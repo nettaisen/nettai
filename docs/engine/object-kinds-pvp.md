@@ -28,7 +28,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x17 | 0x080c6dcc | 180 |
 | T3 0x22 | 0x080c853c | 16 |
 | T3 0x49 | 0x080cd2ec | 87 |
-| T3 0x59 | 0x080cf954 | 7372 |
+| T3 0x59 | 0x080cf954 | 7372 (rock: `kinds::rock`, field-objects.md) |
 | T3 0x5b | 0x080cfcf8 | 96 |
 | T3 0x74 | 0x080d30d0 | 350 |
 | T3 0x82 | 0x080d5740 | 48 |
@@ -72,5 +72,5 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T4 0x76 | 0x080e8b00 | 595 |
 | T4 0x80 | 0x080e9460 | 1192 |
 | T4 0x84 | 0x080e9570 | 761 |
-| T4 0x87 | 0x080e97f0 | 20 |
+| T4 0x87 | 0x080e97f0 | 20 (absorbed obstacle: `kinds::absorbed_obstacle`, field-objects.md) |
 | T4 0x89 | 0x080e9af0 | 118 |
