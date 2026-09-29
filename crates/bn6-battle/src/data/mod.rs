@@ -8,8 +8,10 @@ pub mod collision_generated;
 pub mod effects_generated;
 mod sprites_generated;
 pub mod field_generated;
+pub mod player;
+pub mod player_generated;
 
-pub use banners_generated::{BANNER_TYPES, LOSE_BANNERS, WIN_BANNERS};
+pub use banners_generated::{BANNER_HOLDS, LOSE_BANNERS, WIN_BANNERS};
 pub use chips_generated::CHIPS;
 
 /// Chip ids are indices into [`CHIPS`] (0..=0x19A).
@@ -122,30 +124,62 @@ pub struct SpriteId {
 
 /// One animation frame's timing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[repr(C)]
 pub struct AnimFrame {
     /// Ticks the frame shows for.
     pub duration: u8,
-    /// 0x80 = last frame, 0x40 = loop.
+    /// Frame cue bits: `object::sprite::FRAME_LAST` (0x80) ends the
+    /// animation, `FRAME_LOOP` (0x40) loops it; attacks read others as cues.
     pub flags: u8,
+}
+
+/// A sprite's animations, each a list of frames.
+#[derive(Clone, Copy, Debug)]
+pub struct SpriteAnimations {
+    pub id: SpriteId,
+    pub animations: &'static [&'static [AnimFrame]],
 }
 
 /// An animation's frames (empty when the sprite has no battle animation
 /// data).
 pub fn animation(sprite: SpriteId, anim: u8) -> &'static [AnimFrame] {
-    use sprites_generated::{ANIM_FRAMES, ANIM_STARTS, SPRITE_INDEX};
-    let Ok(i) = SPRITE_INDEX.binary_search_by_key(&(sprite.category, sprite.index), |&(c, i, _, _)| (c, i)) else {
-        return &[];
-    };
-    let (_, _, first, count) = SPRITE_INDEX[i];
-    if anim as u32 >= count {
-        return &[];
+    let key = |s: &SpriteAnimations| (s.id.category, s.id.index);
+    match sprites_generated::SPRITES.binary_search_by_key(&(sprite.category, sprite.index), key) {
+        Ok(i) => sprites_generated::SPRITES[i].animations.get(anim as usize).copied().unwrap_or(&[]),
+        Err(_) => &[],
     }
-    let a = (first + anim as u32) as usize;
-    let (start, end) = (ANIM_STARTS[a] as usize, ANIM_STARTS[a + 1] as usize);
-    let bytes = &ANIM_FRAMES[2 * start..2 * end];
-    // SAFETY: AnimFrame is two u8 fields, repr(C), alignment 1.
-    unsafe { std::slice::from_raw_parts(bytes.as_ptr() as *const AnimFrame, end - start) }
+}
+
+/// A one-shot effect's look: which sprite animation it plays.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EffectSprite {
+    pub sprite: SpriteId,
+    pub anim: u8,
+    pub palette: u8,
+}
+
+/// A HUD banner (the game's UI banner id).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct BannerId(pub u8);
+
+impl BannerId {
+    /// Whether the banner stays up until removed rather than timing out.
+    pub fn holds(self) -> bool {
+        BANNER_HOLDS[(self.0 / 4) as usize]
+    }
+}
+
+/// A panel relative to another, `dx` toward the facing side.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PanelOffset {
+    pub dx: i8,
+    pub dy: i8,
+}
+
+/// A test on a panel's flags: all of `require` set and none of `forbid`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PanelCondition {
+    pub require: u32,
+    pub forbid: u32,
 }
 
 #[cfg(test)]
@@ -154,8 +188,8 @@ mod tests {
 
     /// Total ticks of an effect's animation (its lifetime when not timed).
     fn effect_ticks(id: usize) -> u32 {
-        let (category, index, anim, _) = effects_generated::EFFECTS[id];
-        animation(SpriteId { category, index }, anim).iter().map(|f| f.duration as u32).sum()
+        let e = effects_generated::EFFECTS[id];
+        animation(e.sprite, e.anim).iter().map(|f| f.duration as u32).sum()
     }
 
     #[test]

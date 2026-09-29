@@ -130,6 +130,18 @@ pub struct CollisionData {
     pub acc: Accumulators,
 }
 
+/// Indices into `links`: the status visual objects.
+pub mod link {
+    /// +0x48: confusion stars.
+    pub const CONFUSE: usize = 0;
+    /// +0x4C: blindness.
+    pub const BLIND: usize = 1;
+    /// +0x58: ice block.
+    pub const FREEZE: usize = 2;
+    /// +0x60: bubble.
+    pub const BUBBLE: usize = 3;
+}
+
 /// Indices into `status_timers`.
 pub mod timer {
     pub const PARALYZE: usize = 0;
@@ -213,15 +225,15 @@ impl Collision {
                 .copied()
                 .unwrap_or(&[])
                 .iter()
-                .map(|&(dx, dy)| ((s.panel.x as i8 + dx * dir) as u8, (s.panel.y as i8 + dy) as u8))
+                .map(|o| ((s.panel.x as i8 + o.dx * dir) as u8, (s.panel.y as i8 + o.dy) as u8))
                 .filter(|&(x, y)| field::is_valid(x, y))
                 .collect()
         } else {
-            let (want, forbid) = tables::FIELD_REGIONS[(s.region & 0x7F) as usize];
+            let cond = tables::FIELD_REGIONS[(s.region & 0x7F) as usize];
             let mut v = Vec::new();
             for y in 1..=3 {
                 for x in 1..=6 {
-                    if field.check(x, y, want, forbid) {
+                    if field.check(x, y, cond.require, cond.forbid) {
                         v.push((x, y));
                     }
                 }
@@ -271,6 +283,24 @@ impl Battle {
         // The garbage high byte of any bug code: the table offset the
         // target lookup left in r1.
         let r1 = target_idx as u16 * 8 + o.alliance as u16 * 4;
+        decode_damage_word(s, r1);
+    }
+
+    /// `sub_801A082`: redo the damage and collision-type part of the setup
+    /// (after a change of damage or of what the object is).
+    pub fn reset_collision_types(&mut self, obj: ObjectRef, self_idx: u8, target_idx: u8, hit_mod: u8) {
+        let o = self.objects.get(obj);
+        let Some(id) = o.collision else { return };
+        let (alliance, damage) = (o.alliance, o.damage);
+        let timestop = self.is_time_stop();
+        let s = self.collision.get_mut(id);
+        s.hit_mod_base = hit_mod;
+        s.self_damage = damage;
+        s.self_flags = collision_type(self_idx, alliance) | if timestop { 0x1_0000 } else { 0 };
+        s.target_flags = collision_type(target_idx, alliance);
+        // A bug code's garbage high byte is what `battle_isTimeStop` left in
+        // r1 (4, or 0x10000 in time stop).
+        let r1 = if timestop { 0 } else { 4 };
         decode_damage_word(s, r1);
     }
 
@@ -444,7 +474,11 @@ impl Battle {
             rm.acc.inflicted_bugs = hd.bugs;
         }
         // Multiplier.
-        let w1 = tables::ELEMENT_WEAKNESS.get(rd.element as usize * 5 + hd.element as usize).copied().unwrap_or(0);
+        let w1 = tables::ELEMENT_WEAKNESS
+            .get(rd.element as usize)
+            .and_then(|row| row.get(hd.element as usize))
+            .copied()
+            .unwrap_or(0);
         let w2 = (rd.secondary_weakness & hd.secondary_element != 0 || (rd.secondary_weakness == 0x80 && hs & 0x2000 != 0))
             as u8;
         let mut m = 1 + w1 + w2;

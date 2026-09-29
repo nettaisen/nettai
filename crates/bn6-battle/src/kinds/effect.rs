@@ -4,7 +4,7 @@
 //! See docs/engine/objects-and-player.md §A.3.
 
 use crate::battle::Battle;
-use crate::data::{SpriteId, effects_generated::EFFECTS};
+use crate::data::{EffectSprite, effects_generated::EFFECTS};
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
 /// Effect-private state.
@@ -38,9 +38,9 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 fn init(b: &mut Battle, r: ObjectRef) {
     let id = b.objects.get(r).params[0];
-    let (category, index, anim, _palette) = EFFECTS[id as usize];
+    let EffectSprite { sprite: id, anim, .. } = EFFECTS[id as usize];
     let sprite = b.objects.sprite_mut(r);
-    sprite.load(SpriteId { category, index });
+    sprite.load(id);
     sprite.set_animation(anim);
     sprite.update();
     let o = b.objects.get_mut(r);

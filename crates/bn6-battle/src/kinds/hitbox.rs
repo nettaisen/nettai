@@ -13,15 +13,9 @@ pub struct Vars {
     pub status: u8,
     pub bug: u8,
     pub bug_arg: u8,
-    /// Where to report whether a body was hit.
-    pub report: Option<HitReport>,
-}
-
-/// Where a hitbox reports `hit_flags & 0x0C000000` (the bodies it hit).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum HitReport {
-    /// Into the spawner's attack scratch, at this offset.
-    AttackScratch(ObjectRef, usize),
+    // The game also lets the spawner pass a slot that receives which bodies
+    // were hit (`hit_flags & 0x0C000000`). Added as a typed field on the
+    // spawner's action state when the first attack that reads it is ported.
 }
 
 /// What a hitbox does.
@@ -63,7 +57,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, s: &HitboxSpec) -> Option<ObjectR
     o.stamina = s.stamina;
     o.alliance = alliance;
     o.flip = flip;
-    o.vars = crate::kinds::Vars::Hitbox(Vars { hit_mod: s.hit_mod, status: s.status, bug: s.bug, bug_arg: s.bug_arg, report: None });
+    o.vars = crate::kinds::Vars::Hitbox(Vars { hit_mod: s.hit_mod, status: s.status, bug: s.bug, bug_arg: s.bug_arg });
     Some(r)
 }
 
@@ -125,13 +119,7 @@ fn resolve(b: &mut Battle, r: ObjectRef) {
     let Some(c) = b.objects.get(r).collision else { return };
     b.remove_collision(c);
     crate::kinds::spark::spawn_collision_effect(b, r);
-    let hit = b.collision.get(c).acc.hit_flags;
-    if let Some(HitReport::AttackScratch(owner, off)) = vars(b, r).report
-        && let Some(a) = b.objects.get(owner).actor
-    {
-        b.actors.get_mut(a).attack.set_scratch_u32(off, hit & 0x0C00_0000);
-    }
-    if hit == 0 {
+    if b.collision.get(c).acc.hit_flags == 0 {
         let o = b.objects.get_mut(r);
         let left = o.timer as i32 - 1;
         o.timer = left as u16;

@@ -171,7 +171,7 @@ impl Round {
     /// The engine's starting point for this round.
     pub fn round_setup(&self) -> RoundSetup {
         let bs = unhex(&self.setup.battle_state);
-        let stats = |s: &str| NaviStats(unhex(s).try_into().unwrap());
+        let stats = |s: &str| NaviStats::from_bytes(&unhex(s).try_into().unwrap());
         RoundSetup {
             settings: BattleSettings::netbattle_from_bytes(&unhex(&self.setup.settings)),
             navi_stats: [stats(&self.setup.navi_stats[0]), stats(&self.setup.navi_stats[1])],
@@ -208,7 +208,7 @@ impl Round {
             if f.state[1] == 8 && next.state[1] == 0x0C {
                 let latest = |p: usize| -> (NaviStats, u8) {
                     let e = self.exchanges.iter().filter(|e| e.frame <= f.frame).next_back().expect("exchange record");
-                    (NaviStats(unhex(&e.navi_stats[p]).try_into().unwrap()), unhex(&e.transform[p])[0])
+                    (NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap()), unhex(&e.transform[p])[0])
                 };
                 let result = |p: usize| {
                     let hand = ChipHand::from_bytes(&unhex(&f.chip_blocks[p]));
@@ -269,32 +269,58 @@ pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
     d
 }
 
+/// One object's observable state as the comparison sees it.
+#[allow(clippy::too_many_arguments)]
+fn describe_fields(
+    kind: u8,
+    index: u8,
+    flags: u8,
+    state: [u8; 4],
+    panel: [u8; 2],
+    alliance: u8,
+    hp: [u16; 2],
+    pos: [i32; 3],
+    timer: u16,
+    anim: u8,
+    status: u32,
+) -> String {
+    let pos =
+        if pos_is_garbage(kind, index, flags) { "-".to_string() } else { format!("{},{},{}", pos[0], pos[1], pos[2]) };
+    format!(
+        "T{kind}#{index:#04x} f{flags:#04x} s{state:?} p{},{} a{alliance} hp{}/{} pos{pos} t{timer} an{anim} st{status:#x}",
+        panel[0], panel[1], hp[0], hp[1]
+    )
+}
+
+/// Positions that are register garbage in the game and never read:
+/// the intro sequencer's (effect #2, objects-and-player.md §A.4), and a
+/// charge glow's before its first unpaused update, while it has no sprite
+/// yet (effect #8, §A.5).
+fn pos_is_garbage(kind: u8, index: u8, flags: u8) -> bool {
+    kind == 4 && (index == 2 || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0))
+}
+
 fn describe(b: &Battle, r: crate::object::ObjectRef) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
-    format!(
-        "T{}#{:#04x} f{:#04x} s{:?} p{},{} a{} hp{}/{} pos{},{},{} st{:#x}",
+    describe_fields(
         r.pool.type_number(),
         o.index,
         o.flags,
         [o.state, o.action, o.phase, o.phase_init],
-        o.panel.x,
-        o.panel.y,
+        [o.panel.x, o.panel.y],
         o.alliance,
-        o.hp,
-        o.max_hp,
-        o.pos.x,
-        o.pos.y,
-        o.pos.z,
-        status
+        [o.hp, o.max_hp],
+        [o.pos.x, o.pos.y, o.pos.z],
+        o.timer,
+        o.anim,
+        status,
     )
 }
 
 fn describe_trace(o: &Object) -> String {
-    format!(
-        "T{}#{:#04x} f{:#04x} s{:?} p{},{} a{} hp{}/{} pos{},{},{} st{:#x}",
-        o.kind, o.index, o.flags, o.state, o.panel[0], o.panel[1], o.alliance, o.hp, o.max_hp, o.pos[0], o.pos[1], o.pos[2], o.status
-    )
+    let hp = [o.hp, o.max_hp];
+    describe_fields(o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status)
 }
 
 /// Run a round through the engine; returns the number of frames that
