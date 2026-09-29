@@ -6,3 +6,4 @@ license.workspace = true
 description = "Extracts game data from a BN6 (US Falzar) ROM into bn6-battle's generated tables"
 
 [dependencies]
+bn6-assets = { path = "../bn6-assets" }

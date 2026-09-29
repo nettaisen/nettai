@@ -491,9 +491,13 @@ fn init(b: &mut Battle, r: ObjectRef) {
 fn load_sprite(b: &mut Battle, r: ObjectRef) {
     let (navi, form) = (stats(b, r).navi, stats(b, r).form);
     let id = if navi == Navi::MEGAMAN { pdata::form_sprite(form) } else { pdata::navi_sprite(navi) };
+    let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
     sprite.set_animation(0);
+    // sprite_hasShadow; sprite_setFlip(object_getFlip()).
+    sprite.look.shadow = crate::object::sprite::Shadow::Ground;
+    sprite.look.set_flip(flip);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = 0;
