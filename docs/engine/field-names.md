@@ -178,3 +178,22 @@ These are named after a bit value or an object index, not a struct offset or add
 They are candidates for a later naming pass: `request::PAUSE_40`, `request::PAUSE_4000000`, `request::TRAP_200`,
 `request::TRAP_400`, `request::TRAP_8000`, `request::ACTION_30`, `request::ACTION_49`, `status::CROSS_2000` ...
 `CROSS_40000`, `battle_flags::MODE_40` (and `is_mode_40`), and `setup::ActorKind::Object6E` / `Object7D`.
+
+## Transformation and pause-request bits (Beast Out pass)
+
+The request (`AIData+0x44`) and state (`AIData+0x48`) bits of the transformation and pause-time machinery, named for
+what they start. "No setter found" is from the same heuristic scan as above.
+
+| Old name | New name | Evidence |
+|---|---|---|
+| `request::PAUSE_40` | `request::REVERT_FORM` | 0x40: `sub_8015994` (turn-start check, Beast Out used up). The pause handler `sub_8017BC0` turns it into action 0x1C with state 0x100. |
+| state literal `0x100` | `status::REVERTING_FORM` | `sub_8015614` runs as the pause-time action; `sub_80159A2` waits on it. |
+| `request::PAUSE_4000000` | `request::CROSS_CHANGE` | 0x4000000: `sub_802DCDE`, from the transformation sequencer when a transform record's +4 is set. Becomes action 0x1C with state 0x1000. |
+| state literal `0x1000` | `status::CHANGING_CROSS` | `sub_802D714` runs as the pause-time action; `sub_802DCEC` waits on it. |
+| `status::CROSS_2000` | `status::CROSS_KNOCKOUT` | 0x2000: set with action 0x4C from request 0x8000000 (`sub_801AF44`), or with the pause-time `sub_802D926`. Takes over the dispatch. |
+| `status::CROSS_4000` | `status::CROSSED` | 0x4000: set when the Cross change ends (`sub_802D8F0`); read by `sub_802DD2A` (a crossed link navi falls back instead of being deleted). |
+| `status::CROSS_10000` | `status::VOLLEY` | 0x10000: set with action 0x30 (`sub_80ED55C`, a volley of shots). Takes over the dispatch. |
+| `status::CROSS_20000` | `status::UNINTERRUPTIBLE` | 0x20000: takes over the dispatch like the two above; no setter found. |
+| `status::CROSS_40000` | `status::CROSS_BREAKING` | 0x40000: set on a weakness hit to a Cross form (NameID 0x1AC..0x1C1); `sub_8015766` ends the Cross over 30 ticks. |
+| `request::ACTION_30` | `request::VOLLEY` | 0x40000000: starts action 0x30 with state 0x10000. No setter found. |
+| `request::ACTION_49` | `request::STUN_STRIKE` | 0x80000: starts action 0x49 (`sub_80EEB4C`: a slash at every opposing navi that is paralyzed, or, variant 1, on a panel with flags 0x1C00). No setter found. The form changes (`sub_8014B18`, `sub_8014D70`...) set **state** bit 0x80000, which is `status::FORM_CHANGE_SPRITE_HELD`, not this request. |
