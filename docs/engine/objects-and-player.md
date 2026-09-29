@@ -1657,6 +1657,13 @@ Minimum buster cycle: N+7 frames.
 
 **Routines 0x2B and 0x2C (`sub_8011F8C`, `sub_8011FCE`)**: with absorbed obstacles (AIData+0x0D, list at +0x6C), they pop the last and throw it: action 0x11 variant 2, damage 200, AV+0x30 = the obstacle byte | its sprite (`byte_80E98C0`) << 16. Without any, the buster (0x2B) or `sub_8011AF2` (0x2C).
 
+**DustCross (form 0xA): charged shot 0x28 and B+Back 0x2A** (both trace-verified in soundmod).
+- Routine 0x28 (`sub_8011F64`): damage 0x32 + 10·min(`sub_801265A`, 5), hit param 0x94, element 0x10, action 0x57. Action 0x57 (`sub_80EFC1C`): sub-phase 0 as the buster's (anim 0x0E, the arm, `object_setDefaultCounterTime`, USING_ACTION, sound 0xFF) and on its 2nd tick `sub_80DB800` rolls a junk ball one panel ahead; after 5 ticks sub-phase 4: 31 ticks, then the pointers cleared and `object_exitAttackState`.
+- The ball, T3 0xB0 (`sub_80DB6A4`, Param1 0: frozen in time stop): 18 pixels ahead of its panel's centre, sprite (8, 0xA) anim 0x19. It rolls 6 pixels a tick toward the far column (Timer = the distance to column 6/1 over 6 pixels); on its first tick, and whenever it reaches or passes a panel's centre, it stops if the panel's flags meet `byte_80DB888` (the other side's body, objects); then anim 0x1A, 30 ticks, and on the 5th a hit region (region 1, hit effect 0xA, target 5, self 0x15, modifier 3) and, on a solid panel, sound 0xC0 and `object_crackPanel`. Its Z at spawn is the caller's r3 (the low half of a RAM address), of which the init keeps the fraction; the trace comparison ignores it.
+- Routine 0x2A (`sub_8011F84`): lockout 0x28, action 0x58 (`sub_80EFCB4`): anim 0x17 (0x19 in form 0x16), USING_ACTION and MOVING, a vortex (T4#0 effect 0x63, flip = the side) 7 pixels behind and 4 lower with flags 0x14 cleared, sound 0xAD; on the 10th tick `sub_80EFD74` pulls in the obstacles (field-objects.md §4.4); 11 ticks later MOVING off and `object_exitAttackState`. Every tick the vortex's Timer is set to 2, so it lasts two ticks past the action.
+
+**Action 0x1C outside a pause (`sub_80EC39C`)** runs a chip's routine once (`off_80EC3F0[subtype]`, with the attack variables in registers) and idles, 8 ticks later for subtype 0x14. FullCust (0xAE, subtype 5, `sub_800AF34`) sets the custom gauge to 0x4000 (`sub_801DFA2`; in the flag-0x40 mode the side's gauge gets 0x1555 instead); the gauge task then raises the full flag.
+
 #### B7. Charged shot (AI.Unk_07 = 1)
 
 **Setup, `sub_8011A7E`**: reached through flag 2, or through `sub_8011A26` when v == 2.
@@ -1787,7 +1794,7 @@ Round 2 P1 goes through action 0x1C (1794-1886), which is a form change: NS[0x2C
   - During an A-charge (AI.Unk_1E == 1) whose AI.Unk_1B is ≥ 15, the counter is incremented and Unk_1B is reset to 10. If Unk_1B < 15, nothing happens.
   - When AI.Unk_1E ≠ 1, the counter is reset to 0.
   
-  Not base form; it feeds the chip's extra value in `sub_800EDD0`.
+  Not base form; it feeds the chip's extra value in `sub_800EDD0`. With no chip left, `sub_8010004` gives 0xFFFF and the chip lookup reads past the table (ChipData[9] = 0x30 there: no damage bit), so nothing happens. Trace-verified in ChargeCross (form 5), soundmod round 3.
 - Then, if NS[0x29] == 0: if NS[0x2C] == 0x18 → Z = 0x140000. Otherwise, if CurAction ≠ 0x50 and ObjectFlags1 has no BUBBLED (0x80000000) → **Z = 0**.
 
 For base MegaMan the only effect is clamping Z to 0 each tick. **It has nothing to do with charging.**
