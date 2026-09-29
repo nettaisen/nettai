@@ -68,6 +68,11 @@ impl Cpu {
     }
 
     fn swi(&mut self, n: u32, ret: u32, thumb: bool) {
+        self.swi_inner(n, ret, thumb);
+        self.bios_prefetch = 0xE3A0_2004;
+    }
+
+    fn swi_inner(&mut self, n: u32, ret: u32, thumb: bool) {
         match n {
             SWI_SOFT_RESET | SWI_STOP => panic!("unsupported BIOS call {n:#x}"),
             SWI_REGISTER_RAM_RESET => self.register_ram_reset(),

@@ -3,6 +3,7 @@
 0x03005b00 sub_3005B00: computed jump at 0x03005c68
 0x08000000 GameEntryPoint: computed jump at 0x080001bc
 0x080007be sub_80007BE: computed jump at 0x080007e6
+0x080007e8 loc_80007E8: computed jump at 0x080007e6
 0x08000822 sub_8000822: computed jump at 0x0800084c
 0x0801d12a sub_801D12A: computed jump at 0x0801d188
 0x08144250 sub_8144250: computed jump at 0x08144268

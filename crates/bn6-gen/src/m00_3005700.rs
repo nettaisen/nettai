@@ -6267,8 +6267,39 @@ pub fn sub_80007BE(c: &mut Cpu) {
                 c.st32(c.r[5].wrapping_add(0x8), c.r[0]); // 80007d6: str r0, [r5, #0x8]
                 c.r[6] = 0xc; // 80007d8: mov r6, #0xc
                 c.r[6] = c.adds(c.r[6], c.r[5]); // 80007da: add r6, r6, r5
-                pc = 0x080007dc;
+                let a = c.r[6]; c.r[6] = a.wrapping_add(0x10); c.r[0] = c.ld32(a); c.r[1] = c.ld32(a.wrapping_add(0x4)); c.r[2] = c.ld32(a.wrapping_add(0x8)); c.r[3] = c.ld32(a.wrapping_add(0xc)); // 80007dc: ldmia r6!, {r0-r3}
+                c.r[4] = c.r[10]; // 80007de: mov r4, r10
+                let a = c.r[13].wrapping_sub(0x4); c.st32(a, c.r[4]); c.r[13] = a; // 80007e0: push {r4}
+                c.r[4] = 0x080007e9; // =loc_80007E8+1 // 80007e2: ldr r4, [pc, #0x20] // 0x08000804
+                c.r[14] = c.r[4]; // 80007e4: mov lr, r4
+                pc = c.r[3] & !1; if pc == ret { c.pc = pc; return; } continue; // 80007e6: bx r3
             }
+            // loc_80007F0
+            0x080007f0 => {
+                c.r[0] = 0x0; // 80007f0: mov r0, #0x0
+                c.st32(c.r[5], c.r[0]); // 80007f2: str r0, [r5, #0x0]
+                c.r[6] = c.ld32(c.r[5].wrapping_add(0x8)); // 80007f4: ldr r6, [r5, #0x8]
+                c.subs(c.r[6], 0x0); // 80007f6: cmp r6, #0x0
+                if c.z { pc = 0x08000800; continue; } // 80007f8: beq 0x08000800
+                let a = c.r[6]; c.r[6] = a.wrapping_add(0x10); c.r[0] = c.ld32(a); c.r[1] = c.ld32(a.wrapping_add(0x4)); c.r[2] = c.ld32(a.wrapping_add(0x8)); c.r[3] = c.ld32(a.wrapping_add(0xc)); // 80007fa: ldmia r6!, {r0-r3}
+                c.r[14] = 0x08000801; c.ret = 0x08000800; sound_8000808(c); if c.pc != 0x08000800 { pc = c.pc; continue; } // 80007fc: bl sound_8000808
+                pc = 0x08000800;
+            }
+            // locret_8000800
+            0x08000800 => {
+                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[6] = c.ld32(a.wrapping_add(0x8)); c.r[7] = c.ld32(a.wrapping_add(0xc)); let t = c.ld32(a.wrapping_add(0x10)); c.r[13] = a.wrapping_add(0x14); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 8000800: pop {r4-r7,pc}
+            }
+            _ => return c.fallback(pc, ret),
+        }
+    }
+}
+
+/// `loc_80007E8` (0x080007e8, thumb)
+pub fn loc_80007E8(c: &mut Cpu) {
+    let ret = c.ret;
+    let mut pc: u32 = 0x080007e8;
+    loop {
+        match pc {
             // loc_80007DC
             0x080007dc => {
                 let a = c.r[6]; c.r[6] = a.wrapping_add(0x10); c.r[0] = c.ld32(a); c.r[1] = c.ld32(a.wrapping_add(0x4)); c.r[2] = c.ld32(a.wrapping_add(0x8)); c.r[3] = c.ld32(a.wrapping_add(0xc)); // 80007dc: ldmia r6!, {r0-r3}
@@ -6278,16 +6309,11 @@ pub fn sub_80007BE(c: &mut Cpu) {
                 c.r[14] = c.r[4]; // 80007e4: mov lr, r4
                 pc = c.r[3] & !1; if pc == ret { c.pc = pc; return; } continue; // 80007e6: bx r3
             }
-            // loc_80007E8
             0x080007e8 => {
                 let a = c.r[13]; c.r[4] = c.ld32(a); c.r[13] = a.wrapping_add(0x4); // 80007e8: pop {r4}
                 c.r[10] = c.r[4]; // 80007ea: mov r10, r4
                 c.r[7] = c.subs(c.r[7], 0x1); // 80007ec: sub r7, #0x1
                 if !c.z { pc = 0x080007dc; continue; } // 80007ee: bne 0x080007dc
-                pc = 0x080007f0;
-            }
-            // loc_80007F0
-            0x080007f0 => {
                 c.r[0] = 0x0; // 80007f0: mov r0, #0x0
                 c.st32(c.r[5], c.r[0]); // 80007f2: str r0, [r5, #0x0]
                 c.r[6] = c.ld32(c.r[5].wrapping_add(0x8)); // 80007f4: ldr r6, [r5, #0x8]
@@ -6376,18 +6402,32 @@ pub fn sub_8000822(c: &mut Cpu) {
                 c.r[14] = c.r[4]; // 800084a: mov lr, r4
                 pc = c.r[3] & !1; if pc == ret { c.pc = pc; return; } continue; // 800084c: bx r3
             }
-            // loc_800084E
-            0x0800084e => {
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[13] = a.wrapping_add(0x4); // 800084e: pop {r4}
-                c.r[10] = c.r[4]; // 8000850: mov r10, r4
-                pc = 0x0800085a; continue; // 8000852: b 0x0800085a
-            }
             // loc_8000854
             0x08000854 => {
                 c.r[0] = c.r[6].wrapping_add(0); // 8000854: add r0, r6, #0
                 c.r[0] = c.subs(c.r[0], 0x10); // 8000856: sub r0, #0x10
                 c.st32(c.r[5].wrapping_add(0x8), c.r[0]); // 8000858: str r0, [r5, #0x8]
                 pc = 0x0800085a;
+            }
+            // locret_800085A
+            0x0800085a => {
+                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[6] = c.ld32(a.wrapping_add(0x8)); c.r[7] = c.ld32(a.wrapping_add(0xc)); let t = c.ld32(a.wrapping_add(0x10)); c.r[13] = a.wrapping_add(0x14); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 800085a: pop {r4-r7,pc}
+            }
+            _ => return c.fallback(pc, ret),
+        }
+    }
+}
+
+/// `loc_800084E` (0x0800084e, thumb)
+pub fn loc_800084E(c: &mut Cpu) {
+    let ret = c.ret;
+    let mut pc: u32 = 0x0800084e;
+    loop {
+        match pc {
+            0x0800084e => {
+                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[13] = a.wrapping_add(0x4); // 800084e: pop {r4}
+                c.r[10] = c.r[4]; // 8000850: mov r10, r4
+                pc = 0x0800085a; continue; // 8000852: b 0x0800085a
             }
             // locret_800085A
             0x0800085a => {
@@ -15883,110 +15923,6 @@ pub fn sub_800362C(c: &mut Cpu) {
                 c.r[1] = 0x50; // 800368a: mov r1, #0x50
                 c.r[2] = 0x0; c.n = false; c.z = true; // 800368c: mov r2, #0x0
                 let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[6] = c.ld32(a.wrapping_add(0x8)); c.r[7] = c.ld32(a.wrapping_add(0xc)); let t = c.ld32(a.wrapping_add(0x10)); c.r[13] = a.wrapping_add(0x14); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 800368e: pop {r4-r7,pc}
-            }
-            _ => return c.fallback(pc, ret),
-        }
-    }
-}
-
-/// `sub_8003694` (0x08003694, thumb)
-pub fn sub_8003694(c: &mut Cpu) {
-    let ret = c.ret;
-    let mut pc: u32 = 0x08003694;
-    loop {
-        match pc {
-            0x08003694 => {
-                let a = c.r[13].wrapping_sub(0x14); c.st32(a, c.r[4]); c.st32(a.wrapping_add(0x4), c.r[5]); c.st32(a.wrapping_add(0x8), c.r[6]); c.st32(a.wrapping_add(0xc), c.r[7]); c.st32(a.wrapping_add(0x10), c.r[14]); c.r[13] = a; // 8003694: push {r4-r7,lr}
-                c.r[4] = c.r[8]; // 8003696: mov r4, r8
-                c.r[5] = c.r[9]; // 8003698: mov r5, r9
-                let a = c.r[13].wrapping_sub(0x8); c.st32(a, c.r[4]); c.st32(a.wrapping_add(0x4), c.r[5]); c.r[13] = a; // 800369a: push {r4-r5}
-                c.r[3] = c.r[10]; // 800369c: mov r3, r10
-                c.r[3] = c.ld32(c.r[3].wrapping_add(0xc)); // 800369e: ldr r3, [r3, #0xc]
-                c.r[1] = c.ld32(c.r[0]); // 80036a0: ldr r1, [r0, #0x0]
-                c.r[4] = c.ld32(c.r[3].wrapping_add(0x3c)); // 80036a2: ldr r4, [r3, #0x3c]
-                c.r[1] = c.r[1].wrapping_sub(c.r[4]); // 80036a4: sub r1, r1, r4
-                c.r[8] = c.r[1]; // 80036a6: mov r8, r1
-                c.r[6] = c.ld32(c.r[0].wrapping_add(0x4)); // 80036a8: ldr r6, [r0, #0x4]
-                c.r[4] = c.ld32(c.r[3].wrapping_add(0x40)); // 80036aa: ldr r4, [r3, #0x40]
-                c.r[6] = c.r[6].wrapping_sub(c.r[4]); // 80036ac: sub r6, r6, r4
-                c.r[1] = c.r[1].wrapping_add(c.r[6]); // 80036ae: add r1, r1, r6
-                c.r[1] = ((c.r[1] as i32) >> 16) as u32; // 80036b0: asr r1, r1, #0x10
-                c.r[1] = c.r[1].wrapping_add(0x78); // 80036b2: add r1, #0x78
-                c.r[2] = c.r[8]; // 80036b4: mov r2, r8
-                c.r[6] = c.r[6].wrapping_sub(c.r[2]); // 80036b6: sub r6, r6, r2
-                c.r[6] = ((c.r[6] as i32) >> 1) as u32; // 80036b8: asr r6, r6, #0x1
-                c.r[7] = c.r[6].wrapping_add(0); // 80036ba: add r7, r6, #0
-                c.r[2] = c.ld32(c.r[3].wrapping_add(0x44)); // 80036bc: ldr r2, [r3, #0x44]
-                c.r[4] = 0x80; // 80036be: mov r4, #0x80
-                c.r[4] = c.r[4] << 16; // 80036c0: lsl r4, r4, #0x10
-                c.r[2] = c.r[2].wrapping_add(c.r[4]); // 80036c2: add r2, r2, r4
-                c.r[4] = c.r[2].wrapping_add(c.r[6]); // 80036c4: add r4, r2, r6
-                c.r[4] = ((c.r[4] as i32) >> 16) as u32; // 80036c6: asr r4, r4, #0x10
-                c.r[9] = c.r[4]; // 80036c8: mov r9, r4
-                c.r[4] = c.ld32(c.r[0].wrapping_add(0x8)); // 80036ca: ldr r4, [r0, #0x8]
-                c.r[6] = c.r[6].wrapping_sub(c.r[4]); // 80036cc: sub r6, r6, r4
-                c.r[2] = c.ld32(c.r[3].wrapping_add(0x44)); // 80036ce: ldr r2, [r3, #0x44]
-                c.r[6] = c.r[6].wrapping_add(c.r[2]); // 80036d0: add r6, r6, r2
-                c.r[6] = ((c.r[6] as i32) >> 16) as u32; // 80036d2: asr r6, r6, #0x10
-                c.r[6] = c.r[6].wrapping_add(0x52); // 80036d4: add r6, #0x52
-                c.r[2] = 0x20; // 80036d6: mov r2, #0x20
-                c.r[2] = 0u32.wrapping_sub(c.r[2]); // 80036d8: neg r2, r2
-                c.subs(c.r[1], c.r[2]); // 80036da: cmp r1, r2
-                if c.n != c.v { pc = 0x08003708; continue; } // 80036dc: blt 0x08003708
-                c.r[2] = 0xf0; // 80036de: mov r2, #0xf0
-                c.r[2] = c.r[2].wrapping_add(0x20); // 80036e0: add r2, #0x20
-                c.subs(c.r[1], c.r[2]); // 80036e2: cmp r1, r2
-                if c.n == c.v { pc = 0x08003708; continue; } // 80036e4: bge 0x08003708
-                c.r[2] = 0x20; // 80036e6: mov r2, #0x20
-                c.r[2] = 0u32.wrapping_sub(c.r[2]); // 80036e8: neg r2, r2
-                c.subs(c.r[6], c.r[2]); // 80036ea: cmp r6, r2
-                if c.n != c.v { pc = 0x08003708; continue; } // 80036ec: blt 0x08003708
-                c.r[2] = 0xa0; // 80036ee: mov r2, #0xa0
-                c.r[2] = c.r[2].wrapping_add(0x40); // 80036f0: add r2, #0x40
-                c.subs(c.r[6], c.r[2]); // 80036f2: cmp r6, r2
-                if c.n == c.v { pc = 0x08003708; continue; } // 80036f4: bge 0x08003708
-                c.r[0] = c.r[1].wrapping_add(0); // 80036f6: add r0, r1, #0
-                c.r[1] = c.r[6].wrapping_add(0); // 80036f8: add r1, r6, #0
-                c.r[2] = 0x1; // 80036fa: mov r2, #0x1
-                c.r[3] = c.r[9]; // 80036fc: mov r3, r9
-                c.r[3] = c.adds(c.r[3], 0x60); // 80036fe: add r3, #0x60
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[13] = a.wrapping_add(0x8); // 8003700: pop {r4-r5}
-                c.r[8] = c.r[4]; // 8003702: mov r8, r4
-                c.r[9] = c.r[5]; // 8003704: mov r9, r5
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[6] = c.ld32(a.wrapping_add(0x8)); c.r[7] = c.ld32(a.wrapping_add(0xc)); let t = c.ld32(a.wrapping_add(0x10)); c.r[13] = a.wrapping_add(0x14); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 8003706: pop {r4-r7,pc}
-            }
-            // loc_8003708
-            0x08003708 => {
-                c.r[0] = c.r[1].wrapping_add(0); // 8003708: add r0, r1, #0
-                c.r[1] = c.r[6].wrapping_add(0); // 800370a: add r1, r6, #0
-                c.r[2] = 0x0; // 800370c: mov r2, #0x0
-                c.r[3] = c.r[9]; // 800370e: mov r3, r9
-                c.r[3] = c.adds(c.r[3], 0x60); // 8003710: add r3, #0x60
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[13] = a.wrapping_add(0x8); // 8003712: pop {r4-r5}
-                c.r[8] = c.r[4]; // 8003714: mov r8, r4
-                c.r[9] = c.r[5]; // 8003716: mov r9, r5
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[6] = c.ld32(a.wrapping_add(0x8)); c.r[7] = c.ld32(a.wrapping_add(0xc)); let t = c.ld32(a.wrapping_add(0x10)); c.r[13] = a.wrapping_add(0x14); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 8003718: pop {r4-r7,pc}
-            }
-            _ => return c.fallback(pc, ret),
-        }
-    }
-}
-
-/// `object_Clear3RAMBytes_800371A` (0x0800371a, thumb)
-pub fn object_Clear3RAMBytes_800371A(c: &mut Cpu) {
-    let ret = c.ret;
-    let mut pc: u32 = 0x0800371a;
-    loop {
-        match pc {
-            0x0800371a => {
-                c.r[0] = 0x0; c.n = false; c.z = true; // 800371a: mov r0, #0x0
-                c.r[1] = 0x02036778; // 800371c: ldr r1, [pc, #0x60] // 0x08003780
-                c.st8(c.r[1], c.r[0]); // 800371e: strb r0, [r1, #0x0]
-                c.r[1] = 0x0203ca7c; // 8003720: ldr r1, [pc, #0x60] // 0x08003784
-                c.st8(c.r[1], c.r[0]); // 8003722: strb r0, [r1, #0x0]
-                c.r[1] = 0x02036830; // 8003724: ldr r1, [pc, #0x60] // 0x08003788
-                c.st8(c.r[1], c.r[0]); // 8003726: strb r0, [r1, #0x0]
-                pc = c.r[14] & !1; if pc == ret { c.pc = pc; return; } continue; // 8003728: mov pc, lr
             }
             _ => return c.fallback(pc, ret),
         }

@@ -124,6 +124,7 @@ impl Cpu {
     #[inline(never)]
     fn read32_slow(&mut self, a: u32) -> u32 {
         match a >> 24 {
+            0x00 if a < 0x4000 => self.bios_prefetch,
             0x04 => self.io_read16(a) as u32 | ((self.io_read16(a + 2) as u32) << 16),
             0x05 => rd32(&self.mem.palette[..], (a as usize) & (PALETTE_SIZE - 4)),
             0x06 => rd32(&self.mem.vram[..], Memory::vram_offset(a) & !3),
@@ -157,6 +158,7 @@ impl Cpu {
     #[inline(never)]
     fn read16_slow(&mut self, a: u32) -> u32 {
         match a >> 24 {
+            0x00 if a < 0x4000 => (self.bios_prefetch >> ((a & 2) * 8)) & 0xFFFF,
             0x04 => self.io_read16(a) as u32,
             0x05 => rd16(&self.mem.palette[..], (a as usize) & (PALETTE_SIZE - 2)),
             0x06 => rd16(&self.mem.vram[..], Memory::vram_offset(a) & !1),
@@ -203,6 +205,7 @@ impl Cpu {
                 let h = self.io_read16(a & !1) as u32;
                 (h >> ((a & 1) * 8)) & 0xFF
             }
+            0x00 if a < 0x4000 => (self.bios_prefetch >> ((a & 3) * 8)) & 0xFF,
             _ => self.mem.peek(a) as u32,
         }
     }
@@ -214,6 +217,9 @@ impl Cpu {
 
     #[inline(always)]
     pub fn st32(&mut self, a: u32, v: u32) {
+        if a.wrapping_sub(self.watch_lo) < self.watch_len {
+            self.watch_hit(a, v, 4);
+        }
         let a = a & !3;
         let m = &mut self.mem;
         match a >> 24 {
@@ -241,6 +247,9 @@ impl Cpu {
 
     #[inline(always)]
     pub fn st16(&mut self, a: u32, v: u32) {
+        if a.wrapping_sub(self.watch_lo) < self.watch_len {
+            self.watch_hit(a, v, 2);
+        }
         let a = a & !1;
         let m = &mut self.mem;
         match a >> 24 {
@@ -265,6 +274,9 @@ impl Cpu {
 
     #[inline(always)]
     pub fn st8(&mut self, a: u32, v: u32) {
+        if a.wrapping_sub(self.watch_lo) < self.watch_len {
+            self.watch_hit(a, v, 1);
+        }
         let m = &mut self.mem;
         match a >> 24 {
             0x02 => m.ewram[(a as usize) & (EWRAM_SIZE - 1)] = v as u8,
@@ -295,6 +307,16 @@ impl Cpu {
             0x07 => {}
             0x0E | 0x0F => self.mem.sram[(a as usize) & (SRAM_SIZE - 1)] = b as u8,
             _ => self.io.bad_accesses += 1,
+        }
+    }
+}
+
+impl Cpu {
+    #[cold]
+    #[inline(never)]
+    fn watch_hit(&mut self, a: u32, v: u32, size: u32) {
+        if let Some(f) = self.on_watch {
+            f(self, a, v, size);
         }
     }
 }

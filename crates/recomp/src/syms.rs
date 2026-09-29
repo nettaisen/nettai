@@ -15,6 +15,8 @@ pub struct Syms {
     pub labels: BTreeMap<u32, Vec<String>>,
     /// Addresses referenced from data words (bit 0 cleared).
     pub code_refs: BTreeSet<u32>,
+    /// Thumb function pointers (`.word label+1`) found in data.
+    pub thumb_ptrs: BTreeSet<u32>,
 }
 
 fn parse_hex(s: &str) -> u32 {
@@ -40,12 +42,18 @@ impl Syms {
             labels.entry(parse_hex(a)).or_default().push(n.to_string());
         }
         let mut code_refs = BTreeSet::new();
+        let mut thumb_ptrs = BTreeSet::new();
         for line in read("code_refs.tsv").lines() {
-            if let Some(a) = line.split('\t').next() {
-                code_refs.insert(parse_hex(a) & !1);
+            let mut it = line.split('\t');
+            if let (Some(a), Some(t)) = (it.next(), it.next()) {
+                let a = parse_hex(a) & !1;
+                code_refs.insert(a);
+                if t == "1" {
+                    thumb_ptrs.insert(a);
+                }
             }
         }
-        Syms { funcs, labels, code_refs }
+        Syms { funcs, labels, code_refs, thumb_ptrs }
     }
 
     /// A readable label for an address, preferring global names over

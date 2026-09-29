@@ -69,9 +69,9 @@ pub struct Cpu {
     pub spsr: u32,
     /// Banked r13/r14/SPSR for IRQ and supervisor modes, and the shared
     /// user/system bank while another mode is active.
-    bank_usr: [u32; 2],
-    bank_irq: [u32; 3],
-    bank_svc: [u32; 3],
+    pub bank_usr: [u32; 2],
+    pub bank_irq: [u32; 3],
+    pub bank_svc: [u32; 3],
     pub mem: Box<Memory>,
     pub io: io::IoState,
     /// Translated-code lookup for indirect branches.
@@ -81,6 +81,14 @@ pub struct Cpu {
     host: Option<Box<dyn Host>>,
     /// Count of returns that skipped frames (longjmp-style control flow).
     pub unwinds: u64,
+    /// Debug write watchpoint: stores to [watch_lo, watch_lo + watch_len)
+    /// call `on_watch`.
+    pub watch_lo: u32,
+    pub watch_len: u32,
+    pub on_watch: Option<fn(&mut Cpu, u32, u32, u32)>,
+    /// The last BIOS opcode prefetched before leaving the BIOS: what reads
+    /// of BIOS memory return from outside it (mGBA's `biosPrefetch`).
+    pub bios_prefetch: u32,
 }
 
 impl Cpu {
@@ -104,6 +112,10 @@ impl Cpu {
             overrides: Default::default(),
             host: Some(Box::new(NoHost)),
             unwinds: 0,
+            watch_lo: 0,
+            watch_len: 0,
+            on_watch: None,
+            bios_prefetch: 0,
         }
     }
 
@@ -426,6 +438,9 @@ impl Cpu {
         [self.r[0], self.r[1], self.r[2], self.r[3], self.r[12], self.r[14]] = regs;
         let spsr = self.spsr;
         self.set_cpsr(spsr, 0xF);
+        // Leaving the BIOS's IRQ stub (`subs pc, lr, #4` at 0x13C) leaves
+        // the word at 0x144 in the prefetch.
+        self.bios_prefetch = 0xE55E_C002;
     }
 }
 

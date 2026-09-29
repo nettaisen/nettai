@@ -1,0 +1,24 @@
+[package]
+name = "difftest"
+version = "0.1.0"
+edition = "2021"
+description = "Differential test: recompiled BN6 code vs mGBA replaying a Tango match"
+
+[dependencies]
+tango-replay = { path = "../../../tango/tango-replay" }
+tango-match = { path = "../../../tango/tango-match" }
+tango-backend-mgba = { path = "../../../tango/tango-backend-mgba" }
+tango-gamesupport-bn6 = { path = "../../../tango/tango-gamesupport-bn6" }
+mgba = { git = "https://github.com/tangobattle/mgba-rs" }
+mgba-sys = { git = "https://github.com/tangobattle/mgba-rs" }
+mgba-rollback = { git = "https://github.com/tangobattle/mgba-rollback" }
+gba-rt = { path = "../../crates/gba-rt" }
+bn6-gen = { path = "../../crates/bn6-gen" }
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+debug = 1
+
+[workspace]

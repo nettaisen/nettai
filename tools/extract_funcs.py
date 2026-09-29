@@ -68,7 +68,8 @@ print(len(funcs), "functions")
 # targets for computed jumps (switch tables) and function pointers.
 word_re = re.compile(r"\.word\s+([A-Za-z_][A-Za-z0-9_.]*)\s*(\+\s*1)?\s*$")
 refs = set()
-for f in files:
+data_files = sorted(os.path.join("data", f) for f in os.listdir(os.path.join(BN6F, "data")) if f.endswith(".s"))
+for f in files + data_files + ["iwram_code.s"]:
     text = open(os.path.join(BN6F, f), encoding="utf-8", errors="replace").read()
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     for raw in text.split("\n"):

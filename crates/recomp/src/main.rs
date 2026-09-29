@@ -59,6 +59,10 @@ fn main() {
     };
 
     let mut entries: BTreeMap<u32, Mode> = syms.funcs.iter().map(|(a, (m, _))| (*a, *m)).collect();
+    // Thumb function pointers stored in data are entry points too.
+    for &a in &syms.thumb_ptrs {
+        entries.entry(a).or_insert(Mode::Thumb);
+    }
     // SoundMainRAM runs from its IWRAM copy.
     entries.insert(0x0300_5700, Mode::Thumb);
 
@@ -104,6 +108,12 @@ fn main() {
 
     let emitter = emit::Emitter { image: &image, syms: &syms, idents: &idents };
     std::fs::create_dir_all(&out_dir).unwrap();
+    for e in std::fs::read_dir(&out_dir).unwrap() {
+        let p = e.unwrap().path();
+        if p.extension().is_some_and(|x| x == "rs") {
+            std::fs::remove_file(p).unwrap();
+        }
+    }
 
     let mut report = String::new();
     let mut n_problems = 0;
