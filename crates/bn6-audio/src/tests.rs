@@ -148,6 +148,8 @@ fn a_battle_drives_the_music() {
         rng: 1,
         local_side: 0,
         score: SetScore::default(),
+        later_stages: Default::default(),
+        low_hp_music_latched: false,
     });
     let mut a = BattleAudio::new(bank());
     let mut out = Vec::new();

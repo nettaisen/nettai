@@ -22,6 +22,10 @@ pub struct Setup {
     pub battle_state: String,
     pub rng1: u32,
     pub rng2: u32,
+    /// The stages of the set's later rounds (`byte_203CA50`, 4 bytes), hex.
+    /// Traces recorded without it leave the stages unknown.
+    #[serde(default)]
+    pub stages: Option<String>,
 }
 
 /// A battle object as the trace records it.
@@ -124,7 +128,7 @@ pub fn unhex(s: &str) -> Vec<u8> {
 use crate::battle::{Battle, CustomResult, TickEvents};
 use crate::hand::ChipHand;
 use crate::input::PlayerTick;
-use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
+use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage};
 use crate::transform::TransformRequest;
 
 /// A custom-screen exchange record from a trace.
@@ -181,6 +185,11 @@ impl Round {
             rng: self.setup.rng2,
             local_side: bs[0x0D],
             score: SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
+            // Unknown stages read as entry 0. A replay never gets to use
+            // them: the tick that chains the next round is that round's
+            // init, which isn't among the battle frames.
+            later_stages: self.setup.stages.as_deref().map(|s| Stage::pair_from_bytes(&unhex(s))).unwrap_or_default(),
+            low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
         }
     }
 
