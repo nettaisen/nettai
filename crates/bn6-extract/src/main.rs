@@ -480,6 +480,14 @@ fn player(rom: &Rom) -> String {
     writeln!(out, "/// Ticks to a full charge by charge routine and Charge stat (`byte_8020404`).").unwrap();
     writeln!(out, "pub static CHARGE_THRESHOLDS: [[u16; 5]; 50] = [{}];", list(rows)).unwrap();
     let rows: Vec<String> = (0..5).map(|n| format!("[{}]", list((0..6).map(|k| rom.u8(0x0802_09CC + 6 * n + k).to_string()).collect()))).collect();
+    let steps: Vec<String> = (0..10).map(|i| format!("{:#06x}", u32at(rom, 0x0801_0B2C + 4 * i))).collect();
+    writeln!(out, "/// The deletion times (BCD minutes:seconds.hundredths) that step an SP navi chip's damage down (`byte_8010B2C`).").unwrap();
+    writeln!(out, "pub static SP_TIME_STEPS: [u32; 10] = [{}];", list(steps)).unwrap();
+    let sp_rows: Vec<String> = (0..18)
+        .map(|n| format!("[{}]", list((0..11).map(|k| rom.u16(0x0802_0E54 + 0x16 * n + 2 * k).to_string()).collect())))
+        .collect();
+    writeln!(out, "/// SP navi chip damage by navi chip and deletion-time step (`byte_8020E54`).").unwrap();
+    writeln!(out, "pub static SP_CHIP_DAMAGE: [[u16; 11]; 18] = [{}];", list(sp_rows)).unwrap();
     writeln!(out, "/// Ticks of recovery after a buster shot, by Rapid stat and open panels ahead (`byte_80209CC`).").unwrap();
     writeln!(out, "pub static BUSTER_RECOVERY: [[u8; 6]; 5] = [{}];", list(rows)).unwrap();
     let rows: Vec<String> = (0..23).map(|n| format!("[{}]", bytes(0x0802_0FE0 + 11 * n, 11))).collect();

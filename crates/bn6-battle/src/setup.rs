@@ -482,6 +482,33 @@ pub struct RoundSetup {
     /// (BattleState+0x20), so a round whose init had to wait starts with
     /// it set, and its first tick plays no pinch cue.
     pub low_hp_music_latched: bool,
+    /// Per side, from the save via the init exchange: how fast each SP
+    /// navi was deleted (`byte_203EB00`). The SP navi chips' damage goes
+    /// by it.
+    pub sp_times: [SpTimes; 2],
+}
+
+/// How fast (in frames) a player deleted each SP navi (20 halfwords).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SpTimes(pub [u16; 20]);
+
+impl Default for SpTimes {
+    /// Every SP navi deleted in no time (the best damage).
+    fn default() -> SpTimes {
+        SpTimes([0; 20])
+    }
+}
+
+impl SpTimes {
+    /// Decode the 0x28-byte record.
+    pub fn from_bytes(b: &[u8]) -> SpTimes {
+        SpTimes(std::array::from_fn(|i| u16::from_le_bytes([b[2 * i], b[2 * i + 1]])))
+    }
+
+    /// The frames SP navi chip `n` (formula `n + 1`) took to delete.
+    pub fn frames(&self, n: usize) -> u16 {
+        self.0[n]
+    }
 }
 
 impl RoundSetup {

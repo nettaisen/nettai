@@ -82,6 +82,7 @@ mod tests {
             score: SetScore::default(),
             later_stages: Default::default(),
             low_hp_music_latched: false,
+            sp_times: Default::default(),
         })
     }
 

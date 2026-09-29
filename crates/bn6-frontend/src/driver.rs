@@ -145,6 +145,7 @@ pub fn live_setup(seed: u32) -> RoundSetup {
         // A single round: the stages are never used.
         later_stages: Default::default(),
         low_hp_music_latched: false,
+        sp_times: Default::default(),
     }
 }
 

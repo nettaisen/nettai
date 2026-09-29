@@ -162,6 +162,44 @@ pub fn shift_damage_carry(b: &mut Battle) {
 }
 
 /// Damage formulas for chips whose damage is 1000 or more (`off_80109DC`).
-pub fn chip_damage_formula(_b: &Battle, id: u16, _side: u8, formula: u16) -> u16 {
-    panic!("damage formula {formula} (chip {id:#x}) is not implemented yet")
+pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
+    match formula {
+        1..=18 => sp_chip_damage(b, side, formula as usize - 1),
+        _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
+    }
+}
+
+/// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user
+/// deleted that SP navi (a step per two seconds past ten).
+fn sp_chip_damage(b: &Battle, side: u8, n: usize) -> u16 {
+    use crate::data::player_generated::{SP_CHIP_DAMAGE, SP_TIME_STEPS};
+    let time = time_bcd(b.setup.sp_times[side as usize].frames(n) as u32);
+    let step = SP_TIME_STEPS.iter().take_while(|&&t| time > t).count();
+    SP_CHIP_DAMAGE[n][step]
+}
+
+/// `sub_8000D84`: frames as a BCD time, hours:minutes:seconds.hundredths
+/// (a byte each), capped at 99:59:59.99.
+fn time_bcd(frames: u32) -> u32 {
+    if frames > 0x149_9727 {
+        return 0x9959_5999;
+    }
+    let bcd = |v: u32| (v / 10) << 4 | v % 10;
+    let (hours, rest) = (frames / 216_000, frames % 216_000);
+    let (minutes, rest) = (rest / 3600, rest % 3600);
+    let (seconds, frames) = (rest / 60, rest % 60);
+    bcd(hours) << 24 | bcd(minutes) << 16 | bcd(seconds) << 8 | bcd(frames * 100 / 60)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::time_bcd;
+
+    #[test]
+    fn deletion_times_read_as_bcd_clock_times() {
+        assert_eq!(time_bcd(600), 0x1000, "10 seconds");
+        assert_eq!(time_bcd(203), 0x0338, "3.38 seconds");
+        assert_eq!(time_bcd(216_000 + 3600 * 2 + 61), 0x0102_0101);
+        assert_eq!(time_bcd(0x149_9728), 0x9959_5999, "capped");
+    }
 }

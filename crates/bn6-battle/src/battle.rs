@@ -1300,6 +1300,7 @@ mod tests {
             score: SetScore::default(),
             later_stages: [Stage { settings: 0x11, background: 3 }, Stage { settings: 0x46, background: 0x13 }],
             low_hp_music_latched: false,
+            sp_times: Default::default(),
         });
         let r = &mut b.round;
         (r.top, r.mode, r.sub, r.init) = (top::END, 4, 0, 0);
@@ -1355,6 +1356,7 @@ mod tests {
             score: SetScore::default(),
             later_stages: Default::default(),
             low_hp_music_latched: true,
+            sp_times: Default::default(),
         });
         tick(&mut b);
         assert_eq!(b.sound_cues(), [SoundCue::Music(SoundId::VIRUS_BATTLE)]);
