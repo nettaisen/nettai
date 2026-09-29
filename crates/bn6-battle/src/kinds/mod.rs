@@ -10,6 +10,7 @@ pub mod common;
 pub mod cross_merge;
 pub mod effect;
 pub mod elmnt_man;
+pub mod eruption;
 pub mod form_overlay;
 pub mod hitbox;
 pub mod intro;
@@ -105,6 +106,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Actor, navi_warp::INDEX) => navi_warp::update(b, r),
         (Pool::Actor, elmnt_man::INDEX) => elmnt_man::update(b, r),
         (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
+        (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }
