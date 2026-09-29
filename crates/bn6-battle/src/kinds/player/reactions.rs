@@ -60,7 +60,7 @@ fn begin_deletion(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).params[1] < 1 {
         remove_from_alive(b, r);
     }
-    if super::is_mode_40(b) {
+    if super::per_player_gauges(b) {
         panic!("deletion link bookkeeping (sub_802EF5C) is not implemented yet");
     }
     let o = b.objects.get_mut(r);
@@ -245,7 +245,7 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
         return;
     }
     clear_flag1(b, r, f1::USING_ACTION | f1::FLINCHING);
-    ai_mut(b, r).requests &= !(request::ATTACKS | request::TRAP_400 | request::MODE9_A);
+    ai_mut(b, r).requests &= !(request::ATTACKS | request::ANTI_SWORD_TRIGGERED | request::MODE9_A);
     let o = b.objects.get_mut(r);
     o.anim = 0;
     o.action = 8;
@@ -452,7 +452,7 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
     }
     clear_flag1(b, r, f1::USING_ACTION | f1::DRAG | f1::SLIDING | f1::PARALYZED);
     let a = ai_mut(b, r);
-    a.requests &= !(request::ATTACKS | request::TRAP_400 | request::MODE9_A);
+    a.requests &= !(request::ATTACKS | request::ANTI_SWORD_TRIGGERED | request::MODE9_A);
     a.status &= !ai_status::HEAT_TRAP;
     clear_flag2(b, r, 0x10);
     let o = b.objects.get_mut(r);
