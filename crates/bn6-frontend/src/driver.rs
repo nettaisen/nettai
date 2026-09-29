@@ -3,7 +3,8 @@
 
 use bn6_battle::battle::mode;
 use bn6_battle::input::keys;
-use bn6_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
+use bn6_battle::hand::{ChipHand, NO_CHIP};
+use bn6_battle::setup::{BattleSettings, Form, NaviStats, RoundSetup, SetScore};
 use bn6_battle::trace::{self, Frame, Round};
 use bn6_battle::transform::TransformRequest;
 use bn6_battle::{Battle, CustomResult, PlayerTick, TickEvents};
@@ -144,22 +145,41 @@ pub fn live_setup(seed: u32) -> RoundSetup {
     }
 }
 
+/// The chips both sides get at every custom screen (chip ids with their
+/// codes, as a custom screen would hand them over): GunDelS3 N twice and
+/// Geddon * twice.
+const LIVE_HAND: [(u16, u8); 4] = [(0x11, 13), (0x11, 13), (0xA7, 26), (0xA7, 26)];
+
+/// The live hand as the custom screen's result (the game's chip block).
+pub fn live_hand() -> ChipHand {
+    let mut block = [0u8; 0x50];
+    for i in 0..6 {
+        let (id, selection) = match LIVE_HAND.get(i) {
+            Some(&(id, code)) => (id, (code as u16) << 9 | id),
+            None => (NO_CHIP, NO_CHIP),
+        };
+        block[0x02 + 2 * i..0x04 + 2 * i].copy_from_slice(&id.to_le_bytes());
+        block[0x32 + 2 * i..0x34 + 2 * i].copy_from_slice(&selection.to_le_bytes());
+    }
+    ChipHand::from_bytes(&block)
+}
+
 /// How the live custom screen is going.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Custom {
     /// Not on the custom screen.
     Closed,
-    /// Open; waiting for the player to press A.
+    /// Open; waiting for the player to choose.
     Choosing,
-    /// Confirmed this many ticks ago.
-    Confirmed(u32),
+    /// Confirmed this many ticks ago (with Beast Out or not).
+    Confirmed(u32, bool),
     /// Results sent; waiting for the fight to resume.
     Sent,
 }
 
 /// Plays a round from the keyboard: the local player is the left navi;
-/// the right navi stands still. The custom screen is a stand-in: press A
-/// to close it (no chips are chosen yet).
+/// the right navi stands still. The custom screen is a stand-in: A takes
+/// a fixed hand of chips, B the same and Beast Out.
 pub struct LivePlayer {
     pub setup: RoundSetup,
     custom: Custom,
@@ -199,16 +219,22 @@ impl Driver for LivePlayer {
         self.custom = match (self.custom, in_custom) {
             (_, false) => Custom::Closed,
             (Custom::Closed, true) => Custom::Choosing,
-            (Custom::Choosing, true) if pressed & keys::A != 0 => {
+            (Custom::Choosing, true) if pressed & (keys::A | keys::B) != 0 => {
                 events.local_confirm = true;
-                Custom::Confirmed(0)
+                let beast = pressed & keys::B != 0 && !b.stats[b.setup.local_side as usize].form.is_beast();
+                Custom::Confirmed(0, beast)
             }
-            (Custom::Confirmed(n), true) if n >= EXCHANGE_DELAY => {
-                let result = |side: usize| CustomResult { hand: None, navi_stats: b.stats[side], transform: TransformRequest::NONE };
+            (Custom::Confirmed(n, beast), true) if n >= EXCHANGE_DELAY => {
+                let local = b.setup.local_side as usize;
+                let result = |side: usize| {
+                    let form = (side == local && beast).then_some(Form::FALZAR_BEAST);
+                    let transform = TransformRequest { form, ..TransformRequest::NONE };
+                    CustomResult { hand: Some(live_hand()), navi_stats: b.stats[side], transform }
+                };
                 events.exchange = Some(Box::new([result(0), result(1)]));
                 Custom::Sent
             }
-            (Custom::Confirmed(n), true) => Custom::Confirmed(n + 1),
+            (Custom::Confirmed(n, beast), true) => Custom::Confirmed(n + 1, beast),
             (c, true) => c,
         };
         let choosing = self.custom == Custom::Choosing;
@@ -222,6 +248,6 @@ impl Driver for LivePlayer {
     }
 
     fn prompt(&self) -> Option<&str> {
-        self.choosing().then_some("CUSTOM SCREEN: PRESS A TO FIGHT (NO CHIPS YET)")
+        self.choosing().then_some("CUSTOM: A = GUNDELS3 X2 + GEDDON X2, B = THE SAME + BEAST OUT")
     }
 }

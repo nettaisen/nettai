@@ -2,7 +2,7 @@
 //!
 //! Everything on screen is drawn from engine state (panels, objects with
 //! their sprite, animation frame and look, HP, the custom gauge) and the
-//! graphics bundle `bn6-extract assets` writes; nothing emulates the
+//! graphics bundle `bn6-extract graphics` writes; nothing emulates the
 //! original's hardware. The frame is the original's 240x160, composed with
 //! its layer and sprite ordering rules.
 
