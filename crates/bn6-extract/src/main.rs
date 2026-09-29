@@ -703,6 +703,62 @@ fn attacks(rom: &Rom) -> String {
     out
 }
 
+/// Beast Out lock-on searches (`ho_8026554`, `jt_8026584`): for the lock-on
+/// modes that look for a panel near the target (`sub_80265D0`), the panel
+/// offsets tried, whether the middle row is preferred afterwards
+/// (`sub_80265FE`), and the column shifts tried when nothing fits
+/// (`byte_8026735`).
+fn lockon(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    out.push_str("use super::PanelOffset;\n");
+    out.push_str("use super::lockon::LockonSearch;\n\n");
+    // A list of signed bytes (or byte pairs) up to 0x7F.
+    let list = |mut a: u32, pairs: bool| {
+        let mut v = Vec::new();
+        while rom.u8(a) != 0x7F {
+            if pairs {
+                v.push(format!("PanelOffset {{ dx: {}, dy: {} }}", rom.u8(a) as i8, rom.u8(a + 1) as i8));
+                a += 2;
+            } else {
+                v.push((rom.u8(a) as i8).to_string());
+                a += 1;
+            }
+        }
+        v
+    };
+    let shifts = list(u32at(rom, 0x0802_67E8), false);
+    writeln!(out, "/// Column shifts toward the user tried when no panel next to the target fits (`byte_8026735`).").unwrap();
+    writeln!(out, "pub static COLUMN_SHIFTS: [i8; {}] = [{}];", shifts.len(), shifts.join(", ")).unwrap();
+    // (mode, literal-pool slot of its offset list, prefers the middle row)
+    const MODES: [(u8, u32, bool); 12] = [
+        (0x02, 0x0802_67FC, false),
+        (0x03, 0x0802_6800, true),
+        (0x04, 0x0802_6804, false),
+        (0x05, 0x0802_6808, false),
+        (0x06, 0x0802_680C, true),
+        (0x07, 0x0802_6810, false),
+        (0x08, 0x0802_6814, false),
+        (0x09, 0x0802_6818, true),
+        (0x0C, 0x0802_6824, false),
+        (0x0D, 0x0802_6828, false),
+        (0x0F, 0x0802_6830, false),
+        (0x10, 0x0802_6834, true),
+    ];
+    writeln!(out, "/// The searching lock-on modes: panels next to the target, dx toward the user's front.").unwrap();
+    writeln!(out, "pub static SEARCHES: [LockonSearch; {}] = [", MODES.len()).unwrap();
+    for (mode, pool, middle) in MODES {
+        let offsets = list(u32at(rom, pool), true);
+        writeln!(
+            out,
+            "    LockonSearch {{ mode: {mode:#04x}, offsets: &[{}], prefers_middle_row: {middle} }},",
+            offsets.join(", ")
+        )
+        .unwrap();
+    }
+    writeln!(out, "];").unwrap();
+    out
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let rom = Rom(std::fs::read(&args[0]).expect("reading ROM"));
@@ -721,5 +777,6 @@ fn main() {
     std::fs::write(out_dir.join("actor_lists_generated.rs"), actor_lists(&rom)).unwrap();
     std::fs::write(out_dir.join("obstacles_generated.rs"), obstacles(&rom)).unwrap();
     std::fs::write(out_dir.join("attacks_generated.rs"), attacks(&rom)).unwrap();
+    std::fs::write(out_dir.join("lockon_generated.rs"), lockon(&rom)).unwrap();
     eprintln!("wrote {}", out_dir.display());
 }

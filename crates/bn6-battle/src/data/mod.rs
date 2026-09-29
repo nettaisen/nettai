@@ -12,6 +12,8 @@ pub mod effects_generated;
 mod obstacles_generated;
 mod sprites_generated;
 pub mod field_generated;
+pub mod lockon;
+mod lockon_generated;
 pub mod player;
 pub mod player_generated;
 

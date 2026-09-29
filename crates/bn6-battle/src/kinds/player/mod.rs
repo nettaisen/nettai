@@ -269,6 +269,7 @@ fn set_attack(b: &mut Battle, r: ObjectRef, action: u8, kind: u8) {
 fn reset_attack_links(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.attack.beast_lockon = 0;
+    a.attack.rush.restart();
     if let Some(marker) = a.lockon_marker {
         crate::kinds::lockon_marker::unfreeze(b, marker);
     }

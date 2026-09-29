@@ -144,6 +144,9 @@ pub struct AttackVars {
     pub marker: u32,
     /// The running action's own state (timers, destinations).
     pub action: crate::kinds::player::actions::ActionVars,
+    /// +0x1E..+0x27: the Beast Out rush around the action, when
+    /// `beast_lockon` is 1.
+    pub rush: crate::kinds::player::actions::beast_rush::Vars,
 }
 
 /// Joypad state as an actor sees it.
