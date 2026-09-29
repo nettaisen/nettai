@@ -630,8 +630,10 @@ does the same for the bank. BN6's pack starts the frontend in 0.38 s the
 first time and 0.14 s from the cache.
 
 **Cache key and invalidation.** The key is a 64-bit FNV-1a hash over every
-source file's path and contents under `graphics/` (or `sound/`) and the
-crate's name and version. Any edit, added or removed file, or a new importer
+source file's path and contents under `graphics/` (or `sound/`), the
+crate's name and version, the pack format version and
+`pack::IMPORTER_REVISION` (bumped when an importer reads the same files
+differently). Any edit, added or removed file, or a new importer
 version gives a new key; the old cache file is deleted when the new one is
 written. The cache holds the same bytes `bn6-assets.bin` and the bank file
 always held, and is checked by their own readers. Hashing the sources costs a
