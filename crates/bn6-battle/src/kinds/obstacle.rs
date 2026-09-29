@@ -86,7 +86,9 @@ impl Action {
 pub mod f2 {
     /// Destroy at the next reaction.
     pub const DESTROY: u32 = 0x1;
-    pub const UNK_4: u32 = 0x4;
+    /// Flinch request (a hit with hit modifier bit 0x1); a push cancels
+    /// it.
+    pub const FLINCH: u32 = 0x4;
     /// Pushed by a hit (hit modifier 0x40).
     pub const PUSHED: u32 = 0x100;
     /// Picked up to be thrown.
@@ -231,7 +233,7 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef) {
     // (f1 0x40 marks objects that can't be pushed.)
     if f1_of(b, r) & f1::MOVING == 0 && hit_mod & PUSHING_HIT != 0 {
         set_f2(b, r, f2::PUSHED);
-        clear_f2(b, r, f2::UNK_4);
+        clear_f2(b, r, f2::FLINCH);
         // `sub_801A6A6`.
         let acc = &mut b.collision.get_mut(c).acc;
         acc.final_damage = 0;
@@ -274,7 +276,10 @@ pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
 pub fn react<T: Obstacle>(b: &mut Battle, r: ObjectRef) {
     let c = collision(b, r);
     let damage = b.collision.get(c).acc.final_damage;
-    // (Damage also flashes the obstacle white and plays a sound.)
+    // (Damage also flashes the obstacle white.)
+    if damage != 0 {
+        b.play_sound(crate::sound::SoundId(0x85));
+    }
     let killed = damage != 0 && {
         crate::kinds::subtract_hp(b, r, damage);
         b.objects.get(r).hp == 0

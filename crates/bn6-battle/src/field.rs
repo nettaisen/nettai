@@ -69,8 +69,8 @@ pub mod pflags {
     pub const ALLIANCE_1: u32 = 0x20;
     pub const CRACKED: u32 = 0x40;
     pub const RESERVED: u32 = 0x80;
-    pub const BODY_A0: u32 = 0x0800_0000;
-    pub const BODY_A1: u32 = 0x0400_0000;
+    pub const BODY_SIDE0: u32 = 0x0800_0000;
+    pub const BODY_SIDE1: u32 = 0x0400_0000;
     pub const FLOATING: u32 = 0x0010_0000;
     /// Bodies, neutral objects, blockers and reservations.
     pub const OCCUPIED: u32 = 0x0F88_0080;
@@ -390,6 +390,7 @@ impl Battle {
                     p.kind = PanelType::Broken;
                     self.field.refresh(&self.collision, x, y);
                     self.field.panels[y as usize][x as usize].hole_timer = h;
+                    self.play_sound(crate::sound::SoundId(0x97));
                 }
             }
             PanelType::Volcano => {
@@ -574,6 +575,7 @@ impl Battle {
             p.flags = ((f | pflags::CRACKED) & !0x3F0F) | 3;
             p.kind = PanelType::Cracked;
             p.display_kind = PanelType::Cracked;
+            self.play_sound(crate::sound::SoundId(0x97));
             return true;
         }
         if f & pflags::OCCUPIED != 0 {
@@ -582,6 +584,7 @@ impl Battle {
         p.flags = (f & !0x3F5F) | 1;
         p.kind = PanelType::Broken;
         p.display_kind = PanelType::Broken;
+        self.play_sound(crate::sound::SoundId(0x97));
         true
     }
 

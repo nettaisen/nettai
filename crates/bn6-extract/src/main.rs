@@ -1,14 +1,19 @@
-//! Extract game data from the original ROM.
+//! Extract game data from the original ROM (US Falzar,
+//! `MEGAMAN6_FXXBR6E`).
 //!
 //! Usage:
 //! - `bn6-extract <rom> [out-dir]`: the engine's tables as Rust source
 //!   (out-dir defaults to crates/bn6-battle/src/data);
-//! - `bn6-extract assets <rom> <out-dir>`: the frontend's graphics bundle
-//!   (ROM-derived; keep it out of version control).
+//! - `bn6-extract assets <rom> <sound-bank>`: the sound bank bn6-audio plays
+//!   (see assets.rs);
+//! - `bn6-extract graphics <rom> <out-dir>`: the graphics bundle
+//!   bn6-frontend draws with (see graphics.rs).
 //!
-//! The ROM is US Falzar (MEGAMAN6_FXXBR6E).
+//! The sound bank and the graphics are the game's own data: write them
+//! outside version control (data/sound/ and data/graphics/ are ignored).
 
 mod assets;
+mod graphics;
 mod hud;
 
 use std::fmt::Write as _;
@@ -85,7 +90,7 @@ fn chips(rom: &Rom) -> String {
         let u32at = |a: u32| u32::from_le_bytes(rom.bytes(a, 4).try_into().unwrap());
         writeln!(
             out,
-            "    ChipData {{ name: {name:?}, codes: &[{}], element: Element::{}, rarity: {}, family: {}, class: ChipClass::{}, mb: {}, flags: ChipFlags({:#04x}), hit_param: {}, action: {:#04x}, subtype: {}, unk_0d: {}, unk_0e: {}, beast_lockon: {}, params: {:#010x}, lockout: {}, lib_index: {}, flags2: {:#04x}, lockon_mode: {}, sort_key: {:#06x}, damage: {}, library_no: {}, slotin_max: {}, dark_subst: {} }}, // {id:#05x}",
+            "    ChipData {{ name: {name:?}, codes: &[{}], element: Element::{}, rarity: {}, family: {}, class: ChipClass::{}, mb: {}, flags: ChipFlags({:#04x}), hit_param: {}, action: {:#04x}, subtype: {}, beast_lockon: {}, params: {:#010x}, lockout: {}, lib_index: {}, flags2: {:#04x}, lockon_mode: {}, sort_key: {:#06x}, damage: {}, library_no: {}, slotin_max: {}, dark_subst: {} }}, // {id:#05x}",
             codes.join(", "),
             ["Null", "Fire", "Aqua", "Elec", "Wood"][rom.u8(r + 4) as usize],
             rom.u8(r + 5),
@@ -96,8 +101,7 @@ fn chips(rom: &Rom) -> String {
             rom.u8(r + 0xA),
             rom.u8(r + 0xB),
             rom.u8(r + 0xC),
-            rom.u8(r + 0xD),
-            rom.u8(r + 0xE),
+            // +0x0D and +0x0E have no reader in the game; not extracted.
             rom.u8(r + 0xF),
             u32at(r + 0x10),
             rom.u8(r + 0x14),
@@ -488,7 +492,7 @@ fn player(rom: &Rom) -> String {
             0x20 => "StatusTimer::Blind".into(),
             0x22 => "StatusTimer::Immobilize".into(),
             0x24 => "StatusTimer::Flash".into(),
-            0x26 => "StatusTimer::Flag4".into(),
+            0x26 => "StatusTimer::SemiIntangible".into(),
             0x28 => "StatusTimer::Invulnerable".into(),
             0x2A => "StatusTimer::Freeze".into(),
             0x2C => "StatusTimer::Bubble".into(),
@@ -657,24 +661,139 @@ fn obstacles(rom: &Rom) -> String {
     out
 }
 
+/// Chip-attack tables: the secondary elements chip families add, the
+/// attachment sprites (`byte_80B8BD4`, attachment object #5) and the
+/// GunDelSol tables (`dword_80EDBC8`, `byte_80EDBB8`, and the sun beam's
+/// sprites at `dword_80E5C28`).
+fn attacks(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    out.push_str("use super::SpriteId;\n");
+    out.push_str("use super::attacks::{AttachmentKind, SunBeamLook};\n");
+    out.push_str("use super::player::SecondaryElements;\n\n");
+    let list = |items: Vec<String>| items.join(", ");
+    let sprite = |cat: u8, idx: u8| format!("SpriteId {{ category: {cat:#04x}, index: {idx:#04x} }}");
+
+    let families: Vec<String> = (0..16).map(|i| format!("SecondaryElements({:#04x})", rom.u8(0x0801_29E4 + i))).collect();
+    writeln!(out, "/// The secondary elements a chip family adds to its attacks (`byte_80129E4`).").unwrap();
+    writeln!(out, "pub static FAMILY_ELEMENTS: [SecondaryElements; 16] = [{}];", list(families)).unwrap();
+
+    // Five-byte rows: sprite category and index, palette, lift, attach
+    // point (0 = not attached to a point).
+    const ATTACHMENTS: u32 = 0x080B_8BD4;
+    let rows: Vec<String> = (0..52)
+        .map(|i| {
+            let b = rom.bytes(ATTACHMENTS + 5 * i, 5);
+            let point = if b[4] == 0 { "None".to_string() } else { format!("Some({})", b[4]) };
+            format!(
+                "AttachmentKind {{ sprite: {}, palette: {}, lift: {}, attach_point: {point} }}",
+                sprite(b[0], b[1]),
+                b[2],
+                b[3] as i8
+            )
+        })
+        .collect();
+    writeln!(out, "/// Attachment kinds, the attachment's first parameter (`byte_80B8BD4`).").unwrap();
+    writeln!(out, "pub static ATTACHMENTS: [AttachmentKind; 52] = [\n    {},\n];", rows.join(",\n    ")).unwrap();
+
+    writeln!(out, "/// GunDelSol's firing ticks by level (`dword_80EDBC8`).").unwrap();
+    writeln!(out, "pub static GUN_DEL_SOL_FIRING_TICKS: [u8; 4] = [{}];", list((0..4).map(|i| rom.u8(0x080E_DBC8 + i).to_string()).collect())).unwrap();
+    let beams: Vec<String> = (0..2)
+        .map(|sun| {
+            let row: Vec<String> = (0..4)
+                .map(|level| {
+                    let a = 0x080E_DBB8 + 2 * (level + 4 * sun);
+                    format!("SunBeamLook {{ sprite: {}, palette: {} }}", rom.u8(a), rom.u8(a + 1))
+                })
+                .collect();
+            format!("[{}]", list(row))
+        })
+        .collect();
+    writeln!(out, "/// GunDelSol's sun beam by [sun][level] (`byte_80EDBB8`).").unwrap();
+    writeln!(out, "pub static GUN_DEL_SOL_BEAMS: [[SunBeamLook; 4]; 2] = [{}];", list(beams)).unwrap();
+    let sprites: Vec<String> = (0..2).map(|i| sprite(rom.u8(0x080E_5C28 + 2 * i), rom.u8(0x080E_5C29 + 2 * i))).collect();
+    writeln!(out, "/// The sun beam's sprites, by `SunBeamLook::sprite` (`dword_80E5C28`).").unwrap();
+    writeln!(out, "pub static SUN_BEAM_SPRITES: [SpriteId; 2] = [{}];", list(sprites)).unwrap();
+    out
+}
+
+/// Beast Out lock-on searches (`ho_8026554`, `jt_8026584`): for the lock-on
+/// modes that look for a panel near the target (`sub_80265D0`), the panel
+/// offsets tried, whether the middle row is preferred afterwards
+/// (`sub_80265FE`), and the column shifts tried when nothing fits
+/// (`byte_8026735`).
+fn lockon(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    out.push_str("use super::PanelOffset;\n");
+    out.push_str("use super::lockon::LockonSearch;\n\n");
+    // A list of signed bytes (or byte pairs) up to 0x7F.
+    let list = |mut a: u32, pairs: bool| {
+        let mut v = Vec::new();
+        while rom.u8(a) != 0x7F {
+            if pairs {
+                v.push(format!("PanelOffset {{ dx: {}, dy: {} }}", rom.u8(a) as i8, rom.u8(a + 1) as i8));
+                a += 2;
+            } else {
+                v.push((rom.u8(a) as i8).to_string());
+                a += 1;
+            }
+        }
+        v
+    };
+    let shifts = list(u32at(rom, 0x0802_67E8), false);
+    writeln!(out, "/// Column shifts toward the user tried when no panel next to the target fits (`byte_8026735`).").unwrap();
+    writeln!(out, "pub static COLUMN_SHIFTS: [i8; {}] = [{}];", shifts.len(), shifts.join(", ")).unwrap();
+    // (mode, literal-pool slot of its offset list, prefers the middle row)
+    const MODES: [(u8, u32, bool); 12] = [
+        (0x02, 0x0802_67FC, false),
+        (0x03, 0x0802_6800, true),
+        (0x04, 0x0802_6804, false),
+        (0x05, 0x0802_6808, false),
+        (0x06, 0x0802_680C, true),
+        (0x07, 0x0802_6810, false),
+        (0x08, 0x0802_6814, false),
+        (0x09, 0x0802_6818, true),
+        (0x0C, 0x0802_6824, false),
+        (0x0D, 0x0802_6828, false),
+        (0x0F, 0x0802_6830, false),
+        (0x10, 0x0802_6834, true),
+    ];
+    writeln!(out, "/// The searching lock-on modes: panels next to the target, dx toward the user's front.").unwrap();
+    writeln!(out, "pub static SEARCHES: [LockonSearch; {}] = [", MODES.len()).unwrap();
+    for (mode, pool, middle) in MODES {
+        let offsets = list(u32at(rom, pool), true);
+        writeln!(
+            out,
+            "    LockonSearch {{ mode: {mode:#04x}, offsets: &[{}], prefers_middle_row: {middle} }},",
+            offsets.join(", ")
+        )
+        .unwrap();
+    }
+    writeln!(out, "];").unwrap();
+    out
+}
+
 fn load_rom(path: &str) -> Rom {
     let rom = Rom(std::fs::read(path).expect("reading ROM"));
-    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected US Falzar (MEGAMAN6_FXXBR6E)");
+    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected the US Falzar ROM (MEGAMAN6_FXXBR6E)");
     rom
 }
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("assets") {
+        assets::main(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("graphics") {
         let (Some(rom), Some(out)) = (args.get(1), args.get(2)) else {
-            eprintln!("usage: bn6-extract assets <rom> <out-dir>");
+            eprintln!("usage: bn6-extract graphics <rom> <out-dir>");
             std::process::exit(2);
         };
-        assets::run(&load_rom(rom), std::path::Path::new(out));
+        graphics::run(&load_rom(rom), std::path::Path::new(out));
         return;
     }
     let Some(rom) = args.first() else {
-        eprintln!("usage: bn6-extract <rom> [out-dir] | bn6-extract assets <rom> <out-dir>");
+        eprintln!("usage: bn6-extract <rom> [out-dir] | assets <rom> <sound-bank> | graphics <rom> <out-dir>");
         std::process::exit(2);
     };
     let rom = load_rom(rom);
@@ -691,5 +810,7 @@ fn main() {
     std::fs::write(out_dir.join("player_generated.rs"), player(&rom)).unwrap();
     std::fs::write(out_dir.join("actor_lists_generated.rs"), actor_lists(&rom)).unwrap();
     std::fs::write(out_dir.join("obstacles_generated.rs"), obstacles(&rom)).unwrap();
+    std::fs::write(out_dir.join("attacks_generated.rs"), attacks(&rom)).unwrap();
+    std::fs::write(out_dir.join("lockon_generated.rs"), lockon(&rom)).unwrap();
     eprintln!("wrote {}", out_dir.display());
 }

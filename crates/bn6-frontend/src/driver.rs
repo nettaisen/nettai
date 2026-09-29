@@ -5,6 +5,7 @@ use bn6_battle::battle::mode;
 use bn6_battle::input::keys;
 use bn6_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
 use bn6_battle::trace::{self, Frame, Round};
+use bn6_battle::transform::TransformRequest;
 use bn6_battle::{Battle, CustomResult, PlayerTick, TickEvents};
 
 /// One tick's inputs.
@@ -203,7 +204,7 @@ impl Driver for LivePlayer {
                 Custom::Confirmed(0)
             }
             (Custom::Confirmed(n), true) if n >= EXCHANGE_DELAY => {
-                let result = |side: usize| CustomResult { hand: None, navi_stats: b.stats[side], transform: 0xFF };
+                let result = |side: usize| CustomResult { hand: None, navi_stats: b.stats[side], transform: TransformRequest::NONE };
                 events.exchange = Some(Box::new([result(0), result(1)]));
                 Custom::Sent
             }

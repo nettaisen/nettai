@@ -3,8 +3,9 @@
 use crate::driver::Driver;
 use bn6_battle::Battle;
 
-/// Called after every tick with the battle's new state. Audio plugs in
-/// here: a hook that hands the tick's sound cues to the audio output.
+/// Called after every tick with the battle's new state (the window runs
+/// its hooks after each tick; sound plugs in here, handing the tick's
+/// cues to the audio output).
 pub trait TickHook {
     fn after_tick(&mut self, b: &Battle);
 }
@@ -28,13 +29,12 @@ pub struct Session {
     /// Trace frame of the latest tick, if the driver has frame numbers.
     pub frame: Option<u32>,
     pub ticks: u64,
-    pub hooks: Vec<Box<dyn TickHook>>,
 }
 
 impl Session {
     pub fn new(mut driver: Box<dyn Driver>) -> Session {
         let battle = driver.start();
-        Session { driver, battle, stopped: None, finished: false, diverged: None, frame: None, ticks: 0, hooks: Vec::new() }
+        Session { driver, battle, stopped: None, finished: false, diverged: None, frame: None, ticks: 0 }
     }
 
     /// Start over.
@@ -78,9 +78,6 @@ impl Session {
             if !diffs.is_empty() {
                 self.diverged = Some(format!("differs from the trace at {}:\n  {}", self.driver.position(), diffs.join("\n  ")));
             }
-        }
-        for h in &mut self.hooks {
-            h.after_tick(&self.battle);
         }
         true
     }

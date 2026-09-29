@@ -11,7 +11,9 @@ use crate::input::{InputRecord, PlayerTick, keys};
 use crate::object::{ObjectRef, Objects};
 use crate::rng::Rng;
 use crate::data::BannerId;
-use crate::setup::{NaviStats, RoundSetup, effects};
+use crate::setup::{Form, Navi, NaviStats, RoundSetup, effects};
+use crate::transform::{TransformRequest, TransformSequencer};
+use crate::sound::{SoundCue, SoundId};
 
 /// Battle flag bits.
 pub mod battle_flags {
@@ -23,9 +25,9 @@ pub mod battle_flags {
     pub const TIME_STOP: u16 = 0x04;
     /// A player asked to open the custom screen.
     pub const CUSTOM_REQUESTED: u16 = 0x10;
-    pub const UNK_20: u16 = 0x20;
-    /// The alternate per-player gauge / link navi mode (not PvP).
-    pub const MODE_40: u16 = 0x40;
+    /// Per-player custom gauges and chip counters (`sub_802E112`). Never set
+    /// in netbattles (battle mode 1) or random battles.
+    pub const PER_PLAYER_GAUGES: u16 = 0x40;
 }
 
 /// Top-level battle states (the game's jump-table offsets).
@@ -122,7 +124,6 @@ pub struct RoundState {
 #[derive(Clone, Debug, Default)]
 pub struct FightMachine {
     pub state: u8,
-    pub unk_1: u8,
     pub sub: u8,
     pub init: u8,
     /// 0 none, 1 local win, 2 local loss, 3 draw, 6 open the custom screen.
@@ -160,8 +161,8 @@ pub struct CustomResult {
     /// The chosen hand (None = no chips chosen: the previous hand stays).
     pub hand: Option<ChipHand>,
     pub navi_stats: NaviStats,
-    /// Cross/Beast transformation request (0xFF = none).
-    pub transform: u8,
+    /// Cross/Beast transformation request.
+    pub transform: TransformRequest,
 }
 
 /// Events from outside the simulation that happen on a tick.
@@ -171,6 +172,9 @@ pub struct TickEvents {
     pub local_confirm: bool,
     /// Both players' custom-screen results arrived.
     pub exchange: Option<Box<[CustomResult; 2]>>,
+    /// After the round, the link session the end state asked to close has
+    /// closed.
+    pub link_closed: bool,
 }
 
 pub struct Battle {
@@ -184,9 +188,16 @@ pub struct Battle {
     pub paused: bool,
     pub inputs: [InputRecord; 2],
     pub hands: [ChipHand; 2],
-    pub transform_requests: [u8; 2],
+    /// Both players' transformation requests from the last custom screen.
+    pub transform_requests: [TransformRequest; 2],
+    /// The requests as this turn started (`unk_203A980`): what each navi
+    /// changes into.
+    pub turn_transforms: [TransformRequest; 2],
     /// The transformation sequencer run at the start of each turn.
     pub transform_seq: TransformSequencer,
+    /// Per side: the navi went Beast Out this battle (`byte_203EAE0` +2,
+    /// read after the battle: a navi that did not gets a turn back).
+    pub beast_out_used: [bool; 2],
     pub objects: Objects,
     pub actors: Actors,
     pub collision: Collision,
@@ -205,54 +216,33 @@ pub struct Battle {
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
     /// Per-side registry of defensive chips and their linked objects
-    /// (`unk_2036720`).
+    /// (0x10 bytes per side at 0x02036720).
     pub linked: [LinkedRecord; 2],
-}
-
-/// The transformation sequencer's progress (`dword_20367F0`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct TransformSequencer {
-    /// 0 check, 4 transform, 8 wait.
-    pub state: u8,
-    pub busy: bool,
-}
-
-impl TransformSequencer {
-    pub const START: TransformSequencer = TransformSequencer { state: 0, busy: true };
+    /// Sound calls made this tick (output only; see `sound`).
+    sound: Vec<SoundCue>,
 }
 
 /// A side's extra battle state (0x1D0 bytes at `sub_802E070(side)`); only
-/// the fields the engine reads are modeled. All zero outside the battle
-/// flag 0x40 mode.
+/// the fields the engine reads are modeled (the rest are listed in
+/// docs/engine/field-names.md). All zero outside the battle flag 0x40
+/// mode.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SideState {
     pub active: u8,
-    pub unk_02: u8,
-    pub unk_03: u8,
-    pub unk_0b: u8,
-    pub unk_0e: u8,
-    pub unk_10: u8,
     pub panel_x: u8,
-    pub unk_18: [u32; 3],
     /// A per-side gauge (a SELECT special needs 0x1500; counters add it).
     pub gauge: u16,
-    pub unk_2a: u16,
-    pub unk_2e: u16,
-    pub unk_30: u16,
-    pub unk_3a: u16,
-    pub unk_3c: u16,
     pub select_special: u8,
     pub cross_special: u8,
 }
 
-/// A side's defensive-chip record: the chip, its state, and the object
-/// that implements it.
+/// A side's defensive-chip record: the chip and the object that
+/// implements it. (The game's record also keeps two values from the
+/// registering chip and its owner; nothing ported registers one, see
+/// docs/engine/field-names.md.)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LinkedRecord {
     pub chip: u16,
-    pub unk_02: u16,
-    pub unk_04: u32,
-    pub unk_08: u32,
     pub object: Option<ObjectRef>,
 }
 
@@ -362,8 +352,10 @@ impl Battle {
             paused: false,
             inputs: [InputRecord::default(); 2],
             hands: [ChipHand::empty(), ChipHand::empty()],
-            transform_requests: [0xFF; 2],
+            transform_requests: [TransformRequest::NONE; 2],
+            turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),
+            beast_out_used: [false; 2],
             objects: Objects::new(),
             actors: Actors::default(),
             collision: Collision::new(),
@@ -375,6 +367,7 @@ impl Battle {
             sides: [SideState::default(); 2],
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
+            sound: Vec::new(),
             setup,
         };
         // Init's last steps: refresh every panel, then one unpaused panel
@@ -419,14 +412,25 @@ impl Battle {
         self.player(side).and_then(|r| self.objects.get(r).actor)
     }
 
+    /// Report a sound call of the original (output only).
+    pub fn play_sound(&mut self, cue: impl Into<SoundCue>) {
+        self.sound.push(cue.into());
+    }
+
+    /// The sound calls of the last tick, in the order the game makes them.
+    pub fn sound_cues(&self) -> &[SoundCue] {
+        &self.sound
+    }
+
     /// One battle tick (one frame of the running battle).
     pub fn tick(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
+        self.sound.clear();
         // Panel highlights last one frame: the game's field renderer
         // clears them after drawing.
         self.field.clear_highlights();
         match self.round.top {
             top::RUNNING => self.tick_running(input, events),
-            top::END => self.tick_end(),
+            top::END => self.tick_end(&events),
             _ => {}
         }
         self.round.frames = self.round.frames.wrapping_add(1);
@@ -469,21 +473,42 @@ impl Battle {
         self.round.ticks = self.round.ticks.wrapping_add(1);
     }
 
-    fn tick_end(&mut self) {
+    /// Top state 8 (`sub_8007B80`): 11 ticks of objects still running,
+    /// then close the link session. Once it has closed (mode 4) the round
+    /// is over.
+    fn tick_end(&mut self, events: &TickEvents) {
+        if self.round.mode != 0 {
+            panic!("round chaining (sub_8007CA0) is not implemented yet");
+        }
+        // sub_8007B9C: the sub-state, then objects and panels.
+        match self.round.sub {
+            0 => {
+                // sub_8007BD0
+                if self.round.init == 0 {
+                    self.round.delay = 10;
+                    self.round.init = 4;
+                } else {
+                    self.round.delay -= 1;
+                    if self.round.delay < 0 {
+                        self.round.sub = 4;
+                        self.round.init = 0;
+                    }
+                }
+            }
+            _ => {
+                // sub_8007C14: ask the link to close, then wait for it.
+                if self.round.init == 0 {
+                    self.round.init = 4;
+                } else if events.link_closed {
+                    self.round.mode = 4;
+                    self.round.sub = 0;
+                    self.round.init = 0;
+                }
+            }
+        }
         self.run_objects();
         if !self.paused && !self.is_time_stop() {
             self.tick_panels();
-        }
-        if self.round.sub == 0 {
-            if self.round.init == 0 {
-                self.round.delay = 10;
-                self.round.init = 4;
-            }
-            self.round.delay -= 1;
-            if self.round.delay < 0 {
-                self.round.sub = 4;
-                self.round.init = 0;
-            }
         }
     }
 
@@ -534,6 +559,11 @@ impl Battle {
             self.rng.next_positive();
             self.paused = true;
             self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
+            let link = self.setup.settings.effects & effects::LINK != 0;
+            let music = if link { SoundId::VIRUS_BATTLE } else { SoundId(self.setup.settings.music as u16) };
+            if music != SoundId::NO_MUSIC {
+                self.play_sound(SoundCue::Music(music));
+            }
             self.round.init = 4;
             return;
         }
@@ -553,7 +583,7 @@ impl Battle {
 
     /// `sub_8007368`: spawn the settings' actor list. Only navis join the
     /// alive/actor bookkeeping; rocks and other field objects don't.
-    pub(crate) fn spawn_actors(&mut self) {
+    pub fn spawn_actors(&mut self) {
         use crate::setup::ActorKind;
         for entry in self.setup.settings.actors {
             match entry.kind {
@@ -655,9 +685,10 @@ impl Battle {
             }
         }
         if self.custom_ui.installed {
+            self.play_sound(SoundCue::RestoreVolume);
             for side in 0..2 {
                 if let Some(a) = self.player_actor(side) {
-                    self.actors.get_mut(a).unk_0f = 1;
+                    self.actors.get_mut(a).beast_out_check_delay = 1;
                 }
             }
             self.custom_ui = CustomUi::default();
@@ -698,6 +729,7 @@ impl Battle {
             let hp = self.objects.get(r).hp;
             let d = v.min(hp.saturating_sub(1));
             crate::kinds::subtract_hp(self, r, d);
+            self.play_sound(SoundId(0x6B));
         }
     }
 
@@ -740,28 +772,20 @@ impl Battle {
     /// twice, then count down Beast Out.
     fn fight_setup(&mut self) {
         if self.fight.init == 0 {
-            // sub_80147E4: start the sequencer with the exchanged requests.
-            if self.transform_requests.iter().any(|&t| t != 0xFF) {
-                panic!("Cross/Beast transformations are not implemented yet");
-            }
-            self.transform_seq = TransformSequencer::START;
+            self.start_transform_sequencer();
             self.fight.init = 4;
         }
         if self.step_transform_sequencer() {
             return;
         }
         if self.fight.sub == 0 {
-            // sub_801482C
-            self.transform_seq = TransformSequencer::START;
+            self.transform_seq.restart();
             self.fight.sub = 4;
             return;
         }
         for side in 0..2u8 {
             if self.player(side).is_some() {
-                let s = &mut self.stats[side as usize];
-                if s.form.is_beast() {
-                    s.beast_out_counter = s.beast_out_counter.wrapping_sub(1);
-                }
+                self.count_down_beast_out(side);
             }
         }
         self.fight.state = fight::START_BANNER;
@@ -769,30 +793,14 @@ impl Battle {
         self.fight.init = 0;
     }
 
-    /// `sub_801483C`: one step of the transformation sequencer; true while
-    /// it is busy. Without a transformation request it takes two ticks:
-    /// check each navi (`sub_801486C`), then wait for them (`sub_8014A00`).
-    fn step_transform_sequencer(&mut self) -> bool {
-        use crate::kinds::player;
-        match self.transform_seq.state {
-            0 => {
-                for side in 0..2 {
-                    if let Some(p) = self.player(side) {
-                        player::check_beast_out_end(self, p);
-                    }
-                }
-                self.transform_seq.state = 8;
-            }
-            8 => {
-                let players = [self.player(0), self.player(1)];
-                let busy = |b: &Battle, f: fn(&Battle, ObjectRef) -> bool| players.iter().flatten().any(|&p| f(b, p));
-                if !busy(self, player::reverting_form) && !busy(self, player::changing_form) {
-                    self.transform_seq.busy = false;
-                }
-            }
-            s => panic!("transformation sequencer state {s:#x} is not implemented yet"),
+    /// `sub_8015A38`: a turn in Beast Out uses up one of MegaMan's turns,
+    /// unless he started the battle in Beast Out.
+    fn count_down_beast_out(&mut self, side: u8) {
+        let s = &mut self.stats[side as usize];
+        let started_beast = matches!(s.starting_form, Form::GREGAR_BEAST | Form::FALZAR_BEAST);
+        if s.navi == Navi::MEGAMAN && !started_beast && s.form.is_beast() && s.beast_out_counter != 0 {
+            s.beast_out_counter -= 1;
         }
-        self.transform_seq.busy
     }
 
     fn apply_actor_inputs(&mut self) {
@@ -963,6 +971,12 @@ impl Battle {
         if self.fight.init == 0 {
             self.gauge.enabled = false;
             let win = self.fight.state == fight::WIN;
+            if win {
+                let special = self.setup.settings.effects & 2 != 0;
+                self.play_sound(SoundCue::Music(if special { SoundId::WINNER_SPECIAL } else { SoundId::WINNER }));
+            } else if self.setup.settings.effects & effects::LINK != 0 {
+                self.play_sound(SoundCue::Music(SoundId::LOSER));
+            }
             self.round.winner = if win { self.round.local_side } else { self.round.local_side ^ 1 };
             self.fight.init = 4;
             self.fight.timer = 0x66;
@@ -991,6 +1005,7 @@ impl Battle {
             return;
         }
         if !self.fade.active() {
+            self.play_sound(SoundCue::StopMusic);
             self.objects.free_all();
             self.round.top = top::END;
             self.round.mode = 0;
@@ -1038,6 +1053,7 @@ impl Battle {
             self.gauge.value = CustomGauge::FULL;
             if !self.late_turns() {
                 self.set_flags(battle_flags::GAUGE_FULL);
+                self.play_sound(SoundId(0x8F));
             }
         }
     }
@@ -1081,8 +1097,8 @@ impl Battle {
         }
     }
 
-    /// The low-HP music switch (a sound effect, but it keeps a latch in the
-    /// round state).
+    /// `sub_8009158`: the low-HP music switch (sound only, but it keeps a
+    /// latch in the round state).
     fn low_hp_music(&mut self) {
         if self.setup.settings.effects & effects::LINK == 0 {
             return;
@@ -1092,8 +1108,10 @@ impl Battle {
         let low = o.hp <= o.max_hp / 4;
         if low && self.round.low_hp_music == 0 {
             self.round.low_hp_music = 1;
+            self.play_sound(SoundCue::Pinch(true));
         } else if !low && self.round.low_hp_music != 0 {
             self.round.low_hp_music = 0;
+            self.play_sound(SoundCue::Pinch(false));
         }
     }
 }

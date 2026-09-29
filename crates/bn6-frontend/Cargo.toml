@@ -8,5 +8,6 @@ description = "Draws battles of the native BN6 engine: replays golden traces or 
 [dependencies]
 bn6-battle = { path = "../bn6-battle", features = ["trace"] }
 bn6-assets = { path = "../bn6-assets" }
+bn6-audio = { path = "../bn6-audio" }
 minifb = "0.28"
 png = "0.17"

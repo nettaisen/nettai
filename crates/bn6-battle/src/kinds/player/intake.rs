@@ -48,7 +48,7 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     tick_counter_window(b, r);
     count_stun_ticks(b, r);
     anger_trigger(b, r);
-    hit_cancels_flag4_timer(b, r);
+    hit_ends_semi_intangible(b, r);
     pierce_ends_flash(b, r);
     guard_spark(b, r);
 }
@@ -242,10 +242,10 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
 /// (consuming MOVE_COMPLETE).
 fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     let mut cooldown_ended = false;
-    if !b.paused && !b.is_time_stop() && ai(b, r).unk_38 != 0 {
+    if !b.paused && !b.is_time_stop() && ai(b, r).road_cooldown != 0 {
         let a = ai_mut(b, r);
-        a.unk_38 -= 1;
-        cooldown_ended = a.unk_38 == 0;
+        a.road_cooldown -= 1;
+        cooldown_ended = a.road_cooldown == 0;
     }
     if !cooldown_ended {
         let f = flag1(b, r);
@@ -254,7 +254,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
         }
         if panel_kind(b, coll(b, r).panel).is_road() {
             // sub_801A400
-            if ai(b, r).unk_38 == 0 && f & 0x24 == 0 {
+            if ai(b, r).road_cooldown == 0 && f & 0x24 == 0 {
                 set_flag2(b, r, 0x10);
                 b.objects.get_mut(r).slide_type = 3;
             }
@@ -289,13 +289,13 @@ fn hp_bug_drain(b: &mut Battle, r: ObjectRef) {
     let period = *HP_BUG_PERIODS.get(level).expect("HP bug level");
     let a = ai_mut(b, r);
     if period != 0 {
-        a.unk_09 = a.unk_09.wrapping_add(1);
-        if a.unk_09 < period {
+        a.hp_drain_counter = a.hp_drain_counter.wrapping_add(1);
+        if a.hp_drain_counter < period {
             return;
         }
         crate::kinds::subtract_hp(b, r, 1);
     }
-    ai_mut(b, r).unk_09 = 0;
+    ai_mut(b, r).hp_drain_counter = 0;
 }
 
 /// `sub_802CFF8`: a cursor hit cancels the side's defensive chip.
@@ -303,7 +303,7 @@ fn drop_cursor_trap(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
     if coll(b, r).acc.damage_elements & 0x40 != 0 && b.linked[side as usize].chip != 0 {
         b.clear_linked(side);
-        // Sound 0x8E.
+        b.play_sound(crate::sound::SoundId(0x8E));
     }
 }
 
@@ -315,7 +315,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         let d = &coll(b, r).acc.element_damage;
         if d[0] | d[2] | d[3] | d[4] != 0 {
             ai_mut(b, r).attack.marker = 1;
-            // Sound 0x6E.
+            b.play_sound(crate::sound::SoundId(0x6E));
         }
         zero_trapped_hit(b, r);
         return;
@@ -327,20 +327,20 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         (0xBB, 1)
     } else {
         if chip == 0xBC {
-            use crate::actor::request::TRAP_400;
-            if ai(b, r).requests & TRAP_400 != 0 {
+            use crate::actor::request::ANTI_SWORD_TRIGGERED;
+            if ai(b, r).requests & ANTI_SWORD_TRIGGERED != 0 {
                 zero_trapped_hit(b, r);
                 return;
             }
             let ffc = coll(b, r).acc.hit_flags;
             if ffc & 0x2000 != 0 && ffc & 0x2_0000 == 0 {
-                ai_mut(b, r).requests |= TRAP_400;
+                ai_mut(b, r).requests |= ANTI_SWORD_TRIGGERED;
                 zero_trapped_hit(b, r);
             }
         }
         return;
     };
-    if ai(b, r).requests & 0x8200 != 0 {
+    if ai(b, r).requests & (crate::actor::request::ANTI_DAMAGE_TRIGGERED | crate::actor::request::BODY_GUARD_TRIGGERED) != 0 {
         zero_trapped_hit(b, r);
         return;
     }
@@ -355,7 +355,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         return;
     }
     ai_mut(b, r).requests |=
-        if trap == 0xBB { crate::actor::request::TRAP_200 } else { crate::actor::request::TRAP_8000 };
+        if trap == 0xBB { crate::actor::request::ANTI_DAMAGE_TRIGGERED } else { crate::actor::request::BODY_GUARD_TRIGGERED };
     zero_trapped_hit(b, r);
 }
 
@@ -524,11 +524,11 @@ fn navicust_hit_bug(b: &mut Battle, r: ObjectRef) {
     let latched = b.objects.get(r).prevent_anim != 0;
     let a = ai_mut(b, r);
     if !latched {
-        a.unk_1c = 0;
-    } else if a.unk_1c != 0 {
+        a.hit_bug_latched = false;
+    } else if a.hit_bug_latched {
         return;
     } else {
-        a.unk_1c = 1;
+        a.hit_bug_latched = true;
     }
     match stats(b, r).bugs.hit_status {
         0 => {}
@@ -559,7 +559,7 @@ fn apply_status(b: &mut Battle, r: ObjectRef) {
         StatusTimer::Blind => timer::BLIND,
         StatusTimer::Immobilize => timer::IMMOBILIZE,
         StatusTimer::Flash => timer::FLASH,
-        StatusTimer::Flag4 => timer::UNK_26,
+        StatusTimer::SemiIntangible => timer::SEMI_INTANGIBLE,
         StatusTimer::Invulnerable => timer::INVULNERABLE,
         StatusTimer::Freeze => timer::FREEZE,
         StatusTimer::Bubble => timer::BUBBLE,
@@ -602,10 +602,10 @@ fn drain_heal(b: &mut Battle, r: ObjectRef) {
     let opponent = b.player(side ^ 1).expect("the opponent's player");
     let hits = coll(b, r).acc.drain_hits;
     let o = ai_mut(b, opponent);
-    o.unk_10 = o.unk_10.wrapping_add(hits as u8);
+    o.drain_heal_credits = o.drain_heal_credits.wrapping_add(hits as u8);
     let a = ai_mut(b, r);
-    let credits = a.unk_10 as u32;
-    a.unk_10 = 0;
+    let credits = a.drain_heal_credits as u32;
+    a.drain_heal_credits = 0;
     let heal = (b.objects.get(r).max_hp / 10) as u32 * credits;
     if heal == 0 {
         return;
@@ -613,7 +613,7 @@ fn drain_heal(b: &mut Battle, r: ObjectRef) {
     add_hp(b, r, heal);
     let pos = b.objects.get(r).pos;
     crate::kinds::effect::spawn(b, pos, 6, 0, 0, 0);
-    // Sound 0x8A.
+    b.play_sound(crate::sound::SoundId(0x8A));
 }
 
 /// `object_calculateFinalDamage1`: sum the element damage (halved,
@@ -659,7 +659,7 @@ fn count_stun_ticks(b: &mut Battle, r: ObjectRef) {
     }
     let stunned = flag1(b, r) & (f1::FLINCHING | f1::PARALYZED) != 0;
     let a = ai_mut(b, r);
-    a.unk_4c = if stunned { a.unk_4c.wrapping_add(1) } else { 0 };
+    a.stun_ticks = if stunned { a.stun_ticks.wrapping_add(1) } else { 0 };
 }
 
 /// `sub_80142DC`: anger after 120 stunned ticks or a 300+ damage hit
@@ -669,16 +669,16 @@ fn anger_trigger(b: &mut Battle, r: ObjectRef) {
     if battle_mode(b) == 1 || s.navi != Navi::MEGAMAN || s.form != Form::NONE || flag1(b, r) & f1::ANGER != 0 {
         return;
     }
-    if ai(b, r).unk_4c as i32 >= 0x78 || coll(b, r).acc.final_damage >> 1 >= 0x96 {
+    if ai(b, r).stun_ticks as i32 >= 0x78 || coll(b, r).acc.final_damage >> 1 >= 0x96 {
         set_flag2(b, r, 0x200);
     }
 }
 
-/// `sub_8010198`: any hit ends the timed flag-4 state.
-fn hit_cancels_flag4_timer(b: &mut Battle, r: ObjectRef) {
+/// `sub_8010198`: any hit ends the timed semi-intangible state.
+fn hit_ends_semi_intangible(b: &mut Battle, r: ObjectRef) {
     let c = coll_mut(b, r);
-    if c.status_timers[timer::UNK_26] != 0 && c.acc.hit_flags != 0 {
-        c.status_timers[timer::UNK_26] = 0;
+    if c.status_timers[timer::SEMI_INTANGIBLE] != 0 && c.acc.hit_flags != 0 {
+        c.status_timers[timer::SEMI_INTANGIBLE] = 0;
     }
 }
 
@@ -701,7 +701,7 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
     if b.paused || coll(b, r).acc.hit_flags & 0x2_0000 == 0 {
         return;
     }
-    // Sound 0x6E.
+    b.play_sound(crate::sound::SoundId(0x6E));
     let p = b.objects.get(r).pos;
     let pos = crate::kinds::spark::jitter(b, 0xF, Vec3 { z: p.z.wrapping_add(0x10_0000), ..p });
     crate::kinds::spark::spawn(b, r, pos, 8);

@@ -5,13 +5,13 @@
 
 use super::{
     actions, ai, ai_mut, attach_point, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_paralysis, coll,
-    coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, is_mode_40, navi_record,
+    coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
     reactions, reset_attack_links, save_state_word, set_attack, set_flag1, set_flag2, set_mood,
 };
 use crate::actor::{ActorType, request, status as ai_status};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
-use crate::object::{ObjectRef, Pool, Vec3, flags};
+use crate::object::{DragStep, ObjectRef, Pool, Vec3, flags};
 use crate::setup::Form;
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
@@ -58,10 +58,10 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return Flow::Tail;
     }
     let st = ai(b, r).status;
-    if st & (ai_status::CROSS_2000 | ai_status::CROSS_10000 | ai_status::CROSS_20000) != 0 {
+    if st & (ai_status::CROSS_KNOCKOUT | ai_status::VOLLEY | ai_status::UNINTERRUPTIBLE) != 0 {
         return Flow::Dispatch;
     }
-    if st & ai_status::CROSS_40000 != 0 && cross_lane(b, r) {
+    if st & ai_status::CROSS_BREAKING != 0 && cross_lane(b, r) {
         return Flow::Return;
     }
     if b.is_time_stop() {
@@ -79,7 +79,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         b.objects.get_mut(r).action = 5;
         return Flow::Tail;
     }
-    b.objects.get_mut(r).unk_0d = 0;
+    b.objects.get_mut(r).drag_step = DragStep::Start;
     if flag2(b, r) & 0x10 != 0 {
         clear_flag2(b, r, 0x10);
         slide(b, r);
@@ -93,12 +93,11 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     }
     tick_flash(b, r);
     tick_statuses(b, r);
-    tick_flag4_timer(b, r);
+    tick_semi_intangible(b, r);
     tick_anger(b, r);
     drain_hp(b, r);
-    // sub_802E1D8
-    let side = b.objects.get(r).alliance as usize;
-    b.sides[side].unk_30 = b.sides[side].unk_30.saturating_sub(1);
+    // sub_802E1D8 counts down a battle flag 0x40 mode timer (`sub_802E070`
+    // +0x30) that nothing ported reads.
     Flow::Tail
 }
 
@@ -126,7 +125,7 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     let action = b.objects.get(r).action;
     if action >= 0x10 {
         if ai(b, r).attack.beast_lockon == 1 {
-            panic!("Beast Out attack routine (sub_80EAD9C) is not implemented yet");
+            return actions::beast_rush::update(b, r);
         }
         return actions::dispatch(b, r, action);
     }
@@ -181,14 +180,17 @@ fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let opp = b.objects.get(r).alliance ^ 1;
-    if is_mode_40(b) {
+    if per_player_gauges(b) {
         // sub_802E032
         let s = &mut b.sides[opp as usize];
         s.gauge = (s.gauge as u32 + 0x1500).min(0x4000) as u16;
     }
     b.bump_side_stat(opp, 8, 1);
     coll_mut(b, r).counter_timer = 0;
-    // Unless the battle is over: the "COUNTER" HUD text and sound 0x86.
+    // Unless the battle is over: the "COUNTER" HUD text and a sound.
+    if !b.is_battle_over() {
+        b.play_sound(crate::sound::SoundId(0x86));
+    }
 }
 
 /// `sub_801A506`: note a damaging weakness hit.
@@ -213,7 +215,9 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
             d = hp - 1;
         }
         crate::kinds::subtract_hp(b, r, d);
-        // Sound 0x6B (local player) or 0x6D; sprite_forceWhitePalette.
+        // The local player's navi hears another hit sound; sprite_forceWhitePalette.
+        let local_player = navi_record(b, r).actor_type == ActorType::Player && !b.is_remote(b.objects.get(r).alliance);
+        b.play_sound(crate::sound::SoundId(if local_player { 0x6B } else { 0x6D }));
         b.objects.sprite_mut(r).look.white = true;
         dead = b.objects.get(r).hp == 0;
     }
@@ -244,7 +248,7 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     if coll(b, r).acc.counter & 0x8000 != 0 && matches!(opp_form, Form::NONE | Form::GREGAR_BEAST | Form::FALZAR_BEAST)
     {
         let a = ai(b, r);
-        if a.unk_32 == 0 && a.unk_36 == 0 {
+        if !a.beast_out_spent && !a.beast_over_exhausted {
             set_mood(b, opp, 0xFF);
         }
     }
@@ -269,20 +273,20 @@ fn cross_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     let f = ai(b, r).requests;
     if f & request::CROSS_DEATH != 0 {
         ai_mut(b, r).requests &= !request::CROSS_DEATH;
-        ai_mut(b, r).status |= ai_status::CROSS_2000;
+        ai_mut(b, r).status |= ai_status::CROSS_KNOCKOUT;
         set_attack(b, r, 0x4C, 0);
         return Some(Flow::Dispatch);
     }
-    if f & request::ACTION_30 != 0 {
-        ai_mut(b, r).requests &= !request::ACTION_30;
-        ai_mut(b, r).status |= ai_status::CROSS_10000;
+    if f & request::VOLLEY != 0 {
+        ai_mut(b, r).requests &= !request::VOLLEY;
+        ai_mut(b, r).status |= ai_status::VOLLEY;
         set_attack(b, r, 0x30, 0);
         return Some(Flow::Dispatch);
     }
     if f & request::WEAKNESS_HIT != 0 {
         ai_mut(b, r).requests &= !request::WEAKNESS_HIT;
         if (0x1AC..=0x1C1).contains(&b.objects.get(r).name_id) {
-            ai_mut(b, r).status |= ai_status::CROSS_40000;
+            ai_mut(b, r).status |= ai_status::CROSS_BREAKING;
             exit_attack_state(b, r);
             cross_lane(b, r);
             return Some(Flow::Return);
@@ -308,7 +312,7 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.action = 5;
     o.phase = 0;
-    o.unk_0d = 0;
+    o.drag_step = DragStep::Start;
 }
 
 /// `sub_80166B6`: the ice / road / push slide machine.
@@ -368,7 +372,9 @@ fn tick_flash(b: &mut Battle, r: ObjectRef) {
             set_flag1(b, r, f1::FLASHING);
             return;
         }
-        // Sound 0x94 if invisible.
+        if flag1(b, r) & f1::INVISIBLE != 0 {
+            b.play_sound(crate::sound::SoundId(0x94));
+        }
     }
     clear_flag1(b, r, f1::FLASHING | f1::INVISIBLE);
 }
@@ -537,23 +543,25 @@ fn tick_minor_statuses(b: &mut Battle, r: ObjectRef, f2: u32) {
     }
 }
 
-/// `sub_8010162`: the timed flag-4 state (0xFFFF = indefinite); the flag
-/// is off while an action runs.
-fn tick_flag4_timer(b: &mut Battle, r: ObjectRef) {
-    let t = coll(b, r).status_timers[timer::UNK_26];
+/// `sub_8010162`: the timed semi-intangible state (0xFFFF = indefinite);
+/// the flag is off while an action runs.
+fn tick_semi_intangible(b: &mut Battle, r: ObjectRef) {
+    let t = coll(b, r).status_timers[timer::SEMI_INTANGIBLE];
     if t != 0xFFFF {
         let t = t as i32 - 1;
         if t < 0 {
-            clear_flag1(b, r, f1::UNK_4);
+            clear_flag1(b, r, f1::SEMI_INTANGIBLE);
             return;
         }
-        coll_mut(b, r).status_timers[timer::UNK_26] = t as u16;
-        // At 0: sound 0x94.
+        coll_mut(b, r).status_timers[timer::SEMI_INTANGIBLE] = t as u16;
+        if t == 0 {
+            b.play_sound(crate::sound::SoundId(0x94));
+        }
     }
     if flag1(b, r) & f1::USING_ACTION != 0 {
-        clear_flag1(b, r, f1::UNK_4);
+        clear_flag1(b, r, f1::SEMI_INTANGIBLE);
     } else {
-        set_flag1(b, r, f1::UNK_4);
+        set_flag1(b, r, f1::SEMI_INTANGIBLE);
     }
 }
 
@@ -590,19 +598,20 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80143A6`: calm down.
-fn end_anger(b: &mut Battle, r: ObjectRef) {
+pub(super) fn end_anger(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     b.stats[side].mood = 0x80;
     clear_flag1(b, r, f1::ANGER);
     clear_flag2(b, r, 0x200);
     let a = ai_mut(b, r);
     a.anger = 0;
-    a.unk_4c = 0;
+    a.stun_ticks = 0;
 }
 
-/// `sub_8014498`: while `Unk_36` is set, lose 1 HP per tick (never to 0).
+/// `sub_8014498`: exhausted after Beast Over, lose 1 HP per tick (never
+/// to 0).
 fn drain_hp(b: &mut Battle, r: ObjectRef) {
-    if b.is_battle_over() || ai(b, r).unk_36 == 0 {
+    if b.is_battle_over() || !ai(b, r).beast_over_exhausted {
         return;
     }
     let o = b.objects.get_mut(r);
@@ -643,29 +652,29 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
 fn pause_requests(b: &mut Battle, r: ObjectRef) {
     let st = ai(b, r).status;
     if st & ai_status::FORM_CHANGE != 0 {
-        panic!("form change (sub_8014A38) is not implemented yet");
+        return actions::transform::form_change(b, r);
     }
-    if st & 0x100 != 0 {
+    if st & ai_status::REVERTING_FORM != 0 {
         panic!("pause action (sub_8015614) is not implemented yet");
     }
-    if st & 0x1000 != 0 {
+    if st & ai_status::CHANGING_CROSS != 0 {
         panic!("pause action (sub_802D714) is not implemented yet");
     }
-    if st & 0x2000 != 0 {
+    if st & ai_status::CROSS_KNOCKOUT != 0 {
         panic!("pause action (sub_802D926) is not implemented yet");
     }
     let f = ai(b, r).requests;
     let (bit, state) = if f & request::FORM_CHANGE != 0 {
         (request::FORM_CHANGE, ai_status::FORM_CHANGE)
-    } else if f & request::PAUSE_40 != 0 {
+    } else if f & request::REVERT_FORM != 0 {
         // Saves the state word after zeroing it.
         b.objects.get_mut(r).saved_state = None;
         save_state_word(b, r);
-        (request::PAUSE_40, 0x100)
-    } else if f & request::PAUSE_4000000 != 0 {
-        (request::PAUSE_4000000, 0x1000)
+        (request::REVERT_FORM, ai_status::REVERTING_FORM)
+    } else if f & request::CROSS_CHANGE != 0 {
+        (request::CROSS_CHANGE, ai_status::CHANGING_CROSS)
     } else if f & request::CROSS_DEATH != 0 {
-        (request::CROSS_DEATH, 0x2000)
+        (request::CROSS_DEATH, ai_status::CROSS_KNOCKOUT)
     } else {
         return;
     };
@@ -684,23 +693,23 @@ fn time_stop(b: &mut Battle, r: ObjectRef) {
     }
     let o = b.objects.get_mut(r);
     if o.prevent_anim == 0 {
-        o.unk_30 = (o.pos.x >> 16) as u16;
-        o.unk_32 = (o.pos.z >> 16) as u16;
-        o.unk_19 = 0;
+        o.shake_origin_x = (o.pos.x >> 16) as i16;
+        o.shake_origin_z = (o.pos.z >> 16) as i16;
+        o.shake_timer = 0;
         o.prevent_anim = 4;
     }
     if coll(b, r).acc.final_damage != 0 {
-        b.objects.get_mut(r).unk_19 = 30;
+        b.objects.get_mut(r).shake_timer = 30;
     }
     let o = b.objects.get(r);
-    if o.unk_19 != 0 {
-        let base = Vec3 { x: (o.unk_30 as i32) << 16, y: o.pos.y, z: (o.unk_32 as i32) << 16 };
-        b.objects.get_mut(r).unk_19 -= 1;
+    if o.shake_timer != 0 {
+        let base = Vec3 { x: (o.shake_origin_x as i32) << 16, y: o.pos.y, z: (o.shake_origin_z as i32) << 16 };
+        b.objects.get_mut(r).shake_timer -= 1;
         let pos = crate::kinds::spark::jitter(b, 3, base);
         b.objects.get_mut(r).pos = pos;
     } else {
         let o = b.objects.get_mut(r);
-        o.pos.x = (o.pos.x & 0xFFFF) | ((o.unk_30 as i32) << 16);
-        o.pos.z = (o.pos.z & 0xFFFF) | ((o.unk_32 as i32) << 16);
+        o.pos.x = (o.pos.x & 0xFFFF) | ((o.shake_origin_x as i32) << 16);
+        o.pos.z = (o.pos.z & 0xFFFF) | ((o.shake_origin_z as i32) << 16);
     }
 }
