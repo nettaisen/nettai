@@ -224,6 +224,19 @@ pub struct ActorData {
     pub unk_74: u32,
     pub unk_78: u32,
     pub attack: AttackVars,
+    /// Obstacles the obstacle-absorbing chip pulled in, in arrival order
+    /// (at most eight; the game keeps them at +0x6C with the count at
+    /// +0x0D).
+    pub absorbed: Vec<AbsorbedObstacle>,
+}
+
+/// An obstacle the obstacle-absorbing chip pulled in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AbsorbedObstacle {
+    /// Obstacle kind (`data::ABSORBED_SPRITES`).
+    pub kind: u8,
+    /// Its animation when absorbed.
+    pub anim: u8,
 }
 
 /// The actor-data pool.

@@ -546,6 +546,109 @@ fn player(rom: &Rom) -> String {
     out
 }
 
+/// Battle actor lists: every list referenced by `BattleSettingsList1`
+/// (192 16-byte settings records; bytes 12..16 point at the list). A list
+/// is 4-byte entries up to one whose byte 0 has high nibble 0xF; the
+/// spawn loop (`sub_8007368`) reads kind = b0 >> 4, side = b0 & 1,
+/// x = b1 & 7, y = b1 >> 4, and kind-specific bytes b2, b3.
+fn actor_lists(rom: &Rom) -> String {
+    const SETTINGS: u32 = 0x080B_0D88;
+    const COUNT: u32 = 192;
+    let mut sources: Vec<u32> = (0..COUNT).map(|i| u32at(rom, SETTINGS + 16 * i + 12)).collect();
+    sources.sort_unstable();
+    sources.dedup();
+    let mut out = String::from(HEADER);
+    out.push_str("use crate::setup::{ActorEntry, ActorKind, ActorList};\n\n");
+    writeln!(out, "/// Every actor list the battle settings table refers to, by ROM address.").unwrap();
+    writeln!(out, "pub static ACTOR_LISTS: [ActorList; {}] = [", sources.len()).unwrap();
+    for &source in &sources {
+        let mut entries = Vec::new();
+        let mut a = source;
+        loop {
+            let b = rom.bytes(a, 4);
+            if b[0] >> 4 == 0xF {
+                break;
+            }
+            // Each kind's spawn routine reads only some of the bytes;
+            // the rest must be clear so the decoded entry says it all.
+            let side = b[0] & 1;
+            let unused = |mask0: u8, used2: bool| {
+                assert!(
+                    b[0] & mask0 == 0 && b[1] & 0x08 == 0 && (used2 || b[2] == 0) && b[3] == 0,
+                    "actor entry {a:#010x} sets bytes its spawn routine ignores: {b:02x?}"
+                )
+            };
+            let kind = match b[0] >> 4 {
+                0 => {
+                    unused(0x0E, false);
+                    "ActorKind::Navi".to_string()
+                }
+                3 => {
+                    unused(0x0F, false);
+                    "ActorKind::Object6E".to_string()
+                }
+                8 => {
+                    unused(0x0F, true);
+                    format!("ActorKind::Rock {{ variant: {} }}", b[2])
+                }
+                9 => {
+                    unused(0x0F, true);
+                    format!("ActorKind::Object7D {{ variant: {} }}", b[2])
+                }
+                k => panic!("actor entry {a:#010x}: kind {k} has no ActorKind yet"),
+            };
+            entries.push(format!("ActorEntry {{ kind: {kind}, alliance: {side}, x: {}, y: {} }}", b[1] & 7, b[1] >> 4));
+            a += 4;
+        }
+        writeln!(out, "    ActorList {{ source: {source:#010x}, entries: &[{}] }},", entries.join(", ")).unwrap();
+    }
+    out.push_str("];\n");
+    out
+}
+
+/// Field-object tables: the rock variants (`byte_80CF934`, 8-byte rows
+/// selected by the rock's first parameter) and the sprite of each kind of
+/// obstacle when it is absorbed (`byte_80E98C0`).
+fn obstacles(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    out.push_str("use super::{Element, RockKind, SpriteId};\n\n");
+    const ROCKS: u32 = 0x080C_F934;
+    let rows: Vec<String> = (0..4)
+        .map(|i| {
+            // Row bytes: standing animation, (unused), HP / 2, debris
+            // palette, break sound (u16), name id (u16). The rock's init
+            // (`sub_80CF974`) turns HP / 2 = 0 into 1 HP and makes
+            // variants 3 and up aqua.
+            let r = ROCKS + 8 * i;
+            let hp = match rom.u8(r + 2) as u16 * 2 {
+                0 => 1,
+                hp => hp,
+            };
+            let element = if i >= 3 { "Aqua" } else { "Null" };
+            format!(
+                "RockKind {{ anim: {}, hp: {hp}, element: Element::{element}, debris_palette: {}, \
+                 break_sound: {:#06x}, name_id: {:#06x} }}",
+                rom.u8(r),
+                rom.u8(r + 3),
+                rom.u16(r + 4),
+                rom.u16(r + 6)
+            )
+        })
+        .collect();
+    writeln!(out, "/// Rocks by variant, the rock's first parameter (`byte_80CF934`).").unwrap();
+    writeln!(out, "pub static ROCKS: [RockKind; 4] = [\n    {},\n];", rows.join(",\n    ")).unwrap();
+    const ABSORBED: u32 = 0x080E_98C0;
+    let sprites: Vec<String> = (0..15)
+        .map(|i| {
+            let (category, index) = (rom.u8(ABSORBED + 2 * i), rom.u8(ABSORBED + 2 * i + 1));
+            format!("SpriteId {{ category: {category:#04x}, index: {index:#04x} }}")
+        })
+        .collect();
+    writeln!(out, "/// The sprite an absorbed obstacle flies with, by obstacle kind (`byte_80E98C0`).").unwrap();
+    writeln!(out, "pub static ABSORBED_SPRITES: [SpriteId; 15] = [\n    {},\n];", sprites.join(",\n    ")).unwrap();
+    out
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let rom = Rom(std::fs::read(&args[0]).expect("reading ROM"));
@@ -561,5 +664,7 @@ fn main() {
     std::fs::write(out_dir.join("sprites_generated.rs"), sprites(&rom)).unwrap();
     std::fs::write(out_dir.join("effects_generated.rs"), effects(&rom)).unwrap();
     std::fs::write(out_dir.join("player_generated.rs"), player(&rom)).unwrap();
+    std::fs::write(out_dir.join("actor_lists_generated.rs"), actor_lists(&rom)).unwrap();
+    std::fs::write(out_dir.join("obstacles_generated.rs"), obstacles(&rom)).unwrap();
     eprintln!("wrote {}", out_dir.display());
 }
