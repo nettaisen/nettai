@@ -734,7 +734,8 @@ Checked in `sub_80F0354` after the action is already set up:
 - **Charged chips (flag 8).** Forms set `ai[4..8]` and `ai[0x11]` from `byte_8020354 + 6*form` (`sub_800FEEC`).
   A may then become hold-to-use: 0x20000 while held, released with a full charge → flag 8. `sub_800FB54` then
   takes the flag-8 path:
-  - `sub_800EDD0(obj, 8)`; family 0xA chips use `t = ai[0x11]`, others `t = ai[0x05]`.
+  - `sub_800EDD0(obj, 8)`; family 0xA chips use `t = ai[0x11]` and zero `av.u16[0x14]` (the chip id, so the use
+    reports chip 0), others use `t = ai[0x05]`.
   - `t == 0x18` → `arg = sub_8012CB2()`.
   - `t == 0xFF` → `arg` = family, or 0 for family 0xA. **Quirk:** the family is passed as `arg`.
   - `t ∈ {0x0D,0x1F,0x20,0x29,0x2D,0x05}` → `arg = 1`.
@@ -754,14 +755,35 @@ Checked in `sub_80F0354` after the action is already set up:
 
   Phases:
   - **Phase 0** (`sub_80EADDC`): snap to FuturePanel, reserve it, set the moving flag; `s[4]=0`, `s[5]=12`.
-  - **Phase 4** (`sub_80EAE28`): a 3-frame wait, then teleport next to the target via
-    `ho_8026554(sub_80E164A(), mode)`. `mode` = `cd.lockon_mode` (+0x17), or the overrides `sub_80EAF1A`/`sub_80EAF26`.
-    Spawns warp visuals (`sub_80EAFC2`).
+  - **Phase 4** (`sub_80EAE28`): on entry `s[1] = 1`, freeze the lock-on marker (`sub_80E1654`: its CurAnim = 1),
+    `object_setAnimation(4)` if `sub_80F02A2`, `s[8] = 3`. When the countdown reaches 0: the NaviCust panel trail
+    (`sub_8013CC4`) on the current panel, then teleport next to the target via `ho_8026554(sub_80E164A(), mode)`.
+    `mode` is 0 (stay) when blind or confused outside Beast Over; else 0xC for action 0x52 (`sub_80EAF1A`), a
+    per-variant table for action 0x41 (`sub_80EAF26`), or `cd.lockon_mode` (+0x17, read with the chip id at
+    `av.u16[0x14]`). The old panel goes to `s[2..3]`; the navi's panel, coordinates and collision panels change (not
+    FuturePanel, which still holds the old panel). On column patterns 0x31/0x23/0x33 with `av.u32[0x2C]` set, it also
+    faces that object (`sub_800F2FC`). If it moved, two afterimages (T4#0x28 via `sub_80EAFC2`): at the old panel's
+    coordinates with lifetime 12, then halfway between old and new position (arithmetic mean) with lifetime 20.
+    Then `object_setAnimation(0)`, phase 8.
+  - **`ho_8026554(x, y, mode)`**: a target panel off the field means mode 0 (`sub_802661C`: the navi's own panel).
+    Most modes search (`sub_80265D0`): try a mode-specific list of offsets next to the target (dx toward the navi's
+    front, so negative is between the navi and the target); if none fits, shift the reference column by −1..−4
+    toward the navi (`byte_8026735`) and try again. A candidate must be on the field, must not lie past the target
+    in the navi's facing direction, and must pass `sub_800E680` (the step rule without the side check: floor
+    required unless AirShoe or standing off solid ground, and no other body). Modes 3, 6, 9 and 0x10 then take the
+    middle row of the found column if it passes `sub_800E680` (`sub_80265FE`; its "not found" test reads flags that
+    a `mov r1, #2` just set, so it always runs; with nothing found it tests column 0 and fails). A result with
+    column 0 means "not found", and the caller keeps the navi's panel. The offset lists are extracted into
+    `lockon_generated`: mode 9 (GunDelSol) is two columns before the target, same row, then above, then below;
+    mode 0xC (the claw) is the panel right in front of it. Modes 1, 0xA, 0xB, 0xE, 0x11 and 0x12 work differently.
   - **Phase 8** (`sub_80EAF36`): calls `JumpTable80EAC60[CurAction−0x10]` each frame. When the handler has returned
     to CurAction 8:
     - if `s[4]` is set: `sub_800FC30` **chains** the next chip (it rejects 0xFFFF, 0x52, 0x53 and TFCs, then
       `sub_80127C0(0)`, `setAttack2`, `av[0x1D]=1`), then `sub_800FC7C` and back to phase 4;
-    - otherwise it warps back and exits.
+    - otherwise it warps back and exits: `sub_801011A` (clearing `av[0x1D]`, `s[0..1]` and unfreezing the marker),
+      Panel = FuturePanel with the reservation dropped and coordinates and collision panels updated, ObjectFlags1
+      &= ~0x40 and |= 0x80000, then `object_exitAttackState` if `sub_80F02A2`, else `sub_801171C`.
+    - An action below 0x10 when phase 8 starts goes straight to that exit.
   - After each phase: `s[5] -= 1` if nonzero; otherwise `s[4] = 1` if A is pressed.
   - **Quirk:** the chain branch writes `AIData[0x85] = 0xC` (AIState+5) instead of `s[5]`.
 - **Beast Over** (0x17/0x18): no input latch. `sub_802D322`/`sub_802D358` auto-use chips by setting flag 4 and
@@ -1262,10 +1284,32 @@ In battle 2, `ns[0x2C] = 0x0C` (Falzar Beast Out), and the player object's NameI
 | **2146** | No input. GunDelSol exits (CurAction 8). `sub_80EAF36` immediately runs `sub_800FC30` + `sub_800FC7C`: CurAction 0x37 again, `cur` 1 → 2, pre-phase 2147–2149, phase 0 at 2150, drops 2158..2277 (520 → 40), exit 2288. |
 | 2263–2337 | A held. Charging resumes once idle (`flags48 & 0x10`). At 2337: `ai[0x1B] = 0x14`, `ai[0x1D] = 2`. |
 | **2338** | A released with a full charge → **flag 8** (charged chip). Current chip 0xA7 (Geddon, family 0xA) → `t = ai[0x11] = 0x1E` → `sub_80117BA(0x1E)` → **CurAction 0x52** (`sub_80EF534`, a 2-hit slash with T4 0x3A/0x39 and collision regions, `av+8 = 60`, `av+0x0A = 0x9E`). `av.u16[0x14] = 0`, `av[0x1D] = 1`, `cur` 2 → 3. |
+| 2339 | Rush phase 0. |
+| 2340–2342 | Rush phase 4: marker frozen (anim 1), navi anim 4; at 2342 the claw's mode 0xC picks (4,2), in front of the target at (5,2). Afterimages at the midpoint (x 0) and at the old panel (3,2), each with a T1#0x57 layer. |
+| 2343 | The claw's first tick: anim 0xC (the overlay's CurAnim 0xC, CurAnimCopy 0). |
+| 2345 | First slash: effect 0x3A at (5,2), z 0x10 px; hit region 2 at (5,2), 60 damage, counter 0x9E, hit modifier 1. |
+| 2346 | The target's HP 40 → 0: the battle is over; the marker frees itself. |
 
 - **Geddon's own effect never ran, and no time freeze occurred:** `BattleState+0x32 = 0x0001` at 2338/2340/2345,
   and the freeze structs at 0x0203CF00 are all zero.
 - T1 #0x57 is the beast-form overlay, mirroring the navi's animation, and T4 #0x0F is the Beast Out lock-on marker (objects-and-player.md §A.7, §12.9). Both come from the form change, not from the chip.
+
+#### 4.6.1 The claw: weapon routine 0x1E and action 0x52
+
+`sub_8011E1C` (routine 0x1E): `av[4] = 0`, `av[5] = 0`, `av.u16[6] = 0`, `av.u16[0x0A] = 0x9E` (counter strength),
+`av.u16[8] = sub_8012642(0x32, 0xA)` = 50 + 10·min(buster damage, 5) (`sub_801265A`; 60 in the trace), `av[2] = 0`,
+`av.u16[0x12] = 2` (slashes); returns action 0x52.
+
+`sub_80EF534`, on `av[0]`:
+- **0, `sub_80EF550`**: on entry, ObjectFlags1 |= 0x400000, `av[1] = 1`, `av.u16[0x10] = 3`,
+  `object_setAnimation(0xC)`, and a form overlay gets a **halfword** store of 0xC (CurAnim 0xC, CurAnimCopy 0).
+  Count the timer down; when it was ≤ 1: timer = 0xC, `object_setDefaultCounterTime`, `av[0] = 4`, sound 0x1C5 or
+  0x1C6, and with `k = 2 − (u8)av[0x12]`: effect #0 id `byte_80EF606[k]` (0x3A, 0x39; flip = alliance) at the
+  coordinates of the panel in front (z 0x10 px), and `object_spawnCollisionRegion` on that panel: element 0, z 0,
+  damage word `av.u32[8]`, params `byte_80EF5FC[k]` (region 2 then 4, no hit effect, target type 5, self type 4)
+  and hit modifier `byte_80EF604[k]` (1 then 3).
+- **4, `sub_80EF608`**: count the timer down; when it was ≤ 1, `av.u16[0x12] -= 1`: nonzero → `av[0..1] = 0` (the
+  next slash), zero → clear 0x400000 and `object_exitAttackState`.
 
 ### 4.7 What is generic vs GunDelSol-specific
 
