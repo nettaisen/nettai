@@ -126,6 +126,9 @@ impl Emitter<'_> {
             writeln!(out, "/// PROBLEM: {p}").unwrap();
         }
         writeln!(out, "pub fn {ident}(c: &mut Cpu) {{").unwrap();
+        if self.syms.hooks.contains(&f.entry) {
+            writeln!(out, "    if let Some(h) = c.overrides.get(&{}).copied() {{ return h(c); }}", hex(f.entry)).unwrap();
+        }
         writeln!(out, "    let ret = c.ret;").unwrap();
         writeln!(out, "    let mut pc: u32 = {};", hex(f.entry)).unwrap();
         writeln!(out, "    loop {{").unwrap();
@@ -275,13 +278,13 @@ impl Emitter<'_> {
                 }
             }
             HiAdd { rd: 15, rs } => {
-                return (Self::indirect_jump(&format!("{}.wrapping_add({}) & !1", hex(pc4), r(rs))), true);
+                return (Self::indirect_jump(&format!("{}u32.wrapping_add({}) & !1", hex(pc4), r(rs))), true);
             }
             HiAdd { rd, rs } => format!("{} = {}.wrapping_add({});", r(rd), r(rd), r(rs)),
             HiCmp { rd, rs } => format!("c.subs({}, {});", r(rd), r(rs)),
             HiMov { rd: 15, rs } => {
-                if self.prev_is_mov_lr_pc(f, pc) {
-                    self.indirect_call(&format!("{} & !1", r(rs)), pc + 2)
+                if let Some(ret) = self.call_link(f, pc) {
+                    self.indirect_call_to(&format!("{} & !1", r(rs)), pc, 2, ret)
                 } else {
                     return (Self::indirect_jump(&format!("{} & !1", r(rs))), true);
                 }
@@ -293,8 +296,8 @@ impl Emitter<'_> {
                 return (format!("c.ret = ret; {}(c); return;", self.ident_or_indirect(t)), true);
             }
             Bx { rs } => {
-                if self.prev_is_mov_lr_pc(f, pc) {
-                    self.indirect_call(&format!("{} & !1", r(rs)), pc + 2)
+                if let Some(ret) = self.call_link(f, pc) {
+                    self.indirect_call_to(&format!("{} & !1", r(rs)), pc, 2, ret)
                 } else {
                     return (Self::indirect_jump(&format!("{} & !1", r(rs))), true);
                 }
@@ -411,19 +414,24 @@ impl Emitter<'_> {
         }
     }
 
-    fn prev_is_mov_lr_pc(&self, f: &Func, pc: u32) -> bool {
+    /// For an indirect branch at `pc`, the return address if the previous
+    /// instruction set lr for a call (`mov lr, pc` / `adr lr, label`).
+    fn call_link(&self, f: &Func, pc: u32) -> Option<u32> {
         match f.mode {
-            Mode::Thumb => matches!(f.insns.get(&(pc.wrapping_sub(2))), Some(Ins::T(Thumb::HiMov { rd: 14, rs: 15 }))),
-            Mode::Arm => matches!(
-                f.insns.get(&(pc.wrapping_sub(4))),
-                Some(Ins::A(Arm::DataProc {
-                    op: DpOp::Mov,
-                    rd: 14,
-                    op2: Operand2::ShiftImm { rm: 15, shift: Shift::Lsl, amount: 0 },
-                    ..
-                }))
-            ),
+            Mode::Thumb => matches!(f.insns.get(&(pc.wrapping_sub(2))), Some(Ins::T(Thumb::HiMov { rd: 14, rs: 15 })))
+                .then_some(pc + 2),
+            Mode::Arm => crate::discover::arm_link_value(f.insns.get(&(pc.wrapping_sub(4))), pc.wrapping_sub(4)),
         }
+    }
+
+    /// An indirect call returning to `ret`; if that isn't the next
+    /// instruction, continue there.
+    fn indirect_call_to(&self, target_expr: &str, pc: u32, size: u32, ret: u32) -> String {
+        let mut s = self.indirect_call(target_expr, ret);
+        if ret != pc + size {
+            s.push_str(&format!(" pc = {}; continue;", hex(ret)));
+        }
+        s
     }
 
     fn ident_or_indirect(&self, t: u32) -> String {
@@ -524,8 +532,9 @@ impl Emitter<'_> {
                         if s {
                             return wrap(format!("{body}c.exception_return({res});"), true);
                         }
-                        if self.prev_is_mov_lr_pc(f, pc) {
-                            return wrap(format!("{body}{}", self.indirect_call(&format!("({res}) & !3"), pc + 4)), false);
+                        if let Some(ret) = self.call_link(f, pc) {
+                            let term = ret != pc + 4;
+                            return wrap(format!("{body}{}", self.indirect_call_to(&format!("({res}) & !3"), pc, 4, ret)), term);
                         }
                         return wrap(format!("{body}{}", Self::indirect_jump(&format!("({res}) & !3"))), true);
                     }
@@ -568,8 +577,8 @@ impl Emitter<'_> {
                 wrap(body, false)
             }
             Arm::Bx { rm, .. } => {
-                if self.prev_is_mov_lr_pc(f, pc) {
-                    wrap(self.indirect_call(&format!("c.r[{rm}] & !1"), pc + 4), false)
+                if let Some(ret) = self.call_link(f, pc) {
+                    wrap(self.indirect_call_to(&format!("c.r[{rm}] & !1"), pc, 4, ret), ret != pc + 4)
                 } else {
                     wrap(Self::indirect_jump(&format!("c.r[{rm}] & !1")), true)
                 }
@@ -619,8 +628,8 @@ impl Emitter<'_> {
                         body.push_str(&format!("c.r[{rn}] = wb; "));
                     }
                     if rd == 15 {
-                        if self.prev_is_mov_lr_pc(f, pc) {
-                            return wrap(format!("{body}{}", self.indirect_call("v & !1", pc + 4)), false);
+                        if let Some(ret) = self.call_link(f, pc) {
+                            return wrap(format!("{body}{}", self.indirect_call_to("v & !1", pc, 4, ret)), ret != pc + 4);
                         }
                         return wrap(format!("{body}{}", Self::indirect_jump("v & !1")), true);
                     }

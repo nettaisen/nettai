@@ -1,0 +1,5 @@
+# Functions the host can replace at run time (Cpu::overrides). The generated
+# function checks for an override on entry.
+080003a0	main_awaitFrame
+080003d0	main_pollGeneralLCDStatus_STAT_LYC_
+0803eae4	sub_803EAE4

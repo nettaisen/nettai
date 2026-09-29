@@ -45,13 +45,426 @@ pub fn byte_3005700(c: &mut Cpu) {
                 let a = c.r[6]; let wb = a.wrapping_add(0x4); c.st32(a, c.r[0]); c.r[6] = wb; // 3005788: stmia r6!, {r0}
                 c.r[1] = c.subs(c.r[1], 0x1); // 300578a: sub r1, #0x1
                 if !c.z && c.n == c.v { pc = 0x0300577a; continue; } // 300578c: bgt 0x0300577a
+                c.ret = ret; SoundMainRAM_channels_thumb(c); return; // falls through
+            }
+            _ => return c.fallback(pc, ret),
+        }
+    }
+}
+
+/// `SoundMainRAM_reverb_arm` (0x0300570c, arm)
+pub fn SoundMainRAM_reverb_arm(c: &mut Cpu) {
+    let ret = c.ret;
+    let mut pc: u32 = 0x0300570c;
+    loop {
+        match pc {
+            0x0300570c => {
+                let o2: u32 = 0x00000002; c.subs(c.r[4], o2); // 300570c: cmp r4, #0x2
+                if c.z { let o2: u32 = 0x00000350; c.r[7] = c.r[0].wrapping_add(o2); } // 3005710: addeq r7, r0, #0x350
+                if !c.z { let o2: u32 = c.r[8]; c.r[7] = c.r[5].wrapping_add(o2); } // 3005714: addne r7, r5, r8
+                let o2: u32 = c.r[8]; c.r[4] = o2; // 3005718: mov r4, r8
+                pc = 0x0300571c;
+            }
+            0x0300571c => {
+                let a = c.r[5].wrapping_add(c.r[6]); let v = c.ld8s(a); c.r[0] = v; // 300571c: ldrsb r0, [r5, r6]
+                let a = c.r[5].wrapping_add(0x00000000); let v = c.ld8s(a); c.r[1] = v; // 3005720: ldrsb r1, [r5]
+                let o2: u32 = c.r[1]; c.r[0] = c.r[0].wrapping_add(o2); // 3005724: add r0, r0, r1
+                let a = c.r[7].wrapping_add(c.r[6]); let v = c.ld8s(a); c.r[1] = v; // 3005728: ldrsb r1, [r7, r6]
+                let o2: u32 = c.r[1]; c.r[0] = c.r[0].wrapping_add(o2); // 300572c: add r0, r0, r1
+                let a = c.r[7]; let wb = c.r[7].wrapping_add(0x00000001); let v = c.ld8s(a); c.r[7] = wb; c.r[1] = v; // 3005730: ldrsb r1, [r7], #0x1
+                let o2: u32 = c.r[1]; c.r[0] = c.r[0].wrapping_add(o2); // 3005734: add r0, r0, r1
+                c.r[1] = c.r[0].wrapping_mul(c.r[3]); // 3005738: mul r1, r0, r3
+                let o2: u32 = asr_imm(c.r[1], 9); c.r[0] = o2; // 300573c: mov r0, r1, asr #9
+                let o2: u32 = 0x00000080; c.nz(c.r[0] & o2); // 3005740: tst r0, #0x80
+                if !c.z { let o2: u32 = 0x00000001; c.r[0] = c.r[0].wrapping_add(o2); } // 3005744: addne r0, r0, #0x1
+                let a = c.r[5].wrapping_add(c.r[6]); c.st8(a, c.r[0]); // 3005748: strb r0, [r5, r6]
+                let a = c.r[5]; let wb = c.r[5].wrapping_add(0x00000001); c.st8(a, c.r[0]); c.r[5] = wb; // 300574c: strb r0, [r5], #0x1
+                let o2: u32 = 0x00000001; c.r[4] = c.subs(c.r[4], o2); // 3005750: subs r4, r4, #0x1
+                if !c.z && c.n == c.v { pc = 0x0300571c; continue; } // 3005754: bgt 0x0300571c
+                let o2: u32 = 0x0000002f; c.r[0] = 0x03005760u32.wrapping_add(o2); // 3005758: add r0, pc, #0x2f
+                pc = c.r[0] & !1; if pc == ret { c.pc = pc; return; } continue; // 300575c: bx r0
+            }
+            _ => return c.fallback(pc, ret),
+        }
+    }
+}
+
+/// `SoundMainRAM_channels_thumb` (0x0300578e, thumb)
+pub fn SoundMainRAM_channels_thumb(c: &mut Cpu) {
+    let ret = c.ret;
+    let mut pc: u32 = 0x0300578e;
+    loop {
+        match pc {
+            0x0300578e => {
                 c.r[4] = c.ld32(c.r[13].wrapping_add(0x18)); // 300578e: ldr r4, [sp, #0x18]
                 c.r[0] = c.ld32(c.r[4].wrapping_add(0x18)); // 3005790: ldr r0, [r4, #0x18]
                 c.r[12] = c.r[0]; // 3005792: mov r12, r0
                 c.r[0] = c.ld8(c.r[4].wrapping_add(0x6)); // 3005794: ldrb r0, [r4, #0x6]
                 c.r[4] = c.r[4].wrapping_add(0x50); // 3005796: add r4, #0x50
-                pc = 0x03005798;
+                c.st32(c.r[13].wrapping_add(0x4), c.r[0]); // 3005798: str r0, [sp, #0x4]
+                c.r[3] = c.ld32(c.r[4].wrapping_add(0x24)); // 300579a: ldr r3, [r4, #0x24]
+                c.r[0] = c.ld32(c.r[13].wrapping_add(0x14)); // 300579c: ldr r0, [sp, #0x14]
+                c.subs(c.r[0], 0x0); // 300579e: cmp r0, #0x0
+                if c.z { pc = 0x030057b8; continue; } // 30057a0: beq 0x030057b8
+                c.r[1] = 0x04000006; // 30057a2: ldr r1, [pc, #0x10] // 0x030057b4
+                c.r[1] = c.ld8(c.r[1]); // 30057a4: ldrb r1, [r1, #0x0]
+                c.subs(c.r[1], 0xa0); // 30057a6: cmp r1, #0xa0
+                if c.c { pc = 0x030057ac; continue; } // 30057a8: bcs 0x030057ac
+                c.r[1] = c.r[1].wrapping_add(0xe4); // 30057aa: add r1, #0xe4
+                pc = 0x030057ac;
             }
+            0x030057ac => {
+                c.subs(c.r[1], c.r[0]); // 30057ac: cmp r1, r0
+                if !c.c { pc = 0x030057b8; continue; } // 30057ae: bcc 0x030057b8
+                pc = 0x03005a8a; continue; // 30057b0: b 0x03005a8a
+            }
+            0x030057b8 => {
+                c.r[6] = c.ld8(c.r[4]); // 30057b8: ldrb r6, [r4, #0x0]
+                c.r[0] = 0xc7; // 30057ba: mov r0, #0xc7
+                c.nz(c.r[0] & c.r[6]); // 30057bc: tst r0, r6
+                if !c.z { pc = 0x030057c2; continue; } // 30057be: bne 0x030057c2
+                c.ret = ret; SoundMainRAM_exit_thumb(c); return; // 30057c0: b 0x03005a80
+            }
+            0x030057c2 => {
+                c.r[0] = 0x80; // 30057c2: mov r0, #0x80
+                c.nz(c.r[0] & c.r[6]); // 30057c4: tst r0, r6
+                if c.z { pc = 0x030057f2; continue; } // 30057c6: beq 0x030057f2
+                c.r[0] = 0x40; // 30057c8: mov r0, #0x40
+                c.nz(c.r[0] & c.r[6]); // 30057ca: tst r0, r6
+                if !c.z { pc = 0x03005802; continue; } // 30057cc: bne 0x03005802
+                c.r[6] = 0x3; // 30057ce: mov r6, #0x3
+                c.st8(c.r[4], c.r[6]); // 30057d0: strb r6, [r4, #0x0]
+                c.r[0] = c.r[3].wrapping_add(0); // 30057d2: add r0, r3, #0
+                c.r[0] = c.r[0].wrapping_add(0x10); // 30057d4: add r0, #0x10
+                c.st32(c.r[4].wrapping_add(0x28), c.r[0]); // 30057d6: str r0, [r4, #0x28]
+                c.r[0] = c.ld32(c.r[3].wrapping_add(0xc)); // 30057d8: ldr r0, [r3, #0xc]
+                c.st32(c.r[4].wrapping_add(0x18), c.r[0]); // 30057da: str r0, [r4, #0x18]
+                c.r[5] = 0x0; // 30057dc: mov r5, #0x0
+                c.st8(c.r[4].wrapping_add(0x9), c.r[5]); // 30057de: strb r5, [r4, #0x9]
+                c.st32(c.r[4].wrapping_add(0x1c), c.r[5]); // 30057e0: str r5, [r4, #0x1c]
+                c.r[2] = c.ld8(c.r[3].wrapping_add(0x3)); // 30057e2: ldrb r2, [r3, #0x3]
+                c.r[0] = 0xc0; // 30057e4: mov r0, #0xc0
+                c.nz(c.r[0] & c.r[2]); // 30057e6: tst r0, r2
+                if c.z { pc = 0x0300584a; continue; } // 30057e8: beq 0x0300584a
+                c.r[0] = 0x10; // 30057ea: mov r0, #0x10
+                c.r[6] = c.r[6] | c.r[0]; // 30057ec: orr r6, r0
+                c.st8(c.r[4], c.r[6]); // 30057ee: strb r6, [r4, #0x0]
+                pc = 0x0300584a; continue; // 30057f0: b 0x0300584a
+            }
+            0x030057f2 => {
+                c.r[5] = c.ld8(c.r[4].wrapping_add(0x9)); // 30057f2: ldrb r5, [r4, #0x9]
+                c.r[0] = 0x4; // 30057f4: mov r0, #0x4
+                c.nz(c.r[0] & c.r[6]); // 30057f6: tst r0, r6
+                if c.z { pc = 0x03005808; continue; } // 30057f8: beq 0x03005808
+                c.r[0] = c.ld8(c.r[4].wrapping_add(0xd)); // 30057fa: ldrb r0, [r4, #0xd]
+                c.r[0] = c.subs(c.r[0], 0x1); // 30057fc: sub r0, #0x1
+                c.st8(c.r[4].wrapping_add(0xd), c.r[0]); // 30057fe: strb r0, [r4, #0xd]
+                if c.c && !c.z { pc = 0x03005858; continue; } // 3005800: bhi 0x03005858
+                pc = 0x03005802;
+            }
+            0x03005802 => {
+                c.r[0] = 0x0; c.n = false; c.z = true; // 3005802: mov r0, #0x0
+                c.st8(c.r[4], c.r[0]); // 3005804: strb r0, [r4, #0x0]
+                c.ret = ret; SoundMainRAM_exit_thumb(c); return; // 3005806: b 0x03005a80
+            }
+            0x03005808 => {
+                c.r[0] = 0x40; // 3005808: mov r0, #0x40
+                c.nz(c.r[0] & c.r[6]); // 300580a: tst r0, r6
+                if c.z { pc = 0x03005828; continue; } // 300580c: beq 0x03005828
+                c.r[0] = c.ld8(c.r[4].wrapping_add(0x7)); // 300580e: ldrb r0, [r4, #0x7]
+                c.r[5] = c.r[5].wrapping_mul(c.r[0]); // 3005810: mul r5, r0
+                c.r[5] = c.r[5] >> 8; // 3005812: lsr r5, r5, #0x8
+                c.r[0] = c.ld8(c.r[4].wrapping_add(0xc)); // 3005814: ldrb r0, [r4, #0xc]
+                c.subs(c.r[5], c.r[0]); // 3005816: cmp r5, r0
+                if c.c && !c.z { pc = 0x03005858; continue; } // 3005818: bhi 0x03005858
+                pc = 0x0300581a;
+            }
+            0x0300581a => {
+                c.r[5] = c.ld8(c.r[4].wrapping_add(0xc)); // 300581a: ldrb r5, [r4, #0xc]
+                c.subs(c.r[5], 0x0); // 300581c: cmp r5, #0x0
+                if c.z { pc = 0x03005802; continue; } // 300581e: beq 0x03005802
+                c.r[0] = 0x4; // 3005820: mov r0, #0x4
+                c.r[6] = c.r[6] | c.r[0]; // 3005822: orr r6, r0
+                c.st8(c.r[4], c.r[6]); // 3005824: strb r6, [r4, #0x0]
+                pc = 0x03005858; continue; // 3005826: b 0x03005858
+            }
+            0x03005828 => {
+                c.r[2] = 0x3; // 3005828: mov r2, #0x3
+                c.r[2] = c.r[2] & c.r[6]; // 300582a: and r2, r6
+                c.subs(c.r[2], 0x2); // 300582c: cmp r2, #0x2
+                if !c.z { pc = 0x03005846; continue; } // 300582e: bne 0x03005846
+                c.r[0] = c.ld8(c.r[4].wrapping_add(0x5)); // 3005830: ldrb r0, [r4, #0x5]
+                c.r[5] = c.r[5].wrapping_mul(c.r[0]); // 3005832: mul r5, r0
+                c.r[5] = c.r[5] >> 8; // 3005834: lsr r5, r5, #0x8
+                c.r[0] = c.ld8(c.r[4].wrapping_add(0x6)); // 3005836: ldrb r0, [r4, #0x6]
+                c.subs(c.r[5], c.r[0]); // 3005838: cmp r5, r0
+                if c.c && !c.z { pc = 0x03005858; continue; } // 300583a: bhi 0x03005858
+                c.r[5] = c.adds(c.r[0], 0); // 300583c: add r5, r0, #0
+                if c.z { pc = 0x0300581a; continue; } // 300583e: beq 0x0300581a
+                c.r[6] = c.r[6].wrapping_sub(0x1); // 3005840: sub r6, #0x1
+                c.st8(c.r[4], c.r[6]); // 3005842: strb r6, [r4, #0x0]
+                pc = 0x03005858; continue; // 3005844: b 0x03005858
+            }
+            0x03005846 => {
+                c.subs(c.r[2], 0x3); // 3005846: cmp r2, #0x3
+                if !c.z { pc = 0x03005858; continue; } // 3005848: bne 0x03005858
+                pc = 0x0300584a;
+            }
+            0x0300584a => {
+                c.r[0] = c.ld8(c.r[4].wrapping_add(0x4)); // 300584a: ldrb r0, [r4, #0x4]
+                c.r[5] = c.r[5].wrapping_add(c.r[0]); // 300584c: add r5, r5, r0
+                c.subs(c.r[5], 0xff); // 300584e: cmp r5, #0xff
+                if !c.c { pc = 0x03005858; continue; } // 3005850: bcc 0x03005858
+                c.r[5] = 0xff; // 3005852: mov r5, #0xff
+                c.r[6] = c.r[6].wrapping_sub(0x1); // 3005854: sub r6, #0x1
+                c.st8(c.r[4], c.r[6]); // 3005856: strb r6, [r4, #0x0]
+                pc = 0x03005858;
+            }
+            0x03005858 => {
+                c.st8(c.r[4].wrapping_add(0x9), c.r[5]); // 3005858: strb r5, [r4, #0x9]
+                c.r[0] = c.ld32(c.r[13].wrapping_add(0x18)); // 300585a: ldr r0, [sp, #0x18]
+                c.r[0] = c.ld8(c.r[0].wrapping_add(0x7)); // 300585c: ldrb r0, [r0, #0x7]
+                c.r[0] = c.adds(c.r[0], 0x1); // 300585e: add r0, #0x1
+                c.r[0] = c.r[0].wrapping_mul(c.r[5]); // 3005860: mul r0, r5
+                c.r[5] = c.r[0] >> 4; // 3005862: lsr r5, r0, #0x4
+                c.r[0] = c.ld8(c.r[4].wrapping_add(0x2)); // 3005864: ldrb r0, [r4, #0x2]
+                c.r[0] = c.r[0].wrapping_mul(c.r[5]); // 3005866: mul r0, r5
+                c.r[0] = c.r[0] >> 8; // 3005868: lsr r0, r0, #0x8
+                c.st8(c.r[4].wrapping_add(0xa), c.r[0]); // 300586a: strb r0, [r4, #0xa]
+                c.r[0] = c.ld8(c.r[4].wrapping_add(0x3)); // 300586c: ldrb r0, [r4, #0x3]
+                c.r[0] = c.r[0].wrapping_mul(c.r[5]); // 300586e: mul r0, r5
+                c.r[0] = c.lsr_imm_c(c.r[0], 8); // 3005870: lsr r0, r0, #0x8
+                c.st8(c.r[4].wrapping_add(0xb), c.r[0]); // 3005872: strb r0, [r4, #0xb]
+                c.r[0] = 0x10; // 3005874: mov r0, #0x10
+                c.r[0] = c.nz(c.r[0] & c.r[6]); // 3005876: and r0, r6
+                c.st32(c.r[13].wrapping_add(0x10), c.r[0]); // 3005878: str r0, [sp, #0x10]
+                if c.z { pc = 0x0300588c; continue; } // 300587a: beq 0x0300588c
+                c.r[0] = c.r[3].wrapping_add(0); // 300587c: add r0, r3, #0
+                c.r[0] = c.r[0].wrapping_add(0x10); // 300587e: add r0, #0x10
+                c.r[1] = c.ld32(c.r[3].wrapping_add(0x8)); // 3005880: ldr r1, [r3, #0x8]
+                c.r[0] = c.r[0].wrapping_add(c.r[1]); // 3005882: add r0, r0, r1
+                c.st32(c.r[13].wrapping_add(0xc), c.r[0]); // 3005884: str r0, [sp, #0xc]
+                c.r[0] = c.ld32(c.r[3].wrapping_add(0xc)); // 3005886: ldr r0, [r3, #0xc]
+                c.r[0] = c.subs(c.r[0], c.r[1]); // 3005888: sub r0, r0, r1
+                c.st32(c.r[13].wrapping_add(0x10), c.r[0]); // 300588a: str r0, [sp, #0x10]
+                pc = 0x0300588c;
+            }
+            0x0300588c => {
+                c.r[5] = c.ld32(c.r[13].wrapping_add(0x8)); // 300588c: ldr r5, [sp, #0x8]
+                c.r[2] = c.ld32(c.r[4].wrapping_add(0x18)); // 300588e: ldr r2, [r4, #0x18]
+                c.r[3] = c.ld32(c.r[4].wrapping_add(0x28)); // 3005890: ldr r3, [r4, #0x28]
+                c.r[0] = 0x03005898; // 3005892: add r0, pc, #0x4
+                pc = c.r[0] & !1; if pc == ret { c.pc = pc; return; } continue; // 3005894: bx r0
+            }
+            0x03005a8a => {
+                c.r[0] = c.ld32(c.r[13].wrapping_add(0x18)); // 3005a8a: ldr r0, [sp, #0x18]
+                c.r[3] = 0x68736d53; // 3005a8c: ldr r3, [pc, #0x10] // 0x03005aa0
+                c.st32(c.r[0], c.r[3]); // 3005a8e: str r3, [r0, #0x0]
+                c.r[13] = c.r[13].wrapping_add(0x1c); // 3005a90: add sp, #0x1c
+                let a = c.r[13]; c.r[0] = c.ld32(a); c.r[1] = c.ld32(a.wrapping_add(0x4)); c.r[2] = c.ld32(a.wrapping_add(0x8)); c.r[3] = c.ld32(a.wrapping_add(0xc)); c.r[4] = c.ld32(a.wrapping_add(0x10)); c.r[5] = c.ld32(a.wrapping_add(0x14)); c.r[6] = c.ld32(a.wrapping_add(0x18)); c.r[7] = c.ld32(a.wrapping_add(0x1c)); c.r[13] = a.wrapping_add(0x20); // 3005a92: pop {r0-r7}
+                c.r[8] = c.r[0]; // 3005a94: mov r8, r0
+                c.r[9] = c.r[1]; // 3005a96: mov r9, r1
+                c.r[10] = c.r[2]; // 3005a98: mov r10, r2
+                c.r[11] = c.r[3]; // 3005a9a: mov r11, r3
+                let a = c.r[13]; c.r[3] = c.ld32(a); c.r[13] = a.wrapping_add(0x4); // 3005a9c: pop {r3}
+                pc = c.r[3] & !1; if pc == ret { c.pc = pc; return; } continue; // 3005a9e: bx r3
+            }
+            _ => return c.fallback(pc, ret),
+        }
+    }
+}
+
+/// `SoundMainRAM_mixer_arm` (0x03005898, arm)
+pub fn SoundMainRAM_mixer_arm(c: &mut Cpu) {
+    let ret = c.ret;
+    let mut pc: u32 = 0x03005898;
+    loop {
+        match pc {
+            0x03005898 => {
+                let a = c.r[13].wrapping_add(0x00000000); c.st32(a, c.r[8]); // 3005898: str r8, [sp]
+                let a = c.r[4].wrapping_add(0x0000000a); let v = c.ld8(a); c.r[10] = v; // 300589c: ldrb r10, [r4, #0xa]
+                let a = c.r[4].wrapping_add(0x0000000b); let v = c.ld8(a); c.r[11] = v; // 30058a0: ldrb r11, [r4, #0xb]
+                let o2: u32 = lsl_imm(c.r[10], 16); c.r[10] = o2; // 30058a4: mov r10, r10, lsl #16
+                let o2: u32 = lsl_imm(c.r[11], 16); c.r[11] = o2; // 30058a8: mov r11, r11, lsl #16
+                let a = c.r[4].wrapping_add(0x00000001); let v = c.ld8(a); c.r[0] = v; // 30058ac: ldrb r0, [r4, #0x1]
+                let o2: u32 = 0x00000008; c.nz(c.r[0] & o2); // 30058b0: tst r0, #0x8
+                if c.z { pc = 0x030059d8; continue; } // 30058b4: beq 0x030059d8
+                pc = 0x030058b8;
+            }
+            0x030058b8 => {
+                let o2: u32 = 0x00000004; c.subs(c.r[2], o2); // 30058b8: cmp r2, #0x4
+                if c.z || c.n != c.v { pc = 0x03005928; continue; } // 30058bc: ble 0x03005928
+                let o2: u32 = c.r[8]; c.r[2] = c.subs(c.r[2], o2); // 30058c0: subs r2, r2, r8
+                if !c.z && c.n == c.v { let o2: u32 = 0x00000000; c.r[14] = o2; } // 30058c4: movgt lr, #0x0
+                if !c.z && c.n == c.v { pc = 0x030058e4; continue; } // 30058c8: bgt 0x030058e4
+                let o2: u32 = c.r[8]; c.r[14] = o2; // 30058cc: mov lr, r8
+                let o2: u32 = c.r[8]; c.r[2] = c.r[2].wrapping_add(o2); // 30058d0: add r2, r2, r8
+                let o2: u32 = 0x00000004; c.r[8] = c.r[2].wrapping_sub(o2); // 30058d4: sub r8, r2, #0x4
+                let o2: u32 = c.r[8]; c.r[14] = c.r[14].wrapping_sub(o2); // 30058d8: sub lr, lr, r8
+                let o2: u32 = 0x00000003; c.r[2] = c.nz(c.r[2] & o2); // 30058dc: ands r2, r2, #0x3
+                if c.z { let o2: u32 = 0x00000004; c.r[2] = o2; } // 30058e0: moveq r2, #0x4
+                pc = 0x030058e4;
+            }
+            0x030058e4 => {
+                let a = c.r[5].wrapping_add(0x00000000); let v = c.ld32(a); c.r[6] = v; // 30058e4: ldr r6, [r5]
+                let a = c.r[5].wrapping_add(0x00000630); let v = c.ld32(a); c.r[7] = v; // 30058e8: ldr r7, [r5, #0x630]
+                pc = 0x030058ec;
+            }
+            0x030058ec => {
+                let a = c.r[3]; let wb = c.r[3].wrapping_add(0x00000001); let v = c.ld8s(a); c.r[3] = wb; c.r[0] = v; // 30058ec: ldrsb r0, [r3], #0x1
+                c.r[1] = c.r[10].wrapping_mul(c.r[0]); // 30058f0: mul r1, r10, r0
+                let o2: u32 = 0x00ff0000; c.r[1] = c.r[1] & !o2; // 30058f4: bic r1, r1, #0xff0000
+                let o2: u32 = ror_imm(c.r[6], 8); c.r[6] = c.r[1].wrapping_add(o2); // 30058f8: add r6, r1, r6, ror #8
+                c.r[1] = c.r[11].wrapping_mul(c.r[0]); // 30058fc: mul r1, r11, r0
+                let o2: u32 = 0x00ff0000; c.r[1] = c.r[1] & !o2; // 3005900: bic r1, r1, #0xff0000
+                let o2: u32 = ror_imm(c.r[7], 8); c.r[7] = c.r[1].wrapping_add(o2); // 3005904: add r7, r1, r7, ror #8
+                let o2: u32 = 0x40000000; c.r[5] = c.adds(c.r[5], o2); // 3005908: adds r5, r5, #0x40000000
+                if !c.c { pc = 0x030058ec; continue; } // 300590c: bcc 0x030058ec
+                let a = c.r[5].wrapping_add(0x00000630); c.st32(a, c.r[7]); // 3005910: str r7, [r5, #0x630]
+                let a = c.r[5]; let wb = c.r[5].wrapping_add(0x00000004); c.st32(a, c.r[6]); c.r[5] = wb; // 3005914: str r6, [r5], #0x4
+                let o2: u32 = 0x00000004; c.r[8] = c.subs(c.r[8], o2); // 3005918: subs r8, r8, #0x4
+                if !c.z && c.n == c.v { pc = 0x030058e4; continue; } // 300591c: bgt 0x030058e4
+                let o2: u32 = c.r[14]; c.r[8] = c.adds(c.r[8], o2); // 3005920: adds r8, r8, lr
+                if c.z { pc = 0x03005a6c; continue; } // 3005924: beq 0x03005a6c
+                pc = 0x03005928;
+            }
+            0x03005928 => {
+                let a = c.r[5].wrapping_add(0x00000000); let v = c.ld32(a); c.r[6] = v; // 3005928: ldr r6, [r5]
+                let a = c.r[5].wrapping_add(0x00000630); let v = c.ld32(a); c.r[7] = v; // 300592c: ldr r7, [r5, #0x630]
+                pc = 0x03005930;
+            }
+            0x03005930 => {
+                let a = c.r[3]; let wb = c.r[3].wrapping_add(0x00000001); let v = c.ld8s(a); c.r[3] = wb; c.r[0] = v; // 3005930: ldrsb r0, [r3], #0x1
+                c.r[1] = c.r[10].wrapping_mul(c.r[0]); // 3005934: mul r1, r10, r0
+                let o2: u32 = 0x00ff0000; c.r[1] = c.r[1] & !o2; // 3005938: bic r1, r1, #0xff0000
+                let o2: u32 = ror_imm(c.r[6], 8); c.r[6] = c.r[1].wrapping_add(o2); // 300593c: add r6, r1, r6, ror #8
+                c.r[1] = c.r[11].wrapping_mul(c.r[0]); // 3005940: mul r1, r11, r0
+                let o2: u32 = 0x00ff0000; c.r[1] = c.r[1] & !o2; // 3005944: bic r1, r1, #0xff0000
+                let o2: u32 = ror_imm(c.r[7], 8); c.r[7] = c.r[1].wrapping_add(o2); // 3005948: add r7, r1, r7, ror #8
+                let o2: u32 = 0x00000001; c.r[2] = c.subs(c.r[2], o2); // 300594c: subs r2, r2, #0x1
+                if c.z { pc = 0x030059a0; continue; } // 3005950: beq 0x030059a0
+                pc = 0x03005954;
+            }
+            0x03005954 => {
+                let o2: u32 = 0x40000000; c.r[5] = c.adds(c.r[5], o2); // 3005954: adds r5, r5, #0x40000000
+                if !c.c { pc = 0x03005930; continue; } // 3005958: bcc 0x03005930
+                let a = c.r[5].wrapping_add(0x00000630); c.st32(a, c.r[7]); // 300595c: str r7, [r5, #0x630]
+                let a = c.r[5]; let wb = c.r[5].wrapping_add(0x00000004); c.st32(a, c.r[6]); c.r[5] = wb; // 3005960: str r6, [r5], #0x4
+                let o2: u32 = 0x00000004; c.r[8] = c.subs(c.r[8], o2); // 3005964: subs r8, r8, #0x4
+                if !c.z && c.n == c.v { pc = 0x030058b8; continue; } // 3005968: bgt 0x030058b8
+                pc = 0x03005a6c; continue; // 300596c: b 0x03005a6c
+            }
+            0x03005970 => {
+                let a = c.r[13].wrapping_add(0x00000018); let v = c.ld32(a); c.r[0] = v; // 3005970: ldr r0, [sp, #0x18]
+                let o2: u32 = 0x00000000; c.subs(c.r[0], o2); // 3005974: cmp r0, #0x0
+                if c.z { pc = 0x03005994; continue; } // 3005978: beq 0x03005994
+                let a = c.r[13].wrapping_add(0x00000014); let v = c.ld32(a); c.r[3] = v; // 300597c: ldr r3, [sp, #0x14]
+                let o2: u32 = 0x00000000; c.r[9] = o2.wrapping_sub(c.r[2]); // 3005980: rsb r9, r2, #0x0
+                pc = 0x03005984;
+            }
+            0x03005984 => {
+                let o2: u32 = c.r[2]; c.r[2] = c.adds(c.r[0], o2); // 3005984: adds r2, r0, r2
+                if !c.z && c.n == c.v { pc = 0x03005a3c; continue; } // 3005988: bgt 0x03005a3c
+                let o2: u32 = c.r[0]; c.r[9] = c.r[9].wrapping_sub(o2); // 300598c: sub r9, r9, r0
+                pc = 0x03005984; continue; // 3005990: b 0x03005984
+            }
+            0x03005994 => {
+                let a = c.r[13]; let s = a; let nb = a.wrapping_add(0x8); c.r[13] = nb; c.r[4] = c.ld32(s); c.r[12] = c.ld32(s.wrapping_add(0x4));  // 3005994: ldmia sp!, {r4,r12}
+                let o2: u32 = 0x00000000; c.r[2] = o2; // 3005998: mov r2, #0x0
+                pc = 0x030059b0; continue; // 300599c: b 0x030059b0
+            }
+            0x030059a0 => {
+                let a = c.r[13].wrapping_add(0x00000010); let v = c.ld32(a); c.r[2] = v; // 30059a0: ldr r2, [sp, #0x10]
+                let o2: u32 = 0x00000000; c.subs(c.r[2], o2); // 30059a4: cmp r2, #0x0
+                if !c.z { let a = c.r[13].wrapping_add(0x0000000c); let v = c.ld32(a); c.r[3] = v; } // 30059a8: ldrne r3, [sp, #0xc]
+                if !c.z { pc = 0x03005954; continue; } // 30059ac: bne 0x03005954
+                pc = 0x030059b0;
+            }
+            0x030059b0 => {
+                let a = c.r[4].wrapping_add(0x00000000); c.st8(a, c.r[2]); // 30059b0: strb r2, [r4]
+                let o2: u32 = lsr_imm(c.r[5], 30); c.r[0] = o2; // 30059b4: mov r0, r5, lsr #30
+                let o2: u32 = 0xc0000000; c.r[5] = c.r[5] & !o2; // 30059b8: bic r5, r5, #0xc0000000
+                let o2: u32 = 0x00000003; c.r[0] = o2.wrapping_sub(c.r[0]); // 30059bc: rsb r0, r0, #0x3
+                let o2: u32 = lsl_imm(c.r[0], 3); c.r[0] = o2; // 30059c0: mov r0, r0, lsl #3
+                let o2: u32 = ror_reg(c.r[6], c.r[0]); c.r[6] = o2; // 30059c4: mov r6, r6, ror r0
+                let o2: u32 = ror_reg(c.r[7], c.r[0]); c.r[7] = o2; // 30059c8: mov r7, r7, ror r0
+                let a = c.r[5].wrapping_add(0x00000630); c.st32(a, c.r[7]); // 30059cc: str r7, [r5, #0x630]
+                let a = c.r[5]; let wb = c.r[5].wrapping_add(0x00000004); c.st32(a, c.r[6]); c.r[5] = wb; // 30059d0: str r6, [r5], #0x4
+                pc = 0x03005a74; continue; // 30059d4: b 0x03005a74
+            }
+            0x030059d8 => {
+                let a = c.r[13]; let s = a.wrapping_sub(0x8); let nb = a.wrapping_sub(0x8); c.st32(s, c.r[4]); c.st32(s.wrapping_add(0x4), c.r[12]); c.r[13] = nb; // 30059d8: stmdb sp!, {r4,r12}
+                let a = c.r[4].wrapping_add(0x0000001c); let v = c.ld32(a); c.r[14] = v; // 30059dc: ldr lr, [r4, #0x1c]
+                let a = c.r[4].wrapping_add(0x00000020); let v = c.ld32(a); c.r[1] = v; // 30059e0: ldr r1, [r4, #0x20]
+                c.r[4] = c.r[12].wrapping_mul(c.r[1]); // 30059e4: mul r4, r12, r1
+                let a = c.r[3].wrapping_add(0x00000000); let v = c.ld8s(a); c.r[0] = v; // 30059e8: ldrsb r0, [r3]
+                let a = c.r[3].wrapping_add(0x00000001); let wb = c.r[3].wrapping_add(0x00000001); let v = c.ld8s(a); c.r[3] = wb; c.r[1] = v; // 30059ec: ldrsb r1, [r3, #0x1]!
+                let o2: u32 = c.r[0]; c.r[1] = c.r[1].wrapping_sub(o2); // 30059f0: sub r1, r1, r0
+                pc = 0x030059f4;
+            }
+            0x030059f4 => {
+                let a = c.r[5].wrapping_add(0x00000000); let v = c.ld32(a); c.r[6] = v; // 30059f4: ldr r6, [r5]
+                let a = c.r[5].wrapping_add(0x00000630); let v = c.ld32(a); c.r[7] = v; // 30059f8: ldr r7, [r5, #0x630]
+                pc = 0x030059fc;
+            }
+            0x030059fc => {
+                c.r[9] = c.r[14].wrapping_mul(c.r[1]); // 30059fc: mul r9, lr, r1
+                let o2: u32 = asr_imm(c.r[9], 23); c.r[9] = c.r[0].wrapping_add(o2); // 3005a00: add r9, r0, r9, asr #23
+                c.r[12] = c.r[10].wrapping_mul(c.r[9]); // 3005a04: mul r12, r10, r9
+                let o2: u32 = 0x00ff0000; c.r[12] = c.r[12] & !o2; // 3005a08: bic r12, r12, #0xff0000
+                let o2: u32 = ror_imm(c.r[6], 8); c.r[6] = c.r[12].wrapping_add(o2); // 3005a0c: add r6, r12, r6, ror #8
+                c.r[12] = c.r[11].wrapping_mul(c.r[9]); // 3005a10: mul r12, r11, r9
+                let o2: u32 = 0x00ff0000; c.r[12] = c.r[12] & !o2; // 3005a14: bic r12, r12, #0xff0000
+                let o2: u32 = ror_imm(c.r[7], 8); c.r[7] = c.r[12].wrapping_add(o2); // 3005a18: add r7, r12, r7, ror #8
+                let o2: u32 = c.r[4]; c.r[14] = c.r[14].wrapping_add(o2); // 3005a1c: add lr, lr, r4
+                let o2: u32 = c.lsr_imm_c(c.r[14], 23); c.r[9] = c.nz(o2); // 3005a20: movs r9, lr, lsr #23
+                if c.z { pc = 0x03005a48; continue; } // 3005a24: beq 0x03005a48
+                let o2: u32 = 0x3f800000; c.r[14] = c.r[14] & !o2; // 3005a28: bic lr, lr, #0x3f800000
+                let o2: u32 = c.r[9]; c.r[2] = c.subs(c.r[2], o2); // 3005a2c: subs r2, r2, r9
+                if c.z || c.n != c.v { pc = 0x03005970; continue; } // 3005a30: ble 0x03005970
+                let o2: u32 = 0x00000001; c.r[9] = c.subs(c.r[9], o2); // 3005a34: subs r9, r9, #0x1
+                if c.z { let o2: u32 = c.r[1]; c.r[0] = c.r[0].wrapping_add(o2); } // 3005a38: addeq r0, r0, r1
+                pc = 0x03005a3c;
+            }
+            0x03005a3c => {
+                if !c.z { let a = c.r[3].wrapping_add(c.r[9]); let wb = c.r[3].wrapping_add(c.r[9]); let v = c.ld8s(a); c.r[3] = wb; c.r[0] = v; } // 3005a3c: ldrnesb r0, [r3, r9]!
+                let a = c.r[3].wrapping_add(0x00000001); let wb = c.r[3].wrapping_add(0x00000001); let v = c.ld8s(a); c.r[3] = wb; c.r[1] = v; // 3005a40: ldrsb r1, [r3, #0x1]!
+                let o2: u32 = c.r[0]; c.r[1] = c.r[1].wrapping_sub(o2); // 3005a44: sub r1, r1, r0
+                pc = 0x03005a48;
+            }
+            0x03005a48 => {
+                let o2: u32 = 0x40000000; c.r[5] = c.adds(c.r[5], o2); // 3005a48: adds r5, r5, #0x40000000
+                if !c.c { pc = 0x030059fc; continue; } // 3005a4c: bcc 0x030059fc
+                let a = c.r[5].wrapping_add(0x00000630); c.st32(a, c.r[7]); // 3005a50: str r7, [r5, #0x630]
+                let a = c.r[5]; let wb = c.r[5].wrapping_add(0x00000004); c.st32(a, c.r[6]); c.r[5] = wb; // 3005a54: str r6, [r5], #0x4
+                let o2: u32 = 0x00000004; c.r[8] = c.subs(c.r[8], o2); // 3005a58: subs r8, r8, #0x4
+                if !c.z && c.n == c.v { pc = 0x030059f4; continue; } // 3005a5c: bgt 0x030059f4
+                let o2: u32 = 0x00000001; c.r[3] = c.r[3].wrapping_sub(o2); // 3005a60: sub r3, r3, #0x1
+                let a = c.r[13]; let s = a; let nb = a.wrapping_add(0x8); c.r[13] = nb; c.r[4] = c.ld32(s); c.r[12] = c.ld32(s.wrapping_add(0x4));  // 3005a64: ldmia sp!, {r4,r12}
+                let a = c.r[4].wrapping_add(0x0000001c); c.st32(a, c.r[14]); // 3005a68: str lr, [r4, #0x1c]
+                pc = 0x03005a6c;
+            }
+            0x03005a6c => {
+                let a = c.r[4].wrapping_add(0x00000018); c.st32(a, c.r[2]); // 3005a6c: str r2, [r4, #0x18]
+                let a = c.r[4].wrapping_add(0x00000028); c.st32(a, c.r[3]); // 3005a70: str r3, [r4, #0x28]
+                pc = 0x03005a74;
+            }
+            0x03005a74 => {
+                let a = c.r[13].wrapping_add(0x00000000); let v = c.ld32(a); c.r[8] = v; // 3005a74: ldr r8, [sp]
+                let o2: u32 = 0x00000001; c.r[0] = 0x03005a80u32.wrapping_add(o2); // 3005a78: add r0, pc, #0x1
+                pc = c.r[0] & !1; if pc == ret { c.pc = pc; return; } continue; // 3005a7c: bx r0
+            }
+            _ => return c.fallback(pc, ret),
+        }
+    }
+}
+
+/// `SoundMainRAM_exit_thumb` (0x03005a80, thumb)
+pub fn SoundMainRAM_exit_thumb(c: &mut Cpu) {
+    let ret = c.ret;
+    let mut pc: u32 = 0x03005a80;
+    loop {
+        match pc {
             0x03005798 => {
                 c.st32(c.r[13].wrapping_add(0x4), c.r[0]); // 3005798: str r0, [sp, #0x4]
                 c.r[3] = c.ld32(c.r[4].wrapping_add(0x24)); // 300579a: ldr r3, [r4, #0x24]
@@ -345,7 +758,17 @@ pub fn sub_3005B00(c: &mut Cpu) {
                 let a = c.r[1].wrapping_add(0x00000000); let v = c.ld32(a); c.r[0] = v; // 3005c5c: ldr r0, [r1]
                 let a = c.r[13]; let s = a.wrapping_sub(0x4); let nb = a.wrapping_sub(0x4); c.st32(s, c.r[14]); c.r[13] = nb; // 3005c60: stmdb sp!, {lr}
                 let o2: u32 = 0x00000000; c.r[14] = 0x03005c6cu32.wrapping_add(o2); // 3005c64: add lr, pc, #0x0
-                pc = c.r[0] & !1; if pc == ret { c.pc = pc; return; } continue; // 3005c68: bx r0
+                let t = c.r[0] & !1; c.ret = 0x03005c6c; c.call_indirect(t); if c.pc != 0x03005c6c { pc = c.pc; continue; } // 3005c68: bx r0
+                let a = c.r[13]; let s = a; let nb = a.wrapping_add(0x4); c.r[13] = nb; c.r[14] = c.ld32(s);  // 3005c6c: ldmia sp!, {lr}
+                c.r[3] = c.cpsr(); // 3005c70: mrs r3, cpsr
+                let o2: u32 = 0x000000df; c.r[3] = c.r[3] & !o2; // 3005c74: bic r3, r3, #0xdf
+                let o2: u32 = 0x00000092; c.r[3] = c.r[3] | o2; // 3005c78: orr r3, r3, #0x92
+                c.set_cpsr(c.r[3], 0x9); // 3005c7c: msr cpsr_9, r3
+                let a = c.r[13]; let s = a; let nb = a.wrapping_add(0x14); c.r[13] = nb; c.r[0] = c.ld32(s); c.r[1] = c.ld32(s.wrapping_add(0x4)); c.r[2] = c.ld32(s.wrapping_add(0x8)); c.r[3] = c.ld32(s.wrapping_add(0xc)); c.r[14] = c.ld32(s.wrapping_add(0x10));  // 3005c80: ldmia sp!, {r0-r3,lr}
+                let a = c.r[3].wrapping_add(0x00000000); c.st16(a, c.r[2]); // 3005c84: strh r2, [r3]
+                let a = c.r[3].wrapping_add(0x00000008); c.st16(a, c.r[1]); // 3005c88: strh r1, [r3, #0x8]
+                c.set_spsr(c.r[0], 0x9); // 3005c8c: msr spsr_9, r0
+                pc = c.r[14] & !1; if pc == ret { c.pc = pc; return; } continue; // 3005c90: bx lr
             }
             _ => return c.fallback(pc, ret),
         }
@@ -944,6 +1367,84 @@ pub fn sub_3005F78(c: &mut Cpu) {
             // locret_3005FAA
             0x03005faa => {
                 let a = c.r[13]; c.r[5] = c.ld32(a); let t = c.ld32(a.wrapping_add(0x4)); c.r[13] = a.wrapping_add(0x8); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 3005faa: pop {r5,pc}
+            }
+            _ => return c.fallback(pc, ret),
+        }
+    }
+}
+
+/// `sub_3005FC0` (0x03005fc0, thumb)
+pub fn sub_3005FC0(c: &mut Cpu) {
+    let ret = c.ret;
+    let mut pc: u32 = 0x03005fc0;
+    loop {
+        match pc {
+            0x03005fc0 => {
+                c.r[8] = c.r[5]; // 3005fc0: mov r8, r5
+                c.r[0] = c.r[5] << 27; // 3005fc2: lsl r0, r5, #0x1b
+                c.r[0] = c.r[0] >> 27; // 3005fc4: lsr r0, r0, #0x1b
+                c.r[4] = c.r[5] << 22; // 3005fc6: lsl r4, r5, #0x16
+                c.r[4] = c.r[4] >> 27; // 3005fc8: lsr r4, r4, #0x1b
+                c.r[5] = c.r[5] << 17; // 3005fca: lsl r5, r5, #0x11
+                c.r[5] = c.r[5] >> 27; // 3005fcc: lsr r5, r5, #0x1b
+                c.r[12] = c.r[1]; // 3005fce: mov r12, r1
+                c.r[1] = 0x1f; // 3005fd0: mov r1, #0x1f
+                c.r[0] = c.r[1].wrapping_sub(c.r[0]); // 3005fd2: sub r0, r1, r0
+                c.r[4] = c.r[1].wrapping_sub(c.r[4]); // 3005fd4: sub r4, r1, r4
+                c.r[5] = c.r[1].wrapping_sub(c.r[5]); // 3005fd6: sub r5, r1, r5
+                c.r[1] = c.r[12]; // 3005fd8: mov r1, r12
+                c.r[0] = c.r[0] << 12; // 3005fda: lsl r0, r0, #0xc
+                c.r[4] = c.r[4] << 12; // 3005fdc: lsl r4, r4, #0xc
+                c.r[5] = c.r[5] << 12; // 3005fde: lsl r5, r5, #0xc
+                c.r[0] = c.r[0].wrapping_mul(c.r[1]); // 3005fe0: mul r0, r1
+                c.r[4] = c.r[4].wrapping_mul(c.r[2]); // 3005fe2: mul r4, r2
+                c.r[5] = c.r[5].wrapping_mul(c.r[3]); // 3005fe4: mul r5, r3
+                c.r[0] = c.r[0] >> 16; // 3005fe6: lsr r0, r0, #0x10
+                c.r[4] = c.r[4] >> 16; // 3005fe8: lsr r4, r4, #0x10
+                c.r[5] = c.r[5] >> 16; // 3005fea: lsr r5, r5, #0x10
+                c.r[4] = c.r[4] << 5; // 3005fec: lsl r4, r4, #0x5
+                c.r[5] = c.r[5] << 10; // 3005fee: lsl r5, r5, #0xa
+                c.r[0] = c.r[0] | c.r[4]; // 3005ff0: orr r0, r4
+                c.r[0] = c.r[0] | c.r[5]; // 3005ff2: orr r0, r5
+                c.r[5] = c.r[8]; // 3005ff4: mov r5, r8
+                c.r[0] = c.adds(c.r[5], c.r[0]); // 3005ff6: add r0, r5, r0
+                pc = c.r[14] & !1; if pc == ret { c.pc = pc; return; } continue; // 3005ff8: mov pc, lr
+            }
+            _ => return c.fallback(pc, ret),
+        }
+    }
+}
+
+/// `sub_3005FFA` (0x03005ffa, thumb)
+pub fn sub_3005FFA(c: &mut Cpu) {
+    let ret = c.ret;
+    let mut pc: u32 = 0x03005ffa;
+    loop {
+        match pc {
+            0x03005ffa => {
+                c.r[8] = c.r[5]; // 3005ffa: mov r8, r5
+                c.r[0] = c.r[5] << 27; // 3005ffc: lsl r0, r5, #0x1b
+                c.r[0] = c.r[0] >> 27; // 3005ffe: lsr r0, r0, #0x1b
+                c.r[4] = c.r[5] << 22; // 3006000: lsl r4, r5, #0x16
+                c.r[4] = c.r[4] >> 27; // 3006002: lsr r4, r4, #0x1b
+                c.r[5] = c.r[5] << 17; // 3006004: lsl r5, r5, #0x11
+                c.r[5] = c.r[5] >> 27; // 3006006: lsr r5, r5, #0x1b
+                c.r[0] = c.r[0] << 12; // 3006008: lsl r0, r0, #0xc
+                c.r[4] = c.r[4] << 12; // 300600a: lsl r4, r4, #0xc
+                c.r[5] = c.r[5] << 12; // 300600c: lsl r5, r5, #0xc
+                c.r[0] = c.r[0].wrapping_mul(c.r[1]); // 300600e: mul r0, r1
+                c.r[4] = c.r[4].wrapping_mul(c.r[2]); // 3006010: mul r4, r2
+                c.r[5] = c.r[5].wrapping_mul(c.r[3]); // 3006012: mul r5, r3
+                c.r[0] = c.r[0] >> 16; // 3006014: lsr r0, r0, #0x10
+                c.r[4] = c.r[4] >> 16; // 3006016: lsr r4, r4, #0x10
+                c.r[5] = c.r[5] >> 16; // 3006018: lsr r5, r5, #0x10
+                c.r[4] = c.r[4] << 5; // 300601a: lsl r4, r4, #0x5
+                c.r[5] = c.r[5] << 10; // 300601c: lsl r5, r5, #0xa
+                c.r[0] = c.r[0] | c.r[4]; // 300601e: orr r0, r4
+                c.r[0] = c.r[0] | c.r[5]; // 3006020: orr r0, r5
+                c.r[5] = c.r[8]; // 3006022: mov r5, r8
+                c.r[0] = c.subs(c.r[5], c.r[0]); // 3006024: sub r0, r5, r0
+                pc = c.r[14] & !1; if pc == ret { c.pc = pc; return; } continue; // 3006026: mov pc, lr
             }
             _ => return c.fallback(pc, ret),
         }
@@ -5487,12 +5988,28 @@ pub fn main_(c: &mut Cpu) {
                 c.r[14] = 0x080002c5; c.ret = 0x080002c4; SeedRNG2(c); if c.pc != 0x080002c4 { pc = c.pc; continue; } // 80002c0: bl SeedRNG2
                 c.r[14] = 0x080002c9; c.ret = 0x080002c8; clear_e200AD04(c); if c.pc != 0x080002c8 { pc = c.pc; continue; } // 80002c4: bl clear_e200AD04
                 c.r[14] = 0x080002cd; c.ret = 0x080002cc; sub_803D1A8(c); if c.pc != 0x080002cc { pc = c.pc; continue; } // 80002c8: bl sub_803D1A8
-                pc = 0x080002cc;
+                c.r[14] = 0x080002d1; c.ret = 0x080002d0; main_pollGeneralLCDStatus_STAT_LYC_(c); if c.pc != 0x080002d0 { pc = c.pc; continue; } // 80002cc: bl main_pollGeneralLCDStatus_STAT_LYC_
+                c.r[14] = 0x080002d5; c.ret = 0x080002d4; main_awaitFrame(c); if c.pc != 0x080002d4 { pc = c.pc; continue; } // 80002d0: bl main_awaitFrame
+                c.ret = ret; main_gameRoutine_body(c); return; // falls through
             }
+            _ => return c.fallback(pc, ret),
+        }
+    }
+}
+
+/// `main_gameRoutine_body` (0x080002d4, thumb)
+pub fn main_gameRoutine_body(c: &mut Cpu) {
+    let ret = c.ret;
+    let mut pc: u32 = 0x080002d4;
+    loop {
+        match pc {
             // main_gameRoutine
             0x080002cc => {
                 c.r[14] = 0x080002d1; c.ret = 0x080002d0; main_pollGeneralLCDStatus_STAT_LYC_(c); if c.pc != 0x080002d0 { pc = c.pc; continue; } // 80002cc: bl main_pollGeneralLCDStatus_STAT_LYC_
                 c.r[14] = 0x080002d5; c.ret = 0x080002d4; main_awaitFrame(c); if c.pc != 0x080002d4 { pc = c.pc; continue; } // 80002d0: bl main_awaitFrame
+                pc = 0x080002d4;
+            }
+            0x080002d4 => {
                 c.r[14] = 0x080002d9; c.ret = 0x080002d8; sub_80007BE(c); if c.pc != 0x080002d8 { pc = c.pc; continue; } // 80002d4: bl sub_80007BE
                 c.r[14] = 0x080002dd; c.ret = 0x080002dc; CallBGScrollCallback1(c); if c.pc != 0x080002dc { pc = c.pc; continue; } // 80002d8: bl CallBGScrollCallback1
                 c.r[14] = 0x080002e1; c.ret = 0x080002e0; render_800172C(c); if c.pc != 0x080002e0 { pc = c.pc; continue; } // 80002dc: bl render_800172C
@@ -5541,6 +6058,7 @@ pub fn main_(c: &mut Cpu) {
 
 /// `main_awaitFrame` (0x080003a0, thumb)
 pub fn main_awaitFrame(c: &mut Cpu) {
+    if let Some(h) = c.overrides.get(&0x080003a0).copied() { return h(c); }
     let ret = c.ret;
     let mut pc: u32 = 0x080003a0;
     loop {
@@ -5577,6 +6095,7 @@ pub fn main_awaitFrame(c: &mut Cpu) {
 
 /// `main_pollGeneralLCDStatus_STAT_LYC_` (0x080003d0, thumb)
 pub fn main_pollGeneralLCDStatus_STAT_LYC_(c: &mut Cpu) {
+    if let Some(h) = c.overrides.get(&0x080003d0).copied() { return h(c); }
     let ret = c.ret;
     let mut pc: u32 = 0x080003d0;
     loop {
@@ -15645,284 +16164,6 @@ pub fn InitializeT1BattleObjectStructs(c: &mut Cpu) {
                 c.r[0] = 0x1; c.n = false; c.z = false; // 8003540: mov r0, #0x1
                 c.r[14] = 0x08003547; c.ret = 0x08003546; InitializeStructsOfObjectType(c); if c.pc != 0x08003546 { pc = c.pc; continue; } // 8003542: bl InitializeStructsOfObjectType
                 let a = c.r[13]; let t = c.ld32(a); c.r[13] = a.wrapping_add(0x4); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 8003546: pop {pc}
-            }
-            _ => return c.fallback(pc, ret),
-        }
-    }
-}
-
-/// `InitializeT3BattleObjectStructs` (0x08003548, thumb)
-pub fn InitializeT3BattleObjectStructs(c: &mut Cpu) {
-    let ret = c.ret;
-    let mut pc: u32 = 0x08003548;
-    loop {
-        match pc {
-            0x08003548 => {
-                let a = c.r[13].wrapping_sub(0x4); c.st32(a, c.r[14]); c.r[13] = a; // 8003548: push {lr}
-                c.r[0] = 0x3; c.n = false; c.z = false; // 800354a: mov r0, #0x3
-                c.r[14] = 0x08003551; c.ret = 0x08003550; InitializeStructsOfObjectType(c); if c.pc != 0x08003550 { pc = c.pc; continue; } // 800354c: bl InitializeStructsOfObjectType
-                let a = c.r[13]; let t = c.ld32(a); c.r[13] = a.wrapping_add(0x4); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 8003550: pop {pc}
-            }
-            _ => return c.fallback(pc, ret),
-        }
-    }
-}
-
-/// `InitializeT4BattleObjectStructs` (0x08003552, thumb)
-pub fn InitializeT4BattleObjectStructs(c: &mut Cpu) {
-    let ret = c.ret;
-    let mut pc: u32 = 0x08003552;
-    loop {
-        match pc {
-            0x08003552 => {
-                let a = c.r[13].wrapping_sub(0x4); c.st32(a, c.r[14]); c.r[13] = a; // 8003552: push {lr}
-                c.r[0] = 0x4; c.n = false; c.z = false; // 8003554: mov r0, #0x4
-                c.r[14] = 0x0800355b; c.ret = 0x0800355a; InitializeStructsOfObjectType(c); if c.pc != 0x0800355a { pc = c.pc; continue; } // 8003556: bl InitializeStructsOfObjectType
-                let a = c.r[13]; let t = c.ld32(a); c.r[13] = a.wrapping_add(0x4); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 800355a: pop {pc}
-            }
-            _ => return c.fallback(pc, ret),
-        }
-    }
-}
-
-/// `InitializeOverworldNPCObjectStructs` (0x0800355c, thumb)
-pub fn InitializeOverworldNPCObjectStructs(c: &mut Cpu) {
-    let ret = c.ret;
-    let mut pc: u32 = 0x0800355c;
-    loop {
-        match pc {
-            0x0800355c => {
-                let a = c.r[13].wrapping_sub(0x4); c.st32(a, c.r[14]); c.r[13] = a; // 800355c: push {lr}
-                c.r[0] = 0x2; c.n = false; c.z = false; // 800355e: mov r0, #0x2
-                c.r[14] = 0x08003565; c.ret = 0x08003564; InitializeStructsOfObjectType(c); if c.pc != 0x08003564 { pc = c.pc; continue; } // 8003560: bl InitializeStructsOfObjectType
-                let a = c.r[13]; let t = c.ld32(a); c.r[13] = a.wrapping_add(0x4); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 8003564: pop {pc}
-            }
-            _ => return c.fallback(pc, ret),
-        }
-    }
-}
-
-/// `InitializeOverworldMapObjectStructs` (0x08003566, thumb)
-pub fn InitializeOverworldMapObjectStructs(c: &mut Cpu) {
-    let ret = c.ret;
-    let mut pc: u32 = 0x08003566;
-    loop {
-        match pc {
-            0x08003566 => {
-                let a = c.r[13].wrapping_sub(0x4); c.st32(a, c.r[14]); c.r[13] = a; // 8003566: push {lr}
-                c.r[0] = 0x5; c.n = false; c.z = false; // 8003568: mov r0, #0x5
-                c.r[14] = 0x0800356f; c.ret = 0x0800356e; InitializeStructsOfObjectType(c); if c.pc != 0x0800356e { pc = c.pc; continue; } // 800356a: bl InitializeStructsOfObjectType
-                let a = c.r[13]; let t = c.ld32(a); c.r[13] = a.wrapping_add(0x4); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 800356e: pop {pc}
-            }
-            _ => return c.fallback(pc, ret),
-        }
-    }
-}
-
-/// `SpawnObjectsFromList` (0x08003570, thumb)
-pub fn SpawnObjectsFromList(c: &mut Cpu) {
-    let ret = c.ret;
-    let mut pc: u32 = 0x08003570;
-    loop {
-        match pc {
-            0x08003570 => {
-                let a = c.r[13].wrapping_sub(0x14); c.st32(a, c.r[4]); c.st32(a.wrapping_add(0x4), c.r[5]); c.st32(a.wrapping_add(0x8), c.r[6]); c.st32(a.wrapping_add(0xc), c.r[7]); c.st32(a.wrapping_add(0x10), c.r[14]); c.r[13] = a; // 8003570: push {r4-r7,lr}
-                c.r[7] = c.r[0].wrapping_add(0); // 8003572: add r7, r0, #0
-                c.r[4] = 0x0; // 8003574: mov r4, #0x0
-                pc = 0x08003576;
-            }
-            // SpawnObjectsFromList.spawnObjectsLoop
-            0x08003576 => {
-                c.r[0] = 0x080030fc; // =SpawnObjectJumptable // 8003576: ldr r0, [pc, #0x204] // 0x0800377c
-                c.r[1] = c.ld8(c.r[7]); // 8003578: ldrb r1, [r7, #0x0]
-                c.subs(c.r[1], 0xff); // 800357a: cmp r1, #0xff
-                if c.z { pc = 0x0800359e; continue; } // 800357c: beq 0x0800359e
-                c.r[1] = c.lsl_imm_c(c.r[1], 2); c.nz(c.r[1]); // 800357e: lsl r1, r1, #0x2
-                c.r[6] = c.ld32(c.r[0].wrapping_add(c.r[1])); // 8003580: ldr r6, [r0, r1]
-                let a = c.r[13].wrapping_sub(0x8); c.st32(a, c.r[4]); c.st32(a.wrapping_add(0x4), c.r[7]); c.r[13] = a; // 8003582: push {r4,r7}
-                c.r[0] = c.ld8(c.r[7].wrapping_add(0x1)); // 8003584: ldrb r0, [r7, #0x1]
-                c.r[1] = c.ld32(c.r[7].wrapping_add(0x4)); // 8003586: ldr r1, [r7, #0x4]
-                c.r[2] = c.ld32(c.r[7].wrapping_add(0x8)); // 8003588: ldr r2, [r7, #0x8]
-                c.r[3] = c.ld32(c.r[7].wrapping_add(0xc)); // 800358a: ldr r3, [r7, #0xc]
-                c.r[4] = c.ld32(c.r[7].wrapping_add(0x10)); // 800358c: ldr r4, [r7, #0x10]
-                c.r[14] = 0x08003592u32; // 800358e: mov lr, pc
-                let t = c.r[6] & !1; c.ret = 0x08003592; c.call_indirect(t); if c.pc != 0x08003592 { pc = c.pc; continue; } // 8003590: bx r6
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[7] = c.ld32(a.wrapping_add(0x4)); c.r[13] = a.wrapping_add(0x8); // 8003592: pop {r4,r7}
-                c.nz(c.r[5] & c.r[5]); // 8003594: tst r5, r5
-                if c.z { pc = 0x0800359a; continue; } // 8003596: beq 0x0800359a
-                c.r[4] = c.r[4].wrapping_add(0x1); // 8003598: add r4, #0x1
-                pc = 0x0800359a;
-            }
-            // SpawnObjectsFromList.currentObjectFailedToSpawn
-            0x0800359a => {
-                c.r[7] = c.r[7].wrapping_add(0x14); // 800359a: add r7, #0x14
-                pc = 0x08003576; continue; // 800359c: b 0x08003576
-            }
-            // SpawnObjectsFromList.doneSpawningObjects
-            0x0800359e => {
-                c.r[0] = c.adds(c.r[4], 0); // 800359e: add r0, r4, #0
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[6] = c.ld32(a.wrapping_add(0x8)); c.r[7] = c.ld32(a.wrapping_add(0xc)); let t = c.ld32(a.wrapping_add(0x10)); c.r[13] = a.wrapping_add(0x14); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 80035a0: pop {r4-r7,pc}
-            }
-            _ => return c.fallback(pc, ret),
-        }
-    }
-}
-
-/// `FreeAllObjectsOfSpecifiedTypes` (0x080035a2, thumb)
-pub fn FreeAllObjectsOfSpecifiedTypes(c: &mut Cpu) {
-    let ret = c.ret;
-    let mut pc: u32 = 0x080035a2;
-    loop {
-        match pc {
-            0x080035a2 => {
-                let a = c.r[13].wrapping_sub(0x14); c.st32(a, c.r[4]); c.st32(a.wrapping_add(0x4), c.r[5]); c.st32(a.wrapping_add(0x8), c.r[6]); c.st32(a.wrapping_add(0xc), c.r[7]); c.st32(a.wrapping_add(0x10), c.r[14]); c.r[13] = a; // 80035a2: push {r4-r7,lr}
-                c.r[13] = c.r[13].wrapping_sub(0x18); // 80035a4: sub sp, #0x18
-                c.r[1] = 0x08003114; // =FreeObjectJumptable // 80035a6: ldr r1, [pc, #0x70] // 0x08003618
-                c.r[2] = 0x0800312c; // =ObjectMemoryPointers // 80035a8: ldr r2, [pc, #0x70] // 0x0800361c
-                c.r[3] = 0x08003144; // =ActiveObjectBitfieldPointers // 80035aa: ldr r3, [pc, #0x74] // 0x08003620
-                c.r[4] = 0x0800315c; // =ObjectMemorySizes // 80035ac: ldr r4, [pc, #0x74] // 0x08003624
-                c.r[5] = 0x08003174; // =MaxAmountOfObjects // 80035ae: ldr r5, [pc, #0x78] // 0x08003628
-                pc = 0x080035b0;
-            }
-            // FreeAllObjectsOfSpecifiedTypes.loop
-            0x080035b0 => {
-                c.st32(c.r[13], c.r[0]); // 80035b0: str r0, [sp, #0x0]
-                c.st32(c.r[13].wrapping_add(0x4), c.r[1]); // 80035b2: str r1, [sp, #0x4]
-                c.st32(c.r[13].wrapping_add(0x8), c.r[2]); // 80035b4: str r2, [sp, #0x8]
-                c.st32(c.r[13].wrapping_add(0xc), c.r[3]); // 80035b6: str r3, [sp, #0xc]
-                c.st32(c.r[13].wrapping_add(0x10), c.r[4]); // 80035b8: str r4, [sp, #0x10]
-                c.st32(c.r[13].wrapping_add(0x14), c.r[5]); // 80035ba: str r5, [sp, #0x14]
-                c.nz(c.r[0] & c.r[0]); // 80035bc: tst r0, r0
-                if c.z { pc = 0x08003614; continue; } // 80035be: beq 0x08003614
-                c.r[1] = 0x1; // 80035c0: mov r1, #0x1
-                c.nz(c.r[0] & c.r[1]); // 80035c2: tst r0, r1
-                if c.z { pc = 0x080035fa; continue; } // 80035c4: beq 0x080035fa
-                c.r[5] = c.ld32(c.r[13].wrapping_add(0x8)); // 80035c6: ldr r5, [sp, #0x8]
-                c.r[5] = c.ld32(c.r[5]); // 80035c8: ldr r5, [r5, #0x0]
-                c.r[7] = 0x80; // 80035ca: mov r7, #0x80
-                c.r[7] = c.r[7] << 24; // 80035cc: lsl r7, r7, #0x18
-                c.r[6] = 0x0; // 80035ce: mov r6, #0x0
-                pc = 0x080035d0;
-            }
-            // FreeAllObjectsOfSpecifiedTypes.freeAllObjectsOfTypeLoop
-            0x080035d0 => {
-                c.r[0] = c.ld32(c.r[13].wrapping_add(0xc)); // 80035d0: ldr r0, [sp, #0xc]
-                c.r[0] = c.ld32(c.r[0]); // 80035d2: ldr r0, [r0, #0x0]
-                c.r[1] = c.r[6] >> 5; // 80035d4: lsr r1, r6, #0x5
-                c.r[1] = c.lsl_imm_c(c.r[1], 2); // 80035d6: lsl r1, r1, #0x2
-                c.r[0] = c.ld32(c.r[0].wrapping_add(c.r[1])); // 80035d8: ldr r0, [r0, r1]
-                c.nz(c.r[0] & c.r[7]); // 80035da: tst r0, r7
-                if c.z { pc = 0x080035e6; continue; } // 80035dc: beq 0x080035e6
-                c.r[0] = c.ld32(c.r[13].wrapping_add(0x4)); // 80035de: ldr r0, [sp, #0x4]
-                c.r[0] = c.ld32(c.r[0]); // 80035e0: ldr r0, [r0, #0x0]
-                c.r[14] = 0x080035e6u32; // 80035e2: mov lr, pc
-                let t = c.r[0] & !1; c.ret = 0x080035e6; c.call_indirect(t); if c.pc != 0x080035e6 { pc = c.pc; continue; } // 80035e4: bx r0
-                pc = 0x080035e6;
-            }
-            // FreeAllObjectsOfSpecifiedTypes.objectNotActive
-            0x080035e6 => {
-                c.r[0] = 0x1; // 80035e6: mov r0, #0x1
-                c.r[7] = ror_reg(c.r[7], c.r[0]); // 80035e8: ror r7, r0
-                c.r[0] = c.ld32(c.r[13].wrapping_add(0x10)); // 80035ea: ldr r0, [sp, #0x10]
-                c.r[0] = c.ld32(c.r[0]); // 80035ec: ldr r0, [r0, #0x0]
-                c.r[5] = c.r[5].wrapping_add(c.r[0]); // 80035ee: add r5, r5, r0
-                c.r[6] = c.r[6].wrapping_add(0x1); // 80035f0: add r6, #0x1
-                c.r[0] = c.ld32(c.r[13].wrapping_add(0x14)); // 80035f2: ldr r0, [sp, #0x14]
-                c.r[0] = c.ld32(c.r[0]); // 80035f4: ldr r0, [r0, #0x0]
-                c.subs(c.r[6], c.r[0]); // 80035f6: cmp r6, r0
-                if c.n != c.v { pc = 0x080035d0; continue; } // 80035f8: blt 0x080035d0
-                pc = 0x080035fa;
-            }
-            // FreeAllObjectsOfSpecifiedTypes.skipObjectType
-            0x080035fa => {
-                c.r[0] = c.ld32(c.r[13]); // 80035fa: ldr r0, [sp, #0x0]
-                c.r[1] = c.ld32(c.r[13].wrapping_add(0x4)); // 80035fc: ldr r1, [sp, #0x4]
-                c.r[2] = c.ld32(c.r[13].wrapping_add(0x8)); // 80035fe: ldr r2, [sp, #0x8]
-                c.r[3] = c.ld32(c.r[13].wrapping_add(0xc)); // 8003600: ldr r3, [sp, #0xc]
-                c.r[4] = c.ld32(c.r[13].wrapping_add(0x10)); // 8003602: ldr r4, [sp, #0x10]
-                c.r[5] = c.ld32(c.r[13].wrapping_add(0x14)); // 8003604: ldr r5, [sp, #0x14]
-                c.r[0] = c.r[0] >> 1; // 8003606: lsr r0, r0, #0x1
-                c.r[1] = c.r[1].wrapping_add(0x4); // 8003608: add r1, #0x4
-                c.r[2] = c.r[2].wrapping_add(0x4); // 800360a: add r2, #0x4
-                c.r[3] = c.r[3].wrapping_add(0x4); // 800360c: add r3, #0x4
-                c.r[4] = c.r[4].wrapping_add(0x4); // 800360e: add r4, #0x4
-                c.r[5] = c.adds(c.r[5], 0x4); // 8003610: add r5, #0x4
-                pc = 0x080035b0; continue; // 8003612: b 0x080035b0
-            }
-            // FreeAllObjectsOfSpecifiedTypes.doneFreeingObjects
-            0x08003614 => {
-                c.r[13] = c.r[13].wrapping_add(0x18); // 8003614: add sp, #0x18
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[6] = c.ld32(a.wrapping_add(0x8)); c.r[7] = c.ld32(a.wrapping_add(0xc)); let t = c.ld32(a.wrapping_add(0x10)); c.r[13] = a.wrapping_add(0x14); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 8003616: pop {r4-r7,pc}
-            }
-            _ => return c.fallback(pc, ret),
-        }
-    }
-}
-
-/// `sub_800362C` (0x0800362c, thumb)
-pub fn sub_800362C(c: &mut Cpu) {
-    let ret = c.ret;
-    let mut pc: u32 = 0x0800362c;
-    loop {
-        match pc {
-            0x0800362c => {
-                let a = c.r[13].wrapping_sub(0x14); c.st32(a, c.r[4]); c.st32(a.wrapping_add(0x4), c.r[5]); c.st32(a.wrapping_add(0x8), c.r[6]); c.st32(a.wrapping_add(0xc), c.r[7]); c.st32(a.wrapping_add(0x10), c.r[14]); c.r[13] = a; // 800362c: push {r4-r7,lr}
-                c.r[3] = c.r[10]; // 800362e: mov r3, r10
-                c.r[3] = c.ld32(c.r[3].wrapping_add(0xc)); // 8003630: ldr r3, [r3, #0xc]
-                c.r[2] = 0x2; // 8003632: mov r2, #0x2
-                c.r[1] = c.ld16s(c.r[0].wrapping_add(c.r[2])); // 8003634: ldsh r1, [r0, r2]
-                c.r[4] = c.ld32(c.r[3].wrapping_add(0x3c)); // 8003636: ldr r4, [r3, #0x3c]
-                c.r[4] = ((c.r[4] as i32) >> 16) as u32; // 8003638: asr r4, r4, #0x10
-                c.r[1] = c.r[1].wrapping_sub(c.r[4]); // 800363a: sub r1, r1, r4
-                c.r[6] = 0x020099cc; // 800363c: ldr r6, [pc, #0x50] // 0x08003690
-                c.r[6] = c.ld8(c.r[6]); // 800363e: ldrb r6, [r6, #0x0]
-                c.nz(c.r[6] & c.r[6]); // 8003640: tst r6, r6
-                if c.z { pc = 0x08003646; continue; } // 8003642: beq 0x08003646
-                c.r[1] = 0u32.wrapping_sub(c.r[1]); // 8003644: neg r1, r1
-                pc = 0x08003646;
-            }
-            // loc_8003646
-            0x08003646 => {
-                c.r[1] = c.r[1].wrapping_add(0x78); // 8003646: add r1, #0x78
-                c.r[2] = 0x6; // 8003648: mov r2, #0x6
-                c.r[6] = c.ld16s(c.r[0].wrapping_add(c.r[2])); // 800364a: ldsh r6, [r0, r2]
-                c.r[4] = c.ld32(c.r[3].wrapping_add(0x40)); // 800364c: ldr r4, [r3, #0x40]
-                c.r[4] = ((c.r[4] as i32) >> 16) as u32; // 800364e: asr r4, r4, #0x10
-                c.r[6] = c.r[6].wrapping_sub(c.r[4]); // 8003650: sub r6, r6, r4
-                c.r[6] = c.r[6].wrapping_add(0x50); // 8003652: add r6, #0x50
-                c.r[2] = 0xa; // 8003654: mov r2, #0xa
-                c.r[4] = c.ld16s(c.r[0].wrapping_add(c.r[2])); // 8003656: ldsh r4, [r0, r2]
-                c.r[2] = c.ld32(c.r[3].wrapping_add(0x44)); // 8003658: ldr r2, [r3, #0x44]
-                c.r[2] = ((c.r[2] as i32) >> 16) as u32; // 800365a: asr r2, r2, #0x10
-                c.r[4] = c.r[4].wrapping_sub(c.r[2]); // 800365c: sub r4, r4, r2
-                c.r[6] = c.r[6].wrapping_sub(c.r[4]); // 800365e: sub r6, r6, r4
-                c.r[2] = 0x20; // 8003660: mov r2, #0x20
-                c.r[2] = 0u32.wrapping_sub(c.r[2]); // 8003662: neg r2, r2
-                c.subs(c.r[1], c.r[2]); // 8003664: cmp r1, r2
-                if c.n != c.v { pc = 0x08003688; continue; } // 8003666: blt 0x08003688
-                c.r[2] = 0xf0; // 8003668: mov r2, #0xf0
-                c.r[2] = c.r[2].wrapping_add(0x20); // 800366a: add r2, #0x20
-                c.subs(c.r[1], c.r[2]); // 800366c: cmp r1, r2
-                if c.n == c.v { pc = 0x08003688; continue; } // 800366e: bge 0x08003688
-                c.r[2] = 0x20; // 8003670: mov r2, #0x20
-                c.r[2] = 0u32.wrapping_sub(c.r[2]); // 8003672: neg r2, r2
-                c.subs(c.r[6], c.r[2]); // 8003674: cmp r6, r2
-                if c.n != c.v { pc = 0x08003688; continue; } // 8003676: blt 0x08003688
-                c.r[2] = 0xa0; // 8003678: mov r2, #0xa0
-                c.r[2] = c.r[2].wrapping_add(0x40); // 800367a: add r2, #0x40
-                c.subs(c.r[6], c.r[2]); // 800367c: cmp r6, r2
-                if c.n == c.v { pc = 0x08003688; continue; } // 800367e: bge 0x08003688
-                c.r[0] = c.r[1].wrapping_add(0); // 8003680: add r0, r1, #0
-                c.r[1] = c.adds(c.r[6], 0); // 8003682: add r1, r6, #0
-                c.r[2] = 0x1; c.n = false; c.z = false; // 8003684: mov r2, #0x1
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[6] = c.ld32(a.wrapping_add(0x8)); c.r[7] = c.ld32(a.wrapping_add(0xc)); let t = c.ld32(a.wrapping_add(0x10)); c.r[13] = a.wrapping_add(0x14); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 8003686: pop {r4-r7,pc}
-            }
-            // loc_8003688
-            0x08003688 => {
-                c.r[0] = 0xa0; // 8003688: mov r0, #0xa0
-                c.r[1] = 0x50; // 800368a: mov r1, #0x50
-                c.r[2] = 0x0; c.n = false; c.z = true; // 800368c: mov r2, #0x0
-                let a = c.r[13]; c.r[4] = c.ld32(a); c.r[5] = c.ld32(a.wrapping_add(0x4)); c.r[6] = c.ld32(a.wrapping_add(0x8)); c.r[7] = c.ld32(a.wrapping_add(0xc)); let t = c.ld32(a.wrapping_add(0x10)); c.r[13] = a.wrapping_add(0x14); pc = t & !1; if pc == ret { c.pc = pc; return; } continue; // 800368e: pop {r4-r7,pc}
             }
             _ => return c.fallback(pc, ret),
         }

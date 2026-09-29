@@ -61,16 +61,26 @@ fn is_thumb_mov_lr_pc(i: Option<&Ins>) -> bool {
     matches!(i, Some(Ins::T(Thumb::HiMov { rd: 14, rs: 15 })))
 }
 
-fn is_arm_mov_lr_pc(i: Option<&Ins>) -> bool {
-    matches!(
-        i,
+/// If the ARM instruction at `addr` sets lr to a pc-relative address (`mov
+/// lr, pc` or `adr lr, label`) unconditionally, the address it sets.
+pub fn arm_link_value(i: Option<&Ins>, addr: u32) -> Option<u32> {
+    let pc8 = addr.wrapping_add(8);
+    match i {
         Some(Ins::A(Arm::DataProc {
+            cond: Cond::Al,
             op: DpOp::Mov,
             rd: 14,
             op2: Operand2::ShiftImm { rm: 15, shift: Shift::Lsl, amount: 0 },
             ..
-        }))
-    )
+        })) => Some(pc8),
+        Some(Ins::A(Arm::DataProc { cond: Cond::Al, op: DpOp::Add, rd: 14, rn: 15, op2: Operand2::Imm { value, .. }, .. })) => {
+            Some(pc8.wrapping_add(*value))
+        }
+        Some(Ins::A(Arm::DataProc { cond: Cond::Al, op: DpOp::Sub, rd: 14, rn: 15, op2: Operand2::Imm { value, .. }, .. })) => {
+            Some(pc8.wrapping_sub(*value))
+        }
+        _ => None,
+    }
 }
 
 pub fn discover(ctx: &Ctx, entry: u32, mode: Mode) -> Func {
@@ -167,6 +177,13 @@ fn step_thumb(ctx: &Ctx, f: &mut Func, queue: &mut Vec<u32>, added: &mut bool, p
             f.calls.insert((t, Mode::Arm));
             None
         }
+        Thumb::Bx { rs } if matches!(f.insns.get(&(pc.wrapping_sub(2))), Some(Ins::T(Thumb::AddPc { rd, .. })) if *rd == rs) => {
+            // `adr rN, label; bx rN`: a mode switch to a static target.
+            let Some(Ins::T(Thumb::AddPc { imm, .. })) = f.insns.get(&(pc.wrapping_sub(2))) else { unreachable!() };
+            let t = (pc.wrapping_sub(2).wrapping_add(4) & !3) + *imm as u32;
+            f.calls.insert((t & !1, if t & 1 != 0 { Mode::Thumb } else { Mode::Arm }));
+            None
+        }
         Thumb::Bx { rs } | Thumb::HiMov { rd: 15, rs } => {
             if prev_is_mov_lr_pc {
                 Some(pc + 2) // indirect call; returns to the next instruction
@@ -204,8 +221,17 @@ fn step_arm(ctx: &Ctx, f: &mut Func, queue: &mut Vec<u32>, added: &mut bool, pc:
         return None;
     };
     let ins = arm::decode(op);
-    let prev_is_mov_lr_pc = is_arm_mov_lr_pc(f.insns.get(&(pc.wrapping_sub(4))));
+    let link = arm_link_value(f.insns.get(&(pc.wrapping_sub(4))), pc.wrapping_sub(4));
     f.insns.insert(pc, Ins::A(ins));
+    // An indirect call: resumes at the link address when the callee returns.
+    let call_resume = |f: &mut Func, queue: &mut Vec<u32>, ret: u32| -> Option<u32> {
+        if ret == pc + 4 {
+            Some(pc + 4)
+        } else {
+            add_target(ctx, f, queue, ret);
+            None
+        }
+    };
     let always = ins.cond() == Cond::Al;
     let next = if always { None } else { Some(pc + 4) };
     let pc8 = pc.wrapping_add(8);
@@ -219,8 +245,23 @@ fn step_arm(ctx: &Ctx, f: &mut Func, queue: &mut Vec<u32>, added: &mut bool, pc:
             Some(pc + 4)
         }
         Arm::Bx { rm, .. } => {
-            if prev_is_mov_lr_pc {
-                Some(pc + 4)
+            let prev = f.insns.get(&(pc.wrapping_sub(4))).copied();
+            if let Some(ret) = link {
+                call_resume(f, queue, ret)
+            } else if let Some(Ins::A(Arm::DataProc {
+                cond: Cond::Al,
+                op: DpOp::Add,
+                rd,
+                rn: 15,
+                op2: Operand2::Imm { value, .. },
+                ..
+            })) = prev
+                && rd == rm
+            {
+                // `adr rN, label; bx rN`: a mode switch to a static target.
+                let t = pc.wrapping_sub(4).wrapping_add(8).wrapping_add(value);
+                f.calls.insert((t & !1, if t & 1 != 0 { Mode::Thumb } else { Mode::Arm }));
+                next
             } else {
                 if rm != 14 {
                     f.computed_jumps.push(pc);
@@ -230,8 +271,8 @@ fn step_arm(ctx: &Ctx, f: &mut Func, queue: &mut Vec<u32>, added: &mut bool, pc:
             }
         }
         Arm::DataProc { op, rd: 15, rn, op2, .. } if !op.is_test() => {
-            if prev_is_mov_lr_pc {
-                return Some(pc + 4);
+            if let Some(ret) = link {
+                return call_resume(f, queue, ret);
             }
             // add pc, pc, rX, lsl #2: a table of branches follows at pc + 8.
             if op == DpOp::Add
@@ -255,8 +296,8 @@ fn step_arm(ctx: &Ctx, f: &mut Func, queue: &mut Vec<u32>, added: &mut bool, pc:
             next
         }
         Arm::Mem { load: true, rd: 15, .. } => {
-            if prev_is_mov_lr_pc {
-                return Some(pc + 4);
+            if let Some(ret) = link {
+                return call_resume(f, queue, ret);
             }
             f.computed_jumps.push(pc);
             add_code_refs(ctx, f, queue, added);

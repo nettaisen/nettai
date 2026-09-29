@@ -5,76 +5,82 @@ use gba_rt::Cpu;
 
 mod m00_3005700;
 pub use m00_3005700::*;
-mod m01_8003694;
-pub use m01_8003694::*;
-mod m02_800a672;
-pub use m02_800a672::*;
-mod m03_8010660;
-pub use m03_8010660::*;
-mod m04_8014754;
-pub use m04_8014754::*;
-mod m05_801e0dc;
-pub use m05_801e0dc::*;
-mod m06_802ba24;
-pub use m06_802ba24::*;
-mod m07_80318b0;
-pub use m07_80318b0::*;
-mod m08_8039f62;
-pub use m08_8039f62::*;
-mod m09_803f500;
-pub use m09_803f500::*;
-mod m10_8049d98;
-pub use m10_8049d98::*;
-mod m11_80931fe;
-pub use m11_80931fe::*;
-mod m12_80a59b8;
-pub use m12_80a59b8::*;
-mod m13_80b8f8e;
-pub use m13_80b8f8e::*;
-mod m14_80bf11a;
-pub use m14_80bf11a::*;
-mod m15_80c4b18;
-pub use m15_80c4b18::*;
-mod m16_80cb7bc;
-pub use m16_80cb7bc::*;
-mod m17_80d1f0e;
-pub use m17_80d1f0e::*;
-mod m18_80d86b0;
-pub use m18_80d86b0::*;
-mod m19_80deaa0;
-pub use m19_80deaa0::*;
-mod m20_80e442c;
-pub use m20_80e442c::*;
-mod m21_80e9000;
-pub use m21_80e9000::*;
-mod m22_80f08ba;
-pub use m22_80f08ba::*;
-mod m23_80f7bde;
-pub use m23_80f7bde::*;
-mod m24_80fed28;
-pub use m24_80fed28::*;
-mod m25_8105714;
-pub use m25_8105714::*;
-mod m26_810be2a;
-pub use m26_810be2a::*;
-mod m27_8114060;
-pub use m27_8114060::*;
-mod m28_811a2ec;
-pub use m28_811a2ec::*;
-mod m29_8120cc8;
-pub use m29_8120cc8::*;
-mod m30_812b608;
-pub use m30_812b608::*;
-mod m31_81348dc;
-pub use m31_81348dc::*;
-mod m32_813d5dc;
-pub use m32_813d5dc::*;
-mod m33_81469bc;
-pub use m33_81469bc::*;
+mod m01_8003548;
+pub use m01_8003548::*;
+mod m02_800a2f8;
+pub use m02_800a2f8::*;
+mod m03_8010488;
+pub use m03_8010488::*;
+mod m04_8014720;
+pub use m04_8014720::*;
+mod m05_801e012;
+pub use m05_801e012::*;
+mod m06_802b80c;
+pub use m06_802b80c::*;
+mod m07_8031784;
+pub use m07_8031784::*;
+mod m08_8039d9a;
+pub use m08_8039d9a::*;
+mod m09_803f214;
+pub use m09_803f214::*;
+mod m10_8049a18;
+pub use m10_8049a18::*;
+mod m11_808cf34;
+pub use m11_808cf34::*;
+mod m12_809f612;
+pub use m12_809f612::*;
+mod m13_80aaa1c;
+pub use m13_80aaa1c::*;
+mod m14_80bdd40;
+pub use m14_80bdd40::*;
+mod m15_80c3aca;
+pub use m15_80c3aca::*;
+mod m16_80ca408;
+pub use m16_80ca408::*;
+mod m17_80d0c7c;
+pub use m17_80d0c7c::*;
+mod m18_80d7100;
+pub use m18_80d7100::*;
+mod m19_80dd848;
+pub use m19_80dd848::*;
+mod m20_80e353e;
+pub use m20_80e353e::*;
+mod m21_80e82c0;
+pub use m21_80e82c0::*;
+mod m22_80eefdc;
+pub use m22_80eefdc::*;
+mod m23_80f663c;
+pub use m23_80f663c::*;
+mod m24_80fd822;
+pub use m24_80fd822::*;
+mod m25_8104188;
+pub use m25_8104188::*;
+mod m26_810abfe;
+pub use m26_810abfe::*;
+mod m27_8112928;
+pub use m27_8112928::*;
+mod m28_8118f1c;
+pub use m28_8118f1c::*;
+mod m29_811ef8c;
+pub use m29_811ef8c::*;
+mod m30_812a0e8;
+pub use m30_812a0e8::*;
+mod m31_8132c68;
+pub use m31_8132c68::*;
+mod m32_813ca6c;
+pub use m32_813ca6c::*;
+mod m33_8144bbc;
+pub use m33_8144bbc::*;
+mod m34_814fe60;
+pub use m34_814fe60::*;
 
 /// Every translated function, sorted by address.
-pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
+pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13603] = [
     (0x03005700, byte_3005700),
+    (0x0300570c, SoundMainRAM_reverb_arm),
+    (0x0300578e, SoundMainRAM_channels_thumb),
+    (0x03005898, SoundMainRAM_mixer_arm),
+    (0x03005a80, SoundMainRAM_exit_thumb),
     (0x03005b00, sub_3005B00),
     (0x03005cd8, nullsub_38),
     (0x03005cda, sub_3005CDA),
@@ -96,6 +102,8 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x03005f34, sub_3005F34),
     (0x03005f56, sub_3005F56),
     (0x03005f78, sub_3005F78),
+    (0x03005fc0, sub_3005FC0),
+    (0x03005ffa, sub_3005FFA),
     (0x03006028, sub_3006028),
     (0x03006108, sub_3006108),
     (0x030061a8, sub_30061A8),
@@ -170,6 +178,7 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x0800029c, start_800029C),
     (0x080002a8, start_80002A8),
     (0x080002bc, main_),
+    (0x080002d4, main_gameRoutine_body),
     (0x080003a0, main_awaitFrame),
     (0x080003d0, main_pollGeneralLCDStatus_STAT_LYC_),
     (0x080003e4, main_static_80003E4),
@@ -1280,6 +1289,7 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x080107c0, sub_80107C0),
     (0x080107d4, sub_80107D4),
     (0x08010820, sub_8010820),
+    (0x0801083e, loc_801083E),
     (0x0801086c, sub_801086C),
     (0x080108fc, sub_80108FC),
     (0x0801092c, sub_801092C),
@@ -1353,6 +1363,7 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x08011450, sub_8011450),
     (0x080114d4, nullsub_43),
     (0x08011504, sub_8011504),
+    (0x08011508, loc_8011508),
     (0x0801155a, sub_801155A),
     (0x0801156a, sub_801156A),
     (0x080115ce, sub_80115CE),
@@ -2812,6 +2823,7 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x0803077c, sub_803077C),
     (0x080307d8, sub_80307D8),
     (0x08030808, sub_8030808),
+    (0x0803083e, loc_803083E),
     (0x0803086c, sub_803086C),
     (0x08030892, sub_8030892),
     (0x080309fc, nullsub_61),
@@ -2853,6 +2865,7 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x08031420, sub_8031420),
     (0x08031478, sub_8031478),
     (0x080314cc, sub_80314CC),
+    (0x0803150a, loc_803150A),
     (0x08031520, sub_8031520),
     (0x08031570, sub_8031570),
     (0x08031594, sub_8031594),
@@ -4220,6 +4233,7 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x08052688, CyberAcademy_EnterMapGroup),
     (0x08052764, CyberAcademy_LoadGFXAnims),
     (0x080527f0, CyberAcademy_SpawnMapObjectsForMap),
+    (0x08056efa, word_8056EFA),
     (0x080595b8, SeasideTown_EnterMapGroup),
     (0x08059664, SeasideTown_LoadGFXAnims),
     (0x080596c8, SeasideTown_SpawnMapObjectsForMap),
@@ -4229,90 +4243,151 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x0806036c, SkyTown_EnterMapGroup),
     (0x08060406, SkyTown_LoadGFXAnims),
     (0x0806044c, SkyTown_SpawnMapObjectsForMap),
+    (0x08061bb6, sub_8061BB6),
+    (0x08061bfe, sub_8061BFE),
     (0x08062ab0, ExpoSite_EnterMapGroup),
     (0x08062b64, ExpoSite_LoadGFXAnims),
     (0x08062bcc, ExpoSite_SpawnMapObjectsForMap),
+    (0x080652b8, sub_80652B8),
     (0x080663d0, RobotControlComp_EnterMapGroup),
     (0x08066450, RobotControlComp_LoadGFXAnims),
     (0x0806649c, RobotControlComp_LoadBGAnim),
     (0x0806651c, RobotControlComp_UnkFunction_806651c),
+    (0x0806653c, nullsub_29),
+    (0x0806653e, nullsub_30),
     (0x08066540, RobotControlComp_SpawnMapObjectsForMap),
     (0x08067b5c, AquariumComp_EnterMapGroup),
     (0x08067be4, AquariumComp_LoadGFXAnims),
     (0x08067c88, AquariumComp_LoadBGAnim),
     (0x08067d1c, AquariumComp_UnkFunction_8067d1c),
+    (0x08067d40, nullsub_64),
+    (0x08067d42, nullsub_65),
+    (0x08067d44, nullsub_66),
     (0x08067d46, AquariumComp_SpawnMapObjectsForMap),
     (0x08069038, JudgeTreeComp_EnterMapGroup),
     (0x080690c2, JudgeTreeComp_LoadGFXAnims),
     (0x08069140, JudgeTreeComp_LoadBGAnim),
     (0x080691d4, JudgeTreeComp_UnkFunction_80691d4),
+    (0x080691f8, nullsub_31),
+    (0x080691fa, nullsub_32),
+    (0x080691fc, nullsub_33),
     (0x080691fe, JudgeTreeComp_SpawnMapObjectsForMap),
     (0x08069fe8, MrWeatherComp_EnterMapGroup),
     (0x0806a070, MrWeatherComp_LoadGFXAnims),
     (0x0806a120, MrWeatherComp_LoadBGAnim),
     (0x0806a1b4, MrWeatherComp_UnkFunction_806a1b4),
+    (0x0806a1d8, nullsub_67),
+    (0x0806a1da, nullsub_68),
+    (0x0806a1dc, nullsub_69),
     (0x0806a1de, MrWeatherComp_SpawnMapObjectsForMap),
     (0x0806aa00, PavilionComp_EnterMapGroup),
     (0x0806aaaa, PavilionComp_LoadGFXAnims),
     (0x0806ab94, PavilionComp_LoadBGAnim),
     (0x0806acc0, PavilionComp_UnkFunction_806acc0),
+    (0x0806acec, sub_806ACEC),
+    (0x0806acf0, sub_806ACF0),
+    (0x0806acf4, sub_806ACF4),
+    (0x0806acf8, sub_806ACF8),
+    (0x0806acfc, sub_806ACFC),
     (0x0806ad00, PavilionComp_SpawnMapObjectsForMap),
+    (0x0806b504, dword_806B504),
     (0x0806c23c, HomePages_EnterMapGroup),
     (0x0806c2e2, HomePages_LoadGFXAnims),
     (0x0806c35c, HomePages_LoadBGAnim),
     (0x0806c4b0, HomePages_UnkFunction_806c4b0),
+    (0x0806c4f8, sub_806C4F8),
+    (0x0806c514, sub_806C514),
+    (0x0806c532, sub_806C532),
+    (0x0806c55a, sub_806C55A),
+    (0x0806c578, sub_806C578),
     (0x0806c59c, HomePages_SpawnMapObjectsForMap),
     (0x0806d8f8, Comps1_EnterMapGroup),
     (0x0806d9fc, Comps1_LoadGFXAnims),
     (0x0806da58, Comps1_LoadBGAnim),
     (0x0806dc0c, Comps1_UnkFunction_806dc0c),
+    (0x0806dc78, nullsub_70),
+    (0x0806dc7a, sub_806DC7A),
+    (0x0806dc98, sub_806DC98),
+    (0x0806dcb6, sub_806DCB6),
     (0x0806dcd4, Comps1_SpawnMapObjectsForMap),
     (0x0806fc08, Comps2_EnterMapGroup),
     (0x0806fcf8, Comps2_LoadGFXAnims),
     (0x0806fd54, Comps2_LoadBGAnim),
     (0x0806ff08, Comps2_UnkFunction_806ff08),
+    (0x0806ff74, nullsub_27),
+    (0x0806ff76, sub_806FF76),
+    (0x0806ff94, sub_806FF94),
+    (0x0806ffbc, sub_806FFBC),
     (0x0806ffda, Comps2_SpawnMapObjectsForMap),
     (0x08071b50, CentralArea_EnterMapGroup),
     (0x08071be4, CentralArea_LoadGFXAnims),
     (0x08071c30, CentralArea_LoadBGAnim),
     (0x08071cc4, CentralArea_UnkFunction_8071cc4),
+    (0x08071ce8, nullsub_71),
+    (0x08071cea, nullsub_72),
+    (0x08071cec, nullsub_73),
     (0x08071cee, CentralArea_SpawnMapObjectsForMap),
+    (0x08072b54, sub_8072B54),
+    (0x08072b70, sub_8072B70),
+    (0x08072ba4, sub_8072BA4),
+    (0x08073efc, sub_8073EFC),
     (0x0807544c, SeasideArea_EnterMapGroup),
     (0x080754e2, SeasideArea_LoadGFXAnims),
     (0x08075530, SeasideArea_LoadBGAnim),
     (0x080755c4, SeasideArea_UnkFunction_80755c4),
+    (0x080755e8, nullsub_74),
+    (0x080755ea, nullsub_75),
+    (0x080755ec, nullsub_76),
     (0x080755ee, SeasideArea_SpawnMapObjectsForMap),
     (0x08077d00, GreenArea_EnterMapGroup),
     (0x08077d8a, GreenArea_LoadGFXAnims),
     (0x08077de0, GreenArea_LoadBGAnim),
     (0x08077e60, GreenArea_UnkFunction_8077e60),
+    (0x08077e80, nullsub_77),
+    (0x08077e82, nullsub_78),
     (0x08077e84, GreenArea_SpawnMapObjectsForMap),
     (0x0807931c, Underground_EnterMapGroup),
     (0x0807939a, Underground_LoadGFXAnims),
     (0x080793e8, Underground_LoadBGAnim),
     (0x08079468, Underground_UnkFunction_8079468),
+    (0x08079488, nullsub_79),
+    (0x0807948a, nullsub_80),
     (0x0807948c, Underground_SpawnMapObjectsForMap),
     (0x0807a8e0, SkyACDCArea_EnterMapGroup),
     (0x0807a974, SkyACDCArea_LoadGFXAnims),
     (0x0807a9cc, SkyACDCArea_LoadBGAnim),
+    (0x0807a9fe, sub_807A9FE),
     (0x0807aaac, SkyACDCArea_UnkFunction_807aaac),
+    (0x0807aad0, nullsub_81),
+    (0x0807aad2, nullsub_82),
+    (0x0807aad4, nullsub_83),
     (0x0807aad6, SkyACDCArea_SpawnMapObjectsForMap),
     (0x0807cdec, Undernet_EnterMapGroup),
     (0x0807ce90, Undernet_LoadGFXAnims),
     (0x0807cf24, Undernet_LoadBGAnim),
     (0x0807cfcc, Undernet_UnkFunction_807cfcc),
+    (0x0807cff4, nullsub_84),
+    (0x0807cff6, nullsub_85),
+    (0x0807cff8, nullsub_86),
+    (0x0807cffa, nullsub_87),
     (0x0807cffc, Undernet_SpawnMapObjectsForMap),
     (0x0807ecd0, GraveyardImmortalArea_EnterMapGroup),
     (0x0807ed6c, GraveyardImmortalArea_LoadGFXAnims),
     (0x0807edd4, GraveyardImmortalArea_LoadBGAnim),
     (0x0807ee68, GraveyardImmortalArea_UnkFunction_807ee68),
+    (0x0807ee8c, nullsub_88),
+    (0x0807ee8e, nullsub_89),
+    (0x0807ee90, nullsub_90),
     (0x0807ee92, GraveyardImmortalArea_SpawnMapObjectsForMap),
+    (0x08080314, off_8080314),
+    (0x08080684, off_8080684),
     (0x08080d90, sub_8080D90),
     (0x08080da0, sub_8080DA0),
     (0x08080dea, sub_8080DEA),
     (0x08081308, sub_8081308),
     (0x0808137c, sub_808137C),
     (0x08083d44, sub_8083D44),
+    (0x08083f06, sub_8083F06),
     (0x08086c08, sub_8086C08),
     (0x08086ce4, sub_8086CE4),
     (0x08086d9c, sub_8086D9C),
@@ -9749,6 +9824,7 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x08100144, sub_8100144),
     (0x081002e8, sub_81002E8),
     (0x08100308, sub_8100308),
+    (0x08100314, loc_8100314),
     (0x081003a0, sub_81003A0),
     (0x081003a4, sub_81003A4),
     (0x081003a8, sub_81003A8),
@@ -13473,6 +13549,16 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x0814ccfc, sub_814CCFC),
     (0x0814cd70, sub_814CD70),
     (0x0814ce64, sub_814CE64),
+    (0x0814cf54, librfu_sio32_irq_handler),
+    (0x0814cfb8, sub_814CFB8),
+    (0x0814d248, sub_814D248),
+    (0x0814d654, sub_814D654),
+    (0x0814d6bc, sub_814D6BC),
+    (0x0814d7cc, sub_814D7CC),
+    (0x0814d81c, sub_814D81C),
+    (0x0814d8a8, sub_814D8A8),
+    (0x0814d8ac, sub_814D8AC),
+    (0x0814d8b0, sub_814D8B0),
     (0x0814d8b4, SWI_CpuFastSet),
     (0x0814d8b8, SWI_CpuSet),
     (0x0814d8bc, SWI_Div),
@@ -13492,10 +13578,12 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x0814db30, nullsub_1),
     (0x0814db34, __umodsi3),
     (0x0814dbf4, umul3232H32),
+    (0x0814dbf8, umul3232H32_umul3232H32arm),
     (0x0814dc04, SoundMain),
     (0x0814dc88, SoundMainRAM),
     (0x0814dc94, sub_814DC94),
     (0x0814dce8, sub_814DCE8),
+    (0x0814dd16, loc_814DD16),
     (0x0814de20, sub_814DE20),
     (0x0814e008, sub_814E008),
     (0x0814e026, locret_814E026),
@@ -13590,6 +13678,7 @@ pub static FUNCTIONS: [(u32, fn(&mut Cpu)); 13516] = [
     (0x0814fe4c, sub_814FE4C),
     (0x0814fe60, sub_814FE60),
     (0x0814fe74, nullsub_23),
+    (0x081b9114, off_81B9114),
 ];
 
 /// The translated function entered at `addr`, if any.
@@ -13602,8 +13691,12 @@ pub fn name(addr: u32) -> Option<&'static str> {
     NAMES.binary_search_by_key(&addr, |&(a, _)| a).ok().map(|i| NAMES[i].1)
 }
 
-static NAMES: [(u32, &str); 13516] = [
+static NAMES: [(u32, &str); 13603] = [
     (0x03005700, "byte_3005700"),
+    (0x0300570c, "SoundMainRAM_reverb_arm"),
+    (0x0300578e, "SoundMainRAM_channels_thumb"),
+    (0x03005898, "SoundMainRAM_mixer_arm"),
+    (0x03005a80, "SoundMainRAM_exit_thumb"),
     (0x03005b00, "sub_3005B00"),
     (0x03005cd8, "nullsub_38"),
     (0x03005cda, "sub_3005CDA"),
@@ -13625,6 +13718,8 @@ static NAMES: [(u32, &str); 13516] = [
     (0x03005f34, "sub_3005F34"),
     (0x03005f56, "sub_3005F56"),
     (0x03005f78, "sub_3005F78"),
+    (0x03005fc0, "sub_3005FC0"),
+    (0x03005ffa, "sub_3005FFA"),
     (0x03006028, "sub_3006028"),
     (0x03006108, "sub_3006108"),
     (0x030061a8, "sub_30061A8"),
@@ -13699,6 +13794,7 @@ static NAMES: [(u32, &str); 13516] = [
     (0x0800029c, "start_800029C"),
     (0x080002a8, "start_80002A8"),
     (0x080002bc, "main_"),
+    (0x080002d4, "main_gameRoutine_body"),
     (0x080003a0, "main_awaitFrame"),
     (0x080003d0, "main_pollGeneralLCDStatus_STAT_LYC_"),
     (0x080003e4, "main_static_80003E4"),
@@ -14809,6 +14905,7 @@ static NAMES: [(u32, &str); 13516] = [
     (0x080107c0, "sub_80107C0"),
     (0x080107d4, "sub_80107D4"),
     (0x08010820, "sub_8010820"),
+    (0x0801083e, "loc_801083E"),
     (0x0801086c, "sub_801086C"),
     (0x080108fc, "sub_80108FC"),
     (0x0801092c, "sub_801092C"),
@@ -14882,6 +14979,7 @@ static NAMES: [(u32, &str); 13516] = [
     (0x08011450, "sub_8011450"),
     (0x080114d4, "nullsub_43"),
     (0x08011504, "sub_8011504"),
+    (0x08011508, "loc_8011508"),
     (0x0801155a, "sub_801155A"),
     (0x0801156a, "sub_801156A"),
     (0x080115ce, "sub_80115CE"),
@@ -16341,6 +16439,7 @@ static NAMES: [(u32, &str); 13516] = [
     (0x0803077c, "sub_803077C"),
     (0x080307d8, "sub_80307D8"),
     (0x08030808, "sub_8030808"),
+    (0x0803083e, "loc_803083E"),
     (0x0803086c, "sub_803086C"),
     (0x08030892, "sub_8030892"),
     (0x080309fc, "nullsub_61"),
@@ -16382,6 +16481,7 @@ static NAMES: [(u32, &str); 13516] = [
     (0x08031420, "sub_8031420"),
     (0x08031478, "sub_8031478"),
     (0x080314cc, "sub_80314CC"),
+    (0x0803150a, "loc_803150A"),
     (0x08031520, "sub_8031520"),
     (0x08031570, "sub_8031570"),
     (0x08031594, "sub_8031594"),
@@ -17749,6 +17849,7 @@ static NAMES: [(u32, &str); 13516] = [
     (0x08052688, "CyberAcademy_EnterMapGroup"),
     (0x08052764, "CyberAcademy_LoadGFXAnims"),
     (0x080527f0, "CyberAcademy_SpawnMapObjectsForMap"),
+    (0x08056efa, "word_8056EFA"),
     (0x080595b8, "SeasideTown_EnterMapGroup"),
     (0x08059664, "SeasideTown_LoadGFXAnims"),
     (0x080596c8, "SeasideTown_SpawnMapObjectsForMap"),
@@ -17758,90 +17859,151 @@ static NAMES: [(u32, &str); 13516] = [
     (0x0806036c, "SkyTown_EnterMapGroup"),
     (0x08060406, "SkyTown_LoadGFXAnims"),
     (0x0806044c, "SkyTown_SpawnMapObjectsForMap"),
+    (0x08061bb6, "sub_8061BB6"),
+    (0x08061bfe, "sub_8061BFE"),
     (0x08062ab0, "ExpoSite_EnterMapGroup"),
     (0x08062b64, "ExpoSite_LoadGFXAnims"),
     (0x08062bcc, "ExpoSite_SpawnMapObjectsForMap"),
+    (0x080652b8, "sub_80652B8"),
     (0x080663d0, "RobotControlComp_EnterMapGroup"),
     (0x08066450, "RobotControlComp_LoadGFXAnims"),
     (0x0806649c, "RobotControlComp_LoadBGAnim"),
     (0x0806651c, "RobotControlComp_UnkFunction_806651c"),
+    (0x0806653c, "nullsub_29"),
+    (0x0806653e, "nullsub_30"),
     (0x08066540, "RobotControlComp_SpawnMapObjectsForMap"),
     (0x08067b5c, "AquariumComp_EnterMapGroup"),
     (0x08067be4, "AquariumComp_LoadGFXAnims"),
     (0x08067c88, "AquariumComp_LoadBGAnim"),
     (0x08067d1c, "AquariumComp_UnkFunction_8067d1c"),
+    (0x08067d40, "nullsub_64"),
+    (0x08067d42, "nullsub_65"),
+    (0x08067d44, "nullsub_66"),
     (0x08067d46, "AquariumComp_SpawnMapObjectsForMap"),
     (0x08069038, "JudgeTreeComp_EnterMapGroup"),
     (0x080690c2, "JudgeTreeComp_LoadGFXAnims"),
     (0x08069140, "JudgeTreeComp_LoadBGAnim"),
     (0x080691d4, "JudgeTreeComp_UnkFunction_80691d4"),
+    (0x080691f8, "nullsub_31"),
+    (0x080691fa, "nullsub_32"),
+    (0x080691fc, "nullsub_33"),
     (0x080691fe, "JudgeTreeComp_SpawnMapObjectsForMap"),
     (0x08069fe8, "MrWeatherComp_EnterMapGroup"),
     (0x0806a070, "MrWeatherComp_LoadGFXAnims"),
     (0x0806a120, "MrWeatherComp_LoadBGAnim"),
     (0x0806a1b4, "MrWeatherComp_UnkFunction_806a1b4"),
+    (0x0806a1d8, "nullsub_67"),
+    (0x0806a1da, "nullsub_68"),
+    (0x0806a1dc, "nullsub_69"),
     (0x0806a1de, "MrWeatherComp_SpawnMapObjectsForMap"),
     (0x0806aa00, "PavilionComp_EnterMapGroup"),
     (0x0806aaaa, "PavilionComp_LoadGFXAnims"),
     (0x0806ab94, "PavilionComp_LoadBGAnim"),
     (0x0806acc0, "PavilionComp_UnkFunction_806acc0"),
+    (0x0806acec, "sub_806ACEC"),
+    (0x0806acf0, "sub_806ACF0"),
+    (0x0806acf4, "sub_806ACF4"),
+    (0x0806acf8, "sub_806ACF8"),
+    (0x0806acfc, "sub_806ACFC"),
     (0x0806ad00, "PavilionComp_SpawnMapObjectsForMap"),
+    (0x0806b504, "dword_806B504"),
     (0x0806c23c, "HomePages_EnterMapGroup"),
     (0x0806c2e2, "HomePages_LoadGFXAnims"),
     (0x0806c35c, "HomePages_LoadBGAnim"),
     (0x0806c4b0, "HomePages_UnkFunction_806c4b0"),
+    (0x0806c4f8, "sub_806C4F8"),
+    (0x0806c514, "sub_806C514"),
+    (0x0806c532, "sub_806C532"),
+    (0x0806c55a, "sub_806C55A"),
+    (0x0806c578, "sub_806C578"),
     (0x0806c59c, "HomePages_SpawnMapObjectsForMap"),
     (0x0806d8f8, "Comps1_EnterMapGroup"),
     (0x0806d9fc, "Comps1_LoadGFXAnims"),
     (0x0806da58, "Comps1_LoadBGAnim"),
     (0x0806dc0c, "Comps1_UnkFunction_806dc0c"),
+    (0x0806dc78, "nullsub_70"),
+    (0x0806dc7a, "sub_806DC7A"),
+    (0x0806dc98, "sub_806DC98"),
+    (0x0806dcb6, "sub_806DCB6"),
     (0x0806dcd4, "Comps1_SpawnMapObjectsForMap"),
     (0x0806fc08, "Comps2_EnterMapGroup"),
     (0x0806fcf8, "Comps2_LoadGFXAnims"),
     (0x0806fd54, "Comps2_LoadBGAnim"),
     (0x0806ff08, "Comps2_UnkFunction_806ff08"),
+    (0x0806ff74, "nullsub_27"),
+    (0x0806ff76, "sub_806FF76"),
+    (0x0806ff94, "sub_806FF94"),
+    (0x0806ffbc, "sub_806FFBC"),
     (0x0806ffda, "Comps2_SpawnMapObjectsForMap"),
     (0x08071b50, "CentralArea_EnterMapGroup"),
     (0x08071be4, "CentralArea_LoadGFXAnims"),
     (0x08071c30, "CentralArea_LoadBGAnim"),
     (0x08071cc4, "CentralArea_UnkFunction_8071cc4"),
+    (0x08071ce8, "nullsub_71"),
+    (0x08071cea, "nullsub_72"),
+    (0x08071cec, "nullsub_73"),
     (0x08071cee, "CentralArea_SpawnMapObjectsForMap"),
+    (0x08072b54, "sub_8072B54"),
+    (0x08072b70, "sub_8072B70"),
+    (0x08072ba4, "sub_8072BA4"),
+    (0x08073efc, "sub_8073EFC"),
     (0x0807544c, "SeasideArea_EnterMapGroup"),
     (0x080754e2, "SeasideArea_LoadGFXAnims"),
     (0x08075530, "SeasideArea_LoadBGAnim"),
     (0x080755c4, "SeasideArea_UnkFunction_80755c4"),
+    (0x080755e8, "nullsub_74"),
+    (0x080755ea, "nullsub_75"),
+    (0x080755ec, "nullsub_76"),
     (0x080755ee, "SeasideArea_SpawnMapObjectsForMap"),
     (0x08077d00, "GreenArea_EnterMapGroup"),
     (0x08077d8a, "GreenArea_LoadGFXAnims"),
     (0x08077de0, "GreenArea_LoadBGAnim"),
     (0x08077e60, "GreenArea_UnkFunction_8077e60"),
+    (0x08077e80, "nullsub_77"),
+    (0x08077e82, "nullsub_78"),
     (0x08077e84, "GreenArea_SpawnMapObjectsForMap"),
     (0x0807931c, "Underground_EnterMapGroup"),
     (0x0807939a, "Underground_LoadGFXAnims"),
     (0x080793e8, "Underground_LoadBGAnim"),
     (0x08079468, "Underground_UnkFunction_8079468"),
+    (0x08079488, "nullsub_79"),
+    (0x0807948a, "nullsub_80"),
     (0x0807948c, "Underground_SpawnMapObjectsForMap"),
     (0x0807a8e0, "SkyACDCArea_EnterMapGroup"),
     (0x0807a974, "SkyACDCArea_LoadGFXAnims"),
     (0x0807a9cc, "SkyACDCArea_LoadBGAnim"),
+    (0x0807a9fe, "sub_807A9FE"),
     (0x0807aaac, "SkyACDCArea_UnkFunction_807aaac"),
+    (0x0807aad0, "nullsub_81"),
+    (0x0807aad2, "nullsub_82"),
+    (0x0807aad4, "nullsub_83"),
     (0x0807aad6, "SkyACDCArea_SpawnMapObjectsForMap"),
     (0x0807cdec, "Undernet_EnterMapGroup"),
     (0x0807ce90, "Undernet_LoadGFXAnims"),
     (0x0807cf24, "Undernet_LoadBGAnim"),
     (0x0807cfcc, "Undernet_UnkFunction_807cfcc"),
+    (0x0807cff4, "nullsub_84"),
+    (0x0807cff6, "nullsub_85"),
+    (0x0807cff8, "nullsub_86"),
+    (0x0807cffa, "nullsub_87"),
     (0x0807cffc, "Undernet_SpawnMapObjectsForMap"),
     (0x0807ecd0, "GraveyardImmortalArea_EnterMapGroup"),
     (0x0807ed6c, "GraveyardImmortalArea_LoadGFXAnims"),
     (0x0807edd4, "GraveyardImmortalArea_LoadBGAnim"),
     (0x0807ee68, "GraveyardImmortalArea_UnkFunction_807ee68"),
+    (0x0807ee8c, "nullsub_88"),
+    (0x0807ee8e, "nullsub_89"),
+    (0x0807ee90, "nullsub_90"),
     (0x0807ee92, "GraveyardImmortalArea_SpawnMapObjectsForMap"),
+    (0x08080314, "off_8080314"),
+    (0x08080684, "off_8080684"),
     (0x08080d90, "sub_8080D90"),
     (0x08080da0, "sub_8080DA0"),
     (0x08080dea, "sub_8080DEA"),
     (0x08081308, "sub_8081308"),
     (0x0808137c, "sub_808137C"),
     (0x08083d44, "sub_8083D44"),
+    (0x08083f06, "sub_8083F06"),
     (0x08086c08, "sub_8086C08"),
     (0x08086ce4, "sub_8086CE4"),
     (0x08086d9c, "sub_8086D9C"),
@@ -23278,6 +23440,7 @@ static NAMES: [(u32, &str); 13516] = [
     (0x08100144, "sub_8100144"),
     (0x081002e8, "sub_81002E8"),
     (0x08100308, "sub_8100308"),
+    (0x08100314, "loc_8100314"),
     (0x081003a0, "sub_81003A0"),
     (0x081003a4, "sub_81003A4"),
     (0x081003a8, "sub_81003A8"),
@@ -27002,6 +27165,16 @@ static NAMES: [(u32, &str); 13516] = [
     (0x0814ccfc, "sub_814CCFC"),
     (0x0814cd70, "sub_814CD70"),
     (0x0814ce64, "sub_814CE64"),
+    (0x0814cf54, "librfu_sio32_irq_handler"),
+    (0x0814cfb8, "sub_814CFB8"),
+    (0x0814d248, "sub_814D248"),
+    (0x0814d654, "sub_814D654"),
+    (0x0814d6bc, "sub_814D6BC"),
+    (0x0814d7cc, "sub_814D7CC"),
+    (0x0814d81c, "sub_814D81C"),
+    (0x0814d8a8, "sub_814D8A8"),
+    (0x0814d8ac, "sub_814D8AC"),
+    (0x0814d8b0, "sub_814D8B0"),
     (0x0814d8b4, "SWI_CpuFastSet"),
     (0x0814d8b8, "SWI_CpuSet"),
     (0x0814d8bc, "SWI_Div"),
@@ -27021,10 +27194,12 @@ static NAMES: [(u32, &str); 13516] = [
     (0x0814db30, "nullsub_1"),
     (0x0814db34, "__umodsi3"),
     (0x0814dbf4, "umul3232H32"),
+    (0x0814dbf8, "umul3232H32.umul3232H32arm"),
     (0x0814dc04, "SoundMain"),
     (0x0814dc88, "SoundMainRAM"),
     (0x0814dc94, "sub_814DC94"),
     (0x0814dce8, "sub_814DCE8"),
+    (0x0814dd16, "loc_814DD16"),
     (0x0814de20, "sub_814DE20"),
     (0x0814e008, "sub_814E008"),
     (0x0814e026, "locret_814E026"),
@@ -27119,4 +27294,5 @@ static NAMES: [(u32, &str); 13516] = [
     (0x0814fe4c, "sub_814FE4C"),
     (0x0814fe60, "sub_814FE60"),
     (0x0814fe74, "nullsub_23"),
+    (0x081b9114, "off_81B9114"),
 ];

@@ -45,13 +45,24 @@ impl Dma {
     }
 }
 
+/// A hardware timer. Without cycle timing, a running timer advances when
+/// the program reads it (enough for timeouts and busy-waits to finish).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Timer {
+    pub reload: u16,
+    pub control: u16,
+    pub counter: u16,
+}
+
 #[derive(Default)]
 pub struct IoState {
+    pub timers: [Timer; 4],
+    pub sio: crate::sio::SioState,
     /// Buttons currently held (GBA bit order, 1 = pressed).
     pub keys: u16,
-    /// Whether DISPSTAT reads report VBlank.
-    pub in_vblank: bool,
-    pub vcount: u16,
+    /// The current scanline (0-227). The host sets it at frame points;
+    /// each VCOUNT read advances it, so code that spins on VCOUNT finishes.
+    pub line: u16,
     pub dma: [Dma; 4],
     /// Reads/writes to unmapped memory (should stay 0).
     pub bad_accesses: u64,
@@ -62,6 +73,10 @@ impl Cpu {
     pub fn io_peek16(&self, addr: u32) -> u16 {
         let o = (addr & 0x3FE) as usize;
         u16::from_le_bytes([self.mem.io[o], self.mem.io[o + 1]])
+    }
+
+    pub fn io_poke16_pub(&mut self, addr: u32, v: u16) {
+        self.io_poke16(addr, v);
     }
 
     fn io_poke16(&mut self, addr: u32, v: u16) {
@@ -78,14 +93,45 @@ impl Cpu {
         if let Some(v) = self.with_host(|h, c| h.io_read16(c, addr)) {
             return v;
         }
+        if let Some(v) = self.sio_read(reg) {
+            return v;
+        }
         match reg {
             REG_DISPSTAT => {
                 let stored = self.io_peek16(reg) & 0xFFF8;
-                let vcount_match = (self.io.vcount == (stored >> 8)) as u16;
-                stored | self.io.in_vblank as u16 | (vcount_match << 2)
+                let line = self.io.line;
+                let vblank = (160..227).contains(&line) as u16;
+                let vcount_match = (line == (stored >> 8)) as u16;
+                stored | vblank | (vcount_match << 2)
             }
-            REG_VCOUNT => self.io.vcount,
-            REG_KEYINPUT => !self.io.keys & 0x3FF,
+            REG_VCOUNT => {
+                let line = self.io.line;
+                self.io.line = (line + 1) % 228;
+                line
+            }
+            REG_KEYINPUT => {
+                let mut input = self.io.keys & 0x3FF;
+                let (rl, ud) = (input & 0x030, input & 0x0C0);
+                input &= 0x30F;
+                if rl != 0x030 {
+                    input |= rl;
+                }
+                if ud != 0x0C0 {
+                    input |= ud;
+                }
+                let v = 0x3FF ^ input;
+                self.io_poke16(REG_KEYINPUT, v);
+                v
+            }
+            0x100 | 0x104 | 0x108 | 0x10C => {
+                let t = &mut self.io.timers[((reg - 0x100) / 4) as usize];
+                let value = t.counter;
+                if t.control & 0x80 != 0 && t.control & 0x4 == 0 {
+                    let (next, overflow) = t.counter.overflowing_add(1);
+                    t.counter = if overflow { t.reload } else { next };
+                }
+                value
+            }
             _ => self.io_peek16(reg),
         }
     }
@@ -96,6 +142,7 @@ impl Cpu {
             self.io.bad_accesses += 1;
             return;
         }
+        let Some(v) = self.write_mask(reg, v) else { return };
         match reg {
             REG_IF => {
                 // Writing 1 acknowledges.
@@ -103,6 +150,30 @@ impl Cpu {
                 self.io_poke16(reg, cur & !v);
             }
             REG_VCOUNT | REG_KEYINPUT => {}
+            0x128 | 0x134 => {
+                self.io_poke16(reg, v);
+                self.sio_write(reg, v);
+                self.with_host(|h, c| h.io_write16(c, addr, v));
+                self.service_irqs();
+                return;
+            }
+            0x100 | 0x104 | 0x108 | 0x10C => {
+                self.io.timers[((reg - 0x100) / 4) as usize].reload = v;
+            }
+            0x102 | 0x106 | 0x10A | 0x10E => {
+                self.io_poke16(reg, v);
+                let t = &mut self.io.timers[((reg - 0x102) / 4) as usize];
+                if v & 0x80 != 0 && t.control & 0x80 == 0 {
+                    t.counter = t.reload;
+                }
+                t.control = v;
+            }
+            REG_IE | REG_IME => {
+                self.io_poke16(reg, v);
+                self.with_host(|h, c| h.io_write16(c, addr, v));
+                self.service_irqs();
+                return;
+            }
             0xB0..=0xDF => {
                 self.io_poke16(reg, v);
                 let ch = ((reg - 0xB0) / 12) as usize;
@@ -113,6 +184,49 @@ impl Cpu {
             _ => self.io_poke16(reg, v),
         }
         self.with_host(|h, c| h.io_write16(c, addr, v));
+    }
+
+    /// The value a register stores when written, as mGBA masks it; None
+    /// if the write is dropped.
+    fn write_mask(&self, reg: u32, v: u16) -> Option<u16> {
+        // Sound registers ignore writes while the sound unit is off.
+        if (0x60..=0x80).contains(&reg) && self.io_peek16(0x84) & 0x80 == 0 {
+            return None;
+        }
+        Some(match reg {
+            0x00 => v & 0xFFF7,
+            0x04 => (self.io_peek16(0x04) & 0x7) | (v & 0xFFF8),
+            0x08 | 0x0A => v & 0xDFFF,
+            0x10..=0x1E => v & 0x01FF,
+            0x50 => v & 0x3FFF,
+            0x52 => v & 0x1F1F,
+            0x54 => v & 0x001F,
+            0x48 | 0x4A => v & 0x3F3F,
+            0x60 => v & 0x007F,
+            0x62 => v & 0xFFC0,
+            0x64 => v & 0x4000,
+            0x68 => v & 0xFFC0,
+            0x6C => v & 0x4000,
+            0x70 => v & 0x00E0,
+            0x72 => v & 0xE000,
+            0x74 => v & 0x4000,
+            0x78 => v & 0xFF00,
+            0x7C => v & 0x40FF,
+            0x80 => v & 0xFF77,
+            0x82 => v & 0x770F,
+            0x84 => (v & 0x0080) | (self.io_peek16(0x84) & 0xF),
+            0x88 => v & 0xC3FE,
+            0xBA | 0xC6 | 0xD2 => v & 0xF7E0,
+            0xDE => v & 0xFFE0,
+            0x102 | 0x106 | 0x10A | 0x10E => v & 0x00C7,
+            0x128 => v & 0x7FFF,
+            0x134 => v & 0xC1FF,
+            0x132 => v & 0xC3FF,
+            0x204 => v & 0x5FFF,
+            0x208 => v & 1,
+            0x300 => return None, // POSTFLG: only the BIOS writes it
+            _ => v,
+        })
     }
 
     fn dma_control_written(&mut self, ch: usize, control: u16) {
@@ -202,5 +316,16 @@ impl Cpu {
     /// Whether any enabled interrupt is pending and IME is set.
     pub fn irq_pending(&self) -> bool {
         self.io_peek16(REG_IME) & 1 != 0 && self.io_peek16(REG_IE) & self.io_peek16(REG_IF) != 0
+    }
+
+    /// Take pending interrupts, as the CPU would at the next instruction
+    /// boundary, while the CPSR allows them.
+    pub fn service_irqs(&mut self) {
+        let mut guard = 0;
+        while self.irq_pending() && self.cpsr_ctl & 0x80 == 0 {
+            self.irq(0);
+            guard += 1;
+            assert!(guard < 1000, "interrupt storm: IE={:#x} IF={:#x}", self.io_peek16(REG_IE), self.io_peek16(REG_IF));
+        }
     }
 }

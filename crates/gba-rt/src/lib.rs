@@ -9,6 +9,7 @@
 mod bios;
 mod io;
 mod mem;
+pub mod sio;
 
 pub use io::{Dma, DmaTiming};
 pub use mem::Memory;
@@ -89,6 +90,12 @@ pub struct Cpu {
     /// The last BIOS opcode prefetched before leaving the BIOS: what reads
     /// of BIOS memory return from outside it (mGBA's `biosPrefetch`).
     pub bios_prefetch: u32,
+    in_exception_return: bool,
+    /// The other end of the link cable, if any.
+    pub link: Option<Box<dyn sio::SioLink>>,
+    /// ROM routines the game copies into RAM and runs there: (ROM address,
+    /// length). A call into RAM whose bytes match one runs its translation.
+    pub ram_code: Vec<(u32, u32)>,
 }
 
 impl Cpu {
@@ -116,6 +123,9 @@ impl Cpu {
             watch_len: 0,
             on_watch: None,
             bios_prefetch: 0,
+            in_exception_return: false,
+            link: None,
+            ram_code: Vec::new(),
         }
     }
 
@@ -137,7 +147,43 @@ impl Cpu {
         if let Some(f) = self.overrides.get(&addr) {
             return Some(*f);
         }
-        (self.lookup)(addr)
+        if let Some(f) = (self.lookup)(addr) {
+            return Some(f);
+        }
+        if matches!(addr >> 24, 0x02 | 0x03) {
+            for &(rom, len) in &self.ram_code {
+                if (0..len).all(|i| self.mem.peek(addr + i) == self.mem.peek(rom + i)) {
+                    return (self.lookup)(rom);
+                }
+            }
+            if let Some(rom) = self.rom_source_of(addr) {
+                match (self.lookup)(rom) {
+                    Some(f) => return Some(f),
+                    None => panic!(
+                        "code at {addr:#010x} is a copy of ROM {rom:#010x}, which isn't a translated function entry"
+                    ),
+                }
+            }
+        }
+        None
+    }
+
+    /// Find where in ROM the code at a RAM address was copied from, by
+    /// matching its bytes.
+    pub fn rom_source_of(&self, addr: u32) -> Option<u32> {
+        const N: usize = 48;
+        let needle: Vec<u8> = (0..N as u32).map(|i| self.mem.peek(addr + i)).collect();
+        let rom = &self.mem.rom;
+        let mut found = None;
+        for (i, w) in rom.windows(N).enumerate().step_by(2) {
+            if w == &needle[..] {
+                if found.is_some() {
+                    return None; // ambiguous
+                }
+                found = Some(0x0800_0000 + i as u32);
+            }
+        }
+        found
     }
 
     /// Call the function at `addr` from the host, as `bl` would. Registers
@@ -353,9 +399,13 @@ impl Cpu {
             self.v = value & (1 << 28) != 0;
         }
         if fields & 1 != 0 {
+            let was_masked = self.cpsr_ctl & 0x80 != 0;
             let ctl = (self.cpsr_ctl & !0xFF) | (value & 0xFF);
             self.switch_mode(ctl & 0x1F);
             self.cpsr_ctl = ctl;
+            if was_masked && ctl & 0x80 == 0 && !self.in_exception_return {
+                self.service_irqs();
+            }
         }
     }
 
@@ -436,8 +486,12 @@ impl Cpu {
         }
         self.r[13] = sp + 24;
         [self.r[0], self.r[1], self.r[2], self.r[3], self.r[12], self.r[14]] = regs;
+        // Restoring CPSR returns to the interrupted code; a still-pending
+        // interrupt is taken by the caller's service loop, not recursively.
         let spsr = self.spsr;
+        self.in_exception_return = true;
         self.set_cpsr(spsr, 0xF);
+        self.in_exception_return = false;
         // Leaving the BIOS's IRQ stub (`subs pc, lr, #4` at 0x13C) leaves
         // the word at 0x144 in the prefetch.
         self.bios_prefetch = 0xE55E_C002;

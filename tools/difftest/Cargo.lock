@@ -80,6 +80,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bn6"
+version = "0.1.0"
+dependencies = [
+ "bn6-gen",
+ "gba-rt",
+]
+
+[[package]]
 name = "bn6-gen"
 version = "0.1.0"
 dependencies = [
@@ -247,6 +255,7 @@ dependencies = [
 name = "difftest"
 version = "0.1.0"
 dependencies = [
+ "bn6",
  "bn6-gen",
  "gba-rt",
  "mgba",

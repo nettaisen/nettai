@@ -1,0 +1,10 @@
+# Entry points the disassembly doesn't mark as functions.
+080002d4	thumb	main_gameRoutine_body
+# m4a SoundMainRAM's IWRAM copy switches modes with `adr rN, label; bx rN`.
+0300570c	arm	SoundMainRAM_reverb_arm
+0300578e	thumb	SoundMainRAM_channels_thumb
+03005898	arm	SoundMainRAM_mixer_arm
+03005a80	thumb	SoundMainRAM_exit_thumb
+# librfu's SIO32 IRQ handler (ARM), copied into IWRAM by rfu_initializeAPI;
+# the disassembly leaves it as bytes.
+0814cf54	arm	librfu_sio32_irq_handler

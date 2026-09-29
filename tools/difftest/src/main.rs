@@ -163,8 +163,90 @@ fn is_expected(d: &Diff) -> bool {
     }
 }
 
+/// The button schedule both sides get in boot mode: taps through the logo,
+/// title and menus.
+fn boot_keys(frame: u32) -> u16 {
+    match frame % 60 {
+        30 => bn6::keys::A,
+        45 => bn6::keys::START,
+        _ => 0,
+    }
+}
+
+/// Boot from power-on in both mGBA and the port and compare state at the
+/// start of every main-loop pass.
+fn boot_mode(args: &[String]) {
+    let rom = std::fs::read(&args[0]).unwrap();
+    let save = std::fs::read(&args[1]).unwrap();
+    let frames: u32 = args.get(2).map(|s| s.parse().unwrap()).unwrap_or(600);
+    let rom_arc: Arc<[u8]> = rom.clone().into();
+
+    let mut core = mgba::core::OwnedCore::new_gba("difftest", &Default::default()).unwrap();
+    core.load_rom(mgba::vfile::VFile::from_vec(rom)).unwrap();
+    core.load_save(mgba::vfile::VFile::from_vec(save.clone())).unwrap();
+    core.reset();
+
+    struct State {
+        port: bn6::Gba,
+        frame: u32,
+        failures: u32,
+        shown: u32,
+        region_counts: std::collections::BTreeMap<&'static str, u64>,
+    }
+    let state = Rc::new(RefCell::new(State {
+        port: bn6::Gba::new(rom_arc, Some(&save)),
+        frame: 0,
+        failures: 0,
+        shown: 0,
+        region_counts: Default::default(),
+    }));
+    let st = state.clone();
+    core.set_traps(vec![(
+        bn6::addr::MAIN_LOOP_BODY,
+        Box::new(move |core: &mut mgba::core::Core| {
+            let mut s = st.borrow_mut();
+            let frame = s.frame;
+            let keys = boot_keys(frame);
+            // KEYINPUT is read later in this pass.
+            core.set_keys(keys as u32);
+            let theirs = snap(core);
+            if frame > 0 {
+                s.port.end_frame();
+            }
+            s.port.begin_frame(keys);
+            let sp = theirs.gprs[13];
+            let diffs = compare(&s.port.cpu, &theirs, sp);
+            let unexpected: Vec<&Diff> = diffs.iter().filter(|d| !is_expected(d)).collect();
+            for d in &diffs {
+                *s.region_counts.entry(d.region).or_default() += 1;
+            }
+            if !unexpected.is_empty() {
+                s.failures += 1;
+                if s.shown < 5 {
+                    s.shown += 1;
+                    println!("frame {frame}: {} unexpected diffs", unexpected.len());
+                    for d in unexpected.iter().take(16) {
+                        println!("    {:#010x} [{}] ours {:02x} theirs {:02x}", d.addr, d.region, d.ours, d.theirs);
+                    }
+                }
+            }
+            s.port.run_body();
+            s.frame += 1;
+        }),
+    )]);
+    while state.borrow().frame < frames {
+        core.run_frame();
+    }
+    let s = state.borrow();
+    println!("{} passes compared: {} with unexpected diffs; diff bytes by region {:?}", s.frame, s.failures, s.region_counts);
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(|s| s.as_str()) == Some("boot") {
+        boot_mode(&args[1..]);
+        return;
+    }
     let replay_path = &args[0];
     let rom_path = &args[1];
     let mut max_frames = u32::MAX;

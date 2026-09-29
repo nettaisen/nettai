@@ -21,6 +21,11 @@ for line in open(os.path.join(BN6F, "bn6f.sym")):
 files = ["asm/start.s", "asm/main.s"] + sorted(
     os.path.join("asm", f) for f in os.listdir(os.path.join(BN6F, "asm"))
     if f.endswith(".s") and f not in ("start.s", "main.s"))
+# Per-map code (loaders, callbacks) lives beside the map data.
+files += sorted(
+    os.path.join("maps", d, f) for d in os.listdir(os.path.join(BN6F, "maps"))
+    if os.path.isdir(os.path.join(BN6F, "maps", d))
+    for f in os.listdir(os.path.join(BN6F, "maps", d)) if f.endswith(".s"))
 label_re = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*):")
 funcs = {}
 for f in files:
@@ -67,6 +72,13 @@ print(len(funcs), "functions")
 # Code references from data words (".word label" / ".word label+1"): candidate
 # targets for computed jumps (switch tables) and function pointers.
 word_re = re.compile(r"\.word\s+([A-Za-z_][A-Za-z0-9_.]*)\s*(\+\s*1)?\s*$")
+# Labels defined in the IWRAM code file: an odd one is Thumb code stored as
+# bytes (the palette-fade kernels). Elsewhere odd labels are byte tables.
+code_labels = set()
+for f in ["asm/asm38.s"]:
+    text = open(os.path.join(BN6F, f), encoding="utf-8", errors="replace").read()
+    for m in re.finditer(r"^([A-Za-z_][A-Za-z0-9_]*):", text, flags=re.M):
+        code_labels.add(m.group(1))
 refs = set()
 data_files = sorted(os.path.join("data", f) for f in os.listdir(os.path.join(BN6F, "data")) if f.endswith(".s"))
 for f in files + data_files + ["iwram_code.s"]:
@@ -77,12 +89,18 @@ for f in files + data_files + ["iwram_code.s"]:
         if ":" in line and line.split(":")[0].replace(".", "").replace("_", "").isalnum():
             line = line.split(":", 1)[1].strip()
         m = word_re.search(line)
-        if m and m.group(1) in syms and not re.match(
-                r"(byte|word|dword|hword|off|unk|str|comp|dat|a[A-Z0-9]|pt|ptr|tbl|jt)_?", m.group(1)) and (
-                m.group(2) or re.match(r"(loc|locret|def|sub|nullsub|\.)", m.group(1)) or m.group(1)[0].isupper()):
-            addr = syms[m.group(1)]
-            if 0x08000000 <= addr < 0x08200000 or 0x03000000 <= addr < 0x03008000:
-                refs.add((addr, 1 if m.group(2) else 0))
+        if not m or m.group(1) not in syms:
+            continue
+        name, plus1 = m.group(1), bool(m.group(2))
+        addr = syms[name]
+        if not (0x08000000 <= addr < 0x08200000 or 0x03000000 <= addr < 0x03008000):
+            continue
+        if plus1 or (addr & 1 and name in code_labels):
+            # A Thumb code pointer (label+1, or a label at an odd address).
+            refs.add((addr & ~1, 1))
+        elif not re.match(r"(byte|word|dword|hword|off|unk|str|comp|dat|a[A-Z0-9]|pt|ptr|tbl|jt)_?", name) and (
+                re.match(r"(loc|locret|def|sub|nullsub|\.)", name) or name[0].isupper()):
+            refs.add((addr, 0))
 with open(os.path.join(OUT, "code_refs.tsv"), "w") as out:
     for addr, thumb in sorted(refs):
         out.write(f"{addr:08x}\t{thumb}\n")

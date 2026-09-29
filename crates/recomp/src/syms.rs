@@ -17,6 +17,8 @@ pub struct Syms {
     pub code_refs: BTreeSet<u32>,
     /// Thumb function pointers (`.word label+1`) found in data.
     pub thumb_ptrs: BTreeSet<u32>,
+    /// Functions the host may override at run time.
+    pub hooks: BTreeSet<u32>,
 }
 
 fn parse_hex(s: &str) -> u32 {
@@ -29,7 +31,8 @@ impl Syms {
             std::fs::read_to_string(dir.join(name)).unwrap_or_else(|e| panic!("reading {name}: {e}"))
         };
         let mut funcs = BTreeMap::new();
-        for line in read("functions.tsv").lines() {
+        let extra = read("extra_entries.tsv");
+        for line in read("functions.tsv").lines().chain(extra.lines().filter(|l| !l.starts_with('#'))) {
             let mut it = line.split('\t');
             let (Some(a), Some(m), Some(n)) = (it.next(), it.next(), it.next()) else { continue };
             let mode = if m == "arm" { Mode::Arm } else { Mode::Thumb };
@@ -53,7 +56,12 @@ impl Syms {
                 }
             }
         }
-        Syms { funcs, labels, code_refs, thumb_ptrs }
+        let hooks = read("hooks.tsv")
+            .lines()
+            .filter(|l| !l.starts_with('#') && !l.is_empty())
+            .map(|l| parse_hex(l.split('\t').next().unwrap()))
+            .collect();
+        Syms { funcs, labels, code_refs, thumb_ptrs, hooks }
     }
 
     /// A readable label for an address, preferring global names over

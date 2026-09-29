@@ -39,9 +39,4 @@ impl Image {
         Some(u32::from_le_bytes(self.rom.get(o..o + 4)?.try_into().ok()?))
     }
 
-    /// Whether `addr` holds immutable data (ROM or a code overlay), so loads
-    /// from it can be folded to constants.
-    pub fn is_constant(&self, addr: u32) -> bool {
-        self.offset(addr).is_some()
-    }
 }

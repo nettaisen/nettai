@@ -14,6 +14,7 @@ mgba-sys = { git = "https://github.com/tangobattle/mgba-rs" }
 mgba-rollback = { git = "https://github.com/tangobattle/mgba-rollback" }
 gba-rt = { path = "../../crates/gba-rt" }
 bn6-gen = { path = "../../crates/bn6-gen" }
+bn6 = { path = "../../crates/bn6" }
 
 [profile.dev]
 opt-level = 1
