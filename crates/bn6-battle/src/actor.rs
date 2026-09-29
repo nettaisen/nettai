@@ -31,8 +31,10 @@ pub mod request {
     pub const BACK_SPECIAL: u32 = 0x10;
     /// Forces the charged-shot action (setter unknown).
     pub const FORCED_CHARGED_SHOT: u32 = 0x20;
-    /// Pause-time request: action 0x1C with state bit 0x100.
-    pub const PAUSE_40: u32 = 0x40;
+    /// Revert to base form while paused (`sub_8015994`: the turn-start
+    /// check found the Beast Out used up; the mid-battle custom screen
+    /// asks too): pause-time action 0x1C with `status::REVERTING_FORM`.
+    pub const REVERT_FORM: u32 = 0x40;
     /// Reactive defense chips (anti-damage traps).
     pub const TRAP_200: u32 = 0x200;
     pub const TRAP_400: u32 = 0x400;
@@ -46,19 +48,25 @@ pub mod request {
     pub const ALT_CHIP: u32 = 0x10000;
     pub const A_HELD: u32 = 0x20000;
     pub const B_HELD: u32 = 0x40000;
-    /// Starts action 0x49 from idle.
-    pub const ACTION_49: u32 = 0x80000;
+    /// Starts action 0x49 from idle (`sub_80EEB4C`): a slash at every
+    /// opposing navi that is paralyzed (variant 0) or stands on a panel
+    /// with flags 0x1C00 (variant 1). No setter was found; the form
+    /// changes set the *state* bit 0x80000 (`status::FORM_CHANGE_SPRITE_HELD`),
+    /// not this request.
+    pub const STUN_STRIKE: u32 = 0x80000;
     pub const SELECT_SPECIAL: u32 = 0x0200_0000;
-    /// Pause-time request: action 0x1C with state bit 0x1000.
-    pub const PAUSE_4000000: u32 = 0x0400_0000;
+    /// Change Cross while paused (`sub_802DCDE`, from the transformation
+    /// sequencer): pause-time action 0x1C with `status::CHANGING_CROSS`.
+    pub const CROSS_CHANGE: u32 = 0x0400_0000;
     /// Cross death (action 0x4C) outside the pause; pause-time request for
-    /// action 0x1C with state bit 0x2000 inside it.
+    /// action 0x1C inside it. Both set `status::CROSS_KNOCKOUT`.
     pub const CROSS_DEATH: u32 = 0x0800_0000;
     /// Battle mode 9 A press.
     pub const MODE9_A: u32 = 0x1000_0000;
     pub const CROSS_SPECIAL: u32 = 0x2000_0000;
-    /// Starts action 0x30.
-    pub const ACTION_30: u32 = 0x4000_0000;
+    /// Starts action 0x30 (`sub_80ED55C`, with `status::VOLLEY`): a
+    /// volley of shots, the count per variant. No setter was found.
+    pub const VOLLEY: u32 = 0x4000_0000;
     /// Hit by an element this navi is weak to (ends crosses).
     pub const WEAKNESS_HIT: u32 = 0x8000_0000;
     /// Every attack request.
@@ -73,18 +81,30 @@ pub mod status {
     pub const MOVE_DIRECTIONS: u32 = 0xF;
     pub const CONTROLLABLE: u32 = 0x10;
     pub const CHIP_IN_PROGRESS: u32 = 0x40;
-    /// Pause handler: form change in progress.
+    /// Pause handler: form change in progress (`sub_8014A38`).
     pub const FORM_CHANGE: u32 = 0x80;
+    /// Pause handler: reverting to base form (`sub_8015614`).
+    pub const REVERTING_FORM: u32 = 0x100;
     pub const NO_CHARGE: u32 = 0x200;
     pub const CAN_TURN: u32 = 0x400;
     /// Anti-damage trap armed (acts like chip 0xBB).
     pub const TRAP_ARMED: u32 = 0x800;
-    /// Cross states that take over the action dispatch.
-    pub const CROSS_2000: u32 = 0x2000;
-    pub const CROSS_4000: u32 = 0x4000;
-    pub const CROSS_10000: u32 = 0x1_0000;
-    pub const CROSS_20000: u32 = 0x2_0000;
-    pub const CROSS_40000: u32 = 0x4_0000;
+    /// Pause handler: changing Cross (`sub_802D714`).
+    pub const CHANGING_CROSS: u32 = 0x1000;
+    /// Knocked out of a Cross instead of deleted (action 0x4C, or the
+    /// pause handler's `sub_802D926`). Takes over the action dispatch.
+    pub const CROSS_KNOCKOUT: u32 = 0x2000;
+    /// A Cross change took effect (set when `sub_802D714` ends). A link
+    /// navi with it falls back instead of being deleted (`sub_802DD2A`).
+    pub const CROSSED: u32 = 0x4000;
+    /// The volley (action 0x30) runs. Takes over the action dispatch.
+    pub const VOLLEY: u32 = 0x1_0000;
+    /// Takes over the action dispatch like the two above; no setter was
+    /// found.
+    pub const UNINTERRUPTIBLE: u32 = 0x2_0000;
+    /// A weakness hit is breaking the Cross (`sub_8015766` runs instead
+    /// of the action).
+    pub const CROSS_BREAKING: u32 = 0x4_0000;
     /// A form change holds the navi's sprite still (it is off the field).
     pub const FORM_CHANGE_SPRITE_HELD: u32 = 0x8_0000;
     /// Anti-damage trap for heat attacks.

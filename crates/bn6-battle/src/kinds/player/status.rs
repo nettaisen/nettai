@@ -58,10 +58,10 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return Flow::Tail;
     }
     let st = ai(b, r).status;
-    if st & (ai_status::CROSS_2000 | ai_status::CROSS_10000 | ai_status::CROSS_20000) != 0 {
+    if st & (ai_status::CROSS_KNOCKOUT | ai_status::VOLLEY | ai_status::UNINTERRUPTIBLE) != 0 {
         return Flow::Dispatch;
     }
-    if st & ai_status::CROSS_40000 != 0 && cross_lane(b, r) {
+    if st & ai_status::CROSS_BREAKING != 0 && cross_lane(b, r) {
         return Flow::Return;
     }
     if b.is_time_stop() {
@@ -267,20 +267,20 @@ fn cross_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     let f = ai(b, r).requests;
     if f & request::CROSS_DEATH != 0 {
         ai_mut(b, r).requests &= !request::CROSS_DEATH;
-        ai_mut(b, r).status |= ai_status::CROSS_2000;
+        ai_mut(b, r).status |= ai_status::CROSS_KNOCKOUT;
         set_attack(b, r, 0x4C, 0);
         return Some(Flow::Dispatch);
     }
-    if f & request::ACTION_30 != 0 {
-        ai_mut(b, r).requests &= !request::ACTION_30;
-        ai_mut(b, r).status |= ai_status::CROSS_10000;
+    if f & request::VOLLEY != 0 {
+        ai_mut(b, r).requests &= !request::VOLLEY;
+        ai_mut(b, r).status |= ai_status::VOLLEY;
         set_attack(b, r, 0x30, 0);
         return Some(Flow::Dispatch);
     }
     if f & request::WEAKNESS_HIT != 0 {
         ai_mut(b, r).requests &= !request::WEAKNESS_HIT;
         if (0x1AC..=0x1C1).contains(&b.objects.get(r).name_id) {
-            ai_mut(b, r).status |= ai_status::CROSS_40000;
+            ai_mut(b, r).status |= ai_status::CROSS_BREAKING;
             exit_attack_state(b, r);
             cross_lane(b, r);
             return Some(Flow::Return);
@@ -644,27 +644,27 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
     if st & ai_status::FORM_CHANGE != 0 {
         return actions::transform::form_change(b, r);
     }
-    if st & 0x100 != 0 {
+    if st & ai_status::REVERTING_FORM != 0 {
         panic!("pause action (sub_8015614) is not implemented yet");
     }
-    if st & 0x1000 != 0 {
+    if st & ai_status::CHANGING_CROSS != 0 {
         panic!("pause action (sub_802D714) is not implemented yet");
     }
-    if st & 0x2000 != 0 {
+    if st & ai_status::CROSS_KNOCKOUT != 0 {
         panic!("pause action (sub_802D926) is not implemented yet");
     }
     let f = ai(b, r).requests;
     let (bit, state) = if f & request::FORM_CHANGE != 0 {
         (request::FORM_CHANGE, ai_status::FORM_CHANGE)
-    } else if f & request::PAUSE_40 != 0 {
+    } else if f & request::REVERT_FORM != 0 {
         // Saves the state word after zeroing it.
         b.objects.get_mut(r).saved_state = None;
         save_state_word(b, r);
-        (request::PAUSE_40, 0x100)
-    } else if f & request::PAUSE_4000000 != 0 {
-        (request::PAUSE_4000000, 0x1000)
+        (request::REVERT_FORM, ai_status::REVERTING_FORM)
+    } else if f & request::CROSS_CHANGE != 0 {
+        (request::CROSS_CHANGE, ai_status::CHANGING_CROSS)
     } else if f & request::CROSS_DEATH != 0 {
-        (request::CROSS_DEATH, 0x2000)
+        (request::CROSS_DEATH, ai_status::CROSS_KNOCKOUT)
     } else {
         return;
     };

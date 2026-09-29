@@ -242,7 +242,7 @@ fn save_state_word(b: &mut Battle, r: ObjectRef) {
 /// `sub_802DD2A`: a Cross navi that falls back to base form instead of
 /// dying.
 fn cross_protected(b: &Battle, r: ObjectRef) -> bool {
-    stats(b, r).navi != Navi::MEGAMAN && ai(b, r).status & crate::actor::status::CROSS_4000 != 0
+    stats(b, r).navi != Navi::MEGAMAN && ai(b, r).status & crate::actor::status::CROSSED != 0
 }
 
 /// Switch to `action` at phase 0 (the game's direct CurAction stores).
@@ -416,13 +416,13 @@ pub fn check_beast_out_end(b: &mut Battle, r: ObjectRef) {
         s.form.is_beast()
     };
     if revert {
-        ai_mut(b, r).requests |= request::PAUSE_40;
+        ai_mut(b, r).requests |= request::REVERT_FORM;
     }
 }
 
 /// `sub_80159A2`: a form reversion is pending or running.
 pub fn reverting_form(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & 0x100 != 0 || ai(b, r).requests & request::PAUSE_40 != 0
+    ai(b, r).status & crate::actor::status::REVERTING_FORM != 0 || ai(b, r).requests & request::REVERT_FORM != 0
 }
 
 /// `sub_801596E`: ask the navi to change form (it does so in the pause
@@ -438,7 +438,7 @@ pub fn changing_form(b: &Battle, r: ObjectRef) -> bool {
 
 /// `sub_802DCEC`: a Cross change is pending or running.
 pub fn changing_cross(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & 0x1000 != 0 || ai(b, r).requests & request::PAUSE_4000000 != 0
+    ai(b, r).status & crate::actor::status::CHANGING_CROSS != 0 || ai(b, r).requests & request::CROSS_CHANGE != 0
 }
 
 // ---- Init --------------------------------------------------------------------
