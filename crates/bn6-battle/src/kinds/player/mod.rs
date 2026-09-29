@@ -770,8 +770,11 @@ fn per_form_tick(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let s = *stats(b, r);
-    if !b.paused && (s.navi == Navi(5) || matches!(s.form.0, 5 | 0x11)) {
-        panic!("per-chip charge counters (sub_80F0608) are not implemented yet");
+    if !b.paused && s.navi == Navi(5) {
+        panic!("ChargeMan's per-chip charge limit (sub_800F49E) is not implemented yet");
+    }
+    if !b.paused && matches!(s.form.0, 5 | 0x11) {
+        charge_fire_chip(b, r, 100);
     }
     if s.navi == Navi::MEGAMAN {
         if s.form == Form::FALZAR_BEAST_OVER {
@@ -780,6 +783,34 @@ fn per_form_tick(b: &mut Battle, r: ObjectRef) {
             b.objects.get_mut(r).pos.z = 0;
         }
     }
+}
+
+/// `sub_80F0608`, ChargeCross (forms 5 and 0x11): while the navi charges
+/// with A, a damaging Fire chip up next gains a point of damage each time
+/// the charge counter reaches 15 (which sets it back to 10), up to
+/// `limit`; without the A charge the bonus is lost.
+fn charge_fire_chip(b: &mut Battle, r: ObjectRef, limit: u16) {
+    let side = b.objects.get(r).alliance as usize;
+    let hand = &b.hands[side];
+    let i = hand.cursor as usize;
+    let Some(&chip) = hand.ids.get(i) else { return };
+    let cd = crate::data::chip(chip);
+    if !cd.flags.has(crate::data::ChipFlags::HAS_DAMAGE) || cd.element != crate::data::Element::Fire {
+        return;
+    }
+    if b.hands[side].charge_bonus[i] >= limit {
+        return;
+    }
+    let a = ai_mut(b, r);
+    if a.charge_source != 1 {
+        b.hands[side].charge_bonus[i] = 0;
+        return;
+    }
+    if a.charge_counter < 0xF {
+        return;
+    }
+    a.charge_counter = 0xA;
+    b.hands[side].charge_bonus[i] += 1;
 }
 
 /// `sub_80107D4`: chip lockout and special cooldowns (not in time stop).
