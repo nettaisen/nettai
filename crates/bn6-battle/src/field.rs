@@ -248,6 +248,14 @@ impl Field {
         f
     }
 
+    /// Forget last frame's highlights (presentation only; `sub_800C5E0`
+    /// clears each one it draws).
+    pub fn clear_highlights(&mut self) {
+        for p in self.panels.iter_mut().flatten() {
+            p.highlight = 0;
+        }
+    }
+
     pub fn panel(&self, x: u8, y: u8) -> Option<&Panel> {
         is_valid(x, y).then(|| &self.panels[y as usize][x as usize])
     }

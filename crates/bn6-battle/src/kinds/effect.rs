@@ -5,6 +5,7 @@
 
 use crate::battle::Battle;
 use crate::data::{EffectSprite, effects_generated::EFFECTS};
+use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
 /// Effect-private state.
@@ -60,12 +61,19 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 }
 
 fn init(b: &mut Battle, r: ObjectRef) {
-    let id = b.objects.get(r).params[0];
-    let EffectSprite { sprite: id, anim, .. } = EFFECTS[id as usize];
+    let [id, flip, palette_add, priority] = b.objects.get(r).params;
+    let EffectSprite { sprite: id, anim, palette } = EFFECTS[id as usize];
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
     sprite.set_animation(anim);
     sprite.update();
+    let look = &mut sprite.look;
+    look.shadow = Shadow::WithSprite;
+    look.palette = palette.wrapping_add(palette_add);
+    look.set_flip(flip);
+    if priority != 0 {
+        look.priority = 0;
+    }
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = anim;
