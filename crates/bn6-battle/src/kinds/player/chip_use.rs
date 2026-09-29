@@ -1,0 +1,239 @@
+//! Using the next chip in the hand (`sub_800FB54` and `sub_80127C0`):
+//! read the hand entry, fill the attack variables from the chip data and
+//! the hand, apply the damage modifiers, and start the chip's action. See
+//! chips.md §2.6.4 and §2.7.
+
+use super::{ai, ai_mut, emotion, flag1, navi_record, set_attack, set_mood, stats};
+use crate::actor::{ActorType, request};
+use crate::battle::Battle;
+use crate::collision::f1;
+use crate::data::{self, ChipFlags, ChipId, Element};
+use crate::object::ObjectRef;
+use crate::setup::Navi;
+
+/// Damage-word flag bits a chip use can add (see `oBattleObject_Damage`).
+mod damage_flags {
+    /// Double damage (Full Synchro, anger, some crosses).
+    pub const DOUBLE: u16 = 0x8000;
+    /// Paralyzes (a folded WhiCapsl).
+    pub const PARALYZE: u16 = 0x4000;
+    /// Uninstalls (a folded Uninstll).
+    pub const UNINSTALL: u16 = 0x2000;
+    /// Erases a cross (EraseCross family chips).
+    pub const ERASE_CROSS: u16 = 0x1000;
+}
+
+/// `sub_800FB54`: when a chip request is up (and not sliding), take the
+/// next chip and start its action. Returns the chip used.
+pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
+    let requested = ai(b, r).requests & (request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
+    if flag1(b, r) & f1::SLIDING != 0 || requested == 0 {
+        return None;
+    }
+    if requested & request::CHARGED_CHIP != 0 {
+        panic!("charged chips (sub_800FB54) are not implemented yet");
+    }
+    if requested & request::ALT_CHIP != 0 {
+        panic!("Battle Chip Gate slot-in chips (sub_800EE26) are not implemented yet");
+    }
+    let action = prepare(b, r);
+    set_attack(b, r, action, 2);
+    let form = stats(b, r).form;
+    let a = &mut ai_mut(b, r).attack;
+    if a.special_source != 0 || form.is_beast() {
+        a.beast_lockon = data::chip(a.chip_id).beast_lockon;
+    }
+    ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
+    Some(ai(b, r).attack.chip_id)
+}
+
+/// The hand entry at the cursor (`sub_800EDD0`, player branch).
+struct HandEntry {
+    chip: ChipId,
+    damage: u16,
+    /// Atk+ and charge bonuses plus any form or aura bonus.
+    extra: u16,
+    /// Modifier flags folded into the entry (bit 1 paralyze, bit 2
+    /// uninstall).
+    modifiers: u8,
+}
+
+fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
+    let o = b.objects.get(r);
+    if navi_record(b, r).actor_type != ActorType::Player {
+        panic!("chip use by a non-player (sub_800EDD0) is not implemented yet");
+    }
+    let hand = &b.hands[o.alliance as usize];
+    let i = hand.cursor as usize;
+    let chip = hand.ids[i];
+    let extra = hand.attack_bonus[i].wrapping_add(chip_bonus(b, r, chip)).wrapping_add(hand.charge_bonus[i]);
+    HandEntry { chip, damage: hand.damage[i], extra, modifiers: hand.modifiers[i] }
+}
+
+/// `sub_80127C0(0)`: fill the attack variables for the next chip and
+/// name its action.
+fn prepare(b: &mut Battle, r: ObjectRef) -> u8 {
+    let e = hand_entry(b, r);
+    let cd = data::chip(e.chip);
+    if cd.dark_subst != 0xFF {
+        panic!("dark chip substitution (sub_8010D58) is not implemented yet");
+    }
+    let action = load_attack(b, r, e.chip);
+    let a = &mut ai_mut(b, r).attack;
+    a.charged = 0;
+    // The hand's damage replaces the chip data's.
+    a.damage = e.damage;
+    // sub_8012C7C: the cross charge bonus is 0 for an uncharged use.
+    a.extra = e.extra;
+    let (damage, boost) = double_damage(b, r, e.chip, e.damage);
+    ai_mut(b, r).attack.damage = damage;
+    let side = b.objects.get(r).alliance;
+    match boost {
+        Some(Boost::FullSynchro) => set_mood(b, side, 0x80),
+        Some(Boost::Anger) => super::status::end_anger(b, r),
+        None => {}
+    }
+    let mut damage = ai(b, r).attack.damage;
+    // sub_8012C34
+    if e.modifiers & 2 != 0 {
+        damage |= damage_flags::PARALYZE;
+    }
+    if e.modifiers & 4 != 0 {
+        damage |= damage_flags::UNINSTALL;
+    }
+    // sub_8012C4A
+    if deals_damage(cd.flags) && cd.family == 0x0A && matches!(stats(b, r).form.0, 4 | 0x10) {
+        damage |= damage_flags::ERASE_CROSS;
+    }
+    ai_mut(b, r).attack.damage = damage;
+    heal_on_use(b, r, e.chip);
+    if cd.flags.has(ChipFlags::NAVI) {
+        b.bump_side_stat(side, 6, 1);
+    }
+    // sub_800B79A: some dark chips cost the user when used.
+    if (0x11E..=0x122).contains(&e.chip) {
+        panic!("dark chip side effects (sub_800B79A) are not implemented yet");
+    }
+    action
+}
+
+/// A chip that deals damage and does not stop time (the condition every
+/// damage bonus shares).
+fn deals_damage(flags: ChipFlags) -> bool {
+    flags.has(ChipFlags::HAS_DAMAGE) && !flags.has(ChipFlags::TIME_FREEZE)
+}
+
+/// `sub_80126E4`: the attack variables from the chip data; returns the
+/// chip's action. (The game also counts the use per side, for a report
+/// only the battle-flag 0x40 mode reads.)
+fn load_attack(b: &mut Battle, r: ObjectRef, chip: ChipId) -> u8 {
+    let cd = data::chip(chip);
+    let side = b.objects.get(r).alliance;
+    let damage = crate::hand::chip_damage(b, chip, side);
+    let a = &mut ai_mut(b, r).attack;
+    a.chip_id = chip;
+    a.params = cd.params.to_le_bytes();
+    a.damage = damage;
+    a.hit_param = cd.hit_param as u16;
+    a.lockout = cd.lockout;
+    a.extra = 0;
+    a.variant = cd.subtype;
+    a.element = cd.element as u8 | data::attacks::family_elements(cd.family).0;
+    a.charged = 0;
+    cd.action
+}
+
+/// `sub_800EF34`: the damage bonus MegaMan's form gives a chip, then the
+/// aura bonus (`sub_800F1DC`).
+fn chip_bonus(b: &Battle, r: ObjectRef, chip: ChipId) -> u16 {
+    let s = stats(b, r);
+    if s.navi != Navi::MEGAMAN {
+        panic!("link navi chip bonuses (sub_800F09E) are not implemented yet");
+    }
+    if chip == crate::hand::NO_CHIP {
+        return 0;
+    }
+    let cd = data::chip(chip);
+    let damaging = cd.flags.has(ChipFlags::HAS_DAMAGE);
+    let family_bonus = |family: u8, bonus: u16| (deals_damage(cd.flags) && cd.family == family).then_some(bonus);
+    let form_bonus = match s.form.0 {
+        1 | 0x0D => family_bonus(0, 50),
+        2 | 0x0E => family_bonus(2, 50),
+        3 | 0x0F => family_bonus(5, 50),
+        8 | 0x14 => family_bonus(8, 10),
+        // Unlike the others, this one also boosts time-stopping chips.
+        4 | 0x10 => (damaging && cd.family == 6).then_some(30),
+        9 | 0x15 => family_bonus(9, 10),
+        _ => None,
+    };
+    let beast_bonus = || {
+        let beast = (0x0B..=0x16).contains(&s.form.0);
+        (beast && deals_damage(cd.flags) && cd.family == 0x0A && super::battle_mode(b) != 1).then_some(30)
+    };
+    let bonus = form_bonus.or_else(beast_bonus).unwrap_or(0);
+    bonus + aura_bonus(b, r, chip)
+}
+
+/// `sub_800F1DC`: StreamHd and the AuraHed chips hit harder while the
+/// user's barrier holds.
+fn aura_bonus(b: &Battle, r: ObjectRef, chip: ChipId) -> u16 {
+    if chip != 0x150 && !(0x5F..=0x61).contains(&chip) {
+        return 0;
+    }
+    let c = super::coll(b, r);
+    let up = (1..0x10).contains(&c.barrier) && (c.barrier != 8 || c.barrier_hp != 0);
+    if up { 50 } else { 0 }
+}
+
+/// Why a chip's damage doubled.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Boost {
+    /// Full Synchro (spent by the use).
+    FullSynchro,
+    /// Anger (spent by the use).
+    Anger,
+}
+
+/// `sub_8012A38`: whether the use doubles the chip's damage.
+fn double_damage(b: &Battle, r: ObjectRef, chip: ChipId, damage: u16) -> (u16, Option<Boost>) {
+    let cd = data::chip(chip);
+    if !cd.flags.has(ChipFlags::HAS_DAMAGE) {
+        return (damage, None);
+    }
+    let boost = match emotion(b, b.objects.get(r).alliance) {
+        2 => Some(Boost::FullSynchro),
+        3 => Some(Boost::Anger),
+        _ => {
+            check_cross_boost(b, r);
+            None
+        }
+    };
+    let damage = if boost.is_some() { damage | damage_flags::DOUBLE } else { damage };
+    (damage, boost)
+}
+
+/// `sub_8012AFA`, `sub_8012B4E`, `sub_8012BA2` and `sub_8012ABC`: the
+/// cross and Beast Over element doubles. None applies to MegaMan in base
+/// form.
+fn check_cross_boost(b: &Battle, r: ObjectRef) {
+    let s = stats(b, r);
+    let (navi, form) = (s.navi.0, s.form.0);
+    let wood = navi == 7 || matches!(form, 7 | 0x13);
+    let aqua = navi == 6 || matches!(form, 6 | 0x12);
+    let beast_over = super::battle_mode(b) != 1 && matches!(form, 0x17 | 0x18);
+    if wood || aqua || navi == 0x0B || beast_over {
+        panic!("cross damage doubling (sub_8012A38) is not implemented yet");
+    }
+}
+
+/// The heal some uses give: the NaviCust chip-recovery stat, plus a
+/// twentieth of the base HP for aqua chips in the aqua crosses.
+fn heal_on_use(b: &Battle, r: ObjectRef, chip: ChipId) {
+    let s = stats(b, r);
+    let cd = data::chip(chip);
+    let cross = matches!(s.form.0, 6 | 0x12) && cd.element == Element::Aqua && !cd.flags.has(ChipFlags::TIME_FREEZE);
+    let heal = if cross { s.max_base_hp.div_ceil(0x14) } else { 0 };
+    if s.chip_recovery.wrapping_add(heal) != 0 {
+        panic!("healing on chip use (sub_800E2FC) is not implemented yet");
+    }
+}
