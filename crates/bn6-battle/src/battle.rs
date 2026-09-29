@@ -464,6 +464,9 @@ impl Battle {
     /// One battle tick (one frame of the running battle).
     pub fn tick(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
         self.sound.clear();
+        // Panel highlights last one frame: the game's field renderer
+        // clears them after drawing.
+        self.field.clear_highlights();
         match self.round.top {
             top::RUNNING => self.tick_running(input, events),
             top::END => self.tick_end(&events),

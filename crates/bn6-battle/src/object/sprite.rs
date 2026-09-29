@@ -1,6 +1,8 @@
 //! Sprite animation timing. Nothing is drawn here; the engine steps
 //! animations because some behaviors end when an animation does (effect
 //! lifetimes, some chip attacks). Frame durations come from `data`.
+//! `Look` records how behaviors ask for the sprite to be drawn, for a
+//! frontend.
 
 use crate::data::{self, AnimFrame, SpriteId};
 
@@ -20,6 +22,75 @@ pub struct Sprite {
     pub count: u8,
     /// The current frame's flags.
     pub frame_flags: u8,
+    /// How the sprite is drawn (presentation only; loading a sprite resets
+    /// it).
+    pub look: Look,
+}
+
+/// How a sprite is drawn. Nothing in the simulation reads this; behaviors
+/// set it where the game calls the matching `sprite_*` routine, and a
+/// frontend draws with it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Look {
+    /// `sprite_setPalette`: the palette within the frame's palette set.
+    pub palette: u8,
+    /// `sprite_setFlip`: mirrored horizontally / vertically.
+    pub hflip: bool,
+    pub vflip: bool,
+    /// What the first part of each frame (the shadow) does.
+    pub shadow: Shadow,
+    /// `sprite_forceWhitePalette`: drawn solid white (a hit flash).
+    pub white: bool,
+    /// `sprite_setColorShader`: a palette tint (0 = none).
+    pub color_shader: u16,
+    /// `sprite_setAlpha`: blended over what is behind at alpha/16.
+    pub alpha: Option<u8>,
+    /// `sprite_setMosaicSize`: mosaic blocks of `n + 1` pixels.
+    pub mosaic: Option<u8>,
+    /// Hardware priority against the background layers (0 = frontmost;
+    /// the field is 2).
+    pub priority: u8,
+    /// Parts not drawn: bit 31 - i hides part i (`sprite_setUnk0x2c`).
+    pub hidden_parts: u32,
+}
+
+impl Default for Look {
+    fn default() -> Look {
+        Look {
+            palette: 0,
+            hflip: false,
+            vflip: false,
+            shadow: Shadow::Hidden,
+            white: false,
+            color_shader: 0,
+            alpha: None,
+            mosaic: None,
+            priority: 2,
+            hidden_parts: 0,
+        }
+    }
+}
+
+impl Look {
+    /// `sprite_setFlip` with the game's flip value (bit 0 horizontal, bit
+    /// 1 vertical).
+    pub fn set_flip(&mut self, flip: u8) {
+        self.hflip = flip & 1 != 0;
+        self.vflip = flip & 2 != 0;
+    }
+}
+
+/// The first part of every sprite frame is a shadow.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Shadow {
+    /// Not drawn (the state after loading).
+    #[default]
+    Hidden,
+    /// `sprite_hasShadow`: drawn on the ground under the object, behind
+    /// other sprites.
+    Ground,
+    /// `sprite_noShadow`: drawn with the rest of the sprite, at its height.
+    WithSprite,
 }
 
 impl Sprite {

@@ -7,3 +7,4 @@ description = "Extracts game data from a BN6 (US Falzar) ROM into bn6-battle's g
 
 [dependencies]
 m4a.workspace = true
+bn6-assets = { path = "../bn6-assets" }

@@ -1,17 +1,25 @@
-//! Extract game data from the original ROM into Rust source for bn6-battle.
+//! Extract game data from the original ROM (US Falzar,
+//! `MEGAMAN6_FXXBR6E`).
 //!
-//! Usage: bn6-extract <rom> [out-dir], where <rom> is the US Falzar ROM
-//! (out-dir defaults to crates/bn6-battle/src/data)
+//! Usage:
+//! - `bn6-extract <rom> [out-dir]`: the engine's tables as Rust source
+//!   (out-dir defaults to crates/bn6-battle/src/data);
+//! - `bn6-extract assets <rom> <sound-bank>`: the sound bank bn6-audio plays
+//!   (see assets.rs);
+//! - `bn6-extract graphics <rom> <out-dir>`: the graphics bundle
+//!   bn6-frontend draws with (see graphics.rs).
 //!
-//! `bn6-extract assets <rom> <sound-bank>` writes the sound bank bn6-audio
-//! plays (see assets.rs).
+//! The sound bank and the graphics are the game's own data: write them
+//! outside version control (data/sound/ and data/graphics/ are ignored).
 
 mod assets;
+mod graphics;
+mod hud;
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-struct Rom(Vec<u8>);
+pub(crate) struct Rom(Vec<u8>);
 
 impl Rom {
     fn u8(&self, a: u32) -> u8 {
@@ -140,7 +148,7 @@ fn banners(rom: &Rom) -> String {
     out
 }
 
-fn u32at(rom: &Rom, a: u32) -> u32 {
+pub(crate) fn u32at(rom: &Rom, a: u32) -> u32 {
     u32::from_le_bytes(rom.bytes(a, 4).try_into().unwrap())
 }
 
@@ -274,7 +282,7 @@ fn collision(rom: &Rom) -> String {
 }
 
 /// GBA BIOS LZ77 (type 0x10) decompression.
-fn lz77(rom: &Rom, src: u32) -> Option<Vec<u8>> {
+pub(crate) fn lz77(rom: &Rom, src: u32) -> Option<Vec<u8>> {
     let hdr = u32at(rom, src);
     if hdr & 0xFF != 0x10 {
         return None;
@@ -321,8 +329,8 @@ fn sprites(rom: &Rom) -> String {
             let p = u32at(rom, c + 4 * idx);
             let data: Vec<u8> = if p & 0x8000_0000 != 0 {
                 match lz77(rom, p & 0x7FFF_FFFF) {
-                    Some(d) => d,
-                    None => continue,
+                    Some(d) if d.len() > 4 => d[4..].to_vec(),
+                    _ => continue,
                 }
             } else if (0x0800_0000..0x0900_0000).contains(&p) {
                 let o = (p & 0x01FF_FFFF) as usize;
@@ -855,14 +863,31 @@ fn lockon(rom: &Rom) -> String {
     out
 }
 
+fn load_rom(path: &str) -> Rom {
+    let rom = Rom(std::fs::read(path).expect("reading ROM"));
+    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected the US Falzar ROM (MEGAMAN6_FXXBR6E)");
+    rom
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("assets") {
         assets::main(&args[1..]);
         return;
     }
-    let rom = Rom(std::fs::read(&args[0]).expect("reading ROM"));
-    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected the US Falzar ROM (MEGAMAN6_FXXBR6E)");
+    if args.first().map(String::as_str) == Some("graphics") {
+        let (Some(rom), Some(out)) = (args.get(1), args.get(2)) else {
+            eprintln!("usage: bn6-extract graphics <rom> <out-dir>");
+            std::process::exit(2);
+        };
+        graphics::run(&load_rom(rom), std::path::Path::new(out));
+        return;
+    }
+    let Some(rom) = args.first() else {
+        eprintln!("usage: bn6-extract <rom> [out-dir] | assets <rom> <sound-bank> | graphics <rom> <out-dir>");
+        std::process::exit(2);
+    };
+    let rom = load_rom(rom);
     let out_dir = args
         .get(1)
         .map(PathBuf::from)
