@@ -222,6 +222,8 @@ pub struct Battle {
     /// Per-side registry of defensive chips and their linked objects
     /// (0x10 bytes per side at 0x02036720).
     pub linked: [LinkedRecord; 2],
+    /// Per side: its time freeze (`byte_203CF00`).
+    pub freeze: [crate::time_freeze::FreezeRecord; 2],
     /// Sound calls made this tick (output only; see `sound`).
     sound: Vec<SoundCue>,
     /// How the round ended, once the end state is through.
@@ -402,6 +404,7 @@ impl Battle {
             sides: [SideState::default(); 2],
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
+            freeze: Default::default(),
             sound: Vec::new(),
             outcome: None,
             setup,
