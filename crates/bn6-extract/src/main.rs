@@ -645,6 +645,59 @@ fn battle_settings(rom: &Rom) -> String {
     out
 }
 
+/// Cross tables: the body overlays a navi wears (actor object #0x56:
+/// sprites `byte_80C4320` and per-animation depth tables `off_80C42D4`)
+/// and the extra height of a Cross navi's image as it merges with
+/// MegaMan (`byte_80BC758`). The row types live in bn6-battle's
+/// `data::cross`.
+fn crosses(rom: &Rom) -> String {
+    const OVERLAY_SPRITES: u32 = 0x080C_4320;
+    const OVERLAY_DEPTHS: u32 = 0x080C_42D4;
+    const OVERLAYS: u32 = 19;
+    const MERGE_HEIGHTS: u32 = 0x080B_C758;
+    const NAVIS: u32 = 13;
+    let mut out = String::from(HEADER);
+    out.push_str("use super::SpriteId;\nuse super::cross::BodyOverlay;\n\n");
+    // The depth tables sit back to back and end where the pointer table
+    // starts; an animation past a table's end reads the next one, so each
+    // row runs to the end of the block.
+    writeln!(out, "/// Body overlays by variant (Param1 of actor object #0x56).").unwrap();
+    writeln!(out, "pub static BODY_OVERLAYS: [BodyOverlay; {OVERLAYS}] = [").unwrap();
+    for i in 0..OVERLAYS {
+        let s = rom.bytes(OVERLAY_SPRITES + 2 * i, 2);
+        let depths = u32at(rom, OVERLAY_DEPTHS + 4 * i);
+        assert!(depths < OVERLAY_DEPTHS, "overlay depth table {depths:#x} outside the block");
+        let front: Vec<&str> = rom
+            .bytes(depths, (OVERLAY_DEPTHS - depths) as usize)
+            .iter()
+            .map(|&b| match b {
+                0 => "false",
+                1 => "true",
+                v => panic!("overlay depth byte {v:#x}"),
+            })
+            .collect();
+        writeln!(
+            out,
+            "    BodyOverlay {{ sprite: SpriteId {{ category: {:#04x}, index: {:#04x} }}, in_front: &[{}] }}, // {i:#04x}",
+            s[0],
+            s[1],
+            front.join(", ")
+        )
+        .unwrap();
+    }
+    out.push_str("];\n");
+    let heights: Vec<String> = (0..NAVIS)
+        .map(|i| {
+            let v = u32at(rom, MERGE_HEIGHTS + 4 * i) as i32;
+            assert_eq!(v & 0xFFFF, 0, "merge height {v:#x} is not whole pixels");
+            (v >> 16).to_string()
+        })
+        .collect();
+    writeln!(out, "/// Extra height (whole pixels) of a navi's image merging with MegaMan, by navi.").unwrap();
+    writeln!(out, "pub static MERGE_HEIGHTS: [i16; {NAVIS}] = [{}];", heights.join(", ")).unwrap();
+    out
+}
+
 /// Field-object tables: the rock variants (`byte_80CF934`, 8-byte rows
 /// selected by the rock's first parameter) and the sprite of each kind of
 /// obstacle when it is absorbed (`byte_80E98C0`).
@@ -820,6 +873,7 @@ fn main() {
     std::fs::write(out_dir.join("player_generated.rs"), player(&rom)).unwrap();
     std::fs::write(out_dir.join("actor_lists_generated.rs"), actor_lists(&rom)).unwrap();
     std::fs::write(out_dir.join("battle_settings_generated.rs"), battle_settings(&rom)).unwrap();
+    std::fs::write(out_dir.join("cross_generated.rs"), crosses(&rom)).unwrap();
     std::fs::write(out_dir.join("obstacles_generated.rs"), obstacles(&rom)).unwrap();
     std::fs::write(out_dir.join("attacks_generated.rs"), attacks(&rom)).unwrap();
     std::fs::write(out_dir.join("lockon_generated.rs"), lockon(&rom)).unwrap();

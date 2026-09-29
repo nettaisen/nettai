@@ -483,11 +483,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
         panic!("post-init hook sub_80F22F8 is not implemented yet");
     }
     if stats(b, r).form == Form::NONE {
-        // sub_8010DD0: per-navi hook (`off_8010E0C`); none for MegaMan.
-        let rec = navi_record(b, r);
-        if matches!(rec.ai_index, 1 | 6 | 9 | 13 | 14 | 16 | 18 | 19 | 24 | 25..) {
-            panic!("navi init hook for AI index {} is not implemented yet", rec.ai_index);
-        }
+        navi_init_hook(b.objects.get(r).name_id);
     }
     reset_side_state(b, r);
     apply_starting_hp_bug(b, r);
@@ -496,6 +492,16 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.action = 0;
     o.phase = 0;
     o.phase_init = 0;
+}
+
+/// `sub_8010DD0`: the init hook of a NameID's actor record
+/// (`off_8010E0C`, by actor type and AI index). Most navis, MegaMan among
+/// them, have none; the others spawn helper objects.
+pub(crate) fn navi_init_hook(name_id: u16) {
+    let rec = pdata::navi_record(name_id);
+    if rec.actor_type != ActorType::Virus && matches!(rec.ai_index, 1 | 6 | 9 | 13 | 14 | 16 | 18 | 19 | 24 | 25..) {
+        panic!("navi init hook for AI index {} is not implemented yet", rec.ai_index);
+    }
 }
 
 /// `sub_800FC9E` + `sprite_load`: load the navi's battle sprite.
