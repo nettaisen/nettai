@@ -1,7 +1,7 @@
 //! Buttons to requests (`sub_8012FC8`) and the buster charge
 //! (`sub_8012EBC`). See objects-and-player.md §M3.3, §B3 and §B4.
 
-use super::{ai, ai_mut, battle_mode, is_mode_40, next_chip, stats};
+use super::{ai, ai_mut, battle_mode, per_player_gauges, next_chip, stats};
 use crate::actor::{request, status};
 use crate::battle::{Battle, battle_flags};
 use crate::hand::NO_CHIP;
@@ -98,7 +98,7 @@ fn decode(b: &mut Battle, r: ObjectRef) {
         }
         return;
     }
-    if is_mode_40(b) && ai(b, r).pad.pressed & keys::SELECT != 0 {
+    if per_player_gauges(b) && ai(b, r).pad.pressed & keys::SELECT != 0 {
         let side = b.objects.get(r).alliance as usize;
         if b.sides[side].gauge >= 0x1500 {
             ai_mut(b, r).requests |= request::SELECT_SPECIAL;

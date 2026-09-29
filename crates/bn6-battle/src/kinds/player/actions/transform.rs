@@ -239,6 +239,6 @@ fn settle(b: &mut Battle, r: ObjectRef) {
     }
     // (It also clears battle flag 0x20, which nothing sets.)
     ai_mut(b, r).status &= !(status::FORM_CHANGE | status::FORM_CHANGE_SPRITE_HELD);
-    ai_mut(b, r).requests &= !(request::WEAKNESS_HIT | request::TRAP_8000 | request::TRAP_400 | request::TRAP_200);
+    ai_mut(b, r).requests &= !(request::WEAKNESS_HIT | request::BODY_GUARD_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
     exit_attack_state(b, r);
 }
