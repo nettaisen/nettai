@@ -341,8 +341,8 @@ fn describe_fields(
 /// panel Y, the element and the spawner's address as X, Y and Z
 /// (chips.md §3.6).
 fn pos_is_garbage(kind: u8, index: u8, flags: u8) -> bool {
-    use crate::kinds::{area_grab, invisible, navi_chip};
-    let controller = [invisible::INDEX, navi_chip::INDEX, area_grab::INDEX].contains(&index);
+    use crate::kinds::{area_grab, invisible, navi_chip, trap_chip};
+    let controller = [invisible::INDEX, navi_chip::INDEX, area_grab::INDEX, trap_chip::INDEX].contains(&index);
     kind == 4
         && (index == 2 || index == 0x0A || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0) || controller)
 }

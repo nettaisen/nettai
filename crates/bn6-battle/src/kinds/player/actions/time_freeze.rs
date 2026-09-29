@@ -4,7 +4,7 @@
 //! controller does the rest (`time_freeze`). See docs/engine/chips.md §3.6.
 
 use crate::battle::Battle;
-use crate::kinds::{area_grab, invisible};
+use crate::kinds::{area_grab, invisible, trap_chip};
 use crate::kinds::player::{ai, ai_mut, exit_attack_state};
 use crate::object::ObjectRef;
 use crate::time_freeze::FreezeChip;
@@ -25,6 +25,10 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             area_grab::spawn(b, r, a.element, a.params, damage, chip)
         }
         1 => invisible::spawn(b, r, a.element, a.params, chip),
+        20 => {
+            let damage = a.damage as u32 | (a.hit_param as u32) << 16;
+            trap_chip::spawn(b, r, a.element, a.params, damage, chip)
+        }
         v => panic!("time-freeze chip subtype {v} (off_802CCB4) is not implemented yet"),
     };
     let side = b.objects.get(r).alliance;
