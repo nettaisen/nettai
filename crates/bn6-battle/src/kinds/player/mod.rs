@@ -11,6 +11,7 @@
 pub mod actions;
 mod chip_use;
 mod entry;
+mod form;
 mod idle;
 mod input;
 mod intake;
@@ -241,7 +242,7 @@ fn save_state_word(b: &mut Battle, r: ObjectRef) {
 /// `sub_802DD2A`: a Cross navi that falls back to base form instead of
 /// dying.
 fn cross_protected(b: &Battle, r: ObjectRef) -> bool {
-    stats(b, r).navi != Navi::MEGAMAN && ai(b, r).status & crate::actor::status::CROSS_4000 != 0
+    stats(b, r).navi != Navi::MEGAMAN && ai(b, r).status & crate::actor::status::CROSSED != 0
 }
 
 /// Switch to `action` at phase 0 (the game's direct CurAction stores).
@@ -268,8 +269,9 @@ fn set_attack(b: &mut Battle, r: ObjectRef, action: u8, kind: u8) {
 fn reset_attack_links(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.attack.beast_lockon = 0;
-    if a.lockon_marker.is_some() {
-        panic!("Beast Out lock-on marker (sub_80E1662) is not implemented yet");
+    a.attack.rush.restart();
+    if let Some(marker) = a.lockon_marker {
+        crate::kinds::lockon_marker::unfreeze(b, marker);
     }
 }
 
@@ -377,14 +379,18 @@ fn set_coordinates_from_panel(b: &mut Battle, r: ObjectRef) {
     o.pos.y = y;
 }
 
-/// `sub_8011450`: refresh the form overlay (`RelatedObject2Ptr`) after an
-/// animation change.
+/// `sub_8011450`: restart the form overlay (`related[1]`) with the navi
+/// after an animation change.
 fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
-    let o = b.objects.get(r);
-    let ai_index = ai(b, r).ai_index;
-    let refreshes = matches!(ai_index, 0 | 1 | 9 | 13 | 14 | 16 | 18 | 19 | 24);
-    if refreshes && o.related[1].is_some() {
-        panic!("form overlay refresh (sub_8011450) is not implemented yet");
+    let a = ai(b, r);
+    if a.actor_type == ActorType::Virus {
+        return;
+    }
+    let Some(overlay) = b.objects.get(r).related[1] else { return };
+    match a.ai_index {
+        0 | 1 | 9 | 13 | 16 | 18 | 19 => crate::kinds::form_overlay::restart(b, overlay),
+        14 | 24 | 25.. => panic!("form overlay refresh for AI index {} is not implemented yet", a.ai_index),
+        _ => {}
     }
 }
 
@@ -411,18 +417,29 @@ pub fn check_beast_out_end(b: &mut Battle, r: ObjectRef) {
         s.form.is_beast()
     };
     if revert {
-        ai_mut(b, r).requests |= request::PAUSE_40;
+        ai_mut(b, r).requests |= request::REVERT_FORM;
     }
 }
 
 /// `sub_80159A2`: a form reversion is pending or running.
 pub fn reverting_form(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & 0x100 != 0 || ai(b, r).requests & request::PAUSE_40 != 0
+    ai(b, r).status & crate::actor::status::REVERTING_FORM != 0 || ai(b, r).requests & request::REVERT_FORM != 0
+}
+
+/// `sub_801596E`: ask the navi to change form (it does so in the pause
+/// handler, as action 0x1C).
+pub fn request_form_change(b: &mut Battle, r: ObjectRef) {
+    ai_mut(b, r).requests |= request::FORM_CHANGE;
+}
+
+/// `sub_801597C`: a form change is running.
+pub fn changing_form(b: &Battle, r: ObjectRef) -> bool {
+    ai(b, r).status & crate::actor::status::FORM_CHANGE != 0
 }
 
 /// `sub_802DCEC`: a Cross change is pending or running.
-pub fn changing_form(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & 0x1000 != 0 || ai(b, r).requests & request::PAUSE_4000000 != 0
+pub fn changing_cross(b: &Battle, r: ObjectRef) -> bool {
+    ai(b, r).status & crate::actor::status::CHANGING_CROSS != 0 || ai(b, r).requests & request::CROSS_CHANGE != 0
 }
 
 // ---- Init --------------------------------------------------------------------
@@ -601,11 +618,7 @@ fn reset_status(b: &mut Battle, r: ObjectRef) {
     c.region = 1;
     reset_charge(b, r);
     load_weapons(b, r);
-    let form = stats(b, r).form;
-    // sub_8014536: per-form flags (none for forms 0..6 and 10).
-    if !matches!(form.0, 0..=6 | 10) {
-        panic!("form {form:?} flags (sub_8014536) are not implemented yet");
-    }
+    form::apply_form_flags(b, r);
     update_element(b, r);
     // sub_80142C2
     if is_link(b) {

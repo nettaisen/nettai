@@ -27,7 +27,7 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
     if f & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED) != 0 {
         return reactive_chip(b, r);
     }
-    if f & request::ACTION_49 != 0 {
+    if f & request::STUN_STRIKE != 0 {
         return set_attack(b, r, 0x49, 0);
     }
     // JumpTable80EA7B0[enemy struct byte 4]: every entry is sub_80F0354.
@@ -174,11 +174,12 @@ fn low_hp_navicust_effect(b: &mut Battle, r: ObjectRef) -> bool {
 
 /// `off_80117D4[routine]`: set up a weapon's attack variables and name
 /// its action.
-fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
+pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
     match routine {
         0 => buster_setup(b, r),
         1 => charged_shot_setup(b, r),
         2 => blank_shot_setup(b, r),
+        0x1E => super::actions::beast_claw::setup(b, r),
         _ => panic!("weapon routine {routine:#x} (off_80117D4) is not implemented yet"),
     }
 }
@@ -227,7 +228,7 @@ fn buster_variant(b: &mut Battle, r: ObjectRef) -> u8 {
 
 /// `sub_801265A`: buster damage, attack + 1 (+1 in some forms), at most
 /// 10; 1 when worn out.
-fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
+pub(super) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
     let s = stats(b, r);
     let mut d = s.attack as u16 + BUSTER_BONUS_BY_NAVI[s.navi.index()] as u16;
     if emotion(b, b.objects.get(r).alliance) == 5 {

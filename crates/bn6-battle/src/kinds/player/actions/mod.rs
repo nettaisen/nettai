@@ -5,10 +5,14 @@
 //! (which `set_attack` resets); what an action keeps besides that lives
 //! in its own state struct in `AttackVars::action`.
 
+pub mod beast_claw;
+pub mod beast_rush;
 pub mod gun_del_sol;
 pub mod movement;
 #[cfg(test)]
 mod tests;
+
+pub mod transform;
 
 use crate::battle::Battle;
 use crate::object::ObjectRef;
@@ -22,6 +26,8 @@ pub enum ActionVars {
     None,
     Move(movement::Vars),
     GunDelSol(gun_del_sol::Vars),
+    BeastClaw(beast_claw::Vars),
+    FormChange(transform::Vars),
 }
 
 /// Run action `action` (>= 0x10) for the player `r` this tick.
@@ -29,6 +35,7 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
     match action {
         movement::ACTION => movement::update(b, r),
         gun_del_sol::ACTION => gun_del_sol::update(b, r),
+        beast_claw::ACTION => beast_claw::update(b, r),
         _ => panic!("player action {action:#x} is not implemented yet"),
     }
 }

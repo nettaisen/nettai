@@ -85,6 +85,13 @@ impl ChipHand {
         (id != NO_CHIP).then_some(id)
     }
 
+    /// `sub_800FC7C`: move on to the next chip (not past the last).
+    pub fn advance(&mut self) {
+        if self.cursor < 5 && self.ids[self.cursor as usize] != NO_CHIP {
+            self.cursor += 1;
+        }
+    }
+
     /// Chips left, counting from the cursor.
     pub fn remaining(&self) -> u8 {
         self.ids.iter().skip(self.cursor as usize).take_while(|&&id| id != NO_CHIP).count() as u8
