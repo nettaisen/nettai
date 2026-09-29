@@ -122,7 +122,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// `sub_80F02A2`: whether the step sets the navi's animations. A state
 /// bit (0x8000) together with the attack parameter byte 1 left by the last
 /// chip turns them off.
-fn animates(b: &Battle, r: ObjectRef) -> bool {
+pub(super) fn animates(b: &Battle, r: ObjectRef) -> bool {
     let a = ai(b, r);
     !(a.attack.params[1] != 0 && a.status & 0x8000 != 0)
 }
@@ -228,7 +228,7 @@ fn depart(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8013CC4`: the NaviCust panel-trail bug, which breaks or cracks
 /// the panel a player steps off at random.
-fn panel_trail(b: &Battle, r: ObjectRef, _from: PanelPos) {
+pub(super) fn panel_trail(b: &Battle, r: ObjectRef, _from: PanelPos) {
     if ai(b, r).actor_type == ActorType::Player && stats(b, r).bugs.panel_trail_level != 0 {
         panic!("the panel-trail bug (sub_8013CC4) is not implemented yet");
     }
