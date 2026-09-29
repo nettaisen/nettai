@@ -260,6 +260,51 @@ fn damaged_palettes_are_refused_with_a_reason() {
 }
 
 #[test]
+fn an_aseprite_view_edits_whole_frames() {
+    use bn6_content::aseprite::{self, AseFile, CelContent};
+    let s = sprite(0, 1);
+    let sheet_bytes = |s: &SpriteSheet| Bundle { sprites: vec![s.clone()], ..Default::default() }.to_bytes();
+    let bytes = aseprite::export(&s);
+    let mut r = Report::default();
+    let back = aseprite::import(&bytes, &s, "view", &mut r).unwrap();
+    assert!(r.issues.is_empty(), "{r}");
+    assert_eq!(sheet_bytes(&back), sheet_bytes(&s));
+
+    let ase = AseFile::from_bytes(&bytes).unwrap();
+    assert_eq!((ase.frames.len(), ase.layers.len(), ase.tags.len()), (3, 3, 2));
+    assert_eq!(ase.frames[2].duration_ms, 4186, "250 ticks");
+    // Frames 1 and 2 draw the same shadow from the same tiles: a linked cel.
+    assert!(ase.frames[2].cels.iter().any(|c| c.layer == 0 && c.content == CelContent::Linked(1)));
+
+    // Paint the shadow in frame 1: the shared tiles change for both frames.
+    let mut edited = ase.clone();
+    let cel = edited.frames[1].cels.iter_mut().find(|c| c.layer == 0).unwrap();
+    let CelContent::Image { pixels, .. } = &mut cel.content else { panic!() };
+    pixels[0] = 0x0B;
+    // Frame 2 lasts 110 ms now, and animation 1 plays once.
+    edited.frames[2].duration_ms = 110;
+    edited.tags[1].repeat = 1;
+    let mut r = Report::default();
+    let back = aseprite::import(&edited.to_bytes(), &s, "view", &mut r).unwrap();
+    assert!(!r.has_errors(), "{r}");
+    assert_eq!(back.tilesets[1].get(0).unwrap()[0], 0x0B);
+    assert_eq!((back.animations[1][1].duration, back.animations[1][1].flags), (7, 0x80));
+    assert!(r.issues.iter().any(|i| i.message.contains("110 ms is 7 ticks")));
+
+    // Frames 1 and 2 also share the body's tiles in different shapes (not
+    // linked): editing only one of them is refused.
+    let mut edited = ase.clone();
+    let cel = edited.frames[2].cels.iter_mut().find(|c| c.layer == 1).unwrap();
+    let CelContent::Image { pixels, .. } = &mut cel.content else { panic!("frame 2's body isn't linked") };
+    for p in pixels.iter_mut() {
+        *p = 0x01;
+    }
+    let mut r = Report::default();
+    assert!(aseprite::import(&edited.to_bytes(), &s, "view", &mut r).is_none());
+    assert!(r.issues.iter().any(|i| i.message.contains("several frames share")), "{r}");
+}
+
+#[test]
 fn tiled_maps_refuse_what_the_gba_cannot_do() {
     let dir = temp("tiled");
     write_pack(&dir, &bundle());

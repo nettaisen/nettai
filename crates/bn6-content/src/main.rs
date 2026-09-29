@@ -26,19 +26,23 @@ struct Args {
     graphics_out: Option<PathBuf>,
     sound_out: Option<PathBuf>,
     seconds: f64,
+    /// Sprite folders to work on (aseprite commands; none: all).
+    only: Vec<String>,
 }
 
 const USAGE: &str = "usage:
   bn6-content export <pack> [--graphics <bn6-assets.bin>] [--sound <bank>]
   bn6-content check <pack>
   bn6-content build <pack> [--graphics-out <file>] [--sound-out <file>]
-  bn6-content verify <pack> [--graphics <bn6-assets.bin>] [--sound <bank>] [--seconds N]";
+  bn6-content verify <pack> [--graphics <bn6-assets.bin>] [--sound <bank>] [--seconds N]
+  bn6-content aseprite-export <pack> [CC-II ...]   write sprites' Aseprite views
+  bn6-content aseprite-import <pack> [CC-II ...]   read the views back into the sprites' files";
 
 fn parse() -> Result<Args, String> {
     let mut it = std::env::args().skip(1);
     let command = it.next().ok_or(USAGE)?;
     let pack = PathBuf::from(it.next().ok_or(USAGE)?);
-    let mut a = Args { command, pack, graphics: None, sound: None, graphics_out: None, sound_out: None, seconds: 60.0 };
+    let mut a = Args { command, pack, graphics: None, sound: None, graphics_out: None, sound_out: None, seconds: 60.0, only: Vec::new() };
     while let Some(flag) = it.next() {
         let mut value = || it.next().ok_or(format!("{flag} needs a value"));
         match flag.as_str() {
@@ -47,6 +51,7 @@ fn parse() -> Result<Args, String> {
             "--graphics-out" => a.graphics_out = Some(value()?.into()),
             "--sound-out" => a.sound_out = Some(value()?.into()),
             "--seconds" => a.seconds = value()?.parse().map_err(|_| "--seconds takes a number")?,
+            f if !f.starts_with("--") => a.only.push(f.to_string()),
             f => return Err(format!("unknown option {f}\n{USAGE}")),
         }
     }
@@ -114,8 +119,44 @@ fn main() {
             print_report(&r, false);
         }
         "verify" => verify_pack(&a),
+        "aseprite-export" | "aseprite-import" => aseprite(&a),
         _ => fail(USAGE),
     }
+}
+
+/// Write each sprite's Aseprite view, or read the views back into the
+/// sprites' files.
+fn aseprite(a: &Args) {
+    let root = a.pack.join("graphics/sprites");
+    let mut dirs: Vec<PathBuf> = std::fs::read_dir(&root)
+        .unwrap_or_else(|e| fail(format!("{}: {e}", root.display())))
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.join("sprite.json").is_file())
+        .filter(|p| a.only.is_empty() || a.only.iter().any(|o| p.file_name().is_some_and(|n| n == o.as_str())))
+        .collect();
+    dirs.sort();
+    let mut r = Report::default();
+    let mut done = 0;
+    for dir in &dirs {
+        let name = format!("graphics/sprites/{}", dir.file_name().unwrap().to_string_lossy());
+        let Some(sheet) = bn6_content::sprite::import(dir, &name, &mut r) else { continue };
+        let view = dir.join("sprite.aseprite");
+        if a.command == "aseprite-export" {
+            std::fs::write(&view, bn6_content::aseprite::export(&sheet)).unwrap_or_else(|e| fail(e));
+            done += 1;
+        } else if let Ok(bytes) = std::fs::read(&view) {
+            let file = format!("{name}/sprite.aseprite");
+            if let Some(new) = bn6_content::aseprite::import(&bytes, &sheet, &file, &mut r) {
+                for (f, data) in bn6_content::sprite::export(&new) {
+                    std::fs::write(dir.join(f), data).unwrap_or_else(|e| fail(e));
+                }
+                done += 1;
+            }
+        }
+    }
+    print_report(&r, false);
+    eprintln!("{} {done} of {} sprites", if a.command == "aseprite-export" { "wrote the views of" } else { "read back" }, dirs.len());
 }
 
 fn export(a: &Args) {
