@@ -1,6 +1,6 @@
 # Object kinds seen in PvP fixtures
 
-From data/traces (machgun + soundmod). T1 = actors (navis, summons), T3 = attacks, T4 = effects.
+From the golden traces (machgun + soundmod). T1 = actors (navis, summons), T3 = attacks, T4 = effects.
 Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 
 | kind | handler | frames alive (both traces) |
