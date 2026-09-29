@@ -1,0 +1,12 @@
+[package]
+name = "bn6-frontend"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Draws battles of the native BN6 engine: replays golden traces or plays live"
+
+[dependencies]
+bn6-battle = { path = "../bn6-battle", features = ["trace"] }
+bn6-assets = { path = "../bn6-assets" }
+minifb = "0.28"
+png = "0.17"

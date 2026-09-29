@@ -1,12 +1,20 @@
-//! Extract game data from the original ROM into Rust source for bn6-battle.
+//! Extract game data from the original ROM.
 //!
-//! Usage: bn6-extract <exe6f_rom_f_e.srl> [out-dir]
-//! (out-dir defaults to crates/bn6-battle/src/data)
+//! Usage:
+//! - `bn6-extract <rom> [out-dir]`: the engine's tables as Rust source
+//!   (out-dir defaults to crates/bn6-battle/src/data);
+//! - `bn6-extract assets <rom> <out-dir>`: the frontend's graphics bundle
+//!   (ROM-derived; keep it out of version control).
+//!
+//! The ROM is US Falzar (MEGAMAN6_FXXBR6E).
+
+mod assets;
+mod hud;
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
-struct Rom(Vec<u8>);
+pub(crate) struct Rom(Vec<u8>);
 
 impl Rom {
     fn u8(&self, a: u32) -> u8 {
@@ -136,7 +144,7 @@ fn banners(rom: &Rom) -> String {
     out
 }
 
-fn u32at(rom: &Rom, a: u32) -> u32 {
+pub(crate) fn u32at(rom: &Rom, a: u32) -> u32 {
     u32::from_le_bytes(rom.bytes(a, 4).try_into().unwrap())
 }
 
@@ -270,7 +278,7 @@ fn collision(rom: &Rom) -> String {
 }
 
 /// GBA BIOS LZ77 (type 0x10) decompression.
-fn lz77(rom: &Rom, src: u32) -> Option<Vec<u8>> {
+pub(crate) fn lz77(rom: &Rom, src: u32) -> Option<Vec<u8>> {
     let hdr = u32at(rom, src);
     if hdr & 0xFF != 0x10 {
         return None;
@@ -649,10 +657,27 @@ fn obstacles(rom: &Rom) -> String {
     out
 }
 
+fn load_rom(path: &str) -> Rom {
+    let rom = Rom(std::fs::read(path).expect("reading ROM"));
+    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected US Falzar (MEGAMAN6_FXXBR6E)");
+    rom
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let rom = Rom(std::fs::read(&args[0]).expect("reading ROM"));
-    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected US Falzar (exe6f_rom_f_e.srl)");
+    if args.first().map(String::as_str) == Some("assets") {
+        let (Some(rom), Some(out)) = (args.get(1), args.get(2)) else {
+            eprintln!("usage: bn6-extract assets <rom> <out-dir>");
+            std::process::exit(2);
+        };
+        assets::run(&load_rom(rom), std::path::Path::new(out));
+        return;
+    }
+    let Some(rom) = args.first() else {
+        eprintln!("usage: bn6-extract <rom> [out-dir] | bn6-extract assets <rom> <out-dir>");
+        std::process::exit(2);
+    };
+    let rom = load_rom(rom);
     let out_dir = args
         .get(1)
         .map(PathBuf::from)

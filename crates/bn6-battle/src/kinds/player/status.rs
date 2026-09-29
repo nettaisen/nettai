@@ -214,6 +214,7 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
         }
         crate::kinds::subtract_hp(b, r, d);
         // Sound 0x6B (local player) or 0x6D; sprite_forceWhitePalette.
+        b.objects.sprite_mut(r).look.white = true;
         dead = b.objects.get(r).hp == 0;
     }
     if !dead {

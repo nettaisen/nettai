@@ -34,6 +34,7 @@ fn wait_for_fade(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).phase_init = 4;
     } else if b.round.intro_bits & 0x01 != 0 && b.fadein_is_head(r) {
         // Sound 0x94; the sprite starts transparent.
+        b.objects.sprite_mut(r).look.alpha = Some(0);
         let o = b.objects.get_mut(r);
         o.timer = 2;
         o.timer2 = 0x10;
@@ -55,8 +56,15 @@ fn fade_in(b: &mut Battle, r: ObjectRef) {
     if o.timer2 != 0 {
         // Mosaic and alpha follow timer2.
         o.flags |= flags::VISIBLE;
+        let t = o.timer2 as u8;
+        let look = &mut b.objects.sprite_mut(r).look;
+        look.mosaic = Some(t);
+        look.alpha = Some(16u8.wrapping_sub(t));
         return;
     }
+    let look = &mut b.objects.sprite_mut(r).look;
+    look.alpha = None;
+    look.mosaic = None;
     b.fadein_dequeue(r);
     let o = b.objects.get_mut(r);
     o.phase = 8;

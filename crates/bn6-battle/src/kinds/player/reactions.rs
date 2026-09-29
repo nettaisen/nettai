@@ -19,6 +19,7 @@ use crate::object::{ObjectRef, PanelPos, flags, state};
 /// Action 2, `sub_80173F4`: deletion (§H6).
 pub(super) fn deletion(b: &mut Battle, r: ObjectRef) {
     // sprite_forceWhitePalette every tick.
+    b.objects.sprite_mut(r).look.white = true;
     match b.objects.get(r).phase {
         0 => begin_deletion(b, r),
         4 => explode(b, r),
@@ -110,8 +111,16 @@ fn fade_out(b: &mut Battle, r: ObjectRef) {
     o.timer = o.timer.wrapping_add(1);
     if o.timer != 0x20 {
         // Mosaic and alpha follow the timer.
+        let t = (o.timer >> 1) as u8;
+        let look = &mut b.objects.sprite_mut(r).look;
+        look.mosaic = (t != 0).then_some(t);
+        look.alpha = Some(16u8.wrapping_sub(t));
         return;
     }
+    let look = &mut b.objects.sprite_mut(r).look;
+    look.mosaic = None;
+    look.alpha = None;
+    let o = b.objects.get_mut(r);
     o.flags &= !flags::VISIBLE;
     // sub_802CDD0: the side's damage-carry record forgets this navi.
     let side = o.alliance as usize;

@@ -10,7 +10,7 @@ pub const INDEX: u8 = 0x38;
 
 const SPRITE: SpriteId = SpriteId { category: 0x10, index: 1 };
 
-/// `sub_80E47A4`: a chunk at `pos` (the palette is drawn only).
+/// `sub_80E47A4`: a chunk at `pos` in sprite palette `palette`.
 pub fn spawn(b: &mut Battle, pos: Vec3, palette: u8) -> Option<ObjectRef> {
     b.objects.spawn(Pool::Effect, INDEX, pos, [palette, 0, 0, 0])
 }
@@ -27,10 +27,13 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// 3.5 pixels a tick sideways and in depth, 6 to 13.5 up.
 fn init(b: &mut Battle, r: ObjectRef) {
     let shape = (b.rng.next() & 1) as u8;
+    let palette = b.objects.get(r).params[0];
     let sprite = b.objects.sprite_mut(r);
     sprite.load(SPRITE);
     sprite.set_animation(shape);
     sprite.update();
+    sprite.look.shadow = crate::object::sprite::Shadow::WithSprite;
+    sprite.look.palette = palette;
     let v = b.rng.next();
     let nibble = |shift: u32| ((v >> shift) & 0xF) as i32;
     let o = b.objects.get_mut(r);

@@ -17,7 +17,8 @@ use crate::setup::{Form, Navi};
 
 /// `sub_801AC6C`.
 pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
-    // sprite_clearFinalPalette: presentation.
+    // sprite_clearFinalPalette.
+    b.objects.sprite_mut(r).look.white = false;
     if b.round.flags & battle_flags::FIGHTING == 0 {
         return;
     }
