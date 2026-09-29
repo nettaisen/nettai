@@ -471,6 +471,9 @@ fn player(rom: &Rom) -> String {
         (0..50).map(|r| format!("[{}]", list((0..5).map(|c| rom.u16(0x0802_0404 + 10 * r + 2 * c).to_string()).collect()))).collect();
     writeln!(out, "/// Ticks to a full charge by charge routine and Charge stat (`byte_8020404`).").unwrap();
     writeln!(out, "pub static CHARGE_THRESHOLDS: [[u16; 5]; 50] = [{}];", list(rows)).unwrap();
+    let rows: Vec<String> = (0..5).map(|n| format!("[{}]", list((0..6).map(|k| rom.u8(0x0802_09CC + 6 * n + k).to_string()).collect()))).collect();
+    writeln!(out, "/// Ticks of recovery after a buster shot, by Rapid stat and open panels ahead (`byte_80209CC`).").unwrap();
+    writeln!(out, "pub static BUSTER_RECOVERY: [[u8; 6]; 5] = [{}];", list(rows)).unwrap();
     let rows: Vec<String> = (0..23).map(|n| format!("[{}]", bytes(0x0802_0FE0 + 11 * n, 11))).collect();
     writeln!(out, "/// Move end lag by navi and navi variant (`byte_8020FE0`).").unwrap();
     writeln!(out, "pub static MOVE_LAG: [[u8; 11]; 23] = [{}];", list(rows)).unwrap();
