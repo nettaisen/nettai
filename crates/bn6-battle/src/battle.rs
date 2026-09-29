@@ -428,8 +428,19 @@ impl Battle {
         self.round.init = 0;
     }
 
-    fn spawn_actors(&mut self) {
+    /// `sub_8007368`: spawn the settings' actor list. Only navis join the
+    /// alive/actor bookkeeping; rocks and other field objects don't.
+    pub(crate) fn spawn_actors(&mut self) {
+        use crate::setup::ActorKind;
         for entry in self.setup.settings.actors {
+            match entry.kind {
+                ActorKind::Navi => {}
+                ActorKind::Rock { variant } => {
+                    crate::kinds::rock::spawn_at_start(self, entry.x, entry.y, variant);
+                    continue;
+                }
+                k => panic!("actor list entries of kind {k:?} are not implemented yet"),
+            }
             let r = crate::kinds::player::spawn(self, entry);
             let side = entry.alliance as usize;
             if let Some(r) = r {

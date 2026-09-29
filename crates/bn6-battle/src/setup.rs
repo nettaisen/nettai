@@ -17,8 +17,8 @@ pub struct BattleSettings {
     pub unk_07: u8,
     /// `effects` bits (see `effects`).
     pub effects: u32,
-    /// Who spawns where.
-    pub actors: &'static [ActorEntry],
+    /// Who and what spawns where.
+    pub actors: &'static ActorList,
 }
 
 /// Battle effects bits.
@@ -31,27 +31,68 @@ pub mod effects {
     pub const RANDOM: u32 = 0x20_0000;
 }
 
-/// An entry of a battle's actor list.
+/// An entry of a battle's actor list: something placed on the field when
+/// the round starts (`sub_8007368`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ActorEntry {
-    /// 0 = player navi.
-    pub kind: u8,
+    /// What to spawn.
+    pub kind: ActorKind,
+    /// The side, for navis. Rocks take the side of their panel instead.
     pub alliance: u8,
+    /// Panel.
     pub x: u8,
     pub y: u8,
-    pub unk: [u8; 2],
 }
 
-/// The netbattle actor list: the right-side navi at (5,2), then the left
-/// side's at (2,2).
-pub static NETBATTLE_ACTORS: [ActorEntry; 2] = [
-    ActorEntry { kind: 0, alliance: 1, x: 5, y: 2, unk: [0, 0] },
-    ActorEntry { kind: 0, alliance: 0, x: 2, y: 2, unk: [0, 0] },
-];
+/// What an actor-list entry spawns. These are the kinds the game's lists
+/// use; the spawn loop (`off_80073A0`) knows a few more.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ActorKind {
+    /// A player navi (`sub_80073CC`).
+    Navi,
+    /// A rock (attack object #0x59, `sub_80074FA`), placed at the start.
+    Rock {
+        /// Which rock (`data::ROCKS`).
+        variant: u8,
+    },
+    /// Attack object #0x6E, kept in the field-object registry's stage
+    /// slots (`sub_8007450`).
+    Object6E,
+    /// Attack object #0x7D (`sub_800751C`).
+    Object7D { variant: u8 },
+}
+
+/// A battle's actor list, as found in the game's battle settings table.
+#[derive(Debug, PartialEq, Eq)]
+pub struct ActorList {
+    /// Identifies the list: the game's address for it, which battle
+    /// settings (and so traces and replays) carry.
+    pub source: u32,
+    pub entries: &'static [ActorEntry],
+}
+
+impl ActorList {
+    /// The actor list a battle settings record refers to.
+    pub fn find(source: u32) -> Option<&'static ActorList> {
+        crate::data::ACTOR_LISTS.iter().find(|l| l.source == source)
+    }
+}
+
+impl<'a> IntoIterator for &'a ActorList {
+    type Item = &'a ActorEntry;
+    type IntoIter = std::slice::Iter<'a, ActorEntry>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.entries.iter()
+    }
+}
 
 impl BattleSettings {
-    /// Settings from their 16-byte encoding, with a netbattle actor list.
+    /// Settings from their 16-byte encoding. Bytes 12..16 identify the
+    /// actor list.
     pub fn netbattle_from_bytes(b: &[u8]) -> BattleSettings {
+        let source = u32::from_le_bytes(b[12..16].try_into().unwrap());
+        let actors = ActorList::find(source)
+            .unwrap_or_else(|| panic!("battle settings name an unknown actor list {source:#010x}"));
         BattleSettings {
             layout: b[0],
             unk_01: b[1],
@@ -62,7 +103,7 @@ impl BattleSettings {
             panel_pattern: b[6],
             unk_07: b[7],
             effects: u32::from_le_bytes(b[8..12].try_into().unwrap()),
-            actors: &NETBATTLE_ACTORS,
+            actors,
         }
     }
 }

@@ -2,15 +2,33 @@
 //! typed tables. The files named `*_generated.rs` are written by that tool;
 //! regenerate them rather than editing by hand.
 
+mod actor_lists_generated;
 mod banners_generated;
 mod chips_generated;
 pub mod collision_generated;
 pub mod effects_generated;
+mod obstacles_generated;
 mod sprites_generated;
 pub mod field_generated;
 
+pub use actor_lists_generated::ACTOR_LISTS;
 pub use banners_generated::{BANNER_TYPES, LOSE_BANNERS, WIN_BANNERS};
 pub use chips_generated::CHIPS;
+pub use obstacles_generated::{ABSORBED_SPRITES, ROCKS};
+
+/// A kind of rock (one row of `byte_80CF934`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RockKind {
+    /// The rock's standing animation.
+    pub anim: u8,
+    pub hp: u16,
+    pub element: Element,
+    /// Palette of the debris it breaks into.
+    pub debris_palette: u8,
+    /// Sound it breaks with.
+    pub break_sound: u16,
+    pub name_id: u16,
+}
 
 /// Chip ids are indices into [`CHIPS`] (0..=0x19A).
 pub type ChipId = u16;
