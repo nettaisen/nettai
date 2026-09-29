@@ -38,6 +38,7 @@ fn fight() -> (Battle, ObjectRef, ObjectRef) {
         score: SetScore::default(),
         later_stages: Default::default(),
         low_hp_music_latched: false,
+        sp_times: Default::default(),
     };
     let mut b = Battle::new(setup);
     b.spawn_actors();
