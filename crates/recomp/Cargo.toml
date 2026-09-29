@@ -1,0 +1,9 @@
+[package]
+name = "recomp"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Static recompiler: GBA Thumb/ARM machine code -> Rust"
+
+[dependencies]
+gba-isa = { path = "../gba-isa" }

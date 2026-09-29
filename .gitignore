@@ -1,0 +1,5 @@
+/target
+*.gba
+*.srl
+*.sav
+/tools/*/target
