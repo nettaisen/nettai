@@ -258,7 +258,7 @@ pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
         .flat_map(|y| (1..=6).map(move |x| (x, y)))
         .map(|(x, y)| {
             let p = b.field.panel(x, y).unwrap();
-            [p.kind, p.alliance]
+            [p.kind as u8, p.alliance]
         })
         .collect();
     check("panels", format!("{panels:?}"), format!("{:?}", f.panels));

@@ -4,24 +4,63 @@
 use crate::battle::Battle;
 use crate::collision::Collision;
 use crate::data::field_generated as tables;
+use crate::data::{PanelCondition, PanelOffset};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3};
 
-/// Panel types.
-pub mod kind {
-    pub const MISSING: u8 = 0;
-    pub const BROKEN: u8 = 1;
-    pub const NORMAL: u8 = 2;
-    pub const CRACKED: u8 = 3;
-    pub const POISON: u8 = 4;
-    pub const HOLY: u8 = 5;
-    pub const GRASS: u8 = 6;
-    pub const ICE: u8 = 7;
-    pub const VOLCANO: u8 = 8;
-    pub const ROAD_UP: u8 = 9;
-    pub const ROAD_DOWN: u8 = 10;
-    pub const ROAD_LEFT: u8 = 11;
-    pub const ROAD_RIGHT: u8 = 12;
+/// Panel types. The type is also the low nibble of a panel's flags word.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum PanelType {
+    #[default]
+    Missing = 0,
+    Broken = 1,
+    Normal = 2,
+    Cracked = 3,
+    Poison = 4,
+    Holy = 5,
+    Grass = 6,
+    Ice = 7,
+    Volcano = 8,
+    RoadUp = 9,
+    RoadDown = 10,
+    RoadLeft = 11,
+    RoadRight = 12,
 }
+
+impl PanelType {
+    /// The flag bits the type contributes to a panel's flags word.
+    pub fn flags(self) -> u32 {
+        self as u32 | tables::PANEL_TYPE_FLAGS[self as usize]
+    }
+
+    /// For roads, which way they carry (0 up, 1 down, 2 left, 3 right), the
+    /// index into per-direction tables.
+    pub fn road_index(self) -> Option<usize> {
+        match self {
+            PanelType::RoadUp => Some(0),
+            PanelType::RoadDown => Some(1),
+            PanelType::RoadLeft => Some(2),
+            PanelType::RoadRight => Some(3),
+            _ => None,
+        }
+    }
+
+    /// A road's conveyor direction.
+    pub fn road(self) -> Option<PanelOffset> {
+        self.road_index().map(|i| tables::ROAD_DIRECTIONS[i])
+    }
+
+    pub fn is_road(self) -> bool {
+        self.road_index().is_some()
+    }
+}
+
+/// What a panel must be for an object to step onto it (`sub_800E618`'s
+/// table), given whether the object is floor-free (AirShoes, or standing
+/// off solid ground).
+pub fn step_rule(floor_free: bool, alliance: u8) -> PanelCondition {
+    tables::STEP_RULES[floor_free as usize][alliance as usize & 1]
+}
+
 
 /// Bits of a panel's cached flags word.
 pub mod pflags {
@@ -44,19 +83,19 @@ const ROAD_TICKS: u16 = 0x708;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Panel {
-    pub visible: u8,
+    pub visible: bool,
     pub highlight: u8,
-    pub kind: u8,
+    pub kind: PanelType,
     /// Current owner.
     pub alliance: u8,
     /// Owner at the start of the round (for stolen-area return).
     pub home: u8,
-    pub display_kind: u8,
+    pub display_kind: PanelType,
     pub display_alliance: u8,
     pub display_override: [u8; 3],
     pub x: u8,
     pub y: u8,
-    pub front_edge: u8,
+    pub front_edge: bool,
     /// Hole timer: counts down while broken.
     pub hole_timer: u16,
     pub return_blink: u16,
@@ -119,17 +158,16 @@ impl Field {
         let mut panels = [[Panel::default(); 8]; 5];
         for y in 0..5u8 {
             for x in 0..8u8 {
-                let i = (y * 8 + x) as usize;
-                let t = if is_valid(x, y) { ((rows[y as usize - 1] >> (4 * (x - 1))) & 0xF) as u8 } else { 0 };
+                let t = if is_valid(x, y) { rows[y as usize - 1][x as usize - 1] } else { PanelType::Missing };
                 let home = columns[x as usize].home;
                 panels[y as usize][x as usize] = Panel {
-                    visible: tables::PANEL_VISIBLE[i],
+                    visible: tables::PANEL_VISIBLE[y as usize][x as usize],
                     kind: t,
                     display_kind: t,
                     alliance: home,
                     home,
                     display_alliance: home,
-                    front_edge: tables::PANEL_FRONT_EDGE[i],
+                    front_edge: tables::PANEL_FRONT_EDGE[y as usize][x as usize],
                     x,
                     y,
                     hole_timer: hole_ticks,
@@ -161,6 +199,11 @@ impl Field {
     pub fn check(&self, x: u8, y: u8, set: u32, clear: u32) -> bool {
         let f = self.flags(x, y);
         f != 0 && f & clear == 0 && f & set == set
+    }
+
+    /// Whether panel (x, y) exists and meets `cond`.
+    pub fn meets(&self, x: u8, y: u8, cond: PanelCondition) -> bool {
+        self.check(x, y, cond.require, cond.forbid)
     }
 
     pub fn is_solid(&self, x: u8, y: u8) -> bool {
@@ -209,8 +252,7 @@ impl Field {
         let p = &mut self.panels[y as usize][x as usize];
         p.display_kind = p.kind;
         p.display_alliance = p.alliance;
-        p.flags = p.kind as u32
-            | tables::PANEL_TYPE_FLAGS[p.kind as usize]
+        p.flags = p.kind.flags()
             | ((p.alliance as u32) << 5)
             | if p.reserver.is_some() { pflags::RESERVED } else { 0 }
             | occupants;
@@ -239,7 +281,7 @@ impl Battle {
             for x in 1..=6u8 {
                 self.tick_panel(x, y);
                 let p = &mut self.field.panels[y as usize][x as usize];
-                p.latch = if p.kind == kind::CRACKED { p.flags } else { 0 };
+                p.latch = if p.kind == PanelType::Cracked { p.flags } else { 0 };
             }
         }
     }
@@ -249,31 +291,33 @@ impl Battle {
         let h = self.field.hole_ticks;
         let p = self.field.panels[y as usize][x as usize];
         match p.kind {
-            kind::MISSING => {}
-            kind::BROKEN => {
+            PanelType::Missing => {}
+            PanelType::Broken => {
                 let p = &mut self.field.panels[y as usize][x as usize];
                 p.road_timer = ROAD_TICKS;
                 p.hole_timer = p.hole_timer.wrapping_sub(1);
                 if p.hole_timer == 0 {
-                    p.kind = kind::NORMAL;
+                    p.kind = PanelType::Normal;
                     self.field.refresh(&self.collision, x, y);
                     self.field.panels[y as usize][x as usize].hole_timer = h;
                     return;
                 }
-                p.display_kind = if p.hole_timer <= 60 && p.hole_timer & 2 != 0 { 2 } else { 1 };
+                // Blinks back to normal in its last second.
+                let blink = p.hole_timer <= 60 && p.hole_timer & 2 != 0;
+                p.display_kind = if blink { PanelType::Normal } else { PanelType::Broken };
             }
-            kind::CRACKED => {
+            PanelType::Cracked => {
                 let p = &mut self.field.panels[y as usize][x as usize];
                 p.hole_timer = h;
                 p.road_timer = ROAD_TICKS;
                 let latch = p.latch;
                 if latch & pflags::BODY != 0 && latch & pflags::FLOATING == 0 && p.flags & pflags::OCCUPIED == 0 {
-                    p.kind = kind::BROKEN;
+                    p.kind = PanelType::Broken;
                     self.field.refresh(&self.collision, x, y);
                     self.field.panels[y as usize][x as usize].hole_timer = h;
                 }
             }
-            kind::VOLCANO => {
+            PanelType::Volcano => {
                 let p = &mut self.field.panels[y as usize][x as usize];
                 p.hole_timer = h;
                 p.road_timer = ROAD_TICKS;
@@ -282,17 +326,18 @@ impl Battle {
                     self.erupt(x, y);
                 }
             }
-            kind::ROAD_UP..=kind::ROAD_RIGHT => {
+            PanelType::RoadUp | PanelType::RoadDown | PanelType::RoadLeft | PanelType::RoadRight => {
                 let p = &mut self.field.panels[y as usize][x as usize];
                 p.hole_timer = h;
                 p.road_timer = p.road_timer.wrapping_sub(1);
                 if p.road_timer == 0 {
-                    p.kind = kind::NORMAL;
+                    p.kind = PanelType::Normal;
                     self.field.refresh(&self.collision, x, y);
                     self.field.panels[y as usize][x as usize].road_timer = ROAD_TICKS;
                     return;
                 }
-                p.display_kind = if p.road_timer <= 60 && p.road_timer & 2 != 0 { 2 } else { p.kind };
+                let blink = p.road_timer <= 60 && p.road_timer & 2 != 0;
+                p.display_kind = if blink { PanelType::Normal } else { p.kind };
             }
             _ => {
                 let p = &mut self.field.panels[y as usize][x as usize];
@@ -419,13 +464,13 @@ impl Battle {
     }
 
     /// `_object_setPanelType`.
-    pub fn set_panel_type(&mut self, x: u8, y: u8, t: u8) {
+    pub fn set_panel_type(&mut self, x: u8, y: u8, t: PanelType) {
         let Some(p) = self.field.panel_mut(x, y) else { return };
-        if p.kind == kind::MISSING {
+        if p.kind == PanelType::Missing {
             return;
         }
         p.kind = t;
-        if (kind::ROAD_UP..=kind::ROAD_RIGHT).contains(&t) {
+        if t.is_road() {
             p.road_timer = ROAD_TICKS;
         }
         self.field.refresh(&self.collision, x, y);
@@ -434,7 +479,7 @@ impl Battle {
     /// `object_setPanelAlliance`.
     pub fn set_panel_alliance(&mut self, x: u8, y: u8, alliance: u8) {
         let Some(p) = self.field.panel_mut(x, y) else { return };
-        if p.kind == kind::MISSING {
+        if p.kind == PanelType::Missing {
             return;
         }
         p.alliance = alliance;
@@ -452,16 +497,16 @@ impl Battle {
         }
         if f & pflags::CRACKED == 0 {
             p.flags = ((f | pflags::CRACKED) & !0x3F0F) | 3;
-            p.kind = kind::CRACKED;
-            p.display_kind = kind::CRACKED;
+            p.kind = PanelType::Cracked;
+            p.display_kind = PanelType::Cracked;
             return true;
         }
         if f & pflags::OCCUPIED != 0 {
             return false;
         }
         p.flags = (f & !0x3F5F) | 1;
-        p.kind = kind::BROKEN;
-        p.display_kind = kind::BROKEN;
+        p.kind = PanelType::Broken;
+        p.display_kind = PanelType::Broken;
         true
     }
 
@@ -472,9 +517,7 @@ impl Battle {
         }
         let o = self.objects.get(obj);
         let airshoes = o.collision.map(|c| self.collision.get(c).f1 & crate::collision::f1::AIRSHOE != 0).unwrap_or(false);
-        let mut idx = if !airshoes && self.field.is_solid(o.panel.x, o.panel.y) { 0 } else { 2 };
-        idx += o.alliance as usize;
-        let (set, clear) = tables::STEP_RULES[idx];
-        self.field.check(x, y, set, clear)
+        let floor_free = airshoes || !self.field.is_solid(o.panel.x, o.panel.y);
+        self.field.meets(x, y, step_rule(floor_free, o.alliance))
     }
 }

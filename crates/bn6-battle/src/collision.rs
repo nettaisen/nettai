@@ -8,7 +8,7 @@
 
 use crate::battle::Battle;
 use crate::data::collision_generated as tables;
-use crate::field::{self, kind};
+use crate::field::{self, PanelType};
 use crate::object::{ObjectRef, PanelPos};
 
 pub const SLOTS: usize = 32;
@@ -452,9 +452,9 @@ impl Battle {
             && rs & 0x0C00_0000 == 0
             && hd.status_timers[timer::INVULNERABLE] == 0
             && rd.acc.hit_flags & 1 == 0
-            && self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind) == Some(kind::ICE)
+            && self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind) == Some(PanelType::Ice)
         {
-            self.set_panel_type(hd.panel.x, hd.panel.y, kind::NORMAL);
+            self.set_panel_type(hd.panel.x, hd.panel.y, PanelType::Normal);
             self.collision.get_mut(h).status_final = 0x50;
         }
         let c = hd.counter_byte;
@@ -497,7 +497,7 @@ impl Battle {
         let e = (hd.element as usize).min(5);
         rm.acc.element_damage[e] = rm.acc.element_damage[e].wrapping_add(hd.self_damage.wrapping_mul(m as u16));
         let rp = rd.panel;
-        let grass = self.field.panel(rp.x, rp.y).map(|p| p.kind) == Some(kind::GRASS);
+        let grass = self.field.panel(rp.x, rp.y).map(|p| p.kind) == Some(PanelType::Grass);
         let rm = self.collision.get_mut(r);
         if hd.element == 1 && grass {
             rm.acc.element_damage[0] = rm.acc.element_damage[0].wrapping_add(hd.self_damage);
@@ -520,7 +520,7 @@ impl Battle {
         if (hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0) {
             return;
         }
-        let grass = self.field.panel(rd.panel.x, rd.panel.y).map(|p| p.kind) == Some(kind::GRASS);
+        let grass = self.field.panel(rd.panel.x, rd.panel.y).map(|p| p.kind) == Some(PanelType::Grass);
         let rm = self.collision.get_mut(r);
         rm.acc.raw_hit_flags |= hd.self_flags;
         rm.acc.raw_elements |= hd.secondary_element;
@@ -543,13 +543,13 @@ impl Battle {
         let e = s.element;
         let Some(p) = self.field.panel(x, y) else { return };
         let convert = match p.kind {
-            kind::GRASS => e == 1,
-            kind::VOLCANO => e == 2,
-            kind::ROAD_UP..=kind::ROAD_RIGHT => e == 4,
+            PanelType::Grass => e == 1,
+            PanelType::Volcano => e == 2,
+            t if t.is_road() => e == 4,
             _ => false,
         };
         if convert {
-            self.set_panel_type(x, y, kind::NORMAL);
+            self.set_panel_type(x, y, PanelType::Normal);
         }
     }
 

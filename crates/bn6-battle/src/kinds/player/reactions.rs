@@ -11,7 +11,7 @@ use crate::battle::Battle;
 use crate::collision::{f1, timer};
 use crate::data::player::SlideVector;
 use crate::data::player_generated::{BUBBLE_BOB, ICE_VECTORS, PUSH_VECTORS, ROAD_VECTORS};
-use crate::field::{self, kind};
+use crate::field::{self, PanelType};
 use crate::object::{ObjectRef, PanelPos, flags, state};
 
 // ---- Deletion (action 2) -------------------------------------------------------
@@ -403,7 +403,7 @@ fn step_drag(b: &mut Battle, r: ObjectRef) {
         return;
     }
     b.unreserve_panel(r, fp.x, fp.y);
-    if panel_kind(b, fp) == kind::ICE && coll(b, r).element != 2 {
+    if panel_kind(b, fp) == PanelType::Ice && coll(b, r).element != 2 {
         let o = b.objects.get_mut(r);
         o.timer2 = o.timer2.wrapping_add(1);
     }
@@ -484,12 +484,7 @@ fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
         }
         2 => facing(*ICE_VECTORS.get(coll(b, r).direction as usize).expect("ice slide direction")),
         3 => {
-            let t = panel_kind(b, o.panel);
-            if (kind::ROAD_UP..=kind::ROAD_RIGHT).contains(&t) {
-                ROAD_VECTORS[(t - kind::ROAD_UP) as usize]
-            } else {
-                SlideVector::NONE
-            }
+            panel_kind(b, o.panel).road_index().map_or(SlideVector::NONE, |i| ROAD_VECTORS[i])
         }
         t => panic!("slide type {t} reads past its table"),
     };
@@ -505,7 +500,5 @@ fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
         return false;
     }
     let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
-    let i = if airshoes { 2 } else { 0 } + b.objects.get(r).alliance as usize;
-    let (set, clear) = crate::data::field_generated::STEP_RULES[i];
-    b.field.check(p.x, p.y, set, clear)
+    b.field.meets(p.x, p.y, field::step_rule(airshoes, b.objects.get(r).alliance))
 }
