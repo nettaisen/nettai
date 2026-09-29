@@ -38,6 +38,8 @@ fn setup(actors: u32) -> RoundSetup {
         rng: 1,
         local_side: 0,
         score: SetScore::default(),
+        later_stages: Default::default(),
+        low_hp_music_latched: false,
     }
 }
 
