@@ -415,10 +415,27 @@ Reaction to r0:
 1. Init: `sub_80147E4(byte_203F558, byte_203F658)`. These are the two transform records received with the chip exchange (§7.3).
 2. Wait for `sub_801483C() == 0` (transformation sequencer idle).
 3. If [2]==0: `sub_801482C`, [2]=4, and wait again.
-4. Then `sub_80103BC(0)`/`sub_8015A38`, `sub_80103BC(1)`/`sub_8015A38`. `sub_8015A38` decrements NaviStats+0x21 (beast-out counter) when +0x2C is in 0x0B..0x18.
+4. Then `sub_80103BC(0)`/`sub_8015A38`, `sub_80103BC(1)`/`sub_8015A38`. `sub_8015A38` decrements NaviStats+0x21 (beast-out counter) when all of these hold: the navi is MegaMan (+0x29 == 0), the starting form +0x17 is not 0x0B/0x0C, the form +0x2C is in 0x0B..0x18, and the counter is not already 0. In round 2 it went 3 → 2 at 1909.
 5. [0]=4.
 
 This took 4 ticks in round 1 and 134 in round 2 (P0 requested form 0x0C).
+
+#### 3.4.1 The transformation sequencer (`sub_801483C`)
+
+State lives at `dword_20367F0`: [0] state (0 check, 4 transform, 8 wait), [1] transform sub-state, [3] sub-state init, [4] busy, then the two 0x10-byte transform records (+8 side 0, +0x18 side 1). `sub_80147E4` copies the exchanged records there **and** to `unk_203A980 + 0x10·alliance`, which the navis read through `sub_801595E(alliance)`. It sets [0..3] = 0 and busy = 1. `sub_801482C` only resets [0..3] and busy; the records stay.
+
+A transform record: +0 requested form (0xFF none), +4 Cross change (0xFF none), +8 the requesting navi object (always the side's player). +1 and +3 are written by the custom screen (`sub_8015952`), and nothing in battle reads them.
+
+- **State 0, `sub_801486C`** (one tick), per side: if +4 ≠ 0xFF, `sub_802DCDE` (request 0x4000000) and then the Beast Out check; else if +0 ≠ 0xFF, note that someone transforms and skip the check; else the Beast Out check (`sub_80159C6`, then `sub_8015994` if it says the Beast Out ran out). Next state: 4 if anyone transforms, else 8.
+- **State 4, `sub_80148CC`**, on [1]:
+  - 0 `sub_80148EC`: on init, `SetScreenFade(0x44, 0x10)` (0x70 in battle mode 1) and HUD off. When the fade is done: [1]=4, [2..3]=0. Fade 0x44 takes **16** ticks: started at 1777, first seen done at 1793.
+  - 4 `sub_8014944`: on init, `sub_801596E` (request 0x4000) for each side with +0 ≠ 0xFF, then return. Afterwards, wait while either navi has AIData+0x48 bit 0x80 (`sub_801597C`). Then both +0 = 0xFF, [1]=8, [2..3]=0.
+  - 8 `sub_801498E`: on init, `SetScreenFade(0x40, 0x10)` (0x6C in mode 1). When done: HUD back, [0..3] = 8 (word store). Fade 0x40 takes **17** ticks: 1889 → 1906.
+- **State 8, `sub_8014A00`**: wait while either navi reverts (`sub_80159A2`: AIData+0x48 bit 0x100 or request 0x40). Then, per side in order, wait while it changes Cross (`sub_802DCEC`: +0x48 bit 0x1000 or request 0x4000000), clearing that side's +4. Then busy = 0.
+
+The navi's side of the change is action 0x1C, run by the pause handler (objects-and-player.md §M4.2, and §12.9 for Beast Out). Round 2 timeline: sequencer init 1776, fade-out 1777–1793, request 1794 (the navi enters action 0x1C in the same tick), change done 1887, fade-in 1889–1906, busy cleared 1906, second (reset) run 1907–1908, fighting state 4 at 1909.
+
+Neither `sub_801486C` nor `sub_8014A00` is affected by the custom screen's close setting AIData+0x0F = 1 for both navis (§3.3.2): that value is correct, and it makes the first `sub_80159C6` of the turn return early. The Beast Out end check only runs after a mid-battle custom screen, whose state 0x20 decrements +0x0F to 0 (`sub_8015A16`).
 
 **State 4, `sub_8008064`:**
 1. Every tick: `sub_8012DFC(0)`, `sub_8012DFC(1)` (inputs → actors, §6.5).

@@ -144,3 +144,31 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
     let pos = crate::kinds::spark::jitter(b, 0xF, pos);
     crate::kinds::spark::spawn(b, r, pos, 8);
 }
+
+/// `object_updateSpriteTimestop`: like `update_sprite`, but it also steps
+/// in time stop and whatever the object's collision says.
+pub fn update_sprite_in_time_stop(b: &mut Battle, r: ObjectRef) {
+    if b.paused {
+        return;
+    }
+    let o = b.objects.get(r);
+    if o.flags & flags::ACTIVE == 0 {
+        return;
+    }
+    step_sprite(b, r);
+}
+
+/// `sub_801BCD0`: load a newly requested animation and step the sprite,
+/// paused or not (skipped only for non-animating objects).
+pub fn step_sprite(b: &mut Battle, r: ObjectRef) {
+    let o = b.objects.get(r);
+    if o.flags & flags::NO_SPRITE_UPDATE != 0 {
+        return;
+    }
+    let (anim, loaded) = (o.anim, o.anim_loaded);
+    if anim != loaded {
+        b.objects.sprite_mut(r).set_animation(anim);
+        b.objects.get_mut(r).anim_loaded = anim;
+    }
+    b.objects.sprite_mut(r).update();
+}

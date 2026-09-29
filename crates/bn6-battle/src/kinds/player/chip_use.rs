@@ -31,7 +31,7 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
         return None;
     }
     if requested & request::CHARGED_CHIP != 0 {
-        panic!("charged chips (sub_800FB54) are not implemented yet");
+        return Some(use_charged_chip(b, r));
     }
     if requested & request::ALT_CHIP != 0 {
         panic!("Battle Chip Gate slot-in chips (sub_800EE26) are not implemented yet");
@@ -45,6 +45,59 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
     }
     ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
     Some(ai(b, r).attack.chip_id)
+}
+
+/// `sub_800FB54`'s charged path (request 8): the form's A-charge routine
+/// decides what the charged chip becomes. Returns the attack's chip id,
+/// which that path leaves 0 for Null-family chips.
+fn use_charged_chip(b: &mut Battle, r: ObjectRef) -> ChipId {
+    let chip = hand_entry(b, r).chip;
+    if chip == crate::hand::NO_CHIP {
+        panic!("a charged chip with an empty hand reads past the chip table");
+    }
+    let routine = if data::chip(chip).family == 0x0A {
+        ai_mut(b, r).attack.chip_id = 0;
+        ai(b, r).alt_a_charge
+    } else {
+        ai(b, r).a_charge
+    };
+    match routine {
+        0x18 => panic!("charged chip routine 0x18 (sub_8012CB2) is not implemented yet"),
+        // The chip is used as if uncharged, but with the chip family as
+        // sub_80127C0's argument (0 for the Null family).
+        0xFF => panic!("charged chips without a charge routine (sub_800FB54) are not implemented yet"),
+        0x05 | 0x0D | 0x1F | 0x20 | 0x29 | 0x2D => {
+            panic!("charged chip bonuses (sub_80127C0 with 1) are not implemented yet")
+        }
+        _ => {
+            ai_mut(b, r).attack.charged = 0;
+            let action = super::idle::weapon_routine(b, r, routine);
+            set_attack(b, r, action, 2);
+            let form = stats(b, r).form;
+            if action == super::actions::beast_claw::ACTION || (action == 0x41 && form.0 == 0x0F) {
+                ai_mut(b, r).attack.beast_lockon = 1;
+            }
+        }
+    }
+    ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
+    ai(b, r).attack.chip_id
+}
+
+/// `sub_800FC30`: the Beast Out rush chains the next chip, starting its
+/// action (inside the rush again). Not the claw's chips 0x52/0x53, time
+/// freezes, or an empty hand. True if it did.
+pub(super) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
+    let chip = hand_entry(b, r).chip;
+    if chip == crate::hand::NO_CHIP || chip == 0x52 || chip == 0x53 {
+        return false;
+    }
+    if data::chip(chip).flags.has(ChipFlags::TIME_FREEZE) {
+        return false;
+    }
+    let action = prepare(b, r);
+    set_attack(b, r, action, 2);
+    ai_mut(b, r).attack.beast_lockon = 1;
+    true
 }
 
 /// The hand entry at the cursor (`sub_800EDD0`, player branch).

@@ -48,7 +48,36 @@ pub(super) fn a_chargeable(b: &Battle, r: ObjectRef) -> bool {
     if !may_charge(b, r) || next_chip(b, r) == NO_CHIP {
         return false;
     }
-    panic!("A-chargeable chip check (sub_8013236) is not implemented yet");
+    chip_charges(b, r, next_chip(b, r))
+}
+
+/// `sub_8013236`: whether chip `id` charges on A in the navi's form: its
+/// attack family matches the form (damaging, not time-freeze chips; any
+/// Null-family chip in Beast Out).
+fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
+    use crate::data::{ChipFlags, chip};
+    if id >= 0x190 {
+        return false;
+    }
+    let c = chip(id);
+    let (family, form) = (c.family, stats(b, r).form.0);
+    let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::TIME_FREEZE);
+    let charges = (form == 2 && family == 0xA && damaging)
+        || (matches!(form, 3 | 0xF) && ((0x4C..=0x4F).contains(&id) || family == 5) && damaging)
+        || ((0x0B..=0x16).contains(&form) && family == 0xA)
+        || (matches!(form, 7 | 0x13) && family == 3 && damaging)
+        || (matches!(form, 6 | 0x12) && family == 1 && damaging)
+        || (matches!(form, 9 | 0x15) && family == 9 && damaging)
+        || (matches!(form, 5 | 0x11) && family == 0 && damaging);
+    if charges {
+        return true;
+    }
+    // The link navis' own charged chips (`sub_800F49E`, `byte_8021369`);
+    // MegaMan has none.
+    if stats(b, r).navi != crate::setup::Navi::MEGAMAN {
+        panic!("link navis' charged chips (sub_8013236) are not implemented yet");
+    }
+    false
 }
 
 /// `sub_8013396`: the B button charges.
