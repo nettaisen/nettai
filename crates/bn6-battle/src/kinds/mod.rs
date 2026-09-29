@@ -5,9 +5,12 @@ pub mod absorbed_obstacle;
 pub mod charge_glow;
 pub mod common;
 pub mod effect;
+pub mod form_overlay;
 pub mod hitbox;
 pub mod intro;
+pub mod lockon_marker;
 pub mod obstacle;
+pub mod palette_flash;
 pub mod player;
 pub mod rock;
 pub mod rock_debris;
@@ -29,6 +32,9 @@ pub enum Vars {
     Hitbox(hitbox::Vars),
     Rock(rock::Vars),
     AbsorbedObstacle(absorbed_obstacle::Vars),
+    FormOverlay(form_overlay::Vars),
+    LockonMarker(lockon_marker::Vars),
+    PaletteFlash(palette_flash::Vars),
 }
 
 impl Vars {
@@ -38,6 +44,9 @@ impl Vars {
             (Pool::Effect, 8) => Vars::ChargeGlow(Default::default()),
             (Pool::Effect, 0) => Vars::Effect(Default::default()),
             (Pool::Attack, 3) => Vars::Hitbox(Default::default()),
+            (Pool::Actor, form_overlay::INDEX) => Vars::FormOverlay(Default::default()),
+            (Pool::Effect, lockon_marker::INDEX) => Vars::LockonMarker(Default::default()),
+            (Pool::Effect, palette_flash::INDEX) => Vars::PaletteFlash(Default::default()),
             (Pool::Actor, 0) => Vars::None,
             _ => Vars::None,
         }
@@ -57,6 +66,9 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Attack, rock::INDEX) => rock::update(b, r),
         (Pool::Effect, rock_debris::INDEX) => rock_debris::update(b, r),
         (Pool::Effect, absorbed_obstacle::INDEX) => absorbed_obstacle::update(b, r),
+        (Pool::Actor, form_overlay::INDEX) => form_overlay::update(b, r),
+        (Pool::Effect, lockon_marker::INDEX) => lockon_marker::update(b, r),
+        (Pool::Effect, palette_flash::INDEX) => palette_flash::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }

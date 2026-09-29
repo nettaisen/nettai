@@ -1,6 +1,8 @@
 //! Player actions 0x10 and up (the game's `JumpTable80EAC60`): movement,
 //! buster, charged shot, and chip attacks.
 
+pub mod transform;
+
 use crate::battle::Battle;
 use crate::object::ObjectRef;
 
