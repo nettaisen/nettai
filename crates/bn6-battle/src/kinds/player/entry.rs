@@ -33,7 +33,8 @@ fn wait_for_fade(b: &mut Battle, r: ObjectRef) {
         b.fadein_enqueue(r);
         b.objects.get_mut(r).phase_init = 4;
     } else if b.round.intro_bits & 0x01 != 0 && b.fadein_is_head(r) {
-        // Sound 0x94; the sprite starts transparent.
+        b.play_sound(crate::sound::SoundId(0x94));
+        // The sprite starts transparent.
         let o = b.objects.get_mut(r);
         o.timer = 2;
         o.timer2 = 0x10;

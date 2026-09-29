@@ -187,7 +187,10 @@ fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
     }
     b.bump_side_stat(opp, 8, 1);
     coll_mut(b, r).counter_timer = 0;
-    // Unless the battle is over: the "COUNTER" HUD text and sound 0x86.
+    // Unless the battle is over: the "COUNTER" HUD text and a sound.
+    if !b.is_battle_over() {
+        b.play_sound(crate::sound::SoundId(0x86));
+    }
 }
 
 /// `sub_801A506`: note a damaging weakness hit.
@@ -212,7 +215,9 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
             d = hp - 1;
         }
         crate::kinds::subtract_hp(b, r, d);
-        // Sound 0x6B (local player) or 0x6D; sprite_forceWhitePalette.
+        // The local player's navi hears another hit sound; sprite_forceWhitePalette.
+        let local_player = navi_record(b, r).actor_type == ActorType::Player && !b.is_remote(b.objects.get(r).alliance);
+        b.play_sound(crate::sound::SoundId(if local_player { 0x6B } else { 0x6D }));
         dead = b.objects.get(r).hp == 0;
     }
     if !dead {
@@ -366,7 +371,9 @@ fn tick_flash(b: &mut Battle, r: ObjectRef) {
             set_flag1(b, r, f1::FLASHING);
             return;
         }
-        // Sound 0x94 if invisible.
+        if flag1(b, r) & f1::INVISIBLE != 0 {
+            b.play_sound(crate::sound::SoundId(0x94));
+        }
     }
     clear_flag1(b, r, f1::FLASHING | f1::INVISIBLE);
 }
@@ -546,7 +553,9 @@ fn tick_semi_intangible(b: &mut Battle, r: ObjectRef) {
             return;
         }
         coll_mut(b, r).status_timers[timer::SEMI_INTANGIBLE] = t as u16;
-        // At 0: sound 0x94.
+        if t == 0 {
+            b.play_sound(crate::sound::SoundId(0x94));
+        }
     }
     if flag1(b, r) & f1::USING_ACTION != 0 {
         clear_flag1(b, r, f1::SEMI_INTANGIBLE);
