@@ -108,6 +108,111 @@ fn chips(rom: &Rom) -> String {
     out
 }
 
+/// HUD banner tables: each banner's type (types 2 and 4 hold until
+/// removed) and the per-navi win/lose banner ids.
+fn banners(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    let base = 0x0801_EF84;
+    let mut types = Vec::new();
+    loop {
+        let p = u32::from_le_bytes(rom.bytes(base + 4 * types.len() as u32, 4).try_into().unwrap());
+        if !(0x0800_0000..0x0900_0000).contains(&p) {
+            break;
+        }
+        types.push(rom.u8(p + 2));
+    }
+    writeln!(out, "/// Banner type by banner id / 4 (`pt_801EF84` records, byte 2).").unwrap();
+    writeln!(out, "pub static BANNER_TYPES: [u8; {}] = {:?};", types.len(), types).unwrap();
+    writeln!(out, "/// Netbattle win banner id by navi (`byte_800A8EC`).").unwrap();
+    writeln!(out, "pub static WIN_BANNERS: [u8; 12] = {:?};", rom.bytes(0x0800_A8EC, 12)).unwrap();
+    writeln!(out, "/// Netbattle lose banner id by navi (`byte_800A8C8`).").unwrap();
+    writeln!(out, "pub static LOSE_BANNERS: [u8; 12] = {:?};", rom.bytes(0x0800_A8C8, 12)).unwrap();
+    out
+}
+
+fn u32at(rom: &Rom, a: u32) -> u32 {
+    u32::from_le_bytes(rom.bytes(a, 4).try_into().unwrap())
+}
+
+/// IWRAM code/data is a copy of the ROM at 0x081D6000.
+fn iwram(a: u32) -> u32 {
+    a - 0x0300_5B00 + 0x081D_6000
+}
+
+/// Field tables: panel layouts, per-panel constants, panel type flags and
+/// movement rules.
+fn field(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    let n = (0x0800_E24C - 0x0800_D730) / 12;
+    writeln!(out, "/// Panel types per layout: one u32 per row (y 1..3), a nibble per column (x 1..6).").unwrap();
+    writeln!(out, "pub static PANEL_LAYOUTS: [[u32; 3]; {n}] = [").unwrap();
+    for i in 0..n {
+        let a = 0x0800_D730 + 12 * i;
+        writeln!(out, "    [{:#010x}, {:#010x}, {:#010x}],", u32at(rom, a), u32at(rom, a + 4), u32at(rom, a + 8)).unwrap();
+    }
+    writeln!(out, "];").unwrap();
+    writeln!(out, "/// Initial visibility per panel (index y*8+x).").unwrap();
+    writeln!(out, "pub static PANEL_VISIBLE: [u8; 40] = {:?};", rom.bytes(0x0800_C590, 40)).unwrap();
+    writeln!(out, "/// Front-edge drawing per panel (index y*8+x).").unwrap();
+    writeln!(out, "pub static PANEL_FRONT_EDGE: [u8; 40] = {:?};", rom.bytes(0x0800_C5B8, 40)).unwrap();
+    let types: Vec<String> = (0..13).map(|i| format!("{:#07x}", u32at(rom, iwram(0x0300_7924) + 4 * i))).collect();
+    writeln!(out, "/// Flag bits each panel type contributes (`word_3007924`).").unwrap();
+    writeln!(out, "pub static PANEL_TYPE_FLAGS: [u32; 13] = [{}];", types.join(", ")).unwrap();
+    let rules = |a: u32| -> String {
+        let r: Vec<String> =
+            (0..4).map(|i| format!("({:#x}, {:#010x})", u32at(rom, a + 8 * i), u32at(rom, a + 8 * i + 4))).collect();
+        r.join(", ")
+    };
+    writeln!(out, "/// Step rules (set, clear) by [airshoes-or-off-solid][alliance] (`tbl_800E660`).").unwrap();
+    writeln!(out, "pub static STEP_RULES: [(u32, u32); 4] = [{}];", rules(0x0800_E660)).unwrap();
+    writeln!(out, "/// Step rules in dash mode (`byte_8010388`).").unwrap();
+    writeln!(out, "pub static DASH_STEP_RULES: [(u32, u32); 4] = [{}];", rules(0x0801_0388)).unwrap();
+    writeln!(out, "/// Step rules ignoring ownership (`byte_800E6C8`).").unwrap();
+    writeln!(out, "pub static ANY_SIDE_STEP_RULES: [(u32, u32); 4] = [{}];", rules(0x0800_E6C8)).unwrap();
+    writeln!(out, "/// Road conveyor (dx, dy) by panel type - 9 (`byte_800E538`).").unwrap();
+    let road: Vec<String> = (0..4).map(|i| format!("({}, {})", rom.u8(0x0800_E538 + 4 * i) as i8, rom.u8(0x0800_E539 + 4 * i) as i8)).collect();
+    writeln!(out, "pub static ROAD_DIRECTIONS: [(i8, i8); 4] = [{}];", road.join(", ")).unwrap();
+    out
+}
+
+/// Collision tables: type flags, region shapes, element weaknesses.
+fn collision(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    writeln!(out, "/// Collision type flags [alliance 0, alliance 1] by index (`byte_8019C7C`).").unwrap();
+    writeln!(out, "pub static COLLISION_TYPES: [[u32; 2]; 89] = [").unwrap();
+    for i in 0..89 {
+        let a = 0x0801_9C7C + 8 * i;
+        writeln!(out, "    [{:#010x}, {:#010x}], // {i:#04x}", u32at(rom, a), u32at(rom, a + 4)).unwrap();
+    }
+    writeln!(out, "];").unwrap();
+    writeln!(out, "/// Region shapes: panel offsets (dx, dy), dx toward the facing side (`PanelOffsetListsPointerTable`).").unwrap();
+    writeln!(out, "pub static REGIONS: [&[(i8, i8)]; 47] = [").unwrap();
+    for i in 0..47 {
+        let mut a = u32at(rom, 0x0801_9B78 + 4 * i);
+        let mut v = Vec::new();
+        if a >= 0x0800_0000 {
+            loop {
+                let dx = rom.u8(a) as i8;
+                if dx == 0x7F {
+                    break;
+                }
+                v.push(format!("({dx}, {})", rom.u8(a + 1) as i8));
+                a += 2;
+            }
+        }
+        writeln!(out, "    &[{}], // {i}", v.join(", ")).unwrap();
+    }
+    writeln!(out, "];").unwrap();
+    let f: Vec<String> = (0..9)
+        .map(|i| format!("({:#x}, {:#x})", u32at(rom, 0x0801_9C34 + 8 * i), u32at(rom, 0x0801_9C38 + 8 * i)))
+        .collect();
+    writeln!(out, "/// Whole-field regions 0x80.. : panels whose flags have all of `want` and none of `forbid`.").unwrap();
+    writeln!(out, "pub static FIELD_REGIONS: [(u32, u32); 9] = [{}];", f.join(", ")).unwrap();
+    writeln!(out, "/// Primary-element weakness: [receiver element * 5 + hitter element] (`byte_3007444`).").unwrap();
+    writeln!(out, "pub static ELEMENT_WEAKNESS: [u8; 28] = {:?};", rom.bytes(iwram(0x0300_7444), 28)).unwrap();
+    out
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let rom = Rom(std::fs::read(&args[0]).expect("reading ROM"));
@@ -117,5 +222,8 @@ fn main() {
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../bn6-battle/src/data"));
     std::fs::write(out_dir.join("chips_generated.rs"), chips(&rom)).unwrap();
+    std::fs::write(out_dir.join("banners_generated.rs"), banners(&rom)).unwrap();
+    std::fs::write(out_dir.join("field_generated.rs"), field(&rom)).unwrap();
+    std::fs::write(out_dir.join("collision_generated.rs"), collision(&rom)).unwrap();
     eprintln!("wrote {}", out_dir.display());
 }
