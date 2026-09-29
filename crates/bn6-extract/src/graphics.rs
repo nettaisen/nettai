@@ -7,8 +7,13 @@ use bn6_assets::*;
 use std::collections::HashMap;
 use std::path::Path;
 
+/// The battle graphics of a ROM.
+pub fn bundle(rom: &Rom) -> Bundle {
+    Bundle { sprites: sprites(rom), field: field(rom), backgrounds: backgrounds(rom), hud: crate::hud::hud(rom) }
+}
+
 pub fn run(rom: &Rom, out: &Path) {
-    let bundle = Bundle { sprites: sprites(rom), field: field(rom), backgrounds: backgrounds(rom), hud: crate::hud::hud(rom) };
+    let bundle = bundle(rom);
     bundle.save(out).expect("writing the asset bundle");
     let tiles: usize = bundle.sprites.iter().flat_map(|s| &s.tilesets).map(|t| t.len()).sum();
     eprintln!(

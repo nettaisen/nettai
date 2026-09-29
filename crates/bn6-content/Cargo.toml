@@ -1,0 +1,18 @@
+[package]
+name = "bn6-content"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Open, editable content-pack formats for the battle graphics and sound (indexed PNG + JSON, MIDI + TOML + WAV), with exact import back to the engine's data"
+
+[dependencies]
+bn6-assets = { path = "../bn6-assets" }
+m4a.workspace = true
+png = "0.17"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+[dev-dependencies]
+# The engine's generated timing table, for the engine_timing example.
+bn6-battle.workspace = true
