@@ -12,9 +12,8 @@ This document repeats only what it needs from them.
 
 | Item | Value |
 |---|---|
-| Disassembly | `bn6f/asm/*.s`, abbreviated `asm38.s:3071` etc. |
-| Symbols | `bn6f/bn6f.sym`; `tools/sym.py ADDR` |
-| Exact literals | from `crates/bn6-gen` (e.g. `m00_3005700.rs`). The `.s` literal pools are sometimes mis-disassembled as `.byte` lists with wrong `// =0x0` comments. |
+| Routines | named as in the original's symbols, with their ROM/IWRAM address |
+| Exact literals | read from the ROM bytes: some literal pools disassemble as `.byte` lists with wrong `// =0x0` comments |
 | `obj` | a battle object (`r5`) |
 | `cd` | its CollisionData (`obj+0x54`) |
 | `ai` | its AIData (`obj+0x58`) |
@@ -27,9 +26,9 @@ Additional conventions:
 - "Tick" = one call of `battle_8007A44`. Trace frame numbers are ticks of the battle function.
 
 How claims were verified:
-- By reading the asm and the Rust translation, and, where marked **[verified]**, by running the real game (mGBA core) through `tools/difftest` on the machgun replay (`~/Documents/Tango/replays/20260901132611-chilly-machgun-6-bn6-vs-weenie-p1.tangoreplay`, which reproduces `data/traces/machgun.jsonl` byte-for-byte).
-- `--peek` and `--watch` show memory and the call chain of every write.
-- Some paths that never occur in machgun were verified on the soundmod replay `~/Downloads/20260806025708-awhisperof-hiboomer-bot-bn6_soundmod-vs-Raichubudd-p2.tangoreplay` (run with `--allow-patch`). Those are marked **[verified-soundmod]**.
+- By reading the original's code, and, where marked **[verified]**, by running the real game under emulation on the machgun battle, which reproduces the machgun trace byte-for-byte.
+- Memory peeks and write watches show memory and the call chain of every write.
+- Some paths that never occur in machgun were verified on the soundmod battle (a soundmod netbattle, run as vanilla). Those are marked **[verified-soundmod]**.
 - Anything marked **(code only)** was read but never observed.
 
 ---
@@ -221,7 +220,7 @@ Named masks:
 
 Inputs:
 - `BattleState+6 = BattleSettings[0]` (layout index), set by `sub_800A2F8` 0x0800A2F8.
-- `BattleSettings[6]` = column pattern (`GetBattlePanelColumnPattern`, asm03_0.s:13549).
+- `BattleSettings[6]` = column pattern (`GetBattlePanelColumnPattern`).
 
 The per-round layout index comes from a list received over the link before the match. Treat BattleSettings as input. No RNG is used here.
 
@@ -1390,7 +1389,7 @@ During time stop:
 | Call site | Stream | Count and condition |
 |---|---|---|
 | Panel init / tick / area return / crack / break / poison / set type / set alliance | — | none |
-| Collision kernels (`asm38.s`), final damage, HP application, statuses, flash, slides, poison, grass, holy | — | none |
+| Collision kernels (IWRAM), final damage, HP application, statuses, flash, slides, poison, grass, holy | — | none |
 | `object_spawnCollisionEffect` 0x0801A0D4 / `sub_801A100` (hitter side) | RNG2 | 1× `GetRNG2` per call when `FFC & 0x3F800000`, not `FFC & 1`, and `HitEffect != 0xFF` |
 | `object_spawnHiteffect` 0x0800EB9E (navi, end of stage A) | RNG2 | 1× `GetRNG2` when not paused and `FFC & 0x20000` (it blocked a hit); spark at Z+0x100000, sound 0x6E |
 | `sub_8017AB4` (navi stage B, time-stop branch) | RNG2 | On a tick with FinalDamage ≠ 0: shake counter = 30. Then 1× `GetRNG2` (`AddRandomVarianceToTwoCoords(3,…)`) per tick while the counter runs, so 30 calls, restarted by each new damaging tick. **[verified-soundmod]** |
@@ -1417,7 +1416,7 @@ HP runs in the trace (`hp` = obj+0x24):
 | A1 | 2158–2277 | −4 | 520→40 (round 2) |
 | A1 | 2346 | 40→0 | F1 gains DEAD (status 0x02000100) |
 
-**Tick 646 → 647** (element-5 drain). `--watch` on slot 2 (0x02038640) in tick 646 shows, inside one update of a T3/3 hitbox (`sub_80C52B0` → `sub_80C52D0`):
+**Tick 646 → 647** (element-5 drain). a memory watch on slot 2 (0x02038640) in tick 646 shows, inside one update of a T3/3 hitbox (`sub_80C52B0` → `sub_80C52D0`):
 1. `object_createCollisionData` takes slot 2 (bit 0x20000000).
 2. `object_setupCollisionData(self 0x2C → 0x8000408C, target 5 → 0x15800000)`: SelfDamage 4, element 5, `+0x07` = 0, Region 4 (a vertical 3-panel column) at (5,2), HitEffect 0xFF.
 3. Present. The `Unk_54 = r1` quirk is visible: it is first written 4, then 0.

@@ -127,6 +127,8 @@ pub struct AttackVars {
     /// +0x30: a marker: the move's "direction changed", or a heat trap
     /// swallowing a hit.
     pub marker: u32,
+    /// The running action's own state (timers, destinations).
+    pub action: crate::kinds::player::actions::ActionVars,
 }
 
 

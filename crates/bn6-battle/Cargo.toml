@@ -10,8 +10,6 @@ serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 
 [features]
-# Golden-trace loading and comparison (tests and tools).
+# Loading recorded battles (per-frame inputs and state) and comparing the
+# engine against them.
 trace = ["dep:serde", "dep:serde_json"]
-
-[dev-dependencies]
-bn6-battle = { path = ".", features = ["trace"] }

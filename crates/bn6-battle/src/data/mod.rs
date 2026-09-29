@@ -3,6 +3,8 @@
 //! regenerate them rather than editing by hand.
 
 mod actor_lists_generated;
+pub mod attacks;
+mod attacks_generated;
 mod banners_generated;
 mod chips_generated;
 pub mod collision_generated;

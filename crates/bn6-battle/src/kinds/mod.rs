@@ -2,6 +2,7 @@
 //! behaviors (HP changes, damage formulas).
 
 pub mod absorbed_obstacle;
+pub mod attachment;
 pub mod charge_glow;
 pub mod common;
 pub mod effect;
@@ -15,6 +16,7 @@ pub mod player;
 pub mod rock;
 pub mod rock_debris;
 pub mod spark;
+pub mod sun_beam;
 
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Pool};
@@ -35,6 +37,8 @@ pub enum Vars {
     FormOverlay(form_overlay::Vars),
     LockonMarker(lockon_marker::Vars),
     PaletteFlash(palette_flash::Vars),
+    Attachment(attachment::Vars),
+    SunBeam(sun_beam::Vars),
 }
 
 impl Vars {
@@ -47,6 +51,8 @@ impl Vars {
             (Pool::Actor, form_overlay::INDEX) => Vars::FormOverlay(Default::default()),
             (Pool::Effect, lockon_marker::INDEX) => Vars::LockonMarker(Default::default()),
             (Pool::Effect, palette_flash::INDEX) => Vars::PaletteFlash(Default::default()),
+            (Pool::Actor, attachment::INDEX) => Vars::Attachment(Default::default()),
+            (Pool::Effect, sun_beam::INDEX) => Vars::SunBeam(Default::default()),
             (Pool::Actor, 0) => Vars::None,
             _ => Vars::None,
         }
@@ -69,6 +75,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Actor, form_overlay::INDEX) => form_overlay::update(b, r),
         (Pool::Effect, lockon_marker::INDEX) => lockon_marker::update(b, r),
         (Pool::Effect, palette_flash::INDEX) => palette_flash::update(b, r),
+        (Pool::Actor, attachment::INDEX) => attachment::update(b, r),
+        (Pool::Effect, sun_beam::INDEX) => sun_beam::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }
