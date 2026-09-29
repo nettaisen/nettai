@@ -3,7 +3,7 @@
 
 use crate::compose::{HEIGHT, WIDTH, to_rgb};
 use crate::render::Renderer;
-use crate::session::Session;
+use crate::session::{Session, TickHook};
 use bn6_battle::input::keys;
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::time::{Duration, Instant};
@@ -41,7 +41,13 @@ keys: arrows move, X = A, Z = B, A = L, S = R, Enter = START, Backspace = SELECT
 
 /// Show `sessions` one after another (a trace's rounds): a round that
 /// runs out of input moves on to the next; one the engine stopped stays.
-pub fn run(renderer: &mut Renderer, mut sessions: Vec<Session>, opts: &Options) -> Result<(), String> {
+/// `hooks` see the battle after every tick (sound).
+pub fn run(
+    renderer: &mut Renderer,
+    mut sessions: Vec<Session>,
+    hooks: &mut [Box<dyn TickHook>],
+    opts: &Options,
+) -> Result<(), String> {
     if sessions.is_empty() {
         return Ok(());
     }
@@ -101,11 +107,17 @@ pub fn run(renderer: &mut Renderer, mut sessions: Vec<Session>, opts: &Options) 
                     break;
                 }
                 renderer.observe(&session.battle);
+                for h in hooks.iter_mut() {
+                    h.after_tick(&session.battle);
+                }
             }
         } else {
             owed = 0.0;
             if single_step && session.step(buttons) {
                 renderer.observe(&session.battle);
+                for h in hooks.iter_mut() {
+                    h.after_tick(&session.battle);
+                }
             }
         }
         if let (Some(d), false) = (&session.diverged, reported.0) {

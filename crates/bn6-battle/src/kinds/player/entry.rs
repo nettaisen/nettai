@@ -1,7 +1,7 @@
 //! Actions 0 (battle entry: appear / fade in) and 1 (hand over to the
 //! idle controller). See objects-and-player.md §M4.
 
-use super::{ai, is_mode_40, navi_record};
+use super::{ai, per_player_gauges, navi_record};
 use crate::actor::ActorType;
 use crate::battle::Battle;
 use crate::object::{ObjectRef, flags};
@@ -33,7 +33,8 @@ fn wait_for_fade(b: &mut Battle, r: ObjectRef) {
         b.fadein_enqueue(r);
         b.objects.get_mut(r).phase_init = 4;
     } else if b.round.intro_bits & 0x01 != 0 && b.fadein_is_head(r) {
-        // Sound 0x94; the sprite starts transparent.
+        b.play_sound(crate::sound::SoundId(0x94));
+        // The sprite starts transparent.
         b.objects.sprite_mut(r).look.alpha = Some(0);
         let o = b.objects.get_mut(r);
         o.timer = 2;
@@ -87,7 +88,7 @@ fn wait_for_intro(b: &mut Battle, r: ObjectRef) {
 /// Action 1, `sub_8017888`: hand over to the idle controller (spawning
 /// the Beast Out lock-on marker in the battle flag 0x40 mode).
 pub(super) fn take_control(b: &mut Battle, r: ObjectRef) {
-    if is_mode_40(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).unk_40.is_none() {
+    if per_player_gauges(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).lockon_marker.is_none() {
         panic!("Beast Out lock-on marker (sub_80E1620) is not implemented yet");
     }
     let o = b.objects.get_mut(r);

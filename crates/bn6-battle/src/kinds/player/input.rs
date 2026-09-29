@@ -1,7 +1,7 @@
 //! Buttons to requests (`sub_8012FC8`) and the buster charge
 //! (`sub_8012EBC`). See objects-and-player.md §M3.3, §B3 and §B4.
 
-use super::{ai, ai_mut, battle_mode, is_mode_40, next_chip, stats};
+use super::{ai, ai_mut, battle_mode, per_player_gauges, next_chip, stats};
 use crate::actor::{request, status};
 use crate::battle::{Battle, battle_flags};
 use crate::hand::NO_CHIP;
@@ -48,7 +48,36 @@ pub(super) fn a_chargeable(b: &Battle, r: ObjectRef) -> bool {
     if !may_charge(b, r) || next_chip(b, r) == NO_CHIP {
         return false;
     }
-    panic!("A-chargeable chip check (sub_8013236) is not implemented yet");
+    chip_charges(b, r, next_chip(b, r))
+}
+
+/// `sub_8013236`: whether chip `id` charges on A in the navi's form: its
+/// attack family matches the form (damaging, not time-freeze chips; any
+/// Null-family chip in Beast Out).
+fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
+    use crate::data::{ChipFlags, chip};
+    if id >= 0x190 {
+        return false;
+    }
+    let c = chip(id);
+    let (family, form) = (c.family, stats(b, r).form.0);
+    let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::TIME_FREEZE);
+    let charges = (form == 2 && family == 0xA && damaging)
+        || (matches!(form, 3 | 0xF) && ((0x4C..=0x4F).contains(&id) || family == 5) && damaging)
+        || ((0x0B..=0x16).contains(&form) && family == 0xA)
+        || (matches!(form, 7 | 0x13) && family == 3 && damaging)
+        || (matches!(form, 6 | 0x12) && family == 1 && damaging)
+        || (matches!(form, 9 | 0x15) && family == 9 && damaging)
+        || (matches!(form, 5 | 0x11) && family == 0 && damaging);
+    if charges {
+        return true;
+    }
+    // The link navis' own charged chips (`sub_800F49E`, `byte_8021369`);
+    // MegaMan has none.
+    if stats(b, r).navi != crate::setup::Navi::MEGAMAN {
+        panic!("link navis' charged chips (sub_8013236) are not implemented yet");
+    }
+    false
 }
 
 /// `sub_8013396`: the B button charges.
@@ -69,13 +98,16 @@ fn decode(b: &mut Battle, r: ObjectRef) {
         }
         return;
     }
-    if is_mode_40(b) && ai(b, r).pad.pressed & keys::SELECT != 0 {
+    if per_player_gauges(b) && ai(b, r).pad.pressed & keys::SELECT != 0 {
         let side = b.objects.get(r).alliance as usize;
         if b.sides[side].gauge >= 0x1500 {
             ai_mut(b, r).requests |= request::SELECT_SPECIAL;
             return;
         }
-        // Otherwise the local side hears SOUND_CANT_JACK_IN.
+        // Otherwise the local side hears that it can't.
+        if !b.is_remote(b.objects.get(r).alliance) {
+            b.play_sound(crate::sound::SoundId::CANT_JACK_IN);
+        }
     }
     if battle_mode(b) != 1 && decode_turn(b, r) {
         return;
@@ -144,15 +176,14 @@ fn decode_holds(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// B then Back within 8 ticks (`AIData.Unk_13` window), for navis with a
-/// B+Back special.
+/// B then Back within 8 ticks, for navis with a B+Back special.
 fn decode_back_special(b: &mut Battle, r: ObjectRef) {
     let a = ai(b, r);
-    if a.back_special == 0xFF || a.unk_15 != 0 {
+    if a.back_special == 0xFF || a.back_special_cooldown != 0 {
         return;
     }
     let (pressed, held) = (a.pad.pressed, a.pad.held);
-    let mut window = a.unk_13;
+    let mut window = a.back_special_window;
     if window == 0 {
         if pressed & keys::B == 0 {
             return;
@@ -163,9 +194,9 @@ fn decode_back_special(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     if pressed & back != 0 && held & keys::B != 0 {
         a.requests |= request::BACK_SPECIAL;
-        a.unk_13 = 0;
+        a.back_special_window = 0;
     } else {
-        a.unk_13 = window - 1;
+        a.back_special_window = window - 1;
     }
 }
 

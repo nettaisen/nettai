@@ -13,11 +13,34 @@ use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 pub struct Vars {
     /// Visibility follows `related[0]`.
     pub follow_related: bool,
+    /// The game spawned it with X and Y left in registers by the spawn
+    /// before it (see `spawn_after_spawn`), which the engine doesn't know;
+    /// its `pos.x` and `pos.y` are placeholders. Nothing reads an
+    /// effect's position.
+    pub xy_unknown: bool,
 }
 
 /// `SpawnT4BattleObjectWithId0`: effect `id` at `pos`.
 pub fn spawn(b: &mut Battle, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
     b.objects.spawn(Pool::Effect, 0, pos, [id, flip, palette_add, priority])
+}
+
+/// `SpawnT4BattleObjectWithId0` called again straight after a spawn at
+/// height `z`, without setting a position: Z is still the previous
+/// spawn's, but X and Y hold what the object allocator left in those
+/// registers (list-node addresses, objects-and-player.md §A.3). The effect
+/// gets placeholder X and Y and is marked as not knowing them.
+pub fn spawn_after_spawn(b: &mut Battle, z: i32, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
+    let r = spawn(b, Vec3 { x: 0, y: 0, z }, id, flip, palette_add, priority)?;
+    if let crate::kinds::Vars::Effect(v) = &mut b.objects.get_mut(r).vars {
+        v.xy_unknown = true;
+    }
+    Some(r)
+}
+
+/// Whether `r` is an effect whose X and Y the engine doesn't know.
+pub fn xy_unknown(b: &Battle, r: ObjectRef) -> bool {
+    matches!(&b.objects.get(r).vars, crate::kinds::Vars::Effect(v) if v.xy_unknown)
 }
 
 /// `sub_80E060E`: make an effect's visibility follow `owner`.

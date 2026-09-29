@@ -223,7 +223,7 @@ impl Obstacle for Rock {
             }
             let above = Vec3 { z: pos.z.wrapping_add(0x10 << 16), ..pos };
             crate::kinds::effect::spawn(b, above, 2, 0, 0, 0);
-            // (Plays the kind's break sound.)
+            b.play_sound(crate::sound::SoundId(kind(b, r).break_sound));
         }
         obstacle::finish(b, r);
     }
@@ -260,10 +260,10 @@ fn fall(b: &mut Battle, r: ObjectRef) {
         if !b.field.is_solid(p.x, p.y) {
             Action::Destroyed.start(b, r);
         } else {
-            // (The landing shakes the camera, which draws the local RNG,
-            // and plays a sound.)
+            // (The landing shakes the camera, which draws the local RNG.)
             b.objects.get_mut(r).pos.z = 0;
             obstacle::set_region(b, r, 1);
+            b.play_sound(crate::sound::SoundId(0xC0));
             Action::Idle.start(b, r);
         }
     }
