@@ -479,6 +479,17 @@ fn player(rom: &Rom) -> String {
         (0..50).map(|r| format!("[{}]", list((0..5).map(|c| rom.u16(0x0802_0404 + 10 * r + 2 * c).to_string()).collect()))).collect();
     writeln!(out, "/// Ticks to a full charge by charge routine and Charge stat (`byte_8020404`).").unwrap();
     writeln!(out, "pub static CHARGE_THRESHOLDS: [[u16; 5]; 50] = [{}];", list(rows)).unwrap();
+    let rows: Vec<String> = (0..5).map(|n| format!("[{}]", list((0..6).map(|k| rom.u8(0x0802_09CC + 6 * n + k).to_string()).collect()))).collect();
+    let steps: Vec<String> = (0..10).map(|i| format!("{:#06x}", u32at(rom, 0x0801_0B2C + 4 * i))).collect();
+    writeln!(out, "/// The deletion times (BCD minutes:seconds.hundredths) that step an SP navi chip's damage down (`byte_8010B2C`).").unwrap();
+    writeln!(out, "pub static SP_TIME_STEPS: [u32; 10] = [{}];", list(steps)).unwrap();
+    let sp_rows: Vec<String> = (0..18)
+        .map(|n| format!("[{}]", list((0..11).map(|k| rom.u16(0x0802_0E54 + 0x16 * n + 2 * k).to_string()).collect())))
+        .collect();
+    writeln!(out, "/// SP navi chip damage by navi chip and deletion-time step (`byte_8020E54`).").unwrap();
+    writeln!(out, "pub static SP_CHIP_DAMAGE: [[u16; 11]; 18] = [{}];", list(sp_rows)).unwrap();
+    writeln!(out, "/// Ticks of recovery after a buster shot, by Rapid stat and open panels ahead (`byte_80209CC`).").unwrap();
+    writeln!(out, "pub static BUSTER_RECOVERY: [[u8; 6]; 5] = [{}];", list(rows)).unwrap();
     let rows: Vec<String> = (0..23).map(|n| format!("[{}]", bytes(0x0802_0FE0 + 11 * n, 11))).collect();
     writeln!(out, "/// Move end lag by navi and navi variant (`byte_8020FE0`).").unwrap();
     writeln!(out, "pub static MOVE_LAG: [[u8; 11]; 23] = [{}];", list(rows)).unwrap();
@@ -615,6 +626,94 @@ fn actor_lists(rom: &Rom) -> String {
         writeln!(out, "    ActorList {{ source: {source:#010x}, entries: &[{}] }},", entries.join(", ")).unwrap();
     }
     out.push_str("];\n");
+    out
+}
+
+/// The battle settings table (`BattleSettingsList1`, 192 16-byte records)
+/// that a set's later rounds are drawn from (`battleSettings_802D2B2`).
+/// Byte 1 (read outside the battle simulation) and byte 7 (no reader) are
+/// not kept, as in `BattleSettings::netbattle_from_bytes`.
+fn battle_settings(rom: &Rom) -> String {
+    const SETTINGS: u32 = 0x080B_0D88;
+    const COUNT: u32 = 192;
+    let mut sources: Vec<u32> = (0..COUNT).map(|i| u32at(rom, SETTINGS + 16 * i + 12)).collect();
+    sources.sort_unstable();
+    sources.dedup();
+    let mut out = String::from(HEADER);
+    out.push_str("use super::ACTOR_LISTS;\nuse crate::setup::BattleSettings;\n\n");
+    writeln!(out, "/// `BattleSettingsList1`, by index.").unwrap();
+    writeln!(out, "pub static BATTLE_SETTINGS: [BattleSettings; {COUNT}] = [").unwrap();
+    for i in 0..COUNT {
+        let r = rom.bytes(SETTINGS + 16 * i, 16);
+        let source = u32at(rom, SETTINGS + 16 * i + 12);
+        let list = sources.binary_search(&source).unwrap();
+        writeln!(
+            out,
+            "    BattleSettings {{ layout: {:#04x}, music: {:#04x}, mode: {}, background: {}, battle_number: {}, panel_pattern: {:#04x}, effects: {:#x}, actors: &ACTOR_LISTS[{list}] }}, // {i:#04x}",
+            r[0],
+            r[2],
+            r[3],
+            r[4],
+            r[5],
+            r[6],
+            u32at(rom, SETTINGS + 16 * i + 8),
+        )
+        .unwrap();
+    }
+    out.push_str("];\n");
+    out
+}
+
+/// Cross tables: the body overlays a navi wears (actor object #0x56:
+/// sprites `byte_80C4320` and per-animation depth tables `off_80C42D4`)
+/// and the extra height of a Cross navi's image as it merges with
+/// MegaMan (`byte_80BC758`). The row types live in bn6-battle's
+/// `data::cross`.
+fn crosses(rom: &Rom) -> String {
+    const OVERLAY_SPRITES: u32 = 0x080C_4320;
+    const OVERLAY_DEPTHS: u32 = 0x080C_42D4;
+    const OVERLAYS: u32 = 19;
+    const MERGE_HEIGHTS: u32 = 0x080B_C758;
+    const NAVIS: u32 = 13;
+    let mut out = String::from(HEADER);
+    out.push_str("use super::SpriteId;\nuse super::cross::BodyOverlay;\n\n");
+    // The depth tables sit back to back and end where the pointer table
+    // starts; an animation past a table's end reads the next one, so each
+    // row runs to the end of the block.
+    writeln!(out, "/// Body overlays by variant (Param1 of actor object #0x56).").unwrap();
+    writeln!(out, "pub static BODY_OVERLAYS: [BodyOverlay; {OVERLAYS}] = [").unwrap();
+    for i in 0..OVERLAYS {
+        let s = rom.bytes(OVERLAY_SPRITES + 2 * i, 2);
+        let depths = u32at(rom, OVERLAY_DEPTHS + 4 * i);
+        assert!(depths < OVERLAY_DEPTHS, "overlay depth table {depths:#x} outside the block");
+        let front: Vec<&str> = rom
+            .bytes(depths, (OVERLAY_DEPTHS - depths) as usize)
+            .iter()
+            .map(|&b| match b {
+                0 => "false",
+                1 => "true",
+                v => panic!("overlay depth byte {v:#x}"),
+            })
+            .collect();
+        writeln!(
+            out,
+            "    BodyOverlay {{ sprite: SpriteId {{ category: {:#04x}, index: {:#04x} }}, in_front: &[{}] }}, // {i:#04x}",
+            s[0],
+            s[1],
+            front.join(", ")
+        )
+        .unwrap();
+    }
+    out.push_str("];\n");
+    let heights: Vec<String> = (0..NAVIS)
+        .map(|i| {
+            let v = u32at(rom, MERGE_HEIGHTS + 4 * i) as i32;
+            assert_eq!(v & 0xFFFF, 0, "merge height {v:#x} is not whole pixels");
+            (v >> 16).to_string()
+        })
+        .collect();
+    writeln!(out, "/// Extra height (whole pixels) of a navi's image merging with MegaMan, by navi.").unwrap();
+    writeln!(out, "pub static MERGE_HEIGHTS: [i16; {NAVIS}] = [{}];", heights.join(", ")).unwrap();
     out
 }
 
@@ -809,6 +908,8 @@ fn main() {
     std::fs::write(out_dir.join("effects_generated.rs"), effects(&rom)).unwrap();
     std::fs::write(out_dir.join("player_generated.rs"), player(&rom)).unwrap();
     std::fs::write(out_dir.join("actor_lists_generated.rs"), actor_lists(&rom)).unwrap();
+    std::fs::write(out_dir.join("battle_settings_generated.rs"), battle_settings(&rom)).unwrap();
+    std::fs::write(out_dir.join("cross_generated.rs"), crosses(&rom)).unwrap();
     std::fs::write(out_dir.join("obstacles_generated.rs"), obstacles(&rom)).unwrap();
     std::fs::write(out_dir.join("attacks_generated.rs"), attacks(&rom)).unwrap();
     std::fs::write(out_dir.join("lockon_generated.rs"), lockon(&rom)).unwrap();

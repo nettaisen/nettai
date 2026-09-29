@@ -61,7 +61,26 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 /// to `owner`, stored in `slot` (which gets None if the pool is full). It
 /// takes the owner's panel and side; its init places it.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, kind: u8, slot: AttachSlot) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), [kind, 0, 0, 0]);
+    spawn_with(b, owner, Params { kind, ..Params::default() }, slot)
+}
+
+/// An attachment's spawn parameters.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Params {
+    /// Param1: which attachment (`data::attacks::attachment`).
+    pub kind: u8,
+    /// Param2: its animation.
+    pub anim: u8,
+    /// Param3: it animates in time stop too.
+    pub in_time_stop: bool,
+    /// Param4: added to its palette (drawn only).
+    pub palette_add: u8,
+}
+
+/// `sub_80B8E30` with all its parameters.
+pub fn spawn_with(b: &mut Battle, owner: ObjectRef, p: Params, slot: AttachSlot) -> Option<ObjectRef> {
+    let params = [p.kind, p.anim, p.in_time_stop as u8, p.palette_add];
+    let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), params);
     if let Some(r) = r {
         let (panel, alliance, flip) = {
             let o = b.objects.get(owner);

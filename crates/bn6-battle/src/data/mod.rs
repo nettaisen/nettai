@@ -5,8 +5,11 @@
 mod actor_lists_generated;
 pub mod attacks;
 mod attacks_generated;
+mod battle_settings_generated;
 mod banners_generated;
 mod chips_generated;
+pub mod cross;
+mod cross_generated;
 pub mod collision_generated;
 pub mod effects_generated;
 mod obstacles_generated;
@@ -18,6 +21,7 @@ pub mod player;
 pub mod player_generated;
 
 pub use actor_lists_generated::ACTOR_LISTS;
+pub use battle_settings_generated::BATTLE_SETTINGS;
 pub use banners_generated::{BANNER_HOLDS, LOSE_BANNERS, WIN_BANNERS};
 pub use chips_generated::CHIPS;
 pub use obstacles_generated::{ABSORBED_SPRITES, ROCKS};

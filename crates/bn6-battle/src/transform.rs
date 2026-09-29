@@ -77,6 +77,47 @@ impl TransformSequencer {
     }
 }
 
+/// The reversion a mid-battle custom-screen request waits for before the
+/// sequencer runs (`dword_203C970`, `sub_802D6A0` / `sub_802D6C4`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CustomReversion {
+    /// +3: the navis were checked.
+    pub checked: bool,
+    /// +4: still waiting.
+    pub busy: bool,
+    /// +8 / +0xC: both sides' navis.
+    pub navis: [Option<crate::object::ObjectRef>; 2],
+}
+
+impl Battle {
+    /// `sub_802D6A0`: note both navis and start waiting.
+    pub(crate) fn start_custom_reversion(&mut self) {
+        self.custom_reversion = CustomReversion { checked: false, busy: true, navis: [self.player(0), self.player(1)] };
+    }
+
+    /// `sub_802D6C4`: one step; true while waiting. The first step would
+    /// knock the navis out of their Crosses, but its test
+    /// (`sub_802DD1E`) is always false; then it waits while either navi
+    /// is being knocked out.
+    pub(crate) fn step_custom_reversion(&mut self) -> bool {
+        let rev = &mut self.custom_reversion;
+        if !rev.checked {
+            rev.checked = true;
+            return rev.busy;
+        }
+        let navis = rev.navis;
+        let knocked_out = |b: &Battle, n: Option<crate::object::ObjectRef>| {
+            n.is_some_and(|p| {
+                b.objects.get(p).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::CROSS_KNOCKOUT != 0)
+            })
+        };
+        if !knocked_out(self, navis[0]) && !knocked_out(self, navis[1]) {
+            self.custom_reversion.busy = false;
+        }
+        self.custom_reversion.busy
+    }
+}
+
 /// Screen fade lengths the sequencer uses in netbattles.
 const FADE_OUT_TICKS: u8 = 16;
 const FADE_IN_TICKS: u8 = 17;

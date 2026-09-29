@@ -1,8 +1,8 @@
 //! Action 0x1C as a form change (`sub_8014A38`): while the battle is paused
 //! at the start of a turn, the navi changes into the form its side asked
 //! for (`Battle::turn_transforms`). The transformation sequencer waits for
-//! it. Only Beast Out is implemented. See docs/engine/battle-flow.md
-//! §3.4.1.
+//! it. Crosses and Beast Out are implemented. See docs/engine/battle-flow.md
+//! §3.4.1 and objects-and-player.md §12.9-§12.10.
 
 use crate::actor::{request, status};
 use crate::battle::Battle;
@@ -15,7 +15,7 @@ use crate::kinds::player::{
     ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, coll_mut, emotion, exit_attack_state, form,
     reset_charge, reset_status, set_coordinates_from_panel, set_mood, snap_to_future_panel, stats, stats_mut,
 };
-use crate::kinds::{effect, form_overlay, palette_flash};
+use crate::kinds::{cross_merge, effect, form_overlay, palette_flash};
 use crate::object::{ObjectRef, flags};
 use crate::setup::{Form, Navi};
 
@@ -89,7 +89,7 @@ pub(in crate::kinds::player) fn form_change(b: &mut Battle, r: ObjectRef) {
         0x0D..=0x16 if current.0 > 0x0A => panic!("Cross Beast form changes (sub_80153EC) are not implemented yet"),
         0x0D..=0x16 => panic!("Cross Beast (sub_8014F40) is not implemented yet"),
         0x0B..=0x0C => beast_out(b, r, target),
-        _ => panic!("Cross changes (sub_8014B18) are not implemented yet"),
+        _ => cross(b, r, target),
     }
     if ai(b, r).status & status::FORM_CHANGE_SPRITE_HELD == 0 {
         common::step_sprite(b, r);
@@ -239,6 +239,172 @@ fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
     set_step(b, r, BeastOutStep::Settle);
 }
 
+// ---- Cross -------------------------------------------------------------------
+
+/// The steps of a Cross (`off_8014AB4`), in the attack step.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CrossStep {
+    /// Stop everything; the sprite holds still from now on.
+    Prepare = 0,
+    /// The Cross navi's image appears and merges with MegaMan.
+    Merge = 4,
+    /// MegaMan in the Cross.
+    Emerge = 8,
+    /// A short pause, then back to idle.
+    Settle = 0xC,
+}
+
+impl CrossStep {
+    fn of(b: &Battle, r: ObjectRef) -> CrossStep {
+        match ai(b, r).attack.step {
+            0 => CrossStep::Prepare,
+            4 => CrossStep::Merge,
+            8 => CrossStep::Emerge,
+            0xC => CrossStep::Settle,
+            s => panic!("Cross step {s:#x}"),
+        }
+    }
+}
+
+fn set_cross_step(b: &mut Battle, r: ObjectRef, step: CrossStep) {
+    let a = &mut ai_mut(b, r).attack;
+    a.step = step as u8;
+    a.step_init = 0;
+}
+
+fn cross(b: &mut Battle, r: ObjectRef, target: Form) {
+    match CrossStep::of(b, r) {
+        CrossStep::Prepare => cross_prepare(b, r),
+        CrossStep::Merge => cross_merge(b, r, target),
+        CrossStep::Emerge => cross_emerge(b, r, target),
+        CrossStep::Settle => cross_settle(b, r),
+    }
+}
+
+/// `sub_8014B18`: like Beast Out's preparation, but the navi keeps its
+/// pose, and its sprite holds still until the change is done.
+fn cross_prepare(b: &mut Battle, r: ObjectRef) {
+    ai_mut(b, r).status |= status::FORM_CHANGE_SPRITE_HELD;
+    snap_to_future_panel(b, r);
+    clear_invulnerable(b, r);
+    // sub_800F46C: the standard column patterns face the default way.
+    if matches!(b.setup.settings.panel_pattern, 0x38 | 0x30 | 0x3C) {
+        b.objects.get_mut(r).flip = 0;
+    }
+    // (sub_800F2C6: the sprite's facing and the HUD.)
+    reset_charge(b, r);
+    if ai(b, r).full_synchro_aura.is_some() {
+        panic!("ending the Full Synchro aura (sub_80C4C3A) is not implemented yet");
+    }
+    drop_statuses(b, r);
+    ai_mut(b, r).attack.action = ActionVars::FormChange(Vars { timer: 6 });
+    if stats(b, r).form == Form(9) && b.objects.get(r).anim == 0x16 {
+        panic!("changing Cross from form 9 in animation 0x16 (sub_8014B18) is not implemented yet");
+    }
+    set_cross_step(b, r, CrossStep::Merge);
+}
+
+/// `sub_8014B98`: after 7 ticks the Cross navi's image appears above
+/// MegaMan (actor object #0x1B) and merges with him; 49 ticks later he
+/// changes. The attack marker counts the ticks MegaMan flashes white.
+fn cross_merge(b: &mut Battle, r: ObjectRef, target: Form) {
+    if ai(b, r).attack.step_init == 0 {
+        if !timer_ran_out(b, r) {
+            return;
+        }
+        cross_merge::spawn(b, r, Navi(target.0), 0x14);
+        set_timer(b, r, 0x30);
+        let a = &mut ai_mut(b, r).attack;
+        a.marker = 0;
+        a.step_init = 4;
+    }
+    let a = &mut ai_mut(b, r).attack;
+    if a.marker < 6 {
+        a.marker += 1;
+        b.objects.sprite_mut(r).look.white = true;
+    }
+    if !timer_ran_out(b, r) {
+        return;
+    }
+    set_timer(b, r, 6);
+    set_cross_step(b, r, CrossStep::Emerge);
+    ai_mut(b, r).attack.marker = 0;
+}
+
+/// `sub_8014BEE`: MegaMan in the Cross (sprite, form, name, overlay); 10
+/// ticks later the form's status set-up.
+fn cross_emerge(b: &mut Battle, r: ObjectRef, target: Form) {
+    // sprite_forceWhitePalette every tick.
+    b.objects.sprite_mut(r).look.white = true;
+    if ai(b, r).attack.step_init == 0 {
+        b.objects.get_mut(r).related[0] = None;
+        ai_mut(b, r).overlay = None;
+        let current = stats(b, r).form;
+        form::take_off_overlay(b, r, current);
+        let navi = stats(b, r).navi;
+        let sprite = if navi == Navi::MEGAMAN { pdata::form_sprite(target) } else { pdata::navi_sprite(navi) };
+        let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
+        let s = b.objects.sprite_mut(r);
+        s.load(sprite);
+        // sprite_hasShadow, sprite_setFlip(object_getFlip()), white.
+        s.look.shadow = crate::object::sprite::Shadow::Ground;
+        s.look.set_flip(flip);
+        s.look.white = true;
+        let o = b.objects.get_mut(r);
+        o.flags &= !flags::NO_SPRITE_UPDATE;
+        // object_setAnimation(0), then the sprite restarts it directly.
+        o.anim = 0;
+        o.anim_loaded = 0xFF;
+        b.objects.sprite_mut(r).set_animation(0);
+        set_coordinates_from_panel(b, r);
+        set_timer(b, r, 10);
+        stats_mut(b, r).form = target;
+        // sub_8015B22: the form's NameID.
+        b.objects.get_mut(r).name_id = 0x1AB + target.0 as u16;
+        form::put_on_overlay(b, r, target);
+        b.play_sound(crate::sound::SoundId(0x8D));
+        b.play_sound(crate::sound::SoundId(0x77));
+        ai_mut(b, r).attack.step_init = 4;
+    }
+    let v = vars(b, r);
+    v.timer = v.timer.wrapping_sub(1);
+    if v.timer as i16 > 0 {
+        return;
+    }
+    reset_status(b, r);
+    end_anger(b, r);
+    let side = b.objects.get(r).alliance;
+    set_mood(b, side, 0x80);
+    clear_invulnerable(b, r);
+    set_cross_step(b, r, CrossStep::Settle);
+}
+
+/// `sub_8014CC0`: 21 ticks, then the change is done and the navi idles.
+fn cross_settle(b: &mut Battle, r: ObjectRef) {
+    if ai(b, r).attack.step_init == 0 {
+        set_timer(b, r, 0x14);
+        ai_mut(b, r).attack.step_init = 4;
+    }
+    if !timer_ran_out(b, r) {
+        return;
+    }
+    // sub_800AB2E
+    let side = b.objects.get(r).alliance as usize;
+    b.crossed[side] = true;
+    finish(b, r);
+}
+
+/// The end of a form change: the flags come off (and battle flag 0x20,
+/// which nothing sets), the reactive-defense requests are dropped, and the
+/// navi idles.
+fn finish(b: &mut Battle, r: ObjectRef) {
+    ai_mut(b, r).status &= !(status::FORM_CHANGE | status::FORM_CHANGE_SPRITE_HELD);
+    ai_mut(b, r).requests &= !(request::WEAKNESS_HIT | request::BODY_GUARD_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
+    exit_attack_state(b, r);
+}
+
+// ---- Beast Out, continued ------------------------------------------------------
+
 /// `sub_8014F04`: 21 ticks, then the change is done and the navi idles.
 fn settle(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).attack.step_init == 0 {
@@ -248,8 +414,5 @@ fn settle(b: &mut Battle, r: ObjectRef) {
     if !timer_ran_out(b, r) {
         return;
     }
-    // (It also clears battle flag 0x20, which nothing sets.)
-    ai_mut(b, r).status &= !(status::FORM_CHANGE | status::FORM_CHANGE_SPRITE_HELD);
-    ai_mut(b, r).requests &= !(request::WEAKNESS_HIT | request::BODY_GUARD_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
-    exit_attack_state(b, r);
+    finish(b, r);
 }

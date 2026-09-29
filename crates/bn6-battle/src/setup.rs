@@ -443,6 +443,24 @@ pub struct SetScore {
     pub max_combo: u8,
 }
 
+/// Where a later round of a set is fought: an entry of the battle
+/// settings table and the background to show (one pair of
+/// `byte_203CA50`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Stage {
+    /// Index into [`crate::data::BATTLE_SETTINGS`].
+    pub settings: u8,
+    pub background: u8,
+}
+
+impl Stage {
+    /// Decode the init exchange's two stage pairs (settings index, then
+    /// background, per round).
+    pub fn pair_from_bytes(b: &[u8]) -> [Stage; 2] {
+        [Stage { settings: b[0], background: b[1] }, Stage { settings: b[2], background: b[3] }]
+    }
+}
+
 /// Everything a round starts from.
 #[derive(Clone, Debug)]
 pub struct RoundSetup {
@@ -455,6 +473,55 @@ pub struct RoundSetup {
     /// presentation-driven details depend on it (who fades in at the intro).
     pub local_side: u8,
     pub score: SetScore,
+    /// The stages of the set's next rounds, as player 0 drew them for
+    /// this round's init exchange: when round `n` ends and the set goes
+    /// on, round `n + 1` is fought on `later_stages[n - 1]`.
+    pub later_stages: [Stage; 2],
+    /// The low-HP music latch starts set. The round's init counts the
+    /// frames it waits for the link in the halfword the latch later uses
+    /// (BattleState+0x20), so a round whose init had to wait starts with
+    /// it set, and its first tick plays no pinch cue.
+    pub low_hp_music_latched: bool,
+    /// Per side, from the save via the init exchange: how fast each SP
+    /// navi was deleted (`byte_203EB00`). The SP navi chips' damage goes
+    /// by it.
+    pub sp_times: [SpTimes; 2],
+}
+
+/// How fast (in frames) a player deleted each SP navi (20 halfwords).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SpTimes(pub [u16; 20]);
+
+impl Default for SpTimes {
+    /// Every SP navi deleted in no time (the best damage).
+    fn default() -> SpTimes {
+        SpTimes([0; 20])
+    }
+}
+
+impl SpTimes {
+    /// Decode the 0x28-byte record.
+    pub fn from_bytes(b: &[u8]) -> SpTimes {
+        SpTimes(std::array::from_fn(|i| u16::from_le_bytes([b[2 * i], b[2 * i + 1]])))
+    }
+
+    /// The frames SP navi chip `n` (formula `n + 1`) took to delete.
+    pub fn frames(&self, n: usize) -> u16 {
+        self.0[n]
+    }
+}
+
+impl RoundSetup {
+    /// The settings of the set's next round, fought on `stage` after this
+    /// one (`battleSettings_802D2B2`): that table entry, with this
+    /// round's effects and the stage's background.
+    pub fn next_settings(&self, stage: Stage) -> BattleSettings {
+        BattleSettings {
+            effects: self.settings.effects,
+            background: stage.background,
+            ..crate::data::BATTLE_SETTINGS[stage.settings as usize]
+        }
+    }
 }
 
 #[cfg(test)]
