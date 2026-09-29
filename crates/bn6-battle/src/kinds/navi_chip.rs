@@ -5,7 +5,7 @@
 //! docs/engine/chips.md §3.6.7.
 
 use crate::battle::Battle;
-use crate::kinds::{common, elmnt_man, navi_warp};
+use crate::kinds::{common, elmnt_man, erase_man, navi_warp};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
 use crate::time_freeze::{self, FreezeChip};
 
@@ -191,6 +191,7 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let user = user(b, r);
     let navi = match v.navi {
         elmnt_man::NAVI => elmnt_man::spawn(b, user, r, panel, element, v.params, damage),
+        erase_man::NAVI => erase_man::spawn(b, user, r, panel, element, v.params, damage),
         n => panic!("navi chip navi {n:#x} (off_802CD5C) is not implemented yet"),
     };
     // The spawner sets the flag, through the pointer it hands the navi.
