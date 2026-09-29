@@ -199,7 +199,7 @@ pub struct Battle {
     /// Per side: the navi went Beast Out this battle (`byte_203EAE0` +2,
     /// read after the battle: a navi that did not gets a turn back).
     pub beast_out_used: [bool; 2],
-    /// Per side: the navi changed form this battle (`byte_203EAE0` +0xB,
+    /// Per side: the navi crossed this battle (`byte_203EAE0` +0xB,
     /// read after the battle for the busting level).
     pub changed_form: [bool; 2],
     pub objects: Objects,
