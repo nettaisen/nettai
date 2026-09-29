@@ -61,7 +61,7 @@ pub mod fight {
 }
 
 /// Round-level state (the game's BattleState).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct RoundState {
     pub top: u8,
     pub mode: u8,
@@ -96,8 +96,8 @@ pub struct RoundState {
     pub combo_window: u8,
     pub busting_level: u8,
     pub result: u8,
-    /// Low-HP music latch (`sub_8009158`).
-    pub low_hp_music: bool,
+    /// Low-HP music latch per side (`sub_8009158`).
+    pub low_hp_music: [bool; 2],
     /// Small countdown used by banners and the end state.
     pub delay: i16,
     pub flags: u16,
@@ -122,7 +122,7 @@ pub struct RoundState {
 }
 
 /// The fighting-phase machine.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct FightMachine {
     pub state: u8,
     pub sub: u8,
@@ -135,7 +135,7 @@ pub struct FightMachine {
 }
 
 /// Screen fade progress (only its duration matters to the simulation).
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Hash)]
 pub struct Fade {
     pub remaining: u8,
 }
@@ -157,7 +157,7 @@ impl Fade {
 }
 
 /// A player's custom-screen result, as exchanged when the screen closes.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CustomResult {
     /// The chosen hand (None = no chips chosen: the previous hand stays).
     pub hand: Option<ChipHand>,
@@ -167,7 +167,7 @@ pub struct CustomResult {
 }
 
 /// Events from outside the simulation that happen on a tick.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TickEvents {
     /// The local player confirmed their custom-screen selection.
     pub local_confirm: bool,
@@ -178,6 +178,7 @@ pub struct TickEvents {
     pub link_closed: bool,
 }
 
+#[derive(Clone, Debug)]
 pub struct Battle {
     pub setup: RoundSetup,
     pub stats: [NaviStats; 2],
@@ -226,14 +227,15 @@ pub struct Battle {
     pub linked: [LinkedRecord; 2],
     /// Per side: its time freeze (`byte_203CF00`).
     pub freeze: [crate::time_freeze::FreezeRecord; 2],
-    /// Sound calls made this tick (output only; see `sound`).
-    sound: Vec<SoundCue>,
+    /// Sound calls made this tick, as each side's player hears them
+    /// (output only; see `sound`).
+    pub(crate) sound: [Vec<SoundCue>; 2],
     /// How the round ended, once the end state is through.
-    outcome: Option<RoundEnd>,
+    pub(crate) outcome: Option<RoundEnd>,
 }
 
 /// How a round ended (`sub_8007CA0`).
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RoundEnd {
     /// The set goes on. The next round starts with its own init (link
     /// sync, the navi stats and RNG exchange) from these settings and the
@@ -245,7 +247,7 @@ pub enum RoundEnd {
 
 /// The battle's result from the local side's perspective (BattleState
 /// +0x1F, which the game hands back to the menu that started the battle).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum BattleResult {
     Won = 1,
     Lost = 2,
@@ -263,7 +265,7 @@ enum SetStanding {
 /// the fields the engine reads are modeled (the rest are listed in
 /// docs/engine/field-names.md). All zero outside the battle flag 0x40
 /// mode.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SideState {
     pub active: u8,
     pub panel_x: u8,
@@ -276,7 +278,7 @@ pub struct SideState {
 /// A side's defensive-chip record (0x10 bytes per side at 0x02036720):
 /// the chip, its damage word and bonus (for the counterattack), the navi
 /// that used it, and the object that implements it, if any.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct LinkedRecord {
     /// +0.
     pub chip: u16,
@@ -348,7 +350,7 @@ impl Battle {
 
 /// A side's damage-carry record: damage this tick and last tick, and the
 /// objects it tracks.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Hash)]
 pub struct DamageCarry {
     pub this_tick: u16,
     pub previous: u16,
@@ -357,7 +359,7 @@ pub struct DamageCarry {
 }
 
 /// Local custom-screen UI progress.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct CustomUi {
     /// Results that arrived this tick, installed by the custom screen.
     pub pending: Option<Box<[CustomResult; 2]>>,
@@ -387,7 +389,7 @@ impl Battle {
                 mode_copy: setup.settings.mode,
                 local_side: setup.local_side,
                 intro_bits: 0x0C,
-                low_hp_music: setup.low_hp_music_latched,
+                low_hp_music: std::array::from_fn(|side| side == setup.local_side as usize && setup.low_hp_music_latched),
                 top: top::RUNNING,
                 ..RoundState::default()
             },
@@ -415,7 +417,7 @@ impl Battle {
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
             freeze: Default::default(),
-            sound: Vec::new(),
+            sound: [Vec::new(), Vec::new()],
             outcome: None,
             setup,
         };
@@ -461,19 +463,37 @@ impl Battle {
         self.player(side).and_then(|r| self.objects.get(r).actor)
     }
 
-    /// Report a sound call of the original (output only).
+    /// Report a sound call of the original (output only), heard on both
+    /// sides.
     pub fn play_sound(&mut self, cue: impl Into<SoundCue>) {
-        self.sound.push(cue.into());
+        let cue = cue.into();
+        for heard in &mut self.sound {
+            heard.push(cue);
+        }
     }
 
-    /// The sound calls of the last tick, in the order the game makes them.
+    /// Report a sound call that only `side`'s player hears (the original
+    /// makes it on that player's console only).
+    pub fn play_sound_for(&mut self, side: u8, cue: impl Into<SoundCue>) {
+        self.sound[side as usize].push(cue.into());
+    }
+
+    /// The sound calls of the last tick, in the order the game makes them,
+    /// as the local side hears them.
     pub fn sound_cues(&self) -> &[SoundCue] {
-        &self.sound
+        &self.sound[self.round.local_side as usize]
+    }
+
+    /// The sound calls of the last tick as `side`'s player hears them.
+    pub fn sound_cues_for(&self, side: u8) -> &[SoundCue] {
+        &self.sound[side as usize]
     }
 
     /// One battle tick (one frame of the running battle).
     pub fn tick(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
-        self.sound.clear();
+        for heard in &mut self.sound {
+            heard.clear();
+        }
         // Panel highlights last one frame: the game's field renderer
         // clears them after drawing.
         self.field.clear_highlights();
@@ -1144,13 +1164,18 @@ impl Battle {
         if self.fight.init == 0 {
             self.gauge.enabled = false;
             let win = self.fight.state == fight::WIN;
-            if win {
-                let special = self.setup.settings.effects & 2 != 0;
-                self.play_sound(SoundCue::Music(if special { SoundId::WINNER_SPECIAL } else { SoundId::WINNER }));
-            } else if self.setup.settings.effects & effects::LINK != 0 {
-                self.play_sound(SoundCue::Music(SoundId::LOSER));
-            }
             self.round.winner = if win { self.round.local_side } else { self.round.local_side ^ 1 };
+            // The winner's console plays the victory music; in link
+            // battles the other one plays the defeat music.
+            let special = self.setup.settings.effects & 2 != 0;
+            let link = self.setup.settings.effects & effects::LINK != 0;
+            for side in 0..2 {
+                if side == self.round.winner {
+                    self.play_sound_for(side, SoundCue::Music(if special { SoundId::WINNER_SPECIAL } else { SoundId::WINNER }));
+                } else if link {
+                    self.play_sound_for(side, SoundCue::Music(SoundId::LOSER));
+                }
+            }
             self.fight.init = 4;
             self.fight.timer = 0x66;
             // Netbattle win/lose banners come from per-navi tables.
@@ -1271,20 +1296,21 @@ impl Battle {
     }
 
     /// `sub_8009158`: the low-HP music switch (sound only, but it keeps a
-    /// latch in the round state).
+    /// latch in the round state). Each console switches for its own navi;
+    /// the engine keeps both sides' latches.
     fn low_hp_music(&mut self) {
         if self.setup.settings.effects & effects::LINK == 0 {
             return;
         }
-        let Some(r) = self.player(self.round.local_side) else { return };
-        let o = self.objects.get(r);
-        let low = o.hp <= o.max_hp / 4;
-        if low && !self.round.low_hp_music {
-            self.round.low_hp_music = true;
-            self.play_sound(SoundCue::Pinch(true));
-        } else if !low && self.round.low_hp_music {
-            self.round.low_hp_music = false;
-            self.play_sound(SoundCue::Pinch(false));
+        for side in 0..2 {
+            let Some(r) = self.player(side) else { continue };
+            let o = self.objects.get(r);
+            let low = o.hp <= o.max_hp / 4;
+            let latch = &mut self.round.low_hp_music[side as usize];
+            if low != *latch {
+                *latch = low;
+                self.play_sound_for(side, SoundCue::Pinch(low));
+            }
         }
     }
 }

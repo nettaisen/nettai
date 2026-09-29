@@ -27,7 +27,7 @@ use crate::object::ObjectRef;
 /// The running action's own state. The game keeps it in the shared
 /// attack variables, where it outlives the action; nothing reads it from
 /// another action.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ActionVars {
     #[default]
     None,

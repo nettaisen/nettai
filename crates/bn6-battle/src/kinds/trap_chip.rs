@@ -13,7 +13,7 @@ use crate::time_freeze::{self, FreezeChip};
 pub const INDEX: u8 = 0x2A;
 
 /// The controller's own state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub chip: FreezeChip,
     /// The damage word (object +0x2C), kept for the counterattack.

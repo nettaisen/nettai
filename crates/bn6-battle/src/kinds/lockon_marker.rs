@@ -17,7 +17,7 @@ const SPRITE: SpriteId = SpriteId { category: 0x0C, index: 0x09 };
 const TARGET_ATTACH_POINT: usize = 0x11;
 
 /// Marker-private state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Held in place while a chip is locked on (`sub_80E1654`).
     pub frozen: bool,

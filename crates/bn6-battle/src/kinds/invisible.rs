@@ -12,7 +12,7 @@ use crate::time_freeze::{self, FreezeChip};
 pub const INDEX: u8 = 0x5D;
 
 /// The controller's own state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub chip: FreezeChip,
     /// Param1-2: how long the user stays invisible, in ticks.

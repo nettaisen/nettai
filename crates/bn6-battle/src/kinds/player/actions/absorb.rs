@@ -15,7 +15,7 @@ use crate::object::{ObjectRef, Vec3, flags};
 pub const ACTION: u8 = 0x58;
 
 /// The action's own state.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     /// AIAttackVars+0x10.
     pub timer: u16,

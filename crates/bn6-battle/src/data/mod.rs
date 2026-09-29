@@ -27,7 +27,7 @@ pub use chips_generated::CHIPS;
 pub use obstacles_generated::{ABSORBED_SPRITES, ROCKS};
 
 /// A kind of rock (one row of `byte_80CF934`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct RockKind {
     /// The rock's standing animation.
     pub anim: u8,
@@ -149,7 +149,7 @@ pub struct SpriteId {
 }
 
 /// One animation frame's timing.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct AnimFrame {
     /// Ticks the frame shows for.
     pub duration: u8,
@@ -184,7 +184,7 @@ pub struct EffectSprite {
 }
 
 /// A HUD banner (the game's UI banner id).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BannerId(pub u8);
 
 impl BannerId {
@@ -202,7 +202,7 @@ pub struct PanelOffset {
 }
 
 /// A test on a panel's flags: all of `require` set and none of `forbid`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PanelCondition {
     pub require: u32,
     pub forbid: u32,
