@@ -23,6 +23,14 @@ is gitignored). The frontend loads it at start-up from
 `--graphics <dir-or-file>`, else `$BN6_GRAPHICS`, else `data/graphics`.
 (`bn6-extract assets <rom> <bank>` writes the sound bank; see bn6-audio.)
 
+Or extract a content pack, the graphics and sound as editable open formats
+(indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
+`docs/design/asset-formats.md`), and load that; the bundle is then a cache
+built from the pack:
+
+    cargo run -p bn6-extract -- content <rom> data/content
+    cargo run -p bn6-frontend -- <trace.jsonl> --graphics data/content --sound data/content
+
 The bundle's types live in the `bn6-assets` crate. It holds, decoded
 (tiles as palette indices, colours as BGR555):
 
