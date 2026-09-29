@@ -8,6 +8,8 @@ mod attacks_generated;
 mod battle_settings_generated;
 mod banners_generated;
 mod chips_generated;
+pub mod cross;
+mod cross_generated;
 pub mod collision_generated;
 pub mod effects_generated;
 mod obstacles_generated;

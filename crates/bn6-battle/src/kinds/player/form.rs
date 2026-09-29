@@ -6,7 +6,7 @@ use super::{ai, body_hit_modifier, set_flag1, stats};
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::kinds::common::{Progress, set_progress};
-use crate::kinds::{form_overlay, lockon_marker};
+use crate::kinds::{body_overlay, form_overlay, lockon_marker};
 use crate::object::ObjectRef;
 use crate::setup::Form;
 
@@ -22,8 +22,30 @@ pub(super) fn put_on_overlay(b: &mut Battle, r: ObjectRef, form: Form) {
             let overlay = form_overlay::spawn(b, r, form_overlay::BEAST_HEAD, true);
             b.objects.get_mut(r).related[1] = overlay;
         }
-        1..=10 => panic!("Cross overlays (T1 #0x56, sub_80C44A8) are not implemented yet"),
+        // sub_80112E0 .. sub_801133A: a Cross's helmet and arm, with its
+        // own palette.
+        1..=10 => {
+            let overlay = body_overlay::spawn(b, r, cross_overlay(form), true);
+            b.objects.get_mut(r).related[1] = overlay;
+        }
         _ => panic!("the form {form:?} overlay (sub_8011268) is not implemented yet"),
+    }
+}
+
+/// The body overlay a Cross wears (`sub_80112E0` .. `sub_801133A`).
+fn cross_overlay(form: Form) -> u8 {
+    match form.0 {
+        1 => 0x04,
+        2 => 0x08,
+        3 => 0x0A,
+        4 => 0x0C,
+        5 => 0x11,
+        6 => 0x05,
+        7 => 0x0E,
+        8 => 0x09,
+        9 => 0x0D,
+        10 => 0x12,
+        _ => unreachable!("form {form:?} is not a Cross"),
     }
 }
 
