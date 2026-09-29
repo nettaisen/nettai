@@ -40,6 +40,8 @@ pub struct Banner {
     pub timer: u8,
     /// Stays up until removed instead of sliding out.
     pub holds: bool,
+    /// Which banner is showing (presentation only).
+    pub id: Option<BannerId>,
 }
 
 /// `sub_801E754`: what the flow sees of the banner.
@@ -57,7 +59,7 @@ impl Banner {
         if self.active {
             return false;
         }
-        *self = Banner { active: true, step: 0, timer: 0, holds: id.holds() };
+        *self = Banner { active: true, step: 0, timer: 0, holds: id.holds(), id: Some(id) };
         true
     }
 

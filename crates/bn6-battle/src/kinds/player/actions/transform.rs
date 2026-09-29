@@ -189,12 +189,20 @@ fn vanish(b: &mut Battle, r: ObjectRef) {
 /// `sub_8014E08`: back in the new form (sprite, form, name, overlay, a
 /// white flash); 10 ticks later the form's status set-up.
 fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
+    // sprite_forceWhitePalette every tick.
+    b.objects.sprite_mut(r).look.white = true;
     if ai(b, r).attack.step_init == 0 {
         let current = stats(b, r).form;
         form::take_off_overlay(b, r, current);
         let navi = stats(b, r).navi;
         let sprite = if navi == Navi::MEGAMAN { pdata::form_sprite(target) } else { pdata::navi_sprite(navi) };
-        b.objects.sprite_mut(r).load(sprite);
+        let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
+        let s = b.objects.sprite_mut(r);
+        s.load(sprite);
+        // sprite_hasShadow, sprite_setFlip(object_getFlip()), white.
+        s.look.shadow = crate::object::sprite::Shadow::Ground;
+        s.look.set_flip(flip);
+        s.look.white = true;
         let o = b.objects.get_mut(r);
         o.flags &= !flags::NO_SPRITE_UPDATE;
         // object_setAnimation(0), then the sprite restarts it directly.
