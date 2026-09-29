@@ -649,6 +649,61 @@ fn obstacles(rom: &Rom) -> String {
     out
 }
 
+/// Chip-attack tables: the secondary elements chip families add, the
+/// attachment sprites (`byte_80B8BD4`, attachment object #5) and the
+/// GunDelSol tables (`dword_80EDBC8`, `byte_80EDBB8`, and the sun beam's
+/// sprites at `dword_80E5C28`).
+fn attacks(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    out.push_str("use super::SpriteId;\n");
+    out.push_str("use super::attacks::{AttachmentKind, SunBeamLook};\n");
+    out.push_str("use super::player::SecondaryElements;\n\n");
+    let list = |items: Vec<String>| items.join(", ");
+    let sprite = |cat: u8, idx: u8| format!("SpriteId {{ category: {cat:#04x}, index: {idx:#04x} }}");
+
+    let families: Vec<String> = (0..16).map(|i| format!("SecondaryElements({:#04x})", rom.u8(0x0801_29E4 + i))).collect();
+    writeln!(out, "/// The secondary elements a chip family adds to its attacks (`byte_80129E4`).").unwrap();
+    writeln!(out, "pub static FAMILY_ELEMENTS: [SecondaryElements; 16] = [{}];", list(families)).unwrap();
+
+    // Five-byte rows: sprite category and index, palette, lift, attach
+    // point (0 = not attached to a point).
+    const ATTACHMENTS: u32 = 0x080B_8BD4;
+    let rows: Vec<String> = (0..52)
+        .map(|i| {
+            let b = rom.bytes(ATTACHMENTS + 5 * i, 5);
+            let point = if b[4] == 0 { "None".to_string() } else { format!("Some({})", b[4]) };
+            format!(
+                "AttachmentKind {{ sprite: {}, palette: {}, lift: {}, attach_point: {point} }}",
+                sprite(b[0], b[1]),
+                b[2],
+                b[3] as i8
+            )
+        })
+        .collect();
+    writeln!(out, "/// Attachment kinds, the attachment's first parameter (`byte_80B8BD4`).").unwrap();
+    writeln!(out, "pub static ATTACHMENTS: [AttachmentKind; 52] = [\n    {},\n];", rows.join(",\n    ")).unwrap();
+
+    writeln!(out, "/// GunDelSol's firing ticks by level (`dword_80EDBC8`).").unwrap();
+    writeln!(out, "pub static GUN_DEL_SOL_FIRING_TICKS: [u8; 4] = [{}];", list((0..4).map(|i| rom.u8(0x080E_DBC8 + i).to_string()).collect())).unwrap();
+    let beams: Vec<String> = (0..2)
+        .map(|sun| {
+            let row: Vec<String> = (0..4)
+                .map(|level| {
+                    let a = 0x080E_DBB8 + 2 * (level + 4 * sun);
+                    format!("SunBeamLook {{ sprite: {}, palette: {} }}", rom.u8(a), rom.u8(a + 1))
+                })
+                .collect();
+            format!("[{}]", list(row))
+        })
+        .collect();
+    writeln!(out, "/// GunDelSol's sun beam by [sun][level] (`byte_80EDBB8`).").unwrap();
+    writeln!(out, "pub static GUN_DEL_SOL_BEAMS: [[SunBeamLook; 4]; 2] = [{}];", list(beams)).unwrap();
+    let sprites: Vec<String> = (0..2).map(|i| sprite(rom.u8(0x080E_5C28 + 2 * i), rom.u8(0x080E_5C29 + 2 * i))).collect();
+    writeln!(out, "/// The sun beam's sprites, by `SunBeamLook::sprite` (`dword_80E5C28`).").unwrap();
+    writeln!(out, "pub static SUN_BEAM_SPRITES: [SpriteId; 2] = [{}];", list(sprites)).unwrap();
+    out
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let rom = Rom(std::fs::read(&args[0]).expect("reading ROM"));
@@ -666,5 +721,6 @@ fn main() {
     std::fs::write(out_dir.join("player_generated.rs"), player(&rom)).unwrap();
     std::fs::write(out_dir.join("actor_lists_generated.rs"), actor_lists(&rom)).unwrap();
     std::fs::write(out_dir.join("obstacles_generated.rs"), obstacles(&rom)).unwrap();
+    std::fs::write(out_dir.join("attacks_generated.rs"), attacks(&rom)).unwrap();
     eprintln!("wrote {}", out_dir.display());
 }
