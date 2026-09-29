@@ -103,7 +103,7 @@ fn wind_up(b: &mut Battle, r: ObjectRef) {
         open_counter_window(b, r);
         let slot = AttachSlot::Overlay(actor_id(b, r));
         attachment::spawn(b, r, 7 + level(b, r), slot);
-        // Sound 0xF8.
+        b.play_sound(crate::sound::SoundId(0xF8));
         ai_mut(b, r).attack.action = ActionVars::GunDelSol(Vars { timer: 6 });
         ai_mut(b, r).attack.step_init = 4;
         return;

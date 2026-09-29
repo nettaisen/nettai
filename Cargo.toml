@@ -6,6 +6,11 @@ members = ["crates/*"]
 edition = "2024"
 license = "MIT"
 
+[workspace.dependencies]
+m4a = { path = "crates/m4a" }
+bn6-battle = { path = "crates/bn6-battle" }
+cpal = "0.15"
+
 [profile.dev]
 opt-level = 1
 

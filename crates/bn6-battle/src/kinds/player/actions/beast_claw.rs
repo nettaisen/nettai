@@ -106,7 +106,9 @@ fn slash(b: &mut Battle, r: ObjectRef) {
     let a = &mut ai_mut(b, r).attack;
     a.step = 4;
     a.step_init = 0;
-    // Sound 0x1C5 (first slash) or 0x1C6.
+    // The first slash and the second sound different.
+    let first = vars(b, r).slashes as u8 == 2;
+    b.play_sound(crate::sound::SoundId(if first { 0x1C5 } else { 0x1C6 }));
     let k = 2usize.wrapping_sub(vars(b, r).slashes as u8 as usize);
     let (look, region, hit_mod) = *SLASHES.get(k).expect("beast claw slash count");
     let o = b.objects.get(r);

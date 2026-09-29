@@ -18,7 +18,7 @@ pub struct Vars {
     pub slot: Option<AttachSlot>,
     /// Offset from the owner's position, 16.16.
     pub offset: Vec3,
-    /// Ticks shown (it hums, sound 0xF9, every 11).
+    /// Ticks shown (it hums every 11).
     pub ticks: u16,
 }
 
@@ -88,6 +88,9 @@ fn follow(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).flags &= !flags::VISIBLE;
         set_progress(b, r, Progress::DESTROY);
         return;
+    }
+    if v.ticks % 11 == 0 {
+        b.play_sound(crate::sound::SoundId(0xF9));
     }
     vars(b, r).ticks = v.ticks.wrapping_add(1);
     let owner = b.objects.get(r).related[0].expect("sun beam has an owner");
