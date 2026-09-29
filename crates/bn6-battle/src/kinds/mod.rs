@@ -41,6 +41,8 @@ pub enum Vars {
     PaletteFlash(palette_flash::Vars),
     Attachment(attachment::Vars),
     SunBeam(sun_beam::Vars),
+    /// A content kind's declared state (see `content`).
+    Content(bn6_content_api::ContentState),
 }
 
 impl Vars {
@@ -65,6 +67,9 @@ impl Vars {
 /// Run one object's update.
 pub fn update(b: &mut Battle, r: ObjectRef) {
     let index = b.objects.get(r).index;
+    if let Some(kind) = b.content.object_kind(r.pool, index) {
+        return crate::content::run_object(b, kind, r);
+    }
     match (r.pool, index) {
         (Pool::Actor, 0) => player::update(b, r),
         (Pool::Effect, 2) => intro::update(b, r),

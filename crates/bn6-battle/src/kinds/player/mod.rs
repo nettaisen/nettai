@@ -276,7 +276,7 @@ fn reset_attack_links(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `object_exitAttackState`: back to the idle action with animation 0.
-fn exit_attack_state(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn exit_attack_state(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).anim = 0;
     end_attack(b, r);
 }
