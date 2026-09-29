@@ -19,6 +19,7 @@ pub mod object;
 pub mod rng;
 pub mod setup;
 pub mod sound;
+pub mod time_freeze;
 pub mod transform;
 #[cfg(feature = "trace")]
 pub mod trace;
