@@ -2,7 +2,7 @@
 //! (5), freeze (6) and bubble (7). See objects-and-player.md §H4-§H6.
 
 use super::{
-    ai, ai_mut, cancel_flag4_timer, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_invulnerable,
+    ai, ai_mut, cancel_semi_intangible, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_invulnerable,
     clear_paralysis, coll, coll_mut, coordinates_to_panel, flag1, panel_coordinates, panel_kind, refresh_form_overlay,
     reset_charge, set_flag1, snap_to_future_panel,
 };
@@ -12,7 +12,7 @@ use crate::collision::{f1, timer};
 use crate::data::player::SlideVector;
 use crate::data::player_generated::{BUBBLE_BOB, ICE_VECTORS, PUSH_VECTORS, ROAD_VECTORS};
 use crate::field::{self, PanelType};
-use crate::object::{ObjectRef, PanelPos, flags, state};
+use crate::object::{DragStep, ObjectRef, PanelPos, flags, state};
 
 // ---- Deletion (action 2) -------------------------------------------------------
 
@@ -44,7 +44,7 @@ fn begin_deletion(b: &mut Battle, r: ObjectRef) {
     // sub_801A5E2
     c.links[crate::collision::link::CONFUSE] = None;
     c.links[crate::collision::link::BLIND] = None;
-    cancel_flag4_timer(b, r);
+    cancel_semi_intangible(b, r);
     reset_charge(b, r);
     // sub_801DC36: HUD.
     let o = b.objects.get_mut(r);
@@ -52,8 +52,8 @@ fn begin_deletion(b: &mut Battle, r: ObjectRef) {
     o.chip = 0xFFFF;
     let fp = o.future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
-    // sub_801A7F4: the barrier goes.
-    ai_mut(b, r).unk_60 = 0;
+    // sub_801A7F4: the barrier goes (and the game forgets its visual,
+    // AIData+0x60).
     coll_mut(b, r).barrier = 0;
     // The charge glow sees its slot cleared and ends itself.
     ai_mut(b, r).charge_glow = None;
@@ -91,7 +91,7 @@ fn explode(b: &mut Battle, r: ObjectRef) {
     o.prevent_anim = 0;
     let pos = o.pos;
     let a = ai_mut(b, r);
-    a.unk_5c = 0;
+    a.full_synchro_aura = None;
     a.overlay = None;
     // Sound 0x6C. The second call reuses whatever registers the first
     // left: Z, but list-node addresses from the allocator for X and Y
@@ -156,7 +156,7 @@ fn death_hook(b: &mut Battle, r: ObjectRef) {
 fn enter_reaction(b: &mut Battle, r: ObjectRef, anim: u8) {
     set_flag1(b, r, f1::USING_ACTION);
     clear_flag1(b, r, f1::DRAG | f1::FLINCHING | f1::MOVING | f1::GUARD);
-    cancel_flag4_timer(b, r);
+    cancel_semi_intangible(b, r);
     ai_mut(b, r).status &= !0x20_005F;
     reset_charge(b, r);
     if flag1(b, r) & f1::SLIDING == 0 {
@@ -223,7 +223,7 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
         clear_paralysis(b, r);
         clear_freeze(b, r);
         clear_bubble(b, r);
-        cancel_flag4_timer(b, r);
+        cancel_semi_intangible(b, r);
         ai_mut(b, r).status &= !0x20_005F;
         clear_flag1(b, r, f1::DRAG | f1::MOVING | f1::GUARD);
         reset_charge(b, r);
@@ -321,10 +321,10 @@ pub(super) fn bubble(b: &mut Battle, r: ObjectRef) {
 /// Action 5, `sub_80178B6`: knocked back along the push vector, then a
 /// short recovery (§H4.3).
 pub(super) fn drag(b: &mut Battle, r: ObjectRef) {
-    match b.objects.get(r).unk_0d {
-        0 => start_drag(b, r),
-        4 => step_drag(b, r),
-        _ => recover_from_drag(b, r),
+    match b.objects.get(r).drag_step {
+        DragStep::Start => start_drag(b, r),
+        DragStep::Slide => step_drag(b, r),
+        DragStep::Recover => recover_from_drag(b, r),
     }
 }
 
@@ -354,7 +354,7 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.pos.z &= !0xFFFF;
     clear_flag1(b, r, f1::SLIDING | f1::FLINCHING | f1::MOVING | f1::GUARD);
-    cancel_flag4_timer(b, r);
+    cancel_semi_intangible(b, r);
     let fp = b.objects.get(r).future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
     let side = b.objects.get(r).alliance;
@@ -373,13 +373,13 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
             o.vel.y = v.dy as i32 * 0x6_0000;
             o.future_panel = target;
             b.reserve_panel(r, target.x, target.y);
-            b.objects.get_mut(r).unk_0d = 4;
+            b.objects.get_mut(r).drag_step = DragStep::Slide;
             return;
         }
     }
     let o = b.objects.get_mut(r);
     o.timer = 0x18;
-    o.unk_0d = 8;
+    o.drag_step = DragStep::Recover;
 }
 
 /// `sub_8017992`: move toward the destination; on arrival continue (one
@@ -425,7 +425,7 @@ fn step_drag(b: &mut Battle, r: ObjectRef) {
     b.update_collision_panels(r);
     let o = b.objects.get_mut(r);
     o.timer = 0x14;
-    o.unk_0d = 8;
+    o.drag_step = DragStep::Recover;
 }
 
 /// `sub_800E6E8`: whether a step from `old` to `new` reached `target`

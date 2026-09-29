@@ -108,9 +108,9 @@ pub struct ChipData {
     /// The attack action the user performs.
     pub action: u8,
     /// Variant within the action (e.g. Cannon/HiCannon/M-Cannon = 0/1/2).
+    /// (Record bytes +0x0D and +0x0E have no reader and are not
+    /// extracted.)
     pub subtype: u8,
-    pub unk_0d: u8,
-    pub unk_0e: u8,
     /// Beast Out auto-lock-on.
     pub beast_lockon: u8,
     /// Action-specific parameters.
