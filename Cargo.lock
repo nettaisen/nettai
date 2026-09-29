@@ -116,6 +116,7 @@ dependencies = [
  "bn6-assets",
  "bn6-battle",
  "m4a",
+ "miniz_oxide 0.8.9",
  "png",
  "serde",
  "serde_json",
