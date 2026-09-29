@@ -12,6 +12,7 @@ pub mod effect;
 pub mod form_overlay;
 pub mod hitbox;
 pub mod intro;
+pub mod invisible;
 pub mod lockon_marker;
 pub mod obstacle;
 pub mod palette_flash;
@@ -45,6 +46,7 @@ pub enum Vars {
     SunBeam(sun_beam::Vars),
     CrossMerge(cross_merge::Vars),
     BodyOverlay(body_overlay::Vars),
+    Invisible(invisible::Vars),
 }
 
 impl Vars {
@@ -62,6 +64,7 @@ impl Vars {
             (Pool::Effect, sun_beam::INDEX) => Vars::SunBeam(Default::default()),
             (Pool::Actor, cross_merge::INDEX) => Vars::CrossMerge(Default::default()),
             (Pool::Actor, body_overlay::INDEX) => Vars::BodyOverlay(Default::default()),
+            (Pool::Effect, invisible::INDEX) => Vars::Invisible(Default::default()),
             (Pool::Actor, 0) => Vars::None,
             _ => Vars::None,
         }
@@ -89,6 +92,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, sun_beam::INDEX) => sun_beam::update(b, r),
         (Pool::Actor, cross_merge::INDEX) => cross_merge::update(b, r),
         (Pool::Actor, body_overlay::INDEX) => body_overlay::update(b, r),
+        (Pool::Effect, invisible::INDEX) => invisible::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }

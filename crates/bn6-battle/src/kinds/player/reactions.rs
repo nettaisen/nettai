@@ -469,7 +469,7 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800E468`: the slide vector for the slide type, none when the
 /// first panel is not open.
-fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
+pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
     let o = b.objects.get(r);
     let front = if o.alliance == 0 { 1 } else { -1 };
     let facing = |v: SlideVector| SlideVector { dx: v.dx * front, ..v };
@@ -496,7 +496,7 @@ fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
 
 /// `sub_800E5AC`: a slide may enter (x, y): like a step, but the floor
 /// rule depends only on AirShoes.
-fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
+pub(super) fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
     if !field::is_valid(p.x, p.y) {
         return false;
     }
