@@ -589,7 +589,7 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80143A6`: calm down.
-fn end_anger(b: &mut Battle, r: ObjectRef) {
+pub(super) fn end_anger(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     b.stats[side].mood = 0x80;
     clear_flag1(b, r, f1::ANGER);

@@ -9,6 +9,7 @@
 //! (0, 1), `reactions` (2..7) and `idle` (8); 0x10 and up in `actions`.
 
 pub mod actions;
+mod chip_use;
 mod entry;
 mod idle;
 mod input;
