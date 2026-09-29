@@ -5,17 +5,14 @@ It covers chip data, the per-player battle hand ("chip block"), how a chip gets 
 an attack action, the generic attack framework (action handlers, spawners, collision hand-off, time freeze),
 the MegaBuster as the non-chip counterpart, and a frame-exact worked example (GunDelS3) from a real match.
 
-- The full per-chip inventory, generated from the ROM, is in [`chip-table.md`](chip-table.md). Its generator is
-  `tools/chip_table.py`.
+- The full per-chip inventory, generated from the ROM, is in [`chip-table.md`](chip-table.md).
 - Object kinds seen in PvP traces are in [`object-kinds-pvp.md`](object-kinds-pvp.md).
 
 **Sources.**
-- Disassembly: `~/Documents/Programming/bn6f`. Rust translation: `crates/bn6-gen`.
-- ROM: `~/Documents/Tango/roms/exe6f_rom_f_e.srl` (sha1 `0676ecd4…`, identical to bn6f).
-- Trace: `data/traces/machgun.jsonl`, produced by `tools/difftest --trace` from replay
-  `~/Documents/Tango/replays/20260901132611-chilly-machgun-6-bn6-vs-weenie-p1.tangoreplay`. difftest frame N is
-  trace frame N. `--watch`/`--peek` on that replay were used to confirm call chains and memory values.
-  "machgun" is the Tango room name, not the chip; no MachGun is used.
+- The original game's code (US Falzar, sha1 `0676ecd4…`), read statically and run under emulation.
+- The machgun trace: a recorded netbattle (Falzar vs Falzar, two rounds) with the original's per-frame state.
+  Memory watches on the same battle were used to confirm call chains and memory values.
+  "machgun" is the name of the netbattle room, not the chip; no MachGun is used.
 - Every claim cites a function or table address. Unverified inferences are marked **[unverified]**.
   Claims checked against the trace are marked **[trace]**.
 
@@ -62,7 +59,7 @@ next frame on:         sub_801B9E6 -> JumpTable80EAC60[action-0x10] (phase machi
 | Table | `ChipDataArr_8021DA8` at **0x08021DA8** (ROM offset 0x021DA8). Byte-identical to `data/ChipDataArr.s`. | |
 | Record size | **0x2C** | `getChip8021DA8` |
 | Count | **411** records, ids 0x000..0x19A, followed by `.word 0` | `cmp #0x19B` in `sub_800AFBA` (0x0800AFBA) and `sub_800B022` (0x0800B022) |
-| Accessor | `getChip8021DA8` (0x08021AA4) returns `0x08021DA8 + 0x2C*id`. **No bounds check.** | asm02.s:3 |
+| Accessor | `getChip8021DA8` (0x08021AA4) returns `0x08021DA8 + 0x2C*id`. **No bounds check.** | |
 | "No chip" | id 0xFFFF (hand terminator). `sub_80109A4` returns 0 for it. It is also passed unguarded to `getChip8021DA8` by `chip_800AEE8`; see §2.5 for that quirk. | |
 | Packed chip | `u16 = id \| code<<9`. id = low 9 bits, code = bits 9..15. Used in folders, the raw selection and the link packet. | `sub_800AFBA`, `sub_800B022`, `sub_800A570` |
 | Error chip | **0x185** (nameless, action 0x1C, damage 0). Replaces illegal selections. | `sub_800B022`, `sub_800B090` |
@@ -300,7 +297,7 @@ The builder writes `hand[0] = 0xFF` when there are no selections, meaning "no ch
 
 Battle 2 commits at 1774 and fights from 1775.
 
-The commit write backtrace, from `--watch 527 20349C0 A0`, is `CopyWords ← sub_800B3D8 ← sub_8026DC4 ←
+The commit write backtrace, from a write watch on 0x20349C0 from frame 527, is `CopyWords ← sub_800B3D8 ← sub_8026DC4 ←
 sub_8026A88 ← sub_8026A28 ← sub_8009338 ← sub_8009158 ← battle_8007A44`.
 
 ### 2.3 Port contract for the hand
@@ -411,7 +408,7 @@ Fighting frame in `battle_8007A44`:
 10. **`chip_800AEE8`**
 11. …
 
-Steps 7 and 10 are called at asm00_1.s:8649/8652.
+Steps 7 and 10 are called.
 
 **`sub_800FDC0`** (0x0800FDC0) walks the 8 actor pointers at `BattleState+0x80`. For each one that is non-null,
 has AIData, and has `ActorType == 2` (player), it calls `sub_800FDEA` (0x0800FDEA), which sets:
@@ -981,8 +978,8 @@ object +0x0E/+0x2C/+0x2E into CD+0x02/+0x19, CD+0x2E and CD+0x07.
 
 ### 3.6 Time-freeze chips (action 0x15; navi chips 0x1B)
 
-**No time freeze executes in the machgun trace** (§4.6), and no other available replay reaches the fighting phase
-under difftest. This whole subsection is **code-derived and not trace-verified**, particularly the frame counts.
+**No time freeze executes in the machgun trace** (§4.6), and no other available recording reaches the fighting phase
+under emulation. This whole subsection is **code-derived and not trace-verified**, particularly the frame counts.
 
 #### 3.6.1 State
 
@@ -1104,7 +1101,7 @@ Special cases:
 - Alliance-swap re-registration in `sub_800BE2C`.
 
 **Quirk.** The r4 value entering `sub_80127C0` from `sub_8017AB4` selects hand vs slot-in (§2.6.4). It was not
-checked at run time; `bn6-gen` will show it. **[unverified]**
+checked at run time. **[unverified]**
 
 ---
 
@@ -1185,7 +1182,7 @@ Per-level constants (`dword_80EDBC8`, `byte_80EDBB8`, region shapes via `PanelOf
   the vertical 1×3 column two panels in front of the user, and EX hits a 2×3 block starting there.
 - **"Sun" is `ns[0x22]`.** In the overworld, `sub_80355EC` (called from `EnterMap`) sets it to 1 on the maps listed
   at `word_803562C` (real-world outdoor areas) and to 0 elsewhere. It reaches battle through the exchanged NaviStats.
-  In this replay both players have 1, so dmg = 4 (`--peek 638 0203CE22 = 01`). The "sun/outdoor" reading is
+  In this replay both players have 1, so dmg = 4 (0x0203CE22 = 0x01 at frame 638). The "sun/outdoor" reading is
   inferred from the map list **[unverified name]**.
 - **Damage is hard-coded** at 2 or 4 per frame. The chip damage field, `av+8`, `av+6`, Atk+ and cross boosts are
   all ignored.
@@ -1219,7 +1216,7 @@ Per-level constants (`dword_80EDBC8`, `byte_80EDBB8`, region shapes via `PanelOf
      paths and runs only `object_subtractHP(CD[+0x8C])` (at `loc_801BA68`).
    - `object_presentCollisionData` then clears +0x68..+0xA7.
    - The result: HP drops every frame with no flinch or i-frames. **[trace]** The target's flags1 stayed 0x2000000
-     throughout; `--watch` shows `[0x0203857C] = 4` on frames 646..765.
+     throughout; a memory watch shows `[0x0203857C] = 4` on frames 646..765.
 
 Whether barriers, auras or invisibility block element-5 damage is **[unverified]**. The barrier code sums only
 buckets 0x94..0x9C, which suggests they do not. None of these occurred in the trace.
