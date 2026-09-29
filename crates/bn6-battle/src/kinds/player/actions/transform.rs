@@ -321,6 +321,7 @@ fn cross_merge(b: &mut Battle, r: ObjectRef, target: Form) {
     let a = &mut ai_mut(b, r).attack;
     if a.marker < 6 {
         a.marker += 1;
+        b.objects.sprite_mut(r).look.white = true;
     }
     if !timer_ran_out(b, r) {
         return;
@@ -333,6 +334,8 @@ fn cross_merge(b: &mut Battle, r: ObjectRef, target: Form) {
 /// `sub_8014BEE`: MegaMan in the Cross (sprite, form, name, overlay); 10
 /// ticks later the form's status set-up.
 fn cross_emerge(b: &mut Battle, r: ObjectRef, target: Form) {
+    // sprite_forceWhitePalette every tick.
+    b.objects.sprite_mut(r).look.white = true;
     if ai(b, r).attack.step_init == 0 {
         b.objects.get_mut(r).related[0] = None;
         ai_mut(b, r).overlay = None;
@@ -340,7 +343,13 @@ fn cross_emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         form::take_off_overlay(b, r, current);
         let navi = stats(b, r).navi;
         let sprite = if navi == Navi::MEGAMAN { pdata::form_sprite(target) } else { pdata::navi_sprite(navi) };
-        b.objects.sprite_mut(r).load(sprite);
+        let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
+        let s = b.objects.sprite_mut(r);
+        s.load(sprite);
+        // sprite_hasShadow, sprite_setFlip(object_getFlip()), white.
+        s.look.shadow = crate::object::sprite::Shadow::Ground;
+        s.look.set_flip(flip);
+        s.look.white = true;
         let o = b.objects.get_mut(r);
         o.flags &= !flags::NO_SPRITE_UPDATE;
         // object_setAnimation(0), then the sprite restarts it directly.

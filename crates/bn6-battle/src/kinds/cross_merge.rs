@@ -10,6 +10,7 @@ use crate::battle::Battle;
 use crate::data::{cross, player as pdata};
 use crate::kinds::common;
 use crate::kinds::effect;
+use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
 use crate::setup::Navi;
 
@@ -79,9 +80,19 @@ fn init(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).name_id = name_id;
     // sub_800FC9E(navi, no form)
     let sprite = if navi == Navi::MEGAMAN { pdata::form_sprite(Default::default()) } else { pdata::navi_sprite(navi) };
+    let flip = {
+        let o = b.objects.get(r);
+        o.alliance ^ o.flip
+    };
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.set_animation(0);
+    // sprite_removeShadow, palette 4, the object's facing, and white
+    // (sprite_forceWhitePalette at the end of the init).
+    s.look.shadow = Shadow::Hidden;
+    s.look.palette = 4;
+    s.look.set_flip(flip);
+    s.look.white = true;
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.flags |= flags::VISIBLE;
@@ -117,12 +128,16 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// MegaMan.
 fn tick(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).action == 0 {
-        // Held in place (flashing white) until the timer runs out.
+        // Held in place, white, until the timer runs out.
+        b.objects.sprite_mut(r).look.white = true;
         let o = b.objects.get_mut(r);
         o.timer = o.timer.wrapping_sub(1);
         if o.timer != 0 {
             return common::update_sprite(b, r);
         }
+        // sprite_clearFinalPalette
+        b.objects.sprite_mut(r).look.white = false;
+        let o = b.objects.get_mut(r);
         o.timer = 10;
         o.action = 1;
     }
