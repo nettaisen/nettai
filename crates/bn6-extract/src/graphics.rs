@@ -45,9 +45,11 @@ fn sprites(rom: &Rom) -> Vec<SpriteSheet> {
         for idx in 0..((next - c) / 4).min(256) {
             let p = u32at(rom, c + 4 * idx);
             let data = if p & 0x8000_0000 != 0 {
+                // A compressed archive starts with its own size word
+                // (`sprite_decompress` hands out the data after it).
                 match lz77(rom, p & 0x7FFF_FFFF) {
-                    Some(d) => d,
-                    None => continue,
+                    Some(d) if d.len() > 4 => d[4..].to_vec(),
+                    _ => continue,
                 }
             } else if (0x0800_0000..0x0900_0000).contains(&p) {
                 rom_from(rom, p, 0x8_0000)

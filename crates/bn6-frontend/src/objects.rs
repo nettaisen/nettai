@@ -112,6 +112,35 @@ pub fn project(pos: (i32, i32, i32), view: &View) -> Projected {
     Projected { x, ground, y }
 }
 
+/// A colour shader (`sprite_setColorShader`, applied by `sub_3005EF0`):
+/// bit 15 clear adds the colour to every palette entry, set subtracts it,
+/// per channel and saturating.
+pub fn shade(mut p: Palette, shader: u16) -> Palette {
+    if shader == 0 {
+        return p;
+    }
+    let ch = |c: u16, s: u32| ((c >> s) & 31) as i32;
+    for c in p.iter_mut() {
+        let mut out = 0u16;
+        for s in [0, 5, 10] {
+            let v = if shader & 0x8000 == 0 { ch(*c, s) + ch(shader, s) } else { ch(*c, s) - ch(shader, s) };
+            out |= (v.clamp(0, 31) as u16) << s;
+        }
+        *c = out;
+    }
+    p
+}
+
+/// The palette flash effect (effect object #0x0A, `sub_80E10C0`) turns the
+/// tile layers white on the frames its counter has bit 2 clear (measured:
+/// the sprites keep their colours).
+pub fn palette_flash(b: &Battle) -> bool {
+    b.objects.in_order().any(|r| {
+        let o = b.objects.get(r);
+        r.pool == Pool::Effect && o.index == 0x0A && o.state != 0 && o.timer & 4 == 0
+    })
+}
+
 /// Queue every visible object's sprite.
 pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut SpriteList<'a>) {
     for pool in Pool::ALL {
@@ -154,13 +183,21 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
             mask &= !look.hidden_parts;
 
             let first_palette = parts.first().map(|p| p.palette).unwrap_or(0);
-            let palette = if look.white {
+            // A form overlay shows white with its owner (measured; the
+            // overlay itself doesn't run while the battle is paused).
+            let owner_white = || {
+                r.pool == Pool::Actor
+                    && o.index == 0x57
+                    && o.related[0].is_some_and(|w| b.objects.sprite(w).look.white)
+            };
+            let palette = if look.white && (r.pool != Pool::Actor || o.index != 0x57) || owner_white() {
                 WHITE
             } else {
-                sheet.palette_sets[frame.palette_set as usize]
+                let p = sheet.palette_sets[frame.palette_set as usize]
                     .get(look.palette.wrapping_add(first_palette) as usize)
                     .copied()
-                    .unwrap_or([0; 16])
+                    .unwrap_or([0; 16]);
+                shade(p, look.color_shader)
             };
 
             let mut group = Vec::new();

@@ -91,9 +91,19 @@ pub enum Fade {
     White(u8),
 }
 
+/// Screen-wide fades: `layers` fades the tile layers and the backdrop only
+/// (a background palette fade; sprites keep their colours), `screen`
+/// everything.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Fades {
+    pub layers: Fade,
+    pub screen: Fade,
+}
+
 /// Combine layers and sprite parts (in hardware order: earlier parts are
 /// in front) into a BGR555 frame.
-pub fn compose(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fade: Fade) -> Vec<u16> {
+pub fn compose(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fades) -> Vec<u16> {
+    let backdrop = apply_fade(backdrop, fades.layers);
     // The sprite layer: per pixel the frontmost sprite's colour.
     let mut obj = vec![CLEAR; PIXELS];
     let mut obj_prio = vec![4u8; PIXELS];
@@ -120,14 +130,14 @@ pub fn compose(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fade: Fad
         for l in layers {
             let c = l.pixels[i];
             if c != CLEAR {
-                consider((l.priority, 1 + l.order), c);
+                consider((l.priority, 1 + l.order), apply_fade(c, fades.layers));
             }
         }
         let mut c = first.2;
         if first.1 == 0 && obj_alpha[i] != 0xFF {
             c = blend(c, second.2, obj_alpha[i]);
         }
-        out[i] = apply_fade(c, fade);
+        out[i] = apply_fade(c, fades.screen);
     }
     out
 }
@@ -261,7 +271,7 @@ mod tests {
     fn earlier_sprites_win_ties_and_lower_priority_wins() {
         let t = solid_tiles(1, 1);
         let parts = [part(&t, 0, 0, 2, 0x001F), part(&t, 4, 0, 2, 0x03E0), part(&t, 10, 0, 1, 0x7C00)];
-        let out = compose(0, &[], &parts, Fade::None);
+        let out = compose(0, &[], &parts, Fades::default());
         assert_eq!(out[5], 0x001F, "the earlier part is in front at equal priority");
         assert_eq!(out[11], 0x7C00, "priority 1 beats priority 2");
         assert_eq!(out[8], 0x03E0);
@@ -277,7 +287,7 @@ mod tests {
         let mut behind = Layer::new(2, 2);
         behind.pixels[2] = 0x0042;
         let parts = [part(&t, 0, 0, 2, 0x001F)];
-        let out = compose(0, &[&front, &behind], &parts, Fade::None);
+        let out = compose(0, &[&front, &behind], &parts, Fades::default());
         assert_eq!(out[0], 0x1234, "a priority-1 layer covers priority-2 sprites");
         assert_eq!(out[2], 0x001F, "a sprite covers a layer of its own priority");
     }
@@ -286,7 +296,7 @@ mod tests {
     fn positions_wrap_like_the_hardware() {
         let t = solid_tiles(1, 1);
         // y 252 shows its last 4 rows at the top; x 508 its last 4 columns.
-        let out = compose(0, &[], &[part(&t, 508, 252, 2, 0x001F)], Fade::None);
+        let out = compose(0, &[], &[part(&t, 508, 252, 2, 0x001F)], Fades::default());
         assert_eq!(out[3 * WIDTH + 3], 0x001F);
         assert_eq!(out[4 * WIDTH], 0);
         assert_eq!(out[4], 0);
@@ -297,7 +307,7 @@ mod tests {
         let t = solid_tiles(1, 1);
         let mut p = part(&t, 0, 0, 2, 31);
         p.alpha = Some(8);
-        let out = compose(0, &[], &[p], Fade::None);
+        let out = compose(0, &[], &[p], Fades::default());
         assert_eq!(out[0], 15);
         assert_eq!(blend(0x7FFF, 0, 16), 0x7FFF);
         assert_eq!(apply_fade(0x7FFF, Fade::Black(16)), 0);

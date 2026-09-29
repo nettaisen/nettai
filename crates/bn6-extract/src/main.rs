@@ -329,8 +329,8 @@ fn sprites(rom: &Rom) -> String {
             let p = u32at(rom, c + 4 * idx);
             let data: Vec<u8> = if p & 0x8000_0000 != 0 {
                 match lz77(rom, p & 0x7FFF_FFFF) {
-                    Some(d) => d,
-                    None => continue,
+                    Some(d) if d.len() > 4 => d[4..].to_vec(),
+                    _ => continue,
                 }
             } else if (0x0800_0000..0x0900_0000).contains(&p) {
                 let o = (p & 0x01FF_FFFF) as usize;
