@@ -816,6 +816,11 @@ fn charge_fire_chip(b: &mut Battle, r: ObjectRef, limit: u16) {
     let hand = &b.hands[side];
     let i = hand.cursor as usize;
     let Some(&chip) = hand.ids.get(i) else { return };
+    // With no chip left, the game looks up chip 0xFFFF, far past the
+    // table, and finds flags 0x30: no damage, so nothing happens.
+    if chip == NO_CHIP {
+        return;
+    }
     let cd = crate::data::chip(chip);
     if !cd.flags.has(crate::data::ChipFlags::HAS_DAMAGE) || cd.element != crate::data::Element::Fire {
         return;
