@@ -203,11 +203,11 @@ fn time_bcd(frames: u32) -> u32 {
     if frames > 0x149_9727 {
         return 0x9959_5999;
     }
-    let bcd = |v: u32| (v / 10) << 4 | v % 10;
+    let bcd = |v: u32| ((v / 10) << 4) | (v % 10);
     let (hours, rest) = (frames / 216_000, frames % 216_000);
     let (minutes, rest) = (rest / 3600, rest % 3600);
     let (seconds, frames) = (rest / 60, rest % 60);
-    bcd(hours) << 24 | bcd(minutes) << 16 | bcd(seconds) << 8 | bcd(frames * 100 / 60)
+    (bcd(hours) << 24) | (bcd(minutes) << 16) | (bcd(seconds) << 8) | bcd(frames * 100 / 60)
 }
 
 #[cfg(test)]
