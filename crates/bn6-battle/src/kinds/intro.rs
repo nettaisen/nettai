@@ -5,7 +5,7 @@
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars;
 
 /// Spawn the sequencer (`sub_80E06F8`), before the navis.

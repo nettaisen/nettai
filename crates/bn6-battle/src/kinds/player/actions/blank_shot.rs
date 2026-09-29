@@ -14,7 +14,7 @@ use crate::object::ObjectRef;
 pub const ACTION: u8 = 0x33;
 
 /// The blank shot's own state.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     /// AIAttackVars+0x10: ticks into the shot, then ticks of recovery
     /// left.

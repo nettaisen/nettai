@@ -13,7 +13,7 @@ use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 pub const INDEX: u8 = 0x48;
 
 /// Sun-beam-private state.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     pub slot: Option<AttachSlot>,
     /// Offset from the owner's position, 16.16.

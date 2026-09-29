@@ -76,7 +76,7 @@ pub fn highlight_panel(b: &mut Battle, x: u8, y: u8) {
 /// Where an object is in its behavior: lifecycle state, action, phase and
 /// whether the phase's entry ran. The game saves and restores these
 /// together (one word store).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Progress {
     pub state: u8,
     pub action: u8,

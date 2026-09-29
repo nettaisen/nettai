@@ -9,7 +9,7 @@ use crate::setup::Form;
 
 /// A player's transformation request for the coming turn (the game's
 /// 0x10-byte transform record, sent with the chip exchange).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TransformRequest {
     /// The form to change into (Beast Out, a Cross, Beast Over...).
     pub form: Option<Form>,
@@ -35,7 +35,7 @@ impl TransformRequest {
 }
 
 /// Where the sequencer is (`dword_20367F0`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum SequencerState {
     /// Check each side (`sub_801486C`): Beast Out running out, Cross
     /// changes, and whether anyone transforms.
@@ -49,7 +49,7 @@ pub enum SequencerState {
 }
 
 /// The phases of a transformation, each with an entry tick.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TransformPhase {
     /// `sub_80148EC`: fade the screen out.
     FadeOut,
@@ -60,7 +60,7 @@ pub enum TransformPhase {
 }
 
 /// The transformation sequencer, run at the start of every turn.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TransformSequencer {
     pub state: SequencerState,
     pub busy: bool,
@@ -79,7 +79,7 @@ impl TransformSequencer {
 
 /// The reversion a mid-battle custom-screen request waits for before the
 /// sequencer runs (`dword_203C970`, `sub_802D6A0` / `sub_802D6C4`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct CustomReversion {
     /// +3: the navis were checked.
     pub checked: bool,

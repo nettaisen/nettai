@@ -17,7 +17,7 @@ use crate::setup::Navi;
 pub const INDEX: u8 = 0x1B;
 
 /// The image's own state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Which navi it shows (Param1).
     pub navi: Navi,

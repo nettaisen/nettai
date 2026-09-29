@@ -23,7 +23,7 @@ const SPEED: i32 = 0xB_0000;
 const FALL: u16 = 0x11;
 
 /// The meteor's own state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Param1: it runs (and steps its sprite) in time stop.
     pub in_time_stop: bool,

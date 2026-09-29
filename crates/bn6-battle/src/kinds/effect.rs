@@ -9,7 +9,7 @@ use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
 /// Effect-private state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Visibility follows `related[0]`.
     pub follow_related: bool,

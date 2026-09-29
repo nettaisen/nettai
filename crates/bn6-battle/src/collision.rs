@@ -52,7 +52,7 @@ pub mod f1 {
 }
 
 /// Per-registration-window hit results (zeroed on present).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Accumulators {
     /// Slots already paired with since the last present.
     pub pair_tested: u32,
@@ -77,7 +77,7 @@ pub struct Accumulators {
     pub inflicted_bugs: u16,
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct CollisionData {
     pub enabled: u8,
     /// Region shape (`data::REGIONS`; 0x80.. = filtered whole field).
@@ -157,7 +157,7 @@ pub mod timer {
     pub const BUBBLE: usize = 8;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct Collision {
     slots: [CollisionData; SLOTS],
     in_use: u32,

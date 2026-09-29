@@ -25,7 +25,7 @@ pub trait Obstacle {
 }
 
 /// State every obstacle keeps.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct State {
     /// During time stop: where the obstacle is held (integer pixels) and
     /// how many more ticks it shakes after a hit.

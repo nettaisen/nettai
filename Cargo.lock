@@ -129,6 +129,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "bn6-netplay"
+version = "0.1.0"
+dependencies = [
+ "bn6-battle",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

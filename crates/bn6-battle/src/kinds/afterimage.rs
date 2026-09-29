@@ -19,7 +19,7 @@ pub const INDEX: u8 = 0x28;
 const COLOR_SHADER: u16 = 0x83E0;
 
 /// What ends an afterimage before its time is up.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Tether {
     /// Nothing.
     #[default]
@@ -31,7 +31,7 @@ pub enum Tether {
 }
 
 /// Afterimage-private state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Ticks it lasts.
     pub lifetime: u16,
