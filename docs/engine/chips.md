@@ -1206,6 +1206,25 @@ victim's flinch waits for the time to start again (3684).
 **Counters.** `sub_8017AB4` also needs the next chip to have the time-freeze flag; soundmod 25828 (side 1 presses A
 during ElmntMan's name with FullCust next) clears the request.
 
+**EraseMan, T1 0x15 (`sub_80BB608`, navi 5)**, spawned by `sub_80BB7F6` like ElmntMan (no overlay). His actions
+enter on CurPhase 0 (setting it to 4) and store Timer and Timer2 together:
+- 0: anim 3, sound 0x94, VISIBLE; 3 ticks; panel flags 0x10010 → 4, else 0x14.
+- 4: anim 0, 30 ticks. 8 (`sub_80BB710`): aim. His row picks the aims he cycles through (`byte_80BB88C`: row 1
+  forward, down-forward; row 2 up-forward, forward, down-forward, forward; row 3 up-forward, forward); each aim marks
+  up to 5 panels along its step (`byte_80BB860`: (1, −1), (1, 0), (1, 1), x toward the front; the line stops at the
+  field's edge) with T4 0x62 marks lasting Param1 ticks (sound 0x10E). The aim changes every Param1 ticks; the user's
+  A in the time stop, or 360 ticks, ends it.
+- 0xC: anim 0x11, 10 ticks. 0x10 (`sub_80BB79A`): anim 0x12, a T3 0xC3 segment on each panel of the line (Param1
+  the aim, Param2 60 ticks), sound 0xBA; 60 ticks. 0x14: anim 4; 3 ticks (to −1); the controller's flag cleared,
+  state 8.
+- The mark, T4 0x62 (`sub_80E78BC`): on its panel, Z = its spawn Z's fraction (the 1 `sub_80BB81C` leaves in r3);
+  sprite (0x10, 0x50); gone after Param1 ticks (or when the battle is over).
+- The segment, T3 0xC3 (`sub_80DD940`): 8 pixels behind its panel's centre at height 35/40/45 by aim, anim 1/0/2;
+  collision self 0x16, target 5, modifier 1, status 0x10, hit effect 0xC. Each tick the hits resolve; a hit turns
+  its region off; after Param2 ticks it ends. With Param3 set it would end with its owner's action 0xA, and stand
+  still in time stop.
+- Round 1: side 1 (DustCross) uses EraseMan at 4058; aimed at 4166, slashed 4186, the beams gone 4246.
+
 #### 3.6.8 AreaGrab and PanelGrab (subtype 0, T4 3, T3 0xF)
 
 The controller (`sub_80E0710`) runs `object_drawChipName`; its effect (`sub_80E0754`): Param1 set (AreaGrab, params
