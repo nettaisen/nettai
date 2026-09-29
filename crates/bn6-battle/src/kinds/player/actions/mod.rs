@@ -11,6 +11,7 @@ pub mod blank_shot;
 pub mod buster;
 pub mod beast_rush;
 pub mod gun_del_sol;
+pub mod instant;
 pub mod movement;
 pub mod navi_chip;
 pub mod time_freeze;
@@ -35,6 +36,7 @@ pub enum ActionVars {
     FormChange(transform::Vars),
     BlankShot(blank_shot::Vars),
     Absorb(absorb::Vars),
+    Instant(instant::Vars),
 }
 
 /// Run action `action` (>= 0x10) for the player `r` this tick.
@@ -47,6 +49,7 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
         blank_shot::ACTION => blank_shot::update(b, r),
         navi_chip::ACTION => navi_chip::update(b, r),
         absorb::ACTION => absorb::update(b, r),
+        instant::ACTION => instant::update(b, r),
         _ => panic!("player action {action:#x} is not implemented yet"),
     }
 }
