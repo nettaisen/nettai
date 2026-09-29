@@ -14,7 +14,7 @@ pub const SLOTS: usize = 8;
 pub struct ActorId(pub u8);
 
 /// What kind of actor this is.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ActorType {
     #[default]
     Virus = 0,
@@ -116,7 +116,7 @@ pub mod status {
 /// State of the attack action in progress, shared by whatever action is
 /// running (AIData+0xA0, the game's AIAttackVars). Action-specific state
 /// gets named fields as actions are ported.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct AttackVars {
     /// Step within the action (0, 4, 8...), and whether its entry ran.
     pub step: u8,
@@ -150,7 +150,7 @@ pub struct AttackVars {
 }
 
 /// Joypad state as an actor sees it.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Pad {
     pub held: u16,
     pub pressed: u16,
@@ -168,7 +168,7 @@ impl Pad {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct ActorData {
     pub actor_type: ActorType,
     /// Form or AI variant: selects per-form action tables.
@@ -276,7 +276,7 @@ pub struct ActorData {
 }
 
 /// An obstacle the obstacle-absorbing chip pulled in.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct AbsorbedObstacle {
     /// Obstacle kind (`data::ABSORBED_SPRITES`).
     pub kind: u8,
@@ -285,7 +285,7 @@ pub struct AbsorbedObstacle {
 }
 
 /// The actor-data pool.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Actors {
     slots: [ActorData; SLOTS],
     in_use: u8,

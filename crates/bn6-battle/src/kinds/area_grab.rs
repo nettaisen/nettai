@@ -14,7 +14,7 @@ use crate::time_freeze::{self, FreezeChip};
 pub const INDEX: u8 = 3;
 
 /// The controller's own state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub chip: FreezeChip,
     /// Param1: a whole column (AreaGrab) rather than one panel.
