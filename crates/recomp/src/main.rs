@@ -106,7 +106,8 @@ fn main() {
         names.insert(a, name);
     }
 
-    let emitter = emit::Emitter { image: &image, syms: &syms, idents: &idents };
+    let slots: BTreeMap<u32, usize> = idents.keys().enumerate().map(|(i, a)| (*a, i)).collect();
+    let emitter = emit::Emitter { slots: &slots, image: &image, syms: &syms, idents: &idents };
     std::fs::create_dir_all(&out_dir).unwrap();
     for e in std::fs::read_dir(&out_dir).unwrap() {
         let p = e.unwrap().path();

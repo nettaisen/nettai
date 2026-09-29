@@ -17,6 +17,8 @@ use std::collections::BTreeMap;
 use std::fmt::Write;
 
 pub struct Emitter<'a> {
+    /// Function entry -> dense index (for coverage counters).
+    pub slots: &'a BTreeMap<u32, usize>,
     pub image: &'a Image,
     pub syms: &'a Syms,
     /// Function entry -> Rust identifier.
@@ -129,6 +131,7 @@ impl Emitter<'_> {
         if self.syms.hooks.contains(&f.entry) {
             writeln!(out, "    if let Some(h) = c.overrides.get(&{}).copied() {{ return h(c); }}", hex(f.entry)).unwrap();
         }
+        writeln!(out, "    c.enter({});", self.slots[&f.entry]).unwrap();
         writeln!(out, "    let ret = c.ret;").unwrap();
         writeln!(out, "    let mut pc: u32 = {};", hex(f.entry)).unwrap();
         writeln!(out, "    loop {{").unwrap();

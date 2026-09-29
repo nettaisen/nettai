@@ -1,0 +1,17 @@
+[package]
+name = "bn6-battle"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "The Mega Man Battle Network 6 battle engine, reimplemented in Rust"
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+
+[features]
+# Golden-trace loading and comparison (tests and tools).
+trace = ["dep:serde", "dep:serde_json"]
+
+[dev-dependencies]
+bn6-battle = { path = ".", features = ["trace"] }

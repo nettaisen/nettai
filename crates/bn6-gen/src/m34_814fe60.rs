@@ -4,6 +4,7 @@ use gba_rt::*;
 
 /// `sub_814FE60` (0x0814fe60, thumb)
 pub fn sub_814FE60(c: &mut Cpu) {
+    c.enter(13600);
     let ret = c.ret;
     let mut pc: u32 = 0x0814fe60;
     loop {
@@ -26,6 +27,7 @@ pub fn sub_814FE60(c: &mut Cpu) {
 
 /// `nullsub_23` (0x0814fe74, thumb)
 pub fn nullsub_23(c: &mut Cpu) {
+    c.enter(13601);
     let ret = c.ret;
     let mut pc: u32 = 0x0814fe74;
     loop {
@@ -41,6 +43,7 @@ pub fn nullsub_23(c: &mut Cpu) {
 /// `off_81B9114` (0x081b9114, thumb)
 /// PROBLEM: 0x081b9130: undefined instruction 0xb194
 pub fn off_81B9114(c: &mut Cpu) {
+    c.enter(13602);
     let ret = c.ret;
     let mut pc: u32 = 0x081b9114;
     loop {

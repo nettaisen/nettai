@@ -3,3 +3,4 @@
 *.srl
 *.sav
 /tools/*/target
+/data/traces/*.jsonl

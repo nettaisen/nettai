@@ -96,6 +96,9 @@ pub struct Cpu {
     /// ROM routines the game copies into RAM and runs there: (ROM address,
     /// length). A call into RAM whose bytes match one runs its translation.
     pub ram_code: Vec<(u32, u32)>,
+    /// Per-function call counts (indexed like the generated FUNCTIONS
+    /// table), when enabled.
+    pub coverage: Option<Vec<u64>>,
 }
 
 impl Cpu {
@@ -126,6 +129,7 @@ impl Cpu {
             in_exception_return: false,
             link: None,
             ram_code: Vec::new(),
+            coverage: None,
         }
     }
 
@@ -141,6 +145,14 @@ impl Cpu {
     }
 
     // ---- Calls ----------------------------------------------------------
+
+    /// Entry of a translated function (coverage accounting).
+    #[inline(always)]
+    pub fn enter(&mut self, slot: usize) {
+        if let Some(cov) = &mut self.coverage {
+            cov[slot] += 1;
+        }
+    }
 
     /// The function entered at `addr`: a host override, else translated code.
     pub fn find(&self, addr: u32) -> Option<Func> {

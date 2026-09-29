@@ -97,6 +97,123 @@ fn port_from(s: &Snap, rom: &Arc<[u8]>) -> gba_rt::Cpu {
     c
 }
 
+fn hex_range(s: &Snap, addr: u32, len: u32) -> String {
+    (0..len)
+        .map(|k| {
+            let a = addr + k;
+            let b = match a >> 24 {
+                2 => s.ewram[(a & 0x3FFFF) as usize],
+                3 => s.iwram[(a & 0x7FFF) as usize],
+                _ => 0,
+            };
+            format!("{b:02x}")
+        })
+        .collect()
+}
+
+/// A setup record: the battle's static inputs, captured when a round's
+/// fighting state machine starts.
+fn setup_line(frame: u32, s: &Snap, rom: &[u8]) -> String {
+    let ew32 = |a: u32| u32::from_le_bytes(s.ewram[(a & 0x3FFFF) as usize..][..4].try_into().unwrap());
+    let settings_ptr = ew32(0x0203_4880 + 0x3C);
+    let settings: String = if settings_ptr >> 24 == 8 {
+        rom[(settings_ptr & 0x01FF_FFFF) as usize..][..0x10].iter().map(|b| format!("{b:02x}")).collect()
+    } else {
+        hex_range(s, settings_ptr, 0x10)
+    };
+    format!(
+        "{{\"setup\":{{\"frame\":{frame},\"settings_ptr\":{settings_ptr},\"settings\":\"{settings}\",\"navi_stats\":[\"{}\",\"{}\"],\"folder\":\"{}\",\"battle_state\":\"{}\",\"rng1\":{},\"rng2\":{}}}}}",
+        hex_range(s, 0x0203_CE00, 0x64),
+        hex_range(s, 0x0203_CE64, 0x64),
+        hex_range(s, 0x0203_CDB0, 0x50),
+        hex_range(s, 0x0203_4880, 0xF0),
+        ew32(0x0200_1120),
+        ew32(0x0200_13F0)
+    )
+}
+
+/// One JSON line of observable battle state (see crates/bn6-battle/src/trace.rs).
+fn trace_line(frame: u32, s: &Snap) -> String {
+    let ew = |a: u32| s.ewram[(a & 0x3FFFF) as usize];
+    let ew16 = |a: u32| u16::from_le_bytes([ew(a), ew(a + 1)]);
+    let ew32 = |a: u32| u32::from_le_bytes([ew(a), ew(a + 1), ew(a + 2), ew(a + 3)]);
+    const BS: u32 = 0x0203_4880;
+    let mut o = format!(
+        "{{\"frame\":{frame},\"state\":[{},{},{},{}],\"frames\":{},\"ticks\":{},\"link\":{},\"rng1\":{},\"rng2\":{}",
+        ew(BS),
+        ew(BS + 1),
+        ew(BS + 2),
+        ew(BS + 3),
+        ew32(BS + 0x60),
+        ew32(BS + 0x64),
+        ew(0x0203_F7D9),
+        ew32(0x0200_1120),
+        ew32(0x0200_13F0)
+    );
+    // Per-player input records: held, pressed, released.
+    o.push_str(",\"input\":[");
+    for p in 0..2u32 {
+        let r = 0x0203_6820 + 8 * p;
+        o.push_str(&format!("{}[{},{},{}]", if p > 0 { "," } else { "" }, ew16(r + 2), ew16(r + 4), ew16(r + 6)));
+    }
+    o.push(']');
+    // Objects in update order.
+    o.push_str(",\"objects\":[");
+    let mut node = ew32(0x0200_9380 + 4);
+    let mut first = true;
+    let mut guard = 0;
+    while node != 0x0200_9AB0 && node >> 24 == 2 && guard < 200 {
+        let b = node + 0x10;
+        let coll = ew32(b + 0x54);
+        let flags1 = if coll >> 24 == 2 { ew32(coll + 0x3C) } else { 0 };
+        o.push_str(&format!(
+            "{}{{\"type\":{},\"index\":{},\"flags\":{},\"params\":{},\"state\":[{},{},{},{}],\"panel\":[{},{}],\"alliance\":{},\"flip\":{},\"hp\":{},\"max_hp\":{},\"pos\":[{},{},{}],\"timer\":{},\"anim\":{},\"status\":{}}}",
+            if first { "" } else { "," },
+            ew(b + 2) & 0xF,
+            ew(b + 1),
+            ew(b),
+            ew32(b + 4),
+            ew(b + 8),
+            ew(b + 9),
+            ew(b + 10),
+            ew(b + 11),
+            ew(b + 0x12),
+            ew(b + 0x13),
+            ew(b + 0x16),
+            ew(b + 0x17),
+            ew16(b + 0x24),
+            ew16(b + 0x26),
+            ew32(b + 0x34) as i32,
+            ew32(b + 0x38) as i32,
+            ew32(b + 0x3C) as i32,
+            ew16(b + 0x20),
+            ew(b + 0x10),
+            flags1
+        ));
+        first = false;
+        node = ew32(node + 4);
+        guard += 1;
+    }
+    o.push(']');
+    // The 6x3 field: (type, alliance) per panel, row-major.
+    o.push_str(",\"panels\":[");
+    for y in 1..=3u32 {
+        for x in 1..=6u32 {
+            let p = 0x0203_9AE0 + ((y * 8 + x) << 5);
+            o.push_str(&format!("{}[{},{}]", if y == 1 && x == 1 { "" } else { "," }, ew(p + 2), ew(p + 3)));
+        }
+    }
+    o.push(']');
+    // Chip blocks (the hands chosen at the custom screen), as hex.
+    o.push_str(",\"chip_blocks\":[");
+    for (i, base) in [0x0203_49C0u32, 0x0203_4A10].iter().enumerate() {
+        let hex: String = (0..0x50).map(|k| format!("{:02x}", ew(base + k))).collect();
+        o.push_str(&format!("{}\"{hex}\"", if i > 0 { "," } else { "" }));
+    }
+    o.push_str("]}");
+    o
+}
+
 /// Named regions for reporting and exclusion.
 fn region_name(addr: u32) -> &'static str {
     match addr {
@@ -249,12 +366,19 @@ fn main() {
     }
     let replay_path = &args[0];
     let rom_path = &args[1];
+    // Gregar ROM for Gregar sides (the port itself is Falzar-only; tracing
+    // and testing happen on a Falzar core).
+    let gregar_path = std::path::Path::new(rom_path).with_file_name("exe6_rom_e.srl");
     let mut max_frames = u32::MAX;
     let mut func = 0x0800_7800u32; // battle_8007800
     let mut ret_site = 0x0812_B6ACu32; // after `bl battle_8007800` in sub_812B698
     let mut verbose = false;
     let mut mask_irq = false;
     let mut peeks: Vec<(u32, u32, u32)> = Vec::new(); // (frame, addr, len)
+    let mut coverage_out: Option<String> = None;
+    let mut trace_out: Option<String> = None;
+    let mut script: Option<String> = None;
+    let mut allow_patch = false;
     let mut watch: Option<(u32, u32, u32)> = None; // (frame, addr, len)
     let mut i = 2;
     while i < args.len() {
@@ -273,6 +397,19 @@ fn main() {
             }
             "-v" => verbose = true,
             "--mask-irq" => mask_irq = true,
+            "--allow-patch" => allow_patch = true,
+            "--script" => {
+                script = Some(args[i + 1].clone());
+                i += 1;
+            }
+            "--trace" => {
+                trace_out = Some(args[i + 1].clone());
+                i += 1;
+            }
+            "--coverage" => {
+                coverage_out = Some(args[i + 1].clone());
+                i += 1;
+            }
             "--peek" => {
                 let h = |s: &str| u32::from_str_radix(s.trim_start_matches("0x"), 16).unwrap();
                 peeks.push((args[i + 1].parse().unwrap(), h(&args[i + 2]), h(&args[i + 3])));
@@ -295,14 +432,30 @@ fn main() {
     assert_eq!(&rom[0xAC..0xB0], b"BR6E", "difftest expects US Falzar");
     for p in 0..2 {
         let gi = replay.metadata.side(p).unwrap().game_info.as_ref().unwrap();
-        assert!(gi.patch.is_none() && gi.rom_family == "bn6" && gi.rom_variant == 1, "replay must be vanilla Falzar vs Falzar");
+        println!(
+            "side {p}: {} variant {} patch {:?} inputs {} match_type {}/{}",
+            gi.rom_family,
+            gi.rom_variant,
+            gi.patch.as_ref().map(|x| format!("{x:?}")),
+            replay.inputs.len(),
+            replay.metadata.match_type,
+            replay.metadata.match_subtype
+        );
+        if gi.rom_family != "bn6" || gi.rom_variant != 1 { println!("  (not Falzar)"); }
+        assert!(gi.patch.is_none() || allow_patch, "patched replay (pass --allow-patch for sound-only patches)");
     }
     let rom_arc: Arc<[u8]> = rom.clone().into();
+    let is_falzar = |p: u8| replay.metadata.side(p).unwrap().game_info.as_ref().unwrap().rom_variant == 1;
+    let side_rom = |p: u8| if is_falzar(p) { rom.clone() } else { std::fs::read(&gregar_path).unwrap() };
+    // The core whose engine is traced and tested.
+    let test_core = if is_falzar(0) { 0 } else { 1 };
+    assert!(is_falzar(test_core as u8), "no Falzar side to test");
+    println!("testing core {test_core}");
 
     let mut pair = mgba_rollback::Link::with_options(mgba_rollback::LinkOptions {
         sides: vec![
-            mgba_rollback::SideOptions { rom: rom.clone(), save: Some(replay.srams[0].clone()) },
-            mgba_rollback::SideOptions { rom: rom.clone(), save: Some(replay.srams[1].clone()) },
+            mgba_rollback::SideOptions { rom: side_rom(0), save: Some(replay.srams[0].clone()) },
+            mgba_rollback::SideOptions { rom: side_rom(1), save: Some(replay.srams[1].clone()) },
         ],
         rtc: Some(replay.rtc_time()),
         peripheral: mgba_rollback::Peripheral::Cable,
@@ -328,13 +481,18 @@ fn main() {
         region_counts: std::collections::BTreeMap<&'static str, u64>,
         io_counts: std::collections::BTreeMap<u32, u64>,
         port_time: std::time::Duration,
+        coverage: Vec<u64>,
+        objects: std::collections::BTreeMap<(u8, u8), u64>,
+        trace: String,
+        last_top_state: u8,
     }
     let pre: Rc<RefCell<Option<Snap>>> = Default::default();
     let stats: Rc<RefCell<Stats>> = Default::default();
 
     for core_index in 0..2 {
-        let mut traps = pvp::PVP_BR6E_00.primer_traps(&prime, core_index, &events, &primed[core_index]);
-        if core_index == 0 {
+        let support = if is_falzar(core_index as u8) { &pvp::PVP_BR6E_00 } else { &pvp::PVP_BR5E_00 };
+        let mut traps = support.primer_traps(&prime, core_index, &events, &primed[core_index]);
+        if core_index == test_core {
             let pre_entry = pre.clone();
             let entry_trap: Box<dyn Fn(&mut mgba::core::Core)> = Box::new(move |core: &mut mgba::core::Core| {
                 if mask_irq {
@@ -347,7 +505,9 @@ fn main() {
             let pre_ret = pre.clone();
             let stats_ret = stats.clone();
             let rom_ret = rom_arc.clone();
+            let rom_ret: Arc<[u8]> = rom_ret;
             let peeks = peeks.clone();
+            let tracing = trace_out.is_some();
             let ret_trap: Box<dyn Fn(&mut mgba::core::Core)> = Box::new(move |core: &mut mgba::core::Core| {
                 let Some(before) = pre_ret.borrow_mut().take() else { return };
                 let after = snap(core);
@@ -361,6 +521,10 @@ fn main() {
                 st.frames += 1;
                 let frame = st.frames;
                 let mut c = port_from(&before, &rom_ret);
+                if st.coverage.is_empty() {
+                    st.coverage = vec![0; bn6_gen::FUNCTIONS.len()];
+                }
+                c.coverage = Some(vec![0; bn6_gen::FUNCTIONS.len()]);
                 for &(pf, pa, pl) in &peeks {
                     if pf == frame {
                         let bytes: Vec<u8> = (0..pl).map(|k| c.mem.peek(pa + k)).collect();
@@ -422,6 +586,34 @@ fn main() {
                     }
                     return;
                 }
+                if let Some(cov) = c.coverage.take() {
+                    for (t, n) in st.coverage.iter_mut().zip(cov) {
+                        *t += n;
+                    }
+                }
+                // Live battle objects: the update list from eBattleObjectsLinkedListStart.
+                let rd32 = |a: u32| u32::from_le_bytes(after.ewram[(a & 0x3FFFF) as usize..][..4].try_into().unwrap());
+                let mut node = rd32(0x0200_9380 + 4);
+                let mut guard = 0;
+                while node != 0x0200_9AB0 && node >> 24 == 2 && guard < 200 {
+                    let obj = ((node + 0x10) & 0x3FFFF) as usize;
+                    let key = (after.ewram[obj + 2] & 0xF, after.ewram[obj + 1]);
+                    *st.objects.entry(key).or_default() += 1;
+                    node = rd32(node + 4);
+                    guard += 1;
+                }
+                if tracing {
+                    let top = before.ewram[0x34880];
+                    if top == 4 && st.last_top_state != 4 {
+                        let line = setup_line(frame, &before, &rom_ret);
+                        st.trace.push_str(&line);
+                        st.trace.push('\n');
+                    }
+                    st.last_top_state = top;
+                    let line = trace_line(frame, &after);
+                    st.trace.push_str(&line);
+                    st.trace.push('\n');
+                }
                 let sp_floor = before.gprs[13].min(after.gprs[13]);
                 let diffs = compare(&c, &after, sp_floor);
                 let mut reg_diffs = Vec::new();
@@ -482,8 +674,35 @@ fn main() {
         assert!(prime_ticks < 3600, "prime timeout");
     }
     let t0 = std::time::Instant::now();
-    for row in replay.inputs.iter() {
-        pair.tick(&[row[0].keys as u32 & 0x3ff, row[1].keys as u32 & 0x3ff]);
+    // Inputs: the recording, or a script of "TICK P0KEYS P1KEYS" lines (keys
+    // in hex, held from TICK until the next line; "end TICK" stops).
+    let inputs: Vec<[u32; 2]> = match &script {
+        None => replay.inputs.iter().map(|r| [r[0].keys as u32 & 0x3ff, r[1].keys as u32 & 0x3ff]).collect(),
+        Some(path) => {
+            let mut rows = Vec::new();
+            let mut cur = [0u32; 2];
+            let mut at = 0usize;
+            for line in std::fs::read_to_string(path).unwrap().lines() {
+                let line = line.split('#').next().unwrap().trim();
+                if line.is_empty() {
+                    continue;
+                }
+                let f: Vec<&str> = line.split_whitespace().collect();
+                let tick: usize = f[if f[0] == "end" { 1 } else { 0 }].parse().unwrap();
+                while at < tick {
+                    rows.push(cur);
+                    at += 1;
+                }
+                if f[0] == "end" {
+                    break;
+                }
+                cur = [u32::from_str_radix(f[1], 16).unwrap(), u32::from_str_radix(f[2], 16).unwrap()];
+            }
+            rows
+        }
+    };
+    for row in inputs.iter() {
+        pair.tick(row);
         if stats.borrow().frames >= max_frames {
             break;
         }
@@ -502,5 +721,30 @@ fn main() {
     println!("io diffs by register: {:x?}", st.io_counts);
     for f in &st.first_failures {
         println!("{f}");
+    }
+    if let Some(path) = &trace_out {
+        std::fs::write(path, &st.trace).unwrap();
+        println!("trace: {} frames -> {path}", st.trace.lines().count());
+    }
+    if let Some(path) = coverage_out {
+        let mut out = String::new();
+        let mut rows: Vec<(u64, u32)> = st
+            .coverage
+            .iter()
+            .enumerate()
+            .filter(|(_, n)| **n > 0)
+            .map(|(i, n)| (*n, bn6_gen::FUNCTIONS[i].0))
+            .collect();
+        rows.sort_by(|a, b| b.cmp(a));
+        for (n, a) in &rows {
+            out.push_str(&format!("{a:08x}\t{n}\t{}\n", bn6_gen::name(*a).unwrap_or("?")));
+        }
+        std::fs::write(&path, out).unwrap();
+        let mut objs = String::new();
+        for ((ty, idx), n) in &st.objects {
+            objs.push_str(&format!("T{ty}\t{idx:#04x}\t{n}\n"));
+        }
+        std::fs::write(format!("{path}.objects"), objs).unwrap();
+        println!("coverage: {} functions executed; objects: {} kinds", rows.len(), st.objects.len());
     }
 }

@@ -4,6 +4,7 @@ use gba_rt::*;
 
 /// `sub_80E82C0` (0x080e82c0, thumb)
 pub fn sub_80E82C0(c: &mut Cpu) {
+    c.enter(8400);
     let ret = c.ret;
     let mut pc: u32 = 0x080e82c0;
     loop {
@@ -26,6 +27,7 @@ pub fn sub_80E82C0(c: &mut Cpu) {
 
 /// `sub_80E82D4` (0x080e82d4, thumb)
 pub fn sub_80E82D4(c: &mut Cpu) {
+    c.enter(8401);
     let ret = c.ret;
     let mut pc: u32 = 0x080e82d4;
     loop {
@@ -86,6 +88,7 @@ pub fn sub_80E82D4(c: &mut Cpu) {
 
 /// `sub_80E8326` (0x080e8326, thumb)
 pub fn sub_80E8326(c: &mut Cpu) {
+    c.enter(8402);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8326;
     loop {
@@ -156,6 +159,7 @@ pub fn sub_80E8326(c: &mut Cpu) {
 
 /// `sub_80E8378` (0x080e8378, thumb)
 pub fn sub_80E8378(c: &mut Cpu) {
+    c.enter(8403);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8378;
     loop {
@@ -190,6 +194,7 @@ pub fn sub_80E8378(c: &mut Cpu) {
 
 /// `sub_80E8396` (0x080e8396, thumb)
 pub fn sub_80E8396(c: &mut Cpu) {
+    c.enter(8404);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8396;
     loop {
@@ -221,6 +226,7 @@ pub fn sub_80E8396(c: &mut Cpu) {
 
 /// `sub_80E83B8` (0x080e83b8, thumb)
 pub fn sub_80E83B8(c: &mut Cpu) {
+    c.enter(8405);
     let ret = c.ret;
     let mut pc: u32 = 0x080e83b8;
     loop {
@@ -241,6 +247,7 @@ pub fn sub_80E83B8(c: &mut Cpu) {
 
 /// `sub_80E83D8` (0x080e83d8, thumb)
 pub fn sub_80E83D8(c: &mut Cpu) {
+    c.enter(8406);
     let ret = c.ret;
     let mut pc: u32 = 0x080e83d8;
     loop {
@@ -261,6 +268,7 @@ pub fn sub_80E83D8(c: &mut Cpu) {
 
 /// `sub_80E83FC` (0x080e83fc, thumb)
 pub fn sub_80E83FC(c: &mut Cpu) {
+    c.enter(8407);
     let ret = c.ret;
     let mut pc: u32 = 0x080e83fc;
     loop {
@@ -335,6 +343,7 @@ pub fn sub_80E83FC(c: &mut Cpu) {
 
 /// `sub_80E8464` (0x080e8464, thumb)
 pub fn sub_80E8464(c: &mut Cpu) {
+    c.enter(8408);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8464;
     loop {
@@ -368,6 +377,7 @@ pub fn sub_80E8464(c: &mut Cpu) {
 
 /// `sub_80E8486` (0x080e8486, thumb)
 pub fn sub_80E8486(c: &mut Cpu) {
+    c.enter(8409);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8486;
     loop {
@@ -419,6 +429,7 @@ pub fn sub_80E8486(c: &mut Cpu) {
 
 /// `sub_80E84D0` (0x080e84d0, thumb)
 pub fn sub_80E84D0(c: &mut Cpu) {
+    c.enter(8410);
     let ret = c.ret;
     let mut pc: u32 = 0x080e84d0;
     loop {
@@ -529,6 +540,7 @@ pub fn sub_80E84D0(c: &mut Cpu) {
 
 /// `sub_80E857C` (0x080e857c, thumb)
 pub fn sub_80E857C(c: &mut Cpu) {
+    c.enter(8411);
     let ret = c.ret;
     let mut pc: u32 = 0x080e857c;
     loop {
@@ -549,6 +561,7 @@ pub fn sub_80E857C(c: &mut Cpu) {
 
 /// `sub_80E859C` (0x080e859c, thumb)
 pub fn sub_80E859C(c: &mut Cpu) {
+    c.enter(8412);
     let ret = c.ret;
     let mut pc: u32 = 0x080e859c;
     loop {
@@ -567,6 +580,7 @@ pub fn sub_80E859C(c: &mut Cpu) {
 
 /// `sub_80E85A8` (0x080e85a8, thumb)
 pub fn sub_80E85A8(c: &mut Cpu) {
+    c.enter(8413);
     let ret = c.ret;
     let mut pc: u32 = 0x080e85a8;
     loop {
@@ -626,6 +640,7 @@ pub fn sub_80E85A8(c: &mut Cpu) {
 
 /// `sub_80E85FA` (0x080e85fa, thumb)
 pub fn sub_80E85FA(c: &mut Cpu) {
+    c.enter(8414);
     let ret = c.ret;
     let mut pc: u32 = 0x080e85fa;
     loop {
@@ -653,6 +668,7 @@ pub fn sub_80E85FA(c: &mut Cpu) {
 
 /// `sub_80E8612` (0x080e8612, thumb)
 pub fn sub_80E8612(c: &mut Cpu) {
+    c.enter(8415);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8612;
     loop {
@@ -681,6 +697,7 @@ pub fn sub_80E8612(c: &mut Cpu) {
 
 /// `sub_80E862E` (0x080e862e, thumb)
 pub fn sub_80E862E(c: &mut Cpu) {
+    c.enter(8416);
     let ret = c.ret;
     let mut pc: u32 = 0x080e862e;
     loop {
@@ -701,6 +718,7 @@ pub fn sub_80E862E(c: &mut Cpu) {
 
 /// `sub_80E863E` (0x080e863e, thumb)
 pub fn sub_80E863E(c: &mut Cpu) {
+    c.enter(8417);
     let ret = c.ret;
     let mut pc: u32 = 0x080e863e;
     loop {
@@ -725,6 +743,7 @@ pub fn sub_80E863E(c: &mut Cpu) {
 
 /// `sub_80E8656` (0x080e8656, thumb)
 pub fn sub_80E8656(c: &mut Cpu) {
+    c.enter(8418);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8656;
     loop {
@@ -757,6 +776,7 @@ pub fn sub_80E8656(c: &mut Cpu) {
 
 /// `sub_80E8688` (0x080e8688, thumb)
 pub fn sub_80E8688(c: &mut Cpu) {
+    c.enter(8419);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8688;
     loop {
@@ -778,6 +798,7 @@ pub fn sub_80E8688(c: &mut Cpu) {
 
 /// `sub_80E86AC` (0x080e86ac, thumb)
 pub fn sub_80E86AC(c: &mut Cpu) {
+    c.enter(8420);
     let ret = c.ret;
     let mut pc: u32 = 0x080e86ac;
     loop {
@@ -820,6 +841,7 @@ pub fn sub_80E86AC(c: &mut Cpu) {
 
 /// `sub_80E86F6` (0x080e86f6, thumb)
 pub fn sub_80E86F6(c: &mut Cpu) {
+    c.enter(8421);
     let ret = c.ret;
     let mut pc: u32 = 0x080e86f6;
     loop {
@@ -889,6 +911,7 @@ pub fn sub_80E86F6(c: &mut Cpu) {
 
 /// `sub_80E8770` (0x080e8770, thumb)
 pub fn sub_80E8770(c: &mut Cpu) {
+    c.enter(8422);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8770;
     loop {
@@ -917,6 +940,7 @@ pub fn sub_80E8770(c: &mut Cpu) {
 
 /// `sub_80E8788` (0x080e8788, thumb)
 pub fn sub_80E8788(c: &mut Cpu) {
+    c.enter(8423);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8788;
     loop {
@@ -940,6 +964,7 @@ pub fn sub_80E8788(c: &mut Cpu) {
 
 /// `sub_80E8794` (0x080e8794, thumb)
 pub fn sub_80E8794(c: &mut Cpu) {
+    c.enter(8424);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8794;
     loop {
@@ -961,6 +986,7 @@ pub fn sub_80E8794(c: &mut Cpu) {
 
 /// `sub_80E87B8` (0x080e87b8, thumb)
 pub fn sub_80E87B8(c: &mut Cpu) {
+    c.enter(8425);
     let ret = c.ret;
     let mut pc: u32 = 0x080e87b8;
     loop {
@@ -1003,6 +1029,7 @@ pub fn sub_80E87B8(c: &mut Cpu) {
 
 /// `sub_80E8802` (0x080e8802, thumb)
 pub fn sub_80E8802(c: &mut Cpu) {
+    c.enter(8426);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8802;
     loop {
@@ -1072,6 +1099,7 @@ pub fn sub_80E8802(c: &mut Cpu) {
 
 /// `sub_80E887C` (0x080e887c, thumb)
 pub fn sub_80E887C(c: &mut Cpu) {
+    c.enter(8427);
     let ret = c.ret;
     let mut pc: u32 = 0x080e887c;
     loop {
@@ -1100,6 +1128,7 @@ pub fn sub_80E887C(c: &mut Cpu) {
 
 /// `sub_80E8894` (0x080e8894, thumb)
 pub fn sub_80E8894(c: &mut Cpu) {
+    c.enter(8428);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8894;
     loop {
@@ -1123,6 +1152,7 @@ pub fn sub_80E8894(c: &mut Cpu) {
 
 /// `sub_80E88A0` (0x080e88a0, thumb)
 pub fn sub_80E88A0(c: &mut Cpu) {
+    c.enter(8429);
     let ret = c.ret;
     let mut pc: u32 = 0x080e88a0;
     loop {
@@ -1143,6 +1173,7 @@ pub fn sub_80E88A0(c: &mut Cpu) {
 
 /// `sub_80E88C0` (0x080e88c0, thumb)
 pub fn sub_80E88C0(c: &mut Cpu) {
+    c.enter(8430);
     let ret = c.ret;
     let mut pc: u32 = 0x080e88c0;
     loop {
@@ -1166,6 +1197,7 @@ pub fn sub_80E88C0(c: &mut Cpu) {
 
 /// `sub_80E88D8` (0x080e88d8, thumb)
 pub fn sub_80E88D8(c: &mut Cpu) {
+    c.enter(8431);
     let ret = c.ret;
     let mut pc: u32 = 0x080e88d8;
     loop {
@@ -1217,6 +1249,7 @@ pub fn sub_80E88D8(c: &mut Cpu) {
 
 /// `sub_80E8912` (0x080e8912, thumb)
 pub fn sub_80E8912(c: &mut Cpu) {
+    c.enter(8432);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8912;
     loop {
@@ -1249,6 +1282,7 @@ pub fn sub_80E8912(c: &mut Cpu) {
 
 /// `sub_80E8938` (0x080e8938, thumb)
 pub fn sub_80E8938(c: &mut Cpu) {
+    c.enter(8433);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8938;
     loop {
@@ -1270,6 +1304,7 @@ pub fn sub_80E8938(c: &mut Cpu) {
 
 /// `sub_80E895C` (0x080e895c, thumb)
 pub fn sub_80E895C(c: &mut Cpu) {
+    c.enter(8434);
     let ret = c.ret;
     let mut pc: u32 = 0x080e895c;
     loop {
@@ -1322,6 +1357,7 @@ pub fn sub_80E895C(c: &mut Cpu) {
 
 /// `sub_80E89BA` (0x080e89ba, thumb)
 pub fn sub_80E89BA(c: &mut Cpu) {
+    c.enter(8435);
     let ret = c.ret;
     let mut pc: u32 = 0x080e89ba;
     loop {
@@ -1394,6 +1430,7 @@ pub fn sub_80E89BA(c: &mut Cpu) {
 
 /// `sub_80E8A2A` (0x080e8a2a, thumb)
 pub fn sub_80E8A2A(c: &mut Cpu) {
+    c.enter(8436);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8a2a;
     loop {
@@ -1424,6 +1461,7 @@ pub fn sub_80E8A2A(c: &mut Cpu) {
 
 /// `sub_80E8A46` (0x080e8a46, thumb)
 pub fn sub_80E8A46(c: &mut Cpu) {
+    c.enter(8437);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8a46;
     loop {
@@ -1447,6 +1485,7 @@ pub fn sub_80E8A46(c: &mut Cpu) {
 
 /// `sub_80E8A52` (0x080e8a52, thumb)
 pub fn sub_80E8A52(c: &mut Cpu) {
+    c.enter(8438);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8a52;
     loop {
@@ -1471,6 +1510,7 @@ pub fn sub_80E8A52(c: &mut Cpu) {
 
 /// `sub_80E8A60` (0x080e8a60, thumb)
 pub fn sub_80E8A60(c: &mut Cpu) {
+    c.enter(8439);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8a60;
     loop {
@@ -1491,6 +1531,7 @@ pub fn sub_80E8A60(c: &mut Cpu) {
 
 /// `sub_80E8A80` (0x080e8a80, thumb)
 pub fn sub_80E8A80(c: &mut Cpu) {
+    c.enter(8440);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8a80;
     loop {
@@ -1511,6 +1552,7 @@ pub fn sub_80E8A80(c: &mut Cpu) {
 
 /// `sub_80E8AA4` (0x080e8aa4, thumb)
 pub fn sub_80E8AA4(c: &mut Cpu) {
+    c.enter(8441);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8aa4;
     loop {
@@ -1559,6 +1601,7 @@ pub fn sub_80E8AA4(c: &mut Cpu) {
 
 /// `sub_80E8ADC` (0x080e8adc, thumb)
 pub fn sub_80E8ADC(c: &mut Cpu) {
+    c.enter(8442);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8adc;
     loop {
@@ -1592,6 +1635,7 @@ pub fn sub_80E8ADC(c: &mut Cpu) {
 
 /// `sub_80E8B00` (0x080e8b00, thumb)
 pub fn sub_80E8B00(c: &mut Cpu) {
+    c.enter(8443);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8b00;
     loop {
@@ -1612,6 +1656,7 @@ pub fn sub_80E8B00(c: &mut Cpu) {
 
 /// `sub_80E8B20` (0x080e8b20, thumb)
 pub fn sub_80E8B20(c: &mut Cpu) {
+    c.enter(8444);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8b20;
     loop {
@@ -1632,6 +1677,7 @@ pub fn sub_80E8B20(c: &mut Cpu) {
 
 /// `sub_80E8B44` (0x080e8b44, thumb)
 pub fn sub_80E8B44(c: &mut Cpu) {
+    c.enter(8445);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8b44;
     loop {
@@ -1652,6 +1698,7 @@ pub fn sub_80E8B44(c: &mut Cpu) {
 
 /// `sub_80E8B64` (0x080e8b64, thumb)
 pub fn sub_80E8B64(c: &mut Cpu) {
+    c.enter(8446);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8b64;
     loop {
@@ -1671,6 +1718,7 @@ pub fn sub_80E8B64(c: &mut Cpu) {
 
 /// `sub_80E8B70` (0x080e8b70, thumb)
 pub fn sub_80E8B70(c: &mut Cpu) {
+    c.enter(8447);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8b70;
     loop {
@@ -1731,6 +1779,7 @@ pub fn sub_80E8B70(c: &mut Cpu) {
 
 /// `sub_80E8BB0` (0x080e8bb0, thumb)
 pub fn sub_80E8BB0(c: &mut Cpu) {
+    c.enter(8448);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8bb0;
     loop {
@@ -1756,6 +1805,7 @@ pub fn sub_80E8BB0(c: &mut Cpu) {
 
 /// `sub_80E8BC0` (0x080e8bc0, thumb)
 pub fn sub_80E8BC0(c: &mut Cpu) {
+    c.enter(8449);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8bc0;
     loop {
@@ -1789,6 +1839,7 @@ pub fn sub_80E8BC0(c: &mut Cpu) {
 
 /// `sub_80E8BE2` (0x080e8be2, thumb)
 pub fn sub_80E8BE2(c: &mut Cpu) {
+    c.enter(8450);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8be2;
     loop {
@@ -1812,6 +1863,7 @@ pub fn sub_80E8BE2(c: &mut Cpu) {
 
 /// `sub_80E8BF8` (0x080e8bf8, thumb)
 pub fn sub_80E8BF8(c: &mut Cpu) {
+    c.enter(8451);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8bf8;
     loop {
@@ -1857,6 +1909,7 @@ pub fn sub_80E8BF8(c: &mut Cpu) {
 
 /// `sub_80E8C44` (0x080e8c44, thumb)
 pub fn sub_80E8C44(c: &mut Cpu) {
+    c.enter(8452);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8c44;
     loop {
@@ -1905,6 +1958,7 @@ pub fn sub_80E8C44(c: &mut Cpu) {
 
 /// `sub_80E8C84` (0x080e8c84, thumb)
 pub fn sub_80E8C84(c: &mut Cpu) {
+    c.enter(8453);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8c84;
     loop {
@@ -1954,6 +2008,7 @@ pub fn sub_80E8C84(c: &mut Cpu) {
 
 /// `sub_80E8CC4` (0x080e8cc4, thumb)
 pub fn sub_80E8CC4(c: &mut Cpu) {
+    c.enter(8454);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8cc4;
     loop {
@@ -2002,6 +2057,7 @@ pub fn sub_80E8CC4(c: &mut Cpu) {
 
 /// `sub_80E8CFA` (0x080e8cfa, thumb)
 pub fn sub_80E8CFA(c: &mut Cpu) {
+    c.enter(8455);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8cfa;
     loop {
@@ -2055,6 +2111,7 @@ pub fn sub_80E8CFA(c: &mut Cpu) {
 
 /// `sub_80E8D92` (0x080e8d92, thumb)
 pub fn sub_80E8D92(c: &mut Cpu) {
+    c.enter(8456);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8d92;
     loop {
@@ -2128,6 +2185,7 @@ pub fn sub_80E8D92(c: &mut Cpu) {
 
 /// `sub_80E8DF0` (0x080e8df0, thumb)
 pub fn sub_80E8DF0(c: &mut Cpu) {
+    c.enter(8457);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8df0;
     loop {
@@ -2148,6 +2206,7 @@ pub fn sub_80E8DF0(c: &mut Cpu) {
 
 /// `sub_80E8E10` (0x080e8e10, thumb)
 pub fn sub_80E8E10(c: &mut Cpu) {
+    c.enter(8458);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8e10;
     loop {
@@ -2165,6 +2224,7 @@ pub fn sub_80E8E10(c: &mut Cpu) {
 
 /// `sub_80E8E18` (0x080e8e18, thumb)
 pub fn sub_80E8E18(c: &mut Cpu) {
+    c.enter(8459);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8e18;
     loop {
@@ -2185,6 +2245,7 @@ pub fn sub_80E8E18(c: &mut Cpu) {
 
 /// `sub_80E8E34` (0x080e8e34, thumb)
 pub fn sub_80E8E34(c: &mut Cpu) {
+    c.enter(8460);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8e34;
     loop {
@@ -2238,6 +2299,7 @@ pub fn sub_80E8E34(c: &mut Cpu) {
 
 /// `sub_80E8E82` (0x080e8e82, thumb)
 pub fn sub_80E8E82(c: &mut Cpu) {
+    c.enter(8461);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8e82;
     loop {
@@ -2263,6 +2325,7 @@ pub fn sub_80E8E82(c: &mut Cpu) {
 
 /// `sub_80E8E92` (0x080e8e92, thumb)
 pub fn sub_80E8E92(c: &mut Cpu) {
+    c.enter(8462);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8e92;
     loop {
@@ -2281,6 +2344,7 @@ pub fn sub_80E8E92(c: &mut Cpu) {
 
 /// `sub_80E8EA0` (0x080e8ea0, thumb)
 pub fn sub_80E8EA0(c: &mut Cpu) {
+    c.enter(8463);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8ea0;
     loop {
@@ -2332,6 +2396,7 @@ pub fn sub_80E8EA0(c: &mut Cpu) {
 
 /// `sub_80E8EE0` (0x080e8ee0, thumb)
 pub fn sub_80E8EE0(c: &mut Cpu) {
+    c.enter(8464);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8ee0;
     loop {
@@ -2352,6 +2417,7 @@ pub fn sub_80E8EE0(c: &mut Cpu) {
 
 /// `sub_80E8F00` (0x080e8f00, thumb)
 pub fn sub_80E8F00(c: &mut Cpu) {
+    c.enter(8465);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8f00;
     loop {
@@ -2408,6 +2474,7 @@ pub fn sub_80E8F00(c: &mut Cpu) {
 
 /// `sub_80E8F5C` (0x080e8f5c, thumb)
 pub fn sub_80E8F5C(c: &mut Cpu) {
+    c.enter(8466);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8f5c;
     loop {
@@ -2428,6 +2495,7 @@ pub fn sub_80E8F5C(c: &mut Cpu) {
 
 /// `sub_80E8F74` (0x080e8f74, thumb)
 pub fn sub_80E8F74(c: &mut Cpu) {
+    c.enter(8467);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8f74;
     loop {
@@ -2443,6 +2511,7 @@ pub fn sub_80E8F74(c: &mut Cpu) {
 
 /// `sub_80E8F78` (0x080e8f78, thumb)
 pub fn sub_80E8F78(c: &mut Cpu) {
+    c.enter(8468);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8f78;
     loop {
@@ -2475,6 +2544,7 @@ pub fn sub_80E8F78(c: &mut Cpu) {
 
 /// `sub_80E8F98` (0x080e8f98, thumb)
 pub fn sub_80E8F98(c: &mut Cpu) {
+    c.enter(8469);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8f98;
     loop {
@@ -2497,6 +2567,7 @@ pub fn sub_80E8F98(c: &mut Cpu) {
 
 /// `sub_80E8FB0` (0x080e8fb0, thumb)
 pub fn sub_80E8FB0(c: &mut Cpu) {
+    c.enter(8470);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8fb0;
     loop {
@@ -2519,6 +2590,7 @@ pub fn sub_80E8FB0(c: &mut Cpu) {
 
 /// `sub_80E8FC8` (0x080e8fc8, thumb)
 pub fn sub_80E8FC8(c: &mut Cpu) {
+    c.enter(8471);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8fc8;
     loop {
@@ -2541,6 +2613,7 @@ pub fn sub_80E8FC8(c: &mut Cpu) {
 
 /// `sub_80E8FE0` (0x080e8fe0, thumb)
 pub fn sub_80E8FE0(c: &mut Cpu) {
+    c.enter(8472);
     let ret = c.ret;
     let mut pc: u32 = 0x080e8fe0;
     loop {
@@ -2561,6 +2634,7 @@ pub fn sub_80E8FE0(c: &mut Cpu) {
 
 /// `sub_80E9000` (0x080e9000, thumb)
 pub fn sub_80E9000(c: &mut Cpu) {
+    c.enter(8473);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9000;
     loop {
@@ -2581,6 +2655,7 @@ pub fn sub_80E9000(c: &mut Cpu) {
 
 /// `sub_80E9024` (0x080e9024, thumb)
 pub fn sub_80E9024(c: &mut Cpu) {
+    c.enter(8474);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9024;
     loop {
@@ -2601,6 +2676,7 @@ pub fn sub_80E9024(c: &mut Cpu) {
 
 /// `sub_80E9048` (0x080e9048, thumb)
 pub fn sub_80E9048(c: &mut Cpu) {
+    c.enter(8475);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9048;
     loop {
@@ -2647,6 +2723,7 @@ pub fn sub_80E9048(c: &mut Cpu) {
 
 /// `sub_80E9074` (0x080e9074, thumb)
 pub fn sub_80E9074(c: &mut Cpu) {
+    c.enter(8476);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9074;
     loop {
@@ -2689,6 +2766,7 @@ pub fn sub_80E9074(c: &mut Cpu) {
 
 /// `sub_80E90B0` (0x080e90b0, thumb)
 pub fn sub_80E90B0(c: &mut Cpu) {
+    c.enter(8477);
     let ret = c.ret;
     let mut pc: u32 = 0x080e90b0;
     loop {
@@ -2725,6 +2803,7 @@ pub fn sub_80E90B0(c: &mut Cpu) {
 
 /// `sub_80E90CE` (0x080e90ce, thumb)
 pub fn sub_80E90CE(c: &mut Cpu) {
+    c.enter(8478);
     let ret = c.ret;
     let mut pc: u32 = 0x080e90ce;
     loop {
@@ -2773,6 +2852,7 @@ pub fn sub_80E90CE(c: &mut Cpu) {
 
 /// `sub_80E90FE` (0x080e90fe, thumb)
 pub fn sub_80E90FE(c: &mut Cpu) {
+    c.enter(8479);
     let ret = c.ret;
     let mut pc: u32 = 0x080e90fe;
     loop {
@@ -2806,6 +2886,7 @@ pub fn sub_80E90FE(c: &mut Cpu) {
 
 /// `sub_80E9120` (0x080e9120, thumb)
 pub fn sub_80E9120(c: &mut Cpu) {
+    c.enter(8480);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9120;
     loop {
@@ -2826,6 +2907,7 @@ pub fn sub_80E9120(c: &mut Cpu) {
 
 /// `sub_80E9140` (0x080e9140, thumb)
 pub fn sub_80E9140(c: &mut Cpu) {
+    c.enter(8481);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9140;
     loop {
@@ -2846,6 +2928,7 @@ pub fn sub_80E9140(c: &mut Cpu) {
 
 /// `sub_80E9164` (0x080e9164, thumb)
 pub fn sub_80E9164(c: &mut Cpu) {
+    c.enter(8482);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9164;
     loop {
@@ -2908,6 +2991,7 @@ pub fn sub_80E9164(c: &mut Cpu) {
 
 /// `sub_80E91B8` (0x080e91b8, thumb)
 pub fn sub_80E91B8(c: &mut Cpu) {
+    c.enter(8483);
     let ret = c.ret;
     let mut pc: u32 = 0x080e91b8;
     loop {
@@ -2944,6 +3028,7 @@ pub fn sub_80E91B8(c: &mut Cpu) {
 
 /// `sub_80E91E4` (0x080e91e4, thumb)
 pub fn sub_80E91E4(c: &mut Cpu) {
+    c.enter(8484);
     let ret = c.ret;
     let mut pc: u32 = 0x080e91e4;
     loop {
@@ -2964,6 +3049,7 @@ pub fn sub_80E91E4(c: &mut Cpu) {
 
 /// `sub_80E9204` (0x080e9204, thumb)
 pub fn sub_80E9204(c: &mut Cpu) {
+    c.enter(8485);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9204;
     loop {
@@ -2984,6 +3070,7 @@ pub fn sub_80E9204(c: &mut Cpu) {
 
 /// `sub_80E922C` (0x080e922c, thumb)
 pub fn sub_80E922C(c: &mut Cpu) {
+    c.enter(8486);
     let ret = c.ret;
     let mut pc: u32 = 0x080e922c;
     loop {
@@ -3004,6 +3091,7 @@ pub fn sub_80E922C(c: &mut Cpu) {
 
 /// `sub_80E924C` (0x080e924c, thumb)
 pub fn sub_80E924C(c: &mut Cpu) {
+    c.enter(8487);
     let ret = c.ret;
     let mut pc: u32 = 0x080e924c;
     loop {
@@ -3043,6 +3131,7 @@ pub fn sub_80E924C(c: &mut Cpu) {
 
 /// `sub_80E9272` (0x080e9272, thumb)
 pub fn sub_80E9272(c: &mut Cpu) {
+    c.enter(8488);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9272;
     loop {
@@ -3093,6 +3182,7 @@ pub fn sub_80E9272(c: &mut Cpu) {
 
 /// `sub_80E92C4` (0x080e92c4, thumb)
 pub fn sub_80E92C4(c: &mut Cpu) {
+    c.enter(8489);
     let ret = c.ret;
     let mut pc: u32 = 0x080e92c4;
     loop {
@@ -3134,6 +3224,7 @@ pub fn sub_80E92C4(c: &mut Cpu) {
 
 /// `sub_80E92EE` (0x080e92ee, thumb)
 pub fn sub_80E92EE(c: &mut Cpu) {
+    c.enter(8490);
     let ret = c.ret;
     let mut pc: u32 = 0x080e92ee;
     loop {
@@ -3167,6 +3258,7 @@ pub fn sub_80E92EE(c: &mut Cpu) {
 
 /// `sub_80E9310` (0x080e9310, thumb)
 pub fn sub_80E9310(c: &mut Cpu) {
+    c.enter(8491);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9310;
     loop {
@@ -3187,6 +3279,7 @@ pub fn sub_80E9310(c: &mut Cpu) {
 
 /// `sub_80E9330` (0x080e9330, thumb)
 pub fn sub_80E9330(c: &mut Cpu) {
+    c.enter(8492);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9330;
     loop {
@@ -3207,6 +3300,7 @@ pub fn sub_80E9330(c: &mut Cpu) {
 
 /// `sub_80E9354` (0x080e9354, thumb)
 pub fn sub_80E9354(c: &mut Cpu) {
+    c.enter(8493);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9354;
     loop {
@@ -3227,6 +3321,7 @@ pub fn sub_80E9354(c: &mut Cpu) {
 
 /// `sub_80E9378` (0x080e9378, thumb)
 pub fn sub_80E9378(c: &mut Cpu) {
+    c.enter(8494);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9378;
     loop {
@@ -3266,6 +3361,7 @@ pub fn sub_80E9378(c: &mut Cpu) {
 
 /// `sub_80E93A0` (0x080e93a0, thumb)
 pub fn sub_80E93A0(c: &mut Cpu) {
+    c.enter(8495);
     let ret = c.ret;
     let mut pc: u32 = 0x080e93a0;
     loop {
@@ -3326,6 +3422,7 @@ pub fn sub_80E93A0(c: &mut Cpu) {
 
 /// `sub_80E93F2` (0x080e93f2, thumb)
 pub fn sub_80E93F2(c: &mut Cpu) {
+    c.enter(8496);
     let ret = c.ret;
     let mut pc: u32 = 0x080e93f2;
     loop {
@@ -3362,6 +3459,7 @@ pub fn sub_80E93F2(c: &mut Cpu) {
 
 /// `sub_80E9412` (0x080e9412, thumb)
 pub fn sub_80E9412(c: &mut Cpu) {
+    c.enter(8497);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9412;
     loop {
@@ -3403,6 +3501,7 @@ pub fn sub_80E9412(c: &mut Cpu) {
 
 /// `sub_80E943E` (0x080e943e, thumb)
 pub fn sub_80E943E(c: &mut Cpu) {
+    c.enter(8498);
     let ret = c.ret;
     let mut pc: u32 = 0x080e943e;
     loop {
@@ -3436,6 +3535,7 @@ pub fn sub_80E943E(c: &mut Cpu) {
 
 /// `sub_80E9460` (0x080e9460, thumb)
 pub fn sub_80E9460(c: &mut Cpu) {
+    c.enter(8499);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9460;
     loop {
@@ -3456,6 +3556,7 @@ pub fn sub_80E9460(c: &mut Cpu) {
 
 /// `sub_80E9480` (0x080e9480, thumb)
 pub fn sub_80E9480(c: &mut Cpu) {
+    c.enter(8500);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9480;
     loop {
@@ -3485,6 +3586,7 @@ pub fn sub_80E9480(c: &mut Cpu) {
 
 /// `sub_80E9498` (0x080e9498, thumb)
 pub fn sub_80E9498(c: &mut Cpu) {
+    c.enter(8501);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9498;
     loop {
@@ -3516,6 +3618,7 @@ pub fn sub_80E9498(c: &mut Cpu) {
 
 /// `sub_80E94B4` (0x080e94b4, thumb)
 pub fn sub_80E94B4(c: &mut Cpu) {
+    c.enter(8502);
     let ret = c.ret;
     let mut pc: u32 = 0x080e94b4;
     loop {
@@ -3555,6 +3658,7 @@ pub fn sub_80E94B4(c: &mut Cpu) {
 
 /// `sub_80E94DC` (0x080e94dc, thumb)
 pub fn sub_80E94DC(c: &mut Cpu) {
+    c.enter(8503);
     let ret = c.ret;
     let mut pc: u32 = 0x080e94dc;
     loop {
@@ -3585,6 +3689,7 @@ pub fn sub_80E94DC(c: &mut Cpu) {
 
 /// `sub_80E94F8` (0x080e94f8, thumb)
 pub fn sub_80E94F8(c: &mut Cpu) {
+    c.enter(8504);
     let ret = c.ret;
     let mut pc: u32 = 0x080e94f8;
     loop {
@@ -3660,6 +3765,7 @@ pub fn sub_80E94F8(c: &mut Cpu) {
 
 /// `nullsub_12` (0x080e956e, thumb)
 pub fn nullsub_12(c: &mut Cpu) {
+    c.enter(8505);
     let ret = c.ret;
     let mut pc: u32 = 0x080e956e;
     loop {
@@ -3674,6 +3780,7 @@ pub fn nullsub_12(c: &mut Cpu) {
 
 /// `sub_80E9570` (0x080e9570, thumb)
 pub fn sub_80E9570(c: &mut Cpu) {
+    c.enter(8506);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9570;
     loop {
@@ -3694,6 +3801,7 @@ pub fn sub_80E9570(c: &mut Cpu) {
 
 /// `sub_80E9590` (0x080e9590, thumb)
 pub fn sub_80E9590(c: &mut Cpu) {
+    c.enter(8507);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9590;
     loop {
@@ -3714,6 +3822,7 @@ pub fn sub_80E9590(c: &mut Cpu) {
 
 /// `sub_80E95B4` (0x080e95b4, thumb)
 pub fn sub_80E95B4(c: &mut Cpu) {
+    c.enter(8508);
     let ret = c.ret;
     let mut pc: u32 = 0x080e95b4;
     loop {
@@ -3735,6 +3844,7 @@ pub fn sub_80E95B4(c: &mut Cpu) {
 
 /// `sub_80E95D8` (0x080e95d8, thumb)
 pub fn sub_80E95D8(c: &mut Cpu) {
+    c.enter(8509);
     let ret = c.ret;
     let mut pc: u32 = 0x080e95d8;
     loop {
@@ -3872,6 +3982,7 @@ pub fn sub_80E95D8(c: &mut Cpu) {
 
 /// `sub_80E96C6` (0x080e96c6, thumb)
 pub fn sub_80E96C6(c: &mut Cpu) {
+    c.enter(8510);
     let ret = c.ret;
     let mut pc: u32 = 0x080e96c6;
     loop {
@@ -3927,6 +4038,7 @@ pub fn sub_80E96C6(c: &mut Cpu) {
 
 /// `sub_80E9714` (0x080e9714, thumb)
 pub fn sub_80E9714(c: &mut Cpu) {
+    c.enter(8511);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9714;
     loop {
@@ -4002,6 +4114,7 @@ pub fn sub_80E9714(c: &mut Cpu) {
 
 /// `sub_80E9784` (0x080e9784, thumb)
 pub fn sub_80E9784(c: &mut Cpu) {
+    c.enter(8512);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9784;
     loop {
@@ -4026,6 +4139,7 @@ pub fn sub_80E9784(c: &mut Cpu) {
 
 /// `sub_80E979C` (0x080e979c, thumb)
 pub fn sub_80E979C(c: &mut Cpu) {
+    c.enter(8513);
     let ret = c.ret;
     let mut pc: u32 = 0x080e979c;
     loop {
@@ -4059,6 +4173,7 @@ pub fn sub_80E979C(c: &mut Cpu) {
 
 /// `sub_80E97BE` (0x080e97be, thumb)
 pub fn sub_80E97BE(c: &mut Cpu) {
+    c.enter(8514);
     let ret = c.ret;
     let mut pc: u32 = 0x080e97be;
     loop {
@@ -4097,6 +4212,7 @@ pub fn sub_80E97BE(c: &mut Cpu) {
 
 /// `sub_80E97F0` (0x080e97f0, thumb)
 pub fn sub_80E97F0(c: &mut Cpu) {
+    c.enter(8515);
     let ret = c.ret;
     let mut pc: u32 = 0x080e97f0;
     loop {
@@ -4117,6 +4233,7 @@ pub fn sub_80E97F0(c: &mut Cpu) {
 
 /// `sub_80E9810` (0x080e9810, thumb)
 pub fn sub_80E9810(c: &mut Cpu) {
+    c.enter(8516);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9810;
     loop {
@@ -4204,6 +4321,7 @@ pub fn sub_80E9810(c: &mut Cpu) {
 
 /// `sub_80E98DE` (0x080e98de, thumb)
 pub fn sub_80E98DE(c: &mut Cpu) {
+    c.enter(8517);
     let ret = c.ret;
     let mut pc: u32 = 0x080e98de;
     loop {
@@ -4244,6 +4362,7 @@ pub fn sub_80E98DE(c: &mut Cpu) {
 
 /// `sub_80E991C` (0x080e991c, thumb)
 pub fn sub_80E991C(c: &mut Cpu) {
+    c.enter(8518);
     let ret = c.ret;
     let mut pc: u32 = 0x080e991c;
     loop {
@@ -4300,6 +4419,7 @@ pub fn sub_80E991C(c: &mut Cpu) {
 
 /// `sub_80E996E` (0x080e996e, thumb)
 pub fn sub_80E996E(c: &mut Cpu) {
+    c.enter(8519);
     let ret = c.ret;
     let mut pc: u32 = 0x080e996e;
     loop {
@@ -4332,6 +4452,7 @@ pub fn sub_80E996E(c: &mut Cpu) {
 
 /// `sub_80E9994` (0x080e9994, thumb)
 pub fn sub_80E9994(c: &mut Cpu) {
+    c.enter(8520);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9994;
     loop {
@@ -4352,6 +4473,7 @@ pub fn sub_80E9994(c: &mut Cpu) {
 
 /// `sub_80E99B4` (0x080e99b4, thumb)
 pub fn sub_80E99B4(c: &mut Cpu) {
+    c.enter(8521);
     let ret = c.ret;
     let mut pc: u32 = 0x080e99b4;
     loop {
@@ -4371,6 +4493,7 @@ pub fn sub_80E99B4(c: &mut Cpu) {
 
 /// `sub_80E99C0` (0x080e99c0, thumb)
 pub fn sub_80E99C0(c: &mut Cpu) {
+    c.enter(8522);
     let ret = c.ret;
     let mut pc: u32 = 0x080e99c0;
     loop {
@@ -4402,6 +4525,7 @@ pub fn sub_80E99C0(c: &mut Cpu) {
 
 /// `sub_80E99DC` (0x080e99dc, thumb)
 pub fn sub_80E99DC(c: &mut Cpu) {
+    c.enter(8523);
     let ret = c.ret;
     let mut pc: u32 = 0x080e99dc;
     loop {
@@ -4438,6 +4562,7 @@ pub fn sub_80E99DC(c: &mut Cpu) {
 
 /// `sub_80E9A1C` (0x080e9a1c, thumb)
 pub fn sub_80E9A1C(c: &mut Cpu) {
+    c.enter(8524);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9a1c;
     loop {
@@ -4468,6 +4593,7 @@ pub fn sub_80E9A1C(c: &mut Cpu) {
 
 /// `sub_80E9A38` (0x080e9a38, thumb)
 pub fn sub_80E9A38(c: &mut Cpu) {
+    c.enter(8525);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9a38;
     loop {
@@ -4563,6 +4689,7 @@ pub fn sub_80E9A38(c: &mut Cpu) {
 
 /// `sub_80E9AF0` (0x080e9af0, thumb)
 pub fn sub_80E9AF0(c: &mut Cpu) {
+    c.enter(8526);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9af0;
     loop {
@@ -4584,6 +4711,7 @@ pub fn sub_80E9AF0(c: &mut Cpu) {
 
 /// `sub_80E9B14` (0x080e9b14, thumb)
 pub fn sub_80E9B14(c: &mut Cpu) {
+    c.enter(8527);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9b14;
     loop {
@@ -4620,6 +4748,7 @@ pub fn sub_80E9B14(c: &mut Cpu) {
 
 /// `sub_80E9B56` (0x080e9b56, thumb)
 pub fn sub_80E9B56(c: &mut Cpu) {
+    c.enter(8528);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9b56;
     loop {
@@ -4704,6 +4833,7 @@ pub fn sub_80E9B56(c: &mut Cpu) {
 
 /// `sub_80E9BDC` (0x080e9bdc, thumb)
 pub fn sub_80E9BDC(c: &mut Cpu) {
+    c.enter(8529);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9bdc;
     loop {
@@ -4738,6 +4868,7 @@ pub fn sub_80E9BDC(c: &mut Cpu) {
 
 /// `sub_80E9C00` (0x080e9c00, thumb)
 pub fn sub_80E9C00(c: &mut Cpu) {
+    c.enter(8530);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9c00;
     loop {
@@ -4754,6 +4885,7 @@ pub fn sub_80E9C00(c: &mut Cpu) {
 
 /// `sub_80E9C06` (0x080e9c06, thumb)
 pub fn sub_80E9C06(c: &mut Cpu) {
+    c.enter(8531);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9c06;
     loop {
@@ -4778,6 +4910,7 @@ pub fn sub_80E9C06(c: &mut Cpu) {
 
 /// `sub_80E9C88` (0x080e9c88, thumb)
 pub fn sub_80E9C88(c: &mut Cpu) {
+    c.enter(8532);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9c88;
     loop {
@@ -4798,6 +4931,7 @@ pub fn sub_80E9C88(c: &mut Cpu) {
 
 /// `sub_80E9CA8` (0x080e9ca8, thumb)
 pub fn sub_80E9CA8(c: &mut Cpu) {
+    c.enter(8533);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9ca8;
     loop {
@@ -4820,6 +4954,7 @@ pub fn sub_80E9CA8(c: &mut Cpu) {
 
 /// `sub_80E9CBA` (0x080e9cba, thumb)
 pub fn sub_80E9CBA(c: &mut Cpu) {
+    c.enter(8534);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9cba;
     loop {
@@ -4851,6 +4986,7 @@ pub fn sub_80E9CBA(c: &mut Cpu) {
 
 /// `sub_80E9CD6` (0x080e9cd6, thumb)
 pub fn sub_80E9CD6(c: &mut Cpu) {
+    c.enter(8535);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9cd6;
     loop {
@@ -4900,6 +5036,7 @@ pub fn sub_80E9CD6(c: &mut Cpu) {
 
 /// `sub_80E9D0C` (0x080e9d0c, thumb)
 pub fn sub_80E9D0C(c: &mut Cpu) {
+    c.enter(8536);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9d0c;
     loop {
@@ -4931,6 +5068,7 @@ pub fn sub_80E9D0C(c: &mut Cpu) {
 
 /// `sub_80E9D2A` (0x080e9d2a, thumb)
 pub fn sub_80E9D2A(c: &mut Cpu) {
+    c.enter(8537);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9d2a;
     loop {
@@ -5059,6 +5197,7 @@ pub fn sub_80E9D2A(c: &mut Cpu) {
 
 /// `sub_80E9DF0` (0x080e9df0, thumb)
 pub fn sub_80E9DF0(c: &mut Cpu) {
+    c.enter(8538);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9df0;
     loop {
@@ -5079,6 +5218,7 @@ pub fn sub_80E9DF0(c: &mut Cpu) {
 
 /// `sub_80E9E10` (0x080e9e10, thumb)
 pub fn sub_80E9E10(c: &mut Cpu) {
+    c.enter(8539);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9e10;
     loop {
@@ -5099,6 +5239,7 @@ pub fn sub_80E9E10(c: &mut Cpu) {
 
 /// `sub_80E9E2C` (0x080e9e2c, thumb)
 pub fn sub_80E9E2C(c: &mut Cpu) {
+    c.enter(8540);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9e2c;
     loop {
@@ -5178,6 +5319,7 @@ pub fn sub_80E9E2C(c: &mut Cpu) {
 
 /// `sub_80E9EA0` (0x080e9ea0, thumb)
 pub fn sub_80E9EA0(c: &mut Cpu) {
+    c.enter(8541);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9ea0;
     loop {
@@ -5240,6 +5382,7 @@ pub fn sub_80E9EA0(c: &mut Cpu) {
 
 /// `sub_80E9EFA` (0x080e9efa, thumb)
 pub fn sub_80E9EFA(c: &mut Cpu) {
+    c.enter(8542);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9efa;
     loop {
@@ -5273,6 +5416,7 @@ pub fn sub_80E9EFA(c: &mut Cpu) {
 
 /// `sub_80E9F1C` (0x080e9f1c, thumb)
 pub fn sub_80E9F1C(c: &mut Cpu) {
+    c.enter(8543);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9f1c;
     loop {
@@ -5338,6 +5482,7 @@ pub fn sub_80E9F1C(c: &mut Cpu) {
 
 /// `sub_80E9F64` (0x080e9f64, thumb)
 pub fn sub_80E9F64(c: &mut Cpu) {
+    c.enter(8544);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9f64;
     loop {
@@ -5365,6 +5510,7 @@ pub fn sub_80E9F64(c: &mut Cpu) {
 
 /// `sub_80E9F9C` (0x080e9f9c, thumb)
 pub fn sub_80E9F9C(c: &mut Cpu) {
+    c.enter(8545);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9f9c;
     loop {
@@ -5388,6 +5534,7 @@ pub fn sub_80E9F9C(c: &mut Cpu) {
 
 /// `sub_80E9FBC` (0x080e9fbc, thumb)
 pub fn sub_80E9FBC(c: &mut Cpu) {
+    c.enter(8546);
     let ret = c.ret;
     let mut pc: u32 = 0x080e9fbc;
     loop {
@@ -5444,6 +5591,7 @@ pub fn sub_80E9FBC(c: &mut Cpu) {
 
 /// `sub_80EA010` (0x080ea010, thumb)
 pub fn sub_80EA010(c: &mut Cpu) {
+    c.enter(8547);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea010;
     loop {
@@ -5464,6 +5612,7 @@ pub fn sub_80EA010(c: &mut Cpu) {
 
 /// `sub_80EA030` (0x080ea030, thumb)
 pub fn sub_80EA030(c: &mut Cpu) {
+    c.enter(8548);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea030;
     loop {
@@ -5482,6 +5631,7 @@ pub fn sub_80EA030(c: &mut Cpu) {
 
 /// `sub_80EA03C` (0x080ea03c, thumb)
 pub fn sub_80EA03C(c: &mut Cpu) {
+    c.enter(8549);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea03c;
     loop {
@@ -5502,6 +5652,7 @@ pub fn sub_80EA03C(c: &mut Cpu) {
 
 /// `sub_80EA05C` (0x080ea05c, thumb)
 pub fn sub_80EA05C(c: &mut Cpu) {
+    c.enter(8550);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea05c;
     loop {
@@ -5562,6 +5713,7 @@ pub fn sub_80EA05C(c: &mut Cpu) {
 
 /// `sub_80EA0A0` (0x080ea0a0, thumb)
 pub fn sub_80EA0A0(c: &mut Cpu) {
+    c.enter(8551);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea0a0;
     loop {
@@ -5626,6 +5778,7 @@ pub fn sub_80EA0A0(c: &mut Cpu) {
 
 /// `sub_80EA0EC` (0x080ea0ec, thumb)
 pub fn sub_80EA0EC(c: &mut Cpu) {
+    c.enter(8552);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea0ec;
     loop {
@@ -5662,6 +5815,7 @@ pub fn sub_80EA0EC(c: &mut Cpu) {
 
 /// `sub_80EA10A` (0x080ea10a, thumb)
 pub fn sub_80EA10A(c: &mut Cpu) {
+    c.enter(8553);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea10a;
     loop {
@@ -5683,6 +5837,7 @@ pub fn sub_80EA10A(c: &mut Cpu) {
 
 /// `sub_80EA11C` (0x080ea11c, thumb)
 pub fn sub_80EA11C(c: &mut Cpu) {
+    c.enter(8554);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea11c;
     loop {
@@ -5723,6 +5878,7 @@ pub fn sub_80EA11C(c: &mut Cpu) {
 
 /// `sub_80EA14C` (0x080ea14c, thumb)
 pub fn sub_80EA14C(c: &mut Cpu) {
+    c.enter(8555);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea14c;
     loop {
@@ -5744,6 +5900,7 @@ pub fn sub_80EA14C(c: &mut Cpu) {
 
 /// `sub_80EA170` (0x080ea170, thumb)
 pub fn sub_80EA170(c: &mut Cpu) {
+    c.enter(8556);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea170;
     loop {
@@ -5784,6 +5941,7 @@ pub fn sub_80EA170(c: &mut Cpu) {
 
 /// `sub_80EA1BC` (0x080ea1bc, thumb)
 pub fn sub_80EA1BC(c: &mut Cpu) {
+    c.enter(8557);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea1bc;
     loop {
@@ -5861,6 +6019,7 @@ pub fn sub_80EA1BC(c: &mut Cpu) {
 
 /// `sub_80EA258` (0x080ea258, thumb)
 pub fn sub_80EA258(c: &mut Cpu) {
+    c.enter(8558);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea258;
     loop {
@@ -5881,6 +6040,7 @@ pub fn sub_80EA258(c: &mut Cpu) {
 
 /// `sub_80EA278` (0x080ea278, thumb)
 pub fn sub_80EA278(c: &mut Cpu) {
+    c.enter(8559);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea278;
     loop {
@@ -5902,6 +6062,7 @@ pub fn sub_80EA278(c: &mut Cpu) {
 
 /// `sub_80EA288` (0x080ea288, thumb)
 pub fn sub_80EA288(c: &mut Cpu) {
+    c.enter(8560);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea288;
     loop {
@@ -5922,6 +6083,7 @@ pub fn sub_80EA288(c: &mut Cpu) {
 
 /// `sub_80EA2A4` (0x080ea2a4, thumb)
 pub fn sub_80EA2A4(c: &mut Cpu) {
+    c.enter(8561);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea2a4;
     loop {
@@ -6009,6 +6171,7 @@ pub fn sub_80EA2A4(c: &mut Cpu) {
 
 /// `sub_80EA31E` (0x080ea31e, thumb)
 pub fn sub_80EA31E(c: &mut Cpu) {
+    c.enter(8562);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea31e;
     loop {
@@ -6045,6 +6208,7 @@ pub fn sub_80EA31E(c: &mut Cpu) {
 
 /// `sub_80EA364` (0x080ea364, thumb)
 pub fn sub_80EA364(c: &mut Cpu) {
+    c.enter(8563);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea364;
     loop {
@@ -6065,6 +6229,7 @@ pub fn sub_80EA364(c: &mut Cpu) {
 
 /// `sub_80EA384` (0x080ea384, thumb)
 pub fn sub_80EA384(c: &mut Cpu) {
+    c.enter(8564);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea384;
     loop {
@@ -6093,6 +6258,7 @@ pub fn sub_80EA384(c: &mut Cpu) {
 
 /// `sub_80EA3A4` (0x080ea3a4, thumb)
 pub fn sub_80EA3A4(c: &mut Cpu) {
+    c.enter(8565);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea3a4;
     loop {
@@ -6168,6 +6334,7 @@ pub fn sub_80EA3A4(c: &mut Cpu) {
 
 /// `sub_80EA438` (0x080ea438, thumb)
 pub fn sub_80EA438(c: &mut Cpu) {
+    c.enter(8566);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea438;
     loop {
@@ -6204,6 +6371,7 @@ pub fn sub_80EA438(c: &mut Cpu) {
 
 /// `sub_80EA460` (0x080ea460, thumb)
 pub fn sub_80EA460(c: &mut Cpu) {
+    c.enter(8567);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea460;
     loop {
@@ -6225,6 +6393,7 @@ pub fn sub_80EA460(c: &mut Cpu) {
 
 /// `sub_80EA484` (0x080ea484, thumb)
 pub fn sub_80EA484(c: &mut Cpu) {
+    c.enter(8568);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea484;
     loop {
@@ -6263,6 +6432,7 @@ pub fn sub_80EA484(c: &mut Cpu) {
 
 /// `sub_80EA734` (0x080ea734, thumb)
 pub fn sub_80EA734(c: &mut Cpu) {
+    c.enter(8569);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea734;
     loop {
@@ -6335,6 +6505,7 @@ pub fn sub_80EA734(c: &mut Cpu) {
 
 /// `nullsub_103` (0x080ea7a0, thumb)
 pub fn nullsub_103(c: &mut Cpu) {
+    c.enter(8570);
     let ret = c.ret;
     let mut pc: u32 = 0x080ea7a0;
     loop {
@@ -6349,6 +6520,7 @@ pub fn nullsub_103(c: &mut Cpu) {
 
 /// `nullsub_105` (0x080eac5c, thumb)
 pub fn nullsub_105(c: &mut Cpu) {
+    c.enter(8571);
     let ret = c.ret;
     let mut pc: u32 = 0x080eac5c;
     loop {
@@ -6363,6 +6535,7 @@ pub fn nullsub_105(c: &mut Cpu) {
 
 /// `sub_80EAD9C` (0x080ead9c, thumb)
 pub fn sub_80EAD9C(c: &mut Cpu) {
+    c.enter(8572);
     let ret = c.ret;
     let mut pc: u32 = 0x080ead9c;
     loop {
@@ -6406,6 +6579,7 @@ pub fn sub_80EAD9C(c: &mut Cpu) {
 
 /// `sub_80EADDC` (0x080eaddc, thumb)
 pub fn sub_80EADDC(c: &mut Cpu) {
+    c.enter(8573);
     let ret = c.ret;
     let mut pc: u32 = 0x080eaddc;
     loop {
@@ -6449,6 +6623,7 @@ pub fn sub_80EADDC(c: &mut Cpu) {
 
 /// `sub_80EAE28` (0x080eae28, thumb)
 pub fn sub_80EAE28(c: &mut Cpu) {
+    c.enter(8574);
     let ret = c.ret;
     let mut pc: u32 = 0x080eae28;
     loop {
@@ -6602,6 +6777,7 @@ pub fn sub_80EAE28(c: &mut Cpu) {
 
 /// `sub_80EAF1A` (0x080eaf1a, thumb)
 pub fn sub_80EAF1A(c: &mut Cpu) {
+    c.enter(8575);
     let ret = c.ret;
     let mut pc: u32 = 0x080eaf1a;
     loop {
@@ -6625,6 +6801,7 @@ pub fn sub_80EAF1A(c: &mut Cpu) {
 
 /// `sub_80EAF26` (0x080eaf26, thumb)
 pub fn sub_80EAF26(c: &mut Cpu) {
+    c.enter(8576);
     let ret = c.ret;
     let mut pc: u32 = 0x080eaf26;
     loop {
@@ -6650,6 +6827,7 @@ pub fn sub_80EAF26(c: &mut Cpu) {
 
 /// `sub_80EAF36` (0x080eaf36, thumb)
 pub fn sub_80EAF36(c: &mut Cpu) {
+    c.enter(8577);
     let ret = c.ret;
     let mut pc: u32 = 0x080eaf36;
     loop {
@@ -6734,6 +6912,7 @@ pub fn sub_80EAF36(c: &mut Cpu) {
 
 /// `sub_80EAFC2` (0x080eafc2, thumb)
 pub fn sub_80EAFC2(c: &mut Cpu) {
+    c.enter(8578);
     let ret = c.ret;
     let mut pc: u32 = 0x080eafc2;
     loop {
@@ -6798,6 +6977,7 @@ pub fn sub_80EAFC2(c: &mut Cpu) {
 
 /// `sub_80EB04C` (0x080eb04c, thumb)
 pub fn sub_80EB04C(c: &mut Cpu) {
+    c.enter(8579);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb04c;
     loop {
@@ -6831,6 +7011,7 @@ pub fn sub_80EB04C(c: &mut Cpu) {
 
 /// `sub_80EB088` (0x080eb088, thumb)
 pub fn sub_80EB088(c: &mut Cpu) {
+    c.enter(8580);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb088;
     loop {
@@ -6936,6 +7117,7 @@ pub fn sub_80EB088(c: &mut Cpu) {
 
 /// `sub_80EB128` (0x080eb128, thumb)
 pub fn sub_80EB128(c: &mut Cpu) {
+    c.enter(8581);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb128;
     loop {
@@ -7004,6 +7186,7 @@ pub fn sub_80EB128(c: &mut Cpu) {
 
 /// `sub_80EB194` (0x080eb194, thumb)
 pub fn sub_80EB194(c: &mut Cpu) {
+    c.enter(8582);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb194;
     loop {
@@ -7045,6 +7228,7 @@ pub fn sub_80EB194(c: &mut Cpu) {
 
 /// `sub_80EB1C4` (0x080eb1c4, thumb)
 pub fn sub_80EB1C4(c: &mut Cpu) {
+    c.enter(8583);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb1c4;
     loop {
@@ -7094,6 +7278,7 @@ pub fn sub_80EB1C4(c: &mut Cpu) {
 
 /// `sub_80EB1F8` (0x080eb1f8, thumb)
 pub fn sub_80EB1F8(c: &mut Cpu) {
+    c.enter(8584);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb1f8;
     loop {
@@ -7139,6 +7324,7 @@ pub fn sub_80EB1F8(c: &mut Cpu) {
 
 /// `sub_80EB234` (0x080eb234, thumb)
 pub fn sub_80EB234(c: &mut Cpu) {
+    c.enter(8585);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb234;
     loop {
@@ -7159,6 +7345,7 @@ pub fn sub_80EB234(c: &mut Cpu) {
 
 /// `sub_80EB254` (0x080eb254, thumb)
 pub fn sub_80EB254(c: &mut Cpu) {
+    c.enter(8586);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb254;
     loop {
@@ -7239,6 +7426,7 @@ pub fn sub_80EB254(c: &mut Cpu) {
 
 /// `sub_80EB2DC` (0x080eb2dc, thumb)
 pub fn sub_80EB2DC(c: &mut Cpu) {
+    c.enter(8587);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb2dc;
     loop {
@@ -7386,6 +7574,7 @@ pub fn sub_80EB2DC(c: &mut Cpu) {
 
 /// `sub_80EB3DC` (0x080eb3dc, thumb)
 pub fn sub_80EB3DC(c: &mut Cpu) {
+    c.enter(8588);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb3dc;
     loop {
@@ -7423,6 +7612,7 @@ pub fn sub_80EB3DC(c: &mut Cpu) {
 
 /// `sub_80EB402` (0x080eb402, thumb)
 pub fn sub_80EB402(c: &mut Cpu) {
+    c.enter(8589);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb402;
     loop {
@@ -7475,6 +7665,7 @@ pub fn sub_80EB402(c: &mut Cpu) {
 
 /// `sub_80EB436` (0x080eb436, thumb)
 pub fn sub_80EB436(c: &mut Cpu) {
+    c.enter(8590);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb436;
     loop {
@@ -7495,6 +7686,7 @@ pub fn sub_80EB436(c: &mut Cpu) {
 
 /// `sub_80EB450` (0x080eb450, thumb)
 pub fn sub_80EB450(c: &mut Cpu) {
+    c.enter(8591);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb450;
     loop {
@@ -7604,6 +7796,7 @@ pub fn sub_80EB450(c: &mut Cpu) {
 
 /// `sub_80EB502` (0x080eb502, thumb)
 pub fn sub_80EB502(c: &mut Cpu) {
+    c.enter(8592);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb502;
     loop {
@@ -7668,6 +7861,7 @@ pub fn sub_80EB502(c: &mut Cpu) {
 
 /// `sub_80EB562` (0x080eb562, thumb)
 pub fn sub_80EB562(c: &mut Cpu) {
+    c.enter(8593);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb562;
     loop {
@@ -7688,6 +7882,7 @@ pub fn sub_80EB562(c: &mut Cpu) {
 
 /// `sub_80EB572` (0x080eb572, thumb)
 pub fn sub_80EB572(c: &mut Cpu) {
+    c.enter(8594);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb572;
     loop {
@@ -7807,6 +8002,7 @@ pub fn sub_80EB572(c: &mut Cpu) {
 
 /// `sub_80EB628` (0x080eb628, thumb)
 pub fn sub_80EB628(c: &mut Cpu) {
+    c.enter(8595);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb628;
     loop {
@@ -7827,6 +8023,7 @@ pub fn sub_80EB628(c: &mut Cpu) {
 
 /// `sub_80EB644` (0x080eb644, thumb)
 pub fn sub_80EB644(c: &mut Cpu) {
+    c.enter(8596);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb644;
     loop {
@@ -7936,6 +8133,7 @@ pub fn sub_80EB644(c: &mut Cpu) {
 
 /// `sub_80EB758` (0x080eb758, thumb)
 pub fn sub_80EB758(c: &mut Cpu) {
+    c.enter(8597);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb758;
     loop {
@@ -7971,6 +8169,7 @@ pub fn sub_80EB758(c: &mut Cpu) {
 
 /// `sub_80EB776` (0x080eb776, thumb)
 pub fn sub_80EB776(c: &mut Cpu) {
+    c.enter(8598);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb776;
     loop {
@@ -7991,6 +8190,7 @@ pub fn sub_80EB776(c: &mut Cpu) {
 
 /// `sub_80EB79C` (0x080eb79c, thumb)
 pub fn sub_80EB79C(c: &mut Cpu) {
+    c.enter(8599);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb79c;
     loop {
@@ -8090,6 +8290,7 @@ pub fn sub_80EB79C(c: &mut Cpu) {
 
 /// `sub_80EB84C` (0x080eb84c, thumb)
 pub fn sub_80EB84C(c: &mut Cpu) {
+    c.enter(8600);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb84c;
     loop {
@@ -8118,6 +8319,7 @@ pub fn sub_80EB84C(c: &mut Cpu) {
 
 /// `sub_80EB862` (0x080eb862, thumb)
 pub fn sub_80EB862(c: &mut Cpu) {
+    c.enter(8601);
     let ret = c.ret;
     let mut pc: u32 = 0x080eb862;
     loop {
@@ -8346,6 +8548,7 @@ pub fn sub_80EB862(c: &mut Cpu) {
 
 /// `sub_80EBAE8` (0x080ebae8, thumb)
 pub fn sub_80EBAE8(c: &mut Cpu) {
+    c.enter(8602);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebae8;
     loop {
@@ -8414,6 +8617,7 @@ pub fn sub_80EBAE8(c: &mut Cpu) {
 
 /// `sub_80EBB34` (0x080ebb34, thumb)
 pub fn sub_80EBB34(c: &mut Cpu) {
+    c.enter(8603);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebb34;
     loop {
@@ -8454,6 +8658,7 @@ pub fn sub_80EBB34(c: &mut Cpu) {
 
 /// `sub_80EBB78` (0x080ebb78, thumb)
 pub fn sub_80EBB78(c: &mut Cpu) {
+    c.enter(8604);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebb78;
     loop {
@@ -8486,6 +8691,7 @@ pub fn sub_80EBB78(c: &mut Cpu) {
 
 /// `sub_80EBB98` (0x080ebb98, thumb)
 pub fn sub_80EBB98(c: &mut Cpu) {
+    c.enter(8605);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebb98;
     loop {
@@ -8545,6 +8751,7 @@ pub fn sub_80EBB98(c: &mut Cpu) {
 
 /// `sub_80EBBE2` (0x080ebbe2, thumb)
 pub fn sub_80EBBE2(c: &mut Cpu) {
+    c.enter(8606);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebbe2;
     loop {
@@ -8586,6 +8793,7 @@ pub fn sub_80EBBE2(c: &mut Cpu) {
 
 /// `sub_80EBC0E` (0x080ebc0e, thumb)
 pub fn sub_80EBC0E(c: &mut Cpu) {
+    c.enter(8607);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebc0e;
     loop {
@@ -8606,6 +8814,7 @@ pub fn sub_80EBC0E(c: &mut Cpu) {
 
 /// `sub_80EBC28` (0x080ebc28, thumb)
 pub fn sub_80EBC28(c: &mut Cpu) {
+    c.enter(8608);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebc28;
     loop {
@@ -8738,6 +8947,7 @@ pub fn sub_80EBC28(c: &mut Cpu) {
 
 /// `sub_80EBD3C` (0x080ebd3c, thumb)
 pub fn sub_80EBD3C(c: &mut Cpu) {
+    c.enter(8609);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebd3c;
     loop {
@@ -8779,6 +8989,7 @@ pub fn sub_80EBD3C(c: &mut Cpu) {
 
 /// `sub_80EBD68` (0x080ebd68, thumb)
 pub fn sub_80EBD68(c: &mut Cpu) {
+    c.enter(8610);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebd68;
     loop {
@@ -8805,6 +9016,7 @@ pub fn sub_80EBD68(c: &mut Cpu) {
 
 /// `sub_80EBD9C` (0x080ebd9c, thumb)
 pub fn sub_80EBD9C(c: &mut Cpu) {
+    c.enter(8611);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebd9c;
     loop {
@@ -8875,6 +9087,7 @@ pub fn sub_80EBD9C(c: &mut Cpu) {
 
 /// `sub_80EBE00` (0x080ebe00, thumb)
 pub fn sub_80EBE00(c: &mut Cpu) {
+    c.enter(8612);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebe00;
     loop {
@@ -8895,6 +9108,7 @@ pub fn sub_80EBE00(c: &mut Cpu) {
 
 /// `sub_80EBE20` (0x080ebe20, thumb)
 pub fn sub_80EBE20(c: &mut Cpu) {
+    c.enter(8613);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebe20;
     loop {
@@ -8939,6 +9153,7 @@ pub fn sub_80EBE20(c: &mut Cpu) {
 
 /// `sub_80EBE54` (0x080ebe54, thumb)
 pub fn sub_80EBE54(c: &mut Cpu) {
+    c.enter(8614);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebe54;
     loop {
@@ -9005,6 +9220,7 @@ pub fn sub_80EBE54(c: &mut Cpu) {
 
 /// `sub_80EBEB2` (0x080ebeb2, thumb)
 pub fn sub_80EBEB2(c: &mut Cpu) {
+    c.enter(8615);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebeb2;
     loop {
@@ -9069,6 +9285,7 @@ pub fn sub_80EBEB2(c: &mut Cpu) {
 
 /// `sub_80EBF10` (0x080ebf10, thumb)
 pub fn sub_80EBF10(c: &mut Cpu) {
+    c.enter(8616);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebf10;
     loop {
@@ -9089,6 +9306,7 @@ pub fn sub_80EBF10(c: &mut Cpu) {
 
 /// `sub_80EBF30` (0x080ebf30, thumb)
 pub fn sub_80EBF30(c: &mut Cpu) {
+    c.enter(8617);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebf30;
     loop {
@@ -9137,6 +9355,7 @@ pub fn sub_80EBF30(c: &mut Cpu) {
 
 /// `sub_80EBF6E` (0x080ebf6e, thumb)
 pub fn sub_80EBF6E(c: &mut Cpu) {
+    c.enter(8618);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebf6e;
     loop {
@@ -9212,6 +9431,7 @@ pub fn sub_80EBF6E(c: &mut Cpu) {
 
 /// `sub_80EBFF4` (0x080ebff4, thumb)
 pub fn sub_80EBFF4(c: &mut Cpu) {
+    c.enter(8619);
     let ret = c.ret;
     let mut pc: u32 = 0x080ebff4;
     loop {
@@ -9258,6 +9478,7 @@ pub fn sub_80EBFF4(c: &mut Cpu) {
 
 /// `sub_80EC02A` (0x080ec02a, thumb)
 pub fn sub_80EC02A(c: &mut Cpu) {
+    c.enter(8620);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec02a;
     loop {
@@ -9278,6 +9499,7 @@ pub fn sub_80EC02A(c: &mut Cpu) {
 
 /// `sub_80EC044` (0x080ec044, thumb)
 pub fn sub_80EC044(c: &mut Cpu) {
+    c.enter(8621);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec044;
     loop {
@@ -9361,6 +9583,7 @@ pub fn sub_80EC044(c: &mut Cpu) {
 
 /// `sub_80EC0C0` (0x080ec0c0, thumb)
 pub fn sub_80EC0C0(c: &mut Cpu) {
+    c.enter(8622);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec0c0;
     loop {
@@ -9400,6 +9623,7 @@ pub fn sub_80EC0C0(c: &mut Cpu) {
 
 /// `sub_80EC0E6` (0x080ec0e6, thumb)
 pub fn sub_80EC0E6(c: &mut Cpu) {
+    c.enter(8623);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec0e6;
     loop {
@@ -9420,6 +9644,7 @@ pub fn sub_80EC0E6(c: &mut Cpu) {
 
 /// `sub_80EC104` (0x080ec104, thumb)
 pub fn sub_80EC104(c: &mut Cpu) {
+    c.enter(8624);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec104;
     loop {
@@ -9440,6 +9665,7 @@ pub fn sub_80EC104(c: &mut Cpu) {
 
 /// `sub_80EC11C` (0x080ec11c, thumb)
 pub fn sub_80EC11C(c: &mut Cpu) {
+    c.enter(8625);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec11c;
     loop {
@@ -9544,6 +9770,7 @@ pub fn sub_80EC11C(c: &mut Cpu) {
 
 /// `sub_80EC1C4` (0x080ec1c4, thumb)
 pub fn sub_80EC1C4(c: &mut Cpu) {
+    c.enter(8626);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec1c4;
     loop {
@@ -9585,6 +9812,7 @@ pub fn sub_80EC1C4(c: &mut Cpu) {
 
 /// `sub_80EC1F0` (0x080ec1f0, thumb)
 pub fn sub_80EC1F0(c: &mut Cpu) {
+    c.enter(8627);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec1f0;
     loop {
@@ -9605,6 +9833,7 @@ pub fn sub_80EC1F0(c: &mut Cpu) {
 
 /// `sub_80EC210` (0x080ec210, thumb)
 pub fn sub_80EC210(c: &mut Cpu) {
+    c.enter(8628);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec210;
     loop {
@@ -9688,6 +9917,7 @@ pub fn sub_80EC210(c: &mut Cpu) {
 
 /// `sub_80EC2A4` (0x080ec2a4, thumb)
 pub fn sub_80EC2A4(c: &mut Cpu) {
+    c.enter(8629);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec2a4;
     loop {
@@ -9744,6 +9974,7 @@ pub fn sub_80EC2A4(c: &mut Cpu) {
 
 /// `sub_80EC2EA` (0x080ec2ea, thumb)
 pub fn sub_80EC2EA(c: &mut Cpu) {
+    c.enter(8630);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec2ea;
     loop {
@@ -9800,6 +10031,7 @@ pub fn sub_80EC2EA(c: &mut Cpu) {
 
 /// `sub_80EC350` (0x080ec350, thumb)
 pub fn sub_80EC350(c: &mut Cpu) {
+    c.enter(8631);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec350;
     loop {
@@ -9853,6 +10085,7 @@ pub fn sub_80EC350(c: &mut Cpu) {
 
 /// `sub_80EC39C` (0x080ec39c, thumb)
 pub fn sub_80EC39C(c: &mut Cpu) {
+    c.enter(8632);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec39c;
     loop {
@@ -9917,6 +10150,7 @@ pub fn sub_80EC39C(c: &mut Cpu) {
 
 /// `sub_80EC44C` (0x080ec44c, thumb)
 pub fn sub_80EC44C(c: &mut Cpu) {
+    c.enter(8633);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec44c;
     loop {
@@ -9937,6 +10171,7 @@ pub fn sub_80EC44C(c: &mut Cpu) {
 
 /// `sub_80EC45E` (0x080ec45e, thumb)
 pub fn sub_80EC45E(c: &mut Cpu) {
+    c.enter(8634);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec45e;
     loop {
@@ -9968,6 +10203,7 @@ pub fn sub_80EC45E(c: &mut Cpu) {
 
 /// `sub_80EC490` (0x080ec490, thumb)
 pub fn sub_80EC490(c: &mut Cpu) {
+    c.enter(8635);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec490;
     loop {
@@ -10075,6 +10311,7 @@ pub fn sub_80EC490(c: &mut Cpu) {
 
 /// `sub_80EC556` (0x080ec556, thumb)
 pub fn sub_80EC556(c: &mut Cpu) {
+    c.enter(8636);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec556;
     loop {
@@ -10139,6 +10376,7 @@ pub fn sub_80EC556(c: &mut Cpu) {
 
 /// `sub_80EC5BC` (0x080ec5bc, thumb)
 pub fn sub_80EC5BC(c: &mut Cpu) {
+    c.enter(8637);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec5bc;
     loop {
@@ -10170,6 +10408,7 @@ pub fn sub_80EC5BC(c: &mut Cpu) {
 
 /// `sub_80EC5EC` (0x080ec5ec, thumb)
 pub fn sub_80EC5EC(c: &mut Cpu) {
+    c.enter(8638);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec5ec;
     loop {
@@ -10270,6 +10509,7 @@ pub fn sub_80EC5EC(c: &mut Cpu) {
 
 /// `sub_80EC67E` (0x080ec67e, thumb)
 pub fn sub_80EC67E(c: &mut Cpu) {
+    c.enter(8639);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec67e;
     loop {
@@ -10364,6 +10604,7 @@ pub fn sub_80EC67E(c: &mut Cpu) {
 
 /// `sub_80EC710` (0x080ec710, thumb)
 pub fn sub_80EC710(c: &mut Cpu) {
+    c.enter(8640);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec710;
     loop {
@@ -10427,6 +10668,7 @@ pub fn sub_80EC710(c: &mut Cpu) {
 
 /// `sub_80EC792` (0x080ec792, thumb)
 pub fn sub_80EC792(c: &mut Cpu) {
+    c.enter(8641);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec792;
     loop {
@@ -10448,6 +10690,7 @@ pub fn sub_80EC792(c: &mut Cpu) {
 
 /// `sub_80EC7A6` (0x080ec7a6, thumb)
 pub fn sub_80EC7A6(c: &mut Cpu) {
+    c.enter(8642);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec7a6;
     loop {
@@ -10468,6 +10711,7 @@ pub fn sub_80EC7A6(c: &mut Cpu) {
 
 /// `sub_80EC7C0` (0x080ec7c0, thumb)
 pub fn sub_80EC7C0(c: &mut Cpu) {
+    c.enter(8643);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec7c0;
     loop {
@@ -10534,6 +10778,7 @@ pub fn sub_80EC7C0(c: &mut Cpu) {
 
 /// `sub_80EC81E` (0x080ec81e, thumb)
 pub fn sub_80EC81E(c: &mut Cpu) {
+    c.enter(8644);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec81e;
     loop {
@@ -10573,6 +10818,7 @@ pub fn sub_80EC81E(c: &mut Cpu) {
 
 /// `sub_80EC844` (0x080ec844, thumb)
 pub fn sub_80EC844(c: &mut Cpu) {
+    c.enter(8645);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec844;
     loop {
@@ -10606,6 +10852,7 @@ pub fn sub_80EC844(c: &mut Cpu) {
 
 /// `sub_80EC884` (0x080ec884, thumb)
 pub fn sub_80EC884(c: &mut Cpu) {
+    c.enter(8646);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec884;
     loop {
@@ -10626,6 +10873,7 @@ pub fn sub_80EC884(c: &mut Cpu) {
 
 /// `sub_80EC8A0` (0x080ec8a0, thumb)
 pub fn sub_80EC8A0(c: &mut Cpu) {
+    c.enter(8647);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec8a0;
     loop {
@@ -10697,6 +10945,7 @@ pub fn sub_80EC8A0(c: &mut Cpu) {
 
 /// `sub_80EC90E` (0x080ec90e, thumb)
 pub fn sub_80EC90E(c: &mut Cpu) {
+    c.enter(8648);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec90e;
     loop {
@@ -10736,6 +10985,7 @@ pub fn sub_80EC90E(c: &mut Cpu) {
 
 /// `sub_80EC934` (0x080ec934, thumb)
 pub fn sub_80EC934(c: &mut Cpu) {
+    c.enter(8649);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec934;
     loop {
@@ -10754,6 +11004,7 @@ pub fn sub_80EC934(c: &mut Cpu) {
 
 /// `sub_80EC960` (0x080ec960, thumb)
 pub fn sub_80EC960(c: &mut Cpu) {
+    c.enter(8650);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec960;
     loop {
@@ -10774,6 +11025,7 @@ pub fn sub_80EC960(c: &mut Cpu) {
 
 /// `sub_80EC97C` (0x080ec97c, thumb)
 pub fn sub_80EC97C(c: &mut Cpu) {
+    c.enter(8651);
     let ret = c.ret;
     let mut pc: u32 = 0x080ec97c;
     loop {
@@ -10868,6 +11120,7 @@ pub fn sub_80EC97C(c: &mut Cpu) {
 
 /// `sub_80ECA0C` (0x080eca0c, thumb)
 pub fn sub_80ECA0C(c: &mut Cpu) {
+    c.enter(8652);
     let ret = c.ret;
     let mut pc: u32 = 0x080eca0c;
     loop {
@@ -10892,6 +11145,7 @@ pub fn sub_80ECA0C(c: &mut Cpu) {
 
 /// `sub_80ECA34` (0x080eca34, thumb)
 pub fn sub_80ECA34(c: &mut Cpu) {
+    c.enter(8653);
     let ret = c.ret;
     let mut pc: u32 = 0x080eca34;
     loop {
@@ -10912,6 +11166,7 @@ pub fn sub_80ECA34(c: &mut Cpu) {
 
 /// `sub_80ECA50` (0x080eca50, thumb)
 pub fn sub_80ECA50(c: &mut Cpu) {
+    c.enter(8654);
     let ret = c.ret;
     let mut pc: u32 = 0x080eca50;
     loop {
@@ -10973,6 +11228,7 @@ pub fn sub_80ECA50(c: &mut Cpu) {
 
 /// `sub_80ECAA4` (0x080ecaa4, thumb)
 pub fn sub_80ECAA4(c: &mut Cpu) {
+    c.enter(8655);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecaa4;
     loop {
@@ -11012,6 +11268,7 @@ pub fn sub_80ECAA4(c: &mut Cpu) {
 
 /// `sub_80ECACA` (0x080ecaca, thumb)
 pub fn sub_80ECACA(c: &mut Cpu) {
+    c.enter(8656);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecaca;
     loop {
@@ -11032,6 +11289,7 @@ pub fn sub_80ECACA(c: &mut Cpu) {
 
 /// `sub_80ECAE8` (0x080ecae8, thumb)
 pub fn sub_80ECAE8(c: &mut Cpu) {
+    c.enter(8657);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecae8;
     loop {
@@ -11080,6 +11338,7 @@ pub fn sub_80ECAE8(c: &mut Cpu) {
 
 /// `sub_80ECB28` (0x080ecb28, thumb)
 pub fn sub_80ECB28(c: &mut Cpu) {
+    c.enter(8658);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecb28;
     loop {
@@ -11145,6 +11404,7 @@ pub fn sub_80ECB28(c: &mut Cpu) {
 
 /// `sub_80ECB84` (0x080ecb84, thumb)
 pub fn sub_80ECB84(c: &mut Cpu) {
+    c.enter(8659);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecb84;
     loop {
@@ -11186,6 +11446,7 @@ pub fn sub_80ECB84(c: &mut Cpu) {
 
 /// `sub_80ECBB0` (0x080ecbb0, thumb)
 pub fn sub_80ECBB0(c: &mut Cpu) {
+    c.enter(8660);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecbb0;
     loop {
@@ -11206,6 +11467,7 @@ pub fn sub_80ECBB0(c: &mut Cpu) {
 
 /// `sub_80ECBCC` (0x080ecbcc, thumb)
 pub fn sub_80ECBCC(c: &mut Cpu) {
+    c.enter(8661);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecbcc;
     loop {
@@ -11281,6 +11543,7 @@ pub fn sub_80ECBCC(c: &mut Cpu) {
 
 /// `sub_80ECC60` (0x080ecc60, thumb)
 pub fn sub_80ECC60(c: &mut Cpu) {
+    c.enter(8662);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecc60;
     loop {
@@ -11320,6 +11583,7 @@ pub fn sub_80ECC60(c: &mut Cpu) {
 
 /// `sub_80ECC86` (0x080ecc86, thumb)
 pub fn sub_80ECC86(c: &mut Cpu) {
+    c.enter(8663);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecc86;
     loop {
@@ -11338,6 +11602,7 @@ pub fn sub_80ECC86(c: &mut Cpu) {
 
 /// `sub_80ECCB0` (0x080eccb0, thumb)
 pub fn sub_80ECCB0(c: &mut Cpu) {
+    c.enter(8664);
     let ret = c.ret;
     let mut pc: u32 = 0x080eccb0;
     loop {
@@ -11358,6 +11623,7 @@ pub fn sub_80ECCB0(c: &mut Cpu) {
 
 /// `sub_80ECCCC` (0x080ecccc, thumb)
 pub fn sub_80ECCCC(c: &mut Cpu) {
+    c.enter(8665);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecccc;
     loop {
@@ -11424,6 +11690,7 @@ pub fn sub_80ECCCC(c: &mut Cpu) {
 
 /// `sub_80ECD28` (0x080ecd28, thumb)
 pub fn sub_80ECD28(c: &mut Cpu) {
+    c.enter(8666);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecd28;
     loop {
@@ -11444,6 +11711,7 @@ pub fn sub_80ECD28(c: &mut Cpu) {
 
 /// `sub_80ECD44` (0x080ecd44, thumb)
 pub fn sub_80ECD44(c: &mut Cpu) {
+    c.enter(8667);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecd44;
     loop {
@@ -11540,6 +11808,7 @@ pub fn sub_80ECD44(c: &mut Cpu) {
 
 /// `sub_80ECDD6` (0x080ecdd6, thumb)
 pub fn sub_80ECDD6(c: &mut Cpu) {
+    c.enter(8668);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecdd6;
     loop {
@@ -11579,6 +11848,7 @@ pub fn sub_80ECDD6(c: &mut Cpu) {
 
 /// `sub_80ECDFC` (0x080ecdfc, thumb)
 pub fn sub_80ECDFC(c: &mut Cpu) {
+    c.enter(8669);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecdfc;
     loop {
@@ -11599,6 +11869,7 @@ pub fn sub_80ECDFC(c: &mut Cpu) {
 
 /// `sub_80ECE18` (0x080ece18, thumb)
 pub fn sub_80ECE18(c: &mut Cpu) {
+    c.enter(8670);
     let ret = c.ret;
     let mut pc: u32 = 0x080ece18;
     loop {
@@ -11690,6 +11961,7 @@ pub fn sub_80ECE18(c: &mut Cpu) {
 
 /// `sub_80ECEBC` (0x080ecebc, thumb)
 pub fn sub_80ECEBC(c: &mut Cpu) {
+    c.enter(8671);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecebc;
     loop {
@@ -11746,6 +12018,7 @@ pub fn sub_80ECEBC(c: &mut Cpu) {
 
 /// `sub_80ECF00` (0x080ecf00, thumb)
 pub fn sub_80ECF00(c: &mut Cpu) {
+    c.enter(8672);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecf00;
     loop {
@@ -11779,6 +12052,7 @@ pub fn sub_80ECF00(c: &mut Cpu) {
 
 /// `sub_80ECF2E` (0x080ecf2e, thumb)
 pub fn sub_80ECF2E(c: &mut Cpu) {
+    c.enter(8673);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecf2e;
     loop {
@@ -11799,6 +12073,7 @@ pub fn sub_80ECF2E(c: &mut Cpu) {
 
 /// `sub_80ECF48` (0x080ecf48, thumb)
 pub fn sub_80ECF48(c: &mut Cpu) {
+    c.enter(8674);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecf48;
     loop {
@@ -11843,6 +12118,7 @@ pub fn sub_80ECF48(c: &mut Cpu) {
 
 /// `sub_80ECF8E` (0x080ecf8e, thumb)
 pub fn sub_80ECF8E(c: &mut Cpu) {
+    c.enter(8675);
     let ret = c.ret;
     let mut pc: u32 = 0x080ecf8e;
     loop {
@@ -11966,6 +12242,7 @@ pub fn sub_80ECF8E(c: &mut Cpu) {
 
 /// `sub_80ED040` (0x080ed040, thumb)
 pub fn sub_80ED040(c: &mut Cpu) {
+    c.enter(8676);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed040;
     loop {
@@ -12016,6 +12293,7 @@ pub fn sub_80ED040(c: &mut Cpu) {
 
 /// `sub_80ED090` (0x080ed090, thumb)
 pub fn sub_80ED090(c: &mut Cpu) {
+    c.enter(8677);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed090;
     loop {
@@ -12036,6 +12314,7 @@ pub fn sub_80ED090(c: &mut Cpu) {
 
 /// `sub_80ED0AC` (0x080ed0ac, thumb)
 pub fn sub_80ED0AC(c: &mut Cpu) {
+    c.enter(8678);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed0ac;
     loop {
@@ -12106,6 +12385,7 @@ pub fn sub_80ED0AC(c: &mut Cpu) {
 
 /// `sub_80ED118` (0x080ed118, thumb)
 pub fn sub_80ED118(c: &mut Cpu) {
+    c.enter(8679);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed118;
     loop {
@@ -12145,6 +12425,7 @@ pub fn sub_80ED118(c: &mut Cpu) {
 
 /// `sub_80ED13E` (0x080ed13e, thumb)
 pub fn sub_80ED13E(c: &mut Cpu) {
+    c.enter(8680);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed13e;
     loop {
@@ -12165,6 +12446,7 @@ pub fn sub_80ED13E(c: &mut Cpu) {
 
 /// `sub_80ED154` (0x080ed154, thumb)
 pub fn sub_80ED154(c: &mut Cpu) {
+    c.enter(8681);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed154;
     loop {
@@ -12308,6 +12590,7 @@ pub fn sub_80ED154(c: &mut Cpu) {
 
 /// `sub_80ED25C` (0x080ed25c, thumb)
 pub fn sub_80ED25C(c: &mut Cpu) {
+    c.enter(8682);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed25c;
     loop {
@@ -12328,6 +12611,7 @@ pub fn sub_80ED25C(c: &mut Cpu) {
 
 /// `sub_80ED278` (0x080ed278, thumb)
 pub fn sub_80ED278(c: &mut Cpu) {
+    c.enter(8683);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed278;
     loop {
@@ -12417,6 +12701,7 @@ pub fn sub_80ED278(c: &mut Cpu) {
 
 /// `sub_80ED2F8` (0x080ed2f8, thumb)
 pub fn sub_80ED2F8(c: &mut Cpu) {
+    c.enter(8684);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed2f8;
     loop {
@@ -12437,6 +12722,7 @@ pub fn sub_80ED2F8(c: &mut Cpu) {
 
 /// `sub_80ED314` (0x080ed314, thumb)
 pub fn sub_80ED314(c: &mut Cpu) {
+    c.enter(8685);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed314;
     loop {
@@ -12503,6 +12789,7 @@ pub fn sub_80ED314(c: &mut Cpu) {
 
 /// `sub_80ED374` (0x080ed374, thumb)
 pub fn sub_80ED374(c: &mut Cpu) {
+    c.enter(8686);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed374;
     loop {
@@ -12523,6 +12810,7 @@ pub fn sub_80ED374(c: &mut Cpu) {
 
 /// `sub_80ED394` (0x080ed394, thumb)
 pub fn sub_80ED394(c: &mut Cpu) {
+    c.enter(8687);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed394;
     loop {
@@ -12560,6 +12848,7 @@ pub fn sub_80ED394(c: &mut Cpu) {
 
 /// `sub_80ED3B6` (0x080ed3b6, thumb)
 pub fn sub_80ED3B6(c: &mut Cpu) {
+    c.enter(8688);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed3b6;
     loop {
@@ -12626,6 +12915,7 @@ pub fn sub_80ED3B6(c: &mut Cpu) {
 
 /// `sub_80ED41C` (0x080ed41c, thumb)
 pub fn sub_80ED41C(c: &mut Cpu) {
+    c.enter(8689);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed41c;
     loop {
@@ -12672,6 +12962,7 @@ pub fn sub_80ED41C(c: &mut Cpu) {
 
 /// `sub_80ED454` (0x080ed454, thumb)
 pub fn sub_80ED454(c: &mut Cpu) {
+    c.enter(8690);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed454;
     loop {
@@ -12692,6 +12983,7 @@ pub fn sub_80ED454(c: &mut Cpu) {
 
 /// `sub_80ED470` (0x080ed470, thumb)
 pub fn sub_80ED470(c: &mut Cpu) {
+    c.enter(8691);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed470;
     loop {
@@ -12818,6 +13110,7 @@ pub fn sub_80ED470(c: &mut Cpu) {
 
 /// `sub_80ED52C` (0x080ed52c, thumb)
 pub fn sub_80ED52C(c: &mut Cpu) {
+    c.enter(8692);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed52c;
     loop {
@@ -12862,6 +13155,7 @@ pub fn sub_80ED52C(c: &mut Cpu) {
 
 /// `sub_80ED55C` (0x080ed55c, thumb)
 pub fn sub_80ED55C(c: &mut Cpu) {
+    c.enter(8693);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed55c;
     loop {
@@ -12882,6 +13176,7 @@ pub fn sub_80ED55C(c: &mut Cpu) {
 
 /// `sub_80ED57C` (0x080ed57c, thumb)
 pub fn sub_80ED57C(c: &mut Cpu) {
+    c.enter(8694);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed57c;
     loop {
@@ -12925,6 +13220,7 @@ pub fn sub_80ED57C(c: &mut Cpu) {
 
 /// `sub_80ED5BE` (0x080ed5be, thumb)
 pub fn sub_80ED5BE(c: &mut Cpu) {
+    c.enter(8695);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed5be;
     loop {
@@ -12986,6 +13282,7 @@ pub fn sub_80ED5BE(c: &mut Cpu) {
 
 /// `sub_80ED61C` (0x080ed61c, thumb)
 pub fn sub_80ED61C(c: &mut Cpu) {
+    c.enter(8696);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed61c;
     loop {
@@ -13030,6 +13327,7 @@ pub fn sub_80ED61C(c: &mut Cpu) {
 
 /// `sub_80ED64C` (0x080ed64c, thumb)
 pub fn sub_80ED64C(c: &mut Cpu) {
+    c.enter(8697);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed64c;
     loop {
@@ -13050,6 +13348,7 @@ pub fn sub_80ED64C(c: &mut Cpu) {
 
 /// `sub_80ED668` (0x080ed668, thumb)
 pub fn sub_80ED668(c: &mut Cpu) {
+    c.enter(8698);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed668;
     loop {
@@ -13116,6 +13415,7 @@ pub fn sub_80ED668(c: &mut Cpu) {
 
 /// `sub_80ED6CA` (0x080ed6ca, thumb)
 pub fn sub_80ED6CA(c: &mut Cpu) {
+    c.enter(8699);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed6ca;
     loop {
@@ -13142,6 +13442,7 @@ pub fn sub_80ED6CA(c: &mut Cpu) {
 
 /// `sub_80ED6E6` (0x080ed6e6, thumb)
 pub fn sub_80ED6E6(c: &mut Cpu) {
+    c.enter(8700);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed6e6;
     loop {
@@ -13162,6 +13463,7 @@ pub fn sub_80ED6E6(c: &mut Cpu) {
 
 /// `sub_80ED700` (0x080ed700, thumb)
 pub fn sub_80ED700(c: &mut Cpu) {
+    c.enter(8701);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed700;
     loop {
@@ -13219,6 +13521,7 @@ pub fn sub_80ED700(c: &mut Cpu) {
 
 /// `sub_80ED748` (0x080ed748, thumb)
 pub fn sub_80ED748(c: &mut Cpu) {
+    c.enter(8702);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed748;
     loop {
@@ -13239,6 +13542,7 @@ pub fn sub_80ED748(c: &mut Cpu) {
 
 /// `sub_80ED764` (0x080ed764, thumb)
 pub fn sub_80ED764(c: &mut Cpu) {
+    c.enter(8703);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed764;
     loop {
@@ -13291,6 +13595,7 @@ pub fn sub_80ED764(c: &mut Cpu) {
 
 /// `sub_80ED7A2` (0x080ed7a2, thumb)
 pub fn sub_80ED7A2(c: &mut Cpu) {
+    c.enter(8704);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed7a2;
     loop {
@@ -13360,6 +13665,7 @@ pub fn sub_80ED7A2(c: &mut Cpu) {
 
 /// `sub_80ED810` (0x080ed810, thumb)
 pub fn sub_80ED810(c: &mut Cpu) {
+    c.enter(8705);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed810;
     loop {
@@ -13380,6 +13686,7 @@ pub fn sub_80ED810(c: &mut Cpu) {
 
 /// `sub_80ED82C` (0x080ed82c, thumb)
 pub fn sub_80ED82C(c: &mut Cpu) {
+    c.enter(8706);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed82c;
     loop {
@@ -13447,6 +13754,7 @@ pub fn sub_80ED82C(c: &mut Cpu) {
 
 /// `sub_80ED896` (0x080ed896, thumb)
 pub fn sub_80ED896(c: &mut Cpu) {
+    c.enter(8707);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed896;
     loop {
@@ -13489,6 +13797,7 @@ pub fn sub_80ED896(c: &mut Cpu) {
 
 /// `sub_80ED8C4` (0x080ed8c4, thumb)
 pub fn sub_80ED8C4(c: &mut Cpu) {
+    c.enter(8708);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed8c4;
     loop {
@@ -13509,6 +13818,7 @@ pub fn sub_80ED8C4(c: &mut Cpu) {
 
 /// `sub_80ED8E0` (0x080ed8e0, thumb)
 pub fn sub_80ED8E0(c: &mut Cpu) {
+    c.enter(8709);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed8e0;
     loop {
@@ -13556,6 +13866,7 @@ pub fn sub_80ED8E0(c: &mut Cpu) {
 
 /// `sub_80ED924` (0x080ed924, thumb)
 pub fn sub_80ED924(c: &mut Cpu) {
+    c.enter(8710);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed924;
     loop {
@@ -13595,6 +13906,7 @@ pub fn sub_80ED924(c: &mut Cpu) {
 
 /// `sub_80ED94E` (0x080ed94e, thumb)
 pub fn sub_80ED94E(c: &mut Cpu) {
+    c.enter(8711);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed94e;
     loop {
@@ -13654,6 +13966,7 @@ pub fn sub_80ED94E(c: &mut Cpu) {
 
 /// `sub_80ED998` (0x080ed998, thumb)
 pub fn sub_80ED998(c: &mut Cpu) {
+    c.enter(8712);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed998;
     loop {
@@ -13680,6 +13993,7 @@ pub fn sub_80ED998(c: &mut Cpu) {
 
 /// `sub_80ED9AE` (0x080ed9ae, thumb)
 pub fn sub_80ED9AE(c: &mut Cpu) {
+    c.enter(8713);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed9ae;
     loop {
@@ -13700,6 +14014,7 @@ pub fn sub_80ED9AE(c: &mut Cpu) {
 
 /// `sub_80ED9CC` (0x080ed9cc, thumb)
 pub fn sub_80ED9CC(c: &mut Cpu) {
+    c.enter(8714);
     let ret = c.ret;
     let mut pc: u32 = 0x080ed9cc;
     loop {
@@ -13750,6 +14065,7 @@ pub fn sub_80ED9CC(c: &mut Cpu) {
 
 /// `sub_80EDA0E` (0x080eda0e, thumb)
 pub fn sub_80EDA0E(c: &mut Cpu) {
+    c.enter(8715);
     let ret = c.ret;
     let mut pc: u32 = 0x080eda0e;
     loop {
@@ -13844,6 +14160,7 @@ pub fn sub_80EDA0E(c: &mut Cpu) {
 
 /// `sub_80EDABA` (0x080edaba, thumb)
 pub fn sub_80EDABA(c: &mut Cpu) {
+    c.enter(8716);
     let ret = c.ret;
     let mut pc: u32 = 0x080edaba;
     loop {
@@ -13883,6 +14200,7 @@ pub fn sub_80EDABA(c: &mut Cpu) {
 
 /// `sub_80EDAE0` (0x080edae0, thumb)
 pub fn sub_80EDAE0(c: &mut Cpu) {
+    c.enter(8717);
     let ret = c.ret;
     let mut pc: u32 = 0x080edae0;
     loop {
@@ -13914,6 +14232,7 @@ pub fn sub_80EDAE0(c: &mut Cpu) {
 
 /// `sub_80EDB14` (0x080edb14, thumb)
 pub fn sub_80EDB14(c: &mut Cpu) {
+    c.enter(8718);
     let ret = c.ret;
     let mut pc: u32 = 0x080edb14;
     loop {
@@ -14004,6 +14323,7 @@ pub fn sub_80EDB14(c: &mut Cpu) {
 
 /// `sub_80EDBCC` (0x080edbcc, thumb)
 pub fn sub_80EDBCC(c: &mut Cpu) {
+    c.enter(8719);
     let ret = c.ret;
     let mut pc: u32 = 0x080edbcc;
     loop {
@@ -14134,6 +14454,7 @@ pub fn sub_80EDBCC(c: &mut Cpu) {
 
 /// `sub_80EDC78` (0x080edc78, thumb)
 pub fn sub_80EDC78(c: &mut Cpu) {
+    c.enter(8720);
     let ret = c.ret;
     let mut pc: u32 = 0x080edc78;
     loop {
@@ -14183,6 +14504,7 @@ pub fn sub_80EDC78(c: &mut Cpu) {
 
 /// `sub_80EDCC0` (0x080edcc0, thumb)
 pub fn sub_80EDCC0(c: &mut Cpu) {
+    c.enter(8721);
     let ret = c.ret;
     let mut pc: u32 = 0x080edcc0;
     loop {
@@ -14203,6 +14525,7 @@ pub fn sub_80EDCC0(c: &mut Cpu) {
 
 /// `sub_80EDCDC` (0x080edcdc, thumb)
 pub fn sub_80EDCDC(c: &mut Cpu) {
+    c.enter(8722);
     let ret = c.ret;
     let mut pc: u32 = 0x080edcdc;
     loop {
@@ -14276,6 +14599,7 @@ pub fn sub_80EDCDC(c: &mut Cpu) {
 
 /// `sub_80EDD5C` (0x080edd5c, thumb)
 pub fn sub_80EDD5C(c: &mut Cpu) {
+    c.enter(8723);
     let ret = c.ret;
     let mut pc: u32 = 0x080edd5c;
     loop {
@@ -14311,6 +14635,7 @@ pub fn sub_80EDD5C(c: &mut Cpu) {
 
 /// `sub_80EDD80` (0x080edd80, thumb)
 pub fn sub_80EDD80(c: &mut Cpu) {
+    c.enter(8724);
     let ret = c.ret;
     let mut pc: u32 = 0x080edd80;
     loop {
@@ -14331,6 +14656,7 @@ pub fn sub_80EDD80(c: &mut Cpu) {
 
 /// `sub_80EDDA0` (0x080edda0, thumb)
 pub fn sub_80EDDA0(c: &mut Cpu) {
+    c.enter(8725);
     let ret = c.ret;
     let mut pc: u32 = 0x080edda0;
     loop {
@@ -14380,6 +14706,7 @@ pub fn sub_80EDDA0(c: &mut Cpu) {
 
 /// `sub_80EDDE0` (0x080edde0, thumb)
 pub fn sub_80EDDE0(c: &mut Cpu) {
+    c.enter(8726);
     let ret = c.ret;
     let mut pc: u32 = 0x080edde0;
     loop {
@@ -14413,6 +14740,7 @@ pub fn sub_80EDDE0(c: &mut Cpu) {
 
 /// `sub_80EDDFC` (0x080eddfc, thumb)
 pub fn sub_80EDDFC(c: &mut Cpu) {
+    c.enter(8727);
     let ret = c.ret;
     let mut pc: u32 = 0x080eddfc;
     loop {
@@ -14477,6 +14805,7 @@ pub fn sub_80EDDFC(c: &mut Cpu) {
 
 /// `sub_80EDE4A` (0x080ede4a, thumb)
 pub fn sub_80EDE4A(c: &mut Cpu) {
+    c.enter(8728);
     let ret = c.ret;
     let mut pc: u32 = 0x080ede4a;
     loop {
@@ -14513,6 +14842,7 @@ pub fn sub_80EDE4A(c: &mut Cpu) {
 
 /// `sub_80EDE7E` (0x080ede7e, thumb)
 pub fn sub_80EDE7E(c: &mut Cpu) {
+    c.enter(8729);
     let ret = c.ret;
     let mut pc: u32 = 0x080ede7e;
     loop {
@@ -14533,6 +14863,7 @@ pub fn sub_80EDE7E(c: &mut Cpu) {
 
 /// `sub_80EDE98` (0x080ede98, thumb)
 pub fn sub_80EDE98(c: &mut Cpu) {
+    c.enter(8730);
     let ret = c.ret;
     let mut pc: u32 = 0x080ede98;
     loop {
@@ -14592,6 +14923,7 @@ pub fn sub_80EDE98(c: &mut Cpu) {
 
 /// `sub_80EDEF6` (0x080edef6, thumb)
 pub fn sub_80EDEF6(c: &mut Cpu) {
+    c.enter(8731);
     let ret = c.ret;
     let mut pc: u32 = 0x080edef6;
     loop {
@@ -14618,6 +14950,7 @@ pub fn sub_80EDEF6(c: &mut Cpu) {
 
 /// `sub_80EDF0C` (0x080edf0c, thumb)
 pub fn sub_80EDF0C(c: &mut Cpu) {
+    c.enter(8732);
     let ret = c.ret;
     let mut pc: u32 = 0x080edf0c;
     loop {
@@ -14675,6 +15008,7 @@ pub fn sub_80EDF0C(c: &mut Cpu) {
 
 /// `sub_80EDF5C` (0x080edf5c, thumb)
 pub fn sub_80EDF5C(c: &mut Cpu) {
+    c.enter(8733);
     let ret = c.ret;
     let mut pc: u32 = 0x080edf5c;
     loop {
@@ -14695,6 +15029,7 @@ pub fn sub_80EDF5C(c: &mut Cpu) {
 
 /// `sub_80EDF78` (0x080edf78, thumb)
 pub fn sub_80EDF78(c: &mut Cpu) {
+    c.enter(8734);
     let ret = c.ret;
     let mut pc: u32 = 0x080edf78;
     loop {
@@ -14744,6 +15079,7 @@ pub fn sub_80EDF78(c: &mut Cpu) {
 
 /// `sub_80EDFC0` (0x080edfc0, thumb)
 pub fn sub_80EDFC0(c: &mut Cpu) {
+    c.enter(8735);
     let ret = c.ret;
     let mut pc: u32 = 0x080edfc0;
     loop {
@@ -14783,6 +15119,7 @@ pub fn sub_80EDFC0(c: &mut Cpu) {
 
 /// `sub_80EDFEA` (0x080edfea, thumb)
 pub fn sub_80EDFEA(c: &mut Cpu) {
+    c.enter(8736);
     let ret = c.ret;
     let mut pc: u32 = 0x080edfea;
     loop {
@@ -14842,6 +15179,7 @@ pub fn sub_80EDFEA(c: &mut Cpu) {
 
 /// `sub_80EE044` (0x080ee044, thumb)
 pub fn sub_80EE044(c: &mut Cpu) {
+    c.enter(8737);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee044;
     loop {
@@ -14862,6 +15200,7 @@ pub fn sub_80EE044(c: &mut Cpu) {
 
 /// `sub_80EE060` (0x080ee060, thumb)
 pub fn sub_80EE060(c: &mut Cpu) {
+    c.enter(8738);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee060;
     loop {
@@ -14919,6 +15258,7 @@ pub fn sub_80EE060(c: &mut Cpu) {
 
 /// `sub_80EE0BC` (0x080ee0bc, thumb)
 pub fn sub_80EE0BC(c: &mut Cpu) {
+    c.enter(8739);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee0bc;
     loop {
@@ -14939,6 +15279,7 @@ pub fn sub_80EE0BC(c: &mut Cpu) {
 
 /// `sub_80EE0DC` (0x080ee0dc, thumb)
 pub fn sub_80EE0DC(c: &mut Cpu) {
+    c.enter(8740);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee0dc;
     loop {
@@ -14978,6 +15319,7 @@ pub fn sub_80EE0DC(c: &mut Cpu) {
 
 /// `sub_80EE110` (0x080ee110, thumb)
 pub fn sub_80EE110(c: &mut Cpu) {
+    c.enter(8741);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee110;
     loop {
@@ -15037,6 +15379,7 @@ pub fn sub_80EE110(c: &mut Cpu) {
 
 /// `sub_80EE162` (0x080ee162, thumb)
 pub fn sub_80EE162(c: &mut Cpu) {
+    c.enter(8742);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee162;
     loop {
@@ -15081,6 +15424,7 @@ pub fn sub_80EE162(c: &mut Cpu) {
 
 /// `sub_80EE192` (0x080ee192, thumb)
 pub fn sub_80EE192(c: &mut Cpu) {
+    c.enter(8743);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee192;
     loop {
@@ -15101,6 +15445,7 @@ pub fn sub_80EE192(c: &mut Cpu) {
 
 /// `sub_80EE1AC` (0x080ee1ac, thumb)
 pub fn sub_80EE1AC(c: &mut Cpu) {
+    c.enter(8744);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee1ac;
     loop {
@@ -15218,6 +15563,7 @@ pub fn sub_80EE1AC(c: &mut Cpu) {
 
 /// `sub_80EE274` (0x080ee274, thumb)
 pub fn sub_80EE274(c: &mut Cpu) {
+    c.enter(8745);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee274;
     loop {
@@ -15257,6 +15603,7 @@ pub fn sub_80EE274(c: &mut Cpu) {
 
 /// `sub_80EE2A0` (0x080ee2a0, thumb)
 pub fn sub_80EE2A0(c: &mut Cpu) {
+    c.enter(8746);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee2a0;
     loop {
@@ -15277,6 +15624,7 @@ pub fn sub_80EE2A0(c: &mut Cpu) {
 
 /// `sub_80EE2C0` (0x080ee2c0, thumb)
 pub fn sub_80EE2C0(c: &mut Cpu) {
+    c.enter(8747);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee2c0;
     loop {
@@ -15297,6 +15645,7 @@ pub fn sub_80EE2C0(c: &mut Cpu) {
 
 /// `sub_80EE2CE` (0x080ee2ce, thumb)
 pub fn sub_80EE2CE(c: &mut Cpu) {
+    c.enter(8748);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee2ce;
     loop {
@@ -15374,6 +15723,7 @@ pub fn sub_80EE2CE(c: &mut Cpu) {
 
 /// `sub_80EE33A` (0x080ee33a, thumb)
 pub fn sub_80EE33A(c: &mut Cpu) {
+    c.enter(8749);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee33a;
     loop {
@@ -15394,6 +15744,7 @@ pub fn sub_80EE33A(c: &mut Cpu) {
 
 /// `sub_80EE34A` (0x080ee34a, thumb)
 pub fn sub_80EE34A(c: &mut Cpu) {
+    c.enter(8750);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee34a;
     loop {
@@ -15414,6 +15765,7 @@ pub fn sub_80EE34A(c: &mut Cpu) {
 
 /// `sub_80EE370` (0x080ee370, thumb)
 pub fn sub_80EE370(c: &mut Cpu) {
+    c.enter(8751);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee370;
     loop {
@@ -15479,6 +15831,7 @@ pub fn sub_80EE370(c: &mut Cpu) {
 
 /// `sub_80EE3F0` (0x080ee3f0, thumb)
 pub fn sub_80EE3F0(c: &mut Cpu) {
+    c.enter(8752);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee3f0;
     loop {
@@ -15507,6 +15860,7 @@ pub fn sub_80EE3F0(c: &mut Cpu) {
 
 /// `sub_80EE406` (0x080ee406, thumb)
 pub fn sub_80EE406(c: &mut Cpu) {
+    c.enter(8753);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee406;
     loop {
@@ -15686,6 +16040,7 @@ pub fn sub_80EE406(c: &mut Cpu) {
 
 /// `sub_80EE50C` (0x080ee50c, thumb)
 pub fn sub_80EE50C(c: &mut Cpu) {
+    c.enter(8754);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee50c;
     loop {
@@ -15718,6 +16073,7 @@ pub fn sub_80EE50C(c: &mut Cpu) {
 
 /// `sub_80EE532` (0x080ee532, thumb)
 pub fn sub_80EE532(c: &mut Cpu) {
+    c.enter(8755);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee532;
     loop {
@@ -15759,6 +16115,7 @@ pub fn sub_80EE532(c: &mut Cpu) {
 
 /// `sub_80EE55E` (0x080ee55e, thumb)
 pub fn sub_80EE55E(c: &mut Cpu) {
+    c.enter(8756);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee55e;
     loop {
@@ -15779,6 +16136,7 @@ pub fn sub_80EE55E(c: &mut Cpu) {
 
 /// `sub_80EE57C` (0x080ee57c, thumb)
 pub fn sub_80EE57C(c: &mut Cpu) {
+    c.enter(8757);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee57c;
     loop {
@@ -15810,6 +16168,7 @@ pub fn sub_80EE57C(c: &mut Cpu) {
 
 /// `sub_80EE5A8` (0x080ee5a8, thumb)
 pub fn sub_80EE5A8(c: &mut Cpu) {
+    c.enter(8758);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee5a8;
     loop {
@@ -15879,6 +16238,7 @@ pub fn sub_80EE5A8(c: &mut Cpu) {
 
 /// `sub_80EE604` (0x080ee604, thumb)
 pub fn sub_80EE604(c: &mut Cpu) {
+    c.enter(8759);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee604;
     loop {
@@ -15923,6 +16283,7 @@ pub fn sub_80EE604(c: &mut Cpu) {
 
 /// `sub_80EE634` (0x080ee634, thumb)
 pub fn sub_80EE634(c: &mut Cpu) {
+    c.enter(8760);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee634;
     loop {
@@ -15943,6 +16304,7 @@ pub fn sub_80EE634(c: &mut Cpu) {
 
 /// `sub_80EE654` (0x080ee654, thumb)
 pub fn sub_80EE654(c: &mut Cpu) {
+    c.enter(8761);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee654;
     loop {
@@ -15966,6 +16328,7 @@ pub fn sub_80EE654(c: &mut Cpu) {
 
 /// `sub_80EE66E` (0x080ee66e, thumb)
 pub fn sub_80EE66E(c: &mut Cpu) {
+    c.enter(8762);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee66e;
     loop {
@@ -16012,6 +16375,7 @@ pub fn sub_80EE66E(c: &mut Cpu) {
 
 /// `sub_80EE6A4` (0x080ee6a4, thumb)
 pub fn sub_80EE6A4(c: &mut Cpu) {
+    c.enter(8763);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee6a4;
     loop {
@@ -16077,6 +16441,7 @@ pub fn sub_80EE6A4(c: &mut Cpu) {
 
 /// `sub_80EE6FC` (0x080ee6fc, thumb)
 pub fn sub_80EE6FC(c: &mut Cpu) {
+    c.enter(8764);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee6fc;
     loop {
@@ -16097,6 +16462,7 @@ pub fn sub_80EE6FC(c: &mut Cpu) {
 
 /// `sub_80EE71C` (0x080ee71c, thumb)
 pub fn sub_80EE71C(c: &mut Cpu) {
+    c.enter(8765);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee71c;
     loop {
@@ -16128,6 +16494,7 @@ pub fn sub_80EE71C(c: &mut Cpu) {
 
 /// `sub_80EE748` (0x080ee748, thumb)
 pub fn sub_80EE748(c: &mut Cpu) {
+    c.enter(8766);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee748;
     loop {
@@ -16190,6 +16557,7 @@ pub fn sub_80EE748(c: &mut Cpu) {
 
 /// `sub_80EE7A0` (0x080ee7a0, thumb)
 pub fn sub_80EE7A0(c: &mut Cpu) {
+    c.enter(8767);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee7a0;
     loop {
@@ -16234,6 +16602,7 @@ pub fn sub_80EE7A0(c: &mut Cpu) {
 
 /// `sub_80EE7D0` (0x080ee7d0, thumb)
 pub fn sub_80EE7D0(c: &mut Cpu) {
+    c.enter(8768);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee7d0;
     loop {
@@ -16254,6 +16623,7 @@ pub fn sub_80EE7D0(c: &mut Cpu) {
 
 /// `sub_80EE7EC` (0x080ee7ec, thumb)
 pub fn sub_80EE7EC(c: &mut Cpu) {
+    c.enter(8769);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee7ec;
     loop {
@@ -16305,6 +16675,7 @@ pub fn sub_80EE7EC(c: &mut Cpu) {
 
 /// `sub_80EE840` (0x080ee840, thumb)
 pub fn sub_80EE840(c: &mut Cpu) {
+    c.enter(8770);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee840;
     loop {
@@ -16325,6 +16696,7 @@ pub fn sub_80EE840(c: &mut Cpu) {
 
 /// `sub_80EE860` (0x080ee860, thumb)
 pub fn sub_80EE860(c: &mut Cpu) {
+    c.enter(8771);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee860;
     loop {
@@ -16369,6 +16741,7 @@ pub fn sub_80EE860(c: &mut Cpu) {
 
 /// `sub_80EE89C` (0x080ee89c, thumb)
 pub fn sub_80EE89C(c: &mut Cpu) {
+    c.enter(8772);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee89c;
     loop {
@@ -16441,6 +16814,7 @@ pub fn sub_80EE89C(c: &mut Cpu) {
 
 /// `sub_80EE90C` (0x080ee90c, thumb)
 pub fn sub_80EE90C(c: &mut Cpu) {
+    c.enter(8773);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee90c;
     loop {
@@ -16461,6 +16835,7 @@ pub fn sub_80EE90C(c: &mut Cpu) {
 
 /// `sub_80EE92C` (0x080ee92c, thumb)
 pub fn sub_80EE92C(c: &mut Cpu) {
+    c.enter(8774);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee92c;
     loop {
@@ -16526,6 +16901,7 @@ pub fn sub_80EE92C(c: &mut Cpu) {
 
 /// `sub_80EE996` (0x080ee996, thumb)
 pub fn sub_80EE996(c: &mut Cpu) {
+    c.enter(8775);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee996;
     loop {
@@ -16600,6 +16976,7 @@ pub fn sub_80EE996(c: &mut Cpu) {
 
 /// `sub_80EE9F2` (0x080ee9f2, thumb)
 pub fn sub_80EE9F2(c: &mut Cpu) {
+    c.enter(8776);
     let ret = c.ret;
     let mut pc: u32 = 0x080ee9f2;
     loop {
@@ -16646,6 +17023,7 @@ pub fn sub_80EE9F2(c: &mut Cpu) {
 
 /// `sub_80EEA3C` (0x080eea3c, thumb)
 pub fn sub_80EEA3C(c: &mut Cpu) {
+    c.enter(8777);
     let ret = c.ret;
     let mut pc: u32 = 0x080eea3c;
     loop {
@@ -16666,6 +17044,7 @@ pub fn sub_80EEA3C(c: &mut Cpu) {
 
 /// `sub_80EEA5C` (0x080eea5c, thumb)
 pub fn sub_80EEA5C(c: &mut Cpu) {
+    c.enter(8778);
     let ret = c.ret;
     let mut pc: u32 = 0x080eea5c;
     loop {
@@ -16690,6 +17069,7 @@ pub fn sub_80EEA5C(c: &mut Cpu) {
 
 /// `sub_80EEA78` (0x080eea78, thumb)
 pub fn sub_80EEA78(c: &mut Cpu) {
+    c.enter(8779);
     let ret = c.ret;
     let mut pc: u32 = 0x080eea78;
     loop {
@@ -16784,6 +17164,7 @@ pub fn sub_80EEA78(c: &mut Cpu) {
 
 /// `sub_80EEB18` (0x080eeb18, thumb)
 pub fn sub_80EEB18(c: &mut Cpu) {
+    c.enter(8780);
     let ret = c.ret;
     let mut pc: u32 = 0x080eeb18;
     loop {
@@ -16826,6 +17207,7 @@ pub fn sub_80EEB18(c: &mut Cpu) {
 
 /// `sub_80EEB4C` (0x080eeb4c, thumb)
 pub fn sub_80EEB4C(c: &mut Cpu) {
+    c.enter(8781);
     let ret = c.ret;
     let mut pc: u32 = 0x080eeb4c;
     loop {
@@ -16846,6 +17228,7 @@ pub fn sub_80EEB4C(c: &mut Cpu) {
 
 /// `sub_80EEB68` (0x080eeb68, thumb)
 pub fn sub_80EEB68(c: &mut Cpu) {
+    c.enter(8782);
     let ret = c.ret;
     let mut pc: u32 = 0x080eeb68;
     loop {
@@ -16928,6 +17311,7 @@ pub fn sub_80EEB68(c: &mut Cpu) {
 
 /// `sub_80EEBE2` (0x080eebe2, thumb)
 pub fn sub_80EEBE2(c: &mut Cpu) {
+    c.enter(8783);
     let ret = c.ret;
     let mut pc: u32 = 0x080eebe2;
     loop {
@@ -16967,6 +17351,7 @@ pub fn sub_80EEBE2(c: &mut Cpu) {
 
 /// `sub_80EEC08` (0x080eec08, thumb)
 pub fn sub_80EEC08(c: &mut Cpu) {
+    c.enter(8784);
     let ret = c.ret;
     let mut pc: u32 = 0x080eec08;
     loop {
@@ -17040,6 +17425,7 @@ pub fn sub_80EEC08(c: &mut Cpu) {
 
 /// `sub_80EEC70` (0x080eec70, thumb)
 pub fn sub_80EEC70(c: &mut Cpu) {
+    c.enter(8785);
     let ret = c.ret;
     let mut pc: u32 = 0x080eec70;
     loop {
@@ -17060,6 +17446,7 @@ pub fn sub_80EEC70(c: &mut Cpu) {
 
 /// `sub_80EEC90` (0x080eec90, thumb)
 pub fn sub_80EEC90(c: &mut Cpu) {
+    c.enter(8786);
     let ret = c.ret;
     let mut pc: u32 = 0x080eec90;
     loop {
@@ -17106,6 +17493,7 @@ pub fn sub_80EEC90(c: &mut Cpu) {
 
 /// `sub_80EECCC` (0x080eeccc, thumb)
 pub fn sub_80EECCC(c: &mut Cpu) {
+    c.enter(8787);
     let ret = c.ret;
     let mut pc: u32 = 0x080eeccc;
     loop {
@@ -17168,6 +17556,7 @@ pub fn sub_80EECCC(c: &mut Cpu) {
 
 /// `sub_80EED30` (0x080eed30, thumb)
 pub fn sub_80EED30(c: &mut Cpu) {
+    c.enter(8788);
     let ret = c.ret;
     let mut pc: u32 = 0x080eed30;
     loop {
@@ -17207,6 +17596,7 @@ pub fn sub_80EED30(c: &mut Cpu) {
 
 /// `sub_80EED56` (0x080eed56, thumb)
 pub fn sub_80EED56(c: &mut Cpu) {
+    c.enter(8789);
     let ret = c.ret;
     let mut pc: u32 = 0x080eed56;
     loop {
@@ -17227,6 +17617,7 @@ pub fn sub_80EED56(c: &mut Cpu) {
 
 /// `sub_80EED74` (0x080eed74, thumb)
 pub fn sub_80EED74(c: &mut Cpu) {
+    c.enter(8790);
     let ret = c.ret;
     let mut pc: u32 = 0x080eed74;
     loop {
@@ -17292,6 +17683,7 @@ pub fn sub_80EED74(c: &mut Cpu) {
 
 /// `sub_80EEDDE` (0x080eedde, thumb)
 pub fn sub_80EEDDE(c: &mut Cpu) {
+    c.enter(8791);
     let ret = c.ret;
     let mut pc: u32 = 0x080eedde;
     loop {
@@ -17337,6 +17729,7 @@ pub fn sub_80EEDDE(c: &mut Cpu) {
 
 /// `sub_80EEE10` (0x080eee10, thumb)
 pub fn sub_80EEE10(c: &mut Cpu) {
+    c.enter(8792);
     let ret = c.ret;
     let mut pc: u32 = 0x080eee10;
     loop {
@@ -17383,6 +17776,7 @@ pub fn sub_80EEE10(c: &mut Cpu) {
 
 /// `sub_80EEE60` (0x080eee60, thumb)
 pub fn sub_80EEE60(c: &mut Cpu) {
+    c.enter(8793);
     let ret = c.ret;
     let mut pc: u32 = 0x080eee60;
     loop {
@@ -17403,6 +17797,7 @@ pub fn sub_80EEE60(c: &mut Cpu) {
 
 /// `sub_80EEE88` (0x080eee88, thumb)
 pub fn sub_80EEE88(c: &mut Cpu) {
+    c.enter(8794);
     let ret = c.ret;
     let mut pc: u32 = 0x080eee88;
     loop {
@@ -17455,6 +17850,7 @@ pub fn sub_80EEE88(c: &mut Cpu) {
 
 /// `sub_80EEED4` (0x080eeed4, thumb)
 pub fn sub_80EEED4(c: &mut Cpu) {
+    c.enter(8795);
     let ret = c.ret;
     let mut pc: u32 = 0x080eeed4;
     loop {
@@ -17496,6 +17892,7 @@ pub fn sub_80EEED4(c: &mut Cpu) {
 
 /// `sub_80EEF02` (0x080eef02, thumb)
 pub fn sub_80EEF02(c: &mut Cpu) {
+    c.enter(8796);
     let ret = c.ret;
     let mut pc: u32 = 0x080eef02;
     loop {
@@ -17563,6 +17960,7 @@ pub fn sub_80EEF02(c: &mut Cpu) {
 
 /// `sub_80EEF70` (0x080eef70, thumb)
 pub fn sub_80EEF70(c: &mut Cpu) {
+    c.enter(8797);
     let ret = c.ret;
     let mut pc: u32 = 0x080eef70;
     loop {
@@ -17601,6 +17999,7 @@ pub fn sub_80EEF70(c: &mut Cpu) {
 
 /// `sub_80EEFA4` (0x080eefa4, thumb)
 pub fn sub_80EEFA4(c: &mut Cpu) {
+    c.enter(8798);
     let ret = c.ret;
     let mut pc: u32 = 0x080eefa4;
     loop {
@@ -17628,6 +18027,7 @@ pub fn sub_80EEFA4(c: &mut Cpu) {
 
 /// `sub_80EEFBC` (0x080eefbc, thumb)
 pub fn sub_80EEFBC(c: &mut Cpu) {
+    c.enter(8799);
     let ret = c.ret;
     let mut pc: u32 = 0x080eefbc;
     loop {
