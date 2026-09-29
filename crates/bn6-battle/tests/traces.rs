@@ -30,11 +30,16 @@ fn replay(name: &str) -> Vec<(usize, usize)> {
     progress
 }
 
+/// Each round must match at least `floors[n]` frames. Raised as the engine
+/// grows; the goal is every frame of every round.
+fn check(progress: &[(usize, usize)], floors: &[usize]) {
+    for (n, (&(ok, total), &floor)) in progress.iter().zip(floors).enumerate() {
+        assert!(ok <= total);
+        assert!(ok >= floor, "round {} regressed: {ok} frames match, {floor} did before", n + 1);
+    }
+}
+
 #[test]
 fn machgun() {
-    let progress = replay("machgun.jsonl");
-    // Tightened as the engine grows; the goal is every frame of every round.
-    for (ok, total) in progress {
-        assert!(ok <= total);
-    }
+    check(&replay("machgun.jsonl"), &[1074, 552]);
 }
