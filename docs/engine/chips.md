@@ -1000,8 +1000,9 @@ object +0x0E/+0x2C/+0x2E into CD+0x02/+0x19, CD+0x2E and CD+0x07.
 
 ### 3.6 Time-freeze chips (action 0x15; navi chips 0x1B)
 
-**No time freeze executes in the machgun trace** (§4.6), and no other available recording reaches the fighting phase
-under emulation. This whole subsection is **code-derived and not trace-verified**, particularly the frame counts.
+**No time freeze executes in the machgun trace** (§4.6). The soundmod trace has them; its first, Invisibl (chip 0xB1,
+subtype 1, T4 0x5D) at round-1 frame 3206, verifies the sequence below (§3.6.6). Counters and the navi chips' own
+phases (`sub_800BDB2`, `sub_800BA8A`) are still code-derived.
 
 #### 3.6.1 State
 
@@ -1124,6 +1125,30 @@ Special cases:
 
 **Quirk.** The r4 value entering `sub_80127C0` from `sub_8017AB4` selects hand vs slot-in (§2.6.4). It was not
 checked at run time. **[unverified]**
+
+When the checks fail (e.g. A pressed while the other side's screen is still dimming, soundmod 3217), `sub_8017AB4`
+just clears requests 0x80C; the navi goes on shaking as usual.
+
+#### 3.6.6 Trace: Invisibl (soundmod round 1)
+
+Side 0 uses Invisibl (params 0x168) from idle at 3206 (action 0x15, the chip consumed).
+
+| Frame | Event |
+|---|---|
+| 3207 | Handler frame 1: the controller T4 0x5D is spawned right after the user and registered (`[1] = 1`); its init (`object_timefreezeBegin`) sets battle flag 4 the same tick. |
+| 3208–3224 | `object_dimScreen`: its first update starts the fade (timer 1); the fade is idle on the 17th update (3224, timer 17): **16 ticks**, action 4. |
+| 3224–3283 | `object_drawChipName`: `[1] = 2`, banner 0x4C (the local player's; 0x50 for the remote one) and sound 0x173 at 3224; the banner is done after 60 ticks (3284). |
+| 3284 | `[1] = 4`, action 8 (the user is alive). |
+| 3285–3315 | The effect (`sub_80E7518`): at 3285 `sub_8010474` on the user: CollisionData+0x24 (the flash timer) = 0x168, ObjectFlags1 \|= 2 (INVISIBLE), sound 0x93; timer 0x1E counts to −1 at 3315: action 0xC. |
+| 3316–3333 | `object_undimScreen`: the other side is idle, so the fade 0x38 starts at 3316; idle at 3333 (**17 ticks**): state 8. |
+| 3334 | `object_timefreezeEnd`: `[1] = 5`, then (initiator) battle flag 4 cleared, both records cleared, the controller freed. The user ran earlier that tick, still in time stop. |
+| 3335 | The user runs `sub_80EBD9C` again → `object_exitAttackState`; the flash timer now counts (FLASHING, blinking VISIBLE) for 360 ticks. |
+
+Other facts:
+- `sub_80E7546` spawns the controller with r1..r3 left as the caller's panel Y, element and the spawner's own
+  address, so its X, Y, Z are that garbage (X = 2, Y = 0, Z = 0x080E7547 here). Nothing reads them.
+- `dword_200F3B8[alliance]` (cleared by `object_timefreezeBegin`, set by `sub_800BA8A`) has no reader.
+- The rocks (T3) and every object without flag 0x10 stand still for the whole freeze.
 
 ---
 
