@@ -9,6 +9,8 @@ use crate::compose::{Layer, SpritePart};
 use crate::objects::{SpriteList, View, project};
 use bn6_assets::{Bundle, Hud, MapEntry, Palette, Tiles};
 use bn6_battle::Battle;
+use bn6_battle::actor::status;
+use bn6_battle::transform::{SequencerState, TransformPhase};
 use bn6_battle::battle::{fight, mode, top};
 use bn6_battle::hand::NO_CHIP;
 use bn6_battle::object::{ObjectRef, flags};
@@ -24,6 +26,15 @@ pub struct HudState {
     enemies: Vec<EnemyHp>,
     /// Counts draws (drives the full gauge's animation; wraps at 0x70).
     frame: u8,
+    /// The chip name window is on: the idle controller's entry shows it
+    /// (`sub_801DA48`), using a chip hides it.
+    chip_name: bool,
+    /// As of the previous tick: whether the round was decided (the HUD
+    /// thins out a frame after the decision) and the gauge was running.
+    was_over: bool,
+    gauge_was_on: bool,
+    is_over: bool,
+    gauge_is_on: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -56,6 +67,18 @@ impl HudState {
     /// Follow one tick of the battle.
     pub fn tick(&mut self, b: &Battle) {
         self.frame = (self.frame + 1) % 0x70;
+        (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
+        (self.is_over, self.gauge_is_on) = (decided(b), b.gauge.enabled);
+        if let Some(r) = b.player(b.setup.local_side) {
+            let o = b.objects.get(r);
+            if o.action == IDLE && (o.phase != 0 || o.phase_init != 0) {
+                self.chip_name = true;
+            }
+            let using_chip = o.actor.is_some_and(|a| b.actors.get(a).status & status::CHIP_IN_PROGRESS != 0);
+            if using_chip || b.round.mode != mode::FIGHTING || decided(b) {
+                self.chip_name = false;
+            }
+        }
         let local = b.setup.local_side;
         // The local navi's HP box.
         if let Some(r) = b.player(local) {
@@ -141,6 +164,16 @@ fn decided(b: &Battle) -> bool {
             && matches!(b.fight.state, fight::WIN | fight::LOSE | fight::DRAW | fight::JUDGE))
 }
 
+/// While the navis change form the HUD steps aside: the mugshot from the
+/// start of the fade out, the HP box and gauge once the screen is dark.
+fn transform_hides(b: &Battle) -> (bool, bool) {
+    match b.transform_seq.state {
+        SequencerState::Transform { phase: TransformPhase::FadeOut, .. } => (true, false),
+        SequencerState::Transform { .. } => (true, true),
+        _ => (false, false),
+    }
+}
+
 /// Draw the HUD layer and queue the HUD sprites.
 pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut Layer, list: &mut SpriteList<'a>) {
     let hud = &assets.hud;
@@ -153,8 +186,9 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
     let open = custom_open(b);
     let colour = state.hp.map(|h| h.colour).unwrap_or(0) as usize;
 
+    let (hide_mugshot, hide_boxes) = transform_hides(b);
     // HP box, top left (x 120 while the custom screen is open).
-    if let Some(r) = player {
+    if let Some(r) = player.filter(|_| !hide_boxes) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let x0 = if open { 15 } else { 0 };
         let pal = &hud.hp_palettes[colour.min(2)];
@@ -169,7 +203,7 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
     }
 
     // Custom gauge, top centre.
-    if b.gauge.enabled && !open && !decided(b) {
+    if (b.gauge.enabled || state.gauge_was_on) && !state.was_over && !open && !hide_boxes {
         let pal = &hud.gauge_palette;
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
             put(layer, hud, pal, e, 6 + (i as i32 % 18), i as i32 / 18);
@@ -202,9 +236,7 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
         let o = b.objects.get(r);
         let hand = &b.hands[local as usize];
         let chip = hand.ids.get(hand.cursor as usize).copied().unwrap_or(NO_CHIP);
-        // The idle controller shows it once its entry has run.
-        let idle = o.action == IDLE && (o.phase != 0 || o.phase_init != 0);
-        if b.round.mode == mode::FIGHTING && !decided(b) && idle && chip != NO_CHIP {
+        if state.chip_name && o.chips_held != 0 && chip != NO_CHIP {
             draw_chip_name(layer, hud, &hud.hp_palettes[colour.min(2)], hand, chip);
         }
     }
@@ -215,7 +247,7 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
     if let Some(id) = b.banner.id.filter(|_| b.banner.active) {
         banner_parts(b, hud, id.0, &mut group);
     }
-    if let Some(r) = player.filter(|_| !decided(b)) {
+    if let Some(r) = player.filter(|_| !state.was_over && !hide_mugshot) {
         mugshot_parts(b, hud, r, if open { 120 } else { 0 }, &mut group);
     }
     for e in &state.enemies {
@@ -233,7 +265,7 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
             group.push(glyph(digits, d, hud.enemy_palette, p.x + 4 * n - 32 + 8 * k as i32, p.y, 2, None));
         }
     }
-    if !decided(b) {
+    if !state.was_over {
         for side in 0..2u8 {
             if let Some(r) = b.player(side) {
                 icon_parts(b, hud, r, side == local, &view, &mut group);

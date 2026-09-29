@@ -8,6 +8,7 @@ use crate::actor::ActorId;
 use crate::battle::Battle;
 use crate::data::attacks;
 use crate::kinds::common::{Progress, set_progress, update_sprite};
+use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
 pub const INDEX: u8 = 5;
@@ -91,7 +92,12 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let [kind, anim, ..] = b.objects.get(r).params;
     let k = attacks::attachment(kind);
     let owner = owner(b, r);
-    b.objects.sprite_mut(r).load(k.sprite);
+    let palette_add = b.objects.get(r).params[3];
+    let sprite = b.objects.sprite_mut(r);
+    sprite.load(k.sprite);
+    // sprite_noShadow; the kind's palette plus the fourth parameter.
+    sprite.look.shadow = Shadow::WithSprite;
+    sprite.look.palette = k.palette.wrapping_add(palette_add);
     b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
     // The Cross forms' NameIDs raise it by 8 pixels.
     let name = b.objects.get(owner).name_id;
@@ -136,6 +142,14 @@ fn follow(b: &mut Battle, r: ObjectRef) {
         z: p.z.wrapping_add(v.offset_z).wrapping_sub(lift),
     };
     o.flags = (o.flags & !flags::VISIBLE) | owner_visible;
+    // It wears the owner's colour shader, white flash, alpha and flip.
+    let owner_look = b.objects.sprite(owner).look;
+    let look = &mut b.objects.sprite_mut(r).look;
+    look.color_shader = owner_look.color_shader;
+    look.white = owner_look.white;
+    look.alpha = owner_look.alpha;
+    look.hflip = owner_look.hflip;
+    look.vflip = owner_look.vflip;
     let slot = v.slot.expect("attachment has a slot");
     if !slot.is_occupied(b) {
         b.objects.get_mut(r).flags &= !flags::VISIBLE;

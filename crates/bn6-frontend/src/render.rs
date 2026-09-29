@@ -1,7 +1,8 @@
 //! Drawing a battle: everything visible is derived from the engine's state
 //! and the asset bundle.
 
-use crate::compose::{self, Fade, Layer};
+use crate::compose::{self, Fade, Fades, Layer};
+use bn6_battle::transform::{SequencerState, TransformPhase};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::stage::{Stage, StageClock};
@@ -61,7 +62,24 @@ impl<'a> Renderer<'a> {
         crate::hud::draw(b, assets, &self.hud_state, &mut self.hud, &mut list);
         let parts = list.into_parts();
         let backdrop = stage.palettes[0][0];
-        compose::compose(backdrop, &[&self.hud, &self.field, &self.background], &parts, screen_fade(b))
+        let fades = Fades { layers: layer_fade(b), screen: screen_fade(b) };
+        compose::compose(backdrop, &[&self.hud, &self.field, &self.background], &parts, fades)
+    }
+}
+
+/// The transformation sequencer fades the tile layers (not the sprites)
+/// out to black while the navis change form, and back in; the palette
+/// flash whitens them.
+pub fn layer_fade(b: &Battle) -> Fade {
+    if objects::palette_flash(b) {
+        return Fade::White(16);
+    }
+    let left = b.fade.remaining;
+    match b.transform_seq.state {
+        SequencerState::Transform { phase: TransformPhase::FadeOut, started: true } => Fade::Black(16u8.saturating_sub(left)),
+        SequencerState::Transform { phase: TransformPhase::Change, .. } => Fade::Black(16),
+        SequencerState::Transform { phase: TransformPhase::FadeIn, started } => Fade::Black(if started { left.min(16) } else { 16 }),
+        _ => Fade::None,
     }
 }
 
@@ -85,6 +103,10 @@ pub fn screen_fade(b: &Battle) -> Fade {
         return fade(((left * 16) / total) as u8);
     }
     if b.round.mode == mode::FADE_OUT || b.round.top == bn6_battle::battle::top::END {
+        // The fade starts on the state's second tick.
+        if b.round.top != bn6_battle::battle::top::END && b.round.init == 0 {
+            return Fade::None;
+        }
         if b.fade.active() {
             return Fade::Black((16 - (left * 16) / total) as u8);
         }
