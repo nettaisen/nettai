@@ -508,9 +508,13 @@ pub(crate) fn navi_init_hook(name_id: u16) {
 fn load_sprite(b: &mut Battle, r: ObjectRef) {
     let (navi, form) = (stats(b, r).navi, stats(b, r).form);
     let id = if navi == Navi::MEGAMAN { pdata::form_sprite(form) } else { pdata::navi_sprite(navi) };
+    let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
     sprite.set_animation(0);
+    // sprite_hasShadow; sprite_setFlip(object_getFlip()).
+    sprite.look.shadow = crate::object::sprite::Shadow::Ground;
+    sprite.look.set_flip(flip);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = 0;
@@ -745,10 +749,28 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     per_form_tick(b, r);
     tick_cooldowns(b, r);
     full_synchro_effect(b, r);
-    // sub_80100EC: palette (presentation).
+    navi_palette(b, r);
     if !b.paused {
         b.present_collision(coll_id(b, r));
     }
+}
+
+/// `sub_80100EC` (presentation only): MegaMan's sprite palette, 4 in Full
+/// Synchro, plus the element style's in base form. The Cross forms'
+/// palettes (`byte_80203EA`), Beast Over's and other navis' are not
+/// modelled and keep the palette they have.
+fn navi_palette(b: &mut Battle, r: ObjectRef) {
+    let s = *stats(b, r);
+    if s.navi != Navi::MEGAMAN || s.form.is_beast_over() {
+        return;
+    }
+    let synchro = if s.mood == 0xFF { 4 } else { 0 };
+    let palette = match s.form.0 {
+        0 if s.element != 0 => synchro + s.element.wrapping_mul(5).wrapping_add(0x12),
+        0 | 0x0B | 0x0C => synchro,
+        _ => return,
+    };
+    b.objects.sprite_mut(r).look.palette = palette;
 }
 
 /// `sub_8013DA0`: the NaviCust emotion timer (stats 0x24 and 0x21).

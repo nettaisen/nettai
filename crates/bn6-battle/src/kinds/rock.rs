@@ -128,6 +128,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     sprite.load(SPRITE);
     sprite.set_animation(anim);
     sprite.update();
+    sprite.look.shadow = crate::object::sprite::Shadow::Ground;
     let o = b.objects.get_mut(r);
     o.flags = (o.flags | flags::VISIBLE) & !flags::NO_SPRITE_UPDATE;
     o.anim = anim;

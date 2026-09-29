@@ -69,6 +69,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         state::INIT => {
             // sub_80E1540
             b.objects.sprite_mut(r).load(SPRITE);
+            b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
             let o = b.objects.get_mut(r);
             o.flags &= !flags::NO_SPRITE_UPDATE;
             o.flags |= flags::VISIBLE;

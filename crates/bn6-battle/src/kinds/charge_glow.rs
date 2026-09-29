@@ -140,6 +140,7 @@ fn select_sprite(b: &mut Battle, r: ObjectRef, source: u8) {
     }
     vars(b, r).sprite = wanted;
     b.objects.sprite_mut(r).load(SpriteId { category: 0x14, index: wanted });
+    b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
     o.anim_loaded = 0xFF;
     o.flags &= !flags::NO_SPRITE_UPDATE;

@@ -220,6 +220,7 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
         // The local player's navi hears another hit sound; sprite_forceWhitePalette.
         let local_player = navi_record(b, r).actor_type == ActorType::Player && !b.is_remote(b.objects.get(r).alliance);
         b.play_sound(crate::sound::SoundId(if local_player { 0x6B } else { 0x6D }));
+        b.objects.sprite_mut(r).look.white = true;
         dead = b.objects.get(r).hp == 0;
     }
     if !dead {
