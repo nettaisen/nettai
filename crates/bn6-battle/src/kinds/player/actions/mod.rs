@@ -5,6 +5,7 @@
 //! (which `set_attack` resets); what an action keeps besides that lives
 //! in its own state struct in `AttackVars::action`.
 
+pub mod absorb;
 pub mod beast_claw;
 pub mod blank_shot;
 pub mod buster;
@@ -33,6 +34,7 @@ pub enum ActionVars {
     BeastClaw(beast_claw::Vars),
     FormChange(transform::Vars),
     BlankShot(blank_shot::Vars),
+    Absorb(absorb::Vars),
 }
 
 /// Run action `action` (>= 0x10) for the player `r` this tick.
@@ -44,6 +46,7 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
         time_freeze::ACTION => time_freeze::update(b, r),
         blank_shot::ACTION => blank_shot::update(b, r),
         navi_chip::ACTION => navi_chip::update(b, r),
+        absorb::ACTION => absorb::update(b, r),
         _ => panic!("player action {action:#x} is not implemented yet"),
     }
 }
