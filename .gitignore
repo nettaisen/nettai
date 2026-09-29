@@ -4,3 +4,4 @@
 *.sav
 /tools/*/target
 /data/traces/*.jsonl
+/data/sound/
