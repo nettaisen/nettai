@@ -201,7 +201,7 @@ pub struct Battle {
     pub beast_out_used: [bool; 2],
     /// Per side: the navi crossed this battle (`byte_203EAE0` +0xB,
     /// read after the battle for the busting level).
-    pub changed_form: [bool; 2],
+    pub crossed: [bool; 2],
     pub objects: Objects,
     pub actors: Actors,
     pub collision: Collision,
@@ -392,7 +392,7 @@ impl Battle {
             turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),
             beast_out_used: [false; 2],
-            changed_form: [false; 2],
+            crossed: [false; 2],
             objects: Objects::new(),
             actors: Actors::default(),
             collision: Collision::new(),
