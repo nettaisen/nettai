@@ -8,6 +8,7 @@ use crate::actor::{request, status};
 use crate::battle::Battle;
 use crate::collision::{f1, link, timer};
 use crate::data::player as pdata;
+use super::ActionVars;
 use crate::kinds::common;
 use crate::kinds::player::status::end_anger;
 use crate::kinds::player::{
@@ -43,17 +44,35 @@ impl BeastOutStep {
     }
 }
 
+/// The form change's own state.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Vars {
+    /// Ticks left in the current step.
+    pub timer: u16,
+}
+
+fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
+    match &mut ai_mut(b, r).attack.action {
+        ActionVars::FormChange(v) => v,
+        v => panic!("form change without its state ({v:?})"),
+    }
+}
+
+fn set_timer(b: &mut Battle, r: ObjectRef, ticks: u16) {
+    vars(b, r).timer = ticks;
+}
+
 fn set_step(b: &mut Battle, r: ObjectRef, step: BeastOutStep) {
     let a = &mut ai_mut(b, r).attack;
     a.step = step as u8;
     a.step_init = 0;
 }
 
-/// Count the attack timer down; true once it had run out (it wraps).
+/// Count the timer down; true once it had run out (it wraps).
 fn timer_ran_out(b: &mut Battle, r: ObjectRef) -> bool {
-    let a = &mut ai_mut(b, r).attack;
-    let old = a.timer;
-    a.timer = old.wrapping_sub(1);
+    let v = vars(b, r);
+    let old = v.timer;
+    v.timer = old.wrapping_sub(1);
     old == 0
 }
 
@@ -108,7 +127,7 @@ fn prepare(b: &mut Battle, r: ObjectRef) {
         // Sets the overlay's Param3 to 1 and flags 0x14.
         panic!("changing form with a form overlay on is not implemented yet");
     }
-    ai_mut(b, r).attack.timer = 6;
+    ai_mut(b, r).attack.action = ActionVars::FormChange(Vars { timer: 6 });
     set_step(b, r, BeastOutStep::Vanish);
 }
 
@@ -155,9 +174,8 @@ fn vanish(b: &mut Battle, r: ObjectRef) {
             // Sound 0x1CC (Gregar) or 0x1CD (Falzar), and a 60-tick
             // camera shake (its jitter uses the camera's own RNG).
         }
-        let a = &mut ai_mut(b, r).attack;
-        a.timer = 0x36;
-        a.step_init = 4;
+        set_timer(b, r, 0x36);
+        ai_mut(b, r).attack.step_init = 4;
     }
     if !timer_ran_out(b, r) {
         return;
@@ -181,7 +199,7 @@ fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         o.anim_loaded = 0xFF;
         b.objects.sprite_mut(r).set_animation(0);
         set_coordinates_from_panel(b, r);
-        ai_mut(b, r).attack.timer = 10;
+        set_timer(b, r, 10);
         stats_mut(b, r).form = target;
         palette_flash::spawn(b, 14, true, true);
         // Sound 0x100.
@@ -193,9 +211,9 @@ fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         }
         ai_mut(b, r).attack.step_init = 4;
     }
-    let a = &mut ai_mut(b, r).attack;
-    let old = a.timer;
-    a.timer = old.wrapping_sub(1);
+    let v = vars(b, r);
+    let old = v.timer;
+    v.timer = old.wrapping_sub(1);
     if old >= 2 {
         return;
     }
@@ -213,9 +231,8 @@ fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
 /// `sub_8014F04`: 21 ticks, then the change is done and the navi idles.
 fn settle(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).attack.step_init == 0 {
-        let a = &mut ai_mut(b, r).attack;
-        a.timer = 0x14;
-        a.step_init = 4;
+        set_timer(b, r, 0x14);
+        ai_mut(b, r).attack.step_init = 4;
     }
     if !timer_ran_out(b, r) {
         return;
