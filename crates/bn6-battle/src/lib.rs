@@ -4,7 +4,7 @@
 //! own data model. Game content (chip data, navi stats, animation timing)
 //! lives in `data`, extracted from the original game by `bn6-extract`.
 //! Behavior is verified tick by tick against traces recorded from the
-//! original game (see `trace` and data/traces).
+//! original game (see `trace`).
 
 pub mod actor;
 pub mod battle;
