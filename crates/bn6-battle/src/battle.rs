@@ -23,8 +23,9 @@ pub mod battle_flags {
     pub const TIME_STOP: u16 = 0x04;
     /// A player asked to open the custom screen.
     pub const CUSTOM_REQUESTED: u16 = 0x10;
-    /// The alternate per-player gauge / link navi mode (not PvP).
-    pub const MODE_40: u16 = 0x40;
+    /// Per-player custom gauges and chip counters (`sub_802E112`). Never set
+    /// in netbattles (battle mode 1) or random battles.
+    pub const PER_PLAYER_GAUGES: u16 = 0x40;
 }
 
 /// Top-level battle states (the game's jump-table offsets).

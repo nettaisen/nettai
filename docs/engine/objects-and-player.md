@@ -44,7 +44,7 @@ Related specs in this folder: `battle-flow.md` (tick structure, battle/mode stat
 | Update list start node (head) | 0x02009380 | node {Prev,Next,pad8}; `Next` = first object node | `eBattleObjectsLinkedListStart` |
 | Update list sentinel (tail) | 0x02009AB0 | node; `Prev` = last object node | `eBattleObjectsLinkedListSentinel` |
 | "current object" node pointer | 0x0200AF70 (u32) | node ptr of the object being updated, 0 outside the loop | `eUnkBattleObjectLinkedList` |
-| AIData pool | 0x02034080 | 8 x 0x100; alloc bitfield u32 at 0x0203F6A0 | object.s:5944-5995 |
+| AIData pool | 0x02034080 | 8 x 0x100; alloc bitfield u32 at 0x0203F6A0 | |
 | CollisionData pool | 0x020384F0 (Toolkit+0x30) | 32 x 0xA8; alloc bitfield u32 at 0x02035310 | |
 | Panel collision masks | 0x02034F60 | 40 x u32, index y*8+x (x 0..7, y 0..4), bit (31-k) = CollisionData slot k present on that panel | `sub_3007868`/`sub_3007880` |
 | Panel data | 0x02039AE0 | 0x20 bytes per panel, address = 0x02039AE0 + ((y*8+x)<<5), valid x 1..6, y 1..3 | `_object_getPanelDataOffset` |
@@ -125,7 +125,7 @@ Spawn writes the whole byte: 0x19 for T1 and T4, 0x09 for T3 (table `dword_80032
 ## 3. Pools and spawning
 
 ### 3.1 Pool (re)initialisation
-At battle start, `sub_800794C` runs `sub_800318C` (reset list: Start.Prev=0, Start.Next=&Sentinel, Sentinel.Prev=&Start, Sentinel.Next=0, current=0), then `InitializeStructsOfObjectType` for T1, T3, T4: zero the allocation bitfield (4 bytes), zero the whole pool including nodes (count x size bytes from the first node), then for every slot i write byte +2 = TypeAndSpriteOffset (0x91 / 0x93 / 0x84) and byte +3 = i. `sub_8007A0C` later calls `sub_801986C` (collision pool reset, §7.1) and `sub_800318C` again. The AIData pool is reset earlier by `sub_800ED00` (object.s:5944, from the battle init `sub_80071D4`).
+At battle start, `sub_800794C` runs `sub_800318C` (reset list: Start.Prev=0, Start.Next=&Sentinel, Sentinel.Prev=&Start, Sentinel.Next=0, current=0), then `InitializeStructsOfObjectType` for T1, T3, T4: zero the allocation bitfield (4 bytes), zero the whole pool including nodes (count x size bytes from the first node), then for every slot i write byte +2 = TypeAndSpriteOffset (0x91 / 0x93 / 0x84) and byte +3 = i. `sub_8007A0C` later calls `sub_801986C` (collision pool reset, §7.1) and `sub_800318C` again. The AIData pool is reset earlier by `sub_800ED00` (from the battle init `sub_80071D4`).
 
 At the end of a round `sub_80094DA` calls `FreeAllObjectsOfSpecifiedTypes(0x1A)` (T1|T3|T4) which calls `object_freeMemory` on every active slot in slot order. AIData/CollisionData are not freed there; their pools are re-initialised by the next battle's init.
 
@@ -243,8 +243,8 @@ Because the phase entry runs in the same tick as the phase switch only if the sw
 
 ## 6. AIData pool (0x02034080, 8 x 0x100)
 
-- Bitfield u32 at 0x0203F6A0 (bit 31-k = slot k). `sub_800ED00` (object.s:5944) at battle init writes each slot's own bit into AIData+0x7C (0x80000000, 0x40000000, ...) and zeroes the bitfield.
-- `object_createAIData` (object.s:5968): lowest free slot; zero [0x00,0x7C), [0x80,0xA0), [0xA0,0xF0); **not cleared**: +0x7C (slot bit) and [0xF0,0x100). Returns the pointer or 0 (pool full). Caller stores it in obj+0x58.
+- Bitfield u32 at 0x0203F6A0 (bit 31-k = slot k). `sub_800ED00` at battle init writes each slot's own bit into AIData+0x7C (0x80000000, 0x40000000, ...) and zeroes the bitfield.
+- `object_createAIData`: lowest free slot; zero [0x00,0x7C), [0x80,0xA0), [0xA0,0xF0); **not cleared**: +0x7C (slot bit) and [0xF0,0x100). Returns the pointer or 0 (pool full). Caller stores it in obj+0x58.
 - `sub_800ED80(ai)`: bitfield &= ~ai.Unk_7c.
 - Layout: +0x00 ActorType (0 virus, 1 navi, 2 player), +0x01 AIIndex (form / AI variant; selects per-form tables), +0x02 Unk_02 (1 = "don't count/free", see §12.8), +0x03 from enemy table, +0x04..+0x1E misc stats, +0x20 TotalDamageTaken, +0x22 JoypadHeld, +0x24 JoypadPressed, +0x26 "JoypadUp" (really: released edge), +0x28 "JoypadReleased" (really: previous held) (§M3.1), +0x40.. pointers/work, +0x44 and +0x48 flag words, +0x58 ptr (players: their T4#8 helper), +0x7C slot bit, +0x80 AIState (0x20), +0xA0 AIAttackVars (0x50).
 
@@ -505,7 +505,7 @@ The chain gives: fade done at 89, fade-in of the non-local player 89→121, queu
 - If paused: clear VISIBLE if `owner.AIData.Unk_1e == 0`, then return. Position and sprite are untouched.
 - If `*slot == 0`: CurState = 8 and return.
 - VISIBLE is set and then cleared if any of these holds:
-  - `sub_800EB6C(owner.alliance)` returns 0 (viewer-side blindness check, object.s:5713).
+  - `sub_800EB6C(owner.alliance)` returns 0 (viewer-side blindness check).
   - enable == 0.
   - `object_isValidPanel(owner.PanelXY)` fails.
   - by `owner.AIData.Unk_1e`: 0 → hide; 1 or ≥3 → hide if `battle_networkInvert(owner.alliance)`; 2 → keep.
@@ -615,7 +615,7 @@ Note: the routine coverage record used here covers only round 1 of the match.
 - T1/T3: +0x90, header byte 2 = 0x91/0x93.
 - T4: +0x80, byte 2 = 0x84.
 
-These values are set per slot by `InitializeStructsOfObjectType`. `SpawnBattleObjectCommon` zero-fills only +4..+0x90 (T1/T3) or +4..+0x80 (T4), so **the sprite block is not cleared on spawn**. `sprite_load` → `sprite_initialize` (sprite.s:93) resets it.
+These values are set per slot by `InitializeStructsOfObjectType`. `SpawnBattleObjectCommon` zero-fills only +4..+0x90 (T1/T3) or +4..+0x80 (T4), so **the sprite block is not cleared on spawn**. `sprite_load` → `sprite_initialize` resets it.
 
 **Logic-relevant sprite fields** (offsets within the sprite block):
 
@@ -624,7 +624,7 @@ These values are set per slot by `InitializeStructsOfObjectType`. `SpawnBattleOb
 | 0x00 | Unk_00 | current animation index (`sprite_setAnimation` writes it) |
 | 0x01 | Unk_01 | countdown of the current frame (u8) |
 | 0x02 | Unk_02 | flags of the current frame: 0x80 = last frame, 0x40 = loop to first frame |
-| 0x03 | Unk_03 | format/shadow bits. Bit 7 set = battle format; every battle `sprite_load` call passes r0 = 0x80, which is stored here (sprite.s:84) |
+| 0x03 | Unk_03 | format/shadow bits. Bit 7 set = battle format; every battle `sprite_load` call passes r0 = 0x80, which is stored here |
 | 0x18 | Unk_18 | base = sprite data + 4 |
 | 0x1C | Unk_1c | pointer to the current frame record |
 
@@ -636,7 +636,7 @@ Everything else (0x04 palette, 0x05, 0x10–0x17, 0x20 OAM ptr, 0x24–0x34) is 
 - `PreventAnim` (+0x18): freezes the sprite of objects that have collision data.
 
 **ROM data:**
-- `sprite_load(0x80, catOff, idx)` (0x080026E4, sprite.s:56):
+- `sprite_load(0x80, catOff, idx)` (0x080026E4):
   - Clears header flag 0x08 (STOP_SPRITE_UPDATE, which spawn sets by default).
   - Looks up the decompressed-sprite cache first (`sub_8002986`: 12 entries at `byte_200DCA0`, key `catOff<<8 | idx`).
   - Otherwise uses `SpritePointersList` (0x08031CC4) `[catOff]` (catOff is a byte offset, i.e. entry catOff/4) `[idx·4]`.
@@ -669,7 +669,7 @@ update():                      // one call = one "tick" of the sprite
       else { cnt = 1 }                  // hold: next iteration makes cnt 0 and returns
     } else { frame += 1; cnt = frame.dur; flags = frame.flags }
   }
-get_frame_parameters():        // sprite_getFrameParameters 0x08002DEA, sprite.s:1135
+get_frame_parameters():        // sprite_getFrameParameters 0x08002DEA,
   r0 = (cnt == 0) ? flags : flags & ~0xC0 ;  r1 = r2 = anim
 ```
 
@@ -953,7 +953,7 @@ Consequence: a move does **not** clear pending buster/chip intents or the charge
 
 ##### M3.2 No left/right mirroring
 
-`battle_networkInvert(a)` returns `a XOR BattleState.Unk_0d`. `Unk_0d` is the local side: 0 on P1's GBA, 1 on P2's GBA; it also sets the camera mirror. Movement code does not use it. Direction semantics come from `object_getAllianceDirection(a) = 1 − 2a` (object.s:4523) applied to "Right = +1 forward" (§M6.2). Both GBAs therefore simulate identical state from raw keys, and only rendering is mirrored.
+`battle_networkInvert(a)` returns `a XOR BattleState.Unk_0d`. `Unk_0d` is the local side: 0 on P1's GBA, 1 on P2's GBA; it also sets the camera mirror. Movement code does not use it. Direction semantics come from `object_getAllianceDirection(a) = 1 − 2a` applied to "Right = +1 forward" (§M6.2). Both GBAs therefore simulate identical state from raw keys, and only rendering is mirrored.
 
 UNCERTAIN: the alliance-1 player never moved in this trace, so the dx = −1 mapping for alliance 1 is derived from code only.
 
@@ -1092,7 +1092,7 @@ Branches e–i also call `sub_801031C(0x10)`, which clears the idle-window bit, 
 3. Call `sub_80EB04C` **immediately**, so phase 0 runs on the same tick as the input.
 
 The two parameters:
-- `lag`, from `sub_8010332`: 1 in battle mode 9. Otherwise 4 if navi stat 0x29 == 0, else `byte_8020FE0[stat29*11 + stat2B]`. That table (data/dat01.s:260) is 253 bytes, all 4. **Effectively 4.**
+- `lag`, from `sub_8010332`: 1 in battle mode 9. Otherwise 4 if navi stat 0x29 == 0, else `byte_8020FE0[stat29*11 + stat2B]`. That table (data/) is 253 bytes, all 4. **Effectively 4.**
 - `type`, from `sub_80103A8`: 3 if navi stat 0x31 (ProcessingBug) != 0, else 0.
 
 ##### M6.2 `sub_80EB04C` body
@@ -1126,7 +1126,7 @@ The marker is never read by the move. It is part of the persistent AttackVars st
 
 **Blocked-move consequence (derived from code, not seen in the trace):** holding a direction toward an invalid panel re-enters `setAttack4` every idle tick. That resets `CurPhase/PI` to 0 each tick, so idle stays at `[4,8,0,0]` with Timer re-armed to 10→9 and never reaches phase 4. `CurAnim` is forced to 0 every tick.
 
-##### M6.4 Target validity, `sub_800E618` (object.s:4993)
+##### M6.4 Target validity, `sub_800E618`
 
 1. If `!object_isValidPanel(x,y)` (1 ≤ x ≤ 6 and 1 ≤ y ≤ 3): invalid.
 2. `k = ((ObjectFlags1 & 0x10 /*AIRSHOE*/) || !(currentPanel.Flags & 0x10)) ? 0x10 : 0`, plus `Alliance*8`.
@@ -1139,7 +1139,7 @@ The marker is never read by the move. It is part of the persistent AttackVars st
    | 0x10 | Alliance 0, AirShoes or not standing on floor | 0x00 | 0x0B8800A0 |
    | 0x18 | Alliance 1, same | 0x20 | 0x07880080 |
 
-4. Valid iff `object_checkPanelParameters(x, y, must_set, must_clear)` (object.s:2587): `F = PanelData.Flags`, `F != 0`, `(F & must_clear) == 0`, and `(F & must_set) == must_set`.
+4. Valid iff `object_checkPanelParameters(x, y, must_set, must_clear)`: `F = PanelData.Flags`, `F != 0`, `(F & must_clear) == 0`, and `(F & must_set) == must_set`.
 
 What blocks a move, in terms of panel flags (§M7):
 
@@ -1156,7 +1156,7 @@ The occupancy bits come from occupants' `CollisionData.SelfCollisionTypeFlags & 
 
 In this match P1's `ObjectFlags1 = 0x2000030` (AIRSHOE 0x10, FLOATSHOE 0x20, AFFECTED_BY_ICE) and P2's is 0x2000000. So P1 may step onto no-floor panels.
 
-`sub_800E5AC` (object.s:4929) is the variant used for slides. It is the same except the floor requirement depends only on AIRSHOE (index 0x10 if AIRSHOE, else 0).
+`sub_800E5AC` is the variant used for slides. It is the same except the floor requirement depends only on AIRSHOE (index 0x10 if AIRSHOE, else 0).
 
 ##### M6.5 Reservation
 
@@ -1212,7 +1212,7 @@ Frames F..F+12 all show `CurPhase = 0` in the object header. Move phases live in
 
 ##### M6.7 Coordinates and collision direction
 
-- **`object_getCoordinatesForPanels(px, py)`** (object.s:4471), using s8 inputs:
+- **`object_getCoordinatesForPanels(px, py)`**, using s8 inputs:
 
   ```
   X = (px*40 << 16) − (140 << 16)
@@ -1220,7 +1220,7 @@ Frames F..F+12 all show `CurPhase = 0` in the object header. Move phases live in
   ```
 
   Check: panel (2,2) gives x = −60, y = 28; (3,2) gives −20; (5,2) gives +60. `Z` is untouched by the move.
-- **`sub_800E994(dx, dy, alliance)`** (object.s:5412), the direction code for `CollisionData.Direction`:
+- **`sub_800E994(dx, dy, alliance)`**, the direction code for `CollisionData.Direction`:
 
   | Case | Code |
   |---|---|
@@ -1821,18 +1821,18 @@ The function runs these steps in order:
 | g | `sub_801A6B4` / `sub_801A720` (21176/21244) | Bug infliction by the attack (`coll+0xA4`). 0xF4, or 0xF7 when a hex digit of HP is 4: NaviStats[0x18] += 1 (max 7). 0xF6: NaviStats[0x18] += 2 and [0x19] += 2 (max 7), then paralysis `+0x1C = 150` with `f2 \|= 8`, and unless NameID ∈ [0x173, 0x17E] also `f2 \|= 0x20` with `+0x20 = 1200`. |
 | h | `sub_80139F6` (10368) | More NaviStats edits keyed by `coll+0xA4/+0xA5` (0x18/0x19/0x54/0xFF/0xFE…). No-op when +0xA4 == 0. |
 | i | **`sub_801AEB0`** (22114) | Converts `HitModifierFinal` (hm, the OR of every attacker's `HitModifierBase`) into requests. **`hm & 1`** and not `f1 & 0x220000` (SUPERARMOR or ANGER) → `f2 \|= 4` (flinch). **`hm & 2`** → `f2 \|= 2` (mercy invincibility). **`hm & 0x3C`**: if also `hm & 0x40` → `f2 \|= 0x100` (drag), `f2 &= ~4`, `obj.Unk_0f = 1`; else if not `f1 & 0x100040` → `f2 \|= 0x10` (slide), `obj.Unk_0f = 1`. |
-| j | `sub_800EB26` (object.s:5671) | **Counter hit.** If `FlagsFromCollision & 0x40` and `StatusEffectFinal` ∉ [0x60, 0x65]: `StatusEffectFinal = 0x12` (paralysis for 150 ticks, see §H5), `f2 \|= 0x4000`, `f2 &= ~6` (no flinch, no mercy). |
+| j | `sub_800EB26` | **Counter hit.** If `FlagsFromCollision & 0x40` and `StatusEffectFinal` ∉ [0x60, 0x65]: `StatusEffectFinal = 0x12` (paralysis for 150 ticks, see §H5), `f2 \|= 0x4000`, `f2 &= ~6` (no flinch, no mercy). |
 | k | `sub_8013F1E` (11039) | Navicust "hit bug" (NaviStats[0x16]: 1 → status 0x32, 2 → 0x22, 3 → HP-bug +1). Fires once per hit sequence (latched in `ai+0x1C`) when `f2 & 0x104` and any damage was taken. It is a no-op when [0x16] == 0, as in the trace. |
 | l | `sub_801A554` (20968) | **Applies `StatusEffectFinal`** (see §H5). Skipped when NaviStats[0x29] == 7, [0x2C] ∈ {7, 0x13}, or [0x52] != 0; all three are 0 in the trace. |
 | m | `sub_801A2CC` (20615) | If `FlagsFromCollision & 0x10`: `obj.Chip = 0xFFFF`, and the player's hand cursor (`sub_8010018(alliance)`, byte 0) advances by one if the next hand entry is not 0xFFFF. In effect this is "lose the current chip". |
 | n | `sub_801A324` (20667) | Drain-heal credits. `opp.ai+0x10 += coll+0x92`. Then `k = self.ai+0x10` and `self.ai+0x10 = 0`. If `(MaxHP/10)*k != 0`: heal that much, spawn a T4 kind 0 with params 6, play sound 0x8A. |
-| o | **`object_calculateFinalDamage1`** (object.s:4692) | `s = 1` if the player stands on a holy panel (type 5), else 0. Each PanelDamage1..5 (+0x82..+0x8A) becomes `(d + (1<<s) - 1) >> s` and is written back. The sum goes through **`sub_802CE10`**, which uses the per-side record `dword_203CFB0 + 0xC*alliance`: if `rec+8 == this object`, it adds `rec+2`; otherwise it sets `rec+0 = max(rec+0, sum)`. The result is stored in **`FinalDamage` (+0x80)**. **+0x8C (PanelDamage6) is not included and not halved.** |
+| o | **`object_calculateFinalDamage1`** | `s = 1` if the player stands on a holy panel (type 5), else 0. Each PanelDamage1..5 (+0x82..+0x8A) becomes `(d + (1<<s) - 1) >> s` and is written back. The sum goes through **`sub_802CE10`**, which uses the per-side record `dword_203CFB0 + 0xC*alliance`: if `rec+8 == this object`, it adds `rec+2`; otherwise it sets `rec+0 = max(rec+0, sum)`. The result is stored in **`FinalDamage` (+0x80)**. **+0x8C (PanelDamage6) is not included and not halved.** |
 | p | `sub_801A420` (20799) | If `CounterTimer` (+0x0D) != 0, decrement it. |
 | q | `sub_80143FC` (11691) | If not paused/time stop: when `f1 & 0xC00` (FLINCHING or PARALYZED), `ai+0x4C += 1`; otherwise `ai+0x4C = 0`. |
 | r | `sub_80142DC` (11539) | Anger trigger. If battle mode != 1, NaviStats[0x29] == 0, [0x2C] == 0, not already `f1 & ANGER (0x200000)`, and (`ai+0x4C ≥ 120` or `FinalDamage ≥ 300`): `f2 \|= 0x200`. |
 | s | `sub_8010198` (2708) | If `coll+0x26 != 0 && FlagsFromCollision != 0`: `coll+0x26 = 0` (cancels the timed "UNK_4" invisibility, see §H6). |
 | t | `sub_801A648` (21106) | If not paused, `coll+0x24 != 0`, `FlagsFromCollision & 4` and not `& 0x1000`: `coll+0x24 = 0`. This lets a mercy-piercing hit end mercy early. |
-| u | `object_spawnHiteffect` (object.s:5741) | If not paused and `FlagsFromCollision & 0x20000`: sound 0x6E, **1× `GetRNG2`** via `AddRandomVarianceToTwoCoords(0xF, X, Y, Z+16<<16)`, then spawn T4 kind 4 with params 8 (`sub_80E08C4`). The RNG is never used in the trace. |
+| u | `object_spawnHiteffect` | If not paused and `FlagsFromCollision & 0x20000`: sound 0x6E, **1× `GetRNG2`** via `AddRandomVarianceToTwoCoords(0xF, X, Y, Z+16<<16)`, then spawn T4 kind 4 with params 8 (`sub_80E08C4`). The RNG is never used in the trace. |
 
 `AddRandomVarianceToTwoCoords(mask, x, y, z)` makes one `GetRNG2` call, r. It returns `x += ((r & mask) - (mask>>1)) << 16` and `z += (((r>>16) & mask) - (mask>>1)) << 16`. `y` is unchanged.
 
@@ -1848,7 +1848,7 @@ The function runs these steps in order:
    - Let `d = FinalDamage`. If `d != 0`:
      - `ai.TotalDamageTaken = min(0xFFFF, +d)` (`sub_8010548`).
      - Undershirt: if HP > 1, `f1 & 0x40000` and `HP ≤ d`, then `d = HP - 1`.
-     - `object_subtractHP(d)` (object.s:4548): `HP = max(0, HP - d)`, which also returns the new HP.
+     - `object_subtractHP(d)`: `HP = max(0, HP - d)`, which also returns the new HP.
      - Play sound 0x6D, or 0x6B when this is the local player.
      - If the new HP == 0, go to DEATH. Otherwise call `sprite_forceWhitePalette` and fall through.
    - Always (and after the fall-through): `object_subtractHP(coll+0x8C)`. If HP == 0, go to DEATH.
@@ -1876,7 +1876,7 @@ The function runs these steps in order:
     - If `(a|b) == 0` or `(a|b) & 2`, call **`object_setAttack0(3)`**. When a|b == 1 (paralyzed or frozen, and the hit lacks the mercy bit) there is no flinch.
     - Then `f2 &= ~0x4000`.
 17. `sub_801A5EE` (21060) — **mercy invincibility** (§H4.2).
-18. `sub_800E730` (object.s:5124) — **status timers** (§H5).
+18. `sub_800E730` — **status timers** (§H5).
 19. `sub_8010162` (2678): the `coll+0x26` timer.
     - If it is 0xFFFF (infinite), skip to the flag update.
     - Otherwise decrement it. If the result is < 0, clear `f1 & 4` and return. If it is exactly 0, store it and play sound 0x94.
@@ -1957,12 +1957,12 @@ Action-specific extras:
 
 ##### H4.3 Knockback: slide (push) and drag — code only, not exercised in any trace
 
-**Push vector.** `sub_800E468(1)` (object.s:4778) → `sub_800E548` (4887) uses `hm = HitModifierFinal`:
+**Push vector.** `sub_800E468(1)` → `sub_800E548` (4887) uses `hm = HitModifierFinal`:
 - `off = 5` if `hm & 0x80`, else 0.
 - `i` = index of the lowest set bit among `hm` bits 2..5 (0x04 → 0, 0x08 → 1, 0x10 → 2, 0x20 → 3), or 4 if none.
 - Read the entry `byte_800E58C[(i + off) * 3]`, which gives (dx, dy, count).
 - Final `dx *= (alliance == 0 ? +1 : -1)`, from `object_getEnemyDirection`.
-- The vector is zeroed if the first target panel fails `sub_800E5AC` (object.s:4929: a valid panel plus an alliance/AirShoe-dependent panel mask).
+- The vector is zeroed if the first target panel fails `sub_800E5AC` (: a valid panel plus an alliance/AirShoe-dependent panel mask).
 
 | hm bits | (dx, dy, count) | | hm bits | (dx, dy, count) |
 |---|---|---|---|---|
@@ -2015,7 +2015,7 @@ Damage is still applied in time stop (step 5 runs before step 10). Status timers
 #### H5. Status effects
 
 **Applying a status** (`sub_801A554`). Let `s = StatusEffectFinal` (+0x11, set by the collision engine from the attacker's +0x10, or by the counter to 0x12). If `s != 0`:
-- Look up `e = off_80209EC[(s>>4)-1][s & 0xF]` (data/dat01.s:144). Each entry is 8 bytes: `u32 f2bits, u16 duration, u8 collOffset`.
+- Look up `e = off_80209EC[(s>>4)-1][s & 0xF]` (data/). Each entry is 8 bytes: `u32 f2bits, u16 duration, u8 collOffset`.
 - Write the duration to `coll+collOffset` and set `f2 |= f2bits`.
 - If `s` ∈ [0x50, 0x55], also set `f2 &= ~6` (freeze cancels flinch and mercy).
 
@@ -2029,7 +2029,7 @@ Damage is still applied in time stop (step 5 runs before step 10). Status timers
 | 6 | Bubble | +0x2C | 0x20000 | 0x80000000 | 7 | 150, 150, 150, 4, 300, 600 |
 | — | Invulnerable timer | +0x28 | — | 0x08 | — | set by chips |
 
-**Timers** (`sub_800E730`, object.s:5124; returns if paused; `f2` is snapshotted at entry). Every timer: `t = u16 - 1` (32-bit). If `t ≤ 0`, the status ends: its f1 flag is cleared and the field is stored as 0. Otherwise it is stored and the status is active. Sequence per tick:
+**Timers** (`sub_800E730`). Every timer: `t = u16 - 1` (32-bit). If `t ≤ 0`, the status ends: its f1 flag is cleared and the field is stored as 0. Otherwise it is stored and the status is active. Sequence per tick:
 1. **Paralysis.**
    - Expiry clears 0x800 and `f2 & 8`.
    - While active:
