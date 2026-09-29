@@ -12,6 +12,7 @@ use crate::object::{ObjectRef, Objects};
 use crate::rng::Rng;
 use crate::data::BannerId;
 use crate::setup::{NaviStats, RoundSetup, effects};
+use crate::sound::{SoundCue, SoundId};
 
 /// Battle flag bits.
 pub mod battle_flags {
@@ -207,6 +208,8 @@ pub struct Battle {
     /// Per-side registry of defensive chips and their linked objects
     /// (`unk_2036720`).
     pub linked: [LinkedRecord; 2],
+    /// Sound calls made this tick (output only; see `sound`).
+    sound: Vec<SoundCue>,
 }
 
 /// The transformation sequencer's progress (`dword_20367F0`).
@@ -375,6 +378,7 @@ impl Battle {
             sides: [SideState::default(); 2],
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
+            sound: Vec::new(),
             setup,
         };
         // Init's last steps: refresh every panel, then one unpaused panel
@@ -419,8 +423,19 @@ impl Battle {
         self.player(side).and_then(|r| self.objects.get(r).actor)
     }
 
+    /// Report a sound call of the original (output only).
+    pub fn play_sound(&mut self, cue: impl Into<SoundCue>) {
+        self.sound.push(cue.into());
+    }
+
+    /// The sound calls of the last tick, in the order the game makes them.
+    pub fn sound_cues(&self) -> &[SoundCue] {
+        &self.sound
+    }
+
     /// One battle tick (one frame of the running battle).
     pub fn tick(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
+        self.sound.clear();
         match self.round.top {
             top::RUNNING => self.tick_running(input, events),
             top::END => self.tick_end(),
@@ -531,6 +546,11 @@ impl Battle {
             self.rng.next_positive();
             self.paused = true;
             self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
+            let link = self.setup.settings.effects & effects::LINK != 0;
+            let music = if link { SoundId::VIRUS_BATTLE } else { SoundId(self.setup.settings.music as u16) };
+            if music != SoundId::NO_MUSIC {
+                self.play_sound(SoundCue::Music(music));
+            }
             self.round.init = 4;
             return;
         }
@@ -652,6 +672,7 @@ impl Battle {
             }
         }
         if self.custom_ui.installed {
+            self.play_sound(SoundCue::RestoreVolume);
             for side in 0..2 {
                 if let Some(a) = self.player_actor(side) {
                     self.actors.get_mut(a).unk_0f = 1;
@@ -695,6 +716,7 @@ impl Battle {
             let hp = self.objects.get(r).hp;
             let d = v.min(hp.saturating_sub(1));
             crate::kinds::subtract_hp(self, r, d);
+            self.play_sound(SoundId(0x6B));
         }
     }
 
@@ -960,6 +982,12 @@ impl Battle {
         if self.fight.init == 0 {
             self.gauge.enabled = false;
             let win = self.fight.state == fight::WIN;
+            if win {
+                let special = self.setup.settings.effects & 2 != 0;
+                self.play_sound(SoundCue::Music(if special { SoundId::WINNER_SPECIAL } else { SoundId::WINNER }));
+            } else if self.setup.settings.effects & effects::LINK != 0 {
+                self.play_sound(SoundCue::Music(SoundId::LOSER));
+            }
             self.round.winner = if win { self.round.local_side } else { self.round.local_side ^ 1 };
             self.fight.init = 4;
             self.fight.timer = 0x66;
@@ -988,6 +1016,7 @@ impl Battle {
             return;
         }
         if !self.fade.active() {
+            self.play_sound(SoundCue::StopMusic);
             self.objects.free_all();
             self.round.top = top::END;
             self.round.mode = 0;
@@ -1035,6 +1064,7 @@ impl Battle {
             self.gauge.value = CustomGauge::FULL;
             if !self.late_turns() {
                 self.set_flags(battle_flags::GAUGE_FULL);
+                self.play_sound(SoundId(0x8F));
             }
         }
     }
@@ -1078,8 +1108,8 @@ impl Battle {
         }
     }
 
-    /// The low-HP music switch (a sound effect, but it keeps a latch in the
-    /// round state).
+    /// `sub_8009158`: the low-HP music switch (sound only, but it keeps a
+    /// latch in the round state).
     fn low_hp_music(&mut self) {
         if self.setup.settings.effects & effects::LINK == 0 {
             return;
@@ -1089,8 +1119,10 @@ impl Battle {
         let low = o.hp <= o.max_hp / 4;
         if low && self.round.low_hp_music == 0 {
             self.round.low_hp_music = 1;
+            self.play_sound(SoundCue::Pinch(true));
         } else if !low && self.round.low_hp_music != 0 {
             self.round.low_hp_music = 0;
+            self.play_sound(SoundCue::Pinch(false));
         }
     }
 }

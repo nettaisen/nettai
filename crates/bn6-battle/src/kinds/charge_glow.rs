@@ -5,6 +5,7 @@
 use crate::battle::Battle;
 use crate::data::SpriteId;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::sound::SoundId;
 
 #[derive(Clone, Debug, Default)]
 pub struct Vars {
@@ -89,11 +90,26 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     if level == 0 {
         set_visible(b, r, false);
     }
-    // sub_80E0F5E: charge sounds.
+    charge_sound(b, r, alliance, source);
     let (dx, dz) = crate::kinds::player::attach_point(b, owner, 0);
     let p = b.objects.get(owner).pos;
     b.objects.get_mut(r).pos = Vec3 { x: p.x.wrapping_add(dx << 16), y: p.y, z: p.z.wrapping_add(dz << 16) };
     crate::kinds::player::update_sprite(b, r);
+}
+
+/// `sub_80E0F5E`: the charge sounds, as the charge starts and as it
+/// completes; only the local side hears an A-button charge.
+fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8) {
+    if source != 2 && b.is_remote(alliance) {
+        return;
+    }
+    let v = vars(b, r);
+    let id = match (v.level, v.previous_level) {
+        (1, 0) => SoundId::BUSTER_CHARGE,
+        (2, 1) => SoundId::BUSTER_CHARGED,
+        _ => return,
+    };
+    b.play_sound(id);
 }
 
 fn set_visible(b: &mut Battle, r: ObjectRef, on: bool) {

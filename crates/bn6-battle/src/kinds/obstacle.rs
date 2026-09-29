@@ -274,7 +274,10 @@ pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
 pub fn react<T: Obstacle>(b: &mut Battle, r: ObjectRef) {
     let c = collision(b, r);
     let damage = b.collision.get(c).acc.final_damage;
-    // (Damage also flashes the obstacle white and plays a sound.)
+    // (Damage also flashes the obstacle white.)
+    if damage != 0 {
+        b.play_sound(crate::sound::SoundId(0x85));
+    }
     let killed = damage != 0 && {
         crate::kinds::subtract_hp(b, r, damage);
         b.objects.get(r).hp == 0
