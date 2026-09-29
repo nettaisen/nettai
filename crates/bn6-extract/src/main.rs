@@ -1,6 +1,6 @@
 //! Extract game data from the original ROM into Rust source for bn6-battle.
 //!
-//! Usage: bn6-extract <exe6f_rom_f_e.srl> [out-dir]
+//! Usage: bn6-extract <rom> [out-dir], where <rom> is the US Falzar ROM
 //! (out-dir defaults to crates/bn6-battle/src/data)
 
 use std::fmt::Write as _;
@@ -652,7 +652,7 @@ fn obstacles(rom: &Rom) -> String {
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let rom = Rom(std::fs::read(&args[0]).expect("reading ROM"));
-    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected US Falzar (exe6f_rom_f_e.srl)");
+    assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected the US Falzar ROM (MEGAMAN6_FXXBR6E)");
     let out_dir = args
         .get(1)
         .map(PathBuf::from)
