@@ -1327,8 +1327,8 @@ F1 &= ~0x202
 - FLASHING lasts **119 ticks** **[verified-soundmod]**. A new flash request while already flashing is dropped, not extended.
 - While `F1 & 0x202`, the kernel rejects every hit whose Self lacks 0x4 (§3.8 step 3). So there is no damage, status, counter or modifier from multi-hits during flash; only the raw channel still accumulates.
 - A piercing hit (Self & 4) lands. `sub_801A648` then zeroes `cd+0x24` (unless FFC & 0x1000), so the same tick's `sub_801A5EE` clears 0x202, or restarts a fresh 120 if that hit requests flash. **[verified-soundmod]**
-- F1 bit 0x10 timer (`cd+0x26`, `sub_8010162`):
-  - If `+0x26 != 0xFFFF`: decrement; below 0, clear bit 0x10; at 0, sound 0x94.
+- F1 bit 0x4 timer (`cd+0x26`, `sub_8010162`; the engine's `SEMI_INTANGIBLE`):
+  - If `+0x26 != 0xFFFF`: decrement; below 0, clear bit 0x4; at 0, sound 0x94.
   - The bit is then set unless USING_ACTION.
   - Any FFC hit zeroes +0x26 (`sub_8010198`).
 - **SuperArmor** only suppresses the flinch request. **Undershirt**: §4.5. **Guard**: §3.8 step 4.

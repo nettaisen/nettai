@@ -43,7 +43,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     o.flip = flip;
     o.flags |= flags::RUN_WHILE_PAUSED;
     let actor = b.objects.get(owner).actor.expect("lock-on marker owner has actor data");
-    b.actors.get_mut(actor).unk_40 = Some(r);
+    b.actors.get_mut(actor).lockon_marker = Some(r);
     Some(r)
 }
 
@@ -81,7 +81,7 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 /// The owner's actor-data link to this marker.
 fn link(b: &mut Battle, r: ObjectRef) -> &mut Option<ObjectRef> {
     let actor = b.objects.get(owner(b, r)).actor.expect("lock-on marker owner has actor data");
-    &mut b.actors.get_mut(actor).unk_40
+    &mut b.actors.get_mut(actor).lockon_marker
 }
 
 /// `sub_80E1566`.

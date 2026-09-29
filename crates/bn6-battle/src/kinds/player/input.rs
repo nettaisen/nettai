@@ -173,15 +173,14 @@ fn decode_holds(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// B then Back within 8 ticks (`AIData.Unk_13` window), for navis with a
-/// B+Back special.
+/// B then Back within 8 ticks, for navis with a B+Back special.
 fn decode_back_special(b: &mut Battle, r: ObjectRef) {
     let a = ai(b, r);
-    if a.back_special == 0xFF || a.unk_15 != 0 {
+    if a.back_special == 0xFF || a.back_special_cooldown != 0 {
         return;
     }
     let (pressed, held) = (a.pad.pressed, a.pad.held);
-    let mut window = a.unk_13;
+    let mut window = a.back_special_window;
     if window == 0 {
         if pressed & keys::B == 0 {
             return;
@@ -192,9 +191,9 @@ fn decode_back_special(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     if pressed & back != 0 && held & keys::B != 0 {
         a.requests |= request::BACK_SPECIAL;
-        a.unk_13 = 0;
+        a.back_special_window = 0;
     } else {
-        a.unk_13 = window - 1;
+        a.back_special_window = window - 1;
     }
 }
 

@@ -24,7 +24,6 @@ pub mod battle_flags {
     pub const TIME_STOP: u16 = 0x04;
     /// A player asked to open the custom screen.
     pub const CUSTOM_REQUESTED: u16 = 0x10;
-    pub const UNK_20: u16 = 0x20;
     /// The alternate per-player gauge / link navi mode (not PvP).
     pub const MODE_40: u16 = 0x40;
 }
@@ -123,7 +122,6 @@ pub struct RoundState {
 #[derive(Clone, Debug, Default)]
 pub struct FightMachine {
     pub state: u8,
-    pub unk_1: u8,
     pub sub: u8,
     pub init: u8,
     /// 0 none, 1 local win, 2 local loss, 3 draw, 6 open the custom screen.
@@ -216,42 +214,31 @@ pub struct Battle {
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
     /// Per-side registry of defensive chips and their linked objects
-    /// (`unk_2036720`).
+    /// (0x10 bytes per side at 0x02036720).
     pub linked: [LinkedRecord; 2],
 }
 
 /// A side's extra battle state (0x1D0 bytes at `sub_802E070(side)`); only
-/// the fields the engine reads are modeled. All zero outside the battle
-/// flag 0x40 mode.
+/// the fields the engine reads are modeled (the rest are listed in
+/// docs/engine/field-names.md). All zero outside the battle flag 0x40
+/// mode.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SideState {
     pub active: u8,
-    pub unk_02: u8,
-    pub unk_03: u8,
-    pub unk_0b: u8,
-    pub unk_0e: u8,
-    pub unk_10: u8,
     pub panel_x: u8,
-    pub unk_18: [u32; 3],
     /// A per-side gauge (a SELECT special needs 0x1500; counters add it).
     pub gauge: u16,
-    pub unk_2a: u16,
-    pub unk_2e: u16,
-    pub unk_30: u16,
-    pub unk_3a: u16,
-    pub unk_3c: u16,
     pub select_special: u8,
     pub cross_special: u8,
 }
 
-/// A side's defensive-chip record: the chip, its state, and the object
-/// that implements it.
+/// A side's defensive-chip record: the chip and the object that
+/// implements it. (The game's record also keeps two values from the
+/// registering chip and its owner; nothing ported registers one, see
+/// docs/engine/field-names.md.)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LinkedRecord {
     pub chip: u16,
-    pub unk_02: u16,
-    pub unk_04: u32,
-    pub unk_08: u32,
     pub object: Option<ObjectRef>,
 }
 
@@ -676,7 +663,7 @@ impl Battle {
         if self.custom_ui.installed {
             for side in 0..2 {
                 if let Some(a) = self.player_actor(side) {
-                    self.actors.get_mut(a).unk_0f = 1;
+                    self.actors.get_mut(a).beast_out_check_delay = 1;
                 }
             }
             self.custom_ui = CustomUi::default();

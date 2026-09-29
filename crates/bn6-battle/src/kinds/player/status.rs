@@ -11,7 +11,7 @@ use super::{
 use crate::actor::{ActorType, request, status as ai_status};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
-use crate::object::{ObjectRef, Pool, Vec3, flags};
+use crate::object::{DragStep, ObjectRef, Pool, Vec3, flags};
 use crate::setup::Form;
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
@@ -79,7 +79,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         b.objects.get_mut(r).action = 5;
         return Flow::Tail;
     }
-    b.objects.get_mut(r).unk_0d = 0;
+    b.objects.get_mut(r).drag_step = DragStep::Start;
     if flag2(b, r) & 0x10 != 0 {
         clear_flag2(b, r, 0x10);
         slide(b, r);
@@ -93,12 +93,11 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     }
     tick_flash(b, r);
     tick_statuses(b, r);
-    tick_flag4_timer(b, r);
+    tick_semi_intangible(b, r);
     tick_anger(b, r);
     drain_hp(b, r);
-    // sub_802E1D8
-    let side = b.objects.get(r).alliance as usize;
-    b.sides[side].unk_30 = b.sides[side].unk_30.saturating_sub(1);
+    // sub_802E1D8 counts down a battle flag 0x40 mode timer (`sub_802E070`
+    // +0x30) that nothing ported reads.
     Flow::Tail
 }
 
@@ -243,7 +242,7 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     if coll(b, r).acc.counter & 0x8000 != 0 && matches!(opp_form, Form::NONE | Form::GREGAR_BEAST | Form::FALZAR_BEAST)
     {
         let a = ai(b, r);
-        if a.unk_32 == 0 && a.unk_36 == 0 {
+        if !a.beast_out_spent && !a.beast_over_exhausted {
             set_mood(b, opp, 0xFF);
         }
     }
@@ -307,7 +306,7 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.action = 5;
     o.phase = 0;
-    o.unk_0d = 0;
+    o.drag_step = DragStep::Start;
 }
 
 /// `sub_80166B6`: the ice / road / push slide machine.
@@ -536,23 +535,23 @@ fn tick_minor_statuses(b: &mut Battle, r: ObjectRef, f2: u32) {
     }
 }
 
-/// `sub_8010162`: the timed flag-4 state (0xFFFF = indefinite); the flag
-/// is off while an action runs.
-fn tick_flag4_timer(b: &mut Battle, r: ObjectRef) {
-    let t = coll(b, r).status_timers[timer::UNK_26];
+/// `sub_8010162`: the timed semi-intangible state (0xFFFF = indefinite);
+/// the flag is off while an action runs.
+fn tick_semi_intangible(b: &mut Battle, r: ObjectRef) {
+    let t = coll(b, r).status_timers[timer::SEMI_INTANGIBLE];
     if t != 0xFFFF {
         let t = t as i32 - 1;
         if t < 0 {
-            clear_flag1(b, r, f1::UNK_4);
+            clear_flag1(b, r, f1::SEMI_INTANGIBLE);
             return;
         }
-        coll_mut(b, r).status_timers[timer::UNK_26] = t as u16;
+        coll_mut(b, r).status_timers[timer::SEMI_INTANGIBLE] = t as u16;
         // At 0: sound 0x94.
     }
     if flag1(b, r) & f1::USING_ACTION != 0 {
-        clear_flag1(b, r, f1::UNK_4);
+        clear_flag1(b, r, f1::SEMI_INTANGIBLE);
     } else {
-        set_flag1(b, r, f1::UNK_4);
+        set_flag1(b, r, f1::SEMI_INTANGIBLE);
     }
 }
 
@@ -596,12 +595,13 @@ pub(super) fn end_anger(b: &mut Battle, r: ObjectRef) {
     clear_flag2(b, r, 0x200);
     let a = ai_mut(b, r);
     a.anger = 0;
-    a.unk_4c = 0;
+    a.stun_ticks = 0;
 }
 
-/// `sub_8014498`: while `Unk_36` is set, lose 1 HP per tick (never to 0).
+/// `sub_8014498`: exhausted after Beast Over, lose 1 HP per tick (never
+/// to 0).
 fn drain_hp(b: &mut Battle, r: ObjectRef) {
-    if b.is_battle_over() || ai(b, r).unk_36 == 0 {
+    if b.is_battle_over() || !ai(b, r).beast_over_exhausted {
         return;
     }
     let o = b.objects.get_mut(r);
@@ -683,23 +683,23 @@ fn time_stop(b: &mut Battle, r: ObjectRef) {
     }
     let o = b.objects.get_mut(r);
     if o.prevent_anim == 0 {
-        o.unk_30 = (o.pos.x >> 16) as u16;
-        o.unk_32 = (o.pos.z >> 16) as u16;
-        o.unk_19 = 0;
+        o.shake_origin_x = (o.pos.x >> 16) as i16;
+        o.shake_origin_z = (o.pos.z >> 16) as i16;
+        o.shake_timer = 0;
         o.prevent_anim = 4;
     }
     if coll(b, r).acc.final_damage != 0 {
-        b.objects.get_mut(r).unk_19 = 30;
+        b.objects.get_mut(r).shake_timer = 30;
     }
     let o = b.objects.get(r);
-    if o.unk_19 != 0 {
-        let base = Vec3 { x: (o.unk_30 as i32) << 16, y: o.pos.y, z: (o.unk_32 as i32) << 16 };
-        b.objects.get_mut(r).unk_19 -= 1;
+    if o.shake_timer != 0 {
+        let base = Vec3 { x: (o.shake_origin_x as i32) << 16, y: o.pos.y, z: (o.shake_origin_z as i32) << 16 };
+        b.objects.get_mut(r).shake_timer -= 1;
         let pos = crate::kinds::spark::jitter(b, 3, base);
         b.objects.get_mut(r).pos = pos;
     } else {
         let o = b.objects.get_mut(r);
-        o.pos.x = (o.pos.x & 0xFFFF) | ((o.unk_30 as i32) << 16);
-        o.pos.z = (o.pos.z & 0xFFFF) | ((o.unk_32 as i32) << 16);
+        o.pos.x = (o.pos.x & 0xFFFF) | ((o.shake_origin_x as i32) << 16);
+        o.pos.z = (o.pos.z & 0xFFFF) | ((o.shake_origin_z as i32) << 16);
     }
 }
