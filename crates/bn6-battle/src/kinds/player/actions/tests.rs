@@ -30,7 +30,16 @@ fn fight() -> (Battle, ObjectRef, ObjectRef) {
     let settings = BattleSettings::netbattle_from_bytes(&[
         0xE3, 0x64, 0x15, 0x00, 0x0B, 0x00, 0x38, 0x00, 0x8C, 0x0E, 0x00, 0x00, 0x92, 0x19, 0x0B, 0x08,
     ]);
-    let setup = RoundSetup { settings, navi_stats: [megaman(); 2], rng: 1, local_side: 0, score: SetScore::default() };
+    let setup = RoundSetup {
+        settings,
+        navi_stats: [megaman(); 2],
+        rng: 1,
+        local_side: 0,
+        score: SetScore::default(),
+        later_stages: Default::default(),
+        low_hp_music_latched: false,
+        sp_times: Default::default(),
+    };
     let mut b = Battle::new(setup);
     b.spawn_actors();
     b.run_objects();

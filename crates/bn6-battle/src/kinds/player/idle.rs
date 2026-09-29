@@ -104,10 +104,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     }
     let dir = held_direction(b, r);
     if dir != 0 {
-        let lag = move_lag(b, r);
-        // sub_80103A8
-        let kind = if stats(b, r).bugs.processing != 0 { MoveKind::Astray } else { MoveKind::Input };
-        return movement::start(b, r, dir, lag, kind);
+        return start_move(b, r, dir);
     }
     if ai(b, r).requests & (request::TURN_L | request::TURN_R) != 0 {
         return set_attack(b, r, 0x3B, 4);
@@ -180,6 +177,9 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
         1 => charged_shot_setup(b, r),
         2 => blank_shot_setup(b, r),
         0x1E => super::actions::beast_claw::setup(b, r),
+        0x28 => super::actions::dust_charge::setup(b, r),
+        0x2A => super::actions::absorb::setup(b, r),
+        0x2B => throw_absorbed_setup(b, r),
         _ => panic!("weapon routine {routine:#x} (off_80117D4) is not implemented yet"),
     }
 }
@@ -210,6 +210,15 @@ fn buster_setup(b: &mut Battle, r: ObjectRef) -> u8 {
     a.params[0] = spread;
     a.variant = 0;
     0x11
+}
+
+/// `sub_8011F8C`: a buster that throws the last obstacle the navi
+/// absorbed (action 0x11, variant 2), or fires as usual when it has none.
+fn throw_absorbed_setup(b: &mut Battle, r: ObjectRef) -> u8 {
+    if ai(b, r).absorbed.is_empty() {
+        return buster_setup(b, r);
+    }
+    panic!("throwing an absorbed obstacle (sub_8011F8C) is not implemented yet");
 }
 
 /// `sub_8013D5E`: pick from 16 slots, the first stat 0x14 of them 1
@@ -336,6 +345,14 @@ pub(super) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
         return 0;
     };
     if flag1(b, r) & f1::CONFUSED != 0 { [0, 2, 1, 4, 3][dir as usize] } else { dir }
+}
+
+/// `sub_80116AE(dir, sub_8010332(), sub_80103A8())`: a step toward `dir`
+/// from input (astray with the NaviCust processing bug).
+pub(super) fn start_move(b: &mut Battle, r: ObjectRef, dir: u8) {
+    let lag = move_lag(b, r);
+    let kind = if stats(b, r).bugs.processing != 0 { MoveKind::Astray } else { MoveKind::Input };
+    movement::start(b, r, dir, lag, kind);
 }
 
 /// `sub_8010332`: ticks of lag at the end of a move (4 for MegaMan).
