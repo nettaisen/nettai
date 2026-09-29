@@ -9,8 +9,10 @@ Evidence is cited by routine name (`sub_801A36A`) and struct offset (`AIData+0x3
 the disassembly found no symbolic reference and no raw access through a register holding the struct pointer. That
 scan is heuristic, not a proof.
 
-Behaviour is unchanged: the trace replays match the same number of frames as before (machgun 551/552, soundmod
-2933/3462/1947).
+Behaviour is unchanged: the golden-trace replays match the same number of frames before and after the pass
+(machgun 1074/552, soundmod 2933/3462/1947, with main's movement and chip-use work merged in).
+
+For fields likely to come back with a later port, the evidence column suggests a name ("re-add as ...").
 
 ## Fixing up code that uses the old names
 
@@ -29,7 +31,10 @@ Most renames are mechanical. These changed type, so their uses change too:
 | `obj.unk_30`, `obj.unk_32` (u16) | `obj.shake_origin_x`, `obj.shake_origin_z` (i16; `(pos >> 16) as i16` to store) |
 
 Deleted fields have no replacement. If a branch reads one, that code is new: give the field a name for its role
-(see the evidence below), then add it back.
+(see the evidence below; several suggest one), then add it back. A Beast Out port will likely want
+`AttackVars::unk_1e` back, as `beast_step`.
+
+`AttackVars::move_arg` (not an `unk_*` name) was also deleted: after the merge nothing writes or reads it.
 
 ## ActorData (`actor.rs`; the game's AIData, 0x100 bytes per slot)
 
@@ -39,25 +44,25 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 |---|---|---|---|
 | `unk_03` | deleted | u8 | AIData+0x03: byte 2 of the actor's enemy record (`enemy_getStruct1`), copied at spawn (`sub_800753C`); 1 for player navis. Read by `sub_800F334` and `sub_81095D0` (virus code). The port wrote it at spawn but never read it. |
 | `unk_09` | `hp_drain_counter` | u8 | AIData+0x09: ticks toward the next HP lost to the fight-time HP bug. Players: `sub_8010230` (level from NaviStats+0x18). Actors without navi stats: `sub_801026A` (level from AIData+0x12). |
-| `unk_0b` | deleted | u8 | AIData+0x0B: the emotion last picked by the NaviCust emotion-swing bug (`sub_8013DA0`, unported). |
-| `unk_0c` | deleted | u8 | AIData+0x0C: written by virus/navi init `sub_8016F56` (the opponent's max base HP / 100, clamped to 1..10). Read by `sub_800FE12` and `sub_800FE36` as a damage multiplier for actor version 4. |
+| `unk_0b` | deleted | u8 | AIData+0x0B: the emotion last picked by the NaviCust emotion-swing bug (`sub_8013DA0`, unported). Re-add as `swing_emotion`. |
+| `unk_0c` | deleted | u8 | AIData+0x0C: written by virus/navi init `sub_8016F56` (the opponent's max base HP / 100, clamped to 1..10). Read by `sub_800FE12` and `sub_800FE36`, which multiply a table value by it for actors of version 4. |
 | `unk_0d` | deleted | u8 | AIData+0x0D: count of absorbed obstacles (`sub_80E991C`, `sub_8011F8C`, `sub_8011FCE`). Already modeled as `absorbed.len()`. |
 | `unk_0e` | deleted | u8 | AIData+0x0E: set to 0xFF at spawn (`sub_800753C`) and at deletion (`sub_8016C4E`). Its only reader, `sub_800A86E`, has no effect. The port wrote it at spawn and in `destroy`; both writes are gone. |
 | `unk_0f` | `beast_out_check_delay` | u8 | AIData+0x0F. The turn-start Beast Out check (`sub_80159C6`) runs only while this is 0, then sets it to 2. Closing the custom screen sets it to 1 (`sub_8009338`). A mid-battle custom-screen request counts it down (`sub_8015A16`: MegaMan only, not below 0, 0xFF untouched). **Intent uncertain:** in netbattles the close always leaves 1 before the next check. |
 | `unk_10` | `drain_heal_credits` | u8 | AIData+0x10: drain hits this navi landed on the opponent (`sub_801A308`/`sub_801A324`: the opponent's CollisionData+0x92 is added here). On its own next hit collection it heals MaxHP/10 per credit and clears the count (`sub_801A324`). |
-| `unk_12` | deleted | u8 | AIData+0x12: HP-bug level of actors without navi stats. Read by `sub_801026A`; raised by bug code 0x18 (`sub_8013B20`) and bug code 0xF6 (`sub_801A75A`). |
+| `unk_12` | deleted | u8 | AIData+0x12: HP-bug level of actors without navi stats. Read by `sub_801026A`; raised by bug code 0x18 (`sub_8013B20`) and bug code 0xF6 (`sub_801A75A`). Re-add as `hp_bug_level`. |
 | `unk_13` | `back_special_window` | u8 | AIData+0x13: ticks left to press Back after B for the B+Back special. `sub_8012FC8` sets 8 on a B press and counts it down. Also read by `sub_8112B06`. |
 | `unk_14` | deleted | u8 | AIData+0x14: padding in the game's struct. No access found. |
 | `unk_15` | `back_special_cooldown` | u8 | AIData+0x15: ticks before B+Back can be input again. Set from AIAttackVars+0x05 (the lockout) when a kind-3 action ends (`sub_801171C`). Kind 3 is `object_setAttack3`, which only the B+Back request uses (`sub_80F0354`). Counted down by `sub_80107D4`; `sub_8012FC8` skips B+Back while it is nonzero. |
 | `unk_16` | deleted | u8 | AIData+0x16 (`Version_16`): the actor record's version byte, copied at spawn (`sub_800753C`). Read by about 80 virus/navi AI routines. The port wrote it at spawn but never read it. `NaviRecord::version` still carries the value. |
 | `unk_17` | deleted | u8 | AIData+0x17 (`Version_17`): the same copy. Read and written by `sub_81095D0` only. |
-| `unk_18` | deleted | u8 | AIData+0x18: counted down by `sub_802DD62` (Cross code). |
-| `unk_1c` | `hit_bug_latched` | bool | AIData+0x1C: the NaviCust on-hit bug (NaviStats+0x16) already fired during this hit sequence (`sub_8013F1E`). It is cleared whenever `prevent_anim` is 0. The game stores 0/1. |
+| `unk_18` | deleted | u8 | AIData+0x18: counted down by `sub_802DD62` (Cross code); no other access found. |
+| `unk_1c` | `hit_bug_latched` | bool | AIData+0x1C: the NaviCust on-hit bug (NaviStats+0x16) already fired during this hit sequence. `sub_8013F1E` clears it when it runs with `prevent_anim` 0. The game stores 0/1. |
 | `unk_1f` | deleted | u8 | AIData+0x1F: no reader found. |
-| `unk_32` | `beast_out_spent` | bool | AIData+0x32 (the game stores 0xFFFF or 0). Set by `sub_801443C`, which is called: at init with a zero Beast Out counter (`sub_8013892`); by the turn-start check (`sub_80159C6`); when a Beast Out (not Over) reverts (`sub_80158CC`); by the emotion-swing bug (`sub_8013DA0`); and by `sub_80E4954`. Cleared by `sub_8014446`. Effects: emotion 1 (`sub_8015B64`), mood changes blocked (`sub_8015BEC`), anger blocked (`sub_80143CE`), counter-hit Full Synchro blocked (`sub_801A200`). |
+| `unk_32` | `beast_out_spent` | bool | AIData+0x32 (the game stores 0xFFFF or 0). Set by `sub_801443C`, which is called: at init with a zero Beast Out counter (`sub_8013892`); by the turn-start check (`sub_80159C6`); when a Beast Out (not Over) reverts (`sub_80158CC`); by the emotion-swing bug (`sub_8013DA0`); and by `sub_80E4954` when the counter is 0. Cleared by `sub_8014446` (from the emotion-swing bug, and from `sub_80E4954` when the counter is not 0). Effects: emotion 1 (`sub_8015B64`), mood changes blocked (`sub_8015BEC`), anger blocked (`sub_80143CE`), counter-hit Full Synchro blocked (`sub_801A200`). |
 | `unk_36` | `beast_over_exhausted` | bool | AIData+0x36: set when a Beast Over form reverts (`sub_80158CC` → `sub_8014466`, which also sets mood 0). The game stores 0x3C0, but nothing counts it down, so it is a flag. Effects: emotion 5 (`sub_8015B64`), mood changes and anger blocked, and 1 HP lost per tick, never the last one (`sub_8014498`). |
-| `unk_38` | `road_cooldown` | u16 | AIData+0x38: ticks before a road panel can start another slide. Set to 5 after a road slide (`sub_80166D0`, `sub_8016730`, `sub_80F650A`). Counted down, and tested, by `sub_801A36A` and `sub_801A400`. |
-| `unk_3a` | deleted | u16 | AIData+0x3A: the emotion-swing bug's 60-tick counter (`sub_8013DA0`). |
+| `unk_38` | `road_cooldown` | u16 | AIData+0x38: ticks before a road panel can start another slide. Set to 5 after a road slide (`sub_80166D0`, `sub_8016730`) and to 1 by `sub_80F650A`. Counted down and tested by `sub_801A36A`; tested by `sub_801A400`. |
+| `unk_3a` | deleted | u16 | AIData+0x3A: the emotion-swing bug's 60-tick counter (`sub_8013DA0`). Re-add as `swing_timer`. |
 | `unk_3c` | `bubble_base_z` | i16 (was u16) | AIData+0x3C: the height (Z16, whole pixels) a bubble bobs around and restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses record it every tick when not bubbled (`sub_8108F74`); nothing sets it for players. |
 | `unk_3e` | deleted | u16 | AIData+0x3E: no reader found. |
 | `unk_40` | `lockon_marker` | `Option<ObjectRef>` | AIData+0x40: the Beast Out lock-on marker (effect #0xF, spawned by `sub_80E1620`). `sub_80E164A` reads its panel; `sub_80E1654`/`sub_80E1662` freeze and unfreeze it; `sub_801562C` clears the pointer. |
@@ -65,28 +70,29 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 | `unk_50` | `reset_linked_object` | `Option<ObjectRef>` (was u32) | AIData+0x50: an object tied to the navi. The full status reset ends it (`sub_80144C0` → `sub_801390C` → `sub_80E5410`: state 8, first extra var cleared) and clears the pointer. **Uncertain:** no routine that stores an object here was found. |
 | `unk_54` | deleted | u32 | AIData+0x54: read by `sub_801B9BC`. |
 | `unk_5c` | `full_synchro_aura` | `Option<ObjectRef>` (was u32) | AIData+0x5C: the Full Synchro aura (actor #0x5E). Spawned while the emotion is 2 and no aura exists (`sub_80139C4` → `sub_80C4C12`). Form changes end it through `sub_80C4C3A` (`sub_8014B18`, `sub_8014D08`, `sub_8014F40`, `sub_801516C`, `sub_80153EC`). Visibility follows the navi (`sub_80E1352`, `sub_80E13DC`). Cleared at deletion (`sub_801746E`) and by `sub_802D950`. |
-| `unk_60` | deleted | u32 | AIData+0x60: the barrier visual object. Cleared with the barrier by `sub_801A7F4`; read by the barrier code (`sub_80DE088`, `sub_80E3AFC`, `sub_810AA90`) and by visibility helpers (`sub_80E1352`, `sub_80E13DC`, `sub_80E146C`, `sub_80E14AC`). The port cleared it at deletion but never read it. |
+| `unk_60` | deleted | u32 | AIData+0x60: the barrier visual object. Cleared with the barrier by `sub_801A7F4`; read by the barrier code (`sub_80DE088`, `sub_80E3AFC`, `sub_810AA90`) and by visibility helpers (`sub_80E1352`, `sub_80E13DC`, `sub_80E146C`, `sub_80E14AC`). The port cleared it at deletion but never read it. Re-add as `barrier_visual: Option<ObjectRef>`. |
 | `unk_64` | deleted | u32 | AIData+0x64: no reader found. |
 | `unk_6c` | deleted | u32 | AIData+0x6C..+0x6F: the first four absorbed-obstacle entries (`sub_80E991C`). Already modeled by `absorbed`. |
 | `unk_70` | deleted | u32 | AIData+0x70..+0x73: the last four absorbed-obstacle entries. Already modeled by `absorbed`. |
 | `unk_74` | deleted | u32 | AIData+0x74: an object handed to `sub_80E1A86` by the virus/navi deletion routines (`sub_8016F1A`, `sub_8017122`, `sub_80171D8`); cleared by `sub_801664E`. Also read by `sub_80BC36E`, `sub_80BE6BC`, `sub_80C0072`, `sub_80C10AC`, `sub_80C13E4`. |
-| `unk_78` | deleted | u32 | AIData+0x78: the actor's target, the opposing player navi (`sub_800F318` from virus/navi init `sub_8016F56`). Read by `sub_800F2F0`, `sub_800D4AC` and navi AI (`sub_8101AD4` ...). |
+| `unk_78` | deleted | u32 | AIData+0x78: the actor's target, the opposing player navi, stored by `sub_800F318` from virus/navi init `sub_8016F56`. Read by `sub_800F2F0`, `sub_800D4AC` and navi AI (`sub_8101AD4` ...). Re-add as `target: Option<ObjectRef>`. |
 
 ## AttackVars (`actor.rs`; AIData+0xA0, the game's AIAttackVars)
 
 | Old | New | Type | Meaning and evidence |
 |---|---|---|---|
-| `unk_16` | deleted | u8 | AIAttackVars+0x16: action scratch used by about 80 navi/virus AI and chip routines (e.g. `sub_80EB088`, `sub_80ECF8E`, `sub_80F162C`). |
-| `unk_17` | deleted | u8 | AIAttackVars+0x17: the same kind of scratch (e.g. `sub_80EB088`, `sub_80ECF48`, `sub_80F3180`). |
-| `unk_18` | `move_lag` | u16 | AIAttackVars+0x18: a move's end lag in ticks. Set when a move starts (`sub_80116AE`, `sub_80116D8`). The move action (`sub_80EB194`) copies it into its timer (+0x10). The port writes it in `start_move`; the move action is not ported yet. It is kept, like `move_arg`, because it carries a computed value (`move_lag`, `sub_8010332`) to the next action. |
+| `unk_16` | deleted | u8 | AIAttackVars+0x16: for the player's step (`sub_80EB088`), the destination panel's x (the absolute step's target on entry, the chosen target after). The ported step keeps it as `movement::Vars::target`. Navi/virus AI and other chip routines use the byte as their own scratch (about 80 routines, e.g. `sub_80ECF8E`, `sub_80F162C`). |
+| `unk_17` | deleted | u8 | AIAttackVars+0x17: the step's destination y, as above. |
+| `unk_18` | deleted | u16 | AIAttackVars+0x18: a step's end lag in ticks, set when a step starts (`sub_80116AE`, `sub_80116D8`); the step copies it into its timer (+0x10) on arrival (`sub_80EB194`). The ported step keeps it as `movement::Vars::end_lag`. (Before the merge this pass had renamed it `move_lag`.) Navi AI uses the halfword too (about 120 routines). |
 | `unk_1a` | deleted | u8 | AIAttackVars+0x1A: navi AI scratch. Written by about 76 AI routines; read by `sub_80F59E8`, `sub_8101E24`...`sub_8101EE2`, `sub_810A080`, `sub_811239A`. |
-| `unk_1e` | deleted | u16 | AIAttackVars+0x1E: cleared by `sub_801011A` (`reset_attack_links`); no reader found. The port's clear is gone. |
+| `unk_1e` | deleted | u16 | AIAttackVars+0x1E: the Beast Out attack wrapper's step. `sub_80EAD9C` dispatches on the byte at +0x1E; `sub_801011A` (`reset_attack_links`, from every `set_attack`) clears the halfword. The wrapper is not ported, so the port's clear is gone. Re-add as `beast_step: u8` (plus the byte at +0x1F if the wrapper needs it). |
+| `move_arg` | deleted | u32 | AIAttackVars+0x2C: the absolute step's panel-trail argument (`sub_80116AE`/`sub_80116D8` store 0). After the merge nothing writes or reads it. |
 
 ## Object (`object/mod.rs`; the game's BattleObject)
 
 | Old | New | Type | Meaning and evidence |
 |---|---|---|---|
-| `unk_0c` | deleted | u8 | BattleObject+0x0C: per-kind scratch. E.g. the Full Synchro aura's spawner sets it to 1 (`sub_80C4C12`). Used by many attack and effect kinds (`sub_8017E44`, `sub_80D65FC`, `sub_80BD084`, `sub_80C0C48`...). No ported kind uses it. |
+| `unk_0c` | deleted | u8 | BattleObject+0x0C: per-kind scratch. For sprite attachments (actor #5) it is a signed pixel lift subtracted from Y and Z; the ported attachment keeps it as `attachment::Vars::lift`. The Full Synchro aura's spawner sets it to 1 (`sub_80C4C12`). Many attack and effect kinds use it their own way (`sub_8017E44`, `sub_80D65FC`, `sub_80BD084`, `sub_80C0C48`...). |
 | `unk_0d` | `drag_step` | `DragStep` (was u8) | BattleObject+0x0D: the drag reaction's step: 0 start (`sub_80178D4`), 4 slide (`sub_8017992`), 8 recover (`sub_8017A38`). Dispatched by the drag actions of every actor kind (players `sub_80178B6`; others `sub_8016CE8`, `sub_8017CC0`, `sub_8017E26`). Zeroed by stage B on every undragged tick (`sub_801AF44` and its per-kind twins `sub_801B1C4`...`sub_801B878`). Attack objects use the byte for other things (`sub_80C0DD8`, `sub_80EA11C`, `sub_80DA37A`). |
 | `unk_19` | `shake_timer` | u8 | BattleObject+0x19: ticks left of the time-stop shake. `sub_8017AB4` sets 30 per damaging hit and zeroes it on entry. Other kinds use the byte for other things. |
 | `unk_30` | `shake_origin_x` | i16 (was u16) | BattleObject+0x30: the whole-pixel X an actor shakes around in time stop, saved from X16 on the handler's first tick (`sub_8017AB4`). Other kinds use the halfword for other things (e.g. a time-freeze chip's id). |
