@@ -29,6 +29,7 @@ pub mod rock;
 pub mod rock_debris;
 pub mod spark;
 pub mod sun_beam;
+pub mod trap_chip;
 
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Pool};
@@ -60,6 +61,7 @@ pub enum Vars {
     ElmntMan(elmnt_man::Vars),
     Meteor(meteor::Vars),
     AreaGrab(area_grab::Vars),
+    TrapChip(trap_chip::Vars),
 }
 
 impl Vars {
@@ -114,6 +116,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, area_grab::INDEX) => area_grab::update(b, r),
         (Pool::Attack, grab_shot::INDEX) => grab_shot::update(b, r),
         (Pool::Attack, dust_ball::INDEX) => dust_ball::update(b, r),
+        (Pool::Effect, trap_chip::INDEX) => trap_chip::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }
@@ -148,9 +151,18 @@ pub fn busting_level(_b: &Battle) -> u8 {
     0x0B
 }
 
-/// `sub_802CEC8`: per-side registry of linked objects; clears an entry
-/// when its object's HP reaches 0.
-pub fn update_linked_registry(_b: &mut Battle) {}
+/// `sub_802CEC8`: a defensive-chip record goes when the navi that used
+/// the chip is deleted (its HP reaches 0).
+pub fn update_linked_registry(b: &mut Battle) {
+    for side in 0..2 {
+        if let Some(owner) = b.linked[side].owner
+            && b.objects.get(owner).hp == 0
+        {
+            let alliance = b.objects.get(owner).alliance;
+            b.clear_linked(alliance);
+        }
+    }
+}
 
 /// `sub_802CDFE`: age the per-side damage-carry records.
 pub fn shift_damage_carry(b: &mut Battle) {

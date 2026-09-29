@@ -273,13 +273,20 @@ pub struct SideState {
     pub cross_special: u8,
 }
 
-/// A side's defensive-chip record: the chip and the object that
-/// implements it. (The game's record also keeps two values from the
-/// registering chip and its owner; nothing ported registers one, see
-/// docs/engine/field-names.md.)
+/// A side's defensive-chip record (0x10 bytes per side at 0x02036720):
+/// the chip, its damage word and bonus (for the counterattack), the navi
+/// that used it, and the object that implements it, if any.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LinkedRecord {
+    /// +0.
     pub chip: u16,
+    /// +2: the Atk+ / cross bonus.
+    pub bonus: u16,
+    /// +4: the damage word.
+    pub damage: u32,
+    /// +8: the navi that used the chip; its deletion clears the record.
+    pub owner: Option<ObjectRef>,
+    /// +0xC.
     pub object: Option<ObjectRef>,
 }
 

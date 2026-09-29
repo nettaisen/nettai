@@ -148,6 +148,17 @@ pub fn dim_screen(b: &mut Battle, r: ObjectRef) {
 /// chip's name; after it, wait for a counter to finish, then run the
 /// effect (the next action), or skip it if the user was deleted.
 pub fn show_chip_name(b: &mut Battle, r: ObjectRef) {
+    show_name(b, r, true);
+}
+
+/// `sub_800BBA8`: a hidden chip's name (the trap chips: the other player
+/// sees "???", and the user too for some); unlike `show_chip_name`, the
+/// effect is skipped whenever the user was deleted.
+pub fn show_hidden_chip_name(b: &mut Battle, r: ObjectRef) {
+    show_name(b, r, false);
+}
+
+fn show_name(b: &mut Battle, r: ObjectRef, uncounterable_runs: bool) {
     let side = b.objects.get(r).alliance;
     let other = side ^ 1;
     if b.objects.get(r).phase_init == 0 {
@@ -174,7 +185,7 @@ pub fn show_chip_name(b: &mut Battle, r: ObjectRef) {
     b.freeze(side).state = FreezeState::Running;
     let rec = b.freeze[side as usize];
     let user_alive = rec.user.is_some_and(|u| b.objects.get(u).hp != 0);
-    advance(b, r, if rec.uncounterable || user_alive { 1 } else { 2 });
+    advance(b, r, if (uncounterable_runs && rec.uncounterable) || user_alive { 1 } else { 2 });
 }
 
 /// Navi chips (0xDD..=0x118) that AntiNavi turns back.
