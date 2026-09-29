@@ -1,5 +1,7 @@
-//! Golden traces recorded from the original game (see data/traces/README.md)
-//! and the observable-state comparison the engine is verified with.
+//! Recorded battles: per-frame inputs and observable state captured from the
+//! original game, as JSON lines, and the comparison the engine is verified
+//! with. A round starts with a `{"setup": ...}` line (battle settings, navi
+//! stats, RNG), followed by one line per frame.
 
 use serde::Deserialize;
 use std::io::BufRead;
@@ -123,6 +125,7 @@ use crate::battle::{Battle, CustomResult, TickEvents};
 use crate::hand::ChipHand;
 use crate::input::PlayerTick;
 use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
+use crate::transform::TransformRequest;
 
 /// A custom-screen exchange record from a trace.
 #[derive(Clone, Debug, Deserialize)]
@@ -196,6 +199,10 @@ impl Round {
             in_custom: bs.get(0x14 + p).copied().unwrap_or(0) & 4 != 0,
         });
         let mut events = TickEvents::default();
+        // The link session closed on the tick the end state moved on.
+        if i > 0 && f.state[0] == 8 && f.state[1] == 4 && frames[i - 1].state[1] == 0 {
+            events.link_closed = true;
+        }
         // The local player confirmed on the tick before their status bit
         // cleared.
         if let Some(next) = frames.get(i + 1) {
@@ -206,9 +213,10 @@ impl Round {
             // The exchange installed on the tick before the mode left the
             // custom screen.
             if f.state[1] == 8 && next.state[1] == 0x0C {
-                let latest = |p: usize| -> (NaviStats, u8) {
+                let latest = |p: usize| -> (NaviStats, TransformRequest) {
                     let e = self.exchanges.iter().filter(|e| e.frame <= f.frame).next_back().expect("exchange record");
-                    (NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap()), unhex(&e.transform[p])[0])
+                    let stats = NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap());
+                    (stats, TransformRequest::from_bytes(&unhex(&e.transform[p])))
                 };
                 let result = |p: usize| {
                     let hand = ChipHand::from_bytes(&unhex(&f.chip_blocks[p]));
@@ -245,8 +253,13 @@ pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
     }
     check("gauge", format!("{:#x}", b.gauge.value), format!("{:#x}", f.gauge));
     check("banner", (b.banner.active as u8).to_string(), ((f.hud_tasks >> 15) & 1).to_string());
-    let ours: Vec<String> = b.objects.in_order().map(|o| describe(b, o)).collect();
-    let theirs: Vec<String> = f.objects.iter().map(describe_trace).collect();
+    // Objects whose X and Y the engine doesn't know are compared without
+    // them, on both sides (matched by list position).
+    let order: Vec<crate::object::ObjectRef> = b.objects.in_order().collect();
+    let unknown: Vec<bool> = order.iter().map(|&o| crate::kinds::effect::xy_unknown(b, o)).collect();
+    let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, o, u)).collect();
+    let theirs: Vec<String> =
+        f.objects.iter().enumerate().map(|(i, o)| describe_trace(o, unknown.get(i).copied().unwrap_or(false))).collect();
     if ours != theirs {
         check(
             "objects",
@@ -283,9 +296,15 @@ fn describe_fields(
     timer: u16,
     anim: u8,
     status: u32,
+    xy_unknown: bool,
 ) -> String {
-    let pos =
-        if pos_is_garbage(kind, index, flags) { "-".to_string() } else { format!("{},{},{}", pos[0], pos[1], pos[2]) };
+    let pos = if pos_is_garbage(kind, index, flags) {
+        "-".to_string()
+    } else if xy_unknown {
+        format!("-,-,{}", pos[2])
+    } else {
+        format!("{},{},{}", pos[0], pos[1], pos[2])
+    };
     format!(
         "T{kind}#{index:#04x} f{flags:#04x} s{state:?} p{},{} a{alliance} hp{}/{} pos{pos} t{timer} an{anim} st{status:#x}",
         panel[0], panel[1], hp[0], hp[1]
@@ -293,14 +312,18 @@ fn describe_fields(
 }
 
 /// Positions that are register garbage in the game and never read:
-/// the intro sequencer's (effect #2, objects-and-player.md §A.4), and a
+/// the intro sequencer's (effect #2, objects-and-player.md §A.4), a
 /// charge glow's before its first unpaused update, while it has no sprite
-/// yet (effect #8, §A.5).
+/// yet (effect #8, §A.5), and a palette flash's (effect #0x0A, §A.7).
+/// The X and Y of effects the engine marks as not knowing them are skipped
+/// too (`effect::xy_unknown`): the second deletion explosion, which the
+/// game spawns with the object allocator's list-node addresses as X and Y
+/// (§A.3).
 fn pos_is_garbage(kind: u8, index: u8, flags: u8) -> bool {
-    kind == 4 && (index == 2 || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0))
+    kind == 4 && (index == 2 || index == 0x0A || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0))
 }
 
-fn describe(b: &Battle, r: crate::object::ObjectRef) -> String {
+fn describe(b: &Battle, r: crate::object::ObjectRef, xy_unknown: bool) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
     describe_fields(
@@ -315,12 +338,13 @@ fn describe(b: &Battle, r: crate::object::ObjectRef) -> String {
         o.timer,
         o.anim,
         status,
+        xy_unknown,
     )
 }
 
-fn describe_trace(o: &Object) -> String {
+fn describe_trace(o: &Object, xy_unknown: bool) -> String {
     let hp = [o.hp, o.max_hp];
-    describe_fields(o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status)
+    describe_fields(o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, xy_unknown)
 }
 
 /// Run a round through the engine; returns the number of frames that

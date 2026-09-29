@@ -2,7 +2,6 @@
 *.gba
 *.srl
 *.sav
-/tools/*/target
-/data/traces/*.jsonl
-# The frontend asset bundle (extracted from your ROM; never commit it)
-/assets
+# ROM-derived data the extractor writes (never commit it)
+/data/sound/
+/data/graphics/

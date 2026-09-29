@@ -5,8 +5,9 @@
 //! mode-9 A, a chip, a move, a turn or a buffered move. See
 //! objects-and-player.md §M5 and §B5.
 
+use super::actions::movement::{self, MoveKind};
 use super::{
-    actions, ai, ai_mut, clear_flag1, clear_flag2, coll_mut, cross_protected, emotion, exit_attack_state, flag1,
+    ai, ai_mut, clear_flag1, clear_flag2, coll_mut, cross_protected, emotion, exit_attack_state, flag1,
     is_link, reset_charge, set_attack, stats, stats_mut,
 };
 use crate::actor::{request, status};
@@ -23,10 +24,10 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
         return battle_over(b, r);
     }
     let f = ai(b, r).requests;
-    if f & (request::TRAP_200 | request::TRAP_400 | request::TRAP_8000) != 0 {
+    if f & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED) != 0 {
         return reactive_chip(b, r);
     }
-    if f & request::ACTION_49 != 0 {
+    if f & request::STUN_STRIKE != 0 {
         return set_attack(b, r, 0x49, 0);
     }
     // JumpTable80EA7B0[enemy struct byte 4]: every entry is sub_80F0354.
@@ -65,7 +66,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         panic!("berserk form controller (sub_802D322) is not implemented yet");
     }
     select_specials(b, r);
-    if ai(b, r).requests & (request::TRAP_200 | request::TRAP_400) != 0 {
+    if ai(b, r).requests & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED) != 0 {
         return reactive_chip(b, r);
     }
     if low_hp_navicust_effect(b, r) {
@@ -98,14 +99,15 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         let action = weapon_routine(b, r, ai(b, r).mode9_a);
         return set_attack(b, r, action, 1);
     }
-    if let Some(chip) = use_chip(b, r) {
+    if let Some(chip) = super::chip_use::use_chip(b, r) {
         return after_chip(b, r, chip);
     }
     let dir = held_direction(b, r);
     if dir != 0 {
         let lag = move_lag(b, r);
-        let kind = if stats(b, r).bugs.processing != 0 { 3 } else { 0 };
-        return start_move(b, r, dir, lag, kind);
+        // sub_80103A8
+        let kind = if stats(b, r).bugs.processing != 0 { MoveKind::Astray } else { MoveKind::Input };
+        return movement::start(b, r, dir, lag, kind);
     }
     if ai(b, r).requests & (request::TURN_L | request::TURN_R) != 0 {
         return set_attack(b, r, 0x3B, 4);
@@ -113,7 +115,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let buffered = ai(b, r).buffered_move;
     if buffered != 0 {
         let lag = move_lag(b, r);
-        start_move(b, r, buffered, lag, 1);
+        movement::start(b, r, buffered, lag, MoveKind::Fallback);
     }
 }
 
@@ -172,11 +174,12 @@ fn low_hp_navicust_effect(b: &mut Battle, r: ObjectRef) -> bool {
 
 /// `off_80117D4[routine]`: set up a weapon's attack variables and name
 /// its action.
-fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
+pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
     match routine {
         0 => buster_setup(b, r),
         1 => charged_shot_setup(b, r),
         2 => blank_shot_setup(b, r),
+        0x1E => super::actions::beast_claw::setup(b, r),
         _ => panic!("weapon routine {routine:#x} (off_80117D4) is not implemented yet"),
     }
 }
@@ -225,7 +228,7 @@ fn buster_variant(b: &mut Battle, r: ObjectRef) -> u8 {
 
 /// `sub_801265A`: buster damage, attack + 1 (+1 in some forms), at most
 /// 10; 1 when worn out.
-fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
+pub(super) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
     let s = stats(b, r);
     let mut d = s.attack as u16 + BUSTER_BONUS_BY_NAVI[s.navi.index()] as u16;
     if emotion(b, b.objects.get(r).alliance) == 5 {
@@ -277,21 +280,6 @@ fn blank_shot_setup(b: &mut Battle, r: ObjectRef) -> u8 {
     0x33
 }
 
-/// `sub_800FB54`: use the next chip when a chip request is up (not while
-/// sliding). Returns the chip used.
-fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<u16> {
-    let f = ai(b, r).requests & (request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
-    if flag1(b, r) & f1::SLIDING != 0 || f == 0 {
-        return None;
-    }
-    if f & request::CHARGED_CHIP != 0 {
-        panic!("charged chips (sub_800FB54) are not implemented yet");
-    }
-    // sub_80127C0(0) fetches the chip, sets up the attack variables and
-    // names the action; object_setAttack2 starts it.
-    panic!("chip use (sub_80127C0) is not implemented yet");
-}
-
 /// `loc_80F057C`: after a chip starts: interception by the opponent's
 /// NaviCust, the chip-in-progress state, and the hand advances.
 fn after_chip(b: &mut Battle, r: ObjectRef, chip: u16) {
@@ -331,7 +319,7 @@ fn intercepted(b: &Battle, r: ObjectRef, chip: u16) -> bool {
 
 /// `sub_800FA54`: the held direction (up, down, right, left in that
 /// priority; swapped when confused), none while sliding.
-fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
+pub(super) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
     if flag1(b, r) & f1::SLIDING != 0 {
         return 0;
     }
@@ -360,16 +348,4 @@ fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
         return 4;
     }
     crate::data::player::move_lag(s.navi, s.navi_variant) as u16
-}
-
-/// `sub_80116AE` / `sub_80116D8`: start a move (action 0x10) toward
-/// `dir`; its first step runs at once.
-fn start_move(b: &mut Battle, r: ObjectRef, dir: u8, lag: u16, kind: u8) {
-    let a = &mut ai_mut(b, r).attack;
-    a.params[0] = dir;
-    a.unk_18 = lag;
-    a.variant = kind;
-    a.move_arg = 0;
-    set_attack(b, r, 0x10, 4);
-    actions::dispatch(b, r, 0x10);
 }

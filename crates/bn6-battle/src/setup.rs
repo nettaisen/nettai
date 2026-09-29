@@ -6,7 +6,6 @@
 pub struct BattleSettings {
     /// Panel layout index.
     pub layout: u8,
-    pub unk_01: u8,
     pub music: u8,
     /// Battle mode (0 = netbattle).
     pub mode: u8,
@@ -14,7 +13,6 @@ pub struct BattleSettings {
     pub battle_number: u8,
     /// Panel column pattern (which columns belong to which side).
     pub panel_pattern: u8,
-    pub unk_07: u8,
     /// `effects` bits (see `effects`).
     pub effects: u32,
     /// Who and what spawns where.
@@ -88,20 +86,19 @@ impl<'a> IntoIterator for &'a ActorList {
 
 impl BattleSettings {
     /// Settings from their 16-byte encoding. Bytes 12..16 identify the
-    /// actor list.
+    /// actor list. Byte 1 (read by `GetBattleSettingsUnk01`, outside the
+    /// battle simulation) and byte 7 (no reader found) are not kept.
     pub fn netbattle_from_bytes(b: &[u8]) -> BattleSettings {
         let source = u32::from_le_bytes(b[12..16].try_into().unwrap());
         let actors = ActorList::find(source)
             .unwrap_or_else(|| panic!("battle settings name an unknown actor list {source:#010x}"));
         BattleSettings {
             layout: b[0],
-            unk_01: b[1],
             music: b[2],
             mode: b[3],
             background: b[4],
             battle_number: b[5],
             panel_pattern: b[6],
-            unk_07: b[7],
             effects: u32::from_le_bytes(b[8..12].try_into().unwrap()),
             actors,
         }
