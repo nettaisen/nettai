@@ -196,6 +196,8 @@ pub struct Battle {
     pub turn_transforms: [TransformRequest; 2],
     /// The transformation sequencer run at the start of each turn.
     pub transform_seq: TransformSequencer,
+    /// What a mid-battle custom-screen request waits for first.
+    pub custom_reversion: crate::transform::CustomReversion,
     /// Per side: the navi went Beast Out this battle (`byte_203EAE0` +2,
     /// read after the battle: a navi that did not gets a turn back).
     pub beast_out_used: [bool; 2],
@@ -391,6 +393,7 @@ impl Battle {
             transform_requests: [TransformRequest::NONE; 2],
             turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),
+            custom_reversion: Default::default(),
             beast_out_used: [false; 2],
             crossed: [false; 2],
             objects: Objects::new(),
@@ -875,6 +878,8 @@ impl Battle {
             fight::START_BANNER => self.fight_start_banner(),
             fight::FIGHTING => self.fight_fighting(),
             fight::WIN | fight::LOSE => self.fight_result(),
+            fight::CUSTOM_REVERT => self.fight_custom_revert(),
+            fight::CUSTOM_SEQUENCE => self.fight_custom_sequence(),
             s => panic!("fighting state {s:#x} not implemented yet"),
         }
     }
@@ -1002,6 +1007,56 @@ impl Battle {
             self.paused = true;
             self.fight.state = fight::CUSTOM_REVERT;
         }
+    }
+
+    /// Whether a custom-screen request goes through the reversions and the
+    /// sequencer (battle mode 5, or not the battle flag 0x40 mode).
+    fn custom_request_transforms(&self) -> bool {
+        self.round.mode_copy == 5 || self.round.flags & battle_flags::PER_PLAYER_GAUGES == 0
+    }
+
+    /// Fighting state 0x20 (`sub_8008452`): a custom screen was asked for:
+    /// wait for the navis' reversions, then state 0x24.
+    fn fight_custom_revert(&mut self) {
+        if self.custom_request_transforms() {
+            if self.fight.init == 0 {
+                self.start_custom_reversion();
+                // sub_8015A16: a Beast Out check comes due.
+                for side in 0..2u8 {
+                    if let Some(a) = self.player_actor(side)
+                        && self.stats[side as usize].navi == Navi::MEGAMAN
+                    {
+                        let d = &mut self.actors.get_mut(a).beast_out_check_delay;
+                        if *d != 0 && *d != 0xFF {
+                            *d -= 1;
+                        }
+                    }
+                }
+                self.fight.init = 4;
+            }
+            if self.step_custom_reversion() {
+                return;
+            }
+        }
+        self.fight.state = fight::CUSTOM_SEQUENCE;
+        self.fight.sub = 0;
+        self.fight.init = 0;
+    }
+
+    /// Fighting state 0x24 (`sub_8008492`): the transformation sequencer
+    /// runs once more from the start, then the custom screen opens.
+    fn fight_custom_sequence(&mut self) {
+        if self.custom_request_transforms() {
+            if self.step_transform_sequencer() {
+                return;
+            }
+            if self.fight.sub == 0 {
+                self.transform_seq.restart();
+                self.fight.sub = 4;
+                return;
+            }
+        }
+        self.fight.result = 6;
     }
 
     /// `sub_800A152`: the round's result from the local side's perspective.
