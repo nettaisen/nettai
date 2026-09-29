@@ -24,7 +24,8 @@ Columns:
 - **lock** (+0x14): post-chip input lockout frames → AIData+0x19 at `object_exitAttackState`.
 - **f16** (+0x16): 0x80 no slot-in gauge cost, 0x02 cancelled by Rush support (sub_8010740), 0x01/0x10/0x20/0x40 menu-only.
 - **LO** (+0x17): Beast-Out lock-on panel selector (index into `jt_8026584`).
-- **dmg** (+0x1A, u16). **lib#** (+0x1C, u16) library number. **max** (+0x1E): per-battle slot-in use limit (`sub_802E830`).
+- **dmg** (+0x1A, u16): base damage; values >= 1000 are `var[n]` = formula index n into `off_80109DC` (see below).
+  **lib#** (+0x1C, u16) library number. **max** (+0x1E): per-battle slot-in use limit (`sub_802E830`).
 - **sub1F** (+0x1F): dark-chip substitution index into `off_8010D84` (0xFF = none, omitted).
 
 | id | dec | name | codes | elem | fam | cls | ★ | MB | flags | p0A | act | handler | sub | BO | p10 | lock | f16 | LO | dmg | lib# | max | sub1F |
@@ -114,7 +115,7 @@ Columns:
 | 052 | 82 | VarSwrd | KVW | Null | Sword | Std | 2 | 28 | 4A | 30 | 53 | `sub_80EF62E` (080EF62E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 160 | 81 | 3 |  |
 | 053 | 83 | NeoVari | N | Null | Sword | Std | 3 | 52 | 4A | 30 | 54 | `sub_80EF7E2` (080EF7E2) | 0 | 0 | 00000000 | 0 | 00 | 0 | 220 | 82 | 1 |  |
 | 054 | 84 | MoonBld | AMT | Null | Sword | Std | 2 | 35 | 4A | 30 | 40 | `sub_80EE2A0` (080EE2A0) | 0 | 1 | 00000000 | 0 | 00 | 18 | 130 | 83 | 3 |  |
-| 055 | 85 | Muramasa | M | Null | Sword | Std | 3 | 77 | DA | 50 | 13 | `sub_80EB776` (080EB776) | 8 | 1 | 00000000 | 0 | 00 | 4 | 1020 | 84 | 1 |  |
+| 055 | 85 | Muramasa | M | Null | Sword | Std | 3 | 77 | DA | 50 | 13 | `sub_80EB776` (080EB776) | 8 | 1 | 00000000 | 0 | 00 | 4 | 1020=var[20] | 84 | 1 |  |
 | 056 | 86 | MchnSwrd | HLQ | Null | Null | Std | 0 | 37 | 4A | 30 | 49 | `sub_80EEB4C` (080EEB4C) | 0 | 0 | 00000000 | 0 | 00 | 0 | 200 | 85 | 3 |  |
 | 057 | 87 | ElemSwrd | JMU | Null | Null | Std | 1 | 43 | 4A | 30 | 49 | `sub_80EEB4C` (080EEB4C) | 1 | 0 | 00000000 | 0 | 00 | 0 | 220 | 86 | 3 |  |
 | 058 | 88 | AssnSwrd | NRY | Null | Null | Std | 2 | 50 | 4A | 30 | 49 | `sub_80EEB4C` (080EEB4C) | 2 | 0 | 00000000 | 0 | 00 | 0 | 240 | 87 | 3 |  |
@@ -167,7 +168,7 @@ Columns:
 | 087 | 135 | SumnBlk1 | EIP | Null | Null | Std | 0 | 30 | 4B | 158 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[36] = `sub_80E91B8` (080E91B8) | 36 | 0 | 00000000 | 0 | 00 | 1 | 160 | 100 | 3 |  |
 | 088 | 136 | SumnBlk2 | HOV | Null | Null | Std | 1 | 40 | 4B | 158 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[36] = `sub_80E91B8` (080E91B8) | 36 | 0 | 00000001 | 0 | 00 | 1 | 200 | 101 | 3 |  |
 | 089 | 137 | SumnBlk3 | WYZ | Null | Null | Std | 2 | 46 | 4B | 158 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[36] = `sub_80E91B8` (080E91B8) | 36 | 0 | 00000002 | 0 | 00 | 1 | 260 | 102 | 3 |  |
-| 08A | 138 | NumbrBl | N | Null | Null | Std | 4 | 69 | DB | 138 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[22] = `sub_80E7FBA` (080E7FBA) | 22 | 0 | 00000004 | 0 | 00 | 0 | 1021 | 104 | 1 |  |
+| 08A | 138 | NumbrBl | N | Null | Null | Std | 4 | 69 | DB | 138 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[22] = `sub_80E7FBA` (080E7FBA) | 22 | 0 | 00000004 | 0 | 00 | 0 | 1021=var[21] | 104 | 1 |  |
 | 08B | 139 | Meteors | R | Fire | Fire | Std | 4 | 73 | 4B | 138 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[16] = `sub_80E4288` (080E4288) | 16 | 0 | 00000000 | 0 | 00 | 0 | 40 | 111 | 1 |  |
 | 08C | 140 | JustcOne | J | Null | Break | Std | 4 | 90 | 4A | 178 | 1C | `sub_80EC39C` (080EC39C) | 19 | 0 | 00000008 | 20 | 00 | 0 | 220 | 130 | 1 |  |
 | 08D | 141 | Magnum | FLW | Null | Cursor | Std | 2 | 31 | 4B | 148 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[24] = `sub_80E723E` (080E723E) | 24 | 0 | 00000000 | 0 | 00 | 0 | 130 | 136 | 3 |  |
@@ -255,58 +256,58 @@ Columns:
 | 0DF | 223 | Roll3 | R | Null | Null | Mega | 4 | 60 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[0] = `sub_80C0DD8` (080C0DD8) | 0 | 0 | 00000004 | 0 | 00 | 0 | 60 | 223 | 1 |  |
 | 0E0 | 224 | ProtoMan | B* | Null | Sword | Mega | 2 | 41 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[1] = `sub_80C2A4C` (080C2A4C) | 1 | 0 | 00080000 | 0 | 00 | 0 | 150 | 224 | 1 |  |
 | 0E1 | 225 | ProtoMn[EX] | B | Null | Sword | Mega | 3 | 53 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[1] = `sub_80C2A4C` (080C2A4C) | 1 | 0 | 00080001 | 0 | 00 | 0 | 170 | 225 | 1 |  |
-| 0E2 | 226 | ProtoMn[SP] | B | Null | Sword | Mega | 4 | 68 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[1] = `sub_80C2A4C` (080C2A4C) | 1 | 0 | 00080002 | 0 | 00 | 0 | 1011 | 226 | 1 |  |
+| 0E2 | 226 | ProtoMn[SP] | B | Null | Sword | Mega | 4 | 68 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[1] = `sub_80C2A4C` (080C2A4C) | 1 | 0 | 00080002 | 0 | 00 | 0 | 1011=var[11] | 226 | 1 |  |
 | 0E3 | 227 | HeatMan | H* | Fire | Fire | Mega | 2 | 32 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[2] = `sub_80B921A` (080B921A) | 2 | 0 | 00000000 | 0 | 01 | 0 | 100 | 242 | 1 |  |
 | 0E4 | 228 | HeatMan[EX] | H | Fire | Fire | Mega | 3 | 55 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[2] = `sub_80B921A` (080B921A) | 2 | 0 | 00000000 | 0 | 01 | 0 | 130 | 243 | 1 |  |
-| 0E5 | 229 | HeatMan[SP] | H | Fire | Fire | Mega | 4 | 70 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[2] = `sub_80B921A` (080B921A) | 2 | 0 | 00000000 | 0 | 01 | 0 | 1001 | 244 | 1 |  |
+| 0E5 | 229 | HeatMan[SP] | H | Fire | Fire | Mega | 4 | 70 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[2] = `sub_80B921A` (080B921A) | 2 | 0 | 00000000 | 0 | 01 | 0 | 1001=var[1] | 244 | 1 |  |
 | 0E6 | 230 | ElecMan | E* | Elec | Elec | Mega | 2 | 38 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[3] = `sub_80B9432` (080B9432) | 3 | 0 | 00000000 | 0 | 01 | 0 | 120 | 245 | 1 |  |
 | 0E7 | 231 | ElecMan[EX] | E | Elec | Elec | Mega | 3 | 52 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[3] = `sub_80B9432` (080B9432) | 3 | 0 | 00000003 | 0 | 01 | 0 | 140 | 246 | 1 |  |
-| 0E8 | 232 | ElecMan[SP] | E | Elec | Elec | Mega | 4 | 79 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[3] = `sub_80B9432` (080B9432) | 3 | 0 | 00000004 | 0 | 01 | 0 | 1002 | 247 | 1 |  |
+| 0E8 | 232 | ElecMan[SP] | E | Elec | Elec | Mega | 4 | 79 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[3] = `sub_80B9432` (080B9432) | 3 | 0 | 00000004 | 0 | 01 | 0 | 1002=var[2] | 247 | 1 |  |
 | 0E9 | 233 | SlashMan | S* | Null | Sword | Mega | 2 | 42 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[4] = `sub_80BA1B0` (080BA1B0) | 4 | 0 | 0000000A | 0 | 01 | 0 | 80 | 248 | 1 |  |
 | 0EA | 234 | SlashMn[EX] | S | Null | Sword | Mega | 3 | 65 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[4] = `sub_80BA1B0` (080BA1B0) | 4 | 0 | 00000014 | 0 | 01 | 0 | 100 | 249 | 1 |  |
-| 0EB | 235 | SlashMn[SP] | S | Null | Sword | Mega | 4 | 79 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[4] = `sub_80BA1B0` (080BA1B0) | 4 | 0 | 00000014 | 0 | 01 | 0 | 1003 | 250 | 1 |  |
+| 0EB | 235 | SlashMn[SP] | S | Null | Sword | Mega | 4 | 79 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[4] = `sub_80BA1B0` (080BA1B0) | 4 | 0 | 00000014 | 0 | 01 | 0 | 1003=var[3] | 250 | 1 |  |
 | 0EC | 236 | EraseMan | K* | Null | Cursor | Mega | 2 | 51 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[5] = `sub_80BB7F6` (080BB7F6) | 5 | 0 | 00000014 | 0 | 01 | 0 | 120 | 251 | 1 |  |
 | 0ED | 237 | EraseMn[EX] | K | Null | Cursor | Mega | 3 | 65 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[5] = `sub_80BB7F6` (080BB7F6) | 5 | 0 | 00000010 | 0 | 01 | 0 | 140 | 252 | 1 |  |
-| 0EE | 238 | EraseMn[SP] | K | Null | Cursor | Mega | 4 | 79 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[5] = `sub_80BB7F6` (080BB7F6) | 5 | 0 | 0000000C | 0 | 01 | 0 | 1004 | 253 | 1 |  |
+| 0EE | 238 | EraseMn[SP] | K | Null | Cursor | Mega | 4 | 79 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[5] = `sub_80BB7F6` (080BB7F6) | 5 | 0 | 0000000C | 0 | 01 | 0 | 1004=var[4] | 253 | 1 |  |
 | 0EF | 239 | ChrgeMan | C* | Null | Null | Mega | 2 | 42 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[6] = `sub_80BBAC6` (080BBAC6) | 6 | 0 | 00000000 | 0 | 01 | 0 | 60 | 254 | 1 |  |
 | 0F0 | 240 | ChrgeMn[EX] | C | Null | Null | Mega | 3 | 63 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[6] = `sub_80BBAC6` (080BBAC6) | 6 | 0 | 00000000 | 0 | 01 | 0 | 70 | 255 | 1 |  |
-| 0F1 | 241 | ChrgeMn[SP] | C | Null | Null | Mega | 4 | 81 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[6] = `sub_80BBAC6` (080BBAC6) | 6 | 0 | 00000004 | 0 | 01 | 0 | 1005 | 256 | 1 |  |
+| 0F1 | 241 | ChrgeMn[SP] | C | Null | Null | Mega | 4 | 81 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[6] = `sub_80BBAC6` (080BBAC6) | 6 | 0 | 00000004 | 0 | 01 | 0 | 1005=var[5] | 256 | 1 |  |
 | 0F2 | 242 | SpoutMan | A* | Aqua | Aqua | Mega | 2 | 42 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[7] = `sub_80B9750` (080B9750) | 7 | 0 | 00000000 | 0 | 00 | 0 | 50 | 227 | 1 |  |
 | 0F3 | 243 | SpoutMn[EX] | A | Aqua | Aqua | Mega | 3 | 56 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[7] = `sub_80B9750` (080B9750) | 7 | 0 | 00000000 | 0 | 00 | 0 | 60 | 228 | 1 |  |
-| 0F4 | 244 | SpoutMn[SP] | A | Aqua | Aqua | Mega | 4 | 78 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[7] = `sub_80B9750` (080B9750) | 7 | 0 | 00000000 | 0 | 00 | 0 | 1006 | 229 | 1 |  |
+| 0F4 | 244 | SpoutMn[SP] | A | Aqua | Aqua | Mega | 4 | 78 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[7] = `sub_80B9750` (080B9750) | 7 | 0 | 00000000 | 0 | 00 | 0 | 1006=var[6] | 229 | 1 |  |
 | 0F5 | 245 | TmhkMan | T* | Wood | Wood | Mega | 2 | 40 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[8] = `sub_80B999A` (080B999A) | 8 | 0 | 00000000 | 0 | 00 | 0 | 140 | 230 | 1 |  |
 | 0F6 | 246 | TmhkMan[EX] | T | Wood | Wood | Mega | 3 | 60 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[8] = `sub_80B999A` (080B999A) | 8 | 0 | 00000000 | 0 | 00 | 0 | 160 | 231 | 1 |  |
-| 0F7 | 247 | TmhkMan[SP] | T | Wood | Wood | Mega | 4 | 80 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[8] = `sub_80B999A` (080B999A) | 8 | 0 | 00000000 | 0 | 00 | 0 | 1007 | 232 | 1 |  |
+| 0F7 | 247 | TmhkMan[SP] | T | Wood | Wood | Mega | 4 | 80 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[8] = `sub_80B999A` (080B999A) | 8 | 0 | 00000000 | 0 | 00 | 0 | 1007=var[7] | 232 | 1 |  |
 | 0F8 | 248 | TenguMan | T* | Null | Wind | Mega | 2 | 43 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[9] = `sub_80B9F0E` (080B9F0E) | 9 | 0 | 00000000 | 0 | 00 | 0 | 70 | 233 | 1 |  |
 | 0F9 | 249 | TenguMn[EX] | T | Null | Wind | Mega | 3 | 61 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[9] = `sub_80B9F0E` (080B9F0E) | 9 | 0 | 00000003 | 0 | 00 | 0 | 90 | 234 | 1 |  |
-| 0FA | 250 | TenguMn[SP] | T | Null | Wind | Mega | 4 | 74 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[9] = `sub_80B9F0E` (080B9F0E) | 9 | 0 | 00000004 | 0 | 00 | 0 | 1008 | 235 | 1 |  |
+| 0FA | 250 | TenguMn[SP] | T | Null | Wind | Mega | 4 | 74 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[9] = `sub_80B9F0E` (080B9F0E) | 9 | 0 | 00000004 | 0 | 00 | 0 | 1008=var[8] | 235 | 1 |  |
 | 0FB | 251 | GrndMan | G* | Null | Break | Mega | 2 | 41 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[10] = `sub_80BBDE8` (080BBDE8) | 10 | 0 | 20010800 | 0 | 00 | 0 | 60 | 236 | 1 |  |
 | 0FC | 252 | GrndMan[EX] | G | Null | Break | Mega | 3 | 66 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[10] = `sub_80BBDE8` (080BBDE8) | 10 | 0 | 20010803 | 0 | 00 | 0 | 70 | 237 | 1 |  |
-| 0FD | 253 | GrndMan[SP] | G | Null | Break | Mega | 4 | 85 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[10] = `sub_80BBDE8` (080BBDE8) | 10 | 0 | 20010804 | 0 | 00 | 0 | 1009 | 238 | 1 |  |
+| 0FD | 253 | GrndMan[SP] | G | Null | Break | Mega | 4 | 85 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[10] = `sub_80BBDE8` (080BBDE8) | 10 | 0 | 20010804 | 0 | 00 | 0 | 1009=var[9] | 238 | 1 |  |
 | 0FE | 254 | DustMan | D* | Null | Null | Mega | 2 | 39 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[11] = `sub_80BC0DA` (080BC0DA) | 11 | 0 | 00000000 | 0 | 00 | 0 | 110 | 239 | 1 |  |
 | 0FF | 255 | DustMan[EX] | D | Null | Null | Mega | 3 | 56 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[11] = `sub_80BC0DA` (080BC0DA) | 11 | 0 | 00000000 | 0 | 00 | 0 | 130 | 240 | 1 |  |
-| 100 | 256 | DustMan[SP] | D | Null | Null | Mega | 4 | 74 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[11] = `sub_80BC0DA` (080BC0DA) | 11 | 0 | 00000004 | 0 | 00 | 0 | 1010 | 241 | 1 |  |
+| 100 | 256 | DustMan[SP] | D | Null | Null | Mega | 4 | 74 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[11] = `sub_80BC0DA` (080BC0DA) | 11 | 0 | 00000004 | 0 | 00 | 0 | 1010=var[10] | 241 | 1 |  |
 | 101 | 257 | BlastMan | B* | Fire | Fire | Mega | 2 | 30 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[12] = `sub_80B9014` (080B9014) | 12 | 0 | 00000000 | 0 | 00 | 0 | 120 | 257 | 1 |  |
 | 102 | 258 | BlastMn[EX] | B | Fire | Fire | Mega | 3 | 49 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[12] = `sub_80B9014` (080B9014) | 12 | 0 | 00000000 | 0 | 00 | 0 | 140 | 258 | 1 |  |
-| 103 | 259 | BlastMn[SP] | B | Fire | Fire | Mega | 4 | 68 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[12] = `sub_80B9014` (080B9014) | 12 | 0 | 00000000 | 0 | 00 | 0 | 1012 | 259 | 1 |  |
+| 103 | 259 | BlastMn[SP] | B | Fire | Fire | Mega | 4 | 68 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[12] = `sub_80B9014` (080B9014) | 12 | 0 | 00000000 | 0 | 00 | 0 | 1012=var[12] | 259 | 1 |  |
 | 104 | 260 | DiveMan | D* | Aqua | Aqua | Mega | 2 | 45 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[13] = `sub_80B9B6E` (080B9B6E) | 13 | 0 | 00000000 | 0 | 00 | 0 | 130 | 260 | 1 |  |
 | 105 | 261 | DiveMan[EX] | D | Aqua | Aqua | Mega | 3 | 60 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[13] = `sub_80B9B6E` (080B9B6E) | 13 | 0 | 00000000 | 0 | 00 | 0 | 150 | 261 | 1 |  |
-| 106 | 262 | DiveMan[SP] | D | Aqua | Aqua | Mega | 4 | 75 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[13] = `sub_80B9B6E` (080B9B6E) | 13 | 0 | 00000000 | 0 | 00 | 0 | 1013 | 262 | 1 |  |
+| 106 | 262 | DiveMan[SP] | D | Aqua | Aqua | Mega | 4 | 75 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[13] = `sub_80B9B6E` (080B9B6E) | 13 | 0 | 00000000 | 0 | 00 | 0 | 1013=var[13] | 262 | 1 |  |
 | 107 | 263 | CrcusMan | C* | Null | Null | Mega | 2 | 42 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[14] = `sub_80BA660` (080BA660) | 14 | 0 | 00000000 | 0 | 00 | 0 | 20 | 263 | 1 |  |
 | 108 | 264 | CrcusMn[EX] | C | Null | Null | Mega | 3 | 64 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[14] = `sub_80BA660` (080BA660) | 14 | 0 | 00000000 | 0 | 00 | 0 | 25 | 264 | 1 |  |
-| 109 | 265 | CrcusMn[SP] | C | Null | Null | Mega | 4 | 86 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[14] = `sub_80BA660` (080BA660) | 14 | 0 | 00000004 | 0 | 00 | 0 | 1014 | 265 | 1 |  |
+| 109 | 265 | CrcusMn[SP] | C | Null | Null | Mega | 4 | 86 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[14] = `sub_80BA660` (080BA660) | 14 | 0 | 00000004 | 0 | 00 | 0 | 1014=var[14] | 265 | 1 |  |
 | 10A | 266 | JudgeMan | J* | Elec | Elec | Mega | 2 | 52 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[15] = `sub_80BA920` (080BA920) | 15 | 0 | 00000014 | 0 | 00 | 0 | 100 | 266 | 1 |  |
 | 10B | 267 | JudgeMn[EX] | J | Elec | Elec | Mega | 3 | 62 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[15] = `sub_80BA920` (080BA920) | 15 | 0 | 0000001E | 0 | 00 | 0 | 120 | 267 | 1 |  |
-| 10C | 268 | JudgeMn[SP] | J | Elec | Elec | Mega | 4 | 72 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[15] = `sub_80BA920` (080BA920) | 15 | 0 | 00000028 | 0 | 00 | 0 | 1015 | 268 | 1 |  |
+| 10C | 268 | JudgeMn[SP] | J | Elec | Elec | Mega | 4 | 72 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[15] = `sub_80BA920` (080BA920) | 15 | 0 | 00000028 | 0 | 00 | 0 | 1015=var[15] | 268 | 1 |  |
 | 10D | 269 | ElmntMan | E* | Null | Null | Mega | 2 | 50 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[16] = `sub_80BAE16` (080BAE16) | 16 | 0 | 00000010 | 0 | 00 | 0 | 100 | 269 | 1 |  |
 | 10E | 270 | ElmntMn[EX] | E | Null | Null | Mega | 3 | 53 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[16] = `sub_80BAE16` (080BAE16) | 16 | 0 | 0000000E | 0 | 00 | 0 | 120 | 270 | 1 |  |
-| 10F | 271 | ElmntMn[SP] | E | Null | Null | Mega | 4 | 66 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[16] = `sub_80BAE16` (080BAE16) | 16 | 0 | 0000000C | 0 | 00 | 0 | 1016 | 271 | 1 |  |
+| 10F | 271 | ElmntMn[SP] | E | Null | Null | Mega | 4 | 66 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[16] = `sub_80BAE16` (080BAE16) | 16 | 0 | 0000000C | 0 | 00 | 0 | 1016=var[16] | 271 | 1 |  |
 | 110 | 272 | Colonel | C* | Null | Sword | Mega | 2 | 45 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[17] = `sub_80B84EC` (080B84EC) | 17 | 0 | 00000000 | 0 | 00 | 0 | 160 | 272 | 1 |  |
 | 111 | 273 | Colonel[EX] | C | Null | Sword | Mega | 3 | 70 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[17] = `sub_80B84EC` (080B84EC) | 17 | 0 | 00000000 | 0 | 00 | 0 | 180 | 273 | 1 |  |
-| 112 | 274 | Colonel[SP] | C | Null | Sword | Mega | 4 | 91 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[17] = `sub_80B84EC` (080B84EC) | 17 | 0 | 00000004 | 0 | 00 | 0 | 1018 | 274 | 1 |  |
+| 112 | 274 | Colonel[SP] | C | Null | Sword | Mega | 4 | 91 | 47 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[17] = `sub_80B84EC` (080B84EC) | 17 | 0 | 00000004 | 0 | 00 | 0 | 1018=var[18] | 274 | 1 |  |
 | 113 | 275 | HackJack | H* | Null | Null | Mega | 2 | 60 | 07 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[18] = NULL | 18 | 0 | 00000032 | 0 | 00 | 0 | 20 | 275 | 1 |  |
 | 114 | 276 | HackJck[EX] | H | Null | Null | Mega | 3 | 75 | 07 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[18] = NULL | 18 | 0 | 00000046 | 0 | 00 | 0 | 25 | 276 | 1 |  |
-| 115 | 277 | HackJck[SP] | H | Null | Null | Mega | 4 | 89 | 07 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[18] = NULL | 18 | 0 | 00000064 | 0 | 00 | 0 | 1017 | 277 | 1 |  |
+| 115 | 277 | HackJck[SP] | H | Null | Null | Mega | 4 | 89 | 07 | 138 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[18] = NULL | 18 | 0 | 00000064 | 0 | 00 | 0 | 1017=var[17] | 277 | 1 |  |
 | 116 | 278 | Django | D* | Null | Null | Spec | 2 | 30 | 00 | 0 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[19] = NULL | 19 | 0 | 00000032 | 0 | 00 | 0 | 130 | 278 | 1 |  |
 | 117 | 279 | Django2 | D | Null | Null | Spec | 3 | 70 | 00 | 0 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[19] = NULL | 19 | 0 | 00000050 | 0 | 00 | 0 | 180 | 279 | 1 |  |
 | 118 | 280 | Django3 | D | Null | Null | Spec | 4 | 90 | 00 | 0 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[19] = NULL | 19 | 0 | 00000078 | 0 | 00 | 0 | 260 | 280 | 1 |  |
@@ -349,56 +350,56 @@ Columns:
 | 13D | 317 | BatCan3 | R | Null | Null | Std | 0 | 5 | 02 | 30 | 19 | `sub_80EC0E6` (080EC0E6) | 2 | 1 | 00000302 | 0 | 00 | 1 | 40 | 317 | 1 |  |
 | 13E | 318 | BatCan4 | Z | Null | Null | Std | 0 | 5 | 02 | 30 | 19 | `sub_80EC0E6` (080EC0E6) | 3 | 1 | 00000000 | 0 | 00 | 1 | 40 | 318 | 1 |  |
 | 13F | 319 | BeastOut | * | Null | Null | Giga | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 0 | 0 | 00000000 | 0 | 00 | 0 | 10 | 319 | 1 |  |
-| 140 | 320 | GigaCan1 | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 50 | 14 | `sub_80EBC0E` (080EBC0E) | 4 | 1 | 00000000 | 0 | 00 | 1 | 300 | 320 | 1 |  |
-| 141 | 321 | GigaCan2 | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 50 | 14 | `sub_80EBC0E` (080EBC0E) | 5 | 1 | 00000000 | 0 | 00 | 1 | 400 | 321 | 1 |  |
-| 142 | 322 | GigaCan3 | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 50 | 14 | `sub_80EBC0E` (080EBC0E) | 6 | 1 | 00000000 | 0 | 00 | 1 | 500 | 322 | 1 |  |
-| 143 | 323 | WideBrn1 | ABC* | Fire | 0xB | PA | 0 | 5 | 42 | 2 | 27 | `sub_80ECD28` (080ECD28) | 0 | 1 | 0001823C | 0 | 00 | 9 | 300 | 323 | 1 |  |
-| 144 | 324 | WideBrn2 | ABC* | Fire | 0xB | PA | 0 | 5 | 42 | 2 | 27 | `sub_80ECD28` (080ECD28) | 0 | 1 | 0001823C | 0 | 00 | 9 | 350 | 324 | 1 |  |
-| 145 | 325 | WideBrn3 | ABC* | Fire | 0xB | PA | 0 | 5 | 42 | 2 | 27 | `sub_80ECD28` (080ECD28) | 0 | 1 | 0001823C | 0 | 00 | 9 | 400 | 325 | 1 |  |
-| 146 | 326 | FlmHook1 | ABC* | Fire | 0xB | PA | 0 | 5 | 42 | 10 | 1C | `sub_80EC39C` (080EC39C) | 14 | 0 | 00000100 | 20 | 00 | 0 | 300 | 326 | 1 |  |
-| 147 | 327 | FlmHook2 | ABC* | Fire | 0xB | PA | 0 | 5 | 42 | 10 | 1C | `sub_80EC39C` (080EC39C) | 14 | 0 | 00000100 | 20 | 00 | 0 | 350 | 327 | 1 |  |
-| 148 | 328 | FlmHook3 | ABC* | Fire | 0xB | PA | 0 | 5 | 42 | 10 | 1C | `sub_80EC39C` (080EC39C) | 14 | 0 | 00000100 | 20 | 00 | 0 | 400 | 328 | 1 |  |
-| 149 | 329 | PwrWave1 | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 10 | 31 | `sub_80ED64C` (080ED64C) | 1 | 0 | 0000000F | 0 | 00 | 0 | 400 | 329 | 1 |  |
-| 14A | 330 | PwrWave2 | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 10 | 31 | `sub_80ED64C` (080ED64C) | 1 | 0 | 0000000F | 0 | 00 | 0 | 500 | 330 | 1 |  |
-| 14B | 331 | PwrWave3 | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 10 | 31 | `sub_80ED64C` (080ED64C) | 1 | 0 | 0000000F | 0 | 00 | 0 | 600 | 331 | 1 |  |
-| 14C | 332 | CornFsta | ABC* | Wood | 0xB | PA | 0 | 5 | 43 | 10 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[29] = `sub_80E7F16` (080E7F16) | 29 | 0 | 00000102 | 20 | 00 | 0 | 40 | 332 | 1 |  |
-| 14D | 333 | ParaShl | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 10 | 2C | `sub_80ED25C` (080ED25C) | 0 | 0 | 00010100 | 20 | 00 | 0 | 350 | 333 | 1 |  |
-| 14E | 334 | DestPuls | ABC* | Elec | 0xB | PA | 0 | 5 | 42 | 10 | 42 | `sub_80EE55E` (080EE55E) | 0 | 1 | 033C1200 | 20 | 00 | 17 | 400 | 334 | 1 |  |
-| 14F | 335 | TimeBom+ | ABC* | Null | 0xB | PA | 0 | 5 | 43 | 168 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[10] = `sub_80E3242` (080E3242) | 10 | 0 | 00000001 | 0 | 00 | 0 | 700 | 335 | 1 |  |
-| 150 | 336 | StreamHd | - | Null | 0xB | PA | 0 | 5 | 42 | 5 | 43 | `sub_80EE634` (080EE634) | 1 | 1 | 01000100 | 20 | 00 | 1 | 150 | 336 | 1 |  |
-| 151 | 337 | SuprSpr | ABC* | Aqua | 0xB | PA | 0 | 5 | 42 | 10 | 30 | `sub_80ED55C` (080ED55C) | 1 | 0 | 00000006 | 0 | 00 | 0 | 150 | 337 | 1 |  |
-| 152 | 338 | H-Burst | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 5 | 34 | `sub_80ED810` (080ED810) | 10 | 1 | 0000000A | 0 | 00 | 1 | 60 | 338 | 1 |  |
-| 153 | 339 | LifeSrd | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 40 | 13 | `sub_80EB776` (080EB776) | 5 | 1 | 00000000 | 0 | 00 | 6 | 400 | 339 | 1 |  |
-| 154 | 340 | GreatYo | ABC* | Null | 0xB | PA | 0 | 5 | 42 | 10 | 18 | `sub_80EC02A` (080EC02A) | 1 | 0 | 05040101 | 0 | 00 | 0 | 100 | 340 | 1 |  |
-| 155 | 341 | PitHocky | - | Null | 0xB | PA | 0 | 5 | 42 | 5 | 26 | `sub_80ECCB0` (080ECCB0) | 0 | 0 | 00000103 | 0 | 00 | 0 | 100 | 341 | 1 |  |
-| 156 | 342 | PoisPhar | - | Null | 0xB | PA | 0 | 5 | 41 | 128 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[17] = `sub_80E4164` (080E4164) | 17 | 0 | 00000001 | 0 | 00 | 0 | 1 | 342 | 1 |  |
-| 157 | 343 | BodyGrd | ABC* | Null | 0xB | PA | 0 | 5 | 43 | 133 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[20] = `sub_80E353E` (080E353E) | 20 | 0 | 00000005 | 0 | 00 | 0 | 100 | 343 | 1 |  |
-| 158 | 344 | DblHero | ABC* | Null | 0xB | PA | 0 | 5 | 41 | 138 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[30] = `sub_80E8058` (080E8058) | 30 | 0 | 00000000 | 0 | 00 | 0 | 60 | 344 | 1 |  |
-| 159 | 345 | Darkness | ABC* | Null | 0xB | PA | 0 | 5 | 43 | 143 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[24] = `sub_80BFCD0` (080BFCD0) | 24 | 0 | 00000000 | 0 | 00 | 0 | 300 | 345 | 1 |  |
-| 15A | 346 | MstrCros | ABC* | Null | 0xB | PA | 0 | 5 | 43 | 158 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[22] = `sub_80BF160` (080BF160) | 22 | 0 | 00000000 | 0 | 00 | 0 | 100 | 346 | 1 |  |
-| 15B | 347 | SunMoon | ABC* | Null | 0xB | PA | 0 | 5 | 43 | 168 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[25] = `sub_80BF6AE` (080BF6AE) | 25 | 0 | 00000000 | 0 | 00 | 0 | 200 | 347 | 1 |  |
-| 15C | 348 | TwinLdrs | ABC* | Null | 0xB | PA | 0 | 5 | 43 | 133 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[20] = `sub_80BD9A2` (080BD9A2) | 20 | 0 | 00000000 | 0 | 00 | 0 | 200 | 348 | 1 |  |
-| 15D | 349 | CrosOver | ABC* | Null | 0xB | PA | 0 | 5 | 41 | 130 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[21] = `sub_80BE3E8` (080BE3E8) | 21 | 0 | 00000000 | 0 | 00 | 0 | 100 | 349 | 1 |  |
+| 140 | 320 | GigaCan1 | ABC* | Null | PA | PA | 0 | 5 | 42 | 50 | 14 | `sub_80EBC0E` (080EBC0E) | 4 | 1 | 00000000 | 0 | 00 | 1 | 300 | 320 | 1 |  |
+| 141 | 321 | GigaCan2 | ABC* | Null | PA | PA | 0 | 5 | 42 | 50 | 14 | `sub_80EBC0E` (080EBC0E) | 5 | 1 | 00000000 | 0 | 00 | 1 | 400 | 321 | 1 |  |
+| 142 | 322 | GigaCan3 | ABC* | Null | PA | PA | 0 | 5 | 42 | 50 | 14 | `sub_80EBC0E` (080EBC0E) | 6 | 1 | 00000000 | 0 | 00 | 1 | 500 | 322 | 1 |  |
+| 143 | 323 | WideBrn1 | ABC* | Fire | PA | PA | 0 | 5 | 42 | 2 | 27 | `sub_80ECD28` (080ECD28) | 0 | 1 | 0001823C | 0 | 00 | 9 | 300 | 323 | 1 |  |
+| 144 | 324 | WideBrn2 | ABC* | Fire | PA | PA | 0 | 5 | 42 | 2 | 27 | `sub_80ECD28` (080ECD28) | 0 | 1 | 0001823C | 0 | 00 | 9 | 350 | 324 | 1 |  |
+| 145 | 325 | WideBrn3 | ABC* | Fire | PA | PA | 0 | 5 | 42 | 2 | 27 | `sub_80ECD28` (080ECD28) | 0 | 1 | 0001823C | 0 | 00 | 9 | 400 | 325 | 1 |  |
+| 146 | 326 | FlmHook1 | ABC* | Fire | PA | PA | 0 | 5 | 42 | 10 | 1C | `sub_80EC39C` (080EC39C) | 14 | 0 | 00000100 | 20 | 00 | 0 | 300 | 326 | 1 |  |
+| 147 | 327 | FlmHook2 | ABC* | Fire | PA | PA | 0 | 5 | 42 | 10 | 1C | `sub_80EC39C` (080EC39C) | 14 | 0 | 00000100 | 20 | 00 | 0 | 350 | 327 | 1 |  |
+| 148 | 328 | FlmHook3 | ABC* | Fire | PA | PA | 0 | 5 | 42 | 10 | 1C | `sub_80EC39C` (080EC39C) | 14 | 0 | 00000100 | 20 | 00 | 0 | 400 | 328 | 1 |  |
+| 149 | 329 | PwrWave1 | ABC* | Null | PA | PA | 0 | 5 | 42 | 10 | 31 | `sub_80ED64C` (080ED64C) | 1 | 0 | 0000000F | 0 | 00 | 0 | 400 | 329 | 1 |  |
+| 14A | 330 | PwrWave2 | ABC* | Null | PA | PA | 0 | 5 | 42 | 10 | 31 | `sub_80ED64C` (080ED64C) | 1 | 0 | 0000000F | 0 | 00 | 0 | 500 | 330 | 1 |  |
+| 14B | 331 | PwrWave3 | ABC* | Null | PA | PA | 0 | 5 | 42 | 10 | 31 | `sub_80ED64C` (080ED64C) | 1 | 0 | 0000000F | 0 | 00 | 0 | 600 | 331 | 1 |  |
+| 14C | 332 | CornFsta | ABC* | Wood | PA | PA | 0 | 5 | 43 | 10 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[29] = `sub_80E7F16` (080E7F16) | 29 | 0 | 00000102 | 20 | 00 | 0 | 40 | 332 | 1 |  |
+| 14D | 333 | ParaShl | ABC* | Null | PA | PA | 0 | 5 | 42 | 10 | 2C | `sub_80ED25C` (080ED25C) | 0 | 0 | 00010100 | 20 | 00 | 0 | 350 | 333 | 1 |  |
+| 14E | 334 | DestPuls | ABC* | Elec | PA | PA | 0 | 5 | 42 | 10 | 42 | `sub_80EE55E` (080EE55E) | 0 | 1 | 033C1200 | 20 | 00 | 17 | 400 | 334 | 1 |  |
+| 14F | 335 | TimeBom+ | ABC* | Null | PA | PA | 0 | 5 | 43 | 168 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[10] = `sub_80E3242` (080E3242) | 10 | 0 | 00000001 | 0 | 00 | 0 | 700 | 335 | 1 |  |
+| 150 | 336 | StreamHd | - | Null | PA | PA | 0 | 5 | 42 | 5 | 43 | `sub_80EE634` (080EE634) | 1 | 1 | 01000100 | 20 | 00 | 1 | 150 | 336 | 1 |  |
+| 151 | 337 | SuprSpr | ABC* | Aqua | PA | PA | 0 | 5 | 42 | 10 | 30 | `sub_80ED55C` (080ED55C) | 1 | 0 | 00000006 | 0 | 00 | 0 | 150 | 337 | 1 |  |
+| 152 | 338 | H-Burst | ABC* | Null | PA | PA | 0 | 5 | 42 | 5 | 34 | `sub_80ED810` (080ED810) | 10 | 1 | 0000000A | 0 | 00 | 1 | 60 | 338 | 1 |  |
+| 153 | 339 | LifeSrd | ABC* | Null | PA | PA | 0 | 5 | 42 | 40 | 13 | `sub_80EB776` (080EB776) | 5 | 1 | 00000000 | 0 | 00 | 6 | 400 | 339 | 1 |  |
+| 154 | 340 | GreatYo | ABC* | Null | PA | PA | 0 | 5 | 42 | 10 | 18 | `sub_80EC02A` (080EC02A) | 1 | 0 | 05040101 | 0 | 00 | 0 | 100 | 340 | 1 |  |
+| 155 | 341 | PitHocky | - | Null | PA | PA | 0 | 5 | 42 | 5 | 26 | `sub_80ECCB0` (080ECCB0) | 0 | 0 | 00000103 | 0 | 00 | 0 | 100 | 341 | 1 |  |
+| 156 | 342 | PoisPhar | - | Null | PA | PA | 0 | 5 | 41 | 128 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[17] = `sub_80E4164` (080E4164) | 17 | 0 | 00000001 | 0 | 00 | 0 | 1 | 342 | 1 |  |
+| 157 | 343 | BodyGrd | ABC* | Null | PA | PA | 0 | 5 | 43 | 133 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[20] = `sub_80E353E` (080E353E) | 20 | 0 | 00000005 | 0 | 00 | 0 | 100 | 343 | 1 |  |
+| 158 | 344 | DblHero | ABC* | Null | PA | PA | 0 | 5 | 41 | 138 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[30] = `sub_80E8058` (080E8058) | 30 | 0 | 00000000 | 0 | 00 | 0 | 60 | 344 | 1 |  |
+| 159 | 345 | Darkness | ABC* | Null | PA | PA | 0 | 5 | 43 | 143 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[24] = `sub_80BFCD0` (080BFCD0) | 24 | 0 | 00000000 | 0 | 00 | 0 | 300 | 345 | 1 |  |
+| 15A | 346 | MstrCros | ABC* | Null | PA | PA | 0 | 5 | 43 | 158 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[22] = `sub_80BF160` (080BF160) | 22 | 0 | 00000000 | 0 | 00 | 0 | 100 | 346 | 1 |  |
+| 15B | 347 | SunMoon | ABC* | Null | PA | PA | 0 | 5 | 43 | 168 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[25] = `sub_80BF6AE` (080BF6AE) | 25 | 0 | 00000000 | 0 | 00 | 0 | 200 | 347 | 1 |  |
+| 15C | 348 | TwinLdrs | ABC* | Null | PA | PA | 0 | 5 | 43 | 133 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[20] = `sub_80BD9A2` (080BD9A2) | 20 | 0 | 00000000 | 0 | 00 | 0 | 200 | 348 | 1 |  |
+| 15D | 349 | CrosOver | ABC* | Null | PA | PA | 0 | 5 | 41 | 130 | 1B | `sub_80EC350` (080EC350) → off_802CD5C[21] = `sub_80BE3E8` (080BE3E8) | 21 | 0 | 00000000 | 0 | 00 | 0 | 100 | 349 | 1 |  |
 | 15E | 350 | - | - | Null | Null | Spec | 0 | 5 | 02 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 1 | 0 | 1 |  |
 | 15F | 351 | - | - | Null | Null | Spec | 0 | 5 | 02 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 1 | 0 | 1 |  |
-| 160 | 352 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 161 | 353 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 162 | 354 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 163 | 355 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 164 | 356 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 165 | 357 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 166 | 358 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 167 | 359 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 168 | 360 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 169 | 361 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 16A | 362 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 16B | 363 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 16C | 364 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 16D | 365 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 16E | 366 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
-| 16F | 367 | - | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 160 | 352 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 161 | 353 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 162 | 354 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 163 | 355 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 164 | 356 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 165 | 357 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 166 | 358 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 167 | 359 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 168 | 360 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 169 | 361 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 16A | 362 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 16B | 363 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 16C | 364 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 16D | 365 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 16E | 366 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
+| 16F | 367 | - | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 0 | 1 |  |
 | 170 | 368 | - | ABC* | Null | Null | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 368 | 1 |  |
-| 171 | 369 | ???? | ABC* | Null | 0xC | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 369 | 1 |  |
+| 171 | 369 | ???? | ABC* | Null | Misc | Spec | 0 | 5 | 00 | 0 | 14 | `sub_80EBC0E` (080EBC0E) | 0 | 0 | 00000000 | 0 | 00 | 0 | 40 | 369 | 1 |  |
 | 172 | 370 | FtrSword | ELS* | Null | Sword | Spec | 0 | 8 | 42 | 30 | 13 | `sub_80EB776` (080EB776) | 9 | 1 | 00000000 | 0 | 00 | 5 | 80 | 370 | 1 |  |
 | 173 | 371 | SonicBom | ELS* | Null | Sword | Spec | 0 | 8 | 42 | 30 | 55 | `sub_80EF970` (080EF970) | 0 | 0 | 00000003 | 0 | 00 | 3 | 80 | 371 | 1 |  |
 | 174 | 372 | Curse | ELS* | Null | Sword | Spec | 0 | 8 | 42 | 30 | 55 | `sub_80EF970` (080EF970) | 0 | 0 | 00000000 | 0 | 00 | 0 | 80 | 372 | 1 |  |
@@ -414,13 +415,13 @@ Columns:
 | 17E | 382 | WhiCapsl | - | Null | Null | Spec | 0 | 30 | 01 | 50 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[1] = `sub_80E7546` (080E7546) | 1 | 0 | 00000078 | 0 | 02 | 0 | 0 | 382 | 1 |  |
 | 17F | 383 | PrpCapsl | - | Null | Obj | Spec | 0 | 6 | 00 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000000 | 0 | 00 | 0 | 0 | 383 | 1 |  |
 | 180 | 384 | PnkCapsl | - | Null | Obj | Spec | 0 | 6 | 00 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000001 | 0 | 00 | 0 | 0 | 384 | 1 |  |
-| 181 | 385 | HealBall | - | Null | 0xC | Spec | 0 | 99 | 01 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000000 | 0 | 00 | 0 | 0 | 385 | 1 |  |
-| 182 | 386 | MagPanl | - | Null | 0xC | Spec | 0 | 99 | 01 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000000 | 0 | 00 | 0 | 0 | 386 | 1 |  |
+| 181 | 385 | HealBall | - | Null | Misc | Spec | 0 | 99 | 01 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000000 | 0 | 00 | 0 | 0 | 385 | 1 |  |
+| 182 | 386 | MagPanl | - | Null | Misc | Spec | 0 | 99 | 01 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000000 | 0 | 00 | 0 | 0 | 386 | 1 |  |
 | 183 | 387 | FinalGun | - | Null | Null | Spec | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 10 | 387 | 1 |  |
 | 184 | 388 | NumTrap | - | Null | Null | Spec | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 10 | 388 | 1 |  |
 | 185 | 389 | - | - | Null | Null | Spec | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 0 | 0 | 00000000 | 20 | 00 | 0 | 0 | 389 | 1 |  |
-| 186 | 390 | BeastOut | - | Null | 0xC | Spec | 0 | 99 | 01 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000000 | 0 | 00 | 0 | 0 | 390 | 1 |  |
-| 187 | 391 | BeastOut | - | Null | 0xC | Spec | 0 | 99 | 01 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000000 | 0 | 00 | 0 | 0 | 391 | 1 |  |
+| 186 | 390 | BeastOut | - | Null | Misc | Spec | 0 | 99 | 01 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000000 | 0 | 00 | 0 | 0 | 390 | 1 |  |
+| 187 | 391 | BeastOut | - | Null | Misc | Spec | 0 | 99 | 01 | 0 | 15 | `sub_80EBD9C` (080EBD9C) → off_802CCB4[3] = `sub_80E2566` (080E2566) | 3 | 0 | 00000000 | 0 | 00 | 0 | 0 | 391 | 1 |  |
 | 188 | 392 | - | - | Null | Null | Spec | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 10 | 392 | 1 |  |
 | 189 | 393 | - | - | Null | Null | Spec | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 10 | 393 | 1 |  |
 | 18A | 394 | - | - | Null | Null | Spec | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 10 | 394 | 1 |  |
@@ -429,17 +430,17 @@ Columns:
 | 18D | 397 | - | - | Null | Null | Spec | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 10 | 397 | 1 |  |
 | 18E | 398 | - | - | Null | Null | Spec | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 10 | 398 | 1 |  |
 | 18F | 399 | - | - | Null | Null | Spec | 0 | 99 | 00 | 0 | 1C | `sub_80EC39C` (080EC39C) | 3 | 0 | 00000000 | 0 | 00 | 0 | 10 | 399 | 1 |  |
-| 190 | 400 | HeatPres | H | Fire | Fire | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1024 | 370 | 1 |  |
-| 191 | 401 | DElecSwd | E | Elec | Elec | Spec | 1 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1026 | 49 | 3 |  |
-| 192 | 402 | RSlash | S | Null | Sword | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1028 | 402 | 1 |  |
-| 193 | 403 | EDeletBm | K | Null | Cursor | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1030 | 403 | 1 |  |
-| 194 | 404 | VolcChrg | C | Fire | Fire | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1032 | 404 | 1 |  |
-| 195 | 405 | DripShwr | A | Aqua | Aqua | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1034 | 405 | 1 |  |
-| 196 | 406 | ETomahwk | T | Null | Null | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1036 | 406 | 1 |  |
-| 197 | 407 | FTornado | T | Null | Wind | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1038 | 407 | 1 |  |
-| 198 | 408 | RC Brakr | G | Null | Break | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1040 | 408 | 1 |  |
-| 199 | 409 | DustBrk | D | Null | Break | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1042 | 409 | 1 |  |
-| 19A | 410 | StepSwrd | B | Null | Sword | Spec | 0 | 99 | C2 | 10 | 13 | `sub_80EB776` (080EB776) | 1 | 0 | 00000001 | 0 | 00 | 0 | 1044 | 410 | 1 |  |
+| 190 | 400 | HeatPres | H | Fire | Fire | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1024=var[24] | 370 | 1 |  |
+| 191 | 401 | DElecSwd | E | Elec | Elec | Spec | 1 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1026=var[26] | 49 | 3 |  |
+| 192 | 402 | RSlash | S | Null | Sword | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1028=var[28] | 402 | 1 |  |
+| 193 | 403 | EDeletBm | K | Null | Cursor | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1030=var[30] | 403 | 1 |  |
+| 194 | 404 | VolcChrg | C | Fire | Fire | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1032=var[32] | 404 | 1 |  |
+| 195 | 405 | DripShwr | A | Aqua | Aqua | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1034=var[34] | 405 | 1 |  |
+| 196 | 406 | ETomahwk | T | Null | Null | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1036=var[36] | 406 | 1 |  |
+| 197 | 407 | FTornado | T | Null | Wind | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1038=var[38] | 407 | 1 |  |
+| 198 | 408 | RC Brakr | G | Null | Break | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1040=var[40] | 408 | 1 |  |
+| 199 | 409 | DustBrk | D | Null | Break | Spec | 0 | 99 | C2 | 10 | 0A | per-navi base table off_80EA4C8[AIIndex][0xa] | 3 | 0 | 00000000 | 0 | 00 | 0 | 1042=var[42] | 409 | 1 |  |
+| 19A | 410 | StepSwrd | B | Null | Sword | Spec | 0 | 99 | C2 | 10 | 13 | `sub_80EB776` (080EB776) | 1 | 0 | 00000001 | 0 | 00 | 0 | 1044=var[44] | 410 | 1 |  |
 
 ## JumpTable80EAC60 (0x080EAC60): action handlers
 
@@ -619,3 +620,59 @@ that object's phase `sub_80E1880` calls `off_802CD5C[Unk_19]`.
 | 26 | `sub_80C3B30` (080C3B30) | 12D Bass |
 | 27 | `sub_80C3E98` (080C3E98) | 132 BassAnly |
 | 28 | `sub_80C2F96` (080C2F96) | 12F DeltaRay |
+
+## off_80109DC (0x080109DC): variable-damage formulas
+
+`sub_80109A4(chip, alliance)` returns +0x1A if it is < 1000, else `off_80109DC[dmg - 1000](chip, alliance)`
+(chip 0xFFFF → 0). 45 entries (damage 1000..1044).
+
+| dmg | formula | chip ids |
+|---|---|---|
+| 1000 | `sub_8010A90` (08010A90) |  |
+| 1001 | `sub_8010AE4` (08010AE4) | 0E5 HeatMan[SP] |
+| 1002 | `sub_8010AE4` (08010AE4) | 0E8 ElecMan[SP] |
+| 1003 | `sub_8010AE4` (08010AE4) | 0EB SlashMn[SP] |
+| 1004 | `sub_8010AE4` (08010AE4) | 0EE EraseMn[SP] |
+| 1005 | `sub_8010AE4` (08010AE4) | 0F1 ChrgeMn[SP] |
+| 1006 | `sub_8010AE4` (08010AE4) | 0F4 SpoutMn[SP] |
+| 1007 | `sub_8010AE4` (08010AE4) | 0F7 TmhkMan[SP] |
+| 1008 | `sub_8010AE4` (08010AE4) | 0FA TenguMn[SP] |
+| 1009 | `sub_8010AE4` (08010AE4) | 0FD GrndMan[SP] |
+| 1010 | `sub_8010AE4` (08010AE4) | 100 DustMan[SP] |
+| 1011 | `sub_8010AE4` (08010AE4) | 0E2 ProtoMn[SP] |
+| 1012 | `sub_8010AE4` (08010AE4) | 103 BlastMn[SP] |
+| 1013 | `sub_8010AE4` (08010AE4) | 106 DiveMan[SP] |
+| 1014 | `sub_8010AE4` (08010AE4) | 109 CrcusMn[SP] |
+| 1015 | `sub_8010AE4` (08010AE4) | 10C JudgeMn[SP] |
+| 1016 | `sub_8010AE4` (08010AE4) | 10F ElmntMn[SP] |
+| 1017 | `sub_8010AE4` (08010AE4) | 115 HackJck[SP] |
+| 1018 | `sub_8010AE4` (08010AE4) | 112 Colonel[SP] |
+| 1019 | `sub_8010B78` (08010B78) |  |
+| 1020 | `sub_8010BD0` (08010BD0) | 055 Muramasa |
+| 1021 | `sub_8010BF0` (08010BF0) | 08A NumbrBl |
+| 1022 | `sub_8010C06` (08010C06) |  |
+| 1023 | `sub_8010C50` (08010C50) |  |
+| 1024 | `sub_8010C50` (08010C50) | 190 HeatPres |
+| 1025 | `sub_8010C50` (08010C50) |  |
+| 1026 | `sub_8010C50` (08010C50) | 191 DElecSwd |
+| 1027 | `sub_8010C50` (08010C50) |  |
+| 1028 | `sub_8010C50` (08010C50) | 192 RSlash |
+| 1029 | `sub_8010C50` (08010C50) |  |
+| 1030 | `sub_8010C50` (08010C50) | 193 EDeletBm |
+| 1031 | `sub_8010C50` (08010C50) |  |
+| 1032 | `sub_8010C50` (08010C50) | 194 VolcChrg |
+| 1033 | `sub_8010C50` (08010C50) |  |
+| 1034 | `sub_8010C50` (08010C50) | 195 DripShwr |
+| 1035 | `sub_8010C50` (08010C50) |  |
+| 1036 | `sub_8010C50` (08010C50) | 196 ETomahwk |
+| 1037 | `sub_8010C50` (08010C50) |  |
+| 1038 | `sub_8010C50` (08010C50) | 197 FTornado |
+| 1039 | `sub_8010C50` (08010C50) |  |
+| 1040 | `sub_8010C50` (08010C50) | 198 RC Brakr |
+| 1041 | `sub_8010C50` (08010C50) |  |
+| 1042 | `sub_8010C50` (08010C50) | 199 DustBrk |
+| 1043 | `sub_8010C50` (08010C50) |  |
+| 1044 | `sub_8010C50` (08010C50) | 19A StepSwrd |
+
+Note: chips 0x138 Gregar and 0x139 Falzar have action 0x15 with +0x0C = 34/35, whose `off_802CCB4` slots are NULL;
+in the US ROM using them crashes the game (the JP ROM would be needed to define real behaviour; out of scope).

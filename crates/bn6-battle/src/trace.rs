@@ -59,6 +59,26 @@ pub struct Frame {
     pub link: u8,
     pub rng1: u32,
     pub rng2: u32,
+    /// BattleState (0xF0 bytes), hex.
+    #[serde(default)]
+    pub bs: String,
+    /// The fighting-phase machine (0xC bytes at 0x0203CA70), hex.
+    #[serde(default)]
+    pub fight: String,
+    /// Custom gauge value (0..0x4000) and fill per tick.
+    #[serde(default)]
+    pub gauge: u16,
+    #[serde(default)]
+    pub gauge_rate: u16,
+    /// The battle pause byte.
+    #[serde(default)]
+    pub paused: u8,
+    /// HUD update-task mask (bit 4 = gauge fill, bit 15 = banner).
+    #[serde(default)]
+    pub hud_tasks: u32,
+    /// Banner state (0x10 bytes at 0x02036840), hex.
+    #[serde(default)]
+    pub banner: String,
     /// Per player: held, pressed, released.
     pub input: [[u16; 3]; 2],
     pub objects: Vec<Object>,
