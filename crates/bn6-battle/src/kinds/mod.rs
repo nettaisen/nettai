@@ -22,8 +22,6 @@ pub enum Vars {
     ChargeGlow(charge_glow::Vars),
     Effect(effect::Vars),
     Hitbox(hitbox::Vars),
-    /// Raw scratch for behaviors not given a typed struct yet.
-    Raw([u8; 0x2C]),
 }
 
 impl Vars {
@@ -34,7 +32,7 @@ impl Vars {
             (Pool::Effect, 0) => Vars::Effect(Default::default()),
             (Pool::Attack, 3) => Vars::Hitbox(Default::default()),
             (Pool::Actor, 0) => Vars::None,
-            _ => Vars::Raw([0; 0x2C]),
+            _ => Vars::None,
         }
     }
 }
