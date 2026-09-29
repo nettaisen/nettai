@@ -11,7 +11,7 @@ use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, f1, timer};
 use crate::data::player::{self as pdata, StatusTimer};
 use crate::data::player_generated::HP_BUG_PERIODS;
-use crate::field::kind;
+use crate::field::PanelType;
 use crate::object::{ObjectRef, Vec3};
 use crate::setup::{Form, Navi};
 
@@ -94,7 +94,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     let action = b.objects.get(r).action;
     let holy = {
         let c = coll(b, r);
-        c.barrier != 0 && panel_kind(b, c.panel) == kind::HOLY
+        c.barrier != 0 && panel_kind(b, c.panel) == PanelType::Holy
     };
     let c = coll_mut(b, r);
     let mut barrier = c.barrier;
@@ -209,8 +209,8 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     let p = coll(b, r).panel;
     let Some(t) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     let f = flag1(b, r);
-    let mut tested = t as u32;
-    if t == kind::POISON {
+    let on_grass;
+    if t == PanelType::Poison {
         if f & (0x0800_0000 | f1::FLOATSHOE | f1::INVULNERABLE) == 0 {
             let c = coll_mut(b, r);
             let v = c.poison_timer as i32 - 1;
@@ -221,11 +221,14 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
             }
             return;
         }
-        // Immune: the grass test below compares the flags value.
-        tested = f;
+        // Immune: the game's grass test then compares the status flags
+        // word, not the panel type, against the grass type.
+        on_grass = f == PanelType::Grass as u32;
+    } else {
+        on_grass = t == PanelType::Grass;
     }
     coll_mut(b, r).poison_timer = 0;
-    if tested != kind::GRASS as u32 || b.objects.get(r).element & 0xF != 4 {
+    if !on_grass || b.objects.get(r).element & 0xF != 4 {
         return;
     }
     let cycle = if b.objects.get(r).hp > 9 { b.round.cycle20 } else { b.round.cycle180 };
@@ -248,8 +251,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
         if f & (f1::DRAG | f1::MOVING) != 0 {
             return;
         }
-        let t = panel_kind(b, coll(b, r).panel);
-        if (kind::ROAD_UP..=kind::ROAD_RIGHT).contains(&t) {
+        if panel_kind(b, coll(b, r).panel).is_road() {
             // sub_801A400
             if ai(b, r).unk_38 == 0 && f & 0x24 == 0 {
                 set_flag2(b, r, 0x10);
@@ -263,7 +265,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     }
     super::clear_flag1(b, r, f1::MOVE_COMPLETE);
     let p = coll(b, r).panel;
-    if b.field.panel(p.x, p.y).map(|p| p.kind) != Some(kind::ICE) {
+    if b.field.panel(p.x, p.y).map(|p| p.kind) != Some(PanelType::Ice) {
         return;
     }
     // sub_801A3DA
@@ -617,7 +619,7 @@ fn drain_heal(b: &mut Battle, r: ObjectRef) {
 /// rounding up, per element on a holy panel under the object), through
 /// the side's damage-carry record.
 fn final_damage(b: &mut Battle, r: ObjectRef) {
-    let holy = panel_kind(b, b.objects.get(r).panel) == kind::HOLY;
+    let holy = panel_kind(b, b.objects.get(r).panel) == PanelType::Holy;
     let k = holy as u32;
     let c = coll_mut(b, r);
     let mut sum = 0u32;
