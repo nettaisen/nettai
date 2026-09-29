@@ -36,8 +36,8 @@ pub struct Vars {
     /// Added to the owner's animation.
     pub anim_offset: u8,
     pub stepping: Stepping,
-    /// Holds its sprite still while the owner is dragged or paralyzed.
-    pub hold_while_stunned: bool,
+    // (`sub_80C46C6` can make an overlay hold its sprite still while the
+    // owner is dragged or paralyzed; no ported spawner uses it.)
 }
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
@@ -108,7 +108,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// the sprite.
 fn tick(b: &mut Battle, r: ObjectRef) {
     let owner = owner(b, r);
-    let Vars { nudged, anim_offset, stepping, hold_while_stunned, .. } = vars(b, r).clone();
+    let Vars { nudged, anim_offset, stepping, .. } = vars(b, r).clone();
     let (owner_anim, owner_pos, owner_flags, owner_flip) = {
         let o = b.objects.get(owner);
         (o.anim, o.pos, o.flags, o.flip)
@@ -136,13 +136,6 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         o.action = 4;
         o.phase = 0;
         o.phase_init = 0;
-    }
-    if hold_while_stunned {
-        let stunned = crate::collision::f1::DRAG | crate::collision::f1::PARALYZED;
-        let c = b.objects.get(owner).collision.expect("overlay owner has collision data");
-        if b.collision.get(c).f1 & stunned != 0 {
-            return;
-        }
     }
     match stepping {
         Stepping::Normal => {
