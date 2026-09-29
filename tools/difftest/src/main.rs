@@ -542,6 +542,7 @@ fn main() {
         objects: std::collections::BTreeMap<(u8, u8), u64>,
         trace: String,
         last_top_state: u8,
+        last_exchange: String,
     }
     let pre: Rc<RefCell<Option<Snap>>> = Default::default();
     let stats: Rc<RefCell<Stats>> = Default::default();
@@ -667,6 +668,21 @@ fn main() {
                         st.trace.push('\n');
                     }
                     st.last_top_state = top;
+                    // Custom-screen exchange results: both navi stat blocks and
+                    // transform records, emitted when they change.
+                    let exchange = format!(
+                        "{{\"exchange\":{{\"frame\":{frame},\"navi_stats\":[\"{}\",\"{}\"],\"transform\":[\"{}\",\"{}\"]}}}}",
+                        hex_range(&after, 0x0203_CE00, 0x64),
+                        hex_range(&after, 0x0203_CE64, 0x64),
+                        hex_range(&after, 0x0203_F558, 0x10),
+                        hex_range(&after, 0x0203_F658, 0x10)
+                    );
+                    let key = exchange.split_once(",").unwrap().1.to_string();
+                    if key != st.last_exchange {
+                        st.last_exchange = key;
+                        st.trace.push_str(&exchange);
+                        st.trace.push('\n');
+                    }
                     let line = trace_line(frame, &after);
                     st.trace.push_str(&line);
                     st.trace.push('\n');

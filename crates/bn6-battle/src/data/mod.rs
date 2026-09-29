@@ -2,8 +2,12 @@
 //! typed tables. The files named `*_generated.rs` are written by that tool;
 //! regenerate them rather than editing by hand.
 
+mod banners_generated;
 mod chips_generated;
+pub mod collision_generated;
+pub mod field_generated;
 
+pub use banners_generated::{BANNER_TYPES, LOSE_BANNERS, WIN_BANNERS};
 pub use chips_generated::CHIPS;
 
 /// Chip ids are indices into [`CHIPS`] (0..=0x19A).
@@ -105,4 +109,25 @@ pub struct ChipData {
 /// The data record for a chip.
 pub fn chip(id: ChipId) -> &'static ChipData {
     &CHIPS[id as usize]
+}
+
+/// A sprite: (category byte offset, index) into the game's sprite table.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SpriteId {
+    pub category: u8,
+    pub index: u8,
+}
+
+/// One animation frame's timing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AnimFrame {
+    /// Ticks the frame shows for.
+    pub duration: u8,
+    /// 0x80 = last frame, 0x40 = loop.
+    pub flags: u8,
+}
+
+/// An animation's frames (empty when the sprite's data isn't extracted).
+pub fn animation(_sprite: SpriteId, _anim: u8) -> &'static [AnimFrame] {
+    &[]
 }
