@@ -7,12 +7,16 @@
 //! - `bn6-extract assets <rom> <sound-bank>`: the sound bank bn6-audio plays
 //!   (see assets.rs);
 //! - `bn6-extract graphics <rom> <out-dir>`: the graphics bundle
-//!   bn6-frontend draws with (see graphics.rs).
+//!   bn6-frontend draws with (see graphics.rs);
+//! - `bn6-extract content <rom> <pack-dir>`: the graphics and sound as a
+//!   content pack of open, editable formats (see content.rs).
 //!
-//! The sound bank and the graphics are the game's own data: write them
-//! outside version control (data/sound/ and data/graphics/ are ignored).
+//! The sound bank, the graphics and content packs are the game's own data:
+//! write them outside version control (data/sound/, data/graphics/ and
+//! data/content/ are ignored).
 
 mod assets;
+mod content;
 mod graphics;
 mod hud;
 
@@ -772,7 +776,7 @@ fn lockon(rom: &Rom) -> String {
     out
 }
 
-fn load_rom(path: &str) -> Rom {
+pub(crate) fn load_rom(path: &str) -> Rom {
     let rom = Rom(std::fs::read(path).expect("reading ROM"));
     assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected the US Falzar ROM (MEGAMAN6_FXXBR6E)");
     rom
@@ -784,6 +788,10 @@ fn main() {
         assets::main(&args[1..]);
         return;
     }
+    if args.first().map(String::as_str) == Some("content") {
+        content::main(&args[1..]);
+        return;
+    }
     if args.first().map(String::as_str) == Some("graphics") {
         let (Some(rom), Some(out)) = (args.get(1), args.get(2)) else {
             eprintln!("usage: bn6-extract graphics <rom> <out-dir>");
@@ -793,7 +801,9 @@ fn main() {
         return;
     }
     let Some(rom) = args.first() else {
-        eprintln!("usage: bn6-extract <rom> [out-dir] | assets <rom> <sound-bank> | graphics <rom> <out-dir>");
+        eprintln!(
+            "usage: bn6-extract <rom> [out-dir] | assets <rom> <sound-bank> | graphics <rom> <out-dir> | content <rom> <pack-dir>"
+        );
         std::process::exit(2);
     };
     let rom = load_rom(rom);
