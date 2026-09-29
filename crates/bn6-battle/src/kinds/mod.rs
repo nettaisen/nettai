@@ -1,11 +1,16 @@
 //! Object behaviors, chosen by pool and index, plus helpers shared by many
 //! behaviors (HP changes, damage formulas).
 
+pub mod absorbed_obstacle;
 pub mod charge_glow;
+pub mod common;
 pub mod effect;
 pub mod hitbox;
 pub mod intro;
+pub mod obstacle;
 pub mod player;
+pub mod rock;
+pub mod rock_debris;
 pub mod spark;
 
 use crate::battle::Battle;
@@ -22,6 +27,8 @@ pub enum Vars {
     ChargeGlow(charge_glow::Vars),
     Effect(effect::Vars),
     Hitbox(hitbox::Vars),
+    Rock(rock::Vars),
+    AbsorbedObstacle(absorbed_obstacle::Vars),
 }
 
 impl Vars {
@@ -47,6 +54,9 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, 0) => effect::update(b, r),
         (Pool::Attack, 3) => hitbox::update(b, r),
         (Pool::Effect, 4) => spark::update(b, r),
+        (Pool::Attack, rock::INDEX) => rock::update(b, r),
+        (Pool::Effect, rock_debris::INDEX) => rock_debris::update(b, r),
+        (Pool::Effect, absorbed_obstacle::INDEX) => absorbed_obstacle::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }
