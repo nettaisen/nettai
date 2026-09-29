@@ -31,6 +31,7 @@ NUM_CHIPS = 0x19B  # code checks `cmp r0, #0x19b` (sub_800AFBA, sub_800B022)
 ATTACK_JT = 0x080EAC60  # JumpTable80EAC60, indexed by CurAction - 0x10
 TFC_JT = 0x0802CCB4  # off_802CCB4, indexed by chip +0x0C for action 0x15
 NAVI_JT = 0x0802CD5C  # off_802CD5C, indexed by chip +0x0C for action 0x1B
+VARDMG_JT = 0x080109DC  # off_80109DC, indexed by damage - 1000 (sub_80109A4)
 BASE_TABLES = 0x080EA4C8  # off_80EA4C8[AIIndex] -> per-navi action table (actions < 0x10)
 
 rom = open(ROM, "rb").read()
@@ -120,12 +121,13 @@ def read_table(base, stop=None, allow_null=False):
 attack_jt = read_table(ATTACK_JT)  # 79 entries: actions 0x10..0x5E
 tfc_jt = read_table(TFC_JT, stop=NAVI_JT, allow_null=True)  # 42 entries
 navi_jt = read_table(NAVI_JT, allow_null=True)  # 29 entries
+vardmg_jt = read_table(VARDMG_JT)  # 45 entries: damage values 1000..1044
 
 CODES = {i: chr(ord("A") + i) for i in range(26)}
 CODES[0x1A] = "*"
 ELEM = {0: "Null", 1: "Fire", 2: "Aqua", 3: "Elec", 4: "Wood"}
 FAMILY = {0: "Fire", 1: "Aqua", 2: "Elec", 3: "Wood", 4: "Plus", 5: "Sword", 6: "Cursor", 7: "Obj",
-          8: "Wind", 9: "Break", 0xA: "Null", 0xB: "0xB", 0xC: "0xC"}
+          8: "Wind", 9: "Break", 0xA: "Null", 0xB: "PA", 0xC: "Misc"}
 CLASS = {0: "Std", 1: "Mega", 2: "Giga", 3: "Spec", 4: "PA"}
 
 
@@ -143,6 +145,11 @@ class Chip:
         self.sortkey, self.damage, self.libno = struct.unpack_from("<3H", r, 0x18)
         self.p1e, self.p1f = r[0x1E], r[0x1F]
         self.icon, self.image, self.pal = struct.unpack_from("<3I", r, 0x20)
+
+    def dmg_str(self):
+        if self.damage < 1000:
+            return str(self.damage)
+        return "%d=var[%d]" % (self.damage, self.damage - 1000)
 
     def code_str(self):
         return "".join(CODES.get(c, "") if c != 0xFF else "" for c in self.codes) or "-"
@@ -173,7 +180,7 @@ assert chip_name(4) == "AirShot" and chips[4].code_str() == "*"
 assert chip_name(0x11) == "GunDelS3" and chips[0x11].action == 0x37
 assert chip_name(0xA7) == "Geddon" and chips[0xA7].action == 0x15
 assert chip_name(0xC0) == "Atk+10" and chips[0xC0].damage == 10
-assert len(attack_jt) == 79 and len(tfc_jt) == 42 and len(navi_jt) == 29
+assert len(attack_jt) == 79 and len(tfc_jt) == 42 and len(navi_jt) == 29 and len(vardmg_jt) == 45
 assert u32(CHIP_TABLE + CHIP_SIZE * NUM_CHIPS) == 0  # table is followed by .word 0
 
 # --- output ------------------------------------------------------------------
@@ -205,16 +212,17 @@ w("- **p10** (+0x10..+0x13, u32): per-action parameters → AIAttackVars+0x0C (p
 w("- **lock** (+0x14): post-chip input lockout frames → AIData+0x19 at `object_exitAttackState`.")
 w("- **f16** (+0x16): 0x80 no slot-in gauge cost, 0x02 cancelled by Rush support (sub_8010740), 0x01/0x10/0x20/0x40 menu-only.")
 w("- **LO** (+0x17): Beast-Out lock-on panel selector (index into `jt_8026584`).")
-w("- **dmg** (+0x1A, u16). **lib#** (+0x1C, u16) library number. **max** (+0x1E): per-battle slot-in use limit (`sub_802E830`).")
+w("- **dmg** (+0x1A, u16): base damage; values >= 1000 are `var[n]` = formula index n into `off_80109DC` (see below).")
+w("  **lib#** (+0x1C, u16) library number. **max** (+0x1E): per-battle slot-in use limit (`sub_802E830`).")
 w("- **sub1F** (+0x1F): dark-chip substitution index into `off_8010D84` (0xFF = none, omitted).")
 w("")
 w("| id | dec | name | codes | elem | fam | cls | ★ | MB | flags | p0A | act | handler | sub | BO | p10 | lock | f16 | LO | dmg | lib# | max | sub1F |")
 w("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
 for c in chips:
-    w("| %03X | %d | %s | %s | %s | %s | %s | %d | %d | %02X | %d | %02X | %s | %d | %d | %08X | %d | %02X | %d | %d | %d | %d | %s |" % (
+    w("| %03X | %d | %s | %s | %s | %s | %s | %d | %d | %02X | %d | %02X | %s | %d | %d | %08X | %d | %02X | %d | %s | %d | %d | %s |" % (
         c.id, c.id, chip_name(c.id), c.code_str(), ELEM.get(c.elem, "%#x" % c.elem), FAMILY.get(c.family, "%#x" % c.family),
         CLASS.get(c.cls, str(c.cls)), c.rarity, c.mb, c.flags, c.p0a, c.action, c.handler(), c.sub, c.p0f, c.p10,
-        c.lockout, c.flags2, c.lockon, c.damage, c.libno, c.p1e, "" if c.p1f == 0xFF else str(c.p1f)))
+        c.lockout, c.flags2, c.lockon, c.dmg_str(), c.libno, c.p1e, "" if c.p1f == 0xFF else str(c.p1f)))
 
 w("")
 w("## JumpTable80EAC60 (0x080EAC60): action handlers")
@@ -256,6 +264,21 @@ w("|---|---|---|")
 for k, h in enumerate(navi_jt):
     users = [c for c in chips if c.action == 0x1B and c.sub == k]
     w("| %d | %s | %s |" % (k, fn(h), ", ".join("%03X %s" % (c.id, chip_name(c.id)) for c in users)))
+w("")
+
+w("## off_80109DC (0x080109DC): variable-damage formulas")
+w("")
+w("`sub_80109A4(chip, alliance)` returns +0x1A if it is < 1000, else `off_80109DC[dmg - 1000](chip, alliance)`")
+w("(chip 0xFFFF → 0). 45 entries (damage 1000..1044).")
+w("")
+w("| dmg | formula | chip ids |")
+w("|---|---|---|")
+for k, h in enumerate(vardmg_jt):
+    users = [c for c in chips if c.damage == 1000 + k]
+    w("| %d | %s | %s |" % (1000 + k, fn(h), ", ".join("%03X %s" % (c.id, chip_name(c.id)) for c in users)))
+w("")
+w("Note: chips 0x138 Gregar and 0x139 Falzar have action 0x15 with +0x0C = 34/35, whose `off_802CCB4` slots are NULL;")
+w("in the US ROM using them crashes the game (the JP ROM would be needed to define real behaviour; out of scope).")
 w("")
 
 os.makedirs(os.path.dirname(os.path.abspath(OUT)), exist_ok=True)

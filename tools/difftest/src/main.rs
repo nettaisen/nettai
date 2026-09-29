@@ -150,6 +150,18 @@ fn trace_line(frame: u32, s: &Snap) -> String {
         ew32(0x0200_1120),
         ew32(0x0200_13F0)
     );
+    // Flow state: BattleState, the fighting machine, custom gauge, pause,
+    // HUD task mask, banner state.
+    o.push_str(&format!(
+        ",\"bs\":\"{}\",\"fight\":\"{}\",\"gauge\":{},\"gauge_rate\":{},\"paused\":{},\"hud_tasks\":{},\"banner\":\"{}\"",
+        hex_range(s, BS, 0xF0),
+        hex_range(s, 0x0203_CA70, 0xC),
+        ew16(0x0203_52A0),
+        ew16(0x0203_52A2),
+        ew(0x0200_1B8A),
+        ew32(0x0203_52C0),
+        hex_range(s, 0x0203_6840, 0x10)
+    ));
     // Per-player input records: held, pressed, released.
     o.push_str(",\"input\":[");
     for p in 0..2u32 {
