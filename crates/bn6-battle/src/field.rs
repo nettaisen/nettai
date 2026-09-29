@@ -382,6 +382,7 @@ impl Battle {
                     p.kind = PanelType::Broken;
                     self.field.refresh(&self.collision, x, y);
                     self.field.panels[y as usize][x as usize].hole_timer = h;
+                    self.play_sound(crate::sound::SoundId(0x97));
                 }
             }
             PanelType::Volcano => {
@@ -566,6 +567,7 @@ impl Battle {
             p.flags = ((f | pflags::CRACKED) & !0x3F0F) | 3;
             p.kind = PanelType::Cracked;
             p.display_kind = PanelType::Cracked;
+            self.play_sound(crate::sound::SoundId(0x97));
             return true;
         }
         if f & pflags::OCCUPIED != 0 {
@@ -574,6 +576,7 @@ impl Battle {
         p.flags = (f & !0x3F5F) | 1;
         p.kind = PanelType::Broken;
         p.display_kind = PanelType::Broken;
+        self.play_sound(crate::sound::SoundId(0x97));
         true
     }
 
