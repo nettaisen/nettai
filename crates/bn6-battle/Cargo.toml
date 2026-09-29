@@ -6,6 +6,9 @@ license.workspace = true
 description = "The Mega Man Battle Network 6 battle engine, reimplemented in Rust"
 
 [dependencies]
+bn6-content-api = { path = "../bn6-content-api" }
+bn6-luau = { path = "../bn6-luau", optional = true }
+bn6-content-rust = { path = "../bn6-content-rust", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
 
@@ -13,3 +16,10 @@ serde_json = { version = "1", optional = true }
 # Loading recorded battles (per-frame inputs and state) and comparing the
 # engine against them.
 trace = ["dep:serde", "dep:serde_json"]
+# Content spike (docs/design/scripting.md): run the GunDelSol slice (action
+# 0x37, attachment #5, sun beam #0x48, hitbox #3) from content instead of
+# the built-in kinds. `luau` loads content/bn6 as Luau scripts;
+# `rust-content` uses the same slice written in Rust against the content
+# API. With both, Luau is the default.
+luau = ["dep:bn6-luau"]
+rust-content = ["dep:bn6-content-rust"]

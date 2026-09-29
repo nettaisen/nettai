@@ -4,6 +4,7 @@
 
 use crate::actor::{ActorId, Actors};
 use crate::collision::Collision;
+use crate::content::Content;
 use crate::field::Field;
 use crate::hand::ChipHand;
 use crate::hud::{Banner, BannerStatus, CustomGauge};
@@ -177,6 +178,7 @@ pub struct TickEvents {
     pub link_closed: bool,
 }
 
+#[derive(Clone)]
 pub struct Battle {
     pub setup: RoundSetup,
     pub stats: [NaviStats; 2],
@@ -220,6 +222,9 @@ pub struct Battle {
     pub linked: [LinkedRecord; 2],
     /// Sound calls made this tick (output only; see `sound`).
     sound: Vec<SoundCue>,
+    /// The content running the object kinds and actions the engine
+    /// doesn't implement itself (shared code, not state).
+    pub content: Content,
 }
 
 /// A side's extra battle state (0x1D0 bytes at `sub_802E070(side)`); only
@@ -329,6 +334,11 @@ impl Battle {
     /// Start a round: the state the game is in when its init finishes and
     /// the first battle tick is about to run.
     pub fn new(setup: RoundSetup) -> Battle {
+        Battle::with_content(setup, Content::for_build())
+    }
+
+    /// Start a round running `content`.
+    pub fn with_content(setup: RoundSetup, content: Content) -> Battle {
         let score = setup.score;
         let mut b = Battle {
             stats: setup.navi_stats,
@@ -368,6 +378,7 @@ impl Battle {
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
             sound: Vec::new(),
+            content,
             setup,
         };
         // Init's last steps: refresh every panel, then one unpaused panel
