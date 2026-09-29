@@ -113,16 +113,10 @@ pub struct AttackVars {
     pub timer: u16,
     pub recovery: u16,
     pub chip_id: u16,
-    /// AIAttackVars+0x18: a move's end lag in ticks, set when the move
-    /// starts (`sub_80116AE`, `sub_80116D8`); the move action
-    /// (`sub_80EB194`) copies it into its timer when it arrives.
-    pub move_lag: u16,
     pub special_source: u8,
     /// Which `set_attack` slot started the action.
     pub kind: u8,
     pub beast_lockon: u8,
-    /// +0x2C: the move's panel-trail argument (0 for input moves).
-    pub move_arg: u32,
     /// +0x30: a marker: the move's "direction changed", or a heat trap
     /// swallowing a hit.
     pub marker: u32,
