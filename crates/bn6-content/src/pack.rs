@@ -192,6 +192,10 @@ pub fn import_sound(root: &Path, report: &mut Report) -> Option<SoundBank> {
 
 // ---- Derived caches -----------------------------------------------------------------
 
+/// Bump when an importer reads the same files differently, so caches
+/// built by the old importer are rebuilt.
+pub const IMPORTER_REVISION: u32 = 1;
+
 /// A hash of every file under `dir` (paths and contents) and the importer.
 pub fn source_key(dir: &Path) -> String {
     let mut files = Vec::new();
@@ -207,7 +211,12 @@ pub fn source_key(dir: &Path) -> String {
     }
     walk(dir, dir, &mut files);
     files.sort();
-    let mut all = format!("{} {}\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")).into_bytes();
+    let mut all = format!(
+        "{} {} {IMPORTER_REVISION} {VERSION}\n",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    )
+    .into_bytes();
     for (rel, p) in files {
         let data = std::fs::read(&p).unwrap_or_default();
         all.extend_from_slice(format!("{rel} {}\n", stamp(&data)).as_bytes());
