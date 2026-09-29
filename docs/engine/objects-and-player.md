@@ -371,7 +371,7 @@ For GunDelSol (`sub_80EDB14`, asm31.s:109758): `r4 = 7 + AIAttackVars.Unk_03` (P
 - `CurAnim = CurAnimCopy = Param2`, load the animation, set VISIBLE, palette.
 - Offsets:
   - Param1 == 0xF (special case): (0,0) if `NameID == 0x1A0`, (0xB, −7) if `NameID == 0x1B6`, else (0, 0xD).
-  - Otherwise, if entry[4] ≠ 0, the offsets come from `sub_8018810(owner.NameID, alliance, flip)` (per-sprite attach point × flip direction).
+  - Otherwise, if entry[4] ≠ 0, the offsets come from `sub_8018810(owner.NameID, entry[4], alliance, flip)`: the owner sprite's attach point number entry[4] (13 for the GunDelSol guns: (24, 24) for MegaMan), x times the flip direction. Entry[4] = 0 means no offset, so attach point 0 can't be used.
   - Stored as `XVelocity = dx<<16`, `ZVelocity = dz<<16`.
 - CurState = 4, then it immediately runs the update once.
 
@@ -443,7 +443,7 @@ UNCERTAIN: only 0x03, 0x39 and 0x3A were verified at run time. The others are co
 
 So the second explosion has X = 0x0203A9A0 (T1 slot 0 node), Y = 0x02036928 (T4 slot 1 node, i.e. the dying player's T4#8), Z = 0. Confirmed in trace frame 939 (`pos` = [0x0203A9A0, 0x02036928, 0]).
 
-To reproduce this exactly, compute GBA node addresses: `T1 node(k) = 0x0203A9A0 + k·0xD8`, `T4 node(k) = 0x02036860 + k·0xC8`. The value is visual only.
+The value is visual only and nothing reads it. The engine does not model GBA addresses: it spawns the second explosion with the first one's Z and placeholder X and Y, marked as unknown (`effect::spawn_after_spawn`), and the trace comparison skips that object's X and Y. (For reference, the nodes are `T1 node(k) = 0x0203A9A0 + k·0xD8` and `T4 node(k) = 0x02036860 + k·0xC8`.)
 
 ### A.4 T4#2: battle-intro sequencer (`sub_80E0638`), gameplay-relevant
 
@@ -1114,7 +1114,7 @@ The marker is never read by the move. It is part of the persistent AttackVars st
    - **1:** `sub_800F998(PanelX, PanelY, dir)` tries 4 directions from `byte_800FA00[dir*4..]`: dir 1→{1,3,2,4}, 2→{2,4,1,3}, 3→{3,2,4,1}, 4→{4,1,3,2}. It returns the first valid target; the same SLIDING→0 rule applies.
    - **2:** absolute target `(AttackVars.Unk_16, Unk_17)`.
    - **3:** `sub_800FA20` (ProcessingBug; not in this match).
-5. **If the target is 0 (blocked):** `sub_80F02A2()` is 1 unless `AttackVars.Unk_0d != 0 && AIData.Unk_48 & 0x8000`; it is 1 in normal play. So `object_exitAttackState()` runs: `CurAnim = 0` and `CurAction = 8`. The otherwise branch is `sub_801171C`. Nothing else changes.
+5. **If the target is 0 (blocked):** `sub_80F02A2()` is 1 unless `AttackVars.Unk_0d != 0 && AIData.Unk_48 & 0x8000`; it is 1 in normal play. (The move never writes `Unk_0d`: it is byte 1 of the params the last chip left in the attack variables.) So `object_exitAttackState()` runs: `CurAnim = 0` and `CurAction = 8`. The otherwise branch is `sub_801171C`. Nothing else changes.
 6. **If the target is valid:**
    - `AttackVars.Unk_16/17 = FuturePanelX/Y = target`.
    - `object_reservePanel` (§M6.5).

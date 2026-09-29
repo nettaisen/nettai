@@ -94,10 +94,10 @@ fn explode(b: &mut Battle, r: ObjectRef) {
     a.unk_5c = 0;
     a.overlay = None;
     // Sound 0x6C. The second call reuses whatever registers the first
-    // left: its X/Y are GBA list-node addresses (objects-and-player.md
-    // §A.3), not modeled.
+    // left: Z, but list-node addresses from the allocator for X and Y
+    // (objects-and-player.md §A.3).
     crate::kinds::effect::spawn(b, pos, 3, 0, 0, 0);
-    crate::kinds::effect::spawn(b, pos, 3, 0, 0, 0);
+    crate::kinds::effect::spawn_after_spawn(b, pos.z, 3, 0, 0, 0);
     let o = b.objects.get_mut(r);
     o.timer = 0x15;
     o.phase = 8;
