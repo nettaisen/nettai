@@ -35,16 +35,18 @@ pub mod request {
     /// check found the Beast Out used up; the mid-battle custom screen
     /// asks too): pause-time action 0x1C with `status::REVERTING_FORM`.
     pub const REVERT_FORM: u32 = 0x40;
-    /// Reactive defense chips (anti-damage traps).
-    pub const TRAP_200: u32 = 0x200;
-    pub const TRAP_400: u32 = 0x400;
+    /// AntiDmg (chip 0xBB) caught a hit: its counterattack runs next.
+    pub const ANTI_DAMAGE_TRIGGERED: u32 = 0x200;
+    /// AntiSwrd (chip 0xBC) caught a sword hit.
+    pub const ANTI_SWORD_TRIGGERED: u32 = 0x400;
     /// Time-stop counter chip.
     pub const TIMESTOP_CHIP: u32 = 0x800;
     pub const TURN_L: u32 = 0x1000;
     pub const TURN_R: u32 = 0x2000;
     /// Pause-time request: form change (action 0x1C, state bit 0x80).
     pub const FORM_CHANGE: u32 = 0x4000;
-    pub const TRAP_8000: u32 = 0x8000;
+    /// BodyGrd (program advance 0x157) caught a hit.
+    pub const BODY_GUARD_TRIGGERED: u32 = 0x8000;
     pub const ALT_CHIP: u32 = 0x10000;
     pub const A_HELD: u32 = 0x20000;
     pub const B_HELD: u32 = 0x40000;

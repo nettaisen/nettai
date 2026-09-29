@@ -69,8 +69,8 @@ pub mod pflags {
     pub const ALLIANCE_1: u32 = 0x20;
     pub const CRACKED: u32 = 0x40;
     pub const RESERVED: u32 = 0x80;
-    pub const BODY_A0: u32 = 0x0800_0000;
-    pub const BODY_A1: u32 = 0x0400_0000;
+    pub const BODY_SIDE0: u32 = 0x0800_0000;
+    pub const BODY_SIDE1: u32 = 0x0400_0000;
     pub const FLOATING: u32 = 0x0010_0000;
     /// Bodies, neutral objects, blockers and reservations.
     pub const OCCUPIED: u32 = 0x0F88_0080;
