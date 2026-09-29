@@ -9,6 +9,8 @@ tango-replay = { path = "../../../tango/tango-replay" }
 tango-match = { path = "../../../tango/tango-match" }
 tango-backend-mgba = { path = "../../../tango/tango-backend-mgba" }
 tango-gamesupport-bn6 = { path = "../../../tango/tango-gamesupport-bn6" }
+tango-gamesupport-bn6-dataview = { path = "../../../tango/tango-gamesupport-bn6-dataview" }
+tango-gamesupport-common-dataview = { path = "../../../tango/tango-gamesupport-common-dataview" }
 mgba = { git = "https://github.com/tangobattle/mgba-rs" }
 mgba-sys = { git = "https://github.com/tangobattle/mgba-rs" }
 mgba-rollback = { git = "https://github.com/tangobattle/mgba-rollback" }

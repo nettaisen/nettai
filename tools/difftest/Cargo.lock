@@ -263,6 +263,8 @@ dependencies = [
  "mgba-sys",
  "tango-backend-mgba",
  "tango-gamesupport-bn6",
+ "tango-gamesupport-bn6-dataview",
+ "tango-gamesupport-common-dataview",
  "tango-match",
  "tango-replay",
 ]

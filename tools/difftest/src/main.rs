@@ -358,8 +358,42 @@ fn boot_mode(args: &[String]) {
     println!("{} passes compared: {} with unexpected diffs; diff bytes by region {:?}", s.frame, s.failures, s.region_counts);
 }
 
+/// Write a copy of a save whose equipped folder holds the given chips:
+/// `folder IN.sav OUT.sav ID:CODE [ID:CODE ...]` (ids in hex, code a letter
+/// or `*`; the list repeats to fill 30 slots).
+fn folder_mode(args: &[String]) {
+    use tango_gamesupport_common_dataview::save::{Chip, ChipCode, Save as _};
+    let buf = std::fs::read(&args[0]).unwrap();
+    let mut save = tango_gamesupport_bn6_dataview::save::Save::new(&buf).unwrap();
+    let chips: Vec<Chip> = args[2..]
+        .iter()
+        .map(|s| {
+            let (id, code) = s.split_once(':').expect("ID:CODE");
+            Chip {
+                id: usize::from_str_radix(id.trim_start_matches("0x"), 16).unwrap(),
+                code: ChipCode::from_char(code.chars().next().unwrap()).expect("chip code"),
+            }
+        })
+        .collect();
+    {
+        let mut view = save.view_chips_mut().expect("chips view");
+        let folder = view.equipped_folder_index();
+        for i in 0..30 {
+            assert!(view.set_chip(folder, i, chips[i % chips.len()].clone()));
+        }
+        view.rebuild_anticheat();
+    }
+    save.rebuild_checksum();
+    std::fs::write(&args[1], save.to_sram_dump()).unwrap();
+    println!("wrote {}", args[1]);
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(|s| s.as_str()) == Some("folder") {
+        folder_mode(&args[1..]);
+        return;
+    }
     if args.first().map(|s| s.as_str()) == Some("boot") {
         boot_mode(&args[1..]);
         return;
@@ -379,6 +413,7 @@ fn main() {
     let mut trace_out: Option<String> = None;
     let mut script: Option<String> = None;
     let mut allow_patch = false;
+    let mut saves: Option<[Vec<u8>; 2]> = None;
     let mut watch: Option<(u32, u32, u32)> = None; // (frame, addr, len)
     let mut i = 2;
     while i < args.len() {
@@ -398,6 +433,10 @@ fn main() {
             "-v" => verbose = true,
             "--mask-irq" => mask_irq = true,
             "--allow-patch" => allow_patch = true,
+            "--saves" => {
+                saves = Some([std::fs::read(&args[i + 1]).unwrap(), std::fs::read(&args[i + 2]).unwrap()]);
+                i += 2;
+            }
             "--script" => {
                 script = Some(args[i + 1].clone());
                 i += 1;
@@ -454,8 +493,14 @@ fn main() {
 
     let mut pair = mgba_rollback::Link::with_options(mgba_rollback::LinkOptions {
         sides: vec![
-            mgba_rollback::SideOptions { rom: side_rom(0), save: Some(replay.srams[0].clone()) },
-            mgba_rollback::SideOptions { rom: side_rom(1), save: Some(replay.srams[1].clone()) },
+            mgba_rollback::SideOptions {
+                rom: side_rom(0),
+                save: Some(saves.as_ref().map(|s| s[0].clone()).unwrap_or_else(|| replay.srams[0].clone())),
+            },
+            mgba_rollback::SideOptions {
+                rom: side_rom(1),
+                save: Some(saves.as_ref().map(|s| s[1].clone()).unwrap_or_else(|| replay.srams[1].clone())),
+            },
         ],
         rtc: Some(replay.rtc_time()),
         peripheral: mgba_rollback::Peripheral::Cable,

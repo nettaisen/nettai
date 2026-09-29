@@ -20,6 +20,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "bn6-extract"
+version = "0.1.0"
+
+[[package]]
 name = "bn6-gen"
 version = "0.1.0"
 dependencies = [
