@@ -18,7 +18,7 @@ pub mod keys {
 }
 
 /// Held/pressed/released for one player, updated from each tick's input.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct InputRecord {
     pub held: u16,
     pub pressed: u16,
@@ -36,7 +36,7 @@ impl InputRecord {
 }
 
 /// What one player contributes to a tick.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PlayerTick {
     /// Buttons held (GBA bits; `keys::PRESENT` is added by the engine).
     pub held: u16,

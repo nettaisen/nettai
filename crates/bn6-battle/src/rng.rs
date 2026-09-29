@@ -7,7 +7,7 @@
 //! folder shuffle, whose results are then exchanged.
 
 /// One RNG stream: `x' = (rotl(x, 1) + 1) ^ 0x873CA9E5`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Rng {
     pub state: u32,
 }

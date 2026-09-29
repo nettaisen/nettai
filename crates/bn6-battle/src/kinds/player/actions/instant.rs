@@ -13,7 +13,7 @@ use crate::object::ObjectRef;
 pub const ACTION: u8 = 0x1C;
 
 /// The wait after subtype 0x14.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     /// AIAttackVars+0x10.
     pub timer: u16,

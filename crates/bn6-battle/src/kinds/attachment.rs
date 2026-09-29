@@ -15,7 +15,7 @@ pub const INDEX: u8 = 5;
 
 /// Where an owner keeps an attached object. The object lives while the
 /// slot holds something (not necessarily the object itself).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AttachSlot {
     /// The owner's actor-data overlay slot.
     Overlay(ActorId),
@@ -40,7 +40,7 @@ impl AttachSlot {
 }
 
 /// Attachment-private state.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     pub slot: Option<AttachSlot>,
     /// Offset from the owner's position (its attach point), 16.16.

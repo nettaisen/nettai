@@ -2,7 +2,12 @@
 //! calls the original makes at that point as typed cues, which a frontend
 //! plays (bn6-audio does, with the game's own sound driver and data). Cues
 //! are output only: nothing in the simulation reads them.
-//! See docs/engine/audio.md.
+//!
+//! A few calls the original makes on one console only (a player's own
+//! charge and hit sounds, their pinch and result music); the engine records
+//! what each side's player hears (`Battle::sound_cues_for`). Under rollback
+//! a tick can run more than once: `cues` plays each cue once.
+//! See docs/engine/audio.md and docs/design/rollback.md.
 
 /// An entry of the game's song table. Music (0x00..=0x25) and sound
 /// effects (0x64 and up) share the one table.
@@ -97,6 +102,8 @@ mod tests {
         // The navi has no HP until its own init runs, later in the tick:
         // the low-HP switch fires for one tick, as in the game.
         assert_eq!(tick(&mut b), [SoundCue::Music(SoundId::VIRUS_BATTLE), SoundCue::Pinch(true)]);
+        // The other side's player hears the same: its navi's latch too.
+        assert_eq!(b.sound_cues_for(1), [SoundCue::Music(SoundId::VIRUS_BATTLE), SoundCue::Pinch(true)]);
         assert_eq!(tick(&mut b), [SoundCue::Pinch(false)]);
         assert_eq!(tick(&mut b), [], "cues last one tick");
     }

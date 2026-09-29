@@ -217,9 +217,14 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
             d = hp - 1;
         }
         crate::kinds::subtract_hp(b, r, d);
-        // The local player's navi hears another hit sound; sprite_forceWhitePalette.
-        let local_player = navi_record(b, r).actor_type == ActorType::Player && !b.is_remote(b.objects.get(r).alliance);
-        b.play_sound(crate::sound::SoundId(if local_player { 0x6B } else { 0x6D }));
+        // A player hears another sound when their own navi is hit;
+        // sprite_forceWhitePalette.
+        let player = navi_record(b, r).actor_type == ActorType::Player;
+        let alliance = b.objects.get(r).alliance;
+        for side in 0..2 {
+            let own = player && side == alliance;
+            b.play_sound_for(side, crate::sound::SoundId(if own { 0x6B } else { 0x6D }));
+        }
         b.objects.sprite_mut(r).look.white = true;
         dead = b.objects.get(r).hp == 0;
     }

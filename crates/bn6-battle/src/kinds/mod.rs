@@ -40,7 +40,7 @@ use crate::object::{ObjectRef, Pool};
 /// Behavior-private state. The game gives every object 0x2C (actors,
 /// attacks) or 0x1C (effects) bytes of scratch; here each behavior gets a
 /// typed struct, zeroed at spawn like the game's.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub enum Vars {
     #[default]
     None,

@@ -104,10 +104,8 @@ fn decode(b: &mut Battle, r: ObjectRef) {
             ai_mut(b, r).requests |= request::SELECT_SPECIAL;
             return;
         }
-        // Otherwise the local side hears that it can't.
-        if !b.is_remote(b.objects.get(r).alliance) {
-            b.play_sound(crate::sound::SoundId::CANT_JACK_IN);
-        }
+        // Otherwise its player hears that it can't.
+        b.play_sound_for(b.objects.get(r).alliance, crate::sound::SoundId::CANT_JACK_IN);
     }
     if battle_mode(b) != 1 && decode_turn(b, r) {
         return;
