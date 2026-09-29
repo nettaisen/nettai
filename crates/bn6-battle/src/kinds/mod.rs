@@ -2,8 +2,11 @@
 //! behaviors (HP changes, damage formulas).
 
 pub mod charge_glow;
+pub mod effect;
+pub mod hitbox;
 pub mod intro;
 pub mod player;
+pub mod spark;
 
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Pool};
@@ -17,6 +20,8 @@ pub enum Vars {
     None,
     Intro(intro::Vars),
     ChargeGlow(charge_glow::Vars),
+    Effect(effect::Vars),
+    Hitbox(hitbox::Vars),
     /// Raw scratch for behaviors not given a typed struct yet.
     Raw([u8; 0x2C]),
 }
@@ -26,6 +31,8 @@ impl Vars {
         match (pool, index) {
             (Pool::Effect, 2) => Vars::Intro(Default::default()),
             (Pool::Effect, 8) => Vars::ChargeGlow(Default::default()),
+            (Pool::Effect, 0) => Vars::Effect(Default::default()),
+            (Pool::Attack, 3) => Vars::Hitbox(Default::default()),
             (Pool::Actor, 0) => Vars::None,
             _ => Vars::Raw([0; 0x2C]),
         }
@@ -39,8 +46,20 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Actor, 0) => player::update(b, r),
         (Pool::Effect, 2) => intro::update(b, r),
         (Pool::Effect, 8) => charge_glow::update(b, r),
+        (Pool::Effect, 0) => effect::update(b, r),
+        (Pool::Attack, 3) => hitbox::update(b, r),
+        (Pool::Effect, 4) => spark::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
+}
+
+/// `object_genericDestroy`: drop reservations, free collision, free.
+pub fn generic_destroy(b: &mut Battle, r: ObjectRef) {
+    b.release_reservations(r);
+    if let Some(c) = b.objects.get(r).collision {
+        b.collision.free(c);
+    }
+    b.objects.free(r);
 }
 
 /// `object_subtractHP`.

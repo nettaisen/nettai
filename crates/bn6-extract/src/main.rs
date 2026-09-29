@@ -213,6 +213,148 @@ fn collision(rom: &Rom) -> String {
     out
 }
 
+/// GBA BIOS LZ77 (type 0x10) decompression.
+fn lz77(rom: &Rom, src: u32) -> Option<Vec<u8>> {
+    let hdr = u32at(rom, src);
+    if hdr & 0xFF != 0x10 {
+        return None;
+    }
+    let size = (hdr >> 8) as usize;
+    let mut out = Vec::with_capacity(size);
+    let mut o = src + 4;
+    while out.len() < size {
+        let flags = rom.u8(o);
+        o += 1;
+        for bit in 0..8 {
+            if out.len() >= size {
+                break;
+            }
+            if flags & (0x80 >> bit) != 0 {
+                let (b1, b2) = (rom.u8(o) as usize, rom.u8(o + 1) as usize);
+                o += 2;
+                let n = (b1 >> 4) + 3;
+                let disp = ((b1 & 0xF) << 8 | b2) + 1;
+                for _ in 0..n {
+                    let v = *out.get(out.len().checked_sub(disp)?)?;
+                    out.push(v);
+                }
+            } else {
+                out.push(rom.u8(o));
+                o += 1;
+            }
+        }
+    }
+    Some(out)
+}
+
+/// Animation timing of every battle sprite: per animation, its frames'
+/// (duration, flags). Sprites are (category byte offset, index) into
+/// `SpritePointersList`.
+fn sprites(rom: &Rom) -> String {
+    const LIST: u32 = 0x0803_1CC4;
+    const BATTLE_CATEGORIES: u32 = 6;
+    let cats: Vec<u32> = (0..10).map(|i| u32at(rom, LIST + 4 * i)).collect();
+    let mut sprites: Vec<(u8, u8, Vec<Vec<(u8, u8)>>)> = Vec::new();
+    for (ci, &c) in cats.iter().enumerate().take(BATTLE_CATEGORIES as usize) {
+        let next = cats.iter().copied().filter(|&s| s > c).min().unwrap_or(c + 0x400);
+        for idx in 0..((next - c) / 4).min(256) {
+            let p = u32at(rom, c + 4 * idx);
+            let data: Vec<u8> = if p & 0x8000_0000 != 0 {
+                match lz77(rom, p & 0x7FFF_FFFF) {
+                    Some(d) => d,
+                    None => continue,
+                }
+            } else if (0x0800_0000..0x0900_0000).contains(&p) {
+                let o = (p & 0x01FF_FFFF) as usize;
+                rom.0[o..(o + 0x80000).min(rom.0.len())].to_vec()
+            } else {
+                continue;
+            };
+            let rd32 = |o: usize| data.get(o..o + 4).map(|b| u32::from_le_bytes(b.try_into().unwrap()));
+            let Some(first) = rd32(4) else { continue };
+            let count = first / 4;
+            if count == 0 || count > 256 {
+                continue;
+            }
+            let mut anims = Vec::new();
+            let mut ok = true;
+            for a in 0..count as usize {
+                let Some(off) = rd32(4 + 4 * a) else {
+                    ok = false;
+                    break;
+                };
+                let mut f = 4 + off as usize;
+                let mut frames = Vec::new();
+                loop {
+                    let (Some(&dur), Some(&flags)) = (data.get(f + 0x10), data.get(f + 0x12)) else {
+                        ok = false;
+                        break;
+                    };
+                    frames.push((dur, flags));
+                    if flags & 0x80 != 0 || frames.len() > 512 {
+                        break;
+                    }
+                    f += 0x14;
+                }
+                if !ok {
+                    break;
+                }
+                anims.push(frames);
+            }
+            if ok {
+                sprites.push(((ci * 4) as u8, idx as u8, anims));
+            }
+        }
+    }
+    let mut out = String::from(HEADER);
+    let mut frames: Vec<u8> = Vec::new();
+    let mut anim_starts: Vec<u32> = Vec::new();
+    let mut index = Vec::new();
+    for (cat, idx, anims) in &sprites {
+        index.push(format!("({cat:#04x}, {idx:#04x}, {}, {})", anim_starts.len(), anims.len()));
+        for a in anims {
+            anim_starts.push(frames.len() as u32 / 2);
+            for &(d, f) in a {
+                frames.push(d);
+                frames.push(f);
+            }
+        }
+    }
+    anim_starts.push(frames.len() as u32 / 2);
+    writeln!(out, "/// Sprites with animation data: (category, index, first animation, count), sorted.").unwrap();
+    writeln!(out, "pub static SPRITE_INDEX: [(u8, u8, u32, u32); {}] = [{}];", index.len(), index.join(", ")).unwrap();
+    writeln!(out, "/// Start of each animation's frames in `ANIM_FRAMES` (plus an end marker).").unwrap();
+    writeln!(out, "pub static ANIM_STARTS: [u32; {}] = {:?};", anim_starts.len(), anim_starts).unwrap();
+    writeln!(out, "/// Frames as (duration, flags) byte pairs.").unwrap();
+    writeln!(out, "pub static ANIM_FRAMES: [u8; {}] = {:?};", frames.len(), frames).unwrap();
+    eprintln!("sprites: {} sprites, {} animations, {} frames", sprites.len(), anim_starts.len() - 1, frames.len() / 2);
+    out
+}
+
+/// Generic effect table (`byte_80E0398`): sprite category, index,
+/// animation, palette per effect id.
+fn effects(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    let n = 0x6C;
+    let rows: Vec<String> = (0..n)
+        .map(|i| {
+            let b = rom.bytes(0x080E_0398 + 4 * i, 4);
+            format!("({:#04x}, {:#04x}, {:#04x}, {:#04x})", b[0], b[1], b[2], b[3])
+        })
+        .collect();
+    writeln!(out, "/// Generic effects (effect object #0): (sprite category, index, animation, palette).").unwrap();
+    writeln!(out, "pub static EFFECTS: [(u8, u8, u8, u8); {n}] = [{}];", rows.join(", ")).unwrap();
+    let sparks: Vec<String> = (0..16)
+        .map(|i| {
+            let b = rom.bytes(0x080E_0804 + 4 * i, 4);
+            format!("({:#04x}, {:#04x}, {:#04x}, {:#04x})", b[0], b[1], b[2], b[3])
+        })
+        .collect();
+    writeln!(out, "/// Hit sparks (effect object #4): (sprite category, index, animation, palette).").unwrap();
+    writeln!(out, "pub static SPARKS: [(u8, u8, u8, u8); 16] = [{}];", sparks.join(", ")).unwrap();
+    out
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let rom = Rom(std::fs::read(&args[0]).expect("reading ROM"));
@@ -225,5 +367,7 @@ fn main() {
     std::fs::write(out_dir.join("banners_generated.rs"), banners(&rom)).unwrap();
     std::fs::write(out_dir.join("field_generated.rs"), field(&rom)).unwrap();
     std::fs::write(out_dir.join("collision_generated.rs"), collision(&rom)).unwrap();
+    std::fs::write(out_dir.join("sprites_generated.rs"), sprites(&rom)).unwrap();
+    std::fs::write(out_dir.join("effects_generated.rs"), effects(&rom)).unwrap();
     eprintln!("wrote {}", out_dir.display());
 }
