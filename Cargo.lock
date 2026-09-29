@@ -147,6 +147,7 @@ name = "bn6-luau"
 version = "0.1.0"
 dependencies = [
  "bn6-content-api",
+ "luau-analyze",
  "mlua",
 ]
 
@@ -636,6 +637,15 @@ name = "log"
 version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
+
+[[package]]
+name = "luau-analyze"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2c04160ee6165909d3ea2e7b81db9533e05db1a3cb1172d352b0f33fe44c9d6"
+dependencies = [
+ "cc",
+]
 
 [[package]]
 name = "luau0-src"

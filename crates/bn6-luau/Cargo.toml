@@ -9,6 +9,11 @@ description = "Luau runtime for bn6 battle content: stateless scripts over the c
 bn6-content-api = { path = "../bn6-content-api" }
 mlua = { version = "0.12", features = ["luau"] }
 
+[dev-dependencies]
+# In-process Luau type checking (tests/types.rs checks content/bn6 against
+# its API definitions).
+luau-analyze = "0.0.1"
+
 [features]
 # Luau's native code generator (mlua's `luau-jit`), selectable per pack with
 # `Options::native_code`.
