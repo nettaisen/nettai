@@ -589,7 +589,7 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80143A6`: calm down.
-fn end_anger(b: &mut Battle, r: ObjectRef) {
+pub(super) fn end_anger(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
     b.stats[side].mood = 0x80;
     clear_flag1(b, r, f1::ANGER);
@@ -642,7 +642,7 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
 fn pause_requests(b: &mut Battle, r: ObjectRef) {
     let st = ai(b, r).status;
     if st & ai_status::FORM_CHANGE != 0 {
-        panic!("form change (sub_8014A38) is not implemented yet");
+        return actions::transform::form_change(b, r);
     }
     if st & 0x100 != 0 {
         panic!("pause action (sub_8015614) is not implemented yet");
