@@ -281,15 +281,25 @@ fn an_aseprite_view_edits_whole_frames() {
     let cel = edited.frames[1].cels.iter_mut().find(|c| c.layer == 0).unwrap();
     let CelContent::Image { pixels, .. } = &mut cel.content else { panic!() };
     pixels[0] = 0x0B;
-    // Frame 2 lasts 110 ms now, and animation 1 plays once.
+    // Frame 2 lasts 110 ms now, and animation 1 plays once (the tag's
+    // name says so; its repeat count is only the editor's preview).
+    assert_eq!(ase.tags[1].name, "anim 01 loop");
     edited.frames[2].duration_ms = 110;
+    edited.tags[1].name = "anim 01".into();
     edited.tags[1].repeat = 1;
     let mut r = Report::default();
     let back = aseprite::import(&edited.to_bytes(), &s, "view", &mut r).unwrap();
-    assert!(!r.has_errors(), "{r}");
+    assert!(!r.has_errors() && r.count(Level::Warning) == 0, "{r}");
     assert_eq!(back.tilesets[1].get(0).unwrap()[0], 0x0B);
     assert_eq!((back.animations[1][1].duration, back.animations[1][1].flags), (7, 0x80));
     assert!(r.issues.iter().any(|i| i.message.contains("110 ms is 7 ticks")));
+    // An editor that doesn't keep repeat counts (repeat 0 everywhere).
+    let mut old = ase.clone();
+    old.tags.iter_mut().for_each(|t| t.repeat = 0);
+    let mut r = Report::default();
+    let back = aseprite::import(&old.to_bytes(), &s, "view", &mut r).unwrap();
+    assert_eq!(back.animations[0][0].flags, 0x80, "still plays once");
+    assert!(r.issues.iter().any(|i| i.message.contains("its name decides")), "{r}");
 
     // Frames 1 and 2 also share the body's tiles in different shapes (not
     // linked): editing only one of them is refused.
