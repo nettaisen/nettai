@@ -79,7 +79,7 @@ fn wait_for_intro(b: &mut Battle, r: ObjectRef) {
 /// Action 1, `sub_8017888`: hand over to the idle controller (spawning
 /// the Beast Out lock-on marker in the battle flag 0x40 mode).
 pub(super) fn take_control(b: &mut Battle, r: ObjectRef) {
-    if is_mode_40(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).unk_40.is_none() {
+    if is_mode_40(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).lockon_marker.is_none() {
         panic!("Beast Out lock-on marker (sub_80E1620) is not implemented yet");
     }
     let o = b.objects.get_mut(r);

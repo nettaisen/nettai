@@ -86,7 +86,9 @@ impl Action {
 pub mod f2 {
     /// Destroy at the next reaction.
     pub const DESTROY: u32 = 0x1;
-    pub const UNK_4: u32 = 0x4;
+    /// Flinch request (a hit with hit modifier bit 0x1); a push cancels
+    /// it.
+    pub const FLINCH: u32 = 0x4;
     /// Pushed by a hit (hit modifier 0x40).
     pub const PUSHED: u32 = 0x100;
     /// Picked up to be thrown.
@@ -231,7 +233,7 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef) {
     // (f1 0x40 marks objects that can't be pushed.)
     if f1_of(b, r) & f1::MOVING == 0 && hit_mod & PUSHING_HIT != 0 {
         set_f2(b, r, f2::PUSHED);
-        clear_f2(b, r, f2::UNK_4);
+        clear_f2(b, r, f2::FLINCH);
         // `sub_801A6A6`.
         let acc = &mut b.collision.get_mut(c).acc;
         acc.final_damage = 0;

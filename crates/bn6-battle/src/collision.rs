@@ -22,7 +22,12 @@ pub struct CollisionId(pub u8);
 pub mod f1 {
     pub const GUARD: u32 = 0x1;
     pub const INVISIBLE: u32 = 0x2;
-    pub const UNK_4: u32 = 0x4;
+    /// Collides only with collision types that have bit 0x8 or 0x1000, in
+    /// both directions (`sub_3007218`). Held while the semi-intangible
+    /// timer runs and no action is in use (`sub_8010162`). Which chip or
+    /// state uses it is uncertain (`sub_80101AE` starts it for 480 ticks
+    /// and hides the navi).
+    pub const SEMI_INTANGIBLE: u32 = 0x4;
     pub const INVULNERABLE: u32 = 0x8;
     pub const AIRSHOE: u32 = 0x10;
     pub const FLOATSHOE: u32 = 0x20;
@@ -61,7 +66,6 @@ pub struct Accumulators {
     pub damage_elements: u8,
     pub raw_elements: u8,
     pub elec_damage: u16,
-    pub unk_7a: u16,
     pub hit_by: u32,
     pub final_damage: u16,
     /// Damage by element (null, heat, aqua, elec, wood, element 5/poison).
@@ -70,9 +74,7 @@ pub struct Accumulators {
     pub counter: u16,
     pub drain_hits: u16,
     pub raw_element_damage: [u16; 6],
-    pub unk_a0: u32,
     pub inflicted_bugs: u16,
-    pub unk_a6: u16,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -109,8 +111,8 @@ pub struct CollisionData {
     pub secondary_weakness: u8,
     pub secondary_element: u8,
     pub barrier_timer: u16,
-    /// Status timers: paralyze, confuse, blind, immobilize, flash, unk,
-    /// invulnerable, freeze, bubble.
+    /// Status timers: paralyze, confuse, blind, immobilize, flash,
+    /// semi-intangible, invulnerable, freeze, bubble.
     pub status_timers: [u16; 9],
     pub self_damage: u16,
     /// What I am (collision type flags).
@@ -124,9 +126,6 @@ pub struct CollisionData {
     pub bit: u32,
     /// Status visual objects and other links (0x48..0x67).
     pub links: [Option<ObjectRef>; 4],
-    pub unk_54: u32,
-    pub unk_5c: u32,
-    pub unk_64: u32,
     pub acc: Accumulators,
 }
 
@@ -149,7 +148,10 @@ pub mod timer {
     pub const BLIND: usize = 2;
     pub const IMMOBILIZE: usize = 3;
     pub const FLASH: usize = 4;
-    pub const UNK_26: usize = 5;
+    /// CollisionData+0x26: holds `f1::SEMI_INTANGIBLE` (0xFFFF =
+    /// indefinitely); started by `sub_80101AE`, ended by any hit
+    /// (`sub_8010198`) or by `sub_80101C4`.
+    pub const SEMI_INTANGIBLE: usize = 5;
     pub const INVULNERABLE: usize = 6;
     pub const FREEZE: usize = 7;
     pub const BUBBLE: usize = 8;
@@ -311,7 +313,6 @@ impl Battle {
         if !timestop {
             s.hit_mod_final = 0;
             s.guard_dirs = 0;
-            s.unk_54 = 0;
         }
         s.status_final = 0;
         s.acc = Accumulators::default();
@@ -502,7 +503,6 @@ impl Battle {
         if hd.element == 1 && grass {
             rm.acc.element_damage[0] = rm.acc.element_damage[0].wrapping_add(hd.self_damage);
         }
-        rm.acc.unk_a0 = rm.acc.unk_a0.wrapping_add(hd.unk_64);
         if thaw {
             if let Some(p) = rd.parent {
                 crate::kinds::thaw(self, p);
