@@ -9,6 +9,7 @@
 use crate::battle::Battle;
 use crate::data::cross::{self, BodyOverlay};
 use crate::kinds::common;
+use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
 pub const INDEX: u8 = 0x56;
@@ -91,8 +92,13 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 fn init(b: &mut Battle, r: ObjectRef) {
     let sprite = overlay(b, r).sprite;
     let anim = vars(b, r).anim_offset;
+    let own_palette = vars(b, r).own_palette;
+    let owner_palette = b.objects.sprite(owner(b, r)).look.palette;
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
+    // sprite_noShadow; its palette 0, or its owner's.
+    s.look.shadow = Shadow::WithSprite;
+    s.look.palette = if own_palette { 0 } else { owner_palette };
     s.set_animation(anim);
     s.update();
     let o = b.objects.get_mut(r);
@@ -132,6 +138,19 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         o.flags = (o.flags & !flags::VISIBLE) | (owner_flags & flags::VISIBLE);
     }
     o.flip = owner_flip;
+    let alliance = o.alliance;
+    // The owner's palette (unless it has its own), colour shader, white
+    // flash, alpha and facing.
+    let own_palette = vars(b, r).own_palette;
+    let owner_look = b.objects.sprite(owner).look;
+    let look = &mut b.objects.sprite_mut(r).look;
+    if !own_palette {
+        look.palette = owner_look.palette;
+    }
+    look.color_shader = owner_look.color_shader;
+    look.white = owner_look.white;
+    look.alpha = owner_look.alpha;
+    look.set_flip(alliance ^ owner_flip);
     // Action 0, `sub_80C4484`.
     if always_step {
         common::step_sprite(b, r);
