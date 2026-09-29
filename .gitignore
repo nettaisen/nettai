@@ -4,3 +4,5 @@
 *.sav
 /tools/*/target
 /data/traces/*.jsonl
+# The frontend asset bundle (extracted from your ROM; never commit it)
+/assets
