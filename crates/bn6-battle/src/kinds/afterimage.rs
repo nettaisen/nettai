@@ -15,6 +15,9 @@ use crate::setup::Form;
 
 pub const INDEX: u8 = 0x28;
 
+/// The colour shader `sub_80EAFC2` gives its afterimages.
+const COLOR_SHADER: u16 = 0x83E0;
+
 /// What ends an afterimage before its time is up.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Tether {
@@ -94,9 +97,15 @@ fn init(b: &mut Battle, r: ObjectRef) {
     put_on_layer(b, r, name_id);
     let anim = vars(b, r).anim;
     let lifetime = vars(b, r).lifetime;
+    let flip = b.objects.get(r).params[3];
     let s = b.objects.sprite_mut(r);
     s.set_animation(anim);
     s.update();
+    // A ground shadow, the fourth parameter's flip and the spawner's
+    // colour shader (0x83E0: less green).
+    s.look.shadow = crate::object::sprite::Shadow::Ground;
+    s.look.set_flip(flip);
+    s.look.color_shader = COLOR_SHADER;
     let o = b.objects.get_mut(r);
     o.anim = anim;
     o.anim_loaded = anim;
