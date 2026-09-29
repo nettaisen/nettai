@@ -132,8 +132,6 @@ pub struct AttackVars {
     pub hit_param: u16,
     /// Action parameters (a chip's `params`).
     pub params: [u8; 4],
-    pub timer: u16,
-    pub recovery: u16,
     pub chip_id: u16,
     pub special_source: u8,
     /// Which `set_attack` slot started the action.

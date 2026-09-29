@@ -27,6 +27,7 @@ pub enum ActionVars {
     Move(movement::Vars),
     GunDelSol(gun_del_sol::Vars),
     BeastClaw(beast_claw::Vars),
+    FormChange(transform::Vars),
 }
 
 /// Run action `action` (>= 0x10) for the player `r` this tick.
