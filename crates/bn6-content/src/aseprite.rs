@@ -445,7 +445,7 @@ pub fn export(s: &SpriteSheet) -> Vec<u8> {
             to: frames.len().saturating_sub(1) as u16,
             direction: 0,
             repeat: if looping { 0 } else { 1 },
-            name: format!("anim {a:02}"),
+            name: format!("anim {a:02}{}", if looping { " loop" } else { "" }),
         });
     }
     let layers = (0..layers)
@@ -585,13 +585,32 @@ pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report)
             out.animations[a][i].duration = ticks;
             f += 1;
         }
-        if let Some(tag) = ase.tags.iter().find(|t| t.name == format!("anim {a:02}")) {
-            let last = out.animations[a].last_mut().unwrap();
-            if tag.repeat == 0 {
-                last.flags |= crate::sprite::FLAG_LOOP;
-            } else {
-                last.flags &= !crate::sprite::FLAG_LOOP;
+        // The tag's name says whether the animation loops ("anim NN loop");
+        // its repeat count only drives the editor's preview, and editors
+        // before Aseprite 1.3 (and LibreSprite) don't keep it.
+        let number = |t: &AseTag| t.name.split_whitespace().nth(1).and_then(|n| n.parse::<usize>().ok());
+        match ase.tags.iter().find(|t| t.name.starts_with("anim ") && number(t) == Some(a)) {
+            Some(tag) => {
+                let looping = tag.name.split_whitespace().nth(2) == Some("loop");
+                if looping != (tag.repeat == 0) {
+                    report.warn(
+                        file,
+                        format!(
+                            "tag {:?}: its name decides whether the animation loops ({}); its repeat setting ({}) disagrees",
+                            tag.name,
+                            if looping { "it does" } else { "it doesn't" },
+                            tag.repeat
+                        ),
+                    );
+                }
+                let last = out.animations[a].last_mut().unwrap();
+                if looping {
+                    last.flags |= crate::sprite::FLAG_LOOP;
+                } else {
+                    last.flags &= !crate::sprite::FLAG_LOOP;
+                }
             }
+            None => report.warn(file, format!("no tag \"anim {a:02}\"; animation {a} keeps its loop flag")),
         }
     }
     if outside > 0 {
