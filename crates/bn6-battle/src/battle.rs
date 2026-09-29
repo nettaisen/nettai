@@ -11,7 +11,8 @@ use crate::input::{InputRecord, PlayerTick, keys};
 use crate::object::{ObjectRef, Objects};
 use crate::rng::Rng;
 use crate::data::BannerId;
-use crate::setup::{NaviStats, RoundSetup, effects};
+use crate::setup::{Form, Navi, NaviStats, RoundSetup, effects};
+use crate::transform::{TransformRequest, TransformSequencer};
 
 /// Battle flag bits.
 pub mod battle_flags {
@@ -159,8 +160,8 @@ pub struct CustomResult {
     /// The chosen hand (None = no chips chosen: the previous hand stays).
     pub hand: Option<ChipHand>,
     pub navi_stats: NaviStats,
-    /// Cross/Beast transformation request (0xFF = none).
-    pub transform: u8,
+    /// Cross/Beast transformation request.
+    pub transform: TransformRequest,
 }
 
 /// Events from outside the simulation that happen on a tick.
@@ -186,9 +187,16 @@ pub struct Battle {
     pub paused: bool,
     pub inputs: [InputRecord; 2],
     pub hands: [ChipHand; 2],
-    pub transform_requests: [u8; 2],
+    /// Both players' transformation requests from the last custom screen.
+    pub transform_requests: [TransformRequest; 2],
+    /// The requests as this turn started (`unk_203A980`): what each navi
+    /// changes into.
+    pub turn_transforms: [TransformRequest; 2],
     /// The transformation sequencer run at the start of each turn.
     pub transform_seq: TransformSequencer,
+    /// Per side: the navi went Beast Out this battle (`byte_203EAE0` +2,
+    /// read after the battle: a navi that did not gets a turn back).
+    pub beast_out_used: [bool; 2],
     pub objects: Objects,
     pub actors: Actors,
     pub collision: Collision,
@@ -209,18 +217,6 @@ pub struct Battle {
     /// Per-side registry of defensive chips and their linked objects
     /// (0x10 bytes per side at 0x02036720).
     pub linked: [LinkedRecord; 2],
-}
-
-/// The transformation sequencer's progress (`dword_20367F0`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct TransformSequencer {
-    /// 0 check, 4 transform, 8 wait.
-    pub state: u8,
-    pub busy: bool,
-}
-
-impl TransformSequencer {
-    pub const START: TransformSequencer = TransformSequencer { state: 0, busy: true };
 }
 
 /// A side's extra battle state (0x1D0 bytes at `sub_802E070(side)`); only
@@ -353,8 +349,10 @@ impl Battle {
             paused: false,
             inputs: [InputRecord::default(); 2],
             hands: [ChipHand::empty(), ChipHand::empty()],
-            transform_requests: [0xFF; 2],
+            transform_requests: [TransformRequest::NONE; 2],
+            turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),
+            beast_out_used: [false; 2],
             objects: Objects::new(),
             actors: Actors::default(),
             collision: Collision::new(),
@@ -749,28 +747,20 @@ impl Battle {
     /// twice, then count down Beast Out.
     fn fight_setup(&mut self) {
         if self.fight.init == 0 {
-            // sub_80147E4: start the sequencer with the exchanged requests.
-            if self.transform_requests.iter().any(|&t| t != 0xFF) {
-                panic!("Cross/Beast transformations are not implemented yet");
-            }
-            self.transform_seq = TransformSequencer::START;
+            self.start_transform_sequencer();
             self.fight.init = 4;
         }
         if self.step_transform_sequencer() {
             return;
         }
         if self.fight.sub == 0 {
-            // sub_801482C
-            self.transform_seq = TransformSequencer::START;
+            self.transform_seq.restart();
             self.fight.sub = 4;
             return;
         }
         for side in 0..2u8 {
             if self.player(side).is_some() {
-                let s = &mut self.stats[side as usize];
-                if s.form.is_beast() {
-                    s.beast_out_counter = s.beast_out_counter.wrapping_sub(1);
-                }
+                self.count_down_beast_out(side);
             }
         }
         self.fight.state = fight::START_BANNER;
@@ -778,30 +768,14 @@ impl Battle {
         self.fight.init = 0;
     }
 
-    /// `sub_801483C`: one step of the transformation sequencer; true while
-    /// it is busy. Without a transformation request it takes two ticks:
-    /// check each navi (`sub_801486C`), then wait for them (`sub_8014A00`).
-    fn step_transform_sequencer(&mut self) -> bool {
-        use crate::kinds::player;
-        match self.transform_seq.state {
-            0 => {
-                for side in 0..2 {
-                    if let Some(p) = self.player(side) {
-                        player::check_beast_out_end(self, p);
-                    }
-                }
-                self.transform_seq.state = 8;
-            }
-            8 => {
-                let players = [self.player(0), self.player(1)];
-                let busy = |b: &Battle, f: fn(&Battle, ObjectRef) -> bool| players.iter().flatten().any(|&p| f(b, p));
-                if !busy(self, player::reverting_form) && !busy(self, player::changing_form) {
-                    self.transform_seq.busy = false;
-                }
-            }
-            s => panic!("transformation sequencer state {s:#x} is not implemented yet"),
+    /// `sub_8015A38`: a turn in Beast Out uses up one of MegaMan's turns,
+    /// unless he started the battle in Beast Out.
+    fn count_down_beast_out(&mut self, side: u8) {
+        let s = &mut self.stats[side as usize];
+        let started_beast = matches!(s.starting_form, Form::GREGAR_BEAST | Form::FALZAR_BEAST);
+        if s.navi == Navi::MEGAMAN && !started_beast && s.form.is_beast() && s.beast_out_counter != 0 {
+            s.beast_out_counter -= 1;
         }
-        self.transform_seq.busy
     }
 
     fn apply_actor_inputs(&mut self) {

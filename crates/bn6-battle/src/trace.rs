@@ -125,6 +125,7 @@ use crate::battle::{Battle, CustomResult, TickEvents};
 use crate::hand::ChipHand;
 use crate::input::PlayerTick;
 use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
+use crate::transform::TransformRequest;
 
 /// A custom-screen exchange record from a trace.
 #[derive(Clone, Debug, Deserialize)]
@@ -212,9 +213,10 @@ impl Round {
             // The exchange installed on the tick before the mode left the
             // custom screen.
             if f.state[1] == 8 && next.state[1] == 0x0C {
-                let latest = |p: usize| -> (NaviStats, u8) {
+                let latest = |p: usize| -> (NaviStats, TransformRequest) {
                     let e = self.exchanges.iter().filter(|e| e.frame <= f.frame).next_back().expect("exchange record");
-                    (NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap()), unhex(&e.transform[p])[0])
+                    let stats = NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap());
+                    (stats, TransformRequest::from_bytes(&unhex(&e.transform[p])))
                 };
                 let result = |p: usize| {
                     let hand = ChipHand::from_bytes(&unhex(&f.chip_blocks[p]));
@@ -310,14 +312,15 @@ fn describe_fields(
 }
 
 /// Positions that are register garbage in the game and never read:
-/// the intro sequencer's (effect #2, objects-and-player.md §A.4), and a
+/// the intro sequencer's (effect #2, objects-and-player.md §A.4), a
 /// charge glow's before its first unpaused update, while it has no sprite
-/// yet (effect #8, §A.5). The X and Y of effects the engine marks as not
-/// knowing them are skipped too (`effect::xy_unknown`): the second
-/// deletion explosion, which the game spawns with the object allocator's
-/// list-node addresses as X and Y (§A.3).
+/// yet (effect #8, §A.5), and a palette flash's (effect #0x0A, §A.7).
+/// The X and Y of effects the engine marks as not knowing them are skipped
+/// too (`effect::xy_unknown`): the second deletion explosion, which the
+/// game spawns with the object allocator's list-node addresses as X and Y
+/// (§A.3).
 fn pos_is_garbage(kind: u8, index: u8, flags: u8) -> bool {
-    kind == 4 && (index == 2 || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0))
+    kind == 4 && (index == 2 || index == 0x0A || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0))
 }
 
 fn describe(b: &Battle, r: crate::object::ObjectRef, xy_unknown: bool) -> String {
