@@ -15,7 +15,7 @@ pub const INDEX: u8 = 0x57;
 pub const BEAST_HEAD: SpriteId = SpriteId { category: 0x0C, index: 0x0A };
 
 /// How the overlay's sprite steps once it runs (Param3).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Stepping {
     /// `object_updateSprite`, and not in time stop. The overlay stops
     /// running while the battle is paused.
@@ -28,7 +28,7 @@ pub enum Stepping {
 }
 
 /// Overlay-private state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub sprite: Option<SpriteId>,
     /// Sits one pixel higher and nearer than its owner.

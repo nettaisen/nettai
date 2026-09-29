@@ -15,7 +15,7 @@ use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 pub const INDEX: u8 = 0x56;
 
 /// Overlay-private state (the spawn parameters, and ExtraVars[0]).
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Hash)]
 pub struct Vars {
     /// Param1: which overlay (`data::cross::body_overlay`).
     pub variant: u8,

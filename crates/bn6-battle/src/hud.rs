@@ -5,7 +5,7 @@ use crate::data::BannerId;
 use crate::setup::GaugeSpeed;
 
 /// The custom gauge: one per battle, shared by both players.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct CustomGauge {
     /// 0..=FULL.
     pub value: u16,

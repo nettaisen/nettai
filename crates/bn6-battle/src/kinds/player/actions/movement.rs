@@ -19,7 +19,7 @@ use crate::object::{ObjectRef, PanelPos};
 pub const ACTION: u8 = 0x10;
 
 /// How a step picks its destination (the game's move type byte).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum MoveKind {
     /// One panel in the held direction.
     #[default]
@@ -34,7 +34,7 @@ pub enum MoveKind {
 }
 
 /// The step's own state.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     /// Direction code: 1 up, 2 down, 3 back, 4 forward.
     pub dir: u8,

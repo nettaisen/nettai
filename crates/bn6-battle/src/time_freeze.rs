@@ -12,7 +12,7 @@ use crate::kinds::common::{self, Progress};
 use crate::object::{ObjectRef, state};
 
 /// Where a side's freeze is (record +1).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum FreezeState {
     #[default]
     Idle = 0,
@@ -29,7 +29,7 @@ pub enum FreezeState {
 }
 
 /// A side's freeze record.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FreezeRecord {
     /// +0: the side whose freeze is current (both records are written
     /// together; a counter takes it over).
@@ -50,15 +50,15 @@ const DIM_TICKS: u8 = 16;
 const UNDIM_TICKS: u8 = 17;
 
 /// The chip-name banners: the local player's, and the other player's.
-const LOCAL_NAME_BANNER: BannerId = BannerId(0x4C);
-const REMOTE_NAME_BANNER: BannerId = BannerId(0x50);
+pub(crate) const LOCAL_NAME_BANNER: BannerId = BannerId(0x4C);
+pub(crate) const REMOTE_NAME_BANNER: BannerId = BannerId(0x50);
 
 /// Chips from this id on can't be countered.
 const FIRST_UNCOUNTERABLE: ChipId = 0x170;
 
 /// What every controller knows about its chip (object +0x30 / +0x32): for
 /// the name the HUD shows.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FreezeChip {
     pub chip: ChipId,
     /// The Atk+ / cross bonus, shown with the name for damaging chips.

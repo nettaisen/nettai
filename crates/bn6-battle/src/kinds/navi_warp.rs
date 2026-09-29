@@ -17,7 +17,7 @@ use crate::time_freeze::{hide_user, show_user};
 pub const INDEX: u8 = 0x2D;
 
 /// Which way the navi warps (Param4).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Warp {
     /// Back in: the navi shows again at the end.
     #[default]
@@ -27,7 +27,7 @@ pub enum Warp {
 }
 
 /// The warp's own state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub warp: Warp,
     /// ExtraVars[0]: the warping object's actor type (only players are

@@ -30,7 +30,7 @@ const NAME_ID: u16 = 0x1A0 + 0x10;
 const ELEMENT_PALETTES: [u8; 4] = [2, 4, 8, 6];
 
 /// His own state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// ExtraVars[0]: the element shown (0 Fire, 1 Aqua, 2 Elec, 3 Wood).
     pub element: u8,
