@@ -558,16 +558,18 @@ Later, the Beast Out chip-use routine (`sub_80EAD9C` → `sub_80EAE28` → `sub_
 - **Afterimage layer:** T4#0x28 creates one through `sub_8010DF6`.
 - **Init** `sub_80C4550`: `sprite_load(0x80, Param1, Param2)`, `CurAnim = CurAnimCopy = owner.CurAnim + Param4`, then load + `sprite_update`.
 - **Update** `sub_80C458C`, every tick:
-  - `CurAnim = owner.CurAnim + Param4`, reloading the animation if it changed.
+  - `CurAnim = owner.CurAnim + Param4`. If that differs from CurAnimCopy it calls `sprite_setAnimation` **without updating CurAnimCopy**, so the animation restarts every tick until the sprite step below records it (while paused, with Param3 = 0, that step never comes).
   - `pos = owner.pos`, minus 1 px on Y and Z when ExtraVars ≠ 0.
   - Copies VISIBLE, palette, shader, final palette, mosaic/alpha and flip from the owner.
   - Action 0 waits for `Unk_5c` bit 0x02 and then clears header flag 0x04 unless Param3 ≠ 0 (trace flags 0x13 at 1857). Action 4 steps the sprite with gating chosen by Param3 (0: `object_updateSprite` unless time-stop; 1: `object_updateSpriteTimestop`; 2: `sub_801BCD0`). If ExtraVars+0xC ≠ 0 and the owner has flags `0x100800` (DRAG | PARALYZED), it skips.
+- **Other writers:** `sub_80C44D2` (the owner's `sub_8011450` after an animation change, and MegaMan's flinch/drag hook `sub_80F06CE`) sets CurAnimCopy = 0xFF and steps the overlay's sprite at once with `sub_801BCD0`. The form change sets Param3 = 1 and flags |= 0x14 on an existing overlay (`sub_8014D08`) and Param3 = 0 on the new one (`sub_8014E08`). `sub_80C46C0` sets ExtraVars+8 = 1 (palette from the navi's mood; render only).
+- **Beast Out spawn:** the object is inserted after the navi (spawned during its update) with flag 0x04, so its init runs in the same, paused tick: flags 0x13, anim 0, pos = navi pos − (0, 1, 1) px. From then on it does not run until the pause ends.
 - **Lifetime:** freed via CurState 8, set through `sub_80C46B0(obj)` by the owner. The form overlay lived 1857 → battle-end `FreeAll` at 2521. The afterimage layers were freed at 2353/2361, in the same tick their T4#0x28 was destroyed (they come after it in the list).
 - **Verdict:** visual. It writes only itself. Slot and list position only.
 
 **T4#0x0A** `sub_80E10A4` (asm31.s:83791): screen palette flash.
 - **Spawner** `sub_80E11E0` (asm31.s:83946): `object_spawnType4(0x0A, r1..r3, r4)`, `ExtraVars = r7`, `Flags |= 0x14`.
-- **Spawn values:** `sub_8014E08` passes `r4 = 0x00030E00`. The resulting fields are Param1 = 0 (variant `sub_80E10C0`), Param2 = 14 (duration), Param3 = 3 (bit 0 = run in time-stop, bit 1 = ignore pause). Its X/Y/Z are leftover registers from `SetBattleNaviStatsByte_AllianceFromBattleObject`: X = `eBattleNaviStats0` (0x0203CE00), Y = the form value written (0x0C), Z = earlier r3 (observed 1).
+- **Spawn values:** `sub_8014E08` passes `r4 = 0x00030E00`. The resulting fields are Param1 = 0 (variant `sub_80E10C0`), Param2 = 14 (duration), Param3 = 3 (bit 0 = run in time-stop, bit 1 = ignore pause). Without bit 1 it does nothing while paused (nor, without bit 0, in time stop) except hold the palette; CurState stays 0 until it first runs. Its X/Y/Z are leftover registers from `SetBattleNaviStatsByte_AllianceFromBattleObject`: X = `eBattleNaviStats0` (0x0203CE00), Y = the form value written (0x0C), Z = earlier r3 (observed 1).
 - **Behaviour:** the handler dispatches on **Param1, not CurState**. On the first call it sets `Timer2 = Param2`, `Timer = 0`, CurState = 4. Then, every tick, `Timer2 -= 1`; while ≥ 0 it writes palette-transform entries (`sub_8002378` into `iPalette3001B60`, blinking every 4 ticks); when it goes < 0 it calls `Terminate_ePalette20097a0_Transform(0x14)` and **`object_freeMemory` directly**.
 - **Lifetime:** spawn T → freed at T + Param2 (1857 → 1871).
 - **Verdict:** visual (palette RAM only). Slot and list position only. It has no sprite, so flag 0x08 stays set (trace flags 0x1D).
@@ -580,13 +582,14 @@ Later, the Beast Out chip-use routine (`sub_80EAD9C` → `sub_80EAE28` → `sub_
   - During time-stop: return (no movement).
   - If `battle_isBattleOver()` or `*slot == 0`: **zero `*slot` itself and `object_freeMemory` directly**.
   - Unless frozen (ExtraVars+4 ≠ 0; set/cleared by `sub_80E1654`/`sub_80E1662`):
-    - Picks a target with `sub_80E1670`, which uses `object_getEnemyByNameRange` over opposing actors with name ids below 0x1C3 and the row/column preference in `sub_80E16CC` relative to the owner's panel.
+    - Picks a target with `sub_80E1670`. `object_getEnemyByNameRange` lists the opposing side's four alive-actor slots (BattleState+0x80 + 0x10·side) in slot order, keeping NameIDs 0..0x1C3. `sub_80E16CC` then tries three column ranges relative to the owner's PanelX: ahead of it (`[x+1, 6]` when facing right, `[1, x−1]` when facing left), then behind it, then its own column. The first range with a candidate wins. With several candidates in a range, `sub_80E1730`/`sub_80E175C`/`sub_80E17AC` break the tie by row and distance relative to the owner (not needed in PvP, where each side has one navi). If there is no candidate at all, the result is 0 and the code reads through a null pointer.
     - `pos = target.pos + sub_8018810(target.NameID, 0x11, …) offsets (X, Z) + (0, 8, 8) px`. The offsets are 0 if target NameID ∈ [0x173, 0x178] and target.CurAnim == 0x4F.
   - `object_setPanelsFromCoordinates` recomputes its **own PanelX/PanelY** from pos, and it hides if that panel is invalid.
   - `object_updateSpriteTimestop`.
 - **Why it matters:** `sub_80E164A` (asm31.s:84536) returns this object's PanelX/PanelY, and it is read by chip-use code as the Beast Out target panel: `sub_80EAE28` (asm31.s:104145, passes it to `ho_8026554`), asm31.s:112478, asm03_0.s:13708 and 13920. So its target choice and panel computation feed gameplay.
 - **Lifetime:** spawned 1866 into slot 0, freed at 2346 when the battle became over (the only write to `AIData.Unk_40` at 2346 is its own self-zeroing). `sub_801562C` (asm00_2.s:14071) also zeroes `AIData.Unk_40`, presumably when the form ends.
-- UNCERTAIN: exact target-selection rules (`object_getEnemyByNameRange` iteration order = pool/list order?). They need their own spec with Beast Out. No RNG was observed.
+- Observed: spawned at 1866 with flags 0x17 at (0x370000, 0x240000, 0x130000), panel (5,2): the opponent at x = 0x3C0000 plus attach point 0x11 of NameID 0x1A0 facing left (−5, 0xB) and (0, 8, 8) px. While paused it keeps running (flag 0x04), recomputing its position; `object_updateSpriteTimestop` does nothing while paused. No RNG.
+- The multi-candidate tie-break is code-derived only.
 
 **T4#0x28** `sub_80E32B8` (asm31.s:88278): Beast Out dash afterimage.
 - **Spawner** `sub_80E33FA` (asm31.s:88438): `RelatedObject1Ptr = r5`, `ExtraVars = r6`, `ExtraVars+4 = r7`, alliance copied, `Flags |= 0x04`.
@@ -1018,7 +1021,9 @@ Intermediate values differ between local and remote, and the local side differs 
 
 ##### M4.2 While paused
 
-During the custom screen `battle_isPaused` is true. `sub_801AF44` skips the action handler for `CurAction != 0` and runs `sub_8017BC0` (asm00_2.s:18369) instead. That handler only reacts to `Unk_48` bits 0x80/0x100/0x1000/0x2000 and `+0x44` bits 0x4000/0x40/...; all of these start action 0x1C. `sub_8012E74` produces no intents. So **action 1 persists through the whole first custom screen**: frames 122–592 in the trace.
+During the custom screen `battle_isPaused` is true. `sub_801AF44` skips the action handler for `CurAction != 0` and runs `sub_8017BC0` instead. `sub_8012E74` produces no intents. So **action 1 persists through the whole first custom screen**: frames 122–592 in the trace.
+
+`sub_8017BC0` first runs whatever pause-time action is in progress, by `Unk_48` (state) bit: 0x80 → `sub_8014A38` (form change, §12.9), 0x100 → `sub_8015614` (form revert), 0x1000 → `sub_802D714` (Cross change), 0x2000 → `sub_802D926` (AIAttackVars+3 = 0 first). Otherwise it starts one from an `Unk_44` request, clearing the request, setting the state bit and calling `object_setAttack0(0x1C)`: 0x4000 → 0x80; 0x40 → 0x100 (and it saves the state word in `Unk_5c` after zeroing it); 0x4000000 → 0x1000; 0x8000000 → 0x2000. The action starts running on the next tick. (The listing renders the literal 0x4000000 as `LCDControl` and 0x8000000 as a byte pool.)
 
 ##### M4.3 Action 1, `sub_8017888` (asm00_2.s:17979)
 
@@ -2109,6 +2114,32 @@ The deletion action (§H6) ends by storing CurState 8 at t0+54. On the next upda
 
 **Dangling collision pointer.** `object_freeCollisionData` releases the CollisionData slot but obj+0x54 keeps pointing at it. In round 1 the winner's GunDelSol kept spawning a one-tick T3 collision-region object every tick; from frame 993 each of them allocated the freed slot 0 (lowest free) and zero-filled it, which is why the trace's "status" of the dead player reads 0 from frame 993 (it is really the T3 object's ObjectFlags1). Any code that reads the dead player's flags through `object_getFlag` (e.g. the other player's visibility check via `sub_80103BC`, §H4.2) reads whatever object currently owns that slot. Model the pools as raw memory with pointers/indices exactly like the game, or these aliasing effects will diverge.
 
+### 12.9 Beast Out: the form change (action 0x1C) and what a form changes
+
+Trace: round 2, alliance 0 (MegaMan, Falzar) requests form 0x0C. The transformation sequencer (battle-flow.md §3.4.1) sets request 0x4000 at 1794; the pause handler (§M4.2) starts action 0x1C with state bit 0x80 the same tick. From 1795, `sub_8014A38` runs each paused tick:
+
+1. Read the side's requested form with `sub_801595E(alliance)` (the turn's copy of the transform records). Outside 1..0x18: clear state 0x80 and stop. 0x17/0x18: Beast Over table `off_8014AF0`; 0x0D..0x16: Cross Beast, `off_8014ADC` (or `off_8014B04` when the current form is past 0x0A); 0x0B/0x0C: Beast Out, `off_8014AC8`; 1..10: Cross, `off_8014AB4`. The table is indexed by AIAttackVars+0 (the step; its `strh` writes also clear the step's init byte +1).
+2. Then, unless state bit 0x80000 is set, `sub_801BCD0`: load a changed animation and step the sprite even though the battle is paused.
+
+Beast Out steps (timer = AIAttackVars+0x10, a u16):
+
+| Step | Routine | Ticks | What happens |
+|---|---|---|---|
+| 0 | `sub_8014D08` | 1795 | FuturePanel → panel, drop the reservation, snap coordinates and collision panels; end invulnerability (`sub_800EB08`); face the default way under the standard column patterns (`sub_800F46C`); drop the charge (`sub_8012EA8`); end the Full Synchro aura (`sub_80C4C3A` on AIData+0x5C; with none it writes into BIOS space, a no-op); RelatedObject1Ptr = 0, AIData+0x68 = 0; `sub_80158FA`; CurAnim = 0x11 (not `object_setAnimation`); if there is a form overlay, its Param3 = 1 and flags \|= 0x14; timer = 6; step 4. |
+| 4 | `sub_8014D70` | 1796–1856 | Count 6 down; on the tick the timer was 0 (1802): state \|= 0x80000 (no more sprite steps), T4#0 effect 0x2E (flip = alliance) at the navi's position with Timer 0x36 and flag 0x04, then the navi moves down by 0xC00000 (off the field), `byte_203EAE0[alliance][2] = 1`, sounds, and a 60-tick camera shake (RNG1 only). Timer = 0x36, init = 4, and the same tick counts it to 0x35. Step 8 on the tick the timer was 0 (1856). |
+| 8 | `sub_8014E08` | 1857–1866 | Init (1857): `sub_8011384(current form)` takes off the current form's overlay; load the new form's sprite (`sub_800FC9E(navi, form)`: category 0, index 0x0C), `object_setAnimation(0)` (CurAnimCopy = 0xFF), `sprite_setAnimation(0)`; coordinates from the panel (back on the field); timer = 10; NaviStats+0x2C = form; T4#0x0A palette flash (§A.7); NameID = 0x1AB + form (`sub_8015B22`: 0x1B7); `sub_8011268(form, 0)` puts on the new overlay (T1#0x57, spawned after T4#0x0A so it sits before it in the list); its Param3 = 0. Every tick the timer counts down; on the tick it was ≤ 1 (1866): note whether the emotion is Full Synchro, `sub_80144C0` (status reset: weapons, form flags, element; spawns T4#0x0F), `sub_80143A6` (calm down: mood 0x80), mood 0xFF again if it was Full Synchro, `sub_800EB08`; step 0xC. |
+| 0xC | `sub_8014F04` | 1867–1887 | Timer = 0x14, counted down; on the tick it was 0: clear state 0x80, battle flag 0x20, state 0x80000 and requests 0x80008600, and `object_exitAttackState` (action 8, anim 0). The tail of `sub_8014A38` steps the sprite that tick. |
+
+`sub_80158FA`: ObjectFlags1 &= ~0x80111C40 (bubbled, drag, frozen, sliding, paralyzed, flinching, moving), ObjectFlags2 &= ~0x10, SlideState = 0, AIData+0x48 &= ~0x200800, and the CollisionData paralysis/freeze/bubble timers (+0x1C/+0x2A/+0x2C) and ice/bubble links (+0x58/+0x60) zeroed.
+
+**What form 0x0C changes** (mostly through `sub_80144C0`):
+- Weapons (`sub_800FEEC` from `byte_8020354 + 6·form`): buster 3, A-charge 5, charged shot 0xFF (so B does not charge), B+Back none, alternative A-charge 0x1E for Null-family chips.
+- Element Null and no weakness (`sub_801086C` tables).
+- Form flags (`sub_8014536` → `sub_8014606`): ObjectFlags1 \|= AirShoe | FloatShoe, the collision self type becomes 0x10 (as with FloatShoe), and the lock-on marker T4#0x0F is spawned unless AIData+0x40 already holds one.
+- A charges chips: `sub_801336C` asks `sub_8013236`, which in forms 0x0B..0x16 accepts any family-0xA (Null) chip. The other forms accept damaging, non-time-freeze chips of one family: form 2 Null, forms 3/0xF Sword (or chips 0x4C..0x4F), 7/0x13 Wood, 6/0x12 Aqua, 9/0x15 Break, 5/0x11 Fire. Link navis 5/6/7/0xB have their own rule (`sub_800F49E`, `byte_8021369`); MegaMan's always fails it.
+- The beast-out counter (NaviStats+0x21) goes down at the next fighting state 0 (battle-flow.md §3.4).
+- The overlay follows the navi: with AIIndex 0, every `sub_8011450` call and the flinch/drag hook restart the overlay's animation (`sub_80C44D2`).
+
 ## 13. RNG uses (all that touch objects or battle setup)
 
 RNG1 state is the u32 at 0x02001120, RNG2 at 0x020013F0 (the trace's `rng1`/`rng2`). The generator functions themselves (`GetRNG1`, `GetRNG2`, `GetPositiveSigned*`) are specified in `battle-flow.md` §5. A write watch on both states over the whole reference match (`--watchall`) gave exactly this:
@@ -2199,9 +2230,9 @@ Player:
 9. HUD calls (`sub_801DA48`, `sub_801DACC`, `sub_801DC7C`, `sub_801EB18`, `sub_801E270`) are assumed to have no simulation effect; not fully audited.
 10. Who sets request flags 0x20, 0x600/0x8600 (reactive defensive chips), state flag 0x200 and the SELECT special (flags44 0x2000000) - form/Beast/chip features, unused in base PvP (§B5).
 11. HitModifier bit semantics (1 flinch, 2 mercy, 0x04-0x20 push, 0x40 drag, 0x80 vertical) are inferred from the player-side consumers; the attacker side belongs to the chip/collision specs. MegaMan's charged shot has HitModifier 0 (no flinch).
-12. Not analysed: `sub_8011020` (per-NameID death hook), `sub_802EF5C` (deletion link bookkeeping), `sub_801BB78` (reservation cleanup scan), `sub_8017BC0` (pause-time handler used for chips/transformations while paused), `sub_800A104`.
+12. Not analysed: `sub_8011020` (per-NameID death hook), `sub_802EF5C` (deletion link bookkeeping), `sub_801BB78` (reservation cleanup scan), `sub_800A104`. The pause-time handler `sub_8017BC0` is in §M4.2; of its actions only Beast Out is analysed (§12.9).
 13. Time-stop shake: X/Z may be left perturbed if time stop ends while the 30-tick shake counter is still running (§H4.4).
 14. `sub_800E730` status timers: on the first frozen/bubbled tick with a stale effect-object pointer, execution jumps into the next status's active branch (§H5). Code-derived.
 15. Animation: the claim that MegaMan's own actions never depend on animation data rests on this match's coverage; 12 player chip/form routines do end on end-of-animation (§S.4). Compressed sprites missing from the cache fall back to a one-dot sprite (would change animation lengths) - assumed never to happen in battle (§S.4).
-16. The T4#2 screen-fade delay (17 ticks) was observed for one fade speed only (§A.4).
-17. Round 2 of the reference match contains a Beast Out (navi stat 0x2C = 0x0C, action 0x1C, new AIData weapon bytes, A-charge chips) and the Beast lock-on marker T4#0x0F, which *does* affect chip targeting (§A.7). Cross/Beast forms are outside this spec.
+16. Screen fades: the T4#2 intro fade and the transformation fade-in (type 0x40) take 17 ticks; the transformation fade-out (0x44) and the end-of-round fade (0xC) take 16 (§A.4, battle-flow.md §3.4.1). Other fade types are unmeasured.
+17. Round 2 of the reference match contains a Beast Out (§12.9) and the Beast lock-on marker T4#0x0F, which *does* affect chip targeting (§A.7). Crosses, Cross Beast, Beast Over, form reversion and the Beast chip wrapper are not specified here.

@@ -188,11 +188,11 @@ fn end_reaction(b: &mut Battle, r: ObjectRef) {
     o.phase_init = 0;
 }
 
-/// `sub_80F06CE`: MegaMan's flinch and drag hook resets the form
+/// `sub_80F06CE`: MegaMan's flinch and drag hook restarts the form
 /// overlay.
 fn reset_form_overlay(b: &mut Battle, r: ObjectRef) {
-    if b.objects.get(r).related[1].is_some() {
-        panic!("form overlay reset (sub_80C44D2) is not implemented yet");
+    if let Some(overlay) = b.objects.get(r).related[1] {
+        crate::kinds::form_overlay::restart(b, overlay);
     }
 }
 

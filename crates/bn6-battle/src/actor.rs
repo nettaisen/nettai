@@ -84,6 +84,8 @@ pub mod status {
     pub const CROSS_10000: u32 = 0x1_0000;
     pub const CROSS_20000: u32 = 0x2_0000;
     pub const CROSS_40000: u32 = 0x4_0000;
+    /// A form change holds the navi's sprite still (it is off the field).
+    pub const FORM_CHANGE_SPRITE_HELD: u32 = 0x8_0000;
     /// Anti-damage trap for heat attacks.
     pub const HEAT_TRAP: u32 = 0x20_0000;
 }

@@ -18,6 +18,7 @@ pub mod kinds;
 pub mod object;
 pub mod rng;
 pub mod setup;
+pub mod transform;
 #[cfg(feature = "trace")]
 pub mod trace;
 

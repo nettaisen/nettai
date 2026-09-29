@@ -1268,7 +1268,7 @@ In battle 2, `ns[0x2C] = 0x0C` (Falzar Beast Out), and the player object's NameI
 
 - **Geddon's own effect never ran, and no time freeze occurred:** `BattleState+0x32 = 0x0001` at 2338/2340/2345,
   and the freeze structs at 0x0203CF00 are all zero.
-- T1 #0x57 and T4 #0x0F are beast-form overlay objects mirroring the navi's animation. They are not part of the chip.
+- T1 #0x57 is the beast-form overlay, mirroring the navi's animation, and T4 #0x0F is the Beast Out lock-on marker (objects-and-player.md §A.7, §12.9). Both come from the form change, not from the chip.
 
 ### 4.7 What is generic vs GunDelSol-specific
 
