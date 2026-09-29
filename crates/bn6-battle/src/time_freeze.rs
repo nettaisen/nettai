@@ -177,6 +177,108 @@ pub fn show_chip_name(b: &mut Battle, r: ObjectRef) {
     advance(b, r, if rec.uncounterable || user_alive { 1 } else { 2 });
 }
 
+/// Navi chips (0xDD..=0x118) that AntiNavi turns back.
+fn is_navi_chip(chip: ChipId) -> bool {
+    (0xDD..=0x118).contains(&chip)
+}
+
+/// AntiNavi (chip 0xBA) is the other side's defensive chip.
+fn anti_navi_waits(b: &Battle, side: u8) -> bool {
+    b.linked[(side ^ 1) as usize].chip == 0xBA
+}
+
+/// `sub_800BDB2` (a navi chip's action after the dim): on to the name,
+/// unless the other side's AntiNavi turns the navi back.
+pub fn check_anti_navi(b: &mut Battle, r: ObjectRef, chip: ChipId) {
+    let side = b.objects.get(r).alliance;
+    if b.objects.get(r).phase != 0 || (is_navi_chip(chip) && anti_navi_waits(b, side)) {
+        panic!("AntiNavi (sub_800BDB2) is not implemented yet");
+    }
+    advance(b, r, 1);
+}
+
+/// `sub_800BA8A`: a navi chip's name, like `show_chip_name`, but the
+/// effect runs whether or not the chip can be countered, and is skipped
+/// only if the user was deleted.
+pub fn show_navi_name(b: &mut Battle, r: ObjectRef, chip: ChipId) {
+    let side = b.objects.get(r).alliance;
+    let other = side ^ 1;
+    if b.objects.get(r).phase_init == 0 {
+        if b.freeze[side as usize].state != FreezeState::Running {
+            b.freeze(side).state = FreezeState::ShowingName;
+            if !matches!(b.freeze[other as usize].state, FreezeState::Waiting | FreezeState::Idle) {
+                return;
+            }
+        }
+        let banner = if b.is_remote(side) { REMOTE_NAME_BANNER } else { LOCAL_NAME_BANNER };
+        b.banner.start(banner);
+        b.play_sound(crate::sound::SoundId(0x173));
+        b.objects.get_mut(r).phase_init = 4;
+        return;
+    }
+    if b.banner.status() != BannerStatus::Done {
+        return;
+    }
+    if b.freeze[side as usize].owner != side && !out_of_the_way(b.freeze[other as usize].state) {
+        b.freeze(side).state = FreezeState::Waiting;
+        return;
+    }
+    b.freeze(side).state = FreezeState::Running;
+    let user_alive = b.freeze[side as usize].user.is_some_and(|u| b.objects.get(u).hp != 0);
+    if !user_alive {
+        // (dword_200F3B8[side] = 1: never read.)
+        return advance(b, r, 2);
+    }
+    if is_navi_chip(chip) && anti_navi_waits(b, side) {
+        panic!("AntiNavi (sub_800BA8A) is not implemented yet");
+    }
+    advance(b, r, 1);
+}
+
+/// `sub_80E1352(user, 0)`: the user vanishes while its navi chip's navi
+/// acts (its status visuals and the HUD with it).
+pub fn hide_user(b: &mut Battle, user: ObjectRef) {
+    b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
+    set_links_visible(b, user, false);
+    if b.objects.get(user).actor.is_some_and(|a| b.actors.get(a).full_synchro_aura.is_some()) {
+        panic!("hiding the Full Synchro aura (sub_80C4C46) is not implemented yet");
+    }
+}
+
+/// `sub_80E13DC`: the user is back: visible unless semi-intangible or
+/// hidden by the viewer's blindness.
+pub fn show_user(b: &mut Battle, user: ObjectRef) {
+    let o = b.objects.get(user);
+    let f1 = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+    // sub_800EB6C: the other side's navi is hidden from a blind viewer.
+    let viewer_blind = b.is_remote(o.alliance)
+        && b.player(o.alliance ^ 1).and_then(|p| b.objects.get(p).collision).is_some_and(|c| {
+            b.collision.get(c).f1 & crate::collision::f1::BLIND != 0
+        });
+    if f1 & crate::collision::f1::SEMI_INTANGIBLE == 0 && !viewer_blind {
+        b.objects.get_mut(user).flags |= crate::object::flags::VISIBLE;
+    }
+    set_links_visible(b, user, true);
+    if b.objects.get(user).actor.is_some_and(|a| b.actors.get(a).full_synchro_aura.is_some()) {
+        panic!("showing the Full Synchro aura (sub_80C4C4C) is not implemented yet");
+    }
+}
+
+/// The confusion and blindness visuals (CollisionData+0x48, +0x4C) follow
+/// their navi's visibility.
+fn set_links_visible(b: &mut Battle, user: ObjectRef, visible: bool) {
+    let Some(c) = b.objects.get(user).collision else { return };
+    let links = b.collision.get(c).links;
+    for o in [links[crate::collision::link::CONFUSE], links[crate::collision::link::BLIND]].into_iter().flatten() {
+        let f = &mut b.objects.get_mut(o).flags;
+        if visible {
+            *f |= crate::object::flags::VISIBLE;
+        } else {
+            *f &= !crate::object::flags::VISIBLE;
+        }
+    }
+}
+
 /// `object_undimScreen`: brighten the screen unless the other side's
 /// freeze still runs, then end.
 pub fn undim_screen(b: &mut Battle, r: ObjectRef) {

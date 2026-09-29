@@ -15,7 +15,7 @@ use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 pub const INDEX: u8 = 0x56;
 
 /// Overlay-private state (the spawn parameters, and ExtraVars[0]).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Vars {
     /// Param1: which overlay (`data::cross::body_overlay`).
     pub variant: u8,
@@ -50,7 +50,14 @@ fn vars_mut(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 /// `sub_80C44A8`: layer overlay `variant` on `owner`. It runs its first
 /// update right after the owner's, and keeps running while paused.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, variant: u8, own_palette: bool) -> Option<ObjectRef> {
-    let params = [variant, own_palette as u8, 0, 0];
+    spawn_with(b, owner, Vars { variant, own_palette, ..Vars::default() })
+}
+
+/// `sub_80C44A8` with all its parameters (`forced_front` is ignored: it
+/// is set later, by `sub_80C4526`).
+pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<ObjectRef> {
+    let Vars { variant, own_palette, always_step, anim_offset, .. } = spec;
+    let params = [variant, own_palette as u8, always_step as u8, anim_offset];
     let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), params)?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
@@ -61,9 +68,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, variant: u8, own_palette: bool) -
     o.alliance = alliance;
     o.flip = flip;
     o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP;
-    let v = vars_mut(b, r);
-    v.variant = variant;
-    v.own_palette = own_palette;
+    *vars_mut(b, r) = Vars { forced_front: false, ..spec };
     Some(r)
 }
 
