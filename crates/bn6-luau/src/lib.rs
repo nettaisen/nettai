@@ -35,7 +35,7 @@ use bn6_content_api::{
     ActionDef, ContentError, ContentHost, CoreApi, FieldDef, FieldType, KindId, Manifest, ObjectKindDef, ObjectRef,
     Pool, Schema,
 };
-use mlua::chunk::{ChunkMode, Compiler};
+use mlua::chunk::ChunkMode;
 use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 
 /// A content pack's sources: module path (relative to the pack root,
@@ -91,12 +91,24 @@ pub struct Options {
     pub budget: u32,
     /// Let `print` write to stderr.
     pub debug_print: bool,
+    /// Run a full garbage collection after every call (tests use it to
+    /// show GC timing doesn't reach the battle).
+    pub collect_garbage: bool,
 }
 
 impl Default for Options {
     fn default() -> Options {
-        Options { native_code: false, budget: 1_000_000, debug_print: false }
+        Options { native_code: false, budget: 1_000_000, debug_print: false, collect_garbage: false }
     }
+}
+
+/// Whether this build and machine can compile Luau to native code.
+pub fn native_code_supported() -> bool {
+    #[cfg(feature = "jit")]
+    // SAFETY: a query with no arguments.
+    return unsafe { mlua::ffi::luau_codegen_supported() != 0 };
+    #[cfg(not(feature = "jit"))]
+    false
 }
 
 thread_local! {
@@ -111,6 +123,7 @@ pub struct LuauContent {
     objects: Vec<Function>,
     actions: Vec<Function>,
     budget: u32,
+    collect_garbage: bool,
 }
 
 impl LuauContent {
@@ -127,7 +140,11 @@ impl LuauContent {
     fn call(&self, f: &Function, api: &mut dyn CoreApi, args: impl mlua::IntoLuaMulti) -> Result<(), ContentError> {
         let _enter = bind::Enter::new(api, &self.manifest);
         BUDGET.with(|b| b.set(self.budget));
-        f.call::<()>(args).map_err(|e| ContentError::new(e.to_string()))
+        let result = f.call::<()>(args).map_err(|e| ContentError::new(e.to_string()));
+        if self.collect_garbage {
+            self.lua.gc_collect().map_err(|e| ContentError::new(e.to_string()))?;
+        }
+        result
     }
 }
 
@@ -192,7 +209,7 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
         }
         l.pack.modules.get(path).cloned().ok_or_else(|| mlua::Error::runtime(format!("no module {path}.luau in the pack")))?
     };
-    let bytecode = Compiler::new().set_optimization_level(1).set_debug_level(2).compile(&source)?;
+    let bytecode = sandbox::compiler().compile(&source)?;
     verify::check(path, &bytecode).map_err(|v| mlua::Error::runtime(v.to_string()))?;
     let chunk = lua.load(&bytecode[..]).set_name(format!("@{path}.luau")).set_mode(ChunkMode::Binary).into_function()?;
     loader.borrow_mut().stack.push(path.to_string());
@@ -252,7 +269,7 @@ fn load(pack: &Pack, options: Options) -> mlua::Result<LuauContent> {
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);
     drop(loader);
-    Ok(LuauContent { lua, manifest, objects, actions, budget: options.budget })
+    Ok(LuauContent { lua, manifest, objects, actions, budget: options.budget, collect_garbage: options.collect_garbage })
 }
 
 /// A kind's `state` table: field name to type name (`"u16"`), or to a list

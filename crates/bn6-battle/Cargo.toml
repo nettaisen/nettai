@@ -22,4 +22,18 @@ trace = ["dep:serde", "dep:serde_json"]
 # `rust-content` uses the same slice written in Rust against the content
 # API. With both, Luau is the default.
 luau = ["dep:bn6-luau"]
+# Luau with native code generation available (Content::luau_with).
+luau-jit = ["luau", "bn6-luau/jit"]
 rust-content = ["dep:bn6-content-rust"]
+
+[[example]]
+name = "content_bench"
+required-features = ["luau", "rust-content"]
+
+[[example]]
+name = "luau_ops"
+required-features = ["luau"]
+
+[[example]]
+name = "rollback_trace"
+required-features = ["trace"]

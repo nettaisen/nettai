@@ -182,7 +182,7 @@ struct Links {
 }
 
 /// All battle objects and their update order.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Objects {
     slots: Vec<Object>,
     /// Per-slot sprite state. Kept apart from `Object` because the game

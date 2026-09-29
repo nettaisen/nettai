@@ -36,7 +36,7 @@ impl InputRecord {
 }
 
 /// What one player contributes to a tick.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PlayerTick {
     /// Buttons held (GBA bits; `keys::PRESENT` is added by the engine).
     pub held: u16,
