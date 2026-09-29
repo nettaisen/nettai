@@ -1,6 +1,6 @@
 //! The graphics a battle frontend draws with, in typed form.
 //!
-//! `bn6-extract assets <rom> <dir>` decodes them from the user's copy of the
+//! `bn6-extract graphics <rom> <dir>` decodes them from the user's copy of the
 //! game into `<dir>/bn6-assets.bin`. Nothing ROM-derived is checked in; the
 //! frontend loads the bundle at start-up.
 //!
@@ -14,7 +14,7 @@ use std::path::Path;
 pub const FILE_NAME: &str = "bn6-assets.bin";
 
 /// Identifies the file and its layout version.
-const MAGIC: &[u8; 8] = b"BN6GFX\x00\x03";
+const MAGIC: &[u8; 8] = b"BN6GFX\x00\x04";
 
 /// Everything the frontend draws with.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -57,7 +57,7 @@ impl Bundle {
     pub fn from_bytes(bytes: &[u8]) -> Result<Bundle, LoadError> {
         let body = bytes
             .strip_prefix(MAGIC.as_slice())
-            .ok_or_else(|| LoadError::Format("not a bn6 asset bundle of this version; re-run `bn6-extract assets`".into()))?;
+            .ok_or_else(|| LoadError::Format("not a bn6 asset bundle of this version; re-run `bn6-extract graphics`".into()))?;
         bincode::deserialize(body).map_err(|e| LoadError::Format(format!("corrupt asset bundle: {e}")))
     }
 
@@ -328,6 +328,10 @@ pub struct Hud {
     /// The banner font's digits (glyph d is digit d; glyph 10 is blank).
     pub banner_digits: Tiles,
     pub banner_palette: Palette,
+    /// "Cstmzing..." (8x2 tiles), shown while the opponent is still on the
+    /// custom screen, and its palette.
+    pub waiting: Tiles,
+    pub waiting_palette: Palette,
 }
 
 /// A banner's text and where it sits.

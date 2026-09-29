@@ -47,6 +47,9 @@ const BANNER_COUNT: u32 = 20;
 const BANNER_FILLER: u32 = 0x0801_FDC0;
 const BANNER_DIGITS: u32 = 0x086F_1DC0;
 const BANNER_PALETTE: u32 = 0x086F_2900;
+/// "Cstmzing..." (16 tiles, drawn on the HUD layer in palette 10 =
+/// the banner palette).
+const WAITING: u32 = 0x086F_2040;
 
 fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
     Tiles::from_4bpp(rom.bytes(a, len))
@@ -147,5 +150,7 @@ pub fn hud(rom: &Rom) -> Hud {
         banners: (0..BANNER_COUNT).map(|id| banner(rom, id)).collect(),
         banner_digits,
         banner_palette: palette(rom, BANNER_PALETTE),
+        waiting: tiles(rom, WAITING, 0x200),
+        waiting_palette: palette(rom, BANNER_PALETTE),
     }
 }
