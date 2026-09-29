@@ -125,7 +125,7 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     let action = b.objects.get(r).action;
     if action >= 0x10 {
         if ai(b, r).attack.beast_lockon == 1 {
-            panic!("Beast Out attack routine (sub_80EAD9C) is not implemented yet");
+            return actions::beast_rush::update(b, r);
         }
         return actions::dispatch(b, r, action);
     }

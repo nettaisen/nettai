@@ -47,6 +47,12 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     Some(r)
 }
 
+/// `sub_80E1654`: hold the marker where it is (a chip locked on).
+pub fn freeze(b: &mut Battle, r: ObjectRef) {
+    vars(b, r).frozen = true;
+    b.objects.get_mut(r).anim = 1;
+}
+
 /// `sub_80E1662`: let the marker follow its target again.
 pub fn unfreeze(b: &mut Battle, r: ObjectRef) {
     vars(b, r).frozen = false;
