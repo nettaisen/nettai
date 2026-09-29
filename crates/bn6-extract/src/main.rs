@@ -148,36 +148,70 @@ fn iwram(a: u32) -> u32 {
 /// Field tables: panel layouts, per-panel constants, panel type flags and
 /// movement rules.
 fn field(rom: &Rom) -> String {
+    const TYPES: [&str; 13] = [
+        "Missing", "Broken", "Normal", "Cracked", "Poison", "Holy", "Grass", "Ice", "Volcano", "RoadUp", "RoadDown",
+        "RoadLeft", "RoadRight",
+    ];
     let mut out = String::from(HEADER);
+    writeln!(out, "use super::{{PanelCondition, PanelOffset}};").unwrap();
+    writeln!(out, "use crate::field::PanelType::{{self, *}};\n").unwrap();
+    // `word_800D730`: one u32 per row (y 1..3), a nibble per column (x 1..6).
     let n = (0x0800_E24C - 0x0800_D730) / 12;
-    writeln!(out, "/// Panel types per layout: one u32 per row (y 1..3), a nibble per column (x 1..6).").unwrap();
-    writeln!(out, "pub static PANEL_LAYOUTS: [[u32; 3]; {n}] = [").unwrap();
+    writeln!(out, "/// Panel types per layout, [y - 1][x - 1] over the playable 6x3.").unwrap();
+    writeln!(out, "pub static PANEL_LAYOUTS: [[[PanelType; 6]; 3]; {n}] = [").unwrap();
     for i in 0..n {
-        let a = 0x0800_D730 + 12 * i;
-        writeln!(out, "    [{:#010x}, {:#010x}, {:#010x}],", u32at(rom, a), u32at(rom, a + 4), u32at(rom, a + 8)).unwrap();
+        let rows: Vec<String> = (0..3)
+            .map(|y| {
+                let w = u32at(rom, 0x0800_D730 + 12 * i + 4 * y);
+                let row: Vec<&str> = (0..6).map(|x| TYPES[((w >> (4 * x)) & 0xF) as usize]).collect();
+                format!("[{}]", row.join(", "))
+            })
+            .collect();
+        writeln!(out, "    [{}], // {i:#04x}", rows.join(", ")).unwrap();
     }
     writeln!(out, "];").unwrap();
-    writeln!(out, "/// Initial visibility per panel (index y*8+x).").unwrap();
-    writeln!(out, "pub static PANEL_VISIBLE: [u8; 40] = {:?};", rom.bytes(0x0800_C590, 40)).unwrap();
-    writeln!(out, "/// Front-edge drawing per panel (index y*8+x).").unwrap();
-    writeln!(out, "pub static PANEL_FRONT_EDGE: [u8; 40] = {:?};", rom.bytes(0x0800_C5B8, 40)).unwrap();
+    let grid = |a: u32| -> String {
+        let rows: Vec<String> = (0..5)
+            .map(|y| {
+                let row: Vec<String> = (0..8).map(|x| (rom.u8(a + 8 * y + x) != 0).to_string()).collect();
+                format!("[{}]", row.join(", "))
+            })
+            .collect();
+        rows.join(", ")
+    };
+    writeln!(out, "/// Whether each panel is drawn at the start of a round, [y][x] (`byte_800C590`).").unwrap();
+    writeln!(out, "pub static PANEL_VISIBLE: [[bool; 8]; 5] = [{}];", grid(0x0800_C590)).unwrap();
+    writeln!(out, "/// Whether each panel draws its front edge, [y][x] (`byte_800C5B8`).").unwrap();
+    writeln!(out, "pub static PANEL_FRONT_EDGE: [[bool; 8]; 5] = [{}];", grid(0x0800_C5B8)).unwrap();
     let types: Vec<String> = (0..13).map(|i| format!("{:#07x}", u32at(rom, iwram(0x0300_7924) + 4 * i))).collect();
-    writeln!(out, "/// Flag bits each panel type contributes (`word_3007924`).").unwrap();
+    writeln!(out, "/// Flag bits each panel type contributes, by `PanelType` (`word_3007924`).").unwrap();
     writeln!(out, "pub static PANEL_TYPE_FLAGS: [u32; 13] = [{}];", types.join(", ")).unwrap();
     let rules = |a: u32| -> String {
-        let r: Vec<String> =
-            (0..4).map(|i| format!("({:#x}, {:#010x})", u32at(rom, a + 8 * i), u32at(rom, a + 8 * i + 4))).collect();
+        let r: Vec<String> = (0..2)
+            .map(|floor| {
+                let sides: Vec<String> = (0..2)
+                    .map(|side| {
+                        let e = a + 16 * floor + 8 * side;
+                        format!("PanelCondition {{ require: {:#x}, forbid: {:#010x} }}", u32at(rom, e), u32at(rom, e + 4))
+                    })
+                    .collect();
+                format!("[{}]", sides.join(", "))
+            })
+            .collect();
         r.join(", ")
     };
-    writeln!(out, "/// Step rules (set, clear) by [airshoes-or-off-solid][alliance] (`tbl_800E660`).").unwrap();
-    writeln!(out, "pub static STEP_RULES: [(u32, u32); 4] = [{}];", rules(0x0800_E660)).unwrap();
+    writeln!(out, "/// What a panel must be to step onto, by [floor-free (AirShoes or standing off solid ground)][alliance] (`tbl_800E660`).").unwrap();
+    writeln!(out, "pub static STEP_RULES: [[PanelCondition; 2]; 2] = [{}];", rules(0x0800_E660)).unwrap();
     writeln!(out, "/// Step rules in dash mode (`byte_8010388`).").unwrap();
-    writeln!(out, "pub static DASH_STEP_RULES: [(u32, u32); 4] = [{}];", rules(0x0801_0388)).unwrap();
-    writeln!(out, "/// Step rules ignoring ownership (`byte_800E6C8`).").unwrap();
-    writeln!(out, "pub static ANY_SIDE_STEP_RULES: [(u32, u32); 4] = [{}];", rules(0x0800_E6C8)).unwrap();
-    writeln!(out, "/// Road conveyor (dx, dy) by panel type - 9 (`byte_800E538`).").unwrap();
-    let road: Vec<String> = (0..4).map(|i| format!("({}, {})", rom.u8(0x0800_E538 + 4 * i) as i8, rom.u8(0x0800_E539 + 4 * i) as i8)).collect();
-    writeln!(out, "pub static ROAD_DIRECTIONS: [(i8, i8); 4] = [{}];", road.join(", ")).unwrap();
+    writeln!(out, "pub static DASH_STEP_RULES: [[PanelCondition; 2]; 2] = [{}];", rules(0x0801_0388)).unwrap();
+    writeln!(out, "/// Step rules ignoring panel ownership (`byte_800E6C8`).").unwrap();
+    writeln!(out, "pub static ANY_SIDE_STEP_RULES: [[PanelCondition; 2]; 2] = [{}];", rules(0x0800_E6C8)).unwrap();
+    let road: Vec<String> = (0..4)
+        .map(|i| format!("PanelOffset {{ dx: {}, dy: {} }}", rom.u8(0x0800_E538 + 4 * i) as i8, rom.u8(0x0800_E539 + 4 * i) as i8))
+        .collect();
+    writeln!(out, "/// Road conveyor direction for RoadUp, RoadDown, RoadLeft, RoadRight (`byte_800E538`).").unwrap();
+    writeln!(out, "pub static ROAD_DIRECTIONS: [PanelOffset; 4] = [{}];", road.join(", ")).unwrap();
+    let _ = TYPES;
     out
 }
 

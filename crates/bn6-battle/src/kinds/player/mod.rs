@@ -19,6 +19,7 @@ mod status;
 use crate::actor::{ActorData, ActorId, ActorType, request};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, CollisionId, f1, timer};
+use crate::field::PanelType;
 use crate::data::player::{self as pdata, NaviRecord};
 use crate::hand::NO_CHIP;
 use crate::object::{ObjectRef, PanelPos, Pool, StateWord, Vec3, flags, state};
@@ -193,8 +194,8 @@ pub(crate) fn attach_point(b: &Battle, r: ObjectRef, index: usize) -> (i32, i32)
 
 /// The panel type under (x, y); off the field the game reads BIOS memory,
 /// taken here as "no panel".
-fn panel_kind(b: &Battle, p: PanelPos) -> u8 {
-    b.field.panel(p.x, p.y).map(|p| p.kind).unwrap_or(0)
+fn panel_kind(b: &Battle, p: PanelPos) -> PanelType {
+    b.field.panel(p.x, p.y).map(|p| p.kind).unwrap_or_default()
 }
 
 /// `sub_8010004`: the next chip in the side's hand.
