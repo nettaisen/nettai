@@ -26,6 +26,10 @@ pub struct Setup {
     /// Traces recorded without it leave the stages unknown.
     #[serde(default)]
     pub stages: Option<String>,
+    /// Both players' SP navi deletion times (`byte_203EB00`, 0x28 bytes
+    /// each), hex. Traces recorded without them read as the best times.
+    #[serde(default)]
+    pub sp_times: Option<[String; 2]>,
 }
 
 /// A battle object as the trace records it.
@@ -128,7 +132,7 @@ pub fn unhex(s: &str) -> Vec<u8> {
 use crate::battle::{Battle, CustomResult, TickEvents};
 use crate::hand::ChipHand;
 use crate::input::PlayerTick;
-use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage};
+use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage};
 use crate::transform::TransformRequest;
 
 /// A custom-screen exchange record from a trace.
@@ -190,6 +194,10 @@ impl Round {
             // init, which isn't among the battle frames.
             later_stages: self.setup.stages.as_deref().map(|s| Stage::pair_from_bytes(&unhex(s))).unwrap_or_default(),
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
+            sp_times: match &self.setup.sp_times {
+                Some([a, b]) => [SpTimes::from_bytes(&unhex(a)), SpTimes::from_bytes(&unhex(b))],
+                None => Default::default(),
+            },
         }
     }
 
