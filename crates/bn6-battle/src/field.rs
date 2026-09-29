@@ -426,7 +426,7 @@ impl Battle {
     /// A volcano panel erupts (`sub_80C5B76`): a 50-damage attack object.
     fn erupt(&mut self, x: u8, y: u8) {
         let pos = Vec3 { x: y as i32, y: 0, z: 0 };
-        if let Some(r) = self.objects.spawn(Pool::Attack, 7, pos, [0x28, 0, 0, 0]) {
+        if let Some(r) = self.objects.spawn(Pool::Attack, crate::kinds::eruption::INDEX, pos, [0x28, 0, 0, 0]) {
             let o = self.objects.get_mut(r);
             o.panel = PanelPos { x, y };
             o.element = 0;
