@@ -111,6 +111,18 @@ pub struct Vec3 {
     pub z: i32,
 }
 
+/// The drag reaction's steps (the game's values 0, 4, 8).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DragStep {
+    /// Set up the push (`sub_80178D4`).
+    #[default]
+    Start,
+    /// Sliding toward the destination panel (`sub_8017992`).
+    Slide,
+    /// The recovery wait (`sub_8017A38`).
+    Recover,
+}
+
 /// A panel coordinate: x 1..=6, y 1..=3 on the field (0 and 7/4 are the
 /// border).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -136,8 +148,10 @@ pub struct Object {
     /// Whether the current phase's entry code has run (the game stores
     /// 0, then 4 or 1).
     pub phase_init: u8,
-    pub unk_0c: u8,
-    pub unk_0d: u8,
+    /// BattleObject+0x0D: the drag reaction's step. Actors' stage B resets
+    /// it every tick they aren't dragged (`sub_801AF44`). Attack objects
+    /// use the byte for other things (not ported).
+    pub drag_step: DragStep,
     /// Low nibble: primary element; high nibble: secondary element bits.
     pub element: u8,
     pub slide_type: u8,
@@ -152,7 +166,10 @@ pub struct Object {
     /// Facing is `alliance ^ flip`.
     pub flip: u8,
     pub prevent_anim: u8,
-    pub unk_19: u8,
+    /// BattleObject+0x19: ticks left of the time-stop shake after a hit
+    /// (`sub_8017AB4`: 30 per damaging hit). Other object kinds use the
+    /// byte for other things.
+    pub shake_timer: u8,
     /// Players: chips left in the hand.
     pub chips_held: u8,
     pub slide_tiles: u8,
@@ -170,8 +187,12 @@ pub struct Object {
     /// Attack power plus flag bits (double, paralyze, uninstall...).
     pub damage: u16,
     pub stamina: u16,
-    pub unk_30: u16,
-    pub unk_32: u16,
+    /// BattleObject+0x30 / +0x32: the whole-pixel X and Z an actor shakes
+    /// around in time stop, saved when the time-stop handler first runs
+    /// (`sub_8017AB4`). Other object kinds use these halfwords for other
+    /// things (e.g. a time-freeze chip's id and bonus).
+    pub shake_origin_x: i16,
+    pub shake_origin_z: i16,
     pub pos: Vec3,
     pub vel: Vec3,
     pub related: [Option<ObjectRef>; 2],

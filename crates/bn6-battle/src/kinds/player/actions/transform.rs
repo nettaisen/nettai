@@ -5,7 +5,7 @@
 //! §3.4.1.
 
 use crate::actor::{request, status};
-use crate::battle::{Battle, battle_flags};
+use crate::battle::Battle;
 use crate::collision::{f1, link, timer};
 use crate::data::player as pdata;
 use crate::kinds::common;
@@ -97,7 +97,7 @@ fn prepare(b: &mut Battle, r: ObjectRef) {
     }
     reset_charge(b, r);
     // sub_80C4C3A: the Full Synchro aura goes.
-    if ai(b, r).unk_5c != 0 {
+    if ai(b, r).full_synchro_aura.is_some() {
         panic!("ending the Full Synchro aura (sub_80C4C3A) is not implemented yet");
     }
     b.objects.get_mut(r).related[0] = None;
@@ -220,8 +220,8 @@ fn settle(b: &mut Battle, r: ObjectRef) {
     if !timer_ran_out(b, r) {
         return;
     }
+    // (It also clears battle flag 0x20, which nothing sets.)
     ai_mut(b, r).status &= !(status::FORM_CHANGE | status::FORM_CHANGE_SPRITE_HELD);
-    b.clear_flags(battle_flags::UNK_20);
     ai_mut(b, r).requests &= !(request::WEAKNESS_HIT | request::TRAP_8000 | request::TRAP_400 | request::TRAP_200);
     exit_attack_state(b, r);
 }
