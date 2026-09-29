@@ -177,6 +177,7 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
         1 => charged_shot_setup(b, r),
         2 => blank_shot_setup(b, r),
         0x1E => super::actions::beast_claw::setup(b, r),
+        0x2A => super::actions::absorb::setup(b, r),
         0x2B => throw_absorbed_setup(b, r),
         _ => panic!("weapon routine {routine:#x} (off_80117D4) is not implemented yet"),
     }
