@@ -40,10 +40,12 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, effect: u8) -> Option<
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
         state::INIT => {
-            let EffectSprite { sprite: id, anim, .. } = SPARKS[b.objects.get(r).params[0] as usize];
+            let EffectSprite { sprite: id, anim, palette } = SPARKS[b.objects.get(r).params[0] as usize];
             let sprite = b.objects.sprite_mut(r);
             sprite.load(id);
             sprite.set_animation(anim);
+            sprite.look.shadow = crate::object::sprite::Shadow::WithSprite;
+            sprite.look.palette = palette;
             sprite.update();
             let o = b.objects.get_mut(r);
             o.flags &= !flags::NO_SPRITE_UPDATE;

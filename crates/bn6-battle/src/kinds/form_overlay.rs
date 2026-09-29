@@ -96,6 +96,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.load(sprite);
     s.set_animation(anim);
     s.update();
+    s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = anim;
@@ -124,6 +125,15 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     o.pos = Vec3 { x: owner_pos.x, y: owner_pos.y.wrapping_sub(nudge), z: owner_pos.z.wrapping_sub(nudge) };
     o.flags = (o.flags & !flags::VISIBLE) | (owner_flags & flags::VISIBLE);
     o.flip = owner_flip;
+    let alliance = o.alliance;
+    // The owner's colour shader, white flash and mosaic, and its facing.
+    let owner_look = b.objects.sprite(owner).look;
+    let look = &mut b.objects.sprite_mut(r).look;
+    look.color_shader = owner_look.color_shader;
+    look.white = owner_look.white;
+    look.mosaic = owner_look.mosaic;
+    look.set_flip(alliance ^ owner_flip);
+    let o = b.objects.get_mut(r);
     if o.action == 0 {
         // Wait for every navi to be in.
         if b.round.intro_bits & 0x02 == 0 {

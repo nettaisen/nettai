@@ -60,11 +60,16 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80E5C4C`.
 fn init(b: &mut Battle, r: ObjectRef) {
-    let look = b.objects.get(r).params[0];
+    let [look, palette, ..] = b.objects.get(r).params;
+    let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
     let sprite = b.objects.sprite_mut(r);
     sprite.load(attacks::sun_beam_sprite(look));
     sprite.set_animation(0);
     sprite.update();
+    // sprite_noShadow; sprite_setFlip(object_getFlip()); the palette.
+    sprite.look.shadow = crate::object::sprite::Shadow::WithSprite;
+    sprite.look.set_flip(flip);
+    sprite.look.palette = palette;
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = 0;
