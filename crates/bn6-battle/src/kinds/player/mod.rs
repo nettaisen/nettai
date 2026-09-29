@@ -11,7 +11,7 @@
 pub mod actions;
 mod chip_use;
 mod entry;
-mod form;
+pub(crate) mod form;
 mod idle;
 mod input;
 mod intake;

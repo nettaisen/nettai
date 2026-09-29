@@ -9,11 +9,15 @@ pub mod charge_glow;
 pub mod common;
 pub mod cross_merge;
 pub mod effect;
+pub mod elmnt_man;
 pub mod form_overlay;
 pub mod hitbox;
 pub mod intro;
 pub mod invisible;
 pub mod lockon_marker;
+pub mod meteor;
+pub mod navi_chip;
+pub mod navi_warp;
 pub mod obstacle;
 pub mod palette_flash;
 pub mod player;
@@ -47,6 +51,10 @@ pub enum Vars {
     CrossMerge(cross_merge::Vars),
     BodyOverlay(body_overlay::Vars),
     Invisible(invisible::Vars),
+    NaviChip(navi_chip::Vars),
+    NaviWarp(navi_warp::Vars),
+    ElmntMan(elmnt_man::Vars),
+    Meteor(meteor::Vars),
 }
 
 impl Vars {
@@ -93,6 +101,10 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Actor, cross_merge::INDEX) => cross_merge::update(b, r),
         (Pool::Actor, body_overlay::INDEX) => body_overlay::update(b, r),
         (Pool::Effect, invisible::INDEX) => invisible::update(b, r),
+        (Pool::Effect, navi_chip::INDEX) => navi_chip::update(b, r),
+        (Pool::Actor, navi_warp::INDEX) => navi_warp::update(b, r),
+        (Pool::Actor, elmnt_man::INDEX) => elmnt_man::update(b, r),
+        (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }
