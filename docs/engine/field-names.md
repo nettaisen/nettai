@@ -208,7 +208,7 @@ what they start. "No setter found" is from the same heuristic scan as above.
 | `RoundSetup::low_hp_music_latched` | BattleState+0x20 when init ends | Init's link-wait counter shares the halfword (battle-flow.md §2.2). |
 | `RoundSetup::later_stages` | `byte_203CA50` | The two (settings index, background) pairs of the set's later rounds (battle-flow.md §3.8). |
 | `Battle::round_end()` / `RoundEnd` | BattleState+0x1F, +0x0A | How the round ended (battle-flow.md §3.7). |
-| `Battle::changed_form` | `byte_203EAE0` + 0x10·side + 0xB | The navi crossed this battle (set at the end of the Cross and Cross Beast changes, `sub_8014CC0`, `sub_8015128`, `sub_80155CC`); read only for the busting level. |
+| `Battle::crossed` | `byte_203EAE0` + 0x10·side + 0xB | The navi crossed this battle (set at the end of the Cross and Cross Beast changes, `sub_8014CC0`, `sub_8015128`, `sub_80155CC`); read only for the busting level. |
 | `Battle::freeze` / `FreezeRecord` | `byte_203CF00` + 0x50·side | A side's time freeze: owner +0, state +1, uncounterable +2, initiator +3, controller +8, user +0xC (chips.md §3.6). |
 | `AttackVars::marker` | AIAttackVars+0x30 | Also the Cross change's white-flash count (0..6, `sub_8014B98`). |
 | `attachment::Params` | Param1..4 of T1#5 | Kind, animation, animate in time stop, palette offset (`sub_80B8CF8`). |

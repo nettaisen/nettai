@@ -373,7 +373,7 @@ fn cross_settle(b: &mut Battle, r: ObjectRef) {
     }
     // sub_800AB2E
     let side = b.objects.get(r).alliance as usize;
-    b.changed_form[side] = true;
+    b.crossed[side] = true;
     finish(b, r);
 }
 
