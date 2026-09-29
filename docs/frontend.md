@@ -155,12 +155,22 @@ What differs is what isn't drawn or modelled yet:
 | Frames | What |
 |---|---|
 | 208-384, 1360-1636 | the custom screen itself |
-| 1637-1773, 1775 | the mugshot previews the Beast Out chosen on the custom screen |
+| 1637-1775 | the mugshot previews the Beast Out chosen on the custom screen |
 | 939-960, 2348-2368 | a few pixels of the deletion's light rays (rotated sprites) |
 | 1802-1861 | the camera shake during Beast Out (the engine has no camera) |
 | 1866 | one frame of the beast head's white flash |
 | 1970-2004 | the lock-on marker's edge against the navi |
 | 2373-2402 | a chip icon the original hides during the beast attack |
+
+A second match, traced on the right-hand player's console (so the field is
+drawn mirrored), was compared over round 1's first 2952 frames (up to where
+the engine stops at a Cross change). There the field, the ice panels and
+rock cubes, the navis, the HP numbers and the gauge are exact; every frame
+still differs in two ways: the mugshot previews the Cross chosen on the
+custom screen, and the bottom 7 rows show the background scrolled one
+frame ahead on frames where its scroll steps. The latter is a timing
+effect of the original: on that console its main loop updates the scroll
+register while the last rows are being drawn.
 
 The comparison needs the ROM and a recorded match, so it lives outside this
 repository. The frontend's own tests (`cargo test -p bn6-frontend`) use a
