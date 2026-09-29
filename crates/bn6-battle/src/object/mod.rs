@@ -382,14 +382,14 @@ impl Objects {
     }
 
     /// Start the update loop: returns the first object to run.
-    pub(crate) fn loop_first(&mut self) -> Option<ObjectRef> {
+    pub fn loop_first(&mut self) -> Option<ObjectRef> {
         let first = self.links[HEAD.0 as usize].next?;
         self.enter(first)
     }
 
     /// Advance the update loop past the current object. The successor is
     /// read now, after the object's update ran.
-    pub(crate) fn loop_next(&mut self) -> Option<ObjectRef> {
+    pub fn loop_next(&mut self) -> Option<ObjectRef> {
         let cur = self.current?;
         let next = self.links[cur.0 as usize].next?;
         self.enter(next)

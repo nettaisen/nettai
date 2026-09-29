@@ -169,6 +169,9 @@ pub struct TickEvents {
     pub local_confirm: bool,
     /// Both players' custom-screen results arrived.
     pub exchange: Option<Box<[CustomResult; 2]>>,
+    /// After the round, the link session the end state asked to close has
+    /// closed.
+    pub link_closed: bool,
 }
 
 pub struct Battle {
@@ -410,7 +413,7 @@ impl Battle {
     pub fn tick(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
         match self.round.top {
             top::RUNNING => self.tick_running(input, events),
-            top::END => self.tick_end(),
+            top::END => self.tick_end(&events),
             _ => {}
         }
         self.round.frames = self.round.frames.wrapping_add(1);
@@ -453,21 +456,42 @@ impl Battle {
         self.round.ticks = self.round.ticks.wrapping_add(1);
     }
 
-    fn tick_end(&mut self) {
+    /// Top state 8 (`sub_8007B80`): 11 ticks of objects still running,
+    /// then close the link session. Once it has closed (mode 4) the round
+    /// is over.
+    fn tick_end(&mut self, events: &TickEvents) {
+        if self.round.mode != 0 {
+            panic!("round chaining (sub_8007CA0) is not implemented yet");
+        }
+        // sub_8007B9C: the sub-state, then objects and panels.
+        match self.round.sub {
+            0 => {
+                // sub_8007BD0
+                if self.round.init == 0 {
+                    self.round.delay = 10;
+                    self.round.init = 4;
+                } else {
+                    self.round.delay -= 1;
+                    if self.round.delay < 0 {
+                        self.round.sub = 4;
+                        self.round.init = 0;
+                    }
+                }
+            }
+            _ => {
+                // sub_8007C14: ask the link to close, then wait for it.
+                if self.round.init == 0 {
+                    self.round.init = 4;
+                } else if events.link_closed {
+                    self.round.mode = 4;
+                    self.round.sub = 0;
+                    self.round.init = 0;
+                }
+            }
+        }
         self.run_objects();
         if !self.paused && !self.is_time_stop() {
             self.tick_panels();
-        }
-        if self.round.sub == 0 {
-            if self.round.init == 0 {
-                self.round.delay = 10;
-                self.round.init = 4;
-            }
-            self.round.delay -= 1;
-            if self.round.delay < 0 {
-                self.round.sub = 4;
-                self.round.init = 0;
-            }
         }
     }
 
@@ -537,7 +561,7 @@ impl Battle {
 
     /// `sub_8007368`: spawn the settings' actor list. Only navis join the
     /// alive/actor bookkeeping; rocks and other field objects don't.
-    pub(crate) fn spawn_actors(&mut self) {
+    pub fn spawn_actors(&mut self) {
         use crate::setup::ActorKind;
         for entry in self.setup.settings.actors {
             match entry.kind {
