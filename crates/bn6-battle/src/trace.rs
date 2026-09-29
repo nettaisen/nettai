@@ -311,6 +311,8 @@ fn describe_fields(
         "-".to_string()
     } else if xy_unknown {
         format!("-,-,{}", pos[2])
+    } else if z_fraction_is_garbage(kind, index) {
+        format!("{},{},{}+?", pos[0], pos[1], pos[2] >> 16)
     } else {
         format!("{},{},{}", pos[0], pos[1], pos[2])
     };
@@ -335,6 +337,13 @@ fn pos_is_garbage(kind: u8, index: u8, flags: u8) -> bool {
     let controller = [invisible::INDEX, navi_chip::INDEX, area_grab::INDEX].contains(&index);
     kind == 4
         && (index == 2 || index == 0x0A || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0) || controller)
+}
+
+/// DustCross's junk ball (attack #0xB0) keeps the fraction of the Z its
+/// spawner left in a register (the low half of a RAM address); only its
+/// whole pixels are compared.
+fn z_fraction_is_garbage(kind: u8, index: u8) -> bool {
+    kind == 3 && index == crate::kinds::dust_ball::INDEX
 }
 
 fn describe(b: &Battle, r: crate::object::ObjectRef, xy_unknown: bool) -> String {

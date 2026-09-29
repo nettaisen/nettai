@@ -8,6 +8,7 @@ pub mod attachment;
 pub mod body_overlay;
 pub mod charge_glow;
 pub mod common;
+pub mod dust_ball;
 pub mod cross_merge;
 pub mod effect;
 pub mod elmnt_man;
@@ -112,6 +113,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
         (Pool::Effect, area_grab::INDEX) => area_grab::update(b, r),
         (Pool::Attack, grab_shot::INDEX) => grab_shot::update(b, r),
+        (Pool::Attack, dust_ball::INDEX) => dust_ball::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }

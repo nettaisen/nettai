@@ -9,6 +9,7 @@ pub mod absorb;
 pub mod beast_claw;
 pub mod blank_shot;
 pub mod buster;
+pub mod dust_charge;
 pub mod beast_rush;
 pub mod gun_del_sol;
 pub mod instant;
@@ -37,6 +38,7 @@ pub enum ActionVars {
     BlankShot(blank_shot::Vars),
     Absorb(absorb::Vars),
     Instant(instant::Vars),
+    DustCharge(dust_charge::Vars),
 }
 
 /// Run action `action` (>= 0x10) for the player `r` this tick.
@@ -50,6 +52,7 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
         navi_chip::ACTION => navi_chip::update(b, r),
         absorb::ACTION => absorb::update(b, r),
         instant::ACTION => instant::update(b, r),
+        dust_charge::ACTION => dust_charge::update(b, r),
         _ => panic!("player action {action:#x} is not implemented yet"),
     }
 }
