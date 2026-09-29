@@ -154,6 +154,13 @@ fn object_value(lua: &Lua, o: Option<ObjectRef>) -> mlua::Result<LuaValue> {
 pub struct Object(pub ObjectRef);
 
 impl UserData for Object {
+    fn register(registry: &mut mlua::UserDataRegistry<Self>) {
+        Self::add_fields(registry);
+        Self::add_methods(registry);
+        // `obj:method()` resolves through `__namecall`, skipping `__index`.
+        registry.enable_namecall();
+    }
+
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         for &f in ObjectField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
@@ -255,6 +262,13 @@ fn status_flag(name: &mlua::LuaString) -> mlua::Result<StatusFlag> {
 pub struct Sprite(ObjectRef);
 
 impl UserData for Sprite {
+    fn register(registry: &mut mlua::UserDataRegistry<Self>) {
+        Self::add_fields(registry);
+        Self::add_methods(registry);
+        // `obj:method()` resolves through `__namecall`, skipping `__index`.
+        registry.enable_namecall();
+    }
+
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         for &f in SpriteField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
@@ -293,6 +307,13 @@ impl UserData for Sprite {
 pub struct Collision(ObjectRef);
 
 impl UserData for Collision {
+    fn register(registry: &mut mlua::UserDataRegistry<Self>) {
+        Self::add_fields(registry);
+        Self::add_methods(registry);
+        // `obj:method()` resolves through `__namecall`, skipping `__index`.
+        registry.enable_namecall();
+    }
+
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         for &f in CollisionField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {

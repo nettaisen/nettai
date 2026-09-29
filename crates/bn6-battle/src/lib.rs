@@ -18,6 +18,8 @@ pub mod input;
 pub mod kinds;
 pub mod object;
 pub mod rng;
+pub mod rollback;
+pub mod scenario;
 pub mod setup;
 pub mod sound;
 pub mod transform;

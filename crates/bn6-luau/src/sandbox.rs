@@ -18,7 +18,57 @@
 use std::collections::HashSet;
 use std::ffi::c_void;
 
+use mlua::chunk::Compiler;
 use mlua::{Lua, LuaOptions, StdLib, Table, Value, ffi};
+
+/// The `math` functions content keeps: exact on integers.
+const EXACT_MATH: [&str; 8] = ["abs", "ceil", "floor", "max", "min", "clamp", "sign", "round"];
+
+/// Builtins the compiler must not treat as known. Luau folds calls to known
+/// builtins with constant arguments at compile time, and under `safeenv`
+/// calls them directly (`FASTCALL`) without looking them up, so removing
+/// them from the environment isn't enough: `math.sin(1)` would still run.
+/// Listing them here makes every call go through the environment, where
+/// they don't exist. `setmetatable` is listed so calls reach the guarded
+/// version below.
+const NOT_BUILTINS: [&str; 31] = [
+    "math.random",
+    "math.randomseed",
+    "math.noise",
+    "math.sin",
+    "math.cos",
+    "math.tan",
+    "math.asin",
+    "math.acos",
+    "math.atan",
+    "math.atan2",
+    "math.sinh",
+    "math.cosh",
+    "math.tanh",
+    "math.exp",
+    "math.log",
+    "math.log10",
+    "math.pow",
+    "math.sqrt",
+    "math.frexp",
+    "math.ldexp",
+    "math.deg",
+    "math.rad",
+    "math.fmod",
+    "math.modf",
+    "math.lerp",
+    "math.map",
+    "math.isnan",
+    "math.isinf",
+    "math.isfinite",
+    "setmetatable",
+    "vector",
+];
+
+/// The compiler content is compiled with.
+pub fn compiler() -> Compiler {
+    Compiler::new().set_optimization_level(1).set_debug_level(2).set_disabled_builtins(NOT_BUILTINS)
+}
 
 /// A VM with the content standard library.
 pub fn new_vm(debug_print: bool) -> mlua::Result<Lua> {
@@ -29,7 +79,7 @@ pub fn new_vm(debug_print: bool) -> mlua::Result<Lua> {
     }
     let math: Table = g.get("math")?;
     let exact = lua.create_table()?;
-    for name in ["abs", "ceil", "floor", "max", "min", "clamp", "sign", "round"] {
+    for name in EXACT_MATH {
         exact.raw_set(name, math.raw_get::<Value>(name)?)?;
     }
     g.raw_set("math", exact)?;
