@@ -77,7 +77,7 @@ fn chips(rom: &Rom) -> String {
         let u32at = |a: u32| u32::from_le_bytes(rom.bytes(a, 4).try_into().unwrap());
         writeln!(
             out,
-            "    ChipData {{ name: {name:?}, codes: &[{}], element: Element::{}, rarity: {}, family: {}, class: ChipClass::{}, mb: {}, flags: ChipFlags({:#04x}), hit_param: {}, action: {:#04x}, subtype: {}, unk_0d: {}, unk_0e: {}, beast_lockon: {}, params: {:#010x}, lockout: {}, lib_index: {}, flags2: {:#04x}, lockon_mode: {}, sort_key: {:#06x}, damage: {}, library_no: {}, slotin_max: {}, dark_subst: {} }}, // {id:#05x}",
+            "    ChipData {{ name: {name:?}, codes: &[{}], element: Element::{}, rarity: {}, family: {}, class: ChipClass::{}, mb: {}, flags: ChipFlags({:#04x}), hit_param: {}, action: {:#04x}, subtype: {}, beast_lockon: {}, params: {:#010x}, lockout: {}, lib_index: {}, flags2: {:#04x}, lockon_mode: {}, sort_key: {:#06x}, damage: {}, library_no: {}, slotin_max: {}, dark_subst: {} }}, // {id:#05x}",
             codes.join(", "),
             ["Null", "Fire", "Aqua", "Elec", "Wood"][rom.u8(r + 4) as usize],
             rom.u8(r + 5),
@@ -88,8 +88,7 @@ fn chips(rom: &Rom) -> String {
             rom.u8(r + 0xA),
             rom.u8(r + 0xB),
             rom.u8(r + 0xC),
-            rom.u8(r + 0xD),
-            rom.u8(r + 0xE),
+            // +0x0D and +0x0E have no reader in the game; not extracted.
             rom.u8(r + 0xF),
             u32at(r + 0x10),
             rom.u8(r + 0x14),
@@ -480,7 +479,7 @@ fn player(rom: &Rom) -> String {
             0x20 => "StatusTimer::Blind".into(),
             0x22 => "StatusTimer::Immobilize".into(),
             0x24 => "StatusTimer::Flash".into(),
-            0x26 => "StatusTimer::Flag4".into(),
+            0x26 => "StatusTimer::SemiIntangible".into(),
             0x28 => "StatusTimer::Invulnerable".into(),
             0x2A => "StatusTimer::Freeze".into(),
             0x2C => "StatusTimer::Bubble".into(),

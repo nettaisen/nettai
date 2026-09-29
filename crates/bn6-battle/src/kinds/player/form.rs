@@ -51,7 +51,7 @@ pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
             set_flag1(b, r, f1::AIRSHOE | f1::FLOATSHOE);
             let hm = body_hit_modifier(b);
             b.reset_collision_types(r, 0x10, 2, hm);
-            if ai(b, r).unk_40.is_none() {
+            if ai(b, r).lockon_marker.is_none() {
                 lockon_marker::spawn(b, r);
             }
         }

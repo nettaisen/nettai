@@ -62,13 +62,8 @@ pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
     // The actor record (`sub_80182B4`); MegaMan's is {0, Player, 0}.
     let rec = pdata::navi_record(name_id);
     let ad = b.actors.get_mut(a);
-    ad.unk_16 = rec.version;
-    ad.unk_17 = rec.version;
     ad.actor_type = rec.actor_type;
     ad.ai_index = rec.ai_index;
-    // Enemy struct byte 2 (`enemy_getStruct1`): 1 for every player navi.
-    ad.unk_03 = 1;
-    ad.unk_0e = 0xFF;
     Some(r)
 }
 
@@ -212,11 +207,11 @@ fn emotion(b: &Battle, side: u8) -> u8 {
     let mood = b.stats[side as usize].mood;
     let p = b.player(side).expect("side has a player");
     let a = ai(b, p);
-    if a.unk_36 != 0 || mood == 0 {
+    if a.beast_over_exhausted || mood == 0 {
         5
     } else if a.anger != 0 {
         3
-    } else if a.unk_32 != 0 {
+    } else if a.beast_out_spent {
         1
     } else if mood == 0xFF {
         2
@@ -230,7 +225,7 @@ fn emotion(b: &Battle, side: u8) -> u8 {
 fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     let Some(p) = b.player(side) else { return };
     let a = ai(b, p);
-    if a.unk_32 != 0 || a.unk_36 != 0 {
+    if a.beast_out_spent || a.beast_over_exhausted {
         return;
     }
     b.stats[side as usize].mood = mood;
@@ -274,8 +269,7 @@ fn set_attack(b: &mut Battle, r: ObjectRef, action: u8, kind: u8) {
 fn reset_attack_links(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.attack.beast_lockon = 0;
-    a.attack.unk_1e = 0;
-    if let Some(marker) = a.unk_40 {
+    if let Some(marker) = a.lockon_marker {
         crate::kinds::lockon_marker::unfreeze(b, marker);
     }
 }
@@ -295,7 +289,7 @@ fn end_attack(b: &mut Battle, r: ObjectRef) {
     if kind != 4 {
         match kind {
             2 => a.lockout = a.attack.lockout,
-            3 => a.unk_15 = a.attack.lockout,
+            3 => a.back_special_cooldown = a.attack.lockout,
             _ => {}
         }
         a.buffered_move = 0;
@@ -337,10 +331,10 @@ fn clear_invulnerable(b: &mut Battle, r: ObjectRef) {
     clear_flag1(b, r, f1::INVULNERABLE);
 }
 
-/// `sub_80101C4`: cancel the timed flag-4 state.
-fn cancel_flag4_timer(b: &mut Battle, r: ObjectRef) {
-    coll_mut(b, r).status_timers[timer::UNK_26] = 0;
-    clear_flag1(b, r, f1::UNK_4);
+/// `sub_80101C4`: end the timed semi-intangible state.
+fn cancel_semi_intangible(b: &mut Battle, r: ObjectRef) {
+    coll_mut(b, r).status_timers[timer::SEMI_INTANGIBLE] = 0;
+    clear_flag1(b, r, f1::SEMI_INTANGIBLE);
 }
 
 /// `sub_801A284`: end paralysis.
@@ -355,13 +349,12 @@ fn clear_freeze(b: &mut Battle, r: ObjectRef) {
     crate::kinds::thaw(b, r);
 }
 
-/// `sub_801A2B0`: pop the bubble and restore the height saved in
-/// `Unk_3c`.
+/// `sub_801A2B0`: pop the bubble and restore the navi's resting height.
 fn clear_bubble(b: &mut Battle, r: ObjectRef) {
     clear_flag1(b, r, f1::BUBBLED);
     clear_flag2(b, r, 0x2_0000);
     coll_mut(b, r).status_timers[timer::BUBBLE] = 0;
-    let z16 = ai(b, r).unk_3c;
+    let z16 = ai(b, r).bubble_base_z;
     let o = b.objects.get_mut(r);
     o.pos.z = (o.pos.z & 0xFFFF) | ((z16 as i32) << 16);
 }
@@ -402,24 +395,24 @@ fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
 
 // ---- The transformation sequencer's checks -------------------------------------
 
-/// `sub_80159C6` + `sub_8015994`, once per turn start: the first check
-/// after the custom screen marks the navi (`Unk_0f` = 2), and a Beast Out
-/// whose counter ran out asks to revert (request 0x40, handled while
-/// paused).
+/// `sub_80159C6` + `sub_8015994`, once per turn start: the check runs
+/// only while `beast_out_check_delay` is 0 (and sets it to 2), and a
+/// Beast Out whose counter ran out asks to revert (request 0x40, handled
+/// while paused).
 pub fn check_beast_out_end(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     let revert = if battle_mode(b) == 1 {
         s.form.is_beast()
     } else {
         let a = ai_mut(b, r);
-        if a.unk_0f != 0 {
+        if a.beast_out_check_delay != 0 {
             return;
         }
-        a.unk_0f = 2;
+        a.beast_out_check_delay = 2;
         if s.beast_out_counter != 0 {
             return;
         }
-        a.unk_32 = 0xFFFF;
+        a.beast_out_spent = true;
         s.form.is_beast()
     };
     if revert {
@@ -543,7 +536,7 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         panic!("FirstBarrier (sub_801A7CC) is not implemented yet");
     }
     if stats(b, r).beast_out_counter == 0 {
-        ai_mut(b, r).unk_32 = 0xFFFF;
+        ai_mut(b, r).beast_out_spent = true;
     }
     reset_navicust_state(b, r);
 }
@@ -556,8 +549,8 @@ fn reset_navicust_state(b: &mut Battle, r: ObjectRef) {
     a.back_special = w.back_special;
     clear_flag1(b, r, 0x0800_0000);
     clear_invulnerable(b, r);
-    if ai(b, r).unk_50 != 0 {
-        panic!("sub_80E5410 is not implemented yet");
+    if ai(b, r).reset_linked_object.is_some() {
+        panic!("ending the status reset's linked object (sub_80E5410) is not implemented yet");
     }
     apply_navicust_flags(b, r);
 }
@@ -713,17 +706,12 @@ fn reset_side_state(b: &mut Battle, r: ObjectRef) {
     let s = &mut b.sides[side];
     *s = Default::default();
     if mode_40 {
+        // The game also sets bytes nothing ported reads (see
+        // docs/engine/field-names.md, SideState).
         s.active = 1;
-        s.unk_0b = 0xFF;
-        s.unk_10 = 1;
         s.panel_x = panel_x;
-        s.unk_0e = 3;
         // sub_802E07C
-        s.unk_03 = 0;
-        s.unk_2a = 0;
         s.select_special = 0;
-        s.unk_18 = [0xFFFF_FFFF; 3];
-        s.unk_02 = 0xB4;
     }
 }
 
@@ -794,14 +782,9 @@ fn tick_cooldowns(b: &mut Battle, r: ObjectRef) {
     }
     let a = ai_mut(b, r);
     a.lockout = a.lockout.saturating_sub(1);
-    a.unk_15 = a.unk_15.saturating_sub(1);
-    let side = b.objects.get(r).alliance as usize;
-    let s = &mut b.sides[side];
-    if s.active != 0 {
-        s.unk_2e = s.unk_2e.saturating_sub(1);
-        s.unk_3a = s.unk_3a.saturating_sub(1);
-        s.unk_3c = s.unk_3c.saturating_sub(1);
-    }
+    a.back_special_cooldown = a.back_special_cooldown.saturating_sub(1);
+    // The battle flag 0x40 mode's per-side timers (`sub_802E070` +0x2E,
+    // +0x3A, +0x3C) count down here too; nothing ported reads them.
 }
 
 /// `sub_80139C4`: the Full Synchro aura, spawned while the emotion is 2.
@@ -810,14 +793,14 @@ fn full_synchro_effect(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).hp == 0 || a.actor_type != ActorType::Player || a.ai_index > 0xB {
         return;
     }
-    if emotion(b, b.objects.get(r).alliance) == 2 && a.unk_5c == 0 {
+    if emotion(b, b.objects.get(r).alliance) == 2 && a.full_synchro_aura.is_none() {
         panic!("Full Synchro aura (sub_80C4C12) is not implemented yet");
     }
 }
 
 // ---- Destroy -------------------------------------------------------------------
 
-/// `sub_8016C4E`: runs once. Players (`Unk_02 == 0`) stay allocated and
+/// `sub_8016C4E`: runs once. Players (`not_counted == 0`) stay allocated and
 /// linked until the end of the round.
 fn destroy(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init != 0 {
@@ -832,7 +815,6 @@ fn destroy(b: &mut Battle, r: ObjectRef) {
     if not_counted == 0 {
         b.round.actor_count[side] = b.round.actor_count[side].wrapping_sub(1);
     }
-    ai_mut(b, r).unk_0e = 0xFF;
     b.objects.get_mut(r).phase_init = 4;
     if not_counted != 0 {
         let a = actor_id(b, r);

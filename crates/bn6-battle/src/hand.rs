@@ -9,7 +9,6 @@ use crate::data::{self, ChipFlags, ChipId};
 pub struct ChipHand {
     /// Index of the next chip to use (0..=5).
     pub cursor: u8,
-    pub unk_01: u8,
     /// Effective chip ids (after Program Advance and modifier folding),
     /// `NO_CHIP`-terminated.
     pub ids: [ChipId; 6],
@@ -34,7 +33,6 @@ impl ChipHand {
     pub fn empty() -> ChipHand {
         ChipHand {
             cursor: 0,
-            unk_01: 0,
             ids: [NO_CHIP; 6],
             damage: [0; 6],
             attack_bonus: [0; 6],
@@ -45,12 +43,13 @@ impl ChipHand {
         }
     }
 
-    /// Parse the game's 0x50-byte chip block encoding.
+    /// Parse the game's 0x50-byte chip block encoding. Byte 1 is always 0
+    /// in battle (only the battle flag 0x40 mode's unreferenced routines
+    /// use it) and is not kept.
     pub fn from_bytes(b: &[u8]) -> ChipHand {
         let u16s = |off: usize| -> [u16; 6] { std::array::from_fn(|i| u16::from_le_bytes([b[off + 2 * i], b[off + 2 * i + 1]])) };
         ChipHand {
             cursor: b[0],
-            unk_01: b[1],
             ids: u16s(0x02),
             damage: u16s(0x0E),
             attack_bonus: u16s(0x1A),
@@ -65,7 +64,6 @@ impl ChipHand {
     pub fn to_bytes(&self) -> [u8; 0x50] {
         let mut b = [0u8; 0x50];
         b[0] = self.cursor;
-        b[1] = self.unk_01;
         let mut put = |off: usize, v: &[u16; 6]| {
             for (i, x) in v.iter().enumerate() {
                 b[off + 2 * i..off + 2 * i + 2].copy_from_slice(&x.to_le_bytes());

@@ -1,8 +1,9 @@
 //! Per-actor data for navis: input state, action requests, charge state
 //! and the state of the attack in progress. Eight slots, allocated lowest-free first.
 //!
-//! Field names follow what the fields are used for; ones not yet understood
-//! keep the offset of the game's structure in their name (`unk_2c`).
+//! This is the game's AIData block (0x100 bytes per slot). Only the fields
+//! ported code reads are modeled; each names its AIData offset once. The
+//! full old-name mapping is in docs/engine/field-names.md.
 
 use crate::object::ObjectRef;
 
@@ -91,7 +92,8 @@ pub mod status {
 }
 
 /// State of the attack action in progress, shared by whatever action is
-/// running. Action-specific state gets named fields as actions are ported.
+/// running (AIData+0xA0, the game's AIAttackVars). Action-specific state
+/// gets named fields as actions are ported.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AttackVars {
     /// Step within the action (0, 4, 8...), and whether its entry ran.
@@ -113,25 +115,16 @@ pub struct AttackVars {
     pub timer: u16,
     pub recovery: u16,
     pub chip_id: u16,
-    pub unk_16: u8,
-    pub unk_17: u8,
-    pub unk_18: u16,
-    pub unk_1a: u8,
     pub special_source: u8,
     /// Which `set_attack` slot started the action.
     pub kind: u8,
     pub beast_lockon: u8,
-    pub unk_1e: u16,
-    /// +0x2C: the move's panel-trail argument (0 for input moves).
-    pub move_arg: u32,
     /// +0x30: a marker: the move's "direction changed", or a heat trap
     /// swallowing a hit.
     pub marker: u32,
     /// The running action's own state (timers, destinations).
     pub action: crate::kinds::player::actions::ActionVars,
 }
-
-
 
 /// Joypad state as an actor sees it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -159,7 +152,6 @@ pub struct ActorData {
     pub ai_index: u8,
     /// 1 = not counted as a combatant.
     pub not_counted: u8,
-    pub unk_03: u8,
     /// Weapon routines: battle-mode-9 A press, A-charge type, buster,
     /// charged shot, B+Back special.
     pub mode9_a: u8,
@@ -167,24 +159,33 @@ pub struct ActorData {
     pub buster: u8,
     pub charge_shot: u8,
     pub back_special: u8,
-    pub unk_09: u8,
-    /// HP-drain bug counter.
+    /// AIData+0x09: ticks toward the next HP lost to the fight-time HP bug
+    /// (`sub_8010230`; `sub_801026A` for actors without navi stats).
+    pub hp_drain_counter: u8,
+    /// AIData+0x0A: ticks toward the next HP lost to the custom-screen HP
+    /// drain bug (`sub_80102AC`).
     pub drain_counter: u8,
-    pub unk_0b: u8,
-    pub unk_0c: u8,
-    pub unk_0d: u8,
-    pub unk_0e: u8,
-    pub unk_0f: u8,
-    pub unk_10: u8,
+    /// AIData+0x0F: the turn-start Beast Out check (`sub_80159C6`) runs
+    /// only while this is 0, and then sets it to 2. Closing the custom
+    /// screen sets it to 1 (`sub_8009338`); a mid-battle custom-screen
+    /// request counts it down (`sub_8015A16`, MegaMan only; 0xFF is left
+    /// alone). Intent uncertain: in netbattles the close always leaves 1
+    /// before the next check.
+    pub beast_out_check_delay: u8,
+    /// AIData+0x10: drain hits this navi landed on the opponent, turned
+    /// into healing (MaxHP/10 each) on its own next hit collection
+    /// (`sub_801A308`, `sub_801A324`).
+    pub drain_heal_credits: u8,
     /// Alternative A-charge type (form chips).
     pub alt_a_charge: u8,
-    pub unk_12: u8,
-    pub unk_13: u8,
-    pub unk_14: u8,
-    pub unk_15: u8,
-    pub unk_16: u8,
-    pub unk_17: u8,
-    pub unk_18: u8,
+    /// AIData+0x13: ticks left to press Back after B for the B+Back
+    /// special (`sub_8012FC8`: 8 on a B press).
+    pub back_special_window: u8,
+    /// AIData+0x15: ticks before the B+Back special can be input again:
+    /// the special's lockout, set when a `set_attack` kind-3 action (the
+    /// B+Back special) ends (`sub_801171C`), counted down by
+    /// `sub_80107D4`.
+    pub back_special_cooldown: u8,
     /// Input lockout after a chip, in ticks.
     pub lockout: u8,
     /// Buffered auto-move.
@@ -192,41 +193,58 @@ pub struct ActorData {
     /// Charge counter, level (0 none, 1 charging, 2 full) and source
     /// (0 none, 1 A, 2 B).
     pub charge_counter: u8,
-    pub unk_1c: u8,
+    /// AIData+0x1C: the NaviCust on-hit bug already fired during this
+    /// hit sequence (`sub_8013F1E`; cleared while `prevent_anim` is 0).
+    pub hit_bug_latched: bool,
     pub charge_level: u8,
     pub charge_source: u8,
-    pub unk_1f: u8,
     pub total_damage_taken: u16,
     pub pad: Pad,
     /// Mirror of `pad` maintained during time stop.
     pub timestop_pad: Pad,
-    pub unk_32: u16,
+    /// AIData+0x32: the Beast Out counter is spent (the game stores
+    /// 0xFFFF): set at init with a zero counter (`sub_8013892`), by the
+    /// turn-start check (`sub_80159C6`), when a Beast Out reverts
+    /// (`sub_80158CC`), and by the NaviCust emotion-swing bug
+    /// (`sub_8013DA0`); cleared by `sub_8014446`. Gives emotion 1 and
+    /// blocks mood changes (`sub_8015BEC`) and anger (`sub_80143CE`).
+    pub beast_out_spent: bool,
     pub anger: u16,
-    pub unk_36: u16,
-    pub unk_38: u16,
-    pub unk_3a: u16,
-    pub unk_3c: u16,
-    pub unk_3e: u16,
-    /// Linked helper objects (+0x40: lock-on marker; others per use).
-    pub unk_40: Option<ObjectRef>,
+    /// AIData+0x36: exhausted after Beast Over (`sub_80158CC` →
+    /// `sub_8014466` stores 0x3C0, which nothing counts down): emotion 5,
+    /// mood changes blocked, and 1 HP lost per tick for the rest of the
+    /// battle, never the last one (`sub_8014498`).
+    pub beast_over_exhausted: bool,
+    /// AIData+0x38: ticks before a road panel can start another slide
+    /// (5 after a road slide, `sub_80166D0`/`sub_8016730`; counted down
+    /// by `sub_801A36A`).
+    pub road_cooldown: u16,
+    /// AIData+0x3C: the height (Z, whole pixels) a bubble bobs around and
+    /// restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses
+    /// record it every tick (`sub_8108F74`); nothing sets it for players.
+    pub bubble_base_z: i16,
+    /// AIData+0x40: the Beast Out lock-on marker (effect #0xF,
+    /// `sub_80E1620`), which `sub_80E1662` unfreezes.
+    pub lockon_marker: Option<ObjectRef>,
     /// Action requests from input (`request::*`).
     pub requests: u32,
     /// Actor state bits (`status::*`).
     pub status: u32,
-    pub unk_4c: u32,
-    pub unk_50: u32,
-    pub unk_54: u32,
+    /// AIData+0x4C: consecutive ticks spent flinching or paralyzed
+    /// (`sub_80143FC`); 120 of them make MegaMan angry (`sub_80142DC`).
+    pub stun_ticks: u32,
+    /// AIData+0x50: an object tied to the navi that the full status reset
+    /// ends (`sub_801390C` → `sub_80E5410`: state 8, first extra var
+    /// cleared). Which object stores itself here was not found.
+    pub reset_linked_object: Option<ObjectRef>,
     /// The charge-glow effect object.
     pub charge_glow: Option<ObjectRef>,
-    pub unk_5c: u32,
-    pub unk_60: u32,
-    pub unk_64: u32,
+    /// AIData+0x5C: the Full Synchro aura (actor #0x5E, spawned by
+    /// `sub_80139C4` → `sub_80C4C12`); form changes end it, deletion
+    /// forgets it (`sub_801746E`).
+    pub full_synchro_aura: Option<ObjectRef>,
     /// A sprite overlay attached for the current chip.
     pub overlay: Option<ObjectRef>,
-    pub unk_6c: u32,
-    pub unk_70: u32,
-    pub unk_74: u32,
-    pub unk_78: u32,
     pub attack: AttackVars,
     /// Obstacles the obstacle-absorbing chip pulled in, in arrival order
     /// (at most eight; the game keeps them at +0x6C with the count at
