@@ -1,10 +1,13 @@
-//! Game content, extracted from the original ROM by `bn6-extract` into
+//! Game content, extracted from the original game by `bn6-extract` into
 //! typed tables. The files named `*_generated.rs` are written by that tool;
 //! regenerate them rather than editing by hand.
 
 mod chips_generated;
 
 pub use chips_generated::CHIPS;
+
+/// Chip ids are indices into [`CHIPS`] (0..=0x19A).
+pub type ChipId = u16;
 
 /// A chip code: A-Z are 0-25, `*` is 26.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -18,26 +21,88 @@ impl ChipCode {
     }
 }
 
-/// One battle chip's data record. Fields not yet understood keep their
-/// record offset in the name and are kept so nothing is lost.
+/// An attack's primary element.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Element {
+    Null = 0,
+    Fire = 1,
+    Aqua = 2,
+    Elec = 3,
+    Wood = 4,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ChipClass {
+    Standard,
+    Mega,
+    Giga,
+    /// Not a folder chip (cross/beast attacks, internal chips).
+    Special,
+    ProgramAdvance,
+}
+
+/// Chip record flags (+0x09).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ChipFlags(pub u8);
+
+impl ChipFlags {
+    /// Stops time when used; can counter during time stop.
+    pub const TIME_FREEZE: u8 = 0x01;
+    /// Deals damage: shown on the banner, boostable by Atk+ and forms.
+    pub const HAS_DAMAGE: u8 = 0x02;
+    /// Navi chip: boosted by Navi+.
+    pub const NAVI: u8 = 0x04;
+    /// Damage recomputed every tick while this is the next chip.
+    pub const VARIABLE_DAMAGE: u8 = 0x80;
+
+    pub fn has(self, bit: u8) -> bool {
+        self.0 & bit != 0
+    }
+}
+
+/// One battle chip's data record (see docs/engine/chips.md §1.2).
 #[derive(Clone, Copy, Debug)]
 pub struct ChipData {
+    pub name: &'static str,
     /// Codes the chip comes in (up to four).
     pub codes: &'static [ChipCode],
-    pub element: u8,
-    /// 0-4 stars minus one.
+    pub element: Element,
+    /// Stars minus one.
     pub rarity: u8,
-    pub unk_06: u8,
-    pub unk_07: u8,
+    /// Icon family; Sword/Cursor/Wind/Break also give secondary elements.
+    pub family: u8,
+    pub class: ChipClass,
     /// Folder memory cost.
     pub mb: u8,
-    pub unk_09: u8,
-    pub unk_0a: u8,
-    pub unk_0b: u8,
-    pub unk_0c_17: [u8; 12],
-    pub unk_18: u16,
-    /// Base damage.
+    pub flags: ChipFlags,
+    /// Counter/stagger strength carried to the attack's hitbox.
+    pub hit_param: u8,
+    /// The attack action the user performs.
+    pub action: u8,
+    /// Variant within the action (e.g. Cannon/HiCannon/M-Cannon = 0/1/2).
+    pub subtype: u8,
+    pub unk_0d: u8,
+    pub unk_0e: u8,
+    /// Beast Out auto-lock-on.
+    pub beast_lockon: u8,
+    /// Action-specific parameters.
+    pub params: u32,
+    /// Input lockout after the attack ends, in ticks.
+    pub lockout: u8,
+    pub lib_index: u8,
+    pub flags2: u8,
+    /// Beast Out lock-on panel selector.
+    pub lockon_mode: u8,
+    pub sort_key: u16,
+    /// Base damage; values of 1000 and up select a damage formula.
     pub damage: u16,
-    pub unk_1c: u16,
-    pub unk_1e: u8,
+    pub library_no: u16,
+    pub slotin_max: u8,
+    /// Dark chip substitute when the user has no bug frags (0xFF = none).
+    pub dark_subst: u8,
+}
+
+/// The data record for a chip.
+pub fn chip(id: ChipId) -> &'static ChipData {
+    &CHIPS[id as usize]
 }
