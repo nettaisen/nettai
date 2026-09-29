@@ -101,6 +101,66 @@ pub struct Field {
     pub volcano_counter: u32,
     /// Ticks a broken panel stays broken.
     pub hole_ticks: u16,
+    /// Obstacles on the field, per side.
+    pub objects: FieldObjects,
+}
+
+/// The field-object registry (BattleState+0xA0..+0xC0): the obstacles
+/// (rocks, cubes...) each side owns, so that placing too many evicts the
+/// oldest and chips can find them all.
+///
+/// Slots in the game's order: side 0 has two slots for class-0 obstacles
+/// (oldest first) and one for class 1, then side 1 the same, then two
+/// slots for stage objects.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct FieldObjects {
+    pub slots: [Option<ObjectRef>; 8],
+}
+
+impl FieldObjects {
+    /// Slots per side.
+    const SIDE: usize = 3;
+    /// The per-side slots (the first six) that obstacles register in.
+    pub const OBSTACLE_SLOTS: usize = 6;
+
+    /// `setFieldBattleObject_800F614` without the eviction's side effect:
+    /// record `obj` for `side` in `class` (0 or 1). Returns the object it
+    /// evicted, which the caller destroys.
+    pub fn register(&mut self, obj: ObjectRef, side: u8, class: u8) -> Option<ObjectRef> {
+        assert!(side <= 1 && class <= 1, "field object side {side} class {class}");
+        let base = Self::SIDE * side as usize;
+        if class == 1 {
+            return self.slots[base + 2].replace(obj);
+        }
+        let (oldest, newer) = (base, base + 1);
+        if self.slots[oldest].is_none() {
+            self.slots[oldest] = Some(obj);
+            None
+        } else if self.slots[newer].is_none() {
+            self.slots[newer] = Some(obj);
+            None
+        } else {
+            let evicted = self.slots[oldest];
+            self.slots[oldest] = self.slots[newer];
+            self.slots[newer] = Some(obj);
+            evicted
+        }
+    }
+
+    /// `sub_800F656`: forget `obj` (the six obstacle slots only).
+    pub fn unregister(&mut self, obj: ObjectRef) {
+        for s in &mut self.slots[..Self::OBSTACLE_SLOTS] {
+            if *s == Some(obj) {
+                *s = None;
+            }
+        }
+    }
+
+    /// `sub_800F806`: the class `obj` is registered in (None if it isn't).
+    pub fn class_of(&self, obj: ObjectRef) -> Option<u8> {
+        let i = self.slots[..Self::OBSTACLE_SLOTS].iter().position(|&s| s == Some(obj))?;
+        Some(if i % Self::SIDE == 2 { 1 } else { 0 })
+    }
 }
 
 pub fn is_valid(x: u8, y: u8) -> bool {
@@ -138,7 +198,14 @@ impl Field {
                 };
             }
         }
-        let mut f = Field { panels, columns, home_runs: Vec::new(), volcano_counter: 0x8C, hole_ticks };
+        let mut f = Field {
+            panels,
+            columns,
+            home_runs: Vec::new(),
+            volcano_counter: 0x8C,
+            hole_ticks,
+            objects: FieldObjects::default(),
+        };
         f.build_home_runs();
         f
     }
