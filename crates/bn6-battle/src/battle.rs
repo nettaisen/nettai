@@ -550,7 +550,7 @@ impl Battle {
 
     /// `sub_8007368`: spawn the settings' actor list. Only navis join the
     /// alive/actor bookkeeping; rocks and other field objects don't.
-    pub(crate) fn spawn_actors(&mut self) {
+    pub fn spawn_actors(&mut self) {
         use crate::setup::ActorKind;
         for entry in self.setup.settings.actors {
             match entry.kind {

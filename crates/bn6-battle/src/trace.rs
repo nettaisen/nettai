@@ -1,5 +1,7 @@
-//! Golden traces recorded from the original game (see data/traces/README.md)
-//! and the observable-state comparison the engine is verified with.
+//! Recorded battles: per-frame inputs and observable state captured from the
+//! original game, as JSON lines, and the comparison the engine is verified
+//! with. A round starts with a `{"setup": ...}` line (battle settings, navi
+//! stats, RNG), followed by one line per frame.
 
 use serde::Deserialize;
 use std::io::BufRead;
