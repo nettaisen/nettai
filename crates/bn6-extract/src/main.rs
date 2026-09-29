@@ -2,6 +2,11 @@
 //!
 //! Usage: bn6-extract <exe6f_rom_f_e.srl> [out-dir]
 //! (out-dir defaults to crates/bn6-battle/src/data)
+//!
+//! `bn6-extract assets <rom> <sound-bank>` writes the sound bank bn6-audio
+//! plays (see assets.rs).
+
+mod assets;
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -651,6 +656,10 @@ fn obstacles(rom: &Rom) -> String {
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("assets") {
+        assets::main(&args[1..]);
+        return;
+    }
     let rom = Rom(std::fs::read(&args[0]).expect("reading ROM"));
     assert_eq!(&rom.0[0xA0..0xB0], b"MEGAMAN6_FXXBR6E", "expected US Falzar (exe6f_rom_f_e.srl)");
     let out_dir = args

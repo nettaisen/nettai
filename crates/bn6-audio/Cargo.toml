@@ -1,0 +1,27 @@
+[package]
+name = "bn6-audio"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Plays the battle engine's sound cues through the M4A sound driver"
+
+[dependencies]
+m4a.workspace = true
+bn6-battle.workspace = true
+cpal = { workspace = true, optional = true }
+
+[features]
+default = ["playback"]
+# Real-time output through the default audio device (AudioOut).
+playback = ["dep:cpal"]
+
+[dev-dependencies]
+bn6-battle = { workspace = true, features = ["trace"] }
+
+[[example]]
+name = "trace_audio"
+required-features = ["playback"]
+
+[[example]]
+name = "play_song"
+required-features = ["playback"]
