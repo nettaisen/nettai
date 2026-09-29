@@ -326,20 +326,20 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         (0xBB, 1)
     } else {
         if chip == 0xBC {
-            use crate::actor::request::TRAP_400;
-            if ai(b, r).requests & TRAP_400 != 0 {
+            use crate::actor::request::ANTI_SWORD_TRIGGERED;
+            if ai(b, r).requests & ANTI_SWORD_TRIGGERED != 0 {
                 zero_trapped_hit(b, r);
                 return;
             }
             let ffc = coll(b, r).acc.hit_flags;
             if ffc & 0x2000 != 0 && ffc & 0x2_0000 == 0 {
-                ai_mut(b, r).requests |= TRAP_400;
+                ai_mut(b, r).requests |= ANTI_SWORD_TRIGGERED;
                 zero_trapped_hit(b, r);
             }
         }
         return;
     };
-    if ai(b, r).requests & 0x8200 != 0 {
+    if ai(b, r).requests & (crate::actor::request::ANTI_DAMAGE_TRIGGERED | crate::actor::request::BODY_GUARD_TRIGGERED) != 0 {
         zero_trapped_hit(b, r);
         return;
     }
@@ -354,7 +354,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         return;
     }
     ai_mut(b, r).requests |=
-        if trap == 0xBB { crate::actor::request::TRAP_200 } else { crate::actor::request::TRAP_8000 };
+        if trap == 0xBB { crate::actor::request::ANTI_DAMAGE_TRIGGERED } else { crate::actor::request::BODY_GUARD_TRIGGERED };
     zero_trapped_hit(b, r);
 }
 

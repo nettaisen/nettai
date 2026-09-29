@@ -175,6 +175,6 @@ These are not fields, but they were `UNK_*` names or were named after the `UNK_4
 ## Names left as they are
 
 These are named after a bit value or an object index, not a struct offset or address, so this pass left them alone.
-They are candidates for a later naming pass: `request::PAUSE_40`, `request::PAUSE_4000000`, `request::TRAP_200`,
-`request::TRAP_400`, `request::TRAP_8000`, `request::ACTION_30`, `request::ACTION_49`, `status::CROSS_2000` ...
-`CROSS_40000`, `battle_flags::MODE_40` (and `is_mode_40`), and `setup::ActorKind::Object6E` / `Object7D`.
+They are candidates for a later naming pass: `request::PAUSE_40`, `request::PAUSE_4000000`, `request::TRAP_200` (now `ANTI_DAMAGE_TRIGGERED`),
+`request::TRAP_400` (now `ANTI_SWORD_TRIGGERED`), `request::TRAP_8000` (now `BODY_GUARD_TRIGGERED`), `request::ACTION_30`, `request::ACTION_49`, `status::CROSS_2000` ...
+`CROSS_40000`, `battle_flags::MODE_40` (now `PER_PLAYER_GAUGES`) (and `is_mode_40`), and `setup::ActorKind::Object6E` / `Object7D`.

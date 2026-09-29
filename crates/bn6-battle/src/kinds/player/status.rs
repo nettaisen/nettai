@@ -5,7 +5,7 @@
 
 use super::{
     actions, ai, ai_mut, attach_point, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_paralysis, coll,
-    coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, is_mode_40, navi_record,
+    coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
     reactions, reset_attack_links, save_state_word, set_attack, set_flag1, set_flag2, set_mood,
 };
 use crate::actor::{ActorType, request, status as ai_status};
@@ -180,7 +180,7 @@ fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let opp = b.objects.get(r).alliance ^ 1;
-    if is_mode_40(b) {
+    if per_player_gauges(b) {
         // sub_802E032
         let s = &mut b.sides[opp as usize];
         s.gauge = (s.gauge as u32 + 0x1500).min(0x4000) as u16;
