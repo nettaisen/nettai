@@ -80,6 +80,9 @@ mod tests {
             rng: 0x1234_5678,
             local_side: 0,
             score: SetScore::default(),
+            later_stages: Default::default(),
+            low_hp_music_latched: false,
+            sp_times: Default::default(),
         })
     }
 

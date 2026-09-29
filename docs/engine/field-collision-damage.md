@@ -320,6 +320,7 @@ In the volcano case, `cnt` is the global counter after its decrement.
   - `sub_80C5B76(r0=x, r1=y, r2=0, r3=0, r4=0x28, r6=0x32)` calls `object_spawnType3(index 7, X=y, Y=0, Z=0, Params=0x28)`. If a slot is allocated it sets PanelX/Y, Element=0, and `*(u32*)(obj+0x2C) = 0x32` (Damage 50).
   - Alliance stays 0.
   - **[verified-soundmod]** eruptions alternate between columns 3 and 4 every 70 ticks.
+  - The eruption, T3/7 (`sub_80C5A34`, engine `kinds::eruption`): spawned after the objects ran, it inits the next tick. Init: off the field → freed; sprite (0x10, 0x24); Param1 += 0x28 (0x50 = 80) and Timer = Param1; one pixel back (Y) and down (Z); collision data set up with self type 0x48, target type 0x2A, hit modifier 1, hit effect 1, region off; presented; then the update. Update: remove the collision data (hits resolve) and `object_spawnCollisionEffect`; battle over → region off, state 8. If the panel is no longer a volcano (flag 0x1000) while the region is on → Timer = 3 and region off (and VISIBLE off if the panel holds flags 0x3800000); on a volcano, a hit (FlagsFromCollision) does the same without shortening the timer. Timer −1: at 0 region off and state 8; at Param1 − 0x28 (40 left) the region comes on, Y and Z back to the panel, anim 1; 2 later anim 2; at 2 anim 1. Then present. Trace-verified from its spawn at soundmod 26104.
 - **Roads** revert after 0x708 ticks during which the panel tick ran.
 
 #### 2.6.3 Area steal / return (`sub_800C746`, 0x0800C746)

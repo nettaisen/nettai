@@ -142,13 +142,11 @@ fn main() {
         }
         let frames: Vec<&trace::Frame> = round.battle_frames().collect();
         let mut b = Battle::new(round.round_setup());
-        // State carried in from the round's init, as trace::run_round does,
-        // plus the low-HP music latch, which the game doesn't reset between
-        // rounds.
+        // Counters carried in from the round's init, as trace::run_round
+        // does.
         let bs = trace::unhex(&round.setup.battle_state);
         b.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
         b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
-        b.round.low_hp_music = u16::from_le_bytes(bs[0x20..0x22].try_into().unwrap());
         eprintln!("round {}: {} frames from frame {}", n + 1, frames.len(), round.setup.frame);
         for i in 0..frames.len() {
             if budget == 0 {
