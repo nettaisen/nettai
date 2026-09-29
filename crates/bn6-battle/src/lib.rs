@@ -9,6 +9,7 @@
 pub mod actor;
 pub mod battle;
 pub mod collision;
+pub mod content;
 pub mod data;
 pub mod field;
 pub mod hand;
