@@ -158,7 +158,7 @@ fn vanish(b: &mut Battle, r: ObjectRef) {
             return;
         }
         ai_mut(b, r).status |= status::FORM_CHANGE_SPRITE_HELD;
-        // Sound 0xF7.
+        b.play_sound(crate::sound::SoundId(0xF7));
         let (pos, alliance) = {
             let o = b.objects.get(r);
             (o.pos, o.alliance)
@@ -171,8 +171,11 @@ fn vanish(b: &mut Battle, r: ObjectRef) {
             o.pos.y = o.pos.y.wrapping_add(0xC0_0000);
             // sub_800AB2E
             b.beast_out_used[alliance as usize] = true;
-            // Sound 0x1CC (Gregar) or 0x1CD (Falzar), and a 60-tick
-            // camera shake (its jitter uses the camera's own RNG).
+            // The roar is Gregar's for the Gregar beast and Falzar's
+            // otherwise; a 60-tick camera shake follows (its jitter uses
+            // the camera's own RNG).
+            let gregar = b.turn_transforms[alliance as usize].form == Some(crate::setup::Form::GREGAR_BEAST);
+            b.play_sound(crate::sound::SoundId(if gregar { 0x1CC } else { 0x1CD }));
         }
         set_timer(b, r, 0x36);
         ai_mut(b, r).attack.step_init = 4;
@@ -202,7 +205,7 @@ fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         set_timer(b, r, 10);
         stats_mut(b, r).form = target;
         palette_flash::spawn(b, 14, true, true);
-        // Sound 0x100.
+        b.play_sound(crate::sound::SoundId(0x100));
         // sub_8015B22: the form's NameID.
         b.objects.get_mut(r).name_id = 0x1AB + target.0 as u16;
         form::put_on_overlay(b, r, target);

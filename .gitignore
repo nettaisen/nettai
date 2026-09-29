@@ -2,3 +2,4 @@
 *.gba
 *.srl
 *.sav
+/data/sound/
