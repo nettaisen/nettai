@@ -24,7 +24,7 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
         return battle_over(b, r);
     }
     let f = ai(b, r).requests;
-    if f & (request::TRAP_200 | request::TRAP_400 | request::TRAP_8000) != 0 {
+    if f & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED) != 0 {
         return reactive_chip(b, r);
     }
     if f & request::ACTION_49 != 0 {
@@ -66,7 +66,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         panic!("berserk form controller (sub_802D322) is not implemented yet");
     }
     select_specials(b, r);
-    if ai(b, r).requests & (request::TRAP_200 | request::TRAP_400) != 0 {
+    if ai(b, r).requests & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED) != 0 {
         return reactive_chip(b, r);
     }
     if low_hp_navicust_effect(b, r) {

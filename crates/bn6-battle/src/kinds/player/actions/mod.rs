@@ -47,7 +47,7 @@ fn open_counter_window(b: &mut Battle, r: ObjectRef) {
 fn check_reactive_abort(b: &Battle, r: ObjectRef) {
     use crate::actor::request;
     let f = super::ai(b, r).requests;
-    if f & (request::TRAP_200 | request::TRAP_400 | request::TRAP_8000) != 0 {
+    if f & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED) != 0 {
         panic!("reactive defensive chips (sub_801056A) are not implemented yet");
     }
 }
