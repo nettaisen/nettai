@@ -28,7 +28,7 @@ const AIMS_BY_ROW: [&[u8]; 3] = [&[1, 2], &[0, 1, 2, 1], &[0, 1]];
 const AIM_STEPS: [(i32, i32); 3] = [(1, -1), (1, 0), (1, 1)];
 
 /// His own state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// ExtraVars[0]: where in its row's cycle the aim is.
     pub cycle: u8,

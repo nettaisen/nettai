@@ -31,7 +31,7 @@ pub struct FormWeapons {
 }
 
 /// The status timer a status effect sets (a CollisionData field).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StatusTimer {
     Paralyze,
     Confuse,

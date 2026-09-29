@@ -7,7 +7,7 @@ use crate::data::SpriteId;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 use crate::sound::SoundId;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Other effects can hide the glow.
     pub enabled: bool,
@@ -98,18 +98,20 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80E0F5E`: the charge sounds, as the charge starts and as it
-/// completes; only the local side hears an A-button charge.
+/// completes; only the charging navi's player hears a charge unless it
+/// comes from source 2.
 fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8) {
-    if source != 2 && b.is_remote(alliance) {
-        return;
-    }
     let v = vars(b, r);
     let id = match (v.level, v.previous_level) {
         (1, 0) => SoundId::BUSTER_CHARGE,
         (2, 1) => SoundId::BUSTER_CHARGED,
         _ => return,
     };
-    b.play_sound(id);
+    if source == 2 {
+        b.play_sound(id);
+    } else {
+        b.play_sound_for(alliance, id);
+    }
 }
 
 fn set_visible(b: &mut Battle, r: ObjectRef, on: bool) {

@@ -17,10 +17,16 @@
 //! audio.handle(battle.sound_cues());
 //! audio.tick();
 //! ```
+//!
+//! Under rollback netplay a frontend feeds each simulated tick's cues to a
+//! [`bn6_battle::cues::CueTracker`] instead and hands its actions to
+//! [`BattleAudio::handle_actions`]: confirmed cues play once, and cues
+//! played on a wrong prediction are stopped or undone.
 
 use m4a::{Driver, PlayerId, SongId, SoundBank};
 use std::sync::Arc;
 
+pub use bn6_battle::cues::CueAction;
 pub use bn6_battle::sound::{SoundCue, SoundId};
 pub use m4a;
 
@@ -47,6 +53,9 @@ pub const FPS: f64 = m4a::FPS;
 pub enum Request {
     /// `m4aSongNumStart`.
     Start(SongId),
+    /// `m4aSongNumStop`: stop a song if its player is still playing it
+    /// (only to take back a cue played on a wrong prediction).
+    Stop(SongId),
     /// `m4aMPlayAllStop`.
     StopAll,
     /// `m4aMPlayTempoControl` (0x100 = as written).
@@ -64,6 +73,7 @@ impl Request {
             Request::Start(id) => {
                 driver.start(id);
             }
+            Request::Stop(id) => driver.stop_song(id),
             Request::StopAll => driver.stop_all(),
             Request::Tempo { player, tempo } => driver.set_tempo(player, tempo),
             Request::Pitch { player, tracks, pitch } => driver.set_pitch(player, tracks, pitch),
@@ -78,11 +88,13 @@ pub struct SoundCalls {
     /// The music `PlayMusic` last started (GameState's BGMusicIndicator;
     /// 0xFF: none).
     music: u8,
+    /// What it was before the last change (to undo a cancelled change).
+    previous_music: u8,
 }
 
 impl Default for SoundCalls {
     fn default() -> SoundCalls {
-        SoundCalls { music: NO_INDICATOR }
+        SoundCalls { music: NO_INDICATOR, previous_music: NO_INDICATOR }
     }
 }
 
@@ -103,11 +115,13 @@ impl SoundCalls {
                 if id.0 == self.music as u16 {
                     return;
                 }
+                self.previous_music = self.music;
                 self.music = id.0 as u8;
                 out.push(if id == SoundId::NO_MUSIC { Request::StopAll } else { Request::Start(SongId(id.0)) });
             }
             // musicGameState_8000784.
             SoundCue::StopMusic => {
+                self.previous_music = self.music;
                 self.music = NO_INDICATOR;
                 out.push(Request::StopAll);
             }
@@ -124,6 +138,34 @@ impl SoundCalls {
                 }
             }
         }
+    }
+}
+
+impl SoundCalls {
+    /// The driver calls that take back a cue played on a wrong prediction
+    /// (rollback netplay), appended to `out`: a sound effect stops if it
+    /// is still playing, a music change goes back to the music before it
+    /// (from its start), the pinch effect is switched back.
+    pub fn cancel(&mut self, cue: SoundCue, out: &mut Vec<Request>) {
+        match cue {
+            SoundCue::Effect(id) => out.push(Request::Stop(SongId(id.0))),
+            SoundCue::Music(id) if id.0 == self.music as u16 => self.restore_previous_music(out),
+            SoundCue::StopMusic if self.music == NO_INDICATOR => self.restore_previous_music(out),
+            SoundCue::Pinch(on) => self.requests(SoundCue::Pinch(!on), out),
+            // A later change replaced it already; the custom screen's
+            // volume can't be taken back.
+            SoundCue::Music(_) | SoundCue::StopMusic | SoundCue::RestoreVolume => {}
+        }
+    }
+
+    fn restore_previous_music(&mut self, out: &mut Vec<Request>) {
+        let music = std::mem::replace(&mut self.music, self.previous_music);
+        self.previous_music = music;
+        out.push(match self.music {
+            NO_INDICATOR => Request::StopAll,
+            m if m as u16 == SoundId::NO_MUSIC.0 => Request::StopAll,
+            m => Request::Start(SongId(m as u16)),
+        });
     }
 }
 
@@ -145,6 +187,24 @@ impl BattleAudio {
         let mut requests = Vec::new();
         for &cue in cues {
             self.calls.requests(cue, &mut requests);
+        }
+        for r in requests {
+            if self.queue.len() < QUEUE_LIMIT {
+                self.queue.push(r);
+            }
+        }
+    }
+
+    /// Queue rollback cue actions (see [`bn6_battle::cues`]): plays as
+    /// [`handle`](Self::handle) does, and cancels of cues played on a
+    /// wrong prediction.
+    pub fn handle_actions(&mut self, actions: impl IntoIterator<Item = CueAction>) {
+        let mut requests = Vec::new();
+        for action in actions {
+            match action {
+                CueAction::Play(cue) => self.calls.requests(cue, &mut requests),
+                CueAction::Cancel(cue) => self.calls.cancel(cue, &mut requests),
+            }
         }
         for r in requests {
             if self.queue.len() < QUEUE_LIMIT {

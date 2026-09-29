@@ -45,7 +45,7 @@ impl BeastOutStep {
 }
 
 /// The form change's own state.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     /// Ticks left in the current step.
     pub timer: u16,

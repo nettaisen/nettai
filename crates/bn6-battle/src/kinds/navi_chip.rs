@@ -12,7 +12,7 @@ use crate::time_freeze::{self, FreezeChip};
 pub const INDEX: u8 = 0x10;
 
 /// What the controller needs to bring its navi.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub chip: FreezeChip,
     /// Which navi (`off_802CD5C`; object +0x19, the chip's subtype).
