@@ -29,12 +29,50 @@ pub struct HudState {
     /// The chip name window is on: the idle controller's entry shows it
     /// (`sub_801DA48`), using a chip hides it.
     chip_name: bool,
+    /// The mugshot's mood and its change blink.
+    mood: Option<Mood>,
     /// As of the previous tick: whether the round was decided (the HUD
     /// thins out a frame after the decision) and the gauge was running.
     was_over: bool,
     gauge_was_on: bool,
     is_over: bool,
     gauge_is_on: bool,
+}
+
+/// The mugshot's mood (0 normal, 1 Beast Out spent, 2 Full Synchro,
+/// 3 angry, 5 worn out) and, for 12 frames after it changes, a blink back
+/// to the previous one (`sub_801CB38`).
+#[derive(Clone, Copy, Debug)]
+struct Mood {
+    now: u8,
+    before: u8,
+    blink: u8,
+    /// Show `before` this frame.
+    flash: bool,
+}
+
+impl Mood {
+    fn shown(self) -> u8 {
+        if self.flash { self.before } else { self.now }
+    }
+}
+
+/// `sub_80139C8`'s emotion as the mugshot reads it.
+fn mood_index(b: &Battle, r: ObjectRef) -> u8 {
+    let o = b.objects.get(r);
+    let mood = b.stats[o.alliance as usize].mood;
+    let Some(a) = o.actor.map(|a| b.actors.get(a)) else { return 0 };
+    if a.beast_over_exhausted || mood == 0 {
+        5
+    } else if a.anger != 0 {
+        3
+    } else if a.beast_out_spent {
+        1
+    } else if mood == 0xFF {
+        2
+    } else {
+        0
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -68,6 +106,18 @@ impl HudState {
     pub fn tick(&mut self, b: &Battle) {
         self.frame = (self.frame + 1) % 0x70;
         (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
+        if let Some(r) = b.player(b.setup.local_side) {
+            let now = mood_index(b, r);
+            let m = self.mood.get_or_insert(Mood { now, before: now, blink: 0, flash: false });
+            if now != m.now {
+                *m = Mood { now, before: m.now, blink: 12, flash: false };
+            }
+            m.flash = false;
+            if m.now < 5 && m.now != 3 && m.blink > 0 {
+                m.flash = m.blink & 2 != 0;
+                m.blink -= 1;
+            }
+        }
         (self.is_over, self.gauge_is_on) = (decided(b), b.gauge.enabled);
         if let Some(r) = b.player(b.setup.local_side) {
             let o = b.objects.get(r);
@@ -230,6 +280,18 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
         }
     }
 
+    // "Cstmzing...": after confirming, while waiting for the opponent;
+    // it blinks every 32 frames.
+    if let Some(n) = b.custom_ui.since_confirm.filter(|&n| b.round.mode == mode::CUSTOM && n >= 12) {
+        if !b.custom_ui.installed && ((n - 12) / 32) % 2 == 0 {
+            for i in 0..16usize {
+                if let Some(t) = hud.waiting.get(i) {
+                    layer.draw_tile(t, &hud.waiting_palette, (22 + (i % 8) as i32) * 8, (4 + (i / 8) as i32) * 8, false, false);
+                }
+            }
+        }
+    }
+
     // The next chip's name (and damage) at the bottom left, while the
     // navi stands holding chips.
     if let Some(r) = player {
@@ -248,7 +310,7 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
         banner_parts(b, hud, id.0, &mut group);
     }
     if let Some(r) = player.filter(|_| !state.was_over && !hide_mugshot) {
-        mugshot_parts(b, hud, r, if open { 120 } else { 0 }, &mut group);
+        mugshot_parts(b, hud, state, r, if open { 120 } else { 0 }, &mut group);
     }
     for e in &state.enemies {
         let o = b.objects.get(e.object);
@@ -348,19 +410,13 @@ fn block(tiles: &Tiles, w: u8, h: u8, palette: Palette, x: i32, y: i32) -> Sprit
 }
 
 /// The mugshot (by the navi's mood and form) and the count box beside it.
-fn mugshot_parts<'a>(b: &Battle, hud: &'a Hud, r: ObjectRef, x: i32, out: &mut Vec<SpritePart<'a>>) {
+fn mugshot_parts<'a>(b: &Battle, hud: &'a Hud, state: &HudState, r: ObjectRef, x: i32, out: &mut Vec<SpritePart<'a>>) {
     let side = b.objects.get(r).alliance as usize;
     let stats = &b.stats[side];
-    let mood = stats.mood;
-    let m = if mood == 0 {
-        5
-    } else if mood == 0xFF {
-        2
-    } else {
-        0
-    };
-    let mut e = [0u8, 2, 3, 1, 5, 4][m];
-    let form = stats.form.0;
+    let m = state.mood.map(|m| m.shown()).unwrap_or_else(|| mood_index(b, r));
+    let mut e = [0u8, 2, 3, 1, 5, 4][m as usize];
+    // A Beast Out chosen on the custom screen shows before it happens.
+    let form = b.transform_requests[side].form.filter(|f| f.0 <= 0x18).unwrap_or(stats.form).0;
     if form != 0 {
         let base = hud.form_emotions.get(form as usize).copied().unwrap_or(0);
         e = match form {
@@ -404,6 +460,10 @@ fn icon_parts<'a>(b: &Battle, hud: &'a Hud, r: ObjectRef, local: bool, view: &Vi
         (8, 48)
     };
     let (x0, y0) = (p.x + a * (ax * f - 1) - 8, p.ground - ay - 8);
+    // A navi off the field (Beast Out moves it far below) shows none.
+    if !(-16..160).contains(&y0) || !(-16..240).contains(&x0) {
+        return;
+    }
     for k in 0..o.chips_held.min(6) as i32 {
         out.push(block(tiles, 16, 16, hud.icon_palette, x0 - 2 * k * a * f, y0 - 2 * k));
     }
