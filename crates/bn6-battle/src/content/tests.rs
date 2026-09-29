@@ -84,3 +84,199 @@ fn rust_content_data_matches_the_engine() {
         assert_eq!(attacks::sun_beam_sprite(i), rc::SUN_BEAM_SPRITES[i as usize]);
     }
 }
+
+// ---- Every runtime plays the same battle -------------------------------------------
+
+use crate::battle::{Battle, TickEvents};
+use crate::content::Content;
+use crate::rollback::digest;
+use crate::scenario;
+
+/// Each tick's digest over a tape.
+fn digests(tape: &[scenario::Tick], mut b: Battle) -> Vec<u64> {
+    tape.iter()
+        .map(|t| {
+            b.tick(&t.input, t.events.clone());
+            digest(&b)
+        })
+        .collect()
+}
+
+/// Each tick's digest of what every runtime represents the same way,
+/// with the sound cues it made.
+fn engine_digests(tape: &[scenario::Tick], mut b: Battle) -> Vec<(u64, Vec<crate::sound::SoundCue>)> {
+    tape.iter()
+        .map(|t| {
+            b.tick(&t.input, t.events.clone());
+            (crate::rollback::engine_digest(&b), b.sound_cues().to_vec())
+        })
+        .collect()
+}
+
+#[test]
+fn every_runtime_plays_the_duel_like_the_engine() {
+    let tape = scenario::record(900);
+    let want = engine_digests(&tape, Battle::with_content(scenario::setup(), Content::builtin()));
+    let mut runs: Vec<(&str, Content)> = Vec::new();
+    #[cfg(feature = "rust-content")]
+    runs.push(("rust", Content::rust()));
+    #[cfg(feature = "luau")]
+    runs.push(("luau", Content::luau().unwrap()));
+    #[cfg(feature = "luau-jit")]
+    runs.push(("luau native", Content::luau_with(bn6_luau::Options { native_code: true, ..Default::default() }).unwrap()));
+    for (name, content) in runs {
+        let have = engine_digests(&tape, Battle::with_content(scenario::setup(), content));
+        let first = have.iter().zip(&want).position(|(a, b)| a != b);
+        assert_eq!(first, None, "{name} content diverges from the engine's kinds at tick {first:?}");
+    }
+}
+
+// ---- Luau keeps no state ----------------------------------------------------------------
+
+#[cfg(feature = "luau")]
+mod luau {
+    use super::*;
+    use crate::content::luau_pack;
+
+    #[test]
+    fn luau_is_the_default_content_with_the_feature() {
+        assert_eq!(Battle::new(scenario::setup()).content.runtime(), "luau");
+    }
+
+    /// The pack with text replaced in one module (each `(from, to)` once).
+    fn patched(module: &str, edits: &[(&str, &str)]) -> bn6_luau::Pack {
+        bn6_luau::Pack::new(luau_pack().modules().map(|(path, src)| {
+            let mut src = src.to_string();
+            if path == module {
+                for (from, to) in edits {
+                    assert!(src.contains(from), "{module}.luau has no {from:?}");
+                    src = src.replacen(from, to, 1);
+                }
+            }
+            (path.to_string(), src)
+        }))
+    }
+
+    fn load(pack: &bn6_luau::Pack) -> Result<Content, String> {
+        bn6_luau::LuauContent::load(pack, bn6_luau::Options::default()).and_then(Content::new).map_err(|e| e.to_string())
+    }
+
+    /// Play the duel with `content`: the content error it stopped on, if
+    /// any.
+    fn play_error(content: Content) -> Option<String> {
+        let tape = scenario::record(500);
+        let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| scenario::play(&tape, content)));
+        r.err().map(|e| e.downcast_ref::<String>().cloned().unwrap_or_default())
+    }
+
+    const UPDATE: &str = "function gun_del_sol.update(me: Object, s: State)\n";
+
+    /// GunDelSol's update with `line` added at its top.
+    fn in_update(line: &str) -> bn6_luau::Pack {
+        patched("chips/gun_del_sol", &[(UPDATE, &format!("{UPDATE}    {line}\n"))])
+    }
+
+    #[test]
+    fn state_in_module_locals_is_rejected_at_load() {
+        let pack = patched(
+            "objects/sun_beam",
+            &[("local sun_beam = {", "local hums = 0\nlocal sun_beam = {"), ("    s.ticks += 1\n", "    s.ticks += 1\n    hums += 1\n")],
+        );
+        let e = load(&pack).err().expect("rejected");
+        assert!(e.contains("assigns the module-level local `hums`"), "{e}");
+    }
+
+    #[test]
+    fn global_writes_are_rejected_at_load() {
+        let e = load(&in_update("last_user = me")).err().expect("rejected");
+        assert!(e.contains("assigns a global"), "{e}");
+    }
+
+    #[test]
+    fn module_tables_and_data_are_frozen() {
+        for line in ["gun_del_sol.uses = me.step", "data.GUN_DEL_SOL_FIRING_TICKS[0] = 1", "math.floor = math.ceil"] {
+            let e = play_error(load(&in_update(line)).unwrap()).expect("the write fails");
+            assert!(e.contains("readonly"), "{line}: {e}");
+        }
+    }
+
+    #[test]
+    fn tables_captured_by_functions_are_frozen() {
+        let pack = patched(
+            "chips/gun_del_sol",
+            &[("local gun_del_sol = {", "local seen = {}\nlocal gun_del_sol = {"), (UPDATE, &format!("{UPDATE}    seen[1] = me.step\n"))],
+        );
+        let e = play_error(load(&pack).unwrap()).expect("the write fails");
+        assert!(e.contains("readonly"), "{e}");
+    }
+
+    #[test]
+    fn nondeterministic_libraries_are_absent() {
+        for call in ["math.random()", "math.sin(1)", "os.time()", "collectgarbage()", "coroutine.create(print)", "buffer.create(4)"] {
+            let e = play_error(load(&in_update(&format!("local _ = {call}"))).unwrap()).unwrap_or_else(|| panic!("{call} ran"));
+            assert!(e.contains("attempt to"), "{call}: {e}");
+        }
+    }
+
+    #[test]
+    fn weak_tables_are_refused() {
+        let content = load(&in_update("local _ = setmetatable({}, { __mode = \"k\" })")).unwrap();
+        assert!(play_error(content).expect("refused").contains("weak tables"));
+    }
+
+    #[test]
+    fn fractions_cannot_enter_battle_state() {
+        let content = load(&patched("chips/gun_del_sol", &[("        s.timer = 6\n", "        s.timer = 13 / 2\n")])).unwrap();
+        let e = play_error(content).expect("refused");
+        assert!(e.contains("6.5 is not an integer"), "{e}");
+    }
+
+    #[test]
+    fn runaway_scripts_stop() {
+        let content = load(&in_update("while true do end")).unwrap();
+        assert!(play_error(content).expect("stopped").contains("past its budget"));
+    }
+
+    #[test]
+    fn the_vm_is_not_part_of_the_battle() {
+        let tape = scenario::record(900);
+        let shared = Content::luau().unwrap();
+        let want = digests(&tape, Battle::with_content(scenario::setup(), shared.clone()));
+        // Halfway, move the battle to a fresh VM, as restoring a snapshot
+        // on another machine would.
+        let mut b = Battle::with_content(scenario::setup(), shared.clone());
+        let mut have = Vec::new();
+        for (i, t) in tape.iter().enumerate() {
+            if i == 450 {
+                b.content = Content::luau().unwrap();
+            }
+            b.tick(&t.input, t.events.clone());
+            have.push(digest(&b));
+        }
+        assert_eq!(have, want, "a fresh VM continues the battle identically");
+        // Interleave a second battle, playing a different tape, on the
+        // same VM.
+        let other = scenario::record(900);
+        let (mut a, mut c) = (
+            Battle::with_content(scenario::setup(), shared.clone()),
+            Battle::with_content(scenario::setup(), shared.clone()),
+        );
+        let mut have = Vec::new();
+        for (t, u) in tape.iter().zip(other.iter().skip(40)) {
+            a.tick(&t.input, t.events.clone());
+            have.push(digest(&a));
+            c.tick(&[u.input[1].clone(), u.input[0].clone()], TickEvents { exchange: u.events.exchange.clone(), ..u.events.clone() });
+        }
+        let first = have.iter().zip(&want).position(|(a, b)| a != b);
+        assert_eq!(first, None, "another battle on the same VM changes nothing");
+    }
+
+    #[test]
+    fn gc_timing_does_not_reach_the_battle() {
+        let tape = scenario::record(900);
+        let want = digests(&tape, Battle::with_content(scenario::setup(), Content::luau().unwrap()));
+        let options = bn6_luau::Options { collect_garbage: true, ..Default::default() };
+        let have = digests(&tape, Battle::with_content(scenario::setup(), Content::luau_with(options).unwrap()));
+        assert_eq!(have, want);
+    }
+}
