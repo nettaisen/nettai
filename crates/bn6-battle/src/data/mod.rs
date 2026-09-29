@@ -5,6 +5,8 @@
 mod banners_generated;
 mod chips_generated;
 pub mod collision_generated;
+pub mod effects_generated;
+mod sprites_generated;
 pub mod field_generated;
 
 pub use banners_generated::{BANNER_TYPES, LOSE_BANNERS, WIN_BANNERS};
@@ -120,6 +122,7 @@ pub struct SpriteId {
 
 /// One animation frame's timing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub struct AnimFrame {
     /// Ticks the frame shows for.
     pub duration: u8,
@@ -127,7 +130,39 @@ pub struct AnimFrame {
     pub flags: u8,
 }
 
-/// An animation's frames (empty when the sprite's data isn't extracted).
-pub fn animation(_sprite: SpriteId, _anim: u8) -> &'static [AnimFrame] {
-    &[]
+/// An animation's frames (empty when the sprite has no battle animation
+/// data).
+pub fn animation(sprite: SpriteId, anim: u8) -> &'static [AnimFrame] {
+    use sprites_generated::{ANIM_FRAMES, ANIM_STARTS, SPRITE_INDEX};
+    let Ok(i) = SPRITE_INDEX.binary_search_by_key(&(sprite.category, sprite.index), |&(c, i, _, _)| (c, i)) else {
+        return &[];
+    };
+    let (_, _, first, count) = SPRITE_INDEX[i];
+    if anim as u32 >= count {
+        return &[];
+    }
+    let a = (first + anim as u32) as usize;
+    let (start, end) = (ANIM_STARTS[a] as usize, ANIM_STARTS[a + 1] as usize);
+    let bytes = &ANIM_FRAMES[2 * start..2 * end];
+    // SAFETY: AnimFrame is two u8 fields, repr(C), alignment 1.
+    unsafe { std::slice::from_raw_parts(bytes.as_ptr() as *const AnimFrame, end - start) }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Total ticks of an effect's animation (its lifetime when not timed).
+    fn effect_ticks(id: usize) -> u32 {
+        let (category, index, anim, _) = effects_generated::EFFECTS[id];
+        animation(SpriteId { category, index }, anim).iter().map(|f| f.duration as u32).sum()
+    }
+
+    #[test]
+    fn effect_lifetimes_match_the_game() {
+        // Measured in the original game (objects-and-player.md §A.3).
+        assert_eq!(effect_ticks(0x03), 22);
+        assert_eq!(effect_ticks(0x39), 11);
+        assert_eq!(effect_ticks(0x3A), 11);
+    }
 }
