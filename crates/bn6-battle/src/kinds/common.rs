@@ -140,6 +140,8 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
     if b.collision.get(c).acc.hit_flags & 0x2_0000 == 0 {
         return;
     }
+    b.play_sound(crate::sound::SoundId(0x6E));
+    let o = b.objects.get(r);
     let pos = Vec3 { z: o.pos.z.wrapping_add(0x10 << 16), ..o.pos };
     let pos = crate::kinds::spark::jitter(b, 0xF, pos);
     crate::kinds::spark::spawn(b, r, pos, 8);

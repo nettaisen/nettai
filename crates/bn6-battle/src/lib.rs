@@ -18,6 +18,7 @@ pub mod kinds;
 pub mod object;
 pub mod rng;
 pub mod setup;
+pub mod sound;
 #[cfg(feature = "trace")]
 pub mod trace;
 
@@ -25,3 +26,4 @@ pub use battle::{Battle, CustomResult, TickEvents};
 pub use input::PlayerTick;
 pub use rng::Rng;
 pub use setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
+pub use sound::{SoundCue, SoundId};

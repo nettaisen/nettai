@@ -302,7 +302,7 @@ fn drop_cursor_trap(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
     if coll(b, r).acc.damage_elements & 0x40 != 0 && b.linked[side as usize].chip != 0 {
         b.clear_linked(side);
-        // Sound 0x8E.
+        b.play_sound(crate::sound::SoundId(0x8E));
     }
 }
 
@@ -314,7 +314,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         let d = &coll(b, r).acc.element_damage;
         if d[0] | d[2] | d[3] | d[4] != 0 {
             ai_mut(b, r).attack.marker = 1;
-            // Sound 0x6E.
+            b.play_sound(crate::sound::SoundId(0x6E));
         }
         zero_trapped_hit(b, r);
         return;
@@ -612,7 +612,7 @@ fn drain_heal(b: &mut Battle, r: ObjectRef) {
     add_hp(b, r, heal);
     let pos = b.objects.get(r).pos;
     crate::kinds::effect::spawn(b, pos, 6, 0, 0, 0);
-    // Sound 0x8A.
+    b.play_sound(crate::sound::SoundId(0x8A));
 }
 
 /// `object_calculateFinalDamage1`: sum the element damage (halved,
@@ -700,7 +700,7 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
     if b.paused || coll(b, r).acc.hit_flags & 0x2_0000 == 0 {
         return;
     }
-    // Sound 0x6E.
+    b.play_sound(crate::sound::SoundId(0x6E));
     let p = b.objects.get(r).pos;
     let pos = crate::kinds::spark::jitter(b, 0xF, Vec3 { z: p.z.wrapping_add(0x10_0000), ..p });
     crate::kinds::spark::spawn(b, r, pos, 8);
