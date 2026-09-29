@@ -3,6 +3,7 @@
 
 pub mod absorbed_obstacle;
 pub mod afterimage;
+pub mod area_grab;
 pub mod attachment;
 pub mod body_overlay;
 pub mod charge_glow;
@@ -12,6 +13,7 @@ pub mod effect;
 pub mod elmnt_man;
 pub mod eruption;
 pub mod form_overlay;
+pub mod grab_shot;
 pub mod hitbox;
 pub mod intro;
 pub mod invisible;
@@ -56,6 +58,7 @@ pub enum Vars {
     NaviWarp(navi_warp::Vars),
     ElmntMan(elmnt_man::Vars),
     Meteor(meteor::Vars),
+    AreaGrab(area_grab::Vars),
 }
 
 impl Vars {
@@ -107,6 +110,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Actor, elmnt_man::INDEX) => elmnt_man::update(b, r),
         (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
+        (Pool::Effect, area_grab::INDEX) => area_grab::update(b, r),
+        (Pool::Attack, grab_shot::INDEX) => grab_shot::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }
