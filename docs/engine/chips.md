@@ -172,7 +172,7 @@ return off_80109DC[d - 1000](id, alliance)
 | d | Function | Value | Chips |
 |---|---|---|---|
 | 1000 | `sub_8010A90` | Link battle: min(opponent HP, 500). Otherwise: max enemy HP, capped at 500. | none |
-| 1001–1018 | `sub_8010AE4` | [SP] navi chips: a tier lookup `byte_8020E54[(d−1001)*0x16 + 2*tier]`. The tier comes from comparing `sub_8000D84(byte_203EB00[alliance*0x28 + 2*(d−1001)])` (that player's best delete-time record) against `byte_8010B2C`. **Decoding not finished; [unverified].** | 0xE2, 0xE5, …, 0x115 |
+| 1001–1018 | `sub_8010AE4` | [SP] navi chips: n = d − 1001; t = `byte_203EB00[alliance*0x28 + 2n]` (u16: the frames that player took to delete that SP navi, copied from each player's init exchange, `byte_203F510`/`byte_203F610`); `sub_8000D84(t)` makes it a BCD clock time `hh mm ss cc` (cc = hundredths, frames·100/60; capped 0x99595999); tier = how many of `byte_8010B2C` (0x1000, 0x1200, … 0x2800: 10.00 s to 28.00 s) are below it; damage = `byte_8020E54[n*0x16 + 2*tier]`. Trace-verified on SpoutMn[SP] (soundmod round 2: side 1's time 203 frames, tier 0). The engine takes the times as `RoundSetup::sp_times`. | 0xE2, 0xE5, …, 0x115 |
 | 1019 | `sub_8010B78` | Custom-gauge based. | none |
 | 1020 | `sub_8010BD0` | min(own MaxHP − HP, 500) | Muramasa 0x55 |
 | 1021 | `sub_8010BF0` | own HP % 100 | NumbrBl 0x8A |
@@ -1149,6 +1149,86 @@ Other facts:
   address, so its X, Y, Z are that garbage (X = 2, Y = 0, Z = 0x080E7547 here). Nothing reads them.
 - `dword_200F3B8[alliance]` (cleared by `object_timefreezeBegin`, set by `sub_800BA8A`) has no reader.
 - The rocks (T3) and every object without flag 0x10 stand still for the whole freeze.
+
+#### 3.6.7 Navi chips (action 0x1B): the controller, the warp and ElmntMan
+
+Trace: soundmod, side 0 uses ElmntMan (chip 0x10D, subtype 0x10, params 0x10) in rounds 1 (3407) and 2 (25776).
+
+**Action 0x1B, `sub_80EC350`**, runs once: `sub_80E192C` spawns the controller (r0/r1 the user's panel, r2 element,
+r3 subtype, r4 params, r6 damage word, r7 chip | bonus << 16), registers it like action 0x15 (if the side has no
+controller yet), and `object_exitAttackState` at once: the user idles (gated by the time stop) while its navi acts.
+With subtype 0 and the other side's defensive chip 0xBD, `sub_80E192C` does something else (not ported).
+
+**The controller, T4 0x10 (`sub_80E17E8`).** Spawned with r1..r3 = panel Y, element, subtype as its position (so
+Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is
+a flag its navi clears. Actions: 0 `object_dimScreen`; 4 `sub_800BDB2` (AntiNavi: for chips 0xDD..0x118 when the
+other side's defensive chip is 0xBA, the navi is sent back; otherwise straight on); 8 `sub_800BA8A` (the name, as
+`object_drawChipName` except that it skips the counterable check, and the effect only when the user is deleted);
+0xC `sub_80E1830`; 0x10 `object_undimScreen`. `sub_80E1830`'s phases:
+- 0 (`sub_80E1854`): 30 ticks; at its start the user warps out (`sub_80C0F52(user, 1)`), except for navi 0x17.
+- 4 (`sub_80E1880`): the navi's spawner `off_802CD5C[+0x19]` with r5 = the user, r4 = the params, r6 = damage +
+  bonus, r7 = &controller+0x18 (the spawner sets it to 1). Chips 0xDD..0x118 are also recorded at `byte_203C960`
+  (for chips that copy the last navi chip). Then it waits while +0x18 is set.
+- 8 (`sub_80E18DA`): 30 ticks. 0xC (`sub_80E18F8`): the user warps back in (except navis 0 and 0x17), 30 ticks.
+
+**The warp, T1 0x2D (`sub_80C0E04`), Param4 = 1 out / 0 in.** For a player: the navi's sprite (navi, form), its
+palette and position, VISIBLE, the form's overlay stepping even while paused (`sub_8011420(navi, form, 1)`: for
+MegaMan `sub_8011268(form, 1)`, stored in the warp's own RelatedObject2Ptr), CurAnim = 3 + Param4. Update: on the
+first tick a warp out hides the user (`sub_80E1352(user, 0)`: VISIBLE off, and the confusion/blindness visuals,
+AIData+0x60/+0x58 objects, the Full Synchro aura and the HUD with it); after 4 ticks: VISIBLE off, the NameID's death
+hook on the warp (`sub_8011044`: takes its overlay down), a warp in shows the user again (`sub_80E13DC`: VISIBLE
+unless semi-intangible or hidden by the viewer's blindness), state 8. Its sprite steps in time stop.
+
+**ElmntMan, T1 0x10 (`sub_80BAA8C`)**, spawned by `sub_80BAE16` on the user's panel, with the user's side, the damage
+word, and the controller's flag pointer **in its CollisionDataPtr slot** (so a trace reading ObjectFlags1 through it
+reads 0). Init: sprite (8, 0x10), animation 0, his overlay (`sub_8010DF6(2, 0x10, 1)` → `sub_8011004`: T1 0x56
+variant 0xF, own palette, Param3 1, animation offset 9). Actions (each with a timer; "n ticks" counts to 0):
+- 0: anim 3, VISIBLE, sound 0x94; 2 ticks; if his panel has flags 0x10010 → 4, else 0x18.
+- 4: anim 0; 10 ticks.
+- 8 (`sub_80BABAC`): cycle the elements Fire, Aqua, Elec, Wood (palettes 2, 4, 8, 6; sound 0x134) every Param1 ticks;
+  the user's A in the time stop (AIData+0x2C, the time-stop pressed keys) picks the one shown (sound 0x182); after
+  Param1·20 ticks, **`GetPositiveSignedRNG2() & 3`** picks one.
+- 0xC: anim 5 (7 at 16 ticks left); 35 ticks; Wood first turns every solid panel to grass. Then 0x10, phase = the
+  element · 4.
+- 0x10: Fire (`sub_80BACBC`) lists the panels holding the other side's body (`object_getPanelsExceptCurrentFiltered`,
+  rows 3..1, columns 6..1) and drops a meteor on each, 12 ticks apart. Aqua, Elec and Wood are not ported.
+- 0x14: 20 ticks (anim 8 at 5 left). 0x18: anim 4; 2 ticks; the death hook takes the overlay down, the controller's
+  flag is cleared, state 8.
+- Round 1: spawned 3518, A at 3540 (Fire), the meteor 3578, gone 3602; the controller's undim ends 3683.
+
+**The meteor, T3 0x8D (`sub_80D6BD4`)**, spawned by `sub_80D6D18` with Param1 = 1 (it runs, and steps its sprite,
+in time stop) and flags \|= 0x10: from 192 pixels behind and above its panel it falls 11 pixels a tick for 17 ticks
+(sound 0xC4; the panel highlighted 4 ticks out of 8); on landing, if the panel's flags meet `byte_80D6D08[side]`, a
+T4#0 explosion and a hit region (region 1, hit effect 1, target 5, self 0xA, hit modifier 3; with Param1 set
+`sub_80C53A6` gives the region flag 0x10 so it resolves in the time stop). The damage lands in the time stop; the
+victim's flinch waits for the time to start again (3684).
+
+**Counters.** `sub_8017AB4` also needs the next chip to have the time-freeze flag; soundmod 25828 (side 1 presses A
+during ElmntMan's name with FullCust next) clears the request.
+
+#### 3.6.8 AreaGrab and PanelGrab (subtype 0, T4 3, T3 0xF)
+
+The controller (`sub_80E0710`) runs `object_drawChipName`; its effect (`sub_80E0754`): Param1 set (AreaGrab, params
+1): `sub_800D5BA` finds the nearest column, going back from the user's (then forward), wholly the user's side's, and
+`sub_800D58C` the first column in front of it not wholly the side's; a grab shot on each of its three panels.
+Param1 0 (PanelGrab): `object_getEdgePanelMatchingRow` (from the far edge, back while the panels are the user's
+side's, then on to the first with the side's flags, then one forward): one shot. Then 61 ticks.
+
+The shot (`sub_80C6414`, spawned with Param1 = the side and flags \|= 0x10): from 256 pixels up (sound 0xA1) it falls
+8 pixels a tick (32 ticks); landed: a hit region (region 1, hit effect 0xFF, target 5, self 0xA, modifier 1, flag
+0x10), and the panel changes side if its flags meet `byte_80C6514` (the other side's, nothing on it) and
+`sub_800D668` agrees (the victim keeps another whole home column on that side of it before one it already lost);
+the column's return timer is set to 0x708. Then anim 1 (sound 0xA2) until its animation ends. Its sprite is stepped
+twice a tick (`object_updateSprite` and `object_updateSpriteTimestop`).
+
+#### 3.6.9 AntiDmg's freeze (subtype 20, T4 0x2A)
+
+The controller (`sub_80E34C0`) names the chip with `sub_800BBA8` (the remote player sees chip 0x171; the user's
+survival alone decides the effect). Its effect (`sub_80E3504`): `sub_802CEA6` clears the side's defensive-chip record
+(its object gets Param2 = 1), `sub_80E3560` spawns the trap's object for Param1 0 only (AntiDmg's params are 3: none),
+and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes per side at 0x02036720). Then 61 ticks.
+`sub_802CEC8` clears a record every tick once its user's HP is 0. The trap springs in the damage intake
+(`sub_802CEF4`).
 
 ---
 

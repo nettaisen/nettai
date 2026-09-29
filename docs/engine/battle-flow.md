@@ -342,14 +342,14 @@ Net effect: a banner started on tick T is seen as finished by the mode handler o
 #### 3.3.1 Entry
 
 - **Round start:** the banner state `sub_8009314` sets [1]=8 (frame 207). The battle is already paused.
-- **Mid-battle (static only, §11):**
+- **Mid-battle** (trace-verified in soundmod round 2 from 26113, after FullCust filled the gauge):
 
 | Tick | Where | Effect |
 |---|---|---|
 | T0 | navi object (`sub_8012FC8`, 0x08013044–0x0801306C) | If !timestop, flag 0x40 clear, battle mode ≠ 1, `(sub_801032C() & 0x400) == 0`, flag 2 set and the navi's AIData pressed & 0x300 (L or R): `battle_setFlags(0x10)`; that navi skips the rest of its input handling this tick. Either player can do this; the flag is global. |
 | T1 | `sub_80080D2` | `sub_800A1D0()` is true → `PauseBattle`, machine [0]=0x20 |
 | T2 | `sub_8008452` (0x20) | Init: `sub_802D6A0` (record both navis in `dword_203C970`); `sub_8015A16(navi0/1)` (AIData+0x0F −= 1 unless 0 or 0xFF, only if stats[0x29]==0); [3]=4. Then `sub_802D6C4` starts reverting any cross/beast form. |
-| T3… | `sub_8008452` | Wait until `sub_802D6C4() == 0` (reverts done; one tick without a transformation) → [0]=0x24 |
+| T3… | `sub_8008452` | Wait until `sub_802D6C4() == 0` → [0]=0x24 (word store). `sub_802D6C4`'s first call would ask each navi to leave its Cross (request 0x8000000, `sub_802DD10`), but its test `sub_802DD1E` always returns 0; the second call waits while either navi has AIData+0x48 bit 0x2000 (a Cross knockout), so with none it is done on T3. |
 | T4 | `sub_8008492` (0x24) | `sub_801483C() == 0` → `sub_801482C` (reset sequencer), [2]=4 |
 | T5–T6 | `sub_8008492` | Sequencer `sub_801486C` → `sub_8014A00`. When `sub_801483C() == 0`: [4]=6. In the same tick `sub_800938A` sees 6 → BS[1]=8, [2..3]=0. |
 | T7 | `sub_8009338` | Custom-screen init |
