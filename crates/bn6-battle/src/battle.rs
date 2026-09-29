@@ -11,7 +11,7 @@ use crate::input::{InputRecord, PlayerTick, keys};
 use crate::object::{ObjectRef, Objects};
 use crate::rng::Rng;
 use crate::data::BannerId;
-use crate::setup::{Form, Navi, NaviStats, RoundSetup, effects};
+use crate::setup::{BattleSettings, Form, Navi, NaviStats, RoundSetup, SetScore, effects};
 use crate::transform::{TransformRequest, TransformSequencer};
 use crate::sound::{SoundCue, SoundId};
 
@@ -96,11 +96,12 @@ pub struct RoundState {
     pub combo_window: u8,
     pub busting_level: u8,
     pub result: u8,
-    /// Low-HP music latch.
-    pub low_hp_music: u16,
+    /// Low-HP music latch (`sub_8009158`).
+    pub low_hp_music: bool,
     /// Small countdown used by banners and the end state.
     pub delay: i16,
     pub flags: u16,
+    /// The local navi's HP when the battle ended (`sub_800FAE0`).
     pub exit_hp: u16,
     pub escape: u16,
     /// Ticks of fighting (capped).
@@ -220,6 +221,35 @@ pub struct Battle {
     pub linked: [LinkedRecord; 2],
     /// Sound calls made this tick (output only; see `sound`).
     sound: Vec<SoundCue>,
+    /// How the round ended, once the end state is through.
+    outcome: Option<RoundEnd>,
+}
+
+/// How a round ended (`sub_8007CA0`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RoundEnd {
+    /// The set goes on. The next round starts with its own init (link
+    /// sync, the navi stats and RNG exchange) from these settings and the
+    /// score so far.
+    NextRound { settings: BattleSettings, score: SetScore },
+    /// The battle is over.
+    Over(BattleResult),
+}
+
+/// The battle's result from the local side's perspective (BattleState
+/// +0x1F, which the game hands back to the menu that started the battle).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BattleResult {
+    Won = 1,
+    Lost = 2,
+    Drawn = 3,
+}
+
+/// Where a set stands after a round (`sub_800AF50`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SetStanding {
+    Undecided,
+    Decided(BattleResult),
 }
 
 /// A side's extra battle state (0x1D0 bytes at `sub_802E070(side)`); only
@@ -343,6 +373,7 @@ impl Battle {
                 mode_copy: setup.settings.mode,
                 local_side: setup.local_side,
                 intro_bits: 0x0C,
+                low_hp_music: setup.low_hp_music_latched,
                 top: top::RUNNING,
                 ..RoundState::default()
             },
@@ -368,6 +399,7 @@ impl Battle {
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
             sound: Vec::new(),
+            outcome: None,
             setup,
         };
         // Init's last steps: refresh every panel, then one unpaused panel
@@ -471,13 +503,15 @@ impl Battle {
     }
 
     /// Top state 8 (`sub_8007B80`): 11 ticks of objects still running,
-    /// then close the link session. Once it has closed (mode 4) the round
-    /// is over.
+    /// then close the link session (mode 0, `sub_8007B9C`). Once it has
+    /// closed (mode 4) the round is over (`sub_8007CA0`).
     fn tick_end(&mut self, events: &TickEvents) {
         if self.round.mode != 0 {
-            panic!("round chaining (sub_8007CA0) is not implemented yet");
+            if self.outcome.is_none() {
+                self.finish_round();
+            }
+            return;
         }
-        // sub_8007B9C: the sub-state, then objects and panels.
         match self.round.sub {
             0 => {
                 // sub_8007BD0
@@ -507,6 +541,76 @@ impl Battle {
         if !self.paused && !self.is_time_stop() {
             self.tick_panels();
         }
+    }
+
+    /// How the round ended, once the end state is through.
+    pub fn round_end(&self) -> Option<&RoundEnd> {
+        self.outcome.as_ref()
+    }
+
+    /// `sub_8007CA0`: chain the set's next round, or end the battle.
+    fn finish_round(&mut self) {
+        self.play_sound(SoundCue::StopMusic);
+        let code = self.round.result & 0xF;
+        if matches!(code, 5 | 9 | 0xA) {
+            panic!("ending a battle with result code {code} (sub_8007CA0) is not implemented yet");
+        }
+        if self.setup.settings.effects & effects::SET != 0 {
+            match self.set_standing() {
+                SetStanding::Undecided => return self.chain_next_round(),
+                // setTwoStructs_800A840
+                SetStanding::Decided(r) => self.round.result = r as u8,
+            }
+        }
+        let result = match self.round.result & 0xF {
+            1 => BattleResult::Won,
+            2 => BattleResult::Lost,
+            3 => BattleResult::Drawn,
+            c => panic!("battle result code {c}"),
+        };
+        // (A win also counts toward a save-data statistic, dword_2000B30.)
+        // sub_800FAE0: the local navi's HP, read from its object although
+        // the fade-out freed it.
+        if let Some(r) = self.player(self.round.local_side) {
+            self.round.exit_hp = self.objects.get(r).hp;
+        }
+        // The rest updates the PET navi and rewards outside the battle and
+        // hands the result back (loc_8007E38).
+        self.paused = false;
+        self.round.running = 0;
+        self.outcome = Some(RoundEnd::Over(result));
+    }
+
+    /// `sub_800AF50`: a best-of-three set is decided once one side can no
+    /// longer be caught, or after the third round.
+    fn set_standing(&self) -> SetStanding {
+        let r = &self.round;
+        let left = 3 - r.round as i32;
+        let (wins, losses) = (r.wins as i32, r.losses as i32);
+        if wins > losses + left {
+            SetStanding::Decided(BattleResult::Won)
+        } else if losses > wins + left {
+            SetStanding::Decided(BattleResult::Lost)
+        } else if r.round >= 3 {
+            SetStanding::Decided(BattleResult::Drawn)
+        } else {
+            SetStanding::Undecided
+        }
+    }
+
+    /// The set goes on (`battleSettings_802D2B2`, `loc_8007204`): the next
+    /// round is fought on the stage drawn for it and starts over with its
+    /// init, keeping the score.
+    fn chain_next_round(&mut self) {
+        let stage = self.setup.later_stages[self.round.round as usize - 1];
+        let settings = self.setup.next_settings(stage);
+        let r = &self.round;
+        let score = SetScore { wins: r.wins, losses: r.losses, round: r.round, max_combo: r.max_combo };
+        self.round.top = top::INIT;
+        self.round.mode = 0;
+        self.round.sub = 0;
+        self.round.init = 0;
+        self.outcome = Some(RoundEnd::NextRound { settings, score });
     }
 
     /// Run every object's update in list order, with pause/time-stop gating.
@@ -1103,12 +1207,93 @@ impl Battle {
         let Some(r) = self.player(self.round.local_side) else { return };
         let o = self.objects.get(r);
         let low = o.hp <= o.max_hp / 4;
-        if low && self.round.low_hp_music == 0 {
-            self.round.low_hp_music = 1;
+        if low && !self.round.low_hp_music {
+            self.round.low_hp_music = true;
             self.play_sound(SoundCue::Pinch(true));
-        } else if !low && self.round.low_hp_music != 0 {
-            self.round.low_hp_music = 0;
+        } else if !low && self.round.low_hp_music {
+            self.round.low_hp_music = false;
             self.play_sound(SoundCue::Pinch(false));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::data::BATTLE_SETTINGS;
+    use crate::setup::Stage;
+
+    /// A best-of-three netbattle round about to leave its end state, with
+    /// the set standing at `wins`-`losses` after `round` rounds.
+    fn ending(wins: u8, losses: u8, round: u8) -> Battle {
+        let stats = NaviStats { hp: 1000, max_hp: 1000, max_base_hp: 1000, ..NaviStats::default() };
+        let mut b = Battle::new(RoundSetup {
+            settings: BattleSettings { effects: 0xE8C, ..BATTLE_SETTINGS[0x0B] },
+            navi_stats: [stats; 2],
+            rng: 1,
+            local_side: 0,
+            score: SetScore::default(),
+            later_stages: [Stage { settings: 0x11, background: 3 }, Stage { settings: 0x46, background: 0x13 }],
+            low_hp_music_latched: false,
+        });
+        let r = &mut b.round;
+        (r.top, r.mode, r.sub, r.init) = (top::END, 4, 0, 0);
+        (r.wins, r.losses, r.round, r.max_combo) = (wins, losses, round, 1);
+        r.result = if wins > losses { 1 } else { 2 };
+        b.paused = true;
+        b
+    }
+
+    fn tick(b: &mut Battle) {
+        b.tick(&[PlayerTick::default(), PlayerTick::default()], TickEvents::default());
+    }
+
+    #[test]
+    fn an_undecided_set_chains_its_next_round_on_the_drawn_stage() {
+        let mut b = ending(1, 0, 1);
+        tick(&mut b);
+        let Some(RoundEnd::NextRound { settings, score }) = b.round_end() else { panic!("{:?}", b.round_end()) };
+        // The drawn table entry, with this round's effects and the drawn
+        // background.
+        assert_eq!(*settings, BattleSettings { effects: 0xE8C, background: 3, ..BATTLE_SETTINGS[0x11] });
+        assert_eq!(*score, SetScore { wins: 1, losses: 0, round: 1, max_combo: 1 });
+        assert_eq!(b.round.top, top::INIT);
+        assert_eq!(b.sound_cues(), [SoundCue::StopMusic]);
+    }
+
+    #[test]
+    fn a_decided_set_ends_the_battle() {
+        let mut b = ending(2, 0, 2);
+        tick(&mut b);
+        assert_eq!(b.round_end(), Some(&RoundEnd::Over(BattleResult::Won)));
+        assert_eq!((b.round.top, b.round.mode, b.round.running, b.paused), (top::END, 4, 0, false));
+        tick(&mut b);
+        assert_eq!(b.sound_cues(), [], "the battle ends once");
+
+        let mut b = ending(1, 2, 3);
+        tick(&mut b);
+        assert_eq!(b.round_end(), Some(&RoundEnd::Over(BattleResult::Lost)));
+        let mut b = ending(1, 1, 3);
+        b.round.result = 1;
+        tick(&mut b);
+        assert_eq!((b.round_end(), b.round.result), (Some(&RoundEnd::Over(BattleResult::Drawn)), 3));
+    }
+
+    #[test]
+    fn a_latched_low_hp_switch_plays_no_pinch_cue_on_the_first_tick() {
+        let stats = NaviStats { hp: 500, max_hp: 500, max_base_hp: 500, ..NaviStats::default() };
+        let mut b = Battle::new(RoundSetup {
+            settings: BattleSettings { effects: effects::LINK, ..BATTLE_SETTINGS[0] },
+            navi_stats: [stats; 2],
+            rng: 1,
+            local_side: 0,
+            score: SetScore::default(),
+            later_stages: Default::default(),
+            low_hp_music_latched: true,
+        });
+        tick(&mut b);
+        assert_eq!(b.sound_cues(), [SoundCue::Music(SoundId::VIRUS_BATTLE)]);
+        tick(&mut b);
+        assert_eq!(b.sound_cues(), [SoundCue::Pinch(false)]);
     }
 }

@@ -610,6 +610,41 @@ fn actor_lists(rom: &Rom) -> String {
     out
 }
 
+/// The battle settings table (`BattleSettingsList1`, 192 16-byte records)
+/// that a set's later rounds are drawn from (`battleSettings_802D2B2`).
+/// Byte 1 (read outside the battle simulation) and byte 7 (no reader) are
+/// not kept, as in `BattleSettings::netbattle_from_bytes`.
+fn battle_settings(rom: &Rom) -> String {
+    const SETTINGS: u32 = 0x080B_0D88;
+    const COUNT: u32 = 192;
+    let mut sources: Vec<u32> = (0..COUNT).map(|i| u32at(rom, SETTINGS + 16 * i + 12)).collect();
+    sources.sort_unstable();
+    sources.dedup();
+    let mut out = String::from(HEADER);
+    out.push_str("use super::ACTOR_LISTS;\nuse crate::setup::BattleSettings;\n\n");
+    writeln!(out, "/// `BattleSettingsList1`, by index.").unwrap();
+    writeln!(out, "pub static BATTLE_SETTINGS: [BattleSettings; {COUNT}] = [").unwrap();
+    for i in 0..COUNT {
+        let r = rom.bytes(SETTINGS + 16 * i, 16);
+        let source = u32at(rom, SETTINGS + 16 * i + 12);
+        let list = sources.binary_search(&source).unwrap();
+        writeln!(
+            out,
+            "    BattleSettings {{ layout: {:#04x}, music: {:#04x}, mode: {}, background: {}, battle_number: {}, panel_pattern: {:#04x}, effects: {:#x}, actors: &ACTOR_LISTS[{list}] }}, // {i:#04x}",
+            r[0],
+            r[2],
+            r[3],
+            r[4],
+            r[5],
+            r[6],
+            u32at(rom, SETTINGS + 16 * i + 8),
+        )
+        .unwrap();
+    }
+    out.push_str("];\n");
+    out
+}
+
 /// Field-object tables: the rock variants (`byte_80CF934`, 8-byte rows
 /// selected by the rock's first parameter) and the sprite of each kind of
 /// obstacle when it is absorbed (`byte_80E98C0`).
@@ -784,6 +819,7 @@ fn main() {
     std::fs::write(out_dir.join("effects_generated.rs"), effects(&rom)).unwrap();
     std::fs::write(out_dir.join("player_generated.rs"), player(&rom)).unwrap();
     std::fs::write(out_dir.join("actor_lists_generated.rs"), actor_lists(&rom)).unwrap();
+    std::fs::write(out_dir.join("battle_settings_generated.rs"), battle_settings(&rom)).unwrap();
     std::fs::write(out_dir.join("obstacles_generated.rs"), obstacles(&rom)).unwrap();
     std::fs::write(out_dir.join("attacks_generated.rs"), attacks(&rom)).unwrap();
     std::fs::write(out_dir.join("lockon_generated.rs"), lockon(&rom)).unwrap();

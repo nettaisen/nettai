@@ -23,8 +23,8 @@ pub mod transform;
 #[cfg(feature = "trace")]
 pub mod trace;
 
-pub use battle::{Battle, CustomResult, TickEvents};
+pub use battle::{Battle, BattleResult, CustomResult, RoundEnd, TickEvents};
 pub use input::PlayerTick;
 pub use rng::Rng;
-pub use setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
+pub use setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage};
 pub use sound::{SoundCue, SoundId};
