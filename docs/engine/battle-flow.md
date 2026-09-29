@@ -18,15 +18,15 @@ It is written so that a clean Rust reimplementation can be built from it without
 - `BS` = BattleState at **0x02034880** (`Toolkit+0x18`). "BS+0x12" means the byte at 0x02034892.
 - State bytes are jump-table offsets, so they are multiples of 4. Word stores of a parent state also zero its sub-state bytes.
 - `effects` = `GetBattleEffects()` = BattleSettings+8. In the machgun PvP match it is 0xE8C.
-- A **frame** is one call of `battle_8007800` (harness frame numbers of `data/traces/machgun.jsonl`, core 0). A **tick** is one execution of the simulation block of `battle_8007A44` (§4); BS+0x64 counts ticks.
+- A **frame** is one call of `battle_8007800` (harness frame numbers of the machgun trace, core 0). A **tick** is one execution of the simulation block of `battle_8007A44` (§4); BS+0x64 counts ticks.
 - Trace states are post-frame values. In a timeline, the last frame of a phase is the frame whose handler made the transition.
 - Other key globals:
   - GameState at 0x02001B80 (`Toolkit+0x3C`); its pause byte `BattlePaused` is at **0x02001B8A**.
   - Joypad 0x0200A270, Camera 0x02009980, Toolkit 0x020093B0.
 - Sources used:
-  - static reading of `asm/*.s`;
-  - an instrumented copy of `tools/difftest` (`--dump ADDR LEN` every frame, `--watchall FROM TO ADDR LEN` write backtraces) run on the machgun replay (Falzar vs Falzar, match type 1, 2 rounds, both won by P0 by KO);
-  - the trace, and `data/coverage-machgun.tsv`.
+  - static reading of the original's code;
+  - the original running under emulation with per-frame memory dumps and write backtraces, on the machgun battle (Falzar vs Falzar, match type 1, 2 rounds, both won by P0 by KO);
+  - the machgun trace, and a record of which routines ran in it.
 
 ---
 
@@ -35,11 +35,11 @@ It is written so that a clean Rust reimplementation can be built from it without
 One GBA frame of a netbattle runs in this order:
 
 1. **Main loop** (`main_` 0x080002BC, `main_gameRoutine`): vblank wait and render-side copies, then `*CurFramePtr += 1`, then the subsystem jump table. For a netbattle this is `SubMenuControl` → comm applet → comm-menu battle state **`sub_812B5C8`**.
-2. **`sub_812B5C8`** (asm33.s):
+2. **`sub_812B5C8`**:
    1. `eStruct203F7D8[1] = sub_803EAE4()` is the link tick.
       - Cable PvP has `eStruct200BC30[0] == 0`, so this goes `sub_803EB04` → `sub_803DEB4` (SIO multiplay library).
       - On status 2 it continues `sub_803ED1C` → `sub_803EE98`. That de-interleaves the received packets into rx slot 0 (`unk_20399F0` 0x020399F0, player 0 = SIO master) and rx slot 1 (`unk_2039A00` 0x02039A00, player 1), and stamps tx header bytes.
-      - `sub_803EAE4` is host-overridable (`data/hooks.tsv`). A headless engine replaces this step with "this tick's two packets".
+      - A headless engine replaces this step with "this tick's two packets".
    2. `JumpTable812B5F4[[r5+2]]`. During a battle this is `sub_812B698`, which calls **`battle_8007800`** (return site 0x0812B6AC). It leaves the battle when the return value r0 becomes 0.
 3. **`battle_8007800`** (0x08007800):
    1. `sub_801FE6C` handles link status bookkeeping.
@@ -1070,7 +1070,7 @@ In the machgun trace these bytes never change: +0x0C, +0x21–0x27, +0x2A–0x31
 | 0x04 | **time stop** | `object_timefreezeBegin` (0x0800B916, if `sub_800B8D8`), `sub_802DACC`, `sub_8015766`, `sub_80E8EA0` | `object_timefreezeEnd` (0x0800BD34), `sub_802DC66`, `sub_8015766`, `sub_80E8E92` | `battle_isTimeStop` (≈28k calls) |
 | 0x08 | special (with BS+0x0B = 1) | `sub_80D8DEE` | — | (not PvP) |
 | 0x10 | custom-screen request | `sub_8012FC8` | `sub_801DF92` | `sub_800A1D0` |
-| 0x20 | (unknown) | no setter found | `sub_8014CC0`, `sub_8014F04`, `sub_8015128`, and two more in asm00_2.s | `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4` |
+| 0x20 | (unknown) | no setter found | `sub_8014CC0`, `sub_8014F04`, `sub_8015128`, and two more | `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4` |
 | 0x40 | alternate "per-player gauge / link navi" mode | `sub_802E112` (not in PvP) | — | `TestBattleFlag_0x40` / `sub_800A8F8` (fighting branches, `sub_802DE5C`, `sub_802E156`) |
 
 In the machgun match the word was 0x0000, then 0x0001 from the first fighting tick.

@@ -9,7 +9,7 @@ the registry in `field.rs` (`FieldObjects`), generic helpers in
 `kinds/common.rs`. Tables: `data::ROCKS`, `data::ABSORBED_SPRITES`
 (extracted by bn6-extract).
 
-Addresses are asm files in ~/Documents/Programming/bn6f. "f1"/"f2" are the
+Routine names are the original's. "f1"/"f2" are the
 collision data's ObjectFlags1 (+0x3C, the trace's `status`) and
 ObjectFlags2 (+0x40).
 
@@ -41,7 +41,7 @@ and 0xA fill them if empty). `sub_800F656` clears the object from the six
 side slots; `sub_800F806` returns its class (table {0,0,1,0,0,1}, 0xFF if
 absent). `sub_80EFD74` (the absorbing chip) walks all eight.
 
-## 3. The rock, T3#0x59 (`sub_80CF954`, asm31.s:48370)
+## 3. The rock, T3#0x59 (`sub_80CF954`)
 
 **Spawn `sub_80CFBC4`** (r0 x, r1 y, r2 side, r3 garbage, r4 params, r6
 damage word): `object_spawnType3(0x59, X=r1, Y=r2, Z=r3)` (register
