@@ -331,7 +331,7 @@ fn describe_fields(
 /// panel Y, the element and the spawner's address as X, Y and Z
 /// (chips.md §3.6).
 fn pos_is_garbage(kind: u8, index: u8, flags: u8) -> bool {
-    let controller = index == crate::kinds::invisible::INDEX;
+    let controller = index == crate::kinds::invisible::INDEX || index == crate::kinds::navi_chip::INDEX;
     kind == 4
         && (index == 2 || index == 0x0A || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0) || controller)
 }
