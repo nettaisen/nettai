@@ -18,6 +18,7 @@
 //! OAM parts, M4A songs) but no BN6 rule; only [`hud`] and the field's
 //! panel tables are BN6-shaped.
 
+pub mod aseprite;
 pub mod hud;
 pub mod image;
 pub mod midi;
