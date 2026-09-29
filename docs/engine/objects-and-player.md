@@ -1270,7 +1270,12 @@ This match has road panels: row 1 types 0xC on alliance 0's side, 0xB on allianc
 
 So a slide takes 4 ticks per panel. While SLIDING, `sub_800FA54`, `sub_800F964` and chip use (`sub_800FB54`) are all disabled.
 
-UNCERTAIN: none of this is exercised in the trace. It is code-derived only.
+Details the summary above leaves out:
+- `object_setCollisionPanelsToCurrent` (not `object_updateCollisionPanels`) keeps the collision panel on the navi's: it leaves CollisionData+Direction alone. The direction is written only when the slide stops (and on switching to a road), from `sub_801683C(dx, dy, alliance)`: forward (dx toward the other side) 4, back 3, else up 1, down 2, none 5.
+- The step and panel counters are compared as the 32-bit results of `ldrb` − 1: a slide goes on while the old value was 2 or more.
+- On switching to a road, `sub_800E468` recomputes only dx and dy; the panel count carries on (+1, then the common −1).
+
+Trace-verified on an ice slide in soundmod (frames 3201–3205: side 0 steps onto an ice panel with the move's MOVE_COMPLETE, slides one panel forward, and its panel changes mid-slide at 3204). Road slides and pushes are still code-derived only.
 
 ##### M6.9 Buffered auto-move (`AIData.Unk_1a`)
 
@@ -1639,6 +1644,18 @@ Minimum buster cycle: N+7 frames.
 | 4 | 2, 3, 4, 5, 6, 7 |
 
 `front` = `object_getFrontDirection` = `-(2*(Alliance ^ DirectionFlip) - 1)`: +1 for alliance 0 unflipped.
+
+**The arm, `sub_80EB562` → `sub_80EB572`** (all three shots). It spawns T1#5 via `sub_80B8E30` into AIData+0x68 with r4 = Param1 | Param2 << 8 | Param3 << 16 | Param4 << 24:
+- players with AIIndex 0: Param1 = 6 (the buster arm), **Param2 (its animation) = NaviStats+0x2C, the form**, Param4 (palette) = 0xE with AIData+0x48 bit 0x200 in base form, else 0x14 + NaviStats+0x10 when that is nonzero; 0xE in forms 0x0B/0x0C at Full Synchro; 5 + form − 0xD in forms 0x0D..0x11; else 0;
+- players with another AIIndex: no arm, AIData+0x68 = 0;
+- link navis (actor type 1): Param1 = 0x2B, Param2 = AIIndex − 1, Param4 = 0xD; viruses: Param1 = 6.
+
+**Blank shot, action 0x33 (`sub_80ED748`)**, from `sub_8011ADA` (all AV fields zero):
+- Sub-phase 0 (`sub_80ED764`) is the buster's without the shot: anim 0x0E, the arm, USING_ACTION, AV.Unk_10 = 0; sound 0xF8 on its 2nd tick; after 5 ticks sub-phase 4.
+- Sub-phase 4 (`sub_80ED7A2`) is the buster's recovery, but N = `sub_800FAF6(PanelX, PanelY, Rapid)` counts from the navi's **own** panel, whose body bit is in the mask: k = 0, so N = `byte_80209CC[Rapid*6]`, the shortest.
+- Soundmod round 1, 3367: side 1 (form 0xA) presses B; its buster routine 0x2B (`sub_8011F8C`) has no absorbed obstacle (AIData+0x0D = 0) and falls back to `sub_8011A26`, whose NaviCust roll (one RNG2 step) picks the blank.
+
+**Routines 0x2B and 0x2C (`sub_8011F8C`, `sub_8011FCE`)**: with absorbed obstacles (AIData+0x0D, list at +0x6C), they pop the last and throw it: action 0x11 variant 2, damage 200, AV+0x30 = the obstacle byte | its sprite (`byte_80E98C0`) << 16. Without any, the buster (0x2B) or `sub_8011AF2` (0x2C).
 
 #### B7. Charged shot (AI.Unk_07 = 1)
 
@@ -2139,6 +2156,28 @@ Beast Out steps (timer = AIAttackVars+0x10, a u16):
 - A charges chips: `sub_801336C` asks `sub_8013236`, which in forms 0x0B..0x16 accepts any family-0xA (Null) chip. The other forms accept damaging, non-time-freeze chips of one family: form 2 Null, forms 3/0xF Sword (or chips 0x4C..0x4F), 7/0x13 Wood, 6/0x12 Aqua, 9/0x15 Break, 5/0x11 Fire. Link navis 5/6/7/0xB have their own rule (`sub_800F49E`, `byte_8021369`); MegaMan's always fails it.
 - The beast-out counter (NaviStats+0x21) goes down at the next fighting state 0 (battle-flow.md §3.4).
 - The overlay follows the navi: with AIIndex 0, every `sub_8011450` call and the flinch/drag hook restart the overlay's animation (`sub_80C44D2`).
+
+### 12.10 Crosses: the form change (action 0x1C), the merging image (T1#0x1B) and the body overlay (T1#0x56)
+
+Trace: soundmod, every round's first turn. Both navis cross at once: side 0 (Gregar) into form 2, side 1 (Falzar) into form 0xA. Round 1: the navis enter action 0x1C at 3023, the change is done at 3110 (action 8). Forms 1..10 use `off_8014AB4`; the step and its init byte are AIAttackVars+0/+1, the timer +0x10 (u16), as for Beast Out.
+
+| Step | Routine | Round-1 ticks | What happens |
+|---|---|---|---|
+| 0 | `sub_8014B18` | 3024 | AIData+0x48 \|= 0x80000 **first** (the sprite holds still from now on: no `sub_801BCD0` in `sub_8014A38`'s tail), then as Beast Out's step 0 (FuturePanel → panel, drop the reservation, coordinates, collision panels; `sub_800EB08`; face the default way under the standard patterns; `sub_800F2C6` (sprite flip, HUD); `sub_8012EA8`; the Full Synchro aura; `sub_80158FA`), but CurAnim, RelatedObject1Ptr and AIData+0x68 are left alone. Timer = 6. Only when the current form is 9 and CurAnim is 0x16: CurAnim = 0, both pointers cleared, 0x80000 cleared, the overlay's Param3 = 1 and flags \|= 0x14. Step 4. |
+| 4 | `sub_8014B98` | 3025–3079 | Count 6 down; on the tick it was 0 (3031) spawn the merging image (`sub_80BC844(panelX, panelY, 0x14)` with r4 = the requested form: T1#0x1B, Param1 = form), timer = 0x30, AIAttackVars+0x30 = 0, init = 4. Every tick after: +0x30 counts up to 6 (MegaMan flashes white while it does), the timer counts down; on the tick it was 0 (3079): timer = 6, +0x30 = 0, step 8. |
+| 8 | `sub_8014BEE` | 3080–3089 | Init (3080): RelatedObject1Ptr = AIData+0x68 = 0; `sub_8011384(current form)`; the sprite for (navi, new form): forms 1..10 are MegaMan's base sprite (`byte_800FCBC`); `object_setAnimation(0)`, `sprite_setAnimation`; coordinates from the panel; timer = 10; NaviStats+0x2C = form; `sub_8015B22` (NameID 0x1AB + form); `sub_8011268(form, 0)`: the Cross's body overlay (T1#0x56, below); HUD; sounds 0x8D and 0x77. Every tick the timer counts down; on the tick it reaches 0 (3089): `sub_80144C0` (status reset: the form's weapons, flags, element), `sub_80143A6`, mood 0x80 (`sub_8015BEC`), `sub_800EB08`; step 0xC. |
+| 0xC | `sub_8014CC0` | 3090–3110 | Timer = 0x14, counted down; on the tick it was 0: `byte_203EAE0[alliance][0xB] = 1` (read only after the battle, for the busting level), clear AIData+0x48 0x80 and 0x80000, battle flag 0x20, requests 0x80008600, `object_exitAttackState`. |
+
+**T1#0x1B, the Cross navi's image (`sub_80BC650`).** Spawned by `sub_80BC844`: PanelX/Y = MegaMan's, +0x62 (halfword, the swings) = r3 = 0x14, alliance and flip copied, RelatedObject1Ptr = MegaMan, Timer = 6, flags \|= 0x14 (it runs while paused). Its spawn position is register garbage, overwritten by its init.
+- Init (`sub_80BC670`, the spawn tick): NameID = 0x1A0 + Param1; the sprite of navi Param1 (`sub_800FC9E(Param1, 0)`: category 8), animation 0, VISIBLE; +0x68 = −1 (the side of the next swing); ExtraVars+4 = 0x280000 / swings (`svc 6`), X = panel X + ExtraVars+4 · swings · front (40 pixels in front); ExtraVars+0xC = (4 − PanelY) · 0x180000, added to Y and set as Z (it floats above the panel but sorts with it); ExtraVars+0x10 = `byte_80BC758[Param1]` (extra height: navi 1 +8, 3 +4, 8 −8 pixels), added to Z; the navi's init hook (`sub_8010DD0` by NameID: nothing for navis 2 and 10); ExtraVars+0x14 = 0.
+- Update (`sub_80BC78C`): action 0 counts the timer down (flashing white); at 0: timer = 10, action 1. Action 1 counts the timer down; at 0: the first time, sound 0x8C; swings −1; if none are left, the NameID's death hook (`sub_8011020`: nothing for this object), a T4#0 effect 3 at the panel's coordinates with Z = 16 and flags \|= 4, and `object_freeMemory` (freed at once, so the effect runs its init the same tick). Otherwise timer = 2, X = panel X + (+0x68) · ExtraVars+4 · swings · front, Y = panel Y + ExtraVars+0xC, Z = ExtraVars+0xC + ExtraVars+0x10, +0x68 negated. It swings every other tick, 2 pixels narrower each time. Every tick ends with `object_updateSprite` (nothing while paused).
+- Round 1: spawned at 3031, action 1 at 3037, first swing 3046 (X −138 for side 0), gone at 3084 (effect alive 3084–3106, freed 3107).
+
+**T1#0x56, a body overlay (`sub_80C4348`).** A second sprite on its owner (RelatedObject1Ptr), spawned by `sub_80C44A8` (flags \|= 0x14, alliance and flip copied) with r4 = params: Param1 the variant, Param2 nonzero = its own palette (else its owner's), Param3 how it steps, Param4 an animation offset. The Crosses use `sub_80112E0`..`sub_801133A` with Param2 = 1: forms 1..10 get variants 4, 8, 0xA, 0xC, 0x11, 5, 0xE, 9, 0xD, 0x12.
+- Init (`sub_80C4368`): stores `off_80C42D4[Param1]` (a per-animation byte table) **in its CollisionDataPtr slot**, so a trace reading ObjectFlags1 through it reads 0 (it points into ROM); the sprite `byte_80C4320[Param1]`; CurAnim = Param4 and CurAnimCopy = 0 (one halfword store); state 4, then the update.
+- Update (`sub_80C43C4`): CurAnim = owner's + Param4; position = owner's; then if ExtraVars[0] (`sub_80C4526`): Y and Z + 1 pixel; else if the table's byte for the owner's animation is 0: Y and Z − 1 pixel (same place on screen, drawn behind the owner). Visibility follows the owner unless PhaseInitialized is set (`sub_80C44E4`/`sub_80C44FA` force it); the flip follows the owner. Action 0: Param3 = 0 → `object_updateSprite` unless in time stop; else `sub_801BCD0`.
+- Removal (`sub_80C44C8`): state 8, freed at its next update.
+- The tables: `data::cross::BODY_OVERLAYS` (the byte tables run back to back up to the pointer table; an animation past a table's end reads the next one, so each row is extracted to the block's end).
 
 ## 13. RNG uses (all that touch objects or battle setup)
 

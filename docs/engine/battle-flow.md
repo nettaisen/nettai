@@ -88,6 +88,8 @@ The handler is chosen by `off_8007B50[GetBattleMode()]`, where battle mode = Bat
 
 After the state handler, if effects&8, `sub_8009158` switches BGM when the local navi's HP ≤ MaxHP/4. The latch is BS+0x20, set to 1 and back to 0. This is sound only, but it writes BattleState.
 
+The latch is not carried between rounds: init (top state 0, `sub_8007850` → `loc_8007918`) counts the frames it waits for the link in the same halfword (0xB4 of them is a link error), after the battle start zeroed BattleState. A round whose init waited therefore starts with the latch set: its first tick (when the navi has no HP yet, so HP ≤ MaxHP/4) plays no pinch switch, and the second tick switches it off. Machgun: round 1's init did not wait (BS+0x20 = 0, pinch on at 72 and off at 73); round 2's init waited 6 frames (1149–1154), so only the switch-off at 1225 plays. The engine takes it as `RoundSetup::low_hp_music_latched`.
+
 ### 2.3 Fighting machine: `dword_203CA70` (0x0203CA70)
 
 `sub_800801C` runs `off_8008038[[0]]`, then `sub_802DE5C` (a no-op unless battle flag 0x40 is set), and returns byte [4].
@@ -617,6 +619,12 @@ return 0                        // another round
   - `sub_802CA82` (rewards; none in link);
   - `loc_8007E38`: BattlePaused = 0, clear `flags32_20093A4` bit 1, clear EVENT_1722, **BS+0x0A = 0**.
   - `battle_8007800` then returns 0 and `sub_812B698` ends the battle. Frame 2554: BS+0x1F=1, BS+0x18/19/1A = 2/0/2.
+- Whether chained or not, `sub_8007CA0` starts with `musicGameState_8000784` (all sound stops). Mode 4 runs only `sub_8007CA0`: no objects, no panels.
+- Codes 5, 9 and 0xA (link error, terminate) skip the set check; code 5 outside link battles can restart the same battle (`loc_80071FE`, EVENT_1733). The engine does not implement these endings.
+
+**Engine model.** `Battle::round_end()` is `None` until the tick that runs `sub_8007CA0`, then:
+- `RoundEnd::NextRound { settings, score }` when the set goes on: the top state goes back to 0 (init), which the engine does not simulate. The host runs its init (link sync, the navi stats and RNG exchange, the folder) and starts the next round from a `RoundSetup` with these settings and score.
+- `RoundEnd::Over(BattleResult)` when it ends: BS+0x1F holds the result code, BS+0x34 the local navi's HP (read from the freed object, `sub_800FAE0`), the pause byte is cleared and BS+0x0A = 0. Machgun round 2 ends this way at 2554 (1331/1331 frames).
 
 **Error paths (not in the trace):**
 - **Top 0xC, `sub_8007E62`**, on link status 4 or an init/exchange timeout:
@@ -643,8 +651,12 @@ Init reruns on the next frame.
 
 Carried over between rounds:
 - BS+0x18..0x1B;
-- `byte_203CA50`;
+- the effects dword of the settings;
 - anything outside the re-initialized structures.
+
+`byte_203CA50` is not carried: every init copies it from player 0's init exchange (`battle_copyStructsIncludingBattleStats_800b2d8`, from `dword_203F568`). It holds two (settings index, background) pairs: the pair used after round n is entry n−1 of the copy made for round n. Machgun round 1 had `11 03 46 13` (round 2 on List1[0x11], background 3) and round 2 `3D 13 59 00`. Soundmod rounds 1 and 2 had `43 0B 02 0D` and `48 11 14 04`: rounds 2 and 3 were List1[0x43] background 0x0B and List1[0x14] background 4, as their setups show. The engine takes the pairs as `RoundSetup::later_stages` and the table as `data::BATTLE_SETTINGS` (all 192 records).
+
+BS+0x20 is not carried either (§2.2).
 
 Redone every round:
 - link re-sync and the init exchange (fresh navi stats; any HP changes do not carry over through BattleState);
