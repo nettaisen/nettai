@@ -367,7 +367,7 @@ fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
 fn start_move(b: &mut Battle, r: ObjectRef, dir: u8, lag: u16, kind: u8) {
     let a = &mut ai_mut(b, r).attack;
     a.params[0] = dir;
-    a.unk_18 = lag;
+    a.move_lag = lag;
     a.variant = kind;
     a.move_arg = 0;
     set_attack(b, r, 0x10, 4);
