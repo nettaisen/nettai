@@ -27,7 +27,7 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
     if f & (request::TRAP_200 | request::TRAP_400 | request::TRAP_8000) != 0 {
         return reactive_chip(b, r);
     }
-    if f & request::ACTION_49 != 0 {
+    if f & request::STUN_STRIKE != 0 {
         return set_attack(b, r, 0x49, 0);
     }
     // JumpTable80EA7B0[enemy struct byte 4]: every entry is sub_80F0354.
