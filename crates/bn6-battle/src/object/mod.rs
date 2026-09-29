@@ -93,6 +93,16 @@ pub mod state {
     pub const DESTROY: u8 = 8;
 }
 
+/// An object's lifecycle position: state, action, phase and whether the
+/// phase's entry ran.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StateWord {
+    pub state: u8,
+    pub action: u8,
+    pub phase: u8,
+    pub phase_init: u8,
+}
+
 /// A 16.16 fixed-point position or velocity, relative to the field's center.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Vec3 {
@@ -167,7 +177,9 @@ pub struct Object {
     pub related: [Option<ObjectRef>; 2],
     pub collision: Option<CollisionId>,
     pub actor: Option<ActorId>,
-    pub unk_5c: u32,
+    /// A lifecycle position saved by status reactions (the game's +0x5C
+    /// word; None = nothing saved).
+    pub saved_state: Option<StateWord>,
     /// Behavior-private state.
     pub vars: crate::kinds::Vars,
 }

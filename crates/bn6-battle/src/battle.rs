@@ -10,6 +10,7 @@ use crate::hud::{Banner, BannerStatus, CustomGauge};
 use crate::input::{InputRecord, PlayerTick, keys};
 use crate::object::{ObjectRef, Objects};
 use crate::rng::Rng;
+use crate::data::BannerId;
 use crate::setup::{NaviStats, RoundSetup, effects};
 
 /// Battle flag bits.
@@ -23,6 +24,8 @@ pub mod battle_flags {
     /// A player asked to open the custom screen.
     pub const CUSTOM_REQUESTED: u16 = 0x10;
     pub const UNK_20: u16 = 0x20;
+    /// The alternate per-player gauge / link navi mode (not PvP).
+    pub const MODE_40: u16 = 0x40;
 }
 
 /// Top-level battle states (the game's jump-table offsets).
@@ -182,6 +185,8 @@ pub struct Battle {
     pub inputs: [InputRecord; 2],
     pub hands: [ChipHand; 2],
     pub transform_requests: [u8; 2],
+    /// The transformation sequencer run at the start of each turn.
+    pub transform_seq: TransformSequencer,
     pub objects: Objects,
     pub actors: Actors,
     pub collision: Collision,
@@ -194,6 +199,117 @@ pub struct Battle {
     /// Custom-screen UI progress on this side (local presentation that the
     /// simulation observes in a few places).
     pub custom_ui: CustomUi,
+    /// Per-side extra battle state (`sub_802E070`), used by the battle-flag
+    /// 0x40 mode.
+    pub sides: [SideState; 2],
+    /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
+    pub side_stats: [[u8; 16]; 2],
+    /// Per-side registry of defensive chips and their linked objects
+    /// (`unk_2036720`).
+    pub linked: [LinkedRecord; 2],
+}
+
+/// The transformation sequencer's progress (`dword_20367F0`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TransformSequencer {
+    /// 0 check, 4 transform, 8 wait.
+    pub state: u8,
+    pub busy: bool,
+}
+
+impl TransformSequencer {
+    pub const START: TransformSequencer = TransformSequencer { state: 0, busy: true };
+}
+
+/// A side's extra battle state (0x1D0 bytes at `sub_802E070(side)`); only
+/// the fields the engine reads are modeled. All zero outside the battle
+/// flag 0x40 mode.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct SideState {
+    pub active: u8,
+    pub unk_02: u8,
+    pub unk_03: u8,
+    pub unk_0b: u8,
+    pub unk_0e: u8,
+    pub unk_10: u8,
+    pub panel_x: u8,
+    pub unk_18: [u32; 3],
+    /// A per-side gauge (a SELECT special needs 0x1500; counters add it).
+    pub gauge: u16,
+    pub unk_2a: u16,
+    pub unk_2e: u16,
+    pub unk_30: u16,
+    pub unk_3a: u16,
+    pub unk_3c: u16,
+    pub select_special: u8,
+    pub cross_special: u8,
+}
+
+/// A side's defensive-chip record: the chip, its state, and the object
+/// that implements it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct LinkedRecord {
+    pub chip: u16,
+    pub unk_02: u16,
+    pub unk_04: u32,
+    pub unk_08: u32,
+    pub object: Option<ObjectRef>,
+}
+
+impl Battle {
+    /// `sub_800AB46`: bump a statistics counter (saturating at 0xFF).
+    pub fn bump_side_stat(&mut self, side: u8, index: usize, n: u8) {
+        let v = &mut self.side_stats[side as usize][index];
+        *v = v.saturating_add(n);
+    }
+
+    /// `sub_802CEA6`: clear a side's defensive-chip record, telling its
+    /// object to end (Param2 = 1).
+    pub fn clear_linked(&mut self, side: u8) {
+        let rec = std::mem::take(&mut self.linked[side as usize]);
+        if let Some(o) = rec.object {
+            self.objects.get_mut(o).params[1] = 1;
+        }
+    }
+
+    /// `battle_networkInvert`: whether `alliance` is not the local side.
+    pub fn is_remote(&self, alliance: u8) -> bool {
+        alliance ^ self.round.local_side != 0
+    }
+
+    /// `sub_800AA1A`: add `r` to the intro fade-in queue (unless present).
+    pub fn fadein_enqueue(&mut self, r: ObjectRef) -> bool {
+        for slot in self.fadein_queue.iter_mut() {
+            match slot {
+                Some(o) if *o == r => return false,
+                None => {
+                    *slot = Some(r);
+                    return true;
+                }
+                _ => {}
+            }
+        }
+        false
+    }
+
+    /// `sub_800AA06`: whether `r` is first in the fade-in queue.
+    pub fn fadein_is_head(&self, r: ObjectRef) -> bool {
+        self.fadein_queue[0] == Some(r)
+    }
+
+    /// `sub_800AA40`: remove `r` from the fade-in queue, then compact it
+    /// (`sub_800AA64`, which only looks at the first seven entries).
+    pub fn fadein_dequeue(&mut self, r: ObjectRef) {
+        for slot in self.fadein_queue.iter_mut() {
+            if *slot == Some(r) {
+                *slot = None;
+            }
+        }
+        let kept: Vec<ObjectRef> = self.fadein_queue[..7].iter().flatten().copied().collect();
+        for (i, slot) in self.fadein_queue[..7].iter_mut().enumerate() {
+            *slot = kept.get(i).copied();
+        }
+    }
 }
 
 /// A side's damage-carry record: damage this tick and last tick, and the
@@ -247,6 +363,7 @@ impl Battle {
             inputs: [InputRecord::default(); 2],
             hands: [ChipHand::empty(), ChipHand::empty()],
             transform_requests: [0xFF; 2],
+            transform_seq: TransformSequencer::default(),
             objects: Objects::new(),
             actors: Actors::default(),
             collision: Collision::new(),
@@ -255,6 +372,9 @@ impl Battle {
             fadein_queue: [None; 8],
             damage_carry: [DamageCarry::default(); 2],
             custom_ui: CustomUi::default(),
+            sides: [SideState::default(); 2],
+            side_stats: [[0; 16]; 2],
+            linked: [LinkedRecord::default(); 2],
             setup,
         };
         // Init's last steps: refresh every panel, then one unpaused panel
@@ -410,7 +530,7 @@ impl Battle {
             // Reward-chip pick: draws once; netbattle navis have no rewards.
             self.rng.next_positive();
             self.paused = true;
-            self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed(), self.stats[1].gauge_speed());
+            self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
             self.round.init = 4;
             return;
         }
@@ -471,7 +591,7 @@ impl Battle {
             }
             4 => {
                 if self.round.init == 0 {
-                    self.banner.start(crate::hud::banner_kind(0x30));
+                    self.banner.start(BannerId(0x30));
                     self.round.init = 4;
                 } else if self.banner.status() == BannerStatus::Done {
                     self.round.sub = 8;
@@ -556,7 +676,7 @@ impl Battle {
 
     /// `sub_8013FD0`: custom-HP bug damage at custom-screen open. Never kills.
     fn custom_hp_bug(&mut self, side: u8) {
-        let v = self.stats[side as usize].custom_hp_bug();
+        let v = self.stats[side as usize].bugs.custom_damage;
         if v == 0 {
             return;
         }
@@ -602,23 +722,31 @@ impl Battle {
         }
     }
 
+    /// Fighting state 0 (`sub_800840C`): run the transformation sequencer
+    /// twice, then count down Beast Out.
     fn fight_setup(&mut self) {
         if self.fight.init == 0 {
+            // sub_80147E4: start the sequencer with the exchanged requests.
             if self.transform_requests.iter().any(|&t| t != 0xFF) {
                 panic!("Cross/Beast transformations are not implemented yet");
             }
+            self.transform_seq = TransformSequencer::START;
             self.fight.init = 4;
         }
+        if self.step_transform_sequencer() {
+            return;
+        }
         if self.fight.sub == 0 {
+            // sub_801482C
+            self.transform_seq = TransformSequencer::START;
             self.fight.sub = 4;
             return;
         }
         for side in 0..2u8 {
             if self.player(side).is_some() {
-                let form = self.stats[side as usize].form();
-                if (0x0B..=0x18).contains(&form) {
-                    let c = self.stats[side as usize].beast_out_counter();
-                    self.stats[side as usize].set_byte(0x21, c.wrapping_sub(1));
+                let s = &mut self.stats[side as usize];
+                if s.form.is_beast() {
+                    s.beast_out_counter = s.beast_out_counter.wrapping_sub(1);
                 }
             }
         }
@@ -627,11 +755,37 @@ impl Battle {
         self.fight.init = 0;
     }
 
+    /// `sub_801483C`: one step of the transformation sequencer; true while
+    /// it is busy. Without a transformation request it takes two ticks:
+    /// check each navi (`sub_801486C`), then wait for them (`sub_8014A00`).
+    fn step_transform_sequencer(&mut self) -> bool {
+        use crate::kinds::player;
+        match self.transform_seq.state {
+            0 => {
+                for side in 0..2 {
+                    if let Some(p) = self.player(side) {
+                        player::check_beast_out_end(self, p);
+                    }
+                }
+                self.transform_seq.state = 8;
+            }
+            8 => {
+                let players = [self.player(0), self.player(1)];
+                let busy = |b: &Battle, f: fn(&Battle, ObjectRef) -> bool| players.iter().flatten().any(|&p| f(b, p));
+                if !busy(self, player::reverting_form) && !busy(self, player::changing_form) {
+                    self.transform_seq.busy = false;
+                }
+            }
+            s => panic!("transformation sequencer state {s:#x} is not implemented yet"),
+        }
+        self.transform_seq.busy
+    }
+
     fn apply_actor_inputs(&mut self) {
         for side in 0..2u8 {
             let Some(a) = self.player_actor(side) else { continue };
             let over = self.is_battle_over();
-            let form = self.stats[side as usize].form();
+            let form = self.stats[side as usize].form;
             let held = self.inputs[side as usize].held;
             let timestop = self.is_time_stop();
             let ad = self.actors.get_mut(a);
@@ -639,7 +793,7 @@ impl Battle {
                 ad.pad = Default::default();
                 continue;
             }
-            if form == 0x17 || form == 0x18 {
+            if form.is_beast_over() {
                 continue;
             }
             ad.pad.update(held);
@@ -658,9 +812,9 @@ impl Battle {
             self.fight.init = 4;
             if self.late_turns() {
                 self.fight.turn_timer = 0xA5 * 4 - 1;
-                self.banner.start(crate::hud::banner_kind(0x10));
+                self.banner.start(BannerId(0x10));
             } else if self.setup.settings.effects & effects::LINK != 0 {
-                self.banner.start(crate::hud::banner_kind(0x0C));
+                self.banner.start(BannerId(0x0C));
             }
         }
         if self.banner.status() == BannerStatus::Done {
@@ -748,7 +902,7 @@ impl Battle {
         if self.is_time_stop() || self.is_battle_over() {
             return false;
         }
-        let berserk = |s: &NaviStats| matches!(s.form(), 0x17 | 0x18);
+        let berserk = |s: &NaviStats| s.form.is_beast_over();
         ((berserk(&self.stats[0]) || berserk(&self.stats[1])) && self.round.flags & battle_flags::GAUGE_FULL != 0)
             || self.round.flags & battle_flags::CUSTOM_REQUESTED != 0
     }
@@ -799,9 +953,9 @@ impl Battle {
             self.fight.init = 4;
             self.fight.timer = 0x66;
             // Netbattle win/lose banners come from per-navi tables.
-            let navi = self.stats[self.round.local_side as usize].navi() as usize;
+            let navi = self.stats[self.round.local_side as usize].navi.index();
             let id = if win { crate::data::WIN_BANNERS[navi] } else { crate::data::LOSE_BANNERS[navi] };
-            self.banner.start(crate::hud::banner_kind(id));
+            self.banner.start(id);
         }
         self.fight.timer -= 1;
         if self.banner.status() == BannerStatus::Done && self.fight.timer <= 0 {
@@ -896,7 +1050,7 @@ impl Battle {
             return;
         }
         const PERIOD: [u8; 8] = [0, 40, 30, 20, 10, 5, 3, 2];
-        let period = PERIOD[(self.stats[side as usize].custom_drain_bug() & 7) as usize];
+        let period = PERIOD[(self.stats[side as usize].bugs.custom_drain & 7) as usize];
         if period == 0 {
             return;
         }

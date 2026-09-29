@@ -1,5 +1,5 @@
 //! Per-actor data for navis: input state, action requests, charge state
-//! and the attack scratchpad. Eight slots, allocated lowest-free first.
+//! and the state of the attack in progress. Eight slots, allocated lowest-free first.
 //!
 //! Field names follow what the fields are used for; ones not yet understood
 //! keep the offset of the game's structure in their name (`unk_2c`).
@@ -28,24 +28,69 @@ pub mod request {
     pub const CHIP: u32 = 0x4;
     pub const CHARGED_CHIP: u32 = 0x8;
     pub const BACK_SPECIAL: u32 = 0x10;
+    /// Forces the charged-shot action (setter unknown).
+    pub const FORCED_CHARGED_SHOT: u32 = 0x20;
+    /// Pause-time request: action 0x1C with state bit 0x100.
+    pub const PAUSE_40: u32 = 0x40;
+    /// Reactive defense chips (anti-damage traps).
+    pub const TRAP_200: u32 = 0x200;
+    pub const TRAP_400: u32 = 0x400;
+    /// Time-stop counter chip.
+    pub const TIMESTOP_CHIP: u32 = 0x800;
     pub const TURN_L: u32 = 0x1000;
     pub const TURN_R: u32 = 0x2000;
+    /// Pause-time request: form change (action 0x1C, state bit 0x80).
+    pub const FORM_CHANGE: u32 = 0x4000;
+    pub const TRAP_8000: u32 = 0x8000;
     pub const ALT_CHIP: u32 = 0x10000;
     pub const A_HELD: u32 = 0x20000;
     pub const B_HELD: u32 = 0x40000;
+    /// Starts action 0x49 from idle.
+    pub const ACTION_49: u32 = 0x80000;
     pub const SELECT_SPECIAL: u32 = 0x0200_0000;
+    /// Pause-time request: action 0x1C with state bit 0x1000.
+    pub const PAUSE_4000000: u32 = 0x0400_0000;
+    /// Cross death (action 0x4C) outside the pause; pause-time request for
+    /// action 0x1C with state bit 0x2000 inside it.
+    pub const CROSS_DEATH: u32 = 0x0800_0000;
+    /// Battle mode 9 A press.
+    pub const MODE9_A: u32 = 0x1000_0000;
+    pub const CROSS_SPECIAL: u32 = 0x2000_0000;
+    /// Starts action 0x30.
+    pub const ACTION_30: u32 = 0x4000_0000;
+    /// Hit by an element this navi is weak to (ends crosses).
+    pub const WEAKNESS_HIT: u32 = 0x8000_0000;
+    /// Every attack request.
+    pub const ATTACKS: u32 = 0x3F;
+    /// The charge holds.
+    pub const HOLDS: u32 = A_HELD | B_HELD;
 }
 
 /// Actor state bits (`status`).
 pub mod status {
+    /// Direction bits of the last move (right, left, down, up).
+    pub const MOVE_DIRECTIONS: u32 = 0xF;
     pub const CONTROLLABLE: u32 = 0x10;
     pub const CHIP_IN_PROGRESS: u32 = 0x40;
+    /// Pause handler: form change in progress.
+    pub const FORM_CHANGE: u32 = 0x80;
     pub const NO_CHARGE: u32 = 0x200;
     pub const CAN_TURN: u32 = 0x400;
+    /// Anti-damage trap armed (acts like chip 0xBB).
+    pub const TRAP_ARMED: u32 = 0x800;
+    /// Cross states that take over the action dispatch.
+    pub const CROSS_2000: u32 = 0x2000;
+    pub const CROSS_4000: u32 = 0x4000;
+    pub const CROSS_10000: u32 = 0x1_0000;
+    pub const CROSS_20000: u32 = 0x2_0000;
+    pub const CROSS_40000: u32 = 0x4_0000;
+    /// Anti-damage trap for heat attacks.
+    pub const HEAT_TRAP: u32 = 0x20_0000;
 }
 
-/// The attack scratchpad, shared by whatever action is running.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// State of the attack action in progress, shared by whatever action is
+/// running. Action-specific state gets named fields as actions are ported.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AttackVars {
     /// Step within the action (0, 4, 8...), and whether its entry ran.
     pub step: u8,
@@ -75,53 +120,14 @@ pub struct AttackVars {
     pub kind: u8,
     pub beast_lockon: u8,
     pub unk_1e: u16,
-    /// Bytes 0x20..0x50: action-private.
-    pub scratch: [u8; 0x30],
+    /// +0x2C: the move's panel-trail argument (0 for input moves).
+    pub move_arg: u32,
+    /// +0x30: a marker: the move's "direction changed", or a heat trap
+    /// swallowing a hit.
+    pub marker: u32,
 }
 
-impl Default for AttackVars {
-    fn default() -> AttackVars {
-        AttackVars {
-            step: 0,
-            step_init: 0,
-            element: 0,
-            variant: 0,
-            charged: 0,
-            lockout: 0,
-            extra: 0,
-            damage: 0,
-            hit_param: 0,
-            params: [0; 4],
-            timer: 0,
-            recovery: 0,
-            chip_id: 0,
-            unk_16: 0,
-            unk_17: 0,
-            unk_18: 0,
-            unk_1a: 0,
-            special_source: 0,
-            kind: 0,
-            beast_lockon: 0,
-            unk_1e: 0,
-            scratch: [0; 0x30],
-        }
-    }
-}
 
-impl AttackVars {
-    pub fn scratch_u16(&self, off: usize) -> u16 {
-        u16::from_le_bytes([self.scratch[off], self.scratch[off + 1]])
-    }
-    pub fn set_scratch_u16(&mut self, off: usize, v: u16) {
-        self.scratch[off..off + 2].copy_from_slice(&v.to_le_bytes());
-    }
-    pub fn scratch_u32(&self, off: usize) -> u32 {
-        u32::from_le_bytes(self.scratch[off..off + 4].try_into().unwrap())
-    }
-    pub fn set_scratch_u32(&mut self, off: usize, v: u32) {
-        self.scratch[off..off + 4].copy_from_slice(&v.to_le_bytes());
-    }
-}
 
 /// Joypad state as an actor sees it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -217,11 +223,7 @@ pub struct ActorData {
     pub unk_70: u32,
     pub unk_74: u32,
     pub unk_78: u32,
-    /// AI state machine (0x80..0xA0).
-    pub ai_state: [u8; 0x20],
     pub attack: AttackVars,
-    /// Bytes 0xF0..0x100: not cleared when the slot is reused.
-    pub tail: [u8; 0x10],
 }
 
 /// The actor-data pool.
@@ -240,12 +242,12 @@ impl Actors {
         &mut self.slots[id.0 as usize]
     }
 
-    /// Allocate the lowest free slot, cleared except for its tail bytes.
+    /// Allocate the lowest free slot, cleared. (The game leaves the last
+    /// 0x10 bytes of a slot uncleared; nothing ported reads them.)
     pub fn allocate(&mut self) -> Option<ActorId> {
         let slot = (0..SLOTS as u8).find(|&i| self.in_use & (1 << i) == 0)?;
         self.in_use |= 1 << slot;
-        let tail = self.slots[slot as usize].tail;
-        self.slots[slot as usize] = ActorData { tail, ..ActorData::default() };
+        self.slots[slot as usize] = ActorData::default();
         Some(ActorId(slot))
     }
 

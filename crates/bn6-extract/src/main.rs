@@ -108,25 +108,31 @@ fn chips(rom: &Rom) -> String {
     out
 }
 
-/// HUD banner tables: each banner's type (types 2 and 4 hold until
-/// removed) and the per-navi win/lose banner ids.
+/// HUD banner tables: which banners hold until removed (types 2 and 4 in
+/// `pt_801EF84` records, byte 2) and the per-navi netbattle win/lose
+/// banners.
 fn banners(rom: &Rom) -> String {
     let mut out = String::from(HEADER);
+    writeln!(out, "use super::BannerId;\n").unwrap();
     let base = 0x0801_EF84;
-    let mut types = Vec::new();
+    let mut holds = Vec::new();
     loop {
-        let p = u32::from_le_bytes(rom.bytes(base + 4 * types.len() as u32, 4).try_into().unwrap());
+        let p = u32::from_le_bytes(rom.bytes(base + 4 * holds.len() as u32, 4).try_into().unwrap());
         if !(0x0800_0000..0x0900_0000).contains(&p) {
             break;
         }
-        types.push(rom.u8(p + 2));
+        holds.push(matches!(rom.u8(p + 2), 2 | 4));
     }
-    writeln!(out, "/// Banner type by banner id / 4 (`pt_801EF84` records, byte 2).").unwrap();
-    writeln!(out, "pub static BANNER_TYPES: [u8; {}] = {:?};", types.len(), types).unwrap();
-    writeln!(out, "/// Netbattle win banner id by navi (`byte_800A8EC`).").unwrap();
-    writeln!(out, "pub static WIN_BANNERS: [u8; 12] = {:?};", rom.bytes(0x0800_A8EC, 12)).unwrap();
-    writeln!(out, "/// Netbattle lose banner id by navi (`byte_800A8C8`).").unwrap();
-    writeln!(out, "pub static LOSE_BANNERS: [u8; 12] = {:?};", rom.bytes(0x0800_A8C8, 12)).unwrap();
+    writeln!(out, "/// Whether a banner stays up until removed, by banner id / 4.").unwrap();
+    writeln!(out, "pub static BANNER_HOLDS: [bool; {}] = {:?};", holds.len(), holds).unwrap();
+    let ids = |a: u32| -> String {
+        let v: Vec<String> = rom.bytes(a, 12).iter().map(|b| format!("BannerId({b:#04x})")).collect();
+        v.join(", ")
+    };
+    writeln!(out, "/// Netbattle win banner by navi (`byte_800A8EC`).").unwrap();
+    writeln!(out, "pub static WIN_BANNERS: [BannerId; 12] = [{}];", ids(0x0800_A8EC)).unwrap();
+    writeln!(out, "/// Netbattle lose banner by navi (`byte_800A8C8`).").unwrap();
+    writeln!(out, "pub static LOSE_BANNERS: [BannerId; 12] = [{}];", ids(0x0800_A8C8)).unwrap();
     out
 }
 
@@ -178,6 +184,7 @@ fn field(rom: &Rom) -> String {
 /// Collision tables: type flags, region shapes, element weaknesses.
 fn collision(rom: &Rom) -> String {
     let mut out = String::from(HEADER);
+    writeln!(out, "use super::{{PanelCondition, PanelOffset}};\n").unwrap();
     writeln!(out, "/// Collision type flags [alliance 0, alliance 1] by index (`byte_8019C7C`).").unwrap();
     writeln!(out, "pub static COLLISION_TYPES: [[u32; 2]; 89] = [").unwrap();
     for i in 0..89 {
@@ -185,8 +192,8 @@ fn collision(rom: &Rom) -> String {
         writeln!(out, "    [{:#010x}, {:#010x}], // {i:#04x}", u32at(rom, a), u32at(rom, a + 4)).unwrap();
     }
     writeln!(out, "];").unwrap();
-    writeln!(out, "/// Region shapes: panel offsets (dx, dy), dx toward the facing side (`PanelOffsetListsPointerTable`).").unwrap();
-    writeln!(out, "pub static REGIONS: [&[(i8, i8)]; 47] = [").unwrap();
+    writeln!(out, "/// Region shapes: the panels a hit covers, relative to its panel, dx toward the facing side (`PanelOffsetListsPointerTable`).").unwrap();
+    writeln!(out, "pub static REGIONS: [&[PanelOffset]; 47] = [").unwrap();
     for i in 0..47 {
         let mut a = u32at(rom, 0x0801_9B78 + 4 * i);
         let mut v = Vec::new();
@@ -196,7 +203,7 @@ fn collision(rom: &Rom) -> String {
                 if dx == 0x7F {
                     break;
                 }
-                v.push(format!("({dx}, {})", rom.u8(a + 1) as i8));
+                v.push(format!("PanelOffset {{ dx: {dx}, dy: {} }}", rom.u8(a + 1) as i8));
                 a += 2;
             }
         }
@@ -204,12 +211,27 @@ fn collision(rom: &Rom) -> String {
     }
     writeln!(out, "];").unwrap();
     let f: Vec<String> = (0..9)
-        .map(|i| format!("({:#x}, {:#x})", u32at(rom, 0x0801_9C34 + 8 * i), u32at(rom, 0x0801_9C38 + 8 * i)))
+        .map(|i| {
+            format!(
+                "PanelCondition {{ require: {:#x}, forbid: {:#x} }}",
+                u32at(rom, 0x0801_9C34 + 8 * i),
+                u32at(rom, 0x0801_9C38 + 8 * i)
+            )
+        })
         .collect();
-    writeln!(out, "/// Whole-field regions 0x80.. : panels whose flags have all of `want` and none of `forbid`.").unwrap();
-    writeln!(out, "pub static FIELD_REGIONS: [(u32, u32); 9] = [{}];", f.join(", ")).unwrap();
-    writeln!(out, "/// Primary-element weakness: [receiver element * 5 + hitter element] (`byte_3007444`).").unwrap();
-    writeln!(out, "pub static ELEMENT_WEAKNESS: [u8; 28] = {:?};", rom.bytes(iwram(0x0300_7444), 28)).unwrap();
+    writeln!(out, "/// Whole-field regions (region 0x80 + i): every panel meeting the condition.").unwrap();
+    writeln!(out, "pub static FIELD_REGIONS: [PanelCondition; 9] = [{}];", f.join(", ")).unwrap();
+    // The game indexes a 28-byte table as receiver * 5 + hitter, so hitter
+    // element 5 reads the next receiver's first entry. Materialize that.
+    let w = rom.bytes(iwram(0x0300_7444), 28);
+    let rows: Vec<String> = (0..6)
+        .map(|r| {
+            let row: Vec<String> = (0..6).map(|h| w.get(r * 5 + h).copied().unwrap_or(0).to_string()).collect();
+            format!("[{}]", row.join(", "))
+        })
+        .collect();
+    writeln!(out, "/// Extra damage multiplier by [receiver element][hitter element] (`byte_3007444`, which the game indexes as r*5+h).").unwrap();
+    writeln!(out, "pub static ELEMENT_WEAKNESS: [[u8; 6]; 6] = [{}];", rows.join(", ")).unwrap();
     out
 }
 
@@ -307,51 +329,186 @@ fn sprites(rom: &Rom) -> String {
         }
     }
     let mut out = String::from(HEADER);
-    let mut frames: Vec<u8> = Vec::new();
-    let mut anim_starts: Vec<u32> = Vec::new();
-    let mut index = Vec::new();
+    writeln!(out, "use super::{{AnimFrame, SpriteAnimations, SpriteId}};\n").unwrap();
+    writeln!(out, "const fn f(duration: u8, flags: u8) -> AnimFrame {{\n    AnimFrame {{ duration, flags }}\n}}\n").unwrap();
+    writeln!(out, "/// Battle sprites with animation data, sorted by id.").unwrap();
+    writeln!(out, "pub static SPRITES: [SpriteAnimations; {}] = [", sprites.len()).unwrap();
+    let mut total = (0, 0);
     for (cat, idx, anims) in &sprites {
-        index.push(format!("({cat:#04x}, {idx:#04x}, {}, {})", anim_starts.len(), anims.len()));
-        for a in anims {
-            anim_starts.push(frames.len() as u32 / 2);
-            for &(d, f) in a {
-                frames.push(d);
-                frames.push(f);
-            }
-        }
+        let anims: Vec<String> = anims
+            .iter()
+            .map(|a| {
+                let frames: Vec<String> = a.iter().map(|&(d, f)| format!("f({d}, {f:#04x})")).collect();
+                format!("&[{}]", frames.join(", "))
+            })
+            .collect();
+        total.0 += anims.len();
+        total.1 += sprites_frames(&anims);
+        writeln!(
+            out,
+            "    SpriteAnimations {{ id: SpriteId {{ category: {cat:#04x}, index: {idx:#04x} }}, animations: &[{}] }},",
+            anims.join(", ")
+        )
+        .unwrap();
     }
-    anim_starts.push(frames.len() as u32 / 2);
-    writeln!(out, "/// Sprites with animation data: (category, index, first animation, count), sorted.").unwrap();
-    writeln!(out, "pub static SPRITE_INDEX: [(u8, u8, u32, u32); {}] = [{}];", index.len(), index.join(", ")).unwrap();
-    writeln!(out, "/// Start of each animation's frames in `ANIM_FRAMES` (plus an end marker).").unwrap();
-    writeln!(out, "pub static ANIM_STARTS: [u32; {}] = {:?};", anim_starts.len(), anim_starts).unwrap();
-    writeln!(out, "/// Frames as (duration, flags) byte pairs.").unwrap();
-    writeln!(out, "pub static ANIM_FRAMES: [u8; {}] = {:?};", frames.len(), frames).unwrap();
-    eprintln!("sprites: {} sprites, {} animations, {} frames", sprites.len(), anim_starts.len() - 1, frames.len() / 2);
+    writeln!(out, "];").unwrap();
+    eprintln!("sprites: {} sprites, {} animations", sprites.len(), total.0);
     out
 }
 
-/// Generic effect table (`byte_80E0398`): sprite category, index,
-/// animation, palette per effect id.
+fn sprites_frames(anims: &[String]) -> usize {
+    anims.iter().map(|a| a.matches("f(").count()).sum()
+}
+
+/// Effect sprite tables: generic effects (`byte_80E0398`, effect object
+/// #0) and hit sparks (`off_80E0804`, effect object #4). Each row is sprite
+/// category, index, animation, palette.
 fn effects(rom: &Rom) -> String {
     let mut out = String::from(HEADER);
-    let n = 0x6C;
-    let rows: Vec<String> = (0..n)
+    writeln!(out, "use super::{{EffectSprite, SpriteId}};\n").unwrap();
+    let table = |out: &mut String, name: &str, doc: &str, base: u32, n: u32| {
+        writeln!(out, "/// {doc}").unwrap();
+        writeln!(out, "pub static {name}: [EffectSprite; {n}] = [").unwrap();
+        for i in 0..n {
+            let b = rom.bytes(base + 4 * i, 4);
+            writeln!(
+                out,
+                "    EffectSprite {{ sprite: SpriteId {{ category: {:#04x}, index: {:#04x} }}, anim: {:#04x}, palette: {:#04x} }}, // {i:#04x}",
+                b[0], b[1], b[2], b[3]
+            )
+            .unwrap();
+        }
+        writeln!(out, "];").unwrap();
+    };
+    table(&mut out, "EFFECTS", "Generic effects by effect id.", 0x080E_0398, 0x6C);
+    table(&mut out, "SPARKS", "Hit sparks by hit-effect id.", 0x080E_0804, 16);
+    out
+}
+
+/// Player-navi tables: sprites, elements, weapon routines, charge
+/// thresholds, status effects, attach points and movement vectors. The
+/// row types live in bn6-battle's `data::player`.
+fn player(rom: &Rom) -> String {
+    let mut out = String::from(HEADER);
+    out.push_str("use super::player::{AttachPoint, FormWeapons, NaviRecord, SecondaryElements, SlideVector, StatusEffect, StatusTimer};\n");
+    out.push_str("use super::{Element, SpriteId};\n");
+    out.push_str("use crate::actor::ActorType;\n\n");
+    let list = |items: Vec<String>| items.join(", ");
+    let bytes = |a: u32, n: u32| -> String { list((0..n).map(|i| format!("{:#04x}", rom.u8(a + i))).collect()) };
+    let sprite = |cat: u8, idx: u8| format!("SpriteId {{ category: {cat:#04x}, index: {idx:#04x} }}");
+    let vectors = |a: u32, stride: u32, n: u32| -> String {
+        list((0..n)
+            .map(|i| {
+                let e = a + stride * i;
+                format!("SlideVector {{ dx: {}, dy: {}, tiles: {} }}", rom.u8(e) as i8, rom.u8(e + 1) as i8, rom.u8(e + 2))
+            })
+            .collect())
+    };
+    const ELEMENTS: [&str; 5] = ["Null", "Fire", "Aqua", "Elec", "Wood"];
+
+    writeln!(out, "/// MegaMan's battle sprite by form (category 0, `byte_800FCBC`).").unwrap();
+    let s: Vec<String> = (0..25).map(|i| sprite(0, rom.u8(0x0800_FCBC + i))).collect();
+    writeln!(out, "pub static FORM_SPRITES: [SpriteId; 25] = [{}];", list(s)).unwrap();
+    writeln!(out, "/// Other navis' battle sprite by navi (category 8, `byte_800FCD5`).").unwrap();
+    let s: Vec<String> = (0..12).map(|i| sprite(8, rom.u8(0x0800_FCD5 + i))).collect();
+    writeln!(out, "pub static NAVI_SPRITES: [SpriteId; 12] = [{}];", list(s)).unwrap();
+    writeln!(out, "/// Element by form (MegaMan) or by navi (`byte_80108B8`).").unwrap();
+    let e: Vec<String> = (0..25).map(|i| format!("Element::{}", ELEMENTS[rom.u8(0x0801_08B8 + i) as usize])).collect();
+    writeln!(out, "pub static ELEMENTS: [Element; 25] = [{}];", list(e)).unwrap();
+    writeln!(out, "/// Secondary-element weakness by form (MegaMan) or by navi (`byte_80108D1`).").unwrap();
+    let w: Vec<String> = (0..25).map(|i| format!("SecondaryElements({:#04x})", rom.u8(0x0801_08D1 + i))).collect();
+    writeln!(out, "pub static WEAKNESSES: [SecondaryElements; 25] = [{}];", list(w)).unwrap();
+    writeln!(out, "/// Weapon routines by form (`byte_8020354`).").unwrap();
+    let f: Vec<String> = (0..25)
         .map(|i| {
-            let b = rom.bytes(0x080E_0398 + 4 * i, 4);
-            format!("({:#04x}, {:#04x}, {:#04x}, {:#04x})", b[0], b[1], b[2], b[3])
+            let b = rom.bytes(0x0802_0354 + 6 * i, 6);
+            format!(
+                "FormWeapons {{ mode9_a: {:#04x}, a_charge: {:#04x}, buster: {:#04x}, charge_shot: {:#04x}, back_special: {:#04x}, alt_a_charge: {:#04x} }}",
+                b[0], b[1], b[2], b[3], b[4], b[5]
+            )
         })
         .collect();
-    writeln!(out, "/// Generic effects (effect object #0): (sprite category, index, animation, palette).").unwrap();
-    writeln!(out, "pub static EFFECTS: [(u8, u8, u8, u8); {n}] = [{}];", rows.join(", ")).unwrap();
-    let sparks: Vec<String> = (0..16)
-        .map(|i| {
-            let b = rom.bytes(0x080E_0804 + 4 * i, 4);
-            format!("({:#04x}, {:#04x}, {:#04x}, {:#04x})", b[0], b[1], b[2], b[3])
+    writeln!(out, "pub static FORM_WEAPONS: [FormWeapons; 25] = [{}];", list(f)).unwrap();
+    let rows: Vec<String> =
+        (0..50).map(|r| format!("[{}]", list((0..5).map(|c| rom.u16(0x0802_0404 + 10 * r + 2 * c).to_string()).collect()))).collect();
+    writeln!(out, "/// Ticks to a full charge by charge routine and Charge stat (`byte_8020404`).").unwrap();
+    writeln!(out, "pub static CHARGE_THRESHOLDS: [[u16; 5]; 50] = [{}];", list(rows)).unwrap();
+    let rows: Vec<String> = (0..23).map(|n| format!("[{}]", bytes(0x0802_0FE0 + 11 * n, 11))).collect();
+    writeln!(out, "/// Move end lag by navi and navi variant (`byte_8020FE0`).").unwrap();
+    writeln!(out, "pub static MOVE_LAG: [[u8; 11]; 23] = [{}];", list(rows)).unwrap();
+    // Status effects: per group a pointer to 8-byte entries {u32 F2 bits,
+    // u16 duration, u8 CollisionData offset}. Nibbles past a group's end
+    // read the following bytes, as in the game.
+    let timer = |off: u8| -> String {
+        match off {
+            0x1C => "StatusTimer::Paralyze".into(),
+            0x1E => "StatusTimer::Confuse".into(),
+            0x20 => "StatusTimer::Blind".into(),
+            0x22 => "StatusTimer::Immobilize".into(),
+            0x24 => "StatusTimer::Flash".into(),
+            0x26 => "StatusTimer::Flag4".into(),
+            0x28 => "StatusTimer::Invulnerable".into(),
+            0x2A => "StatusTimer::Freeze".into(),
+            0x2C => "StatusTimer::Bubble".into(),
+            0x0A => "StatusTimer::CollisionPanel".into(),
+            o => format!("StatusTimer::Other({o:#04x})"),
+        }
+    };
+    let groups: Vec<String> = (0..6)
+        .map(|g| {
+            let p = u32at(rom, 0x0802_09EC + 4 * g);
+            let e: Vec<String> = (0..16)
+                .map(|n| {
+                    let a = p + 8 * n;
+                    format!("StatusEffect {{ requests: {:#x}, duration: {}, timer: {} }}", u32at(rom, a), rom.u16(a + 4), timer(rom.u8(a + 6)))
+                })
+                .collect();
+            format!("[{}]", list(e))
         })
         .collect();
-    writeln!(out, "/// Hit sparks (effect object #4): (sprite category, index, animation, palette).").unwrap();
-    writeln!(out, "pub static SPARKS: [(u8, u8, u8, u8); 16] = [{}];", sparks.join(", ")).unwrap();
+    writeln!(out, "/// Status effects by (status >> 4) - 1 and status & 0xF (`off_80209EC`).").unwrap();
+    writeln!(out, "pub static STATUS_EFFECTS: [[StatusEffect; 16]; 6] = [{}];", list(groups)).unwrap();
+    // Per player NameID (0x1A0..=0x1C3): the actor record and the sprite
+    // attach points (`sub_8018810`: enemy struct sprite -> attach table).
+    const ACTOR_TYPES: [&str; 3] = ["Virus", "Navi", "Player"];
+    let mut records = Vec::new();
+    let mut attach = Vec::new();
+    for name in 0x1A0..=0x1C3u32 {
+        let rec = rom.bytes(0x0801_82C4 + 3 * name, 3);
+        records.push(format!(
+            "NaviRecord {{ version: {}, actor_type: ActorType::{}, ai_index: {} }}",
+            rec[0], ACTOR_TYPES[rec[1] as usize], rec[2]
+        ));
+        let st = u32at(rom, u32at(rom, 0x0800_F230 + 4 * rec[1] as u32) + 4 * rec[2] as u32);
+        let (cat, mut idx) = (rom.u8(st) as u32, rom.u8(st + 1) as u32);
+        if cat == 0 {
+            idx = rom.u8(0x0801_88B0 + idx) as u32;
+        }
+        let table = u32at(rom, 0x0801_88A0 + cat) + 0x44 * idx;
+        let points: Vec<String> = (0..34)
+            .map(|i| format!("AttachPoint {{ x: {}, y: {} }}", rom.u8(table + 2 * i) as i8, rom.u8(table + 2 * i + 1) as i8))
+            .collect();
+        attach.push(format!("[{}]", list(points)));
+    }
+    writeln!(out, "/// Actor records by NameID - 0x1A0 (`byte_80182C4`).").unwrap();
+    writeln!(out, "pub static NAVI_RECORDS: [NaviRecord; 36] = [{}];", list(records)).unwrap();
+    writeln!(out, "/// Sprite attach points by NameID - 0x1A0 (`sub_8018810`).").unwrap();
+    writeln!(out, "pub static NAVI_ATTACH_POINTS: [[AttachPoint; 34]; 36] = [{}];", list(attach)).unwrap();
+    writeln!(out, "/// Push vectors by hit-modifier bit (+5 with 0x80) (`byte_800E58C`).").unwrap();
+    writeln!(out, "pub static PUSH_VECTORS: [SlideVector; 10] = [{}];", vectors(0x0800_E58C, 3, 10)).unwrap();
+    writeln!(out, "/// Ice slide vectors by collision direction (`byte_800E4E8`).").unwrap();
+    writeln!(out, "pub static ICE_VECTORS: [SlideVector; 6] = [{}];", vectors(0x0800_E4E8, 4, 6)).unwrap();
+    writeln!(out, "/// Road slide vectors by panel type - 9 (`byte_800E538`).").unwrap();
+    writeln!(out, "pub static ROAD_VECTORS: [SlideVector; 4] = [{}];", vectors(0x0800_E538, 4, 4)).unwrap();
+    let bob: Vec<String> = rom.bytes(0x0801_7868, 32).iter().map(|&b| (b as i8).to_string()).collect();
+    writeln!(out, "/// Bubble bobbing height by timer (`byte_8017868`).").unwrap();
+    writeln!(out, "pub static BUBBLE_BOB: [i8; 32] = [{}];", list(bob)).unwrap();
+    writeln!(out, "/// Buster damage bonus by navi (`byte_80126A4`).").unwrap();
+    writeln!(out, "pub static BUSTER_BONUS_BY_NAVI: [u8; 12] = [{}];", bytes(0x0801_26A4, 12)).unwrap();
+    writeln!(out, "/// Buster damage bonus by form (`off_80126B0`).").unwrap();
+    writeln!(out, "pub static BUSTER_BONUS_BY_FORM: [u8; 25] = [{}];", bytes(0x0801_26B0, 25)).unwrap();
+    writeln!(out, "/// HP-bug drain period by bug level (`byte_80102A4`).").unwrap();
+    writeln!(out, "pub static HP_BUG_PERIODS: [u8; 8] = [{}];", bytes(0x0801_02A4, 8)).unwrap();
     out
 }
 
@@ -369,5 +526,6 @@ fn main() {
     std::fs::write(out_dir.join("collision_generated.rs"), collision(&rom)).unwrap();
     std::fs::write(out_dir.join("sprites_generated.rs"), sprites(&rom)).unwrap();
     std::fs::write(out_dir.join("effects_generated.rs"), effects(&rom)).unwrap();
+    std::fs::write(out_dir.join("player_generated.rs"), player(&rom)).unwrap();
     eprintln!("wrote {}", out_dir.display());
 }
