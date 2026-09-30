@@ -2,7 +2,7 @@
 //!
 //! Everything here is made up: a MegaMan-like navi and its base form,
 //! a few chips that use GunDelSol, two dimming chips (one grabs a column)
-//! and two navi chips, rocks,
+//! and three navi chips, rocks,
 //! sprites with short animations, and rules written from the engine's own
 //! flag semantics (docs/engine/field-collision-damage.md). It is not BN6's
 //! data, which comes only from a content pack extracted from the user's ROM
@@ -36,6 +36,8 @@ pub const ERASER: ChipId = 0x06;
 pub const GRAB: ChipId = 0x07;
 /// A navi chip (action 0x1B, subtype 16: the elements navi).
 pub const ELEMENTS: ChipId = 0x08;
+/// A navi chip (action 0x1B, subtype 7: the water navi).
+pub const SPOUT: ChipId = 0x09;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -148,6 +150,12 @@ pub fn scripts() -> Scripts {
                 ("objects/elmnt-ice/elmnt_ice", "objects/elmnt-ice/elmnt_ice"),
                 ("objects/elmnt-bolt/elmnt_bolt", "objects/elmnt-bolt/elmnt_bolt"),
                 ("objects/elmnt-vine/elmnt_vine", "objects/elmnt-vine/elmnt_vine"),
+                ("objects/spout-man/spout_man", "objects/spout-man/spout_man"),
+                ("objects/spout-ball/spout_ball", "objects/spout-ball/spout_ball"),
+                ("objects/spout-splash/spout_splash", "objects/spout-splash/spout_splash"),
+                ("objects/spout-pillar/spout_pillar", "objects/spout-pillar/spout_pillar"),
+                ("objects/spout-geyser/spout_geyser", "objects/spout-geyser/spout_geyser"),
+                ("objects/spout-mark/spout_mark", "objects/spout-mark/spout_mark"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -203,6 +211,12 @@ fn kinds() -> Vec<ObjectKind> {
         kind("elmnt-ice", Pool::Attack, 0x8E, "objects/elmnt-ice/elmnt_ice"),
         ObjectKind { scratch_z_fraction: true, ..kind("elmnt-bolt", Pool::Attack, 0xB8, "objects/elmnt-bolt/elmnt_bolt") },
         kind("elmnt-vine", Pool::Attack, 0xB9, "objects/elmnt-vine/elmnt_vine"),
+        kind("spout-man", Pool::Actor, 0x09, "objects/spout-man/spout_man"),
+        kind("spout-ball", Pool::Attack, 0x22, "objects/spout-ball/spout_ball"),
+        kind("spout-splash", Pool::Attack, 0x23, "objects/spout-splash/spout_splash"),
+        ObjectKind { scratch_z_fraction: true, ..kind("spout-pillar", Pool::Effect, 0x2D, "objects/spout-pillar/spout_pillar") },
+        kind("spout-geyser", Pool::Attack, 0x17, "objects/spout-geyser/spout_geyser"),
+        kind("spout-mark", Pool::Effect, 0x2E, "objects/spout-mark/spout_mark"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -303,6 +317,14 @@ fn chips() -> Vec<ChipData> {
             damage: 50,
             script: Some("objects/elmnt-man/elmnt_man".into()),
             ..chip(ELEMENTS, "Elements", 0x1B, 16)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            element: Element::Aqua,
+            class: ChipClass::Mega,
+            damage: 40,
+            script: Some("objects/spout-man/spout_man".into()),
+            ..chip(SPOUT, "Spout", 0x1B, 7)
         },
     ]
 }
@@ -599,6 +621,16 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x10, index: 0x0F }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x14, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
+    // The water navi, his ball, splash, pillar, geyser and marks, and his
+    // layer.
+    let mut spout = vec![once(4); 0x16];
+    spout[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 8, index: 6 }, spout);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x23 }, vec![once(4), vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x1A }, vec![vec![f(5, 0), f(5, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x1F }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 4]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x20 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x21 }, vec![vec![f(6, 0), f(6, LAST | LOOP)]]);
     // The buster's muzzle flash, and its arm (by form).
     sprites.insert(SpriteId { category: 0x0C, index: 0x06 }, vec![vec![f(2, 0), f(2, LAST)]]);
     sprites.insert(SpriteId { category: 0x0C, index: 0x03 }, vec![vec![f(30, LAST | LOOP)]; 0x19]);
