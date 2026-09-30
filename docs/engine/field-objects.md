@@ -6,8 +6,9 @@ is the one the netbattle fixtures use: the soundmod trace's round 1 starts
 with two. Engine code: `kinds/obstacle.rs` (shared), `kinds/rock.rs`,
 `kinds/rock_debris.rs` (T4#0x38), `kinds/absorbed_obstacle.rs` (T4#0x87),
 the registry in `field.rs` (`FieldObjects`), generic helpers in
-`kinds/common.rs`. Tables: `data::ROCKS`, `data::ABSORBED_SPRITES`
-(extracted by bn6-extract).
+`kinds/common.rs`. Data: `ObjectData::rocks`, `ObjectData::absorbed_sprites`
+(a content pack's `objects/rock/object.toml` and
+`objects/absorbed-obstacle/object.toml`, extracted by bn6-extract).
 
 Routine names are the original's. "f1"/"f2" are the
 collision data's ObjectFlags1 (+0x3C, the trace's `status`) and
