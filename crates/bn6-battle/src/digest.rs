@@ -153,6 +153,7 @@ impl Hash for Battle {
             stats,
             cross_stats,
             rng,
+            consoles,
             round,
             fight,
             gauge,
@@ -188,6 +189,7 @@ impl Hash for Battle {
         stats.hash(h);
         cross_stats.hash(h);
         rng.hash(h);
+        consoles.hash(h);
         round.hash(h);
         fight.hash(h);
         gauge.hash(h);

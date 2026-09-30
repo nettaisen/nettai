@@ -7,7 +7,7 @@
 use bn6_content_api::{Hook, HookCall, NaviChipSpec};
 
 use crate::battle::Battle;
-use crate::kinds::{common, navi_warp};
+use crate::kinds::{common, heal, navi_warp};
 use crate::object::{ObjectRef, PanelPos, Vec3, state};
 use crate::dimming::{self, DimmingChip};
 
@@ -53,10 +53,13 @@ pub struct Spec {
 }
 
 /// `sub_80E192C`: the controller for `user`'s navi chip, on its panel.
-/// (Its position is register garbage nothing reads.)
+/// (Its position is register garbage nothing reads.) Roll's chips (navi
+/// 0, which heal) against the other side's armed AntiRecv spring the
+/// trap instead: the controller is AntiRecv's counterattack.
 pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
-    if s.navi == 0 && b.chip_number(b.linked[(b.objects.get(user).alliance ^ 1) as usize].chip) == Some(0xBD) {
-        panic!("navi chip 0 against the other side's chip 0xBD (sub_80E192C) is not implemented yet");
+    let side = b.objects.get(user).alliance;
+    if s.navi == ROLL && b.chip_number(b.linked[(side ^ 1) as usize].chip) == Some(heal::ANTI_RECOVERY) {
+        return spring_anti_recovery(b, user, s);
     }
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::NaviChip, Vec3::default(), s.params)?;
     let (panel, alliance, flip) = {
@@ -77,6 +80,33 @@ pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
         navi_acting: false,
     });
     Some(r)
+}
+
+/// Roll's navi (`off_802CD5C[0]`), whose chips heal.
+const ROLL: u8 = 0;
+
+/// `loc_80E1968`: Roll against AntiRecv. The trap's mark over the user
+/// (`sub_800ABC6`), the other side's record is spent (`sub_802CEA6`), and
+/// AntiRecv's counterattack (`sub_80E37D2`) comes for the user with three
+/// times Roll's damage (`sub_80E199A`) and hit parameter 0x1E, in the
+/// chip's parameters. Action 0x1B registers it as the side's dimming, as it
+/// would the navi chip's controller; unlike a recovery chip's heal
+/// (`kinds::heal`), nothing starts one here.
+fn spring_anti_recovery(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
+    let side = b.objects.get(user).alliance;
+    heal::trap_mark(b, user);
+    b.clear_linked(side ^ 1);
+    let damage = counterattack_damage(s.damage) + (heal::TRAP_HIT_PARAM << 16);
+    // Its Z is the mark's, which `sub_800ABC6` left in r3.
+    heal::spawn_counterattack(b, user, damage, s.params, heal::TRAP_MARK_Z)
+}
+
+/// `sub_80E199A`: three times the damage word's damage (its low 11 bits),
+/// doubled first when it carries the double-damage flag (0x8000).
+fn counterattack_damage(word: u32) -> u32 {
+    let d = word & 0x7FF;
+    let d = if word & 0x8000 != 0 { d * 2 } else { d };
+    d * 3
 }
 
 /// The navi is done (`sub_80BADE4` and the like write 0 through the

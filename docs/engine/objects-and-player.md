@@ -2190,7 +2190,7 @@ Throughout action 2, `sub_80173F4` calls `sprite_forceWhitePalette` every tick. 
 
 #### H7. Camera shake and RNG1
 
-The shake is not player code, but it consumes RNG1. `camera_doShakeEffect_80301e8` is called every tick from `sub_802FFF4`, straight after `RunBattleObjectLogic` in `battle_8007A44`. There are two counters in `eCamera` (0x02009980):
+The shake is not player code, but it consumes RNG1 (the port simulates it per console for that: `crate::console`, custom-screen.md §8). `camera_doShakeEffect_80301e8` is called every tick from `sub_802FFF4`, straight after `RunBattleObjectLogic` in `battle_8007A44`. There are two counters in `eCamera` (0x02009980):
 - Primary: +0x0C timer, +0x0E type. Set by `camera_initShakeEffect_80302a8(type, dur)`; about 40 callers in asm31 chip/virus objects.
 - Secondary: +0x10 timer, +0x12 type. Set by `sub_80302B6(type, dur)`.
 
