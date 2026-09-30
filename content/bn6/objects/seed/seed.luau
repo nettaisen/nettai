@@ -6,6 +6,7 @@
 -- on something; off the field or on a hole it just ends (a splash in the
 -- hole). What it is, its first parameter, and its palette, the second.
 
+local panels = require("../../lib/panels")
 local region = require("../../lib/region")
 
 local seed = {}
@@ -100,8 +101,9 @@ local function burst(me: Object)
         error(string.format("seed kind %d reads past byte_80CE41E", kind))
     end
     local x, y = me.panel_x, me.panel_y
-    -- (The game passes the side and flip halfword as the side.)
-    local dir = region.direction(me.alliance + me.flip * 0x100)
+    -- (The game passes the side and flip halfword as the side, unmasked,
+    -- so a flipped seed's dx lands far off the field.)
+    local dir = panels.side_direction(me.alliance + me.flip * 0x100)
     region.effects_on_panels(x, y, k.effect, r, dir, 0)
     region.set_types(x, y, k.panel, r)
     battle.play_sound(k.sound)

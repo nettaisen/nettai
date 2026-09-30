@@ -48,9 +48,6 @@ pub struct Rules {
     pub sine: Vec<i16>,
     /// Pushes by hit-modifier bit (+5 with 0x80).
     pub push_vectors: [SlideVector; 10],
-    /// An obstacle's push by the lowest of hit-modifier bits 2..5
-    /// (`byte_800F604`), dx away from the side that pushed.
-    pub obstacle_push_vectors: [SlideVector; 4],
     /// Ice slides by the direction the navi last moved.
     pub ice_vectors: [SlideVector; 6],
     /// A bubbled navi's height, by bubble timer.

@@ -12,7 +12,7 @@
 -- `obstacle` service) around its own actions.
 
 local panel_bursts = require("../panel-bursts/panel_bursts")
-local smoke_puff = require("../smoke-puff/smoke_puff")
+local rising_bubble = require("../rising-bubble/rising_bubble")
 local trajectory = require("../../lib/trajectory")
 
 export type State = {
@@ -119,7 +119,7 @@ local function fly(me: Object)
     end
     me:set_coordinates_from_panel()
     local p = me.pos
-    smoke_puff.spawn(Vec3.new(p.x, p.y, 0), 0)
+    rising_bubble.spawn(Vec3.new(p.x, p.y, 0), 0)
     me.collision.region = 0
     obstacle.unregister(me)
     obstacle.release_tracking(me)
@@ -176,7 +176,7 @@ local ACTIONS: { [number]: (Object) -> () } = {
     [2] = destroyed,
     [3] = obstacle.flinch,
     [4] = obstacle.paralyzed,
-    [5] = obstacle.pushed,
+    [5] = obstacle.knocked_back,
     [6] = obstacle.frozen,
     [7] = obstacle.bubbled,
     [8] = fly,
@@ -200,13 +200,13 @@ end
 -- `sub_80CD5F8`.
 local function tick(me: Object)
     me.visible = true
-    obstacle.take_hits_keeping_damage(me)
+    obstacle.take_hits(me, "keeps_damage")
     me:hit_spark()
     catch_fire(me)
     if me:param(1) == 0 then
         obstacle.tick_lifetime(me)
     end
-    local a = obstacle.react_holding(me)
+    local a = obstacle.react(me, "breaks", "always")
     if a then
         local action = ACTIONS[a]
         if not action then

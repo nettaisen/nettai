@@ -1,6 +1,0 @@
-# The rising smoke puff (effect object #0x14, `sub_80E1CF8`) is a script.
-
-[kind]
-pool = "effect"
-index = 0x14
-script = "smoke_puff.luau"

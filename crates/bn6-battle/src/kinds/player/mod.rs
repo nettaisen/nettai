@@ -19,6 +19,8 @@ mod intake;
 mod reactions;
 mod status;
 
+pub(crate) use reactions::passed;
+
 use crate::actor::{ActorData, ActorId, ActorType, request};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, CollisionId, f1, timer};
@@ -927,8 +929,11 @@ fn tick_cooldowns(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.lockout = a.lockout.saturating_sub(1);
     a.back_special_cooldown = a.back_special_cooldown.saturating_sub(1);
-    // The battle flag 0x40 mode's per-side timers (`sub_802E070` +0x2E,
-    // +0x3A, +0x3C) count down here too; nothing ported reads them.
+    // The per-side gauge timers count down here too (+0x2E, the per-player
+    // gauges' mode's, isn't ported: nothing reads it).
+    let side = &mut b.sides[b.objects.get(r).alliance as usize];
+    side.fast_gauge_ticks = side.fast_gauge_ticks.saturating_sub(1);
+    side.slow_gauge_ticks = side.slow_gauge_ticks.saturating_sub(1);
 }
 
 /// `sub_80139C4`: the Full Synchro aura, spawned while the emotion is 2.

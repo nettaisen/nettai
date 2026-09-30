@@ -7,7 +7,7 @@
 -- or a crushing hit first ends it in an explosion; landing in a hole, in
 -- a puff of smoke.
 
-local smoke_puff = require("../smoke-puff/smoke_puff")
+local rising_bubble = require("../rising-bubble/rising_bubble")
 local trajectory = require("../../lib/trajectory")
 
 export type State = {
@@ -123,7 +123,7 @@ local function fly(me: Object)
     end
     me:set_coordinates_from_panel()
     local p = me.pos
-    smoke_puff.spawn(Vec3.new(p.x, p.y, 0), 0)
+    rising_bubble.spawn(Vec3.new(p.x, p.y, 0), 0)
     me.collision.region = 0
     me.visible = false
     me.lifecycle = "destroy"
