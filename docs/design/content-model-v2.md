@@ -61,7 +61,7 @@ the original's numbers (§6). Routine names are the original's. "Dimming", "cut-
   stop existing (spawn parameters, attack variants, chip subtypes, NameIDs) were never compared (§10).
 - **Migration** (§12): 13 steps in four phases, main green and every floor held at each: foundations (one to two
   agents, about 10 agent-days), a family-by-family conversion that the four waiting agents join as soon as the
-  exemplars land, the ruleset's de-numbering in parallel, and the removal of the transitional bridge. About 35
+  exemplars land, the ruleset's de-numbering in parallel, and the removal of registration by number. About 35
   to 45 agent-days in all.
 
 ## 1. What changes
@@ -1093,9 +1093,10 @@ name is a load error naming the module. The resolved value is a handle into the 
 - **Luau can't.** Compat is TOML. The loader discovers modules by `.luau`, `require` resolves modules only, and the
   define phase never exposes compat. No Luau API returns an original number (the numeric API is removed, §7.6).
 - **The engine can't.** `bn6-compat` depends on `bn6-battle`; a dependency the other way is a cycle. `Content`
-  has no compat fields after the migration's last step. A test in `bn6-compat` asserts `bn6-battle`'s
+  has no compat fields at any step: the validator maps the engine's handles to the original's numbers, and no
+  bridge carries them into the engine (§7.3, the user's decision). A test in `bn6-compat` asserts `bn6-battle`'s
   dependency list doesn't contain it, and a source guard in `bn6-battle`'s tests fails on the word `compat`
-  outside comments and the transitional bridge's module (removed in step 13).
+  outside comments in the engine and the crates it runs content through.
 - **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no placeholder
   asset names, once the ratchet reaches zero.
 
@@ -1215,7 +1216,7 @@ pub trait ContentHost {
 ```
 
 `Registrations`, `KindReg { pool, index }` and `Content::registrations` are deleted (step 3); `Hook` by number
-stays as the bridge's lookup (`Defs::hook`) until step 13. While the migration runs, a registry also holds the
+stays as registration by number's lookup (`Defs::hook`) until step 13. While the migration runs, a registry also holds the
 engine's own entries (its kinds, keyed `engine/player`, `engine/hitbox`, ...) and the entries registration by
 number makes, keyed from that data: a kind by its folder name, an action `v1/action-12`, a weapon `v1/weapon-02`.
 Registration by number reaches entries through lookups on the registries (a kind's object slot, an action's
@@ -1223,15 +1224,27 @@ number, a weapon's routine numbers), filled from that registration's own data (`
 `weapon.toml`) and nothing else.
 
 **The engine never reads compat (user decision, 2026-09-30).** "the validator maps the ids and the engine itself
-doesn't know about them, so the engine can be clean of validation code". Definitions are not given the
-original's numbers inside the engine: there is no bridge from compat in `Content::define`. The engine runs on its
-own identities (handles and keys), and the validator (the golden-trace comparison and the setup codecs, in
-`bn6-compat`) maps them to and from the original's numbers with compat: an object's kind to its pool and index, a
-navi's running action to its action number, a hand's chips to chip ids, a setup's chip ids, weapon routines,
-forms and navis to handles. For a definition to run where the traces look, the engine's state must hold that
-identity rather than a number: that is §12's revised order (steps 3b and 3c). `Defs::bridge_kind`,
-`bridge_action`, `bridge_weapon` and `bridge_chip` stay only for the engine's tests (they give the test pack's
-definitions the slots the engine still runs by) and go with the numbers.
+doesn't know about them, so the engine can be clean of validation code". There is no bridge from compat into the
+engine, at any step: definitions are never given the original's numbers inside it. The engine runs on its own
+identities (handles), and the validator, `bn6-compat` (the golden-trace comparison and the setup codecs), maps
+them to and from the original's numbers with compat. Where the engine's state still holds a number, what content
+defines needs a handle there instead, which is §7.2's table brought forward:
+
+- **Objects** (step 3, done): `Object.kind: KindHandle` replaces `Object.index`. A kind registered by number
+  keeps its slot in its definition (`KindDef::slot`), which the numeric spawns and the validator use; a defined
+  kind has none and spawns by handle. `Compat::object_slot` gives the comparison an object's pool and index: the
+  definition's slot, else compat's by key.
+- **The navi's action** (step 3, done): a defined action runs by handle (the attack's `content_action`) with the
+  navi's CurAction at `CONTENT_ACTION` (0xFF, above every number the original has), until `NaviAction` replaces
+  the byte (step 9). `Compat::navi_action` gives the comparison the original's number by the action's key.
+- **Chips, navis, forms, weapons and stages** (step 3b, §12): hands, folders, `NaviStats` and battle settings hold
+  handles, and the codecs map the original's chip ids, navi and form numbers, weapon routines and settings to them
+  and back. Until then a defined chip or weapon is reached by number only in the engine's tests
+  (`Defs::number_chip`, `number_weapon`, compiled for tests alone).
+
+The trace comparison's hints (`scratch_position` and the rest) are compat's alone: kinds.toml has them, and the
+engine's kinds carry none. A source guard (`crates/bn6-battle/tests/no_compat.rs`) fails on the word `compat`
+outside comments in `bn6-battle`, `bn6-content-api` and `bn6-luau`.
 
 **The spike.** A throwaway crate (not committed) ran a define phase on bn6-luau's real sandbox with five modules
 (a bombs library with a shared state table, a bomb kind with a module-level effect, MiniBomb and BigBomb
@@ -1516,8 +1529,8 @@ collision status flags), the panels (type and alliance) and both hands (0x50-byt
 
 | Compared | v2 |
 |---|---|
-| object type and index | `compat.kinds[key]` for the object's kind handle |
-| a navi's state word action byte | from `NaviAction`: the framework's states as themselves, engine actions and content actions through compat actions.toml |
+| object type and index | `compat.kinds[key]` for the object's kind handle (`Compat::object_slot`, from step 3) |
+| a navi's state word action byte | from `NaviAction`: the framework's states as themselves, engine actions and content actions through compat actions.toml (`Compat::navi_action` maps `CONTENT_ACTION`, from step 3) |
 | hands | `compat.hand_bytes(&hand)`: chip handles to ids, `(chip, code)` to `code << 9 \| id` |
 | position of register-garbage kinds | compat kinds' `scratch_position`, `scratch_z_fraction`; the engine kinds' conditions (charge glow before its first update, the intro, the palette flash, the navi chip controller, `effect::xy_unknown`) by `EngineKind` |
 | everything else | unchanged |
@@ -1588,8 +1601,8 @@ to five.
 **The ratchet.** From step 3 to step 13 the old and the new coexist: the numeric API, the `legacy { }` marker,
 the v1 registration files and the `data` global keep v1 modules working while families convert. A test counts
 their uses per module against an allowlist in `bn6-content-check`'s tests that may only shrink; step 13 deletes
-the allowlist with the last use. The bridge that serves the old API from handles (`Content::legacy`, built from
-compat while the old API exists) is the only place the engine reads compat, and step 13 deletes it.
+the allowlist with the last use. The engine never reads compat, at any step (§7.3): what content defines
+reaches the traces and the game's setups through `bn6-compat`, which maps the engine's handles.
 
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 
@@ -1602,16 +1615,24 @@ compat while the old API exists) is the only place the engine reads compat, and 
 3. **The define phase and handles.** `bn6_luau::define`, `bn6_battle::content::define`, `Content` with registries
    and handles alongside today's fields; the runtime dispatch by handle; `define.kind`/`define.action`/
    `define.chip`/`define.weapon` accepted alongside v1 registration (a v1 file and a definition claiming the same
-   thing is an error); the bridge; the test pack. v1 registrations get transitional keys (a kind's folder name,
-   a chip's slug, a weapon's folder name) so everything has a handle from here on. No content changes. **L.**
+   thing is an error); the test pack. v1 registrations get transitional keys (a kind's folder name, an action's
+   and a weapon's number) so everything has a handle from here on. Objects record their kind's handle and a navi
+   runs a defined action by handle; `bn6-compat` maps both to the original's numbers (§7.3). No bridge from
+   compat into the engine (the user's decision). No content changes. **L.**
+3b. **Setups and hands on handles** (new with that decision). Hands, folders, the linked chips, the attack
+   header's chip, `NaviStats` (navi, form, weapons) and battle settings (stage) hold handles, §7.2's table; the
+   records content doesn't define yet get transitional keys (a chip `v1/chip-036`); `bn6-compat`'s codecs map the
+   game's bytes to handles and back (traces, saves, link data), and the comparison maps hands. The ruleset's
+   numeric *logic* stays for phase C: this step changes what state holds, not what the ruleset asks of it. Before
+   it, a defined chip or weapon can't be reached from a setup the original recorded. **M.**
 4. **The v2 API.** core.d.luau's definers, asset resolvers, definition types, reference state fields, the
    handle-based object and battle API; the numeric API kept, marked deprecated, and counted by the ratchet.
    `bn6-content check` and the new lints. **M.**
 5. **Data to Luau.** gen-content writes every chip, navi, form, weapon, rule section, stage and registry entry
    as v2 definitions in the v2 folders (§4), with `legacy { action, subtype, params, script }` markers where a
    chip's behaviour is still a v1 module; the pack's TOML battle data and bn6-extract's battle.rs go;
-   `bn6_content::battle` goes; the loader takes the content and assets roots. Gate: the `Content` the bridge
-   builds equals the one v1 extracted (a one-off field-by-field check, as in the v1 move), `gen-content check`
+   `bn6_content::battle` goes; the loader takes the content and assets roots. Needs step 3b. Gate: the `Content`
+   the definitions build equals the one v1 extracted (a one-off field-by-field check, as in the v1 move), `gen-content check`
    passes, the traces hold. Mostly generated. **L.**
 6. **Assets by name and the codemod.** The extractor names assets from compat; sprites and sounds become asset
    handles in the engine; the codemod of §11 runs over every module (asset strings and numbers to names,
@@ -1624,9 +1645,11 @@ compat while the old API exists) is the only place the engine reads compat, and 
 
 The waiting agents can start after step 7, writing their scopes in v2 (G3: the projectile and cannon family,
 §5.3, with SonicBom, Z Saver, LilBoiler, VDoll; B2a and B2b: the dimming chips on `lib/dimming`; A2: the navi
-chips on `lib/navi-chips`). To start them earlier, step 3 can let a definition override the bridge's record
-for the same compat id, so a family can be written in v2 before step 5 lands; that saves about four agent-days
-on their critical path at the cost of a merge-ordering rule (step 5's generator skips chips already defined).
+chips on `lib/navi-chips`). To start them earlier, step 3b lets a chip definition be the chip (its record and
+its use) wherever a setup names its compat id, so a family can be written in v2 before step 5 lands; that saves
+about four agent-days on their critical path at the cost of a merge-ordering rule (step 5's generator skips
+chips already defined). (The first plan did this with an engine-side bridge from compat; the user's decision
+of §7.3 moves the mapping to `bn6-compat`, which needs step 3b's handles.)
 
 ### Phase B: conversion by family (parallel)
 
@@ -1655,21 +1678,21 @@ family's packet, in gen-content, and checked by `gen-content check`.
     stages on handles. **M.**
 
 Phase C packets touch the ruleset and `core_api.rs`; the content API they expose is step 4's, so phase B isn't
-disturbed. Each deletes the bridge's use for its category.
+disturbed. Each deletes registration by number's use for its category.
 
-### Phase D: the end of the bridge
+### Phase D: the end of registration by number
 
-13. **Remove the old**: the numeric API, `legacy { }`, v1 registration, the `data` global, `Content::legacy`,
-    the ratchet's allowlist; the guards of §6.4 go strict. Rewrite content-pack.md, scripting.md,
+13. **Remove the old**: the numeric API, `legacy { }`, v1 registration (and with it `KindDef::slot`,
+    `ActionDef::number`, `CONTENT_ACTION`'s byte), the `data` global, the ratchet's allowlist. Rewrite content-pack.md, scripting.md,
     content-migration.md and the engine docs' references to the pack's files; memory and brief updates. **M.**
 
 ### Size
 
 | Phase | Steps | Agent-days | Parallelism |
 |---|---|---|---|
-| A | 1-7 | 10 to 14 | 1 and 2 in parallel; 3-7 sequential |
+| A | 1-7 (with 3b) | 11 to 16 | 1 and 2 in parallel; 3-7 sequential |
 | B | 8 | 12 to 20 for the conversion (more with new porting) | 5 to 7 packets at once |
-| C | 9-12 | 8 to 11 | 2 to 4 packets at once |
+| C | 9-12 | 7 to 10 (3b took their state changes) | 2 to 4 packets at once |
 | D | 13 | 2 | 1 |
 
 About 35 to 45 agent-days of conversion, plus the new content the waiting agents port. Wall-clock, with phase A

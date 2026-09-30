@@ -156,11 +156,10 @@ export):
 
 - **An object kind.** `objects/KIND/object.toml` has a `[kind]` table:
   the pool and index of the object slot it implements (the original's
-  identity, which the traces compare), the script, and optionally
-  `scratch_position = true` (its X, Y and Z are the spawner's register
-  garbage until its init places them) or `scratch_z_fraction = true` (the
-  low half of its Z stays garbage), which the trace comparison skips.
-  The folder's name is the kind's name, how scripts and engine code spawn
+  identity, which the traces compare) and the script. What the trace
+  comparison skips (a position that is the spawner's register garbage)
+  is compat's (content/bn6/compat/kinds.toml), which only the validator
+  reads. The folder's name is the kind's name, how scripts and engine code spawn
   it (`battle.spawn_kind("grab-shot", ...)`).
 - **A chip.** `script` in `chip.toml` names the module that implements
   the chip's action (its `state` and `update`). For the ruleset's generic
