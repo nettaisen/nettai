@@ -137,7 +137,7 @@ local function strike(me: Object, n: number)
     -- flip halfword, or the element if the pool was full).
     local r3 = search_register(me, direction)
     for i = #found, 1, -1 do
-        local x, y = panels.unpack(found[i])
+        local x, y = panels.x(found[i]), panels.y(found[i])
         local bolt = elec_thunder.spawn(me, x, y, me.element, { n + 1 }, damage, bit32.band(r3, 0xFFFF))
         r3 = if bolt then bit32.bor(me.alliance, bit32.lshift(me.flip, 8)) else me.element
     end

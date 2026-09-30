@@ -114,7 +114,8 @@ local function pick(me: Object, require: number, forbid: number): (number?, numb
     if #found == 0 then
         return nil, nil
     end
-    return panels.unpack(found[battle.rng_positive() % #found + 1])
+    local p = found[battle.rng_positive() % #found + 1]
+    return panels.x(p), panels.y(p)
 end
 
 -- `sub_80C3B54`: a shot, and its flash at his hand.

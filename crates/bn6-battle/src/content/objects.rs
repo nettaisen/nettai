@@ -27,6 +27,8 @@ pub struct ObjectData {
     pub name_looks: Vec<NameLook>,
     /// The object kinds scripts implement, by name (see `content::scripts`).
     pub kinds: Vec<super::ObjectKind>,
+    /// Shock waves (attack object #0x16) by variant, its first parameter.
+    pub shock_waves: Vec<ShockWave>,
 }
 
 impl ObjectData {
@@ -54,6 +56,24 @@ impl ObjectData {
     pub fn sun_beam_sprite(&self, look: u8) -> SpriteId {
         *self.sun_beam_looks.get(look as usize).unwrap_or_else(|| panic!("sun beam look {look} is not in the content"))
     }
+}
+
+/// A shock wave's look and timing (attack object #0x16, `byte_80C6B00`):
+/// the rolling wave of WaveArm, PwrWave and the viruses that send one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShockWave {
+    /// The variant number.
+    pub id: u8,
+    pub sprite: SpriteId,
+    pub anim: u8,
+    /// Ticks on a panel before the next wave rolls on.
+    pub ticks: u8,
+    /// What it does to its panel as it comes: cracks it (`cracked`),
+    /// breaks it (`broken`, or cracks it when something stands there), or
+    /// turns it to another type.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub panel: Option<crate::field::PanelType>,
 }
 
 /// A kind of rock.

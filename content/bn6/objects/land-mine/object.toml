@@ -1,0 +1,7 @@
+# The mine the Mine chip lays (attack object #0x4C, `sub_80CDD44`) is a
+# script on the obstacle framework's steps.
+
+[kind]
+pool = "attack"
+index = 0x4C
+script = "land_mine.luau"

@@ -1,0 +1,3 @@
+# A dimming chip (subtype 10): its dimming controller sets a countdown bomb.
+
+script = "../../objects/time-bom/time_bom.luau"

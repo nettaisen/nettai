@@ -21,7 +21,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T1 0x1b | 0x080bc650 | 424 (Cross navi image: `kinds::cross_merge`, objects-and-player.md §12.10) |
 | T1 0x2d | 0x080c0e04 | 136 (navi warp: `kinds::navi_warp`, chips.md §3.6.7) |
 | T1 0x50 | 0x080c3ce8 | 454 |
-| T1 0x55 | 0x080c40d8 | 592 (SpoutMan's layer: `kinds::navi_layer`, the navi parts `kinds::navi_parts`) |
+| T1 0x55 | 0x080c40d8 | 592 (SpoutMan's idle overlay: `kinds::idle_overlay`, put on by the navi hooks in `kinds::player::form`) |
 | T1 0x56 | 0x080c4348 | 72155 (body overlay: `kinds::body_overlay`, objects-and-player.md §12.10) |
 | T1 0x57 | 0x080c4530 | 1148 |
 | T1 0x5d | 0x080c4828 | 300 |
@@ -37,14 +37,14 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x22 | 0x080c853c | 16 (SpoutMan's ball: the pack's `objects/spout-ball`, chips.md §3.6.11) |
 | T3 0x23 | 0x080c86d8 | lab only (its splash: the pack's `objects/spout-splash`, chips.md §3.6.11) |
 | T3 0x26 | 0x080c8c74 | lab only (HeatMan's flame: the pack's `objects/heat-flame`, chips.md §3.6.15) |
-| T3 0x49 | 0x080cd2ec | 87 |
-| T3 0x59 | 0x080cf954 | 7372 (rock: `kinds::rock`, field-objects.md) |
+| T3 0x49 | 0x080cd2ec | 87 (WindRack's gust: the pack's `objects/gust`, standard-chips.md) |
+| T3 0x59 | 0x080cf954 | 7372 (rock: the pack's `objects/rock`, field-objects.md) |
 | T3 0x5b | 0x080cfcf8 | 96 |
 | T3 0x62 | 0x080d07cc | lab only (SlashMan's sword wave: the pack's `objects/slash-wave`, chips.md §3.6.18) |
 | T3 0x64 | 0x080d0d7c | lab only (ElecMan's thunderbolt: the pack's `objects/elec-thunder`, chips.md §3.6.16) |
-| T3 0x74 | 0x080d30d0 | 350 |
-| T3 0x82 | 0x080d5740 | 48 |
-| T3 0x8b | 0x080d6924 | 225 |
+| T3 0x74 | 0x080d30d0 | 350 (RskyHny's bee: the pack's `objects/honey-bee`, chips.md §3.7) |
+| T3 0x82 | 0x080d5740 | 48 (DolThdr's doll: the pack's `objects/thunder-doll`, standard-chips.md) |
+| T3 0x8b | 0x080d6924 | 225 (DolThdr's thunder column: the pack's `objects/thunder-column`, standard-chips.md) |
 | T3 0x8d | 0x080d6bd4 | 38 (meteor: the pack's `objects/meteor`, chips.md §3.6.7) |
 | T3 0x8e | 0x080d6d80 | 96 (ElmntMan's ice: the pack's `objects/elmnt-ice`, chips.md §3.6.7) |
 | T3 0x94 | 0x080d7acc | 217 |
@@ -57,8 +57,8 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0xc1 | 0x080dd34c | 296 |
 | T3 0xc2 | 0x080dd764 | 967 |
 | T3 0xc3 | 0x080dd940 | 732 (EraseMan's slash: the pack's `objects/erase-beam`, chips.md §3.6.7) |
-| T3 0xc8 | 0x080de13c | 2774 |
-| T3 0xc9 | 0x080de404 | 579 |
+| T3 0xc8 | 0x080de13c | 2774 (a dragon's body segment: the pack's `objects/dragon-body`, chips.md §3.8) |
+| T3 0xc9 | 0x080de404 | 579 (a dragon's head: the pack's `objects/dragon-head`, chips.md §3.8) |
 | T3 0xcf | 0x080df328 | 4170 |
 | T4 0x00 | 0x080e0548 | 3910 |
 | T4 0x02 | 0x080e0638 | 250 |
@@ -73,14 +73,14 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T4 0x1f | 0x080e28a8 | 192 |
 | T4 0x20 | 0x080e2ae8 | 609 |
 | T4 0x28 | 0x080e32b8 | 500 |
-| T4 0x2a | 0x080e34c0 | 2276 (trap chip dimming controller: `kinds::trap_chip`, chips.md §3.6.9) |
+| T4 0x2a | 0x080e34c0 | 2276 (trap chip dimming controller: the pack's `objects/trap-chip`, chips.md §3.6.9) |
 | T4 0x2d | 0x080e37f4 | 316 (SpoutMan's pillar: the pack's `objects/spout-pillar`, chips.md §3.6.11) |
 | T4 0x2e | 0x080e39a0 | 810 (SpoutMan's geyser marks: the pack's `objects/spout-mark`, chips.md §3.6.11) |
 | T4 0x2f | 0x080e3ab8 | 471 |
 | T4 0x3b | 0x080e4910 | 494 |
 | T4 0x48 | 0x080e5c2c | 847 |
 | T4 0x5a | 0x080e70c8 | 184 |
-| T4 0x5d | 0x080e74d4 | 762 (Invisibl dimming controller: `kinds::invisible`, chips.md §3.6) |
+| T4 0x5d | 0x080e74d4 | 762 (Invisibl dimming controller: the pack's `objects/invisible`, chips.md §3.6) |
 | T4 0x62 | 0x080e78bc | 260 (EraseMan's aim mark: the pack's `objects/erase-mark`, chips.md §3.6.7) |
 | T4 0x6b | 0x080e807c | 54 |
 | T4 0x76 | 0x080e8b00 | 595 |

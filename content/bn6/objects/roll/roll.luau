@@ -142,7 +142,7 @@ end
 -- compares the candidate's row with the best's row distance, as the game
 -- does. 0 if none.
 local function target(me: Object): (number, number)
-    local found = panels.except(me, ENEMY_NAVI[me.alliance], 0)
+    local found = panels.filtered_except(me, ENEMY_NAVI[me.alliance], 0)
     if #found == 0 then
         return 0, 0
     end
@@ -150,7 +150,7 @@ local function target(me: Object): (number, number)
     local right = bit32.bxor(me.alliance, me.flip) == 0
     local candidates = {}
     for _, p in found do
-        local x, y = panels.unpack(p)
+        local x, y = panels.x(p), panels.y(p)
         local ahead = if right then x > me.panel_x else me.panel_x > x
         if ahead then
             local lx = x - me.facing

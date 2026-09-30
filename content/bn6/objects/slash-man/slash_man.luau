@@ -205,7 +205,7 @@ local function landing(me: Object): (number?, number?)
         end
         local found = panels.in_column(x, ENEMY_NAVI[me.alliance], 0)
         if #found ~= 0 then
-            local fx, fy = panels.unpack(found[1])
+            local fx, fy = panels.x(found[1]), panels.y(found[1])
             local lx = fx - me.facing
             if field.check(lx, fy, LAND_REQUIRE, LAND_FORBID) then
                 return lx, fy
