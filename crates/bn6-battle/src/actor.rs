@@ -147,6 +147,11 @@ pub struct AttackVars {
     /// +0x30: a marker: the move's "direction changed", or a heat trap
     /// swallowing a hit.
     pub marker: u32,
+    /// +0x12: the recovery a shot waits after firing (actions 0x11 and
+    /// 0x16 write it). The word outlives the action: a thrown obstacle
+    /// (action 0x11's variant 2) fires without writing it and waits
+    /// whatever the last shot left, whatever ran in between.
+    pub recovery: u16,
     /// The running action's own state (timers, destinations).
     pub action: crate::kinds::player::actions::ActionVars,
     /// +0x1E..+0x27: the Beast Out rush around the action, when

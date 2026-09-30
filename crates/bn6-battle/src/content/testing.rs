@@ -141,7 +141,11 @@ pub fn scripts() -> Scripts {
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
                 ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
+                ("objects/projectile/projectile", "objects/projectile/projectile"),
+                ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
+                ("lib/element", "lib/element"),
+                ("lib/projectile", "lib/projectile"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -153,9 +157,9 @@ pub fn scripts() -> Scripts {
         .clone()
 }
 
-/// MegaMan's weapon routines scripts implement: the BN6 overlay's buster,
-/// charged shot, blank shot, DustCross's charged shot and the absorbed
-/// obstacle throw.
+/// MegaMan's weapon routines scripts implement: the BN6 overlay's buster
+/// (and a routine that aliases it), charged shot, blank shot, DustCross's
+/// charged shot and the absorbed obstacle throw.
 fn weapons() -> Vec<WeaponData> {
     let weapon = |id: u8, name: &str, action: Option<u8>, script: &str| WeaponData {
         id,
@@ -164,11 +168,12 @@ fn weapons() -> Vec<WeaponData> {
         script: format!("navis/00-megaman/weapons/{script}"),
     };
     vec![
-        weapon(0x00, "Buster", None, "00-buster/buster"),
-        weapon(0x01, "Charged shot", None, "01-charged-shot/charged_shot"),
+        weapon(0x00, "Buster", Some(0x11), "00-buster/buster"),
+        weapon(0x01, "Charged shot", Some(0x16), "01-charged-shot/charged_shot"),
         weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
         weapon(0x2B, "Throw absorbed", None, "2b-throw-absorbed/throw_absorbed"),
+        weapon(0x2E, "Buster", None, "00-buster/buster"),
     ]
 }
 
@@ -194,6 +199,8 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
         kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
+        kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
+        kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -544,8 +551,91 @@ fn objects() -> ObjectData {
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
+        projectiles: projectiles(),
+        flying_shots: flying_shots(),
         kinds: kinds(),
     }
+}
+
+/// The projectile's kinds: a plain shot (0), one that cracks the panel it
+/// hits (1), one that breaks it (2), one that turns it to grass (3), one
+/// that lays a road away from its side (4), one that bursts (5), a charged
+/// shot with a spark (6) and a drawn one that climbs (7).
+fn projectiles() -> Vec<ProjectileKind> {
+    let shot = |id| ProjectileKind {
+        id,
+        self_type: 0x04,
+        target_type: 0x05,
+        hit_mod: 0,
+        element: Element::Null,
+        secondary: SecondaryElements::default(),
+        hit_effect: 0,
+        sprite: None,
+        anim: 0,
+        status: 0,
+        bug: 0,
+        bug_arg: 0,
+        hit_panel: None,
+        bursts: false,
+        climbs: false,
+    };
+    vec![
+        shot(0),
+        ProjectileKind { hit_panel: Some(PanelHit::Crack), ..shot(1) },
+        ProjectileKind { hit_panel: Some(PanelHit::Break), ..shot(2) },
+        ProjectileKind {
+            hit_panel: Some(PanelHit::SetType { left_side: PanelType::Grass, right_side: PanelType::Grass }),
+            ..shot(3)
+        },
+        ProjectileKind {
+            hit_panel: Some(PanelHit::SetType { left_side: PanelType::RoadRight, right_side: PanelType::RoadLeft }),
+            ..shot(4)
+        },
+        ProjectileKind { bursts: true, hit_mod: 3, ..shot(5) },
+        ProjectileKind { hit_effect: 5, ..shot(6) },
+        ProjectileKind { sprite: Some(SpriteId { category: 0x0C, index: 0x21 }), anim: 0, climbs: true, ..shot(7) },
+    ]
+}
+
+/// The flying shot's kinds: arrows (0 to 5; 2 waits with a sound and
+/// sparks over its panel, 5 leaves an effect) and the thrown obstacle (6).
+fn flying_shots() -> Vec<FlyingShotKind> {
+    let arrow = |id| FlyingShotKind {
+        id,
+        self_type: 0x04,
+        target_type: 0x05,
+        hit_mod: 0,
+        element: Element::Null,
+        secondary: SecondaryElements::default(),
+        hit_effect: 5,
+        sprite: SpriteId { category: 0x0C, index: 0x21 },
+        anim: 0,
+        shadow: false,
+        speed: 8 << 16,
+        range: 8,
+        status: 0,
+        highlight: false,
+        obstacle: false,
+        panel_spark: false,
+        launch_sound: None,
+        end_effect: None,
+    };
+    vec![
+        arrow(0),
+        arrow(1),
+        FlyingShotKind { panel_spark: true, launch_sound: Some(0x18A), element: Element::Aqua, ..arrow(2) },
+        arrow(3),
+        arrow(4),
+        FlyingShotKind { range: 2, end_effect: Some(7), ..arrow(5) },
+        FlyingShotKind {
+            obstacle: true,
+            highlight: true,
+            speed: 10 << 16,
+            hit_mod: 3,
+            secondary: SecondaryElements(SecondaryElements::BREAK),
+            ..arrow(6)
+        },
+    ]
 }
 
 fn regions() -> Vec<Vec<PanelOffset>> {
@@ -599,6 +689,8 @@ fn animations() -> Animations {
     junk[0x19] = vec![f(4, 0), f(4, LAST | LOOP)];
     junk[0x1A] = vec![f(10, 0), f(20, LAST)];
     sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
+    // The arrow.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x21 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
     // Effects and sparks.
