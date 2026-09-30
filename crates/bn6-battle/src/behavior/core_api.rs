@@ -960,6 +960,7 @@ impl CoreApi for Battle {
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
+            CollisionField::Direction => c.direction as i64,
         }))
     }
 
@@ -974,7 +975,9 @@ impl CoreApi for Battle {
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
-            CollisionField::HitFlags | CollisionField::FinalDamage => unreachable!("read-only"),
+            CollisionField::HitFlags | CollisionField::FinalDamage | CollisionField::Direction => {
+                unreachable!("read-only")
+            }
         }
         Ok(())
     }
@@ -996,6 +999,19 @@ impl CoreApi for Battle {
 
     fn hit_spark(&mut self, o: ObjectRef) {
         kinds::spark::spawn_collision_effect(self, o);
+    }
+
+    fn highlight_collision_panels(&mut self, o: ObjectRef) {
+        let obj = self.objects.get(o);
+        let facing = common::facing(obj.alliance, obj.flip);
+        let c = self.collision.get(obj.collision.expect("highlighting an object without collision data"));
+        let (anchor, region) = (c.panel, c.region);
+        let offsets = self.content.region(region).to_vec();
+        for off in offsets {
+            let x = (anchor.x as i32 + off.dx as i32 * facing) as u8;
+            let y = (anchor.y as i32 + off.dy as i32) as u8;
+            common::highlight_panel(self, x, y);
+        }
     }
 
     // ---- Services ------------------------------------------------------------

@@ -277,6 +277,9 @@ named_fields! {
         HitFlags = "hit_flags", U32, ro;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
+        /// Which way the region's anchor last moved (0 none, 1 up, 2 down,
+        /// 3 back, 4 forward, 5 other).
+        Direction = "direction", U8, ro;
     }
 }
 
@@ -868,6 +871,9 @@ pub trait CoreApi {
     /// Unregister, resolving hits against whatever is registered there.
     fn remove_collision(&mut self, o: ObjectRef);
     fn free_collision(&mut self, o: ObjectRef);
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels of
+    /// the registration's region (drawn only).
+    fn highlight_collision_panels(&mut self, o: ObjectRef);
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
     fn hit_spark(&mut self, o: ObjectRef);

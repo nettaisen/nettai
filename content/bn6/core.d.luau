@@ -207,11 +207,17 @@ declare class Collision
     hit_flags: number
     -- The damage taken this window (read-only).
     final_damage: number
+    -- Which way the region's anchor last moved: 0 none, 1 up, 2 down, 3
+    -- back, 4 forward, 5 other (read-only).
+    direction: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
     function remove(self): ()
     function free(self): ()
+    -- `object_highlightCurrentCollisionPanels`: highlight the region's
+    -- panels (drawn only).
+    function highlight(self): ()
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -737,6 +743,10 @@ export type RockKind = {
 
 export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } }
 
+-- A kind of boomerang (objects/boomerang): 16.16 pixels a tick along a row
+-- and along the column, and whether it turns panels it crosses to grass.
+export type BoomerangKind = { id: number, speed: number, turn_speed: number, grass: boolean }
+
 export type WeaponData = { id: number, name: string, action: number?, instant_chip: number?, script: string }
 
 -- An object kind a script implements.
@@ -744,6 +754,9 @@ export type ObjectKindData = { pool: Pool, index: number, script: string }
 
 export type PackData = {
     chips: { [number]: ChipData },
+    -- Hit-region shapes by region number: the panels' offsets `{ dx, dy }`
+    -- from the anchor (dx facing right).
+    regions: { [number]: { { number } } },
     navis: { [number]: NaviData },
     forms: { [number]: FormData },
     weapons: { [number]: WeaponData },
@@ -753,6 +766,7 @@ export type PackData = {
         absorbed_sprites: { [number]: SpriteId },
         body_overlays: { [number]: BodyOverlay },
         sun_beam_looks: { [number]: SpriteId },
+        boomerangs: { [number]: BoomerangKind },
         kinds: { [string]: ObjectKindData },
     },
     rules: {

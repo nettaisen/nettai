@@ -519,6 +519,7 @@ fn objects() -> ObjectData {
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
+        boomerangs: (0..5).map(|id| BoomerangKind { id, speed: 0x8_0000, turn_speed: 0x6_0000, grass: id < 3 }).collect(),
         kinds: kinds(),
     }
 }

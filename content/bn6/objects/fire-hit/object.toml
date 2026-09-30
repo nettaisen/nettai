@@ -1,0 +1,6 @@
+# FireHit's fist (attack object #0x5B, `sub_80CFCF8`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x5B
+script = "fire_hit.luau"
