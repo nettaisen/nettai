@@ -666,6 +666,12 @@ impl Battle {
         k.slot.unwrap_or_else(|| panic!("object kind {} has no number", k.key)).1
     }
 
+    /// The key of `r`'s kind (`"bomb"`, `"engine/effect"`, a v1 kind's
+    /// folder name): how tests and tools name what an object is.
+    pub fn kind_key(&self, r: ObjectRef) -> &str {
+        &self.content.defs.kind(self.objects.get(r).kind).key
+    }
+
     /// The player navi of a side (`sub_80103BC`).
     pub fn player(&self, side: u8) -> Option<ObjectRef> {
         let r = self.round.spawned_actors[side as usize][0]?;

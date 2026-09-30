@@ -281,14 +281,84 @@ fn make() -> Content {
     }
 }
 
-/// The asset names the test content has: a few made-up ones for the test
-/// pack's effects, sparks and sounds, and a placeholder.
+/// A synthetic asset index for `modules`: every name they give an
+/// `asset.<kind>("...")` call, each a made-up asset of its own (nothing
+/// ROM-derived; for tests that load modules the test content doesn't
+/// list).
+pub fn asset_names_used(modules: &std::collections::BTreeMap<String, String>) -> bn6_content_api::AssetNames {
+    use bn6_content_api::AssetKind;
+    let mut a = bn6_content_api::AssetNames::default();
+    let mut n = 0u16;
+    for source in modules.values() {
+        for kind in AssetKind::ALL {
+            for piece in source.split(&format!("asset.{kind}(")).skip(1) {
+                let piece = piece.trim_start();
+                let Some(quote) = piece.chars().next().filter(|c| matches!(c, '"' | '\'')) else { continue };
+                let Some(name) = piece[1..].split(quote).next() else { continue };
+                n += 1;
+                let id = n;
+                match kind {
+                    AssetKind::Sprite => {
+                        a.sprites.entry(name.into()).or_insert(SpriteId { category: 0x7F, index: id as u8 });
+                    }
+                    AssetKind::Sound => {
+                        a.sounds.entry(name.into()).or_insert(id);
+                    }
+                    AssetKind::Banner => {
+                        a.banners.entry(name.into()).or_insert(id as u8);
+                    }
+                    AssetKind::Background => {
+                        a.backgrounds.entry(name.into()).or_insert(id as u8);
+                    }
+                    AssetKind::Mugshot => {
+                        a.mugshots.entry(name.into()).or_insert(id as u8);
+                    }
+                }
+            }
+        }
+    }
+    a
+}
+
+/// The asset names the test content has: the BN6 names its modules use
+/// (with BN6's numbers), a few made-up ones for the test pack, and a
+/// placeholder.
 fn assets() -> bn6_content_api::AssetNames {
     let mut a = bn6_content_api::AssetNames::default();
-    a.sprites.insert("test-burst".into(), SpriteId { category: 0x14, index: 0 });
-    a.sprites.insert("test-spark".into(), SpriteId { category: 0x14, index: 1 });
-    a.sprites.insert("sprite-14-02".into(), SpriteId { category: 0x14, index: 2 });
-    a.sounds.insert("test-tick".into(), 0x1A6);
+    let sprite = |c, i| SpriteId { category: c, index: i };
+    for (name, id) in [
+        ("test-burst", sprite(0x14, 0)),
+        ("test-spark", sprite(0x14, 1)),
+        ("sprite-14-02", sprite(0x14, 2)),
+        ("bomb", sprite(0x0C, 0x02)),
+        ("flash-bomb", sprite(0x10, 0x52)),
+        ("black-bomb", sprite(0x0C, 0x24)),
+        ("energy-burst", sprite(0x14, 0x12)),
+        ("bomb-slash", sprite(0x0C, 0x00)),
+        ("explosion", sprite(0x14, 0x00)),
+        ("rising-bubble", sprite(0x14, 0x02)),
+        ("puff", sprite(0x14, 0x0D)),
+        ("grab-shot", sprite(0x0C, 0x13)),
+        ("copy-mark", sprite(0x14, 0x05)),
+        ("reflected-shot", sprite(0x14, 0x04)),
+    ] {
+        a.sprites.insert(name.into(), id);
+    }
+    for (name, id) in [
+        ("test-tick", 0x1A6),
+        ("minibomb-throw", 0xB2),
+        ("hit-bomb-1", 0x70),
+        ("panel-poison", 0x90),
+        ("freeze", 0x118),
+        ("elmnt-man-3", 0x11B),
+        ("flash", 0x1BD),
+        ("bug-bomb-land", 0x115),
+        ("land", 0xC0),
+        ("burst", 0xC3),
+        ("energy-burst", 0xBB),
+    ] {
+        a.sounds.insert(name.into(), id);
+    }
     a
 }
 
@@ -357,16 +427,32 @@ pub fn scripts() -> Scripts {
                 ("objects/reflected-shot/reflected_shot", "objects/reflected-shot/reflected_shot"),
                 ("chips/008-mirror/chip", "chips/083-rflectr1/chip"),
                 ("chips/009-mend/chip", "chips/09a-recov10/chip"),
-                ("lib/region", "lib/region"),
+                ("lib/regions", "lib/regions"),
+                ("lib/effects", "lib/effects"),
+                ("lib/sparks", "lib/sparks"),
+                ("rules/collision", "rules/collision"),
                 ("lib/trajectory", "lib/trajectory"),
                 ("lib/hp", "lib/hp"),
-                ("objects/bomb/bomb", "objects/bomb/bomb"),
-                ("objects/bomb-slash/bomb_slash", "objects/bomb-slash/bomb_slash"),
-                ("objects/energy-burst/energy_burst", "objects/energy-burst/energy_burst"),
-                ("objects/seed/seed", "objects/seed/seed"),
-                ("objects/flash-bomb/flash_bomb", "objects/flash-bomb/flash_bomb"),
-                ("objects/bug-bomb/bug_bomb", "objects/bug-bomb/bug_bomb"),
-                ("objects/black-bomb/black_bomb", "objects/black-bomb/black_bomb"),
+                // The bombs and seeds (content model v2): the chips' own
+                // actions, which the test chips reach through the numbered
+                // registration's module.
+                ("lib/bombs/throw", "lib/bombs/throw"),
+                ("lib/bombs/bomb", "lib/bombs/bomb"),
+                ("lib/bombs/slash", "lib/bombs/slash"),
+                ("lib/bombs/seed", "lib/bombs/seed"),
+                ("chips/minibomb/chip", "chips/minibomb/chip"),
+                ("chips/bigbomb/chip", "chips/bigbomb/chip"),
+                ("chips/energbom/chips", "chips/energbom/chips"),
+                ("chips/energbom/burst", "chips/energbom/burst"),
+                ("chips/flshbom/chips", "chips/flshbom/chips"),
+                ("chips/flshbom/bomb", "chips/flshbom/bomb"),
+                ("chips/blkbomb/chip", "chips/blkbomb/chip"),
+                ("chips/blkbomb/bomb", "chips/blkbomb/bomb"),
+                ("chips/bugbomb/chip", "chips/bugbomb/chip"),
+                ("chips/bugbomb/bomb", "chips/bugbomb/bomb"),
+                ("chips/grasseed/chip", "chips/grasseed/chip"),
+                ("chips/iceseed/chip", "chips/iceseed/chip"),
+                ("chips/poisseed/chip", "chips/poisseed/chip"),
                 ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
                 ("chips/00e-bees/chip", "chips/025-rskyhny1/chip"),
                 ("objects/honey-bee/honey_bee", "objects/honey-bee/honey_bee"),
@@ -499,7 +585,6 @@ fn kinds() -> Vec<ObjectKind> {
         actor_list_entry: None,
     };
     let mut kinds = vec![
-        kind("attachment", Pool::Actor, 0x05, "objects/attachment/attachment"),
         kind("sun-beam", Pool::Effect, 0x48, "objects/sun-beam/sun_beam"),
         kind("erase-man", Pool::Actor, 0x15, "objects/erase-man/erase_man"),
         kind("erase-mark", Pool::Effect, 0x62, "objects/erase-mark/erase_mark"),
@@ -535,12 +620,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
         kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
         kind("reflected-shot", Pool::Attack, 0x2F, "objects/reflected-shot/reflected_shot"),
-        kind("bomb", Pool::Attack, 0x08, "objects/bomb/bomb"),
-        kind("bomb-slash", Pool::Attack, 0x0A, "objects/bomb-slash/bomb_slash"),
-        kind("energy-burst", Pool::Attack, 0x11, "objects/energy-burst/energy_burst"),
-        kind("seed", Pool::Attack, 0x4F, "objects/seed/seed"),
-        kind("flash-bomb", Pool::Attack, 0xA4, "objects/flash-bomb/flash_bomb"),
-        kind("bug-bomb", Pool::Attack, 0xA5, "objects/bug-bomb/bug_bomb"),
         kind("honey-bee", Pool::Attack, 0x74, "objects/honey-bee/honey_bee"),
         kind("dragon-head", Pool::Attack, 0xC9, "objects/dragon-head/dragon_head"),
         kind("dragon-body", Pool::Attack, 0xC8, "objects/dragon-body/dragon_body"),

@@ -48,10 +48,10 @@ local LOOKS: { [number]: { effect: number, sound: number } } = {
 
 -- `sub_80E3038`: the panels of hit region `region` around (x, y), the
 -- offsets' x toward `side`'s front, that are on the field.
-local function region_panels(region: number, x: number, y: number, side: number): { number }
-    local offsets = data.regions[region]
+local function region_panels(region: number | Region, x: number, y: number, side: number): { number }
+    local offsets = if type(region) == "number" then data.regions[region] else region.panels
     if not offsets then
-        error(string.format("sub_80E3038: hit region %#x reads past PanelOffsetListsPointerTable", region))
+        error(string.format("sub_80E3038: hit region %s reads past PanelOffsetListsPointerTable", tostring(region)))
     end
     -- `object_getAllianceDirection`.
     local dir = 1 - 2 * side
@@ -65,25 +65,31 @@ local function region_panels(region: number, x: number, y: number, side: number)
     return list
 end
 
--- `sub_80E2FE8`: bursts over the panels of `region` (from 0x80, the whole
--- field's panels meeting condition `region - 0x80`; else hit region
--- `region` around the panel (Param3, Param4) of `params`, facing
--- `spawner`'s side's way), one every `interval` ticks at height `z`, with
--- the look `params[1]` (`LOOKS`). (Its X is `interval` and its Y the
--- spawner's registers, which nothing reads.)
-function panel_bursts.spawn(spawner: Object, region: number, interval: number, z: number, params: { number }): Object?
+-- `sub_80E2FE8`: bursts over the panels of `region` (a region definition:
+-- a whole-field one's panels, else its panels around the panel (Param3,
+-- Param4) of `params`, facing `spawner`'s side's way), one every
+-- `interval` ticks at height `z`, with the look `params[1]` (`LOOKS`). (Its
+-- X is `interval` and its Y the spawner's registers, which nothing reads.)
+-- Deprecated: a region by number (from 0x80, the whole field's panels
+-- meeting condition `region - 0x80`).
+function panel_bursts.spawn(spawner: Object, region: number | Region, interval: number, z: number, params: { number }): Object?
     local o = battle.spawn_kind("panel-bursts", Vec3.new(interval, 0, z), params)
     if not o then
         return nil
     end
     o.timer2 = interval
     local list
-    if bit32.btest(region, WHOLE_FIELD) then
+    local cond: PanelCondition? = nil
+    if type(region) ~= "number" then
+        cond = region.field
+    elseif bit32.btest(region, WHOLE_FIELD) then
         local i = bit32.band(region, 0x7F)
-        local cond = data.rules.field_regions[i]
+        cond = data.rules.field_regions[i]
         if not cond then
             error(string.format("sub_80E2FE8: whole-field region %#x reads past byte_8019C34", 0x80 + i))
         end
+    end
+    if cond then
         o.panel_x, o.panel_y = 0, 0
         list = panels.filtered_except(o, cond.require, cond.forbid)
     else

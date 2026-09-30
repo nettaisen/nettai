@@ -1,37 +1,39 @@
 --!strict
--- A BugBomb (attack object #0xA5, `sub_80D9D4C`): action 0x12's subtype 7.
--- Lobbed at the panel three ahead, it sits there with 40 HP for a second
--- and then bursts over the 3x3 around it, giving what it hits a NaviCust
--- bug: one its target's side doesn't have yet (HP drain, custom-screen HP
--- drain, a panel trail or buster blanks), picked at random. Breaking it
--- or a crushing hit first ends it in an explosion; landing in a hole, in
--- a puff of smoke.
+-- A BugBomb (the original's attack object #0xA5, `sub_80D9D4C`). Lobbed at
+-- the panel three ahead, it sits there with 40 HP for a second and then
+-- bursts over the 3x3 around it, giving what it hits a NaviCust bug: one
+-- its target's side doesn't have yet (HP drain, custom-screen HP drain, a
+-- panel trail or buster blanks), picked at random. Breaking it or a
+-- crushing hit first ends it in an explosion; landing in a hole, in a puff
+-- of smoke.
 
-local rising_bubble = require("../rising-bubble/rising_bubble")
+local collision = require("../../rules/collision")
+local regions = require("../../lib/regions")
+local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local trajectory = require("../../lib/trajectory")
+
+local bug_bomb = {}
 
 export type State = {
     -- The angle it was thrown at (BattleObject+0x0C).
     angle: number,
+    -- The panel it aims at.
+    target_x: number,
+    target_y: number,
 }
 
-local bug_bomb = {
-    state = { angle = "u8" },
-}
-
-local SPRITE, ANIM = "0c-02", 5
+local SPRITE, ANIM = asset.sprite("bomb"), 5
 -- Thrown at 0x2C000 a tick along the ground, to land 10 pixels up,
 -- falling 0x2800 a tick.
 local SPEED, LANDING_Z, GRAVITY = 0x2C000, 0x0A * 0x10000, -0x2800
 local HP = 0x28
--- Collision while it sits: self type 0x4E, target 0x14; its status 0x20.
-local SELF_TYPE, TARGET, HIT_MOD, STATUS = 0x4E, 0x14, 0, 0x20
--- The burst: ticks it sits (61), its region (0x10) with self type 4
--- and target 5, and an explosion (effect 0x4A) on each panel of the 3x3.
+-- Collision while it sits; its status 0x20.
+local HIT_MOD, STATUS = 0, 0x20
+-- The burst: ticks it sits (61), over the eight around it, and an
+-- explosion (effect 0x4A) on each panel of the 3x3.
 local SIT_TICKS = 0x3C
-local BURST_REGION, BURST_SELF_TYPE, BURST_TARGET = 0x10, 0x04, 0x05
-local EFFECT_BURST, EFFECTS_REGION = 0x4A, 0x0F
-local SOUND_LAND, SOUND_HIT_BOMB = 0x115, 0x70
+local EXPLOSION = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
+local SOUND_LAND, SOUND_HIT_BOMB = asset.sound("bug-bomb-land"), asset.sound("hit-bomb-1")
 -- What in its hits ends it at once.
 local CRUSHED = 0x3F800000
 
@@ -45,20 +47,6 @@ local BUGS = {
 }
 -- The panel trail that means the target already has that bug.
 local TRAIL_BUGGED = 3
-
--- `sub_80D9FA8`: a BugBomb thrown by `user` from `pos` at the panel three
--- ahead, with the chip's damage word. (Its parameters are only the target
--- panel, from the user's panel as a halfword.)
-function bug_bomb.throw(user: Object, pos: Vec3, _params: { number }, damage: number): Object?
-    local xy = user.panel_x + user.panel_y * 0x100 + 3 * user.facing
-    local o = battle.spawn_kind("bug-bomb", pos, { 0, 0, bit32.band(xy, 0xFF), bit32.extract(int.u32(xy), 8, 8) })
-    if o then
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = user.alliance, user.flip
-    end
-    return o
-end
 
 -- `sub_80D9FC2`: a bug its target's side doesn't have yet, at random (one
 -- RNG draw), or any of the four when it has them all.
@@ -87,14 +75,14 @@ end
 
 -- Done: hidden, off its panels, and freed at the next update.
 local function finish(me: Object)
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me.visible = false
     me:set_lifecycle("destroy")
 end
 
 -- `sub_80D9E94`: fly until the ticks run out or it comes down; then land
 -- on its target panel, 10 pixels up.
-local function fly(me: Object)
+local function fly(me: Object, s: State)
     local t = me.timer - 1
     me.timer = t
     if t > 0 then
@@ -108,13 +96,13 @@ local function fly(me: Object)
             return
         end
     end
-    local x, y = me:param(3), me:param(4)
+    local x, y = s.target_x, s.target_y
     me.panel_x, me.panel_y = x, y
     me.collision.panel_x, me.collision.panel_y = x, y
     local cx, cy = field.center(x, y)
     me.pos = Vec3.new(cx, cy, LANDING_Z)
     if field.solid(x, y) then
-        me.collision.region = 1
+        me.collision:set_region(regions.single)
         me.run_while_dimmed = true
         battle.play_sound(SOUND_LAND)
         me.action = 4
@@ -124,7 +112,7 @@ local function fly(me: Object)
     me:set_coordinates_from_panel()
     local p = me.pos
     rising_bubble.spawn(Vec3.new(p.x, p.y, 0), 0)
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me.visible = false
     me.lifecycle = "destroy"
 end
@@ -140,9 +128,9 @@ local function sit(me: Object)
     if t >= 0 then
         return
     end
-    me.collision.region = BURST_REGION
-    me:reset_collision_types(BURST_SELF_TYPE, BURST_TARGET, 0)
-    battle.region_effects(me.panel_x, me.panel_y, EFFECTS_REGION, me.alliance, EFFECT_BURST, 0)
+    me.collision:set_region(regions.ring)
+    me:reset_collision_types(collision.attack, collision.hits_navis, 0)
+    battle.region_effects(me.panel_x, me.panel_y, regions.square, me.alliance, EXPLOSION, 0)
     -- (The camera shakes, which draws the local RNG only.)
     battle.play_sound(SOUND_HIT_BOMB)
     me.visible = false
@@ -159,7 +147,7 @@ local function tick(me: Object)
         return
     end
     if me:take_damage(0) < 0 or bit32.btest(me.collision.hit_flags, CRUSHED) then
-        battle.effect(me.pos, EFFECT_BURST)
+        battle.effect(me.pos, EXPLOSION)
         battle.play_sound(SOUND_HIT_BOMB)
         finish(me)
         return
@@ -167,12 +155,12 @@ local function tick(me: Object)
     if not battle.dimmed() then
         local a = me.action
         if a == 0 then
-            fly(me)
+            fly(me, me.state :: State)
         elseif a == 4 then
             sit(me)
         elseif a == 8 then
             -- `sub_80D9F84`: burst; gone.
-            me.collision.region = 0
+            me.collision:set_region(nil)
             me:set_lifecycle("destroy")
         else
             error(string.format("BugBomb action %#x reads past its table", a))
@@ -193,8 +181,8 @@ local function init(me: Object, s: State)
     sprite:set_animation(0xFF)
     sprite:step()
     sprite.shadow = "ground"
-    me.future_panel_x, me.future_panel_y = me:param(3), me:param(4)
-    local tx, ty = field.center(me:param(3), me:param(4))
+    me.future_panel_x, me.future_panel_y = s.target_x, s.target_y
+    local tx, ty = field.center(s.target_x, s.target_y)
     local p = me.pos
     s.angle = trajectory.angle(int.i32(tx - p.x), int.i32(ty - p.y))
     local vx, vy = trajectory.toward(s.angle, SPEED)
@@ -207,25 +195,50 @@ local function init(me: Object, s: State)
         me:free()
         return
     end
-    me:setup_collision(SELF_TYPE, TARGET, HIT_MOD)
+    me:setup_collision(collision.own_thrown_body, collision.hit_by_other_side, HIT_MOD)
     pick_bug(me)
     me.collision.status_base = STATUS
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me.collision:present()
     me.lifecycle = "update"
     tick(me)
 end
 
--- `sub_80D9D4C`.
-function bug_bomb.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me, me.state :: State)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
-    end
+bug_bomb.kind = define.kind {
+    id = "bugbomb/bomb",
+    pool = "attack",
+    state = { angle = "u8", target_x = "u8", target_y = "u8" },
+    -- `sub_80D9D4C`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me, me.state :: State)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+    end,
+}
+
+-- `sub_80D9FA8`: a thrower for `throw.action` that throws a BugBomb at the
+-- panel three ahead of the user. (The original keeps that panel as a
+-- halfword from the user's panel: a panel off the left edge wraps.)
+function bug_bomb.thrower(): Thrower
+    return {
+        throw = function(user: Object, pos: Vec3, damage: number): Object?
+            local xy = int.u32(user.panel_x + user.panel_y * 0x100 + 3 * user.facing)
+            local o = battle.spawn(bug_bomb.kind, pos)
+            if o then
+                local s = o.state :: State
+                s.target_x = bit32.band(xy, 0xFF)
+                s.target_y = bit32.extract(xy, 8, 8)
+                o:set_damage_word(damage)
+                o.alliance, o.flip = user.alliance, user.flip
+            end
+            return o
+        end,
+    }
 end
 
 return bug_bomb

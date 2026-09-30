@@ -1,6 +1,0 @@
-# The FlashBomb (attack object #0xA4, `sub_80D9A50`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xA4
-script = "flash_bomb.luau"

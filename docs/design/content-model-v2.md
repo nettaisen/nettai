@@ -734,6 +734,37 @@ return define.chip {
 These are v1's `KINDS[0]` and `KINDS[3]` rows (`byte_80C5BA0` with the blast regions of `dword_80C5D7C`) and
 `THROWS[0x0]` and `THROWS[0xF]`, now written where they are used.
 
+**As built** (step 7, the bombs exemplar): content/bn6/lib/bombs/ (`throw`, `bomb`, `seed`, `slash`),
+chips/{minibomb, bigbomb, energbom, flshbom, blkbomb, bugbomb, grasseed, iceseed, poisseed}/, the attachment
+(objects/attachment) and the shared definitions they need (rules/collision.luau, lib/effects.luau,
+lib/sparks.luau, lib/regions.luau). What it settled:
+
+- **A thrower is a table**, `{ throw = function, variant = record }`: a closure alone would hide the variant
+  from the canonical tree, which then shows what each chip throws (`minibomb/action/args/thrower/variant`).
+  `ThrowSpec`, `BombVariant`, `SeedVariant`, `FlashBombVariant` and `AttachmentLook` are in types.d.luau.
+- **Attachment looks are records** (`attachment.look { sprite, palette, lift?, attach_point?, by_owner? }`,
+  `attachment.attach(owner, look, slot, { anim, while_dimmed, palette_add })`); the attachment kind is a
+  definition. Its numeric API (`spawn`, `spawn_with`, by the pack data's rows) stays for its 23 other users:
+  the rows become looks at load, from `data`.
+- **The chip records** are the pack data's values field by field, except `beast` (the Beast lock-on mode):
+  lock-on modes are rules/lockon.luau's, which step 5's generator writes; its check reports the chips' missing
+  `beast` until a person adds it.
+- **Shared definitions the generator also writes.** The exemplar made rules/collision.luau (ten types), lib/effects.luau,
+  lib/sparks.luau and lib/regions.luau with the entries it uses. The generator must add the entries these
+  modules lack rather than skip them (it identifies a collision type by `row_offset`, a region or effect by its
+  numbers). The collision types' names other than `thrown` and `hits-navis` were made up by what their flags do:
+  `attack` (row 0x04), `piercing` (0x0B), `hit-by-other-side` (0x14), `hit-by-other-side-or-blockers` (0x0D),
+  `own-object` (0x0C), `own-thrown-body` (0x4E), `neutral-object` (0x4F), `everything` (0x0F): to review.
+- **Until chips are handles (3b)**, registration by number reaches the chips through a shim,
+  chips/036-minibomb/chip.luau: the 16 chip records still name action 0x12, and the shim runs the chip's own
+  action by subtype (and FlshBom's level). LilBoiler and VDoll, not ported, wind up and fail where they throw,
+  as before. The shim is counted by the ratchet and goes with the chips' records' numbers.
+- **What stays numeric**, having no v2 form yet: statuses (the flash's blinding, the bug bomb's 0x20), bug codes,
+  NameIDs (the BlkBomb's 0xD5, the attachment's Cross check) and the absorbed-obstacle kind; the hitbox's
+  `hit_effect = 0xFF` ("none"). The ratchet counts what it can see of them.
+- **Verified** on the test content (the thrown chips' duel under rollback, the engine's tests) and the type
+  check; the traces wait for the asset names of real packs (step 6).
+
 EnergBom and MegEnBom (a series, one folder) pass `after = energy_burst.leave` from their own
 `chips/energbom/burst.luau`; the bomb kind no longer requires the energy burst. FlshBom1-3 pass their own
 `held_palette` (0, 3, 6: the original's level times three, materialized) and `flash_bomb.thrower` from

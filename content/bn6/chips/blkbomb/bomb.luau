@@ -1,73 +1,63 @@
 --!strict
--- A BlkBomb (attack object #0x4A, `sub_80CD4EC`): action 0x12's subtype 6.
--- Lobbed at the panel three ahead, it sits there as an obstacle with 100
--- HP (one to a side, `obstacle.register` class 1) until a fire hit sets it
--- off: it bursts over the whole of the side opposite its panel's owner
--- (one hit, then explosions scattered over those panels), with the chip's
--- damage. Broken otherwise, it just goes. A thrown one lasts 6000 ticks;
--- one placed some other way (its first parameter set) stays. Its third
--- and fourth parameters are the panel it aims at.
+-- A BlkBomb (the original's attack object #0x4A, `sub_80CD4EC`). Lobbed at
+-- the panel three ahead, it sits there as an obstacle with 100 HP (one to a
+-- side, `obstacle.register` class 1) until a fire hit sets it off: it
+-- bursts over the whole of the side opposite its panel's owner (one hit,
+-- then explosions scattered over those panels), with the chip's damage.
+-- Broken otherwise, it just goes. A thrown one lasts 6000 ticks; one placed
+-- some other way (`placed`) stays.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
-local panel_bursts = require("../panel-bursts/panel_bursts")
-local rising_bubble = require("../rising-bubble/rising_bubble")
+local attachment = require("../../objects/attachment/attachment")
+local collision = require("../../rules/collision")
+local effects = require("../../lib/effects")
+local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
+local regions = require("../../lib/regions")
+local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 local trajectory = require("../../lib/trajectory")
+
+local black_bomb = {}
 
 export type State = {
     -- The angle it was thrown at (BattleObject+0x0C).
     angle: number,
     -- A fire hit set it off (its ExtraVars word).
     set_off: boolean,
+    -- Placed some other way than thrown: it sets down at once and stays
+    -- (the original's first parameter).
+    placed: boolean,
+    -- The panel it aims at.
+    target_x: number,
+    target_y: number,
 }
 
-local black_bomb = {
-    state = { angle = "u8", set_off = "bool" },
-}
-
-local SPRITE = "0c-24"
+local SPRITE = asset.sprite("black-bomb")
 local NAME_ID = 0xD5
 local HP = 0x64
 local LIFETIME = 0x1770
 -- Thrown at 0x2C000 a tick along the ground, falling 0x2800 a tick.
 local SPEED, GRAVITY = 0x2C000, -0x2800
--- Its collision: self type 0x4F, target 0xF, hit modifier 3; it deals 100
--- with counter byte 0x1E; hit spark 0xA.
-local SELF_TYPE, TARGET, HIT_MOD, SELF_DAMAGE, COUNTER, HIT_SPARK = 0x4F, 0x0F, 3, 0x64, 0x1E, 0x0A
+-- Its collision: hit modifier 3; it deals 100 with counter byte 0x1E; its
+-- hit spark (0x0A).
+local HIT_MOD, SELF_DAMAGE, COUNTER = 3, 0x64, 0x1E
+local HIT_SPARK = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
 -- Its kind among absorbed obstacles (`data.objects.absorbed_sprites`).
 local ABSORBED_KIND = 1
-local SOUND_LAND, SOUND_HIT_BOMB, SOUND_BURST = 0xC0, 0x70, 0xC3
--- What's left when a chip removes it (effect 0x14, 12 pixels up), and
--- when it breaks (effect 0, the explosion).
-local EFFECT_REMOVED, EFFECT_BROKEN = 0x14, 0
--- The burst (`byte_80CD828`): the whole-field region of the side it hits
--- (0x82 is side 1's area, 0x81 side 0's), hit spark none, target 5, self
--- type 4, hit modifier 3, fire; then explosions there every 3 ticks
+local SOUND_LAND, SOUND_HIT_BOMB, SOUND_BURST = asset.sound("land"), asset.sound("hit-bomb-1"), asset.sound("burst")
+-- The burst (`byte_80CD828`): over the whole area of the side it hits, no
+-- hit spark, hit modifier 3, fire; then explosions there every 3 ticks
 -- (panel bursts, look 1).
-local BURST_REGIONS = { [0] = 0x82, [1] = 0x81 }
-local BURST_TARGET, BURST_SELF_TYPE, BURST_HIT_MOD, FIRE = 0x05, 0x04, 3, 1
+local BURST_HIT_MOD, FIRE = 3, 1
 local BURST_INTERVAL, BURST_LOOK = 2, 1
+
+-- What the navi holds while throwing one: the bomb's sprite, palette 4
+-- (the original's attachment row 0x2D).
+black_bomb.held = attachment.look { sprite = asset.sprite("bomb"), palette = 4 }
 
 -- The actions (the object's action byte).
 local DESTROYED, SET = 2, 9
-
--- `sub_80CD886`: a BlkBomb thrown by `user` from `pos` at the panel three
--- ahead, with the chip's damage word: one of the side's field objects.
--- (Its parameters are only the target panel, from the user's panel as a
--- halfword; the game also keeps its thrower's X, which nothing reads.)
-function black_bomb.throw(user: Object, pos: Vec3, _params: { number }, damage: number): Object?
-    local xy = int.u16(user.panel_x + user.panel_y * 0x100 + 3 * user.facing)
-    local o = battle.spawn_kind("black-bomb", pos, { 0, 0, bit32.band(xy, 0xFF), bit32.rshift(xy, 8) })
-    if o then
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance = user.alliance
-        o.run_while_dimmed = true
-        obstacle.register(o, user.alliance, 1)
-    end
-    return o
-end
 
 -- Gone from the field's bookkeeping, and freed at the next update.
 local function finish(me: Object)
@@ -79,7 +69,7 @@ end
 
 -- Set down (`loc_80CD6BC`): on its panel for good.
 local function set_down(me: Object)
-    me.collision.region = 1
+    me.collision:set_region(regions.single)
     me.run_while_dimmed = true
     me.action = SET
     me.phase, me.phase_init = 0, 0
@@ -89,7 +79,8 @@ end
 -- or in a hole in a puff of smoke. One placed some other way sets down at
 -- once.
 local function fly(me: Object)
-    if me:param(1) ~= 0 then
+    local s = me.state :: State
+    if s.placed then
         set_down(me)
         return
     end
@@ -106,7 +97,7 @@ local function fly(me: Object)
             return
         end
     end
-    local x, y = me:param(3), me:param(4)
+    local x, y = s.target_x, s.target_y
     me.panel_x, me.panel_y = x, y
     me.collision.panel_x, me.collision.panel_y = x, y
     local cx, cy = field.center(x, y)
@@ -120,7 +111,7 @@ local function fly(me: Object)
     me:set_coordinates_from_panel()
     local p = me.pos
     rising_bubble.spawn(Vec3.new(p.x, p.y, 0), 0)
-    me.collision.region = 0
+    me.collision:set_region(nil)
     obstacle.unregister(me)
     obstacle.release_tracking(me)
     me.lifecycle = "destroy"
@@ -130,7 +121,7 @@ end
 -- puff), else broken (an explosion, with the bomb's sound unless a fire
 -- hit set it off, which bursts as it goes); held while dimmed.
 local function destroyed(me: Object)
-    me.collision.region = 0
+    me.collision:set_region(nil)
     local how = obstacle.removal(me)
     if how ~= "broken" then
         if how == "absorbed" then
@@ -141,7 +132,7 @@ local function destroyed(me: Object)
                 return
             elseif blink == "no" then
                 local p = me.pos
-                battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), EFFECT_REMOVED)
+                battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), effects.puff)
             end
         end
         finish(me)
@@ -151,7 +142,7 @@ local function destroyed(me: Object)
         me.phase_init = 4
         me.visible = false
         if me.hp == 0 then
-            battle.effect(me.pos, EFFECT_BROKEN)
+            battle.effect(me.pos, effects.explosion)
             if not (me.state :: State).set_off then
                 battle.play_sound(SOUND_HIT_BOMB)
                 finish(me)
@@ -190,7 +181,7 @@ local function catch_fire(me: Object)
         return
     end
     s.set_off = true
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me.visible = false
     me.hp = 0
     me.action = DESTROYED
@@ -203,7 +194,7 @@ local function tick(me: Object)
     obstacle.take_hits(me, "keeps_damage")
     me:hit_spark()
     catch_fire(me)
-    if me:param(1) == 0 then
+    if not (me.state :: State).placed then
         obstacle.tick_lifetime(me)
     end
     local a = obstacle.react(me, "breaks", "always")
@@ -230,24 +221,23 @@ local function burst(me: Object)
     end
     local side = bit32.bxor(panel.alliance, 1)
     me.alliance = side
-    local r = BURST_REGIONS[side]
-    if r == nil then
-        error(string.format("BlkBomb side %d reads past byte_80CD828", side))
-    end
+    -- The area of the side it hits: the other side's.
+    local area = regions.area[bit32.bxor(side, 1)]
     battle.hitbox(me, {
         panel_x = me.panel_x,
         panel_y = me.panel_y,
         element = FIRE,
         z = me.pos.z,
-        region = r,
+        region = area,
+        -- None.
         hit_effect = 0xFF,
-        target = BURST_TARGET,
-        self_type = BURST_SELF_TYPE,
+        target = collision.hits_navis,
+        self_type = collision.attack,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = BURST_HIT_MOD,
     })
-    panel_bursts.spawn(me, r, BURST_INTERVAL, 0, { BURST_LOOK, 0, 0, 0 })
+    panel_bursts.spawn(me, area, BURST_INTERVAL, 0, { BURST_LOOK, 0, 0, 0 })
     -- (The camera shakes, which is only drawn.)
     battle.play_sound(SOUND_BURST)
 end
@@ -261,8 +251,8 @@ local function init(me: Object, s: State)
     sprite:set_animation(0)
     sprite.shadow = "ground"
     me.name_id = NAME_ID
-    if me:param(1) == 0 then
-        local x, y = me:param(3), me:param(4)
+    if not s.placed then
+        local x, y = s.target_x, s.target_y
         me.future_panel_x, me.future_panel_y = x, y
         local tx, ty = field.center(x, y)
         local p = me.pos
@@ -288,29 +278,57 @@ local function init(me: Object, s: State)
         me:free()
         return
     end
-    me:setup_collision(SELF_TYPE, TARGET, HIT_MOD)
+    me:setup_collision(collision.neutral_object, collision.everything, HIT_MOD)
     me.collision.self_damage = SELF_DAMAGE
     me.collision.counter_byte = COUNTER
-    me.collision.region = 0
-    me.collision.hit_effect = HIT_SPARK
+    me.collision:set_region(nil)
+    me.collision:set_hit_effect(HIT_SPARK)
     me.collision:present()
     me.lifecycle = "update"
     tick(me)
 end
 
--- `sub_80CD4EC`.
-function black_bomb.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me, me.state :: State)
-    elseif l == "update" then
-        tick(me)
-    else
-        -- `sub_80CD78E`.
-        burst(me)
-        me.collision:free()
-        me:free()
-    end
+black_bomb.kind = define.kind {
+    id = "blkbomb/bomb",
+    pool = "attack",
+    state = { angle = "u8", set_off = "bool", placed = "bool", target_x = "u8", target_y = "u8" },
+    -- `sub_80CD4EC`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me, me.state :: State)
+        elseif l == "update" then
+            tick(me)
+        else
+            -- `sub_80CD78E`.
+            burst(me)
+            me.collision:free()
+            me:free()
+        end
+    end,
+}
+
+-- `sub_80CD886`: a thrower for `throw.action` that throws a BlkBomb at the
+-- panel three ahead of the user: one of the side's field objects. (The
+-- original keeps that panel as a halfword from the user's panel, and its
+-- thrower's X, which nothing reads.)
+function black_bomb.thrower(): Thrower
+    return {
+        throw = function(user: Object, pos: Vec3, damage: number): Object?
+            local xy = int.u16(user.panel_x + user.panel_y * 0x100 + 3 * user.facing)
+            local o = battle.spawn(black_bomb.kind, pos)
+            if o then
+                local s = o.state :: State
+                s.target_x = bit32.band(xy, 0xFF)
+                s.target_y = bit32.rshift(xy, 8)
+                o:set_damage_word(damage)
+                o.alliance = user.alliance
+                o.run_while_dimmed = true
+                obstacle.register(o, user.alliance, 1)
+            end
+            return o
+        end,
+    }
 end
 
 return black_bomb
