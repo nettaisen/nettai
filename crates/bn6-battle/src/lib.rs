@@ -11,6 +11,7 @@ pub mod actor;
 pub mod battle;
 pub mod collision;
 pub mod behavior;
+pub mod console;
 pub mod content;
 pub mod cues;
 pub mod custom;

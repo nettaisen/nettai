@@ -6,6 +6,7 @@
 use crate::rng::SplitMix64;
 use crate::world::Game;
 use bn6_battle::battle::top;
+use bn6_battle::console::ConsoleSetup;
 use bn6_battle::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
 use bn6_battle::content::{ChipCode, ChipId, Content};
 use bn6_battle::input::keys;
@@ -112,14 +113,16 @@ pub fn megaman(hp: u16) -> NaviStats {
 /// A one-round netbattle between two MegaMen on `content`'s battle
 /// settings 0, simulated from side 0's perspective, with these battle
 /// folders. The Crosses and Beast Out are locked; the players' buttons
-/// reach the fight at once (no link delay).
+/// reach the fight at once (no link delay). Each player's console RNG is
+/// derived from the seed.
 pub fn netbattle(content: &Content, hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
-    let player = |f: BattleFolder| PlayerSetup {
+    let player = |f: BattleFolder, side: u32| PlayerSetup {
         folder: Some(f),
         unlocks: Unlocks { crosses: [false; 5], beast_out: false, ..Unlocks::everything(GameVersion::Falzar) },
         joypad_phase: 0,
         bug_frags: 0,
         navi_level: 0,
+        console: ConsoleSetup { rng: seed.rotate_left(16) ^ side.wrapping_mul(0x9E37_79B9), ..ConsoleSetup::default() },
     };
     let [a, b] = folders;
     RoundSetup {
@@ -132,7 +135,7 @@ pub fn netbattle(content: &Content, hp: u16, seed: u32, folders: [BattleFolder; 
         later_stages: Default::default(),
         low_hp_music_latched: false,
         sp_times: Default::default(),
-        players: [player(a), player(b)],
+        players: [player(a, 0), player(b, 1)],
         link_delay: 0,
     }
 }

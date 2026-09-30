@@ -62,6 +62,7 @@ pub fn setup() -> RoundSetup {
         joypad_phase: 0,
         bug_frags: 0,
         navi_level: 0,
+        console: Default::default(),
     };
     RoundSetup {
         content: content.hash(),

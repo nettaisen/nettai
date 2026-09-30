@@ -116,8 +116,8 @@ end
 
 -- The strike: a hit region on the panel ahead running while dimmed
 -- (`sub_80C53A6`: region 0x11, no hit spark), the earth splashing there
--- (16 pixels up), sound 0x10A. (It also shakes the camera,
--- `camera_initShakeEffect_80302a8(1, 30)`: presentation, not simulated.)
+-- (16 pixels up), sound 0x10A, and the camera shakes (magnitude 1, 30
+-- ticks).
 local function strike(me: Object)
     local x, y = me.panel_x + me.facing, me.panel_y
     local box = battle.hitbox(me, {
@@ -139,6 +139,7 @@ local function strike(me: Object)
     local cx, cy = field.center(x, y)
     battle.effect(Vec3.new(cx, cy, 0x10_0000), 0x33, bit32.bxor(me.alliance, me.flip))
     battle.play_sound(0x10A)
+    battle.shake_camera(1, 0x1E)
 end
 
 -- `sub_80B98EC`: the swing, 61 ticks (to -1); the tomahawk lands at 55

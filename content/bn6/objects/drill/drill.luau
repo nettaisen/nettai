@@ -6,7 +6,7 @@
 -- a second drill on the panel ahead of itself. Each goes as soon as the
 -- slot that holds it lets go of it: its navi's first related object, or,
 -- for the second, the first drill's link, which the first clears when it
--- goes. A hit also shakes the camera (presentation; not modeled).
+-- goes. A hit also shakes the camera.
 
 export type State = {
     -- Where it is held (ExtraVars+0, a pointer in the game): its owner's
@@ -83,7 +83,7 @@ local function tick(me: Object)
     if not done then
         if c.hit_flags ~= 0 then
             c.region = 0
-            -- (camera_initShakeEffect_80302a8(0, 12): presentation.)
+            battle.shake_camera(0, 0xC)
         end
         local left = me.timer2 - 1
         me.timer2 = left

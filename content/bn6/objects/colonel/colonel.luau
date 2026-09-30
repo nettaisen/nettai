@@ -265,9 +265,8 @@ local function draw(me: Object)
     attachment.spawn_with(me, SWORD, "related")
 end
 
--- `sub_80B83C0`: sound 0xC7; at 32 left the strike (and a camera shake,
--- `camera_initShakeEffect_80302a8(3, 35)`: presentation, not simulated);
--- 40 ticks.
+-- `sub_80B83C0`: sound 0xC7; at 32 left the strike and a camera shake
+-- (magnitude 3, 35 ticks); 40 ticks.
 local function strike(me: Object)
     if me.phase_init == 0 then
         battle.play_sound(0xC7)
@@ -280,6 +279,7 @@ local function strike(me: Object)
         else
             cross_divide(me)
         end
+        battle.shake_camera(3, 0x23)
     end
     local left = me.timer - 1
     me.timer = left
