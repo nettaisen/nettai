@@ -129,7 +129,7 @@ fn temp(name: &str) -> PathBuf {
 
 fn write_pack(dir: &Path, b: &Bundle) {
     let mut files = vec![pack::manifest("test", Some(b), false, false)];
-    files.extend(pack::export_graphics(b));
+    files.extend(pack::export_graphics(b, &bn6_content::names::AssetNames::default()));
     pack::write_files(dir, &files).unwrap();
 }
 
@@ -148,11 +148,34 @@ fn graphics_read_back_exactly() {
     assert!(!report.has_errors() && report.count(Level::Warning) == 0, "{report}");
     assert_eq!(back.unwrap(), b);
     // The background map is a Tiled map; the sprite's timing a file of its own.
-    assert!(dir.join("graphics/backgrounds/00/map.tmj").is_file());
-    assert!(!dir.join("graphics/backgrounds/01").exists());
-    let anims = std::fs::read_to_string(dir.join("graphics/sprites/00-01/animations.json")).unwrap();
+    assert!(dir.join("graphics/backgrounds/background-00/map.tmj").is_file());
+    assert!(!dir.join("graphics/backgrounds/background-01").exists());
+    let anims = std::fs::read_to_string(dir.join("graphics/sprites/sprite-00-01/animations.json")).unwrap();
     assert!(anims.contains(r#"{"ticks":250,"flags":["last","loop"],"tileset":1,"layout":2}"#), "{anims}");
     assert!(anims.contains(r#""flags":[4]"#));
+}
+
+/// Assets are written under the names given them; each file holds its
+/// number, so the names are free.
+#[test]
+fn named_assets_read_back_by_their_numbers() {
+    let dir = temp("named");
+    let b = bundle();
+    let mut names = bn6_content::names::AssetNames::default();
+    for (i, s) in b.sprites.iter().enumerate() {
+        names.sprites.insert((s.category, s.index), format!("sprite-named-{i}"));
+    }
+    names.backgrounds.insert(0, "clouds".into());
+    names.mugshots.insert(0, "megaman".into());
+    let mut files = vec![pack::manifest("test", Some(&b), false, false)];
+    files.extend(pack::export_graphics(&b, &names));
+    pack::write_files(&dir, &files).unwrap();
+    assert!(dir.join("graphics/sprites/sprite-named-0/sprite.json").is_file());
+    assert!(dir.join("graphics/backgrounds/clouds/background.json").is_file());
+    assert!(dir.join("graphics/hud/mugshots/megaman.png").is_file());
+    let (back, report) = import(&dir);
+    assert!(!report.has_errors(), "{report}");
+    assert_eq!(back.unwrap(), b);
 }
 
 #[test]
@@ -161,7 +184,7 @@ fn timing_loads_without_images() {
     let b = bundle();
     write_pack(&dir, &b);
     for s in &b.sprites {
-        std::fs::remove_file(dir.join(format!("graphics/sprites/{:02x}-{:02x}/atlas.png", s.category, s.index))).unwrap();
+        std::fs::remove_file(dir.join(format!("graphics/sprites/sprite-{:02x}-{:02x}/atlas.png", s.category, s.index))).unwrap();
     }
     let mut r = Report::default();
     let t = timing::load(&dir, &mut r).unwrap();
@@ -177,7 +200,7 @@ fn loading_reads_the_files_as_they_are() {
     let (first, _) = pack::load_graphics(&dir).unwrap();
     assert_eq!(first, b);
     // Recolour one sprite colour: the next load has it.
-    let atlas = dir.join("graphics/sprites/00-01/atlas.png");
+    let atlas = dir.join("graphics/sprites/sprite-00-01/atlas.png");
     let mut img = Indexed::load(&atlas).unwrap();
     img.palette[5] = [255, 255, 255];
     img.save(&atlas).unwrap();
@@ -192,7 +215,7 @@ fn edits_in_an_image_editor_come_through() {
     write_pack(&dir, &b);
     // Paint one pixel of the first part (tile 0) with colour 9 of the
     // part's palette row, as an editor would.
-    let atlas = dir.join("graphics/sprites/00-01/atlas.png");
+    let atlas = dir.join("graphics/sprites/sprite-00-01/atlas.png");
     let mut img = Indexed::load(&atlas).unwrap();
     img.set(3, 2, 9);
     img.save(&atlas).unwrap();
@@ -207,7 +230,7 @@ fn damaged_palettes_are_refused_with_a_reason() {
     let dir = temp("damage");
     let b = bundle();
     write_pack(&dir, &b);
-    let atlas = dir.join("graphics/sprites/00-01/atlas.png");
+    let atlas = dir.join("graphics/sprites/sprite-00-01/atlas.png");
     let good = std::fs::read(&atlas).unwrap();
 
     // Re-sorted palette (pixels remapped so the picture looks the same).
@@ -313,7 +336,7 @@ fn an_aseprite_view_edits_whole_frames() {
 fn tiled_maps_refuse_what_the_gba_cannot_do() {
     let dir = temp("tiled");
     write_pack(&dir, &bundle());
-    let map = dir.join("graphics/backgrounds/00/map.tmj");
+    let map = dir.join("graphics/backgrounds/background-00/map.tmj");
     let text = std::fs::read_to_string(&map).unwrap();
     // Rotate the first cell (Tiled's diagonal flip bit).
     let first = text.split("\"data\": [").nth(1).unwrap().trim_start().split(',').next().unwrap().to_string();

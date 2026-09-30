@@ -17,7 +17,7 @@ pub mod sprite;
 
 use crate::collision::CollisionId;
 use crate::actor::ActorId;
-use bn6_content_api::KindHandle;
+use bn6_content_api::{ChipHandle, KindHandle};
 use sprite::Sprite;
 
 pub use bn6_content_api::{ObjectRef, PanelPos, Pool, Vec3};
@@ -173,8 +173,10 @@ pub struct Object {
     pub hp: u16,
     pub max_hp: u16,
     pub name_id: u16,
-    /// Players: the next chip in the hand (0xFFFF = none).
-    pub chip: u16,
+    /// Players: the next chip in the hand (none: the game's 0xFFFF). Other
+    /// objects keep the zeroed field, which the chip use reads as the
+    /// pack's chip 0.
+    pub chip: Option<ChipHandle>,
     /// Attack power plus flag bits (double, paralyze, uninstall...).
     pub damage: u16,
     pub stamina: u16,

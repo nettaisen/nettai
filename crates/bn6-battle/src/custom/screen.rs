@@ -28,7 +28,7 @@ pub const CROSSES: usize = 5;
 
 /// The chip id a selection turns into when it isn't allowed (the
 /// "error" chip), with code 0x1B.
-pub const INVALID_CHIP: FolderChip = FolderChip { id: 0x185, code: ChipCode(0x1B) };
+pub const INVALID_CHIP: (ChipId, ChipCode) = (0x185, ChipCode(0x1B));
 /// Codes outside the alphabet that the selection rules treat apart:
 /// the invalid chip's, and one no chip has.
 const SPECIAL_CODES: [ChipCode; 2] = [ChipCode(0x1B), ChipCode(0x1C)];
@@ -288,11 +288,10 @@ impl Screen {
     /// compact the folder, deal, and lay out the slots. `turn`: the
     /// screen's number in the round (1 = first).
     pub fn open(folder: &mut BattleFolder, view: &PlayerView, turn: u8, round: &mut RoundMemory) -> Screen {
-        let stats = view.stats;
-        let megaman = stats.navi == crate::setup::Navi::MEGAMAN;
+        let megaman = view.navi() == crate::setup::Navi::MEGAMAN;
         // sub_802A49C: ChargeCross deals one more chip per screen spent in
         // it, up to three.
-        let form = stats.form;
+        let form = view.form();
         round.charge_cross_screens = if megaman && (form == Form::CHARGE_CROSS || form == Form::CHARGE_CROSS.with_beast()) {
             (round.charge_cross_screens + 1).min(3)
         } else {
@@ -355,7 +354,7 @@ impl Screen {
         for i in 0..dealt {
             self.slots[i as usize].kind = SlotKind::Chip { index: i, regular: i == 0 && view.regular_pending };
         }
-        let form = view.stats.form;
+        let form = view.form();
         if self.megaman && (form == Form::DUST_CROSS || form == Form::DUST_CROSS.with_beast()) {
             // DustCross (sub_8027F10): the scrap button, usable once.
             self.slots[8] = Slot { kind: SlotKind::Scrap { right_half: false }, right: Some(11), state: SlotState::Unavailable, uses_left: 1, ..self.slots[8] };
@@ -709,7 +708,7 @@ impl Screen {
                 self.slots[cursor as usize].state = SlotState::Selected;
                 self.update_availability(view, folder);
                 // sub_802A00C
-                if self.chip_in(cursor, folder).is_some_and(|c| c.id == BEAST_OUT_CHIP) {
+                if self.chip_in(cursor, folder).is_some_and(|c| view.library.chip_number(c.id) == Some(BEAST_OUT_CHIP)) {
                     self.phase = Phase::BeastOutChipChosen { tick: 0 };
                 }
             }
@@ -858,7 +857,7 @@ impl Screen {
         for &s in self.selection() {
             let Some(c) = self.chip_in(s, folder) else { continue };
             let c = checked(c, view);
-            if c.id == BEAST_OUT_CHIP {
+            if view.library.chip_number(c.id) == Some(BEAST_OUT_CHIP) {
                 continue;
             }
             if SPECIAL_CODES.contains(&c.code) {
@@ -881,7 +880,7 @@ impl Screen {
             let c = checked(c, view);
             let ok = if full {
                 false
-            } else if c.id == BEAST_OUT_CHIP {
+            } else if view.library.chip_number(c.id) == Some(BEAST_OUT_CHIP) {
                 true
             } else if SPECIAL_CODES.contains(&c.code) {
                 special.is_none_or(|s| s == c.code)
@@ -958,6 +957,11 @@ fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
 /// invalid chip when it is a Mega or Giga chip past the navi's limit for
 /// the battle, or its code isn't one the chip comes in.
 pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
+    let invalid = || {
+        let (id, code) = INVALID_CHIP;
+        let id = view.library.chip_numbered(id).unwrap_or_else(|| panic!("the invalid chip, chip {id:#x}"));
+        FolderChip { id, code }
+    };
     let d = view.library.chip(c.id);
     if !SPECIAL_CODES.contains(&c.code) {
         let limit = match d.class {
@@ -966,12 +970,13 @@ pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
             _ => None,
         };
         if limit.is_some_and(|(used, max)| used > max) {
-            return INVALID_CHIP;
+            return invalid();
         }
     }
-    let code_checked = c.code != ChipCode(0x1B) && c.id < 0x19B;
+    // (A chip content defines has no number: its codes are checked.)
+    let code_checked = c.code != ChipCode(0x1B) && view.library.chip_number(c.id).is_none_or(|n| n < 0x19B);
     if code_checked && !d.codes.contains(&c.code) {
-        return INVALID_CHIP;
+        return invalid();
     }
     c
 }
@@ -979,11 +984,10 @@ pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
 /// `sub_80280A2`: a link navi's own chip (`word_802A828`), unless it was
 /// used this round.
 fn navi_chip(view: &PlayerView) -> Option<FolderChip> {
-    let navi = view.stats.navi;
-    if view.round.navi_chips_used & (1 << navi.0) != 0 {
+    if view.round.navi_chips_used & (1 << view.navi().0) != 0 {
         return None;
     }
-    view.library.navi_chip(navi)
+    view.library.navi_chip(view.stats.navi)
 }
 
 /// `sub_802A40C`: how many chips a screen deals.
@@ -995,7 +999,8 @@ fn hand_size(view: &PlayerView, turn: u8, charge_cross_screens: u8, scrap_button
         extra = n - 8;
         n = 8;
     }
-    if s.form != Form::DUST_CROSS && s.form != Form::DUST_CROSS.with_beast() && !scrap_button && s.number_open {
+    let form = view.form();
+    if form != Form::DUST_CROSS && form != Form::DUST_CROSS.with_beast() && !scrap_button && s.number_open {
         n = 10;
         extra = charge_cross_screens as i16;
     }
@@ -1010,11 +1015,22 @@ fn hand_size(view: &PlayerView, turn: u8, charge_cross_screens: u8, scrap_button
 }
 
 impl PlayerView<'_> {
+    /// The navi, by number (the screen's numeric logic asks it until phase
+    /// C).
+    pub fn navi(&self) -> crate::setup::Navi {
+        self.library.navi_number(self.stats.navi)
+    }
+
+    /// The form, by number.
+    pub fn form(&self) -> Form {
+        self.library.form_number(self.stats.form)
+    }
+
     /// `sub_8029F70` (battle modes 0, 0xA and 0xB).
     fn crosses_allowed(&self) -> bool {
         !self.random_battle
             && if self.unlocks.beast_out_sealed {
-                self.stats.navi == crate::setup::Navi::MEGAMAN
+                self.navi() == crate::setup::Navi::MEGAMAN
             } else {
                 !self.per_player_gauges
             }
@@ -1026,7 +1042,8 @@ impl PlayerView<'_> {
         let mut w = CrossWindow::default();
         for i in 0..CROSSES as u8 {
             let form = self.unlocks.version.cross_form(i);
-            if self.unlocks.crosses[i as usize] && !self.round.crosses_used[i as usize] && self.stats.starting_form != form {
+            let starting = self.library.form_number(self.stats.starting_form);
+            if self.unlocks.crosses[i as usize] && !self.round.crosses_used[i as usize] && starting != form {
                 w.offered[w.count as usize] = i;
                 w.count += 1;
             }
@@ -1037,7 +1054,7 @@ impl PlayerView<'_> {
     /// `sub_8029FB4` (battle mode 0): the Beast Out button is on the
     /// screen.
     fn beast_out_button(&self) -> bool {
-        self.stats.navi == crate::setup::Navi::MEGAMAN
+        self.navi() == crate::setup::Navi::MEGAMAN
             && !self.unlocks.beast_out_sealed
             && !self.per_player_gauges
             && !self.random_battle
@@ -1050,7 +1067,7 @@ impl PlayerView<'_> {
     fn beast_out_available(&self) -> bool {
         self.emotion != Emotion::WornOut
             && (self.emotion != Emotion::Tired || self.round.beast_out_used)
-            && !self.stats.form.is_beast()
+            && !self.form().is_beast()
     }
 }
 

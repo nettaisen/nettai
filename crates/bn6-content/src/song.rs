@@ -67,6 +67,8 @@ const XCMD_ECHO_LENGTH: u8 = 9;
 /// The sidecar of a song.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct SongDoc {
+    /// The song-table entry it is.
+    pub id: u16,
     pub midi: String,
     pub player: u8,
     pub priority: u8,
@@ -135,7 +137,7 @@ fn summary(tls: &[Timeline]) -> Exported {
 
 /// A song as MIDI bytes and its sidecar (with `voicegroup` the name of its
 /// voicegroup file).
-pub fn export(song: &Song, title: &str, voicegroup: &str, midi_file: &str) -> Result<(Vec<u8>, SongDoc), String> {
+pub fn export(song: &Song, id: u16, title: &str, voicegroup: &str, midi_file: &str) -> Result<(Vec<u8>, SongDoc), String> {
     let mut tls = Vec::new();
     for (i, t) in song.tracks.iter().enumerate() {
         tls.push(timeline::linearize(t).map_err(|e| format!("track {i}: {e}"))?);
@@ -150,6 +152,7 @@ pub fn export(song: &Song, title: &str, voicegroup: &str, midi_file: &str) -> Re
         return Err(format!("the MIDI mapping doesn't read back the same (a case it can't express yet) {why}"));
     }
     let doc = SongDoc {
+        id,
         midi: midi_file.into(),
         player: song.player.0,
         priority: song.priority,

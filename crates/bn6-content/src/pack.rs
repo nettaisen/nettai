@@ -8,9 +8,14 @@
 //! sound/                 songs, instruments, samples (see crate::sound)
 //! ```
 //!
+//! Sprites, backgrounds, songs and the HUD's mugshots, banners and chip
+//! icons are written under their names ([`crate::names`]); each file holds
+//! its number, which the importers read.
+//!
 //! Everything loads straight from these files ([`load_battle`],
 //! [`import_graphics`], [`import_sound`]); there is no derived binary.
 
+use crate::names::AssetNames;
 use crate::report::Report;
 use crate::{hud, sound, sprite, stage};
 use bn6_assets::Bundle;
@@ -37,8 +42,9 @@ pub struct Manifest {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GraphicsManifest {
-    /// Background ids 0..slots (folders `graphics/backgrounds/NN`; a
-    /// missing folder is an id without a background).
+    /// Background ids 0..slots (a folder of `graphics/backgrounds` each,
+    /// whose `background.json` gives its id; an id without a folder has no
+    /// background).
     pub background_slots: usize,
 }
 
@@ -113,33 +119,32 @@ fn parallel<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R>
     })
 }
 
-pub fn export_graphics(b: &Bundle) -> Files {
+pub fn export_graphics(b: &Bundle, names: &AssetNames) -> Files {
     let mut files = Files::new();
     let sprites = parallel(&b.sprites, |s| {
-        let dir = format!("graphics/sprites/{}", sprite::folder_name(s.category, s.index));
+        let dir = format!("graphics/sprites/{}", names.sprite(s.category, s.index));
         sprite::export(s).into_iter().map(|(n, d)| (format!("{dir}/{n}"), d)).collect::<Files>()
     });
     files.extend(sprites.into_iter().flatten());
     files.extend(stage::export_field(&b.field).into_iter().map(|(n, d)| (format!("graphics/field/{n}"), d)));
     for (id, bg) in b.backgrounds.iter().enumerate() {
         if let Some(bg) = bg {
-            files.extend(stage::export_background(bg).into_iter().map(|(n, d)| (format!("graphics/backgrounds/{id:02}/{n}"), d)));
+            let dir = format!("graphics/backgrounds/{}", names.background(id as u8));
+            files.extend(stage::export_background(bg, id as u8).into_iter().map(|(n, d)| (format!("{dir}/{n}"), d)));
         }
     }
-    files.extend(hud::export(&b.hud).into_iter().map(|(n, d)| (format!("graphics/hud/{n}"), d)));
+    files.extend(hud::export(&b.hud, names).into_iter().map(|(n, d)| (format!("graphics/hud/{n}"), d)));
     files
 }
 
-fn sprite_dirs(root: &Path) -> Vec<(u8, u8, PathBuf)> {
-    let mut v: Vec<(u8, u8, PathBuf)> = std::fs::read_dir(root.join("graphics/sprites"))
+/// The folders under `dir`, by name.
+fn subdirs(dir: &Path) -> Vec<(String, PathBuf)> {
+    let mut v: Vec<(String, PathBuf)> = std::fs::read_dir(dir)
         .into_iter()
         .flatten()
         .flatten()
-        .filter_map(|e| {
-            let name = e.file_name().into_string().ok()?;
-            let (c, i) = name.split_once('-')?;
-            Some((u8::from_str_radix(c, 16).ok()?, u8::from_str_radix(i, 16).ok()?, e.path()))
-        })
+        .filter(|e| e.path().is_dir())
+        .filter_map(|e| Some((e.file_name().into_string().ok()?, e.path())))
         .collect();
     v.sort();
     v
@@ -151,32 +156,36 @@ pub fn import_graphics(root: &Path, report: &mut Report) -> Option<Bundle> {
         report.error(MANIFEST, "the pack has no graphics");
         return None;
     };
-    let dirs = sprite_dirs(root);
-    let results = parallel(&dirs, |(c, i, dir)| {
+    let dirs: Vec<(String, PathBuf)> =
+        subdirs(&root.join("graphics/sprites")).into_iter().filter(|(_, d)| d.join("sprite.json").is_file()).collect();
+    let results = parallel(&dirs, |(folder, dir)| {
         let mut r = Report::default();
-        let name = format!("graphics/sprites/{}", sprite::folder_name(*c, *i));
-        let s = sprite::import(dir, &name, &mut r);
-        if let Some(s) = &s
-            && (s.category, s.index) != (*c, *i)
-        {
-            r.error(format!("{name}/sprite.json"), "the sprite id doesn't match the folder name");
-        }
-        (s, r)
+        let s = sprite::import(dir, &format!("graphics/sprites/{folder}"), &mut r);
+        (folder.clone(), s, r)
     });
-    let mut sprites = Vec::new();
-    for (s, r) in results {
+    let mut sprites: Vec<bn6_assets::SpriteSheet> = Vec::new();
+    for (folder, s, r) in results {
         report.issues.extend(r.issues);
-        sprites.extend(s);
+        if let Some(s) = s {
+            if let Some(other) = sprites.iter().find(|o| (o.category, o.index) == (s.category, s.index)) {
+                let id = sprite::folder_name(other.category, other.index);
+                report.error(format!("graphics/sprites/{folder}/sprite.json"), format!("another folder is sprite {id} too"));
+                continue;
+            }
+            sprites.push(s);
+        }
     }
+    sprites.sort_by_key(|s| (s.category, s.index));
     let field = stage::import_field(&root.join("graphics/field"), "graphics/field", report)?;
-    let mut backgrounds = Vec::new();
-    for id in 0..g.background_slots {
-        let dir = root.join(format!("graphics/backgrounds/{id:02}"));
-        backgrounds.push(if dir.is_dir() {
-            stage::import_background(&dir, &format!("graphics/backgrounds/{id:02}"), report)
-        } else {
-            None
-        });
+    let mut backgrounds: Vec<Option<bn6_assets::Background>> = vec![None; g.background_slots];
+    for (folder, dir) in subdirs(&root.join("graphics/backgrounds")) {
+        let name = format!("graphics/backgrounds/{folder}");
+        let Some((id, bg)) = stage::import_background(&dir, &name, report) else { continue };
+        match backgrounds.get_mut(id as usize) {
+            Some(slot @ None) => *slot = Some(bg),
+            Some(Some(_)) => report.error(format!("{name}/background.json"), format!("another folder is background {id} too")),
+            None => report.error(format!("{name}/background.json"), format!("background {id} is past the manifest's {} slots", g.background_slots)),
+        }
     }
     let hud = hud::import(&root.join("graphics/hud"), "graphics/hud", report)?;
     if report.has_errors() {
@@ -185,8 +194,8 @@ pub fn import_graphics(root: &Path, report: &mut Report) -> Option<Bundle> {
     Some(Bundle { sprites, field, backgrounds, hud })
 }
 
-pub fn export_sound(bank: &SoundBank) -> (Files, Vec<(m4a::SongId, String)>) {
-    let (files, failures) = sound::export(bank);
+pub fn export_sound(bank: &SoundBank, names: &AssetNames) -> (Files, Vec<(m4a::SongId, String)>) {
+    let (files, failures) = sound::export(bank, names);
     (files.into_iter().map(|(n, d)| (format!("sound/{n}"), d)).collect(), failures)
 }
 

@@ -96,7 +96,7 @@ mod tests {
         b.banner = Default::default();
         b.fight.state = fight::WIN;
         b.round.winner = 0;
-        let navi = b.content.navi(crate::setup::Navi::MEGAMAN).clone();
+        let navi = b.content.navi_data(crate::setup::Navi::MEGAMAN).clone();
         b.start_banner(navi.win_banner);
         assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(navi.win_banner), Some(navi.lose_banner)));
     }

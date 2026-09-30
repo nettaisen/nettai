@@ -241,6 +241,8 @@ fn write_value(s: &mut String, v: &serde_json::Value, depth: usize) {
 pub struct BackgroundDoc {
     pub format: String,
     pub version: u32,
+    /// The background's id (battle settings' background byte).
+    pub id: u8,
     pub tiles: TileImage,
     pub first_tile: u16,
     /// The Tiled map of the tile map.
@@ -277,7 +279,7 @@ pub struct AnimFrameDoc {
     pub palettes: Vec<Vec<String>>,
 }
 
-pub fn export_background(bg: &Background) -> Vec<(String, Vec<u8>)> {
+pub fn export_background(bg: &Background, id: u8) -> Vec<(String, Vec<u8>)> {
     let all = from_zero(&bg.tiles, bg.first_tile);
     let rows = vec![bg.palette.unwrap_or_else(grey)];
     let row_of = first_rows(all.len(), bg.map.iter().copied(), 0);
@@ -327,6 +329,7 @@ pub fn export_background(bg: &Background) -> Vec<(String, Vec<u8>)> {
     let doc = BackgroundDoc {
         format: BACKGROUND_FORMAT.into(),
         version: VERSION,
+        id,
         tiles: image,
         first_tile: bg.first_tile,
         map: "map.tmj".into(),
@@ -338,7 +341,8 @@ pub fn export_background(bg: &Background) -> Vec<(String, Vec<u8>)> {
     files
 }
 
-pub fn import_background(dir: &Path, prefix: &str, report: &mut Report) -> Option<Background> {
+/// A background and its id.
+pub fn import_background(dir: &Path, prefix: &str, report: &mut Report) -> Option<(u8, Background)> {
     let name = format!("{prefix}/background.json");
     let doc: BackgroundDoc = read_json(&dir.join("background.json"), &name, report)?;
     if doc.format != BACKGROUND_FORMAT || doc.version > VERSION {
@@ -388,7 +392,7 @@ pub fn import_background(dir: &Path, prefix: &str, report: &mut Report) -> Optio
             .collect();
         anims.push(GfxAnim { target, frames, repeat_from: a.repeat_from });
     }
-    Some(Background {
+    let bg = Background {
         tiles,
         first_tile: doc.first_tile,
         map,
@@ -397,7 +401,8 @@ pub fn import_background(dir: &Path, prefix: &str, report: &mut Report) -> Optio
         palette: doc.palette.then(|| palettes.first().copied().unwrap_or_default()),
         scroll: (doc.scroll[0], doc.scroll[1]),
         anims,
-    })
+    };
+    Some((doc.id, bg))
 }
 
 // ---- Tiled maps -------------------------------------------------------------------
