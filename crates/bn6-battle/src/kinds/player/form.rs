@@ -61,21 +61,12 @@ fn cross_overlay(form: Form) -> u8 {
 
 /// `sub_8011020` / `sub_8011044`: what an object with a navi's NameID
 /// takes down when it goes (`off_801105C`, by actor type and AI index):
-/// for most, the overlay in its `related[1]`.
+/// the parts its record added (`navi_parts`). (A navi object keeps no
+/// second part: only CircusMan's record adds one, and his navi chip's
+/// navi takes his off himself.)
 pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, name_id: u16) {
     let rec = b.content.navi_record(name_id);
-    if rec.actor_type == crate::actor::ActorType::Virus {
-        return;
-    }
-    match rec.ai_index {
-        0 | 1 | 9 | 13 | 16 | 18 | 19 | 24..=34 | 36 | 42..=46 | 48 => {
-            if let Some(o) = b.objects.get_mut(r).related[1].take() {
-                set_progress(b, o, Progress::DESTROY);
-            }
-        }
-        6 | 14 => panic!("the death hook for AI index {} (off_801105C) is not implemented yet", rec.ai_index),
-        _ => {}
-    }
+    crate::kinds::navi_parts::remove(b, r, rec.actor_type, rec.ai_index, None);
 }
 
 /// `sub_8011384(form)`: take off the overlay `form` wore, if that form

@@ -2,7 +2,7 @@
 //!
 //! Everything here is made up: a MegaMan-like navi and its base form,
 //! a few chips that use GunDelSol, two dimming chips (one grabs a column)
-//! and a navi chip, rocks,
+//! and two navi chips, rocks,
 //! sprites with short animations, and rules written from the engine's own
 //! flag semantics (docs/engine/field-collision-damage.md). It is not BN6's
 //! data, which comes only from a content pack extracted from the user's ROM
@@ -34,6 +34,8 @@ pub const VEIL: ChipId = 0x05;
 pub const ERASER: ChipId = 0x06;
 /// A dimming chip (action 0x15, subtype 0) that grabs a column.
 pub const GRAB: ChipId = 0x07;
+/// A navi chip (action 0x1B, subtype 16: the elements navi).
+pub const ELEMENTS: ChipId = 0x08;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -140,6 +142,12 @@ pub fn scripts() -> Scripts {
                 ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("lib/buster", "lib/buster"),
+                ("lib/panels", "lib/panels"),
+                ("objects/elmnt-man/elmnt_man", "objects/elmnt-man/elmnt_man"),
+                ("objects/meteor/meteor", "objects/meteor/meteor"),
+                ("objects/elmnt-ice/elmnt_ice", "objects/elmnt-ice/elmnt_ice"),
+                ("objects/elmnt-bolt/elmnt_bolt", "objects/elmnt-bolt/elmnt_bolt"),
+                ("objects/elmnt-vine/elmnt_vine", "objects/elmnt-vine/elmnt_vine"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -190,6 +198,11 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
         kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
+        kind("elmnt-man", Pool::Actor, 0x10, "objects/elmnt-man/elmnt_man"),
+        kind("meteor", Pool::Attack, 0x8D, "objects/meteor/meteor"),
+        kind("elmnt-ice", Pool::Attack, 0x8E, "objects/elmnt-ice/elmnt_ice"),
+        ObjectKind { scratch_z_fraction: true, ..kind("elmnt-bolt", Pool::Attack, 0xB8, "objects/elmnt-bolt/elmnt_bolt") },
+        kind("elmnt-vine", Pool::Attack, 0xB9, "objects/elmnt-vine/elmnt_vine"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -281,6 +294,15 @@ fn chips() -> Vec<ChipData> {
             damage: 10,
             script: Some("objects/area-grab/area_grab".into()),
             ..chip(GRAB, "Grab", 0x15, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            hit_param: 100,
+            params: [4, 0, 0, 0],
+            damage: 50,
+            script: Some("objects/elmnt-man/elmnt_man".into()),
+            ..chip(ELEMENTS, "Elements", 0x1B, 16)
         },
     ]
 }
@@ -516,7 +538,10 @@ fn objects() -> ObjectData {
         attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03)]).collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
-        body_overlays: Vec::new(),
+        // The elements navi's overlay (variant 0x0F).
+        body_overlays: (0..0x10)
+            .map(|id| BodyOverlay { id, sprite: SpriteId { category: 8, index: 0x11 }, in_front: vec![true; 0x20] })
+            .collect(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
         kinds: kinds(),
     }
@@ -565,6 +590,15 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 8, index: 4 }, eraser);
     sprites.insert(SpriteId { category: 0x10, index: 0x50 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x10, index: 0x51 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
+    // The elements navi (appearing, leaving, winding up, attacking, a vine)
+    // and its overlay; its meteor, ice and bolt.
+    let mut elements = vec![once(4); 0x13];
+    elements[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 8, index: 0x10 }, elements);
+    sprites.insert(SpriteId { category: 8, index: 0x11 }, vec![once(4); 0x20]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x0F }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x14, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
     // The buster's muzzle flash, and its arm (by form).
     sprites.insert(SpriteId { category: 0x0C, index: 0x06 }, vec![vec![f(2, 0), f(2, LAST)]]);
     sprites.insert(SpriteId { category: 0x0C, index: 0x03 }, vec![vec![f(30, LAST | LOOP)]; 0x19]);

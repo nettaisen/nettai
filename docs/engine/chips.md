@@ -1205,17 +1205,39 @@ variant 0xF, own palette, Param3 1, animation offset 9). Actions (each with a ti
 - 0xC: anim 5 (7 at 16 ticks left); 35 ticks; Wood first turns every solid panel to grass. Then 0x10, phase = the
   element · 4.
 - 0x10: Fire (`sub_80BACBC`) lists the panels holding the other side's body (`object_getPanelsExceptCurrentFiltered`,
-  rows 3..1, columns 6..1) and drops a meteor on each, 12 ticks apart. Aqua, Elec and Wood are not ported.
+  rows 3..1, columns 6..1; Param2 = how many, Param3 counts) and drops a meteor on each, 12 ticks apart. Aqua
+  (`sub_80BAD06`): T3 0x8E ice (Param2 30, Param3 1) on the three panels of the column ahead, each solid one turned
+  to ice; sound 0x99; 30 ticks. Elec (`sub_80BAD76`): a T3 0xB8 bolt in each row of the column three ahead, 16 ticks
+  apart. Wood (`sub_80BAD34`): a T3 0xB9 vine on the next panel along his row every 15 ticks, up to five, until a
+  panel isn't solid (or no vine spawns). The grass before it (`sub_80BAF06`): every solid panel (columns 1..6, rows
+  1..3) turns to grass with a T4#0 effect 2 (palette +5) at Z 8 (raw), sound 0x11B.
 - 0x14: 20 ticks (anim 8 at 5 left). 0x18: anim 4; 2 ticks; the death hook takes the overlay down, the controller's
   flag is cleared, state 8.
 - Round 1: spawned 3518, A at 3540 (Fire), the meteor 3578, gone 3602; the controller's undim ends 3683.
 
-**The meteor, T3 0x8D (`sub_80D6BD4`)**, spawned by `sub_80D6D18` with Param1 = 1 (it runs, and steps its sprite,
-while dimmed) and flags \|= 0x10: from 192 pixels behind and above its panel it falls 11 pixels a tick for 17 ticks
-(sound 0xC4; the panel highlighted 4 ticks out of 8); on landing, if the panel's flags meet `byte_80D6D08[side]`, a
-T4#0 explosion and a hit region (region 1, hit effect 1, target 5, self 0xA, hit modifier 3; with Param1 set
-`sub_80C53A6` gives the region flag 0x10 so it resolves while dimmed). The damage lands while dimmed; the
-victim's flinch waits for the time to start again (3684).
+**The meteor, T3 0x8D (`sub_80D6BD4`)**, spawned by `sub_80D6D18` with flags \|= 0x10 and Param1 = 1 from
+ElmntMan (it acts, and steps its sprite, while dimmed), 0 from his navi AI (it waits a dimming out, its sprite
+stepping as `object_updateSpritePaused` does): from 192 pixels behind and above its panel it falls 11 pixels a tick
+for 17 ticks (sound 0xC4; the panel highlighted 4 ticks out of 8); on landing, if the panel's flags meet
+`byte_80D6D08[side]`, a T4#0 explosion and a hit region (region 1, hit effect 1, target 5, self 0xA, hit modifier 3;
+with Param1 set `sub_80C53A6` gives the region flag 0x10 so it resolves while dimmed). The damage lands while dimmed;
+the victim's flinch waits for the time to start again (3684).
+
+**ElmntMan's ice, T3 0x8E (`sub_80D6D80`)**, spawned by `sub_80D6EB0` (flags \|= 0x10; its Z is the spawner's r3,
+of which the init keeps the fraction under a height of 8): sprite (0x10, 0xF) animation 1; collision self 4, target 5,
+modifier 3, status 0x50, hit effect 2, region 0 until it acts: then region 1, its panel turned to ice, Param2 ticks.
+Each tick the hits resolve and a hit clears the region (and the hit flags). Param3 1 (ElmntMan's) acts and steps its
+sprite while dimmed; Param3 0 (his navi AI's) waits a dimming out with its collision off.
+
+**ElmntMan's bolt, T3 0xB8 (`sub_80DC3F8`)** and **vine, T3 0xB9 (`sub_80DC4FC`)**: on their panel on the ground
+(their Z keeps its fraction: the bolt's is garbage from the object loop, the vine's the row minus 1 that its
+spawner's panel check leaves in r3), running while dimmed. On their first action tick a hit region that resolves
+while dimmed (region 1, target 5, self 0xA; the bolt hit effect 3, modifier 3, the vine hit effect 4, modifier 1);
+the bolt breaks its panel (`object_breakPanel_dup2`: cracks it if something occupies it), sound 0x12E, and shows 16
+ticks; the vine (ElmntMan's sprite, animation 0x12), sound 0x181, 30 ticks.
+
+All of these are the pack's scripts (objects/elmnt-man, meteor, elmnt-ice, elmnt-bolt, elmnt-vine). The navi AI's
+meteors and ice (Param1/Param3 0) are ported but no trace reaches them (unverified).
 
 **Cut-ins.** `sub_8017AB4` also needs the next chip to have the dimming flag; soundmod 25828 (side 1 presses A
 during ElmntMan's name with FullCust next) clears the request.
