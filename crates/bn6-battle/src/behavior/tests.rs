@@ -32,6 +32,8 @@ fn battles_run_the_content_scripts() {
             "bomb",
             "bomb-slash",
             "bug-bomb",
+            "dragon-body",
+            "dragon-head",
             "dust-ball",
             "energy-burst",
             "erase-beam",
@@ -39,6 +41,7 @@ fn battles_run_the_content_scripts() {
             "erase-mark",
             "flash-bomb",
             "grab-shot",
+            "honey-bee",
             "reflected-shot",
             "reflector-shield",
             "seed",
@@ -103,6 +106,51 @@ fn the_scripted_navi_and_dimming_chips_play() {
     assert!(ticks((Attack, 0x0F)) > 0, "grab shots: {seen:?}");
 }
 
+/// A duel with the bee and dragon chips in the folders: the ticks each
+/// scripted kind was on the field, and the players' HP at the end.
+fn bee_and_dragon_duel(ticks: usize) -> (std::collections::BTreeMap<(crate::object::Pool, u8), usize>, [u16; 2]) {
+    let setup = || scenario::setup_with(&[testing::BEES, testing::DRAGON]);
+    let tape = scenario::record_on(setup(), ticks, 5);
+    let mut b = Battle::new(setup(), scenario::content());
+    let mut seen = std::collections::BTreeMap::new();
+    for t in &tape {
+        b.tick(&t.input, t.events.clone());
+        for r in b.objects.in_order() {
+            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+        }
+    }
+    let hp = [0, 1].map(|s| b.objects.get(b.player(s).unwrap()).hp);
+    (seen, hp)
+}
+
+#[test]
+fn the_bees_and_dragons_play() {
+    use crate::object::Pool::{Actor, Attack};
+    let (seen, hp) = bee_and_dragon_duel(2400);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // The hive in hand, the bees it sends, the dragon's head and body.
+    assert!(ticks((Actor, 0x05)) > 0, "the hive: {seen:?}");
+    assert!(ticks((Attack, 0x74)) > 0, "bees: {seen:?}");
+    assert!(ticks((Attack, 0xC9)) > 0, "dragon heads: {seen:?}");
+    assert!(ticks((Attack, 0xC8)) >= 4 * ticks((Attack, 0xC9)), "four body segments a head: {seen:?}");
+    assert!(hp.iter().any(|&h| h < 1000), "someone got hit: {hp:?}");
+}
+
+#[test]
+fn the_bees_and_dragons_roll_back() {
+    let setup = || scenario::setup_with(&[testing::BEES, testing::DRAGON]);
+    let tape = scenario::record_on(setup(), 1600, 5);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    for (i, t) in tape.iter().enumerate() {
+        if i % 89 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+    }
+}
+
 #[test]
 fn the_thrown_chips_play_and_roll_back() {
     // Duels with the bomb, seed, flash bomb and bug bomb in the folders:
@@ -152,10 +200,11 @@ fn scripted_chips_roll_back() {
 fn registrations_follow_the_content_data() {
     let mut c = testing::build();
     let r = c.registrations().unwrap();
-    // The four SunGun chips share one action; two weapons have theirs;
-    // the mend and mirror chips theirs.
+    // The four SunGun chips share one action, and the thrown chips
+    // theirs; two weapons have theirs; the mend, mirror, bee and dragon
+    // chips theirs.
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
-    assert_eq!(actions, [0x12, 0x20, 0x2B, 0x33, 0x37, 0x57], "{:?}", r.actions);
+    assert_eq!(actions, [0x12, 0x20, 0x2B, 0x33, 0x37, 0x39, 0x51, 0x57], "{:?}", r.actions);
     // Two chips implementing one action with different scripts is an error.
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
     let e = c.registrations().unwrap_err();

@@ -378,6 +378,9 @@ impl UserData for Object {
             let mode = u8_arg(mode, "damage mode")?;
             with(|api, _| Ok(api.take_damage(this.0, mode)))
         });
+        methods.add_method("highlight_collision_panels", |_, this, ()| {
+            with(|api, _| Ok(api.highlight_collision_panels(this.0)))
+        });
 
         // Navis: the attack, requests, state, buttons.
         methods.add_method("attack_param", |_, this, n: LuaValue| {

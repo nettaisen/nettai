@@ -135,6 +135,8 @@ export type NaviStateFlag =
     -- Gone from the field while its navi chip's navi acts.
     | "vanished"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
+-- A navi's drag reaction step.
+export type DragStep = "start" | "slide" | "recover"
 
 -- A sprite: "CC-II" in hex, its folder in the pack's graphics/sprites.
 export type SpriteId = string
@@ -271,6 +273,8 @@ declare class Object
     -- Keeps updating while the battle is dimmed.
     run_while_dimmed: boolean
     no_sprite_update: boolean
+    -- A navi's drag reaction step (the byte other kinds use otherwise).
+    drag_step: DragStep
     sprite: Sprite
     collision: Collision
     -- The kind's declared state (cast it to the kind's State type).
@@ -390,6 +394,9 @@ declare class Object
     -- (not in mode 1), a white flash while hit, with a sound in modes 0
     -- and 2. -1 when its HP ran out, 1 when hit in another mode, else 0.
     function take_damage(self, mode: number): number
+    -- `object_highlightCurrentCollisionPanels`: highlight the panels its
+    -- collision region covers, facing its way (drawn only).
+    function highlight_collision_panels(self): ()
 
     -- Navis only.
     function attack_param(self, n: number): number

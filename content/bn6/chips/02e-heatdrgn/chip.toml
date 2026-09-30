@@ -1,0 +1,3 @@
+# HeatDrgn runs the dragons' action (0x51, `sub_80EF4B4`), in chip.luau.
+
+script = "chip.luau"
