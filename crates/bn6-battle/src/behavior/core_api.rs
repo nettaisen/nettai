@@ -339,6 +339,25 @@ impl CoreApi for Battle {
         self.side_stats[side as usize & 1][index as usize & 0xF]
     }
 
+    fn damage_carry(&self, side: u8) -> bn6_content_api::api::DamageCarryInfo {
+        let c = &self.damage_carry[side as usize & 1];
+        bn6_content_api::api::DamageCarryInfo {
+            this_tick: c.this_tick,
+            previous: c.previous,
+            source: c.source,
+            target: c.target,
+        }
+    }
+
+    fn set_damage_carry(&mut self, side: u8, rec: bn6_content_api::api::DamageCarryInfo) {
+        self.damage_carry[side as usize & 1] = crate::battle::DamageCarry {
+            this_tick: rec.this_tick,
+            previous: rec.previous,
+            source: rec.source,
+            target: rec.target,
+        };
+    }
+
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo> {
         let name = self
             .content
@@ -470,6 +489,12 @@ impl CoreApi for Battle {
         Ok(super::spawn_object(self, pool, index, pos, params))
     }
 
+    fn spawn_kind_at_end(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
+        let k = self.content.object_kind(name).ok_or_else(|| ApiError::UnknownKind(name.to_string()))?;
+        let (pool, index) = (k.pool, k.index);
+        Ok(super::spawn_object_at_end(self, pool, index, pos, params))
+    }
+
     fn free(&mut self, o: ObjectRef) {
         self.objects.free(o);
     }
@@ -482,6 +507,7 @@ impl CoreApi for Battle {
         match self.objects.get(o).state {
             state::INIT => Lifecycle::Init,
             state::UPDATE => Lifecycle::Update,
+            state::FINISH => Lifecycle::Finish,
             _ => Lifecycle::Destroy,
         }
     }
@@ -491,6 +517,7 @@ impl CoreApi for Battle {
             Lifecycle::Init => Progress::default(),
             Lifecycle::Update => Progress::UPDATE,
             Lifecycle::Destroy => Progress::DESTROY,
+            Lifecycle::Finish => Progress { state: state::FINISH, action: 0, phase: 0, phase_init: 0 },
         };
         common::set_progress(self, o, p);
     }
@@ -500,6 +527,7 @@ impl CoreApi for Battle {
             Lifecycle::Init => state::INIT,
             Lifecycle::Update => state::UPDATE,
             Lifecycle::Destroy => state::DESTROY,
+            Lifecycle::Finish => state::FINISH,
         };
     }
 

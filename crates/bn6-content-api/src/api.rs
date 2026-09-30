@@ -23,6 +23,10 @@ pub enum Lifecycle {
     Update,
     /// Ending; its next update frees it.
     Destroy,
+    /// The fourth state (the game's 0xC) of kinds that have one after
+    /// `Destroy`: for them `Destroy` is a last running phase, and this one
+    /// frees them.
+    Finish,
 }
 
 impl Lifecycle {
@@ -31,11 +35,12 @@ impl Lifecycle {
             Lifecycle::Init => "init",
             Lifecycle::Update => "update",
             Lifecycle::Destroy => "destroy",
+            Lifecycle::Finish => "finish",
         }
     }
 
     pub fn from_name(s: &str) -> Option<Lifecycle> {
-        [Lifecycle::Init, Lifecycle::Update, Lifecycle::Destroy].into_iter().find(|l| l.name() == s)
+        [Lifecycle::Init, Lifecycle::Update, Lifecycle::Destroy, Lifecycle::Finish].into_iter().find(|l| l.name() == s)
     }
 }
 
@@ -576,6 +581,18 @@ pub struct LinkedChip {
     pub object: Option<ObjectRef>,
 }
 
+/// A side's damage-carry record (`dword_203CFB0`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DamageCarryInfo {
+    /// The side's largest damage this tick, and last tick.
+    pub this_tick: u16,
+    pub previous: u16,
+    /// The object that set the record, and the target that takes last
+    /// tick's damage on top of its own.
+    pub source: Option<ObjectRef>,
+    pub target: Option<ObjectRef>,
+}
+
 /// A NameID's actor record.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NaviRecordInfo {
@@ -681,6 +698,12 @@ pub trait CoreApi {
     fn side_stat(&self, side: u8, index: u8) -> u8;
     /// A player NameID's actor record, if it is one.
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo>;
+    /// The damage-carry record of the side that takes the damage
+    /// (`dword_203CFB0`; CopyDmg's): what that side took this tick and
+    /// last tick, the object that set it, and the target that also takes
+    /// last tick's damage.
+    fn damage_carry(&self, side: u8) -> DamageCarryInfo;
+    fn set_damage_carry(&mut self, side: u8, rec: DamageCarryInfo);
 
     // ---- Panels -----------------------------------------------------------
 
@@ -734,6 +757,9 @@ pub trait CoreApi {
     fn spawn(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef>;
     /// Spawn the content object kind named `name` (its folder in the pack).
     fn spawn_kind(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
+    /// `sub_8003374` (attacks) / `sub_800333C` (actors): the same, at the
+    /// end of the update list rather than right after the spawner.
+    fn spawn_kind_at_end(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
     /// Free the slot now (the object stops running).
     fn free(&mut self, o: ObjectRef);
     /// `object_genericDestroy`: release panel reservations and collision,
