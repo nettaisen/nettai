@@ -107,8 +107,8 @@ fn link(b: &mut Battle, r: ObjectRef) -> &mut Option<ObjectRef> {
 /// `sub_80E1566`.
 fn tick(b: &mut Battle, r: ObjectRef) {
     let alliance = b.objects.get(r).alliance;
-    let s = &b.stats[alliance as usize];
-    let shown = s.navi == Navi::MEGAMAN && s.form.is_beast() && !b.is_remote(alliance);
+    let side = alliance as usize;
+    let shown = b.navi(side) == Navi::MEGAMAN && b.form(side).is_beast() && !b.is_remote(alliance);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::VISIBLE;
     if shown {

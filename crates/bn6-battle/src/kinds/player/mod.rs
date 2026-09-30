@@ -26,7 +26,8 @@ use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, CollisionId, f1, timer};
 use crate::field::PanelType;
 use crate::content::NaviRecord;
-use crate::hand::NO_CHIP;
+use bn6_content_api::{ChipHandle, WeaponHandle};
+use crate::content::Content;
 use crate::object::{ObjectRef, PanelPos, Pool, StateWord, Vec3, flags, state};
 use crate::setup::{ActorEntry, Form, Navi, NaviStats, effects};
 
@@ -60,7 +61,7 @@ pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
     };
     b.objects.get_mut(r).actor = Some(a);
     b.actors.get_mut(a).actor_type = ActorType::Player;
-    let navi = b.stats[entry.alliance as usize].navi;
+    let navi = b.navi(entry.alliance as usize);
     let name_id = 0x1A0 + navi.0 as u16;
     b.objects.get_mut(r).name_id = name_id;
     // The actor record (`sub_80182B4`); MegaMan's is {0, Player, 0}.
@@ -115,6 +116,17 @@ fn ai_mut(b: &mut Battle, r: ObjectRef) -> &mut ActorData {
 /// The navi stats of the object's side.
 fn stats(b: &Battle, r: ObjectRef) -> &NaviStats {
     &b.stats[b.objects.get(r).alliance as usize]
+}
+
+/// The form of the object's side, by number (the ruleset asks forms by
+/// number until phase C).
+pub(crate) fn form_of(b: &Battle, r: ObjectRef) -> Form {
+    b.content.form_number(stats(b, r).form)
+}
+
+/// The navi of the object's side, by number.
+pub(crate) fn navi_of(b: &Battle, r: ObjectRef) -> Navi {
+    b.content.navi_number(stats(b, r).navi)
 }
 
 fn stats_mut(b: &mut Battle, r: ObjectRef) -> &mut NaviStats {
@@ -220,19 +232,18 @@ fn panel_kind(b: &Battle, p: PanelPos) -> PanelType {
     b.field.panel(p.x, p.y).map(|p| p.kind).unwrap_or_default()
 }
 
-/// `sub_8010004`: the next chip in the side's hand.
-fn next_chip(b: &Battle, r: ObjectRef) -> u16 {
+/// `sub_8010004`: the next chip in the side's hand (none: the game's
+/// 0xFFFF).
+fn next_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
     let hand = &b.hands[b.objects.get(r).alliance as usize];
-    hand.ids.get(hand.cursor as usize).copied().unwrap_or(NO_CHIP)
+    hand.ids.get(hand.cursor as usize).copied().flatten()
 }
 
 /// Whether hand chip `id` is of the Null family. The game looks an empty
 /// hand's chip (0xFFFF) up in the chip table too, reading the record past
 /// its end (`Rules::empty_hand`).
-fn null_family(b: &Battle, id: u16) -> bool {
-    if id == NO_CHIP {
-        return b.content.rules.empty_hand.null_family;
-    }
+fn null_family(b: &Battle, id: Option<ChipHandle>) -> bool {
+    let Some(id) = id else { return b.content.rules.empty_hand.null_family };
     b.content.chip(id).family == crate::content::ChipFamily::Null
 }
 
@@ -292,7 +303,7 @@ fn save_state_word(b: &mut Battle, r: ObjectRef) {
 /// `sub_802DD2A`: a Cross navi that falls back to base form instead of
 /// dying.
 fn cross_protected(b: &Battle, r: ObjectRef) -> bool {
-    stats(b, r).navi != Navi::MEGAMAN && ai(b, r).status & crate::actor::status::CROSSED != 0
+    navi_of(b, r) != Navi::MEGAMAN && ai(b, r).status & crate::actor::status::CROSSED != 0
 }
 
 /// Switch to `action` at phase 0 (the game's direct CurAction stores).
@@ -538,8 +549,9 @@ pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) -> u8 {
 /// while paused).
 pub fn check_beast_out_end(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
+    let beast = form_of(b, r).is_beast();
     let revert = if battle_mode(b) == 1 {
-        s.form.is_beast()
+        beast
     } else {
         let a = ai_mut(b, r);
         if a.beast_out_check_delay != 0 {
@@ -550,7 +562,7 @@ pub fn check_beast_out_end(b: &mut Battle, r: ObjectRef) {
             return;
         }
         a.beast_out_spent = true;
-        s.form.is_beast()
+        beast
     };
     if revert {
         ai_mut(b, r).requests |= request::REVERT_FORM;
@@ -599,13 +611,13 @@ fn init(b: &mut Battle, r: ObjectRef) {
     init_hp(b, r);
     init_navicust(b, r);
     update_element(b, r);
-    if stats(b, r).navi == Navi::MEGAMAN {
+    if navi_of(b, r) == Navi::MEGAMAN {
         // sub_8015B22
-        let form = stats(b, r).form;
+        let form = form_of(b, r);
         b.objects.get_mut(r).name_id = if form == Form::NONE { 0x1A0 } else { 0x1AB + form.0 as u16 };
     }
     // sub_8011268: the starting form's overlay (none in base form).
-    let form = stats(b, r).form;
+    let form = form_of(b, r);
     form::put_on_overlay(b, r, form);
     reset_status(b, r);
     style_hook(b, r);
@@ -614,7 +626,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     enable_turning(b, r);
     crate::kinds::charge_glow::spawn(b, r);
     post_init_hook(b, r);
-    if stats(b, r).form == Form::NONE {
+    if form_of(b, r) == Form::NONE {
         let name_id = b.objects.get(r).name_id;
         form::navi_init_hook(b, r, name_id);
     }
@@ -675,8 +687,8 @@ fn post_init_hook(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800FC9E` + `sprite_load`: load the navi's battle sprite.
 fn load_sprite(b: &mut Battle, r: ObjectRef) {
-    let (navi, form) = (stats(b, r).navi, stats(b, r).form);
-    let id = if navi == Navi::MEGAMAN { b.content.form(form).sprite } else { b.content.navi(navi).sprite };
+    let s = stats(b, r);
+    let id = if navi_of(b, r) == Navi::MEGAMAN { b.content.form(s.form).sprite } else { b.content.navi(s.navi).sprite };
     let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
@@ -743,7 +755,7 @@ fn reset_navicust_state(b: &mut Battle, r: ObjectRef) {
 /// flags after a NaviCust change.
 fn refresh_navicust_state(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
-    if s.form == Form::NONE {
+    if form_of(b, r) == Form::NONE {
         let a = ai_mut(b, r);
         a.charge_shot = s.weapons.charge_shot;
         a.back_special = s.weapons.back_special;
@@ -775,15 +787,16 @@ fn apply_navicust_flags(b: &mut Battle, r: ObjectRef) {
 /// `sub_801086C`: element and secondary weakness from the navi and form.
 fn update_element(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
-    let element = if s.navi != Navi::MEGAMAN {
+    let base = form_of(b, r) == Form::NONE;
+    let element = if navi_of(b, r) != Navi::MEGAMAN {
         b.content.navi(s.navi).element as u8
-    } else if s.form != Form::NONE {
+    } else if !base {
         b.content.form(s.form).element as u8
     } else {
         s.element
     };
     set_element(b, r, element);
-    let weakness = if s.form != Form::NONE { b.content.form(s.form).weakness } else { b.content.navi(s.navi).weakness };
+    let weakness = if !base { b.content.form(s.form).weakness } else { b.content.navi(s.navi).weakness };
     coll_mut(b, r).secondary_weakness = weakness.0;
 }
 
@@ -823,46 +836,50 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
 fn load_weapons(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     let mode9 = battle_mode(b) == 9;
-    let form_weapons = (s.form != Form::NONE).then(|| b.content.form(s.form).weapons);
+    let content = b.content.clone();
+    // A form's weapons are the pack's routine numbers (0xFF: none).
+    let weapon = |n: u8| (n != 0xFF).then(|| content.weapon_numbered(n));
+    let base = form_of(b, r) == Form::NONE;
     let a = ai_mut(b, r);
-    if s.form == Form::NONE {
+    if base {
         let w = s.weapons;
-        a.mode9_a = if mode9 { w.mode9_a } else { 0xFF };
+        a.mode9_a = if mode9 { w.mode9_a } else { None };
         a.buster = w.buster;
-        set_charge_shot_routine(a, w.charge_shot);
+        set_charge_shot_routine(a, w.charge_shot, &content);
         a.a_charge = w.a_charge;
         a.back_special = w.back_special;
-        a.alt_a_charge = 0xFF;
+        a.alt_a_charge = None;
     } else {
-        let w = form_weapons.expect("a form's weapons");
-        a.mode9_a = w.mode9_a;
-        a.a_charge = w.a_charge;
-        a.buster = w.buster;
-        set_charge_shot_routine(a, w.charge_shot);
-        a.back_special = w.back_special;
-        a.alt_a_charge = w.alt_a_charge;
+        let w = content.form(s.form).weapons;
+        a.mode9_a = weapon(w.mode9_a);
+        a.a_charge = weapon(w.a_charge);
+        a.buster = weapon(w.buster);
+        set_charge_shot_routine(a, weapon(w.charge_shot), &content);
+        a.back_special = weapon(w.back_special);
+        a.alt_a_charge = weapon(w.alt_a_charge);
     }
 }
 
 /// `sub_800FF5E`: reload the base form's weapon bytes (after a NaviCust
 /// change).
 fn reload_base_weapons(b: &mut Battle, r: ObjectRef) {
-    if stats(b, r).form == Form::NONE {
+    if form_of(b, r) == Form::NONE {
         load_weapons(b, r);
     }
 }
 
 /// `sub_800FFAA`: set the charge-shot routine; the special routines
 /// 0x21..=0x26 stick, and change some buster routines.
-fn set_charge_shot_routine(a: &mut ActorData, v: u8) {
-    let special = |x: u8| (0x21..=0x26).contains(&x);
+fn set_charge_shot_routine(a: &mut ActorData, v: Option<WeaponHandle>, content: &Content) {
+    let number = |w: Option<WeaponHandle>| w.and_then(|w| content.weapon_number(w));
+    let special = |w: Option<WeaponHandle>| number(w).is_some_and(|x| (0x21..=0x26).contains(&x));
     if special(v) || !special(a.charge_shot) {
         a.charge_shot = v;
     }
     if special(a.charge_shot) {
-        match a.buster {
-            3 | 4 => a.buster = 0,
-            0x2C => a.buster = 0x2B,
+        match number(a.buster) {
+            Some(3 | 4) => a.buster = Some(content.weapon_numbered(0)),
+            Some(0x2C) => a.buster = Some(content.weapon_numbered(0x2B)),
             _ => {}
         }
     }
@@ -904,7 +921,7 @@ fn style_hook(b: &mut Battle, r: ObjectRef) {
 /// `sub_80141F4`: L/R turning, except with the standard column patterns.
 fn enable_turning(b: &mut Battle, r: ObjectRef) {
     const DUSTMAN_MINI_GAME: u8 = 0xB;
-    if matches!(b.setup.settings.panel_pattern, 0x38 | 0x30 | 0x3C) || battle_mode(b) == DUSTMAN_MINI_GAME {
+    if matches!(b.panel_pattern(), 0x38 | 0x30 | 0x3C) || battle_mode(b) == DUSTMAN_MINI_GAME {
         return;
     }
     ai_mut(b, r).status |= crate::actor::status::CAN_TURN;
@@ -969,11 +986,12 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 /// modelled and keep the palette they have.
 fn navi_palette(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
-    if s.navi != Navi::MEGAMAN || s.form.is_beast_over() {
+    let form = form_of(b, r);
+    if navi_of(b, r) != Navi::MEGAMAN || form.is_beast_over() {
         return;
     }
     let synchro = if s.mood == 0xFF { 4 } else { 0 };
-    let palette = match s.form.0 {
+    let palette = match form.0 {
         0 if s.element != 0 => synchro + s.element.wrapping_mul(5).wrapping_add(0x12),
         0 | 0x0B | 0x0C => synchro,
         _ => return,
@@ -1001,7 +1019,7 @@ fn emotion_timer(b: &mut Battle, r: ObjectRef) {
     if s.bugs.emotion == 0 || s.beast_out_counter == 0 {
         return;
     }
-    if s.form != Form::NONE {
+    if form_of(b, r) != Form::NONE {
         status::end_anger(b, r);
         ai_mut(b, r).beast_out_spent = false;
         return;
@@ -1051,8 +1069,8 @@ fn per_form_tick(b: &mut Battle, r: ObjectRef) {
     if !matches!(ai(b, r).ai_index, 0 | 5) {
         return;
     }
-    let s = *stats(b, r);
-    if !b.paused && s.navi == Navi(5) {
+    let (navi, form) = (navi_of(b, r), form_of(b, r));
+    if !b.paused && navi == Navi(5) {
         // ChargeMan charges his Fire chips up to a limit by his level
         // (none unset). (The game first compares the level with the word at
         // the start of `byte_8021300`, MegaMan's row of zeros: never less.)
@@ -1063,11 +1081,11 @@ fn per_form_tick(b: &mut Battle, r: ObjectRef) {
                 .unwrap_or_else(|| panic!("ChargeMan's level {level} reads past his charge limits (sub_80F0608)"));
             charge_fire_chip(b, r, limit as u16);
         }
-    } else if !b.paused && matches!(s.form.0, 5 | 0x11) {
+    } else if !b.paused && matches!(form.0, 5 | 0x11) {
         charge_fire_chip(b, r, 100);
     }
-    if s.navi == Navi::MEGAMAN {
-        if s.form == Form::FALZAR_BEAST_OVER {
+    if navi == Navi::MEGAMAN {
+        if form == Form::FALZAR_BEAST_OVER {
             b.objects.get_mut(r).pos.z = 0x14_0000;
         } else if b.objects.get(r).action != 0x50 && flag1(b, r) & f1::BUBBLED == 0 {
             b.objects.get_mut(r).pos.z = 0;
@@ -1086,12 +1104,15 @@ fn charge_fire_chip(b: &mut Battle, r: ObjectRef, limit: u16) {
     let Some(&chip) = hand.ids.get(i) else { return };
     // With no chip left, the game looks up chip 0xFFFF, far past the
     // table (`Rules::empty_hand`).
-    let (flags, fire) = if chip == NO_CHIP {
-        let e = b.content.rules.empty_hand;
-        (e.flags, e.fire)
-    } else {
-        let cd = b.content.chip(chip);
-        (cd.flags, cd.element == crate::content::Element::Fire)
+    let (flags, fire) = match chip {
+        None => {
+            let e = b.content.rules.empty_hand;
+            (e.flags, e.fire)
+        }
+        Some(chip) => {
+            let cd = b.content.chip(chip);
+            (cd.flags, cd.element == crate::content::Element::Fire)
+        }
     };
     if !flags.has(crate::content::ChipFlags::HAS_DAMAGE) || !fire {
         return;

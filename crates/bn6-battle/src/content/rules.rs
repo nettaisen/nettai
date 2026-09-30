@@ -2,7 +2,7 @@
 
 use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, PanelOffset, SecondaryElements};
 use crate::field::PanelType;
-use crate::setup::{ActorList, BattleSettings};
+use crate::setup::{ActorList, StageSettings};
 use serde::{Deserialize, Serialize};
 
 /// Global rules: element weakness, collision types, panels, stages,
@@ -155,14 +155,14 @@ impl StepRuleSet {
 pub struct Stages {
     /// `BattleSettingsList1`, by index (a set's later rounds are drawn from
     /// it).
-    pub settings: Vec<BattleSettings>,
+    pub settings: Vec<StageSettings>,
     /// Actor lists by [`ActorListId`](crate::setup::ActorListId).
     pub actor_lists: Vec<ActorList>,
 }
 
 impl Stages {
     /// Battle settings entry `index`.
-    pub fn settings(&self, index: u8) -> BattleSettings {
+    pub fn settings(&self, index: u8) -> StageSettings {
         *self.settings.get(index as usize).unwrap_or_else(|| panic!("battle settings {index:#x} are not in the content"))
     }
 

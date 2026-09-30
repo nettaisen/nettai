@@ -82,8 +82,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
         return tick(b, r);
     }
     let side = b.objects.get(navi).alliance as usize;
-    let (navi_id, form) = (b.stats[side].navi, b.stats[side].form);
-    let sprite = if navi_id == Navi::MEGAMAN { b.content.form(form).sprite } else { b.content.navi(navi_id).sprite };
+    let (navi_id, form) = (b.navi(side), b.form(side));
+    let s = &b.stats[side];
+    let sprite = if navi_id == Navi::MEGAMAN { b.content.form(s.form).sprite } else { b.content.navi(s.navi).sprite };
     let (pos, palette) = (b.objects.get(navi).pos, b.objects.sprite(navi).look.palette);
     let flip = {
         let o = b.objects.get(r);

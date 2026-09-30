@@ -7,7 +7,7 @@ use crate::{Rom, iwram, lz77, u32at};
 use bn6_battle::actor::ActorType;
 use bn6_battle::content::*;
 use bn6_battle::field::PanelType;
-use bn6_battle::setup::{ActorEntry, ActorKind, ActorList, ActorListId, BattleSettings};
+use bn6_battle::setup::{ActorEntry, ActorKind, ActorList, ActorListId, StageSettings};
 use std::collections::BTreeMap;
 
 /// The ROM's battle data.
@@ -65,7 +65,7 @@ fn chips(rom: &Rom) -> Vec<ChipData> {
             let flags = b(0x09);
             assert_eq!(flags & 0x20, 0, "chip {id:#x}: flag 0x20 (unused by every chip) is set");
             ChipData {
-                id: id as ChipId,
+                id: Some(id as ChipId),
                 name: chip_name(rom, id),
                 codes: rom.bytes(r, 4).iter().filter(|&&c| c != 0xFF).map(|&c| ChipCode(c)).collect(),
                 element: element(b(0x04)),
@@ -128,7 +128,7 @@ const ATTACHMENTS: u8 = 52;
 fn attach_gun_del_sol(rom: &Rom, chips: &mut [ChipData]) {
     for c in chips.iter_mut().filter(|c| c.action == 0x37) {
         let level = c.subtype as u32;
-        assert!(level < 4, "GunDelSol chip {:#x} of level {level}", c.id);
+        assert!(level < 4, "GunDelSol chip {:#x} of level {level}", c.id.unwrap_or_default());
         let look = |sun: u32| {
             let a = 0x080E_DBB8 + 2 * (level + 4 * sun);
             SunBeamLook { look: rom.u8(a), palette: rom.u8(a + 1) }
@@ -146,7 +146,7 @@ fn attach_gun_del_sol(rom: &Rom, chips: &mut [ChipData]) {
 /// HP (ten halfwords; past them the routine reads its own code).
 fn attach_recovery(rom: &Rom, chips: &mut [ChipData]) {
     for c in chips.iter_mut().filter(|c| c.action == 0x20) {
-        assert!(c.subtype < 10, "recovery chip {:#x} of subtype {}", c.id, c.subtype);
+        assert!(c.subtype < 10, "recovery chip {:#x} of subtype {}", c.id.unwrap_or_default(), c.subtype);
         c.recovery = Some(rom.u16(0x080E_C870 + 2 * c.subtype as u32));
     }
 }
@@ -158,9 +158,9 @@ fn attach_recovery(rom: &Rom, chips: &mut [ChipData]) {
 fn attach_swords(rom: &Rom, chips: &mut [ChipData]) {
     for c in chips.iter_mut().filter(|c| c.action == 0x13 || c.action == 0x49) {
         let v = c.subtype as u32;
-        assert!(v < 20, "sword chip {:#x} of subtype {v}", c.id);
+        assert!(v < 20, "sword chip {:#x} of subtype {v}", c.id.unwrap_or_default());
         let slash = (c.action == 0x13).then(|| {
-            assert!(v < 16, "action 0x13 chip {:#x} of subtype {v}", c.id);
+            assert!(v < 16, "action 0x13 chip {:#x} of subtype {v}", c.id.unwrap_or_default());
             let region = rom.bytes(0x080E_BA18 + 4 * v, 4);
             let hit = rom.bytes(0x080E_BA58 + 4 * v, 4);
             SwordSlash {
@@ -212,7 +212,13 @@ fn attach_program_advances(rom: &Rom, chips: &mut [ChipData]) {
 }
 
 /// The Program Advance table's records, in order.
-fn program_advance_records(rom: &Rom) -> Vec<ProgramAdvance> {
+/// A Program Advance record: the result chip and its recipe, by number.
+struct PaRecord {
+    result: ChipId,
+    recipe: PaRecipe,
+}
+
+fn program_advance_records(rom: &Rom) -> Vec<PaRecord> {
     const TABLE: u32 = 0x0802_BCB0;
     let mut out = Vec::new();
     let mut i = 0;
@@ -227,7 +233,7 @@ fn program_advance_records(rom: &Rom) -> Vec<ProgramAdvance> {
             4 => PaRecipe::Sequence((0..count as u32).map(|k| rom.u16(p + 4 + 2 * k)).collect()),
             k => panic!("Program Advance record {p:#x}: matcher {k}"),
         };
-        out.push(ProgramAdvance { result, recipe });
+        out.push(PaRecord { result, recipe });
         i += 1;
     }
     out
@@ -701,7 +707,7 @@ fn stages(rom: &Rom, (sources, lists): &(Vec<u32>, Vec<ActorList>)) -> Stages {
         .map(|i| {
             let r = rom.bytes(SETTINGS + 16 * i, 16);
             let source = u32at(rom, SETTINGS + 16 * i + 12);
-            BattleSettings {
+            StageSettings {
                 layout: r[0],
                 music: r[2],
                 mode: r[3],

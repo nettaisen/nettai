@@ -94,7 +94,11 @@ pub fn screen_fade(b: &Battle) -> Fade {
         // The first battle of a set fades in from white, later ones from
         // black (`sub_80E0684`).
         let s = &b.setup.settings;
-        let later = if s.effects & bn6_battle::setup::effects::SET != 0 { b.round.round > 1 } else { s.battle_number >= 2 };
+        let later = if s.effects & bn6_battle::setup::effects::SET != 0 {
+            b.round.round > 1
+        } else {
+            b.content.stage(s.stage).battle_number >= 2
+        };
         let fade = if later { Fade::Black } else { Fade::White };
         // Before the intro fade starts the screen is fully faded.
         if b.round.intro_bits & 0x10 == 0 {
