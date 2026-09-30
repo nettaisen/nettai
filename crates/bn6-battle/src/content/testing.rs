@@ -34,6 +34,9 @@ pub const VEIL: ChipId = 0x05;
 pub const ERASER: ChipId = 0x06;
 /// A dimming chip (action 0x15, subtype 0) that grabs a column.
 pub const GRAB: ChipId = 0x07;
+/// Standard chip actions (ids 0x100 and up): a CrakShot (action 0x22,
+/// subtype 0: the panel ahead).
+pub const CRACK: ChipId = 0x100;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -146,6 +149,8 @@ pub fn scripts() -> Scripts {
                 ("lib/buster", "lib/buster"),
                 ("lib/element", "lib/element"),
                 ("lib/projectile", "lib/projectile"),
+                ("chips/059-crakshot/chip", "chips/059-crakshot/chip"),
+                ("objects/crack-shot/crack_shot", "objects/crack-shot/crack_shot"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -201,6 +206,7 @@ fn kinds() -> Vec<ObjectKind> {
         kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
         kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
+        kind("crack-shot", Pool::Attack, 0x33, "objects/crack-shot/crack_shot"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -233,6 +239,7 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         slot_in_limit: 3,
         dark_substitute: None,
         sp_damage: None,
+        navi_damage: None,
         modifier: None,
         program_advances: Vec::new(),
         gun_del_sol: None,
@@ -262,9 +269,23 @@ fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
     }
 }
 
+/// Chip ids up to here exist (the ids no test uses are blanks).
+const CHIP_IDS: ChipId = 0x120;
+
+/// The chips, by id (the content looks chips up by index). Dimming chips
+/// of the subtypes other scripts implement take ids 0x10 and up.
 fn chips() -> Vec<ChipData> {
+    let blank = |id| ChipData { class: ChipClass::Special, codes: vec![], ..chip(id, "Blank", 0, 0) };
+    let mut all: Vec<ChipData> = (0..CHIP_IDS).map(blank).collect();
+    for c in named_chips() {
+        let id = c.id as usize;
+        all[id] = c;
+    }
+    all
+}
+
+fn named_chips() -> Vec<ChipData> {
     vec![
-        ChipData { class: ChipClass::Special, codes: vec![], ..chip(0, "Blank", 0, 0) },
         sun_gun(SUN_GUN_1, "SunGun1", 0, 48),
         sun_gun(SUN_GUN_2, "SunGun2", 1, 72),
         sun_gun(SUN_GUN_3, "SunGun3", 2, 96),
@@ -292,6 +313,13 @@ fn chips() -> Vec<ChipData> {
             damage: 10,
             script: Some("objects/area-grab/area_grab".into()),
             ..chip(GRAB, "Grab", 0x15, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 30,
+            damage: 40,
+            script: Some("chips/059-crakshot/chip".into()),
+            ..chip(CRACK, "Crack", 0x22, 0)
         },
     ]
 }
@@ -429,6 +457,8 @@ fn rules() -> Rules {
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
+        // A made-up sine: a triangle wave, 0x100 at a quarter turn.
+        sine: (0..384).map(|i: i32| [i % 128, 128 - i % 128][(i / 64 % 2) as usize] * 4 * if i / 128 % 2 == 0 { 1 } else { -1 }).map(|v| v.clamp(-256, 256) as i16).collect(),
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
             SlideVector { dx: -1, dy: 0, tiles: 6 },
@@ -554,6 +584,7 @@ fn objects() -> ObjectData {
         projectiles: projectiles(),
         flying_shots: flying_shots(),
         kinds: kinds(),
+        shock_waves: (0..16).map(|id| ShockWave { id, sprite: SpriteId { category: 0x10, index: 3 }, anim: 1, ticks: 6, panel: None }).collect(),
     }
 }
 
@@ -693,6 +724,8 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x21 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
+    // The crack shot: flying.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x33 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);

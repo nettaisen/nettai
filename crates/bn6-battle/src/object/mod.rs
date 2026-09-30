@@ -67,6 +67,9 @@ pub mod state {
     pub const INIT: u8 = 0;
     pub const UPDATE: u8 = 4;
     pub const DESTROY: u8 = 8;
+    /// The fourth state of kinds that have one after DESTROY (for them
+    /// DESTROY is a last running phase).
+    pub const FINISH: u8 = 0x0C;
 }
 
 /// An object's lifecycle position: state, action, phase and whether the

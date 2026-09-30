@@ -42,6 +42,10 @@ pub struct Rules {
     /// The deletion times (BCD hours:minutes:seconds.hundredths) at which
     /// an SP navi chip's damage steps down (`ChipData::sp_damage`).
     pub sp_deletion_times: Vec<u32>,
+    /// The sine table (`math_sinTable`, which `math_cosTable` continues):
+    /// 256 steps a turn, 1.0 = 0x100, over a turn and a half, so that the
+    /// cosine of step `a` is entry `a + 64`.
+    pub sine: Vec<i16>,
     /// Pushes by hit-modifier bit (+5 with 0x80).
     pub push_vectors: [SlideVector; 10],
     /// Ice slides by the direction the navi last moved.

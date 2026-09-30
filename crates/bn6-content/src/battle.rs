@@ -68,6 +68,15 @@ struct SunBeamFile {
     script_kind: Option<ObjectKind>,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ShockWaveFile {
+    /// By variant, the wave's first parameter.
+    wave: Vec<ShockWave>,
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
+}
+
 /// An object kind a script implements, in its folder's `object.toml`
 /// (`[kind]`: pool, index, script).
 #[derive(Serialize, Deserialize)]
@@ -298,6 +307,12 @@ struct SlotRecord {
     vertical: u8,
     left: u8,
     right: u8,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MathFile {
+    sine: Vec<i16>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -558,8 +573,8 @@ pub fn weapon_folder(w: &WeaponData) -> String {
 
 /// The object kinds whose folders hold data of their own (a kind of these
 /// a script implements keeps its `[kind]` in the same file).
-const DATA_OBJECTS: [&str; 7] =
-    ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "projectile", "flying-shot"];
+const DATA_OBJECTS: [&str; 8] =
+    ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "projectile", "flying-shot", "shock-wave"];
 
 /// A script as an entity's file names it: `module` (a path in the pack
 /// without `.luau`) relative to `folder`, with `.luau`.
@@ -648,6 +663,13 @@ pub fn export(c: &Content) -> Files {
         toml_file(
             "The sun beam's (effect object #0x48) sprites by look, its first parameter.",
             &SunBeamFile { look: looks, script_kind: script_kind("sun-beam") },
+        ),
+    );
+    put(
+        "objects/shock-wave/object.toml".into(),
+        toml_file(
+            "Shock waves (attack object #0x16) by variant, its first parameter: sprite, animation, ticks on a\npanel before the next wave rolls on, and the panel type it leaves (`cracked` cracks the panel,\n`broken` breaks it or cracks it under something).",
+            &ShockWaveFile { wave: o.shock_waves.clone(), script_kind: script_kind("shock-wave") },
         ),
     );
     let owned: Vec<u8> = c.chips.iter().filter_map(|c| Some(c.gun_del_sol.as_ref()?.gun.id)).collect();
@@ -849,6 +871,12 @@ neighbour is looked for along the scan lists, each slot starting at its *_scan_s
         "rules/sp-chips.toml".into(), toml_file(
             "The deletion times at which an SP navi chip's damage steps down (chips' sp_damage).",
             &SpChipsFile { deletion_times: r.sp_deletion_times.iter().map(|&t| bcd_time(t)).collect() },
+        ),
+    );
+    put(
+        "rules/math.toml".into(), toml_file(
+            "The sine table (math_sinTable, which math_cosTable continues): 256 steps a turn, 1.0 = 0x100,\nover a turn and a half (the cosine of step a is entry a + 64).",
+            &MathFile { sine: r.sine.clone() },
         ),
     );
     // Registries.
@@ -1083,6 +1111,10 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     add_kind("sun-beam", beams.script_kind, report);
     let file = "objects/sun-beam/object.toml";
     let sun_beam_looks = dense(beams.look.into_iter().map(|l| (l.id as usize, l.sprite, file.into())).collect(), "sun beam look", report);
+    let waves: ShockWaveFile = read_toml(root, "objects/shock-wave/object.toml", report)?;
+    add_kind("shock-wave", waves.script_kind, report);
+    let file = "objects/shock-wave/object.toml";
+    let shock_waves = dense(waves.wave.into_iter().map(|w| (w.id as usize, w, file.into())).collect(), "shock wave", report);
     let shots: ObjectFile<ProjectileKind> = read_toml(root, "objects/projectile/object.toml", report)?;
     add_kind("projectile", shots.script_kind, report);
     let file = "objects/projectile/object.toml";
@@ -1124,7 +1156,7 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     }
     let attachments = dense(all.into_iter().map(|(id, (a, file))| (id as usize, a, file)).collect(), "attachment", report);
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
-    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, projectiles, flying_shots, kinds })
+    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, projectiles, flying_shots, kinds, shock_waves })
 }
 
 fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
@@ -1269,6 +1301,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         blocking: bz.blocking,
         opposing_player: bz.opposing_player,
     };
+    let math: MathFile = read_toml(root, "rules/math.toml", report)?;
     let file = "rules/sp-chips.toml";
     let sp: SpChipsFile = read_toml(root, file, report)?;
     let mut sp_deletion_times = Vec::new();
@@ -1316,6 +1349,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         empty_hand: w.empty_hand,
         buster_recovery: w.buster_recovery,
         sp_deletion_times,
+        sine: math.sine,
         push_vectors: reactions.push,
         ice_vectors: reactions.ice,
         bubble_bob: reactions.bubble_bob,
@@ -1419,6 +1453,9 @@ fn check_references(c: &Content, report: &mut Report) {
         }
         if chip.damage > 1000 && chip.damage <= 1000 + 18 && chip.sp_damage.is_none() {
             report.error(&file, "an SP navi chip (damage formula 1..=18) needs sp_damage");
+        }
+        if (1024..=1044).contains(&chip.damage) && chip.navi_damage.is_none() {
+            report.error(&file, "a link navi's chip (damage formula 24..=44) needs navi_damage");
         }
         if let Some(d) = &chip.sp_damage
             && d.len() != c.rules.sp_deletion_times.len() + 1
