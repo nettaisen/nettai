@@ -30,7 +30,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x49 | 0x080cd2ec | 87 |
 | T3 0x59 | 0x080cf954 | 7372 (rock: `kinds::rock`, field-objects.md) |
 | T3 0x5b | 0x080cfcf8 | 96 |
-| T3 0x74 | 0x080d30d0 | 350 |
+| T3 0x74 | 0x080d30d0 | 350 (RskyHny's bee: the pack's `objects/honey-bee`, chips.md §3.7) |
 | T3 0x82 | 0x080d5740 | 48 |
 | T3 0x8b | 0x080d6924 | 225 |
 | T3 0x8d | 0x080d6bd4 | 38 (meteor: `kinds::meteor`, chips.md §3.6.7) |
@@ -43,8 +43,8 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0xc1 | 0x080dd34c | 296 |
 | T3 0xc2 | 0x080dd764 | 967 |
 | T3 0xc3 | 0x080dd940 | 732 (EraseMan's slash: the pack's `objects/erase-beam`, chips.md §3.6.7) |
-| T3 0xc8 | 0x080de13c | 2774 |
-| T3 0xc9 | 0x080de404 | 579 |
+| T3 0xc8 | 0x080de13c | 2774 (a dragon's body segment: the pack's `objects/dragon-body`, chips.md §3.8) |
+| T3 0xc9 | 0x080de404 | 579 (a dragon's head: the pack's `objects/dragon-head`, chips.md §3.8) |
 | T3 0xcf | 0x080df328 | 4170 |
 | T4 0x00 | 0x080e0548 | 3910 |
 | T4 0x02 | 0x080e0638 | 250 |
