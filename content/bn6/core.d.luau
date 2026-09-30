@@ -12,9 +12,11 @@
 --   chips/NNN-name/chip.toml  script = "chip.luau"          the chip's action:
 --       `state` and `update(me, s)`; for a dimming chip (action 0x15)
 --       `dimming_chip(user, spec)`, for a navi chip (0x1B) `navi_chip(user,
---       controller, spec)`
+--       controller, spec)`, for an instant chip (0x1C) `instant_chip(user,
+--       spec)`
 --   navis/00-megaman/weapons/NN-name/weapon.toml            a weapon routine:
---       `setup(navi) -> action`, and `state`/`update` for its `action`
+--       `setup(navi) -> action`, and `state`/`update` for its `action`,
+--       `instant_chip(user, spec)` for its `instant_chip`
 --
 -- Functions keep nothing between calls: what an object or action keeps
 -- lives in its declared `state` (typed fields the engine stores and
@@ -414,6 +416,10 @@ declare class Object
     function can_move(self): boolean
     -- `sub_801265A`: the buster's damage.
     function buster_damage(self): number
+    -- The attack state as content action `action`'s (zeroed unless that
+    -- action last used it): how a weapon routine sets up the action it
+    -- names before it starts. Cast it to the action's State type.
+    function action_state(self, action: number): any
     -- The obstacles it absorbed, oldest first.
     function absorbed(self): { { kind: number, anim: number } }
     function push_absorbed(self, kind: number, anim: number): boolean
@@ -503,6 +509,19 @@ export type NaviChipSpec = {
     damage: number,
 }
 
+-- What an instant chip's effect runs with (`sub_80EC39C`'s registers).
+export type InstantChipSpec = {
+    -- The user's panel and Z (16.16).
+    panel_x: number,
+    panel_y: number,
+    z: number,
+    element: number,
+    params: { number },
+    -- The damage word (damage | hit parameter << 16) plus the bonus's low
+    -- byte.
+    damage: number,
+}
+
 declare battle: {
     -- The battle is dimmed (battle flag 4): objects that don't run while
     -- dimmed stand still.
@@ -520,6 +539,8 @@ declare battle: {
     navis_in: () -> boolean,
     -- Presentation only: the side the simulation's perspective is.
     local_side: () -> number,
+    -- Battle flag 0x40 (`sub_800A8F8`): each side has its own custom gauge.
+    per_player_gauges: () -> boolean,
     -- Sound for both players, or for one side's player (output only).
     play_sound: (id: number) -> (),
     play_sound_for: (side: number, id: number) -> (),
@@ -543,6 +564,8 @@ declare battle: {
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
     fill_custom_gauge: () -> (),
+    -- `sub_802E032`: add to a side's own custom gauge, up to full.
+    add_side_gauge: (side: number, n: number) -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
     navi_record: (name_id: number) -> NaviRecord?,
     -- Spawn into the pool's lowest free slot; it runs later this tick,
@@ -714,7 +737,7 @@ export type RockKind = {
 
 export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } }
 
-export type WeaponData = { id: number, name: string, action: number?, script: string }
+export type WeaponData = { id: number, name: string, action: number?, instant_chip: number?, script: string }
 
 -- An object kind a script implements.
 export type ObjectKindData = { pool: Pool, index: number, script: string }

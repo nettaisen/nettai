@@ -322,6 +322,9 @@ named_fields! {
         NavisIn = "navis_in", Bool, ro;
         /// Presentation only: the side the simulation's perspective is.
         LocalSide = "local_side", U8, ro;
+        /// Battle flag 0x40 (`sub_800A8F8`): each side has its own custom
+        /// gauge.
+        PerPlayerGauges = "per_player_gauges", Bool, ro;
     }
 }
 
@@ -666,6 +669,9 @@ pub trait CoreApi {
     fn clear_linked(&mut self, side: u8);
     /// FullCust: the custom gauge is full.
     fn fill_custom_gauge(&mut self);
+    /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
+    /// up to full.
+    fn add_side_gauge(&mut self, side: u8, n: u16);
     /// `sub_800AB46`: bump a side's statistics counter.
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// A player NameID's actor record, if it is one.
@@ -792,6 +798,10 @@ pub trait CoreApi {
     /// The running content action's state, zeroed when a different action
     /// last used it.
     fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ContentState>;
+    /// The attack state as content action `action`'s (zeroed unless that
+    /// action last used it): how a weapon routine sets up the action it
+    /// names before the action starts.
+    fn attack_state_for(&mut self, o: ObjectRef, action: u8) -> ApiResult<&mut ContentState>;
     fn status(&self, o: ObjectRef, flag: StatusFlag) -> ApiResult<bool>;
     fn set_status(&mut self, o: ObjectRef, flag: StatusFlag, on: bool) -> ApiResult<()>;
     fn status_timer(&self, o: ObjectRef, t: StatusTimer) -> ApiResult<u16>;

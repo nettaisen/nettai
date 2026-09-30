@@ -214,6 +214,9 @@ impl CoreApi for Battle {
             BattleInfo::PanelPattern => Value::Int(self.setup.settings.panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
             BattleInfo::LocalSide => Value::Int(self.round.local_side as i64),
+            BattleInfo::PerPlayerGauges => {
+                Value::Bool(self.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0)
+            }
         }
     }
 
@@ -313,6 +316,11 @@ impl CoreApi for Battle {
 
     fn fill_custom_gauge(&mut self) {
         self.gauge.value = crate::hud::CustomGauge::FULL;
+    }
+
+    fn add_side_gauge(&mut self, side: u8, n: u16) {
+        let s = &mut self.sides[side as usize & 1];
+        s.gauge = (s.gauge as u32 + n as u32).min(crate::hud::CustomGauge::FULL as u32) as u16;
     }
 
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
@@ -757,8 +765,12 @@ impl CoreApi for Battle {
     }
 
     fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ContentState> {
-        let content = self.behaviors.clone();
         let action = self.objects.get(o).action;
+        self.attack_state_for(o, action)
+    }
+
+    fn attack_state_for(&mut self, o: ObjectRef, action: u8) -> ApiResult<&mut ContentState> {
+        let content = self.behaviors.clone();
         let (m, kind) = content.manifest().zip(content.action(action)).ok_or(ApiError::NoState(o))?;
         let id = m.action_state(kind);
         let a = self.actor_of_mut(o)?;

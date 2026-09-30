@@ -254,7 +254,7 @@ impl UserData for Object {
         fields.add_field_method_get("facing", |_, this| with(|api, _| Ok(api.facing(this.0))));
         fields.add_field_method_get("sprite", |_, this| Ok(Sprite(this.0)));
         fields.add_field_method_get("collision", |_, this| Ok(Collision(this.0)));
-        fields.add_field_method_get("state", |_, this| Ok(State { owner: this.0, action: false }));
+        fields.add_field_method_get("state", |_, this| Ok(State { owner: this.0, action: false, of_action: None }));
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
@@ -442,6 +442,10 @@ impl UserData for Object {
             let (kind, anim) = (u8_arg(kind, "obstacle kind")?, u8_arg(anim, "anim")?);
             with(|api, _| api.push_absorbed(this.0, kind, anim).map_err(api_error))
         });
+        methods.add_method("action_state", |_, this, action: LuaValue| {
+            let a = u8_arg(action, "action")?;
+            Ok(State { owner: this.0, action: true, of_action: Some(a) })
+        });
         methods.add_method("pop_absorbed", |_, this, ()| {
             with(|api, _| api.pop_absorbed(this.0).map_err(api_error)).map(|v| v.map_or((None, None), |(k, a)| (Some(k), Some(a))))
         });
@@ -545,6 +549,9 @@ impl UserData for Collision {
 pub struct State {
     pub owner: ObjectRef,
     pub action: bool,
+    /// The attack state as this action's (`navi:action_state(n)`), rather
+    /// than the running action's.
+    pub of_action: Option<u8>,
 }
 
 impl State {
@@ -554,7 +561,9 @@ impl State {
         f: impl FnOnce(&mut ContentState, &bn6_content_api::Schema, usize) -> mlua::Result<R>,
     ) -> mlua::Result<R> {
         with(|api, manifest| {
-            let s = if self.action {
+            let s = if let Some(a) = self.of_action {
+                api.attack_state_for(self.owner, a).map_err(api_error)?
+            } else if self.action {
                 api.action_state_mut(self.owner).map_err(api_error)?
             } else {
                 api.state_mut(self.owner).ok_or_else(|| api_error(ApiError::NoState(self.owner)))?
@@ -817,6 +826,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.clear_linked(side)))
     });
     lib_fn!(lua, t, "fill_custom_gauge", |_, ()| with(|api, _| Ok(api.fill_custom_gauge())));
+    lib_fn!(lua, t, "add_side_gauge", |_, (side, n): (LuaValue, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "gauge")?);
+        with(|api, _| Ok(api.add_side_gauge(side, n)))
+    });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))
@@ -1032,7 +1045,7 @@ pub fn object(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
 
 /// Wrap an action's state as a script value.
 pub fn action_state(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
-    lua.create_userdata(State { owner: o, action: true })
+    lua.create_userdata(State { owner: o, action: true, of_action: None })
 }
 
 /// A hook call's arguments.
@@ -1058,6 +1071,16 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
             t.raw_set("damage", spec.damage)?;
             vec![obj(user)?, obj(controller)?, LuaValue::Table(t)]
         }
+        HookCall::InstantChip { user, spec } => {
+            let t = lua.create_table()?;
+            t.raw_set("panel_x", spec.panel.x)?;
+            t.raw_set("panel_y", spec.panel.y)?;
+            t.raw_set("element", spec.element)?;
+            t.raw_set("z", spec.z)?;
+            t.raw_set("params", params_table(lua, spec.params)?)?;
+            t.raw_set("damage", spec.damage)?;
+            vec![obj(user)?, LuaValue::Table(t)]
+        }
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1069,5 +1092,6 @@ pub fn hook_result(v: LuaValue, call: HookCall) -> mlua::Result<Value> {
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
+        HookCall::InstantChip { .. } => Ok(Value::Nil),
     }
 }
