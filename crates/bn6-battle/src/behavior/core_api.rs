@@ -636,6 +636,10 @@ impl CoreApi for Battle {
         kinds::spark::spawn(self, owner, pos, id)
     }
 
+    fn spawn_palette_flash(&mut self, variant: u8, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
+        kinds::palette_flash::spawn_variant(self, variant, ticks, while_dimmed, while_paused)
+    }
+
     fn death_hook(&mut self, o: ObjectRef, name_id: u16) {
         kinds::player::form::navi_death_hook(self, o, name_id);
     }
@@ -969,6 +973,10 @@ impl CoreApi for Battle {
             CollisionField::HitFlags | CollisionField::FinalDamage => unreachable!("read-only"),
         }
         Ok(())
+    }
+
+    fn take_damage(&mut self, o: ObjectRef, mode: u8) -> i32 {
+        kinds::common::take_damage(self, o, mode)
     }
 
     fn present_collision(&mut self, o: ObjectRef) {

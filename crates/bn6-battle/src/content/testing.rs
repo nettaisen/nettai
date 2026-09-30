@@ -416,6 +416,8 @@ fn rules() -> Rules {
         weapons: vec![WeaponRoutine { charge_ticks: [120, 100, 80, 60, 50] }; 0x30],
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
+        // A made-up sine: a triangle wave, 0x100 at a quarter turn.
+        sine: (0..384).map(|i: i32| [i % 128, 128 - i % 128][(i / 64 % 2) as usize] * 4 * if i / 128 % 2 == 0 { 1 } else { -1 }).map(|v| v.clamp(-256, 256) as i16).collect(),
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
             SlideVector { dx: -1, dy: 0, tiles: 6 },

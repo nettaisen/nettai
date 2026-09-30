@@ -776,6 +776,10 @@ pub trait CoreApi {
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
     /// `sub_80E08C4`: hit spark `id` at `pos`.
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
+    /// `sub_80E11E0`: a screen palette flash (effect object #0x0A) of
+    /// `variant` (0 white or red, 1 white over two layers) for `ticks`,
+    /// optionally going on while dimmed or paused.
+    fn spawn_palette_flash(&mut self, variant: u8, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
@@ -865,6 +869,12 @@ pub trait CoreApi {
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
     fn hit_spark(&mut self, o: ObjectRef);
+    /// `sub_801156A`: an object with HP takes this tick's damage (the sum
+    /// of its hits by element): a guard spark if it blocked, then the HP
+    /// loss (not in mode 1), and a white flash while hit, with a sound in
+    /// modes 0 and 2. -1 when its HP ran out, 1 when hit in another mode,
+    /// else 0.
+    fn take_damage(&mut self, o: ObjectRef, mode: u8) -> i32;
 
     // ---- Services ------------------------------------------------------------
 

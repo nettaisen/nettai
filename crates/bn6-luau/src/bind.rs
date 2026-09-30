@@ -374,6 +374,10 @@ impl UserData for Object {
             },
         );
         methods.add_method("hit_spark", |_, this, ()| with(|api, _| Ok(api.hit_spark(this.0))));
+        methods.add_method("take_damage", |_, this, mode: LuaValue| {
+            let mode = u8_arg(mode, "damage mode")?;
+            with(|api, _| Ok(api.take_damage(this.0, mode)))
+        });
 
         // Navis: the attack, requests, state, buttons.
         methods.add_method("attack_param", |_, this, n: LuaValue| {
@@ -867,6 +871,17 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let opt = |v: Option<LuaValue>, what| v.map_or(Ok(0), |v| u8_arg(v, what));
             let (flip, add, prio) = (opt(flip, "flip")?, opt(palette_add, "palette")?, opt(priority, "priority")?);
             let o = with(|api, _| Ok(api.spawn_effect(pos.0, id, flip, add, prio)))?;
+            object_value(lua, o)
+        }
+    );
+    lib_fn!(
+        lua,
+        t,
+        "palette_flash",
+        |lua, (variant, ticks, while_dimmed, while_paused): (LuaValue, LuaValue, Option<bool>, Option<bool>)| {
+            let (variant, ticks) = (u8_arg(variant, "palette flash variant")?, u8_arg(ticks, "palette flash ticks")?);
+            let (dimmed, paused) = (while_dimmed.unwrap_or(false), while_paused.unwrap_or(false));
+            let o = with(|api, _| Ok(api.spawn_palette_flash(variant, ticks, dimmed, paused)))?;
             object_value(lua, o)
         }
     );

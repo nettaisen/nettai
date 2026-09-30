@@ -380,6 +380,11 @@ declare class Object
     -- `object_spawnCollisionEffect`: the hit spark after a hit (one RNG
     -- draw when it shows).
     function hit_spark(self): ()
+    -- `sub_801156A`: an object with HP takes this tick's damage (the sum
+    -- of its hits by element): a guard spark if it blocked, the HP loss
+    -- (not in mode 1), a white flash while hit, with a sound in modes 0
+    -- and 2. -1 when its HP ran out, 1 when hit in another mode, else 0.
+    function take_damage(self, mode: number): number
 
     -- Navis only.
     function attack_param(self, n: number): number
@@ -558,6 +563,10 @@ declare battle: {
     effect: (pos: Vec3, id: number, flip: number?, palette_add: number?, priority: number?) -> Object?,
     -- The one-tick hit region (attack object #3).
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
+    -- `sub_80E11E0`: a screen palette flash (effect object #0x0A) of a
+    -- variant (0 white or red, 1 white over two layers) for `ticks`,
+    -- optionally going on while dimmed or paused.
+    palette_flash: (variant: number, ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
 }
@@ -748,6 +757,10 @@ export type PackData = {
         -- every panel whose flags word has all of `require` and none of
         -- `forbid`.
         field_regions: { [number]: PanelCondition },
+        -- The sine table (`math_sinTable`, which `math_cosTable` continues):
+        -- 256 steps a turn, 1.0 = 0x100, over a turn and a half, so the
+        -- cosine of step a is entry a + 64.
+        sine: { [number]: number },
     },
     -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
     -- panels a region covers, { dx, dy } from its panel with dx toward the
