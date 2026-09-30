@@ -767,8 +767,9 @@ lib/sparks.luau, lib/regions.luau). What it settled:
 - **What stays numeric**, having no v2 form yet: statuses (the flash's blinding, the bug bomb's 0x20), bug codes,
   NameIDs (the BlkBomb's 0xD5, the attachment's Cross check) and the absorbed-obstacle kind; the hitbox's
   `hit_effect = 0xFF` ("none"). The ratchet counts what it can see of them.
-- **Verified** on the test content (the thrown chips' duel under rollback, the engine's tests) and the type
-  check; the traces wait for the asset names of real packs (step 6).
+- **Verified** on the test content (the thrown chips' duel under rollback, the engine's tests), the type
+  check, and the traces (at every latency) and chip lab on a pack extracted with asset names (step 6): the
+  lab's matches are unchanged.
 
 EnergBom and MegEnBom (a series, one folder) pass `after = energy_burst.leave` from their own
 `chips/energbom/burst.luau`; the bomb kind no longer requires the energy burst. FlshBom1-3 pass their own
