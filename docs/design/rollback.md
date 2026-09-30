@@ -522,7 +522,9 @@ The rules of the core/content boundary (docs/design/core-content-boundary.md, §
 ### 8.3 Round chaining
 
 `RoundEnd::NextRound` hands over the next round's settings and score; the next `Battle` also needs its RNG seed
-and navi stats, which the original's init exchange provides. A netplay session must derive them from shared data
+and navi stats, which the original's init exchange provides, and each player's shuffled folder and console RNG
+(`PlayerSetup::console`; the original's carries on from the last round's `Battle::consoles` through the next
+init's folder shuffle). A netplay session must derive them from shared data
 (the previous round's state, or values exchanged before the match), and keep rolling back across the boundary or
 confirm it before starting the next round. A getgud session has no end of its own: a host ends the round's
 session once its settled state is over (`round_end`), and starts the next round's from that settled state and
