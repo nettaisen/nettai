@@ -868,6 +868,13 @@ pub trait CoreApi {
     fn can_step(&self, o: ObjectRef, p: PanelPos) -> bool;
     /// `sub_800E680`: could `o` stand on `p`, whichever side owns it?
     fn can_stand_any_side(&self, o: ObjectRef, p: PanelPos) -> bool;
+    // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
+    /// `object_panel_setPoison`: a solid panel turns to poison. Whether it
+    /// was solid.
+    fn poison_panel(&mut self, p: PanelPos) -> bool;
+    /// `object_setPanelTypeBlink`: this frame the panel is drawn as type
+    /// `kind` (an index into [`PANEL_TYPES`]) of side `side` (drawn only).
+    fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8);
 
     // ---- Objects -----------------------------------------------------------
 

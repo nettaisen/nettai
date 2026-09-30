@@ -495,6 +495,16 @@ impl CoreApi for Battle {
         self.field.meets(p.x, p.y, rule)
     }
 
+    // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
+    fn poison_panel(&mut self, p: PanelPos) -> bool {
+        Battle::poison_panel(self, p.x, p.y)
+    }
+
+    fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8) {
+        let t = PanelType::ALL.get(kind as usize).copied().unwrap_or_else(|| panic!("panel type {kind} doesn't exist"));
+        Battle::blink_panel(self, p.x, p.y, t, side);
+    }
+
     // ---- Objects -----------------------------------------------------------
 
     fn spawn(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
