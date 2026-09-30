@@ -155,6 +155,12 @@ pub fn scripts() -> Scripts {
                 ("chips/0af-busterup/chip", "chips/0af-busterup/chip"),
                 ("chips/11d-synctrgr/chip", "chips/11d-synctrgr/chip"),
                 ("objects/plus-sparkle/plus_sparkle", "objects/plus-sparkle/plus_sparkle"),
+                ("lib/sword", "lib/sword"),
+                ("objects/gust/gust", "objects/gust/gust"),
+                ("objects/sword-wave/sword_wave", "objects/sword-wave/sword_wave"),
+                ("objects/hit-zone/hit_zone", "objects/hit-zone/hit_zone"),
+                ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
+                ("objects/drill-hit/drill_hit", "objects/drill-hit/drill_hit"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -177,7 +183,7 @@ fn weapons() -> Vec<WeaponData> {
         instant_chip: None,
         script: format!("navis/00-megaman/weapons/{script}"),
     };
-    vec![
+    let mut weapons = vec![
         weapon(0x00, "Buster", None, "00-buster/buster"),
         weapon(0x01, "Charged shot", None, "01-charged-shot/charged_shot"),
         weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
@@ -185,7 +191,20 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
         weapon(0x2A, "Absorb", Some(0x58), "2a-absorb/absorb"),
         weapon(0x2B, "Throw absorbed", None, "2b-throw-absorbed/throw_absorbed"),
-    ]
+        weapon(0x06, "Heat charge", None, "06-heat-charge/heat_charge"),
+        weapon(0x0B, "Elec charge", None, "0b-elec-charge/elec_charge"),
+        weapon(0x0C, "Spout charge", None, "0c-spout-charge/spout_charge"),
+        weapon(0x0F, "Tengu charge", None, "0f-tengu-charge/tengu_charge"),
+        WeaponData { instant_chip: Some(0x14), ..weapon(0x10, "Tengu wind", None, "10-tengu-wind/tengu_wind") },
+        weapon(0x11, "Slash A-charge", None, "11-slash-a-charge/slash_a_charge"),
+        weapon(0x12, "Slash charge", Some(0x41), "12-slash-charge/slash_charge"),
+        weapon(0x14, "Erase charge", Some(0x45), "14-erase-charge/erase_charge"),
+        weapon(0x16, "Tomahawk charge", Some(0x4A), "16-tomahawk-charge/tomahawk_charge"),
+        weapon(0x19, "Ground charge", Some(0x4D), "19-ground-charge/ground_charge"),
+    ];
+    // (In routine order, as a pack lists them.)
+    weapons.sort_by_key(|w| w.id);
+    weapons
 }
 
 /// The object kinds scripts implement, by name (in name order, as a pack
@@ -210,6 +229,11 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
         kind("absorbed-obstacle", Pool::Effect, 0x87, "objects/absorbed-obstacle/absorbed_obstacle"),
         kind("plus-sparkle", Pool::Effect, 0x14, "objects/plus-sparkle/plus_sparkle"),
+        kind("gust", Pool::Attack, 0x49, "objects/gust/gust"),
+        kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
+        kind("hit-zone", Pool::Attack, 0x8B, "objects/hit-zone/hit_zone"),
+        kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
+        kind("drill-hit", Pool::Attack, 0x71, "objects/drill-hit/drill_hit"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -382,6 +406,11 @@ fn rules() -> Rules {
         collision_types[t] = attack;
     }
     collision_types[0x2A] = collision_types[0x05];
+    // The Crosses' attacks (sword waves, hit zones, gusts, drills).
+    collision_types.resize(0x4B, [0, 0]);
+    for t in [0x06, 0x07, 0x1E, 0x4A] {
+        collision_types[t] = attack;
+    }
     collision_types[0x0E] = [NEUTRAL | BLOCKER | WHILE_DIMMED | REACHES_FLOATING | BREAKS; 2];
     collision_types[0x0F] = [ATTACK[0] | ATTACK[1] | BODY[0] | BODY[1] | BREAKS; 2];
 
@@ -483,7 +512,10 @@ fn rules() -> Rules {
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
         lockon: Lockon {
-            searches: vec![LockonSearch { mode: 1, offsets: vec![PanelOffset { dx: -1, dy: 0 }], prefers_middle_row: false }],
+            searches: vec![
+                LockonSearch { mode: 1, offsets: vec![PanelOffset { dx: -1, dy: 0 }], prefers_middle_row: false },
+                LockonSearch { mode: 0xC, offsets: vec![PanelOffset { dx: -1, dy: 0 }], prefers_middle_row: false },
+            ],
             column_shifts: vec![-1, -2],
             slash_modes: vec![1; 0x13],
         },
@@ -559,7 +591,8 @@ fn objects() -> ObjectData {
     // The buster's muzzle flash and arm.
     let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03)]).collect(),
+        // The rest up to the drill arm (0x20).
+        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03)]).chain((7..=0x20).map(|id| plain(id, 0x20))).collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
@@ -574,7 +607,7 @@ fn objects() -> ObjectData {
 fn sword_wave(id: u8) -> SwordWave {
     SwordWave {
         id,
-        self_type: 7,
+        self_type: 4,
         target_type: 5,
         hit_mod: 3,
         region: 1,
@@ -592,7 +625,7 @@ fn sword_wave(id: u8) -> SwordWave {
 
 /// A made-up hit zone.
 fn hit_zone(id: u8, hit_effect: u8) -> HitZone {
-    HitZone { id, self_type: 7, target_type: 5, hit_mod: 3, hit_effect, region: 1, status: 0, bug: 0, bug_arg: 0 }
+    HitZone { id, self_type: 4, target_type: 5, hit_mod: 3, hit_effect, region: 1, status: 0, bug: 0, bug_arg: 0 }
 }
 
 fn regions() -> Vec<Vec<PanelOffset>> {
@@ -650,6 +683,12 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
     // The plus chips' sparkle (animation 1).
     sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(2), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
+    // The gust, the sword waves, EraseCross's beam (opening, beaming,
+    // closing) and the drill arm (attachment 0x20).
+    sprites.insert(SpriteId { category: 0x0C, index: 0x2E }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x4C }, vec![vec![f(3, 0), f(3, LAST)], vec![f(8, LAST | LOOP)], once(4)]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x20 }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);

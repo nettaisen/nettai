@@ -30,13 +30,18 @@ fn battles_run_the_content_scripts() {
             "absorbed-obstacle",
             "area-grab",
             "attachment",
+            "drill-hit",
             "dust-ball",
             "erase-beam",
             "erase-man",
             "erase-mark",
+            "erase-ray",
             "grab-shot",
+            "gust",
+            "hit-zone",
             "plus-sparkle",
-            "sun-beam"
+            "sun-beam",
+            "sword-wave"
         ]
     );
     assert!(b.behaviors.action(0x37).is_some(), "GunDelSol is a script");
@@ -117,11 +122,13 @@ fn scripted_chips_roll_back() {
 fn registrations_follow_the_content_data() {
     let mut c = testing::build();
     let r = c.registrations().unwrap();
-    // The four SunGun chips share one action; four weapons have theirs.
+    // The four SunGun chips share one action; nine weapons have theirs.
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
-    assert_eq!(actions, [0x33, 0x37, 0x52, 0x57, 0x58], "{:?}", r.actions);
-    // The instant chip registers its subtype's effect.
+    assert_eq!(actions, [0x33, 0x37, 0x41, 0x45, 0x4A, 0x4D, 0x52, 0x57, 0x58], "{:?}", r.actions);
+    // The instant chip registers its subtype's effect, and a weapon the
+    // subtype it names.
     assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(5)), "{:?}", r.hooks);
+    assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(0x14)), "{:?}", r.hooks);
     // Two chips implementing one action with different scripts is an error.
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
     let e = c.registrations().unwrap_err();
