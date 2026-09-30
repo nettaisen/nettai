@@ -15,7 +15,9 @@ pub mod eruption;
 pub mod form_overlay;
 pub mod full_synchro_aura;
 pub mod heal;
+pub mod hit_marker;
 pub mod hitbox;
+pub mod ice_visual;
 pub mod idle_overlay;
 pub mod intro;
 pub mod lockon_marker;
@@ -83,7 +85,9 @@ impl Vars {
             | EngineKind::NaviChip
             | EngineKind::NaviWarp
             | EngineKind::Eruption
-            | EngineKind::StatusVisual => Vars::None,
+            | EngineKind::StatusVisual
+            | EngineKind::IceVisual
+            | EngineKind::HitMarker => Vars::None,
         }
     }
 }
@@ -136,6 +140,8 @@ pub enum EngineKind {
     Hitbox,
     Spark,
     BubbleVisual,
+    IceVisual,
+    HitMarker,
     FormOverlay,
     Afterimage,
     LockonMarker,
@@ -154,7 +160,7 @@ pub enum EngineKind {
 /// The engine's kinds: their keys (`engine/...`), pools, and the object
 /// slots they fill (the original's pool and index, which the traces
 /// compare).
-pub const ENGINE_KINDS: [(EngineKind, &str, Pool, u8); 20] = [
+pub const ENGINE_KINDS: [(EngineKind, &str, Pool, u8); 22] = [
     (EngineKind::Player, "engine/player", Pool::Actor, 0),
     (EngineKind::Intro, "engine/intro", Pool::Effect, 2),
     (EngineKind::ChargeGlow, "engine/charge-glow", Pool::Effect, 8),
@@ -162,6 +168,8 @@ pub const ENGINE_KINDS: [(EngineKind, &str, Pool, u8); 20] = [
     (EngineKind::Hitbox, "engine/hitbox", Pool::Attack, 3),
     (EngineKind::Spark, "engine/spark", Pool::Effect, 4),
     (EngineKind::BubbleVisual, "engine/bubble-visual", Pool::Effect, bubble_visual::INDEX),
+    (EngineKind::IceVisual, "engine/ice-visual", Pool::Effect, ice_visual::INDEX),
+    (EngineKind::HitMarker, "engine/hit-marker", Pool::Effect, hit_marker::INDEX),
     (EngineKind::FormOverlay, "engine/form-overlay", Pool::Actor, form_overlay::INDEX),
     (EngineKind::Afterimage, "engine/afterimage", Pool::Effect, afterimage::INDEX),
     (EngineKind::LockonMarker, "engine/lockon-marker", Pool::Effect, lockon_marker::INDEX),
@@ -191,6 +199,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             EngineKind::Hitbox => hitbox::update(b, r),
             EngineKind::Spark => spark::update(b, r),
             EngineKind::BubbleVisual => bubble_visual::update(b, r),
+            EngineKind::IceVisual => ice_visual::update(b, r),
+            EngineKind::HitMarker => hit_marker::update(b, r),
             EngineKind::FormOverlay => form_overlay::update(b, r),
             EngineKind::Afterimage => afterimage::update(b, r),
             EngineKind::LockonMarker => lockon_marker::update(b, r),
@@ -263,40 +273,93 @@ pub fn shift_damage_carry(b: &mut Battle) {
 /// Damage formulas for chips whose damage is 1000 or more (`off_80109DC`).
 pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
     match formula {
+        0 => opponent_hp(b, side),
         1..=18 => sp_chip_damage(b, id, side, formula as usize - 1),
+        19 => gauge_damage(b, side),
         20 => damage_taken(b, side),
         21 => hp_last_digits(b, side),
-        24..=44 => navi_chip_damage(b, id, side),
-        _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
+        22 => half_opponent_max_hp(b, side),
+        23..=44 => navi_chip_damage(b, id, side),
+        // The table ends at 44: the game jumps through the code after it.
+        _ => panic!("damage formula {formula} (chip {id:#x}) reads past its table (off_80109DC)"),
     }
 }
 
-/// `sub_8010BD0` (Muramasa's): the HP the side's player has lost, at most
-/// 500. `sub_80103BC` looks for the player among the side's alive actors,
-/// but its loop never advances, so it only ever checks the first slot four
-/// times: with no player there the damage is 0.
-fn damage_taken(b: &Battle, side: u8) -> u16 {
-    let Some(r) = b.round.alive_actors[side as usize & 1][0] else { return 0 };
-    let o = b.objects.get(r);
-    if b.content.navi_record(o.name_id).actor_type != crate::actor::ActorType::Player {
-        return 0;
+/// `BattleState+0x90`: side 1's alive actors, from which the single-player
+/// formulas read the opponents (the first three for side 0, the first one
+/// for side 1).
+fn single_player_opponents(b: &Battle, side: u8) -> impl Iterator<Item = ObjectRef> + '_ {
+    let n = if side & 1 == 0 { 3 } else { 1 };
+    b.round.alive_actors[1][..n].iter().flatten().copied()
+}
+
+/// `sub_8010A90`: the opponent's HP, at most 500: in link battles the other
+/// side's player's, else the highest of the opponents'.
+fn opponent_hp(b: &Battle, side: u8) -> u16 {
+    let hp = if b.setup.settings.effects & crate::setup::effects::LINK != 0 {
+        let Some(p) = b.player(side ^ 1) else {
+            panic!("damage formula 0 reads the HP of a missing navi (sub_8010A90)");
+        };
+        b.objects.get(p).hp
+    } else {
+        single_player_opponents(b, side).map(|r| b.objects.get(r).hp).max().unwrap_or(0)
+    };
+    hp.min(500)
+}
+
+/// `sub_8010B78`: damage by how full the custom gauge is (the side's own
+/// gauge plus 0x1500 in the battle flag 0x40 mode): 10 to 32 over the first
+/// half, to 128 by seven eighths, to 255 short of full; a full gauge (or
+/// more) gives 10.
+fn gauge_damage(b: &Battle, side: u8) -> u16 {
+    let gauge = if b.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0 {
+        b.sides[side as usize & 1].gauge as u32 + 0x1500
+    } else {
+        b.gauge.value as u32
+    };
+    let g = gauge >> 7;
+    if g >= 0x80 {
+        10
+    } else if g <= 0x40 {
+        (0x16 * g / 0x40 + 0xA) as u16
+    } else if g <= 0x70 {
+        (0x60 * (g - 0x40) / 0x30 + 0x20) as u16
+    } else {
+        (0x80 * (g - 0x70) / 0xF + 0x80) as u16
     }
+}
+
+/// `sub_8010BF0` (NumbrBl's): the last two digits of the side's player's
+/// HP (0 without one).
+fn hp_last_digits(b: &Battle, side: u8) -> u16 {
+    b.player(side).map_or(0, |p| b.objects.get(p).hp % 100)
+}
+
+/// `sub_8010C06`: half the opponent's max HP, at most 999: in link battles
+/// the other side's player's (0 without one), else the highest of the
+/// opponents'.
+fn half_opponent_max_hp(b: &Battle, side: u8) -> u16 {
+    let max_hp = if b.setup.settings.effects & crate::setup::effects::LINK != 0 {
+        let Some(p) = b.player(side ^ 1) else { return 0 };
+        b.objects.get(p).max_hp
+    } else {
+        // Always the first three, whichever side.
+        b.round.alive_actors[1][..3].iter().flatten().map(|&r| b.objects.get(r).max_hp).max().unwrap_or(0)
+    };
+    (max_hp >> 1).min(999)
+}
+
+/// `sub_8010BD0` (Muramasa's): the HP the side's player has lost, at most
+/// 500. `sub_80103BC` (`Battle::player`) looks for the player among the
+/// side's actors as spawned, but its loop never advances, so it only ever
+/// checks the first slot four times: with no player there the damage is 0.
+fn damage_taken(b: &Battle, side: u8) -> u16 {
+    let Some(r) = b.player(side & 1) else { return 0 };
+    let o = b.objects.get(r);
     // A signed difference, capped at 500 (an HP above the maximum would
     // give a negative damage, cut to 16 bits).
     let lost = o.max_hp as i32 - o.hp as i32;
     lost.min(500) as u16
-}
-
-/// `sub_8010BF0` (NumbrBl's): the last two digits of the side's player's
-/// HP (its HP mod 100), found as [`damage_taken`] finds it: no player in
-/// the side's first slot gives 0.
-fn hp_last_digits(b: &Battle, side: u8) -> u16 {
-    let Some(r) = b.round.alive_actors[side as usize & 1][0] else { return 0 };
-    let o = b.objects.get(r);
-    if b.content.navi_record(o.name_id).actor_type != crate::actor::ActorType::Player {
-        return 0;
-    }
-    o.hp % 100
 }
 
 /// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user

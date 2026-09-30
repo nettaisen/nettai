@@ -1,0 +1,348 @@
+//! Changing navis mid-battle (a "Cross change": the battle flag 0x40
+//! mode's link navi switch). A player's transformation record names the
+//! navi to change to (+4); at the turn's start the transformation
+//! sequencer asks the navi (`sub_802DCDE`), and the pause handler runs the
+//! change as action 0x1C (`sub_802D714`): the navi lands, becomes the other
+//! navi (its stats kept or fresh, `Battle::cross_stats`), and after 21
+//! ticks goes on as it. A navi changed so falls back to the one it was
+//! instead of being deleted (`sub_802DD2A`): the Cross knockout
+//! (`sub_802D926`) brings the kept navi back. See docs/engine/battle-flow.md
+//! §3.4.
+//!
+//! Only the battle flag 0x40 mode sends a Cross change; no recording has
+//! one, so all of it is unverified.
+
+use super::ActionVars;
+use crate::actor::{request, status};
+use crate::battle::Battle;
+use crate::collision::f1;
+use crate::kinds::common;
+use crate::kinds::player::{
+    ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, clear_statuses, coll_mut, exit_attack_state, form,
+    load_sprite, post_init_hook, reset_status, reset_status_tail, set_coordinates_from_panel, stats, status as navi_status,
+    update_element,
+};
+use crate::object::ObjectRef;
+use crate::setup::{Form, Navi, NaviStats, NaviWeapons};
+
+/// The action's own state.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Vars {
+    /// AIAttackVars+0x10: ticks left in the step.
+    pub timer: u16,
+}
+
+fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
+    let a = &mut ai_mut(b, r).attack;
+    if !matches!(a.action, ActionVars::CrossChange(_)) {
+        a.action = ActionVars::CrossChange(Vars::default());
+    }
+    match &mut a.action {
+        ActionVars::CrossChange(v) => v,
+        _ => unreachable!(),
+    }
+}
+
+fn set_step(b: &mut Battle, r: ObjectRef, step: u8) {
+    let a = &mut ai_mut(b, r).attack;
+    a.step = step;
+    a.step_init = 0;
+}
+
+/// `sub_802DCDE`: the transformation sequencer asks `navi` to change.
+pub(crate) fn request_change(b: &mut Battle, navi: ObjectRef) {
+    ai_mut(b, navi).requests |= request::CROSS_CHANGE;
+}
+
+/// `sub_802D714`: one paused tick of the change, then the sprite steps
+/// (`sub_801BCD0`).
+pub(in crate::kinds::player) fn change(b: &mut Battle, r: ObjectRef) {
+    match ai(b, r).attack.step {
+        // sub_802D738
+        0 => land(b, r, false),
+        // sub_802D7A0
+        4 => become_other_navi(b, r),
+        // sub_802D8F0
+        8 => {
+            if settle(b, r) {
+                // (The HUD shows the navi again.)
+                let a = ai_mut(b, r);
+                a.status |= status::CROSSED;
+                a.status &= !(status::TRAP_ARMED | status::CHANGING_CROSS);
+                a.requests &= !(request::BODY_GUARD_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
+                exit_attack_state(b, r);
+            }
+        }
+        s => panic!("Cross change step {s:#x} reads past its table (off_802D72C)"),
+    }
+    common::step_sprite(b, r);
+}
+
+/// `sub_802D926` (the pause handler sets the variant to 0 first): one
+/// paused tick of the Cross knockout; the sprite steps with variant 0
+/// (`sub_801BCD0`).
+pub(in crate::kinds::player) fn knock_out(b: &mut Battle, r: ObjectRef) {
+    match ai(b, r).attack.step {
+        // sub_802D950
+        0 => land(b, r, true),
+        // sub_802D9B0
+        4 => take_back(b, r),
+        // sub_802DA78
+        8 => {
+            if settle(b, r) {
+                let a = ai_mut(b, r);
+                a.status &= !(status::TRAP_ARMED | status::CROSS_KNOCKOUT | status::CROSSED);
+                a.requests &= !(request::CROSS_CHANGE
+                    | request::BODY_GUARD_TRIGGERED
+                    | request::ANTI_SWORD_TRIGGERED
+                    | request::ANTI_DAMAGE_TRIGGERED);
+                exit_attack_state(b, r);
+            }
+        }
+        s => panic!("Cross knockout step {s:#x} reads past its table (off_802D944)"),
+    }
+    if ai(b, r).attack.variant == 0 {
+        common::step_sprite(b, r);
+    }
+}
+
+/// `sub_802D738` / `sub_802D950`: onto the destination panel on the
+/// ground, facing the default way, out of any slide, paralysis, flinch,
+/// move or guard (the requests' clear takes the same bits: the game passes
+/// the flags' mask again), the animation 4, links cut; the change keeps its
+/// collision region on, the knockout ends the Full Synchro aura's link.
+/// Four ticks.
+fn land(b: &mut Battle, r: ObjectRef, knockout: bool) {
+    if ai(b, r).attack.step_init == 0 {
+        let o = b.objects.get_mut(r);
+        o.panel = o.future_panel;
+        let p = o.panel;
+        b.unreserve_panel(r, p.x, p.y);
+        set_coordinates_from_panel(b, r);
+        b.objects.get_mut(r).pos.z = 0;
+        b.update_collision_panels(r);
+        super::transform::face_default(b, r);
+        const LANDING: u32 = f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING | f1::GUARD;
+        clear_flag1(b, r, LANDING);
+        clear_flag2(b, r, LANDING);
+        common::set_animation(b, r, 4);
+        b.objects.get_mut(r).related[0] = None;
+        ai_mut(b, r).overlay = None;
+        if knockout {
+            ai_mut(b, r).full_synchro_aura = None;
+        } else {
+            coll_mut(b, r).region = 1;
+        }
+        vars(b, r).timer = 4;
+        ai_mut(b, r).attack.step_init = 4;
+    }
+    let v = vars(b, r);
+    let t = v.timer as i32 - 1;
+    v.timer = t as u16;
+    if t <= 0 {
+        set_step(b, r, 4);
+    }
+}
+
+/// `sub_802D8F0` / `sub_802DA78`: 21 ticks; true when they are over.
+fn settle(b: &mut Battle, r: ObjectRef) -> bool {
+    if ai(b, r).attack.step_init == 0 {
+        vars(b, r).timer = 0x14;
+        ai_mut(b, r).attack.step_init = 4;
+    }
+    let v = vars(b, r);
+    let t = v.timer as i32 - 1;
+    v.timer = t as u16;
+    t < 0
+}
+
+/// The navi `r` becomes the one its stats name: its actor record, sprite
+/// (animation 3) and overlays; the statuses and anger end.
+fn take_identity(b: &mut Battle, r: ObjectRef) {
+    let navi = stats(b, r).navi;
+    ai_mut(b, r).ai_index = navi.0;
+    b.objects.get_mut(r).name_id = 0x1A0 + navi.0 as u16;
+    load_sprite(b, r);
+    common::set_animation(b, r, 3);
+}
+
+/// `sub_802D7A0`: the change itself (one tick).
+fn become_other_navi(b: &mut Battle, r: ObjectRef) {
+    let side = b.objects.get(r).alliance as usize & 1;
+    let old_form = stats(b, r).form;
+    form::take_off_overlay(b, r, old_form);
+    let name_id = b.objects.get(r).name_id;
+    form::navi_death_hook(b, r, name_id);
+    navi_status::end_anger(b, r);
+    // The navi it leaves is kept when it is the kept one (with its HP).
+    if b.cross_stats[side].navi == b.stats[side].navi {
+        b.stats[side].hp = b.objects.get(r).hp;
+        b.cross_stats[side] = b.stats[side];
+    }
+    // sub_802DCCC: the record's navi.
+    let Some(target) = b.turn_transforms[side].cross_change else {
+        panic!("a Cross change without a navi reads 0xFF as one (sub_802DCCC)");
+    };
+    b.stats[side] = if b.cross_stats[side].navi.0 == target { b.cross_stats[side] } else { fresh_stats(target) };
+    super::super::refresh_navicust_state(b, r);
+    take_identity(b, r);
+    let s = *stats(b, r);
+    if s.navi == Navi::MEGAMAN {
+        form::put_on_overlay(b, r, s.form);
+    } else {
+        form::navi_init_hook(b, r, b.objects.get(r).name_id);
+    }
+    post_init_hook(b, r);
+    clear_statuses(b, r);
+    navi_status::end_anger(b, r);
+    let (hp, max_hp) = if s.navi == Navi::MEGAMAN { (s.hp, s.max_hp) } else { changed_hp(s.navi, side as u8) };
+    let o = b.objects.get_mut(r);
+    o.hp = hp;
+    o.max_hp = max_hp;
+    finish_change(b, r);
+    set_step(b, r, 8);
+}
+
+/// `sub_802D9B0`: the knockout's change back to the kept navi (one tick).
+fn take_back(b: &mut Battle, r: ObjectRef) {
+    let side = b.objects.get(r).alliance as usize & 1;
+    let name_id = b.objects.get(r).name_id;
+    form::navi_death_hook(b, r, name_id);
+    b.stats[side] = b.cross_stats[side];
+    take_identity(b, r);
+    form::navi_init_hook(b, r, b.objects.get(r).name_id);
+    let s = *stats(b, r);
+    form::put_on_overlay(b, r, s.form);
+    clear_statuses(b, r);
+    reset_status(b, r);
+    // sub_80143B4
+    clear_flag1(b, r, f1::ANGER);
+    clear_flag2(b, r, 0x200);
+    let a = ai_mut(b, r);
+    a.anger = 0;
+    a.stun_ticks = 0;
+    let o = b.objects.get_mut(r);
+    o.hp = s.hp;
+    o.max_hp = s.max_hp;
+    b.hands[side].drop_link_navi_chips();
+    finish_change(b, r);
+    set_step(b, r, 8);
+}
+
+/// What both changes end with: the hit in progress dropped
+/// (`sub_800EA0E`), poison affecting it again, its element, the hand's
+/// charge bonuses cleared (`sub_8014216`, and for MegaMan his status reset
+/// without its NaviCust part or weapon bytes, `sub_80144CA`), no
+/// invulnerability.
+fn finish_change(b: &mut Battle, r: ObjectRef) {
+    clear_flag2(b, r, 0x3_01FE);
+    let acc = &mut coll_mut(b, r).acc;
+    acc.final_damage = 0;
+    acc.element_damage = [0; 6];
+    clear_flag1(b, r, f1::UNAFFECTED_BY_POISON);
+    update_element(b, r);
+    // sub_8014216
+    ai_mut(b, r).status &= !0x20;
+    let side = b.objects.get(r).alliance as usize & 1;
+    b.hands[side].charge_bonus = [0; 6];
+    match stats(b, r).navi.0 {
+        0 => reset_status_tail(b, r, false),
+        1..=11 => {}
+        n => panic!("the Cross change hook for navi {n:#x} reads past its table (off_801426C)"),
+    }
+    clear_invulnerable(b, r);
+}
+
+/// `byte_80210DD`: a navi's stats when a Cross change brings it fresh, by
+/// navi: half its HP, SuperArmor, FloatShoe, AirShoe, Undershirt, first
+/// barrier, Mega and Giga levels, buster, charged shot, B+Back special,
+/// A charge (and three words and a byte nothing ported reads).
+///
+/// Game data held in the engine for now: it belongs with the navis in the
+/// content (to move there with the content model's next version).
+const FRESH: [[u8; 16]; 12] = [
+    [0x32, 0, 0, 0, 0, 0, 5, 1, 0, 0x01, 0xFF, 1, 0xA, 0, 8, 0xFF],
+    [0x32, 0, 1, 0, 0, 0, 5, 1, 0, 0x40, 0xFF, 1, 0xA, 0, 8, 0xFF],
+    [0x64, 0, 1, 0, 0, 0, 5, 1, 0, 0x44, 0xFF, 1, 0xA, 0, 8, 0xFF],
+    [0x4B, 0, 0, 0, 0, 0, 5, 1, 0, 0x43, 0xFF, 1, 0xA, 0, 8, 0xFF],
+    [0x96, 0, 0, 0, 0, 0, 5, 1, 0, 0x47, 0xFF, 1, 0xA, 0, 8, 0xFF],
+    [0x7D, 0, 0, 0, 0, 0, 5, 1, 0, 0x48, 0xFF, 1, 0xA, 0, 8, 0x29],
+    [0x32, 0, 0, 0, 0, 0, 5, 1, 0, 0x41, 0xFF, 1, 0xA, 0, 8, 0x20],
+    [0x64, 1, 0, 0, 0, 0, 5, 1, 0, 0x45, 0xFF, 1, 0xA, 0, 8, 0x1F],
+    [0x4B, 0, 1, 1, 0, 0, 5, 1, 0, 0x42, 0x10, 1, 0xA, 0, 8, 0xFF],
+    [0x96, 1, 0, 0, 0, 0, 5, 1, 0, 0x4A, 0xFF, 1, 0xA, 0, 8, 0xFF],
+    [0x7D, 1, 0, 0, 0, 0, 5, 1, 0, 0x49, 0xFF, 1, 0xA, 0, 8, 0xFF],
+    [0x7D, 0, 0, 0, 0, 0, 5, 1, 0, 0x32, 0x34, 1, 0xA, 0x32, 8, 0x2D],
+];
+
+/// `init_8013B64`: navi `navi`'s stats, fresh: the defaults
+/// (`initNaviStats_WithDefaultStatsMaybe_8013438`) with its `FRESH` row.
+fn fresh_stats(navi: u8) -> NaviStats {
+    let Some(row) = FRESH.get(navi as usize) else {
+        panic!("navi {navi:#x}'s fresh stats read past their table (init_8013B64)");
+    };
+    let hp = row[0] as u16 * 2;
+    let defaults = NaviStats::default();
+    NaviStats {
+        version: 1,
+        reg_up: 4,
+        custom_level: 5,
+        support: Some(Default::default()),
+        mood: 0x99,
+        beast_out_counter: 3,
+        form: Form::NONE,
+        folder: 0,
+        folder_reg: [0xFF; 2],
+        folder_tags: [[0xFF; 2]; 2],
+        navi: Navi(navi),
+        max_base_hp: hp,
+        hp,
+        max_hp: hp,
+        super_armor: row[1] != 0,
+        float_shoes: row[2] != 0,
+        air_shoes: row[3] != 0,
+        undershirt: row[4] != 0,
+        first_barrier: row[5],
+        mega_level: row[6],
+        giga_level: row[7],
+        weapons: NaviWeapons {
+            buster: row[8],
+            charge_shot: row[9],
+            back_special: row[10],
+            a_charge: row[15],
+            ..defaults.weapons
+        },
+        bugs: crate::setup::NaviCustBugs { panel_trail_kind: 0xFF, ..defaults.bugs },
+        ..defaults
+    }
+}
+
+/// `byte_802DD88`: a navi's HP after a Cross change, by navi and (the game
+/// passes the side where the table's column is the navi's level) the
+/// first two columns.
+///
+/// Game data held in the engine for now (see `FRESH`).
+const CHANGED_HP: [[u16; 2]; 13] = [
+    [999, 999],
+    [100, 150],
+    [130, 130],
+    [150, 150],
+    [150, 150],
+    [200, 200],
+    [150, 150],
+    [100, 150],
+    [100, 150],
+    [180, 180],
+    [150, 150],
+    [200, 200],
+    [150, 150],
+];
+
+/// `sub_802DD70(navi, side)`: a link navi's HP (and max) after a change.
+fn changed_hp(navi: Navi, side: u8) -> (u16, u16) {
+    let Some(row) = CHANGED_HP.get(navi.0 as usize) else {
+        panic!("navi {:#x}'s HP after a Cross change reads past its table (sub_802DD70)", navi.0);
+    };
+    let hp = row[side as usize & 1];
+    (hp, hp)
+}

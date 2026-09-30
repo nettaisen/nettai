@@ -49,6 +49,7 @@
 "protoman/charge" = [0x32]
 "protoman/back-special" = [0x34]
 "megaman/shield" = [0x3B]
+"megaman/reflect-2" = [0x3C]
 "megaman/anti-damage" = [0x3D]
 "heatman/charge" = [0x40]
 "spoutman/charge" = [0x41]
@@ -61,3 +62,4 @@
 "dustman/charge" = [0x49]
 "groundman/charge" = [0x4A]
 "megaman/reflect" = [0x8B]
+"megaman/shield-2" = [0x8C]

@@ -1,0 +1,7 @@
+# Beat, the NaviCust support that snatches a Mega or Giga chip (actor object #0x4C,
+# `sub_80C34E0`), is a script.
+
+[kind]
+pool = "actor"
+index = 0x4C
+script = "beat.luau"
