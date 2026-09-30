@@ -1,0 +1,4 @@
+# M-Boomer, an instant chip (action 0x1C, subtype 1): its effect throws the
+# boomerang (`sub_80CA4F6`).
+
+script = "../../objects/boomerang/boomerang.luau"

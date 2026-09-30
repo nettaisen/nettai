@@ -539,6 +539,7 @@ impl UserData for Collision {
         methods.add_method("present", |_, this, ()| with(|api, _| Ok(api.present_collision(this.0))));
         methods.add_method("remove", |_, this, ()| with(|api, _| Ok(api.remove_collision(this.0))));
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free_collision(this.0))));
+        methods.add_method("highlight", |_, this, ()| with(|api, _| Ok(api.highlight_collision_panels(this.0))));
     }
 }
 
