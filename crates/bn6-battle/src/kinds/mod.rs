@@ -52,6 +52,7 @@ pub enum Vars {
     BodyOverlay(body_overlay::Vars),
     Invisible(invisible::Vars),
     NaviChip(navi_chip::Vars),
+    NaviLayer(navi_layer::Vars),
     NaviWarp(navi_warp::Vars),
     TrapChip(trap_chip::Vars),
     /// A content kind's declared state (see `content`).
@@ -72,6 +73,7 @@ impl Vars {
             (Pool::Actor, cross_merge::INDEX) => Vars::CrossMerge(Default::default()),
             (Pool::Actor, body_overlay::INDEX) => Vars::BodyOverlay(Default::default()),
             (Pool::Effect, invisible::INDEX) => Vars::Invisible(Default::default()),
+            (Pool::Actor, navi_layer::INDEX) => Vars::NaviLayer(Default::default()),
             (Pool::Actor, 0) => Vars::None,
             _ => Vars::None,
         }

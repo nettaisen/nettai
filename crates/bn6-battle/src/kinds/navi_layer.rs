@@ -14,6 +14,25 @@ use crate::object::{ObjectRef, Pool, flags, state};
 
 pub const INDEX: u8 = 0x55;
 
+/// The layer's own state.
+#[derive(Clone, Copy, Debug, Default, Hash)]
+pub struct Vars {
+    /// ExtraVars[0]: it keeps its height (a Cross image's, `sub_80BC670`)
+    /// rather than rising out of sight with the owner's animation.
+    pub keep_height: bool,
+}
+
+/// Keep the layer's height (the Cross image sets it on SpoutMan's).
+pub fn keep_height(b: &mut Battle, r: ObjectRef) {
+    if let crate::kinds::Vars::NaviLayer(v) = &mut b.objects.get_mut(r).vars {
+        v.keep_height = true;
+    }
+}
+
+fn keeps_height(b: &Battle, r: ObjectRef) -> bool {
+    matches!(&b.objects.get(r).vars, crate::kinds::Vars::NaviLayer(v) if v.keep_height)
+}
+
 /// The layer's sprite (`dword_80C40D4[Param1]`; its only spawner,
 /// `sub_80C41D8`, passes Param1 0).
 const SPRITE: SpriteId = SpriteId { category: 0x10, index: 0x21 };
@@ -81,16 +100,18 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         (o.pos, o.flags, o.flip, o.anim)
     };
     let owner_look = b.objects.sprite(owner).look;
+    let keep_height = keeps_height(b, r);
     let o = b.objects.get_mut(r);
     o.pos = pos;
     o.flags = (o.flags & !flags::VISIBLE) | (owner_flags & flags::VISIBLE);
     o.flip = owner_flip;
     let flip = o.alliance ^ owner_flip;
-    // (ExtraVars[0], which nothing sets, would keep the height.) Out of
-    // sight unless the owner is in his first animation: Z's whole part
-    // (a halfword store) 0 or 255.
-    let lift: i32 = if owner_anim == 0 { 0 } else { 0xFF };
-    o.pos.z = (o.pos.z & 0xFFFF) | (lift << 16);
+    // Out of sight unless the owner is in his first animation: Z's whole
+    // part (a halfword store) 0 or 255; unless it keeps its height.
+    if !keep_height {
+        let lift: i32 = if owner_anim == 0 { 0 } else { 0xFF };
+        o.pos.z = (o.pos.z & 0xFFFF) | (lift << 16);
+    }
     let look = &mut b.objects.sprite_mut(r).look;
     look.palette = owner_look.palette;
     look.color_shader = owner_look.color_shader;

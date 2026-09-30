@@ -498,7 +498,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
         panic!("post-init hook sub_80F22F8 is not implemented yet");
     }
     if stats(b, r).form == Form::NONE {
-        navi_init_hook(b, b.objects.get(r).name_id);
+        navi_init_hook(b, r, b.objects.get(r).name_id);
     }
     reset_side_state(b, r);
     apply_starting_hp_bug(b, r);
@@ -509,14 +509,14 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.phase_init = 0;
 }
 
-/// `sub_8010DD0`: the init hook of a NameID's actor record
-/// (`off_8010E0C`, by actor type and AI index). Most navis, MegaMan among
-/// them, have none; the others spawn helper objects.
-pub(crate) fn navi_init_hook(b: &Battle, name_id: u16) {
+/// `sub_8010DD0` / `sub_8010DDA`: the parts a NameID's actor record adds
+/// to `r` (`kinds::navi_parts`, the routine's third argument 0). Most
+/// navis, MegaMan among them, have none. (The second part CircusMan's
+/// record adds goes in the object's ExtraVars[0], which a player and a
+/// Cross image don't keep: no Cross and no ported navi has that record.)
+pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, name_id: u16) {
     let rec = b.content.navi_record(name_id);
-    if rec.actor_type != ActorType::Virus && matches!(rec.ai_index, 1 | 6 | 9 | 13 | 14 | 16 | 18 | 19 | 24 | 25..) {
-        panic!("navi init hook for AI index {} is not implemented yet", rec.ai_index);
-    }
+    crate::kinds::navi_parts::add(b, r, rec.actor_type, rec.ai_index, 0);
 }
 
 /// `sub_800FC9E` + `sprite_load`: load the navi's battle sprite.
