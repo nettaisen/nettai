@@ -1,0 +1,7 @@
+# ElmntMan, the ElmntMan chips' navi (actor object #0x10, `sub_80BAA8C`), is a
+# script.
+
+[kind]
+pool = "actor"
+index = 0x10
+script = "elmnt_man.luau"

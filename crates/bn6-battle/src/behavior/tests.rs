@@ -24,7 +24,24 @@ fn battles_run_the_content_scripts() {
     assert_eq!(b.behaviors.runtime(), "luau");
     let m = b.behaviors.manifest().expect("the test content has scripts");
     let kinds: Vec<&str> = m.objects.iter().map(|k| k.name.as_str()).collect();
-    assert_eq!(kinds, ["area-grab", "attachment", "dust-ball", "erase-beam", "erase-man", "erase-mark", "grab-shot", "sun-beam"]);
+    assert_eq!(
+        kinds,
+        [
+            "area-grab",
+            "attachment",
+            "dust-ball",
+            "elmnt-bolt",
+            "elmnt-ice",
+            "elmnt-man",
+            "elmnt-vine",
+            "erase-beam",
+            "erase-man",
+            "erase-mark",
+            "grab-shot",
+            "meteor",
+            "sun-beam"
+        ]
+    );
     assert!(b.behaviors.action(0x37).is_some(), "GunDelSol is a script");
     assert!(b.behaviors.action(0x10).is_none(), "the step is the engine's");
 }
@@ -55,8 +72,14 @@ fn the_duel_fires_scripted_gun_del_sols() {
 /// in the folders: the ticks each scripted kind was on the field, by
 /// (pool, index).
 fn chip_duel(ticks: usize) -> std::collections::BTreeMap<(crate::object::Pool, u8), usize> {
-    let setup = || scenario::setup_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3]);
-    let tape = scenario::record_on(setup(), ticks, 11);
+    duel_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3], ticks, 11)
+}
+
+/// A duel with `chips` in the folders and the players' moves from `seed`:
+/// the ticks each kind was on the field, by (pool, index).
+fn duel_with(chips: &[crate::content::ChipId], ticks: usize, seed: u32) -> std::collections::BTreeMap<(crate::object::Pool, u8), usize> {
+    let setup = || scenario::setup_with(chips);
+    let tape = scenario::record_on(setup(), ticks, seed);
     let mut b = Battle::new(setup(), scenario::content());
     let mut seen = std::collections::BTreeMap::new();
     for t in &tape {
@@ -83,19 +106,34 @@ fn the_scripted_navi_and_dimming_chips_play() {
 }
 
 #[test]
+fn the_elements_navi_attacks() {
+    use crate::object::Pool::{Actor, Attack};
+    let seen = duel_with(&[testing::ELEMENTS], 2400, 11);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // The elements navi comes with his overlay and attacks with an
+    // element: meteors, ice, bolts or vines.
+    assert!(ticks((Actor, 0x10)) > 0, "ElmntMan: {seen:?}");
+    assert!(ticks((Actor, 0x56)) > 0, "ElmntMan's overlay: {seen:?}");
+    let attacks = [0x8D, 0x8E, 0xB8, 0xB9].map(|i| ticks((Attack, i)));
+    assert!(attacks.iter().any(|&t| t > 0), "ElmntMan's attacks: {seen:?}");
+}
+
+#[test]
 fn scripted_chips_roll_back() {
     // A copy of the battle taken at any tick plays on exactly as the
     // battle does: the scripts' state is all in the battle.
-    let setup = || scenario::setup_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3]);
-    let tape = scenario::record_on(setup(), 2400, 11);
-    let mut b = Battle::new(setup(), scenario::content());
-    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
-    for (i, t) in tape.iter().enumerate() {
-        if i % 97 == 0 {
-            let copy = digests(&tape[i..], b.clone());
-            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+    for chips in [&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3][..], &[testing::ELEMENTS]] {
+        let setup = || scenario::setup_with(chips);
+        let tape = scenario::record_on(setup(), 2400, 11);
+        let mut b = Battle::new(setup(), scenario::content());
+        let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+        for (i, t) in tape.iter().enumerate() {
+            if i % 97 == 0 {
+                let copy = digests(&tape[i..], b.clone());
+                assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way ({chips:?})");
+            }
+            b.tick(&t.input, t.events.clone());
         }
-        b.tick(&t.input, t.events.clone());
     }
 }
 
