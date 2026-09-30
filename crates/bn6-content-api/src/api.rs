@@ -345,6 +345,8 @@ named_fields! {
         NavisIn = "navis_in", Bool, ro;
         /// Presentation only: the side the simulation's perspective is.
         LocalSide = "local_side", U8, ro;
+        /// Battle flag 1: the fight is on (collision is live).
+        Fighting = "fighting", Bool, ro;
     }
 }
 
@@ -811,9 +813,6 @@ pub trait CoreApi {
     /// `object_breakPanel_dup1`: break a solid panel, or crack it when
     /// something stands on it; true only when it broke.
     fn shatter_panel(&mut self, p: PanelPos) -> bool;
-    /// `object_highlightCurrentCollisionPanels`: highlight the panels of
-    /// `o`'s collision region (drawn only).
-    fn highlight_collision_panels(&mut self, o: ObjectRef);
 
     // ---- Objects -----------------------------------------------------------
 
@@ -977,6 +976,12 @@ pub trait CoreApi {
     /// Unregister, resolving hits against whatever is registered there.
     fn remove_collision(&mut self, o: ObjectRef);
     fn free_collision(&mut self, o: ObjectRef);
+    /// `object_setCollisionPanelsToCurrent`: the registration's panel
+    /// becomes the object's (its move direction kept).
+    fn set_collision_panel(&mut self, o: ObjectRef);
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels the
+    /// registration's region covers.
+    fn highlight_collision_panels(&mut self, o: ObjectRef);
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
     fn hit_spark(&mut self, o: ObjectRef);

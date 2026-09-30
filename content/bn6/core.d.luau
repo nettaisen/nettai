@@ -388,6 +388,12 @@ declare class Object
     -- Onto the destination panel of a move (panel, reservation,
     -- coordinates, collision).
     function snap_to_future_panel(self): ()
+    -- `object_setCollisionPanelsToCurrent`: the collision registration's
+    -- panel becomes the object's (its move direction kept).
+    function set_collision_panel(self): ()
+    -- `object_highlightCurrentCollisionPanels`: highlight the panels the
+    -- registration's region covers.
+    function highlight_collision_panels(self): ()
     function reserve_panel(self, x: number, y: number): boolean
     function unreserve_panel(self, x: number, y: number): boolean
     function release_reservations(self): ()
@@ -409,9 +415,6 @@ declare class Object
     -- `object_spawnCollisionEffect`: the hit spark after a hit (one RNG
     -- draw when it shows).
     function hit_spark(self): ()
-    -- `object_highlightCurrentCollisionPanels`: highlight the panels its
-    -- collision region covers (drawn only).
-    function highlight_collision_panels(self): ()
     -- `sub_801156A`: an object with HP takes this tick's damage (the sum
     -- of its hits by element): a guard spark if it blocked, the HP loss
     -- (not in mode 1), a white flash while hit, with a sound in modes 0
@@ -595,6 +598,8 @@ declare battle: {
     navis_in: () -> boolean,
     -- Presentation only: the side the simulation's perspective is.
     local_side: () -> number,
+    -- Battle flag 1: the fight is on (collision is live).
+    fighting: () -> boolean,
     -- Sound for both players, or for one side's player (output only).
     play_sound: (id: number) -> (),
     play_sound_for: (side: number, id: number) -> (),
@@ -898,6 +903,9 @@ export type WeaponData = { id: number, name: string, action: number?, script: st
 -- parameter): ticks on a panel before the next rolls on, and the panel
 -- type it leaves ("cracked" cracks the panel, "broken" breaks it).
 export type ShockWave = { id: number, sprite: SpriteId, anim: number, ticks: number, panel: PanelType? }
+-- A panel condition: the flags word has all of `require` and none of
+-- `forbid`.
+export type PanelCondition = { require: number, forbid: number }
 
 -- An object kind a script implements.
 export type ObjectKindData = { pool: Pool, index: number, script: string }
@@ -926,6 +934,10 @@ export type PackData = {
         -- 256 steps a turn, 1.0 = 0x100, over a turn and a half, so the
         -- cosine of step a is entry a + 64.
         sine: { [number]: number },
+        -- Whole-field hit regions (`byte_8019C34`): region 0x80 + i covers
+        -- every panel whose flags word has all of `require` and none of
+        -- `forbid`.
+        field_regions: { [number]: PanelCondition },
     },
     -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
     -- panels a region covers, { dx, dy } from its panel with dx toward the
