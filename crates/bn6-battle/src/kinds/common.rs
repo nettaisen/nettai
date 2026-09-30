@@ -160,6 +160,22 @@ pub fn update_sprite_while_dimmed(b: &mut Battle, r: ObjectRef) {
     step_sprite(b, r);
 }
 
+/// `object_updateSpritePaused`: load a newly requested animation and step
+/// the sprite, paused or not, but not while dimmed. (It skips only
+/// inactive objects: `NO_SPRITE_UPDATE` doesn't stop it.)
+pub fn update_sprite_while_paused(b: &mut Battle, r: ObjectRef) {
+    if b.objects.get(r).flags & flags::ACTIVE == 0 || b.is_dimmed() {
+        return;
+    }
+    let o = b.objects.get(r);
+    let (anim, loaded) = (o.anim, o.anim_loaded);
+    if anim != loaded {
+        b.objects.sprite_mut(r).set_animation(anim, &b.content);
+        b.objects.get_mut(r).anim_loaded = anim;
+    }
+    b.objects.sprite_mut(r).update(&b.content);
+}
+
 /// `sub_801BCD0`: load a newly requested animation and step the sprite,
 /// paused or not (skipped only for non-animating objects).
 pub fn step_sprite(b: &mut Battle, r: ObjectRef) {

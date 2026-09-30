@@ -8,7 +8,7 @@
 
 use crate::battle::{Battle, TickEvents, mode};
 use crate::behavior::Behaviors;
-use crate::content::{ChipCode, Content, testing};
+use crate::content::{ChipCode, ChipId, Content, testing};
 use crate::custom::screen::{OK_SLOT, Phase, SlotKind, SlotState};
 use crate::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
 use crate::input::{PlayerTick, keys};
@@ -76,6 +76,20 @@ pub fn setup() -> RoundSetup {
     }
 }
 
+/// The same round with both folders holding `chips` (in turn, all code
+/// A) instead.
+pub fn setup_with(chips: &[ChipId]) -> RoundSetup {
+    let mut s = setup();
+    let mut folder = BattleFolder::empty();
+    for (slot, &id) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
+        *slot = Some(FolderChip::new(id, ChipCode(0)));
+    }
+    for p in &mut s.players {
+        p.folder = Some(folder);
+    }
+    s
+}
+
 /// A player's buttons on the custom screen: A on the chip under the
 /// cursor, RIGHT to the next one, until four are picked; then START and A
 /// on OK. A and START are released between presses.
@@ -117,7 +131,13 @@ pub fn record(ticks: usize) -> Vec<Tick> {
 /// another duel. (A tape drives the custom screens too, so it plays back
 /// only from the start of the round it was recorded on.)
 pub fn record_seeded(ticks: usize, seed: u32) -> Vec<Tick> {
-    let mut b = Battle::new(setup(), content());
+    record_on(setup(), ticks, seed)
+}
+
+/// The duel's players on another round (`setup_with`), with the steps and
+/// shots from `seed`.
+pub fn record_on(setup: RoundSetup, ticks: usize, seed: u32) -> Vec<Tick> {
+    let mut b = Battle::new(setup, content());
     let mut rng = Lcg(seed);
     let mut tape = Vec::with_capacity(ticks);
     // Per side: a held direction and how long to keep it.

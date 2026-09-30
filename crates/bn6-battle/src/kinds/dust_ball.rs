@@ -45,10 +45,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         state::UPDATE => tick(b, r),
         _ => return crate::kinds::generic_destroy(b, r),
     }
-    // object_updateSpritePaused: not while dimmed.
-    if !b.is_dimmed() && b.objects.get(r).flags & flags::ACTIVE != 0 {
-        common::step_sprite(b, r);
-    }
+    common::update_sprite_while_paused(b, r);
 }
 
 /// `sub_80DB6D4`: 18 pixels in front of its panel's centre.
