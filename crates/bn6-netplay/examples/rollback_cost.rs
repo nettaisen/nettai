@@ -1,9 +1,10 @@
 //! What rollback costs on a golden-trace round, measured as the
 //! verification workspace's `soundmod_rollback_cost` test does: over the
 //! 2000 frames around the round's busiest one, the worst case of a
-//! 10-frame rollback every rendered frame (restore a snapshot, simulate 10
-//! frames again saving each, then the new frame, then digest), against the
-//! 16.7 ms a frame has at 60 fps.
+//! 10-frame rollback every rendered frame, through the battle's getgud
+//! `World` the way a session drives it (load the settled state, step the
+//! corrected tick and the 10 speculated after it, saving each, then digest
+//! the settled state), against the 16.7 ms a frame has at 60 fps.
 //!
 //! cargo run --release -p bn6-netplay --example rollback_cost --features trace -- <trace.jsonl> <pack> [round]
 //!
@@ -14,9 +15,10 @@
 
 use std::time::{Duration, Instant};
 
-use bn6_battle::{Battle, trace};
-use bn6_netplay::Game;
+use bn6_battle::trace;
 use bn6_netplay::bn6::Bn6Input;
+use bn6_netplay::getgud::World;
+use bn6_netplay::{BattleState, BattleWorld};
 
 const DEPTH: usize = 10;
 
@@ -39,38 +41,48 @@ fn main() {
             [Bn6Input { tick: players[0], events }, Bn6Input { tick: players[1], events: Default::default() }]
         })
         .collect();
-    let mut g: Battle = round.start(content.clone());
-    let runtime = g.behaviors.runtime().to_string();
-    let mut states = vec![g.clone()];
+    // Side 0's world: its input is `local`, side 1's the remote.
+    let mut world = BattleWorld::new(round.start(content.clone()), 0);
+    let runtime = world.game().behaviors.runtime().to_string();
+    let step = |w: &mut BattleWorld<_>, [a, b]: &[Bn6Input; 2]| {
+        let Ok(()) = w.step(a, std::slice::from_ref(b));
+    };
+    let save = |w: &mut BattleWorld<_>| -> BattleState {
+        let Ok(s) = w.save();
+        s
+    };
+    let mut states = vec![save(&mut world)];
     for i in &inputs {
-        g.advance(i);
-        states.push(g.clone());
+        step(&mut world, i);
+        states.push(save(&mut world));
     }
-    let busiest = (DEPTH..limit - 1).max_by_key(|&f| states[f].objects.in_order().count()).unwrap();
+    let objects = |s: &BattleState| s.battle().objects.in_order().count();
+    let busiest = (DEPTH..limit - 1).max_by_key(|&f| objects(&states[f])).unwrap();
     let window = busiest.saturating_sub(1000).max(DEPTH)..(busiest + 1000).min(limit - 1);
-    let (mut restore, mut advance, mut save, mut digest) =
+    let (mut restore, mut advance, mut save_time, mut digest) =
         (Duration::ZERO, Duration::ZERO, Duration::ZERO, Duration::ZERO);
     let mut all = Vec::new();
-    let mut snapshots = vec![states[0].clone(); DEPTH + 1];
+    let mut speculated: Vec<BattleState> = Vec::with_capacity(DEPTH + 1);
     for f in window.clone() {
-        let mut game = states[f + 1].clone();
         let start = Instant::now();
         let t = Instant::now();
-        game.clone_from(&states[f + 1 - DEPTH]);
+        let Ok(()) = world.load(&states[f + 1 - DEPTH]);
         restore += t.elapsed();
-        for (k, i) in inputs[f + 1 - DEPTH..=f + 1].iter().enumerate() {
+        speculated.clear();
+        for i in &inputs[f + 1 - DEPTH..=f + 1] {
             let t = Instant::now();
-            game.advance(i);
+            step(&mut world, i);
             advance += t.elapsed();
             let t = Instant::now();
-            snapshots[k % (DEPTH + 1)] = game.clone();
-            save += t.elapsed();
+            speculated.push(save(&mut world));
+            save_time += t.elapsed();
         }
+        // The first of them is the new settled state.
         let t = Instant::now();
-        std::hint::black_box(game.digest());
+        std::hint::black_box(speculated[0].battle().digest());
         digest += t.elapsed();
         all.push(start.elapsed());
-        assert_eq!(game.digest(), states[f + 2].digest(), "a re-simulated frame differs");
+        assert_eq!(world.game().digest(), states[f + 2].battle().digest(), "a re-simulated frame differs");
     }
     let count = all.len() as f64;
     let us = |d: Duration, k: f64| d.as_secs_f64() * 1e6 / k;
@@ -79,10 +91,10 @@ fn main() {
     println!(
         "{runtime} content, round {n} frames {window:?} (up to {} objects): restore {:.2} us, advance {:.2} us/frame, \
          save {:.2} us/frame, digest {:.2} us; per rendered frame {:.1} us (99th percentile {:.1} us, worst {:.1} us) of 16667 us",
-        states[busiest].objects.in_order().count(),
+        objects(&states[busiest]),
         us(restore, count),
         us(advance, count * (DEPTH + 1) as f64),
-        us(save, count * (DEPTH + 1) as f64),
+        us(save_time, count * (DEPTH + 1) as f64),
         us(digest, count),
         us(total, count),
         us(all[all.len() * 99 / 100], 1.0),
