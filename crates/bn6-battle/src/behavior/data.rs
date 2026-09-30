@@ -12,6 +12,8 @@
 //!             .body_overlays[id], .sun_beam_looks[look]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
+//! data.rules.field_regions[i]   whole-field region 0x80 + i: { require, forbid } (byte_8019C34)
+//! data.regions[region]      a hit region's panels: { {dx, dy}, ... } (PanelOffsetListsPointerTable)
 //! ```
 
 use bn6_content_api::{Data, DataKey};
@@ -68,7 +70,14 @@ pub fn script_data(c: &Content) -> Data {
         ),
     ]);
     let recovery = c.rules.buster_recovery.iter().flatten().enumerate().map(|(i, &t)| (i as i64, t));
-    let rules = Data::map([("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64)))]);
+    let field_regions = c.rules.field_regions.iter().enumerate().map(|(i, r)| (i as i64, r));
+    let field_regions = by_id(field_regions, |r| {
+        Data::map([("require", Data::Int(r.require as i64)), ("forbid", Data::Int(r.forbid as i64))])
+    });
+    let rules = Data::map([("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64))), ("field_regions", field_regions)]);
+    let regions = by_id(c.regions.iter().enumerate().map(|(i, r)| (i as i64, r)), |r| {
+        Data::List(r.iter().map(|p| Data::List(vec![Data::Int(p.dx as i64), Data::Int(p.dy as i64)])).collect())
+    });
     Data::map([
         ("chips", by_id(c.chips.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("navis", by_id(c.navis.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
@@ -76,5 +85,6 @@ pub fn script_data(c: &Content) -> Data {
         ("weapons", by_id(c.weapons.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("objects", objects),
         ("rules", rules),
+        ("regions", regions),
     ])
 }

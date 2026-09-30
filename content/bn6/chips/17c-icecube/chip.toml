@@ -1,0 +1,3 @@
+# A dimming chip (subtype 6): its dimming controller places an ice block.
+
+script = "../../objects/rock-cube/rock_cube.luau"
