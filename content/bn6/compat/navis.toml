@@ -1,0 +1,17 @@
+# Written by gen-content (the verification workspace) from the ROM, which its `check`
+# compares this with. Edit it when content is renamed or added.
+#
+# Navis: the navi number (NaviStats+0x29) and the navi's NameID.
+
+megaman = { navi = 0x00, name_id = 0x1A0 }
+heatman = { navi = 0x01, name_id = 0x1A1 }
+elecman = { navi = 0x02, name_id = 0x1A2 }
+slashman = { navi = 0x03, name_id = 0x1A3 }
+eraseman = { navi = 0x04, name_id = 0x1A4 }
+chargeman = { navi = 0x05, name_id = 0x1A5 }
+spoutman = { navi = 0x06, name_id = 0x1A6 }
+tomahawkman = { navi = 0x07, name_id = 0x1A7 }
+tenguman = { navi = 0x08, name_id = 0x1A8 }
+groundman = { navi = 0x09, name_id = 0x1A9 }
+dustman = { navi = 0x0A, name_id = 0x1AA }
+protoman = { navi = 0x0B, name_id = 0x1AB }
