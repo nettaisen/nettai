@@ -39,10 +39,15 @@ pub enum ActionVars {
     Absorb(absorb::Vars),
     Instant(instant::Vars),
     DustCharge(dust_charge::Vars),
+    /// A content action's declared state (see `content`).
+    Content(bn6_content_api::ContentState),
 }
 
 /// Run action `action` (>= 0x10) for the player `r` this tick.
 pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
+    if let Some(kind) = b.behaviors.action(action) {
+        return crate::behavior::run_action(b, kind, r);
+    }
     match action {
         movement::ACTION => movement::update(b, r),
         gun_del_sol::ACTION => gun_del_sol::update(b, r),
@@ -59,7 +64,7 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
 
 /// `object_setDefaultCounterTime`: an attack opens a 16-tick counter
 /// window (for players, only in link battles).
-fn open_counter_window(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn open_counter_window(b: &mut Battle, r: ObjectRef) {
     if super::ai(b, r).actor_type == crate::actor::ActorType::Player && !super::is_link(b) {
         return;
     }
@@ -68,7 +73,7 @@ fn open_counter_window(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801056A`, the reactive-defense abort some chip actions check after
 /// each phase (requests 0x200, 0x400, 0x8000).
-fn check_reactive_abort(b: &Battle, r: ObjectRef) {
+pub(crate) fn check_reactive_abort(b: &Battle, r: ObjectRef) {
     use crate::actor::request;
     let f = super::ai(b, r).requests;
     if f & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED) != 0 {

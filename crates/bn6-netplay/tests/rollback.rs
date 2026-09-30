@@ -254,3 +254,18 @@ fn state_outside_the_snapshot_is_caught() {
     let mut m = Match::from_starts([leaky(), leaky()], leaky(), NetConfig::latency(0, 0));
     assert!(m.run(mashers(1), &mut [(), ()], 30_000).in_sync());
 }
+
+/// With a content feature (`luau`, `rust-content`), every battle above
+/// runs the GunDelSol slice as content (docs/design/scripting.md), so these
+/// tests are also the scripted slice under rollback.
+#[test]
+fn the_battles_run_the_featured_content() {
+    let want = if cfg!(feature = "luau") {
+        "luau"
+    } else if cfg!(feature = "rust-content") {
+        "rust"
+    } else {
+        "builtin"
+    };
+    assert_eq!(start(1).battle.behaviors.runtime(), want);
+}
