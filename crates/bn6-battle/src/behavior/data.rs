@@ -13,6 +13,9 @@
 //!             .flying_shots[kind]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
+//! data.rules.sine[i]        the sine table (math_sinTable; cos is i + 64)
+//! data.rules.cross_palettes[form]   MegaMan's palette in each Cross (byte_80203EA)
+//! data.rules.field_regions[i]       whole-field region 0x80 + i's condition (byte_8019C34)
 //! data.regions[n]           a panel region's offsets, each [dx, dy] (PanelOffsetListsPointerTable)
 //! ```
 
@@ -72,7 +75,14 @@ pub fn script_data(c: &Content) -> Data {
         ),
     ]);
     let recovery = c.rules.buster_recovery.iter().flatten().enumerate().map(|(i, &t)| (i as i64, t));
-    let rules = Data::map([("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64)))]);
+    let sine = c.rules.sine.iter().enumerate().map(|(i, &v)| (i as i64, v));
+    let palettes = c.rules.cross_palettes.iter().enumerate().map(|(i, &v)| (i as i64, v));
+    let rules = Data::map([
+        ("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64))),
+        ("sine", by_id(sine, |&v| Data::Int(v as i64))),
+        ("cross_palettes", by_id(palettes, |&v| Data::Int(v as i64))),
+        ("field_regions", by_id(c.rules.field_regions.iter().enumerate().map(|(i, r)| (i as i64, r)), |r| value(*r))),
+    ]);
     Data::map([
         ("chips", by_id(c.chips.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("navis", by_id(c.navis.iter().map(|x| (x.id as i64, x)), |x| value(*x))),

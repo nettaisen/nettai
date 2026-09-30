@@ -1,0 +1,7 @@
+# A panel strike (attack object #0x09, `sub_80C5DDC`: Bass's and MachGun's shots) is a
+# script.
+
+[kind]
+pool = "attack"
+index = 0x09
+script = "panel_strike.luau"

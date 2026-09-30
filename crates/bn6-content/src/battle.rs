@@ -259,6 +259,28 @@ struct ReactionsFile {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct ActorsFile {
+    cross_palettes: Vec<u8>,
+    record: Vec<ActorRecordEntry>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ActorRecordEntry {
+    name_id: u16,
+    version: u8,
+    actor_type: bn6_battle::actor::ActorType,
+    ai_index: u8,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MathFile {
+    sine: Vec<i16>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LockonFile {
     column_shifts: Vec<i8>,
     search: Vec<LockonSearch>,
@@ -811,6 +833,26 @@ neighbour is looked for along the scan lists, each slot starting at its *_scan_s
         ),
     );
     put(
+        "rules/actors.toml".into(), toml_file(
+            "Every NameID's actor record (byte_80182C4): the version byte, the actor type and the AI index\n(which picks per-navi hooks and tables). cross_palettes: the palette MegaMan's sprite takes in\neach Cross, by form (byte_80203EA).",
+            &ActorsFile {
+                cross_palettes: r.cross_palettes.clone(),
+                record: r
+                    .actor_records
+                    .iter()
+                    .enumerate()
+                    .map(|(i, a)| ActorRecordEntry { name_id: i as u16, version: a.version, actor_type: a.actor_type, ai_index: a.ai_index })
+                    .collect(),
+            },
+        ),
+    );
+    put(
+        "rules/math.toml".into(), toml_file(
+            "sine: math_sinTable, 8.8 fixed point, 256 steps a turn; 320 entries, math_cosTable being the\nsame table 64 on.",
+            &MathFile { sine: r.sine.clone() },
+        ),
+    );
+    put(
         "rules/sp-chips.toml".into(), toml_file(
             "The deletion times at which an SP navi chip's damage steps down (chips' sp_damage).",
             &SpChipsFile { deletion_times: r.sp_deletion_times.iter().map(|&t| bcd_time(t)).collect() },
@@ -1222,6 +1264,18 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
     let weapons = dense(w.weapon.into_iter().map(|w| (w.id as usize, WeaponRoutine { charge_ticks: w.charge_ticks }, file.into())).collect(), "weapon routine", report);
     let reactions: ReactionsFile = read_toml(root, "rules/reactions.toml", report)?;
     let lockon: LockonFile = read_toml(root, "rules/lockon.toml", report)?;
+    let file = "rules/actors.toml";
+    let actors: ActorsFile = read_toml(root, file, report)?;
+    let actor_records = dense(
+        actors
+            .record
+            .into_iter()
+            .map(|r| (r.name_id as usize, NaviRecord { version: r.version, actor_type: r.actor_type, ai_index: r.ai_index }, file.into()))
+            .collect(),
+        "actor record",
+        report,
+    );
+    let math: MathFile = read_toml(root, "rules/math.toml", report)?;
     let file = "rules/sp-chips.toml";
     let sp: SpChipsFile = read_toml(root, file, report)?;
     let mut sp_deletion_times = Vec::new();
@@ -1272,6 +1326,9 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         ice_vectors: reactions.ice,
         bubble_bob: reactions.bubble_bob,
         lockon: Lockon { searches: lockon.search, column_shifts: lockon.column_shifts },
+        actor_records,
+        cross_palettes: actors.cross_palettes,
+        sine: math.sine,
     })
 }
 

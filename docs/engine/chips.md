@@ -1452,6 +1452,63 @@ SlashMan's: the user holding B sets Param2, sound 0x8B), then it flies ahead at 
 until off the field; with Param2 set it drifts toward the nearest row (0, −1, +1, −2, +2) with an enemy navi ahead,
 arriving as it reaches that column. A hit on an enemy's body (`byte_80D08C4`) or the battle's end ends it (a byte
 store). All match, the steering too (a scratch scenario holding B); unverified: Param1 0 (the navi AI's).
+#### 3.6.32 SunMoon (navi chip subtype 25, PA chip 0x15B, T1 0x24)
+
+The pack's objects/sun-moon, sun-meteor and moon-beam. **SunMoon, T1 0x24 (`sub_80BF260`)**, spawned by `sub_80BF6AE`
+on the user's panel (related1 the user, the controller's flag pointer in ExtraVars[0], flags \|= 0x10), its sprite
+(0x0C, 0x64) 64 pixels up; its sprite steps as `object_updateSprite` (not while dimmed). Its handlers set their
+timer on entry and count it the same tick. Actions:
+- 0: sound 0x94; 60 ticks. 4.0: animation 2; a T3 0xB5 meteor every 15 ticks, six (element Fire, damage 0x32 with
+  the damage's flag bits, its height SunMoon's Z). 4.4: animation 1, 30 ticks.
+- 8.0: animation 1, sound 0x110; 30 ticks with the palette blinking 4/0 (`sub_80BF402`: the tick count's bit 1
+  above 20 left, bit 2 below; its third rate is unreachable); palette 4. 8.4: 30 ticks.
+- 0xC.0: animation 3, palette 0, the T3 0xB6 moonlight (element 0, damage 2 with the flag bits); 100 ticks. 0xC.4:
+  animation 1, palette 4, 30 ticks. 0x10.0: as 8.0 inverted, ending on palette 0. 0x10.4: 30 ticks.
+- 0x14.0: 10 ticks (a camera shake); then 16 ticks toward the panel three columns toward the enemy (velocity =
+  distance / 16, truncated; sound 0x17F). 0x14.4: landing (Z 0) on a panel with any of 0x0F800010: sound 0xC3, a
+  region 0xF hit (hit effect 0xFF, target 5, self 0xA, modifier 3, resolving while dimmed), the region's panels
+  cracked (`sub_80DB48A`, offsets as they are), T4#0 effect 5 on its panels on the field (`sub_801BD3C`, dx toward
+  the side, Z 3 raw: the r7 left over), a 30-tick palette flash; on another, a T4#0 effect 0x12 16 pixels up.
+  Hidden. 0x14.8: 60 ticks; state 8, which clears the controller's flag.
+
+**The meteor, T3 0xB5 (`sub_80DBEE6`)**: record `byte_80DBEE0[Param1]` (only record 0: sprite (0x0C, 0x31), self
+type 0xA, target 5, a camera shake, nothing done to an occupied panel). 20 pixels ahead and 20 below its spawner's
+height, aimed at the panel three columns ahead (16 ticks); collision modifier 3, hit effect = element & 0xF, region
+0 while it falls. Landing on a panel with any of 0x0F800010: T4#0 effect 5, sound 0x70; else the panel breaks
+(`object_breakPanel`, which only breaks a solid, unoccupied one). Then region 1 for a tick, hidden, gone.
+
+**The moonlight, T3 0xB6 (`sub_80DC0E8`)**: SunMoon's sprite, animation 4, 40 pixels ahead. After 3 ticks: a hit
+on the panel three columns ahead with damage 0x2000 (an uninstall), self type 0x17; then every tick for 100 ticks a
+hit there with its damage, self type 0x30, modifier 3 (sound 0x111 every 8 ticks); all resolve while dimmed.
+
+Lab (scratch, the PA chip put straight in the folder): the opponent a row up and both a column forward match every
+frame; on a hit the replay stops at the uninstall's reaction (`sub_80140EE`, the navi framework's).
+
+#### 3.6.33 Bass (navi chip subtype 26, Giga chip 0x12D, T1 0x4F)
+
+The pack's objects/bass and panel-strike. **Bass, T1 0x4F (`sub_80C3970`)**, spawned by `sub_80C3B30` on the user's
+panel (no related1: the controller's flag pointer is kept in his X velocity). Init: sprite (8, 0x13), a ground
+shadow, his cape (`sub_80C468C`: form overlay T1 0x57 of the same sprite, animation + 0x14, stepping while dimmed;
+related1), sound 0x94, 100 ticks, and his first tick at once; he goes when his panel is off the field.
+- 0: 100 ticks, rising half a pixel a tick over the last 81.
+- 4.0: animation 0xA until its last frame; animation 0xC, 24 volleys, the 18 panel cooldowns cleared.
+- 4.1: every tick the cooldowns count down. Each volley (8 ticks apart): two shots (`sub_80C3B54`): his columns
+  (`sub_80C3C2C`: from column 3 facing right, 4 facing left, or his own if further; each further column with a
+  panel of the other side's, `byte_80C3C90`); five times in eight (`GetPositiveSignedRNG2 & 7 >= 3`) a random panel
+  holding an enemy navi's body, else (or if none) any panel with 0x10000, rows 3 to 1, not shot in the last 22 ticks
+  (one RNG draw each pick with candidates); a T3 0x09 strike there (element 0, Param2 20, Param4 1, resolving while
+  dimmed; its Z 0) and T4#0 effect 0x57 20 pixels ahead and 34 up, jittered by up to 7 pixels (one draw).
+- 4.8: 12 ticks, animation 0, 30 ticks; state 8: T4#0 effect 0x12 16 pixels up, the cape off, the controller's
+  flag cleared, freed.
+
+**The panel strike, T3 0x09 (`sub_80C5DDC`)**, Bass's and MachGun's: collision self 0xA, target 5, modifier by Param3
+(0 → 3, 1 → 1, else 0), region 0; Param2 ticks highlighting its panel 4 out of 8; then (unless Param4 is set and the
+panel isn't solid: it just goes) the burst, sprite (0x10, 0x26), region 1 for its first tick, sound 0xB9, and with
+Param1 an uncracked panel cracked; it goes when the burst's animation ends. One without flag 0x10 goes once the
+battle is over.
+
+Lab (scratch, Bass dug from a Giga folder): hit, miss and adjacent match every frame. Unverified: the strike's
+Param1/Param3/no-flag-0x10 branches (MachGun's), Bass leaving off the field.
 
 ---
 
