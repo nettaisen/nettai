@@ -38,6 +38,10 @@ pub const GRAB: ChipId = 0x07;
 pub const ELEMENTS: ChipId = 0x08;
 /// A navi chip (action 0x1B, subtype 7: the water navi).
 pub const SPOUT: ChipId = 0x09;
+/// A navi chip (action 0x1B, subtype 26: the shooting navi, Bass's).
+pub const BASS: ChipId = 0x0A;
+/// A navi chip (action 0x1B, subtype 25: the sun-and-moon navi).
+pub const SUN_MOON: ChipId = 0x0B;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -156,6 +160,11 @@ pub fn scripts() -> Scripts {
                 ("objects/spout-pillar/spout_pillar", "objects/spout-pillar/spout_pillar"),
                 ("objects/spout-geyser/spout_geyser", "objects/spout-geyser/spout_geyser"),
                 ("objects/spout-mark/spout_mark", "objects/spout-mark/spout_mark"),
+                ("objects/bass/bass", "objects/bass/bass"),
+                ("objects/panel-strike/panel_strike", "objects/panel-strike/panel_strike"),
+                ("objects/sun-moon/sun_moon", "objects/sun-moon/sun_moon"),
+                ("objects/sun-meteor/sun_meteor", "objects/sun-meteor/sun_meteor"),
+                ("objects/moon-beam/moon_beam", "objects/moon-beam/moon_beam"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -217,6 +226,11 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_z_fraction: true, ..kind("spout-pillar", Pool::Effect, 0x2D, "objects/spout-pillar/spout_pillar") },
         kind("spout-geyser", Pool::Attack, 0x17, "objects/spout-geyser/spout_geyser"),
         kind("spout-mark", Pool::Effect, 0x2E, "objects/spout-mark/spout_mark"),
+        kind("bass", Pool::Actor, 0x4F, "objects/bass/bass"),
+        kind("panel-strike", Pool::Attack, 0x09, "objects/panel-strike/panel_strike"),
+        kind("sun-moon", Pool::Actor, 0x24, "objects/sun-moon/sun_moon"),
+        kind("sun-meteor", Pool::Attack, 0xB5, "objects/sun-meteor/sun_meteor"),
+        kind("moon-beam", Pool::Attack, 0xB6, "objects/moon-beam/moon_beam"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -325,6 +339,20 @@ fn chips() -> Vec<ChipData> {
             damage: 40,
             script: Some("objects/spout-man/spout_man".into()),
             ..chip(SPOUT, "Spout", 0x1B, 7)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Giga,
+            damage: 30,
+            script: Some("objects/bass/bass".into()),
+            ..chip(BASS, "Shooter", 0x1B, 26)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Giga,
+            damage: 90,
+            script: Some("objects/sun-moon/sun_moon".into()),
+            ..chip(SUN_MOON, "SunMoon", 0x1B, 25)
         },
     ]
 }
@@ -625,6 +653,15 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x10, index: 0x0F }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x14, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
+    // The shooting navi (rising, raising his arm, shooting) and his cape
+    // (his animation + 0x14), his shots' bursts; the sun-and-moon navi
+    // and its moonlight.
+    let mut shooter = vec![once(4); 0x21];
+    shooter[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    shooter[0x0C] = vec![f(4, 0), f(4, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 8, index: 0x13 }, shooter);
+    sprites.insert(SpriteId { category: 0x10, index: 0x26 }, vec![vec![f(3, 0), f(3, LAST)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x64 }, vec![vec![f(8, 0), f(8, LAST | LOOP)]; 5]);
     // The water navi, his ball, splash, pillar, geyser and marks, and his
     // layer.
     let mut spout = vec![once(4); 0x16];
