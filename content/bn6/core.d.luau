@@ -361,6 +361,12 @@ declare class Object
     -- Onto the destination panel of a move (panel, reservation,
     -- coordinates, collision).
     function snap_to_future_panel(self): ()
+    -- `object_setCollisionPanelsToCurrent`: the collision registration's
+    -- panel becomes the object's (its move direction kept).
+    function set_collision_panel(self): ()
+    -- `object_highlightCurrentCollisionPanels`: highlight the panels the
+    -- registration's region covers.
+    function highlight_collision_panels(self): ()
     function reserve_panel(self, x: number, y: number): boolean
     function unreserve_panel(self, x: number, y: number): boolean
     function release_reservations(self): ()

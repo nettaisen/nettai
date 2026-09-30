@@ -73,7 +73,7 @@ local function swing(me: Object, s: State)
             hit.timer = HIT_TICKS
         end
         for y = 1, 3 do
-            gust.spawn(x, y, me.alliance, me.flip, GUST_PARAMS, 0, nil)
+            gust.spawn(x, y, me.alliance, me.flip, GUST_PARAMS, 0, nil, 0)
         end
     end
     local t = s.timer - 1
