@@ -143,7 +143,7 @@ serde_flags!(ChipFlags, u8);
 pub struct ExtraChipFlags(pub u8);
 
 impl ExtraChipFlags {
-    /// Cancelled by the opponent's Rush support navi.
+    /// Cancelled by the opponent's Rush (a NaviCust support).
     pub const RUSH_CANCELS: u8 = 0x02;
     /// Costs no slot-in gauge (Battle Chip Gate slot-in only).
     pub const FREE_SLOT_IN: u8 = 0x80;

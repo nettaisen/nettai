@@ -159,15 +159,15 @@ pub enum GaugeSpeed {
     Slow = 2,
 }
 
-/// Support navis that act once in link battles (NaviStats+0x0D bits; the
-/// byte is 0xFF when there are none).
+/// The NaviCust supports, which act once in link battles (NaviStats+0x0D
+/// bits; the byte is 0xFF when there are none).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct SupportNavis {
-    /// Bit 0: cancels one chip with `flags2 & 2`.
+pub struct Supports {
+    /// Bit 0: Rush cancels one chip with `flags2 & 2`.
     pub rush: bool,
-    /// Bit 1: cancels one Mega or Giga chip.
+    /// Bit 1: Beat cancels one Mega or Giga chip.
     pub beat: bool,
-    /// Bit 2: acts once when HP drops to a quarter.
+    /// Bit 2: Tango heals once when HP drops to a quarter.
     pub tango: bool,
 }
 
@@ -249,7 +249,7 @@ pub struct NaviStats {
     pub mega_level: u8,
     pub giga_level: u8,
     /// +0x0D: None when the byte is 0xFF.
-    pub support: Option<SupportNavis>,
+    pub support: Option<Supports>,
     /// +0x0E: 0 worn out, 0x80 normal, 0xFF Full Synchro; hits wear it
     /// down.
     pub mood: u8,
@@ -327,7 +327,7 @@ impl NaviStats {
             0x0B => self.mega_level = value,
             0x0C => self.giga_level = value,
             0x0D => {
-                self.support = (value != 0xFF).then_some(SupportNavis {
+                self.support = (value != 0xFF).then_some(Supports {
                     rush: value & 1 != 0,
                     beat: value & 2 != 0,
                     tango: value & 4 != 0,

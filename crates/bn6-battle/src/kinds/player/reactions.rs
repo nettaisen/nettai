@@ -60,9 +60,8 @@ fn begin_deletion(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).params[1] < 1 {
         remove_from_alive(b, r);
     }
-    if super::per_player_gauges(b) {
-        panic!("deletion link bookkeeping (sub_802EF5C) is not implemented yet");
-    }
+    // sub_802EF5C: a side tracking the deleted navi tracks another.
+    crate::kinds::obstacle::release_tracking(b, r);
     let o = b.objects.get_mut(r);
     o.phase = 4;
     o.phase_init = 0;
@@ -135,25 +134,10 @@ fn fade_out(b: &mut Battle, r: ObjectRef) {
     o.phase_init = 0;
 }
 
-/// `sub_8011020`: per-navi death hook (MegaMan's ends the form overlay).
+/// `sub_8011020`: the navi's death hook (its overlays come down).
 fn death_hook(b: &mut Battle, r: ObjectRef) {
-    let rec = super::navi_record(b, r);
-    match rec.ai_index {
-        0 => {
-            // sub_80111B8
-            if let Some(overlay) = b.objects.get_mut(r).related[1].take() {
-                let o = b.objects.get_mut(overlay);
-                o.state = state::DESTROY;
-                o.action = 0;
-                o.phase = 0;
-                o.phase_init = 0;
-            }
-        }
-        1 | 6 | 9 | 13 | 14 | 16 | 18 | 19 | 24 | 25.. => {
-            panic!("navi death hook for AI index {} is not implemented yet", rec.ai_index)
-        }
-        _ => {}
-    }
+    let name_id = b.objects.get(r).name_id;
+    super::form::navi_death_hook(b, r, name_id);
 }
 
 // ---- Common reaction entry ---------------------------------------------------------
@@ -205,18 +189,45 @@ fn reset_form_overlay(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_800F3E8`: the per-form flinch hook.
+/// The player rows of the flinch and drag hook tables (`off_80EAB94`,
+/// `off_80EABF8`): AI indices 0..=24.
+const PLAYER_HOOK_ROWS: u8 = 25;
+
+/// The AI index whose player row a hook table reads; the other actor
+/// types' rows (`off_81094D0`, `off_80F27F8`, ...) belong to the virus and
+/// navi AI.
+fn player_hook_row(b: &Battle, r: ObjectRef, table: &str) -> u8 {
+    let a = ai(b, r);
+    if a.actor_type != crate::actor::ActorType::Player {
+        panic!("the {table} of {:?} actors belongs to the virus and navi AI", a.actor_type);
+    }
+    if a.ai_index >= PLAYER_HOOK_ROWS {
+        panic!("the {table} for AI index {} reads past its table", a.ai_index);
+    }
+    a.ai_index
+}
+
+/// `sub_800F3E8`: the per-form flinch hook (`off_80EAB94`): MegaMan's
+/// restarts his form overlay (`sub_80F06CE`), AI index 1's its body overlay
+/// (`sub_80F0700`, `sub_80C44D2`).
 fn flinch_hook(b: &mut Battle, r: ObjectRef) {
-    match ai(b, r).ai_index {
+    match player_hook_row(b, r, "flinch hook (sub_800F3E8)") {
         0 => reset_form_overlay(b, r),
-        1 => panic!("flinch hook sub_80F0700 is not implemented yet"),
+        1 => {
+            // Without its overlay, sub_80F0700 jumps into the middle of
+            // sub_80F0728 with another stack frame.
+            if b.objects.get(r).related[1].is_none() {
+                panic!("the flinch hook of AI index 1 without its overlay jumps into sub_80F0728 (sub_80F0700)");
+            }
+            reset_form_overlay(b, r);
+        }
         _ => {}
     }
 }
 
-/// `sub_800F404`: the per-form drag hook.
+/// `sub_800F404`: the per-form drag hook (`off_80EABF8`: MegaMan's only).
 fn drag_hook(b: &mut Battle, r: ObjectRef) {
-    if ai(b, r).ai_index == 0 {
+    if player_hook_row(b, r, "drag hook (sub_800F404)") == 0 {
         reset_form_overlay(b, r);
     }
 }

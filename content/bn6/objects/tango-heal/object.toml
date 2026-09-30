@@ -1,0 +1,6 @@
+# Tango's heal (attack object #0xC7, `sub_80DE000`) is a script.
+
+[kind]
+pool = "attack"
+index = 0xC7
+script = "tango_heal.luau"

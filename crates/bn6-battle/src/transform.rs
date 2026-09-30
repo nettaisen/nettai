@@ -3,7 +3,7 @@
 //! the screen out, has the navis change form, and fades it back in
 //! (`sub_801483C`). See docs/engine/battle-flow.md §3.4.1.
 
-use crate::battle::Battle;
+use crate::battle::{Battle, FadeMode};
 use crate::kinds::player;
 use crate::setup::Form;
 
@@ -109,9 +109,8 @@ impl Battle {
     }
 }
 
-/// Screen fade lengths the sequencer uses in netbattles.
-const FADE_OUT_TICKS: u8 = 16;
-const FADE_IN_TICKS: u8 = 17;
+/// The sequencer's screen fades step by 0x10: 16 ticks out, 17 back in.
+const FADE_SPEED: u8 = 0x10;
 
 impl Battle {
     /// `sub_80147E4`: start the sequencer with this turn's requests. The
@@ -141,10 +140,13 @@ impl Battle {
             let req = self.transform_seq.requests[side as usize];
             let navi = self.player(side);
             if req.cross_change.is_some() {
-                // sub_802DCDE
-                panic!("Cross changes (sub_802DCDE) are not implemented yet");
-            }
-            if req.form.is_some() {
+                // A Cross change is asked for, and the Beast Out check runs
+                // too (the form isn't looked at).
+                if let Some(p) = navi {
+                    player::actions::cross_change::request_change(self, p);
+                    player::check_beast_out_end(self, p);
+                }
+            } else if req.form.is_some() {
                 transforming = true;
             } else if let Some(p) = navi {
                 player::check_beast_out_end(self, p);
@@ -159,17 +161,16 @@ impl Battle {
 
     /// `sub_80148CC`.
     fn sequencer_transform(&mut self, phase: TransformPhase, started: bool) {
-        if self.round.mode_copy == 1 {
-            // Battle mode 1 fades with other screen fades (0x70 / 0x6C).
-            panic!("transformations in battle mode 1 are not implemented yet");
-        }
+        // Battle mode 1 fades in other colours (0x70 / 0x6C), and shows
+        // other HUD parts; the timing is the same.
+        let mode1 = self.round.mode_copy == 1;
         let set = |b: &mut Battle, phase, started| b.transform_seq.state = SequencerState::Transform { phase, started };
         match phase {
             TransformPhase::FadeOut => {
                 if !started {
-                    // SetScreenFade(0x44, 0x10); the HUD hides.
-                    self.fade.start();
-                    self.fade.remaining = FADE_OUT_TICKS;
+                    // The HUD hides.
+                    let mode = if mode1 { FadeMode::Mode1TransformOut } else { FadeMode::TransformOut };
+                    self.fade.start(mode, FADE_SPEED);
                     set(self, phase, true);
                 }
                 if !self.fade.active() {
@@ -201,9 +202,8 @@ impl Battle {
             }
             TransformPhase::FadeIn => {
                 if !started {
-                    // SetScreenFade(0x40, 0x10).
-                    self.fade.start();
-                    self.fade.remaining = FADE_IN_TICKS;
+                    let mode = if mode1 { FadeMode::Mode1TransformIn } else { FadeMode::TransformIn };
+                    self.fade.start(mode, FADE_SPEED);
                     set(self, phase, true);
                 }
                 if !self.fade.active() {
