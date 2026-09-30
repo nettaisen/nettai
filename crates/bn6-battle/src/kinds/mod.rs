@@ -66,6 +66,8 @@ pub enum Vars {
     AreaGrab(area_grab::Vars),
     TrapChip(trap_chip::Vars),
     EraseMan(erase_man::Vars),
+    /// A content kind's declared state (see `content`).
+    Content(bn6_content_api::ContentState),
 }
 
 impl Vars {
@@ -93,6 +95,9 @@ impl Vars {
 /// Run one object's update.
 pub fn update(b: &mut Battle, r: ObjectRef) {
     let index = b.objects.get(r).index;
+    if let Some(kind) = b.behaviors.object_kind(r.pool, index) {
+        return crate::behavior::run_object(b, kind, r);
+    }
     match (r.pool, index) {
         (Pool::Actor, 0) => player::update(b, r),
         (Pool::Effect, 2) => intro::update(b, r),
