@@ -6,10 +6,11 @@
 //! docs/engine/custom-screen.md §2-§4.
 
 use super::folder::{BattleFolder, FolderChip};
-use super::builder::ClassCounts;
+use super::builder::{ClassCounts, FormedAdvance};
 use super::library::Library;
 use super::{GameVersion, Unlocks};
-use crate::content::{ChipClass, ChipCode, ChipId, CustomScreenLayout, TemplateSlot};
+use crate::content::{BannerId, ChipClass, ChipCode, ChipId, CustomScreenLayout, TemplateSlot};
+use crate::hud::{Banner, BannerStatus};
 use crate::input::{Joypad, keys};
 use crate::kinds::player::Emotion;
 use crate::setup::{Form, NaviStats};
@@ -134,11 +135,72 @@ pub enum Phase {
     /// OK was pressed; the window slides out (`sub_8026BF4`, 10 ticks).
     Closing { tick: u8 },
     /// The Program Advance animation (`sub_8026DB0`).
-    ProgramAdvance { tick: u16 },
+    ProgramAdvance { anim: ProgramAdvanceAnimation },
     /// The result is on its way to the other player (`sub_8026DC4`);
     /// `started`: its first tick, which sends it, has run.
     Sending { started: bool },
 }
+
+/// The Program Advance animation (`sub_802B734`, its state at
+/// `word_2036660`): the screen fades, the Program Advance banner comes up
+/// and holds while the picked chips' names and then the Program Advance's
+/// are shown, then the banner goes and the screen comes back.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ProgramAdvanceAnimation {
+    /// +0: 0 before its first call (`sub_802B75C`), 4 running, 8 done.
+    pub state: AnimationState,
+    /// +1.
+    pub step: ProgramAdvanceStep,
+    /// +2: the step's entry ran.
+    pub started: bool,
+    /// +0x10.
+    pub timer: u16,
+    /// The console's screen fade: frames left (`SetScreenFade`, whose
+    /// engine runs after the frame's logic).
+    pub fade: u8,
+}
+
+/// `word_2036660`+0.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum AnimationState {
+    #[default]
+    Starting,
+    Running,
+    Done,
+}
+
+/// `sub_802B76C`'s steps (`off_802B784`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ProgramAdvanceStep {
+    /// `sub_802B7A0`: fade the screen out, then put up the banner.
+    #[default]
+    FadeOut,
+    /// `sub_802B7E0`: once the banner holds, 20 ticks.
+    BannerIn,
+    /// `sub_802B80C`: a picked chip's name every 8 ticks.
+    Names,
+    /// `sub_802B8E0`: 24 ticks.
+    Pause,
+    /// `sub_802B920`: the Program Advance's name; 96 ticks, then the
+    /// banner is let go.
+    Result,
+    /// `sub_802B9B8`: once the banner is gone, fade the screen back in.
+    BannerOut,
+    /// `sub_802B9D4`: once it is back, done.
+    FadeIn,
+}
+
+/// The Program Advance banner (`sub_802B7A0`): 0x24, or 0x34 for a recipe
+/// of no chips.
+const PROGRAM_ADVANCE_BANNER: BannerId = BannerId(0x24);
+const EMPTY_RECIPE_BANNER: BannerId = BannerId(0x34);
+
+/// Frames the animation's screen fades take (`SetScreenFade(0x14, 8)` out
+/// to level 0x40, `SetScreenFade(0x10, 8)` back in to 0; the level starts
+/// at 0, where every fade before the custom screen left it; a fade in
+/// holds its first frame).
+const FADE_OUT_FRAMES: u8 = 0x40 / 8;
+const FADE_IN_FRAMES: u8 = 1 + 0x40 / 8;
 
 /// The SELECT sub-screen's steps.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -175,9 +237,13 @@ pub struct Screen {
     /// Beast Out is picked (`+0x17`).
     pub beast_out: bool,
     pub crosses: CrossWindow,
-    /// A Program Advance formed at OK, from this many picked chips: its
-    /// animation runs after the window slides out.
-    pub program_advance: Option<u8>,
+    /// A Program Advance formed at OK: its animation runs after the
+    /// window slides out.
+    pub program_advance: Option<FormedAdvance>,
+    /// The console's HUD banner as the screen uses it (the Program
+    /// Advance's), stepped after the screen's logic each tick as the HUD
+    /// task is.
+    pub hud: Banner,
 }
 
 /// What the screen reads of its player when it opens and while it runs.
@@ -250,6 +316,7 @@ impl Screen {
             beast_out: false,
             crosses: CrossWindow::default(),
             program_advance: None,
+            hud: Banner::default(),
         };
         if view.crosses_allowed() && view.emotion != Emotion::WornOut {
             screen.crosses = view.offered_crosses();
@@ -357,8 +424,18 @@ impl Screen {
         !matches!(self.phase, Phase::Hidden { .. } | Phase::Closing { .. } | Phase::ProgramAdvance { .. } | Phase::Sending { .. })
     }
 
-    /// One tick of the screen with this joypad.
+    /// One tick of the screen with this joypad, then the console's HUD
+    /// banner.
     pub fn tick(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder) -> Option<Request> {
+        let request = self.step(joy, view, folder);
+        self.hud.tick();
+        if let Phase::ProgramAdvance { anim } = &mut self.phase {
+            anim.fade = anim.fade.saturating_sub(1);
+        }
+        request
+    }
+
+    fn step(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder) -> Option<Request> {
         match self.phase {
             Phase::Opening { tick } => {
                 let tick = tick + 1;
@@ -445,19 +522,26 @@ impl Screen {
             Phase::Closing { tick } => {
                 let tick = tick + 1;
                 self.phase = match tick {
-                    10 if self.program_advance.is_some() => Phase::ProgramAdvance { tick: 0 },
+                    10 if self.program_advance.is_some() => Phase::ProgramAdvance { anim: Default::default() },
                     10 => Phase::Sending { started: false },
                     _ => Phase::Closing { tick },
                 };
                 None
             }
-            Phase::ProgramAdvance { tick } => {
-                let tick = tick + 1;
-                let chips = self.program_advance.unwrap_or(0) as u16;
-                self.phase = if tick >= program_advance_ticks(chips) {
-                    Phase::Sending { started: false }
-                } else {
-                    Phase::ProgramAdvance { tick }
+            Phase::ProgramAdvance { mut anim } => {
+                let pa = self.program_advance.expect("a Program Advance formed");
+                self.phase = match anim.state {
+                    // sub_802B75C
+                    AnimationState::Starting => {
+                        anim.state = AnimationState::Running;
+                        Phase::ProgramAdvance { anim }
+                    }
+                    AnimationState::Running => {
+                        self.animate_program_advance(&mut anim, pa, view);
+                        Phase::ProgramAdvance { anim }
+                    }
+                    // sub_802B766: done; on to sending (state 0x14).
+                    AnimationState::Done => Phase::Sending { started: false },
                 };
                 None
             }
@@ -466,6 +550,81 @@ impl Screen {
                 Some(Request::Send)
             }
             Phase::Sending { started: true } => None,
+        }
+    }
+
+    /// `sub_802B76C`: one step of the Program Advance animation.
+    fn animate_program_advance(&mut self, anim: &mut ProgramAdvanceAnimation, pa: FormedAdvance, view: &PlayerView) {
+        use ProgramAdvanceStep as S;
+        let next = |anim: &mut ProgramAdvanceAnimation, step| {
+            anim.step = step;
+            anim.started = false;
+            anim.timer = 0;
+        };
+        match anim.step {
+            S::FadeOut => {
+                if !anim.started {
+                    anim.started = true;
+                    anim.fade = FADE_OUT_FRAMES;
+                    return;
+                }
+                if anim.fade != 0 {
+                    return;
+                }
+                let id = if pa.len != 0 { PROGRAM_ADVANCE_BANNER } else { EMPTY_RECIPE_BANNER };
+                self.hud.start(id, view.library.banner_holds(id));
+                next(anim, S::BannerIn);
+            }
+            S::BannerIn => {
+                if !anim.started {
+                    if self.hud.status() != BannerStatus::Holding {
+                        return;
+                    }
+                    anim.started = true;
+                }
+                anim.timer += 1;
+                if anim.timer >= 0x14 {
+                    next(anim, S::Names);
+                }
+            }
+            S::Names => {
+                // A name every 8 ticks (drawn only), the recipe's with a
+                // sound.
+                let old = anim.timer;
+                anim.timer = old + 1;
+                if old & 7 != 0 {
+                    return;
+                }
+                if (anim.timer >> 3) + 1 >= pa.picks as u16 {
+                    next(anim, S::Pause);
+                }
+            }
+            S::Pause => {
+                anim.timer += 1;
+                if anim.timer >= 0x18 {
+                    next(anim, S::Result);
+                }
+            }
+            S::Result => {
+                // The Program Advance's name shows at 16 ticks.
+                anim.timer += 1;
+                if anim.timer >= 0x60 {
+                    next(anim, S::BannerOut);
+                    // sub_801E780
+                    self.hud.release();
+                }
+            }
+            S::BannerOut => {
+                if self.hud.status() == BannerStatus::Done {
+                    next(anim, S::FadeIn);
+                    anim.fade = FADE_IN_FRAMES;
+                }
+            }
+            S::FadeIn => {
+                if anim.fade == 0 {
+                    anim.state = AnimationState::Done;
+                }
+            }
         }
     }
 
@@ -766,13 +925,6 @@ const DISMISS_TICKS: u16 = 5;
 /// printed; this is an estimate of its printing time (the chatbox's text
 /// timing isn't ported; no recording has one).
 const RUN_MESSAGE_ARM: u16 = 72;
-/// [unverified] The Program Advance animation (`sub_802B734`), by the
-/// chips picked: the window slides out, then the Program Advance is
-/// sent this many ticks later (read from the code; no recording has one).
-fn program_advance_ticks(chips: u16) -> u16 {
-    166 + 8 * chips
-}
-
 /// Scan `list` from `start` for the first slot present.
 fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
     let mut i = start as usize;

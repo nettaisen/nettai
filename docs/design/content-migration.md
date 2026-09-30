@@ -133,10 +133,10 @@ cargo test --release -p sound-tests      # the sound calls
 ```
 
 (run in the verification workspace). The floors today: machgun rounds 1 and 2 complete (1074/1074, 1331/1331),
-soundmod 6728/6761/2566 (round 1 stops at dimming chip subtype 26, round 2 at chip effect 0x8, round 3 at action 0x39), the
-rollback test matching every confirmed frame at latencies 0+0 to 10+3, and the sound calls (machgun 53 over 1651
-frames, soundmod 35 over 8596). A trace exercises a script only where it reaches it: grep the trace for the object's
-`"type"` and `"index"` or the player's `"state":[4,ACTION,` to see whether and when. Where the workspace's tests
+soundmod 6728/6761/2744 (round 1 stops at dimming chip subtype 26, round 2 at chip effect 0x8, round 3 at weapon
+routine 0x27), the rollback test matching every confirmed frame at latencies 0+0 to 10+3, and the sound calls
+(machgun 53 over 1651 frames, soundmod 35 over 8596). A trace exercises a script only where it reaches it: grep
+the trace for the object's `"type"` and `"index"` or the player's `"state":[4,ACTION,` to see whether and when. Where the workspace's tests
 name something that moved (a Rust kind's `INDEX`, a renamed flag), update them to the content's
 (`b.content.object_kind("sun-beam")`).
 
@@ -155,30 +155,43 @@ crates/bn6-battle/src/behavior/tests.rs (the registration lists); docs/engine/ob
 
 ### Group A: navi chips
 
-Done (wave 2): the navi parts service (`kinds::navi_parts`, `sub_8010DF6`/`sub_8011044`, with SpoutMan's layer
-`kinds::navi_layer`; the player's and the Cross image's init hook use it), and as pack scripts with every kind they
-spawn: ElmntMan (all four elements; `kinds/elmnt_man.rs` and `kinds/meteor.rs` deleted), SpoutMan, HeatMan,
+Done (wave 2): the navi parts service (`me:add_navi_parts` / `me:remove_navi_parts`, `sub_8010DF6`/`sub_8011044`
+by actor record: the navi hooks in `kinds::player::form`, with SpoutMan's idle overlay `kinds::idle_overlay`), and
+as pack scripts with every kind they spawn: ElmntMan (all four elements; `kinds/elmnt_man.rs` and `kinds/meteor.rs` deleted), SpoutMan, HeatMan,
 ElecMan, SlashMan, ChargeMan, TomahawkMan, TenguMan, BlastMan, Roll, ProtoMan, Colonel (and CrossDiv), Bass,
 BassAnly, DeltaRay, SunMoon. `bring_navi`'s fallback is a content error (HackJack's and Django's entries are NULL:
 an explicit error). Every scratch-lab scenario of these chips matches (docs/engine/chips.md §3.6.7 on).
 
 Left:
-- GroundMan, DustMan, DiveMan, CircusMan, JudgeMan (navis 10, 11, 13, 14, 15): some kinds and the name looks
-  data (`byte_8021220`) are in (objects/falling-rock, objects/rubble), the navis aren't registered.
+- GroundMan, DustMan, DiveMan, CircusMan, JudgeMan (navis 10, 11, 13, 14, 15): the name looks data
+  (`byte_8021220`) is in; the navis aren't registered. Unverified work in progress for all five is on branch
+  `worktree-agent-a4a2385d487c33845` (its falling rock and rubble predate group H's objects/falling-rock and
+  objects/rock-chip, which it should use, and its obstacle calls predate the `obstacle` service).
 - TwinLdrs (20), CrosOver (21), MstrCros (22), BigHook (23), Darkness (24): not ported.
 - Roll against the other side's AntiRecv (`sub_80E192C`, chip 0xBD: the trap chips' `sub_80E37D2`, group B).
 - The PA chips' lab recipes stop at the custom screen's PA banner and hand (not navi-chip code).
 
 ### Group B: dimming chips
 
-- Invisible's controller (subtype 1, effect #0x5D, `kinds/invisible.rs`) and the trap chips' (subtype 20, AntiDmg
-  and its kin, effect #0x2A, `kinds/trap_chip.rs`, with the trap object `sub_80CE0EC` it lacks).
-- Then the other subtypes of `off_802CCB4` (Geddon, Barrier, PanlRetrn, RockCube, Wind, TimeBom, Mine, AirRaid,
-  Meteors, Anubis, Sensor, ...).
-- Their controllers' register-garbage positions move from trace.rs's `pos_is_garbage` list to `scratch_position`
-  in their `[kind]`.
-- Owns: kinds/invisible.rs, kinds/trap_chip.rs (deleted), the fallback in kinds/player/actions/dimming_chip.rs,
-  trace.rs.
+Done: the dimming chips have no Rust fallback (kinds/player/actions/dimming_chip.rs calls `Hook::DimmingChip`
+only), and the controllers declare `scratch_position` (trace.rs keeps only the navi chip controller). Scripts:
+subtypes 1 (objects/invisible), 6 (objects/rock-cube), 20 (objects/trap-chip, with ElemTrap's trap
+objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts), 10 (objects/time-bom,
+objects/countdown-bomb), 11 (objects/mine, objects/land-mine), 25 (objects/gauge-speed), 38 (objects/navi-boost).
+Shared: lib/panels (the game's panel lists and shuffle), objects/rising-bubble (effect #0x14).
+
+Left (each a controller and its objects, every branch; docs/engine/chips.md §3.6.10 has what is known):
+
+- 14 Guardian: objects/guardian, guardian-statue and guardian-strike are written but no chip names them yet and
+  they are unverified; register chip 0x097 and check them against the lab.
+- 2 (no chip), 3 Geddon and the capsules, 4 Barrier (with the FirstBarrier framework `sub_801A7CC` and the barrier
+  visual, effect #7), 5 PanlRetrn and the road/holy chips (the `field.poison` and `field.blink` services exist;
+  its 19-row table is pack data to extract), 7 LifeSync, 8 Wind/Fan, 9 Fanfare and kin, 12 Snake, 13 AirRaid, 15
+  GrabBnsh/GrabRvng, 16 Meteors, 17 Anubis/PoisPhar, 18 Otenko, 19 CircGun, 21 BlzrdBal, 22 NumbrBl, 23 BurnSqr,
+  24 Magnum, 26 BugFix, 27 ColorPt/DblPoint, 28 Sensor, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 36 SumnBlk, 37
+  DblBeast; 31, 33 and 41 (no chip; their actors are navi chips' navis).
+- Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
+  notes), thrown and encased obstacles (`sub_8018002`, `sub_801813A`), AntiNavi in the dimming service.
 
 ### Group C: DustCross and the Beast forms' weapons
 
@@ -217,11 +230,9 @@ Left:
 
 ### Group F: rocks
 
-- The rock (attack #0x59, `kinds/rock.rs`) and its debris (effect #0x38, `kinds/rock_debris.rs`) as kinds on the
-  obstacle framework;
-  the stage spawns rocks at the start (`battle.rs`, `kinds::rock::spawn_at_start`) through the kind.
-- The verification workspace's rock_trace and bn6_data tests name `kinds::rock`; update them.
-- Owns: kinds/rock.rs, kinds/rock_debris.rs, kinds/rock_tests.rs, battle.rs's actor-list spawn.
+Done: the rock (objects/rock) and its debris (objects/rock-debris) are kinds on the obstacle framework (the
+`obstacle` service); the actor lists' rocks go through the rock's `actor_list_entry` (`Hook::ActorListEntry`).
+The verification workspace's rock_trace and bn6_data tests need the updated copies (they named `kinds::rock`).
 
 ### Group G: standard chip actions
 

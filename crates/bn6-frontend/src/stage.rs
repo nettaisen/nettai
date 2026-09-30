@@ -170,11 +170,13 @@ impl<'a> Stage<'a> {
                     blank(layer, col, edge_row, 5, 1);
                     continue;
                 }
-                if p.highlight != 0 {
+                // A blink (`object_setPanelTypeBlink`) shows before a
+                // highlight.
+                if p.highlight != 0 && p.blink.is_none() {
                     let h = &f.highlights[(p.highlight as usize - 1).min(1)];
                     block(layer, h, col, row, 5);
                 } else {
-                    let mut kind = p.display_kind;
+                    let (mut kind, alliance) = p.blink.unwrap_or((p.display_kind, p.display_alliance));
                     if mirror == 1 {
                         kind = match kind {
                             PanelType::RoadLeft => PanelType::RoadRight,
@@ -182,7 +184,7 @@ impl<'a> Stage<'a> {
                             k => k,
                         };
                     }
-                    let owner = (p.display_alliance ^ local_side) as usize & 1;
+                    let owner = (alliance ^ local_side) as usize & 1;
                     let i = 6 * kind as usize + 3 * owner + y as usize - 1;
                     if let Some(entries) = f.panels.get(i) {
                         block(layer, entries, col, row, 5);

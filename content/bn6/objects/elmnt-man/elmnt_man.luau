@@ -220,7 +220,7 @@ local function fire(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
         me.phase_init = 4
-        local found = panels.except(me, ENEMY_NAVI[me.alliance], 0)
+        local found = panels.filtered_except(me, ENEMY_NAVI[me.alliance], 0)
         if #found == 0 then
             me:set_action(0x14)
             return
@@ -240,7 +240,8 @@ local function fire(me: Object)
     end
     -- sub_80BAE60
     local n = me:param(3)
-    local x, y = panels.unpack(s.targets[n + 1])
+    local p = s.targets[n + 1]
+    local x, y = panels.x(p), panels.y(p)
     meteor.spawn(me, x, y, 1, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), true)
     n += 1
     me:set_param(3, n)

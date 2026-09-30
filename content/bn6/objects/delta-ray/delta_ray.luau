@@ -327,7 +327,7 @@ local function strike(me: Object)
         s.again = 1
     end
     if t == 0xA then
-        battle.palette_flash({ duration = 5, while_dimmed = true })
+        battle.palette_flash(0, 5, true)
         local x, y = me.panel_x + (1 - 2 * s.facing), me.panel_y
         local box = battle.hitbox(me, {
             panel_x = x,
@@ -384,7 +384,7 @@ local function burst(me: Object, x: number, y: number)
         fx.timer = 0x3C
     end
     battle.play_sound(0x92)
-    battle.palette_flash({ duration = 0x14, while_dimmed = true })
+    battle.palette_flash(0, 0x14, true)
 end
 
 -- `sub_80C2E6E`: the finish (animation 0xF), a burst in the middle row

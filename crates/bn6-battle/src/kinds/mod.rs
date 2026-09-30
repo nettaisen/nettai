@@ -5,28 +5,28 @@
 
 pub mod absorbed_obstacle;
 pub mod afterimage;
+pub mod beast_over_burst;
 pub mod body_overlay;
+pub mod bubble_visual;
 pub mod charge_glow;
 pub mod common;
 pub mod cross_merge;
 pub mod effect;
 pub mod eruption;
 pub mod form_overlay;
+pub mod full_synchro_aura;
+pub mod heal;
 pub mod hitbox;
+pub mod idle_overlay;
 pub mod intro;
-pub mod invisible;
 pub mod lockon_marker;
 pub mod navi_chip;
-pub mod navi_layer;
-pub mod navi_parts;
 pub mod navi_warp;
 pub mod obstacle;
 pub mod palette_flash;
 pub mod player;
-pub mod rock;
-pub mod rock_debris;
 pub mod spark;
-pub mod trap_chip;
+pub mod status_visual;
 
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Pool};
@@ -42,7 +42,6 @@ pub enum Vars {
     ChargeGlow(charge_glow::Vars),
     Effect(effect::Vars),
     Hitbox(hitbox::Vars),
-    Rock(rock::Vars),
     AbsorbedObstacle(absorbed_obstacle::Vars),
     FormOverlay(form_overlay::Vars),
     Afterimage(afterimage::Vars),
@@ -50,11 +49,12 @@ pub enum Vars {
     PaletteFlash(palette_flash::Vars),
     CrossMerge(cross_merge::Vars),
     BodyOverlay(body_overlay::Vars),
-    Invisible(invisible::Vars),
     NaviChip(navi_chip::Vars),
-    NaviLayer(navi_layer::Vars),
     NaviWarp(navi_warp::Vars),
-    TrapChip(trap_chip::Vars),
+    StatusVisual(status_visual::Vars),
+    IdleOverlay(idle_overlay::Vars),
+    FullSynchroAura(full_synchro_aura::Vars),
+    BeastOverBurst(beast_over_burst::Vars),
     /// A content kind's declared state (see `content`).
     Content(bn6_content_api::ContentState),
 }
@@ -72,8 +72,9 @@ impl Vars {
             (Pool::Effect, palette_flash::INDEX) => Vars::PaletteFlash(Default::default()),
             (Pool::Actor, cross_merge::INDEX) => Vars::CrossMerge(Default::default()),
             (Pool::Actor, body_overlay::INDEX) => Vars::BodyOverlay(Default::default()),
-            (Pool::Effect, invisible::INDEX) => Vars::Invisible(Default::default()),
-            (Pool::Actor, navi_layer::INDEX) => Vars::NaviLayer(Default::default()),
+            (Pool::Actor, idle_overlay::INDEX) => Vars::IdleOverlay(Default::default()),
+            (Pool::Actor, full_synchro_aura::INDEX) => Vars::FullSynchroAura(Default::default()),
+            (Pool::Effect, beast_over_burst::INDEX) => Vars::BeastOverBurst(Default::default()),
             (Pool::Actor, 0) => Vars::None,
             _ => Vars::None,
         }
@@ -93,8 +94,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, 0) => effect::update(b, r),
         (Pool::Attack, 3) => hitbox::update(b, r),
         (Pool::Effect, 4) => spark::update(b, r),
-        (Pool::Attack, rock::INDEX) => rock::update(b, r),
-        (Pool::Effect, rock_debris::INDEX) => rock_debris::update(b, r),
+        (Pool::Effect, bubble_visual::INDEX) => bubble_visual::update(b, r),
         (Pool::Effect, absorbed_obstacle::INDEX) => absorbed_obstacle::update(b, r),
         (Pool::Actor, form_overlay::INDEX) => form_overlay::update(b, r),
         (Pool::Effect, afterimage::INDEX) => afterimage::update(b, r),
@@ -102,12 +102,13 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, palette_flash::INDEX) => palette_flash::update(b, r),
         (Pool::Actor, cross_merge::INDEX) => cross_merge::update(b, r),
         (Pool::Actor, body_overlay::INDEX) => body_overlay::update(b, r),
-        (Pool::Effect, invisible::INDEX) => invisible::update(b, r),
+        (Pool::Actor, idle_overlay::INDEX) => idle_overlay::update(b, r),
+        (Pool::Actor, full_synchro_aura::INDEX) => full_synchro_aura::update(b, r),
+        (Pool::Effect, beast_over_burst::INDEX) => beast_over_burst::update(b, r),
         (Pool::Effect, navi_chip::INDEX) => navi_chip::update(b, r),
         (Pool::Actor, navi_warp::INDEX) => navi_warp::update(b, r),
-        (Pool::Actor, navi_layer::INDEX) => navi_layer::update(b, r),
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
-        (Pool::Effect, trap_chip::INDEX) => trap_chip::update(b, r),
+        (Pool::Effect, status_visual::INDEX) => status_visual::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }
@@ -168,8 +169,26 @@ pub fn shift_damage_carry(b: &mut Battle) {
 pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
     match formula {
         1..=18 => sp_chip_damage(b, id, side, formula as usize - 1),
+        20 => damage_taken(b, side),
+        24..=44 => navi_chip_damage(b, id, side),
         _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
     }
+}
+
+/// `sub_8010BD0` (Muramasa's): the HP the side's player has lost, at most
+/// 500. `sub_80103BC` looks for the player among the side's alive actors,
+/// but its loop never advances, so it only ever checks the first slot four
+/// times: with no player there the damage is 0.
+fn damage_taken(b: &Battle, side: u8) -> u16 {
+    let Some(r) = b.round.alive_actors[side as usize & 1][0] else { return 0 };
+    let o = b.objects.get(r);
+    if b.content.navi_record(o.name_id).actor_type != crate::actor::ActorType::Player {
+        return 0;
+    }
+    // A signed difference, capped at 500 (an HP above the maximum would
+    // give a negative damage, cut to 16 bits).
+    let lost = o.max_hp as i32 - o.hp as i32;
+    lost.min(500) as u16
 }
 
 /// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user
@@ -180,6 +199,16 @@ fn sp_chip_damage(b: &Battle, id: u16, side: u8, n: usize) -> u16 {
     let step = b.content.rules.sp_deletion_times.iter().take_while(|&&t| time > t).count();
     let damage = b.content.chip(id).sp_damage.as_ref();
     damage.unwrap_or_else(|| panic!("SP chip {id:#x} has no damage by deletion time"))[step]
+}
+
+/// `sub_8010C50`: a link navi's chip's damage, from the side's player navi
+/// (none: 0): its base, plus its step for each level of the navi's buster
+/// attack (`sub_8012642`), up to 5.
+fn navi_chip_damage(b: &Battle, id: u16, side: u8) -> u16 {
+    let Some(navi) = b.player(side) else { return 0 };
+    let d = b.content.chip(id).navi_damage.unwrap_or_else(|| panic!("link navi chip {id:#x} has no navi_damage"));
+    let level = player::idle::buster_damage(b, navi).min(5);
+    d.base as u16 + d.per_level as u16 * level
 }
 
 /// `sub_8000D84`: frames as a BCD time, hours:minutes:seconds.hundredths

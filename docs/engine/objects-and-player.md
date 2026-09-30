@@ -598,6 +598,14 @@ Later, the Beast Out chip-use routine (`sub_80EAD9C` → `sub_80EAE28` → `sub_
   - r6 = 0x83E0 (color shader).
   - r7 = `0x01010014 − r0` (u16 lifetime `20 − r0`; bytes 2/3 are shadow flags).
   - Afterwards `sub_80E341E` sets ExtraVars+0xC = 1 if the owner is in form 0xB..0x18, else 2.
+  - The step sword (action 0x13) calls `sub_80E33FA` itself: r6 = 0xFFE0, r7 = 0x01010014 (the step, anim 0) or
+    0x0101001E (the swing, anim 5), and a third with its own sprite: Param1/Param2 = the blade attachment's sprite
+    (`byte_80B8BD4`), r7 = 0x1E (no ground shadow). Nothing sets ExtraVars+0xC, so nothing ends them early. The engine
+    keeps it Rust (`kinds::afterimage`); content spawns one with `battle.afterimage`.
+  - ExtraVars+6 = 0 → `sprite_noShadow`; else `sprite_hasShadow`, and `sprite_removeShadow` if ExtraVars+7 = 0.
+  - An afterimage with its own sprite keeps NameID 0 (a virus record: no layer, no teardown). A copy wears the layer
+    its NameID's record's AI index gives (`off_8010EA4`, `off_8010F08` after it: a Cross's body overlay, the Falzar
+    beast head...), forced in front by `sub_80C4526`.
 - **Init** `sub_80E32D8`: with Param1 = 0xFF it copies `owner.NameID`, loads that sprite, and creates a T1#0x57 layer through `sub_8010DF6` (stored in its RelatedObject2Ptr). It then sets anim = Param3, `Timer2 = lifetime`, `Timer = 0`, and runs the update. The layer comes from the NameID's actor record: `sub_8010DF6(record[1], record[2], 0)` indexes the same per-(type, AI index) tables as the form overlays, so a Falzar Beast afterimage (NameID 0x1B7, AI index 36) gets the beast head (`sub_8011366`: T1#0x57, nudged 1 px, owner = the afterimage). The sprite comes from `sub_800F26C`, which for player NameIDs gives the form's (or link navi's) battle sprite. Teardown at destroy is `sub_8011044(record[1], record[2], 1)`, the per-NameID death-hook table (`sub_801140E` for the beast head: CurState 8).
 - **Update** `sub_80E336E`:
   - Destroy if (ExtraVars+0xC == 1 and the owner's form ∉ [0xB, 0x18]) or (== 2 and `owner.CurAction < 0x10`).
