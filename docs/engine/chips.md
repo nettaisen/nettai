@@ -1137,8 +1137,14 @@ Special cases:
 - AntiNavi checks (`sub_802CE78(opp) == 0xBA`) in `sub_800BA8A`/`sub_800BDB2` for navi chips 0xDD..0x118.
 - Alliance-swap re-registration in `sub_800BE2C`.
 
-**Quirk.** The r4 value entering `sub_80127C0` from `sub_8017AB4` selects hand vs slot-in (§2.6.4). It was not
-checked at run time. **[unverified]**
+**Quirk.** The r4 value entering `sub_80127C0` from `sub_8017AB4` selects hand vs slot-in (§2.6.4). On this path r4
+is always AIIndex*4 (set in `sub_80EA484`, preserved through `sub_801AF44`), so the cut-in always reads the hand.
+`sub_80127C0`'s side effects all still happen (the Full Synchro / anger doubling with sound 0x87, the use counter,
+heal-on-use, side stat 6 for navi chips, dark-chip costs); it writes every field the spawners read (+2 element, +3
+subtype, +6 bonus, +8 damage, +0xA hit param, +0xC params, +0x14 chip). An action other than 0x15 or 0x1B registers
+nothing and doesn't advance the hand. `loc_800BF30` doesn't check for a registered controller, and a failed spawn
+registers none. `sub_800B8EE(side)`: effect #0 look 0x1E at panel ((side^1)*3+2, 4), z 0x78 px, sound 0xA5. (Not
+ported yet: the engine panics "cut-ins (sub_8017AB4) are not implemented yet".)
 
 When the checks fail (e.g. A pressed while the other side's screen is still dimming, soundmod 3217), `sub_8017AB4`
 just clears requests 0x80C; the navi goes on shaking as usual.
@@ -1289,6 +1295,26 @@ subtype:
   body's collision types; 1 and 2 make weapon routine Param2 the charged shot in the stats and the navi
   (`sub_80E97BE`: a buster of 3 or 4 goes, 0x2C becomes 0x2B); 3 sets the navi's request 0x20000000. The arm
   effect's height offset is lost to a shift of the wrong register. objects/navi-boost.
+
+Not ported yet, with what is known:
+
+- 4 (Barrier, Barr100, Barr200, BblWrap, LifeAur; T4 0x2F, effect `sub_80E3AFC`): `sub_801A7CC(Param1)` on the user
+  (barrier = type, barrier_weak = `byte_8020B8C[type]`, and from `byte_8020B2C[type*6]` three halfwords: barrier HP
+  (low byte of the first), threshold (low byte of the second), timer (the third); 16 types: pack rules data), then
+  it ends the old barrier visual (AIData+0x60, `sub_80E0DC0`) and spawns the new one (T4 7, `sub_80E0D98`), 61
+  ticks. Its spawner copies only element, user, alliance, damage word and +0x30 (position: register garbage). The
+  FirstBarrier NaviCust (`sub_8013892`) calls the same routine, and a register clobber there gives the charge glow a
+  link pointer into the BIOS (the glow never learns it's linked and never frees itself).
+- The barrier visual (T4 7, `sub_80E0AD4`): driven by the collision data's barrier and the AIData+0x60 link;
+  spawned by FirstBarrier, the Barrier chips, attack #0xC7 and a navi AI. Its look by type from
+  `byte_80E0A14[type*12]`; follows the user; hidden and shown by `sub_80E1352`/`sub_80E13DC`; popped (barrier 0x10)
+  it's blown away; gone with the barrier.
+- 7 (LifeSync; T4 0x5C): in a link battle `sub_80E72C8` branches into another routine's body (`loc_80E73C4`).
+- 26 (BugFix; T4 0x3B): spawns the glow actor T1 0x5D (`sub_80C4AEC`, busy flag Param2), zeroes the stats
+  processing, panel-trail level, buster blanks, hit status, custom damage (halfword), emotion, custom drain, HP
+  drain, battle start and hand-shrink turn (`sub_80E49C4`), calls `sub_801E658`, then `sub_8014446` or `sub_801443C`
+  by stat 0x21, and waits for the glow.
+- 2, 3, 5, 7-19, 21-24, 26-33, 36, 37, 41 and the ElemTrap object: see docs/design/content-migration.md §5.
 
 Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
 (program advance 0x157: only as its recipe), per-player gauges (not in netbattles).
