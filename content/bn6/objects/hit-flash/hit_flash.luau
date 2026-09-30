@@ -56,7 +56,7 @@ end
 -- `sub_80E88C0`: three flashes to go (Param2).
 local function init(me: Object)
     me:set_param(2, FLASHES)
-    -- (A camera shake: presentation only.)
+    battle.shake_camera(2, 0xC)
     me:set_lifecycle("update")
     tick(me)
 end

@@ -113,7 +113,7 @@ local function fly(me: Object)
     me.pos = Vec3.new(cx, cy, 0)
     if field.solid(x, y) then
         battle.play_sound(SOUND_LAND)
-        -- (The camera shakes, which is only drawn.)
+        battle.shake_camera(1, 0xF)
         set_down(me)
         return
     end
@@ -248,7 +248,7 @@ local function burst(me: Object)
         hit_mod = BURST_HIT_MOD,
     })
     panel_bursts.spawn(me, r, BURST_INTERVAL, 0, { BURST_LOOK, 0, 0, 0 })
-    -- (The camera shakes, which is only drawn.)
+    battle.shake_camera(1, 0x3C)
     battle.play_sound(SOUND_BURST)
 end
 

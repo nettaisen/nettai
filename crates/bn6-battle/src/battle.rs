@@ -12,6 +12,7 @@ use crate::hud::{Banner, BannerStatus, CustomGauge};
 use crate::input::{InputRecord, PlayerTick, keys};
 use crate::link::{Link, Packet};
 use crate::object::{ObjectRef, Objects};
+use crate::console::Console;
 use crate::rng::Rng;
 use crate::content::{BannerId, Content};
 use crate::setup::{BattleSettings, Form, Navi, NaviStats, RoundSetup, SetScore, effects};
@@ -344,6 +345,9 @@ pub struct Battle {
     /// one (`sub_802D7A0`); a Cross knockout takes it back (`sub_802D9B0`).
     pub cross_stats: [NaviStats; 2],
     pub rng: Rng,
+    /// Each player's console: its own RNG (RNG1), which ChpShufl's re-deal
+    /// draws from, and what advances it (`console`).
+    pub consoles: [Console; 2],
     pub round: RoundState,
     pub fight: FightMachine,
     pub gauge: CustomGauge,
@@ -609,6 +613,7 @@ impl Battle {
             stats: setup.navi_stats,
             cross_stats: setup.navi_stats,
             rng: Rng::new(setup.rng),
+            consoles: [Console::new(&setup.players[0].console), Console::new(&setup.players[1].console)],
             round: RoundState {
                 running: 1,
                 max_combo: score.max_combo.max(1),
@@ -750,6 +755,7 @@ impl Battle {
             top::END => self.tick_end(input, &events),
             _ => {}
         }
+        self.end_console_frames();
         self.round.frames = self.round.frames.wrapping_add(1);
         self.fade.step();
     }
@@ -781,11 +787,13 @@ impl Battle {
 
         self.run_mode_handler(&events);
         self.run_objects();
+        self.update_cameras();
         if !self.paused && !self.is_dimmed() {
             self.tick_panels();
         }
         self.update_player_hands();
         self.run_hud_tasks();
+        self.update_emotion_windows();
         self.update_linked_registry();
         self.refresh_variable_damage();
         if !self.paused {
@@ -981,6 +989,8 @@ impl Battle {
             return;
         }
         if self.round.sub == 0 {
+            // sub_800927C: the HUD's setup.
+            self.start_emotion_windows();
             self.round.sub = 4;
         }
         if self.round.intro_bits & 0x02 != 0 {
@@ -1183,7 +1193,9 @@ impl Battle {
     /// unsigned and never holds the state.)
     fn fight_draw(&mut self) {
         if self.fight.init == 0 {
-            // The HUD's parts hide.
+            // The HUD's parts hide, and its tasks stop (`sub_801BED6`): the
+            // emotion windows' among them.
+            self.stop_emotion_windows();
             self.fight.timer = 0x66;
             self.fight.init = 4;
             self.start_banner(BannerId(0x1C));
@@ -1646,7 +1658,10 @@ impl Battle {
 
     fn fight_result(&mut self) {
         if self.fight.init == 0 {
+            // The HUD's tasks stop (`sub_801BED6(0xE4C53)`): the gauge's and
+            // the emotion windows'.
             self.gauge.enabled = false;
+            self.stop_emotion_windows();
             let win = self.fight.state == fight::WIN;
             self.round.winner = if win { self.round.local_side } else { self.round.local_side ^ 1 };
             // The winner's console plays the victory music; in link
