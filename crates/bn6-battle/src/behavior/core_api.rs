@@ -216,6 +216,9 @@ impl CoreApi for Battle {
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
             BattleInfo::LocalSide => Value::Int(self.round.local_side as i64),
             BattleInfo::Turn => Value::Int(self.round.turn as i64),
+            BattleInfo::PerPlayerGauges => {
+                Value::Bool(self.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0)
+            }
         }
     }
 
@@ -341,6 +344,16 @@ impl CoreApi for Battle {
 
     fn fill_custom_gauge(&mut self) {
         self.gauge.value = crate::hud::CustomGauge::FULL;
+    }
+
+    fn set_gauge_rate(&mut self, rate: u16) {
+        self.gauge.rate = rate;
+    }
+
+    fn set_gauge_speed_ticks(&mut self, side: u8, slow: u16, fast: u16) {
+        let s = &mut self.sides[side as usize & 1];
+        s.slow_gauge_ticks = slow;
+        s.fast_gauge_ticks = fast;
     }
 
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {

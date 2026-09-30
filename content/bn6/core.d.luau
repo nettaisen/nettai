@@ -540,6 +540,8 @@ declare battle: {
     local_side: () -> number,
     -- Custom screens opened so far.
     turn: () -> number,
+    -- Battle flag 0x40: each player has a custom gauge (not in netbattles).
+    per_player_gauges: () -> boolean,
     -- Sound for both players, or for one side's player (output only).
     play_sound: (id: number) -> (),
     play_sound_for: (side: number, id: number) -> (),
@@ -563,6 +565,10 @@ declare battle: {
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
     fill_custom_gauge: () -> (),
+    -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
+    set_gauge_rate: (rate: number) -> (),
+    -- A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
+    set_gauge_speed_ticks: (side: number, slow: number, fast: number) -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
     navi_record: (name_id: number) -> NaviRecord?,
     -- Spawn into the pool's lowest free slot; it runs later this tick,

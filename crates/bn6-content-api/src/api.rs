@@ -339,6 +339,9 @@ named_fields! {
         LocalSide = "local_side", U8, ro;
         /// Custom screens opened so far.
         Turn = "turn", U8, ro;
+        /// Battle flag 0x40: each player has a custom gauge (`sub_800A8F8`;
+        /// not in netbattles).
+        PerPlayerGauges = "per_player_gauges", Bool, ro;
     }
 }
 
@@ -749,6 +752,11 @@ pub trait CoreApi {
     fn clear_linked(&mut self, side: u8);
     /// FullCust: the custom gauge is full.
     fn fill_custom_gauge(&mut self);
+    /// `sub_801DF8C`: the custom gauge fills `rate` a tick (full at
+    /// 0x4000).
+    fn set_gauge_rate(&mut self, rate: u16);
+    /// A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
+    fn set_gauge_speed_ticks(&mut self, side: u8, slow: u16, fast: u16);
     /// `sub_800AB46`: bump a side's statistics counter.
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// A player NameID's actor record, if it is one.

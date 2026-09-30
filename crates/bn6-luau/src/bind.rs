@@ -830,6 +830,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.clear_linked(side)))
     });
     lib_fn!(lua, t, "fill_custom_gauge", |_, ()| with(|api, _| Ok(api.fill_custom_gauge())));
+    lib_fn!(lua, t, "set_gauge_rate", |_, rate: LuaValue| {
+        let rate = u16_arg(rate, "gauge rate")?;
+        with(|api, _| Ok(api.set_gauge_rate(rate)))
+    });
+    lib_fn!(lua, t, "set_gauge_speed_ticks", |_, (side, slow, fast): (LuaValue, LuaValue, LuaValue)| {
+        let (side, slow, fast) = (u8_arg(side, "side")? & 1, u16_arg(slow, "ticks")?, u16_arg(fast, "ticks")?);
+        with(|api, _| Ok(api.set_gauge_speed_ticks(side, slow, fast)))
+    });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))
