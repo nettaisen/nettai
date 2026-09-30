@@ -1,16 +1,16 @@
-//! Play songs or sound effects from a sound bank.
+//! Play songs or sound effects from a content pack's sound.
 //!
-//!     play_song <sound-bank> <id>[,<id>...] [--every FRAMES] [--seconds S] [--wav OUT.wav]
+//!     play_song <pack> <id>[,<id>...] [--every FRAMES] [--seconds S] [--wav OUT.wav]
 //!
 //! Starts each song-table entry (ids in hex or decimal; several are started
 //! `--every` frames apart, 60 by default) on its music player and plays
 //! for `--seconds` (5 by default), in real time or into a WAV file.
 
-use bn6_audio::{AudioOut, BattleAudio, FPS, SAMPLE_RATE, SoundCue, SoundId, load_bank, wav};
+use bn6_audio::{AudioOut, BattleAudio, FPS, SAMPLE_RATE, SoundCue, SoundId, wav};
 use std::time::{Duration, Instant};
 
 fn usage() -> ! {
-    eprintln!("usage: play_song <sound-bank> <id>[,<id>...] [--every FRAMES] [--seconds S] [--wav OUT.wav]");
+    eprintln!("usage: play_song <pack> <id>[,<id>...] [--every FRAMES] [--seconds S] [--wav OUT.wav]");
     std::process::exit(2);
 }
 
@@ -27,10 +27,11 @@ fn main() {
     if args.len() < 2 {
         usage();
     }
-    let bank = load_bank(&args[0]).unwrap_or_else(|e| {
-        eprintln!("{e}");
+    let (bank, _) = bn6_content::pack::load_sound(std::path::Path::new(&args[0])).unwrap_or_else(|r| {
+        eprintln!("{}: {r}", args[0]);
         std::process::exit(1);
     });
+    let bank = std::sync::Arc::new(bank);
     let ids: Vec<u16> = args[1].split(',').map(parse_id).collect();
     let (mut every, mut seconds, mut out_path) = (60usize, 5.0f64, None);
     let mut i = 2;

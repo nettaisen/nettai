@@ -4,7 +4,7 @@
 //! See docs/engine/objects-and-player.md §A.3.
 
 use crate::battle::Battle;
-use crate::data::{EffectSprite, effects_generated::EFFECTS};
+use crate::content::EffectSprite;
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
@@ -62,11 +62,11 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 fn init(b: &mut Battle, r: ObjectRef) {
     let [id, flip, palette_add, priority] = b.objects.get(r).params;
-    let EffectSprite { sprite: id, anim, palette } = EFFECTS[id as usize];
+    let EffectSprite { sprite: id, anim, palette } = b.content.effect(id);
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
-    sprite.set_animation(anim);
-    sprite.update();
+    sprite.set_animation(anim, &b.content);
+    sprite.update(&b.content);
     let look = &mut sprite.look;
     look.shadow = Shadow::WithSprite;
     look.palette = palette.wrapping_add(palette_add);
@@ -97,7 +97,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         let finished = b.objects.sprite(r).frame_parameters() & crate::object::sprite::FRAME_LAST != 0;
         destroy = finished && (b.objects.get(r).timer as i16) <= 0;
     }
-    b.objects.sprite_mut(r).update();
+    b.objects.sprite_mut(r).update(&b.content);
     if destroy {
         let o = b.objects.get_mut(r);
         o.flags &= !flags::VISIBLE;

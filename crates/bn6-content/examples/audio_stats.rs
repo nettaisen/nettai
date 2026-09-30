@@ -1,14 +1,15 @@
-//! Survey a sound bank's songs as timelines: what a MIDI file has to carry.
+//! Survey a content pack's songs as timelines: what a MIDI file has to
+//! carry.
 //!
-//!     cargo run -p bn6-content --example audio_stats -- data/sound/bn6.soundbank
+//!     cargo run -p bn6-content --example audio_stats -- data/content/bn6
 
 use bn6_content::timeline::{Ending, encode, linearize};
-use m4a::bank::{Command, SoundBank};
+use m4a::bank::Command;
 use std::collections::{BTreeMap, HashMap};
 
 fn main() {
-    let path = std::env::args().nth(1).expect("usage: audio_stats <bank>");
-    let bank = SoundBank::from_bytes(&std::fs::read(path).unwrap()).unwrap();
+    let path = std::env::args().nth(1).expect("usage: audio_stats <pack>");
+    let (bank, _) = bn6_content::pack::load_sound(std::path::Path::new(&path)).unwrap_or_else(|r| panic!("{r}"));
     let mut n = BTreeMap::<String, usize>::new();
     let mut bump = |k: &str| *n.entry(k.to_string()).or_default() += 1;
     let mut big = BTreeMap::<&str, BTreeMap<u8, usize>>::new();

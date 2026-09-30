@@ -22,7 +22,7 @@ const MAX_ABSORBED: usize = 8;
 /// What flies.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Spec {
-    /// Obstacle kind (`data::ABSORBED_SPRITES`).
+    /// Obstacle kind (`ObjectData::absorbed_sprites`).
     pub kind: u8,
     /// The absorbing side.
     pub side: u8,
@@ -84,9 +84,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
     common::set_panels_from_coordinates(b, r);
     let Vars { kind, side, anim, .. } = *vars(b, r);
     let sprite = b.objects.sprite_mut(r);
-    sprite.load(crate::data::ABSORBED_SPRITES[kind as usize]);
-    sprite.set_animation(anim);
-    sprite.update();
+    sprite.load(b.content.objects.absorbed_sprite(kind));
+    sprite.set_animation(anim, &b.content);
+    sprite.update(&b.content);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = anim;
@@ -137,7 +137,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
             arrive(b, r, navi);
         }
     }
-    b.objects.sprite_mut(r).update();
+    b.objects.sprite_mut(r).update(&b.content);
 }
 
 /// Join the navi's absorbed list, if it has room.

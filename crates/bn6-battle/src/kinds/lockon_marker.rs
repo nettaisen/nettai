@@ -4,7 +4,7 @@
 //! navi's own side. See docs/engine/objects-and-player.md §A.7.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress, set_progress};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
 use crate::setup::Navi;

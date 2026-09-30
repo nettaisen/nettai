@@ -3,17 +3,20 @@ name = "bn6-content"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "Open, editable content-pack formats for the battle graphics and sound (indexed PNG + JSON, MIDI + TOML + WAV), with exact import back to the engine's data"
+description = "Content packs: the battle data, graphics and sound in open, editable formats (TOML, indexed PNG + JSON, MIDI + TOML + WAV), loaded exactly into the engine's data"
 
 [dependencies]
 bn6-assets = { path = "../bn6-assets" }
+# The battle data model the pack's battle files load into.
+bn6-battle.workspace = true
 m4a.workspace = true
 png = "0.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
+# Writing TOML with hex ids and flag words (the version toml uses).
+toml_edit = "0.22"
 miniz_oxide = "0.8"
 
 [dev-dependencies]
-# The engine's generated timing table, for the engine_timing example.
-bn6-battle.workspace = true
+bn6-battle = { workspace = true, features = ["test-content"] }

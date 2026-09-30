@@ -1,18 +1,17 @@
-//! A content pack: a folder of open-format files, and the binary data the
-//! engine and frontend load, derived from it.
+//! A content pack: a folder of open-format files that loads into the data
+//! the engine, the frontend and the audio use.
 //!
 //! ```text
 //! content.toml           the manifest
-//! graphics/              sprites, field, backgrounds, HUD (see graphics())
+//! chips/ navis/ objects/ rules/ registries/   the battle data (see crate::battle)
+//! graphics/              sprites, field, backgrounds, HUD
 //! sound/                 songs, instruments, samples (see crate::sound)
 //! ```
 //!
-//! The pack is the source; `bn6-assets.bin` and the sound bank are caches
-//! built from it ([`load_graphics`], [`load_sound`]), keyed by a hash of
-//! every source file and the importer's version, and rebuilt when either
-//! changes.
+//! Everything loads straight from these files ([`load_battle`],
+//! [`import_graphics`], [`import_sound`]); there is no derived binary.
 
-use crate::report::{Report, stamp};
+use crate::report::Report;
 use crate::{hud, sound, sprite, stage};
 use bn6_assets::Bundle;
 use m4a::SoundBank;
@@ -32,6 +31,8 @@ pub struct Manifest {
     pub graphics: Option<GraphicsManifest>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sound: Option<SoundManifest>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub battle: Option<BattleManifest>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -43,6 +44,10 @@ pub struct GraphicsManifest {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SoundManifest {}
+
+/// The pack has battle data (chips, navis, rules... see crate::battle).
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BattleManifest {}
 
 /// Files as (path in the pack, contents).
 pub type Files = Vec<(String, Vec<u8>)>;
@@ -58,16 +63,17 @@ pub fn write_files(root: &Path, files: &Files) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn manifest(name: &str, graphics: Option<&Bundle>, sound: bool) -> (String, Vec<u8>) {
+pub fn manifest(name: &str, graphics: Option<&Bundle>, sound: bool, battle: bool) -> (String, Vec<u8>) {
     let m = Manifest {
         format: FORMAT.into(),
         version: VERSION,
         name: name.into(),
         graphics: graphics.map(|b| GraphicsManifest { background_slots: b.backgrounds.len() }),
         sound: sound.then_some(SoundManifest {}),
+        battle: battle.then_some(BattleManifest {}),
     };
     let text = format!(
-        "# A content pack: open formats the engine's data is built from.\n{}",
+        "# A content pack: a battle's data, graphics and sound in open formats.\n{}",
         toml::to_string_pretty(&m).unwrap()
     );
     (MANIFEST.into(), text.into_bytes())
@@ -190,91 +196,36 @@ pub fn import_sound(root: &Path, report: &mut Report) -> Option<SoundBank> {
     (!report.has_errors()).then_some(bank)
 }
 
-// ---- Derived caches -----------------------------------------------------------------
+// ---- Loading -------------------------------------------------------------------
 
-/// Bump when an importer reads the same files differently, so caches
-/// built by the old importer are rebuilt.
-pub const IMPORTER_REVISION: u32 = 1;
-
-/// A hash of every file under `dir` (paths and contents) and the importer.
-pub fn source_key(dir: &Path) -> String {
-    let mut files = Vec::new();
-    fn walk(d: &Path, base: &Path, out: &mut Vec<(String, PathBuf)>) {
-        for e in std::fs::read_dir(d).into_iter().flatten().flatten() {
-            let p = e.path();
-            if p.is_dir() {
-                walk(&p, base, out);
-            } else if let Ok(rel) = p.strip_prefix(base) {
-                out.push((rel.to_string_lossy().replace('\\', "/"), p.clone()));
-            }
-        }
-    }
-    walk(dir, dir, &mut files);
-    files.sort();
-    let mut all = format!(
-        "{} {} {IMPORTER_REVISION} {VERSION}\n",
-        env!("CARGO_PKG_NAME"),
-        env!("CARGO_PKG_VERSION")
-    )
-    .into_bytes();
-    for (rel, p) in files {
-        let data = std::fs::read(&p).unwrap_or_default();
-        all.extend_from_slice(format!("{rel} {}\n", stamp(&data)).as_bytes());
-    }
-    stamp(&all)
-}
-
-/// Load `name` from `cache_dir` if it was built from the current sources,
-/// else build it and store it (dropping older builds).
-fn cached<T>(
-    source: &Path,
-    cache_dir: &Path,
-    name: &str,
-    build: impl FnOnce(&mut Report) -> Option<T>,
-    to_bytes: impl Fn(&T) -> Vec<u8>,
-    from_bytes: impl Fn(&[u8]) -> Option<T>,
-) -> Result<(T, Report), Report> {
-    let key = source_key(source);
-    let file = cache_dir.join(format!("{name}-{key}.bin"));
-    if let Ok(bytes) = std::fs::read(&file)
-        && let Some(v) = from_bytes(&bytes)
-    {
-        return Ok((v, Report::default()));
-    }
+/// A pack's battle data, for the engine.
+pub fn load_battle(root: &Path) -> Result<(bn6_battle::Content, Report), Report> {
     let mut report = Report::default();
-    let Some(v) = build(&mut report) else { return Err(report) };
-    if std::fs::create_dir_all(cache_dir).is_ok() {
-        for e in std::fs::read_dir(cache_dir).into_iter().flatten().flatten() {
-            let n = e.file_name().to_string_lossy().into_owned();
-            if n.starts_with(&format!("{name}-")) && n.ends_with(".bin") {
-                let _ = std::fs::remove_file(e.path());
-            }
-        }
-        let _ = std::fs::write(&file, to_bytes(&v));
+    let m = read_manifest(root, &mut report).ok_or_else(|| report.clone())?;
+    if m.battle.is_none() {
+        report.error(MANIFEST, "the pack has no battle data");
+        return Err(report);
     }
-    Ok((v, report))
+    match crate::battle::load(root, &mut report) {
+        Some(c) => Ok((c, report)),
+        None => Err(report),
+    }
 }
 
-/// The graphics bundle of a pack, from the cache when it is current.
-pub fn load_graphics(root: &Path, cache_dir: &Path) -> Result<(Bundle, Report), Report> {
-    cached(
-        &root.join("graphics"),
-        cache_dir,
-        "graphics",
-        |r| import_graphics(root, r),
-        |b| b.to_bytes(),
-        |d| Bundle::from_bytes(d).ok(),
-    )
+/// A pack's graphics, for a frontend.
+pub fn load_graphics(root: &Path) -> Result<(Bundle, Report), Report> {
+    let mut report = Report::default();
+    match import_graphics(root, &mut report) {
+        Some(b) => Ok((b, report)),
+        None => Err(report),
+    }
 }
 
-/// The sound bank of a pack, from the cache when it is current.
-pub fn load_sound(root: &Path, cache_dir: &Path) -> Result<(SoundBank, Report), Report> {
-    cached(
-        &root.join("sound"),
-        cache_dir,
-        "sound",
-        |r| import_sound(root, r),
-        |b| b.to_bytes(),
-        |d| SoundBank::from_bytes(d).ok(),
-    )
+/// A pack's sound, for the audio.
+pub fn load_sound(root: &Path) -> Result<(SoundBank, Report), Report> {
+    let mut report = Report::default();
+    match import_sound(root, &mut report) {
+        Some(b) => Ok((b, report)),
+        None => Err(report),
+    }
 }

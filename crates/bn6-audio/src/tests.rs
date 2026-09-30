@@ -171,30 +171,11 @@ fn the_game_queue_holds_32_calls_a_frame() {
 
 #[test]
 fn a_battle_drives_the_music() {
-    use bn6_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, effects};
+    use bn6_battle::content::testing;
     use bn6_battle::{Battle, PlayerTick, TickEvents};
-    let stats = NaviStats { hp: 500, max_hp: 500, max_base_hp: 500, ..NaviStats::default() };
-    let mut b = Battle::new(RoundSetup {
-        settings: BattleSettings {
-            layout: 0,
-            music: 0,
-            mode: 0,
-            background: 0,
-            battle_number: 0,
-            panel_pattern: 0x38,
-            effects: effects::LINK,
-            actors: &bn6_battle::data::ACTOR_LISTS[0],
-        },
-        navi_stats: [stats; 2],
-        rng: 1,
-        local_side: 0,
-        score: SetScore::default(),
-        later_stages: Default::default(),
-        low_hp_music_latched: false,
-        sp_times: Default::default(),
-        players: Default::default(),
-        link_delay: 0,
-    });
+    let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
+    setup.settings.music = 0;
+    let mut b = Battle::new(setup, testing::content());
     let mut a = BattleAudio::new(bank());
     let mut out = Vec::new();
     for _ in 0..4 {

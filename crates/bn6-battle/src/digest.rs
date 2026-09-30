@@ -18,8 +18,10 @@
 //! - which banner is showing ([`Banner::id`](crate::hud::Banner::id));
 //! - the objects' `VISIBLE` header flag.
 //!
-//! Also left out: the content handle (`Battle::content`), which is code.
-//! Behaviors kinds' state is hashed with the objects and actors that hold it.
+//! Also left out: the behaviors handle (`Battle::behaviors`), which is
+//! code (behaviors kinds' state is hashed with the objects and actors that
+//! hold it), and the content (`Battle::content`), which never changes and
+//! whose hash the round's setup carries (`RoundSetup::content`).
 //!
 //! The impls below destructure their structs without `..`, so adding a
 //! field to one of them fails to compile until the field is either hashed
@@ -144,6 +146,9 @@ impl Battle {
 impl Hash for Battle {
     fn hash<H: Hasher>(&self, h: &mut H) {
         let Battle {
+            // Read-only data shared by snapshots: its identity is in the
+            // setup (`RoundSetup::content`).
+            content: _,
             setup,
             stats,
             rng,

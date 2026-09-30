@@ -55,20 +55,20 @@ pub(super) fn a_chargeable(b: &Battle, r: ObjectRef) -> bool {
 /// attack family matches the form (damaging, not time-freeze chips; any
 /// Null-family chip in Beast Out).
 fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
-    use crate::data::{ChipFlags, chip};
+    use crate::content::{ChipFamily as F, ChipFlags};
     if id >= 0x190 {
         return false;
     }
-    let c = chip(id);
+    let c = b.content.chip(id);
     let (family, form) = (c.family, stats(b, r).form.0);
     let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::TIME_FREEZE);
-    let charges = (form == 2 && family == 0xA && damaging)
-        || (matches!(form, 3 | 0xF) && ((0x4C..=0x4F).contains(&id) || family == 5) && damaging)
-        || ((0x0B..=0x16).contains(&form) && family == 0xA)
-        || (matches!(form, 7 | 0x13) && family == 3 && damaging)
-        || (matches!(form, 6 | 0x12) && family == 1 && damaging)
-        || (matches!(form, 9 | 0x15) && family == 9 && damaging)
-        || (matches!(form, 5 | 0x11) && family == 0 && damaging);
+    let charges = (form == 2 && family == F::Null && damaging)
+        || (matches!(form, 3 | 0xF) && ((0x4C..=0x4F).contains(&id) || family == F::Sword) && damaging)
+        || ((0x0B..=0x16).contains(&form) && family == F::Null)
+        || (matches!(form, 7 | 0x13) && family == F::Wood && damaging)
+        || (matches!(form, 6 | 0x12) && family == F::Aqua && damaging)
+        || (matches!(form, 9 | 0x15) && family == F::Break && damaging)
+        || (matches!(form, 5 | 0x11) && family == F::Fire && damaging);
     if charges {
         return true;
     }
@@ -294,10 +294,10 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
     if routine == 0xFF {
         return 0xFF;
     }
-    crate::data::player::charge_threshold(routine, s.charge)
+    b.content.rules.charge_threshold(routine, s.charge)
 }
 
-/// Whether the next chip is one of the family (0x0A) that uses the
+/// Whether the next chip is of the Null family, which uses the
 /// alternative A-charge routine in Beast forms.
 fn uses_alt_a_charge(b: &Battle, r: ObjectRef) -> bool {
     let id = next_chip(b, r);
@@ -306,5 +306,5 @@ fn uses_alt_a_charge(b: &Battle, r: ObjectRef) -> bool {
     if id == NO_CHIP {
         panic!("charge threshold with an empty hand reads past the chip table");
     }
-    crate::data::chip(id).family == 0x0A
+    b.content.chip(id).family == crate::content::ChipFamily::Null
 }

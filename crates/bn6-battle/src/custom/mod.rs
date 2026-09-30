@@ -16,11 +16,11 @@ pub mod library;
 pub mod screen;
 
 pub use folder::{BattleFolder, FolderChip, SavedFolder};
-pub use library::{BuiltIn, Library};
+pub use library::Library;
 pub use screen::{Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
 use crate::battle::{Battle, CustomResult, battle_flags};
-use crate::data::ChipId;
+use crate::content::ChipId;
 use crate::hand::ChipHand;
 use crate::input::Joypad;
 use crate::kinds::player::Emotion;
@@ -303,10 +303,11 @@ impl Side {
 }
 
 impl Battle {
-    /// What side `side`'s screen reads of the battle.
-    fn custom_context(&self, side: u8) -> Context<'static> {
+    /// What side `side`'s screen reads of the battle (and its game data,
+    /// the battle's content).
+    fn custom_context<'a>(&self, side: u8, library: &'a dyn Library) -> Context<'a> {
         Context {
-            library: &BuiltIn,
+            library,
             stats: self.stats[side as usize],
             emotion: crate::kinds::player::emotion(self, side),
             turn: self.round.turn,
@@ -326,8 +327,9 @@ impl Battle {
         self.round.turn += 1;
         self.custom.ticks = 0;
         self.custom.committed = false;
+        let content = self.content.clone();
         for side in 0..2u8 {
-            let ctx = self.custom_context(side);
+            let ctx = self.custom_context(side, &*content);
             self.custom.sides[side as usize].open(&ctx);
         }
     }
@@ -352,7 +354,8 @@ impl Battle {
                 }
                 continue;
             }
-            let ctx = self.custom_context(side);
+            let content = self.content.clone();
+            let ctx = self.custom_context(side, &*content);
             let mut s = self.custom.sides[side as usize].clone();
             let request = s.tick(&ctx, |id| crate::hand::chip_damage(self, id, side));
             self.custom.sides[side as usize] = s;

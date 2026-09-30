@@ -4,7 +4,7 @@
 //! once it has hit something. See docs/engine/field-collision-damage.md.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::field;
 use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
@@ -37,7 +37,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.load(SPRITE);
     s.look.shadow = Shadow::WithSprite;
     s.look.palette = 0;
-    s.set_animation(0);
+    s.set_animation(0, &b.content);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.flags |= flags::VISIBLE;

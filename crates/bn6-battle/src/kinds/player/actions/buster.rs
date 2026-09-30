@@ -6,7 +6,6 @@
 use crate::actor::{ActorType, status};
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::data::player as pdata;
 use crate::kinds::attachment::{self, AttachSlot};
 use crate::kinds::player::{Emotion, actor_id, ai, ai_mut, emotion, exit_attack_state, flag1, stats};
 use crate::kinds::player::actions::movement;
@@ -68,7 +67,7 @@ pub(in crate::kinds::player) fn recovery(b: &Battle, r: ObjectRef, x: u8, y: u8)
         open = open.saturating_add(1);
         px += front;
     }
-    pdata::buster_recovery(stats(b, r).rapid, open) as u16
+    b.content.rules.buster_recovery(stats(b, r).rapid, open) as u16
 }
 
 /// The move that cuts a shot's recovery short: `object_canMove`, a held

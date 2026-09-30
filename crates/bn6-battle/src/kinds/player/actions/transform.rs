@@ -7,7 +7,6 @@
 use crate::actor::{request, status};
 use crate::battle::Battle;
 use crate::collision::{f1, link, timer};
-use crate::data::player as pdata;
 use super::ActionVars;
 use crate::kinds::common;
 use crate::kinds::player::status::end_anger;
@@ -195,7 +194,7 @@ fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         let current = stats(b, r).form;
         form::take_off_overlay(b, r, current);
         let navi = stats(b, r).navi;
-        let sprite = if navi == Navi::MEGAMAN { pdata::form_sprite(target) } else { pdata::navi_sprite(navi) };
+        let sprite = if navi == Navi::MEGAMAN { b.content.form(target).sprite } else { b.content.navi(navi).sprite };
         let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
         let s = b.objects.sprite_mut(r);
         s.load(sprite);
@@ -208,7 +207,7 @@ fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         // object_setAnimation(0), then the sprite restarts it directly.
         o.anim = 0;
         o.anim_loaded = 0xFF;
-        b.objects.sprite_mut(r).set_animation(0);
+        b.objects.sprite_mut(r).set_animation(0, &b.content);
         set_coordinates_from_panel(b, r);
         set_timer(b, r, 10);
         stats_mut(b, r).form = target;
@@ -342,7 +341,7 @@ fn cross_emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         let current = stats(b, r).form;
         form::take_off_overlay(b, r, current);
         let navi = stats(b, r).navi;
-        let sprite = if navi == Navi::MEGAMAN { pdata::form_sprite(target) } else { pdata::navi_sprite(navi) };
+        let sprite = if navi == Navi::MEGAMAN { b.content.form(target).sprite } else { b.content.navi(navi).sprite };
         let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
         let s = b.objects.sprite_mut(r);
         s.load(sprite);
@@ -355,7 +354,7 @@ fn cross_emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         // object_setAnimation(0), then the sprite restarts it directly.
         o.anim = 0;
         o.anim_loaded = 0xFF;
-        b.objects.sprite_mut(r).set_animation(0);
+        b.objects.sprite_mut(r).set_animation(0, &b.content);
         set_coordinates_from_panel(b, r);
         set_timer(b, r, 10);
         stats_mut(b, r).form = target;
