@@ -378,6 +378,10 @@ impl CoreApi for Battle {
         Battle::crack_panel(self, p.x, p.y)
     }
 
+    fn break_panel(&mut self, p: PanelPos) -> bool {
+        Battle::break_panel(self, p.x, p.y)
+    }
+
     fn panel_solid(&self, p: PanelPos) -> bool {
         self.field.is_solid(p.x, p.y)
     }
@@ -611,6 +615,10 @@ impl CoreApi for Battle {
 
     fn spawn_effect(&mut self, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
         kinds::effect::spawn(self, pos, id, flip, palette_add, priority)
+    }
+
+    fn spawn_region_effects(&mut self, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32) {
+        kinds::effect::spawn_over_region(self, x, y, region, side, id, z);
     }
 
     fn spawn_hitbox(&mut self, owner: ObjectRef, s: &HitboxSpec) -> Option<ObjectRef> {
