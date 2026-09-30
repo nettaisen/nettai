@@ -6,4 +6,3 @@
 pool = "attack"
 index = 0xB0
 script = "dust_ball.luau"
-scratch_z_fraction = true

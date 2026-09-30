@@ -5,4 +5,3 @@
 pool = "effect"
 index = 0x29
 script = "mine.luau"
-scratch_position = true

@@ -341,9 +341,11 @@ impl NaviAttack {
 }
 
 /// The content action the navi `r` is running: the one its attack started,
-/// while its CurAction is still that action's.
-pub(crate) fn running_content_action(b: &Battle, r: ObjectRef) -> Option<bn6_content_api::ActionHandle> {
-    let h = ai(b, r).attack.content_action?;
+/// while its CurAction is still that action's. None for an object that
+/// isn't an actor.
+pub fn running_content_action(b: &Battle, r: ObjectRef) -> Option<bn6_content_api::ActionHandle> {
+    let id = b.objects.get(r).actor?;
+    let h = b.actors.get(id).attack.content_action?;
     let number = b.content.defs.action(h).number.unwrap_or(CONTENT_ACTION);
     (b.objects.get(r).action == number).then_some(h)
 }
