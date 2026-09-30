@@ -26,8 +26,8 @@ const BUTTONS: [(Key, u16); 10] = [
     (Key::Down, keys::DOWN),
     (Key::Left, keys::LEFT),
     (Key::Right, keys::RIGHT),
-    (Key::X, keys::A),
-    (Key::Z, keys::B),
+    (Key::Z, keys::A),
+    (Key::X, keys::B),
     (Key::A, keys::L),
     (Key::S, keys::R),
     (Key::Enter, keys::START),
@@ -35,7 +35,7 @@ const BUTTONS: [(Key, u16); 10] = [
 ];
 
 pub const HELP: &str = "\
-keys: arrows move, X = A, Z = B, A = L, S = R, Enter = START, Backspace = SELECT
+keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START, Backspace = SELECT
       Space pause, . step one frame (paused), - / = slower / faster, F5 restart,
       H toggle the status line, Esc quit";
 

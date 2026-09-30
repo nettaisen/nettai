@@ -59,7 +59,7 @@ follow when a round's input runs out), `--scale N` sets the window scale
 `--png-scale N` scales headless output, `--quit-after N` closes the window
 after N ticks.
 
-Keys: arrows move, X = A, Z = B, A = L, S = R, Enter = START,
+Keys: arrows move, Z = A, X = B, A = L, S = R, Enter = START,
 Backspace = SELECT; Space pauses, `.` steps one frame while paused, `-` and
 `=` change speed (1/8x to 16x of 59.73 Hz), F5 restarts the round, H toggles
 the status line, Esc quits.
