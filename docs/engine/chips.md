@@ -1451,7 +1451,7 @@ Param1 0 hits its panel at its start and 10 ticks in), swing `byte_80D0950[Param
 SlashMan's: the user holding B sets Param2, sound 0x8B), then it flies ahead at `byte_80D0A54[Param1]` (sound 0xB3)
 until off the field; with Param2 set it drifts toward the nearest row (0, −1, +1, −2, +2) with an enemy navi ahead,
 arriving as it reaches that column. A hit on an enemy's body (`byte_80D08C4`) or the battle's end ends it (a byte
-store). All match; unverified: the steering (no scenario holds B) and Param1 0 (the navi AI's).
+store). All match, the steering too (a scratch scenario holding B); unverified: Param1 0 (the navi AI's).
 
 ---
 
