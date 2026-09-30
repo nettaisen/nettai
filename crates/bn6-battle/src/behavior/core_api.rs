@@ -390,10 +390,6 @@ impl CoreApi for Battle {
         Battle::break_panel(self, p.x, p.y)
     }
 
-    fn break_or_crack_panel(&mut self, p: PanelPos) -> bool {
-        Battle::break_or_crack_panel(self, p.x, p.y)
-    }
-
     fn panel_solid(&self, p: PanelPos) -> bool {
         self.field.is_solid(p.x, p.y)
     }
@@ -642,6 +638,10 @@ impl CoreApi for Battle {
         kinds::effect::spawn(self, pos, id, flip, palette_add, priority)
     }
 
+    fn spawn_region_effects(&mut self, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32) {
+        kinds::effect::spawn_over_region(self, x, y, region, side, id, z);
+    }
+
     fn spawn_hitbox(&mut self, owner: ObjectRef, s: &HitboxSpec) -> Option<ObjectRef> {
         let spec = kinds::hitbox::HitboxSpec {
             panel: s.panel,
@@ -699,6 +699,7 @@ impl CoreApi for Battle {
             ActorField::AttackKind => i(at.kind as i64),
             ActorField::BeastLockon => i(at.beast_lockon as i64),
             ActorField::Marker => i(at.marker as i64),
+            ActorField::Recovery => i(at.recovery as i64),
             ActorField::ActorType => i(actor_type_index(a.actor_type)),
             ActorField::AiIndex => i(a.ai_index as i64),
             ActorField::LockonMarker => a.lockon_marker.into(),
@@ -738,6 +739,7 @@ impl CoreApi for Battle {
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
             (ActorField::BeastLockon, FieldValue::U8(x)) => at.beast_lockon = x,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
+            (ActorField::Recovery, FieldValue::U16(x)) => at.recovery = x,
             (ActorField::LockonMarker, FieldValue::Object(r)) => a.lockon_marker = r,
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,

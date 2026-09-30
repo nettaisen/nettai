@@ -289,6 +289,10 @@ declare class Object
     beast_lockon: number
     -- A per-action word some actions keep.
     marker: number
+    -- The recovery a shot waits after firing: a word of the attack that
+    -- outlives the action, so an action that waits it without writing it
+    -- (a thrown obstacle) waits the last shot's.
+    recovery: number
     -- The actor data (read-only unless noted).
     actor_type: ActorType
     ai_index: number
@@ -563,6 +567,11 @@ declare battle: {
     spawn_kind: (name: string, pos: Vec3?, params: { number }?) -> Object?,
     -- The generic one-shot effect (effect object #0).
     effect: (pos: Vec3, id: number, flip: number?, palette_add: number?, priority: number?) -> Object?,
+    -- `sub_801BD3C`: the one-shot effect `id` on each field panel of hit
+    -- region `region` around (x, y), turned the way side `side` faces, at
+    -- height z (default 0); a whole-field region's (0x80 and up) from the
+    -- bottom right, on the ground.
+    region_effects: (x: number, y: number, region: number, side: number, id: number, z: number?) -> (),
     -- The one-tick hit region (attack object #3).
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
@@ -585,11 +594,9 @@ declare field: {
     -- `object_crackPanel`: crack a solid panel, or break a cracked,
     -- unoccupied one.
     crack: (x: number, y: number) -> boolean,
-    -- `object_breakPanel`: break a solid panel nothing occupies.
+    -- `object_breakPanel_dup2`: break a solid panel, or crack it while
+    -- something stands on it.
     break_panel: (x: number, y: number) -> boolean,
-    -- `object_breakPanel_dup2`: break a solid panel, or crack it (cracked
-    -- already or not) if something occupies it.
-    break_or_crack: (x: number, y: number) -> boolean,
     -- `object_isPanelSolid`: something can stand on it (not missing or
     -- broken).
     solid: (x: number, y: number) -> boolean,
@@ -730,6 +737,74 @@ export type RockKind = {
 
 export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } }
 
+-- What a projectile's hit does to the panel it hits: crack it
+-- (`object_crackPanel`), break it (`object_breakPanel_dup2`), or make a
+-- solid one a panel of a type (by the shot's side).
+export type PanelHit = {
+    effect: "crack" | "break" | "set_type",
+    left_side: PanelType?,
+    right_side: PanelType?,
+}
+
+-- A kind of projectile (attack object #0, objects/projectile), by its
+-- first parameter: fire one with lib/projectile.luau.
+export type ProjectileKind = {
+    id: number,
+    -- Collision types (what it is, what it hits) and hit modifier.
+    self_type: number,
+    target_type: number,
+    hit_mod: number,
+    -- Its element and secondary elements (lib/element.luau).
+    element: string,
+    secondary: { string }?,
+    -- The hit spark (0xFF: none).
+    hit_effect: number,
+    -- Drawn with this sprite and animation (0 if nil), if any.
+    sprite: SpriteId?,
+    anim: number?,
+    -- The status byte and bug its hits carry (nil or 0: none).
+    status: number?,
+    bug: number?,
+    bug_arg: number?,
+    hit_panel: PanelHit?,
+    -- It bursts around what it hits, and over the last two columns when
+    -- it leaves the field.
+    bursts: boolean?,
+    -- It sits a pixel lower down the field and higher on each panel.
+    climbs: boolean?,
+}
+
+-- A kind of flying shot (attack object #0xB, objects/flying-shot), by its
+-- first parameter.
+export type FlyingShotKind = {
+    id: number,
+    self_type: number,
+    target_type: number,
+    hit_mod: number,
+    element: string,
+    secondary: { string }?,
+    hit_effect: number,
+    -- Its sprite and animation (0 if nil).
+    sprite: SpriteId,
+    anim: number?,
+    shadow: boolean?,
+    -- Pixels a tick forward, 16.16.
+    speed: number,
+    -- Panel centers it passes before it ends.
+    range: number,
+    -- The status byte its hits carry (nil or 0: none).
+    status: number?,
+    highlight: boolean?,
+    -- A thrown obstacle: its look is its spawner's.
+    obstacle: boolean?,
+    -- Its spark shows over its panel's center.
+    panel_spark: boolean?,
+    -- The sound when it sets off after its wait.
+    launch_sound: number?,
+    -- The effect it leaves when its range runs out.
+    end_effect: number?,
+}
+
 export type WeaponData = { id: number, name: string, action: number?, script: string }
 
 -- An object kind a script implements.
@@ -746,6 +821,8 @@ export type PackData = {
         absorbed_sprites: { [number]: SpriteId },
         body_overlays: { [number]: BodyOverlay },
         sun_beam_looks: { [number]: SpriteId },
+        projectiles: { [number]: ProjectileKind },
+        flying_shots: { [number]: FlyingShotKind },
         kinds: { [string]: ObjectKindData },
     },
     rules: {
