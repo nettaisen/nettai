@@ -913,8 +913,8 @@ Representative handlers, all code-derived. Frame counts assume the attack is not
 
 | Chip (action → handler) | Frames | Timeline |
 |---|---|---|
-| Cannon/HiCannon/M-Cannon (0x14 → `sub_80EBC0E`) | 33 | f1: anim 8, counter time, arm (Params `sub_80EBD68()<<8 \| byte_80EBD2C[av3]`), flag. **f16** (timer 0xF): sound 0xAE, then `sub_80C4FFE(x+front, y, r2=av+6, r3=0x180000, r4=byte_80EBD34[av3], r6=av.u32[8]+av.u16[6])` → T3 type 0 shot (descriptor 1). TankCan adds smoke at timer 8. f30: release arm, anim 7, timer 3. **f33**: exit. |
-| Vulcan1..3/SuprVulc (0x17 → `sub_80EBF10`) | 36 for Vulcan1 | f1: anim 0xA, arm Params 0xD into `ai+0x68`. f3: shots `av+0x12 = dword_80EBFEC[av3]` = {3,4,5,10}; a shot every 11 frames from f3 (Vulcan1: f3, f14, f25). **Each shot draws `GetPositiveSignedRNG2() & 3`** to pick Z from {8,0x10,0x18,0x20}<<16 (visual height only, but it advances RNG2). Each shot calls `sub_80C6ADA(x+front, y, av+2, Z, av.u32[0xC], av.u32[8]+av.u16[6])` → T3 0x12. Then a 1-frame recovery init, 10 more frames, and exit. |
+| Cannon/HiCannon/M-Cannon (0x14 → `sub_80EBC0E`) | 33 | f1: anim 8, counter time, arm (Params `sub_80EBD68()<<8 \| byte_80EBD2C[av3]`), flag. **f16** (timer 0xF): sound 0xAE, then `sub_80C4FFE(x+front, y, r2=av+6, r3=0x180000, r4=byte_80EBD34[av3], r6=av.u32[8]+av.u16[6])` → T3 type 0 shot (descriptor 1). GigaCan (variants 4..6) leaves two afterimages at timer 8. f30: release arm, anim 7, timer 3. **f33**: exit. The full spec, with ticks counted from the handler's first run: shot-chips.md §2. |
+| Vulcan1..3/SuprVulc (0x17 → `sub_80EBF10`) | 36 for Vulcan1 | f1: anim 0xA, arm Params 0xD into `ai+0x68`. f3: shots `av+0x12 = dword_80EBFEC[av3]` = {3,4,5,10}; a shot every 11 frames from f3 (Vulcan1: f3, f14, f25). **Each shot draws `GetPositiveSignedRNG2() & 3`** to pick Z from {8,0x10,0x18,0x20}<<16 (visual height only, but it advances RNG2). Each shot calls `sub_80C6ADA(x+front, y, av+2, Z, av.u32[0xC], av.u32[8]+av.u16[6])` → T3 0x12. Then a 1-frame recovery init, 10 more frames, and exit. The full spec and the bullet: shot-chips.md §4. |
 | Sword family (0x13 → `sub_80EB776`; the pack's chips/047-sword) | 30 | Phase 0 returns at once (or does a step-sword advance if `params` byte 0 ≠ 0: `sub_8015B00` wants the panel two ahead on the field (flag 0x10000) with no body; the navi leaves a T4#0x28 afterimage and moves there, holding its own panel reserved (not in a Beast form or with the special-source byte set); with no such panel, anim 4 and straight to the step back). Phase 1 sets hits = 1 (2 when `av3 == 0xB`). f3: anim 5, `sub_8011450`, sound 0xB0 (0xCE for variants 5, 6, 0xB), the blade (attachment `byte_80EBB64[av3]`, anim by form `sub_80EBAE8`), timer 0x15. A step sword leaves two more afterimages at f8 (itself, and the blade's sprite). **f12**: `object_spawnCollisionRegion(x+front, y, av+2, 0, r4=byte_80EBA18[av3], r6=av.u32[8]+av.u16[6], r7=off_80EBA00[0][av3])` (CrosSwrd, variant 0xA, adds a region-1 one on the same panel) plus the slash, T4#0 `byte_80EBAD8[av3]` at 16 px (palette variant − 0xB for 0xC..0xF). f24 ends the swing (DblDream swings again). A step sword steps back once its animation ends (`sub_80EBB98`). f25: recovery (timer 5). f30: exit. The per-variant tables are each chip's data (`sword`). **Trace-checked** (chip lab: every Sword, WideSwrd, LongSwrd, blade, elemental sword, StepSwrd and Muramasa scenario that reaches it). Unverified: DblDream's second swing, CrosSwrd's second hit, FtrSword, LifeSrd and DrkSword (their scenarios stop earlier), the step with no panel to step to, in a Beast form or with the special-source byte, and the turned-round step (AIAttackVars+0x34, which no player action sets). |
 | MchnSwrd/ElemSwrd/AssnSwrd (0x49 → `sub_80EEB4C`; the pack's chips/056-mchnswrd) | 28 | f1: counter time, anim 5, sound 0xB0, the blade, timer 0x15. **f10**: for each opposing alive actor: a region-4 hit (0x0705FF04, hit modifier 3) and T4#0 0x16 (flip = its side, palette variant + 7) on its panel if variant ≠ 1 and it is paralyzed (CollisionData+0x1C), or variant ≠ 0 and its panel has flags 0x1C00 (grass, ice, volcano). f23: recovery (timer 5). f28: exit. Trace-checked up to the hit, which no lab scenario reaches (unverified). |
 | Instant (0x1C → `sub_80EC39C`) | 1 | `off_80EC3F0[av3](panelX, panelY, av+2, obj.Z, av.u32[0xC], av.u32[8] + (u8)av[6])`, then exit in the same frame (`av3 == 0x14` waits 8 frames). **Only the low byte of the bonus is added.** |
@@ -1435,7 +1435,8 @@ lib/dragon.luau.
 
 The action: phase 0 (`sub_80EF4D0`): anim 0xC, counter window, USING_ACTION, `av+0x10` = 15; at 13, the dragon; at -1,
 `av+0x10` = 5 and phase 4 (`sub_80ECA0C`: 6 ticks, then `object_exitAttackState`). The column (`sub_80ED040`): the
-first column ahead with an enemy body (0x04010000 / 0x08010000), else the one right ahead. `sub_80DE660(x, 0, element,
+first column ahead with an enemy body (0x04010000 / 0x08010000), else the last column ahead (6 facing right, 1 facing
+left; shot-chips.md §8). `sub_80DE660(x, 0, element,
 0, r4 = subtype, damage word + bonus)`: panel (x, **0**), the row above the field.
 
 **The head (T3#0xC9, `sub_80DE404`).** Init (`sub_80DE430`): sprite 4/0x10, anim 2, palette 3 × kind; Z16 -= 0x24;
@@ -1506,7 +1507,7 @@ setting down onto its own body, and breaking before the flash; the BugBomb broke
 choices beyond the lab's; the BlkBomb set off by fire (its burst and the panel bursts), placed (Param1), with no ticks
 to fly, removed, absorbed, blinking out, or pushed (`sub_8017CC0` and `sub_800F598` are unreached). **Not ported**:
 LilBoiler (subtype 3: T3#0x93 and what it spawns, T1#0x54) and VDoll (subtype 8: T3#0x7A, its curse controller T4#0x4E
-and T4#0x11); their throws raise a content error.
+and T4#0x11); their throws raise a content error. shot-chips.md §14 specifies both.
 
 #### 3.6.11 SpoutMan (navi chip subtype 7, T1 0x09)
 
