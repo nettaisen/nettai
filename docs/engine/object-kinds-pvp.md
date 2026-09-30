@@ -27,12 +27,12 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x12 | 0x080c6946 | 600 |
 | T3 0x17 | 0x080c6dcc | 180 |
 | T3 0x22 | 0x080c853c | 16 |
-| T3 0x49 | 0x080cd2ec | 87 |
+| T3 0x49 | 0x080cd2ec | 87 (WindRack's gust: the pack's `objects/gust`, standard-chips.md) |
 | T3 0x59 | 0x080cf954 | 7372 (rock: `kinds::rock`, field-objects.md) |
 | T3 0x5b | 0x080cfcf8 | 96 |
 | T3 0x74 | 0x080d30d0 | 350 |
-| T3 0x82 | 0x080d5740 | 48 |
-| T3 0x8b | 0x080d6924 | 225 |
+| T3 0x82 | 0x080d5740 | 48 (DolThdr's doll: the pack's `objects/thunder-doll`, standard-chips.md) |
+| T3 0x8b | 0x080d6924 | 225 (DolThdr's thunder column: the pack's `objects/thunder-column`, standard-chips.md) |
 | T3 0x8d | 0x080d6bd4 | 38 (meteor: `kinds::meteor`, chips.md §3.6.7) |
 | T3 0x8e | 0x080d6d80 | 96 |
 | T3 0x94 | 0x080d7acc | 217 |

@@ -1,0 +1,6 @@
+# The shock wave (attack object #0x16, `sub_80C6B40`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x16
+script = "shock_wave.luau"

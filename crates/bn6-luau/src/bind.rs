@@ -255,6 +255,7 @@ impl UserData for Object {
         fields.add_field_method_get("sprite", |_, this| Ok(Sprite(this.0)));
         fields.add_field_method_get("collision", |_, this| Ok(Collision(this.0)));
         fields.add_field_method_get("state", |_, this| Ok(State { owner: this.0, action: false }));
+        fields.add_field_method_get("attack_state", |_, this| Ok(State { owner: this.0, action: true }));
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
@@ -318,6 +319,10 @@ impl UserData for Object {
             with(|api, _| Ok(api.update_collision_panels(this.0)))
         });
         methods.add_method("snap_to_future_panel", |_, this, ()| with(|api, _| Ok(api.snap_to_future_panel(this.0))));
+        methods.add_method("set_collision_panel", |_, this, ()| with(|api, _| Ok(api.set_collision_panel(this.0))));
+        methods.add_method("highlight_collision_panels", |_, this, ()| {
+            with(|api, _| Ok(api.highlight_collision_panels(this.0)))
+        });
         methods.add_method("reserve_panel", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.reserve_panel(this.0, p)))
@@ -374,6 +379,10 @@ impl UserData for Object {
             },
         );
         methods.add_method("hit_spark", |_, this, ()| with(|api, _| Ok(api.hit_spark(this.0))));
+        methods.add_method("take_damage", |_, this, mode: LuaValue| {
+            let mode = u8_arg(mode, "damage mode")?;
+            with(|api, _| Ok(api.take_damage(this.0, mode)))
+        });
 
         // Navis: the attack, requests, state, buttons.
         methods.add_method("attack_param", |_, this, n: LuaValue| {
@@ -444,6 +453,20 @@ impl UserData for Object {
         });
         methods.add_method("pop_absorbed", |_, this, ()| {
             with(|api, _| api.pop_absorbed(this.0).map_err(api_error)).map(|v| v.map_or((None, None), |(k, a)| (Some(k), Some(a))))
+        });
+
+        // Field objects (obstacles).
+        methods.add_method("obstacle_flag", |_, this, name: mlua::LuaString| {
+            let f = named(&name, "obstacle flag", bn6_content_api::api::ObstacleFlag::from_name)?;
+            with(|api, _| api.obstacle_flag(this.0, f).map_err(api_error))
+        });
+        methods.add_method("release_tracking", |_, this, ()| with(|api, _| Ok(api.release_tracking(this.0))));
+        methods.add_method("blink_out", |_, this, ()| {
+            with(|api, _| api.blink_out(this.0).map_err(api_error)).map(|b| b.name())
+        });
+        methods.add_method("fly_to_absorber", |_, this, kind: LuaValue| {
+            let kind = u8_arg(kind, "absorbed kind")?;
+            with(|api, _| Ok(api.fly_to_absorber(this.0, kind)))
         });
     }
 }
@@ -821,6 +844,30 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))
     });
+    lib_fn!(lua, t, "side_stat", |_, (side, i): (LuaValue, LuaValue)| {
+        let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?);
+        with(|api, _| Ok(api.side_stat(side, i)))
+    });
+    lib_fn!(lua, t, "damage_carry", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let r = with(|api, _| Ok(api.damage_carry(side)))?;
+        let t = lua.create_table()?;
+        t.raw_set("this_tick", r.this_tick)?;
+        t.raw_set("previous", r.previous)?;
+        t.raw_set("source", object_value(lua, r.source)?)?;
+        t.raw_set("target", object_value(lua, r.target)?)?;
+        Ok(t)
+    });
+    lib_fn!(lua, t, "set_damage_carry", |_, (side, r): (LuaValue, mlua::Table)| {
+        let side = u8_arg(side, "side")? & 1;
+        let rec = bn6_content_api::api::DamageCarryInfo {
+            this_tick: table_int(&r, "this_tick")? as u16,
+            previous: table_int(&r, "previous")? as u16,
+            source: object_arg(&r.raw_get("source")?, "source")?,
+            target: object_arg(&r.raw_get("target")?, "target")?,
+        };
+        with(|api, _| Ok(api.set_damage_carry(side, rec)))
+    });
     lib_fn!(lua, t, "navi_record", |lua, name_id: LuaValue| {
         let name_id = u16_arg(name_id, "NameID")?;
         let Some(r) = with(|api, _| Ok(api.navi_record(name_id)))? else { return Ok(LuaValue::Nil) };
@@ -849,6 +896,17 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let name = name.to_str()?.to_string();
             let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
             let o = with(|api, _| api.spawn_kind(&name, pos, p).map_err(api_error))?;
+            object_value(lua, o)
+        }
+    );
+    lib_fn!(
+        lua,
+        t,
+        "spawn_kind_at_end",
+        |lua, (name, pos, p): (mlua::LuaString, Option<mlua::UserDataRef<LVec3>>, Option<mlua::Table>)| {
+            let name = name.to_str()?.to_string();
+            let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
+            let o = with(|api, _| api.spawn_kind_at_end(&name, pos, p).map_err(api_error))?;
             object_value(lua, o)
         }
     );
@@ -907,6 +965,46 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let id = u8_arg(id, "hit spark")?;
         let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;
         object_value(lua, o)
+    });
+    lib_fn!(
+        lua,
+        t,
+        "afterimage",
+        |lua, (owner, pos, spec): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, mlua::Table)| {
+            let sprite: LuaValue = spec.raw_get("sprite")?;
+            let shadow: Option<mlua::LuaString> = spec.raw_get("shadow")?;
+            let shadow = match shadow {
+                Some(s) => named(&s, "shadow", |n| bn6_content_api::Shadow::NAMES.iter().position(|&m| m == n).map(|i| bn6_content_api::Shadow::ALL[i]))?,
+                None => bn6_content_api::Shadow::WithSprite,
+            };
+            let tether: Option<mlua::LuaString> = spec.raw_get("tether")?;
+            let tether = match tether {
+                Some(s) => named(&s, "afterimage tether", |n| match n {
+                    "beast_form" => Some(1),
+                    "attack" => Some(2),
+                    _ => None,
+                })?,
+                None => 0,
+            };
+            let s = bn6_content_api::api::AfterimageSpec {
+                sprite: sprite_id(sprite, None)?,
+                anim: table_int(&spec, "anim")? as u8,
+                flip: table_int(&spec, "flip")? as u8,
+                lifetime: table_int(&spec, "lifetime")? as u16,
+                color_shader: table_int(&spec, "color_shader")? as u16,
+                palette: table_int(&spec, "palette")? as u8,
+                shadow,
+                steady: spec.raw_get::<Option<bool>>("steady")?.unwrap_or(false),
+                tether,
+            };
+            let o = with(|api, _| Ok(api.spawn_afterimage(owner.0, pos.0, &s)))?;
+            object_value(lua, o)
+        }
+    );
+    lib_fn!(lua, t, "attach_point", |_, (name_id, point, alliance, flip): (LuaValue, LuaValue, LuaValue, LuaValue)| {
+        let (name_id, point) = (u16_arg(name_id, "NameID")?, u8_arg(point, "attach point")?);
+        let (alliance, flip) = (u8_arg(alliance, "side")?, u8_arg(flip, "flip")?);
+        with(|api, _| Ok(api.name_attach_point(name_id, point, alliance, flip)))
     });
     Ok(t)
 }
@@ -968,6 +1066,14 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.break_panel(p)))
     });
+    lib_fn!(lua, t, "shatter", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.shatter_panel(p)))
+    });
+    lib_fn!(lua, t, "break_empty", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.break_empty_panel(p)))
+    });
     lib_fn!(lua, t, "solid", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.panel_solid(p)))
@@ -975,6 +1081,16 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "highlight", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.highlight_panel(p)))
+    });
+    lib_fn!(lua, t, "register_object", |_, (o, side, class): (mlua::UserDataRef<Object>, LuaValue, LuaValue)| {
+        let (side, class) = (u8_arg(side, "side")? & 1, u8_arg(class, "field object class")?);
+        if class > 1 {
+            return Err(mlua::Error::runtime(format!("field object class {class}: the classes are 0 and 1")));
+        }
+        with(|api, _| Ok(api.register_field_object(o.0, side, class)))
+    });
+    lib_fn!(lua, t, "unregister_object", |_, o: mlua::UserDataRef<Object>| {
+        with(|api, _| Ok(api.unregister_field_object(o.0)))
     });
     Ok(t)
 }

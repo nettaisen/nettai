@@ -16,6 +16,7 @@ pub fn content(rom: &Rom) -> Content {
     let mut chips = chips(rom);
     attach_gun_del_sol(rom, &mut chips);
     attach_sp_damage(rom, &mut chips);
+    attach_navi_damage(rom, &mut chips);
     attach_program_advances(rom, &mut chips);
     attach_modifiers(&mut chips);
     Content {
@@ -90,6 +91,7 @@ fn chips(rom: &Rom) -> Vec<ChipData> {
                 slot_in_limit: b(0x1E),
                 dark_substitute: (b(0x1F) != 0xFF).then_some(b(0x1F)),
                 sp_damage: None,
+                navi_damage: None,
                 modifier: None,
                 program_advances: Vec::new(),
                 gun_del_sol: None,
@@ -144,6 +146,16 @@ fn attach_sp_damage(rom: &Rom, chips: &mut [ChipData]) {
         c.sp_damage = Some((0..11).map(|k| rom.u16(0x0802_0E54 + 0x16 * n as u32 + 2 * k)).collect());
     }
     assert!(rows_used.iter().all(|&u| u), "every SP damage row has its chip");
+}
+
+/// Link navis' chips: damage formula n (24..=44, `sub_8010C50`) reads row
+/// n - 23 of `byte_80212D4` (base, per buster level).
+fn attach_navi_damage(rom: &Rom, chips: &mut [ChipData]) {
+    for c in chips.iter_mut() {
+        let Some(n) = c.damage.checked_sub(1023).filter(|n| (1..=21).contains(n)) else { continue };
+        let row = 0x0802_12D4 + 2 * n as u32;
+        c.navi_damage = Some(NaviChipDamage { base: rom.u8(row), per_level: rom.u8(row + 1) });
+    }
 }
 
 /// The Program Advances (`off_802BCB0`, null-terminated): pointers to
@@ -383,6 +395,8 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
         buster_recovery: (0..5).map(|n| rom.bytes(0x0802_09CC + 6 * n, 6).try_into().unwrap()).collect(),
         // BCD times (`byte_8010B2C`).
         sp_deletion_times: (0..10).map(|i| u32at(rom, 0x0801_0B2C + 4 * i)).collect(),
+        // `math_sinTable` through `math_cosTable`'s end: 384 halfwords.
+        sine: (0..384).map(|i| rom.u16(0x0800_65E0 + 2 * i) as i16).collect(),
         // By hit-modifier bit (`byte_800E58C`, three bytes each) and by
         // collision direction (`byte_800E4E8`, four bytes each).
         push_vectors: std::array::from_fn(|i| slide(rom, 0x0800_E58C + 3 * i as u32)),
@@ -696,7 +710,7 @@ fn effect_table(rom: &Rom, base: u32, n: u32) -> Vec<EffectSprite> {
 /// Object data: attachments (`byte_80B8BD4`), rocks (`byte_80CF934`),
 /// absorbed obstacles' sprites (`byte_80E98C0`), body overlays
 /// (`byte_80C4320` sprites and `off_80C42D4` depth tables) and the sun
-/// beam's sprites (`dword_80E5C28`).
+/// beam's sprites (`dword_80E5C28`), shock waves (`byte_80C6B00`).
 fn objects(rom: &Rom) -> ObjectData {
     // Rock rows: standing animation, (unused), HP / 2, debris palette,
     // break sound (u16), name id (u16). The rock's init (`sub_80CF974`)
@@ -749,7 +763,20 @@ fn objects(rom: &Rom) -> ObjectData {
         projectiles: projectiles(rom),
         flying_shots: flying_shots(rom),
         kinds: Vec::new(),
+        shock_waves: (0..16).map(|i| shock_wave(rom, i)).collect(),
     }
+}
+
+/// A shock wave's row (`byte_80C6B00`, by the wave's first parameter):
+/// the sprite's index in category 0x10, the animation, the ticks, and the
+/// panel type it leaves (0xFF none).
+fn shock_wave(rom: &Rom, id: u8) -> ShockWave {
+    let b = rom.bytes(0x080C_6B00 + 4 * id as u32, 4);
+    let panel = match b[3] {
+        0xFF => None,
+        t => Some(*PanelType::ALL.get(t as usize).unwrap_or_else(|| panic!("shock wave {id}: panel type {t:#x}"))),
+    };
+    ShockWave { id, sprite: SpriteId { category: 0x10, index: b[0] }, anim: b[1], ticks: b[2], panel }
 }
 
 /// An element byte: the primary element in the low bits, secondary bits
