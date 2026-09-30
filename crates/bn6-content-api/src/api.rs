@@ -202,6 +202,10 @@ named_fields! {
         /// A per-action word some actions keep (a move's direction change,
         /// a thrown obstacle).
         Marker = "marker", U32, rw;
+        /// The recovery a shot waits after firing, a word of the attack
+        /// that outlives the action: an action that waits it without
+        /// writing it (a thrown obstacle) waits the last shot's.
+        Recovery = "recovery", U16, rw;
         ActorType = "actor_type", enum_type(&ACTOR_TYPES), ro;
         /// Form or AI variant.
         AiIndex = "ai_index", U8, ro;
@@ -781,6 +785,9 @@ pub trait CoreApi {
     /// `object_crackPanel`: crack a solid panel, or break a cracked,
     /// unoccupied one.
     fn crack_panel(&mut self, p: PanelPos) -> bool;
+    /// `object_breakPanel_dup2`: break a solid panel, or crack it while
+    /// something stands on it.
+    fn break_panel(&mut self, p: PanelPos) -> bool;
     /// `object_isPanelSolid`: the panel is solid (something can stand on
     /// it).
     fn panel_solid(&self, p: PanelPos) -> bool;
@@ -861,6 +868,11 @@ pub trait CoreApi {
     fn state_mut(&mut self, o: ObjectRef) -> Option<&mut ContentState>;
     /// `SpawnT4BattleObjectWithId0`: the one-shot effect `id`.
     fn spawn_effect(&mut self, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
+    /// `sub_801BD3C`: the one-shot effect `id` on each field panel of hit
+    /// region `region` around (x, y), turned the way side `side` faces,
+    /// at height `z`; a whole-field region's (0x80 and up) from the
+    /// bottom right, on the ground.
+    fn spawn_region_effects(&mut self, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32);
     /// `object_spawnCollisionRegion`: a one-tick hit region spawned by
     /// `owner`.
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;

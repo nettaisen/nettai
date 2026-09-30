@@ -196,6 +196,11 @@ crates/bn6-battle/src/behavior/tests.rs (the registration lists); docs/engine/ob
 - The weapon ids that alias the buster (`off_80117D4` entries pointing at `sub_8011A26`: 0x2E, 0x2F, 0x3E, 0x3F,
   0x4D..0x51, 0x6F, 0x70, 0x77, 0x79, 0x7B, 0x7E, 0x82) as weapons naming 00-buster's module.
 - Owns: new objects/ and weapons/ folders, the extractor and pack IO for the projectile table.
+- Done: `objects/projectile` (kinds in its `object.toml`, `data.objects.projectiles`), fired with
+  `lib/projectile.luau` (`projectile.fire(navi, shot)`, `projectile.spawn(owner, x, y, shot)`, the shot typed as
+  `ProjectileShot` in types.d.luau); `objects/flying-shot` (attack #0xB, `sub_80C6248`'s object, with its kinds,
+  `data.objects.flying_shots`), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16 in
+  `weapons/00-buster` and `weapons/01-charged-shot`; the aliases as `weapons/NN-buster`.
 
 ### Group E: instant chips
 
