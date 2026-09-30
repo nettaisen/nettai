@@ -3,7 +3,7 @@
 //! whatever stands there, and takes the panel for its side if it is the
 //! other side's, empty, and not the last of that side's full columns
 //! (the panel comes back later with the stolen-area return). Spawned
-//! during a time stop, it runs in it. See docs/engine/chips.md §3.6.8.
+//! during a dimming, it runs in it. See docs/engine/chips.md §3.6.8.
 
 use crate::battle::Battle;
 use crate::content::SpriteId;
@@ -35,7 +35,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, panel: PanelPos, element: u8, dam
     o.alliance = alliance;
     o.damage = damage as u16;
     o.stamina = (damage >> 16) as u16;
-    o.flags |= flags::RUN_IN_TIME_STOP;
+    o.flags |= flags::RUN_WHILE_DIMMED;
     Some(r)
 }
 
@@ -45,7 +45,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         state::UPDATE => tick(b, r),
         _ => return crate::kinds::generic_destroy(b, r),
     }
-    common::update_sprite_in_time_stop(b, r);
+    common::update_sprite_while_dimmed(b, r);
 }
 
 /// `sub_80C6438`: high above its panel.
@@ -109,7 +109,7 @@ fn fall(b: &mut Battle, r: ObjectRef) {
         ..Default::default()
     };
     if let Some(h) = hitbox::spawn(b, r, &spec) {
-        b.objects.get_mut(h).flags |= flags::RUN_IN_TIME_STOP;
+        b.objects.get_mut(h).flags |= flags::RUN_WHILE_DIMMED;
     }
     // byte_80C6514: the other side's panel, with nothing on it.
     let (require, forbid) = if alliance == 0 {

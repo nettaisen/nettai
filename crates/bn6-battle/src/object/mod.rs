@@ -30,7 +30,7 @@ fn pool_base(pool: Pool) -> usize {
 fn spawn_flags(pool: Pool) -> u8 {
     match pool {
         Pool::Attack => flags::ACTIVE | flags::NO_SPRITE_UPDATE,
-        _ => flags::ACTIVE | flags::NO_SPRITE_UPDATE | flags::RUN_IN_TIME_STOP,
+        _ => flags::ACTIVE | flags::NO_SPRITE_UPDATE | flags::RUN_WHILE_DIMMED,
     }
 }
 
@@ -56,8 +56,8 @@ pub mod flags {
     pub const RUN_WHILE_PAUSED: u8 = 0x04;
     /// The sprite doesn't animate (set at spawn; loading a sprite clears it).
     pub const NO_SPRITE_UPDATE: u8 = 0x08;
-    /// Keeps updating during time stop.
-    pub const RUN_IN_TIME_STOP: u8 = 0x10;
+    /// Keeps updating while dimmed.
+    pub const RUN_WHILE_DIMMED: u8 = 0x10;
     /// Holds a panel reservation.
     pub const HOLDS_RESERVATION: u8 = 0x20;
 }
@@ -126,7 +126,7 @@ pub struct Object {
     /// Facing is `alliance ^ flip`.
     pub flip: u8,
     pub prevent_anim: u8,
-    /// BattleObject+0x19: ticks left of the time-stop shake after a hit
+    /// BattleObject+0x19: ticks left of the dimming shake after a hit
     /// (`sub_8017AB4`: 30 per damaging hit). Other object kinds use the
     /// byte for other things.
     pub shake_timer: u8,
@@ -148,9 +148,9 @@ pub struct Object {
     pub damage: u16,
     pub stamina: u16,
     /// BattleObject+0x30 / +0x32: the whole-pixel X and Z an actor shakes
-    /// around in time stop, saved when the time-stop handler first runs
+    /// around while dimmed, saved when the dimming handler first runs
     /// (`sub_8017AB4`). Other object kinds use these halfwords for other
-    /// things (e.g. a time-freeze chip's id and bonus).
+    /// things (e.g. a cut-in chip's id and bonus).
     pub shake_origin_x: i16,
     pub shake_origin_z: i16,
     pub pos: Vec3,

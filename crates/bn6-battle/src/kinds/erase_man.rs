@@ -1,5 +1,5 @@
 //! EraseMan, the navi of the EraseMan chip (actor object #0x15,
-//! `sub_80BB608`), brought by its time-freeze controller (`navi_chip`).
+//! `sub_80BB608`), brought by its dimming controller (`navi_chip`).
 //! He appears and aims a line of marks (`erase_mark`) up-forward,
 //! forward or down-forward from his row, switching every Param1 ticks,
 //! until his user presses A (or 360 ticks pass); then he slashes along the
@@ -95,7 +95,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         },
         _ => b.objects.free(r),
     }
-    common::update_sprite_in_time_stop(b, r);
+    common::update_sprite_while_dimmed(b, r);
 }
 
 /// `sub_80BB62C`.
@@ -202,7 +202,7 @@ fn mark(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80BB710`: aim, switching every Param1 ticks, until the user
-/// presses A in the time stop, or for 360 ticks.
+/// presses A while dimmed, or for 360 ticks.
 fn aim(b: &mut Battle, r: ObjectRef) {
     let period = b.objects.get(r).params[0] as u16;
     if b.objects.get(r).phase == 0 {
@@ -217,7 +217,7 @@ fn aim(b: &mut Battle, r: ObjectRef) {
     }
     let user = b.objects.get(r).related[0].expect("EraseMan has a user");
     let a = b.objects.get(user).actor.expect("the user has actor data");
-    if b.actors.get(a).timestop_pad.pressed & keys::A != 0 || ran_out(b, r) {
+    if b.actors.get(a).dimmed_pad.pressed & keys::A != 0 || ran_out(b, r) {
         return common::set_action(b, r, 0xC);
     }
     let o = b.objects.get_mut(r);

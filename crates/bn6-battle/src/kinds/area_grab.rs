@@ -1,5 +1,5 @@
-//! The AreaGrab and PanelGrab chips' time-freeze controller (effect object
-//! #3, `sub_80E0710`): the usual freeze phases (`time_freeze`), with an
+//! The AreaGrab and PanelGrab chips' dimming controller (effect object
+//! #3, `sub_80E0710`): the usual dimming phases (`dimming`), with an
 //! effect that drops grab shots (`grab_shot`) on the first column in
 //! front not wholly the user's side's (AreaGrab, Param1 set) or on the
 //! first enemy panel in the user's row (PanelGrab), then waits 61 ticks.
@@ -9,14 +9,14 @@ use crate::battle::Battle;
 use crate::field::{self, pflags};
 use crate::kinds::{common, grab_shot};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
-use crate::time_freeze::{self, FreezeChip};
+use crate::dimming::{self, CutInChip};
 
 pub const INDEX: u8 = 3;
 
 /// The controller's own state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    pub chip: FreezeChip,
+    pub chip: CutInChip,
     /// Param1: a whole column (AreaGrab) rather than one panel.
     pub column: bool,
     /// The damage word (object +0x2C).
@@ -38,7 +38,7 @@ pub fn spawn(
     element: u8,
     params: [u8; 4],
     damage: u32,
-    chip: FreezeChip,
+    chip: CutInChip,
 ) -> Option<ObjectRef> {
     let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), params)?;
     let (panel, alliance, flip) = {
@@ -57,18 +57,18 @@ pub fn spawn(
 
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
-        state::INIT => time_freeze::begin(b, r),
+        state::INIT => dimming::begin(b, r),
         state::UPDATE => match b.objects.get(r).action {
-            0 => time_freeze::dim_screen(b, r),
-            4 => time_freeze::show_chip_name(b, r),
+            0 => dimming::dim_screen(b, r),
+            4 => dimming::show_telop(b, r),
             8 => effect(b, r),
-            _ => time_freeze::undim_screen(b, r),
+            _ => dimming::undim_screen(b, r),
         },
-        _ => time_freeze::end(b, r),
+        _ => dimming::end(b, r),
     }
 }
 
-/// `sub_80E0754`: the grab shots (running in time stop), then 61 ticks.
+/// `sub_80E0754`: the grab shots (running while dimmed), then 61 ticks.
 fn effect(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init == 0 {
         let v = vars(b, r).clone();

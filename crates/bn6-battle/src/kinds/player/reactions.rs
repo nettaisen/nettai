@@ -80,9 +80,9 @@ fn remove_from_alive(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801746E`: two explosions (not in time stop).
+/// `sub_801746E`: two explosions (not while dimmed).
 fn explode(b: &mut Battle, r: ObjectRef) {
-    if b.is_time_stop() {
+    if b.is_dimmed() {
         return;
     }
     let o = b.objects.get_mut(r);

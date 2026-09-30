@@ -25,8 +25,8 @@ fn content() -> Arc<bn6_battle::Content> {
 }
 
 /// Side 0's folder: GunDelSol chips, a navi chip (the eraser navi) and a
-/// time freeze (the invisibility freeze). Side 1's: GunDelSols only, so
-/// that neither side can counter a freeze with one of its own (not
+/// dimming (the invisibility cut-in). Side 1's: GunDelSols only, so
+/// that neither side can counter a cut-in with one of its own (not
 /// implemented yet). The codes are the chips' own (A and *).
 fn folders() -> [bn6_battle::custom::BattleFolder; 2] {
     use testing::{ERASER, SUN_GUN_1, SUN_GUN_2, SUN_GUN_3, VEIL};

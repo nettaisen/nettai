@@ -334,7 +334,7 @@ impl Field {
 
 impl Battle {
     /// `sub_800BFC4`: the per-tick panel update (callers gate it on pause
-    /// and time stop).
+    /// and dimming).
     pub fn tick_panels(&mut self) {
         self.return_stolen_area();
         self.field.volcano_counter = self.field.volcano_counter.wrapping_sub(1);

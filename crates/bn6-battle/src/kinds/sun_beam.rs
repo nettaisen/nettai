@@ -87,10 +87,10 @@ fn init(b: &mut Battle, r: ObjectRef) {
     follow(b, r);
 }
 
-/// `sub_80E5CA0`: hidden in time stop (unless the third parameter is 1);
+/// `sub_80E5CA0`: hidden while dimmed (unless the third parameter is 1);
 /// otherwise follow the owner, or end once the slot is cleared.
 fn follow(b: &mut Battle, r: ObjectRef) {
-    if b.objects.get(r).params[2] != 1 && b.is_time_stop() {
+    if b.objects.get(r).params[2] != 1 && b.is_dimmed() {
         b.objects.get_mut(r).flags &= !flags::VISIBLE;
         return;
     }

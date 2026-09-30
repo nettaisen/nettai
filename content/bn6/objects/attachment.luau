@@ -34,7 +34,7 @@ function attachment.spawn(owner: Object, kind: number, which: Slot): Object?
         o.panel_x, o.panel_y = owner.panel_x, owner.panel_y
         o.alliance, o.flip = owner.alliance, owner.flip
         o.run_while_paused = true
-        o.run_in_time_stop = true
+        o.run_while_dimmed = true
         local s = o.state :: State
         s.slot = which
     end
@@ -43,7 +43,7 @@ function attachment.spawn(owner: Object, kind: number, which: Slot): Object?
 end
 
 -- `sub_80B8DA6`: follow the owner's position and visibility; animate,
--- except while paused (or in time stop, unless param 3 says otherwise);
+-- except while paused (or while dimmed, unless param 3 says otherwise);
 -- end once the slot is cleared.
 local function follow(me: Object)
     local owner = me.related1 :: Object
@@ -64,7 +64,7 @@ local function follow(me: Object)
         me:set_lifecycle("destroy")
         return
     end
-    if me:param(3) == 0 and battle.time_stop() then
+    if me:param(3) == 0 and battle.dimmed() then
         return
     end
     if battle.paused() then

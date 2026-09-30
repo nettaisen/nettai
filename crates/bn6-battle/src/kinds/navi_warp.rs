@@ -11,7 +11,7 @@ use crate::kinds::player::form;
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 use crate::setup::Navi;
-use crate::time_freeze::{hide_user, show_user};
+use crate::dimming::{hide_user, show_user};
 
 pub const INDEX: u8 = 0x2D;
 
@@ -138,5 +138,5 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         }
         common::set_progress(b, r, Progress::DESTROY);
     }
-    common::update_sprite_in_time_stop(b, r);
+    common::update_sprite_while_dimmed(b, r);
 }

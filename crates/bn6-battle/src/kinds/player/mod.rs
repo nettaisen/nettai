@@ -856,9 +856,9 @@ fn charge_fire_chip(b: &mut Battle, r: ObjectRef, limit: u16) {
     b.hands[side].charge_bonus[i] += 1;
 }
 
-/// `sub_80107D4`: chip lockout and special cooldowns (not in time stop).
+/// `sub_80107D4`: chip lockout and special cooldowns (not while dimmed).
 fn tick_cooldowns(b: &mut Battle, r: ObjectRef) {
-    if b.is_time_stop() {
+    if b.is_dimmed() {
         return;
     }
     let a = ai_mut(b, r);
@@ -905,7 +905,7 @@ fn destroy(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_801BCF4` / `object_updateSprite`: apply a requested animation and
-/// step the sprite (not while paused, in time stop without flag 0x10, or
+/// step the sprite (not while paused, while dimmed without flag 0x10, or
 /// with `PreventAnim`).
 pub(crate) fn update_sprite(b: &mut Battle, r: ObjectRef) {
     if b.paused {
@@ -915,7 +915,7 @@ pub(crate) fn update_sprite(b: &mut Battle, r: ObjectRef) {
     if o.flags & flags::ACTIVE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
         return;
     }
-    if o.flags & flags::RUN_IN_TIME_STOP == 0 && b.is_time_stop() {
+    if o.flags & flags::RUN_WHILE_DIMMED == 0 && b.is_dimmed() {
         return;
     }
     if o.collision.is_some() && o.prevent_anim != 0 {

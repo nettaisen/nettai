@@ -48,25 +48,25 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0xcf | 0x080df328 | 4170 |
 | T4 0x00 | 0x080e0548 | 3910 |
 | T4 0x02 | 0x080e0638 | 250 |
-| T4 0x03 | 0x080e0710 | 1876 (AreaGrab freeze controller: `kinds::area_grab`, chips.md §3.6.8) |
+| T4 0x03 | 0x080e0710 | 1876 (AreaGrab dimming controller: `kinds::area_grab`, chips.md §3.6.8) |
 | T4 0x04 | 0x080e0844 | 1134 |
 | T4 0x07 | 0x080e0ad4 | 5502 |
 | T4 0x08 | 0x080e0df0 | 118268 |
 | T4 0x0a | 0x080e10a4 | 56 |
 | T4 0x0f | 0x080e1520 | 6154 |
-| T4 0x10 | 0x080e17e8 | 6284 (navi chip freeze controller: `kinds::navi_chip`, chips.md §3.6.7) |
+| T4 0x10 | 0x080e17e8 | 6284 (navi chip dimming controller: `kinds::navi_chip`, chips.md §3.6.7) |
 | T4 0x1c | 0x080e23a4 | 334 |
 | T4 0x1f | 0x080e28a8 | 192 |
 | T4 0x20 | 0x080e2ae8 | 609 |
 | T4 0x28 | 0x080e32b8 | 500 |
-| T4 0x2a | 0x080e34c0 | 2276 (trap chip freeze controller: `kinds::trap_chip`, chips.md §3.6.9) |
+| T4 0x2a | 0x080e34c0 | 2276 (trap chip dimming controller: `kinds::trap_chip`, chips.md §3.6.9) |
 | T4 0x2d | 0x080e37f4 | 316 |
 | T4 0x2e | 0x080e39a0 | 810 |
 | T4 0x2f | 0x080e3ab8 | 471 |
 | T4 0x3b | 0x080e4910 | 494 |
 | T4 0x48 | 0x080e5c2c | 847 |
 | T4 0x5a | 0x080e70c8 | 184 |
-| T4 0x5d | 0x080e74d4 | 762 (Invisibl freeze controller: `kinds::invisible`, chips.md §3.6) |
+| T4 0x5d | 0x080e74d4 | 762 (Invisibl dimming controller: `kinds::invisible`, chips.md §3.6) |
 | T4 0x62 | 0x080e78bc | 260 (EraseMan's aim mark: `kinds::erase_mark`, chips.md §3.6.7) |
 | T4 0x6b | 0x080e807c | 54 |
 | T4 0x76 | 0x080e8b00 | 595 |

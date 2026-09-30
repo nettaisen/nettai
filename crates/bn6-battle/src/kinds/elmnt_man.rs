@@ -1,5 +1,5 @@
 //! ElmntMan, the navi of the ElmntMan chip (actor object #0x10,
-//! `sub_80BAA8C`), brought by its time-freeze controller (`navi_chip`).
+//! `sub_80BAA8C`), brought by its dimming controller (`navi_chip`).
 //! He appears, cycles through the four elements until his user presses A
 //! (or a while passes, then one at random), and attacks with it: Fire
 //! drops a meteor on every enemy navi, Aqua, Elec and Wood are not
@@ -101,7 +101,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         },
         _ => b.objects.free(r),
     }
-    common::update_sprite_in_time_stop(b, r);
+    common::update_sprite_while_dimmed(b, r);
 }
 
 /// `sub_80BAAB0`: on his panel, with his overlay (actor #0x56 variant
@@ -183,7 +183,7 @@ fn show_element(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_80BABAC`: cycle the elements every Param1 ticks until the user
-/// presses A in the time stop; after 20 cycles' worth, one at random (a
+/// presses A while dimmed; after 20 cycles' worth, one at random (a
 /// simulation RNG draw).
 fn cycle(b: &mut Battle, r: ObjectRef) {
     let period = b.objects.get(r).params[0] as u16;
@@ -199,7 +199,7 @@ fn cycle(b: &mut Battle, r: ObjectRef) {
     }
     let user = b.objects.get(r).related[0].expect("ElmntMan has a user");
     let a = b.objects.get(user).actor.expect("the user has actor data");
-    if b.actors.get(a).timestop_pad.pressed & keys::A != 0 {
+    if b.actors.get(a).dimmed_pad.pressed & keys::A != 0 {
         b.play_sound(crate::sound::SoundId(0x182));
         return common::set_action(b, r, 0xC);
     }

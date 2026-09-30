@@ -23,13 +23,13 @@ Routine names are the original's (`sub_80EDAE0`). "Tick" is one call of `Battle:
 **Three layers, two boundaries.** The engine splits naturally into:
 
 - **Core**: mechanism with no BN6 rules in it. Object pools and the update list with the game's insertion and
-  freeing semantics, pause and time-stop gating, the typed state store, collision registration on panels and
+  freeing semantics, pause and dimming gating, the typed state store, collision registration on panels and
   pair iteration, the panel grid with reservations and cached flags, 16.16 positions, the animation stepper,
   RNG streams, input records, the sound and look output channels, and snapshots.
 - **Ruleset**: BN6's battle rules, written in Rust against the core. The hit kernel and damage pipeline,
   element weakness, guard, counters, statuses, the navi framework (request decoding, charge, the idle
   controller, `set_attack`/exit, hit reactions, deletion), the chip hand and chip use, the custom gauge and the
-  flow state machines, panel types, the obstacle framework, the time-freeze service and the forms framework
+  flow state machines, panel types, the obstacle framework, the dimming service and the forms framework
   (turn-start sequencer, pause-time actions, action wrappers).
 - **Content**: data plus small scripts. Chips, attack actions, object kinds, navis, forms, effects, stages.
 
@@ -55,8 +55,8 @@ overwhelmingly content work, which is what makes the boundary worth drawing now.
 
 **The hardest cases** (§4): same-tick spawn and list-order effects; the attack scratch that persists between
 actions; Beast Out's wrapper around arbitrary chips and chip chaining; content reaching into other objects'
-state; global battle state that content mutates (including time stop set mid-tick); the pause handler; raw
-observable state (byte-offset phase numbers, register-garbage values); counters and counter-freezes; handles
+state; global battle state that content mutates (including dimming set mid-tick); the pause handler; raw
+observable state (byte-offset phase numbers, register-garbage values); counters and counter cut-ins; handles
 that alias after a slot is reused; and content ids hard-coded throughout the ruleset.
 
 ## 1. Inventory
@@ -86,7 +86,7 @@ Lines are exact (`wc -l`); splits are by function and rounded.
 | object/mod.rs | 411 | core | Pools, lowest-free allocation, the linked update list, `spawn` (after current, else tail), `free` (unlink, own links kept), the loop cursor. **Mixed:** `Object` carries ruleset fields (hp, max_hp, name_id, chip, chips_held, damage, stamina, element, the slide fields, drag_step, shake_*, saved_state), about 35 lines. |
 | object/sprite.rs | 153 | core | The animation stepper and `Look`. **Mixed:** reads frame timing from a global (then the generated `SPRITES` table; now the battle's `Content` passes it in). |
 | sound.rs | 119 | core (≈45), content (≈20), tests (≈54) | The cue channel is core; the named `SoundId` constants are content. |
-| battle.rs | 1,117 | ruleset (≈900), core (≈150), content (≈70) | Core: `tick`, `run_objects` (flags sampled before the handler, successor read after), the pause and time-stop gates, the sound buffer, `Fade`. Ruleset: round state, the mode handler, the fighting machine, results, custom screen, combo, battle time, turn timer, gauge, hand exposure, damage carry, NaviCust drain, low-HP music, and the order of the per-tick systems. **Mixed:** `count_down_beast_out` (MegaMan and Beast forms), `custom_open_requested` and `apply_actor_inputs` (Beast Over), music and banner ids, per-navi win/lose banners, `spawn_actors` naming the rock kind, the drain period table. |
+| battle.rs | 1,117 | ruleset (≈900), core (≈150), content (≈70) | Core: `tick`, `run_objects` (flags sampled before the handler, successor read after), the pause and dimming gates, the sound buffer, `Fade`. Ruleset: round state, the mode handler, the fighting machine, results, custom screen, combo, battle time, turn timer, gauge, hand exposure, damage carry, NaviCust drain, low-HP music, and the order of the per-tick systems. **Mixed:** `count_down_beast_out` (MegaMan and Beast forms), `custom_open_requested` and `apply_actor_inputs` (Beast Over), music and banner ids, per-navi win/lose banners, `spawn_actors` naming the rock kind, the drain period table. |
 | collision.rs | 601 | core (≈260), ruleset (≈340) | Core: the slot pool, per-panel masks, `present`/`remove`, pair iteration and dedup, region expansion. Ruleset: the hit kernel (`resolve_hit`: state filters, guard, air/ground, invulnerability, status, counter, multiplier), the raw channel, damage-word decoding, panel conversions. **Mixed:** reads `REGIONS`, `FIELD_REGIONS`, `COLLISION_TYPES` and `ELEMENT_WEAKNESS` as globals; aqua-on-ice and heat-on-grass are panel-type rules inside the kernel. |
 | field.rs | 601 | core (≈230), ruleset (≈340), content (≈30) | Core: the grid, cached flags, refresh, reservations, `check`. Ruleset: panel types (holes, cracks, roads, volcano), stolen-area return, the field-object registry, step rules. **Mixed:** `erupt` spawns attack object #7 with 50 damage; `crack_panel` plays sound 0x97. |
 | actor.rs | 319 | ruleset (≈200), content (≈80), core (≈40) | The actor-data pool is core. Pad, charge, requests, status bits and the attack header are the navi framework. **Mixed:** request and status bits named for chips (AntiDmg 0xBB, AntiSwrd 0xBC, BodyGrd 0x157) and forms; fields for one chip or form (`absorbed`, `lockon_marker`, `full_synchro_aura`, `beast_over_exhausted`). |
@@ -127,7 +127,7 @@ Lines are exact (`wc -l`); splits are by function and rounded.
 | mod.rs | 872 | ruleset (≈560), content (≈250), core (≈60) | Spawn, init, the per-tick pipeline, `set_attack`/`exit_attack_state`, status reset, weapons, element. **Mixed:** MegaMan (NameID 0x1A0 + form), per-AI-index hook lists that panic, `per_form_tick` (form 0x18 height), `navi_palette`, `style_hook`, the Beast Out counter. `update_sprite` duplicates `common::update_sprite`. |
 | input.rs | 312 | ruleset (≈260), content (≈50) | Buttons to requests, charge. **Mixed:** `chip_charges` is a form×family table written as code; buster types 3/4/0x2C. |
 | intake.rs | 708 | ruleset (≈550), content (≈160) | Stage A of the damage pipeline. **Mixed:** barrier types, trap chips 0xBB/0xBC/0x157, bug codes, status immunity for navi 7 and forms 7/0x13. |
-| status.rs | 715 | ruleset (≈560), content (≈150) | Stage B, the action dispatch, statuses, the pause handler, time stop. **Mixed:** Cross knockout and lanes (NameID 0x1AC..0x1C1), Beast Over exhaustion, the Beast rush hook in `dispatch`. |
+| status.rs | 715 | ruleset (≈560), content (≈150) | Stage B, the action dispatch, statuses, the pause handler, dimming. **Mixed:** Cross knockout and lanes (NameID 0x1AC..0x1C1), Beast Over exhaustion, the Beast rush hook in `dispatch`. |
 | reactions.rs | 514 | ruleset (≈440), content (≈70) | Deletion, flinch, paralysis, drag, freeze, bubble. **Mixed:** the per-AI-index death, flinch and drag hooks; reaction sound ids. |
 | idle.rs | 351 | ruleset (≈200), content (≈150) | The idle controller. **Mixed:** weapon routines (buster, charged, blank, claw) and their damage, NaviCust interception, move lag. |
 | chip_use.rs | 292 | ruleset (≈150), content (≈140) | Chip use and chaining. **Mixed:** chain exclusions (chips 0x52/0x53), aura chips 0x150 and 0x5F..0x61, dark chips 0x11E..0x122, form bonuses per family, cross doubles. |
@@ -254,7 +254,7 @@ Bit-exact semantics:
   (an attachment then stores `None` in its owner's slot, and the owner's later writes to it are no-ops).
 - **Initial state:** the common header is zeroed except the sprite, which keeps the previous occupant's data
   until a `sprite_load` (the game's zero fill stops at the sprite block). Header flags are the pool default: 0x19
-  for actors and effects (active, no sprite update, runs in time stop), 0x09 for attacks. Spawners OR in 0x04
+  for actors and effects (active, no sprite update, runs while dimmed), 0x09 for attacks. Spawners OR in 0x04
   (runs while paused) or 0x14 themselves. The kind's state is its zero value. The state word is [0,0,0,0], so the
   first update runs init.
 - **Position in the list:** immediately after the object currently updating, so the new object runs later in
@@ -275,14 +275,14 @@ pub struct StateWord { pub state: u8, pub action: u8, pub phase: u8, pub phase_i
 
 impl Ctx<'_> {
     fn flags(&self, r: ObjectRef) -> u8;                // ACTIVE 1, VISIBLE 2, RUN_WHILE_PAUSED 4,
-    fn set_flags(&mut self, r: ObjectRef, bits: u8);    // NO_SPRITE_UPDATE 8, RUN_IN_TIME_STOP 0x10,
+    fn set_flags(&mut self, r: ObjectRef, bits: u8);    // NO_SPRITE_UPDATE 8, RUN_WHILE_DIMMED 0x10,
     fn clear_flags(&mut self, r: ObjectRef, bits: u8);  // HOLDS_RESERVATION 0x20
     fn progress(&self, r: ObjectRef) -> StateWord;
     fn set_progress(&mut self, r: ObjectRef, w: StateWord);
     fn set_action(&mut self, r: ObjectRef, action: u8); // phase = phase_init = 0
     fn set_phase(&mut self, r: ObjectRef, phase: u8);   // phase_init = 0
     fn is_paused(&self) -> bool;
-    fn is_time_stop(&self) -> bool;
+    fn is_dimmed(&self) -> bool;
 }
 
 pub struct KindDef {
@@ -297,7 +297,7 @@ pub struct KindDef {
 ```
 
 - **Loop (core):** walk the list; sample the object's flags *before* its handler; skip it if paused and it lacks
-  0x04, or if in time stop and it lacks 0x10; otherwise call its kind's `update`. The ACTIVE bit is not tested:
+  0x04, or if dimmed and it lacks 0x10; otherwise call its kind's `update`. The ACTIVE bit is not tested:
   whatever is linked gets called. The successor is read after the handler.
 - **State word:** `[state, action, phase, phase_init]` is observable (the traces compare it), and its values are
   the original's jump-table offsets: state 0/4/8, phases 0, 4, 8, 0xC..., `phase_init` 0 then 4 (or 1 in some
@@ -305,8 +305,8 @@ pub struct KindDef {
   with `phase_init = 0` runs the entry on the next tick unless the routine falls through.
 - **Actor attack steps (R):** navi actions keep their own phase in the attack header (`step`, `step_init`), not
   in the state word; `set_attack` resets both.
-- **Gates** are core: `paused` and `time_stop` are two global bits. When they flip is ruleset (flow) or content
-  (a time-freeze controller's init sets time stop in the middle of the object loop; later objects in the same
+- **Gates** are core: `paused` and `dimmed` are two global bits. When they flip is ruleset (flow) or content
+  (a dimming controller's init starts the dimming in the middle of the object loop; later objects in the same
   tick already see it).
 
 ### 2.4 Timers and integer semantics
@@ -348,8 +348,8 @@ impl Ctx<'_> {
 - **Allocation:** lowest free slot; the slot is zeroed except its bit; `enabled = 1`.
 - **Setup (R):** copies the object's element (low nibble primary, high nibble secondary), alliance, flip, panel,
   counter byte (low byte of `stamina`) and damage word; looks up the self and target type masks by (index,
-  alliance), OR 0x10000 into self when created during time stop; decodes the damage word (§2.6); region = 1.
-- **Present:** clears the hit results (in time stop the final hit modifier and guard directions survive), then
+  alliance), OR 0x10000 into self when created while dimmed; decodes the damage word (§2.6); region = 1.
+- **Present:** clears the hit results (while dimmed the final hit modifier and guard directions survive), then
   sets the slot's bit on each valid panel of its region in the region's list order and refreshes each panel's
   flags. Whole-field regions skip the refresh (the game passes the wrong arguments).
 - **Remove:** for each panel of the *current* region (whole field: only where the bit was set), clear the bit,
@@ -456,7 +456,7 @@ impl Ctx<'_> {
     fn set_animation(&mut self, r: ObjectRef, anim: u8);    // CurAnim = anim, CurAnimCopy = 0xFF: restarts
     fn request_animation(&mut self, r: ObjectRef, anim: u8);// CurAnim only: restarts on change
     fn update_sprite(&mut self, r: ObjectRef);              // object_updateSprite gating
-    fn update_sprite_in_time_stop(&mut self, r: ObjectRef); // object_updateSpriteTimestop
+    fn update_sprite_while_dimmed(&mut self, r: ObjectRef); // object_updateSpriteTimestop
     fn step_sprite(&mut self, r: ObjectRef);                // sub_801BCD0: paused or not
     fn sprite_tick(&mut self, r: ObjectRef);                // bare sprite_update, no gating
     fn frame_flags(&self, r: ObjectRef) -> u8;              // 0x80 last, 0x40 loop: only when count == 0
@@ -468,7 +468,7 @@ impl Ctx<'_> {
 - **Stepper (core):** a frame of duration d is current for exactly d updates; end-of-animation is visible after
   the sum of durations; a held last frame reports 0x80 from then on; a looping one for one tick per cycle;
   zero-duration frames are skipped within one update.
-- **Gating:** `update_sprite` skips while paused, in time stop unless the object runs in time stop, when the
+- **Gating:** `update_sprite` skips while paused, while dimmed unless the object runs while dimmed, when the
   object has collision data and `prevent_anim` set, and for inactive or non-animating objects. Which wrapper a
   routine calls is part of its behavior (the form overlay picks one of three by a spawn parameter).
 - **Animation timing is simulation data.** Effect lifetimes and chip timings end on `frame_flags`; any change of
@@ -504,7 +504,7 @@ custom screen) is per console and never read by lockstep code; the engine does n
 
 Draws in ported code, all in object update order: every buster request (1, `sub_8013D5E`, even with the
 NaviCust stats at 0), plus 1 positive draw when a buster or charged-shot projectile stat is set; each `jitter`
-(hit effects of hitters, guard sparks, rock debris positions, the time-stop shake every tick for 30 ticks after a
+(hit effects of hitters, guard sparks, rock debris positions, the dimming shake every tick for 30 ticks after a
 hit); rock debris init (2 each, so a broken rock costs 6); the battle-start style hook for NaviCust 9/10 (1); the
 intro's reward pick (1 positive). Unported content adds more (Vulcan: 1 per bullet). A content change that adds,
 removes or reorders a draw changes everything after it, so draws are part of a script's contract.
@@ -514,7 +514,7 @@ removes or reorders a draw changes everything after it, so draws are part of a s
 ```rust
 impl Ctx<'_> {
     fn pad(&self, r: ObjectRef) -> Pad;              // held, pressed, released, previous
-    fn timestop_pad(&self, r: ObjectRef) -> Pad;     // maintained only during time stop
+    fn dimmed_pad(&self, r: ObjectRef) -> Pad;     // maintained only while dimmed
     fn requests(&self, r: ObjectRef) -> u32;         // (R) the navi's request bits (ai+0x44)
     fn set_requests(&mut self, r: ObjectRef, bits: u32);
     fn clear_requests(&mut self, r: ObjectRef, bits: u32);
@@ -599,7 +599,7 @@ impl Ctx<'_> {
 - Chip use happens inside the idle controller on the press tick (the hand advances that tick); the action's first
   handler tick is the next one. `prepare_chip` fills the header from the hand entry and the chip record, applies
   double damage, paralyze, uninstall and erase bits, the chip-recovery heal and the navi-chip counter, and returns
-  the chip's action. `into` exists for the counter-freeze, which prepares into a temporary header (§4.10).
+  the chip's action. `into` exists for the counter cut-in, which prepares into a temporary header (§4.10).
 
 ### 2.17 Global battle state
 
@@ -608,7 +608,7 @@ impl Ctx<'_> {
     fn is_fighting(&self) -> bool;                // battle flag 1
     fn is_battle_over(&self) -> bool;             // a side has no navi, or time up
     fn is_battle_over_zflag(&self) -> bool;       // the Z-flag reading seven callers use: true only for time up
-    fn set_time_stop(&mut self, on: bool);        // (R) via the time-freeze service
+    fn set_dimmed(&mut self, on: bool);           // (R) via the dimming service
     fn player(&self, side: u8) -> Option<ObjectRef>;
     fn is_remote(&self, alliance: u8) -> bool;    // alliance != the local side (presentation choices)
     fn link_battle(&self) -> bool;
@@ -658,7 +658,7 @@ literals in the ruleset: not chainable in a Beast rush (0x52, 0x53), aura bonus 
 
 **Code:** none per chip. A chip names an action; all per-chip variation within an action is data indexed by
 `subtype` (GunDelSol's firing ticks {60, 90, 120, 120} and beam looks; Cannon's projectile descriptors; Vulcan's
-shot counts {3, 4, 5, 10}). The original has 46 attack actions used by chips, 38 time-freeze spawners (action 0x15,
+shot counts {3, 4, 5, 10}). The original has 46 attack actions used by chips, 38 cut-in chip spawners (action 0x15,
 by subtype), 27 navi-chip summons (action 0x1B, by subtype) and 10 chips dispatched through per-form action tables:
 about 120 scripts for 411 chips. Damage codes 1000..1044 map onto 7 formula functions.
 
@@ -730,7 +730,7 @@ ChipDef ──action────▶ ActionDef ──spawns──▶ KindDef: hit
    │  ├─hit_param────▶ hitbox counter byte ──▶ counter window, mood damage
    │  ├─lockon_mode──▶ lock-on search (Beast rush destination)
    │  ├─damage≥1000──▶ damage formula script
-   │  └─(0x15/0x1B)──▶ time-freeze spawner / navi summon, by subtype
+   │  └─(0x15/0x1B)──▶ cut-in chip spawner / navi summon, by subtype
 ActionDef ──sounds──▶ SoundId ──▶ song (the pack's sound)
 KindDef ──sprite──▶ SpriteId ──▶ animation timing (simulation) + pixels (assets)
         ──effect id─▶ EffectDef ──▶ SpriteId, anim, palette
@@ -766,7 +766,7 @@ Each case: what it is, where it shows today, and how the boundary handles it.
 several spawns run in reverse order. Hits resolve when the *later* of two objects removes its collision, so HP drops
 this tick or next depending on list order. RNG draws happen in list order. The dying player's charge glow is freed
 after its explosions spawn, which decides their slots (3 and 4, not 1). The flow exposes the hand after objects run.
-Time stop can start in the middle of the object loop.
+Dimming can start in the middle of the object loop.
 
 **Handling.** The core owns the list and its rules (§2.2, §2.3), and content cannot influence ordering except by
 spawning. Every `Ctx` call applies at once; a scripting runtime must not batch effects or run objects in parallel.
@@ -821,12 +821,12 @@ halfword stores (the claw's) are expressed as the two named fields they set.
 ### 4.5 Global battle state that content mutates
 
 **What.** Content changes NaviStats (mood, form, bug levels, support flags, the Beast Out counter), battle flags
-(time stop; gauge full and custom requested from input), the intro bits, hand cursors, `beast_out_used`, side
+(dimming; gauge full and custom requested from input), the intro bits, hand cursors, `beast_out_used`, side
 statistics, the defensive-chip registry, damage-carry targets, the fade-in queue, the field-object registry, the
 alive lists (deletion) and, in unported chips, the custom gauge (FullCust).
 
 **Handling.** Every global is owned by the core or the ruleset and changed through a named operation (§2.17). State
-that exists only for some content (a time-freeze controller's per-side record, the defensive-chip registry) is
+that exists only for some content (a dimming controller's per-side record, the defensive-chip registry) is
 declared by that content as a battle global with a schema, stored and snapshotted by the engine like everything
 else.
 
@@ -881,15 +881,15 @@ the dead player's flags reads the hitbox's. Freed objects keep their links.
 behavior the traces observe. Content never gets a reference that could dangle; it gets a handle whose meaning is
 "whatever is in that slot now", which is the game's meaning.
 
-### 4.10 Time freeze and the counter-freeze
+### 4.10 Dimming and the counter cut-in
 
-**What.** Not yet ported, but on the chip path. A time-freeze controller's init sets time stop in the middle of the
-object loop, so later objects that do not run in time stop are skipped for the rest of the tick. Per-side freeze
-records gate the name banner and a counter by the other side; a counter-freeze prepares the counterer's chip into
+**What.** Not yet ported, but on the chip path. A dimming controller's init starts the dimming in the middle of the
+object loop, so later objects that do not run while dimmed are skipped for the rest of the tick. Per-side dimming
+records gate the telop and a counter cut-in by the other side; a counter cut-in prepares the counterer's chip into
 a 0x50-byte temporary block on the stack so the navi's real attack header and action are untouched; resumption is
 last-in, first-out.
 
-**Handling.** A ruleset **time-freeze service** owning the per-side records and the flag; controllers are content
+**Handling.** A ruleset **dimming service** owning the per-side records and the flag; controllers are content
 scripts. `prepare_chip` takes a target (the actor's header, or a detached header) so the counter path can use it.
 
 ### 4.11 Content ids inside the ruleset
