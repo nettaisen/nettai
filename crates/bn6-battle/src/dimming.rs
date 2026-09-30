@@ -368,11 +368,14 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: ChipId) {
 }
 
 /// `sub_80E1352(user, 0)`: the user vanishes while its navi chip's navi
-/// acts (its status visuals and the HUD with it).
+/// acts (its status visuals, charge glow, Full Synchro aura and the HUD
+/// with it). (Its barrier visual too, once the port has one:
+/// docs/engine/dimming-chips.md §3.3.)
 pub fn hide_user(b: &mut Battle, user: ObjectRef) {
     b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
     set_vanished(b, user, true);
     set_links_visible(b, user, false);
+    set_charge_glow(b, user, false);
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
         crate::kinds::full_synchro_aura::hide(b, aura);
     }
@@ -393,6 +396,7 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
     }
     set_vanished(b, user, false);
     set_links_visible(b, user, true);
+    set_charge_glow(b, user, true);
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
         crate::kinds::full_synchro_aura::show(b, aura);
     }
@@ -407,6 +411,14 @@ fn set_vanished(b: &mut Battle, user: ObjectRef, on: bool) {
         *status |= crate::actor::status::VANISHED;
     } else {
         *status &= !crate::actor::status::VANISHED;
+    }
+}
+
+/// The charge glow (AIData+0x58) is hidden and shown with its navi
+/// (`sub_80E0F22`, `sub_80E0F28`).
+fn set_charge_glow(b: &mut Battle, user: ObjectRef, on: bool) {
+    if let Some(glow) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).charge_glow) {
+        crate::kinds::charge_glow::set_enabled(b, glow, on);
     }
 }
 
