@@ -360,6 +360,9 @@ declare class Object
     function set_coordinates_from_panel(self): ()
     function set_panel_from_coordinates(self): ()
     function update_collision_panels(self): ()
+    -- `sub_80169BE`: shown unless the battle is dimmed; hidden if it is the
+    -- remote side's and the local player is blind.
+    function update_visibility(self): ()
     -- Onto the destination panel of a move (panel, reservation,
     -- coordinates, collision).
     function snap_to_future_panel(self): ()
@@ -750,6 +753,9 @@ export type PackData = {
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
     },
+    -- Panel regions by number (`PanelOffsetListsPointerTable`): each
+    -- panel's {dx, dy}, dx toward the facing side.
+    regions: { [number]: { { number } } },
 }
 
 declare data: PackData
