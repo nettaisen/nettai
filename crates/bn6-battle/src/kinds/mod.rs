@@ -16,7 +16,6 @@ pub mod form_overlay;
 pub mod heal;
 pub mod hitbox;
 pub mod intro;
-pub mod invisible;
 pub mod lockon_marker;
 pub mod meteor;
 pub mod navi_chip;
@@ -24,11 +23,8 @@ pub mod navi_warp;
 pub mod obstacle;
 pub mod palette_flash;
 pub mod player;
-pub mod rock;
-pub mod rock_debris;
 pub mod spark;
 pub mod status_visual;
-pub mod trap_chip;
 
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Pool};
@@ -44,7 +40,6 @@ pub enum Vars {
     ChargeGlow(charge_glow::Vars),
     Effect(effect::Vars),
     Hitbox(hitbox::Vars),
-    Rock(rock::Vars),
     AbsorbedObstacle(absorbed_obstacle::Vars),
     FormOverlay(form_overlay::Vars),
     Afterimage(afterimage::Vars),
@@ -52,12 +47,10 @@ pub enum Vars {
     PaletteFlash(palette_flash::Vars),
     CrossMerge(cross_merge::Vars),
     BodyOverlay(body_overlay::Vars),
-    Invisible(invisible::Vars),
     NaviChip(navi_chip::Vars),
     NaviWarp(navi_warp::Vars),
     ElmntMan(elmnt_man::Vars),
     Meteor(meteor::Vars),
-    TrapChip(trap_chip::Vars),
     StatusVisual(status_visual::Vars),
     /// A content kind's declared state (see `content`).
     Content(bn6_content_api::ContentState),
@@ -76,7 +69,6 @@ impl Vars {
             (Pool::Effect, palette_flash::INDEX) => Vars::PaletteFlash(Default::default()),
             (Pool::Actor, cross_merge::INDEX) => Vars::CrossMerge(Default::default()),
             (Pool::Actor, body_overlay::INDEX) => Vars::BodyOverlay(Default::default()),
-            (Pool::Effect, invisible::INDEX) => Vars::Invisible(Default::default()),
             (Pool::Actor, 0) => Vars::None,
             _ => Vars::None,
         }
@@ -96,8 +88,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, 0) => effect::update(b, r),
         (Pool::Attack, 3) => hitbox::update(b, r),
         (Pool::Effect, 4) => spark::update(b, r),
-        (Pool::Attack, rock::INDEX) => rock::update(b, r),
-        (Pool::Effect, rock_debris::INDEX) => rock_debris::update(b, r),
         (Pool::Effect, absorbed_obstacle::INDEX) => absorbed_obstacle::update(b, r),
         (Pool::Actor, form_overlay::INDEX) => form_overlay::update(b, r),
         (Pool::Effect, afterimage::INDEX) => afterimage::update(b, r),
@@ -105,13 +95,11 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, palette_flash::INDEX) => palette_flash::update(b, r),
         (Pool::Actor, cross_merge::INDEX) => cross_merge::update(b, r),
         (Pool::Actor, body_overlay::INDEX) => body_overlay::update(b, r),
-        (Pool::Effect, invisible::INDEX) => invisible::update(b, r),
         (Pool::Effect, navi_chip::INDEX) => navi_chip::update(b, r),
         (Pool::Actor, navi_warp::INDEX) => navi_warp::update(b, r),
         (Pool::Actor, elmnt_man::INDEX) => elmnt_man::update(b, r),
         (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
-        (Pool::Effect, trap_chip::INDEX) => trap_chip::update(b, r),
         (Pool::Effect, status_visual::INDEX) => status_visual::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }

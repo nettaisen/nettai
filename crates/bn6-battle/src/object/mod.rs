@@ -276,6 +276,18 @@ impl Objects {
         Some(r)
     }
 
+    /// Spawn an object at the head of the update list (`sub_80033E4`): it
+    /// first runs next tick, before everything else.
+    pub fn spawn_at_front(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+        let r = self.allocate(pool, index, pos, params)?;
+        let new = node_of(r);
+        let first = self.links[HEAD.0 as usize].next.expect("list head has a successor");
+        self.links[new.0 as usize] = Links { prev: Some(HEAD), next: Some(first) };
+        self.links[HEAD.0 as usize].next = Some(new);
+        self.links[first.0 as usize].prev = Some(new);
+        Some(r)
+    }
+
     /// Spawn an object at the end of the update list.
     pub fn spawn_at_end(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
         let r = self.allocate(pool, index, pos, params)?;

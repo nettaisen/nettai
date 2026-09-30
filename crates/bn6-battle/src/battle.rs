@@ -759,18 +759,22 @@ impl Battle {
     }
 
     /// `sub_8007368`: spawn the settings' actor list. Only navis join the
-    /// alive/actor bookkeeping; rocks and other field objects don't.
+    /// alive/actor bookkeeping; rocks and other field objects don't. The
+    /// field objects are content's (`Hook::ActorListEntry`, by the entry's
+    /// type in `off_80073A0`).
     pub fn spawn_actors(&mut self) {
         use crate::setup::ActorKind;
+        use bn6_content_api::{ActorListEntrySpec, Hook, HookCall, PanelPos};
         let content = self.content.clone();
         for entry in content.rules.stages.actor_list(self.setup.settings.actors) {
-            match entry.kind {
-                ActorKind::Navi => {}
-                ActorKind::Rock { variant } => {
-                    crate::kinds::rock::spawn_at_start(self, entry.x, entry.y, variant);
-                    continue;
-                }
-                k => panic!("actor list entries of kind {k:?} are not implemented yet"),
+            if entry.kind != ActorKind::Navi {
+                let Some(hook) = self.behaviors.hook(Hook::ActorListEntry(entry.kind.entry_type())) else {
+                    panic!("actor list entries of kind {:?} are not implemented yet", entry.kind);
+                };
+                let panel = PanelPos { x: entry.x, y: entry.y };
+                let spec = ActorListEntrySpec { panel, side: entry.alliance, variant: entry.kind.variant() };
+                crate::behavior::call_hook(self, hook, HookCall::ActorListEntry { spec });
+                continue;
             }
             let r = crate::kinds::player::spawn(self, entry);
             let side = entry.alliance as usize;
