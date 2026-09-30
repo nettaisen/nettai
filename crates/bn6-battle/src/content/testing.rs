@@ -519,6 +519,7 @@ fn objects() -> ObjectData {
         body_overlays: Vec::new(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
         kinds: kinds(),
+        shock_waves: (0..16).map(|id| ShockWave { id, sprite: SpriteId { category: 0x10, index: 3 }, anim: 1, ticks: 6, panel: None }).collect(),
     }
 }
 
