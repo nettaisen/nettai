@@ -759,7 +759,7 @@ The stored state is always the full 32 bits. Callers usually reduce with `svc 6`
   - the local folder shuffle;
   - the local custom screen.
 
-  No lockstep code reads it. An engine that only needs simulation state can keep one RNG1 per player (or drop it). To reproduce the trace's `rng1` column, model the sites below for core 0.
+  No lockstep code reads it, but each console's custom screen does (ChpShufl's re-deal), so the port keeps one per player and advances it as the original does (`crate::console`; custom-screen.md §8). The sites below are what it models: the main loop, the camera shake, the emotion window's flicker and the custom screen's re-deal.
 
 ### 5.3 Advances on a battle frame outside object handlers
 
