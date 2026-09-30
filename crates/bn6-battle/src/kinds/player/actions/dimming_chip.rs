@@ -7,6 +7,7 @@
 
 use bn6_content_api::{DimmingChipSpec, Hook, HookCall};
 
+use crate::actor::AttackVars;
 use crate::battle::Battle;
 use crate::kinds::player::{ai, ai_mut, exit_attack_state};
 use crate::object::ObjectRef;
@@ -19,14 +20,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         return exit_attack_state(b, r);
     }
     let a = ai(b, r).attack.clone();
-    let damage = a.damage as u32 | (a.hit_param as u32) << 16;
-    // off_802CCB4, by the chip's subtype. (Its subtypes 34, 35, 39 and 40
-    // are null: the game jumps to address 0.)
-    let Some(hook) = b.behaviors.hook(Hook::DimmingChip(a.variant)) else {
-        panic!("dimming chip subtype {} (off_802CCB4) is not implemented yet", a.variant);
-    };
-    let spec = DimmingChipSpec { element: a.element, params: a.params, damage, chip: a.chip_id, bonus: a.extra };
-    let controller = crate::behavior::call_hook(b, hook, HookCall::DimmingChip { user: r, spec }).object();
+    let controller = spawn_controller(b, r, &a);
     let side = b.objects.get(r).alliance;
     if b.dimming[side as usize].controller.is_none()
         && let Some(c) = controller
@@ -34,4 +28,19 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         b.register_dimming(side, a.chip_id, c, r);
     }
     ai_mut(b, r).attack.step_init = 1;
+}
+
+/// `off_802CCB4[subtype]`: spawn the dimming controller of the chip the
+/// attack variables `a` hold, for `user` (r0/r1 its panel, r2 the element,
+/// r4 the params, r6 the damage word, r7 the chip and its bonus). Action
+/// 0x15 and the counter cut-in (`sub_8017AB4`) both call it.
+pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) -> Option<ObjectRef> {
+    let damage = a.damage as u32 | (a.hit_param as u32) << 16;
+    // off_802CCB4, by the chip's subtype. (Its subtypes 34, 35, 39 and 40
+    // are null: the game jumps to address 0.)
+    let Some(hook) = b.behaviors.hook(Hook::DimmingChip(a.variant)) else {
+        panic!("dimming chip subtype {} (off_802CCB4) is not implemented yet", a.variant);
+    };
+    let spec = DimmingChipSpec { element: a.element, params: a.params, damage, chip: a.chip_id, bonus: a.extra };
+    crate::behavior::call_hook(b, hook, HookCall::DimmingChip { user, spec }).object()
 }
