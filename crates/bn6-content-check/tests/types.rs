@@ -32,6 +32,10 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local function f(me: Object) local _: \"gone\" = obstacle.removal(me) end", "not an obstacle removal"),
         ("local _ = data.objects.projectiles[0].hit_efect", "not a projectile field"),
         ("local _: ProjectileShot = { kind = 0, damage = 1 }", "a shot without its height"),
+        // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+        ("local function f(me: Object) obstacle.take_hits(me, \"shoved\") end", "not an obstacle push"),
+        ("local function f(me: Object) local _ = obstacle.react(me, \"breaks\", \"never\") end", "not a dimming hold"),
+        ("local function f(me: Object) battle.set_wind(me, 0, \"chip\") end", "not a wind source"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

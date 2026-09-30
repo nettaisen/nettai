@@ -39,6 +39,7 @@ fn battles_run_the_content_scripts() {
             "invisible",
             "navi-boost",
             "projectile",
+            "rising-bubble",
             "rock",
             "rock-cube",
             "rock-debris",

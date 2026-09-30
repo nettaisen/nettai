@@ -229,6 +229,7 @@ impl Hash for Object {
             action,
             phase,
             phase_init,
+            slide_bounds,
             drag_step,
             element,
             slide_type,
@@ -268,7 +269,7 @@ impl Hash for Object {
         index.hash(h);
         params.hash(h);
         (state, action, phase, phase_init).hash(h);
-        drag_step.hash(h);
+        (slide_bounds, drag_step).hash(h);
         (element, slide_type, anim, anim_loaded).hash(h);
         (panel, future_panel, alliance, flip).hash(h);
         (prevent_anim, shake_timer, chips_held).hash(h);
