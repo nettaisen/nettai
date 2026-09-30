@@ -4,6 +4,7 @@
 //! engine's bit values or offsets.
 
 use bn6_content_api::api::ApiResult;
+use bn6_content_api::api::{BlinkOut, ObstacleFlag};
 use bn6_content_api::{
     ActorField, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
     FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField,
@@ -945,6 +946,8 @@ impl CoreApi for Battle {
         let c = self.collision_of(o)?;
         Ok(Value::Int(match f {
             CollisionField::Region => c.region as i64,
+            CollisionField::PanelX => c.panel.x as i64,
+            CollisionField::PanelY => c.panel.y as i64,
             CollisionField::HitEffect => c.hit_effect as i64,
             CollisionField::StatusBase => c.status_base as i64,
             CollisionField::Bugs => c.bugs as i64,
@@ -952,6 +955,7 @@ impl CoreApi for Battle {
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
+            CollisionField::DamageElements => c.acc.damage_elements as i64,
         }))
     }
 
@@ -961,14 +965,22 @@ impl CoreApi for Battle {
         let x = int(v);
         match f {
             CollisionField::Region => c.region = x as u8,
+            CollisionField::PanelX => c.panel.x = x as u8,
+            CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::HitEffect => c.hit_effect = x as u8,
             CollisionField::StatusBase => c.status_base = x as u8,
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
-            CollisionField::HitFlags | CollisionField::FinalDamage => unreachable!("read-only"),
+            CollisionField::HitFlags | CollisionField::FinalDamage | CollisionField::DamageElements => {
+                unreachable!("read-only")
+            }
         }
         Ok(())
+    }
+
+    fn take_damage(&mut self, o: ObjectRef, mode: u8) -> i32 {
+        kinds::common::take_damage(self, o, mode)
     }
 
     fn present_collision(&mut self, o: ObjectRef) {
@@ -1016,5 +1028,54 @@ impl CoreApi for Battle {
 
     fn navi_chip_left(&mut self, controller: ObjectRef) {
         kinds::navi_chip::navi_left(self, controller);
+    }
+
+    // ---- Field objects (obstacles) -------------------------------------------
+
+    fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool> {
+        use kinds::obstacle::f2;
+        let mask = match flag {
+            ObstacleFlag::Destroy => f2::DESTROY,
+            ObstacleFlag::Flinch => f2::FLINCH,
+            ObstacleFlag::Pushed => f2::PUSHED,
+            ObstacleFlag::Thrown => f2::THROWN,
+            ObstacleFlag::Encased => f2::ENCASED,
+            ObstacleFlag::Removed => f2::REMOVED,
+            ObstacleFlag::Vanish => f2::VANISH,
+            ObstacleFlag::Absorbed => f2::ABSORBED,
+            ObstacleFlag::AbsorbedBy0 => f2::ABSORBED_BY_0,
+            ObstacleFlag::AbsorbedBy1 => f2::ABSORBED_BY_1,
+        };
+        Ok(self.collision_of(o)?.f2 & mask != 0)
+    }
+
+    fn register_field_object(&mut self, o: ObjectRef, side: u8, class: u8) {
+        kinds::obstacle::register(self, o, side, class);
+    }
+
+    fn unregister_field_object(&mut self, o: ObjectRef) {
+        self.field.objects.unregister(o);
+    }
+
+    fn release_tracking(&mut self, o: ObjectRef) {
+        kinds::obstacle::release_tracking(self, o);
+    }
+
+    fn blink_out(&mut self, o: ObjectRef) -> ApiResult<BlinkOut> {
+        let f2 = self.collision_of(o)?.f2;
+        Ok(match kinds::obstacle::blink_out(self, o, f2) {
+            kinds::obstacle::BlinkOut::No => BlinkOut::No,
+            kinds::obstacle::BlinkOut::Blinking => BlinkOut::Blinking,
+            kinds::obstacle::BlinkOut::Done => BlinkOut::Done,
+        })
+    }
+
+    fn fly_to_absorber(&mut self, o: ObjectRef, kind: u8) {
+        let palette = self.objects.sprite(o).look.palette;
+        kinds::obstacle::fly_to_absorber(self, o, kind, palette);
+    }
+
+    fn name_attach_point(&self, name_id: u16, point: u8, alliance: u8, flip: u8) -> (i32, i32) {
+        kinds::player::name_attach_point(self, name_id, point as usize, alliance, flip)
     }
 }
