@@ -27,7 +27,7 @@ local fireswrd = require("../fireswrd/chip")
 local aquaswrd = require("../aquaswrd/chip")
 local elecswrd = require("../elecswrd/chip")
 local bambswrd = require("../bambswrd/chip")
-local stepswrd = require("../stepswrd/chips")
+local stepswrd = require("../stepswrd/chip")
 local protoman_stepswrd = require("../stepswrd/protoman")
 
 local legacy = {
@@ -56,7 +56,7 @@ local BY_SUBTYPE: { [number]: Action } = {
 local function action_of(me: Object): Action
     if me:attack_param(1) ~= 0 then
         -- ProtoMan's own StepSwrd is chip 0x19A.
-        return if me.chip == 0x19A then protoman_stepswrd.action else stepswrd[1].action
+        return if me.chip == 0x19A then protoman_stepswrd.action else stepswrd.action
     end
     local a = BY_SUBTYPE[me.variant]
     if not a then
