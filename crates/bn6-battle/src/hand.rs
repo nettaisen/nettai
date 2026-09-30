@@ -5,7 +5,7 @@ use crate::battle::Battle;
 use crate::data::{self, ChipFlags, ChipId};
 
 /// Up to five chips, in use order, with their build-time damage and bonuses.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ChipHand {
     /// Index of the next chip to use (0..=5).
     pub cursor: u8,

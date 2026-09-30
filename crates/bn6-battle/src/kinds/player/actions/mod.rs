@@ -5,10 +5,17 @@
 //! (which `set_attack` resets); what an action keeps besides that lives
 //! in its own state struct in `AttackVars::action`.
 
+pub mod absorb;
 pub mod beast_claw;
+pub mod blank_shot;
+pub mod buster;
+pub mod dust_charge;
 pub mod beast_rush;
 pub mod gun_del_sol;
+pub mod instant;
 pub mod movement;
+pub mod navi_chip;
+pub mod time_freeze;
 #[cfg(test)]
 mod tests;
 
@@ -20,7 +27,7 @@ use crate::object::ObjectRef;
 /// The running action's own state. The game keeps it in the shared
 /// attack variables, where it outlives the action; nothing reads it from
 /// another action.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ActionVars {
     #[default]
     None,
@@ -28,6 +35,10 @@ pub enum ActionVars {
     GunDelSol(gun_del_sol::Vars),
     BeastClaw(beast_claw::Vars),
     FormChange(transform::Vars),
+    BlankShot(blank_shot::Vars),
+    Absorb(absorb::Vars),
+    Instant(instant::Vars),
+    DustCharge(dust_charge::Vars),
     /// A content action's declared state (see `content`).
     Content(bn6_content_api::ContentState),
 }
@@ -41,6 +52,12 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
         movement::ACTION => movement::update(b, r),
         gun_del_sol::ACTION => gun_del_sol::update(b, r),
         beast_claw::ACTION => beast_claw::update(b, r),
+        time_freeze::ACTION => time_freeze::update(b, r),
+        blank_shot::ACTION => blank_shot::update(b, r),
+        navi_chip::ACTION => navi_chip::update(b, r),
+        absorb::ACTION => absorb::update(b, r),
+        instant::ACTION => instant::update(b, r),
+        dust_charge::ACTION => dust_charge::update(b, r),
         _ => panic!("player action {action:#x} is not implemented yet"),
     }
 }

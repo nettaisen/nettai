@@ -18,7 +18,7 @@ use crate::object::{ObjectRef, PanelPos, Vec3};
 pub const ACTION: u8 = 0x52;
 
 /// The claw's own state.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     /// Ticks left in the current phase.
     pub timer: u16,

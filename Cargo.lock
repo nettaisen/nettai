@@ -117,6 +117,13 @@ name = "bn6-content-api"
 version = "0.1.0"
 
 [[package]]
+name = "bn6-content-check"
+version = "0.1.0"
+dependencies = [
+ "luau-analyze",
+]
+
+[[package]]
 name = "bn6-content-rust"
 version = "0.1.0"
 dependencies = [
@@ -147,8 +154,14 @@ name = "bn6-luau"
 version = "0.1.0"
 dependencies = [
  "bn6-content-api",
- "luau-analyze",
  "mlua",
+]
+
+[[package]]
+name = "bn6-netplay"
+version = "0.1.0"
+dependencies = [
+ "bn6-battle",
 ]
 
 [[package]]

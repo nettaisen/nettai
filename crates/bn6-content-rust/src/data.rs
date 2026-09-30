@@ -86,7 +86,21 @@ pub static ATTACHMENTS: [AttachmentKind; 52] = [
 pub static GUN_DEL_SOL_FIRING_TICKS: [u16; 4] = [60, 90, 120, 120];
 
 /// GunDelSol's sun beam by [sun][level] (`byte_80EDBB8`).
-pub static GUN_DEL_SOL_BEAMS: [[SunBeamLook; 4]; 2] = [[SunBeamLook { sprite: 0, palette: 0 }, SunBeamLook { sprite: 0, palette: 0 }, SunBeamLook { sprite: 0, palette: 0 }, SunBeamLook { sprite: 1, palette: 0 }], [SunBeamLook { sprite: 0, palette: 2 }, SunBeamLook { sprite: 0, palette: 2 }, SunBeamLook { sprite: 0, palette: 2 }, SunBeamLook { sprite: 1, palette: 3 }]];
+pub static GUN_DEL_SOL_BEAMS: [[SunBeamLook; 4]; 2] = [
+    [
+        SunBeamLook { sprite: 0, palette: 0 },
+        SunBeamLook { sprite: 0, palette: 0 },
+        SunBeamLook { sprite: 0, palette: 0 },
+        SunBeamLook { sprite: 1, palette: 0 },
+    ],
+    [
+        SunBeamLook { sprite: 0, palette: 2 },
+        SunBeamLook { sprite: 0, palette: 2 },
+        SunBeamLook { sprite: 0, palette: 2 },
+        SunBeamLook { sprite: 1, palette: 3 },
+    ],
+];
 
 /// The sun beam's sprites, by `SunBeamLook::sprite` (`dword_80E5C28`).
-pub static SUN_BEAM_SPRITES: [SpriteId; 2] = [SpriteId { category: 0x0c, index: 0x3c }, SpriteId { category: 0x0c, index: 0x47 }];
+pub static SUN_BEAM_SPRITES: [SpriteId; 2] =
+    [SpriteId { category: 0x0c, index: 0x3c }, SpriteId { category: 0x0c, index: 0x47 }];

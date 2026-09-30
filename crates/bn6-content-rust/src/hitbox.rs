@@ -80,7 +80,8 @@ fn init(api: &mut dyn CoreApi, me: ObjectRef) {
         return;
     }
     let s: State = state(api, me);
-    let (region, hit_effect, target, self_type) = (api.param(me, 0), api.param(me, 1), api.param(me, 2), api.param(me, 3));
+    let (region, hit_effect, target, self_type) =
+        (api.param(me, 0), api.param(me, 1), api.param(me, 2), api.param(me, 3));
     api.setup_collision(me, self_type, target, s.hit_mod);
     api.set_region(me, region);
     api.set_hit_effect(me, hit_effect);

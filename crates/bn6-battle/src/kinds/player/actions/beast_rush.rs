@@ -22,7 +22,7 @@ use crate::object::{ObjectRef, PanelPos, Vec3};
 const CHAIN_BLOCK_TICKS: u8 = 12;
 
 /// Where the rush is.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Phase {
     /// Hold the panel (`sub_80EADDC`).
     #[default]
@@ -35,7 +35,7 @@ pub enum Phase {
 
 /// The rush's state (AIAttackVars+0x1E..+0x27), next to the chip action's
 /// own.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     pub phase: Phase,
     /// The phase's entry ran.

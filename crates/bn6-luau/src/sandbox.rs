@@ -74,7 +74,9 @@ pub fn compiler() -> Compiler {
 pub fn new_vm(debug_print: bool) -> mlua::Result<Lua> {
     let lua = Lua::new_with(StdLib::STRING | StdLib::TABLE | StdLib::BIT | StdLib::MATH, LuaOptions::default())?;
     let g = lua.globals();
-    for name in ["collectgarbage", "gcinfo", "getfenv", "setfenv", "loadstring", "newproxy", "load", "dofile", "loadfile"] {
+    for name in
+        ["collectgarbage", "gcinfo", "getfenv", "setfenv", "loadstring", "newproxy", "load", "dofile", "loadfile"]
+    {
         g.raw_set(name, Value::Nil)?;
     }
     let math: Table = g.get("math")?;

@@ -252,7 +252,10 @@ impl StatusFlag {
 /// engine stops the battle, the same way on every machine.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ApiError {
-    Type { field: &'static str, error: TypeError },
+    Type {
+        field: &'static str,
+        error: TypeError,
+    },
     ReadOnly(&'static str),
     /// The object has no actor data (it isn't a navi).
     NoActor(ObjectRef),

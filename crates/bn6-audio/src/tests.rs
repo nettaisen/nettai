@@ -90,6 +90,47 @@ fn pinch_and_volume_cues_are_player_controls() {
 }
 
 #[test]
+fn cancelling_a_cue_takes_it_back() {
+    let mut c = SoundCalls::new();
+    let music = |id| SoundCue::Music(SoundId(id));
+    requests(&mut c, music(0x15));
+    requests(&mut c, SoundCue::Music(SoundId::WINNER));
+    let mut out = Vec::new();
+    c.cancel(SoundCue::Music(SoundId::WINNER), &mut out);
+    assert_eq!(out, [Request::Start(SongId(0x15))], "back to the battle music");
+    assert_eq!(requests(&mut c, music(0x15)), [], "which is the music again");
+    requests(&mut c, SoundCue::StopMusic);
+    let mut out = Vec::new();
+    c.cancel(SoundCue::StopMusic, &mut out);
+    assert_eq!(out, [Request::Start(SongId(0x15))]);
+    let mut out = Vec::new();
+    c.cancel(SoundCue::Effect(SoundId(0x94)), &mut out);
+    c.cancel(SoundCue::Pinch(true), &mut out);
+    let m = MUSIC_PLAYER;
+    assert_eq!(
+        out,
+        [
+            Request::Stop(SongId(0x94)),
+            Request::Pitch { player: m, tracks: 0xFFFF, pitch: 0 },
+            Request::Tempo { player: m, tempo: 0x100 }
+        ]
+    );
+}
+
+#[test]
+fn a_cancelled_effect_stops() {
+    let mut a = BattleAudio::new(bank());
+    let mut out = Vec::new();
+    a.handle_actions([CueAction::Play(SoundCue::Effect(SoundId(0x94)))]);
+    a.tick(&mut out);
+    assert_eq!(a.driver().player(PlayerId(16)).unwrap().song(), Some(SongId(0x94)));
+    assert!(a.driver().player(PlayerId(16)).unwrap().is_playing());
+    a.handle_actions([CueAction::Cancel(SoundCue::Effect(SoundId(0x94)))]);
+    a.tick(&mut out);
+    assert!(!a.driver().player(PlayerId(16)).unwrap().is_playing());
+}
+
+#[test]
 fn a_cue_sounds_two_frames_later_as_in_the_game() {
     let mut a = BattleAudio::new(bank());
     let mut out = Vec::new();
@@ -148,6 +189,9 @@ fn a_battle_drives_the_music() {
         rng: 1,
         local_side: 0,
         score: SetScore::default(),
+        later_stages: Default::default(),
+        low_hp_music_latched: false,
+        sp_times: Default::default(),
     });
     let mut a = BattleAudio::new(bank());
     let mut out = Vec::new();
