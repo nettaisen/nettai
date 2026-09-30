@@ -479,6 +479,28 @@ export type HitboxSpec = {
     bug_arg: number?,
 }
 
+-- A form overlay: `sprite` layered on its owner, on the owner's animation
+-- plus `anim_offset`; `stepping` (Param3) 0 steps it as any object (not
+-- while dimmed), 1 while dimmed too, 2 always; `nudged`: a pixel higher
+-- and nearer.
+export type FormOverlaySpec = {
+    sprite: SpriteId,
+    stepping: number?,
+    anim_offset: number?,
+    nudged: boolean?,
+}
+
+-- An afterimage: `sprite` holding `anim` with `flip` (the game's flip
+-- value), tinted by `color_shader`, blinking for `lifetime` ticks.
+export type AfterimageSpec = {
+    sprite: SpriteId,
+    anim: number,
+    flip: number,
+    color_shader: number,
+    lifetime: number,
+    shadow: Shadow?,
+}
+
 -- A side's defensive-chip record.
 export type LinkedChip = {
     chip: number,
@@ -567,6 +589,14 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80C468C`: a form overlay (actor object #0x57) on `owner`.
+    form_overlay: (owner: Object, spec: FormOverlaySpec) -> Object?,
+    -- `sub_80E33FA` with a sprite of its own: a blinking afterimage
+    -- (effect object #0x28) at `pos`.
+    afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
+    -- `sub_80E11E0`: a white screen flash (effect object #0x0A) for
+    -- `duration` ticks, going on while dimmed and/or paused.
+    palette_flash: (duration: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
 }
 
 declare field: {

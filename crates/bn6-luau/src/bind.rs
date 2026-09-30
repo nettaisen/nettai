@@ -908,6 +908,45 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let o = with(|api, _| Ok(api.spawn_hitbox(owner.0, &s)))?;
         object_value(lua, o)
     });
+    lib_fn!(lua, t, "form_overlay", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
+        let sprite = sprite_id(spec.raw_get("sprite")?, None)?;
+        let (stepping, anim_offset) = (table_int(&spec, "stepping")? as u8, table_int(&spec, "anim_offset")? as u8);
+        let nudged = spec.raw_get::<Option<bool>>("nudged")?.unwrap_or(false);
+        let o = with(|api, _| Ok(api.spawn_form_overlay(owner.0, sprite, stepping, anim_offset, nudged)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(
+        lua,
+        t,
+        "afterimage",
+        |lua, (owner, pos, spec): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, mlua::Table)| {
+            let sprite = sprite_id(spec.raw_get("sprite")?, None)?;
+            let shadow = match spec.raw_get::<Option<mlua::LuaString>>("shadow")? {
+                Some(s) => named(&s, "shadow", |n| {
+                    bn6_content_api::Shadow::NAMES.iter().position(|x| *x == n).map(|i| bn6_content_api::Shadow::ALL[i])
+                })?,
+                None => bn6_content_api::Shadow::WithSprite,
+            };
+            let o = with(|api, _| {
+                Ok(api.spawn_afterimage(
+                    owner.0,
+                    pos.0,
+                    sprite,
+                    table_int(&spec, "anim")? as u8,
+                    table_int(&spec, "flip")? as u8,
+                    table_int(&spec, "color_shader")? as u16,
+                    table_int(&spec, "lifetime")? as u16,
+                    shadow,
+                ))
+            })?;
+            object_value(lua, o)
+        }
+    );
+    lib_fn!(lua, t, "palette_flash", |lua, (duration, while_dimmed, while_paused): (LuaValue, Option<bool>, Option<bool>)| {
+        let duration = u8_arg(duration, "duration")?;
+        let o = with(|api, _| Ok(api.spawn_palette_flash(duration, while_dimmed.unwrap_or(false), while_paused.unwrap_or(false))))?;
+        object_value(lua, o)
+    });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {
         let id = u8_arg(id, "hit spark")?;
         let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;

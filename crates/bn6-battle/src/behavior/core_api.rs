@@ -661,6 +661,33 @@ impl CoreApi for Battle {
         kinds::hitbox::spawn(self, owner, &spec)
     }
 
+    fn spawn_form_overlay(&mut self, owner: ObjectRef, sprite: SpriteId, stepping: u8, anim_offset: u8, nudged: bool) -> Option<ObjectRef> {
+        kinds::form_overlay::spawn_with(self, owner, sprite, stepping, anim_offset, nudged)
+    }
+
+    fn spawn_afterimage(
+        &mut self,
+        owner: ObjectRef,
+        pos: Vec3,
+        sprite: SpriteId,
+        anim: u8,
+        flip: u8,
+        color_shader: u16,
+        lifetime: u16,
+        shadow: Shadow,
+    ) -> Option<ObjectRef> {
+        let shadow = match shadow {
+            Shadow::Hidden => sprite::Shadow::Hidden,
+            Shadow::Ground => sprite::Shadow::Ground,
+            Shadow::WithSprite => sprite::Shadow::WithSprite,
+        };
+        kinds::afterimage::spawn_sprite(self, owner, pos, sprite, anim, flip, color_shader, lifetime, shadow)
+    }
+
+    fn spawn_palette_flash(&mut self, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
+        kinds::palette_flash::spawn(self, duration, while_dimmed, while_paused)
+    }
+
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef> {
         kinds::spark::spawn(self, owner, pos, id)
     }

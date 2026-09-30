@@ -782,6 +782,29 @@ pub trait CoreApi {
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
     /// `sub_80E08C4`: hit spark `id` at `pos`.
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
+    /// `sub_80C468C`: a form overlay (actor object #0x57) layering `sprite`
+    /// on `owner`, following its animation plus `anim_offset`; `stepping`
+    /// (Param3) 0 steps it as any object, 1 while dimmed too, 2 always;
+    /// `nudged`: a pixel higher and nearer.
+    fn spawn_form_overlay(&mut self, owner: ObjectRef, sprite: SpriteId, stepping: u8, anim_offset: u8, nudged: bool) -> Option<ObjectRef>;
+    /// `sub_80E33FA` with a sprite of its own: a blinking afterimage
+    /// (effect object #0x28) of `sprite` holding `anim` with `flip` at
+    /// `pos`, for `owner`, lasting `lifetime` ticks with `color_shader`.
+    #[allow(clippy::too_many_arguments)]
+    fn spawn_afterimage(
+        &mut self,
+        owner: ObjectRef,
+        pos: Vec3,
+        sprite: SpriteId,
+        anim: u8,
+        flip: u8,
+        color_shader: u16,
+        lifetime: u16,
+        shadow: Shadow,
+    ) -> Option<ObjectRef>;
+    /// `sub_80E11E0`: a white screen flash (effect object #0x0A) for
+    /// `duration` ticks, going on while dimmed and/or paused.
+    fn spawn_palette_flash(&mut self, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
