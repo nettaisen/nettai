@@ -572,10 +572,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // HUD table.
     enable_turning(b, r);
     crate::kinds::charge_glow::spawn(b, r);
-    // sub_800F378: per-form post-init hook.
-    if ai(b, r).ai_index == 10 {
-        panic!("post-init hook sub_80F22F8 is not implemented yet");
-    }
+    post_init_hook(b, r);
     if stats(b, r).form == Form::NONE {
         let name_id = b.objects.get(r).name_id;
         form::navi_init_hook(b, r, name_id);
@@ -587,6 +584,52 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.action = 0;
     o.phase = 0;
     o.phase_init = 0;
+}
+
+/// `sub_800F378`: the post-init hook by actor type and AI index. For
+/// players (`off_80EAA04`) every entry is empty but DustMan's (AI index 10,
+/// `sub_80F22F8`), which in battle mode 9 spawns two objects he keeps
+/// (attack #0xD2 on the same side, running while dimmed, and actor #0x28).
+/// Viruses' and AI navis' hooks (`off_81092D0`, `off_80F2668`) belong to
+/// their AI.
+fn post_init_hook(b: &mut Battle, r: ObjectRef) {
+    let a = ai(b, r);
+    match a.actor_type {
+        ActorType::Player => {}
+        t => panic!("the post-init hooks of {t:?} actors (sub_800F378) belong to the virus and navi AI"),
+    }
+    match a.ai_index {
+        10 => {
+            if battle_mode(b) != 9 {
+                return;
+            }
+            // sub_80DFD74 (at 0, 0, 0) and sub_80C02A6 (at the registers the
+            // first spawn left: garbage nothing is known to read).
+            let (alliance, flip) = {
+                let o = b.objects.get(r);
+                (o.alliance, o.flip)
+            };
+            let junk = crate::behavior::spawn_object(b, Pool::Attack, 0xD2, Vec3::default(), [0; 4]);
+            if let Some(j) = junk {
+                let o = b.objects.get_mut(j);
+                o.related[0] = Some(r);
+                o.alliance = alliance;
+                o.flip = flip;
+                o.element = 0;
+                o.flags |= flags::RUN_WHILE_DIMMED;
+            }
+            let second = crate::behavior::spawn_object(b, Pool::Actor, 0x28, Vec3::default(), [0; 4]);
+            if let Some(s) = second {
+                let o = b.objects.get_mut(s);
+                o.related[0] = Some(r);
+                o.alliance = alliance;
+                o.flip = flip;
+            }
+            ai_mut(b, r).mode9_objects = [junk, second];
+        }
+        0..=24 => {}
+        i => panic!("the post-init hook for AI index {i} reads past its table (off_80EAA04)"),
+    }
 }
 
 /// `sub_800FC9E` + `sprite_load`: load the navi's battle sprite.
@@ -771,8 +814,10 @@ fn set_charge_shot_routine(a: &mut ActorData, v: u8) {
     }
 }
 
-/// `sub_8013E58`: the NaviCust battle-start hook (9 and 10 pick a random
-/// variant).
+/// `sub_8013E58`: the NaviCust battle-start bug (stat 0x1A,
+/// `off_8013E9C`): for 300 ticks (variants 1..=4) or 600 (5..=8) the navi
+/// starts invisible, invulnerable, blind or confused; 9 and 10 roll one of
+/// the four.
 fn style_hook(b: &mut Battle, r: ObjectRef) {
     let s = stats(b, r).bugs.battle_start;
     let variant = match s {
@@ -780,8 +825,25 @@ fn style_hook(b: &mut Battle, r: ObjectRef) {
         10 => (b.rng.next() & 3) as u8 + 5,
         _ => s,
     };
-    if variant != 0 {
-        panic!("NaviCust style hook {variant} (off_8013E9C) is not implemented yet");
+    let ticks: u16 = match variant {
+        0 => return,
+        1..=4 => 300,
+        5..=8 => 600,
+        _ => panic!("NaviCust battle-start bug {variant} reads past its table (off_8013E9C)"),
+    };
+    match (variant - 1) % 4 {
+        // sub_8010474: invisible, flashing, with its sound.
+        0 => {
+            coll_mut(b, r).status_timers[timer::FLASH] = ticks;
+            set_flag1(b, r, f1::INVISIBLE);
+            b.play_sound(crate::sound::SoundId(0x93));
+        }
+        1 => set_invulnerable(b, r, ticks),
+        2 => {
+            coll_mut(b, r).status_timers[timer::BLIND] = ticks;
+            set_flag2(b, r, 0x20);
+        }
+        _ => coll_mut(b, r).status_timers[timer::CONFUSE] = ticks,
     }
 }
 
@@ -859,16 +921,68 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).look.palette = palette;
 }
 
-/// `sub_8013DA0`: the NaviCust emotion timer (stats 0x24 and 0x21).
+/// `byte_8013E44`: the emotions the swing rolls from (six normal, eight
+/// tired, one angry, one Full Synchro), before the current one is
+/// swapped out.
+const EMOTION_SWINGS: [u8; 16] = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2, 3];
+/// `dword_8013E54`: the mood a normal (0) or Full Synchro (3) swing sets.
+const SWING_MOODS: [u8; 4] = [0x99, 0x3C, 0x00, 0xFF];
+
+/// `sub_8013DA0`: the NaviCust emotion-swing bug (stat 0x24), while the
+/// Beast Out counter (stat 0x21) lasts: in a form it only keeps the navi
+/// calm and untired; in base form, every 60 ticks the emotion swings to a
+/// random other one (a roll of 16 from `EMOTION_SWINGS`, where the current
+/// emotion counts as normal, or as tired when it is normal).
 fn emotion_timer(b: &mut Battle, r: ObjectRef) {
     if b.paused {
         return;
     }
-    let s = stats(b, r);
-    if s.bugs.emotion != 0 && s.beast_out_counter != 0 {
-        panic!("NaviCust emotion timer (sub_8013DA0) is not implemented yet");
+    let s = *stats(b, r);
+    if s.bugs.emotion == 0 || s.beast_out_counter == 0 {
+        return;
+    }
+    if s.form != Form::NONE {
+        status::end_anger(b, r);
+        ai_mut(b, r).beast_out_spent = false;
+        return;
+    }
+    let a = ai_mut(b, r);
+    a.emotion_swing_ticks = a.emotion_swing_ticks.wrapping_add(1);
+    if a.emotion_swing_ticks < 0x3C {
+        return;
+    }
+    a.emotion_swing_ticks = 0;
+    status::end_anger(b, r);
+    // sub_8014446
+    ai_mut(b, r).beast_out_spent = false;
+    let current = ai(b, r).swung_emotion;
+    let choices = EMOTION_SWINGS.map(|e| if e != current { e } else { u8::from(current == 0) });
+    let roll = b.rng.next_positive() % choices.len() as u32;
+    let swung = choices[roll as usize];
+    ai_mut(b, r).swung_emotion = swung;
+    match swung {
+        // sub_80143CE: anger, unless tired or exhausted.
+        2 => {
+            let a = ai(b, r);
+            if !a.beast_out_spent && !a.beast_over_exhausted {
+                set_flag2(b, r, 0x200);
+            }
+        }
+        // sub_801443C
+        1 => ai_mut(b, r).beast_out_spent = true,
+        _ => {
+            let side = b.objects.get(r).alliance;
+            set_mood(b, side, SWING_MOODS[swung as usize]);
+        }
     }
 }
+
+/// `byte_802136D`: the most damage ChargeMan's charge adds to a Fire chip,
+/// by his navi level.
+///
+/// Game data held in the engine for now: it belongs with ChargeMan's navi
+/// in the content (to move there with the content model's next version).
+const CHARGE_MAN_LIMITS: [u8; 15] = [0, 0, 0, 30, 30, 30, 30, 30, 30, 50, 50, 50, 50, 50, 100];
 
 /// `off_80EA93C[AIIndex]`: the per-form tick hook (`sub_80F0608` for
 /// MegaMan): per-chip charge counters for some forms, and the height
@@ -879,9 +993,17 @@ fn per_form_tick(b: &mut Battle, r: ObjectRef) {
     }
     let s = *stats(b, r);
     if !b.paused && s.navi == Navi(5) {
-        panic!("ChargeMan's per-chip charge limit (sub_800F49E) is not implemented yet");
-    }
-    if !b.paused && matches!(s.form.0, 5 | 0x11) {
+        // ChargeMan charges his Fire chips up to a limit by his level
+        // (none unset). (The game first compares the level with the word at
+        // the start of `byte_8021300`, MegaMan's row of zeros: never less.)
+        let level = b.navi_levels[b.objects.get(r).alliance as usize];
+        if level != 0xFF {
+            let limit = *CHARGE_MAN_LIMITS
+                .get(level as usize)
+                .unwrap_or_else(|| panic!("ChargeMan's level {level} reads past his charge limits (sub_80F0608)"));
+            charge_fire_chip(b, r, limit as u16);
+        }
+    } else if !b.paused && matches!(s.form.0, 5 | 0x11) {
         charge_fire_chip(b, r, 100);
     }
     if s.navi == Navi::MEGAMAN {

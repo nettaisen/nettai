@@ -13,7 +13,7 @@ use crate::actor::{ActorType, request, status as ai_status};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
 use crate::field::PanelType;
-use crate::object::{DragStep, ObjectRef, PanelPos, Pool, Vec3, flags};
+use crate::object::{DragStep, ObjectRef, PanelPos, Vec3, flags};
 use crate::setup::Form;
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
@@ -157,26 +157,24 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
 
 /// Spawn the weakness / bug "!" marker (`sub_80E8124`, effect #0x6B) at
 /// the navi's attach point 5.
-fn spawn_marker(b: &mut Battle, r: ObjectRef, param: u8) {
+fn spawn_marker(b: &mut Battle, r: ObjectRef, mark: crate::kinds::hit_marker::Mark) {
     let (dx, dy) = attach_point(b, r, 5);
-    let pos = Vec3 { x: dx << 16, y: 0, z: dy << 16 };
-    if let Some(m) = b.objects.spawn(Pool::Effect, 0x6B, pos, [param, 0, 0, 0]) {
-        b.objects.get_mut(m).related[0] = Some(r);
-    }
+    let offset = Vec3 { x: dx << 16, y: 0, z: dy << 16 };
+    crate::kinds::hit_marker::spawn(b, r, offset, mark);
 }
 
 /// `sub_801A42E`: a weakness hit that did damage shows "!!".
 fn weakness_effect(b: &mut Battle, r: ObjectRef) {
     let c = coll(b, r);
     if c.acc.exclamation != 0 && c.acc.final_damage != 0 {
-        spawn_marker(b, r, 0);
+        spawn_marker(b, r, crate::kinds::hit_marker::Mark::Weakness);
     }
 }
 
 /// `sub_801A4A6`: an HP-bug hit shows its marker.
 fn bug_effect(b: &mut Battle, r: ObjectRef) {
     if matches!(coll(b, r).acc.inflicted_bugs as u8, 0xF4 | 0xF7) {
-        spawn_marker(b, r, 3);
+        spawn_marker(b, r, crate::kinds::hit_marker::Mark::Bug);
     }
 }
 
