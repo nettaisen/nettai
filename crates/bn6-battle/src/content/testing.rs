@@ -378,7 +378,9 @@ fn rules() -> Rules {
                 PanelType::RoadLeft => (pflags::SOLID | 0x200, Some(SlideVector { dx: -1, dy: 0, tiles: 1 })),
                 PanelType::RoadRight => (pflags::SOLID | 0x200, Some(SlideVector { dx: 1, dy: 0, tiles: 1 })),
             };
-            PanelTypeRule { flags, road_slide }
+            // Every type has the "a panel" bit (the scatter's panel search
+            // wants it).
+            PanelTypeRule { flags: flags | 0x1_0000, road_slide }
         })
         .collect();
     // Steps: onto a free panel of one's own side, solid unless floor-free.
@@ -458,12 +460,26 @@ fn rules() -> Rules {
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
         lockon: Lockon {
-            searches: vec![LockonSearch {
-                mode: 1,
-                offsets: vec![PanelOffset { dx: -1, dy: 0 }],
-                prefers_middle_row: false,
-                skips_first_at_edge: false,
-            }],
+            searches: vec![
+                LockonSearch {
+                    mode: 1,
+                    offsets: vec![PanelOffset { dx: -1, dy: 0 }],
+                    prefers_middle_row: false,
+                    skips_first_at_edge: false,
+                },
+                LockonSearch {
+                    mode: 2,
+                    offsets: vec![PanelOffset { dx: -1, dy: 0 }, PanelOffset { dx: -1, dy: 1 }],
+                    prefers_middle_row: false,
+                    skips_first_at_edge: false,
+                },
+                LockonSearch {
+                    mode: 0xB,
+                    offsets: vec![PanelOffset { dx: -1, dy: 0 }, PanelOffset { dx: -2, dy: 0 }],
+                    prefers_middle_row: false,
+                    skips_first_at_edge: true,
+                },
+            ],
             column_shifts: vec![-1, -2],
         },
         custom_screen: custom_screen_layout(),
