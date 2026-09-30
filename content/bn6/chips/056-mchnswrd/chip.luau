@@ -1,12 +1,12 @@
 --!strict
--- Registration by number, until chips are handles
--- (docs/design/content-model-v2.md §12, step 3b): the machine swords'
--- records name the original's action 0x49 and their subtype, and
--- registration by number runs this module for them (and for the stun
--- strike the navi's own request 0x80000 starts, which nothing in the game
--- sets). It runs the chip's own strike (chips/mchnswrd, chips/elemswrd,
--- chips/assnswrd), picked by the subtype. It goes when the chips'
--- definitions replace their records.
+-- Registration by number (docs/design/content-model-v2.md §5.2, "As
+-- built"): action 0x49 runs this module, which runs the machine sword's
+-- own strike (chips/mchnswrd, chips/elemswrd, chips/assnswrd) picked by the
+-- subtype. The chips are definitions and run their strikes without it;
+-- what still reaches it is the stun strike the ruleset starts by number
+-- (the navi's request 0x80000, which nothing in the game sets; with the
+-- variant the attack holds) and the test content's StunBld. It goes when
+-- the stun strike is a role (phase C).
 
 local strike = require("../../lib/swords/strike")
 local mchnswrd = require("../mchnswrd/chip")

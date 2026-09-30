@@ -1,12 +1,15 @@
 --!strict
--- Registration by number, until chips are handles
--- (docs/design/content-model-v2.md §12, step 3b): the sword chips' records
--- name the original's action 0x13 and their subtype, and registration by
--- number runs this module for them (and for the variable swords' picks).
--- It runs the chip's own slash (chips/sword, chips/wideswrd, ...), picked
--- by the subtype (and StepSwrd's first attack parameter) as the original's
--- routine branches. It goes when the chips' definitions replace their
--- records.
+-- Registration by number (docs/design/content-model-v2.md §5.2, "As
+-- built"): a record that names the original's action 0x13 runs this
+-- module (as do the variable swords' picks), which runs the chip's own
+-- slash (chips/sword, chips/wideswrd, ...) picked by the subtype (and
+-- StepSwrd's first attack parameter) as the original's routine branches.
+-- A chip content defines runs its action without it; the records that
+-- reach it are the sword chips other records or the ruleset name by
+-- number (the Program Advances', the dark chip, the swords SlashCross
+-- charges, the Cross special's), Muramasa, ProtoMan's StepSwrd and the
+-- test content's blades. It goes when those are definitions or roles
+-- (step 5, phase C).
 
 local slash = require("../../lib/swords/slash")
 local sword = require("../sword/chip")
