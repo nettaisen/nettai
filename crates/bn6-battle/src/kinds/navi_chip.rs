@@ -7,7 +7,7 @@
 use bn6_content_api::{Hook, HookCall, NaviChipSpec};
 
 use crate::battle::Battle;
-use crate::kinds::{common, elmnt_man, navi_warp};
+use crate::kinds::{common, navi_warp};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
 use crate::dimming::{self, DimmingChip};
 
@@ -183,9 +183,9 @@ fn effect(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `off_802CD5C[navi]`: bring the chip's navi, with the damage and the
-/// bonus: the content pack's script for the navi (`Hook::NaviChip`), else
-/// the engine's. (The game also records the last navi chip used,
-/// `byte_203C960`, for chips that copy it.)
+/// bonus: the content pack's script for the navi (`Hook::NaviChip`). (The
+/// game also records the last navi chip used, `byte_203C960`, which
+/// nothing in a battle reads.)
 fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let v = vars(b, r).clone();
     let damage = v.damage.wrapping_add(v.chip.bonus as u32);
@@ -197,10 +197,12 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
             let spec = NaviChipSpec { panel, element, params: v.params, damage };
             crate::behavior::call_hook(b, hook, HookCall::NaviChip { user, controller: r, spec }).object()
         }
-        None => match v.navi {
-            elmnt_man::NAVI => elmnt_man::spawn(b, user, r, panel, element, v.params, damage),
-            n => panic!("navi chip navi {n:#x} (off_802CD5C) is not implemented yet"),
-        },
+        // HackJack's and Django's entries are NULL: the game jumps to
+        // address 0.
+        None if matches!(v.navi, 0x12 | 0x13) => {
+            panic!("navi chip navi {:#x} is NULL in off_802CD5C (the game jumps to address 0)", v.navi)
+        }
+        None => panic!("content error: no script implements navi chip subtype {} (off_802CD5C)", v.navi),
     };
     // The spawner sets the flag, through the pointer it hands the navi.
     vars_mut(b, r).navi_acting = navi.is_some();

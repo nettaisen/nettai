@@ -1216,17 +1216,39 @@ variant 0xF, own palette, Param3 1, animation offset 9). Actions (each with a ti
 - 0xC: anim 5 (7 at 16 ticks left); 35 ticks; Wood first turns every solid panel to grass. Then 0x10, phase = the
   element · 4.
 - 0x10: Fire (`sub_80BACBC`) lists the panels holding the other side's body (`object_getPanelsExceptCurrentFiltered`,
-  rows 3..1, columns 6..1) and drops a meteor on each, 12 ticks apart. Aqua, Elec and Wood are not ported.
+  rows 3..1, columns 6..1; Param2 = how many, Param3 counts) and drops a meteor on each, 12 ticks apart. Aqua
+  (`sub_80BAD06`): T3 0x8E ice (Param2 30, Param3 1) on the three panels of the column ahead, each solid one turned
+  to ice; sound 0x99; 30 ticks. Elec (`sub_80BAD76`): a T3 0xB8 bolt in each row of the column three ahead, 16 ticks
+  apart. Wood (`sub_80BAD34`): a T3 0xB9 vine on the next panel along his row every 15 ticks, up to five, until a
+  panel isn't solid (or no vine spawns). The grass before it (`sub_80BAF06`): every solid panel (columns 1..6, rows
+  1..3) turns to grass with a T4#0 effect 2 (palette +5) at Z 8 (raw), sound 0x11B.
 - 0x14: 20 ticks (anim 8 at 5 left). 0x18: anim 4; 2 ticks; the death hook takes the overlay down, the controller's
   flag is cleared, state 8.
 - Round 1: spawned 3518, A at 3540 (Fire), the meteor 3578, gone 3602; the controller's undim ends 3683.
 
-**The meteor, T3 0x8D (`sub_80D6BD4`)**, spawned by `sub_80D6D18` with Param1 = 1 (it runs, and steps its sprite,
-while dimmed) and flags \|= 0x10: from 192 pixels behind and above its panel it falls 11 pixels a tick for 17 ticks
-(sound 0xC4; the panel highlighted 4 ticks out of 8); on landing, if the panel's flags meet `byte_80D6D08[side]`, a
-T4#0 explosion and a hit region (region 1, hit effect 1, target 5, self 0xA, hit modifier 3; with Param1 set
-`sub_80C53A6` gives the region flag 0x10 so it resolves while dimmed). The damage lands while dimmed; the
-victim's flinch waits for the time to start again (3684).
+**The meteor, T3 0x8D (`sub_80D6BD4`)**, spawned by `sub_80D6D18` with flags \|= 0x10 and Param1 = 1 from
+ElmntMan (it acts, and steps its sprite, while dimmed), 0 from his navi AI (it waits a dimming out, its sprite
+stepping as `object_updateSpritePaused` does): from 192 pixels behind and above its panel it falls 11 pixels a tick
+for 17 ticks (sound 0xC4; the panel highlighted 4 ticks out of 8); on landing, if the panel's flags meet
+`byte_80D6D08[side]`, a T4#0 explosion and a hit region (region 1, hit effect 1, target 5, self 0xA, hit modifier 3;
+with Param1 set `sub_80C53A6` gives the region flag 0x10 so it resolves while dimmed). The damage lands while dimmed;
+the victim's flinch waits for the time to start again (3684).
+
+**ElmntMan's ice, T3 0x8E (`sub_80D6D80`)**, spawned by `sub_80D6EB0` (flags \|= 0x10; its Z is the spawner's r3,
+of which the init keeps the fraction under a height of 8): sprite (0x10, 0xF) animation 1; collision self 4, target 5,
+modifier 3, status 0x50, hit effect 2, region 0 until it acts: then region 1, its panel turned to ice, Param2 ticks.
+Each tick the hits resolve and a hit clears the region (and the hit flags). Param3 1 (ElmntMan's) acts and steps its
+sprite while dimmed; Param3 0 (his navi AI's) waits a dimming out with its collision off.
+
+**ElmntMan's bolt, T3 0xB8 (`sub_80DC3F8`)** and **vine, T3 0xB9 (`sub_80DC4FC`)**: on their panel on the ground
+(their Z keeps its fraction: the bolt's is garbage from the object loop, the vine's the row minus 1 that its
+spawner's panel check leaves in r3), running while dimmed. On their first action tick a hit region that resolves
+while dimmed (region 1, target 5, self 0xA; the bolt hit effect 3, modifier 3, the vine hit effect 4, modifier 1);
+the bolt breaks its panel (`object_breakPanel_dup2`: cracks it if something occupies it), sound 0x12E, and shows 16
+ticks; the vine (ElmntMan's sprite, animation 0x12), sound 0x181, 30 ticks.
+
+All of these are the pack's scripts (objects/elmnt-man, meteor, elmnt-ice, elmnt-bolt, elmnt-vine). The navi AI's
+meteors and ice (Param1/Param3 0) are ported but no trace reaches them (unverified).
 
 **Cut-ins.** `sub_8017AB4` also needs the next chip to have the dimming flag; soundmod 25828 (side 1 presses A
 during ElmntMan's name with FullCust next) clears the request.
@@ -1486,6 +1508,231 @@ choices beyond the lab's; the BlkBomb set off by fire (its burst and the panel b
 to fly, removed, absorbed, blinking out, or pushed (`sub_8017CC0` and `sub_800F598` are unreached). **Not ported**:
 LilBoiler (subtype 3: T3#0x93 and what it spawns, T1#0x54) and VDoll (subtype 8: T3#0x7A, its curse controller T4#0x4E
 and T4#0x11); their throws raise a content error.
+
+#### 3.6.11 SpoutMan (navi chip subtype 7, T1 0x09)
+
+Trace: soundmod rounds 1 and 2 (side 0's SpoutMan); the scratch lab's navis/0x0f2-spoutman/long{,-miss,-adjacent,
+-holes} and the EX and SP `long`s match every frame. The pack's scripts: objects/spout-man, spout-ball,
+spout-splash, spout-pillar, spout-geyser, spout-mark.
+
+**SpoutMan, T1 0x09 (`sub_80B94BC`)**, spawned by `sub_80B9750` like ElmntMan (the controller's flag pointer in his
+CollisionDataPtr slot). His position is the spawner's registers: X, Y = panel Y and element (overwritten), Z = r3 =
+the spawner's own address `0x080B9751`, whose low half his init keeps (a halfword store of 0 over Z's whole part).
+Sprite (8, 6) with a ground shadow; his actions enter on CurPhase 0 and step his sprite while dimmed:
+- 0: anim 3, sound 0x94, his parts (`sub_8010DF6(2, 6, 1)`: T1 0x55, his layer), VISIBLE, Timer:Timer2 = 6 (a word);
+  6 ticks; panel flags 0x10010 → 4, else 0x18.
+- 4: anim 0, 30 ticks; away from his back columns (side 0: x > 2; side 1: x < 5) → 8 (the ball), else 0x10 (the
+  geyser).
+- 8: anim 0x13, 20 ticks. 0xC: anim 0x14, a T3 0x22 ball from his panel (Param1 4), a T4#0 effect 0x2A where he
+  stands (flip = alliance ^ flip), sound 0x12D; 60 ticks → 0x18.
+- 0x10: anim 0xF, a T4 0x2D pillar on his panel (Param1 4; `sub_80E3976` stores it in his ExtraVars[0] and keeps a
+  pointer to that slot); 66 ticks: anim 0x10 at 57 left, the pillar's PhaseInitialized byte = 1 at 27 left.
+- 0x14: anim 0x15, sound 0x189, a T3 0x17 geyser (Param1 4, Param2 90, Param3 = the column `sub_80B9776` picks: the
+  first ahead holding an enemy navi's body, else the field's edge; r3 = 4 becomes its Z); 90 ticks, then anim 0 and
+  the pillar's PhaseInitialized = 2 → 0x18.
+- 0x18: anim 4, Timer:Timer2 = 8; to −1 (9 ticks); his parts off (`sub_8011044(2, 6)`), the controller's flag
+  cleared, state 8.
+
+**His layer, T1 0x55 (`sub_80C40D8`)**, the navi framework's (the idle overlay `kinds::idle_overlay`, from the navi hooks in `kinds::player::form`): sprite
+(0x10, 0x21) (`dword_80C40D4[Param1]`, Param1 always 0); each tick his position, visibility, palette, colour
+shader, white flash, mosaic, facing and alpha, and Z's whole part 0 when his animation is 0, else 255 (out of
+sight); its sprite steps unless dimmed or paused.
+
+**The ball, T3 0x22 (`sub_80C853C`)**: 24 pixels ahead of its panel at a height of 16, sprite (0xC, 0x23) anim 1; it
+flies 4 pixels a tick for (0x500000 − 0x180000) / 0x40000 = 14 ticks, falling 0x100000 / 14 a tick (both BIOS
+divisions), its panel following its X; then on a solid panel action 4: sound 0x11D, a T3 0x23 splash there
+(Param2 1, Z 0x100 from r3) and one on the next panel if that is solid (Param2 0); else it just goes.
+
+**The splash, T3 0x23 (`loc_80C86D8`)**: sprite (0xC, 0x1A), collision self 0xA, target 5, modifier 3, hit effect 2;
+30 ticks, its region off once it hit. On its destroy a solid panel cracks if Param1 ≥ 2 and Param2 is set.
+
+**The pillar, T4 0x2D (`sub_80E37F4`)**: sprite (0x10, 0x1F); shows while SpoutMan does. 9 ticks rising (anim 3),
+then it follows his signals in its PhaseInitialized byte: 1 → spout (anim 1, 27 ticks, then anim 2), again 1 →
+stand (anim 3) and spout again, 2 → gone; going, it clears his slot if it still holds it. Its Z fraction is the
+object loop's register garbage (`scratch_z_fraction`).
+
+**The geyser, T3 0x17 (`sub_80C6DCC`)**: a pixel down and up from his panel (sprite (0x10, 0x20)), running its first
+update in its init. It picks its column (`sub_80C6F08`: the first of the next five holding something of the other
+side's, `byte_80C6F48`, or Param3, or x ≤ 1 / ≥ 6) into Param4, marks it and the trail to it (T4 0x2E: the column's
+Param1 1 with Z 1, the trail's Param1 0; Param2 = its ticks; Param3 = `byte_80C7028[Param1]`, 1 for SpoutMan's),
+highlights them every tick, and every 30 ticks from the first hits the column's three panels (valid ones) and the
+trail with hit regions (region 1, hit effect 2, target 5, self 4, modifier 3) that run while dimmed and last 30
+ticks (their Timer). Param2 ticks.
+
+**The marks, T4 0x2E (`sub_80E39A0`)**: 2 pixels down and up, sprite (0x10, 0x20), anim `word_80E3A30[Param1]` (1, 2);
+Param2 ticks counted from the tick they appear.
+
+Unverified (no scenario reaches them; the navi AI's): the ball, splash, pillar, geyser and marks with Param1 (or
+Param3) other than SpoutMan's, which stand still while dimmed and end with their owner's action 0xB.
+
+#### The other navi chips' navis: common shape
+
+Each is spawned by its `off_802CD5C` entry like ElmntMan (panel, element, the user in RelatedObject1Ptr, the user's
+side and flip, the damage word; the controller's flag pointer in CollisionDataPtr, except TenguMan's in
+ExtraVars[0]), and steps its sprite while dimmed (`object_updateSpriteTimestop`). Their position is the spawner's
+registers (panel Y, element, and in r3 the spawner's own address, which the controller calls through): those whose
+init clears only Z's whole part (a halfword store) keep that address's low half as their Z fraction (SpoutMan
+0x9751, TomahawkMan 0x999B, TenguMan 0x9F0F, HeatMan 0x921B). Most actions enter on CurPhase 0 (4) and some store
+Timer and Timer2 as one word. Where the scratch lab says "all match", every scenario of the chip and its EX and SP
+(long, long-miss, long-adjacent, long-holes) matches every frame. Unverified everywhere: a pool with no free slot
+(the spawns' failure branches) and the battle ending mid-attack.
+
+#### 3.6.12 TomahawkMan (subtype 8, T1 0x0A `sub_80B97C0`)
+
+Sprite (8, 7). 0: anim 3, sound 0x94, VISIBLE, 3 ticks; panel flags 0x10010 → 4, else 0x10. 4: anim 0, 30 ticks. 8:
+anim 0xF, 30 ticks. 0xC (PhaseInitialized): anim 0x10, 61 ticks (to −1); at 55 left the strike: a hit region on the
+panel ahead (region 0x11, no hit spark, target 0, self 7, modifier 1) that resolves while dimmed, T4#0 effect 0x33
+there 16 pixels up (flip = alliance ^ flip), sound 0x10A and a camera shake (`camera_initShakeEffect_80302a8(1,
+30)`: presentation, not simulated). 0x10: anim 4, 3 ticks, the controller's flag cleared. All match.
+
+#### 3.6.13 TenguMan (subtype 9, T1 0x0C `sub_80B9C14`)
+
+Sprite (8, 8), and collision (self 4, target 5, modifier 3, hit effect 6, region off): he is the attack. Each tick
+the hits resolve (a hit turns his region off) and he registers again after acting. 0: anim 3, sound 0x94, VISIBLE, 3
+ticks. 4: 30 ticks. 8: anim 4, 23 ticks; at 20 left Z's whole part 255 (out of sight), no ground shadow. 0xC: the
+dash: region 4, anim 0x13, 16 pixels up with a shadow, on panel (0, 3) (side 1: (7, 3)), 5 pixels a tick ahead
+speeding up 0xA000 a tick, 40 ticks (sound 0x13C at 30 left); each new column turns the region back on; region 0x23
+highlighted from (1, 3)/(6, 3) 4 ticks out of 8. 0x10: the dive from (2, 0)/(5, 0): anim 0x14, 12 pixels a tick
+ahead and 0x73333 down, 0x280000·5 / 0xC0000 = 16 ticks (a BIOS division), sound 0x13C, region 0x25 highlighted
+from (4, 2)/(3, 2); then region off and state 8 (a byte store). Destroy (`sub_80B9F00`): the controller's flag
+cleared through ExtraVars[0], the object freed — its collision slot is never freed. Without a collision slot at
+init he goes at once (unverified). All match.
+
+#### 3.6.14 BlastMan (subtype 12, T1 0x06 `sub_80B8EA0`)
+
+Sprite (8, 0xC). 0: anim 3, sound 0x94, VISIBLE, 3 ticks → 4 (no panel check). 4: anim 0, 30 ticks. 8: anim 0xA, 20
+ticks. 0xC: anim 0xB, a fire blast along his row and the rows above and below (`sub_80B903A`, valid ones) from
+behind his side's edge (x 0, Param2 1: right; side 1 x 7, Param2 0: left), sound 0x17F; 61 ticks. 0x10: anim 4, 4
+ticks, the controller's flag cleared.
+
+**The fire blast, T3 0x21 (`sub_80C8388`)**: speed `byte_80C8454[Param1]` (BlastMan's Param1 4: 6 pixels a tick),
+direction `byte_80C846C[Param2]` (left, right, up, down), `byte_80C8488[Param2]` / speed ticks (0x1180000 / 0x60000
+= 46), BlastMan's sprite animation 0x11 (0x12 vertically) with flip `dword_80C8478[Param2]`; collision self 4,
+target 5, modifier 3, hit effect 1, its body the hit region; the panel it is over highlighted; a hit or its time ends
+it. Param1 other than 4 waits a dimming out (unverified). All match.
+
+#### 3.6.15 HeatMan (subtype 2, T1 0x07 `sub_80B9078`)
+
+Sprite (8, 1), his parts (`sub_8010DF6(2, 1, 1)`: body overlay 2, stepping even while paused). 0: anim 3, sound
+0x94, VISIBLE, 5 ticks; panel check → 4 / 0x10. 4: anim 0, 30 ticks. 8: anim 0xF, 10 ticks. 0xC: anim 0x15, the cone
+(`sub_80B9240`: one panel ahead, three on the next column, five on the one after; each panel whose flags have
+0x10010) of T3 0x26 flames (Param1 4, Param2 30); 61 ticks, anim 0x10 at 52 left. 0x10: anim 4, 5 ticks, his parts
+off, the controller's flag cleared.
+
+**The flame, T3 0x26 (`sub_80C8C74`)**: sprite (0x10, 2); collision self 4 (0xA with Param3 set), target 5,
+modifier 3, hit effect 1; a hit turns its region off. 5 ticks flaring (sound 0xF7), Param2 − 5 burning (anim 1),
+region off, 2 dying (anim 2). All match.
+
+#### 3.6.16 ElecMan (subtype 3, T1 0x08 `sub_80B92B8`)
+
+Sprite (8, 2). 0: anim 3, sound 0x94, VISIBLE, 3 ticks → 4. 4: anim 0, 30 ticks. 8: anim 0x12, 13 ticks. 0xC: anim
+0x13, sound 0xC6, strike 0; 120 ticks, strike 1 at 60 left. A strike (`sub_80B9458`) searches region 0x26 (5×5
+around him, dx along his side's direction, `object_getPanelRegion`) for panels with `byte_80B94AC` (strike 0: an
+enemy navi's body; strike 1: 0x810000) and puts a T3 0x64 thunderbolt (Param1 = strike + 1) on each, last found
+first. The first bolt's Z fraction is what the search left in r3 (`_object_getPanelDataOffset`'s x − 1, or y − 1,
+for the region's last panel); the others', his side and flip halfword. 0x10: anim 4, 4 ticks.
+
+**The thunderbolt, T3 0x64 (`sub_80D0D7C`)**: sprite (0x14, 0x14), 255 pixels up; collision self 0xA, target 5,
+modifier 3, hit effect 3, region off. 20 ticks, its panel highlighted 4 ticks out of 8; then down (the loaded
+animation forgotten, so it restarts), sound 0x12E, region 1 for 20 ticks of 30 (a hit turns it off); Param1 0 cracks
+its panel, Param1 2 hits the eight panels around it once (status 0x12, modifier 1). Param1 0 waits a dimming out with
+its collision off (unverified; so is strike 1 finding anything in the lab). The lab's adjacent and miss scenarios
+reach strike 0's bolt; all match.
+
+#### 3.6.17 ChargeMan (subtype 6, T1 0x16 `sub_80BB914`)
+
+Sprite (8, 5). 0: anim 3, sound 0x94, VISIBLE, 3 ticks; panel check → 4 / 0xC. 4: his train (`sub_80BBB38`: on each
+panel behind him that is solid and none of 0x0F800000, until one isn't, five at most, a T3 0xAC car: Param1 1,
+Param2 its place, Param3 60, Param4 0xFF, speed 0x40000 in its ExtraVars[0]; how many into his ExtraVars[0], which
+nothing reads); 60 ticks, anim 0xF at 30 left. 8: sound 0xE3, 4 pixels a tick ahead for |edge − x|·0x280000 /
+0x40000 ticks (edge 7 or 0); each tick the panel under him (`sub_800E258`): on the field and not solid → 0xC; else,
+reaching a new column, a hit region there (region 1, hit effect 0xA, self 6, modifier 3, resolving while dimmed).
+Then 0x10: the controller's flag cleared and gone. 0xC: anim 4, 4 ticks, then the same.
+
+**The car, T3 0xAC (`sub_80DAE94`)**: sprite (0x10, 0x54), Z's and Y's whole parts lowered by Param2 + 1 (so the
+train stacks); `sub_80169BE` each tick (visible unless dimmed; hidden from a blind local player if it is the remote
+side's). Param3 ticks, then it rolls like ChargeMan (its speed from ExtraVars[0]), hitting new panels (modifier 3
+while dimmed with Param1 set, else 1), exploding (T4#0 effect 0x12, 16 pixels up) where the floor ends, when the
+battle ends, or when its owner leaves action Param4 (0xFF: never checked). Param1 0 starts rolling at once and
+waits a dimming out (unverified). All match.
+
+#### 3.6.18 SlashMan (subtype 4, T1 0x0D `sub_80B9F44`)
+
+Sprite (8, 3). 0: anim 3, sound 0x94, VISIBLE, 3 ticks; panel check → 4 / 0x1C. 4: anim 0, 10 ticks. 8
+(`sub_80BA1D6`): from the other side's edge toward him, the first column with a panel of `byte_80BA228` into Param2
+(none before his own column → 0x10); anim 0x14, 10 ticks. 0xC: every 15 ticks from the first, `sub_80BA238` puts a
+T3 0x62 sword wave on each free panel of column Param2 (`byte_80BA284`), the user's (their owner and side), with
+Param1 1, element 0 and damage = the chip's Param1 | his damage's flag bits; Param2 steps back toward him, until his
+column or the edge → 0x10. 0x10: 60 ticks. 0x14 (`sub_80BA294`): the panel in front of the first enemy navi within
+five columns ahead, if solid and unoccupied (or his own) → future panel, anim 4, 16 ticks, there at 13 left (anim
+3); else → 0x1C. 0x18: anim 0x10, sound 0x158, a hit region on the panel ahead (region 4, no hit spark, target 0,
+self 7, modifier 3, resolving while dimmed) and T4#0 effect 0x39 there 16 pixels up; 30 ticks. 0x1C: anim 4, 4
+ticks, the controller's flag cleared.
+
+**The sword wave, T3 0x62 (`sub_80D07CC`)**: 20 pixels up, sprite (0x10, 0x39) with a shadow; collision self 4,
+target 5, modifier 3, no hit spark, region off; Param2 cleared. Wind-up `byte_80D0914[Param1]` ticks (sound 0xB7;
+Param1 0 hits its panel at its start and 10 ticks in), swing `byte_80D0950[Param1]` + 1 ticks (anim 1, region on;
+SlashMan's: the user holding B sets Param2, sound 0x8B), then it flies ahead at `byte_80D0A54[Param1]` (sound 0xB3)
+until off the field; with Param2 set it drifts toward the nearest row (0, −1, +1, −2, +2) with an enemy navi ahead,
+arriving as it reaches that column. A hit on an enemy's body (`byte_80D08C4`) or the battle's end ends it (a byte
+store). All match, the steering too (a scratch scenario holding B); unverified: Param1 0 (the navi AI's).
+#### 3.6.32 SunMoon (navi chip subtype 25, PA chip 0x15B, T1 0x24)
+
+The pack's objects/sun-moon, sun-meteor and moon-beam. **SunMoon, T1 0x24 (`sub_80BF260`)**, spawned by `sub_80BF6AE`
+on the user's panel (related1 the user, the controller's flag pointer in ExtraVars[0], flags \|= 0x10), its sprite
+(0x0C, 0x64) 64 pixels up; its sprite steps as `object_updateSprite` (not while dimmed). Its handlers set their
+timer on entry and count it the same tick. Actions:
+- 0: sound 0x94; 60 ticks. 4.0: animation 2; a T3 0xB5 meteor every 15 ticks, six (element Fire, damage 0x32 with
+  the damage's flag bits, its height SunMoon's Z). 4.4: animation 1, 30 ticks.
+- 8.0: animation 1, sound 0x110; 30 ticks with the palette blinking 4/0 (`sub_80BF402`: the tick count's bit 1
+  above 20 left, bit 2 below; its third rate is unreachable); palette 4. 8.4: 30 ticks.
+- 0xC.0: animation 3, palette 0, the T3 0xB6 moonlight (element 0, damage 2 with the flag bits); 100 ticks. 0xC.4:
+  animation 1, palette 4, 30 ticks. 0x10.0: as 8.0 inverted, ending on palette 0. 0x10.4: 30 ticks.
+- 0x14.0: 10 ticks (a camera shake); then 16 ticks toward the panel three columns toward the enemy (velocity =
+  distance / 16, truncated; sound 0x17F). 0x14.4: landing (Z 0) on a panel with any of 0x0F800010: sound 0xC3, a
+  region 0xF hit (hit effect 0xFF, target 5, self 0xA, modifier 3, resolving while dimmed), the region's panels
+  cracked (`sub_80DB48A`, offsets as they are), T4#0 effect 5 on its panels on the field (`sub_801BD3C`, dx toward
+  the side, Z 3 raw: the r7 left over), a 30-tick palette flash; on another, a T4#0 effect 0x12 16 pixels up.
+  Hidden. 0x14.8: 60 ticks; state 8, which clears the controller's flag.
+
+**The meteor, T3 0xB5 (`sub_80DBEE6`)**: record `byte_80DBEE0[Param1]` (only record 0: sprite (0x0C, 0x31), self
+type 0xA, target 5, a camera shake, nothing done to an occupied panel). 20 pixels ahead and 20 below its spawner's
+height, aimed at the panel three columns ahead (16 ticks); collision modifier 3, hit effect = element & 0xF, region
+0 while it falls. Landing on a panel with any of 0x0F800010: T4#0 effect 5, sound 0x70; else the panel breaks
+(`object_breakPanel`, which only breaks a solid, unoccupied one). Then region 1 for a tick, hidden, gone.
+
+**The moonlight, T3 0xB6 (`sub_80DC0E8`)**: SunMoon's sprite, animation 4, 40 pixels ahead. After 3 ticks: a hit
+on the panel three columns ahead with damage 0x2000 (an uninstall), self type 0x17; then every tick for 100 ticks a
+hit there with its damage, self type 0x30, modifier 3 (sound 0x111 every 8 ticks); all resolve while dimmed.
+
+Lab (scratch, the PA chip put straight in the folder): the opponent a row up and both a column forward match every
+frame; on a hit the replay stops at the uninstall's reaction (`sub_80140EE`, the navi framework's).
+
+#### 3.6.33 Bass (navi chip subtype 26, Giga chip 0x12D, T1 0x4F)
+
+The pack's objects/bass and panel-strike. **Bass, T1 0x4F (`sub_80C3970`)**, spawned by `sub_80C3B30` on the user's
+panel (no related1: the controller's flag pointer is kept in his X velocity). Init: sprite (8, 0x13), a ground
+shadow, his cape (`sub_80C468C`: form overlay T1 0x57 of the same sprite, animation + 0x14, stepping while dimmed;
+related1), sound 0x94, 100 ticks, and his first tick at once; he goes when his panel is off the field.
+- 0: 100 ticks, rising half a pixel a tick over the last 81.
+- 4.0: animation 0xA until its last frame; animation 0xC, 24 volleys, the 18 panel cooldowns cleared.
+- 4.1: every tick the cooldowns count down. Each volley (8 ticks apart): two shots (`sub_80C3B54`): his columns
+  (`sub_80C3C2C`: from column 3 facing right, 4 facing left, or his own if further; each further column with a
+  panel of the other side's, `byte_80C3C90`); five times in eight (`GetPositiveSignedRNG2 & 7 >= 3`) a random panel
+  holding an enemy navi's body, else (or if none) any panel with 0x10000, rows 3 to 1, not shot in the last 22 ticks
+  (one RNG draw each pick with candidates); a T3 0x09 strike there (element 0, Param2 20, Param4 1, resolving while
+  dimmed; its Z 0) and T4#0 effect 0x57 20 pixels ahead and 34 up, jittered by up to 7 pixels (one draw).
+- 4.8: 12 ticks, animation 0, 30 ticks; state 8: T4#0 effect 0x12 16 pixels up, the cape off, the controller's
+  flag cleared, freed.
+
+**The panel strike, T3 0x09 (`sub_80C5DDC`)**, Bass's and MachGun's: collision self 0xA, target 5, modifier by Param3
+(0 → 3, 1 → 1, else 0), region 0; Param2 ticks highlighting its panel 4 out of 8; then (unless Param4 is set and the
+panel isn't solid: it just goes) the burst, sprite (0x10, 0x26), region 1 for its first tick, sound 0xB9, and with
+Param1 an uncracked panel cracked; it goes when the burst's animation ends. One without flag 0x10 goes once the
+battle is over.
+
+Lab (scratch, Bass dug from a Giga folder): hit, miss and adjacent match every frame. Unverified: the strike's
+Param1/Param3/no-flag-0x10 branches (MachGun's), Bass leaving off the field.
 
 ---
 

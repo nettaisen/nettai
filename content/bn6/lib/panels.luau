@@ -111,4 +111,54 @@ function panels.random_enemy_panel(me: Object, x: number, y: number, region: num
     return panels.random_in_region(x, y, ENEMY_BODY[me.alliance], 0, region, panels.side_direction(me.alliance))
 end
 
+-- `object_getPanelsInColumnFiltered`: the panels of column x (y 1 to 3)
+-- that pass `field.check`.
+function panels.in_column(x: number, require: number, forbid: number): { number }
+    local list = {}
+    for y = 1, 3 do
+        if field.check(x, y, require, forbid) then
+            table.insert(list, panels.pack(x, y))
+        end
+    end
+    return list
+end
+
+-- A hit region's offsets ({dx, dy} each, dx toward the facing side).
+local function region_shape(n: number): { { number } }
+    local r = data.regions[n]
+    if not r then
+        error(string.format("panel region %#x reads past PanelOffsetListsPointerTable", n))
+    end
+    return r
+end
+
+-- `object_highlightPanelRegion`: highlight region `n`'s panels around (x,
+-- y), dx along `facing` (+1 right, -1 left).
+function panels.highlight_region(x: number, y: number, n: number, facing: number)
+    for _, o in region_shape(n) do
+        field.highlight(x + o[1] * facing, y + o[2])
+    end
+end
+
+-- `object_getPanelRegion`: region `n`'s panels around (x, y), dx along
+-- `direction`, that pass `field.check`.
+function panels.region(x: number, y: number, n: number, direction: number, require: number, forbid: number): { number }
+    local list = {}
+    for _, o in region_shape(n) do
+        local px, py = x + o[1] * direction, y + o[2]
+        if field.check(px, py, require, forbid) then
+            table.insert(list, panels.pack(px, py))
+        end
+    end
+    return list
+end
+
+-- `sub_80DB48A`: crack (`object_crackPanel`) each panel of region `n`
+-- around (x, y), its offsets as they are (not turned to a side).
+function panels.crack_region(x: number, y: number, n: number)
+    for _, o in region_shape(n) do
+        field.crack(x + o[1], y + o[2])
+    end
+end
+
 return panels

@@ -104,8 +104,15 @@ fn init_routine(b: &mut Battle, r: ObjectRef, row: u8, param3: u8) {
 /// most navis' is nothing; a few wear overlays.
 pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, name_id: u16) {
     let rec = b.content.navi_record(name_id);
-    if let Some(row) = hook_row(rec.actor_type, rec.ai_index, "init hook (off_8010E0C)") {
-        init_routine(b, r, row, 0);
+    record_init_hook(b, r, rec.actor_type, rec.ai_index, 0);
+}
+
+/// `sub_8010DF6(actor_type, ai_index, param3)`: the init hook of an actor
+/// record given outright (a navi chip's navi puts on his own this way,
+/// with r2 = 1: his overlay steps even while paused).
+pub(crate) fn record_init_hook(b: &mut Battle, r: ObjectRef, actor_type: ActorType, ai_index: u8, param3: u8) {
+    if let Some(row) = hook_row(actor_type, ai_index, "init hook (off_8010E0C)") {
+        init_routine(b, r, row, param3);
     }
 }
 
@@ -191,7 +198,13 @@ fn has_death_routine(row: u8) -> bool {
 /// the overlay in its `related[1]` (and row 14's second one).
 pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, name_id: u16) {
     let rec = b.content.navi_record(name_id);
-    let Some(row) = hook_row(rec.actor_type, rec.ai_index, "death hook (off_801105C)") else { return };
+    record_death_hook(b, r, rec.actor_type, rec.ai_index);
+}
+
+/// `sub_8011044(actor_type, ai_index)`: the death hook of an actor record
+/// given outright (a navi chip's navi takes his own off this way).
+pub(crate) fn record_death_hook(b: &mut Battle, r: ObjectRef, actor_type: ActorType, ai_index: u8) {
+    let Some(row) = hook_row(actor_type, ai_index, "death hook (off_801105C)") else { return };
     if !has_death_routine(row) {
         return;
     }

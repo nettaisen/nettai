@@ -1,0 +1,7 @@
+# A meteor (attack object #0x8D, `sub_80D6BD4`), which ElmntMan's Fire drops, is a
+# script.
+
+[kind]
+pool = "attack"
+index = 0x8D
+script = "meteor.luau"

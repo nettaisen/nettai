@@ -299,8 +299,8 @@ named_fields! {
         /// strength, bit 7 can't counter), which setup takes from the
         /// damage word's high half.
         CounterByte = "counter_byte", U8, rw;
-        /// What the last resolution hit.
-        HitFlags = "hit_flags", U32, ro;
+        /// What the last resolution hit (writable: some kinds clear it).
+        HitFlags = "hit_flags", U32, rw;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
         /// The directions (1 << the hitter's flip) a guard blocked hits
@@ -328,6 +328,8 @@ named_fields! {
         Charge = "charge", U8, rw;
         Mood = "mood", U8, ro;
         BeastOutCounter = "beast_out_counter", U8, ro;
+        /// The navi's game: 0 Gregar, 1 Falzar.
+        Version = "version", U8, ro;
         MaxBaseHp = "max_base_hp", U16, ro;
         /// The NaviCust's heal on chip use.
         ChipRecovery = "chip_recovery", U16, ro;
@@ -581,6 +583,11 @@ named_flags! {
         Finish = "finish",
     }
 }
+
+/// How a form overlay's sprite steps once every navi is in (its Param3):
+/// `object_updateSprite` (and not while dimmed), `object_updateSpriteTimestop`,
+/// or `sub_801BCD0` (paused or not).
+pub const OVERLAY_STEPPINGS: [&str; 3] = ["normal", "while_dimmed", "always"];
 
 named_flags! {
     /// A shared entry of an obstacle's action table (the obstacle
@@ -1049,6 +1056,11 @@ pub trait CoreApi {
     fn set_panel_from_coordinates(&mut self, o: ObjectRef);
     /// `object_updateCollisionPanels`.
     fn update_collision_panels(&mut self, o: ObjectRef);
+    /// `sub_80169BE`: show `o` unless the battle is dimmed, then hide it if
+    /// it is the remote side's and the local player is blind (the
+    /// original's perspective, as `sub_800EB6C`; the HUD flash it also
+    /// drives for a player in an action is presentation).
+    fn update_visibility(&mut self, o: ObjectRef);
     /// Onto the destination panel of a move: the panel, the reservation,
     /// the coordinates and the collision.
     fn snap_to_future_panel(&mut self, o: ObjectRef);
@@ -1067,6 +1079,19 @@ pub trait CoreApi {
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
     /// `sub_80E08C4`: hit spark `id` at `pos`.
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
+    /// `sub_80C468C`: a form overlay (actor 0x57) on `owner`: `sprite`,
+    /// following the owner's animation plus `anim_offset`; `stepping` 0
+    /// normal, 1 while dimmed, 2 always (Param3); a pixel nearer when
+    /// `nudged`; wearing the owner's palette when `owner_palette`.
+    fn spawn_form_overlay(
+        &mut self,
+        owner: ObjectRef,
+        sprite: SpriteId,
+        stepping: u8,
+        anim_offset: u8,
+        nudged: bool,
+        owner_palette: bool,
+    ) -> Option<ObjectRef>;
     /// `sub_80E11E0`: a screen palette flash (effect object #0x0A) of
     /// `variant` (0 white or red, 1 white over two layers) for `ticks`,
     /// optionally going on while dimmed or paused.
@@ -1077,6 +1102,14 @@ pub trait CoreApi {
     /// `sub_80E33FA`: an afterimage of `owner`'s side at `pos` (a sprite of
     /// its own, or a copy of the owner's).
     fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
+    /// `sub_8010DF6`: put on the overlays an actor record (by actor type,
+    /// an index into [`ACTOR_TYPES`], and AI index) adds to `o` (the navi
+    /// init hook's routine, kept in its second related slot; CircusMan's
+    /// second one in its second overlay). `arg` (r2): they step even while
+    /// paused.
+    fn add_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, arg: u8);
+    /// `sub_8011044`: take them off (at their next update).
+    fn remove_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8);
 
     // ---- Navis and the attack in progress -------------------------------------
 
@@ -1201,6 +1234,9 @@ pub trait CoreApi {
     fn show_user(&mut self, user: ObjectRef);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
+    /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
+    /// navi warp, actor 0x2D).
+    fn navi_warp(&mut self, user: ObjectRef, out: bool);
 
     // ---- Obstacles (the obstacle framework) -------------------------------
 

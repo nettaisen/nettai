@@ -22,6 +22,9 @@ pub struct ObjectData {
     pub projectiles: Vec<ProjectileKind>,
     /// The flying shot (attack object #0xB) by kind, its first parameter.
     pub flying_shots: Vec<FlyingShotKind>,
+    /// How a field object looks by its NameID (`byte_8021220`, NameIDs
+    /// 0xCD..=0xFF), as `sub_800F26C` gives it: what DustMan throws.
+    pub name_looks: Vec<NameLook>,
     /// The object kinds scripts implement, by name (see `content::scripts`).
     pub kinds: Vec<super::ObjectKind>,
     /// Shock waves (attack object #0x16) by variant, its first parameter.
@@ -214,6 +217,22 @@ pub struct FlyingShotKind {
     /// out.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_effect: Option<u8>,
+}
+
+/// How a field object looks, by NameID (`byte_8021220`, 5 bytes a NameID
+/// from 0xCD: sprite category and index, animation, palette, shadow).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NameLook {
+    pub name_id: u16,
+    /// None where the table's category byte is 0xFF (`sub_800F26C`'s "no
+    /// look").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sprite: Option<SpriteId>,
+    pub anim: u8,
+    pub palette: u8,
+    /// Drawn with a shadow (the fifth byte nonzero).
+    pub shadow: bool,
 }
 
 /// A body overlay (actor object #0x56): a second sprite layered on a

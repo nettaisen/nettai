@@ -23,7 +23,7 @@ use std::ptr::NonNull;
 
 use bn6_content_api::{
     ACTOR_TYPES, ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
-    HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, Manifest, NaviStat, NaviState, ObjectField, ObstacleAction,
+    HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, Manifest, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
     ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Pool, RequestFlag, SpriteField, SpriteId, StatusFlag,
     StatusTimer, Value, Vec3,
 };
@@ -292,6 +292,19 @@ impl UserData for Object {
             let name_id = u16_arg(name_id, "NameID")?;
             with(|api, _| Ok(api.death_hook(this.0, name_id)))
         });
+        methods.add_method(
+            "add_navi_parts",
+            |_, this, (actor_type, ai, arg): (mlua::LuaString, LuaValue, LuaValue)| {
+                let t = named(&actor_type, "actor type", |s| ACTOR_TYPES.iter().position(|n| *n == s))? as u8;
+                let (ai, arg) = (u8_arg(ai, "AI index")?, u8_arg(arg, "arg")?);
+                with(|api, _| Ok(api.add_navi_parts(this.0, t, ai, arg)))
+            },
+        );
+        methods.add_method("remove_navi_parts", |_, this, (actor_type, ai): (mlua::LuaString, LuaValue)| {
+            let t = named(&actor_type, "actor type", |s| ACTOR_TYPES.iter().position(|n| *n == s))? as u8;
+            let ai = u8_arg(ai, "AI index")?;
+            with(|api, _| Ok(api.remove_navi_parts(this.0, t, ai)))
+        });
 
         // Sprite stepping.
         methods.add_method("set_animation", |_, this, anim: LuaValue| {
@@ -318,6 +331,7 @@ impl UserData for Object {
         methods.add_method("set_panel_from_coordinates", |_, this, ()| {
             with(|api, _| Ok(api.set_panel_from_coordinates(this.0)))
         });
+        methods.add_method("update_visibility", |_, this, ()| with(|api, _| Ok(api.update_visibility(this.0))));
         methods.add_method("update_collision_panels", |_, this, ()| {
             with(|api, _| Ok(api.update_collision_panels(this.0)))
         });
@@ -745,6 +759,9 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     g.set("obstacle", obstacle_lib(lua)?)?;
 
     let navi_chip = lua.create_table()?;
+    lib_fn!(lua, navi_chip, "warp", |_, (user, out): (mlua::UserDataRef<Object>, bool)| {
+        with(|api, _| Ok(api.navi_warp(user.0, out)))
+    });
     lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.navi_chip_left(c.0)))
     });
@@ -1006,6 +1023,18 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {
         let id = u8_arg(id, "hit spark")?;
         let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "form_overlay", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
+        let sprite = sprite_id(spec.raw_get("sprite")?, None)?;
+        let stepping = match spec.raw_get::<Option<mlua::LuaString>>("stepping")? {
+            Some(s) => named(&s, "overlay stepping", |n| OVERLAY_STEPPINGS.iter().position(|x| *x == n))? as u8,
+            None => 0,
+        };
+        let anim_offset = table_int(&spec, "anim_offset")? as u8;
+        let nudged = spec.raw_get::<Option<bool>>("nudged")?.unwrap_or(false);
+        let owner_palette = spec.raw_get::<Option<bool>>("owner_palette")?.unwrap_or(false);
+        let o = with(|api, _| Ok(api.spawn_form_overlay(owner.0, sprite, stepping, anim_offset, nudged, owner_palette)))?;
         object_value(lua, o)
     });
     // Subtype 18 (Otenko).

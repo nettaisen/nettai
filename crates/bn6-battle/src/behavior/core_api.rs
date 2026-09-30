@@ -150,6 +150,14 @@ fn flag_bit(f: ObjectField) -> Option<u8> {
     })
 }
 
+fn actor_type_of(i: u8) -> ActorType {
+    match i {
+        0 => ActorType::Virus,
+        1 => ActorType::Navi,
+        _ => ActorType::Player,
+    }
+}
+
 fn actor_type_index(t: ActorType) -> i64 {
     match t {
         ActorType::Virus => 0,
@@ -251,6 +259,7 @@ impl CoreApi for Battle {
             NaviStat::Charge => i(s.charge as i64),
             NaviStat::Mood => i(s.mood as i64),
             NaviStat::BeastOutCounter => i(s.beast_out_counter as i64),
+            NaviStat::Version => i(s.version as i64),
             NaviStat::MaxBaseHp => i(s.max_base_hp as i64),
             NaviStat::ChipRecovery => i(s.chip_recovery as i64),
             NaviStat::BusterShot => i(s.weapons.buster_shot as i64),
@@ -444,14 +453,15 @@ impl CoreApi for Battle {
     }
 
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo> {
-        let name = self
+        let r = self
             .content
             .navis
             .iter()
             .filter_map(|n| n.name_record.as_ref())
             .chain(self.content.forms.iter().filter_map(|f| f.name_record.as_ref()))
-            .find(|n| n.id == name_id)?;
-        let r = name.record();
+            .find(|n| n.id == name_id)
+            .map(crate::content::NameData::record)
+            .or_else(|| self.content.rules.actor_records.get(name_id as usize).copied())?;
         Some(NaviRecordInfo { actor_type: actor_type_index(r.actor_type) as u8, ai_index: r.ai_index })
     }
 
@@ -758,6 +768,19 @@ impl CoreApi for Battle {
         common::set_panels_from_coordinates(self, o);
     }
 
+    fn update_visibility(&mut self, o: ObjectRef) {
+        if !self.is_dimmed() {
+            self.objects.get_mut(o).flags |= flags::VISIBLE;
+        }
+        let alliance = self.objects.get(o).alliance;
+        if self.is_remote(alliance) {
+            let blind = self.player(alliance ^ 1).and_then(|p| self.objects.get(p).collision).is_some_and(|c| self.collision.get(c).f1 & f1::BLIND != 0);
+            if blind {
+                self.objects.get_mut(o).flags &= !flags::VISIBLE;
+            }
+        }
+    }
+
     fn update_collision_panels(&mut self, o: ObjectRef) {
         Battle::update_collision_panels(self, o);
     }
@@ -811,12 +834,35 @@ impl CoreApi for Battle {
         kinds::spark::spawn(self, owner, pos, id)
     }
 
+    fn spawn_form_overlay(
+        &mut self,
+        owner: ObjectRef,
+        sprite: SpriteId,
+        stepping: u8,
+        anim_offset: u8,
+        nudged: bool,
+        owner_palette: bool,
+    ) -> Option<ObjectRef> {
+        use kinds::form_overlay::{Palette, Stepping, Vars, spawn_with};
+        let palette = if owner_palette { Palette::Owner } else { Palette::Own };
+        let spec = Vars { sprite: Some(sprite), nudged, anim_offset, stepping: Stepping::from_param(stepping), palette, ..Vars::default() };
+        spawn_with(self, owner, spec)
+    }
+
     fn spawn_palette_flash(&mut self, variant: u8, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
         kinds::palette_flash::spawn_variant(self, variant, ticks, while_dimmed, while_paused)
     }
 
     fn death_hook(&mut self, o: ObjectRef, name_id: u16) {
         kinds::player::form::navi_death_hook(self, o, name_id);
+    }
+
+    fn add_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, arg: u8) {
+        kinds::player::form::record_init_hook(self, o, actor_type_of(actor_type), ai_index, arg);
+    }
+
+    fn remove_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8) {
+        kinds::player::form::record_death_hook(self, o, actor_type_of(actor_type), ai_index);
     }
 
     fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &bn6_content_api::api::AfterimageSpec) -> Option<ObjectRef> {
@@ -1194,10 +1240,10 @@ impl CoreApi for Battle {
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
             CollisionField::CounterByte => c.counter_byte = x as u8,
-            CollisionField::HitFlags
-            | CollisionField::FinalDamage
-            | CollisionField::GuardDirs
-            | CollisionField::DamageElements => unreachable!("read-only"),
+            CollisionField::HitFlags => c.acc.hit_flags = x as u32,
+            CollisionField::FinalDamage | CollisionField::GuardDirs | CollisionField::DamageElements => {
+                unreachable!("read-only")
+            }
         }
         Ok(())
     }
@@ -1277,6 +1323,11 @@ impl CoreApi for Battle {
 
     fn navi_chip_left(&mut self, controller: ObjectRef) {
         kinds::navi_chip::navi_left(self, controller);
+    }
+
+    fn navi_warp(&mut self, user: ObjectRef, out: bool) {
+        use kinds::navi_warp::{Warp, spawn};
+        spawn(self, user, if out { Warp::Out } else { Warp::In });
     }
 
     // ---- Obstacles ----------------------------------------------------------------------

@@ -459,6 +459,16 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
             opposing_player: [u32at(rom, 0x080E_74C4), u32at(rom, 0x080E_74C8)],
         },
         custom_screen: custom_screen(rom),
+        // Three bytes by NameID, 0..=0x1C3 (`byte_80182C4`).
+        actor_records: (0..0x1C4)
+            .map(|n| {
+                let rec = rom.bytes(0x0801_82C4 + 3 * n, 3);
+                let actor_type = [ActorType::Virus, ActorType::Navi, ActorType::Player][rec[1] as usize];
+                NaviRecord { version: rec[0], actor_type, ai_index: rec[2] }
+            })
+            .collect(),
+        // By form, the base form and the ten Crosses (`byte_80203EA`).
+        cross_palettes: rom.bytes(0x0802_03EA, 11).to_vec(),
     }
 }
 
@@ -803,6 +813,7 @@ fn objects(rom: &Rom) -> ObjectData {
         sun_beam_looks: (0..2).map(|i| sprite_at(0x080E_5C28 + 2 * i)).collect(),
         projectiles: projectiles(rom),
         flying_shots: flying_shots(rom),
+        name_looks: name_looks(rom),
         kinds: Vec::new(),
         shock_waves: (0..16).map(|i| shock_wave(rom, i)).collect(),
     }
@@ -917,6 +928,26 @@ fn flying_shots(rom: &Rom) -> Vec<FlyingShotKind> {
                 panel_spark: id == 2,
                 launch_sound: (id == 2).then_some(0x18A),
                 end_effect: (id == 5).then_some(7),
+            }
+        })
+        .collect()
+}
+
+/// `byte_8021220`: how a field object looks by NameID, 5 bytes from
+/// NameID 0xCD, for every NameID `sub_800F26C` reads it for (0xCD..=0xFF;
+/// the entries past 0xEB are the bytes that follow the table).
+fn name_looks(rom: &Rom) -> Vec<NameLook> {
+    const TABLE: u32 = 0x0802_1220;
+    (0xCDu16..=0xFF)
+        .map(|name_id| {
+            let a = TABLE + 5 * (name_id as u32 - 0xCD);
+            let category = rom.u8(a);
+            NameLook {
+                name_id,
+                sprite: (category != 0xFF).then(|| SpriteId { category, index: rom.u8(a + 1) }),
+                anim: rom.u8(a + 2),
+                palette: rom.u8(a + 3),
+                shadow: rom.u8(a + 4) != 0,
             }
         })
         .collect()

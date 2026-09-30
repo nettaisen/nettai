@@ -1,0 +1,6 @@
+# SlashMan, the SlashMan chips' navi (actor object #0x0D, `sub_80B9F44`), is a script.
+
+[kind]
+pool = "actor"
+index = 0x0D
+script = "slash_man.luau"

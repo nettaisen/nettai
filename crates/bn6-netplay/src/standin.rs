@@ -92,6 +92,7 @@ pub fn megaman(hp: u16) -> NaviStats {
         air_shoes: true,
         undershirt: false,
         super_armor: false,
+        version: 0,
         beast_out_counter: 3,
         sun: false,
         navi: Navi::MEGAMAN,

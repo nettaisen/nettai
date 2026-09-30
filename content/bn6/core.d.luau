@@ -230,7 +230,7 @@ declare class Collision
     -- The counter byte (bits 0-6 counter strength, bit 7 can't counter),
     -- which setup takes from the damage word's high half.
     counter_byte: number
-    -- What the last resolution hit (read-only).
+    -- What the last resolution hit (some kinds clear it).
     hit_flags: number
     -- The damage taken this window (read-only).
     final_damage: number
@@ -383,6 +383,13 @@ declare class Object
     -- `sub_8011044`: what an object with a navi's NameID takes down when it
     -- goes (for most, its form overlay in related2).
     function death_hook(self, name_id: number): ()
+    -- `sub_8010DF6`: put on the overlays an actor record adds (a body
+    -- overlay, SpoutMan's idle overlay, a beast head), kept in related2
+    -- (CircusMan's second one kept by the engine); `arg` 1: their sprites
+    -- step even while paused.
+    function add_navi_parts(self, actor_type: ActorType, ai_index: number, arg: number): ()
+    -- `sub_8011044`: take them off (at their next update).
+    function remove_navi_parts(self, actor_type: ActorType, ai_index: number): ()
 
     -- `object_setAnimation`: request an animation, restarting it even if
     -- it is current.
@@ -403,6 +410,9 @@ declare class Object
     function set_coordinates_from_panel(self): ()
     function set_panel_from_coordinates(self): ()
     function update_collision_panels(self): ()
+    -- `sub_80169BE`: shown unless the battle is dimmed; hidden if it is the
+    -- remote side's and the local player is blind.
+    function update_visibility(self): ()
     -- Onto the destination panel of a move (panel, reservation,
     -- coordinates, collision).
     function snap_to_future_panel(self): ()
@@ -508,6 +518,8 @@ declare class Navi
     charge: number
     mood: number
     beast_out_counter: number
+    -- The navi's game: 0 Gregar, 1 Falzar.
+    version: number
     max_base_hp: number
     chip_recovery: number
     -- NaviCust: the buster's spread shot, the charged shot's kind, and the
@@ -596,6 +608,24 @@ export type PanelCondition = { require: number, forbid: number }
 export type DamageCarry = { this_tick: number, previous: number, source: Object?, target: Object? }
 export type Column = { home: number, timer: number }
 export type NaviRecord = { actor_type: ActorType, ai_index: number }
+
+-- How a form overlay's sprite steps once the navis are in (its Param3):
+-- `object_updateSprite` (not while dimmed; it stops running while paused),
+-- `object_updateSpriteTimestop`, or `sub_801BCD0` (paused or not).
+export type FormOverlayStepping = "normal" | "while_dimmed" | "always"
+
+-- A form overlay (`battle.form_overlay`): its sprite (Param1, Param2),
+-- stepping (Param3), the offset to the owner's animation it plays
+-- (Param4); a pixel nearer than its owner when `nudged` (ExtraVars[0]);
+-- wearing the owner's palette when `owner_palette` (ExtraVars[1] 0xFF).
+export type FormOverlaySpec = {
+    sprite: SpriteId,
+    -- "normal" by default.
+    stepping: FormOverlayStepping?,
+    anim_offset: number?,
+    nudged: boolean?,
+    owner_palette: boolean?,
+}
 
 -- What a dimming chip's controller is spawned with: the user's attack.
 export type DimmingChipSpec = {
@@ -702,6 +732,9 @@ declare battle: {
     palette_flash: (variant: number, ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80C468C`: a form overlay (actor object #0x57) on `owner`,
+    -- following it every tick.
+    form_overlay: (owner: Object, spec: FormOverlaySpec) -> Object?,
     -- Subtype 18 (Otenko): the turn (from 0) a hand's chip at i was picked
     -- in, and adding to its Atk+ bonus.
     hand_turn: (side: number, i: number) -> number,
@@ -792,6 +825,8 @@ declare dimming: {
 declare navi_chip: {
     -- The navi is done: its controller moves on.
     navi_left: (controller: Object) -> (),
+    -- `sub_80E1332`: the user warps out (`out`) or back in.
+    warp: (user: Object, out: boolean) -> (),
 }
 
 -- What an actor list's entry is placed with (`off_80073A0[type]`): an
@@ -1068,6 +1103,9 @@ export type FlyingShotKind = {
     -- The effect it leaves when its range runs out.
     end_effect: number?,
 }
+-- How a field object looks by its NameID (`byte_8021220`, NameIDs
+-- 0xCD..=0xFF, as `sub_800F26C` gives it); no sprite is the table's none.
+export type NameLook = { name_id: number, sprite: SpriteId?, anim: number, palette: number, shadow: boolean }
 
 export type WeaponData = { id: number, name: string, action: number?, script: string }
 
@@ -1091,6 +1129,7 @@ export type PackData = {
         sun_beam_looks: { [number]: SpriteId },
         projectiles: { [number]: ProjectileKind },
         flying_shots: { [number]: FlyingShotKind },
+        name_looks: { [number]: NameLook },
         kinds: { [string]: ObjectKindData },
         shock_waves: { [number]: ShockWave },
     },
@@ -1106,6 +1145,8 @@ export type PackData = {
         -- every panel whose flags word has all of `require` and none of
         -- `forbid`.
         field_regions: { [number]: PanelCondition },
+        -- MegaMan's palette in each Cross, by form (`byte_80203EA`).
+        cross_palettes: { [number]: number },
     },
     -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
     -- panels a region covers, { dx, dy } from its panel with dx toward the
