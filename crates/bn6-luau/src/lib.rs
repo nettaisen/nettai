@@ -174,7 +174,10 @@ impl ContentHost for LuauContent {
 
     fn update_action(&self, api: &mut dyn CoreApi, action: KindId, me: ObjectRef) -> Result<(), ContentError> {
         let o = bind::object(&self.lua, me).map_err(|e| ContentError::new(e.to_string()))?;
-        let s = bind::action_state(&self.lua, me).map_err(|e| ContentError::new(e.to_string()))?;
+        // The state of the action being run, even after the update leaves
+        // it (the game's attack variables outlive the action).
+        let number = self.manifest.actions[action.0 as usize].action;
+        let s = bind::action_state(&self.lua, me, number).map_err(|e| ContentError::new(e.to_string()))?;
         self.call(&self.actions[action.0 as usize], api, (o, s))
     }
 

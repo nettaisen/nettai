@@ -23,7 +23,8 @@ fn run_only(b: &mut Battle, kinds: &[(Pool, u8)]) {
 const ROCK_KINDS: [(Pool, u8); 4] = [
     (Pool::Attack, INDEX),
     (Pool::Effect, crate::kinds::rock_debris::INDEX),
-    (Pool::Effect, crate::kinds::absorbed_obstacle::INDEX),
+    // The absorbed obstacle (the pack's objects/absorbed-obstacle).
+    (Pool::Effect, 0x87),
     (Pool::Effect, 0),
 ];
 
