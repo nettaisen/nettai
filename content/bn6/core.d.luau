@@ -193,6 +193,10 @@ end
 declare class Collision
     -- Region shape.
     region: number
+    -- The panel the region is anchored on (`update_collision_panels`
+    -- copies the object's).
+    panel_x: number
+    panel_y: number
     -- Hit spark effect (0xFF = none).
     hit_effect: number
     status_base: number
@@ -716,6 +720,10 @@ export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } 
 
 export type WeaponData = { id: number, name: string, action: number?, script: string }
 
+-- A panel condition: the flags word has all of `require` and none of
+-- `forbid`.
+export type PanelCondition = { require: number, forbid: number }
+
 -- An object kind a script implements.
 export type ObjectKindData = { pool: Pool, index: number, script: string }
 
@@ -736,7 +744,15 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- Whole-field hit regions (`byte_8019C34`): region 0x80 + i covers
+        -- every panel whose flags word has all of `require` and none of
+        -- `forbid`.
+        field_regions: { [number]: PanelCondition },
     },
+    -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
+    -- panels a region covers, { dx, dy } from its panel with dx toward the
+    -- facing side, in the game's order.
+    regions: { [number]: { { number } } },
 }
 
 declare data: PackData
