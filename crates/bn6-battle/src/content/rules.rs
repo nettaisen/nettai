@@ -259,4 +259,8 @@ pub struct LockonSearch {
     pub offsets: Vec<PanelOffset>,
     /// Afterwards, the middle row of the chosen column is taken if free.
     pub prefers_middle_row: bool,
+    /// With the target in the far column (the one at the user's front
+    /// edge), the first offset is skipped (`sub_80266BA`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub skips_first_at_edge: bool,
 }
