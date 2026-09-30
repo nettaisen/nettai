@@ -49,6 +49,7 @@ scripts' API and runtime in [scripting.md](scripting.md).
 
 ```text
 content.toml                              the manifest ([battle], [graphics], [sound])
+assets.toml                               the asset index: every asset content can name, by kind and name
 chips/NNN-name/chip.toml                  a chip, with the data only its action reads (and its `script`)
 chips/NNN-name/*.luau                     the chip's action, if it has its own
 navis/NN-name/navi.toml                   a navi (MegaMan is 00)
@@ -307,14 +308,24 @@ reads the battle data and the sprite timing into a `Content`, with a
 - a weapon routine is declared once, and scripts are paths inside the
   pack.
 
+It then fills `Content::assets` from the asset index, `assets.toml`
+(`bn6_content::names::read_index`): every sprite, sound, banner,
+background and mugshot by name, with the engine's identity for it (a
+sprite as `"category-index"` in hex, the others their numbers), so
+content's `asset.sprite("bomb")` resolves while it is defined. The
+extractor writes it from compat/assets.toml: every name the table gives
+(a banner the HUD doesn't draw included) and the pack's other assets
+under their placeholders. A pack without one loads with no asset names
+(a note), and content that names an asset doesn't define on it.
+
 What the scripts register is checked when a battle loads them
 (`Content::registrations`): a script that isn't in the pack, an object
 slot, action or hook claimed by two different modules, and a module
 without the function its registration needs are errors.
 
 `bn6-content check <pack>` runs every import and prints the report.
-`bn6-extract content` writes the files (`battle::export`), loads them back
-and requires the same `Content`; `bn6-content verify <pack> <reference>`
+`bn6-extract content` writes the files (`battle::export`, the asset
+index), loads them back and requires the same `Content` and index; `bn6-content verify <pack> <reference>`
 compares what two packs load (after an editor round trip, say).
 
 Loading is straight from the files: there is no derived cache. BN6's

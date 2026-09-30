@@ -149,6 +149,7 @@ dependencies = [
  "bn6-battle",
  "bn6-compat",
  "bn6-content",
+ "bn6-content-api",
  "m4a",
 ]
 

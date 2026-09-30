@@ -178,6 +178,40 @@ fn named_assets_read_back_by_their_numbers() {
     assert_eq!(back.unwrap(), b);
 }
 
+/// The asset index lists every asset under the name it is written under
+/// (placeholders for the rest), and reads back.
+#[test]
+fn the_asset_index_lists_every_asset_by_name() {
+    use bn6_content_api::{AssetKind, AssetNames, SpriteId};
+    let dir = temp("index");
+    let b = bundle();
+    let mut names = bn6_content::names::AssetNames::default();
+    let first = &b.sprites[0];
+    names.sprites.insert((first.category, first.index), "bomb".into());
+    names.backgrounds.insert(0, "clouds".into());
+    names.songs.insert(0x63, "no-music".into());
+    names.songs.insert(1, "throw".into());
+    // A banner the HUD doesn't draw is named all the same.
+    names.banners.insert(0xA0, "heatman-win".into());
+    let index = names.index(&b, &[0, 1, 2].into());
+    assert_eq!(index.sprites["bomb"], SpriteId { category: first.category, index: first.index });
+    assert_eq!(index.sprites.len(), b.sprites.len());
+    let sounds: Vec<(&str, u16)> = index.sounds.iter().map(|(k, &v)| (k.as_str(), v)).collect();
+    assert_eq!(sounds, [("no-music", 0x63), ("sound-000", 0), ("sound-002", 2), ("throw", 1)]);
+    assert_eq!(index.banners.get("heatman-win"), Some(&0xA0));
+    assert_eq!(index.backgrounds.get("clouds"), Some(&0));
+    assert_eq!(index.banners.len(), b.hud.banners.len() + 1);
+    assert_eq!(index.mugshots.len(), b.hud.mugshots.len());
+    assert!(AssetNames::is_placeholder(AssetKind::Sound, "sound-002"));
+    pack::write_files(&dir, &vec![bn6_content::names::index_file(&index)]).unwrap();
+    let mut r = Report::default();
+    assert_eq!(bn6_content::names::read_index(&dir, &mut r), Some(index), "{r}");
+    // Without an index a pack names no assets.
+    let mut r = Report::default();
+    assert_eq!(bn6_content::names::read_index(&temp("no-index"), &mut r), Some(AssetNames::default()));
+    assert_eq!(r.count(Level::Note), 1);
+}
+
 #[test]
 fn timing_loads_without_images() {
     let dir = temp("timing");
