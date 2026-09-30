@@ -220,16 +220,18 @@ fn select_special(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).requests &= !request::SELECT_SPECIAL;
 }
 
-/// `sub_8010660`: a NaviCust program (stat 0x0D bit 4) fires once when
-/// HP drops to a quarter in link battles.
+/// `sub_8010660`: in link battles the NaviCust support Tango (stat 0x0D
+/// bit 2) comes once when the navi's HP drops to a quarter; the navi does
+/// nothing else this tick.
 fn low_hp_navicust_effect(b: &mut Battle, r: ObjectRef) -> bool {
     let Some(support) = stats(b, r).support else { return false };
     let o = b.objects.get(r);
     if !is_link(b) || !support.tango || o.max_hp / 4 < o.hp {
         return false;
     }
-    stats_mut(b, r).support = Some(crate::setup::SupportNavis { tango: false, ..support });
-    panic!("low-HP NaviCust effect (sub_80E90FE) is not implemented yet");
+    stats_mut(b, r).support = Some(crate::setup::Supports { tango: false, ..support });
+    summon_support(b, r, Support::Tango, 0);
+    true
 }
 
 /// `off_80117D4[routine]`: set up a weapon's attack variables and name
@@ -285,19 +287,84 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: u16) {
     }
 }
 
-/// `sub_80106C0` / `sub_8010740`: the opponent's NaviCust (stat 0x0D bits
-/// 2 and 1) cancels a Mega/Giga chip or a flagged chip, once.
-fn intercepted(b: &Battle, r: ObjectRef, chip: u16) -> bool {
+/// `sub_80106C0`, then `sub_8010740`: the opponent's NaviCust support
+/// turns the chip back, once: Beat (stat 0x0D bit 1) a Mega or Giga
+/// chip, Rush (bit 0) a chip flagged for him. (The game reads the chip's
+/// record with the id as it is, flag bits and all.)
+fn intercepted(b: &mut Battle, r: ObjectRef, chip: u16) -> bool {
+    use crate::content::{ChipClass, ExtraChipFlags};
     if !is_link(b) {
         return false;
     }
-    let Some(opp) = b.stats[(b.objects.get(r).alliance ^ 1) as usize].support else { return false };
-    let data = b.content.chip(chip & 0x7FFF);
-    let mega_or_giga = matches!(data.class, crate::content::ChipClass::Mega | crate::content::ChipClass::Giga);
-    if (opp.beat && mega_or_giga) || (opp.rush && data.extra_flags.has(crate::content::ExtraChipFlags::RUSH_CANCELS)) {
-        panic!("NaviCust chip interception (sub_80E90FE) is not implemented yet");
+    let other = b.objects.get(r).alliance ^ 1;
+    let support = match b.stats[other as usize].support {
+        Some(opp) if opp.beat && matches!(b.content.chip(chip).class, ChipClass::Mega | ChipClass::Giga) => {
+            b.stats[other as usize].support = Some(crate::setup::Supports { beat: false, ..opp });
+            Support::Beat
+        }
+        Some(opp) if opp.rush && b.content.chip(chip).extra_flags.has(ExtraChipFlags::RUSH_CANCELS) => {
+            b.stats[other as usize].support = Some(crate::setup::Supports { rush: false, ..opp });
+            Support::Rush
+        }
+        _ => return false,
+    };
+    let Some(host) = b.player(other) else {
+        // The game goes on with a null navi: its panel and side come from
+        // the BIOS.
+        panic!("the opponent's support has no navi to come from (sub_80106C0 / sub_8010740 read a null object)");
+    };
+    summon_support(b, host, support, chip);
+    true
+}
+
+/// The NaviCust supports, by the controller's first parameter.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Support {
+    Rush = 0,
+    Beat = 1,
+    Tango = 2,
+}
+
+impl Support {
+    /// The chip record the controller's telop names (its +0x30).
+    fn telop_chip(self) -> u16 {
+        match self {
+            Support::Rush => 0x179,
+            Support::Beat => 0x17A,
+            Support::Tango => 0x17B,
+        }
     }
-    false
+}
+
+/// The supports' dimming controller (effect object #0x79, `sub_80E8FE0`),
+/// a content kind.
+const SUPPORT_CONTROLLER: &str = "support";
+
+/// `sub_80E90FE`, then `sub_800BF16(side, 1, controller)`: `support`'s
+/// controller on `host`'s panel, its side's, and a dimming its side starts
+/// that no one can cut in on (`host` its user). Rush's controller carries
+/// the chip he eats in its third and fourth parameters.
+fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: u16) {
+    let h = b.objects.get(host);
+    let (panel, side) = (h.panel, h.alliance);
+    let chip = if support == Support::Rush { chip } else { 0 };
+    let params = [support as u8, 0, chip as u8, (chip >> 8) as u8];
+    // The spawn's position is the caller's r1..r3: the host's panel row
+    // and two zeros.
+    let pos = crate::object::Vec3 { x: panel.y as i32, y: 0, z: 0 };
+    let controller = crate::behavior::spawn_kind(b, SUPPORT_CONTROLLER, pos, params);
+    if let Some(c) = controller {
+        let o = b.objects.get_mut(c);
+        o.panel = panel;
+        o.element = 0;
+        o.related[0] = Some(host);
+        o.alliance = side;
+        o.damage = 0;
+        o.stamina = 0;
+        let telop = bn6_content_api::Value::Int(support.telop_chip() as i64);
+        crate::behavior::set_state_field(b, c, "telop_chip", telop);
+    }
+    b.start_dimming(side, true, controller, host);
 }
 
 /// `sub_800FA54`: the held direction (up, down, right, left in that

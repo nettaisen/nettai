@@ -184,15 +184,15 @@ pub enum GaugeSpeed {
     Slow = 2,
 }
 
-/// Support navis that act once in link battles (NaviStats+0x0D bits; the
-/// byte is 0xFF when there are none).
+/// The NaviCust supports, which act once in link battles (NaviStats+0x0D
+/// bits; the byte is 0xFF when there are none).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct SupportNavis {
-    /// Bit 0: cancels one chip with `flags2 & 2`.
+pub struct Supports {
+    /// Bit 0: Rush cancels one chip with `flags2 & 2`.
     pub rush: bool,
-    /// Bit 1: cancels one Mega or Giga chip.
+    /// Bit 1: Beat cancels one Mega or Giga chip.
     pub beat: bool,
-    /// Bit 2: acts once when HP drops to a quarter.
+    /// Bit 2: Tango heals once when HP drops to a quarter.
     pub tango: bool,
 }
 
@@ -274,7 +274,7 @@ pub struct NaviStats {
     pub mega_level: u8,
     pub giga_level: u8,
     /// +0x0D: None when the byte is 0xFF.
-    pub support: Option<SupportNavis>,
+    pub support: Option<Supports>,
     /// +0x0E: 0 worn out, 0x80 normal, 0xFF Full Synchro; hits wear it
     /// down.
     pub mood: u8,
@@ -340,7 +340,7 @@ impl NaviStats {
             custom_level: b[0x0A],
             mega_level: b[0x0B],
             giga_level: b[0x0C],
-            support: (b[0x0D] != 0xFF).then(|| SupportNavis {
+            support: (b[0x0D] != 0xFF).then(|| Supports {
                 rush: b[0x0D] & 1 != 0,
                 beat: b[0x0D] & 2 != 0,
                 tango: b[0x0D] & 4 != 0,
@@ -612,7 +612,7 @@ mod tests {
         assert_eq!(s.form, Form::NONE);
         assert!(s.float_shoes && s.air_shoes && !s.undershirt && !s.super_armor);
         assert_eq!(s.mood, 0x80);
-        assert_eq!(s.support, Some(SupportNavis::default()));
+        assert_eq!(s.support, Some(Supports::default()));
         assert_eq!(
             (
                 s.weapons.buster,

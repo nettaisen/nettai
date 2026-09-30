@@ -1,0 +1,7 @@
+# Rush, the NaviCust support that eats a chip (actor object #0x4B, `sub_80C3218`), is a
+# script.
+
+[kind]
+pool = "actor"
+index = 0x4B
+script = "rush.luau"
