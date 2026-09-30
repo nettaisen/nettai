@@ -1,0 +1,3 @@
+# A navi chip (subtype 5): its navi is EraseMan.
+
+script = "../../objects/erase-man/erase_man.luau"
