@@ -4,8 +4,9 @@ Obstacles are attack-pool (T3) objects without actor data that stand on a
 panel, take hits, and leave the field in several ways. The rock (T3#0x59)
 is the one the netbattle fixtures use: the soundmod trace's round 1 starts
 with two. Engine code: `kinds/obstacle.rs` (shared), `kinds/rock.rs`,
-`kinds/rock_debris.rs` (T4#0x38), `kinds/absorbed_obstacle.rs` (T4#0x87),
-the registry in `field.rs` (`FieldObjects`), generic helpers in
+`kinds/rock_debris.rs` (T4#0x38), the registry in `field.rs`
+(`FieldObjects`); the absorbed obstacle (T4#0x87) is the content pack's
+`objects/absorbed-obstacle`, spawned by name; generic helpers in
 `kinds/common.rs`. Data: `ObjectData::rocks`, `ObjectData::absorbed_sprites`
 (a content pack's `objects/rock/object.toml` and
 `objects/absorbed-obstacle/object.toml`, extracted by bn6-extract).
@@ -171,26 +172,31 @@ shake }`.
 ### 4.4 Requests from chips
 
 `sub_800F884` f2 |= 0x8000 (removed); `sub_800F898` also 0x40000
-(blink out); `sub_800F8B0` also 0x100000 << absorber's side. The absorbing
-chip (player action 0x58, `sub_80EFCD8`) calls `sub_80EFD74` on its 10th
-tick: for all eight registry slots, skip empty, NameID 0xDA, no collision,
-or f2 & 0x348000, else `sub_800F8B0`.
+(blink out); `sub_800F8B0` also 0x100000 << absorber's side. DustCross's
+B+Back (weapon routine 0x2A, player action 0x58 `sub_80EFCB4`: the pack's
+`navis/00-megaman/weapons/2a-absorb`) calls `sub_80EFD74` on its 10th tick
+(`battle.absorb_obstacles`): for all eight registry slots, skip empty,
+NameID 0xDA, no collision, or f2 & 0x348000, else `sub_800F8B0`.
 
 ## 5. Spawned effects
 
 **T4#0x87 absorbed obstacle (`sub_80E97F0`).** Spawned by `sub_800F90E(kind)`
 at the obstacle's position with params {kind, side (f2 & 0x200000), CurAnim,
-sprite palette}; copies Alliance/Flip; flags &= ~0x14 (0x03 after init).
+sprite palette}, and the obstacle's hidden sprite parts in ExtraVars+8;
+copies Alliance/Flip; flags &= ~0x14 (0x03 after init).
 Init: panel from coordinates (`sub_800E258`: x = (X/65536 + 160) / 40, y =
 (Y/65536 + 32) / 24); sprite `byte_80E98C0[kind]` (rock: (0x10, 0)); CurAnim
-= CurAnimCopy = Param3; target = that side's navi (`sub_80103BC`) X + 20 px
+= CurAnimCopy = Param3; kind 2 keeps the hidden parts; target = that side's
+navi (`sub_80103BC`, the side's first actor if it is a player) X + 20 px
 toward its facing, navi Y; Timer 9; velocities = (target − pos) / 9 (signed
 division), Zvel = (16 px − Z) / 9; VISIBLE; state 4. Update: battle over or
 off the field → T4#0 effect 0x12 at Z + 16 px, destroy; else move, panel
 from coordinates, and while the navi's CurAction is 0x58: `--Timer <= 0` →
 if the navi's AIData+0x0D < 8, store Param1 | CurAnim << 4 at AIData+0x6C +
-count, count += 1, destroy. Then a bare `sprite_update`. Engine: the navi's
-`ActorData::absorbed` list.
+count, count += 1, destroy (a full list leaves the timer to wrap: 65534
+ticks before it tries again). Then a bare `sprite_update`. Engine: the
+navi's `ActorData::absorbed` list; the kind is the pack's
+`objects/absorbed-obstacle`.
 
 **T4#0x38 rock debris (`sub_80E46D8`).** Init: VISIBLE, sprite (0x10, 1),
 animation RNG2 & 1, palette Param1, r = RNG2: Xvel = ((r & 15) − 7) << 15,

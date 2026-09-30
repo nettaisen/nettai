@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x2A, DustCross's B+Back special (`sub_8011F84`), and
+# its action, pulling in the field's obstacles (`sub_80EFCB4`), are a script.
+
+id = 0x2A
+name = "Absorb"
+action = 0x58
+script = "absorb.luau"
