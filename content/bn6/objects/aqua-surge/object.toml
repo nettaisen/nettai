@@ -1,0 +1,7 @@
+# A surge of water (attack object #0x76, `sub_80D385C`), SpoutCross Beast's
+# charged chip's, is a script.
+
+[kind]
+pool = "attack"
+index = 0x76
+script = "aqua_surge.luau"

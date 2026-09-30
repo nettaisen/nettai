@@ -13,6 +13,7 @@
 //!             .flying_shots[kind]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
+//! data.regions[n]           region shape n: its panels as { dx, dy } (dx toward the facing side)
 //! ```
 
 use bn6_content_api::{Data, DataKey};
@@ -79,5 +80,6 @@ pub fn script_data(c: &Content) -> Data {
         ("weapons", by_id(c.weapons.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("objects", objects),
         ("rules", rules),
+        ("regions", by_id(c.regions.iter().enumerate().map(|(i, r)| (i as i64, r)), |r| value(*r))),
     ])
 }
