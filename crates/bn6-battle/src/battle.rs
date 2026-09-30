@@ -135,6 +135,35 @@ pub struct FightMachine {
     pub pausing_player: u8,
     pub timer: i16,
     pub turn_timer: u16,
+    /// The damage judge after a time-up (`dword_203EAD0`).
+    pub judge: Judge,
+}
+
+/// What opening the custom screen costs a side in the battle flag 0x40
+/// mode (`sub_800A29A`).
+const GAUGE_CUSTOM_COST: u16 = 0x2900;
+
+/// The damage judge (`sub_802CB38` sets it up, `sub_802CB78` runs it): the
+/// judge's banner with both navis' damage taken, 59 ticks of rolling
+/// digits (one RNG draw each), the real values for 120 ticks, then 30 more.
+/// Less damage taken wins; equal damage is a draw.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Judge {
+    /// +0: 0 starting, 4 running, 8 done.
+    pub state: u8,
+    /// +1, +2, +3: the running state's step, sub-step, and whether the
+    /// sub-step's entry ran.
+    pub step: u8,
+    pub sub: u8,
+    pub sub_init: bool,
+    /// +5.
+    pub timer: u8,
+    /// +7: 1 the local side wins, 2 it loses, 3 a draw.
+    pub outcome: u8,
+    /// +8, +0xA: the damage side 1 and side 0 took.
+    pub damage: [u16; 2],
+    /// +0xC, +0xE: the rolling digits shown (presentation).
+    pub rolled: [u16; 2],
 }
 
 /// The screen fades a battle starts (`SetScreenFade`'s modes): which
@@ -389,6 +418,14 @@ pub enum BattleResult {
     Won = 1,
     Lost = 2,
     Drawn = 3,
+    /// The player ran away (single-player battles).
+    Escaped = 4,
+    /// The link broke (`sub_8007EB8`).
+    CommError = 5,
+    /// Result codes 9 and 0xA: the battle was cut short. (Their setters
+    /// weren't found; `sub_8007CA0` treats both alike.)
+    Terminated = 9,
+    TerminatedA = 0xA,
 }
 
 /// Where a set stands after a round (`sub_800AF50`).
@@ -774,10 +811,9 @@ impl Battle {
     fn finish_round(&mut self) {
         self.play_sound(SoundCue::StopMusic);
         let code = self.round.result & 0xF;
-        if matches!(code, 5 | 9 | 0xA) {
-            panic!("ending a battle with result code {code} (sub_8007CA0) is not implemented yet");
-        }
-        if self.setup.settings.effects & effects::SET != 0 {
+        // A broken link or a cut-short battle ends the set.
+        let cut_short = matches!(code, 5 | 9 | 0xA);
+        if self.setup.settings.effects & effects::SET != 0 && !cut_short {
             match self.set_standing() {
                 SetStanding::Undecided => return self.chain_next_round(),
                 // setTwoStructs_800A840
@@ -788,12 +824,24 @@ impl Battle {
             1 => BattleResult::Won,
             2 => BattleResult::Lost,
             3 => BattleResult::Drawn,
-            c => panic!("battle result code {c}"),
+            4 => BattleResult::Escaped,
+            5 => BattleResult::CommError,
+            9 => BattleResult::Terminated,
+            0xA => BattleResult::TerminatedA,
+            c => panic!("battle result code {c} is none sub_8007CA0 hands back"),
         };
+        let link = self.setup.settings.effects & effects::LINK != 0;
+        if result == BattleResult::CommError && !link {
+            // Outside link battles the game may restart the battle
+            // (sub_803F4EC, event flag 0x1733, loc_80071FE): the menus'.
+            panic!("a single-player battle's communication error restarts it from the menus (sub_8007CA0)");
+        }
         // (A win also counts toward a save-data statistic, dword_2000B30.)
         // sub_800FAE0: the local navi's HP, read from its object although
-        // the fade-out freed it.
-        if let Some(r) = self.player(self.round.local_side) {
+        // the fade-out freed it. A broken link skips it (loc_8007E38).
+        if result != BattleResult::CommError
+            && let Some(r) = self.player(self.round.local_side)
+        {
             self.round.exit_hp = self.objects.get(r).hp;
         }
         // The rest updates the PET navi and rewards outside the battle and
@@ -1053,7 +1101,7 @@ impl Battle {
             _ => {
                 match r {
                     1 | 2 => {
-                        self.round.result = (self.round.result & 0xF0) | r;
+                        self.round.result = r;
                         self.round.busting_level = self.busting_level();
                     }
                     _ => {}
@@ -1069,9 +1117,199 @@ impl Battle {
             fight::START_BANNER => self.fight_start_banner(),
             fight::FIGHTING => self.fight_fighting(),
             fight::WIN | fight::LOSE => self.fight_result(),
+            fight::DRAW => self.fight_draw(),
+            fight::JUDGE => self.fight_judge(),
+            fight::PAUSE => self.fight_pause(),
             fight::CUSTOM_REVERT => self.fight_custom_revert(),
             fight::CUSTOM_SEQUENCE => self.fight_custom_sequence(),
-            s => panic!("fighting state {s:#x} not implemented yet"),
+            s => panic!("fighting state {s:#x} reads past its table (sub_80080D2)"),
+        }
+    }
+
+    /// A word store of the fighting state: its sub-state and entry flag go
+    /// back to 0.
+    fn set_fight_state(&mut self, state: u8) {
+        self.fight.state = state;
+        self.fight.sub = 0;
+        self.fight.init = 0;
+    }
+
+    /// Fighting state 0x14, a draw (`sub_80082DC`): the draw banner (0x1C);
+    /// once it is done, in a set whose standing is decided (`sub_800AF50`)
+    /// the set's winner's result state, otherwise the round is a draw.
+    /// (Its 0x66-tick timer counts down, but its test reads the halfword
+    /// unsigned and never holds the state.)
+    fn fight_draw(&mut self) {
+        if self.fight.init == 0 {
+            // The HUD's parts hide.
+            self.fight.timer = 0x66;
+            self.fight.init = 4;
+            self.start_banner(BannerId(0x1C));
+        }
+        self.fight.timer = self.fight.timer.wrapping_sub(1);
+        if self.banner.status() != BannerStatus::Done {
+            return;
+        }
+        if self.setup.settings.effects & effects::SET != 0 {
+            match self.set_standing() {
+                SetStanding::Decided(BattleResult::Won) => return self.set_fight_state(fight::WIN),
+                SetStanding::Decided(BattleResult::Lost) => return self.set_fight_state(fight::LOSE),
+                _ => {}
+            }
+        }
+        // setTwoStructs_800A840(3) (and GameState+0x14 = 3).
+        self.round.result = BattleResult::Drawn as u8;
+        self.fight.result = BattleResult::Drawn as u8;
+    }
+
+    /// Fighting state 0x18, the damage judge after a time-up
+    /// (`sub_800834A`): 60 ticks, then the judge (`sub_802CB38`,
+    /// `sub_802CB78`); its outcome is a win (counted), a loss (counted) or a
+    /// draw.
+    fn fight_judge(&mut self) {
+        if self.fight.sub == 0 {
+            // sub_8008364
+            if self.fight.init == 0 {
+                self.fight.timer = 0;
+                self.fight.init = 4;
+            }
+            self.fight.timer = self.fight.timer.wrapping_add(1);
+            if self.fight.timer >= 0x3C {
+                // (The HUD's time display hides.)
+                self.fight.sub = 4;
+                self.fight.init = 0;
+            }
+            return;
+        }
+        // sub_800838A
+        if self.fight.init == 0 {
+            let taken = |b: &Battle, side: u8| {
+                let Some(a) = b.player_actor(side) else {
+                    panic!("the damage judge reads a missing navi's damage (sub_801055E)");
+                };
+                b.actors.get(a).total_damage_taken
+            };
+            let (d1, d0) = (taken(self, 1), taken(self, 0));
+            self.start_judge(d1, d0);
+            self.fight.init = 4;
+            return;
+        }
+        if self.step_judge() {
+            return;
+        }
+        match self.fight.judge.outcome {
+            1 => {
+                self.round.wins += 1;
+                self.set_fight_state(fight::WIN);
+            }
+            2 => {
+                self.round.losses += 1;
+                self.set_fight_state(fight::LOSE);
+            }
+            _ => self.set_fight_state(fight::DRAW),
+        }
+    }
+
+    /// `sub_802CB38(damage of side 1, damage of side 0)`: the side that took
+    /// more damage loses (none on equal damage; the fighting machine's +0x10
+    /// keeps it, which nothing reads), and the outcome from the local side.
+    fn start_judge(&mut self, d1: u16, d0: u16) {
+        let loser = if d1 == d0 {
+            None
+        } else if d1 < d0 {
+            Some(0)
+        } else {
+            Some(1)
+        };
+        let outcome = match loser {
+            None => 3,
+            Some(l) if l == self.round.local_side => 2,
+            Some(_) => 1,
+        };
+        self.fight.judge = Judge { damage: [d1, d0], outcome, ..Judge::default() };
+    }
+
+    /// `sub_802CB78`: one tick of the judge; true while it runs.
+    fn step_judge(&mut self) -> bool {
+        let j = &mut self.fight.judge;
+        match j.state {
+            // sub_802CBA4
+            0 => j.state = 4,
+            // sub_802CBAC
+            4 => match j.step {
+                // sub_802CBCC: the judge's banner with both damages, the
+                // local side's first.
+                0 => {
+                    j.step = 4;
+                    j.sub = 0;
+                    j.sub_init = false;
+                    self.start_banner(BannerId(0x28));
+                }
+                // sub_802CBF2
+                4 => match j.sub {
+                    // sub_802CC10
+                    0 => {
+                        j.timer = 0x3C;
+                        j.sub = 4;
+                    }
+                    // sub_802CC1A: rolling digits.
+                    4 => {
+                        j.timer = j.timer.wrapping_sub(1);
+                        if j.timer == 0 {
+                            j.sub = 8;
+                            j.sub_init = false;
+                        } else {
+                            let v = self.rng.next_positive();
+                            let j = &mut self.fight.judge;
+                            j.rolled = [(v & 0xFFFF) as u16 % 0x270E, (v >> 16) as u16 % 0x270E];
+                        }
+                    }
+                    // sub_802CC50: the real values for 120 ticks.
+                    _ => {
+                        if !j.sub_init {
+                            j.timer = 0x78;
+                            j.sub_init = true;
+                        }
+                        j.timer = j.timer.wrapping_sub(1);
+                        if j.timer == 0 {
+                            j.step = 8;
+                            j.sub = 0;
+                            j.sub_init = false;
+                        }
+                    }
+                },
+                // sub_802CC8C: the banner goes, 30 ticks.
+                _ => {
+                    if j.sub == 0 {
+                        j.timer = 0x1E;
+                        j.sub = 4;
+                        self.banner.release();
+                    }
+                    let j = &mut self.fight.judge;
+                    j.timer = j.timer.wrapping_sub(1);
+                    if j.timer == 0 {
+                        j.state = 8;
+                        j.step = 0;
+                        j.sub = 0;
+                        j.sub_init = false;
+                    }
+                }
+            },
+            // sub_802CCAE
+            _ => return false,
+        }
+        true
+    }
+
+    /// Fighting state 0x1C, paused (`sub_80083E4`): only the player who
+    /// paused resumes, with a new START press (sound 0x9F); the battle
+    /// unpauses at the top of the next fighting tick.
+    fn fight_pause(&mut self) {
+        let p = self.fight.pausing_player as usize & 1;
+        if self.inputs[p].pressed & keys::START != 0 {
+            self.play_sound(SoundId(0x9F));
+            self.set_fight_state(fight::FIGHTING);
+            // (The HUD's pause display hides.)
         }
     }
 
@@ -1171,7 +1409,12 @@ impl Battle {
         match self.round_result() {
             1 => {
                 if self.round.escape != 0 {
-                    panic!("escape is not a netbattle outcome");
+                    // sub_800AAD6: an escape ends the battle as a loss
+                    // (result code 4, then 2), straight to the fade-out.
+                    self.round.result = BattleResult::Escaped as u8;
+                    self.enter_mode(mode::FADE_OUT);
+                    self.round.result = BattleResult::Lost as u8;
+                    return;
                 }
                 self.round.wins += 1;
                 self.fight.state = fight::WIN;
@@ -1191,13 +1434,45 @@ impl Battle {
         if let Some(p) = self.pause_request() {
             self.fight.pausing_player = p;
             self.paused = true;
-            self.fight.state = fight::PAUSE;
+            self.set_fight_state(fight::PAUSE);
             return;
         }
-        if self.custom_open_requested() {
+        let open = if self.round.flags & battle_flags::PER_PLAYER_GAUGES != 0 {
+            // sub_800A244: in the battle flag 0x40 mode a side opens it with
+            // L or R and a gauge of 0x2900, which it pays.
+            let sides = self.gauge_custom_requests();
+            for side in 0..2 {
+                if sides & (1 << side) != 0 {
+                    let g = &mut self.sides[side].gauge;
+                    *g = g.wrapping_sub(GAUGE_CUSTOM_COST);
+                }
+            }
+            sides != 0
+        } else {
+            self.custom_open_requested()
+        };
+        if open {
             self.paused = true;
-            self.fight.state = fight::CUSTOM_REVERT;
+            self.set_fight_state(fight::CUSTOM_REVERT);
         }
+    }
+
+    /// `sub_800A244`: the sides (bit per side; side 1 only in link
+    /// battles) asking for the custom screen with L or R and a full enough
+    /// gauge, unless dimmed, over, or a SELECT special runs.
+    fn gauge_custom_requests(&self) -> u8 {
+        if self.is_dimmed() || self.is_battle_over() {
+            return 0;
+        }
+        if self.sides[0].select_special != 0 || self.sides[1].select_special != 0 {
+            return 0;
+        }
+        // sub_800A29A
+        let asks = |side: usize| {
+            self.sides[side].gauge >= GAUGE_CUSTOM_COST && self.inputs[side].pressed & (keys::L | keys::R) != 0
+        };
+        let link = self.setup.settings.effects & effects::LINK != 0;
+        u8::from(asks(0)) | (u8::from(link && asks(1)) << 1)
     }
 
     /// Whether a custom-screen request goes through the reversions and the
@@ -1513,6 +1788,31 @@ mod tests {
             n += 1;
         }
         n
+    }
+
+    #[test]
+    fn the_damage_judge_rolls_59_times_and_rules_on_damage_taken() {
+        let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::stats(1000)), testing::content());
+        b.round.local_side = 0;
+        // Side 0 took more damage: the local side loses.
+        b.start_judge(10, 20);
+        assert_eq!(b.fight.judge.outcome, 2);
+        let seed = b.rng;
+        let mut ticks = 0;
+        while b.step_judge() {
+            ticks += 1;
+        }
+        // T+62 ..= T+274 run, T+275 reports.
+        assert_eq!(ticks, 213);
+        let mut expected = seed;
+        for _ in 0..59 {
+            expected.next();
+        }
+        assert_eq!(b.rng, expected);
+        b.start_judge(20, 20);
+        assert_eq!(b.fight.judge.outcome, 3);
+        b.start_judge(20, 10);
+        assert_eq!(b.fight.judge.outcome, 1);
     }
 
     #[test]
