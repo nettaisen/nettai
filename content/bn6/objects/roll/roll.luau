@@ -7,7 +7,7 @@
 -- back in herself; and drops a heart on her user's panel (objects/
 -- roll-heart) that heals three times her damage. Then she goes, and the
 -- controller moves on. With no enemy navi ahead she leaves at once. See
--- docs/engine/chips.md §3.6.12.
+-- docs/engine/chips.md §3.6.20.
 --
 -- The chips' script (navi chip subtype 0): `navi_chip` is her spawner,
 -- `off_802CD5C[0]`. (The controller skips the user's warp back in for

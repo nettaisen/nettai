@@ -36,6 +36,9 @@ pub struct Vars {
     /// Added to the owner's animation.
     pub anim_offset: u8,
     pub stepping: Stepping,
+    /// ExtraVars[1] = 0xFF: it wears its owner's palette (`sub_80C46CC`).
+    /// (Its other palette modes are presentation the port leaves out.)
+    pub owner_palette: bool,
     // (`sub_80C46C6` can make an overlay hold its sprite still while the
     // owner is dragged or paralyzed; no ported spawner uses it.)
 }
@@ -60,6 +63,17 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, sprite: SpriteId, nudged: bool) -
     let v = vars(b, r);
     v.sprite = Some(sprite);
     v.nudged = nudged;
+    Some(r)
+}
+
+/// `sub_80C468C` with all its parameters: `sprite` (Param1, Param2),
+/// `stepping` (Param3), `anim_offset` (Param4), `nudged` (ExtraVars[0])
+/// and `owner_palette` (ExtraVars[1] = 0xFF).
+pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<ObjectRef> {
+    let sprite = spec.sprite.expect("a form overlay has a sprite");
+    let r = spawn(b, owner, sprite, spec.nudged)?;
+    b.objects.get_mut(r).params = [sprite.category, sprite.index, spec.stepping as u8, spec.anim_offset];
+    *vars(b, r) = spec;
     Some(r)
 }
 
@@ -92,11 +106,15 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 fn init(b: &mut Battle, r: ObjectRef) {
     let sprite = vars(b, r).sprite.expect("form overlay has a sprite");
     let anim = b.objects.get(owner(b, r)).anim.wrapping_add(vars(b, r).anim_offset);
+    let owner_palette = vars(b, r).owner_palette.then(|| b.objects.sprite(owner(b, r)).look.palette);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
+    s.look.shadow = crate::object::sprite::Shadow::WithSprite;
+    if let Some(palette) = owner_palette {
+        s.look.palette = palette;
+    }
     s.set_animation(anim, &b.content);
     s.update(&b.content);
-    s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = anim;
@@ -109,7 +127,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// the sprite.
 fn tick(b: &mut Battle, r: ObjectRef) {
     let owner = owner(b, r);
-    let Vars { nudged, anim_offset, stepping, .. } = vars(b, r).clone();
+    let Vars { nudged, anim_offset, stepping, owner_palette, .. } = vars(b, r).clone();
     let (owner_anim, owner_pos, owner_flags, owner_flip) = {
         let o = b.objects.get(owner);
         (o.anim, o.pos, o.flags, o.flip)
@@ -129,6 +147,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     // The owner's colour shader, white flash and mosaic, and its facing.
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
+    if owner_palette {
+        look.palette = owner_look.palette;
+    }
     look.color_shader = owner_look.color_shader;
     look.white = owner_look.white;
     look.mosaic = owner_look.mosaic;
