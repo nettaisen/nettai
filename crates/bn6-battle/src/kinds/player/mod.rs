@@ -18,6 +18,8 @@ mod intake;
 mod reactions;
 mod status;
 
+pub(crate) use reactions::passed;
+
 use crate::actor::{ActorData, ActorId, ActorType, request};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, CollisionId, f1, timer};
