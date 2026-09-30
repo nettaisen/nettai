@@ -57,6 +57,8 @@ pub enum SharedAction {
     ReturnToIdle,
     /// `sub_8017E26`.
     Slide,
+    /// `sub_8017CC0` (the thrown obstacles' entry 5).
+    Pushed,
     /// `sub_80166AE`, `sub_8016B02`, `sub_8016B36`, `sub_8016B72`.
     Flinch,
     Paralyzed,
@@ -104,6 +106,9 @@ pub enum Crush {
     Breaks,
     /// `sub_801B4D4`: destroyed, the HP as it is.
     Destroys,
+    /// `sub_801B878` while its object says so (a LilBoiler boiling
+    /// over): nothing; only its HP or a chip's removal destroys it.
+    Passes,
 }
 
 /// How an obstacle left the field, as its `Destroyed` action reads it.
@@ -234,6 +239,15 @@ pub fn absorb_all(b: &mut Battle, absorber: ObjectRef) {
 /// tick's hits and total the damage. A pushing hit (hit modifier 0x40)
 /// starts a push and forgets the damage.
 pub fn take_hits(b: &mut Battle, r: ObjectRef) {
+    take_hits_as(b, r, true);
+}
+
+/// `sub_801AD12`: [`take_hits`], but a push keeps the damage.
+pub fn take_hits_keeping_damage(b: &mut Battle, r: ObjectRef) {
+    take_hits_as(b, r, false);
+}
+
+fn take_hits_as(b: &mut Battle, r: ObjectRef, push_forgets_damage: bool) {
     // sprite_clearFinalPalette
     b.objects.sprite_mut(r).look.white = false;
     let c = collision(b, r);
@@ -249,13 +263,15 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef) {
     if f1_of(b, r) & f1::MOVING == 0 && hit_mod & PUSHING_HIT != 0 {
         set_f2(b, r, f2::PUSHED);
         clear_f2(b, r, f2::FLINCH);
-        // `sub_801A6A6`.
-        let acc = &mut b.collision.get_mut(c).acc;
-        acc.final_damage = 0;
-        acc.element_damage = [0; 6];
-        acc.mood_damage = 0;
-        acc.counter = 0;
-        acc.drain_hits = 0;
+        if push_forgets_damage {
+            // `sub_801A6A6`.
+            let acc = &mut b.collision.get_mut(c).acc;
+            acc.final_damage = 0;
+            acc.element_damage = [0; 6];
+            acc.mood_damage = 0;
+            acc.counter = 0;
+            acc.drain_hits = 0;
+        }
         b.objects.get_mut(r).slide_type = 1;
     }
     common::total_damage(b, r);
@@ -290,6 +306,16 @@ pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
 /// either run a status routine (None) or leave the current action for the
 /// kind's action table to run (its number).
 pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush) -> Option<u8> {
+    react_as(b, r, crush, true)
+}
+
+/// `sub_801B750`: [`react`] (breaking), but while dimmed the obstacle
+/// holds still even while appearing.
+pub fn react_holding(b: &mut Battle, r: ObjectRef, crush: Crush) -> Option<u8> {
+    react_as(b, r, crush, false)
+}
+
+fn react_as(b: &mut Battle, r: ObjectRef, crush: Crush, appears_while_dimmed: bool) -> Option<u8> {
     let c = collision(b, r);
     let damage = b.collision.get(c).acc.final_damage;
     let killed = damage != 0 && {
@@ -300,7 +326,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush) -> Option<u8> {
         b.objects.get(r).hp == 0
     };
     let destroy = killed || {
-        if b.collision.get(c).acc.hit_flags & CRUSHING_HITS != 0 {
+        if b.collision.get(c).acc.hit_flags & CRUSHING_HITS != 0 && crush != Crush::Passes {
             if crush == Crush::Breaks {
                 b.objects.get_mut(r).hp = 0;
             }
@@ -333,7 +359,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush) -> Option<u8> {
             encased(b, r);
             return None;
         } else if b.is_dimmed() {
-            if b.objects.get(r).action != Action::Appear as u8 {
+            if !appears_while_dimmed || b.objects.get(r).action != Action::Appear as u8 {
                 hold_while_dimmed(b, r);
                 return None;
             }
@@ -367,6 +393,7 @@ pub fn shared_action(b: &mut Battle, r: ObjectRef, a: SharedAction) {
     match a {
         SharedAction::ReturnToIdle => return_to_idle(b, r),
         SharedAction::Slide => slide(b, r),
+        SharedAction::Pushed => pushed(b, r),
         // `sub_80166AE`, `sub_8016B02`, `sub_8016B36`, `sub_8016B72` look up
         // per-actor-type routines through the object's actor data, which
         // obstacles don't have (the game reads through a null pointer).
@@ -443,6 +470,153 @@ fn return_to_idle(b: &mut Battle, r: ObjectRef) {
 /// [`Action::Slide`], `sub_8017E26`: pushed or dragged along the field.
 fn slide(_b: &mut Battle, _r: ObjectRef) {
     panic!("pushed obstacles (sub_8017E26) are not implemented yet");
+}
+
+/// [`SharedAction::Pushed`], `sub_8017CC0`: pushed along the field by a
+/// hit, panel by panel (one more over ice, unless aqua) while the panels
+/// ahead are free and solid, then a 21-tick pause, and back to what it
+/// was doing. Its step is `drag_step`, the panels left `phase_init`, the
+/// pause `phase`.
+fn pushed(b: &mut Battle, r: ObjectRef) {
+    match b.objects.get(r).drag_step {
+        DragStep::Start => push_start(b, r),
+        DragStep::Slide => push_slide(b, r),
+        DragStep::Recover => push_recover(b, r),
+    }
+}
+
+/// The panels a pushed obstacle may slide onto (`sub_800F50C`): on the
+/// field, solid-standing (flag 0x10) and free.
+fn can_push_onto(b: &Battle, x: i32, y: i32) -> bool {
+    const REQUIRE: u32 = 0x10;
+    const FORBID: u32 = 0x0F88_0080;
+    (1..=6).contains(&x) && (1..=3).contains(&y) && b.field.check(x as u8, y as u8, REQUIRE, FORBID)
+}
+
+/// `sub_800F598`: which way this tick's hit pushes the obstacle (dx, dy)
+/// and how many panels: by the lowest of hit-modifier bits 2..5, away
+/// from the side whose attack hit it; nothing if both sides' or neither's
+/// did.
+fn push_vector(b: &Battle, r: ObjectRef) -> (i8, i8, u8) {
+    let c = b.collision.get(collision(b, r));
+    // (The game ORs in CollisionData+0x54, which presenting outside a
+    // dimming zeroes.)
+    let flags = c.acc.hit_flags;
+    if flags & 0xF300_0000 == 0 {
+        return (0, 0, 0);
+    }
+    let dir = if flags & 0xA200_0000 == 0 {
+        -1
+    } else if flags & 0x5100_0000 == 0 {
+        1
+    } else {
+        return (0, 0, 0);
+    };
+    let bits = c.hit_mod_final >> 2;
+    let Some(i) = (0..4).find(|i| bits & (1 << i) != 0) else {
+        panic!("sub_800F598: a push without a direction bit reads its vector from the BIOS");
+    };
+    let v = b.content.rules.obstacle_push_vectors[i];
+    (v.dx.wrapping_mul(dir), v.dy, v.tiles)
+}
+
+/// `sub_8017CE0`: off the reserved panel, the push begins, or (nothing
+/// to push toward) the pause.
+fn push_start(b: &mut Battle, r: ObjectRef) {
+    set_f1(b, r, f1::DRAG);
+    let o = b.objects.get_mut(r);
+    o.related[0] = None;
+    o.panel = o.future_panel;
+    common::set_coordinates_from_panels(b, r);
+    b.update_collision_panels(r);
+    let c = collision(b, r);
+    b.collision.get_mut(c).f1 &= !(f1::SLIDING | f1::MOVING);
+    let fp = b.objects.get(r).future_panel;
+    b.unreserve_panel(r, fp.x, fp.y);
+    let (dx, dy, tiles) = push_vector(b, r);
+    let o = b.objects.get_mut(r);
+    o.slide_dx = dx as u8;
+    o.slide_dy = dy as u8;
+    o.phase_init = tiles;
+    let (x, y) = (o.panel.x as i32 + dx as i32, o.panel.y as i32 + dy as i32);
+    if tiles != 0 && can_push_onto(b, x, y) {
+        let o = b.objects.get_mut(r);
+        o.vel.x = (dx as i32).wrapping_mul(0xA_0000);
+        o.vel.y = (dy as i32).wrapping_mul(0x6_0000);
+        o.future_panel = crate::object::PanelPos { x: x as u8, y: y as u8 };
+        b.reserve_panel(r, x as u8, y as u8);
+        b.objects.get_mut(r).drag_step = DragStep::Slide;
+        return;
+    }
+    let o = b.objects.get_mut(r);
+    o.phase = 0x18;
+    o.drag_step = DragStep::Recover;
+}
+
+/// `sub_800E6E8`: moving from `from` to `to`, it passed `mark`.
+fn passed(to: i32, from: i32, mark: i32) -> bool {
+    if to <= from { mark > to && mark <= from } else { mark > from && mark <= to }
+}
+
+/// `sub_8017D64`: slide toward the reserved panel; there, on to the next
+/// if any panels are left and it is free, else stop.
+fn push_slide(b: &mut Battle, r: ObjectRef) {
+    let fp = b.objects.get(r).future_panel;
+    let (tx, ty) = crate::kinds::player::panel_coordinates(fp.x, fp.y);
+    let o = b.objects.get_mut(r);
+    let from = o.pos.x;
+    o.pos.x = from.wrapping_add(o.vel.x);
+    let mut arrived = passed(o.pos.x, from, tx);
+    if !arrived {
+        let from = o.pos.y;
+        o.pos.y = from.wrapping_add(o.vel.y);
+        arrived = passed(o.pos.y, from, ty);
+    }
+    if !arrived {
+        common::set_panels_from_coordinates(b, r);
+        b.update_collision_panels(r);
+        return;
+    }
+    b.unreserve_panel(r, fp.x, fp.y);
+    let aqua = b.collision.get(collision(b, r)).element == 2;
+    let ice = b.field.panel(fp.x, fp.y).is_some_and(|p| p.kind == crate::field::PanelType::Ice);
+    let o = b.objects.get_mut(r);
+    if !aqua && ice {
+        o.phase_init = o.phase_init.wrapping_add(1);
+    }
+    let left = o.phase_init as i32 - 1;
+    o.phase_init = left as u8;
+    if left > 0 {
+        let (x, y) = (fp.x as i32 + o.slide_dx as i8 as i32, fp.y as i32 + o.slide_dy as i8 as i32);
+        if can_push_onto(b, x, y) {
+            b.objects.get_mut(r).future_panel = crate::object::PanelPos { x: x as u8, y: y as u8 };
+            b.reserve_panel(r, x as u8, y as u8);
+            return;
+        }
+    }
+    let o = b.objects.get_mut(r);
+    o.panel = o.future_panel;
+    common::set_coordinates_from_panels(b, r);
+    b.update_collision_panels(r);
+    let o = b.objects.get_mut(r);
+    o.phase = 0x14;
+    o.drag_step = DragStep::Recover;
+}
+
+/// `sub_8017E0A`: the pause; then back to the state word saved when the
+/// push came.
+fn push_recover(b: &mut Battle, r: ObjectRef) {
+    let o = b.objects.get_mut(r);
+    let t = o.phase as i32 - 1;
+    o.phase = t as u8;
+    if t >= 0 {
+        return;
+    }
+    let c = collision(b, r);
+    b.collision.get_mut(c).f1 &= !f1::DRAG;
+    let o = b.objects.get_mut(r);
+    let w = o.saved_state.take().unwrap_or_default();
+    (o.state, o.action, o.phase, o.phase_init) = (w.state, w.action, w.phase, w.phase_init);
 }
 
 // ---- Leaving the field -----------------------------------------------------

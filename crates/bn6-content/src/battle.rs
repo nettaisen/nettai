@@ -253,6 +253,7 @@ struct WeaponRecord {
 #[serde(deny_unknown_fields)]
 struct ReactionsFile {
     push: [SlideVector; 10],
+    obstacle_push: [SlideVector; 4],
     ice: [SlideVector; 6],
     bubble_bob: [i8; 32],
 }
@@ -761,8 +762,8 @@ pub fn export(c: &Content) -> Files {
     );
     put(
         "rules/reactions.toml".into(), toml_file(
-            "push: slides by hit-modifier bit (+5 with 0x80); ice: slides by the direction the navi last\nmoved (none, up, down, back, forward, other); panels = 6 slides until blocked.\nbubble_bob: a bubbled navi's height by bubble timer.",
-            &ReactionsFile { push: r.push_vectors, ice: r.ice_vectors, bubble_bob: r.bubble_bob },
+            "push: slides by hit-modifier bit (+5 with 0x80); ice: slides by the direction the navi last\nmoved (none, up, down, back, forward, other); panels = 6 slides until blocked.\nbubble_bob: a bubbled navi's height by bubble timer. obstacle_push: an obstacle's push by the\nlowest of hit-modifier bits 2..5, dx away from the side that pushed.",
+            &ReactionsFile { push: r.push_vectors, obstacle_push: r.obstacle_push_vectors, ice: r.ice_vectors, bubble_bob: r.bubble_bob },
         ),
     );
     put(
@@ -1253,6 +1254,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         sp_deletion_times,
         sine: math.sine,
         push_vectors: reactions.push,
+        obstacle_push_vectors: reactions.obstacle_push,
         ice_vectors: reactions.ice,
         bubble_bob: reactions.bubble_bob,
         lockon: Lockon { searches: lockon.search, column_shifts: lockon.column_shifts },

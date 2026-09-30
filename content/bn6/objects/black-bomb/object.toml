@@ -1,0 +1,6 @@
+# The BlkBomb (attack object #0x4A, `sub_80CD4EC`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x4A
+script = "black_bomb.luau"

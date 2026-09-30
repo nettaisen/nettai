@@ -183,6 +183,9 @@ pub fn scripts() -> Scripts {
                 ("objects/flash-bomb/flash_bomb", "objects/flash-bomb/flash_bomb"),
                 ("objects/bug-bomb/bug_bomb", "objects/bug-bomb/bug_bomb"),
                 ("objects/smoke-puff/smoke_puff", "objects/smoke-puff/smoke_puff"),
+                ("objects/black-bomb/black_bomb", "objects/black-bomb/black_bomb"),
+                ("objects/panel-bursts/panel_bursts", "objects/panel-bursts/panel_bursts"),
+                ("lib/panels", "lib/panels"),
                 ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
                 ("chips/00e-bees/chip", "chips/025-rskyhny1/chip"),
                 ("objects/honey-bee/honey_bee", "objects/honey-bee/honey_bee"),
@@ -600,6 +603,12 @@ fn rules() -> Rules {
             SlideVector { dx: 1, dy: 0, tiles: 2 },
             SlideVector { dx: -1, dy: 0, tiles: 2 },
             SlideVector::NONE,
+        ],
+        obstacle_push_vectors: [
+            SlideVector { dx: -1, dy: 0, tiles: 6 },
+            SlideVector { dx: 1, dy: 0, tiles: 6 },
+            SlideVector { dx: -1, dy: 0, tiles: 1 },
+            SlideVector { dx: 1, dy: 0, tiles: 1 },
         ],
         ice_vectors: [
             SlideVector::NONE,
