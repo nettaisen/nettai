@@ -34,9 +34,9 @@ pub const VEIL: ChipId = 0x05;
 pub const ERASER: ChipId = 0x06;
 /// A dimming chip (action 0x15, subtype 0) that grabs a column.
 pub const GRAB: ChipId = 0x07;
-/// Standard chip actions: a CrakShot (action 0x22, subtype 0: the panel
-/// ahead).
-pub const CRACK: ChipId = 0x08;
+/// Standard chip actions (ids 0x100 and up): a CrakShot (action 0x22,
+/// subtype 0: the panel ahead).
+pub const CRACK: ChipId = 0x100;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -258,9 +258,23 @@ fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
     }
 }
 
+/// Chip ids up to here exist (the ids no test uses are blanks).
+const CHIP_IDS: ChipId = 0x120;
+
+/// The chips, by id (the content looks chips up by index). Dimming chips
+/// of the subtypes other scripts implement take ids 0x10 and up.
 fn chips() -> Vec<ChipData> {
+    let blank = |id| ChipData { class: ChipClass::Special, codes: vec![], ..chip(id, "Blank", 0, 0) };
+    let mut all: Vec<ChipData> = (0..CHIP_IDS).map(blank).collect();
+    for c in named_chips() {
+        let id = c.id as usize;
+        all[id] = c;
+    }
+    all
+}
+
+fn named_chips() -> Vec<ChipData> {
     vec![
-        ChipData { class: ChipClass::Special, codes: vec![], ..chip(0, "Blank", 0, 0) },
         sun_gun(SUN_GUN_1, "SunGun1", 0, 48),
         sun_gun(SUN_GUN_2, "SunGun2", 1, 72),
         sun_gun(SUN_GUN_3, "SunGun3", 2, 96),
