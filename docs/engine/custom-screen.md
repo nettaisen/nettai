@@ -259,7 +259,7 @@ Built on the OK tick from the picks in order, with each chip as checked (§3.4):
    | Atk+10 (0xC0), Atk+30 (0xC3) | `attack_plus` | damaging chips (flag 2) | attack bonus += its damage |
    | Navi+20 (0xC1) | `navi_plus` | navi chips (flag 4) | attack bonus += 20 |
    | WhiCapsl (0xB8) | `paralyze` | damaging chips | paralyzes (modifier bit 2) |
-   | Uninstll (0xB9) | `uninstall` | damaging chips, not time freezes | uninstalls (bit 4) |
+   | Uninstll (0xB9) | `uninstall` | damaging chips, not dimming chips | uninstalls (bit 4) |
 
 4. The hand: ids, damage, attack bonus, charge bonus 0, `selection` (the raw picks, not changed by steps 2-3),
    turn = BS+7 − 1, modifier bits (bit 1 = the Regular chip). With nothing picked, nothing is sent and the

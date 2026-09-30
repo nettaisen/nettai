@@ -85,14 +85,14 @@ fn use_charged_chip(b: &mut Battle, r: ObjectRef) -> ChipId {
 }
 
 /// `sub_800FC30`: the Beast Out rush chains the next chip, starting its
-/// action (inside the rush again). Not the claw's chips 0x52/0x53, time
-/// freezes, or an empty hand. True if it did.
+/// action (inside the rush again). Not the claw's chips 0x52/0x53, dimming
+/// chips, or an empty hand. True if it did.
 pub(super) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
     let chip = hand_entry(b, r).chip;
     if chip == crate::hand::NO_CHIP || chip == 0x52 || chip == 0x53 {
         return false;
     }
-    if b.content.chip(chip).flags.has(ChipFlags::TIME_FREEZE) {
+    if b.content.chip(chip).flags.has(ChipFlags::DIMMING) {
         return false;
     }
     let action = prepare(b, r);
@@ -172,10 +172,10 @@ fn prepare(b: &mut Battle, r: ObjectRef) -> u8 {
     action
 }
 
-/// A chip that deals damage and does not stop time (the condition every
+/// A chip that deals damage and isn't a dimming chip (the condition every
 /// damage bonus shares).
 fn deals_damage(flags: ChipFlags) -> bool {
-    flags.has(ChipFlags::HAS_DAMAGE) && !flags.has(ChipFlags::TIME_FREEZE)
+    flags.has(ChipFlags::HAS_DAMAGE) && !flags.has(ChipFlags::DIMMING)
 }
 
 /// `sub_80126E4`: the attack variables from the chip data; returns the
@@ -217,7 +217,7 @@ fn chip_bonus(b: &Battle, r: ObjectRef, chip: ChipId) -> u16 {
         2 | 0x0E => family_bonus(ChipFamily::Elec, 50),
         3 | 0x0F => family_bonus(ChipFamily::Sword, 50),
         8 | 0x14 => family_bonus(ChipFamily::Wind, 10),
-        // Unlike the others, this one also boosts time-stopping chips.
+        // Unlike the others, this one also boosts dimming chips.
         4 | 0x10 => (damaging && cd.family == ChipFamily::Cursor).then_some(30),
         9 | 0x15 => family_bonus(ChipFamily::Break, 10),
         _ => None,
@@ -287,7 +287,7 @@ fn check_cross_boost(b: &Battle, r: ObjectRef) {
 fn heal_on_use(b: &Battle, r: ObjectRef, chip: ChipId) {
     let s = stats(b, r);
     let cd = b.content.chip(chip);
-    let cross = matches!(s.form.0, 6 | 0x12) && cd.element == Element::Aqua && !cd.flags.has(ChipFlags::TIME_FREEZE);
+    let cross = matches!(s.form.0, 6 | 0x12) && cd.element == Element::Aqua && !cd.flags.has(ChipFlags::DIMMING);
     let heal = if cross { s.max_base_hp.div_ceil(0x14) } else { 0 };
     if s.chip_recovery.wrapping_add(heal) != 0 {
         panic!("healing on chip use (sub_800E2FC) is not implemented yet");

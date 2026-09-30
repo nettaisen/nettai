@@ -94,7 +94,6 @@ name = "bn6-battle"
 version = "0.1.0"
 dependencies = [
  "bn6-content-api",
- "bn6-content-rust",
  "bn6-luau",
  "serde",
  "serde_json",
@@ -127,13 +126,6 @@ name = "bn6-content-check"
 version = "0.1.0"
 dependencies = [
  "luau-analyze",
-]
-
-[[package]]
-name = "bn6-content-rust"
-version = "0.1.0"
-dependencies = [
- "bn6-content-api",
 ]
 
 [[package]]

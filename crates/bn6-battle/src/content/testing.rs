@@ -1,17 +1,23 @@
 //! A small hand-authored content set for tests and examples.
 //!
 //! Everything here is made up: a MegaMan-like navi and its base form,
-//! a few chips that use the engine's GunDelSol, time-freeze and navi-chip
-//! actions, rocks, sprites with short animations, and rules written from
-//! the engine's own flag semantics (docs/engine/field-collision-damage.md).
-//! It is not BN6's data, which comes only from a content pack extracted
-//! from the user's ROM (`bn6-extract content`), and its numbers are chosen
-//! for tests, not taken from the game. It has just what battles of two
-//! such navis need: stepping, the chips below, custom screens, rocks and
-//! the round's flow.
+//! a few chips that use GunDelSol, two dimming chips (one grabs a column)
+//! and a navi chip, rocks,
+//! sprites with short animations, and rules written from the engine's own
+//! flag semantics (docs/engine/field-collision-damage.md). It is not BN6's
+//! data, which comes only from a content pack extracted from the user's ROM
+//! (`bn6-extract content`), and its numbers are chosen for tests, not taken
+//! from the game. It has just what battles of two such navis need:
+//! stepping, the chips below, custom screens, rocks and the round's flow.
+//!
+//! Its scripts are this repository's BN6 scripts (content/bn6, the source
+//! overlay: this project's own code, not game data), read from the
+//! repository and registered under this content's names, so the tests run
+//! the real scripts on made-up data.
 
 use super::*;
 use crate::actor::ActorType;
+use bn6_content_api::Pool;
 use crate::field::{PanelType, pflags};
 use crate::setup::{ActorEntry, ActorKind, ActorList, ActorListId, BattleSettings, effects};
 use std::sync::Arc;
@@ -22,10 +28,12 @@ pub const SUN_GUN_1: ChipId = 0x01;
 pub const SUN_GUN_2: ChipId = 0x02;
 pub const SUN_GUN_3: ChipId = 0x03;
 pub const SUN_GUN_EX: ChipId = 0x04;
-/// A time freeze (action 0x15, subtype 1: the invisibility freeze).
+/// A dimming (action 0x15, subtype 1: the invisibility freeze).
 pub const VEIL: ChipId = 0x05;
 /// A navi chip (action 0x1B, subtype 5: the eraser navi).
 pub const ERASER: ChipId = 0x06;
+/// A dimming chip (action 0x15, subtype 0) that grabs a column.
+pub const GRAB: ChipId = 0x07;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -54,7 +62,7 @@ const NEUTRAL: u32 = 0x0080_0000;
 const PLAYER: [u32; 2] = [0x0040_0000, 0x0020_0000];
 const FLOATING: u32 = 0x0010_0000;
 const BLOCKER: u32 = 0x0008_0000;
-const TIME_STOP: u32 = 0x0001_0000;
+const WHILE_DIMMED: u32 = 0x0001_0000;
 const REACHES_FLOATING: u32 = 0x0080;
 const BREAKS: u32 = 0x0002;
 
@@ -101,7 +109,90 @@ pub fn build() -> Content {
         regions: regions(),
         panel_layouts: vec![PanelLayout { rows: [[PanelType::Normal; 6]; 3] }],
         animations: animations(),
+        weapons: weapons(),
+        scripts: scripts(),
     }
+}
+
+/// Where the BN6 scripts are (the source overlay in this repository).
+const OVERLAY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+
+/// The test content's scripts: modules of the BN6 overlay, by the paths
+/// this content registers them under (the ones the overlay's modules
+/// `require` stay where they are).
+pub fn scripts() -> Scripts {
+    static SCRIPTS: std::sync::OnceLock<Scripts> = std::sync::OnceLock::new();
+    SCRIPTS
+        .get_or_init(|| {
+            let read = |path: &str| {
+                let file = format!("{OVERLAY}/{path}.luau");
+                std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"))
+            };
+            let modules = [
+                ("lib/slot", "lib/slot"),
+                ("objects/attachment/attachment", "objects/attachment/attachment"),
+                ("objects/sun-beam/sun_beam", "objects/sun-beam/sun_beam"),
+                ("chips/001-sungun1/chip", "chips/00f-gundels1/chip"),
+                ("objects/erase-man/erase_man", "objects/erase-man/erase_man"),
+                ("objects/erase-mark/erase_mark", "objects/erase-mark/erase_mark"),
+                ("objects/erase-beam/erase_beam", "objects/erase-beam/erase_beam"),
+                ("objects/area-grab/area_grab", "objects/area-grab/area_grab"),
+                ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
+                ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
+                ("lib/buster", "lib/buster"),
+            ];
+            let weapons = weapons().into_iter().map(|w| {
+                let module = w.script;
+                (module.clone(), module)
+            });
+            let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string())).chain(weapons);
+            Scripts { modules: modules.map(|(to, from)| (to, read(&from))).collect() }
+        })
+        .clone()
+}
+
+/// MegaMan's weapon routines scripts implement: the BN6 overlay's buster,
+/// charged shot, blank shot, DustCross's charged shot and the absorbed
+/// obstacle throw.
+fn weapons() -> Vec<WeaponData> {
+    let weapon = |id: u8, name: &str, action: Option<u8>, script: &str| WeaponData {
+        id,
+        name: name.into(),
+        action,
+        script: format!("navis/00-megaman/weapons/{script}"),
+    };
+    vec![
+        weapon(0x00, "Buster", None, "00-buster/buster"),
+        weapon(0x01, "Charged shot", None, "01-charged-shot/charged_shot"),
+        weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
+        weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
+        weapon(0x2B, "Throw absorbed", None, "2b-throw-absorbed/throw_absorbed"),
+    ]
+}
+
+/// The object kinds scripts implement, by name (in name order, as a pack
+/// lists them).
+fn kinds() -> Vec<ObjectKind> {
+    let kind = |name: &str, pool, index, script: &str| ObjectKind {
+        name: name.into(),
+        pool,
+        index,
+        script: script.into(),
+        scratch_position: false,
+        scratch_z_fraction: false,
+    };
+    let mut kinds = vec![
+        kind("attachment", Pool::Actor, 0x05, "objects/attachment/attachment"),
+        kind("sun-beam", Pool::Effect, 0x48, "objects/sun-beam/sun_beam"),
+        kind("erase-man", Pool::Actor, 0x15, "objects/erase-man/erase_man"),
+        kind("erase-mark", Pool::Effect, 0x62, "objects/erase-mark/erase_mark"),
+        kind("erase-beam", Pool::Attack, 0xC3, "objects/erase-beam/erase_beam"),
+        ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
+        kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
+        ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
+    ];
+    kinds.sort_by(|a, b| a.name.cmp(&b.name));
+    kinds
 }
 
 /// A chip record with the fields tests don't care about filled in.
@@ -134,6 +225,7 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         modifier: None,
         program_advances: Vec::new(),
         gun_del_sol: None,
+        script: None,
     }
 }
 
@@ -154,6 +246,7 @@ fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
                 attach_point: Some(3),
             },
         }),
+        script: Some("chips/001-sungun1/chip".into()),
         ..chip(id, name, 0x37, level)
     }
 }
@@ -166,7 +259,7 @@ fn chips() -> Vec<ChipData> {
         sun_gun(SUN_GUN_3, "SunGun3", 2, 96),
         sun_gun(SUN_GUN_EX, "SunGunX", 3, 96),
         ChipData {
-            flags: ChipFlags(ChipFlags::TIME_FREEZE | ChipFlags::STANDARD_LIBRARY),
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             extra_flags: ExtraChipFlags(ExtraChipFlags::RUSH_CANCELS),
             family: ChipFamily::Plus,
             ..chip(VEIL, "Veil", 0x15, 1)
@@ -178,7 +271,16 @@ fn chips() -> Vec<ChipData> {
             hit_param: 100,
             params: [16, 0, 0, 0],
             damage: 60,
+            script: Some("objects/erase-man/erase_man".into()),
             ..chip(ERASER, "Eraser", 0x1B, 5)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            params: [1, 0, 0, 0],
+            damage: 10,
+            script: Some("objects/area-grab/area_grab".into()),
+            ..chip(GRAB, "Grab", 0x15, 0)
         },
     ]
 }
@@ -227,15 +329,15 @@ fn rules() -> Rules {
     let both = |f: &dyn Fn(usize) -> u32| [f(0), f(1)];
     let mut collision_types = vec![[0, 0]; 0x49];
     let attack = both(&|s| ATTACK[s] | REACHES_FLOATING);
-    collision_types[0x01] = both(&|s| BODY[s] | PLAYER[s] | TIME_STOP | REACHES_FLOATING);
-    collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | TIME_STOP | REACHES_FLOATING | FLOATING);
+    collision_types[0x01] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING);
+    collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING | FLOATING);
     collision_types[0x02] = both(&|s| ATTACK[s ^ 1] | OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
     collision_types[0x05] = both(&|s| OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
     for t in [0x04, 0x0A, 0x15, 0x16, 0x2C, 0x48] {
         collision_types[t] = attack;
     }
     collision_types[0x2A] = collision_types[0x05];
-    collision_types[0x0E] = [NEUTRAL | BLOCKER | TIME_STOP | REACHES_FLOATING | BREAKS; 2];
+    collision_types[0x0E] = [NEUTRAL | BLOCKER | WHILE_DIMMED | REACHES_FLOATING | BREAKS; 2];
     collision_types[0x0F] = [ATTACK[0] | ATTACK[1] | BODY[0] | BODY[1] | BREAKS; 2];
 
     // Panels: what each type adds to a panel's flags word.
@@ -408,12 +510,15 @@ fn objects() -> ObjectData {
         attach_point: (id != 0).then_some(3),
     };
     let rock = |id, anim, element| RockKind { id, anim, hp: 100, element, debris_palette: id, break_sound: 0x118, name_id: 0x100 };
+    // The buster's muzzle flash and arm.
+    let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        attachments: (0..5).map(gun).collect(),
+        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03)]).collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
+        kinds: kinds(),
     }
 }
 
@@ -452,6 +557,24 @@ fn animations() -> Animations {
         vec![vec![f(3, 0), f(3, 0), f(3, LAST)], vec![f(30, LAST | LOOP)], vec![f(30, LAST | LOOP)]],
     );
     sprites.insert(SpriteId { category: 0x10, index: 1 }, vec![once(6), once(6), once(6), once(6)]);
+    // The eraser navi (standing, appearing, leaving, raising, slashing), its
+    // marks and its slash.
+    let mut eraser = vec![once(4); 0x13];
+    eraser[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    eraser[0x12] = vec![f(4, 0), f(40, LAST)];
+    sprites.insert(SpriteId { category: 8, index: 4 }, eraser);
+    sprites.insert(SpriteId { category: 0x10, index: 0x50 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x51 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
+    // The buster's muzzle flash, and its arm (by form).
+    sprites.insert(SpriteId { category: 0x0C, index: 0x06 }, vec![vec![f(2, 0), f(2, LAST)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x03 }, vec![vec![f(30, LAST | LOOP)]; 0x19]);
+    // The junk ball: rolling, bursting.
+    let mut junk = vec![once(4); 0x1B];
+    junk[0x19] = vec![f(4, 0), f(4, LAST | LOOP)];
+    junk[0x1A] = vec![f(10, 0), f(20, LAST)];
+    sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
+    // The grab shot: falling, landing.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);

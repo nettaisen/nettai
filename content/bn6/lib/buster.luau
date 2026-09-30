@@ -1,0 +1,114 @@
+--!strict
+-- What the buster's shots share (the buster, the charged shot, the blank
+-- shot, DustCross's charged shot and the like): the arm the navi raises,
+-- the recovery after a shot, and the move that may cut the recovery short.
+-- See docs/engine/objects-and-player.md §B6.
+
+local attachment = require("../objects/attachment/attachment")
+
+local buster = {}
+
+-- The buster arm (data.objects.attachments), and an enemy navi's.
+local ARM, NAVI_ARM = 6, 0x2B
+
+-- The arm's palette additions: the charge disabled, and a Full Synchro
+-- Beast form.
+local NO_CHARGE_PALETTE = 0xE
+
+-- The four spawn parameters `sub_80EB572` adds into one word: the kind,
+-- the animation shifted by 8 and the palette addition by 24 (so a
+-- negative animation borrows from the bytes above it).
+local function arm_params(kind: number, anim: number, palette_add: number): { number }
+    local word = int.u32(kind + int.shl(anim, 8) + int.shl(palette_add, 24))
+    return {
+        bit32.band(word, 0xFF),
+        bit32.band(bit32.rshift(word, 8), 0xFF),
+        bit32.band(bit32.rshift(word, 16), 0xFF),
+        bit32.rshift(word, 24),
+    }
+end
+
+-- `sub_80EB562`: raise the buster arm, kept in the navi's overlay slot. Its
+-- animation shows the form; its palette the element, the charge disabled,
+-- Full Synchro or the Beast form. A player's second actor gets none.
+function buster.raise_arm(navi: Object)
+    local kind = navi.actor_type
+    if kind == "virus" then
+        attachment.spawn_with(navi, arm_params(ARM, 0, 0), "overlay")
+        return
+    elseif kind == "navi" then
+        attachment.spawn_with(navi, arm_params(NAVI_ARM, navi.ai_index - 1, 0xD), "overlay")
+        return
+    elseif navi.ai_index ~= 0 then
+        navi.overlay = nil
+        return
+    end
+    local side = navi.alliance
+    local stats = battle.navi(side)
+    local form = stats.form
+    local palette_add = 0
+    if form == 0 then
+        if navi:navi_state("no_charge") then
+            palette_add = NO_CHARGE_PALETTE
+        elseif stats.element ~= 0 then
+            palette_add = 0x14 + stats.element
+        end
+    elseif form == 0xB or form == 0xC then
+        -- Gregar and Falzar Beast.
+        if battle.emotion(side) == "full_synchro" then
+            palette_add = NO_CHARGE_PALETTE
+        end
+    elseif form >= 0xD and form <= 0x11 then
+        -- The first five Beast Crosses: palettes 5 to 9.
+        palette_add = 5 + form - 0xD
+    end
+    attachment.spawn_with(navi, arm_params(ARM, form, palette_add), "overlay")
+end
+
+-- What stops a shot's panel count (`byte_800FB4C`, by side): bodies,
+-- neutral objects, blockers and reservations, and only the other side's
+-- barrier bits.
+local CLOSED = { [0] = 0x0D880080, [1] = 0x0E880080 }
+
+-- `sub_800FAF6`: the ticks of recovery after a shot, by the Rapid stat and
+-- the open panels from (x, y) forward, counting (x, y) itself, at most 5
+-- (`data.rules.buster_recovery`).
+function buster.recovery(navi: Object, x: number, y: number): number
+    local closed = CLOSED[navi.alliance]
+    local open = 0
+    while true do
+        local f = field.flags(x, y)
+        if f == 0 or bit32.btest(f, closed) then
+            break
+        end
+        open += 1
+        x += navi.facing
+    end
+    local rapid = battle.navi(navi.alliance).rapid
+    local ticks = data.rules.buster_recovery[rapid * 6 + math.min(open, 5)]
+    if ticks == nil then
+        error(string.format("Rapid %d reads past the buster's recovery table", rapid))
+    end
+    return ticks
+end
+
+-- The move that cuts a shot's recovery short: `object_canMove`, a held
+-- direction (`sub_800FA54`) and a panel to step to (`sub_800F964`). Then
+-- the arm and anything in the first related slot are let go, and the move
+-- starts (`sub_80116AE`); true if it did.
+function buster.move_cancel(navi: Object): boolean
+    if not navi:can_move() then
+        return false
+    end
+    local dir = navi:held_direction()
+    if dir == 0 or navi:step_target(dir) == nil then
+        return false
+    end
+    navi.related1 = nil
+    navi.overlay = nil
+    navi:exit_attack()
+    navi:start_move(dir)
+    return true
+end
+
+return buster

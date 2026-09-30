@@ -169,74 +169,24 @@ fn low_hp_navicust_effect(b: &mut Battle, r: ObjectRef) -> bool {
 }
 
 /// `off_80117D4[routine]`: set up a weapon's attack variables and name
-/// its action.
+/// its action: the content pack's script for the routine
+/// (`Hook::Weapon`), else the engine's.
 pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
+    use bn6_content_api::{Hook, HookCall};
+    if let Some(hook) = b.behaviors.hook(Hook::Weapon(routine)) {
+        let action = crate::behavior::call_hook(b, hook, HookCall::Weapon { navi: r });
+        return action.int().expect("a weapon routine names its action") as u8;
+    }
     match routine {
-        0 => buster_setup(b, r),
-        1 => charged_shot_setup(b, r),
-        2 => blank_shot_setup(b, r),
         0x1E => super::actions::beast_claw::setup(b, r),
-        0x28 => super::actions::dust_charge::setup(b, r),
         0x2A => super::actions::absorb::setup(b, r),
-        0x2B => throw_absorbed_setup(b, r),
         _ => panic!("weapon routine {routine:#x} (off_80117D4) is not implemented yet"),
     }
 }
 
-/// `sub_8011A26`: MegaMan's buster (action 0x11). The NaviCust may turn
-/// it into a blank (0x33) or charged shot: one RNG draw every time.
-fn buster_setup(b: &mut Battle, r: ObjectRef) -> u8 {
-    match buster_variant(b, r) {
-        1 => return blank_shot_setup(b, r),
-        2 => return charged_shot_setup(b, r),
-        _ => {}
-    }
-    let damage = buster_damage(b, r);
-    let mut spread = stats(b, r).weapons.buster_shot;
-    if spread != 0 {
-        let mask = if spread >= 0x1E { 7 } else { 1 };
-        if b.rng.next_positive() & mask != 0 {
-            spread = 0;
-        }
-    }
-    let a = &mut ai_mut(b, r).attack;
-    a.damage = damage;
-    a.element = 0;
-    a.charged = 0;
-    a.extra = 0;
-    a.hit_param = 0;
-    a.lockout = 0;
-    a.params[0] = spread;
-    a.variant = 0;
-    0x11
-}
-
-/// `sub_8011F8C`: a buster that throws the last obstacle the navi
-/// absorbed (action 0x11, variant 2), or fires as usual when it has none.
-fn throw_absorbed_setup(b: &mut Battle, r: ObjectRef) -> u8 {
-    if ai(b, r).absorbed.is_empty() {
-        return buster_setup(b, r);
-    }
-    panic!("throwing an absorbed obstacle (sub_8011F8C) is not implemented yet");
-}
-
-/// `sub_8013D5E`: pick from 16 slots, the first stat 0x14 of them 1
-/// (blank shot) and the next stat 0x15 of them 2 (charged shot).
-fn buster_variant(b: &mut Battle, r: ObjectRef) -> u8 {
-    let bugs = stats(b, r).bugs;
-    let (blank, charged) = (bugs.buster_blanks as usize, bugs.buster_charged as usize);
-    if blank + charged > 16 {
-        panic!("buster variant table overflows the stack (sub_8013D5E)");
-    }
-    let mut table = [0u8; 16];
-    table[..blank].fill(1);
-    table[blank..blank + charged].fill(2);
-    table[(b.rng.next() & 0xF) as usize]
-}
-
 /// `sub_801265A`: buster damage, attack + 1 (+1 in some forms), at most
 /// 10; 1 when worn out.
-pub(super) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
+pub(crate) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
     let s = stats(b, r);
     let mut d = s.attack as u16 + b.content.navi(s.navi).buster_bonus as u16;
     if emotion(b, b.objects.get(r).alliance) == Emotion::WornOut {
@@ -245,47 +195,6 @@ pub(super) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
         d += b.content.form(s.form).buster_bonus as u16;
     }
     d.min(10)
-}
-
-/// `sub_8011A7E`: the charged shot (action 0x16), (attack + 1) * 10.
-fn charged_shot_setup(b: &mut Battle, r: ObjectRef) -> u8 {
-    let mut base = stats(b, r).attack as u16 + 1;
-    if emotion(b, b.objects.get(r).alliance) == Emotion::WornOut {
-        base = 1;
-    }
-    let mut kind = stats(b, r).weapons.charge_shot_kind;
-    if kind == 0 {
-        kind = 6;
-    } else if kind != 6 {
-        let mask = if matches!(kind, 9 | 0x23) { 7 } else { 1 };
-        if b.rng.next_positive() & mask != 0 {
-            kind = 6;
-        }
-    }
-    let a = &mut ai_mut(b, r).attack;
-    a.damage = base * 10;
-    a.params = [kind, 0, 0, 0];
-    a.element = 0;
-    a.variant = 0;
-    a.charged = 0;
-    a.extra = 0;
-    a.hit_param = 0;
-    a.lockout = 0;
-    0x16
-}
-
-/// `sub_8011ADA`: a blank shot (action 0x33).
-fn blank_shot_setup(b: &mut Battle, r: ObjectRef) -> u8 {
-    let a = &mut ai_mut(b, r).attack;
-    a.element = 0;
-    a.variant = 0;
-    a.charged = 0;
-    a.lockout = 0;
-    a.extra = 0;
-    a.hit_param = 0;
-    a.damage = 0;
-    a.params = [0; 4];
-    0x33
 }
 
 /// `loc_80F057C`: after a chip starts: interception by the opponent's
@@ -327,7 +236,7 @@ fn intercepted(b: &Battle, r: ObjectRef, chip: u16) -> bool {
 
 /// `sub_800FA54`: the held direction (up, down, right, left in that
 /// priority; swapped when confused), none while sliding.
-pub(super) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
+pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
     if flag1(b, r) & f1::SLIDING != 0 {
         return 0;
     }
@@ -348,7 +257,7 @@ pub(super) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
 
 /// `sub_80116AE(dir, sub_8010332(), sub_80103A8())`: a step toward `dir`
 /// from input (astray with the NaviCust processing bug).
-pub(super) fn start_move(b: &mut Battle, r: ObjectRef, dir: u8) {
+pub(crate) fn start_move(b: &mut Battle, r: ObjectRef, dir: u8) {
     let lag = move_lag(b, r);
     let kind = if stats(b, r).bugs.processing != 0 { MoveKind::Astray } else { MoveKind::Input };
     movement::start(b, r, dir, lag, kind);

@@ -6,13 +6,13 @@ use crate::content::testing;
 use crate::setup::{ActorKind, NaviStats, RoundSetup};
 
 /// Step the objects of the given kinds, in list order and with the game's
-/// pause and time-stop gating (as `Battle::run_objects`).
+/// pause and dimming gating (as `Battle::run_objects`).
 fn run_only(b: &mut Battle, kinds: &[(Pool, u8)]) {
     let mut cur = b.objects.loop_first();
     while let Some(r) = cur {
         let o = b.objects.get(r);
         let gated = (b.paused && o.flags & flags::RUN_WHILE_PAUSED == 0)
-            || (b.is_time_stop() && o.flags & flags::RUN_IN_TIME_STOP == 0);
+            || (b.is_dimmed() && o.flags & flags::RUN_WHILE_DIMMED == 0);
         if !gated && kinds.contains(&(r.pool, o.index)) {
             crate::kinds::update(b, r);
         }

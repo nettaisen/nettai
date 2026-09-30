@@ -9,7 +9,7 @@
 //! - sound: `Battle::sound_cues_for` (the engine records what each side
 //!   hears: its charge sounds, its hit sound, its pinch music, its
 //!   victory or defeat music);
-//! - banners: [`Battle::banner_for`] (the chip-name banners say whose chip
+//! - banners: [`Battle::banner_for`] (the telops say whose chip
 //!   it is, the result banner shows the viewer's navi winning or losing);
 //! - the result: [`Battle::round_end_for`].
 //!
@@ -21,7 +21,7 @@
 use crate::battle::{Battle, BattleResult, RoundEnd, fight};
 use crate::content::BannerId;
 use crate::setup::SetScore;
-use crate::time_freeze::{LOCAL_NAME_BANNER, REMOTE_NAME_BANNER};
+use crate::dimming::{LOCAL_TELOP, REMOTE_TELOP};
 
 impl BattleResult {
     /// The same result for the other side.
@@ -49,11 +49,11 @@ impl Battle {
         if viewer == local {
             return Some(id);
         }
-        if id == LOCAL_NAME_BANNER {
-            return Some(REMOTE_NAME_BANNER);
+        if id == LOCAL_TELOP {
+            return Some(REMOTE_TELOP);
         }
-        if id == REMOTE_NAME_BANNER {
-            return Some(LOCAL_NAME_BANNER);
+        if id == REMOTE_TELOP {
+            return Some(LOCAL_TELOP);
         }
         let navi = |side: u8| self.content.navi(self.stats[side as usize].navi);
         let result_banner = navi(local).win_banner == id || navi(local).lose_banner == id;
@@ -90,8 +90,8 @@ mod tests {
     #[test]
     fn each_viewer_sees_its_own_name_and_result_banners() {
         let mut b = battle();
-        b.start_banner(LOCAL_NAME_BANNER);
-        assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(LOCAL_NAME_BANNER), Some(REMOTE_NAME_BANNER)));
+        b.start_banner(LOCAL_TELOP);
+        assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(LOCAL_TELOP), Some(REMOTE_TELOP)));
         b.banner = Default::default();
         b.fight.state = fight::WIN;
         b.round.winner = 0;

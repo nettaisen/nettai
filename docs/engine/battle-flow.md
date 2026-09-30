@@ -346,7 +346,7 @@ Net effect: a banner started on tick T is seen as finished by the mode handler o
 
 | Tick | Where | Effect |
 |---|---|---|
-| T0 | navi object (`sub_8012FC8`, 0x08013044–0x0801306C) | If !timestop, flag 0x40 clear, battle mode ≠ 1, `(sub_801032C() & 0x400) == 0`, flag 2 set and the navi's AIData pressed & 0x300 (L or R): `battle_setFlags(0x10)`; that navi skips the rest of its input handling this tick. Either player can do this; the flag is global. |
+| T0 | navi object (`sub_8012FC8`, 0x08013044–0x0801306C) | If !dimmed, flag 0x40 clear, battle mode ≠ 1, `(sub_801032C() & 0x400) == 0`, flag 2 set and the navi's AIData pressed & 0x300 (L or R): `battle_setFlags(0x10)`; that navi skips the rest of its input handling this tick. Either player can do this; the flag is global. |
 | T1 | `sub_80080D2` | `sub_800A1D0()` is true → `PauseBattle`, machine [0]=0x20 |
 | T2 | `sub_8008452` (0x20) | Init: `sub_802D6A0` (record both navis in `dword_203C970`); `sub_8015A16(navi0/1)` (AIData+0x0F −= 1 unless 0 or 0xFF, only if stats[0x29]==0); [3]=4. Then `sub_802D6C4` starts reverting any cross/beast form. |
 | T3… | `sub_8008452` | Wait until `sub_802D6C4() == 0` → [0]=0x24 (word store). `sub_802D6C4`'s first call would ask each navi to leave its Cross (request 0x8000000, `sub_802DD10`), but its test `sub_802DD1E` always returns 0; the second call waits while either navi has AIData+0x48 bit 0x2000 (a Cross knockout), so with none it is done on T3. |
@@ -355,7 +355,7 @@ Net effect: a banner started on tick T is seen as finished by the mode handler o
 | T7 | `sub_8009338` | Custom-screen init |
 
 `sub_800A1D0` (0x0800A1D0) is true when all of the following hold:
-- not time stop;
+- not dimming;
 - not battle over (`tst` form);
 - and either:
   - (NaviStats(0)+0x2C or NaviStats(1)+0x2C ∈ {0x17,0x18}) **and** flag 2; or
@@ -456,7 +456,7 @@ Neither `sub_801486C` nor `sub_8014A00` is affected by the custom screen's close
 4. `sub_800AE0C`: combo bookkeeping.
    - If BS+0x1C > BS+0x1B: BS+0x1B = BS+0x1C, and a combo message if it is ≥ 2.
    - If BS+0x1D: BS+0x1D −= 1, else BS+0x1C = 0. (`sub_800AE44` on hits does +0x1C += 1, +0x1D = 10.)
-5. `sub_800A6A6`: battle time. BS+0x40 += 1 (cap 0x8C9F) if not timestop, not paused, flag 1 set, and `battle_isBattleOver` is false *in its Z-flag form* (§3.6).
+5. `sub_800A6A6`: battle time. BS+0x40 += 1 (cap 0x8C9F) if not dimmed, not paused, flag 1 set, and `battle_isBattleOver` is false *in its Z-flag form* (§3.6).
 6. If `sub_800A97A()`: `sub_800AB7C` (turn timer, §3.6).
 7. `r = sub_800A152()`:
    - 1 → if BS+0x3A ≠ 0: `sub_800AAD6` (escape). Else BS+0x18 += 1 and [0]=0xC.
@@ -471,7 +471,7 @@ The first fighting tick is when the battle unpauses: frames 593 / 1970.
 ### 3.5 START pause
 
 `sub_800A046` (0x0800A046):
-- returns 0xFF if the battle is over (`tst` form) or in time stop;
+- returns 0xFF if the battle is over (`tst` form) or while dimmed;
 - else 0 if P0's record has START pressed;
 - else 1 if P1's has;
 - else 0xFF.
@@ -559,7 +559,7 @@ The only PvP time limit applies from the 15th custom screen on. `sub_800A97A` (0
 On fighting state 4's init tick, if it holds, [0xA] = 659 and the turn banner is `(0x10, 0)`. Each fighting tick, `sub_80080D2` calls `sub_800AB7C` (0x0800AB7C):
 
 ```
-if paused or timestop: nothing
+if paused or dimmed: nothing
 elif battle_isBattleOver() (tst form): sub_801DACC(0x800); return
 elif [0xA] >= 0x3C: [0xA] -= 1
 else: BS[0xB] = 1
@@ -682,15 +682,15 @@ This is the exact call order. "Sim" = the call changes simulation state (anythin
 | 4 | `eStruct2038160_getBattleTerminate01` (0x0802015E) | | link | Nonzero → `setTwoStructs(v==1 ? 9 : 0xA)`, top 0x10, skip to #18. Never in cable PvP. |
 | 5 | `sub_800A01C` (0x0800A01C) | | no | `byte_3000EA8 = 0`: empty the deferred sprite queue (`sub_8009FF8` → `sub_8009FCC`). |
 | 6 | `off_8007B50[GetBattleMode()]` | | **yes** | Mode handler; PvP → `sub_8009158` (§2.2, §3). |
-| 7 | `RunBattleObjectLogic` (0x080031AC) | | **yes** | All objects in list order, with per-object pause/time-stop gating (§8.4). |
+| 7 | `RunBattleObjectLogic` (0x080031AC) | | **yes** | All objects in list order, with per-object pause/dimming gating (§8.4). |
 | 8 | `sub_802FFF4` (0x0802FFF4) | | RNG1 only | Camera follow and shake, BG scroll. Two `GetRNG1` calls per tick while a shake is active (§5.3). |
-| 9 | `sub_800BFC4` (0x0800BFC4) | !paused && !timestop | **yes** | See below. |
+| 9 | `sub_800BFC4` (0x0800BFC4) | !paused && !dimmed | **yes** | See below. |
 | 10 | `sub_800FDC0` (0x0800FDC0) | | **yes** | Chip block → actor `ChipsHeld`/`Chip` (§7.4). |
 | 11 | `sub_801BEE0` (0x0801BEE0) | | **mixed** | HUD update tasks: for each set bit i of `eStruct2035280+0x40` (0x020352C0), LSB first, call `off_801BF04[i]`. Simulation-relevant: **bit 4 `sub_801C470` custom gauge** (§7.1) and **bit 15 `sub_801CE28` banner lifetime** (§3.2). The rest are presentation (§9). |
 | 12 | `sub_802CEC8` (0x0802CEC8) | | **yes** | For i = 0,1: record `unk_2036720 + 0x10·i`. If the object pointer at +8 is non-null and that object's HP (+0x24) is 0: `sub_802CEA6(obj.alliance)`, which clears the record and sets `[[rec+0xC]+5] = 1`. This is a per-alliance linked-object registry. |
 | 13 | `chip_800AEE8` (0x0800AEE8) | | **yes** | For alliance 0 then 1: refresh the damage of the next chip if its ChipData+9 has bit 0x80 (§7.4). |
-| 14 | timers | !paused && !timestop | **yes** | `BS[0x0E] = (BS[0x0E]+1) % 20`; `BS[0x16] = (BS[0x16]+1) % 180`. Read by `sub_801A186` (grass panel + Wood element: +1 HP when BS+0x0E==0 if HP > 9, else when BS+0x16==0). |
-| 15 | `sub_802CDFE` (0x0802CDFE) | !paused (also runs in time stop) | **yes** | `*(u32*)0x0203CFB0 <<= 16; *(u32*)0x0203CFBC <<= 16`: per-alliance damage-carry records (+0 u16 this tick, +2 previous tick, +4/+8 object pointers). Read by `sub_802CE10` from `object_calculateFinalDamage1` (0x0800E3DE); the tracking is set up by `sub_80C913C`. |
+| 14 | timers | !paused && !dimmed | **yes** | `BS[0x0E] = (BS[0x0E]+1) % 20`; `BS[0x16] = (BS[0x16]+1) % 180`. Read by `sub_801A186` (grass panel + Wood element: +1 HP when BS+0x0E==0 if HP > 9, else when BS+0x16==0). |
+| 15 | `sub_802CDFE` (0x0802CDFE) | !paused (also runs while dimmed) | **yes** | `*(u32*)0x0203CFB0 <<= 16; *(u32*)0x0203CFBC <<= 16`: per-alliance damage-carry records (+0 u16 this tick, +2 previous tick, +4/+8 object pointers). Read by `sub_802CE10` from `object_calculateFinalDamage1` (0x0800E3DE); the tracking is set up by `sub_80C913C`. |
 | 16 | `sub_80102AC(0)`, then `sub_80102AC(1)` if effects&8 | always, even paused | **yes** | See below. |
 | 17 | `BS+0x64 += 1` | | **yes** | Tick counter. |
 | 18 | render tail | always, including stall/error frames | no | `sub_80027B4`, `sub_800286C`, `sub_8003E18`, `sub_8004218`, `sub_8004510`, `sub_800C5E0`, `sub_801BF64`, `sub_802E156`, `sub_8003C70`, `sub_80046F8`, `sub_80049B0`, `sub_8009FCC`, `sub_803C59C(0xE0,0x90)` (§9) |
@@ -774,7 +774,7 @@ Each tick:
    - at least one of:
      - `sub_80269D0()` (BS+0x14 & 5),
      - `!IsCurSubsystemInUse()`,
-     - `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4()` (false only when paused without time stop and without flag 0x20).
+     - `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4()` (false only when paused without dimming and without flag 0x20).
 
    Then decrement it and shake with its magnitude.
 2. **Secondary channel.** Otherwise, if the secondary counter is nonzero, decrement it and shake.
@@ -918,7 +918,7 @@ else: o2 = ai.w2A; ai.w30 = o2; ai.w2A = new; ai.w2C = !o2 & new; ai.w2E = o2 & 
 
 AIData input fields:
 - +0x22 held, +0x24 pressed, +0x26 released, +0x28 previous held. The include-file names "JoypadUp"/"JoypadReleased" are misleading.
-- +0x2A..+0x30: the same set, maintained only during time stop.
+- +0x2A..+0x30: the same set, maintained only while dimmed.
 
 AIData starts zeroed, so the first call gives pressed = 0xFC00 | keys. This was checked tick by tick for frames 533–944.
 
@@ -947,7 +947,7 @@ NaviStats+0x08 is a speed class, read as 0 normal, 1 fast, 2 slow (uncertain). I
 **Per tick, `sub_801C470`** (HUD task bit 4, run inside `sub_801BEE0`):
 
 ```
-if paused || timestop || (flags & 2): return
+if paused || dimmed || (flags & 2): return
 gauge = (gauge + rate) as u16
 if gauge >= 0x4000:
     gauge = 0x4000
@@ -1098,7 +1098,7 @@ In the machgun trace these bytes never change: +0x0C, +0x21–0x27, +0x2A–0x31
 |---|---|---|---|---|
 | 0x01 | fighting has started | `sub_80080D2` every fighting tick (and the other modes' equivalents) | battle start only | `sub_800A6A6` (battle time) |
 | 0x02 | custom gauge full | `sub_801C470` (`sub_801C4AE` in other modes) | `sub_801DF92` | `sub_8012FC8` (L/R), `sub_800A1D0`, `sub_801C470` |
-| 0x04 | **time stop** | `object_timefreezeBegin` (0x0800B916, if `sub_800B8D8`), `sub_802DACC`, `sub_8015766`, `sub_80E8EA0` | `object_timefreezeEnd` (0x0800BD34), `sub_802DC66`, `sub_8015766`, `sub_80E8E92` | `battle_isTimeStop` (≈28k calls) |
+| 0x04 | **dimming** | `object_timefreezeBegin` (0x0800B916, if `sub_800B8D8`), `sub_802DACC`, `sub_8015766`, `sub_80E8EA0` | `object_timefreezeEnd` (0x0800BD34), `sub_802DC66`, `sub_8015766`, `sub_80E8E92` | `battle_isTimeStop` (≈28k calls) |
 | 0x08 | special (with BS+0x0B = 1) | `sub_80D8DEE` | — | (not PvP) |
 | 0x10 | custom-screen request | `sub_8012FC8` | `sub_801DF92` | `sub_800A1D0` |
 | 0x20 | (unknown) | no setter found | `sub_8014CC0`, `sub_8014F04`, `sub_8015128`, and two more | `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4` |
@@ -1106,7 +1106,7 @@ In the machgun trace these bytes never change: +0x0C, +0x21–0x27, +0x2A–0x31
 
 In the machgun match the word was 0x0000, then 0x0001 from the first fighting tick.
 
-### 8.3 Pause and time stop
+### 8.3 Pause and dimming
 
 **Pause** is GameState+0x0A at 0x02001B8A (`PauseBattle` 0x0800A028, `UnpauseBattle` 0x0800A032, `battle_isPaused` 0x0800A03C).
 - Set: intro (`sub_80091F0`), START pause, custom-screen request (`sub_80080D2`), comm error / terminate.
@@ -1114,9 +1114,9 @@ In the machgun match the word was 0x0000, then 0x0001 from the first fighting ti
 
 So pause is on from the first intro tick through custom screens and the start banner, and off from the first fighting tick through the result and end states.
 
-**Time stop** is battle flag 0x04, set and cleared by object code (time-freeze chips and certain navi actions).
+**Dimming** is battle flag 0x04, set and cleared by object code (dimming chips and certain navi actions).
 
-| Component | Paused | Time stop |
+| Component | Paused | Dimming |
 |---|---|---|
 | `RunBattleObjectLogic` | only objects with flag 0x04 run | only objects with flag 0x10 run (both gates apply when both hold) |
 | `sub_800BFC4` panels | skipped | skipped |
@@ -1125,8 +1125,8 @@ So pause is on from the first intro tick through custom screens and the start ba
 | `sub_80102AC` HP drain, `sub_800FDC0`, `chip_800AEE8`, `sub_802CEC8`, `sub_801BEE0` (tasks gate themselves), camera | run | run |
 | gauge fill `sub_801C470` | no | no |
 | battle time `sub_800A6A6`, turn timer `sub_800AB7C` | no | no |
-| `sub_8012DFC` inputs | not called outside states 4/8 | time-stop mirror fields maintained |
-| `sub_800A152` result probe | — | returns 0 (no KO resolution during time stop) |
+| `sub_8012DFC` inputs | not called outside states 4/8 | dimming mirror fields maintained |
+| `sub_800A152` result probe | — | returns 0 (no KO resolution while dimmed) |
 | START / custom checks | — | blocked (`sub_800A046` returns 0xFF; `sub_800A1D0` false) |
 
 Object flags in the trace: navis 0x17/0x15 (have 0x04 and 0x10); T4 helpers 0x1D → 0x15.
@@ -1138,7 +1138,7 @@ Object flags in the trace: navis 0x17/0x15 (have 0x04 and 0x10); T4 helpers 0x1D
 2. Walk the linked list from `eBattleObjectsLinkedListStart` (0x02009380; node + 0x10 = object) to the sentinel 0x02009AB0. For each object:
    1. Store the node in `eUnkBattleObjectLinkedList` (0x0200AF70).
    2. If paused and !(flags & 0x04), skip.
-   3. If time stop and !(flags & 0x10), skip.
+   3. If dimming and !(flags & 0x10), skip.
    4. Otherwise call `JumptableTable[type & 0xF][index]` (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
    5. **Always** call `object_800372A`, which appends the object to its type's live list (`dword_2039A10` / `dword_203A010` / `byte_203F750`, count ++).
 3. Store 0 in 0x0200AF70.

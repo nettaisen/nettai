@@ -136,7 +136,7 @@ Z + 16 px, jittered: one RNG2 draw).
 
 ### 4.2 `sub_800F672` (lifetime)
 
-Battle over → region 0, HP 0. Else, unless time stop or paused: Timer −= 1
+Battle over → region 0, HP 0. Else, unless dimmed or paused: Timer −= 1
 (32-bit); reaching 0 → region 0, HP 0; Timer <= 0xB4 with bit 1 set → clear
 VISIBLE (blinks the last 3 s).
 
@@ -153,15 +153,15 @@ VISIBLE (blinks the last 3 s).
 4. f2 & 0x3000 (PreventAnim = 0 first) or f1 & 0x30000000 → `sub_801813A`
    (encased in ice/bubble, then replaced by a rock or `sub_80D99EC`) and
    return.
-5. Time stop: action 0 → dispatch; else `sub_801823C` and return.
+5. Dimming: action 0 → dispatch; else `sub_801823C` and return.
 6. PreventAnim = 0; f2 & 0x100 → clear, save the state word in Unk_5c if
    it is 0, action 5, CurPhase = 0, Unk_0d = 0; else f1 & DRAG → action 5;
    else Unk_0d = 0.
 7. Dispatch: `sprite_zeroColorShader`, `sub_80181F6` (VISIBLE on unless
-   time stop; if the object is not on the local side and the local player
+   dimming; if the object is not on the local side and the local player
    is BLIND, VISIBLE off), then action table[CurAction].
 
-`sub_801823C` (time stop hold): `sub_80181F6`; first time (PreventAnim ==
+`sub_801823C` (dimming hold): `sub_80181F6`; first time (PreventAnim ==
 0) save X16/Z16 in Unk_30/Unk_32, Unk_19 = 0, PreventAnim = 4 (which also
 freezes the sprite); final damage != 0 → Unk_19 = 30; while Unk_19 counts
 down, position = (Unk_30, Y, Unk_32) jittered by mask 3 (one RNG2 draw per
@@ -207,8 +207,8 @@ HP, position, timer, animation and status every frame. It matches:
 
 - 72: both rocks spawn and stand in their first (paused) tick: flags 0x13,
   [4,8,0,0], HP 200, anim 2, Timer 6000.
-- Timer counts only unpaused, non-time-stop ticks: 3193 (fight starts)
-  onward, frozen during the time stops 3207–3333 and 3408–3683 (the rocks
+- Timer counts only unpaused, undimmed ticks: 3193 (fight starts)
+  onward, frozen while dimmed 3207–3333 and 3408–3683 (the rocks
   run then, holding position).
 - 3757: side 1's navi entered action 0x58 at 3747 (first run 3748) and
   pulls at 3757; both rocks go to f1 DEAD, VISIBLE off, state 8, and spawn
@@ -218,7 +218,7 @@ HP, position, timer, animation and status every frame. It matches:
   at 3767. No RNG draws on this path.
 
 Not exercised by any trace: damage and breaking (debris, 6 RNG2 draws),
-pushes, blink-out, falling/rising entrances, time-stop shaking, eviction.
+pushes, blink-out, falling/rising entrances, dimming shaking, eviction.
 
 ## 7. Not implemented (panic)
 

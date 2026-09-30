@@ -40,8 +40,8 @@ pub mod request {
     pub const ANTI_DAMAGE_TRIGGERED: u32 = 0x200;
     /// AntiSwrd (chip 0xBC) caught a sword hit.
     pub const ANTI_SWORD_TRIGGERED: u32 = 0x400;
-    /// Time-stop counter chip.
-    pub const TIMESTOP_CHIP: u32 = 0x800;
+    /// Dimming counter chip.
+    pub const CUT_IN: u32 = 0x800;
     pub const TURN_L: u32 = 0x1000;
     pub const TURN_R: u32 = 0x2000;
     /// Pause-time request: form change (action 0x1C, state bit 0x80).
@@ -224,8 +224,8 @@ pub struct ActorData {
     pub charge_source: u8,
     pub total_damage_taken: u16,
     pub pad: Pad,
-    /// Mirror of `pad` maintained during time stop.
-    pub timestop_pad: Pad,
+    /// Mirror of `pad` maintained while dimmed.
+    pub dimmed_pad: Pad,
     /// AIData+0x32: the Beast Out counter is spent (the game stores
     /// 0xFFFF): set at init with a zero counter (`sub_8013892`), by the
     /// turn-start check (`sub_80159C6`), when a Beast Out reverts

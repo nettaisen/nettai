@@ -1,20 +1,22 @@
-//! A navi chip's time-freeze controller (effect object #0x10,
-//! `sub_80E17E8`): the freeze phases (`time_freeze`) with the navi chip's
+//! A navi chip's dimming controller (effect object #0x10,
+//! `sub_80E17E8`): the dimming phases (`dimming`) with the navi chip's
 //! own: after the dim, AntiNavi's check; after the name, the user warps
 //! out, the chip's navi comes and acts, and the user warps back in. See
 //! docs/engine/chips.md §3.6.7.
 
+use bn6_content_api::{Hook, HookCall, NaviChipSpec};
+
 use crate::battle::Battle;
-use crate::kinds::{common, elmnt_man, erase_man, navi_warp};
+use crate::kinds::{common, elmnt_man, navi_warp};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
-use crate::time_freeze::{self, FreezeChip};
+use crate::dimming::{self, DimmingChip};
 
 pub const INDEX: u8 = 0x10;
 
 /// What the controller needs to bring its navi.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    pub chip: FreezeChip,
+    pub chip: DimmingChip,
     /// Which navi (`off_802CD5C`; object +0x19, the chip's subtype).
     pub navi: u8,
     /// The damage word (object +0x2C).
@@ -47,7 +49,7 @@ pub struct Spec {
     pub navi: u8,
     pub params: [u8; 4],
     pub damage: u32,
-    pub chip: FreezeChip,
+    pub chip: DimmingChip,
 }
 
 /// `sub_80E192C`: the controller for `user`'s navi chip, on its panel.
@@ -85,18 +87,18 @@ pub fn navi_left(b: &mut Battle, controller: ObjectRef) {
 
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
-        state::INIT => time_freeze::begin(b, r),
+        state::INIT => dimming::begin(b, r),
         state::UPDATE => {
             let chip = vars(b, r).chip.chip;
             match b.objects.get(r).action {
-                0 => time_freeze::dim_screen(b, r),
-                4 => time_freeze::check_anti_navi(b, r, chip),
-                8 => time_freeze::show_navi_name(b, r, chip),
+                0 => dimming::dim_screen(b, r),
+                4 => dimming::check_anti_navi(b, r, chip),
+                8 => dimming::show_navi_telop(b, r, chip),
                 0xC => effect(b, r),
-                _ => time_freeze::undim_screen(b, r),
+                _ => dimming::undim_screen(b, r),
             }
         }
-        _ => time_freeze::end(b, r),
+        _ => dimming::end(b, r),
     }
 }
 
@@ -181,18 +183,24 @@ fn effect(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `off_802CD5C[navi]`: bring the chip's navi, with the damage and the
-/// bonus. (The game also records the last navi chip used, `byte_203C960`,
-/// for chips that copy it.)
+/// bonus: the content pack's script for the navi (`Hook::NaviChip`), else
+/// the engine's. (The game also records the last navi chip used,
+/// `byte_203C960`, for chips that copy it.)
 fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let v = vars(b, r).clone();
     let damage = v.damage.wrapping_add(v.chip.bonus as u32);
     let o = b.objects.get(r);
     let (panel, element) = (o.panel, o.element);
     let user = user(b, r);
-    let navi = match v.navi {
-        elmnt_man::NAVI => elmnt_man::spawn(b, user, r, panel, element, v.params, damage),
-        erase_man::NAVI => erase_man::spawn(b, user, r, panel, element, v.params, damage),
-        n => panic!("navi chip navi {n:#x} (off_802CD5C) is not implemented yet"),
+    let navi = match b.behaviors.hook(Hook::NaviChip(v.navi)) {
+        Some(hook) => {
+            let spec = NaviChipSpec { panel, element, params: v.params, damage };
+            crate::behavior::call_hook(b, hook, HookCall::NaviChip { user, controller: r, spec }).object()
+        }
+        None => match v.navi {
+            elmnt_man::NAVI => elmnt_man::spawn(b, user, r, panel, element, v.params, damage),
+            n => panic!("navi chip navi {n:#x} (off_802CD5C) is not implemented yet"),
+        },
     };
     // The spawner sets the flag, through the pointer it hands the navi.
     vars_mut(b, r).navi_acting = navi.is_some();

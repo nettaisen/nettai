@@ -263,7 +263,7 @@ impl Battle {
     pub fn setup_collision(&mut self, obj: ObjectRef, self_idx: u8, target_idx: u8, hit_mod: u8) {
         let o = self.objects.get(obj).clone();
         let Some(id) = o.collision else { return };
-        let timestop = self.is_time_stop();
+        let dimmed = self.is_dimmed();
         let s = self.collision.get_mut(id);
         s.parent = Some(obj);
         s.hit_mod_base = hit_mod;
@@ -275,7 +275,7 @@ impl Battle {
         s.region = 1;
         s.counter_byte = o.stamina as u8;
         s.self_damage = o.damage;
-        s.self_flags = self.content.rules.collision_type(self_idx, o.alliance) | if timestop { 0x1_0000 } else { 0 };
+        s.self_flags = self.content.rules.collision_type(self_idx, o.alliance) | if dimmed { 0x1_0000 } else { 0 };
         s.target_flags = self.content.rules.collision_type(target_idx, o.alliance);
         // The garbage high byte of any bug code: the table offset the
         // target lookup left in r1.
@@ -289,23 +289,23 @@ impl Battle {
         let o = self.objects.get(obj);
         let Some(id) = o.collision else { return };
         let (alliance, damage) = (o.alliance, o.damage);
-        let timestop = self.is_time_stop();
+        let dimmed = self.is_dimmed();
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
         s.self_damage = damage;
-        s.self_flags = self.content.rules.collision_type(self_idx, alliance) | if timestop { 0x1_0000 } else { 0 };
+        s.self_flags = self.content.rules.collision_type(self_idx, alliance) | if dimmed { 0x1_0000 } else { 0 };
         s.target_flags = self.content.rules.collision_type(target_idx, alliance);
         // A bug code's garbage high byte is what `battle_isTimeStop` left in
-        // r1 (4, or 0x10000 in time stop).
-        let r1 = if timestop { 0 } else { 4 };
+        // r1 (4, or 0x10000 while dimmed).
+        let r1 = if dimmed { 0 } else { 4 };
         decode_damage_word(s, r1);
     }
 
     /// `object_presentCollisionData`: clear the accumulators and register.
     pub fn present_collision(&mut self, id: CollisionId) {
-        let timestop = self.is_time_stop();
+        let dimmed = self.is_dimmed();
         let s = self.collision.get_mut(id);
-        if !timestop {
+        if !dimmed {
             s.hit_mod_final = 0;
             s.guard_dirs = 0;
         }
@@ -389,7 +389,7 @@ impl Battle {
     fn resolve_hit(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
         let rd = *self.collision.get(r);
-        if self.is_time_stop() && !(rd.f1 & 0x0100_0000 != 0 || hd.self_flags & 0x1_0000 != 0) {
+        if self.is_dimmed() && !(rd.f1 & 0x0100_0000 != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
         // The hitter's state against the receiver's type.
@@ -512,7 +512,7 @@ impl Battle {
     fn accumulate_raw(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
         let rd = *self.collision.get(r);
-        if self.is_time_stop() && !(rd.f1 & 0x0100_0000 != 0 || hd.self_flags & 0x1_0000 != 0) {
+        if self.is_dimmed() && !(rd.f1 & 0x0100_0000 != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
         if (hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0) {

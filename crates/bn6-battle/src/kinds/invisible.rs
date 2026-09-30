@@ -1,20 +1,20 @@
-//! The Invisibl chip's time-freeze controller (effect object #0x5D,
-//! `sub_80E74D4`): the usual freeze phases (`time_freeze`), with an effect
-//! that makes the user invisible, then 31 ticks before time starts again.
+//! The Invisibl chip's dimming controller (effect object #0x5D,
+//! `sub_80E74D4`): the usual dimming phases (`dimming`), with an effect
+//! that makes the user invisible, then 31 ticks before the dimming ends.
 //! See docs/engine/chips.md §3.6.
 
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
 use crate::kinds::common;
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
-use crate::time_freeze::{self, FreezeChip};
+use crate::dimming::{self, DimmingChip};
 
 pub const INDEX: u8 = 0x5D;
 
 /// The controller's own state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    pub chip: FreezeChip,
+    pub chip: DimmingChip,
     /// Param1-2: how long the user stays invisible, in ticks.
     pub duration: u16,
 }
@@ -28,7 +28,7 @@ fn vars(b: &Battle, r: ObjectRef) -> &Vars {
 
 /// `sub_80E7546`: the controller for `user`, on its panel. (Its position
 /// is register garbage nothing reads.)
-pub fn spawn(b: &mut Battle, user: ObjectRef, element: u8, params: [u8; 4], chip: FreezeChip) -> Option<ObjectRef> {
+pub fn spawn(b: &mut Battle, user: ObjectRef, element: u8, params: [u8; 4], chip: DimmingChip) -> Option<ObjectRef> {
     let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), params)?;
     let (panel, alliance) = {
         let o = b.objects.get(user);
@@ -48,14 +48,14 @@ pub fn spawn(b: &mut Battle, user: ObjectRef, element: u8, params: [u8; 4], chip
 
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
-        state::INIT => time_freeze::begin(b, r),
+        state::INIT => dimming::begin(b, r),
         state::UPDATE => match b.objects.get(r).action {
-            0 => time_freeze::dim_screen(b, r),
-            4 => time_freeze::show_chip_name(b, r),
+            0 => dimming::dim_screen(b, r),
+            4 => dimming::show_telop(b, r),
             8 => effect(b, r),
-            _ => time_freeze::undim_screen(b, r),
+            _ => dimming::undim_screen(b, r),
         },
-        _ => time_freeze::end(b, r),
+        _ => dimming::end(b, r),
     }
 }
 

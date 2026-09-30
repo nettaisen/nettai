@@ -102,9 +102,9 @@ pub fn spawn(b: &mut Battle, panel: PanelPos, side: u8, spec: Spec, damage: u16,
     o.damage = damage;
     o.stamina = stamina;
     o.flags |= if spec.entrance == Entrance::Placed {
-        flags::RUN_IN_TIME_STOP | flags::RUN_WHILE_PAUSED
+        flags::RUN_WHILE_DIMMED | flags::RUN_WHILE_PAUSED
     } else {
-        flags::RUN_IN_TIME_STOP
+        flags::RUN_WHILE_DIMMED
     };
     o.vars = crate::kinds::Vars::Rock(Vars { variant: spec.variant, entrance: spec.entrance, obstacle: Default::default() });
     obstacle::register(b, r, side, spec.class);
