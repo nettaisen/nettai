@@ -3,9 +3,10 @@
 -- what DustCross Beast's buster fires without an absorbed obstacle, and
 -- action 0x1E (`sub_80EC5BC`). The navi raises the buster and fires the
 -- buster's projectile (attack object #0xB, group D's kind) from the panel
--- in front; in Beast Over (or with a Cross special in the battle flag 0x40
--- mode) every shot but each third is a volley of three, and eight more
--- shots follow. Holding B keeps it firing. See docs/engine/chips.md §4.6.
+-- in front. The shots of one attack cycle single, volley of three, volley
+-- of three; in Beast Over (or with a Cross special in the battle flag 0x40
+-- mode) the cycle starts at a volley and eight more shots follow. Holding B
+-- keeps it firing. See docs/engine/chips.md §4.6.
 
 local buster = require("../../../../lib/buster")
 local weapon = require("../../../../lib/weapon")
