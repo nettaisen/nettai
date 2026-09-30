@@ -62,7 +62,7 @@ function air_spin.spawn(owner: Object, x: number, y: number, element: number, pa
         o.alliance, o.flip = owner.alliance, owner.flip
         o.related1 = owner
         o.run_while_dimmed = true
-        field.register_object(o, o.alliance, CLASS)
+        obstacle.register(o, o.alliance, CLASS)
     end
     return o
 end
@@ -106,8 +106,8 @@ end
 -- Gone: out of the target tracking and the field-object registry, its
 -- region cleared, destroyed at the next update.
 local function leave(me: Object)
-    me:release_tracking()
-    field.unregister_object(me)
+    obstacle.release_tracking(me)
+    obstacle.unregister(me)
     me.collision.region = 0
     me:set_lifecycle("destroy")
 end
@@ -229,9 +229,9 @@ end
 -- navi; blinking out, it blinks first; otherwise it goes in a puff.
 local function removed(me: Object)
     if me:obstacle_flag("absorbed") then
-        me:fly_to_absorber(ABSORBED_KIND)
+        obstacle.fly_to_absorber(me, ABSORBED_KIND)
     else
-        local b = me:blink_out()
+        local b = obstacle.blink_out(me)
         if b == "blinking" then
             return
         elseif b == "no" then
@@ -297,7 +297,7 @@ local function init(me: Object)
     local f = field.flags(me.panel_x, me.panel_y)
     if not bit32.btest(f, SOLID) or bit32.btest(f, BODIES) then
         puff(me, 0x10)
-        field.unregister_object(me)
+        obstacle.unregister(me)
         me:free()
         return
     end

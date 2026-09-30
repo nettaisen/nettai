@@ -16,6 +16,7 @@ pub mod elmnt_man;
 pub mod eruption;
 pub mod form_overlay;
 pub mod full_synchro_aura;
+pub mod heal;
 pub mod hitbox;
 pub mod idle_overlay;
 pub mod intro;
@@ -27,6 +28,7 @@ pub mod obstacle;
 pub mod palette_flash;
 pub mod player;
 pub mod spark;
+pub mod status_visual;
 
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Pool};
@@ -53,6 +55,7 @@ pub enum Vars {
     NaviWarp(navi_warp::Vars),
     ElmntMan(elmnt_man::Vars),
     Meteor(meteor::Vars),
+    StatusVisual(status_visual::Vars),
     IdleOverlay(idle_overlay::Vars),
     FullSynchroAura(full_synchro_aura::Vars),
     BeastOverBurst(beast_over_burst::Vars),
@@ -111,6 +114,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Actor, elmnt_man::INDEX) => elmnt_man::update(b, r),
         (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
+        (Pool::Effect, status_visual::INDEX) => status_visual::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }
@@ -171,9 +175,26 @@ pub fn shift_damage_carry(b: &mut Battle) {
 pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
     match formula {
         1..=18 => sp_chip_damage(b, id, side, formula as usize - 1),
+        20 => damage_taken(b, side),
         24..=44 => navi_chip_damage(b, id, side),
         _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
     }
+}
+
+/// `sub_8010BD0` (Muramasa's): the HP the side's player has lost, at most
+/// 500. `sub_80103BC` looks for the player among the side's alive actors,
+/// but its loop never advances, so it only ever checks the first slot four
+/// times: with no player there the damage is 0.
+fn damage_taken(b: &Battle, side: u8) -> u16 {
+    let Some(r) = b.round.alive_actors[side as usize & 1][0] else { return 0 };
+    let o = b.objects.get(r);
+    if b.content.navi_record(o.name_id).actor_type != crate::actor::ActorType::Player {
+        return 0;
+    }
+    // A signed difference, capped at 500 (an HP above the maximum would
+    // give a negative damage, cut to 16 bits).
+    let lost = o.max_hp as i32 - o.hp as i32;
+    lost.min(500) as u16
 }
 
 /// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user
