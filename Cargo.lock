@@ -165,6 +165,7 @@ version = "0.1.0"
 dependencies = [
  "bn6-battle",
  "bn6-content",
+ "getgud",
 ]
 
 [[package]]
@@ -473,6 +474,11 @@ dependencies = [
  "pin-project-lite",
  "slab",
 ]
+
+[[package]]
+name = "getgud"
+version = "0.1.0"
+source = "git+https://github.com/tangobattle/getgud#747b51bba50589f83f6e6724fcb01ccf35d73c73"
 
 [[package]]
 name = "getrandom"
