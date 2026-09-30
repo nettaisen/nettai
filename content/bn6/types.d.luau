@@ -17,8 +17,9 @@ export type LinkChipState = {
     target_y: number,
     -- The object the routine keeps (AIAttackVars+0x30).
     held: Object?,
-    -- A speed, 16.16 (AIAttackVars+0x34).
+    -- A speed, 16.16 (AIAttackVars+0x34), or a second object there.
     speed: number,
+    held2: Object?,
 }
 
 -- What a projectile (attack object #0, objects/projectile) is fired with
