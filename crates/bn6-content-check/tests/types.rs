@@ -28,6 +28,10 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("field.set_type(1, 1, \"lava\")", "not a panel type"),
         ("local function f(me: Object) me:set_status_timer(\"stun\", 3) end", "not a status timer"),
         ("local _ = data.chips[1].gun_del_sol.firing_tick", "not a data field"),
+        (
+            "local function f(me: Object) battle.form_overlay(me, { sprite = \"08-12\", stepping = \"dimmed\" }) end",
+            "not a form overlay stepping",
+        ),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

@@ -3,7 +3,7 @@
 -- pixels above her user's panel, 3 pixels a tick, sparkling every 10
 -- ticks; landed, it heals the user by its damage (or to full, with none),
 -- with a sound and an effect, and goes 60 ticks later. See
--- docs/engine/chips.md §3.6.12.
+-- docs/engine/chips.md §3.6.20.
 
 local roll_heart = {}
 
