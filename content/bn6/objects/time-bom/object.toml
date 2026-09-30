@@ -1,0 +1,8 @@
+# The TimeBom chips' dimming controller (effect object #0x27, `sub_80E31D8`)
+# is a script. Its position is its spawner's registers, which nothing reads.
+
+[kind]
+pool = "effect"
+index = 0x27
+script = "time_bom.luau"
+scratch_position = true

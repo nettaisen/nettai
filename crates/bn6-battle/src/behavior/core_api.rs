@@ -4,12 +4,15 @@
 //! engine's bit values or offsets.
 
 use bn6_content_api::api::ApiResult;
-use bn6_content_api::api::{BlinkOut, ObstacleFlag};
+use bn6_content_api::api::ObstacleFlag;
 use bn6_content_api::{
-    ActorField, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
-    FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField,
-    Pad, PanelInfo, RequestFlag, Shadow, SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
+    ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep,
+    Emotion, FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState,
+    ObjectField, ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
+    SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
+// Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 
 use crate::actor::{AbsorbedObstacle, ActorData, ActorType, request, status};
 use crate::battle::{Battle, LinkedRecord};
@@ -50,6 +53,7 @@ fn status_bit(flag: StatusFlag) -> u32 {
         StatusFlag::UsingAction => f1::USING_ACTION,
         StatusFlag::AffectedByIce => f1::AFFECTED_BY_ICE,
         StatusFlag::Bubbled => f1::BUBBLED,
+        StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
     }
 }
 
@@ -216,6 +220,10 @@ impl CoreApi for Battle {
             BattleInfo::PanelPattern => Value::Int(self.setup.settings.panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
             BattleInfo::LocalSide => Value::Int(self.round.local_side as i64),
+            BattleInfo::Turn => Value::Int(self.round.turn as i64),
+            BattleInfo::PerPlayerGauges => {
+                Value::Bool(self.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0)
+            }
             BattleInfo::Fighting => Value::Bool(self.round.flags & crate::battle::battle_flags::FIGHTING != 0),
         }
     }
@@ -250,6 +258,13 @@ impl CoreApi for Battle {
             NaviStat::BusterCharged => i(s.bugs.buster_charged as i64),
             NaviStat::Beast => Value::Bool(s.form.is_beast()),
             NaviStat::BeastOver => Value::Bool(s.form.is_beast_over()),
+            NaviStat::CustomLevel => i(s.custom_level as i64),
+            NaviStat::HandShrinkTurn => i(s.bugs.hand_shrink_turn as i64),
+            NaviStat::ChargeShotRoutine => i(s.weapons.charge_shot as i64),
+            NaviStat::BackSpecialRoutine => i(s.weapons.back_special as i64),
+            NaviStat::FloatShoes => Value::Bool(s.float_shoes),
+            NaviStat::AirShoes => Value::Bool(s.air_shoes),
+            NaviStat::Undershirt => Value::Bool(s.undershirt),
             NaviStat::BugKinds => {
                 let b = &s.bugs;
                 let kinds = [
@@ -267,6 +282,25 @@ impl CoreApi for Battle {
                 i(kinds.iter().filter(|&&k| k).count() as i64)
             }
         }
+    }
+
+    fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()> {
+        let v = store(stat.name(), stat.writable(), stat.ty(), v)?;
+        let s = &mut self.stats[side as usize & 1];
+        match (stat, v) {
+            (NaviStat::Attack, FieldValue::U8(x)) => s.attack = x,
+            (NaviStat::Rapid, FieldValue::U8(x)) => s.rapid = x,
+            (NaviStat::Charge, FieldValue::U8(x)) => s.charge = x,
+            (NaviStat::CustomLevel, FieldValue::U8(x)) => s.custom_level = x,
+            (NaviStat::HandShrinkTurn, FieldValue::U8(x)) => s.bugs.hand_shrink_turn = x,
+            (NaviStat::ChargeShotRoutine, FieldValue::U8(x)) => s.weapons.charge_shot = x,
+            (NaviStat::BackSpecialRoutine, FieldValue::U8(x)) => s.weapons.back_special = x,
+            (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
+            (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
+            (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
+            (f, v) => unreachable!("{f:?} stored as {v:?}"),
+        }
+        Ok(())
     }
 
     fn emotion(&self, side: u8) -> Emotion {
@@ -316,6 +350,18 @@ impl CoreApi for Battle {
         self.hands[side as usize & 1].advance();
     }
 
+    // Subtype 18 (Otenko).
+    fn hand_turn(&self, side: u8, i: u8) -> u8 {
+        // (The cursor never passes 5.)
+        self.hands[side as usize & 1].turn.get(i as usize).copied().unwrap_or(0)
+    }
+
+    fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16) {
+        if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
+            *b = b.wrapping_add(n);
+        }
+    }
+
     fn linked(&self, side: u8) -> LinkedChip {
         let r = self.linked[side as usize & 1];
         LinkedChip { chip: r.chip, bonus: r.bonus, damage: r.damage, owner: r.owner, object: r.object }
@@ -334,8 +380,40 @@ impl CoreApi for Battle {
         self.gauge.value = crate::hud::CustomGauge::FULL;
     }
 
+    fn set_gauge_rate(&mut self, rate: u16) {
+        self.gauge.rate = rate;
+    }
+
+    fn set_gauge_speed_ticks(&mut self, side: u8, slow: u16, fast: u16) {
+        let s = &mut self.sides[side as usize & 1];
+        s.slow_gauge_ticks = slow;
+        s.fast_gauge_ticks = fast;
+    }
+
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
+    }
+
+    // Subtype 8 (Wind and Fan).
+    fn wind(&self, side: u8) -> (Option<ObjectRef>, WindSource) {
+        let w = self.field.winds[side as usize & 1];
+        let source = match w.source {
+            crate::field::WindSource::Obstacle => WindSource::Obstacle,
+            crate::field::WindSource::Navi => WindSource::Navi,
+        };
+        (w.object, source)
+    }
+
+    fn set_wind(&mut self, o: ObjectRef, side: u8, source: WindSource) {
+        let source = match source {
+            WindSource::Obstacle => crate::field::WindSource::Obstacle,
+            WindSource::Navi => crate::field::WindSource::Navi,
+        };
+        kinds::obstacle::set_wind(self, o, side & 1, source);
+    }
+
+    fn clear_wind(&mut self, o: ObjectRef) {
+        kinds::obstacle::clear_wind(self, o);
     }
 
     fn side_stat(&self, side: u8, index: u8) -> u8 {
@@ -459,6 +537,16 @@ impl CoreApi for Battle {
         self.field.meets(p.x, p.y, rule)
     }
 
+    // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
+    fn poison_panel(&mut self, p: PanelPos) -> bool {
+        Battle::poison_panel(self, p.x, p.y)
+    }
+
+    fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8) {
+        let t = PanelType::ALL.get(kind as usize).copied().unwrap_or_else(|| panic!("panel type {kind} doesn't exist"));
+        Battle::blink_panel(self, p.x, p.y, t, side);
+    }
+
     fn break_empty_panel(&mut self, p: PanelPos) -> bool {
         Battle::break_empty_panel(self, p.x, p.y)
     }
@@ -477,6 +565,12 @@ impl CoreApi for Battle {
         let k = self.content.object_kind(name).ok_or_else(|| ApiError::UnknownKind(name.to_string()))?;
         let (pool, index) = (k.pool, k.index);
         Ok(super::spawn_object(self, pool, index, pos, params))
+    }
+
+    fn spawn_kind_first(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
+        let k = self.content.object_kind(name).ok_or_else(|| ApiError::UnknownKind(name.to_string()))?;
+        let (pool, index) = (k.pool, k.index);
+        Ok(super::spawn_object_first(self, pool, index, pos, params))
     }
 
     fn spawn_kind_at_end(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
@@ -797,6 +891,8 @@ impl CoreApi for Battle {
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
             (ActorField::ChipLockout, FieldValue::U8(x)) => a.lockout = x,
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
+            (ActorField::BusterRoutine, FieldValue::U8(x)) => a.buster = x,
+            (ActorField::ChargeShotRoutine, FieldValue::U8(x)) => a.charge_shot = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1044,6 +1140,14 @@ impl CoreApi for Battle {
         }))
     }
 
+    fn collision_element_damage(&self, o: ObjectRef, element: u8) -> ApiResult<u16> {
+        let damage = self.collision_of(o)?.acc.element_damage;
+        damage
+            .get(element as usize)
+            .copied()
+            .ok_or_else(|| ApiError::Other(format!("element {element} has no damage slot (0 to 5)")))
+    }
+
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()> {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
         let c = self.collision_of_mut(o)?;
@@ -1123,6 +1227,10 @@ impl CoreApi for Battle {
         }
     }
 
+    fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef) {
+        Battle::start_dimming(self, side & 1, no_cut_in, controller, user);
+    }
+
     fn hide_user(&mut self, user: ObjectRef) {
         crate::dimming::hide_user(self, user);
     }
@@ -1133,6 +1241,104 @@ impl CoreApi for Battle {
 
     fn navi_chip_left(&mut self, controller: ObjectRef) {
         kinds::navi_chip::navi_left(self, controller);
+    }
+
+    // ---- Obstacles ----------------------------------------------------------------------
+
+    fn obstacle_register(&mut self, o: ObjectRef, side: u8, class: u8) {
+        kinds::obstacle::register(self, o, side & 1, class & 1);
+    }
+
+    fn obstacle_unregister(&mut self, o: ObjectRef) {
+        kinds::obstacle::unregister(self, o);
+    }
+
+    fn obstacle_take_hits(&mut self, o: ObjectRef, push: ObstaclePush) -> ApiResult<()> {
+        use kinds::obstacle::Push;
+        self.collision_of(o)?;
+        let push = match push {
+            ObstaclePush::ForgetsDamage => Push::ForgetsDamage,
+            ObstaclePush::KeepsDamage => Push::KeepsDamage,
+            ObstaclePush::AnyHit => Push::AnyHit,
+            ObstaclePush::Ignored => Push::Ignored,
+        };
+        kinds::obstacle::take_hits(self, o, push);
+        Ok(())
+    }
+
+    fn obstacle_tick_lifetime(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of(o)?;
+        kinds::obstacle::tick_lifetime(self, o);
+        Ok(())
+    }
+
+    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush, hold: ObstacleHold) -> ApiResult<Option<u8>> {
+        use kinds::obstacle::{Crush, Hold};
+        self.collision_of(o)?;
+        let crush = match crush {
+            ObstacleCrush::Breaks => Crush::Breaks,
+            ObstacleCrush::Destroys => Crush::Destroys,
+            ObstacleCrush::SparesBodies => Crush::SparesBodies,
+        };
+        let hold = match hold {
+            ObstacleHold::AfterAppearing => Hold::AfterAppearing,
+            ObstacleHold::Always => Hold::Always,
+        };
+        Ok(kinds::obstacle::react(self, o, crush, hold))
+    }
+
+    fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()> {
+        use kinds::obstacle::SharedAction as S;
+        self.collision_of(o)?;
+        let a = match a {
+            ObstacleAction::ReturnToIdle => S::ReturnToIdle,
+            ObstacleAction::Slide => S::Slide,
+            ObstacleAction::KnockedBack => S::KnockedBack,
+            ObstacleAction::Flinch => S::Flinch,
+            ObstacleAction::Paralyzed => S::Paralyzed,
+            ObstacleAction::Frozen => S::Frozen,
+            ObstacleAction::Bubbled => S::Bubbled,
+        };
+        kinds::obstacle::shared_action(self, o, a).map_err(ApiError::Other)
+    }
+
+    fn obstacle_removal(&self, o: ObjectRef) -> ApiResult<ObstacleRemoval> {
+        use kinds::obstacle::Removal;
+        self.collision_of(o)?;
+        Ok(match kinds::obstacle::removal(self, o) {
+            Removal::Broken => ObstacleRemoval::Broken,
+            Removal::Removed => ObstacleRemoval::Removed,
+            Removal::Vanished => ObstacleRemoval::Vanished,
+            Removal::Absorbed { .. } => ObstacleRemoval::Absorbed,
+        })
+    }
+
+    fn obstacle_blink_out(&mut self, o: ObjectRef) -> ApiResult<BlinkOut> {
+        use kinds::obstacle::BlinkOut as B;
+        self.collision_of(o)?;
+        Ok(match kinds::obstacle::blink_out(self, o) {
+            B::No => BlinkOut::No,
+            B::Blinking => BlinkOut::Blinking,
+            B::Done => BlinkOut::Done,
+        })
+    }
+
+    fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, kind: u8) -> ApiResult<()> {
+        self.collision_of(o)?;
+        kinds::obstacle::fly_to_absorber(self, o, kind);
+        Ok(())
+    }
+
+    fn obstacle_release_tracking(&mut self, o: ObjectRef) {
+        kinds::obstacle::release_tracking(self, o);
+    }
+
+    fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef) {
+        match request {
+            ObstacleRequest::Remove => kinds::obstacle::remove(self, o),
+            ObstacleRequest::Vanish => kinds::obstacle::vanish(self, o),
+            ObstacleRequest::Absorb => kinds::obstacle::absorb(self, o, by),
+        }
     }
 
     // ---- Field objects (obstacles) -------------------------------------------
@@ -1167,8 +1373,8 @@ impl CoreApi for Battle {
     }
 
     fn blink_out(&mut self, o: ObjectRef) -> ApiResult<BlinkOut> {
-        let f2 = self.collision_of(o)?.f2;
-        Ok(match kinds::obstacle::blink_out(self, o, f2) {
+        self.collision_of(o)?;
+        Ok(match kinds::obstacle::blink_out(self, o) {
             kinds::obstacle::BlinkOut::No => BlinkOut::No,
             kinds::obstacle::BlinkOut::Blinking => BlinkOut::Blinking,
             kinds::obstacle::BlinkOut::Done => BlinkOut::Done,
@@ -1176,8 +1382,7 @@ impl CoreApi for Battle {
     }
 
     fn fly_to_absorber(&mut self, o: ObjectRef, kind: u8) {
-        let palette = self.objects.sprite(o).look.palette;
-        kinds::obstacle::fly_to_absorber(self, o, kind, palette);
+        kinds::obstacle::fly_to_absorber(self, o, kind);
     }
 
     fn name_attach_point(&self, name_id: u16, point: u8, alliance: u8, flip: u8) -> (i32, i32) {
