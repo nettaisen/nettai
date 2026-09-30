@@ -771,6 +771,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
         with(|api, _| Ok(api.set_mood(side, mood)))
     });
+    lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.side_special(side).name()))
+    });
     lib_fn!(lua, t, "player", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         let p = with(|api, _| Ok(api.player(side)))?;
