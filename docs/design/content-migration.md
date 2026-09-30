@@ -86,7 +86,8 @@ kind, or a numbered hook.
 | A chip's action | `script = "..."` in `chips/NNN-name/chip.toml` | `state`, `update(me, s)` |
 | A dimming chip (action 0x15) | `script` in each chip of the subtype | `dimming_chip(user, spec: DimmingChipSpec) -> Object?`: spawn the controller; its update calls the `dimming` service's steps in its routine's order |
 | A navi chip (action 0x1B) | `script` in each chip of the subtype | `navi_chip(user, controller, spec: NaviChipSpec) -> Object?`: spawn the navi; it calls `navi_chip.navi_left(controller)` when done |
-| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
+| An instant chip (action 0x1C) | `script` in each chip of the subtype, or `instant_chip = N` in a weapon.toml whose routine names the subtype | `instant_chip(user, spec: InstantChipSpec)`: the effect (`off_80EC3F0[subtype]`), run once; the ruleset's action idles after it |
+| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` (the setup can prepare that state before the action starts: `navi:action_state(action)`) |
 
 Scripts are paths relative to the registering file. Two chips of an action or subtype must name the same module;
 a slot, action or hook claimed twice is an error (`Content::registrations`, `Registrations::validate`).
@@ -196,6 +197,11 @@ crates/bn6-battle/src/behavior/tests.rs (the registration lists); docs/engine/ob
 - The weapon ids that alias the buster (`off_80117D4` entries pointing at `sub_8011A26`: 0x2E, 0x2F, 0x3E, 0x3F,
   0x4D..0x51, 0x6F, 0x70, 0x77, 0x79, 0x7B, 0x7E, 0x82) as weapons naming 00-buster's module.
 - Owns: new objects/ and weapons/ folders, the extractor and pack IO for the projectile table.
+- Done: `objects/projectile` (kinds in its `object.toml`, `data.objects.projectiles`), fired with
+  `lib/projectile.luau` (`projectile.fire(navi, shot)`, `projectile.spawn(owner, x, y, shot)`, the shot typed as
+  `ProjectileShot` in types.d.luau); `objects/flying-shot` (attack #0xB, `sub_80C6248`'s object, with its kinds,
+  `data.objects.flying_shots`), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16 in
+  `weapons/00-buster` and `weapons/01-charged-shot`; the aliases as `weapons/NN-buster`.
 
 ### Group E: instant chips
 
