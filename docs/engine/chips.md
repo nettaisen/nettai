@@ -1285,6 +1285,62 @@ and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes p
 `sub_802CEC8` clears a record every tick once its user's HP is 0. The trap springs in the damage intake
 (`sub_802CEF4`).
 
+#### 3.6.11 SpoutMan (navi chip subtype 7, T1 0x09)
+
+Trace: soundmod rounds 1 and 2 (side 0's SpoutMan); the scratch lab's navis/0x0f2-spoutman/long{,-miss,-adjacent,
+-holes} and the EX and SP `long`s match every frame. The pack's scripts: objects/spout-man, spout-ball,
+spout-splash, spout-pillar, spout-geyser, spout-mark.
+
+**SpoutMan, T1 0x09 (`sub_80B94BC`)**, spawned by `sub_80B9750` like ElmntMan (the controller's flag pointer in his
+CollisionDataPtr slot). His position is the spawner's registers: X, Y = panel Y and element (overwritten), Z = r3 =
+the spawner's own address `0x080B9751`, whose low half his init keeps (a halfword store of 0 over Z's whole part).
+Sprite (8, 6) with a ground shadow; his actions enter on CurPhase 0 and step his sprite while dimmed:
+- 0: anim 3, sound 0x94, his parts (`sub_8010DF6(2, 6, 1)`: T1 0x55, his layer), VISIBLE, Timer:Timer2 = 6 (a word);
+  6 ticks; panel flags 0x10010 → 4, else 0x18.
+- 4: anim 0, 30 ticks; away from his back columns (side 0: x > 2; side 1: x < 5) → 8 (the ball), else 0x10 (the
+  geyser).
+- 8: anim 0x13, 20 ticks. 0xC: anim 0x14, a T3 0x22 ball from his panel (Param1 4), a T4#0 effect 0x2A where he
+  stands (flip = alliance ^ flip), sound 0x12D; 60 ticks → 0x18.
+- 0x10: anim 0xF, a T4 0x2D pillar on his panel (Param1 4; `sub_80E3976` stores it in his ExtraVars[0] and keeps a
+  pointer to that slot); 66 ticks: anim 0x10 at 57 left, the pillar's PhaseInitialized byte = 1 at 27 left.
+- 0x14: anim 0x15, sound 0x189, a T3 0x17 geyser (Param1 4, Param2 90, Param3 = the column `sub_80B9776` picks: the
+  first ahead holding an enemy navi's body, else the field's edge; r3 = 4 becomes its Z); 90 ticks, then anim 0 and
+  the pillar's PhaseInitialized = 2 → 0x18.
+- 0x18: anim 4, Timer:Timer2 = 8; to −1 (9 ticks); his parts off (`sub_8011044(2, 6)`), the controller's flag
+  cleared, state 8.
+
+**His layer, T1 0x55 (`sub_80C40D8`)**, the navi framework's (`kinds::navi_layer`, from `kinds::navi_parts`): sprite
+(0x10, 0x21) (`dword_80C40D4[Param1]`, Param1 always 0); each tick his position, visibility, palette, colour
+shader, white flash, mosaic, facing and alpha, and Z's whole part 0 when his animation is 0, else 255 (out of
+sight); its sprite steps unless dimmed or paused.
+
+**The ball, T3 0x22 (`sub_80C853C`)**: 24 pixels ahead of its panel at a height of 16, sprite (0xC, 0x23) anim 1; it
+flies 4 pixels a tick for (0x500000 − 0x180000) / 0x40000 = 14 ticks, falling 0x100000 / 14 a tick (both BIOS
+divisions), its panel following its X; then on a solid panel action 4: sound 0x11D, a T3 0x23 splash there
+(Param2 1, Z 0x100 from r3) and one on the next panel if that is solid (Param2 0); else it just goes.
+
+**The splash, T3 0x23 (`loc_80C86D8`)**: sprite (0xC, 0x1A), collision self 0xA, target 5, modifier 3, hit effect 2;
+30 ticks, its region off once it hit. On its destroy a solid panel cracks if Param1 ≥ 2 and Param2 is set.
+
+**The pillar, T4 0x2D (`sub_80E37F4`)**: sprite (0x10, 0x1F); shows while SpoutMan does. 9 ticks rising (anim 3),
+then it follows his signals in its PhaseInitialized byte: 1 → spout (anim 1, 27 ticks, then anim 2), again 1 →
+stand (anim 3) and spout again, 2 → gone; going, it clears his slot if it still holds it. Its Z fraction is the
+object loop's register garbage (`scratch_z_fraction`).
+
+**The geyser, T3 0x17 (`sub_80C6DCC`)**: a pixel down and up from his panel (sprite (0x10, 0x20)), running its first
+update in its init. It picks its column (`sub_80C6F08`: the first of the next five holding something of the other
+side's, `byte_80C6F48`, or Param3, or x ≤ 1 / ≥ 6) into Param4, marks it and the trail to it (T4 0x2E: the column's
+Param1 1 with Z 1, the trail's Param1 0; Param2 = its ticks; Param3 = `byte_80C7028[Param1]`, 1 for SpoutMan's),
+highlights them every tick, and every 30 ticks from the first hits the column's three panels (valid ones) and the
+trail with hit regions (region 1, hit effect 2, target 5, self 4, modifier 3) that run while dimmed and last 30
+ticks (their Timer). Param2 ticks.
+
+**The marks, T4 0x2E (`sub_80E39A0`)**: 2 pixels down and up, sprite (0x10, 0x20), anim `word_80E3A30[Param1]` (1, 2);
+Param2 ticks counted from the tick they appear.
+
+Unverified (no scenario reaches them; the navi AI's): the ball, splash, pillar, geyser and marks with Param1 (or
+Param3) other than SpoutMan's, which stand still while dimmed and end with their owner's action 0xB.
+
 ---
 
 ## 4. Worked example: GunDelS3 (chip 0x11) in the machgun trace
