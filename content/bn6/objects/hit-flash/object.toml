@@ -6,4 +6,3 @@
 pool = "effect"
 index = 0x73
 script = "hit_flash.luau"
-scratch_position = true

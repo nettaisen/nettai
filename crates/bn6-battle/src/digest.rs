@@ -225,7 +225,7 @@ impl Hash for Object {
     fn hash<H: Hasher>(&self, h: &mut H) {
         let Object {
             flags: header,
-            index,
+            kind,
             params,
             state,
             action,
@@ -269,7 +269,7 @@ impl Hash for Object {
             vars,
         } = self;
         (header & !flags::VISIBLE).hash(h);
-        index.hash(h);
+        kind.hash(h);
         params.hash(h);
         (state, action, phase, phase_init).hash(h);
         (slide_bounds, drag_step).hash(h);

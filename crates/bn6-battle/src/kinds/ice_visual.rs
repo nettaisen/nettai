@@ -9,7 +9,7 @@ use crate::actor::ActorType;
 use crate::battle::Battle;
 use crate::collision::{f1, link};
 use crate::content::SpriteId;
-use crate::object::{ObjectRef, Pool, flags, state};
+use crate::object::{ObjectRef, flags, state};
 
 pub const INDEX: u8 = 0x89;
 
@@ -39,7 +39,7 @@ const NAVI_SIZES: [u8; 50] = [
 /// status routine's leftover registers; its init places it at once.)
 pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     let pos = b.objects.get(owner).pos;
-    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [0; 4])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::IceVisual, pos, [0; 4])?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)

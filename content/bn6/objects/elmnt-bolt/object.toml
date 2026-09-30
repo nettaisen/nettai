@@ -6,4 +6,3 @@
 pool = "attack"
 index = 0xB8
 script = "elmnt_bolt.luau"
-scratch_z_fraction = true

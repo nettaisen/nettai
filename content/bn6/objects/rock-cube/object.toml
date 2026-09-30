@@ -5,4 +5,3 @@
 pool = "effect"
 index = 0x37
 script = "rock_cube.luau"
-scratch_position = true

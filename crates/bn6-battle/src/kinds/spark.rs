@@ -2,7 +2,7 @@
 
 use crate::battle::Battle;
 use crate::content::EffectSprite;
-use crate::object::{ObjectRef, Pool, Vec3, flags, sprite::FRAME_LAST, state};
+use crate::object::{ObjectRef, Vec3, flags, sprite::FRAME_LAST, state};
 
 /// `AddRandomVarianceToTwoCoords`: jitter x and z by up to ±mask/2 pixels
 /// (one simulation RNG draw).
@@ -27,9 +27,24 @@ pub fn spawn_collision_effect(b: &mut Battle, hitter: ObjectRef) {
     spawn(b, hitter, pos, effect);
 }
 
+/// Spark-private state.
+#[derive(Clone, Debug, Default, Hash)]
+pub struct Vars {
+    /// Its look, when a definition gave it (else spark `Param1`'s).
+    pub look: Option<EffectSprite>,
+}
+
+/// The same with the look a spark definition gives (its first parameter is
+/// then 0).
+pub fn spawn_look(b: &mut Battle, owner: ObjectRef, pos: Vec3, look: EffectSprite) -> Option<ObjectRef> {
+    let r = spawn(b, owner, pos, 0)?;
+    b.objects.get_mut(r).vars = crate::kinds::Vars::Spark(Vars { look: Some(look) });
+    Some(r)
+}
+
 /// `sub_80E08C4`.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, effect: u8) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Effect, 4, pos, [effect, 0, 0, 0])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Spark, pos, [effect, 0, 0, 0])?;
     let alliance = b.objects.get(owner).alliance;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
@@ -40,7 +55,11 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, effect: u8) -> Option<
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
         state::INIT => {
-            let EffectSprite { sprite: id, anim, palette } = b.content.spark(b.objects.get(r).params[0]);
+            let given = match &b.objects.get(r).vars {
+                crate::kinds::Vars::Spark(v) => v.look,
+                _ => None,
+            };
+            let EffectSprite { sprite: id, anim, palette } = given.unwrap_or_else(|| b.content.spark(b.objects.get(r).params[0]));
             let sprite = b.objects.sprite_mut(r);
             sprite.load(id);
             sprite.set_animation(anim, &b.content);

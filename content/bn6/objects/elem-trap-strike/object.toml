@@ -5,4 +5,3 @@
 pool = "effect"
 index = 0x2B
 script = "elem_trap_strike.luau"
-scratch_position = true

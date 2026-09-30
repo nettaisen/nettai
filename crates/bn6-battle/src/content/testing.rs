@@ -196,16 +196,12 @@ pub fn stats(hp: u16) -> crate::setup::NaviStats {
     crate::setup::NaviStats { hp, max_hp: hp, max_base_hp: hp, ..Default::default() }
 }
 
-/// The chips the test pack's ticker series takes over (`with_test_pack`).
+/// The chip ids the test pack's ticker series takes over, and the weapon
+/// routine its tick shot is (`with_test_pack`): hands and navi stats still
+/// name chips and weapons by number.
 pub const TICKER_1: ChipId = 0x20;
 pub const TICKER_2: ChipId = 0x21;
-/// What the test pack's definitions are bridged to (`with_test_pack`): its
-/// ticker kind's object slot (an effect), its tick shot's weapon routine
-/// and action number, and its ticker chips' action number.
-pub const TICKER_SLOT: u8 = 0xF0;
 pub const TICK_SHOT: u8 = 0xF0;
-pub const TICK_SHOT_ACTION: u8 = 0xF0;
-pub const TICKER_ACTION: u8 = 0xF1;
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
 /// definitions the engine's tests run.
@@ -232,33 +228,28 @@ pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
     out
 }
 
-/// The content set with the test pack's modules (under `test/`), defined,
-/// and bridged the way compat bridges BN6's definitions: the ticker kind
-/// fills effect object `TICKER_SLOT`, the tick shot is weapon routine
-/// `TICK_SHOT` with its action numbered `TICK_SHOT_ACTION`, and the ticker
-/// chips take over chips `TICKER_1` and `TICKER_2` (whose records name
-/// action `TICKER_ACTION`, which both chips' own actions carry).
+/// The content set with the test pack's modules (under `test/`), defined.
+/// Its kind and actions run by handle, with no numbers; the tick shot is
+/// weapon routine `TICK_SHOT` and the ticker chips take over chips
+/// `TICKER_1` and `TICKER_2`, the numbers hands and navi stats still reach
+/// them by.
 pub fn with_test_pack() -> Content {
     let mut c = make();
     for (path, source) in modules_under(TEST_PACK) {
         c.scripts.modules.insert(format!("test/{path}"), source);
     }
     for (id, name) in [(TICKER_1, "Ticker1"), (TICKER_2, "Ticker2")] {
-        c.chips[id as usize] = ChipData { damage: 10, ..chip(id, name, TICKER_ACTION, 0) };
+        c.chips[id as usize] = ChipData { damage: 10, ..chip(id, name, 0, 0) };
     }
     c.define().unwrap_or_else(|e| panic!("content error: {e}"));
-    let bridge = |c: &mut Content| -> Result<(), bn6_content_api::ContentError> {
+    let number = |c: &mut Content| -> Result<(), bn6_content_api::ContentError> {
         let d = &mut c.defs;
-        d.bridge_kind("test/ticker", (Pool::Effect, TICKER_SLOT))?;
-        d.bridge_weapon("test/tick-shot", TICK_SHOT)?;
-        d.bridge_action("test/tick-shot/shot", TICK_SHOT_ACTION)?;
-        d.bridge_action("test/ticker1/action", TICKER_ACTION)?;
-        d.bridge_action("test/ticker2/action", TICKER_ACTION)?;
-        d.bridge_chip("test/ticker1", TICKER_1)?;
-        d.bridge_chip("test/ticker2", TICKER_2)?;
+        d.number_weapon("test/tick-shot", TICK_SHOT)?;
+        d.number_chip("test/ticker1", TICKER_1)?;
+        d.number_chip("test/ticker2", TICKER_2)?;
         Ok(())
     };
-    bridge(&mut c).unwrap_or_else(|e| panic!("content error: {e}"));
+    number(&mut c).unwrap_or_else(|e| panic!("content error: {e}"));
     c
 }
 
@@ -427,7 +418,7 @@ pub fn scripts() -> Scripts {
                 (module.clone(), module)
             });
             let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string())).chain(weapons);
-            Scripts { modules: modules.map(|(to, from)| (to, read(&from))).collect() }
+            Scripts::new(modules.map(|(to, from)| (to, read(&from))).collect())
         })
         .clone()
 }
@@ -491,8 +482,6 @@ fn kinds() -> Vec<ObjectKind> {
         pool,
         index,
         script: script.into(),
-        scratch_position: false,
-        scratch_z_fraction: false,
         actor_list_entry: None,
     };
     let mut kinds = vec![
@@ -501,16 +490,16 @@ fn kinds() -> Vec<ObjectKind> {
         kind("erase-man", Pool::Actor, 0x15, "objects/erase-man/erase_man"),
         kind("erase-mark", Pool::Effect, 0x62, "objects/erase-mark/erase_mark"),
         kind("erase-beam", Pool::Attack, 0xC3, "objects/erase-beam/erase_beam"),
-        ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
+        kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab"),
         kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
-        ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
+        kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball"),
         kind("element-pillar", Pool::Attack, 0x61, "objects/element-pillar/element_pillar"),
         kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
         kind("whirlwind", Pool::Attack, 0x81, "objects/whirlwind/whirlwind"),
         kind("dash-hit", Pool::Attack, 0xAF, "objects/dash-hit/dash_hit"),
         kind("erase-drop", Pool::Attack, 0xA1, "objects/erase-drop/erase_drop"),
         kind("lunge-slash", Pool::Attack, 0xB1, "objects/lunge-slash/lunge_slash"),
-        ObjectKind { scratch_position: true, ..kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash") },
+        kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash"),
         kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
         kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
         kind("absorbed-obstacle", Pool::Effect, 0x87, "objects/absorbed-obstacle/absorbed_obstacle"),
@@ -541,36 +530,33 @@ fn kinds() -> Vec<ObjectKind> {
         kind("honey-bee", Pool::Attack, 0x74, "objects/honey-bee/honey_bee"),
         kind("dragon-head", Pool::Attack, 0xC9, "objects/dragon-head/dragon_head"),
         kind("dragon-body", Pool::Attack, 0xC8, "objects/dragon-body/dragon_body"),
-        ObjectKind { scratch_position: true, ..kind("invisible", Pool::Effect, 0x5D, "objects/invisible/invisible") },
+        kind("invisible", Pool::Effect, 0x5D, "objects/invisible/invisible"),
         ObjectKind { actor_list_entry: Some(8), ..kind("rock", Pool::Attack, 0x59, "objects/rock/rock") },
-        ObjectKind { scratch_position: true, ..kind("rock-cube", Pool::Effect, 0x37, "objects/rock-cube/rock_cube") },
+        kind("rock-cube", Pool::Effect, 0x37, "objects/rock-cube/rock_cube"),
         kind("rock-debris", Pool::Effect, 0x38, "objects/rock-debris/rock_debris"),
-        ObjectKind { scratch_position: true, ..kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip") },
+        kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip"),
         kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
-        ObjectKind { scratch_position: true, ..kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost") },
-        ObjectKind { scratch_position: true, ..kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed") },
+        kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost"),
+        kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed"),
         kind("rising-bubble", Pool::Effect, 0x14, "objects/rising-bubble/rising_bubble"),
         // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
-        ObjectKind { scratch_position: true, ..kind("elem-trap", Pool::Attack, 0x4D, "objects/elem-trap/elem_trap") },
-        ObjectKind {
-            scratch_position: true,
-            ..kind("elem-trap-strike", Pool::Effect, 0x2B, "objects/elem-trap-strike/elem_trap_strike")
-        },
-        ObjectKind { scratch_position: true, ..kind("panel-bursts", Pool::Effect, 0x24, "objects/panel-bursts/panel_bursts") },
-        ObjectKind { scratch_position: true, ..kind("time-bom", Pool::Effect, 0x27, "objects/time-bom/time_bom") },
+        kind("elem-trap", Pool::Attack, 0x4D, "objects/elem-trap/elem_trap"),
+        kind("elem-trap-strike", Pool::Effect, 0x2B, "objects/elem-trap-strike/elem_trap_strike"),
+        kind("panel-bursts", Pool::Effect, 0x24, "objects/panel-bursts/panel_bursts"),
+        kind("time-bom", Pool::Effect, 0x27, "objects/time-bom/time_bom"),
         kind("countdown-bomb", Pool::Attack, 0x4B, "objects/countdown-bomb/countdown_bomb"),
-        ObjectKind { scratch_position: true, ..kind("mine", Pool::Effect, 0x29, "objects/mine/mine") },
+        kind("mine", Pool::Effect, 0x29, "objects/mine/mine"),
         kind("land-mine", Pool::Attack, 0x4C, "objects/land-mine/land_mine"),
         kind("crack-shot", Pool::Attack, 0x33, "objects/crack-shot/crack_shot"),
         kind("elmnt-man", Pool::Actor, 0x10, "objects/elmnt-man/elmnt_man"),
         kind("meteor", Pool::Attack, 0x8D, "objects/meteor/meteor"),
         kind("elmnt-ice", Pool::Attack, 0x8E, "objects/elmnt-ice/elmnt_ice"),
-        ObjectKind { scratch_z_fraction: true, ..kind("elmnt-bolt", Pool::Attack, 0xB8, "objects/elmnt-bolt/elmnt_bolt") },
+        kind("elmnt-bolt", Pool::Attack, 0xB8, "objects/elmnt-bolt/elmnt_bolt"),
         kind("elmnt-vine", Pool::Attack, 0xB9, "objects/elmnt-vine/elmnt_vine"),
         kind("spout-man", Pool::Actor, 0x09, "objects/spout-man/spout_man"),
         kind("spout-ball", Pool::Attack, 0x22, "objects/spout-ball/spout_ball"),
         kind("spout-splash", Pool::Attack, 0x23, "objects/spout-splash/spout_splash"),
-        ObjectKind { scratch_z_fraction: true, ..kind("spout-pillar", Pool::Effect, 0x2D, "objects/spout-pillar/spout_pillar") },
+        kind("spout-pillar", Pool::Effect, 0x2D, "objects/spout-pillar/spout_pillar"),
         kind("spout-geyser", Pool::Attack, 0x17, "objects/spout-geyser/spout_geyser"),
         kind("spout-mark", Pool::Effect, 0x2E, "objects/spout-mark/spout_mark"),
         kind("heat-man", Pool::Actor, 0x07, "objects/heat-man/heat_man"),

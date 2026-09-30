@@ -6,7 +6,7 @@
 
 use crate::battle::Battle;
 use crate::content::SpriteId;
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 use crate::object::sprite::FRAME_LAST;
 
 pub const INDEX: u8 = 0x6B;
@@ -24,7 +24,7 @@ pub enum Mark {
 
 /// `sub_80E8124`: the mark over `owner`, `offset` from its position (16.16).
 pub fn spawn(b: &mut Battle, owner: ObjectRef, offset: Vec3, mark: Mark) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Effect, INDEX, offset, [mark as u8, 0, 0, 0])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::HitMarker, offset, [mark as u8, 0, 0, 0])?;
     b.objects.get_mut(r).related[0] = Some(owner);
     Some(r)
 }

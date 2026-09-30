@@ -22,13 +22,13 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use bn6_content_api::{
-    ActionHandle, BindPlan, ContentError, ContentHost, ContentState, CoreApi, FnId, HookCall, KindHandle, Manifest,
+    ActionHandle, BindPlan, ContentError, ContentHost, CoreApi, FnId, HookCall, KindHandle, Manifest, SpawnAt,
     Value,
 };
 
 use crate::battle::Battle;
 use crate::content::{Content, ContentHash};
-use crate::kinds::Vars;
+use crate::kinds::{self, Vars};
 use crate::object::{ObjectRef, Pool, Vec3};
 
 pub use bn6_luau::Options;
@@ -123,8 +123,7 @@ impl Behaviors {
         if content.defs.functions.is_empty() && content.defs.definitions.is_empty() {
             return Ok(Behaviors::none());
         }
-        let pack = bn6_luau::Pack::new(content.scripts.modules.iter().map(|(k, v)| (k.clone(), v.clone())));
-        let host = bn6_luau::LuauContent::load(&pack, &plan(content), &script_data(content), options)?;
+        let host = bn6_luau::LuauContent::load(&content.scripts.pack(), &plan(content), &script_data(content), options)?;
         Ok(Behaviors { loaded: Some(Rc::new(Loaded { host: Box::new(host) })) })
     }
 
@@ -205,53 +204,29 @@ pub(crate) fn call_hook(b: &mut Battle, f: FnId, call: HookCall) -> Value {
     }
 }
 
-/// Spawn an object; a content kind starts with its zeroed state.
+/// Spawn the kind in object slot `index` of `pool` (registration by
+/// number); a content kind starts with its zeroed state.
 pub fn spawn_object(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-    let r = b.objects.spawn(pool, index, pos, params)?;
-    Some(init_state(b, r))
+    kinds::spawn_numbered(b, pool, index, SpawnAt::AfterCurrent, pos, params)
 }
 
-/// Spawn an object at the head of the update list (`sub_80033E4`); a
-/// content kind starts with its zeroed state.
+/// The same at the head of the update list (`sub_80033E4`).
 pub fn spawn_object_first(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-    let r = b.objects.spawn_at_front(pool, index, pos, params)?;
-    Some(init_state(b, r))
+    kinds::spawn_numbered(b, pool, index, SpawnAt::First, pos, params)
 }
 
-/// `sub_8003374` (attacks) and `sub_800333C` (actors): spawn an object at
-/// the end of the update list rather than right after its spawner; a
-/// content kind starts with its zeroed state.
+/// `sub_8003374` (attacks) and `sub_800333C` (actors): the same at the end
+/// of the update list rather than right after its spawner.
 pub fn spawn_object_at_end(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-    let r = b.objects.spawn_at_end(pool, index, pos, params)?;
-    Some(init_state(b, r))
+    kinds::spawn_numbered(b, pool, index, SpawnAt::End, pos, params)
 }
 
-/// A new content object's zeroed state.
-fn init_state(b: &mut Battle, r: ObjectRef) -> ObjectRef {
-    use crate::content::KindImpl;
-    let index = b.objects.get(r).index;
-    if let Some(kind) = b.content.defs.kind_at(r.pool, index) {
-        let k = b.content.defs.kind(kind);
-        if matches!(k.implementation, KindImpl::Script { .. }) {
-            let id = k.schema;
-            b.objects.get_mut(r).vars = Vars::Content(ContentState::new(id));
-        }
-    }
-    r
-}
-
-/// Spawn the content object kind `key` (a v1 kind's folder name): how
-/// engine code spawns a kind a script implements. None if the pool is full;
-/// panics if no kind has the key, or it fills no object slot.
+/// Spawn the content object kind `key`: how engine code spawns a kind a
+/// script implements. None if the pool is full; panics if no kind has the
+/// key.
 pub fn spawn_kind(b: &mut Battle, key: &str, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-    let (pool, index) = kind_slot(&b.content, key).unwrap_or_else(|e| panic!("{e}"));
-    spawn_object(b, pool, index, pos, params)
-}
-
-/// The object slot of kind `key`.
-pub(crate) fn kind_slot(content: &Content, key: &str) -> Result<(Pool, u8), String> {
-    let h = content.defs.kind_by_key(key).ok_or_else(|| format!("no object kind is named {key:?}"))?;
-    content.defs.kind(h).slot.ok_or_else(|| format!("object kind {key} fills no object slot yet (compat)"))
+    let kind = b.content.defs.kind_by_key(key).unwrap_or_else(|| panic!("no object kind is named {key:?}"));
+    kinds::spawn(b, kind, SpawnAt::AfterCurrent, pos, params)
 }
 
 /// Set an enum state field of a content object by variant name.
