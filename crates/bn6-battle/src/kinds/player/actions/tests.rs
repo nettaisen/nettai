@@ -240,6 +240,185 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     assert_eq!(b.objects.get(p0).action, 8);
 }
 
+// ---- The Beast forms' weapons --------------------------------------------------
+
+/// Start weapon routine `routine` for `r` as a charged chip does
+/// (`sub_800FB54`): the routine's setup, then its action. Returns the
+/// action.
+fn start_weapon(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
+    ai_mut(b, r).attack.charged = 0;
+    let action = crate::kinds::player::idle::weapon_routine(b, r, routine);
+    crate::kinds::player::set_attack(b, r, action, 2);
+    action
+}
+
+/// A copy of the battle plays the next `n` ticks exactly as the battle
+/// does (the scripts' state is all in the battle).
+fn plays_on_the_same(b: &mut Battle, p: [ObjectRef; 2], n: u32) {
+    let mut copy = b.clone();
+    for _ in 0..n {
+        tick(b, p[0], p[1], 0);
+        tick(&mut copy, p[0], p[1], 0);
+        assert_eq!(b.digest(), copy.digest());
+    }
+}
+
+#[test]
+fn heat_beast_charge_raises_fire_pillars_on_its_region() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x07), 0x35);
+    // 50 damage and 30 per buster Attack point (1 here), Fire.
+    let a = &ai_mut(&mut b, p0).attack;
+    assert_eq!((a.damage, a.hit_param, a.element), (80, 0x8A, 1));
+    let mut t = 0;
+    run_to(&mut b, p, &mut t, 1, 0);
+    assert_eq!(b.objects.get(p0).anim, 0x12);
+    assert_eq!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), f1::USING_ACTION | f1::MOVING);
+    // When the wind-up ends: pillars on the test region 0x1A from the
+    // panel in front (it and two past it).
+    while of_kind(&b, "element-pillar").is_empty() {
+        let next = t + 1;
+        run_to(&mut b, p, &mut t, next, 0);
+        assert!(t < 20, "no pillars");
+    }
+    assert_eq!(b.objects.get(p0).anim, 0x13);
+    // (Each runs right after its spawner: the later one first.)
+    let panels: Vec<PanelPos> = of_kind(&b, "element-pillar").iter().map(|&o| b.objects.get(o).panel).collect();
+    assert_eq!(panels, [PanelPos { x: 5, y: 2 }, PanelPos { x: 3, y: 2 }]);
+    let pillar = of_kind(&b, "element-pillar")[1];
+    let (x, y) = crate::kinds::player::panel_coordinates(3, 2);
+    let o = b.objects.get(pillar);
+    assert_eq!((o.pos.x, o.pos.y, o.pos.z, o.timer), (x, y + (2 << 16), 2 << 16, 0x5A - 1));
+    plays_on_the_same(&mut b, p, 20);
+    t += 20;
+    // One hit: the pillar's region goes once it hits.
+    assert_eq!(b.objects.get(p1).hp, 920);
+    // The navi idles 91 ticks after the pillars; they are gone by then.
+    let end = t + 75;
+    run_to(&mut b, p, &mut t, end, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
+    assert!(of_kind(&b, "element-pillar").is_empty());
+    assert_eq!(b.objects.get(p1).hp, 920);
+}
+
+#[test]
+fn elec_beast_charge_strikes_lightning_that_cracks_panels() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x09), 0x3C);
+    let mut t = 0;
+    while of_kind(&b, "element-pillar").is_empty() {
+        let next = t + 1;
+        run_to(&mut b, p, &mut t, next, 0);
+        assert!(t < 20, "no lightning");
+    }
+    // Lightning (Param1 1) cracks its panels, the enemy's too.
+    assert_eq!(b.field.panel(3, 2).unwrap().kind, crate::field::PanelType::Cracked);
+    assert_eq!(b.field.panel(5, 2).unwrap().kind, crate::field::PanelType::Cracked);
+    plays_on_the_same(&mut b, p, 5);
+    t += 5;
+    // 40 damage and 30 per buster Attack point.
+    assert_eq!(b.objects.get(p1).hp, 930);
+    // The navi stops 91 ticks after the lightning, which lasts 9 more at
+    // most.
+    let end = t + 100;
+    run_to(&mut b, p, &mut t, end, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert!(of_kind(&b, "element-pillar").is_empty());
+}
+
+#[test]
+fn spout_beast_charge_surges_from_the_panel_in_front() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    // Step to (3,2) first.
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::RIGHT);
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
+    assert_eq!(start_weapon(&mut b, p0, 0x08), 0x3A);
+    let mut t = 0;
+    // 8 ticks in, the surge, 20 pixels ahead of the panel in front.
+    run_to(&mut b, p, &mut t, 8, 0);
+    assert!(of_kind(&b, "aqua-surge").is_empty());
+    run_to(&mut b, p, &mut t, 9, 0);
+    let surge = of_kind(&b, "aqua-surge")[0];
+    let (x, _) = crate::kinds::player::panel_coordinates(4, 2);
+    let o = b.objects.get(surge);
+    assert_eq!((o.panel, o.pos.x, o.pos.z), (PanelPos { x: 4, y: 2 }, x + (20 << 16), 0));
+    // It reaches the enemy on the panel ahead (region 2): 10 damage and 10
+    // per buster Attack point, once until its region comes back.
+    plays_on_the_same(&mut b, p, 5);
+    t += 5;
+    assert_eq!(b.objects.get(p1).hp, 980);
+    // The navi idles 61 ticks after the surge; the surge lasts 60.
+    run_to(&mut b, p, &mut t, 9 + 60, 0);
+    assert_eq!(b.objects.get(p0).action, 0x3A);
+    run_to(&mut b, p, &mut t, 9 + 62, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert!(of_kind(&b, "aqua-surge").is_empty());
+}
+
+#[test]
+fn tengu_beast_charge_sends_a_whirlwind_that_leaves_hits() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x0A), 0x3D);
+    let a = &ai_mut(&mut b, p0).attack;
+    assert_eq!((a.damage, a.element, a.params), (50, 0x20, [0x00, 0x3D, 0x2D, 0x00]));
+    let mut t = 0;
+    while of_kind(&b, "whirlwind").is_empty() {
+        let next = t + 1;
+        run_to(&mut b, p, &mut t, next, 0);
+        assert!(t < 20, "no whirlwind");
+    }
+    let w = of_kind(&b, "whirlwind")[0];
+    let (x, _) = crate::kinds::player::panel_coordinates(3, 2);
+    let o = b.objects.get(w);
+    assert_eq!((o.panel, o.pos.x, o.timer), (PanelPos { x: 3, y: 2 }, x + (40 << 16), 0x2D - 1));
+    // Its first wave's last hit covers the column two panels ahead, where
+    // the enemy stands.
+    plays_on_the_same(&mut b, p, 5);
+    t += 5;
+    assert_eq!(b.objects.get(p1).hp, 950);
+    let end = t + 60;
+    run_to(&mut b, p, &mut t, end, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert!(of_kind(&b, "whirlwind").is_empty());
+}
+
+#[test]
+fn the_beast_busters_raise_the_arm_for_their_projectile() {
+    for (routine, action) in [(0x03, 0x1E), (0x04, 0x1D)] {
+        let (mut b, p0, p1) = fight();
+        let p = [p0, p1];
+        assert_eq!(start_weapon(&mut b, p0, routine), action);
+        let a = &ai_mut(&mut b, p0).attack;
+        // The buster's damage (at most 5), no repeats outside Beast Over.
+        assert_eq!((a.damage, a.params[1], a.variant), (1, 0, 0));
+        let mut t = 0;
+        run_to(&mut b, p, &mut t, 1, 0);
+        assert_eq!(b.objects.get(p0).anim, 0x0E);
+        let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
+        assert_eq!(b.objects.get(arm).params[0], 6);
+        // (The shot is the buster's projectile, which isn't content yet.)
+    }
+}
+
+#[test]
+fn dustcross_beast_throws_its_newest_obstacle_or_fires_the_beast_buster() {
+    let (mut b, p0, _) = fight();
+    assert_eq!(start_weapon(&mut b, p0, 0x2C), 0x1E);
+    let actor = b.objects.get(p0).actor.unwrap();
+    b.actors.get_mut(actor).absorbed.push(crate::actor::AbsorbedObstacle { kind: 2, anim: 1 });
+    assert_eq!(start_weapon(&mut b, p0, 0x2C), 0x11);
+    let a = &ai_mut(&mut b, p0).attack;
+    assert_eq!((a.damage, a.variant, a.marker), (200, 2, 0x12));
+    assert!(b.actors.get(actor).absorbed.is_empty());
+}
+
 /// Two navis idle and fighting on the test content's battle settings
 /// `settings`, with both navis' stats `stats`.
 fn fight_on(settings: u8, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {

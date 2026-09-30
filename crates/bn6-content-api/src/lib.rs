@@ -32,6 +32,7 @@ pub use api::{
     ACTOR_TYPES, ActorField, ApiError, ApiResult, BattleInfo, CollisionField, ColumnInfo, CoreApi, DimmingStep,
     Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField, PANEL_TYPES,
     Pad, PanelInfo, RequestFlag, Shadow, SpriteField, StatusFlag, StatusTimer,
+    SideSpecial,
 };
 pub use data::{Data, Key as DataKey};
 pub use host::{

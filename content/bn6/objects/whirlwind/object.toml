@@ -1,0 +1,7 @@
+# A whirlwind (attack object #0x81, `sub_80D5580`), TenguCross Beast's charged
+# chip's, is a script.
+
+[kind]
+pool = "attack"
+index = 0x81
+script = "whirlwind.luau"
