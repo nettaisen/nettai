@@ -24,7 +24,21 @@ fn battles_run_the_content_scripts() {
     assert_eq!(b.behaviors.runtime(), "luau");
     let m = b.behaviors.manifest().expect("the test content has scripts");
     let kinds: Vec<&str> = m.objects.iter().map(|k| k.name.as_str()).collect();
-    assert_eq!(kinds, ["area-grab", "attachment", "dust-ball", "erase-beam", "erase-man", "erase-mark", "grab-shot", "sun-beam"]);
+    assert_eq!(
+        kinds,
+        [
+            "area-grab",
+            "attachment",
+            "dust-ball",
+            "erase-beam",
+            "erase-man",
+            "erase-mark",
+            "falling-rock",
+            "grab-shot",
+            "rock-chip",
+            "sun-beam"
+        ]
+    );
     assert!(b.behaviors.action(0x37).is_some(), "GunDelSol is a script");
     assert!(b.behaviors.action(0x10).is_none(), "the step is the engine's");
 }

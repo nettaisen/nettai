@@ -1,106 +1,125 @@
 --!strict
--- A rock falling on a panel (attack object #0x1D, `sub_80C7F40`): the hit
--- of GroundCross's charged chip, which drops three (`sub_8012CB2`, in the
--- ruleset). It is spawned on its panel with its damage word; its first
--- update hits there (the hit spark and collision) and it goes. Its owner
--- (related1) is never set, so the owner's-action test reads memory the
--- game has no object at; a rock whose owner is in action 0xB would stay
--- on for 72 ticks (`sub_80C802C`), a branch no spawner reaches.
+-- A rock falling on a panel (attack object #0x1D, `sub_80C7D78`): it
+-- appears 104 pixels over its panel and falls, faster and faster; its hit
+-- region opens once it is under 30 pixels. What it hits breaks it into two
+-- chips; landing it breaks on a solid panel, or drops into a hole with a
+-- splash (effect 0x14). Spawned by `sub_80C7F20`: the ruleset's GroundCross
+-- barrage (`sub_8012CB2`), with the panel, element and damage word.
+-- ExtraVars[0] may point at a counter of rocks in flight; the barrage
+-- passes none.
+
+local rock_chip = require("../rock-chip/rock_chip")
 
 local falling_rock = {}
 
-local SPRITE = "10-12"
+local SPRITE = "10-05"
 
--- Drawn this far toward its front, in whole pixels.
-local AHEAD = 0x88
+-- Its starting height, and its fall's acceleration (16.16).
+local HEIGHT, GRAVITY = 0x68_0000, 0x2000
 
--- The owner action that keeps it on, and for how long (`byte_80C8068`, by
--- Param1).
-local HOLD_ACTION = 0x0B
-local HOLD_TICKS = { [0] = 0x48, [1] = 0x48, [2] = 0x48, [3] = 0x48 }
+-- It can hit once lower than this, in whole pixels.
+local HIT_HEIGHT = 0x1E
 
--- `sub_80C7F64`: on its panel at ground level (its Z's fraction left),
--- the sprite, and a hit registered on the panel (region 8, no hit
--- effect). False if no collision slot was free (it is freed).
+-- The chips a rock breaks into: their sideways and upward speeds
+-- (`dword_80C7F00`; the rock uses the first two).
+local CHIPS = { { 0x8000, 0x28000 }, { -0x8000, 0x30000 } }
+
+-- `sub_80C7EC8`: two chips fly off from its position at ground level (in
+-- front at priority 2), and a crash.
+local function shatter(me: Object)
+    for i = 1, 2 do
+        -- The chips' Param1 is a draw's low bits plus one (unread).
+        local n = bit32.band(battle.rng(), 3) + 1
+        local p = me.pos
+        rock_chip.spawn(Vec3.new(p.x, p.y, 0), CHIPS[i][1], CHIPS[i][2], 2, n)
+    end
+    battle.play_sound(0xD9)
+end
+
+-- `sub_80C7D98`: over its panel, falling from 104 pixels, with its hit
+-- registered (region closed until low enough). Not when the battle is over
+-- or its panel is off the field: it is freed.
 local function init(me: Object): boolean
-    me:set_coordinates_from_panel()
-    local p = me.pos
-    me.pos = Vec3.new(p.x + me.facing * AHEAD * 0x10000, p.y, bit32.band(p.z, 0xFFFF))
+    if battle.over() or not field.valid(me.panel_x, me.panel_y) then
+        me:free()
+        return false
+    end
+    local x, y = field.center(me.panel_x, me.panel_y)
+    me.pos = Vec3.new(x, y, HEIGHT)
+    me.visible = true
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "with_sprite"
-    me.visible = true
+    sprite.shadow = "ground"
     me.anim = 0
-    me.anim_loaded = 0
     sprite:set_animation(0)
-    sprite.palette = 0
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
+    me.vel = Vec3.new(me.vel.x, me.vel.y, 0)
     if not me:create_collision() then
         me:free()
         return false
     end
-    me:setup_collision(4, 5, 3)
-    me.collision.region = 8
-    me.collision.hit_effect = 0xFF
+    me:setup_collision(0x15, 5, 1)
+    me.collision.hit_effect = 0
+    me.collision.region = 0
     me.collision:present()
     me:set_lifecycle("update")
     return true
 end
 
--- `sub_80C802C`: held on for its time, the hit ending once it landed.
-local function hold(me: Object)
-    if me.phase == 0 then
+-- `sub_80C7E6C`: open the region once under 30 pixels (that tick it
+-- doesn't move); fall; at the ground, break or splash, and go.
+local function fall(me: Object)
+    if me.phase == 0 and bit32.rshift(me.pos.z, 16) < HIT_HEIGHT then
+        me.collision.region = 1
         me.phase = 4
-        me.timer = HOLD_TICKS[me:param(1)] or error("falling rock Param1 reads past its table (sub_80C802C)")
+        me.phase_init = 0
         return
     end
-    if me.collision.hit_flags ~= 0 then
-        me.collision.region = 0
-    end
-    local left = me.timer - 1
-    me.timer = left
-    if left > 0 then
+    local vz = me.vel.z + GRAVITY
+    me.vel = Vec3.new(me.vel.x, me.vel.y, vz)
+    local z = me.pos.z - vz
+    me.pos = Vec3.new(me.pos.x, me.pos.y, z)
+    if z > 0 then
         return
+    end
+    if field.solid(me.panel_x, me.panel_y) then
+        shatter(me)
+    else
+        battle.effect(me.pos, 0x14)
     end
     me.collision.region = 0
     me:set_lifecycle("destroy")
 end
 
--- `sub_80C7FDC`: resolve the hit (and its spark); unless the owner is in
--- action 0xB, the rock goes.
+-- `sub_80C7E24`: resolve its hit (and the spark); a hit breaks it.
 local function update(me: Object)
     me.collision:remove()
     me:hit_spark()
-    if not battle.over() then
-        if me.collision.hit_flags ~= 0 then
-            me.collision.region = 0
-        end
-        local owner = me.related1
-        if owner and owner.action == HOLD_ACTION then
-            if battle.dimmed() then
-                return
-            end
-            hold(me)
-            me.collision:present()
-            return
-        end
+    if me.collision.hit_flags ~= 0 then
+        shatter(me)
+        me.collision.region = 0
+        me:set_lifecycle("destroy")
+        return
     end
-    me.collision.region = 0
-    me:set_lifecycle("destroy")
+    if me.action ~= 0 then
+        error("falling rock action " .. me.action .. " runs off its table (sub_80C7E24)")
+    end
+    fall(me)
+    me:update_sprite()
+    me.collision:present()
 end
 
 function falling_rock.update(me: Object)
-    if me.lifecycle == "init" then
-        if not init(me) then
-            return
+    local l = me.lifecycle
+    if l == "init" then
+        if init(me) then
+            update(me)
         end
-    elseif me.lifecycle == "update" then
+    elseif l == "update" then
         update(me)
     else
         me:destroy()
-        return
     end
-    me:update_sprite_while_paused()
 end
 
 return falling_rock
