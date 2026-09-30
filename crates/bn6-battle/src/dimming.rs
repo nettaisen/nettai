@@ -263,8 +263,8 @@ pub fn hide_user(b: &mut Battle, user: ObjectRef) {
     b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
     set_vanished(b, user, true);
     set_links_visible(b, user, false);
-    if b.objects.get(user).actor.is_some_and(|a| b.actors.get(a).full_synchro_aura.is_some()) {
-        panic!("hiding the Full Synchro aura (sub_80C4C46) is not implemented yet");
+    if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
+        crate::kinds::full_synchro_aura::hide(b, aura);
     }
 }
 
@@ -283,8 +283,8 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
     }
     set_vanished(b, user, false);
     set_links_visible(b, user, true);
-    if b.objects.get(user).actor.is_some_and(|a| b.actors.get(a).full_synchro_aura.is_some()) {
-        panic!("showing the Full Synchro aura (sub_80C4C4C) is not implemented yet");
+    if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
+        crate::kinds::full_synchro_aura::show(b, aura);
     }
 }
 

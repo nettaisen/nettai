@@ -1,0 +1,6 @@
+# AirSpin's whirlwind (attack object #0x9B, `sub_80D88E0`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x9B
+script = "air_spin.luau"

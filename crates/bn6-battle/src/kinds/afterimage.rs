@@ -1,16 +1,20 @@
 //! An afterimage (effect object #0x28, `sub_80E32B8`): a blinking copy of
-//! a navi's sprite left behind when the Beast Out rush warps it, or when a
-//! step sword steps (and of the sword's blade, a sprite of its own).
-//! Purely visual, but it holds an effect slot and a place in the update
-//! order, wears the navi's form overlay (its own form overlay object), and
-//! may end early when the navi's form or action changes. See
+//! a navi's sprite left behind when the Beast Out rush warps it. Purely
+//! visual, but it holds an effect slot and a place in the update order,
+//! wears the navi's form overlay (its own form overlay object), and ends
+//! early when the navi's form or action changes. See
 //! docs/engine/objects-and-player.md §A.7.
+//!
+//! A plain afterimage (first parameter not 0xFF) shows a sprite of its own
+//! instead, looking as its spawner says (`PlainLook`): content spawns
+//! these (`spawn_plain`), such as PitHocky's puck trail. Content also
+//! spawns copies with a look of its own (`spawn_copy`), such as the step
+//! sword's afterimages of its user.
 
 use crate::battle::Battle;
 use crate::content::{Content, SpriteId};
 use crate::kinds::common::{Progress, set_progress};
-use crate::kinds::form_overlay;
-use crate::object::sprite::Shadow;
+use crate::kinds::player::form;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 use crate::setup::Form;
 
@@ -31,57 +35,51 @@ pub enum Tether {
     Attack,
 }
 
-/// Afterimage-private state: what its spawner (`sub_80E33FA`) and the
-/// setters after it leave in its ExtraVars.
+/// Afterimage-private state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    /// Ticks it lasts (ExtraVars+4, a halfword).
+    /// Ticks it lasts.
     pub lifetime: u16,
-    /// ExtraVars+0xC (`sub_80E341E`).
     pub tether: Tether,
     /// The animation it holds.
     pub anim: u8,
-    /// ExtraVars+0: its sprite's colour shader.
-    pub color_shader: u16,
-    /// ExtraVars+6 and +7: its shadow.
-    pub shadow: ShadowFlag,
+    /// Its look (a plain one's, or a copy's that its spawner chose).
+    pub plain: PlainLook,
 }
 
-/// How an afterimage's shadow is drawn (presentation only):
-/// `sprite_noShadow` when ExtraVars+6 is 0, else `sprite_hasShadow`, then
-/// `sprite_removeShadow` when ExtraVars+7 is 0.
+/// How a plain afterimage looks: what its spawner puts in its extra
+/// variables (`sub_80E33FA`'s callers).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum ShadowFlag {
+pub struct PlainLook {
+    /// ExtraVars+0: the colour shader.
+    pub color_shader: u16,
+    /// ExtraVars+6 and +7: a shadow at its height (neither set), on the
+    /// ground (both), or none (only the first).
+    pub shadow: PlainShadow,
+    /// ExtraVars+0x10: the palette.
+    pub palette: u8,
+    /// ExtraVars+8: shown steadily instead of blinking.
+    pub steady: bool,
+}
+
+/// A plain afterimage's shadow.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum PlainShadow {
     #[default]
     WithSprite,
     Ground,
     Hidden,
 }
 
-impl ShadowFlag {
-    fn shadow(self) -> Shadow {
+impl PlainShadow {
+    fn shadow(self) -> crate::object::sprite::Shadow {
+        use crate::object::sprite::Shadow;
         match self {
-            ShadowFlag::WithSprite => Shadow::WithSprite,
-            ShadowFlag::Ground => Shadow::Ground,
-            ShadowFlag::Hidden => Shadow::Hidden,
+            PlainShadow::WithSprite => Shadow::WithSprite,
+            PlainShadow::Ground => Shadow::Ground,
+            PlainShadow::Hidden => Shadow::Hidden,
         }
     }
-}
-
-/// What an afterimage shows and for how long (`sub_80E33FA`'s
-/// parameters).
-#[derive(Clone, Copy, Debug)]
-pub struct Spec {
-    /// A sprite of its own (Param1 and Param2), or None: a copy of the
-    /// owner's (Param1 0xFF), with the owner's NameID and form overlay.
-    pub sprite: Option<SpriteId>,
-    pub anim: u8,
-    /// Param4: the game's flip value.
-    pub flip: u8,
-    pub color_shader: u16,
-    pub lifetime: u16,
-    pub shadow: ShadowFlag,
-    pub tether: Tether,
 }
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
@@ -91,46 +89,80 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
     }
 }
 
-/// `sub_80EAFC2` (via `sub_80E33FA`): the Beast Out rush's afterimage of
-/// `owner` at `pos` lasting `lifetime` ticks, holding `anim`.
+/// `sub_80EAFC2` (via `sub_80E33FA`): an afterimage of `owner` at `pos`
+/// lasting `lifetime` ticks, holding `anim`.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u16) -> Option<ObjectRef> {
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)
     };
-    // sub_80E341E: tied to the Beast form, or to the attack.
-    let tether = if b.stats[alliance as usize].form.is_beast() { Tether::BeastForm } else { Tether::Attack };
-    // A copy of the owner facing its way (`object_getFlip`), less green,
-    // with a ground shadow (the spawner's r7 is 0x01010014 - n).
-    let spec = Spec {
-        sprite: None,
-        anim,
-        flip: alliance ^ flip,
-        color_shader: COLOR_SHADER,
-        lifetime,
-        shadow: ShadowFlag::Ground,
-        tether,
-    };
-    spawn_with(b, owner, pos, &spec)
-}
-
-/// `sub_80E33FA`: an afterimage of `owner` at `pos`.
-pub fn spawn_with(b: &mut Battle, owner: ObjectRef, pos: Vec3, spec: &Spec) -> Option<ObjectRef> {
-    let alliance = b.objects.get(owner).alliance;
-    let (p1, p2) = spec.sprite.map_or((0xFF, 0), |s| (s.category, s.index));
-    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [p1, p2, spec.anim, spec.flip])?;
+    // Param1 0xFF: copy the owner's sprite; Param4 its facing
+    // (`object_getFlip`).
+    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [0xFF, 0, anim, alliance ^ flip])?;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
     o.flags |= flags::RUN_WHILE_PAUSED;
-    *vars(b, r) = Vars {
-        lifetime: spec.lifetime,
-        tether: spec.tether,
-        anim: spec.anim,
-        color_shader: spec.color_shader,
-        shadow: spec.shadow,
-    };
+    // sub_80E341E: tied to the Beast form, or to the attack.
+    let tether = if b.stats[alliance as usize].form.is_beast() { Tether::BeastForm } else { Tether::Attack };
+    // Less green, with a ground shadow (the spawner's r7 is 0x01010014 - n).
+    let look = PlainLook { color_shader: COLOR_SHADER, shadow: PlainShadow::Ground, ..Default::default() };
+    *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
     Some(r)
+}
+
+/// `sub_80E33FA` with Param1 0xFF: a copy of `owner` (its NameID's sprite
+/// and form overlay) at `pos`, holding `anim` flipped by the game's flip
+/// value `flip`, for `lifetime` ticks, looking as `look` says (the step
+/// sword's). It runs while paused.
+pub fn spawn_copy(
+    b: &mut Battle,
+    owner: ObjectRef,
+    pos: Vec3,
+    anim: u8,
+    flip: u8,
+    lifetime: u16,
+    tether: Tether,
+    look: PlainLook,
+) -> Option<ObjectRef> {
+    let alliance = b.objects.get(owner).alliance;
+    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [0xFF, 0, anim, flip])?;
+    let o = b.objects.get_mut(r);
+    o.related[0] = Some(owner);
+    o.alliance = alliance;
+    o.flags |= flags::RUN_WHILE_PAUSED;
+    *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
+    Some(r)
+}
+
+/// `sub_80E33FA` with a sprite of its own: a plain afterimage of `owner`'s
+/// side at `pos`, showing `anim` of `sprite` (flipped by the game's flip
+/// value `flip`) for `lifetime` ticks. It runs while paused.
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_plain(
+    b: &mut Battle,
+    owner: ObjectRef,
+    pos: Vec3,
+    sprite: SpriteId,
+    anim: u8,
+    flip: u8,
+    lifetime: u16,
+    tether: Tether,
+    look: PlainLook,
+) -> Option<ObjectRef> {
+    let alliance = b.objects.get(owner).alliance;
+    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [sprite.category, sprite.index, anim, flip])?;
+    let o = b.objects.get_mut(r);
+    o.related[0] = Some(owner);
+    o.alliance = alliance;
+    o.flags |= flags::RUN_WHILE_PAUSED;
+    *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
+    Some(r)
+}
+
+/// Whether it is plain (its first parameter isn't 0xFF).
+fn is_plain(b: &Battle, r: ObjectRef) -> bool {
+    b.objects.get(r).params[0] != 0xFF
 }
 
 pub fn update(b: &mut Battle, r: ObjectRef) {
@@ -148,37 +180,36 @@ fn player_sprite(content: &Content, name_id: u16) -> SpriteId {
         0x1A0 => content.form(Form::NONE).sprite,
         0x1A1..=0x1AB => content.navi(crate::setup::Navi((name_id - 0x1A0) as u8)).sprite,
         0x1AC..=0x1C3 => content.form(Form((name_id - 0x1AB) as u8)).sprite,
-        _ => panic!("afterimages of NameID {name_id:#x} are not implemented yet"),
+        // Only players' Beast Out rush leaves afterimages.
+        _ => unreachable!("an afterimage of NameID {name_id:#x}, which is not a player's"),
     }
 }
 
-/// `sub_80E32D8`: copy the owner's NameID and sprite and put on its form's
-/// overlay (Param1 0xFF), or load a sprite of its own; show `anim`.
+/// `sub_80E32D8`: copy the owner's NameID and sprite, put on its form's
+/// overlay, and show `anim`.
 fn init(b: &mut Battle, r: ObjectRef) {
-    b.objects.get_mut(r).flags |= flags::VISIBLE;
-    let params = b.objects.get(r).params;
-    if params[0] == 0xFF {
-        let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
-        let name_id = b.objects.get(owner).name_id;
-        b.objects.get_mut(r).name_id = name_id;
-        b.objects.sprite_mut(r).load(player_sprite(&b.content, name_id));
-        b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
-        put_on_layer(b, r, name_id);
-    } else {
-        b.objects.sprite_mut(r).load(SpriteId { category: params[0], index: params[1] });
-        b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
+    if is_plain(b, r) {
+        return init_plain(b, r);
     }
-    let Vars { anim, lifetime, color_shader, shadow, .. } = vars(b, r).clone();
-    let flip = params[3];
+    b.objects.get_mut(r).flags |= flags::VISIBLE;
+    let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
+    let name_id = b.objects.get(owner).name_id;
+    b.objects.get_mut(r).name_id = name_id;
+    b.objects.sprite_mut(r).load(player_sprite(&b.content, name_id));
+    b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
+    put_on_layer(b, r, name_id);
+    let anim = vars(b, r).anim;
+    let lifetime = vars(b, r).lifetime;
+    let flip = b.objects.get(r).params[3];
+    let look = vars(b, r).plain;
     let s = b.objects.sprite_mut(r);
     s.set_animation(anim, &b.content);
     s.update(&b.content);
-    // Its shadow, the fourth parameter's flip and the spawner's colour
-    // shader (the rush's 0x83E0: less green). (Its palette, ExtraVars+0x10,
-    // is 0 from every spawner.)
-    s.look.shadow = shadow.shadow();
+    // The spawner's shadow and colour shader (the Beast rush's: a ground
+    // shadow, 0x83E0 less green), and the fourth parameter's flip.
+    s.look.shadow = look.shadow.shadow();
     s.look.set_flip(flip);
-    s.look.color_shader = color_shader;
+    s.look.color_shader = look.color_shader;
     let o = b.objects.get_mut(r);
     o.anim = anim;
     o.anim_loaded = anim;
@@ -188,59 +219,38 @@ fn init(b: &mut Battle, r: ObjectRef) {
     tick(b, r);
 }
 
+/// `sub_80E32D8` for a plain afterimage: its own sprite (the first two
+/// parameters), animation (the third) and flip (the fourth), and the look
+/// its spawner gave it.
+fn init_plain(b: &mut Battle, r: ObjectRef) {
+    b.objects.get_mut(r).flags |= flags::VISIBLE;
+    let [category, index, anim, flip] = b.objects.get(r).params;
+    let Vars { lifetime, plain, .. } = *vars(b, r);
+    let s = b.objects.sprite_mut(r);
+    s.load(SpriteId { category, index });
+    s.set_animation(anim, &b.content);
+    s.update(&b.content);
+    s.look.shadow = plain.shadow.shadow();
+    s.look.palette = plain.palette;
+    s.look.set_flip(flip);
+    s.look.color_shader = plain.color_shader;
+    let o = b.objects.get_mut(r);
+    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.anim = anim;
+    o.anim_loaded = anim;
+    o.timer2 = lifetime;
+    o.timer = 0;
+    set_progress(b, r, Progress::UPDATE);
+    tick(b, r);
+}
+
 /// `sub_8010DF6(record, 0)` then `sub_80C4526(layer, 1)`: the overlay the
-/// NameID's navi or form wears (by its record's AI index: `off_8010EA4`
-/// and `off_8010F08` after it), on the afterimage, drawn in front.
+/// NameID's init hook puts on, on the afterimage, pinned in front.
 fn put_on_layer(b: &mut Battle, r: ObjectRef, name_id: u16) {
-    use crate::kinds::body_overlay;
-    let rec = b.content.navi_record(name_id);
-    // A virus record's table is all nullsubs.
-    if rec.actor_type == crate::actor::ActorType::Virus {
-        return;
-    }
-    let body = |variant: u8, own_palette: bool, anim_offset: u8| body_overlay::Vars {
-        variant,
-        own_palette,
-        anim_offset,
-        ..Default::default()
-    };
-    let layer = match rec.ai_index {
-        // nullsub_42 / nullsub_43.
-        0 | 2..=5 | 7 | 8 | 10..=12 | 15 | 17 | 20..=23 | 35 | 37..=41 | 47 => return,
-        // sub_8010F6A, sub_8010F86, sub_8010F96, sub_8011004, sub_8010FAC,
-        // sub_8010FC2: a body overlay (Param3, stepping while paused, 0).
-        1 => body_overlay::spawn_with(b, r, body(2, false, 0)),
-        9 => body_overlay::spawn_with(b, r, body(0x0B, false, 0)),
-        13 => body_overlay::spawn_with(b, r, body(3, false, 0x0A)),
-        16 => body_overlay::spawn_with(b, r, body(0x0F, true, 9)),
-        18 => body_overlay::spawn_with(b, r, body(0, false, 0x0D)),
-        19 => body_overlay::spawn_with(b, r, body(0x10, false, 0x14)),
-        // sub_80112E0 .. sub_801133A (via sub_8011344): a Cross's helmet
-        // and arm, with its own palette; AI index 24 + the form.
-        25..=34 => {
-            let variant = crate::kinds::player::form::cross_overlay(Form(rec.ai_index - 24));
-            body_overlay::spawn_with(b, r, body(variant, true, 0))
-        }
-        // sub_8011366 and sub_8011352 .. sub_8011362: the Falzar beast head
-        // (for 24, 36 and 48 its palette follows the navi's mood: drawn
-        // only).
-        24 | 36 | 42..=46 | 48 => {
-            let layer = form_overlay::spawn(b, r, form_overlay::BEAST_HEAD, true);
-            b.objects.get_mut(r).related[1] = layer;
-            return;
-        }
-        // sub_8010F7A: SpoutMan's overlay, actor object #0x55, which the
-        // engine doesn't have yet (the navi init hook for AI index 6).
-        6 => panic!("afterimage overlays for AI index 6 (sub_8010F7A, actor object #0x55) are not implemented yet"),
-        // sub_8010FD8: two overlays, the second stored over the
-        // afterimage's colour shader; AI index 14 is a navi AI's, which no
-        // player NameID has.
-        14 => panic!("afterimages of NameID {name_id:#x} (a navi AI's record, sub_8010FD8) are not implemented yet"),
-        n => panic!("NameID {name_id:#x}'s AI index {n} reads past sub_8010DF6's overlay table"),
-    };
-    b.objects.get_mut(r).related[1] = layer;
-    if let Some(l) = layer {
-        body_overlay::force_front(b, l);
+    form::navi_init_hook(b, r, name_id);
+    // (With no overlay the game's store lands in BIOS memory.)
+    if let Some(layer) = b.objects.get(r).related[1] {
+        form::pin_overlay(b, layer);
     }
 }
 
@@ -267,9 +277,10 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
     b.objects.get_mut(r).timer = timer;
     b.objects.sprite_mut(r).update(&b.content);
+    let steady = vars(b, r).plain.steady;
     let o = b.objects.get_mut(r);
     o.flags |= flags::VISIBLE;
-    if timer & 2 == 0 {
+    if !steady && timer & 2 == 0 {
         o.flags &= !flags::VISIBLE;
     }
 }
@@ -279,15 +290,17 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 /// afterimage is freed.
 fn destroy(b: &mut Battle, r: ObjectRef) {
     set_progress(b, r, Progress::DESTROY);
+    if is_plain(b, r) {
+        // NameID 0's teardown (sub_8011044) does nothing.
+        b.objects.free(r);
+        return;
+    }
     if let Some(layer) = b.objects.get(r).related[1] {
         b.objects.get_mut(layer).flags |= flags::RUN_WHILE_PAUSED;
     }
-    // sub_8011044(record, 1): the overlay comes off (for the Falzar beast
-    // head, sub_801140E). One with a sprite of its own keeps NameID 0, a
-    // virus's record, whose hook is a nullsub.
+    // sub_8011044(record, 1): the NameID's death hook takes the overlay
+    // off.
     let name_id = b.objects.get(r).name_id;
-    if name_id != 0 {
-        crate::kinds::player::form::navi_death_hook(b, r, name_id);
-    }
+    form::navi_death_hook(b, r, name_id);
     b.objects.free(r);
 }
