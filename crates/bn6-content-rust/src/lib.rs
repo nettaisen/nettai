@@ -62,17 +62,19 @@ impl bn6_content_api::state::StateField for Slot {
     }
 }
 
-type Update = fn(&mut dyn CoreApi, ObjectRef);
+type Update = fn(&data::Data, &mut dyn CoreApi, ObjectRef);
 
 /// The slice as a content host.
 pub struct RustContent {
+    data: data::Data,
     manifest: Manifest,
     objects: Vec<Update>,
     actions: Vec<Update>,
 }
 
 impl RustContent {
-    pub fn new() -> RustContent {
+    /// The slice, reading `data` (from the content pack).
+    pub fn new(data: data::Data) -> RustContent {
         let kind = |name: &str, pool, index, schema| ObjectKindDef { name: name.into(), pool, index, schema };
         let manifest = Manifest {
             objects: vec![
@@ -87,16 +89,11 @@ impl RustContent {
             }],
         };
         RustContent {
+            data,
             manifest,
             objects: vec![attachment::update, sun_beam::update, hitbox::update],
             actions: vec![gun_del_sol::update],
         }
-    }
-}
-
-impl Default for RustContent {
-    fn default() -> RustContent {
-        RustContent::new()
     }
 }
 
@@ -110,12 +107,12 @@ impl ContentHost for RustContent {
     }
 
     fn update_object(&self, api: &mut dyn CoreApi, kind: KindId, me: ObjectRef) -> Result<(), ContentError> {
-        (self.objects[kind.0 as usize])(api, me);
+        (self.objects[kind.0 as usize])(&self.data, api, me);
         Ok(())
     }
 
     fn update_action(&self, api: &mut dyn CoreApi, action: KindId, me: ObjectRef) -> Result<(), ContentError> {
-        (self.actions[action.0 as usize])(api, me);
+        (self.actions[action.0 as usize])(&self.data, api, me);
         Ok(())
     }
 }

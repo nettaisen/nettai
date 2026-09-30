@@ -8,7 +8,7 @@
 -- The damage is 2 per hit, 4 in the sun, whatever the chip data, Atk+ or
 -- forms say.
 
-local data = require("../data/attacks")
+local data = require("../data/pack")
 local attachment = require("../objects/attachment")
 local sun_beam = require("../objects/sun_beam")
 local hitbox = require("../objects/hitbox")
@@ -41,14 +41,24 @@ local function advance_gun(me: Object)
     end
 end
 
+-- The chip's GunDelSol data (its gun, firing time and beam), from the
+-- content pack.
+local function chip_data(me: Object): GunDelSol
+    local chip = data.chips[me.chip]
+    local d = chip and chip.gun_del_sol
+    if not d then
+        error(string.format("chip %#x runs GunDelSol without its data", me.chip))
+    end
+    return d
+end
+
 -- `sub_80EDB14`: the gun comes out; 6 ticks later the beam lights up.
 local function wind_up(me: Object, s: State)
-    local level = me.variant
     if me.step_init == 0 then
         me:set_status("using_action", true)
         me:set_animation(0x0A)
         me:open_counter_window()
-        attachment.spawn(me, 7 + level, "overlay")
+        attachment.spawn(me, chip_data(me).gun.id, "overlay")
         battle.play_sound(0xF8)
         s.timer = 6
         me.step_init = 4
@@ -59,10 +69,10 @@ local function wind_up(me: Object, s: State)
     if t > 0 then
         return
     end
-    s.timer = data.GUN_DEL_SOL_FIRING_TICKS[level]
+    local d = chip_data(me)
+    s.timer = d.firing_ticks
     advance_gun(me)
-    local sun = if battle.navi(me.alliance).sun then 1 else 0
-    local look = data.GUN_DEL_SOL_BEAMS[sun][level]
+    local look = if battle.navi(me.alliance).sun then d.beam_in_sun else d.beam
     me.related1 = sun_beam.spawn(me, look, Vec3.px(me.facing * 0x50, 0, 0), "related")
     set_phase(me, FIRING)
 end

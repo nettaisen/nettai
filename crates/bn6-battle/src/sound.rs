@@ -65,32 +65,17 @@ mod tests {
     use super::*;
     use crate::battle::{Battle, TickEvents};
     use crate::input::PlayerTick;
-    use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, effects};
+    use crate::content::testing;
+    use crate::setup::effects;
 
-    /// A link battle between two MegaMen with 500 HP, started in code.
+    /// A battle between two navis with 500 HP on the test content, a link
+    /// battle or not, with this music.
     fn battle(music: u8, link: bool) -> Battle {
-        let stats = NaviStats { hp: 500, max_hp: 500, max_base_hp: 500, ..NaviStats::default() };
-        Battle::new(RoundSetup {
-            settings: BattleSettings {
-                layout: 0,
-                music,
-                mode: 0,
-                background: 0,
-                battle_number: 0,
-                panel_pattern: 0x38,
-                effects: if link { effects::LINK } else { 0 },
-                actors: &crate::data::ACTOR_LISTS[0],
-            },
-            navi_stats: [stats; 2],
-            rng: 0x1234_5678,
-            local_side: 0,
-            score: SetScore::default(),
-            later_stages: Default::default(),
-            low_hp_music_latched: false,
-            sp_times: Default::default(),
-            players: Default::default(),
-            link_delay: 0,
-        })
+        let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
+        setup.settings.music = music;
+        setup.settings.effects = if link { effects::LINK } else { 0 };
+        setup.rng = 0x1234_5678;
+        Battle::new(setup, testing::content())
     }
 
     fn tick(b: &mut Battle) -> Vec<SoundCue> {

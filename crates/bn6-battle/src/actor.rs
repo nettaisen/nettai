@@ -14,7 +14,8 @@ pub const SLOTS: usize = 8;
 pub struct ActorId(pub u8);
 
 /// What kind of actor this is.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ActorType {
     #[default]
     Virus = 0,
@@ -278,7 +279,7 @@ pub struct ActorData {
 /// An obstacle the obstacle-absorbing chip pulled in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct AbsorbedObstacle {
-    /// Obstacle kind (`data::ABSORBED_SPRITES`).
+    /// Obstacle kind (`ObjectData::absorbed_sprites`).
     pub kind: u8,
     /// Its animation when absorbed.
     pub anim: u8,

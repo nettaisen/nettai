@@ -6,7 +6,7 @@
 //! line (`erase_beam`), and leaves. See docs/engine/chips.md §3.6.10.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::field;
 use crate::input::keys;
 use crate::kinds::{common, erase_beam, erase_mark, navi_chip};
@@ -111,7 +111,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.shadow = Shadow::Ground;
     s.look.palette = 0;
     s.look.set_flip(flip);
-    s.set_animation(0);
+    s.set_animation(0, &b.content);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = 0;

@@ -552,6 +552,10 @@ pub trait OtherFields: CoreApi {
     fn variant(&self, o: ObjectRef) -> u8 {
         u8::from_value(self.actor_get(o, ActorField::AttackVariant).unwrap_or_else(|e| panic!("{e}")))
     }
+    /// The chip the navi's attack is using.
+    fn chip(&self, o: ObjectRef) -> u16 {
+        u16::from_value(self.actor_get(o, ActorField::AttackChip).unwrap_or_else(|e| panic!("{e}")))
+    }
     fn hit_flags(&self, o: ObjectRef) -> u32 {
         u32::from_value(self.collision_get(o, CollisionField::HitFlags).unwrap_or_else(|e| panic!("{e}")))
     }

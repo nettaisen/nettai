@@ -5,7 +5,7 @@
 //! cleared. See objects-and-player.md §A.6.
 
 use crate::battle::Battle;
-use crate::data::attacks::{self, SunBeamLook};
+use crate::content::SunBeamLook;
 use crate::kinds::attachment::AttachSlot;
 use crate::kinds::common::{Progress, set_progress, update_sprite};
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
@@ -31,7 +31,7 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 
 /// `sub_80E5D12`: a beam at `offset` from `owner`, stored in `slot`.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, look: SunBeamLook, offset: Vec3, slot: AttachSlot) -> Option<ObjectRef> {
-    let r = crate::behavior::spawn_object(b, Pool::Effect, INDEX, offset, [look.sprite, look.palette, 0, 0])?;
+    let r = crate::behavior::spawn_object(b, Pool::Effect, INDEX, offset, [look.look, look.palette, 0, 0])?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)
@@ -70,9 +70,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let [look, palette, ..] = b.objects.get(r).params;
     let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
     let sprite = b.objects.sprite_mut(r);
-    sprite.load(attacks::sun_beam_sprite(look));
-    sprite.set_animation(0);
-    sprite.update();
+    sprite.load(b.content.objects.sun_beam_sprite(look));
+    sprite.set_animation(0, &b.content);
+    sprite.update(&b.content);
     // sprite_noShadow; sprite_setFlip(object_getFlip()); the palette.
     sprite.look.shadow = crate::object::sprite::Shadow::WithSprite;
     sprite.look.set_flip(flip);

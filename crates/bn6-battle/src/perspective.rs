@@ -19,7 +19,7 @@
 //! marker and of the A-button charge glow (the objects' `VISIBLE` flag).
 
 use crate::battle::{Battle, BattleResult, RoundEnd, fight};
-use crate::data::{BannerId, LOSE_BANNERS, WIN_BANNERS};
+use crate::content::BannerId;
 use crate::setup::SetScore;
 use crate::time_freeze::{LOCAL_NAME_BANNER, REMOTE_NAME_BANNER};
 
@@ -55,11 +55,11 @@ impl Battle {
         if id == REMOTE_NAME_BANNER {
             return Some(LOCAL_NAME_BANNER);
         }
-        let navi = |side: u8| self.stats[side as usize].navi.index();
-        let result_banner = WIN_BANNERS[navi(local)] == id || LOSE_BANNERS[navi(local)] == id;
+        let navi = |side: u8| self.content.navi(self.stats[side as usize].navi);
+        let result_banner = navi(local).win_banner == id || navi(local).lose_banner == id;
         if result_banner && matches!(self.fight.state, fight::WIN | fight::LOSE) {
             let won = self.round.winner == viewer;
-            return Some(if won { WIN_BANNERS[navi(viewer)] } else { LOSE_BANNERS[navi(viewer)] });
+            return Some(if won { navi(viewer).win_banner } else { navi(viewer).lose_banner });
         }
         Some(id)
     }
@@ -81,34 +81,23 @@ impl Battle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::setup::{BattleSettings, NaviStats, RoundSetup};
+    use crate::content::testing;
 
     fn battle() -> Battle {
-        let stats = NaviStats { hp: 100, max_hp: 100, max_base_hp: 100, ..NaviStats::default() };
-        Battle::new(RoundSetup {
-            settings: BattleSettings { effects: crate::setup::effects::LINK, ..crate::data::BATTLE_SETTINGS[0] },
-            navi_stats: [stats; 2],
-            rng: 1,
-            local_side: 0,
-            score: SetScore::default(),
-            later_stages: Default::default(),
-            low_hp_music_latched: false,
-            sp_times: Default::default(),
-            players: Default::default(),
-            link_delay: 0,
-        })
+        Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::stats(100)), testing::content())
     }
 
     #[test]
     fn each_viewer_sees_its_own_name_and_result_banners() {
         let mut b = battle();
-        b.banner.start(LOCAL_NAME_BANNER);
+        b.start_banner(LOCAL_NAME_BANNER);
         assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(LOCAL_NAME_BANNER), Some(REMOTE_NAME_BANNER)));
         b.banner = Default::default();
         b.fight.state = fight::WIN;
         b.round.winner = 0;
-        b.banner.start(WIN_BANNERS[0]);
-        assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(WIN_BANNERS[0]), Some(LOSE_BANNERS[0])));
+        let navi = b.content.navi(crate::setup::Navi::MEGAMAN).clone();
+        b.start_banner(navi.win_banner);
+        assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(navi.win_banner), Some(navi.lose_banner)));
     }
 
     #[test]

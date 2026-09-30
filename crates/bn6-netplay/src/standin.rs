@@ -8,9 +8,9 @@ use crate::bn6::HasBattle;
 use crate::rng::SplitMix64;
 use bn6_battle::battle::top;
 use bn6_battle::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
-use bn6_battle::data::{ChipCode, ChipId};
+use bn6_battle::content::{ChipCode, ChipId, Content};
 use bn6_battle::input::keys;
-use bn6_battle::setup::{BattleSettings, Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, SupportNavis};
+use bn6_battle::setup::{Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, SupportNavis};
 use bn6_battle::{Battle, PlayerTick, TickEvents, TickInput};
 
 /// A battle stepped on the players' buttons alone.
@@ -119,11 +119,11 @@ pub fn megaman(hp: u16) -> NaviStats {
     }
 }
 
-/// A one-round netbattle between two MegaMen on the plain field
-/// (battle settings 0), simulated from side 0's perspective, with these
-/// battle folders. The Crosses and Beast Out are locked; the players'
-/// buttons reach the fight at once (no link delay).
-pub fn netbattle(hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
+/// A one-round netbattle between two MegaMen on `content`'s battle
+/// settings 0, simulated from side 0's perspective, with these battle
+/// folders. The Crosses and Beast Out are locked; the players' buttons
+/// reach the fight at once (no link delay).
+pub fn netbattle(content: &Content, hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
     let player = |f: BattleFolder| PlayerSetup {
         folder: Some(f),
         unlocks: Unlocks { crosses: [false; 5], beast_out: false, ..Unlocks::everything(GameVersion::Falzar) },
@@ -131,7 +131,8 @@ pub fn netbattle(hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
     };
     let [a, b] = folders;
     RoundSetup {
-        settings: BattleSettings { ..bn6_battle::data::BATTLE_SETTINGS[0] },
+        content: content.hash(),
+        settings: content.rules.stages.settings(0),
         navi_stats: [megaman(hp), megaman(hp)],
         rng: seed,
         local_side: 0,

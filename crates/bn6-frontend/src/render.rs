@@ -1,5 +1,5 @@
 //! Drawing a battle: everything visible is derived from the engine's state
-//! and the asset bundle.
+//! and the pack's graphics.
 
 use crate::compose::{self, Fade, Fades, Layer};
 use bn6_battle::transform::{SequencerState, TransformPhase};

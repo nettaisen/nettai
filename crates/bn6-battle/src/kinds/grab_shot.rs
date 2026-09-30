@@ -6,7 +6,7 @@
 //! during a time stop, it runs in it. See docs/engine/chips.md §3.6.8.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::field::{self, pflags};
 use crate::kinds::common;
 use crate::kinds::hitbox;

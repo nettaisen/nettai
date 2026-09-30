@@ -1,10 +1,10 @@
 //! Sprite animation timing. Nothing is drawn here; the engine steps
 //! animations because some behaviors end when an animation does (effect
-//! lifetimes, some chip attacks). Frame durations come from `data`.
+//! lifetimes, some chip attacks). Frame durations come from the content.
 //! `Look` records how behaviors ask for the sprite to be drawn, for a
 //! frontend.
 
-use crate::data::{self, AnimFrame, SpriteId};
+use crate::content::{AnimFrame, Content, SpriteId};
 
 /// Frame flag: this is the animation's last frame.
 pub const FRAME_LAST: u8 = 0x80;
@@ -94,13 +94,13 @@ pub enum Shadow {
 }
 
 impl Sprite {
-    fn frames(&self) -> &'static [AnimFrame] {
-        self.id.map(|id| data::animation(id, self.anim)).unwrap_or(&[])
+    fn frames<'c>(&self, content: &'c Content) -> &'c [AnimFrame] {
+        self.id.map(|id| content.animation(id, self.anim)).unwrap_or(&[])
     }
 
-    fn frame_at(&self, i: u16) -> AnimFrame {
+    fn frame_at(&self, content: &Content, i: u16) -> AnimFrame {
         // A sprite without data behaves like a single held frame.
-        self.frames().get(i as usize).copied().unwrap_or(AnimFrame { duration: 1, flags: FRAME_LAST })
+        self.frames(content).get(i as usize).copied().unwrap_or(AnimFrame { duration: 1, flags: FRAME_LAST })
     }
 
     /// Load a sprite (resets the animation state).
@@ -108,17 +108,18 @@ impl Sprite {
         *self = Sprite { id: Some(id), ..Sprite::default() };
     }
 
-    /// Start animation `anim` from its first frame.
-    pub fn set_animation(&mut self, anim: u8) {
+    /// Start animation `anim` from its first frame (timing from
+    /// `content`).
+    pub fn set_animation(&mut self, anim: u8, content: &Content) {
         self.anim = anim;
         self.frame = 0;
-        let f = self.frame_at(0);
+        let f = self.frame_at(content, 0);
         self.count = f.duration;
         self.frame_flags = f.flags;
     }
 
-    /// Advance one tick.
-    pub fn update(&mut self) {
+    /// Advance one tick (timing from `content`).
+    pub fn update(&mut self, content: &Content) {
         loop {
             let old = self.count;
             self.count = old.wrapping_sub(1);
@@ -127,13 +128,13 @@ impl Sprite {
             }
             if self.frame_flags & FRAME_LAST != 0 {
                 if self.frame_flags & FRAME_LOOP != 0 {
-                    self.set_animation(self.anim);
+                    self.set_animation(self.anim, content);
                 } else {
                     self.count = 1;
                 }
             } else {
                 self.frame += 1;
-                let f = self.frame_at(self.frame);
+                let f = self.frame_at(content, self.frame);
                 self.count = f.duration;
                 self.frame_flags = f.flags;
             }

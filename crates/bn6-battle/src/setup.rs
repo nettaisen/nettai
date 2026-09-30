@@ -1,10 +1,12 @@
 //! What a round starts from: the battle settings, both navis' stats, the
 //! shared RNG seed, and the set score carried between rounds.
 
+use crate::content::{Content, ContentHash};
+
 /// Battle settings (the game's 16-byte BattleSettings record).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BattleSettings {
-    /// Panel layout index.
+    /// Panel layout (`Content::panel_layout`).
     pub layout: u8,
     pub music: u8,
     /// Battle mode (0 = netbattle).
@@ -16,7 +18,7 @@ pub struct BattleSettings {
     /// `effects` bits (see `effects`).
     pub effects: u32,
     /// Who and what spawns where.
-    pub actors: &'static ActorList,
+    pub actors: ActorListId,
 }
 
 /// Battle effects bits.
@@ -50,7 +52,7 @@ pub enum ActorKind {
     Navi,
     /// A rock (attack object #0x59, `sub_80074FA`), placed at the start.
     Rock {
-        /// Which rock (`data::ROCKS`).
+        /// Which rock (`ObjectData::rocks`).
         variant: u8,
     },
     /// Attack object #0x6E, kept in the field-object registry's stage
@@ -60,21 +62,18 @@ pub enum ActorKind {
     Object7D { variant: u8 },
 }
 
-/// A battle's actor list, as found in the game's battle settings table.
-#[derive(Debug, PartialEq, Eq, Hash)]
+/// A battle's actor list (`Stages::actor_lists`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ActorList {
-    /// Identifies the list: the game's address for it, which battle
-    /// settings (and so traces and replays) carry.
-    pub source: u32,
-    pub entries: &'static [ActorEntry],
+    /// The address the original's battle settings records name the list
+    /// by: what link data and traces carry.
+    pub original_address: u32,
+    pub entries: Vec<ActorEntry>,
 }
 
-impl ActorList {
-    /// The actor list a battle settings record refers to.
-    pub fn find(source: u32) -> Option<&'static ActorList> {
-        crate::data::ACTOR_LISTS.iter().find(|l| l.source == source)
-    }
-}
+/// An actor list: its index in the content's `Stages::actor_lists`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ActorListId(pub u8);
 
 impl<'a> IntoIterator for &'a ActorList {
     type Item = &'a ActorEntry;
@@ -85,13 +84,17 @@ impl<'a> IntoIterator for &'a ActorList {
 }
 
 impl BattleSettings {
-    /// Settings from their 16-byte encoding. Bytes 12..16 identify the
-    /// actor list. Byte 1 (read by `GetBattleSettingsUnk01`, outside the
-    /// battle simulation) and byte 7 (no reader found) are not kept.
-    pub fn netbattle_from_bytes(b: &[u8]) -> BattleSettings {
-        let source = u32::from_le_bytes(b[12..16].try_into().unwrap());
-        let actors = ActorList::find(source)
-            .unwrap_or_else(|| panic!("battle settings name an unknown actor list {source:#010x}"));
+    /// Settings from their 16-byte encoding. Bytes 12..16 name the actor
+    /// list by its original address, which `content` resolves. Byte 1
+    /// (read by `GetBattleSettingsUnk01`, outside the battle simulation)
+    /// and byte 7 (no reader found) are not kept.
+    pub fn netbattle_from_bytes(b: &[u8], content: &Content) -> BattleSettings {
+        let address = u32::from_le_bytes(b[12..16].try_into().unwrap());
+        let actors = content
+            .rules
+            .stages
+            .actor_list_at(address)
+            .unwrap_or_else(|| panic!("battle settings name an unknown actor list {address:#010x}"));
         BattleSettings {
             layout: b[0],
             music: b[2],
@@ -469,7 +472,7 @@ pub struct SetScore {
 /// `byte_203CA50`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Stage {
-    /// Index into [`crate::data::BATTLE_SETTINGS`].
+    /// Index into the content's battle settings (`Stages::settings`).
     pub settings: u8,
     pub background: u8,
 }
@@ -485,6 +488,10 @@ impl Stage {
 /// Everything a round starts from.
 #[derive(Clone, Debug, Hash)]
 pub struct RoundSetup {
+    /// The content the round runs on ([`Content::hash`]). `Battle::new`
+    /// checks it against the content it is given; netplay peers whose
+    /// setups agree run the same content.
+    pub content: ContentHash,
     pub settings: BattleSettings,
     /// Both navis' stats, by side.
     pub navi_stats: [NaviStats; 2],
@@ -547,11 +554,11 @@ impl RoundSetup {
     /// The settings of the set's next round, fought on `stage` after this
     /// one (`battleSettings_802D2B2`): that table entry, with this
     /// round's effects and the stage's background.
-    pub fn next_settings(&self, stage: Stage) -> BattleSettings {
+    pub fn next_settings(&self, stage: Stage, content: &Content) -> BattleSettings {
         BattleSettings {
             effects: self.settings.effects,
             background: stage.background,
-            ..crate::data::BATTLE_SETTINGS[stage.settings as usize]
+            ..content.rules.stages.settings(stage.settings)
         }
     }
 }

@@ -1,7 +1,7 @@
 //! Hit sparks (effect object #4), spawned where an attack connects.
 
 use crate::battle::Battle;
-use crate::data::{EffectSprite, effects_generated::SPARKS};
+use crate::content::EffectSprite;
 use crate::object::{ObjectRef, Pool, Vec3, flags, sprite::FRAME_LAST, state};
 
 /// `AddRandomVarianceToTwoCoords`: jitter x and z by up to ±mask/2 pixels
@@ -40,13 +40,13 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, effect: u8) -> Option<
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
         state::INIT => {
-            let EffectSprite { sprite: id, anim, palette } = SPARKS[b.objects.get(r).params[0] as usize];
+            let EffectSprite { sprite: id, anim, palette } = b.content.spark(b.objects.get(r).params[0]);
             let sprite = b.objects.sprite_mut(r);
             sprite.load(id);
-            sprite.set_animation(anim);
+            sprite.set_animation(anim, &b.content);
             sprite.look.shadow = crate::object::sprite::Shadow::WithSprite;
             sprite.look.palette = palette;
-            sprite.update();
+            sprite.update(&b.content);
             let o = b.objects.get_mut(r);
             o.flags &= !flags::NO_SPRITE_UPDATE;
             o.anim = anim;
@@ -66,7 +66,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
                 o.phase = 0;
                 o.phase_init = 0;
             }
-            b.objects.sprite_mut(r).update();
+            b.objects.sprite_mut(r).update(&b.content);
         }
         _ => b.objects.free(r),
     }

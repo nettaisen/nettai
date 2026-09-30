@@ -79,9 +79,43 @@ pub struct PanelPos {
     pub y: u8,
 }
 
-/// A sprite: (category, index) into the game's sprite table.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// A sprite: (category, index) into the game's sprite table. Written
+/// `"CC-II"` in hex (in content files too): the name of the sprite's
+/// folder in a content pack's `graphics/sprites`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SpriteId {
     pub category: u8,
     pub index: u8,
+}
+
+impl std::fmt::Display for SpriteId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:02x}-{:02x}", self.category, self.index)
+    }
+}
+
+impl std::str::FromStr for SpriteId {
+    type Err = String;
+    fn from_str(s: &str) -> Result<SpriteId, String> {
+        let bad = || format!("{s:?} is not a sprite id (CC-II in hex)");
+        let (c, i) = s.split_once('-').ok_or_else(bad)?;
+        if c.len() != 2 || i.len() != 2 {
+            return Err(bad());
+        }
+        let hex = |t: &str| u8::from_str_radix(t, 16).map_err(|_| bad());
+        Ok(SpriteId { category: hex(c)?, index: hex(i)? })
+    }
+}
+
+impl serde::Serialize for SpriteId {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.collect_str(self)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for SpriteId {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<SpriteId, D::Error> {
+        let s = <String as serde::Deserialize>::deserialize(d)?;
+        s.parse().map_err(serde::de::Error::custom)
+    }
 }

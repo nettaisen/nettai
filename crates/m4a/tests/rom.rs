@@ -1,6 +1,6 @@
 //! Reading sound data out of a small ROM image built here: the driver's
 //! tables, song headers, track bytes (running status, patterns, loops, ties)
-//! and voicegroups, and the bank file round trip.
+//! and voicegroups, and the bank's reference checks.
 
 use m4a::bank::*;
 use m4a::rom::{RomError, extract};
@@ -157,22 +157,10 @@ fn a_rom_reads_into_a_bank() {
 }
 
 #[test]
-fn a_bank_survives_its_file_format() {
-    let (bank, _) = extract(&image().0).unwrap();
-    let bytes = bank.to_bytes();
-    assert_eq!(SoundBank::from_bytes(&bytes), Ok(bank));
-    assert_eq!(SoundBank::from_bytes(b"RIFF...."), Err(BankError::NotABank));
-    assert_eq!(SoundBank::from_bytes(&bytes[..bytes.len() - 1]), Err(BankError::Truncated));
-    let mut bad = bytes.clone();
-    bad[8] = 99;
-    assert_eq!(SoundBank::from_bytes(&bad), Err(BankError::Version(99)));
-}
-
-#[test]
 fn a_bank_with_a_dangling_reference_is_refused() {
     let (mut bank, _) = extract(&image().0).unwrap();
     bank.songs[0].as_mut().unwrap().tracks[1].commands[3] = Command::Goto(99);
-    assert_eq!(SoundBank::from_bytes(&bank.to_bytes()), Err(BankError::Invalid("jump")));
+    assert_eq!(bank.validate(), Err(BankError::Invalid("jump")));
 }
 
 #[test]

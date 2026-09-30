@@ -7,7 +7,7 @@
 //! See docs/engine/objects-and-player.md §12.10.
 
 use crate::battle::Battle;
-use crate::data::cross::{self, BodyOverlay};
+use crate::content::BodyOverlay;
 use crate::kinds::common;
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
@@ -17,7 +17,7 @@ pub const INDEX: u8 = 0x56;
 /// Overlay-private state (the spawn parameters, and ExtraVars[0]).
 #[derive(Clone, Copy, Debug, Default, Hash)]
 pub struct Vars {
-    /// Param1: which overlay (`data::cross::body_overlay`).
+    /// Param1: which overlay (`ObjectData::body_overlays`).
     pub variant: u8,
     /// Param2: the overlay keeps its own palette rather than its owner's
     /// (presentation only).
@@ -85,8 +85,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-fn overlay(b: &Battle, r: ObjectRef) -> BodyOverlay {
-    cross::body_overlay(vars(b, r).variant)
+fn overlay(b: &Battle, r: ObjectRef) -> &BodyOverlay {
+    b.content.objects.body_overlay(vars(b, r).variant)
 }
 
 fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
@@ -104,8 +104,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // sprite_noShadow; its palette 0, or its owner's.
     s.look.shadow = Shadow::WithSprite;
     s.look.palette = if own_palette { 0 } else { owner_palette };
-    s.set_animation(anim);
-    s.update();
+    s.set_animation(anim, &b.content);
+    s.update(&b.content);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     // A halfword store: the animation, and 0 as the loaded one.

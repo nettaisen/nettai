@@ -3,7 +3,7 @@
 //! it lands. Visual, but it draws the simulation RNG twice.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
 pub const INDEX: u8 = 0x38;
@@ -30,8 +30,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let palette = b.objects.get(r).params[0];
     let sprite = b.objects.sprite_mut(r);
     sprite.load(SPRITE);
-    sprite.set_animation(shape);
-    sprite.update();
+    sprite.set_animation(shape, &b.content);
+    sprite.update(&b.content);
     sprite.look.shadow = crate::object::sprite::Shadow::WithSprite;
     sprite.look.palette = palette;
     let v = b.rng.next();

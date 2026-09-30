@@ -6,7 +6,7 @@
 //! makes the controllers wait on each other. See docs/engine/chips.md §3.6.
 
 use crate::battle::{Battle, battle_flags};
-use crate::data::{BannerId, ChipId};
+use crate::content::{BannerId, ChipId};
 use crate::hud::BannerStatus;
 use crate::kinds::common::{self, Progress};
 use crate::object::{ObjectRef, state};
@@ -169,7 +169,7 @@ fn show_name(b: &mut Battle, r: ObjectRef, uncounterable_runs: bool) {
         // (The HUD's other parts hide.) The chip's name, with its damage
         // and bonus for damaging chips.
         let banner = if b.is_remote(side) { REMOTE_NAME_BANNER } else { LOCAL_NAME_BANNER };
-        b.banner.start(banner);
+        b.start_banner(banner);
         b.play_sound(crate::sound::SoundId(0x173));
         b.objects.get_mut(r).phase_init = 4;
         return;
@@ -222,7 +222,7 @@ pub fn show_navi_name(b: &mut Battle, r: ObjectRef, chip: ChipId) {
             }
         }
         let banner = if b.is_remote(side) { REMOTE_NAME_BANNER } else { LOCAL_NAME_BANNER };
-        b.banner.start(banner);
+        b.start_banner(banner);
         b.play_sound(crate::sound::SoundId(0x173));
         b.objects.get_mut(r).phase_init = 4;
         return;

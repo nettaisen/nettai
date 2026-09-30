@@ -22,7 +22,7 @@ use crate::actor::{ActorData, ActorId, ActorType, request};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, CollisionId, f1, timer};
 use crate::field::PanelType;
-use crate::data::player::{self as pdata, NaviRecord};
+use crate::content::NaviRecord;
 use crate::hand::NO_CHIP;
 use crate::object::{ObjectRef, PanelPos, Pool, StateWord, Vec3, flags, state};
 use crate::setup::{ActorEntry, Form, Navi, NaviStats, effects};
@@ -60,7 +60,7 @@ pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
     let name_id = 0x1A0 + navi.0 as u16;
     b.objects.get_mut(r).name_id = name_id;
     // The actor record (`sub_80182B4`); MegaMan's is {0, Player, 0}.
-    let rec = pdata::navi_record(name_id);
+    let rec = b.content.navi_record(name_id);
     let ad = b.actors.get_mut(a);
     ad.actor_type = rec.actor_type;
     ad.ai_index = rec.ai_index;
@@ -175,7 +175,7 @@ fn flip_direction(alliance: u8, flip: u8) -> i32 {
 
 /// `sub_80182B4`: the object's actor record.
 fn navi_record(b: &Battle, r: ObjectRef) -> NaviRecord {
-    pdata::navi_record(b.objects.get(r).name_id)
+    b.content.navi_record(b.objects.get(r).name_id)
 }
 
 /// `sub_8018810`: the object's sprite attach point `index`, in pixels,
@@ -185,7 +185,7 @@ pub(crate) fn attach_point(b: &Battle, r: ObjectRef, index: usize) -> (i32, i32)
     if (0xCD..=0xFF).contains(&o.name_id) {
         return (0, 7);
     }
-    let p = pdata::attach_point(o.name_id, index);
+    let p = b.content.attach_point(o.name_id, index);
     (p.x as i32 * flip_direction(o.alliance, o.flip), p.y as i32)
 }
 
@@ -498,7 +498,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
         panic!("post-init hook sub_80F22F8 is not implemented yet");
     }
     if stats(b, r).form == Form::NONE {
-        navi_init_hook(b.objects.get(r).name_id);
+        navi_init_hook(b, b.objects.get(r).name_id);
     }
     reset_side_state(b, r);
     apply_starting_hp_bug(b, r);
@@ -512,8 +512,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// `sub_8010DD0`: the init hook of a NameID's actor record
 /// (`off_8010E0C`, by actor type and AI index). Most navis, MegaMan among
 /// them, have none; the others spawn helper objects.
-pub(crate) fn navi_init_hook(name_id: u16) {
-    let rec = pdata::navi_record(name_id);
+pub(crate) fn navi_init_hook(b: &Battle, name_id: u16) {
+    let rec = b.content.navi_record(name_id);
     if rec.actor_type != ActorType::Virus && matches!(rec.ai_index, 1 | 6 | 9 | 13 | 14 | 16 | 18 | 19 | 24 | 25..) {
         panic!("navi init hook for AI index {} is not implemented yet", rec.ai_index);
     }
@@ -522,11 +522,11 @@ pub(crate) fn navi_init_hook(name_id: u16) {
 /// `sub_800FC9E` + `sprite_load`: load the navi's battle sprite.
 fn load_sprite(b: &mut Battle, r: ObjectRef) {
     let (navi, form) = (stats(b, r).navi, stats(b, r).form);
-    let id = if navi == Navi::MEGAMAN { pdata::form_sprite(form) } else { pdata::navi_sprite(navi) };
+    let id = if navi == Navi::MEGAMAN { b.content.form(form).sprite } else { b.content.navi(navi).sprite };
     let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
-    sprite.set_animation(0);
+    sprite.set_animation(0, &b.content);
     // sprite_hasShadow; sprite_setFlip(object_getFlip()).
     sprite.look.shadow = crate::object::sprite::Shadow::Ground;
     sprite.look.set_flip(flip);
@@ -618,14 +618,14 @@ fn apply_navicust_flags(b: &mut Battle, r: ObjectRef) {
 fn update_element(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     let element = if s.navi != Navi::MEGAMAN {
-        pdata::navi_element(s.navi) as u8
+        b.content.navi(s.navi).element as u8
     } else if s.form != Form::NONE {
-        pdata::form_element(s.form) as u8
+        b.content.form(s.form).element as u8
     } else {
         s.element
     };
     set_element(b, r, element);
-    let weakness = if s.form != Form::NONE { pdata::form_weakness(s.form) } else { pdata::navi_weakness(s.navi) };
+    let weakness = if s.form != Form::NONE { b.content.form(s.form).weakness } else { b.content.navi(s.navi).weakness };
     coll_mut(b, r).secondary_weakness = weakness.0;
 }
 
@@ -656,6 +656,7 @@ fn reset_status(b: &mut Battle, r: ObjectRef) {
 fn load_weapons(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     let mode9 = battle_mode(b) == 9;
+    let form_weapons = (s.form != Form::NONE).then(|| b.content.form(s.form).weapons);
     let a = ai_mut(b, r);
     if s.form == Form::NONE {
         let w = s.weapons;
@@ -666,7 +667,7 @@ fn load_weapons(b: &mut Battle, r: ObjectRef) {
         a.back_special = w.back_special;
         a.alt_a_charge = 0xFF;
     } else {
-        let w = pdata::form_weapons(s.form);
+        let w = form_weapons.expect("a form's weapons");
         a.mode9_a = w.mode9_a;
         a.a_charge = w.a_charge;
         a.buster = w.buster;
@@ -836,8 +837,8 @@ fn charge_fire_chip(b: &mut Battle, r: ObjectRef, limit: u16) {
     if chip == NO_CHIP {
         return;
     }
-    let cd = crate::data::chip(chip);
-    if !cd.flags.has(crate::data::ChipFlags::HAS_DAMAGE) || cd.element != crate::data::Element::Fire {
+    let cd = b.content.chip(chip);
+    if !cd.flags.has(crate::content::ChipFlags::HAS_DAMAGE) || cd.element != crate::content::Element::Fire {
         return;
     }
     if b.hands[side].charge_bonus[i] >= limit {
@@ -922,8 +923,8 @@ pub(crate) fn update_sprite(b: &mut Battle, r: ObjectRef) {
     }
     let (anim, loaded) = (o.anim, o.anim_loaded);
     if anim != loaded {
-        b.objects.sprite_mut(r).set_animation(anim);
+        b.objects.sprite_mut(r).set_animation(anim, &b.content);
         b.objects.get_mut(r).anim_loaded = anim;
     }
-    b.objects.sprite_mut(r).update();
+    b.objects.sprite_mut(r).update(&b.content);
 }

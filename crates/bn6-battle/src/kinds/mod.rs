@@ -188,18 +188,19 @@ pub fn shift_damage_carry(b: &mut Battle) {
 /// Damage formulas for chips whose damage is 1000 or more (`off_80109DC`).
 pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
     match formula {
-        1..=18 => sp_chip_damage(b, side, formula as usize - 1),
+        1..=18 => sp_chip_damage(b, id, side, formula as usize - 1),
         _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
     }
 }
 
 /// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user
-/// deleted that SP navi (a step per two seconds past ten).
-fn sp_chip_damage(b: &Battle, side: u8, n: usize) -> u16 {
-    use crate::data::player_generated::{SP_CHIP_DAMAGE, SP_TIME_STEPS};
+/// deleted that SP navi (a step per two seconds past ten). `n` is the SP
+/// navi (the chip's damage formula - 1).
+fn sp_chip_damage(b: &Battle, id: u16, side: u8, n: usize) -> u16 {
     let time = time_bcd(b.setup.sp_times[side as usize].frames(n) as u32);
-    let step = SP_TIME_STEPS.iter().take_while(|&&t| time > t).count();
-    SP_CHIP_DAMAGE[n][step]
+    let step = b.content.rules.sp_deletion_times.iter().take_while(|&&t| time > t).count();
+    let damage = b.content.chip(id).sp_damage.as_ref();
+    damage.unwrap_or_else(|| panic!("SP chip {id:#x} has no damage by deletion time"))[step]
 }
 
 /// `sub_8000D84`: frames as a BCD time, hours:minutes:seconds.hundredths
