@@ -239,3 +239,100 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     run_to(&mut b, p, &mut t, 70, 0);
     assert_eq!(b.objects.get(p0).action, 8);
 }
+
+/// The kind named `name` somewhere on the field.
+fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
+    let k = b.content.object_kind(name).unwrap();
+    b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index))
+}
+
+/// Give side `side` the chip `chip` as the next in its hand, with its
+/// damage.
+fn hand_with(b: &mut Battle, side: usize, chip: crate::content::ChipId) {
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = chip;
+    hand.damage[0] = b.content.chip(chip).damage;
+    b.hands[side] = hand;
+}
+
+#[test]
+fn a_recovery_chip_heals_its_hp_in_one_tick() {
+    let (mut b, p0, p1) = fight();
+    b.objects.get_mut(p0).hp = 500;
+    hand_with(&mut b, 0, testing::MEND);
+    tick(&mut b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x20);
+    // The next tick: 40 HP, the sparkle right after the navi, a recovery
+    // counted, and back to idle.
+    tick(&mut b, p0, p1, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.hp, o.action), (540, 8));
+    assert_eq!(following(&b, p0)[0], (Pool::Effect, 0));
+    assert_eq!(b.side_stats[0][5], 1);
+    // Never past the maximum.
+    b.objects.get_mut(p0).hp = 990;
+    hand_with(&mut b, 0, testing::MEND);
+    tick(&mut b, p0, p1, keys::A);
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(b.objects.get(p0).hp, 1000);
+}
+
+#[test]
+fn a_reflector_guards_for_its_first_parameter_then_its_shield_fades() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    hand_with(&mut b, 0, testing::MIRROR);
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x2B);
+    // Tick 1: the shield, right after the navi at its attach point 6, and
+    // the guard up.
+    run_to(&mut b, p, &mut t, 1, 0);
+    let shield = find_kind(&b, "reflector-shield").expect("the shield");
+    assert_eq!(b.objects.in_order().skip_while(|&o| o != p0).nth(1), Some(shield));
+    assert_ne!(f1_of(&b, p0) & f1::GUARD, 0);
+    let (at, s) = (b.objects.get(p0).pos, b.objects.get(shield).pos);
+    assert_eq!((s.x - at.x, s.y - at.y, s.z - at.z), (4 << 16, 0, 24 << 16));
+    // It guards for 30 ticks after that one.
+    run_to(&mut b, p, &mut t, 31, 0);
+    assert_eq!(b.objects.get(p0).action, 0x2B);
+    run_to(&mut b, p, &mut t, 32, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(f1_of(&b, p0) & f1::GUARD, 0);
+    // The shield fades for 14 ticks and goes.
+    run_to(&mut b, p, &mut t, 47, 0);
+    assert_eq!(find_kind(&b, "reflector-shield"), Some(shield));
+    run_to(&mut b, p, &mut t, 48, 0);
+    assert_eq!(find_kind(&b, "reflector-shield"), None);
+}
+
+#[test]
+fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    // Side 0 steps to (3,2), in the column side 1's GunDelSol hits.
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::RIGHT);
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
+    hand_with(&mut b, 0, testing::MIRROR);
+    hand_with(&mut b, 1, testing::SUN_GUN_3);
+    // Both use their chips.
+    let both = |b: &mut Battle, held: [u16; 2]| {
+        ai_mut(b, p0).pad.update(held[0] | keys::PRESENT);
+        ai_mut(b, p1).pad.update(held[1] | keys::PRESENT);
+        b.run_objects();
+    };
+    both(&mut b, [keys::A, keys::A]);
+    assert_eq!((b.objects.get(p0).action, b.objects.get(p1).action), (0x2B, 0x37));
+    // The guard blocks the beam's hits (no drain), and the first one sends
+    // a wave back that runs along the row into side 1: 50 damage, once.
+    let mut waves = 0;
+    for _ in 0..30 {
+        both(&mut b, [0, 0]);
+        waves += find_kind(&b, "reflected-shot").is_some() as u32;
+    }
+    assert!(waves > 0, "no wave");
+    assert_eq!(b.objects.get(p0).hp, 1000);
+    assert_eq!(b.objects.get(p1).hp, 950);
+}

@@ -426,6 +426,10 @@ impl UserData for Object {
             with(|api, _| Ok(api.start_move(this.0, dir)))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
+        methods.add_method("heal", |_, this, (amount, anti_recovery): (LuaValue, bool)| {
+            let amount = u16_arg(amount, "HP")?;
+            with(|api, _| Ok(api.heal(this.0, amount, anti_recovery)))
+        });
         methods.add_method("buster_damage", |_, this, ()| with(|api, _| Ok(api.buster_damage(this.0))));
         methods.add_method("absorbed", |lua, this, ()| {
             let list = with(|api, _| api.absorbed(this.0).map_err(api_error))?;
