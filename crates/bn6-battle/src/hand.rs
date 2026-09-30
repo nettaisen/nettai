@@ -43,42 +43,6 @@ impl ChipHand {
         }
     }
 
-    /// Parse the game's 0x50-byte chip block encoding. Byte 1 is always 0
-    /// in battle (only the battle flag 0x40 mode's unreferenced routines
-    /// use it) and is not kept.
-    pub fn from_bytes(b: &[u8]) -> ChipHand {
-        let u16s = |off: usize| -> [u16; 6] { std::array::from_fn(|i| u16::from_le_bytes([b[off + 2 * i], b[off + 2 * i + 1]])) };
-        ChipHand {
-            cursor: b[0],
-            ids: u16s(0x02),
-            damage: u16s(0x0E),
-            attack_bonus: u16s(0x1A),
-            charge_bonus: u16s(0x26),
-            selection: u16s(0x32),
-            turn: b[0x3E..0x44].try_into().unwrap(),
-            modifiers: b[0x44..0x4A].try_into().unwrap(),
-        }
-    }
-
-    /// The game's 0x50-byte encoding (for comparison with traces).
-    pub fn to_bytes(&self) -> [u8; 0x50] {
-        let mut b = [0u8; 0x50];
-        b[0] = self.cursor;
-        let mut put = |off: usize, v: &[u16; 6]| {
-            for (i, x) in v.iter().enumerate() {
-                b[off + 2 * i..off + 2 * i + 2].copy_from_slice(&x.to_le_bytes());
-            }
-        };
-        put(0x02, &self.ids);
-        put(0x0E, &self.damage);
-        put(0x1A, &self.attack_bonus);
-        put(0x26, &self.charge_bonus);
-        put(0x32, &self.selection);
-        b[0x3E..0x44].copy_from_slice(&self.turn);
-        b[0x44..0x4A].copy_from_slice(&self.modifiers);
-        b
-    }
-
     /// The next chip, if any.
     pub fn next_chip(&self) -> Option<ChipId> {
         let id = *self.ids.get(self.cursor as usize)?;
