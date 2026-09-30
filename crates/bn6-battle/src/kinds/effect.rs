@@ -38,6 +38,36 @@ pub fn spawn_after_spawn(b: &mut Battle, z: i32, id: u8, flip: u8, palette_add: 
     Some(r)
 }
 
+/// `sub_801BD3C`: effect `id` on each field panel of hit region `region`
+/// around (x, y), turned the way side `side` faces, at height `z`; for a
+/// whole-field region (0x80 and up), on each panel it covers from the
+/// bottom right, on the ground.
+pub fn spawn_over_region(b: &mut Battle, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32) {
+    let at = |b: &mut Battle, px: u8, py: u8, z: i32| {
+        let (cx, cy) = crate::kinds::player::panel_coordinates(px, py);
+        spawn(b, Vec3 { x: cx, y: cy, z }, id, 0, 0, 0);
+    };
+    if region & 0x80 != 0 {
+        let cond = b.content.rules.field_regions[(region & 0x7F) as usize];
+        for py in (1..=3).rev() {
+            for px in (1..=6).rev() {
+                if b.field.check(px, py, cond.require, cond.forbid) {
+                    at(b, px, py, 0);
+                }
+            }
+        }
+        return;
+    }
+    // `object_getAllianceDirection`: by side alone, whatever the flip.
+    let dir = if side == 0 { 1 } else { -1 };
+    for o in b.content.region(region).to_vec() {
+        let (px, py) = (x + o.dx as i32 * dir, y + o.dy as i32);
+        if (1..=6).contains(&px) && (1..=3).contains(&py) {
+            at(b, px as u8, py as u8, z);
+        }
+    }
+}
+
 /// Whether `r` is an effect whose X and Y the engine doesn't know.
 pub fn xy_unknown(b: &Battle, r: ObjectRef) -> bool {
     matches!(&b.objects.get(r).vars, crate::kinds::Vars::Effect(v) if v.xy_unknown)

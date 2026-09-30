@@ -154,7 +154,7 @@ pub fn netbattle(content: &Content, hp: u16, seed: u32, folders: [BattleFolder; 
 pub struct Masher {
     rng: SplitMix64,
     held: u16,
-    /// Also press B (the buster; not implemented in the engine yet).
+    /// Also press B: the buster, and held, the charged shot.
     pub buster: bool,
 }
 
