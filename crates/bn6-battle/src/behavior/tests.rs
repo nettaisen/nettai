@@ -37,6 +37,7 @@ fn battles_run_the_content_scripts() {
             "grab-shot",
             "invisible",
             "navi-boost",
+            "rising-bubble",
             "rock",
             "rock-cube",
             "rock-debris",
