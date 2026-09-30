@@ -6,8 +6,7 @@
 //! docs/engine/objects-and-player.md §A.7.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
-use crate::data::player as pdata;
+use crate::content::{Content, SpriteId};
 use crate::kinds::common::{Progress, set_progress};
 use crate::kinds::form_overlay;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
@@ -77,11 +76,11 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 /// A player navi's battle sprite by NameID (`sub_800F26C`, which reads the
 /// same sprites the form and navi tables give).
-fn player_sprite(name_id: u16) -> SpriteId {
+fn player_sprite(content: &Content, name_id: u16) -> SpriteId {
     match name_id {
-        0x1A0 => pdata::form_sprite(Form::NONE),
-        0x1A1..=0x1AB => pdata::navi_sprite(crate::setup::Navi((name_id - 0x1A0) as u8)),
-        0x1AC..=0x1C3 => pdata::form_sprite(Form((name_id - 0x1AB) as u8)),
+        0x1A0 => content.form(Form::NONE).sprite,
+        0x1A1..=0x1AB => content.navi(crate::setup::Navi((name_id - 0x1A0) as u8)).sprite,
+        0x1AC..=0x1C3 => content.form(Form((name_id - 0x1AB) as u8)).sprite,
         _ => panic!("afterimages of NameID {name_id:#x} are not implemented yet"),
     }
 }
@@ -93,15 +92,15 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
     let name_id = b.objects.get(owner).name_id;
     b.objects.get_mut(r).name_id = name_id;
-    b.objects.sprite_mut(r).load(player_sprite(name_id));
+    b.objects.sprite_mut(r).load(player_sprite(&b.content, name_id));
     b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
     put_on_layer(b, r, name_id);
     let anim = vars(b, r).anim;
     let lifetime = vars(b, r).lifetime;
     let flip = b.objects.get(r).params[3];
     let s = b.objects.sprite_mut(r);
-    s.set_animation(anim);
-    s.update();
+    s.set_animation(anim, &b.content);
+    s.update(&b.content);
     // A ground shadow, the fourth parameter's flip and the spawner's
     // colour shader (0x83E0: less green).
     s.look.shadow = crate::object::sprite::Shadow::Ground;
@@ -153,7 +152,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         return destroy(b, r);
     }
     b.objects.get_mut(r).timer = timer;
-    b.objects.sprite_mut(r).update();
+    b.objects.sprite_mut(r).update(&b.content);
     let o = b.objects.get_mut(r);
     o.flags |= flags::VISIBLE;
     if timer & 2 == 0 {

@@ -327,11 +327,11 @@ impl CoreApi for Battle {
     }
 
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8) {
-        self.objects.sprite_mut(o).set_animation(anim);
+        self.objects.sprite_mut(o).set_animation(anim, &self.content);
     }
 
     fn sprite_step(&mut self, o: ObjectRef) {
-        self.objects.sprite_mut(o).update();
+        self.objects.sprite_mut(o).update(&self.content);
     }
 
     fn sprite_get(&self, o: ObjectRef, f: SpriteField) -> Value {

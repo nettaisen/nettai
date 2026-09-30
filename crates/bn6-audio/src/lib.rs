@@ -1,6 +1,7 @@
 //! Battle audio: plays bn6-battle's sound cues with the game's own sound
-//! driver (the `m4a` crate) and sound data (a sound bank that
-//! `bn6-extract assets` writes from the user's ROM).
+//! driver (the `m4a` crate) and sound data (a content pack's sound, which
+//! bn6-content loads into an `m4a::SoundBank`; `bn6-extract content` writes
+//! the pack from the user's ROM).
 //!
 //! - [`SoundCalls`]: what the game's sound functions ask of the driver for
 //!   each cue (BN6's wrappers: `PlayMusic`'s current-music check, the pinch
@@ -232,26 +233,6 @@ impl BattleAudio {
         &mut self.driver
     }
 }
-
-/// Read a sound bank file (see `bn6-extract assets`).
-pub fn load_bank(path: impl AsRef<std::path::Path>) -> Result<Arc<SoundBank>, BankFileError> {
-    let path = path.as_ref();
-    let data = std::fs::read(path).map_err(|e| BankFileError(format!("{}: {e}", path.display())))?;
-    let bank = SoundBank::from_bytes(&data).map_err(|e| BankFileError(format!("{}: {e}", path.display())))?;
-    Ok(Arc::new(bank))
-}
-
-/// Reading a sound bank file failed.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BankFileError(pub String);
-
-impl std::fmt::Display for BankFileError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl std::error::Error for BankFileError {}
 
 #[cfg(test)]
 mod tests;

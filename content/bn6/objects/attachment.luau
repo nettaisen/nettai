@@ -5,7 +5,7 @@
 -- position and visibility, and ends itself once the owner clears the slot
 -- it was stored in. See objects-and-player.md §A.2.
 
-local data = require("../data/attacks")
+local data = require("../data/pack")
 local slot = require("../lib/slot")
 
 export type State = {
@@ -24,7 +24,7 @@ local attachment = {
     state = { slot = slot.TYPE, offset_x = "i32", offset_z = "i32", lift = "i8" },
 }
 
--- `sub_80B8E30`: attach an object of `kind` (data.ATTACHMENTS) to `owner`,
+-- `sub_80B8E30`: attach an object of `kind` (data.attachments) to `owner`,
 -- stored in `which` (which gets nil if the pool is full). It takes the
 -- owner's panel and side; its init places it.
 function attachment.spawn(owner: Object, kind: number, which: Slot): Object?
@@ -76,7 +76,7 @@ end
 -- `sub_80B8CF8`.
 local function init(me: Object)
     local kind, anim, palette_add = me:param(1), me:param(2), me:param(4)
-    local k = data.ATTACHMENTS[kind]
+    local k = data.attachments[kind]
     local owner = me.related1 :: Object
     local sprite = me.sprite
     sprite:load(k.sprite.category, k.sprite.index)

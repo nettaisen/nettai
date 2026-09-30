@@ -5,7 +5,10 @@
 //! frames again saving each, then the new frame, then digest), against the
 //! 16.7 ms a frame has at 60 fps.
 //!
-//! cargo run --release -p bn6-netplay --example rollback_cost --features trace -- <trace.jsonl> [round]
+//! cargo run --release -p bn6-netplay --example rollback_cost --features trace -- <trace.jsonl> <pack> [round]
+//!
+//! (`<pack>`: the BN6 content pack the trace's battle runs on, from
+//! `bn6-extract content`.)
 //!
 //! Add `luau` or `rust-content` to measure the GunDelSol slice as content.
 
@@ -19,23 +22,24 @@ const DEPTH: usize = 10;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let path = args.get(1).expect("usage: rollback_cost <trace.jsonl> [round]");
-    let n: usize = args.get(2).map_or(1, |s| s.parse().expect("a round number"));
+    let usage = "usage: rollback_cost <trace.jsonl> <pack> [round]";
+    let path = args.get(1).expect(usage);
+    let pack = args.get(2).expect(usage);
+    let (content, _) = bn6_content::pack::load_battle(std::path::Path::new(pack)).unwrap_or_else(|r| panic!("{pack}: {r}"));
+    let content = std::sync::Arc::new(content);
+    let n: usize = args.get(3).map_or(1, |s| s.parse().expect("a round number"));
     std::panic::set_hook(Box::new(|_| {}));
     let rounds = trace::rounds(path).expect("a readable trace");
     let round = &rounds[n - 1];
     let frames: Vec<&trace::Frame> = round.battle_frames().collect();
-    let (limit, _) = trace::run_round(round);
+    let (limit, _) = trace::run_round(round, &content);
     let inputs: Vec<[Bn6Input; 2]> = (0..limit)
         .map(|i| {
             let (players, events) = round.tick_inputs(i, &frames);
             [Bn6Input { tick: players[0], events }, Bn6Input { tick: players[1], events: Default::default() }]
         })
         .collect();
-    let mut g = Battle::new(round.round_setup());
-    let bs = trace::unhex(&round.setup.battle_state);
-    g.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
-    g.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
+    let mut g: Battle = round.start(content.clone());
     let runtime = g.behaviors.runtime().to_string();
     let mut states = vec![g.clone()];
     for i in &inputs {

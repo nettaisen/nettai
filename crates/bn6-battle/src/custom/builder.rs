@@ -4,30 +4,8 @@
 
 use super::folder::FolderChip;
 use super::library::Library;
-use crate::data::custom::PaRecipe;
-use crate::data::{ChipClass, ChipCode, ChipFlags, ChipId};
+use crate::content::{ChipClass, ChipCode, ChipFlags, ChipId, ChipModifier, PaRecipe};
 use crate::hand::{ChipHand, NO_CHIP};
-
-/// What a modifier chip does to the chip before it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Modifier {
-    /// Adds its damage to the chip's attack bonus (Atk+10, Atk+30:
-    /// damaging chips; Navi+20: navi chips).
-    AttackBonus { needs: u8 },
-    /// Makes the chip paralyze (WhiCapsl).
-    Paralyze,
-    /// Makes the chip uninstall (Uninstll; not time-freeze chips).
-    Uninstall,
-}
-
-/// The modifier chips (`sub_8029224`).
-pub const MODIFIERS: [(ChipId, Modifier); 5] = [
-    (0xC0, Modifier::AttackBonus { needs: ChipFlags::HAS_DAMAGE }),
-    (0xC1, Modifier::AttackBonus { needs: ChipFlags::NAVI }),
-    (0xC3, Modifier::AttackBonus { needs: ChipFlags::HAS_DAMAGE }),
-    (0xB8, Modifier::Paralyze),
-    (0xB9, Modifier::Uninstall),
-];
 
 /// `ChipHand::modifiers` bits.
 pub mod modifier_bits {
@@ -154,7 +132,7 @@ fn find_program_advance(raw: &[u16], used: &mut ProgramAdvancesUsed, library: &d
 
 fn recipe_matches(recipe: &PaRecipe, chips: &[FolderChip]) -> bool {
     match *recipe {
-        PaRecipe::Sequence(ids) => chips.iter().zip(ids).all(|(c, &id)| c.id == id),
+        PaRecipe::Sequence(ref ids) => chips.iter().zip(ids).all(|(c, &id)| c.id == id),
         PaRecipe::CodeRun { chip, .. } => chips.iter().all(|c| c.id == chip) && codes_run(chips),
     }
 }
@@ -188,24 +166,25 @@ fn codes_run(chips: &[FolderChip]) -> bool {
 fn fold_modifiers(entries: &mut [Entry; 6], library: &dyn Library) {
     let mut i = 1;
     while i < entries.len() && entries[i].id != NO_CHIP {
-        let Some(&(_, m)) = MODIFIERS.iter().find(|(id, _)| *id == entries[i].id) else {
+        let Some(m) = library.chip(entries[i].id).modifier else {
             i += 1;
             continue;
         };
         let prev = library.chip(entries[i - 1].id).flags;
         let applies = match m {
-            Modifier::AttackBonus { needs } => prev.has(needs),
-            Modifier::Paralyze => prev.has(ChipFlags::HAS_DAMAGE),
-            Modifier::Uninstall => prev.has(ChipFlags::HAS_DAMAGE) && !prev.has(ChipFlags::TIME_FREEZE),
+            ChipModifier::AttackPlus => prev.has(ChipFlags::HAS_DAMAGE),
+            ChipModifier::NaviPlus => prev.has(ChipFlags::NAVI),
+            ChipModifier::Paralyze => prev.has(ChipFlags::HAS_DAMAGE),
+            ChipModifier::Uninstall => prev.has(ChipFlags::HAS_DAMAGE) && !prev.has(ChipFlags::TIME_FREEZE),
         };
         if !applies {
             i += 1;
             continue;
         }
         match m {
-            Modifier::AttackBonus { .. } => entries[i - 1].bonus += entries[i].damage,
-            Modifier::Paralyze => entries[i - 1].modifiers |= modifier_bits::PARALYZE,
-            Modifier::Uninstall => entries[i - 1].modifiers |= modifier_bits::UNINSTALL,
+            ChipModifier::AttackPlus | ChipModifier::NaviPlus => entries[i - 1].bonus += entries[i].damage,
+            ChipModifier::Paralyze => entries[i - 1].modifiers |= modifier_bits::PARALYZE,
+            ChipModifier::Uninstall => entries[i - 1].modifiers |= modifier_bits::UNINSTALL,
         }
         remove(entries, i);
     }
@@ -245,7 +224,7 @@ pub fn count_classes(hand: &ChipHand, uses: &mut ClassCounts, library: &dyn Libr
 mod tests {
     use super::*;
     use crate::custom::library::testing::{EVERY_CODE, TestLibrary, chip};
-    use crate::data::custom::ProgramAdvance;
+    use crate::content::{ChipData, ProgramAdvance};
 
     // Made-up chips: 1 a damaging chip, 2 one without damage, 3 a time
     // freeze, 4 a navi chip, and the modifiers; the Program Advance 0x140
@@ -263,18 +242,23 @@ mod tests {
                 (QUIET, chip(ChipClass::Standard, EVERY_CODE, 0, 0)),
                 (FREEZE, chip(ChipClass::Standard, EVERY_CODE, ChipFlags::HAS_DAMAGE | ChipFlags::TIME_FREEZE, 30)),
                 (NAVI, chip(ChipClass::Mega, EVERY_CODE, ChipFlags::NAVI, 100)),
-                (0xC0, chip(ChipClass::Standard, EVERY_CODE, 0, 10)),
-                (0xC1, chip(ChipClass::Standard, EVERY_CODE, 0, 20)),
-                (0xB8, chip(ChipClass::Standard, EVERY_CODE, 0, 0)),
-                (0xB9, chip(ChipClass::Standard, EVERY_CODE, 0, 0)),
+                (0xC0, modifier(ChipModifier::AttackPlus, 10)),
+                (0xC1, modifier(ChipModifier::NaviPlus, 20)),
+                (0xB8, modifier(ChipModifier::Paralyze, 0)),
+                (0xB9, modifier(ChipModifier::Uninstall, 0)),
                 (0x140, chip(ChipClass::ProgramAdvance, EVERY_CODE, ChipFlags::HAS_DAMAGE, 300)),
                 (0x141, chip(ChipClass::ProgramAdvance, EVERY_CODE, ChipFlags::HAS_DAMAGE, 200)),
             ],
             vec![
-                ProgramAdvance { result: 0x141, recipe: PaRecipe::Sequence(&[QUIET, CANNON, QUIET]) },
+                ProgramAdvance { result: 0x141, recipe: PaRecipe::Sequence(vec![QUIET, CANNON, QUIET]) },
                 ProgramAdvance { result: 0x140, recipe: PaRecipe::CodeRun { chip: CANNON, count: 3 } },
             ],
         )
+    }
+
+    /// A modifier chip (the ids are made up too).
+    fn modifier(m: ChipModifier, damage: u16) -> ChipData {
+        ChipData { modifier: Some(m), ..chip(ChipClass::Standard, EVERY_CODE, 0, damage) }
     }
 
     fn pick(id: ChipId, code: u8) -> Pick {

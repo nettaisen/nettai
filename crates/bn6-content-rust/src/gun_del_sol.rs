@@ -9,7 +9,7 @@ use bn6_content_api::api::{ActorFields, ObjectFields, OtherFields};
 use bn6_content_api::state::TypedState;
 use bn6_content_api::{CoreApi, NaviStat, ObjectRef, PanelPos, StatusFlag, Value, Vec3, content_state};
 
-use crate::data::{GUN_DEL_SOL_BEAMS, GUN_DEL_SOL_FIRING_TICKS};
+use crate::data::{Data, GunDelSol};
 use crate::{Slot, attachment, hitbox, sun_beam};
 
 pub const ACTION: u8 = 0x37;
@@ -44,9 +44,9 @@ fn in_sun(api: &dyn CoreApi, me: ObjectRef) -> bool {
     api.navi_stat(api.alliance(me), NaviStat::Sun) == Value::Bool(true)
 }
 
-pub fn update(api: &mut dyn CoreApi, me: ObjectRef) {
+pub fn update(data: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
     match api.step(me) {
-        WIND_UP => wind_up(api, me),
+        WIND_UP => wind_up(data, api, me),
         FIRING => fire(api, me),
         RECOVER => recover(api, me),
         s => panic!("GunDelSol phase {s:#x} reads past its phase table"),
@@ -62,14 +62,21 @@ fn advance_gun(api: &mut dyn CoreApi, me: ObjectRef) {
     }
 }
 
+/// The chip's GunDelSol data (its gun, firing time and beam).
+fn chip_data(data: &Data, api: &dyn CoreApi, me: ObjectRef) -> GunDelSol {
+    use bn6_content_api::api::OtherFields;
+    let chip = api.chip(me);
+    *data.gun_del_sol.get(&chip).unwrap_or_else(|| panic!("chip {chip:#x} runs GunDelSol without its data"))
+}
+
 /// `sub_80EDB14`: the gun comes out; 6 ticks later the beam lights up.
-fn wind_up(api: &mut dyn CoreApi, me: ObjectRef) {
-    let level = api.variant(me);
+fn wind_up(data: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
     if api.step_init(me) == 0 {
         api.set_status(me, StatusFlag::UsingAction, true).expect("a navi has collision");
         api.set_animation(me, 0x0A);
         api.open_counter_window(me);
-        attachment::spawn(api, me, 7 + level, Slot::Overlay);
+        let gun = chip_data(data, api, me).gun.id;
+        attachment::spawn(api, me, gun, Slot::Overlay);
         api.play_sound(0xF8);
         store(api, me, State { timer: 6 });
         api.set_step_init(me, 4);
@@ -82,9 +89,10 @@ fn wind_up(api: &mut dyn CoreApi, me: ObjectRef) {
     if t > 0 {
         return;
     }
-    store(api, me, State { timer: GUN_DEL_SOL_FIRING_TICKS[level as usize] });
+    let d = chip_data(data, api, me);
+    store(api, me, State { timer: d.firing_ticks });
     advance_gun(api, me);
-    let look = GUN_DEL_SOL_BEAMS[in_sun(api, me) as usize][level as usize];
+    let look = if in_sun(api, me) { d.beam_in_sun } else { d.beam };
     let offset = Vec3 { x: (api.facing(me) * 0x50) << 16, y: 0, z: 0 };
     let beam = sun_beam::spawn(api, me, look, offset, Slot::Related);
     api.set_related1(me, beam);

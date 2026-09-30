@@ -1,23 +1,13 @@
-//! The graphics a battle frontend draws with, in typed form.
-//!
-//! `bn6-extract graphics <rom> <dir>` decodes them from the user's copy of the
-//! game into `<dir>/bn6-assets.bin`. Nothing ROM-derived is checked in; the
-//! frontend loads the bundle at start-up.
+//! The graphics a battle frontend draws with, in typed form: what a
+//! content pack's graphics (bn6-content) load into. Nothing ROM-derived is
+//! checked in; `bn6-extract content` writes the pack from the user's copy
+//! of the game.
 //!
 //! Colours are the GBA's 15-bit BGR555. Tiles are 8x8 with one palette index
 //! per pixel, where index 0 is transparent.
 
-use serde::{Deserialize, Serialize};
-use std::path::Path;
-
-/// The bundle's file name inside the asset directory.
-pub const FILE_NAME: &str = "bn6-assets.bin";
-
-/// Identifies the file and its layout version.
-const MAGIC: &[u8; 8] = b"BN6GFX\x00\x04";
-
 /// Everything the frontend draws with.
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Bundle {
     /// Battle sprites, sorted by (category, index).
     pub sprites: Vec<SpriteSheet>,
@@ -27,53 +17,7 @@ pub struct Bundle {
     pub hud: Hud,
 }
 
-#[derive(Debug)]
-pub enum LoadError {
-    Io(std::io::Error),
-    /// Not an asset bundle, or one written by a different version.
-    Format(String),
-}
-
-impl std::fmt::Display for LoadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LoadError::Io(e) => write!(f, "{e}"),
-            LoadError::Format(e) => write!(f, "{e}"),
-        }
-    }
-}
-
-impl std::error::Error for LoadError {}
-
 impl Bundle {
-    /// Encode the bundle.
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut out = MAGIC.to_vec();
-        out.extend(bincode::serialize(self).expect("bundle serializes"));
-        out
-    }
-
-    /// Decode a bundle written by [`Bundle::to_bytes`].
-    pub fn from_bytes(bytes: &[u8]) -> Result<Bundle, LoadError> {
-        let body = bytes
-            .strip_prefix(MAGIC.as_slice())
-            .ok_or_else(|| LoadError::Format("not a bn6 asset bundle of this version; re-run `bn6-extract graphics`".into()))?;
-        bincode::deserialize(body).map_err(|e| LoadError::Format(format!("corrupt asset bundle: {e}")))
-    }
-
-    /// Load `dir/bn6-assets.bin` (or `path` itself if it names a file).
-    pub fn load(path: impl AsRef<Path>) -> Result<Bundle, LoadError> {
-        let path = path.as_ref();
-        let file = if path.is_dir() { path.join(FILE_NAME) } else { path.to_path_buf() };
-        Bundle::from_bytes(&std::fs::read(&file).map_err(LoadError::Io)?)
-    }
-
-    /// Write `dir/bn6-assets.bin`.
-    pub fn save(&self, dir: impl AsRef<Path>) -> std::io::Result<()> {
-        std::fs::create_dir_all(dir.as_ref())?;
-        std::fs::write(dir.as_ref().join(FILE_NAME), self.to_bytes())
-    }
-
     /// A battle sprite by (category, index).
     pub fn sprite(&self, category: u8, index: u8) -> Option<&SpriteSheet> {
         self.sprites
@@ -89,7 +33,7 @@ impl Bundle {
 }
 
 /// 8x8 tiles, 64 palette indices each (row-major).
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Tiles {
     pub pixels: Vec<u8>,
 }
@@ -137,7 +81,7 @@ pub fn palettes_from_bytes(data: &[u8]) -> Vec<Palette> {
 }
 
 /// A background map entry: which tile, flipped how, in which palette.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct MapEntry {
     pub tile: u16,
     pub hflip: bool,
@@ -156,7 +100,7 @@ impl MapEntry {
 
 /// A battle sprite: its animations, and the tiles, palettes and part
 /// layouts their frames draw with.
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SpriteSheet {
     /// The engine's `SpriteId`.
     pub category: u8,
@@ -170,7 +114,7 @@ pub struct SpriteSheet {
 }
 
 /// One animation frame.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SpriteFrame {
     /// Index into `tilesets`.
     pub tileset: u16,
@@ -184,7 +128,7 @@ pub struct SpriteFrame {
 
 /// One hardware sprite of a frame. The first part of every frame is the
 /// object's shadow.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SpritePart {
     /// First tile in the frame's tileset (the part's tiles follow in
     /// row-major order).
@@ -204,7 +148,7 @@ pub struct SpritePart {
 // ---- Field ------------------------------------------------------------------
 
 /// The battle field's panels.
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Field {
     /// Panel tiles; `tiles[0]` is tile number `first_tile` of the map
     /// entries below.
@@ -225,7 +169,7 @@ pub struct Field {
 }
 
 /// A palette that cycles through frames.
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PaletteAnim {
     /// The background palette it replaces.
     pub slot: u8,
@@ -238,7 +182,7 @@ pub struct PaletteAnim {
 // ---- Backgrounds -------------------------------------------------------------
 
 /// A battle background: a scrolling, possibly animated tile map.
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Background {
     /// `tiles[0]` is tile number `first_tile`.
     pub tiles: Tiles,
@@ -254,7 +198,7 @@ pub struct Background {
 }
 
 /// A graphics animation: tiles or palettes replaced on a schedule.
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GfxAnim {
     pub target: AnimTarget,
     pub frames: Vec<GfxAnimFrame>,
@@ -263,7 +207,7 @@ pub struct GfxAnim {
     pub repeat_from: Option<usize>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum AnimTarget {
     /// Replaces tiles `first..first + count`.
     Tiles { first: u16, count: u16 },
@@ -273,7 +217,7 @@ pub enum AnimTarget {
     Nothing,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GfxAnimFrame {
     pub tiles: Tiles,
     pub palettes: Vec<Palette>,
@@ -285,7 +229,7 @@ pub struct GfxAnimFrame {
 
 /// The HUD's graphics. "Glyphs" are 8x16: glyph k is tiles 2k (top) and
 /// 2k + 1 (bottom).
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Hud {
     /// The HUD layer's tiles: `tiles[0]` is tile number `first_tile` of the
     /// map entries below (the HP box, HP and damage digits, '+', '×2').
@@ -335,7 +279,7 @@ pub struct Hud {
 }
 
 /// A banner's text and where it sits.
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BannerLayout {
     pub x: u8,
     pub y: u8,
@@ -351,17 +295,6 @@ pub struct BannerLayout {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn round_trips() {
-        let mut b = Bundle::default();
-        b.sprites.push(SpriteSheet { category: 0, index: 1, ..Default::default() });
-        b.field.tiles = Tiles::from_4bpp(&[0x21; 32]);
-        let back = Bundle::from_bytes(&b.to_bytes()).unwrap();
-        assert_eq!(back.sprites.len(), 1);
-        assert_eq!(back.field.tiles.get(0).unwrap()[..2], [1, 2]);
-        assert!(Bundle::from_bytes(b"nope").is_err());
-    }
 
     #[test]
     fn map_entries_decode() {

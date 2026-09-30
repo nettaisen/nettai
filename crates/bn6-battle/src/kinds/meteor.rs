@@ -5,7 +5,7 @@
 //! See docs/engine/chips.md §3.6.7.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::{effect, hitbox};
 use crate::object::sprite::Shadow;
@@ -87,7 +87,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.shadow = Shadow::WithSprite;
     s.look.palette = 0;
     s.look.set_flip(flip);
-    s.set_animation(0);
+    s.set_animation(0, &b.content);
     common::set_progress(b, r, Progress::UPDATE);
 }
 

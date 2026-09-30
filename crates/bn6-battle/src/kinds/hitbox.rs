@@ -24,7 +24,7 @@ pub struct HitboxSpec {
     pub panel: PanelPos,
     pub element: u8,
     pub z: i32,
-    /// Region shape (see `data::collision_generated::REGIONS`).
+    /// Region shape (`Content::region`).
     pub region: u8,
     pub hit_effect: u8,
     /// Collision type indices.

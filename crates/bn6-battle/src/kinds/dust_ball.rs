@@ -5,7 +5,7 @@
 //! in time stop.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::hitbox;
 use crate::kinds::player::panel_coordinates;
@@ -68,7 +68,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.shadow = Shadow::Ground;
     s.look.palette = 0;
     s.look.set_flip(flip);
-    s.set_animation(0x19);
+    s.set_animation(0x19, &b.content);
     common::set_progress(b, r, Progress::UPDATE);
 }
 

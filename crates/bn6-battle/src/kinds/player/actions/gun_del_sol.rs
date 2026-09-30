@@ -11,7 +11,7 @@ use super::super::{actor_id, ai, ai_mut, clear_flag1, exit_attack_state, set_fla
 use super::{ActionVars, check_reactive_abort, open_counter_window};
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::data::attacks;
+use crate::content::GunDelSol;
 use crate::kinds::attachment::{self, AttachSlot};
 use crate::kinds::common::{facing, set_animation};
 use crate::kinds::hitbox::{self, HitboxSpec};
@@ -76,6 +76,12 @@ fn level(b: &Battle, r: ObjectRef) -> u8 {
     ai(b, r).attack.variant
 }
 
+/// The chip's GunDelSol data: its gun, firing time and beam.
+fn data(b: &Battle, r: ObjectRef) -> GunDelSol {
+    let chip = ai(b, r).attack.chip_id;
+    b.content.chip(chip).gun_del_sol.unwrap_or_else(|| panic!("chip {chip:#x} runs GunDelSol without its data"))
+}
+
 /// `sub_80EDAE0`: the phase, then the reactive-defense abort.
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match Phase::of(ai(b, r).attack.step) {
@@ -102,7 +108,7 @@ fn wind_up(b: &mut Battle, r: ObjectRef) {
         set_animation(b, r, 0x0A);
         open_counter_window(b, r);
         let slot = AttachSlot::Overlay(actor_id(b, r));
-        attachment::spawn(b, r, 7 + level(b, r), slot);
+        attachment::spawn(b, r, data(b, r).gun.id, slot);
         b.play_sound(crate::sound::SoundId(0xF8));
         ai_mut(b, r).attack.action = ActionVars::GunDelSol(Vars { timer: 6 });
         ai_mut(b, r).attack.step_init = 4;
@@ -114,9 +120,10 @@ fn wind_up(b: &mut Battle, r: ObjectRef) {
     if t > 0 {
         return;
     }
-    vars(b, r).timer = attacks::gun_del_sol_firing_ticks(level(b, r));
+    let d = data(b, r);
+    vars(b, r).timer = d.firing_ticks;
     advance_gun(b, r);
-    let look = attacks::gun_del_sol_beam(stats(b, r).sun, level(b, r));
+    let look = if stats(b, r).sun { d.beam_in_sun } else { d.beam };
     let o = b.objects.get(r);
     let offset = Vec3 { x: (facing(o.alliance, o.flip) * 0x50) << 16, y: 0, z: 0 };
     let beam = sun_beam::spawn(b, r, look, offset, AttachSlot::Related(r));

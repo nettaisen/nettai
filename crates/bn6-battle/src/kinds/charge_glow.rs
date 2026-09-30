@@ -3,7 +3,7 @@
 //! lifetime follows the player's. See docs/engine/objects-and-player.md §A.5.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 use crate::sound::SoundId;
 

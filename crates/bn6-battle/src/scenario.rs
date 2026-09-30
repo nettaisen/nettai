@@ -1,17 +1,19 @@
 //! A synthetic netbattle for tests and benchmarks that need whole rounds
-//! without golden traces: two MegaMen in the sun whose folders hold only
-//! GunDelS3 (code N), picking four at each custom screen, stepping about
-//! and firing. It is recorded as an input tape (both players' inputs and
-//! the link events for every tick), the way a replay is, so rollback runs
-//! and benchmarks can play it back exactly.
+//! without golden traces, on the hand-authored test content
+//! (`content::testing`): two navis in the sun whose folders hold only a
+//! level-3 GunDelSol chip (code A), picking four at each custom screen,
+//! stepping about and firing. It is recorded as an input tape (both
+//! players' inputs and the link events for every tick), the way a replay
+//! is, so rollback runs and benchmarks can play it back exactly.
 
 use crate::battle::{Battle, TickEvents, mode};
 use crate::behavior::Behaviors;
+use crate::content::{ChipCode, Content, testing};
 use crate::custom::screen::{OK_SLOT, Phase, SlotKind, SlotState};
 use crate::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
-use crate::data::ChipCode;
 use crate::input::{PlayerTick, keys};
-use crate::setup::{BattleSettings, NaviStats, NaviWeapons, RoundSetup, SetScore};
+use crate::setup::{NaviStats, NaviWeapons, RoundSetup, SetScore};
+use std::sync::Arc;
 
 /// One tick of a tape.
 #[derive(Clone, Debug)]
@@ -43,22 +45,25 @@ fn megaman() -> NaviStats {
     }
 }
 
-/// The round: a link battle with the usual two-navi list, on a field of
-/// plain panels (no roads or ice to slide on).
+/// The test content the duel is fought on.
+pub fn content() -> Arc<Content> {
+    testing::content()
+}
+
+/// The round: a link battle with the usual two-navi list (side 1 first),
+/// on a field of plain panels (no roads or ice to slide on).
 pub fn setup() -> RoundSetup {
-    let mut settings = BattleSettings::netbattle_from_bytes(&[
-        0xE3, 0x64, 0x15, 0x00, 0x0B, 0x00, 0x38, 0x00, 0x8C, 0x0E, 0x00, 0x00, 0x92, 0x19, 0x0B, 0x08,
-    ]);
-    settings.layout = 0;
+    let content = testing::build();
     let mut folder = BattleFolder::empty();
-    folder.chips = [Some(FolderChip::new(0x11, ChipCode(13))); 30];
+    folder.chips = [Some(FolderChip::new(testing::SUN_GUN_3, ChipCode(0))); 30];
     let player = PlayerSetup {
         folder: Some(folder),
         unlocks: Unlocks { crosses: [false; 5], beast_out: false, ..Unlocks::everything(GameVersion::Falzar) },
         joypad_phase: 0,
     };
     RoundSetup {
-        settings,
+        content: content.hash(),
+        settings: content.rules.stages.settings(testing::LINK_BATTLE),
         navi_stats: [megaman(); 2],
         rng: 0x1234_5678,
         local_side: 0,
@@ -112,7 +117,7 @@ pub fn record(ticks: usize) -> Vec<Tick> {
 /// another duel. (A tape drives the custom screens too, so it plays back
 /// only from the start of the round it was recorded on.)
 pub fn record_seeded(ticks: usize, seed: u32) -> Vec<Tick> {
-    let mut b = Battle::with_behaviors(setup(), Behaviors::builtin());
+    let mut b = Battle::with_behaviors(setup(), content(), Behaviors::builtin());
     let mut rng = Lcg(seed);
     let mut tape = Vec::with_capacity(ticks);
     // Per side: a held direction and how long to keep it.
@@ -149,9 +154,9 @@ pub fn record_seeded(ticks: usize, seed: u32) -> Vec<Tick> {
     tape
 }
 
-/// Play a tape from the start of the round with `content`.
-pub fn play(tape: &[Tick], content: Behaviors) -> Battle {
-    let mut b = Battle::with_behaviors(setup(), content);
+/// Play a tape from the start of the round with `behaviors`.
+pub fn play(tape: &[Tick], behaviors: Behaviors) -> Battle {
+    let mut b = Battle::with_behaviors(setup(), content(), behaviors);
     for t in tape {
         b.tick(&t.input, t.events.clone());
     }

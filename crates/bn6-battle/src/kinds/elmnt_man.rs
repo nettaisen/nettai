@@ -7,7 +7,7 @@
 //! See docs/engine/chips.md §3.6.7.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::input::keys;
 use crate::kinds::{body_overlay, common, meteor, navi_chip};
 use crate::kinds::player::form;
@@ -118,7 +118,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.shadow = Shadow::Ground;
     s.look.palette = 0;
     s.look.set_flip(flip);
-    s.set_animation(0);
+    s.set_animation(0, &b.content);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = 0;

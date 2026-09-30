@@ -7,7 +7,7 @@ use super::{Emotion, ai, ai_mut, emotion, flag1, navi_record, set_attack, set_mo
 use crate::actor::{ActorType, request};
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::data::{self, ChipFlags, ChipId, Element};
+use crate::content::{ChipFamily, ChipFlags, ChipId, Element};
 use crate::object::ObjectRef;
 use crate::setup::Navi;
 
@@ -39,9 +39,10 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
     let action = prepare(b, r);
     set_attack(b, r, action, 2);
     let form = stats(b, r).form;
+    let content = b.content.clone();
     let a = &mut ai_mut(b, r).attack;
     if a.special_source != 0 || form.is_beast() {
-        a.beast_lockon = data::chip(a.chip_id).beast_lockon;
+        a.beast_lockon = content.chip(a.chip_id).beast_lockon as u8;
     }
     ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
     Some(ai(b, r).attack.chip_id)
@@ -55,7 +56,7 @@ fn use_charged_chip(b: &mut Battle, r: ObjectRef) -> ChipId {
     if chip == crate::hand::NO_CHIP {
         panic!("a charged chip with an empty hand reads past the chip table");
     }
-    let routine = if data::chip(chip).family == 0x0A {
+    let routine = if b.content.chip(chip).family == ChipFamily::Null {
         ai_mut(b, r).attack.chip_id = 0;
         ai(b, r).alt_a_charge
     } else {
@@ -91,7 +92,7 @@ pub(super) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
     if chip == crate::hand::NO_CHIP || chip == 0x52 || chip == 0x53 {
         return false;
     }
-    if data::chip(chip).flags.has(ChipFlags::TIME_FREEZE) {
+    if b.content.chip(chip).flags.has(ChipFlags::TIME_FREEZE) {
         return false;
     }
     let action = prepare(b, r);
@@ -127,8 +128,9 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
 /// name its action.
 fn prepare(b: &mut Battle, r: ObjectRef) -> u8 {
     let e = hand_entry(b, r);
-    let cd = data::chip(e.chip);
-    if cd.dark_subst != 0xFF {
+    let content = b.content.clone();
+    let cd = content.chip(e.chip);
+    if cd.dark_substitute.is_some() {
         panic!("dark chip substitution (sub_8010D58) is not implemented yet");
     }
     let action = load_attack(b, r, e.chip);
@@ -155,7 +157,7 @@ fn prepare(b: &mut Battle, r: ObjectRef) -> u8 {
         damage |= damage_flags::UNINSTALL;
     }
     // sub_8012C4A
-    if deals_damage(cd.flags) && cd.family == 0x0A && matches!(stats(b, r).form.0, 4 | 0x10) {
+    if deals_damage(cd.flags) && cd.family == ChipFamily::Null && matches!(stats(b, r).form.0, 4 | 0x10) {
         damage |= damage_flags::ERASE_CROSS;
     }
     ai_mut(b, r).attack.damage = damage;
@@ -180,18 +182,19 @@ fn deals_damage(flags: ChipFlags) -> bool {
 /// chip's action. (The game also counts the use per side, for a report
 /// only the battle-flag 0x40 mode reads.)
 fn load_attack(b: &mut Battle, r: ObjectRef, chip: ChipId) -> u8 {
-    let cd = data::chip(chip);
+    let content = b.content.clone();
+    let cd = content.chip(chip);
     let side = b.objects.get(r).alliance;
     let damage = crate::hand::chip_damage(b, chip, side);
     let a = &mut ai_mut(b, r).attack;
     a.chip_id = chip;
-    a.params = cd.params.to_le_bytes();
+    a.params = cd.params;
     a.damage = damage;
     a.hit_param = cd.hit_param as u16;
     a.lockout = cd.lockout;
     a.extra = 0;
     a.variant = cd.subtype;
-    a.element = cd.element as u8 | data::attacks::family_elements(cd.family).0;
+    a.element = cd.element as u8 | content.rules.family_elements(cd.family).0;
     a.charged = 0;
     cd.action
 }
@@ -206,22 +209,22 @@ fn chip_bonus(b: &Battle, r: ObjectRef, chip: ChipId) -> u16 {
     if chip == crate::hand::NO_CHIP {
         return 0;
     }
-    let cd = data::chip(chip);
+    let cd = b.content.chip(chip);
     let damaging = cd.flags.has(ChipFlags::HAS_DAMAGE);
-    let family_bonus = |family: u8, bonus: u16| (deals_damage(cd.flags) && cd.family == family).then_some(bonus);
+    let family_bonus = |family: ChipFamily, bonus: u16| (deals_damage(cd.flags) && cd.family == family).then_some(bonus);
     let form_bonus = match s.form.0 {
-        1 | 0x0D => family_bonus(0, 50),
-        2 | 0x0E => family_bonus(2, 50),
-        3 | 0x0F => family_bonus(5, 50),
-        8 | 0x14 => family_bonus(8, 10),
+        1 | 0x0D => family_bonus(ChipFamily::Fire, 50),
+        2 | 0x0E => family_bonus(ChipFamily::Elec, 50),
+        3 | 0x0F => family_bonus(ChipFamily::Sword, 50),
+        8 | 0x14 => family_bonus(ChipFamily::Wind, 10),
         // Unlike the others, this one also boosts time-stopping chips.
-        4 | 0x10 => (damaging && cd.family == 6).then_some(30),
-        9 | 0x15 => family_bonus(9, 10),
+        4 | 0x10 => (damaging && cd.family == ChipFamily::Cursor).then_some(30),
+        9 | 0x15 => family_bonus(ChipFamily::Break, 10),
         _ => None,
     };
     let beast_bonus = || {
         let beast = (0x0B..=0x16).contains(&s.form.0);
-        (beast && deals_damage(cd.flags) && cd.family == 0x0A && super::battle_mode(b) != 1).then_some(30)
+        (beast && deals_damage(cd.flags) && cd.family == ChipFamily::Null && super::battle_mode(b) != 1).then_some(30)
     };
     let bonus = form_bonus.or_else(beast_bonus).unwrap_or(0);
     bonus + aura_bonus(b, r, chip)
@@ -249,7 +252,7 @@ enum Boost {
 
 /// `sub_8012A38`: whether the use doubles the chip's damage.
 fn double_damage(b: &Battle, r: ObjectRef, chip: ChipId, damage: u16) -> (u16, Option<Boost>) {
-    let cd = data::chip(chip);
+    let cd = b.content.chip(chip);
     if !cd.flags.has(ChipFlags::HAS_DAMAGE) {
         return (damage, None);
     }
@@ -283,7 +286,7 @@ fn check_cross_boost(b: &Battle, r: ObjectRef) {
 /// twentieth of the base HP for aqua chips in the aqua crosses.
 fn heal_on_use(b: &Battle, r: ObjectRef, chip: ChipId) {
     let s = stats(b, r);
-    let cd = data::chip(chip);
+    let cd = b.content.chip(chip);
     let cross = matches!(s.form.0, 6 | 0x12) && cd.element == Element::Aqua && !cd.flags.has(ChipFlags::TIME_FREEZE);
     let heal = if cross { s.max_base_hp.div_ceil(0x14) } else { 0 };
     if s.chip_recovery.wrapping_add(heal) != 0 {

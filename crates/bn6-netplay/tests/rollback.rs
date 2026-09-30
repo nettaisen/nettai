@@ -15,19 +15,30 @@ use bn6_netplay::{Game, Observer};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::sync::Arc;
 
-/// Side 0's folder: GunDelSols, EraseMan (a navi chip) and Invisibl (a
-/// time freeze). Side 1's: GunDelSols only, so that neither side can
-/// counter a freeze with one of its own (not implemented yet).
+use bn6_battle::content::testing;
+
+/// The engine's hand-authored test content (made up, not BN6's data).
+fn content() -> Arc<bn6_battle::Content> {
+    testing::content()
+}
+
+/// Side 0's folder: GunDelSol chips, a navi chip (the eraser navi) and a
+/// time freeze (the invisibility freeze). Side 1's: GunDelSols only, so
+/// that neither side can counter a freeze with one of its own (not
+/// implemented yet). The codes are the chips' own (A and *).
 fn folders() -> [bn6_battle::custom::BattleFolder; 2] {
+    use testing::{ERASER, SUN_GUN_1, SUN_GUN_2, SUN_GUN_3, VEIL};
     [
-        folder(&[(0x11, 13), (0xEC, 10), (0x0F, 2), (0xB1, 26), (0x11, 16)]),
-        folder(&[(0x11, 13), (0x0F, 2), (0x10, 1), (0x11, 16), (0x0F, 12)]),
+        folder(&[(SUN_GUN_3, 0), (ERASER, 0), (SUN_GUN_1, 0), (VEIL, 26), (SUN_GUN_3, 26)]),
+        folder(&[(SUN_GUN_3, 0), (SUN_GUN_1, 0), (SUN_GUN_2, 0), (SUN_GUN_3, 26), (SUN_GUN_1, 26)]),
     ]
 }
 
 fn start(seed: u64) -> StandInBattle {
-    StandInBattle::new(Battle::new(netbattle(300, seed as u32 ^ 0x1234_5678, folders())))
+    let c = content();
+    StandInBattle::new(Battle::new(netbattle(&c, 300, seed as u32 ^ 0x1234_5678, folders()), c))
 }
 
 fn mashers(seed: u64) -> impl FnMut(usize, u32) -> u16 {
@@ -167,7 +178,8 @@ fn recorded_events_ride_in_the_inputs() {
 fn the_local_side_is_part_of_the_shared_setup() {
     let mut a = start(5);
     let mut b = start(5);
-    b.battle = Battle::new(bn6_battle::RoundSetup { local_side: 1, ..netbattle(300, 5 ^ 0x1234_5678, folders()) });
+    let c = content();
+    b.battle = Battle::new(bn6_battle::RoundSetup { local_side: 1, ..netbattle(&c, 300, 5 ^ 0x1234_5678, folders()) }, c);
     let mut inputs = mashers(5);
     let first_difference = (0..200u32).find(|_| {
         let i = [inputs(0, 0), inputs(1, 0)];
