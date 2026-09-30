@@ -169,8 +169,25 @@ pub fn shift_damage_carry(b: &mut Battle) {
 pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
     match formula {
         1..=18 => sp_chip_damage(b, id, side, formula as usize - 1),
+        20 => damage_taken(b, side),
         _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
     }
+}
+
+/// `sub_8010BD0` (Muramasa's): the HP the side's player has lost, at most
+/// 500. `sub_80103BC` looks for the player among the side's alive actors,
+/// but its loop never advances, so it only ever checks the first slot four
+/// times: with no player there the damage is 0.
+fn damage_taken(b: &Battle, side: u8) -> u16 {
+    let Some(r) = b.round.alive_actors[side as usize & 1][0] else { return 0 };
+    let o = b.objects.get(r);
+    if b.content.navi_record(o.name_id).actor_type != crate::actor::ActorType::Player {
+        return 0;
+    }
+    // A signed difference, capped at 500 (an HP above the maximum would
+    // give a negative damage, cut to 16 bits).
+    let lost = o.max_hp as i32 - o.hp as i32;
+    lost.min(500) as u16
 }
 
 /// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user
