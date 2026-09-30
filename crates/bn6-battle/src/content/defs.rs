@@ -528,6 +528,12 @@ fn export(definitions: &Definitions, module: &str, name: &str, whose: &str) -> R
 /// fields the engine reads. Damage formulas, Program Advance recipes, dark
 /// chips' substitutes and lock-on modes by definition come with the v2 API
 /// (steps 4 and 10); a definition that gives one is refused.
+///
+/// The transitional `legacy = { subtype, params }` marker gives the record
+/// the original's subtype and parameter bytes, for what still reads them
+/// of a chip besides its own action (SlashCross's charged slash reads a
+/// sword's); its `action` and `script` (a behaviour still a v1 module)
+/// come with step 5.
 fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
     let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
     let spec = &d.spec;
@@ -620,6 +626,7 @@ fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
             (rush, mode)
         }
     };
+    let (subtype, params) = legacy_bytes(spec).map_err(|e| what(e))?;
     let library = spec.field("library");
     let lib_int = |field: &str| library.field(field).int().unwrap_or(0);
     Ok(ChipData {
@@ -634,9 +641,9 @@ fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
         flags: ChipFlags(flags("flags", ChipFlags::NAMES)?),
         hit_param: int("hit_param", 0xFF)? as u8,
         action: 0,
-        subtype: 0,
+        subtype,
         beast_lockon,
-        params: [0; 4],
+        params,
         lockout: int("lockout", 0xFF)? as u8,
         extra_flags: ExtraChipFlags(flags("extra_flags", ExtraChipFlags::NAMES)?),
         lockon_mode,
@@ -655,6 +662,42 @@ fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
         sword: None,
         script: None,
     })
+}
+
+/// A chip definition's `legacy` marker: the subtype and parameter bytes
+/// (none: 0).
+fn legacy_bytes(spec: &Data) -> Result<(u8, [u8; 4]), String> {
+    let legacy = spec.field("legacy");
+    match legacy {
+        Data::Nil => return Ok((0, [0; 4])),
+        Data::Map(_) => {}
+        Data::List(l) if l.is_empty() => return Ok((0, [0; 4])),
+        other => return Err(format!("`legacy` is {other:?}, not a table")),
+    }
+    for field in ["action", "script"] {
+        if !legacy.field(field).is_nil() {
+            return Err(format!("`legacy.{field}` (a behaviour still a v1 module) comes with step 5"));
+        }
+    }
+    let byte = |d: &Data, what: &str| match d {
+        Data::Int(i) if (0..=0xFF).contains(i) => Ok(*i as u8),
+        other => Err(format!("`legacy.{what}` holds {other:?}, not a byte")),
+    };
+    let subtype = match legacy.field("subtype") {
+        Data::Nil => 0,
+        d => byte(d, "subtype")?,
+    };
+    let mut params = [0; 4];
+    match legacy.field("params") {
+        Data::Nil => {}
+        Data::List(items) if items.len() <= 4 => {
+            for (p, item) in params.iter_mut().zip(items) {
+                *p = byte(item, "params")?;
+            }
+        }
+        other => return Err(format!("`legacy.params` is {other:?}, not up to four bytes")),
+    }
+    Ok((subtype, params))
 }
 
 impl Defs {
