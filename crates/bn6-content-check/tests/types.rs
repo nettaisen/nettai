@@ -30,6 +30,8 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local _ = data.chips[1].gun_del_sol.firing_tick", "not a data field"),
         ("local function f(me: Object) local _ = obstacle.react(me, \"shatters\") end", "not an obstacle crush"),
         ("local function f(me: Object) local _: \"gone\" = obstacle.removal(me) end", "not an obstacle removal"),
+        // Dimming chip subtypes 2, 3, 5, 15 and 27.
+        ("field.blink(1, 1, \"lava\", 0)", "a blink to not a panel type"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

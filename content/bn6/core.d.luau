@@ -608,6 +608,16 @@ declare field: {
     solid: (x: number, y: number) -> boolean,
     -- Drawn only.
     highlight: (x: number, y: number) -> (),
+    -- Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
+    -- `object_breakPanel_dup2`: break a solid, unoccupied panel, or crack
+    -- an occupied one; whether it was solid.
+    break_panel: (x: number, y: number) -> boolean,
+    -- `object_panel_setPoison`: a solid panel turns to poison; whether it
+    -- was solid.
+    poison: (x: number, y: number) -> boolean,
+    -- `object_setPanelTypeBlink`: this frame the panel is drawn as `kind`
+    -- of `side` (drawn only).
+    blink: (x: number, y: number, kind: PanelType, side: number) -> (),
 }
 
 -- The dimming service: the steps of a dimming chip's controller, which its

@@ -990,6 +990,20 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.highlight_panel(p)))
     });
+    // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
+    lib_fn!(lua, t, "break_panel", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.break_panel(p)))
+    });
+    lib_fn!(lua, t, "poison", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.poison_panel(p)))
+    });
+    lib_fn!(lua, t, "blink", |_, (x, y, kind, side): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
+        let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);
+        let kind = named(&kind, "panel type", |s| PANEL_TYPES.iter().position(|&n| n == s))? as u8;
+        with(|api, _| Ok(api.blink_panel(p, kind, side)))
+    });
     Ok(t)
 }
 
