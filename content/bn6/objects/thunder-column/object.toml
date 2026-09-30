@@ -1,0 +1,6 @@
+# The thunder column (attack object #0x8B, `sub_80D6924`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x8B
+script = "thunder_column.luau"

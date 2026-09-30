@@ -1,0 +1,6 @@
+# The hockey puck (attack object #0x2E, `sub_80C9824`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x2E
+script = "hockey_puck.luau"
