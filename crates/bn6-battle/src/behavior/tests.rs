@@ -35,6 +35,7 @@ fn battles_run_the_content_scripts() {
             "erase-mark",
             "grab-shot",
             "invisible",
+            "navi-boost",
             "rock",
             "rock-cube",
             "rock-debris",
@@ -282,6 +283,39 @@ fn breaking_a_scripted_rock_throws_debris() {
     assert_eq!(b.field.objects.slots[0], None);
     run_only(&mut b, &ROCK_KINDS);
     assert!(!b.objects.is_allocated(r));
+}
+
+// ---- The navi-changing chips (subtype 38) ----------------------------------------------------
+
+#[test]
+fn the_navi_changing_chips_change_the_navi() {
+    use crate::object::Pool::Effect;
+    let setup = || {
+        let mut s = scenario::setup_with(&[testing::BOOST, testing::ARM]);
+        s.players[1] = scenario::setup().players[1];
+        s
+    };
+    let tape = scenario::record_on(setup(), 2400, 5);
+    let mut b = Battle::new(setup(), scenario::content());
+    let before = b.stats[0].clone();
+    let mut controllers = 0;
+    for t in &tape {
+        b.tick(&t.input, t.events.clone());
+        controllers += b.objects.in_order().filter(|r| r.pool == Effect && b.objects.get(*r).index == 0x84).count();
+    }
+    assert!(controllers > 0, "the controller ran");
+    let after = &b.stats[0];
+    assert_eq!((after.rapid, after.charge, after.custom_level), (4, 4, 8), "{before:?}");
+    assert!(after.float_shoes && after.air_shoes && after.undershirt);
+    assert_eq!(after.weapons.charge_shot, 1, "the arm's charged shot");
+    let copy = digests(&tape, Battle::new(setup(), scenario::content()));
+    let mut b = Battle::new(setup(), scenario::content());
+    for (i, t) in tape.iter().enumerate() {
+        if i % 131 == 0 {
+            assert_eq!(digests(&tape[i..], b.clone()), copy[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+    }
 }
 
 // ---- Luau keeps no state ----------------------------------------------------------------

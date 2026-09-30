@@ -215,6 +215,7 @@ impl CoreApi for Battle {
             BattleInfo::PanelPattern => Value::Int(self.setup.settings.panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
             BattleInfo::LocalSide => Value::Int(self.round.local_side as i64),
+            BattleInfo::Turn => Value::Int(self.round.turn as i64),
         }
     }
 
@@ -248,7 +249,33 @@ impl CoreApi for Battle {
             NaviStat::BusterCharged => i(s.bugs.buster_charged as i64),
             NaviStat::Beast => Value::Bool(s.form.is_beast()),
             NaviStat::BeastOver => Value::Bool(s.form.is_beast_over()),
+            NaviStat::CustomLevel => i(s.custom_level as i64),
+            NaviStat::HandShrinkTurn => i(s.bugs.hand_shrink_turn as i64),
+            NaviStat::ChargeShotRoutine => i(s.weapons.charge_shot as i64),
+            NaviStat::BackSpecialRoutine => i(s.weapons.back_special as i64),
+            NaviStat::FloatShoes => Value::Bool(s.float_shoes),
+            NaviStat::AirShoes => Value::Bool(s.air_shoes),
+            NaviStat::Undershirt => Value::Bool(s.undershirt),
         }
+    }
+
+    fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()> {
+        let v = store(stat.name(), stat.writable(), stat.ty(), v)?;
+        let s = &mut self.stats[side as usize & 1];
+        match (stat, v) {
+            (NaviStat::Attack, FieldValue::U8(x)) => s.attack = x,
+            (NaviStat::Rapid, FieldValue::U8(x)) => s.rapid = x,
+            (NaviStat::Charge, FieldValue::U8(x)) => s.charge = x,
+            (NaviStat::CustomLevel, FieldValue::U8(x)) => s.custom_level = x,
+            (NaviStat::HandShrinkTurn, FieldValue::U8(x)) => s.bugs.hand_shrink_turn = x,
+            (NaviStat::ChargeShotRoutine, FieldValue::U8(x)) => s.weapons.charge_shot = x,
+            (NaviStat::BackSpecialRoutine, FieldValue::U8(x)) => s.weapons.back_special = x,
+            (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
+            (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
+            (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
+            (f, v) => unreachable!("{f:?} stored as {v:?}"),
+        }
+        Ok(())
     }
 
     fn emotion(&self, side: u8) -> Emotion {
@@ -714,6 +741,8 @@ impl CoreApi for Battle {
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
             (ActorField::ChipLockout, FieldValue::U8(x)) => a.lockout = x,
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
+            (ActorField::BusterRoutine, FieldValue::U8(x)) => a.buster = x,
+            (ActorField::ChargeShotRoutine, FieldValue::U8(x)) => a.charge_shot = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())

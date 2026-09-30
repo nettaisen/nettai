@@ -222,9 +222,10 @@ named_fields! {
         ChipLockout = "chip_lockout", U8, rw;
         /// Ticks before the B+Back special can be input again.
         BackSpecialCooldown = "back_special_cooldown", U8, rw;
-        /// The weapon routines the navi's buttons run (0xFF = none).
-        BusterRoutine = "buster_routine", U8, ro;
-        ChargeShotRoutine = "charge_shot_routine", U8, ro;
+        /// The weapon routines the navi's buttons run (0xFF = none; the
+        /// buster's and charged shot's writable: chips change them).
+        BusterRoutine = "buster_routine", U8, rw;
+        ChargeShotRoutine = "charge_shot_routine", U8, rw;
         BackSpecialRoutine = "back_special_routine", U8, ro;
         AChargeRoutine = "a_charge_routine", U8, ro;
         AltAChargeRoutine = "alt_a_charge_routine", U8, ro;
@@ -290,9 +291,10 @@ named_fields! {
         NaviVariant = "navi_variant", U8, ro;
         /// The base form's element.
         Element = "element", U8, ro;
-        Attack = "attack", U8, ro;
-        Rapid = "rapid", U8, ro;
-        Charge = "charge", U8, ro;
+        /// The buster's levels (writable: chips raise them).
+        Attack = "attack", U8, rw;
+        Rapid = "rapid", U8, rw;
+        Charge = "charge", U8, rw;
         Mood = "mood", U8, ro;
         BeastOutCounter = "beast_out_counter", U8, ro;
         MaxBaseHp = "max_base_hp", U16, ro;
@@ -308,6 +310,19 @@ named_fields! {
         /// The form is a Beast form, Beast Over.
         Beast = "beast", Bool, ro;
         BeastOver = "beast_over", Bool, ro;
+        // Written by the navi-changing dimming chips (off_802CCB4[38]).
+        /// The custom screen's size.
+        CustomLevel = "custom_level", U8, rw;
+        /// NaviCust bug: the hand shrinks from this turn on (0 none).
+        HandShrinkTurn = "hand_shrink_turn", U8, rw;
+        /// The weapon routines the navi starts rounds with: the charged
+        /// shot, the B+Back special (0xFF none).
+        ChargeShotRoutine = "charge_shot_routine", U8, rw;
+        BackSpecialRoutine = "back_special_routine", U8, rw;
+        /// NaviCust: FloatShoes, AirShoes, UnderShirt.
+        FloatShoes = "float_shoes", Bool, rw;
+        AirShoes = "air_shoes", Bool, rw;
+        Undershirt = "undershirt", Bool, rw;
     }
 }
 
@@ -322,6 +337,8 @@ named_fields! {
         NavisIn = "navis_in", Bool, ro;
         /// Presentation only: the side the simulation's perspective is.
         LocalSide = "local_side", U8, ro;
+        /// Custom screens opened so far.
+        Turn = "turn", U8, ro;
     }
 }
 
@@ -703,6 +720,8 @@ pub trait CoreApi {
     /// Report a sound only `side`'s player hears.
     fn play_sound_for(&mut self, side: u8, sound: u16);
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value;
+    /// Change one of a side's navi stats (the writable ones).
+    fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()>;
     /// A side's emotion (`sub_8015B54`).
     fn emotion(&self, side: u8) -> Emotion;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
