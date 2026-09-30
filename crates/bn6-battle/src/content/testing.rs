@@ -155,6 +155,8 @@ pub fn scripts() -> Scripts {
                 ("chips/0af-busterup/chip", "chips/0af-busterup/chip"),
                 ("chips/11d-synctrgr/chip", "chips/11d-synctrgr/chip"),
                 ("objects/plus-sparkle/plus_sparkle", "objects/plus-sparkle/plus_sparkle"),
+                ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
+                ("objects/rock-chunk/rock_chunk", "objects/rock-chunk/rock_chunk"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -181,6 +183,7 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x00, "Buster", None, "00-buster/buster"),
         weapon(0x01, "Charged shot", None, "01-charged-shot/charged_shot"),
         weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
+        weapon(0x18, "Ground charge", None, "18-ground-charge/ground_charge"),
         weapon(0x1E, "Beast claw", Some(0x52), "1e-beast-claw/beast_claw"),
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
         weapon(0x2A, "Absorb", Some(0x58), "2a-absorb/absorb"),
@@ -210,6 +213,8 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
         kind("absorbed-obstacle", Pool::Effect, 0x87, "objects/absorbed-obstacle/absorbed_obstacle"),
         kind("plus-sparkle", Pool::Effect, 0x14, "objects/plus-sparkle/plus_sparkle"),
+        kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
+        kind("rock-chunk", Pool::Effect, 0x09, "objects/rock-chunk/rock_chunk"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -620,6 +625,8 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
+    // GroundCross's falling rock (0) and its chunks (1).
+    sprites.insert(SpriteId { category: 0x10, index: 5 }, vec![vec![f(8, LAST | LOOP)], vec![f(4, LAST | LOOP)]]);
     // The plus chips' sparkle (animation 1).
     sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(2), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
     // Effects and sparks.
