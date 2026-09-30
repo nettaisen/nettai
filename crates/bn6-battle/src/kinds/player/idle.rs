@@ -7,7 +7,7 @@
 
 use super::actions::movement::{self, MoveKind};
 use super::{
-    ai, ai_mut, clear_flag1, clear_flag2, coll_mut, cross_protected, emotion, exit_attack_state, flag1,
+    Emotion, ai, ai_mut, clear_flag1, clear_flag2, coll_mut, cross_protected, emotion, exit_attack_state, flag1,
     is_link, reset_charge, set_attack, stats, stats_mut,
 };
 use crate::actor::{request, status};
@@ -240,7 +240,7 @@ fn buster_variant(b: &mut Battle, r: ObjectRef) -> u8 {
 pub(super) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
     let s = stats(b, r);
     let mut d = s.attack as u16 + BUSTER_BONUS_BY_NAVI[s.navi.index()] as u16;
-    if emotion(b, b.objects.get(r).alliance) == 5 {
+    if emotion(b, b.objects.get(r).alliance) == Emotion::WornOut {
         d = 1;
     } else {
         d += BUSTER_BONUS_BY_FORM[s.form.index()] as u16;
@@ -251,7 +251,7 @@ pub(super) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
 /// `sub_8011A7E`: the charged shot (action 0x16), (attack + 1) * 10.
 fn charged_shot_setup(b: &mut Battle, r: ObjectRef) -> u8 {
     let mut base = stats(b, r).attack as u16 + 1;
-    if emotion(b, b.objects.get(r).alliance) == 5 {
+    if emotion(b, b.objects.get(r).alliance) == Emotion::WornOut {
         base = 1;
     }
     let mut kind = stats(b, r).weapons.charge_shot_kind;

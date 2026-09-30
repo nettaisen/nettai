@@ -5,10 +5,12 @@
 use crate::actor::{ActorId, Actors};
 use crate::collision::Collision;
 use crate::behavior::Behaviors;
+use crate::custom::{CustomScreens, Recorded};
 use crate::field::Field;
 use crate::hand::ChipHand;
 use crate::hud::{Banner, BannerStatus, CustomGauge};
 use crate::input::{InputRecord, PlayerTick, keys};
+use crate::link::{Link, Packet};
 use crate::object::{ObjectRef, Objects};
 use crate::rng::Rng;
 use crate::data::BannerId;
@@ -82,11 +84,10 @@ pub struct RoundState {
     pub cycle180: u8,
     pub mode_copy: u8,
     pub winner: u8,
-    /// This side's status bits (bit 2: in the custom screen).
-    pub status: u8,
     /// Alive navis per side.
     pub alive: [u8; 2],
-    /// Both players' status bits as received.
+    /// Both players' status bits as the link delivers them (bit 2: that
+    /// player's custom screen is open).
     pub remote_status: [u8; 2],
     pub has_regular: u8,
     pub wins: u8,
@@ -157,7 +158,8 @@ impl Fade {
     }
 }
 
-/// A player's custom-screen result, as exchanged when the screen closes.
+/// A player's custom-screen result, as it goes over the link when their
+/// window has slid out.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct CustomResult {
     /// The chosen hand (None = no chips chosen: the previous hand stays).
@@ -170,13 +172,13 @@ pub struct CustomResult {
 /// Events from outside the simulation that happen on a tick.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TickEvents {
-    /// The local player confirmed their custom-screen selection.
-    pub local_confirm: bool,
-    /// Both players' custom-screen results arrived.
-    pub exchange: Option<Box<[CustomResult; 2]>>,
     /// After the round, the link session the end state asked to close has
     /// closed.
     pub link_closed: bool,
+    /// For checking against recordings that lack a player's folder: what
+    /// the recording says that player's custom screen sends (see
+    /// `custom::PlayerSetup::folder`). None for simulated players.
+    pub recorded: [Option<Recorded>; 2],
 }
 
 #[derive(Clone, Debug)]
@@ -215,9 +217,11 @@ pub struct Battle {
     pub fadein_queue: [Option<ObjectRef>; 8],
     /// Per-side damage-carry records (`dword_203CFB0`).
     pub damage_carry: [DamageCarry; 2],
-    /// Custom-screen UI progress on this side (local presentation that the
-    /// simulation observes in a few places).
-    pub custom_ui: CustomUi,
+    /// Both players' custom screens.
+    pub custom: CustomScreens,
+    /// The link: what each player sends reaches the fight `delay` ticks
+    /// later.
+    pub link: Link,
     /// Per-side extra battle state (`sub_802E070`), used by the battle-flag
     /// 0x40 mode.
     pub sides: [SideState; 2],
@@ -363,19 +367,6 @@ pub struct DamageCarry {
     pub target: Option<ObjectRef>,
 }
 
-/// Local custom-screen UI progress.
-#[derive(Clone, Debug, Default, Hash)]
-pub struct CustomUi {
-    /// Results that arrived this tick, installed by the custom screen.
-    pub pending: Option<Box<[CustomResult; 2]>>,
-    /// Ticks since the screen opened.
-    pub ticks: u32,
-    /// Ticks since the local player confirmed.
-    pub since_confirm: Option<u32>,
-    /// The exchange was installed; the screen closes next tick.
-    pub installed: bool,
-}
-
 impl Battle {
     /// Start a round: the state the game is in when its init finishes and
     /// the first battle tick is about to run.
@@ -422,7 +413,8 @@ impl Battle {
             fade: Fade::default(),
             fadein_queue: [None; 8],
             damage_carry: [DamageCarry::default(); 2],
-            custom_ui: CustomUi::default(),
+            custom: CustomScreens::new(&setup.players),
+            link: Link::new(setup.link_delay),
             sides: [SideState::default(); 2],
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
@@ -510,27 +502,39 @@ impl Battle {
         self.field.clear_highlights();
         match self.round.top {
             top::RUNNING => self.tick_running(input, events),
-            top::END => self.tick_end(&events),
+            top::END => self.tick_end(input, &events),
             _ => {}
         }
         self.round.frames = self.round.frames.wrapping_add(1);
         self.fade.step();
     }
 
+    /// The link's step at the start of a tick (`sub_801FF18`): both
+    /// players' packets go out, the ones sent `delay` ticks ago arrive;
+    /// and both joypads read this tick's buttons.
+    fn exchange_packets(&mut self, input: &[PlayerTick; 2], events: &TickEvents) -> [Packet; 2] {
+        let sent = std::array::from_fn(|p| Packet {
+            held: input[p].held & 0x3FF,
+            in_custom: match &events.recorded[p] {
+                Some(r) => r.in_custom,
+                None => self.custom.sides[p].in_custom,
+            },
+        });
+        for (side, t) in self.custom.sides.iter_mut().zip(input) {
+            side.joypad.update(t.held);
+        }
+        self.link.exchange(sent)
+    }
+
     fn tick_running(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
         // Apply both players' packets.
-        for (p, t) in input.iter().enumerate() {
-            self.inputs[p].update(t.held | keys::PRESENT);
-            self.round.remote_status[p] = if t.in_custom { 4 } else { 0 };
-        }
-        if events.local_confirm {
-            self.custom_ui.since_confirm = Some(0);
-        }
-        if let Some(results) = events.exchange {
-            self.custom_ui.pending = Some(results);
+        let arrived = self.exchange_packets(input, &events);
+        for (p, packet) in arrived.iter().enumerate() {
+            self.inputs[p].update(packet.held | keys::PRESENT);
+            self.round.remote_status[p] = if packet.in_custom { 4 } else { 0 };
         }
 
-        self.run_mode_handler();
+        self.run_mode_handler(&events);
         self.run_objects();
         if !self.paused && !self.is_time_stop() {
             self.tick_panels();
@@ -556,7 +560,8 @@ impl Battle {
     /// Top state 8 (`sub_8007B80`): 11 ticks of objects still running,
     /// then close the link session (mode 0, `sub_8007B9C`). Once it has
     /// closed (mode 4) the round is over (`sub_8007CA0`).
-    fn tick_end(&mut self, events: &TickEvents) {
+    fn tick_end(&mut self, input: &[PlayerTick; 2], events: &TickEvents) {
+        self.exchange_packets(input, events);
         if self.round.mode != 0 {
             if self.outcome.is_none() {
                 self.finish_round();
@@ -685,11 +690,11 @@ impl Battle {
 
     // ---- Battle-mode handler -------------------------------------------
 
-    fn run_mode_handler(&mut self) {
+    fn run_mode_handler(&mut self, events: &TickEvents) {
         match self.round.mode {
             mode::INTRO => self.mode_intro(),
             mode::BANNER => self.mode_banner(),
-            mode::CUSTOM => self.mode_custom(),
+            mode::CUSTOM => self.mode_custom(&events.recorded),
             mode::FIGHTING => self.mode_fighting(),
             mode::FADE_OUT => self.mode_fade_out(),
             m => panic!("battle mode state {m:#x} not supported in netbattles"),
@@ -810,57 +815,35 @@ impl Battle {
 
     // ---- Custom screen ---------------------------------------------------
 
-    fn mode_custom(&mut self) {
+    /// Mode state 8 (`sub_8009338`): the custom screen. Both players'
+    /// screens open on the first tick (`sub_8026840`) and run from the
+    /// next; the tick after both results are in, the fight resumes
+    /// (`sub_8026A6C`).
+    fn mode_custom(&mut self, recorded: &[Option<Recorded>; 2]) {
         if self.round.init == 0 {
-            self.round.status |= 4;
             self.round.init = 1;
-            self.open_custom();
+            self.open_custom_screens();
+            return;
         }
-        let first_screen = self.round.turn == 1;
-        let ui = &mut self.custom_ui;
-        ui.ticks += 1;
-        // Slide-in completes 10 ticks in: the NaviCust custom-HP bug bites
-        // (except on the first screen of the battle).
-        if ui.ticks == 11 && !first_screen {
-            for side in 0..2 {
-                self.custom_hp_bug(side);
-            }
-        }
-        let ui = &mut self.custom_ui;
-        if let Some(t) = ui.since_confirm.as_mut() {
-            let n = *t;
-            *t += 1;
-            match n {
-                1 => self.round.status &= !4,
-                11 => self.gauge.enabled = true,
-                _ => {}
-            }
-        }
-        if self.custom_ui.installed {
+        if self.custom.committed {
+            self.restart_gauge();
             self.play_sound(SoundCue::RestoreVolume);
             for side in 0..2 {
                 if let Some(a) = self.player_actor(side) {
                     self.actors.get_mut(a).beast_out_check_delay = 1;
                 }
             }
-            self.custom_ui = CustomUi::default();
+            self.custom.committed = false;
             self.enter_mode(mode::FIGHTING);
             return;
         }
-        if let Some(results) = self.custom_ui.pending.take() {
-            self.install_exchange(*results);
-        }
+        self.tick_custom_screens(recorded);
     }
 
-    fn open_custom(&mut self) {
-        self.gauge.value = 0;
-        self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
-        self.gauge.enabled = false;
-        self.round.turn += 1;
-        self.custom_ui = CustomUi::default();
-    }
-
-    fn install_exchange(&mut self, results: [CustomResult; 2]) {
+    /// `sub_800B3D8`: both results are in: each hand with chips replaces
+    /// that player's hand, both navis' stats are taken as sent, and the
+    /// transformations wait for the turn to start.
+    pub(crate) fn install_exchange(&mut self, results: [CustomResult; 2]) {
         for (side, r) in results.into_iter().enumerate() {
             if let Some(h) = r.hand {
                 self.hands[side] = h;
@@ -868,11 +851,10 @@ impl Battle {
             self.stats[side] = r.navi_stats;
             self.transform_requests[side] = r.transform;
         }
-        self.custom_ui.installed = true;
     }
 
     /// `sub_8013FD0`: custom-HP bug damage at custom-screen open. Never kills.
-    fn custom_hp_bug(&mut self, side: u8) {
+    pub(crate) fn custom_hp_bug(&mut self, side: u8) {
         let v = self.stats[side as usize].bugs.custom_damage;
         if v == 0 {
             return;
@@ -1345,6 +1327,8 @@ mod tests {
             later_stages: [Stage { settings: 0x11, background: 3 }, Stage { settings: 0x46, background: 0x13 }],
             low_hp_music_latched: false,
             sp_times: Default::default(),
+            players: Default::default(),
+            link_delay: 0,
         });
         let r = &mut b.round;
         (r.top, r.mode, r.sub, r.init) = (top::END, 4, 0, 0);
@@ -1401,6 +1385,8 @@ mod tests {
             later_stages: Default::default(),
             low_hp_music_latched: true,
             sp_times: Default::default(),
+            players: Default::default(),
+            link_delay: 0,
         });
         tick(&mut b);
         assert_eq!(b.sound_cues(), [SoundCue::Music(SoundId::VIRUS_BATTLE)]);

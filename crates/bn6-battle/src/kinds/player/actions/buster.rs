@@ -8,7 +8,7 @@ use crate::battle::Battle;
 use crate::collision::f1;
 use crate::data::player as pdata;
 use crate::kinds::attachment::{self, AttachSlot};
-use crate::kinds::player::{actor_id, ai, ai_mut, emotion, exit_attack_state, flag1, stats};
+use crate::kinds::player::{Emotion, actor_id, ai, ai_mut, emotion, exit_attack_state, flag1, stats};
 use crate::kinds::player::actions::movement;
 use crate::kinds::player::idle;
 use crate::object::ObjectRef;
@@ -38,7 +38,7 @@ pub(in crate::kinds::player) fn raise_arm(b: &mut Battle, r: ObjectRef) {
                     0 => 0,
                     e => 0x14u8.wrapping_add(e),
                 },
-                0x0B | 0x0C if emotion(b, b.objects.get(r).alliance) == 2 => 0xE,
+                0x0B | 0x0C if emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro => 0xE,
                 0x0D..=0x11 => 5 + form - 0x0D,
                 _ => 0,
             };

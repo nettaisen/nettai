@@ -16,9 +16,9 @@ is the battle once `f + 1` ticks have run.
   22 KB (8.6 KB inline plus the object pools); saving takes about 2 µs, restoring 2-8 µs (release).
 - **Digest**: `Battle::digest()` hashes the simulation state (presentation left out) with a platform-independent
   hasher. Peers compare it every confirmed frame.
-- **Input**: `Battle::step(&TickInput)`. A `TickInput` is both players' buttons plus, until the custom screen is
-  simulated, the custom screen's results and the link-closed event, which netplay carries in a player's input so
-  both peers step every frame with the same record.
+- **Input**: `Battle::step(&TickInput)`. A `TickInput` is both players' buttons plus the link-closed event at
+  the end of a round, which netplay carries in a player's input so both peers step every frame with the same
+  record. Both players' custom screens are simulated from their buttons (engine/custom-screen.md).
 - **Perspective**: both peers simulate from the same side (`RoundSetup::local_side` is shared setup) and present
   it for their own player (`sound_cues_for`, `banner_for`, `round_end_for`). §2 explains why and lists every
   per-console detail with its decision.
@@ -52,26 +52,28 @@ mutability, hash-map iteration or addresses (§7).
 Each player contributes their share. In bn6-netplay that is `Bn6Input { tick: PlayerTick, events: TickEvents }`;
 the frame's record combines both shares (`bn6::tick_input`).
 
-**Fields that exist only because the custom screen isn't simulated yet.** The custom screen runs on each console
-and exchanges its results over the link; the engine takes them as input:
+**The custom screen is simulated.** Both players' custom screens run in the engine from their buttons
+(engine/custom-screen.md): `PlayerTick` is just the buttons, and what used to be inputs is state:
 
-| Field | What it is | Once the custom screen is simulated |
-|---|---|---|
-| `PlayerTick::held` | The player's buttons | The whole input |
-| `PlayerTick::in_custom` | The player's custom screen is open (drives the NaviCust drain bug) | Derived state |
-| `TickEvents::local_confirm` | The local side's player confirmed (starts the status and gauge timers) | Derived from that player's buttons, for both sides (§8.1) |
-| `TickEvents::exchange` | Both players' chosen hands, stats and transformation requests | Derived state |
-| `TickEvents::link_closed` | The end state's link session closed | A fixed delay, or derived |
+| Former input | Now |
+|---|---|
+| `PlayerTick::in_custom` | `custom::Side::in_custom`, carried to the fight by the simulated link (`link::Link`) |
+| `TickEvents::local_confirm` | Each player's screen, from their buttons |
+| `TickEvents::exchange` | Each player's result (`custom::Side::sent`), arriving 50 + `link_delay` ticks after it is sent |
+| `TickEvents::link_closed` | Still an event (the end state's link session closing) |
 
-Until then, the events are part of the frame's input record: one player's input carries them (the golden-trace
-replay puts them in player 0's), both peers receive them like any input, and a peer that predicted "no events"
-rolls back when they arrive. Prediction repeats the buttons and `in_custom` and never repeats events
-(`Game::predict` for `Battle`).
+`TickEvents::recorded` exists only to check against golden traces that lack a player's folder: that player's
+screen isn't simulated and the recording supplies what it sent (engine/custom-screen.md §7). The events are part
+of the frame's input record: one player's input carries them (the golden-trace replay puts them in player 0's),
+both peers receive them like any input, and a peer that predicted "no events" rolls back when they arrive.
+Prediction repeats the buttons and never repeats events (`Game::predict` for `Battle`).
 
-For synthetic matches, `standin::StandInBattle` puts a stand-in custom screen inside the simulated game: A
-confirms (after 20 ticks; everyone confirms after 90), the results go out 12 ticks after the local confirmation,
-and the link closes at once. Its state is part of the game and rolls back with it, so the players' buttons are
-the whole input, as they will be with the real custom screen.
+The simulated link also delays the fight's view of the buttons by `RoundSetup::link_delay` ticks (4 in the
+recordings, as the original's link queue); the custom screens read them at once. This is part of the game, not
+of the netplay layer, whose own input delay and prediction come on top.
+
+For synthetic matches, `standin::StandInBattle` closes the link at once at the end of a round; everything else is
+the engine, so the players' buttons are the whole input.
 
 ### 1.2 Prediction
 
@@ -177,8 +179,8 @@ must use the same entry.
 | `player/entry.rs` | Which navi appears at once and which fades in | Shared: it is object state (phase, timers) and gates the intro; the non-local viewer sees the mirror image of the original (its own navi fades in) | Accepted, cosmetic |
 | `charge_glow.rs` `viewer_sees`, `obstacle.rs` `update_visibility`, `player/status.rs` blind visibility, `time_freeze.rs` `show_user` | A blinded local player doesn't see the other side's navi, effects and obstacles (`VISIBLE`) | Should be presentation: record "hidden from a blinded viewer" per viewer instead of clearing `VISIBLE` for the local one | Open (cosmetic; the digest leaves `VISIBLE` out) |
 | `lockon_marker.rs`, `charge_glow.rs` `shown_to_side` | The Beast Out lock-on marker and the A-charge glow show only on the owner's console | Same as above | Open (cosmetic: the other viewer sees the local player's marker, not its own) |
-| `battle.rs` custom screen (`local_confirm`, `round.status`, `custom_ui`) | The local player's custom-screen progress; the gauge task restarts 11 ticks after the local confirmation | Shared through the input record today; the custom screen port must compute both sides (§8.1) | Handed over |
-| RNG1 (the per-console stream) | Folder shuffle and other local decisions | Not in the engine; the custom screen must not bring it in (§8.1) | Handed over |
+| `battle.rs` custom screen (`local_confirm`, `round.status`, `custom_ui`) | The local player's custom-screen progress; the gauge task restarts 11 ticks after the local confirmation | Both players' screens are simulated (`custom`); the gauge restarts when either player sends and when the screen closes | Done |
+| RNG1 (the per-console stream) | Folder shuffle and other local decisions | Not in the engine: each player's shuffled folder is round setup (`RoundSetup::players`); the custom screen draws no RNG | Done |
 | `RoundSetup::low_hp_music_latched` | The local console waited for the link at init | Per-console quirk of the recording; netplay rounds start unlatched | Documented |
 
 ## 3. Presentation under rollback
@@ -231,30 +233,33 @@ crates/bn6-netplay is generic over a `Game` (advance on two inputs, digest, `Clo
   speculative if the lockstep run gets through that frame.
 
 `bn6` implements `Game` for `Battle` (the engine's input record, events carried in the inputs) and `standin`
-provides the stand-in custom screen, a MegaMan built in code, a netbattle setup and a seeded button masher.
+provides the link closing, a MegaMan built in code, a netbattle setup with given folders and a seeded button
+masher.
 
 ## 5. Results
 
 ### 5.1 Synthetic netbattles (in this repository)
 
-`crates/bn6-netplay/tests/rollback.rs`: two MegaMen with 500 HP on netbattle settings 0; side 0 holds GunDelS3,
-EraseMan, GunDelS1, Invisibl, GunDelS3, side 1 GunDelSols only; every custom screen hands out the same hand. Both
-players mash (held buttons change every four frames on average: a direction, A, L or R; B and START are never
-pressed, see §7.2). Three seeds, each under every configuration:
+`crates/bn6-netplay/tests/rollback.rs`: two MegaMen with 300 HP on netbattle settings 0; side 0's folder holds
+GunDelS3, EraseMan, GunDelS1, Invisibl, GunDelS3 over and over, side 1's GunDelSols only (no Crosses or Beast
+Out). Both players mash (held buttons change every four frames on average: a direction, A, L or R; B and START
+are never pressed, see §7.2), and the mashing drives their custom screens too. Three seeds, each under every
+configuration:
 
-| Latency + jitter | Input delay | Seed 1 / 2 / 3: frames to the KO | Rollbacks per peer (seed 3) | Deepest rollback | Diverged |
+| Latency + jitter | Input delay | Seed 1 / 2 / 3: frames to the KO | Rollbacks per peer (seed 2) | Deepest rollback | Diverged |
 |---|---|---|---|---|---|
-| 0 | 0 | 2,093 / 2,530 / 7,726 | 0 | 0 | never |
-| 1 + 1 | 0 | same | ~1,700 | 2 | never |
-| 2 + 1 | 0 | same | ~1,700 | 3 | never |
-| 5 + 2 | 0 | same | ~1,800 | 7 | never |
-| 10 + 3 | 0 | same | ~1,900 | 13 | never |
-| 10 + 2 | 3 | same | ~1,800 | 10 | never |
+| 0 | 0 | 3,106 / 6,706 / 1,988 | 0 | 0 | never |
+| 1 + 1 | 0 | same | ~1,450 | 2 | never |
+| 2 + 1 | 0 | same | ~1,450 | 3 | never |
+| 5 + 2 | 0 | same | ~1,550 | 7 | never |
+| 10 + 3 | 0 | same | ~1,650 | 13 | never |
+| 10 + 2 | 3 | same | ~1,550 | 10 | never |
 
 Every battle runs to the end with both peers' digests equal to each other and to the lockstep run on every
-frame, and ends the same way as without rollback. The other tests: the engine's own input record with recorded
-custom-screen events riding in player 0's input (latencies 3 and 8, 9,888 frames, ~2,200 rollbacks, in sync),
-confirmation order, and the two negative tests below.
+frame, and ends the same way as without rollback. The other tests: the engine's own input record with the
+recorded events riding in player 0's input (latencies 3 and 8, 8,803 frames, ~2,000 rollbacks, in sync),
+confirmation order, and the two negative tests below. (With 500 HP a mashed battle can reach the 15th custom
+screen, whose turn timer ends in the damage judge, which the engine doesn't have yet.)
 
 ### 5.2 How long before a divergence, and why
 
@@ -321,7 +326,8 @@ and is needed once per confirmed frame, not per re-simulated one.
   explores input sequences no player made, so it can reach an unported path the real match never does, and crash
   a peer that is otherwise in sync. The synthetic tests avoid the paths that mashing reaches: the buster (B,
   actions 0x11 and 0x16), counters to a time freeze with a freeze chip, ElmntMan's random elements, and Beast
-  Out's head and rush (so the stand-in's Beast Out is off). The simulator reports a panic as speculative when the
+  Out's head and rush (so the synthetic players have no Beast Out or Crosses), and the damage judge after the
+  15th turn (so their battles are short). The simulator reports a panic as speculative when the
   lockstep run gets through the frame. For netplay, unported paths must become unreachable (content that can't
   run isn't allowed in a netplay folder) or end the battle deterministically on both peers instead of panicking.
 - **Per-viewer visibility**: the blindness rules and the lock-on marker and A-charge glow still decide `VISIBLE`
@@ -346,6 +352,8 @@ and is needed once per confirmed frame, not per re-simulated one.
 ## 8. What the other layers must guarantee
 
 ### 8.1 The custom screen
+
+Done (engine/custom-screen.md): what follows is what it guarantees.
 
 - **Driven by buttons only.** Its outputs (the hand, the transformation, confirmation timing) come from the
   players' buttons and simulated state, inside `Battle`. Then `TickEvents` and `PlayerTick::in_custom` go away

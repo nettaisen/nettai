@@ -2,9 +2,11 @@
 //!
 //! [`Battle`] steps on the engine's per-tick input record
 //! ([`TickInput`]). Each player contributes their share of it: their
-//! buttons, and (until the custom screen is simulated) the frame's events
-//! their console produced ([`Bn6Input`]). Carrying the events in the
-//! inputs is what makes both peers step each frame with the same ones.
+//! buttons, and the frame's events their console produced ([`Bn6Input`]):
+//! the link session closing at the end of a round, and, only when checking
+//! against a recording that lacks a player's folder, that player's
+//! recorded custom-screen results. Carrying the events in the inputs is
+//! what makes both peers step each frame with the same ones.
 //!
 //! Both peers simulate from the same perspective (`RoundSetup::local_side`
 //! is part of the shared setup); each presents it for its own player
@@ -20,8 +22,7 @@ use bn6_battle::{Battle, PlayerTick, TickEvents, TickInput};
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Bn6Input {
     pub tick: PlayerTick,
-    /// Events this player's console contributes to the frame. They exist
-    /// only because the custom screen isn't simulated yet (see
+    /// Events this player's console contributes to the frame (see
     /// `bn6_battle::TickInput`); an input carries them on the frame they
     /// happen only.
     pub events: TickEvents,
@@ -32,10 +33,11 @@ pub struct Bn6Input {
 pub fn tick_input(inputs: &[Bn6Input; 2]) -> TickInput {
     let mut events = TickEvents::default();
     for i in inputs {
-        events.local_confirm |= i.events.local_confirm;
         events.link_closed |= i.events.link_closed;
-        if i.events.exchange.is_some() {
-            events.exchange = i.events.exchange.clone();
+        for (merged, recorded) in events.recorded.iter_mut().zip(&i.events.recorded) {
+            if recorded.is_some() {
+                *merged = recorded.clone();
+            }
         }
     }
     TickInput { players: [inputs[0].tick, inputs[1].tick], events }
@@ -60,7 +62,7 @@ impl Game for Battle {
         Bn6Input::default()
     }
 
-    /// Buttons and the custom-screen flag carry on; events happen once.
+    /// Buttons carry on; events happen once.
     fn predict(last: &Bn6Input) -> Bn6Input {
         Bn6Input { tick: last.tick, events: TickEvents::default() }
     }

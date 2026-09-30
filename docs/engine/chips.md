@@ -233,7 +233,7 @@ are indexed by hand entry i. A code pointer to entry i, `e = blk+2+2i`, reaches 
 | +0x26 | u16[6] | `charge_bonus[i]` | 0 at build time. Raised while A is held by `sub_80F0608`, the per-frame hook `off_80EA93C[AIIndex]`. That only happens for navi 5 or cross form 5/0x11 with a Fire (`+4==1`) damage chip, so never for plain MegaMan. Zeroed at form changes (`sub_8014216`, `sub_80144C0`). | builder, `sub_80F0608` | `sub_800EDD0` |
 | +0x32 | u16[6] | `raw_sel[i]` | The raw selection as packed `code<<9\|id`, taken before PA and before modifier folding. Illegal chips appear as 0x3785. | builder, copy | PA detection and the mega/giga counter (custom-screen side); no fight-time reader |
 | +0x3E | u8[6] | `tag[i]` | `BattleState[7] − 1` (turn number from 0). | builder | `sub_800EDD0` (returned in r4 bits 8..15), `sub_80DB1E0` |
-| +0x44 | u8[6] | `mod_flags[i]` | bit0 = slot-descriptor byte +4 (**meaning unknown**, 0 in the trace); bit1 = WhiCapsl folded (use ORs 0x4000 DAMAGE_PARALYZE); bit2 = Uninstll folded (ORs 0x2000 DAMAGE_UNINSTALL). | builder | `sub_800EDD0` → `sub_8012C34` |
+| +0x44 | u8[6] | `mod_flags[i]` | bit0 = the folder's Regular chip (slot-descriptor byte +4, set on slot 0 while BattleState+0x17); bit1 = WhiCapsl folded (use ORs 0x4000 DAMAGE_PARALYZE); bit2 = Uninstll folded (ORs 0x2000 DAMAGE_UNINSTALL). | builder | `sub_800EDD0` → `sub_8012C34` |
 | +0x4A..+0x4F | – | – | Unused. | zero-init, copy | none |
 
 Invariants: `cur ≤ 5`. The hand is empty when `id[cur] == 0xFFFF`.
@@ -247,9 +247,13 @@ selected a chip.
   which zero-fills 0x50 bytes and then fills +2..+0xD with 0xFF.
 - Blocks are **not** reset per turn. `sub_800B3D8` overwrites a block only when that player transmitted a
   non-empty hand. A player who selects nothing therefore keeps their unused chips from the previous turn,
-  including `cur`. This follows from the code only; no multi-turn trace was available. **[unverified]**
+  including `cur` **[trace: soundmod round 2 turn 4]**. A player who picks only Beast Out sends an empty hand
+  (hand[0] = 0, all ids 0xFFFF), which does replace the block.
 
 ### 2.2 Custom screen → link → block (PvP)
+
+The custom screen itself, and the verified timing model of this exchange for both players, are in
+[`custom-screen.md`](custom-screen.md) (§5-§6); where they differ, it supersedes this section and §2.3-§2.4.
 
 This path runs in link battles (`GetBattleEffects() & 8`). Both GBAs simulate both players. Only the hand
 builder runs locally; each side's result is transmitted.
@@ -289,8 +293,11 @@ The builder writes `hand[0] = 0xFF` when there are no selections, meaning "no ch
 
 | Frame | Event |
 |---|---|
-| 386 | p0 confirms. |
+| 375 | p0 presses OK: the hand is built. |
+| 376 | Slide-out starts; BS+0x11 bit 2 clears. |
+| 386 | The packet is filled (`sub_800B3A2`). |
 | 387–436 | p0's 50 words are sent. |
+| 391–440 | p0's own words come back into its staging buffer (the link's 4-frame latency). |
 | 478–527 | p1's words arrive. Word 1 is `0xFFFF00FF`: p1 selected nothing. |
 | **527** | p1's magic word arrives. `sub_800B3D8` fills block 0. Later the same frame `sub_800FDC0` sets p0's ChipsHeld=4, Chip=0x11. `BattleState = [4,8,0,1]`. |
 | 528 | Fighting (`BattleState+1 = 0x0C`). |
@@ -301,6 +308,9 @@ The commit write backtrace, from a write watch on 0x20349C0 from frame 527, is `
 sub_8026A88 ← sub_8026A28 ← sub_8009338 ← sub_8009158 ← battle_8007A44`.
 
 ### 2.3 Port contract for the hand
+
+*Superseded*: the port simulates both players' custom screens ([`custom-screen.md`](custom-screen.md) §0). The
+contract below describes the original's per-console view.
 
 Per turn and per player, accept either input:
 - the 0x50-byte hand the player transmitted, which is exact and simplest; or
@@ -350,7 +360,8 @@ for i in 0..6: hand.id[i]=W.id[i]; hand.dmg[i]=W.dmg[i]; hand.atk_bonus[i]=W.bon
 ```
 
 **Validity check `sub_800B022`.** The chip is replaced by 0x3785 (error chip 0x185, code 0x1B) if either of these holds:
-- its class is 1 or 2 and `dword_20367E0[class] > ns[L].byte(0x0A+class)` (the mega/giga limit); or
+- its code isn't 0x1B or 0x1C, its class is 1 or 2 and `dword_20367E0[class] > ns[L].byte(0x0A+class)` (the
+  mega/giga limit; the counts are per round, raised when a hand is sent, custom-screen.md §5.4); or
 - `sub_8006EE8(id, code')` fails. Here `code' = 0xFF` when code == 0x1B or id ≥ 0x19B. That check is an
   anti-tamper mirror plus the code-legality test.
 
@@ -362,13 +373,15 @@ Legitimate input never triggers it.
 - **kind 0** (`sub_80295C8`): `len` copies of `ids[0]` whose codes run consecutive and ascending in selection
   order, with at most one `*` wildcard.
 - **kind 4** (`sub_802961A`): the exact id sequence; codes are ignored.
-- On a match, `sub_8029652` enforces **once per battle per player** via bit `pa−0x140` of `dword_203CA48` (cleared
-  in `sub_801BE70`). The bit is set **before** the `sub_8029328` veto, so a vetoed PA is still spent.
+- On a match, `sub_8029652` enforces **once per round per player** via bit `pa−0x140` of `dword_203CA48` (cleared
+  by `sub_801BE70` at each round's init). A PA already spent is passed over and the scan goes on. The bit is set
+  **before** the `sub_8029328` veto, so a vetoed PA is still spent (the veto never fires in practice).
+- On a formed PA, `sub_802B6F2` arms the PA animation (custom sub-state 0x10), which delays sending the hand.
 - Examples: GigaCan1–3 (Cannon/HiCannon/M-Cannon ×3), H-Burst, LifeSrd, and StreamHd (AuraHed ×3).
 
 **PA replace `sub_80292CC`:**
 - Entry s becomes `(pa, sub_80109A4(pa), fam(pa))`.
-- The `W.flag` bit0 values of the window are ORed into entry s.
+- Bit 0 (the Regular chip) of the window's other entries is ORed into entry s.
 - The tail (id, dmg, fam, flag) shifts down. `W.bonus`, `W.code` and `hand.raw` are **not** shifted.
 
 **Modifier folding `sub_8029224`** covers **Atk+X / Navi+X and similar**. For entry i = 1, 2, … (entry 0 never
