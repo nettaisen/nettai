@@ -1,0 +1,7 @@
+# An absorbed obstacle (effect object #0x87, `sub_80E97F0`) is a script. The
+# obstacle framework spawns it (`sub_800F90E`) through `absorbed_obstacle.spawn`.
+
+[kind]
+pool = "effect"
+index = 0x87
+script = "absorbed_obstacle.luau"

@@ -462,14 +462,23 @@ pub fn blink_out(b: &mut Battle, r: ObjectRef, f2: u32) -> BlinkOut {
 }
 
 /// `sub_800F90E`: an absorbed obstacle of kind `kind` (see
-/// `ObjectData::absorbed_sprites`) flies to the absorbing side's navi.
-/// `palette` is the obstacle's sprite palette.
-pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, kind: u8, palette: u8) {
+/// `ObjectData::absorbed_sprites`) flies from `r` to the absorbing side's
+/// navi: the content pack's absorbed obstacle (`sub_80E996E`, effect
+/// #0x87, objects/absorbed-obstacle), spawned where `r` is with its
+/// animation, sprite palette, hidden sprite parts and facing, running
+/// neither while paused nor while dimmed.
+pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, kind: u8) {
     let side = (f2_of(b, r) & f2::ABSORBED_BY_1 != 0) as u8;
     let o = b.objects.get(r);
-    let spec = crate::kinds::absorbed_obstacle::Spec { kind, side, anim: o.anim, palette };
-    let pos = o.pos;
-    crate::kinds::absorbed_obstacle::spawn(b, r, pos, spec);
+    let (pos, anim, alliance, flip) = (o.pos, o.anim, o.alliance, o.flip);
+    let look = b.objects.sprite(r).look;
+    let params = [kind, side, anim, look.palette];
+    let Some(e) = crate::behavior::spawn_kind(b, "absorbed-obstacle", pos, params) else { return };
+    crate::behavior::set_state_field(b, e, "hidden_parts", bn6_content_api::Value::Int(look.hidden_parts as i64));
+    let o = b.objects.get_mut(e);
+    o.alliance = alliance;
+    o.flip = flip;
+    o.flags &= !(flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED);
 }
 
 /// Done: hidden, and destroyed at the next update.

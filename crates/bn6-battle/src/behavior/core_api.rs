@@ -253,6 +253,16 @@ impl CoreApi for Battle {
         }
     }
 
+    fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()> {
+        let v = store(stat.name(), stat.writable(), stat.ty(), v)?;
+        let s = &mut self.stats[side as usize & 1];
+        match (stat, v) {
+            (NaviStat::Attack, FieldValue::U8(x)) => s.attack = x,
+            (f, v) => unreachable!("navi stat {f:?} took {v:?}"),
+        }
+        Ok(())
+    }
+
     fn emotion(&self, side: u8) -> Emotion {
         use crate::kinds::player::Emotion as E;
         match kinds::player::emotion(self, side & 1) {
@@ -323,6 +333,17 @@ impl CoreApi for Battle {
         s.gauge = (s.gauge as u32 + n as u32).min(crate::hud::CustomGauge::FULL as u32) as u16;
     }
 
+    fn add_plus_bonus(&mut self, side: u8, index: u8, n: u16) -> ApiResult<()> {
+        let s = &mut self.sides[side as usize & 1];
+        let Some(bonus) = s.plus_bonus.get_mut(index as usize) else {
+            return Err(ApiError::Other(format!(
+                "plus bonus {index} is past the side state's two (sub_8010488 would write its timers)"
+            )));
+        };
+        *bonus = bonus.wrapping_add(n);
+        Ok(())
+    }
+
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
     }
@@ -343,6 +364,11 @@ impl CoreApi for Battle {
 
     fn panel_valid(&self, p: PanelPos) -> bool {
         crate::field::is_valid(p.x, p.y)
+    }
+
+    fn side_field_objects(&self, side: u8) -> Vec<ObjectRef> {
+        let first = (side as usize & 1) * 3;
+        self.field.objects.slots[first..first + 3].iter().flatten().copied().collect()
     }
 
     fn panel_center(&self, p: PanelPos) -> (i32, i32) {
@@ -1071,5 +1097,9 @@ impl CoreApi for Battle {
 
     fn navi_chip_left(&mut self, controller: ObjectRef) {
         kinds::navi_chip::navi_left(self, controller);
+    }
+
+    fn absorb_obstacles(&mut self, absorber: ObjectRef) {
+        kinds::obstacle::absorb_all(self, absorber);
     }
 }

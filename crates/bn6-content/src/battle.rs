@@ -610,7 +610,7 @@ pub fn export(c: &Content) -> Files {
     put(
         "objects/absorbed-obstacle/object.toml".into(),
         toml_file(
-            "The sprite an absorbed obstacle (effect object #0x39) flies with, by obstacle kind.",
+            "The sprite an absorbed obstacle (effect object #0x87) flies with, by obstacle kind.",
             &AbsorbedFile { obstacle: absorbed, script_kind: script_kind("absorbed-obstacle") },
         ),
     );
