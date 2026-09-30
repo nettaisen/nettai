@@ -652,6 +652,12 @@ impl UserData for Navi {
                 let v = with(|api, _| Ok(api.navi_stat(this.0, f)))?;
                 from_api(lua, v, &f.ty())
             });
+            if f.writable() {
+                fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
+                    let v = to_api(v, &f.ty(), f.name())?;
+                    with(|api, _| api.set_navi_stat(this.0, f, v).map_err(api_error))
+                });
+            }
         }
     }
 }

@@ -313,7 +313,8 @@ declare class Object
     buffered_move: number
     chip_lockout: number
     back_special_cooldown: number
-    -- The weapon routines the navi's buttons run (0xFF = none).
+    -- The weapon routines the navi's buttons run (0xFF = none; the
+    -- buster's and the charged shot's writable).
     buster_routine: number
     charge_shot_routine: number
     back_special_routine: number
@@ -425,7 +426,8 @@ declare class Object
     function pop_absorbed(self): (number?, number?)
 end
 
--- A side's navi stats (read-only).
+-- A side's navi stats (read-only but the buster's levels, the custom
+-- level, the hand-shrink bug's turn, the start weapons and the shoes).
 declare class Navi
     -- Fighting in the sun.
     sun: boolean
@@ -450,6 +452,15 @@ declare class Navi
     -- The form is a Beast form, Beast Over.
     beast: boolean
     beast_over: boolean
+    custom_level: number
+    -- NaviCust bug: the hand shrinks from this turn on (0 none).
+    hand_shrink_turn: number
+    -- The weapon routines rounds start with (0xFF none).
+    charge_shot_routine: number
+    back_special_routine: number
+    float_shoes: boolean
+    air_shoes: boolean
+    undershirt: boolean
 end
 
 -- A one-tick hit region (`battle.hitbox`).
@@ -527,6 +538,8 @@ declare battle: {
     navis_in: () -> boolean,
     -- Presentation only: the side the simulation's perspective is.
     local_side: () -> number,
+    -- Custom screens opened so far.
+    turn: () -> number,
     -- Sound for both players, or for one side's player (output only).
     play_sound: (id: number) -> (),
     play_sound_for: (side: number, id: number) -> (),

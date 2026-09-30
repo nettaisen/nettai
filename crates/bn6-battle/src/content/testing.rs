@@ -39,6 +39,11 @@ pub const GRAB: ChipId = 0x07;
 pub const CUBE: ChipId = 0x08;
 /// A trap chip (action 0x15, subtype 20, Param1 3: no object).
 pub const TRAP: ChipId = 0x09;
+/// Navi-changing dimming chips (action 0x15, subtype 38): the buster and
+/// shoes boost (Param1 0), and a new charged shot (Param1 2: weapon
+/// routine 1).
+pub const BOOST: ChipId = 0x0A;
+pub const ARM: ChipId = 0x0B;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -150,6 +155,7 @@ pub fn scripts() -> Scripts {
                 ("objects/rock-cube/rock_cube", "objects/rock-cube/rock_cube"),
                 ("objects/rock-debris/rock_debris", "objects/rock-debris/rock_debris"),
                 ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
+                ("objects/navi-boost/navi_boost", "objects/navi-boost/navi_boost"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -206,6 +212,7 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("rock-cube", Pool::Effect, 0x37, "objects/rock-cube/rock_cube") },
         kind("rock-debris", Pool::Effect, 0x38, "objects/rock-debris/rock_debris"),
         ObjectKind { scratch_position: true, ..kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip") },
+        ObjectKind { scratch_position: true, ..kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost") },
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -326,6 +333,17 @@ fn named_chips() -> Vec<ChipData> {
             params: [3, 0, 0, 0],
             script: Some("objects/trap-chip/trap_chip".into()),
             ..chip(TRAP, "Trap", 0x15, 20)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            script: Some("objects/navi-boost/navi_boost".into()),
+            ..chip(BOOST, "Boost", 0x15, 38)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            params: [2, 1, 0, 0],
+            script: Some("objects/navi-boost/navi_boost".into()),
+            ..chip(ARM, "Arm", 0x15, 38)
         },
     ]
 }
