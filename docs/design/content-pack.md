@@ -360,9 +360,10 @@ let pas = b.content.program_advances();          // in the order they are tried
 - Where a function needs `&mut Battle` while holding content data,
   clone the `Arc` first (`let content = b.content.clone();`): it costs an
   atomic increment.
-- Trace replays take the content: `trace::run_round(round, &content)`,
-  `round.start(content)`, `round.round_setup(&content)`.
-- `BattleSettings::netbattle_from_bytes(bytes, &content)` resolves the
+- Trace replays (bn6-compat's `trace`) take the content and compat:
+  `trace::run_round(round, &content, &compat)`, `round.start(content)`,
+  `round.round_setup(&content)`.
+- `bn6_compat::codec::battle_settings(bytes, &content)` resolves the
   actor list the record names by its original address;
   `BattleSettings::actors` is an `ActorListId` into
   `content.rules.stages.actor_lists`.
