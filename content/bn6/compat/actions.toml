@@ -201,4 +201,5 @@
 "chargecross/tackle/action" = 0x56
 "dustcross/charge/action" = 0x57
 "megaman/absorb/action" = 0x58
+"megaman/anti-damage/action" = 0x5A
 "z-saver/action" = 0x5B
