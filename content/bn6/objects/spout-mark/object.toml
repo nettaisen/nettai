@@ -1,0 +1,6 @@
+# A water mark of SpoutMan's geyser (effect object #0x2E, `sub_80E39A0`) is a script.
+
+[kind]
+pool = "effect"
+index = 0x2E
+script = "spout_mark.luau"
