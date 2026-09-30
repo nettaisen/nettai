@@ -134,6 +134,52 @@ fn definition_mistakes_are_load_errors() {
     assert!(e.contains("chip \"x\" is defined twice: in a.luau and in b.luau"), "{e}");
 }
 
+/// Asset names for these tests.
+fn names() -> AssetNames {
+    let mut a = AssetNames::default();
+    a.sprites.insert("bomb".into(), bn6_content_api::SpriteId { category: 0x0C, index: 2 });
+    a.sprites.insert("explosion".into(), bn6_content_api::SpriteId { category: 0x0C, index: 1 });
+    a.sounds.insert("throw".into(), 0x1A6);
+    a
+}
+
+fn define_named(modules: &[(&str, &str)]) -> Result<Definitions, String> {
+    define(&pack(modules), &Data::Nil, &names(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
+}
+
+#[test]
+fn assets_resolve_by_name_while_content_loads() {
+    let d = define_named(&[(
+        "lib/effects",
+        "local SOUND = asset.sound('throw')\n\
+         if asset.sprite('bomb') ~= asset.sprite('bomb') then error('one value per asset') end\n\
+         return { explosion = define.effect { sprite = asset.sprite('explosion'), anim = 3, sound = SOUND } }",
+    )])
+    .unwrap();
+    let e = &d.of(Registry::Effect)[0];
+    assert_eq!(e.spec.field("sprite"), &Data::Asset(bn6_content_api::AssetKind::Sprite, "explosion".into()));
+    assert_eq!(e.spec.field("sound"), &Data::Asset(bn6_content_api::AssetKind::Sound, "throw".into()));
+    // An unknown name is an error naming the module; so is a resolver
+    // called after loading.
+    let e = define_named(&[("chips/x/chip", "return { s = asset.sprite('bom') }")]).unwrap_err();
+    assert!(e.contains("chips/x/chip: no sprite is named \"bom\""), "{e}");
+    let e = define_named(&[("m", "return { f = function() return asset.sound('throw') end }")]);
+    assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
+}
+
+#[test]
+fn the_roles_are_one_definition() {
+    let d = define_named(&[
+        ("lib/counter", "return define.action { id = 'counter', state = {}, update = function(me, s) end }"),
+        ("rules/roles", "return define.roles { actions = { anti_damage_counter = require('../lib/counter') } }"),
+    ])
+    .unwrap();
+    let roles = d.get(Registry::Roles, "roles").expect("keyed roles");
+    assert_eq!(roles.spec.field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "counter".into()));
+    let e = define_named(&[("a", "return define.roles {}"), ("b", "return define.roles {}")]).unwrap_err();
+    assert!(e.contains("roles \"roles\" is defined twice"), "{e}");
+}
+
 #[test]
 fn definitions_are_frozen_and_definers_close_after_loading() {
     let p = pack(&[(
