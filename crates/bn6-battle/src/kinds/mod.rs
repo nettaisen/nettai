@@ -15,6 +15,7 @@ pub mod eruption;
 pub mod form_overlay;
 pub mod full_synchro_aura;
 pub mod heal;
+pub mod hit_marker;
 pub mod hitbox;
 pub mod ice_visual;
 pub mod idle_overlay;
@@ -95,6 +96,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, 4) => spark::update(b, r),
         (Pool::Effect, bubble_visual::INDEX) => bubble_visual::update(b, r),
         (Pool::Effect, ice_visual::INDEX) => ice_visual::update(b, r),
+        (Pool::Effect, hit_marker::INDEX) => hit_marker::update(b, r),
         (Pool::Actor, form_overlay::INDEX) => form_overlay::update(b, r),
         (Pool::Effect, afterimage::INDEX) => afterimage::update(b, r),
         (Pool::Effect, lockon_marker::INDEX) => lockon_marker::update(b, r),
