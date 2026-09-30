@@ -347,10 +347,10 @@ fn clear_invulnerable(b: &mut Battle, r: ObjectRef) {
     clear_flag1(b, r, f1::INVULNERABLE);
 }
 
-/// `sub_80101C4`: end the timed semi-intangible state.
-fn cancel_semi_intangible(b: &mut Battle, r: ObjectRef) {
-    coll_mut(b, r).status_timers[timer::SEMI_INTANGIBLE] = 0;
-    clear_flag1(b, r, f1::SEMI_INTANGIBLE);
+/// `sub_80101C4`: end the timed submerged state.
+fn cancel_submerged(b: &mut Battle, r: ObjectRef) {
+    coll_mut(b, r).status_timers[timer::SUBMERGED] = 0;
+    clear_flag1(b, r, f1::SUBMERGED);
 }
 
 /// `sub_801A284`: end paralysis.

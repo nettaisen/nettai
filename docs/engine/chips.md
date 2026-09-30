@@ -1190,7 +1190,7 @@ MegaMan `sub_8011268(form, 1)`, stored in the warp's own RelatedObject2Ptr), Cur
 first tick a warp out hides the user (`sub_80E1352(user, 0)`: VISIBLE off, and the confusion/blindness visuals,
 AIData+0x60/+0x58 objects, the Full Synchro aura and the HUD with it); after 4 ticks: VISIBLE off, the NameID's death
 hook on the warp (`sub_8011044`: takes its overlay down), a warp in shows the user again (`sub_80E13DC`: VISIBLE
-unless semi-intangible or hidden by the viewer's blindness), state 8. Its sprite steps in time stop.
+unless submerged or hidden by the viewer's blindness), state 8. Its sprite steps in time stop.
 
 **ElmntMan, T1 0x10 (`sub_80BAA8C`)**, spawned by `sub_80BAE16` on the user's panel, with the user's side, the damage
 word, and the controller's flag pointer **in its CollisionDataPtr slot** (so a trace reading ObjectFlags1 through it

@@ -48,7 +48,7 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     tick_counter_window(b, r);
     count_stun_ticks(b, r);
     anger_trigger(b, r);
-    hit_ends_semi_intangible(b, r);
+    hit_ends_submerged(b, r);
     pierce_ends_flash(b, r);
     guard_spark(b, r);
 }
@@ -559,7 +559,7 @@ fn apply_status(b: &mut Battle, r: ObjectRef) {
         StatusTimer::Blind => timer::BLIND,
         StatusTimer::Immobilize => timer::IMMOBILIZE,
         StatusTimer::Flash => timer::FLASH,
-        StatusTimer::SemiIntangible => timer::SEMI_INTANGIBLE,
+        StatusTimer::Submerged => timer::SUBMERGED,
         StatusTimer::Invulnerable => timer::INVULNERABLE,
         StatusTimer::Freeze => timer::FREEZE,
         StatusTimer::Bubble => timer::BUBBLE,
@@ -674,11 +674,11 @@ fn anger_trigger(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_8010198`: any hit ends the timed semi-intangible state.
-fn hit_ends_semi_intangible(b: &mut Battle, r: ObjectRef) {
+/// `sub_8010198`: any hit ends the timed submerged state.
+fn hit_ends_submerged(b: &mut Battle, r: ObjectRef) {
     let c = coll_mut(b, r);
-    if c.status_timers[timer::SEMI_INTANGIBLE] != 0 && c.acc.hit_flags != 0 {
-        c.status_timers[timer::SEMI_INTANGIBLE] = 0;
+    if c.status_timers[timer::SUBMERGED] != 0 && c.acc.hit_flags != 0 {
+        c.status_timers[timer::SUBMERGED] = 0;
     }
 }
 
