@@ -16,8 +16,8 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
 - **Netcode**: getgud (a workspace dependency from its repository, the revision pinned in Cargo.lock) keeps the
   input queues, the settled state, the speculative tail, promotion and rollback, and the clock skew. bn6-netplay
   supplies its `World`, `BattleWorld`: one peer's battle, its player's side, snapshots and prediction (§4).
-- **Snapshots**: `Battle` is plain data and `Clone`; a snapshot (`save_state` / `load_state`) is a boxed copy
-  without the behaviors handle, which makes it `Send`, as getgud requires. About 22 KB (8.6 KB inline plus the
+- **Snapshots**: `Battle` is plain data, `Clone` and `Send`; a snapshot (`save_state` / `load_state`) is a boxed
+  copy, `Send` as getgud requires. About 22 KB (8.6 KB inline plus the
   object pools); saving takes about 2-3 µs, restoring 3-5 µs (release). The battle's content
   (`Battle::content`, an `Arc<Content>`) never changes and is shared by every snapshot.
 - **Digest**: `Battle::digest()` hashes the simulation state (presentation left out) with a platform-independent
@@ -94,18 +94,17 @@ keeps the peers' leads even, and a host adds a stall guard (§4.1).
 
 A snapshot is a copy of the battle: `Battle::save_state()` / `save_state_into()` / `load_state()`. `Battle`
 derives `Clone`; every part of its state is plain data (fixed arrays and a few vectors). Copies share only what
-never changes: the content the round runs on (`Battle::content`, an `Arc<Content>`: the pack's battle data and
-animation timing) and the behaviors handle (code, docs/design/scripting.md). State refers to content by id, never
-by reference. So a restored battle continues exactly as the saved one would have: in-repo tests roll a battle back
-mid-fight, simulate a wrong future, restore, and compare digests frame by frame.
+never changes: the content the round runs on (`Battle::content`, an `Arc<Content>`: the pack's battle data,
+animation timing and scripts). State refers to content by id, never by reference. So a restored battle continues
+exactly as the saved one would have: in-repo tests roll a battle back mid-fight, simulate a wrong future,
+restore, and compare digests frame by frame.
 
-A `Snapshot` leaves the behaviors handle out. The handle holds an `Rc` (the Luau runtime lives on the battle's
-thread), which would make every snapshot `!Send`, and getgud requires the states it keeps to be `Send`.
-`load_state` keeps the live battle's own handle, and a saved battle (`Snapshot::battle`) is for reading (drawing,
-digests, comparisons), not for stepping. `Snapshot` implements `Send` by hand; next to it, a compile-time check
-destructures `Battle` without `..` and requires every other field to be `Send`, so a new field that isn't fails
-to compile there. The battle is boxed in the snapshot: getgud moves saved states into and out of its buffers more
-often than it makes them, and a battle is 8.6 KB inline.
+The content's runtime (the Luau VM that runs its scripts) is not part of a battle: each thread keeps runtimes in
+a cache keyed by the content hash the round's setup carries, and every runtime made from the same content behaves
+the same (docs/design/scripting.md, docs/design/content-model-v2.md §7.3). So a battle and its snapshots are `Send`
+by construction, as getgud requires of the states it keeps, and a restored snapshot steps on any thread. The
+battle is boxed in the snapshot: getgud moves saved states into and out of its buffers more often than it makes
+them, and a battle is 8.6 KB inline.
 
 The per-tick sound cues are part of the copy (they are the cues of the tick that produced the state); a consumer
 reads them right after each tick.
@@ -125,7 +124,7 @@ banner's id (`Banner::id`; its lifetime is in), and the objects' `VISIBLE` heade
 perspective (§2) these are identical on both peers anyway; leaving them out keeps presentation free to become
 per-viewer later without touching desync detection.
 
-**Left out, as immutable input**: the content (`Battle::content`) and the behaviors handle. The digest covers
+**Left out, as immutable input**: the content (`Battle::content`). The digest covers
 the round's setup, and the setup carries the content's hash (`RoundSetup::content`, which `Battle::new` checks
 against the content it is given), so peers on different content have different digests from the first frame.
 
@@ -338,8 +337,8 @@ guard's `max_lead`, and the simulated link no longer reorders packets.
 
 ### 4.5 What doesn't fit getgud
 
-- **`State` must be `Send`.** A battle holds its behaviors handle (an `Rc`), so snapshots leave it out and are
-  `Send` by hand (§1.3).
+- **`State` must be `Send`.** A battle is `Send`: the content's runtime lives in a per-thread cache, not in the
+  battle (§1.3).
 - **The host can't reach the world.** `Session` has no accessor for its `World`, so what only the world sees
   (every simulated tick, for sound and checks) reaches the host through a handle the two share. A
   `Session::world()` (and `world_mut()`) would do without it.
@@ -471,8 +470,8 @@ with getgud and 6.2 to 6.6 µs with the old peer, measured side by side.
 ### 7.3 Checked, not a problem
 
 - No floats, statics, thread-locals, `Rc`/`RefCell`/`Cell`, hash maps, clocks or I/O in the simulation (the
-  frontend's thread-local panic flag and bn6-audio's floats are presentation; the content's `Arc` and the
-  behaviors handle's `Rc` point at immutable data and code, not state).
+  frontend's thread-local panic flag and bn6-audio's floats are presentation; the content's `Arc` points at
+  immutable data, and the per-thread runtime cache holds code, not state).
 - No address-dependent behavior: the values the original takes from addresses and registers (list-node addresses
   as a deletion effect's position, register garbage in spawn positions and bug codes) are modeled as fixed values
   or marked unknown.

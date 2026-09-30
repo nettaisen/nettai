@@ -155,18 +155,29 @@ const BREAKS: u32 = 0x0002;
 // A panel flag every panel type has.
 const ON_FIELD: u32 = 0x0001_0000;
 
-/// The content set, shared.
+/// The content set, shared (defined once per process: the define phase
+/// runs every module).
 pub fn content() -> Arc<Content> {
-    Arc::new(build())
+    shared().0.clone()
+}
+
+/// The content set and its hash, made once.
+fn shared() -> &'static (Arc<Content>, crate::content::ContentHash) {
+    static SHARED: std::sync::OnceLock<(Arc<Content>, crate::content::ContentHash)> = std::sync::OnceLock::new();
+    SHARED.get_or_init(|| {
+        let c = make().defined();
+        let hash = c.hash();
+        (Arc::new(c), hash)
+    })
 }
 
 /// A round on this content with battle settings `settings`, both navis
 /// with `stats`: RNG seed 1, side 0's perspective, no set score, no
 /// folders.
 pub fn round_setup(settings: u8, stats: crate::setup::NaviStats) -> crate::setup::RoundSetup {
-    let content = build();
+    let (content, hash) = shared();
     crate::setup::RoundSetup {
-        content: content.hash(),
+        content: *hash,
         settings: content.rules.stages.settings(settings),
         navi_stats: [stats; 2],
         rng: 1,
@@ -185,8 +196,80 @@ pub fn stats(hp: u16) -> crate::setup::NaviStats {
     crate::setup::NaviStats { hp, max_hp: hp, max_base_hp: hp, ..Default::default() }
 }
 
-/// The content set.
+/// The chips the test pack's ticker series takes over (`with_test_pack`).
+pub const TICKER_1: ChipId = 0x20;
+pub const TICKER_2: ChipId = 0x21;
+/// What the test pack's definitions are bridged to (`with_test_pack`): its
+/// ticker kind's object slot (an effect), its tick shot's weapon routine
+/// and action number, and its ticker chips' action number.
+pub const TICKER_SLOT: u8 = 0xF0;
+pub const TICK_SHOT: u8 = 0xF0;
+pub const TICK_SHOT_ACTION: u8 = 0xF0;
+pub const TICKER_ACTION: u8 = 0xF1;
+
+/// The content model v2 test pack (crates/bn6-battle/testdata/pack):
+/// definitions the engine's tests run.
+const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
+
+/// Every `.luau` module under `dir`, by path without `.luau`.
+pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
+    fn walk(root: &std::path::Path, dir: &std::path::Path, out: &mut std::collections::BTreeMap<String, String>) {
+        for entry in std::fs::read_dir(dir).unwrap_or_else(|e| panic!("{}: {e}", dir.display())) {
+            let path = entry.expect("a directory entry").path();
+            if path.is_dir() {
+                walk(root, &path, out);
+            } else if let Some(name) = path.to_str().and_then(|s| s.strip_suffix(".luau"))
+                && !name.ends_with(".d")
+            {
+                let rel = std::path::Path::new(name).strip_prefix(root).expect("under the root");
+                let key = rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
+                out.insert(key, std::fs::read_to_string(&path).expect("a module"));
+            }
+        }
+    }
+    let mut out = std::collections::BTreeMap::new();
+    walk(std::path::Path::new(dir), std::path::Path::new(dir), &mut out);
+    out
+}
+
+/// The content set with the test pack's modules (under `test/`), defined,
+/// and bridged the way compat bridges BN6's definitions: the ticker kind
+/// fills effect object `TICKER_SLOT`, the tick shot is weapon routine
+/// `TICK_SHOT` with its action numbered `TICK_SHOT_ACTION`, and the ticker
+/// chips take over chips `TICKER_1` and `TICKER_2` (whose records name
+/// action `TICKER_ACTION`, which both chips' own actions carry).
+pub fn with_test_pack() -> Content {
+    let mut c = make();
+    for (path, source) in modules_under(TEST_PACK) {
+        c.scripts.modules.insert(format!("test/{path}"), source);
+    }
+    for (id, name) in [(TICKER_1, "Ticker1"), (TICKER_2, "Ticker2")] {
+        c.chips[id as usize] = ChipData { damage: 10, ..chip(id, name, TICKER_ACTION, 0) };
+    }
+    c.define().unwrap_or_else(|e| panic!("content error: {e}"));
+    let bridge = |c: &mut Content| -> Result<(), bn6_content_api::ContentError> {
+        let d = &mut c.defs;
+        d.bridge_kind("test/ticker", (Pool::Effect, TICKER_SLOT))?;
+        d.bridge_weapon("test/tick-shot", TICK_SHOT)?;
+        d.bridge_action("test/tick-shot/shot", TICK_SHOT_ACTION)?;
+        d.bridge_action("test/ticker1/action", TICKER_ACTION)?;
+        d.bridge_action("test/ticker2/action", TICKER_ACTION)?;
+        d.bridge_chip("test/ticker1", TICKER_1)?;
+        d.bridge_chip("test/ticker2", TICKER_2)?;
+        Ok(())
+    };
+    bridge(&mut c).unwrap_or_else(|e| panic!("content error: {e}"));
+    c
+}
+
+/// The content set, defined (a copy: tests change it; one that changes
+/// its scripts defines it again, `Content::define`).
 pub fn build() -> Content {
+    (*content()).clone()
+}
+
+/// The content set, not yet defined.
+fn make() -> Content {
     Content {
         chips: chips(),
         navis: vec![navi()],
@@ -200,6 +283,7 @@ pub fn build() -> Content {
         animations: animations(),
         weapons: weapons(),
         scripts: scripts(),
+        defs: Default::default(),
     }
 }
 

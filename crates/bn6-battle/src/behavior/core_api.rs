@@ -11,6 +11,7 @@ use bn6_content_api::{
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
+use bn6_content_api::{ActionHandle, Registry, StateId};
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 
@@ -619,20 +620,17 @@ impl CoreApi for Battle {
     }
 
     fn spawn_kind(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
-        let k = self.content.object_kind(name).ok_or_else(|| ApiError::UnknownKind(name.to_string()))?;
-        let (pool, index) = (k.pool, k.index);
+        let (pool, index) = super::kind_slot(&self.content, name).map_err(ApiError::Other)?;
         Ok(super::spawn_object(self, pool, index, pos, params))
     }
 
     fn spawn_kind_first(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
-        let k = self.content.object_kind(name).ok_or_else(|| ApiError::UnknownKind(name.to_string()))?;
-        let (pool, index) = (k.pool, k.index);
+        let (pool, index) = super::kind_slot(&self.content, name).map_err(ApiError::Other)?;
         Ok(super::spawn_object_first(self, pool, index, pos, params))
     }
 
     fn spawn_kind_at_end(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
-        let k = self.content.object_kind(name).ok_or_else(|| ApiError::UnknownKind(name.to_string()))?;
-        let (pool, index) = (k.pool, k.index);
+        let (pool, index) = super::kind_slot(&self.content, name).map_err(ApiError::Other)?;
         Ok(super::spawn_object_at_end(self, pool, index, pos, params))
     }
 
@@ -1058,24 +1056,41 @@ impl CoreApi for Battle {
     }
 
     fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ContentState> {
-        let action = self.objects.get(o).action;
-        self.attack_state_for(o, action)
+        // The running action: the content action the attack names, else the
+        // one registered by the navi's action number.
+        let running = self.actor_of(o)?.attack.content_action;
+        let action = match running {
+            Some(h) => Value::Def(Registry::Action, h.0),
+            None => Value::Int(self.objects.get(o).action as i64),
+        };
+        let id = self.action_schema(action).map_err(|_| ApiError::NoState(o))?;
+        self.attack_state_for(o, id)
     }
 
-    fn attack_state_for(&mut self, o: ObjectRef, action: u8) -> ApiResult<&mut ContentState> {
-        let content = self.behaviors.clone();
-        let (m, kind) = content.manifest().zip(content.action(action)).ok_or(ApiError::NoState(o))?;
-        let id = m.action_state(kind);
+    fn attack_state_for(&mut self, o: ObjectRef, id: StateId) -> ApiResult<&mut ContentState> {
         let a = self.actor_of_mut(o)?;
         // The game keeps an action's variables in the shared attack state,
-        // where they outlive the action; a different action starts from
-        // zero.
+        // where they outlive the action; an action of another layout starts
+        // from zero.
         if !matches!(&a.attack.action, ActionVars::Content(s) if s.id() == id) {
             a.attack.action = ActionVars::Content(ContentState::new(id));
         }
         match &mut a.attack.action {
             ActionVars::Content(s) => Ok(s),
             _ => unreachable!(),
+        }
+    }
+
+    fn action_schema(&self, action: Value) -> ApiResult<StateId> {
+        let defs = &self.content.defs;
+        match action {
+            Value::Int(n) => u8::try_from(n)
+                .ok()
+                .and_then(|n| defs.action_numbered(n))
+                .map(|h| defs.action(h).schema)
+                .ok_or_else(|| ApiError::Other(format!("no content action has the number {n:#x}"))),
+            Value::Def(Registry::Action, h) if (h as usize) < defs.actions.len() => Ok(defs.action(ActionHandle(h)).schema),
+            v => Err(ApiError::Other(format!("{v:?} is not an action"))),
         }
     }
 

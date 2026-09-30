@@ -23,19 +23,22 @@ use std::ptr::NonNull;
 
 use bn6_content_api::{
     ACTOR_TYPES, ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
-    HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, Manifest, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
-    ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Pool, RequestFlag, SpriteField, SpriteId, StatusFlag,
-    StatusTimer, Value, Vec3,
+    HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
+    ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Pool, Registry, RequestFlag, SpriteField, SpriteId,
+    StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use bn6_content_api::ObjectRef;
+
+use crate::Bound;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMethods, Value as LuaValue};
 
-type Ctx = (NonNull<dyn CoreApi>, NonNull<Manifest>);
+type Ctx = (NonNull<dyn CoreApi>, NonNull<Bound>);
 
 thread_local! {
-    /// The engine and manifest of the call running on this thread.
+    /// The engine, and what the binding reads, of the call running on this
+    /// thread.
     static CTX: Cell<Option<Ctx>> = const { Cell::new(None) };
 }
 
@@ -46,13 +49,13 @@ pub struct Enter<'a> {
 }
 
 impl<'a> Enter<'a> {
-    pub fn new(api: &'a mut dyn CoreApi, manifest: &'a Manifest) -> Enter<'a> {
+    pub fn new(api: &'a mut dyn CoreApi, bound: &'a Bound) -> Enter<'a> {
         let api: NonNull<dyn CoreApi + 'a> = NonNull::from(api);
         // SAFETY: only the lifetime is erased. The pointer is reachable
         // (through CTX) only while this guard lives, and the guard borrows
         // `api` exclusively for its whole life.
         let api: NonNull<dyn CoreApi + 'static> = unsafe { std::mem::transmute(api) };
-        let prev = CTX.with(|c| c.replace(Some((api, NonNull::from(manifest)))));
+        let prev = CTX.with(|c| c.replace(Some((api, NonNull::from(bound)))));
         Enter { prev, _borrow: PhantomData }
     }
 }
@@ -64,13 +67,13 @@ impl Drop for Enter<'_> {
 }
 
 /// Run `f` against the engine of the running call.
-fn with<R>(f: impl FnOnce(&mut dyn CoreApi, &Manifest) -> mlua::Result<R>) -> mlua::Result<R> {
-    let (api, manifest) = CTX
+fn with<R>(f: impl FnOnce(&mut dyn CoreApi, &Bound) -> mlua::Result<R>) -> mlua::Result<R> {
+    let (api, bound) = CTX
         .with(|c| c.get())
         .ok_or_else(|| mlua::Error::runtime("the battle is only reachable while content runs"))?;
     // SAFETY: set by a live `Enter`, which holds the exclusive borrow.
     // Callbacks don't nest `with` calls, so this is the only reference.
-    f(unsafe { &mut *api.as_ptr() }, unsafe { &*manifest.as_ptr() })
+    f(unsafe { &mut *api.as_ptr() }, unsafe { &*bound.as_ptr() })
 }
 
 fn api_error(e: ApiError) -> mlua::Error {
@@ -163,6 +166,7 @@ fn from_api(lua: &Lua, v: Value, ty: &FieldType) -> mlua::Result<LuaValue> {
         },
         Value::Object(o) => LuaValue::UserData(lua.create_userdata(Object(o))?),
         Value::Vec3(p) => LuaValue::UserData(lua.create_userdata(LVec3(p))?),
+        Value::Def(r, _) => return Err(mlua::Error::runtime(format!("a {r} can't be read from a state field yet"))),
     })
 }
 
@@ -485,8 +489,15 @@ impl UserData for Object {
             with(|api, _| api.push_absorbed(this.0, kind, anim).map_err(api_error))
         });
         methods.add_method("action_state", |_, this, action: LuaValue| {
-            let a = u8_arg(action, "action")?;
-            Ok(State { owner: this.0, action: true, of_action: Some(a) })
+            let id = with(|api, bound| {
+                let action = match bound.def(&action) {
+                    Some((Registry::Action, h)) => Value::Def(Registry::Action, h),
+                    Some((r, _)) => return Err(mlua::Error::runtime(format!("action_state: a {r} is not an action"))),
+                    None => Value::Int(u8_arg(action, "action")? as i64),
+                };
+                api.action_schema(action).map_err(api_error)
+            })?;
+            Ok(State { owner: this.0, action: true, of_action: Some(id) })
         });
         methods.add_method("pop_absorbed", |_, this, ()| {
             with(|api, _| api.pop_absorbed(this.0).map_err(api_error)).map(|v| v.map_or((None, None), |(k, a)| (Some(k), Some(a))))
@@ -601,9 +612,9 @@ impl UserData for Collision {
 pub struct State {
     pub owner: ObjectRef,
     pub action: bool,
-    /// The attack state as this action's (`navi:action_state(n)`), rather
-    /// than the running action's.
-    pub of_action: Option<u8>,
+    /// The attack state as a state of this layout (an action's update's
+    /// own, `navi:action_state(action)`), rather than the running action's.
+    pub of_action: Option<StateId>,
 }
 
 impl State {
@@ -612,15 +623,15 @@ impl State {
         key: &str,
         f: impl FnOnce(&mut ContentState, &bn6_content_api::Schema, usize) -> mlua::Result<R>,
     ) -> mlua::Result<R> {
-        with(|api, manifest| {
-            let s = if let Some(a) = self.of_action {
-                api.attack_state_for(self.owner, a).map_err(api_error)?
+        with(|api, bound| {
+            let s = if let Some(id) = self.of_action {
+                api.attack_state_for(self.owner, id).map_err(api_error)?
             } else if self.action {
                 api.action_state_mut(self.owner).map_err(api_error)?
             } else {
                 api.state_mut(self.owner).ok_or_else(|| api_error(ApiError::NoState(self.owner)))?
             };
-            let schema = manifest.schema(s.id());
+            let schema = bound.manifest.schema(s.id());
             let i = schema.index_of(key).ok_or_else(|| {
                 let names: Vec<&str> = schema.fields().iter().map(|f| f.name.as_str()).collect();
                 mlua::Error::runtime(format!("state has no field `{key}` (it declares {})", names.join(", ")))
@@ -1373,9 +1384,10 @@ pub fn object(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
     lua.create_userdata(Object(o))
 }
 
-/// Wrap the state of action `action`, which `o` runs, as a script value.
-pub fn action_state(lua: &Lua, o: ObjectRef, action: u8) -> mlua::Result<AnyUserData> {
-    lua.create_userdata(State { owner: o, action: true, of_action: Some(action) })
+/// Wrap the attack state of `o`, as a state of layout `state` (the action
+/// it runs), as a script value.
+pub fn action_state(lua: &Lua, o: ObjectRef, state: StateId) -> mlua::Result<AnyUserData> {
+    lua.create_userdata(State { owner: o, action: true, of_action: Some(state) })
 }
 
 /// A hook call's arguments.
@@ -1424,9 +1436,14 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
 }
 
 /// A hook's result as the engine takes it.
-pub fn hook_result(v: LuaValue, call: HookCall) -> mlua::Result<Value> {
+pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<Value> {
     match call {
-        HookCall::Weapon { .. } => Ok(Value::Int(int(&v, "the action a weapon routine returns")? as u8 as i64)),
+        // An action: its number (registration by number) or its definition.
+        HookCall::Weapon { .. } => match bound.def(&v) {
+            Some((Registry::Action, h)) => Ok(Value::Def(Registry::Action, h)),
+            Some((r, _)) => Err(mlua::Error::runtime(format!("a weapon routine returns an action, not a {r}"))),
+            None => Ok(Value::Int(int(&v, "the action a weapon routine returns")? as u8 as i64)),
+        },
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::ActorListEntry { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }

@@ -11,7 +11,7 @@
 
 use std::fmt;
 
-use crate::state::{ContentState, FieldType, TypeError, Value};
+use crate::state::{ContentState, FieldType, StateId, TypeError, Value};
 use crate::types::{ObjectRef, PanelPos, Pool, SpriteId, Vec3};
 
 /// An object's lifecycle state (the game's 0/4/8).
@@ -1158,13 +1158,17 @@ pub trait CoreApi {
     fn set_navi_state(&mut self, o: ObjectRef, f: NaviState, on: bool) -> ApiResult<()>;
     /// Whether `key` is in the navi's button record `pad`.
     fn key(&self, o: ObjectRef, pad: Pad, key: Key) -> ApiResult<bool>;
-    /// The running content action's state, zeroed when a different action
-    /// last used it.
+    /// The running content action's state, zeroed when an action of another
+    /// layout last used it.
     fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ContentState>;
-    /// The attack state as content action `action`'s (zeroed unless that
-    /// action last used it): how a weapon routine sets up the action it
-    /// names before the action starts.
-    fn attack_state_for(&mut self, o: ObjectRef, action: u8) -> ApiResult<&mut ContentState>;
+    /// The attack state as a state of layout `state` (zeroed unless an
+    /// action of that layout last used it): how an action's update sees it,
+    /// and how a weapon routine sets up the action it names before the
+    /// action starts.
+    fn attack_state_for(&mut self, o: ObjectRef, state: StateId) -> ApiResult<&mut ContentState>;
+    /// The state layout of a content action: by number (`Value::Int`,
+    /// registration by number) or by definition (`Value::Def`).
+    fn action_schema(&self, action: Value) -> ApiResult<StateId>;
     fn status(&self, o: ObjectRef, flag: StatusFlag) -> ApiResult<bool>;
     fn set_status(&mut self, o: ObjectRef, flag: StatusFlag, on: bool) -> ApiResult<()>;
     fn status_timer(&self, o: ObjectRef, t: StatusTimer) -> ApiResult<u16>;
