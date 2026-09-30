@@ -101,7 +101,7 @@ local function init(me: Object)
         me:free()
         return
     end
-    field.break_panel(x, y)
+    field.break_empty(x, y)
     battle.play_sound(0xDA)
     local sprite = me.sprite
     sprite:load(SPRITE)
