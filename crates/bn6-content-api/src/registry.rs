@@ -26,6 +26,10 @@ pub enum Registry {
     Collision,
     Status,
     Lockon,
+    /// What the ruleset needs from content by role (docs/design/
+    /// content-model-v2.md §7.4): one definition, `define.roles { ... }`,
+    /// keyed `roles`.
+    Roles,
     /// Data only content reads (a bomb variant, a projectile variant): the
     /// engine keeps its handle and its type name.
     Record,
@@ -34,7 +38,7 @@ pub enum Registry {
 }
 
 impl Registry {
-    pub const ALL: [Registry; 15] = [
+    pub const ALL: [Registry; 16] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -48,13 +52,14 @@ impl Registry {
         Registry::Collision,
         Registry::Status,
         Registry::Lockon,
+        Registry::Roles,
         Registry::Record,
         Registry::Schema,
     ];
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 14] = [
+    pub const DEFINED: [Registry; 15] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -68,6 +73,7 @@ impl Registry {
         Registry::Collision,
         Registry::Status,
         Registry::Lockon,
+        Registry::Roles,
         Registry::Record,
     ];
 
@@ -88,6 +94,7 @@ impl Registry {
             Registry::Collision => "collision",
             Registry::Status => "status",
             Registry::Lockon => "lockon",
+            Registry::Roles => "roles",
             Registry::Record => "record",
             Registry::Schema => "schema",
         }

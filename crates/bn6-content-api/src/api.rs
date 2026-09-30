@@ -11,8 +11,23 @@
 
 use std::fmt;
 
+use crate::registry::Registry;
 use crate::state::{ContentState, FieldType, StateId, TypeError, Value};
 use crate::types::{ObjectRef, PanelPos, Pool, SpriteId, Vec3};
+
+/// What a navi runs (`CoreApi::navi_action`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NaviAction {
+    /// A content action, by handle.
+    Content(u16),
+    /// One of the ruleset's own states or actions: `"entry"`,
+    /// `"take_control"`, `"deletion"`, `"flinch"`, `"paralysis"`, `"drag"`,
+    /// `"freeze"`, `"bubble"`, `"idle"`, `"move"`, `"dimming_chip"`,
+    /// `"navi_chip"`, `"instant_chip"`, `"cross_special"`.
+    Engine(&'static str),
+    /// A number the ruleset doesn't name (a link navi's own action).
+    Number(u8),
+}
 
 /// Where a spawned object goes in the update list.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1057,11 +1072,21 @@ pub trait CoreApi {
     fn spawn_kind_at_end(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
     /// Spawn an object of kind `kind` (a handle of the kind registry) where
     /// `at` says; its content state starts zeroed. None if the pool is
-    /// full; an error if the kind fills no object slot yet.
+    /// full.
     fn spawn_def(&mut self, kind: u16, pos: Vec3, at: SpawnAt) -> ApiResult<Option<ObjectRef>>;
-    /// The object's kind (a handle of the kind registry), if the content
-    /// knows the slot it fills.
+    /// The object's kind (a handle of the kind registry).
     fn object_kind(&self, o: ObjectRef) -> Option<u16>;
+    /// The byte the ruleset still stores for a region, collision type,
+    /// one-shot effect or hit spark content defines (a hitbox's region, a
+    /// collision's types, an effect object's look): the engine's own
+    /// number for it, which it gives each after the pack data's
+    /// (docs/design/content-model-v2.md §12, step 4). Only the binding
+    /// reads it; content never sees it.
+    fn def_number(&self, registry: Registry, h: u16) -> ApiResult<u8>;
+    /// What navi `o` runs: a content action (by handle), one of the
+    /// ruleset's own states and actions (by name), or a number neither
+    /// names (a link navi's own action).
+    fn navi_action(&self, o: ObjectRef) -> ApiResult<NaviAction>;
     /// Free the slot now (the object stops running).
     fn free(&mut self, o: ObjectRef);
     /// `object_genericDestroy`: release panel reservations and collision,
@@ -1133,14 +1158,6 @@ pub trait CoreApi {
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
     /// `sub_80E08C4`: hit spark `id` at `pos`.
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
-    /// The one-shot effect a definition describes (a handle of the effect
-    /// registry), as `spawn_effect`.
-    fn spawn_effect_def(&mut self, pos: Vec3, effect: u16, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
-    /// The same over a hit region, as `spawn_region_effects`.
-    fn spawn_region_effects_def(&mut self, x: i32, y: i32, region: u8, side: u8, effect: u16, z: i32);
-    /// The hit spark a definition describes (a handle of the spark
-    /// registry), as `spawn_spark`.
-    fn spawn_spark_def(&mut self, owner: ObjectRef, pos: Vec3, spark: u16) -> Option<ObjectRef>;
     /// `sub_80C468C`: a form overlay (actor 0x57) on `owner`: `sprite`,
     /// following the owner's animation plus `anim_offset`; `stepping` 0
     /// normal, 1 while dimmed, 2 always (Param3); a pixel nearer when
@@ -1222,8 +1239,9 @@ pub trait CoreApi {
     /// (1 buster, 2 chip or charged shot, 3 special, 4 move...).
     fn set_attack(&mut self, o: ObjectRef, action: u8, kind: u8);
     /// The same for a content action (a handle of the action registry): the
-    /// navi's action byte is the action's number, and the action runs by
-    /// its handle.
+    /// action runs by its handle (the navi's action byte is the number
+    /// registration by number gave it, else the engine's content-action
+    /// byte).
     fn set_content_attack(&mut self, o: ObjectRef, action: u16, kind: u8) -> ApiResult<()>;
     /// `sub_801011A`: clear the attack's link bytes and unfreeze the
     /// lock-on marker.
