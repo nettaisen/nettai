@@ -21,13 +21,13 @@ function panels.random_in_region(
     region: number,
     dir: number
 ): (number?, number?)
-    local shape = data.rules.regions[region]
+    local shape = data.regions[region]
     if shape == nil then
         error(string.format("GetRandomRelativePanelFiltered: region %d is not in the content", region))
     end
     local found: { number } = {}
     for _, p in shape do
-        local px, py = x + p.dx * dir, y + p.dy
+        local px, py = x + p[1] * dir, y + p[2]
         if field.check(px, py, require, forbid) then
             -- The game keeps them as bytes: x in the low 3 bits, y above.
             table.insert(found, bit32.bor(bit32.band(px, 0xFF), bit32.lshift(bit32.band(py, 0xFF), 4)))
