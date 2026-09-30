@@ -493,6 +493,23 @@ export type Panel = { kind: PanelType, alliance: number, home: number }
 export type Column = { home: number, timer: number }
 export type NaviRecord = { actor_type: ActorType, ai_index: number }
 
+-- How a form overlay's sprite steps once the navis are in (its Param3):
+-- `object_updateSprite` (not while dimmed; it stops running while paused),
+-- `object_updateSpriteTimestop`, or `sub_801BCD0` (paused or not).
+export type FormOverlayStepping = "normal" | "while_dimmed" | "always"
+
+-- A form overlay (`battle.form_overlay`): its sprite (Param1, Param2),
+-- stepping (Param3), the offset to the owner's animation it plays
+-- (Param4); a pixel nearer than its owner when `nudged` (ExtraVars[0]);
+-- wearing the owner's palette when `owner_palette` (ExtraVars[1] 0xFF).
+export type FormOverlaySpec = {
+    sprite: SpriteId,
+    stepping: FormOverlayStepping,
+    anim_offset: number?,
+    nudged: boolean?,
+    owner_palette: boolean?,
+}
+
 -- What a dimming chip's controller is spawned with: the user's attack.
 export type DimmingChipSpec = {
     element: number,
@@ -567,6 +584,11 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80C468C`: a form overlay (actor object #0x57) on `owner`.
+    form_overlay: (owner: Object, spec: FormOverlaySpec) -> Object?,
+    -- `sub_80E11E0`: a screen palette flash (effect object #0x0A, the
+    -- white one) for `duration` ticks.
+    palette_flash: (duration: number, while_dimmed: boolean, while_paused: boolean) -> Object?,
 }
 
 declare field: {
