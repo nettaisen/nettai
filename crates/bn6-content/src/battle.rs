@@ -450,6 +450,15 @@ const HEX_KEYS: &[(&str, usize)] = &[
     ("require", 8),
     ("forbid", 8),
     ("requests", 8),
+    ("self_type", 0),
+    ("target_type", 0),
+    ("hit_mod", 0),
+    ("hit_effect", 0),
+    ("status", 0),
+    ("bug", 0),
+    ("launch_sound", 0),
+    ("end_effect", 0),
+    ("speed", 8),
 ];
 
 fn hex(v: i64, digits: usize) -> toml_edit::Value {
@@ -541,7 +550,8 @@ pub fn weapon_folder(w: &WeaponData) -> String {
 
 /// The object kinds whose folders hold data of their own (a kind of these
 /// a script implements keeps its `[kind]` in the same file).
-const DATA_OBJECTS: [&str; 6] = ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "boomerang"];
+const DATA_OBJECTS: [&str; 8] =
+    ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "boomerang", "projectile", "flying-shot"];
 
 /// A script as an entity's file names it: `module` (a path in the pack
 /// without `.luau`) relative to `folder`, with `.luau`.
@@ -645,6 +655,18 @@ pub fn export(c: &Content) -> Files {
         "objects/attachment/object.toml".into(), toml_file(
             "Attachments (actor object #5) by number, its first parameter: the ones no chip folder declares.",
             &AttachmentFile { attachment: rest, script_kind: script_kind("attachment") },
+        ),
+    );
+    put(
+        "objects/projectile/object.toml".into(), toml_file(
+            "The projectile (attack object #0) by kind, its first parameter: the shot of the buster, the\ncannons and many chips. See docs/engine/objects-and-player.md §B8.",
+            &ObjectFile { variant: o.projectiles.clone(), script_kind: script_kind("projectile") },
+        ),
+    );
+    put(
+        "objects/flying-shot/object.toml".into(), toml_file(
+            "The flying shot (attack object #0xB) by kind, its first parameter: arrows, the Beast forms'\nslash waves, thrown obstacles. See docs/engine/objects-and-player.md §B8.",
+            &ObjectFile { variant: o.flying_shots.clone(), script_kind: script_kind("flying-shot") },
         ),
     );
     for k in o.kinds.iter().filter(|k| !DATA_OBJECTS.contains(&k.name.as_str())) {
@@ -1050,6 +1072,14 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     add_kind("boomerang", boomerangs.script_kind, report);
     let file = "objects/boomerang/object.toml";
     let boomerangs = dense(boomerangs.variant.into_iter().map(|b| (b.id as usize, b, file.into())).collect(), "boomerang", report);
+    let shots: ObjectFile<ProjectileKind> = read_toml(root, "objects/projectile/object.toml", report)?;
+    add_kind("projectile", shots.script_kind, report);
+    let file = "objects/projectile/object.toml";
+    let projectiles = dense(shots.variant.into_iter().map(|k| (k.id as usize, k, file.into())).collect(), "projectile kind", report);
+    let shots: ObjectFile<FlyingShotKind> = read_toml(root, "objects/flying-shot/object.toml", report)?;
+    add_kind("flying-shot", shots.script_kind, report);
+    let file = "objects/flying-shot/object.toml";
+    let flying_shots = dense(shots.variant.into_iter().map(|k| (k.id as usize, k, file.into())).collect(), "flying shot kind", report);
     // Attachments: the chips' own and the rest. A chip may share another's
     // (the same row), but not change it.
     let rest: AttachmentFile = read_toml(root, "objects/attachment/object.toml", report)?;
@@ -1083,7 +1113,17 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     }
     let attachments = dense(all.into_iter().map(|(id, (a, file))| (id as usize, a, file)).collect(), "attachment", report);
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
-    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, boomerangs, kinds })
+    Some(ObjectData {
+        attachments,
+        rocks,
+        absorbed_sprites,
+        body_overlays,
+        sun_beam_looks,
+        boomerangs,
+        projectiles,
+        flying_shots,
+        kinds,
+    })
 }
 
 fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {

@@ -39,7 +39,16 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
     if requested & request::ALT_CHIP != 0 {
         panic!("Battle Chip Gate slot-in chips (sub_800EE26) are not implemented yet");
     }
-    let action = prepare(b, r);
+    use_next_chip(b, r, 0);
+    ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
+    Some(ai(b, r).attack.chip_id)
+}
+
+/// `loc_800FBEE`: use the next chip (`sub_80127C0(charged)`) and start its
+/// action; in a Beast form, or from a special source, the chip's Beast Out
+/// lock-on applies.
+fn use_next_chip(b: &mut Battle, r: ObjectRef, charged: u8) {
+    let action = prepare(b, r, charged);
     set_attack(b, r, action, 2);
     let form = stats(b, r).form;
     let content = b.content.clone();
@@ -47,8 +56,6 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
     if a.special_source != 0 || form.is_beast() {
         a.beast_lockon = content.chip(a.chip_id).beast_lockon as u8;
     }
-    ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
-    Some(ai(b, r).attack.chip_id)
 }
 
 /// `sub_800FB54`'s charged path (request 8): the form's A-charge routine
@@ -59,20 +66,31 @@ fn use_charged_chip(b: &mut Battle, r: ObjectRef) -> ChipId {
     if chip == crate::hand::NO_CHIP {
         panic!("a charged chip with an empty hand reads past the chip table");
     }
-    let routine = if b.content.chip(chip).family == ChipFamily::Null {
+    let family = b.content.chip(chip).family;
+    let routine = if family == ChipFamily::Null {
         ai_mut(b, r).attack.chip_id = 0;
         ai(b, r).alt_a_charge
     } else {
         ai(b, r).a_charge
     };
     match routine {
-        0x18 => panic!("charged chip routine 0x18 (sub_8012CB2) is not implemented yet"),
-        // The chip is used as if uncharged, but with the chip family as
-        // sub_80127C0's argument (0 for the Null family).
-        0xFF => panic!("charged chips without a charge routine (sub_800FB54) are not implemented yet"),
-        0x05 | 0x0D | 0x1F | 0x20 | 0x29 | 0x2D => {
-            panic!("charged chip bonuses (sub_80127C0 with 1) are not implemented yet")
+        // GroundCross's A-charge: `sub_8012CB2` (the content pack's script
+        // for routine 0x18, which `off_80117D4` leaves a nullsub) drops rocks
+        // on the enemies first; what it leaves in r0 is the use's charge
+        // argument.
+        0x18 => {
+            let charged = super::idle::weapon_routine(b, r, 0x18);
+            use_next_chip(b, r, charged);
         }
+        // No charge routine: the chip is used, with the register that held
+        // the chip's family as the charge argument (the Null family's was
+        // cleared with the chip id).
+        0xFF => {
+            let charged = if family == ChipFamily::Null { 0 } else { family as u8 };
+            use_next_chip(b, r, charged);
+        }
+        // The forms whose A-charge is the chip's charged use.
+        0x05 | 0x0D | 0x1F | 0x20 | 0x29 | 0x2D => use_next_chip(b, r, 1),
         _ => {
             ai_mut(b, r).attack.charged = 0;
             let action = super::idle::weapon_routine(b, r, routine);
@@ -100,7 +118,7 @@ pub(super) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
     if b.content.chip(chip).flags.has(ChipFlags::DIMMING) {
         return false;
     }
-    let action = prepare(b, r);
+    let action = prepare(b, r, 0);
     set_attack(b, r, action, 2);
     ai_mut(b, r).attack.beast_lockon = 1;
     true
@@ -129,9 +147,10 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
     HandEntry { chip, damage: hand.damage[i], extra, modifiers: hand.modifiers[i] }
 }
 
-/// `sub_80127C0(0)`: fill the attack variables for the next chip and
-/// name its action.
-fn prepare(b: &mut Battle, r: ObjectRef) -> u8 {
+/// `sub_80127C0(charged)`: fill the attack variables for the next chip and
+/// name its action. `charged` is the A-charge's argument (0 for a plain
+/// use).
+fn prepare(b: &mut Battle, r: ObjectRef, charged: u8) -> u8 {
     let e = hand_entry(b, r);
     let content = b.content.clone();
     let cd = content.chip(e.chip);
@@ -140,18 +159,30 @@ fn prepare(b: &mut Battle, r: ObjectRef) -> u8 {
     }
     let action = load_attack(b, r, e.chip);
     let a = &mut ai_mut(b, r).attack;
-    a.charged = 0;
+    a.charged = charged;
     // The hand's damage replaces the chip data's.
     a.damage = e.damage;
-    // sub_8012C7C: the cross charge bonus is 0 for an uncharged use.
-    a.extra = e.extra;
-    let (damage, boost) = double_damage(b, r, e.chip, e.damage);
+    let bonus = charge_bonus(b, r, charged);
+    if bonus != 0 {
+        let a = &mut ai_mut(b, r).attack;
+        a.damage = a.damage.wrapping_add(bonus);
+        b.play_sound(crate::sound::SoundId(BOOST_SOUND));
+    }
+    ai_mut(b, r).attack.extra = e.extra;
+    let damage = ai(b, r).attack.damage;
+    let (damage, boost) = double_damage(b, r, e.chip, damage, charged);
     ai_mut(b, r).attack.damage = damage;
     let side = b.objects.get(r).alliance;
     match boost {
-        Some(Boost::FullSynchro) => set_mood(b, side, 0x80),
-        Some(Boost::Anger) => super::status::end_anger(b, r),
-        None => {}
+        Some(Boost::FullSynchro) => {
+            set_mood(b, side, 0x80);
+            b.play_sound(crate::sound::SoundId(BOOST_SOUND));
+        }
+        Some(Boost::Anger) => {
+            super::status::end_anger(b, r);
+            b.play_sound(crate::sound::SoundId(BOOST_SOUND));
+        }
+        Some(Boost::Element | Boost::BeastOver) | None => {}
     }
     let mut damage = ai(b, r).attack.damage;
     // sub_8012C34
@@ -246,17 +277,38 @@ fn aura_bonus(b: &Battle, r: ObjectRef, chip: ChipId) -> u16 {
     if up { 50 } else { 0 }
 }
 
-/// Why a chip's damage doubled.
+/// The sound of a charge bonus or a doubled chip (`SOUND_HIT_87`).
+const BOOST_SOUND: u16 = 0x87;
+
+/// `sub_8012C7C`: what a charged use adds to the chip's damage in the
+/// ElecCross forms (the paralyzing flag) and the SlashCross forms (40).
+fn charge_bonus(b: &Battle, r: ObjectRef, charged: u8) -> u16 {
+    if charged == 0 {
+        return 0;
+    }
+    match stats(b, r).form.0 {
+        2 | 0x0E => damage_flags::PARALYZE,
+        3 | 0x0F => 0x28,
+        _ => 0,
+    }
+}
+
+/// Why a chip's damage doubled (`sub_8012A38`'s second result).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Boost {
-    /// Full Synchro (spent by the use).
+    /// Full Synchro (1, spent by the use).
     FullSynchro,
-    /// Anger (spent by the use).
+    /// Anger (2, spent by the use).
     Anger,
+    /// A charged chip of the element or family its cross favors (4 wood,
+    /// 6 aqua or sword).
+    Element,
+    /// A Null-family chip in Beast Over (4).
+    BeastOver,
 }
 
 /// `sub_8012A38`: whether the use doubles the chip's damage.
-fn double_damage(b: &Battle, r: ObjectRef, chip: ChipId, damage: u16) -> (u16, Option<Boost>) {
+fn double_damage(b: &Battle, r: ObjectRef, chip: ChipId, damage: u16, charged: u8) -> (u16, Option<Boost>) {
     let cd = b.content.chip(chip);
     if !cd.flags.has(ChipFlags::HAS_DAMAGE) {
         return (damage, None);
@@ -264,26 +316,36 @@ fn double_damage(b: &Battle, r: ObjectRef, chip: ChipId, damage: u16) -> (u16, O
     let boost = match emotion(b, b.objects.get(r).alliance) {
         Emotion::FullSynchro => Some(Boost::FullSynchro),
         Emotion::Angry => Some(Boost::Anger),
-        _ => {
-            check_cross_boost(b, r);
-            None
-        }
+        _ => cross_boost(b, r, chip, charged),
     };
     let damage = if boost.is_some() { damage | damage_flags::DOUBLE } else { damage };
     (damage, boost)
 }
 
-/// `sub_8012AFA`, `sub_8012B4E`, `sub_8012BA2` and `sub_8012ABC`: the
-/// cross and Beast Over element doubles. None applies to MegaMan in base
-/// form.
-fn check_cross_boost(b: &Battle, r: ObjectRef) {
+/// `sub_8012AFA`, `sub_8012B4E`, `sub_8012BA2` and `sub_8012ABC`, in that
+/// order: a charged wood chip for TomahawkMan or TomahawkCross, a charged
+/// aqua chip for SpoutMan or SpoutCross, a charged sword-family chip for
+/// navi 0x0B, and a Null-family chip in Beast Over (outside battle mode 1).
+/// "Charged" is the use's charge argument, or a full A charge held
+/// (charge level 2 from A).
+fn cross_boost(b: &Battle, r: ObjectRef, chip: ChipId, charged: u8) -> Option<Boost> {
     let s = stats(b, r);
     let (navi, form) = (s.navi.0, s.form.0);
-    let wood = navi == 7 || matches!(form, 7 | 0x13);
-    let aqua = navi == 6 || matches!(form, 6 | 0x12);
-    let beast_over = super::battle_mode(b) != 1 && matches!(form, 0x17 | 0x18);
-    if wood || aqua || navi == 0x0B || beast_over {
-        panic!("cross damage doubling (sub_8012A38) is not implemented yet");
+    let cd = b.content.chip(chip);
+    let damaging = cd.flags.has(ChipFlags::HAS_DAMAGE) && !cd.flags.has(ChipFlags::DIMMING);
+    let a = ai(b, r);
+    let charged = charged != 0 || (a.charge_level == 2 && a.charge_source == 1);
+    let wood = (navi == 7 || matches!(form, 7 | 0x13)) && damaging && cd.element == Element::Wood && charged;
+    let aqua = (navi == 6 || matches!(form, 6 | 0x12)) && damaging && cd.element == Element::Aqua && charged;
+    let sword = navi == 0x0B && damaging && cd.family == ChipFamily::Sword && charged;
+    let beast_over =
+        super::battle_mode(b) != 1 && matches!(form, 0x17 | 0x18) && damaging && cd.family == ChipFamily::Null;
+    if wood || aqua || sword {
+        Some(Boost::Element)
+    } else if beast_over {
+        Some(Boost::BeastOver)
+    } else {
+        None
     }
 }
 
