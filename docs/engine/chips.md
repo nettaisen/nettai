@@ -1351,6 +1351,8 @@ Not ported yet, with what is known:
   drain, battle start and hand-shrink turn (`sub_80E49C4`), calls `sub_801E658`, then `sub_8014446` or `sub_801443C`
   by stat 0x21, and waits for the glow.
 - The others (and the ElemTrap object): see docs/design/content-migration.md §5.
+- Subtypes 2, 3, 7, 8, 12, 14–19, 21–24, 29, 30, 32 and 37, every object they spawn, branch by branch with
+  their lab coverage: docs/engine/dimming-chip-effects.md.
 
 Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
 (program advance 0x157: only as its recipe), per-player gauges (not in netbattles).

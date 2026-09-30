@@ -191,8 +191,11 @@ Left (each a controller and its objects, every branch; docs/engine/chips.md §3.
   GrabBnsh/GrabRvng, 16 Meteors, 17 Anubis/PoisPhar, 18 Otenko, 19 CircGun, 21 BlzrdBal, 22 NumbrBl, 23 BurnSqr,
   24 Magnum, 26 BugFix, 27 ColorPt/DblPoint, 28 Sensor, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 36 SumnBlk, 37
   DblBeast; 31, 33 and 41 (no chip; their actors are navi chips' navis).
+- Specified, not yet written as content: 2, 3, 7, 8, 12, 14 (the scripts exist, unregistered), 15–19, 21–24,
+  29, 30, 32, 37 (docs/engine/dimming-chip-effects.md).
 - Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
-  notes), thrown and encased obstacles (`sub_8018002`, `sub_801813A`), AntiNavi in the dimming service.
+  notes), encased obstacles (`sub_801813A`; thrown ones, `sub_8018002`, are ported), AntiNavi in the dimming
+  service.
 
 ### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 

@@ -830,7 +830,8 @@ Chip 0x8A NumbrBl (null, damage 1021: formula 21, hit param 138, params [4, 0, 0
 **Damage formula 21 (`sub_8010BF0(chip, side)`, `off_80109DC[21]`)**: `sub_80103BC(side)` (the side's first
 actor if it is a player; its loop re-reads the same slot) → its HP mod 100 (`svc 6`'s remainder): the last
 two digits of the user's HP; no player → 0. `sub_80109A4` evaluates it when the hand is built (chips.md
-§2.4) and, the chip having flag 0x80 in its record, `chip_800AEE8` refreshes the current entry every frame.
+§2.4) and, the chip having flag 0x80 in its record, `chip_800AEE8` refreshes the current entry every frame. Engine:
+`kinds::chip_damage_formula` (`hp_last_digits`).
 
 **Spawner `sub_80E7FBA`**: T4#0x69; the common fields (alliance and flip).
 
@@ -881,7 +882,7 @@ user, the user's alliance/flip halfword, the damage word, ExtraVars+0 = r7 and `
 - 8 (`sub_80D73AC`): X += Xvel; panels and collision panels from the coordinates; X's pixels + 150 past 300
   (unsigned) → region 0, state destroy (word).
 
-**Lab**: 20 scenarios (the engine stops earlier, at formula 21). The balls hit in 18; `miss`'s roll off. Beast
+**Lab**: 20 scenarios. The balls hit in 18; `miss`'s roll off. Beast
 and Cross scenarios use the index − 0x18 attachment. `counter-cut-in` reaches the navi telop's cut-in branch.
 **Unverified**: a non-player user, a record index 1..0x18, the user deleted before the effect, no player
 for formula 21.
