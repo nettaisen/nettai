@@ -52,8 +52,9 @@ local function fall(me: Object)
     if not bit32.btest(field.flags(me.panel_x, me.panel_y), SOLID) then
         me:set_lifecycle("destroy")
         battle.effect(me.pos, BURST)
+    else
+        battle.shake_camera(2, 0x18)
     end
-    -- (Otherwise a camera shake: presentation only.)
     battle.hitbox(me, {
         panel_x = me.panel_x,
         panel_y = me.panel_y,

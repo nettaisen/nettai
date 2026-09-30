@@ -9,6 +9,7 @@
 -- for variant 0xA). Variant 0xB slashes twice, the second as 0x12. A dash
 -- ends back on the panel it started from.
 
+local attachment = require("../../../../objects/attachment/attachment")
 local sword = require("../../../../lib/sword")
 local sword_wave = require("../../../../objects/sword-wave/sword_wave")
 local weapon = require("../../../../lib/weapon")
@@ -43,6 +44,17 @@ local DASH_REQUIRE, DASH_FORBID = 0x10000, 0x0F800000
 
 -- The dash's afterimage: its colour shader and lifetime.
 local AFTERIMAGE_SHADER, AFTERIMAGE_TICKS = 0xFFE0, 0x14
+
+-- The blade raised, by variant (`sub_80EBB34`'s table `byte_80EBB64`): an
+-- attachment kind. (Action 0x13 reads the same table, as each sword chip's
+-- `sword.blade`; here the variant may be a weapon's or a variable sword's.)
+local BLADES = {
+    [0x00] = 0x03, [0x01] = 0x03, [0x02] = 0x03, [0x03] = 0x03,
+    [0x04] = 0x03, [0x05] = 0x03, [0x06] = 0x03, [0x07] = 0x03,
+    [0x08] = 0x03, [0x09] = 0x03, [0x0A] = 0x03, [0x0B] = 0x03,
+    [0x0C] = 0x19, [0x0D] = 0x1A, [0x0E] = 0x1B, [0x0F] = 0x1C,
+    [0x10] = 0x00, [0x11] = 0x03, [0x12] = 0x03, [0x13] = 0x00,
+}
 
 -- The tick of the count the wave goes out on (the game means 17 for
 -- variants 0x10 and 0x11, but compares the wrong register).
@@ -108,6 +120,23 @@ local function count(me: Object, s: State)
     me.step_init = 0
 end
 
+-- The blade raised (`sub_80B8E30` into the first related slot): its kind
+-- by the variant (`sub_80EBB34`), its animation by the navi's arm
+-- (`sub_80EBAE8`), its palette (`sub_80EBB78`). The second slash of a
+-- double slash (0x12) passes 0xB, which `sub_80EBB34` ignores: it reads the
+-- variant itself.
+local function raise(me: Object, v: number)
+    local kind = BLADES[v]
+    if kind == nil then
+        error(string.format("charged slash variant %#x reads past byte_80EBB64 (sub_80EBB34)", v))
+    end
+    attachment.spawn(me, {
+        kind = kind,
+        anim = sword.blade_anim(me),
+        palette_add = sword.blade_palette(me),
+    }, "related")
+end
+
 -- `sub_80EE406`: raise the sword; send the wave on the 12th tick; after
 -- 21 ticks slash again or go on.
 local function slash(me: Object, s: State)
@@ -120,7 +149,7 @@ local function slash(me: Object, s: State)
         local loud = v == 5 or v == DOUBLE_SLASH or v == SECOND_SLASH or v == 6
         battle.play_sound(if loud then 0xCE else 0xB0)
         if not no_arm then
-            sword.raise(me, v)
+            raise(me, v)
         end
         me:set_status("using_action", true)
         s.timer = 0x15

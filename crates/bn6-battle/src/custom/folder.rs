@@ -86,6 +86,17 @@ impl BattleFolder {
     /// among the first 21. Gigas are shuffled apart and each is inserted at
     /// a random place at least 10 chips in (8 to 18 in battle mode 1).
     pub fn shuffled(saved: &SavedFolder, battle_mode: u8, rng: &mut Rng, library: &dyn Library) -> BattleFolder {
+        BattleFolder::shuffled_with_tag_pair(saved, battle_mode, rng, library).0
+    }
+
+    /// `shuffled`, and where the tag pair went (BattleState+0x45, which
+    /// ChpShufl's re-deal reads: `ConsoleSetup::tag_pair`).
+    pub fn shuffled_with_tag_pair(
+        saved: &SavedFolder,
+        battle_mode: u8,
+        rng: &mut Rng,
+        library: &dyn Library,
+    ) -> (BattleFolder, Option<u8>) {
         let (regular, tags) = if battle_mode == 1 { (None, None) } else { (saved.regular, saved.tags) };
         // Lay out: the regular chip first, the tags last.
         let mut laid = [saved.chips[0]; FOLDER_SIZE];
@@ -124,17 +135,21 @@ impl BattleFolder {
                 }
             }
         }
+        let mut tag_pair = None;
         if tags.is_some() && normal.len() == FOLDER_SIZE {
             let at = (rng.next_positive() % 19 + 1) as usize;
             normal.swap(FOLDER_SIZE - 2, at);
             normal.swap(FOLDER_SIZE - 1, at + 1);
+            tag_pair = Some(at as u8);
         }
-        BattleFolder { chips: std::array::from_fn(|i| normal.get(i).copied()), regular_pending: regular.is_some() }
+        let folder =
+            BattleFolder { chips: std::array::from_fn(|i| normal.get(i).copied()), regular_pending: regular.is_some() };
+        (folder, tag_pair)
     }
 }
 
 /// `sub_8000D12`: `rounds` swaps of two entries picked at random.
-fn shuffle(chips: &mut [FolderChip], rounds: usize, rng: &mut Rng) {
+pub(crate) fn shuffle<T>(chips: &mut [T], rounds: usize, rng: &mut Rng) {
     let n = chips.len() as u32;
     for _ in 0..rounds {
         let a = (rng.next_positive() % n) as usize;

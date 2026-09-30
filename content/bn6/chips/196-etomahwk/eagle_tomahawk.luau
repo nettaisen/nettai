@@ -48,8 +48,8 @@ local function strikes(me: Object)
     end
 end
 
--- `sub_80F1902`: the swing; the blow falls 10 ticks in (the camera's
--- shake is drawn only), sound 0x10C; 30 ticks.
+-- `sub_80F1902`: the swing; the blow falls 10 ticks in with a camera shake
+-- (magnitude 2, 30 ticks), sound 0x10C; 30 ticks.
 local function swing(me: Object, s: State)
     if me.step_init == 0 then
         me.step_init = 4
@@ -64,6 +64,7 @@ local function swing(me: Object, s: State)
     local t = s.timer - 1
     s.timer = t
     if t == FALL_AT then
+        battle.shake_camera(2, 0x1E)
         battle.play_sound(0x10C)
         strikes(me)
     elseif t <= 0 then
