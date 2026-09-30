@@ -80,8 +80,8 @@ pub struct PanelPos {
 }
 
 /// A sprite: (category, index) into the game's sprite table. Written
-/// `"CC-II"` in hex (in content files too): the name of the sprite's
-/// folder in a content pack's `graphics/sprites`.
+/// `"CC-II"` in hex (in content files too), as its `sprite.json` in a
+/// content pack holds it (its folder there is its name).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SpriteId {
     pub category: u8,

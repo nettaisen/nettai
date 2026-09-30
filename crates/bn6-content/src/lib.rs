@@ -27,6 +27,7 @@ pub mod battle;
 pub mod hud;
 pub mod image;
 pub mod midi;
+pub mod names;
 pub mod overlay;
 pub mod pack;
 pub mod report;
