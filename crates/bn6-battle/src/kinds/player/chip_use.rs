@@ -24,6 +24,9 @@ mod damage_flags {
     pub const ERASE_CROSS: u16 = 0x1000;
 }
 
+/// The Beast forms' claw, the action weapon routine 0x1E names.
+const BEAST_CLAW: u8 = 0x52;
+
 /// The chip-use sound of a damage bonus (`SOUND_HIT_87`).
 const BONUS_SOUND: crate::sound::SoundId = crate::sound::SoundId(0x87);
 
@@ -40,7 +43,8 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
         // The form's A-charge routine decides what the charged chip does;
         // for the Null family the attack's chip id is cleared.
         let chip = hand_entry(b, r).chip;
-        let routine = if super::null_family(b, chip) {
+        let null = super::null_family(b, chip);
+        let routine = if null {
             ai_mut(b, r).attack.chip_id = 0;
             ai(b, r).alt_a_charge
         } else {
@@ -50,8 +54,16 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
             // sub_8012CB2: GroundCross's rocks fall first; its leftover r0
             // (2 after a barrage, 0 without targets) marks the chip.
             0x18 => charge = rock_barrage(b, r),
-            // No routine: used as if uncharged.
-            0xFF => {}
+            // No routine: the chip is used with the register that held its
+            // family byte as the argument (cleared with the chip id for the
+            // Null family).
+            0xFF if null => {}
+            0xFF => {
+                if chip == NO_CHIP {
+                    panic!("a charged use of the empty hand without a charge routine needs its family byte (sub_800FB54)");
+                }
+                charge = b.content.chip(chip).family as u8;
+            }
             // These forms' charged chips are the chip with a bonus.
             0x05 | 0x0D | 0x1F | 0x20 | 0x29 | 0x2D => charge = 1,
             // The rest run a weapon routine instead of the chip.
@@ -60,7 +72,9 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
                 let action = super::idle::weapon_routine(b, r, routine);
                 set_attack(b, r, action, 2);
                 let form = stats(b, r).form;
-                if action == super::actions::beast_claw::ACTION || (action == 0x41 && form.0 == 0x0F) {
+                // The Beast forms' claw (weapon 0x1E) and SlashCross Beast's
+                // charged sword run inside the Beast Out rush.
+                if action == BEAST_CLAW || (action == 0x41 && form.0 == 0x0F) {
                     ai_mut(b, r).attack.beast_lockon = 1;
                 }
                 ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
@@ -129,7 +143,7 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
 /// the dark chip's substitute) and name its action. `charge` marks the
 /// attack as charged (AIAttackVars+4): 1 for the forms' charged chips, 2
 /// after GroundCross's rocks.
-fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> u8 {
+pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> u8 {
     if ai(b, r).requests & request::ALT_CHIP != 0 {
         ai_mut(b, r).attack.special_source = 1;
     }

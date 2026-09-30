@@ -81,7 +81,7 @@ impl Look {
 }
 
 /// The first part of every sprite frame is a shadow.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Shadow {
     /// Not drawn (the state after loading).
     #[default]

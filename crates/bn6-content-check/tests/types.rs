@@ -37,6 +37,7 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local function f(me: Object) local _: \"gone\" = obstacle.removal(me) end", "not an obstacle removal"),
         ("local _ = data.objects.projectiles[0].hit_efect", "not a projectile field"),
         ("local _: ProjectileShot = { kind = 0, damage = 1 }", "a shot without its height"),
+        ("local function f(): SideSpecial return \"beast\" end", "not a side special"),
         (
             "local function f(me: Object) battle.form_overlay(me, { sprite = \"08-12\", stepping = \"dimmed\" }) end",
             "not a form overlay stepping",

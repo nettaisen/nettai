@@ -805,12 +805,27 @@ fn objects(rom: &Rom) -> ObjectData {
             BodyOverlay { id: i as u8, sprite: sprite_at(0x080C_4320 + 2 * i), in_front }
         })
         .collect();
+    // Boomerang rows (`byte_80CA26C`, 12 bytes): +3 turns panels to grass,
+    // +4 the speed along a row, +8 along the column.
+    let boomerangs = (0..5u32)
+        .map(|i| {
+            let r = 0x080C_A26C + 12 * i;
+            BoomerangKind {
+                id: i as u8,
+                speed: u32at(rom, r + 4) as i32,
+                turn_speed: u32at(rom, r + 8) as i32,
+                grass: rom.u8(r + 3) != 0,
+            }
+        })
+        .collect();
     ObjectData {
         attachments: (0..ATTACHMENTS).map(|i| attachment(rom, i)).collect(),
         rocks,
         absorbed_sprites: (0..15).map(|i| sprite_at(0x080E_98C0 + 2 * i)).collect(),
         body_overlays,
         sun_beam_looks: (0..2).map(|i| sprite_at(0x080E_5C28 + 2 * i)).collect(),
+        sword_waves: sword_waves(rom),
+        boomerangs,
         projectiles: projectiles(rom),
         flying_shots: flying_shots(rom),
         name_looks: name_looks(rom),
@@ -928,6 +943,48 @@ fn flying_shots(rom: &Rom) -> Vec<FlyingShotKind> {
                 panel_spark: id == 2,
                 launch_sound: (id == 2).then_some(0x18A),
                 end_effect: (id == 5).then_some(7),
+            }
+        })
+        .collect()
+}
+
+/// A byte the object code only tests for zero, as a flag.
+fn flag_byte(rom: &Rom, a: u32) -> bool {
+    match rom.u8(a) {
+        0 => false,
+        1 => true,
+        v => panic!("flag byte {v:#x} at {a:#x}"),
+    }
+}
+
+/// The sword wave's kinds (`byte_80D7F4C`, 16 bytes each, read by
+/// `sub_80D80B4`), up to the object's code: collision types and hit
+/// modifier, region, sprite, animation, whether it animates, whether it
+/// highlights, reach, shadow (low nibble) and palette (high), status,
+/// speed.
+fn sword_waves(rom: &Rom) -> Vec<SwordWave> {
+    const TABLE: u32 = 0x080D_7F4C;
+    const END: u32 = 0x080D_807C;
+    (0..(END - TABLE) / 16)
+        .map(|i| {
+            let r = TABLE + 16 * i;
+            let look = rom.u8(r + 10);
+            assert!(look & 0xF <= 1, "sword wave {i} shadow nibble {look:#x}");
+            SwordWave {
+                id: i as u8,
+                self_type: rom.u8(r),
+                target_type: rom.u8(r + 1),
+                hit_mod: rom.u8(r + 2),
+                region: rom.u8(r + 3),
+                sprite: SpriteId { category: rom.u8(r + 4), index: rom.u8(r + 5) },
+                anim: rom.u8(r + 6),
+                animates: flag_byte(rom, r + 7),
+                highlight: flag_byte(rom, r + 8),
+                reach: rom.u8(r + 9),
+                ground_shadow: look & 0xF != 0,
+                palette: look >> 4,
+                status: rom.u8(r + 11),
+                speed: u32at(rom, r + 12) as i32,
             }
         })
         .collect()

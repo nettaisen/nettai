@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x0A, TenguCross Beast's charged chip (`sub_8011C18`),
+# and its action 0x3D (`sub_80EE044`) are a script.
+
+id = 0x0A
+name = "TenguCross Beast charge"
+action = 0x3D
+script = "tengu_beast_charge.luau"

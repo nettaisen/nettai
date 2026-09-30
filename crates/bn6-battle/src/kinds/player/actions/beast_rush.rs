@@ -167,7 +167,7 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
     let action = b.objects.get(r).action;
     let attack = &ai(b, r).attack;
     let special = match action {
-        super::beast_claw::ACTION => 0x0C,
+        BEAST_CLAW => 0x0C,
         CHARGED_SWORD => {
             let modes = &b.content.rules.lockon.charged_sword_modes;
             *modes.get(attack.variant as usize).unwrap_or_else(|| {
@@ -185,6 +185,16 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
 /// The charged sword's action (a sword chip charged in SlashCross's
 /// forms).
 const CHARGED_SWORD: u8 = 0x41;
+
+/// The Beast forms' charged claw (weapon routine 0x1E's action, content).
+const BEAST_CLAW: u8 = 0x52;
+
+/// `ho_8026554` as its callers outside the rush see it (the claw's and
+/// the Beast lunge's setups): the panel, or (0, 0x7F) when no panel fits
+/// (`sub_80265D0`'s registers then).
+pub(crate) fn lockon_panel(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> PanelPos {
+    destination(b, r, target, mode).unwrap_or(PanelPos { x: 0, y: 0x7F })
+}
 
 /// `ho_8026554`: the panel to attack `target` from in lock-on `mode`;
 /// None to stay. A target off the field's playable panels means mode 0.
