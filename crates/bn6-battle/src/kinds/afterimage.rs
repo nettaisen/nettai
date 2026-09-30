@@ -8,7 +8,7 @@
 use crate::battle::Battle;
 use crate::content::{Content, SpriteId};
 use crate::kinds::common::{Progress, set_progress};
-use crate::kinds::form_overlay;
+use crate::kinds::player::form;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 use crate::setup::Form;
 
@@ -81,7 +81,8 @@ fn player_sprite(content: &Content, name_id: u16) -> SpriteId {
         0x1A0 => content.form(Form::NONE).sprite,
         0x1A1..=0x1AB => content.navi(crate::setup::Navi((name_id - 0x1A0) as u8)).sprite,
         0x1AC..=0x1C3 => content.form(Form((name_id - 0x1AB) as u8)).sprite,
-        _ => panic!("afterimages of NameID {name_id:#x} are not implemented yet"),
+        // Only players' Beast Out rush leaves afterimages.
+        _ => unreachable!("an afterimage of NameID {name_id:#x}, which is not a player's"),
     }
 }
 
@@ -116,17 +117,12 @@ fn init(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_8010DF6(record, 0)` then `sub_80C4526(layer, 1)`: the overlay the
-/// NameID's form wears, on the afterimage.
+/// NameID's init hook puts on, on the afterimage, pinned in front.
 fn put_on_layer(b: &mut Battle, r: ObjectRef, name_id: u16) {
-    match name_id {
-        // Base MegaMan and the forms without an overlay (nullsub).
-        0x1A0 | 0x1B6 | 0x1B8..=0x1BC | 0x1C2 => {}
-        // The Falzar beast head (sub_8011366).
-        0x1B7 => {
-            let layer = form_overlay::spawn(b, r, form_overlay::BEAST_HEAD, true);
-            b.objects.get_mut(r).related[1] = layer;
-        }
-        _ => panic!("afterimage overlays for NameID {name_id:#x} (sub_8010DF6) are not implemented yet"),
+    form::navi_init_hook(b, r, name_id);
+    // (With no overlay the game's store lands in BIOS memory.)
+    if let Some(layer) = b.objects.get(r).related[1] {
+        form::pin_overlay(b, layer);
     }
 }
 
@@ -168,15 +164,9 @@ fn destroy(b: &mut Battle, r: ObjectRef) {
     if let Some(layer) = b.objects.get(r).related[1] {
         b.objects.get_mut(layer).flags |= flags::RUN_WHILE_PAUSED;
     }
-    // sub_8011044(record, 1): the Falzar beast head comes off (sub_801140E).
-    match b.objects.get(r).name_id {
-        0x1A0 | 0x1B6 | 0x1B8..=0x1BC | 0x1C2 => {}
-        0x1B7 => {
-            if let Some(layer) = b.objects.get_mut(r).related[1].take() {
-                set_progress(b, layer, Progress::DESTROY);
-            }
-        }
-        n => panic!("afterimage teardown for NameID {n:#x} (sub_8011044) is not implemented yet"),
-    }
+    // sub_8011044(record, 1): the NameID's death hook takes the overlay
+    // off.
+    let name_id = b.objects.get(r).name_id;
+    form::navi_death_hook(b, r, name_id);
     b.objects.free(r);
 }

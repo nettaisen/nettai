@@ -156,6 +156,9 @@ pub struct Object {
     pub pos: Vec3,
     pub vel: Vec3,
     pub related: [Option<ObjectRef>; 2],
+    /// ExtraVars[0] of an object whose NameID's init hook puts on two
+    /// overlays (AI index 14, `sub_8010FD8`): the second one.
+    pub second_overlay: Option<ObjectRef>,
     pub collision: Option<CollisionId>,
     pub actor: Option<ActorId>,
     /// A lifecycle position saved by status reactions (the game's +0x5C
