@@ -71,11 +71,12 @@ mod tests {
     /// A battle between two navis with 500 HP on the test content, a link
     /// battle or not, with this music.
     fn battle(music: u8, link: bool) -> Battle {
+        let content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |s| s.music = music);
         let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
-        setup.settings.music = music;
+        setup.content = content.hash();
         setup.settings.effects = if link { effects::LINK } else { 0 };
         setup.rng = 0x1234_5678;
-        Battle::new(setup, testing::content())
+        Battle::new(setup, std::sync::Arc::new(content))
     }
 
     fn tick(b: &mut Battle) -> Vec<SoundCue> {

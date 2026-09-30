@@ -2,10 +2,32 @@
 //! shared RNG seed, and the set score carried between rounds.
 
 use crate::content::{Content, ContentHash};
+use bn6_content_api::{FormHandle, NaviHandle, StageHandle, WeaponHandle};
 
-/// Battle settings (the game's 16-byte BattleSettings record).
+/// A round's battle settings: its stage, and what the round sets over the
+/// stage's record (the background a set's later rounds draw, the effects
+/// the battle runs with).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BattleSettings {
+    pub stage: StageHandle,
+    pub background: u8,
+    /// `effects` bits (see `effects`).
+    pub effects: u32,
+}
+
+impl BattleSettings {
+    /// A round on `stage` as its record gives it (its background and
+    /// effects).
+    pub fn on(content: &Content, stage: StageHandle) -> BattleSettings {
+        let s = content.stage(stage);
+        BattleSettings { stage, background: s.background, effects: s.effects }
+    }
+}
+
+/// A stage's battle settings record (the game's 16-byte BattleSettings,
+/// `BattleSettingsList1`'s entries).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct StageSettings {
     /// Panel layout (`Content::panel_layout`).
     pub layout: u8,
     pub music: u8,
@@ -171,19 +193,19 @@ pub struct Supports {
     pub tango: bool,
 }
 
-/// The weapon routine indices (`off_80117D4`; 0xFF = none).
+/// The navi's weapons (`off_80117D4`'s routines; the byte 0xFF is none).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviWeapons {
     /// +0x04: the B-button buster.
-    pub buster: u8,
+    pub buster: Option<WeaponHandle>,
     /// +0x05: the charged shot.
-    pub charge_shot: u8,
+    pub charge_shot: Option<WeaponHandle>,
     /// +0x07: the B+Back special.
-    pub back_special: u8,
+    pub back_special: Option<WeaponHandle>,
     /// +0x39: the A-button charge (charged chips).
-    pub a_charge: u8,
+    pub a_charge: Option<WeaponHandle>,
     /// +0x44: the A button in battle mode 9.
-    pub mode9_a: u8,
+    pub mode9_a: Option<WeaponHandle>,
     /// +0x4D: the buster shot's projectile config (applied on an RNG roll).
     pub buster_shot: u8,
     /// +0x4F: the charged shot's projectile config (0 = default 6).
@@ -256,7 +278,7 @@ pub struct NaviStats {
     /// +0x10: MegaMan's base element byte (primary | secondary bits).
     pub element: u8,
     /// +0x17: the form at battle start (copied to `form` at init).
-    pub starting_form: Form,
+    pub starting_form: FormHandle,
     /// +0x1B / +0x1C / +0x1D / +0x23
     pub float_shoes: bool,
     pub air_shoes: bool,
@@ -270,11 +292,11 @@ pub struct NaviStats {
     /// +0x22: fighting outdoors in the sun (some chips hit harder).
     pub sun: bool,
     /// +0x29
-    pub navi: Navi,
+    pub navi: NaviHandle,
     /// +0x2B: a per-navi variant (selects its move lag).
     pub navi_variant: u8,
     /// +0x2C
-    pub form: Form,
+    pub form: FormHandle,
     /// +0x2D: the folder the navi brings (0-2).
     pub folder: u8,
     /// +0x2E / +0x2F: the folders' regular chips.
@@ -299,8 +321,10 @@ impl NaviStats {
     /// A hit's bug code can name any stat byte below 0x64 by its offset
     /// and set it (`sub_80139F6`): the field at that offset takes the
     /// byte (a halfword's low or high byte; a flag is set by any nonzero
-    /// byte). Offsets the engine doesn't model are not supported.
-    pub fn set_byte_by_bug_code(&mut self, offset: u8, value: u8) {
+    /// byte; a navi, form or weapon byte names the pack's by number).
+    /// Offsets the engine doesn't model are not supported.
+    pub fn set_byte_by_bug_code(&mut self, offset: u8, value: u8, content: &Content) {
+        let weapon = |v: u8| (v != 0xFF).then(|| content.weapon_numbered(v));
         let flag = value != 0;
         let low = |w: &mut u16| *w = (*w & 0xFF00) | value as u16;
         let high = |w: &mut u16| *w = (*w & 0x00FF) | (value as u16) << 8;
@@ -310,10 +334,10 @@ impl NaviStats {
             0x01 => self.attack = value,
             0x02 => self.rapid = value,
             0x03 => self.charge = value,
-            0x04 => w.buster = value,
-            0x05 => w.charge_shot = value,
+            0x04 => w.buster = weapon(value),
+            0x05 => w.charge_shot = weapon(value),
             0x06 => self.first_barrier = value,
-            0x07 => w.back_special = value,
+            0x07 => w.back_special = weapon(value),
             0x08 => {
                 self.gauge_speed = match value {
                     0 => GaugeSpeed::Normal,
@@ -341,7 +365,7 @@ impl NaviStats {
             0x14 => g.buster_blanks = value,
             0x15 => g.buster_charged = value,
             0x16 => g.hit_status = value,
-            0x17 => self.starting_form = Form(value),
+            0x17 => self.starting_form = content.form_numbered(Form(value)),
             0x18 => g.hp_drain = value,
             0x19 => g.custom_drain = value,
             0x1A => g.battle_start = value,
@@ -353,14 +377,14 @@ impl NaviStats {
             0x22 => self.sun = flag,
             0x23 => self.super_armor = flag,
             0x24 => g.emotion = value,
-            0x29 => self.navi = Navi(value),
+            0x29 => self.navi = content.navi_numbered(Navi(value)),
             0x2B => self.navi_variant = value,
-            0x2C => self.form = Form(value),
+            0x2C => self.form = content.form_numbered(Form(value)),
             0x2D => self.folder = value,
             0x2E => self.folder_reg[0] = value,
             0x2F => self.folder_reg[1] = value,
             0x31 => g.processing = value,
-            0x39 => w.a_charge = value,
+            0x39 => w.a_charge = weapon(value),
             0x3D => g.starting_damage = value,
             0x3E => low(&mut self.max_base_hp),
             0x3F => high(&mut self.max_base_hp),
@@ -368,7 +392,7 @@ impl NaviStats {
             0x41 => high(&mut self.hp),
             0x42 => low(&mut self.max_hp),
             0x43 => high(&mut self.max_hp),
-            0x44 => w.mode9_a = value,
+            0x44 => w.mode9_a = weapon(value),
             0x4D => w.buster_shot = value,
             0x4F => w.charge_shot_kind = value,
             0x50 => low(&mut self.chip_recovery),
@@ -399,13 +423,11 @@ pub struct SetScore {
     pub max_combo: u8,
 }
 
-/// Where a later round of a set is fought: an entry of the battle
-/// settings table and the background to show (one pair of
-/// `byte_203CA50`).
+/// Where a later round of a set is fought: a stage and the background to
+/// show (one pair of `byte_203CA50`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Stage {
-    /// Index into the content's battle settings (`Stages::settings`).
-    pub settings: u8,
+    pub stage: StageHandle,
     pub background: u8,
 }
 
@@ -473,12 +495,8 @@ impl RoundSetup {
     /// The settings of the set's next round, fought on `stage` after this
     /// one (`battleSettings_802D2B2`): that table entry, with this
     /// round's effects and the stage's background.
-    pub fn next_settings(&self, stage: Stage, content: &Content) -> BattleSettings {
-        BattleSettings {
-            effects: self.settings.effects,
-            background: stage.background,
-            ..content.rules.stages.settings(stage.settings)
-        }
+    pub fn next_settings(&self, stage: Stage) -> BattleSettings {
+        BattleSettings { stage: stage.stage, background: stage.background, effects: self.settings.effects }
     }
 }
 
@@ -488,12 +506,15 @@ mod tests {
 
     #[test]
     fn bug_code_writes_a_named_stat() {
+        let content = crate::content::testing::content();
         let mut s = NaviStats { max_hp: 1000, ..Default::default() };
-        s.set_byte_by_bug_code(0x1D, 1);
+        s.set_byte_by_bug_code(0x1D, 1, &content);
         assert!(s.undershirt);
-        s.set_byte_by_bug_code(0x16, 2);
+        s.set_byte_by_bug_code(0x16, 2, &content);
         assert_eq!(s.bugs.hit_status, 2);
-        s.set_byte_by_bug_code(0x43, 0x01);
+        s.set_byte_by_bug_code(0x43, 0x01, &content);
         assert_eq!(s.max_hp, 0x01E8);
+        s.set_byte_by_bug_code(0x05, 0xFF, &content);
+        assert_eq!(s.weapons.charge_shot, None);
     }
 }

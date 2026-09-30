@@ -1,10 +1,10 @@
 //! Buttons to requests (`sub_8012FC8`) and the buster charge
 //! (`sub_8012EBC`). See objects-and-player.md §M3.3, §B3 and §B4.
 
-use super::{ai, ai_mut, battle_mode, per_player_gauges, next_chip, stats};
+use super::{ai, ai_mut, battle_mode, form_of, navi_of, next_chip, per_player_gauges, stats};
 use crate::actor::{request, status};
 use crate::battle::{Battle, battle_flags};
-use crate::hand::NO_CHIP;
+use bn6_content_api::ChipHandle;
 use crate::input::keys;
 use crate::object::ObjectRef;
 
@@ -42,28 +42,30 @@ pub(super) fn may_charge(b: &Battle, r: ObjectRef) -> bool {
 /// `sub_801336C`: the A button charges (a charged-chip form).
 pub(super) fn a_chargeable(b: &Battle, r: ObjectRef) -> bool {
     let a = ai(b, r);
-    if a.a_charge == 0xFF && a.alt_a_charge == 0xFF {
+    if a.a_charge.is_none() && a.alt_a_charge.is_none() {
         return false;
     }
-    if !may_charge(b, r) || next_chip(b, r) == NO_CHIP {
+    let Some(chip) = next_chip(b, r) else { return false };
+    if !may_charge(b, r) {
         return false;
     }
-    chip_charges(b, r, next_chip(b, r))
+    chip_charges(b, r, chip)
 }
 
 /// `sub_8013236`: whether chip `id` charges on A in the navi's form: its
 /// attack family matches the form (damaging, not dimming chips; any
 /// Null-family chip in Beast Out).
-fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
+fn chip_charges(b: &Battle, r: ObjectRef, chip: ChipHandle) -> bool {
     use crate::content::{ChipFamily as F, ChipFlags};
-    if id >= 0x190 {
+    let id = b.content.chip_number(chip);
+    if id.is_some_and(|id| id >= 0x190) {
         return false;
     }
-    let c = b.content.chip(id);
-    let (family, form) = (c.family, stats(b, r).form.0);
+    let c = b.content.chip(chip);
+    let (family, form) = (c.family, form_of(b, r).0);
     let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::DIMMING);
     let charges = (form == 2 && family == F::Null && damaging)
-        || (matches!(form, 3 | 0xF) && ((0x4C..=0x4F).contains(&id) || family == F::Sword) && damaging)
+        || (matches!(form, 3 | 0xF) && (id.is_some_and(|id| (0x4C..=0x4F).contains(&id)) || family == F::Sword) && damaging)
         || ((0x0B..=0x16).contains(&form) && family == F::Null)
         || (matches!(form, 7 | 0x13) && family == F::Wood && damaging)
         || (matches!(form, 6 | 0x12) && family == F::Aqua && damaging)
@@ -79,7 +81,7 @@ fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
     if level == 0xFF || !damaging {
         return false;
     }
-    let (own, i) = match stats(b, r).navi.0 {
+    let (own, i) = match navi_of(b, r).0 {
         5 => (F::Fire, 0),
         6 => (F::Aqua, 1),
         7 => (F::Wood, 2),
@@ -98,7 +100,7 @@ const LINK_NAVI_CHARGE_LEVELS: [u8; 4] = [3, 11, 11, 11];
 
 /// `sub_8013396`: the B button charges.
 fn b_chargeable(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).charge_shot != 0xFF && may_charge(b, r)
+    ai(b, r).charge_shot.is_some() && may_charge(b, r)
 }
 
 /// `sub_8012FC8`: raise requests from this tick's buttons.
@@ -106,7 +108,7 @@ fn decode(b: &mut Battle, r: ObjectRef) {
     let f0 = ai(b, r).requests;
     if b.is_dimmed() {
         // Only a dimming chip can cut in.
-        if !chips_enabled(b, r) || f0 & request::CUT_IN != 0 || next_chip(b, r) == NO_CHIP {
+        if !chips_enabled(b, r) || f0 & request::CUT_IN != 0 || next_chip(b, r).is_none() {
             return;
         }
         if ai(b, r).dimmed_pad.pressed & keys::A != 0 {
@@ -193,7 +195,7 @@ fn decode_holds(b: &mut Battle, r: ObjectRef) {
 /// B then Back within 8 ticks, for navis with a B+Back special.
 fn decode_back_special(b: &mut Battle, r: ObjectRef) {
     let a = ai(b, r);
-    if a.back_special == 0xFF || a.back_special_cooldown != 0 {
+    if a.back_special.is_none() || a.back_special_cooldown != 0 {
         return;
     }
     let (pressed, held) = (a.pad.pressed, a.pad.held);
@@ -218,12 +220,12 @@ fn decode_back_special(b: &mut Battle, r: ObjectRef) {
 /// some rapid busters). A full B charge from last tick makes it a charged
 /// shot.
 fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
-    let form = stats(b, r).form;
+    let form = form_of(b, r);
     let a = ai(b, r);
-    if a.buster == 0xFF || f0 & (request::BUSTER | request::CHARGED_SHOT) != 0 {
+    if a.buster.is_none() || f0 & (request::BUSTER | request::CHARGED_SHOT) != 0 {
         return;
     }
-    let edge = if matches!(a.buster, 3 | 4 | 0x2C) {
+    let edge = if matches!(b.weapon_number(a.buster), Some(3 | 4 | 0x2C)) {
         if matches!(form.0, 0x14 | 0x16) && a.requests & request::BACK_SPECIAL != 0 {
             return;
         }
@@ -231,7 +233,7 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
             return;
         }
         a.pad.held
-    } else if a.charge_shot != 0xFF {
+    } else if a.charge_shot.is_some() {
         a.pad.released
     } else {
         a.pad.pressed
@@ -246,7 +248,7 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
 /// A chip: on A press (A release when A charges). A full A charge makes
 /// it a charged chip.
 fn decode_chip(b: &mut Battle, r: ObjectRef, f0: u32) {
-    if !chips_enabled(b, r) || f0 & (request::CHIP | request::CHARGED_CHIP) != 0 || next_chip(b, r) == NO_CHIP {
+    if !chips_enabled(b, r) || f0 & (request::CHIP | request::CHARGED_CHIP) != 0 || next_chip(b, r).is_none() {
         return;
     }
     let edge = if a_chargeable(b, r) { ai(b, r).pad.released } else { ai(b, r).pad.pressed };
@@ -302,15 +304,23 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
     let a = ai(b, r);
     let routine = if source == 2 {
         a.charge_shot
-    } else if s.form.is_beast() && uses_alt_a_charge(b, r) {
+    } else if form_of(b, r).is_beast() && uses_alt_a_charge(b, r) {
         a.alt_a_charge
     } else {
         a.a_charge
     };
-    if routine == 0xFF {
-        return 0xFF;
+    let Some(routine) = routine else { return 0xFF };
+    // The charge table goes by routine number; a weapon content defines
+    // gives its own.
+    match b.content.weapon_number(routine) {
+        Some(number) => b.content.rules.charge_threshold(number, s.charge),
+        None => {
+            let w = b.content.defs.weapon(routine);
+            *w.charge_ticks.get(s.charge as usize).unwrap_or_else(|| {
+                panic!("content error: weapon {:?} has no charge time at Charge {}", w.key, s.charge)
+            })
+        }
     }
-    b.content.rules.charge_threshold(routine, s.charge)
 }
 
 /// Whether the next chip is of the Null family, which uses the

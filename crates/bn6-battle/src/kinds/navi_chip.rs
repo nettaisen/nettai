@@ -55,7 +55,7 @@ pub struct Spec {
 /// `sub_80E192C`: the controller for `user`'s navi chip, on its panel.
 /// (Its position is register garbage nothing reads.)
 pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
-    if s.navi == 0 && b.linked[(b.objects.get(user).alliance ^ 1) as usize].chip == 0xBD {
+    if s.navi == 0 && b.chip_number(b.linked[(b.objects.get(user).alliance ^ 1) as usize].chip) == Some(0xBD) {
         panic!("navi chip 0 against the other side's chip 0xBD (sub_80E192C) is not implemented yet");
     }
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::NaviChip, Vec3::default(), s.params)?;
@@ -194,9 +194,12 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let user = user(b, r);
     // The chip's own navi, if content defines the chip; else
     // off_802CD5C, by the subtype.
-    let defined = match b.content.defs.chip_with_id(v.chip.chip).map(|c| c.usage) {
+    let defined = match v.chip.chip.and_then(|c| b.content.defs.chip(c).usage) {
         Some(crate::content::ChipUsage::Navi(f)) => Some(f),
-        Some(u) => panic!("chip {:#x} is a navi chip, but its definition uses it as {u:?}", v.chip.chip),
+        Some(u) => panic!(
+            "chip {:?} is a navi chip, but its definition uses it as {u:?}",
+            b.content.defs.chip(v.chip.chip.expect("a defined chip")).key
+        ),
         None => None,
     };
     let navi = match defined.or_else(|| b.content.defs.hook(Hook::NaviChip(v.navi))) {

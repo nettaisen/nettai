@@ -7,7 +7,10 @@
 //! - the engine's own (its object kinds, keyed `engine/...`);
 //! - content registered by number from the pack's data (an object folder's
 //!   `[kind]`, a chip's `script`, a `weapon.toml`), keyed from that data
-//!   (the kind's folder name; `v1/action-12`, `v1/weapon-02`);
+//!   (the kind's folder name; `v1/action-12`, `v1/weapon-02`); and the
+//!   pack's records content doesn't define yet: its chips, navis, forms
+//!   and stages (`v1/chip-036`, `v1/navi-01`, `v1/form-0c`, `v1/stage-11`)
+//!   and every weapon routine number (`v1/weapon-29`);
 //! - content's definitions (`define.kind { ... }`), keyed by their keys.
 //!
 //! Each registry's keys are sorted byte-wise; an entry's handle is its
@@ -23,11 +26,15 @@
 use std::collections::BTreeMap;
 
 use bn6_content_api::{
-    ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, Hook, KindHandle, Pool,
-    RecordHandle, Registry, Schema, StateId, WeaponHandle,
+    ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, FnId, FnSource, FormHandle, Hook, KindHandle,
+    NaviHandle, Pool, RecordHandle, Registry, Schema, StageHandle, StateId, WeaponHandle,
 };
 
-use super::{ChipId, Content, DIMMING_CHIP_ACTION, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION};
+use super::{
+    ChipClass, ChipCode, ChipData, ChipFamily, ChipFlags, ChipId, ChipModifier, Content, DIMMING_CHIP_ACTION, Element,
+    ExtraChipFlags, FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
+};
+use crate::setup::{Form, Navi, StageSettings};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
 /// Who implements an object kind.
@@ -74,11 +81,17 @@ pub struct ActionDef {
 pub struct WeaponDef {
     pub key: String,
     pub name: String,
-    /// `setup(navi) -> action`.
-    pub setup: FnId,
-    /// The weapon routine numbers that name it: a `weapon.toml`'s (the
-    /// engine's navi stats still name weapons by number).
-    pub ids: Vec<u8>,
+    /// `setup(navi) -> action`; none for a routine number nothing
+    /// implements yet.
+    pub setup: Option<FnId>,
+    /// The weapon routine number registration by number gives it (a
+    /// `weapon.toml`'s, or the number of a routine nothing implements): the
+    /// ruleset's numeric logic asks it until phase C. A weapon content
+    /// defines has none.
+    pub number: Option<u8>,
+    /// Ticks to a full charge by Charge stat, for a weapon content defines
+    /// (the pack's routines' are the charge table's, by number).
+    pub charge_ticks: Vec<u16>,
 }
 
 /// How a chip is used.
@@ -94,15 +107,41 @@ pub enum ChipUsage {
     Instant(FnId),
 }
 
-/// A chip content defines.
+/// A chip: the pack's record (registration by number, keyed `v1/chip-036`)
+/// or what content defines.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ChipDef {
     pub key: String,
-    pub usage: ChipUsage,
-    /// The chip id the engine's hands reach it by, until they hold chip
-    /// handles (docs/design/content-model-v2.md §12): only the engine's
-    /// tests give one.
-    pub id: Option<ChipId>,
+    /// Its record. A definition's has no `id`: the engine never learns the
+    /// original's number for what content defines.
+    pub record: ChipData,
+    /// How its definition uses it; none for the pack's records, which are
+    /// used by their action number and subtype.
+    pub usage: Option<ChipUsage>,
+}
+
+/// A navi: the pack's record (keyed `v1/navi-01`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct NaviDef {
+    pub key: String,
+    pub record: NaviData,
+}
+
+/// One of MegaMan's forms: the pack's record (keyed `v1/form-0c`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct FormDef {
+    pub key: String,
+    pub record: FormData,
+}
+
+/// A stage: the pack's battle settings record (keyed `v1/stage-11` by its
+/// place in the settings table).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct StageDef {
+    pub key: String,
+    pub record: StageSettings,
+    /// Its place in the pack's settings table.
+    pub number: u8,
 }
 
 /// A record only content reads: the engine keeps its handle and type.
@@ -135,6 +174,9 @@ pub struct Defs {
     pub actions: Vec<ActionDef>,
     pub weapons: Vec<WeaponDef>,
     pub chips: Vec<ChipDef>,
+    pub navis: Vec<NaviDef>,
+    pub forms: Vec<FormDef>,
+    pub stages: Vec<StageDef>,
     pub records: Vec<RecordDef>,
     /// One-shot effects' and hit sparks' looks content defines, by handle.
     pub effects: Vec<super::EffectSprite>,
@@ -154,8 +196,14 @@ pub struct Defs {
     action_numbers: Vec<Option<ActionHandle>>,
     /// Weapons by routine number (registration by number).
     weapon_ids: Vec<Option<WeaponHandle>>,
-    /// Chips content defines, by the chip id a test gave them.
-    chip_ids: BTreeMap<ChipId, ChipHandle>,
+    /// The pack's records by their numbers (registration by number).
+    chip_numbers: BTreeMap<ChipId, ChipHandle>,
+    navi_numbers: Vec<Option<NaviHandle>>,
+    form_numbers: Vec<Option<FormHandle>>,
+    stage_numbers: Vec<Option<StageHandle>>,
+    /// Keys by registry, for the codecs.
+    chip_keys: BTreeMap<String, ChipHandle>,
+    weapon_keys: BTreeMap<String, WeaponHandle>,
 }
 
 fn pool_index(pool: Pool) -> usize {
@@ -205,16 +253,76 @@ impl Defs {
         self.weapon_ids.get(id as usize).copied().flatten()
     }
 
-    /// A chip content defines, by the chip id a test gave it.
-    pub fn chip_with_id(&self, id: ChipId) -> Option<&ChipDef> {
-        self.chip_ids.get(&id).map(|h| &self.chips[h.index()])
+    /// The pack's chip record with this id (registration by number).
+    pub fn chip_numbered(&self, id: ChipId) -> Option<ChipHandle> {
+        self.chip_numbers.get(&id).copied()
+    }
+
+    /// The chip with this key.
+    pub fn chip_by_key(&self, key: &str) -> Option<ChipHandle> {
+        self.chip_keys.get(key).copied()
+    }
+
+    pub fn chip(&self, h: ChipHandle) -> &ChipDef {
+        &self.chips[h.index()]
+    }
+
+    /// The pack's navi with this number.
+    pub fn navi_numbered(&self, navi: Navi) -> Option<NaviHandle> {
+        self.navi_numbers.get(navi.index()).copied().flatten()
+    }
+
+    pub fn navi(&self, h: NaviHandle) -> &NaviDef {
+        &self.navis[h.index()]
+    }
+
+    /// The navi with this key.
+    pub fn navi_by_key(&self, key: &str) -> Option<NaviHandle> {
+        self.navis.binary_search_by(|n| n.key.as_str().cmp(key)).ok().map(|i| NaviHandle(i as u16))
+    }
+
+    /// The pack's form with this number.
+    pub fn form_numbered(&self, form: Form) -> Option<FormHandle> {
+        self.form_numbers.get(form.index()).copied().flatten()
+    }
+
+    pub fn form(&self, h: FormHandle) -> &FormDef {
+        &self.forms[h.index()]
+    }
+
+    /// The form with this key.
+    pub fn form_by_key(&self, key: &str) -> Option<FormHandle> {
+        self.forms.binary_search_by(|f| f.key.as_str().cmp(key)).ok().map(|i| FormHandle(i as u16))
+    }
+
+    /// The pack's stage at this place in the settings table.
+    pub fn stage_numbered(&self, index: u8) -> Option<StageHandle> {
+        self.stage_numbers.get(index as usize).copied().flatten()
+    }
+
+    pub fn stage(&self, h: StageHandle) -> &StageDef {
+        &self.stages[h.index()]
+    }
+
+    /// The stage with this key.
+    pub fn stage_by_key(&self, key: &str) -> Option<StageHandle> {
+        self.stages.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| StageHandle(i as u16))
+    }
+
+    pub fn weapon(&self, h: WeaponHandle) -> &WeaponDef {
+        &self.weapons[h.index()]
+    }
+
+    /// The weapon with this key.
+    pub fn weapon_by_key(&self, key: &str) -> Option<WeaponHandle> {
+        self.weapon_keys.get(key).copied()
     }
 
     /// The function a hook by number runs: a weapon routine's `setup`, or
     /// what the pack's data registers for a subtype or an entry type.
     pub fn hook(&self, hook: Hook) -> Option<FnId> {
         match hook {
-            Hook::Weapon(n) => self.weapon_numbered(n).map(|w| self.weapons[w.index()].setup),
+            Hook::Weapon(n) => self.weapon_numbered(n).and_then(|w| self.weapons[w.index()].setup),
             _ => self.hooks.get(&hook).copied(),
         }
     }
@@ -231,44 +339,6 @@ impl Defs {
 
     pub fn schema(&self, id: StateId) -> &Schema {
         &self.schemas[id.0 as usize].schema
-    }
-
-    /// Give the weapon `key` a weapon routine number, as a `weapon.toml`
-    /// does: how the engine's tests reach a defined weapon while navi stats
-    /// name weapons by number. Nothing else calls it: the engine never
-    /// learns the original's numbers for what content defines.
-    #[cfg(any(test, feature = "test-content"))]
-    pub fn number_weapon(&mut self, key: &str, id: u8) -> Result<WeaponHandle, ContentError> {
-        let i = self.weapons.binary_search_by(|w| w.key.as_str().cmp(key));
-        let h = WeaponHandle(i.map_err(|_| ContentError::new(format!("no weapon is named {key:?}")))? as u16);
-        if let Some(other) = self.weapon_ids[id as usize]
-            && other != h
-        {
-            return Err(ContentError::new(format!(
-                "weapons {} and {key} both are routine {id:#04x}",
-                self.weapons[other.index()].key
-            )));
-        }
-        self.weapons[h.index()].ids.push(id);
-        self.weapon_ids[id as usize] = Some(h);
-        Ok(h)
-    }
-
-    /// Give the chip `key` a chip id: the engine's record with that id runs
-    /// the definition's usage. How the engine's tests reach a defined chip
-    /// while hands hold chip ids; nothing else calls it.
-    #[cfg(any(test, feature = "test-content"))]
-    pub fn number_chip(&mut self, key: &str, id: ChipId) -> Result<ChipHandle, ContentError> {
-        let i = self.chips.binary_search_by(|c| c.key.as_str().cmp(key));
-        let h = ChipHandle(i.map_err(|_| ContentError::new(format!("no chip is named {key:?}")))? as u16);
-        if let Some(&other) = self.chip_ids.get(&id)
-            && other != h
-        {
-            return Err(ContentError::new(format!("chips {} and {key} both are chip {id:#x}", self.chips[other.index()].key)));
-        }
-        self.chips[h.index()].id = Some(id);
-        self.chip_ids.insert(id, h);
-        Ok(h)
     }
 }
 
@@ -341,6 +411,139 @@ fn export(definitions: &Definitions, module: &str, name: &str, whose: &str) -> R
         return Err(ContentError::new(format!("{whose}: {module}.luau doesn't export the function `{name}`")));
     }
     Ok(FnSource::export(module, name))
+}
+
+/// A chip definition's record (docs/design/content-model-v2.md §3.1): the
+/// fields the engine reads. Damage formulas, Program Advance recipes, dark
+/// chips' substitutes and lock-on modes by definition come with the v2 API
+/// (steps 4 and 10); a definition that gives one is refused.
+fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
+    let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
+    let spec = &d.spec;
+    let int = |field: &str, max: i64| -> Result<i64, ContentError> {
+        match spec.field(field) {
+            Data::Nil => Ok(0),
+            Data::Int(i) if (0..=max).contains(i) => Ok(*i),
+            other => Err(what(format!("`{field}` is {other:?}, not a number from 0 to {max}"))),
+        }
+    };
+    let name_of = |field: &str| -> Result<Option<String>, ContentError> {
+        match spec.field(field) {
+            Data::Nil => Ok(None),
+            Data::Str(s) => Ok(Some(s.clone())),
+            other => Err(what(format!("`{field}` is {other:?}, not a name"))),
+        }
+    };
+    fn named<T: serde::de::DeserializeOwned>(name: &str) -> Option<T> {
+        serde_json::from_value(serde_json::Value::String(name.to_string())).ok()
+    }
+    let enum_field = |field: &str| -> Result<Option<String>, ContentError> { name_of(field) };
+    let element = match enum_field("element")? {
+        None => Element::Null,
+        Some(n) => named(&n).ok_or_else(|| what(format!("`element` {n:?} is not an element")))?,
+    };
+    let family = match enum_field("family")? {
+        None => ChipFamily::Null,
+        Some(n) => named(&n).ok_or_else(|| what(format!("`family` {n:?} is not a chip family")))?,
+    };
+    let class = match enum_field("class")? {
+        None => ChipClass::Standard,
+        Some(n) => named(&n).ok_or_else(|| what(format!("`class` {n:?} is not a chip class")))?,
+    };
+    let modifier: Option<ChipModifier> = match enum_field("modifier")? {
+        None => None,
+        Some(n) => Some(named(&n).ok_or_else(|| what(format!("`modifier` {n:?} is not a modifier")))?),
+    };
+    let flags = |field: &str, names: &[(u32, &str)]| -> Result<u8, ContentError> {
+        let mut bits = 0u8;
+        match spec.field(field) {
+            Data::Nil => {}
+            Data::List(items) => {
+                for item in items {
+                    let n = item.str().ok_or_else(|| what(format!("`{field}` holds {item:?}, not a flag's name")))?;
+                    let (bit, _) = names.iter().find(|(_, f)| *f == n).ok_or_else(|| what(format!("`{field}`: no flag {n:?}")))?;
+                    bits |= *bit as u8;
+                }
+            }
+            other => Err(what(format!("`{field}` is {other:?}, not a list of flags")))?,
+        }
+        Ok(bits)
+    };
+    let codes = match spec.field("codes") {
+        Data::Nil => Vec::new(),
+        Data::List(items) => items
+            .iter()
+            .map(|c| {
+                c.str()
+                    .and_then(|s| {
+                        let mut chars = s.chars();
+                        match (chars.next().and_then(ChipCode::from_letter), chars.next()) {
+                            (Some(code), None) => Some(code),
+                            _ => None,
+                        }
+                    })
+                    .ok_or_else(|| what(format!("`codes` holds {c:?}, not a code (A-Z or *)")))
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+        other => return Err(what(format!("`codes` is {other:?}, not a list"))),
+    };
+    for field in ["program_advances", "dark_substitute"] {
+        if !spec.field(field).is_nil() {
+            return Err(what(format!("`{field}` in a definition comes with the v2 API")));
+        }
+    }
+    let damage = match spec.field("damage") {
+        Data::Nil => 0,
+        Data::Int(i) if (0..1000).contains(i) => *i as u16,
+        other => return Err(what(format!("`damage` is {other:?}: a number below 1000 (formulas come with the v2 API)"))),
+    };
+    let (beast_lockon, lockon_mode) = match spec.field("beast") {
+        Data::Nil => (false, 0),
+        beast => {
+            let rush = !matches!(beast.field("rush"), Data::Bool(false));
+            let mode = match beast.field("lockon") {
+                Data::Nil => 0,
+                Data::Int(i) if (0..=0xFF).contains(i) => *i as u8,
+                other => return Err(what(format!("`beast.lockon` is {other:?}: a lock-on mode's number until the v2 API"))),
+            };
+            (rush, mode)
+        }
+    };
+    let library = spec.field("library");
+    let lib_int = |field: &str| library.field(field).int().unwrap_or(0);
+    Ok(ChipData {
+        id: None,
+        name: name_of("name")?.unwrap_or_else(|| d.key.clone()),
+        codes,
+        element,
+        rarity: int("rarity", 0xFF)? as u8,
+        family,
+        class,
+        mb: int("mb", 0xFF)? as u8,
+        flags: ChipFlags(flags("flags", ChipFlags::NAMES)?),
+        hit_param: int("hit_param", 0xFF)? as u8,
+        action: 0,
+        subtype: 0,
+        beast_lockon,
+        params: [0; 4],
+        lockout: int("lockout", 0xFF)? as u8,
+        extra_flags: ExtraChipFlags(flags("extra_flags", ExtraChipFlags::NAMES)?),
+        lockon_mode,
+        damage,
+        library_number: lib_int("number") as u16,
+        library_index: lib_int("index") as u8,
+        sort_key: lib_int("sort") as u16,
+        slot_in_limit: int("slot_in_limit", 0xFF)? as u8,
+        dark_substitute: None,
+        sp_damage: None,
+        navi_damage: None,
+        modifier,
+        program_advances: Vec::new(),
+        gun_del_sol: None,
+        recovery: None,
+        sword: None,
+        script: None,
+    })
 }
 
 impl Defs {
@@ -449,7 +652,7 @@ impl Defs {
         };
         for c in &content.chips {
             let Some(module) = &c.script else { continue };
-            let whose = format!("chip {:#05x} ({})", c.id, c.name);
+            let whose = format!("chip {:#05x} ({})", c.id.unwrap_or_default(), c.name);
             match c.action {
                 DIMMING_CHIP_ACTION => {
                     let f = export(&definitions, module, "dimming_chip", &whose)?;
@@ -499,12 +702,52 @@ impl Defs {
         for w in &content.weapons {
             let whose = format!("weapon routine {:#04x} ({})", w.id, w.name);
             let setup = export(&definitions, &w.script, "setup", &whose)?;
-            let def = WeaponDef { key: format!("v1/weapon-{:02x}", w.id), name: w.name.clone(), setup: functions.id(setup), ids: vec![w.id] };
+            let def = WeaponDef {
+                key: format!("v1/weapon-{:02x}", w.id),
+                name: w.name.clone(),
+                setup: Some(functions.id(setup)),
+                number: Some(w.id),
+                charge_ticks: Vec::new(),
+            };
             weapons.add(def.key.clone(), def, whose);
+        }
+        // Every other routine number a navi's stats may name: a weapon
+        // nothing implements yet (using it is the ruleset's error).
+        for n in 0..=0xFEu8 {
+            if !content.weapons.iter().any(|w| w.id == n) {
+                let def = WeaponDef {
+                    key: format!("v1/weapon-{n:02x}"),
+                    name: String::new(),
+                    setup: None,
+                    number: Some(n),
+                    charge_ticks: Vec::new(),
+                };
+                weapons.add(def.key.clone(), def, "a weapon routine number".into());
+            }
         }
         for d in definitions.of(Registry::Weapon) {
             let name = d.spec.field("name").str().unwrap_or(&d.key).to_string();
-            let def = WeaponDef { key: d.key.clone(), name, setup: functions.id(slot(d, "setup")?), ids: Vec::new() };
+            let charge_ticks = match d.spec.field("charge_ticks") {
+                Data::Nil => Vec::new(),
+                Data::List(items) => items
+                    .iter()
+                    .map(|t| match t {
+                        Data::Int(i) if (0..=0xFFFF).contains(i) => Ok(*i as u16),
+                        other => Err(ContentError::new(format!(
+                            "{}.luau: weapon {}'s `charge_ticks` holds {other:?}, not a tick count",
+                            d.module, d.key
+                        ))),
+                    })
+                    .collect::<Result<_, _>>()?,
+                other => {
+                    return Err(ContentError::new(format!(
+                        "{}.luau: weapon {}'s `charge_ticks` is {other:?}, not a list",
+                        d.module, d.key
+                    )));
+                }
+            };
+            let setup = Some(functions.id(slot(d, "setup")?));
+            let def = WeaponDef { key: d.key.clone(), name, setup, number: None, charge_ticks };
             weapons.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let weapons: Vec<WeaponDef> = weapons.sorted()?.into_iter().map(|(_, w)| w).collect();
@@ -513,7 +756,11 @@ impl Defs {
         let action_handle = |key: &str| -> Option<ActionHandle> {
             actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
         };
-        let mut chips = Vec::new();
+        let mut chips = Entries::new(Registry::Chip);
+        for c in &content.chips {
+            let key = format!("v1/chip-{:03x}", c.id.unwrap_or_default());
+            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage: None }, "the pack's chip record".into());
+        }
         for d in definitions.of(Registry::Chip) {
             let mut usages = Vec::new();
             match d.spec.field("action") {
@@ -536,8 +783,30 @@ impl Defs {
                     d.module, d.key
                 )));
             };
-            chips.push(ChipDef { key: d.key.clone(), usage, id: None });
+            let record = chip_record(d)?;
+            chips.add(d.key.clone(), ChipDef { key: d.key.clone(), record, usage: Some(usage) }, format!("defined in {}.luau", d.module));
         }
+        let chips: Vec<ChipDef> = chips.sorted()?.into_iter().map(|(_, c)| c).collect();
+
+        // The pack's navis, forms and stages.
+        let mut navis = Entries::new(Registry::Navi);
+        for n in &content.navis {
+            let key = format!("v1/navi-{:02x}", n.id);
+            navis.add(key.clone(), NaviDef { key, record: n.clone() }, "the pack's navi".into());
+        }
+        let navis: Vec<NaviDef> = navis.sorted()?.into_iter().map(|(_, n)| n).collect();
+        let mut forms = Entries::new(Registry::Form);
+        for f in &content.forms {
+            let key = format!("v1/form-{:02x}", f.id);
+            forms.add(key.clone(), FormDef { key, record: f.clone() }, "the pack's form".into());
+        }
+        let forms: Vec<FormDef> = forms.sorted()?.into_iter().map(|(_, f)| f).collect();
+        let mut stages = Entries::new(Registry::Stage);
+        for (i, st) in content.rules.stages.settings.iter().enumerate() {
+            let key = format!("v1/stage-{i:02x}");
+            stages.add(key.clone(), StageDef { key, record: *st, number: i as u8 }, "the pack's battle settings".into());
+        }
+        let stages: Vec<StageDef> = stages.sorted()?.into_iter().map(|(_, s)| s).collect();
 
         let look = |d: &Definition| -> Result<super::EffectSprite, ContentError> {
             let what = |e: String| ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key));
@@ -575,6 +844,7 @@ impl Defs {
                 Registry::Kind => position(kinds.iter().map(|k| &k.key), &d.key),
                 Registry::Action => position(actions.iter().map(|a| &a.key), &d.key),
                 Registry::Weapon => position(weapons.iter().map(|w| &w.key), &d.key),
+                Registry::Chip => position(chips.iter().map(|c| &c.key), &d.key),
                 Registry::Schema => schema_id(&d.key).0,
                 _ => in_registry,
             });
@@ -594,11 +864,19 @@ impl Defs {
             kind_slots: vec![None; 3 * 256],
             action_numbers: vec![None; 256],
             weapon_ids: vec![None; 256],
-            chip_ids: BTreeMap::new(),
+            chip_numbers: BTreeMap::new(),
+            navi_numbers: Vec::new(),
+            form_numbers: Vec::new(),
+            stage_numbers: Vec::new(),
+            chip_keys: BTreeMap::new(),
+            weapon_keys: BTreeMap::new(),
             kinds: Vec::new(),
             actions,
             weapons,
             chips,
+            navis,
+            forms,
+            stages,
             records,
             effects,
             sparks,
@@ -627,7 +905,8 @@ impl Defs {
             }
         }
         for (i, w) in defs.weapons.iter().enumerate() {
-            for &id in &w.ids {
+            defs.weapon_keys.insert(w.key.clone(), WeaponHandle(i as u16));
+            if let Some(id) = w.number {
                 if let Some(other) = defs.weapon_ids[id as usize] {
                     return Err(ContentError::new(format!(
                         "weapons {} and {} both are routine {id:#04x}",
@@ -637,6 +916,26 @@ impl Defs {
                 }
                 defs.weapon_ids[id as usize] = Some(WeaponHandle(i as u16));
             }
+        }
+        for (i, c) in defs.chips.iter().enumerate() {
+            defs.chip_keys.insert(c.key.clone(), ChipHandle(i as u16));
+            if c.usage.is_none()
+                && let Some(id) = c.record.id
+            {
+                defs.chip_numbers.insert(id, ChipHandle(i as u16));
+            }
+        }
+        defs.navi_numbers = vec![None; 256];
+        for (i, n) in defs.navis.iter().enumerate() {
+            defs.navi_numbers[n.record.id as usize] = Some(NaviHandle(i as u16));
+        }
+        defs.form_numbers = vec![None; 256];
+        for (i, f) in defs.forms.iter().enumerate() {
+            defs.form_numbers[f.record.id as usize] = Some(FormHandle(i as u16));
+        }
+        defs.stage_numbers = vec![None; 256];
+        for (i, st) in defs.stages.iter().enumerate() {
+            defs.stage_numbers[st.number as usize] = Some(StageHandle(i as u16));
         }
         defs.hooks = hooks.into_iter().map(|(hook, (f, _))| (hook, functions.id(f))).collect();
         defs.functions = functions.list;

@@ -255,7 +255,7 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     }
     let side = b.objects.get(r).alliance;
     let opp = side ^ 1;
-    let opp_form = b.stats[opp as usize].form;
+    let opp_form = b.form(opp as usize);
     if coll(b, r).acc.counter & 0x8000 != 0 && matches!(opp_form, Form::NONE | Form::GREGAR_BEAST | Form::FALZAR_BEAST)
     {
         let a = ai(b, r);
@@ -879,8 +879,7 @@ fn while_dimmed(b: &mut Battle, r: ObjectRef) {
     if player && is_link(b) && ai(b, r).requests & request::CUT_IN != 0 {
         // The next chip must be a dimming chip too.
         let chip = super::next_chip(b, r);
-        let freezes = chip != crate::hand::NO_CHIP
-            && b.content.chip(chip).flags.has(crate::content::ChipFlags::DIMMING);
+        let freezes = chip.is_some_and(|c| b.content.chip(c).flags.has(crate::content::ChipFlags::DIMMING));
         if can_cut_in(b, r) && freezes {
             cut_in(b, r);
         }

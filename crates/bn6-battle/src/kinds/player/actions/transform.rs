@@ -22,8 +22,8 @@ use crate::kinds::common;
 use crate::kinds::player::status::end_anger;
 use crate::kinds::player::{
     Emotion, ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, clear_statuses, coll_mut, emotion,
-    exit_attack_state, form, reset_charge, reset_status, set_coordinates_from_panel, set_mood, snap_to_future_panel,
-    stats, stats_mut,
+    exit_attack_state, form, form_of, navi_of, reset_charge, reset_status, set_coordinates_from_panel, set_mood,
+    snap_to_future_panel, stats, stats_mut,
 };
 use crate::kinds::{cross_merge, effect, full_synchro_aura, palette_flash};
 use crate::object::{ObjectRef, Vec3, flags};
@@ -123,11 +123,12 @@ fn timer_running(b: &mut Battle, r: ObjectRef) -> bool {
 /// `sub_8014A38`: one tick of the form change.
 pub(in crate::kinds::player) fn form_change(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
-    let Some(target) = b.turn_transforms[side].form.filter(|f| (1..=0x18).contains(&f.0)) else {
+    let target = b.turn_transforms[side].form.map(|f| b.content.form_number(f));
+    let Some(target) = target.filter(|f| (1..=0x18).contains(&f.0)) else {
         ai_mut(b, r).status &= !status::FORM_CHANGE;
         return;
     };
-    let current = stats(b, r).form;
+    let current = form_of(b, r);
     let seq = Sequence::of(target, current);
     if ai(b, r).attack.step == Step::Prepare as u8 && !matches!(ai(b, r).attack.action, ActionVars::FormChange(_)) {
         ai_mut(b, r).attack.action = ActionVars::FormChange(Vars::default());
@@ -155,7 +156,7 @@ fn land(b: &mut Battle, r: ObjectRef) {
 /// `sub_800F46C` + `sub_800F2C6`: face the default way under the standard
 /// column patterns, and the sprite with it.
 pub(in crate::kinds::player) fn face_default(b: &mut Battle, r: ObjectRef) {
-    if matches!(b.setup.settings.panel_pattern, 0x38 | 0x30 | 0x3C) {
+    if matches!(b.panel_pattern(), 0x38 | 0x30 | 0x3C) {
         b.objects.get_mut(r).flip = 0;
     }
     let o = b.objects.get(r);
@@ -195,7 +196,7 @@ fn prepare(b: &mut Battle, r: ObjectRef, seq: Sequence) {
         Sequence::Cross => {
             set_timer(b, r, 6);
             // A GroundCross in its animation 0x16 lets go of it.
-            if stats(b, r).form == Form(9) && b.objects.get(r).anim == 0x16 {
+            if form_of(b, r) == Form(9) && b.objects.get(r).anim == 0x16 {
                 b.objects.get_mut(r).anim = 0;
                 b.objects.get_mut(r).related[0] = None;
                 ai_mut(b, r).overlay = None;
@@ -377,14 +378,16 @@ fn emerge(b: &mut Battle, r: ObjectRef, seq: Sequence, target: Form) {
             }
             _ => {}
         }
-        let current = stats(b, r).form;
+        let current = form_of(b, r);
         form::take_off_overlay(b, r, current);
         if seq == Sequence::BeastCross {
             b.objects.get_mut(r).related[0] = None;
             ai_mut(b, r).overlay = None;
         }
-        let navi = stats(b, r).navi;
-        let sprite = if navi == Navi::MEGAMAN { b.content.form(target).sprite } else { b.content.navi(navi).sprite };
+        let navi = navi_of(b, r);
+        let target_form = b.content.form_numbered(target);
+        let sprite =
+            if navi == Navi::MEGAMAN { b.content.form(target_form).sprite } else { b.content.navi(stats(b, r).navi).sprite };
         let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
         let s = b.objects.sprite_mut(r);
         s.load(sprite);
@@ -403,7 +406,7 @@ fn emerge(b: &mut Battle, r: ObjectRef, seq: Sequence, target: Form) {
         if seq == Sequence::BeastOver {
             clear_statuses(b, r);
         }
-        stats_mut(b, r).form = target;
+        stats_mut(b, r).form = target_form;
         if matches!(seq, Sequence::BeastOut | Sequence::CrossBeast | Sequence::BeastOver) {
             palette_flash::spawn(b, 14, true, true);
             b.play_sound(crate::sound::SoundId(0x100));
@@ -518,9 +521,9 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         clear_flag1(b, r, f1::UNAFFECTED_BY_POISON | f1::SLIDING | f1::FLINCHING | f1::MOVING);
         clear_flag2(b, r, 0x10);
         b.objects.get_mut(r).slide_state = 0;
-        let current = stats(b, r).form;
+        let current = form_of(b, r);
         form::take_off_overlay(b, r, current);
-        let sprite = b.content.form(Form::NONE).sprite;
+        let sprite = b.content.form_data(Form::NONE).sprite;
         let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
         let s = b.objects.sprite_mut(r);
         s.load(sprite);
@@ -537,7 +540,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         s.look.white = true;
         b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
         spend_form(b, r);
-        stats_mut(b, r).form = Form::NONE;
+        stats_mut(b, r).form = b.content.form_numbered(Form::NONE);
         b.objects.get_mut(r).name_id = 0x1A0;
         reset_status(b, r);
         // sub_80143B4: anger ends (the mood is left alone).
@@ -576,7 +579,7 @@ fn spend_form(b: &mut Battle, r: ObjectRef) {
     if crate::kinds::player::battle_mode(b) == 1 {
         return;
     }
-    match stats(b, r).form.0 {
+    match form_of(b, r).0 {
         0x0B..=0x16 => ai_mut(b, r).beast_out_spent = true,
         0x17.. => {
             // sub_8014466: exhausted, then the mood 0 that exhaustion
@@ -629,7 +632,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         clear_flag2(b, r, 0x10);
         b.objects.get_mut(r).slide_state = 0;
         keep_overlay_stepping(b, r);
-        let current = stats(b, r).form;
+        let current = form_of(b, r);
         form::take_off_overlay(b, r, current);
         let new = match current.0 {
             0..=0x0A => Form::NONE,
@@ -637,7 +640,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
             _ => Form::FALZAR_BEAST,
         };
         // sub_800FC9E(MegaMan, the new form).
-        let sprite = b.content.form(new).sprite;
+        let sprite = b.content.form_data(new).sprite;
         let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
         let s = b.objects.sprite_mut(r);
         s.load(sprite);
@@ -650,7 +653,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         s.set_animation(0, &b.content);
         s.look.set_flip(flip);
         s.look.white = true;
-        stats_mut(b, r).form = new;
+        stats_mut(b, r).form = b.content.form_numbered(new);
         // sub_8015B22
         b.objects.get_mut(r).name_id = if new == Form::NONE { 0x1A0 } else { 0x1AB + new.0 as u16 };
         let side = b.objects.get(r).alliance;
