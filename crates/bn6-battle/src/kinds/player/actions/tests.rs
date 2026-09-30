@@ -33,8 +33,15 @@ fn megaman_stats() -> NaviStats {
         max_base_hp: 1000,
         mood: 0x80,
         sun: true,
-        weapons: NaviWeapons { buster: 0, charge_shot: 1, back_special: 0xFF, a_charge: 0xFF, mode9_a: 0xFF, ..Default::default() },
-        ..Default::default()
+        weapons: NaviWeapons {
+            buster: testing::weapon(0),
+            charge_shot: testing::weapon(1),
+            back_special: None,
+            a_charge: None,
+            mode9_a: None,
+            ..Default::default()
+        },
+        ..testing::megaman_on(&testing::content())
     }
 }
 
@@ -120,8 +127,8 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     assert_eq!((b.objects.get(p0).action, b.objects.get(p0).panel), (8, PanelPos { x: 3, y: 2 }));
 
     let mut hand = ChipHand::empty();
-    hand.ids[0] = testing::SUN_GUN_3;
-    let firing = b.content.chip(testing::SUN_GUN_3).gun_del_sol.unwrap().firing_ticks as u32;
+    hand.ids[0] = Some(testing::chip_in(&b.content, testing::SUN_GUN_3));
+    let firing = b.content.chip(testing::chip_in(&b.content, testing::SUN_GUN_3)).gun_del_sol.unwrap().firing_ticks as u32;
     b.hands[0] = hand;
     let mut t = 0;
     tick(&mut b, p0, p1, keys::A);
@@ -212,7 +219,7 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
 #[test]
 fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     // Weapon routine 0x28 as the charged shot.
-    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.charge_shot = 0x28));
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.charge_shot = testing::weapon(0x28)));
     let p = [p0, p1];
     // Charge fully (the test rules: 120 ticks at Charge 0), then release.
     for _ in 0..130 {
@@ -250,8 +257,8 @@ fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
 /// damage.
 fn hand_with(b: &mut Battle, side: usize, chip: crate::content::ChipId) {
     let mut hand = ChipHand::empty();
-    hand.ids[0] = chip;
-    hand.damage[0] = b.content.chip(chip).damage;
+    hand.ids[0] = Some(testing::chip_in(&b.content, chip));
+    hand.damage[0] = b.content.chip(testing::chip_in(&b.content, chip)).damage;
     b.hands[side] = hand;
 }
 
@@ -340,8 +347,14 @@ fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
 /// Side 0 uses `chip` (the first in its hand) from idle: the tick the
 /// action starts.
 fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: crate::content::ChipId) {
+    let chip = testing::chip_in(&b.content, chip);
+    use_chip_handle(b, p0, p1, chip);
+}
+
+/// The same with the chip by handle.
+fn use_chip_handle(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: bn6_content_api::ChipHandle) {
     let mut hand = ChipHand::empty();
-    hand.ids[0] = chip;
+    hand.ids[0] = Some(chip);
     hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;
     tick(b, p0, p1, keys::A);
@@ -579,7 +592,7 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
 #[test]
 fn a_buster_alias_fires_the_buster() {
     // Weapon routine 0x2E is the buster's.
-    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = 0x2E));
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = testing::weapon(0x2E)));
     tick(&mut b, p0, p1, keys::B);
     tick(&mut b, p0, p1, 0);
     assert_eq!(b.objects.get(p0).action, 0x11);
@@ -588,7 +601,7 @@ fn a_buster_alias_fires_the_buster() {
 #[test]
 fn the_absorbed_obstacle_flies_at_the_enemy() {
     // Weapon routine 0x2B throws the last obstacle absorbed.
-    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = 0x2B));
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = testing::weapon(0x2B)));
     let p = [p0, p1];
     ai_mut(&mut b, p0).absorbed.push(crate::actor::AbsorbedObstacle { kind: 1, anim: 2 });
     tick(&mut b, p0, p1, keys::B);
@@ -623,7 +636,7 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
 
 #[test]
 fn a_throw_waits_the_last_shots_recovery() {
-    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = 0x2B));
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = testing::weapon(0x2B)));
     let p = [p0, p1];
     // Nothing absorbed: the plain buster, and its recovery.
     tick(&mut b, p0, p1, keys::B);
@@ -865,7 +878,7 @@ fn slashcross_beast_lunge_strikes_from_beside_its_target() {
 
 #[test]
 fn chargecross_charged_shot_tackles_the_enemy() {
-    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.charge_shot = 0x27));
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.charge_shot = testing::weapon(0x27)));
     let p = [p0, p1];
     for _ in 0..130 {
         tick(&mut b, p0, p1, keys::B);
@@ -900,7 +913,7 @@ fn form_weapons_roll_back() {
 /// Start weapon routine `routine` for side 0 as a `set_attack` of `kind`
 /// (1 buster, 2 charged shot, 3 B+Back); returns the action it named.
 fn start_weapon_as(b: &mut Battle, p0: ObjectRef, routine: u8, kind: u8) -> u8 {
-    let action = super::super::idle::weapon_routine(b, p0, routine);
+    let action = super::super::idle::weapon_routine(b, p0, b.content.weapon_numbered(routine));
     super::super::set_attack(b, p0, action, kind);
     action.number
 }
@@ -1069,7 +1082,7 @@ fn the_cross_charged_shots_roll_back() {
 /// action.
 fn start_weapon(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
     ai_mut(b, r).attack.charged = 0;
-    let action = crate::kinds::player::idle::weapon_routine(b, r, routine);
+    let action = crate::kinds::player::idle::weapon_routine(b, r, b.content.weapon_numbered(routine));
     crate::kinds::player::set_attack(b, r, action, 2);
     action.number
 }
@@ -1262,7 +1275,7 @@ fn fight_on(settings: u8, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
 fn an_instant_chip_runs_its_effect_once_and_idles() {
     let (mut b, p0, p1) = fight();
     let mut hand = ChipHand::empty();
-    hand.ids[0] = testing::FULL_GAUGE;
+    hand.ids[0] = Some(testing::chip_in(&b.content, testing::FULL_GAUGE));
     b.hands[0] = hand;
     b.gauge.value = 0;
     tick(&mut b, p0, p1, keys::A);
@@ -1282,9 +1295,9 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     // Weapon routine 0x2A as the B+Back special, and no buster, so B does
     // nothing else.
     let stats = megaman_with(|s| {
-        s.weapons.buster = 0xFF;
-        s.weapons.charge_shot = 0xFF;
-        s.weapons.back_special = 0x2A;
+        s.weapons.buster = testing::weapon(0xFF);
+        s.weapons.charge_shot = testing::weapon(0xFF);
+        s.weapons.back_special = testing::weapon(0x2A);
     });
     let (mut b, p0, p1) = fight_on(testing::ROCK_BATTLE, stats);
     let p = [p0, p1];
@@ -1331,7 +1344,7 @@ fn the_beast_claw_slashes_the_panel_ahead_twice() {
     let o = b.objects.get_mut(p0);
     (o.panel, o.future_panel) = (PanelPos { x: 4, y: 2 }, PanelPos { x: 4, y: 2 });
     (o.pos.x, o.pos.y) = (x, y);
-    let action = super::super::idle::weapon_routine(&mut b, p0, 0x1E);
+    let action = super::super::idle::weapon_routine(&mut b, p0, testing::weapon(0x1E).unwrap());
     assert_eq!(action.number, 0x52);
     super::super::set_attack(&mut b, p0, action, 2);
     let mut t = 0;
@@ -1374,9 +1387,9 @@ fn assert_rolls_back(b: &mut Battle, p: [ObjectRef; 2], ticks: u32, held: u16) {
 #[test]
 fn absorbing_and_the_claw_roll_back() {
     let stats = megaman_with(|s| {
-        s.weapons.buster = 0xFF;
-        s.weapons.charge_shot = 0xFF;
-        s.weapons.back_special = 0x2A;
+        s.weapons.buster = testing::weapon(0xFF);
+        s.weapons.charge_shot = testing::weapon(0xFF);
+        s.weapons.back_special = testing::weapon(0x2A);
     });
     let (mut b, p0, p1) = fight_on(testing::ROCK_BATTLE, stats);
     tick(&mut b, p0, p1, keys::B);
@@ -1388,7 +1401,7 @@ fn absorbing_and_the_claw_roll_back() {
     assert_rolls_back(&mut b, [p0, p1], 20, 0);
 
     let (mut b, p0, p1) = fight();
-    let action = super::super::idle::weapon_routine(&mut b, p0, 0x1E);
+    let action = super::super::idle::weapon_routine(&mut b, p0, testing::weapon(0x1E).unwrap());
     super::super::set_attack(&mut b, p0, action, 2);
     tick(&mut b, p0, p1, 0);
     assert_rolls_back(&mut b, [p0, p1], 30, 0);
@@ -1398,7 +1411,7 @@ fn absorbing_and_the_claw_roll_back() {
 /// effect ran (the tick after the chip starts).
 fn use_instant_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: u16) {
     let mut hand = ChipHand::empty();
-    hand.ids[0] = chip;
+    hand.ids[0] = Some(testing::chip_in(&b.content, chip));
     b.hands[0] = hand;
     tick(b, p0, p1, keys::A);
     assert_eq!(b.objects.get(p0).action, 0x1C);
@@ -1427,7 +1440,7 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     // instead.
     let (mut b, p0, p1) = fight();
     let mut hand = ChipHand::empty();
-    (hand.ids[0], hand.damage[0]) = (testing::PLUS, 10);
+    (hand.ids[0], hand.damage[0]) = (Some(testing::chip_in(&b.content, testing::PLUS)), 10);
     b.hands[0] = hand;
     tick(&mut b, p0, p1, keys::A);
     ai_mut(&mut b, p0).attack.special_source = 1;
@@ -1479,7 +1492,7 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
             // The worm comes out behind the enemy, on a panel with the flag
             // the test content's panel types don't give.
             let mut hand = ChipHand::empty();
-            hand.ids[0] = chip;
+            hand.ids[0] = Some(testing::chip_in(&b.content, chip));
             b.hands[0] = hand;
             tick(&mut b, p0, p1, keys::A);
             b.field.panel_mut(6, 2).unwrap().flags |= 0x1_0000;
@@ -1531,7 +1544,7 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
     };
     let start = || {
         let (mut b, p0, p1) = fight();
-        let action = super::super::idle::weapon_routine(&mut b, p0, 0x1B);
+        let action = super::super::idle::weapon_routine(&mut b, p0, testing::weapon(0x1B).unwrap());
         assert_eq!(action.number, 0x4E);
         super::super::set_attack(&mut b, p0, action, 2);
         (b, p0, p1)
@@ -1570,8 +1583,9 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
 /// base form charges no chip, so the charge itself is skipped.
 fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: u8, chip: u16) {
     let mut hand = ChipHand::empty();
-    hand.ids[0] = chip;
+    hand.ids[0] = Some(testing::chip_in(&b.content, chip));
     b.hands[0] = hand;
+    let routine = testing::weapon_in(&b.content, routine);
     let a = ai_mut(b, p0);
     a.a_charge = routine;
     a.requests |= request::CHARGED_CHIP;
@@ -1597,7 +1611,7 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     // Side 0 changes to the navi it already is (the test content has only
     // MegaMan): kept, then taken back from the kept stats.
     let (mut b, p0, p1) = fight();
-    b.turn_transforms[0].cross_change = Some(0);
+    b.turn_transforms[0].cross_change = Some(b.content.navi_numbered(crate::setup::Navi(0)));
     super::cross_change::request_change(&mut b, p0);
     b.paused = true;
     b.objects.get_mut(p0).hp = 700;
@@ -1630,8 +1644,18 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
 /// (`testing::with_test_pack`).
 fn fight_on_test_pack() -> (Battle, ObjectRef, ObjectRef) {
     let content = std::sync::Arc::new(testing::with_test_pack());
-    let mut setup = testing::round_setup(testing::LINK_BATTLE, megaman());
+    // Its own handles: the pack's definitions come first.
+    let stats = NaviStats {
+        weapons: NaviWeapons {
+            buster: testing::weapon_in(&content, 0),
+            charge_shot: testing::weapon_in(&content, 1),
+            ..megaman().weapons
+        },
+        ..megaman()
+    };
+    let mut setup = testing::round_setup(testing::LINK_BATTLE, stats);
     setup.content = content.hash();
+    setup.settings.stage = content.stage_numbered(testing::LINK_BATTLE);
     setup.settings.effects = 0xE8C;
     let mut b = Battle::new(setup, content);
     b.spawn_actors();
@@ -1685,7 +1709,8 @@ fn a_defined_kind_runs_by_its_handle_with_its_state() {
 #[test]
 fn a_weapon_names_a_defined_action_which_runs_by_handle() {
     let (mut b, p0, p1) = fight_on_test_pack();
-    let action = super::super::idle::weapon_routine(&mut b, p0, testing::TICK_SHOT);
+    let shot = b.content.defs.weapon_by_key(testing::TICK_SHOT).unwrap();
+    let action = super::super::idle::weapon_routine(&mut b, p0, shot);
     assert_eq!(action.number, super::super::CONTENT_ACTION);
     let h = action.content.expect("a defined action");
     assert_eq!(b.content.defs.action(h).key, "test/tick-shot/shot");
@@ -1702,17 +1727,18 @@ fn chips_of_a_series_run_their_own_actions() {
     // length.
     let (mut b, p0, p1) = fight_on_test_pack();
     let defs = &b.content.defs;
-    let [one, two] = [testing::TICKER_1, testing::TICKER_2].map(|id| match defs.chip_with_id(id).unwrap().usage {
+    let [ticker1, ticker2] = [testing::TICKER_1, testing::TICKER_2].map(|key| defs.chip_by_key(key).unwrap());
+    let [one, two] = [ticker1, ticker2].map(|h| match defs.chip(h).usage.unwrap() {
         crate::content::ChipUsage::Action(h) => h,
         u => panic!("{u:?}"),
     });
     assert_ne!(one, two);
     assert_eq!(defs.action(one).schema, defs.action(two).schema, "one builder, one state layout");
-    use_chip(&mut b, p0, p1, testing::TICKER_1);
+    use_chip_handle(&mut b, p0, p1, ticker1);
     assert_eq!(b.objects.get(p0).action, super::super::CONTENT_ACTION);
     let first = ticks_in(&mut b, p0, p1, one);
     let (mut b, p0, p1) = fight_on_test_pack();
-    use_chip(&mut b, p0, p1, testing::TICKER_2);
+    use_chip_handle(&mut b, p0, p1, ticker2);
     assert_rolls_back(&mut b, [p0, p1], 3, 0);
     let second = ticks_in(&mut b, p0, p1, two) + 3;
     assert_eq!(second - first, 3, "Ticker2 stands 9 ticks to Ticker1's 6");

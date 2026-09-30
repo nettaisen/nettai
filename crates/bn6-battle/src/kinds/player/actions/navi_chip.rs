@@ -20,7 +20,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     if b.dimming[side as usize].controller.is_none()
         && let Some(c) = controller
     {
-        b.register_dimming(side, a.chip_id, c, r);
+        b.register_dimming(side, a.chip, c, r);
     }
     exit_attack_state(b, r);
 }
@@ -35,7 +35,7 @@ pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) 
         navi: a.variant,
         params: a.params,
         damage: a.damage as u32 | (a.hit_param as u32) << 16,
-        chip: DimmingChip { chip: a.chip_id, bonus: a.extra },
+        chip: DimmingChip { chip: a.chip, bonus: a.extra },
     };
     navi_chip::spawn(b, user, spec)
 }

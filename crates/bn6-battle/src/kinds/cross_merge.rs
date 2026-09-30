@@ -78,7 +78,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let name_id = 0x1A0 + navi.0 as u16;
     b.objects.get_mut(r).name_id = name_id;
     // sub_800FC9E(navi, no form)
-    let sprite = if navi == Navi::MEGAMAN { b.content.form(Default::default()).sprite } else { b.content.navi(navi).sprite };
+    let sprite =
+        if navi == Navi::MEGAMAN { b.content.form_data(crate::setup::Form::NONE).sprite } else { b.content.navi_data(navi).sprite };
     let flip = {
         let o = b.objects.get(r);
         o.alliance ^ o.flip
@@ -102,7 +103,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // The game's svc Div, with a zero divisor never passed.
     let step = 0x28_0000 / swings as i32;
     let lift = (4 - panel_y as i32) * 0x18_0000;
-    let extra = (b.content.navi(navi).merge_height as i32) << 16;
+    let extra = (b.content.navi_data(navi).merge_height as i32) << 16;
     let v = vars(b, r);
     v.swing_side = -1;
     v.swing_step = step;

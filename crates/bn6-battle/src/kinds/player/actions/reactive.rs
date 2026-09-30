@@ -47,7 +47,7 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     a.damage = rec.damage as u16;
     a.hit_param = (rec.damage >> 16) as u16;
     a.extra = rec.bonus;
-    a.chip_id = rec.chip;
+    a.chip = rec.chip;
     a.element = 0;
     a.lockout = 0;
     a.variant = 0;
@@ -77,7 +77,7 @@ pub(crate) fn stance_counter(b: &mut Battle, r: ObjectRef) {
     a.damage = damage as u16;
     a.hit_param = (damage >> 16) as u16;
     a.extra = 0;
-    a.chip_id = 0;
+    a.chip = None;
     a.element = 0;
     a.lockout = lockout;
     a.variant = variant;

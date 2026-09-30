@@ -12,8 +12,8 @@ use crate::field;
 use crate::input::keys;
 use crate::kinds::common::{facing, set_animation};
 use crate::kinds::player::{
-    ai, ai_mut, chip_use, clear_flag1, clear_flag2, end_attack, exit_attack_state, flag1, panel_coordinates,
-    reset_attack_links, set_coordinates_from_panel, set_flag1, snap_to_future_panel, stats,
+    ai, ai_mut, chip_use, clear_flag1, clear_flag2, end_attack, exit_attack_state, flag1, form_of, panel_coordinates,
+    reset_attack_links, set_coordinates_from_panel, set_flag1, snap_to_future_panel,
 };
 use crate::kinds::{afterimage, lockon_marker};
 use crate::object::{ObjectRef, PanelPos, Vec3};
@@ -133,7 +133,7 @@ fn warp(b: &mut Battle, r: ObjectRef) {
     set_coordinates_from_panel(b, r);
     b.update_collision_panels(r);
     if let Some(t) = ai(b, r).attack.face_target
-        && matches!(b.setup.settings.panel_pattern, 0x31 | 0x23 | 0x33)
+        && matches!(b.panel_pattern(), 0x31 | 0x23 | 0x33)
     {
         crate::kinds::player::face_toward(b, r, t);
     }
@@ -159,7 +159,7 @@ fn afterimage_anim(name_id: u16) -> u8 {
 /// Over; else the claw's 0xC (`sub_80EAF1A`), the charged sword's by its
 /// variant (`sub_80EAF26`), and failing those (0), the chip's.
 fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
-    let beast_over = matches!(stats(b, r).form.0, 0x17 | 0x18);
+    let beast_over = matches!(form_of(b, r).0, 0x17 | 0x18);
     if !beast_over && flag1(b, r) & (f1::BLIND | f1::CONFUSED) != 0 {
         return 0;
     }
@@ -178,7 +178,7 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
     if special != 0 {
         return special;
     }
-    b.content.chip(attack.chip_id).lockon_mode
+    b.content.chip_field(attack.chip).lockon_mode
 }
 
 /// The charged sword's action (a sword chip charged in SlashCross's
