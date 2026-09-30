@@ -143,11 +143,7 @@ pub fn chip(id: ChipId) -> &'static ChipData {
 }
 
 /// A sprite: (category byte offset, index) into the game's sprite table.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SpriteId {
-    pub category: u8,
-    pub index: u8,
-}
+pub use bn6_content_api::SpriteId;
 
 /// One animation frame's timing.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

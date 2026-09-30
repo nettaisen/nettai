@@ -19,55 +19,31 @@ use crate::collision::CollisionId;
 use crate::actor::ActorId;
 use sprite::Sprite;
 
-/// Which pool an object lives in.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Pool {
-    /// Actors: navis, and large chip objects (the game's type 1).
-    Actor,
-    /// Attacks and hit regions (type 3).
-    Attack,
-    /// Effects and helpers (type 4).
-    Effect,
+pub use bn6_content_api::{ObjectRef, PanelPos, Pool, Vec3};
+
+/// Where a pool's slots start in the slot arrays.
+fn pool_base(pool: Pool) -> usize {
+    pool as usize * SLOTS
 }
 
-impl Pool {
-    pub const ALL: [Pool; 3] = [Pool::Actor, Pool::Attack, Pool::Effect];
-
-    /// The game's type number (1, 3, 4).
-    pub fn type_number(self) -> u8 {
-        match self {
-            Pool::Actor => 1,
-            Pool::Attack => 3,
-            Pool::Effect => 4,
-        }
-    }
-
-    fn base(self) -> usize {
-        self as usize * SLOTS
-    }
-
-    /// Header flags every new object in this pool starts with.
-    fn spawn_flags(self) -> u8 {
-        match self {
-            Pool::Attack => flags::ACTIVE | flags::NO_SPRITE_UPDATE,
-            _ => flags::ACTIVE | flags::NO_SPRITE_UPDATE | flags::RUN_IN_TIME_STOP,
-        }
+/// Header flags every new object in a pool starts with.
+fn spawn_flags(pool: Pool) -> u8 {
+    match pool {
+        Pool::Attack => flags::ACTIVE | flags::NO_SPRITE_UPDATE,
+        _ => flags::ACTIVE | flags::NO_SPRITE_UPDATE | flags::RUN_IN_TIME_STOP,
     }
 }
 
 pub const SLOTS: usize = 32;
 
-/// A handle to an object slot.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ObjectRef {
-    pub pool: Pool,
-    pub slot: u8,
+/// An object's slot index across all pools.
+fn slot_index(r: ObjectRef) -> usize {
+    pool_base(r.pool) + r.slot as usize
 }
 
-impl ObjectRef {
-    fn node(self) -> Node {
-        Node(FIRST_OBJECT_NODE + (self.pool.base() + self.slot as usize) as u8)
-    }
+/// An object's node in the update list.
+fn node_of(r: ObjectRef) -> Node {
+    Node(FIRST_OBJECT_NODE + slot_index(r) as u8)
 }
 
 /// Header flag bits.
@@ -103,14 +79,6 @@ pub struct StateWord {
     pub phase_init: u8,
 }
 
-/// A 16.16 fixed-point position or velocity, relative to the field's center.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Vec3 {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32,
-}
-
 /// The drag reaction's steps (the game's values 0, 4, 8).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum DragStep {
@@ -121,14 +89,6 @@ pub enum DragStep {
     Slide,
     /// The recovery wait (`sub_8017A38`).
     Recover,
-}
-
-/// A panel coordinate: x 1..=6, y 1..=3 on the field (0 and 7/4 are the
-/// border).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct PanelPos {
-    pub x: u8,
-    pub y: u8,
 }
 
 /// The state every object shares. Behavior-specific state lives in `vars`.
@@ -266,19 +226,19 @@ impl Objects {
     }
 
     pub fn get(&self, r: ObjectRef) -> &Object {
-        &self.slots[r.pool.base() + r.slot as usize]
+        &self.slots[slot_index(r)]
     }
 
     pub fn get_mut(&mut self, r: ObjectRef) -> &mut Object {
-        &mut self.slots[r.pool.base() + r.slot as usize]
+        &mut self.slots[slot_index(r)]
     }
 
     pub fn sprite(&self, r: ObjectRef) -> &Sprite {
-        &self.sprites[r.pool.base() + r.slot as usize]
+        &self.sprites[slot_index(r)]
     }
 
     pub fn sprite_mut(&mut self, r: ObjectRef) -> &mut Sprite {
-        &mut self.sprites[r.pool.base() + r.slot as usize]
+        &mut self.sprites[slot_index(r)]
     }
 
     pub fn is_allocated(&self, r: ObjectRef) -> bool {
@@ -293,7 +253,7 @@ impl Objects {
         *bits |= 0x8000_0000 >> slot;
         let r = ObjectRef { pool, slot };
         *self.get_mut(r) = Object {
-            flags: pool.spawn_flags(),
+            flags: spawn_flags(pool),
             index,
             params,
             pos,
@@ -308,7 +268,7 @@ impl Objects {
     /// outside the update loop.
     pub fn spawn(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
         let r = self.allocate(pool, index, pos, params)?;
-        let new = r.node();
+        let new = node_of(r);
         match self.current {
             Some(cur) if cur != new => self.insert_after(cur, new),
             _ => self.append(new),
@@ -319,7 +279,7 @@ impl Objects {
     /// Spawn an object at the end of the update list.
     pub fn spawn_at_end(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
         let r = self.allocate(pool, index, pos, params)?;
-        self.append(r.node());
+        self.append(node_of(r));
         Some(r)
     }
 
@@ -342,7 +302,7 @@ impl Objects {
     pub fn free(&mut self, r: ObjectRef) {
         self.get_mut(r).flags = 0;
         self.in_use[r.pool as usize] &= !(0x8000_0000 >> r.slot);
-        let n = r.node();
+        let n = node_of(r);
         let Links { prev, next } = self.links[n.0 as usize];
         if let Some(p) = prev {
             self.links[p.0 as usize].next = next;

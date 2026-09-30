@@ -9,6 +9,7 @@
 pub mod actor;
 pub mod battle;
 pub mod collision;
+pub mod behavior;
 pub mod cues;
 pub mod custom;
 pub mod data;
@@ -23,6 +24,7 @@ pub mod object;
 pub mod perspective;
 pub mod rng;
 pub mod rollback;
+pub mod scenario;
 pub mod setup;
 pub mod sound;
 pub mod time_freeze;
