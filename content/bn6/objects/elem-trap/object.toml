@@ -5,4 +5,3 @@
 pool = "attack"
 index = 0x4D
 script = "elem_trap.luau"
-scratch_position = true

@@ -103,14 +103,6 @@ pub struct ObjectKind {
     /// The module (see [`Scripts::modules`]); in the file, a path relative
     /// to the folder.
     pub script: String,
-    /// Its position is whatever its spawner's registers held until its
-    /// init places it (the trace comparison skips it).
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub scratch_position: bool,
-    /// The fraction of its Z is whatever its spawner's registers held,
-    /// which its init keeps (the trace comparison skips it).
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub scratch_z_fraction: bool,
     /// The actor lists' entry type it places when a round starts
     /// (`off_80073A0`: 8, a rock), through its `actor_list_entry`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
