@@ -41,7 +41,9 @@
 -- whole words) are the scripts' constants, named where they're defined.
 
 export type Pool = "actor" | "attack" | "effect"
-export type Lifecycle = "init" | "update" | "destroy"
+-- ("finish" is the fourth state of kinds that have one after "destroy":
+-- for them "destroy" is a last running phase, and "finish" frees them.)
+export type Lifecycle = "init" | "update" | "destroy" | "finish"
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
@@ -193,6 +195,10 @@ end
 declare class Collision
     -- Region shape.
     region: number
+    -- The panel the region is anchored on (`update_collision_panels`
+    -- copies the object's).
+    panel_x: number
+    panel_y: number
     -- Hit spark effect (0xFF = none).
     hit_effect: number
     status_base: number
@@ -479,6 +485,11 @@ export type LinkedChip = {
 }
 
 export type Panel = { kind: PanelType, alliance: number, home: number }
+
+-- A side's damage-carry record: the side's largest damage this tick and
+-- last tick, the object that set the record, and the target that takes
+-- last tick's damage on top of its own.
+export type DamageCarry = { this_tick: number, previous: number, source: Object?, target: Object? }
 export type Column = { home: number, timer: number }
 export type NaviRecord = { actor_type: ActorType, ai_index: number }
 
@@ -545,11 +556,18 @@ declare battle: {
     fill_custom_gauge: () -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
     navi_record: (name_id: number) -> NaviRecord?,
+    -- The damage-carry record of the side that takes the damage
+    -- (`dword_203CFB0`; CopyDmg's).
+    damage_carry: (side: number) -> DamageCarry,
+    set_damage_carry: (side: number, record: DamageCarry) -> (),
     -- Spawn into the pool's lowest free slot; it runs later this tick,
     -- right after the spawner. nil if the pool is full.
     spawn: (pool: Pool, index: number, pos: Vec3?, params: { number }?) -> Object?,
     -- The same for a content kind, by name (its folder under objects/).
     spawn_kind: (name: string, pos: Vec3?, params: { number }?) -> Object?,
+    -- `sub_8003374` / `sub_800333C`: the same, at the end of the update
+    -- list (it runs after everything else this tick).
+    spawn_kind_at_end: (name: string, pos: Vec3?, params: { number }?) -> Object?,
     -- The generic one-shot effect (effect object #0).
     effect: (pos: Vec3, id: number, flip: number?, palette_add: number?, priority: number?) -> Object?,
     -- The one-tick hit region (attack object #3).

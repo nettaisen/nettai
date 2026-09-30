@@ -821,6 +821,26 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))
     });
+    lib_fn!(lua, t, "damage_carry", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let r = with(|api, _| Ok(api.damage_carry(side)))?;
+        let t = lua.create_table()?;
+        t.raw_set("this_tick", r.this_tick)?;
+        t.raw_set("previous", r.previous)?;
+        t.raw_set("source", object_value(lua, r.source)?)?;
+        t.raw_set("target", object_value(lua, r.target)?)?;
+        Ok(t)
+    });
+    lib_fn!(lua, t, "set_damage_carry", |_, (side, r): (LuaValue, mlua::Table)| {
+        let side = u8_arg(side, "side")? & 1;
+        let rec = bn6_content_api::api::DamageCarryInfo {
+            this_tick: table_int(&r, "this_tick")? as u16,
+            previous: table_int(&r, "previous")? as u16,
+            source: object_arg(&r.raw_get("source")?, "source")?,
+            target: object_arg(&r.raw_get("target")?, "target")?,
+        };
+        with(|api, _| Ok(api.set_damage_carry(side, rec)))
+    });
     lib_fn!(lua, t, "navi_record", |lua, name_id: LuaValue| {
         let name_id = u16_arg(name_id, "NameID")?;
         let Some(r) = with(|api, _| Ok(api.navi_record(name_id)))? else { return Ok(LuaValue::Nil) };
@@ -849,6 +869,17 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let name = name.to_str()?.to_string();
             let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
             let o = with(|api, _| api.spawn_kind(&name, pos, p).map_err(api_error))?;
+            object_value(lua, o)
+        }
+    );
+    lib_fn!(
+        lua,
+        t,
+        "spawn_kind_at_end",
+        |lua, (name, pos, p): (mlua::LuaString, Option<mlua::UserDataRef<LVec3>>, Option<mlua::Table>)| {
+            let name = name.to_str()?.to_string();
+            let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
+            let o = with(|api, _| api.spawn_kind_at_end(&name, pos, p).map_err(api_error))?;
             object_value(lua, o)
         }
     );

@@ -91,12 +91,10 @@ local function blow(me: Object)
     end
     local p = me.pos
     me.pos = Vec3.new(p.x + me.vel.x, p.y, p.z)
+    -- `sub_800E24C`: the panel under it, for itself and its collision.
     me:set_panel_from_coordinates()
-    -- (The game copies the panel into the collision without the move
-    -- direction `update_collision_panels` also records; nothing reads an
-    -- attack's.)
-    me:update_collision_panels()
     local x, y = me.panel_x, me.panel_y
+    me.collision.panel_x, me.collision.panel_y = x, y
     if not field.valid(x, y) then
         return stop(me)
     end
