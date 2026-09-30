@@ -46,6 +46,9 @@ pub struct Rules {
     pub ice_vectors: [SlideVector; 6],
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
+    /// The sine of a 256th of a turn in 256ths (`math_sinTable`), 256 + 64
+    /// entries so that entry `i + 64` is the cosine (`math_cosTable`).
+    pub sine: Vec<i16>,
     pub lockon: Lockon,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,

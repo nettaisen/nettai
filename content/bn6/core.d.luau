@@ -133,6 +133,8 @@ export type NaviStateFlag =
     | "form_change_sprite_held"
     | "heat_trap"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
+-- A navi's drag reaction step.
+export type DragStep = "start" | "slide" | "recover"
 
 -- A sprite: "CC-II" in hex, its folder in the pack's graphics/sprites.
 export type SpriteId = string
@@ -205,6 +207,9 @@ declare class Collision
     hit_flags: number
     -- The damage taken this window (read-only).
     final_damage: number
+    -- The panel the region is anchored at.
+    panel_x: number
+    panel_y: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
@@ -262,6 +267,8 @@ declare class Object
     -- Keeps updating while the battle is dimmed.
     run_while_dimmed: boolean
     no_sprite_update: boolean
+    -- A navi's drag reaction step (the byte other kinds use otherwise).
+    drag_step: DragStep
     sprite: Sprite
     collision: Collision
     -- The kind's declared state (cast it to the kind's State type).
@@ -376,6 +383,9 @@ declare class Object
     -- `object_spawnCollisionEffect`: the hit spark after a hit (one RNG
     -- draw when it shows).
     function hit_spark(self): ()
+    -- `object_highlightCurrentCollisionPanels`: highlight the panels its
+    -- collision region covers, facing its way (drawn only).
+    function highlight_collision_panels(self): ()
 
     -- Navis only.
     function attack_param(self, n: number): number
@@ -736,6 +746,9 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- The sine of i/256 of a turn in 256ths (`math_sinTable`), for i
+        -- = 0..319: entry i + 64 is the cosine (`math_cosTable`).
+        sine: { [number]: number },
     },
 }
 

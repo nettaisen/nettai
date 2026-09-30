@@ -365,6 +365,8 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
         push_vectors: std::array::from_fn(|i| slide(rom, 0x0800_E58C + 3 * i as u32)),
         ice_vectors: std::array::from_fn(|i| slide(rom, 0x0800_E4E8 + 4 * i as u32)),
         bubble_bob: std::array::from_fn(|i| rom.u8(0x0801_7868 + i as u32) as i8),
+        // `math_sinTable`, running on into `math_cosTable`.
+        sine: (0..320).map(|i| rom.u16(0x0800_65E0 + 2 * i) as i16).collect(),
         lockon: lockon(rom),
         custom_screen: custom_screen(rom),
     }

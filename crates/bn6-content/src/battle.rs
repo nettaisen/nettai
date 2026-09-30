@@ -251,6 +251,12 @@ struct WeaponRecord {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct MathFile {
+    sine: Vec<i16>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ReactionsFile {
     push: [SlideVector; 10],
     ice: [SlideVector; 6],
@@ -760,6 +766,13 @@ pub fn export(c: &Content) -> Files {
         ),
     );
     put(
+        "rules/math.toml".into(),
+        toml_file(
+            "sine: the sine of i/256 of a turn, in 256ths (1.0 = 256), for i = 0..320: entry i + 64 is the\ncosine.",
+            &MathFile { sine: r.sine.clone() },
+        ),
+    );
+    put(
         "rules/lockon.toml".into(), toml_file(
             "The Beast Out lock-on: for the chips' lock-on modes that search, the panels next to the\ntarget tried (dx toward the user's front), whether the middle row is taken afterwards, and the\ncolumn shifts tried when nothing fits.",
             &LockonFile { column_shifts: r.lockon.column_shifts.clone(), search: r.lockon.searches.clone() },
@@ -1191,6 +1204,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
     let w: WeaponsFile = read_toml(root, file, report)?;
     let weapons = dense(w.weapon.into_iter().map(|w| (w.id as usize, WeaponRoutine { charge_ticks: w.charge_ticks }, file.into())).collect(), "weapon routine", report);
     let reactions: ReactionsFile = read_toml(root, "rules/reactions.toml", report)?;
+    let math: MathFile = read_toml(root, "rules/math.toml", report)?;
     let lockon: LockonFile = read_toml(root, "rules/lockon.toml", report)?;
     let file = "rules/sp-chips.toml";
     let sp: SpChipsFile = read_toml(root, file, report)?;
@@ -1241,6 +1255,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         push_vectors: reactions.push,
         ice_vectors: reactions.ice,
         bubble_bob: reactions.bubble_bob,
+        sine: math.sine,
         lockon: Lockon { searches: lockon.search, column_shifts: lockon.column_shifts },
     })
 }

@@ -34,6 +34,10 @@ pub const VEIL: ChipId = 0x05;
 pub const ERASER: ChipId = 0x06;
 /// A dimming chip (action 0x15, subtype 0) that grabs a column.
 pub const GRAB: ChipId = 0x07;
+/// A chip that sends bees (action 0x39, RskyHny's).
+pub const BEES: ChipId = 0x08;
+/// A chip that sends an elec dragon (action 0x51, subtype 1).
+pub const DRAGON: ChipId = 0x09;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -140,6 +144,12 @@ pub fn scripts() -> Scripts {
                 ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("lib/buster", "lib/buster"),
+                ("chips/008-bees/chip", "chips/025-rskyhny1/chip"),
+                ("objects/honey-bee/honey_bee", "objects/honey-bee/honey_bee"),
+                ("chips/009-dragon/chip", "chips/02e-heatdrgn/chip"),
+                ("lib/dragon", "lib/dragon"),
+                ("objects/dragon-head/dragon_head", "objects/dragon-head/dragon_head"),
+                ("objects/dragon-body/dragon_body", "objects/dragon-body/dragon_body"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -190,6 +200,9 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
         kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
+        kind("honey-bee", Pool::Attack, 0x74, "objects/honey-bee/honey_bee"),
+        kind("dragon-head", Pool::Attack, 0xC9, "objects/dragon-head/dragon_head"),
+        kind("dragon-body", Pool::Attack, 0xC8, "objects/dragon-body/dragon_body"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -281,6 +294,23 @@ fn chips() -> Vec<ChipData> {
             damage: 10,
             script: Some("objects/area-grab/area_grab".into()),
             ..chip(GRAB, "Grab", 0x15, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            element: Element::Wood,
+            hit_param: 30,
+            params: [1, 0, 0, 0],
+            damage: 20,
+            script: Some("chips/008-bees/chip".into()),
+            ..chip(BEES, "Bees", 0x39, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            element: Element::Elec,
+            hit_param: 30,
+            damage: 100,
+            script: Some("chips/009-dragon/chip".into()),
+            ..chip(DRAGON, "Dragon", 0x51, 1)
         },
     ]
 }
@@ -437,6 +467,13 @@ fn rules() -> Rules {
             SlideVector::NONE,
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
+        // A triangle wave: 256 at a quarter turn, -256 at three quarters.
+        sine: (0..320)
+            .map(|i: i16| {
+                let t = i % 256;
+                if t < 64 { t * 4 } else if t < 192 { 512 - t * 4 } else { t * 4 - 1024 }
+            })
+            .collect(),
         lockon: Lockon {
             searches: vec![LockonSearch { mode: 1, offsets: vec![PanelOffset { dx: -1, dy: 0 }], prefers_middle_row: false }],
             column_shifts: vec![-1, -2],
@@ -513,7 +550,7 @@ fn objects() -> ObjectData {
     // The buster's muzzle flash and arm.
     let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03)]).collect(),
+        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03), plain(0x28, 0x5E)]).collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
@@ -575,6 +612,10 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
+    // The hive (closed, open), a bee, and a dragon's animations.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x5E }, vec![vec![f(30, LAST | LOOP)], vec![f(4, 0), f(30, LAST)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x04, index: 0x10 }, vec![vec![f(6, LAST | LOOP)]; 8]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);

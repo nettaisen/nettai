@@ -74,6 +74,10 @@ pub const PANEL_TYPES: [&str; 13] = [
 /// Actor types by name (an actor record's type).
 pub const ACTOR_TYPES: [&str; 3] = ["virus", "navi", "player"];
 
+/// A navi's drag reaction steps by name (BattleObject+0x0D: the game's 0,
+/// 4, 8).
+pub const DRAG_STEPS: [&str; 3] = ["start", "slide", "recover"];
+
 fn enum_type(names: &[&str]) -> FieldType {
     FieldType::Enum(names.iter().map(|s| s.to_string()).collect())
 }
@@ -165,6 +169,8 @@ named_fields! {
         RunWhileDimmed = "run_while_dimmed", Bool, rw;
         /// The sprite doesn't animate.
         NoSpriteUpdate = "no_sprite_update", Bool, rw;
+        /// A navi's drag reaction step (BattleObject+0x0D).
+        DragStep = "drag_step", enum_type(&DRAG_STEPS), rw;
     }
 }
 
@@ -277,6 +283,9 @@ named_fields! {
         HitFlags = "hit_flags", U32, ro;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
+        /// The panel the region is anchored at (CollisionData+0x0A).
+        PanelX = "panel_x", U8, rw;
+        PanelY = "panel_y", U8, rw;
     }
 }
 
@@ -861,6 +870,9 @@ pub trait CoreApi {
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
     fn hit_spark(&mut self, o: ObjectRef);
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels of
+    /// the registration's region, facing the object's way (drawn only).
+    fn highlight_collision_panels(&mut self, o: ObjectRef);
 
     // ---- Services ------------------------------------------------------------
 
