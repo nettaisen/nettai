@@ -164,13 +164,13 @@ These are not fields, but they were `UNK_*` names or were named after the `UNK_4
 | Old | New | Meaning and evidence |
 |---|---|---|
 | `battle::battle_flags::UNK_20` | deleted | Battle flag 0x20: no setter found. Cleared by form-change code (`sub_8014CC0`, `sub_8014F04`, `sub_8015128`); read by `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`. Unused by the port. |
-| `collision::f1::UNK_4` | `collision::f1::SEMI_INTANGIBLE` | ObjectFlags1 0x4. The object collides only with collision types that have bit 0x8 or 0x1000, in both directions (`sub_3007218`). `sub_8010162` holds it each tick while the timer below runs and no action is in use. **Uncertain** which chip or state uses it: `sub_80101AE` starts it for 480 ticks and hides the navi, from a navi-double object (`sub_80C49E4`); a navi AI sets the bit directly (`sub_80FDEFC`). |
-| `collision::timer::UNK_26` | `collision::timer::SEMI_INTANGIBLE` | CollisionData+0x26: the timer for the state above (0xFFFF = indefinite). Started by `sub_80101AE`; ended by any hit (`sub_8010198`) or by `sub_80101C4`. |
-| `data::player::StatusTimer::Flag4` | `StatusTimer::SemiIntangible` | A status-table entry that writes CollisionData+0x26. None of the extracted entries does. Renamed in the extractor too. |
+| `collision::f1::UNK_4` | `collision::f1::SUBMERGED` (first named `SEMI_INTANGIBLE`) | ObjectFlags1 0x4. The object collides only with collision types that have bit 0x8 or 0x1000, in both directions (`sub_3007218`). `sub_8010162` holds it each tick while the timer below runs and no action is in use. Submerged: DiveMan's dive (`sub_80FDEFC`); the timed starter `sub_80101AE` is only reached from an unspawned variant of actor #0x5D. See field-collision-damage.md §4.10.1. |
+| `collision::timer::UNK_26` | `collision::timer::SUBMERGED` (first `SEMI_INTANGIBLE`) | CollisionData+0x26: the timer for the state above (0xFFFF = indefinite). Started by `sub_80101AE`; ended by any hit (`sub_8010198`) or by `sub_80101C4`. |
+| `data::player::StatusTimer::Flag4` | `StatusTimer::Submerged` (first `SemiIntangible`) | A status-table entry that writes CollisionData+0x26. None of the extracted entries does. Renamed in the extractor too. |
 | `kinds::obstacle::f2::UNK_4` | `kinds::obstacle::f2::FLINCH` | ObjectFlags2 0x4: a flinch request (hit modifier bit 0x1, as for players in `sub_801AEB0`). A push cancels it. |
-| `kinds::player::cancel_flag4_timer` (private) | `cancel_semi_intangible` | `sub_80101C4`. |
-| `kinds::player::status::tick_flag4_timer` (private) | `tick_semi_intangible` | `sub_8010162`. |
-| `kinds::player::intake::hit_cancels_flag4_timer` (private) | `hit_ends_semi_intangible` | `sub_8010198`. |
+| `kinds::player::cancel_flag4_timer` (private) | `cancel_submerged` | `sub_80101C4`. |
+| `kinds::player::status::tick_flag4_timer` (private) | `tick_submerged` | `sub_8010162`. |
+| `kinds::player::intake::hit_cancels_flag4_timer` (private) | `hit_ends_submerged` | `sub_8010198`. |
 
 ## Names left as they are
 
