@@ -1,0 +1,7 @@
+# EraseCross Beast's drop (attack object #0xA1, `sub_80D96A4`) is a script. Its
+# position is its spawner's registers until its init places it.
+
+[kind]
+pool = "attack"
+index = 0xA1
+script = "erase_drop.luau"

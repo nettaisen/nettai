@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x17, GroundCross Beast's charged Null chip
+# (`sub_8011D54`), and its action 0x1A (`sub_80EC1F0`) are a script.
+
+id = 0x17
+name = "GroundCross Beast dash"
+action = 0x1A
+script = "ground_beast_dash.luau"
