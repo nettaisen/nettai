@@ -16,6 +16,7 @@ pub fn content(rom: &Rom) -> Content {
     let mut chips = chips(rom);
     attach_gun_del_sol(rom, &mut chips);
     attach_sp_damage(rom, &mut chips);
+    attach_navi_damage(rom, &mut chips);
     attach_program_advances(rom, &mut chips);
     attach_modifiers(&mut chips);
     Content {
@@ -90,6 +91,7 @@ fn chips(rom: &Rom) -> Vec<ChipData> {
                 slot_in_limit: b(0x1E),
                 dark_substitute: (b(0x1F) != 0xFF).then_some(b(0x1F)),
                 sp_damage: None,
+                navi_damage: None,
                 modifier: None,
                 program_advances: Vec::new(),
                 gun_del_sol: None,
@@ -144,6 +146,16 @@ fn attach_sp_damage(rom: &Rom, chips: &mut [ChipData]) {
         c.sp_damage = Some((0..11).map(|k| rom.u16(0x0802_0E54 + 0x16 * n as u32 + 2 * k)).collect());
     }
     assert!(rows_used.iter().all(|&u| u), "every SP damage row has its chip");
+}
+
+/// Link navis' chips: damage formula n (24..=44, `sub_8010C50`) reads row
+/// n - 23 of `byte_80212D4` (base, per buster level).
+fn attach_navi_damage(rom: &Rom, chips: &mut [ChipData]) {
+    for c in chips.iter_mut() {
+        let Some(n) = c.damage.checked_sub(1023).filter(|n| (1..=21).contains(n)) else { continue };
+        let row = 0x0802_12D4 + 2 * n as u32;
+        c.navi_damage = Some(NaviChipDamage { base: rom.u8(row), per_level: rom.u8(row + 1) });
+    }
 }
 
 /// The Program Advances (`off_802BCB0`, null-terminated): pointers to
