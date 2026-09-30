@@ -451,10 +451,12 @@ fn describe_fields(
 /// game spawns with the object allocator's list-node addresses as X and Y
 /// (§A.3). And the navi chip controller's, spawned with the user's panel
 /// Y, the element and the spawner's address as X, Y and Z (chips.md
-/// §3.6), and any kind a script implements that says so
-/// (`scratch_position`: the dimming chips' controllers, among others).
+/// §3.6), Beast Over's burst's (effect #0x90, whatever its spawner's
+/// r1..r3 held; it bursts around its panel), and any kind a script
+/// implements that says so (`scratch_position`: the dimming chips'
+/// controllers, among others).
 fn pos_is_garbage(content: &Content, kind: u8, index: u8, flags: u8) -> bool {
-    use crate::kinds::navi_chip;
+    use crate::kinds::{beast_over_burst, navi_chip};
     use crate::object::Pool;
     let pool = match kind {
         1 => Pool::Actor,
@@ -469,7 +471,8 @@ fn pos_is_garbage(content: &Content, kind: u8, index: u8, flags: u8) -> bool {
         && (index == 2
             || index == 0x0A
             || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0)
-            || index == navi_chip::INDEX)
+            || index == navi_chip::INDEX
+            || index == beast_over_burst::INDEX)
 }
 
 /// Kinds a script implements that keep the fraction of the Z their
