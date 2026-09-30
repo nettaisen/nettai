@@ -31,7 +31,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x09 | 0x080c5ddc | 1452 (panel strike: the pack's `objects/panel-strike`, chips.md §3.6.33) |
 | T3 0x0b | 0x080c60a8 | 38 (flying shot: the pack's `objects/flying-shot`, objects-and-player.md §B8) |
 | T3 0x0f | 0x080c6414 | 1107 (grab shot: the pack's `objects/grab-shot`, chips.md §3.6.8) |
-| T3 0x12 | 0x080c6946 | 600 |
+| T3 0x12 | 0x080c6946 | 600 (the Vulcans' and Spreaders' bullet: shot-chips.md §4.1, not ported) |
 | T3 0x17 | 0x080c6dcc | 180 (SpoutMan's geyser: the pack's `objects/spout-geyser`, chips.md §3.6.11) |
 | T3 0x21 | 0x080c8388 | lab only (BlastMan's fire blast: the pack's `objects/blast-fire`, chips.md §3.6.14) |
 | T3 0x22 | 0x080c853c | 16 (SpoutMan's ball: the pack's `objects/spout-ball`, chips.md §3.6.11) |
