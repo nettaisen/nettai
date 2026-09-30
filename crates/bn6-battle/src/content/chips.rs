@@ -106,8 +106,8 @@ impl ChipFamily {
 pub struct ChipFlags(pub u8);
 
 impl ChipFlags {
-    /// Stops time when used; can counter during time stop.
-    pub const TIME_FREEZE: u8 = 0x01;
+    /// A dimming chip: its use starts a dimming; it can counter while dimmed.
+    pub const DIMMING: u8 = 0x01;
     /// Deals damage: shown on the banner, boostable by Atk+ and forms.
     pub const HAS_DAMAGE: u8 = 0x02;
     /// Navi chip: boosted by Navi+.
@@ -121,7 +121,7 @@ impl ChipFlags {
     /// Damage recomputed every tick while this is the next chip.
     pub const VARIABLE_DAMAGE: u8 = 0x80;
     pub(crate) const NAMES: &[(u32, &str)] = &[
-        (0x01, "time_freeze"),
+        (0x01, "dimming"),
         (0x02, "has_damage"),
         (0x04, "navi"),
         (0x08, "standard_library"),
@@ -218,6 +218,12 @@ pub struct ChipData {
     /// GunDelSol's data (action 0x37).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gun_del_sol: Option<GunDelSol>,
+    /// The script that implements the chip's action, or its part of a
+    /// generic one (see `content::scripts`): a module path in the pack
+    /// (`chips/00f-gundels1/chip`); in the chip's file, a path relative to
+    /// its folder (`chip.luau`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub script: Option<String>,
 }
 
 /// What an attachment (attachment object #5) looks like and where it sits

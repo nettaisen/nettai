@@ -15,8 +15,8 @@ pub const INDEX: u8 = 0x0A;
 pub struct Vars {
     /// Ticks the flash lasts.
     pub duration: u8,
-    /// Keeps flashing in time stop.
-    pub in_time_stop: bool,
+    /// Keeps flashing while dimmed.
+    pub while_dimmed: bool,
     /// Keeps flashing while the battle is paused.
     pub while_paused: bool,
 }
@@ -29,11 +29,11 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 }
 
 /// `sub_80E11E0`: a white flash (variant 0) for `duration` ticks.
-pub fn spawn(b: &mut Battle, duration: u8, in_time_stop: bool, while_paused: bool) -> Option<ObjectRef> {
-    let mode = in_time_stop as u8 | (while_paused as u8) << 1;
+pub fn spawn(b: &mut Battle, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
+    let mode = while_dimmed as u8 | (while_paused as u8) << 1;
     let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), [0, duration, mode, 0])?;
-    b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP;
-    *vars(b, r) = Vars { duration, in_time_stop, while_paused };
+    b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+    *vars(b, r) = Vars { duration, while_dimmed, while_paused };
     Some(r)
 }
 
@@ -41,8 +41,8 @@ pub fn spawn(b: &mut Battle, duration: u8, in_time_stop: bool, while_paused: boo
 /// battle is paused or time is stopped (unless it keeps flashing then), it
 /// only holds the palette.
 pub fn update(b: &mut Battle, r: ObjectRef) {
-    let Vars { duration, in_time_stop, while_paused } = vars(b, r).clone();
-    let held = !while_paused && (b.paused || (!in_time_stop && b.is_time_stop()));
+    let Vars { duration, while_dimmed, while_paused } = vars(b, r).clone();
+    let held = !while_paused && (b.paused || (!while_dimmed && b.is_dimmed()));
     if held {
         return;
     }

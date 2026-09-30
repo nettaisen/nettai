@@ -1,22 +1,22 @@
 //! What single content-API operations cost from Luau: each is run 200,000
-//! times inside one sun beam update (the pack's sun beam, patched), and
-//! the tick's time over a plain tick is divided out.
+//! times inside one sun beam update (the test content's sun beam script,
+//! patched), and the tick's time over a plain tick is divided out.
 //!
-//! cargo run --release -p bn6-battle --example luau_ops --features luau
+//! cargo run --release -p bn6-battle --example luau_ops --features test-content
 //! (add `luau-jit` to also time native code)
 
 use std::time::Instant;
 
 use bn6_battle::Battle;
-use bn6_battle::behavior::{self, Behaviors, luau_pack};
+use bn6_battle::behavior::{self, Behaviors, Options};
+use bn6_battle::content::testing;
 use bn6_battle::input::PlayerTick;
-use bn6_battle::object::{Pool, Vec3};
+use bn6_battle::object::Vec3;
 use bn6_battle::scenario;
-use bn6_content_api::Value;
 
 const N: u32 = 200_000;
 
-const OPS: [(&str, &str); 14] = [
+const OPS: [(&str, &str); 16] = [
     ("loop overhead", "local _ = i"),
     ("field read `me.anim`", "local _ = me.anim"),
     ("field write `me.anim = 3`", "me.anim = 3"),
@@ -24,11 +24,13 @@ const OPS: [(&str, &str); 14] = [
     ("state read `s.ticks`", "local _ = s.ticks"),
     ("state write `s.ticks = 5`", "s.ticks = 5"),
     ("enum state read `s.slot`", "local _ = s.slot"),
-    ("library call `battle.time_stop()`", "local _ = battle.time_stop()"),
+    ("library call `battle.dimmed()`", "local _ = battle.dimmed()"),
+    ("panel flags `field.flags(3, 2)`", "local _ = field.flags(3, 2)"),
     ("string field `me.lifecycle`", "local _ = me.lifecycle"),
     ("Vec3 field `me.pos`", "local _ = me.pos"),
     ("handle field `me.related1`", "local _ = me.related1"),
     ("handle field `me.sprite`", "local _ = me.sprite"),
+    ("data read `data.objects.sun_beam_looks[0]`", "local _ = data.objects.sun_beam_looks[0]"),
     ("`Vec3.new(1, 2, 3)`", "local _ = Vec3.new(1, 2, 3)"),
     ("9-field table literal", "local _ = { a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8, i = 9 }"),
 ];
@@ -40,32 +42,23 @@ fn main() {
     println!("| operation | interpreted |{}", if natives.len() > 1 { " native |" } else { "" });
     println!("|---|---|{}", if natives.len() > 1 { "---|" } else { "" });
     for (name, op) in OPS {
-        let full = luau_pack(&scenario::content());
-        let pack = bn6_luau::Pack::new(full.modules().map(|(p, s)| {
-            let s = if p == "objects/sun_beam" {
-                let hook = "    if s.ticks % 11 == 0 then";
-                s.replacen(hook, &format!("    if me.timer2 == 7 then for i = 1, {N} do {op} end end\n{hook}"), 1)
-            } else {
-                s.to_string()
-            };
-            (p.to_string(), s)
-        }));
+        let mut content = testing::build();
+        let beam = content.scripts.modules.get_mut("objects/sun-beam/sun_beam").expect("the sun beam script");
+        let hook = "    if s.ticks % 11 == 0 then";
+        *beam = beam.replacen(hook, &format!("    if me.timer2 == 7 then for i = 1, {N} do {op} end end\n{hook}"), 1);
         let mut row = format!("| {name} |");
         for &native in natives {
-            let options = bn6_luau::Options { native_code: native, budget: u32::MAX, ..Default::default() };
-            let mut b = Battle::with_behaviors(
-                scenario::setup(),
-                scenario::content(),
-                Behaviors::new(bn6_luau::LuauContent::load(&pack, options).unwrap()).unwrap(),
-            );
+            let options = Options { native_code: native, budget: u32::MAX, ..Default::default() };
+            let behaviors = Behaviors::load(&content, options).unwrap();
+            let mut b = Battle::with_behaviors(scenario::setup(), scenario::content(), behaviors);
             for t in &tape[..250] {
                 b.tick(&t.input, t.events.clone());
             }
             // A sun beam on player 0 that runs `op` N times when its timer2 is 7.
             let owner = b.player(0).unwrap();
-            let r = behavior::spawn_object(&mut b, Pool::Effect, 0x48, Vec3::default(), [0, 2, 0, 0]).unwrap();
+            let r = behavior::spawn_kind(&mut b, "sun-beam", Vec3::default(), [0, 2, 0, 0]).unwrap();
             b.objects.get_mut(r).related[0] = Some(owner);
-            behavior::set_state_field(&mut b, r, "slot", Value::Int(1));
+            behavior::set_state_variant(&mut b, r, "slot", "related");
             b.objects.get_mut(owner).related[0] = Some(r);
             b.tick(&idle, Default::default());
             let t = Instant::now();

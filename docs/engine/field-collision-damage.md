@@ -46,7 +46,7 @@ How claims were verified:
 | 0x0203CB04 | `byte_203CB04` | **u32** | Volcano eruption cycle counter, period 0x8C. |
 | 0x0203CFB0 / 0x0203CFBC | damage-carry records | 2 × 0xC | Per-alliance records (§4.4). |
 | BattleState+0x0E / +0x16 | | u8 / u8 | Tick counters mod 20 / mod 180 (grass heal). |
-| BattleState+0x32 | battle flags | u16 | Bit 0x1: navis resolve collisions. Bit 0x4: time stop. |
+| BattleState+0x32 | battle flags | u16 | Bit 0x1: navis resolve collisions. Bit 0x4: dimming. |
 | GameState.BattlePaused | | u8 | Pause. |
 
 RNG (both streams use `s = ((s<<1 | s>>31) + 1) ^ 0x873CA9E5`):
@@ -64,12 +64,12 @@ RNG (both streams use `s = ((s<<1 | s>>31) + 1) ^ 0x873CA9E5`):
 
 1. Battle-mode handler.
 2. **`RunBattleObjectLogic`** (0x080031AC). Walks the object list from `eBattleObjectsLinkedListStart.Next` (0x02009380).
-   - Objects are skipped if paused and header flag 0x04 is clear, or if time-stopped and header flag 0x10 is clear.
+   - Objects are skipped if paused and header flag 0x04 is clear, or if dimmed and header flag 0x10 is clear.
    - Objects spawned by `object_spawnType1/3/4` (via `sub_8003400`) are inserted **directly after the object currently updating**. They therefore run later in the same tick, and several spawns from one update run in reverse spawn order.
 3. `sub_802FFF4` (camera, RNG1).
 4. **`sub_800BFC4`** (panel tick, §2.6).
 5. `sub_800FDC0`, `sub_801BEE0`, `sub_802CEC8`, `chip_800AEE8`.
-6. If not paused and not time-stopped: `BS+0x0E=(BS+0x0E+1)%20`, `BS+0x16=(BS+0x16+1)%180`.
+6. If not paused and not dimmed: `BS+0x0E=(BS+0x0E+1)%20`, `BS+0x16=(BS+0x16+1)%180`.
 7. If not paused: `sub_802CDFE` (shifts the damage-carry records, §4.4).
 8. `sub_80102AC`.
 9. `BS+0x64 += 1`.
@@ -496,7 +496,7 @@ State lives in the object:
 **Triggers** run in `sub_801AC6C` (stage A, §4.1):
 
 `sub_801A36A` 0x0801A36A:
-1. If not paused, not time-stopped, and `ai+0x38 != 0`: decrement it. On the 1→0 tick, jump straight to the ice test.
+1. If not paused, not dimmed, and `ai+0x38 != 0`: decrement it. On the 1→0 tick, jump straight to the ice test.
 2. Otherwise, if `F1 & 0x00100040` (DRAG | moving), return.
 3. If the CollisionData panel type is 9..12 → `sub_801A400`: if `ai+0x38 == 0` and `!(F1 & 0x24)`, then `F2 |= 0x10`, SlideType=3. Return.
 4. Else, if `F1 & 0x80000` (MOVE_COMPLETE): clear it. If the panel type is 7 → `sub_801A3DA`: if element ≠ aqua, `!(F1 & 0x24)` and `F1 & 0x02000000`, then `F2 |= 0x10`, SlideType=2.
@@ -540,7 +540,7 @@ Delta sources for `sub_800E468`:
 
 All of these run in the navi's stage A (§4.1) unless noted.
 
-**Poison / grass**: `sub_801A186` 0x0801A186. It returns early if time-stopped, paused, `cd.Region == 0`, or the CollisionData panel is invalid. Otherwise, with t = the panel type at `(cd.PanelX, cd.PanelY)`:
+**Poison / grass**: `sub_801A186` 0x0801A186. It returns early if dimmed, paused, `cd.Region == 0`, or the CollisionData panel is invalid. Otherwise, with t = the panel type at `(cd.PanelX, cd.PanelY)`:
 
 - **t == 4 and `!(F1 & 0x08000028)`** (immune if flag 0x08000000, FLOATSHOE 0x20 or INVULNERABLE 0x08):
   - `cd+0x08 -= 1`. If the result is < 0: `cd+0x08 = 6` and `u16 cd+0x8C += 1`.
@@ -590,7 +590,7 @@ All of these run in the navi's stage A (§4.1) unless noted.
 | 0x00 | u8 | Enabled | |
 | 0x01 | u8 | Region | Shape (§3.4). 0 means no panels. `object_setCollisionRegion` 0x0801A07C, `object_clearCollisionRegion` 0x0801A074. Setup writes 1. |
 | 0x02 | u8 | PrimaryElement | `obj.Element & 0xF`: 0 null, 1 heat, 2 aqua, 3 elec, 4 wood. Some hitboxes use 5 (§3.8). Also written by `sub_8019F8C`. |
-| 0x03 | u8 | Unk_03 | Guard directions: `|= 1<<hitter.Flip` on a blocked hit. Cleared by present unless time stop. |
+| 0x03 | u8 | Unk_03 | Guard directions: `|= 1<<hitter.Flip` on a blocked hit. Cleared by present unless dimmed. |
 | 0x04/0x05 | u8 | Alliance / Flip | Copied from obj+0x16/+0x17. |
 | 0x06 | u8 | Barrier type | §4.2. Barrier state also uses +0x14 (weak element), +0x15 (saved hmF), +0x16 (u8 HP), +0x17 (threshold), +0x1A (u16 timer), +0x1B. |
 | 0x07 | u8 | Counter/stamina byte | Low byte of obj+0x2E at setup. Bits 0–6 value; bit 7 = "cannot counter". |
@@ -696,7 +696,7 @@ Bits the engine tests directly (everything else only matters through `Target & S
 | 0x00400000 / 0x00200000 | Region filters 0x84/0x85 | Player navi of alliance 0 / 1 |
 | 0x00100000 | Air/ground rule, cracked-panel rule | Floating |
 | 0x00080000 | Panel masks | Blocker |
-| 0x00010000 | Time-stop gate | Interacts during time stop. Setup ORs it in when created during time stop; navi bodies always have it. |
+| 0x00010000 | Dimming gate | Interacts while dimmed. Setup ORs it in when created while dimmed; navi bodies always have it. |
 | 0x00008000 | Air/ground rule | Ground-only hit |
 | 0x4000 + 0x1000, or 0x0002 | Guard rule | Break guard |
 | 0x2000 | Secondary weakness | Counts as sword against a pure sword weakness (0x80) |
@@ -768,7 +768,7 @@ These regions were not exercised in machgun.
 2. `PrimaryElement = obj.Element & 0xF`; `SecondaryElement = obj.Element & 0xF0`.
 3. Copy Alliance/Flip (obj+0x16), PanelX/Y (obj+0x12); `Region = 1`.
 4. `+0x07 = (u8)obj+0x2E`; `SelfDamage = obj+0x2C` (the raw damage word).
-5. `Self = table(selfIdx)`, and if time-stopped `Self |= 0x10000`. `Target = table(targetIdx)`.
+5. `Self = table(selfIdx)`, and if dimmed `Self |= 0x10000`. `Target = table(targetIdx)`.
 6. `sub_8019F44` decodes the damage word D = SelfDamage (LSL-carry tests, verified in the Rust):
    - `SelfDamage = D & 0x7FF`.
    - `D & 0x8000` (double): `SelfDamage *= 2`.
@@ -778,7 +778,7 @@ These regions were not exercised in machgun.
    - `D & 0x0800`: no effect.
    - r1 here is the leftover `targetIdx*8 + alliance*4` from the Target lookup, so the Bugs high byte is "garbage". Reproduce it.
 
-**`sub_801A082(r1, r2, r3)`** (0x0801A082) re-runs HitModifierBase, SelfDamage (from obj+0x2C), Self, Target, the time-stop OR and `sub_8019F44` on an existing slot.
+**`sub_801A082(r1, r2, r3)`** (0x0801A082) re-runs HitModifierBase, SelfDamage (from obj+0x2C), Self, Target, the dimming OR and `sub_8019F44` on an existing slot.
 - Used by `sub_801393A` (0x0801393A) to switch the navi between Self idx 0x10 (`ns+0x1B` FloatShoes: also `F1 |= 0x20`) and idx 1 (`F1 &= ~0x20`).
 - The same function sets `F1 |= 0x10` for `ns+0x1C` (AirShoes).
 
@@ -814,7 +814,7 @@ Alliance and flip are copied from the spawner. Timer is 0 unless the spawner set
 
 **`object_presentCollisionData`** (0x0801A018):
 1. `cd+0x54 = r1`. This is a quirk: the code computes `Unk_54 | FFC` into r0 and discards it.
-2. If not time-stopped: `HitModifierFinal = 0`, `Unk_03 = 0`, `+0x54 = 0`.
+2. If not dimmed: `HitModifierFinal = 0`, `Unk_03 = 0`, `+0x54 = 0`.
 3. `StatusEffectFinal = 0`.
 4. Zero `+0x68..+0xA7`.
 5. `sub_300777C(cd)` (0x0300777C):
@@ -873,7 +873,7 @@ sub_3007650(A, B): if A.Target & B.Self: { sub_3007218(A, B); sub_3007692(A, B) 
 
 Receiver R (r6) reacts to hitter H (r7). "Return" means H contributes nothing to R's filtered accumulators; `sub_3007692` still runs afterwards.
 
-1. **Time stop.** If `battle_isTimeStop()` and not (`R.F1 & 0x01000000` or `H.Self & 0x10000`): return.
+1. **Dimming.** If `battle_isTimeStop()` and not (`R.F1 & 0x01000000` or `H.Self & 0x10000`): return.
 2. **Hitter-state filters** (H.F1 against R.Self):
    - `0x202` without `R.Self & 0x4`: return.
    - `0x4` without `R.Self & 0x1008`: return.
@@ -926,7 +926,7 @@ Receiver R (r6) reacts to hitter H (r7). "Return" means H contributes nothing to
    12. `R+0xA0 += H+0x64`.
 
 **`sub_3007692`** (0x03007692), the raw channel, runs right after, for the same pair:
-- Same time-stop gate.
+- Same dimming gate.
 - Return if `H.F1 & 0x20 && !(R.Self & 0x80)`, or if `R.F1 & 0x20 && !(H.Self & 0x80)`.
 - Then:
   - `R+0x6C |= H.Self`;
@@ -1007,12 +1007,12 @@ Navi update: `sub_80EA460` → state 4 `sub_80EA484`.
    - If DEAD, go to L142.
    - If `F2 & 1` (death pending): clear it, `F1 |= 0x100`, CurAction 2, go to L142.
    - `ai+0x48` special states and `ai+0x44` requests (crosses, etc.).
-   - **If time-stopped, go to L142.**
+   - **If dimmed, go to L142.**
    - Knockback (`F2 & 0x100`) → CurAction 5. DRAG → CurAction 5.
    - Slide driver (§2.11).
    - Flinch (`F2 & 4`).
    - L126: `sub_801A5EE` (flash), `sub_800E730` (status timers), `sub_8010162`, `sub_8014326` (anger), `sub_8014498`, `sub_802E1D8`.
-9. L142 is visuals. Then, if not dead: paused → `sub_8017BC0`; time stop → `sub_8017AB4` (hit shake, §5); else the action dispatcher `sub_801B9E6`.
+9. L142 is visuals. Then, if not dead: paused → `sub_8017BC0`; dimming → `sub_8017AB4` (hit shake, §5); else the action dispatcher `sub_801B9E6`.
 
 Navi actions:
 
@@ -1050,14 +1050,14 @@ if (cd[0x77] & 0x20) == 0 && (cd[0x6C] & 0xA20) == 0: goto L860        // no "po
 b = 0x10; cd[6] = 0x10; u16 cd[0x16] = 0; cd[0x15] = cd[0x0F]          // popped
 L860:
  if b == 8:   if u16 cd[0x16] != 0: goto L8E0
-              if timestop or CurAction in (6,7): return
+              if dimmed or CurAction in (6,7): return
               u16 cd[0x1A] += 1; if >= 0xF0: u16 cd[0x16] = 1; return          // regrow after 240 ticks
  if b == 0xA: r1 = u16 cd[0x16]
-              if r1 == 0: if timestop: return; cd[0x1B] += 1; if cd[0x1B] >= 0x78: u16 cd[0x16] = 0xC8; return
+              if r1 == 0: if dimmed: return; cd[0x1B] += 1; if cd[0x1B] >= 0x78: u16 cd[0x16] = 0xC8; return
               if r1 < 0xC8: r0 = cd[0x1A] + 1; if r0 >= 6: { u16 cd[0x16] = r1 + 1; r0 = 0 }
               else: r0 = <stale register: u32 cd[0x6C]>
               cd[0x1A] = (u8) r0; goto L8E0
- if cd[6] != 0x10 && timestop: goto L8E0
+ if cd[6] != 0x10 && dimmed: goto L8E0
  t = u16 cd[0x1A]; if t != 0xFFFF: { t -= 1; u16 cd[0x1A] = t; if (s32) t <= 0: cd[6] = 0 }
 L8E0:
  if b == 8 && u16 cd[0x9A] != 0: { u16 cd[0x88] += u16 cd[0x78]; goto L90A }   // elec pops it; elec damage doubled
@@ -1078,7 +1078,7 @@ Consequences:
 - `+0x8C` (element 5 and poison) is never absorbed.
 - Barriers are fed by the **raw** channel, so they lose HP to hits the filters rejected (flashing, guard, invulnerable).
 - A popped barrier (state 0x10) absorbs everything until its visual object clears it.
-- Barrier timers and regeneration pause during time stop.
+- Barrier timers and regeneration pause while dimmed.
 - All barrier behaviour is code only (not in machgun).
 
 ### 4.3 Anti-damage traps (`sub_802CEF4`)
@@ -1163,7 +1163,7 @@ END: sub_801A200()                                    // counter/Full Synchro + 
 | Routine | Rule |
 |---|---|
 | `sub_801A186` poison / grass | §2.12 |
-| `sub_8010230` HP bug (stage A) | If not time-stopped or paused and HP > 1: `p = byte_80102A4[ns[0x18]]` = {0,40,35,30,25,20,15,10}. If p == 0: `ai+9 = 0`. Else `ai+9 += 1`; at ≥ p: HP −1 and reset. **[verified-soundmod]** |
+| `sub_8010230` HP bug (stage A) | If not dimmed or paused and HP > 1: `p = byte_80102A4[ns[0x18]]` = {0,40,35,30,25,20,15,10}. If p == 0: `ai+9 = 0`. Else `ai+9 += 1`; at ≥ p: HP −1 and reset. **[verified-soundmod]** |
 | `sub_801A324` drain heal (stage A) | `opponentAI+0x10 += u16 cd[0x92]` (hits I took from Self bit **0x100** hitters). Then `n = ownAI+0x10; ownAI+0x10 = 0; h = (MaxHP / 10) * n`. If h: `object_addHP(h)`, spawn T4/6, sound 0x8A. The attacker heals during its next stage A. |
 | `sub_8014498` (stage B) | While `ai+0x36 != 0`: HP −1 per tick, never to 0. |
 | `sub_80102AC` (tick level) | NaviCust drain while the player is in the custom screen (see `battle-flow.md`). |
@@ -1231,7 +1231,7 @@ So a paralyzed or frozen navi is only flinched by a hit that also requests flash
 - 0x66/0x67 hit garbage: 0x66 writes u16 0xFFFF to +0x0A (PanelX/Y!) with no flag.
 - The damage-word paralyze bit gives 0x10 (90 ticks). A counter gives 0x12 (150). Aqua-on-ice gives 0x50 (150).
 
-**Timer engine** `sub_800E730` (stage B, skipped when paused or time-stopped). `F2s` is F2 on entry; "save" means `if obj+0x5C == 0: obj+0x5C = obj+8`.
+**Timer engine** `sub_800E730` (stage B, skipped when paused or dimmed). `F2s` is F2 on entry; "save" means `if obj+0x5C == 0: obj+0x5C = obj+8`.
 
 **Paralyze** (+0x1C):
 - `t -= 1`. If `t ≤ 0`: `F1 &= ~0x800`; `F2 &= ~8`; +0x1C = 0.
@@ -1368,10 +1368,10 @@ Which attacks use which types is catalogued per chip as the chips are ported.
    dive with only the periscope showing). It's the "dove underwater" state. Navi AI isn't ported yet.
 2. **`sub_80101AE`** starts the timed form: it stores the duration in `+0x26`, sets bit 0x4 and clears the
    object's VISIBLE flag. Its only caller is **variant 1 of actor object #0x5D** (`sub_80C49E4`, chosen by
-   Param1): after a 30-tick white flash it runs the time-freeze return (`sub_80E13DC`), then makes its owner
+   Param1): after a 30-tick white flash it runs the dimming return (`sub_80E13DC`), then makes its owner
    submerged for **480 ticks** (0xF0 × 2) with sound 0x93.
 3. **That variant is never spawned.** Actor #0x5D has one spawner (`sub_80C4AEC`). Its one caller, the effect
-   of BugFix's time-freeze controller (chip 0xB0, effect #0x3B, `sub_80E4954`), always passes Param1 0: the
+   of BugFix's dimming controller (chip 0xB0, effect #0x3B, `sub_80E4954`), always passes Param1 0: the
    white flash plus the bug fix (`sub_80C4958`/`sub_80C49A4`), which doesn't submerge. Variant 2
    (`sub_80C4A52`) is unused as well. This is from a static search for spawns of index 0x5D; a spawn through a
    computed index would have escaped it. **[unverified]**
@@ -1415,9 +1415,9 @@ The write paths (0x18, 0x19, 0x54, 0xFF, other) then call `sub_801393A` and `sub
 
 It sets `F2 |= 0x200`. `sub_8014326` then sets ANGER (F1 0x200000) for 600 ticks.
 
-### 4.12 Time stop
+### 4.12 Dimming
 
-During time stop:
+During dimming:
 - Only objects with header flag 0x10 run.
 - The panel tick and the BS+0x0E/+0x16 counters stop.
 - Collision still resolves between objects that have Self 0x10000 or F1 0x01000000 (§3.8 step 1).
@@ -1425,8 +1425,8 @@ During time stop:
   - HP is still applied immediately (stage B runs up to `applyDamage`).
   - Stage B stops before flinch, status and flash processing.
   - HitModifierFinal/Unk_03 are **not** cleared by present, so `sub_801AEB0` re-asserts the flinch/flash requests every tick.
-  - All pending requests fire on the first tick after the time stop.
-  - **[verified-soundmod]** tick 3596: 100 heat damage during time stop; flinch and flash began at 3684.
+  - All pending requests fire on the first tick after the dimming.
+  - **[verified-soundmod]** tick 3596: 100 heat damage while dimmed; flinch and flash began at 3684.
 
 ---
 
@@ -1438,7 +1438,7 @@ During time stop:
 | Collision kernels (IWRAM), final damage, HP application, statuses, flash, slides, poison, grass, holy | — | none |
 | `object_spawnCollisionEffect` 0x0801A0D4 / `sub_801A100` (hitter side) | RNG2 | 1× `GetRNG2` per call when `FFC & 0x3F800000`, not `FFC & 1`, and `HitEffect != 0xFF` |
 | `object_spawnHiteffect` 0x0800EB9E (navi, end of stage A) | RNG2 | 1× `GetRNG2` when not paused and `FFC & 0x20000` (it blocked a hit); spark at Z+0x100000, sound 0x6E |
-| `sub_8017AB4` (navi stage B, time-stop branch) | RNG2 | On a tick with FinalDamage ≠ 0: shake counter = 30. Then 1× `GetRNG2` (`AddRandomVarianceToTwoCoords(3,…)`) per tick while the counter runs, so 30 calls, restarted by each new damaging tick. **[verified-soundmod]** |
+| `sub_8017AB4` (navi stage B, dimming branch) | RNG2 | On a tick with FinalDamage ≠ 0: shake counter = 30. Then 1× `GetRNG2` (`AddRandomVarianceToTwoCoords(3,…)`) per tick while the counter runs, so 30 calls, restarted by each new damaging tick. **[verified-soundmod]** |
 | `sub_8013CC4` (step "panel trail", NaviCust) | RNG2 | 1× `GetPositiveSignedRNG2` at step F+3 if `ai.ActorType == 2 && ns[0x13] != 0`; effect if `(r & 7) <= ns[0x13] − 1`: `ns[0x12]` 1 → break (dup2), 3 → crack (Dup1), else set type (sound table `byte_8013D44`). Skips holes and voids. |
 | `sub_8013FAE` (auto-repeat step) | RNG2 | 1× `GetRNG2` at step end (mode ≠ 1) if `ns[0x11] != 0` |
 | `sub_8013DA0` (NaviCust) | RNG2 | Every 60 ticks when `ns[0x24] && ns[0x21]` |
@@ -1494,7 +1494,7 @@ In tick 647 the navi's stage A computes FinalDamage 0 (the +0x8C slot is exclude
 1. The panel masks are never cleared per tick; `free` doesn't clear bits; stale bits are tested and feed panel Flags (§3.1, §3.6).
 2. `PairTested` (+0x68) dedup across objects and across the tick boundary (§3.7).
 3. The present path's Region-0x80 panel refresh uses the wrong arguments; `sub_300777C` clobbers r8 (§3.6).
-4. `object_presentCollisionData` stores the caller's r1 into +0x54; in time stop, HitModifierFinal/Unk_03 persist (§3.6, §4.12).
+4. `object_presentCollisionData` stores the caller's r1 into +0x54; while dimmed, HitModifierFinal/Unk_03 persist (§3.6, §4.12).
 5. Aqua-on-ice writes the *body's* StatusEffectFinal from the other direction and is order-dependent (§3.8).
 6. Frozen-break and bubble-elec bonuses add to the weakness count; the frozen check sees break bits from earlier hitters this tick (§3.8).
 7. Heat-on-grass damage goes into the null slot, unmultiplied, using the receiver's *collision* panel. Holy halving uses the *object* panel; barriers use the collision panel (§3.8, §4.2, §4.4).

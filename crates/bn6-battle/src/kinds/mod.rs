@@ -1,23 +1,18 @@
-//! Object behaviors, chosen by pool and index, plus helpers shared by many
-//! behaviors (HP changes, damage formulas).
+//! Object behaviors the engine implements itself, chosen by pool and
+//! index, plus helpers shared by many behaviors (HP changes, damage
+//! formulas). A kind the content pack's scripts implement runs as content
+//! instead (`behavior`).
 
 pub mod absorbed_obstacle;
 pub mod afterimage;
-pub mod area_grab;
-pub mod attachment;
 pub mod body_overlay;
 pub mod charge_glow;
 pub mod common;
-pub mod dust_ball;
 pub mod cross_merge;
 pub mod effect;
 pub mod elmnt_man;
-pub mod erase_beam;
-pub mod erase_man;
-pub mod erase_mark;
 pub mod eruption;
 pub mod form_overlay;
-pub mod grab_shot;
 pub mod hitbox;
 pub mod intro;
 pub mod invisible;
@@ -31,7 +26,6 @@ pub mod player;
 pub mod rock;
 pub mod rock_debris;
 pub mod spark;
-pub mod sun_beam;
 pub mod trap_chip;
 
 use crate::battle::Battle;
@@ -54,8 +48,6 @@ pub enum Vars {
     Afterimage(afterimage::Vars),
     LockonMarker(lockon_marker::Vars),
     PaletteFlash(palette_flash::Vars),
-    Attachment(attachment::Vars),
-    SunBeam(sun_beam::Vars),
     CrossMerge(cross_merge::Vars),
     BodyOverlay(body_overlay::Vars),
     Invisible(invisible::Vars),
@@ -63,9 +55,7 @@ pub enum Vars {
     NaviWarp(navi_warp::Vars),
     ElmntMan(elmnt_man::Vars),
     Meteor(meteor::Vars),
-    AreaGrab(area_grab::Vars),
     TrapChip(trap_chip::Vars),
-    EraseMan(erase_man::Vars),
     /// A content kind's declared state (see `content`).
     Content(bn6_content_api::ContentState),
 }
@@ -81,8 +71,6 @@ impl Vars {
             (Pool::Effect, afterimage::INDEX) => Vars::Afterimage(Default::default()),
             (Pool::Effect, lockon_marker::INDEX) => Vars::LockonMarker(Default::default()),
             (Pool::Effect, palette_flash::INDEX) => Vars::PaletteFlash(Default::default()),
-            (Pool::Actor, attachment::INDEX) => Vars::Attachment(Default::default()),
-            (Pool::Effect, sun_beam::INDEX) => Vars::SunBeam(Default::default()),
             (Pool::Actor, cross_merge::INDEX) => Vars::CrossMerge(Default::default()),
             (Pool::Actor, body_overlay::INDEX) => Vars::BodyOverlay(Default::default()),
             (Pool::Effect, invisible::INDEX) => Vars::Invisible(Default::default()),
@@ -112,8 +100,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, afterimage::INDEX) => afterimage::update(b, r),
         (Pool::Effect, lockon_marker::INDEX) => lockon_marker::update(b, r),
         (Pool::Effect, palette_flash::INDEX) => palette_flash::update(b, r),
-        (Pool::Actor, attachment::INDEX) => attachment::update(b, r),
-        (Pool::Effect, sun_beam::INDEX) => sun_beam::update(b, r),
         (Pool::Actor, cross_merge::INDEX) => cross_merge::update(b, r),
         (Pool::Actor, body_overlay::INDEX) => body_overlay::update(b, r),
         (Pool::Effect, invisible::INDEX) => invisible::update(b, r),
@@ -122,13 +108,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Actor, elmnt_man::INDEX) => elmnt_man::update(b, r),
         (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
-        (Pool::Effect, area_grab::INDEX) => area_grab::update(b, r),
-        (Pool::Attack, grab_shot::INDEX) => grab_shot::update(b, r),
-        (Pool::Attack, dust_ball::INDEX) => dust_ball::update(b, r),
         (Pool::Effect, trap_chip::INDEX) => trap_chip::update(b, r),
-        (Pool::Actor, erase_man::INDEX) => erase_man::update(b, r),
-        (Pool::Effect, erase_mark::INDEX) => erase_mark::update(b, r),
-        (Pool::Attack, erase_beam::INDEX) => erase_beam::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }

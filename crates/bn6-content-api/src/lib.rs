@@ -1,32 +1,42 @@
 //! The content API: the contract between the battle engine's core and the
-//! game content built on it (chips, attacks, navi actions, effects).
+//! game content built on it (chips, navi actions, weapons, object kinds).
 //!
 //! The core owns every piece of battle state as typed data: the object
 //! pools and their update order, actors, collision, sprites, the RNG. It
-//! knows no particular chip. Content is a set of *object kinds* and
-//! *actions*, each declaring
+//! knows no particular chip. Content is a set of scripts in a content pack,
+//! and the pack's data says what each implements (see [`host`]):
 //!
-//! - which object slot or action number it implements,
-//! - the schema of its own state ([`state::Schema`]: named, typed fields
-//!   the core stores next to the object), and
-//! - an update function, run by the core once per tick.
+//! - *object kinds*: which object slot (pool and index) a module
+//!   implements, the schema of its own state ([`state::Schema`]: named,
+//!   typed fields the core stores next to the object) and its update;
+//! - *navi actions*: an action number, its state and update;
+//! - *hooks*: ruleset tables filled by number (weapon routines, dimming
+//!   chips' dimming controllers, navi chips' navis).
 //!
-//! Update functions are stateless: everything they keep between ticks
+//! Content functions are stateless: everything they keep between ticks
 //! lives in engine-owned state, reached through [`CoreApi`]. That is what
-//! makes a battle snapshot a plain `Clone` of the engine state, whatever
-//! language the content is written in (see docs/design/scripting.md).
+//! makes a battle snapshot a plain `Clone` of the engine state (see
+//! docs/design/scripting.md).
 //!
-//! A runtime (native Rust, Luau, ...) implements [`ContentHost`]; the engine
-//! implements [`CoreApi`].
+//! A runtime (Luau) implements [`ContentHost`]; the engine implements
+//! [`CoreApi`] and builds the [`Registrations`] and the scripts' [`Data`]
+//! from the pack.
 
 pub mod api;
+pub mod data;
 pub mod host;
 pub mod state;
 pub mod types;
 
 pub use api::{
-    ActorField, ApiError, CollisionField, CoreApi, Lifecycle, NaviStat, ObjectField, Shadow, SpriteField, StatusFlag,
+    ACTOR_TYPES, ActorField, ApiError, ApiResult, BattleInfo, CollisionField, ColumnInfo, CoreApi, DimmingStep,
+    Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField, PANEL_TYPES,
+    Pad, PanelInfo, RequestFlag, Shadow, SpriteField, StatusFlag, StatusTimer,
 };
-pub use host::{ActionDef, ContentError, ContentHost, KindId, Manifest, ObjectKindDef};
-pub use state::{ContentState, FieldDef, FieldType, FieldValue, Schema, StateId, Value};
+pub use data::{Data, Key as DataKey};
+pub use host::{
+    ActionDef, ActionReg, ContentError, ContentHost, DimmingChipSpec, Hook, HookCall, HookDef, HookId, HookReg, KindId,
+    KindReg, Manifest, NaviChipSpec, ObjectKindDef, Registrations,
+};
+pub use state::{ContentState, FieldDef, FieldType, FieldValue, MAX_BYTES, Schema, StateId, Value};
 pub use types::{ObjectRef, PanelPos, Pool, SpriteId, Vec3};

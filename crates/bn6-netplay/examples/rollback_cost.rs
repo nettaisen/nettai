@@ -10,7 +10,7 @@
 //! (`<pack>`: the BN6 content pack the trace's battle runs on, from
 //! `bn6-extract content`.)
 //!
-//! Add `luau` or `rust-content` to measure the GunDelSol slice as content.
+//! The pack's scripts (Luau) run the content they implement.
 
 use std::time::{Duration, Instant};
 
