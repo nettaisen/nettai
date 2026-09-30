@@ -12,7 +12,6 @@ pub mod charge_glow;
 pub mod common;
 pub mod cross_merge;
 pub mod effect;
-pub mod elmnt_man;
 pub mod eruption;
 pub mod form_overlay;
 pub mod full_synchro_aura;
@@ -21,7 +20,6 @@ pub mod hitbox;
 pub mod idle_overlay;
 pub mod intro;
 pub mod lockon_marker;
-pub mod meteor;
 pub mod navi_chip;
 pub mod navi_warp;
 pub mod obstacle;
@@ -53,8 +51,6 @@ pub enum Vars {
     BodyOverlay(body_overlay::Vars),
     NaviChip(navi_chip::Vars),
     NaviWarp(navi_warp::Vars),
-    ElmntMan(elmnt_man::Vars),
-    Meteor(meteor::Vars),
     StatusVisual(status_visual::Vars),
     IdleOverlay(idle_overlay::Vars),
     FullSynchroAura(full_synchro_aura::Vars),
@@ -111,8 +107,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, beast_over_burst::INDEX) => beast_over_burst::update(b, r),
         (Pool::Effect, navi_chip::INDEX) => navi_chip::update(b, r),
         (Pool::Actor, navi_warp::INDEX) => navi_warp::update(b, r),
-        (Pool::Actor, elmnt_man::INDEX) => elmnt_man::update(b, r),
-        (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
         (Pool::Effect, status_visual::INDEX) => status_visual::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),

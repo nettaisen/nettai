@@ -1,0 +1,3 @@
+# A navi chip (subtype 12): its navi is BlastMan.
+
+script = "../../objects/blast-man/blast_man.luau"

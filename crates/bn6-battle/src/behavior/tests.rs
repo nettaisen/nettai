@@ -29,16 +29,27 @@ fn battles_run_the_content_scripts() {
         [
             "area-grab",
             "attachment",
+            "bass",
+            "blast-fire",
+            "blast-man",
             "bomb",
             "bomb-slash",
             "bug-bomb",
+            "charge-car",
+            "charge-man",
             "countdown-bomb",
             "crack-shot",
             "dragon-body",
             "dragon-head",
             "dust-ball",
+            "elec-man",
+            "elec-thunder",
             "elem-trap",
             "elem-trap-strike",
+            "elmnt-bolt",
+            "elmnt-ice",
+            "elmnt-man",
+            "elmnt-vine",
             "energy-burst",
             "erase-beam",
             "erase-man",
@@ -48,12 +59,17 @@ fn battles_run_the_content_scripts() {
             "flying-shot",
             "gauge-speed",
             "grab-shot",
+            "heat-flame",
+            "heat-man",
             "honey-bee",
             "invisible",
             "land-mine",
+            "meteor",
             "mine",
+            "moon-beam",
             "navi-boost",
             "panel-bursts",
+            "panel-strike",
             "projectile",
             "reflected-shot",
             "reflector-shield",
@@ -63,8 +79,20 @@ fn battles_run_the_content_scripts() {
             "rock-cube",
             "rock-debris",
             "seed",
+            "slash-man",
+            "slash-wave",
+            "spout-ball",
+            "spout-geyser",
+            "spout-man",
+            "spout-mark",
+            "spout-pillar",
+            "spout-splash",
             "sun-beam",
+            "sun-meteor",
+            "sun-moon",
+            "tengu-man",
             "time-bom",
+            "tomahawk-man",
             "trap-chip",
         ]
     );
@@ -98,8 +126,14 @@ fn the_duel_fires_scripted_gun_del_sols() {
 /// in the folders: the ticks each scripted kind was on the field, by
 /// (pool, index).
 fn chip_duel(ticks: usize) -> std::collections::BTreeMap<(crate::object::Pool, u8), usize> {
-    let setup = || scenario::setup_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3]);
-    let tape = scenario::record_on(setup(), ticks, 11);
+    duel_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3], ticks, 11)
+}
+
+/// A duel with `chips` in the folders and the players' moves from `seed`:
+/// the ticks each kind was on the field, by (pool, index).
+fn duel_with(chips: &[crate::content::ChipId], ticks: usize, seed: u32) -> std::collections::BTreeMap<(crate::object::Pool, u8), usize> {
+    let setup = || scenario::setup_with(chips);
+    let tape = scenario::record_on(setup(), ticks, seed);
     let mut b = Battle::new(setup(), scenario::content());
     let mut seen = std::collections::BTreeMap::new();
     for t in &tape {
@@ -199,19 +233,85 @@ fn the_thrown_chips_play_and_roll_back() {
 }
 
 #[test]
+fn the_elements_navi_attacks() {
+    use crate::object::Pool::{Actor, Attack};
+    let seen = duel_with(&[testing::ELEMENTS], 2400, 11);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // The elements navi comes with his overlay and attacks with an
+    // element: meteors, ice, bolts or vines.
+    assert!(ticks((Actor, 0x10)) > 0, "ElmntMan: {seen:?}");
+    assert!(ticks((Actor, 0x56)) > 0, "ElmntMan's overlay: {seen:?}");
+    let attacks = [0x8D, 0x8E, 0xB8, 0xB9].map(|i| ticks((Attack, i)));
+    assert!(attacks.iter().any(|&t| t > 0), "ElmntMan's attacks: {seen:?}");
+}
+
+#[test]
+fn the_water_navi_attacks() {
+    use crate::object::Pool::{Actor, Attack, Effect};
+    let seen = duel_with(&[testing::SPOUT], 2400, 11);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // The water navi comes in his water (his layer) and throws his ball
+    // or raises his geyser, which marks its column.
+    assert!(ticks((Actor, 0x09)) > 0, "SpoutMan: {seen:?}");
+    assert!(ticks((Actor, 0x55)) > 0, "SpoutMan's layer: {seen:?}");
+    let ball = ticks((Attack, 0x22)) > 0 && ticks((Attack, 0x23)) > 0;
+    let geyser = ticks((Effect, 0x2D)) > 0 && ticks((Attack, 0x17)) > 0 && ticks((Effect, 0x2E)) > 0;
+    assert!(ball || geyser, "SpoutMan's attacks: {seen:?}");
+}
+
+#[test]
+fn the_navi_chip_navis_come_and_go() {
+    use crate::object::Pool::Actor;
+    // Each navi chip's navi comes (and the duel goes on without a content
+    // error); its attacks depend on where the players stand.
+    for (chip, navi) in [
+        (testing::HEAT, 0x07),
+        (testing::ELEC, 0x08),
+        (testing::SLASH, 0x0D),
+        (testing::CHARGE, 0x16),
+        (testing::TOMAHAWK, 0x0A),
+        (testing::TENGU, 0x0C),
+        (testing::BLAST, 0x06),
+    ] {
+        let seen = duel_with(&[chip], 1500, 11);
+        assert!(seen.get(&(Actor, navi)).copied().unwrap_or(0) > 0, "navi {navi:#x} of chip {chip:#x}: {seen:?}");
+    }
+}
+
+#[test]
+fn the_shooting_and_sun_moon_navis_attack() {
+    use crate::object::Pool::{Actor, Attack};
+    let seen = duel_with(&[testing::BASS], 2400, 11);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // The shooting navi comes with his cape (a form overlay) and fires
+    // panel strikes.
+    assert!(ticks((Actor, 0x4F)) > 0, "Bass: {seen:?}");
+    assert!(ticks((Actor, 0x57)) > 0, "Bass's cape: {seen:?}");
+    assert!(ticks((Attack, 0x09)) > 0, "Bass's shots: {seen:?}");
+    // The sun-and-moon navi throws meteors, shines and dives.
+    let seen = duel_with(&[testing::SUN_MOON], 2400, 11);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    assert!(ticks((Actor, 0x24)) > 0, "SunMoon: {seen:?}");
+    assert!(ticks((Attack, 0xB5)) > 0, "SunMoon's meteors: {seen:?}");
+    assert!(ticks((Attack, 0xB6)) > 0, "SunMoon's moonlight: {seen:?}");
+}
+
+#[test]
 fn scripted_chips_roll_back() {
     // A copy of the battle taken at any tick plays on exactly as the
     // battle does: the scripts' state is all in the battle.
-    let setup = || scenario::setup_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3]);
-    let tape = scenario::record_on(setup(), 2400, 11);
-    let mut b = Battle::new(setup(), scenario::content());
-    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
-    for (i, t) in tape.iter().enumerate() {
-        if i % 97 == 0 {
-            let copy = digests(&tape[i..], b.clone());
-            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+    for chips in [&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3][..], &[testing::ELEMENTS], &[testing::SPOUT], &[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST], &[testing::BASS], &[testing::SUN_MOON]] {
+        let setup = || scenario::setup_with(chips);
+        let tape = scenario::record_on(setup(), 2400, 11);
+        let mut b = Battle::new(setup(), scenario::content());
+        let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+        for (i, t) in tape.iter().enumerate() {
+            if i % 97 == 0 {
+                let copy = digests(&tape[i..], b.clone());
+                assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way ({chips:?})");
+            }
+            b.tick(&t.input, t.events.clone());
         }
-        b.tick(&t.input, t.events.clone());
     }
 }
 

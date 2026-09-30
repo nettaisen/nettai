@@ -1,0 +1,6 @@
+# SpoutMan's geyser (attack object #0x17, `sub_80C6DCC`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x17
+script = "spout_geyser.luau"

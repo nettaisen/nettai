@@ -60,6 +60,15 @@ struct AbsorbedFile {
     script_kind: Option<ObjectKind>,
 }
 
+/// DustMan's junk's file: how field objects look, by NameID.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NameLookFile {
+    look: Vec<NameLook>,
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SunBeamFile {
@@ -265,6 +274,22 @@ struct ReactionsFile {
     push: [SlideVector; 10],
     ice: [SlideVector; 6],
     bubble_bob: [i8; 32],
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ActorsFile {
+    cross_palettes: Vec<u8>,
+    record: Vec<ActorRecordEntry>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ActorRecordEntry {
+    name_id: u16,
+    version: u8,
+    actor_type: bn6_battle::actor::ActorType,
+    ai_index: u8,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -573,8 +598,17 @@ pub fn weapon_folder(w: &WeaponData) -> String {
 
 /// The object kinds whose folders hold data of their own (a kind of these
 /// a script implements keeps its `[kind]` in the same file).
-const DATA_OBJECTS: [&str; 8] =
-    ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "projectile", "flying-shot", "shock-wave"];
+const DATA_OBJECTS: [&str; 9] = [
+    "rock",
+    "absorbed-obstacle",
+    "body-overlay",
+    "sun-beam",
+    "attachment",
+    "projectile",
+    "flying-shot",
+    "shock-wave",
+    "dust-junk",
+];
 
 /// A script as an entity's file names it: `module` (a path in the pack
 /// without `.luau`) relative to `folder`, with `.luau`.
@@ -663,6 +697,13 @@ pub fn export(c: &Content) -> Files {
         toml_file(
             "The sun beam's (effect object #0x48) sprites by look, its first parameter.",
             &SunBeamFile { look: looks, script_kind: script_kind("sun-beam") },
+        ),
+    );
+    put(
+        "objects/dust-junk/object.toml".into(),
+        toml_file(
+            "How a field object looks by its NameID (`byte_8021220`, NameIDs 0xCD..=0xFF): what DustMan's junk\n(attack object #0xB3) shows; no sprite is the table's \"none\".",
+            &NameLookFile { look: o.name_looks.clone(), script_kind: script_kind("dust-junk") },
         ),
     );
     put(
@@ -864,6 +905,20 @@ neighbour is looked for along the scan lists, each slot starting at its *_scan_s
                 right_scan_bottom: cs.right_scan_bottom.clone(),
                 left_scan_start: cs.left_scan_start,
                 right_scan_start: cs.right_scan_start,
+            },
+        ),
+    );
+    put(
+        "rules/actors.toml".into(), toml_file(
+            "Every NameID's actor record (byte_80182C4): the version byte, the actor type and the AI index\n(which picks per-navi hooks and tables). cross_palettes: the palette MegaMan's sprite takes in\neach Cross, by form (byte_80203EA).",
+            &ActorsFile {
+                cross_palettes: r.cross_palettes.clone(),
+                record: r
+                    .actor_records
+                    .iter()
+                    .enumerate()
+                    .map(|(i, a)| ActorRecordEntry { name_id: i as u16, version: a.version, actor_type: a.actor_type, ai_index: a.ai_index })
+                    .collect(),
             },
         ),
     );
@@ -1123,6 +1178,9 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     add_kind("flying-shot", shots.script_kind, report);
     let file = "objects/flying-shot/object.toml";
     let flying_shots = dense(shots.variant.into_iter().map(|k| (k.id as usize, k, file.into())).collect(), "flying shot kind", report);
+    let looks: NameLookFile = read_toml(root, "objects/dust-junk/object.toml", report)?;
+    add_kind("dust-junk", looks.script_kind, report);
+    let name_looks = looks.look;
     // Attachments: the chips' own and the rest. A chip may share another's
     // (the same row), but not change it.
     let rest: AttachmentFile = read_toml(root, "objects/attachment/object.toml", report)?;
@@ -1156,7 +1214,7 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     }
     let attachments = dense(all.into_iter().map(|(id, (a, file))| (id as usize, a, file)).collect(), "attachment", report);
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
-    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, projectiles, flying_shots, kinds, shock_waves })
+    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, projectiles, flying_shots, kinds, shock_waves, name_looks })
 }
 
 fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
@@ -1301,6 +1359,17 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         blocking: bz.blocking,
         opposing_player: bz.opposing_player,
     };
+    let file = "rules/actors.toml";
+    let actors: ActorsFile = read_toml(root, file, report)?;
+    let actor_records = dense(
+        actors
+            .record
+            .into_iter()
+            .map(|r| (r.name_id as usize, NaviRecord { version: r.version, actor_type: r.actor_type, ai_index: r.ai_index }, file.into()))
+            .collect(),
+        "actor record",
+        report,
+    );
     let math: MathFile = read_toml(root, "rules/math.toml", report)?;
     let file = "rules/sp-chips.toml";
     let sp: SpChipsFile = read_toml(root, file, report)?;
@@ -1360,6 +1429,8 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
             charged_sword_modes: lockon.charged_sword_modes,
         },
         berserk,
+        actor_records,
+        cross_palettes: actors.cross_palettes,
     })
 }
 
