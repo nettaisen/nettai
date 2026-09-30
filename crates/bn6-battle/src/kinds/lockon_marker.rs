@@ -166,15 +166,41 @@ fn target(b: &Battle, r: ObjectRef) -> ObjectRef {
     let x = owner.panel.x;
     let ahead = if facing_right { (x + 1, 6) } else { (1, x.wrapping_sub(1)) };
     let behind = if facing_right { (1, x.wrapping_sub(1)) } else { (x + 1, 6) };
+    let owner_ref = self::owner(b, r);
     for (lo, hi) in [ahead, behind, (x, x)] {
-        // sub_80E1704
-        let mut found = candidates.iter().copied().filter(|&c| (lo..=hi).contains(&b.objects.get(c).panel.x));
-        if let Some(first) = found.next() {
-            if found.next().is_some() {
-                panic!("lock-on between several targets (sub_80E1730) is not implemented yet");
-            }
-            return first;
+        // sub_80E1704: the first in the range, then each later one against
+        // the one held.
+        let found = candidates.iter().copied().filter(|&c| (lo..=hi).contains(&b.objects.get(c).panel.x));
+        if let Some(best) = found.reduce(|held, c| closer(b, owner_ref, held, c)) {
+            return best;
         }
     }
     panic!("a lock-on marker with no opponent to target reads through a null pointer");
+}
+
+/// `sub_80E1730`: of two targets in range, the one in the owner's row;
+/// with both or neither there, `sub_80E175C`: the nearer column, then
+/// (same distance) the one further ahead of the owner, then (same column,
+/// `sub_80E17AC`) the nearer row, then the one not below the owner.
+fn closer(b: &Battle, owner: ObjectRef, held: ObjectRef, candidate: ObjectRef) -> ObjectRef {
+    let (o, h, c) = (b.objects.get(owner).panel, b.objects.get(held).panel, b.objects.get(candidate).panel);
+    match (h.y == o.y, c.y == o.y) {
+        (true, false) => return held,
+        (false, true) => return candidate,
+        _ => {}
+    }
+    let (hd, cd) = ((h.x as i32 - o.x as i32).abs(), (c.x as i32 - o.x as i32).abs());
+    if cd != hd {
+        return if cd < hd { candidate } else { held };
+    }
+    if c.x != h.x {
+        let owner_o = b.objects.get(owner);
+        let facing_right = owner_o.alliance ^ owner_o.flip == 0;
+        return if (c.x > h.x) == facing_right { candidate } else { held };
+    }
+    let (hd, cd) = ((h.y as i32 - o.y as i32).abs(), (c.y as i32 - o.y as i32).abs());
+    if cd != hd {
+        return if cd < hd { candidate } else { held };
+    }
+    if o.y < c.y { held } else { candidate }
 }
