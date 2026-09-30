@@ -888,6 +888,20 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             object_value(lua, o)
         }
     );
+    lib_fn!(
+        lua,
+        t,
+        "region_effects",
+        |_, (x, y, region, side, id, z): (LuaValue, LuaValue, LuaValue, LuaValue, LuaValue, Option<LuaValue>)| {
+            let (x, y) = (int(&x, "x")? as i32, int(&y, "y")? as i32);
+            let (region, side, id) = (u8_arg(region, "region")?, u8_arg(side, "side")? & 1, u8_arg(id, "effect")?);
+            let z = match z {
+                Some(z) => int(&z, "z")? as i32,
+                None => 0,
+            };
+            with(|api, _| Ok(api.spawn_region_effects(x, y, region, side, id, z)))
+        }
+    );
     lib_fn!(lua, t, "hitbox", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
         let s = HitboxSpec {
             panel: PanelPos { x: table_int(&spec, "panel_x")? as u8, y: table_int(&spec, "panel_y")? as u8 },
