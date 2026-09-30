@@ -443,6 +443,19 @@ fn rules() -> Rules {
             column_shifts: vec![-1, -2],
         },
         custom_screen: custom_screen_layout(),
+        // A made-up sine: a triangle wave.
+        sine: (0..320i32)
+            .map(|i| {
+                let q = i % 64;
+                let v = match i / 64 % 4 {
+                    0 => q,
+                    1 => 64 - q,
+                    2 => -q,
+                    _ => q - 64,
+                };
+                (v * 4) as i16
+            })
+            .collect(),
     }
 }
 
