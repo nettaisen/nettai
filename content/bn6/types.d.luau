@@ -3,6 +3,7 @@
 -- a module and the modules that require it both name, declared once for
 -- the pack. (The engine's API and data types are in core.d.luau.)
 
--- Where an owner keeps an attached object: its actor overlay slot, or its
--- first related object (lib/slot.luau).
-export type Slot = "overlay" | "related"
+-- Where an owner keeps an attached object: its actor overlay slot, its
+-- first related object, or (a content kind) its state's `attachment`
+-- field (lib/slot.luau).
+export type Slot = "overlay" | "related" | "state"
