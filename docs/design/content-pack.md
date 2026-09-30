@@ -74,6 +74,8 @@ graphics/...  sound/...                   see asset-formats.md
 | `objects/absorbed-obstacle/object.toml` | `[[obstacle]]`: the sprite an absorbed obstacle flies with, by obstacle kind | `ObjectData::absorbed_sprites` |
 | `objects/body-overlay/object.toml` | Cross body overlays: sprite, in front by animation | `ObjectData::body_overlays` |
 | `objects/sun-beam/object.toml` | the sun beam's sprites by look | `ObjectData::sun_beam_looks` |
+| `objects/projectile/object.toml` | the projectile's kinds (attack object #0, by its first parameter): collision, element, spark, look, status, bug, what its hit does to the panel, bursting, climbing | `ObjectData::projectiles` |
+| `objects/flying-shot/object.toml` | the flying shot's kinds (attack object #0xB): collision, element, spark, look, speed, range, status, highlight, the thrown obstacle's look, panel spark, launch sound, end effect | `ObjectData::flying_shots` |
 | `objects/attachment/object.toml` | attachments no chip declares | `ObjectData::attachments` (with the chips' own) |
 | `objects/KIND/object.toml` `[kind]` | the object slot a script implements: pool, index, script, whether its spawn position is register garbage | `ObjectData::kinds`, `ObjectKind` |
 | `**/*.luau` | the scripts, by path without `.luau` | `Content::scripts` |
