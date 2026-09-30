@@ -1,0 +1,6 @@
+# The attachment kind (actor object #5, `sub_80B8CD8`) is a script.
+
+[kind]
+pool = "actor"
+index = 0x05
+script = "attachment.luau"

@@ -4,6 +4,8 @@
 //! out, the chip's navi comes and acts, and the user warps back in. See
 //! docs/engine/chips.md §3.6.7.
 
+use bn6_content_api::{Hook, HookCall, NaviChipSpec};
+
 use crate::battle::Battle;
 use crate::kinds::{common, elmnt_man, erase_man, navi_warp};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
@@ -181,18 +183,25 @@ fn effect(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `off_802CD5C[navi]`: bring the chip's navi, with the damage and the
-/// bonus. (The game also records the last navi chip used, `byte_203C960`,
-/// for chips that copy it.)
+/// bonus: the content pack's script for the navi (`Hook::NaviChip`), else
+/// the engine's. (The game also records the last navi chip used,
+/// `byte_203C960`, for chips that copy it.)
 fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let v = vars(b, r).clone();
     let damage = v.damage.wrapping_add(v.chip.bonus as u32);
     let o = b.objects.get(r);
     let (panel, element) = (o.panel, o.element);
     let user = user(b, r);
-    let navi = match v.navi {
-        elmnt_man::NAVI => elmnt_man::spawn(b, user, r, panel, element, v.params, damage),
-        erase_man::NAVI => erase_man::spawn(b, user, r, panel, element, v.params, damage),
-        n => panic!("navi chip navi {n:#x} (off_802CD5C) is not implemented yet"),
+    let navi = match b.behaviors.hook(Hook::NaviChip(v.navi)) {
+        Some(hook) => {
+            let spec = NaviChipSpec { panel, element, params: v.params, damage };
+            crate::behavior::call_hook(b, hook, HookCall::NaviChip { user, controller: r, spec }).object()
+        }
+        None => match v.navi {
+            elmnt_man::NAVI => elmnt_man::spawn(b, user, r, panel, element, v.params, damage),
+            erase_man::NAVI => erase_man::spawn(b, user, r, panel, element, v.params, damage),
+            n => panic!("navi chip navi {n:#x} (off_802CD5C) is not implemented yet"),
+        },
     };
     // The spawner sets the flag, through the pointer it hands the navi.
     vars_mut(b, r).navi_acting = navi.is_some();

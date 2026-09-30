@@ -12,7 +12,7 @@ pub mod actions;
 mod chip_use;
 mod entry;
 pub(crate) mod form;
-mod idle;
+pub(crate) mod idle;
 mod input;
 mod intake;
 mod reactions;
@@ -237,7 +237,7 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
 
 /// `sub_8015BEC`: set a side's mood, unless its navi is in a special
 /// emotion state.
-fn set_mood(b: &mut Battle, side: u8, mood: u8) {
+pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     let Some(p) = b.player(side) else { return };
     let a = ai(b, p);
     if a.beast_out_spent || a.beast_over_exhausted {
@@ -270,7 +270,7 @@ fn set_action(b: &mut Battle, r: ObjectRef, action: u8) {
 
 /// `object_setAttack0..5`: start `action`, recording which helper started
 /// it in the attack variables (§M2.2).
-fn set_attack(b: &mut Battle, r: ObjectRef, action: u8, kind: u8) {
+pub(crate) fn set_attack(b: &mut Battle, r: ObjectRef, action: u8, kind: u8) {
     set_action(b, r, action);
     let a = &mut ai_mut(b, r).attack;
     a.step = 0;
@@ -281,7 +281,7 @@ fn set_attack(b: &mut Battle, r: ObjectRef, action: u8, kind: u8) {
 
 /// `sub_801011A`: clear the attack's link bytes and unfreeze the Beast
 /// Out lock-on marker (`sub_80E1662`; a no-op without one).
-fn reset_attack_links(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn reset_attack_links(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.attack.beast_lockon = 0;
     a.attack.rush.restart();
@@ -298,7 +298,7 @@ pub(crate) fn exit_attack_state(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801171C`: leave the current attack for the idle action. A move
 /// (kind 4) keeps pending requests and the charge.
-fn end_attack(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.attack.special_source = 0;
     let kind = a.attack.kind;
@@ -377,7 +377,7 @@ fn clear_bubble(b: &mut Battle, r: ObjectRef) {
 
 /// Snap a moving navi onto its destination panel (the reaction actions'
 /// common entry, unless sliding).
-fn snap_to_future_panel(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn snap_to_future_panel(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.panel = o.future_panel;
     let p = o.panel;
@@ -387,7 +387,7 @@ fn snap_to_future_panel(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `object_setCoordinatesFromPanels`.
-fn set_coordinates_from_panel(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn set_coordinates_from_panel(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     let (x, y) = panel_coordinates(o.panel.x, o.panel.y);
     o.pos.x = x;

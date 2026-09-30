@@ -4,9 +4,10 @@
 -- and a place in the update order. It follows its owner at a fixed offset
 -- and ends itself once the owner's slot is cleared. See
 -- objects-and-player.md §A.6.
+--
+-- Its looks (the first parameter) are data: data.objects.sun_beam_looks.
 
-local data = require("../data/pack")
-local slot = require("../lib/slot")
+local slot = require("../../lib/slot")
 
 export type State = {
     slot: Slot,
@@ -17,15 +18,12 @@ export type State = {
 }
 
 local sun_beam = {
-    name = "sun_beam",
-    pool = "effect",
-    index = 0x48,
     state = { slot = slot.TYPE, offset = "vec3", ticks = "u16" },
 }
 
 -- `sub_80E5D12`: a beam at `offset` from `owner`, stored in `which`.
 function sun_beam.spawn(owner: Object, look: SunBeamLook, offset: Vec3, which: Slot): Object?
-    local o = battle.spawn("effect", sun_beam.index, offset, { look.look, look.palette, 0, 0 })
+    local o = battle.spawn_kind("sun-beam", offset, { look.look, look.palette, 0, 0 })
     if not o then
         return nil
     end
@@ -70,8 +68,11 @@ end
 local function init(me: Object)
     local look, palette = me:param(1), me:param(2)
     local sprite = me.sprite
-    local id = data.sun_beam_looks[look]
-    sprite:load(id.category, id.index)
+    local id = data.objects.sun_beam_looks[look]
+    if not id then
+        error(string.format("sun beam look %d is not in the content", look))
+    end
+    sprite:load(id)
     sprite:set_animation(0)
     sprite:step()
     sprite.shadow = "with_sprite"

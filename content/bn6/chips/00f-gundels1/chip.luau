@@ -1,17 +1,17 @@
 --!strict
--- Action 0x37: GunDelSol1/2/3/EX (`sub_80EDAE0`). See chips.md §4.
+-- GunDelSol1/2/3/EX: action 0x37 (`sub_80EDAE0`). See chips.md §4.
 --
 -- A 7-tick wind-up with the gun out, then one hit per tick for 60, 90 or
 -- 120 ticks on the column two panels ahead (a 2x3 block for EX) under the
 -- sun beam, then an 11-tick recovery. The hits are element 5: they drain
 -- HP on the target's next update without flinching it or making it flash.
 -- The damage is 2 per hit, 4 in the sun, whatever the chip data, Atk+ or
--- forms say.
+-- forms say. What differs between the chips (the gun, how long it fires,
+-- the beam in and out of the sun) is each chip's own data
+-- (`data.chips[id].gun_del_sol`).
 
-local data = require("../data/pack")
-local attachment = require("../objects/attachment")
-local sun_beam = require("../objects/sun_beam")
-local hitbox = require("../objects/hitbox")
+local attachment = require("../../objects/attachment/attachment")
+local sun_beam = require("../../objects/sun-beam/sun_beam")
 
 export type State = {
     -- Ticks left in the current phase.
@@ -19,8 +19,6 @@ export type State = {
 }
 
 local gun_del_sol = {
-    name = "gun_del_sol",
-    action = 0x37,
     state = { timer = "u16" },
 }
 
@@ -41,8 +39,7 @@ local function advance_gun(me: Object)
     end
 end
 
--- The chip's GunDelSol data (its gun, firing time and beam), from the
--- content pack.
+-- The chip's GunDelSol data (its gun, firing time and beam).
 local function chip_data(me: Object): GunDelSol
     local chip = data.chips[me.chip]
     local d = chip and chip.gun_del_sol
@@ -58,7 +55,7 @@ local function wind_up(me: Object, s: State)
         me:set_status("using_action", true)
         me:set_animation(0x0A)
         me:open_counter_window()
-        attachment.spawn(me, chip_data(me).gun.id, "overlay")
+        attachment.spawn(me, { kind = chip_data(me).gun.id }, "overlay")
         battle.play_sound(0xF8)
         s.timer = 6
         me.step_init = 4
@@ -89,7 +86,7 @@ local function fire(me: Object, s: State)
         set_phase(me, RECOVER)
         return
     end
-    hitbox.spawn(me, {
+    battle.hitbox(me, {
         panel_x = me.panel_x + 2 * me.facing,
         panel_y = me.panel_y,
         element = 5,

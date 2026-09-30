@@ -7,15 +7,24 @@
 //! (as the game's `strb`/`strh`/`str` do), and a value of the wrong kind is
 //! an error. So a script cannot put a fraction, a table or a string into
 //! battle state, and a `u16` timer written with -1 reads back as 0xFFFF.
+//!
+//! A state is a fixed-size block of bytes ([`MAX_BYTES`]); the schema
+//! decides where each field lives in it. That layout is private to this
+//! module: content and engine code read and write fields by name (or by
+//! the schema's field index), never by offset.
 
 use std::fmt;
 
-use crate::types::{ObjectRef, Vec3};
+use crate::types::{ObjectRef, Pool, Vec3};
 
-/// Most fields one kind's state may declare. (The game gives an object
-/// 0x1C to 0x2C bytes of scratch; eight typed fields cover every kind
-/// ported so far.)
-pub const MAX_FIELDS: usize = 8;
+/// Bytes of state one kind or action may declare. (The game gives an
+/// object 0x1C to 0x2C bytes of scratch and an action about 0x40; this
+/// covers every kind ported so far with room to spare, and keeps a state a
+/// small `Copy` value.)
+pub const MAX_BYTES: usize = 64;
+
+/// Most elements an array field may have.
+pub const MAX_ARRAY: usize = 64;
 
 /// The type of a state field.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,12 +44,23 @@ pub enum FieldType {
     Enum(Vec<String>),
     /// A byte, or none (engine fields only, e.g. a sprite's alpha).
     OptionalU8,
+    /// A fixed number of elements of a scalar type (`"u8[18]"`): read and
+    /// written element by element.
+    Array(Box<FieldType>, u8),
 }
 
 impl FieldType {
-    /// A scalar type by name: `bool`, `u8`, `u16`, `u32`, `i8`, `i16`,
-    /// `i32`, `object`, `vec3`.
+    /// A type by name: `bool`, `u8`, `u16`, `u32`, `i8`, `i16`, `i32`,
+    /// `object`, `vec3`, or an array of one of the scalars, `"u8[18]"`.
     pub fn scalar(name: &str) -> Option<FieldType> {
+        if let Some((elem, len)) = name.strip_suffix(']').and_then(|s| s.split_once('[')) {
+            let elem = FieldType::scalar(elem)?;
+            let len: usize = len.parse().ok()?;
+            if matches!(elem, FieldType::Array(..) | FieldType::Vec3) || !(1..=MAX_ARRAY).contains(&len) {
+                return None;
+            }
+            return Some(FieldType::Array(Box::new(elem), len as u8));
+        }
         Some(match name {
             "bool" => FieldType::Bool,
             "u8" => FieldType::U8,
@@ -53,6 +73,17 @@ impl FieldType {
             "vec3" => FieldType::Vec3,
             _ => return None,
         })
+    }
+
+    /// Bytes a value of this type takes in a state.
+    pub fn size(&self) -> usize {
+        match self {
+            FieldType::Bool | FieldType::U8 | FieldType::I8 | FieldType::Object | FieldType::Enum(_) => 1,
+            FieldType::U16 | FieldType::I16 | FieldType::OptionalU8 => 2,
+            FieldType::U32 | FieldType::I32 => 4,
+            FieldType::Vec3 => 12,
+            FieldType::Array(elem, n) => elem.size() * *n as usize,
+        }
     }
 
     /// The value a fresh state holds (all zero, like the game's scratch).
@@ -69,11 +100,13 @@ impl FieldType {
             FieldType::Vec3 => FieldValue::Vec3(Vec3::default()),
             FieldType::Enum(_) => FieldValue::Enum(0),
             FieldType::OptionalU8 => FieldValue::OptionalU8(None),
+            FieldType::Array(elem, _) => elem.zero(),
         }
     }
 
     /// Convert `v` for storing in a field of this type: integers wrap to
-    /// the width; anything else must match.
+    /// the width; anything else must match. (For an array, the type of
+    /// one element.)
     pub fn store(&self, v: Value) -> Result<FieldValue, TypeError> {
         Ok(match (self, v) {
             (FieldType::Bool, Value::Bool(b)) => FieldValue::Bool(b),
@@ -91,8 +124,56 @@ impl FieldType {
             }
             (FieldType::OptionalU8, Value::Int(i)) => FieldValue::OptionalU8(Some(i as u8)),
             (FieldType::OptionalU8, Value::Nil) => FieldValue::OptionalU8(None),
+            (FieldType::Array(elem, _), v) => return elem.store(v),
             (ty, v) => return Err(TypeError { expected: ty.clone(), got: v }),
         })
+    }
+
+    /// Write a stored value (of this type) at the start of `out`.
+    fn encode(&self, v: FieldValue, out: &mut [u8]) {
+        match v {
+            FieldValue::Bool(b) => out[0] = b as u8,
+            FieldValue::U8(x) => out[0] = x,
+            FieldValue::I8(x) => out[0] = x as u8,
+            FieldValue::U16(x) => out[..2].copy_from_slice(&x.to_le_bytes()),
+            FieldValue::I16(x) => out[..2].copy_from_slice(&x.to_le_bytes()),
+            FieldValue::U32(x) => out[..4].copy_from_slice(&x.to_le_bytes()),
+            FieldValue::I32(x) => out[..4].copy_from_slice(&x.to_le_bytes()),
+            FieldValue::Object(o) => out[0] = o.map_or(0, |o| 0x80 | (o.pool as u8) << 5 | (o.slot & 0x1F)),
+            FieldValue::Vec3(p) => {
+                out[..4].copy_from_slice(&p.x.to_le_bytes());
+                out[4..8].copy_from_slice(&p.y.to_le_bytes());
+                out[8..12].copy_from_slice(&p.z.to_le_bytes());
+            }
+            FieldValue::Enum(i) => out[0] = i,
+            FieldValue::OptionalU8(v) => {
+                out[0] = v.is_some() as u8;
+                out[1] = v.unwrap_or(0);
+            }
+        }
+    }
+
+    /// Read a value of this type (an array's element type) from the start
+    /// of `b`.
+    fn decode(&self, b: &[u8]) -> FieldValue {
+        let i32_at = |k: usize| i32::from_le_bytes([b[k], b[k + 1], b[k + 2], b[k + 3]]);
+        match self {
+            FieldType::Bool => FieldValue::Bool(b[0] != 0),
+            FieldType::U8 => FieldValue::U8(b[0]),
+            FieldType::I8 => FieldValue::I8(b[0] as i8),
+            FieldType::U16 => FieldValue::U16(u16::from_le_bytes([b[0], b[1]])),
+            FieldType::I16 => FieldValue::I16(i16::from_le_bytes([b[0], b[1]])),
+            FieldType::U32 => FieldValue::U32(i32_at(0) as u32),
+            FieldType::I32 => FieldValue::I32(i32_at(0)),
+            FieldType::Object => FieldValue::Object((b[0] & 0x80 != 0).then(|| ObjectRef {
+                pool: Pool::ALL[((b[0] >> 5) & 3) as usize],
+                slot: b[0] & 0x1F,
+            })),
+            FieldType::Vec3 => FieldValue::Vec3(Vec3 { x: i32_at(0), y: i32_at(4), z: i32_at(8) }),
+            FieldType::Enum(_) => FieldValue::Enum(b[0]),
+            FieldType::OptionalU8 => FieldValue::OptionalU8((b[0] != 0).then_some(b[1])),
+            FieldType::Array(elem, _) => elem.decode(b),
+        }
     }
 }
 
@@ -110,6 +191,7 @@ impl fmt::Display for FieldType {
             FieldType::Vec3 => f.write_str("vec3"),
             FieldType::Enum(names) => write!(f, "enum {}", names.join(" | ")),
             FieldType::OptionalU8 => f.write_str("u8?"),
+            FieldType::Array(elem, n) => write!(f, "{elem}[{n}]"),
         }
     }
 }
@@ -201,15 +283,16 @@ pub struct FieldDef {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Schema {
     fields: Vec<FieldDef>,
+    /// Where each field starts in a state's bytes.
+    offsets: Vec<u8>,
 }
 
 impl Schema {
-    /// A schema from its fields; names must be unique identifiers and
-    /// there can be at most [`MAX_FIELDS`].
+    /// A schema from its fields; names must be unique identifiers and the
+    /// fields must fit in [`MAX_BYTES`].
     pub fn new(fields: Vec<FieldDef>) -> Result<Schema, String> {
-        if fields.len() > MAX_FIELDS {
-            return Err(format!("{} state fields; at most {MAX_FIELDS} are allowed", fields.len()));
-        }
+        let mut offsets = Vec::with_capacity(fields.len());
+        let mut at = 0usize;
         for (i, f) in fields.iter().enumerate() {
             let ident = f.name.chars().next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
                 && f.name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
@@ -224,8 +307,13 @@ impl Schema {
             {
                 return Err(format!("state field {:?}: an enum needs 1 to 256 variants", f.name));
             }
+            offsets.push(at as u8);
+            at += f.ty.size();
         }
-        Ok(Schema { fields })
+        if at > MAX_BYTES {
+            return Err(format!("the state's fields take {at} bytes; at most {MAX_BYTES} are allowed"));
+        }
+        Ok(Schema { fields, offsets })
     }
 
     pub fn fields(&self) -> &[FieldDef] {
@@ -239,145 +327,77 @@ impl Schema {
     pub fn field(&self, i: usize) -> &FieldDef {
         &self.fields[i]
     }
+
+    fn at(&self, i: usize) -> usize {
+        self.offsets[i] as usize
+    }
 }
 
 /// Which schema a [`ContentState`] follows (an index into the content's
 /// [`crate::Manifest`]).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StateId(pub u16);
 
 /// The stored state of one object or action: the values of its schema's
-/// fields. A plain `Copy` value, so snapshots copy it like any other
-/// engine state.
+/// fields, in a fixed block of bytes. A plain `Copy` value, so snapshots
+/// copy it like any other engine state and the digest hashes it.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ContentState {
     id: StateId,
-    len: u8,
-    values: [FieldValue; MAX_FIELDS],
+    bytes: [u8; MAX_BYTES],
 }
 
 impl ContentState {
-    /// A zeroed state for `schema`.
-    pub fn new(id: StateId, schema: &Schema) -> ContentState {
-        let mut values = [FieldValue::Bool(false); MAX_FIELDS];
-        for (v, f) in values.iter_mut().zip(schema.fields()) {
-            *v = f.ty.zero();
-        }
-        ContentState { id, len: schema.fields().len() as u8, values }
+    /// A zeroed state for the schema `id`. (Every field type's zero value
+    /// is all zero bytes.)
+    pub fn new(id: StateId) -> ContentState {
+        ContentState { id, bytes: [0; MAX_BYTES] }
     }
 
     pub fn id(&self) -> StateId {
         self.id
     }
 
-    pub fn values(&self) -> &[FieldValue] {
-        &self.values[..self.len as usize]
-    }
-
-    pub fn get(&self, i: usize) -> FieldValue {
-        self.values()[i]
+    /// Field `i` of `schema` (for an array, its first element).
+    pub fn get(&self, schema: &Schema, i: usize) -> FieldValue {
+        schema.field(i).ty.decode(&self.bytes[schema.at(i)..])
     }
 
     /// Store `v` in field `i`, converted by the field's type.
     pub fn set(&mut self, schema: &Schema, i: usize, v: Value) -> Result<(), TypeError> {
-        self.values[i] = schema.field(i).ty.store(v)?;
+        let ty = &schema.field(i).ty;
+        if let FieldType::Array(..) = ty {
+            return Err(TypeError { expected: ty.clone(), got: v });
+        }
+        let stored = ty.store(v)?;
+        ty.encode(stored, &mut self.bytes[schema.at(i)..]);
         Ok(())
     }
 
-    /// Replace field `i` with a stored value of the same type (for typed
-    /// Rust views, which convert exactly).
-    pub fn replace(&mut self, i: usize, v: FieldValue) {
-        let old = &mut self.values[i];
-        assert_eq!(std::mem::discriminant(old), std::mem::discriminant(&v), "field {i} changes type");
-        *old = v;
+    /// Element `k` of array field `i` (None past its end).
+    pub fn get_elem(&self, schema: &Schema, i: usize, k: usize) -> Option<FieldValue> {
+        let FieldType::Array(elem, n) = &schema.field(i).ty else { return None };
+        (k < *n as usize).then(|| elem.decode(&self.bytes[schema.at(i) + k * elem.size()..]))
     }
-}
 
-/// A Rust type a typed state field can have.
-pub trait StateField: Sized {
-    fn field_type() -> FieldType;
-    fn from_field(v: FieldValue) -> Self;
-    fn to_field(&self) -> FieldValue;
-}
-
-macro_rules! state_field {
-    ($($t:ty => $ty:ident),*) => {$(
-        impl StateField for $t {
-            fn field_type() -> FieldType {
-                FieldType::$ty
-            }
-            fn from_field(v: FieldValue) -> $t {
-                match v {
-                    FieldValue::$ty(x) => x,
-                    v => panic!("expected {}, got {v:?}", stringify!($ty)),
-                }
-            }
-            fn to_field(&self) -> FieldValue {
-                FieldValue::$ty(*self)
-            }
+    /// Store `v` in element `k` of array field `i`.
+    pub fn set_elem(&mut self, schema: &Schema, i: usize, k: usize, v: Value) -> Result<(), String> {
+        let FieldType::Array(elem, n) = &schema.field(i).ty else {
+            return Err(format!("field `{}` is not an array", schema.field(i).name));
+        };
+        if k >= *n as usize {
+            return Err(format!("index {} is past the end of `{}` ({n} elements)", k + 1, schema.field(i).name));
         }
-    )*};
-}
-state_field!(bool => Bool, u8 => U8, u16 => U16, u32 => U32, i8 => I8, i16 => I16, i32 => I32, Vec3 => Vec3);
-
-impl StateField for Option<ObjectRef> {
-    fn field_type() -> FieldType {
-        FieldType::Object
+        let stored = elem.store(v).map_err(|e| e.to_string())?;
+        elem.encode(stored, &mut self.bytes[schema.at(i) + k * elem.size()..]);
+        Ok(())
     }
-    fn from_field(v: FieldValue) -> Option<ObjectRef> {
-        match v {
-            FieldValue::Object(x) => x,
-            v => panic!("expected an object, got {v:?}"),
-        }
-    }
-    fn to_field(&self) -> FieldValue {
-        FieldValue::Object(*self)
-    }
-}
-
-/// A Rust struct viewing a [`ContentState`]: Rust content declares its
-/// state with [`content_state!`](crate::content_state) and copies it in and
-/// out.
-pub trait TypedState: Sized {
-    fn schema() -> Schema;
-    fn load(s: &ContentState) -> Self;
-    fn store(&self, s: &mut ContentState);
-}
-
-/// Declare a Rust content kind's state: a plain struct whose fields become
-/// the kind's schema (in order), with [`TypedState`] to copy it from and to
-/// the engine's [`ContentState`].
-#[macro_export]
-macro_rules! content_state {
-    ($(#[$m:meta])* $vis:vis struct $name:ident { $($(#[$fm:meta])* $f:ident : $t:ty),* $(,)? }) => {
-        $(#[$m])*
-        #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-        $vis struct $name { $($(#[$fm])* pub $f: $t,)* }
-
-        impl $crate::state::TypedState for $name {
-            fn schema() -> $crate::Schema {
-                $crate::Schema::new(vec![$($crate::FieldDef {
-                    name: stringify!($f).to_string(),
-                    ty: <$t as $crate::state::StateField>::field_type(),
-                },)*]).expect("a valid state schema")
-            }
-            #[allow(unused_assignments)]
-            fn load(s: &$crate::ContentState) -> Self {
-                let mut i = 0;
-                $name { $($f: { let v = <$t as $crate::state::StateField>::from_field(s.get(i)); i += 1; v },)* }
-            }
-            #[allow(unused_assignments)]
-            fn store(&self, s: &mut $crate::ContentState) {
-                let mut i = 0;
-                $( s.replace(i, $crate::state::StateField::to_field(&self.$f)); i += 1; )*
-            }
-        }
-    };
 }
 
 impl fmt::Debug for ContentState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("ContentState").field("id", &self.id).field("values", &self.values()).finish()
+        let used = self.bytes.iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
+        f.debug_struct("ContentState").field("id", &self.id).field("bytes", &&self.bytes[..used]).finish()
     }
 }
 
@@ -391,6 +411,8 @@ mod tests {
             FieldDef { name: "lift".into(), ty: FieldType::I8 },
             FieldDef { name: "slot".into(), ty: FieldType::Enum(vec!["overlay".into(), "related".into()]) },
             FieldDef { name: "owner".into(), ty: FieldType::Object },
+            FieldDef { name: "offset".into(), ty: FieldType::Vec3 },
+            FieldDef { name: "targets".into(), ty: FieldType::scalar("u8[6]").unwrap() },
         ])
         .unwrap()
     }
@@ -398,29 +420,59 @@ mod tests {
     #[test]
     fn integer_fields_wrap_to_their_width() {
         let s = schema();
-        let mut st = ContentState::new(StateId(0), &s);
+        let mut st = ContentState::new(StateId(0));
         st.set(&s, 0, Value::Int(-1)).unwrap();
-        assert_eq!(st.get(0), FieldValue::U16(0xFFFF));
+        assert_eq!(st.get(&s, 0), FieldValue::U16(0xFFFF));
         st.set(&s, 1, Value::Int(0x1F8)).unwrap();
-        assert_eq!(st.get(1).load(), Value::Int(-8));
+        assert_eq!(st.get(&s, 1).load(), Value::Int(-8));
+    }
+
+    #[test]
+    fn fields_read_back_what_was_stored() {
+        let s = schema();
+        let mut st = ContentState::new(StateId(0));
+        let o = ObjectRef { pool: Pool::Effect, slot: 31 };
+        st.set(&s, 3, Value::Object(o)).unwrap();
+        let p = Vec3 { x: -1, y: 0x12_3456, z: i32::MIN };
+        st.set(&s, 4, Value::Vec3(p)).unwrap();
+        st.set(&s, 2, Value::Int(1)).unwrap();
+        assert_eq!(st.get(&s, 3), FieldValue::Object(Some(o)));
+        assert_eq!(st.get(&s, 4), FieldValue::Vec3(p));
+        assert_eq!(st.get(&s, 2), FieldValue::Enum(1));
+        assert_eq!(st.get(&s, 0), FieldValue::U16(0), "neighbours untouched");
+        st.set(&s, 3, Value::Nil).unwrap();
+        assert_eq!(st.get(&s, 3), FieldValue::Object(None));
+    }
+
+    #[test]
+    fn arrays_are_read_and_written_by_element() {
+        let s = schema();
+        let mut st = ContentState::new(StateId(0));
+        st.set_elem(&s, 5, 5, Value::Int(0x1FF)).unwrap();
+        assert_eq!(st.get_elem(&s, 5, 5), Some(FieldValue::U8(0xFF)));
+        assert_eq!(st.get_elem(&s, 5, 0), Some(FieldValue::U8(0)));
+        assert_eq!(st.get_elem(&s, 5, 6), None);
+        assert!(st.set_elem(&s, 5, 6, Value::Int(1)).is_err());
+        assert!(st.set(&s, 5, Value::Int(1)).is_err(), "a whole array isn't one value");
     }
 
     #[test]
     fn wrong_kinds_and_bad_enum_values_are_errors() {
         let s = schema();
-        let mut st = ContentState::new(StateId(0), &s);
+        let mut st = ContentState::new(StateId(0));
         assert!(st.set(&s, 0, Value::Bool(true)).is_err());
         assert!(st.set(&s, 2, Value::Int(2)).is_err());
         assert!(st.set(&s, 3, Value::Int(1)).is_err());
-        st.set(&s, 3, Value::Nil).unwrap();
-        assert_eq!(st.get(3).load(), Value::Nil);
     }
 
     #[test]
-    fn schemas_reject_duplicates_and_bad_names() {
-        let f = |n: &str| FieldDef { name: n.into(), ty: FieldType::U8 };
-        assert!(Schema::new(vec![f("a"), f("a")]).is_err());
-        assert!(Schema::new(vec![f("1a")]).is_err());
-        assert!(Schema::new((0..9).map(|i| f(&format!("f{i}"))).collect()).is_err());
+    fn schemas_reject_duplicates_bad_names_and_oversize() {
+        let f = |n: &str, ty: FieldType| FieldDef { name: n.into(), ty };
+        assert!(Schema::new(vec![f("a", FieldType::U8), f("a", FieldType::U8)]).is_err());
+        assert!(Schema::new(vec![f("1a", FieldType::U8)]).is_err());
+        assert!(Schema::new((0..6).map(|i| f(&format!("v{i}"), FieldType::Vec3)).collect()).is_err());
+        assert!(Schema::new((0..16).map(|i| f(&format!("f{i}"), FieldType::U32)).collect()).is_ok());
+        assert!(FieldType::scalar("vec3[2]").is_none());
+        assert!(FieldType::scalar("u8[0]").is_none());
     }
 }
