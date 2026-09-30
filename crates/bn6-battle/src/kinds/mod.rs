@@ -169,6 +169,7 @@ pub fn shift_damage_carry(b: &mut Battle) {
 pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
     match formula {
         1..=18 => sp_chip_damage(b, id, side, formula as usize - 1),
+        24..=44 => navi_chip_damage(b, id, side),
         _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
     }
 }
@@ -181,6 +182,16 @@ fn sp_chip_damage(b: &Battle, id: u16, side: u8, n: usize) -> u16 {
     let step = b.content.rules.sp_deletion_times.iter().take_while(|&&t| time > t).count();
     let damage = b.content.chip(id).sp_damage.as_ref();
     damage.unwrap_or_else(|| panic!("SP chip {id:#x} has no damage by deletion time"))[step]
+}
+
+/// `sub_8010C50`: a link navi's chip's damage, from the side's player navi
+/// (none: 0): its base, plus its step for each level of the navi's buster
+/// attack (`sub_8012642`), up to 5.
+fn navi_chip_damage(b: &Battle, id: u16, side: u8) -> u16 {
+    let Some(navi) = b.player(side) else { return 0 };
+    let d = b.content.chip(id).navi_damage.unwrap_or_else(|| panic!("link navi chip {id:#x} has no navi_damage"));
+    let level = player::idle::buster_damage(b, navi).min(5);
+    d.base as u16 + d.per_level as u16 * level
 }
 
 /// `sub_8000D84`: frames as a BCD time, hours:minutes:seconds.hundredths
