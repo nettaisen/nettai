@@ -26,7 +26,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     if b.dimming[side as usize].controller.is_none()
         && let Some(c) = controller
     {
-        b.register_dimming(side, a.chip_id, c, r);
+        b.register_dimming(side, a.chip, c, r);
     }
     ai_mut(b, r).attack.step_init = 1;
 }
@@ -40,13 +40,18 @@ pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) 
     // The chip's own controller, if content defines the chip; else
     // off_802CCB4, by the chip's subtype. (Its subtypes 34, 35, 39 and 40
     // are null: the game jumps to address 0.)
-    let hook = match b.content.defs.chip_with_id(a.chip_id).map(|c| c.usage) {
+    let hook = match a.chip.and_then(|c| b.content.defs.chip(c).usage) {
         Some(ChipUsage::Dimming(f)) => f,
-        Some(u) => panic!("chip {:#x} is a dimming chip, but its definition uses it as {u:?}", a.chip_id),
+        Some(u) => panic!(
+            "chip {:?} is a dimming chip, but its definition uses it as {u:?}",
+            b.content.defs.chip(a.chip.expect("a defined chip")).key
+        ),
         None => b.content.defs.hook(Hook::DimmingChip(a.variant)).unwrap_or_else(|| {
             panic!("dimming chip subtype {} (off_802CCB4) is not implemented yet", a.variant)
         }),
     };
-    let spec = DimmingChipSpec { element: a.element, params: a.params, damage, chip: a.chip_id, bonus: a.extra };
+    // (The numeric API's chip: 0 for none.)
+    let chip = b.api_chip_field(a.chip, 0);
+    let spec = DimmingChipSpec { element: a.element, params: a.params, damage, chip, bonus: a.extra };
     crate::behavior::call_hook(b, hook, HookCall::DimmingChip { user, spec }).object()
 }

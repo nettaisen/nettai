@@ -19,7 +19,7 @@ use super::*;
 use crate::actor::ActorType;
 use bn6_content_api::Pool;
 use crate::field::{PanelType, pflags};
-use crate::setup::{ActorEntry, ActorKind, ActorList, ActorListId, BattleSettings, effects};
+use crate::setup::{ActorEntry, ActorKind, ActorList, ActorListId, StageSettings, effects};
 use std::sync::Arc;
 
 /// Chips: three GunDelSol levels (action 0x37 with subtypes 0..=2) and
@@ -178,7 +178,7 @@ pub fn round_setup(settings: u8, stats: crate::setup::NaviStats) -> crate::setup
     let (content, hash) = shared();
     crate::setup::RoundSetup {
         content: *hash,
-        settings: content.rules.stages.settings(settings),
+        settings: crate::setup::BattleSettings::on(content, content.stage_numbered(settings)),
         navi_stats: [stats; 2],
         rng: 1,
         local_side: 0,
@@ -193,16 +193,47 @@ pub fn round_setup(settings: u8, stats: crate::setup::NaviStats) -> crate::setup
 
 /// A navi with `hp` HP and nothing else of note.
 pub fn stats(hp: u16) -> crate::setup::NaviStats {
-    crate::setup::NaviStats { hp, max_hp: hp, max_base_hp: hp, ..Default::default() }
+    crate::setup::NaviStats { hp, max_hp: hp, max_base_hp: hp, ..megaman_on(&content()) }
 }
 
-/// The chip ids the test pack's ticker series takes over, and the weapon
-/// routine its tick shot is (`with_test_pack`): hands and navi stats still
-/// name chips and weapons by number.
-pub const TICKER_1: ChipId = 0x20;
-pub const TICKER_2: ChipId = 0x21;
-pub const TICKER_3: ChipId = 0x22;
-pub const TICK_SHOT: u8 = 0xF0;
+/// Stats with nothing of note but MegaMan in his base form, by `content`'s
+/// handles.
+pub fn megaman_on(content: &Content) -> crate::setup::NaviStats {
+    let base = content.form_numbered(crate::setup::Form::NONE);
+    crate::setup::NaviStats {
+        navi: content.navi_numbered(crate::setup::Navi::MEGAMAN),
+        form: base,
+        starting_form: base,
+        ..Default::default()
+    }
+}
+
+/// The chip with number `id` in the content (its handle there).
+pub fn chip_in(content: &Content, id: ChipId) -> bn6_content_api::ChipHandle {
+    content.chip_numbered(id).unwrap_or_else(|| panic!("chip {id:#x} is not in the test content"))
+}
+
+/// The chip with number `id` in the shared test content.
+pub fn chip_handle(id: ChipId) -> bn6_content_api::ChipHandle {
+    chip_in(&content(), id)
+}
+
+/// Weapon routine `n` in the content (none for 0xFF).
+pub fn weapon_in(content: &Content, n: u8) -> Option<bn6_content_api::WeaponHandle> {
+    (n != 0xFF).then(|| content.weapon_numbered(n))
+}
+
+/// Weapon routine `n` in the shared test content (none for 0xFF).
+pub fn weapon(n: u8) -> Option<bn6_content_api::WeaponHandle> {
+    weapon_in(&content(), n)
+}
+
+/// The test pack's ticker chips and tick shot weapon (`with_test_pack`),
+/// by key: setups reach them by handle.
+pub const TICKER_1: &str = "test/ticker1";
+pub const TICKER_2: &str = "test/ticker2";
+pub const TICKER_3: &str = "test/ticker3";
+pub const TICK_SHOT: &str = "test/tick-shot";
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
 /// definitions the engine's tests run.
@@ -230,28 +261,23 @@ pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
 }
 
 /// The content set with the test pack's modules (under `test/`), defined.
-/// Its kind and actions run by handle, with no numbers; the tick shot is
-/// weapon routine `TICK_SHOT` and the ticker chips take over chips
-/// `TICKER_1` and `TICKER_2`, the numbers hands and navi stats still reach
-/// them by.
+/// Its kind, actions, chips and weapon run by handle, with no numbers:
+/// hands and navi stats hold them (`TICKER_1`, `TICKER_2`, `TICK_SHOT`).
 pub fn with_test_pack() -> Content {
     let mut c = make();
     for (path, source) in modules_under(TEST_PACK) {
         c.scripts.modules.insert(format!("test/{path}"), source);
     }
-    for (id, name) in [(TICKER_1, "Ticker1"), (TICKER_2, "Ticker2"), (TICKER_3, "Ticker3")] {
-        c.chips[id as usize] = ChipData { damage: 10, ..chip(id, name, 0, 0) };
-    }
     c.define().unwrap_or_else(|e| panic!("content error: {e}"));
-    let number = |c: &mut Content| -> Result<(), bn6_content_api::ContentError> {
-        let d = &mut c.defs;
-        d.number_weapon("test/tick-shot", TICK_SHOT)?;
-        d.number_chip("test/ticker1", TICKER_1)?;
-        d.number_chip("test/ticker2", TICKER_2)?;
-        d.number_chip("test/ticker3", TICKER_3)?;
-        Ok(())
-    };
-    number(&mut c).unwrap_or_else(|e| panic!("content error: {e}"));
+    c
+}
+
+/// The content set with stage `stage`'s record changed by `f` (its music,
+/// say).
+pub fn restaged(stage: u8, f: impl FnOnce(&mut StageSettings)) -> Content {
+    let mut c = build();
+    let h = c.stage_numbered(stage);
+    f(&mut c.defs.stages[h.index()].record);
     c
 }
 
@@ -600,7 +626,7 @@ fn kinds() -> Vec<ObjectKind> {
 /// A chip record with the fields tests don't care about filled in.
 fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
     ChipData {
-        id,
+        id: Some(id),
         name: name.into(),
         codes: vec![ChipCode(0), ChipCode::ASTERISK],
         element: Element::Null,
@@ -691,7 +717,7 @@ fn chips() -> Vec<ChipData> {
     let blank = |id| ChipData { class: ChipClass::Special, codes: vec![], ..chip(id, "Blank", 0, 0) };
     let mut all: Vec<ChipData> = (0..CHIP_IDS).map(blank).collect();
     for c in named_chips() {
-        let id = c.id as usize;
+        let id = c.id.expect("a numbered chip") as usize;
         all[id] = c;
     }
     all
@@ -1226,7 +1252,7 @@ pub fn custom_screen_layout() -> CustomScreenLayout {
 fn stages() -> Stages {
     let navi = |alliance, x| ActorEntry { kind: ActorKind::Navi, alliance, x, y: 2 };
     let rock = |x, y| ActorEntry { kind: ActorKind::Rock { variant: 1 }, alliance: 0, x, y };
-    let settings = |actors| BattleSettings {
+    let settings = |actors| StageSettings {
         layout: 0,
         music: 0x16,
         mode: 0,

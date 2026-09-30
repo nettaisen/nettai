@@ -5,16 +5,16 @@
 
 use crate::battle::{Battle, FadeMode};
 use crate::kinds::player;
-use crate::setup::Form;
+use bn6_content_api::{FormHandle, NaviHandle};
 
 /// A player's transformation request for the coming turn (the game's
 /// 0x10-byte transform record, sent with the chip exchange).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TransformRequest {
     /// The form to change into (Beast Out, a Cross, Beast Over...).
-    pub form: Option<Form>,
-    /// A Cross change (switching from one Cross to another).
-    pub cross_change: Option<u8>,
+    pub form: Option<FormHandle>,
+    /// A Cross change: the navi to change to.
+    pub cross_change: Option<NaviHandle>,
 }
 
 impl TransformRequest {

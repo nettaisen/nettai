@@ -2,56 +2,59 @@
 //! block"). See docs/engine/chips.md §2.
 
 use crate::battle::Battle;
-use crate::content::{ChipFlags, ChipId};
+use crate::content::ChipFlags;
+use crate::custom::FolderChip;
+use bn6_content_api::ChipHandle;
 
 /// Up to five chips, in use order, with their build-time damage and bonuses.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ChipHand {
     /// Index of the next chip to use (0..=5).
     pub cursor: u8,
-    /// Effective chip ids (after Program Advance and modifier folding),
-    /// `NO_CHIP`-terminated.
-    pub ids: [ChipId; 6],
+    /// The chips (after Program Advance and modifier folding), ended by the
+    /// first empty entry (what lies past it is left from before).
+    pub ids: [Option<ChipHandle>; 6],
     /// Base damage per entry.
     pub damage: [u16; 6],
     /// Atk+ / Navi+ bonus folded into each entry.
     pub attack_bonus: [u16; 6],
     /// Bonus raised while charging (some forms).
     pub charge_bonus: [u16; 6],
-    /// The raw selection (`code << 9 | id`), before folding.
-    pub selection: [u16; 6],
+    /// The chips picked, with their codes, before folding; none past the
+    /// picks (the game's 0xFFFF). A hand never built holds the zeroed
+    /// block: chip 0 in code A.
+    pub selection: [Option<FolderChip>; 6],
     /// Which turn (custom screen, from 0) each chip was picked in.
     pub turn: [u8; 6],
     /// Modifier flags per entry (bit 1: WhiCapsl folded, bit 2: Uninstll).
     pub modifiers: [u8; 6],
 }
 
-pub const NO_CHIP: ChipId = 0xFFFF;
-
 impl ChipHand {
-    /// The hand every battle starts with: no chips.
-    pub fn empty() -> ChipHand {
+    /// The hand every battle starts with: no chips (the selection zeroed:
+    /// `content`'s chip 0 in code A).
+    pub fn empty(content: &crate::content::Content) -> ChipHand {
+        let zeroed = content.chip_numbered(0).map(|id| FolderChip::new(id, crate::content::ChipCode(0)));
         ChipHand {
             cursor: 0,
-            ids: [NO_CHIP; 6],
+            ids: [None; 6],
             damage: [0; 6],
             attack_bonus: [0; 6],
             charge_bonus: [0; 6],
-            selection: [0; 6],
+            selection: [zeroed; 6],
             turn: [0; 6],
             modifiers: [0; 6],
         }
     }
 
     /// The next chip, if any.
-    pub fn next_chip(&self) -> Option<ChipId> {
-        let id = *self.ids.get(self.cursor as usize)?;
-        (id != NO_CHIP).then_some(id)
+    pub fn next_chip(&self) -> Option<ChipHandle> {
+        *self.ids.get(self.cursor as usize)?
     }
 
     /// `sub_800FC7C`: move on to the next chip (not past the last).
     pub fn advance(&mut self) {
-        if self.cursor < 5 && self.ids[self.cursor as usize] != NO_CHIP {
+        if self.cursor < 5 && self.ids[self.cursor as usize].is_some() {
             self.cursor += 1;
         }
     }
@@ -59,14 +62,12 @@ impl ChipHand {
     /// `sub_80108FC`: from the cursor on, the link navis' own chips
     /// (0x190..=0x19A) leave the hand; the entries after each move up one
     /// (`sub_801092C`), the last staying where it was.
-    pub fn drop_link_navi_chips(&mut self) {
+    pub fn drop_link_navi_chips(&mut self, content: &crate::content::Content) {
         let mut i = self.cursor as usize;
         let mut removed = 0;
         while let Some(&id) = self.ids.get(i) {
-            if id == NO_CHIP {
-                return;
-            }
-            if !(0x190..=0x19A).contains(&id) {
+            let Some(id) = id else { return };
+            if !content.chip_number(id).is_some_and(|n| (0x190..=0x19A).contains(&n)) {
                 i += 1;
                 continue;
             }
@@ -89,16 +90,14 @@ impl ChipHand {
 
     /// Chips left, counting from the cursor.
     pub fn remaining(&self) -> u8 {
-        self.ids.iter().skip(self.cursor as usize).take_while(|&&id| id != NO_CHIP).count() as u8
+        self.ids.iter().skip(self.cursor as usize).take_while(|id| id.is_some()).count() as u8
     }
 }
 
 /// `sub_80109A4`: a chip's damage, evaluating damage formulas (values of
 /// 1000 and up).
-pub fn chip_damage(b: &Battle, id: ChipId, side: u8) -> u16 {
-    if id == NO_CHIP {
-        return 0;
-    }
+pub fn chip_damage(b: &Battle, id: Option<ChipHandle>, side: u8) -> u16 {
+    let Some(id) = id else { return 0 };
     let d = b.content.chip(id).damage;
     if d < 1000 {
         return d;
@@ -111,10 +110,10 @@ pub fn chip_damage(b: &Battle, id: ChipId, side: u8) -> u16 {
 pub fn refresh_variable_damage(b: &mut Battle, side: u8) {
     let hand = &b.hands[side as usize];
     let i = hand.cursor as usize;
-    let Some(&id) = hand.ids.get(i) else { return };
-    if id == NO_CHIP || !b.content.chip(id).flags.has(ChipFlags::VARIABLE_DAMAGE) {
+    let Some(&Some(id)) = hand.ids.get(i) else { return };
+    if !b.content.chip(id).flags.has(ChipFlags::VARIABLE_DAMAGE) {
         return;
     }
-    let d = chip_damage(b, id, side);
+    let d = chip_damage(b, Some(id), side);
     b.hands[side as usize].damage[i] = d;
 }

@@ -674,7 +674,7 @@ Carried over between rounds:
 - the effects dword of the settings;
 - anything outside the re-initialized structures.
 
-`byte_203CA50` is not carried: every init copies it from player 0's init exchange (`battle_copyStructsIncludingBattleStats_800b2d8`, from `dword_203F568`). It holds two (settings index, background) pairs: the pair used after round n is entry n−1 of the copy made for round n. Machgun round 1 had `11 03 46 13` (round 2 on List1[0x11], background 3) and round 2 `3D 13 59 00`. Soundmod rounds 1 and 2 had `43 0B 02 0D` and `48 11 14 04`: rounds 2 and 3 were List1[0x43] background 0x0B and List1[0x14] background 4, as their setups show. The engine takes the pairs as `RoundSetup::later_stages` and the table from the content (`Stages::settings`, all 192 records).
+`byte_203CA50` is not carried: every init copies it from player 0's init exchange (`battle_copyStructsIncludingBattleStats_800b2d8`, from `dword_203F568`). It holds two (settings index, background) pairs: the pair used after round n is entry n−1 of the copy made for round n. Machgun round 1 had `11 03 46 13` (round 2 on List1[0x11], background 3) and round 2 `3D 13 59 00`. Soundmod rounds 1 and 2 had `43 0B 02 0D` and `48 11 14 04`: rounds 2 and 3 were List1[0x43] background 0x0B and List1[0x14] background 4, as their setups show. The engine takes the pairs as `RoundSetup::later_stages`, each naming a stage (the content's stages are the table's 192 records, `v1/stage-11` for List1[0x11]; bn6-compat's codec maps an index to its stage) and the background.
 
 BS+0x20 is not carried either (§2.2).
 

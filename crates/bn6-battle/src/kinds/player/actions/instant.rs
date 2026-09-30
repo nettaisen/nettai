@@ -62,9 +62,12 @@ fn run_effect(b: &mut Battle, r: ObjectRef) {
     let subtype = a.variant;
     // The chip's own effect, if content defines the chip; else
     // off_80EC3F0, by the subtype.
-    let defined = match b.content.defs.chip_with_id(a.chip_id).map(|c| c.usage) {
+    let defined = match a.chip.and_then(|c| b.content.defs.chip(c).usage) {
         Some(crate::content::ChipUsage::Instant(f)) => Some(f),
-        Some(u) => panic!("chip {:#x} is an instant chip, but its definition uses it as {u:?}", a.chip_id),
+        Some(u) => panic!(
+            "chip {:?} is an instant chip, but its definition uses it as {u:?}",
+            b.content.defs.chip(a.chip.expect("a defined chip")).key
+        ),
         None => None,
     };
     match defined.or_else(|| b.content.defs.hook(Hook::InstantChip(subtype))) {

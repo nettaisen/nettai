@@ -61,7 +61,7 @@ pub fn compare_battle(a: &bn6_battle::Content, b: &bn6_battle::Content) -> Vec<S
     }
     for (x, y) in a.chips.iter().zip(&b.chips) {
         if x != y {
-            out.push(format!("chip {:#05x} {} differs", x.id, x.name));
+            out.push(format!("chip {:#05x} {} differs", x.id.unwrap_or_default(), x.name));
         }
     }
     let parts: [(&str, bool); 11] = [

@@ -1237,10 +1237,24 @@ defines needs a handle there instead, which is §7.2's table brought forward:
 - **The navi's action** (step 3, done): a defined action runs by handle (the attack's `content_action`) with the
   navi's CurAction at `CONTENT_ACTION` (0xFF, above every number the original has), until `NaviAction` replaces
   the byte (step 9). `Compat::navi_action` gives the comparison the original's number by the action's key.
-- **Chips, navis, forms, weapons and stages** (step 3b, §12): hands, folders, `NaviStats` and battle settings hold
-  handles, and the codecs map the original's chip ids, navi and form numbers, weapon routines and settings to them
-  and back. Until then a defined chip or weapon is reached by number only in the engine's tests
-  (`Defs::number_chip`, `number_weapon`, compiled for tests alone).
+- **Chips, navis, forms, weapons and stages** (step 3b, done): hands (`ChipHand.ids`, the selection's
+  `FolderChip`s), folders, the linked chips, the attack's chip, dimming controllers' chips, `NaviStats` (navi,
+  form, starting form, weapons), the actor's weapon slots, transformation requests and battle settings hold
+  handles. `BattleSettings` is `{ stage: StageHandle, background, effects }`, the stage's record
+  (`StageSettings`, the 16-byte BattleSettingsList1 entry) read through the content; a set's later rounds name
+  their stages by handle. The pack's records are `v1/chip-036`, `v1/navi-01`, `v1/form-0c`, `v1/stage-11` and
+  `v1/weapon-29` (every routine number, implemented or not). The ruleset's numeric logic is unchanged: it asks
+  `Content::chip_number`, `navi_number`, `form_number`, `weapon_number` (none for what content defines, so a
+  defined chip gets none of the ruleset's by-number cases until phase C gives them traits and roles). What the
+  original zeroes and the engine now holds as none reads as the pack's chip 0 where the game reads it
+  (`Content::chip_field`: the attack's cleared chip, a non-player's carried chip, the side's special chip, a
+  never-built hand's selection). `bn6_compat::codec::Ids` maps the original's numbers to handles through
+  compat's keys: a definition with the key compat gives a number is the thing (so a v2-defined chip or weapon is
+  reached from a recorded folder or navi stats), else the pack's record by number; back, a record gives its own
+  number and a definition compat's (a weapon's first routine number). A trace's 16-byte battle settings name the
+  first stage whose record matches them. The numeric API (core_api) keeps numbers: a chip content defines reads
+  as `0x200 +` its handle (`core_api::DEFINED_CHIPS`), which it takes back; a defined weapon has no routine
+  number for it and panics there. `Defs::number_chip` and `number_weapon` are gone.
 
 The trace comparison's hints (`scratch_position` and the rest) are compat's alone: kinds.toml has them, and the
 engine's kinds carry none. A source guard (`crates/bn6-battle/tests/no_compat.rs`) fails on the word `compat`
@@ -1319,7 +1333,7 @@ Counted in `crates/bn6-battle/src` without tests; file names are the modules tha
 - The afterimage's tether "action below 0x10". → `NaviAction::is_attack()`.
 
 **Chips by id.**
-- `hand.rs` `NO_CHIP` 0xFFFF. → `Option<ChipHandle>`.
+- `hand.rs` `NO_CHIP` 0xFFFF. → `Option<ChipHandle>` (step 3b).
 - `chip_use.rs`: chain exclusions 0x52/0x53, dark chips 0x11E..0x122 (their effects on the side's state), the
   aura chips 0x150 and 0x5F..0x61, the substitutes list `[0x47, 0x1E, 0x9A, 0xB1, 0xC0]` indexed by a dark
   chip's `dark_substitute`, the SlashCross charged swords 0x4C..0x4F (in input.rs). → chip traits `no_chain`,
@@ -1669,7 +1683,7 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    and a weapon's number) so everything has a handle from here on. Objects record their kind's handle and a navi
    runs a defined action by handle; `bn6-compat` maps both to the original's numbers (§7.3). No bridge from
    compat into the engine (the user's decision). No content changes. **L.**
-3b. **Setups and hands on handles** (new with that decision). Hands, folders, the linked chips, the attack
+3b. **Setups and hands on handles** (new with that decision; done, §7.3). Hands, folders, the linked chips, the attack
    header's chip, `NaviStats` (navi, form, weapons) and battle settings (stage) hold handles, §7.2's table; the
    records content doesn't define yet get transitional keys (a chip `v1/chip-036`); `bn6-compat`'s codecs map the
    game's bytes to handles and back (traces, saves, link data), and the comparison maps hands. The ruleset's

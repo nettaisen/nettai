@@ -6,6 +6,7 @@
 //! full old-name mapping is in docs/engine/field-names.md.
 
 use crate::object::ObjectRef;
+use bn6_content_api::{ChipHandle, WeaponHandle};
 
 pub const SLOTS: usize = 8;
 
@@ -140,7 +141,9 @@ pub struct AttackVars {
     pub hit_param: u16,
     /// Action parameters (a chip's `params`).
     pub params: [u8; 4],
-    pub chip_id: u16,
+    /// The attack's chip; none for no chip (the game's 0, whose record
+    /// reads as the pack's chip 0: see [`crate::content::Content::chip_field`]).
+    pub chip: Option<ChipHandle>,
     pub special_source: u8,
     /// Which `set_attack` slot started the action.
     pub kind: u8,
@@ -195,13 +198,13 @@ pub struct ActorData {
     pub ai_index: u8,
     /// 1 = not counted as a combatant.
     pub not_counted: u8,
-    /// Weapon routines: battle-mode-9 A press, A-charge type, buster,
-    /// charged shot, B+Back special.
-    pub mode9_a: u8,
-    pub a_charge: u8,
-    pub buster: u8,
-    pub charge_shot: u8,
-    pub back_special: u8,
+    /// Weapons (the game's routine bytes; none for 0xFF): battle-mode-9 A
+    /// press, A-charge type, buster, charged shot, B+Back special.
+    pub mode9_a: Option<WeaponHandle>,
+    pub a_charge: Option<WeaponHandle>,
+    pub buster: Option<WeaponHandle>,
+    pub charge_shot: Option<WeaponHandle>,
+    pub back_special: Option<WeaponHandle>,
     /// AIData+0x09: ticks toward the next HP lost to the fight-time HP bug
     /// (`sub_8010230`; `sub_801026A` for actors without navi stats).
     pub hp_drain_counter: u8,
@@ -224,7 +227,7 @@ pub struct ActorData {
     /// (`sub_801A308`, `sub_801A324`).
     pub drain_heal_credits: u8,
     /// Alternative A-charge type (form chips).
-    pub alt_a_charge: u8,
+    pub alt_a_charge: Option<WeaponHandle>,
     /// AIData+0x13: ticks left to press Back after B for the B+Back
     /// special (`sub_8012FC8`: 8 on a B press).
     pub back_special_window: u8,
