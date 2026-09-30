@@ -34,6 +34,14 @@ pub const VEIL: ChipId = 0x05;
 pub const ERASER: ChipId = 0x06;
 /// A dimming chip (action 0x15, subtype 0) that grabs a column.
 pub const GRAB: ChipId = 0x07;
+/// An instant chip that fills the custom gauge (FullCust's effect).
+pub const FULL_GAUGE: ChipId = 0x08;
+/// Instant chips: a plus chip used on its own (subtype 3), one that raises
+/// the buster's attack by 1 (subtype 10) and one that syncs the navi
+/// (subtype 13).
+pub const PLUS: ChipId = 0x09;
+pub const BUSTER_UP: ChipId = 0x0A;
+pub const SYNC: ChipId = 0x0B;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -147,6 +155,12 @@ pub fn scripts() -> Scripts {
                 ("objects/hit-flash/hit_flash", "objects/hit-flash/hit_flash"),
                 ("objects/charge-wave/charge_wave", "objects/charge-wave/charge_wave"),
                 ("objects/junk-shot/junk_shot", "objects/junk-shot/junk_shot"),
+                ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
+                ("chips/0ae-fullcust/chip", "chips/0ae-fullcust/chip"),
+                ("chips/0c0-atk-10/chip", "chips/0c0-atk-10/chip"),
+                ("chips/0af-busterup/chip", "chips/0af-busterup/chip"),
+                ("chips/11d-synctrgr/chip", "chips/11d-synctrgr/chip"),
+                ("objects/plus-sparkle/plus_sparkle", "objects/plus-sparkle/plus_sparkle"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -159,8 +173,8 @@ pub fn scripts() -> Scripts {
 }
 
 /// MegaMan's weapon routines scripts implement: the BN6 overlay's buster,
-/// charged shot, blank shot, DustCross's charged shot and the absorbed
-/// obstacle throw.
+/// charged shot, blank shot, the Beast claw, DustCross's charged shot, its
+/// obstacle absorbing and the absorbed obstacle throw.
 fn weapons() -> Vec<WeaponData> {
     let weapon = |id: u8, name: &str, action: Option<u8>, script: &str| WeaponData {
         id,
@@ -169,11 +183,13 @@ fn weapons() -> Vec<WeaponData> {
         instant_chip: None,
         script: format!("navis/00-megaman/weapons/{script}"),
     };
-    vec![
+    let mut weapons = vec![
         weapon(0x00, "Buster", None, "00-buster/buster"),
         weapon(0x01, "Charged shot", None, "01-charged-shot/charged_shot"),
         weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
+        weapon(0x1E, "Beast claw", Some(0x52), "1e-beast-claw/beast_claw"),
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
+        weapon(0x2A, "Absorb", Some(0x58), "2a-absorb/absorb"),
         weapon(0x2B, "Throw absorbed", None, "2b-throw-absorbed/throw_absorbed"),
         weapon(0x15, "EraseCross Beast drop", Some(0x46), "15-erase-beast-drop/erase_beast_drop"),
         weapon(0x17, "GroundCross Beast dash", Some(0x1A), "17-ground-beast-dash/ground_beast_dash"),
@@ -181,7 +197,10 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x1C, "ChargeCross Beast wave", Some(0x4F), "1c-charge-beast-wave/charge_beast_wave"),
         weapon(0x1D, "DustCross Beast scatter", Some(0x50), "1d-dust-beast-scatter/dust_beast_scatter"),
         weapon(0x27, "ChargeCross tackle", Some(0x56), "27-charge-cross-tackle/charge_cross_tackle"),
-    ]
+    ];
+    // In id order, as a pack lists them.
+    weapons.sort_by_key(|w| w.id);
+    weapons
 }
 
 /// The object kinds scripts implement, by name (in name order, as a pack
@@ -210,6 +229,8 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash") },
         kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
         kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
+        kind("absorbed-obstacle", Pool::Effect, 0x87, "objects/absorbed-obstacle/absorbed_obstacle"),
+        kind("plus-sparkle", Pool::Effect, 0x14, "objects/plus-sparkle/plus_sparkle"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -301,6 +322,31 @@ fn chips() -> Vec<ChipData> {
             damage: 10,
             script: Some("objects/area-grab/area_grab".into()),
             ..chip(GRAB, "Grab", 0x15, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
+            lockout: 20,
+            script: Some("chips/0ae-fullcust/chip".into()),
+            ..chip(FULL_GAUGE, "FullGage", 0x1C, 5)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
+            family: ChipFamily::Plus,
+            damage: 10,
+            script: Some("chips/0c0-atk-10/chip".into()),
+            ..chip(PLUS, "Plus", 0x1C, 3)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
+            family: ChipFamily::Plus,
+            params: [1, 0, 0, 0],
+            script: Some("chips/0af-busterup/chip".into()),
+            ..chip(BUSTER_UP, "BustUp", 0x1C, 10)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
+            script: Some("chips/11d-synctrgr/chip".into()),
+            ..chip(SYNC, "Sync", 0x1C, 13)
         },
     ]
 }
@@ -618,6 +664,8 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
+    // The plus chips' sparkle (animation 1).
+    sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(2), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);

@@ -204,9 +204,18 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
      define real behaviour; that is out of scope.
    - **0x1B** `sub_80EC350` (0x080EC350), navi chips. It spawns T4 object 0x10 via `sub_80E192C`. That controller
      later calls **`off_802CD5C[subtype]`** (0x0802CD5C, 29 entries).
-4. Action **0x1C** `sub_80EC39C` (0x080EC39C) is the "instant" handler. It calls `off_80EC3F0[av[3]]` once and exits.
-   It is used by 54 chips: the MegaBuster pseudo-chip 0, Atk+/Navi+ left unfolded, FullCust, Boomer, Lance, FireHit,
-   the error chip 0x185, and others.
+4. Action **0x1C** `sub_80EC39C` (0x080EC39C) is the "instant" handler. It calls `off_80EC3F0[av[3]]` once and exits
+   (subtype 0x14, TenguCross's B+Back, waits 8 more ticks). It is used by 54 chips: the MegaBuster pseudo-chip 0,
+   Atk+/Navi+ left unfolded, FullCust, Boomer, Lance, FireHit, the error chip 0x185, and others. `off_80EC3F0` has 23
+   entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are the content pack's scripts
+   (`Hook::InstantChip`, the `instant_chip` of the module a chip of the subtype names, or a weapon's `instant_chip`):
+   0 BeastOut `sub_80104E0` and 3 the plus chips `sub_8010488` (chips/13f-beastout, chips/0c0-atk-10, with their
+   sparkle, effect #0x14, objects/plus-sparkle), 5 FullCust `sub_800AF34` (chips/0ae-fullcust), 10 BusterUp
+   `sub_8010820` (chips/0af-busterup), 13 SyncTrgr `sub_80EC44C` (chips/11d-synctrgr). Subtypes 2 (`sub_8010474`,
+   invisibility), 6 (`sub_801050C`, repairs the side's obstacles), 9 (`sub_8015AA6`, an immobilizing hit, attack
+   #0x3F, on every enemy body in the row ahead) and 11 (`sub_802E1BE`, writes side state nothing reads) are named by
+   no chip: 2 and 9 by the link navis' weapon routines 0x71 and 0x83; they are in lib/instant-chips for those to
+   register.
 
 `chip-table.md` lists the handler of every chip and, per action, the handler address and the chips that use it.
 It also lists the spawner tables `off_802CCB4` and `off_802CD5C` and the formula table `off_80109DC`.
@@ -1448,6 +1457,9 @@ In battle 2, `ns[0x2C] = 0x0C` (Falzar Beast Out), and the player object's NameI
   and hit modifier `byte_80EF604[k]` (1 then 3).
 - **4, `sub_80EF608`**: count the timer down; when it was ≤ 1, `av.u16[0x12] -= 1`: nonzero → `av[0..1] = 0` (the
   next slash), zero → clear 0x400000 and `object_exitAttackState`.
+
+Both are the content pack's script `navis/00-megaman/weapons/1e-beast-claw` (the setup writes the slash count into
+the action's state before the action starts, `navi:action_state(0x52)`); a phase past the table's two is an error.
 
 ### 4.7 What is generic vs GunDelSol-specific
 

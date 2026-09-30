@@ -240,6 +240,219 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     assert_eq!(b.objects.get(p0).action, 8);
 }
 
+/// Two navis idle and fighting on the test content's battle settings
+/// `settings`, with both navis' stats `stats`.
+fn fight_on(settings: u8, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
+    let mut setup = testing::round_setup(settings, stats);
+    setup.settings.effects = 0xE8C;
+    let mut b = Battle::new(setup, testing::content());
+    b.spawn_actors();
+    b.run_objects();
+    b.round.flags |= battle_flags::FIGHTING;
+    let players = [b.player(0).unwrap(), b.player(1).unwrap()];
+    for p in players {
+        let o = b.objects.get_mut(p);
+        (o.action, o.phase, o.phase_init) = (8, 0, 0);
+    }
+    (b, players[0], players[1])
+}
+
+#[test]
+fn an_instant_chip_runs_its_effect_once_and_idles() {
+    let (mut b, p0, p1) = fight();
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = testing::FULL_GAUGE;
+    b.hands[0] = hand;
+    b.gauge.value = 0;
+    tick(&mut b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(b.gauge.value, 0);
+    // Its first tick: the effect (the gauge fills) and back to idle, with
+    // the chip's lockout.
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(b.gauge.value, crate::hud::CustomGauge::FULL);
+    assert_eq!(b.objects.get(p0).action, 8);
+    // (Applied, and counted down once already.)
+    assert_eq!(ai_mut(&mut b, p0).lockout, 19);
+}
+
+#[test]
+fn dustcross_back_special_pulls_the_rocks_in() {
+    // Weapon routine 0x2A as the B+Back special, and no buster, so B does
+    // nothing else.
+    let stats = megaman_with(|s| {
+        s.weapons.buster = 0xFF;
+        s.weapons.charge_shot = 0xFF;
+        s.weapons.back_special = 0x2A;
+    });
+    let (mut b, p0, p1) = fight_on(testing::ROCK_BATTLE, stats);
+    let p = [p0, p1];
+    let rocks: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
+    assert_eq!(rocks.len(), 2);
+    tick(&mut b, p0, p1, keys::B);
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::B | keys::LEFT);
+    assert_eq!(b.objects.get(p0).action, 0x58);
+
+    // Tick 1: the pose and the vortex (effect 0x63), kept alive.
+    run_to(&mut b, p, &mut t, 1, keys::B);
+    assert_eq!(b.objects.get(p0).anim, 0x17);
+    assert_ne!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), 0);
+    let vortex = b.objects.in_order().find(|&o| o.pool == Pool::Effect && b.objects.get(o).params[0] == 0x63);
+    let vortex = vortex.expect("the vortex");
+    assert_eq!(b.objects.get(vortex).timer, 2);
+
+    // Tick 10: the pull. The rocks go on their next update, each leaving
+    // an absorbed obstacle that flies to the navi.
+    run_to(&mut b, p, &mut t, 11, 0);
+    let absorbed = b.content.object_kind("absorbed-obstacle").unwrap();
+    let flying = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (absorbed.pool, absorbed.index)).count();
+    assert_eq!(flying, 2);
+
+    // They arrive 9 ticks later, while the navi still absorbs, and join
+    // its list; the navi idles 11 ticks after the pull.
+    run_to(&mut b, p, &mut t, 20, 0);
+    assert_eq!(b.objects.get(p0).action, 0x58);
+    run_to(&mut b, p, &mut t, 21, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    let actor = b.objects.get(p0).actor.unwrap();
+    assert_eq!(b.actors.get(actor).absorbed.len(), 2);
+    // The B+Back cooldown (40 ticks, counted down once already).
+    assert_eq!(ai_mut(&mut b, p0).back_special_cooldown, 0x27);
+}
+
+#[test]
+fn the_beast_claw_slashes_the_panel_ahead_twice() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    // The navi right in front of the enemy at (5,2).
+    let (x, y) = crate::kinds::player::panel_coordinates(4, 2);
+    let o = b.objects.get_mut(p0);
+    (o.panel, o.future_panel) = (PanelPos { x: 4, y: 2 }, PanelPos { x: 4, y: 2 });
+    (o.pos.x, o.pos.y) = (x, y);
+    let action = super::super::idle::weapon_routine(&mut b, p0, 0x1E);
+    assert_eq!(action, 0x52);
+    super::super::set_attack(&mut b, p0, action, 2);
+    let mut t = 0;
+    // The claw is up for 3 ticks; the first slash on the third: its effect
+    // and a hit on the panel ahead, 50 damage and 10 per buster damage
+    // point (1).
+    let slashes = |b: &Battle| {
+        let looks = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 0));
+        looks.map(|o| b.objects.get(o).params[0]).filter(|&l| l == 0x3A || l == 0x39).collect::<Vec<_>>()
+    };
+    run_to(&mut b, p, &mut t, 2, 0);
+    assert_eq!(b.objects.get(p0).anim, 0x0C);
+    assert_eq!(slashes(&b), Vec::<u8>::new());
+    run_to(&mut b, p, &mut t, 3, 0);
+    assert_eq!(slashes(&b), [0x3A]);
+    assert_eq!(ai_mut(&mut b, p0).attack.damage, 60);
+    run_to(&mut b, p, &mut t, 5, 0);
+    assert_eq!(b.objects.get(p1).hp, 940);
+    // 12 ticks later the second slash, and 12 after it, idle.
+    run_to(&mut b, p, &mut t, 18, 0);
+    assert_eq!(b.objects.get(p0).action, 0x52);
+    run_to(&mut b, p, &mut t, 29, 0);
+    assert_eq!(b.objects.get(p0).action, 0x52);
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(f1_of(&b, p0) & f1::USING_ACTION, 0);
+}
+
+/// Run `b` and a copy of it taken now for `ticks` ticks with side 0
+/// holding `held`: both must go the same way.
+fn assert_rolls_back(b: &mut Battle, p: [ObjectRef; 2], ticks: u32, held: u16) {
+    let mut copy = b.clone();
+    for i in 0..ticks {
+        tick(b, p[0], p[1], held);
+        tick(&mut copy, p[0], p[1], held);
+        assert_eq!(b.digest(), copy.digest(), "the copy went its own way on tick {i}");
+    }
+}
+
+#[test]
+fn absorbing_and_the_claw_roll_back() {
+    let stats = megaman_with(|s| {
+        s.weapons.buster = 0xFF;
+        s.weapons.charge_shot = 0xFF;
+        s.weapons.back_special = 0x2A;
+    });
+    let (mut b, p0, p1) = fight_on(testing::ROCK_BATTLE, stats);
+    tick(&mut b, p0, p1, keys::B);
+    tick(&mut b, p0, p1, keys::B | keys::LEFT);
+    for _ in 0..5 {
+        tick(&mut b, p0, p1, 0);
+    }
+    // Mid-pull, then through the flight and the absorbing.
+    assert_rolls_back(&mut b, [p0, p1], 20, 0);
+
+    let (mut b, p0, p1) = fight();
+    let action = super::super::idle::weapon_routine(&mut b, p0, 0x1E);
+    super::super::set_attack(&mut b, p0, action, 2);
+    tick(&mut b, p0, p1, 0);
+    assert_rolls_back(&mut b, [p0, p1], 30, 0);
+}
+
+/// Use the instant chip `chip` from side 0's hand; returns once its
+/// effect ran (the tick after the chip starts).
+fn use_instant_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: u16) {
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = chip;
+    b.hands[0] = hand;
+    tick(b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x1C);
+    tick(b, p0, p1, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+#[test]
+fn a_plus_chip_on_its_own_raises_a_sparkle() {
+    let (mut b, p0, p1) = fight();
+    use_instant_chip(&mut b, p0, p1, testing::PLUS);
+    // 4 pixels toward the enemy from the navi's panel, 48 up, and rising
+    // (its first rise at once).
+    let sparkle = b.content.object_kind("plus-sparkle").unwrap().clone();
+    let s = b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (sparkle.pool, sparkle.index));
+    let s = s.expect("the sparkle");
+    let (x, y) = crate::kinds::player::panel_coordinates(2, 2);
+    let o = b.objects.get(s);
+    assert_eq!((o.pos.x, o.pos.y, o.pos.z), (x + (4 << 16), y, 50 << 16));
+    // Gone after its animation (12 ticks in the test content).
+    for _ in 0..13 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert!(!b.objects.is_allocated(s) || b.objects.get(s).index != sparkle.index);
+    // From a special source the damage goes into the side's Atk+ bonus
+    // instead.
+    let (mut b, p0, p1) = fight();
+    let mut hand = ChipHand::empty();
+    (hand.ids[0], hand.damage[0]) = (testing::PLUS, 10);
+    b.hands[0] = hand;
+    tick(&mut b, p0, p1, keys::A);
+    ai_mut(&mut b, p0).attack.special_source = 1;
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(b.sides[0].plus_bonus, [10, 0]);
+}
+
+#[test]
+fn buster_up_and_sync_trigger_change_the_navi() {
+    // (A navi whose Beast Out is spent keeps its mood.)
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.beast_out_counter = 3));
+    let attack = b.stats[0].attack;
+    use_instant_chip(&mut b, p0, p1, testing::BUSTER_UP);
+    assert_eq!(b.stats[0].attack, attack + 1);
+    // At 9 or more it stays at 9.
+    b.stats[0].attack = 9;
+    use_instant_chip(&mut b, p0, p1, testing::BUSTER_UP);
+    assert_eq!(b.stats[0].attack, 9);
+    // SyncTrgr's effect alone (the Full Synchro aura that follows is the
+    // framework's, not ported yet): the mood goes to the top.
+    let hook = b.behaviors.hook(bn6_content_api::Hook::InstantChip(13)).expect("SyncTrgr's effect");
+    let spec = bn6_content_api::InstantChipSpec::default();
+    crate::behavior::call_hook(&mut b, hook, bn6_content_api::HookCall::InstantChip { user: p0, spec });
+    assert_eq!(b.stats[0].mood, 0xFF);
+}
+
 // ---- Form weapons ---------------------------------------------------------------
 
 /// Start weapon routine `routine` for `r` as a charged chip starts it

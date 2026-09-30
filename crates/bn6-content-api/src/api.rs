@@ -281,7 +281,7 @@ named_fields! {
 }
 
 named_fields! {
-    /// A side's navi stats that content reads.
+    /// A side's navi stats that content reads (and the few it changes).
     pub enum NaviStat {
         /// Fighting in the sun.
         Sun = "sun", Bool, ro;
@@ -290,7 +290,8 @@ named_fields! {
         NaviVariant = "navi_variant", U8, ro;
         /// The base form's element.
         Element = "element", U8, ro;
-        Attack = "attack", U8, ro;
+        /// The buster's attack level (BusterUp raises it).
+        Attack = "attack", U8, rw;
         Rapid = "rapid", U8, ro;
         Charge = "charge", U8, ro;
         Mood = "mood", U8, ro;
@@ -642,6 +643,8 @@ pub trait CoreApi {
     /// Report a sound only `side`'s player hears.
     fn play_sound_for(&mut self, side: u8, sound: u16);
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value;
+    /// `SetBattleNaviStatsByte`: change a writable navi stat.
+    fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()>;
     /// A side's emotion (`sub_8015B54`).
     fn emotion(&self, side: u8) -> Emotion;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
@@ -672,6 +675,10 @@ pub trait CoreApi {
     /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
     /// up to full.
     fn add_side_gauge(&mut self, side: u8, n: u16);
+    /// `sub_8010488`'s special-source branch: add `n` to a side's plus
+    /// chip bonus `index` (0 Atk+, 1 Navi+), which the next chips get
+    /// (`sub_802DED8`). An index past them is an error.
+    fn add_plus_bonus(&mut self, side: u8, index: u8, n: u16) -> ApiResult<()>;
     /// `sub_800AB46`: bump a side's statistics counter.
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// A player NameID's actor record, if it is one.
@@ -687,6 +694,10 @@ pub trait CoreApi {
     /// The flags word has every `require` bit and no `forbid` bit.
     fn panel_check(&self, p: PanelPos, require: u32, forbid: u32) -> bool;
     fn panel_info(&self, p: PanelPos) -> Option<PanelInfo>;
+    /// A side's registered field objects (the obstacles it owns: the
+    /// registry's three slots at BattleState+0xA0 + side * 0xC), in slot
+    /// order, empty slots left out.
+    fn side_field_objects(&self, side: u8) -> Vec<ObjectRef>;
     fn column_info(&self, x: u8) -> ColumnInfo;
     fn set_column_timer(&mut self, x: u8, ticks: u16);
     /// `object_setPanelAlliance`.
@@ -904,4 +915,8 @@ pub trait CoreApi {
     fn show_user(&mut self, user: ObjectRef);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
+    /// `sub_80EFD74`: the obstacle framework pulls every obstacle on the
+    /// field (except NameID 0xDA and those already leaving) toward
+    /// `absorber`'s side.
+    fn absorb_obstacles(&mut self, absorber: ObjectRef);
 }

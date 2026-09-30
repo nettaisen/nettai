@@ -661,6 +661,12 @@ impl UserData for Navi {
                 let v = with(|api, _| Ok(api.navi_stat(this.0, f)))?;
                 from_api(lua, v, &f.ty())
             });
+            if f.writable() {
+                fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
+                    let v = to_api(v, &f.ty(), f.name())?;
+                    with(|api, _| api.set_navi_stat(this.0, f, v).map_err(api_error))
+                });
+            }
         }
     }
 }
@@ -835,6 +841,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "gauge")?);
         with(|api, _| Ok(api.add_side_gauge(side, n)))
     });
+    lib_fn!(lua, t, "add_plus_bonus", |_, (side, index, n): (LuaValue, LuaValue, LuaValue)| {
+        let (side, index, n) = (u8_arg(side, "side")? & 1, u8_arg(index, "bonus")?, u16_arg(n, "bonus")?);
+        with(|api, _| api.add_plus_bonus(side, index, n).map_err(api_error))
+    });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))
@@ -929,6 +939,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let o = with(|api, _| Ok(api.spawn_palette_flash(p)))?;
         object_value(lua, o)
     });
+    lib_fn!(lua, t, "absorb_obstacles", |_, absorber: mlua::UserDataRef<Object>| {
+        with(|api, _| Ok(api.absorb_obstacles(absorber.0)))
+    });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {
         let id = u8_arg(id, "hit spark")?;
         let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;
@@ -964,6 +977,11 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t.raw_set("alliance", info.alliance)?;
         t.raw_set("home", info.home)?;
         Ok(LuaValue::Table(t))
+    });
+    lib_fn!(lua, t, "objects", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let list = with(|api, _| Ok(api.side_field_objects(side)))?;
+        lua.create_sequence_from(list.into_iter().map(Object))
     });
     lib_fn!(lua, t, "column", |lua, x: LuaValue| {
         let x = u8_arg(x, "column")?;
@@ -1070,9 +1088,9 @@ pub fn object(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
     lua.create_userdata(Object(o))
 }
 
-/// Wrap an action's state as a script value.
-pub fn action_state(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
-    lua.create_userdata(State { owner: o, action: true, of_action: None })
+/// Wrap the state of action `action`, which `o` runs, as a script value.
+pub fn action_state(lua: &Lua, o: ObjectRef, action: u8) -> mlua::Result<AnyUserData> {
+    lua.create_userdata(State { owner: o, action: true, of_action: Some(action) })
 }
 
 /// A hook call's arguments.
