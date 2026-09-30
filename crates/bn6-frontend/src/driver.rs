@@ -3,7 +3,8 @@
 
 use bn6_battle::battle::{mode, top};
 use bn6_battle::custom::{self, BattleFolder, BuiltIn, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
-use bn6_battle::data::{self, ChipCode};
+use bn6_battle::custom::Library;
+use bn6_battle::data::ChipCode;
 use bn6_battle::input::keys;
 use bn6_battle::link::Link;
 use bn6_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
@@ -268,7 +269,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
             SlotKind::Scrap { right_half: false } => "SCRAP".to_string(),
             SlotKind::Redeal { right_half: false } => "REDEAL".to_string(),
             SlotKind::Empty | SlotKind::Hidden | SlotKind::Scrap { .. } | SlotKind::Redeal { .. } => return String::new(),
-            _ => screen.chip_in(slot, folder).map(|c| format!("{} {}", data::chip(c.id).name, c.code.letter())).unwrap_or_default(),
+            _ => screen.chip_in(slot, folder).map(|c| format!("{} {}", BuiltIn.chip(c.id).name, c.code.letter())).unwrap_or_default(),
         };
         let mark = match x.state {
             SlotState::Selected => "+",
@@ -289,7 +290,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         .selection()
         .iter()
         .map(|&s| match screen.chip_in(s, folder) {
-            Some(c) => format!("{} {}", data::chip(c.id).name, c.code.letter()),
+            Some(c) => format!("{} {}", BuiltIn.chip(c.id).name, c.code.letter()),
             None => "BEAST OUT".to_string(),
         })
         .collect();

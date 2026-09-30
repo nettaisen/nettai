@@ -209,7 +209,7 @@ fn picks_share_a_code_or_a_chip() {
 #[test]
 fn mega_chips_past_the_limit_turn_invalid() {
     let mut p = Player::new(&[(MEGA, 0)], GameVersion::Falzar);
-    p.side.class_uses = [0, 2, 0];
+    p.side.class_uses = builder::ClassCounts { mega: 2, ..Default::default() };
     p.open();
     p.wait(10);
     p.step(0);

@@ -26,7 +26,7 @@ use crate::input::Joypad;
 use crate::kinds::player::Emotion;
 use crate::setup::{Form, NaviStats, effects};
 use crate::transform::TransformRequest;
-use builder::{Pick, ProgramAdvancesUsed};
+use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
 use screen::SPECIAL_SLOT;
 
 /// Which game a player plays: it decides their Crosses and Beast form.
@@ -109,8 +109,8 @@ pub struct Side {
     pub folder: Option<BattleFolder>,
     pub round: RoundMemory,
     pub program_advances: ProgramAdvancesUsed,
-    /// Standard, Mega and Giga chips sent this round.
-    pub class_uses: [u8; 3],
+    /// Chips sent this round, by class.
+    pub class_uses: ClassCounts,
     /// The screen, from its opening until the next one opens.
     pub screen: Option<Screen>,
     /// The status bit the player's console sends: its custom screen is
@@ -130,7 +130,7 @@ impl Side {
             folder: setup.folder,
             round: RoundMemory::default(),
             program_advances: ProgramAdvancesUsed::default(),
-            class_uses: [0; 3],
+            class_uses: ClassCounts::default(),
             screen: None,
             in_custom: false,
             built: None,
