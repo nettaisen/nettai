@@ -15,7 +15,7 @@ use crate::battle::Battle;
 use crate::content::{Content, SpriteId};
 use crate::kinds::common::{Progress, set_progress};
 use crate::kinds::player::form;
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 use crate::setup::Form;
 
 pub const INDEX: u8 = 0x28;
@@ -98,7 +98,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     };
     // Param1 0xFF: copy the owner's sprite; Param4 its facing
     // (`object_getFlip`).
-    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [0xFF, 0, anim, alliance ^ flip])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [0xFF, 0, anim, alliance ^ flip])?;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
@@ -126,7 +126,7 @@ pub fn spawn_copy(
     look: PlainLook,
 ) -> Option<ObjectRef> {
     let alliance = b.objects.get(owner).alliance;
-    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [0xFF, 0, anim, flip])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [0xFF, 0, anim, flip])?;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
@@ -151,7 +151,7 @@ pub fn spawn_plain(
     look: PlainLook,
 ) -> Option<ObjectRef> {
     let alliance = b.objects.get(owner).alliance;
-    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [sprite.category, sprite.index, anim, flip])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Afterimage, pos, [sprite.category, sprite.index, anim, flip])?;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;

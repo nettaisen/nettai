@@ -5,4 +5,3 @@
 pool = "effect"
 index = 0x5D
 script = "invisible.luau"
-scratch_position = true

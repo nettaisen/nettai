@@ -5,4 +5,3 @@
 pool = "effect"
 index = 0x2A
 script = "trap_chip.luau"
-scratch_position = true

@@ -3,7 +3,7 @@
 //! See docs/engine/objects-and-player.md §A.4.
 
 use crate::battle::{Battle, FadeMode};
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars;
@@ -12,7 +12,7 @@ pub struct Vars;
 pub fn spawn(b: &mut Battle) {
     // The spawn position is whatever the caller's registers held; it is
     // never read.
-    if let Some(r) = b.objects.spawn(Pool::Effect, 2, Vec3::default(), [2, 0, 0, 0]) {
+    if let Some(r) = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Intro, Vec3::default(), [2, 0, 0, 0]) {
         b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED;
     }
 }
