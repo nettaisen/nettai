@@ -1,11 +1,11 @@
-//! The dimming service of cut-in chips: the per-side dimming records
+//! The dimming service of dimming chips: the per-side dimming records
 //! (`byte_203CF00`, one 0x50-byte record per side) and the phases every
 //! dimming controller object goes through: start the dimming (battle
 //! flag 4: everything but the allowed objects stands still), dim the
 //! screen, show the telop, run the chip's effect (the controller's own),
-//! brighten the screen, and end the dimming. A counter cut-in (the other
-//! side's cut-in chip during the telop) makes the controllers wait on
-//! each other. See docs/engine/chips.md §3.6.
+//! brighten the screen, and end the dimming. A cut-in (the other
+//! side's dimming chip used during the telop) makes the controllers wait
+//! on each other. See docs/engine/chips.md §3.6.
 
 use crate::battle::{Battle, battle_flags};
 use crate::content::{BannerId, ChipId};
@@ -22,11 +22,11 @@ pub enum DimmingState {
     Registered = 1,
     /// Its name is (about to be) shown.
     ShowingName = 2,
-    /// The name was shown, but the other side's counter runs first.
+    /// The telop was shown, but the other side's cut-in runs first.
     Waiting = 3,
     /// The chip's effect runs.
     Running = 4,
-    /// Done; time starts again once the other side is done too.
+    /// Done; the dimming ends once the other side is done too.
     Ending = 5,
 }
 
@@ -34,12 +34,12 @@ pub enum DimmingState {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DimmingRecord {
     /// +0: the side whose dimming is current (both records are written
-    /// together; a counter takes it over).
+    /// together; a cut-in takes it over).
     pub owner: u8,
     pub state: DimmingState,
-    /// +2: the chip can't be countered (chips 0x170 and up).
-    pub uncounterable: bool,
-    /// +3: the side that stopped time (both records).
+    /// +2: the chip can't be cut in on (chips 0x170 and up).
+    pub no_cut_in: bool,
+    /// +3: the side that started the dimming (both records).
     pub initiator: u8,
     /// +8: the side's controller object.
     pub controller: Option<ObjectRef>,
@@ -55,13 +55,13 @@ const UNDIM_TICKS: u8 = 17;
 pub(crate) const LOCAL_TELOP: BannerId = BannerId(0x4C);
 pub(crate) const REMOTE_TELOP: BannerId = BannerId(0x50);
 
-/// Chips from this id on can't be countered.
-const FIRST_UNCOUNTERABLE: ChipId = 0x170;
+/// Chips from this id on can't be cut in on.
+const FIRST_NO_CUT_IN: ChipId = 0x170;
 
 /// What every controller knows about its chip (object +0x30 / +0x32): for
 /// the name the HUD shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct CutInChip {
+pub struct DimmingChip {
     pub chip: ChipId,
     /// The Atk+ / cross bonus, shown with the name for damaging chips.
     pub bonus: u16,
@@ -72,7 +72,7 @@ impl Battle {
         &mut self.dimming[side as usize]
     }
 
-    /// `sub_800BF16`: `side` stops time with `controller`, used by `user`.
+    /// `sub_800BF16`: `side` starts a dimming with `controller`, used by `user`.
     /// Its previous controller, if any, is told to end.
     pub(crate) fn register_dimming(&mut self, side: u8, chip: ChipId, controller: ObjectRef, user: ObjectRef) {
         for r in &mut self.dimming {
@@ -86,7 +86,7 @@ impl Battle {
             end_controller_now(self, old);
         }
         let rec = self.dimming(side);
-        rec.uncounterable = chip >= FIRST_UNCOUNTERABLE;
+        rec.no_cut_in = chip >= FIRST_NO_CUT_IN;
         rec.controller = Some(controller);
         rec.user = Some(user);
         rec.state = DimmingState::Registered;
@@ -147,7 +147,7 @@ pub fn dim_screen(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `object_drawChipName`: once the other side isn't mid-dimming, show the
-/// telop; after it, wait for a counter cut-in to finish, then run the
+/// telop; after it, wait for a cut-in to finish, then run the
 /// effect (the next action), or skip it if the user was deleted.
 pub fn show_telop(b: &mut Battle, r: ObjectRef) {
     telop(b, r, true);
@@ -160,7 +160,7 @@ pub fn show_hidden_telop(b: &mut Battle, r: ObjectRef) {
     telop(b, r, false);
 }
 
-fn telop(b: &mut Battle, r: ObjectRef, uncounterable_runs: bool) {
+fn telop(b: &mut Battle, r: ObjectRef, no_cut_in_runs: bool) {
     let side = b.objects.get(r).alliance;
     let other = side ^ 1;
     if b.objects.get(r).phase_init == 0 {
@@ -179,7 +179,7 @@ fn telop(b: &mut Battle, r: ObjectRef, uncounterable_runs: bool) {
     if b.banner.status() != BannerStatus::Done {
         return;
     }
-    // sub_800B8C2: a counter cut-in took the dimming over.
+    // sub_800B8C2: a cut-in took the dimming over.
     if b.dimming[side as usize].owner != side && !out_of_the_way(b.dimming[other as usize].state) {
         b.dimming(side).state = DimmingState::Waiting;
         return;
@@ -187,7 +187,7 @@ fn telop(b: &mut Battle, r: ObjectRef, uncounterable_runs: bool) {
     b.dimming(side).state = DimmingState::Running;
     let rec = b.dimming[side as usize];
     let user_alive = rec.user.is_some_and(|u| b.objects.get(u).hp != 0);
-    advance(b, r, if (uncounterable_runs && rec.uncounterable) || user_alive { 1 } else { 2 });
+    advance(b, r, if (no_cut_in_runs && rec.no_cut_in) || user_alive { 1 } else { 2 });
 }
 
 /// Navi chips (0xDD..=0x118) that AntiNavi turns back.
@@ -211,7 +211,7 @@ pub fn check_anti_navi(b: &mut Battle, r: ObjectRef, chip: ChipId) {
 }
 
 /// `sub_800BA8A`: a navi chip's name, like `show_telop`, but the
-/// effect runs whether or not the chip can be countered, and is skipped
+/// effect runs whether or not the chip can be cut in on, and is skipped
 /// only if the user was deleted.
 pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: ChipId) {
     let side = b.objects.get(r).alliance;
@@ -310,7 +310,7 @@ pub fn undim_screen(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `object_timefreezeEnd` (the controller's state 8): once the other side
-/// is done too, the side that stopped time starts it again (ending the
+/// is done too, the side that started the dimming ends it (ending the
 /// other side's controller), and the controller is freed.
 pub fn end(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init != 0 {

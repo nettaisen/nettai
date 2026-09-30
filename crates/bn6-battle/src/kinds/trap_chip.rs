@@ -8,14 +8,14 @@
 use crate::battle::{Battle, LinkedRecord};
 use crate::kinds::common;
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
-use crate::dimming::{self, CutInChip};
+use crate::dimming::{self, DimmingChip};
 
 pub const INDEX: u8 = 0x2A;
 
 /// The controller's own state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    pub chip: CutInChip,
+    pub chip: DimmingChip,
     /// The damage word (object +0x2C), kept for the counterattack.
     pub damage: u32,
 }
@@ -35,7 +35,7 @@ pub fn spawn(
     element: u8,
     params: [u8; 4],
     damage: u32,
-    chip: CutInChip,
+    chip: DimmingChip,
 ) -> Option<ObjectRef> {
     let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), params)?;
     let (panel, alliance) = {

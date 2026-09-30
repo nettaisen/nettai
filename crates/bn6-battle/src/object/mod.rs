@@ -150,7 +150,7 @@ pub struct Object {
     /// BattleObject+0x30 / +0x32: the whole-pixel X and Z an actor shakes
     /// around while dimmed, saved when the dimming handler first runs
     /// (`sub_8017AB4`). Other object kinds use these halfwords for other
-    /// things (e.g. a cut-in chip's id and bonus).
+    /// things (e.g. a dimming chip's id and bonus).
     pub shake_origin_x: i16,
     pub shake_origin_z: i16,
     pub pos: Vec3,

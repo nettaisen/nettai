@@ -52,7 +52,7 @@ pub(super) fn a_chargeable(b: &Battle, r: ObjectRef) -> bool {
 }
 
 /// `sub_8013236`: whether chip `id` charges on A in the navi's form: its
-/// attack family matches the form (damaging, not cut-in chips; any
+/// attack family matches the form (damaging, not dimming chips; any
 /// Null-family chip in Beast Out).
 fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
     use crate::content::{ChipFamily as F, ChipFlags};
@@ -61,7 +61,7 @@ fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
     }
     let c = b.content.chip(id);
     let (family, form) = (c.family, stats(b, r).form.0);
-    let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::CUT_IN);
+    let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::DIMMING);
     let charges = (form == 2 && family == F::Null && damaging)
         || (matches!(form, 3 | 0xF) && ((0x4C..=0x4F).contains(&id) || family == F::Sword) && damaging)
         || ((0x0B..=0x16).contains(&form) && family == F::Null)
@@ -89,12 +89,12 @@ fn b_chargeable(b: &Battle, r: ObjectRef) -> bool {
 fn decode(b: &mut Battle, r: ObjectRef) {
     let f0 = ai(b, r).requests;
     if b.is_dimmed() {
-        // Only a dimming counter chip can be requested.
-        if !chips_enabled(b, r) || f0 & request::COUNTER_CUT_IN != 0 || next_chip(b, r) == NO_CHIP {
+        // Only a dimming chip can cut in.
+        if !chips_enabled(b, r) || f0 & request::CUT_IN != 0 || next_chip(b, r) == NO_CHIP {
             return;
         }
         if ai(b, r).dimmed_pad.pressed & keys::A != 0 {
-            ai_mut(b, r).requests |= request::COUNTER_CUT_IN;
+            ai_mut(b, r).requests |= request::CUT_IN;
         }
         return;
     }

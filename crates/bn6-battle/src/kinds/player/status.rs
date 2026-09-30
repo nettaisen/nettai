@@ -831,17 +831,17 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
     set_attack(b, r, 0x1C, 0);
 }
 
-/// `sub_800BEDA`: the navi may counter the other side's cut-in: its own
+/// `sub_800BEDA`: the navi may cut in on the other side's dimming: its own
 /// side isn't freezing (or it is waiting on a counter), and the other
-/// side's chip, which can be countered, is showing its name.
-fn can_counter_cut_in(b: &Battle, r: ObjectRef) -> bool {
+/// side's chip, which can be cut in on, is showing its telop.
+fn can_cut_in(b: &Battle, r: ObjectRef) -> bool {
     use crate::dimming::DimmingState;
     let side = b.objects.get(r).alliance as usize;
     let own = b.dimming[side];
     let other = b.dimming[side ^ 1];
     own.user.is_none_or(|u| u == r)
         && matches!(own.state, DimmingState::Idle | DimmingState::Waiting)
-        && !other.uncounterable
+        && !other.no_cut_in
         && other.state == DimmingState::ShowingName
 }
 
@@ -849,15 +849,15 @@ fn can_counter_cut_in(b: &Battle, r: ObjectRef) -> bool {
 /// draw per shaking tick).
 fn while_dimmed(b: &mut Battle, r: ObjectRef) {
     let player = navi_record(b, r).actor_type == ActorType::Player;
-    if player && is_link(b) && ai(b, r).requests & request::COUNTER_CUT_IN != 0 {
-        // The next chip must stop time too.
+    if player && is_link(b) && ai(b, r).requests & request::CUT_IN != 0 {
+        // The next chip must be a dimming chip too.
         let chip = super::next_chip(b, r);
         let freezes = chip != crate::hand::NO_CHIP
-            && b.content.chip(chip).flags.has(crate::content::ChipFlags::CUT_IN);
-        if can_counter_cut_in(b, r) && freezes {
-            panic!("dimming counter chips (sub_8017AB4) are not implemented yet");
+            && b.content.chip(chip).flags.has(crate::content::ChipFlags::DIMMING);
+        if can_cut_in(b, r) && freezes {
+            panic!("cut-ins (sub_8017AB4) are not implemented yet");
         }
-        ai_mut(b, r).requests &= !(request::COUNTER_CUT_IN | request::CHARGED_CHIP | request::CHIP);
+        ai_mut(b, r).requests &= !(request::CUT_IN | request::CHARGED_CHIP | request::CHIP);
     }
     let o = b.objects.get_mut(r);
     if o.prevent_anim == 0 {
