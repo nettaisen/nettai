@@ -8,6 +8,7 @@
 //! in its own state struct in `AttackVars::action`.
 
 pub mod beast_rush;
+pub mod cross_special;
 pub mod instant;
 pub mod movement;
 pub mod navi_chip;
@@ -30,6 +31,7 @@ pub enum ActionVars {
     Move(movement::Vars),
     FormChange(transform::Vars),
     Instant(instant::Vars),
+    CrossSpecial(cross_special::Vars),
     /// A content action's declared state (see `content`).
     Content(bn6_content_api::ContentState),
 }
@@ -44,6 +46,7 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
         dimming_chip::ACTION => dimming_chip::update(b, r),
         navi_chip::ACTION => navi_chip::update(b, r),
         instant::ACTION => instant::update(b, r),
+        cross_special::ACTION => cross_special::update(b, r),
         _ => panic!("player action {action:#x} is not implemented yet"),
     }
 }
