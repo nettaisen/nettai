@@ -104,31 +104,6 @@ impl<'a> IntoIterator for &'a ActorList {
     }
 }
 
-impl BattleSettings {
-    /// Settings from their 16-byte encoding. Bytes 12..16 name the actor
-    /// list by its original address, which `content` resolves. Byte 1
-    /// (read by `GetBattleSettingsUnk01`, outside the battle simulation)
-    /// and byte 7 (no reader found) are not kept.
-    pub fn netbattle_from_bytes(b: &[u8], content: &Content) -> BattleSettings {
-        let address = u32::from_le_bytes(b[12..16].try_into().unwrap());
-        let actors = content
-            .rules
-            .stages
-            .actor_list_at(address)
-            .unwrap_or_else(|| panic!("battle settings name an unknown actor list {address:#010x}"));
-        BattleSettings {
-            layout: b[0],
-            music: b[2],
-            mode: b[3],
-            background: b[4],
-            battle_number: b[5],
-            panel_pattern: b[6],
-            effects: u32::from_le_bytes(b[8..12].try_into().unwrap()),
-            actors,
-        }
-    }
-}
-
 /// A navi (NaviStats+0x29): MegaMan, or one of the link navis.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Navi(pub u8);
@@ -252,8 +227,8 @@ pub struct NaviCustBugs {
 }
 
 /// A navi's in-battle stats (the game's 0x64-byte NaviStats block). Only
-/// the bytes the engine uses are modeled; `from_bytes`/`to_bytes` are the
-/// one place that knows the layout.
+/// the bytes the engine uses are modeled; bn6-compat's codec knows the
+/// block's layout (the field comments give each one's offset).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviStats {
     /// +0x01: buster attack level.
@@ -321,165 +296,96 @@ pub struct NaviStats {
 }
 
 impl NaviStats {
-    /// Decode the game's 0x64-byte block.
-    pub fn from_bytes(b: &[u8; 0x64]) -> NaviStats {
-        let u16at = |i: usize| u16::from_le_bytes([b[i], b[i + 1]]);
-        let flag = |i: usize| b[i] != 0;
-        NaviStats {
-            attack: b[0x01],
-            rapid: b[0x02],
-            charge: b[0x03],
-            first_barrier: b[0x06],
-            gauge_speed: match b[0x08] {
-                0 => GaugeSpeed::Normal,
-                1 => GaugeSpeed::Fast,
-                2 => GaugeSpeed::Slow,
-                v => panic!("gauge speed {v}"),
-            },
-            reg_up: b[0x09],
-            custom_level: b[0x0A],
-            mega_level: b[0x0B],
-            giga_level: b[0x0C],
-            support: (b[0x0D] != 0xFF).then(|| SupportNavis {
-                rush: b[0x0D] & 1 != 0,
-                beat: b[0x0D] & 2 != 0,
-                tango: b[0x0D] & 4 != 0,
-            }),
-            mood: b[0x0E],
-            element: b[0x10],
-            starting_form: Form(b[0x17]),
-            float_shoes: flag(0x1B),
-            air_shoes: flag(0x1C),
-            undershirt: flag(0x1D),
-            super_armor: flag(0x23),
-            version: b[0x20],
-            beast_out_counter: b[0x21],
-            sun: flag(0x22),
-            navi: Navi(b[0x29]),
-            navi_variant: b[0x2B],
-            form: Form(b[0x2C]),
-            folder: b[0x2D],
-            folder_reg: [b[0x2E], b[0x2F]],
-            max_base_hp: u16at(0x3E),
-            hp: u16at(0x40),
-            max_hp: u16at(0x42),
-            chip_recovery: u16at(0x50),
-            folder_tags: [[b[0x56], b[0x57]], [b[0x58], b[0x59]]],
-            chip_shuffle: flag(0x60),
-            number_open: b[0x61] == 1,
-            weapons: NaviWeapons {
-                buster: b[0x04],
-                charge_shot: b[0x05],
-                back_special: b[0x07],
-                a_charge: b[0x39],
-                mode9_a: b[0x44],
-                buster_shot: b[0x4D],
-                charge_shot_kind: b[0x4F],
-            },
-            bugs: NaviCustBugs {
-                auto_step: b[0x11],
-                panel_trail_kind: b[0x12],
-                panel_trail_level: b[0x13],
-                buster_blanks: b[0x14],
-                buster_charged: b[0x15],
-                hit_status: b[0x16],
-                hp_drain: b[0x18],
-                custom_drain: b[0x19],
-                battle_start: b[0x1A],
-                emotion: b[0x24],
-                processing: b[0x31],
-                starting_damage: b[0x3D],
-                status_immunity: flag(0x52),
-                custom_damage: u16at(0x54),
-                hand_shrink_turn: b[0x63],
-            },
-        }
-    }
-
-    /// Encode the modeled fields (other bytes are zero).
-    pub fn to_bytes(&self) -> [u8; 0x64] {
-        let mut b = [0u8; 0x64];
-        let put16 =
-            |b: &mut [u8; 0x64], i: usize, v: u16| b[i..i + 2].copy_from_slice(&v.to_le_bytes());
-        b[0x01] = self.attack;
-        b[0x02] = self.rapid;
-        b[0x03] = self.charge;
-        b[0x06] = self.first_barrier;
-        b[0x08] = self.gauge_speed as u8;
-        b[0x09] = self.reg_up;
-        b[0x0A] = self.custom_level;
-        b[0x0B] = self.mega_level;
-        b[0x0C] = self.giga_level;
-        b[0x0D] = match self.support {
-            None => 0xFF,
-            Some(s) => s.rush as u8 | (s.beat as u8) << 1 | (s.tango as u8) << 2,
-        };
-        b[0x0E] = self.mood;
-        b[0x10] = self.element;
-        b[0x17] = self.starting_form.0;
-        b[0x1B] = self.float_shoes as u8;
-        b[0x1C] = self.air_shoes as u8;
-        b[0x1D] = self.undershirt as u8;
-        b[0x23] = self.super_armor as u8;
-        b[0x20] = self.version;
-        b[0x21] = self.beast_out_counter;
-        b[0x22] = self.sun as u8;
-        b[0x29] = self.navi.0;
-        b[0x2B] = self.navi_variant;
-        b[0x2C] = self.form.0;
-        b[0x2D] = self.folder;
-        b[0x2E] = self.folder_reg[0];
-        b[0x2F] = self.folder_reg[1];
-        put16(&mut b, 0x3E, self.max_base_hp);
-        put16(&mut b, 0x40, self.hp);
-        put16(&mut b, 0x42, self.max_hp);
-        put16(&mut b, 0x50, self.chip_recovery);
-        b[0x56] = self.folder_tags[0][0];
-        b[0x57] = self.folder_tags[0][1];
-        b[0x58] = self.folder_tags[1][0];
-        b[0x59] = self.folder_tags[1][1];
-        b[0x60] = self.chip_shuffle as u8;
-        b[0x61] = self.number_open as u8;
-        let w = &self.weapons;
-        b[0x04] = w.buster;
-        b[0x05] = w.charge_shot;
-        b[0x07] = w.back_special;
-        b[0x39] = w.a_charge;
-        b[0x44] = w.mode9_a;
-        b[0x4D] = w.buster_shot;
-        b[0x4F] = w.charge_shot_kind;
-        let g = &self.bugs;
-        b[0x11] = g.auto_step;
-        b[0x12] = g.panel_trail_kind;
-        b[0x13] = g.panel_trail_level;
-        b[0x14] = g.buster_blanks;
-        b[0x15] = g.buster_charged;
-        b[0x16] = g.hit_status;
-        b[0x18] = g.hp_drain;
-        b[0x19] = g.custom_drain;
-        b[0x1A] = g.battle_start;
-        b[0x24] = g.emotion;
-        b[0x31] = g.processing;
-        b[0x3D] = g.starting_damage;
-        b[0x52] = g.status_immunity as u8;
-        put16(&mut b, 0x54, g.custom_damage);
-        b[0x63] = g.hand_shrink_turn;
-        b
-    }
-
     /// A hit's bug code can name any stat byte below 0x64 by its offset
-    /// and set it (`sub_80139F6`). Offsets the engine doesn't model are
-    /// not supported.
+    /// and set it (`sub_80139F6`): the field at that offset takes the
+    /// byte (a halfword's low or high byte; a flag is set by any nonzero
+    /// byte). Offsets the engine doesn't model are not supported.
     pub fn set_byte_by_bug_code(&mut self, offset: u8, value: u8) {
-        let mut b = self.to_bytes();
-        b[offset as usize] = value;
-        let updated = NaviStats::from_bytes(&b);
-        // An unmodeled byte reads back as 0 (flags read back as 1).
-        let back = updated.to_bytes()[offset as usize];
-        if back != value && !(back == 1 && value != 0) {
-            panic!("bug code writes NaviStats+{offset:#x}, which is not modeled");
+        let flag = value != 0;
+        let low = |w: &mut u16| *w = (*w & 0xFF00) | value as u16;
+        let high = |w: &mut u16| *w = (*w & 0x00FF) | (value as u16) << 8;
+        let w = &mut self.weapons;
+        let g = &mut self.bugs;
+        match offset {
+            0x01 => self.attack = value,
+            0x02 => self.rapid = value,
+            0x03 => self.charge = value,
+            0x04 => w.buster = value,
+            0x05 => w.charge_shot = value,
+            0x06 => self.first_barrier = value,
+            0x07 => w.back_special = value,
+            0x08 => {
+                self.gauge_speed = match value {
+                    0 => GaugeSpeed::Normal,
+                    1 => GaugeSpeed::Fast,
+                    2 => GaugeSpeed::Slow,
+                    v => panic!("bug code sets the gauge speed to {v}, which is not modeled"),
+                }
+            }
+            0x09 => self.reg_up = value,
+            0x0A => self.custom_level = value,
+            0x0B => self.mega_level = value,
+            0x0C => self.giga_level = value,
+            0x0D => {
+                self.support = (value != 0xFF).then_some(SupportNavis {
+                    rush: value & 1 != 0,
+                    beat: value & 2 != 0,
+                    tango: value & 4 != 0,
+                })
+            }
+            0x0E => self.mood = value,
+            0x10 => self.element = value,
+            0x11 => g.auto_step = value,
+            0x12 => g.panel_trail_kind = value,
+            0x13 => g.panel_trail_level = value,
+            0x14 => g.buster_blanks = value,
+            0x15 => g.buster_charged = value,
+            0x16 => g.hit_status = value,
+            0x17 => self.starting_form = Form(value),
+            0x18 => g.hp_drain = value,
+            0x19 => g.custom_drain = value,
+            0x1A => g.battle_start = value,
+            0x1B => self.float_shoes = flag,
+            0x1C => self.air_shoes = flag,
+            0x1D => self.undershirt = flag,
+            0x20 => self.version = value,
+            0x21 => self.beast_out_counter = value,
+            0x22 => self.sun = flag,
+            0x23 => self.super_armor = flag,
+            0x24 => g.emotion = value,
+            0x29 => self.navi = Navi(value),
+            0x2B => self.navi_variant = value,
+            0x2C => self.form = Form(value),
+            0x2D => self.folder = value,
+            0x2E => self.folder_reg[0] = value,
+            0x2F => self.folder_reg[1] = value,
+            0x31 => g.processing = value,
+            0x39 => w.a_charge = value,
+            0x3D => g.starting_damage = value,
+            0x3E => low(&mut self.max_base_hp),
+            0x3F => high(&mut self.max_base_hp),
+            0x40 => low(&mut self.hp),
+            0x41 => high(&mut self.hp),
+            0x42 => low(&mut self.max_hp),
+            0x43 => high(&mut self.max_hp),
+            0x44 => w.mode9_a = value,
+            0x4D => w.buster_shot = value,
+            0x4F => w.charge_shot_kind = value,
+            0x50 => low(&mut self.chip_recovery),
+            0x51 => high(&mut self.chip_recovery),
+            0x52 => g.status_immunity = flag,
+            0x54 => low(&mut g.custom_damage),
+            0x55 => high(&mut g.custom_damage),
+            0x56 => self.folder_tags[0][0] = value,
+            0x57 => self.folder_tags[0][1] = value,
+            0x58 => self.folder_tags[1][0] = value,
+            0x59 => self.folder_tags[1][1] = value,
+            0x60 => self.chip_shuffle = flag,
+            // The game tests the byte for 1.
+            0x61 => self.number_open = value == 1,
+            0x63 => g.hand_shrink_turn = value,
+            _ => panic!("bug code writes NaviStats+{offset:#x}, which is not modeled"),
         }
-        *self = updated;
     }
 }
 
@@ -501,14 +407,6 @@ pub struct Stage {
     /// Index into the content's battle settings (`Stages::settings`).
     pub settings: u8,
     pub background: u8,
-}
-
-impl Stage {
-    /// Decode the init exchange's two stage pairs (settings index, then
-    /// background, per round).
-    pub fn pair_from_bytes(b: &[u8]) -> [Stage; 2] {
-        [Stage { settings: b[0], background: b[1] }, Stage { settings: b[2], background: b[3] }]
-    }
 }
 
 /// Everything a round starts from.
@@ -565,11 +463,6 @@ impl Default for SpTimes {
 }
 
 impl SpTimes {
-    /// Decode the 0x28-byte record.
-    pub fn from_bytes(b: &[u8]) -> SpTimes {
-        SpTimes(std::array::from_fn(|i| u16::from_le_bytes([b[2 * i], b[2 * i + 1]])))
-    }
-
     /// The frames SP navi chip `n` (formula `n + 1`) took to delete.
     pub fn frames(&self, n: usize) -> u16 {
         self.0[n]
@@ -593,49 +486,14 @@ impl RoundSetup {
 mod tests {
     use super::*;
 
-    /// The left navi's stats at the start of the machgun replay.
-    const MACHGUN_P0: &str = "08000000000100ff00320505010080000000ff00000000000000000101000001010301000000001f0000000a0000ffffff0000000000000000ff00000000e803e803e8030000010000000a0000000000000000000000ffffffffffff0000000000000000";
-
-    fn bytes(hex: &str) -> [u8; 0x64] {
-        let v: Vec<u8> = (0..hex.len())
-            .step_by(2)
-            .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
-            .collect();
-        v.try_into().unwrap()
-    }
-
-    #[test]
-    fn navi_stats_decode() {
-        let s = NaviStats::from_bytes(&bytes(MACHGUN_P0));
-        assert_eq!((s.hp, s.max_hp, s.max_base_hp), (1000, 1000, 1000));
-        assert_eq!(s.navi, Navi::MEGAMAN);
-        assert_eq!(s.form, Form::NONE);
-        assert!(s.float_shoes && s.air_shoes && !s.undershirt && !s.super_armor);
-        assert_eq!(s.mood, 0x80);
-        assert_eq!(s.support, Some(SupportNavis::default()));
-        assert_eq!(
-            (
-                s.weapons.buster,
-                s.weapons.charge_shot,
-                s.weapons.back_special
-            ),
-            (0, 1, 0xFF)
-        );
-        assert_eq!(s.beast_out_counter, 3);
-    }
-
-    #[test]
-    fn navi_stats_encode_round_trips() {
-        let s = NaviStats::from_bytes(&bytes(MACHGUN_P0));
-        assert_eq!(NaviStats::from_bytes(&s.to_bytes()), s);
-    }
-
     #[test]
     fn bug_code_writes_a_named_stat() {
-        let mut s = NaviStats::from_bytes(&bytes(MACHGUN_P0));
+        let mut s = NaviStats { max_hp: 1000, ..Default::default() };
         s.set_byte_by_bug_code(0x1D, 1);
         assert!(s.undershirt);
         s.set_byte_by_bug_code(0x16, 2);
         assert_eq!(s.bugs.hit_status, 2);
+        s.set_byte_by_bug_code(0x43, 0x01);
+        assert_eq!(s.max_hp, 0x01E8);
     }
 }

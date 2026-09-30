@@ -9,15 +9,8 @@ description = "Rollback netplay for the battle engine on getgud, with a simulate
 bn6-battle.workspace = true
 getgud.workspace = true
 
-[features]
-# Reading golden traces (examples/rollback_cost).
-trace = ["bn6-battle/trace"]
-
 [dev-dependencies]
 bn6-battle = { workspace = true, features = ["test-content"] }
-# rollback_cost loads the BN6 content pack.
+# rollback_cost loads the BN6 content pack and replays a golden trace.
 bn6-content = { path = "../bn6-content" }
-
-[[example]]
-name = "rollback_cost"
-required-features = ["trace"]
+bn6-compat = { workspace = true, features = ["trace"] }

@@ -590,7 +590,10 @@ fn scripted_dimming_chips_and_rocks_roll_back() {
 /// pattern 0x38: columns 1-3 are side 0's), not a link battle.
 fn rock_battle() -> Battle {
     use crate::setup::NaviStats;
-    let mut setup = testing::round_setup(testing::ROCK_BATTLE, NaviStats::from_bytes(&[0; 0x64]));
+    // An all-zero stats block: support navis byte 0 (none of them, but not
+    // 0xFF), everything else zero.
+    let stats = NaviStats { support: Some(Default::default()), ..Default::default() };
+    let mut setup = testing::round_setup(testing::ROCK_BATTLE, stats);
     setup.settings.effects = 0;
     Battle::new(setup, testing::content())
 }

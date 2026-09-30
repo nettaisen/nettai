@@ -153,13 +153,13 @@ New type: `object::DragStep { Start, Slide, Recover }` (the game's 0, 4, 8). `De
 
 | Old | New | Type | Meaning and evidence |
 |---|---|---|---|
-| `unk_01` | deleted | u8 | Chip block +0x01: always 0 in battle. Only the unreferenced flag-0x40-mode routines `sub_802DE74` and `sub_802E588` use it. `from_bytes` skips it and `to_bytes` writes 0. Every chip block in both traces has 0 there. |
+| `unk_01` | deleted | u8 | Chip block +0x01: always 0 in battle. Only the unreferenced flag-0x40-mode routines `sub_802DE74` and `sub_802E588` use it. bn6-compat's `codec::chip_hand` skips it and `chip_hand_bytes` writes 0. Every chip block in both traces has 0 there. |
 
 ## BattleSettings (`setup.rs`; the game's 16-byte record)
 
 | Old | New | Type | Meaning and evidence |
 |---|---|---|---|
-| `unk_01` | deleted | u8 | Settings+0x01: read through `GetBattleSettingsUnk01` by `sub_8026F1A` and `sub_80AA4C0`, outside the battle simulation. It is 0x64 in both traces. `netbattle_from_bytes` skips it. |
+| `unk_01` | deleted | u8 | Settings+0x01: read through `GetBattleSettingsUnk01` by `sub_8026F1A` and `sub_80AA4C0`, outside the battle simulation. It is 0x64 in both traces. bn6-compat's `codec::battle_settings` skips it. |
 | `unk_07` | deleted | u8 | Settings+0x07: no reader found; 0 in both traces. |
 
 ## ChipData (`content::ChipData`, extracted by `bn6-extract`)
