@@ -1,0 +1,8 @@
+# AquaNdl's volley (effect object #0x40, `sub_80E50C4`) is a script. Its position is its
+# spawner's registers, a code address among them, and never read.
+
+[kind]
+pool = "effect"
+index = 0x40
+script = "needle_volley.luau"
+scratch_position = true
