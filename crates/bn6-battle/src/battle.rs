@@ -291,6 +291,9 @@ pub struct SideState {
     /// FstGauge), counted down by `sub_80107D4`.
     pub slow_gauge_ticks: u16,
     pub fast_gauge_ticks: u16,
+    /// +0x44: the target the side tracks (an actor of the other side), which
+    /// an obstacle leaving hands on (`sub_802EF74`).
+    pub tracked: Option<ObjectRef>,
 }
 
 /// A side's defensive-chip record (0x10 bytes per side at 0x02036720):
