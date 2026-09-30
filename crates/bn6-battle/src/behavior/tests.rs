@@ -29,7 +29,13 @@ fn battles_run_the_content_scripts() {
         [
             "area-grab",
             "attachment",
+            "blast-fire",
+            "blast-man",
+            "charge-car",
+            "charge-man",
             "dust-ball",
+            "elec-man",
+            "elec-thunder",
             "elmnt-bolt",
             "elmnt-ice",
             "elmnt-man",
@@ -38,14 +44,20 @@ fn battles_run_the_content_scripts() {
             "erase-man",
             "erase-mark",
             "grab-shot",
+            "heat-flame",
+            "heat-man",
             "meteor",
+            "slash-man",
+            "slash-wave",
             "spout-ball",
             "spout-geyser",
             "spout-man",
             "spout-mark",
             "spout-pillar",
             "spout-splash",
-            "sun-beam"
+            "sun-beam",
+            "tengu-man",
+            "tomahawk-man"
         ]
     );
     assert!(b.behaviors.action(0x37).is_some(), "GunDelSol is a script");
@@ -139,10 +151,29 @@ fn the_water_navi_attacks() {
 }
 
 #[test]
+fn the_navi_chip_navis_come_and_go() {
+    use crate::object::Pool::Actor;
+    // Each navi chip's navi comes (and the duel goes on without a content
+    // error); its attacks depend on where the players stand.
+    for (chip, navi) in [
+        (testing::HEAT, 0x07),
+        (testing::ELEC, 0x08),
+        (testing::SLASH, 0x0D),
+        (testing::CHARGE, 0x16),
+        (testing::TOMAHAWK, 0x0A),
+        (testing::TENGU, 0x0C),
+        (testing::BLAST, 0x06),
+    ] {
+        let seen = duel_with(&[chip], 1500, 11);
+        assert!(seen.get(&(Actor, navi)).copied().unwrap_or(0) > 0, "navi {navi:#x} of chip {chip:#x}: {seen:?}");
+    }
+}
+
+#[test]
 fn scripted_chips_roll_back() {
     // A copy of the battle taken at any tick plays on exactly as the
     // battle does: the scripts' state is all in the battle.
-    for chips in [&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3][..], &[testing::ELEMENTS], &[testing::SPOUT]] {
+    for chips in [&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3][..], &[testing::ELEMENTS], &[testing::SPOUT], &[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST]] {
         let setup = || scenario::setup_with(chips);
         let tape = scenario::record_on(setup(), 2400, 11);
         let mut b = Battle::new(setup(), scenario::content());
