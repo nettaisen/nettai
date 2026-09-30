@@ -1395,6 +1395,11 @@ export type ChipSpec = {
     dark_substitute: any?,
     modifier: any?,
     program_advances: { any }?,
+    -- Transitional (counted by the ratchet): the original's subtype and
+    -- parameter bytes, for what reads them of the chip besides its own use
+    -- (SlashCross's charged slash reads a sword's). `action` and `script`
+    -- (a behaviour still a v1 module) come with step 5.
+    legacy: { subtype: number?, params: { number }? }?,
     action: Action?,
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
