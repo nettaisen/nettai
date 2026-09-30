@@ -4,7 +4,7 @@
 //! come off (the death hooks `off_801105C`, `sub_8011384`), and the flags
 //! and helper objects a form adds (`sub_8014536`).
 
-use super::{ai, body_hit_modifier, set_flag1, stats};
+use super::{ai, body_hit_modifier, form_of, set_flag1};
 use crate::actor::ActorType;
 use crate::battle::Battle;
 use crate::collision::f1;
@@ -235,7 +235,7 @@ pub(super) fn take_off_overlay(b: &mut Battle, r: ObjectRef, form: Form) {
 /// `sub_8014536`: the flags and helper objects the current form adds
 /// (part of the status reset).
 pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
-    let form = stats(b, r).form;
+    let form = form_of(b, r);
     match form.0 {
         // nullsub_50 .. nullsub_56, nullsub_4.
         0..=6 | 10 => {}
@@ -291,7 +291,7 @@ pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
 /// form's flags come back, as `apply_form_flags` gave them but without the
 /// lock-on markers (`off_80146B8`).
 pub(super) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
-    let form = stats(b, r).form;
+    let form = form_of(b, r);
     // sub_8014760: floating (AirShoe and FloatShoe), the floating body.
     let floating = |b: &mut Battle| {
         set_flag1(b, r, f1::AIRSHOE | f1::FLOATSHOE);

@@ -228,7 +228,7 @@ impl Battle {
         use crate::setup::effects;
         // The glitch is kept outside random battles and battle modes 1-5
         // and 8.
-        let mode = self.setup.settings.mode;
+        let mode = self.round.mode_copy;
         let keeps = self.setup.settings.effects & effects::RANDOM == 0 && !matches!(mode, 1..=5 | 8);
         for c in &mut self.consoles {
             let w = &mut c.emotion_window;
@@ -261,8 +261,8 @@ impl Battle {
             if !self.consoles[side].emotion_window.running {
                 continue;
             }
-            let stats = self.stats[side];
-            self.consoles[side].update_emotion_window(stats.navi, bugs(&stats) != 0);
+            let (navi, bugged) = (self.navi(side), bugs(&self.stats[side]) != 0);
+            self.consoles[side].update_emotion_window(navi, bugged);
         }
     }
 

@@ -70,7 +70,8 @@ precisely what a format can't carry and how each case is handled.
 content.toml                         manifest: format, version, name, what it holds
 chips/ navis/ objects/ rules/ registries/   the battle data (content-pack.md)
 graphics/
-  sprites/CC-II/                     one folder per sprite: category, index (hex)
+  sprites/NAME/                      one folder per sprite, under its name (compat/assets.toml;
+                                     sprite-CC-II without one); sprite.json holds its id
     atlas.png                        part images; palette = the sprite's palette set
     sprite.json                      tile sets (atlas regions) and frame layouts
     animations.json                  timing: ticks and flags per frame
@@ -78,11 +79,12 @@ graphics/
   field/
     tiles.png                        panel tiles; palette rows = background palette slots
     field.json                       panel blocks, edges, highlights, cycling palettes
-  backgrounds/NN/                    one folder per background id; missing = none
+  backgrounds/NAME/                   one folder per background (background.json holds its id)
     tiles.png  map.tmj  background.json  anim-K.png
   hud/
-    hud.json  layer.png  gauge.png  font.png  enemy-digits.png  chip-icons.png
-    mugshot-NN.png  counts.png  banners.png  banner-digits.png  waiting.png
+    hud.json  layer.png  gauge.png  font.png  enemy-digits.png  counts.png
+    banner-digits.png  waiting.png
+    hidden-icon.png  chip-icons/CHIP.png  mugshots/NAME.png  banners/NAME.png
 sound/
   sound.toml                         mixer, music players, song table size
   samples.toml                       per sample: file, exact rate, loop start, stamp
@@ -90,8 +92,8 @@ sound/
   waves.toml                         PSG wave shapes
   keymaps.toml                       key splits
   voicegroups/vg-NNN.toml            instruments (drum kits and split groups too)
-  songs/song-XXX.mid                 a song (XXX = song id in hex)
-  songs/song-XXX.toml                its header and stamps
+  songs/NAME.mid                     a song, under its name (sound-XXX without one)
+  songs/NAME.toml                    its header (with its song id) and stamps
 ```
 
 BN6's pack is 2,759 files, 10.6 MiB (468 of the files, about 2 MiB, are
@@ -219,8 +221,8 @@ battle data's loader puts it in the engine's `Content::animations`.
 
 ### 3.5 The Aseprite view
 
-`bn6-content aseprite-export <pack> [CC-II ...]` writes
-`graphics/sprites/CC-II/sprite.aseprite`; `aseprite-import` reads it back. It
+`bn6-content aseprite-export <pack> [NAME ...]` writes
+`graphics/sprites/NAME/sprite.aseprite`; `aseprite-import` reads it back. It
 exists because whole frames are what artists want to see, and Aseprite can
 show them without flattening:
 
@@ -278,7 +280,7 @@ highlights, and the cycling panel palettes (slot, start timer, frames of
 `:v` or `:hv` when flipped; a colour is `#rrggbb`, or `0xNNNN` (raw BGR555)
 when it has bits RGB can't hold.
 
-**Backgrounds** (`graphics/backgrounds/NN/`): `tiles.png`; `map.tmj`, a Tiled
+**Backgrounds** (`graphics/backgrounds/NAME/`): `tiles.png`; `map.tmj`, a Tiled
 JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
 `tiles.png`, gid = tile number + 1, flips as Tiled's flip bits; palettes, when
 any cell's isn't 0, as the layer's `palettes` property, a hex digit a cell);
@@ -357,7 +359,7 @@ MIDI leaves undefined; mid2agb ignores them):
 | where TEMPO sits among track 0's commands | conductor tempo goes after the tick's KEYSH, else it stays on its track | all 397 open tick 0 after KEYSH |
 | song header: player, priority, reverb, voicegroup | sidecar | |
 
-The sidecar (`song-XXX.toml`):
+The sidecar (`NAME.toml`):
 
 ```toml
 midi = "song-015.mid"
@@ -658,8 +660,8 @@ the exporters), about 1 s. It is the only extraction.
     cargo run -p bn6-frontend -- <trace.jsonl> --pack data/content/bn6
     cargo run -p bn6-content -- check data/content/bn6            # lint every file
     cargo run -p bn6-content -- verify data/content/bn6 <reference-pack> [--seconds N]
-    cargo run -p bn6-content -- aseprite-export data/content/bn6 [CC-II ...]
-    cargo run -p bn6-content -- aseprite-import data/content/bn6 [CC-II ...]
+    cargo run -p bn6-content -- aseprite-export data/content/bn6 [NAME ...]
+    cargo run -p bn6-content -- aseprite-import data/content/bn6 [NAME ...]
     cargo run -p bn6-content --example midi_summary -- a.mid b.mid
     cargo run -p bn6-content --example stats -- data/content/bn6
     cargo run -p bn6-content --example audio_stats -- data/content/bn6

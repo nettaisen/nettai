@@ -33,7 +33,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
                 let later = if s.effects & crate::setup::effects::SET != 0 {
                     b.round.round > 1
                 } else {
-                    s.battle_number >= 2
+                    b.content.stage(s.stage).battle_number >= 2
                 };
                 let mode = if later { FadeMode::IntroFromBlack } else { FadeMode::IntroFromWhite };
                 b.fade.start(mode, 0x10);

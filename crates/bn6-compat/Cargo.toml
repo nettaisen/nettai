@@ -7,6 +7,7 @@ description = "The original game's numbers for BN6's content (content/bn6/compat
 
 [dependencies]
 bn6-battle.workspace = true
+bn6-content-api = { path = "../bn6-content-api" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", optional = true }
 toml = "0.8"
@@ -18,4 +19,3 @@ trace = ["dep:serde_json"]
 
 [dev-dependencies]
 bn6-battle = { workspace = true, features = ["test-content"] }
-bn6-content-api = { path = "../bn6-content-api" }

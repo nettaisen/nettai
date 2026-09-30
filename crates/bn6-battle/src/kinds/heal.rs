@@ -33,7 +33,7 @@ const TRAP_SOUND: u16 = 0xA5;
 pub fn heal(b: &mut Battle, r: ObjectRef, amount: u16, anti_recovery: bool) -> bool {
     let alliance = b.objects.get(r).alliance;
     // sub_802CE78: the opponent's defensive-chip record.
-    if anti_recovery && b.linked[(alliance ^ 1) as usize].chip == ANTI_RECOVERY {
+    if anti_recovery && b.chip_number(b.linked[(alliance ^ 1) as usize].chip) == Some(ANTI_RECOVERY) {
         spring_anti_recovery(b, r, amount);
         return true;
     }

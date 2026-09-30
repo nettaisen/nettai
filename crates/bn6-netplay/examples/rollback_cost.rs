@@ -34,15 +34,17 @@ fn main() {
     let rounds = trace::rounds(path).expect("a readable trace");
     let round = &rounds[n - 1];
     let frames: Vec<&trace::Frame> = round.battle_frames().collect();
-    let (limit, _) = trace::run_round(round, &content, bn6_compat::Compat::bn6());
+    let compat = bn6_compat::Compat::bn6();
+    let (limit, _) = trace::run_round(round, &content, compat);
+    let ids = bn6_compat::codec::Ids::new(&content, compat);
     let inputs: Vec<[Bn6Input; 2]> = (0..limit)
         .map(|i| {
-            let (players, events) = round.tick_inputs(i, &frames);
+            let (players, events) = round.tick_inputs(i, &frames, &ids);
             [Bn6Input { tick: players[0], events }, Bn6Input { tick: players[1], events: Default::default() }]
         })
         .collect();
     // Side 0's world: its input is `local`, side 1's the remote.
-    let mut world = BattleWorld::new(round.start(content.clone()), 0);
+    let mut world = BattleWorld::new(round.start(content.clone(), compat), 0);
     let runtime = bn6_battle::behavior::Behaviors::for_content(&world.game().content).unwrap().runtime().to_string();
     let step = |w: &mut BattleWorld<_>, [a, b]: &[Bn6Input; 2]| {
         let Ok(()) = w.step(a, std::slice::from_ref(b));
