@@ -57,4 +57,34 @@ function panels.in_column(x: number, require: number, forbid: number): { number 
     return out
 end
 
+-- A panel region's offsets ({dx, dy} each, dx toward the facing side).
+local function region(n: number): { { number } }
+    local r = data.regions[n]
+    if not r then
+        error(string.format("panel region %#x reads past PanelOffsetListsPointerTable", n))
+    end
+    return r
+end
+
+-- `object_highlightPanelRegion`: highlight region `n`'s panels around (x,
+-- y), dx along `facing` (+1 right, -1 left).
+function panels.highlight_region(x: number, y: number, n: number, facing: number)
+    for _, o in region(n) do
+        field.highlight(x + o[1] * facing, y + o[2])
+    end
+end
+
+-- `object_getPanelRegion`: region `n`'s panels around (x, y), dx along
+-- `direction`, that pass `field.check`.
+function panels.region(x: number, y: number, n: number, direction: number, require: number, forbid: number): { number }
+    local out = {}
+    for _, o in region(n) do
+        local px, py = x + o[1] * direction, y + o[2]
+        if field.check(px, py, require, forbid) then
+            table.insert(out, bit32.bor(bit32.lshift(py, 4), px))
+        end
+    end
+    return out
+end
+
 return panels
