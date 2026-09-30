@@ -746,19 +746,24 @@ lib/sparks.luau, lib/regions.luau). What it settled:
   `attachment.attach(owner, look, slot, { anim, while_dimmed, palette_add })`); the attachment kind is a
   definition. Its numeric API (`spawn`, `spawn_with`, by the pack data's rows) stays for its 23 other users:
   the rows become looks at load, from `data`.
-- **The chip records** are the pack data's values field by field, except `beast` (the Beast lock-on mode):
-  lock-on modes are rules/lockon.luau's, which step 5's generator writes; its check reports the chips' missing
-  `beast` until a person adds it.
+- **The chip records** are the pack data's values field by field. `beast = { lockon = 5 }` (the Beast rush and
+  its lock-on mode) takes the mode's number, as 3b reads it, until step 5's generator writes rules/lockon.luau
+  and the chips name its modes.
 - **Shared definitions the generator also writes.** The exemplar made rules/collision.luau (ten types), lib/effects.luau,
   lib/sparks.luau and lib/regions.luau with the entries it uses. The generator must add the entries these
   modules lack rather than skip them (it identifies a collision type by `row_offset`, a region or effect by its
   numbers). The collision types' names other than `thrown` and `hits-navis` were made up by what their flags do:
   `attack` (row 0x04), `piercing` (0x0B), `hit-by-other-side` (0x14), `hit-by-other-side-or-blockers` (0x0D),
   `own-object` (0x0C), `own-thrown-body` (0x4E), `neutral-object` (0x4F), `everything` (0x0F): to review.
-- **Until chips are handles (3b)**, registration by number reaches the chips through a shim,
-  chips/036-minibomb/chip.luau: the 16 chip records still name action 0x12, and the shim runs the chip's own
-  action by subtype (and FlshBom's level). LilBoiler and VDoll, not ported, wind up and fail where they throw,
-  as before. The shim is counted by the ratchet and goes with the chips' records' numbers.
+- **A definition is the chip** (3b): compat's key maps a recorded chip to it, and it runs its own action (the
+  navi's CurAction reads as 0x12 through compat actions.toml's `minibomb/action`). A chip that other records or
+  the ruleset still name by number keeps the pack's record, and its module gives only the action, with its
+  compat key as `id` (`throw.action { id = "poisseed/action", ... }`): PoisSeed, whose number PoisPhar's recipe
+  names. Registration by number reaches such records through a shim, chips/036-minibomb/chip.luau, which runs
+  the chip's own action by subtype (and FlshBom's level). Records still reach it: PoisSeed; LilBoiler and
+  VDoll (not ported: they wind up and fail where they throw, as before); the Cross special's MiniBomb, EnergBom
+  and MegEnBom, which the ruleset's table picks by number and so gets the pack's records; and the test
+  content's numbered bombs. The shim goes when those are definitions or roles (step 5, phase C).
 - **What stays numeric**, having no v2 form yet: statuses (the flash's blinding, the bug bomb's 0x20), bug codes,
   NameIDs (the BlkBomb's 0xD5, the attachment's Cross check) and the absorbed-obstacle kind; the hitbox's
   `hit_effect = 0xFF` ("none"). The ratchet counts what it can see of them.
@@ -822,6 +827,40 @@ modifier 3, effects 24 and 22) becomes these arguments, and `lib/swords/` names 
 the family shares. MchnSwrd/ElemSwrd/AssnSwrd (action 0x49) and VarSwrd/NeoVari compose
 `lib/swords/` builders the same way; `VariSwordSpec.choices`, today a list of chip numbers, becomes a list of
 chips.
+
+**As built** (step 7, the swords exemplar): content/bn6/lib/swords/ (`parts`: the blades, slashes and sounds
+the family shares, and the blade's animation and palette by the navi's arm; `slash`: action 0x13's builder;
+`strike`: action 0x49's; `vari`: the variable swords' library, moved from lib/vari_sword), and a folder per
+chip. `SlashSpec` and `StrikeSpec` are in types.d.luau; DblDream's two swings, CrosSwrd's second hit,
+StepSwrd's step and the elemental swords' colours are arguments (`swings`, `second_hit`, `step`,
+`effect_palette`), and each chip's blade is an attachment look. What it settled:
+
+- **Which chips are definitions.** MchnSwrd, ElemSwrd and AssnSwrd are definitions with their records. The
+  sword family keeps the pack's records, each module giving its chip's action with its compat key as `id`:
+  SlashCross charges every Sword-family chip (and FireSwrd to BambSwrd by number, 0x4C to 0x4F), and its
+  charged slash (weapons 0x11 and 0x12, action 0x41) reads the chip's subtype (the blade, the wave, CrosSwrd's
+  two waves, DblDream's two slashes) and first parameter (StepSwrd's dash) from the record, which a
+  definition's record doesn't have (the lab's `chips/0x051-stepswrd/cross-slash-charged` showed it). Most
+  have other reasons too: Sword, WideSwrd, LongSwrd, WideBlde, LongBlde and LifeSrd are Program Advance
+  ingredients or results; DrkSword is one of the ruleset's dark chips (0x11E to 0x122) and has a substitute
+  chip; Muramasa's damage is a formula (the damage taken), which definitions take in step 10; ProtoMan's own
+  StepSwrd (chips/stepswrd/protoman.luau) is a link navi's chip (0x190 to 0x19A) with damage by his level.
+  They become definitions when SlashCross's weapons convert (the charged slash asks the chip for its slash)
+  and what 3b's reader rejects in a definition (`program_advances`, `dark_substitute`, damage formulas) comes
+  with the v2 API.
+- **The shims.** chips/047-sword/chip.luau (action 0x13) runs a record's slash by subtype (and StepSwrd's first
+  attack parameter, ProtoMan's copy by his chip), for the records above, the Cross special's swords, the
+  variable swords' picks and the test content's blades. chips/056-mchnswrd/chip.luau (action 0x49) is left
+  only the stun strike the ruleset starts by number (the navi's request 0x80000, with the variant the attack
+  holds) and the test content's StunBld. Both go with the 0x12 shim (step 5, phase C: a role for the stun
+  strike).
+- **SlashCross's blade.** The charged slash (action 0x41) raises the blade by the attack's variant
+  (`byte_80EBB64`), which an earlier merge lost; lib/sword's `sword.raise` has it again, and goes into
+  lib/swords when SlashCross's weapons convert.
+- **Asset names** for the family: `sword`, `fire-sword`, `aqua-sword`, `elec-sword`, `sword-slash`,
+  `big-slash`, `cross-slash`, `sword-swing`, `big-sword-swing` (compat/assets.toml and curation.toml).
+- **Verified** on the test content (the blades' duel under rollback, the engine's tests), the type check, and
+  the traces and chip lab on a pack extracted with asset names.
 
 ### 5.3 Cannons and projectiles: one kind, per-chip variants
 
