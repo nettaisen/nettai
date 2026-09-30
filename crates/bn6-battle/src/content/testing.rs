@@ -200,7 +200,7 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x12, "Slash charge", Some(0x41), "12-slash-charge/slash_charge"),
         weapon(0x14, "Erase charge", Some(0x45), "14-erase-charge/erase_charge"),
         weapon(0x16, "Tomahawk charge", Some(0x4A), "16-tomahawk-charge/tomahawk_charge"),
-        weapon(0x19, "Ground charge", Some(0x4D), "19-ground-charge/ground_charge"),
+        weapon(0x19, "Ground drill", Some(0x4D), "19-ground-drill/ground_drill"),
     ];
     // (In routine order, as a pack lists them.)
     weapons.sort_by_key(|w| w.id);
