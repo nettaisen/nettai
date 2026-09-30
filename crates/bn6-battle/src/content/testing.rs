@@ -2,7 +2,7 @@
 //!
 //! Everything here is made up: a MegaMan-like navi and its base form,
 //! a few chips that use GunDelSol, two dimming chips (one grabs a column)
-//! and three navi chips, rocks,
+//! and ten navi chips, rocks,
 //! sprites with short animations, and rules written from the engine's own
 //! flag semantics (docs/engine/field-collision-damage.md). It is not BN6's
 //! data, which comes only from a content pack extracted from the user's ROM
@@ -38,6 +38,20 @@ pub const GRAB: ChipId = 0x07;
 pub const ELEMENTS: ChipId = 0x08;
 /// A navi chip (action 0x1B, subtype 7: the water navi).
 pub const SPOUT: ChipId = 0x09;
+/// A navi chip (action 0x1B, subtype 2: the heat navi).
+pub const HEAT: ChipId = 0x0A;
+/// A navi chip (action 0x1B, subtype 3: the elec navi).
+pub const ELEC: ChipId = 0x0B;
+/// A navi chip (action 0x1B, subtype 4: the slash navi).
+pub const SLASH: ChipId = 0x0C;
+/// A navi chip (action 0x1B, subtype 6: the charge navi).
+pub const CHARGE: ChipId = 0x0D;
+/// A navi chip (action 0x1B, subtype 8: the tomahawk navi).
+pub const TOMAHAWK: ChipId = 0x0E;
+/// A navi chip (action 0x1B, subtype 9: the tengu navi).
+pub const TENGU: ChipId = 0x0F;
+/// A navi chip (action 0x1B, subtype 12: the blast navi).
+pub const BLAST: ChipId = 0x10;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -156,6 +170,18 @@ pub fn scripts() -> Scripts {
                 ("objects/spout-pillar/spout_pillar", "objects/spout-pillar/spout_pillar"),
                 ("objects/spout-geyser/spout_geyser", "objects/spout-geyser/spout_geyser"),
                 ("objects/spout-mark/spout_mark", "objects/spout-mark/spout_mark"),
+                ("objects/heat-man/heat_man", "objects/heat-man/heat_man"),
+                ("objects/heat-flame/heat_flame", "objects/heat-flame/heat_flame"),
+                ("objects/elec-man/elec_man", "objects/elec-man/elec_man"),
+                ("objects/elec-thunder/elec_thunder", "objects/elec-thunder/elec_thunder"),
+                ("objects/slash-man/slash_man", "objects/slash-man/slash_man"),
+                ("objects/slash-wave/slash_wave", "objects/slash-wave/slash_wave"),
+                ("objects/charge-man/charge_man", "objects/charge-man/charge_man"),
+                ("objects/charge-car/charge_car", "objects/charge-car/charge_car"),
+                ("objects/tomahawk-man/tomahawk_man", "objects/tomahawk-man/tomahawk_man"),
+                ("objects/tengu-man/tengu_man", "objects/tengu-man/tengu_man"),
+                ("objects/blast-man/blast_man", "objects/blast-man/blast_man"),
+                ("objects/blast-fire/blast_fire", "objects/blast-fire/blast_fire"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -217,6 +243,18 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_z_fraction: true, ..kind("spout-pillar", Pool::Effect, 0x2D, "objects/spout-pillar/spout_pillar") },
         kind("spout-geyser", Pool::Attack, 0x17, "objects/spout-geyser/spout_geyser"),
         kind("spout-mark", Pool::Effect, 0x2E, "objects/spout-mark/spout_mark"),
+        kind("heat-man", Pool::Actor, 0x07, "objects/heat-man/heat_man"),
+        kind("heat-flame", Pool::Attack, 0x26, "objects/heat-flame/heat_flame"),
+        kind("elec-man", Pool::Actor, 0x08, "objects/elec-man/elec_man"),
+        kind("elec-thunder", Pool::Attack, 0x64, "objects/elec-thunder/elec_thunder"),
+        kind("slash-man", Pool::Actor, 0x0D, "objects/slash-man/slash_man"),
+        kind("slash-wave", Pool::Attack, 0x62, "objects/slash-wave/slash_wave"),
+        kind("charge-man", Pool::Actor, 0x16, "objects/charge-man/charge_man"),
+        kind("charge-car", Pool::Attack, 0xAC, "objects/charge-car/charge_car"),
+        kind("tomahawk-man", Pool::Actor, 0x0A, "objects/tomahawk-man/tomahawk_man"),
+        kind("tengu-man", Pool::Actor, 0x0C, "objects/tengu-man/tengu_man"),
+        kind("blast-man", Pool::Actor, 0x06, "objects/blast-man/blast_man"),
+        kind("blast-fire", Pool::Attack, 0x21, "objects/blast-fire/blast_fire"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -325,6 +363,62 @@ fn chips() -> Vec<ChipData> {
             damage: 40,
             script: Some("objects/spout-man/spout_man".into()),
             ..chip(SPOUT, "Spout", 0x1B, 7)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/heat-man/heat_man".into()),
+            ..chip(HEAT, "Heat", 0x1B, 2)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/elec-man/elec_man".into()),
+            ..chip(ELEC, "Elec", 0x1B, 3)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/slash-man/slash_man".into()),
+            ..chip(SLASH, "Slash", 0x1B, 4)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/charge-man/charge_man".into()),
+            ..chip(CHARGE, "Charge", 0x1B, 6)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/tomahawk-man/tomahawk_man".into()),
+            ..chip(TOMAHAWK, "Tomahawk", 0x1B, 8)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/tengu-man/tengu_man".into()),
+            ..chip(TENGU, "Tengu", 0x1B, 9)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/blast-man/blast_man".into()),
+            ..chip(BLAST, "Blast", 0x1B, 12)
         },
     ]
 }
