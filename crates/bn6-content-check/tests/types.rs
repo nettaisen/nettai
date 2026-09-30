@@ -30,6 +30,8 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local _ = data.chips[1].gun_del_sol.firing_tick", "not a data field"),
         ("local function f(me: Object) local _ = obstacle.react(me, \"shatters\") end", "not an obstacle crush"),
         ("local function f(me: Object) local _: \"gone\" = obstacle.removal(me) end", "not an obstacle removal"),
+        ("local _ = data.objects.projectiles[0].hit_efect", "not a projectile field"),
+        ("local _: ProjectileShot = { kind = 0, damage = 1 }", "a shot without its height"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
