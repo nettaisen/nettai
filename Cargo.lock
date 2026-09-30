@@ -105,6 +105,7 @@ name = "bn6-compat"
 version = "0.1.0"
 dependencies = [
  "bn6-battle",
+ "bn6-content-api",
  "serde",
  "serde_json",
  "toml",

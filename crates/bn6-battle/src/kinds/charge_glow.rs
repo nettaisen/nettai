@@ -4,7 +4,7 @@
 
 use crate::battle::Battle;
 use crate::content::SpriteId;
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 use crate::sound::SoundId;
 
 #[derive(Clone, Debug, Default, Hash)]
@@ -35,7 +35,7 @@ pub fn set_enabled(b: &mut Battle, r: ObjectRef, on: bool) {
 /// leftover registers in the game (§A.5); they are never read.
 pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     let actor = b.objects.get(owner).actor?;
-    let r = b.objects.spawn(Pool::Effect, 8, Vec3::default(), [0; 4])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::ChargeGlow, Vec3::default(), [0; 4])?;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.flags |= flags::RUN_WHILE_PAUSED;

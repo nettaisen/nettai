@@ -5,4 +5,3 @@
 pool = "effect"
 index = 0x84
 script = "navi_boost.luau"
-scratch_position = true

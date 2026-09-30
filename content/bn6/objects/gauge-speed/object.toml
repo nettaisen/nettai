@@ -5,4 +5,3 @@
 pool = "effect"
 index = 0x1C
 script = "gauge_speed.luau"
-scratch_position = true

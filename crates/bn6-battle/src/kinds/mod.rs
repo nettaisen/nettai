@@ -29,8 +29,10 @@ pub mod player;
 pub mod spark;
 pub mod status_visual;
 
+use bn6_content_api::{KindHandle, SpawnAt};
+
 use crate::battle::Battle;
-use crate::object::{ObjectRef, Pool};
+use crate::object::{New, ObjectRef, Pool, Vec3};
 
 /// Behavior-private state. The game gives every object 0x2C (actors,
 /// attacks) or 0x1C (effects) bytes of scratch; here each behavior gets a
@@ -42,6 +44,7 @@ pub enum Vars {
     Intro(intro::Vars),
     ChargeGlow(charge_glow::Vars),
     Effect(effect::Vars),
+    Spark(spark::Vars),
     Hitbox(hitbox::Vars),
     FormOverlay(form_overlay::Vars),
     Afterimage(afterimage::Vars),
@@ -60,25 +63,70 @@ pub enum Vars {
 }
 
 impl Vars {
-    pub fn for_kind(pool: Pool, index: u8) -> Vars {
-        match (pool, index) {
-            (Pool::Effect, 2) => Vars::Intro(Default::default()),
-            (Pool::Effect, 8) => Vars::ChargeGlow(Default::default()),
-            (Pool::Effect, 0) => Vars::Effect(Default::default()),
-            (Pool::Attack, 3) => Vars::Hitbox(Default::default()),
-            (Pool::Actor, form_overlay::INDEX) => Vars::FormOverlay(Default::default()),
-            (Pool::Effect, afterimage::INDEX) => Vars::Afterimage(Default::default()),
-            (Pool::Effect, lockon_marker::INDEX) => Vars::LockonMarker(Default::default()),
-            (Pool::Effect, palette_flash::INDEX) => Vars::PaletteFlash(Default::default()),
-            (Pool::Actor, cross_merge::INDEX) => Vars::CrossMerge(Default::default()),
-            (Pool::Actor, body_overlay::INDEX) => Vars::BodyOverlay(Default::default()),
-            (Pool::Actor, idle_overlay::INDEX) => Vars::IdleOverlay(Default::default()),
-            (Pool::Actor, full_synchro_aura::INDEX) => Vars::FullSynchroAura(Default::default()),
-            (Pool::Effect, beast_over_burst::INDEX) => Vars::BeastOverBurst(Default::default()),
-            (Pool::Actor, 0) => Vars::None,
-            _ => Vars::None,
+    /// An engine kind's state at spawn.
+    pub fn for_engine(kind: EngineKind) -> Vars {
+        match kind {
+            EngineKind::Intro => Vars::Intro(Default::default()),
+            EngineKind::ChargeGlow => Vars::ChargeGlow(Default::default()),
+            EngineKind::Effect => Vars::Effect(Default::default()),
+            EngineKind::Spark => Vars::Spark(Default::default()),
+            EngineKind::Hitbox => Vars::Hitbox(Default::default()),
+            EngineKind::FormOverlay => Vars::FormOverlay(Default::default()),
+            EngineKind::Afterimage => Vars::Afterimage(Default::default()),
+            EngineKind::LockonMarker => Vars::LockonMarker(Default::default()),
+            EngineKind::PaletteFlash => Vars::PaletteFlash(Default::default()),
+            EngineKind::CrossMerge => Vars::CrossMerge(Default::default()),
+            EngineKind::BodyOverlay => Vars::BodyOverlay(Default::default()),
+            EngineKind::IdleOverlay => Vars::IdleOverlay(Default::default()),
+            EngineKind::FullSynchroAura => Vars::FullSynchroAura(Default::default()),
+            EngineKind::BeastOverBurst => Vars::BeastOverBurst(Default::default()),
+            EngineKind::Player
+            | EngineKind::BubbleVisual
+            | EngineKind::NaviChip
+            | EngineKind::NaviWarp
+            | EngineKind::Eruption
+            | EngineKind::StatusVisual
+            | EngineKind::IceVisual
+            | EngineKind::HitMarker => Vars::None,
         }
     }
+}
+
+/// Spawn an object of kind `kind` where `at` says in the update list, with
+/// its kind's state at spawn: an engine kind's, or a content kind's zeroed
+/// declared state. None when its pool is full.
+pub fn spawn(b: &mut Battle, kind: KindHandle, at: SpawnAt, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+    use crate::content::KindImpl;
+    let k = b.content.defs.kind(kind);
+    let vars = match k.implementation {
+        KindImpl::Engine(e) => Vars::for_engine(e),
+        KindImpl::Script { .. } => Vars::Content(bn6_content_api::ContentState::new(k.schema)),
+    };
+    let new = New { pool: k.pool, kind, vars, pos, params };
+    match at {
+        SpawnAt::AfterCurrent => b.objects.spawn(new),
+        SpawnAt::First => b.objects.spawn_at_front(new),
+        SpawnAt::End => b.objects.spawn_at_end(new),
+    }
+}
+
+/// Spawn one of the engine's kinds, right after the object updating.
+pub fn spawn_engine(b: &mut Battle, kind: EngineKind, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+    let h = b.content.defs.engine(kind);
+    spawn(b, h, SpawnAt::AfterCurrent, pos, params)
+}
+
+/// Spawn the kind registration by number puts in object slot `index` of
+/// `pool` (the numeric spawns of the pack's scripts). A slot nothing fills
+/// is a kind not ported yet.
+pub fn spawn_numbered(b: &mut Battle, pool: Pool, index: u8, at: SpawnAt, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+    let Some(kind) = b.content.defs.kind_at(pool, index) else {
+        if !b.objects.has_room(pool) {
+            return None;
+        }
+        panic!("object kind {pool:?} {index:#x} is not implemented yet")
+    };
+    spawn(b, kind, at, pos, params)
 }
 
 /// The object kinds the engine implements itself (the rest are content's:
@@ -137,13 +185,10 @@ pub const ENGINE_KINDS: [(EngineKind, &str, Pool, u8); 22] = [
     (EngineKind::StatusVisual, "engine/status-visual", Pool::Effect, status_visual::INDEX),
 ];
 
-/// Run one object's update: its kind's (by the object slot it fills).
+/// Run one object's update: its kind's.
 pub fn update(b: &mut Battle, r: ObjectRef) {
     use crate::content::KindImpl;
-    let index = b.objects.get(r).index;
-    let Some(kind) = b.content.defs.kind_at(r.pool, index) else {
-        panic!("object kind {:?} {index:#x} is not implemented yet", r.pool)
-    };
+    let kind = b.objects.get(r).kind;
     match b.content.defs.kind(kind).implementation {
         KindImpl::Script { update } => crate::behavior::run_object(b, kind, update, r),
         KindImpl::Engine(k) => match k {

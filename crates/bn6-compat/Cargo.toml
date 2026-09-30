@@ -18,3 +18,4 @@ trace = ["dep:serde_json"]
 
 [dev-dependencies]
 bn6-battle = { workspace = true, features = ["test-content"] }
+bn6-content-api = { path = "../bn6-content-api" }

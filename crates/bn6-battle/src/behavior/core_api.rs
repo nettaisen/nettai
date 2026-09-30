@@ -11,7 +11,7 @@ use bn6_content_api::{
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
-use bn6_content_api::{ActionHandle, Registry, StateId};
+use bn6_content_api::{ActionHandle, KindHandle, Registry, SpawnAt, StateId};
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 
@@ -28,6 +28,11 @@ use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
 use crate::sound::SoundId;
 
 /// The collision `f1` bit behind a status flag.
+/// The object kind named `key`.
+fn kind_named(content: &crate::content::Content, key: &str) -> ApiResult<KindHandle> {
+    content.defs.kind_by_key(key).ok_or_else(|| ApiError::Other(format!("no object kind is named {key:?}")))
+}
+
 fn status_bit(flag: StatusFlag) -> u32 {
     match flag {
         StatusFlag::Guard => f1::GUARD,
@@ -620,18 +625,26 @@ impl CoreApi for Battle {
     }
 
     fn spawn_kind(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
-        let (pool, index) = super::kind_slot(&self.content, name).map_err(ApiError::Other)?;
-        Ok(super::spawn_object(self, pool, index, pos, params))
+        Ok(kinds::spawn(self, kind_named(&self.content, name)?, SpawnAt::AfterCurrent, pos, params))
     }
 
     fn spawn_kind_first(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
-        let (pool, index) = super::kind_slot(&self.content, name).map_err(ApiError::Other)?;
-        Ok(super::spawn_object_first(self, pool, index, pos, params))
+        Ok(kinds::spawn(self, kind_named(&self.content, name)?, SpawnAt::First, pos, params))
     }
 
     fn spawn_kind_at_end(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
-        let (pool, index) = super::kind_slot(&self.content, name).map_err(ApiError::Other)?;
-        Ok(super::spawn_object_at_end(self, pool, index, pos, params))
+        Ok(kinds::spawn(self, kind_named(&self.content, name)?, SpawnAt::End, pos, params))
+    }
+
+    fn spawn_def(&mut self, kind: u16, pos: Vec3, at: SpawnAt) -> ApiResult<Option<ObjectRef>> {
+        if kind as usize >= self.content.defs.kinds.len() {
+            return Err(ApiError::Other(format!("no kind has handle {kind}")));
+        }
+        Ok(kinds::spawn(self, KindHandle(kind), at, pos, [0; 4]))
+    }
+
+    fn object_kind(&self, o: ObjectRef) -> Option<u16> {
+        Some(self.objects.get(o).kind.0)
     }
 
     fn free(&mut self, o: ObjectRef) {
@@ -689,7 +702,12 @@ impl CoreApi for Battle {
         }
         let i = |v: i64| Value::Int(v);
         match f {
-            ObjectField::Index => i(ob.index as i64),
+            // The object slot registration by number gives its kind; a kind
+            // content defines has none.
+            ObjectField::Index => match self.content.defs.kind(ob.kind).slot {
+                Some((_, index)) => i(index as i64),
+                None => Value::Nil,
+            },
             ObjectField::Action => i(ob.action as i64),
             ObjectField::Phase => i(ob.phase as i64),
             ObjectField::PhaseInit => i(ob.phase_init as i64),
@@ -879,6 +897,21 @@ impl CoreApi for Battle {
         kinds::spark::spawn(self, owner, pos, id)
     }
 
+    fn spawn_effect_def(&mut self, pos: Vec3, effect: u16, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
+        let look = self.content.defs.effects[effect as usize];
+        kinds::effect::spawn_look(self, pos, look, flip, palette_add, priority)
+    }
+
+    fn spawn_region_effects_def(&mut self, x: i32, y: i32, region: u8, side: u8, effect: u16, z: i32) {
+        let look = self.content.defs.effects[effect as usize];
+        kinds::effect::spawn_look_over_region(self, x, y, region, side, look, z);
+    }
+
+    fn spawn_spark_def(&mut self, owner: ObjectRef, pos: Vec3, spark: u16) -> Option<ObjectRef> {
+        let look = self.content.defs.sparks[spark as usize];
+        kinds::spark::spawn_look(self, owner, pos, look)
+    }
+
     fn spawn_form_overlay(
         &mut self,
         owner: ObjectRef,
@@ -1056,9 +1089,10 @@ impl CoreApi for Battle {
     }
 
     fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ContentState> {
-        // The running action: the content action the attack names, else the
-        // one registered by the navi's action number.
-        let running = self.actor_of(o)?.attack.content_action;
+        // The running action: the content action the attack started, else
+        // the one registered by the navi's action number.
+        self.actor_of(o)?;
+        let running = kinds::player::running_content_action(self, o);
         let action = match running {
             Some(h) => Value::Def(Registry::Action, h.0),
             None => Value::Int(self.objects.get(o).action as i64),
@@ -1143,6 +1177,15 @@ impl CoreApi for Battle {
 
     fn set_attack(&mut self, o: ObjectRef, action: u8, kind: u8) {
         kinds::player::set_attack(self, o, action, kind);
+    }
+
+    fn set_content_attack(&mut self, o: ObjectRef, action: u16, kind: u8) -> ApiResult<()> {
+        if action as usize >= self.content.defs.actions.len() {
+            return Err(ApiError::Other(format!("no action has handle {action}")));
+        }
+        let attack = kinds::player::NaviAttack::content(&self.content.defs, ActionHandle(action));
+        kinds::player::set_attack(self, o, attack, kind);
+        Ok(())
     }
 
     fn reset_attack_links(&mut self, o: ObjectRef) {

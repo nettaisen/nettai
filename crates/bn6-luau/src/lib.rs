@@ -36,6 +36,7 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use bn6_content_api::{
     BindPlan, ContentError, ContentHost, CoreApi, Data, DataKey, Definitions, FnId, FnSource, HookCall, Manifest,
@@ -45,15 +46,50 @@ use mlua::chunk::ChunkMode;
 use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 
 /// A content pack's scripts: module path (relative to the pack root,
-/// without `.luau`) to source text.
+/// without `.luau`) to source text, and bytecode already compiled from
+/// them.
 #[derive(Clone, Debug, Default)]
 pub struct Pack {
     modules: BTreeMap<String, String>,
+    compiled: Compiled,
+}
+
+/// Modules' bytecode, each with the source it was compiled from: loading a
+/// pack again (a runtime per thread, after the define phase) skips the
+/// compiler for every module whose source is unchanged. Bytecode is a pure
+/// function of the source (the compiler's options are fixed), and it is
+/// still verified when it loads.
+#[derive(Clone, Debug, Default)]
+pub struct Compiled {
+    modules: BTreeMap<String, (Arc<str>, Arc<[u8]>)>,
+}
+
+impl Compiled {
+    /// Module `path`'s bytecode, if it was compiled from `source`.
+    fn get(&self, path: &str, source: &str) -> Option<Arc<[u8]>> {
+        let (s, b) = self.modules.get(path)?;
+        (**s == *source).then(|| b.clone())
+    }
+
+    /// Modules compiled.
+    pub fn len(&self) -> usize {
+        self.modules.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.modules.is_empty()
+    }
 }
 
 impl Pack {
     pub fn new(modules: impl IntoIterator<Item = (String, String)>) -> Pack {
-        Pack { modules: modules.into_iter().collect() }
+        Pack { modules: modules.into_iter().collect(), compiled: Compiled::default() }
+    }
+
+    /// The same pack, with bytecode compiled before (see [`Compiled`]).
+    pub fn with_compiled(mut self, compiled: Compiled) -> Pack {
+        self.compiled = compiled;
+        self
     }
 
     /// Every `.luau` file under `dir` (definition files, `.d.luau`,
@@ -78,7 +114,7 @@ impl Pack {
         }
         let mut modules = BTreeMap::new();
         walk(dir, dir, &mut modules)?;
-        Ok(Pack { modules })
+        Ok(Pack::new(modules))
     }
 
     pub fn modules(&self) -> impl Iterator<Item = (&str, &str)> {
@@ -157,7 +193,7 @@ impl LuauContent {
     /// `plan` was made from, and bind the functions `plan` names, with the
     /// pack's data as the global `data`.
     pub fn load(pack: &Pack, plan: &BindPlan, data: &Data, options: Options) -> Result<LuauContent, ContentError> {
-        let (lua, defined, modules) = open(pack, data, options)?;
+        let (lua, defined, modules, _) = open(pack, data, options)?;
         if defined.definitions != plan.definitions {
             return Err(ContentError::new(format!(
                 "loading Luau content: the scripts define something other than what the content was made from ({})",
@@ -249,9 +285,10 @@ impl LuauContent {
 }
 
 /// Read a pack's definitions: the define phase, in a VM of its own (which
-/// is dropped). The engine makes its content from what this returns.
-pub fn define(pack: &Pack, data: &Data, options: Options) -> Result<Definitions, ContentError> {
-    open(pack, data, options).map(|(_, defined, _)| defined.definitions)
+/// is dropped). The engine makes its content from what this returns, and
+/// keeps the modules' bytecode for its runtimes (`Pack::with_compiled`).
+pub fn define(pack: &Pack, data: &Data, options: Options) -> Result<(Definitions, Compiled), ContentError> {
+    open(pack, data, options).map(|(_, defined, _, compiled)| (defined.definitions, compiled))
 }
 
 /// The first place two readings of the definitions differ, for messages.
@@ -275,6 +312,8 @@ struct Loader {
     pack: Pack,
     /// Module results by path.
     loaded: BTreeMap<String, LuaValue>,
+    /// What was compiled (or taken from the pack's bytecode) by path.
+    compiled: Compiled,
     /// Modules being loaded, innermost last (for relative paths and
     /// cycles).
     stack: Vec<String>,
@@ -314,8 +353,13 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
             .cloned()
             .ok_or_else(|| mlua::Error::runtime(format!("no module {path}.luau in the pack")))?
     };
-    let bytecode = sandbox::compiler().compile(&source)?;
+    let cached = loader.borrow().pack.compiled.get(path, &source);
+    let bytecode: Arc<[u8]> = match cached {
+        Some(b) => b,
+        None => sandbox::compiler().compile(&source)?.into(),
+    };
     verify::check(path, &bytecode).map_err(|v| mlua::Error::runtime(v.to_string()))?;
+    loader.borrow_mut().compiled.modules.insert(path.to_string(), (source.as_str().into(), bytecode.clone()));
     let chunk =
         lua.load(&bytecode[..]).set_name(format!("@{path}.luau")).set_mode(ChunkMode::Binary).into_function()?;
     loader.borrow_mut().stack.push(path.to_string());
@@ -358,7 +402,9 @@ fn data_value(lua: &Lua, d: &Data) -> mlua::Result<LuaValue> {
 
 /// A VM with the content API, `data`, `define` and `require`, every module
 /// of the pack loaded, and the define phase finished.
-fn open(pack: &Pack, data: &Data, options: Options) -> Result<(Lua, define::Defined, BTreeMap<String, LuaValue>), ContentError> {
+type Opened = (Lua, define::Defined, BTreeMap<String, LuaValue>, Compiled);
+
+fn open(pack: &Pack, data: &Data, options: Options) -> Result<Opened, ContentError> {
     let err = |e: mlua::Error| ContentError::new(format!("loading Luau content: {e}"));
     let lua = sandbox::new_vm(options.debug_print).map_err(err)?;
     #[cfg(feature = "jit")]
@@ -371,7 +417,12 @@ fn open(pack: &Pack, data: &Data, options: Options) -> Result<(Lua, define::Defi
     let data = data_value(&lua, data).map_err(err)?;
     sandbox::deep_freeze(&lua, &data).map_err(err)?;
     lua.globals().set("data", data).map_err(err)?;
-    let loader = Rc::new(RefCell::new(Loader { pack: pack.clone(), loaded: BTreeMap::new(), stack: Vec::new() }));
+    let loader = Rc::new(RefCell::new(Loader {
+        pack: pack.clone(),
+        loaded: BTreeMap::new(),
+        compiled: Compiled::default(),
+        stack: Vec::new(),
+    }));
     let collector = Rc::new(RefCell::new(define::Collector::open()));
     let module = {
         let loader = Rc::downgrade(&loader);
@@ -413,12 +464,13 @@ fn open(pack: &Pack, data: &Data, options: Options) -> Result<(Lua, define::Defi
         v.map_err(err)?;
     }
     let modules = std::mem::take(&mut loader.borrow_mut().loaded);
+    let compiled = std::mem::take(&mut loader.borrow_mut().compiled);
     drop(loader);
     let defined = define::finish(&lua, &collector, &modules)
         .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?;
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);
-    Ok((lua, defined, modules))
+    Ok((lua, defined, modules, compiled))
 }
 
 /// The function a plan names.
