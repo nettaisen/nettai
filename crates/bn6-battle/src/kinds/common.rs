@@ -14,8 +14,8 @@ pub fn set_animation(b: &mut Battle, r: ObjectRef, anim: u8) {
 }
 
 /// `object_updateSprite`: load a newly requested animation and step the
-/// sprite one tick. Skipped while paused, during time stop (unless the
-/// object runs in time stop), while `prevent_anim` holds an object with
+/// sprite one tick. Skipped while paused, while dimmed (unless the
+/// object runs while dimmed), while `prevent_anim` holds an object with
 /// collision still, and for inactive or non-animating objects.
 pub fn update_sprite(b: &mut Battle, r: ObjectRef) {
     if b.paused {
@@ -25,7 +25,7 @@ pub fn update_sprite(b: &mut Battle, r: ObjectRef) {
     if o.flags & flags::ACTIVE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
         return;
     }
-    if o.flags & flags::RUN_IN_TIME_STOP == 0 && b.is_time_stop() {
+    if o.flags & flags::RUN_WHILE_DIMMED == 0 && b.is_dimmed() {
         return;
     }
     if o.collision.is_some() && o.prevent_anim != 0 {
@@ -148,8 +148,8 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `object_updateSpriteTimestop`: like `update_sprite`, but it also steps
-/// in time stop and whatever the object's collision says.
-pub fn update_sprite_in_time_stop(b: &mut Battle, r: ObjectRef) {
+/// while dimmed and whatever the object's collision says.
+pub fn update_sprite_while_dimmed(b: &mut Battle, r: ObjectRef) {
     if b.paused {
         return;
     }

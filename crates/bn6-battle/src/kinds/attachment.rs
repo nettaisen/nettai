@@ -70,15 +70,15 @@ pub struct Params {
     pub kind: u8,
     /// Param2: its animation.
     pub anim: u8,
-    /// Param3: it animates in time stop too.
-    pub in_time_stop: bool,
+    /// Param3: it animates while dimmed too.
+    pub while_dimmed: bool,
     /// Param4: added to its palette (drawn only).
     pub palette_add: u8,
 }
 
 /// `sub_80B8E30` with all its parameters.
 pub fn spawn_with(b: &mut Battle, owner: ObjectRef, p: Params, slot: AttachSlot) -> Option<ObjectRef> {
-    let params = [p.kind, p.anim, p.in_time_stop as u8, p.palette_add];
+    let params = [p.kind, p.anim, p.while_dimmed as u8, p.palette_add];
     let r = crate::behavior::spawn_object(b, Pool::Actor, INDEX, Vec3::default(), params);
     if let Some(r) = r {
         let (panel, alliance, flip) = {
@@ -90,7 +90,7 @@ pub fn spawn_with(b: &mut Battle, owner: ObjectRef, p: Params, slot: AttachSlot)
         o.panel = panel;
         o.alliance = alliance;
         o.flip = flip;
-        o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP;
+        o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
         if b.behaviors.object_kind(Pool::Actor, INDEX).is_some() {
             // Behaviors implements attachments: its slot names the owner's.
             crate::behavior::set_state_variant(b, r, "slot", content_slot(b, owner, slot));
@@ -160,7 +160,7 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 }
 
 /// `sub_80B8DA6`: follow the owner's position and visibility; animate,
-/// except while paused (or in time stop, unless the third parameter
+/// except while paused (or while dimmed, unless the third parameter
 /// says otherwise); end once the slot is cleared.
 fn follow(b: &mut Battle, r: ObjectRef) {
     let owner = owner(b, r);
@@ -189,7 +189,7 @@ fn follow(b: &mut Battle, r: ObjectRef) {
         set_progress(b, r, Progress::DESTROY);
         return;
     }
-    if b.objects.get(r).params[2] == 0 && b.is_time_stop() {
+    if b.objects.get(r).params[2] == 0 && b.is_dimmed() {
         return;
     }
     if b.paused {

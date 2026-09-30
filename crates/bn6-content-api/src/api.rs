@@ -126,8 +126,8 @@ named_fields! {
         Visible = "visible", Bool, rw;
         /// Keeps updating while the battle is paused.
         RunWhilePaused = "run_while_paused", Bool, rw;
-        /// Keeps updating during time stop.
-        RunInTimeStop = "run_in_time_stop", Bool, rw;
+        /// Keeps updating while dimmed.
+        RunWhileDimmed = "run_while_dimmed", Bool, rw;
         /// The sprite doesn't animate.
         NoSpriteUpdate = "no_sprite_update", Bool, rw;
     }
@@ -286,7 +286,7 @@ pub type ApiResult<T> = Result<T, ApiError>;
 pub trait CoreApi {
     // ---- The battle ------------------------------------------------------
 
-    fn is_time_stop(&self) -> bool;
+    fn is_dimmed(&self) -> bool;
     fn is_paused(&self) -> bool;
     /// Report a sound effect (output only; nothing in the simulation reads
     /// it).
@@ -512,7 +512,7 @@ typed_accessors! {
     Related2 => related2 / set_related2: Option<ObjectRef>;
     Visible => visible / set_visible: bool;
     RunWhilePaused => run_while_paused / set_run_while_paused: bool;
-    RunInTimeStop => run_in_time_stop / set_run_in_time_stop: bool;
+    RunWhileDimmed => run_while_dimmed / set_run_while_dimmed: bool;
     NoSpriteUpdate => no_sprite_update / set_no_sprite_update: bool;
 }
 

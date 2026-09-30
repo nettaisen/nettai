@@ -1,7 +1,7 @@
 //! A small hand-authored content set for tests and examples.
 //!
 //! Everything here is made up: a MegaMan-like navi and its base form,
-//! a few chips that use the engine's GunDelSol, time-freeze and navi-chip
+//! a few chips that use the engine's GunDelSol, dimming and navi-chip
 //! actions, rocks, sprites with short animations, and rules written from
 //! the engine's own flag semantics (docs/engine/field-collision-damage.md).
 //! It is not BN6's data, which comes only from a content pack extracted
@@ -22,7 +22,7 @@ pub const SUN_GUN_1: ChipId = 0x01;
 pub const SUN_GUN_2: ChipId = 0x02;
 pub const SUN_GUN_3: ChipId = 0x03;
 pub const SUN_GUN_EX: ChipId = 0x04;
-/// A time freeze (action 0x15, subtype 1: the invisibility freeze).
+/// A dimming (action 0x15, subtype 1: the invisibility freeze).
 pub const VEIL: ChipId = 0x05;
 /// A navi chip (action 0x1B, subtype 5: the eraser navi).
 pub const ERASER: ChipId = 0x06;
@@ -54,7 +54,7 @@ const NEUTRAL: u32 = 0x0080_0000;
 const PLAYER: [u32; 2] = [0x0040_0000, 0x0020_0000];
 const FLOATING: u32 = 0x0010_0000;
 const BLOCKER: u32 = 0x0008_0000;
-const TIME_STOP: u32 = 0x0001_0000;
+const WHILE_DIMMED: u32 = 0x0001_0000;
 const REACHES_FLOATING: u32 = 0x0080;
 const BREAKS: u32 = 0x0002;
 
@@ -166,7 +166,7 @@ fn chips() -> Vec<ChipData> {
         sun_gun(SUN_GUN_3, "SunGun3", 2, 96),
         sun_gun(SUN_GUN_EX, "SunGunX", 3, 96),
         ChipData {
-            flags: ChipFlags(ChipFlags::TIME_FREEZE | ChipFlags::STANDARD_LIBRARY),
+            flags: ChipFlags(ChipFlags::CUT_IN | ChipFlags::STANDARD_LIBRARY),
             extra_flags: ExtraChipFlags(ExtraChipFlags::RUSH_CANCELS),
             family: ChipFamily::Plus,
             ..chip(VEIL, "Veil", 0x15, 1)
@@ -227,15 +227,15 @@ fn rules() -> Rules {
     let both = |f: &dyn Fn(usize) -> u32| [f(0), f(1)];
     let mut collision_types = vec![[0, 0]; 0x49];
     let attack = both(&|s| ATTACK[s] | REACHES_FLOATING);
-    collision_types[0x01] = both(&|s| BODY[s] | PLAYER[s] | TIME_STOP | REACHES_FLOATING);
-    collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | TIME_STOP | REACHES_FLOATING | FLOATING);
+    collision_types[0x01] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING);
+    collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING | FLOATING);
     collision_types[0x02] = both(&|s| ATTACK[s ^ 1] | OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
     collision_types[0x05] = both(&|s| OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
     for t in [0x04, 0x0A, 0x15, 0x16, 0x2C, 0x48] {
         collision_types[t] = attack;
     }
     collision_types[0x2A] = collision_types[0x05];
-    collision_types[0x0E] = [NEUTRAL | BLOCKER | TIME_STOP | REACHES_FLOATING | BREAKS; 2];
+    collision_types[0x0E] = [NEUTRAL | BLOCKER | WHILE_DIMMED | REACHES_FLOATING | BREAKS; 2];
     collision_types[0x0F] = [ATTACK[0] | ATTACK[1] | BODY[0] | BODY[1] | BREAKS; 2];
 
     // Panels: what each type adds to a panel's flags word.

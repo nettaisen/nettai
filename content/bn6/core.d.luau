@@ -120,7 +120,7 @@ declare class Object
     related2: Object?
     visible: boolean
     run_while_paused: boolean
-    run_in_time_stop: boolean
+    run_while_dimmed: boolean
     no_sprite_update: boolean
     sprite: Sprite
     collision: Collision
@@ -169,7 +169,9 @@ declare class Navi
 end
 
 declare battle: {
-    time_stop: () -> boolean,
+    -- The dimming is on (battle flag 4): objects that don't run while
+    -- dimmed stand still.
+    dimmed: () -> boolean,
     paused: () -> boolean,
     play_sound: (id: number) -> (),
     navi: (side: number) -> Navi,

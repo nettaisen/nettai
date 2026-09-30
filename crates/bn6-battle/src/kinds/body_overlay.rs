@@ -23,8 +23,8 @@ pub struct Vars {
     /// (presentation only).
     pub own_palette: bool,
     /// Param3: step the sprite even while paused (`sub_801BCD0`), not
-    /// just like any object (`object_updateSprite`, and not in time
-    /// stop).
+    /// just like any object (`object_updateSprite`, and not while
+    /// dimmed).
     pub always_step: bool,
     /// Param4: added to the owner's animation.
     pub anim_offset: u8,
@@ -67,7 +67,7 @@ pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<Object
     o.related[0] = Some(owner);
     o.alliance = alliance;
     o.flip = flip;
-    o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP;
+    o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
     *vars_mut(b, r) = Vars { forced_front: false, ..spec };
     Some(r)
 }
@@ -159,7 +159,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     // Action 0, `sub_80C4484`.
     if always_step {
         common::step_sprite(b, r);
-    } else if !b.is_time_stop() {
+    } else if !b.is_dimmed() {
         common::update_sprite(b, r);
     }
 }

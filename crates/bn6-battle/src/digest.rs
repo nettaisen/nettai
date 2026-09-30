@@ -177,7 +177,7 @@ impl Hash for Battle {
             sides,
             side_stats,
             linked,
-            freeze,
+            dimming,
             sound: _,
             outcome,
             // Code, not state: the content runtime keeps nothing between
@@ -213,7 +213,7 @@ impl Hash for Battle {
         sides.hash(h);
         side_stats.hash(h);
         linked.hash(h);
-        freeze.hash(h);
+        dimming.hash(h);
         outcome.hash(h);
     }
 }

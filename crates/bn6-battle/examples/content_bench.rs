@@ -93,7 +93,7 @@ fn attach(b: &mut Battle, n: usize) {
             b.objects.get_mut(owner).related[0] = Some(r);
         } else {
             o.panel = panel;
-            o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP;
+            o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
             behavior::set_state_field(b, r, "slot", Value::Int(0));
             b.actors.get_mut(actor).overlay = Some(r);
         }

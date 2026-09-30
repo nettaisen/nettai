@@ -29,7 +29,7 @@ pub mod rollback;
 pub mod scenario;
 pub mod setup;
 pub mod sound;
-pub mod time_freeze;
+pub mod dimming;
 pub mod transform;
 #[cfg(feature = "trace")]
 pub mod trace;

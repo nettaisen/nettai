@@ -40,7 +40,7 @@ fn flag_bit(f: ObjectField) -> Option<u8> {
     Some(match f {
         ObjectField::Visible => flags::VISIBLE,
         ObjectField::RunWhilePaused => flags::RUN_WHILE_PAUSED,
-        ObjectField::RunInTimeStop => flags::RUN_IN_TIME_STOP,
+        ObjectField::RunWhileDimmed => flags::RUN_WHILE_DIMMED,
         ObjectField::NoSpriteUpdate => flags::NO_SPRITE_UPDATE,
         _ => return None,
     })
@@ -84,8 +84,8 @@ fn store(name: &'static str, writable: bool, ty: bn6_content_api::FieldType, v: 
 }
 
 impl CoreApi for Battle {
-    fn is_time_stop(&self) -> bool {
-        Battle::is_time_stop(self)
+    fn is_dimmed(&self) -> bool {
+        Battle::is_dimmed(self)
     }
 
     fn is_paused(&self) -> bool {
@@ -179,7 +179,7 @@ impl CoreApi for Battle {
             ObjectField::Related2 => ob.related[1].into(),
             ObjectField::Visible
             | ObjectField::RunWhilePaused
-            | ObjectField::RunInTimeStop
+            | ObjectField::RunWhileDimmed
             | ObjectField::NoSpriteUpdate => {
                 unreachable!("flag fields are read above")
             }

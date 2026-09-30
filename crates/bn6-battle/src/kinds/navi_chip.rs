@@ -1,5 +1,5 @@
-//! A navi chip's time-freeze controller (effect object #0x10,
-//! `sub_80E17E8`): the freeze phases (`time_freeze`) with the navi chip's
+//! A navi chip's dimming controller (effect object #0x10,
+//! `sub_80E17E8`): the dimming phases (`dimming`) with the navi chip's
 //! own: after the dim, AntiNavi's check; after the name, the user warps
 //! out, the chip's navi comes and acts, and the user warps back in. See
 //! docs/engine/chips.md §3.6.7.
@@ -7,14 +7,14 @@
 use crate::battle::Battle;
 use crate::kinds::{common, elmnt_man, erase_man, navi_warp};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
-use crate::time_freeze::{self, FreezeChip};
+use crate::dimming::{self, CutInChip};
 
 pub const INDEX: u8 = 0x10;
 
 /// What the controller needs to bring its navi.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    pub chip: FreezeChip,
+    pub chip: CutInChip,
     /// Which navi (`off_802CD5C`; object +0x19, the chip's subtype).
     pub navi: u8,
     /// The damage word (object +0x2C).
@@ -47,7 +47,7 @@ pub struct Spec {
     pub navi: u8,
     pub params: [u8; 4],
     pub damage: u32,
-    pub chip: FreezeChip,
+    pub chip: CutInChip,
 }
 
 /// `sub_80E192C`: the controller for `user`'s navi chip, on its panel.
@@ -85,18 +85,18 @@ pub fn navi_left(b: &mut Battle, controller: ObjectRef) {
 
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
-        state::INIT => time_freeze::begin(b, r),
+        state::INIT => dimming::begin(b, r),
         state::UPDATE => {
             let chip = vars(b, r).chip.chip;
             match b.objects.get(r).action {
-                0 => time_freeze::dim_screen(b, r),
-                4 => time_freeze::check_anti_navi(b, r, chip),
-                8 => time_freeze::show_navi_name(b, r, chip),
+                0 => dimming::dim_screen(b, r),
+                4 => dimming::check_anti_navi(b, r, chip),
+                8 => dimming::show_navi_telop(b, r, chip),
                 0xC => effect(b, r),
-                _ => time_freeze::undim_screen(b, r),
+                _ => dimming::undim_screen(b, r),
             }
         }
-        _ => time_freeze::end(b, r),
+        _ => dimming::end(b, r),
     }
 }
 
