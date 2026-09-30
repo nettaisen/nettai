@@ -20,15 +20,6 @@ pub struct TransformRequest {
 impl TransformRequest {
     pub const NONE: TransformRequest = TransformRequest { form: None, cross_change: None };
 
-    /// Decode a transform record: +0 the form, +4 the Cross change (0xFF
-    /// = none for both). +1 and +3 are custom-screen bookkeeping nothing
-    /// in battle reads, and +8 names the requesting navi object, which is
-    /// always the side's player.
-    pub fn from_bytes(b: &[u8]) -> TransformRequest {
-        let opt = |v: u8| (v != 0xFF).then_some(v);
-        TransformRequest { form: opt(b[0]).map(Form), cross_change: opt(b[4]) }
-    }
-
     pub fn is_none(&self) -> bool {
         self.form.is_none() && self.cross_change.is_none()
     }

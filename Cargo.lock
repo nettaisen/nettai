@@ -84,6 +84,7 @@ name = "bn6-audio"
 version = "0.1.0"
 dependencies = [
  "bn6-battle",
+ "bn6-compat",
  "bn6-content",
  "cpal",
  "m4a",
@@ -97,6 +98,16 @@ dependencies = [
  "bn6-luau",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "bn6-compat"
+version = "0.1.0"
+dependencies = [
+ "bn6-battle",
+ "serde",
+ "serde_json",
+ "toml",
 ]
 
 [[package]]
@@ -145,6 +156,7 @@ dependencies = [
  "bn6-assets",
  "bn6-audio",
  "bn6-battle",
+ "bn6-compat",
  "bn6-content",
  "m4a",
  "minifb",
@@ -164,6 +176,7 @@ name = "bn6-netplay"
 version = "0.1.0"
 dependencies = [
  "bn6-battle",
+ "bn6-compat",
  "bn6-content",
  "getgud",
 ]

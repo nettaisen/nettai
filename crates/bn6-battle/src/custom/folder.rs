@@ -60,18 +60,6 @@ impl BattleFolder {
         BattleFolder { chips: [None; FOLDER_SIZE], regular_pending: false }
     }
 
-    /// A battle folder from the game's 0x3C-byte encoding (packed chips,
-    /// 0xFFFF = empty).
-    pub fn from_bytes(b: &[u8], regular_pending: bool) -> BattleFolder {
-        BattleFolder {
-            chips: std::array::from_fn(|i| {
-                let v = u16::from_le_bytes([b[2 * i], b[2 * i + 1]]);
-                (v != 0xFFFF).then(|| FolderChip::from_packed(v))
-            }),
-            regular_pending,
-        }
-    }
-
     /// Chips left.
     pub fn count(&self) -> usize {
         self.chips.iter().flatten().count()
@@ -96,16 +84,6 @@ impl BattleFolder {
         if let Some(slot) = self.chips.iter_mut().find(|s| s.is_none()) {
             *slot = Some(c);
         }
-    }
-
-    /// The game's encoding (for comparisons with recordings).
-    pub fn to_bytes(&self) -> [u8; 2 * FOLDER_SIZE] {
-        let mut b = [0u8; 2 * FOLDER_SIZE];
-        for (i, c) in self.chips.iter().enumerate() {
-            let v = c.map_or(0xFFFF, FolderChip::packed);
-            b[2 * i..2 * i + 2].copy_from_slice(&v.to_le_bytes());
-        }
-        b
     }
 
     /// A round's battle folder (`sub_800A3E4`, then `sub_800A570`), drawn
