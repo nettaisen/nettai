@@ -5,7 +5,7 @@
 //! animation timing) comes in a [`Content`], which a loader outside the
 //! engine reads from a content pack (bn6-content); a battle shares it
 //! read-only. Behavior is verified tick by tick against traces recorded
-//! from the original game (see `trace`).
+//! from the original game (bn6-compat's `trace`).
 
 pub mod actor;
 pub mod battle;
@@ -31,8 +31,6 @@ pub mod setup;
 pub mod sound;
 pub mod dimming;
 pub mod transform;
-#[cfg(feature = "trace")]
-pub mod trace;
 
 pub use battle::{Battle, BattleResult, CustomResult, RoundEnd, TickEvents};
 pub use content::{Content, ContentHash};
