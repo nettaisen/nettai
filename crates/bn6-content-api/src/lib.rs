@@ -26,6 +26,7 @@
 //! scripts' [`Data`] from the pack.
 
 pub mod api;
+pub mod assets;
 pub mod data;
 pub mod definitions;
 pub mod host;
@@ -35,7 +36,7 @@ pub mod types;
 
 pub use api::{
     ACTOR_TYPES, ActorField, ApiError, ApiResult, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi,
-    DimmingStep, Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField, SpawnAt,
+    DimmingStep, Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField, NaviAction, SpawnAt,
     OVERLAY_STEPPINGS,
     ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, PANEL_TYPES, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, StatusFlag, StatusTimer,
@@ -44,6 +45,7 @@ pub use api::{
 pub use api::AfterimageSpec;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 pub use api::{ObstacleHold, ObstaclePush, WindSource};
+pub use assets::{AssetKind, AssetNames};
 pub use data::{Data, Key as DataKey};
 pub use definitions::{Definition, Definitions, ModuleExports};
 pub use host::{
