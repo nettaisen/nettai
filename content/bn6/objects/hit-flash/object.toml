@@ -1,0 +1,9 @@
+# A hit's flashes (effect object #0x73, `sub_80E88A0`), SlashCross Beast's lunge's, is
+# a script. Its position (and its parameters but Param2) are its spawner's registers,
+# which nothing reads.
+
+[kind]
+pool = "effect"
+index = 0x73
+script = "hit_flash.luau"
+scratch_position = true

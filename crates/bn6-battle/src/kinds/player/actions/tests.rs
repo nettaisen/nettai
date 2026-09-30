@@ -1064,3 +1064,184 @@ fn a_climbing_projectile_rises_a_pixel_a_panel() {
     run_to(&mut b, p, &mut t, 2, 0);
     assert_eq!(b.objects.get(shot).pos.z, (0x18 + 2) << 16);
 }
+
+// ---- Form weapons ---------------------------------------------------------------
+
+/// Weapon `routine` from idle, run until the navi idles again (at most
+/// `ticks`); copies of the battle taken along the way play on exactly as
+/// it does. Returns the ticks it took.
+fn run_weapon(b: &mut Battle, p: [ObjectRef; 2], routine: u8, ticks: u32) -> u32 {
+    start_weapon(b, p[0], routine);
+    let mut digests = Vec::new();
+    let mut copies = Vec::new();
+    let mut t = 0;
+    while t < ticks {
+        t += 1;
+        if t % 7 == 3 {
+            copies.push((digests.len(), b.clone()));
+        }
+        tick(b, p[0], p[1], 0);
+        digests.push(b.digest());
+        if b.objects.get(p[0]).action == 8 {
+            break;
+        }
+    }
+    for (from, mut copy) in copies {
+        for want in &digests[from..] {
+            tick(&mut copy, p[0], p[1], 0);
+            assert_eq!(copy.digest(), *want, "a copy of the battle went its own way");
+        }
+    }
+    t
+}
+
+#[test]
+fn groundcross_beast_dash_runs_the_enemy_over_and_lands_back() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x17), 0x1A);
+    let mut t = 0;
+    // Six ticks of wind-up, then the dash, invulnerable, with its two hits.
+    run_to(&mut b, p, &mut t, 6, 0);
+    assert_eq!(ai_mut(&mut b, p0).attack.step, 0);
+    run_to(&mut b, p, &mut t, 7, 0);
+    assert_eq!(of_kind(&b, "dash-hit").len(), 2);
+    assert_ne!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
+    // Both hits run through the enemy: 90 damage and 20 per buster Attack
+    // point (1 here) each.
+    run_to(&mut b, p, &mut t, 27, 0);
+    assert_eq!(b.objects.get(p1).hp, 1000 - 2 * 110);
+    assert!(of_kind(&b, "dash-hit").is_empty());
+    // Off the field, then back on its panel.
+    run_to(&mut b, p, &mut t, 28, 0);
+    assert_eq!(b.objects.get(p0).pos.x, 0xDC << 16);
+    run_to(&mut b, p, &mut t, 37, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.action, o.panel, o.pos.z), (8, PanelPos { x: 2, y: 2 }, 0));
+    assert_eq!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
+    assert_eq!(b.field.panel(2, 2).unwrap().reserver, None);
+}
+
+#[test]
+fn erasecross_beast_drop_falls_on_the_enemy() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x15), 0x46);
+    let mut t = 0;
+    // The arms go up for their animation; the drop at the next's end.
+    run_to(&mut b, p, &mut t, 9, 0);
+    let drop = of_kind(&b, "erase-drop");
+    assert_eq!(drop.len(), 1);
+    assert_eq!(b.objects.get(drop[0]).panel, PanelPos { x: 5, y: 2 });
+    // It lands 3 ticks later: 70 damage and 30 per buster Attack point.
+    run_to(&mut b, p, &mut t, 13, 0);
+    assert_eq!(b.objects.get(p1).hp, 900);
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert!(of_kind(&b, "erase-drop").is_empty());
+}
+
+#[test]
+fn chargecross_beast_wave_rolls_through_the_enemy() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x1C), 0x4F);
+    let mut t = 0;
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert!(of_kind(&b, "charge-wave").is_empty());
+    run_to(&mut b, p, &mut t, 31, 0);
+    assert_eq!(of_kind(&b, "charge-wave").len(), 1);
+    // 70 damage and 30 per buster Attack point; afterimages behind it.
+    run_to(&mut b, p, &mut t, 45, 0);
+    assert_eq!(b.objects.get(p1).hp, 900);
+    let afterimages = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 0x28)).count();
+    assert_eq!(afterimages, 2);
+    run_to(&mut b, p, &mut t, 82, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+#[test]
+fn dustcross_beast_scatter_throws_at_six_panels_the_enemy_first() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x1D), 0x50);
+    let mut t = 0;
+    // Up for 17 ticks, then six throws 11 ticks apart.
+    run_to(&mut b, p, &mut t, 17, 0);
+    assert!(b.objects.get(p0).pos.z > 0);
+    let mut thrown = 0;
+    let mut last = Vec::new();
+    while t < 77 {
+        let next = t + 1;
+        run_to(&mut b, p, &mut t, next, 0);
+        let now = of_kind(&b, "junk-shot");
+        thrown += now.iter().filter(|o| !last.contains(*o)).count();
+        last = now;
+    }
+    assert_eq!(thrown, 6);
+    // The enemy's panel is always among them: 80 damage and 20 per buster
+    // Attack point.
+    run_to(&mut b, p, &mut t, 90, 0);
+    assert_eq!(b.objects.get(p1).hp, 900);
+    run_to(&mut b, p, &mut t, 108, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.action, o.pos.z), (8, 0));
+}
+
+#[test]
+fn slashcross_beast_lunge_strikes_from_beside_its_target() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    crate::kinds::lockon_marker::spawn(&mut b, p0);
+    tick(&mut b, p0, p1, 0);
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(start_weapon(&mut b, p0, 0x1A), 0x4C);
+    let mut t = 0;
+    // Mode 2 (the target in its row): the panel before it.
+    run_to(&mut b, p, &mut t, 3, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 4, y: 2 });
+    assert_eq!(b.field.panel(2, 2).unwrap().reserver, Some(p0));
+    // The slash and the hit: 50 damage and 30 per buster Attack point
+    // each; the struck body flashes.
+    run_to(&mut b, p, &mut t, 16, 0);
+    assert_eq!(b.objects.get(p1).hp, 1000 - 2 * 80);
+    assert_eq!(of_kind(&b, "hit-flash").len(), 1);
+    run_to(&mut b, p, &mut t, 37, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 2 });
+    run_to(&mut b, p, &mut t, 40, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+#[test]
+fn chargecross_charged_shot_tackles_the_enemy() {
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.charge_shot = 0x27));
+    let p = [p0, p1];
+    for _ in 0..130 {
+        tick(&mut b, p0, p1, keys::B);
+    }
+    let mut t = 0;
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(b.objects.get(p0).action, 0x56);
+    // Nine ticks of wind-up, then the charge with its hit.
+    run_to(&mut b, p, &mut t, 10, 0);
+    assert_eq!(of_kind(&b, "dash-hit").len(), 1);
+    assert_ne!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
+    // The hit strikes (30 damage and 20 per buster Attack point) and is
+    // gone; the navi slows down, then drops back onto its panel.
+    run_to(&mut b, p, &mut t, 40, 0);
+    assert_eq!(b.objects.get(p1).hp, 950);
+    assert!(of_kind(&b, "dash-hit").is_empty());
+    run_to(&mut b, p, &mut t, 60, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.action, o.panel), (8, PanelPos { x: 2, y: 2 }));
+    assert_eq!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
+}
+
+#[test]
+fn form_weapons_roll_back() {
+    for routine in [0x15, 0x17, 0x1C, 0x1D] {
+        let (mut b, p0, p1) = fight();
+        let t = run_weapon(&mut b, [p0, p1], routine, 200);
+        assert!(t < 200, "weapon {routine:#x} never ended");
+    }
+}

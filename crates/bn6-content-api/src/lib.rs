@@ -30,7 +30,7 @@ pub mod types;
 
 pub use api::{
     ACTOR_TYPES, ActorField, ApiError, ApiResult, BattleInfo, CollisionField, ColumnInfo, CoreApi, DimmingStep,
-    AfterimageSpec, Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField, PANEL_TYPES,
+    Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField, PANEL_TYPES,
     Pad, PanelInfo, RequestFlag, Shadow, SpriteField, StatusFlag, StatusTimer,
     SideSpecial,
 };
