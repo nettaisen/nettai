@@ -6,4 +6,3 @@
 pool = "effect"
 index = 0x2D
 script = "spout_pillar.luau"
-scratch_z_fraction = true

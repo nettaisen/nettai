@@ -11,9 +11,14 @@
 //! - content's definitions (`define.kind { ... }`), keyed by their keys.
 //!
 //! Each registry's keys are sorted byte-wise; an entry's handle is its
-//! place. Registration by number still reaches entries by the original's
-//! numbers (an object slot, an action number, a weapon routine, a hook by
-//! subtype): the *bridge*, which the migration's last step deletes.
+//! place. Registration by number still reaches its entries by the numbers
+//! its own data gives (an object slot, an action number, a weapon routine,
+//! a hook by subtype), until the migration's last step deletes it.
+//!
+//! The engine never learns the original's numbers for what content
+//! defines: an object records its kind's handle, a navi its content
+//! action's, and the validator (`bn6-compat`) maps them to the original's
+//! numbers with compat (docs/design/content-model-v2.md §7.3).
 
 use std::collections::BTreeMap;
 
@@ -43,14 +48,10 @@ pub struct KindDef {
     pub implementation: KindImpl,
     /// A content kind's state layout.
     pub schema: StateId,
-    /// The object slot (pool and index) it fills, for registration by
-    /// number and the traces (the bridge).
+    /// The object slot (pool and index) registration by number reaches it
+    /// by: the engine's own kinds' and the pack's `object.toml`s'. A kind
+    /// content defines has none.
     pub slot: Option<(Pool, u8)>,
-    /// Its position is register garbage until its init places it (the trace
-    /// comparison skips it).
-    pub scratch_position: bool,
-    /// The fraction of its Z is register garbage (likewise).
-    pub scratch_z_fraction: bool,
 }
 
 /// A navi action content implements.
@@ -61,8 +62,10 @@ pub struct ActionDef {
     /// Its state layout. Actions of one layout continue each other's
     /// attack state, as the original's actions share theirs.
     pub schema: StateId,
-    /// Its action number (the navi's CurAction, which the traces compare;
-    /// registration by number reaches it by it): the bridge.
+    /// The action number registration by number gives it (a chip record's
+    /// or a `weapon.toml`'s): the navi's CurAction while it runs. An action
+    /// content defines has none; the navi's CurAction is then
+    /// [`crate::kinds::player::CONTENT_ACTION`].
     pub number: Option<u8>,
 }
 
@@ -73,7 +76,8 @@ pub struct WeaponDef {
     pub name: String,
     /// `setup(navi) -> action`.
     pub setup: FnId,
-    /// The weapon routine numbers that name it (the bridge).
+    /// The weapon routine numbers that name it: a `weapon.toml`'s (the
+    /// engine's navi stats still name weapons by number).
     pub ids: Vec<u8>,
 }
 
@@ -95,8 +99,9 @@ pub enum ChipUsage {
 pub struct ChipDef {
     pub key: String,
     pub usage: ChipUsage,
-    /// Its chip id, which the engine's hands and records still use (the
-    /// bridge).
+    /// The chip id the engine's hands reach it by, until they hold chip
+    /// handles (docs/design/content-model-v2.md §12): only the engine's
+    /// tests give one.
     pub id: Option<ChipId>,
 }
 
@@ -131,6 +136,9 @@ pub struct Defs {
     pub weapons: Vec<WeaponDef>,
     pub chips: Vec<ChipDef>,
     pub records: Vec<RecordDef>,
+    /// One-shot effects' and hit sparks' looks content defines, by handle.
+    pub effects: Vec<super::EffectSprite>,
+    pub sparks: Vec<super::EffectSprite>,
     /// State layouts by [`StateId`].
     pub schemas: Vec<SchemaDef>,
     /// The functions the runtime binds, by [`FnId`].
@@ -138,13 +146,15 @@ pub struct Defs {
     /// Registration by number: hooks by table and number (the bridge).
     pub hooks: BTreeMap<Hook, FnId>,
     kind_keys: BTreeMap<String, KindHandle>,
-    /// Kinds by object slot: `pool * 256 + index` (the bridge).
+    /// The engine's kinds, in [`ENGINE_KINDS`]' order.
+    engine: Vec<KindHandle>,
+    /// Kinds by object slot: `pool * 256 + index` (registration by number).
     kind_slots: Vec<Option<KindHandle>>,
-    /// Actions by number (the bridge).
+    /// Actions by number (registration by number).
     action_numbers: Vec<Option<ActionHandle>>,
-    /// Weapons by routine number (the bridge).
+    /// Weapons by routine number (registration by number).
     weapon_ids: Vec<Option<WeaponHandle>>,
-    /// Chips content defines, by chip id (the bridge).
+    /// Chips content defines, by the chip id a test gave them.
     chip_ids: BTreeMap<ChipId, ChipHandle>,
 }
 
@@ -162,16 +172,30 @@ impl Defs {
         &self.kinds[h.index()]
     }
 
-    /// The kind filling an object slot.
+    /// The kind registration by number puts in an object slot.
     pub fn kind_at(&self, pool: Pool, index: u8) -> Option<KindHandle> {
         self.kind_slots.get(pool_index(pool) * 256 + index as usize).copied().flatten()
+    }
+
+    /// The engine's kind `kind`.
+    pub fn engine(&self, kind: EngineKind) -> KindHandle {
+        let i = ENGINE_KINDS.iter().position(|e| e.0 == kind).expect("every engine kind is listed");
+        self.engine[i]
+    }
+
+    /// Which of the engine's kinds `h` is, if it is one.
+    pub fn engine_kind(&self, h: KindHandle) -> Option<EngineKind> {
+        match self.kinds.get(h.index())?.implementation {
+            KindImpl::Engine(k) => Some(k),
+            KindImpl::Script { .. } => None,
+        }
     }
 
     pub fn action(&self, h: ActionHandle) -> &ActionDef {
         &self.actions[h.index()]
     }
 
-    /// The action registered by number (or bridged to it).
+    /// The action registered by number.
     pub fn action_numbered(&self, number: u8) -> Option<ActionHandle> {
         self.action_numbers.get(number as usize).copied().flatten()
     }
@@ -181,7 +205,7 @@ impl Defs {
         self.weapon_ids.get(id as usize).copied().flatten()
     }
 
-    /// A chip content defines, by its chip id.
+    /// A chip content defines, by the chip id a test gave it.
     pub fn chip_with_id(&self, id: ChipId) -> Option<&ChipDef> {
         self.chip_ids.get(&id).map(|h| &self.chips[h.index()])
     }
@@ -209,28 +233,12 @@ impl Defs {
         &self.schemas[id.0 as usize].schema
     }
 
-    /// Give the kind `key` an object slot (for registration by number and
-    /// the traces): how the bridge reaches a kind content defines.
-    pub fn bridge_kind(&mut self, key: &str, slot: (Pool, u8)) -> Result<KindHandle, ContentError> {
-        let h = self.kind_by_key(key).ok_or_else(|| ContentError::new(format!("no kind is named {key:?}")))?;
-        let i = pool_index(slot.0) * 256 + slot.1 as usize;
-        if let Some(other) = self.kind_slots[i]
-            && other != h
-        {
-            return Err(ContentError::new(format!(
-                "kinds {} and {key} both fill {} object {:#x}",
-                self.kinds[other.index()].key,
-                slot.0.name(),
-                slot.1
-            )));
-        }
-        self.kinds[h.index()].slot = Some(slot);
-        self.kind_slots[i] = Some(h);
-        Ok(h)
-    }
-
-    /// Give the weapon `key` a weapon routine number (the bridge).
-    pub fn bridge_weapon(&mut self, key: &str, id: u8) -> Result<WeaponHandle, ContentError> {
+    /// Give the weapon `key` a weapon routine number, as a `weapon.toml`
+    /// does: how the engine's tests reach a defined weapon while navi stats
+    /// name weapons by number. Nothing else calls it: the engine never
+    /// learns the original's numbers for what content defines.
+    #[cfg(any(test, feature = "test-content"))]
+    pub fn number_weapon(&mut self, key: &str, id: u8) -> Result<WeaponHandle, ContentError> {
         let i = self.weapons.binary_search_by(|w| w.key.as_str().cmp(key));
         let h = WeaponHandle(i.map_err(|_| ContentError::new(format!("no weapon is named {key:?}")))? as u16);
         if let Some(other) = self.weapon_ids[id as usize]
@@ -246,9 +254,11 @@ impl Defs {
         Ok(h)
     }
 
-    /// Give the chip `key` a chip id (the bridge): the engine's record with
-    /// that id runs the definition's usage.
-    pub fn bridge_chip(&mut self, key: &str, id: ChipId) -> Result<ChipHandle, ContentError> {
+    /// Give the chip `key` a chip id: the engine's record with that id runs
+    /// the definition's usage. How the engine's tests reach a defined chip
+    /// while hands hold chip ids; nothing else calls it.
+    #[cfg(any(test, feature = "test-content"))]
+    pub fn number_chip(&mut self, key: &str, id: ChipId) -> Result<ChipHandle, ContentError> {
         let i = self.chips.binary_search_by(|c| c.key.as_str().cmp(key));
         let h = ChipHandle(i.map_err(|_| ContentError::new(format!("no chip is named {key:?}")))? as u16);
         if let Some(&other) = self.chip_ids.get(&id)
@@ -258,18 +268,6 @@ impl Defs {
         }
         self.chips[h.index()].id = Some(id);
         self.chip_ids.insert(id, h);
-        Ok(h)
-    }
-
-    /// Give the action `key` an action number (the bridge).
-    pub fn bridge_action(&mut self, key: &str, number: u8) -> Result<ActionHandle, ContentError> {
-        let i = self.actions.binary_search_by(|a| a.key.as_str().cmp(key));
-        let h = ActionHandle(i.map_err(|_| ContentError::new(format!("no action is named {key:?}")))? as u16);
-        self.actions[h.index()].number = Some(number);
-        // Several actions can share a number (the chips of one family each
-        // compose their own); registration by number reaches the first.
-        let slot = &mut self.action_numbers[number as usize];
-        slot.get_or_insert(h);
         Ok(h)
     }
 }
@@ -383,8 +381,6 @@ impl Defs {
                 implementation: KindImpl::Engine(kind),
                 schema: schema_id(NO_STATE),
                 slot: Some((pool, index)),
-                scratch_position: false,
-                scratch_z_fraction: false,
             };
             kinds.add(key.to_string(), def, "the engine's".into());
         }
@@ -410,8 +406,6 @@ impl Defs {
                 implementation: KindImpl::Script { update: functions.id(update) },
                 schema: module_state(&k.script),
                 slot: Some((k.pool, k.index)),
-                scratch_position: k.scratch_position,
-                scratch_z_fraction: k.scratch_z_fraction,
             };
             kinds.add(k.name.clone(), def, whose.clone());
             if let Some(entry) = k.actor_list_entry {
@@ -431,8 +425,6 @@ impl Defs {
                 implementation: KindImpl::Script { update: functions.id(slot(d, "update")?) },
                 schema: state_of(d)?,
                 slot: None,
-                scratch_position: false,
-                scratch_z_fraction: false,
             };
             kinds.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
@@ -517,8 +509,7 @@ impl Defs {
         }
         let weapons: Vec<WeaponDef> = weapons.sorted()?.into_iter().map(|(_, w)| w).collect();
 
-        // Chips content defines (their records join the engine's once
-        // compat gives them their ids).
+        // Chips content defines.
         let action_handle = |key: &str| -> Option<ActionHandle> {
             actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
         };
@@ -548,6 +539,21 @@ impl Defs {
             chips.push(ChipDef { key: d.key.clone(), usage, id: None });
         }
 
+        let look = |d: &Definition| -> Result<super::EffectSprite, ContentError> {
+            let what = |e: String| ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key));
+            let sprite = d.spec.field("sprite").str().ok_or_else(|| what("needs a `sprite`".into()))?;
+            let byte = |field: &str| -> Result<u8, ContentError> {
+                match d.spec.field(field) {
+                    Data::Nil => Ok(0),
+                    Data::Int(i) => u8::try_from(*i).map_err(|_| what(format!("`{field}` {i} is not a byte"))),
+                    _ => Err(what(format!("`{field}` is not a number"))),
+                }
+            };
+            Ok(super::EffectSprite { sprite: sprite.parse().map_err(what)?, anim: byte("anim")?, palette: byte("palette")? })
+        };
+        let effects = definitions.of(Registry::Effect).iter().map(look).collect::<Result<Vec<_>, _>>()?;
+        let sparks = definitions.of(Registry::Spark).iter().map(look).collect::<Result<Vec<_>, _>>()?;
+
         let records: Vec<RecordDef> = definitions
             .of(Registry::Record)
             .iter()
@@ -575,12 +581,16 @@ impl Defs {
             in_registry += 1;
         }
 
-        // The bridge from numbers.
+        // Registration by number's lookups.
+        let kind_keys: BTreeMap<String, KindHandle> =
+            kinds.iter().enumerate().map(|(i, k)| (k.key.clone(), KindHandle(i as u16))).collect();
+        let engine = ENGINE_KINDS.iter().map(|e| kind_keys[e.1]).collect();
         let mut defs = Defs {
             defined: true,
             definitions,
             handles,
-            kind_keys: kinds.iter().enumerate().map(|(i, k)| (k.key.clone(), KindHandle(i as u16))).collect(),
+            kind_keys,
+            engine,
             kind_slots: vec![None; 3 * 256],
             action_numbers: vec![None; 256],
             weapon_ids: vec![None; 256],
@@ -590,6 +600,8 @@ impl Defs {
             weapons,
             chips,
             records,
+            effects,
+            sparks,
             schemas,
             functions: Vec::new(),
             hooks: BTreeMap::new(),

@@ -5,4 +5,3 @@
 pool = "effect"
 index = 0x03
 script = "area_grab.luau"
-scratch_position = true
