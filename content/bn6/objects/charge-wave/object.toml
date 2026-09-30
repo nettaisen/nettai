@@ -1,0 +1,6 @@
+# ChargeCross Beast's wave (attack object #0xC4, `sub_80DDA84`) is a script.
+
+[kind]
+pool = "attack"
+index = 0xC4
+script = "charge_wave.luau"

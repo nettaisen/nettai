@@ -419,8 +419,10 @@ fn status_effects(rom: &Rom) -> Vec<[StatusEffect; 16]> {
 
 /// Beast Out lock-on searches (`ho_8026554`, `jt_8026584`): for the modes
 /// that look for a panel near the target (`sub_80265D0`), the offsets
-/// tried and whether the middle row is taken afterwards (`sub_80265FE`),
-/// and the column shifts tried when nothing fits (`byte_8026735`).
+/// tried and whether the middle row is taken afterwards (`sub_80265FE`)
+/// or the first offset skipped with the target in the far column
+/// (`sub_80266BA`), and the column shifts tried when nothing fits
+/// (`byte_8026735`).
 fn lockon(rom: &Rom) -> Lockon {
     // A list of signed bytes, or byte pairs, up to 0x7F.
     let list = |mut a: u32, pairs: bool| {
@@ -433,26 +435,29 @@ fn lockon(rom: &Rom) -> Lockon {
     };
     let column_shifts = list(u32at(rom, 0x0802_67E8), false).into_iter().map(|(s, _)| s).collect();
     // (mode, literal-pool slot of its offset list, prefers the middle row)
-    const MODES: [(u8, u32, bool); 12] = [
-        (0x02, 0x0802_67FC, false),
-        (0x03, 0x0802_6800, true),
-        (0x04, 0x0802_6804, false),
-        (0x05, 0x0802_6808, false),
-        (0x06, 0x0802_680C, true),
-        (0x07, 0x0802_6810, false),
-        (0x08, 0x0802_6814, false),
-        (0x09, 0x0802_6818, true),
-        (0x0C, 0x0802_6824, false),
-        (0x0D, 0x0802_6828, false),
-        (0x0F, 0x0802_6830, false),
-        (0x10, 0x0802_6834, true),
+    // (and whether the first offset is skipped at the far column)
+    const MODES: [(u8, u32, bool, bool); 13] = [
+        (0x02, 0x0802_67FC, false, false),
+        (0x03, 0x0802_6800, true, false),
+        (0x04, 0x0802_6804, false, false),
+        (0x05, 0x0802_6808, false, false),
+        (0x06, 0x0802_680C, true, false),
+        (0x07, 0x0802_6810, false, false),
+        (0x08, 0x0802_6814, false, false),
+        (0x09, 0x0802_6818, true, false),
+        (0x0B, 0x0802_6820, false, true),
+        (0x0C, 0x0802_6824, false, false),
+        (0x0D, 0x0802_6828, false, false),
+        (0x0F, 0x0802_6830, false, false),
+        (0x10, 0x0802_6834, true, false),
     ];
     let searches = MODES
         .iter()
-        .map(|&(mode, pool, prefers_middle_row)| LockonSearch {
+        .map(|&(mode, pool, prefers_middle_row, skips_first_at_edge)| LockonSearch {
             mode,
             offsets: list(u32at(rom, pool), true).into_iter().map(|(dx, dy)| PanelOffset { dx, dy }).collect(),
             prefers_middle_row,
+            skips_first_at_edge,
         })
         .collect();
     Lockon { searches, column_shifts }

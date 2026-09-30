@@ -556,22 +556,6 @@ pub struct HitboxSpec {
     pub bug_arg: u8,
 }
 
-/// A sprite afterimage (effect object #0x28), as `sub_80E33FA` and its
-/// setters take it: the sprite, its animation and flip (the game's flip
-/// value), how many ticks it lasts, and how it looks.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct AfterimageSpec {
-    pub sprite: SpriteId,
-    pub anim: u8,
-    pub flip: u8,
-    pub ticks: u16,
-    pub color_shader: u16,
-    pub shadow: Shadow,
-    /// Hidden every other two ticks (unless `sub_80E3422` says not).
-    pub blinks: bool,
-    pub palette: u8,
-}
-
 /// A panel as content sees it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PanelInfo {
@@ -839,12 +823,24 @@ pub trait CoreApi {
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
     /// `sub_80E08C4`: hit spark `id` at `pos`.
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
-    /// `sub_80E33FA` with a sprite: an afterimage (effect object #0x28) of
-    /// `owner`'s at `pos`, showing a sprite's animation for a few ticks.
-    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
-    /// `sub_80E11E0`: a white screen flash (effect object #0x0A) for
-    /// `ticks` ticks, going on while dimmed or paused if it says so.
-    fn spawn_palette_flash(&mut self, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
+    /// `sub_80E33FA`: an afterimage (effect object #0x28) for `owner`'s
+    /// side at `pos`: `params` its sprite (category and index, or 0xFF for
+    /// the owner's), animation and flip; `shader` its colour shader;
+    /// `lifetime` its ticks (low half), a shadow (byte 2) kept on the
+    /// ground (byte 3); `palette` its palette (`sub_80E3428`).
+    fn spawn_afterimage(
+        &mut self,
+        owner: ObjectRef,
+        pos: Vec3,
+        params: [u8; 4],
+        shader: u32,
+        lifetime: u32,
+        palette: u8,
+    ) -> Option<ObjectRef>;
+    /// `sub_80E11E0`: a palette flash (effect object #0xA): `params` its
+    /// variant, ticks, whether it runs on while dimmed (bit 0) or paused
+    /// (bit 1), and colour.
+    fn spawn_palette_flash(&mut self, params: [u8; 4]) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
@@ -895,6 +891,10 @@ pub trait CoreApi {
     fn step_target(&self, o: ObjectRef, dir: u8) -> Option<PanelPos>;
     /// `sub_80116AE`: start a step toward `dir` from input.
     fn start_move(&mut self, o: ObjectRef, dir: u8);
+    /// `ho_8026554`: the panel the navi would attack `target` from in
+    /// Beast Out lock-on mode `mode` (its own panel for mode 0 or a
+    /// target off the field; (0, 0x7F) when no panel fits).
+    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: u8) -> PanelPos;
     /// `object_canMove`: not immobilized, sliding or moving.
     fn can_move(&self, o: ObjectRef) -> bool;
     /// `sub_801265A`: the buster's damage (the attack level, with the

@@ -164,6 +164,12 @@ pub fn scripts() -> Scripts {
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
                 ("objects/aqua-surge/aqua_surge", "objects/aqua-surge/aqua_surge"),
                 ("objects/whirlwind/whirlwind", "objects/whirlwind/whirlwind"),
+                ("objects/dash-hit/dash_hit", "objects/dash-hit/dash_hit"),
+                ("objects/erase-drop/erase_drop", "objects/erase-drop/erase_drop"),
+                ("objects/lunge-slash/lunge_slash", "objects/lunge-slash/lunge_slash"),
+                ("objects/hit-flash/hit_flash", "objects/hit-flash/hit_flash"),
+                ("objects/charge-wave/charge_wave", "objects/charge-wave/charge_wave"),
+                ("objects/junk-shot/junk_shot", "objects/junk-shot/junk_shot"),
                 ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
                 ("chips/0ae-fullcust/chip", "chips/0ae-fullcust/chip"),
                 ("chips/0c0-atk-10/chip", "chips/0c0-atk-10/chip"),
@@ -217,6 +223,12 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
         weapon(0x2A, "Absorb", Some(0x58), "2a-absorb/absorb"),
         weapon(0x2B, "Throw absorbed", None, "2b-throw-absorbed/throw_absorbed"),
+        weapon(0x15, "EraseCross Beast drop", Some(0x46), "15-erase-beast-drop/erase_beast_drop"),
+        weapon(0x17, "GroundCross Beast dash", Some(0x1A), "17-ground-beast-dash/ground_beast_dash"),
+        weapon(0x1A, "SlashCross Beast lunge", Some(0x4C), "1a-slash-beast-lunge/slash_beast_lunge"),
+        weapon(0x1C, "ChargeCross Beast wave", Some(0x4F), "1c-charge-beast-wave/charge_beast_wave"),
+        weapon(0x1D, "DustCross Beast scatter", Some(0x50), "1d-dust-beast-scatter/dust_beast_scatter"),
+        weapon(0x27, "ChargeCross tackle", Some(0x56), "27-charge-cross-tackle/charge_cross_tackle"),
         weapon(0x2E, "Buster", None, "00-buster/buster"),
         weapon(0x03, "Falzar Beast buster", Some(0x1E), "03-falzar-beast-buster/falzar_beast_buster"),
         weapon(0x04, "Gregar Beast buster", Some(0x1D), "04-gregar-beast-buster/gregar_beast_buster"),
@@ -254,6 +266,12 @@ fn kinds() -> Vec<ObjectKind> {
         kind("element-pillar", Pool::Attack, 0x61, "objects/element-pillar/element_pillar"),
         kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
         kind("whirlwind", Pool::Attack, 0x81, "objects/whirlwind/whirlwind"),
+        kind("dash-hit", Pool::Attack, 0xAF, "objects/dash-hit/dash_hit"),
+        kind("erase-drop", Pool::Attack, 0xA1, "objects/erase-drop/erase_drop"),
+        kind("lunge-slash", Pool::Attack, 0xB1, "objects/lunge-slash/lunge_slash"),
+        ObjectKind { scratch_position: true, ..kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash") },
+        kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
+        kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
         kind("absorbed-obstacle", Pool::Effect, 0x87, "objects/absorbed-obstacle/absorbed_obstacle"),
         kind("plus-sparkle", Pool::Effect, 0x14, "objects/plus-sparkle/plus_sparkle"),
         kind("boomerang", Pool::Attack, 0x32, "objects/boomerang/boomerang"),
@@ -458,7 +476,7 @@ fn rules() -> Rules {
     collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING | FLOATING);
     collision_types[0x02] = both(&|s| ATTACK[s ^ 1] | OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
     collision_types[0x05] = both(&|s| OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
-    for t in [0x04, 0x0A, 0x12, 0x15, 0x16, 0x2C, 0x48] {
+    for t in [0x04, 0x06, 0x07, 0x0A, 0x0B, 0x12, 0x15, 0x16, 0x2C, 0x32, 0x48] {
         collision_types[t] = attack;
     }
     collision_types[0x2A] = collision_types[0x05];
@@ -483,7 +501,9 @@ fn rules() -> Rules {
                 PanelType::RoadLeft => (pflags::SOLID | 0x200, Some(SlideVector { dx: -1, dy: 0, tiles: 1 })),
                 PanelType::RoadRight => (pflags::SOLID | 0x200, Some(SlideVector { dx: 1, dy: 0, tiles: 1 })),
             };
-            PanelTypeRule { flags, road_slide }
+            // Every type has the "a panel" bit (the scatter's panel search
+            // wants it).
+            PanelTypeRule { flags: flags | 0x1_0000, road_slide }
         })
         .collect();
     // Steps: onto a free panel of one's own side, solid unless floor-free.
@@ -563,7 +583,26 @@ fn rules() -> Rules {
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
         lockon: Lockon {
-            searches: vec![LockonSearch { mode: 1, offsets: vec![PanelOffset { dx: -1, dy: 0 }], prefers_middle_row: false }],
+            searches: vec![
+                LockonSearch {
+                    mode: 1,
+                    offsets: vec![PanelOffset { dx: -1, dy: 0 }],
+                    prefers_middle_row: false,
+                    skips_first_at_edge: false,
+                },
+                LockonSearch {
+                    mode: 2,
+                    offsets: vec![PanelOffset { dx: -1, dy: 0 }, PanelOffset { dx: -1, dy: 1 }],
+                    prefers_middle_row: false,
+                    skips_first_at_edge: false,
+                },
+                LockonSearch {
+                    mode: 0xB,
+                    offsets: vec![PanelOffset { dx: -1, dy: 0 }, PanelOffset { dx: -2, dy: 0 }],
+                    prefers_middle_row: false,
+                    skips_first_at_edge: true,
+                },
+            ],
             column_shifts: vec![-1, -2],
         },
         custom_screen: custom_screen_layout(),
@@ -755,6 +794,8 @@ fn regions() -> Vec<Vec<PanelOffset>> {
     // The Beast charged chips' pillars: here the panel in front and two
     // past it.
     v[0x1A] = vec![p(0, 0), p(2, 0)];
+    // A block around the panel (the scatter's panel search).
+    v[0x0F] = vec![p(0, 0), p(1, 0), p(-1, 0), p(0, -1), p(0, 1), p(1, -1), p(1, 1), p(-1, -1), p(-1, 1)];
     v
 }
 

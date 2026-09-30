@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x1A, SlashCross Beast's charged Null chip
+# (`sub_8011D9C`), and its action 0x4C (`sub_80EEE60`) are a script.
+
+id = 0x1A
+name = "SlashCross Beast lunge"
+action = 0x4C
+script = "slash_beast_lunge.luau"

@@ -15,6 +15,7 @@
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
 //! data.rules.sine[angle]    the sine table (math_sinTable; the cosine is 64 on)
+//! data.regions[id]          a region shape: its panels as {dx, dy}
 //! ```
 
 use bn6_content_api::{Data, DataKey};

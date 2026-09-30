@@ -5,7 +5,7 @@
 
 use bn6_content_api::api::ApiResult;
 use bn6_content_api::{
-    ActorField, AfterimageSpec, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
+    ActorField, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
     FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField,
     Pad, PanelInfo, RequestFlag, Shadow, SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
     SideSpecial,
@@ -671,29 +671,6 @@ impl CoreApi for Battle {
         kinds::effect::spawn(self, pos, id, flip, palette_add, priority)
     }
 
-    fn spawn_palette_flash(&mut self, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
-        kinds::palette_flash::spawn(self, ticks, while_dimmed, while_paused)
-    }
-
-    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, s: &AfterimageSpec) -> Option<ObjectRef> {
-        let shadow = match s.shadow {
-            Shadow::Hidden => sprite::Shadow::Hidden,
-            Shadow::Ground => sprite::Shadow::Ground,
-            Shadow::WithSprite => sprite::Shadow::WithSprite,
-        };
-        let spec = kinds::afterimage::SpriteSpec {
-            sprite: s.sprite,
-            anim: s.anim,
-            flip: s.flip,
-            lifetime: s.ticks,
-            color_shader: s.color_shader,
-            shadow,
-            blinks: s.blinks,
-            palette: s.palette,
-        };
-        kinds::afterimage::spawn_sprite(self, owner, pos, spec)
-    }
-
     fn spawn_region_effects(&mut self, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32) {
         kinds::effect::spawn_over_region(self, x, y, region, side, id, z);
     }
@@ -719,6 +696,24 @@ impl CoreApi for Battle {
 
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef> {
         kinds::spark::spawn(self, owner, pos, id)
+    }
+
+    fn spawn_afterimage(
+        &mut self,
+        owner: ObjectRef,
+        pos: Vec3,
+        params: [u8; 4],
+        shader: u32,
+        lifetime: u32,
+        palette: u8,
+    ) -> Option<ObjectRef> {
+        let r = kinds::afterimage::spawn_with(self, owner, pos, params, shader, lifetime)?;
+        kinds::afterimage::set_palette(self, r, palette);
+        Some(r)
+    }
+
+    fn spawn_palette_flash(&mut self, params: [u8; 4]) -> Option<ObjectRef> {
+        kinds::palette_flash::spawn_with(self, params)
     }
 
     fn death_hook(&mut self, o: ObjectRef, name_id: u16) {
@@ -922,6 +917,10 @@ impl CoreApi for Battle {
 
     fn start_move(&mut self, o: ObjectRef, dir: u8) {
         kinds::player::idle::start_move(self, o, dir);
+    }
+
+    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: u8) -> PanelPos {
+        kinds::player::actions::beast_rush::lockon_panel(self, o, target, mode)
     }
 
     fn can_move(&self, o: ObjectRef) -> bool {

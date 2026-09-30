@@ -82,15 +82,9 @@ end
 local function afterimage(me: Object)
     local kind = me:param(2)
     local shader = SHADER[kind] or SHADER[1]
-    battle.afterimage(me, me.pos, {
-        sprite = SPRITE,
-        anim = me.anim,
-        flip = bit32.bxor(me.alliance, me.flip),
-        ticks = AFTERIMAGE_TICKS,
-        color_shader = shader,
-        shadow = "with_sprite",
-        palette = if kind == 1 then 1 else 0,
-    })
+    -- (Its sprite, 0c-45, as Param1 and Param2; no shadow.)
+    local params = { 0x0C, 0x45, me.anim, bit32.bxor(me.alliance, me.flip) }
+    battle.afterimage(me, me.pos, params, shader, AFTERIMAGE_TICKS, if kind == 1 then 1 else 0)
 end
 
 -- `sub_80DE984`: onto the arc at its angle (the timer's high byte), turn
@@ -138,7 +132,8 @@ local function tick(me: Object)
     me:hit_spark()
     c.region = 0
     if c.hit_flags ~= 0 then
-        battle.palette_flash(FLASH_TICKS, true, false)
+        -- A white flash (variant 0) that goes on while dimmed (mode 1).
+        battle.palette_flash({ 0, FLASH_TICKS, 1, 0 })
     end
     local x, y = me.panel_x, me.panel_y
     local a = me.action
