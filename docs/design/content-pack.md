@@ -193,7 +193,7 @@ Conventions:
   actor-list entry kinds (`navi`, `rock`, `object_6e`, `object_7d`: the
   original's object numbers are the identity of BN6's object kinds).
 - **Flag bytes as lists** of flag names, with any bit that has no name as
-  its number: chips' `flags` (`time_freeze`, `has_damage`, `navi`,
+  its number: chips' `flags` (`cut_in`, `has_damage`, `navi`,
   `standard_library`, `damage_shown_variable`, `library`,
   `variable_damage`), `extra_flags` (`rush_cancels`, `free_slot_in`, and
   menu-only bits as numbers), secondary elements (`break`, `wind`,
@@ -305,7 +305,7 @@ let pas = b.content.program_advances();          // in the order they are tried
 
 In-repo tests never load game data. `bn6_battle::content::testing` (the
 `test-content` feature, and the engine's own tests) is a small content set
-written by hand: made-up chips on the engine's GunDelSol, time-freeze and
+written by hand: made-up chips on the engine's GunDelSol, dimming and
 navi-chip actions, one navi and its base form, rocks, a custom-screen
 layout, and collision types and panel rules written from the engine's own
 flag semantics. The engine, netplay, audio and frontend tests run on it;

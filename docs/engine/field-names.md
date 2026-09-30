@@ -14,6 +14,20 @@ Behaviour is unchanged: the golden-trace replays match the same number of frames
 
 For fields likely to come back with a later port, the evidence column suggests a name ("re-add as ...").
 
+## Terminology
+
+The engine and its docs use these terms (older code and docs used the ones on the right). The original's routine
+and symbol names keep their own words (`object_timefreezeBegin`, `battle_isTimeStop`,
+`object_updateSpriteTimestop`, `OBJECT_FLAG_UPDATE_DURING_TIMESTOP`).
+
+| Term | Meaning | Was |
+|---|---|---|
+| dimming | Battle flag 4: the screen dims and every object but the ones allowed to (header flag 0x10, `RUN_WHILE_DIMMED`) stands still. `Battle::is_dimmed`, `battle_flags::DIMMED`, the dimming service (`dimming.rs`, `DimmingRecord`, `Battle::dimming`) | time freeze, time stop, `time_freeze.rs`, `FreezeRecord`, `Battle::freeze`, `TIME_STOP`, `RUN_IN_TIME_STOP`, `is_time_stop` |
+| dimming controller | The object a cut-in chip spawns to run the dimming's phases | time-freeze controller |
+| cut-in chip | A chip whose use starts a dimming (chip flag 0x01, `ChipFlags::CUT_IN`, `cut_in` in a pack's `flags`); `CutInChip` is the chip id and bonus a controller shows | time-freeze chip, TFC, `TIME_FREEZE`, `FreezeChip` |
+| counter cut-in | Using one's own cut-in chip during the other side's dimming (request 0x800, `request::COUNTER_CUT_IN`) | counter-TFC, time-freeze counter, `TIMESTOP_CHIP` |
+| telop | The chip-name banner a cut-in shows (banners 0x4C for the local player's chip, 0x50 for the other's); other banners (round start, turn, results) stay banners | chip-name banner |
+
 ## Fixing up code that uses the old names
 
 Most renames are mechanical. These changed type, so their uses change too:
@@ -94,9 +108,9 @@ Fields that already had names are unchanged. `drain_counter` (+0x0A) kept its na
 |---|---|---|---|
 | `unk_0c` | deleted | u8 | BattleObject+0x0C: per-kind scratch. For sprite attachments (actor #5) it is a signed pixel lift subtracted from Y and Z; the ported attachment keeps it as `attachment::Vars::lift`. The Full Synchro aura's spawner sets it to 1 (`sub_80C4C12`). Many attack and effect kinds use it their own way (`sub_8017E44`, `sub_80D65FC`, `sub_80BD084`, `sub_80C0C48`...). |
 | `unk_0d` | `drag_step` | `DragStep` (was u8) | BattleObject+0x0D: the drag reaction's step: 0 start (`sub_80178D4`), 4 slide (`sub_8017992`), 8 recover (`sub_8017A38`). Dispatched by the drag actions of every actor kind (players `sub_80178B6`; others `sub_8016CE8`, `sub_8017CC0`, `sub_8017E26`). Zeroed by stage B on every undragged tick (`sub_801AF44` and its per-kind twins `sub_801B1C4`...`sub_801B878`). Attack objects use the byte for other things (`sub_80C0DD8`, `sub_80EA11C`, `sub_80DA37A`). |
-| `unk_19` | `shake_timer` | u8 | BattleObject+0x19: ticks left of the time-stop shake. `sub_8017AB4` sets 30 per damaging hit and zeroes it on entry. Other kinds use the byte for other things. |
-| `unk_30` | `shake_origin_x` | i16 (was u16) | BattleObject+0x30: the whole-pixel X an actor shakes around in time stop, saved from X16 on the handler's first tick (`sub_8017AB4`). Other kinds use the halfword for other things (e.g. a time-freeze chip's id). |
-| `unk_32` | `shake_origin_z` | i16 (was u16) | BattleObject+0x32: the same for Z16. Other kinds use it for other things (e.g. a time-freeze chip's bonus). |
+| `unk_19` | `shake_timer` | u8 | BattleObject+0x19: ticks left of the dimming shake. `sub_8017AB4` sets 30 per damaging hit and zeroes it on entry. Other kinds use the byte for other things. |
+| `unk_30` | `shake_origin_x` | i16 (was u16) | BattleObject+0x30: the whole-pixel X an actor shakes around while dimmed, saved from X16 on the handler's first tick (`sub_8017AB4`). Other kinds use the halfword for other things (e.g. a cut-in chip's id). |
+| `unk_32` | `shake_origin_z` | i16 (was u16) | BattleObject+0x32: the same for Z16. Other kinds use it for other things (e.g. a cut-in chip's bonus). |
 
 New type: `object::DragStep { Start, Slide, Recover }` (the game's 0, 4, 8). `Default` is `Start`.
 
@@ -104,7 +118,7 @@ New type: `object::DragStep { Start, Slide, Recover }` (the game's 0, 4, 8). `De
 
 | Old | New | Type | Meaning and evidence |
 |---|---|---|---|
-| `CollisionData::unk_54` | deleted | u32 | CollisionData+0x54: `object_presentCollisionData` stores the caller's r1 there, then 0 unless in time stop. No reader found. The port's clear in `present_collision` is gone. |
+| `CollisionData::unk_54` | deleted | u32 | CollisionData+0x54: `object_presentCollisionData` stores the caller's r1 there, then 0 unless while dimmed. No reader found. The port's clear in `present_collision` is gone. |
 | `CollisionData::unk_5c` | deleted | u32 | CollisionData+0x5C: no access found. |
 | `CollisionData::unk_64` | deleted | u32 | CollisionData+0x64: a per-variant value set by one attack kind (`sub_80C518C`). `sub_3007218` adds it into the receiver's +0xA0. The port never set it, so it was always 0. |
 | `Accumulators::unk_7a` | deleted | u16 | CollisionData+0x7A: the upper half of the game's u32 at +0x78. Only the lower half (`elec_damage`) is accessed. |
@@ -200,7 +214,7 @@ what they start. "No setter found" is from the same heuristic scan as above.
 | `request::ACTION_30` | `request::VOLLEY` | 0x40000000: starts action 0x30 with state 0x10000. No setter found. |
 | `request::ACTION_49` | `request::STUN_STRIKE` | 0x80000: starts action 0x49 (`sub_80EEB4C`: a slash at every opposing navi that is paralyzed, or, variant 1, on a panel with flags 0x1C00). No setter found. The form changes (`sub_8014B18`, `sub_8014D70`...) set **state** bit 0x80000, which is `status::FORM_CHANGE_SPRITE_HELD`, not this request. |
 
-## State added with round chaining, Crosses and time freezes
+## State added with round chaining, Crosses and cut-in chips
 
 | Field | Game location | Meaning |
 |---|---|---|
@@ -209,8 +223,8 @@ what they start. "No setter found" is from the same heuristic scan as above.
 | `RoundSetup::later_stages` | `byte_203CA50` | The two (settings index, background) pairs of the set's later rounds (battle-flow.md §3.8). |
 | `Battle::round_end()` / `RoundEnd` | BattleState+0x1F, +0x0A | How the round ended (battle-flow.md §3.7). |
 | `Battle::crossed` | `byte_203EAE0` + 0x10·side + 0xB | The navi crossed this battle (set at the end of the Cross and Cross Beast changes, `sub_8014CC0`, `sub_8015128`, `sub_80155CC`); read only for the busting level. |
-| `Battle::freeze` / `FreezeRecord` | `byte_203CF00` + 0x50·side | A side's time freeze: owner +0, state +1, uncounterable +2, initiator +3, controller +8, user +0xC (chips.md §3.6). |
+| `Battle::dimming` / `DimmingRecord` | `byte_203CF00` + 0x50·side | A side's dimming: owner +0, state +1, uncounterable +2, initiator +3, controller +8, user +0xC (chips.md §3.6). |
 | `AttackVars::marker` | AIAttackVars+0x30 | Also the Cross change's white-flash count (0..6, `sub_8014B98`). |
-| `attachment::Params` | Param1..4 of T1#5 | Kind, animation, animate in time stop, palette offset (`sub_80B8CF8`). |
+| `attachment::Params` | Param1..4 of T1#5 | Kind, animation, animate while dimmed, palette offset (`sub_80B8CF8`). |
 | `cross_merge::Vars` | +0x62, ExtraVars+4/+0xC/+0x10/+0x14, +0x68 of T1#0x1B | Swings left, swing step, lift, extra height, sound played, side of the next swing. |
 | `body_overlay::Vars` | Param1..4 and ExtraVars[0] of T1#0x56 | Variant, own palette, always step, animation offset, forced in front. |

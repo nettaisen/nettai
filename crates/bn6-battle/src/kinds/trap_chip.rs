@@ -1,6 +1,6 @@
-//! The trap chips' time-freeze controller (effect object #0x2A,
-//! `sub_80E34C0`): AntiDmg and its kin. The usual freeze phases
-//! (`time_freeze`), with the chip's name hidden, and an effect that
+//! The trap chips' dimming controller (effect object #0x2A,
+//! `sub_80E34C0`): AntiDmg and its kin. The usual dimming phases
+//! (`dimming`), with the telop hidden, and an effect that
 //! registers the trap as the side's defensive chip (the linked record);
 //! the trap springs from the damage intake. See docs/engine/chips.md
 //! §3.6.9.
@@ -8,14 +8,14 @@
 use crate::battle::{Battle, LinkedRecord};
 use crate::kinds::common;
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
-use crate::time_freeze::{self, FreezeChip};
+use crate::dimming::{self, CutInChip};
 
 pub const INDEX: u8 = 0x2A;
 
 /// The controller's own state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    pub chip: FreezeChip,
+    pub chip: CutInChip,
     /// The damage word (object +0x2C), kept for the counterattack.
     pub damage: u32,
 }
@@ -35,7 +35,7 @@ pub fn spawn(
     element: u8,
     params: [u8; 4],
     damage: u32,
-    chip: FreezeChip,
+    chip: CutInChip,
 ) -> Option<ObjectRef> {
     let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), params)?;
     let (panel, alliance) = {
@@ -53,14 +53,14 @@ pub fn spawn(
 
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
-        state::INIT => time_freeze::begin(b, r),
+        state::INIT => dimming::begin(b, r),
         state::UPDATE => match b.objects.get(r).action {
-            0 => time_freeze::dim_screen(b, r),
-            4 => time_freeze::show_hidden_chip_name(b, r),
+            0 => dimming::dim_screen(b, r),
+            4 => dimming::show_hidden_telop(b, r),
             8 => effect(b, r),
-            _ => time_freeze::undim_screen(b, r),
+            _ => dimming::undim_screen(b, r),
         },
-        _ => time_freeze::end(b, r),
+        _ => dimming::end(b, r),
     }
 }
 

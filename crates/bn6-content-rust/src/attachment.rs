@@ -36,7 +36,7 @@ pub fn spawn(api: &mut dyn CoreApi, owner: ObjectRef, kind: u8, slot: Slot) -> O
         api.set_alliance(r, alliance);
         api.set_flip(r, flip);
         api.set_run_while_paused(r, true);
-        api.set_run_in_time_stop(r, true);
+        api.set_run_while_dimmed(r, true);
         set_state(api, r, &State { slot, ..State::default() });
     }
     slot.set(api, owner, r);
@@ -89,7 +89,7 @@ fn init(data: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
 }
 
 /// `sub_80B8DA6`: follow the owner's position and visibility; animate,
-/// except while paused (or in time stop, unless the third parameter says
+/// except while paused (or while dimmed, unless the third parameter says
 /// otherwise); end once the slot is cleared.
 fn follow(api: &mut dyn CoreApi, me: ObjectRef) {
     let owner = owner(api, me);
@@ -119,7 +119,7 @@ fn follow(api: &mut dyn CoreApi, me: ObjectRef) {
         api.set_lifecycle(me, Lifecycle::Destroy);
         return;
     }
-    if api.param(me, 2) == 0 && api.is_time_stop() {
+    if api.param(me, 2) == 0 && api.is_dimmed() {
         return;
     }
     if api.is_paused() {

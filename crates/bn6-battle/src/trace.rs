@@ -432,7 +432,7 @@ fn describe_fields(
 /// The X and Y of effects the engine marks as not knowing them are skipped
 /// too (`effect::xy_unknown`): the second deletion explosion, which the
 /// game spawns with the object allocator's list-node addresses as X and Y
-/// (§A.3). And the time-freeze controllers', spawned with the user's
+/// (§A.3). And the dimming controllers', spawned with the user's
 /// panel Y, the element and the spawner's address as X, Y and Z
 /// (chips.md §3.6).
 fn pos_is_garbage(kind: u8, index: u8, flags: u8) -> bool {

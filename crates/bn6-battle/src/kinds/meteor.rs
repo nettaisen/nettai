@@ -1,7 +1,7 @@
 //! A meteor (attack object #0x8D, `sub_80D6BD4`): it falls from high
 //! behind its panel onto it in 17 ticks; if the panel holds something, it
 //! bursts there with a one-tick hit region. ElmntMan's Fire drops them
-//! during a time stop (Param1 = 1: it runs in time stop).
+//! during a dimming (Param1 = 1: it runs while dimmed).
 //! See docs/engine/chips.md §3.6.7.
 
 use crate::battle::Battle;
@@ -25,16 +25,16 @@ const FALL: u16 = 0x11;
 /// The meteor's own state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    /// Param1: it runs (and steps its sprite) in time stop.
-    pub in_time_stop: bool,
+    /// Param1: it runs (and steps its sprite) while dimmed.
+    pub while_dimmed: bool,
 }
 
-fn in_time_stop(b: &Battle, r: ObjectRef) -> bool {
-    matches!(&b.objects.get(r).vars, crate::kinds::Vars::Meteor(v) if v.in_time_stop)
+fn while_dimmed(b: &Battle, r: ObjectRef) -> bool {
+    matches!(&b.objects.get(r).vars, crate::kinds::Vars::Meteor(v) if v.while_dimmed)
 }
 
 /// `sub_80D6D18`: a Fire meteor from `owner` onto `panel`, running in
-/// time stop.
+/// dimming.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, panel: PanelPos, damage: u32) -> Option<ObjectRef> {
     let r = b.objects.spawn(Pool::Attack, INDEX, Vec3::default(), [1, 0, 0, 0])?;
     let (alliance, flip) = {
@@ -48,8 +48,8 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, panel: PanelPos, damage: u32) -> 
     o.stamina = (damage >> 16) as u16;
     o.alliance = alliance;
     o.flip = flip;
-    o.flags |= flags::RUN_IN_TIME_STOP;
-    o.vars = crate::kinds::Vars::Meteor(Vars { in_time_stop: true });
+    o.flags |= flags::RUN_WHILE_DIMMED;
+    o.vars = crate::kinds::Vars::Meteor(Vars { while_dimmed: true });
     Some(r)
 }
 
@@ -62,11 +62,11 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             return crate::kinds::generic_destroy(b, r);
         }
     }
-    if in_time_stop(b, r) {
-        common::update_sprite_in_time_stop(b, r);
+    if while_dimmed(b, r) {
+        common::update_sprite_while_dimmed(b, r);
     } else {
         // object_updateSpritePaused
-        panic!("meteors outside time stop (object_updateSpritePaused) are not implemented yet");
+        panic!("meteors outside a dimming (object_updateSpritePaused) are not implemented yet");
     }
 }
 
@@ -97,7 +97,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     if b.is_battle_over() {
         return common::set_progress(b, r, Progress::DESTROY);
     }
-    if !in_time_stop(b, r) && b.is_time_stop() {
+    if !while_dimmed(b, r) && b.is_dimmed() {
         return;
     }
     if b.objects.get(r).phase == 0 {
@@ -135,7 +135,7 @@ fn land(b: &mut Battle, r: ObjectRef) {
     if b.field.flags(p.x, p.y) & HITS[alliance as usize] != 0 {
         let pos = b.objects.get(r).pos;
         effect::spawn(b, pos, 0, 0, 0, 0);
-        // sub_80D6D3E: the region runs in time stop as well
+        // sub_80D6D3E: the region runs while dimmed as well
         // (sub_80C53A6).
         let o = b.objects.get(r);
         let spec = hitbox::HitboxSpec {
@@ -152,7 +152,7 @@ fn land(b: &mut Battle, r: ObjectRef) {
             ..Default::default()
         };
         if let Some(h) = hitbox::spawn(b, r, &spec) {
-            b.objects.get_mut(h).flags |= flags::RUN_IN_TIME_STOP;
+            b.objects.get_mut(h).flags |= flags::RUN_WHILE_DIMMED;
         }
     }
     common::set_progress(b, r, Progress::DESTROY);

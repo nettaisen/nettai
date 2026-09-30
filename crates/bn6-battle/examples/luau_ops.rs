@@ -24,7 +24,7 @@ const OPS: [(&str, &str); 14] = [
     ("state read `s.ticks`", "local _ = s.ticks"),
     ("state write `s.ticks = 5`", "s.ticks = 5"),
     ("enum state read `s.slot`", "local _ = s.slot"),
-    ("library call `battle.time_stop()`", "local _ = battle.time_stop()"),
+    ("library call `battle.dimmed()`", "local _ = battle.dimmed()"),
     ("string field `me.lifecycle`", "local _ = me.lifecycle"),
     ("Vec3 field `me.pos`", "local _ = me.pos"),
     ("handle field `me.related1`", "local _ = me.related1"),

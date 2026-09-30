@@ -1,7 +1,7 @@
 //! A segment of EraseMan's slash (attack object #0xC3, `sub_80DD940`): it
 //! stands on its panel with its collision on (status 0x10) for Param2
 //! ticks, or until it has hit something. With Param3 0 (EraseMan's) it
-//! runs in time stop.
+//! runs while dimmed.
 
 use crate::battle::Battle;
 use crate::content::SpriteId;
@@ -42,7 +42,7 @@ pub fn spawn(
     o.stamina = (damage >> 16) as u16;
     o.alliance = alliance;
     o.flip = flip;
-    o.flags |= flags::RUN_IN_TIME_STOP;
+    o.flags |= flags::RUN_WHILE_DIMMED;
     Some(r)
 }
 
@@ -55,7 +55,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).params[2] != 0 {
         panic!("EraseMan beams with Param3 (object_updateSpritePaused) are not implemented yet");
     }
-    common::update_sprite_in_time_stop(b, r);
+    common::update_sprite_while_dimmed(b, r);
 }
 
 /// `sub_80DD970`.

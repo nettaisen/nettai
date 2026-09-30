@@ -61,7 +61,7 @@ pub fn spawn(b: &mut Battle, obstacle: ObjectRef, pos: Vec3, spec: Spec) -> Opti
     let o = b.objects.get_mut(r);
     o.alliance = alliance;
     o.flip = flip;
-    o.flags &= !(flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP);
+    o.flags &= !(flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED);
     o.vars = crate::kinds::Vars::AbsorbedObstacle(Vars {
         kind: spec.kind,
         side: spec.side,

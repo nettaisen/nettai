@@ -442,7 +442,7 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     let g = lua.globals();
 
     let battle = lua.create_table()?;
-    battle.set("time_stop", lua.create_function(|_, ()| with(|api, _| Ok(api.is_time_stop())))?)?;
+    battle.set("dimmed", lua.create_function(|_, ()| with(|api, _| Ok(api.is_dimmed())))?)?;
     battle.set("paused", lua.create_function(|_, ()| with(|api, _| Ok(api.is_paused())))?)?;
     battle.set(
         "play_sound",

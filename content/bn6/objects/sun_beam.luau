@@ -43,10 +43,10 @@ function sun_beam.stop(o: Object)
     o:set_lifecycle("destroy")
 end
 
--- `sub_80E5CA0`: hidden in time stop (unless param 3 is 1); otherwise
+-- `sub_80E5CA0`: hidden while dimmed (unless param 3 is 1); otherwise
 -- follow the owner, or end once the slot is cleared.
 local function follow(me: Object)
-    if me:param(3) ~= 1 and battle.time_stop() then
+    if me:param(3) ~= 1 and battle.dimmed() then
         me.visible = false
         return
     end

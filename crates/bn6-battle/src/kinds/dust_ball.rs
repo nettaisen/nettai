@@ -2,7 +2,7 @@
 //! of junk that rolls forward from in front of the navi, 6 pixels a tick,
 //! to the far edge; where it meets an enemy body or object it stops, and
 //! 5 ticks later hits its panel (cracking it). Param1 0: it stands still
-//! in time stop.
+//! while dimmed.
 
 use crate::battle::Battle;
 use crate::content::SpriteId;
@@ -35,7 +35,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, panel: PanelPos, element: u8, dam
     o.stamina = (damage >> 16) as u16;
     o.alliance = alliance;
     o.flip = flip;
-    o.flags |= flags::RUN_IN_TIME_STOP;
+    o.flags |= flags::RUN_WHILE_DIMMED;
     Some(r)
 }
 
@@ -45,8 +45,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         state::UPDATE => tick(b, r),
         _ => return crate::kinds::generic_destroy(b, r),
     }
-    // object_updateSpritePaused: not in time stop.
-    if !b.is_time_stop() && b.objects.get(r).flags & flags::ACTIVE != 0 {
+    // object_updateSpritePaused: not while dimmed.
+    if !b.is_dimmed() && b.objects.get(r).flags & flags::ACTIVE != 0 {
         common::step_sprite(b, r);
     }
 }
@@ -77,7 +77,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).state = state::DESTROY;
         return;
     }
-    if b.is_time_stop() {
+    if b.is_dimmed() {
         return;
     }
     match b.objects.get(r).action {

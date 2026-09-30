@@ -1,5 +1,5 @@
 //! Action 0x1B, a navi chip (`sub_80EC350`): the navi spawns the chip's
-//! time-freeze controller (`kinds::navi_chip`), registers it for its side
+//! dimming controller (`kinds::navi_chip`), registers it for its side
 //! and goes back to idle at once; the controller brings the chip's navi.
 //! See docs/engine/chips.md §3.6.7.
 
@@ -7,7 +7,7 @@ use crate::battle::Battle;
 use crate::kinds::navi_chip::{self, Spec};
 use crate::kinds::player::{ai, exit_attack_state};
 use crate::object::ObjectRef;
-use crate::time_freeze::FreezeChip;
+use crate::dimming::CutInChip;
 
 pub const ACTION: u8 = 0x1B;
 
@@ -19,14 +19,14 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         navi: a.variant,
         params: a.params,
         damage: a.damage as u32 | (a.hit_param as u32) << 16,
-        chip: FreezeChip { chip: a.chip_id, bonus: a.extra },
+        chip: CutInChip { chip: a.chip_id, bonus: a.extra },
     };
     let controller = navi_chip::spawn(b, r, spec);
     let side = b.objects.get(r).alliance;
-    if b.freeze[side as usize].controller.is_none()
+    if b.dimming[side as usize].controller.is_none()
         && let Some(c) = controller
     {
-        b.register_freeze(side, a.chip_id, c, r);
+        b.register_dimming(side, a.chip_id, c, r);
     }
     exit_attack_state(b, r);
 }

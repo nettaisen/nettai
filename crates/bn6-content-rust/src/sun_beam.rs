@@ -74,10 +74,10 @@ fn init(data: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
     follow(api, me);
 }
 
-/// `sub_80E5CA0`: hidden in time stop (unless the third parameter is 1);
+/// `sub_80E5CA0`: hidden while dimmed (unless the third parameter is 1);
 /// otherwise follow the owner, or end once the slot is cleared.
 fn follow(api: &mut dyn CoreApi, me: ObjectRef) {
-    if api.param(me, 2) != 1 && api.is_time_stop() {
+    if api.param(me, 2) != 1 && api.is_dimmed() {
         api.set_visible(me, false);
         return;
     }

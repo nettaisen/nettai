@@ -25,8 +25,8 @@ pub mod battle_flags {
     pub const FIGHTING: u16 = 0x01;
     /// The custom gauge is full.
     pub const GAUGE_FULL: u16 = 0x02;
-    /// Time stop (time-freeze chips).
-    pub const TIME_STOP: u16 = 0x04;
+    /// Dimming (cut-in chips).
+    pub const DIMMED: u16 = 0x04;
     /// A player asked to open the custom screen.
     pub const CUSTOM_REQUESTED: u16 = 0x10;
     /// Per-player custom gauges and chip counters (`sub_802E112`). Never set
@@ -235,8 +235,8 @@ pub struct Battle {
     /// Per-side registry of defensive chips and their linked objects
     /// (0x10 bytes per side at 0x02036720).
     pub linked: [LinkedRecord; 2],
-    /// Per side: its time freeze (`byte_203CF00`).
-    pub freeze: [crate::time_freeze::FreezeRecord; 2],
+    /// Per side: its dimming (`byte_203CF00`).
+    pub dimming: [crate::dimming::DimmingRecord; 2],
     /// Sound calls made this tick, as each side's player hears them
     /// (output only; see `sound`).
     pub(crate) sound: [Vec<SoundCue>; 2],
@@ -430,7 +430,7 @@ impl Battle {
             sides: [SideState::default(); 2],
             side_stats: [[0; 16]; 2],
             linked: [LinkedRecord::default(); 2],
-            freeze: Default::default(),
+            dimming: Default::default(),
             sound: [Vec::new(), Vec::new()],
             outcome: None,
             behaviors,
@@ -449,8 +449,8 @@ impl Battle {
         self.banner.start(id, self.content.rules.banner_holds(id))
     }
 
-    pub fn is_time_stop(&self) -> bool {
-        self.round.flags & battle_flags::TIME_STOP != 0
+    pub fn is_dimmed(&self) -> bool {
+        self.round.flags & battle_flags::DIMMED != 0
     }
 
     pub fn set_flags(&mut self, f: u16) {
@@ -554,7 +554,7 @@ impl Battle {
 
         self.run_mode_handler(&events);
         self.run_objects();
-        if !self.paused && !self.is_time_stop() {
+        if !self.paused && !self.is_dimmed() {
             self.tick_panels();
         }
         self.update_player_hands();
@@ -562,7 +562,7 @@ impl Battle {
         self.update_linked_registry();
         self.refresh_variable_damage();
         if !self.paused {
-            if !self.is_time_stop() {
+            if !self.is_dimmed() {
                 self.round.cycle20 = (self.round.cycle20 + 1) % 20;
                 self.round.cycle180 = (self.round.cycle180 + 1) % 180;
             }
@@ -612,7 +612,7 @@ impl Battle {
             }
         }
         self.run_objects();
-        if !self.paused && !self.is_time_stop() {
+        if !self.paused && !self.is_dimmed() {
             self.tick_panels();
         }
     }
@@ -687,7 +687,7 @@ impl Battle {
         self.outcome = Some(RoundEnd::NextRound { settings, score });
     }
 
-    /// Run every object's update in list order, with pause/time-stop gating.
+    /// Run every object's update in list order, with pause/dimming gating.
     pub fn run_objects(&mut self) {
         let mut cur = self.objects.loop_first();
         while let Some(r) = cur {
@@ -696,7 +696,7 @@ impl Battle {
             if self.paused && f & crate::object::flags::RUN_WHILE_PAUSED == 0 {
                 run = false;
             }
-            if run && self.is_time_stop() && f & crate::object::flags::RUN_IN_TIME_STOP == 0 {
+            if run && self.is_dimmed() && f & crate::object::flags::RUN_WHILE_DIMMED == 0 {
                 run = false;
             }
             if run {
@@ -964,7 +964,7 @@ impl Battle {
             let over = self.is_battle_over();
             let form = self.stats[side as usize].form;
             let held = self.inputs[side as usize].held;
-            let timestop = self.is_time_stop();
+            let dimmed = self.is_dimmed();
             let ad = self.actors.get_mut(a);
             if over {
                 ad.pad = Default::default();
@@ -974,10 +974,10 @@ impl Battle {
                 continue;
             }
             ad.pad.update(held);
-            if !timestop {
-                ad.timestop_pad = Default::default();
+            if !dimmed {
+                ad.dimmed_pad = Default::default();
             } else {
-                ad.timestop_pad.update(held);
+                ad.dimmed_pad.update(held);
             }
         }
     }
@@ -1100,7 +1100,7 @@ impl Battle {
 
     /// `sub_800A152`: the round's result from the local side's perspective.
     fn round_result(&self) -> u8 {
-        if self.is_time_stop() {
+        if self.is_dimmed() {
             return 0;
         }
         let local = self.round.local_side;
@@ -1118,7 +1118,7 @@ impl Battle {
 
     /// `sub_800A046`: a player pressed START.
     fn pause_request(&self) -> Option<u8> {
-        if self.is_battle_over() || self.is_time_stop() {
+        if self.is_battle_over() || self.is_dimmed() {
             return None;
         }
         (0..2u8).find(|&p| self.inputs[p as usize].pressed & keys::START != 0)
@@ -1126,7 +1126,7 @@ impl Battle {
 
     /// `sub_800A1D0`.
     fn custom_open_requested(&self) -> bool {
-        if self.is_time_stop() || self.is_battle_over() {
+        if self.is_dimmed() || self.is_battle_over() {
             return false;
         }
         let berserk = |s: &NaviStats| s.form.is_beast_over();
@@ -1147,7 +1147,7 @@ impl Battle {
     }
 
     fn update_battle_time(&mut self) {
-        if self.is_time_stop() || self.paused || self.round.flags & battle_flags::FIGHTING == 0 {
+        if self.is_dimmed() || self.paused || self.round.flags & battle_flags::FIGHTING == 0 {
             return;
         }
         if self.is_battle_over_flag_quirk() {
@@ -1159,7 +1159,7 @@ impl Battle {
     }
 
     fn update_turn_timer(&mut self) {
-        if self.paused || self.is_time_stop() {
+        if self.paused || self.is_dimmed() {
             return;
         }
         if self.is_battle_over() {
@@ -1254,7 +1254,7 @@ impl Battle {
 
     /// `sub_801C470`.
     fn fill_gauge(&mut self) {
-        if self.paused || self.is_time_stop() || self.round.flags & battle_flags::GAUGE_FULL != 0 {
+        if self.paused || self.is_dimmed() || self.round.flags & battle_flags::GAUGE_FULL != 0 {
             return;
         }
         let v = self.gauge.value.wrapping_add(self.gauge.rate);

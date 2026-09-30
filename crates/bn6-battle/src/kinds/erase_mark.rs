@@ -1,5 +1,5 @@
 //! A mark on a panel EraseMan aims at (effect object #0x62,
-//! `sub_80E78BC`): it shows for Param1 ticks (it runs in time stop).
+//! `sub_80E78BC`): it shows for Param1 ticks (it runs while dimmed).
 //! Purely visual, but it holds an effect slot.
 
 use crate::battle::Battle;
@@ -41,7 +41,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         }
         _ => b.objects.free(r),
     }
-    common::update_sprite_in_time_stop(b, r);
+    common::update_sprite_while_dimmed(b, r);
 }
 
 /// `sub_80E78E0`.

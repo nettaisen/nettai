@@ -64,7 +64,7 @@ fn pull(b: &mut Battle, r: ObjectRef) {
         };
         let vortex = effect::spawn(b, pos, 0x63, o.alliance, 0, 0);
         if let Some(e) = vortex {
-            b.objects.get_mut(e).flags &= !(flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP);
+            b.objects.get_mut(e).flags &= !(flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED);
         }
         ai_mut(b, r).attack.action = ActionVars::Absorb(Vars { timer: 9, vortex });
         b.play_sound(crate::sound::SoundId(0xAD));

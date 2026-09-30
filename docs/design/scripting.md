@@ -105,7 +105,7 @@ variant and chip; status flags; the counter window, the reactive abort, `exit_at
 stepping and look; collision create, set-up, present, remove, free and hit spark; navi stats (`sun`, form); panel
 validity and centers; sound cues. Nothing names GunDelSol.
 
-The audit's API is larger (panels and their types, RNG draws, input, the chip hand, damage words, time freeze,
+The audit's API is larger (panels and their types, RNG draws, input, the chip hand, damage words, dimming,
 forms). Those extend the same pattern and weren't needed by this slice.
 
 ### 2.2 Content state: schemas the engine owns
@@ -470,7 +470,7 @@ rollback.md §8.2 lists what content must guarantee. The prototype does each:
   Rust content likewise.
 - **Synthetic netbattles** (bn6-netplay's tests, run with `--features luau` or `rust-content`): two navis of the
   test content (`content::testing`) mashing buttons with its made-up chips, which use the same actions as
-  GunDelS1/S2/S3, Invisibl and EraseMan (GunDelSol, the invisibility freeze, the eraser navi chip), three seeds,
+  GunDelS1/S2/S3, Invisibl and EraseMan (GunDelSol, the invisibility cut-in, the eraser navi chip), three seeds,
   latencies 0 to 10 with jitter and input delay, up to about 2,000 rollbacks and 22,000 re-simulated frames per run:
   in sync to the KO in every configuration; sound plays each confirmed cue once.
   `the_battles_run_the_featured_content` checks the feature took effect.
@@ -513,7 +513,7 @@ Where the time goes (`examples/luau_ops`):
 | Operation | Cost |
 |---|---|
 | Loop iteration (the VM itself) | 10 ns |
-| Library call `battle.time_stop()` | 39 ns |
+| Library call `battle.dimmed()` | 39 ns |
 | Method `me:param(1)` | 80 ns |
 | Field read `me.anim` / write | 117 / 126 ns |
 | Content state read `s.ticks` / write | 122 / 136 ns |

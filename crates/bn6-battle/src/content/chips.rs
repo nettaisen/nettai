@@ -106,8 +106,8 @@ impl ChipFamily {
 pub struct ChipFlags(pub u8);
 
 impl ChipFlags {
-    /// Stops time when used; can counter during time stop.
-    pub const TIME_FREEZE: u8 = 0x01;
+    /// Stops time when used; can counter while dimmed.
+    pub const CUT_IN: u8 = 0x01;
     /// Deals damage: shown on the banner, boostable by Atk+ and forms.
     pub const HAS_DAMAGE: u8 = 0x02;
     /// Navi chip: boosted by Navi+.
@@ -121,7 +121,7 @@ impl ChipFlags {
     /// Damage recomputed every tick while this is the next chip.
     pub const VARIABLE_DAMAGE: u8 = 0x80;
     pub(crate) const NAMES: &[(u32, &str)] = &[
-        (0x01, "time_freeze"),
+        (0x01, "cut_in"),
         (0x02, "has_damage"),
         (0x04, "navi"),
         (0x08, "standard_library"),

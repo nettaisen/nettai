@@ -52,7 +52,7 @@ pub(super) fn a_chargeable(b: &Battle, r: ObjectRef) -> bool {
 }
 
 /// `sub_8013236`: whether chip `id` charges on A in the navi's form: its
-/// attack family matches the form (damaging, not time-freeze chips; any
+/// attack family matches the form (damaging, not cut-in chips; any
 /// Null-family chip in Beast Out).
 fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
     use crate::content::{ChipFamily as F, ChipFlags};
@@ -61,7 +61,7 @@ fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
     }
     let c = b.content.chip(id);
     let (family, form) = (c.family, stats(b, r).form.0);
-    let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::TIME_FREEZE);
+    let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::CUT_IN);
     let charges = (form == 2 && family == F::Null && damaging)
         || (matches!(form, 3 | 0xF) && ((0x4C..=0x4F).contains(&id) || family == F::Sword) && damaging)
         || ((0x0B..=0x16).contains(&form) && family == F::Null)
@@ -88,13 +88,13 @@ fn b_chargeable(b: &Battle, r: ObjectRef) -> bool {
 /// `sub_8012FC8`: raise requests from this tick's buttons.
 fn decode(b: &mut Battle, r: ObjectRef) {
     let f0 = ai(b, r).requests;
-    if b.is_time_stop() {
-        // Only a time-stop counter chip can be requested.
-        if !chips_enabled(b, r) || f0 & request::TIMESTOP_CHIP != 0 || next_chip(b, r) == NO_CHIP {
+    if b.is_dimmed() {
+        // Only a dimming counter chip can be requested.
+        if !chips_enabled(b, r) || f0 & request::COUNTER_CUT_IN != 0 || next_chip(b, r) == NO_CHIP {
             return;
         }
-        if ai(b, r).timestop_pad.pressed & keys::A != 0 {
-            ai_mut(b, r).requests |= request::TIMESTOP_CHIP;
+        if ai(b, r).dimmed_pad.pressed & keys::A != 0 {
+            ai_mut(b, r).requests |= request::COUNTER_CUT_IN;
         }
         return;
     }
@@ -245,7 +245,7 @@ fn decode_chip(b: &mut Battle, r: ObjectRef, f0: u32) {
 /// `sub_8012EBC`: count the charge while a hold flag is up: level 1 from
 /// 10 ticks, 2 (full) at the routine's threshold.
 fn accumulate_charge(b: &mut Battle, r: ObjectRef) {
-    if b.is_time_stop() {
+    if b.is_dimmed() {
         return;
     }
     if !may_charge(b, r) {
