@@ -9,7 +9,7 @@ use bn6_battle::battle::top;
 use bn6_battle::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
 use bn6_battle::content::{ChipCode, ChipId, Content};
 use bn6_battle::input::keys;
-use bn6_battle::setup::{Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, SupportNavis};
+use bn6_battle::setup::{Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, Supports};
 use bn6_battle::{Battle, PlayerTick, TickEvents, TickInput};
 
 /// A battle stepped on the players' buttons alone.
@@ -73,7 +73,7 @@ pub fn megaman(hp: u16) -> NaviStats {
         custom_level: 5,
         mega_level: 5,
         giga_level: 1,
-        support: Some(SupportNavis::default()),
+        support: Some(Supports::default()),
         mood: 0x80,
         element: 0,
         starting_form: Form::NONE,
