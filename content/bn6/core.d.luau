@@ -228,10 +228,10 @@ end
 
 -- An object's collision registration.
 declare class Collision
-    -- The region shape (a region definition) and hit spark (a spark
-    -- definition).
-    function set_region(self, region: Region): ()
-    function set_hit_effect(self, spark: Spark): ()
+    -- The region shape (a region definition; nil, none) and hit spark (a
+    -- spark definition; nil, none).
+    function set_region(self, region: Region?): ()
+    function set_hit_effect(self, spark: Spark?): ()
     -- Region shape, as the engine's byte (`set_region` takes a
     -- definition). Deprecated: setting it to a number.
     region: number
@@ -637,7 +637,7 @@ export type HitboxSpec = {
 -- with its `tether`: when its side leaves the Beast forms, or when its
 -- owner's action drops below 0x10.
 export type AfterimageSpec = {
-    sprite: SpriteId?,
+    sprite: (SpriteAsset | SpriteId)?,
     anim: number?,
     flip: number?,
     lifetime: number,
@@ -680,7 +680,7 @@ export type FormOverlayStepping = "normal" | "while_dimmed" | "always"
 -- (Param4); a pixel nearer than its owner when `nudged` (ExtraVars[0]);
 -- wearing the owner's palette when `owner_palette` (ExtraVars[1] 0xFF).
 export type FormOverlaySpec = {
-    sprite: SpriteId,
+    sprite: SpriteAsset | SpriteId,
     -- "normal" by default.
     stepping: FormOverlayStepping?,
     anim_offset: number?,
