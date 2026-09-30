@@ -77,7 +77,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
         v.owner_type = owner_type;
     }
     if owner_type != ActorType::Player {
-        panic!("warping a non-player (sub_80C0E24) is not implemented yet");
+        // No image for anything but a player: it just counts its ticks.
+        common::set_progress(b, r, Progress::UPDATE);
+        return tick(b, r);
     }
     let side = b.objects.get(navi).alliance as usize;
     let (navi_id, form) = (b.stats[side].navi, b.stats[side].form);
@@ -98,11 +100,14 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.flags |= flags::VISIBLE;
     o.pos = pos;
-    // sub_8011420(navi, form, 1): the form's overlay, or the navi's own.
-    if navi_id == Navi::MEGAMAN {
-        form::put_on_overlay_stepping(b, r, form, true);
-    } else {
-        panic!("warping a link navi (sub_8010DF6) is not implemented yet");
+    // sub_8011420(navi, form, 1): the form's overlay (whose Param3 is
+    // lost on the way), or a link navi's own; then, in a form, the
+    // overlay's Param3 = 1 and flags 0x14.
+    form::put_on_navi_overlay(b, r, navi_id, form, 1);
+    if form != crate::setup::Form::NONE
+        && let Some(overlay) = b.objects.get(r).related[1]
+    {
+        form::keep_overlay_stepping(b, overlay);
     }
     let o = b.objects.get_mut(r);
     o.anim = 3 + warp as u8;

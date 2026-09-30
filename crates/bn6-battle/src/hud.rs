@@ -74,6 +74,14 @@ impl Banner {
         }
     }
 
+    /// `sub_801E780`: let a holding banner go: it holds three more ticks,
+    /// then slides out.
+    pub fn release(&mut self) {
+        if self.holds {
+            self.timer = 0x2D;
+        }
+    }
+
     /// One tick of the banner task (`sub_801CE28`).
     pub fn tick(&mut self) {
         if !self.active {

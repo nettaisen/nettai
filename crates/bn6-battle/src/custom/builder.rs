@@ -57,9 +57,20 @@ const EMPTY: Entry = Entry { id: NO_CHIP, damage: 0, bonus: 0, modifiers: 0 };
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Built {
     pub hand: ChipHand,
-    /// The Program Advance that formed, and how many chips were picked
-    /// (its animation's length goes by them).
-    pub program_advance: Option<(ChipId, u8)>,
+    /// The Program Advance that formed (its animation lists the picks).
+    pub program_advance: Option<FormedAdvance>,
+}
+
+/// A Program Advance formed at OK: what its animation shows
+/// (`sub_802B6F2`'s arguments).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct FormedAdvance {
+    pub chip: ChipId,
+    /// Chips picked (all listed).
+    pub picks: u8,
+    /// Where the recipe's chips start among them, and how many.
+    pub start: u8,
+    pub len: u8,
 }
 
 /// Build a hand from the picked chips, in pick order (`sub_8029110`),
@@ -90,10 +101,11 @@ pub fn build(
             // it is the Regular chip if one of them was.
             let regular = entries[start..start + len].iter().fold(0, |m, e| m | (e.modifiers & modifier_bits::REGULAR));
             entries[start] = Entry { id: result, damage: damage(result), bonus: 0, modifiers: entries[start].modifiers | regular };
-            for _ in 1..len {
-                remove(&mut entries, start + 1);
-            }
-            program_advance = Some((result, picks.len() as u8));
+            // The entries after the recipe move up behind it, up to and
+            // with the end marker; what lay past it stays.
+            shift_up(&mut entries, start + 1, start + len);
+            program_advance =
+                Some(FormedAdvance { chip: result, picks: picks.len() as u8, start: start as u8, len: len as u8 });
         }
         fold_modifiers(&mut entries, library);
     }
@@ -186,14 +198,26 @@ fn fold_modifiers(entries: &mut [Entry; 6], library: &dyn Library) {
             ChipModifier::Paralyze => entries[i - 1].modifiers |= modifier_bits::PARALYZE,
             ChipModifier::Uninstall => entries[i - 1].modifiers |= modifier_bits::UNINSTALL,
         }
-        remove(entries, i);
+        shift_up(entries, i, i + 1);
     }
 }
 
-/// Take entry `i` out; the ones after it move up.
-fn remove(entries: &mut [Entry; 6], i: usize) {
-    entries.copy_within(i + 1.., i);
-    entries[5] = EMPTY;
+/// The game's way of taking entries out: entries from `from` move to
+/// `to` onward, one by one, up to and with the end marker; entries past
+/// the end marker keep what they held, and each entry keeps its bonus
+/// (only the chip, damage and modifiers move).
+fn shift_up(entries: &mut [Entry; 6], to: usize, from: usize) {
+    let (mut dst, mut src) = (to, from);
+    loop {
+        let e = entries[src];
+        let bonus = entries[dst].bonus;
+        entries[dst] = Entry { bonus, ..e };
+        if e.id == NO_CHIP {
+            return;
+        }
+        dst += 1;
+        src += 1;
+    }
 }
 
 /// Chips a player sent in a round, by class (`dword_20367E0`).
@@ -293,8 +317,10 @@ mod tests {
         let lib = library();
         let mut used = ProgramAdvancesUsed::default();
         let b = build(&picks, 2, &mut used, &lib, |id| lib.chip(id).damage);
-        assert_eq!(b.program_advance, Some((0x140, 3)));
-        assert_eq!(b.hand.ids, [0x140, NO_CHIP, NO_CHIP, NO_CHIP, NO_CHIP, NO_CHIP]);
+        assert_eq!(b.program_advance.map(|p| (p.chip, p.picks)), Some((0x140, 3)));
+        // The end marker moves up behind the Program Advance; the third
+        // part stays past it, as in the game.
+        assert_eq!(b.hand.ids, [0x140, NO_CHIP, CANNON, NO_CHIP, NO_CHIP, NO_CHIP]);
         assert_eq!(b.hand.damage[0], 300);
         assert_eq!(b.hand.modifiers[0], modifier_bits::REGULAR);
         assert_eq!(b.hand.selection[..4], [0x0001, 0x0201, 0x0401, NO_CHIP]);
@@ -309,7 +335,7 @@ mod tests {
         // The sequence 2, 1, 2 starting at the second pick; the chips
         // around it stay.
         let b = built(&[pick(CANNON, 5), pick(QUIET, 0), pick(CANNON, 9), pick(QUIET, 3), pick(CANNON, 1)]);
-        assert_eq!(b.program_advance, Some((0x141, 5)));
+        assert_eq!(b.program_advance.map(|p| (p.chip, p.picks, p.start, p.len)), Some((0x141, 5, 1, 3)));
         assert_eq!(b.hand.ids[..4], [CANNON, 0x141, CANNON, NO_CHIP]);
     }
 

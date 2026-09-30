@@ -140,6 +140,10 @@ pub struct AttackVars {
     /// Which `set_attack` slot started the action.
     pub kind: u8,
     pub beast_lockon: u8,
+    /// +0x2C: an object a step or the Beast Out rush turns to face in the
+    /// panel patterns 0x23, 0x31 and 0x33 (`sub_800F2FC`). Players' steps
+    /// clear it (`sub_80116AE`); only the unused `sub_80116F6` sets one.
+    pub face_target: Option<ObjectRef>,
     /// +0x30: a marker: the move's "direction changed", or a heat trap
     /// swallowing a hit.
     pub marker: u32,
@@ -275,6 +279,9 @@ pub struct ActorData {
     /// A sprite overlay attached for the current chip.
     pub overlay: Option<ObjectRef>,
     pub attack: AttackVars,
+    /// AIData+0xF0: the Beast Over berserk controller's state
+    /// (`sub_802D322`), in the 0x10 bytes allocation leaves alone.
+    pub berserk: crate::kinds::player::berserk::State,
     /// Obstacles the obstacle-absorbing chip pulled in, in arrival order
     /// (at most eight; the game keeps them at +0x6C with the count at
     /// +0x0D).
@@ -306,12 +313,13 @@ impl Actors {
         &mut self.slots[id.0 as usize]
     }
 
-    /// Allocate the lowest free slot, cleared. (The game leaves the last
-    /// 0x10 bytes of a slot uncleared; nothing ported reads them.)
+    /// Allocate the lowest free slot, cleared, except for its last 0x10
+    /// bytes, which the game leaves alone (the berserk controller's).
     pub fn allocate(&mut self) -> Option<ActorId> {
         let slot = (0..SLOTS as u8).find(|&i| self.in_use & (1 << i) == 0)?;
         self.in_use |= 1 << slot;
-        self.slots[slot as usize] = ActorData::default();
+        let berserk = self.slots[slot as usize].berserk;
+        self.slots[slot as usize] = ActorData { berserk, ..ActorData::default() };
         Some(ActorId(slot))
     }
 

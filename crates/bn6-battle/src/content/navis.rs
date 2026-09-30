@@ -28,9 +28,24 @@ pub struct NaviData {
     /// A link navi's own chip, offered on the custom screen once a round.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub own_chip: Option<CodedChip>,
+    /// A link navi's damage bonus on its family's chips.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chip_bonus: Option<NaviChipBonus>,
     /// The navi's NameID and what goes with it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name_record: Option<NameData>,
+}
+
+/// A link navi's damage bonus on the damaging chips of its family
+/// (`sub_800F09E`), by the navi's level (`byte_8021300`, 15 a navi).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NaviChipBonus {
+    pub family: super::ChipFamily,
+    /// Dimming chips of the family count too.
+    #[serde(default)]
+    pub dimming_chips: bool,
+    pub by_level: Vec<u8>,
 }
 
 /// One of MegaMan's forms: his base form (0), a Cross (1..=10), Beast Out

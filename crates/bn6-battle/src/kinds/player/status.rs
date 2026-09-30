@@ -269,9 +269,9 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
 
 // ---- Special states ------------------------------------------------------------
 
-/// `sub_8015766`: Cross lanes.
-fn cross_lane(_b: &mut Battle, _r: ObjectRef) -> bool {
-    panic!("Cross lanes (sub_8015766) are not implemented yet");
+/// `sub_8015766`: a weakness hit breaks the Cross; true while it runs.
+fn cross_lane(b: &mut Battle, r: ObjectRef) -> bool {
+    actions::transform::break_cross(b, r)
 }
 
 /// The Cross/Beast requests in `ai.requests` (none fire for base
@@ -802,7 +802,7 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return actions::transform::form_change(b, r);
     }
     if st & ai_status::REVERTING_FORM != 0 {
-        panic!("pause action (sub_8015614) is not implemented yet");
+        return actions::transform::revert(b, r);
     }
     if st & ai_status::CHANGING_CROSS != 0 {
         panic!("pause action (sub_802D714) is not implemented yet");
