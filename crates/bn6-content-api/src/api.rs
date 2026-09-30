@@ -1174,6 +1174,11 @@ pub trait CoreApi {
     /// `sub_801056A`: the reactive-defense abort attacks check after each
     /// phase.
     fn check_reactive_abort(&mut self, o: ObjectRef);
+    /// `sub_80105F2`: a stance's own trap caught a hit (the AntiDmg
+    /// program's action 0x5A): its counter starts at the next tick, AntiDmg's
+    /// (0x47) or, for a sword hit, AntiSwrd's (0x48), with the stance's damage
+    /// word, lockout and variant.
+    fn start_stance_counter(&mut self, o: ObjectRef);
     /// `sub_8011450`: restart the navi's form overlay with it after an
     /// animation change.
     fn refresh_form_overlay(&mut self, o: ObjectRef);

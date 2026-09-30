@@ -1110,6 +1110,10 @@ impl CoreApi for Battle {
         kinds::player::actions::check_reactive_abort(self, o);
     }
 
+    fn start_stance_counter(&mut self, o: ObjectRef) {
+        kinds::player::actions::reactive::stance_counter(self, o);
+    }
+
     fn refresh_form_overlay(&mut self, o: ObjectRef) {
         kinds::player::refresh_form_overlay(self, o);
     }

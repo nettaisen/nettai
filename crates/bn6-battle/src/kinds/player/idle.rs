@@ -47,8 +47,8 @@ fn battle_over(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_801056A`: a reactive defensive chip fires.
-fn reactive_chip(_b: &mut Battle, _r: ObjectRef) {
-    panic!("reactive defensive chips (sub_801056A) are not implemented yet");
+fn reactive_chip(b: &mut Battle, r: ObjectRef) {
+    super::actions::reactive::counter(b, r);
 }
 
 /// `sub_80F0354`.
