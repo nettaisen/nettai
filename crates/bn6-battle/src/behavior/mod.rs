@@ -211,6 +211,18 @@ fn init_state(b: &mut Battle, r: ObjectRef) -> ObjectRef {
     r
 }
 
+/// `sub_8003374` (attacks) and `sub_800333C` (actors): spawn an object at
+/// the end of the update list rather than right after its spawner; a
+/// content kind starts with its zeroed state.
+pub fn spawn_object_at_end(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+    let r = b.objects.spawn_at_end(pool, index, pos, params)?;
+    if let Some(kind) = b.behaviors.object_kind(pool, index) {
+        let m = b.behaviors.manifest().expect("content kinds come from loaded scripts");
+        b.objects.get_mut(r).vars = Vars::Content(ContentState::new(m.object_state(kind)));
+    }
+    Some(r)
+}
+
 /// Spawn the content object kind named `name` (its folder in the pack):
 /// how engine code spawns a kind a script implements. None if the pool is
 /// full; panics if no script implements the kind.
