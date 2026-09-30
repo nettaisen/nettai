@@ -1627,7 +1627,9 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    it, a defined chip or weapon can't be reached from a setup the original recorded. **M.**
 4. **The v2 API.** core.d.luau's definers, asset resolvers, definition types, reference state fields, the
    handle-based object and battle API; the numeric API kept, marked deprecated, and counted by the ratchet.
-   `bn6-content check` and the new lints. **M.**
+   `bn6-content check` and the new lints. `define.roles` (§7.4) with the roles the ruleset starts content by
+   already: the trap chips' counter actions (AntiDmg's, AntiSwrd's and BodyGrd's, 0x47, 0x48 and 0x4B, which no
+   chip record names), with their keys in compat actions.toml. **M.**
 5. **Data to Luau.** gen-content writes every chip, navi, form, weapon, rule section, stage and registry entry
    as v2 definitions in the v2 folders (§4), with `legacy { action, subtype, params, script }` markers where a
    chip's behaviour is still a v1 module; the pack's TOML battle data and bn6-extract's battle.rs go;
