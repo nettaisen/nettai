@@ -21,8 +21,10 @@ const HEAL_SOUND: u16 = 0x8A;
 /// its damage carries, the "trap!" mark (effect #0's look) raised over
 /// the healer, and its sound.
 const TRAP_CONTROLLER: u8 = 0x2C;
-const TRAP_HIT_PARAM: u32 = 0x1E;
+pub(crate) const TRAP_HIT_PARAM: u32 = 0x1E;
 const TRAP_MARK: u8 = 0x46;
+/// The mark's height, 32 pixels.
+pub(crate) const TRAP_MARK_Z: i32 = 0x20_0000;
 const TRAP_SOUND: u16 = 0xA5;
 
 /// `sub_800E2FC`: heal `r` by `amount`; with `anti_recovery`, check the
@@ -53,35 +55,49 @@ pub fn add_hp(b: &mut Battle, r: ObjectRef, amount: u16) {
 /// trap's mark shows over it (`sub_800ABC6`), and the opponent's record
 /// is spent (`sub_802CEA6`).
 fn spring_anti_recovery(b: &mut Battle, r: ObjectRef, amount: u16) {
-    let (panel, alliance) = {
-        let o = b.objects.get(r);
-        (o.panel, o.alliance)
-    };
+    let alliance = b.objects.get(r).alliance;
     // The controller spawns with the spawner's registers as its position
     // (panel Y, element 0, the defensive record's owner word) and
     // parameters (whatever the heal's caller left in r4); a dimming
     // controller's init never reads either.
-    let pos = Vec3 { x: panel.y as i32, y: 0, z: 0 };
-    let controller = crate::behavior::spawn_object(b, Pool::Effect, TRAP_CONTROLLER, pos, [0; 4]);
-    if let Some(c) = controller {
-        let damage = amount as u32 + (TRAP_HIT_PARAM << 16);
-        let o = b.objects.get_mut(c);
-        o.panel = panel;
-        o.element = 0;
-        o.related[0] = Some(r);
-        o.alliance = alliance;
-        o.damage = damage as u16;
-        o.stamina = (damage >> 16) as u16;
-        // (+0x30 also gets the trap's chip id, for the telop only.)
-    }
+    let controller = spawn_counterattack(b, r, amount as u32 + (TRAP_HIT_PARAM << 16), [0; 4], 0);
     // sub_800BF16, no cut-in allowed, with the spawn's result (none when
     // the effect pool is full: the game registers a null controller).
     b.start_dimming(alliance, true, controller, r);
-    // sub_800ABC6: the mark over the healer's panel, for the local side's
-    // look (Param2).
+    trap_mark(b, r);
+    b.clear_linked(alliance ^ 1);
+}
+
+/// `sub_80E37D2`: AntiRecv's counterattack (effect #0x2C, the pack's
+/// objects/anti-recovery) against `healer`, on its panel and side, dealing
+/// the damage word `damage` (damage | hit parameter << 16). Its telop is
+/// AntiRecv's (object +0x30). None when the effect pool is full. Its
+/// position is the spawner's registers: the panel's Y, the element (0) and
+/// `z`, which nothing reads.
+pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32, params: [u8; 4], z: i32) -> Option<ObjectRef> {
+    let (panel, alliance) = {
+        let o = b.objects.get(healer);
+        (o.panel, o.alliance)
+    };
+    let pos = Vec3 { x: panel.y as i32, y: 0, z };
+    let c = crate::behavior::spawn_object(b, Pool::Effect, TRAP_CONTROLLER, pos, params)?;
+    let o = b.objects.get_mut(c);
+    o.panel = panel;
+    o.element = 0;
+    o.related[0] = Some(healer);
+    o.alliance = alliance;
+    o.damage = damage as u16;
+    o.stamina = (damage >> 16) as u16;
+    // (+0x30 also gets the trap's chip id, for the telop only.)
+    Some(c)
+}
+
+/// `sub_800ABC6`: the trap's mark over `r`'s panel (for the local side's
+/// look, Param2), with its sound.
+pub(crate) fn trap_mark(b: &mut Battle, r: ObjectRef) {
+    let panel = b.objects.get(r).panel;
     let (x, y) = crate::kinds::player::panel_coordinates(panel.x, panel.y);
     let local = b.round.local_side;
-    effect::spawn(b, Vec3 { x, y: y.wrapping_add(0x10_0000), z: 0x20_0000 }, TRAP_MARK, local, 0, 0);
+    effect::spawn(b, Vec3 { x, y: y.wrapping_add(0x10_0000), z: TRAP_MARK_Z }, TRAP_MARK, local, 0, 0);
     b.play_sound(SoundId(TRAP_SOUND));
-    b.clear_linked(alliance ^ 1);
 }

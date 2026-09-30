@@ -187,9 +187,12 @@ local function after_moonlight(me: Object)
     end
 end
 
--- `sub_80BF588`: 10 ticks (a camera shake, drawn only); then aim the dive
--- at the panel three columns toward the enemy (sound 0x17F).
+-- `sub_80BF588`: 10 ticks (the camera shakes for them, magnitude 1); then
+-- aim the dive at the panel three columns toward the enemy (sound 0x17F).
 local function aim_dive(me: Object)
+    if me.phase_init == 0 then
+        battle.shake_camera(1, 0xA)
+    end
     if countdown(me, 0xA) then
         me.timer = DIVE_TICKS
         local direction = 1 - 2 * me.alliance
@@ -222,7 +225,7 @@ local function dive(me: Object)
         battle.effect(Vec3.new(p.x, p.y, 0x10_0000), 0x12)
     else
         battle.play_sound(0xC3)
-        -- (A camera shake, drawn only.)
+        battle.shake_camera(3, 0x1E)
         local box = battle.hitbox(me, {
             panel_x = x,
             panel_y = y,

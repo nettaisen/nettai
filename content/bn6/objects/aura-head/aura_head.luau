@@ -93,8 +93,7 @@ local function tick(me: Object)
         if not s.has_hit then
             me.timer = int.tdiv(PANEL, me.vel.y) + 2
             me.timer2 = 0
-            -- (The camera shakes for 30 ticks: presentation, drawing the
-            -- local RNG.)
+            battle.shake_camera(1, 0x1E)
             s.has_hit = true
         end
     end

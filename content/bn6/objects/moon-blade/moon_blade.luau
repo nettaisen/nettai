@@ -2,8 +2,8 @@
 -- MoonBld's blade (attack object #0x85, `sub_80D5C48`): it rides on its
 -- owner and sweeps the eight panels around it, one a tick for 8 ticks,
 -- starting ahead and going round (each hit highlighted, region 1, no spark,
--- collision types 5 and 7, hit modifier 3, status 0x18 and bug 1; with a
--- Param1, hit modifier 3 alone), then goes after 10 ticks.
+-- collision types 5 and 7, hit modifier 3 and bug 0x18 with argument 1;
+-- with a Param1, hit modifier 3 alone), then goes after 10 ticks.
 --
 -- Its spawner leaves registers in its panel and position (see `spawn`);
 -- its first update overwrites both, so its position is declared scratch.
@@ -24,8 +24,9 @@ local SWEEP = {
     { 1, -1 },
 }
 -- The hits: region 1, no spark, collision types 5 (target) and 7; hit
--- modifier 3, status 0x18, bug 1 (`dword_80D5D50`), or hit modifier 3 alone
--- with a Param1.
+-- modifier 3, no status, bug 0x18 with argument 1 (`dword_80D5D50`,
+-- 0x01180003: its bytes are the hit modifier, the status, the bug and its
+-- argument), or hit modifier 3 alone with a Param1.
 local HIT = { region = 1, hit_effect = 0xFF, target = 5, self_type = 7 }
 
 -- `sub_80D5D34`: a blade on `owner`. Its panel is what the spawner's
@@ -71,8 +72,8 @@ local function sweep(me: Object, i: number)
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = 3,
-        status = if plain then 0 else 0x18,
-        bug = if plain then 0 else 1,
+        bug = if plain then 0 else 0x18,
+        bug_arg = if plain then 0 else 1,
     })
 end
 

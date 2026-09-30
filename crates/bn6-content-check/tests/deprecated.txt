@@ -78,6 +78,7 @@ navis/00-megaman/weapons/3b-shield/shield.luau 1
 navis/00-megaman/weapons/3d-anti-damage/anti_damage.luau 1
 objects/absorbed-obstacle/absorbed_obstacle.luau 8
 objects/air-spin/air_spin.luau 15
+objects/anti-recovery/anti_recovery.luau 2
 objects/aqua-needle/aqua_needle.luau 7
 objects/aqua-surge/aqua_surge.luau 7
 objects/area-grab/area_grab.luau 2
@@ -166,6 +167,7 @@ objects/navi-boost/navi_boost.luau 15
 objects/navi-effect/navi_effect.luau 8
 objects/needle-volley/needle_volley.luau 6
 objects/panel-bursts/panel_bursts.luau 11
+objects/panel-changer/panel_changer.luau 6
 objects/panel-strike/panel_strike.luau 7
 objects/projectile/projectile.luau 7
 objects/proto-man/proto_man.luau 8

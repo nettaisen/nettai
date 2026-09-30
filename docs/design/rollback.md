@@ -209,7 +209,7 @@ the content the round runs on, so peers whose setups agree run the same data.
 | `charge_glow.rs` `viewer_sees`, `obstacle.rs` `update_visibility`, `player/status.rs` blind visibility, `dimming.rs` `show_user` | A blinded local player doesn't see the other side's navi, effects and obstacles (`VISIBLE`) | Should be presentation: record "hidden from a blinded viewer" per viewer instead of clearing `VISIBLE` for the local one | Open (cosmetic; the digest leaves `VISIBLE` out) |
 | `lockon_marker.rs`, `charge_glow.rs` `shown_to_side` | The Beast Out lock-on marker and the A-charge glow show only on the owner's console | Same as above | Open (cosmetic: the other viewer sees the local player's marker, not its own) |
 | `battle.rs` custom screen (`local_confirm`, `round.status`, `custom_ui`) | The local player's custom-screen progress; the gauge task restarts 11 ticks after the local confirmation | Both players' screens are simulated (`custom`); the gauge restarts when either player sends and when the screen closes | Done |
-| RNG1 (the per-console stream) | Folder shuffle and other local decisions | Not in the engine: each player's shuffled folder is round setup (`RoundSetup::players`); the custom screen draws no RNG | Done |
+| RNG1 (the per-console stream) | Folder shuffle, ChpShufl's re-deal, and what else advances it (camera shakes, the emotion window) | Each player's shuffled folder is round setup (`RoundSetup::players`); each player's console RNG is simulated in `Battle::consoles`, seeded from the setup (`PlayerSetup::console`), and in the digest (custom-screen.md §8) | Done |
 | `RoundSetup::low_hp_music_latched` | The local console waited for the link at init | Per-console quirk of the recording; netplay rounds start unlatched | Documented |
 
 ## 3. Presentation under rollback
@@ -494,9 +494,11 @@ Done (engine/custom-screen.md): what follows is what it guarantees.
   and the timers that follow it (`custom_ui`, `round.status` bit 2, the gauge restart 11 ticks after the
   confirmation) must exist per side, or be defined from shared state, never "the local player's". Which screen a
   viewer sees is presentation.
-- **No per-console RNG.** The original shuffles the folder with RNG1, a per-console stream, and exchanges the
-  result. Either draw from a shared stream seeded in the setup, or treat each player's shuffle as that player's
-  input.
+- **Per-console RNG in the simulation.** The original shuffles the folder with RNG1, a per-console stream, and
+  exchanges the result: each player's shuffled folder is setup. ChpShufl's re-deal draws from the same stream
+  mid-battle, so each player's console RNG is simulated (`Battle::consoles`): its seed is setup both peers share
+  (`PlayerSetup::console`), and everything that advances it is a function of the simulation and that player's
+  buttons.
 - **No link waits in the simulation.** The original's link exchange takes frames; in the port the exchange is
   the simulation's own, deterministic, and doesn't depend on network timing.
 - **Everything in `Battle`,** hashed (the destructuring in `digest.rs` will ask for new fields).
@@ -520,7 +522,9 @@ The rules of the core/content boundary (docs/design/core-content-boundary.md, §
 ### 8.3 Round chaining
 
 `RoundEnd::NextRound` hands over the next round's settings and score; the next `Battle` also needs its RNG seed
-and navi stats, which the original's init exchange provides. A netplay session must derive them from shared data
+and navi stats, which the original's init exchange provides, and each player's shuffled folder and console RNG
+(`PlayerSetup::console`; the original's carries on from the last round's `Battle::consoles` through the next
+init's folder shuffle). A netplay session must derive them from shared data
 (the previous round's state, or values exchanged before the match), and keep rolling back across the boundary or
 confirm it before starting the next round. A getgud session has no end of its own: a host ends the round's
 session once its settled state is over (`round_end`), and starts the next round's from that settled state and

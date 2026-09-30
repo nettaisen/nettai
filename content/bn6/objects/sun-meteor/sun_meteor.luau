@@ -125,8 +125,10 @@ local function fall(me: Object)
     else
         battle.effect(me.pos, 5)
         battle.play_sound(0x70)
-        -- (A shake of the camera, if its record says so, is drawn only.)
         local r = record(me)
+        if r.shake then
+            battle.shake_camera(1, 0xF)
+        end
         if r.panel == 1 then
             field.crack(x, y)
         elseif r.panel ~= 0 then

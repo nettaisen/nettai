@@ -278,7 +278,7 @@ local function strike(me: Object)
     -- (The game passes the panel's Y and the element as sub_801BD3C's
     -- panel, and 3 as its height, which only a hit region's sparks use.)
     region_sparks(me.panel_y, me.element, STRIKE_SPARK, region, me.alliance, 3)
-    -- (The camera shakes, which draws the local RNG only.)
+    battle.shake_camera(1, 0x3C)
     battle.play_sound(STRIKE_SOUND)
     me.anim = STRIKE_ANIM
     me.phase = 8
