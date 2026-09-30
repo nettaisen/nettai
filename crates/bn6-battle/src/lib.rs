@@ -38,5 +38,5 @@ pub use content::{Content, ContentHash};
 pub use input::PlayerTick;
 pub use rng::Rng;
 pub use rollback::{Snapshot, TickInput};
-pub use setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage};
+pub use setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage, StageSettings};
 pub use sound::{SoundCue, SoundId};

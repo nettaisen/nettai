@@ -10,7 +10,9 @@ use bn6_battle::console::ConsoleSetup;
 use bn6_battle::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
 use bn6_battle::content::{ChipCode, ChipId, Content};
 use bn6_battle::input::keys;
-use bn6_battle::setup::{Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, Supports};
+use bn6_battle::setup::{
+    BattleSettings, Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, RoundSetup, SetScore, Supports,
+};
 use bn6_battle::{Battle, PlayerTick, TickEvents, TickInput};
 
 /// A battle stepped on the players' buttons alone.
@@ -52,18 +54,22 @@ impl Game for StandInBattle {
     }
 }
 
-/// A battle folder of these chips (id, code) over and over, in this
-/// order (not shuffled).
-pub fn folder(chips: &[(ChipId, u8)]) -> BattleFolder {
+/// A battle folder of `content`'s chips with these numbers (id, code)
+/// over and over, in this order (not shuffled).
+pub fn folder(content: &Content, chips: &[(ChipId, u8)]) -> BattleFolder {
     let mut f = BattleFolder::empty();
     for (slot, &(id, code)) in f.chips.iter_mut().zip(chips.iter().cycle()) {
-        *slot = Some(FolderChip::new(id, ChipCode(code)));
+        let chip = content.chip_numbered(id).unwrap_or_else(|| panic!("chip {id:#x} is not in the content"));
+        *slot = Some(FolderChip::new(chip, ChipCode(code)));
     }
     f
 }
 
-/// A MegaMan (base form, Falzar Beast Out available) with `hp` HP.
-pub fn megaman(hp: u16) -> NaviStats {
+/// A MegaMan (base form, Falzar Beast Out available) with `hp` HP, on
+/// `content`.
+pub fn megaman(content: &Content, hp: u16) -> NaviStats {
+    let base = content.form_numbered(Form::NONE);
+    let weapon = |n: u8| (n != 0xFF).then(|| content.weapon_numbered(n));
     NaviStats {
         attack: 0,
         rapid: 0,
@@ -77,7 +83,7 @@ pub fn megaman(hp: u16) -> NaviStats {
         support: Some(Supports::default()),
         mood: 0x80,
         element: 0,
-        starting_form: Form::NONE,
+        starting_form: base,
         float_shoes: true,
         air_shoes: true,
         undershirt: false,
@@ -85,9 +91,9 @@ pub fn megaman(hp: u16) -> NaviStats {
         version: 0,
         beast_out_counter: 3,
         sun: false,
-        navi: Navi::MEGAMAN,
+        navi: content.navi_numbered(Navi::MEGAMAN),
         navi_variant: 10,
-        form: Form::NONE,
+        form: base,
         folder: 0,
         folder_reg: [0xFF; 2],
         max_base_hp: hp,
@@ -98,11 +104,11 @@ pub fn megaman(hp: u16) -> NaviStats {
         chip_shuffle: false,
         number_open: false,
         weapons: NaviWeapons {
-            buster: 0,
-            charge_shot: 1,
-            back_special: 0xFF,
-            a_charge: 0xFF,
-            mode9_a: 0,
+            buster: weapon(0),
+            charge_shot: weapon(1),
+            back_special: weapon(0xFF),
+            a_charge: weapon(0xFF),
+            mode9_a: weapon(0),
             buster_shot: 0,
             charge_shot_kind: 0,
         },
@@ -127,8 +133,8 @@ pub fn netbattle(content: &Content, hp: u16, seed: u32, folders: [BattleFolder; 
     let [a, b] = folders;
     RoundSetup {
         content: content.hash(),
-        settings: content.rules.stages.settings(0),
-        navi_stats: [megaman(hp), megaman(hp)],
+        settings: BattleSettings::on(content, content.stage_numbered(0)),
+        navi_stats: [megaman(content, hp), megaman(content, hp)],
         rng: seed,
         local_side: 0,
         score: SetScore::default(),

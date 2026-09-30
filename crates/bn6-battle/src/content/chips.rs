@@ -161,7 +161,10 @@ serde_flags!(ExtraChipFlags, u8);
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChipData {
-    pub id: ChipId,
+    /// The chip's number in the pack's table (its place in the original's
+    /// chip table); a chip content defines has none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub id: Option<ChipId>,
     pub name: String,
     /// Codes the chip comes in (up to four).
     #[serde(default)]

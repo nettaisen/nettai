@@ -58,7 +58,7 @@ pub struct Spec {
 /// trap instead: the controller is AntiRecv's counterattack.
 pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
     let side = b.objects.get(user).alliance;
-    if s.navi == ROLL && b.linked[(side ^ 1) as usize].chip == heal::ANTI_RECOVERY {
+    if s.navi == ROLL && b.chip_number(b.linked[(side ^ 1) as usize].chip) == Some(heal::ANTI_RECOVERY) {
         return spring_anti_recovery(b, user, s);
     }
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::NaviChip, Vec3::default(), s.params)?;
@@ -224,9 +224,12 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let user = user(b, r);
     // The chip's own navi, if content defines the chip; else
     // off_802CD5C, by the subtype.
-    let defined = match b.content.defs.chip_with_id(v.chip.chip).map(|c| c.usage) {
+    let defined = match v.chip.chip.and_then(|c| b.content.defs.chip(c).usage) {
         Some(crate::content::ChipUsage::Navi(f)) => Some(f),
-        Some(u) => panic!("chip {:#x} is a navi chip, but its definition uses it as {u:?}", v.chip.chip),
+        Some(u) => panic!(
+            "chip {:?} is a navi chip, but its definition uses it as {u:?}",
+            b.content.defs.chip(v.chip.chip.expect("a defined chip")).key
+        ),
         None => None,
     };
     let navi = match defined.or_else(|| b.content.defs.hook(Hook::NaviChip(v.navi))) {

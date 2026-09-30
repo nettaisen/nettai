@@ -21,7 +21,7 @@ pub use screen::{Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind
 
 use crate::battle::{Battle, CustomResult, battle_flags};
 use crate::console::{Console, ConsoleSetup};
-use crate::content::ChipId;
+use bn6_content_api::ChipHandle;
 use crate::hand::ChipHand;
 use crate::input::Joypad;
 use crate::kinds::player::Emotion;
@@ -242,7 +242,7 @@ impl Side {
     /// One tick of the player's screen on their joypad and console.
     /// `damage`: a chip's damage for this player now (`sub_80109A4`), for
     /// the hand built at OK.
-    pub fn tick(&mut self, ctx: &Context, console: &mut Console, damage: impl Fn(ChipId) -> u16) -> Option<Request> {
+    pub fn tick(&mut self, ctx: &Context, console: &mut Console, damage: impl Fn(ChipHandle) -> u16) -> Option<Request> {
         let (Some(mut screen), Some(mut folder)) = (self.screen, self.folder) else { return None };
         let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console);
         match request {
@@ -272,7 +272,7 @@ impl Side {
     /// OK (`sub_8028D3A`): build the hand (`sub_8029110`), take the picked
     /// chips out of the folder (`sub_80293F8`), and turn Beast Out or the
     /// Cross into a transformation (`sub_8029344`, `sub_802937A`).
-    fn confirm(&mut self, ctx: &Context, screen: &mut Screen, folder: &mut BattleFolder, damage: impl Fn(ChipId) -> u16) {
+    fn confirm(&mut self, ctx: &Context, screen: &mut Screen, folder: &mut BattleFolder, damage: impl Fn(ChipHandle) -> u16) {
         let view = self.view(ctx, folder.regular_pending);
         let picks: Vec<Pick> = screen
             .selection()
@@ -287,26 +287,27 @@ impl Side {
         let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, damage);
         self.program_advances = pa_used;
         for p in &picks {
-            if p.chip.id >= 0x190 {
-                self.round.navi_chips_used |= 1 << (p.chip.id - 0x18F);
+            if let Some(id) = ctx.library.chip_number(p.chip.id).filter(|&id| id >= 0x190) {
+                self.round.navi_chips_used |= 1 << (id - 0x18F);
             }
         }
-        let form = ctx.stats.form;
+        let form = ctx.library.form_number(ctx.stats.form);
         let version = self.unlocks.version;
         let mut transform = TransformRequest::NONE;
         if screen.selection().contains(&SPECIAL_SLOT) {
-            transform.form = Some(if ctx.emotion == Emotion::Tired {
+            let to = if ctx.emotion == Emotion::Tired {
                 version.beast_over()
             } else if form == Form::NONE {
                 version.beast_out()
             } else {
                 form.with_beast()
-            });
+            };
+            transform.form = Some(ctx.library.form_numbered(to));
             self.round.beast_out_used = true;
         }
         if let Some(cross) = screen.crosses.chosen {
             let f = version.cross_form(cross);
-            transform.form = Some(if form.is_beast() { f.with_beast() } else { f });
+            transform.form = Some(ctx.library.form_numbered(if form.is_beast() { f.with_beast() } else { f }));
             self.round.crosses_used[cross as usize] = true;
         }
         for &slot in screen.selection() {
@@ -379,7 +380,7 @@ impl Battle {
             let ctx = self.custom_context(side, &*content);
             let mut s = self.custom.sides[side as usize].clone();
             let mut console = self.consoles[side as usize];
-            let request = s.tick(&ctx, &mut console, |id| crate::hand::chip_damage(self, id, side));
+            let request = s.tick(&ctx, &mut console, |id| crate::hand::chip_damage(self, Some(id), side));
             self.custom.sides[side as usize] = s;
             self.consoles[side as usize] = console;
             if request == Some(Request::Send) {
