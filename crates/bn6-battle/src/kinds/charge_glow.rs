@@ -25,6 +25,12 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
     }
 }
 
+/// `sub_80E0F22` / `sub_80E0F28`: hide it with its navi, or let it show
+/// again (EV+4).
+pub fn set_enabled(b: &mut Battle, r: ObjectRef, on: bool) {
+    vars(b, r).enabled = on;
+}
+
 /// Spawn the glow for `owner` (`sub_80E0F02`). Its initial X/Y/Z are
 /// leftover registers in the game (§A.5); they are never read.
 pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
