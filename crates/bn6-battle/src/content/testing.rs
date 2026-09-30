@@ -163,6 +163,8 @@ pub fn scripts() -> Scripts {
                 ("objects/gauge-speed/gauge_speed", "objects/gauge-speed/gauge_speed"),
                 ("lib/element", "lib/element"),
                 ("lib/projectile", "lib/projectile"),
+                // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+                ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -224,6 +226,7 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed") },
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
         kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
+        kind("rising-bubble", Pool::Effect, 0x14, "objects/rising-bubble/rising_bubble"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -742,5 +745,7 @@ fn animations() -> Animations {
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);
+    // The rising bubble.
+    sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(4), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
     Animations { sprites }
 }

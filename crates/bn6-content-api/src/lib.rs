@@ -34,6 +34,8 @@ pub use api::{
     ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, PANEL_TYPES, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, StatusFlag, StatusTimer,
 };
+// Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+pub use api::{ObstacleHold, ObstaclePush, WindSource};
 pub use data::{Data, Key as DataKey};
 pub use host::{
     ActionDef, ActionReg, ActorListEntrySpec, ContentError, ContentHost, DimmingChipSpec, Hook, HookCall, HookDef,

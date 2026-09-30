@@ -544,7 +544,8 @@ named_flags! {
     pub enum ObstacleAction {
         /// `sub_80165B8`: back to idle.
         ReturnToIdle = "return_to_idle",
-        /// `sub_8017E26`: pushed or dragged along the field.
+        /// `sub_8017E26`: pushed up to six panels, not into bodies or other
+        /// obstacles (and, pulled back, not into the puller's area).
         Slide = "slide",
         /// `sub_80166AE`, `sub_8016B02`, `sub_8016B36`, `sub_8016B72`: the
         /// actor hit reactions (they need actor data).
@@ -552,17 +553,63 @@ named_flags! {
         Paralyzed = "paralyzed",
         Frozen = "frozen",
         Bubbled = "bubbled",
+        // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
+        /// `sub_8017CC0`: knocked back as far as the hit says, onto free
+        /// panels it reserves on the way.
+        KnockedBack = "knocked_back",
     }
 }
 
 named_flags! {
-    /// What an obstacle's `obstacle.react` does with a body's or another
-    /// obstacle's touch (the two dispatchers differ only there).
+    /// What an obstacle's `obstacle.react` does with a body's, another
+    /// obstacle's or a breaking hit's touch (the dispatchers differ there).
     pub enum ObstacleCrush {
         /// `sub_801B394`: the HP drops to 0.
         Breaks = "breaks",
         /// `sub_801B4D4`: destroyed, the HP as it is.
         Destroys = "destroys",
+        // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
+        /// `sub_801B610`: bodies don't break it; obstacles and breaking
+        /// hits drop the HP to 0.
+        SparesBodies = "spares_bodies",
+    }
+}
+
+// Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
+named_flags! {
+    /// When `obstacle.react` holds an obstacle still while dimmed.
+    pub enum ObstacleHold {
+        /// `sub_801B394` and the others: once it has appeared (its
+        /// appearing action runs on while dimmed).
+        AfterAppearing = "after_appearing",
+        /// `sub_801B750`: always.
+        Always = "always",
+    }
+}
+
+named_flags! {
+    /// What a pushing hit (hit modifier 0x40) does in `obstacle.take_hits`.
+    pub enum ObstaclePush {
+        /// `sub_801AD9E`: pushes it, and its damage is forgotten.
+        ForgetsDamage = "forgets_damage",
+        /// `sub_801AD12`: pushes it, and the damage still lands.
+        KeepsDamage = "keeps_damage",
+        /// `sub_801ADFA`: as `keeps_damage`, and any hit from one side (but
+        /// hits of type 0x1000) pushes it a panel away.
+        AnyHit = "any_hit",
+        /// `sub_801AD6A`: it is never pushed.
+        Ignored = "ignored",
+    }
+}
+
+named_flags! {
+    /// Who placed a side's wind (`sub_80E541A`'s third argument).
+    pub enum WindSource {
+        /// Wind and Fan's fan (attack object #0x48).
+        Obstacle = "obstacle",
+        /// A navi's own wind (effect object #0x41, `sub_80E532C`), which a
+        /// fan's can't replace.
+        Navi = "navi",
     }
 }
 
@@ -749,6 +796,13 @@ pub trait CoreApi {
     fn hand_cursor(&self, side: u8) -> u8;
     /// `sub_800FC7C`: the cursor moves to the next chip.
     fn advance_hand(&mut self, side: u8);
+    // Subtype 18 (Otenko):
+    /// The turn (custom screens opened before, from 0) the chip at `i` of a
+    /// side's hand was picked in.
+    fn hand_turn(&self, side: u8, i: u8) -> u8;
+    /// Add to the Atk+ bonus of the chip at `i` of a side's hand
+    /// (wrapping).
+    fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
     /// A side's defensive-chip record.
     fn linked(&self, side: u8) -> LinkedChip;
     fn set_linked(&mut self, side: u8, rec: LinkedChip);
@@ -765,6 +819,14 @@ pub trait CoreApi {
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// A player NameID's actor record, if it is one.
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo>;
+    // Subtype 8 (Wind and Fan):
+    /// `sub_80E543C`: a side's wind (BattleState+0xC0) and who placed it.
+    fn wind(&self, side: u8) -> (Option<ObjectRef>, WindSource);
+    /// `sub_80E541A`: `o` is `side`'s wind; the one there before is
+    /// destroyed at once (`sub_80E5410`).
+    fn set_wind(&mut self, o: ObjectRef, side: u8, source: WindSource);
+    /// `sub_80E544C`: `o` is no side's wind.
+    fn clear_wind(&mut self, o: ObjectRef);
 
     // ---- Panels -----------------------------------------------------------
 
@@ -995,14 +1057,15 @@ pub trait CoreApi {
     fn obstacle_register(&mut self, o: ObjectRef, side: u8, class: u8);
     /// `sub_800F656`: forget `o` in the field-object registry.
     fn obstacle_unregister(&mut self, o: ObjectRef);
-    /// `sub_801AD9E`: resolve this tick's hits (a push forgets the damage).
-    fn obstacle_take_hits(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_801AD9E` and its variants (`push`): resolve this tick's hits.
+    fn obstacle_take_hits(&mut self, o: ObjectRef, push: ObstaclePush) -> ApiResult<()>;
     /// `sub_800F672`: the lifetime; broken when it runs out or the battle
     /// is over, blinking for its last three seconds.
     fn obstacle_tick_lifetime(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// `sub_801B394` / `sub_801B4D4`: damage, removal and status; the
-    /// action the kind's own table runs now (None: a status routine ran).
-    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>>;
+    /// `sub_801B394` and its variants (`crush`, `hold`): damage, removal
+    /// and status; the action the kind's own table runs now (None: a status
+    /// routine ran).
+    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush, hold: ObstacleHold) -> ApiResult<Option<u8>>;
     /// Run a shared entry of the obstacle's action table.
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()>;
     /// How the obstacle is leaving.
