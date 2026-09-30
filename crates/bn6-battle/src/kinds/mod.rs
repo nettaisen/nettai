@@ -16,6 +16,7 @@ pub mod form_overlay;
 pub mod full_synchro_aura;
 pub mod heal;
 pub mod hitbox;
+pub mod ice_visual;
 pub mod idle_overlay;
 pub mod intro;
 pub mod lockon_marker;
@@ -93,6 +94,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Attack, 3) => hitbox::update(b, r),
         (Pool::Effect, 4) => spark::update(b, r),
         (Pool::Effect, bubble_visual::INDEX) => bubble_visual::update(b, r),
+        (Pool::Effect, ice_visual::INDEX) => ice_visual::update(b, r),
         (Pool::Actor, form_overlay::INDEX) => form_overlay::update(b, r),
         (Pool::Effect, afterimage::INDEX) => afterimage::update(b, r),
         (Pool::Effect, lockon_marker::INDEX) => lockon_marker::update(b, r),
@@ -165,23 +167,89 @@ pub fn shift_damage_carry(b: &mut Battle) {
 /// Damage formulas for chips whose damage is 1000 or more (`off_80109DC`).
 pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
     match formula {
+        0 => opponent_hp(b, side),
         1..=18 => sp_chip_damage(b, id, side, formula as usize - 1),
+        19 => gauge_damage(b, side),
         20 => damage_taken(b, side),
-        24..=44 => navi_chip_damage(b, id, side),
-        _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
+        21 => hp_last_digits(b, side),
+        22 => half_opponent_max_hp(b, side),
+        23..=44 => navi_chip_damage(b, id, side),
+        // The table ends at 44: the game jumps through the code after it.
+        _ => panic!("damage formula {formula} (chip {id:#x}) reads past its table (off_80109DC)"),
     }
 }
 
-/// `sub_8010BD0` (Muramasa's): the HP the side's player has lost, at most
-/// 500. `sub_80103BC` looks for the player among the side's alive actors,
-/// but its loop never advances, so it only ever checks the first slot four
-/// times: with no player there the damage is 0.
-fn damage_taken(b: &Battle, side: u8) -> u16 {
-    let Some(r) = b.round.alive_actors[side as usize & 1][0] else { return 0 };
-    let o = b.objects.get(r);
-    if b.content.navi_record(o.name_id).actor_type != crate::actor::ActorType::Player {
-        return 0;
+/// `BattleState+0x90`: side 1's alive actors, from which the single-player
+/// formulas read the opponents (the first three for side 0, the first one
+/// for side 1).
+fn single_player_opponents(b: &Battle, side: u8) -> impl Iterator<Item = ObjectRef> + '_ {
+    let n = if side & 1 == 0 { 3 } else { 1 };
+    b.round.alive_actors[1][..n].iter().flatten().copied()
+}
+
+/// `sub_8010A90`: the opponent's HP, at most 500: in link battles the other
+/// side's player's, else the highest of the opponents'.
+fn opponent_hp(b: &Battle, side: u8) -> u16 {
+    let hp = if b.setup.settings.effects & crate::setup::effects::LINK != 0 {
+        let Some(p) = b.player(side ^ 1) else {
+            panic!("damage formula 0 reads the HP of a missing navi (sub_8010A90)");
+        };
+        b.objects.get(p).hp
+    } else {
+        single_player_opponents(b, side).map(|r| b.objects.get(r).hp).max().unwrap_or(0)
+    };
+    hp.min(500)
+}
+
+/// `sub_8010B78`: damage by how full the custom gauge is (the side's own
+/// gauge plus 0x1500 in the battle flag 0x40 mode): 10 to 32 over the first
+/// half, to 128 by seven eighths, to 255 short of full; a full gauge (or
+/// more) gives 10.
+fn gauge_damage(b: &Battle, side: u8) -> u16 {
+    let gauge = if b.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0 {
+        b.sides[side as usize & 1].gauge as u32 + 0x1500
+    } else {
+        b.gauge.value as u32
+    };
+    let g = gauge >> 7;
+    if g >= 0x80 {
+        10
+    } else if g <= 0x40 {
+        (0x16 * g / 0x40 + 0xA) as u16
+    } else if g <= 0x70 {
+        (0x60 * (g - 0x40) / 0x30 + 0x20) as u16
+    } else {
+        (0x80 * (g - 0x70) / 0xF + 0x80) as u16
     }
+}
+
+/// `sub_8010BF0` (NumbrBl's): the last two digits of the side's player's
+/// HP (0 without one).
+fn hp_last_digits(b: &Battle, side: u8) -> u16 {
+    b.player(side).map_or(0, |p| b.objects.get(p).hp % 100)
+}
+
+/// `sub_8010C06`: half the opponent's max HP, at most 999: in link battles
+/// the other side's player's (0 without one), else the highest of the
+/// opponents'.
+fn half_opponent_max_hp(b: &Battle, side: u8) -> u16 {
+    let max_hp = if b.setup.settings.effects & crate::setup::effects::LINK != 0 {
+        let Some(p) = b.player(side ^ 1) else { return 0 };
+        b.objects.get(p).max_hp
+    } else {
+        // Always the first three, whichever side.
+        b.round.alive_actors[1][..3].iter().flatten().map(|&r| b.objects.get(r).max_hp).max().unwrap_or(0)
+    };
+    (max_hp >> 1).min(999)
+}
+
+/// `sub_8010BD0` (Muramasa's): the HP the side's player has lost, at most
+/// 500. `sub_80103BC` (`Battle::player`) looks for the player among the
+/// side's actors as spawned, but its loop never advances, so it only ever
+/// checks the first slot four times: with no player there the damage is 0.
+fn damage_taken(b: &Battle, side: u8) -> u16 {
+    let Some(r) = b.player(side & 1) else { return 0 };
+    let o = b.objects.get(r);
     // A signed difference, capped at 500 (an HP above the maximum would
     // give a negative damage, cut to 16 bits).
     let lost = o.max_hp as i32 - o.hp as i32;
