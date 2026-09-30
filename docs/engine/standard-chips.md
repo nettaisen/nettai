@@ -168,32 +168,160 @@ action 0x2B, `obstacle` by dimming subtype 6, `beast` and `beast-charged` by the
 ## Action 0x0A: the link navis' chips (not yet content)
 
 Chips 0x190 HeatPres to 0x199 DustBrk have action 0x0A, below 0x10, so they run through the user's own action table
-(`off_80EA4C8[AIIndex][0xA]`, chips.md §1.6), not `JumpTable80EAC60`. Only the link navis' tables (AI indices 1 to
-10) have an entry 0xA: 1 HeatMan `sub_80F0778`, 2 ElecMan `sub_80F09B8`, 3 SlashMan `sub_80F0CB0`, 4 EraseMan
-`sub_80F1056`, 5 ChargeMan `sub_80F1334`, 6 SpoutMan `sub_80F15CE`, 7 TomahawkMan `sub_80F18AC`, 8 TenguMan
-`sub_80F1A46`, 9 GroundMan `sub_80F1C1C`, 10 DustMan `sub_80F1FA0`. A content action registered for 0x0A runs for a
-link navi (`status::dispatch`); none is registered yet.
+(`off_80EA4C8[AIIndex]`, chips.md §1.6), not `JumpTable80EAC60`. `off_80EA4C8` has 25 tables by AI index: 0 and
+0xC..0x18 (MegaMan and his forms) share `off_80EA52C` and AI index 0xB has `off_80EA710`, nine entries each (actions
+0..8), without an entry 0xA (it would read on into the next table: for MegaMan `off_80EA550[1]`, `sub_8017888`; the
+port should refuse it); the link navis' tables have eleven, and DustMan's thirteen (0xB `sub_80F20F8` and 0xC
+`sub_80F2274`, his other moves; entry 9 of each link navi's table is another move of his, not a chip). Entry 0xA: 1 HeatMan `sub_80F0778`, 2 ElecMan
+`sub_80F09B8`, 3 SlashMan `sub_80F0CB0`, 4 EraseMan `sub_80F1056`, 5 ChargeMan `sub_80F1334`, 6 SpoutMan
+`sub_80F15CE`, 7 TomahawkMan `sub_80F18AC`, 8 TenguMan `sub_80F1A46`, 9 GroundMan `sub_80F1C1C`, 10 DustMan
+`sub_80F1FA0`. The dispatcher content needs is that table's entry 0xA by the user's AI index (one module
+registered for action 0x0A that dispatches on `ai_index`, erroring for an AI index without one).
 
-Ported but not registered (chips/19x folders, their shared state in chips/190-heatpres/state.luau and
-`LinkChipState` in types.d.luau, **[unverified]**): EraseMan's (the navi's erase beams, objects/erase-beam with
-Param3 set), SpoutMan's (the jump and the water spray, attack #0x29, objects/drip-shower), ElecMan's (the slide and
-slash, the glow effect #0x31, objects/navi-effect), SlashMan's (the rolling route, the riding hit attack #0x69,
-objects/riding-hit), TomahawkMan's (the axe effect #0x32, objects/eagle-tomahawk, and the strikes attack #0x6A,
-objects/tomahawk-strike), TenguMan's (attack #0x60, objects/tengu-tornado) and DustMan's (the dust clouds, effects
-#0x71 and #0x72, objects/dust-cloud, one module for both). Left: HeatMan's (the arc, `sub_8001330`, and attack
-#0x26), ChargeMan's (attack #0x86, its arc), GroundMan's (attack #0x80, effects #0x09 and #0x61), the dispatcher
-module for action 0x0A and the kinds' `object.toml` registrations.
+Each routine runs its phases by `av[0]` (entry on `av[1]` 0, set to 4), keeps its timer in `av.u16[0x10]`
+("n ticks": after the entry tick until the timer reaches 0, `bgt`), and in its first attacking phase adds the Atk+
+bonus to the damage (`av.u16[8] += av.u16[6]`); "the damage word" below is `av.u32[8]` after that. Every chip has
+subtype 3 and params 0.
+
+- **HeatPres (AI 1, `sub_80F0778`, phases `off_80F078C`).** 0 (`sub_80F0798`), the jump: his collision region
+  cleared, FuturePanel = his panel, reserved (`object_reservePanel`), anim 0x12; an arc (`sub_8001330`: from his X,
+  Y, Z to the centre of the panel three ahead at Z 0 in 20 ticks with gravity −0x18000: the angle, the distance
+  `SWI_Sqrt`ed and divided by the ticks for the speed, `sub_80011A0` for X and Y, the Z velocity ((0 − Z) − 20 · 20 ·
+  g / 2) / 20; lib/trajectory's `in_ticks`) into his velocity; Timer 20. Each later tick while the timer, counted down,
+  stays ≥ 0: X, Y, Z += velocity, Z velocity −= 0x18000, his panel from the coordinates; then Z's whole part 0 and
+  his panel solid (0x10) → 4, else 8. 4 (`sub_80F0832`), the press: the bonus; four flames
+  (`sub_80F37D8`: on each of the panels left, right, above and below him (`byte_80F3824`: (−1, 0), (1, 0), (0, −1),
+  (0, 1)) that is solid, attack #0x26, objects/heat-flame, Param1 0 (it waits a dimming out), Param2 60, the damage
+  word; its Z the r3 `_object_getPanelDataOffset` leaves: the row − 1); a hit on his panel lasting 60
+  (`object_spawnCollisionRegion`: region 1, hit effect 1, target 5, self 4, modifier 3, Z 0, Timer 60); sound 0xC0;
+  60 ticks → 8. 8 (`sub_80F0898`): anim 0, region 1, back onto FuturePanel (unreserved), `object_exitAttackState`.
+- **DElecSwd (AI 2, `sub_80F09B8`).** 0 (`sub_80F09DC`), the slide: the bonus; anim 0x10; FuturePanel his, reserved;
+  ObjectFlags1 |= 0x40 (moving) and 0x400000 (using action); X velocity front · 0x50000; his glow (`sub_80E3FB4`:
+  effect #0x31 at his panel's centre, r4 = 7 | side << 8; RelatedObject1 him) in `av+0x30`; the stop check
+  (`sub_80F0BD2`) at once. Each later tick: c = his panel's centre X; X += velocity; `sub_800E708(X, the X
+  velocity, c)` (the game passes the velocity where the old X belongs: true while c ≤ X); true → the stop check.
+  Stopping: his panel from the coordinates → 4; else the panel and collision panels follow. The stop check:
+  the next panel (x + front) holds another body of either side or a neutral object (0x03800000) → stop; the one
+  after that isn't on the field (no 0x10000) → stop; else `GetRandomRelativePanelFiltered` (lib/panels:
+  `random_in_region`) on region 4 around the next panel, dx toward his side's front, for an enemy navi's body
+  (`off_80F0C24`): found (**one RNG draw**) → stop. 4 (`sub_80F0A7A`): anim 0x11, Timer 20; a hit on the panel ahead
+  (`sub_80F0B80`, `object_getEnemyDirection`: region 4, hit effect 3, target 5, self 7, r7 0x1001: modifier 1,
+  status 0x10; Z 0), T4#0 effect 0x16 at the panel ahead's centre, 16 pixels up (his flip, palette + 3), sound 0xB0;
+  the glow's CurAnim = 0x10; 20 ticks → 8. 8 (`sub_80F0AB6`): anim 3, back onto FuturePanel (unreserved), the
+  coordinates and collision panels; flags: 0x40 off, 0x80000 (move complete) on, 0x400000 off; Timer 3; the glow's
+  state word = 8 (`sub_80E3FC4`); 3 ticks → 0xC. 0xC (`sub_80F0B0E`): anim 0, 30 ticks → exit.
+- **RSlash (AI 3, `sub_80F0CB0`).** 0 (`sub_80F0CD4`): the bonus; `av+0x30` = 0; speed `av+0x34` = 0x40000; anim 0x12;
+  20 ticks → 4. 4 (`sub_80F0D08`): region cleared; FuturePanel his, reserved; flag 0x40; anim 0x13; the riding hit
+  (`sub_80D19D4`: attack #0x69, objects/riding-hit: self 7, target 5, Param1 3 (modifier), Param2 0xFF (no spark),
+  Param3 1 (goes on after hitting a body), the element and damage word; it lasts while he is in action 0xA) in
+  `av+0x30`; sound 0x164; 10 ticks: the heading (`sub_80F0E96`: on row 3 X velocity front · speed and route step
+  `av[0xC]` = 1; else Y velocity + speed (down), step 0) → 8. 8 (`sub_80F0D64`), the roll: c = his panel's centre on
+  the axis (step odd: X; even: Y); X, Y += velocity; the panel under him (`sub_800E258`) must meet require 0x10010,
+  forbid 0x800000 (a valid solid panel, no neutral object), else → 0xC; when the old coordinate wasn't c and he
+  reached or passed c (`sub_800E708`): snapped to its centre, the route (`sub_80F0EC0`) — ended → 0xC; then his panel
+  and collision panels follow. 0xC (`sub_80F0DEC`): anim 7, region 1, back onto FuturePanel (unreserved), flag 0x40
+  off, Timer 20, the riding hit's state word = 8 (`sub_80D1A00`); 20 ticks → exit.
+  The route, `byte_80F0F50[side][step]` (target x, target y, dx, dy): side 0: (0, 3, +1, 0), (6, 0, 0, −1), (0, 1,
+  −1, 0), (1, 0, 0, +1), (0, 0, 0, 0); side 1: (0, 3, −1, 0), (1, 0, 0, −1), (0, 1, +1, 0), (6, 0, 0, +1), (0, 0, 0,
+  0). Step 1 turns when an enemy navi's body is in his column (`sub_80F0F78`, `object_getPanelsInColumnFiltered`) or
+  he is at the target column; steps 0 and 2 turn at the target column (a non-zero target x) or row; step 3 (back
+  along row 1): at FuturePanel's column it ends if at its row too, else turns; step 4 (down that column): at its
+  row it ends. A turn sets the velocity to (dx, dy) · speed and adds 1 to the step (a word store over `av+0xC`).
+  So: down to row 3, forward until an enemy is in his column (or the far column), up to row 1, back to his column,
+  down to his row.
+- **EDeletBm (AI 4, `sub_80F1056`).** 0 (`sub_80F1074`): the bonus; anim 0x11; 9 ticks → 4. 4 (`sub_80F10A0`): anim
+  0x12; the beams (`sub_80F1148`: on the panels 1..5 ahead in his row, stopping at the field's edge, attack #0xC3,
+  objects/erase-beam, Param1 1 (aimed straight), Param2 60, Param3 1 (it ends with his action 0xA, and stands still
+  while dimmed), the damage word); sound 0xBA; 60 ticks → 8. 8 (`sub_80F10CE`): 30 ticks → anim 0, exit.
+- **VolcChrg (AI 5, `sub_80F1334`).** 0 (`sub_80F1350`): the bonus; anim 6; Timer 30; the tick it reaches 11, the
+  volcano (`sub_80F13B4`) and sound 0x146; 30 ticks → 4. 4 (`sub_80F1390`): 30 ticks → anim 0, exit. The volcano: a
+  list (`object_getPanelsExceptCurrentFiltered`, rows 3..1, columns 6..1) of the panels with an enemy navi's body on
+  the other side's area (`off_80F1434[side]`: side 0 require 0x04000020; side 1 require 0x08000000, forbid 0x20),
+  then those of the other side's area without one (`byte_80F1448[side]`: side 0 require 0x20, forbid 0x04000000;
+  side 1 forbid 0x08000020), the latter shuffled when there are any (`sub_8000C72(list, n, n)`: n swaps, **two RNG
+  draws each**, lib/panels' `shuffle`), then (x, 1), (x, 2), (x, 3) with x = `dword_80F145C[side]` (7; side 1: 0, off
+  the field); the first five get a rock (`sub_80F1460` → `sub_80D5EB0`: attack #0x86, FuturePanel the target, on
+  his panel, element, Param1 = the subtype, the damage word, flags |= 0x10).
+  **The volcano rock, T3 0x86 (`sub_80D5D54`)**: init: on his panel 10 pixels ahead, Z's whole part 48, sprite (0x10,
+  0x55), a ground shadow, VISIBLE, anim 0, palette 0, flip; its sprite as `object_updateSpritePaused`. Each tick: the
+  battle over → state 8 (genericDestroy); dimmed → nothing; action 0: entry: the arc to its target's centre, Z 0, in
+  45 ticks with gravity −0x4000 (`sub_8001330`), Timer 45, Timer2 0; each later tick while the timer, counted down,
+  stays ≥ 0: Timer2 + 1 (the target highlighted while its bit 2 is clear), the move, Z velocity −0x4000, its panel
+  from the coordinates; then, if its panel has any of `byte_80D5EA0[side]` (0x15800010; side 1 0x2A800010), sound
+  SOUND_HIT_BOMB_1, T4#0 effect 0 at it and a hit lasting 5 (`sub_80D5EDE`: region 1, hit effect 1, target 5, self
+  0xA, modifier 3); either way state 8.
+- **DripShwr (AI 6, `sub_80F15CE`, phases 0..0x18).** 0 (`sub_80F15FC`): anim 0x11, Timer 35, anim 0x12 at 30; 35
+  ticks → 4. 4 (`sub_80F162C`, one tick): if he can move (`object_canMove`) and the panel three ahead meets require
+  0x10, forbid 0x0F880080: it (into `av+0x16`, `av+0x17`) and his own panel (FuturePanel) reserved, region cleared,
+  flag 0x40, Timer 2 → 8; else Timer 2 → 0xC. 8 (`sub_80F1694`): 2 ticks: onto the reserved panel, coordinates and
+  collision panels → 0x10. 0xC (`sub_80F16B4`), no jump: the timer counts before the entry: 2 ticks, then anim 3,
+  Timer 8, and 8 ticks → exit. 0x10 (`sub_80F16E0`): the bonus (here: the no-jump path never adds it); the spray
+  (`sub_80C92CC`: attack #0x29, objects/drip-shower, on his panel, Param1 4, Param2 2, Param3 0xA, the element and
+  damage word); Timer 0xA · 4 · 2 + 0xA = 90 → 0x14. 0x14 (`sub_80F172C`): anim 4, flag 0x40, 6 ticks → 0x18. 0x18
+  (`sub_80F1756`): anim 3; his panel unreserved, back onto FuturePanel (unreserved), coordinates, collision panels,
+  region 1, flags 0x40 off, 0x80000 on, 0x400000 off; 8 ticks → exit.
+- **ETomahwk (AI 7, `sub_80F18AC`).** 0 (`sub_80F18CC`): the bonus; anim 0x11; his axe (`sub_80E40C2`: effect #0x32,
+  objects/eagle-tomahawk, r4 1, kept in `av+0x30`); 16 ticks → 4. 4 (`sub_80F1902`): anim 0x12, Timer 30, the axe's
+  CurAction = 1; the tick it reaches 20: a camera shake (2, 30), sound 0x10C, the strikes (`sub_80F197A`: on the
+  panels 1..6 ahead in his row, stopping at the edge, attack #0x6A, objects/tomahawk-strike, Param1 (n − 1) · 5 (the
+  delay), Param2 7, Param3 5, Param4 0xFF, the element and damage word); 30 ticks → 8. 8 (`sub_80F194C`): anim 7,
+  the axe's CurAction = 2, 30 ticks → exit.
+- **FTornado (AI 8, `sub_80F1A46`).** 0 (`sub_80F1A60`): anim 0x10; the bonus; a tornado (`sub_80D05C4`: attack
+  #0x60, objects/tengu-tornado, the element and damage word) on every panel ahead of him (rows 1..3, columns 1..6,
+  columns beyond his toward the front) with the other side's body or object or a neutral object
+  (`byte_80F1B70[side]`: 0x05800000; side 1 0x0A800000), in that order; a whole-field hit of no damage
+  (`sub_80F1B78`: region 0x80, no spark, target 2, self 1, modifier 0, element 0, at (0, 0)); sound 0xB8; T4#0 effect
+  0x41 at his panel's centre, 32 pixels up (his flip); 30 ticks → 4. 4 (`sub_80F1AB6`): anim 7, 20 ticks → anim 0,
+  exit.
+- **RC Brakr (AI 9, `sub_80F1C1C`, phases 0..0x14).** 0 (`sub_80F1C48`): the bonus; rocks to drop `av[0xC]` = 9; anim
+  0x11; 12 ticks → 4. 4 (`sub_80F1C78`), the dig: anim 0x12; FuturePanel his, reserved; flags 0x40 and 0x400000;
+  invulnerable (`object_setInvulnerableTime(0xFFFF)`: flag 8); `sub_80F1E50(0x40000)`: X velocity front · 0x40000,
+  Timer = |c − x| · 0x280000 / 0x40000 (c 6; side 1: 1); sound 0x1C0; the drill (`sub_80E7896`, r4 0xA00: T4 0x61,
+  Param1 0, Param2 0xA: it goes once he leaves action 0xA; chips.md §3.6.25) in `av+0x30`. Each later tick: X +=
+  velocity; the panel under him (`sub_800E258`); a new column → a hit there (`sub_80F1E7E`: region 1, hit effect
+  0xA, target 5, self 6, r7 0x63: modifier 0x63; Z 0); that panel against `byte_80F1D20[side]` (require 0x10, forbid
+  0x07800000; side 1 0x0B800000): refused → 0xC; else his panel and collision panels follow, the timer counts, and
+  at 0 sound 0xE5 → 8. 8 (`sub_80F1D30`), the rockfall: a rock (`sub_80F1E98`: of the panels meeting
+  `off_80F1EF0[side]` (GroundMan's: side 0 require 0x04000020, side 1 require 0x08000000 forbid 0x20) but his own
+  (`object_getPanelsExceptCurrentFiltered`), one at random (**one draw**, `GetPositiveSignedRNG2()` mod n; none: no
+  rock), attack #0x80 (chips.md §3.6.25) with Param1 10, Param2 0 (it waits a dimming out), Param3 0 (no crack),
+  Param4 0), a camera shake (1, 20), Timer 20; 20 ticks: `av[0xC]` − 1, above 0 the entry again, else → 0xC. Nine
+  rocks, 20 ticks apart. 0xC (`sub_80F1D6C`): anim 4, Timer 4, the drill's state word = 8 (`sub_80E78AE`); 4 ticks →
+  0x10. 0x10 (`sub_80F1D9A`): back onto FuturePanel (unreserved), coordinates, collision panels; flags 0x40 and
+  0x400000 off; invulnerability off (`sub_800EB08`: its timer 0, flag 8 off); anim 3, 9 ticks → 0x14. 0x14
+  (`sub_80F1DE4`): anim 0, 20 ticks → exit.
+- **DustBrk (AI 10, `sub_80F1FA0`).** 0 (`sub_80F1FC0`): the bonus; anim 0x12; the first dust cloud (`sub_80E887C`, r4
+  0xA00: effect #0x72, objects/dust-cloud) in `av+0x30`; sound 0xAD; Timer 30; every tick, the entry's too, the pull
+  (`sub_80F20A0`: in his row, on each panel of the other side's area (`byte_80F20E0[side]`: side 0 require 0x20;
+  side 1 forbid 0x20), a hit of no damage, element 0, region 1, no spark, target 5, self 0x1E, modifier 0x10); 30
+  ticks → 4. 4 (`sub_80F2004`): anim 0x14; the second cloud (`sub_80E8770`, r4 0xA: effect #0x71) in `av+0x34`, Timer
+  40; the first cloud's state word = 8 (`sub_80E8894`); the tick it reaches 30, a hit on the panel ahead (region 1,
+  hit effect 0xA, target 5, self 6, modifier 3, the element and damage word) and sound 0x17B; 40 ticks → 8. 8
+  (`sub_80F204E`): 30 ticks → anim 0, exit, and only then the second cloud's state word = 8 (`sub_80E8788`).
+
+Ported but not registered, from group G2 (chips/19x folders, their shared state in chips/190-heatpres/state.luau and
+`LinkChipState` in types.d.luau, **[unverified]**, agreeing with the reading above where checked): EraseMan's,
+SpoutMan's, ElecMan's, SlashMan's, TomahawkMan's, TenguMan's and DustMan's, with their objects (objects/erase-beam,
+drip-shower, navi-effect, riding-hit, eagle-tomahawk, tomahawk-strike, tengu-tornado, dust-cloud). Not written:
+HeatPres (lib/trajectory for the arc, objects/heat-flame for the flames), VolcChrg (the volcano rock, attack #0x86)
+and RC Brakr (objects/ground-drill and the rock of chips.md §3.6.25, effect #9 = objects/rock-chip), and the action
+0x0A dispatcher and registrations.
 
 What the port has for them so far: their damage, damage formulas 24 to 44 (`sub_8010C50`): the chip's row of
 `byte_80212D4` (its `navi_damage`: a base and a step), plus the step for each level of the user's buster attack
 (`sub_801265A`) up to 5, and 0 without a player navi on the side.
 
-What stops them, in the lab's link-navi scenarios (navis/navi-01 to navi-10), before the chip runs:
+Lab (the original's coverage): each routine is reached by one scenario, navis/navi-01-heatpres to navi-10-dustbrk.
+**Unverified** (no scenario reaches them): HeatPres landing off solid ground; DElecSwd's first two stop reasons (a
+blocker, the field's edge) and a stop on its entry tick; RSlash starting on row 3, the turns at a target column and
+at row 1's end being his start row, the roll's floor check ending it; EDeletBm's five-beam cap; VolcChrg with no
+empty enemy panels or fewer than five in all; DripShwr's jump and spray (every scenario's panel three ahead was
+taken); ETomahwk's six-strike cap; RC Brakr's rockfall (the dig always met the opponent) and the drill's absence;
+every "no object" path (a failed spawn). What stops the port first, in these scenarios, before the chip runs:
 
 - the init hooks of AI indices 1, 6 and 9 (`off_8010E0C`) and DustMan's post-init hook `sub_80F22F8`;
 - the link navis' chip bonus `sub_800F09E`, at chip use: by AI index, a damaging chip of the navi's family gets a
   bonus from `byte_8021300`, indexed by a per-side value (`dword_203CFA0`, copied from the battle's link data at the
   round's start) that the traces don't record; ChargeMan's charge limit (`sub_800F49E`) reads the same value;
-- the objects several of them spawn are the navi chips' too (attack #0x26 HeatMan's, #0x80 GroundMan's, effects
-  #0x09 and #0x61), and EraseMan's is objects/erase-beam with Param3 set (its "navi's" branch, which ends once the
-  navi leaves action 0xA).
+- today the lab's first difference is "form action 10 is not implemented yet" (nothing registered for action 0x0A)
+  for navi-01..04 and 06..09, ChargeMan's charge limit for navi-05, and the post-init hook for navi-10.
