@@ -168,7 +168,7 @@ fn temp(name: &str) -> PathBuf {
 }
 
 fn write_pack(dir: &Path, b: &SoundBank) {
-    let (files, failures) = pack::export_sound(b);
+    let (files, failures) = pack::export_sound(b, &bn6_content::names::AssetNames::default());
     assert!(failures.is_empty(), "{failures:?}");
     let mut all = vec![pack::manifest("test", None, true, false)];
     all.extend(files);
@@ -211,12 +211,12 @@ fn a_bank_plays_the_same_after_the_round_trip() {
     assert!(!r.has_errors() && r.count(Level::Warning) == 0, "{r}");
     assert_plays_the_same(&b, &back.unwrap());
     // The extensions this bank needs are in the file.
-    let midi = Smf::from_bytes(&std::fs::read(dir.join("sound/songs/song-001.mid")).unwrap()).unwrap();
+    let midi = Smf::from_bytes(&std::fs::read(dir.join("sound/songs/sound-001.mid")).unwrap()).unwrap();
     let msgs: Vec<&Message> = midi.tracks.iter().flat_map(|t| t.events.iter().map(|e| &e.message)).collect();
     let cc = |c: u8, v: u8| msgs.iter().any(|m| matches!(m, Message::Control { controller, value, .. } if *controller == c && *value == v));
     assert!(cc(103, 1) && cc(103, 2) && cc(104, 70), "tie/gated marks and the bare end-tie");
     assert!(msgs.iter().any(|m| matches!(m, Message::Marker(s) if s == "fine")));
-    let music = Smf::from_bytes(&std::fs::read(dir.join("sound/songs/song-000.mid")).unwrap()).unwrap();
+    let music = Smf::from_bytes(&std::fs::read(dir.join("sound/songs/sound-000.mid")).unwrap()).unwrap();
     assert!(music.tracks[0].events.iter().any(|e| e.message == Message::Marker("[".into())));
     assert!(music.tracks[0].events.iter().any(|e| matches!(e.message, Message::Tempo(400_000))), "track 0's tempo in the conductor");
     assert!(music.tracks[3].events.iter().any(|e| matches!(e.message, Message::Tempo(_))), "track 2's tempo stays on its track");
@@ -233,7 +233,7 @@ fn a_daw_save_at_another_resolution_is_exact() {
     let dir = temp("ppq");
     let b = bank();
     write_pack(&dir, &b);
-    for song in ["song-000", "song-001"] {
+    for song in ["sound-000", "sound-001"] {
         edit_midi(&dir.join(format!("sound/songs/{song}.mid")), |smf| {
             smf.division = 480;
             for t in &mut smf.tracks {
@@ -254,7 +254,7 @@ fn a_daw_save_at_another_resolution_is_exact() {
 fn damage_to_songs_is_reported() {
     let dir = temp("songdamage");
     write_pack(&dir, &bank());
-    let music = dir.join("sound/songs/song-000.mid");
+    let music = dir.join("sound/songs/sound-000.mid");
     let good = std::fs::read(&music).unwrap();
     // Markers and M4A's controllers dropped, as editors that don't know them do.
     edit_midi(&music, |smf| {
@@ -267,7 +267,7 @@ fn damage_to_songs_is_reported() {
     assert!(says("loop markers"), "{r}");
     assert!(says("all 1 lfo_delay commands are gone") && says("key_shift"), "{r}");
     // The effect's `fine` marker dropped: it would end when its last note does.
-    edit_midi(&dir.join("sound/songs/song-001.mid"), |smf| {
+    edit_midi(&dir.join("sound/songs/sound-001.mid"), |smf| {
         for t in &mut smf.tracks {
             t.events.retain(|e| e.message != Message::Marker("fine".into()));
         }
@@ -321,7 +321,7 @@ fn songs_mixing_loops_and_endings_are_refused_for_now() {
     let mut b = bank();
     let s = b.songs[0].as_mut().unwrap();
     s.tracks[1] = Track { commands: vec![SetVoice(1), note(12, Some(60), Some(100)), Wait(12), Fine] };
-    let (_, failures) = pack::export_sound(&b);
+    let (_, failures) = pack::export_sound(&b, &bn6_content::names::AssetNames::default());
     assert_eq!(failures.len(), 1);
     assert!(failures[0].1.contains("one loop per song"));
 }

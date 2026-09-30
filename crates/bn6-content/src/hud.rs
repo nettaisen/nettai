@@ -1,6 +1,9 @@
 //! The HUD's graphics: one indexed PNG per tile block, laid out as the
 //! game draws it (8x16 glyphs, 2x2 icons, 4x2 mugshots), and `hud.json`
 //! (map entries, chip names in the game's text codes, banner layouts).
+//! Mugshots, banners and chip icons are a file each, under their names
+//! (`mugshots/<name>.png`, `banners/<name>.png`, `chip-icons/<chip>.png`);
+//! `hud.json` lists them in the game's order.
 //!
 //! Each palette belongs to one image, as rows of that image's palette
 //! (`palettes` in its entry). Images drawn with another image's palette
@@ -15,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub const FORMAT: &str = "bn6-content/hud";
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 
@@ -41,19 +44,17 @@ pub struct HudDoc {
     /// The opponent's HP digits: normal, dropping, rising (a row each),
     /// with their palette.
     pub enemy_digits: TileImage,
-    /// Chip icons by chip id, then the hidden chip's icon; the icon palette.
-    pub chip_icons: TileImage,
-    /// Chips without an icon.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub chips_without_icon: Vec<u16>,
-    /// Mugshots by emotion, each with its palette.
+    /// Chip icons by chip id (none for a chip without one), each with the
+    /// icon palette.
+    pub chip_icons: Vec<Option<TileImage>>,
+    /// The icon a hidden chip shows.
+    pub hidden_icon: TileImage,
+    /// Mugshots in the mugshot table's order, each with its palette.
     pub mugshots: Vec<TileImage>,
     /// The count box showing 0..=10, then without a number.
     pub counts: TileImage,
     pub form_emotions: Vec<u8>,
-    /// Banner glyphs, a row per banner (empty for text banners); the
-    /// banner palette.
-    pub banner_glyphs: TileImage,
+    /// Banners by banner id / 4.
     pub banners: Vec<BannerDoc>,
     pub banner_digits: TileImage,
     /// "Cstmzing..." and its palette.
@@ -68,13 +69,17 @@ pub struct BannerDoc {
     pub glyphs: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_at: Option<[u8; 2]>,
+    /// Its glyphs, with the banner palette (none for banners drawn from
+    /// text at run time).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<TileImage>,
 }
 
 fn concat(parts: &[&Tiles]) -> Tiles {
     Tiles { pixels: parts.iter().flat_map(|t| t.pixels.iter().copied()).collect() }
 }
 
-pub fn export(h: &Hud) -> Vec<(String, Vec<u8>)> {
+pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>)> {
     let mut files = Vec::new();
     let mut image = |file: &str, t: &Tiles, layout: Layout, rows: &[Palette], owned: usize| {
         let (png, doc) = tiles::export_image(file, t, layout, rows, [0, owned], |_| 0);
@@ -87,25 +92,49 @@ pub fn export(h: &Hud) -> Vec<(String, Vec<u8>)> {
     let font = image("font.png", &h.font, GLYPHS(16), &[h.hp_palettes[0]], 0);
     let digits = concat(&h.enemy_digits.iter().collect::<Vec<_>>());
     let enemy_digits = image("enemy-digits.png", &digits, GLYPHS(10), &[h.enemy_palette], 1);
-    // Icons: 4 tiles each; a chip without one gets a blank block.
-    let blank = Tiles { pixels: vec![0; 4 * Tiles::TILE] };
-    let mut icons: Vec<&Tiles> = h.chip_icons.iter().map(|t| if t.is_empty() { &blank } else { t }).collect();
-    icons.push(&h.hidden_icon);
-    let chip_icons = image("chip-icons.png", &concat(&icons), Layout::Blocks { width: 2, height: 2, columns: 16 }, &[h.icon_palette], 1);
+    // Icons: 4 tiles each.
+    let icon = Layout::Blocks { width: 2, height: 2, columns: 1 };
+    let chip_icons = h
+        .chip_icons
+        .iter()
+        .enumerate()
+        .map(|(id, t)| {
+            (!t.is_empty()).then(|| image(&format!("chip-icons/{}.png", names.chip_icon(id as u16)), t, icon, &[h.icon_palette], 1))
+        })
+        .collect();
+    // Not in chip-icons/, where a chip may be named anything.
+    let hidden_icon = image("hidden-icon.png", &h.hidden_icon, icon, &[h.icon_palette], 1);
     let mugshots = h
         .mugshots
         .iter()
         .enumerate()
-        .map(|(i, (t, p))| image(&format!("mugshot-{i:02}.png"), t, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[*p], 1))
+        .map(|(i, (t, p))| {
+            let file = format!("mugshots/{}.png", names.mugshot(i as u8));
+            image(&file, t, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[*p], 1)
+        })
         .collect();
     let mut counts: Vec<&Tiles> = h.counts.iter().collect();
     counts.push(&h.count_box);
     let mug0 = h.mugshots.first().map(|m| m.1).unwrap_or([0; 16]);
     let counts = image("counts.png", &concat(&counts), Layout::Blocks { width: 2, height: 2, columns: 12 }, &[mug0], 0);
-    // Banner glyphs: 20 glyphs (40 tiles) a row; text banners have none.
-    let empty = Tiles { pixels: vec![0; 40 * Tiles::TILE] };
-    let rows: Vec<&Tiles> = h.banners.iter().map(|b| if b.glyphs.is_empty() { &empty } else { &b.glyphs }).collect();
-    let banner_glyphs = image("banners.png", &concat(&rows), GLYPHS(20), &[h.banner_palette], 1);
+    // Banner glyphs: up to 20 glyphs (40 tiles) a banner; text banners
+    // have none.
+    let banners = h
+        .banners
+        .iter()
+        .enumerate()
+        .map(|(i, b)| {
+            let file = format!("banners/{}.png", names.banner(4 * i as u8));
+            let img = (!b.glyphs.is_empty()).then(|| image(&file, &b.glyphs, GLYPHS(20), &[h.banner_palette], 1));
+            BannerDoc {
+                at: [b.x, b.y],
+                kind: b.kind,
+                glyphs: b.glyphs.len() / 2,
+                number_at: b.number_at.map(|(x, y)| [x, y]),
+                image: img,
+            }
+        })
+        .collect();
     let banner_digits = image("banner-digits.png", &h.banner_digits, GLYPHS(11), &[h.banner_palette], 0);
     let waiting = image("waiting.png", &h.waiting, Layout::Grid { columns: 8 }, &[h.waiting_palette], 1);
     let texts = |m: &[MapEntry]| m.iter().map(tiles::entry_text).collect();
@@ -123,21 +152,11 @@ pub fn export(h: &Hud) -> Vec<(String, Vec<u8>)> {
         chip_shows_damage: h.chip_shows_damage.iter().enumerate().filter(|(_, s)| **s).map(|(i, _)| i as u16).collect(),
         enemy_digits,
         chip_icons,
-        chips_without_icon: h.chip_icons.iter().enumerate().filter(|(_, t)| t.is_empty()).map(|(i, _)| i as u16).collect(),
+        hidden_icon,
         mugshots,
         counts,
         form_emotions: h.form_emotions.clone(),
-        banner_glyphs,
-        banners: h
-            .banners
-            .iter()
-            .map(|b| BannerDoc {
-                at: [b.x, b.y],
-                kind: b.kind,
-                glyphs: b.glyphs.len() / 2,
-                number_at: b.number_at.map(|(x, y)| [x, y]),
-            })
-            .collect(),
+        banners,
         banner_digits,
         waiting,
     };
@@ -148,8 +167,8 @@ pub fn export(h: &Hud) -> Vec<(String, Vec<u8>)> {
 pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     let name = format!("{prefix}/hud.json");
     let doc: HudDoc = read_json(&dir.join("hud.json"), &name, report)?;
-    if doc.format != FORMAT || doc.version > VERSION {
-        report.error(&name, format!("not a {FORMAT} file of version {VERSION} or older"));
+    if doc.format != FORMAT || doc.version != VERSION {
+        report.error(&name, format!("not a {FORMAT} file of version {VERSION} (extract the pack again)"));
         return None;
     }
     let img = |d: &TileImage, report: &mut Report| tiles::import_image(dir, prefix, d, report);
@@ -157,9 +176,27 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     let (gauge_tiles, gauge_pal) = img(&doc.gauge, report)?;
     let (font, _) = img(&doc.font, report)?;
     let (digits, enemy_pal) = img(&doc.enemy_digits, report)?;
-    let (icons, icon_pal) = img(&doc.chip_icons, report)?;
+    let (hidden_icon, icon_pal) = img(&doc.hidden_icon, report)?;
+    let mut chip_icons = Vec::new();
+    for icon in &doc.chip_icons {
+        chip_icons.push(match icon {
+            Some(i) => img(i, report)?.0,
+            None => Tiles::default(),
+        });
+    }
     let (counts, _) = img(&doc.counts, report)?;
-    let (banner_glyphs, banner_pal) = img(&doc.banner_glyphs, report)?;
+    let mut banner_pal = vec![Palette::default()];
+    let mut banner_glyphs = Vec::new();
+    for b in &doc.banners {
+        banner_glyphs.push(match &b.image {
+            Some(i) => {
+                let (t, p) = img(i, report)?;
+                banner_pal = p;
+                t
+            }
+            None => Tiles::default(),
+        });
+    }
     let (banner_digits, _) = img(&doc.banner_digits, report)?;
     let (waiting, waiting_pal) = img(&doc.waiting, report)?;
     let mut mugshots = Vec::new();
@@ -180,13 +217,6 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     };
     let chips = doc.chip_names.len();
     let per_digit_set = digits.len() / 3;
-    let mut chip_icons: Vec<Tiles> = (0..icons.len() / 4 - 1).map(|i| slice(&icons, 4 * i, 4)).collect();
-    for &c in &doc.chips_without_icon {
-        if let Some(t) = chip_icons.get_mut(c as usize) {
-            *t = Tiles::default();
-        }
-    }
-    let hidden_icon = slice(&icons, icons.len() - 4, 4);
     let mut shows = vec![false; chips];
     for &c in &doc.chip_shows_damage {
         match shows.get_mut(c as usize) {
@@ -197,12 +227,12 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     let banners = doc
         .banners
         .iter()
-        .enumerate()
-        .map(|(i, b)| BannerLayout {
+        .zip(banner_glyphs)
+        .map(|(b, glyphs)| BannerLayout {
             x: b.at[0],
             y: b.at[1],
             kind: b.kind,
-            glyphs: slice(&banner_glyphs, 40 * i, 2 * b.glyphs),
+            glyphs: if glyphs.is_empty() { glyphs } else { slice(&glyphs, 0, 2 * b.glyphs) },
             number_at: b.number_at.map(|[x, y]| (x, y)),
         })
         .collect();

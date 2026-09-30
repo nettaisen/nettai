@@ -147,6 +147,7 @@ version = "0.1.0"
 dependencies = [
  "bn6-assets",
  "bn6-battle",
+ "bn6-compat",
  "bn6-content",
  "m4a",
 ]

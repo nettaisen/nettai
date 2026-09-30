@@ -11,7 +11,7 @@ use bn6_content_api::{
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
-use bn6_content_api::{ActionHandle, KindHandle, NaviAction, Registry, SpawnAt, StateId};
+use bn6_content_api::{ActionHandle, ChipHandle, KindHandle, NaviAction, Registry, SpawnAt, StateId, WeaponHandle};
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 
@@ -192,7 +192,57 @@ impl Battle {
         let c = self.objects.get(o).collision.ok_or(ApiError::NoCollision(o))?;
         Ok(self.collision.get_mut(c))
     }
+
+    /// A chip as the numeric API gives it: the pack's number, or for a chip
+    /// content defines (which has none) [`DEFINED_CHIPS`] plus its handle,
+    /// so a script can hand it back.
+    pub(crate) fn api_chip(&self, h: ChipHandle) -> u16 {
+        self.content.chip_number(h).unwrap_or(DEFINED_CHIPS + h.0)
+    }
+
+    /// A chip field as the numeric API gives it; `none` for no chip (the
+    /// field's own "none": 0 or 0xFFFF).
+    pub(crate) fn api_chip_field(&self, h: Option<ChipHandle>, none: u16) -> u16 {
+        h.map_or(none, |h| self.api_chip(h))
+    }
+
+    /// The chip a number from the numeric API names (see [`Self::api_chip`]);
+    /// `none` for no chip.
+    pub(crate) fn chip_from_api(&self, n: u16, none: u16) -> ApiResult<Option<ChipHandle>> {
+        if n == none {
+            return Ok(None);
+        }
+        if n >= DEFINED_CHIPS {
+            let h = ChipHandle(n - DEFINED_CHIPS);
+            return (h.index() < self.content.defs.chips.len())
+                .then_some(Some(h))
+                .ok_or_else(|| ApiError::Other(format!("chip {n:#x} is not in the content")));
+        }
+        self.content.chip_numbered(n).map(Some).ok_or_else(|| ApiError::Other(format!("chip {n:#x} is not in the content")))
+    }
+
+    /// A weapon as the numeric API gives it: its routine number (0xFF for
+    /// none). A weapon content defines has no number for it to give.
+    fn api_weapon(&self, w: Option<WeaponHandle>) -> i64 {
+        let Some(w) = w else { return 0xFF };
+        match self.content.weapon_number(w) {
+            Some(n) => n as i64,
+            None => panic!(
+                "the numeric API can't name weapon {:?}, which content defines (the v2 API names it by handle)",
+                self.content.defs.weapon(w).key
+            ),
+        }
+    }
+
+    /// The weapon a routine number from the numeric API names (0xFF: none).
+    fn weapon_from_api(&self, n: u8) -> Option<WeaponHandle> {
+        (n != 0xFF).then(|| self.content.weapon_numbered(n))
+    }
 }
+
+/// Where the numeric API's chips content defines start: past every chip id
+/// the original has (nine bits).
+pub const DEFINED_CHIPS: u16 = 0x200;
 
 /// Check a write and convert it by the field's type.
 fn store(name: &'static str, writable: bool, ty: FieldType, v: Value) -> ApiResult<FieldValue> {
@@ -232,7 +282,7 @@ impl CoreApi for Battle {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
             BattleInfo::Mode => Value::Int(self.round.mode_copy as i64),
-            BattleInfo::PanelPattern => Value::Int(self.setup.settings.panel_pattern as i64),
+            BattleInfo::PanelPattern => Value::Int(self.content.stage(self.setup.settings.stage).panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
             BattleInfo::LocalSide => Value::Int(self.round.local_side as i64),
             BattleInfo::Turn => Value::Int(self.round.turn as i64),
@@ -256,8 +306,8 @@ impl CoreApi for Battle {
         let i = |v: i64| Value::Int(v);
         match stat {
             NaviStat::Sun => Value::Bool(s.sun),
-            NaviStat::Form => i(s.form.0 as i64),
-            NaviStat::Navi => i(s.navi.0 as i64),
+            NaviStat::Form => i(self.content.form_number(s.form).0 as i64),
+            NaviStat::Navi => i(self.content.navi_number(s.navi).0 as i64),
             NaviStat::NaviVariant => i(s.navi_variant as i64),
             NaviStat::Element => i(s.element as i64),
             NaviStat::Attack => i(s.attack as i64),
@@ -275,12 +325,12 @@ impl CoreApi for Battle {
             NaviStat::HpDrain => i(s.bugs.hp_drain as i64),
             NaviStat::CustomDrain => i(s.bugs.custom_drain as i64),
             NaviStat::PanelTrail => i(s.bugs.panel_trail_kind as i64),
-            NaviStat::Beast => Value::Bool(s.form.is_beast()),
-            NaviStat::BeastOver => Value::Bool(s.form.is_beast_over()),
+            NaviStat::Beast => Value::Bool(self.content.form_number(s.form).is_beast()),
+            NaviStat::BeastOver => Value::Bool(self.content.form_number(s.form).is_beast_over()),
             NaviStat::CustomLevel => i(s.custom_level as i64),
             NaviStat::HandShrinkTurn => i(s.bugs.hand_shrink_turn as i64),
-            NaviStat::ChargeShotRoutine => i(s.weapons.charge_shot as i64),
-            NaviStat::BackSpecialRoutine => i(s.weapons.back_special as i64),
+            NaviStat::ChargeShotRoutine => i(self.api_weapon(s.weapons.charge_shot)),
+            NaviStat::BackSpecialRoutine => i(self.api_weapon(s.weapons.back_special)),
             NaviStat::FloatShoes => Value::Bool(s.float_shoes),
             NaviStat::AirShoes => Value::Bool(s.air_shoes),
             NaviStat::Undershirt => Value::Bool(s.undershirt),
@@ -305,6 +355,10 @@ impl CoreApi for Battle {
 
     fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()> {
         let v = store(stat.name(), stat.writable(), stat.ty(), v)?;
+        let weapon = match v {
+            FieldValue::U8(x) => self.weapon_from_api(x),
+            _ => None,
+        };
         let s = &mut self.stats[side as usize & 1];
         match (stat, v) {
             (NaviStat::Attack, FieldValue::U8(x)) => s.attack = x,
@@ -312,8 +366,8 @@ impl CoreApi for Battle {
             (NaviStat::Charge, FieldValue::U8(x)) => s.charge = x,
             (NaviStat::CustomLevel, FieldValue::U8(x)) => s.custom_level = x,
             (NaviStat::HandShrinkTurn, FieldValue::U8(x)) => s.bugs.hand_shrink_turn = x,
-            (NaviStat::ChargeShotRoutine, FieldValue::U8(x)) => s.weapons.charge_shot = x,
-            (NaviStat::BackSpecialRoutine, FieldValue::U8(x)) => s.weapons.back_special = x,
+            (NaviStat::ChargeShotRoutine, FieldValue::U8(_)) => s.weapons.charge_shot = weapon,
+            (NaviStat::BackSpecialRoutine, FieldValue::U8(_)) => s.weapons.back_special = weapon,
             (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
             (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
             (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
@@ -369,7 +423,9 @@ impl CoreApi for Battle {
     }
 
     fn hand_chip(&self, side: u8, i: u8) -> u16 {
-        self.hands[side as usize & 1].ids.get(i as usize).copied().unwrap_or(crate::hand::NO_CHIP)
+        // An empty entry (and one past the hand) is 0xFFFF.
+        let chip = self.hands[side as usize & 1].ids.get(i as usize).copied().flatten();
+        self.api_chip_field(chip, 0xFFFF)
     }
 
     fn hand_cursor(&self, side: u8) -> u8 {
@@ -394,12 +450,14 @@ impl CoreApi for Battle {
 
     fn linked(&self, side: u8) -> LinkedChip {
         let r = self.linked[side as usize & 1];
-        LinkedChip { chip: r.chip, bonus: r.bonus, damage: r.damage, owner: r.owner, object: r.object }
+        let chip = self.api_chip_field(r.chip, 0);
+        LinkedChip { chip, bonus: r.bonus, damage: r.damage, owner: r.owner, object: r.object }
     }
 
     fn set_linked(&mut self, side: u8, rec: LinkedChip) {
+        let chip = self.chip_from_api(rec.chip, 0).unwrap_or_else(|e| panic!("a linked chip record: {e}"));
         self.linked[side as usize & 1] =
-            LinkedRecord { chip: rec.chip, bonus: rec.bonus, damage: rec.damage, owner: rec.owner, object: rec.object };
+            LinkedRecord { chip, bonus: rec.bonus, damage: rec.damage, owner: rec.owner, object: rec.object };
     }
 
     fn clear_linked(&mut self, side: u8) {
@@ -1003,7 +1061,7 @@ impl CoreApi for Battle {
             ActorField::Step => i(at.step as i64),
             ActorField::StepInit => i(at.step_init as i64),
             ActorField::Variant => i(at.variant as i64),
-            ActorField::Chip => i(at.chip_id as i64),
+            ActorField::Chip => i(self.api_chip_field(at.chip, 0) as i64),
             ActorField::AttackElement => i(at.element as i64),
             ActorField::AttackDamage => i(at.damage as i64),
             ActorField::HitParam => i(at.hit_param as i64),
@@ -1026,17 +1084,27 @@ impl CoreApi for Battle {
             ActorField::BufferedMove => i(a.buffered_move as i64),
             ActorField::ChipLockout => i(a.lockout as i64),
             ActorField::BackSpecialCooldown => i(a.back_special_cooldown as i64),
-            ActorField::BusterRoutine => i(a.buster as i64),
-            ActorField::ChargeShotRoutine => i(a.charge_shot as i64),
-            ActorField::BackSpecialRoutine => i(a.back_special as i64),
-            ActorField::AChargeRoutine => i(a.a_charge as i64),
-            ActorField::AltAChargeRoutine => i(a.alt_a_charge as i64),
-            ActorField::Mode9ARoutine => i(a.mode9_a as i64),
+            ActorField::BusterRoutine => i(self.api_weapon(a.buster)),
+            ActorField::ChargeShotRoutine => i(self.api_weapon(a.charge_shot)),
+            ActorField::BackSpecialRoutine => i(self.api_weapon(a.back_special)),
+            ActorField::AChargeRoutine => i(self.api_weapon(a.a_charge)),
+            ActorField::AltAChargeRoutine => i(self.api_weapon(a.alt_a_charge)),
+            ActorField::Mode9ARoutine => i(self.api_weapon(a.mode9_a)),
         })
     }
 
     fn actor_set(&mut self, o: ObjectRef, f: ActorField, v: Value) -> ApiResult<()> {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
+        let chip = match (f, v) {
+            (ActorField::Chip, FieldValue::U16(x)) => self.chip_from_api(x, 0)?,
+            _ => None,
+        };
+        let weapon = match v {
+            FieldValue::U8(x) if matches!(f, ActorField::BusterRoutine | ActorField::ChargeShotRoutine) => {
+                self.weapon_from_api(x)
+            }
+            _ => None,
+        };
         let a = self.actor_of_mut(o)?;
         let at = &mut a.attack;
         match (f, v) {
@@ -1044,7 +1112,7 @@ impl CoreApi for Battle {
             (ActorField::Step, FieldValue::U8(x)) => at.step = x,
             (ActorField::StepInit, FieldValue::U8(x)) => at.step_init = x,
             (ActorField::Variant, FieldValue::U8(x)) => at.variant = x,
-            (ActorField::Chip, FieldValue::U16(x)) => at.chip_id = x,
+            (ActorField::Chip, FieldValue::U16(_)) => at.chip = chip,
             (ActorField::AttackElement, FieldValue::U8(x)) => at.element = x,
             (ActorField::AttackDamage, FieldValue::U16(x)) => at.damage = x,
             (ActorField::HitParam, FieldValue::U16(x)) => at.hit_param = x,
@@ -1061,8 +1129,8 @@ impl CoreApi for Battle {
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
             (ActorField::ChipLockout, FieldValue::U8(x)) => a.lockout = x,
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
-            (ActorField::BusterRoutine, FieldValue::U8(x)) => a.buster = x,
-            (ActorField::ChargeShotRoutine, FieldValue::U8(x)) => a.charge_shot = x,
+            (ActorField::BusterRoutine, FieldValue::U8(_)) => a.buster = weapon,
+            (ActorField::ChargeShotRoutine, FieldValue::U8(_)) => a.charge_shot = weapon,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1446,6 +1514,8 @@ impl CoreApi for Battle {
 
     fn dimming(&mut self, o: ObjectRef, step: DimmingStep, chip: u16) {
         use crate::dimming as d;
+        // A controller's chip field: 0 for none.
+        let chip = self.chip_from_api(chip, 0).unwrap_or_else(|e| panic!("a dimming step's chip: {e}"));
         match step {
             DimmingStep::Begin => d::begin(self, o),
             DimmingStep::DimScreen => d::dim_screen(self, o),

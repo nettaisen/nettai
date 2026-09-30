@@ -49,7 +49,7 @@ fn begin_deletion(b: &mut Battle, r: ObjectRef) {
     // sub_801DC36: HUD.
     let o = b.objects.get_mut(r);
     o.chips_held = 0;
-    o.chip = 0xFFFF;
+    o.chip = None;
     let fp = o.future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
     // sub_801A7F4: the barrier goes (and the game forgets its visual,

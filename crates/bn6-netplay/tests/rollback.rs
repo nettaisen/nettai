@@ -28,17 +28,17 @@ fn content() -> Arc<bn6_battle::Content> {
 /// dimming (the invisibility dimming chip). Side 1's: GunDelSols only, so
 /// that neither side can cut in on a dimming with one of its own (not
 /// implemented yet). The codes are the chips' own (A and *).
-fn folders() -> [bn6_battle::custom::BattleFolder; 2] {
+fn folders(c: &bn6_battle::Content) -> [bn6_battle::custom::BattleFolder; 2] {
     use testing::{ERASER, SUN_GUN_1, SUN_GUN_2, SUN_GUN_3, VEIL};
     [
-        folder(&[(SUN_GUN_3, 0), (ERASER, 0), (SUN_GUN_1, 0), (VEIL, 26), (SUN_GUN_3, 26)]),
-        folder(&[(SUN_GUN_3, 0), (SUN_GUN_1, 0), (SUN_GUN_2, 0), (SUN_GUN_3, 26), (SUN_GUN_1, 26)]),
+        folder(c, &[(SUN_GUN_3, 0), (ERASER, 0), (SUN_GUN_1, 0), (VEIL, 26), (SUN_GUN_3, 26)]),
+        folder(c, &[(SUN_GUN_3, 0), (SUN_GUN_1, 0), (SUN_GUN_2, 0), (SUN_GUN_3, 26), (SUN_GUN_1, 26)]),
     ]
 }
 
 fn start(seed: u64) -> StandInBattle {
     let c = content();
-    StandInBattle::new(Battle::new(netbattle(&c, 300, seed as u32 ^ 0x1234_5678, folders()), c))
+    StandInBattle::new(Battle::new(netbattle(&c, 300, seed as u32 ^ 0x1234_5678, folders(&c)), c))
 }
 
 fn mashers(seed: u64) -> impl FnMut(usize, u32) -> u16 {
@@ -196,7 +196,7 @@ fn the_local_side_is_part_of_the_shared_setup() {
     let mut a = start(5);
     let mut b = start(5);
     let c = content();
-    b.battle = Battle::new(bn6_battle::RoundSetup { local_side: 1, ..netbattle(&c, 300, 5 ^ 0x1234_5678, folders()) }, c);
+    b.battle = Battle::new(bn6_battle::RoundSetup { local_side: 1, ..netbattle(&c, 300, 5 ^ 0x1234_5678, folders(&c)) }, c);
     let mut inputs = mashers(5);
     let first_difference = (0..200u32).find(|_| {
         let i = [inputs(0, 0), inputs(1, 0)];

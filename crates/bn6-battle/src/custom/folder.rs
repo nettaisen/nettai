@@ -3,7 +3,8 @@
 //! §1).
 
 use super::library::Library;
-use crate::content::{ChipClass, ChipCode, ChipId};
+use crate::content::{ChipClass, ChipCode};
+use bn6_content_api::ChipHandle;
 use crate::rng::Rng;
 
 /// Chips in a folder.
@@ -12,23 +13,13 @@ pub const FOLDER_SIZE: usize = 30;
 /// A chip with its code, as folders and selections hold it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FolderChip {
-    pub id: ChipId,
+    pub id: ChipHandle,
     pub code: ChipCode,
 }
 
 impl FolderChip {
-    pub fn new(id: ChipId, code: ChipCode) -> FolderChip {
+    pub fn new(id: ChipHandle, code: ChipCode) -> FolderChip {
         FolderChip { id, code }
-    }
-
-    /// Decode the game's packed form, `code << 9 | id`.
-    pub fn from_packed(v: u16) -> FolderChip {
-        FolderChip { id: v & 0x1FF, code: ChipCode((v >> 9) as u8) }
-    }
-
-    /// The game's packed form, `code << 9 | id`.
-    pub fn packed(self) -> u16 {
-        (self.code.0 as u16) << 9 | self.id
     }
 }
 
@@ -163,8 +154,10 @@ mod tests {
         TestLibrary::new([0x130, 0x132, 0x133, 0x134, 0x135, 0x136].map(|id| (id, giga())).to_vec(), Vec::new())
     }
 
+    /// Folder chips from the game's packed halfwords (`code << 9 | id`),
+    /// on the test library (whose chip handles are their numbers).
     fn chips(packed: [u16; FOLDER_SIZE]) -> [FolderChip; FOLDER_SIZE] {
-        packed.map(FolderChip::from_packed)
+        packed.map(|v| FolderChip::new(ChipHandle(v & 0x1FF), ChipCode((v >> 9) as u8)))
     }
 
     /// `rng1_next_frame`: RNG1 at the start of the next frame, after the

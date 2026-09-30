@@ -4,8 +4,14 @@
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
-use crate::content::{ChipClass, ChipCode, ChipFlags};
+use crate::content::{ChipClass, ChipCode, ChipFlags, ChipId};
 use crate::input::keys;
+use bn6_content_api::{ChipHandle, FormHandle};
+
+/// The test library's handles are the numbers.
+fn form(f: Form) -> FormHandle {
+    FormHandle(f.0 as u16)
+}
 
 const STAR: u8 = 26;
 /// Made-up chips: a damaging chip in codes A-C and *, a second one in A, B
@@ -36,7 +42,7 @@ fn folder(chips: &[(ChipId, u8)]) -> BattleFolder {
     let mut f = BattleFolder::empty();
     for (i, slot) in f.chips.iter_mut().enumerate() {
         let (id, code) = chips.get(i).copied().unwrap_or((0x50, STAR));
-        *slot = Some(FolderChip::new(id, ChipCode(code)));
+        *slot = Some(FolderChip::new(ChipHandle(id), ChipCode(code)));
     }
     f
 }
@@ -158,8 +164,8 @@ fn the_timeline_from_opening_to_sending() {
     let sent = p.side.sent.as_ref().unwrap();
     assert_eq!(sent.arrives, ok_tick + 11 + 54);
     let hand = sent.result.hand.as_ref().unwrap();
-    assert_eq!(hand.ids[..2], [SHOT, crate::hand::NO_CHIP]);
-    assert_eq!(hand.selection[0], (1 << 9) | SHOT);
+    assert_eq!(hand.ids[..2], [Some(ChipHandle(SHOT)), None]);
+    assert_eq!(hand.selection[0], Some(FolderChip::new(ChipHandle(SHOT), ChipCode(1))));
     assert_eq!(hand.damage[0], 40);
     // The picked chip left the folder.
     assert_eq!(p.side.folder.unwrap().chips[1], None);
@@ -218,13 +224,14 @@ fn mega_chips_past_the_limit_turn_invalid() {
     p.press(keys::A);
     p.wait(20);
     let hand = p.side.sent.as_ref().unwrap().result.hand.clone().unwrap();
-    assert_eq!(hand.ids[0], screen::INVALID_CHIP.id);
-    assert_eq!(hand.selection[0], screen::INVALID_CHIP.packed());
+    let (invalid, code) = screen::INVALID_CHIP;
+    assert_eq!(hand.ids[0], Some(ChipHandle(invalid)));
+    assert_eq!(hand.selection[0], Some(FolderChip::new(ChipHandle(invalid), code)));
 }
 
 #[test]
 fn beast_out() {
-    for (version, form) in [(GameVersion::Falzar, Form::FALZAR_BEAST), (GameVersion::Gregar, Form::GREGAR_BEAST)] {
+    for (version, beast) in [(GameVersion::Falzar, Form::FALZAR_BEAST), (GameVersion::Gregar, Form::GREGAR_BEAST)] {
         let mut p = Player::new(&[], version);
         p.open();
         p.wait(10);
@@ -245,10 +252,10 @@ fn beast_out() {
         p.press(keys::A);
         p.wait(20);
         let sent = p.side.sent.as_ref().unwrap();
-        assert_eq!(sent.result.transform.form, Some(form));
+        assert_eq!(sent.result.transform.form, Some(form(beast)));
         // Only Beast Out was picked: an empty hand goes out (and replaces
         // what the navi still held).
-        assert_eq!(sent.result.hand.as_ref().unwrap().ids[0], crate::hand::NO_CHIP);
+        assert_eq!(sent.result.hand.as_ref().unwrap().ids[0], None);
         assert!(p.side.round.beast_out_used);
     }
 }
@@ -284,14 +291,14 @@ fn a_cross_from_the_window() {
     p.press(keys::A);
     p.wait(20);
     // Falzar's second Cross is form 7.
-    assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(Form(7)));
+    assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(form(Form(7))));
     assert!(p.side.round.crosses_used[1]);
 }
 
 #[test]
 fn dust_cross_scraps_the_picks() {
     let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)], GameVersion::Falzar);
-    p.stats.form = Form::DUST_CROSS;
+    p.stats.form = form(Form::DUST_CROSS);
     p.open();
     assert!(matches!(p.screen().slots[8].kind, SlotKind::Scrap { right_half: false }));
     p.wait(10);
@@ -316,7 +323,7 @@ fn dust_cross_scraps_the_picks() {
     // The scrapped chips went to the end of the folder, in pick order, and
     // the hand is dealt again from the front.
     let f = p.side.folder.unwrap();
-    let ids: Vec<(ChipId, u8)> = f.chips.iter().flatten().map(|c| (c.id, c.code.0)).collect();
+    let ids: Vec<(ChipId, u8)> = f.chips.iter().flatten().map(|c| (c.id.0, c.code.0)).collect();
     assert_eq!(ids[..5], [(WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)]);
     assert_eq!(ids[28..], [(SHOT, 0), (SHOT, 1)]);
 }
