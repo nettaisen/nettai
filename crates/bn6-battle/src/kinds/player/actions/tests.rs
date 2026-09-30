@@ -16,6 +16,17 @@ use crate::setup::{NaviStats, NaviWeapons};
 
 /// A plain MegaMan with 1000 HP, fighting in the sun.
 fn megaman() -> NaviStats {
+    megaman_with(|_| {})
+}
+
+/// The same, changed by `f`.
+fn megaman_with(f: impl FnOnce(&mut NaviStats)) -> NaviStats {
+    let mut s = megaman_stats();
+    f(&mut s);
+    s
+}
+
+fn megaman_stats() -> NaviStats {
     NaviStats {
         hp: 1000,
         max_hp: 1000,
@@ -30,8 +41,13 @@ fn megaman() -> NaviStats {
 /// Two navis idle and fighting: side 0 at (2,2), side 1 at (5,2) (side 1
 /// updates first). Returns the battle and both players.
 fn fight() -> (Battle, ObjectRef, ObjectRef) {
+    fight_with(megaman())
+}
+
+/// The same with both navis' stats `stats`.
+fn fight_with(stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
     // A link battle on a plain field with the usual two-navi list.
-    let mut setup = testing::round_setup(testing::LINK_BATTLE, megaman());
+    let mut setup = testing::round_setup(testing::LINK_BATTLE, stats);
     setup.settings.effects = 0xE8C;
     let mut b = Battle::new(setup, testing::content());
     b.spawn_actors();
@@ -157,4 +173,69 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     run_to(&mut b, p, &mut t, 20 + firing, 0);
     assert!(!b.objects.is_allocated(gun));
     assert_eq!(b.objects.get(p1).hp, drained);
+}
+
+#[test]
+fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
+    // The NaviCust's buster bug fills all 16 slots with blanks: the buster
+    // script's draw always picks the blank shot.
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.bugs.buster_blanks = 16));
+    let p = [p0, p1];
+    // B fires on release (the navi has a charged shot).
+    tick(&mut b, p0, p1, keys::B);
+    let mut t = 0;
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(b.objects.get(p0).action, 0x33);
+
+    // Tick 1: the arm is up.
+    run_to(&mut b, p, &mut t, 1, 0);
+    assert_eq!(b.objects.get(p0).anim, 0x0E);
+    assert_ne!(f1_of(&b, p0) & f1::USING_ACTION, 0);
+    let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
+    let attachment = b.content.object_kind("attachment").unwrap();
+    let o = b.objects.get(arm);
+    assert_eq!((arm.pool, o.index, o.params[0]), (attachment.pool, attachment.index, 6));
+
+    // Five ticks up, then the recovery by the open panels from its own
+    // (its body is off the field while it updates) to the enemy's:
+    // rules.buster_recovery[Rapid 0][3].
+    let recovery = b.content.rules.buster_recovery(0, 3) as u32;
+    run_to(&mut b, p, &mut t, 5 + recovery, 0);
+    assert_eq!(b.objects.get(p0).action, 0x33);
+    run_to(&mut b, p, &mut t, 6 + recovery, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(ai_mut(&mut b, p0).overlay, None);
+    // Nothing was fired.
+    assert_eq!(b.objects.get(p1).hp, 1000);
+}
+
+#[test]
+fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
+    // Weapon routine 0x28 as the charged shot.
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.charge_shot = 0x28));
+    let p = [p0, p1];
+    // Charge fully (the test rules: 120 ticks at Charge 0), then release.
+    for _ in 0..130 {
+        tick(&mut b, p0, p1, keys::B);
+    }
+    let mut t = 0;
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(b.objects.get(p0).action, 0x57);
+
+    // Tick 2: the ball, in front of the navi.
+    run_to(&mut b, p, &mut t, 2, 0);
+    let dust_ball = b.content.object_kind("dust-ball").unwrap();
+    let ball = b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (dust_ball.pool, dust_ball.index));
+    let ball = ball.expect("the ball");
+    assert_eq!(b.objects.get(ball).panel, PanelPos { x: 3, y: 2 });
+
+    // It rolls up to the enemy at (5,2), bursts, and hits: 50 damage and
+    // 10 per buster Attack point (1 here). The enemy's panel cracks.
+    run_to(&mut b, p, &mut t, 60, 0);
+    assert_eq!(b.objects.get(ball).panel, PanelPos { x: 5, y: 2 });
+    assert_eq!(b.objects.get(p1).hp, 940);
+    assert_eq!(b.field.panel(5, 2).unwrap().kind, crate::field::PanelType::Cracked);
+    // The navi idles 35 ticks after the shot.
+    run_to(&mut b, p, &mut t, 70, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
 }

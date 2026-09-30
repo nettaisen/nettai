@@ -574,6 +574,9 @@ declare field: {
     -- `object_crackPanel`: crack a solid panel, or break a cracked,
     -- unoccupied one.
     crack: (x: number, y: number) -> boolean,
+    -- `object_isPanelSolid`: something can stand on it (not missing or
+    -- broken).
+    solid: (x: number, y: number) -> boolean,
     -- Drawn only.
     highlight: (x: number, y: number) -> (),
 }

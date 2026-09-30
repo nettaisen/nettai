@@ -39,6 +39,12 @@ export type Params = {
 -- side; its init places it.
 function attachment.spawn(owner: Object, p: Params, which: Slot): Object?
     local params = { p.kind, p.anim or 0, if p.while_dimmed then 1 else 0, p.palette_add or 0 }
+    return attachment.spawn_with(owner, params, which)
+end
+
+-- The same with the four parameters as bytes, for spawners that compute
+-- them as one word.
+function attachment.spawn_with(owner: Object, params: { number }, which: Slot): Object?
     local o = battle.spawn_kind("attachment", Vec3.zero, params)
     if o then
         o.related1 = owner

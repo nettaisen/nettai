@@ -690,6 +690,9 @@ pub trait CoreApi {
     /// `object_crackPanel`: crack a solid panel, or break a cracked,
     /// unoccupied one.
     fn crack_panel(&mut self, p: PanelPos) -> bool;
+    /// `object_isPanelSolid`: the panel is solid (something can stand on
+    /// it).
+    fn panel_solid(&self, p: PanelPos) -> bool;
     /// `object_highlightPanel` (drawn only).
     fn highlight_panel(&mut self, p: PanelPos);
     /// `object_reservePanel`.

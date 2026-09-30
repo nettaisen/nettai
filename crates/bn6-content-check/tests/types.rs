@@ -10,7 +10,7 @@ fn pack() -> std::path::PathBuf {
 #[test]
 fn the_content_pack_type_checks_against_the_core_api() {
     let (checked, problems) = bn6_content_check::check_pack(&pack()).unwrap();
-    assert!(checked >= 6, "found the pack's modules ({checked})");
+    assert!(checked >= 16, "found the pack's modules ({checked})");
     assert!(problems.is_empty(), "type errors:\n{}", problems.join("\n"));
 }
 

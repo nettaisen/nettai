@@ -8,7 +8,6 @@ pub mod afterimage;
 pub mod body_overlay;
 pub mod charge_glow;
 pub mod common;
-pub mod dust_ball;
 pub mod cross_merge;
 pub mod effect;
 pub mod elmnt_man;
@@ -109,7 +108,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Actor, elmnt_man::INDEX) => elmnt_man::update(b, r),
         (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
-        (Pool::Attack, dust_ball::INDEX) => dust_ball::update(b, r),
         (Pool::Effect, trap_chip::INDEX) => trap_chip::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }

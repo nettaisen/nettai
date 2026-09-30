@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x02, the blank shot (`sub_8011ADA`), and its action
+# (`sub_80ED748`) are a script.
+
+id = 0x02
+name = "Blank shot"
+action = 0x33
+script = "blank_shot.luau"

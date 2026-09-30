@@ -109,7 +109,7 @@ pub fn build() -> Content {
         regions: regions(),
         panel_layouts: vec![PanelLayout { rows: [[PanelType::Normal; 6]; 3] }],
         animations: animations(),
-        weapons: Vec::new(),
+        weapons: weapons(),
         scripts: scripts(),
     }
 }
@@ -138,13 +138,40 @@ pub fn scripts() -> Scripts {
                 ("objects/erase-beam/erase_beam", "objects/erase-beam/erase_beam"),
                 ("objects/area-grab/area_grab", "objects/area-grab/area_grab"),
                 ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
+                ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
+                ("lib/buster", "lib/buster"),
             ];
-            Scripts { modules: modules.iter().map(|(to, from)| (to.to_string(), read(from))).collect() }
+            let weapons = weapons().into_iter().map(|w| {
+                let module = w.script;
+                (module.clone(), module)
+            });
+            let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string())).chain(weapons);
+            Scripts { modules: modules.map(|(to, from)| (to, read(&from))).collect() }
         })
         .clone()
 }
 
-/// The object kinds scripts implement, by name.
+/// MegaMan's weapon routines scripts implement: the BN6 overlay's buster,
+/// charged shot, blank shot, DustCross's charged shot and the absorbed
+/// obstacle throw.
+fn weapons() -> Vec<WeaponData> {
+    let weapon = |id: u8, name: &str, action: Option<u8>, script: &str| WeaponData {
+        id,
+        name: name.into(),
+        action,
+        script: format!("navis/00-megaman/weapons/{script}"),
+    };
+    vec![
+        weapon(0x00, "Buster", None, "00-buster/buster"),
+        weapon(0x01, "Charged shot", None, "01-charged-shot/charged_shot"),
+        weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
+        weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
+        weapon(0x2B, "Throw absorbed", None, "2b-throw-absorbed/throw_absorbed"),
+    ]
+}
+
+/// The object kinds scripts implement, by name (in name order, as a pack
+/// lists them).
 fn kinds() -> Vec<ObjectKind> {
     let kind = |name: &str, pool, index, script: &str| ObjectKind {
         name: name.into(),
@@ -152,8 +179,9 @@ fn kinds() -> Vec<ObjectKind> {
         index,
         script: script.into(),
         scratch_position: false,
+        scratch_z_fraction: false,
     };
-    vec![
+    let mut kinds = vec![
         kind("attachment", Pool::Actor, 0x05, "objects/attachment/attachment"),
         kind("sun-beam", Pool::Effect, 0x48, "objects/sun-beam/sun_beam"),
         kind("erase-man", Pool::Actor, 0x15, "objects/erase-man/erase_man"),
@@ -161,7 +189,10 @@ fn kinds() -> Vec<ObjectKind> {
         kind("erase-beam", Pool::Attack, 0xC3, "objects/erase-beam/erase_beam"),
         ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
         kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
-    ]
+        ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
+    ];
+    kinds.sort_by(|a, b| a.name.cmp(&b.name));
+    kinds
 }
 
 /// A chip record with the fields tests don't care about filled in.
@@ -479,8 +510,10 @@ fn objects() -> ObjectData {
         attach_point: (id != 0).then_some(3),
     };
     let rock = |id, anim, element| RockKind { id, anim, hp: 100, element, debris_palette: id, break_sound: 0x118, name_id: 0x100 };
+    // The buster's muzzle flash and arm.
+    let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        attachments: (0..5).map(gun).collect(),
+        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03)]).collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
@@ -532,6 +565,14 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 8, index: 4 }, eraser);
     sprites.insert(SpriteId { category: 0x10, index: 0x50 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x10, index: 0x51 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
+    // The buster's muzzle flash, and its arm (by form).
+    sprites.insert(SpriteId { category: 0x0C, index: 0x06 }, vec![vec![f(2, 0), f(2, LAST)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x03 }, vec![vec![f(30, LAST | LOOP)]; 0x19]);
+    // The junk ball: rolling, bursting.
+    let mut junk = vec![once(4); 0x1B];
+    junk[0x19] = vec![f(4, 0), f(4, LAST | LOOP)];
+    junk[0x1A] = vec![f(10, 0), f(20, LAST)];
+    sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
     // Effects and sparks.

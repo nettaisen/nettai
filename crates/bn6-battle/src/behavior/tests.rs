@@ -24,7 +24,7 @@ fn battles_run_the_content_scripts() {
     assert_eq!(b.behaviors.runtime(), "luau");
     let m = b.behaviors.manifest().expect("the test content has scripts");
     let kinds: Vec<&str> = m.objects.iter().map(|k| k.name.as_str()).collect();
-    assert_eq!(kinds, ["attachment", "sun-beam", "erase-man", "erase-mark", "erase-beam", "area-grab", "grab-shot"]);
+    assert_eq!(kinds, ["area-grab", "attachment", "dust-ball", "erase-beam", "erase-man", "erase-mark", "grab-shot", "sun-beam"]);
     assert!(b.behaviors.action(0x37).is_some(), "GunDelSol is a script");
     assert!(b.behaviors.action(0x10).is_none(), "the step is the engine's");
 }
@@ -103,7 +103,9 @@ fn scripted_chips_roll_back() {
 fn registrations_follow_the_content_data() {
     let mut c = testing::build();
     let r = c.registrations().unwrap();
-    assert_eq!(r.actions.len(), 1, "the four SunGun chips share one action: {:?}", r.actions);
+    // The four SunGun chips share one action; two weapons have theirs.
+    let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
+    assert_eq!(actions, [0x33, 0x37, 0x57], "{:?}", r.actions);
     // Two chips implementing one action with different scripts is an error.
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
     let e = c.registrations().unwrap_err();
