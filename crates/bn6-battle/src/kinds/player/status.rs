@@ -605,7 +605,7 @@ fn tick_paralysis(b: &mut Battle, r: ObjectRef, f2: u32) {
 
 /// Freeze: like paralysis with action 6 and the ice visual. Returns true
 /// when a stale ice visual makes the game jump into the bubble's active
-/// branch.
+/// branch (after spawning one it goes on to the bubble's countdown).
 fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
     if !count_down(b, r, timer::FREEZE) {
         clear_flag1(b, r, f1::FROZEN);
@@ -628,7 +628,8 @@ fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
     if coll(b, r).links[link::FREEZE].is_some() {
         return true;
     }
-    panic!("the ice visual (sub_80E9BDC) is not implemented yet");
+    crate::kinds::ice_visual::spawn(b, r);
+    false
 }
 
 /// The bubble's active branch. Returns false when a stale bubble visual
