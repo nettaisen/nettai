@@ -129,6 +129,9 @@ pub enum Phase {
     CrossChosen { tick: u8 },
     /// Beast Out was picked (`sub_802770C`, 70 ticks).
     BeastOutChosen { tick: u8 },
+    /// The BeastOut chip was picked from a chip slot (`sub_80275EC`, 85
+    /// ticks).
+    BeastOutChipChosen { tick: u8 },
     /// DustCross scraps the selected chips (`sub_8027406`).
     /// `done`: the last scrap is over; the next tick returns to choosing.
     Scrapping { tick: u16, done: bool, scrapped: [Option<FolderChip>; MAX_SELECTIONS], count: u8 },
@@ -515,6 +518,22 @@ impl Screen {
                 self.phase = if tick >= 70 { Phase::Choosing } else { Phase::BeastOutChosen { tick } };
                 None
             }
+            Phase::BeastOutChipChosen { tick } => {
+                // Like Beast Out's (`sub_802770C`), 16 ticks later: its fade
+                // out (0x64) starts at tick 17, with sounds 0x193 and 0xBC;
+                // 50 ticks on (tick 68) the chip moves to the front of the
+                // selection (the Beast Out button's state and the Beast Out
+                // flag stay as they are: the hand's chip is the Beast Out),
+                // and the fade back in (0x60) ends it.
+                let tick = tick + 1;
+                if tick == 68 {
+                    let n = self.selected as usize;
+                    self.selection[..n].rotate_right(1);
+                    self.update_availability(view, folder);
+                }
+                self.phase = if tick >= 85 { Phase::Choosing } else { Phase::BeastOutChipChosen { tick } };
+                None
+            }
             Phase::Scrapping { .. } => {
                 self.scrap(view, folder);
                 None
@@ -689,8 +708,9 @@ impl Screen {
                 self.push_selection(cursor);
                 self.slots[cursor as usize].state = SlotState::Selected;
                 self.update_availability(view, folder);
+                // sub_802A00C
                 if self.chip_in(cursor, folder).is_some_and(|c| c.id == BEAST_OUT_CHIP) {
-                    panic!("the BeastOut chip in a chip slot (custom screen state 0x44) is not implemented yet");
+                    self.phase = Phase::BeastOutChipChosen { tick: 0 };
                 }
             }
             SlotKind::Ok => {
