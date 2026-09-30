@@ -2165,10 +2165,10 @@ on the panel three columns ahead with damage 0x2000 (an uninstall), self type 0x
 hit there with its damage, self type 0x30, modifier 3 (sound 0x111 every 8 ticks); all resolve while dimmed.
 
 Lab (scratch, the PA chip put straight in the folder): the opponent a row up and both a column forward match every
-frame; on a hit the replay stops at the uninstall's reaction (`sub_80140EE`, the navi framework's). That reaction
-(hit reaction 0xF8, `sub_80139F6` → `sub_80140EE`; field-collision-damage.md) is still a "not implemented" panic in
-kinds/player/intake.rs and is group H2's (the framework gaps); nothing in SunMoon's own code is left, but what
-follows the uninstall in that scenario is unverified until it is ported.
+frame; on a hit the replay stopped at the uninstall's reaction (`sub_80140EE`, the navi framework's). That reaction
+(hit reaction 0xF8, `sub_80139F6` → `sub_80140EE`; field-collision-damage.md) is now ported (kinds/player/intake.rs
+`strip_programs` and the form's NaviCust refresh, `form::refresh_form_flags`), unverified: no lab scenario records
+an uninstall.
 
 #### 3.6.33 Bass (navi chip subtype 26, Giga chip 0x12D, T1 0x4F)
 
