@@ -3,6 +3,7 @@
 //!
 //! ```text
 //! content.toml           the manifest
+//! assets.toml            the asset index: every asset by name (crate::names)
 //! chips/ navis/ objects/ rules/ registries/   the battle data (see crate::battle)
 //! graphics/              sprites, field, backgrounds, HUD
 //! sound/                 songs, instruments, samples (see crate::sound)
@@ -207,8 +208,8 @@ pub fn import_sound(root: &Path, report: &mut Report) -> Option<SoundBank> {
 
 // ---- Loading -------------------------------------------------------------------
 
-/// A pack's battle data, for the engine: loaded and defined
-/// (`Content::define`).
+/// A pack's battle data, for the engine: loaded, with the asset names its
+/// index gives (`Content::assets`), and defined (`Content::define`).
 pub fn load_battle(root: &Path) -> Result<(bn6_battle::Content, Report), Report> {
     let mut report = Report::default();
     let m = read_manifest(root, &mut report).ok_or_else(|| report.clone())?;
@@ -217,6 +218,8 @@ pub fn load_battle(root: &Path) -> Result<(bn6_battle::Content, Report), Report>
         return Err(report);
     }
     let Some(mut c) = crate::battle::load(root, &mut report) else { return Err(report) };
+    let Some(assets) = crate::names::read_index(root, &mut report) else { return Err(report) };
+    c.assets = assets;
     // The define phase: what the scripts define, and the registries.
     if let Err(e) = c.define() {
         report.error("scripts", e.message);

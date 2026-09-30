@@ -12,12 +12,15 @@
 //!
 //! Sprites, backgrounds, songs and the HUD's mugshots, banners and chip
 //! icons are written under the names the overlay's compat/assets.toml (and
-//! chips.toml, for the icons) gives them; the rest under placeholders.
+//! chips.toml, for the icons) gives them; the rest under placeholders. The
+//! pack's asset index (`assets.toml`) lists them all by those names, for
+//! the loader to fill `Content::assets` from.
 //!
 //! The pack holds the game's own data: write it outside version control
 //! (data/content/ is ignored).
 
 use bn6_content::report::{Level, Report};
+use bn6_content_api::{AssetKind, AssetNames};
 use std::path::Path;
 
 /// The source overlay in this repository (content/bn6).
@@ -60,6 +63,12 @@ pub fn main(args: &[String]) {
     files.extend(bn6_content::pack::export_graphics(&bundle, &names));
     let (sound, left_out) = bn6_content::pack::export_sound(&bank, &names);
     files.extend(sound);
+    // The song-table entries: the songs the bank plays and those it left
+    // out.
+    let songs = bank.songs.iter().enumerate().filter(|(_, s)| s.is_some()).map(|(i, _)| i as u16);
+    let songs = songs.chain(failures.iter().map(|(id, _)| id.0)).collect();
+    let index = names.index(&bundle, &songs);
+    files.push(bn6_content::names::index_file(&index));
     for (song, e) in &left_out {
         eprintln!("song {:#05x} left out (no MIDI mapping yet): {e}", song.0);
     }
@@ -76,6 +85,13 @@ pub fn main(args: &[String]) {
         Some(back) => panic!("the pack's battle data reads back differently: {:?}", bn6_content::verify::compare_battle(&battle, &back)),
         None => panic!("the pack's battle data doesn't load"),
     }
+    // So must the asset index.
+    let mut report = Report::default();
+    match bn6_content::names::read_index(root, &mut report) {
+        Some(back) if back == index => {}
+        Some(_) => panic!("the pack's asset index reads back differently"),
+        None => panic!("the pack's asset index doesn't load:\n{report}"),
+    }
     // So must the graphics, under whatever names they were written.
     let mut report = Report::default();
     match bn6_content::pack::import_graphics(root, &mut report) {
@@ -85,7 +101,7 @@ pub fn main(args: &[String]) {
     }
     let bytes: usize = files.iter().map(|f| f.1.len()).sum();
     eprintln!(
-        "wrote {out}: {} chips, {} navis, {} forms, {} scripts, {} sprites, {} backgrounds, {} songs, {} samples; {} files, {} KiB in {:.1?} (content {})",
+        "wrote {out}: {} chips, {} navis, {} forms, {} scripts, {} sprites, {} backgrounds, {} songs, {} samples, {} named assets; {} files, {} KiB in {:.1?} (content {})",
         battle.chips.len(),
         battle.navis.len(),
         battle.forms.len(),
@@ -94,6 +110,7 @@ pub fn main(args: &[String]) {
         bundle.backgrounds.iter().flatten().count(),
         bank.songs.iter().flatten().count() - left_out.len(),
         bank.samples.len(),
+        AssetKind::ALL.iter().map(|&k| index.names(k).iter().filter(|n| !AssetNames::is_placeholder(k, n)).count()).sum::<usize>(),
         files.len(),
         bytes / 1024,
         t.elapsed(),
