@@ -14,16 +14,16 @@ local attachment = require("../../../../objects/attachment/attachment")
 local lib = require("../../../../lib/buster")
 local projectile = require("../../../../lib/projectile")
 
+-- (The recovery after the shot is the navi's `recovery`, AIAttackVars+0x12,
+-- which a thrown obstacle waits again.)
 export type State = {
     -- Ticks left of the wait, ticks into the shot, then ticks of recovery
     -- left (AIAttackVars+0x10).
     timer: number,
-    -- The recovery after the shot (AIAttackVars+0x12).
-    recovery: number,
 }
 
 local charged_shot = {
-    state = { timer = "u16", recovery = "u16" },
+    state = { timer = "u16" },
 }
 
 local ACTION = 0x16
@@ -85,7 +85,7 @@ local function shoot(me: Object, s: State)
     end
     if s.timer == 1 then
         battle.play_sound(SHOT_SOUND)
-        s.recovery = projectile.fire(me, { kind = me:attack_param(1), damage = me.attack_damage, z = SHOT_Z })
+        me.recovery = projectile.fire(me, { kind = me:attack_param(1), damage = me.attack_damage, z = SHOT_Z })
         attachment.spawn(me, { kind = FLASH }, "related")
     end
     s.timer += 1
@@ -115,7 +115,7 @@ end
 -- it ends (there is no return after the exit).
 local function recover(me: Object, s: State)
     if me.step_init == 0 then
-        s.timer = s.recovery
+        s.timer = me.recovery
         me.step_init = 4
     end
     local left = s.timer - 1

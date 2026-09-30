@@ -20,16 +20,16 @@ local flying_shot = require("../../../../objects/flying-shot/flying_shot")
 local lib = require("../../../../lib/buster")
 local projectile = require("../../../../lib/projectile")
 
+-- (The recovery after the shot is the navi's `recovery`, AIAttackVars+0x12:
+-- a throw doesn't write it, so it waits the last shot's, whatever ran in
+-- between.)
 export type State = {
     -- Ticks into the shot, then ticks of recovery left (AIAttackVars+0x10).
     timer: number,
-    -- The recovery after the shot (AIAttackVars+0x12). A throw leaves it
-    -- as the last shot did.
-    recovery: number,
 }
 
 local buster = {
-    state = { timer = "u16", recovery = "u16" },
+    state = { timer = "u16" },
 }
 
 local ACTION = 0x11
@@ -142,7 +142,7 @@ local function shoot(me: Object, s: State)
             flash = ARM
         else
             local kind, damage = me:attack_param(1), damage_word(me)
-            s.recovery = projectile.fire(me, { kind = kind, damage = damage, z = SHOT_Z })
+            me.recovery = projectile.fire(me, { kind = kind, damage = damage, z = SHOT_Z })
             if me.variant == SPREAD then
                 -- The side shots' rows are the attack's second parameter,
                 -- which keeps the last.
@@ -164,7 +164,7 @@ end
 -- `sub_80EB502`: the recovery; a move may cut it short.
 local function recover(me: Object, s: State)
     if me.step_init == 0 then
-        s.timer = s.recovery
+        s.timer = me.recovery
         me.step_init = 4
     end
     local left = s.timer - 1

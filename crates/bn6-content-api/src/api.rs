@@ -202,6 +202,10 @@ named_fields! {
         /// A per-action word some actions keep (a move's direction change,
         /// a thrown obstacle).
         Marker = "marker", U32, rw;
+        /// The recovery a shot waits after firing, a word of the attack
+        /// that outlives the action: an action that waits it without
+        /// writing it (a thrown obstacle) waits the last shot's.
+        Recovery = "recovery", U16, rw;
         ActorType = "actor_type", enum_type(&ACTOR_TYPES), ro;
         /// Form or AI variant.
         AiIndex = "ai_index", U8, ro;
