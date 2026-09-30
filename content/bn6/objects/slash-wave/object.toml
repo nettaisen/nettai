@@ -1,0 +1,6 @@
+# A sword wave (attack object #0x62, `sub_80D07CC`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x62
+script = "slash_wave.luau"

@@ -1,0 +1,6 @@
+# SunMoon's moonlight (attack object #0xB6, `sub_80DC0E8`) is a script.
+
+[kind]
+pool = "attack"
+index = 0xB6
+script = "moon_beam.luau"

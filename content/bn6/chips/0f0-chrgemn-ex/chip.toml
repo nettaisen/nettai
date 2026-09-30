@@ -1,0 +1,3 @@
+# A navi chip (subtype 6): its navi is ChargeMan.
+
+script = "../../objects/charge-man/charge_man.luau"

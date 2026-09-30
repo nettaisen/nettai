@@ -1,6 +1,0 @@
-# A rock chunk (effect object #9, `sub_80E0FA0`) is a script.
-
-[kind]
-pool = "effect"
-index = 0x09
-script = "rock_chunk.luau"

@@ -439,7 +439,7 @@ fn step_drag(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800E6E8`: whether a step from `old` to `new` reached `target`
 /// (moving left, exactly reaching it does not count).
-fn passed(new: i32, old: i32, target: i32) -> bool {
+pub(crate) fn passed(new: i32, old: i32, target: i32) -> bool {
     if new > old { target > old && target <= new } else { target > new && target <= old }
 }
 

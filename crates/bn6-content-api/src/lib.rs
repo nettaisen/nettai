@@ -29,16 +29,20 @@ pub mod state;
 pub mod types;
 
 pub use api::{
-    ACTOR_TYPES, ActorField, ApiError, ApiResult, BattleInfo, CollisionField, ColumnInfo, CoreApi, DimmingStep,
-    Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField, PANEL_TYPES,
-    Pad, PanelInfo, RequestFlag, Shadow, SpriteField, StatusFlag, StatusTimer,
+    ACTOR_TYPES, ActorField, ApiError, ApiResult, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi,
+    DimmingStep, Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField,
+    OVERLAY_STEPPINGS,
+    ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, PANEL_TYPES, Pad, PanelInfo, RequestFlag, Shadow,
+    SpriteField, StatusFlag, StatusTimer,
     SideSpecial,
 };
 pub use api::AfterimageSpec;
+// Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+pub use api::{ObstacleHold, ObstaclePush, WindSource};
 pub use data::{Data, Key as DataKey};
 pub use host::{
-    ActionDef, ActionReg, ContentError, ContentHost, DimmingChipSpec, Hook, HookCall, HookDef, HookId, HookReg, KindId,
-    KindReg, Manifest, NaviChipSpec, ObjectKindDef, Registrations,
+    ActionDef, ActionReg, ActorListEntrySpec, ContentError, ContentHost, DimmingChipSpec, Hook, HookCall, HookDef,
+    HookId, HookReg, KindId, KindReg, Manifest, NaviChipSpec, ObjectKindDef, Registrations,
     InstantChipSpec,
 };
 pub use state::{ContentState, FieldDef, FieldType, FieldValue, MAX_BYTES, Schema, StateId, Value};

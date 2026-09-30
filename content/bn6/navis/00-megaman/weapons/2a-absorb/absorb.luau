@@ -70,7 +70,7 @@ local function pull(me: Object, s: State)
     if left >= 0 then
         return
     end
-    battle.absorb_obstacles(me)
+    obstacle.absorb_all(me)
     s.timer = 0xB
     me.step = RECOVER
     me.step_init = 0

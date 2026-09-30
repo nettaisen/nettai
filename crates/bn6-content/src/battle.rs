@@ -60,10 +60,28 @@ struct AbsorbedFile {
     script_kind: Option<ObjectKind>,
 }
 
+/// DustMan's junk's file: how field objects look, by NameID.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NameLookFile {
+    look: Vec<NameLook>,
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SunBeamFile {
     look: Vec<IdSprite>,
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ShockWaveFile {
+    /// By variant, the wave's first parameter.
+    wave: Vec<ShockWave>,
     #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
     script_kind: Option<ObjectKind>,
 }
@@ -239,6 +257,7 @@ struct StatusRecord {
 #[serde(deny_unknown_fields)]
 struct WeaponsFile {
     buster_recovery: Vec<[u8; 6]>,
+    empty_hand: EmptyHandChip,
     weapon: Vec<WeaponRecord>,
 }
 
@@ -265,10 +284,38 @@ struct ReactionsFile {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct ActorsFile {
+    cross_palettes: Vec<u8>,
+    record: Vec<ActorRecordEntry>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ActorRecordEntry {
+    name_id: u16,
+    version: u8,
+    actor_type: bn6_battle::actor::ActorType,
+    ai_index: u8,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LockonFile {
     column_shifts: Vec<i8>,
-    slash_modes: Vec<u8>,
-    search: Vec<LockonSearch>,
+    /// By alliance.
+    clear_path: [PanelCondition; 2],
+    charged_sword_modes: Vec<u8>,
+    mode: Vec<LockonMode>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct BerserkFile {
+    step: StepRecord,
+    opponent: SidesRecord,
+    /// By alliance.
+    blocking: [u32; 2],
+    opposing_player: [u32; 2],
 }
 
 #[derive(Serialize, Deserialize)]
@@ -551,7 +598,7 @@ pub fn weapon_folder(w: &WeaponData) -> String {
 
 /// The object kinds whose folders hold data of their own (a kind of these
 /// a script implements keeps its `[kind]` in the same file).
-const DATA_OBJECTS: [&str; 10] = [
+const DATA_OBJECTS: [&str; 11] = [
     "rock",
     "absorbed-obstacle",
     "body-overlay",
@@ -561,7 +608,8 @@ const DATA_OBJECTS: [&str; 10] = [
     "projectile",
     "flying-shot",
     "sword-wave",
-    "hit-zone",
+    "shock-wave",
+    "dust-junk",
 ];
 
 /// A script as an entity's file names it: `module` (a path in the pack
@@ -661,17 +709,24 @@ pub fn export(c: &Content) -> Files {
         ),
     );
     put(
-        "objects/hit-zone/object.toml".into(),
-        toml_file(
-            "Hit zones (attack object #0x8B) by kind, its first parameter.",
-            &ObjectFile { variant: o.hit_zones.clone(), script_kind: script_kind("hit-zone") },
-        ),
-    );
-    put(
         "objects/boomerang/object.toml".into(),
         toml_file(
             "Boomerangs (attack object #0x32) by variant, its first parameter: 16.16 pixels a tick along a\nrow and along the column, and whether it turns the other side's panels to grass.",
             &ObjectFile { variant: o.boomerangs.clone(), script_kind: script_kind("boomerang") },
+        ),
+    );
+    put(
+        "objects/dust-junk/object.toml".into(),
+        toml_file(
+            "How a field object looks by its NameID (`byte_8021220`, NameIDs 0xCD..=0xFF): what DustMan's junk\n(attack object #0xB3) shows; no sprite is the table's \"none\".",
+            &NameLookFile { look: o.name_looks.clone(), script_kind: script_kind("dust-junk") },
+        ),
+    );
+    put(
+        "objects/shock-wave/object.toml".into(),
+        toml_file(
+            "Shock waves (attack object #0x16) by variant, its first parameter: sprite, animation, ticks on a\npanel before the next wave rolls on, and the panel type it leaves (`cracked` cracks the panel,\n`broken` breaks it or cracks it under something).",
+            &ShockWaveFile { wave: o.shock_waves.clone(), script_kind: script_kind("shock-wave") },
         ),
     );
     let owned: Vec<u8> = c.chips.iter().filter_map(|c| Some(c.gun_del_sol.as_ref()?.gun.id)).collect();
@@ -809,8 +864,8 @@ pub fn export(c: &Content) -> Files {
     let weapon = r.weapons.iter().enumerate().map(|(i, w)| WeaponRecord { id: i as u8, charge_ticks: w.charge_ticks }).collect();
     put(
         "rules/weapons.toml".into(), toml_file(
-            "Weapon routines by number: ticks to a full charge by Charge stat (0..4; a Charge past 4 reads\nthe next routine's). buster_recovery: ticks after a buster shot by Rapid stat, then by open\npanels ahead (0..5).",
-            &WeaponsFile { buster_recovery: r.buster_recovery.clone(), weapon },
+            "Weapon routines by number: ticks to a full charge by Charge stat (0..4; a Charge past 4 reads\nthe next routine's). buster_recovery: ticks after a buster shot by Rapid stat, then by open\npanels ahead (0..5). empty_hand: what the charge rules read for an empty hand's chip (0xFFFF),\nwhose record lies past the chip table: whether its family is Null, its element Fire, its flags.",
+            &WeaponsFile { buster_recovery: r.buster_recovery.clone(), empty_hand: r.empty_hand, weapon },
         ),
     );
     put(
@@ -821,11 +876,28 @@ pub fn export(c: &Content) -> Files {
     );
     put(
         "rules/lockon.toml".into(), toml_file(
-            "The Beast Out lock-on: for the chips' lock-on modes that search, the panels next to the\ntarget tried (dx toward the user's front), whether the middle row is taken afterwards, and the\ncolumn shifts tried when nothing fits. slash_modes: the charged slash's (action 0x41) mode by\nits variant (0: the chip's).",
+            "The Beast Out lock-on: for each of the chips' lock-on modes, how it picks the panel to attack\nfrom: stay, along the target's row from the user's column (row), or next to the target\n(near); the offsets tried (dx toward the user's front), whether the column shifts are tried\nwhen nothing fits, whether the path to the target must be clear (clear_path, by alliance),\nand whether the middle row is taken afterwards. charged_sword_modes: the charged sword's\n(action 0x41) mode by its variant.",
             &LockonFile {
                 column_shifts: r.lockon.column_shifts.clone(),
-                slash_modes: r.lockon.slash_modes.clone(),
-                search: r.lockon.searches.clone(),
+                clear_path: r.lockon.clear_path,
+                charged_sword_modes: r.lockon.charged_sword_modes.clone(),
+                mode: r.lockon.modes.clone(),
+            },
+        ),
+    );
+    let bz = &r.berserk;
+    put(
+        "rules/berserk.toml".into(),
+        toml_file(
+            "Beast Over's berserk controller: where its steps may land (grounded, and with AirShoe), a\npanel with an opponent on it, the panel flags that end its look behind an opponent (by\nalliance), and the opposing player's panel flag (by alliance).",
+            &BerserkFile {
+                step: StepRecord {
+                    grounded: SidesRecord { side0: bz.step.grounded[0], side1: bz.step.grounded[1] },
+                    floor_free: SidesRecord { side0: bz.step.floor_free[0], side1: bz.step.floor_free[1] },
+                },
+                opponent: SidesRecord { side0: bz.opponent[0], side1: bz.opponent[1] },
+                blocking: bz.blocking,
+                opposing_player: bz.opposing_player,
             },
         ),
     );
@@ -853,16 +925,29 @@ neighbour is looked for along the scan lists, each slot starting at its *_scan_s
         ),
     );
     put(
-        "rules/math.toml".into(),
-        toml_file(
-            "sine: the sine table by angle (256 a turn), 1.0 = 0x100, with 64 entries more (the cosine\ntable is the same table 64 entries on).",
-            &MathFile { sine: r.sine.clone() },
+        "rules/actors.toml".into(), toml_file(
+            "Every NameID's actor record (byte_80182C4): the version byte, the actor type and the AI index\n(which picks per-navi hooks and tables). cross_palettes: the palette MegaMan's sprite takes in\neach Cross, by form (byte_80203EA).",
+            &ActorsFile {
+                cross_palettes: r.cross_palettes.clone(),
+                record: r
+                    .actor_records
+                    .iter()
+                    .enumerate()
+                    .map(|(i, a)| ActorRecordEntry { name_id: i as u16, version: a.version, actor_type: a.actor_type, ai_index: a.ai_index })
+                    .collect(),
+            },
         ),
     );
     put(
         "rules/sp-chips.toml".into(), toml_file(
             "The deletion times at which an SP navi chip's damage steps down (chips' sp_damage).",
             &SpChipsFile { deletion_times: r.sp_deletion_times.iter().map(|&t| bcd_time(t)).collect() },
+        ),
+    );
+    put(
+        "rules/math.toml".into(), toml_file(
+            "The sine table (math_sinTable, which math_cosTable continues): 256 steps a turn, 1.0 = 0x100,\nover a turn and a half (the cosine of step a is entry a + 64).",
+            &MathFile { sine: r.sine.clone() },
         ),
     );
     // Registries.
@@ -1102,14 +1187,14 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     let file = "objects/sword-wave/object.toml";
     let sword_waves =
         dense(waves.variant.into_iter().map(|w| (w.id as usize, w, file.into())).collect(), "sword wave", report);
-    let zones: ObjectFile<HitZone> = read_toml(root, "objects/hit-zone/object.toml", report)?;
-    add_kind("hit-zone", zones.script_kind, report);
-    let file = "objects/hit-zone/object.toml";
-    let hit_zones = dense(zones.variant.into_iter().map(|z| (z.id as usize, z, file.into())).collect(), "hit zone", report);
     let boomerangs: ObjectFile<BoomerangKind> = read_toml(root, "objects/boomerang/object.toml", report)?;
     add_kind("boomerang", boomerangs.script_kind, report);
     let file = "objects/boomerang/object.toml";
     let boomerangs = dense(boomerangs.variant.into_iter().map(|b| (b.id as usize, b, file.into())).collect(), "boomerang", report);
+    let waves: ShockWaveFile = read_toml(root, "objects/shock-wave/object.toml", report)?;
+    add_kind("shock-wave", waves.script_kind, report);
+    let file = "objects/shock-wave/object.toml";
+    let shock_waves = dense(waves.wave.into_iter().map(|w| (w.id as usize, w, file.into())).collect(), "shock wave", report);
     let shots: ObjectFile<ProjectileKind> = read_toml(root, "objects/projectile/object.toml", report)?;
     add_kind("projectile", shots.script_kind, report);
     let file = "objects/projectile/object.toml";
@@ -1118,6 +1203,9 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     add_kind("flying-shot", shots.script_kind, report);
     let file = "objects/flying-shot/object.toml";
     let flying_shots = dense(shots.variant.into_iter().map(|k| (k.id as usize, k, file.into())).collect(), "flying shot kind", report);
+    let looks: NameLookFile = read_toml(root, "objects/dust-junk/object.toml", report)?;
+    add_kind("dust-junk", looks.script_kind, report);
+    let name_looks = looks.look;
     // Attachments: the chips' own and the rest. A chip may share another's
     // (the same row), but not change it.
     let rest: AttachmentFile = read_toml(root, "objects/attachment/object.toml", report)?;
@@ -1157,12 +1245,13 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
         absorbed_sprites,
         body_overlays,
         sun_beam_looks,
+        sword_waves,
         boomerangs,
         projectiles,
         flying_shots,
-        sword_waves,
-        hit_zones,
         kinds,
+        shock_waves,
+        name_looks,
     })
 }
 
@@ -1295,7 +1384,30 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
     let w: WeaponsFile = read_toml(root, file, report)?;
     let weapons = dense(w.weapon.into_iter().map(|w| (w.id as usize, WeaponRoutine { charge_ticks: w.charge_ticks }, file.into())).collect(), "weapon routine", report);
     let reactions: ReactionsFile = read_toml(root, "rules/reactions.toml", report)?;
-    let lockon: LockonFile = read_toml(root, "rules/lockon.toml", report)?;
+    let file = "rules/lockon.toml";
+    let lockon: LockonFile = read_toml(root, file, report)?;
+    let lockon_modes = dense(lockon.mode.into_iter().map(|m| (m.mode as usize, m, file.into())).collect(), "lock-on mode", report);
+    let bz: BerserkFile = read_toml(root, "rules/berserk.toml", report)?;
+    let berserk = BerserkRules {
+        step: StepRuleSet {
+            grounded: [bz.step.grounded.side0, bz.step.grounded.side1],
+            floor_free: [bz.step.floor_free.side0, bz.step.floor_free.side1],
+        },
+        opponent: [bz.opponent.side0, bz.opponent.side1],
+        blocking: bz.blocking,
+        opposing_player: bz.opposing_player,
+    };
+    let file = "rules/actors.toml";
+    let actors: ActorsFile = read_toml(root, file, report)?;
+    let actor_records = dense(
+        actors
+            .record
+            .into_iter()
+            .map(|r| (r.name_id as usize, NaviRecord { version: r.version, actor_type: r.actor_type, ai_index: r.ai_index }, file.into()))
+            .collect(),
+        "actor record",
+        report,
+    );
     let math: MathFile = read_toml(root, "rules/math.toml", report)?;
     let file = "rules/sp-chips.toml";
     let sp: SpChipsFile = read_toml(root, file, report)?;
@@ -1341,13 +1453,22 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         status_effects,
         hp_bug_periods: st.hp_bug_periods,
         weapons,
+        empty_hand: w.empty_hand,
         buster_recovery: w.buster_recovery,
         sp_deletion_times,
+        sine: math.sine,
         push_vectors: reactions.push,
         ice_vectors: reactions.ice,
         bubble_bob: reactions.bubble_bob,
-        lockon: Lockon { searches: lockon.search, column_shifts: lockon.column_shifts, slash_modes: lockon.slash_modes },
-        sine: math.sine,
+        lockon: Lockon {
+            modes: lockon_modes,
+            column_shifts: lockon.column_shifts,
+            clear_path: lockon.clear_path,
+            charged_sword_modes: lockon.charged_sword_modes,
+        },
+        berserk,
+        actor_records,
+        cross_palettes: actors.cross_palettes,
     })
 }
 
@@ -1439,8 +1560,16 @@ fn check_references(c: &Content, report: &mut Report) {
                 }
             }
         }
+        if let Some(s) = &chip.sword
+            && !c.objects.attachments.iter().any(|a| a.id == s.blade)
+        {
+            report.error(&file, format!("sword blade {:#04x} isn't an attachment", s.blade));
+        }
         if chip.damage > 1000 && chip.damage <= 1000 + 18 && chip.sp_damage.is_none() {
             report.error(&file, "an SP navi chip (damage formula 1..=18) needs sp_damage");
+        }
+        if (1024..=1044).contains(&chip.damage) && chip.navi_damage.is_none() {
+            report.error(&file, "a link navi's chip (damage formula 24..=44) needs navi_damage");
         }
         if let Some(d) = &chip.sp_damage
             && d.len() != c.rules.sp_deletion_times.len() + 1

@@ -1,82 +1,79 @@
 --!strict
--- The sword a navi holds while it slashes (attachment kinds 3, 0x19..0x1C):
--- which one, its animation and palette (`sub_80EBB34`, `sub_80EBAE8`,
--- `sub_80EBB78`), as the sword actions spawn it into the navi's first
--- related slot.
+-- What the sword actions share (0x13, `sub_80EB776`, and 0x49,
+-- `sub_80EEB4C`): the blade their user holds while it swings. Which blade
+-- is the chip's data (`data.chips[id].sword`); its animation follows the
+-- user's form.
 
 local attachment = require("../objects/attachment/attachment")
 
 local sword = {}
 
--- `byte_80EBB64`: the sword by the attack's variant (a sword chip's
--- subtype): the plain sword, and the element swords for 0xC..0xF.
-local KINDS = {
-    [0x00] = 0x03,
-    [0x01] = 0x03,
-    [0x02] = 0x03,
-    [0x03] = 0x03,
-    [0x04] = 0x03,
-    [0x05] = 0x03,
-    [0x06] = 0x03,
-    [0x07] = 0x03,
-    [0x08] = 0x03,
-    [0x09] = 0x03,
-    [0x0A] = 0x03,
-    [0x0B] = 0x03,
-    [0x0C] = 0x19,
-    [0x0D] = 0x1A,
-    [0x0E] = 0x1B,
-    [0x0F] = 0x1C,
-    [0x10] = 0x00,
-    [0x11] = 0x03,
-    [0x12] = 0x03,
-    [0x13] = 0x00,
-}
-
--- `sub_80EBAE8`: the sword's animation, by who holds it: none for a virus;
--- an enemy navi's AI index below 13; a player's AI index (19 shows 14) or,
--- for MegaMan himself, 12 in the Beast forms (13 in Falzar's and in the
--- later Beast Crosses and Beast Over).
-local function animation(navi: Object): number
-    local kind, ai = navi.actor_type, navi.ai_index
-    if kind == "virus" then
-        return 0
-    elseif kind == "navi" then
-        return if ai < 13 then ai else 0
-    end
-    if ai ~= 0 then
-        return if ai == 19 then 14 else ai
-    end
-    local form = battle.navi(navi.alliance).form
-    if form < 0x0B then
-        return 0
-    elseif form == 0x0C or (form ~= 0x17 and form > 0x11) then
-        return 13
-    end
-    return 12
+-- The Beast forms (and Beast Over): forms 0xB to 0x18.
+function sword.beast(form: number): boolean
+    return form >= 0x0B and form <= 0x18
 end
 
--- `sub_80EBB78`: the palette addition: 12 for an enemy navi of AI index
--- 0x12 in its fourth version (AIData+0x16, its NameID record's).
-local function palette(navi: Object): number
-    if navi.actor_type ~= "navi" or navi.ai_index ~= 0x12 then
-        return 0
+-- The chip's sword data.
+function sword.data(me: Object): Sword
+    local chip = data.chips[me.chip]
+    local d = chip and chip.sword
+    if not d then
+        error(string.format("chip %#x swings a sword without its sword data", me.chip))
     end
-    local record = battle.navi_record(navi.name_id)
-    if record == nil then
-        error(string.format("NameID %#x's record is not in the content (sub_80EBB78)", navi.name_id))
-    end
-    return if record.version == 4 then 12 else 0
+    return d
 end
 
--- `sub_80EBB34` .. `sub_80B8E30`: the sword for the attack's variant, in
--- the navi's first related slot.
-function sword.raise(navi: Object, variant: number): Object?
-    local kind = KINDS[variant]
-    if kind == nil then
-        error(string.format("sword variant %#x reads past byte_80EBB64 (sub_80EBB34)", variant))
+-- `sub_80EBAE8`: the blade's animation, which matches the user's arm: a
+-- navi AI's (under 0xD), a form's (AI index 0x13 has animation 0xE), or
+-- for MegaMan's base AI, 0 or a Beast form's (0xC for Gregar's, 0xD for
+-- Falzar's).
+function sword.blade_anim(me: Object): number
+    local kind, ai = me.actor_type, me.ai_index
+    if kind == "navi" then
+        return if ai < 0x0D then ai else 0
+    elseif kind == "player" then
+        if ai ~= 0 then
+            return if ai == 0x13 then 0x0E else ai
+        end
+        local form = battle.navi(me.alliance).form
+        if form < 0x0B then
+            return 0
+        elseif form == 0x0C then
+            return 0x0D
+        elseif form == 0x17 or form <= 0x11 then
+            return 0x0C
+        end
+        return 0x0D
     end
-    return attachment.spawn(navi, { kind = kind, anim = animation(navi), palette_add = palette(navi) }, "related")
+    return 0
+end
+
+-- `sub_80EBB78`: added to the blade's palette: 0xC for navi AI 0x12's
+-- version 4, else 0.
+function sword.blade_palette(me: Object): number
+    if me.actor_type == "navi" and me.ai_index == 0x12 then
+        -- The game compares AIData+0x16, a navi AI's version, which this
+        -- engine's actors (players) don't have.
+        error("sub_80EBB78: navi AI 0x12's version (AIData+0x16) is not modelled")
+    end
+    return 0
+end
+
+-- `sub_80B8E30` with the blade: hold it (in the first related slot) with
+-- `palette_add`.
+function sword.hold_blade(me: Object, palette_add: number): Object?
+    return attachment.spawn(me, {
+        kind = sword.data(me).blade,
+        anim = sword.blade_anim(me),
+        palette_add = palette_add,
+    }, "related")
+end
+
+-- Let go of the blade (and anything in the overlay slot): what is attached
+-- there ends itself.
+function sword.drop_blade(me: Object)
+    me.related1 = nil
+    me.overlay = nil
 end
 
 return sword

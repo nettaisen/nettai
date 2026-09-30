@@ -85,9 +85,15 @@ end
 -- `dy` below it.
 local function dust(me: Object, anim: number, dy: number)
     local p = me.pos
-    -- (Its sprite, 10-30, as Param1 and Param2; no shadow.)
-    local params = { 0x10, 0x30, anim, bit32.bxor(me.alliance, me.flip) }
-    battle.afterimage(me, Vec3.new(p.x, p.y + dy, p.z), params, AFTERIMAGE_SHADER, AFTERIMAGE_TICKS)
+    -- (Its sprite as Param1 and Param2; the lifetime word's high bytes
+    -- clear: a shadow at its height.)
+    battle.afterimage(me, Vec3.new(p.x, p.y + dy, p.z), {
+        sprite = SPRITE,
+        anim = anim,
+        flip = bit32.bxor(me.alliance, me.flip),
+        lifetime = AFTERIMAGE_TICKS,
+        color_shader = AFTERIMAGE_SHADER,
+    })
 end
 
 -- Move by its speed: forward, and down.

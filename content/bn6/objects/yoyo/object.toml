@@ -1,0 +1,6 @@
+# The yoyo (attack object #0x52, `sub_80CE81C`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x52
+script = "yoyo.luau"

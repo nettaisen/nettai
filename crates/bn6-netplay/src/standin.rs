@@ -92,6 +92,7 @@ pub fn megaman(hp: u16) -> NaviStats {
         air_shoes: true,
         undershirt: false,
         super_armor: false,
+        version: 0,
         beast_out_counter: 3,
         sun: false,
         navi: Navi::MEGAMAN,
@@ -128,6 +129,8 @@ pub fn netbattle(content: &Content, hp: u16, seed: u32, folders: [BattleFolder; 
         folder: Some(f),
         unlocks: Unlocks { crosses: [false; 5], beast_out: false, ..Unlocks::everything(GameVersion::Falzar) },
         joypad_phase: 0,
+        bug_frags: 0,
+        navi_level: 0,
     };
     let [a, b] = folders;
     RoundSetup {

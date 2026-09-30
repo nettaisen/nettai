@@ -67,6 +67,9 @@ pub mod state {
     pub const INIT: u8 = 0;
     pub const UPDATE: u8 = 4;
     pub const DESTROY: u8 = 8;
+    /// The fourth state of kinds that have one after DESTROY (for them
+    /// DESTROY is a last running phase).
+    pub const FINISH: u8 = 0x0C;
 }
 
 /// An object's lifecycle position: state, action, phase and whether the
@@ -91,6 +94,17 @@ pub enum DragStep {
     Recover,
 }
 
+/// Where a pushed obstacle may slide (`sub_8017E44`'s +0x0C: 0, 1, 2).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum SlideBounds {
+    /// Any solid panel no other obstacle or body holds.
+    #[default]
+    Anywhere,
+    /// Only the given side's panels: pulled back toward whoever pushed it,
+    /// it stays out of their area.
+    Area(u8),
+}
+
 /// The state every object shares. Behavior-specific state lives in `vars`.
 #[derive(Clone, Debug, Default)]
 pub struct Object {
@@ -106,11 +120,13 @@ pub struct Object {
     /// Phase within the action.
     pub phase: u8,
     /// Whether the current phase's entry code has run (the game stores
-    /// 0, then 4 or 1).
+    /// 0, then 4 or 1). An obstacle's slide keeps its panels left here.
     pub phase_init: u8,
+    /// BattleObject+0x0C: where a pushed obstacle may slide (`sub_8017E44`).
+    pub slide_bounds: SlideBounds,
     /// BattleObject+0x0D: the drag reaction's step. Actors' stage B resets
-    /// it every tick they aren't dragged (`sub_801AF44`). Attack objects
-    /// use the byte for other things (not ported).
+    /// it every tick they aren't dragged (`sub_801AF44`); an obstacle's
+    /// slide steps through it too (`sub_8017E26`, `sub_8017CC0`).
     pub drag_step: DragStep,
     /// Low nibble: primary element; high nibble: secondary element bits.
     pub element: u8,
@@ -156,6 +172,9 @@ pub struct Object {
     pub pos: Vec3,
     pub vel: Vec3,
     pub related: [Option<ObjectRef>; 2],
+    /// ExtraVars[0] of an object whose NameID's init hook puts on two
+    /// overlays (AI index 14, `sub_8010FD8`): the second one.
+    pub second_overlay: Option<ObjectRef>,
     pub collision: Option<CollisionId>,
     pub actor: Option<ActorId>,
     /// A lifecycle position saved by status reactions (the game's +0x5C
@@ -273,6 +292,18 @@ impl Objects {
             Some(cur) if cur != new => self.insert_after(cur, new),
             _ => self.append(new),
         }
+        Some(r)
+    }
+
+    /// Spawn an object at the head of the update list (`sub_80033E4`): it
+    /// first runs next tick, before everything else.
+    pub fn spawn_at_front(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+        let r = self.allocate(pool, index, pos, params)?;
+        let new = node_of(r);
+        let first = self.links[HEAD.0 as usize].next.expect("list head has a successor");
+        self.links[new.0 as usize] = Links { prev: Some(HEAD), next: Some(first) };
+        self.links[HEAD.0 as usize].next = Some(new);
+        self.links[first.0 as usize].prev = Some(new);
         Some(r)
     }
 

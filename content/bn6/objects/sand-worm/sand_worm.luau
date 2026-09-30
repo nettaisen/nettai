@@ -288,7 +288,7 @@ local function tick(me: Object)
         error(string.format("sand worm action %#x reads past its table", a))
     end
     c:present()
-    c:highlight()
+    me:highlight_collision_panels()
 end
 
 -- `sub_80DEA7C`.

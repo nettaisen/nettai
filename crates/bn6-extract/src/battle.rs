@@ -15,7 +15,10 @@ pub fn content(rom: &Rom) -> Content {
     let actor_lists = actor_lists(rom);
     let mut chips = chips(rom);
     attach_gun_del_sol(rom, &mut chips);
+    attach_recovery(rom, &mut chips);
+    attach_swords(rom, &mut chips);
     attach_sp_damage(rom, &mut chips);
+    attach_navi_damage(rom, &mut chips);
     attach_program_advances(rom, &mut chips);
     attach_modifiers(&mut chips);
     Content {
@@ -90,9 +93,12 @@ fn chips(rom: &Rom) -> Vec<ChipData> {
                 slot_in_limit: b(0x1E),
                 dark_substitute: (b(0x1F) != 0xFF).then_some(b(0x1F)),
                 sp_damage: None,
+                navi_damage: None,
                 modifier: None,
                 program_advances: Vec::new(),
                 gun_del_sol: None,
+                recovery: None,
+                sword: None,
                 script: None,
             }
         })
@@ -134,6 +140,43 @@ fn attach_gun_del_sol(rom: &Rom, chips: &mut [ChipData]) {
     }
 }
 
+/// Recovery chips (action 0x20, `sub_80EC844`) heal `byte_80EC870[subtype]`
+/// HP (ten halfwords; past them the routine reads its own code).
+fn attach_recovery(rom: &Rom, chips: &mut [ChipData]) {
+    for c in chips.iter_mut().filter(|c| c.action == 0x20) {
+        assert!(c.subtype < 10, "recovery chip {:#x} of subtype {}", c.id, c.subtype);
+        c.recovery = Some(rom.u16(0x080E_C870 + 2 * c.subtype as u32));
+    }
+}
+
+/// Swords by their subtype: the blade (`byte_80EBB64`, 20 bytes, which
+/// actions 0x13 and 0x49 both read) and action 0x13's slash (`sub_80EB862`:
+/// the hit region's parameters `byte_80EBA18` and `byte_80EBA58`, four
+/// bytes each, and the effect `byte_80EBAD8`, 16 rows each).
+fn attach_swords(rom: &Rom, chips: &mut [ChipData]) {
+    for c in chips.iter_mut().filter(|c| c.action == 0x13 || c.action == 0x49) {
+        let v = c.subtype as u32;
+        assert!(v < 20, "sword chip {:#x} of subtype {v}", c.id);
+        let slash = (c.action == 0x13).then(|| {
+            assert!(v < 16, "action 0x13 chip {:#x} of subtype {v}", c.id);
+            let region = rom.bytes(0x080E_BA18 + 4 * v, 4);
+            let hit = rom.bytes(0x080E_BA58 + 4 * v, 4);
+            SwordSlash {
+                region: region[0],
+                hit_effect: region[1],
+                target: region[2],
+                self_type: region[3],
+                hit_mod: hit[0],
+                status: hit[1],
+                bug: hit[2],
+                bug_arg: hit[3],
+                effect: rom.u8(0x080E_BAD8 + v),
+            }
+        });
+        c.sword = Some(Sword { blade: rom.u8(0x080E_BB64 + v), slash });
+    }
+}
+
 /// SP navi chips: damage formula n + 1 (1..=18, `sub_8010AE4`) reads row
 /// n of `byte_8020E54` (11 halfwords by deletion-time step).
 fn attach_sp_damage(rom: &Rom, chips: &mut [ChipData]) {
@@ -144,6 +187,16 @@ fn attach_sp_damage(rom: &Rom, chips: &mut [ChipData]) {
         c.sp_damage = Some((0..11).map(|k| rom.u16(0x0802_0E54 + 0x16 * n as u32 + 2 * k)).collect());
     }
     assert!(rows_used.iter().all(|&u| u), "every SP damage row has its chip");
+}
+
+/// Link navis' chips: damage formula n (24..=44, `sub_8010C50`) reads row
+/// n - 23 of `byte_80212D4` (base, per buster level).
+fn attach_navi_damage(rom: &Rom, chips: &mut [ChipData]) {
+    for c in chips.iter_mut() {
+        let Some(n) = c.damage.checked_sub(1023).filter(|n| (1..=21).contains(n)) else { continue };
+        let row = 0x0802_12D4 + 2 * n as u32;
+        c.navi_damage = Some(NaviChipDamage { base: rom.u8(row), per_level: rom.u8(row + 1) });
+    }
 }
 
 /// The Program Advances (`off_802BCB0`, null-terminated): pointers to
@@ -260,10 +313,32 @@ fn navis(rom: &Rom) -> Vec<NaviData> {
                 lose_banner: BannerId(rom.u8(0x0800_A8C8 + n)),
                 merge_height: (merge >> 16) as i16,
                 own_chip,
+                chip_bonus: navi_chip_bonus(rom, n as u8),
                 name_record: Some(name_record(rom, FIRST_NAME + n as u16)),
             }
         })
         .collect()
+}
+
+/// A link navi's chip bonus (`sub_800F09E`): its family (and whether
+/// dimming chips of it count: only EraseMan's), and its row of
+/// `byte_8021300` (15 bytes a row, by level).
+fn navi_chip_bonus(rom: &Rom, navi: u8) -> Option<NaviChipBonus> {
+    let (row, family, dimming_chips) = match navi {
+        1 => (0, 0, false),
+        2 => (1, 2, false),
+        3 => (2, 5, false),
+        4 => (3, 6, true),
+        8 => (4, 8, false),
+        9 => (5, 9, false),
+        10 => (6, 9, false),
+        _ => return None,
+    };
+    Some(NaviChipBonus {
+        family: ChipFamily::from_number(family).expect("a family"),
+        dimming_chips,
+        by_level: rom.bytes(0x0802_1300 + 15 * row, 15).to_vec(),
+    })
 }
 
 /// MegaMan's forms: sprites (`byte_800FCBC`, category 0), elements and
@@ -356,19 +431,56 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
         weapons: (0..50)
             .map(|r| WeaponRoutine { charge_ticks: std::array::from_fn(|c| rom.u16(0x0802_0404 + 10 * r + 2 * c as u32)) })
             .collect(),
+        empty_hand: empty_hand(rom),
         // By Rapid, then open panels ahead (`byte_80209CC`).
         buster_recovery: (0..5).map(|n| rom.bytes(0x0802_09CC + 6 * n, 6).try_into().unwrap()).collect(),
         // BCD times (`byte_8010B2C`).
         sp_deletion_times: (0..10).map(|i| u32at(rom, 0x0801_0B2C + 4 * i)).collect(),
+        // `math_sinTable` through `math_cosTable`'s end: 384 halfwords.
+        sine: (0..384).map(|i| rom.u16(0x0800_65E0 + 2 * i) as i16).collect(),
         // By hit-modifier bit (`byte_800E58C`, three bytes each) and by
         // collision direction (`byte_800E4E8`, four bytes each).
         push_vectors: std::array::from_fn(|i| slide(rom, 0x0800_E58C + 3 * i as u32)),
         ice_vectors: std::array::from_fn(|i| slide(rom, 0x0800_E4E8 + 4 * i as u32)),
         bubble_bob: std::array::from_fn(|i| rom.u8(0x0801_7868 + i as u32) as i8),
         lockon: lockon(rom),
+        // The berserk controller's panel tables: the step conditions
+        // (`byte_802D410` grounded, `byte_802D420` with AirShoe; 8 bytes
+        // an alliance), an opponent's panel (`off_8109784`), what ends the
+        // look behind an opponent (`byte_8015D78`) and the opposing
+        // player's panel flag (`byte_80E74C4`).
+        berserk: BerserkRules {
+            step: StepRuleSet {
+                grounded: [condition(rom, 0x0802_D410), condition(rom, 0x0802_D418)],
+                floor_free: [condition(rom, 0x0802_D420), condition(rom, 0x0802_D428)],
+            },
+            opponent: [condition(rom, 0x0810_9784), condition(rom, 0x0810_978C)],
+            blocking: [u32at(rom, 0x0801_5D78), u32at(rom, 0x0801_5D7C)],
+            opposing_player: [u32at(rom, 0x080E_74C4), u32at(rom, 0x080E_74C8)],
+        },
         custom_screen: custom_screen(rom),
-        // `math_sinTable`, running into `math_cosTable` 64 entries on.
-        sine: (0..320).map(|i| rom.u16(0x0800_65E0 + 2 * i) as i16).collect(),
+        // Three bytes by NameID, 0..=0x1C3 (`byte_80182C4`).
+        actor_records: (0..0x1C4)
+            .map(|n| {
+                let rec = rom.bytes(0x0801_82C4 + 3 * n, 3);
+                let actor_type = [ActorType::Virus, ActorType::Navi, ActorType::Player][rec[1] as usize];
+                NaviRecord { version: rec[0], actor_type, ai_index: rec[2] }
+            })
+            .collect(),
+        // By form, the base form and the ten Crosses (`byte_80203EA`).
+        cross_palettes: rom.bytes(0x0802_03EA, 11).to_vec(),
+    }
+}
+
+/// What an empty hand's chip (0xFFFF) reads: the record 0xFFFF records
+/// past the chip table, which is other ROM data (`getChip8021DA8` doesn't
+/// check the id). Its family (+6), element (+4) and flags (+9) bytes.
+fn empty_hand(rom: &Rom) -> EmptyHandChip {
+    let r = CHIP_TABLE + 0xFFFF * CHIP_RECORD;
+    EmptyHandChip {
+        null_family: ChipFamily::from_number(rom.u8(r + 6)) == Some(ChipFamily::Null),
+        fire: rom.u8(r + 4) == 1,
+        flags: ChipFlags(rom.u8(r + 9)),
     }
 }
 
@@ -417,14 +529,13 @@ fn status_effects(rom: &Rom) -> Vec<[StatusEffect; 16]> {
         .collect()
 }
 
-/// Beast Out lock-on searches (`ho_8026554`, `jt_8026584`): for the modes
-/// that look for a panel near the target (`sub_80265D0`), the offsets
-/// tried and whether the middle row is taken afterwards (`sub_80265FE`)
-/// or the first offset skipped with the target in the far column
-/// (`sub_80266BA`), and the column shifts tried when nothing fits
-/// (`byte_8026735`).
+/// The Beast Out lock-on (`ho_8026554`): what each mode of `jt_8026584`
+/// does with its lists (signed bytes, or byte pairs, up to 0x7F; each
+/// routine loads its list through a literal-pool slot), the column shifts
+/// tried when nothing fits (`byte_8026735`), the clear-path panel
+/// condition (`byte_8026544`) and the charged sword's modes
+/// (`byte_80EB028`).
 fn lockon(rom: &Rom) -> Lockon {
-    // A list of signed bytes, or byte pairs, up to 0x7F.
     let list = |mut a: u32, pairs: bool| {
         let mut v = Vec::new();
         while rom.u8(a) != 0x7F {
@@ -433,37 +544,62 @@ fn lockon(rom: &Rom) -> Lockon {
         }
         v
     };
-    let column_shifts = list(u32at(rom, 0x0802_67E8), false).into_iter().map(|(s, _)| s).collect();
-    // (mode, literal-pool slot of its offset list, prefers the middle row)
-    // (and whether the first offset is skipped at the far column)
-    const MODES: [(u8, u32, bool, bool); 13] = [
-        (0x02, 0x0802_67FC, false, false),
-        (0x03, 0x0802_6800, true, false),
-        (0x04, 0x0802_6804, false, false),
-        (0x05, 0x0802_6808, false, false),
-        (0x06, 0x0802_680C, true, false),
-        (0x07, 0x0802_6810, false, false),
-        (0x08, 0x0802_6814, false, false),
-        (0x09, 0x0802_6818, true, false),
-        (0x0B, 0x0802_6820, false, true),
-        (0x0C, 0x0802_6824, false, false),
-        (0x0D, 0x0802_6828, false, false),
-        (0x0F, 0x0802_6830, false, false),
-        (0x10, 0x0802_6834, true, false),
+    let offsets = |a: u32| list(a, true).into_iter().map(|(dx, dy)| PanelOffset { dx, dy }).collect::<Vec<_>>();
+    let shifts = |a: u32| list(a, false).into_iter().map(|(s, _)| s).collect::<Vec<_>>();
+    let near = |mode: u8, pool: u32, column_shifts: bool, prefers_middle_row: bool| LockonMode {
+        mode,
+        rule: LockonRule::Near,
+        offsets: offsets(u32at(rom, pool)),
+        column_shifts,
+        prefers_middle_row,
+        ..Default::default()
+    };
+    let modes = vec![
+        // sub_802661C
+        LockonMode { mode: 0, rule: LockonRule::Stay, ..Default::default() },
+        // sub_8026622: byte_802673C, byte_802673A (which runs on into
+        // byte_802673C) and the row shifts byte_8026730.
+        LockonMode {
+            mode: 1,
+            rule: LockonRule::Row,
+            offsets: offsets(u32at(rom, 0x0802_67EC)),
+            same_row_offsets: offsets(u32at(rom, 0x0802_67F0)),
+            row_shifts: shifts(u32at(rom, 0x0802_67F4)),
+            ..Default::default()
+        },
+        // sub_8026650 .. sub_802669E: sub_80265D0, some then sub_80265FE.
+        near(2, 0x0802_67FC, true, false),
+        near(3, 0x0802_6800, true, true),
+        near(4, 0x0802_6804, true, false),
+        near(5, 0x0802_6808, true, false),
+        near(6, 0x0802_680C, true, true),
+        near(7, 0x0802_6810, true, false),
+        near(8, 0x0802_6814, true, false),
+        near(9, 0x0802_6818, true, true),
+        // sub_80266AC: sub_80264A8 alone (a clear path, no shifts).
+        LockonMode { clear_path: true, ..near(0x0A, 0x0802_681C, false, false) },
+        // sub_80266BA: byte_80267A6, or from its second pair on when the
+        // target is in the far column.
+        LockonMode {
+            far_column_offsets: Some(offsets(u32at(rom, 0x0802_6820) + 2)),
+            ..near(0x0B, 0x0802_6820, true, false)
+        },
+        near(0x0C, 0x0802_6824, true, false),
+        near(0x0D, 0x0802_6828, true, false),
+        // sub_80266F2: sub_8026450 alone, then sub_80265FE.
+        near(0x0E, 0x0802_682C, false, true),
+        near(0x0F, 0x0802_6830, true, false),
+        near(0x10, 0x0802_6834, true, true),
+        near(0x11, 0x0802_6838, true, false),
+        near(0x12, 0x0802_683C, true, false),
     ];
-    let searches = MODES
-        .iter()
-        .map(|&(mode, pool, prefers_middle_row, skips_first_at_edge)| LockonSearch {
-            mode,
-            offsets: list(u32at(rom, pool), true).into_iter().map(|(dx, dy)| PanelOffset { dx, dy }).collect(),
-            prefers_middle_row,
-            skips_first_at_edge,
-        })
-        .collect();
-    // The charged slash's modes by variant: the sword chips' subtypes and
-    // the charged shots' 0x10..=0x12.
-    let slash_modes = (0..0x13).map(|v| rom.u8(0x080E_B028 + v)).collect();
-    Lockon { searches, column_shifts, slash_modes }
+    Lockon {
+        modes,
+        column_shifts: shifts(u32at(rom, 0x0802_67E8)),
+        clear_path: [condition(rom, 0x0802_6544), condition(rom, 0x0802_654C)],
+        // Up to the literal pool that follows it.
+        charged_sword_modes: rom.bytes(0x080E_B028, 0x14).to_vec(),
+    }
 }
 
 /// The custom screen's slot grid (`dword_802A7CC`: four bytes a slot:
@@ -625,7 +761,7 @@ fn effect_table(rom: &Rom, base: u32, n: u32) -> Vec<EffectSprite> {
 /// Object data: attachments (`byte_80B8BD4`), rocks (`byte_80CF934`),
 /// absorbed obstacles' sprites (`byte_80E98C0`), body overlays
 /// (`byte_80C4320` sprites and `off_80C42D4` depth tables) and the sun
-/// beam's sprites (`dword_80E5C28`).
+/// beam's sprites (`dword_80E5C28`), shock waves (`byte_80C6B00`).
 fn objects(rom: &Rom) -> ObjectData {
     // Rock rows: standing animation, (unused), HP / 2, debris palette,
     // break sound (u16), name id (u16). The rock's init (`sub_80CF974`)
@@ -689,12 +825,25 @@ fn objects(rom: &Rom) -> ObjectData {
         body_overlays,
         sun_beam_looks: (0..2).map(|i| sprite_at(0x080E_5C28 + 2 * i)).collect(),
         sword_waves: sword_waves(rom),
-        hit_zones: hit_zones(rom),
         boomerangs,
         projectiles: projectiles(rom),
         flying_shots: flying_shots(rom),
+        name_looks: name_looks(rom),
         kinds: Vec::new(),
+        shock_waves: (0..16).map(|i| shock_wave(rom, i)).collect(),
     }
+}
+
+/// A shock wave's row (`byte_80C6B00`, by the wave's first parameter):
+/// the sprite's index in category 0x10, the animation, the ticks, and the
+/// panel type it leaves (0xFF none).
+fn shock_wave(rom: &Rom, id: u8) -> ShockWave {
+    let b = rom.bytes(0x080C_6B00 + 4 * id as u32, 4);
+    let panel = match b[3] {
+        0xFF => None,
+        t => Some(*PanelType::ALL.get(t as usize).unwrap_or_else(|| panic!("shock wave {id}: panel type {t:#x}"))),
+    };
+    ShockWave { id, sprite: SpriteId { category: 0x10, index: b[0] }, anim: b[1], ticks: b[2], panel }
 }
 
 /// An element byte: the primary element in the low bits, secondary bits
@@ -841,29 +990,25 @@ fn sword_waves(rom: &Rom) -> Vec<SwordWave> {
         .collect()
 }
 
-/// The hit zone's kinds (`byte_80D6914`, 8 bytes each, read by
-/// `sub_80D6952`): collision types, hit effect, region, hit modifier (the
-/// low byte of the word at +4), status, bug and its argument.
-fn hit_zones(rom: &Rom) -> Vec<HitZone> {
-    const TABLE: u32 = 0x080D_6914;
-    (0..2)
-        .map(|i| {
-            let r = TABLE + 8 * i;
-            HitZone {
-                id: i as u8,
-                self_type: rom.u8(r),
-                target_type: rom.u8(r + 1),
-                hit_effect: rom.u8(r + 2),
-                region: rom.u8(r + 3),
-                hit_mod: rom.u8(r + 4),
-                status: rom.u8(r + 5),
-                bug: rom.u8(r + 6),
-                bug_arg: rom.u8(r + 7),
+/// `byte_8021220`: how a field object looks by NameID, 5 bytes from
+/// NameID 0xCD, for every NameID `sub_800F26C` reads it for (0xCD..=0xFF;
+/// the entries past 0xEB are the bytes that follow the table).
+fn name_looks(rom: &Rom) -> Vec<NameLook> {
+    const TABLE: u32 = 0x0802_1220;
+    (0xCDu16..=0xFF)
+        .map(|name_id| {
+            let a = TABLE + 5 * (name_id as u32 - 0xCD);
+            let category = rom.u8(a);
+            NameLook {
+                name_id,
+                sprite: (category != 0xFF).then(|| SpriteId { category, index: rom.u8(a + 1) }),
+                anim: rom.u8(a + 2),
+                palette: rom.u8(a + 3),
+                shadow: rom.u8(a + 4) != 0,
             }
         })
         .collect()
 }
-
 
 // ---- Sprite timing ---------------------------------------------------------------------
 

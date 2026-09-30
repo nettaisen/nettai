@@ -219,7 +219,7 @@ local function tick(me: Object)
     end
     if field.valid(me.panel_x, me.panel_y) then
         c:present()
-        c:highlight()
+        me:highlight_collision_panels()
         return
     end
     c.region = 0

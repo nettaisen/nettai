@@ -72,9 +72,9 @@ pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<Object
     Some(r)
 }
 
-/// `sub_80C4526(overlay, 1)`: draw it a pixel in front whatever its
-/// owner's animation.
-pub fn set_forced_front(b: &mut Battle, r: ObjectRef) {
+/// `sub_80C4526(overlay, 1)`: draw it in front whatever the owner's
+/// animation.
+pub fn force_front(b: &mut Battle, r: ObjectRef) {
     vars_mut(b, r).forced_front = true;
 }
 

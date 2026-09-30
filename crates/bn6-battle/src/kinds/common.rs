@@ -133,6 +133,39 @@ pub fn total_damage(b: &mut Battle, r: ObjectRef) {
     acc.final_damage = total as u16;
 }
 
+/// `sub_801156A`: an object with HP (a thrown or placed thing, not a
+/// navi) takes this tick's damage. It shows a guard spark if it blocked a
+/// hit, totals its damage by element (`sub_800E3BE`, no holy-panel
+/// halving) into `final_damage`, and loses that much HP unless `mode` is 1.
+/// Returns -1 when its HP runs out (the rest is skipped), else it flashes
+/// white while hit, with sound 0x85 (mode 0) or 0x6D (mode 2) and 0, or 1
+/// for a hit in another mode; 0 when not hit.
+pub fn take_damage(b: &mut Battle, r: ObjectRef, mode: u8) -> i32 {
+    spawn_guard_spark(b, r);
+    let c = b.objects.get(r).collision.expect("object with collision data");
+    let acc = &mut b.collision.get_mut(c).acc;
+    let total: u32 = acc.element_damage[..5].iter().map(|&d| d as u32).sum();
+    acc.final_damage = total as u16;
+    if mode != 1 {
+        let o = b.objects.get_mut(r);
+        let hp = (o.hp as i32).wrapping_sub(total as i32);
+        o.hp = hp as u16;
+        if hp <= 0 {
+            return -1;
+        }
+    }
+    b.objects.sprite_mut(r).look.white = total != 0;
+    if total == 0 {
+        return 0;
+    }
+    match mode {
+        0 => b.play_sound(crate::sound::SoundId(0x85)),
+        2 => b.play_sound(crate::sound::SoundId(0x6D)),
+        _ => return 1,
+    }
+    0
+}
+
 /// `object_spawnHiteffect`: an object that blocked a hit shows a guard
 /// spark (one simulation RNG draw).
 pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
