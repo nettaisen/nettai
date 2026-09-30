@@ -139,6 +139,8 @@ pub fn scripts() -> Scripts {
                 ("objects/area-grab/area_grab", "objects/area-grab/area_grab"),
                 ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
+                ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
+                ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
                 ("lib/buster", "lib/buster"),
             ];
             let weapons = weapons().into_iter().map(|w| {
@@ -190,6 +192,8 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
         kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
+        kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
+        kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
