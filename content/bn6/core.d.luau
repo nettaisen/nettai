@@ -635,7 +635,7 @@ export type HitboxSpec = {
 -- with its `tether`: when its side leaves the Beast forms, or when its
 -- owner's action drops below 0x10.
 export type AfterimageSpec = {
-    sprite: SpriteId?,
+    sprite: (SpriteAsset | SpriteId)?,
     anim: number?,
     flip: number?,
     lifetime: number,
@@ -677,7 +677,7 @@ export type FormOverlayStepping = "normal" | "while_dimmed" | "always"
 -- (Param4); a pixel nearer than its owner when `nudged` (ExtraVars[0]);
 -- wearing the owner's palette when `owner_palette` (ExtraVars[1] 0xFF).
 export type FormOverlaySpec = {
-    sprite: SpriteId,
+    sprite: SpriteAsset | SpriteId,
     -- "normal" by default.
     stepping: FormOverlayStepping?,
     anim_offset: number?,

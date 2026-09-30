@@ -1,10 +1,10 @@
 --!strict
--- NeoVari: action 0x54 (`sub_80EF7E2`). VarSwrd's scheme (lib/vari_sword)
+-- NeoVari: action 0x54 (`sub_80EF7E2`). VarSwrd's scheme (lib/swords/vari)
 -- with three sequences: down, forward, up gives CrosSwrd; back, forward,
 -- back, A+B SprSonic (action 0x55); up, A+B, down, A+B, up, A+B DblDream.
 -- Letting go of A, or 48 ticks, gives a Sword.
 
-local vari_sword = require("../../lib/vari_sword")
+local vari_sword = require("../../lib/swords/vari")
 
 export type State = VariSwordState
 

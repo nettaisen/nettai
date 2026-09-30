@@ -1,12 +1,12 @@
 --!strict
 -- VarSwrd: action 0x53 (`sub_80EF62E`). The navi holds A and enters a
--- direction sequence (lib/vari_sword): a quarter circle forward (down,
+-- direction sequence (lib/swords/vari): a quarter circle forward (down,
 -- down-forward, forward) gives LongSwrd, a half circle from back
 -- FtrSword, up-forward-down WideSwrd, down-back-up-forward-down LifeSrd,
 -- and back, A+B, forward, A+B SonicBom (action 0x55). Letting go of A, or
 -- 48 ticks, gives a Sword.
 
-local vari_sword = require("../../lib/vari_sword")
+local vari_sword = require("../../lib/swords/vari")
 
 export type State = VariSwordState
 

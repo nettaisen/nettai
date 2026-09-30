@@ -16,10 +16,10 @@ chips/033-drilarm/chip.luau 6
 chips/034-tornado/chip.luau 6
 chips/036-minibomb/chip.luau 3
 chips/03d-aquandl1/chip.luau 4
-chips/047-sword/chip.luau 7
+chips/047-sword/chip.luau 3
 chips/050-windrack/chip.luau 3
 chips/054-moonbld/chip.luau 1
-chips/056-mchnswrd/chip.luau 3
+chips/056-mchnswrd/chip.luau 2
 chips/059-crakshot/chip.luau 4
 chips/05c-wavearm1/chip.luau 6
 chips/05f-aurahed1/chip.luau 9
@@ -47,9 +47,8 @@ lib/instant-chips/02-invisible.luau 1
 lib/instant-chips/06-repair-obstacles.luau 2
 lib/object_setup.luau 2
 lib/panels.luau 2
-lib/sword.luau 1
+lib/swords/vari.luau 4
 lib/trajectory.luau 1
-lib/vari_sword.luau 4
 navis/00-megaman/weapons/00-buster/buster.luau 8
 navis/00-megaman/weapons/01-charged-shot/charged_shot.luau 4
 navis/00-megaman/weapons/02-blank-shot/blank_shot.luau 2
