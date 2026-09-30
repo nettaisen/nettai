@@ -259,6 +259,7 @@ impl Hash for Object {
             pos,
             vel,
             related,
+            second_overlay,
             collision,
             actor,
             saved_state,
@@ -276,7 +277,7 @@ impl Hash for Object {
         (timer, timer2, hp, max_hp, name_id, chip, damage, stamina).hash(h);
         (shake_origin_x, shake_origin_z).hash(h);
         (pos, vel).hash(h);
-        (related, collision, actor, saved_state).hash(h);
+        (related, second_overlay, collision, actor, saved_state).hash(h);
         vars.hash(h);
     }
 }

@@ -14,7 +14,7 @@ use crate::kinds::player::{
     Emotion, ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, coll_mut, emotion, exit_attack_state, form,
     reset_charge, reset_status, set_coordinates_from_panel, set_mood, snap_to_future_panel, stats, stats_mut,
 };
-use crate::kinds::{cross_merge, effect, form_overlay, palette_flash};
+use crate::kinds::{cross_merge, effect, palette_flash};
 use crate::object::{ObjectRef, flags};
 use crate::setup::{Form, Navi};
 
@@ -122,9 +122,9 @@ fn prepare(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).overlay = None;
     drop_statuses(b, r);
     b.objects.get_mut(r).anim = 0x11;
-    if b.objects.get(r).related[1].is_some() {
-        // Sets the overlay's Param3 to 1 and flags 0x14.
-        panic!("changing form with a form overlay on is not implemented yet");
+    // The overlay keeps stepping while the battle is paused.
+    if let Some(o) = b.objects.get(r).related[1] {
+        form::keep_overlay_stepping(b, o);
     }
     ai_mut(b, r).attack.action = ActionVars::FormChange(Vars { timer: 6 });
     set_step(b, r, BeastOutStep::Vanish);
@@ -216,8 +216,9 @@ fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         // sub_8015B22: the form's NameID.
         b.objects.get_mut(r).name_id = 0x1AB + target.0 as u16;
         form::put_on_overlay(b, r, target);
+        // Its Param3 = 0.
         if let Some(o) = b.objects.get(r).related[1] {
-            form_overlay::set_stepping(b, o, form_overlay::Stepping::Normal);
+            form::normal_overlay_stepping(b, o);
         }
         ai_mut(b, r).attack.step_init = 4;
     }

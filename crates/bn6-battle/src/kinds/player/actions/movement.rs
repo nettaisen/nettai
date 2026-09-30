@@ -82,14 +82,29 @@ impl Phase {
 }
 
 /// `sub_80116AE` / `sub_80116D8`: start a step toward `dir` (a direction
-/// code); its first phase runs at once.
+/// code); its first phase runs at once. The object the step faces in some
+/// panel patterns (AIAttackVars+0x2C) is cleared.
 pub(in crate::kinds::player) fn start(b: &mut Battle, r: ObjectRef, dir: u8, end_lag: u16, kind: MoveKind) {
-    ai_mut(b, r).attack.action = ActionVars::Move(Vars { dir, kind, end_lag, ..Vars::default() });
-    // The game also clears the step's panel-trail argument here; only
-    // absolute steps (`sub_80116F6`) set one.
+    let target = match &ai(b, r).attack.action {
+        ActionVars::Move(v) => v.target,
+        _ => PanelPos::default(),
+    };
+    ai_mut(b, r).attack.action = ActionVars::Move(Vars { dir, kind, end_lag, target, ..Vars::default() });
+    ai_mut(b, r).attack.face_target = None;
     set_attack(b, r, ACTION, 4);
     update(b, r);
 }
+
+/// `sub_80116AE(5, end_lag, 2)` after setting AIAttackVars+0x16/+0x17:
+/// a step straight to `target` (the berserk controller's). A target in
+/// column 0 means no step.
+pub(in crate::kinds::player) fn start_absolute(b: &mut Battle, r: ObjectRef, target: PanelPos, end_lag: u16, kind: MoveKind) {
+    ai_mut(b, r).attack.action = ActionVars::Move(Vars { target, ..Vars::default() });
+    start(b, r, ABSOLUTE_DIRECTION, end_lag, kind);
+}
+
+/// The direction code an absolute step carries (none of the four).
+const ABSOLUTE_DIRECTION: u8 = 5;
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
     match &mut ai_mut(b, r).attack.action {
@@ -150,7 +165,11 @@ fn begin(b: &mut Battle, r: ObjectRef) {
     let target = match kind {
         MoveKind::Input => step_target(b, r, dir),
         MoveKind::Fallback => panic!("fallback steps (sub_800F998) are not implemented yet"),
-        MoveKind::Absolute => panic!("absolute steps (sub_80116F6) are not implemented yet"),
+        // The given destination, unchecked (column 0: none).
+        MoveKind::Absolute => {
+            let t = vars(b, r).target;
+            (t.x != 0).then_some(t)
+        }
         MoveKind::Astray => panic!("astray steps (sub_800FA20) are not implemented yet"),
     };
     let Some(target) = target else { return leave(b, r) };
@@ -219,8 +238,11 @@ fn depart(b: &mut Battle, r: ObjectRef) {
     b.unreserve_panel(r, p.x, p.y);
     set_coordinates_from_panel(b, r);
     b.update_collision_panels(r);
-    // A panel-trail argument (absolute steps only) would convert panels
-    // here in some column patterns.
+    if let Some(t) = ai(b, r).attack.face_target
+        && matches!(b.setup.settings.panel_pattern, 0x31 | 0x23 | 0x33)
+    {
+        crate::kinds::player::face_toward(b, r, t);
+    }
     set_animation(b, r, 3);
     vars(b, r).timer = 5;
     set_phase(b, r, Phase::Arrive);

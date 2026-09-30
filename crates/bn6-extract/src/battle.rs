@@ -356,6 +356,7 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
         weapons: (0..50)
             .map(|r| WeaponRoutine { charge_ticks: std::array::from_fn(|c| rom.u16(0x0802_0404 + 10 * r + 2 * c as u32)) })
             .collect(),
+        empty_hand: empty_hand(rom),
         // By Rapid, then open panels ahead (`byte_80209CC`).
         buster_recovery: (0..5).map(|n| rom.bytes(0x0802_09CC + 6 * n, 6).try_into().unwrap()).collect(),
         // BCD times (`byte_8010B2C`).
@@ -366,7 +367,33 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
         ice_vectors: std::array::from_fn(|i| slide(rom, 0x0800_E4E8 + 4 * i as u32)),
         bubble_bob: std::array::from_fn(|i| rom.u8(0x0801_7868 + i as u32) as i8),
         lockon: lockon(rom),
+        // The berserk controller's panel tables: the step conditions
+        // (`byte_802D410` grounded, `byte_802D420` with AirShoe; 8 bytes
+        // an alliance), an opponent's panel (`off_8109784`), what ends the
+        // look behind an opponent (`byte_8015D78`) and the opposing
+        // player's panel flag (`byte_80E74C4`).
+        berserk: BerserkRules {
+            step: StepRuleSet {
+                grounded: [condition(rom, 0x0802_D410), condition(rom, 0x0802_D418)],
+                floor_free: [condition(rom, 0x0802_D420), condition(rom, 0x0802_D428)],
+            },
+            opponent: [condition(rom, 0x0810_9784), condition(rom, 0x0810_978C)],
+            blocking: [u32at(rom, 0x0801_5D78), u32at(rom, 0x0801_5D7C)],
+            opposing_player: [u32at(rom, 0x080E_74C4), u32at(rom, 0x080E_74C8)],
+        },
         custom_screen: custom_screen(rom),
+    }
+}
+
+/// What an empty hand's chip (0xFFFF) reads: the record 0xFFFF records
+/// past the chip table, which is other ROM data (`getChip8021DA8` doesn't
+/// check the id). Its family (+6), element (+4) and flags (+9) bytes.
+fn empty_hand(rom: &Rom) -> EmptyHandChip {
+    let r = CHIP_TABLE + 0xFFFF * CHIP_RECORD;
+    EmptyHandChip {
+        null_family: ChipFamily::from_number(rom.u8(r + 6)) == Some(ChipFamily::Null),
+        fire: rom.u8(r + 4) == 1,
+        flags: ChipFlags(rom.u8(r + 9)),
     }
 }
 
@@ -415,12 +442,13 @@ fn status_effects(rom: &Rom) -> Vec<[StatusEffect; 16]> {
         .collect()
 }
 
-/// Beast Out lock-on searches (`ho_8026554`, `jt_8026584`): for the modes
-/// that look for a panel near the target (`sub_80265D0`), the offsets
-/// tried and whether the middle row is taken afterwards (`sub_80265FE`),
-/// and the column shifts tried when nothing fits (`byte_8026735`).
+/// The Beast Out lock-on (`ho_8026554`): what each mode of `jt_8026584`
+/// does with its lists (signed bytes, or byte pairs, up to 0x7F; each
+/// routine loads its list through a literal-pool slot), the column shifts
+/// tried when nothing fits (`byte_8026735`), the clear-path panel
+/// condition (`byte_8026544`) and the charged sword's modes
+/// (`byte_80EB028`).
 fn lockon(rom: &Rom) -> Lockon {
-    // A list of signed bytes, or byte pairs, up to 0x7F.
     let list = |mut a: u32, pairs: bool| {
         let mut v = Vec::new();
         while rom.u8(a) != 0x7F {
@@ -429,31 +457,62 @@ fn lockon(rom: &Rom) -> Lockon {
         }
         v
     };
-    let column_shifts = list(u32at(rom, 0x0802_67E8), false).into_iter().map(|(s, _)| s).collect();
-    // (mode, literal-pool slot of its offset list, prefers the middle row)
-    const MODES: [(u8, u32, bool); 12] = [
-        (0x02, 0x0802_67FC, false),
-        (0x03, 0x0802_6800, true),
-        (0x04, 0x0802_6804, false),
-        (0x05, 0x0802_6808, false),
-        (0x06, 0x0802_680C, true),
-        (0x07, 0x0802_6810, false),
-        (0x08, 0x0802_6814, false),
-        (0x09, 0x0802_6818, true),
-        (0x0C, 0x0802_6824, false),
-        (0x0D, 0x0802_6828, false),
-        (0x0F, 0x0802_6830, false),
-        (0x10, 0x0802_6834, true),
+    let offsets = |a: u32| list(a, true).into_iter().map(|(dx, dy)| PanelOffset { dx, dy }).collect::<Vec<_>>();
+    let shifts = |a: u32| list(a, false).into_iter().map(|(s, _)| s).collect::<Vec<_>>();
+    let near = |mode: u8, pool: u32, column_shifts: bool, prefers_middle_row: bool| LockonMode {
+        mode,
+        rule: LockonRule::Near,
+        offsets: offsets(u32at(rom, pool)),
+        column_shifts,
+        prefers_middle_row,
+        ..Default::default()
+    };
+    let modes = vec![
+        // sub_802661C
+        LockonMode { mode: 0, rule: LockonRule::Stay, ..Default::default() },
+        // sub_8026622: byte_802673C, byte_802673A (which runs on into
+        // byte_802673C) and the row shifts byte_8026730.
+        LockonMode {
+            mode: 1,
+            rule: LockonRule::Row,
+            offsets: offsets(u32at(rom, 0x0802_67EC)),
+            same_row_offsets: offsets(u32at(rom, 0x0802_67F0)),
+            row_shifts: shifts(u32at(rom, 0x0802_67F4)),
+            ..Default::default()
+        },
+        // sub_8026650 .. sub_802669E: sub_80265D0, some then sub_80265FE.
+        near(2, 0x0802_67FC, true, false),
+        near(3, 0x0802_6800, true, true),
+        near(4, 0x0802_6804, true, false),
+        near(5, 0x0802_6808, true, false),
+        near(6, 0x0802_680C, true, true),
+        near(7, 0x0802_6810, true, false),
+        near(8, 0x0802_6814, true, false),
+        near(9, 0x0802_6818, true, true),
+        // sub_80266AC: sub_80264A8 alone (a clear path, no shifts).
+        LockonMode { clear_path: true, ..near(0x0A, 0x0802_681C, false, false) },
+        // sub_80266BA: byte_80267A6, or from its second pair on when the
+        // target is in the far column.
+        LockonMode {
+            far_column_offsets: Some(offsets(u32at(rom, 0x0802_6820) + 2)),
+            ..near(0x0B, 0x0802_6820, true, false)
+        },
+        near(0x0C, 0x0802_6824, true, false),
+        near(0x0D, 0x0802_6828, true, false),
+        // sub_80266F2: sub_8026450 alone, then sub_80265FE.
+        near(0x0E, 0x0802_682C, false, true),
+        near(0x0F, 0x0802_6830, true, false),
+        near(0x10, 0x0802_6834, true, true),
+        near(0x11, 0x0802_6838, true, false),
+        near(0x12, 0x0802_683C, true, false),
     ];
-    let searches = MODES
-        .iter()
-        .map(|&(mode, pool, prefers_middle_row)| LockonSearch {
-            mode,
-            offsets: list(u32at(rom, pool), true).into_iter().map(|(dx, dy)| PanelOffset { dx, dy }).collect(),
-            prefers_middle_row,
-        })
-        .collect();
-    Lockon { searches, column_shifts }
+    Lockon {
+        modes,
+        column_shifts: shifts(u32at(rom, 0x0802_67E8)),
+        clear_path: [condition(rom, 0x0802_6544), condition(rom, 0x0802_654C)],
+        // Up to the literal pool that follows it.
+        charged_sword_modes: rom.bytes(0x080E_B028, 0x14).to_vec(),
+    }
 }
 
 /// The custom screen's slot grid (`dword_802A7CC`: four bytes a slot:

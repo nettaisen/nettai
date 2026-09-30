@@ -53,10 +53,8 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
 /// which that path leaves 0 for Null-family chips.
 fn use_charged_chip(b: &mut Battle, r: ObjectRef) -> ChipId {
     let chip = hand_entry(b, r).chip;
-    if chip == crate::hand::NO_CHIP {
-        panic!("a charged chip with an empty hand reads past the chip table");
-    }
-    let routine = if b.content.chip(chip).family == ChipFamily::Null {
+    // (An empty hand reads the record past the chip table.)
+    let routine = if super::null_family(b, chip) {
         ai_mut(b, r).attack.chip_id = 0;
         ai(b, r).alt_a_charge
     } else {
