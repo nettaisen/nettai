@@ -1,15 +1,18 @@
 # Content packs: the battle data
 
 A battle runs on **content**: chips, navis and their forms, the ruleset's
-tables, object kinds' data, the effect and region registries, and every
-sprite's animation timing. The engine holds it as one typed value,
+tables, object kinds' data, the effect and region registries, every
+sprite's animation timing, and the Luau scripts that implement chips,
+weapons and object kinds. The engine holds it as one typed value,
 `bn6_battle::Content`, and reads it from nowhere else: no ROM, no tables
-compiled into the engine, no files. A **content pack** is where content
-comes from: a folder of open-format files that `bn6-extract content` writes
-from the user's ROM and that ordinary tools edit. This document describes
-the pack's battle data (its layout, its files, how it loads) and the
-`Content` API the engine and other layers use. The pack's graphics and
-sound are described in [asset-formats.md](asset-formats.md).
+or scripts compiled into the engine, no files. A **content pack** is where
+content comes from: a folder of open-format files that `bn6-extract
+content` writes from the user's ROM and this repository's source overlay
+(the scripts), and that ordinary tools edit. This document describes the
+pack's battle data and scripts (their layout, their files, how they load)
+and the `Content` API the engine and other layers use. The pack's graphics
+and sound are described in [asset-formats.md](asset-formats.md); the
+scripts' API and runtime in [scripting.md](scripting.md).
 
 ## 0. Summary
 
@@ -20,8 +23,12 @@ sound are described in [asset-formats.md](asset-formats.md).
   verification workspace all load packs.
 - **By owner.** Data that belongs to one entity lives in that entity's
   folder (a chip's own attack data in the chip's `chip.toml`, a navi's
-  banners in its `navi.toml`); only rules no entity owns and registries many
-  entities refer to by number are shared files.
+  banners in its `navi.toml`), and so does its script; only rules no
+  entity owns and registries many entities refer to by number are shared
+  files.
+- **Scripts register by data.** A chip's `script`, an object folder's
+  `[kind]` and a weapon's `weapon.toml` say what their Luau module
+  implements; nothing in the engine lists scripted content.
 - **Typed, named, TOML.** Every field has a name and a type: enums as
   names (`element = "aqua"`), flag bytes as lists of flag names, sprites as
   their folder names (`"0c-3b"`), ids and flag words in hex. No offsets,
@@ -42,10 +49,15 @@ sound are described in [asset-formats.md](asset-formats.md).
 
 ```text
 content.toml                              the manifest ([battle], [graphics], [sound])
-chips/NNN-name/chip.toml                  a chip, with the data only its action reads
+chips/NNN-name/chip.toml                  a chip, with the data only its action reads (and its `script`)
+chips/NNN-name/*.luau                     the chip's action, if it has its own
 navis/NN-name/navi.toml                   a navi (MegaMan is 00)
 navis/00-megaman/forms/NN-name/form.toml  one of MegaMan's forms (00 is the base form)
-objects/KIND/object.toml                  an object kind's own data
+navis/00-megaman/weapons/NN-name/         a weapon routine a script implements: weapon.toml, *.luau
+objects/KIND/object.toml                  an object kind's own data, and `[kind]` if a script implements it
+objects/KIND/*.luau                       the kind's script
+lib/*.luau                                helpers the scripts share
+core.d.luau, types.d.luau                 the scripts' API and shared types (for editors and the checker)
 rules/*.toml                              rules no entity owns
 registries/*.toml                         what many entities name by number
 graphics/sprites/CC-II/animations.json    each sprite's animation timing (with its graphics)
@@ -54,14 +66,17 @@ graphics/...  sound/...                   see asset-formats.md
 
 | File | Holds | Engine side |
 |---|---|---|
-| `chips/NNN-name/chip.toml` (411) | the chip record; `[gun_del_sol]` (firing time, beam looks, the gun), `sp_damage`, `[[program_advance]]` recipes that make this chip, `modifier` | `Content::chips`, `ChipData` |
+| `chips/NNN-name/chip.toml` (411) | the chip record; `[gun_del_sol]` (firing time, beam looks, the gun), `sp_damage`, `[[program_advance]]` recipes that make this chip, `modifier`, `script` | `Content::chips`, `ChipData` |
 | `navis/NN-name/navi.toml` (12) | sprite, element, weakness, buster bonus, move lag by variant, result banners, Cross merge height, `[own_chip]`, `[name_record]` (NameID, actor record, attach points) | `Content::navis`, `NaviData` |
 | `navis/00-megaman/forms/NN-name/form.toml` (25) | sprite, element, weakness, `[weapons]`, buster bonus, `[name_record]` | `Content::forms`, `FormData` |
 | `objects/rock/object.toml` | rock variants | `ObjectData::rocks` |
-| `objects/absorbed-obstacle/object.toml` | the sprite an absorbed obstacle flies with, by kind | `ObjectData::absorbed_sprites` |
+| `navis/00-megaman/weapons/NN-name/weapon.toml` | a weapon routine a script implements: its number, name, the action it brings and the script | `Content::weapons`, `WeaponData` |
+| `objects/absorbed-obstacle/object.toml` | `[[obstacle]]`: the sprite an absorbed obstacle flies with, by obstacle kind | `ObjectData::absorbed_sprites` |
 | `objects/body-overlay/object.toml` | Cross body overlays: sprite, in front by animation | `ObjectData::body_overlays` |
 | `objects/sun-beam/object.toml` | the sun beam's sprites by look | `ObjectData::sun_beam_looks` |
 | `objects/attachment/object.toml` | attachments no chip declares | `ObjectData::attachments` (with the chips' own) |
+| `objects/KIND/object.toml` `[kind]` | the object slot a script implements: pool, index, script, whether its spawn position is register garbage | `ObjectData::kinds`, `ObjectKind` |
+| `**/*.luau` | the scripts, by path without `.luau` | `Content::scripts` |
 | `rules/elements.toml` | element weakness; secondary elements by chip family | `Rules::element_weakness`, `family_elements` |
 | `rules/collision.toml` | collision types by number, for each side; whole-field hit regions (0x80 and up) | `Rules::collision_types`, `field_regions` |
 | `rules/panels.toml` | panel types' flag bits and road slides; start visibility and front edges; step rules (normal, dash, any side) | `Rules::panels` |
@@ -78,8 +93,9 @@ graphics/...  sound/...                   see asset-formats.md
 | `registries/panel-layouts.toml` | panel layouts by layout number | `Content::panel_layouts` |
 | `graphics/sprites/CC-II/animations.json` (298) | frame durations and flags | `Content::animations` |
 
-BN6's battle data is 468 files (about 2 MiB) of the pack's 2,759 files;
-chips are most of it.
+BN6's battle data is 479 TOML files and 298 timing files (about 2 MiB) of
+the pack's 2,788 files; chips are most of it. Its scripts are 18 Luau
+files.
 
 ### 1.1 What goes where: colocate single-owner data
 
@@ -100,7 +116,13 @@ refer to by number.**
   for the form. Per-form and per-navi tables indexed by number dissolve
   into these files.
 - An object kind's folder holds its own variants (rocks, overlays, the sun
-  beam's looks).
+  beam's looks), and its script.
+- A script sits next to the data it implements: a chip's action in the
+  chip's folder, an object kind's in the kind's, a weapon routine's in
+  the weapon's. A script several entities share lives with one of them
+  (GunDelSol's in GunDelS1's folder; AreaGrab's in its controller's object
+  folder, `objects/area-grab`, which both grab chips name), and helpers
+  no entity owns in `lib/`.
 - `rules/` holds what no entity owns: element weakness, collision types,
   panel rules, battle settings, statuses, the custom screen's layout.
 - `registries/` holds what many entities name by number: effects, hit
@@ -122,14 +144,43 @@ the loader assembles the dense tables the engine indexes by them. Two
 chips may declare the same attachment row (the same data); declaring it
 differently is an error.
 
-### 1.3 Room for scripts and mods
+### 1.3 Scripts and what registers them
 
-A chip's or object's folder is where its script will go when the
-behavior moves to content (docs/design/scripting.md): today the Luau
-scripts live in the repository (content/bn6) and read their entity's data
-from the battle's `Content` (§4). Packs are designed to overlay: a later
-pack could add or replace records by id; the loader doesn't implement
-overlays yet.
+Every `.luau` file but the definition files (`*.d.luau`) is a module,
+named by its path without `.luau` (`objects/sun-beam/sun_beam`). A module
+runs only if data registers it (scripting.md §2.3 for what each must
+export):
+
+- **An object kind.** `objects/KIND/object.toml` has a `[kind]` table:
+  the pool and index of the object slot it implements (the original's
+  identity, which the traces compare), the script, and optionally
+  `scratch_position = true` (its X, Y and Z are the spawner's register
+  garbage until its init places them) or `scratch_z_fraction = true` (the
+  low half of its Z stays garbage), which the trace comparison skips.
+  The folder's name is the kind's name, how scripts and engine code spawn
+  it (`battle.spawn_kind("grab-shot", ...)`).
+- **A chip.** `script` in `chip.toml` names the module that implements
+  the chip's action (its `state` and `update`). For the ruleset's generic
+  actions it implements the chip's part, by the chip's subtype: action
+  0x15 (dimming chips) its dimming controller (`dimming_chip`), action
+  0x1B (navi chips) its navi (`navi_chip`). Chips sharing an action or a
+  subtype must name the same module.
+- **A weapon routine.** `navis/00-megaman/weapons/NN-name/weapon.toml`:
+  `id` (the routine's number, as forms and navi stats name it), `name`,
+  optionally `action` (the navi action the module also implements), and
+  `script`.
+
+Scripts are paths relative to the file's folder (`script =
+"../../objects/area-grab/area_grab.luau"`); the loader resolves them to
+module paths.
+
+BN6's scripts aren't in the ROM: they are this project's port of the
+game's routines, kept in the repository as a **source overlay**
+(content/bn6, laid out like a pack: `chip.toml` files holding only
+`script`, object folders holding only `[kind]`, weapons, modules and the
+definition files). `bn6-extract content` merges it into the extracted
+data before writing the pack. A modder's pack has the same shape, with no
+extractor.
 
 ## 2. The files
 
@@ -210,6 +261,28 @@ Conventions:
   without gaps where the engine indexes a table by them (chips, navis,
   forms, collision types, effects...).
 
+An object kind a script implements:
+
+```toml
+# grab-shot attack object 0x0f: a script implements it.
+
+[kind]
+pool = "attack"
+index = 0x0f
+script = "grab_shot.luau"
+```
+
+A weapon routine:
+
+```toml
+# MegaMan's weapon routine 0x02, Blank shot: a script implements it.
+
+id = 0x02
+name = "Blank shot"
+action = 0x33
+script = "blank_shot.luau"
+```
+
 Everything the engine reads is in these files; nothing is derived at load
 except the dense tables. What the engine doesn't read isn't extracted
 (chip record bytes no routine reads; the table rows no navi number can
@@ -228,7 +301,14 @@ reads the battle data and the sprite timing into a `Content`, with a
   is also in chips/003-sungun3/chip.toml", "chip 0x2 is missing");
 - references resolve: battle settings' actor lists and panel layouts,
   GunDelSol chips' beam looks, SP chips' damage rows (one more entry than
-  there are deletion times), NameIDs unique across navis and forms.
+  there are deletion times), NameIDs unique across navis and forms;
+- a weapon routine is declared once, and scripts are paths inside the
+  pack.
+
+What the scripts register is checked when a battle loads them
+(`Content::registrations`): a script that isn't in the pack, an object
+slot, action or hook claimed by two different modules, and a module
+without the function its registration needs are errors.
 
 `bn6-content check <pack>` runs every import and prints the report.
 `bn6-extract content` writes the files (`battle::export`), loads them back
@@ -283,17 +363,20 @@ let pas = b.content.program_advances();          // in the order they are tried
   actor list the record names by its original address;
   `BattleSettings::actors` is an `ActorListId` into
   `content.rules.stages.actor_lists`.
-- The behaviors layer builds its runtimes from the content:
-  `Behaviors::luau(&content)` gives the Luau scripts a frozen `data/pack`
-  module built from it (each chip's own data, the attachments, the sun
-  beam's looks), `Behaviors::rust(&content)` the same as typed data.
+- The scripts run from the content: `Battle::new` loads them with
+  `Behaviors::for_content(&content)` (once per thread and content hash;
+  the VM is a cache, not battle state), and they read the content as a
+  frozen `data` global built from it (`data.chips[id]`, `data.weapons`,
+  `data.objects.attachments`, `data.rules.buster_recovery`...), field
+  names as in the files.
 
 ## 5. Identity, snapshots and netplay
 
-- `Content::hash()` is a stable 64-bit hash of all of it (the state
-  digest's hasher over the typed data), so it doesn't depend on how the
-  files are formatted. BN6's pack is `0909753cc2c672eb` today; it changes
-  with any edit and with the engine's data layout.
+- `Content::hash()` is a stable 64-bit hash of all of it, scripts
+  included (the state digest's hasher over the typed data and the
+  modules' source), so it doesn't depend on how the files are formatted.
+  It changes with any edit to the data or a script and with the engine's
+  data layout.
 - `RoundSetup::content` carries it. The setup is part of the state
   digest, so two peers whose digests agree run the same content; a netplay
   session should compare setups (hence the hash) before the match.
@@ -305,10 +388,13 @@ let pas = b.content.program_advances();          // in the order they are tried
 
 In-repo tests never load game data. `bn6_battle::content::testing` (the
 `test-content` feature, and the engine's own tests) is a small content set
-written by hand: made-up chips on the engine's GunDelSol, dimming and
-navi-chip actions, one navi and its base form, rocks, a custom-screen
-layout, and collision types and panel rules written from the engine's own
-flag semantics. The engine, netplay, audio and frontend tests run on it;
+written by hand: made-up chips on GunDelSol's, the dimming and grab
+chips' and the eraser navi chip's actions, one navi and its base form
+with the buster weapons, rocks, a custom-screen layout, and collision
+types and panel rules written from the engine's own flag semantics. Its
+scripts are the BN6 overlay's (content/bn6), read from the repository and
+registered by the test content's own records, so the tests run the real
+scripts on made-up data. The engine, netplay, audio and frontend tests run on it;
 bn6-content's tests write it as a pack and read it back. Tests about BN6's
 actual data (effect lifetimes, GunDelSol's 480 HP in the sun, the soundmod
 stage's rocks, the golden traces) live in the verification workspace, which
