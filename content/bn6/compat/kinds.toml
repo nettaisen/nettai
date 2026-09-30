@@ -160,4 +160,4 @@ navi-boost = { pool = "effect", index = 0x84, scratch_position = true }
 absorbed-obstacle = { pool = "effect", index = 0x87 }
 "engine/ice-visual" = { pool = "effect", index = 0x89 }
 "flmhook/hook" = { pool = "effect", index = 0x8C }
-"engine/beast-over-burst" = { pool = "effect", index = 0x90 }
+"engine/beast-over-burst" = { pool = "effect", index = 0x90, scratch_position = true }
