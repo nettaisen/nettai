@@ -1,0 +1,6 @@
+# The gust (attack object #0x49, `sub_80CD2EC`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x49
+script = "gust.luau"
