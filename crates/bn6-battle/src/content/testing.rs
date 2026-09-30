@@ -38,6 +38,13 @@ pub const GRAB: ChipId = 0x07;
 pub const MIRROR: ChipId = 0x08;
 /// A recovery chip (action 0x20): heals 40 HP.
 pub const MEND: ChipId = 0x09;
+/// The thrown chips (action 0x12): a bomb (subtype 0), a seed that
+/// poisons panels (subtype 12), a flash bomb (subtype 14) and a bug bomb
+/// (subtype 7).
+pub const BOMB: ChipId = 0x0A;
+pub const SEED: ChipId = 0x0B;
+pub const FLASH: ChipId = 0x0C;
+pub const BUG: ChipId = 0x0D;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -148,6 +155,17 @@ pub fn scripts() -> Scripts {
                 ("objects/reflected-shot/reflected_shot", "objects/reflected-shot/reflected_shot"),
                 ("chips/008-mirror/chip", "chips/083-rflectr1/chip"),
                 ("chips/009-mend/chip", "chips/09a-recov10/chip"),
+                ("lib/region", "lib/region"),
+                ("lib/trajectory", "lib/trajectory"),
+                ("lib/hp", "lib/hp"),
+                ("objects/bomb/bomb", "objects/bomb/bomb"),
+                ("objects/bomb-slash/bomb_slash", "objects/bomb-slash/bomb_slash"),
+                ("objects/energy-burst/energy_burst", "objects/energy-burst/energy_burst"),
+                ("objects/seed/seed", "objects/seed/seed"),
+                ("objects/flash-bomb/flash_bomb", "objects/flash-bomb/flash_bomb"),
+                ("objects/bug-bomb/bug_bomb", "objects/bug-bomb/bug_bomb"),
+                ("objects/smoke-puff/smoke_puff", "objects/smoke-puff/smoke_puff"),
+                ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -200,6 +218,13 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
         kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
         kind("reflected-shot", Pool::Attack, 0x2F, "objects/reflected-shot/reflected_shot"),
+        kind("bomb", Pool::Attack, 0x08, "objects/bomb/bomb"),
+        kind("bomb-slash", Pool::Attack, 0x0A, "objects/bomb-slash/bomb_slash"),
+        kind("energy-burst", Pool::Attack, 0x11, "objects/energy-burst/energy_burst"),
+        kind("seed", Pool::Attack, 0x4F, "objects/seed/seed"),
+        kind("flash-bomb", Pool::Attack, 0xA4, "objects/flash-bomb/flash_bomb"),
+        kind("bug-bomb", Pool::Attack, 0xA5, "objects/bug-bomb/bug_bomb"),
+        kind("smoke-puff", Pool::Effect, 0x14, "objects/smoke-puff/smoke_puff"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -302,7 +327,23 @@ fn chips() -> Vec<ChipData> {
             ..chip(MIRROR, "Mirror", 0x2B, 0)
         },
         ChipData { recovery: Some(40), script: Some("chips/009-mend/chip".into()), ..chip(MEND, "Mend", 0x20, 1) },
+        thrown(BOMB, "Bomb", 0, [0, 0, 0, 0], 50),
+        thrown(SEED, "Seed", 12, [0, 0, 0, 0], 10),
+        thrown(FLASH, "Flash", 14, [1, 0, 0, 0], 40),
+        thrown(BUG, "Bug", 7, [0, 0, 0, 0], 0),
     ]
+}
+
+/// A thrown chip (action 0x12) of `subtype`.
+fn thrown(id: ChipId, name: &str, subtype: u8, params: [u8; 4], damage: u16) -> ChipData {
+    ChipData {
+        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+        hit_param: 30,
+        params,
+        damage,
+        script: Some("chips/00a-bomb/chip".into()),
+        ..chip(id, name, 0x12, subtype)
+    }
 }
 
 fn navi() -> NaviData {
@@ -347,7 +388,7 @@ fn base_form() -> FormData {
 fn rules() -> Rules {
     // Collision types by what they are.
     let both = |f: &dyn Fn(usize) -> u32| [f(0), f(1)];
-    let mut collision_types = vec![[0, 0]; 0x49];
+    let mut collision_types = vec![[0, 0]; 0x59];
     let attack = both(&|s| ATTACK[s] | REACHES_FLOATING);
     collision_types[0x01] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING);
     collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING | FLOATING);
@@ -359,6 +400,13 @@ fn rules() -> Rules {
     collision_types[0x2A] = collision_types[0x05];
     collision_types[0x0E] = [NEUTRAL | BLOCKER | WHILE_DIMMED | REACHES_FLOATING | BREAKS; 2];
     collision_types[0x0F] = [ATTACK[0] | ATTACK[1] | BODY[0] | BODY[1] | BREAKS; 2];
+    // Thrown things: a flash's hit, a set-down bomb (an object either side
+    // can hit) and what it reacts to, a bug bomb and its target.
+    collision_types[0x0B] = attack;
+    collision_types[0x0C] = both(&|s| OBJECT[s] | NEUTRAL);
+    collision_types[0x0D] = both(&|s| ATTACK[s ^ 1] | BODY[s ^ 1]);
+    collision_types[0x4E] = both(&|s| OBJECT[s] | NEUTRAL);
+    collision_types[0x14] = both(&|s| ATTACK[s ^ 1] | BODY[s ^ 1]);
 
     // Panels: what each type adds to a panel's flags word.
     let types = PanelType::ALL
@@ -535,7 +583,8 @@ fn objects() -> ObjectData {
     // The buster's muzzle flash and arm.
     let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03)]).collect(),
+        // What the thrown chips hold: the bomb, a seed, the flash bomb.
+        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03), plain(0x24, 0x02), plain(0x2E, 0x02)]).collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
