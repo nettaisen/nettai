@@ -126,7 +126,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!((b.objects.get(p0).action, b.objects.get(p0).panel), (8, PanelPos { x: 3, y: 2 }));
 
-    let mut hand = ChipHand::empty();
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, testing::SUN_GUN_3));
     let firing = b.content.chip(testing::chip_in(&b.content, testing::SUN_GUN_3)).gun_del_sol.unwrap().firing_ticks as u32;
     b.hands[0] = hand;
@@ -256,7 +256,7 @@ fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
 /// Give side `side` the chip `chip` as the next in its hand, with its
 /// damage.
 fn hand_with(b: &mut Battle, side: usize, chip: crate::content::ChipId) {
-    let mut hand = ChipHand::empty();
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, chip));
     hand.damage[0] = b.content.chip(testing::chip_in(&b.content, chip)).damage;
     b.hands[side] = hand;
@@ -353,7 +353,7 @@ fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: crate::content::
 
 /// The same with the chip by handle.
 fn use_chip_handle(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: bn6_content_api::ChipHandle) {
-    let mut hand = ChipHand::empty();
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(chip);
     hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;
@@ -1274,7 +1274,7 @@ fn fight_on(settings: u8, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
 #[test]
 fn an_instant_chip_runs_its_effect_once_and_idles() {
     let (mut b, p0, p1) = fight();
-    let mut hand = ChipHand::empty();
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, testing::FULL_GAUGE));
     b.hands[0] = hand;
     b.gauge.value = 0;
@@ -1410,7 +1410,7 @@ fn absorbing_and_the_claw_roll_back() {
 /// Use the instant chip `chip` from side 0's hand; returns once its
 /// effect ran (the tick after the chip starts).
 fn use_instant_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: u16) {
-    let mut hand = ChipHand::empty();
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, chip));
     b.hands[0] = hand;
     tick(b, p0, p1, keys::A);
@@ -1439,7 +1439,7 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     // From a special source the damage goes into the side's Atk+ bonus
     // instead.
     let (mut b, p0, p1) = fight();
-    let mut hand = ChipHand::empty();
+    let mut hand = ChipHand::empty(&b.content);
     (hand.ids[0], hand.damage[0]) = (Some(testing::chip_in(&b.content, testing::PLUS)), 10);
     b.hands[0] = hand;
     tick(&mut b, p0, p1, keys::A);
@@ -1491,7 +1491,7 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
         if chip == testing::WORM {
             // The worm comes out behind the enemy, on a panel with the flag
             // the test content's panel types don't give.
-            let mut hand = ChipHand::empty();
+            let mut hand = ChipHand::empty(&b.content);
             hand.ids[0] = Some(testing::chip_in(&b.content, chip));
             b.hands[0] = hand;
             tick(&mut b, p0, p1, keys::A);
@@ -1582,7 +1582,7 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
 /// charge raises), with the A-charge routine `routine`; the test content's
 /// base form charges no chip, so the charge itself is skipped.
 fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: u8, chip: u16) {
-    let mut hand = ChipHand::empty();
+    let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, chip));
     b.hands[0] = hand;
     let routine = testing::weapon_in(&b.content, routine);
@@ -1742,4 +1742,99 @@ fn chips_of_a_series_run_their_own_actions() {
     assert_rolls_back(&mut b, [p0, p1], 3, 0);
     let second = ticks_in(&mut b, p0, p1, two) + 3;
     assert_eq!(second - first, 3, "Ticker2 stands 9 ticks to Ticker1's 6");
+}
+
+// ---- Content model v2: the v2 API (step 4) ---------------------------------------------------
+
+/// The objects of the kind content defines as `key`.
+fn defined(b: &Battle, key: &str) -> Vec<ObjectRef> {
+    let kind = b.content.defs.kind_by_key(key).unwrap_or_else(|| panic!("no kind {key}"));
+    b.objects.in_order().filter(|&o| b.objects.get(o).kind == kind).collect()
+}
+
+/// A content object's reference field, as the definition it holds.
+fn state_def(b: &Battle, r: ObjectRef, name: &str) -> Option<(bn6_content_api::Registry, u16)> {
+    let crate::kinds::Vars::Content(s) = &b.objects.get(r).vars else { panic!("{r:?} has no content state") };
+    let schema = b.content.defs.schema(s.id());
+    s.get(schema, schema.index_of(name).expect("the field")).load().def()
+}
+
+#[test]
+fn a_kind_spawns_by_definition_and_its_state_holds_definitions() {
+    use bn6_content_api::Registry;
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let launcher = crate::behavior::spawn_kind(&mut b, "test/launcher", crate::object::Vec3::default(), [0; 4]).unwrap();
+    tick(&mut b, p0, p1, 0);
+    let [ticker] = defined(&b, "test/ticker")[..] else { panic!("one ticker") };
+    let defs = &b.content.defs;
+    // Its variant is the launcher's record, its parent the launcher's kind.
+    let (registry, h) = state_def(&b, ticker, "variant").expect("a variant");
+    assert_eq!(registry, Registry::Record);
+    assert_eq!(defs.records[h as usize].record_type, "ticker-variant");
+    assert_eq!(state_def(&b, ticker, "parent"), Some((Registry::Kind, defs.kind_by_key("test/launcher").unwrap().0)));
+    // The effect is the definition's look, and the sound the asset's.
+    let burst = b.objects.in_order().find(|&o| defs.engine_kind(b.objects.get(o).kind) == Some(crate::kinds::EngineKind::Effect));
+    let burst = burst.expect("the burst");
+    assert_eq!(b.objects.sprite(burst).id, Some(bn6_content_api::SpriteId { category: 0x14, index: 0 }));
+    assert!(b.sound_cues().contains(&crate::sound::SoundCue::Effect(crate::sound::SoundId(0x1A6))));
+    // The collision types and region are the definitions'.
+    let c = b.collision.get(b.objects.get(launcher).collision.expect("a collision"));
+    assert_eq!(c.self_flags & 0xFFFE_FFFF, 0x80000088);
+    assert_eq!(c.target_flags, 0x15800000);
+    let wide: Vec<(i8, i8)> = b.content.region(c.region).iter().map(|p| (p.dx, p.dy)).collect();
+    assert_eq!(wide, [(1, -1), (1, 0), (1, 1)]);
+    // The variant's lifetime (5) ends it.
+    for _ in 0..4 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert!(defined(&b, "test/ticker").is_empty(), "the short variant's ticker left after 5 ticks");
+}
+
+#[test]
+#[should_panic(expected = "expected a record:ticker-variant, got a record:other-variant")]
+fn a_reference_field_refuses_a_record_of_another_type() {
+    let (mut b, p0, p1) = fight_on_test_pack();
+    crate::behavior::spawn_kind(&mut b, "test/misuse", crate::object::Vec3::default(), [0; 4]).unwrap();
+    tick(&mut b, p0, p1, 0);
+}
+
+#[test]
+fn an_action_starts_the_next_by_definition() {
+    // Ticker3's action stands 3 ticks, then starts its `next` (2 ticks) with
+    // `set_attack`; each checks the navi runs it (`navi_action`).
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let defs = &b.content.defs;
+    let ticker3 = defs.chip_by_key(testing::TICKER_3).unwrap();
+    let Some(crate::content::ChipUsage::Action(first)) = defs.chip(ticker3).usage else { panic!("an action") };
+    let next = bn6_content_api::ActionHandle(
+        defs.actions.iter().position(|a| a.key == "test/ticker3/action/args/next").expect("a derived key") as u16,
+    );
+    use_chip_handle(&mut b, p0, p1, ticker3);
+    assert_eq!(ticks_in(&mut b, p0, p1, first), 3);
+    assert_rolls_back(&mut b, [p0, p1], 1, 0);
+    assert_eq!(ticks_in(&mut b, p0, p1, next) + 1, 2);
+}
+
+#[test]
+fn the_ruleset_starts_a_role_action() {
+    // A caught hit starts AntiDmg's counter: the role content fills.
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let role = b.content.defs.roles.actions.anti_damage_counter.expect("the test pack fills it");
+    assert_eq!(b.content.defs.action(role).key, "test/anti-damage-counter");
+    ai_mut(&mut b, p0).requests |= request::ANTI_DAMAGE_TRIGGERED;
+    super::reactive::counter(&mut b, p0);
+    assert_eq!(super::super::running_content_action(&b, p0), Some(role));
+    assert_eq!(b.objects.get(p0).action, super::super::CONTENT_ACTION);
+    use bn6_content_api::CoreApi;
+    assert_eq!(b.navi_action(p0).unwrap(), bn6_content_api::NaviAction::Content(role.0));
+    // It ran its first tick with the counter's set-up; three more.
+    assert_eq!(ticks_in(&mut b, p0, p1, role), 3);
+}
+
+#[test]
+#[should_panic(expected = "the role actions.body_guard_counter is not filled")]
+fn an_unfilled_role_names_itself() {
+    let (mut b, p0, _) = fight_on_test_pack();
+    ai_mut(&mut b, p0).requests |= request::BODY_GUARD_TRIGGERED;
+    super::reactive::counter(&mut b, p0);
 }

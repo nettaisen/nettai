@@ -26,6 +26,7 @@ pub mod aseprite;
 pub mod battle;
 pub mod hud;
 pub mod image;
+pub mod lint;
 pub mod midi;
 pub mod names;
 pub mod overlay;

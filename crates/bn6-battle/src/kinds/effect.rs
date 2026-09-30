@@ -18,23 +18,11 @@ pub struct Vars {
     /// its `pos.x` and `pos.y` are placeholders. Nothing reads an
     /// effect's position.
     pub xy_unknown: bool,
-    /// Its look, when a definition gave it (else effect `Param1`'s).
-    pub look: Option<EffectSprite>,
 }
 
 /// `SpawnT4BattleObjectWithId0`: effect `id` at `pos`.
 pub fn spawn(b: &mut Battle, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
     crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Effect, pos, [id, flip, palette_add, priority])
-}
-
-/// The same with the look an effect definition gives (its first parameter
-/// is then 0).
-pub fn spawn_look(b: &mut Battle, pos: Vec3, look: EffectSprite, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
-    let r = spawn(b, pos, 0, flip, palette_add, priority)?;
-    if let crate::kinds::Vars::Effect(v) = &mut b.objects.get_mut(r).vars {
-        v.look = Some(look);
-    }
-    Some(r)
 }
 
 /// `SpawnT4BattleObjectWithId0` called again straight after a spawn at
@@ -55,26 +43,12 @@ pub fn spawn_after_spawn(b: &mut Battle, z: i32, id: u8, flip: u8, palette_add: 
 /// whole-field region (0x80 and up), on each panel it covers from the
 /// bottom right, on the ground.
 pub fn spawn_over_region(b: &mut Battle, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32) {
-    spawn_over_region_as(b, x, y, region, side, z, |b, pos| {
-        spawn(b, pos, id, 0, 0, 0);
-    });
-}
-
-/// The same with the look an effect definition gives.
-pub fn spawn_look_over_region(b: &mut Battle, x: i32, y: i32, region: u8, side: u8, look: EffectSprite, z: i32) {
-    spawn_over_region_as(b, x, y, region, side, z, |b, pos| {
-        spawn_look(b, pos, look, 0, 0, 0);
-    });
-}
-
-/// `sub_801BD3C`'s walk over the region, spawning with `spawn`.
-fn spawn_over_region_as(b: &mut Battle, x: i32, y: i32, region: u8, side: u8, z: i32, spawn: impl Fn(&mut Battle, Vec3)) {
     let at = |b: &mut Battle, px: u8, py: u8, z: i32| {
         let (cx, cy) = crate::kinds::player::panel_coordinates(px, py);
-        spawn(b, Vec3 { x: cx, y: cy, z });
+        spawn(b, Vec3 { x: cx, y: cy, z }, id, 0, 0, 0);
     };
     if region & 0x80 != 0 {
-        let cond = b.content.rules.field_regions[(region & 0x7F) as usize];
+        let cond = b.content.field_region(region);
         for py in (1..=3).rev() {
             for px in (1..=6).rev() {
                 if b.field.check(px, py, cond.require, cond.forbid) {
@@ -118,11 +92,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 fn init(b: &mut Battle, r: ObjectRef) {
     let [id, flip, palette_add, priority] = b.objects.get(r).params;
-    let given = match &b.objects.get(r).vars {
-        crate::kinds::Vars::Effect(v) => v.look,
-        _ => None,
-    };
-    let EffectSprite { sprite: id, anim, palette } = given.unwrap_or_else(|| b.content.effect(id));
+    let EffectSprite { sprite: id, anim, palette } = b.content.effect(id);
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
     sprite.set_animation(anim, &b.content);

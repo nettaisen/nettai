@@ -1160,7 +1160,7 @@ pub fn load(root: &Path, report: &mut Report) -> Option<Content> {
     let weapons = load_weapons(root, report);
     let scripts = load_scripts(root, report);
     let content =
-        Content { chips, navis, forms, rules, objects, effects, sparks, regions, panel_layouts, animations, weapons, scripts, defs: Default::default() };
+        Content { chips, navis, forms, rules, objects, effects, sparks, regions, panel_layouts, animations, weapons, scripts, assets: Default::default(), defs: Default::default() };
     check_references(&content, report);
     (report.count(crate::report::Level::Error) == errors_before).then_some(content)
 }

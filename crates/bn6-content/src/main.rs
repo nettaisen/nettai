@@ -81,15 +81,18 @@ fn main() {
                 // scripts define and the data registers fits together.
                 let t = std::time::Instant::now();
                 match c.define() {
-                    Ok(()) => r.note(
-                        "scripts",
-                        format!(
-                            "{} modules define {} definitions ({:.1?})",
-                            c.scripts.modules.len(),
-                            c.defs.definitions.defs.len(),
-                            t.elapsed()
-                        ),
-                    ),
+                    Ok(()) => {
+                        r.note(
+                            "scripts",
+                            format!(
+                                "{} modules define {} definitions ({:.1?})",
+                                c.scripts.modules.len(),
+                                c.defs.definitions.defs.len(),
+                                t.elapsed()
+                            ),
+                        );
+                        bn6_content::lint::definitions(&c, &mut r);
+                    }
                     Err(e) => r.error("scripts", e.message),
                 }
             }

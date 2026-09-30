@@ -44,7 +44,6 @@ pub enum Vars {
     Intro(intro::Vars),
     ChargeGlow(charge_glow::Vars),
     Effect(effect::Vars),
-    Spark(spark::Vars),
     Hitbox(hitbox::Vars),
     FormOverlay(form_overlay::Vars),
     Afterimage(afterimage::Vars),
@@ -69,7 +68,7 @@ impl Vars {
             EngineKind::Intro => Vars::Intro(Default::default()),
             EngineKind::ChargeGlow => Vars::ChargeGlow(Default::default()),
             EngineKind::Effect => Vars::Effect(Default::default()),
-            EngineKind::Spark => Vars::Spark(Default::default()),
+
             EngineKind::Hitbox => Vars::Hitbox(Default::default()),
             EngineKind::FormOverlay => Vars::FormOverlay(Default::default()),
             EngineKind::Afterimage => Vars::Afterimage(Default::default()),
@@ -85,6 +84,7 @@ impl Vars {
             | EngineKind::NaviChip
             | EngineKind::NaviWarp
             | EngineKind::Eruption
+            | EngineKind::Spark
             | EngineKind::StatusVisual
             | EngineKind::IceVisual
             | EngineKind::HitMarker => Vars::None,

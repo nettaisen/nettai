@@ -12,7 +12,6 @@ use bn6_battle::Battle;
 use bn6_battle::actor::status;
 use bn6_battle::transform::{SequencerState, TransformPhase};
 use bn6_battle::battle::{fight, mode, top};
-use bn6_battle::hand::NO_CHIP;
 use bn6_battle::object::{ObjectRef, flags};
 
 /// The player navi's action while it stands waiting for input.
@@ -298,8 +297,12 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
     if let Some(r) = player {
         let o = b.objects.get(r);
         let hand = &b.hands[local as usize];
-        let chip = hand.ids.get(hand.cursor as usize).copied().unwrap_or(NO_CHIP);
-        if state.chip_name && o.chips_held != 0 && chip != NO_CHIP {
+        // The HUD's names and icons are the pack's, by chip number.
+        let chip = hand.ids.get(hand.cursor as usize).copied().flatten().and_then(|h| b.content.chip_number(h));
+        if state.chip_name
+            && o.chips_held != 0
+            && let Some(chip) = chip
+        {
             draw_chip_name(layer, hud, &hud.hp_palettes[colour.min(2)], hand, chip);
         }
     }
@@ -442,8 +445,8 @@ fn icon_parts<'a>(b: &Battle, hud: &'a Hud, r: ObjectRef, local: bool, view: &Vi
     }
     let tiles = if local {
         let hand = &b.hands[o.alliance as usize];
-        let chip = hand.ids.get(hand.cursor as usize).copied().unwrap_or(NO_CHIP);
-        match hud.chip_icons.get(chip as usize) {
+        let chip = hand.ids.get(hand.cursor as usize).copied().flatten().and_then(|h| b.content.chip_number(h));
+        match chip.and_then(|c| hud.chip_icons.get(c as usize)) {
             Some(t) if !t.is_empty() => t,
             _ => return,
         }

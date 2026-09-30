@@ -62,12 +62,30 @@ const CACHED: usize = 8;
 
 /// What the runtime binds for `content`.
 fn plan(content: &Content) -> BindPlan {
+    use bn6_content_api::Registry;
     let d = &content.defs;
+    // The entries that are no definition (the engine's own, registration by
+    // number's): scripts reach them as stand-ins.
+    let defined: std::collections::HashSet<(Registry, &str)> =
+        d.definitions.defs.iter().map(|x| (x.registry, x.key.as_str())).collect();
+    let mut entries = Vec::new();
+    let mut add = |registry: Registry, keys: &mut dyn Iterator<Item = &String>| {
+        for (i, key) in keys.enumerate() {
+            if !defined.contains(&(registry, key.as_str())) {
+                entries.push((registry, i as u16, key.clone()));
+            }
+        }
+    };
+    add(Registry::Kind, &mut d.kinds.iter().map(|k| &k.key));
+    add(Registry::Action, &mut d.actions.iter().map(|a| &a.key));
+    add(Registry::Weapon, &mut d.weapons.iter().map(|w| &w.key));
     BindPlan {
         functions: d.functions.clone(),
         schemas: d.schemas.iter().map(|s| s.schema.clone()).collect(),
         definitions: d.definitions.clone(),
         handles: d.handles.clone(),
+        entries,
+        assets: content.assets.clone(),
     }
 }
 

@@ -20,7 +20,9 @@ pub struct ChipHand {
     pub attack_bonus: [u16; 6],
     /// Bonus raised while charging (some forms).
     pub charge_bonus: [u16; 6],
-    /// The chips picked, with their codes, before folding.
+    /// The chips picked, with their codes, before folding; none past the
+    /// picks (the game's 0xFFFF). A hand never built holds the zeroed
+    /// block: chip 0 in code A.
     pub selection: [Option<FolderChip>; 6],
     /// Which turn (custom screen, from 0) each chip was picked in.
     pub turn: [u8; 6],
@@ -29,15 +31,17 @@ pub struct ChipHand {
 }
 
 impl ChipHand {
-    /// The hand every battle starts with: no chips.
-    pub fn empty() -> ChipHand {
+    /// The hand every battle starts with: no chips (the selection zeroed:
+    /// `content`'s chip 0 in code A).
+    pub fn empty(content: &crate::content::Content) -> ChipHand {
+        let zeroed = content.chip_numbered(0).map(|id| FolderChip::new(id, crate::content::ChipCode(0)));
         ChipHand {
             cursor: 0,
             ids: [None; 6],
             damage: [0; 6],
             attack_bonus: [0; 6],
             charge_bonus: [0; 6],
-            selection: [None; 6],
+            selection: [zeroed; 6],
             turn: [0; 6],
             modifiers: [0; 6],
         }
