@@ -16,6 +16,11 @@ rust-content = ["bn6-battle/rust-content"]
 # Reading golden traces (examples/rollback_cost).
 trace = ["bn6-battle/trace"]
 
+[dev-dependencies]
+bn6-battle = { workspace = true, features = ["test-content"] }
+# rollback_cost loads the BN6 content pack.
+bn6-content = { path = "../bn6-content" }
+
 [[example]]
 name = "rollback_cost"
 required-features = ["trace"]

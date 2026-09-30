@@ -1,14 +1,15 @@
 //! bn6-frontend: watch a golden trace replayed through the engine, or play.
 //! See docs/frontend.md.
 
-use bn6_assets::Bundle;
-use bn6_frontend::driver::{LivePlayer, TracePlayer, live_setup};
+use bn6_frontend::driver::{LivePlayer, TracePlayer, bn6_live_setup};
 use bn6_frontend::{Renderer, Session, TickHook, app, headless, session};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::Instant;
 
 struct Args {
-    graphics: Option<PathBuf>,
-    sound: Option<PathBuf>,
+    pack: Option<PathBuf>,
+    mute: bool,
     trace: Option<PathBuf>,
     round: usize,
     play: bool,
@@ -21,20 +22,18 @@ struct Args {
     quit_after: Option<u64>,
 }
 
-/// Where `bn6-extract graphics` puts the bundle by default.
-const DEFAULT_GRAPHICS: &str = "data/graphics";
+/// Where `bn6-extract content <rom> <dir>` puts the BN6 pack by default.
+const DEFAULT_PACK: &str = "data/content/bn6";
 
 const USAGE: &str = "\
 usage: bn6-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        bn6-frontend [OPTIONS] --play          play live (you are the left navi)
        bn6-frontend [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
 
-  --graphics PATH  a content pack (from `bn6-extract content <rom> <dir>`), or
-                   the graphics bundle or its directory, from
-                   `bn6-extract graphics <rom> <dir>` (default: $BN6_GRAPHICS,
-                   else data/graphics)
-  --sound BANK     play sound with a content pack's sound, or the bank from
-                   `bn6-extract assets <rom> BANK`
+  --pack DIR       the content pack to play (battle data, graphics and sound),
+                   from `bn6-extract content <rom> <dir>` (default: $BN6_PACK,
+                   else data/content/bn6)
+  --mute           no sound (headless rendering never plays any)
   --round N        the trace round to start with (default 1; later rounds follow)
   --seed N         the live battle's RNG seed
   --scale N        window scale (default 4)
@@ -46,8 +45,8 @@ usage: bn6-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
 
 fn parse() -> Result<Args, String> {
     let mut a = Args {
-        graphics: None,
-        sound: None,
+        pack: None,
+        mute: false,
         trace: None,
         round: 1,
         play: false,
@@ -64,8 +63,8 @@ fn parse() -> Result<Args, String> {
         let mut value = |name: &str| it.next().ok_or_else(|| format!("{name} needs a value"));
         let number = |v: String, name: &str| v.parse::<u64>().map_err(|_| format!("bad {name} {v:?}"));
         match arg.as_str() {
-            "--graphics" => a.graphics = Some(value("--graphics")?.into()),
-            "--sound" => a.sound = Some(value("--sound")?.into()),
+            "--pack" => a.pack = Some(value("--pack")?.into()),
+            "--mute" => a.mute = true,
             "--round" => a.round = number(value("--round")?, "--round")? as usize,
             "--play" => a.play = true,
             "--seed" => a.seed = Some(number(value("--seed")?, "--seed")? as u32),
@@ -91,52 +90,38 @@ fn fail(msg: impl std::fmt::Display) -> ! {
     std::process::exit(1);
 }
 
-/// A content pack's derived data lives in its `.cache` folder.
-fn pack_cache(pack: &std::path::Path) -> PathBuf {
-    pack.join(".cache")
-}
-
-fn is_pack(path: &std::path::Path) -> bool {
-    path.join(bn6_content::pack::MANIFEST).is_file()
-}
-
-/// Show what building a pack's data found (warnings and errors).
+/// Show what loading a pack found (warnings and errors).
 fn show(report: &bn6_content::report::Report) {
     for i in report.issues.iter().filter(|i| i.level != bn6_content::report::Level::Note) {
         eprintln!("{i}");
     }
 }
 
-fn load_graphics(path: &std::path::Path) -> Bundle {
-    if is_pack(path) {
-        let (b, r) = bn6_content::pack::load_graphics(path, &pack_cache(path)).unwrap_or_else(|r| {
+/// Load one part of the pack, or stop with what is wrong with it.
+fn load<T>(pack: &Path, what: &str, f: impl Fn(&Path) -> Result<(T, bn6_content::report::Report), bn6_content::report::Report>) -> T {
+    let t = Instant::now();
+    match f(pack) {
+        Ok((v, r)) => {
             show(&r);
-            fail(format!("can't build the graphics of the content pack {}", path.display()))
-        });
-        show(&r);
-        return b;
+            if std::env::var_os("BN6_LOAD_TIMES").is_some() {
+                eprintln!("loaded the {what} in {:.1?}", t.elapsed());
+            }
+            v
+        }
+        Err(r) => {
+            show(&r);
+            fail(format!(
+                "can't load the {what} of the content pack {}\n(write it with `cargo run -p bn6-extract -- content <rom> {}`)",
+                pack.display(),
+                pack.display()
+            ))
+        }
     }
-    Bundle::load(path).unwrap_or_else(|e| {
-        fail(format!(
-            "can't load the graphics from {}: {e}\n(create them with `cargo run -p bn6-extract -- content <rom> <dir>`)",
-            path.display()
-        ))
-    })
 }
 
 /// Sound: hand each tick's cues to the audio output.
-fn audio_hook(bank: &std::path::Path) -> Box<dyn TickHook> {
-    let bank = if is_pack(bank) {
-        let (b, r) = bn6_content::pack::load_sound(bank, &pack_cache(bank)).unwrap_or_else(|r| {
-            show(&r);
-            fail(format!("can't build the sound of the content pack {}", bank.display()))
-        });
-        show(&r);
-        std::sync::Arc::new(b)
-    } else {
-        bn6_audio::load_bank(bank).unwrap_or_else(|e| fail(format!("can't load the sound bank {}: {e}", bank.display())))
-    };
-    let mut out = bn6_audio::AudioOut::new(bank).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
+fn audio_hook(bank: m4a::SoundBank) -> Box<dyn TickHook> {
+    let mut out = bn6_audio::AudioOut::new(Arc::new(bank)).unwrap_or_else(|e| fail(format!("no audio output: {e}")));
     Box::new(move |b: &bn6_battle::Battle| {
         out.handle(b.sound_cues());
         out.tick();
@@ -154,12 +139,13 @@ fn main() {
             std::process::exit(2);
         }
     };
-    let graphics = args
-        .graphics
+    let pack = args
+        .pack
         .clone()
-        .or_else(|| std::env::var_os("BN6_GRAPHICS").map(PathBuf::from))
-        .unwrap_or_else(|| PathBuf::from(DEFAULT_GRAPHICS));
-    let assets = load_graphics(&graphics);
+        .or_else(|| std::env::var_os("BN6_PACK").map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from(DEFAULT_PACK));
+    let content = Arc::new(load(&pack, "battle data", bn6_content::pack::load_battle));
+    let assets = load(&pack, "graphics", bn6_content::pack::load_graphics);
     session::quiet_engine_panics();
     let mut renderer = Renderer::new(&assets);
 
@@ -168,9 +154,10 @@ fn main() {
         let seed = args.seed.unwrap_or_else(|| {
             std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.subsec_nanos()).unwrap_or(1)
         });
-        sessions.push(Session::new(Box::new(LivePlayer::new(live_setup(seed)))));
+        sessions.push(Session::new(Box::new(LivePlayer::new(bn6_live_setup(&content, seed), content.clone()))));
     } else if let Some(path) = &args.trace {
-        let rounds = TracePlayer::load(path).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())));
+        let rounds =
+            TracePlayer::load(path, &content).unwrap_or_else(|e| fail(format!("can't read {}: {e}", path.display())));
         for r in rounds.into_iter().skip(args.round.saturating_sub(1)) {
             if let Some((a, b)) = r.frame_range() {
                 eprintln!("round {}: frames {a}..={b}", r.round_number);
@@ -198,8 +185,8 @@ fn main() {
     }
 
     let mut hooks: Vec<Box<dyn TickHook>> = Vec::new();
-    if let Some(bank) = &args.sound {
-        hooks.push(audio_hook(bank));
+    if !args.mute {
+        hooks.push(audio_hook(load(&pack, "sound", bn6_content::pack::load_sound)));
     }
     eprintln!("{}", app::HELP);
     let opts = app::Options { scale: args.scale, start_paused: args.paused, quit_after: args.quit_after };

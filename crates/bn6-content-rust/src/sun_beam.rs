@@ -5,7 +5,7 @@
 use bn6_content_api::api::{ObjectFields, SpriteFields};
 use bn6_content_api::{CoreApi, Lifecycle, ObjectRef, Pool, Shadow, Vec3, content_state};
 
-use crate::data::{SUN_BEAM_SPRITES, SunBeamLook};
+use crate::data::{Data, SunBeamLook};
 use crate::{Slot, set_state, state};
 
 pub const INDEX: u8 = 0x48;
@@ -29,7 +29,7 @@ pub fn spawn(
     offset: Vec3,
     slot: Slot,
 ) -> Option<ObjectRef> {
-    let r = api.spawn(Pool::Effect, INDEX, offset, [look.sprite, look.palette, 0, 0])?;
+    let r = api.spawn(Pool::Effect, INDEX, offset, [look.look, look.palette, 0, 0])?;
     api.set_related1(r, Some(owner));
     let (alliance, flip) = (api.alliance(owner), api.flip(owner));
     api.set_alliance(r, alliance);
@@ -44,19 +44,19 @@ pub fn end(api: &mut dyn CoreApi, r: ObjectRef) {
     api.set_lifecycle(r, Lifecycle::Destroy);
 }
 
-pub fn update(api: &mut dyn CoreApi, me: ObjectRef) {
+pub fn update(data: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
     match api.lifecycle(me) {
-        Lifecycle::Init => init(api, me),
+        Lifecycle::Init => init(data, api, me),
         Lifecycle::Update => follow(api, me),
         Lifecycle::Destroy => api.free(me),
     }
 }
 
 /// `sub_80E5C4C`.
-fn init(api: &mut dyn CoreApi, me: ObjectRef) {
+fn init(data: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
     let (look, palette) = (api.param(me, 0), api.param(me, 1));
     let flip = api.alliance(me) ^ api.flip(me);
-    api.sprite_load(me, SUN_BEAM_SPRITES[look as usize]);
+    api.sprite_load(me, data.sun_beam_looks[look as usize]);
     api.sprite_set_animation(me, 0);
     api.sprite_step(me);
     use bn6_content_api::api::OtherFields;

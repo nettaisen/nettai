@@ -1,4 +1,4 @@
-//! HUD graphics for the asset bundle. Everything here is uncompressed in
+//! HUD graphics for the pack's graphics. Everything here is uncompressed in
 //! the ROM; the HUD tasks (`sub_801BF64`) copy it to VRAM as needed.
 
 use crate::{Rom, u32at};

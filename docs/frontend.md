@@ -11,27 +11,24 @@ and blending rules.
 It replays a golden trace (the recorded inputs of a real match) or is
 played live from the keyboard, and can render chosen frames to PNG.
 
-## 1. Graphics
+## 1. The content pack
 
-The graphics come from your own ROM (US Falzar, `MEGAMAN6_FXXBR6E`) and are
-never checked in. Extract them once:
+Everything the frontend shows and plays comes from a content pack made from
+your own ROM (US Falzar, `MEGAMAN6_FXXBR6E`), never checked in: the battle
+data the engine runs on, the graphics and the sound, in open formats
+(TOML, indexed PNG, JSON, Tiled maps, MIDI, WAV; see
+`docs/design/content-pack.md` and `docs/design/asset-formats.md`). Extract
+it once:
 
-    cargo run -p bn6-extract -- graphics <rom> data/graphics
+    cargo run -p bn6-extract -- content <rom> data/content/bn6
 
-This writes `data/graphics/bn6-assets.bin` (about 5 MB; `data/graphics/`
-is gitignored). The frontend loads it at start-up from
-`--graphics <dir-or-file>`, else `$BN6_GRAPHICS`, else `data/graphics`.
-(`bn6-extract assets <rom> <bank>` writes the sound bank; see bn6-audio.)
+(`data/content/` is gitignored.) The frontend loads the pack at start-up
+from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight
+from its files: the battle data into the engine's `Content`, the graphics
+through bn6-content's importer, and, when a window opens, the sound.
+`BN6_LOAD_TIMES=1` prints how long each part took.
 
-Or extract a content pack, the graphics and sound as editable open formats
-(indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
-`docs/design/asset-formats.md`), and load that; the bundle is then a cache
-built from the pack:
-
-    cargo run -p bn6-extract -- content <rom> data/content
-    cargo run -p bn6-frontend -- <trace.jsonl> --graphics data/content --sound data/content
-
-The bundle's types live in the `bn6-assets` crate. It holds, decoded
+The graphics load into the types of the `bn6-assets` crate, decoded
 (tiles as palette indices, colours as BGR555):
 
 - **Sprites**: every battle sprite (categories 0x00..=0x14 of
@@ -53,11 +50,12 @@ The bundle's types live in the `bn6-assets` crate. It holds, decoded
     cargo run -p bn6-frontend -- <trace.jsonl>              # watch a trace
     cargo run -p bn6-frontend -- --play                     # play live
     cargo run -p bn6-frontend -- <trace.jsonl> --headless 150,300,600 --out <dir>
-    cargo run -p bn6-frontend -- --play --sound <bank>      # with sound
+    cargo run -p bn6-frontend -- --play --pack <dir>        # another pack
 
-Options: `--round N` starts a trace at round N (later rounds follow when a
-round's input runs out), `--scale N` sets the window scale (default 4),
-`--paused` starts paused, `--seed N` fixes a live battle's RNG seed,
+Options: `--pack <dir>` names the content pack (see above), `--mute`
+turns the sound off, `--round N` starts a trace at round N (later rounds
+follow when a round's input runs out), `--scale N` sets the window scale
+(default 4), `--paused` starts paused, `--seed N` fixes a live battle's RNG seed,
 `--png-scale N` scales headless output, `--quit-after N` closes the window
 after N ticks.
 
@@ -72,7 +70,8 @@ stops, shows the reason on screen and prints it; the first difference from
 the trace's recorded state is printed too. Frame numbers are the trace's.
 
 **Live play**: you are the left navi; the right one stands still. The round
-uses a built-in netbattle setup (the recorded matches' field and a
+is the recorded matches' netbattle on the pack's BN6 content
+(`driver::bn6_live_setup`: their field and a
 1000-HP MegaMan per side, each with a folder of GunDelSols, Geddon,
 Invisibl and EraseMan, shuffled from the seed). The custom screen is the
 engine's (docs/engine/custom-screen.md), shown as text for now: the dealt
@@ -89,7 +88,8 @@ starts over.
 numbers, or tick numbers in live play) to `frame_NNNNN.png`. It exits
 non-zero if some frames couldn't be rendered (the engine stopped first).
 
-**Sound**: `--sound <bank>` plays each tick's sound cues through bn6-audio.
+**Sound**: the window plays each tick's sound cues through bn6-audio, with
+the pack's sound, unless `--mute`; headless rendering never plays sound.
 Other per-tick consumers can plug in the same way, as a `TickHook`
 (`bn6_frontend::session`), which the window runs after every tick.
 
@@ -152,7 +152,8 @@ Small, presentation-only additions:
   frame (the original's field renderer clears them after drawing).
 - bn6-extract reads LZ77-compressed sprite archives correctly (they start
   with a size word), so the 41 compressed battle sprites have animation
-  data in `sprites_generated.rs` too.
+  timing too (the pack's `animations.json`, which the engine loads into
+  `Content::animations`).
 
 ## 4. Verification
 
@@ -163,6 +164,9 @@ original running under emulation, one per battle frame. On the vanilla PvP test 
 fades and the opponent's mosaic fade-in, round and turn banners,
 movement, GunDelSol, the deletion, the win banner and the fade out, and in
 round 2 Beast Out with its overlay, afterimages, lock-on and screen dim.
+Frames rendered from the content pack are pixel-identical to those the
+frontend rendered before the engine and frontend switched to packs (all
+2405 frames of this trace).
 
 What differs is what isn't drawn or modelled yet:
 

@@ -170,7 +170,7 @@ fn temp(name: &str) -> PathBuf {
 fn write_pack(dir: &Path, b: &SoundBank) {
     let (files, failures) = pack::export_sound(b);
     assert!(failures.is_empty(), "{failures:?}");
-    let mut all = vec![pack::manifest("test", None, true)];
+    let mut all = vec![pack::manifest("test", None, true, false)];
     all.extend(files);
     pack::write_files(dir, &all).unwrap();
 }

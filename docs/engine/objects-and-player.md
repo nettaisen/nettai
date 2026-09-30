@@ -1097,7 +1097,7 @@ Branches e–i also call `sub_801031C(0x10)`, which clears the idle-window bit, 
 3. Call `sub_80EB04C` **immediately**, so phase 0 runs on the same tick as the input.
 
 The two parameters:
-- `lag`, from `sub_8010332`: 1 in battle mode 9. Otherwise 4 if navi stat 0x29 == 0, else `byte_8020FE0[stat29*11 + stat2B]`. That table (data/) is 253 bytes, all 4. **Effectively 4.**
+- `lag`, from `sub_8010332`: 1 in battle mode 9. Otherwise 4 if navi stat 0x29 == 0, else `byte_8020FE0[stat29*11 + stat2B]`. That table (each navi's `move_lag` in the content) is 253 bytes, all 4. **Effectively 4.**
 - `type`, from `sub_80103A8`: 3 if navi stat 0x31 (ProcessingBug) != 0, else 0.
 
 ##### M6.2 `sub_80EB04C` body
@@ -2044,7 +2044,7 @@ Damage is still applied in time stop (step 5 runs before step 10). Status timers
 #### H5. Status effects
 
 **Applying a status** (`sub_801A554`). Let `s = StatusEffectFinal` (+0x11, set by the collision engine from the attacker's +0x10, or by the counter to 0x12). If `s != 0`:
-- Look up `e = off_80209EC[(s>>4)-1][s & 0xF]` (data/). Each entry is 8 bytes: `u32 f2bits, u16 duration, u8 collOffset`.
+- Look up `e = off_80209EC[(s>>4)-1][s & 0xF]` (`Rules::status_effects`). Each entry is 8 bytes: `u32 f2bits, u16 duration, u8 collOffset`.
 - Write the duration to `coll+collOffset` and set `f2 |= f2bits`.
 - If `s` ∈ [0x50, 0x55], also set `f2 &= ~6` (freeze cancels flinch and mercy).
 
@@ -2184,7 +2184,7 @@ Trace: soundmod, every round's first turn. Both navis cross at once: side 0 (Gre
 - Init (`sub_80C4368`): stores `off_80C42D4[Param1]` (a per-animation byte table) **in its CollisionDataPtr slot**, so a trace reading ObjectFlags1 through it reads 0 (it points into ROM); the sprite `byte_80C4320[Param1]`; CurAnim = Param4 and CurAnimCopy = 0 (one halfword store); state 4, then the update.
 - Update (`sub_80C43C4`): CurAnim = owner's + Param4; position = owner's; then if ExtraVars[0] (`sub_80C4526`): Y and Z + 1 pixel; else if the table's byte for the owner's animation is 0: Y and Z − 1 pixel (same place on screen, drawn behind the owner). Visibility follows the owner unless PhaseInitialized is set (`sub_80C44E4`/`sub_80C44FA` force it); the flip follows the owner. Action 0: Param3 = 0 → `object_updateSprite` unless in time stop; else `sub_801BCD0`.
 - Removal (`sub_80C44C8`): state 8, freed at its next update.
-- The tables: `data::cross::BODY_OVERLAYS` (the byte tables run back to back up to the pointer table; an animation past a table's end reads the next one, so each row is extracted to the block's end).
+- The tables: `ObjectData::body_overlays` (a content pack's `objects/body-overlay/object.toml`; the byte tables run back to back up to the pointer table; an animation past a table's end reads the next one, so each row is extracted to the block's end).
 
 ## 13. RNG uses (all that touch objects or battle setup)
 

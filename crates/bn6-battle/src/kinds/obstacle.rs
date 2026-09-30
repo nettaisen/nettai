@@ -462,7 +462,7 @@ pub fn blink_out(b: &mut Battle, r: ObjectRef, f2: u32) -> BlinkOut {
 }
 
 /// `sub_800F90E`: an absorbed obstacle of kind `kind` (see
-/// `data::ABSORBED_SPRITES`) flies to the absorbing side's navi.
+/// `ObjectData::absorbed_sprites`) flies to the absorbing side's navi.
 /// `palette` is the obstacle's sprite palette.
 pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, kind: u8, palette: u8) {
     let side = (f2_of(b, r) & f2::ABSORBED_BY_1 != 0) as u8;

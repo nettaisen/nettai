@@ -4,7 +4,7 @@
 //! runs in time stop.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
@@ -76,7 +76,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.shadow = Shadow::WithSprite;
     s.look.palette = 0;
     s.look.set_flip(flip);
-    s.set_animation(ANIMS[aim]);
+    s.set_animation(ANIMS[aim], &b.content);
     let Some(c) = b.create_collision(r) else {
         return b.objects.free(r);
     };

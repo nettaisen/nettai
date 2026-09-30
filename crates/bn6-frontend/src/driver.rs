@@ -2,14 +2,14 @@
 //! live input from the keyboard.
 
 use bn6_battle::battle::{mode, top};
-use bn6_battle::custom::{self, BattleFolder, BuiltIn, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
-use bn6_battle::custom::Library;
-use bn6_battle::data::ChipCode;
+use bn6_battle::content::{ChipCode, ChipId, Content};
+use bn6_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
 use bn6_battle::input::keys;
 use bn6_battle::link::Link;
 use bn6_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
 use bn6_battle::trace::{self, Frame, Round};
 use bn6_battle::{Battle, PlayerTick, Rng, TickEvents};
+use std::sync::Arc;
 
 /// One tick's inputs.
 pub struct Step {
@@ -44,6 +44,8 @@ pub trait Driver {
 /// Replays one round of a golden trace.
 pub struct TracePlayer {
     round: Round,
+    /// The content the trace's battle runs on (BN6's).
+    content: Arc<Content>,
     /// Indices of the frames the engine simulates.
     frames: Vec<usize>,
     pos: usize,
@@ -51,7 +53,7 @@ pub struct TracePlayer {
 }
 
 impl TracePlayer {
-    pub fn new(round: Round, round_number: usize) -> TracePlayer {
+    pub fn new(round: Round, round_number: usize, content: Arc<Content>) -> TracePlayer {
         let start = round.setup.frame;
         let frames = round
             .frames
@@ -61,12 +63,12 @@ impl TracePlayer {
             .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
             .map(|(i, _)| i)
             .collect();
-        TracePlayer { round, frames, pos: 0, round_number }
+        TracePlayer { round, content, frames, pos: 0, round_number }
     }
 
-    /// Every round of a trace file.
-    pub fn load(path: &std::path::Path) -> std::io::Result<Vec<TracePlayer>> {
-        Ok(trace::rounds(path)?.into_iter().enumerate().map(|(i, r)| TracePlayer::new(r, i + 1)).collect())
+    /// Every round of a trace file, on `content`.
+    pub fn load(path: &std::path::Path, content: &Arc<Content>) -> std::io::Result<Vec<TracePlayer>> {
+        Ok(trace::rounds(path)?.into_iter().enumerate().map(|(i, r)| TracePlayer::new(r, i + 1, content.clone())).collect())
     }
 
     pub fn len(&self) -> usize {
@@ -91,12 +93,7 @@ impl TracePlayer {
 impl Driver for TracePlayer {
     fn start(&mut self) -> Battle {
         self.pos = 0;
-        let mut b = Battle::new(self.round.round_setup());
-        // Counters carried in from the round's init.
-        let bs = trace::unhex(&self.round.setup.battle_state);
-        b.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
-        b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
-        b
+        self.round.start(self.content.clone())
     }
 
     fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
@@ -135,14 +132,21 @@ fn unhex(s: &str) -> Vec<u8> {
     (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
 }
 
-/// A round to play live: both players bring the same folder, each
-/// shuffled from the seed.
-pub fn live_setup(seed: u32) -> RoundSetup {
+/// The live round on BN6's content: the netbattle of the recorded
+/// matches, both players with the live folder (`LIVE_FOLDER`).
+pub fn bn6_live_setup(content: &Content, seed: u32) -> RoundSetup {
+    live_setup(content, BattleSettings::netbattle_from_bytes(&unhex(LIVE_SETTINGS), content), &LIVE_FOLDER, seed)
+}
+
+/// A round to play live on `content` with these battle settings: two
+/// MegaMen with 1000 HP who both bring `folder` (chip ids with codes,
+/// repeated to 30 chips), each shuffled from the seed.
+pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(ChipId, u8)], seed: u32) -> RoundSetup {
     let stats = NaviStats::from_bytes(&unhex(LIVE_NAVI).try_into().unwrap());
     let player = |side: u32| {
         let saved = SavedFolder {
             chips: std::array::from_fn(|i| {
-                let (id, code) = LIVE_FOLDER[i % LIVE_FOLDER.len()];
+                let (id, code) = folder[i % folder.len()];
                 FolderChip::new(id, ChipCode(code))
             }),
             regular: None,
@@ -150,13 +154,14 @@ pub fn live_setup(seed: u32) -> RoundSetup {
         };
         let mut rng = Rng::new(seed ^ side.wrapping_mul(0x9E37_79B9));
         PlayerSetup {
-            folder: Some(BattleFolder::shuffled(&saved, 0, &mut rng, &BuiltIn)),
+            folder: Some(BattleFolder::shuffled(&saved, 0, &mut rng, content)),
             unlocks: Unlocks::everything(GameVersion::Falzar),
             joypad_phase: 0,
         }
     };
     RoundSetup {
-        settings: BattleSettings::netbattle_from_bytes(&unhex(LIVE_SETTINGS)),
+        content: content.hash(),
+        settings,
         navi_stats: [stats, stats],
         rng: seed,
         local_side: 0,
@@ -170,8 +175,8 @@ pub fn live_setup(seed: u32) -> RoundSetup {
     }
 }
 
-/// The live folder's chips (ids with their codes), repeated to 30:
-/// GunDelSols, Geddon, Invisibl and EraseMan.
+/// The live folder on BN6's content (chip ids with their codes), repeated
+/// to 30: GunDelSols, Geddon, Invisibl and EraseMan.
 const LIVE_FOLDER: [(u16, u8); 6] = [(0x11, 13), (0x0F, 2), (0xA7, 26), (0x11, 16), (0xB1, 26), (0xEC, 10)];
 
 /// Plays a round from the keyboard: the local player is the left navi,
@@ -179,12 +184,13 @@ const LIVE_FOLDER: [(u16, u8); 6] = [(0x11, 13), (0x0F, 2), (0xA7, 26), (0x11, 1
 /// custom screen picks the first chip it can and presses OK.
 pub struct LivePlayer {
     pub setup: RoundSetup,
+    content: Arc<Content>,
     ticks: u32,
 }
 
 impl LivePlayer {
-    pub fn new(setup: RoundSetup) -> LivePlayer {
-        LivePlayer { setup, ticks: 0 }
+    pub fn new(setup: RoundSetup, content: Arc<Content>) -> LivePlayer {
+        LivePlayer { setup, content, ticks: 0 }
     }
 }
 
@@ -210,7 +216,7 @@ fn bot_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
 impl Driver for LivePlayer {
     fn start(&mut self) -> Battle {
         self.ticks = 0;
-        Battle::new(self.setup.clone())
+        Battle::new(self.setup.clone(), self.content.clone())
     }
 
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
@@ -269,7 +275,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
             SlotKind::Scrap { right_half: false } => "SCRAP".to_string(),
             SlotKind::Redeal { right_half: false } => "REDEAL".to_string(),
             SlotKind::Empty | SlotKind::Hidden | SlotKind::Scrap { .. } | SlotKind::Redeal { .. } => return String::new(),
-            _ => screen.chip_in(slot, folder).map(|c| format!("{} {}", BuiltIn.chip(c.id).name, c.code.letter())).unwrap_or_default(),
+            _ => screen.chip_in(slot, folder).map(|c| format!("{} {}", b.content.chip(c.id).name, c.code.letter())).unwrap_or_default(),
         };
         let mark = match x.state {
             SlotState::Selected => "+",
@@ -290,7 +296,7 @@ pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
         .selection()
         .iter()
         .map(|&s| match screen.chip_in(s, folder) {
-            Some(c) => format!("{} {}", BuiltIn.chip(c.id).name, c.code.letter()),
+            Some(c) => format!("{} {}", b.content.chip(c.id).name, c.code.letter()),
             None => "BEAST OUT".to_string(),
         })
         .collect();
@@ -319,7 +325,10 @@ mod tests {
     /// same, and the fight starts with both hands.
     #[test]
     fn live_custom_screen() {
-        let mut live = LivePlayer::new(live_setup(7));
+        let content = bn6_battle::content::testing::content();
+        let settings = content.rules.stages.settings(bn6_battle::content::testing::LINK_BATTLE);
+        let folder = [(bn6_battle::content::testing::SUN_GUN_3, 0)];
+        let mut live = LivePlayer::new(live_setup(&content, settings, &folder, 7), content.clone());
         let mut b = live.start();
         let mut shown = false;
         for tick in 0..3000u32 {

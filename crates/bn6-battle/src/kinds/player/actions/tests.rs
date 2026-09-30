@@ -1,5 +1,8 @@
-//! Action timelines, checked against what the original game does in a
-//! netbattle (tick offsets from the tick the action starts).
+//! Action timelines, as the original game runs them in a netbattle (tick
+//! offsets from the tick the action starts), on the hand-authored test
+//! content (`content::testing`): the timings that come from data are that
+//! content's, the rest are the engine's. The same timelines with BN6's own
+//! data are checked in the verification workspace.
 
 use super::super::ai_mut;
 use crate::actor::request;
@@ -8,7 +11,8 @@ use crate::collision::f1;
 use crate::hand::ChipHand;
 use crate::input::keys;
 use crate::object::{ObjectRef, PanelPos, Pool, state};
-use crate::setup::{BattleSettings, NaviStats, NaviWeapons, RoundSetup, SetScore};
+use crate::content::testing;
+use crate::setup::{NaviStats, NaviWeapons};
 
 /// A plain MegaMan with 1000 HP, fighting in the sun.
 fn megaman() -> NaviStats {
@@ -26,23 +30,10 @@ fn megaman() -> NaviStats {
 /// Two navis idle and fighting: side 0 at (2,2), side 1 at (5,2) (side 1
 /// updates first). Returns the battle and both players.
 fn fight() -> (Battle, ObjectRef, ObjectRef) {
-    // A link battle on the standard field with the usual two-navi list.
-    let settings = BattleSettings::netbattle_from_bytes(&[
-        0xE3, 0x64, 0x15, 0x00, 0x0B, 0x00, 0x38, 0x00, 0x8C, 0x0E, 0x00, 0x00, 0x92, 0x19, 0x0B, 0x08,
-    ]);
-    let setup = RoundSetup {
-        settings,
-        navi_stats: [megaman(); 2],
-        rng: 1,
-        local_side: 0,
-        score: SetScore::default(),
-        later_stages: Default::default(),
-        low_hp_music_latched: false,
-        sp_times: Default::default(),
-        players: Default::default(),
-        link_delay: 0,
-    };
-    let mut b = Battle::new(setup);
+    // A link battle on a plain field with the usual two-navi list.
+    let mut setup = testing::round_setup(testing::LINK_BATTLE, megaman());
+    setup.settings.effects = 0xE8C;
+    let mut b = Battle::new(setup, testing::content());
     b.spawn_actors();
     b.run_objects();
     b.round.flags |= battle_flags::FIGHTING;
@@ -103,7 +94,7 @@ fn a_step_commits_on_the_third_tick_and_ends_on_the_twelfth() {
 }
 
 #[test]
-fn gun_del_sol_drains_480_hp_in_the_sun() {
+fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
     // Step to (3,2), in range of the target at (5,2).
@@ -113,7 +104,8 @@ fn gun_del_sol_drains_480_hp_in_the_sun() {
     assert_eq!((b.objects.get(p0).action, b.objects.get(p0).panel), (8, PanelPos { x: 3, y: 2 }));
 
     let mut hand = ChipHand::empty();
-    hand.ids[0] = 0x11; // GunDelS3
+    hand.ids[0] = testing::SUN_GUN_3;
+    let firing = b.content.chip(testing::SUN_GUN_3).gun_del_sol.unwrap().firing_ticks as u32;
     b.hands[0] = hand;
     let mut t = 0;
     tick(&mut b, p0, p1, keys::A);
@@ -121,13 +113,14 @@ fn gun_del_sol_drains_480_hp_in_the_sun() {
     assert_eq!(b.hands[0].cursor, 1);
     assert_eq!(ai_mut(&mut b, p0).requests & request::CHIP, 0);
 
-    // Tick 1: the gun comes out, attached right behind its owner.
+    // Tick 1: the gun comes out, at its owner's attach point.
     run_to(&mut b, p, &mut t, 1, keys::A);
     assert_eq!(b.objects.get(p0).anim, 0x0A);
     assert_eq!(following(&b, p0)[0], (Pool::Actor, crate::kinds::attachment::INDEX));
     let gun = ai_mut(&mut b, p0).overlay.unwrap();
     let (at, g) = (b.objects.get(p0).pos, b.objects.get(gun).pos);
-    assert_eq!((g.x - at.x, g.y - at.y, g.z - at.z), (24 << 16, 0, 24 << 16));
+    let point = testing::GUN_POINT;
+    assert_eq!((g.x - at.x, g.y - at.y, g.z - at.z), ((point.x as i32) << 16, 0, (point.y as i32) << 16));
 
     // Tick 7: the beam, two panels ahead.
     run_to(&mut b, p, &mut t, 7, 0);
@@ -144,19 +137,22 @@ fn gun_del_sol_drains_480_hp_in_the_sun() {
     assert_eq!(b.objects.get(p1).hp, 996);
     assert_eq!(b.objects.get(p1).action, 8);
     assert_eq!(f1_of(&b, p1) & (f1::FLINCHING | f1::FLASHING), 0);
-    run_to(&mut b, p, &mut t, 128, 0);
-    assert_eq!(b.objects.get(p1).hp, 520);
+    // One hit a tick for the chip's firing time.
+    let drained = 1000 - 4 * firing as u16;
+    run_to(&mut b, p, &mut t, 8 + firing, 0);
+    assert_eq!(b.objects.get(p1).hp, drained);
     assert!(!b.objects.is_allocated(beam));
-    run_to(&mut b, p, &mut t, 129, 0);
+    run_to(&mut b, p, &mut t, 9 + firing, 0);
     assert_eq!(b.objects.get(gun).anim, 2);
 
-    // Tick 139: back to idle; the gun ends itself and is gone a tick later.
-    run_to(&mut b, p, &mut t, 138, 0);
+    // 11 ticks later: back to idle; the gun ends itself and is gone a
+    // tick later.
+    run_to(&mut b, p, &mut t, 18 + firing, 0);
     assert_eq!(b.objects.get(p0).action, 0x37);
-    run_to(&mut b, p, &mut t, 139, 0);
+    run_to(&mut b, p, &mut t, 19 + firing, 0);
     assert_eq!(b.objects.get(p0).action, 8);
     assert_eq!(b.objects.get(gun).state, state::DESTROY);
-    run_to(&mut b, p, &mut t, 140, 0);
+    run_to(&mut b, p, &mut t, 20 + firing, 0);
     assert!(!b.objects.is_allocated(gun));
-    assert_eq!(b.objects.get(p1).hp, 520);
+    assert_eq!(b.objects.get(p1).hp, drained);
 }

@@ -10,6 +10,12 @@ from here to there that keeps the golden-trace results intact at every step.
 It changes no engine code. The formats for content files and the scripting runtime are being prototyped
 separately; this document fixes the boundary those prototypes plug into.
 
+The analysis is kept as written: its line counts, file names and "today" describe the engine at the time. Since
+then, step 9 of the migration plan (§6) is done and decision 2 (§7) is decided: the battle data comes from a
+content pack, loaded at run time into `Content` (docs/design/content-pack.md). There are no generated Rust tables
+and no embedded BN6 pack; the engine has no default content, and BN6's pack comes only from the user's ROM. Where
+the inventory below says "generated", read: then, generated Rust tables; now, the pack's battle data.
+
 Routine names are the original's (`sub_80EDAE0`). "Tick" is one call of `Battle::tick`.
 
 ## 0. Summary
@@ -39,7 +45,7 @@ needs.
 | Core | ≈ 1,650 | 11% |
 | Ruleset | ≈ 7,050 | 48% |
 | Content, code | ≈ 3,300 | 23% |
-| Content, data (1,474 generated + 463 schema) | 1,937 | 13% |
+| Content, data (1,474 in generated tables, then; 463 schema) | 1,937 | 13% |
 | Tests and trace harness | ≈ 750 | 5% |
 
 The ruleset is large because the PvP navi framework is nearly complete, while very little content is ported: 4
@@ -64,7 +70,7 @@ that alias after a slot is reused; and content ids hard-coded throughout the rul
 | (c) Content | Specific chips, actions, object kinds, navis, forms, effects, data tables | Does it name one? |
 
 A module is "mixed" when it contains more than one layer, for example ruleset code that switches on a specific
-form number, or core code that reads a generated content table through a global.
+form number, or core code that reads a content table through a global (then a generated Rust table).
 
 ### 1.2 bn6-battle, module by module
 
@@ -78,7 +84,7 @@ Lines are exact (`wc -l`); splits are by function and rounded.
 | rng.rs | 45 | core | The step function; both streams. Only the simulation stream is modeled. |
 | input.rs | 46 | core | Key bits and held/pressed/released records. |
 | object/mod.rs | 411 | core | Pools, lowest-free allocation, the linked update list, `spawn` (after current, else tail), `free` (unlink, own links kept), the loop cursor. **Mixed:** `Object` carries ruleset fields (hp, max_hp, name_id, chip, chips_held, damage, stamina, element, the slide fields, drag_step, shake_*, saved_state), about 35 lines. |
-| object/sprite.rs | 153 | core | The animation stepper and `Look`. **Mixed:** reads frame timing from the generated `SPRITES` table through a global (`data::animation`). |
+| object/sprite.rs | 153 | core | The animation stepper and `Look`. **Mixed:** reads frame timing from a global (then the generated `SPRITES` table; now the battle's `Content` passes it in). |
 | sound.rs | 119 | core (≈45), content (≈20), tests (≈54) | The cue channel is core; the named `SoundId` constants are content. |
 | battle.rs | 1,117 | ruleset (≈900), core (≈150), content (≈70) | Core: `tick`, `run_objects` (flags sampled before the handler, successor read after), the pause and time-stop gates, the sound buffer, `Fade`. Ruleset: round state, the mode handler, the fighting machine, results, custom screen, combo, battle time, turn timer, gauge, hand exposure, damage carry, NaviCust drain, low-HP music, and the order of the per-tick systems. **Mixed:** `count_down_beast_out` (MegaMan and Beast forms), `custom_open_requested` and `apply_actor_inputs` (Beast Over), music and banner ids, per-navi win/lose banners, `spawn_actors` naming the rock kind, the drain period table. |
 | collision.rs | 601 | core (≈260), ruleset (≈340) | Core: the slot pool, per-panel masks, `present`/`remove`, pair iteration and dedup, region expansion. Ruleset: the hit kernel (`resolve_hit`: state filters, guard, air/ground, invulnerability, status, counter, multiplier), the raw channel, damage-word decoding, panel conversions. **Mixed:** reads `REGIONS`, `FIELD_REGIONS`, `COLLISION_TYPES` and `ELEMENT_WEAKNESS` as globals; aqua-on-ice and heat-on-grass are panel-type rules inside the kernel. |
@@ -90,12 +96,12 @@ Lines are exact (`wc -l`); splits are by function and rounded.
 | setup.rs | 509 | ruleset (≈300), content (≈150), tests (≈60) | Settings and the NaviStats model and codec are ruleset. **Mixed:** `ActorKind::Rock`/`Object6E`/`Object7D`, the `Navi` and `Form` id constants, the NaviCust bug fields. |
 | trace.rs | 372 | harness | Trace codec and comparison. **Mixed:** knows which kinds have garbage positions by pool and index (`pos_is_garbage`). |
 
-**Content data** (`data/`)
+**Content data** (`data/`, at the time; now `content/`, with the tables loaded from a pack)
 
 | Module | Lines | Layer | Notes |
 |---|---|---|---|
 | mod.rs, attacks.rs, lockon.rs, player.rs | 463 | content schema | Row types (`ChipData`, `RockKind`, `EffectSprite`, `AnimFrame`, ...) and typed lookups. |
-| *_generated.rs (11 files) | 1,474 | data | Written by bn6-extract. `CHIPS` (411), `SPRITES` (298 sprites' animation timing), `EFFECTS`, `SPARKS`, `ATTACHMENTS`, `ROCKS`, `ACTOR_LISTS`, `PANEL_LAYOUTS` (237), the player/form/navi tables, and ruleset tables (`COLLISION_TYPES`, `REGIONS`, `ELEMENT_WEAKNESS`, `STEP_RULES`, `STATUS_EFFECTS`, vectors, `CHARGE_THRESHOLDS`). |
+| generated tables (11 files) | 1,474 | data | Written by bn6-extract then; now the pack's battle data. `CHIPS` (411), `SPRITES` (298 sprites' animation timing), `EFFECTS`, `SPARKS`, `ATTACHMENTS`, `ROCKS`, `ACTOR_LISTS`, `PANEL_LAYOUTS` (237), the player/form/navi tables, and ruleset tables (`COLLISION_TYPES`, `REGIONS`, `ELEMENT_WEAKNESS`, `STEP_RULES`, `STATUS_EFFECTS`, vectors, `CHARGE_THRESHOLDS`). |
 
 **Object kinds** (`kinds/`, 2,724 lines without the player)
 
@@ -173,14 +179,15 @@ These are the couplings a boundary has to cut. Each one is a concrete site, not 
 8. **Trace identity and presentation read raw kind numbers.** `trace::compare` prints `T{type}#{index}` and
    decides garbage positions from `(type, index)`; the frontend special-cases effect #0x0A and actor #0x57.
 9. **State references static data.** `rock::Vars` holds `&'static RockKind`; `BattleSettings` holds
-   `&'static ActorList`. Loaded content would need ids instead.
+   `&'static ActorList`. Loaded content would need ids instead. (Fixed since: `BattleSettings::actors` is an
+   `ActorListId` and a rock's kind is a variant id.)
 10. **Duplicated core helper.** `player::update_sprite` and `common::update_sprite` are the same function.
 
 ### 1.5 The other crates
 
 | Crate | Lines | Layer | Notes |
 |---|---|---|---|
-| bn6-extract | 1,390 | content importer | ROM addresses and decoders for every table (main.rs 816: engine tables; graphics.rs 381 and hud.rs 156: the asset bundle; assets.rs 37: the sound bank). It is the BN6 content pipeline for ruleset and content data alike. |
+| bn6-extract | 1,390 | content importer | ROM addresses and decoders for every table (then main.rs 816: engine tables; graphics.rs 381 and hud.rs 156: graphics; assets.rs 37: sound. Now it writes all of it as one content pack). It is the BN6 content pipeline for ruleset and content data alike. |
 | bn6-assets | 371 | presentation core + BN6 schema | Generic tile/palette/sprite-part types plus a BN6-specific `Hud` (chip names, mugshots, banners). |
 | bn6-frontend | 2,434 | presentation core (≈1,120) + BN6 presentation (≈1,310) | compose, render, text, app, main, headless, session and lib are generic. hud.rs (502) and stage.rs (276) draw BN6's HUD and field; objects.rs (284) is generic except for the #0x57 and #0x0A special cases; driver.rs (253) hard-codes a live-play hand (GunDelS3, Geddon, Beast Out) and a MegaMan setup. It reads engine internals directly (objects, actor status bits, hands, the transform sequencer, moods). |
 | bn6-audio | 560 | presentation mapping | `SoundCalls` turns cues into driver calls with BN6 specifics (music player 31, the pinch pitch/tempo, volume restore on players 31 and 22). |
@@ -629,15 +636,15 @@ order.
 A battle runs against one immutable content pack, identified by a hash. It holds data tables and script
 references. Which parts are data:
 
-| Group | Tables | Today |
-|---|---|---|
-| Ruleset data | collision types, regions, filtered regions, element weakness, panel type flags, step rules, road directions, status effects, push/ice/road vectors, bubble bob, charge thresholds, HP-bug periods, gauge rates, banner holds | generated Rust |
-| Chips | 411 chip records; family elements; per-action variant tables; damage formulas | generated Rust (formulas: panic) |
-| Kinds | per kind: pool, trace index, flags, state schema, script; attachment kinds (52); effect and spark sprites (108 + 16); rocks (4); absorbed-obstacle sprites (15) | Rust code + generated tables |
-| Sprites | animation timing: `(SpriteId, anim) -> [(duration, flags)]` for 298 sprites | generated Rust |
-| Navis | navi records (36 NameIDs), sprites, elements, weaknesses, attach points (36 × 34), move lag, buster bonus, win/lose banners | generated Rust |
-| Forms | sprite, element, weakness, weapons, per form (25) | generated Rust |
-| Stages | panel layouts (237), actor lists (28), battle settings | generated Rust |
+| Group | Tables | Then | Now (a pack's files) |
+|---|---|---|---|
+| Ruleset data | collision types, regions, filtered regions, element weakness, panel type flags, step rules, road directions, status effects, push/ice/road vectors, bubble bob, charge thresholds, HP-bug periods, gauge rates, banner holds | generated Rust | `rules/*.toml`, `registries/regions.toml` |
+| Chips | 411 chip records; family elements; per-action variant tables; damage formulas | generated Rust (formulas: panic) | `chips/NNN-name/chip.toml` (formulas: panic) |
+| Kinds | per kind: pool, trace index, flags, state schema, script; attachment kinds (52); effect and spark sprites (108 + 16); rocks (4); absorbed-obstacle sprites (15) | Rust code + generated tables | Rust code + `objects/<kind>/object.toml`, `registries/effects.toml`, `registries/sparks.toml` |
+| Sprites | animation timing: `(SpriteId, anim) -> [(duration, flags)]` for 298 sprites | generated Rust | `graphics/sprites/*/animations.json` |
+| Navis | navi records (36 NameIDs), sprites, elements, weaknesses, attach points (36 × 34), move lag, buster bonus, win/lose banners | generated Rust | `navis/NN-name/navi.toml` |
+| Forms | sprite, element, weakness, weapons, per form (25) | generated Rust | `navis/00-megaman/forms/NN-name/form.toml` |
+| Stages | panel layouts (237), actor lists (28), battle settings | generated Rust | `rules/stages.toml`, `registries/panel-layouts.toml` |
 
 Scripts implement object kinds, actions, weapon routines, damage formulas, hooks and form-change sequences. The
 ruleset stays Rust (§7).
@@ -724,7 +731,7 @@ ChipDef ──action────▶ ActionDef ──spawns──▶ KindDef: hit
    │  ├─lockon_mode──▶ lock-on search (Beast rush destination)
    │  ├─damage≥1000──▶ damage formula script
    │  └─(0x15/0x1B)──▶ time-freeze spawner / navi summon, by subtype
-ActionDef ──sounds──▶ SoundId ──▶ sound bank song
+ActionDef ──sounds──▶ SoundId ──▶ song (the pack's sound)
 KindDef ──sprite──▶ SpriteId ──▶ animation timing (simulation) + pixels (assets)
         ──effect id─▶ EffectDef ──▶ SpriteId, anim, palette
 NaviDef ──NameID──▶ record, sprite, attach points ──▶ used by attachments, charge glow, lock-on marker
@@ -914,7 +921,8 @@ both hands, transform requests and sequencer, `objects` (three pools with header
 sprite array the game does not clear on spawn), `actors`, `collision`, `field` (panels, columns, home runs, the
 field-object registry), the fade, the fade-in queue, damage carry, custom-screen progress, side state, statistics,
 the linked registry and the RNG. Output channels are the sound buffer and each sprite's `Look`. Content data is
-`'static`.
+`'static`. (Now it is the battle's `Content`, an `Arc` shared by every snapshot, and no state holds a `&'static`
+reference into it: `BattleSettings::actors` is an `ActorListId`, a rock's kind a variant id.)
 
 `Battle` is not `Clone` today, but only because nothing asks: adding `#[derive(Clone)]` compiles unchanged. A
 throwaway measurement (release build, a two-navi battle 60 ticks in, not committed): `size_of::<Battle>()` is 8,264
@@ -932,7 +940,8 @@ already cheap enough for rollback.
 4. **Order is list order or slot order.** No hash-map iteration, no sorting by address.
 5. **No addresses.** Handles are slot indices; garbage values the game takes from addresses are declared unknown.
 6. **Content is immutable during a battle** and identified by a hash that netplay peers compare at the handshake.
-   State refers to content by id, never by reference (`&'static RockKind` becomes a rock variant id).
+   State refers to content by id, never by reference (`&'static RockKind` becomes a rock variant id, as it now
+   is).
 7. **Outputs are write-only.** Sound cues and `Look` are never inputs to a decision.
 8. **Bounded work.** A script that exceeds its budget must fail the battle deterministically on every peer, not be
    cut short.
@@ -1003,11 +1012,14 @@ digest tick by tick before and after on battles built in code.
    `Battle` internals.
 8. **Schema-declared state.** Replace `kinds::Vars`, `ActionVars` and the content fields of `ActorData` and `Battle`
    with stores declared per kind, action, navi, form and battle (a Rust macro first, the same shapes as today).
-   Replace `&'static` references in state with ids and the `absorbed` vector with a fixed array. Snapshots become
-   fixed-size.
+   Replace `&'static` references in state with ids (done, with step 9) and the `absorbed` vector with a fixed
+   array. Snapshots become fixed-size.
 9. **Content files.** bn6-extract writes the tables as content files in the format the asset prototype settles on;
    the engine loads a content pack, with the BN6 pack embedded as the default. Retire generated Rust tables one at a
    time. This needs a decision on the project's rule that extracted data becomes generated Rust (§7).
+   **Done**, without the embedded default: `bn6-extract content` writes a pack (docs/design/content-pack.md) and the
+   engine loads its battle data at run time into `Content`. No generated tables remain, and the engine has no
+   default content; tests use a small hand-authored set (`content::testing`).
 10. **Scripts behind the registries.** Let a `KindDef` or `ActionDef` be backed by a script from the scripting
     prototype. Port a visual kind first (the palette flash or the sun beam), then GunDelSol, then the rock. A
     differential test runs the Rust and script implementations side by side from the same snapshot every tick and
@@ -1030,6 +1042,8 @@ and 10 depend on the format and scripting prototypes; 11 and 12 can proceed in p
    committed Rust tables and the engine never reads the ROM. Content files keep the second half (still extracted by
    the tool, still no ROM at run time) but replace the first. One option keeps both: bn6-extract writes content
    files, and a build step embeds the BN6 pack so the default engine still needs no files at run time.
+   **Decided: content packs only.** bn6-extract writes a pack from the user's ROM and the engine loads it at run
+   time; nothing extracted is committed or embedded, and the engine never reads the ROM.
 3. **Kind identity.** Keep the original pool and index as the identity of BN6 kinds (the traces and the frontend
    depend on it) and give new content ids outside that range.
 4. **Register garbage.** Keep reproducing the garbage values that can be reproduced, or treat all spawn-register
