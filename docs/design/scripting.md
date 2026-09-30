@@ -133,7 +133,7 @@ by number, and hooks. A module exports what its registration needs:
 | Registered by | What | The module exports |
 |---|---|---|
 | `objects/KIND/object.toml` `[kind]` | an object kind (pool, index) | `state` (optional), `update(me)` |
-| a chip's `script`, action other than 0x15 and 0x1B | the chip's action | `state`, `update(me, s)` |
+| a chip's `script`, action other than 0x15, 0x1B and 0x1C | the chip's action | `state`, `update(me, s)` |
 | a chip's `script`, action 0x15 | `Hook::DimmingChip(subtype)`: the dimming controller (`off_802CCB4[subtype]`) | `dimming_chip(user, spec) -> Object?` |
 | a chip's `script`, action 0x1B | `Hook::NaviChip(subtype)`: the chip's navi (`off_802CD5C[subtype]`) | `navi_chip(user, controller, spec) -> Object?` |
 | a chip's `script`, action 0x1C; a weapon's `instant_chip` | `Hook::InstantChip(subtype)`: the instant chip's effect (`off_80EC3F0[subtype]`) | `instant_chip(user, spec)` |
