@@ -39,6 +39,12 @@ fn battles_run_the_content_scripts() {
             "erase-mark",
             "grab-shot",
             "meteor",
+            "spout-ball",
+            "spout-geyser",
+            "spout-man",
+            "spout-mark",
+            "spout-pillar",
+            "spout-splash",
             "sun-beam"
         ]
     );
@@ -119,10 +125,24 @@ fn the_elements_navi_attacks() {
 }
 
 #[test]
+fn the_water_navi_attacks() {
+    use crate::object::Pool::{Actor, Attack, Effect};
+    let seen = duel_with(&[testing::SPOUT], 2400, 11);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // The water navi comes in his water (his layer) and throws his ball
+    // or raises his geyser, which marks its column.
+    assert!(ticks((Actor, 0x09)) > 0, "SpoutMan: {seen:?}");
+    assert!(ticks((Actor, 0x55)) > 0, "SpoutMan's layer: {seen:?}");
+    let ball = ticks((Attack, 0x22)) > 0 && ticks((Attack, 0x23)) > 0;
+    let geyser = ticks((Effect, 0x2D)) > 0 && ticks((Attack, 0x17)) > 0 && ticks((Effect, 0x2E)) > 0;
+    assert!(ball || geyser, "SpoutMan's attacks: {seen:?}");
+}
+
+#[test]
 fn scripted_chips_roll_back() {
     // A copy of the battle taken at any tick plays on exactly as the
     // battle does: the scripts' state is all in the battle.
-    for chips in [&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3][..], &[testing::ELEMENTS]] {
+    for chips in [&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3][..], &[testing::ELEMENTS], &[testing::SPOUT]] {
         let setup = || scenario::setup_with(chips);
         let tape = scenario::record_on(setup(), 2400, 11);
         let mut b = Battle::new(setup(), scenario::content());

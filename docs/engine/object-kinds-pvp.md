@@ -7,7 +7,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 |---|---|---|
 | T1 0x00 | 0x080b81ec | 119138 |
 | T1 0x05 | 0x080b8cd8 | 9798 |
-| T1 0x09 | 0x080b94bc | 545 |
+| T1 0x09 | 0x080b94bc | 545 (SpoutMan: the pack's `objects/spout-man`, chips.md §3.6.11) |
 | T1 0x0f | 0x080ba708 | 438 |
 | T1 0x10 | 0x080baa8c | 481 (ElmntMan: the pack's `objects/elmnt-man`, chips.md §3.6.7) |
 | T1 0x15 | 0x080bb608 | 513 (EraseMan: the pack's `objects/erase-man`, chips.md §3.6.7) |
@@ -25,8 +25,9 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x0b | 0x080c60a8 | 38 |
 | T3 0x0f | 0x080c6414 | 1107 (grab shot: the pack's `objects/grab-shot`, chips.md §3.6.8) |
 | T3 0x12 | 0x080c6946 | 600 |
-| T3 0x17 | 0x080c6dcc | 180 |
-| T3 0x22 | 0x080c853c | 16 |
+| T3 0x17 | 0x080c6dcc | 180 (SpoutMan's geyser: the pack's `objects/spout-geyser`, chips.md §3.6.11) |
+| T3 0x22 | 0x080c853c | 16 (SpoutMan's ball: the pack's `objects/spout-ball`, chips.md §3.6.11) |
+| T3 0x23 | 0x080c86d8 | lab only (its splash: the pack's `objects/spout-splash`, chips.md §3.6.11) |
 | T3 0x49 | 0x080cd2ec | 87 |
 | T3 0x59 | 0x080cf954 | 7372 (rock: `kinds::rock`, field-objects.md) |
 | T3 0x5b | 0x080cfcf8 | 96 |
@@ -61,8 +62,8 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T4 0x20 | 0x080e2ae8 | 609 |
 | T4 0x28 | 0x080e32b8 | 500 |
 | T4 0x2a | 0x080e34c0 | 2276 (trap chip dimming controller: `kinds::trap_chip`, chips.md §3.6.9) |
-| T4 0x2d | 0x080e37f4 | 316 |
-| T4 0x2e | 0x080e39a0 | 810 |
+| T4 0x2d | 0x080e37f4 | 316 (SpoutMan's pillar: the pack's `objects/spout-pillar`, chips.md §3.6.11) |
+| T4 0x2e | 0x080e39a0 | 810 (SpoutMan's geyser marks: the pack's `objects/spout-mark`, chips.md §3.6.11) |
 | T4 0x2f | 0x080e3ab8 | 471 |
 | T4 0x3b | 0x080e4910 | 494 |
 | T4 0x48 | 0x080e5c2c | 847 |
