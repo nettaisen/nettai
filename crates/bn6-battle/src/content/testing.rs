@@ -300,6 +300,7 @@ fn navi() -> NaviData {
         lose_banner: BannerId(0x44),
         merge_height: 0,
         own_chip: None,
+        chip_bonus: None,
         name_record: Some(NameData { id: 0x1A0, version: 0, actor_type: ActorType::Player, ai_index: 0, attach_points }),
     }
 }
