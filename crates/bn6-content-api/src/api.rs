@@ -265,6 +265,10 @@ named_fields! {
     pub enum CollisionField {
         /// Region shape.
         Region = "region", U8, rw;
+        /// The panel the region is anchored on (the game's CollisionData
+        /// PanelX/PanelY; `update_collision_panels` copies the object's).
+        PanelX = "panel_x", U8, rw;
+        PanelY = "panel_y", U8, rw;
         /// Hit spark effect (0xFF = none).
         HitEffect = "hit_effect", U8, rw;
         StatusBase = "status_base", U8, rw;
