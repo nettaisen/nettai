@@ -167,6 +167,7 @@ pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
     match formula {
         1..=18 => sp_chip_damage(b, id, side, formula as usize - 1),
         20 => damage_taken(b, side),
+        21 => hp_last_digits(b, side),
         24..=44 => navi_chip_damage(b, id, side),
         _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
     }
@@ -186,6 +187,18 @@ fn damage_taken(b: &Battle, side: u8) -> u16 {
     // give a negative damage, cut to 16 bits).
     let lost = o.max_hp as i32 - o.hp as i32;
     lost.min(500) as u16
+}
+
+/// `sub_8010BF0` (NumbrBl's): the last two digits of the side's player's
+/// HP (its HP mod 100), found as [`damage_taken`] finds it: no player in
+/// the side's first slot gives 0.
+fn hp_last_digits(b: &Battle, side: u8) -> u16 {
+    let Some(r) = b.round.alive_actors[side as usize & 1][0] else { return 0 };
+    let o = b.objects.get(r);
+    if b.content.navi_record(o.name_id).actor_type != crate::actor::ActorType::Player {
+        return 0;
+    }
+    o.hp % 100
 }
 
 /// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user
@@ -224,6 +237,23 @@ fn time_bcd(frames: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::time_bcd;
+
+    /// NumbrBl's damage (formula 21) is the last two digits of its user's
+    /// HP.
+    #[test]
+    fn formula_21_is_the_players_hp_mod_100() {
+        use crate::content::testing;
+        let stats = crate::setup::NaviStats { hp: 1000, max_hp: 1000, max_base_hp: 1000, ..Default::default() };
+        let setup = testing::round_setup(testing::LINK_BATTLE, stats);
+        let mut b = crate::battle::Battle::new(setup, testing::content());
+        b.spawn_actors();
+        b.run_objects();
+        for (hp, want) in [(1234, 34), (100, 0), (99, 99)] {
+            let p = b.player(1).unwrap();
+            b.objects.get_mut(p).hp = hp;
+            assert_eq!(super::chip_damage_formula(&b, testing::SUN_GUN_3, 1, 21), want, "HP {hp}");
+        }
+    }
 
     #[test]
     fn deletion_times_read_as_bcd_clock_times() {
