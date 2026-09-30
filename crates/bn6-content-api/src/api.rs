@@ -292,6 +292,9 @@ named_fields! {
         HitFlags = "hit_flags", U32, ro;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
+        /// The secondary elements (sword 0x80, cursor 0x40, wind 0x20,
+        /// break 0x10) of what hit it this window.
+        DamageElements = "damage_elements", U8, ro;
     }
 }
 
@@ -530,6 +533,41 @@ named_flags! {
         /// `object_timefreezeEnd`: the controller's state 8; ends the
         /// dimming once both sides are done, and frees the controller.
         Finish = "finish",
+    }
+}
+
+named_flags! {
+    /// What other objects ask of a field object (an obstacle: a rock, a
+    /// cube, a whirlwind...), in its collision's second flags word.
+    pub enum ObstacleFlag {
+        /// Break it at its next reaction.
+        Destroy = "destroy",
+        /// A hit made it flinch.
+        Flinch = "flinch",
+        /// A hit pushes it.
+        Pushed = "pushed",
+        /// Picked up to be thrown.
+        Thrown = "thrown",
+        /// Encased in ice or a bubble.
+        Encased = "encased",
+        /// A chip removes it.
+        Removed = "removed",
+        /// It blinks out.
+        Vanish = "vanish",
+        /// A side absorbs it (either side, side 0, side 1).
+        Absorbed = "absorbed",
+        AbsorbedBy0 = "absorbed_by_0",
+        AbsorbedBy1 = "absorbed_by_1",
+    }
+}
+
+named_flags! {
+    /// How a removed field object's blink-out goes (`sub_800F8CE`).
+    pub enum BlinkOut {
+        /// It isn't blinking out (removed some other way).
+        No = "no",
+        Blinking = "blinking",
+        Done = "done",
     }
 }
 
@@ -942,6 +980,12 @@ pub trait CoreApi {
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
     fn hit_spark(&mut self, o: ObjectRef);
+    /// `sub_801156A`: an object with HP takes this tick's damage (the sum
+    /// of its hits by element): a guard spark if it blocked, then the HP
+    /// loss (not in mode 1), and a white flash while hit, with a sound in
+    /// modes 0 and 2. -1 when its HP ran out, 1 when hit in another mode,
+    /// else 0.
+    fn take_damage(&mut self, o: ObjectRef, mode: u8) -> i32;
 
     // ---- Services ------------------------------------------------------------
 
@@ -954,4 +998,27 @@ pub trait CoreApi {
     fn show_user(&mut self, user: ObjectRef);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
+
+    // ---- Field objects (obstacles) -------------------------------------------
+
+    /// Whether another object asked `flag` of the field object `o`.
+    fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool>;
+    /// `setFieldBattleObject_800F614`: register `o` as `side`'s field
+    /// object of `class` (0: two at most, 1: one); the oldest one it
+    /// replaces loses its HP (it breaks at its next update).
+    fn register_field_object(&mut self, o: ObjectRef, side: u8, class: u8);
+    /// `sub_800F656`: forget `o` as a field object.
+    fn unregister_field_object(&mut self, o: ObjectRef);
+    /// `sub_802EF5C`: a field object leaving updates the sides' target
+    /// tracking (battle flag 0x40 only).
+    fn release_tracking(&mut self, o: ObjectRef);
+    /// `sub_800F8CE`: a field object removed to blink out blinks for 20
+    /// ticks.
+    fn blink_out(&mut self, o: ObjectRef) -> ApiResult<BlinkOut>;
+    /// `sub_800F90E`: an absorbed field object of absorbed kind `kind`
+    /// (`ObjectData::absorbed_sprites`) flies to the absorbing side's navi.
+    fn fly_to_absorber(&mut self, o: ObjectRef, kind: u8);
+    /// `sub_8018810`: NameID `name_id`'s sprite attach point `point`, in
+    /// pixels, facing the way `alliance` and `flip` say.
+    fn name_attach_point(&self, name_id: u16, point: u8, alliance: u8, flip: u8) -> (i32, i32);
 }

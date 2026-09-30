@@ -135,6 +135,20 @@ export type NaviStateFlag =
     | "form_change_sprite_held"
     | "heat_trap"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
+-- What other objects ask of a field object (an obstacle).
+export type ObstacleFlag =
+    "destroy"
+    | "flinch"
+    | "pushed"
+    | "thrown"
+    | "encased"
+    | "removed"
+    | "vanish"
+    | "absorbed"
+    | "absorbed_by_0"
+    | "absorbed_by_1"
+-- How a removed field object's blink-out goes.
+export type BlinkOut = "no" | "blinking" | "done"
 
 -- A sprite: "CC-II" in hex, its folder in the pack's graphics/sprites.
 export type SpriteId = string
@@ -211,6 +225,9 @@ declare class Collision
     hit_flags: number
     -- The damage taken this window (read-only).
     final_damage: number
+    -- The secondary elements (sword 0x80, cursor 0x40, wind 0x20, break
+    -- 0x10) of what hit it this window (read-only).
+    damage_elements: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
@@ -395,6 +412,11 @@ declare class Object
     -- `object_highlightCurrentCollisionPanels`: highlight the panels its
     -- collision region covers (drawn only).
     function highlight_collision_panels(self): ()
+    -- `sub_801156A`: an object with HP takes this tick's damage (the sum
+    -- of its hits by element): a guard spark if it blocked, the HP loss
+    -- (not in mode 1), a white flash while hit, with a sound in modes 0
+    -- and 2. -1 when its HP ran out, 1 when hit in another mode, else 0.
+    function take_damage(self, mode: number): number
 
     -- Navis only.
     function attack_param(self, n: number): number
@@ -437,6 +459,16 @@ declare class Object
     function absorbed(self): { { kind: number, anim: number } }
     function push_absorbed(self, kind: number, anim: number): boolean
     function pop_absorbed(self): (number?, number?)
+
+    -- Field objects (obstacles): whether another object asked this of it.
+    function obstacle_flag(self, flag: ObstacleFlag): boolean
+    -- `sub_802EF5C`: leaving, it updates the sides' target tracking.
+    function release_tracking(self): ()
+    -- `sub_800F8CE`: removed to blink out, it blinks for 20 ticks.
+    function blink_out(self): BlinkOut
+    -- `sub_800F90E`: absorbed, it flies to the absorbing side's navi as
+    -- absorbed kind `kind` (data.objects.absorbed_sprites).
+    function fly_to_absorber(self, kind: number): ()
 end
 
 -- A side's navi stats (read-only).
@@ -616,6 +648,9 @@ declare battle: {
     -- `sub_80E33FA`: a plain afterimage (effect object #0x28) of `owner`'s
     -- side at `pos`: a copy of a sprite that stays behind.
     afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
+    -- `sub_8018810`: NameID `name_id`'s sprite attach point `point`, in
+    -- pixels, facing the way `alliance` and `flip` say.
+    attach_point: (name_id: number, point: number, alliance: number, flip: number) -> (number, number),
 }
 
 declare field: {
@@ -649,6 +684,11 @@ declare field: {
     solid: (x: number, y: number) -> boolean,
     -- Drawn only.
     highlight: (x: number, y: number) -> (),
+    -- `setFieldBattleObject_800F614`: register a field object of `side`
+    -- in `class` (0: two at most, 1: one); the oldest one it replaces
+    -- loses its HP. `sub_800F656`: forget one.
+    register_object: (o: Object, side: number, class: number) -> (),
+    unregister_object: (o: Object) -> (),
 }
 
 -- The dimming service: the steps of a dimming chip's controller, which its
