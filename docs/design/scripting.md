@@ -352,8 +352,8 @@ handle (an `Rc`); a snapshot copies the handle, and the digest leaves it out.
 
 Scripts read the pack as a frozen global, `data`, built from the `Content` when the modules load
 (`behavior::data`): `data.chips[id]` (each chip's record with its own data), `data.navis`, `data.forms`,
-`data.weapons`, `data.objects.{attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, kinds}`,
-`data.rules.buster_recovery`. Field names are as in the files, enums as names, sprites as `"CC-II"`, keyed by the
+`data.weapons`, `data.objects.{attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, projectiles,
+flying_shots, kinds}`, `data.rules.buster_recovery`. Field names are as in the files, enums as names, sprites as `"CC-II"`, keyed by the
 entities' ids. core.d.luau types the fields scripts read; a type for new data is added there when a script needs
 it.
 
