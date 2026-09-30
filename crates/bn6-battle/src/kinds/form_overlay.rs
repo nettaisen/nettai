@@ -63,6 +63,32 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, sprite: SpriteId, nudged: bool) -
     Some(r)
 }
 
+/// `sub_80C468C` with its other parameters: Param3 `stepping` (0 normal,
+/// 1 while dimmed, 2 always; others step normally), Param4 `anim_offset`
+/// (added to the owner's animation), ExtraVars[0] `nudged`. (ExtraVars[1]
+/// and [2], its palette, are drawn only and not kept.)
+pub fn spawn_with(
+    b: &mut Battle,
+    owner: ObjectRef,
+    sprite: SpriteId,
+    stepping: u8,
+    anim_offset: u8,
+    nudged: bool,
+) -> Option<ObjectRef> {
+    let r = spawn(b, owner, sprite, nudged)?;
+    let o = b.objects.get_mut(r);
+    o.params[2] = stepping;
+    o.params[3] = anim_offset;
+    let v = vars(b, r);
+    v.anim_offset = anim_offset;
+    v.stepping = match stepping {
+        1 => Stepping::WhileDimmed,
+        2 => Stepping::Always,
+        _ => Stepping::Normal,
+    };
+    Some(r)
+}
+
 /// Make the overlay step its sprite `stepping`'s way from now on.
 pub fn set_stepping(b: &mut Battle, r: ObjectRef, stepping: Stepping) {
     vars(b, r).stepping = stepping;

@@ -486,6 +486,10 @@ fn rules() -> Rules {
             column_shifts: vec![-1, -2],
         },
         custom_screen: custom_screen_layout(),
+        actor_records: Vec::new(),
+        cross_palettes: (0..11).collect(),
+        // A made-up triangle wave, 64 steps a quarter turn.
+        sine: (0..320i16).map(|i| [i % 64 * 4, 256 - i % 64 * 4, -(i % 64 * 4), -256 + i % 64 * 4][(i / 64 % 4) as usize]).collect(),
     }
 }
 
