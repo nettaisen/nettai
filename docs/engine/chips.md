@@ -1314,7 +1314,7 @@ Not ported yet, with what is known:
   processing, panel-trail level, buster blanks, hit status, custom damage (halfword), emotion, custom drain, HP
   drain, battle start and hand-shrink turn (`sub_80E49C4`), calls `sub_801E658`, then `sub_8014446` or `sub_801443C`
   by stat 0x21, and waits for the glow.
-- 2, 3, 5, 7-19, 21-24, 26-33, 36, 37, 41 and the ElemTrap object: see docs/design/content-migration.md §5.
+- The others (and the ElemTrap object): see docs/design/content-migration.md §5.
 
 Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
 (program advance 0x157: only as its recipe), per-player gauges (not in netbattles).
