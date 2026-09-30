@@ -7,14 +7,14 @@
 use crate::battle::Battle;
 use crate::kinds::{common, elmnt_man, erase_man, navi_warp};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
-use crate::dimming::{self, CutInChip};
+use crate::dimming::{self, DimmingChip};
 
 pub const INDEX: u8 = 0x10;
 
 /// What the controller needs to bring its navi.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    pub chip: CutInChip,
+    pub chip: DimmingChip,
     /// Which navi (`off_802CD5C`; object +0x19, the chip's subtype).
     pub navi: u8,
     /// The damage word (object +0x2C).
@@ -47,7 +47,7 @@ pub struct Spec {
     pub navi: u8,
     pub params: [u8; 4],
     pub damage: u32,
-    pub chip: CutInChip,
+    pub chip: DimmingChip,
 }
 
 /// `sub_80E192C`: the controller for `user`'s navi chip, on its panel.

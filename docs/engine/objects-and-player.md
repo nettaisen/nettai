@@ -218,7 +218,7 @@ Then `battle_8007800` increments BattleState+0x60 ("frames"). In the end-of-batt
 
 ### 4.2 Pause and dimming in practice
 - `GameState.BattlePaused` (0x02001B8A) is set from the first fighting-state tick (trace frame 72) through the intro, custom screen and "battle start" banner, and cleared at frame 593 together with battle flag bit 0 (fight active). During that time only flag-0x04 objects (players, their T4 helpers, T4#2...) run.
-- Dimming (battle flag 0x04) is set by cut-in chips; only flag-0x10 objects run (default for T1/T4). Not exercised in the reference match.
+- Dimming (battle flag 0x04) is set by dimming chips; only flag-0x10 objects run (default for T1/T4). Not exercised in the reference match.
 
 ## 5. State-machine convention
 
@@ -2160,7 +2160,7 @@ Beast Out steps (timer = AIAttackVars+0x10, a u16):
 - Weapons (`sub_800FEEC` from `byte_8020354 + 6·form`): buster 3, A-charge 5, charged shot 0xFF (so B does not charge), B+Back none, alternative A-charge 0x1E for Null-family chips.
 - Element Null and no weakness (`sub_801086C` tables).
 - Form flags (`sub_8014536` → `sub_8014606`): ObjectFlags1 \|= AirShoe | FloatShoe, the collision self type becomes 0x10 (as with FloatShoe), and the lock-on marker T4#0x0F is spawned unless AIData+0x40 already holds one.
-- A charges chips: `sub_801336C` asks `sub_8013236`, which in forms 0x0B..0x16 accepts any family-0xA (Null) chip. The other forms accept damaging, non-cut-in chips of one family: form 2 Null, forms 3/0xF Sword (or chips 0x4C..0x4F), 7/0x13 Wood, 6/0x12 Aqua, 9/0x15 Break, 5/0x11 Fire. Link navis 5/6/7/0xB have their own rule (`sub_800F49E`, `byte_8021369`); MegaMan's always fails it.
+- A charges chips: `sub_801336C` asks `sub_8013236`, which in forms 0x0B..0x16 accepts any family-0xA (Null) chip. The other forms accept damaging, non-dimming chips of one family: form 2 Null, forms 3/0xF Sword (or chips 0x4C..0x4F), 7/0x13 Wood, 6/0x12 Aqua, 9/0x15 Break, 5/0x11 Fire. Link navis 5/6/7/0xB have their own rule (`sub_800F49E`, `byte_8021369`); MegaMan's always fails it.
 - The beast-out counter (NaviStats+0x21) goes down at the next fighting state 0 (battle-flow.md §3.4).
 - The overlay follows the navi: with AIIndex 0, every `sub_8011450` call and the flinch/drag hook restart the overlay's animation (`sub_80C44D2`).
 

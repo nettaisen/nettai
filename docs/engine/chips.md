@@ -107,7 +107,7 @@ Bytes +0x11..+0x13, +0x1B and +0x1D are only ever read as part of the wider fiel
 
 | Bit | Meaning | Evidence |
 |---|---|---|
-| 0x01 | **Cut-in chip.** Allowed as a counter while dimmed. Excluded from every "boostable" test. | `sub_8017AB4` (0x08017AB4), `sub_800FC30`, `sub_80F0354` (no opponent banner for cut-in chips) |
+| 0x01 | **Dimming chip.** Can cut in (be used during the other side's dimming). Excluded from every "boostable" test. | `sub_8017AB4` (0x08017AB4), `sub_800FC30`, `sub_80F0354` (no opponent banner for dimming chips) |
 | 0x02 | **Has damage.** The damage is shown in the name banner, and the chip can receive Atk+, cross/beast boosts and double damage. The boost tests generally require `(flags & 3) == 2`. | `sub_8029224` (Atk+ fold), `sub_8012A38`, `sub_800EF34`, `object_drawChipName` |
 | 0x04 | **Navi chip.** Receives Navi+20. On use, `byte_203EAE0[0x10*alliance+6]` += 1 (saturating). | `sub_8029224`, `sub_80127C0` → `sub_800AB46` |
 | 0x08, 0x40 | Library membership (standard / any). | menus |
@@ -121,7 +121,7 @@ Common values:
 |---|---|
 | 0x4A | Standard attack chip |
 | 0x48 | Standard non-damage chip (GunDelS1–3, Atk+10) |
-| 0x49 / 0x4B | Standard cut-in chip without / with damage |
+| 0x49 / 0x4B | Standard dimming chip without / with damage |
 | 0x47 | Navi chip |
 | 0x42 / 0x43 | Mega / PA |
 | 0xC2 | Cross/beast charge chip |
@@ -198,7 +198,7 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
 | ≥ 0x10 with `av[0x1D] == 1` | `sub_80EAD9C` (0x080EAD9C), the Beast-Out wrapper. It calls the same `JumpTable80EAC60` entry from its phase 8 (§2.11). |
 
 3. Two actions are generic "call a spawner indexed by subtype" handlers:
-   - **0x15** `sub_80EBD9C` (0x080EBD9C), cut-in chips. It calls **`off_802CCB4[av[3]]`** (0x0802CCB4, 42
+   - **0x15** `sub_80EBD9C` (0x080EBD9C), dimming chips. It calls **`off_802CCB4[av[3]]`** (0x0802CCB4, 42
      entries; slots 34, 35, 39, 40 are NULL). Chips 0x138 Gregar and 0x139 Falzar point at NULL slots 34/35. In the
      US ROM using them crashes the game, so the port can treat them as unsupported. The JP ROM would be needed to
      define real behaviour; that is out of scope.
@@ -480,7 +480,7 @@ Requests accumulate in `ai.u32[0x44]` (set/clear/get: `SetAIData_Unk_44_Flag` / 
 | **0x4** | **Chip use** | A (see below); `sub_802D358` (Beast Over auto-use) | `sub_800FB54` |
 | **0x8** | **Charged chip use** | A with the chip charge full (cross/beast only) | `sub_800FB54` |
 | 0x10 | B+forward special | only if `ai[0x08] != 0xFF` | `sub_80F0354` → setAttack3 |
-| **0x800** | **Counter cut-in** | A while dimmed | `sub_8017AB4` |
+| **0x800** | **Cut-in** | A while dimmed | `sub_8017AB4` |
 | 0x10000 | Battle-Chip-Gate slot-in chip | `sub_802E62A` | `sub_80127C0` (via the caller's r4) |
 | 0x20000 / 0x40000 | Chip / buster charging (A / B held) | `sub_8012FC8` | `sub_8012EBC` |
 | 0x600, 0x8600, 0x80000 | Forced status actions | elsewhere | `sub_801056A`, action 0x49 |
@@ -491,7 +491,7 @@ Algorithm, in exact order:
 f0 = ai.flags44
 if battle_isTimeStop():
     if !sub_800A772(alliance) || (f0 & 0x800) || sub_8010004() == 0xFFFF: return
-    if ai.u16[0x2C] & A: set(0x800)                 // counter cut-in request (§3.6.5)
+    if ai.u16[0x2C] & A: set(0x800)                 // cut-in request (§3.6.5)
     return
 [chip-gate SELECT branch: needs sub_800A8F8() (battle flag 0x40); off in PvP]
 if GetBattleMode() != 1: [L/R handling; L/R opens the custom screen when battle_getFlags()&2]
@@ -792,7 +792,7 @@ Checked in `sub_80F0354` after the action is already set up:
     0xA, 0xB, 0xE, 0x11 and 0x12 work differently.
   - **Phase 8** (`sub_80EAF36`): calls `JumpTable80EAC60[CurAction−0x10]` each frame. When the handler has returned
     to CurAction 8:
-    - if `s[4]` is set: `sub_800FC30` **chains** the next chip (it rejects 0xFFFF, 0x52, 0x53 and cut-in chips, then
+    - if `s[4]` is set: `sub_800FC30` **chains** the next chip (it rejects 0xFFFF, 0x52, 0x53 and dimming chips, then
       `sub_80127C0(0)`, `setAttack2`, `av[0x1D]=1`), then `sub_800FC7C` and back to phase 4;
     - otherwise it warps back and exits: `sub_801011A` (clearing `av[0x1D]`, `s[0..1]` and unfreezing the marker),
       Panel = FuturePanel with the reservation dropped and coordinates and collision panels updated, ObjectFlags1
@@ -853,7 +853,7 @@ The player navi is T1 type 0: `sub_80B81EC` → ActorType 2 → `sub_80EA460` �
 - Then, at the tail:
   - if the dead flag 0x100 is set → `sub_801B9E6`;
   - else if paused and CurAction ≠ 0 → `sub_8017BC0`;
-  - else if **dimming** → **`sub_8017AB4`** (counter cut-in; the action handler does *not* run);
+  - else if **dimming** → **`sub_8017AB4`** (cut-in; the action handler does *not* run);
   - else → `sub_801B9E6`.
 - Exception: while `sub_801032C() & (0x2000|0x10000|0x20000)`, dispatch goes straight to `sub_801B9E6`.
 
@@ -908,7 +908,7 @@ Representative handlers, all code-derived. Frame counts assume the attack is not
 | Vulcan1..3/SuprVulc (0x17 → `sub_80EBF10`) | 36 for Vulcan1 | f1: anim 0xA, arm Params 0xD into `ai+0x68`. f3: shots `av+0x12 = dword_80EBFEC[av3]` = {3,4,5,10}; a shot every 11 frames from f3 (Vulcan1: f3, f14, f25). **Each shot draws `GetPositiveSignedRNG2() & 3`** to pick Z from {8,0x10,0x18,0x20}<<16 (visual height only, but it advances RNG2). Each shot calls `sub_80C6ADA(x+front, y, av+2, Z, av.u32[0xC], av.u32[8]+av.u16[6])` → T3 0x12. Then a 1-frame recovery init, 10 more frames, and exit. |
 | Sword family (0x13 → `sub_80EB776`) | 30 | Phase 0 returns at once (or does a step-sword advance if `params` byte 0 ≠ 0). Phase 1 sets hits = 1 (2 when `av3 == 0xB`). f3: anim 5, sound 0xB0/0xCE, arm, timer 0x15. **f12**: `object_spawnCollisionRegion(x+front, y, av+2, 0, r4=byte_80EBA18[av3], r6=av.u32[8]+av.u16[6], r7=off_80EBA00[0][av3])` plus a T4 slash visual. f25: recovery (timer 5). f30: exit. |
 | Instant (0x1C → `sub_80EC39C`) | 1 | `off_80EC3F0[av3](panelX, panelY, av+2, obj.Z, av.u32[0xC], av.u32[8] + (u8)av[6])`, then exit in the same frame (`av3 == 0x14` waits 8 frames). **Only the low byte of the bonus is added.** |
-| Cut-in chips (0x15 → `sub_80EBD9C`) | whole dimming | §3.6 |
+| Dimming chips (0x15 → `sub_80EBD9C`) | whole dimming | §3.6 |
 | Navi chips (0x1B → `sub_80EC350`) | 1 | `sub_80E192C(panelX, panelY, av+2, av3, av.u32[0xC], av.u32[8], chip \| av6<<16)` spawns T4 0x10 (summon controller → `off_802CD5C[subtype]`). Registers the dimming exactly as 0x15, then exits **in the same frame**. |
 | GunDelSol (0x37 → `sub_80EDAE0`) | 140 (S3) | §4 |
 
@@ -923,7 +923,7 @@ Chip spawners are called with:
 | r3 | Z or subtype |
 | r4 | Params word (object +0x04..+0x07 = Param1..4) |
 | r6 | **damage word** = `(av.u16[8] + av.u16[6]) \| cd.hit_param << 16`, i.e. `av.u32[8] + av.u16[6]` |
-| r7 | (T4 / cut-in chip spawners) `chip \| bonus << 16`, stored at object +0x30 / +0x32 |
+| r7 | (T4 / dimming chip spawners) `chip \| bonus << 16`, stored at object +0x30 / +0x32 |
 
 So **the damage an attack object carries is `hand dmg | modifier flags` plus the Atk+/cross bonus.** The handler
 adds the bonus at spawn time. Handlers that ignore `av+8`/`av+6`, such as GunDelSol, cannot be boosted.
@@ -1012,10 +1012,10 @@ Per-object additions:
 Element = `av+2`, unless a descriptor overrides it. `hit_param` = the counter/stagger byte. All three travel as
 object +0x0E/+0x2C/+0x2E into CD+0x02/+0x19, CD+0x2E and CD+0x07.
 
-### 3.6 Cut-in chips (action 0x15; navi chips 0x1B)
+### 3.6 Dimming chips (action 0x15; navi chips 0x1B)
 
 **No dimming executes in the machgun trace** (§4.6). The soundmod trace has them; its first, Invisibl (chip 0xB1,
-subtype 1, T4 0x5D) at round-1 frame 3206, verifies the sequence below (§3.6.6). Counters and the navi chips' own
+subtype 1, T4 0x5D) at round-1 frame 3206, verifies the sequence below (§3.6.6). Cut-ins and the navi chips' own
 phases (`sub_800BDB2`, `sub_800BA8A`) are still code-derived.
 
 #### 3.6.1 State
@@ -1027,8 +1027,8 @@ phases (`sub_800BDB2`, `sub_800BA8A`) are still code-derived.
 | Off | Meaning |
 |---|---|
 | +0 | u8 current owner alliance, written into both structs (`sub_800B8AC`) |
-| +1 | u8 state: 0 idle, 1 registered, 2 showing name, 3 waiting (opponent mid-counter), 4 effect running, 5 ending |
-| +2 | u8 1 if chip id ≥ 0x170 (cannot be countered) |
+| +1 | u8 state: 0 idle, 1 registered, 2 showing name, 3 waiting (the other side cut in), 4 effect running, 5 ending |
+| +2 | u8 1 if chip id ≥ 0x170 (cannot be cut in on) |
 | +3 | u8 alliance that started the dimming (both structs, `sub_800BF16` only) |
 | +8 | u32 dimming controller object |
 | +0xC | u32 user object |
@@ -1066,7 +1066,7 @@ From N+2 the user navi is gated into `sub_8017AB4` and stays in CurAction 0x15 f
    - The banner (`byte_2036840`, stepped by `sub_801CE28` from `sub_801BEE0`) runs slide-in 5 frames, hold until
      counter 0x30, slide-out 5 frames; it is disabled on the next update.
    - `sub_801E754` returns 0 at about N+78.
-   - Then: if someone countered (own `[0] ≠ own alliance`) and opponent `[1] ∉ {0,5}`, set `[1] = 3` and retry.
+   - Then: if the other side cut in (own `[0] ≠ own alliance`) and opponent `[1] ∉ {0,5}`, set `[1] = 3` and retry.
      Otherwise `[1] = 4`. If `[2] == 0` and the user's HP is 0, the effect is skipped.
 3. **The chip's effect**, from about N+79. Geddon (`sub_80E2528`): reserve the user's panel, spawn helper
    **T4 0x1E** (`sub_80E2712`, level = Param1), and wait for it. Panel tables are at 0x080E2588.
@@ -1100,14 +1100,14 @@ From N+2 the user navi is gated into `sub_8017AB4` and stays in CurAction 0x15 f
 
 Collisions created while dimmed carry SelfCollisionTypeFlags `| 0x10000`.
 
-#### 3.6.4 The cut-in flag vs the action
+#### 3.6.4 The dimming flag vs the action
 
-- A cut-in chip is `flags & 1`. Most cut-in chips use action 0x15 (84 chips); navi chips use 0x1B.
+- A dimming chip is `flags & 1`. Most dimming chips use action 0x15 (84 chips); navi chips use 0x1B.
 - A few action-0x15 chips lack bit 0: PunchArm and the other Arm chips, IceCube, and the capsules. They still
-  dimming when used normally but cannot be used as a counter.
-- `sub_80F0354` shows the opponent telop (`sub_801EB18`) only for non-cut-in chips. This is presentation only.
+  dim the screen when used normally, but can't cut in.
+- `sub_80F0354` shows the opponent telop (`sub_801EB18`) only for non-dimming chips. This is presentation only.
 
-#### 3.6.5 Counter cut-in (network battles only)
+#### 3.6.5 Cut-in (network battles only)
 
 **Request.** In the dimming branch of `sub_8012FC8`, the following must all hold; then `ai+0x44 |= 0x800`:
 - `sub_800A772`;
@@ -1119,19 +1119,19 @@ Collisions created while dimmed carry SelfCollisionTypeFlags `| 0x10000`.
 1. Requires a player navi, `BattleEffects & 8`, and flag 0x800.
 2. Requires `sub_800BEDA()`: own `[0xC] ∈ {0, self}`, own `[1] ∈ {0,3}`, **opponent `[2] == 0` and opponent
    `[1] == 2`**. So only during the opponent's name banner, and only if their chip id is < 0x170.
-3. Requires the next chip to be a cut-in chip (`flags & 1`).
+3. Requires the next chip to be a dimming chip (`flags & 1`).
 4. `sub_80127C0(0)` with **r7 = a 0x50-byte stack buffer**, so the navi's real `av` and CurAction are untouched.
 5. If the action is 0x15 → `off_802CCB4[tmp[3]]`. If 0x1B → `sub_80E192C`.
 6. `loc_800BF30(alliance, 0, ctrl)`: registers like `sub_800BF16` but does not write `[3]`. Ownership `[0]` moves to
-   the counterer.
+   the side that cut in.
 7. `sub_800B8EE`: a T4 flash (id 0, Params 0x1E) plus sound 0xA5.
 8. **`sub_800FC7C`** (consume).
 9. Clears 0x80C, on every path.
 
 Ordering, inferred from the state machine **[unverified]**:
-- The counterer's controller shows its banner and runs its effect first.
+- The controller of the side that cut in shows its telop and runs its effect first.
 - The original waits in state 3, then runs its effect.
-- Time resumes when the initiator (`[3]`) ends, i.e. LIFO.
+- The dimming ends when the initiator (`[3]`) ends, i.e. LIFO.
 
 Special cases:
 - AntiNavi checks (`sub_802CE78(opp) == 0xBA`) in `sub_800BA8A`/`sub_800BDB2` for navi chips 0xDD..0x118.
@@ -1177,7 +1177,7 @@ With subtype 0 and the other side's defensive chip 0xBD, `sub_80E192C` does some
 Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is
 a flag its navi clears. Actions: 0 `object_dimScreen`; 4 `sub_800BDB2` (AntiNavi: for chips 0xDD..0x118 when the
 other side's defensive chip is 0xBA, the navi is sent back; otherwise straight on); 8 `sub_800BA8A` (the name, as
-`object_drawChipName` except that it skips the counterable check, and the effect only when the user is deleted);
+`object_drawChipName` except that it skips the cut-in check, and the effect only when the user is deleted);
 0xC `sub_80E1830`; 0x10 `object_undimScreen`. `sub_80E1830`'s phases:
 - 0 (`sub_80E1854`): 30 ticks; at its start the user warps out (`sub_80C0F52(user, 1)`), except for navi 0x17.
 - 4 (`sub_80E1880`): the navi's spawner `off_802CD5C[+0x19]` with r5 = the user, r4 = the params, r6 = damage +
@@ -1217,7 +1217,7 @@ T4#0 explosion and a hit region (region 1, hit effect 1, target 5, self 0xA, hit
 `sub_80C53A6` gives the region flag 0x10 so it resolves while dimmed). The damage lands while dimmed; the
 victim's flinch waits for the time to start again (3684).
 
-**Counters.** `sub_8017AB4` also needs the next chip to have the cut-in flag; soundmod 25828 (side 1 presses A
+**Cut-ins.** `sub_8017AB4` also needs the next chip to have the dimming flag; soundmod 25828 (side 1 presses A
 during ElmntMan's name with FullCust next) clears the request.
 
 **EraseMan, T1 0x15 (`sub_80BB608`, navi 5)**, spawned by `sub_80BB7F6` like ElmntMan (no overlay). His actions
@@ -1254,7 +1254,7 @@ The shot (`sub_80C6414`, spawned with Param1 = the side and flags \|= 0x10): fro
 the column's return timer is set to 0x708. Then anim 1 (sound 0xA2) until its animation ends. Its sprite is stepped
 twice a tick (`object_updateSprite` and `object_updateSpriteTimestop`).
 
-#### 3.6.9 AntiDmg's cut-in (subtype 20, T4 0x2A)
+#### 3.6.9 AntiDmg's dimming (subtype 20, T4 0x2A)
 
 The controller (`sub_80E34C0`) names the chip with `sub_800BBA8` (the remote player sees chip 0x171; the user's
 survival alone decides the effect). Its effect (`sub_80E3504`): `sub_802CEA6` clears the side's defensive-chip record
@@ -1281,7 +1281,7 @@ and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes p
 |---|---|---|
 | +0..3 | `0D 10 16 FF` | codes N, Q, W |
 | +4 / +6 | 0 / 0x0A | Null element, Null family (beast-boostable family, but not boostable here: flags bit 1 clear) |
-| +9 | 0x48 | not a cut-in chip, no damage display |
+| +9 | 0x48 | not a dimming chip, no damage display |
 | +0x0B | **0x37** | handler `JumpTable80EAC60[0x27]` = **`sub_80EDAE0`** (0x080EDAE0) |
 | +0x0C | **2** | level (GunDelS1/S2/S3/EX = 0/1/2/3) |
 | +0x0F / +0x17 | 1 / 9 | Beast lock-on flag / lock-on mode (Beast Out only) |
@@ -1532,9 +1532,9 @@ Chip 0 "MegaBstr" (action 0x1C) is only a pseudo-chip.
 
 ## 7. Uncertainties (ranked by impact on a PvP port)
 
-1. **Dimming is entirely untraced.** Dim 16 / banner ≈59 / undim 17 frames, LIFO counter ordering and the
-   AntiNavi paths are all code-derived; no available replay executes a cut-in chip. Get a trace with a cut-in chip (and ideally a
-   counter cut-in) before trusting §3.6's frame counts. The dim length also depends on the fade level when the dimming starts.
+1. **Dimming is entirely untraced.** Dim 16 / banner ≈59 / undim 17 frames, LIFO cut-in ordering and the
+   AntiNavi paths are all code-derived; no available replay executes a dimming chip. Get a trace with a dimming chip (and ideally a
+   cut-in) before trusting §3.6's frame counts. The dim length also depends on the fade level when the dimming starts.
 2. **Multi-turn hand lifetime.** The claim that a player who selects nothing keeps last turn's leftover hand comes
    from code only; every trace here has a single turn. The link-transmit stall condition `sub_803EA2C` was not analysed.
 3. **CollisionData+0x07 (`hit_param`) semantics.** The counter-hit bit and the +0x8E/+0x90 accumulators are read
@@ -1583,9 +1583,9 @@ Chip 0 "MegaBstr" (action 0x1C) is only a pseudo-chip.
 | 0x0801AF44 / 0x0801B9E6 | `sub_801AF44` / `sub_801B9E6` | navi per-frame gate / action dispatch |
 | 0x080EAC60 | `JumpTable80EAC60` | action handlers 0x10..0x5E |
 | 0x080EAD9C | `sub_80EAD9C` | Beast lock-on / chain wrapper |
-| 0x080EBD9C / 0x0802CCB4 | `sub_80EBD9C` / `off_802CCB4` | cut-in chip handler / cut-in chip spawners |
+| 0x080EBD9C / 0x0802CCB4 | `sub_80EBD9C` / `off_802CCB4` | dimming chip handler / dimming chip spawners |
 | 0x080EC350 / 0x0802CD5C | `sub_80EC350` / `off_802CD5C` | navi-chip handler / summon routines |
-| 0x08017AB4 | `sub_8017AB4` | counter cut-in while dimmed |
+| 0x08017AB4 | `sub_8017AB4` | cut-in while dimmed |
 | 0x0800BF16 / 0x0800BF5C | `sub_800BF16` / `sub_800BF5C` | dimming registration / dimming record |
 | 0x0800B916 / 0x0800BD34 | `object_timefreezeBegin` / `object_timefreezeEnd` | dimming on / off |
 | 0x080B8E30 | `sub_80B8E30` | T1 #5 "arm" attachment spawner |

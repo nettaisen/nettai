@@ -15,7 +15,7 @@ pub mod gun_del_sol;
 pub mod instant;
 pub mod movement;
 pub mod navi_chip;
-pub mod cut_in;
+pub mod dimming_chip;
 #[cfg(test)]
 mod tests;
 
@@ -52,7 +52,7 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
         movement::ACTION => movement::update(b, r),
         gun_del_sol::ACTION => gun_del_sol::update(b, r),
         beast_claw::ACTION => beast_claw::update(b, r),
-        cut_in::ACTION => cut_in::update(b, r),
+        dimming_chip::ACTION => dimming_chip::update(b, r),
         blank_shot::ACTION => blank_shot::update(b, r),
         navi_chip::ACTION => navi_chip::update(b, r),
         absorb::ACTION => absorb::update(b, r),

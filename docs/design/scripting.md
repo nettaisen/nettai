@@ -470,7 +470,7 @@ rollback.md §8.2 lists what content must guarantee. The prototype does each:
   Rust content likewise.
 - **Synthetic netbattles** (bn6-netplay's tests, run with `--features luau` or `rust-content`): two navis of the
   test content (`content::testing`) mashing buttons with its made-up chips, which use the same actions as
-  GunDelS1/S2/S3, Invisibl and EraseMan (GunDelSol, the invisibility cut-in, the eraser navi chip), three seeds,
+  GunDelS1/S2/S3, Invisibl and EraseMan (GunDelSol, the invisibility dimming chip, the eraser navi chip), three seeds,
   latencies 0 to 10 with jitter and input delay, up to about 2,000 rollbacks and 22,000 re-simulated frames per run:
   in sync to the KO in every configuration; sound plays each confirmed cue once.
   `the_battles_run_the_featured_content` checks the feature took effect.

@@ -15,7 +15,7 @@ Columns:
   via `byte_80129E4`.
 - **cls** (+0x07): 0 Std, 1 Mega, 2 Giga, 3 Spec (not a folder chip), 4 PA (program advance).
 - **★** (+0x05): rarity 0..4 (stars − 1). **MB** (+0x08).
-- **flags** (+0x09): 0x01 cut-in chip, 0x02 has damage (shown, boostable), 0x04 Navi chip (Navi+ applies),
+- **flags** (+0x09): 0x01 dimming chip, 0x02 has damage (shown, boostable), 0x04 Navi chip (Navi+ applies),
   0x08 standard library, 0x10 variable-damage display, 0x40 library (std/mega), 0x80 damage recomputed each frame.
 - **p0A** (+0x0A): hi-half of the attack damage word → attack object +0x2E → CollisionData+0x07.
 - **act** (+0x0B): CurAction set by `object_setAttack2`. **handler**: see header of this file.
@@ -535,7 +535,7 @@ current cross/beast form's own table): 190 HeatPres (act A), 191 DElecSwd (act A
 
 ## off_802CCB4 (0x0802CCB4): dimming (action 0x15) effect spawners, indexed by chip +0x0C
 
-Called once by `sub_80EBD9C` (action 0x15) and by `sub_8017AB4` (counter cut-in while dimmed) with
+Called once by `sub_80EBD9C` (action 0x15) and by `sub_8017AB4` (cut-in while dimmed) with
 r0 = PanelX, r1 = PanelY, r2 = AIAttackVars+0x02 (element byte), r4 = AIAttackVars+0x0C (+0x10 params),
 r6 = AIAttackVars+0x08 (damage word), r7 = (AIAttackVars+0x06 << 16) | chip id.
 

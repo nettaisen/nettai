@@ -1114,7 +1114,7 @@ In the machgun match the word was 0x0000, then 0x0001 from the first fighting ti
 
 So pause is on from the first intro tick through custom screens and the start banner, and off from the first fighting tick through the result and end states.
 
-**Dimming** is battle flag 0x04, set and cleared by object code (cut-in chips and certain navi actions).
+**Dimming** is battle flag 0x04, set and cleared by object code (dimming chips and certain navi actions).
 
 | Component | Paused | Dimming |
 |---|---|---|
