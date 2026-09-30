@@ -1,0 +1,7 @@
+# An immobilizing hit (attack object #0x3F, `sub_80CC044`) is a script. Its
+# position is its spawner's registers until its init places it.
+
+[kind]
+pool = "attack"
+index = 0x3F
+script = "immobilizer.luau"

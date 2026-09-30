@@ -7,8 +7,6 @@
 //! (which `set_attack` resets); what an action keeps besides that lives
 //! in its own state struct in `AttackVars::action`.
 
-pub mod absorb;
-pub mod beast_claw;
 pub mod beast_rush;
 pub mod instant;
 pub mod movement;
@@ -30,9 +28,7 @@ pub enum ActionVars {
     #[default]
     None,
     Move(movement::Vars),
-    BeastClaw(beast_claw::Vars),
     FormChange(transform::Vars),
-    Absorb(absorb::Vars),
     Instant(instant::Vars),
     /// A content action's declared state (see `content`).
     Content(bn6_content_api::ContentState),
@@ -45,10 +41,8 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
     }
     match action {
         movement::ACTION => movement::update(b, r),
-        beast_claw::ACTION => beast_claw::update(b, r),
         dimming_chip::ACTION => dimming_chip::update(b, r),
         navi_chip::ACTION => navi_chip::update(b, r),
-        absorb::ACTION => absorb::update(b, r),
         instant::ACTION => instant::update(b, r),
         _ => panic!("player action {action:#x} is not implemented yet"),
     }

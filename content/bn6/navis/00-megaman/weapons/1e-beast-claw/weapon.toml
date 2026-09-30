@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x1E, the Beast forms' claw (`sub_8011E1C`), and its
+# action (`sub_80EF534`) are a script.
+
+id = 0x1E
+name = "Beast claw"
+action = 0x52
+script = "beast_claw.luau"
