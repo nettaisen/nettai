@@ -1971,6 +1971,162 @@ the whip's Param1 0 (the navi AI's) and battle-over paths; a book's failed spawn
 arriving at its target, leaving solid ground, the heading's reversal, and the target past the far edge (no enemy
 navi at all).
 
+#### 3.6.30 TwinLdrs (navi chip subtype 20, PA chip 0x15C, T1 0x20)
+
+ProtoMn[SP] B + AntiNavi * + Colonel *. Not yet content (the WIP branch `worktree-agent-a8ec4fbd3af457f98` has the
+NameIDs' actor records as `registries/names.toml` and no script). ProtoMan leads and brings Colonel; both are T1
+0x20, told apart by Param1.
+
+**The spawner, `sub_80BD9A2`** (`off_802CD5C[20]`): `object_spawnType1(0x20)` with the caller's r1..r3 as its
+position and r4 as its Params (the chip's: Param1 0); PanelX/Y, element, the damage word (r6), RelatedObject1 = r5
+(the user), ExtraVars[0] = r7 (the controller's flag pointer; the flag set to 1 when r7 isn't 0), the user's side
+and flip, flags |= 0x10 (it runs while dimmed). **The object, `sub_80BD388`**: its sprite steps as
+`object_updateSprite` (so while dimmed, having flag 0x10). Init (`sub_80BD3AC`), by `byte_80BD464[Param1]` (8 bytes:
+sprite category (bit 7: `sprite_decompress` first), index, NameID, dx, dy): Param1 0 ProtoMan, (8, 0xB), NameID
+0x13D, (+10, +10); Param1 1 Colonel, (8, 0x12) decompressed, NameID 0x167, (−10, −10). The NameID; the sprite with a
+ground shadow, CurAnim 0 (loaded 0xFF); X, Y, Z = the user's (RelatedObject1's) + (dx · front, dy, 0) pixels, kept
+at +0x40 as his home; the panel from the coordinates; Z = 0 (a word); VISIBLE; flip; his parts
+(`sub_800F29C(NameID)` → actor record (type 1; AI index 0xB ProtoMan: none, 0x12 Colonel: `sub_8010FAC`, body
+overlay T1 0x56 Param1 0, Param3 1, Param4 0xD, his cape) → `sub_8010DF6(type, index, 1)`). ProtoMan then spawns
+Colonel (`sub_80BD9A2` with r5 = the user, r4 = 1, r7 = 0: no flag; his panel, element and damage word) and they
+keep each other in ExtraVars[1] (a failed spawn writes through a null pointer and leaves ProtoMan's link 0). Its
+first update at once. Updates (`sub_80BD478`): Param1 0 by `off_80BD4A0` (actions 0, 4, 8, 0xC), Param1 1 by
+`off_80BD4B0` (0, 4, 8). Phases here enter on PhaseInitialized 0.
+
+ProtoMan (Param1 0):
+- 0 (`sub_80BD4BC`), each tick the phase and then the colour shader from his grey level Param4 (`sub_80BD9D4`:
+  Param4 · 0x421). Phase 0 (`sub_80BD4DC`): entry: shader 0x7FFF, Param4 = 31, sound 0x94, Timer 0. Then each tick
+  VISIBLE, Timer + 1 (odd: VISIBLE off: he flickers in), Param4 − 2; at 0 or below VISIBLE, Param4 0, phase 4 (16
+  ticks). Phase 4 (`sub_80BD538`): Timer 30; 30 ticks: his panel not solid → action 0xC; else FuturePanel = (x +
+  front, 1), ExtraVars[3] = 1 (a fresh search), Param3 = 0 (targets so far) → action 4.
+- 4 (`sub_80BD586`), the slashes, phases `off_80BD598`:
+  - 0 (`sub_80BD5A8`), the search: FuturePanel off the field → action 8. From FuturePanel (x, y): row 1 when
+    ExtraVars[3] is set, else the row after the last target's; rows to 3, then the next column (x + front) from
+    row 1, while 1 ≤ x ≤ 6. A panel with an enemy navi's body (`off_80BD63C[side]`: 0x04000000, side 1
+    0x08000000) whose front panel (x − front, y) is his user's (RelatedObject1's panel) or solid with none of
+    0x0F800000 is the target: FuturePanel = it, ExtraVars[3] = 0, Param3 + 1, phase 4. None → action 8.
+    (RelatedObject1 is cleared at his first slash; later searches read the user's panel through a null pointer, as
+    ProtoMan's navi chip does.)
+  - 4 (`sub_80BD644`): anim 4, his sword (ExtraVars[2]) taken off (`sub_80B8E58`: its state word = 8),
+    RelatedObject1 = 0, Timer 3; on the first target (Param3 1) an afterimage (`sub_80BDA7C(0)`); 3 ticks → 8.
+  - 8 (`sub_80BD67E`): anim 4, Timer 0, onto the target's front panel (x − front, y), coordinates from it; 1 tick →
+    0xC.
+  - 0xC (`sub_80BD6B6`), the slash: anim 5 with CurAnimCopy 6 (it restarts), his sword (`sub_80B8E30`, r4 =
+    0x10B11: T1 5, attachment 0x11 (sprite (0xC, 0)), animation 0xB, Param3 1; its pointer in ExtraVars[2]), sound
+    0xB0, Timer 10, afterimages (`sub_80BDA7C(5)`). The tick the timer reads 5 (before its decrement): a hit on the
+    panel ahead (`sub_80C53A6`: Z 16 pixels, r4 0x0405FF04: region 4, no hit spark, target 5, self 4; modifier 3;
+    his element and damage word), T4#0 effect 0x27 at its centre, 16 pixels up (flip his), a camera shake (1, 10)
+    and a palette flash (`sub_80E11E0`, r4 0x10A00: 10 ticks). 10 ticks → phase 0 (the next search).
+- 8 (`sub_80BD742`), back: phase 0 (`sub_80BD760`): anim 4, the sword off, Timer 3, counting from the entry: 3 ticks
+  → 4. Phase 4 (`sub_80BD788`): anim 7 and his sprite's flip toggled (`sprite_setFlip(flip ^ 1)`) when he slashed
+  (Param3 ≠ 0), else anim 3; back to his home (+0x40), the panel from it, Z 0, Timer 3 (PhaseInitialized = 8),
+  counting from the entry: 3 ticks → 8. Phase 8 (`sub_80BD7D6`): once Colonel's CurAction (ExtraVars[1]'s byte +9)
+  is 8 → action 0xC.
+- 0xC (`sub_80BD7EA`, Colonel's 8 too): anim 4, the sword off, Timer 4, counting from the entry to −1 (5 ticks):
+  VISIBLE off, state 8. His destroy (`sub_80BD984`): his parts off (`sub_8011044` by his actor record), the
+  controller's flag (ExtraVars[0]) cleared if he has one, freed.
+
+Colonel (Param1 1):
+- 0 (`sub_80BD81A`): phase 0 (`sub_80BD834`): sound 0x94, Timer 4, anim 3; 4 ticks: Param3 = 0; his panel solid →
+  action 4, else phase 4 (`sub_80BD878`: 40 ticks → action 8).
+- 4 (`sub_80BD89C`): the phase, then each tick his charge (`sub_80BDAE0`, by Param3):
+  - 0 (`sub_80BDB04`): T4#0 effect 0x4E at his attach point 0 (`sub_8018810(NameID, 0, side, flip)`, added to X
+    and Z) with Timer 0x7FFF, kept in ExtraVars[5]; sound SOUND_BUSTER_CHARGE; Timer2 0; Param3 = 4.
+  - 4 (`sub_80BDB3C`): Timer2 + 1; once ProtoMan's CurAction is 8 and Timer2 ≥ 40: the glow's Timer = 1, T4#0
+    effect 0x4F at the attach point with Timer 30, sound SOUND_UNK_72, Timer2 0, Param3 = 8.
+  - 8 (`sub_80BDB8C`): Timer2 + 1; at 15 Param3 = 0xC. 0xC: nothing.
+  Phase 0 (`sub_80BD8BC`) waits for Param3 0xC; then anim 5, his sword (`sub_80B8E30`, r4 0x11C1F: attachment 0x1F
+  (sprite (0x10, 0x5A)), animation 0x1C, in ExtraVars[2]), the target (`sub_80BDA08`), two hits there (element 0, Z
+  0, modifier 3, his damage word; regions 0x12 and 0x13: r4 0x0405FF12 and 0x0405FF13, no hit spark, target 5, self
+  4), T4#0 effects 0x36 and 0x37 at its centre (flip = his side), sound 0xC7, a camera shake (3, 0x23), a palette
+  flash (r4 0x12800: 40 ticks); 30 ticks → phase 4 (`sub_80BD960`: 20 ticks → action 8).
+  The target (`sub_80BDA08`): along his row from the panel ahead, the first panel with an enemy navi's body
+  (`off_80BDA68[side]`); off the field first: column `dword_80BDA70[side]` (5; side 1: 2), a column further when
+  that is his own.
+- 8: `sub_80BD7EA`, as ProtoMan's 0xC.
+
+The afterimages (`sub_80BDA7C(n)`, `sub_80E33FA`: effect #0x28 of his side at his X, Y, Z, colour shader 0x8318, 30
+ticks, blinking, no tether): with n 5 first the sword's (attachment 0x11's sprite, animation 0xB, his flip; the
+shadow at its height), then always his own (sprite (8, 0xB), animation n, his flip; a ground shadow).
+
+Lab: the official pa/0x15c-twinldrs recipes (which now match every frame, group H's banner and hand being ported)
+end during the controller's 30-tick warp-out, before he appears; the scratch navis/0x15c-twinldrs/long reaches
+both, with every slash landing (one target). **Unverified**: his footing failing (0 → 0xC) and Colonel's (the
+40-tick wait); ProtoMan leaving without a slash (anim 3) or with more than one target; Colonel's target off the
+field; a failed Colonel spawn.
+
+#### 3.6.31 CrosOver (navi chip subtype 21, PA chip 0x15D, T1 0x21)
+
+Django D + Django2 D + Django3 D: MegaMan (Param1 0) with his buster and sword, and Django (Param1 1) with his Gun
+del Sol. Not yet content.
+
+**The spawner, `sub_80BE3E8`** (`off_802CD5C[21]`), as TwinLdrs's (T1 0x21; ExtraVars[0] the flag pointer, set to
+1). **The object, `sub_80BDBA4`**, its sprite as `object_updateSprite`. Init (`sub_80BDBC8`):
+- MegaMan (Param1 0): NameID = the user's when it is 0x1A0 or above 0x1AB (MegaMan and his forms; ExtraVars[4] =
+  1), else 0x1A0 (a link navi user, 0x1A1..0x1AB; ExtraVars[4] = 0); the user's AIData pointer; the user hidden
+  (`sub_80E1352(user, 0xF)`: VISIBLE off, its companions kept). Sprite: ExtraVars[4] 0: (0, 0); else, the NameID's
+  actor record's type 2 (a player): `sub_800FC9E(stats[0x29], stats[0x2C])` (navi 0: (0, `byte_800FCBC[form]`),
+  else (8, `byte_800FCD5[navi]`)); another type: `sub_800F26C(NameID)`. X, Y, Z the user's (the panel from them);
+  his parts (`sub_8010DF6` by the record); palette `byte_80203EA[stats[0x2C]]` (the form's). ExtraVars[1] = 0; the
+  target (`sub_80BE434`) → FuturePanel; when it gives Django a panel, Django (`sub_80BE3E8` with r5 = the user, r4
+  = 1, r7 = 0, that panel), linked both ways in ExtraVars[1], with MegaMan's FuturePanel and DirectionFlip 1
+  (facing back).
+- Django (Param1 1): `sprite_decompress(0xC, 0xF)`, sprite (0xC, 0xF), on his panel.
+- Both: a ground shadow, CurAnim 0 (loaded 0xFF), VISIBLE, flip, Param4 = 0; the first update at once.
+- The target (`sub_80BE434`): along MegaMan's row from the panel ahead, the first panel with an enemy navi's body
+  (`off_80BE4C8[side]`) is the target; Django's panel is two columns beyond it (+ 2 · front) if solid with none of
+  0x0F800000, else the far column (6; side 1: 1) of that row if it is; else none (0, 0). Off the field before a
+  target: target (0, 0), and Django's panel the far column's (as above) or none.
+
+MegaMan's actions (`off_80BDD24`):
+- 0 (`sub_80BDD40`): sound 0x94, Timer 60, anim 3; 60 ticks → 4 (CurAction + 4).
+- 4 (`sub_80BDD70`): on to 8 once there is no Django or Django's CurAction is 4.
+- 8 (`sub_80BDD88`), the buster, phases `off_80BDD9C`: 0 (`sub_80BDDA8`): Timer 0, one tick; Timer2 = 12 → 4. 4
+  (`sub_80BDDCA`), a shot: anim 0xE (loaded 0xFF), Timer 10, sound SOUND_BUSTER_6A; the arm (ExtraVars[2]) off and
+  a new one: ExtraVars[4] set: the buster arm by the user's form (`sub_80EB572(&ExtraVars[2], 1)`, action 0x11's);
+  else attachment 6 (r4 0x10006); the muzzle flash (ExtraVars[3]) off and a new one (attachment 5, r4 0x10005);
+  `sub_80C44D2(RelatedObject2)` (his body overlay restarted); a projectile (`sub_80C4FFE`: the panel ahead, Z 16
+  pixels, r4 0x1D: kind 0x1D, r6 0x0083001E: damage 30, hit parameter 0x83; flags |= 0x10). 10 ticks (the entry's
+  included): Timer2 − 1; above 0 the entry again (a shot every 10 ticks), else → 8. Twelve shots.
+  8 (`sub_80BDE58`): anim 0, the arm and the flash off, Timer 10, to −1 (11 ticks): no target (FuturePanelX 0) →
+  his parts off, VISIBLE off, state 8, the user shown (`sub_80E13DC`); else → action 0xC.
+- 0xC (`sub_80BDEC0`), the sword, phases `off_80BDED4`: 0 (`sub_80BDEF0`): 30 ticks → 4. 4 (`sub_80BDF0E`): anim 4,
+  the attachments off, 4 ticks → 8. 8 (`sub_80BDF3C`): anim 3; the target's front panel (FuturePanelX − front,
+  FuturePanelY), when solid with none of 0x07800000 (side 1: 0x0B800000: any body but his own side's navi's):
+  there, Param4 = 1; else VISIBLE off, Param4 0; 3 ticks → 0xC, or (Param4 0) 0x18. 0xC (`sub_80BDFA6`), the
+  slash: anim 5, sound 0xB0; the sword: the user's AIData type and index saved (+0x74, +0x75) and set to MegaMan's
+  (2, 0) while the look is picked (r4 = `sub_80EBB34()` | `sub_80EBAE8()` << 8 | 1 << 16 | `sub_80EBB78()` << 24,
+  action 0x13's sword helpers: attachment, animation by form), `sub_80B8E30` into ExtraVars[2], restored; Timer 0.
+  The tick the timer reads 10: Django in position (his Param4 ≠ 0): effect 0x36, region 0x13, a camera shake (3,
+  0x23), a flash of 40 ticks (r4 0x12800); else effect 0x18, region 1, shake (1, 0x19), flash of 30 (0x11E00): the
+  effect at the panel ahead's centre, 16 pixels up (flip his), and a hit there (`sub_80C53A6`: Z 0, r4 0x0405FF13
+  or 0x0405FF01: no hit spark, target 5, self 4; modifier 3; his element and damage word). Timer + 1; past 50 →
+  0x10. 0x10 (`sub_80BE098`): the attachments off, anim 4, 4 ticks: VISIBLE off → 0x14. 0x14 (`sub_80BE0CE`): anim
+  3, onto the user's panel, 3 ticks → 0x18. 0x18 (`sub_80BE0FA`): 10 ticks: his parts off, VISIBLE off, state 8.
+
+Django's actions (`off_80BDD34`):
+- 0 (`sub_80BE144`): sound 0x94, Timer 60, anim 1; 60 ticks → 4.
+- 4 (`sub_80BE174`): 0 (`sub_80BE190`): anim 3, Timer 10, his gun (`sub_80B8E30`, r4 0x1080B: attachment 0xB,
+  animation 8, in ExtraVars[2]), sound 0xF8; 10 ticks (the entry's included): the sun beam (`sub_80E5D12`: effect
+  #0x48, objects/sun-beam, offset (80 · front, 0, 0) pixels from him in its velocity, r4 0x10000: look 0, palette
+  0, Param3 1: it goes on while dimmed; r7 = &ExtraVars[3], where it is kept) → 4. 4 (`sub_80BE1DC`): anim 4, the
+  gun's animation 9 (`sub_80B8E70`), Timer 120; every tick, the entry's too, a hit on the panel two ahead (element 5,
+  Z 0, r4 0x1705FF04: region 4, no hit spark, target 5, self 0x17; damage 3, modifier 0: the silent drain of
+  GunDelSol, §4.4); 120 ticks: the beam's state word = 8 (`sub_80E5D3E`) → action 8.
+- 8 (`sub_80BE22E`), phases `off_80BE240`: 0 (`sub_80BE254`): anim 0, the attachments off, 30 ticks. 4
+  (`sub_80BE282`): anim 2, 4 ticks: no target → VISIBLE off, state 8; else 8. 8 (`sub_80BE2B8`): anim 1; the
+  panel behind the target (FuturePanelX − front, he faces back) if solid with none of 0x0F800000: there, Param4 =
+  1, 3 ticks → 0xC; else VISIBLE off, state 8. 0xC (`sub_80BE312`): anim 5, sound 0xB0, Timer 0; at 10 effect and
+  hit as MegaMan's (0x36 / region 0x13 when MegaMan's Param4 is set, else 0x18 / region 1), no shake or flash;
+  past 50 → 0x10. 0x10 (`sub_80BE39A`): anim 2, 4 ticks: VISIBLE off, state 8.
+- The destroy (`sub_80BE3C4`): MegaMan's parts off (Param1 0), the controller's flag (ExtraVars[0], MegaMan's)
+  cleared, freed.
+
+Lab: the official pa/0x15d-crosover/recipe1 ends before they appear (it matches every frame); the scratch
+navis/0x15d-crosover/long reaches the path with a target and both in position. **Unverified**: a link navi or
+non-player user (NameID 0x1A1..0x1AB, ExtraVars[4] 0, attachment 6), no target, no Django (or his panel taken),
+either one's front panel refused, the far-column fallback, a missing beam.
+
 #### 3.6.32 SunMoon (navi chip subtype 25, PA chip 0x15B, T1 0x24)
 
 The pack's objects/sun-moon, sun-meteor and moon-beam. **SunMoon, T1 0x24 (`sub_80BF260`)**, spawned by `sub_80BF6AE`
@@ -2001,7 +2157,10 @@ on the panel three columns ahead with damage 0x2000 (an uninstall), self type 0x
 hit there with its damage, self type 0x30, modifier 3 (sound 0x111 every 8 ticks); all resolve while dimmed.
 
 Lab (scratch, the PA chip put straight in the folder): the opponent a row up and both a column forward match every
-frame; on a hit the replay stops at the uninstall's reaction (`sub_80140EE`, the navi framework's).
+frame; on a hit the replay stops at the uninstall's reaction (`sub_80140EE`, the navi framework's). That reaction
+(hit reaction 0xF8, `sub_80139F6` → `sub_80140EE`; field-collision-damage.md) is still a "not implemented" panic in
+kinds/player/intake.rs and is group H2's (the framework gaps); nothing in SunMoon's own code is left, but what
+follows the uninstall in that scenario is unverified until it is ported.
 
 #### 3.6.33 Bass (navi chip subtype 26, Giga chip 0x12D, T1 0x4F)
 
@@ -2028,6 +2187,164 @@ battle is over.
 
 Lab (scratch, Bass dug from a Giga folder): hit, miss and adjacent match every frame. Unverified: the strike's
 Param1/Param3/no-flag-0x10 branches (MachGun's), Bass leaving off the field.
+
+#### 3.6.34 MstrCros (navi chip subtype 22, PA chip 0x15A, T1 0x23)
+
+FireHit3 A + AquaNdl3 A + ElcPuls3 A + RskyHny3 A: MegaMan's five Crosses of the user's game, each
+appearing by an enemy and using his Cross's move, then three of them together. Not yet content.
+
+**The spawner, `sub_80BF160`** (`off_802CD5C[22]`): T1 0x23 (`object_spawnType1`, the caller's r1..r3 its position
+and r4 its Params), PanelX/Y, element, the damage word, RelatedObject1 = r5, ExtraVars[0] = r7 (a flag byte, set to
+1 when r7 isn't 0), r5's side and flip, flags |= 0x10. **The object, `sub_80BE798`**, sprite as
+`object_updateSprite`. The chip's Param1 is 0: the leader, which has no sprite. Init (`sub_80BE7BC`) for a Cross
+(Param1 = its form, 1..0xA): sprite `sub_800FC9E(0, form)` ((0, `byte_800FCBC[form]`): (0, 0) for the Crosses)
+with a ground shadow, CurAnim 0 (loaded 0xFF), on its panel with Z 0, NameID 0x1AB + form (0x1AC..0x1B5: actor
+records type 2, AI index 0x18 + form), flip, palette `byte_80203EA[form]` (00 02 07 09 0D 13 05 11 0B 0F 15 by
+form 0..0xA), its parts (`sub_8010DF6` by the record: the Cross's form overlays); with Param2 4 it starts at action
+8. Both: state update and the first update at once. The leader runs `sub_80BE878`'s phases; a Cross its actions
+(`off_80BE854`, 0 to 0x20).
+
+The leader's phases (`off_80BE88C`):
+- 0 (`sub_80BE8A0`): Timer and Timer2 0 → 4 (the next tick).
+- 4 (`sub_80BE8AE`), the first wave: records `byte_80BE91C` (the user's navi stats byte 0x20, the game, 0: Gregar)
+  or `byte_80BE936` (Falzar), 5 bytes each (form, move, look, side, element), at Timer2: 0xFF → phase 8. Else a Cross
+  (`sub_80BF160` from his panel: r2 = the element byte, r3 = 0, r4 = form | move << 8 | look << 16 | Timer2 << 24,
+  r6 his damage word, r7 = his byte +0x6C + Timer2, its "still acting" flag); its FuturePanel = `sub_80BF192(side
+  byte)`; its byte +0x0C = the side byte ^ 1; Timer2 + 1; again at once (the whole wave in one tick).
+  - Gregar: (5 ChargeCross, sword, look 0, 1, element 0), (1 HeatCross, sword, 2, 0, 1), (2 ElecCross, sword, 4, 1,
+    3), (3 SlashCross, sword, 1, 0, 0), (4 EraseCross, beam, 0, 1, 0).
+  - Falzar: (0xA DustCross, sword, 0, 1, 0), (6 SpoutCross, sword, 3, 0, 2), (7 TomahawkCross, sword, 5, 1, 4), (8
+    TenguCross, fan, 0, 0, 0), (9 GroundCross, drill, 0, 1, 0).
+  - `sub_80BF192(s)`: the panels with an enemy navi's body (`object_getPanelsFiltered`, require `off_80BF224[side]`,
+    rows 3..1, columns 6..1); for each, the panel beside it (x + d, with d = `object_getFlipDirection(side, flip ^
+    s)`: s 1 in front of it, s 0 behind it) if it is the user's panel or solid with none of 0x0F800000; one of those
+    at random (one draw: `GetPositiveSignedRNG2()` mod n); none: (0, …) (no target).
+- 8 (`sub_80BE950`): once his flag bytes +0x6C..+0x73 are all 0, 10 ticks → Timer2 0, phase 0xC.
+- 0xC (`sub_80BE97A`), the finale: `byte_80BE9D8` (Gregar: ChargeCross, HeatCross, ElecCross) or `byte_80BE9F3`
+  (Falzar: DustCross, SpoutCross, TomahawkCross), move 4 (the charge), elements 0, 1, 3 (Falzar 0, 2, 4), spawned
+  the same way with FuturePanel = his own panel; at 0xFF → 0x10.
+- 0x10 (`sub_80BEA10`): once the flags are clear, 30 ticks: his flag (ExtraVars[0], the controller's) cleared, state
+  8 (freed).
+
+A Cross (Param4 = its place in its wave):
+- 0 (`sub_80BEA50`), the first wave's entry: phase 0 (`sub_80BEA78`): Timer 30; places 0..2: sound 0x94 and VISIBLE
+  (places 3 and 4 stay hidden); Timer2 31; each tick (the entry's too) Timer − 1: at 0 the colour shader 0
+  (`sprite_zeroColorShader`), phase 4; else Timer2 − 1 (not below 0) and the shader Timer2 · 0x421 (fading from
+  white). Phase 4 (`sub_80BEACE`): Timer 0, sound 0x110; each tick Timer + 1 (past 20 → phase 8, that tick too) and
+  he circles out from his panel's centre: `sub_80E58D2`: X = centre + cos(a) · r · front, Y = centre + sin(a) · r
+  (the sine table, 1.0 = 0x100), r = Timer pixels, a = `byte_80BEB20[place]` (0, 0x55, 0xAA, 0x78, 0xC8) + Timer.
+  Phase 8 (`sub_80BEB28`): 30 ticks → 0xC. Phase 0xC (`sub_80BEB46`): anim 4, 4 ticks: VISIBLE off, phase 0x10; no
+  target (FuturePanelX 0): his flag cleared, his parts off, state 8. Phase 0x10 (`sub_80BEB90`): Timer = place ·
+  20, counting (place 0: one tick) → action 4.
+- 4 (`sub_80BEC68`): phase 0 (`sub_80BEC84`): onto FuturePanel, DirectionFlip ^= byte +0x0C (s 0: he faces back),
+  the sprite's flip, anim 3, VISIBLE, 3 ticks. Phase 4 (`sub_80BECC6`): anim 0, 5 ticks → action 0xC + move · 4.
+- 8 (`sub_80BEBBC`), the finale's entry: phase 0 (`sub_80BEBD8`): anim 3, places 0..2 sound 0x94 and VISIBLE, at the
+  end of the circle (r 20, a = `byte_80BEC38[place]` + 20, the same angles), 3 ticks. Phase 4 (`sub_80BEC40`):
+  Timer 0 + 1 > 0 on the entry tick → action 0x1C.
+- 0xC (`sub_80BECF0`), the sword (move 0): anim 5, sound 0xB0, the blade (`sub_80B8E30`, r4 0x10000 + attachment
+  `byte_80BEDC6[look]`: 3, 3, 0x19, 0x1A, 0x1B, 0x1C) in ExtraVars[1], Timer 0. At Timer 9: a hit on the panel ahead
+  (`sub_80C53A6`, r4 `byte_80BEDA8[look]` as a word: look 0 region 1, else region 4; no hit spark, target 5, self 4;
+  modifier 3; his element and damage word; Z 0), T4#0 effect `byte_80BEDC0[look]` (0x18, then 0x16) at its centre
+  16 pixels up (his flip; looks 2 and up add look − 1 to its palette), a 10-tick palette flash. Timer + 1, past 21 →
+  0x20. (Its table's phase 4, `sub_80BEDCC`, is never entered.)
+- 0x10 (`sub_80BEE04`), EraseCross's beam (move 1): anim 0xF; `sub_80D8F98` (attack #0x9D, objects/erase-ray) on
+  the panel ahead, r4 = 2 (it shuts when its Param2 is set), flags |= 0x10, in ExtraVars[2]; sound 0xBA; Timer 70; a
+  10-tick flash; at Timer 40 `sub_80D8FB8` (its Param2 = 1 if its Param1 is 2); 70 ticks → 0x20.
+- 0x14 (`sub_80BEE62`), GroundCross's drill (move 2): phase 0: 10 ticks, then phase 4 at once. Phase 4
+  (`sub_80BEEA2`): anim 0xA, attachment 0x20 (r4 0x10120: animation 1) in ExtraVars[1]; `sub_80D2B8E` (attack #0x71,
+  objects/drill; his element, r4 0x11E00: Param2 0x1E, Param3 1; Z 16 pixels; his damage word; held in ExtraVars[2])
+  with flags |= 0x10; Timer 30; sound 0xF0; a 10-tick flash; Y's and Z's whole parts + 1; 30 ticks → 8. Phase 8: the
+  attachment's animation 0 (`sub_80B8E70`), 10 ticks → 0x20.
+- 0x18 (`sub_80BEF2C`), TenguCross's fan (move 3): anim 5, sound 0x11F, attachment 0x2A (r4 0x1002A) in
+  ExtraVars[1], T4#0 effect 0x44 at his panel's centre 16 pixels up (his flip), Timer 21; at Timer 12 a hit on the
+  panel ahead (r4 0x0405FF04: region 4; Z 16 pixels; modifier 3) and a 10-tick flash; to −1 (22 ticks) → phase 4: 5
+  to −1 (6 ticks) → 0x20.
+- 0x1C (`sub_80BEFE2`), the finale's charge (move 4): phase 0 (`sub_80BF000`): Timer 0, the charge glow (T4#0
+  effect 0x4E at attach point 0, Timer 70), sound SOUND_BUSTER_CHARGE; at Timer 70 effect 0x4F there (Timer 20),
+  sound SOUND_UNK_72; past 90 → 4. Phase 4 (`sub_80BF07A`): anim 0xC, Timer 0; at Timer 4, place 0 only: a hit on
+  his panel with the whole-field region of `byte_80BF0F0[side]` (0x82; side 1 0x81: the other side's area; no hit
+  spark, target 5, self 4; modifier 3; his element; Z his), the panel bursts on it (`sub_80E2FE8(region, 2, 0, r4
+  = 1)`: effect #0x24, objects/panel-bursts, flags |= 0x10), a camera shake (3, 30), a palette flash of 35 ticks
+  (r4 0x12300), sound 0xC3; past 60 → 8. Phase 8 (`sub_80BF0F8`): 30 to −1 (31 ticks) → 0x20.
+- 0x20 (`sub_80BF11A`): anim 4, the attachment (ExtraVars[1]) off, 3 ticks: VISIBLE off, his flag cleared, his
+  parts off, state 8.
+
+Lab: the official pa/0x15a-mstrcros/recipe1 ends before (it matches every frame); the scratch
+navis/0x15a-mstrcros/long and navis-a4 pa-mstrcros{,-adjacent,-holes,-miss} (the PA straight in the folder) reach
+the Falzar tables (sword, drill, fan, finale) and every wave's target. **Unverified**: the Gregar tables (so the
+beam, move 1), no target for a Cross, a leader without the controller's flag, a failed spawn, the sword's dead
+phase 4.
+
+#### 3.6.35 BigHook (navi chip subtype 23, Giga chip 0x12E, effect T4 0x8C)
+
+BigHook's navi spawner, `off_802CD5C[23]` = `sub_80EA11C`, is instant chip effect 14 (FlmHook's, `off_80EC3F0[14]`)
+too: it spawns the hook, effect #0x8C (`sub_80EA010`, objects/flame-hook, content since group E), with the chip's
+params as its Params (BigHook's 0x00000A01: Param1 1, Param2 0xA), on the user's panel (also kept in bytes +0x0C and
++0x0D), with its element, side and flip, damage word and RelatedObject1. With Param1 set it keeps r7 in
+ExtraVars[1] and stores 1 there: from the navi chip controller that is its flag; from action 0x1C r7 is a ROM
+pointer and the write does nothing. Its destroy (`sub_80EA10A`) stores 0 through ExtraVars[1] unconditionally
+(clearing the controller's flag; 0 or ROM otherwise). The controller neither warps the user out nor back in for
+navi 0x17 (§3.6.7). With Param1 1 the hook's flames (attack #0xCA, objects/flame-hook-fire) swing from columns 4
+then 5 (side 1: 3 then 2), their kind (Param2) 1 (faster, the other palette and shader, running while dimmed) and
+hit spark (Param3) 0xA.
+
+Lab: the official chips/0x12e-bighook/beast-charged and counter-cut-in (where the port stops: no script registers
+subtype 23), the scratch navis/0x12e-bighook/long, long-miss, long-adjacent, and FlmHook's pa/0x146..0x148 reach
+the hook. **Unverified**: a failed spawn.
+
+#### 3.6.36 Darkness (navi chip subtype 24, PA chip 0x159, T1 0x25)
+
+VDoll F + VDoll F + Bass F (or BassAnly F). Dark MegaMan (Param1 0) raises
+a dark flame, then Bass (Param1 1) swoops in and slashes. Not yet content.
+
+**The spawner, `sub_80BFCD0`** (`off_802CD5C[24]`): T1 0x25, as MstrCros's but the flag pointer in ExtraVars[1].
+**The object, `sub_80BF6EC`**, sprite as `object_updateSprite`. Init (`sub_80BF710`), by `byte_80BF7A8[Param1]` (8
+bytes as TwinLdrs's): 0: sprite (0, 0), NameID 0x1A0, offset (0, 0); 1: (8, 0x13) decompressed, NameID 0x16D (actor
+type 1, AI index 0x13), (0, 0): the NameID, the sprite with a ground shadow, CurAnim 0 (loaded 0xFF), X, Y, Z the
+user's (RelatedObject1's), kept at +0x40, the panel from them, Z 0, VISIBLE, flip, parts (`sub_8010DF6` by the
+record), state update and the first update at once.
+
+Dark MegaMan (Param1 0), actions `off_80BF7E4`:
+- 0 (`sub_80BF800`): phase 0 (`sub_80BF81C`): sound 0xFC, Timer 0, Timer2 0, palette 0x19; each later tick Timer + 1,
+  past 1 Timer 0 and Timer2 + 1, past 15 alpha off (`sprite_disableAlpha`) and phase 4; every tick before that the
+  sprite's alpha = Timer2 (`sprite_setAlpha_8002c7a`): he fades in over 32 ticks. Phase 4 (`sub_80BF866`): 30 ticks
+  → 4.
+- 4 (`sub_80BF888`): phase 0 (`sub_80BF8A8`): anim 0xA, Timer 30, his aura (`sub_80B8E30`, r4 0x10032: attachment
+  0x32, sprite (0xC, 0x43)) in ExtraVars[0], sound 0x94; 30 ticks → 4. Phase 4 (`sub_80BF8DA`): Timer 0, Timer2 0,
+  the aura's animation 2, a camera shake (2, 0x6A); each tick sound 0x12B when Timer2 is 0 (Timer2 cycles 0..15);
+  at Timer 0, 8 and 16 the dark flames `sub_80BFD02(0 / 1 / 2, 0x5A)`; Timer + 1, past 0x6A → 8. Phase 8
+  (`sub_80BF94E`): Timer 30, the aura's animation 3; 30 ticks → 8.
+- 8 (`sub_80BF97C`): anim 4, the aura off, 3 ticks: VISIBLE off → 0xC.
+- 0xC (`sub_80BF9B0`): phase 0 (`sub_80BF9CC`): Bass (`sub_80BFCD0` from the user (r5 = RelatedObject1), his panel,
+  element 0, r4 = 1, his damage word, r7 = his own FuturePanelX byte, which the spawn sets to 1); then each tick,
+  once FuturePanelX is 0 (Bass gone) → phase 4 (`sub_80BF9FE`: 30 ticks → state 8).
+- His destroy (`sub_80BFCB2`): his parts off, the byte ExtraVars[1] points at (the controller's flag) cleared, freed.
+
+The dark flames `sub_80BFD02(n, 0x5A)`: element pillars (`sub_80D07A0`: attack #0x61, objects/element-pillar, kind 5;
+element 1, Z 6 pixels, r4 = Param1 5, Param2 (2 − n) · 8 + 0x5A, Param3 8, Param4 n; his damage word; flags |=
+0x10) on the panels `off_80BFD68[n]` from his (dx toward the front, dy): n 0 (1, 0); n 1 (2, −1), (2, 0), (2, 1);
+n 2 (3, −1), (3, 0), (3, 1).
+
+Bass (Param1 1), actions `off_80BF7F4`:
+- 0 (`sub_80BFA1C`): phase 0 (`sub_80BFA38`): sound 0x13B, Timer 0, X − 100 · front pixels, Z 100 pixels, X velocity
+  10 · front and Z velocity −10 pixels a tick; each tick (the entry's too) he moves; at Timer 5 and 7 afterimages
+  (`sub_80BFD90(0)`); Timer + 1, at 10 onto his panel's centre (`object_setCoordinatesFromPanels`), alpha off, phase
+  4 (`sub_80BFAAE`: one tick) → 4. `sub_80BFD90(a)`: two afterimages (`sub_80E33FA`) at his X, Y − 1 and Z − 1 pixels, colour
+  shader 0x8108, 15 ticks, blinking, sprite (8, 0x13) with his flip: animation 0x14 + a (r4 0x141308, r7 0xF: the
+  shadow at its height), then animation a (r4 0x1308, r7 0x0101000F: a ground shadow).
+- 4 (`sub_80BFAD8`): phase 0 (`sub_80BFAF8`): anim 0, the charge glow (effect 0x4E at attach point 0, Timer 30),
+  sound SOUND_BUSTER_CHARGE, Timer 40; at 20 effect 0x4F (Timer 10), sound SOUND_UNK_72; 40 ticks → 4. Phase 4
+  (`sub_80BFB74`): anim 5, Timer 0, his sword (r4 0x10E03: attachment 3, animation 0xE) in ExtraVars[0], sound 0xCE;
+  at Timer 10 a hit on the panel ahead (r4 0x0405FF11: region 0x11, no hit spark, target 5, self 4; modifier 3; his
+  element; Z 0), T4#0 effect 0x1B at its centre 16 pixels up (his flip, palette + 4), a camera shake (2, 0x28), a
+  30-tick flash (r4 0x11E00); past 30 → 8. Phase 8 (`sub_80BFBFA`): 30 ticks → 8.
+- 8 (`sub_80BFC28`): phase 0 (`sub_80BFC44`): anim 0, the sword off, Timer 0, Timer2 15; each later tick Timer + 1,
+  past 2 Timer 0 and Timer2 − 1, at 0 VISIBLE off, alpha off, phase 4; before that alpha = Timer2 (fading out over
+  45 ticks). Phase 4 (`sub_80BFC94`): 30 ticks → state 8, whose destroy clears MegaMan's FuturePanelX.
+
+Lab: the official pa/0x159-darkness recipes end before (they match every frame); the scratch navis/0x159-darkness/long
+and navis-a4 pa-darkness{,-adjacent,-holes,-miss} reach every branch but the failed spawns and a missing flag
+pointer (**unverified**).
 
 ---
 
