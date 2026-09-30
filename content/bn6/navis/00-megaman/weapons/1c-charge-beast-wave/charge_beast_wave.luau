@@ -1,7 +1,7 @@
 --!strict
 -- ChargeCross Beast's charged Null chip: weapon routine 0x1C (`sub_8011DDC`)
 -- and action 0x4F (`sub_80EF282`). The navi winds up for 31 ticks, twice
--- striking the whole field with a harmless hit carrying status 0x46; then
+-- striking the whole field with a hit of no damage and status 0x46; then
 -- a wave rolls out from its panel (objects/charge-wave), and 51 ticks
 -- later it idles.
 
@@ -40,8 +40,8 @@ function charge_beast_wave.setup(navi: Object): number
     return ACTION
 end
 
--- `sub_80EF30A`: a harmless hit on every panel (region 0x83) with
--- status 0x46, element 5.
+-- `sub_80EF30A`: a hit of no damage on every panel (region 0x83), with
+-- status 0x46 and element 5.
 local function field_hit(me: Object)
     battle.hitbox(me, {
         panel_x = me.panel_x,
