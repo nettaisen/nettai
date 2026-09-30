@@ -543,6 +543,16 @@ fn objects() -> ObjectData {
             .map(|id| BodyOverlay { id, sprite: SpriteId { category: 8, index: 0x11 }, in_front: vec![true; 0x20] })
             .collect(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
+        // Made-up looks for NameIDs 0xCD..=0xFF (0xCF has none).
+        name_looks: (0xCD..=0xFF)
+            .map(|name_id| NameLook {
+                name_id,
+                sprite: (name_id != 0xCF).then_some(SpriteId { category: 0x10, index: 0 }),
+                anim: 1,
+                palette: 0,
+                shadow: true,
+            })
+            .collect(),
         kinds: kinds(),
     }
 }
