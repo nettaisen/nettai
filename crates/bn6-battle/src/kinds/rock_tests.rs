@@ -41,6 +41,8 @@ fn setup(actors: u32) -> RoundSetup {
         later_stages: Default::default(),
         low_hp_music_latched: false,
         sp_times: Default::default(),
+        players: Default::default(),
+        link_delay: 0,
     }
 }
 

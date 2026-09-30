@@ -21,20 +21,14 @@ use crate::input::PlayerTick;
 /// battles started from the same setup and stepped with the same inputs
 /// are in the same state.
 ///
-/// Some of it is there only because the custom screen isn't simulated
-/// yet; the custom screen supplies it today, as each console's link
-/// packets did:
-///
-/// - [`PlayerTick::in_custom`] (the player's custom screen is open);
-/// - all of [`TickEvents`]: `local_confirm` and `exchange` are the custom
-///   screen's results, `link_closed` is the link session closing at the
-///   end of the round.
-///
-/// Once the custom screen runs in the engine from the players' buttons,
-/// each player's buttons are the whole input. Until then, in netplay the
-/// events belong to the frame's input record like the buttons do: both
-/// peers must step the frame with the same events (the netplay layer
-/// carries them in a player's input).
+/// Each player's share is their buttons ([`PlayerTick`]); both players'
+/// custom screens run in the engine from them. The [`TickEvents`] are the
+/// link session closing at the end of the round, and, only when checking
+/// against a recording that lacks a player's folder, that player's
+/// recorded custom-screen results. In netplay the events belong to the
+/// frame's input record like the buttons do: both peers must step the
+/// frame with the same events (the netplay layer carries them in a
+/// player's input).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TickInput {
     /// By side.
@@ -93,6 +87,8 @@ mod tests {
             later_stages: Default::default(),
             low_hp_music_latched: false,
             sp_times: Default::default(),
+            players: Default::default(),
+            link_delay: 0,
         })
     }
 
@@ -100,7 +96,7 @@ mod tests {
         // Walk about: a direction every few frames.
         let dirs = [keys::UP, keys::RIGHT, keys::DOWN, keys::LEFT, 0];
         let held = |p: u32| dirs[((frame / 7 + p * 3) % 5) as usize];
-        TickInput { players: [PlayerTick { held: held(0), in_custom: false }, PlayerTick { held: held(1), in_custom: false }], events: TickEvents::default() }
+        TickInput { players: [PlayerTick { held: held(0) }, PlayerTick { held: held(1) }], events: TickEvents::default() }
     }
 
     #[test]

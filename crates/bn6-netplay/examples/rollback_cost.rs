@@ -7,23 +7,18 @@
 
 use bn6_battle::Battle;
 use bn6_netplay::Game;
-use bn6_netplay::standin::{Masher, Rules, StandInBattle, hand, netbattle};
+use bn6_netplay::standin::{Masher, StandInBattle, folder, netbattle};
 use std::time::{Duration, Instant};
 
 const DEPTH: usize = 10;
 
 fn main() {
-    let rules = Rules {
-        hands: [
-            hand(&[(0x11, 13), (0xEC, 4), (0x0F, 2), (0xB1, 0), (0x11, 16)]),
-            hand(&[(0x11, 13), (0x0F, 2), (0x10, 1), (0x11, 16), (0x0F, 12)]),
-        ],
-        min_ticks: 20,
-        max_ticks: 90,
-        beast_out: false,
-    };
+    let folders = [
+        folder(&[(0x11, 13), (0xEC, 10), (0x0F, 2), (0xB1, 26), (0x11, 16)]),
+        folder(&[(0x11, 13), (0x0F, 2), (0x10, 1), (0x11, 16), (0x0F, 12)]),
+    ];
     let seed = 3u64;
-    let mut g = StandInBattle::new(Battle::new(netbattle(500, seed as u32 ^ 0x1234_5678)), rules);
+    let mut g = StandInBattle::new(Battle::new(netbattle(500, seed as u32 ^ 0x1234_5678, folders)));
     let mut m = [Masher::new(seed), Masher::new(seed ^ 0xABCD)];
     let mut inputs = Vec::new();
     let mut states = Vec::new();

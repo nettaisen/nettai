@@ -1,5 +1,6 @@
-//! Synthetic netbattles under rollback: two MegaMen with fixed hands and
-//! seeded random button mashing, played by two peers over simulated links
+//! Synthetic netbattles under rollback: two MegaMen with fixed folders
+//! and seeded random button mashing (which drives their custom screens
+//! too), played by two peers over simulated links
 //! with various latencies. Every confirmed frame, both peers' state
 //! digests must equal each other and a plain lockstep run's, the battle
 //! must end, and each peer's sound must play every confirmed cue once.
@@ -9,29 +10,24 @@ use bn6_battle::{Battle, SoundCue, TickInput};
 use bn6_netplay::bn6::{Bn6Input, CueFeed};
 use bn6_netplay::network::LinkConfig;
 use bn6_netplay::sim::{Match, NetConfig, Report};
-use bn6_netplay::standin::{Masher, Rules, StandInBattle, hand, netbattle};
+use bn6_netplay::standin::{Masher, StandInBattle, folder, netbattle};
 use bn6_netplay::{Game, Observer};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-/// Side 0: GunDelSols, EraseMan (a navi chip) and Invisibl (a time
-/// freeze). Side 1: GunDelSols only, so that neither side can counter a
-/// freeze with one of its own (not implemented yet).
-fn rules() -> Rules {
-    Rules {
-        hands: [
-            hand(&[(0x11, 13), (0xEC, 4), (0x0F, 2), (0xB1, 0), (0x11, 16)]),
-            hand(&[(0x11, 13), (0x0F, 2), (0x10, 1), (0x11, 16), (0x0F, 12)]),
-        ],
-        min_ticks: 20,
-        max_ticks: 90,
-        beast_out: false,
-    }
+/// Side 0's folder: GunDelSols, EraseMan (a navi chip) and Invisibl (a
+/// time freeze). Side 1's: GunDelSols only, so that neither side can
+/// counter a freeze with one of its own (not implemented yet).
+fn folders() -> [bn6_battle::custom::BattleFolder; 2] {
+    [
+        folder(&[(0x11, 13), (0xEC, 10), (0x0F, 2), (0xB1, 26), (0x11, 16)]),
+        folder(&[(0x11, 13), (0x0F, 2), (0x10, 1), (0x11, 16), (0x0F, 12)]),
+    ]
 }
 
 fn start(seed: u64) -> StandInBattle {
-    StandInBattle::new(Battle::new(netbattle(500, seed as u32 ^ 0x1234_5678)), rules())
+    StandInBattle::new(Battle::new(netbattle(300, seed as u32 ^ 0x1234_5678, folders())))
 }
 
 fn mashers(seed: u64) -> impl FnMut(usize, u32) -> u16 {
@@ -133,8 +129,8 @@ fn latency_10_with_input_delay() {
     run_latency(10, 2, 3);
 }
 
-/// The engine's own input record, with the custom screen's events riding
-/// in player 0's input: record a stand-in battle's tick inputs, then play
+/// The engine's own input record, with the frame's events riding in
+/// player 0's input: record a stand-in battle's tick inputs, then play
 /// them back through `Battle` as a rollback game.
 #[test]
 fn recorded_events_ride_in_the_inputs() {
@@ -171,7 +167,7 @@ fn recorded_events_ride_in_the_inputs() {
 fn the_local_side_is_part_of_the_shared_setup() {
     let mut a = start(5);
     let mut b = start(5);
-    b.battle = Battle::new(bn6_battle::RoundSetup { local_side: 1, ..netbattle(500, 5 ^ 0x1234_5678) });
+    b.battle = Battle::new(bn6_battle::RoundSetup { local_side: 1, ..netbattle(300, 5 ^ 0x1234_5678, folders()) });
     let mut inputs = mashers(5);
     let first_difference = (0..200u32).find(|_| {
         let i = [inputs(0, 0), inputs(1, 0)];
