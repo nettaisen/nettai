@@ -5,7 +5,7 @@
 -- and ends itself once the owner's slot is cleared. See
 -- objects-and-player.md §A.6.
 
-local data = require("../data/attacks")
+local data = require("../data/pack")
 local slot = require("../lib/slot")
 
 export type State = {
@@ -25,7 +25,7 @@ local sun_beam = {
 
 -- `sub_80E5D12`: a beam at `offset` from `owner`, stored in `which`.
 function sun_beam.spawn(owner: Object, look: SunBeamLook, offset: Vec3, which: Slot): Object?
-    local o = battle.spawn("effect", sun_beam.index, offset, { look.sprite, look.palette, 0, 0 })
+    local o = battle.spawn("effect", sun_beam.index, offset, { look.look, look.palette, 0, 0 })
     if not o then
         return nil
     end
@@ -70,7 +70,7 @@ end
 local function init(me: Object)
     local look, palette = me:param(1), me:param(2)
     local sprite = me.sprite
-    local id = data.SUN_BEAM_SPRITES[look]
+    local id = data.sun_beam_looks[look]
     sprite:load(id.category, id.index)
     sprite:set_animation(0)
     sprite:step()

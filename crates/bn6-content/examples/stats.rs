@@ -1,14 +1,14 @@
-//! Survey an extracted graphics bundle: how sprites use tilesets, parts and
+//! Survey a content pack's graphics: how sprites use tilesets, parts and
 //! palettes (to choose an exact editable format).
 //!
-//!     cargo run -p bn6-content --example stats -- data/graphics/bn6-assets.bin
+//!     cargo run -p bn6-content --example stats -- data/content/bn6
 
 use bn6_assets::Bundle;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 fn main() {
-    let path = std::env::args().nth(1).expect("usage: stats <bn6-assets.bin>");
-    let b = Bundle::load(&path).unwrap();
+    let path = std::env::args().nth(1).expect("usage: stats <pack>");
+    let (b, _) = bn6_content::pack::load_graphics(std::path::Path::new(&path)).unwrap_or_else(|r| panic!("{r}"));
     let mut n = BTreeMap::<&str, usize>::new();
     let mut flags = BTreeMap::<u8, usize>::new();
     let mut durations = BTreeMap::<u8, usize>::new();

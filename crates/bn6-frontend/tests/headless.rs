@@ -3,6 +3,7 @@
 //! where the original draws them, and PNGs come out.
 
 use bn6_assets::{Bundle, Field, MapEntry, SpriteFrame, SpritePart, SpriteSheet, Tiles};
+use bn6_battle::content::testing;
 use bn6_frontend::driver::{LivePlayer, live_setup};
 use bn6_frontend::{Renderer, Session, headless};
 use std::collections::BTreeSet;
@@ -72,7 +73,11 @@ fn rgb(c: u16) -> [u8; 3] {
 fn renders_a_live_battle_to_png() {
     let assets = assets();
     let mut renderer = Renderer::new(&assets);
-    let session = Session::new(Box::new(LivePlayer::new(live_setup(1))));
+    // A live battle on the engine's hand-authored test content.
+    let content = testing::content();
+    let settings = content.rules.stages.settings(testing::LINK_BATTLE);
+    let setup = live_setup(&content, settings, &[(testing::SUN_GUN_3, 0)], 1);
+    let session = Session::new(Box::new(LivePlayer::new(setup, content.clone())));
     let out = std::env::temp_dir().join(format!("bn6-frontend-test-{}", std::process::id()));
     let wanted: BTreeSet<u32> = [1, 100].into_iter().collect();
     let mut log = |s: &str| panic!("{s}");

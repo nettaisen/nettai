@@ -7,7 +7,7 @@
 
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::data::{PanelOffset, lockon};
+use crate::content::PanelOffset;
 use crate::field;
 use crate::input::keys;
 use crate::kinds::common::{facing, set_animation};
@@ -166,7 +166,7 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
         super::beast_claw::ACTION => 0x0C,
         // sub_80EAF26
         0x41 => panic!("the lock-on of action 0x41 (sub_80EAF26) is not implemented yet"),
-        _ => crate::data::chip(ai(b, r).attack.chip_id).lockon_mode,
+        _ => b.content.chip(ai(b, r).attack.chip_id).lockon_mode,
     }
 }
 
@@ -178,10 +178,10 @@ fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> Option<P
         // sub_802661C: the navi's own panel.
         return Some(b.objects.get(r).panel);
     }
-    let Some(search) = lockon::search(mode) else {
+    let Some(search) = b.content.rules.lockon.search(mode) else {
         panic!("lock-on mode {mode:#x} (jt_8026584) is not implemented yet");
     };
-    let found = search_near(b, r, target, search.offsets);
+    let found = search_near(b, r, target, &search.offsets);
     if !search.prefers_middle_row {
         return found;
     }
@@ -197,7 +197,7 @@ fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> Option<P
 fn search_near(b: &Battle, r: ObjectRef, target: PanelPos, offsets: &[PanelOffset]) -> Option<PanelPos> {
     let o = b.objects.get(r);
     let front = facing(o.alliance, o.flip);
-    let columns = std::iter::once(0).chain(lockon::column_shifts().iter().copied());
+    let columns = std::iter::once(0).chain(b.content.rules.lockon.column_shifts.iter().copied());
     for shift in columns {
         let x = target.x as i32 + front * shift as i32;
         // sub_8026450
@@ -225,7 +225,7 @@ fn can_stand(b: &Battle, r: ObjectRef, x: u8, y: u8) -> bool {
     }
     let o = b.objects.get(r);
     let floor_free = flag1(b, r) & f1::AIRSHOE != 0 || !b.field.is_solid(o.panel.x, o.panel.y);
-    let rule = crate::data::field_generated::ANY_SIDE_STEP_RULES[floor_free as usize][o.alliance as usize & 1];
+    let rule = b.content.rules.panels.any_side_step.get(floor_free, o.alliance);
     b.field.meets(x, y, rule)
 }
 

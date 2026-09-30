@@ -6,3 +6,5 @@ license.workspace = true
 description = "The battle engine's content API: what chips, attacks and effects see of the core"
 
 [dependencies]
+# SpriteId is written "CC-II" in content files.
+serde = "1"

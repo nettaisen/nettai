@@ -128,7 +128,7 @@ fn temp(name: &str) -> PathBuf {
 }
 
 fn write_pack(dir: &Path, b: &Bundle) {
-    let mut files = vec![pack::manifest("test", Some(b), false)];
+    let mut files = vec![pack::manifest("test", Some(b), false, false)];
     files.extend(pack::export_graphics(b));
     pack::write_files(dir, &files).unwrap();
 }
@@ -140,13 +140,13 @@ fn import(dir: &Path) -> (Option<Bundle>, Report) {
 }
 
 #[test]
-fn a_bundle_reads_back_byte_for_byte() {
+fn graphics_read_back_exactly() {
     let dir = temp("roundtrip");
     let b = bundle();
     write_pack(&dir, &b);
     let (back, report) = import(&dir);
     assert!(!report.has_errors() && report.count(Level::Warning) == 0, "{report}");
-    assert_eq!(back.unwrap().to_bytes(), b.to_bytes());
+    assert_eq!(back.unwrap(), b);
     // The background map is a Tiled map; the sprite's timing a file of its own.
     assert!(dir.join("graphics/backgrounds/00/map.tmj").is_file());
     assert!(!dir.join("graphics/backgrounds/01").exists());
@@ -170,23 +170,19 @@ fn timing_loads_without_images() {
 }
 
 #[test]
-fn the_cache_follows_the_sources() {
-    let dir = temp("cache");
-    let cache = dir.join("cache");
+fn loading_reads_the_files_as_they_are() {
+    let dir = temp("load");
     let b = bundle();
     write_pack(&dir, &b);
-    let (first, _) = pack::load_graphics(&dir, &cache).unwrap();
-    assert_eq!(first.to_bytes(), b.to_bytes());
-    let built: Vec<_> = std::fs::read_dir(&cache).unwrap().collect();
-    assert_eq!(built.len(), 1);
-    // Recolour one sprite colour: a new cache entry replaces the old one.
+    let (first, _) = pack::load_graphics(&dir).unwrap();
+    assert_eq!(first, b);
+    // Recolour one sprite colour: the next load has it.
     let atlas = dir.join("graphics/sprites/00-01/atlas.png");
     let mut img = Indexed::load(&atlas).unwrap();
     img.palette[5] = [255, 255, 255];
     img.save(&atlas).unwrap();
-    let (second, _) = pack::load_graphics(&dir, &cache).unwrap();
+    let (second, _) = pack::load_graphics(&dir).unwrap();
     assert_eq!(second.sprites[0].palette_sets[0][0][5], 0x7FFF);
-    assert_eq!(std::fs::read_dir(&cache).unwrap().count(), 1);
 }
 
 #[test]
@@ -263,12 +259,11 @@ fn damaged_palettes_are_refused_with_a_reason() {
 fn an_aseprite_view_edits_whole_frames() {
     use bn6_content::aseprite::{self, AseFile, CelContent};
     let s = sprite(0, 1);
-    let sheet_bytes = |s: &SpriteSheet| Bundle { sprites: vec![s.clone()], ..Default::default() }.to_bytes();
     let bytes = aseprite::export(&s);
     let mut r = Report::default();
     let back = aseprite::import(&bytes, &s, "view", &mut r).unwrap();
     assert!(r.issues.is_empty(), "{r}");
-    assert_eq!(sheet_bytes(&back), sheet_bytes(&s));
+    assert_eq!(back, s);
 
     let ase = AseFile::from_bytes(&bytes).unwrap();
     assert_eq!((ase.frames.len(), ase.layers.len(), ase.tags.len()), (3, 3, 2));

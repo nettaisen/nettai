@@ -9,8 +9,7 @@ use super::{
 use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
-use crate::data::player::SlideVector;
-use crate::data::player_generated::{BUBBLE_BOB, ICE_VECTORS, PUSH_VECTORS, ROAD_VECTORS};
+use crate::content::SlideVector;
 use crate::field::{self, PanelType};
 use crate::object::{DragStep, ObjectRef, PanelPos, flags, state};
 
@@ -318,7 +317,7 @@ pub(super) fn bubble(b: &mut Battle, r: ObjectRef) {
     }
     let popped = mash(b, r, timer::BUBBLE, f1::BUBBLED);
     let t = coll(b, r).status_timers[timer::BUBBLE] as i16 as i32;
-    b.objects.get_mut(r).pos.z = (BUBBLE_BOB[((t >> 2) & 0x1F) as usize] as i32) << 16;
+    b.objects.get_mut(r).pos.z = (b.content.rules.bubble_bob[((t >> 2) & 0x1F) as usize] as i32) << 16;
     if popped {
         b.objects.get_mut(r).pos.z = 0;
         b.play_sound(crate::sound::SoundId(0x124));
@@ -490,11 +489,11 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
             let off = if hm & 0x80 != 0 { 5 } else { 0 };
             let bits = (hm & 0x7F) >> 2;
             let i = (0..4).find(|&i| bits & (1 << i) != 0).unwrap_or(4);
-            facing(PUSH_VECTORS[i + off])
+            facing(b.content.rules.push_vectors[i + off])
         }
-        2 => facing(*ICE_VECTORS.get(coll(b, r).direction as usize).expect("ice slide direction")),
+        2 => facing(*b.content.rules.ice_vectors.get(coll(b, r).direction as usize).expect("ice slide direction")),
         3 => {
-            panel_kind(b, o.panel).road_index().map_or(SlideVector::NONE, |i| ROAD_VECTORS[i])
+            b.content.rules.panels.road_slide(panel_kind(b, o.panel)).unwrap_or(SlideVector::NONE)
         }
         t => panic!("slide type {t} reads past its table"),
     };
@@ -510,5 +509,5 @@ pub(super) fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
         return false;
     }
     let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
-    b.field.meets(p.x, p.y, field::step_rule(airshoes, b.objects.get(r).alliance))
+    b.field.meets(p.x, p.y, b.content.rules.panels.step.get(airshoes, b.objects.get(r).alliance))
 }

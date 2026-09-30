@@ -33,10 +33,10 @@ pub fn update_sprite(b: &mut Battle, r: ObjectRef) {
     }
     let (anim, loaded) = (o.anim, o.anim_loaded);
     if anim != loaded {
-        b.objects.sprite_mut(r).set_animation(anim);
+        b.objects.sprite_mut(r).set_animation(anim, &b.content);
         b.objects.get_mut(r).anim_loaded = anim;
     }
-    b.objects.sprite_mut(r).update();
+    b.objects.sprite_mut(r).update(&b.content);
 }
 
 /// `sub_800E258`: the panel a field position is over (x 1..=6 and y
@@ -169,8 +169,8 @@ pub fn step_sprite(b: &mut Battle, r: ObjectRef) {
     }
     let (anim, loaded) = (o.anim, o.anim_loaded);
     if anim != loaded {
-        b.objects.sprite_mut(r).set_animation(anim);
+        b.objects.sprite_mut(r).set_animation(anim, &b.content);
         b.objects.get_mut(r).anim_loaded = anim;
     }
-    b.objects.sprite_mut(r).update();
+    b.objects.sprite_mut(r).update(&b.content);
 }

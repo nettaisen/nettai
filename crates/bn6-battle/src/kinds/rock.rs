@@ -6,7 +6,7 @@
 //! docs/engine/field-objects.md.
 
 use crate::battle::Battle;
-use crate::data::{self, RockKind, SpriteId};
+use crate::content::{RockKind, SpriteId};
 use crate::field::pflags;
 use crate::kinds::common;
 use crate::kinds::obstacle::{self, Action, Obstacle};
@@ -18,7 +18,7 @@ pub const INDEX: u8 = 0x59;
 /// Rocks live this many ticks.
 const LIFETIME: u16 = 6000;
 
-/// The rock's kind among absorbed obstacles (`data::ABSORBED_SPRITES`).
+/// The rock's kind among absorbed obstacles (`ObjectData::absorbed_sprites`).
 const ABSORBED_KIND: u8 = 4;
 
 /// Damage a rock deals when thrown.
@@ -44,7 +44,7 @@ pub enum Entrance {
 /// What a rock is spawned with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Spec {
-    /// Which rock (`data::ROCKS`).
+    /// Which rock (`ObjectData::rocks`).
     pub variant: u8,
     /// Which of its side's field-object slots it takes (0: two per side,
     /// 1: one per side).
@@ -55,7 +55,8 @@ pub struct Spec {
 /// Rock behavior state.
 #[derive(Clone, Debug, Hash)]
 pub struct Vars {
-    pub kind: &'static RockKind,
+    /// Which rock (`ObjectData::rocks`).
+    pub variant: u8,
     pub entrance: Entrance,
     pub obstacle: obstacle::State,
 }
@@ -74,8 +75,8 @@ fn vars_mut(o: &mut Object) -> &mut Vars {
     }
 }
 
-fn kind(b: &Battle, r: ObjectRef) -> &'static RockKind {
-    vars(b, r).kind
+fn kind(b: &Battle, r: ObjectRef) -> RockKind {
+    *b.content.objects.rock(vars(b, r).variant)
 }
 
 /// `sub_80074FA`: a rock from a battle's actor list, on the side of its
@@ -90,7 +91,6 @@ pub fn spawn_at_start(b: &mut Battle, x: u8, y: u8, variant: u8) -> Option<Objec
 /// field-object slots (possibly evicting an older one). `damage` and
 /// `stamina` are what it hits with when thrown.
 pub fn spawn(b: &mut Battle, panel: PanelPos, side: u8, spec: Spec, damage: u16, stamina: u16) -> Option<ObjectRef> {
-    let kind = &data::ROCKS[spec.variant as usize];
     let params = [spec.variant, spec.class, spec.entrance as u8, 0];
     // Until init places it, the position is whatever the spawner's
     // registers held; nothing sees it.
@@ -106,7 +106,7 @@ pub fn spawn(b: &mut Battle, panel: PanelPos, side: u8, spec: Spec, damage: u16,
     } else {
         flags::RUN_IN_TIME_STOP
     };
-    o.vars = crate::kinds::Vars::Rock(Vars { kind, entrance: spec.entrance, obstacle: Default::default() });
+    o.vars = crate::kinds::Vars::Rock(Vars { variant: spec.variant, entrance: spec.entrance, obstacle: Default::default() });
     obstacle::register(b, r, side, spec.class);
     Some(r)
 }
@@ -126,8 +126,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let anim = if entrance == Entrance::Placed { kind.anim } else { 0 };
     let sprite = b.objects.sprite_mut(r);
     sprite.load(SPRITE);
-    sprite.set_animation(anim);
-    sprite.update();
+    sprite.set_animation(anim, &b.content);
+    sprite.update(&b.content);
     sprite.look.shadow = crate::object::sprite::Shadow::Ground;
     let o = b.objects.get_mut(r);
     o.flags = (o.flags | flags::VISIBLE) & !flags::NO_SPRITE_UPDATE;

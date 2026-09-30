@@ -2,6 +2,7 @@
 //! It registers on its panels, resolves against whatever is there, and
 //! (by default) frees itself within its first update.
 
+use crate::data::Data;
 use bn6_content_api::api::{CollisionFields, ObjectFields, OtherFields};
 use bn6_content_api::{CoreApi, Lifecycle, ObjectRef, PanelPos, Pool, Vec3, content_state};
 
@@ -57,7 +58,7 @@ pub fn spawn(api: &mut dyn CoreApi, owner: ObjectRef, s: &Spec) -> Option<Object
     Some(r)
 }
 
-pub fn update(api: &mut dyn CoreApi, me: ObjectRef) {
+pub fn update(_: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
     match api.lifecycle(me) {
         Lifecycle::Init => init(api, me),
         Lifecycle::Update => resolve(api, me),

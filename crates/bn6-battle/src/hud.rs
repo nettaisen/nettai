@@ -1,7 +1,7 @@
 //! The parts of the battle HUD that gate simulation: the custom gauge and
 //! the banner lifetime. Drawing is left to the frontend.
 
-use crate::data::BannerId;
+use crate::content::BannerId;
 use crate::setup::GaugeSpeed;
 
 /// The custom gauge: one per battle, shared by both players.
@@ -54,12 +54,13 @@ pub enum BannerStatus {
 }
 
 impl Banner {
-    /// Start a banner unless one is showing. Returns false if one was.
-    pub fn start(&mut self, id: BannerId) -> bool {
+    /// Start a banner unless one is showing; `holds`: it stays up until
+    /// removed (`Rules::banner_holds`). Returns false if one was showing.
+    pub fn start(&mut self, id: BannerId, holds: bool) -> bool {
         if self.active {
             return false;
         }
-        *self = Banner { active: true, step: 0, timer: 0, holds: id.holds(), id: Some(id) };
+        *self = Banner { active: true, step: 0, timer: 0, holds, id: Some(id) };
         true
     }
 

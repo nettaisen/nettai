@@ -1,27 +1,14 @@
-//! `bn6-extract graphics <rom> <out-dir>`: decode the battle graphics into
-//! the frontend's asset bundle (see the bn6-assets crate). The output is
-//! derived from the user's ROM and is never checked in.
+//! The battle graphics, decoded from the ROM into their typed form (see the
+//! bn6-assets crate); bn6-content writes them as the pack's images and
+//! JSON.
 
 use crate::{Rom, lz77, u32at};
 use bn6_assets::*;
 use std::collections::HashMap;
-use std::path::Path;
 
 /// The battle graphics of a ROM.
 pub fn bundle(rom: &Rom) -> Bundle {
     Bundle { sprites: sprites(rom), field: field(rom), backgrounds: backgrounds(rom), hud: crate::hud::hud(rom) }
-}
-
-pub fn run(rom: &Rom, out: &Path) {
-    let bundle = bundle(rom);
-    bundle.save(out).expect("writing the asset bundle");
-    let tiles: usize = bundle.sprites.iter().flat_map(|s| &s.tilesets).map(|t| t.len()).sum();
-    eprintln!(
-        "wrote {}: {} sprites ({tiles} tiles), {} backgrounds",
-        out.join(FILE_NAME).display(),
-        bundle.sprites.len(),
-        bundle.backgrounds.iter().flatten().count()
-    );
 }
 
 /// Bytes starting at a ROM address.

@@ -74,22 +74,12 @@ impl Battle {
 mod tests {
     use super::*;
     use crate::input::keys;
-    use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, effects};
+    use crate::content::testing;
 
     fn battle() -> Battle {
-        let stats = NaviStats { hp: 300, max_hp: 300, max_base_hp: 300, ..NaviStats::default() };
-        Battle::new(RoundSetup {
-            settings: BattleSettings { effects: effects::LINK, ..crate::data::BATTLE_SETTINGS[0] },
-            navi_stats: [stats; 2],
-            rng: 0x2468_ACE0,
-            local_side: 0,
-            score: SetScore::default(),
-            later_stages: Default::default(),
-            low_hp_music_latched: false,
-            sp_times: Default::default(),
-            players: Default::default(),
-            link_delay: 0,
-        })
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(300));
+        setup.rng = 0x2468_ACE0;
+        Battle::new(setup, testing::content())
     }
 
     fn input(frame: u32) -> TickInput {
@@ -136,7 +126,7 @@ mod tests {
         assert_eq!(b.clone().digest(), d, "a copy digests the same");
         let mut c = b.clone();
         c.play_sound(crate::sound::SoundId(0x94));
-        c.banner.id = Some(crate::data::BannerId(0x4C));
+        c.banner.id = Some(crate::content::BannerId(0x4C));
         assert_eq!(c.digest(), d, "sound cues and the banner id are presentation");
         let mut c = b.clone();
         c.rng.next();

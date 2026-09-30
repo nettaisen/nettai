@@ -3,7 +3,7 @@
 //! Purely visual, but it holds an effect slot.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::kinds::common;
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
@@ -60,6 +60,6 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.shadow = Shadow::WithSprite;
     s.look.palette = 0;
     s.look.set_flip(flip);
-    s.set_animation(0);
+    s.set_animation(0, &b.content);
     common::set_progress(b, r, common::Progress::UPDATE);
 }

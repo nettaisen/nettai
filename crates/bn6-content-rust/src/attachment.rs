@@ -6,7 +6,7 @@
 use bn6_content_api::api::{ObjectFields, OtherFields, SpriteFields};
 use bn6_content_api::{CoreApi, Lifecycle, NaviStat, ObjectRef, Pool, Shadow, Value, Vec3, content_state};
 
-use crate::data::ATTACHMENTS;
+use crate::data::Data;
 use crate::{Slot, set_state, state};
 
 pub const INDEX: u8 = 5;
@@ -43,9 +43,9 @@ pub fn spawn(api: &mut dyn CoreApi, owner: ObjectRef, kind: u8, slot: Slot) -> O
     r
 }
 
-pub fn update(api: &mut dyn CoreApi, me: ObjectRef) {
+pub fn update(data: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
     match api.lifecycle(me) {
-        Lifecycle::Init => init(api, me),
+        Lifecycle::Init => init(data, api, me),
         Lifecycle::Update => follow(api, me),
         Lifecycle::Destroy => api.free(me),
     }
@@ -56,9 +56,9 @@ fn owner(api: &dyn CoreApi, me: ObjectRef) -> ObjectRef {
 }
 
 /// `sub_80B8CF8`.
-fn init(api: &mut dyn CoreApi, me: ObjectRef) {
+fn init(data: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
     let (kind, anim, palette_add) = (api.param(me, 0), api.param(me, 1), api.param(me, 3));
-    let k = ATTACHMENTS[kind as usize];
+    let k = data.attachments[kind as usize];
     let owner = owner(api, me);
     api.sprite_load(me, k.sprite);
     api.set_shadow(me, Shadow::WithSprite);

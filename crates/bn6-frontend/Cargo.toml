@@ -10,5 +10,9 @@ bn6-battle = { path = "../bn6-battle", features = ["trace"] }
 bn6-assets = { path = "../bn6-assets" }
 bn6-audio = { path = "../bn6-audio" }
 bn6-content = { path = "../bn6-content" }
+m4a.workspace = true
 minifb = "0.28"
 png = "0.17"
+
+[dev-dependencies]
+bn6-battle = { path = "../bn6-battle", features = ["trace", "test-content"] }

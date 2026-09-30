@@ -1,6 +1,8 @@
-//! Checks that a pack reads back as the data it was exported from:
-//! graphics byte for byte, sprite timing frame for frame, songs command
-//! for command (as timelines) and sample for sample (rendered PCM).
+//! Comparing what packs load into: battle data record by record, graphics
+//! part by part, sprite timing frame for frame, songs command for command
+//! (as timelines) and sample for sample (rendered PCM). `bn6-content
+//! verify` uses these to check a pack against a reference pack (after an
+//! editor round trip, say); the extractor checks its own export.
 
 use crate::timeline::{self, Timeline};
 use crate::timing::Timing;
@@ -9,47 +11,71 @@ use m4a::bank::{Song, SoundBank};
 use m4a::{Driver, SongId};
 use std::sync::Arc;
 
-/// Differences between two bundles, by part (empty: identical bytes).
+/// Differences between two graphics sets, by part (empty: identical).
 pub fn compare_graphics(a: &Bundle, b: &Bundle) -> Vec<String> {
     let mut out = Vec::new();
-    if a.to_bytes() == b.to_bytes() {
+    if a == b {
         return out;
     }
     if a.sprites.len() != b.sprites.len() {
         out.push(format!("{} sprites, {} after", a.sprites.len(), b.sprites.len()));
     }
     for (x, y) in a.sprites.iter().zip(&b.sprites) {
-        let bytes = |s: &bn6_assets::SpriteSheet| Bundle { sprites: vec![s.clone()], ..Default::default() }.to_bytes();
-        if bytes(x) != bytes(y) {
-            let what = if x.tilesets != y.tilesets {
-                "tiles"
-            } else if x.palette_sets != y.palette_sets {
-                "palettes"
-            } else if x.part_lists != y.part_lists {
-                "layouts"
-            } else {
-                "animations"
-            };
-            out.push(format!("sprite {:02x}-{:02x}: {what} differ", x.category, x.index));
-        }
+        let what = if (x.category, x.index) != (y.category, y.index) {
+            "ids"
+        } else if x.tilesets != y.tilesets {
+            "tiles"
+        } else if x.palette_sets != y.palette_sets {
+            "palettes"
+        } else if x.part_lists != y.part_lists {
+            "layouts"
+        } else if x.animations != y.animations {
+            "animations"
+        } else {
+            continue;
+        };
+        out.push(format!("sprite {:02x}-{:02x}: {what} differ", x.category, x.index));
     }
-    let field = |f: &Bundle| Bundle { field: f.field.clone(), ..Default::default() }.to_bytes();
-    if field(a) != field(b) {
+    if a.field != b.field {
         out.push("field differs".into());
     }
+    if a.backgrounds.len() != b.backgrounds.len() {
+        out.push(format!("{} backgrounds, {} after", a.backgrounds.len(), b.backgrounds.len()));
+    }
     for (i, (x, y)) in a.backgrounds.iter().zip(&b.backgrounds).enumerate() {
-        let bg = |v: &Option<bn6_assets::Background>| Bundle { backgrounds: vec![v.clone()], ..Default::default() }.to_bytes();
-        if bg(x) != bg(y) {
+        if x != y {
             out.push(format!("background {i} differs"));
         }
     }
-    let hud = |h: &Bundle| Bundle { hud: h.hud.clone(), ..Default::default() }.to_bytes();
-    if hud(a) != hud(b) {
+    if a.hud != b.hud {
         out.push("HUD differs".into());
     }
-    if out.is_empty() {
-        out.push("bundles differ".into());
+    out
+}
+
+/// Differences between two battle contents, by part (empty: identical).
+pub fn compare_battle(a: &bn6_battle::Content, b: &bn6_battle::Content) -> Vec<String> {
+    let mut out = Vec::new();
+    if a.chips.len() != b.chips.len() {
+        out.push(format!("{} chips, {} after", a.chips.len(), b.chips.len()));
     }
+    for (x, y) in a.chips.iter().zip(&b.chips) {
+        if x != y {
+            out.push(format!("chip {:#05x} {} differs", x.id, x.name));
+        }
+    }
+    let parts: [(&str, bool); 9] = [
+        ("navis", a.navis == b.navis),
+        ("forms", a.forms == b.forms),
+        ("rules", a.rules == b.rules),
+        ("objects", a.objects == b.objects),
+        ("effects", a.effects == b.effects),
+        ("sparks", a.sparks == b.sparks),
+        ("regions", a.regions == b.regions),
+        ("panel layouts", a.panel_layouts == b.panel_layouts),
+        ("sprite timing", a.animations == b.animations),
+    ];
+    out.extend(parts.iter().filter(|p| !p.1).map(|p| format!("{} differ", p.0)));
     out
 }
 
@@ -67,7 +93,7 @@ pub fn compare_timing(t: &Timing, b: &Bundle) -> Vec<String> {
         }
     }
     if t.sprites.len() != b.sprites.len() {
-        out.push(format!("{} sprites with timing, {} in the bundle", t.sprites.len(), b.sprites.len()));
+        out.push(format!("{} sprites with timing, {} in the graphics", t.sprites.len(), b.sprites.len()));
     }
     out
 }

@@ -13,7 +13,6 @@ use super::{
 use crate::actor::{request, status};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
-use crate::data::player_generated::{BUSTER_BONUS_BY_FORM, BUSTER_BONUS_BY_NAVI};
 use crate::input::keys;
 use crate::object::ObjectRef;
 use crate::setup::Navi;
@@ -239,11 +238,11 @@ fn buster_variant(b: &mut Battle, r: ObjectRef) -> u8 {
 /// 10; 1 when worn out.
 pub(super) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
     let s = stats(b, r);
-    let mut d = s.attack as u16 + BUSTER_BONUS_BY_NAVI[s.navi.index()] as u16;
+    let mut d = s.attack as u16 + b.content.navi(s.navi).buster_bonus as u16;
     if emotion(b, b.objects.get(r).alliance) == Emotion::WornOut {
         d = 1;
     } else {
-        d += BUSTER_BONUS_BY_FORM[s.form.index()] as u16;
+        d += b.content.form(s.form).buster_bonus as u16;
     }
     d.min(10)
 }
@@ -318,9 +317,9 @@ fn intercepted(b: &Battle, r: ObjectRef, chip: u16) -> bool {
         return false;
     }
     let Some(opp) = b.stats[(b.objects.get(r).alliance ^ 1) as usize].support else { return false };
-    let data = crate::data::chip(chip & 0x7FFF);
-    let mega_or_giga = matches!(data.class, crate::data::ChipClass::Mega | crate::data::ChipClass::Giga);
-    if (opp.beat && mega_or_giga) || (opp.rush && data.flags2 & 2 != 0) {
+    let data = b.content.chip(chip & 0x7FFF);
+    let mega_or_giga = matches!(data.class, crate::content::ChipClass::Mega | crate::content::ChipClass::Giga);
+    if (opp.beat && mega_or_giga) || (opp.rush && data.extra_flags.has(crate::content::ExtraChipFlags::RUSH_CANCELS)) {
         panic!("NaviCust chip interception (sub_80E90FE) is not implemented yet");
     }
     false
@@ -364,5 +363,5 @@ fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
     if s.navi == Navi::MEGAMAN {
         return 4;
     }
-    crate::data::player::move_lag(s.navi, s.navi_variant) as u16
+    b.content.navi(s.navi).move_lag[s.navi_variant as usize] as u16
 }

@@ -40,7 +40,7 @@ fn main() {
     println!("| operation | interpreted |{}", if natives.len() > 1 { " native |" } else { "" });
     println!("|---|---|{}", if natives.len() > 1 { "---|" } else { "" });
     for (name, op) in OPS {
-        let full = luau_pack();
+        let full = luau_pack(&scenario::content());
         let pack = bn6_luau::Pack::new(full.modules().map(|(p, s)| {
             let s = if p == "objects/sun_beam" {
                 let hook = "    if s.ticks % 11 == 0 then";
@@ -55,6 +55,7 @@ fn main() {
             let options = bn6_luau::Options { native_code: native, budget: u32::MAX, ..Default::default() };
             let mut b = Battle::with_behaviors(
                 scenario::setup(),
+                scenario::content(),
                 Behaviors::new(bn6_luau::LuauContent::load(&pack, options).unwrap()).unwrap(),
             );
             for t in &tape[..250] {

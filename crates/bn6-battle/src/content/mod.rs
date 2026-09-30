@@ -1,0 +1,245 @@
+//! Game content: the typed data a battle runs on.
+//!
+//! [`Content`] holds everything the simulation reads that isn't rules
+//! code: chips, navis and forms, the ruleset's tables (collision types,
+//! panel rules, battle settings, status effects...), object data (rocks,
+//! attachments, overlays), the effect and region registries, and every
+//! sprite's animation timing. It never changes during a battle and is
+//! shared between battles and their snapshots through an `Arc`:
+//!
+//! ```ignore
+//! let (content, _report) = bn6_content::pack::load_battle(pack)?;
+//! let content = Arc::new(content);
+//! let setup = RoundSetup { content: content.hash(), ..setup };
+//! let battle = Battle::new(setup, content.clone());
+//! let chip = battle.content.chip(0x11);
+//! ```
+//!
+//! See docs/design/content-pack.md for the pack's files and this API.
+//!
+//! The engine does no file IO: a loader outside it (bn6-content) reads a
+//! content pack into this model, and tests build small content sets in
+//! code. BN6's content comes only from a pack extracted from the user's
+//! ROM (`bn6-extract content`).
+//!
+//! Content has an identity, [`Content::hash`], which a round's setup
+//! carries (`RoundSetup::content`) so that netplay peers can check they
+//! run the same content. The content itself is not part of a snapshot or
+//! of the state digest.
+//!
+//! Ids are the original's numbers (chip ids, NameIDs, row numbers the
+//! state and traces observe); the tables here are dense and indexed by
+//! them.
+
+mod chips;
+mod custom;
+mod flags;
+mod navis;
+mod objects;
+mod rules;
+mod sprites;
+#[cfg(any(test, feature = "test-content"))]
+pub mod testing;
+
+pub use chips::*;
+pub use custom::*;
+pub use navis::*;
+pub use objects::*;
+pub use rules::*;
+pub use sprites::*;
+
+use serde::{Deserialize, Serialize};
+
+/// An attack's primary element (a chip's element, a navi's or form's).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Element {
+    #[default]
+    Null = 0,
+    Fire = 1,
+    Aqua = 2,
+    Elec = 3,
+    Wood = 4,
+}
+
+/// Secondary-element bits: an attack's extra elements, or what a navi is
+/// weak to. In a content file, a list of names (`["sword"]`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SecondaryElements(pub u8);
+
+impl SecondaryElements {
+    pub const BREAK: u8 = 0x10;
+    pub const WIND: u8 = 0x20;
+    pub const CURSOR: u8 = 0x40;
+    pub const SWORD: u8 = 0x80;
+    pub(crate) const NAMES: &[(u32, &str)] =
+        &[(0x10, "break"), (0x20, "wind"), (0x40, "cursor"), (0x80, "sword")];
+}
+
+flags::serde_flags!(SecondaryElements, u8);
+
+/// A panel relative to another, `dx` toward the facing side. In a
+/// content file, `[dx, dy]`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct PanelOffset {
+    pub dx: i8,
+    pub dy: i8,
+}
+
+impl Serialize for PanelOffset {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        [self.dx, self.dy].serialize(s)
+    }
+}
+
+impl<'de> Deserialize<'de> for PanelOffset {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<PanelOffset, D::Error> {
+        let [dx, dy] = <[i8; 2]>::deserialize(d)?;
+        Ok(PanelOffset { dx, dy })
+    }
+}
+
+/// A test on a panel's flags word (`field::pflags`): all of `require`
+/// set and none of `forbid`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PanelCondition {
+    pub require: u32,
+    pub forbid: u32,
+}
+
+/// A HUD banner (the game's UI banner id).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct BannerId(pub u8);
+
+/// The identity of a content set: a stable hash of all of it. A round's
+/// setup carries it; two peers whose setups agree run the same content.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ContentHash(pub u64);
+
+impl std::fmt::Display for ContentHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:016x}", self.0)
+    }
+}
+
+/// Everything the simulation reads besides its own state and code. See
+/// the module docs.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Content {
+    /// Chips by chip id (0..=0x19A).
+    pub chips: Vec<ChipData>,
+    /// Navis by [`Navi`](crate::setup::Navi) number (MegaMan is 0).
+    pub navis: Vec<NaviData>,
+    /// MegaMan's forms by [`Form`](crate::setup::Form) number (0 is the
+    /// base form).
+    pub forms: Vec<FormData>,
+    /// The ruleset's tables.
+    pub rules: Rules,
+    /// Object kinds' data.
+    pub objects: ObjectData,
+    /// Generic one-shot effects by effect id (effect object #0's first
+    /// parameter).
+    pub effects: Vec<EffectSprite>,
+    /// Hit sparks by hit-effect id.
+    pub sparks: Vec<EffectSprite>,
+    /// Hit-region shapes by region number (below 0x80): the panels a hit
+    /// covers, relative to its panel.
+    pub regions: Vec<Vec<PanelOffset>>,
+    /// Panel layouts by layout number (the battle settings' `layout`).
+    pub panel_layouts: Vec<PanelLayout>,
+    /// Every sprite's animation timing.
+    pub animations: Animations,
+}
+
+impl Content {
+    /// The content's identity (a stable hash of all of it; computing it
+    /// walks everything, so callers keep the value).
+    pub fn hash(&self) -> ContentHash {
+        ContentHash(crate::digest::stable_hash(self))
+    }
+
+    /// A chip's record.
+    pub fn chip(&self, id: ChipId) -> &ChipData {
+        self.chips.get(id as usize).unwrap_or_else(|| panic!("chip {id:#x} is not in the content"))
+    }
+
+    /// A navi's data.
+    pub fn navi(&self, navi: crate::setup::Navi) -> &NaviData {
+        self.navis.get(navi.index()).unwrap_or_else(|| panic!("navi {} is not in the content", navi.0))
+    }
+
+    /// One of MegaMan's forms.
+    pub fn form(&self, form: crate::setup::Form) -> &FormData {
+        self.forms.get(form.index()).unwrap_or_else(|| panic!("form {:#x} is not in the content", form.0))
+    }
+
+    /// The navi or form that has a player NameID, and its name record.
+    pub fn name(&self, name_id: u16) -> &NameData {
+        self.navis
+            .iter()
+            .filter_map(|n| n.name_record.as_ref())
+            .chain(self.forms.iter().filter_map(|f| f.name_record.as_ref()))
+            .find(|n| n.id == name_id)
+            .unwrap_or_else(|| panic!("NameID {name_id:#x} is not a player navi"))
+    }
+
+    /// The actor record of a player NameID.
+    pub fn navi_record(&self, name_id: u16) -> NaviRecord {
+        self.name(name_id).record()
+    }
+
+    /// A player NameID's sprite attach point `index`.
+    pub fn attach_point(&self, name_id: u16, index: usize) -> AttachPoint {
+        self.name(name_id).attach_points[index]
+    }
+
+    /// An animation's frames (empty when the sprite has no animation
+    /// data: the sprite then behaves like a single held frame).
+    pub fn animation(&self, sprite: SpriteId, anim: u8) -> &[AnimFrame] {
+        self.animations.get(sprite, anim)
+    }
+
+    /// A generic effect's look.
+    pub fn effect(&self, id: u8) -> EffectSprite {
+        *self.effects.get(id as usize).unwrap_or_else(|| panic!("effect {id:#x} is not in the content"))
+    }
+
+    /// A hit spark's look.
+    pub fn spark(&self, id: u8) -> EffectSprite {
+        *self.sparks.get(id as usize).unwrap_or_else(|| panic!("hit spark {id:#x} is not in the content"))
+    }
+
+    /// A hit-region shape (empty for regions the content doesn't have).
+    pub fn region(&self, region: u8) -> &[PanelOffset] {
+        self.regions.get(region as usize).map(Vec::as_slice).unwrap_or(&[])
+    }
+
+    /// A panel layout.
+    pub fn panel_layout(&self, layout: u8) -> &PanelLayout {
+        self.panel_layouts.get(layout as usize).unwrap_or_else(|| panic!("panel layout {layout:#x} is not in the content"))
+    }
+
+    /// The Program Advances, in the order they are tried (each chip holds
+    /// the recipes that make it).
+    pub fn program_advances(&self) -> Vec<ProgramAdvance> {
+        let mut v: Vec<(u8, ProgramAdvance)> = self
+            .chips
+            .iter()
+            .flat_map(|c| c.program_advances.iter().map(|r| (r.order, ProgramAdvance { result: c.id, recipe: r.recipe.clone() })))
+            .collect();
+        v.sort_by_key(|(order, _)| *order);
+        v.into_iter().map(|(_, pa)| pa).collect()
+    }
+
+    /// A link navi's own chip (none for MegaMan).
+    pub fn navi_chip(&self, navi: crate::setup::Navi) -> Option<CodedChip> {
+        self.navis.get(navi.index())?.own_chip
+    }
+
+    /// An attachment kind (the attachment object's first parameter).
+    pub fn attachment(&self, kind: u8) -> &AttachmentKind {
+        self.objects.attachment(kind)
+    }
+}

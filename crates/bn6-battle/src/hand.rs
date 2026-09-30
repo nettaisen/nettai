@@ -2,7 +2,7 @@
 //! block"). See docs/engine/chips.md §2.
 
 use crate::battle::Battle;
-use crate::data::{self, ChipFlags, ChipId};
+use crate::content::{ChipFlags, ChipId};
 
 /// Up to five chips, in use order, with their build-time damage and bonuses.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -104,7 +104,7 @@ pub fn chip_damage(b: &Battle, id: ChipId, side: u8) -> u16 {
     if id == NO_CHIP {
         return 0;
     }
-    let d = data::chip(id).damage;
+    let d = b.content.chip(id).damage;
     if d < 1000 {
         return d;
     }
@@ -117,7 +117,7 @@ pub fn refresh_variable_damage(b: &mut Battle, side: u8) {
     let hand = &b.hands[side as usize];
     let i = hand.cursor as usize;
     let Some(&id) = hand.ids.get(i) else { return };
-    if id == NO_CHIP || !data::chip(id).flags.has(ChipFlags::VARIABLE_DAMAGE) {
+    if id == NO_CHIP || !b.content.chip(id).flags.has(ChipFlags::VARIABLE_DAMAGE) {
         return;
     }
     let d = chip_damage(b, id, side);
