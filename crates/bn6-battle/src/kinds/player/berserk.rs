@@ -11,7 +11,6 @@ use crate::actor::request;
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::content::{ChipId, PanelCondition};
-use crate::hand::NO_CHIP;
 use crate::object::{ObjectRef, PanelPos};
 
 /// Where the controller is (+0, read as a jump-table offset).
@@ -91,7 +90,7 @@ fn use_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
             }
         }
     }
-    if super::next_chip(b, r) == NO_CHIP {
+    if super::next_chip(b, r).is_none() {
         set_step(b, r, Step::Buster);
         return Outcome::Nothing;
     }
@@ -185,7 +184,7 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
         let flashing =
             target.is_some_and(|t| b.objects.get(t).collision.is_some_and(|c| b.collision.get(c).f1 & f1::FLASHING != 0));
         if flashing {
-            let form = super::stats(b, r).form.0;
+            let form = super::form_of(b, r).0;
             let s = &mut ai_mut(b, r).berserk;
             s.step = Step::Buster;
             // The game means 6 (2 in Beast Out) but stores the form number
@@ -196,17 +195,19 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
         }
     }
     ai_mut(b, r).berserk.moves = 0;
-    let chip = pick_special_chip(b, r);
+    let number = pick_special_chip(b, r);
     let content = b.content.clone();
+    let numbered = |id: ChipId| content.chip_numbered(id).unwrap_or_else(|| panic!("the Cross special's chip {id:#x}"));
+    let chip = numbered(number);
     let cd = content.chip(chip);
     let a = &mut ai_mut(b, r).attack;
-    a.chip_id = chip;
+    a.chip = Some(chip);
     a.variant = cd.subtype;
     a.params = cd.params;
     a.damage = cd.damage;
     a.hit_param = (cd.hit_param | 0x80) as u16;
-    if chip == 0x153 {
-        a.damage = content.chip(0x52).damage;
+    if number == 0x153 {
+        a.damage = content.chip(numbered(0x52)).damage;
     }
     super::set_attack(b, r, cd.action, 5);
     ai_mut(b, r).attack.beast_lockon = cd.beast_lockon as u8;

@@ -104,7 +104,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     o.alliance = alliance;
     o.flags |= flags::RUN_WHILE_PAUSED;
     // sub_80E341E: tied to the Beast form, or to the attack.
-    let tether = if b.stats[alliance as usize].form.is_beast() { Tether::BeastForm } else { Tether::Attack };
+    let tether = if b.form(alliance as usize).is_beast() { Tether::BeastForm } else { Tether::Attack };
     // Less green, with a ground shadow (the spawner's r7 is 0x01010014 - n).
     let look = PlainLook { color_shader: COLOR_SHADER, shadow: PlainShadow::Ground, ..Default::default() };
     *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
@@ -177,9 +177,9 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// same sprites the form and navi tables give).
 fn player_sprite(content: &Content, name_id: u16) -> SpriteId {
     match name_id {
-        0x1A0 => content.form(Form::NONE).sprite,
-        0x1A1..=0x1AB => content.navi(crate::setup::Navi((name_id - 0x1A0) as u8)).sprite,
-        0x1AC..=0x1C3 => content.form(Form((name_id - 0x1AB) as u8)).sprite,
+        0x1A0 => content.form_data(Form::NONE).sprite,
+        0x1A1..=0x1AB => content.navi_data(crate::setup::Navi((name_id - 0x1A0) as u8)).sprite,
+        0x1AC..=0x1C3 => content.form_data(Form((name_id - 0x1AB) as u8)).sprite,
         // Only players' Beast Out rush leaves afterimages.
         _ => unreachable!("an afterimage of NameID {name_id:#x}, which is not a player's"),
     }
@@ -260,7 +260,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let tether = vars(b, r).tether;
     let alliance = b.objects.get(r).alliance;
     let cut = match tether {
-        Tether::BeastForm => !b.stats[alliance as usize].form.is_beast(),
+        Tether::BeastForm => !b.form(alliance as usize).is_beast(),
         Tether::Attack => b.objects.get(owner).action < 0x10,
         Tether::None => false,
     };

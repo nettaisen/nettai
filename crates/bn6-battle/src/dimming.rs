@@ -9,6 +9,7 @@
 
 use crate::battle::{Battle, FadeMode, battle_flags};
 use crate::content::{BannerId, ChipId};
+use bn6_content_api::ChipHandle;
 use crate::hud::BannerStatus;
 use crate::kinds::common::{self, Progress};
 use crate::object::{ObjectRef, state};
@@ -63,7 +64,8 @@ const FIRST_NO_CUT_IN: ChipId = 0x170;
 /// the name the HUD shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DimmingChip {
-    pub chip: ChipId,
+    /// None: the attack's chip field held none (the game's 0).
+    pub chip: Option<ChipHandle>,
     /// The Atk+ / cross bonus, shown with the name for damaging chips.
     pub bonus: u16,
 }
@@ -76,8 +78,9 @@ impl Battle {
     /// `side` starts a dimming for `chip` with `controller`, used by `user`
     /// (action 0x15's and 0x1B's registration: `sub_800BF16` with the
     /// chip's cut-in rule).
-    pub(crate) fn register_dimming(&mut self, side: u8, chip: ChipId, controller: ObjectRef, user: ObjectRef) {
-        self.start_dimming(side, chip >= FIRST_NO_CUT_IN, Some(controller), user);
+    pub(crate) fn register_dimming(&mut self, side: u8, chip: Option<ChipHandle>, controller: ObjectRef, user: ObjectRef) {
+        let no_cut_in = self.chip_number(chip).is_some_and(|n| n >= FIRST_NO_CUT_IN);
+        self.start_dimming(side, no_cut_in, Some(controller), user);
     }
 
     /// `sub_800BF16`: `side` starts a dimming with `controller` (none if
@@ -229,8 +232,8 @@ fn telop(b: &mut Battle, r: ObjectRef, no_cut_in_runs: bool) {
 }
 
 /// Navi chips (0xDD..=0x118) that AntiNavi turns back.
-fn is_navi_chip(chip: ChipId) -> bool {
-    (0xDD..=0x118).contains(&chip)
+fn is_navi_chip(b: &Battle, chip: Option<ChipHandle>) -> bool {
+    b.chip_number(chip).is_some_and(|n| (0xDD..=0x118).contains(&n))
 }
 
 /// AntiNavi, the defensive chip that turns a navi chip around.
@@ -238,7 +241,7 @@ const ANTI_NAVI: ChipId = 0xBA;
 
 /// AntiNavi (chip 0xBA) is the other side's defensive chip.
 fn anti_navi_waits(b: &Battle, side: u8) -> bool {
-    b.linked[(side ^ 1) as usize].chip == ANTI_NAVI
+    b.chip_number(b.linked[(side ^ 1) as usize].chip) == Some(ANTI_NAVI)
 }
 
 /// How long the sparkle shows before AntiNavi's telop, in ticks after the
@@ -258,7 +261,7 @@ const TELOP_SOUND: crate::sound::SoundId = crate::sound::SoundId(0x173);
 /// chip around: a sparkle on the controller's panel, 31 ticks, AntiNavi's
 /// telop, then the controller changes sides and runs for AntiNavi's user.
 /// See docs/engine/dimming-chips.md §2.
-pub fn check_anti_navi(b: &mut Battle, r: ObjectRef, chip: ChipId) {
+pub fn check_anti_navi(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     match b.objects.get(r).phase {
         0 => anti_navi_check(b, r, chip),
         4 => anti_navi_wait(b, r),
@@ -277,9 +280,9 @@ fn set_phase(b: &mut Battle, r: ObjectRef, phase: u8) {
 /// `sub_800BDD0`: the other side's AntiNavi springs on a navi chip (the
 /// side's dimming runs its effect from now on; a sparkle on the
 /// controller's panel), or the name comes next.
-fn anti_navi_check(b: &mut Battle, r: ObjectRef, chip: ChipId) {
+fn anti_navi_check(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let side = b.objects.get(r).alliance;
-    if !(is_navi_chip(chip) && anti_navi_waits(b, side)) {
+    if !(is_navi_chip(b, chip) && anti_navi_waits(b, side)) {
         return advance(b, r, 1);
     }
     b.dimming(side).state = DimmingState::Running;
@@ -355,7 +358,7 @@ fn anti_navi_turn(b: &mut Battle, r: ObjectRef) {
 /// `sub_800BA8A`: a navi chip's name, like `show_telop`, but the
 /// effect runs whether or not the chip can be cut in on, and is skipped
 /// only if the user was deleted.
-pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: ChipId) {
+pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let side = b.objects.get(r).alliance;
     let other = side ^ 1;
     if b.objects.get(r).phase_init == 0 {
@@ -387,7 +390,7 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: ChipId) {
         // (dword_200F3B8[side] = 1: never read.)
         return advance(b, r, 2);
     }
-    if is_navi_chip(chip) && anti_navi_waits(b, side) {
+    if is_navi_chip(b, chip) && anti_navi_waits(b, side) {
         // The other side's AntiNavi turns it around again: back to
         // `sub_800BDB2` from its first phase.
         let a = b.objects.get(r).action;
@@ -531,7 +534,8 @@ mod tests {
         let mut came_for = Vec::new();
         let arm = |b: &mut Battle, s: u8| {
             let owner = b.player(s);
-            b.linked[s as usize] = LinkedRecord { chip: super::ANTI_NAVI, owner, ..LinkedRecord::default() };
+            let chip = b.content.chip_numbered(super::ANTI_NAVI);
+            b.linked[s as usize] = LinkedRecord { chip, owner, ..LinkedRecord::default() };
         };
         for t in &tape {
             b.tick(&t.input, t.events.clone());
@@ -556,13 +560,13 @@ mod tests {
     fn anti_navi_turns_a_navi_chip_around() {
         let (user, came_for, b) = anti_navi_duel(false);
         assert_eq!(came_for.first(), Some(&(user ^ 1)), "the navi comes for AntiNavi's side");
-        assert_eq!(b.linked[(user ^ 1) as usize].chip, 0, "AntiNavi is spent");
+        assert_eq!(b.linked[(user ^ 1) as usize].chip, None, "AntiNavi is spent");
     }
 
     #[test]
     fn two_anti_navis_send_the_chip_back() {
         let (user, came_for, b) = anti_navi_duel(true);
         assert_eq!(came_for.first(), Some(&user), "the navi comes for its own side after all");
-        assert!(b.linked.iter().all(|l| l.chip == 0), "both AntiNavis are spent");
+        assert!(b.linked.iter().all(|l| l.chip.is_none()), "both AntiNavis are spent");
     }
 }
