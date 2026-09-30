@@ -522,7 +522,8 @@ fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
 
 /// `sub_8012CB2`: rocks fall on up to three of the opponents (by panel, a
 /// shared panel moved to another free one on their side), for 30 plus 20
-/// per buster level up to 5, then the camera shakes. Returns what the game
+/// per buster level up to 5, then the camera shakes (20 ticks at magnitude
+/// 2). Returns what the game
 /// leaves in r0: 2 after a barrage, 0 without targets.
 fn rock_barrage(b: &mut Battle, r: ObjectRef) -> u8 {
     let side = b.objects.get(r).alliance;
@@ -571,7 +572,8 @@ fn rock_barrage(b: &mut Battle, r: ObjectRef) -> u8 {
             o.flip = flip;
         }
     }
-    // camera_initShakeEffect(2, 0x14): the camera's own RNG.
+    // camera_initShakeEffect_80302a8(2, 0x14).
+    b.shake_camera(2, 0x14);
     2
 }
 

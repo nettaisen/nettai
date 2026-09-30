@@ -20,6 +20,7 @@ pub use library::Library;
 pub use screen::{Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
 use crate::battle::{Battle, CustomResult, battle_flags};
+use crate::console::{Console, ConsoleSetup};
 use bn6_content_api::ChipHandle;
 use crate::hand::ChipHand;
 use crate::input::Joypad;
@@ -76,6 +77,10 @@ pub struct PlayerSetup {
     /// level (its chip bonus), which the init exchange shares.
     pub bug_frags: u32,
     pub navi_level: u8,
+    /// What the player's console brings besides: its RNG (RNG1), which
+    /// ChpShufl's re-deal draws from (`crate::console`). In netplay it is
+    /// part of the setup the peers exchange.
+    pub console: ConsoleSetup,
 }
 
 impl Default for PlayerSetup {
@@ -86,6 +91,7 @@ impl Default for PlayerSetup {
             joypad_phase: 0,
             bug_frags: 0,
             navi_level: 0,
+            console: ConsoleSetup::default(),
         }
     }
 }
@@ -209,10 +215,10 @@ impl Side {
         }
     }
 
-    /// The custom screen opens (`sub_8026840`): the status bit goes up
-    /// and the player's screen deals. The round's first screen forgets the
-    /// previous round's Crosses and Beast Out.
-    pub fn open(&mut self, ctx: &Context) {
+    /// The custom screen opens (`sub_8026840`) on the player's console:
+    /// the status bit goes up and the player's screen deals. The round's
+    /// first screen forgets the previous round's Crosses and Beast Out.
+    pub fn open(&mut self, ctx: &Context, console: &mut Console) {
         self.in_custom = true;
         self.built = None;
         self.sent = None;
@@ -223,17 +229,22 @@ impl Side {
         let mut round = self.round;
         let regular = folder.regular_pending;
         let screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, &mut round);
+        // sub_802A646: once the tag pair is among the chips a screen can
+        // deal, a re-deal no longer keeps it apart (BattleState+0x44).
+        if console.tag_pair.is_some_and(|t| t < screen.hand_size) {
+            console.tag_pair = None;
+        }
         self.round = round;
         self.folder = Some(folder);
         self.screen = Some(screen);
     }
 
-    /// One tick of the player's screen on their joypad. `damage`: a
-    /// chip's damage for this player now (`sub_80109A4`), for the hand
-    /// built at OK.
-    pub fn tick(&mut self, ctx: &Context, damage: impl Fn(ChipHandle) -> u16) -> Option<Request> {
+    /// One tick of the player's screen on their joypad and console.
+    /// `damage`: a chip's damage for this player now (`sub_80109A4`), for
+    /// the hand built at OK.
+    pub fn tick(&mut self, ctx: &Context, console: &mut Console, damage: impl Fn(ChipHandle) -> u16) -> Option<Request> {
         let (Some(mut screen), Some(mut folder)) = (self.screen, self.folder) else { return None };
-        let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder);
+        let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console);
         match request {
             Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, damage),
             Some(Request::Send) => {
@@ -341,7 +352,7 @@ impl Battle {
         let content = self.content.clone();
         for side in 0..2u8 {
             let ctx = self.custom_context(side, &*content);
-            self.custom.sides[side as usize].open(&ctx);
+            self.custom.sides[side as usize].open(&ctx, &mut self.consoles[side as usize]);
         }
     }
 
@@ -368,8 +379,10 @@ impl Battle {
             let content = self.content.clone();
             let ctx = self.custom_context(side, &*content);
             let mut s = self.custom.sides[side as usize].clone();
-            let request = s.tick(&ctx, |id| crate::hand::chip_damage(self, Some(id), side));
+            let mut console = self.consoles[side as usize];
+            let request = s.tick(&ctx, &mut console, |id| crate::hand::chip_damage(self, Some(id), side));
             self.custom.sides[side as usize] = s;
+            self.consoles[side as usize] = console;
             if request == Some(Request::Send) {
                 // sub_8027D78 on the sending tick.
                 self.restart_gauge();

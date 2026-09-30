@@ -965,7 +965,7 @@ Representative handlers, all code-derived. Frame counts assume the attack is not
 | Navi chips (0x1B → `sub_80EC350`) | 1 | `sub_80E192C(panelX, panelY, av+2, av3, av.u32[0xC], av.u32[8], chip \| av6<<16)` spawns T4 0x10 (summon controller → `off_802CD5C[subtype]`). Registers the dimming exactly as 0x15, then exits **in the same frame**. |
 | GunDelSol (0x37 → `sub_80EDAE0`) | 140 (S3) | §4 |
 | Reflector (0x2B → `sub_80ED13E`; the pack's `chips/083-rflectr1`) | params[0] + 2 (62) | One phase. f1: the shield (T3 0x2B, `sub_80C97E0`: at attach point 6, look `byte_80C9664[params[1]]`, stored in RelatedObject1Ptr), ObjectFlags1 GUARD and 0x400000, anim 0 (and the Beast head's, `sub_80101D4`), av+0x30 = 0, timer = 0. **Every tick after:** unless subtype 3, if CollisionData+0x03 (the directions the guard blocked) has bit `1 << flip`: a guard-breaking hit (FlagsFromCollision & 2) drops the shield and the guard; otherwise the first such tick (av+0x30 0 → 1) sends the wave back: subtypes 0..2 the T3 0x2F wave (`sub_80C9CDA`: one panel ahead, Z 16, damage word `av.u32[8] + av.u16[6]`, sound 0xC5), subtype 4 the buster's projectile (T3 #0 with Param1 6, Z 20), others nothing. Then timer + 1; past params[0]: the shield and guard go, exit. No reactive abort, no counter window. |
-| Recovery (0x20 → `sub_80EC844`; `chips/09a-recov10`) | 1 | f1: `sub_800E2FC(byte_80EC870[subtype], 1)` (10, 30, 50, 80, 120, 150, 200, 300, 1000; the pack's chip `recovery`): unless the opponent's defensive-chip record is AntiRecv (0xBD), HP += n up to the maximum, effect #0 look 6 at the navi, sound 0x8A; if it is, AntiRecv's controller (T4 0x2C, `sub_80E3728`) starts a dimming (`sub_800BF16` with no cut-in) that takes n from the navi, the trap mark (effect #0 look 0x46, Param2 = the local side, sound 0xA5) and the record is spent. Then side statistic 5 + 1, exit. The ruleset's heal (`kinds::heal`) runs it; the AntiRecv branch is **[unverified]** (no scenario reaches it) and T4 0x2C is not ported. |
+| Recovery (0x20 → `sub_80EC844`; `chips/09a-recov10`) | 1 | f1: `sub_800E2FC(byte_80EC870[subtype], 1)` (10, 30, 50, 80, 120, 150, 200, 300, 1000; the pack's chip `recovery`): unless the opponent's defensive-chip record is AntiRecv (0xBD), HP += n up to the maximum, effect #0 look 6 at the navi, sound 0x8A; if it is, AntiRecv's controller (T4 0x2C, `sub_80E3728`) starts a dimming (`sub_800BF16` with no cut-in) that takes n from the navi, the trap mark (effect #0 look 0x46, Param2 = the local side, sound 0xA5) and the record is spent. Then side statistic 5 + 1, exit. The ruleset's heal (`kinds::heal`) runs it; T4 0x2C is the pack's objects/anti-recovery (§3.6.7). The AntiRecv branch matches a scratch chip-lab recording (Recov10 against AntiRecv). |
 | Reflector's shield (T3 0x2B, `sub_80C96A0`; `objects/reflector-shield`) | - | Init: sprite, anim, palette from its look row, panel from its spawn position (the attach-point offset), flip, sound 0xA0, the offset kept in its velocity. Action 0: its owner's position + offset, until the owner's RelatedObject1Ptr is cleared; action 4: the fade animation for the row's ticks, then state 8 (`object_freeMemory`). After the action: visible, unless the local navi is blind to it (`sub_800EB6C`) or its owner vanished for a navi chip (state bit 0x100000). Runs while paused and dimmed; the sprite stands still while dimmed. |
 | Reflector's wave (T3 0x2F, `sub_80C9BC4`) | - | Init: off the field, freed; else sprite 0x14/4, timer 2, collision (4, 5, 0) region 1 on its panel. Each tick: resolve, hit spark; battle over: gone. A hit clears its region. Action 0: timer − 1; at 0 the next segment one panel ahead (same Z and damage), action 4. Action 4: gone when the animation's last frame ends. |
 
@@ -1218,7 +1218,8 @@ scenarios (the other side's copy of the chip, answered during the telop) match e
   and its end waits; then the first effect runs, its undim fades the screen back, and its end (the initiator's)
   frees both.
 
-Unverified: a cut-in whose next chip is a navi chip of subtype 0 against the other side's chip 0xBD, a failed
+Unverified: a cut-in whose next chip is a navi chip of subtype 0 against the other side's chip 0xBD (AntiRecv's
+counterattack takes the dimming over), a failed
 controller spawn, a cut-in by a chip of another action, and cut-ins with Full Synchro, anger, or a dark chip.
 
 When the checks fail (e.g. A pressed while the other side's screen is still dimming, soundmod 3217), `sub_8017AB4`
@@ -1252,7 +1253,25 @@ Trace: soundmod, side 0 uses ElmntMan (chip 0x10D, subtype 0x10, params 0x10) in
 **Action 0x1B, `sub_80EC350`**, runs once: `sub_80E192C` spawns the controller (r0/r1 the user's panel, r2 element,
 r3 subtype, r4 params, r6 damage word, r7 chip | bonus << 16), registers it like action 0x15 (if the side has no
 controller yet), and `object_exitAttackState` at once: the user idles (gated by the dimming) while its navi acts.
-With subtype 0 and the other side's defensive chip 0xBD, `sub_80E192C` does something else (not ported).
+With subtype 0 (Roll's chips, which heal) and the other side's defensive chip 0xBD (AntiRecv armed), `sub_80E192C`
+springs the trap instead (`loc_80E1968`): the trap's mark over the user (`sub_800ABC6`), the other side's record is
+spent (`sub_802CEA6`), and AntiRecv's counterattack (T4 0x2C, `sub_80E37D2`; below) comes for the user with three
+times Roll's damage (`sub_80E199A`: the damage word's low 11 bits, doubled when it has the double-damage flag 0x8000)
+and hit parameter 0x1E, in the chip's parameters (Z = the mark's, left in r3). Action 0x1B registers it as the side's
+dimming like the navi chip's controller; nothing else starts one (unlike a recovery chip's heal). Port:
+`kinds::navi_chip`, `kinds::heal`.
+
+**AntiRecv's counterattack, T4 0x2C (`sub_80E3728`; the pack's objects/anti-recovery).** Spawned by `sub_80E37D2`
+(r0/r1 the healer's panel, r2 element 0, r6 the damage word, r7 = 0xBD for the telop; RelatedObject1 = the healer,
+the healer's alliance; its position the spawner's registers). A dimming controller: states `object_timefreezeBegin`,
+`sub_80E3748`, `object_timefreezeEnd`; actions (`off_80E375C`) 0 `object_dimScreen`, 4 `object_drawChipName`, 8
+`sub_80E376C`, 0xC `object_undimScreen`. `sub_80E376C`'s first tick: Timer = 0x3C (unread), `object_subtractHP` on
+the healer by the damage (down to 0), two rising bubbles (T4 0x14, palette 1) 16 px right then left of the panel's
+center at Z 0, the panel changer (T4 0x1F, kind 6: the own panel turns to poison; dimming-chips.md §4.2) handed
+Param2's address, Param2 = 1. Every tick: once Param2 is 0 (the changer cleared the four parameters), action 0xC.
+**Lab (scratch recordings)**: AntiRecv set by side 0, then side 1's Roll (this branch) or Recov10 (the heal's)
+springs it; both match every frame (1051), with the positions of T4 0x2C and 0x1F skipped (compat has no entries
+for them yet). Unverified: Roll's damage with the double-damage flag, a full effect pool.
 
 **The controller, T4 0x10 (`sub_80E17E8`).** Spawned with r1..r3 = panel Y, element, subtype as its position (so
 Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is

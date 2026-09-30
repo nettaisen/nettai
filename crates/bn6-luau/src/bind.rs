@@ -971,6 +971,13 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, id) = (u8_arg(side, "side")? & 1, sound_arg(id)?);
         with(|api, _| Ok(api.play_sound_for(side, id)))
     });
+    lib_fn!(lua, t, "shake_camera", |_, (magnitude, ticks): (LuaValue, LuaValue)| {
+        let (magnitude, ticks) = (u16_arg(magnitude, "magnitude")?, u16_arg(ticks, "ticks")?);
+        if magnitude > 3 {
+            return Err(mlua::Error::runtime(format!("camera shake magnitude {magnitude} reads past byte_8030284")));
+        }
+        with(|api, _| Ok(api.shake_camera(magnitude, ticks)))
+    });
     lib_fn!(lua, t, "navi", |_, side: LuaValue| Ok(Navi(u8_arg(side, "side")? & 1)));
     lib_fn!(lua, t, "emotion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;

@@ -149,7 +149,7 @@ local function burst(me: Object)
     if left == 0x19 then
         hit(me)
         if field.solid(me.panel_x, me.panel_y) then
-            -- (And a camera shake: presentation only.)
+            battle.shake_camera(2, 0x14)
             battle.play_sound(0xC0)
             field.crack(me.panel_x, me.panel_y)
         end

@@ -135,8 +135,12 @@ local function explode(me: Object)
         hit_mod = BLAST_HIT_MOD,
     })
     panel_bursts.spawn(me, region, BURST_INTERVAL, 0, { BURST_LOOK })
-    -- (The camera shakes, which draws the local RNG only.)
+    battle.shake_camera(1, 0x1E)
     battle.play_sound(BLAST_SOUND)
+    if variant(me) == VARIANTS[1] then
+        -- TimeBom+ shakes it harder.
+        battle.shake_camera(3, 0x3C)
+    end
 end
 
 -- Gone: hidden, out of the field-object slots, destroyed next update.
