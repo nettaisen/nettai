@@ -513,6 +513,70 @@ named_flags! {
     }
 }
 
+named_flags! {
+    /// A shared entry of an obstacle's action table (the obstacle
+    /// framework, `kinds/obstacle.rs`): what an obstacle kind's table runs
+    /// for the actions that aren't its own.
+    pub enum ObstacleAction {
+        /// `sub_80165B8`: back to idle.
+        ReturnToIdle = "return_to_idle",
+        /// `sub_8017E26`: pushed or dragged along the field.
+        Slide = "slide",
+        /// `sub_80166AE`, `sub_8016B02`, `sub_8016B36`, `sub_8016B72`: the
+        /// actor hit reactions (they need actor data).
+        Flinch = "flinch",
+        Paralyzed = "paralyzed",
+        Frozen = "frozen",
+        Bubbled = "bubbled",
+    }
+}
+
+named_flags! {
+    /// What an obstacle's `obstacle.react` does with a body's or another
+    /// obstacle's touch (the two dispatchers differ only there).
+    pub enum ObstacleCrush {
+        /// `sub_801B394`: the HP drops to 0.
+        Breaks = "breaks",
+        /// `sub_801B4D4`: destroyed, the HP as it is.
+        Destroys = "destroys",
+    }
+}
+
+named_flags! {
+    /// How an obstacle is leaving the field (its collision `f2` word).
+    pub enum ObstacleRemoval {
+        /// Broken: its HP ran out, its time is up, the battle is over.
+        Broken = "broken",
+        /// A chip removed it.
+        Removed = "removed",
+        /// A chip made it blink out.
+        Vanished = "vanished",
+        /// A navi absorbed it.
+        Absorbed = "absorbed",
+    }
+}
+
+named_flags! {
+    /// `sub_800F8CE`: how a removed obstacle's blink-out is going.
+    pub enum BlinkOut {
+        /// Not blinking out (removed some other way).
+        No = "no",
+        Blinking = "blinking",
+        Done = "done",
+    }
+}
+
+named_flags! {
+    /// What a chip asks of an obstacle (`sub_800F884`, `sub_800F898`,
+    /// `sub_800F8B0`).
+    pub enum ObstacleRequest {
+        Remove = "remove",
+        Vanish = "vanish",
+        /// Absorbed by the requester's side's navi.
+        Absorb = "absorb",
+    }
+}
+
 /// A one-tick hit region (attack object #3), as `object_spawnCollisionRegion`
 /// takes it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -714,6 +778,9 @@ pub trait CoreApi {
     fn spawn(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef>;
     /// Spawn the content object kind named `name` (its folder in the pack).
     fn spawn_kind(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
+    /// `sub_80033E4`: the same at the head of the update list (it first
+    /// runs next tick, before everything else).
+    fn spawn_kind_first(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
     /// Free the slot now (the object stops running).
     fn free(&mut self, o: ObjectRef);
     /// `object_genericDestroy`: release panel reservations and collision,
@@ -852,6 +919,9 @@ pub trait CoreApi {
     /// `sub_801A082`: redo the types (and damage) of a registration.
     fn reset_collision_types(&mut self, o: ObjectRef, self_type: u8, target_type: u8, hit_mod: u8);
     fn collision_get(&self, o: ObjectRef, f: CollisionField) -> ApiResult<Value>;
+    /// The damage taken this window in element `element` (0 null, 1 fire,
+    /// 2 aqua, 3 elec, 4 wood, 5 the sixth slot), as totaled.
+    fn collision_element_damage(&self, o: ObjectRef, element: u8) -> ApiResult<u16>;
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()>;
     /// Register on the region's panels (clearing the last results).
     fn present_collision(&mut self, o: ObjectRef);
@@ -867,10 +937,46 @@ pub trait CoreApi {
     /// Run a step of the dimming service for the controller `o`; `chip`
     /// is the chip the controller shows (AntiNavi's steps read it).
     fn dimming(&mut self, o: ObjectRef, step: DimmingStep, chip: u16);
+    /// `sub_800BF16`: `side` starts a dimming with `controller` (None: its
+    /// spawn failed), used by `user`; `no_cut_in`: the other side can't cut
+    /// in on it. For controllers that aren't a chip's (a trap springing).
+    fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef);
     /// `sub_80E1352`: a navi chip's user vanishes while its navi acts.
     fn hide_user(&mut self, user: ObjectRef);
     /// `sub_80E13DC`: and comes back.
     fn show_user(&mut self, user: ObjectRef);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
+
+    // ---- Obstacles (the obstacle framework) -------------------------------
+
+    /// `setFieldBattleObject_800F614`: register `o` as one of `side`'s
+    /// field objects of `class` (0: two a side, 1: one); a third class-0
+    /// one (a second class-1) evicts the oldest, whose HP drops to 0.
+    fn obstacle_register(&mut self, o: ObjectRef, side: u8, class: u8);
+    /// `sub_800F656`: forget `o` in the field-object registry.
+    fn obstacle_unregister(&mut self, o: ObjectRef);
+    /// `sub_801AD9E`: resolve this tick's hits (a push forgets the damage).
+    fn obstacle_take_hits(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_800F672`: the lifetime; broken when it runs out or the battle
+    /// is over, blinking for its last three seconds.
+    fn obstacle_tick_lifetime(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_801B394` / `sub_801B4D4`: damage, removal and status; the
+    /// action the kind's own table runs now (None: a status routine ran).
+    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>>;
+    /// Run a shared entry of the obstacle's action table.
+    fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()>;
+    /// How the obstacle is leaving.
+    fn obstacle_removal(&self, o: ObjectRef) -> ApiResult<ObstacleRemoval>;
+    /// `sub_800F8CE`: blink out for 20 ticks when it vanishes.
+    fn obstacle_blink_out(&mut self, o: ObjectRef) -> ApiResult<BlinkOut>;
+    /// `sub_800F90E`: absorbed, it flies to the absorbing side's navi as
+    /// obstacle kind `kind` (`data.objects.absorbed_sprites`), with its
+    /// animation and palette.
+    fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, kind: u8) -> ApiResult<()>;
+    /// `sub_802EF5C`: the per-side target tracking some chips keep.
+    fn obstacle_release_tracking(&mut self, o: ObjectRef);
+    /// A chip's request of the obstacle `o` (`by`: the requester, whose
+    /// side absorbs).
+    fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef);
 }

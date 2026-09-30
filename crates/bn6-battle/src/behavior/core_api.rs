@@ -5,9 +5,10 @@
 
 use bn6_content_api::api::ApiResult;
 use bn6_content_api::{
-    ActorField, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
-    FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField,
-    Pad, PanelInfo, RequestFlag, Shadow, SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
+    ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep,
+    Emotion, FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState,
+    ObjectField, ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
+    SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
 
 use crate::actor::{AbsorbedObstacle, ActorData, ActorType, request, status};
@@ -423,6 +424,12 @@ impl CoreApi for Battle {
         let k = self.content.object_kind(name).ok_or_else(|| ApiError::UnknownKind(name.to_string()))?;
         let (pool, index) = (k.pool, k.index);
         Ok(super::spawn_object(self, pool, index, pos, params))
+    }
+
+    fn spawn_kind_first(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>> {
+        let k = self.content.object_kind(name).ok_or_else(|| ApiError::UnknownKind(name.to_string()))?;
+        let (pool, index) = (k.pool, k.index);
+        Ok(super::spawn_object_first(self, pool, index, pos, params))
     }
 
     fn free(&mut self, o: ObjectRef) {
@@ -951,6 +958,14 @@ impl CoreApi for Battle {
         }))
     }
 
+    fn collision_element_damage(&self, o: ObjectRef, element: u8) -> ApiResult<u16> {
+        let damage = self.collision_of(o)?.acc.element_damage;
+        damage
+            .get(element as usize)
+            .copied()
+            .ok_or_else(|| ApiError::Other(format!("element {element} has no damage slot (0 to 5)")))
+    }
+
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()> {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
         let c = self.collision_of_mut(o)?;
@@ -1002,6 +1017,10 @@ impl CoreApi for Battle {
         }
     }
 
+    fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef) {
+        Battle::start_dimming(self, side & 1, no_cut_in, controller, user);
+    }
+
     fn hide_user(&mut self, user: ObjectRef) {
         crate::dimming::hide_user(self, user);
     }
@@ -1012,5 +1031,91 @@ impl CoreApi for Battle {
 
     fn navi_chip_left(&mut self, controller: ObjectRef) {
         kinds::navi_chip::navi_left(self, controller);
+    }
+
+    // ---- Obstacles ----------------------------------------------------------------------
+
+    fn obstacle_register(&mut self, o: ObjectRef, side: u8, class: u8) {
+        kinds::obstacle::register(self, o, side & 1, class & 1);
+    }
+
+    fn obstacle_unregister(&mut self, o: ObjectRef) {
+        kinds::obstacle::unregister(self, o);
+    }
+
+    fn obstacle_take_hits(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of(o)?;
+        kinds::obstacle::take_hits(self, o);
+        Ok(())
+    }
+
+    fn obstacle_tick_lifetime(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of(o)?;
+        kinds::obstacle::tick_lifetime(self, o);
+        Ok(())
+    }
+
+    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>> {
+        use kinds::obstacle::Crush;
+        self.collision_of(o)?;
+        let crush = match crush {
+            ObstacleCrush::Breaks => Crush::Breaks,
+            ObstacleCrush::Destroys => Crush::Destroys,
+        };
+        Ok(kinds::obstacle::react(self, o, crush))
+    }
+
+    fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()> {
+        use kinds::obstacle::SharedAction as S;
+        self.collision_of(o)?;
+        let a = match a {
+            ObstacleAction::ReturnToIdle => S::ReturnToIdle,
+            ObstacleAction::Slide => S::Slide,
+            ObstacleAction::Flinch => S::Flinch,
+            ObstacleAction::Paralyzed => S::Paralyzed,
+            ObstacleAction::Frozen => S::Frozen,
+            ObstacleAction::Bubbled => S::Bubbled,
+        };
+        kinds::obstacle::shared_action(self, o, a);
+        Ok(())
+    }
+
+    fn obstacle_removal(&self, o: ObjectRef) -> ApiResult<ObstacleRemoval> {
+        use kinds::obstacle::Removal;
+        self.collision_of(o)?;
+        Ok(match kinds::obstacle::removal(self, o) {
+            Removal::Broken => ObstacleRemoval::Broken,
+            Removal::Removed => ObstacleRemoval::Removed,
+            Removal::Vanished => ObstacleRemoval::Vanished,
+            Removal::Absorbed { .. } => ObstacleRemoval::Absorbed,
+        })
+    }
+
+    fn obstacle_blink_out(&mut self, o: ObjectRef) -> ApiResult<BlinkOut> {
+        use kinds::obstacle::BlinkOut as B;
+        self.collision_of(o)?;
+        Ok(match kinds::obstacle::blink_out(self, o) {
+            B::No => BlinkOut::No,
+            B::Blinking => BlinkOut::Blinking,
+            B::Done => BlinkOut::Done,
+        })
+    }
+
+    fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, kind: u8) -> ApiResult<()> {
+        self.collision_of(o)?;
+        kinds::obstacle::fly_to_absorber(self, o, kind);
+        Ok(())
+    }
+
+    fn obstacle_release_tracking(&mut self, o: ObjectRef) {
+        kinds::obstacle::release_tracking(self, o);
+    }
+
+    fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef) {
+        match request {
+            ObstacleRequest::Remove => kinds::obstacle::remove(self, o),
+            ObstacleRequest::Vanish => kinds::obstacle::vanish(self, o),
+            ObstacleRequest::Absorb => kinds::obstacle::absorb(self, o, by),
+        }
     }
 }

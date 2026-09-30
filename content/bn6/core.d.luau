@@ -8,7 +8,9 @@
 -- they implement; the data registers them (docs/design/content-pack.md):
 --
 --   objects/NAME/object.toml  [kind] pool, index, script   an object kind:
---       the module exports `state` and `update(me)`
+--       the module exports `state` and `update(me)`; with `actor_list_entry
+--       = N`, also `actor_list_entry(spec)` for the actor lists' entries
+--       of type N (the field objects a stage places)
 --   chips/NNN-name/chip.toml  script = "chip.luau"          the chip's action:
 --       `state` and `update(me, s)`; for a dimming chip (action 0x15)
 --       `dimming_chip(user, spec)`, for a navi chip (0x1B) `navi_chip(user,
@@ -210,6 +212,9 @@ declare class Collision
     -- Unregister, resolving hits against what is registered there.
     function remove(self): ()
     function free(self): ()
+    -- The damage taken this window in an element (0 null, 1 fire, 2 aqua,
+    -- 3 elec, 4 wood; 5 the sixth slot).
+    function element_damage(self, element: number): number
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -479,6 +484,8 @@ export type LinkedChip = {
 }
 
 export type Panel = { kind: PanelType, alliance: number, home: number }
+-- A panel flags word has every `require` bit and no `forbid` bit.
+export type PanelCondition = { require: number, forbid: number }
 export type Column = { home: number, timer: number }
 export type NaviRecord = { actor_type: ActorType, ai_index: number }
 
@@ -550,6 +557,9 @@ declare battle: {
     spawn: (pool: Pool, index: number, pos: Vec3?, params: { number }?) -> Object?,
     -- The same for a content kind, by name (its folder under objects/).
     spawn_kind: (name: string, pos: Vec3?, params: { number }?) -> Object?,
+    -- `sub_80033E4`: the same at the head of the update list (it first
+    -- runs next tick, before everything else).
+    spawn_kind_first: (name: string, pos: Vec3?, params: { number }?) -> Object?,
     -- The generic one-shot effect (effect object #0).
     effect: (pos: Vec3, id: number, flip: number?, palette_add: number?, priority: number?) -> Object?,
     -- The one-tick hit region (attack object #3).
@@ -598,6 +608,10 @@ declare dimming: {
     show_navi_telop: (controller: Object, chip: number) -> (),
     -- `object_undimScreen`.
     undim_screen: (controller: Object) -> (),
+    -- `sub_800BF16`: `side` starts a dimming with `controller` (nil if its
+    -- spawn failed), used by `user`; `no_cut_in`: the other side can't cut
+    -- in. For controllers no chip action registers (a trap springing).
+    start: (side: number, no_cut_in: boolean, controller: Object?, user: Object) -> (),
     -- `object_timefreezeEnd` (the controller's destroy state).
     finish: (controller: Object) -> (),
     -- `sub_80E1352` / `sub_80E13DC`: a navi chip's user vanishes and comes
@@ -609,6 +623,67 @@ declare dimming: {
 declare navi_chip: {
     -- The navi is done: its controller moves on.
     navi_left: (controller: Object) -> (),
+}
+
+-- What an actor list's entry is placed with (`off_80073A0[type]`): an
+-- object kind's `actor_list_entry(spec)`.
+export type ActorListEntrySpec = {
+    panel_x: number,
+    panel_y: number,
+    -- The entry's side (field objects take their panel's instead).
+    side: number,
+    -- The entry's argument (a rock's variant).
+    variant: number,
+}
+
+export type ObstacleCrush = "breaks" | "destroys"
+export type ObstacleRemoval = "broken" | "removed" | "vanished" | "absorbed"
+export type BlinkOut = "no" | "blinking" | "done"
+
+-- The obstacle framework: the steps of a field obstacle's update (rocks,
+-- cubes and the like, without actor data), which its update calls in its
+-- routine's order: `take_hits`, the hit spark, `tick_lifetime`, `react`
+-- (then the kind's own action table: its entries for actions 0 appear, 2
+-- destroyed and 8 idle, and the shared ones below for 1, 3 to 7), the
+-- sprite, and presenting its collision.
+declare obstacle: {
+    -- `setFieldBattleObject_800F614`: one of `side`'s field objects of
+    -- `class` (0: two a side, 1: one); a third evicts the oldest (its HP
+    -- drops to 0).
+    register: (me: Object, side: number, class: number) -> (),
+    -- `sub_800F656`: forget it in the field-object registry.
+    unregister: (me: Object) -> (),
+    -- `sub_801AD9E`: resolve this tick's hits (a push forgets the damage).
+    take_hits: (me: Object) -> (),
+    -- `sub_800F672`: the lifetime (`timer`): broken when it runs out or
+    -- the battle is over, blinking for its last three seconds.
+    tick_lifetime: (me: Object) -> (),
+    -- `sub_801B394` ("breaks", the default: a body's touch drops the HP to
+    -- 0) or `sub_801B4D4` ("destroys"): damage, removal and status; the
+    -- action the kind's table runs now, nil when a status routine ran.
+    react: (me: Object, crush: ObstacleCrush?) -> number?,
+    -- The shared table entries: `sub_80165B8` (1), `sub_8017E26` (5, a
+    -- push), and the actor reactions obstacles can't take (3, 4, 6, 7).
+    return_to_idle: (me: Object) -> (),
+    slide: (me: Object) -> (),
+    flinch: (me: Object) -> (),
+    paralyzed: (me: Object) -> (),
+    frozen: (me: Object) -> (),
+    bubbled: (me: Object) -> (),
+    -- How it is leaving (for its destroyed action).
+    removal: (me: Object) -> ObstacleRemoval,
+    -- `sub_800F8CE`: blink out for 20 ticks when it vanishes.
+    blink_out: (me: Object) -> BlinkOut,
+    -- `sub_800F90E`: absorbed, it flies to the absorbing navi as obstacle
+    -- kind `kind` (`data.objects.absorbed_sprites`).
+    fly_to_absorber: (me: Object, kind: number) -> (),
+    -- `sub_802EF5C`: the per-side target tracking some chips keep.
+    release_tracking: (me: Object) -> (),
+    -- A chip's requests: `sub_800F884` removes it, `sub_800F898` makes it
+    -- blink out, `sub_800F8B0` has the absorber's side's navi absorb it.
+    remove: (obj: Object) -> (),
+    vanish: (obj: Object) -> (),
+    absorb: (obj: Object, absorber: Object) -> (),
 }
 
 -- Exact integer helpers.
@@ -736,7 +811,13 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- Whole-field hit region 0x80 + i covers every panel whose flags
+        -- meet condition i (`byte_8019C34`).
+        field_regions: { [number]: PanelCondition },
     },
+    -- Hit regions' shapes by region (`PanelOffsetListsPointerTable`): the
+    -- panels' offsets { dx, dy }, dx toward the facing side.
+    regions: { [number]: { { number } } },
 }
 
 declare data: PackData

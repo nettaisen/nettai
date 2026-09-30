@@ -46,6 +46,7 @@ struct Loaded {
     weapons: [Option<HookId>; 256],
     dimming_chips: [Option<HookId>; 256],
     navi_chips: [Option<HookId>; 256],
+    actor_list_entries: [Option<HookId>; 256],
 }
 
 impl std::fmt::Debug for Behaviors {
@@ -103,15 +104,18 @@ impl Behaviors {
             actions[a.action as usize] = Some(KindId(i as u16));
         }
         let (mut weapons, mut dimming_chips, mut navi_chips) = ([None; 256], [None; 256], [None; 256]);
+        let mut actor_list_entries = [None; 256];
         for (i, h) in m.hooks.iter().enumerate() {
             let id = Some(HookId(i as u16));
             match h.hook {
                 Hook::Weapon(n) => weapons[n as usize] = id,
                 Hook::DimmingChip(n) => dimming_chips[n as usize] = id,
                 Hook::NaviChip(n) => navi_chips[n as usize] = id,
+                Hook::ActorListEntry(n) => actor_list_entries[n as usize] = id,
             }
         }
-        Behaviors { loaded: Some(Rc::new(Loaded { host, objects, actions, weapons, dimming_chips, navi_chips })) }
+        let loaded = Loaded { host, objects, actions, weapons, dimming_chips, navi_chips, actor_list_entries };
+        Behaviors { loaded: Some(Rc::new(loaded)) }
     }
 
     /// Which runtime runs the content ("none" without scripts).
@@ -140,6 +144,7 @@ impl Behaviors {
             Hook::Weapon(n) => l.weapons[n as usize],
             Hook::DimmingChip(n) => l.dimming_chips[n as usize],
             Hook::NaviChip(n) => l.navi_chips[n as usize],
+            Hook::ActorListEntry(n) => l.actor_list_entries[n as usize],
         }
     }
 }
@@ -186,11 +191,24 @@ pub(crate) fn call_hook(b: &mut Battle, hook: HookId, call: HookCall) -> Value {
 /// Spawn an object; a content kind starts with its zeroed state.
 pub fn spawn_object(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
     let r = b.objects.spawn(pool, index, pos, params)?;
+    Some(init_state(b, r))
+}
+
+/// Spawn an object at the head of the update list (`sub_80033E4`); a
+/// content kind starts with its zeroed state.
+pub fn spawn_object_first(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+    let r = b.objects.spawn_at_front(pool, index, pos, params)?;
+    Some(init_state(b, r))
+}
+
+/// A new content object's zeroed state.
+fn init_state(b: &mut Battle, r: ObjectRef) -> ObjectRef {
+    let (pool, index) = (r.pool, b.objects.get(r).index);
     if let Some(kind) = b.behaviors.object_kind(pool, index) {
         let m = b.behaviors.manifest().expect("content kinds come from loaded scripts");
         b.objects.get_mut(r).vars = Vars::Content(ContentState::new(m.object_state(kind)));
     }
-    Some(r)
+    r
 }
 
 /// Spawn the content object kind named `name` (its folder in the pack):
