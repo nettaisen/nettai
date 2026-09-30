@@ -72,9 +72,18 @@ impl Battle {
         &mut self.dimming[side as usize]
     }
 
-    /// `sub_800BF16`: `side` starts a dimming with `controller`, used by `user`.
-    /// Its previous controller, if any, is told to end.
+    /// `side` starts a dimming for `chip` with `controller`, used by `user`
+    /// (action 0x15's and 0x1B's registration: `sub_800BF16` with the
+    /// chip's cut-in rule).
     pub(crate) fn register_dimming(&mut self, side: u8, chip: ChipId, controller: ObjectRef, user: ObjectRef) {
+        self.start_dimming(side, chip >= FIRST_NO_CUT_IN, Some(controller), user);
+    }
+
+    /// `sub_800BF16`: `side` starts a dimming with `controller` (none if
+    /// its spawn failed: the record waits for nothing), used by `user`;
+    /// `no_cut_in`: the other side can't cut in on it. Its previous
+    /// controller, if any, is told to end.
+    pub(crate) fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef) {
         for r in &mut self.dimming {
             r.initiator = side;
         }
@@ -86,8 +95,8 @@ impl Battle {
             end_controller_now(self, old);
         }
         let rec = self.dimming(side);
-        rec.no_cut_in = chip >= FIRST_NO_CUT_IN;
-        rec.controller = Some(controller);
+        rec.no_cut_in = no_cut_in;
+        rec.controller = controller;
         rec.user = Some(user);
         rec.state = DimmingState::Registered;
     }

@@ -12,6 +12,9 @@
 //!   generic actions its part of them by the chip's subtype: action 0x15
 //!   (dimming chips) its dimming controller, action 0x1B (navi chips) its
 //!   navi ([`ChipData::script`](super::ChipData::script));
+//! - an object kind's `actor_list_entry` implements the actor lists'
+//!   entries of that type (the field objects a stage places when a round
+//!   starts: rocks);
 //! - a weapon routine of MegaMan's (`navis/00-megaman/weapons/NN-name/
 //!   weapon.toml`) implements the routine and the action it names
 //!   ([`WeaponData`]).
@@ -65,6 +68,10 @@ pub struct ObjectKind {
     /// which its init keeps (the trace comparison skips it).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub scratch_z_fraction: bool,
+    /// The actor lists' entry type it places when a round starts
+    /// (`off_80073A0`: 8, a rock), through its `actor_list_entry`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub actor_list_entry: Option<u8>,
 }
 
 /// A weapon routine of MegaMan's that a script implements
@@ -148,6 +155,11 @@ impl Content {
                 NAVI_CHIP_ACTION => add_hook(Hook::NaviChip(c.subtype), module, whose)?,
                 action if action < 0x10 => return Err(format!("{whose}: actions below 0x10 are the engine's")),
                 action => add_action(action, module, whose)?,
+            }
+        }
+        for k in &self.objects.kinds {
+            if let Some(entry) = k.actor_list_entry {
+                add_hook(Hook::ActorListEntry(entry), &k.script, format!("object kind {}", k.name))?;
             }
         }
         for w in &self.weapons {

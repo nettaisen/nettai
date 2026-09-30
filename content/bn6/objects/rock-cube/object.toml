@@ -1,0 +1,8 @@
+# RockCube and IceCube's dimming controller (effect object #0x37, `sub_80E4634`)
+# is a script. Its position is its spawner's registers, which nothing reads.
+
+[kind]
+pool = "effect"
+index = 0x37
+script = "rock_cube.luau"
+scratch_position = true
