@@ -836,19 +836,18 @@ chip. `SlashSpec` and `StrikeSpec` are in types.d.luau; DblDream's two swings, C
 StepSwrd's step and the elemental swords' colours are arguments (`swings`, `second_hit`, `step`,
 `effect_palette`), and each chip's blade is an attachment look. What it settled:
 
-- **Which chips are definitions.** MchnSwrd, ElemSwrd and AssnSwrd are definitions with their records. The
-  sword family keeps the pack's records, each module giving its chip's action with its compat key as `id`:
-  SlashCross charges every Sword-family chip (and FireSwrd to BambSwrd by number, 0x4C to 0x4F), and its
-  charged slash (weapons 0x11 and 0x12, action 0x41) reads the chip's subtype (the blade, the wave, CrosSwrd's
-  two waves, DblDream's two slashes) and first parameter (StepSwrd's dash) from the record, which a
-  definition's record doesn't have (the lab's `chips/0x051-stepswrd/cross-slash-charged` showed it). Most
-  have other reasons too: Sword, WideSwrd, LongSwrd, WideBlde, LongBlde and LifeSrd are Program Advance
-  ingredients or results; DrkSword is one of the ruleset's dark chips (0x11E to 0x122) and has a substitute
-  chip; Muramasa's damage is a formula (the damage taken), which definitions take in step 10; ProtoMan's own
-  StepSwrd (chips/stepswrd/protoman.luau) is a link navi's chip (0x190 to 0x19A) with damage by his level.
-  They become definitions when SlashCross's weapons convert (the charged slash asks the chip for its slash)
-  and what 3b's reader rejects in a definition (`program_advances`, `dark_substitute`, damage formulas) comes
-  with the v2 API.
+- **Which chips are definitions.** StepSwrd, FtrSword, CrosSwrd, DblDream, MchnSwrd, ElemSwrd and AssnSwrd.
+  SlashCross charges every Sword-family chip, and its charged slash (weapons 0x11 and 0x12, action 0x41) reads
+  the chip's subtype (the blade, the wave, CrosSwrd's two waves, DblDream's two slashes) and first parameter
+  (StepSwrd's dash) from its record: the four Sword-family definitions carry them in the transitional
+  `legacy = { subtype, params }` marker (the lab's `chips/0x051-stepswrd/cross-slash-charged` fails without
+  it). The other swords keep the pack's records, each module giving its chip's action with its compat key as
+  `id`, because the ruleset or other records name them by number: Sword, WideSwrd, LongSwrd, WideBlde,
+  LongBlde and LifeSrd are Program Advance ingredients or results; DrkSword is one of the ruleset's dark chips
+  (0x11E to 0x122) and has a substitute chip; SlashCross charges FireSwrd to BambSwrd by number (0x4C to 0x4F);
+  Muramasa's damage is a formula (the damage taken); ProtoMan's own StepSwrd (chips/stepswrd/protoman.luau) is
+  a link navi's chip (0x190 to 0x19A) with damage by his level. The list of what goes when is §12's
+  transitional list.
 - **The shims.** chips/047-sword/chip.luau (action 0x13) runs a record's slash by subtype (and StepSwrd's first
   attack parameter, ProtoMan's copy by his chip), for the records above, the Cross special's swords, the
   variable swords' picks and the test content's blades. chips/056-mchnswrd/chip.luau (action 0x49) is left
@@ -1412,6 +1411,9 @@ Counted in `crates/bn6-battle/src` without tests; file names are the modules tha
   chip's `dark_substitute`, the SlashCross charged swords 0x4C..0x4F (in input.rs). → chip traits `no_chain`,
   `dark(DarkEffect)`, `aura`; a dark chip's `dark_substitute` names its substitute chip directly (the list goes);
   SlashCross's `charged_chips.also`.
+- `berserk.rs` `CROSS_SPECIAL_CHIPS` and `CROSS_SPECIAL_TOP_CHIPS` (the Cross special's chips by the navi's HP),
+  and the Program Advance recipes' ingredients (`PaRecipe`, resolved through `chip_numbered`). → the rules'
+  Cross special list and the recipes name chips (step 10).
 - `intake.rs`: AntiDmg 0xBB, AntiSwrd 0xBC, BodyGrd 0x157. → chip trait `trap(AntiDamage | AntiSword |
   BodyGuard)`.
 - `dimming.rs`: `FIRST_NO_CUT_IN` 0x170, the navi chip range 0xDD..=0x118, AntiNavi 0xBA; `navi_chip.rs`/`heal.rs`
@@ -1740,6 +1742,28 @@ the v1 registration files and the `data` global keep v1 modules working while fa
 their uses per module against an allowlist in `bn6-content-check`'s tests that may only shrink; step 13 deletes
 the allowlist with the last use. The engine never reads compat, at any step (§7.3): what content defines
 reaches the traces and the game's setups through `bn6-compat`, which maps the engine's handles.
+
+**Transitional, and when it goes** (from the exemplars, step 7):
+- **The legacy marker in a v2 definition.** A chip definition may carry `legacy = { subtype, params }`: the
+  original's subtype and parameter bytes in its record, for what reads them of a chip besides its own use.
+  Counted by the ratchet (the lint matches `legacy = {` and `legacy {`). StepSwrd, FtrSword, CrosSwrd and
+  DblDream carry it for SlashCross's charged slash (weapons 0x11/0x12, action 0x41), which reads a chip's
+  subtype and first parameter: exactly the coupling v2 removes. It goes when the charged slash gets a proper
+  hook, the sword chips' actions exposing what the charge needs (StepSwrd's dash, CrosSwrd's two waves,
+  DblDream's two slashes) as a trait or spec field SlashCross's weapon reads: with HeatCross's exemplar (step 7)
+  or when family 8e converts the forms. The marker's `action` and `script` (a behaviour still a v1 module) are
+  step 5's; the reader refuses them until then.
+- **Registration-by-number shims.** chips/036-minibomb (action 0x12), chips/047-sword (0x13) and
+  chips/056-mchnswrd (0x49) run a record's action by its subtype for records something still names by number:
+  the Cross special's chips (berserk.rs `CROSS_SPECIAL_CHIPS`: MiniBomb, EnergBom, MegEnBom and swords), the
+  Program Advance recipes' ingredients (PoisSeed, the swords), records not ported (LilBoiler, VDoll), the test
+  content's numbered chips. The 0x12 and 0x13 shims go when the Cross special's list and the recipes go by
+  handle (phase C, step 10); the 0x49 one when the stun strike (idle.rs `set_attack(0x49)`) is
+  `roles.actions.stun_strike`.
+- **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
+  above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
+  (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
+  anyway), and those chips become definitions.
 
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 

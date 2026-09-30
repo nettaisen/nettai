@@ -1749,6 +1749,25 @@ fn chips_of_a_series_run_their_own_actions() {
     assert_eq!(second - first, 3, "Ticker2 stands 9 ticks to Ticker1's 6");
 }
 
+#[test]
+fn a_legacy_marker_gives_a_definitions_record_its_bytes() {
+    // The transitional marker: what reads a chip's subtype and parameters
+    // besides its own action (SlashCross's charged slash reads a sword's)
+    // finds them in the attack, from the record.
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let defs = &b.content.defs;
+    let [ticker1, ticker2] = [testing::TICKER_1, testing::TICKER_2].map(|key| defs.chip_by_key(key).unwrap());
+    let bytes = |b: &Battle, h| {
+        let c = b.content.chip(h);
+        (c.subtype, c.params)
+    };
+    assert_eq!(bytes(&b, ticker1), (0, [0; 4]));
+    assert_eq!(bytes(&b, ticker2), (7, [1, 2, 0, 0]));
+    use_chip_handle(&mut b, p0, p1, ticker2);
+    let a = &ai_mut(&mut b, p0).attack;
+    assert_eq!((a.variant, a.params), (7, [1, 2, 0, 0]));
+}
+
 // ---- Content model v2: the v2 API (step 4) ---------------------------------------------------
 
 /// The objects of the kind content defines as `key`.
