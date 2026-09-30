@@ -5,3 +5,6 @@
 # ROM-derived data the extractor writes (never commit it)
 /data/sound/
 /data/graphics/
+/data/content/
+/data/cache/
+/data/verify/
