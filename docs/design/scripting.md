@@ -418,7 +418,7 @@ rollback.md §8.2 lists what content must guarantee:
   both peers.
 - **Synthetic netbattles** (bn6-netplay's tests): two navis of the test content mashing buttons with its chips
   (GunDelSol, the invisibility dimming chip, the eraser navi chip), several seeds, latencies 0 to 10 with jitter and
-  input delay: in sync to the KO in every configuration; sound plays each confirmed cue once.
+  present delay: in sync to the KO in every configuration; sound plays each confirmed cue once.
 - **In-repo**: `scripted_chips_roll_back` copies a battle every 97 ticks of a duel with the eraser, grab and
   GunDelSol chips and checks the copy plays on exactly as the battle does.
 

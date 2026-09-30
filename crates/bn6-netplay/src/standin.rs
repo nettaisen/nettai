@@ -3,9 +3,8 @@
 //! outside the simulation, the link session closing at the end of the
 //! round, derived inside the game; and a seeded button masher.
 
-use crate::Game;
-use crate::bn6::HasBattle;
 use crate::rng::SplitMix64;
+use crate::world::Game;
 use bn6_battle::battle::top;
 use bn6_battle::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
 use bn6_battle::content::{ChipCode, ChipId, Content};
@@ -38,27 +37,17 @@ impl StandInBattle {
 impl Game for StandInBattle {
     type Input = u16;
 
-    fn advance(&mut self, inputs: &[u16; 2]) {
-        let input = self.tick_input(*inputs);
+    fn step(&mut self, inputs: [&u16; 2]) {
+        let input = self.tick_input([*inputs[0], *inputs[1]]);
         self.battle.step(&input);
     }
 
-    fn digest(&self) -> u64 {
-        self.battle.digest()
-    }
-
-    fn is_over(&self) -> bool {
-        self.battle.round_end().is_some()
-    }
-
-    fn blank_input() -> u16 {
-        0
-    }
-}
-
-impl HasBattle for StandInBattle {
     fn battle(&self) -> &Battle {
         &self.battle
+    }
+
+    fn battle_mut(&mut self) -> &mut Battle {
+        &mut self.battle
     }
 }
 
