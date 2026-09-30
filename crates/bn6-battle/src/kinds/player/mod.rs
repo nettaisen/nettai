@@ -182,11 +182,17 @@ fn navi_record(b: &Battle, r: ObjectRef) -> NaviRecord {
 /// facing the object's way.
 pub(crate) fn attach_point(b: &Battle, r: ObjectRef, index: usize) -> (i32, i32) {
     let o = b.objects.get(r);
-    if (0xCD..=0xFF).contains(&o.name_id) {
+    name_attach_point(b, o.name_id, index, o.alliance, o.flip)
+}
+
+/// `sub_8018810` as the game calls it: NameID `name_id`'s attach point
+/// `index`, in pixels, facing the way `alliance` and `flip` say.
+pub(crate) fn name_attach_point(b: &Battle, name_id: u16, index: usize, alliance: u8, flip: u8) -> (i32, i32) {
+    if (0xCD..=0xFF).contains(&name_id) {
         return (0, 7);
     }
-    let p = b.content.attach_point(o.name_id, index);
-    (p.x as i32 * flip_direction(o.alliance, o.flip), p.y as i32)
+    let p = b.content.attach_point(name_id, index);
+    (p.x as i32 * flip_direction(alliance, flip), p.y as i32)
 }
 
 /// The panel type under (x, y); off the field the game reads BIOS memory,
