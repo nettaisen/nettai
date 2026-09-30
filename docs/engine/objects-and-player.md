@@ -1612,8 +1612,11 @@ Sub-phase 0, `sub_80EB450`:
     - Variant 2 (the absorbed-obstacle throw of routines 0x2B/0x2C) plays sound 0xFF too and throws
       (`sub_80C6248`): the flying shot (T3 #0xB, §B8) of kind 6 from the center of the panel in front, 12 pixels
       up, with damage AV.u32[0x08] and the obstacle word AV+0x30 as its ExtraVars. It sets no recovery: sub-phase
-      4 waits whatever AV.Unk_12 holds from the last action that wrote it. (The port keeps AV.Unk_12 in action
-      0x11's own state, so after another action ran it is 0; **unverified**.)
+      4 waits whatever AV.Unk_12 holds from the last action that wrote it. The port keeps AV.Unk_12 as the navi's
+      `recovery` word (`AttackVars::recovery`), which actions 0x11 and 0x16 write; a chip action that writes the
+      same word in the game but keeps its own state in the port would leave it unchanged (**unverified**). A lab
+      scenario (the Falzar side of the gregar base in DustCross: a shot, a blank shot, B+Back, the throw)
+      verified that the throw waits the first shot's recovery through the blank shot and the pull.
   - Then `sub_80B8E30` with r7 = &obj.RelatedObject1Ptr spawns a second T1#5 with r4 as its parameters: 5, the
     muzzle flash; after a throw, r4 still holds the throw's 6, so a second buster arm.
 - Every tick: `AV.Unk_10++`. If > 4 → AV.u16[0] = 4 (sub-phase 4, not initialized).

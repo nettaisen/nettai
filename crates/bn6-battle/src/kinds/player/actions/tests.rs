@@ -412,6 +412,34 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     assert_eq!(b.objects.get(thrown).state, state::DESTROY);
 }
 
+#[test]
+fn a_throw_waits_the_last_shots_recovery() {
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = 0x2B));
+    let p = [p0, p1];
+    // Nothing absorbed: the plain buster, and its recovery.
+    tick(&mut b, p0, p1, keys::B);
+    let mut t = 0;
+    tick(&mut b, p0, p1, 0);
+    let recovery = b.content.rules.buster_recovery(0, 2) as u32;
+    run_to(&mut b, p, &mut t, 6 + recovery, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    // Something else runs (a step), then the throw: it doesn't write the
+    // recovery, and waits the shot's.
+    tick(&mut b, p0, p1, keys::UP);
+    let mut t = 0;
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    ai_mut(&mut b, p0).absorbed.push(crate::actor::AbsorbedObstacle { kind: 0, anim: 0 });
+    tick(&mut b, p0, p1, keys::B);
+    let mut t = 0;
+    tick(&mut b, p0, p1, 0);
+    assert_eq!((b.objects.get(p0).action, ai_mut(&mut b, p0).attack.variant), (0x11, 2));
+    run_to(&mut b, p, &mut t, 5 + recovery, 0);
+    assert_eq!(b.objects.get(p0).action, 0x11);
+    run_to(&mut b, p, &mut t, 6 + recovery, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
 /// A projectile of kind `kind` from side 0's navi, on (x, y).
 fn projectile(b: &mut Battle, owner: ObjectRef, kind: u8, x: u8, y: u8) -> ObjectRef {
     let r = crate::behavior::spawn_kind(b, "projectile", crate::object::Vec3 { x: 0, y: 0, z: 0x18 << 16 }, [kind, 0, 0, 0])

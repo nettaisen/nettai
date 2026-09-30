@@ -289,6 +289,10 @@ declare class Object
     beast_lockon: number
     -- A per-action word some actions keep.
     marker: number
+    -- The recovery a shot waits after firing: a word of the attack that
+    -- outlives the action, so an action that waits it without writing it
+    -- (a thrown obstacle) waits the last shot's.
+    recovery: number
     -- The actor data (read-only unless noted).
     actor_type: ActorType
     ai_index: number
