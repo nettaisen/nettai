@@ -1148,7 +1148,8 @@ Ordering, inferred from the state machine **[unverified]**:
 - The dimming ends when the initiator (`[3]`) ends, i.e. LIFO.
 
 Special cases:
-- AntiNavi checks (`sub_802CE78(opp) == 0xBA`) in `sub_800BA8A`/`sub_800BDB2` for navi chips 0xDD..0x118.
+- AntiNavi checks (`sub_802CE78(opp) == 0xBA`) in `sub_800BA8A`/`sub_800BDB2` for navi chips 0xDD..0x118
+  (docs/engine/dimming-chips.md §2; ported in dimming.rs).
 - Alliance-swap re-registration in `sub_800BE2C`.
 
 **Quirk.** The r4 value entering `sub_80127C0` from `sub_8017AB4` selects hand vs slot-in (§2.6.4). On this path r4
@@ -1196,7 +1197,8 @@ With subtype 0 and the other side's defensive chip 0xBD, `sub_80E192C` does some
 **The controller, T4 0x10 (`sub_80E17E8`).** Spawned with r1..r3 = panel Y, element, subtype as its position (so
 Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is
 a flag its navi clears. Actions: 0 `object_dimScreen`; 4 `sub_800BDB2` (AntiNavi: for chips 0xDD..0x118 when the
-other side's defensive chip is 0xBA, the navi is sent back; otherwise straight on); 8 `sub_800BA8A` (the name, as
+other side's defensive chip is 0xBA, the controller changes sides and the navi comes for AntiNavi's user,
+dimming-chips.md §2; otherwise straight on); 8 `sub_800BA8A` (the name, as
 `object_drawChipName` except that it skips the cut-in check, and the effect only when the user is deleted);
 0xC `sub_80E1830`; 0x10 `object_undimScreen`. `sub_80E1830`'s phases:
 - 0 (`sub_80E1854`): 30 ticks; at its start the user warps out (`sub_80C0F52(user, 1)`), except for navi 0x17.
@@ -1334,22 +1336,10 @@ subtype:
 
 Not ported yet, with what is known:
 
-- 4 (Barrier, Barr100, Barr200, BblWrap, LifeAur; T4 0x2F, effect `sub_80E3AFC`): `sub_801A7CC(Param1)` on the user
-  (barrier = type, barrier_weak = `byte_8020B8C[type]`, and from `byte_8020B2C[type*6]` three halfwords: barrier HP
-  (low byte of the first), threshold (low byte of the second), timer (the third); 16 types: pack rules data), then
-  it ends the old barrier visual (AIData+0x60, `sub_80E0DC0`) and spawns the new one (T4 7, `sub_80E0D98`), 61
-  ticks. Its spawner copies only element, user, alliance, damage word and +0x30 (position: register garbage). The
-  FirstBarrier NaviCust (`sub_8013892`) calls the same routine, and a register clobber there gives the charge glow a
-  link pointer into the BIOS (the glow never learns it's linked and never frees itself).
-- The barrier visual (T4 7, `sub_80E0AD4`): driven by the collision data's barrier and the AIData+0x60 link;
-  spawned by FirstBarrier, the Barrier chips, attack #0xC7 and a navi AI. Its look by type from
-  `byte_80E0A14[type*12]`; follows the user; hidden and shown by `sub_80E1352`/`sub_80E13DC`; popped (barrier 0x10)
-  it's blown away; gone with the barrier.
+- 4 (the barriers), 5 (the panel chips), 9 (the instruments), 13 (AirRaid), 26 (BugFix), 27 (ColorPt, DblPoint),
+  28 (Sensor), 36 (SumnBlk), the barrier routine `sub_801A7CC`, the barrier visual (T4 7) and FirstBarrier:
+  specified in docs/engine/dimming-chips.md.
 - 7 (LifeSync; T4 0x5C): in a link battle `sub_80E72C8` branches into another routine's body (`loc_80E73C4`).
-- 26 (BugFix; T4 0x3B): spawns the glow actor T1 0x5D (`sub_80C4AEC`, busy flag Param2), zeroes the stats
-  processing, panel-trail level, buster blanks, hit status, custom damage (halfword), emotion, custom drain, HP
-  drain, battle start and hand-shrink turn (`sub_80E49C4`), calls `sub_801E658`, then `sub_8014446` or `sub_801443C`
-  by stat 0x21, and waits for the glow.
 - The others (and the ElemTrap object): see docs/design/content-migration.md §5.
 
 Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
