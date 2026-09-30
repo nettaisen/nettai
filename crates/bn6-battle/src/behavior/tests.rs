@@ -30,12 +30,22 @@ fn battles_run_the_content_scripts() {
             "absorbed-obstacle",
             "area-grab",
             "attachment",
+            "boomerang",
             "dust-ball",
             "erase-beam",
             "erase-man",
             "erase-mark",
+            "fire-hit",
+            "flame-hook",
+            "flame-hook-fire",
+            "golem",
             "grab-shot",
+            "justice-one",
+            "lance",
             "plus-sparkle",
+            "sand-hole",
+            "sand-spray",
+            "sand-worm",
             "sun-beam"
         ]
     );
@@ -119,7 +129,7 @@ fn registrations_follow_the_content_data() {
     let r = c.registrations().unwrap();
     // The four SunGun chips share one action; four weapons have theirs.
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
-    assert_eq!(actions, [0x33, 0x37, 0x52, 0x57, 0x58], "{:?}", r.actions);
+    assert_eq!(actions, [0x33, 0x37, 0x4E, 0x52, 0x57, 0x58], "{:?}", r.actions);
     // The instant chip registers its subtype's effect.
     assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(5)), "{:?}", r.hooks);
     // Two chips implementing one action with different scripts is an error.
@@ -151,6 +161,33 @@ fn scripted_instant_chips_play_and_roll_back() {
         sparkles += b.objects.in_order().filter(|&r| (r.pool, b.objects.get(r).index) == (crate::object::Pool::Effect, 0x14)).count();
     }
     assert!(sparkles > 0, "no plus chip was used");
+}
+
+#[test]
+fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
+    // Folders of instant chips that spawn objects (boomerangs, lances,
+    // fists, flame hooks, falling fists, golems): a copy of the battle taken
+    // at any tick plays on as the battle does.
+    let chips = [testing::BOOMERANG, testing::LANCE, testing::FIST, testing::FLAME_HOOK, testing::JUSTICE, testing::GOLEM];
+    let setup = || scenario::setup_with(&chips);
+    let tape = scenario::record_on(setup(), 2400, 17);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    let mut spawned = 0;
+    for (i, t) in tape.iter().enumerate() {
+        if i % 97 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+        let content = b.content.clone();
+        spawned += b
+            .objects
+            .in_order()
+            .filter(|&r| content.object_kind_at(r.pool, b.objects.get(r).index).is_some_and(|k| k.name != "attachment"))
+            .count();
+    }
+    assert!(spawned > 0, "no instant chip spawned anything");
 }
 
 // ---- Luau keeps no state ----------------------------------------------------------------
