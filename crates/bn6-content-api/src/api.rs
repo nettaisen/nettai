@@ -312,6 +312,11 @@ named_fields! {
         /// The form is a Beast form, Beast Over.
         Beast = "beast", Bool, ro;
         BeastOver = "beast_over", Bool, ro;
+        /// `sub_800FE52`: how many kinds of NaviCust bug the navi has
+        /// (astray steps, a panel trail, buster blanks, a hit status,
+        /// custom-screen damage, emotion swings, the two HP drains, a
+        /// battle-start hook, a shrinking hand).
+        BugKinds = "bug_kinds", U8, ro;
     }
 }
 
@@ -672,6 +677,8 @@ pub trait CoreApi {
     fn fill_custom_gauge(&mut self);
     /// `sub_800AB46`: bump a side's statistics counter.
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
+    /// `sub_800AB3A`: a side's statistics counter.
+    fn side_stat(&self, side: u8, index: u8) -> u8;
     /// A player NameID's actor record, if it is one.
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo>;
 

@@ -247,6 +247,22 @@ impl CoreApi for Battle {
             NaviStat::BusterCharged => i(s.bugs.buster_charged as i64),
             NaviStat::Beast => Value::Bool(s.form.is_beast()),
             NaviStat::BeastOver => Value::Bool(s.form.is_beast_over()),
+            NaviStat::BugKinds => {
+                let b = &s.bugs;
+                let kinds = [
+                    b.processing == 1,
+                    b.panel_trail_level != 0,
+                    b.buster_blanks != 0,
+                    b.hit_status != 0,
+                    b.custom_damage != 0,
+                    b.emotion != 0,
+                    b.hp_drain != 0,
+                    b.custom_drain != 0,
+                    b.battle_start != 0,
+                    b.hand_shrink_turn != 0,
+                ];
+                i(kinds.iter().filter(|&&k| k).count() as i64)
+            }
         }
     }
 
@@ -317,6 +333,10 @@ impl CoreApi for Battle {
 
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
+    }
+
+    fn side_stat(&self, side: u8, index: u8) -> u8 {
+        self.side_stats[side as usize & 1][index as usize & 0xF]
     }
 
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo> {

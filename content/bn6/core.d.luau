@@ -449,6 +449,8 @@ declare class Navi
     -- The form is a Beast form, Beast Over.
     beast: boolean
     beast_over: boolean
+    -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
+    bug_kinds: number
 end
 
 -- A one-tick hit region (`battle.hitbox`).
@@ -548,6 +550,8 @@ declare battle: {
     clear_linked: (side: number) -> (),
     fill_custom_gauge: () -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
+    -- `sub_800AB3A`: a side's statistics counter.
+    side_stat: (side: number, index: number) -> number,
     navi_record: (name_id: number) -> NaviRecord?,
     -- Spawn into the pool's lowest free slot; it runs later this tick,
     -- right after the spawner. nil if the pool is full.
