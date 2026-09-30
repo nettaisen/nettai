@@ -1265,6 +1265,15 @@ impl Battle {
         if self.gauge.enabled {
             self.fill_gauge();
         }
+        // While the custom screen is up the banner is the local player's
+        // screen's (its Program Advance's), already stepped with it.
+        let local = self.round.local_side as usize;
+        if self.round.mode == mode::CUSTOM
+            && let Some(s) = &self.custom.sides[local].screen
+        {
+            self.banner = s.hud;
+            return;
+        }
         self.banner.tick();
     }
 

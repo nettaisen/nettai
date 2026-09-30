@@ -306,7 +306,7 @@ impl Side {
                 }
             }
         }
-        screen.program_advance = built.program_advance.map(|(_, chips)| chips);
+        screen.program_advance = built.program_advance;
         let hand = (!screen.selection().is_empty()).then_some(built.hand);
         self.built = Some((hand, transform));
     }
