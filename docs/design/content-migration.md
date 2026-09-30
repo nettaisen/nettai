@@ -133,7 +133,7 @@ cargo test --release -p sound-tests      # the sound calls
 ```
 
 (run in the verification workspace). The floors today: machgun rounds 1 and 2 complete (1074/1074, 1331/1331),
-soundmod 4513/6284/2566 (rounds 1 and 2 stop at SpoutMan, navi chip navi 7; round 3 at action 0x39, RskyHny), the
+soundmod 6728/6761/2566 (round 1 stops at dimming chip subtype 26, round 2 at chip effect 0x8, round 3 at action 0x39), the
 rollback test matching every confirmed frame at latencies 0+0 to 10+3, and the sound calls (machgun 53 over 1651
 frames, soundmod 35 over 8596). A trace exercises a script only where it reaches it: grep the trace for the object's
 `"type"` and `"index"` or the player's `"state":[4,ACTION,` to see whether and when. Where the workspace's tests
@@ -155,14 +155,19 @@ crates/bn6-battle/src/behavior/tests.rs (the registration lists); docs/engine/ob
 
 ### Group A: navi chips
 
-- ElmntMan (navi 16, actor #0x10, `kinds/elmnt_man.rs`) and the meteors he drops (`kinds/meteor.rs`, attack 0x8D), with the
-  branches the Rust leaves out (his Aqua, Elec and Wood: `sub_80BAD06`, `sub_80BAD76`, `sub_80BAD34`,
-  `sub_80BAF06`; meteors outside a dimming).
-- SpoutMan (navi 7): soundmod rounds 1 and 2 stop there, so it moves their floors.
-- Then the other navis of `off_802CD5C` (Roll, ProtoMan, HeatMan, ElecMan, SlashMan, ChargeMan, TomahawkMan,
-  TenguMan, GroundMan, DustMan, BlastMan, DiveMan, CircusMan, JudgeMan, Colonel, HackJack, Django, ...), each a
-  folder under objects/ with its chips naming it.
-- Owns: kinds/elmnt_man.rs, kinds/meteor.rs (deleted), the fallback in kinds/navi_chip.rs `bring_navi`.
+Done (wave 2): the navi parts service (`kinds::navi_parts`, `sub_8010DF6`/`sub_8011044`, with SpoutMan's layer
+`kinds::navi_layer`; the player's and the Cross image's init hook use it), and as pack scripts with every kind they
+spawn: ElmntMan (all four elements; `kinds/elmnt_man.rs` and `kinds/meteor.rs` deleted), SpoutMan, HeatMan,
+ElecMan, SlashMan, ChargeMan, TomahawkMan, TenguMan, BlastMan, Roll, ProtoMan, Colonel (and CrossDiv), Bass,
+BassAnly, DeltaRay, SunMoon. `bring_navi`'s fallback is a content error (HackJack's and Django's entries are NULL:
+an explicit error). Every scratch-lab scenario of these chips matches (docs/engine/chips.md §3.6.7 on).
+
+Left:
+- GroundMan, DustMan, DiveMan, CircusMan, JudgeMan (navis 10, 11, 13, 14, 15): some kinds and the name looks
+  data (`byte_8021220`) are in (objects/falling-rock, objects/rubble), the navis aren't registered.
+- TwinLdrs (20), CrosOver (21), MstrCros (22), BigHook (23), Darkness (24): not ported.
+- Roll against the other side's AntiRecv (`sub_80E192C`, chip 0xBD: the trap chips' `sub_80E37D2`, group B).
+- The PA chips' lab recipes stop at the custom screen's PA banner and hand (not navi-chip code).
 
 ### Group B: dimming chips
 
