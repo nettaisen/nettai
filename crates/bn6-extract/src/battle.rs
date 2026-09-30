@@ -406,6 +406,8 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
         // By hit-modifier bit (`byte_800E58C`, three bytes each) and by
         // collision direction (`byte_800E4E8`, four bytes each).
         push_vectors: std::array::from_fn(|i| slide(rom, 0x0800_E58C + 3 * i as u32)),
+        // An obstacle's (`byte_800F604`, three bytes each).
+        obstacle_push_vectors: std::array::from_fn(|i| slide(rom, 0x0800_F604 + 3 * i as u32)),
         ice_vectors: std::array::from_fn(|i| slide(rom, 0x0800_E4E8 + 4 * i as u32)),
         bubble_bob: std::array::from_fn(|i| rom.u8(0x0801_7868 + i as u32) as i8),
         lockon: lockon(rom),
