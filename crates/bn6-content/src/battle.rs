@@ -251,6 +251,12 @@ struct WeaponRecord {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct MathFile {
+    sine: Vec<i16>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ReactionsFile {
     push: [SlideVector; 10],
     ice: [SlideVector; 6],
@@ -544,8 +550,8 @@ pub fn weapon_folder(w: &WeaponData) -> String {
 
 /// The object kinds whose folders hold data of their own (a kind of these
 /// a script implements keeps its `[kind]` in the same file).
-const DATA_OBJECTS: [&str; 7] =
-    ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "projectile", "flying-shot"];
+const DATA_OBJECTS: [&str; 8] =
+    ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "boomerang", "projectile", "flying-shot"];
 
 /// A script as an entity's file names it: `module` (a path in the pack
 /// without `.luau`) relative to `folder`, with `.luau`.
@@ -634,6 +640,13 @@ pub fn export(c: &Content) -> Files {
         toml_file(
             "The sun beam's (effect object #0x48) sprites by look, its first parameter.",
             &SunBeamFile { look: looks, script_kind: script_kind("sun-beam") },
+        ),
+    );
+    put(
+        "objects/boomerang/object.toml".into(),
+        toml_file(
+            "Boomerangs (attack object #0x32) by variant, its first parameter: 16.16 pixels a tick along a\nrow and along the column, and whether it turns the other side's panels to grass.",
+            &ObjectFile { variant: o.boomerangs.clone(), script_kind: script_kind("boomerang") },
         ),
     );
     let owned: Vec<u8> = c.chips.iter().filter_map(|c| Some(c.gun_del_sol.as_ref()?.gun.id)).collect();
@@ -808,6 +821,13 @@ neighbour is looked for along the scan lists, each slot starting at its *_scan_s
                 left_scan_start: cs.left_scan_start,
                 right_scan_start: cs.right_scan_start,
             },
+        ),
+    );
+    put(
+        "rules/math.toml".into(),
+        toml_file(
+            "sine: the sine table by angle (256 a turn), 1.0 = 0x100, with 64 entries more (the cosine\ntable is the same table 64 entries on).",
+            &MathFile { sine: r.sine.clone() },
         ),
     );
     put(
@@ -1048,6 +1068,10 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     add_kind("sun-beam", beams.script_kind, report);
     let file = "objects/sun-beam/object.toml";
     let sun_beam_looks = dense(beams.look.into_iter().map(|l| (l.id as usize, l.sprite, file.into())).collect(), "sun beam look", report);
+    let boomerangs: ObjectFile<BoomerangKind> = read_toml(root, "objects/boomerang/object.toml", report)?;
+    add_kind("boomerang", boomerangs.script_kind, report);
+    let file = "objects/boomerang/object.toml";
+    let boomerangs = dense(boomerangs.variant.into_iter().map(|b| (b.id as usize, b, file.into())).collect(), "boomerang", report);
     let shots: ObjectFile<ProjectileKind> = read_toml(root, "objects/projectile/object.toml", report)?;
     add_kind("projectile", shots.script_kind, report);
     let file = "objects/projectile/object.toml";
@@ -1089,7 +1113,17 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     }
     let attachments = dense(all.into_iter().map(|(id, (a, file))| (id as usize, a, file)).collect(), "attachment", report);
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
-    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, projectiles, flying_shots, kinds })
+    Some(ObjectData {
+        attachments,
+        rocks,
+        absorbed_sprites,
+        body_overlays,
+        sun_beam_looks,
+        boomerangs,
+        projectiles,
+        flying_shots,
+        kinds,
+    })
 }
 
 fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
@@ -1222,6 +1256,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
     let weapons = dense(w.weapon.into_iter().map(|w| (w.id as usize, WeaponRoutine { charge_ticks: w.charge_ticks }, file.into())).collect(), "weapon routine", report);
     let reactions: ReactionsFile = read_toml(root, "rules/reactions.toml", report)?;
     let lockon: LockonFile = read_toml(root, "rules/lockon.toml", report)?;
+    let math: MathFile = read_toml(root, "rules/math.toml", report)?;
     let file = "rules/sp-chips.toml";
     let sp: SpChipsFile = read_toml(root, file, report)?;
     let mut sp_deletion_times = Vec::new();
@@ -1272,6 +1307,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         ice_vectors: reactions.ice,
         bubble_bob: reactions.bubble_bob,
         lockon: Lockon { searches: lockon.search, column_shifts: lockon.column_shifts },
+        sine: math.sine,
     })
 }
 
