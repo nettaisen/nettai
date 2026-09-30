@@ -166,14 +166,25 @@ crates/bn6-battle/src/behavior/tests.rs (the registration lists); docs/engine/ob
 
 ### Group B: dimming chips
 
-- Invisible's controller (subtype 1, effect #0x5D, `kinds/invisible.rs`) and the trap chips' (subtype 20, AntiDmg
-  and its kin, effect #0x2A, `kinds/trap_chip.rs`, with the trap object `sub_80CE0EC` it lacks).
-- Then the other subtypes of `off_802CCB4` (Geddon, Barrier, PanlRetrn, RockCube, Wind, TimeBom, Mine, AirRaid,
-  Meteors, Anubis, Sensor, ...).
-- Their controllers' register-garbage positions move from trace.rs's `pos_is_garbage` list to `scratch_position`
-  in their `[kind]`.
-- Owns: kinds/invisible.rs, kinds/trap_chip.rs (deleted), the fallback in kinds/player/actions/dimming_chip.rs,
-  trace.rs.
+Done: the dimming chips have no Rust fallback (kinds/player/actions/dimming_chip.rs calls `Hook::DimmingChip`
+only), and the controllers declare `scratch_position` (trace.rs keeps only the navi chip controller). Scripts:
+subtypes 1 (objects/invisible), 6 (objects/rock-cube), 20 (objects/trap-chip, with ElemTrap's trap
+objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts), 10 (objects/time-bom,
+objects/countdown-bomb), 11 (objects/mine, objects/land-mine), 25 (objects/gauge-speed), 38 (objects/navi-boost).
+Shared: lib/panels (the game's panel lists and shuffle), objects/rising-bubble (effect #0x14).
+
+Left (each a controller and its objects, every branch; docs/engine/chips.md §3.6.10 has what is known):
+
+- 14 Guardian: objects/guardian, guardian-statue and guardian-strike are written but no chip names them yet and
+  they are unverified; register chip 0x097 and check them against the lab.
+- 2 (no chip), 3 Geddon and the capsules, 4 Barrier (with the FirstBarrier framework `sub_801A7CC` and the barrier
+  visual, effect #7), 5 PanlRetrn and the road/holy chips (the `field.poison` and `field.blink` services exist;
+  its 19-row table is pack data to extract), 7 LifeSync, 8 Wind/Fan, 9 Fanfare and kin, 12 Snake, 13 AirRaid, 15
+  GrabBnsh/GrabRvng, 16 Meteors, 17 Anubis/PoisPhar, 18 Otenko, 19 CircGun, 21 BlzrdBal, 22 NumbrBl, 23 BurnSqr,
+  24 Magnum, 26 BugFix, 27 ColorPt/DblPoint, 28 Sensor, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 36 SumnBlk, 37
+  DblBeast; 31, 33 and 41 (no chip; their actors are navi chips' navis).
+- Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
+  notes), thrown and encased obstacles (`sub_8018002`, `sub_801813A`), AntiNavi in the dimming service.
 
 ### Group C: DustCross and the Beast forms' weapons
 
@@ -212,11 +223,9 @@ crates/bn6-battle/src/behavior/tests.rs (the registration lists); docs/engine/ob
 
 ### Group F: rocks
 
-- The rock (attack #0x59, `kinds/rock.rs`) and its debris (effect #0x38, `kinds/rock_debris.rs`) as kinds on the
-  obstacle framework;
-  the stage spawns rocks at the start (`battle.rs`, `kinds::rock::spawn_at_start`) through the kind.
-- The verification workspace's rock_trace and bn6_data tests name `kinds::rock`; update them.
-- Owns: kinds/rock.rs, kinds/rock_debris.rs, kinds/rock_tests.rs, battle.rs's actor-list spawn.
+Done: the rock (objects/rock) and its debris (objects/rock-debris) are kinds on the obstacle framework (the
+`obstacle` service); the actor lists' rocks go through the rock's `actor_list_entry` (`Hook::ActorListEntry`).
+The verification workspace's rock_trace and bn6_data tests need the updated copies (they named `kinds::rock`).
 
 ### Group G: standard chip actions
 
