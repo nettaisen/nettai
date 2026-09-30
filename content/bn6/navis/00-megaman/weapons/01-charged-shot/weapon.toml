@@ -1,6 +1,7 @@
-# MegaMan's weapon routine 0x01, the charged shot (`sub_8011A7E`), is a script.
-# The action it names, 0x16, is not content yet.
+# MegaMan's weapon routine 0x01, the charged shot (`sub_8011A7E`), and the
+# action it names, the shot (0x16, `sub_80EBE00`), are a script.
 
 id = 0x01
 name = "Charged shot"
+action = 0x16
 script = "charged_shot.luau"
