@@ -453,7 +453,10 @@ fn lockon(rom: &Rom) -> Lockon {
             prefers_middle_row,
         })
         .collect();
-    Lockon { searches, column_shifts }
+    // The charged slash's modes by variant: the sword chips' subtypes and
+    // the charged shots' 0x10..=0x12.
+    let slash_modes = (0..0x13).map(|v| rom.u8(0x080E_B028 + v)).collect();
+    Lockon { searches, column_shifts, slash_modes }
 }
 
 /// The custom screen's slot grid (`dword_802A7CC`: four bytes a slot:
@@ -665,8 +668,75 @@ fn objects(rom: &Rom) -> ObjectData {
         absorbed_sprites: (0..15).map(|i| sprite_at(0x080E_98C0 + 2 * i)).collect(),
         body_overlays,
         sun_beam_looks: (0..2).map(|i| sprite_at(0x080E_5C28 + 2 * i)).collect(),
+        sword_waves: sword_waves(rom),
+        hit_zones: hit_zones(rom),
         kinds: Vec::new(),
     }
+}
+
+/// A byte the object code only tests for zero, as a flag.
+fn flag_byte(rom: &Rom, a: u32) -> bool {
+    match rom.u8(a) {
+        0 => false,
+        1 => true,
+        v => panic!("flag byte {v:#x} at {a:#x}"),
+    }
+}
+
+/// The sword wave's kinds (`byte_80D7F4C`, 16 bytes each, read by
+/// `sub_80D80B4`), up to the object's code: collision types and hit
+/// modifier, region, sprite, animation, whether it animates, whether it
+/// highlights, reach, shadow (low nibble) and palette (high), status,
+/// speed.
+fn sword_waves(rom: &Rom) -> Vec<SwordWave> {
+    const TABLE: u32 = 0x080D_7F4C;
+    const END: u32 = 0x080D_807C;
+    (0..(END - TABLE) / 16)
+        .map(|i| {
+            let r = TABLE + 16 * i;
+            let look = rom.u8(r + 10);
+            assert!(look & 0xF <= 1, "sword wave {i} shadow nibble {look:#x}");
+            SwordWave {
+                id: i as u8,
+                self_type: rom.u8(r),
+                target_type: rom.u8(r + 1),
+                hit_mod: rom.u8(r + 2),
+                region: rom.u8(r + 3),
+                sprite: SpriteId { category: rom.u8(r + 4), index: rom.u8(r + 5) },
+                anim: rom.u8(r + 6),
+                animates: flag_byte(rom, r + 7),
+                highlight: flag_byte(rom, r + 8),
+                reach: rom.u8(r + 9),
+                ground_shadow: look & 0xF != 0,
+                palette: look >> 4,
+                status: rom.u8(r + 11),
+                speed: u32at(rom, r + 12) as i32,
+            }
+        })
+        .collect()
+}
+
+/// The hit zone's kinds (`byte_80D6914`, 8 bytes each, read by
+/// `sub_80D6952`): collision types, hit effect, region, hit modifier (the
+/// low byte of the word at +4), status, bug and its argument.
+fn hit_zones(rom: &Rom) -> Vec<HitZone> {
+    const TABLE: u32 = 0x080D_6914;
+    (0..2)
+        .map(|i| {
+            let r = TABLE + 8 * i;
+            HitZone {
+                id: i as u8,
+                self_type: rom.u8(r),
+                target_type: rom.u8(r + 1),
+                hit_effect: rom.u8(r + 2),
+                region: rom.u8(r + 3),
+                hit_mod: rom.u8(r + 4),
+                status: rom.u8(r + 5),
+                bug: rom.u8(r + 6),
+                bug_arg: rom.u8(r + 7),
+            }
+        })
+        .collect()
 }
 
 // ---- Sprite timing ---------------------------------------------------------------------
