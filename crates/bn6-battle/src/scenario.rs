@@ -60,6 +60,8 @@ pub fn setup() -> RoundSetup {
         folder: Some(folder),
         unlocks: Unlocks { crosses: [false; 5], beast_out: false, ..Unlocks::everything(GameVersion::Falzar) },
         joypad_phase: 0,
+        bug_frags: 0,
+        navi_level: 0,
     };
     RoundSetup {
         content: content.hash(),

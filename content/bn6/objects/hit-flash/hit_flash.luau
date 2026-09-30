@@ -6,9 +6,9 @@
 
 local hit_flash = {}
 
--- The flash: variant 1 (the screen and the objects), 2 ticks, held while
--- dimmed or paused (`off_80E8934`).
-local FLASH = { 1, 2, 0, 0 }
+-- The flash (`off_80E8934`): variant 1 (the screen and the objects) for 2
+-- ticks, neither going on while dimmed nor while paused.
+local FLASH_VARIANT, FLASH_TICKS = 1, 2
 
 -- The flashes, and the ticks between them.
 local FLASHES, GAP = 3, 8
@@ -36,7 +36,7 @@ local function tick(me: Object)
     end
     if me.action == FLASHING then
         me.action = WAITING
-        battle.palette_flash(FLASH)
+        battle.palette_flash(FLASH_VARIANT, FLASH_TICKS)
         me.timer = GAP
     end
     local left = me.timer - 1

@@ -1,0 +1,6 @@
+# The thrown seed (attack object #0x4F, `sub_80CE24C`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x4F
+script = "seed.luau"

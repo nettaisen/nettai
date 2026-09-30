@@ -1,0 +1,9 @@
+# The water spouting under SpoutMan (effect object #0x2D, `sub_80E37F4`) is a script. The
+# fraction of its Z is its spawner's register garbage (the object loop's count of the
+# objects of the one before him, times 4), which its init keeps.
+
+[kind]
+pool = "effect"
+index = 0x2D
+script = "spout_pillar.luau"
+scratch_z_fraction = true

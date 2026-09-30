@@ -26,10 +26,13 @@ pub struct ObjectData {
     pub flying_shots: Vec<FlyingShotKind>,
     /// Sword waves (attack object #0x96) by kind, its first parameter.
     pub sword_waves: Vec<SwordWave>,
-    /// Hit zones (attack object #0x8B) by kind, its first parameter.
-    pub hit_zones: Vec<HitZone>,
+    /// How a field object looks by its NameID (`byte_8021220`, NameIDs
+    /// 0xCD..=0xFF), as `sub_800F26C` gives it: what DustMan throws.
+    pub name_looks: Vec<NameLook>,
     /// The object kinds scripts implement, by name (see `content::scripts`).
     pub kinds: Vec<super::ObjectKind>,
+    /// Shock waves (attack object #0x16) by variant, its first parameter.
+    pub shock_waves: Vec<ShockWave>,
 }
 
 impl ObjectData {
@@ -57,6 +60,24 @@ impl ObjectData {
     pub fn sun_beam_sprite(&self, look: u8) -> SpriteId {
         *self.sun_beam_looks.get(look as usize).unwrap_or_else(|| panic!("sun beam look {look} is not in the content"))
     }
+}
+
+/// A shock wave's look and timing (attack object #0x16, `byte_80C6B00`):
+/// the rolling wave of WaveArm, PwrWave and the viruses that send one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ShockWave {
+    /// The variant number.
+    pub id: u8,
+    pub sprite: SpriteId,
+    pub anim: u8,
+    /// Ticks on a panel before the next wave rolls on.
+    pub ticks: u8,
+    /// What it does to its panel as it comes: cracks it (`cracked`),
+    /// breaks it (`broken`, or cracks it when something stands there), or
+    /// turns it to another type.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub panel: Option<crate::field::PanelType>,
 }
 
 /// A kind of rock.
@@ -245,26 +266,21 @@ pub struct SwordWave {
     pub speed: i32,
 }
 
-/// A kind of hit zone (attack object #0x8B, `byte_80D6914`): a hit region
-/// that stays on a panel for a while, such as EraseCross's beam's.
+/// How a field object looks, by NameID (`byte_8021220`, 5 bytes a NameID
+/// from 0xCD: sprite category and index, animation, palette, shadow).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct HitZone {
-    /// The kind number.
-    pub id: u8,
-    /// Its collision types (what it is, what it hits) and hit modifier.
-    pub self_type: u8,
-    pub target_type: u8,
-    pub hit_mod: u8,
-    pub hit_effect: u8,
-    pub region: u8,
-    /// The status its hit inflicts (0: none).
-    pub status: u8,
-    /// The bug it gives and its argument (0: none).
-    pub bug: u8,
-    pub bug_arg: u8,
+pub struct NameLook {
+    pub name_id: u16,
+    /// None where the table's category byte is 0xFF (`sub_800F26C`'s "no
+    /// look").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sprite: Option<SpriteId>,
+    pub anim: u8,
+    pub palette: u8,
+    /// Drawn with a shadow (the fifth byte nonzero).
+    pub shadow: bool,
 }
-
 
 /// A body overlay (actor object #0x56): a second sprite layered on a
 /// navi, drawn in front of it in some of its animations and one pixel

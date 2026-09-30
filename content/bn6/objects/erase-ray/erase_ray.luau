@@ -1,23 +1,23 @@
 --!strict
 -- EraseCross's charged beam (attack object #0x9D, `sub_80D8E10`): it
 -- appears ahead of the navi, and when its opening animation ends lays a
--- hit zone (objects/hit-zone, kind 1) on each panel from its own forward,
+-- hit column (objects/thunder-column, kind 1) on each panel from its own forward,
 -- up to five. Once its navi leaves the charged shot's action (0x45) it
 -- shuts: the zones end two ticks later and the beam five. Its first
 -- parameter: 0 lasts 70 ticks; 1 (the Beast form's) until it shuts; 2
 -- shuts when its second parameter is set.
 
-local hit_zone = require("../hit-zone/hit_zone")
+local thunder_column = require("../thunder-column/thunder_column")
 
 export type State = {
-    -- ExtraVars+0x60..: the zones it laid, and how many (the game ends the
-    -- list with -1).
-    zones: { Object? },
+    -- ExtraVars+0x60..: the columns it laid (which register there), and
+    -- how many (the game ends the list with -1).
+    columns: { Object? },
     count: number,
 }
 
 local erase_ray = {
-    state = { zones = "object[5]", count = "u8" },
+    state = { columns = "object[5]", count = "u8" },
 }
 
 local SPRITE = "10-4c"
@@ -32,8 +32,9 @@ local OPENING, BEAMING, CLOSING = 0x0, 0x4, 0x8
 -- Its navi's action while the beam lasts.
 local CHARGED_SHOT_ACTION = 0x45
 
--- The zones' kind, their height, and how many at most.
-local ZONE_KIND, ZONE_Z, MAX_ZONES = 1, 0x10_0000, 5
+-- The columns' kind and how many at most. (They stand 16 pixels up, the
+-- thunder column's height.)
+local ZONE_KIND, MAX_ZONES = 1, 5
 
 -- `sub_80D8F98`: a beam of `owner`'s on (x, y) at height `z` with `params`
 -- and the damage word `damage`. (Its X and Y are its spawner's registers
@@ -62,7 +63,7 @@ end
 -- runs while dimmed.
 local function lay(me: Object, x: number, slot: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local z = hit_zone.spawn(me, x, me.panel_y, me.element, ZONE_Z, { ZONE_KIND, 0, 0, 0 }, damage, me, slot)
+    local z = thunder_column.spawn(me, x, me.panel_y, me.element, { ZONE_KIND, 0, 0, 0 }, damage, me, slot + 1)
     if z then
         z.run_while_dimmed = me.run_while_dimmed
         z.timer = me.timer
@@ -102,7 +103,7 @@ local function beaming(me: Object)
         me.timer = 5
         local s = me.state :: State
         for i = 1, s.count do
-            local z = s.zones[i]
+            local z = s.columns[i]
             if z then
                 z.timer = 2
             end

@@ -1,7 +1,0 @@
-# A drill's hit (attack object #0x71, `sub_80D2A94`) is a script. Its X and Y are
-# its spawner's registers until its init places it.
-
-[kind]
-pool = "attack"
-index = 0x71
-script = "drill_hit.luau"

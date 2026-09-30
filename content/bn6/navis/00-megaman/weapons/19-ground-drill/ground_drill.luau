@@ -3,12 +3,12 @@
 -- action 0x4D (`sub_80EEFDC`). The navi burrows (its body leaves the field
 -- 3 ticks in), comes up on the panel Beast Out lock-on mode 0xC picks in
 -- front of the first enemy in its row (or of the other side's front
--- column there), drills there with a drill arm (objects/drill-hit, for as
+-- column there), drills there with a drill arm (objects/drill, for as
 -- long as the attack's second parameter says, plus 10 ticks), then
 -- burrows back to the panel it left.
 
 local attachment = require("../../../../objects/attachment/attachment")
-local drill_hit = require("../../../../objects/drill-hit/drill_hit")
+local drill_object = require("../../../../objects/drill/drill")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -173,7 +173,7 @@ local function drill(me: Object, s: State)
         attachment.spawn(me, { kind = DRILL_ARM, anim = DRILL_ANIM }, "overlay")
         local damage = int.u32(bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16)) + me.extra)
         local params = { me:attack_param(1), me:attack_param(2), me:attack_param(3), me:attack_param(4) }
-        drill_hit.spawn(me, me.attack_element, params, damage, 0x10_0000, me, "related1")
+        drill_object.spawn(me, me.attack_element, 0x10_0000, damage, params, "related")
         me:open_counter_window()
         s.timer = me:attack_param(2) + 0xA
         battle.play_sound(0x1BF)

@@ -17,7 +17,6 @@ export type State = {
 charge_wave.state = { hit_panel = "u16", trail = "i32" }
 
 local SPRITE = "10-09"
-local SPRITE_CATEGORY, SPRITE_INDEX = 0x10, 0x09
 
 -- Its speed, 16.16.
 local SPEED = 0xC_0000
@@ -58,7 +57,7 @@ local function afterimage(me: Object)
     local p = me.pos
     local pos = Vec3.new(p.x, p.y - 0x1_0000, p.z - 0x1_0000)
     local flip = bit32.bxor(me.alliance, me.flip)
-    battle.afterimage(me, pos, { SPRITE_CATEGORY, SPRITE_INDEX, 0, flip }, TRAIL_SHADER, TRAIL_LIFETIME)
+    battle.afterimage(me, pos, { sprite = SPRITE, flip = flip, lifetime = TRAIL_LIFETIME, color_shader = TRAIL_SHADER })
 end
 
 -- `sub_80DDB98`: roll on.

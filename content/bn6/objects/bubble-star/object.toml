@@ -1,0 +1,6 @@
+# The bubble star (attack object #0x42, `sub_80CC5A8`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x42
+script = "bubble_star.luau"

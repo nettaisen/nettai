@@ -1,7 +1,0 @@
-# GroundCross's A-charge, routine 0x18 (`sub_8012CB2`), is a script. The weapon
-# table has a nullsub there; the chip-use framework calls this before a charged
-# chip's use and takes the result as the use's charge argument.
-
-id = 0x18
-name = "Ground charge"
-script = "ground_charge.luau"

@@ -1,0 +1,3 @@
+# A navi chip (subtype 16): its navi is ElmntMan.
+
+script = "../../objects/elmnt-man/elmnt_man.luau"

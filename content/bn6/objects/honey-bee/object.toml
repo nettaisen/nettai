@@ -1,0 +1,6 @@
+# RskyHny's bee (attack object #0x74, `sub_80D30D0`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x74
+script = "honey_bee.luau"

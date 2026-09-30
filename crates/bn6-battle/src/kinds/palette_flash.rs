@@ -13,8 +13,8 @@ pub const INDEX: u8 = 0x0A;
 /// Flash-private state (the spawn parameters).
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    /// Param1: which flash (0: the screen, `sub_80E10C0`; 1: the screen
-    /// and the objects, `sub_80E114C`).
+    /// Which flash (Param1): 0 white or red over one palette layer
+    /// (`sub_80E10C0`), 1 white over two (`sub_80E114C`).
     pub variant: u8,
     /// Ticks the flash lasts.
     pub duration: u8,
@@ -33,35 +33,31 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 
 /// `sub_80E11E0`: a white flash (variant 0) for `duration` ticks.
 pub fn spawn(b: &mut Battle, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
-    let mode = while_dimmed as u8 | (while_paused as u8) << 1;
-    spawn_with(b, [0, duration, mode, 0])
+    spawn_variant(b, 0, duration, while_dimmed, while_paused)
 }
 
-/// `sub_80E11E0` with its parameters: the variant, the ticks, whether it
-/// keeps flashing while dimmed (bit 0) and while paused (bit 1), and the
-/// colour (Param4). (The spawner also leaves a register in ExtraVars,
-/// which neither variant reads.)
-pub fn spawn_with(b: &mut Battle, params: [u8; 4]) -> Option<ObjectRef> {
-    let [variant, duration, mode, _] = params;
-    let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), params)?;
+/// `sub_80E11E0` with the flash's variant (Param1).
+pub fn spawn_variant(b: &mut Battle, variant: u8, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
+    let mode = while_dimmed as u8 | (while_paused as u8) << 1;
+    let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), [variant, duration, mode, 0])?;
     b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
-    *vars(b, r) = Vars { variant, duration, while_dimmed: mode & 1 != 0, while_paused: mode & 2 != 0 };
+    *vars(b, r) = Vars { variant, duration, while_dimmed, while_paused };
     Some(r)
 }
 
-/// `sub_80E10A4`: by variant, `sub_80E10C0` or `sub_80E114C`: count the
-/// flash down and free it when done. While the battle is paused or dimmed
-/// (unless it keeps flashing then), it only holds the palette. (Variant
-/// 1 tests the paused bit twice, so it holds while dimmed either way; it
-/// leaves its timer alone.)
+/// `sub_80E10A4`: count the flash down and free it when done. While the
+/// battle is paused or dimmed (unless it keeps flashing then), it only
+/// holds the palette. Variant 1 (`sub_80E114C`) tests the pause bit where
+/// variant 0 tests the dimming bit, so it holds while dimmed whatever its
+/// parameters say, and it doesn't count its ticks up.
 pub fn update(b: &mut Battle, r: ObjectRef) {
     let Vars { variant, duration, while_dimmed, while_paused } = vars(b, r).clone();
-    let while_dimmed = match variant {
+    let keeps_dimming = match variant {
         0 => while_dimmed,
-        1 => false,
+        1 => while_paused,
         v => panic!("palette flash variant {v} reads past off_80E10B8"),
     };
-    let held = !while_paused && (b.paused || (!while_dimmed && b.is_dimmed()));
+    let held = !while_paused && (b.paused || (!keeps_dimming && b.is_dimmed()));
     if held {
         return;
     }

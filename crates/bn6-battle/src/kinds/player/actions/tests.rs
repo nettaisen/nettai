@@ -240,562 +240,189 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     assert_eq!(b.objects.get(p0).action, 8);
 }
 
-// ---- The Beast forms' weapons --------------------------------------------------
-
-/// Start weapon routine `routine` for `r` as a charged chip does
-/// (`sub_800FB54`): the routine's setup, then its action. Returns the
-/// action.
-fn start_weapon(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
-    ai_mut(b, r).attack.charged = 0;
-    let action = crate::kinds::player::idle::weapon_routine(b, r, routine);
-    crate::kinds::player::set_attack(b, r, action, 2);
-    action
+/// The kind named `name` somewhere on the field.
+fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
+    let k = b.content.object_kind(name).unwrap();
+    b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index))
 }
 
-/// A copy of the battle plays the next `n` ticks exactly as the battle
-/// does (the scripts' state is all in the battle).
-fn plays_on_the_same(b: &mut Battle, p: [ObjectRef; 2], n: u32) {
-    let mut copy = b.clone();
-    for _ in 0..n {
-        tick(b, p[0], p[1], 0);
-        tick(&mut copy, p[0], p[1], 0);
-        assert_eq!(b.digest(), copy.digest());
-    }
+/// Give side `side` the chip `chip` as the next in its hand, with its
+/// damage.
+fn hand_with(b: &mut Battle, side: usize, chip: crate::content::ChipId) {
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = chip;
+    hand.damage[0] = b.content.chip(chip).damage;
+    b.hands[side] = hand;
 }
 
 #[test]
-fn heat_beast_charge_raises_fire_pillars_on_its_region() {
+fn a_recovery_chip_heals_its_hp_in_one_tick() {
+    let (mut b, p0, p1) = fight();
+    b.objects.get_mut(p0).hp = 500;
+    hand_with(&mut b, 0, testing::MEND);
+    tick(&mut b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x20);
+    // The next tick: 40 HP, the sparkle right after the navi, a recovery
+    // counted, and back to idle.
+    tick(&mut b, p0, p1, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.hp, o.action), (540, 8));
+    assert_eq!(following(&b, p0)[0], (Pool::Effect, 0));
+    assert_eq!(b.side_stats[0][5], 1);
+    // Never past the maximum.
+    b.objects.get_mut(p0).hp = 990;
+    hand_with(&mut b, 0, testing::MEND);
+    tick(&mut b, p0, p1, keys::A);
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(b.objects.get(p0).hp, 1000);
+}
+
+#[test]
+fn a_reflector_guards_for_its_first_parameter_then_its_shield_fades() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    assert_eq!(start_weapon(&mut b, p0, 0x07), 0x35);
-    // 50 damage and 30 per buster Attack point (1 here), Fire.
-    let a = &ai_mut(&mut b, p0).attack;
-    assert_eq!((a.damage, a.hit_param, a.element), (80, 0x8A, 1));
+    hand_with(&mut b, 0, testing::MIRROR);
     let mut t = 0;
+    tick(&mut b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x2B);
+    // Tick 1: the shield, right after the navi at its attach point 6, and
+    // the guard up.
     run_to(&mut b, p, &mut t, 1, 0);
-    assert_eq!(b.objects.get(p0).anim, 0x12);
-    assert_eq!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), f1::USING_ACTION | f1::MOVING);
-    // When the wind-up ends: pillars on the test region 0x1A from the
-    // panel in front (it and two past it).
-    while of_kind(&b, "element-pillar").is_empty() {
-        let next = t + 1;
-        run_to(&mut b, p, &mut t, next, 0);
-        assert!(t < 20, "no pillars");
-    }
-    assert_eq!(b.objects.get(p0).anim, 0x13);
-    // (Each runs right after its spawner: the later one first.)
-    let panels: Vec<PanelPos> = of_kind(&b, "element-pillar").iter().map(|&o| b.objects.get(o).panel).collect();
-    assert_eq!(panels, [PanelPos { x: 5, y: 2 }, PanelPos { x: 3, y: 2 }]);
-    let pillar = of_kind(&b, "element-pillar")[1];
-    let (x, y) = crate::kinds::player::panel_coordinates(3, 2);
-    let o = b.objects.get(pillar);
-    assert_eq!((o.pos.x, o.pos.y, o.pos.z, o.timer), (x, y + (2 << 16), 2 << 16, 0x5A - 1));
-    plays_on_the_same(&mut b, p, 20);
-    t += 20;
-    // One hit: the pillar's region goes once it hits.
-    assert_eq!(b.objects.get(p1).hp, 920);
-    // The navi idles 91 ticks after the pillars; they are gone by then.
-    let end = t + 75;
-    run_to(&mut b, p, &mut t, end, 0);
+    let shield = find_kind(&b, "reflector-shield").expect("the shield");
+    assert_eq!(b.objects.in_order().skip_while(|&o| o != p0).nth(1), Some(shield));
+    assert_ne!(f1_of(&b, p0) & f1::GUARD, 0);
+    let (at, s) = (b.objects.get(p0).pos, b.objects.get(shield).pos);
+    assert_eq!((s.x - at.x, s.y - at.y, s.z - at.z), (4 << 16, 0, 24 << 16));
+    // It guards for 30 ticks after that one.
+    run_to(&mut b, p, &mut t, 31, 0);
+    assert_eq!(b.objects.get(p0).action, 0x2B);
+    run_to(&mut b, p, &mut t, 32, 0);
     assert_eq!(b.objects.get(p0).action, 8);
-    assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
-    assert!(of_kind(&b, "element-pillar").is_empty());
-    assert_eq!(b.objects.get(p1).hp, 920);
+    assert_eq!(f1_of(&b, p0) & f1::GUARD, 0);
+    // The shield fades for 14 ticks and goes.
+    run_to(&mut b, p, &mut t, 47, 0);
+    assert_eq!(find_kind(&b, "reflector-shield"), Some(shield));
+    run_to(&mut b, p, &mut t, 48, 0);
+    assert_eq!(find_kind(&b, "reflector-shield"), None);
 }
 
 #[test]
-fn elec_beast_charge_strikes_lightning_that_cracks_panels() {
+fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    assert_eq!(start_weapon(&mut b, p0, 0x09), 0x3C);
-    let mut t = 0;
-    while of_kind(&b, "element-pillar").is_empty() {
-        let next = t + 1;
-        run_to(&mut b, p, &mut t, next, 0);
-        assert!(t < 20, "no lightning");
-    }
-    // Lightning (Param1 1) cracks its panels, the enemy's too.
-    assert_eq!(b.field.panel(3, 2).unwrap().kind, crate::field::PanelType::Cracked);
-    assert_eq!(b.field.panel(5, 2).unwrap().kind, crate::field::PanelType::Cracked);
-    plays_on_the_same(&mut b, p, 5);
-    t += 5;
-    // 40 damage and 30 per buster Attack point.
-    assert_eq!(b.objects.get(p1).hp, 930);
-    // The navi stops 91 ticks after the lightning, which lasts 9 more at
-    // most.
-    let end = t + 100;
-    run_to(&mut b, p, &mut t, end, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
-    assert!(of_kind(&b, "element-pillar").is_empty());
-}
-
-#[test]
-fn spout_beast_charge_surges_from_the_panel_in_front() {
-    let (mut b, p0, p1) = fight();
-    let p = [p0, p1];
-    // Step to (3,2) first.
+    // Side 0 steps to (3,2), in the column side 1's GunDelSol hits.
     let mut t = 0;
     tick(&mut b, p0, p1, keys::RIGHT);
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
-    assert_eq!(start_weapon(&mut b, p0, 0x08), 0x3A);
-    let mut t = 0;
-    // 8 ticks in, the surge, 20 pixels ahead of the panel in front.
-    run_to(&mut b, p, &mut t, 8, 0);
-    assert!(of_kind(&b, "aqua-surge").is_empty());
-    run_to(&mut b, p, &mut t, 9, 0);
-    let surge = of_kind(&b, "aqua-surge")[0];
-    let (x, _) = crate::kinds::player::panel_coordinates(4, 2);
-    let o = b.objects.get(surge);
-    assert_eq!((o.panel, o.pos.x, o.pos.z), (PanelPos { x: 4, y: 2 }, x + (20 << 16), 0));
-    // It reaches the enemy on the panel ahead (region 2): 10 damage and 10
-    // per buster Attack point, once until its region comes back.
-    plays_on_the_same(&mut b, p, 5);
-    t += 5;
-    assert_eq!(b.objects.get(p1).hp, 980);
-    // The navi idles 61 ticks after the surge; the surge lasts 60.
-    run_to(&mut b, p, &mut t, 9 + 60, 0);
-    assert_eq!(b.objects.get(p0).action, 0x3A);
-    run_to(&mut b, p, &mut t, 9 + 62, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
-    assert!(of_kind(&b, "aqua-surge").is_empty());
-}
-
-#[test]
-fn tengu_beast_charge_sends_a_whirlwind_that_leaves_hits() {
-    let (mut b, p0, p1) = fight();
-    let p = [p0, p1];
-    assert_eq!(start_weapon(&mut b, p0, 0x0A), 0x3D);
-    let a = &ai_mut(&mut b, p0).attack;
-    assert_eq!((a.damage, a.element, a.params), (50, 0x20, [0x00, 0x3D, 0x2D, 0x00]));
-    let mut t = 0;
-    while of_kind(&b, "whirlwind").is_empty() {
-        let next = t + 1;
-        run_to(&mut b, p, &mut t, next, 0);
-        assert!(t < 20, "no whirlwind");
-    }
-    let w = of_kind(&b, "whirlwind")[0];
-    let (x, _) = crate::kinds::player::panel_coordinates(3, 2);
-    let o = b.objects.get(w);
-    assert_eq!((o.panel, o.pos.x, o.timer), (PanelPos { x: 3, y: 2 }, x + (40 << 16), 0x2D - 1));
-    // Its first wave's last hit covers the column two panels ahead, where
-    // the enemy stands.
-    plays_on_the_same(&mut b, p, 5);
-    t += 5;
-    assert_eq!(b.objects.get(p1).hp, 950);
-    let end = t + 60;
-    run_to(&mut b, p, &mut t, end, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
-    assert!(of_kind(&b, "whirlwind").is_empty());
-}
-
-#[test]
-fn the_beast_busters_raise_the_arm_for_their_projectile() {
-    for (routine, action) in [(0x03, 0x1E), (0x04, 0x1D)] {
-        let (mut b, p0, p1) = fight();
-        let p = [p0, p1];
-        assert_eq!(start_weapon(&mut b, p0, routine), action);
-        let a = &ai_mut(&mut b, p0).attack;
-        // The buster's damage (at most 5), no repeats outside Beast Over.
-        assert_eq!((a.damage, a.params[1], a.variant), (1, 0, 0));
-        let mut t = 0;
-        run_to(&mut b, p, &mut t, 1, 0);
-        assert_eq!(b.objects.get(p0).anim, 0x0E);
-        let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
-        assert_eq!(b.objects.get(arm).params[0], 6);
-        // (The shot is the buster's projectile, which isn't content yet.)
-    }
-}
-
-#[test]
-fn dustcross_beast_throws_its_newest_obstacle_or_fires_the_beast_buster() {
-    let (mut b, p0, _) = fight();
-    assert_eq!(start_weapon(&mut b, p0, 0x2C), 0x1E);
-    let actor = b.objects.get(p0).actor.unwrap();
-    b.actors.get_mut(actor).absorbed.push(crate::actor::AbsorbedObstacle { kind: 2, anim: 1 });
-    assert_eq!(start_weapon(&mut b, p0, 0x2C), 0x11);
-    let a = &ai_mut(&mut b, p0).attack;
-    assert_eq!((a.damage, a.variant, a.marker), (200, 2, 0x12));
-    assert!(b.actors.get(actor).absorbed.is_empty());
-}
-
-/// Two navis idle and fighting on the test content's battle settings
-/// `settings`, with both navis' stats `stats`.
-fn fight_on(settings: u8, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
-    let mut setup = testing::round_setup(settings, stats);
-    setup.settings.effects = 0xE8C;
-    let mut b = Battle::new(setup, testing::content());
-    b.spawn_actors();
-    b.run_objects();
-    b.round.flags |= battle_flags::FIGHTING;
-    let players = [b.player(0).unwrap(), b.player(1).unwrap()];
-    for p in players {
-        let o = b.objects.get_mut(p);
-        (o.action, o.phase, o.phase_init) = (8, 0, 0);
-    }
-    (b, players[0], players[1])
-}
-
-#[test]
-fn an_instant_chip_runs_its_effect_once_and_idles() {
-    let (mut b, p0, p1) = fight();
-    let mut hand = ChipHand::empty();
-    hand.ids[0] = testing::FULL_GAUGE;
-    b.hands[0] = hand;
-    b.gauge.value = 0;
-    tick(&mut b, p0, p1, keys::A);
-    assert_eq!(b.objects.get(p0).action, 0x1C);
-    assert_eq!(b.gauge.value, 0);
-    // Its first tick: the effect (the gauge fills) and back to idle, with
-    // the chip's lockout.
-    tick(&mut b, p0, p1, 0);
-    assert_eq!(b.gauge.value, crate::hud::CustomGauge::FULL);
-    assert_eq!(b.objects.get(p0).action, 8);
-    // (Applied, and counted down once already.)
-    assert_eq!(ai_mut(&mut b, p0).lockout, 19);
-}
-
-#[test]
-fn dustcross_back_special_pulls_the_rocks_in() {
-    // Weapon routine 0x2A as the B+Back special, and no buster, so B does
-    // nothing else.
-    let stats = megaman_with(|s| {
-        s.weapons.buster = 0xFF;
-        s.weapons.charge_shot = 0xFF;
-        s.weapons.back_special = 0x2A;
-    });
-    let (mut b, p0, p1) = fight_on(testing::ROCK_BATTLE, stats);
-    let p = [p0, p1];
-    let rocks: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
-    assert_eq!(rocks.len(), 2);
-    tick(&mut b, p0, p1, keys::B);
-    let mut t = 0;
-    tick(&mut b, p0, p1, keys::B | keys::LEFT);
-    assert_eq!(b.objects.get(p0).action, 0x58);
-
-    // Tick 1: the pose and the vortex (effect 0x63), kept alive.
-    run_to(&mut b, p, &mut t, 1, keys::B);
-    assert_eq!(b.objects.get(p0).anim, 0x17);
-    assert_ne!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), 0);
-    let vortex = b.objects.in_order().find(|&o| o.pool == Pool::Effect && b.objects.get(o).params[0] == 0x63);
-    let vortex = vortex.expect("the vortex");
-    assert_eq!(b.objects.get(vortex).timer, 2);
-
-    // Tick 10: the pull. The rocks go on their next update, each leaving
-    // an absorbed obstacle that flies to the navi.
-    run_to(&mut b, p, &mut t, 11, 0);
-    let absorbed = b.content.object_kind("absorbed-obstacle").unwrap();
-    let flying = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (absorbed.pool, absorbed.index)).count();
-    assert_eq!(flying, 2);
-
-    // They arrive 9 ticks later, while the navi still absorbs, and join
-    // its list; the navi idles 11 ticks after the pull.
-    run_to(&mut b, p, &mut t, 20, 0);
-    assert_eq!(b.objects.get(p0).action, 0x58);
-    run_to(&mut b, p, &mut t, 21, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
-    let actor = b.objects.get(p0).actor.unwrap();
-    assert_eq!(b.actors.get(actor).absorbed.len(), 2);
-    // The B+Back cooldown (40 ticks, counted down once already).
-    assert_eq!(ai_mut(&mut b, p0).back_special_cooldown, 0x27);
-}
-
-#[test]
-fn the_beast_claw_slashes_the_panel_ahead_twice() {
-    let (mut b, p0, p1) = fight();
-    let p = [p0, p1];
-    // The navi right in front of the enemy at (5,2).
-    let (x, y) = crate::kinds::player::panel_coordinates(4, 2);
-    let o = b.objects.get_mut(p0);
-    (o.panel, o.future_panel) = (PanelPos { x: 4, y: 2 }, PanelPos { x: 4, y: 2 });
-    (o.pos.x, o.pos.y) = (x, y);
-    let action = super::super::idle::weapon_routine(&mut b, p0, 0x1E);
-    assert_eq!(action, 0x52);
-    super::super::set_attack(&mut b, p0, action, 2);
-    let mut t = 0;
-    // The claw is up for 3 ticks; the first slash on the third: its effect
-    // and a hit on the panel ahead, 50 damage and 10 per buster damage
-    // point (1).
-    let slashes = |b: &Battle| {
-        let looks = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 0));
-        looks.map(|o| b.objects.get(o).params[0]).filter(|&l| l == 0x3A || l == 0x39).collect::<Vec<_>>()
+    hand_with(&mut b, 0, testing::MIRROR);
+    hand_with(&mut b, 1, testing::SUN_GUN_3);
+    // Both use their chips.
+    let both = |b: &mut Battle, held: [u16; 2]| {
+        ai_mut(b, p0).pad.update(held[0] | keys::PRESENT);
+        ai_mut(b, p1).pad.update(held[1] | keys::PRESENT);
+        b.run_objects();
     };
-    run_to(&mut b, p, &mut t, 2, 0);
-    assert_eq!(b.objects.get(p0).anim, 0x0C);
-    assert_eq!(slashes(&b), Vec::<u8>::new());
-    run_to(&mut b, p, &mut t, 3, 0);
-    assert_eq!(slashes(&b), [0x3A]);
-    assert_eq!(ai_mut(&mut b, p0).attack.damage, 60);
-    run_to(&mut b, p, &mut t, 5, 0);
-    assert_eq!(b.objects.get(p1).hp, 940);
-    // 12 ticks later the second slash, and 12 after it, idle.
-    run_to(&mut b, p, &mut t, 18, 0);
-    assert_eq!(b.objects.get(p0).action, 0x52);
-    run_to(&mut b, p, &mut t, 29, 0);
-    assert_eq!(b.objects.get(p0).action, 0x52);
-    run_to(&mut b, p, &mut t, 30, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
-    assert_eq!(f1_of(&b, p0) & f1::USING_ACTION, 0);
-}
-
-/// Run `b` and a copy of it taken now for `ticks` ticks with side 0
-/// holding `held`: both must go the same way.
-fn assert_rolls_back(b: &mut Battle, p: [ObjectRef; 2], ticks: u32, held: u16) {
-    let mut copy = b.clone();
-    for i in 0..ticks {
-        tick(b, p[0], p[1], held);
-        tick(&mut copy, p[0], p[1], held);
-        assert_eq!(b.digest(), copy.digest(), "the copy went its own way on tick {i}");
+    both(&mut b, [keys::A, keys::A]);
+    assert_eq!((b.objects.get(p0).action, b.objects.get(p1).action), (0x2B, 0x37));
+    // The guard blocks the beam's hits (no drain), and the first one sends
+    // a wave back that runs along the row into side 1: 50 damage, once.
+    let mut waves = 0;
+    for _ in 0..30 {
+        both(&mut b, [0, 0]);
+        waves += find_kind(&b, "reflected-shot").is_some() as u32;
     }
+    assert!(waves > 0, "no wave");
+    assert_eq!(b.objects.get(p0).hp, 1000);
+    assert_eq!(b.objects.get(p1).hp, 950);
 }
 
-#[test]
-fn absorbing_and_the_claw_roll_back() {
-    let stats = megaman_with(|s| {
-        s.weapons.buster = 0xFF;
-        s.weapons.charge_shot = 0xFF;
-        s.weapons.back_special = 0x2A;
-    });
-    let (mut b, p0, p1) = fight_on(testing::ROCK_BATTLE, stats);
-    tick(&mut b, p0, p1, keys::B);
-    tick(&mut b, p0, p1, keys::B | keys::LEFT);
-    for _ in 0..5 {
-        tick(&mut b, p0, p1, 0);
-    }
-    // Mid-pull, then through the flight and the absorbing.
-    assert_rolls_back(&mut b, [p0, p1], 20, 0);
-
-    let (mut b, p0, p1) = fight();
-    let action = super::super::idle::weapon_routine(&mut b, p0, 0x1E);
-    super::super::set_attack(&mut b, p0, action, 2);
-    tick(&mut b, p0, p1, 0);
-    assert_rolls_back(&mut b, [p0, p1], 30, 0);
-}
-
-/// Use the instant chip `chip` from side 0's hand; returns once its
-/// effect ran (the tick after the chip starts).
-fn use_instant_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: u16) {
+/// Side 0 uses `chip` (the first in its hand) from idle: the tick the
+/// action starts.
+fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: crate::content::ChipId) {
     let mut hand = ChipHand::empty();
     hand.ids[0] = chip;
+    hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;
     tick(b, p0, p1, keys::A);
-    assert_eq!(b.objects.get(p0).action, 0x1C);
-    tick(b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+/// The effect objects (effect #0) and afterimages (effect #0x28) there are.
+fn effects(b: &Battle, index: u8) -> Vec<ObjectRef> {
+    b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.objects.get(o).index == index).collect()
 }
 
 #[test]
-fn a_plus_chip_on_its_own_raises_a_sparkle() {
-    let (mut b, p0, p1) = fight();
-    use_instant_chip(&mut b, p0, p1, testing::PLUS);
-    // 4 pixels toward the enemy from the navi's panel, 48 up, and rising
-    // (its first rise at once).
-    let sparkle = b.content.object_kind("plus-sparkle").unwrap().clone();
-    let s = b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (sparkle.pool, sparkle.index));
-    let s = s.expect("the sparkle");
-    let (x, y) = crate::kinds::player::panel_coordinates(2, 2);
-    let o = b.objects.get(s);
-    assert_eq!((o.pos.x, o.pos.y, o.pos.z), (x + (4 << 16), y, 50 << 16));
-    // Gone after its animation (12 ticks in the test content).
-    for _ in 0..13 {
-        tick(&mut b, p0, p1, 0);
-    }
-    assert!(!b.objects.is_allocated(s) || b.objects.get(s).index != sparkle.index);
-    // From a special source the damage goes into the side's Atk+ bonus
-    // instead.
-    let (mut b, p0, p1) = fight();
-    let mut hand = ChipHand::empty();
-    (hand.ids[0], hand.damage[0]) = (testing::PLUS, 10);
-    b.hands[0] = hand;
-    tick(&mut b, p0, p1, keys::A);
-    ai_mut(&mut b, p0).attack.special_source = 1;
-    tick(&mut b, p0, p1, 0);
-    assert_eq!(b.sides[0].plus_bonus, [10, 0]);
-}
-
-#[test]
-fn buster_up_and_sync_trigger_change_the_navi() {
-    // (A navi whose Beast Out is spent keeps its mood.)
-    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.beast_out_counter = 3));
-    let attack = b.stats[0].attack;
-    use_instant_chip(&mut b, p0, p1, testing::BUSTER_UP);
-    assert_eq!(b.stats[0].attack, attack + 1);
-    // At 9 or more it stays at 9.
-    b.stats[0].attack = 9;
-    use_instant_chip(&mut b, p0, p1, testing::BUSTER_UP);
-    assert_eq!(b.stats[0].attack, 9);
-    // SyncTrgr's effect alone (the Full Synchro aura that follows is the
-    // framework's, not ported yet): the mood goes to the top.
-    let hook = b.behaviors.hook(bn6_content_api::Hook::InstantChip(13)).expect("SyncTrgr's effect");
-    let spec = bn6_content_api::InstantChipSpec::default();
-    crate::behavior::call_hook(&mut b, hook, bn6_content_api::HookCall::InstantChip { user: p0, spec });
-    assert_eq!(b.stats[0].mood, 0xFF);
-}
-
-/// The objects of content kind `name` alive in `b`.
-fn count_kind(b: &Battle, name: &str) -> usize {
-    let k = b.content.object_kind(name).unwrap_or_else(|| panic!("no kind {name}"));
-    b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index)).count()
-}
-
-#[test]
-fn spawning_instant_chips_run_their_objects_and_roll_back() {
-    // Each effect's object appears the tick the chip's effect runs, plays
-    // out, rolls back at any point, and is gone within 200 ticks.
-    let chips = [
-        (testing::BOOMERANG, "boomerang"),
-        (testing::LANCE, "lance"),
-        (testing::FIST, "fire-hit"),
-        (testing::WORM, "sand-worm"),
-        (testing::FLAME_HOOK, "flame-hook"),
-        (testing::JUSTICE, "justice-one"),
-        (testing::GOLEM, "golem"),
-    ];
-    for (chip, name) in chips {
-        let (mut b, p0, p1) = fight();
-        if chip == testing::WORM {
-            // The worm comes out behind the enemy, on a panel with the flag
-            // the test content's panel types don't give.
-            let mut hand = ChipHand::empty();
-            hand.ids[0] = chip;
-            b.hands[0] = hand;
-            tick(&mut b, p0, p1, keys::A);
-            b.field.panel_mut(6, 2).unwrap().flags |= 0x1_0000;
-            tick(&mut b, p0, p1, 0);
-        } else {
-            use_instant_chip(&mut b, p0, p1, chip);
-        }
-        assert!(count_kind(&b, name) > 0, "{name} didn't appear");
-        for _ in 0..8 {
-            assert_rolls_back(&mut b, [p0, p1], 5, 0);
-            for _ in 0..7 {
-                tick(&mut b, p0, p1, 0);
-            }
-        }
-        for _ in 0..200 {
-            tick(&mut b, p0, p1, 0);
-        }
-        assert_eq!(count_kind(&b, name), 0, "{name} didn't go");
-    }
-}
-
-#[test]
-fn lances_thrust_from_the_far_column() {
-    let (mut b, p0, p1) = fight();
-    use_instant_chip(&mut b, p0, p1, testing::LANCE);
-    // Three lances on column 6, one per row, 64 pixels out and one 8-pixel
-    // step back already (the init runs the first tick).
-    let lance = b.content.object_kind("lance").unwrap().clone();
-    let lances: Vec<ObjectRef> =
-        b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (lance.pool, lance.index)).collect();
-    let mut rows: Vec<u8> = lances.iter().map(|&l| b.objects.get(l).panel.y).collect();
-    rows.sort();
-    assert_eq!(rows, [1, 2, 3]);
-    let (x, _) = crate::kinds::player::panel_coordinates(6, 1);
-    assert!(lances.iter().all(|&l| b.objects.get(l).pos.x == x + (56 << 16)));
-    // Column 6 is empty: the enemy at (5,2) is untouched.
-    for _ in 0..30 {
-        tick(&mut b, p0, p1, 0);
-    }
-    assert_eq!(b.objects.get(p1).hp, 1000);
-}
-
-#[test]
-fn the_tomahawk_throw_sends_two_tomahawks() {
-    let tomahawks = |b: &Battle| {
-        let k = b.content.object_kind("boomerang").unwrap();
-        let t = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index));
-        t.map(|o| (b.objects.get(o).params[0], b.objects.get(o).panel.y)).collect::<Vec<_>>()
-    };
-    let start = || {
-        let (mut b, p0, p1) = fight();
-        let action = super::super::idle::weapon_routine(&mut b, p0, 0x1B);
-        assert_eq!(action, 0x4E);
-        super::super::set_attack(&mut b, p0, action, 2);
-        (b, p0, p1)
-    };
-    let (mut b, p0, p1) = start();
-    // 50 damage and 20 per buster damage point (1), Wood.
-    assert_eq!(ai_mut(&mut b, p0).attack.damage, 70);
-    let mut t = 0;
-    let mut first = None;
-    while t < 40 {
-        let next = t + 1;
-        run_to(&mut b, [p0, p1], &mut t, next, 0);
-        if first.is_none() && !tomahawks(&b).is_empty() {
-            first = Some(t);
-        }
-    }
-    let first = first.expect("no tomahawk");
-    // Two tomahawks (boomerang kind 4); the second 10 ticks after the
-    // first, on row 3.
-    let (mut b, p0, p1) = start();
-    let mut t = 0;
-    run_to(&mut b, [p0, p1], &mut t, first + 9, 0);
-    assert_eq!(tomahawks(&b).len(), 1);
-    run_to(&mut b, [p0, p1], &mut t, first + 10, 0);
-    let mut both = tomahawks(&b);
-    both.sort();
-    assert_eq!(both, [(4, 1), (4, 3)]);
-    assert_rolls_back(&mut b, [p0, p1], 20, 0);
-    // 96 ticks into the swing, idle.
-    run_to(&mut b, [p0, p1], &mut t, first + 120, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
-}
-
-/// Use `chip` from side 0's hand as a charged chip (the request a full A
-/// charge raises), with the A-charge routine `routine`; the test content's
-/// base form charges no chip, so the charge itself is skipped.
-fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: u8, chip: u16) {
-    let mut hand = ChipHand::empty();
-    hand.ids[0] = chip;
-    b.hands[0] = hand;
-    let a = ai_mut(b, p0);
-    a.a_charge = routine;
-    a.requests |= request::CHARGED_CHIP;
-    super::super::chip_use::use_chip(b, p0);
-}
-
-#[test]
-fn a_charged_chip_with_a_bonus_routine_is_used_charged() {
-    // An A-charge routine that is the chip's charged use (ElecCross's).
-    let (mut b, p0, _) = fight();
-    use_charged_chip(&mut b, p0, 0x0D, testing::BUSTER_UP);
-    assert_eq!(b.objects.get(p0).action, 0x1C);
-    assert_eq!(ai_mut(&mut b, p0).attack.charged, 1);
-    // Without a routine: the chip family's register (Plus, 4).
-    let (mut b, p0, _) = fight();
-    use_charged_chip(&mut b, p0, 0xFF, testing::BUSTER_UP);
-    assert_eq!(ai_mut(&mut b, p0).attack.charged, 4);
-}
-
-#[test]
-fn ground_cross_charge_drops_rocks_on_the_enemy() {
+fn a_step_sword_steps_in_slashes_and_steps_back() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    use_charged_chip(&mut b, p0, 0x18, testing::BUSTER_UP);
-    // The rocks come first, then the chip, used with the routine's result
-    // (2: there is an enemy) as its charge.
-    assert_eq!(b.objects.get(p0).action, 0x1C);
-    assert_eq!(ai_mut(&mut b, p0).attack.charged, 2);
-    let falling_rock = b.content.object_kind("falling-rock").unwrap().clone();
-    let rocks: Vec<_> =
-        b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (falling_rock.pool, falling_rock.index)).collect();
-    assert_eq!(rocks.len(), 3);
-    // One falls on the enemy's panel: 30 damage and 20 per buster damage
-    // point (1). They fall from 104 pixels, faster each tick.
-    assert!(rocks.iter().any(|&r| b.objects.get(r).panel == PanelPos { x: 5, y: 2 }));
-    assert_eq!(b.objects.get(rocks[0]).damage, 50);
     let mut t = 0;
-    run_to(&mut b, p, &mut t, 40, 0);
-    assert_eq!(b.objects.get(p1).hp, 950);
-    // They broke into chunks, thrown up and gone after a blink.
-    let chunks = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 9)).count();
-    assert!(chunks > 0);
-    run_to(&mut b, p, &mut t, 120, 0);
-    let chunks = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 9)).count();
-    assert_eq!(chunks, 0);
-    assert!(rocks.iter().all(|&r| !b.objects.is_allocated(r) || b.objects.get(r).index != falling_rock.index));
+    use_chip(&mut b, p0, p1, testing::STEP_BLADE);
+    assert_eq!(b.objects.get(p0).action, 0x13);
+
+    // Tick 1: an afterimage where it stood, and it is two panels ahead,
+    // its own panel held for the way back.
+    run_to(&mut b, p, &mut t, 1, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.panel, o.future_panel), (PanelPos { x: 4, y: 2 }, PanelPos { x: 2, y: 2 }));
+    assert_eq!(b.field.panel(2, 2).unwrap().reserver, Some(p0));
+    assert_ne!(f1_of(&b, p0) & f1::MOVING, 0);
+    let first = effects(&b, 0x28);
+    assert_eq!(first.len(), 1);
+    assert_eq!(b.objects.get(first[0]).pos.x, crate::kinds::player::panel_coordinates(2, 2).0);
+
+    // Tick 3: the swing, with the blade.
+    run_to(&mut b, p, &mut t, 3, 0);
+    assert_eq!(b.objects.get(p0).anim, 5);
+    let blade = b.objects.get(p0).related[0].expect("the blade");
+    assert_eq!(b.objects.get(blade).params[0], 7);
+    // Tick 8: two more afterimages: the navi's and the blade's.
+    run_to(&mut b, p, &mut t, 8, 0);
+    assert_eq!(effects(&b, 0x28).len(), 3);
+    // Tick 12: the slash on the column ahead hits the target at (5,2) on
+    // its next update, and its effect shows.
+    run_to(&mut b, p, &mut t, 11, 0);
+    assert!(effects(&b, 0).is_empty());
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!(b.objects.get(effects(&b, 0)[0]).params[0], 0x16);
+    run_to(&mut b, p, &mut t, 13, 0);
+    assert_eq!(b.objects.get(p1).hp, 920);
+
+    // Tick 25, once the swing's animation is over: back home, the blade
+    // let go.
+    run_to(&mut b, p, &mut t, 24, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 4, y: 2 });
+    run_to(&mut b, p, &mut t, 25, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 2 });
+    assert_eq!(b.field.panel(2, 2).unwrap().reserver, None);
+    // Tick 31: idle.
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 0x13);
+    run_to(&mut b, p, &mut t, 31, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(b.objects.get(p0).related[0], None);
+    assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
+}
+
+#[test]
+fn a_sword_without_a_target_ahead_swings_at_nothing() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    let mut t = 0;
+    use_chip(&mut b, p0, p1, testing::BLADE);
+    // No step: it swings from where it stands on tick 3, and the slash
+    // (on tick 12) finds nobody at (3,2).
+    run_to(&mut b, p, &mut t, 3, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.panel, o.anim), (PanelPos { x: 2, y: 2 }, 5));
+    assert!(effects(&b, 0x28).is_empty());
+    run_to(&mut b, p, &mut t, 13, 0);
+    assert_eq!(b.objects.get(p1).hp, 1000);
+    // No way back to walk: idle on tick 30.
+    run_to(&mut b, p, &mut t, 29, 0);
+    assert_eq!(b.objects.get(p0).action, 0x13);
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
 }
 
 /// The objects of content kind `name` on the field, in update order.
@@ -922,6 +549,30 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     run_to(&mut b, p, &mut t, 9 + recovery, 0);
     assert_eq!(b.objects.get(p0).action, 0x16);
     run_to(&mut b, p, &mut t, 10 + recovery, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+#[test]
+fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    let c = b.objects.get(p1).collision.unwrap();
+    b.collision.get_mut(c).status_timers[crate::collision::timer::PARALYZE] = 100;
+    let mut t = 0;
+    use_chip(&mut b, p0, p1, testing::STUN_BLADE);
+    assert_eq!(b.objects.get(p0).action, 0x49);
+    // The slashes land on tick 10, on the target's own column.
+    run_to(&mut b, p, &mut t, 10, 0);
+    let slash = effects(&b, 0)[0];
+    let (x, y) = crate::kinds::player::panel_coordinates(5, 2);
+    let o = b.objects.get(slash);
+    assert_eq!((o.params, o.pos.x, o.pos.y), ([0x16, 0, 2 + 7, 0], x, y));
+    run_to(&mut b, p, &mut t, 11, 0);
+    assert_eq!(b.objects.get(p1).hp, 920);
+    // Idle on tick 28.
+    run_to(&mut b, p, &mut t, 27, 0);
+    assert_eq!(b.objects.get(p0).action, 0x49);
+    run_to(&mut b, p, &mut t, 28, 0);
     assert_eq!(b.objects.get(p0).action, 8);
 }
 
@@ -1333,7 +984,7 @@ fn erase_cross_charged_shot_beams_the_row_while_the_navi_holds() {
     // After its opening animation, a hit zone on each panel from its own
     // to the field's edge; the one on the enemy hits once and ends.
     run_to(&mut b, p, &mut t, 10, 0);
-    let mut zones: Vec<_> = kind_objects(&b, "hit-zone").iter().map(|&z| b.objects.get(z).panel.x).collect();
+    let mut zones: Vec<_> = kind_objects(&b, "thunder-column").iter().map(|&z| b.objects.get(z).panel.x).collect();
     zones.sort();
     assert_eq!(zones, [3, 4, 6]);
     assert_eq!(b.objects.get(p1).hp, 940);
@@ -1343,7 +994,7 @@ fn erase_cross_charged_shot_beams_the_row_while_the_navi_holds() {
     run_to(&mut b, p, &mut t, 72, 0);
     assert_eq!(b.objects.get(p0).action, 8);
     run_to(&mut b, p, &mut t, 80, 0);
-    assert!(kind_objects(&b, "hit-zone").is_empty());
+    assert!(kind_objects(&b, "thunder-column").is_empty());
     assert!(kind_objects(&b, "erase-ray").is_empty());
 }
 
@@ -1384,7 +1035,7 @@ fn ground_cross_charged_shot_burrows_to_the_enemy_and_drills() {
     run_to(&mut b, p, &mut t, 30, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 4, y: 2 });
     run_to(&mut b, p, &mut t, 41, 0);
-    let mut drills: Vec<_> = kind_objects(&b, "drill-hit").iter().map(|&d| b.objects.get(d).panel.x).collect();
+    let mut drills: Vec<_> = kind_objects(&b, "drill").iter().map(|&d| b.objects.get(d).panel.x).collect();
     drills.sort();
     assert_eq!(drills, [5, 6]);
     run_to(&mut b, p, &mut t, 73, 0);
@@ -1395,7 +1046,7 @@ fn ground_cross_charged_shot_burrows_to_the_enemy_and_drills() {
     run_to(&mut b, p, &mut t, 86, 0);
     let o = b.objects.get(p0);
     assert_eq!((o.action, o.panel), (8, PanelPos { x: 2, y: 2 }));
-    assert!(kind_objects(&b, "drill-hit").is_empty());
+    assert!(kind_objects(&b, "drill").is_empty());
 }
 
 #[test]
@@ -1409,4 +1060,533 @@ fn the_cross_charged_shots_roll_back() {
         }
         assert_rolls_back(&mut b, [p0, p1], 60, 0);
     }
+}
+
+// ---- The Beast forms' weapons and the instant chips ------------------------------
+
+/// Start weapon routine `routine` for `r` as a charged chip does
+/// (`sub_800FB54`): the routine's setup, then its action. Returns the
+/// action.
+fn start_weapon(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
+    ai_mut(b, r).attack.charged = 0;
+    let action = crate::kinds::player::idle::weapon_routine(b, r, routine);
+    crate::kinds::player::set_attack(b, r, action, 2);
+    action
+}
+
+/// A copy of the battle plays the next `n` ticks exactly as the battle
+/// does (the scripts' state is all in the battle).
+fn plays_on_the_same(b: &mut Battle, p: [ObjectRef; 2], n: u32) {
+    let mut copy = b.clone();
+    for _ in 0..n {
+        tick(b, p[0], p[1], 0);
+        tick(&mut copy, p[0], p[1], 0);
+        assert_eq!(b.digest(), copy.digest());
+    }
+}
+
+#[test]
+fn heat_beast_charge_raises_fire_pillars_on_its_region() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x07), 0x35);
+    // 50 damage and 30 per buster Attack point (1 here), Fire.
+    let a = &ai_mut(&mut b, p0).attack;
+    assert_eq!((a.damage, a.hit_param, a.element), (80, 0x8A, 1));
+    let mut t = 0;
+    run_to(&mut b, p, &mut t, 1, 0);
+    assert_eq!(b.objects.get(p0).anim, 0x12);
+    assert_eq!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), f1::USING_ACTION | f1::MOVING);
+    // When the wind-up ends: pillars on the test region 0x1A from the
+    // panel in front (it and two past it).
+    while of_kind(&b, "element-pillar").is_empty() {
+        let next = t + 1;
+        run_to(&mut b, p, &mut t, next, 0);
+        assert!(t < 20, "no pillars");
+    }
+    assert_eq!(b.objects.get(p0).anim, 0x13);
+    // (Each runs right after its spawner: the later one first.)
+    let panels: Vec<PanelPos> = of_kind(&b, "element-pillar").iter().map(|&o| b.objects.get(o).panel).collect();
+    assert_eq!(panels, [PanelPos { x: 5, y: 2 }, PanelPos { x: 3, y: 2 }]);
+    let pillar = of_kind(&b, "element-pillar")[1];
+    let (x, y) = crate::kinds::player::panel_coordinates(3, 2);
+    let o = b.objects.get(pillar);
+    assert_eq!((o.pos.x, o.pos.y, o.pos.z, o.timer), (x, y + (2 << 16), 2 << 16, 0x5A - 1));
+    plays_on_the_same(&mut b, p, 20);
+    t += 20;
+    // One hit: the pillar's region goes once it hits.
+    assert_eq!(b.objects.get(p1).hp, 920);
+    // The navi idles 91 ticks after the pillars; they are gone by then.
+    let end = t + 75;
+    run_to(&mut b, p, &mut t, end, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
+    assert!(of_kind(&b, "element-pillar").is_empty());
+    assert_eq!(b.objects.get(p1).hp, 920);
+}
+
+#[test]
+fn elec_beast_charge_strikes_lightning_that_cracks_panels() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x09), 0x3C);
+    let mut t = 0;
+    while of_kind(&b, "element-pillar").is_empty() {
+        let next = t + 1;
+        run_to(&mut b, p, &mut t, next, 0);
+        assert!(t < 20, "no lightning");
+    }
+    // Lightning (Param1 1) cracks its panels, the enemy's too.
+    assert_eq!(b.field.panel(3, 2).unwrap().kind, crate::field::PanelType::Cracked);
+    assert_eq!(b.field.panel(5, 2).unwrap().kind, crate::field::PanelType::Cracked);
+    plays_on_the_same(&mut b, p, 5);
+    t += 5;
+    // 40 damage and 30 per buster Attack point.
+    assert_eq!(b.objects.get(p1).hp, 930);
+    // The navi stops 91 ticks after the lightning, which lasts 9 more at
+    // most.
+    let end = t + 100;
+    run_to(&mut b, p, &mut t, end, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert!(of_kind(&b, "element-pillar").is_empty());
+}
+
+#[test]
+fn spout_beast_charge_surges_from_the_panel_in_front() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    // Step to (3,2) first.
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::RIGHT);
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
+    assert_eq!(start_weapon(&mut b, p0, 0x08), 0x3A);
+    let mut t = 0;
+    // 8 ticks in, the surge, 20 pixels ahead of the panel in front.
+    run_to(&mut b, p, &mut t, 8, 0);
+    assert!(of_kind(&b, "aqua-surge").is_empty());
+    run_to(&mut b, p, &mut t, 9, 0);
+    let surge = of_kind(&b, "aqua-surge")[0];
+    let (x, _) = crate::kinds::player::panel_coordinates(4, 2);
+    let o = b.objects.get(surge);
+    assert_eq!((o.panel, o.pos.x, o.pos.z), (PanelPos { x: 4, y: 2 }, x + (20 << 16), 0));
+    // It reaches the enemy on the panel ahead (region 2): 10 damage and 10
+    // per buster Attack point, once until its region comes back.
+    plays_on_the_same(&mut b, p, 5);
+    t += 5;
+    assert_eq!(b.objects.get(p1).hp, 980);
+    // The navi idles 61 ticks after the surge; the surge lasts 60.
+    run_to(&mut b, p, &mut t, 9 + 60, 0);
+    assert_eq!(b.objects.get(p0).action, 0x3A);
+    run_to(&mut b, p, &mut t, 9 + 62, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert!(of_kind(&b, "aqua-surge").is_empty());
+}
+
+#[test]
+fn tengu_beast_charge_sends_a_whirlwind_that_leaves_hits() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon(&mut b, p0, 0x0A), 0x3D);
+    let a = &ai_mut(&mut b, p0).attack;
+    assert_eq!((a.damage, a.element, a.params), (50, 0x20, [0x00, 0x3D, 0x2D, 0x00]));
+    let mut t = 0;
+    while of_kind(&b, "whirlwind").is_empty() {
+        let next = t + 1;
+        run_to(&mut b, p, &mut t, next, 0);
+        assert!(t < 20, "no whirlwind");
+    }
+    let w = of_kind(&b, "whirlwind")[0];
+    let (x, _) = crate::kinds::player::panel_coordinates(3, 2);
+    let o = b.objects.get(w);
+    assert_eq!((o.panel, o.pos.x, o.timer), (PanelPos { x: 3, y: 2 }, x + (40 << 16), 0x2D - 1));
+    // Its first wave's last hit covers the column two panels ahead, where
+    // the enemy stands.
+    plays_on_the_same(&mut b, p, 5);
+    t += 5;
+    assert_eq!(b.objects.get(p1).hp, 950);
+    let end = t + 60;
+    run_to(&mut b, p, &mut t, end, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert!(of_kind(&b, "whirlwind").is_empty());
+}
+
+#[test]
+fn the_beast_busters_raise_the_arm_for_their_projectile() {
+    for (routine, action) in [(0x03, 0x1E), (0x04, 0x1D)] {
+        let (mut b, p0, p1) = fight();
+        let p = [p0, p1];
+        assert_eq!(start_weapon(&mut b, p0, routine), action);
+        let a = &ai_mut(&mut b, p0).attack;
+        // The buster's damage (at most 5), no repeats outside Beast Over.
+        assert_eq!((a.damage, a.params[1], a.variant), (1, 0, 0));
+        let mut t = 0;
+        run_to(&mut b, p, &mut t, 1, 0);
+        assert_eq!(b.objects.get(p0).anim, 0x0E);
+        let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
+        assert_eq!(b.objects.get(arm).params[0], 6);
+        // (The shot is the buster's projectile, which isn't content yet.)
+    }
+}
+
+#[test]
+fn dustcross_beast_throws_its_newest_obstacle_or_fires_the_beast_buster() {
+    let (mut b, p0, _) = fight();
+    assert_eq!(start_weapon(&mut b, p0, 0x2C), 0x1E);
+    let actor = b.objects.get(p0).actor.unwrap();
+    b.actors.get_mut(actor).absorbed.push(crate::actor::AbsorbedObstacle { kind: 2, anim: 1 });
+    assert_eq!(start_weapon(&mut b, p0, 0x2C), 0x11);
+    let a = &ai_mut(&mut b, p0).attack;
+    assert_eq!((a.damage, a.variant, a.marker), (200, 2, 0x12));
+    assert!(b.actors.get(actor).absorbed.is_empty());
+}
+
+/// Two navis idle and fighting on the test content's battle settings
+/// `settings`, with both navis' stats `stats`.
+fn fight_on(settings: u8, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
+    let mut setup = testing::round_setup(settings, stats);
+    setup.settings.effects = 0xE8C;
+    let mut b = Battle::new(setup, testing::content());
+    b.spawn_actors();
+    b.run_objects();
+    b.round.flags |= battle_flags::FIGHTING;
+    let players = [b.player(0).unwrap(), b.player(1).unwrap()];
+    for p in players {
+        let o = b.objects.get_mut(p);
+        (o.action, o.phase, o.phase_init) = (8, 0, 0);
+    }
+    (b, players[0], players[1])
+}
+
+#[test]
+fn an_instant_chip_runs_its_effect_once_and_idles() {
+    let (mut b, p0, p1) = fight();
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = testing::FULL_GAUGE;
+    b.hands[0] = hand;
+    b.gauge.value = 0;
+    tick(&mut b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(b.gauge.value, 0);
+    // Its first tick: the effect (the gauge fills) and back to idle, with
+    // the chip's lockout.
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(b.gauge.value, crate::hud::CustomGauge::FULL);
+    assert_eq!(b.objects.get(p0).action, 8);
+    // (Applied, and counted down once already.)
+    assert_eq!(ai_mut(&mut b, p0).lockout, 19);
+}
+
+#[test]
+fn dustcross_back_special_pulls_the_rocks_in() {
+    // Weapon routine 0x2A as the B+Back special, and no buster, so B does
+    // nothing else.
+    let stats = megaman_with(|s| {
+        s.weapons.buster = 0xFF;
+        s.weapons.charge_shot = 0xFF;
+        s.weapons.back_special = 0x2A;
+    });
+    let (mut b, p0, p1) = fight_on(testing::ROCK_BATTLE, stats);
+    let p = [p0, p1];
+    let rocks: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
+    assert_eq!(rocks.len(), 2);
+    tick(&mut b, p0, p1, keys::B);
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::B | keys::LEFT);
+    assert_eq!(b.objects.get(p0).action, 0x58);
+
+    // Tick 1: the pose and the vortex (effect 0x63), kept alive.
+    run_to(&mut b, p, &mut t, 1, keys::B);
+    assert_eq!(b.objects.get(p0).anim, 0x17);
+    assert_ne!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), 0);
+    let vortex = b.objects.in_order().find(|&o| o.pool == Pool::Effect && b.objects.get(o).params[0] == 0x63);
+    let vortex = vortex.expect("the vortex");
+    assert_eq!(b.objects.get(vortex).timer, 2);
+
+    // Tick 10: the pull. The rocks go on their next update, each leaving
+    // an absorbed obstacle that flies to the navi.
+    run_to(&mut b, p, &mut t, 11, 0);
+    let absorbed = b.content.object_kind("absorbed-obstacle").unwrap();
+    let flying = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (absorbed.pool, absorbed.index)).count();
+    assert_eq!(flying, 2);
+
+    // They arrive 9 ticks later, while the navi still absorbs, and join
+    // its list; the navi idles 11 ticks after the pull.
+    run_to(&mut b, p, &mut t, 20, 0);
+    assert_eq!(b.objects.get(p0).action, 0x58);
+    run_to(&mut b, p, &mut t, 21, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    let actor = b.objects.get(p0).actor.unwrap();
+    assert_eq!(b.actors.get(actor).absorbed.len(), 2);
+    // The B+Back cooldown (40 ticks, counted down once already).
+    assert_eq!(ai_mut(&mut b, p0).back_special_cooldown, 0x27);
+}
+
+#[test]
+fn the_beast_claw_slashes_the_panel_ahead_twice() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    // The navi right in front of the enemy at (5,2).
+    let (x, y) = crate::kinds::player::panel_coordinates(4, 2);
+    let o = b.objects.get_mut(p0);
+    (o.panel, o.future_panel) = (PanelPos { x: 4, y: 2 }, PanelPos { x: 4, y: 2 });
+    (o.pos.x, o.pos.y) = (x, y);
+    let action = super::super::idle::weapon_routine(&mut b, p0, 0x1E);
+    assert_eq!(action, 0x52);
+    super::super::set_attack(&mut b, p0, action, 2);
+    let mut t = 0;
+    // The claw is up for 3 ticks; the first slash on the third: its effect
+    // and a hit on the panel ahead, 50 damage and 10 per buster damage
+    // point (1).
+    let slashes = |b: &Battle| {
+        let looks = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 0));
+        looks.map(|o| b.objects.get(o).params[0]).filter(|&l| l == 0x3A || l == 0x39).collect::<Vec<_>>()
+    };
+    run_to(&mut b, p, &mut t, 2, 0);
+    assert_eq!(b.objects.get(p0).anim, 0x0C);
+    assert_eq!(slashes(&b), Vec::<u8>::new());
+    run_to(&mut b, p, &mut t, 3, 0);
+    assert_eq!(slashes(&b), [0x3A]);
+    assert_eq!(ai_mut(&mut b, p0).attack.damage, 60);
+    run_to(&mut b, p, &mut t, 5, 0);
+    assert_eq!(b.objects.get(p1).hp, 940);
+    // 12 ticks later the second slash, and 12 after it, idle.
+    run_to(&mut b, p, &mut t, 18, 0);
+    assert_eq!(b.objects.get(p0).action, 0x52);
+    run_to(&mut b, p, &mut t, 29, 0);
+    assert_eq!(b.objects.get(p0).action, 0x52);
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(f1_of(&b, p0) & f1::USING_ACTION, 0);
+}
+
+/// Run `b` and a copy of it taken now for `ticks` ticks with side 0
+/// holding `held`: both must go the same way.
+fn assert_rolls_back(b: &mut Battle, p: [ObjectRef; 2], ticks: u32, held: u16) {
+    let mut copy = b.clone();
+    for i in 0..ticks {
+        tick(b, p[0], p[1], held);
+        tick(&mut copy, p[0], p[1], held);
+        assert_eq!(b.digest(), copy.digest(), "the copy went its own way on tick {i}");
+    }
+}
+
+#[test]
+fn absorbing_and_the_claw_roll_back() {
+    let stats = megaman_with(|s| {
+        s.weapons.buster = 0xFF;
+        s.weapons.charge_shot = 0xFF;
+        s.weapons.back_special = 0x2A;
+    });
+    let (mut b, p0, p1) = fight_on(testing::ROCK_BATTLE, stats);
+    tick(&mut b, p0, p1, keys::B);
+    tick(&mut b, p0, p1, keys::B | keys::LEFT);
+    for _ in 0..5 {
+        tick(&mut b, p0, p1, 0);
+    }
+    // Mid-pull, then through the flight and the absorbing.
+    assert_rolls_back(&mut b, [p0, p1], 20, 0);
+
+    let (mut b, p0, p1) = fight();
+    let action = super::super::idle::weapon_routine(&mut b, p0, 0x1E);
+    super::super::set_attack(&mut b, p0, action, 2);
+    tick(&mut b, p0, p1, 0);
+    assert_rolls_back(&mut b, [p0, p1], 30, 0);
+}
+
+/// Use the instant chip `chip` from side 0's hand; returns once its
+/// effect ran (the tick after the chip starts).
+fn use_instant_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: u16) {
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = chip;
+    b.hands[0] = hand;
+    tick(b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x1C);
+    tick(b, p0, p1, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+#[test]
+fn a_plus_chip_on_its_own_raises_a_sparkle() {
+    let (mut b, p0, p1) = fight();
+    use_instant_chip(&mut b, p0, p1, testing::PLUS);
+    // 4 pixels toward the enemy from the navi's panel, 48 up, and rising
+    // (its first rise at once).
+    let sparkle = b.content.object_kind("rising-bubble").unwrap().clone();
+    let s = b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (sparkle.pool, sparkle.index));
+    let s = s.expect("the sparkle");
+    let (x, y) = crate::kinds::player::panel_coordinates(2, 2);
+    let o = b.objects.get(s);
+    assert_eq!((o.pos.x, o.pos.y, o.pos.z), (x + (4 << 16), y, 50 << 16));
+    // Gone after its animation (12 ticks in the test content).
+    for _ in 0..13 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert!(!b.objects.is_allocated(s) || b.objects.get(s).index != sparkle.index);
+    // From a special source the damage goes into the side's Atk+ bonus
+    // instead.
+    let (mut b, p0, p1) = fight();
+    let mut hand = ChipHand::empty();
+    (hand.ids[0], hand.damage[0]) = (testing::PLUS, 10);
+    b.hands[0] = hand;
+    tick(&mut b, p0, p1, keys::A);
+    ai_mut(&mut b, p0).attack.special_source = 1;
+    tick(&mut b, p0, p1, 0);
+    assert_eq!((b.sides[0].special_attack_bonus, b.sides[0].special_navi_bonus), (10, 0));
+}
+
+#[test]
+fn buster_up_and_sync_trigger_change_the_navi() {
+    // (A navi whose Beast Out is spent keeps its mood.)
+    let (mut b, p0, p1) = fight_with(megaman_with(|s| s.beast_out_counter = 3));
+    let attack = b.stats[0].attack;
+    use_instant_chip(&mut b, p0, p1, testing::BUSTER_UP);
+    assert_eq!(b.stats[0].attack, attack + 1);
+    // At 9 or more it stays at 9.
+    b.stats[0].attack = 9;
+    use_instant_chip(&mut b, p0, p1, testing::BUSTER_UP);
+    assert_eq!(b.stats[0].attack, 9);
+    // SyncTrgr's effect alone (the Full Synchro aura that follows is the
+    // framework's, not ported yet): the mood goes to the top.
+    let hook = b.behaviors.hook(bn6_content_api::Hook::InstantChip(13)).expect("SyncTrgr's effect");
+    let spec = bn6_content_api::InstantChipSpec::default();
+    crate::behavior::call_hook(&mut b, hook, bn6_content_api::HookCall::InstantChip { user: p0, spec });
+    assert_eq!(b.stats[0].mood, 0xFF);
+}
+
+/// The objects of content kind `name` alive in `b`.
+fn count_kind(b: &Battle, name: &str) -> usize {
+    let k = b.content.object_kind(name).unwrap_or_else(|| panic!("no kind {name}"));
+    b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index)).count()
+}
+
+#[test]
+fn spawning_instant_chips_run_their_objects_and_roll_back() {
+    // Each effect's object appears the tick the chip's effect runs, plays
+    // out, rolls back at any point, and is gone within 200 ticks.
+    let chips = [
+        (testing::BOOMERANG, "boomerang"),
+        (testing::LANCE, "lance"),
+        (testing::FIST, "fire-hit"),
+        (testing::WORM, "sand-worm"),
+        (testing::FLAME_HOOK, "flame-hook"),
+        (testing::JUSTICE, "justice-one"),
+        (testing::GOLEM, "golem"),
+    ];
+    for (chip, name) in chips {
+        let (mut b, p0, p1) = fight();
+        if chip == testing::WORM {
+            // The worm comes out behind the enemy, on a panel with the flag
+            // the test content's panel types don't give.
+            let mut hand = ChipHand::empty();
+            hand.ids[0] = chip;
+            b.hands[0] = hand;
+            tick(&mut b, p0, p1, keys::A);
+            b.field.panel_mut(6, 2).unwrap().flags |= 0x1_0000;
+            tick(&mut b, p0, p1, 0);
+        } else {
+            use_instant_chip(&mut b, p0, p1, chip);
+        }
+        assert!(count_kind(&b, name) > 0, "{name} didn't appear");
+        for _ in 0..8 {
+            assert_rolls_back(&mut b, [p0, p1], 5, 0);
+            for _ in 0..7 {
+                tick(&mut b, p0, p1, 0);
+            }
+        }
+        for _ in 0..200 {
+            tick(&mut b, p0, p1, 0);
+        }
+        assert_eq!(count_kind(&b, name), 0, "{name} didn't go");
+    }
+}
+
+#[test]
+fn lances_thrust_from_the_far_column() {
+    let (mut b, p0, p1) = fight();
+    use_instant_chip(&mut b, p0, p1, testing::LANCE);
+    // Three lances on column 6, one per row, 64 pixels out and one 8-pixel
+    // step back already (the init runs the first tick).
+    let lance = b.content.object_kind("lance").unwrap().clone();
+    let lances: Vec<ObjectRef> =
+        b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (lance.pool, lance.index)).collect();
+    let mut rows: Vec<u8> = lances.iter().map(|&l| b.objects.get(l).panel.y).collect();
+    rows.sort();
+    assert_eq!(rows, [1, 2, 3]);
+    let (x, _) = crate::kinds::player::panel_coordinates(6, 1);
+    assert!(lances.iter().all(|&l| b.objects.get(l).pos.x == x + (56 << 16)));
+    // Column 6 is empty: the enemy at (5,2) is untouched.
+    for _ in 0..30 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert_eq!(b.objects.get(p1).hp, 1000);
+}
+
+#[test]
+fn the_tomahawk_throw_sends_two_tomahawks() {
+    let tomahawks = |b: &Battle| {
+        let k = b.content.object_kind("boomerang").unwrap();
+        let t = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index));
+        t.map(|o| (b.objects.get(o).params[0], b.objects.get(o).panel.y)).collect::<Vec<_>>()
+    };
+    let start = || {
+        let (mut b, p0, p1) = fight();
+        let action = super::super::idle::weapon_routine(&mut b, p0, 0x1B);
+        assert_eq!(action, 0x4E);
+        super::super::set_attack(&mut b, p0, action, 2);
+        (b, p0, p1)
+    };
+    let (mut b, p0, p1) = start();
+    // 50 damage and 20 per buster damage point (1), Wood.
+    assert_eq!(ai_mut(&mut b, p0).attack.damage, 70);
+    let mut t = 0;
+    let mut first = None;
+    while t < 40 {
+        let next = t + 1;
+        run_to(&mut b, [p0, p1], &mut t, next, 0);
+        if first.is_none() && !tomahawks(&b).is_empty() {
+            first = Some(t);
+        }
+    }
+    let first = first.expect("no tomahawk");
+    // Two tomahawks (boomerang kind 4); the second 10 ticks after the
+    // first, on row 3.
+    let (mut b, p0, p1) = start();
+    let mut t = 0;
+    run_to(&mut b, [p0, p1], &mut t, first + 9, 0);
+    assert_eq!(tomahawks(&b).len(), 1);
+    run_to(&mut b, [p0, p1], &mut t, first + 10, 0);
+    let mut both = tomahawks(&b);
+    both.sort();
+    assert_eq!(both, [(4, 1), (4, 3)]);
+    assert_rolls_back(&mut b, [p0, p1], 20, 0);
+    // 96 ticks into the swing, idle.
+    run_to(&mut b, [p0, p1], &mut t, first + 120, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+/// Use `chip` from side 0's hand as a charged chip (the request a full A
+/// charge raises), with the A-charge routine `routine`; the test content's
+/// base form charges no chip, so the charge itself is skipped.
+fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: u8, chip: u16) {
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = chip;
+    b.hands[0] = hand;
+    let a = ai_mut(b, p0);
+    a.a_charge = routine;
+    a.requests |= request::CHARGED_CHIP;
+    super::super::chip_use::use_chip(b, p0);
+}
+
+#[test]
+fn a_charged_chip_with_a_bonus_routine_is_used_charged() {
+    // An A-charge routine that is the chip's charged use (ElecCross's).
+    let (mut b, p0, _) = fight();
+    use_charged_chip(&mut b, p0, 0x0D, testing::BUSTER_UP);
+    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(ai_mut(&mut b, p0).attack.charged, 1);
+    // Without a routine: the chip family's register (Plus, 4).
+    let (mut b, p0, _) = fight();
+    use_charged_chip(&mut b, p0, 0xFF, testing::BUSTER_UP);
+    assert_eq!(ai_mut(&mut b, p0).attack.charged, 4);
 }

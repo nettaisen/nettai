@@ -51,8 +51,8 @@ end
 -- (`sub_80C9EE6`).
 function col_army.instant_chip(user: Object, spec: InstantChipSpec)
     for _, o in field.all_objects() do
-        if o.name_id ~= SPARED and battle.obstacle_present(o) then
-            battle.vanish_obstacle(o)
+        if o.name_id ~= SPARED and obstacle.present(o) then
+            obstacle.vanish(o)
             spawn(user, o.panel_x, o.panel_y, spec.element, spec.damage)
         end
     end

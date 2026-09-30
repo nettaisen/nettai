@@ -118,7 +118,7 @@ local function tick(me: Object)
     end
     c:present()
     if me:param(3) ~= 0 then
-        me.collision:highlight()
+        me:highlight_collision_panels()
     end
     if me:param(1) == STEPPING then
         me:update_sprite()
