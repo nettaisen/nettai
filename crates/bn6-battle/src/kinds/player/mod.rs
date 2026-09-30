@@ -27,9 +27,10 @@ use crate::hand::NO_CHIP;
 use crate::object::{ObjectRef, PanelPos, Pool, StateWord, Vec3, flags, state};
 use crate::setup::{ActorEntry, Form, Navi, NaviStats, effects};
 
-/// Panel center coordinates (`object_getCoordinatesForPanels`).
+/// Panel center coordinates (`object_getCoordinatesForPanels`, which
+/// takes the panel numbers as signed bytes).
 pub fn panel_coordinates(x: u8, y: u8) -> (i32, i32) {
-    ((x as i32 * 40 - 140) << 16, (y as i32 * 24 - 20) << 16)
+    ((x as i8 as i32 * 40 - 140) << 16, (y as i8 as i32 * 24 - 20) << 16)
 }
 
 /// The panel under a position (`sub_800E258`; the game divides toward

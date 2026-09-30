@@ -644,6 +644,21 @@ impl CoreApi for Battle {
         kinds::spark::spawn(self, owner, pos, id)
     }
 
+    fn spawn_afterimage(
+        &mut self,
+        owner: ObjectRef,
+        pos: Vec3,
+        params: [u8; 4],
+        shader: u32,
+        lifetime: u32,
+    ) -> Option<ObjectRef> {
+        kinds::afterimage::spawn_with(self, owner, pos, params, shader, lifetime)
+    }
+
+    fn spawn_palette_flash(&mut self, params: [u8; 4]) -> Option<ObjectRef> {
+        kinds::palette_flash::spawn_with(self, params)
+    }
+
     fn death_hook(&mut self, o: ObjectRef, name_id: u16) {
         kinds::player::form::navi_death_hook(self, o, name_id);
     }
@@ -843,6 +858,10 @@ impl CoreApi for Battle {
 
     fn start_move(&mut self, o: ObjectRef, dir: u8) {
         kinds::player::idle::start_move(self, o, dir);
+    }
+
+    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: u8) -> PanelPos {
+        kinds::player::actions::beast_rush::lockon_panel(self, o, target, mode)
     }
 
     fn can_move(&self, o: ObjectRef) -> bool {

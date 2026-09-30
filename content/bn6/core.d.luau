@@ -412,6 +412,10 @@ declare class Object
     function step_target(self, dir: number): (number?, number?)
     -- `sub_80116AE`: start a step toward dir.
     function start_move(self, dir: number): ()
+    -- `ho_8026554`: the panel the navi would attack (x, y) from in Beast
+    -- Out lock-on mode `mode` (its own for mode 0 or a target off the
+    -- field; (0, 0x7F) when no panel fits).
+    function lockon_panel(self, x: number, y: number, mode: number): (number, number)
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
     -- `sub_801265A`: the buster's damage.
@@ -579,6 +583,15 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80E33FA`: an afterimage (effect object #0x28) for owner's side:
+    -- params its sprite (category, index; or 0xFF, 0 for the owner's),
+    -- animation and flip; its colour shader; its lifetime word (ticks in
+    -- the low half, a shadow in byte 2, kept on the ground in byte 3).
+    afterimage: (owner: Object, pos: Vec3, params: { number }, shader: number, lifetime: number) -> Object?,
+    -- `sub_80E11E0`: a palette flash (effect object #0xA): params its
+    -- variant, ticks, runs on while dimmed (bit 0) or paused (bit 1), and
+    -- colour.
+    palette_flash: (params: { number }) -> Object?,
 }
 
 declare field: {
@@ -747,6 +760,10 @@ export type PackData = {
     navis: { [number]: NaviData },
     forms: { [number]: FormData },
     weapons: { [number]: WeaponData },
+    -- Region shapes by region number (`PanelOffsetListsPointerTable`): the
+    -- panels as {dx, dy}, dx toward the facing side, in the order hits and
+    -- panel searches (`object_getPanelRegion`) take them.
+    regions: { [number]: { { number } } },
     objects: {
         attachments: { [number]: AttachmentKind },
         rocks: { [number]: RockKind },

@@ -425,6 +425,11 @@ impl UserData for Object {
             let dir = u8_arg(dir, "direction")?;
             with(|api, _| Ok(api.start_move(this.0, dir)))
         });
+        methods.add_method("lockon_panel", |_, this, (x, y, mode): (LuaValue, LuaValue, LuaValue)| {
+            let (p, mode) = (panel(x, y)?, u8_arg(mode, "lock-on mode")?);
+            let p = with(|api, _| Ok(api.lockon_panel(this.0, p, mode)))?;
+            Ok((p.x, p.y))
+        });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
         methods.add_method("buster_damage", |_, this, ()| with(|api, _| Ok(api.buster_damage(this.0))));
         methods.add_method("absorbed", |lua, this, ()| {
@@ -900,6 +905,28 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             bug_arg: table_int(&spec, "bug_arg")? as u8,
         };
         let o = with(|api, _| Ok(api.spawn_hitbox(owner.0, &s)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(
+        lua,
+        t,
+        "afterimage",
+        |lua, (owner, pos, p, shader, lifetime): (
+            mlua::UserDataRef<Object>,
+            mlua::UserDataRef<LVec3>,
+            mlua::Table,
+            LuaValue,
+            LuaValue
+        )| {
+            let p = params(Some(p), "afterimage param")?;
+            let (shader, lifetime) = (int(&shader, "shader")? as u32, int(&lifetime, "lifetime")? as u32);
+            let o = with(|api, _| Ok(api.spawn_afterimage(owner.0, pos.0, p, shader, lifetime)))?;
+            object_value(lua, o)
+        }
+    );
+    lib_fn!(lua, t, "palette_flash", |lua, p: mlua::Table| {
+        let p = params(Some(p), "palette flash param")?;
+        let o = with(|api, _| Ok(api.spawn_palette_flash(p)))?;
         object_value(lua, o)
     });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {

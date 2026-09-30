@@ -140,6 +140,13 @@ pub fn scripts() -> Scripts {
                 ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("lib/buster", "lib/buster"),
+                ("lib/weapon", "lib/weapon"),
+                ("objects/dash-hit/dash_hit", "objects/dash-hit/dash_hit"),
+                ("objects/erase-drop/erase_drop", "objects/erase-drop/erase_drop"),
+                ("objects/lunge-slash/lunge_slash", "objects/lunge-slash/lunge_slash"),
+                ("objects/hit-flash/hit_flash", "objects/hit-flash/hit_flash"),
+                ("objects/charge-wave/charge_wave", "objects/charge-wave/charge_wave"),
+                ("objects/junk-shot/junk_shot", "objects/junk-shot/junk_shot"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -168,6 +175,12 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
         weapon(0x2B, "Throw absorbed", None, "2b-throw-absorbed/throw_absorbed"),
+        weapon(0x15, "EraseCross Beast drop", Some(0x46), "15-erase-beast-drop/erase_beast_drop"),
+        weapon(0x17, "GroundCross Beast dash", Some(0x1A), "17-ground-beast-dash/ground_beast_dash"),
+        weapon(0x1A, "SlashCross Beast lunge", Some(0x4C), "1a-slash-beast-lunge/slash_beast_lunge"),
+        weapon(0x1C, "ChargeCross Beast wave", Some(0x4F), "1c-charge-beast-wave/charge_beast_wave"),
+        weapon(0x1D, "DustCross Beast scatter", Some(0x50), "1d-dust-beast-scatter/dust_beast_scatter"),
+        weapon(0x27, "ChargeCross tackle", Some(0x56), "27-charge-cross-tackle/charge_cross_tackle"),
     ]
 }
 
@@ -191,6 +204,12 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
         kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
+        kind("dash-hit", Pool::Attack, 0xAF, "objects/dash-hit/dash_hit"),
+        kind("erase-drop", Pool::Attack, 0xA1, "objects/erase-drop/erase_drop"),
+        kind("lunge-slash", Pool::Attack, 0xB1, "objects/lunge-slash/lunge_slash"),
+        ObjectKind { scratch_position: true, ..kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash") },
+        kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
+        kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -334,7 +353,7 @@ fn rules() -> Rules {
     collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING | FLOATING);
     collision_types[0x02] = both(&|s| ATTACK[s ^ 1] | OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
     collision_types[0x05] = both(&|s| OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
-    for t in [0x04, 0x0A, 0x15, 0x16, 0x2C, 0x48] {
+    for t in [0x04, 0x06, 0x07, 0x0A, 0x0B, 0x15, 0x16, 0x2C, 0x32, 0x48] {
         collision_types[t] = attack;
     }
     collision_types[0x2A] = collision_types[0x05];
@@ -439,7 +458,12 @@ fn rules() -> Rules {
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
         lockon: Lockon {
-            searches: vec![LockonSearch { mode: 1, offsets: vec![PanelOffset { dx: -1, dy: 0 }], prefers_middle_row: false }],
+            searches: vec![LockonSearch {
+                mode: 1,
+                offsets: vec![PanelOffset { dx: -1, dy: 0 }],
+                prefers_middle_row: false,
+                skips_first_at_edge: false,
+            }],
             column_shifts: vec![-1, -2],
         },
         custom_screen: custom_screen_layout(),
@@ -531,6 +555,8 @@ fn regions() -> Vec<Vec<PanelOffset>> {
     v[3] = vec![p(1, 0)];
     v[4] = vec![p(0, 0), p(0, -1), p(0, 1)];
     v[0x11] = vec![p(0, 0), p(0, -1), p(0, 1), p(1, 0), p(1, -1), p(1, 1)];
+    // A block around the panel (the scatter's panel search).
+    v[0x0F] = vec![p(0, 0), p(1, 0), p(-1, 0), p(0, -1), p(0, 1), p(1, -1), p(1, 1), p(-1, -1), p(-1, 1)];
     v
 }
 

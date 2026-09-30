@@ -12,6 +12,7 @@
 //!             .body_overlays[id], .sun_beam_looks[look]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
+//! data.regions[id]          a region shape: its panels as {dx, dy}
 //! ```
 
 use bn6_content_api::{Data, DataKey};
@@ -74,6 +75,7 @@ pub fn script_data(c: &Content) -> Data {
         ("navis", by_id(c.navis.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("forms", by_id(c.forms.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("weapons", by_id(c.weapons.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
+        ("regions", by_id(c.regions.iter().enumerate().map(|(i, r)| (i as i64, r)), |r| value(*r))),
         ("objects", objects),
         ("rules", rules),
     ])
