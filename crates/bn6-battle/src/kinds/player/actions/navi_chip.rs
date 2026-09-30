@@ -7,7 +7,7 @@ use crate::battle::Battle;
 use crate::kinds::navi_chip::{self, Spec};
 use crate::kinds::player::{ai, exit_attack_state};
 use crate::object::ObjectRef;
-use crate::dimming::CutInChip;
+use crate::dimming::DimmingChip;
 
 pub const ACTION: u8 = 0x1B;
 
@@ -19,7 +19,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         navi: a.variant,
         params: a.params,
         damage: a.damage as u32 | (a.hit_param as u32) << 16,
-        chip: CutInChip { chip: a.chip_id, bonus: a.extra },
+        chip: DimmingChip { chip: a.chip_id, bonus: a.extra },
     };
     let controller = navi_chip::spawn(b, r, spec);
     let side = b.objects.get(r).alliance;

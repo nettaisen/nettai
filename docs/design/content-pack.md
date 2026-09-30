@@ -193,7 +193,7 @@ Conventions:
   actor-list entry kinds (`navi`, `rock`, `object_6e`, `object_7d`: the
   original's object numbers are the identity of BN6's object kinds).
 - **Flag bytes as lists** of flag names, with any bit that has no name as
-  its number: chips' `flags` (`cut_in`, `has_damage`, `navi`,
+  its number: chips' `flags` (`dimming`, `has_damage`, `navi`,
   `standard_library`, `damage_shown_variable`, `library`,
   `variable_damage`), `extra_flags` (`rush_cancels`, `free_slot_in`, and
   menu-only bits as numbers), secondary elements (`break`, `wind`,

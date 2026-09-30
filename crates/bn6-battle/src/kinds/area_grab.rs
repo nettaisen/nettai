@@ -9,14 +9,14 @@ use crate::battle::Battle;
 use crate::field::{self, pflags};
 use crate::kinds::{common, grab_shot};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
-use crate::dimming::{self, CutInChip};
+use crate::dimming::{self, DimmingChip};
 
 pub const INDEX: u8 = 3;
 
 /// The controller's own state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    pub chip: CutInChip,
+    pub chip: DimmingChip,
     /// Param1: a whole column (AreaGrab) rather than one panel.
     pub column: bool,
     /// The damage word (object +0x2C).
@@ -38,7 +38,7 @@ pub fn spawn(
     element: u8,
     params: [u8; 4],
     damage: u32,
-    chip: CutInChip,
+    chip: DimmingChip,
 ) -> Option<ObjectRef> {
     let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), params)?;
     let (panel, alliance, flip) = {

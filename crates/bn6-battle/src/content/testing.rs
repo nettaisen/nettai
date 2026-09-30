@@ -166,7 +166,7 @@ fn chips() -> Vec<ChipData> {
         sun_gun(SUN_GUN_3, "SunGun3", 2, 96),
         sun_gun(SUN_GUN_EX, "SunGunX", 3, 96),
         ChipData {
-            flags: ChipFlags(ChipFlags::CUT_IN | ChipFlags::STANDARD_LIBRARY),
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             extra_flags: ExtraChipFlags(ExtraChipFlags::RUSH_CANCELS),
             family: ChipFamily::Plus,
             ..chip(VEIL, "Veil", 0x15, 1)

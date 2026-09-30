@@ -56,7 +56,7 @@ overwhelmingly content work, which is what makes the boundary worth drawing now.
 **The hardest cases** (§4): same-tick spawn and list-order effects; the attack scratch that persists between
 actions; Beast Out's wrapper around arbitrary chips and chip chaining; content reaching into other objects'
 state; global battle state that content mutates (including dimming set mid-tick); the pause handler; raw
-observable state (byte-offset phase numbers, register-garbage values); counters and counter cut-ins; handles
+observable state (byte-offset phase numbers, register-garbage values); counters and cut-ins; handles
 that alias after a slot is reused; and content ids hard-coded throughout the ruleset.
 
 ## 1. Inventory
@@ -599,7 +599,7 @@ impl Ctx<'_> {
 - Chip use happens inside the idle controller on the press tick (the hand advances that tick); the action's first
   handler tick is the next one. `prepare_chip` fills the header from the hand entry and the chip record, applies
   double damage, paralyze, uninstall and erase bits, the chip-recovery heal and the navi-chip counter, and returns
-  the chip's action. `into` exists for the counter cut-in, which prepares into a temporary header (§4.10).
+  the chip's action. `into` exists for the cut-in, which prepares into a temporary header (§4.10).
 
 ### 2.17 Global battle state
 
@@ -658,7 +658,7 @@ literals in the ruleset: not chainable in a Beast rush (0x52, 0x53), aura bonus 
 
 **Code:** none per chip. A chip names an action; all per-chip variation within an action is data indexed by
 `subtype` (GunDelSol's firing ticks {60, 90, 120, 120} and beam looks; Cannon's projectile descriptors; Vulcan's
-shot counts {3, 4, 5, 10}). The original has 46 attack actions used by chips, 38 cut-in chip spawners (action 0x15,
+shot counts {3, 4, 5, 10}). The original has 46 attack actions used by chips, 38 dimming chip spawners (action 0x15,
 by subtype), 27 navi-chip summons (action 0x1B, by subtype) and 10 chips dispatched through per-form action tables:
 about 120 scripts for 411 chips. Damage codes 1000..1044 map onto 7 formula functions.
 
@@ -730,7 +730,7 @@ ChipDef ──action────▶ ActionDef ──spawns──▶ KindDef: hit
    │  ├─hit_param────▶ hitbox counter byte ──▶ counter window, mood damage
    │  ├─lockon_mode──▶ lock-on search (Beast rush destination)
    │  ├─damage≥1000──▶ damage formula script
-   │  └─(0x15/0x1B)──▶ cut-in chip spawner / navi summon, by subtype
+   │  └─(0x15/0x1B)──▶ dimming chip spawner / navi summon, by subtype
 ActionDef ──sounds──▶ SoundId ──▶ song (the pack's sound)
 KindDef ──sprite──▶ SpriteId ──▶ animation timing (simulation) + pixels (assets)
         ──effect id─▶ EffectDef ──▶ SpriteId, anim, palette
@@ -881,16 +881,16 @@ the dead player's flags reads the hitbox's. Freed objects keep their links.
 behavior the traces observe. Content never gets a reference that could dangle; it gets a handle whose meaning is
 "whatever is in that slot now", which is the game's meaning.
 
-### 4.10 Dimming and the counter cut-in
+### 4.10 Dimming and the cut-in
 
 **What.** Not yet ported, but on the chip path. A dimming controller's init starts the dimming in the middle of the
 object loop, so later objects that do not run while dimmed are skipped for the rest of the tick. Per-side dimming
-records gate the telop and a counter cut-in by the other side; a counter cut-in prepares the counterer's chip into
+records gate the telop and a cut-in by the other side; a cut-in prepares the cutting-in side's chip into
 a 0x50-byte temporary block on the stack so the navi's real attack header and action are untouched; resumption is
 last-in, first-out.
 
 **Handling.** A ruleset **dimming service** owning the per-side records and the flag; controllers are content
-scripts. `prepare_chip` takes a target (the actor's header, or a detached header) so the counter path can use it.
+scripts. `prepare_chip` takes a target (the actor's header, or a detached header) so the cut-in path can use it.
 
 ### 4.11 Content ids inside the ruleset
 

@@ -175,7 +175,7 @@ fn fold_modifiers(entries: &mut [Entry; 6], library: &dyn Library) {
             ChipModifier::AttackPlus => prev.has(ChipFlags::HAS_DAMAGE),
             ChipModifier::NaviPlus => prev.has(ChipFlags::NAVI),
             ChipModifier::Paralyze => prev.has(ChipFlags::HAS_DAMAGE),
-            ChipModifier::Uninstall => prev.has(ChipFlags::HAS_DAMAGE) && !prev.has(ChipFlags::CUT_IN),
+            ChipModifier::Uninstall => prev.has(ChipFlags::HAS_DAMAGE) && !prev.has(ChipFlags::DIMMING),
         };
         if !applies {
             i += 1;
@@ -226,12 +226,12 @@ mod tests {
     use crate::custom::library::testing::{EVERY_CODE, TestLibrary, chip};
     use crate::content::{ChipData, ProgramAdvance};
 
-    // Made-up chips: 1 a damaging chip, 2 one without damage, 3 a cut-in
+    // Made-up chips: 1 a damaging chip, 2 one without damage, 3 a dimming
     // chip, 4 a navi chip, and the modifiers; the Program Advance 0x140
     // is three of chip 1 in a code run, 0x141 the sequence 2, 1, 2.
     const CANNON: ChipId = 1;
     const QUIET: ChipId = 2;
-    const CUT_IN: ChipId = 3;
+    const DIMMING: ChipId = 3;
     const NAVI: ChipId = 4;
 
     fn library() -> TestLibrary {
@@ -240,7 +240,7 @@ mod tests {
             vec![
                 (CANNON, damaging),
                 (QUIET, chip(ChipClass::Standard, EVERY_CODE, 0, 0)),
-                (CUT_IN, chip(ChipClass::Standard, EVERY_CODE, ChipFlags::HAS_DAMAGE | ChipFlags::CUT_IN, 30)),
+                (DIMMING, chip(ChipClass::Standard, EVERY_CODE, ChipFlags::HAS_DAMAGE | ChipFlags::DIMMING, 30)),
                 (NAVI, chip(ChipClass::Mega, EVERY_CODE, ChipFlags::NAVI, 100)),
                 (0xC0, modifier(ChipModifier::AttackPlus, 10)),
                 (0xC1, modifier(ChipModifier::NaviPlus, 20)),
@@ -331,12 +331,12 @@ mod tests {
 
     #[test]
     fn white_capsule_and_uninstall() {
-        let b = built(&[pick(CANNON, 0), pick(0xB8, 26), pick(CANNON, 1), pick(0xB9, 6), pick(CUT_IN, 0)]);
-        assert_eq!(b.hand.ids[..4], [CANNON, CANNON, CUT_IN, NO_CHIP]);
+        let b = built(&[pick(CANNON, 0), pick(0xB8, 26), pick(CANNON, 1), pick(0xB9, 6), pick(DIMMING, 0)]);
+        assert_eq!(b.hand.ids[..4], [CANNON, CANNON, DIMMING, NO_CHIP]);
         assert_eq!(b.hand.modifiers[..2], [modifier_bits::PARALYZE, modifier_bits::UNINSTALL]);
         // Uninstll doesn't fold into a dimming.
-        let b = built(&[pick(CUT_IN, 0), pick(0xB9, 6)]);
-        assert_eq!(b.hand.ids[..3], [CUT_IN, 0xB9, NO_CHIP]);
+        let b = built(&[pick(DIMMING, 0), pick(0xB9, 6)]);
+        assert_eq!(b.hand.ids[..3], [DIMMING, 0xB9, NO_CHIP]);
     }
 
     #[test]

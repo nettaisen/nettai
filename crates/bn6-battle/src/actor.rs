@@ -41,7 +41,7 @@ pub mod request {
     /// AntiSwrd (chip 0xBC) caught a sword hit.
     pub const ANTI_SWORD_TRIGGERED: u32 = 0x400;
     /// Dimming counter chip.
-    pub const COUNTER_CUT_IN: u32 = 0x800;
+    pub const CUT_IN: u32 = 0x800;
     pub const TURN_L: u32 = 0x1000;
     pub const TURN_R: u32 = 0x2000;
     /// Pause-time request: form change (action 0x1C, state bit 0x80).

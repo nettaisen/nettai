@@ -1,20 +1,20 @@
 //! The Invisibl chip's dimming controller (effect object #0x5D,
 //! `sub_80E74D4`): the usual dimming phases (`dimming`), with an effect
-//! that makes the user invisible, then 31 ticks before time starts again.
+//! that makes the user invisible, then 31 ticks before the dimming ends.
 //! See docs/engine/chips.md §3.6.
 
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
 use crate::kinds::common;
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
-use crate::dimming::{self, CutInChip};
+use crate::dimming::{self, DimmingChip};
 
 pub const INDEX: u8 = 0x5D;
 
 /// The controller's own state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    pub chip: CutInChip,
+    pub chip: DimmingChip,
     /// Param1-2: how long the user stays invisible, in ticks.
     pub duration: u16,
 }
@@ -28,7 +28,7 @@ fn vars(b: &Battle, r: ObjectRef) -> &Vars {
 
 /// `sub_80E7546`: the controller for `user`, on its panel. (Its position
 /// is register garbage nothing reads.)
-pub fn spawn(b: &mut Battle, user: ObjectRef, element: u8, params: [u8; 4], chip: CutInChip) -> Option<ObjectRef> {
+pub fn spawn(b: &mut Battle, user: ObjectRef, element: u8, params: [u8; 4], chip: DimmingChip) -> Option<ObjectRef> {
     let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), params)?;
     let (panel, alliance) = {
         let o = b.objects.get(user);

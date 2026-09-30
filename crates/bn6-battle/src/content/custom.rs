@@ -113,7 +113,7 @@ pub enum ChipModifier {
     NaviPlus,
     /// Makes a damaging chip paralyze (WhiCapsl).
     Paralyze,
-    /// Makes a damaging chip that doesn't stop time uninstall (Uninstll).
+    /// Makes a damaging chip that isn't a dimming chip uninstall (Uninstll).
     Uninstall,
 }
 

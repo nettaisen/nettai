@@ -25,7 +25,7 @@ pub mod battle_flags {
     pub const FIGHTING: u16 = 0x01;
     /// The custom gauge is full.
     pub const GAUGE_FULL: u16 = 0x02;
-    /// Dimming (cut-in chips).
+    /// Dimming (dimming chips).
     pub const DIMMED: u16 = 0x04;
     /// A player asked to open the custom screen.
     pub const CUSTOM_REQUESTED: u16 = 0x10;

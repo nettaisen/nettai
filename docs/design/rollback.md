@@ -251,7 +251,7 @@ seeded button masher.
 
 `crates/bn6-netplay/tests/rollback.rs`: two navis with 300 HP on the battle settings 0 of the engine's test content
 (`content::testing`, hand-authored, not BN6's data). Its chips are made up but run the engine's own actions: side
-0's folder holds a level-3 GunDelSol, an eraser navi chip, a level-1 GunDelSol, an invisibility cut-in and a level-3
+0's folder holds a level-3 GunDelSol, an eraser navi chip, a level-1 GunDelSol, an invisibility dimming chip and a level-3
 GunDelSol over and over (GunDelSol is action 0x37; the invisibility freeze 0x15 with subtype 1, as Invisibl; the
 eraser navi chip 0x1B with subtype 5, as EraseMan), side 1's GunDelSols only (no Crosses or Beast Out). Both players
 mash (held buttons change every four frames on average: a direction, A, L or R; B and START are never pressed, see
@@ -344,7 +344,7 @@ work. (Measure with `cargo run --release -p bn6-netplay --example rollback_cost 
 - **Speculative panics.** The engine panics on content that isn't ported yet. A peer simulating a predicted input
   explores input sequences no player made, so it can reach an unported path the real match never does, and crash
   a peer that is otherwise in sync. The synthetic tests avoid the paths that mashing reaches: the buster (B,
-  actions 0x11 and 0x16), counter cut-ins (a cut-in chip during the other side's dimming), ElmntMan's random elements, and Beast
+  actions 0x11 and 0x16), cut-ins (a dimming chip during the other side's dimming), ElmntMan's random elements, and Beast
   Out's head and rush (so the synthetic players have no Beast Out or Crosses), and the damage judge after the
   15th turn (so their battles are short). The simulator reports a panic as speculative when the
   lockstep run gets through the frame. For netplay, unported paths must become unreachable (content that can't
