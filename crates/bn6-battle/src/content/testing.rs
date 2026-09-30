@@ -34,6 +34,9 @@ pub const VEIL: ChipId = 0x05;
 pub const ERASER: ChipId = 0x06;
 /// A dimming chip (action 0x15, subtype 0) that grabs a column.
 pub const GRAB: ChipId = 0x07;
+/// Standard chip actions: a CrakShot (action 0x22, subtype 0: the panel
+/// ahead).
+pub const CRACK: ChipId = 0x08;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -140,6 +143,8 @@ pub fn scripts() -> Scripts {
                 ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("lib/buster", "lib/buster"),
+                ("chips/059-crakshot/chip", "chips/059-crakshot/chip"),
+                ("objects/crack-shot/crack_shot", "objects/crack-shot/crack_shot"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -190,6 +195,7 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
         kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
+        kind("crack-shot", Pool::Attack, 0x33, "objects/crack-shot/crack_shot"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -222,6 +228,7 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         slot_in_limit: 3,
         dark_substitute: None,
         sp_damage: None,
+        navi_damage: None,
         modifier: None,
         program_advances: Vec::new(),
         gun_del_sol: None,
@@ -281,6 +288,13 @@ fn chips() -> Vec<ChipData> {
             damage: 10,
             script: Some("objects/area-grab/area_grab".into()),
             ..chip(GRAB, "Grab", 0x15, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 30,
+            damage: 40,
+            script: Some("chips/059-crakshot/chip".into()),
+            ..chip(CRACK, "Crack", 0x22, 0)
         },
     ]
 }
@@ -575,6 +589,8 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
+    // The crack shot: flying.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x33 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);
