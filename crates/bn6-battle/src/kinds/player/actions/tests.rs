@@ -452,3 +452,58 @@ fn buster_up_and_sync_trigger_change_the_navi() {
     crate::behavior::call_hook(&mut b, hook, bn6_content_api::HookCall::InstantChip { user: p0, spec });
     assert_eq!(b.stats[0].mood, 0xFF);
 }
+
+/// Use `chip` from side 0's hand as a charged chip (the request a full A
+/// charge raises), with the A-charge routine `routine`; the test content's
+/// base form charges no chip, so the charge itself is skipped.
+fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: u8, chip: u16) {
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = chip;
+    b.hands[0] = hand;
+    let a = ai_mut(b, p0);
+    a.a_charge = routine;
+    a.requests |= request::CHARGED_CHIP;
+    super::super::chip_use::use_chip(b, p0);
+}
+
+#[test]
+fn a_charged_chip_with_a_bonus_routine_is_used_charged() {
+    // An A-charge routine that is the chip's charged use (ElecCross's).
+    let (mut b, p0, _) = fight();
+    use_charged_chip(&mut b, p0, 0x0D, testing::BUSTER_UP);
+    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(ai_mut(&mut b, p0).attack.charged, 1);
+    // Without a routine: the chip family's register (Plus, 4).
+    let (mut b, p0, _) = fight();
+    use_charged_chip(&mut b, p0, 0xFF, testing::BUSTER_UP);
+    assert_eq!(ai_mut(&mut b, p0).attack.charged, 4);
+}
+
+#[test]
+fn ground_cross_charge_drops_rocks_on_the_enemy() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    use_charged_chip(&mut b, p0, 0x18, testing::BUSTER_UP);
+    // The rocks come first, then the chip, used with the routine's result
+    // (2: there is an enemy) as its charge.
+    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(ai_mut(&mut b, p0).attack.charged, 2);
+    let falling_rock = b.content.object_kind("falling-rock").unwrap().clone();
+    let rocks: Vec<_> =
+        b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (falling_rock.pool, falling_rock.index)).collect();
+    assert_eq!(rocks.len(), 3);
+    // One falls on the enemy's panel: 30 damage and 20 per buster damage
+    // point (1). They fall from 104 pixels, faster each tick.
+    assert!(rocks.iter().any(|&r| b.objects.get(r).panel == PanelPos { x: 5, y: 2 }));
+    assert_eq!(b.objects.get(rocks[0]).damage, 50);
+    let mut t = 0;
+    run_to(&mut b, p, &mut t, 40, 0);
+    assert_eq!(b.objects.get(p1).hp, 950);
+    // They broke into chunks, thrown up and gone after a blink.
+    let chunks = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 9)).count();
+    assert!(chunks > 0);
+    run_to(&mut b, p, &mut t, 120, 0);
+    let chunks = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 9)).count();
+    assert_eq!(chunks, 0);
+    assert!(rocks.iter().all(|&r| !b.objects.is_allocated(r) || b.objects.get(r).index != falling_rock.index));
+}
