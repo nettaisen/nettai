@@ -348,7 +348,10 @@ first use, cached by content hash (`for_content` keeps one per thread). Every VM
 identically (the fresh-VM test in §3.1), so VMs are a cache, not part of any battle: `Battle` holds no handle to
 one, and a content call uses the thread's runtime for the hash the round's setup carries (`behavior::with_runtime`
 picks another). Since content model v2's step 3 the runtime loads every module of the pack (the define phase) and
-binds what the engine plans from the content's registries (docs/design/content-model-v2.md §7.3).
+binds what the engine plans from the content's registries (docs/design/content-model-v2.md §7.3). Since step 4
+the API takes definitions and assets where it took numbers (`battle.spawn(kind, pos)`, `me:set_attack(action,
+kind)`, `battle.play_sound(asset.sound("throw"))`), and state fields hold them; the numeric forms remain,
+deprecated and counted (content-model-v2.md §7.6, "Step 4 as built").
 
 ### 5.2 Data
 
