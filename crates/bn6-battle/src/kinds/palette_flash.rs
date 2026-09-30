@@ -6,7 +6,7 @@
 //! §A.7.
 
 use crate::battle::Battle;
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 
 pub const INDEX: u8 = 0x0A;
 
@@ -39,7 +39,7 @@ pub fn spawn(b: &mut Battle, duration: u8, while_dimmed: bool, while_paused: boo
 /// `sub_80E11E0` with the flash's variant (Param1).
 pub fn spawn_variant(b: &mut Battle, variant: u8, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
     let mode = while_dimmed as u8 | (while_paused as u8) << 1;
-    let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), [variant, duration, mode, 0])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::PaletteFlash, Vec3::default(), [variant, duration, mode, 0])?;
     b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
     *vars(b, r) = Vars { variant, duration, while_dimmed, while_paused };
     Some(r)

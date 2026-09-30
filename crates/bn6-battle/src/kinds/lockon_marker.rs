@@ -6,7 +6,7 @@
 use crate::battle::Battle;
 use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress, set_progress};
-use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::setup::Navi;
 
 pub const INDEX: u8 = 0x0F;
@@ -32,7 +32,7 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 
 /// `sub_80E1620`: give `owner` a marker (kept in its actor data).
 pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), [0; 4])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::LockonMarker, Vec3::default(), [0; 4])?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)

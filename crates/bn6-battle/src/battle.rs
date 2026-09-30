@@ -488,6 +488,15 @@ impl Battle {
         self.round.time_up != 0 && self.round.alive[0] != 0 && self.round.alive[1] != 0
     }
 
+    /// The object slot index registration by number gives `r`'s kind (the
+    /// engine's kinds and the pack's `object.toml`s have one): for tests
+    /// and tools that name kinds by number. Panics for a kind content
+    /// defines, which has none.
+    pub fn slot_index(&self, r: ObjectRef) -> u8 {
+        let k = self.content.defs.kind(self.objects.get(r).kind);
+        k.slot.unwrap_or_else(|| panic!("object kind {} has no number", k.key)).1
+    }
+
     /// The player navi of a side (`sub_80103BC`).
     pub fn player(&self, side: u8) -> Option<ObjectRef> {
         let r = self.round.spawned_actors[side as usize][0]?;

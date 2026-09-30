@@ -507,7 +507,7 @@ mod tests {
         };
         for t in &tape {
             b.tick(&t.input, t.events.clone());
-            let seen: Vec<_> = b.objects.in_order().map(|r| (r.pool, b.objects.get(r).index, b.objects.get(r).alliance)).collect();
+            let seen: Vec<_> = b.objects.in_order().map(|r| (r.pool, b.slot_index(r), b.objects.get(r).alliance)).collect();
             for (pool, index, alliance) in seen {
                 if pool == Pool::Effect && index == CONTROLLER && user.is_none() {
                     user = Some(alliance);

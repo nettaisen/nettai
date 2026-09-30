@@ -490,10 +490,16 @@ fn z_fraction_is_garbage(content: &Content, kind: u8, index: u8) -> bool {
 fn describe(b: &Battle, r: crate::object::ObjectRef, xy_unknown: bool) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+    let kind = b.content.defs.kind(o.kind);
+    let Some((_, index)) = kind.slot else {
+        // What content defines has no number in the engine: compat has it
+        // (bn6-compat's comparison maps it).
+        return format!("T{} {} (a defined kind: compat has its number)", r.pool.type_number(), kind.key);
+    };
     describe_fields(
         &b.content,
         r.pool.type_number(),
-        o.index,
+        index,
         o.flags,
         [o.state, o.action, o.phase, o.phase_init],
         [o.panel.x, o.panel.y],

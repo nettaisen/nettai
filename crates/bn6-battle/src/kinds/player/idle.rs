@@ -184,13 +184,7 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> super
     if let Some(hook) = b.content.defs.hook(Hook::Weapon(routine)) {
         return match crate::behavior::call_hook(b, hook, HookCall::Weapon { navi: r }) {
             Value::Int(n) => super::NaviAttack::from(n as u8),
-            Value::Def(Registry::Action, h) => {
-                let a = b.content.defs.action(ActionHandle(h));
-                let number = a.number.unwrap_or_else(|| {
-                    panic!("weapon routine {routine:#x} names action {}, which has no action number (compat)", a.key)
-                });
-                super::NaviAttack { number, content: Some(ActionHandle(h)) }
-            }
+            Value::Def(Registry::Action, h) => super::NaviAttack::content(&b.content.defs, ActionHandle(h)),
             v => panic!("weapon routine {routine:#x} names {v:?}, not an action"),
         };
     }

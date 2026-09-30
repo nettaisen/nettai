@@ -69,7 +69,7 @@ fn tick(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, held: u16) {
 }
 
 fn following(b: &Battle, r: ObjectRef) -> Vec<(Pool, u8)> {
-    b.objects.in_order().skip_while(|&o| o != r).skip(1).map(|o| (o.pool, b.objects.get(o).index)).collect()
+    b.objects.in_order().skip_while(|&o| o != r).skip(1).map(|o| (o.pool, b.slot_index(o))).collect()
 }
 
 fn f1_of(b: &Battle, r: ObjectRef) -> u32 {
@@ -143,7 +143,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     run_to(&mut b, p, &mut t, 7, 0);
     let beam = b.objects.get(p0).related[0].unwrap();
     let sun_beam = b.content.object_kind("sun-beam").unwrap();
-    assert_eq!((beam.pool, b.objects.get(beam).index), (sun_beam.pool, sun_beam.index));
+    assert_eq!((beam.pool, b.slot_index(beam)), (sun_beam.pool, sun_beam.index));
     assert_eq!(b.objects.get(beam).pos.x, 60 << 16);
     assert_eq!(b.objects.get(gun).anim, 1);
 
@@ -194,7 +194,7 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
     let attachment = b.content.object_kind("attachment").unwrap();
     let o = b.objects.get(arm);
-    assert_eq!((arm.pool, o.index, o.params[0]), (attachment.pool, attachment.index, 6));
+    assert_eq!((arm.pool, b.slot_index(arm), o.params[0]), (attachment.pool, attachment.index, 6));
 
     // Five ticks up, then the recovery by the open panels from its own
     // (its body is off the field while it updates) to the enemy's:
@@ -225,7 +225,7 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     // Tick 2: the ball, in front of the navi.
     run_to(&mut b, p, &mut t, 2, 0);
     let dust_ball = b.content.object_kind("dust-ball").unwrap();
-    let ball = b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (dust_ball.pool, dust_ball.index));
+    let ball = b.objects.in_order().find(|&o| (o.pool, b.slot_index(o)) == (dust_ball.pool, dust_ball.index));
     let ball = ball.expect("the ball");
     assert_eq!(b.objects.get(ball).panel, PanelPos { x: 3, y: 2 });
 
@@ -243,7 +243,7 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
 /// The kind named `name` somewhere on the field.
 fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
     let k = b.content.object_kind(name).unwrap();
-    b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index))
+    b.objects.in_order().find(|&o| (o.pool, b.slot_index(o)) == (k.pool, k.index))
 }
 
 /// Give side `side` the chip `chip` as the next in its hand, with its
@@ -349,7 +349,7 @@ fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: crate::content::
 
 /// The effect objects (effect #0) and afterimages (effect #0x28) there are.
 fn effects(b: &Battle, index: u8) -> Vec<ObjectRef> {
-    b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.objects.get(o).index == index).collect()
+    b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.slot_index(o) == index).collect()
 }
 
 #[test]
@@ -428,7 +428,7 @@ fn a_sword_without_a_target_ahead_swings_at_nothing() {
 /// The objects of content kind `name` on the field, in update order.
 fn of_kind(b: &Battle, name: &str) -> Vec<ObjectRef> {
     let k = b.content.object_kind(name).unwrap();
-    b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index)).collect()
+    b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (k.pool, k.index)).collect()
 }
 
 #[test]
@@ -685,7 +685,7 @@ fn a_bursting_projectile_bursts_on_the_enemy_and_a_missed_one_off_the_field() {
     let mut t = 0;
     run_to(&mut b, p, &mut t, 4, 0);
     assert!(b.objects.get(p1).hp < 1000);
-    let effects = b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.objects.get(o).index == 0).count();
+    let effects = b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.slot_index(o) == 0).count();
     assert!(effects > 0, "the burst's effects");
     // Missing (a row away), it bursts over the last two columns.
     let (mut b, p0, p1) = fight();
@@ -698,7 +698,7 @@ fn a_bursting_projectile_bursts_on_the_enemy_and_a_missed_one_off_the_field() {
     assert_eq!(b.objects.get(shot).panel, PanelPos { x: 6, y: 1 });
     run_to(&mut b, p, &mut t, 6, 0);
     assert_eq!(b.objects.get(shot).state, state::DESTROY);
-    let effects = b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.objects.get(o).index == 0).count();
+    let effects = b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.slot_index(o) == 0).count();
     assert_eq!(effects, 4, "the burst off the field");
 }
 
@@ -805,7 +805,7 @@ fn chargecross_beast_wave_rolls_through_the_enemy() {
     // 70 damage and 30 per buster Attack point; afterimages behind it.
     run_to(&mut b, p, &mut t, 45, 0);
     assert_eq!(b.objects.get(p1).hp, 900);
-    let afterimages = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 0x28)).count();
+    let afterimages = b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (Pool::Effect, 0x28)).count();
     assert_eq!(afterimages, 2);
     run_to(&mut b, p, &mut t, 82, 0);
     assert_eq!(b.objects.get(p0).action, 8);
@@ -909,7 +909,7 @@ fn start_weapon_as(b: &mut Battle, p0: ObjectRef, routine: u8, kind: u8) -> u8 {
 fn kind_objects(b: &Battle, name: &str) -> Vec<ObjectRef> {
     let k = b.content.object_kind(name).unwrap_or_else(|| panic!("no kind {name}"));
     let (pool, index) = (k.pool, k.index);
-    b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (pool, index)).collect()
+    b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (pool, index)).collect()
 }
 
 /// Put side 0's navi on (x, 2).
@@ -1307,7 +1307,7 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     // an absorbed obstacle that flies to the navi.
     run_to(&mut b, p, &mut t, 11, 0);
     let absorbed = b.content.object_kind("absorbed-obstacle").unwrap();
-    let flying = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (absorbed.pool, absorbed.index)).count();
+    let flying = b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (absorbed.pool, absorbed.index)).count();
     assert_eq!(flying, 2);
 
     // They arrive 9 ticks later, while the navi still absorbs, and join
@@ -1339,7 +1339,7 @@ fn the_beast_claw_slashes_the_panel_ahead_twice() {
     // and a hit on the panel ahead, 50 damage and 10 per buster damage
     // point (1).
     let slashes = |b: &Battle| {
-        let looks = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (Pool::Effect, 0));
+        let looks = b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (Pool::Effect, 0));
         looks.map(|o| b.objects.get(o).params[0]).filter(|&l| l == 0x3A || l == 0x39).collect::<Vec<_>>()
     };
     run_to(&mut b, p, &mut t, 2, 0);
@@ -1413,7 +1413,7 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     // 4 pixels toward the enemy from the navi's panel, 48 up, and rising
     // (its first rise at once).
     let sparkle = b.content.object_kind("rising-bubble").unwrap().clone();
-    let s = b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (sparkle.pool, sparkle.index));
+    let s = b.objects.in_order().find(|&o| (o.pool, b.slot_index(o)) == (sparkle.pool, sparkle.index));
     let s = s.expect("the sparkle");
     let (x, y) = crate::kinds::player::panel_coordinates(2, 2);
     let o = b.objects.get(s);
@@ -1422,7 +1422,7 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     for _ in 0..13 {
         tick(&mut b, p0, p1, 0);
     }
-    assert!(!b.objects.is_allocated(s) || b.objects.get(s).index != sparkle.index);
+    assert!(!b.objects.is_allocated(s) || b.slot_index(s) != sparkle.index);
     // From a special source the damage goes into the side's Atk+ bonus
     // instead.
     let (mut b, p0, p1) = fight();
@@ -1457,7 +1457,7 @@ fn buster_up_and_sync_trigger_change_the_navi() {
 /// The objects of content kind `name` alive in `b`.
 fn count_kind(b: &Battle, name: &str) -> usize {
     let k = b.content.object_kind(name).unwrap_or_else(|| panic!("no kind {name}"));
-    b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index)).count()
+    b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (k.pool, k.index)).count()
 }
 
 #[test]
@@ -1509,7 +1509,7 @@ fn lances_thrust_from_the_far_column() {
     // step back already (the init runs the first tick).
     let lance = b.content.object_kind("lance").unwrap().clone();
     let lances: Vec<ObjectRef> =
-        b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (lance.pool, lance.index)).collect();
+        b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (lance.pool, lance.index)).collect();
     let mut rows: Vec<u8> = lances.iter().map(|&l| b.objects.get(l).panel.y).collect();
     rows.sort();
     assert_eq!(rows, [1, 2, 3]);
@@ -1526,7 +1526,7 @@ fn lances_thrust_from_the_far_column() {
 fn the_tomahawk_throw_sends_two_tomahawks() {
     let tomahawks = |b: &Battle| {
         let k = b.content.object_kind("boomerang").unwrap();
-        let t = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index));
+        let t = b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (k.pool, k.index));
         t.map(|o| (b.objects.get(o).params[0], b.objects.get(o).panel.y)).collect::<Vec<_>>()
     };
     let start = || {
@@ -1619,10 +1619,10 @@ fn state_field(b: &Battle, r: ObjectRef, name: &str) -> i64 {
     s.get(schema, schema.index_of(name).expect("the field")).load().int().expect("an integer")
 }
 
-/// How many ticks the navi stays in action `action` from now.
-fn ticks_in(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, action: u8) -> u32 {
+/// How many ticks the navi stays in the content action `action` from now.
+fn ticks_in(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, action: bn6_content_api::ActionHandle) -> u32 {
     let mut n = 0;
-    while b.objects.get(p0).action == action {
+    while super::super::running_content_action(b, p0) == Some(action) {
         tick(b, p0, p1, 0);
         n += 1;
         assert!(n < 100, "the action never ended");
@@ -1631,10 +1631,13 @@ fn ticks_in(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, action: u8) -> u32 {
 }
 
 #[test]
-fn a_defined_kind_runs_in_its_bridged_slot_with_its_state() {
+fn a_defined_kind_runs_by_its_handle_with_its_state() {
     let (mut b, p0, p1) = fight_on_test_pack();
     let r = crate::behavior::spawn_kind(&mut b, "test/ticker", crate::object::Vec3::default(), [0; 4]).unwrap();
-    assert_eq!((r.pool, b.objects.get(r).index), (Pool::Effect, testing::TICKER_SLOT));
+    // It has no number: the object is of its kind, in its pool.
+    let kind = b.content.defs.kind_by_key("test/ticker").unwrap();
+    assert_eq!((r.pool, b.objects.get(r).kind), (Pool::Effect, kind));
+    assert_eq!(b.content.defs.kind(kind).slot, None);
     for n in 1..=5 {
         tick(&mut b, p0, p1, 0);
         assert_eq!(state_field(&b, r, "ticks"), n);
@@ -1650,19 +1653,20 @@ fn a_defined_kind_runs_in_its_bridged_slot_with_its_state() {
 fn a_weapon_names_a_defined_action_which_runs_by_handle() {
     let (mut b, p0, p1) = fight_on_test_pack();
     let action = super::super::idle::weapon_routine(&mut b, p0, testing::TICK_SHOT);
-    assert_eq!(action.number, testing::TICK_SHOT_ACTION);
+    assert_eq!(action.number, super::super::CONTENT_ACTION);
     let h = action.content.expect("a defined action");
     assert_eq!(b.content.defs.action(h).key, "test/tick-shot/shot");
     super::super::set_attack(&mut b, p0, action, 1);
-    // The navi's CurAction is the bridged number, and the action's own
-    // update runs: it stands for 12 ticks.
-    assert_eq!(ticks_in(&mut b, p0, p1, testing::TICK_SHOT_ACTION), 12);
+    // The navi runs it by handle, under no number of its own; its update
+    // runs: it stands for 12 ticks.
+    assert_eq!(b.objects.get(p0).action, super::super::CONTENT_ACTION);
+    assert_eq!(ticks_in(&mut b, p0, p1, h), 12);
 }
 
 #[test]
-fn chips_of_a_series_run_their_own_actions_under_one_number() {
-    // Both chips' records name one action number; each runs the action its
-    // definition composed, with its own length.
+fn chips_of_a_series_run_their_own_actions() {
+    // Each chip runs the action its definition composed, with its own
+    // length.
     let (mut b, p0, p1) = fight_on_test_pack();
     let defs = &b.content.defs;
     let [one, two] = [testing::TICKER_1, testing::TICKER_2].map(|id| match defs.chip_with_id(id).unwrap().usage {
@@ -1672,11 +1676,11 @@ fn chips_of_a_series_run_their_own_actions_under_one_number() {
     assert_ne!(one, two);
     assert_eq!(defs.action(one).schema, defs.action(two).schema, "one builder, one state layout");
     use_chip(&mut b, p0, p1, testing::TICKER_1);
-    assert_eq!(b.objects.get(p0).action, testing::TICKER_ACTION);
-    let first = ticks_in(&mut b, p0, p1, testing::TICKER_ACTION);
+    assert_eq!(b.objects.get(p0).action, super::super::CONTENT_ACTION);
+    let first = ticks_in(&mut b, p0, p1, one);
     let (mut b, p0, p1) = fight_on_test_pack();
     use_chip(&mut b, p0, p1, testing::TICKER_2);
     assert_rolls_back(&mut b, [p0, p1], 3, 0);
-    let second = ticks_in(&mut b, p0, p1, testing::TICKER_ACTION) + 3;
+    let second = ticks_in(&mut b, p0, p1, two) + 3;
     assert_eq!(second - first, 3, "Ticker2 stands 9 ticks to Ticker1's 6");
 }

@@ -1218,11 +1218,20 @@ pub trait ContentHost {
 stays as the bridge's lookup (`Defs::hook`) until step 13. While the migration runs, a registry also holds the
 engine's own entries (its kinds, keyed `engine/player`, `engine/hitbox`, ...) and the entries registration by
 number makes, keyed from that data: a kind by its folder name, an action `v1/action-12`, a weapon `v1/weapon-02`.
-The bridge from numbers is a set of lookups on the registries (a kind's object slot, an action's number, a
-weapon's routine numbers, a chip's id), filled from registration by number now and from compat later
-(`Defs::bridge_kind`, `bridge_action`, `bridge_weapon`, `bridge_chip`). A definition the bridge gives a chip id
-takes over that chip's use: chip use runs the definition's action, the dimming, navi-chip and instant-chip
-actions call its hook, before registration by subtype is consulted.
+Registration by number reaches entries through lookups on the registries (a kind's object slot, an action's
+number, a weapon's routine numbers), filled from that registration's own data (`object.toml`, `chip.toml`,
+`weapon.toml`) and nothing else.
+
+**The engine never reads compat (user decision, 2026-09-30).** "the validator maps the ids and the engine itself
+doesn't know about them, so the engine can be clean of validation code". Definitions are not given the
+original's numbers inside the engine: there is no bridge from compat in `Content::define`. The engine runs on its
+own identities (handles and keys), and the validator (the golden-trace comparison and the setup codecs, in
+`bn6-compat`) maps them to and from the original's numbers with compat: an object's kind to its pool and index, a
+navi's running action to its action number, a hand's chips to chip ids, a setup's chip ids, weapon routines,
+forms and navis to handles. For a definition to run where the traces look, the engine's state must hold that
+identity rather than a number: that is §12's revised order (steps 3b and 3c). `Defs::bridge_kind`,
+`bridge_action`, `bridge_weapon` and `bridge_chip` stay only for the engine's tests (they give the test pack's
+definitions the slots the engine still runs by) and go with the numbers.
 
 **The spike.** A throwaway crate (not committed) ran a define phase on bn6-luau's real sandbox with five modules
 (a bombs library with a shared state table, a bomb kind with a module-level effect, MiniBomb and BigBomb
