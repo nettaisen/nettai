@@ -1349,6 +1349,53 @@ enemy body ahead (the column right ahead, `sub_80ED040`'s fallback); the head wi
 end when the battle is over; a blocked hit (0xFF800000) clearing the head's region; `sub_810FA4C`'s cap at 4;
 `sub_80DE768`'s off-field and not-solid exits.
 
+### 3.9 The bombs and seeds (action 0x12, `sub_80EB628`)
+
+Content: chips/036-minibomb/chip.luau (the action; the other chips name it), objects/bomb (T3#8), objects/bomb-slash
+(T3#0xA), objects/energy-burst (T3#0x11), objects/seed (T3#0x4F), objects/flash-bomb (T3#0xA4), objects/bug-bomb
+(T3#0xA5), objects/black-bomb (T3#0x4A), objects/smoke-puff (T4#0x14), objects/panel-bursts (T4#0x24), lib/region.luau
+(`sub_801BD3C`, `sub_80CE468`, `sub_80CE424`), lib/trajectory.luau (`sub_8001330`, `sub_800120E`, `sub_80011A0`,
+`calcAngle_800117C` and the BIOS division, square root and arctangent), lib/hp.luau (`object_applyDamage`).
+
+The action: phase 0 (`sub_80EB644`): anim 6, counter window, the held thing (attachment `byte_80EB738[subtype]`, Param4
+3 for BigBomb and 3 × params[0] for FlashBomb) in the first related slot, sound 0xB2, USING_ACTION, `av+0x10` = 0; at
+9 the thrower `off_80EB6F8[subtype]` from (X + 4 px ahead, Y, Z + 48 px) with the chip's parameters and damage word +
+bonus, then both related slots cleared; at 0x15 phase 4 (`sub_80EB758`: 6 ticks, `object_exitAttackState`). No reactive
+abort. Subtypes: 0-2, 4, 5, 10, 11, 15 the bomb; 3 LilBoiler; 6 BlkBomb; 7 BugBomb; 8 VDoll; 9, 12, 13 the seeds; 14
+FlashBomb.
+
+- **Bomb** (T3#8): 40 ticks in an arc (0x2E666 a tick ahead, rising 0x20666 less 0x2800 a tick; its panel (0, 0) until
+  it lands, so it hits nothing), then on a solid panel its kind's region (`dword_80C5D7C`: 1, 0, 0, 0xF) with effect 0
+  on each panel and sound 0x70, or effect 1 over a hole; the next tick kind 1 leaves the lingering hit (T3#0xA, 60
+  ticks), kind 2 the energy burst (T3#0x11: three hits 7 apart with hit modifiers 1, 1, 3); a hit it made ends it first.
+  Kinds by Param1 (`byte_80C5BA0`): collision types, hit modifier and palette.
+- **Seed** (T3#0x4F): the bomb's flight; the tick after landing, its kind's panel type (poison, ice, grass) over its
+  panel if the hit connected, else the 3x3, with effects on the non-missing panels (dx scaled by the side and flip
+  halfword, as the game passes it).
+- **FlashBomb** (T3#0xA4): thrown to the panel three ahead in 40 ticks (`sub_8001330`, gravity 0x3000); sets down with
+  the level's HP (`byte_80D9A20`) unless the panel holds a body of its own side; two ticks before its time is up a
+  palette flash (variant 1), sound 0x1BD, and a hit over the other side's area with the level's status; levels with a
+  final status hit again as it goes. A hit to its body (0x0F800000) or its HP running out ends it.
+- **BugBomb** (T3#0xA5): lobbed at 0x2C000 a tick (`sub_800120E`) to land 10 px up; a 40-HP body for 61 ticks, then a
+  burst over region 0x10 (effects 0x4A on the 3x3) carrying a NaviCust bug the target's side lacks (`sub_80D9FC2`: one
+  RNG draw); broken or crushed first, an explosion; in a hole, a puff (T4#0x14).
+- **BlkBomb** (T3#0x4A): an obstacle (field-object class 1) lobbed like the BugBomb; 100 HP, 6000 ticks; a fire hit
+  sets it off (`sub_80CD7A0`), and as it goes it hits the whole area of the side opposite its panel's owner (fire, hit
+  modifier 3) and scatters panel bursts (look 1) there. Its update uses the obstacle service's `sub_801AD12` and
+  `sub_801B750`, and its push is `sub_8017CC0`.
+
+The confusion and blindness a BugBomb or FlashBomb gives show the status visual (T4#6, `sub_80E08FC`, Rust
+`kinds::status_visual`).
+
+Verified by the chip lab's bomb and seed scenarios (every one that runs as far as the chip matches, including every
+chip's counter variant, which throws a MiniBomb). **Unverified**: bomb kind 1 and the lingering hit (no chip throws
+it); a bomb or seed ending on a hit it made or the battle's end; seed kind 3; FlashBomb levels 3 to 8, its Param2,
+setting down onto its own body, and breaking before the flash; the BugBomb broken or crushed, in a hole, and its bug
+choices beyond the lab's; the BlkBomb set off by fire (its burst and the panel bursts), placed (Param1), with no ticks
+to fly, removed, absorbed, blinking out, or pushed (`sub_8017CC0` and `sub_800F598` are unreached). **Not ported**:
+LilBoiler (subtype 3: T3#0x93 and what it spawns, T1#0x54) and VDoll (subtype 8: T3#0x7A, its curse controller T4#0x4E
+and T4#0x11); their throws raise a content error.
+
 ---
 
 ## 4. Worked example: GunDelS3 (chip 0x11) in the machgun trace
