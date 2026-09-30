@@ -2,7 +2,7 @@
 
 use crate::battle::Battle;
 use crate::content::EffectSprite;
-use crate::object::{ObjectRef, Pool, Vec3, flags, sprite::FRAME_LAST, state};
+use crate::object::{ObjectRef, Vec3, flags, sprite::FRAME_LAST, state};
 
 /// `AddRandomVarianceToTwoCoords`: jitter x and z by up to ±mask/2 pixels
 /// (one simulation RNG draw).
@@ -44,7 +44,7 @@ pub fn spawn_look(b: &mut Battle, owner: ObjectRef, pos: Vec3, look: EffectSprit
 
 /// `sub_80E08C4`.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, effect: u8) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Effect, 4, pos, [effect, 0, 0, 0])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Spark, pos, [effect, 0, 0, 0])?;
     let alliance = b.objects.get(owner).alliance;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);

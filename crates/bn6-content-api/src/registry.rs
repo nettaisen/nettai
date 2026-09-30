@@ -136,7 +136,7 @@ macro_rules! handles {
     ($($(#[$doc:meta])* $name:ident => $registry:ident,)*) => {
         $(
             $(#[$doc])*
-            #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+            #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
             pub struct $name(pub u16);
 
             impl $name {

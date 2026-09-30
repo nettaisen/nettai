@@ -10,7 +10,7 @@ use crate::battle::Battle;
 use crate::kinds::common;
 use crate::kinds::effect;
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::setup::Navi;
 
 pub const INDEX: u8 = 0x1B;
@@ -46,7 +46,7 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 /// `sub_80BC844`: `navi`'s image over MegaMan (`owner`), `swings` swings
 /// from his panel.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, navi: Navi, swings: u16) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), [navi.0, 0, 0, 0])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::CrossMerge, Vec3::default(), [navi.0, 0, 0, 0])?;
     let (panel, alliance, flip) = {
         let o = b.objects.get(owner);
         (o.panel, o.alliance, o.flip)

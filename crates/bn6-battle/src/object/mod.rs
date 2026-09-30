@@ -17,6 +17,7 @@ pub mod sprite;
 
 use crate::collision::CollisionId;
 use crate::actor::ActorId;
+use bn6_content_api::KindHandle;
 use sprite::Sprite;
 
 pub use bn6_content_api::{ObjectRef, PanelPos, Pool, Vec3};
@@ -105,12 +106,26 @@ pub enum SlideBounds {
     Area(u8),
 }
 
+/// A new object: its kind (and the pool the kind's objects live in), its
+/// kind's initial state, and where and with what it starts
+/// (`crate::kinds::spawn` makes one from a kind).
+pub struct New {
+    pub pool: Pool,
+    pub kind: KindHandle,
+    pub vars: crate::kinds::Vars,
+    pub pos: Vec3,
+    pub params: [u8; 4],
+}
+
 /// The state every object shares. Behavior-specific state lives in `vars`.
 #[derive(Clone, Debug, Default)]
 pub struct Object {
     pub flags: u8,
-    /// Which behavior within the pool.
-    pub index: u8,
+    /// Its kind. The original's object slot (pool and index), which the
+    /// traces compare, is the validator's to know: the engine's own kinds'
+    /// and number-registered kinds' slots are in their definitions
+    /// (`KindDef::slot`), and compat has every kind's.
+    pub kind: KindHandle,
     /// Spawn parameters (behavior-specific).
     pub params: [u8; 4],
     /// Lifecycle state (`state::INIT/UPDATE/DESTROY`).
@@ -260,23 +275,29 @@ impl Objects {
         &mut self.sprites[slot_index(r)]
     }
 
+    /// Whether `pool` has a free slot.
+    pub fn has_room(&self, pool: Pool) -> bool {
+        self.in_use[pool as usize].count_ones() < SLOTS as u32
+    }
+
     pub fn is_allocated(&self, r: ObjectRef) -> bool {
         self.in_use[r.pool as usize] & (0x8000_0000 >> r.slot) != 0
     }
 
     /// Allocate the lowest free slot of `pool` and initialize the object.
     /// Returns None if the pool is full. The caller links it.
-    fn allocate(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+    fn allocate(&mut self, new: New) -> Option<ObjectRef> {
+        let New { pool, kind, vars, pos, params } = new;
         let bits = &mut self.in_use[pool as usize];
         let slot = (0..SLOTS as u8).find(|&i| *bits & (0x8000_0000 >> i) == 0)?;
         *bits |= 0x8000_0000 >> slot;
         let r = ObjectRef { pool, slot };
         *self.get_mut(r) = Object {
             flags: spawn_flags(pool),
-            index,
+            kind,
             params,
             pos,
-            vars: crate::kinds::Vars::for_kind(pool, index),
+            vars,
             ..Object::default()
         };
         Some(r)
@@ -285,8 +306,8 @@ impl Objects {
     /// Spawn an object. It runs in the current tick: right after the
     /// object that spawned it, or at the end of the list when spawned from
     /// outside the update loop.
-    pub fn spawn(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-        let r = self.allocate(pool, index, pos, params)?;
+    pub fn spawn(&mut self, new: New) -> Option<ObjectRef> {
+        let r = self.allocate(new)?;
         let new = node_of(r);
         match self.current {
             Some(cur) if cur != new => self.insert_after(cur, new),
@@ -297,8 +318,8 @@ impl Objects {
 
     /// Spawn an object at the head of the update list (`sub_80033E4`): it
     /// first runs next tick, before everything else.
-    pub fn spawn_at_front(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-        let r = self.allocate(pool, index, pos, params)?;
+    pub fn spawn_at_front(&mut self, new: New) -> Option<ObjectRef> {
+        let r = self.allocate(new)?;
         let new = node_of(r);
         let first = self.links[HEAD.0 as usize].next.expect("list head has a successor");
         self.links[new.0 as usize] = Links { prev: Some(HEAD), next: Some(first) };
@@ -308,8 +329,8 @@ impl Objects {
     }
 
     /// Spawn an object at the end of the update list.
-    pub fn spawn_at_end(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-        let r = self.allocate(pool, index, pos, params)?;
+    pub fn spawn_at_end(&mut self, new: New) -> Option<ObjectRef> {
+        let r = self.allocate(new)?;
         self.append(node_of(r));
         Some(r)
     }

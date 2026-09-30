@@ -9,7 +9,7 @@ use crate::battle::Battle;
 use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, Pool, flags, state};
+use crate::object::{ObjectRef, flags, state};
 
 pub const INDEX: u8 = 0x55;
 
@@ -38,7 +38,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, variant: u8) -> Option<ObjectRef>
         let o = b.objects.get(owner);
         (o.pos, o.alliance)
     };
-    let r = b.objects.spawn(Pool::Actor, INDEX, pos, [variant, 0, 0, 0])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::IdleOverlay, pos, [variant, 0, 0, 0])?;
     let o = b.objects.get_mut(r);
     o.alliance = alliance;
     o.related[0] = Some(owner);

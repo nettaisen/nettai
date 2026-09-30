@@ -9,7 +9,7 @@
 use crate::battle::Battle;
 use crate::collision::{f1, link};
 use crate::content::SpriteId;
-use crate::object::{ObjectRef, Pool, flags, state};
+use crate::object::{ObjectRef, flags, state};
 use crate::sound::SoundId;
 
 pub const INDEX: u8 = 0x06;
@@ -68,7 +68,7 @@ const ATTACH_POINT: usize = 5;
 /// registers; its first unpaused update places it on the owner.)
 pub fn spawn(b: &mut Battle, owner: ObjectRef, status: Status) -> Option<ObjectRef> {
     let pos = b.objects.get(owner).pos;
-    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [status as u8, 0, 0, 0])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::StatusVisual, pos, [status as u8, 0, 0, 0])?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)

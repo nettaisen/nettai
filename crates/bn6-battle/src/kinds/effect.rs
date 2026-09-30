@@ -6,7 +6,7 @@
 use crate::battle::Battle;
 use crate::content::EffectSprite;
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 
 /// Effect-private state.
 #[derive(Clone, Debug, Default, Hash)]
@@ -24,7 +24,7 @@ pub struct Vars {
 
 /// `SpawnT4BattleObjectWithId0`: effect `id` at `pos`.
 pub fn spawn(b: &mut Battle, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
-    b.objects.spawn(Pool::Effect, 0, pos, [id, flip, palette_add, priority])
+    crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Effect, pos, [id, flip, palette_add, priority])
 }
 
 /// The same with the look an effect definition gives (its first parameter

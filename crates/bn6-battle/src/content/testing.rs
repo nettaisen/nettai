@@ -196,16 +196,12 @@ pub fn stats(hp: u16) -> crate::setup::NaviStats {
     crate::setup::NaviStats { hp, max_hp: hp, max_base_hp: hp, ..Default::default() }
 }
 
-/// The chips the test pack's ticker series takes over (`with_test_pack`).
+/// The chip ids the test pack's ticker series takes over, and the weapon
+/// routine its tick shot is (`with_test_pack`): hands and navi stats still
+/// name chips and weapons by number.
 pub const TICKER_1: ChipId = 0x20;
 pub const TICKER_2: ChipId = 0x21;
-/// What the test pack's definitions are bridged to (`with_test_pack`): its
-/// ticker kind's object slot (an effect), its tick shot's weapon routine
-/// and action number, and its ticker chips' action number.
-pub const TICKER_SLOT: u8 = 0xF0;
 pub const TICK_SHOT: u8 = 0xF0;
-pub const TICK_SHOT_ACTION: u8 = 0xF0;
-pub const TICKER_ACTION: u8 = 0xF1;
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
 /// definitions the engine's tests run.
@@ -232,33 +228,28 @@ pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
     out
 }
 
-/// The content set with the test pack's modules (under `test/`), defined,
-/// and bridged the way compat bridges BN6's definitions: the ticker kind
-/// fills effect object `TICKER_SLOT`, the tick shot is weapon routine
-/// `TICK_SHOT` with its action numbered `TICK_SHOT_ACTION`, and the ticker
-/// chips take over chips `TICKER_1` and `TICKER_2` (whose records name
-/// action `TICKER_ACTION`, which both chips' own actions carry).
+/// The content set with the test pack's modules (under `test/`), defined.
+/// Its kind and actions run by handle, with no numbers; the tick shot is
+/// weapon routine `TICK_SHOT` and the ticker chips take over chips
+/// `TICKER_1` and `TICKER_2`, the numbers hands and navi stats still reach
+/// them by.
 pub fn with_test_pack() -> Content {
     let mut c = make();
     for (path, source) in modules_under(TEST_PACK) {
         c.scripts.modules.insert(format!("test/{path}"), source);
     }
     for (id, name) in [(TICKER_1, "Ticker1"), (TICKER_2, "Ticker2")] {
-        c.chips[id as usize] = ChipData { damage: 10, ..chip(id, name, TICKER_ACTION, 0) };
+        c.chips[id as usize] = ChipData { damage: 10, ..chip(id, name, 0, 0) };
     }
     c.define().unwrap_or_else(|e| panic!("content error: {e}"));
-    let bridge = |c: &mut Content| -> Result<(), bn6_content_api::ContentError> {
+    let number = |c: &mut Content| -> Result<(), bn6_content_api::ContentError> {
         let d = &mut c.defs;
-        d.bridge_kind("test/ticker", (Pool::Effect, TICKER_SLOT))?;
-        d.bridge_weapon("test/tick-shot", TICK_SHOT)?;
-        d.bridge_action("test/tick-shot/shot", TICK_SHOT_ACTION)?;
-        d.bridge_action("test/ticker1/action", TICKER_ACTION)?;
-        d.bridge_action("test/ticker2/action", TICKER_ACTION)?;
-        d.bridge_chip("test/ticker1", TICKER_1)?;
-        d.bridge_chip("test/ticker2", TICKER_2)?;
+        d.number_weapon("test/tick-shot", TICK_SHOT)?;
+        d.number_chip("test/ticker1", TICKER_1)?;
+        d.number_chip("test/ticker2", TICKER_2)?;
         Ok(())
     };
-    bridge(&mut c).unwrap_or_else(|e| panic!("content error: {e}"));
+    number(&mut c).unwrap_or_else(|e| panic!("content error: {e}"));
     c
 }
 

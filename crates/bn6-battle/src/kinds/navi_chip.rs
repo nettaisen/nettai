@@ -8,7 +8,7 @@ use bn6_content_api::{Hook, HookCall, NaviChipSpec};
 
 use crate::battle::Battle;
 use crate::kinds::{common, navi_warp};
-use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
+use crate::object::{ObjectRef, PanelPos, Vec3, state};
 use crate::dimming::{self, DimmingChip};
 
 pub const INDEX: u8 = 0x10;
@@ -58,7 +58,7 @@ pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
     if s.navi == 0 && b.linked[(b.objects.get(user).alliance ^ 1) as usize].chip == 0xBD {
         panic!("navi chip 0 against the other side's chip 0xBD (sub_80E192C) is not implemented yet");
     }
-    let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), s.params)?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::NaviChip, Vec3::default(), s.params)?;
     let (panel, alliance, flip) = {
         let o = b.objects.get(user);
         (o.panel, o.alliance, o.flip)

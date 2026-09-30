@@ -27,7 +27,7 @@ use crate::collision::{CollisionData, CollisionId, f1, timer};
 use crate::field::PanelType;
 use crate::content::NaviRecord;
 use crate::hand::NO_CHIP;
-use crate::object::{ObjectRef, PanelPos, Pool, StateWord, Vec3, flags, state};
+use crate::object::{ObjectRef, PanelPos, StateWord, Vec3, flags, state};
 use crate::setup::{ActorEntry, Form, Navi, NaviStats, effects};
 
 /// Panel center coordinates (`object_getCoordinatesForPanels`, which
@@ -44,7 +44,7 @@ pub fn coordinates_to_panel(x: i32, y: i32) -> PanelPos {
 
 /// Spawn a player navi from an actor-list entry (`sub_800753C`).
 pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Actor, 0, Vec3::default(), [0; 4])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Player, Vec3::default(), [0; 4])?;
     let (x, y) = panel_coordinates(entry.x, entry.y);
     {
         let o = b.objects.get_mut(r);
@@ -322,6 +322,30 @@ pub(crate) fn set_attack(b: &mut Battle, r: ObjectRef, action: impl Into<NaviAtt
 pub struct NaviAttack {
     pub number: u8,
     pub content: Option<bn6_content_api::ActionHandle>,
+}
+
+/// The navi's CurAction while it runs an action content defines. Such an
+/// action has no number in the engine: the running action is the attack's
+/// `content_action`, and the validator maps it to the original's number
+/// with compat (docs/design/content-model-v2.md §7.3). A value above every
+/// action number the original has; `NaviAction::Content` replaces it
+/// (§7.2).
+pub const CONTENT_ACTION: u8 = 0xFF;
+
+impl NaviAttack {
+    /// Start the content action `h`: under the number registration by
+    /// number gave it, else as [`CONTENT_ACTION`].
+    pub fn content(defs: &crate::content::Defs, h: bn6_content_api::ActionHandle) -> NaviAttack {
+        NaviAttack { number: defs.action(h).number.unwrap_or(CONTENT_ACTION), content: Some(h) }
+    }
+}
+
+/// The content action the navi `r` is running: the one its attack started,
+/// while its CurAction is still that action's.
+pub(crate) fn running_content_action(b: &Battle, r: ObjectRef) -> Option<bn6_content_api::ActionHandle> {
+    let h = ai(b, r).attack.content_action?;
+    let number = b.content.defs.action(h).number.unwrap_or(CONTENT_ACTION);
+    (b.objects.get(r).action == number).then_some(h)
 }
 
 impl From<u8> for NaviAttack {
