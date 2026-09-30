@@ -15,7 +15,7 @@ fn pack(modules: &[(&str, &str)]) -> Pack {
 }
 
 fn define_pack(modules: &[(&str, &str)]) -> Result<Definitions, String> {
-    define(&pack(modules), &Data::Nil, Options::default()).map_err(|e| e.message)
+    define(&pack(modules), &Data::Nil, Options::default()).map(|(d, _)| d).map_err(|e| e.message)
 }
 
 /// A family library, a kind, and chips composing them: MiniBomb's pattern
@@ -140,7 +140,7 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
         "m",
         "local d = define.record('r', { n = 1 })\nreturn { d = d, late = function() return define.record('r', {}) end }",
     )]);
-    let (lua, defined, modules) = open(&p, &Data::Nil, Options::default()).unwrap();
+    let (lua, defined, modules, _) = open(&p, &Data::Nil, Options::default()).unwrap();
     assert!(defined.tables.iter().all(|t| t.is_readonly()));
     let LuaValue::Table(m) = &modules["m"] else { panic!("a table") };
     let late: Function = m.get("late").unwrap();
@@ -155,7 +155,9 @@ fn a_plan_binds_definition_slots_and_module_exports() {
     let mut modules = BOMBS.to_vec();
     modules.push(("objects/old/old", "return { state = { t = 'u8' }, update = function(me) end }"));
     let p = pack(&modules);
-    let definitions = define(&p, &Data::Nil, Options::default()).unwrap();
+    let (definitions, compiled) = define(&p, &Data::Nil, Options::default()).unwrap();
+    assert_eq!(compiled.len(), modules.len(), "every module compiled");
+    let p = p.with_compiled(compiled);
     let handles = (0..definitions.defs.len() as u16).collect();
     let plan = BindPlan {
         functions: vec![

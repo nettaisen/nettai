@@ -123,8 +123,7 @@ impl Behaviors {
         if content.defs.functions.is_empty() && content.defs.definitions.is_empty() {
             return Ok(Behaviors::none());
         }
-        let pack = bn6_luau::Pack::new(content.scripts.modules.iter().map(|(k, v)| (k.clone(), v.clone())));
-        let host = bn6_luau::LuauContent::load(&pack, &plan(content), &script_data(content), options)?;
+        let host = bn6_luau::LuauContent::load(&content.scripts.pack(), &plan(content), &script_data(content), options)?;
         Ok(Behaviors { loaded: Some(Rc::new(Loaded { host: Box::new(host) })) })
     }
 

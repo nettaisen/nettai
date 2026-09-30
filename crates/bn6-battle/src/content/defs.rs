@@ -131,6 +131,9 @@ pub struct Defs {
     pub weapons: Vec<WeaponDef>,
     pub chips: Vec<ChipDef>,
     pub records: Vec<RecordDef>,
+    /// One-shot effects' and hit sparks' looks content defines, by handle.
+    pub effects: Vec<super::EffectSprite>,
+    pub sparks: Vec<super::EffectSprite>,
     /// State layouts by [`StateId`].
     pub schemas: Vec<SchemaDef>,
     /// The functions the runtime binds, by [`FnId`].
@@ -548,6 +551,21 @@ impl Defs {
             chips.push(ChipDef { key: d.key.clone(), usage, id: None });
         }
 
+        let look = |d: &Definition| -> Result<super::EffectSprite, ContentError> {
+            let what = |e: String| ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key));
+            let sprite = d.spec.field("sprite").str().ok_or_else(|| what("needs a `sprite`".into()))?;
+            let byte = |field: &str| -> Result<u8, ContentError> {
+                match d.spec.field(field) {
+                    Data::Nil => Ok(0),
+                    Data::Int(i) => u8::try_from(*i).map_err(|_| what(format!("`{field}` {i} is not a byte"))),
+                    _ => Err(what(format!("`{field}` is not a number"))),
+                }
+            };
+            Ok(super::EffectSprite { sprite: sprite.parse().map_err(what)?, anim: byte("anim")?, palette: byte("palette")? })
+        };
+        let effects = definitions.of(Registry::Effect).iter().map(look).collect::<Result<Vec<_>, _>>()?;
+        let sparks = definitions.of(Registry::Spark).iter().map(look).collect::<Result<Vec<_>, _>>()?;
+
         let records: Vec<RecordDef> = definitions
             .of(Registry::Record)
             .iter()
@@ -590,6 +608,8 @@ impl Defs {
             weapons,
             chips,
             records,
+            effects,
+            sparks,
             schemas,
             functions: Vec::new(),
             hooks: BTreeMap::new(),

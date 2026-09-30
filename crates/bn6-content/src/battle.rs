@@ -1535,7 +1535,7 @@ pub fn load_scripts(root: &Path, report: &mut Report) -> Scripts {
     }
     let mut modules = BTreeMap::new();
     walk(root, root, &mut modules, report);
-    Scripts { modules }
+    Scripts::new(modules)
 }
 
 /// References between records that must resolve.
