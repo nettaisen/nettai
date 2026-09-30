@@ -7,7 +7,7 @@
 //! side's dimming chip used during the telop) makes the controllers wait
 //! on each other. See docs/engine/chips.md §3.6.
 
-use crate::battle::{Battle, battle_flags};
+use crate::battle::{Battle, FadeMode, battle_flags};
 use crate::content::{BannerId, ChipId};
 use crate::hud::BannerStatus;
 use crate::kinds::common::{self, Progress};
@@ -47,9 +47,10 @@ pub struct DimmingRecord {
     pub user: Option<ObjectRef>,
 }
 
-/// Screen fades the controllers use, in ticks.
-const DIM_TICKS: u8 = 16;
-const UNDIM_TICKS: u8 = 17;
+/// The controllers' screen fades step by 4: from a clear screen the dim
+/// takes 16 ticks (from an already dimmed one, after a cut-in, 1), and the
+/// undim 17.
+const FADE_SPEED: u8 = 4;
 
 /// The telops: the local player's, and the other player's.
 pub(crate) const LOCAL_TELOP: BannerId = BannerId(0x4C);
@@ -87,6 +88,21 @@ impl Battle {
         for r in &mut self.dimming {
             r.initiator = side;
         }
+        self.take_over_dimming(side, no_cut_in, controller, user);
+    }
+
+    /// `loc_800BF30(side, 0, controller)`: `side` cuts in on the other
+    /// side's dimming (`sub_8017AB4`) with `controller` (none if its spawn
+    /// failed), used by `user`: like `start_dimming`, but the initiator
+    /// stays the other side, so the dimming ends when theirs does, and
+    /// the cut-in chip can itself be cut in on.
+    pub(crate) fn cut_in_dimming(&mut self, side: u8, controller: Option<ObjectRef>, user: ObjectRef) {
+        self.take_over_dimming(side, false, controller, user);
+    }
+
+    /// `loc_800BF32`: `side` owns the dimming now; its record takes the
+    /// controller.
+    fn take_over_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef) {
         // sub_800B8AC
         for r in &mut self.dimming {
             r.owner = side;
@@ -107,6 +123,20 @@ impl Battle {
         rec.state = DimmingState::Idle;
         rec.controller = None;
     }
+}
+
+/// The cut-in flash: effect #0 look 0x1E, 120 pixels up, below the middle
+/// of the other side's area.
+const CUT_IN_FLASH: u8 = 0x1E;
+const CUT_IN_FLASH_Z: i32 = 0x78 << 16;
+const CUT_IN_SOUND: crate::sound::SoundId = crate::sound::SoundId(0xA5);
+
+/// `sub_800B8EE(side)`: `side` cut in: a flash at panel (2 + 3 · the other
+/// side, 4) and its sound.
+pub(crate) fn cut_in_flash(b: &mut Battle, side: u8) {
+    let (x, y) = crate::kinds::player::panel_coordinates((side ^ 1) * 3 + 2, 4);
+    crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y, z: CUT_IN_FLASH_Z }, CUT_IN_FLASH, 0, 0, 0);
+    b.play_sound(CUT_IN_SOUND);
 }
 
 /// Kill a controller: it frees itself at its next update without its end
@@ -142,8 +172,7 @@ fn advance(b: &mut Battle, r: ObjectRef, actions: u8) {
 /// The timer counts the ticks.
 pub fn dim_screen(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init == 0 {
-        b.fade.start();
-        b.fade.remaining = DIM_TICKS;
+        b.fade.start(FadeMode::Dim, FADE_SPEED);
         let o = b.objects.get_mut(r);
         o.timer = 0;
         o.phase_init = 4;
@@ -445,8 +474,7 @@ pub fn undim_screen(b: &mut Battle, r: ObjectRef) {
         if !out_of_the_way(b.dimming[(side ^ 1) as usize].state) {
             return common::set_progress(b, r, Progress::DESTROY);
         }
-        b.fade.start();
-        b.fade.remaining = UNDIM_TICKS;
+        b.fade.start(FadeMode::Undim, FADE_SPEED);
         b.objects.get_mut(r).phase_init = 4;
     }
     if !b.fade.active() {

@@ -287,6 +287,57 @@ pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
     }
 }
 
+/// `sub_801469C`: after a NaviCust edit (a bug code, an uninstall) the
+/// form's flags come back, as `apply_form_flags` gave them but without the
+/// lock-on markers (`off_80146B8`).
+pub(super) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
+    let form = stats(b, r).form;
+    // sub_8014760: floating (AirShoe and FloatShoe), the floating body.
+    let floating = |b: &mut Battle| {
+        set_flag1(b, r, f1::AIRSHOE | f1::FLOATSHOE);
+        let hm = body_hit_modifier(b);
+        b.reset_collision_types(r, 0x10, 2, hm);
+    };
+    match form.0 {
+        // nullsub_801471C .. nullsub_8014728, nullsub_5.
+        0..=6 | 10 => {}
+        // sub_801472A, TomahawkCross.
+        7 => clear_statuses_unless_mode1(b, r),
+        // sub_801473C, TenguCross.
+        8 => set_flag1(b, r, f1::AIRSHOE),
+        // sub_8014746, GroundCross; sub_8014754, the Gregar beast and its
+        // Crosses.
+        9 | 0x0B | 0x0D..=0x11 => set_flag1(b, r, f1::SUPERARMOR),
+        // sub_8014760: the Falzar beast, SpoutCross, TenguCross and
+        // DustCross Beasts.
+        0x0C | 0x12 | 0x14 | 0x16 => floating(b),
+        // sub_8014776, TomahawkCross Beast.
+        0x13 => {
+            clear_statuses_unless_mode1(b, r);
+            floating(b);
+        }
+        // sub_801478C, GroundCross Beast.
+        0x15 => {
+            set_flag1(b, r, f1::SUPERARMOR);
+            floating(b);
+        }
+        // sub_801479C, Gregar Beast Over.
+        0x17 => {
+            set_flag1(b, r, f1::SUPERARMOR);
+            super::set_invulnerable(b, r, 0xFFFF);
+            super::berserk::reset(b, r);
+        }
+        // sub_80147B2, Falzar Beast Over.
+        0x18 => {
+            floating(b);
+            set_flag1(b, r, f1::UNAFFECTED_BY_POISON);
+            super::set_invulnerable(b, r, 0xFFFF);
+            super::berserk::reset(b, r);
+        }
+        _ => panic!("the NaviCust refresh of form {form:?} reads past its table (sub_801469C)"),
+    }
+}
+
 /// `sub_80E1620` unless AIData+0x40 already holds a marker.
 fn spawn_lockon_marker(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).lockon_marker.is_none() {
