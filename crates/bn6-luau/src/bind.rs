@@ -255,6 +255,7 @@ impl UserData for Object {
         fields.add_field_method_get("sprite", |_, this| Ok(Sprite(this.0)));
         fields.add_field_method_get("collision", |_, this| Ok(Collision(this.0)));
         fields.add_field_method_get("state", |_, this| Ok(State { owner: this.0, action: false }));
+        fields.add_field_method_get("attack_state", |_, this| Ok(State { owner: this.0, action: true }));
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {

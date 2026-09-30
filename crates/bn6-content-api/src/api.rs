@@ -170,6 +170,8 @@ named_fields! {
         RunWhileDimmed = "run_while_dimmed", Bool, rw;
         /// The sprite doesn't animate.
         NoSpriteUpdate = "no_sprite_update", Bool, rw;
+        /// It holds a panel reservation (released when it is destroyed).
+        HoldsReservation = "holds_reservation", Bool, rw;
     }
 }
 

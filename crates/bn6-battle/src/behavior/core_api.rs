@@ -139,6 +139,7 @@ fn flag_bit(f: ObjectField) -> Option<u8> {
         ObjectField::RunWhilePaused => flags::RUN_WHILE_PAUSED,
         ObjectField::RunWhileDimmed => flags::RUN_WHILE_DIMMED,
         ObjectField::NoSpriteUpdate => flags::NO_SPRITE_UPDATE,
+        ObjectField::HoldsReservation => flags::HOLDS_RESERVATION,
         _ => return None,
     })
 }
@@ -583,7 +584,8 @@ impl CoreApi for Battle {
             | ObjectField::Visible
             | ObjectField::RunWhilePaused
             | ObjectField::RunWhileDimmed
-            | ObjectField::NoSpriteUpdate => {
+            | ObjectField::NoSpriteUpdate
+            | ObjectField::HoldsReservation => {
                 unreachable!("flag fields are read above")
             }
         }

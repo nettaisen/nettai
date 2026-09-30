@@ -268,10 +268,16 @@ declare class Object
     -- Keeps updating while the battle is dimmed.
     run_while_dimmed: boolean
     no_sprite_update: boolean
+    -- It holds a panel reservation (released when it is destroyed).
+    holds_reservation: boolean
     sprite: Sprite
     collision: Collision
     -- The kind's declared state (cast it to the kind's State type).
     state: any
+    -- Navis only: the declared state of the content action it is running
+    -- (cast it to that action's State type), as another object reaches
+    -- into the game's attack variables.
+    attack_state: any
 
     -- Navis (actors) only. The attack in progress: its phase and whether
     -- the phase's entry ran; its variant (a chip's subtype) and chip.

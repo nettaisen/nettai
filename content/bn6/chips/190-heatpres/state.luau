@@ -7,7 +7,7 @@
 type State = LinkChipState
 
 local state = {
-    schema = { timer = "u16", target_x = "u8", target_y = "u8", held = "object", speed = "i32" },
+    schema = { timer = "u16", target_x = "u8", target_y = "u8", held = "object", speed = "i32", held2 = "object" },
 }
 
 -- The Atk+ bonus goes into the damage (`ldrh av+8; ldrh av+6; add;
