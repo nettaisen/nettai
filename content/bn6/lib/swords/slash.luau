@@ -261,7 +261,7 @@ function slash.action(spec: SlashSpec): Action
         end
     end
 
-    return define.action { state = slash.STATE, args = spec, update = update }
+    return define.action { id = spec.id, state = slash.STATE, args = spec, update = update }
 end
 
 return slash

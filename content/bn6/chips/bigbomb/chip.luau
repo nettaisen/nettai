@@ -16,6 +16,8 @@ return define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 59, index = 59, sort = 37 },
     slot_in_limit = 3,
+    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
+    beast = { lockon = 15 },
     action = throw.action {
         held = bomb.held,
         held_palette = 3,

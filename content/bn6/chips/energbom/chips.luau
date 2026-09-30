@@ -32,6 +32,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 60, index = 60, sort = 149 },
         slot_in_limit = 3,
+        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
+        beast = { lockon = 5 },
         action = energy_throw(),
     },
     define.chip {
@@ -43,6 +45,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 61, index = 61, sort = 313 },
         slot_in_limit = 3,
+        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
+        beast = { lockon = 5 },
         action = energy_throw(),
     },
 }

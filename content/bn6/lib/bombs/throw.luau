@@ -98,7 +98,7 @@ function throw.action(spec: ThrowSpec): Action
         end
     end
 
-    return define.action { state = throw.STATE, args = spec, update = update }
+    return define.action { id = spec.id, state = throw.STATE, args = spec, update = update }
 end
 
 return throw

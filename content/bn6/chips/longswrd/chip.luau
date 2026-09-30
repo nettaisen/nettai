@@ -1,20 +1,17 @@
 --!strict
 -- LongSwrd: a slash on the two panels ahead.
+--
+-- Its record stays the pack's for now (LifeSrd's Program Advance recipes name it by number): this
+-- is its action, which registration by number runs (docs/design/content-model-v2.md §5.1, "As
+-- built").
 
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
 
-return define.chip {
-    id = "longswrd",
-    name = "LongSwrd",
-    codes = { "H", "L", "S", "*" },
-    element = "null", family = "sword", class = "standard",
-    rarity = 2, mb = 25, damage = 100, hit_param = 30, lockout = 0,
-    flags = { "has_damage", "standard_library", "library" },
-    library = { number = 72, index = 72, sort = 304 },
-    slot_in_limit = 3,
+return {
     action = slash.action {
+        id = "longswrd/action",
         blade = parts.blades.sword,
         hit = { region = regions.long, collision = parts.slashes_navis, hit_mod = 3 },
         effect = parts.effects.long,
