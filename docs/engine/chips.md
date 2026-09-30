@@ -1267,6 +1267,87 @@ and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes p
 `sub_802CEC8` clears a record every tick once its user's HP is 0. The trap springs in the damage intake
 (`sub_802CEF4`).
 
+### 3.7 RskyHny (action 0x39, `sub_80EDD80`)
+
+Content: chips/025-rskyhny1/chip.luau (the action), objects/honey-bee (the bee, T3#0x74).
+
+The action (`off_80EDD94`, three phases on `av[0]`; no counter window, no reactive abort):
+
+| Phase | Routine | What |
+|---|---|---|
+| 0 | `sub_80EDDA0` | Anim 0xA; the hive (attachment kind 0x28) in `ai+0x68`; USING_ACTION; **AIData+0x48 bit 0x200000** (the RskyHny trap, `NaviState` `heat_trap`); `av+0x10` = 1. Two ticks. |
+| 4 | `sub_80EDDE0` | A bee (`sub_80EDE4A`), unless params byte 1 (`av+0x0D`) is set, when it clears the navi's +0x0D (the drag step) instead: no chip has it (**unverified**). `av+0x12` = 3. |
+| 8 | `sub_80EDDFC` | Three windows of 11 ticks (`av+0x10` = 10 down to -1): entering one clears `av+0x30`; while the phase-init byte is 1, `av+0x30` ≠ 0 sends a bee (once a window). After the third: `RelatedObject1Ptr` and `ai+0x68` cleared, the trap bit cleared, `object_exitAttackState`. |
+
+The trap: `sub_802CEF4` (damage intake), while the bit is set, swallows the hit and, if it did any damage that isn't
+fire (PanelDamage2 = 0 and another element's nonzero), sets `av+0x30` = 1 and plays 0x6E. A hit reaction clears the
+bit (`sub_80178D4`...).
+
+`sub_80EDE4A`: `sub_80D32FE(panelX + front, panelY, av[2], Z = 0x10 px, r4 = av.u32[0xC], r6 = damage word + bonus)`,
+then the hive's anim = 1 (`ai+0x68`'s +0x10/+0x11 = 1, 0xFF) and sound 0x1A8.
+
+**The bee (T3#0x74, `sub_80D30D0`).** Spawned at the registers (panelY, element, 16 px) with the chip's params (Param1 =
+level 0..2, Param3 = turns taken), flags |= 0x10. Init (`sub_80D30F4`): coordinates from the panel; `sub_8011504`
+(sprite 0x10/0x31 with a shadow, anim 0, collision self 4 / target 5 / hitmod 1; without a collision slot: effect #0
+id 0x14 16 px up, and freed); visible, hit spark 4, palette = level; speeds by level (`byte_80D3164`: across 0x28000,
+0x30000, 0x38000; along 0x18000, 0x1CCCC, 0x21999); X velocity = front × speed; Timer2 = 0x280000 / speed (ticks a
+panel: 16, 13, 11). Update (`sub_80D317C`): remove, spark; battle over or off the field → region 0, destroy; hit flags
+& 0xF3800000 → the same; & 0x0C000000 (a body) → region 0 and action 4 (unless already). Not while dimmed: the action
+(0 fly, 4 sting, 8 fade); present. `object_updateSpritePaused` after.
+
+- Fly (`sub_80D31EC`): off the field → destroy with action 2. At each panel's center (phase 0): steer (`sub_80D3326`),
+  Timer = Timer2, snap to the center. Move by the velocity; panels from coordinates.
+- Steer: the destination is the nearest panel with an enemy body (`off_80D33F4`: 0x04000000 / 0x08000000 by side) in
+  the first such column from the **user's** column + front going forward (`sub_80D3374`: its own row, else the nearest
+  row, the upper on a tie), else from the user's column going back, else ((side ^ 1) × 7, 2). Flying along a column,
+  once level with or past the destination's row it turns across toward it (or reverses if it is in this column);
+  flying across, once level with or past its column it turns up or down toward it (or reverses in its row). Each turn
+  counts in Param3 (`sub_80D3496`); from the third on it flies straight. Its flip follows its X velocity.
+- Sting (`ho_80D3240`): `sub_80E7486` finds the other side's combatant whose collision is on the panel (the panel must
+  show the other side's navi: 0x200000 / 0x400000); five times, 5 ticks apart, it moves onto that navi's panel and
+  (region 1 again) hits; then destroy.
+- Fade (`sub_80D32C4`): blink for 10 ticks and destroy. **Nothing sets action 8 (unverified).**
+
+Verified: soundmod round 3 (RskyHny3 at frame 39688, its bee turning into the enemy's row and stinging) and the chip
+lab's RskyHny scenarios (every one that runs as far as the chip matches). **Unverified** (no trace or lab scenario
+reaches them): the bee without a collision slot; its end by battle over, off the field, or an attack's hit
+(0xF3800000); a sting with no navi on the panel; steering while flying along a column (`sub_80D3404`) and reversing
+in a row; the destination behind the user or off the edge (`sub_80D3342`'s fallbacks) and among several rows
+(`sub_80D3374`); the flip in `sub_80D3474`; the fade; the phase-4 branch on params byte 1.
+
+### 3.8 The dragons (action 0x51, `sub_80EF4B4`)
+
+Content: chips/02e-heatdrgn/chip.luau (the action), objects/dragon-head (T3#0xC9), objects/dragon-body (T3#0xC8),
+lib/dragon.luau.
+
+The action: phase 0 (`sub_80EF4D0`): anim 0xC, counter window, USING_ACTION, `av+0x10` = 15; at 13, the dragon; at -1,
+`av+0x10` = 5 and phase 4 (`sub_80ECA0C`: 6 ticks, then `object_exitAttackState`). The column (`sub_80ED040`): the
+first column ahead with an enemy body (0x04010000 / 0x08010000), else the one right ahead. `sub_80DE660(x, 0, element,
+0, r4 = subtype, damage word + bonus)`: panel (x, **0**), the row above the field.
+
+**The head (T3#0xC9, `sub_80DE404`).** Init (`sub_80DE430`): sprite 4/0x10, anim 2, palette 3 × kind; Z16 -= 0x24;
+collision self 4 / target 5 / hitmod 3, region 1, hit spark by kind (1, 3, 2, 4); `sub_80DE67E` (velocity 4 px/tick
+down and forward, 10 ticks a panel, dip step 0x80 / 10 = 12); four body segments (`sub_80DE7C8`, delays 3, 6, 9, 12);
+a splash (effect #0 id 2 at Z 0, flipped); sound 0xF7. Update (`sub_80DE4EC`): remove, spark; battle over → destroy;
+hit flags & 0xFF800000 → region 0; not while dimmed the action; present; `object_highlightCurrentCollisionPanels`.
+
+- Column (action 0): Y += velocity; on each new panel (`sub_80DE730`) the panel it left gets the kind's type
+  (`sub_80DE768`: none, cracked, ice, grass, on solid field panels) and region 1 again. Going down, at row 3: action 4
+  with the dip's base Y. Going up, at row 0: 4 more ticks (`sub_80DE7A0`), action 8.
+- Swim (action 4): 10 ticks; the anim runs 2..6 by fifths (`sub_810FA4C`); X += velocity; Y = base + sine[angle] × 12
+  × 256 (`math_sinTable`, read unsigned, angle += 12). At the tenth tick: turn up (Y velocity negated), X snapped to
+  the panel.
+- Leave (action 8): climb the 4 ticks, then a splash, region 0, hidden, destroy.
+
+**The body (T3#0xC8, `sub_80DE13C`).** Spawned at the registers (the head's row, i, the delay) with Param1 = kind;
+its Z keeps the delay as its fraction. Hidden (anim 7) until its delay is up, then a splash and the head's path
+(`sub_80DE21A`, `sub_80DE266`, `sub_80DE2B0`) without collision, panel types or animation changes.
+
+Verified by the chip lab's dragon scenarios (every one that runs as far as the chip matches). **Unverified**: no
+enemy body ahead (the column right ahead, `sub_80ED040`'s fallback); the head without a collision slot; either part's
+end when the battle is over; a blocked hit (0xFF800000) clearing the head's region; `sub_810FA4C`'s cap at 4;
+`sub_80DE768`'s off-field and not-solid exits.
+
 ---
 
 ## 4. Worked example: GunDelS3 (chip 0x11) in the machgun trace

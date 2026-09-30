@@ -45,6 +45,10 @@ pub const BOMB: ChipId = 0x0A;
 pub const SEED: ChipId = 0x0B;
 pub const FLASH: ChipId = 0x0C;
 pub const BUG: ChipId = 0x0D;
+/// A chip that sends bees (action 0x39, RskyHny's).
+pub const BEES: ChipId = 0x0E;
+/// A chip that sends an elec dragon (action 0x51, subtype 1).
+pub const DRAGON: ChipId = 0x0F;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -166,6 +170,12 @@ pub fn scripts() -> Scripts {
                 ("objects/bug-bomb/bug_bomb", "objects/bug-bomb/bug_bomb"),
                 ("objects/smoke-puff/smoke_puff", "objects/smoke-puff/smoke_puff"),
                 ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
+                ("chips/00e-bees/chip", "chips/025-rskyhny1/chip"),
+                ("objects/honey-bee/honey_bee", "objects/honey-bee/honey_bee"),
+                ("chips/00f-dragon/chip", "chips/02e-heatdrgn/chip"),
+                ("lib/dragon", "lib/dragon"),
+                ("objects/dragon-head/dragon_head", "objects/dragon-head/dragon_head"),
+                ("objects/dragon-body/dragon_body", "objects/dragon-body/dragon_body"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -225,6 +235,9 @@ fn kinds() -> Vec<ObjectKind> {
         kind("flash-bomb", Pool::Attack, 0xA4, "objects/flash-bomb/flash_bomb"),
         kind("bug-bomb", Pool::Attack, 0xA5, "objects/bug-bomb/bug_bomb"),
         kind("smoke-puff", Pool::Effect, 0x14, "objects/smoke-puff/smoke_puff"),
+        kind("honey-bee", Pool::Attack, 0x74, "objects/honey-bee/honey_bee"),
+        kind("dragon-head", Pool::Attack, 0xC9, "objects/dragon-head/dragon_head"),
+        kind("dragon-body", Pool::Attack, 0xC8, "objects/dragon-body/dragon_body"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -331,6 +344,23 @@ fn chips() -> Vec<ChipData> {
         thrown(SEED, "Seed", 12, [0, 0, 0, 0], 10),
         thrown(FLASH, "Flash", 14, [1, 0, 0, 0], 40),
         thrown(BUG, "Bug", 7, [0, 0, 0, 0], 0),
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            element: Element::Wood,
+            hit_param: 30,
+            params: [1, 0, 0, 0],
+            damage: 20,
+            script: Some("chips/00e-bees/chip".into()),
+            ..chip(BEES, "Bees", 0x39, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            element: Element::Elec,
+            hit_param: 30,
+            damage: 100,
+            script: Some("chips/00f-dragon/chip".into()),
+            ..chip(DRAGON, "Dragon", 0x51, 1)
+        },
     ]
 }
 
@@ -484,8 +514,6 @@ fn rules() -> Rules {
         weapons: vec![WeaponRoutine { charge_ticks: [120, 100, 80, 60, 50] }; 0x30],
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
-        // A made-up sine: a triangle wave, 0x100 at a quarter turn.
-        sine: (0..384).map(|i: i32| [i % 128, 128 - i % 128][(i / 64 % 2) as usize] * 4 * if i / 128 % 2 == 0 { 1 } else { -1 }).map(|v| v.clamp(-256, 256) as i16).collect(),
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
             SlideVector { dx: -1, dy: 0, tiles: 6 },
@@ -507,6 +535,14 @@ fn rules() -> Rules {
             SlideVector::NONE,
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
+        // A triangle wave: 256 at a quarter turn, -256 at three quarters,
+        // over a turn and a half.
+        sine: (0..384)
+            .map(|i: i16| {
+                let t = i % 256;
+                if t < 64 { t * 4 } else if t < 192 { 512 - t * 4 } else { t * 4 - 1024 }
+            })
+            .collect(),
         lockon: Lockon {
             searches: vec![LockonSearch { mode: 1, offsets: vec![PanelOffset { dx: -1, dy: 0 }], prefers_middle_row: false }],
             column_shifts: vec![-1, -2],
@@ -583,8 +619,16 @@ fn objects() -> ObjectData {
     // The buster's muzzle flash and arm.
     let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        // What the thrown chips hold: the bomb, a seed, the flash bomb.
-        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03), plain(0x24, 0x02), plain(0x2E, 0x02)]).collect(),
+        // Attachments are numbered without gaps: fillers up to the bee
+        // chip's hive (0x28), then what the thrown chips hold (a seed at
+        // 0x24, the flash bomb at 0x2E).
+        attachments: (0..5)
+            .map(gun)
+            .chain([plain(5, 0x06), plain(6, 0x03)])
+            .chain((7..0x28).map(|id| if id == 0x24 { plain(id, 0x02) } else { plain(id, 0x06) }))
+            .chain([plain(0x28, 0x5E)])
+            .chain((0x29..0x2F).map(|id| plain(id, 0x02)))
+            .collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
@@ -649,6 +693,10 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x14, index: 0x04 }, vec![vec![f(2, 0), f(3, LAST)]]);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
+    // The hive (closed, open), a bee, and a dragon's animations.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x5E }, vec![vec![f(30, LAST | LOOP)], vec![f(4, 0), f(30, LAST)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x04, index: 0x10 }, vec![vec![f(6, LAST | LOOP)]; 8]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);

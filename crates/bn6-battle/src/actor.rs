@@ -113,7 +113,9 @@ pub mod status {
     /// Gone from the field while its navi chip's navi acts (`sub_80E1352`
     /// sets it, `sub_80E13DC` clears it).
     pub const VANISHED: u32 = 0x10_0000;
-    /// Anti-damage trap for heat attacks.
+    /// RskyHny's trap (action 0x39): a hit with no fire damage is
+    /// swallowed and, if it did other damage, sends another bee
+    /// (`sub_802CEF4`).
     pub const HEAT_TRAP: u32 = 0x20_0000;
 }
 

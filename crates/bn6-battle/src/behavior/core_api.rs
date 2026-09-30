@@ -506,6 +506,11 @@ impl CoreApi for Battle {
             ObjectField::Vel => Value::Vec3(ob.vel),
             ObjectField::Related1 => ob.related[0].into(),
             ObjectField::Related2 => ob.related[1].into(),
+            ObjectField::DragStep => i(match ob.drag_step {
+                crate::object::DragStep::Start => 0,
+                crate::object::DragStep::Slide => 1,
+                crate::object::DragStep::Recover => 2,
+            }),
             ObjectField::Active
             | ObjectField::Visible
             | ObjectField::RunWhilePaused
@@ -549,6 +554,10 @@ impl CoreApi for Battle {
             (ObjectField::Vel, FieldValue::Vec3(p)) => ob.vel = p,
             (ObjectField::Related1, FieldValue::Object(r)) => ob.related[0] = r,
             (ObjectField::Related2, FieldValue::Object(r)) => ob.related[1] = r,
+            (ObjectField::DragStep, FieldValue::Enum(i)) => {
+                use crate::object::DragStep;
+                ob.drag_step = [DragStep::Start, DragStep::Slide, DragStep::Recover][i as usize]
+            }
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1005,6 +1014,22 @@ impl CoreApi for Battle {
 
     fn hit_spark(&mut self, o: ObjectRef) {
         kinds::spark::spawn_collision_effect(self, o);
+    }
+
+    fn highlight_collision_panels(&mut self, o: ObjectRef) {
+        let ob = self.objects.get(o);
+        let c = ob.collision.expect("highlighting the panels of an object without collision data");
+        let dir = common::facing(ob.alliance, ob.flip);
+        let s = self.collision.get(c);
+        let (x, y) = (s.panel.x as i32, s.panel.y as i32);
+        let panels: Vec<(i32, i32)> =
+            self.content.region(s.region).iter().map(|p| (x + p.dx as i32 * dir, y + p.dy as i32)).collect();
+        // `object_highlightPanel` skips panels off the field.
+        for (px, py) in panels {
+            if (1..=6).contains(&px) && (1..=3).contains(&py) {
+                common::highlight_panel(self, px as u8, py as u8);
+            }
+        }
     }
 
     // ---- Services ------------------------------------------------------------

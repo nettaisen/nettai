@@ -74,6 +74,10 @@ pub const PANEL_TYPES: [&str; 13] = [
 /// Actor types by name (an actor record's type).
 pub const ACTOR_TYPES: [&str; 3] = ["virus", "navi", "player"];
 
+/// A navi's drag reaction steps by name (BattleObject+0x0D: the game's 0,
+/// 4, 8).
+pub const DRAG_STEPS: [&str; 3] = ["start", "slide", "recover"];
+
 fn enum_type(names: &[&str]) -> FieldType {
     FieldType::Enum(names.iter().map(|s| s.to_string()).collect())
 }
@@ -165,6 +169,8 @@ named_fields! {
         RunWhileDimmed = "run_while_dimmed", Bool, rw;
         /// The sprite doesn't animate.
         NoSpriteUpdate = "no_sprite_update", Bool, rw;
+        /// A navi's drag reaction step (BattleObject+0x0D).
+        DragStep = "drag_step", enum_type(&DRAG_STEPS), rw;
     }
 }
 
@@ -890,6 +896,9 @@ pub trait CoreApi {
     /// modes 0 and 2. -1 when its HP ran out, 1 when hit in another mode,
     /// else 0.
     fn take_damage(&mut self, o: ObjectRef, mode: u8) -> i32;
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels of
+    /// the registration's region, facing the object's way (drawn only).
+    fn highlight_collision_panels(&mut self, o: ObjectRef);
 
     // ---- Services ------------------------------------------------------------
 
