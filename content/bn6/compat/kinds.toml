@@ -25,6 +25,9 @@ attachment = { pool = "actor", index = 0x05 }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
 "protoman/navi" = { pool = "actor", index = 0x3C }
 "deltaray/ray" = { pool = "actor", index = 0x3D }
+rush = { pool = "actor", index = 0x4B }
+beat = { pool = "actor", index = 0x4C }
+tango = { pool = "actor", index = 0x4D }
 "bass/navi" = { pool = "actor", index = 0x4F }
 "bassanly/navi" = { pool = "actor", index = 0x50 }
 "engine/idle-overlay" = { pool = "actor", index = 0x55 }
@@ -109,6 +112,7 @@ thunder-column = { pool = "attack", index = 0x8B }
 "eraseman/beam" = { pool = "attack", index = 0xC3 }
 "chargecross-beast/wave" = { pool = "attack", index = 0xC4 }
 "dustcross-beast/junk-shot" = { pool = "attack", index = 0xC5 }
+"tango/heal" = { pool = "attack", index = 0xC7 }
 dragon-body = { pool = "attack", index = 0xC8 }
 dragon-head = { pool = "attack", index = 0xC9 }
 "flmhook/fire" = { pool = "attack", index = 0xCA }
@@ -147,10 +151,13 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
+"engine/hit-marker" = { pool = "effect", index = 0x6B }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
+"support/controller" = { pool = "effect", index = 0x79 }
 "colforce/force" = { pool = "effect", index = 0x80 }
 navi-boost = { pool = "effect", index = 0x84, scratch_position = true }
 absorbed-obstacle = { pool = "effect", index = 0x87 }
+"engine/ice-visual" = { pool = "effect", index = 0x89 }
 "flmhook/hook" = { pool = "effect", index = 0x8C }
-"engine/beast-over-burst" = { pool = "effect", index = 0x90 }
+"engine/beast-over-burst" = { pool = "effect", index = 0x90, scratch_position = true }

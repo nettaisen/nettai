@@ -2,7 +2,7 @@
 //! for the navis waiting to appear. Its progress bits gate the intro.
 //! See docs/engine/objects-and-player.md §A.4.
 
-use crate::battle::Battle;
+use crate::battle::{Battle, FadeMode};
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
 #[derive(Clone, Debug, Default, Hash)]
@@ -26,8 +26,17 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).phase {
         0 => {
             if b.objects.get(r).phase_init == 0 {
+                // sub_80E0684: the first battle of a set clears from white,
+                // later ones from black.
                 b.round.intro_bits |= 0x10;
-                b.fade.start();
+                let s = &b.setup.settings;
+                let later = if s.effects & crate::setup::effects::SET != 0 {
+                    b.round.round > 1
+                } else {
+                    s.battle_number >= 2
+                };
+                let mode = if later { FadeMode::IntroFromBlack } else { FadeMode::IntroFromWhite };
+                b.fade.start(mode, 0x10);
                 b.objects.get_mut(r).phase_init = 4;
             }
             if !b.fade.active() {
