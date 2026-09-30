@@ -107,7 +107,7 @@ local function fall(me: Object)
         if not field.solid(me.panel_x, me.panel_y) then
             me:set_action(2)
         else
-            -- (The landing shakes the camera, which draws the local RNG.)
+            battle.shake_camera(1, 0x14)
             me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
             me.collision.region = 1
             battle.play_sound(LAND_SOUND)

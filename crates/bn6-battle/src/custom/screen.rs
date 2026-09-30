@@ -5,10 +5,11 @@
 //! both players' screens run in the simulation. See
 //! docs/engine/custom-screen.md §2-§4.
 
-use super::folder::{BattleFolder, FolderChip};
+use super::folder::{BattleFolder, FOLDER_SIZE, FolderChip, shuffle};
 use super::builder::{ClassCounts, FormedAdvance};
 use super::library::Library;
 use super::{GameVersion, Unlocks};
+use crate::console::Console;
 use crate::content::{BannerId, ChipClass, ChipCode, ChipId, CustomScreenLayout, TemplateSlot};
 use crate::hud::{Banner, BannerStatus};
 use crate::input::{Joypad, keys};
@@ -135,6 +136,11 @@ pub enum Phase {
     /// DustCross scraps the selected chips (`sub_8027406`).
     /// `done`: the last scrap is over; the next tick returns to choosing.
     Scrapping { tick: u16, done: bool, scrapped: [Option<FolderChip>; MAX_SELECTIONS], count: u8 },
+    /// ChpShufl re-deals (`sub_80271F8`, state 0x28): `deal` is the new
+    /// order, drawn on the first tick; every 4 ticks the chips are shown
+    /// shuffled again, and on the 32nd the deal lands. `started`: the first
+    /// tick has run; `elapsed`: ticks since (`+0x40`).
+    Redealing { started: bool, elapsed: u8, deal: Deal },
     /// OK was pressed; the window slides out (`sub_8026BF4`, 10 ticks).
     Closing { tick: u8 },
     /// The Program Advance animation (`sub_8026DB0`).
@@ -142,6 +148,14 @@ pub enum Phase {
     /// The result is on its way to the other player (`sub_8026DC4`);
     /// `started`: its first tick, which sends it, has run.
     Sending { started: bool },
+}
+
+/// The chips a re-deal shuffles, in the order it walks the folder (the
+/// buffer at `word_2036660`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Deal {
+    pub chips: [Option<FolderChip>; FOLDER_SIZE],
+    pub count: u8,
 }
 
 /// The Program Advance animation (`sub_802B734`, its state at
@@ -426,10 +440,11 @@ impl Screen {
         !matches!(self.phase, Phase::Hidden { .. } | Phase::Closing { .. } | Phase::ProgramAdvance { .. } | Phase::Sending { .. })
     }
 
-    /// One tick of the screen with this joypad, then the console's HUD
-    /// banner.
-    pub fn tick(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder) -> Option<Request> {
-        let request = self.step(joy, view, folder);
+    /// One tick of the screen with this joypad, on the player's console
+    /// (its RNG, for ChpShufl's re-deal, and its camera), then the
+    /// console's HUD banner.
+    pub fn tick(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console) -> Option<Request> {
+        let request = self.step(joy, view, folder, console);
         self.hud.tick();
         if let Phase::ProgramAdvance { anim } = &mut self.phase {
             anim.fade = anim.fade.saturating_sub(1);
@@ -437,7 +452,7 @@ impl Screen {
         request
     }
 
-    fn step(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder) -> Option<Request> {
+    fn step(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console) -> Option<Request> {
         match self.phase {
             Phase::Opening { tick } => {
                 let tick = tick + 1;
@@ -503,7 +518,11 @@ impl Screen {
             Phase::BeastOutChosen { tick } => {
                 let tick = tick + 1;
                 match tick {
+                    // sub_8027738
                     1 => self.beast_out = true,
+                    // sub_802774C: the screen fades (0x64) and this
+                    // console's camera shakes, 40 ticks at magnitude 1.
+                    2 => console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1),
                     53 => {
                         // Beast Out goes first in the selection, so B takes
                         // it back last.
@@ -525,6 +544,11 @@ impl Screen {
                 // flag stay as they are: the hand's chip is the Beast Out),
                 // and the fade back in (0x60) ends it.
                 let tick = tick + 1;
+                if tick == 17 {
+                    // sub_8027624: this console's camera shakes as for
+                    // Beast Out.
+                    console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
+                }
                 if tick == 68 {
                     let n = self.selected as usize;
                     self.selection[..n].rotate_right(1);
@@ -535,6 +559,10 @@ impl Screen {
             }
             Phase::Scrapping { .. } => {
                 self.scrap(view, folder);
+                None
+            }
+            Phase::Redealing { .. } => {
+                self.redeal(view, folder, console);
                 None
             }
             Phase::Closing { tick } => {
@@ -734,9 +762,11 @@ impl Screen {
                 }
             }
             SlotKind::Redeal { right_half } => {
+                // sub_8028DD6
                 let button = if right_half { 8 } else { cursor };
                 if self.slots[button as usize].state == SlotState::Selectable {
-                    panic!("ChpShufl's re-deal (custom screen state 0x28) is not implemented yet");
+                    let deal = Deal { chips: [None; FOLDER_SIZE], count: 0 };
+                    self.phase = Phase::Redealing { started: false, elapsed: 0, deal };
                 }
             }
             SlotKind::Empty | SlotKind::Hidden => {}
@@ -848,6 +878,94 @@ impl Screen {
         self.phase = Phase::Scrapping { tick, done: false, scrapped, count };
     }
 
+    /// ChpShufl's re-deal (`sub_80271F8`, state 0x28), drawing from the
+    /// console's RNG. The first tick (`sub_802721C`) shuffles the chips it
+    /// deals again into a new order (`sub_8029788`) and marks the button
+    /// in use. Then every 4 ticks (`sub_802723A`) the chips are shown
+    /// shuffled once more (`sub_8029688`: shuffled in the folder itself),
+    /// until on the 32nd the new order lands (`sub_802983C`), the button
+    /// has a use fewer, and the grid takes keys again. The availability is
+    /// redone each time.
+    fn redeal(&mut self, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console) {
+        let Phase::Redealing { started, elapsed, mut deal } = self.phase else { unreachable!() };
+        let places = self.redeal_places(console.tag_pair);
+        if !started {
+            let n = places.len();
+            for (d, &i) in deal.chips.iter_mut().zip(&places) {
+                *d = folder.chips[i];
+            }
+            deal.count = n as u8;
+            // The table that could shuffle the dealt chips apart
+            // (`byte_80298C8`) is all zeros: one shuffle of them all.
+            if n != 0 {
+                shuffle(&mut deal.chips[..n], n, &mut console.rng);
+            }
+            self.slots[8].state = SlotState::Selected;
+            self.update_availability(view, folder);
+            self.phase = Phase::Redealing { started: true, elapsed: 0, deal };
+            return;
+        }
+        let elapsed = elapsed + 1;
+        self.phase = Phase::Redealing { started, elapsed, deal };
+        if elapsed % REDEAL_STEP != 0 {
+            return;
+        }
+        if elapsed / REDEAL_STEP >= REDEAL_STEPS {
+            for (&i, &c) in places.iter().zip(&deal.chips[..deal.count as usize]) {
+                folder.chips[i] = c;
+            }
+            let button = &mut self.slots[8];
+            button.uses_left = button.uses_left.wrapping_sub(1);
+            button.state = if button.uses_left != 0 { SlotState::Selectable } else { SlotState::Unavailable };
+            self.phase = Phase::Choosing;
+        } else {
+            let mut shown: Vec<Option<FolderChip>> = places.iter().map(|&i| folder.chips[i]).collect();
+            let n = shown.len();
+            if n != 0 {
+                shuffle(&mut shown, n, &mut console.rng);
+            }
+            for (&i, c) in places.iter().zip(shown) {
+                folder.chips[i] = c;
+            }
+        }
+        self.update_availability(view, folder);
+    }
+
+    /// The folder entries a re-deal shuffles, as its routines walk them
+    /// (`sub_8029788`, `sub_8029688`, `sub_802983C`): over the first
+    /// hand-size slots, each chip slot is the next entry, taken unless it
+    /// is picked or the Regular chip; then as many more entries as the
+    /// folder had chips beyond the hand size, skipping the tag pair (two
+    /// entries at `tag_pair`) when the walk reaches it. (With NumbrOpn's
+    /// ten chips the re-deal button covers slots 8 and 9, so the walk
+    /// counts eight dealt entries and leaves the folder's last two out.
+    /// Where the tag pair straddles the end the original's walk runs on
+    /// past the folder; this one stops at it.)
+    fn redeal_places(&self, tag_pair: Option<u8>) -> Vec<usize> {
+        let mut places = Vec::new();
+        let mut at = 0usize;
+        for slot in &self.slots[..(self.hand_size as usize).min(SLOTS)] {
+            if let SlotKind::Chip { regular, .. } = slot.kind {
+                if slot.state != SlotState::Selected && !regular {
+                    places.push(at);
+                }
+                at += 1;
+            }
+        }
+        let mut left = self.chips_left as i32 - self.hand_size as i32;
+        while left > 0 && at < FOLDER_SIZE {
+            if tag_pair.is_some_and(|t| t != 0 && t as usize == at) {
+                at += 2;
+                left -= 2;
+            } else {
+                places.push(at);
+                at += 1;
+                left -= 1;
+            }
+        }
+        places
+    }
+
     /// `sub_8028E32`: grey out what doesn't go with the selection.
     pub(crate) fn update_availability(&mut self, view: &PlayerView, folder: &BattleFolder) {
         // sub_8028E4C: what the picked chips have in common.
@@ -934,6 +1052,13 @@ impl<T: PartialEq + Copy> Common<T> {
         }
     }
 }
+
+/// The re-deal's steps: every 4 ticks, the 8th lands.
+const REDEAL_STEP: u8 = 4;
+const REDEAL_STEPS: u8 = 8;
+/// The camera shake of Beast Out on the custom screen (`sub_80302B6(1,
+/// 0x28)`): magnitude 1, 40 ticks.
+const BEAST_OUT_SHAKE: (u16, u16) = (1, 0x28);
 
 /// A chip description's chatbox (`chatbox_onUpdate`): it takes a key from
 /// the 6th tick after R; the screen sees it closed 5 ticks after the key

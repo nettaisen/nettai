@@ -50,6 +50,7 @@ fn folder(chips: &[(ChipId, u8)]) -> BattleFolder {
 /// A player's side with this folder, and what their screen reads.
 struct Player {
     side: Side,
+    console: Console,
     lib: TestLibrary,
     stats: NaviStats,
     tick: u32,
@@ -58,7 +59,7 @@ struct Player {
 impl Player {
     fn new(chips: &[(ChipId, u8)], version: GameVersion) -> Player {
         let setup = PlayerSetup { folder: Some(folder(chips)), unlocks: Unlocks::everything(version), ..PlayerSetup::default() };
-        Player { side: Side::new(&setup), lib: library(), stats: stats(), tick: 0 }
+        Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), tick: 0 }
     }
 
     fn context(&self) -> Context<'_> {
@@ -77,8 +78,10 @@ impl Player {
     fn open(&mut self) {
         let ctx = self.context();
         let mut side = self.side.clone();
-        side.open(&ctx);
+        let mut console = self.console;
+        side.open(&ctx, &mut console);
         self.side = side;
+        self.console = console;
     }
 
     /// One tick with these buttons held.
@@ -87,8 +90,10 @@ impl Player {
         self.side.joypad.update(held);
         let ctx = self.context();
         let mut side = self.side.clone();
-        let r = side.tick(&ctx, |id| self.lib.chip(id).damage);
+        let mut console = self.console;
+        let r = side.tick(&ctx, &mut console, |id| self.lib.chip(id).damage);
         self.side = side;
+        self.console = console;
         r
     }
 
@@ -337,7 +342,7 @@ fn hand_size() {
         p.stats.number_open = number_open;
         let ctx = Context { turn, ..p.context() };
         let mut side = p.side.clone();
-        side.open(&ctx);
+        side.open(&ctx, &mut p.console.clone());
         side.screen.unwrap().hand_size
     };
     assert_eq!(size(5, 0, 1, false), 5);
@@ -363,4 +368,80 @@ fn select_hides_the_window_until_a_key() {
     assert_eq!(p.phase(), Phase::Choosing);
     p.step(keys::RIGHT);
     assert_eq!(p.screen().cursor, 0);
+}
+
+#[test]
+fn chip_shuffle_redeals_what_is_not_picked() {
+    // Thirty different chips (ids and codes), the first one the pick.
+    let chips: Vec<(ChipId, u8)> = (0..30).map(|i| ([SHOT, WAVE][i % 2], (i / 2) as u8 % 3)).collect();
+    let mut p = Player::new(&chips, GameVersion::Falzar);
+    p.stats.chip_shuffle = true;
+    p.console = Console::new(&ConsoleSetup { rng: 0x1234_5678, ..ConsoleSetup::default() });
+    p.open();
+    assert!(matches!(p.screen().slots[8].kind, SlotKind::Redeal { right_half: false }));
+    p.wait(10);
+    p.step(0);
+    p.press(keys::A);
+    let before = p.side.folder.unwrap();
+    // Down from the fourth chip to the re-deal button.
+    p.press(keys::RIGHT);
+    p.press(keys::RIGHT);
+    p.press(keys::RIGHT);
+    p.press(keys::DOWN);
+    assert_eq!(p.screen().cursor, 8);
+    let rng = p.console.rng;
+    let a = p.tick + 1;
+    p.step(keys::A);
+    assert!(matches!(p.phase(), Phase::Redealing { .. }));
+    while p.phase() != Phase::Choosing && p.tick < 1000 {
+        p.step(0);
+    }
+    // The first tick, then 32.
+    assert_eq!(p.tick, a + 33);
+    // The pick stays; the other 29 are shuffled once from the RNG as it
+    // was (29 swaps, two draws each), which the 7 shows in between (the
+    // same again each) don't change.
+    let after = p.side.folder.unwrap();
+    assert_eq!(after.chips[0], before.chips[0]);
+    let mut expected = before.chips[1..].to_vec();
+    let mut r = rng;
+    super::folder::shuffle(&mut expected, 29, &mut r);
+    assert_eq!(after.chips[1..], expected[..]);
+    for _ in 0..7 {
+        super::folder::shuffle(&mut expected, 29, &mut r);
+    }
+    assert_eq!(p.console.rng, r);
+    // The button is used up; the pick is still the pick.
+    assert_eq!(p.screen().slots[8].state, SlotState::Unavailable);
+    assert_eq!(p.screen().selection(), &[0]);
+}
+
+#[test]
+fn chip_shuffle_leaves_the_regular_chip_and_the_tag_pair() {
+    let chips: Vec<(ChipId, u8)> = (0..30).map(|i| ([SHOT, WAVE][i % 2], (i / 2) as u8 % 3)).collect();
+    let mut p = Player::new(&chips, GameVersion::Falzar);
+    p.stats.chip_shuffle = true;
+    let mut f = folder(&chips);
+    f.regular_pending = true;
+    p.side.folder = Some(f);
+    p.console = Console::new(&ConsoleSetup { rng: 0x0BAD_F00D, tag_pair: Some(12), ..ConsoleSetup::default() });
+    p.open();
+    assert!(matches!(p.screen().slots[0].kind, SlotKind::Chip { regular: true, .. }));
+    p.wait(10);
+    p.step(0);
+    let before = p.side.folder.unwrap();
+    p.press(keys::RIGHT);
+    p.press(keys::RIGHT);
+    p.press(keys::RIGHT);
+    p.press(keys::DOWN);
+    p.step(keys::A);
+    while p.phase() != Phase::Choosing && p.tick < 1000 {
+        p.step(0);
+    }
+    let after = p.side.folder.unwrap();
+    // The Regular chip (entry 0) and the tag pair (entries 12 and 13)
+    // stay where they are.
+    assert_eq!(after.chips[0], before.chips[0]);
+    assert_eq!(after.chips[12..14], before.chips[12..14]);
+    assert_ne!(after.chips, before.chips);
 }

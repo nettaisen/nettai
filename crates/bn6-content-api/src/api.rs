@@ -924,6 +924,10 @@ pub trait CoreApi {
     fn play_sound(&mut self, sound: u16);
     /// Report a sound only `side`'s player hears.
     fn play_sound_for(&mut self, side: u8, sound: u16);
+    /// `camera_initShakeEffect_80302a8`: both consoles' cameras shake for
+    /// `ticks` ticks at `magnitude` (0-3). Each shaking tick draws from
+    /// the consoles' own RNGs, which ChpShufl's re-deal reads.
+    fn shake_camera(&mut self, magnitude: u16, ticks: u16);
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value;
     /// Change one of a side's navi stats (the writable ones).
     fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()>;
