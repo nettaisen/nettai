@@ -116,6 +116,13 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.pos.z = lift.wrapping_add(extra);
     // sub_8010DD0: the navi's own init hook (some wear an overlay).
     crate::kinds::player::form::navi_init_hook(b, r, name_id);
+    // SpoutMan's image keeps its idle overlay at its own height (the
+    // hook's result, ExtraVars[0] = 1).
+    if navi == Navi(6)
+        && let Some(o) = b.objects.get(r).related[1]
+    {
+        crate::kinds::player::form::pin_overlay(b, o);
+    }
     let o = b.objects.get_mut(r);
     o.state = state::UPDATE;
     o.action = 0;

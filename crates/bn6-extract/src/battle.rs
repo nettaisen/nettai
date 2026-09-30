@@ -260,10 +260,32 @@ fn navis(rom: &Rom) -> Vec<NaviData> {
                 lose_banner: BannerId(rom.u8(0x0800_A8C8 + n)),
                 merge_height: (merge >> 16) as i16,
                 own_chip,
+                chip_bonus: navi_chip_bonus(rom, n as u8),
                 name_record: Some(name_record(rom, FIRST_NAME + n as u16)),
             }
         })
         .collect()
+}
+
+/// A link navi's chip bonus (`sub_800F09E`): its family (and whether
+/// dimming chips of it count: only EraseMan's), and its row of
+/// `byte_8021300` (15 bytes a row, by level).
+fn navi_chip_bonus(rom: &Rom, navi: u8) -> Option<NaviChipBonus> {
+    let (row, family, dimming_chips) = match navi {
+        1 => (0, 0, false),
+        2 => (1, 2, false),
+        3 => (2, 5, false),
+        4 => (3, 6, true),
+        8 => (4, 8, false),
+        9 => (5, 9, false),
+        10 => (6, 9, false),
+        _ => return None,
+    };
+    Some(NaviChipBonus {
+        family: ChipFamily::from_number(family).expect("a family"),
+        dimming_chips,
+        by_level: rom.bytes(0x0802_1300 + 15 * row, 15).to_vec(),
+    })
 }
 
 /// MegaMan's forms: sprites (`byte_800FCBC`, category 0), elements and

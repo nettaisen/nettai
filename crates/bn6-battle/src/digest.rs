@@ -165,6 +165,8 @@ impl Hash for Battle {
             custom_reversion,
             beast_out_used,
             crossed,
+            bug_frags,
+            navi_levels,
             objects,
             actors,
             collision,
@@ -201,6 +203,8 @@ impl Hash for Battle {
         custom_reversion.hash(h);
         beast_out_used.hash(h);
         crossed.hash(h);
+        bug_frags.hash(h);
+        navi_levels.hash(h);
         objects.hash(h);
         actors.hash(h);
         collision.hash(h);
