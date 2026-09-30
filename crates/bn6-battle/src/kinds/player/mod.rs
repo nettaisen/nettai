@@ -562,10 +562,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
         let form = stats(b, r).form;
         b.objects.get_mut(r).name_id = if form == Form::NONE { 0x1A0 } else { 0x1AB + form.0 as u16 };
     }
+    // sub_8011268: the starting form's overlay (none in base form).
     let form = stats(b, r).form;
-    if form != Form::NONE {
-        panic!("form {form:?} set-up (sub_8011268) is not implemented yet");
-    }
+    form::put_on_overlay(b, r, form);
     reset_status(b, r);
     style_hook(b, r);
     // sub_801DB84, sub_8018856, sub_801DC06, sub_801DC36: the HP number
@@ -688,8 +687,12 @@ fn reset_navicust_state(b: &mut Battle, r: ObjectRef) {
     a.back_special = w.back_special;
     clear_flag1(b, r, f1::UNAFFECTED_BY_POISON);
     clear_invulnerable(b, r);
-    if ai(b, r).reset_linked_object.is_some() {
-        panic!("ending the status reset's linked object (sub_80E5410) is not implemented yet");
+    // sub_80E5410: the linked object's state word becomes 8 (it frees
+    // itself at its next update) and its first extra variable 0, and the
+    // link goes. (No kind is known to link itself here, so the extra
+    // variable, which would be that kind's own state, has no field.)
+    if let Some(o) = ai_mut(b, r).reset_linked_object.take() {
+        crate::kinds::common::set_progress(b, o, crate::kinds::common::Progress::DESTROY);
     }
     apply_navicust_flags(b, r);
 }
