@@ -1106,7 +1106,9 @@ name is a load error naming the module. The resolved value is a handle into the 
   table lists every asset the ROM has, so a placeholder is an entry too. Content may not use a placeholder (the
   checker warns); naming one is part of using it.
 - **The extractor** reads compat/assets.toml and writes `graphics/sprites/<name>/`, `sound/songs/<name>.mid`,
-  `graphics/hud/chip-icons/<chip key>.png` and so on. An asset the table doesn't list (one a newer table left out)
+  `graphics/hud/chip-icons/<chip key>.png` and so on, and the asset root's name index, `assets.toml` (every name
+  the table gives, and the pack's other assets under their placeholders, each with the engine's identity for it),
+  from which the loader fills `Content::assets` (done with step 6's first part). An asset the table doesn't list (one a newer table left out)
   is written under its placeholder, so nothing the ROM has is lost.
 - **The checker** validates asset names without a ROM: compat/assets.toml is the list of names the BN6 content can
   use. A modded pack without compat lists its own assets' folders.
@@ -1731,7 +1733,8 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    `bn6_content::battle` goes; the loader takes the content and assets roots. Needs step 3b. Gate: the `Content`
    the definitions build equals the one v1 extracted (a one-off field-by-field check, as in the v1 move), `gen-content check`
    passes, the traces hold. Mostly generated. **L.**
-6. **Assets by name and the codemod.** The extractor names assets from compat; sprites and sounds become asset
+6. **Assets by name and the codemod.** The extractor names assets from compat and writes the asset index, which
+   the loader fills `Content::assets` from (done first, so real packs resolve `asset.*`); sprites and sounds become asset
    handles in the engine; the codemod of §11 runs over every module (asset strings and numbers to names,
    `object.toml`/`weapon.toml` to definitions, folders moved and renamed per §4.2, requires fixed). Mechanical,
    verified by the traces and by `every_chip_runs`. **M.**
