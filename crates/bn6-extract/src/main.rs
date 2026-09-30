@@ -507,7 +507,7 @@ fn player(rom: &Rom) -> String {
             0x20 => "StatusTimer::Blind".into(),
             0x22 => "StatusTimer::Immobilize".into(),
             0x24 => "StatusTimer::Flash".into(),
-            0x26 => "StatusTimer::SemiIntangible".into(),
+            0x26 => "StatusTimer::Submerged".into(),
             0x28 => "StatusTimer::Invulnerable".into(),
             0x2A => "StatusTimer::Freeze".into(),
             0x2C => "StatusTimer::Bubble".into(),

@@ -1328,11 +1328,56 @@ F1 &= ~0x202
 - FLASHING lasts **119 ticks** **[verified-soundmod]**. A new flash request while already flashing is dropped, not extended.
 - While `F1 & 0x202`, the kernel rejects every hit whose Self lacks 0x4 (§3.8 step 3). So there is no damage, status, counter or modifier from multi-hits during flash; only the raw channel still accumulates.
 - A piercing hit (Self & 4) lands. `sub_801A648` then zeroes `cd+0x24` (unless FFC & 0x1000), so the same tick's `sub_801A5EE` clears 0x202, or restarts a fresh 120 if that hit requests flash. **[verified-soundmod]**
-- F1 bit 0x4 timer (`cd+0x26`, `sub_8010162`; the engine's `SEMI_INTANGIBLE`):
-  - If `+0x26 != 0xFFFF`: decrement; below 0, clear bit 0x4; at 0, sound 0x94.
-  - The bit is then set unless USING_ACTION.
-  - Any FFC hit zeroes +0x26 (`sub_8010198`).
+- F1 bit 0x4 and its timer at `cd+0x26`: see §4.10.1 (submerged).
 - **SuperArmor** only suppresses the flinch request. **Undershirt**: §4.5. **Guard**: §3.8 step 4.
+
+### 4.10.1 Submerged (F1 0x4)
+
+ObjectFlags1 bit 0x4 is the engine's `f1::SUBMERGED`: the object is below the surface, and only some attacks
+reach it. **It never occurs in a netbattle**: its only live source is DiveMan's AI.
+
+**Collision rule** (`sub_3007218`, the pair test, §3.8). A pair is skipped when one side is submerged and the
+other side's Self collision type has neither bit 0x8 nor bit 0x1000:
+
+- receiver submerged (`F1 & 4`) and the hitter's `Self & 0x1008 == 0`: no hit;
+- hitter submerged and the receiver's `Self & 0x1008 == 0`: no hit.
+
+So it works both ways. Attacks whose collision type carries 0x8 or 0x1000 still land; many do, e.g. type 0x2C
+(GunDelSol's hitbox, Self 0x8000408C). Body contact and types without those bits pass through. Of the 89
+collision types, 30 carry one of the bits: 0x0A, 0x15, 0x17, 0x19, 0x1A, 0x1C, 0x1D, 0x20–0x22, 0x24, 0x26, 0x2B–0x2D,
+0x2F–0x33 (0x31, 0x32 by bit 0x1000), 0x37, 0x3A, 0x3C, 0x3F, 0x45, 0x4B, 0x4E, 0x4F, 0x52 (bit 0x1000) and 0x55.
+Which attacks use which types is catalogued per chip as the chips are ported.
+
+**The timed form** (`cd+0x26`, the engine's `timer::SUBMERGED`), run by the navi's status stage each tick
+(`sub_8010162`):
+
+- If `+0x26 != 0xFFFF`: decrement. Below 0: clear bit 0x4 and stop. At exactly 0: sound 0x94. (0xFFFF means
+  indefinitely.)
+- Then set bit 0x4, or clear it while the navi is using an action (`F1 & 0x400000`, USING_ACTION): a submerged
+  navi is solid while it attacks.
+- Any registered hit (`FlagsFromCollision != 0`) zeroes the timer (`sub_8010198`, stage A), so the next status
+  stage ends it.
+- `sub_80101C4` zeroes the timer and clears the bit. It's called by the hit-reaction actions (`sub_80165F8`,
+  `sub_8016B02`…`sub_8017900`: flinch, paralysis, freeze, bubble, drag, deletion), by `sub_810E4F0` and `sub_810E928`,
+  and by actor #0x5D variant 1 before it starts the timer.
+
+**What sets it:**
+
+1. **DiveMan's AI** sets bit 0x4 directly while its AI state has bit 0x20 (`sub_80FDEFC`, entry 13 of the navi
+   routine tables at `off_80F25A0`; navi 13's sprite is category 8, index 0x0D, whose animations include the
+   dive with only the periscope showing). It's the "dove underwater" state. Navi AI isn't ported yet.
+2. **`sub_80101AE`** starts the timed form: it stores the duration in `+0x26`, sets bit 0x4 and clears the
+   object's VISIBLE flag. Its only caller is **variant 1 of actor object #0x5D** (`sub_80C49E4`, chosen by
+   Param1): after a 30-tick white flash it runs the time-freeze return (`sub_80E13DC`), then makes its owner
+   submerged for **480 ticks** (0xF0 × 2) with sound 0x93.
+3. **That variant is never spawned.** Actor #0x5D has one spawner (`sub_80C4AEC`). Its one caller, the effect
+   of BugFix's time-freeze controller (chip 0xB0, effect #0x3B, `sub_80E4954`), always passes Param1 0: the
+   white flash plus the bug fix (`sub_80C4958`/`sub_80C49A4`), which doesn't submerge. Variant 2
+   (`sub_80C4A52`) is unused as well. This is from a static search for spawns of index 0x5D; a spawn through a
+   computed index would have escaped it. **[unverified]**
+
+Invisibl (chip 0xB1) is not this: it sets INVISIBLE (F1 0x2) and the 360-tick flash timer (§4.10, chips.md
+§3.6.6).
 
 ### 4.11 Bugs and NaviCust hooks (summary)
 

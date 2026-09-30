@@ -256,7 +256,7 @@ pub fn hide_user(b: &mut Battle, user: ObjectRef) {
     }
 }
 
-/// `sub_80E13DC`: the user is back: visible unless semi-intangible or
+/// `sub_80E13DC`: the user is back: visible unless submerged or
 /// hidden by the viewer's blindness.
 pub fn show_user(b: &mut Battle, user: ObjectRef) {
     let o = b.objects.get(user);
@@ -266,7 +266,7 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
         && b.player(o.alliance ^ 1).and_then(|p| b.objects.get(p).collision).is_some_and(|c| {
             b.collision.get(c).f1 & crate::collision::f1::BLIND != 0
         });
-    if f1 & crate::collision::f1::SEMI_INTANGIBLE == 0 && !viewer_blind {
+    if f1 & crate::collision::f1::SUBMERGED == 0 && !viewer_blind {
         b.objects.get_mut(user).flags |= crate::object::flags::VISIBLE;
     }
     set_links_visible(b, user, true);

@@ -2,7 +2,7 @@
 //! (5), freeze (6) and bubble (7). See objects-and-player.md §H4-§H6.
 
 use super::{
-    ai, ai_mut, cancel_semi_intangible, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_invulnerable,
+    ai, ai_mut, cancel_submerged, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_invulnerable,
     clear_paralysis, coll, coll_mut, coordinates_to_panel, flag1, panel_coordinates, panel_kind, refresh_form_overlay,
     reset_charge, set_flag1, snap_to_future_panel,
 };
@@ -45,7 +45,7 @@ fn begin_deletion(b: &mut Battle, r: ObjectRef) {
     // sub_801A5E2
     c.links[crate::collision::link::CONFUSE] = None;
     c.links[crate::collision::link::BLIND] = None;
-    cancel_semi_intangible(b, r);
+    cancel_submerged(b, r);
     reset_charge(b, r);
     // sub_801DC36: HUD.
     let o = b.objects.get_mut(r);
@@ -166,7 +166,7 @@ fn death_hook(b: &mut Battle, r: ObjectRef) {
 fn enter_reaction(b: &mut Battle, r: ObjectRef, anim: u8) {
     set_flag1(b, r, f1::USING_ACTION);
     clear_flag1(b, r, f1::DRAG | f1::FLINCHING | f1::MOVING | f1::GUARD);
-    cancel_semi_intangible(b, r);
+    cancel_submerged(b, r);
     ai_mut(b, r).status &= !0x20_005F;
     reset_charge(b, r);
     if flag1(b, r) & f1::SLIDING == 0 {
@@ -233,7 +233,7 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
         clear_paralysis(b, r);
         clear_freeze(b, r);
         clear_bubble(b, r);
-        cancel_semi_intangible(b, r);
+        cancel_submerged(b, r);
         ai_mut(b, r).status &= !0x20_005F;
         clear_flag1(b, r, f1::DRAG | f1::MOVING | f1::GUARD);
         reset_charge(b, r);
@@ -364,7 +364,7 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.pos.z &= !0xFFFF;
     clear_flag1(b, r, f1::SLIDING | f1::FLINCHING | f1::MOVING | f1::GUARD);
-    cancel_semi_intangible(b, r);
+    cancel_submerged(b, r);
     let fp = b.objects.get(r).future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
     let side = b.objects.get(r).alliance;

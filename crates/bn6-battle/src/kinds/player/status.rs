@@ -95,7 +95,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     }
     tick_flash(b, r);
     tick_statuses(b, r);
-    tick_semi_intangible(b, r);
+    tick_submerged(b, r);
     tick_anger(b, r);
     drain_hp(b, r);
     // sub_802E1D8 counts down a battle flag 0x40 mode timer (`sub_802E070`
@@ -690,25 +690,25 @@ fn tick_minor_statuses(b: &mut Battle, r: ObjectRef, f2: u32) {
     }
 }
 
-/// `sub_8010162`: the timed semi-intangible state (0xFFFF = indefinite);
+/// `sub_8010162`: the timed submerged state (0xFFFF = indefinite);
 /// the flag is off while an action runs.
-fn tick_semi_intangible(b: &mut Battle, r: ObjectRef) {
-    let t = coll(b, r).status_timers[timer::SEMI_INTANGIBLE];
+fn tick_submerged(b: &mut Battle, r: ObjectRef) {
+    let t = coll(b, r).status_timers[timer::SUBMERGED];
     if t != 0xFFFF {
         let t = t as i32 - 1;
         if t < 0 {
-            clear_flag1(b, r, f1::SEMI_INTANGIBLE);
+            clear_flag1(b, r, f1::SUBMERGED);
             return;
         }
-        coll_mut(b, r).status_timers[timer::SEMI_INTANGIBLE] = t as u16;
+        coll_mut(b, r).status_timers[timer::SUBMERGED] = t as u16;
         if t == 0 {
             b.play_sound(crate::sound::SoundId(0x94));
         }
     }
     if flag1(b, r) & f1::USING_ACTION != 0 {
-        clear_flag1(b, r, f1::SEMI_INTANGIBLE);
+        clear_flag1(b, r, f1::SUBMERGED);
     } else {
-        set_flag1(b, r, f1::SEMI_INTANGIBLE);
+        set_flag1(b, r, f1::SUBMERGED);
     }
 }
 

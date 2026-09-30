@@ -22,12 +22,13 @@ pub struct CollisionId(pub u8);
 pub mod f1 {
     pub const GUARD: u32 = 0x1;
     pub const INVISIBLE: u32 = 0x2;
-    /// Collides only with collision types that have bit 0x8 or 0x1000, in
-    /// both directions (`sub_3007218`). Held while the semi-intangible
-    /// timer runs and no action is in use (`sub_8010162`). Which chip or
-    /// state uses it is uncertain (`sub_80101AE` starts it for 480 ticks
-    /// and hides the navi).
-    pub const SEMI_INTANGIBLE: u32 = 0x4;
+    /// Submerged: collides only with collision types that have bit 0x8 or
+    /// 0x1000, in both directions (`sub_3007218`). DiveMan's AI sets it
+    /// while he dives (`sub_80FDEFC`). The timed form (`timer::SUBMERGED`)
+    /// is held while its timer runs and no action is in use (`sub_8010162`);
+    /// its only starter, actor #0x5D variant 1 (`sub_80C49E4`), is never
+    /// spawned. See field-collision-damage.md §4.10.1.
+    pub const SUBMERGED: u32 = 0x4;
     pub const INVULNERABLE: u32 = 0x8;
     pub const AIRSHOE: u32 = 0x10;
     pub const FLOATSHOE: u32 = 0x20;
@@ -112,7 +113,7 @@ pub struct CollisionData {
     pub secondary_element: u8,
     pub barrier_timer: u16,
     /// Status timers: paralyze, confuse, blind, immobilize, flash,
-    /// semi-intangible, invulnerable, freeze, bubble.
+    /// submerged, invulnerable, freeze, bubble.
     pub status_timers: [u16; 9],
     pub self_damage: u16,
     /// What I am (collision type flags).
@@ -148,10 +149,10 @@ pub mod timer {
     pub const BLIND: usize = 2;
     pub const IMMOBILIZE: usize = 3;
     pub const FLASH: usize = 4;
-    /// CollisionData+0x26: holds `f1::SEMI_INTANGIBLE` (0xFFFF =
+    /// CollisionData+0x26: holds `f1::SUBMERGED` (0xFFFF =
     /// indefinitely); started by `sub_80101AE`, ended by any hit
     /// (`sub_8010198`) or by `sub_80101C4`.
-    pub const SEMI_INTANGIBLE: usize = 5;
+    pub const SUBMERGED: usize = 5;
     pub const INVULNERABLE: usize = 6;
     pub const FREEZE: usize = 7;
     pub const BUBBLE: usize = 8;

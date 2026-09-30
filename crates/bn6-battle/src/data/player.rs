@@ -38,8 +38,8 @@ pub enum StatusTimer {
     Blind,
     Immobilize,
     Flash,
-    /// CollisionData+0x26 (`collision::timer::SEMI_INTANGIBLE`).
-    SemiIntangible,
+    /// CollisionData+0x26 (`collision::timer::SUBMERGED`).
+    Submerged,
     Invulnerable,
     Freeze,
     Bubble,
