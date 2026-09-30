@@ -159,6 +159,8 @@ pub fn scripts() -> Scripts {
                 ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
                 ("objects/navi-boost/navi_boost", "objects/navi-boost/navi_boost"),
                 ("objects/gauge-speed/gauge_speed", "objects/gauge-speed/gauge_speed"),
+                // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+                ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -217,6 +219,7 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip") },
         ObjectKind { scratch_position: true, ..kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost") },
         ObjectKind { scratch_position: true, ..kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed") },
+        kind("rising-bubble", Pool::Effect, 0x14, "objects/rising-bubble/rising_bubble"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -650,5 +653,7 @@ fn animations() -> Animations {
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);
+    // The rising bubble.
+    sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(4), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
     Animations { sprites }
 }

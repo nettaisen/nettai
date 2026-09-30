@@ -10,6 +10,8 @@ use bn6_content_api::{
     ObjectField, ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
+// Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 
 use crate::actor::{AbsorbedObstacle, ActorData, ActorType, request, status};
 use crate::battle::{Battle, LinkedRecord};
@@ -328,6 +330,18 @@ impl CoreApi for Battle {
         self.hands[side as usize & 1].advance();
     }
 
+    // Subtype 18 (Otenko).
+    fn hand_turn(&self, side: u8, i: u8) -> u8 {
+        // (The cursor never passes 5.)
+        self.hands[side as usize & 1].turn.get(i as usize).copied().unwrap_or(0)
+    }
+
+    fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16) {
+        if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
+            *b = b.wrapping_add(n);
+        }
+    }
+
     fn linked(&self, side: u8) -> LinkedChip {
         let r = self.linked[side as usize & 1];
         LinkedChip { chip: r.chip, bonus: r.bonus, damage: r.damage, owner: r.owner, object: r.object }
@@ -358,6 +372,28 @@ impl CoreApi for Battle {
 
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
+    }
+
+    // Subtype 8 (Wind and Fan).
+    fn wind(&self, side: u8) -> (Option<ObjectRef>, WindSource) {
+        let w = self.field.winds[side as usize & 1];
+        let source = match w.source {
+            crate::field::WindSource::Obstacle => WindSource::Obstacle,
+            crate::field::WindSource::Navi => WindSource::Navi,
+        };
+        (w.object, source)
+    }
+
+    fn set_wind(&mut self, o: ObjectRef, side: u8, source: WindSource) {
+        let source = match source {
+            WindSource::Obstacle => crate::field::WindSource::Obstacle,
+            WindSource::Navi => crate::field::WindSource::Navi,
+        };
+        kinds::obstacle::set_wind(self, o, side & 1, source);
+    }
+
+    fn clear_wind(&mut self, o: ObjectRef) {
+        kinds::obstacle::clear_wind(self, o);
     }
 
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo> {
@@ -1085,9 +1121,16 @@ impl CoreApi for Battle {
         kinds::obstacle::unregister(self, o);
     }
 
-    fn obstacle_take_hits(&mut self, o: ObjectRef) -> ApiResult<()> {
+    fn obstacle_take_hits(&mut self, o: ObjectRef, push: ObstaclePush) -> ApiResult<()> {
+        use kinds::obstacle::Push;
         self.collision_of(o)?;
-        kinds::obstacle::take_hits(self, o);
+        let push = match push {
+            ObstaclePush::ForgetsDamage => Push::ForgetsDamage,
+            ObstaclePush::KeepsDamage => Push::KeepsDamage,
+            ObstaclePush::AnyHit => Push::AnyHit,
+            ObstaclePush::Ignored => Push::Ignored,
+        };
+        kinds::obstacle::take_hits(self, o, push);
         Ok(())
     }
 
@@ -1097,14 +1140,19 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>> {
-        use kinds::obstacle::Crush;
+    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush, hold: ObstacleHold) -> ApiResult<Option<u8>> {
+        use kinds::obstacle::{Crush, Hold};
         self.collision_of(o)?;
         let crush = match crush {
             ObstacleCrush::Breaks => Crush::Breaks,
             ObstacleCrush::Destroys => Crush::Destroys,
+            ObstacleCrush::SparesBodies => Crush::SparesBodies,
         };
-        Ok(kinds::obstacle::react(self, o, crush))
+        let hold = match hold {
+            ObstacleHold::AfterAppearing => Hold::AfterAppearing,
+            ObstacleHold::Always => Hold::Always,
+        };
+        Ok(kinds::obstacle::react(self, o, crush, hold))
     }
 
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()> {
@@ -1113,13 +1161,13 @@ impl CoreApi for Battle {
         let a = match a {
             ObstacleAction::ReturnToIdle => S::ReturnToIdle,
             ObstacleAction::Slide => S::Slide,
+            ObstacleAction::KnockedBack => S::KnockedBack,
             ObstacleAction::Flinch => S::Flinch,
             ObstacleAction::Paralyzed => S::Paralyzed,
             ObstacleAction::Frozen => S::Frozen,
             ObstacleAction::Bubbled => S::Bubbled,
         };
-        kinds::obstacle::shared_action(self, o, a);
-        Ok(())
+        kinds::obstacle::shared_action(self, o, a).map_err(ApiError::Other)
     }
 
     fn obstacle_removal(&self, o: ObjectRef) -> ApiResult<ObstacleRemoval> {

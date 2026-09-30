@@ -585,6 +585,16 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- Subtype 18 (Otenko): the turn (from 0) a hand's chip at i was picked
+    -- in, and adding to its Atk+ bonus.
+    hand_turn: (side: number, i: number) -> number,
+    add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
+    -- Subtype 8 (Wind and Fan): a side's wind (`sub_80E543C`) and who
+    -- placed it; `sub_80E541A` makes `me` a side's wind (the one there
+    -- before is destroyed at once); `sub_80E544C` makes it no side's.
+    wind: (side: number) -> (Object?, WindSource),
+    set_wind: (me: Object, side: number, source: WindSource) -> (),
+    clear_wind: (me: Object) -> (),
 }
 
 declare field: {
@@ -655,7 +665,11 @@ export type ActorListEntrySpec = {
     variant: number,
 }
 
-export type ObstacleCrush = "breaks" | "destroys"
+export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies"
+-- Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
+export type ObstacleHold = "after_appearing" | "always"
+export type ObstaclePush = "forgets_damage" | "keeps_damage" | "any_hit" | "ignored"
+export type WindSource = "obstacle" | "navi"
 export type ObstacleRemoval = "broken" | "removed" | "vanished" | "absorbed"
 export type BlinkOut = "no" | "blinking" | "done"
 
@@ -672,19 +686,33 @@ declare obstacle: {
     register: (me: Object, side: number, class: number) -> (),
     -- `sub_800F656`: forget it in the field-object registry.
     unregister: (me: Object) -> (),
-    -- `sub_801AD9E`: resolve this tick's hits (a push forgets the damage).
-    take_hits: (me: Object) -> (),
+    -- `sub_801AD9E` and its variants: resolve this tick's hits. What a
+    -- pushing hit (hit modifier 0x40) does: "forgets_damage" (the default,
+    -- `sub_801AD9E`: pushed, its damage forgotten), "keeps_damage"
+    -- (`sub_801AD12`: pushed, the damage lands), "any_hit" (`sub_801ADFA`:
+    -- that, and any one side's hit but type 0x1000 pushes it a panel away),
+    -- "ignored" (`sub_801AD6A`: never pushed).
+    take_hits: (me: Object, push: ObstaclePush?) -> (),
     -- `sub_800F672`: the lifetime (`timer`): broken when it runs out or
     -- the battle is over, blinking for its last three seconds.
     tick_lifetime: (me: Object) -> (),
-    -- `sub_801B394` ("breaks", the default: a body's touch drops the HP to
-    -- 0) or `sub_801B4D4` ("destroys"): damage, removal and status; the
-    -- action the kind's table runs now, nil when a status routine ran.
-    react: (me: Object, crush: ObstacleCrush?) -> number?,
-    -- The shared table entries: `sub_80165B8` (1), `sub_8017E26` (5, a
-    -- push), and the actor reactions obstacles can't take (3, 4, 6, 7).
+    -- `sub_801B394` ("breaks", the default: a body's, another obstacle's
+    -- or a breaking hit's touch drops the HP to 0), `sub_801B4D4`
+    -- ("destroys": destroyed, the HP as it is) or `sub_801B610`
+    -- ("spares_bodies": bodies don't break it): damage, removal and status;
+    -- the action the kind's table runs now, nil when a status routine ran.
+    -- While dimmed it holds the obstacle still once it has appeared
+    -- ("after_appearing", the default) or always ("always", `sub_801B750`).
+    react: (me: Object, crush: ObstacleCrush?, hold: ObstacleHold?) -> number?,
+    -- The shared table entries: `sub_80165B8` (1), the pushes (5:
+    -- `sub_8017E26` slides up to six panels, not into bodies or obstacles
+    -- nor, pulled back, into the puller's area; `sub_8017CC0` is knocked
+    -- back as far as the hit says onto free panels it reserves), and the
+    -- actor reactions nothing starts on an obstacle (3, 4, 6, 7: an
+    -- error).
     return_to_idle: (me: Object) -> (),
     slide: (me: Object) -> (),
+    knocked_back: (me: Object) -> (),
     flinch: (me: Object) -> (),
     paralyzed: (me: Object) -> (),
     frozen: (me: Object) -> (),
