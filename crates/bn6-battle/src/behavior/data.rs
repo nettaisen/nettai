@@ -12,6 +12,7 @@
 //!             .body_overlays[id], .sun_beam_looks[look]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
+//! data.rules.sine[step]     the sine table: 256 steps a turn, 1.0 = 0x100 (math_sinTable)
 //! data.regions[region]      a hit region's panels, [dx, dy] each (PanelOffsetListsPointerTable)
 //! ```
 
@@ -69,7 +70,10 @@ pub fn script_data(c: &Content) -> Data {
         ),
     ]);
     let recovery = c.rules.buster_recovery.iter().flatten().enumerate().map(|(i, &t)| (i as i64, t));
-    let rules = Data::map([("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64)))]);
+    let rules = Data::map([
+        ("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64))),
+        ("sine", by_id(c.rules.sine.iter().enumerate().map(|(i, &v)| (i as i64, v)), |&v| Data::Int(v as i64))),
+    ]);
     Data::map([
         ("chips", by_id(c.chips.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("navis", by_id(c.navis.iter().map(|x| (x.id as i64, x)), |x| value(*x))),

@@ -945,6 +945,8 @@ impl CoreApi for Battle {
         let c = self.collision_of(o)?;
         Ok(Value::Int(match f {
             CollisionField::Region => c.region as i64,
+            CollisionField::PanelX => c.panel.x as i64,
+            CollisionField::PanelY => c.panel.y as i64,
             CollisionField::HitEffect => c.hit_effect as i64,
             CollisionField::StatusBase => c.status_base as i64,
             CollisionField::Bugs => c.bugs as i64,
@@ -961,6 +963,8 @@ impl CoreApi for Battle {
         let x = int(v);
         match f {
             CollisionField::Region => c.region = x as u8,
+            CollisionField::PanelX => c.panel.x = x as u8,
+            CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::HitEffect => c.hit_effect = x as u8,
             CollisionField::StatusBase => c.status_base = x as u8,
             CollisionField::Bugs => c.bugs = x as u16,

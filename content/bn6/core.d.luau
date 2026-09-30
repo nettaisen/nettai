@@ -193,6 +193,10 @@ end
 declare class Collision
     -- Region shape.
     region: number
+    -- The panel the region is anchored on (`update_collision_panels`
+    -- copies the object's).
+    panel_x: number
+    panel_y: number
     -- Hit spark effect (0xFF = none).
     hit_effect: number
     status_base: number
@@ -738,6 +742,10 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- The sine table (`math_sinTable`, which `math_cosTable` continues):
+        -- 256 steps a turn, 1.0 = 0x100, over a turn and a half, so the
+        -- cosine of step a is entry a + 64.
+        sine: { [number]: number },
     },
     -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
     -- panels a region covers, { dx, dy } from its panel with dx toward the
