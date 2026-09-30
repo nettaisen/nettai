@@ -1,0 +1,6 @@
+# BassAnly, the BassAnly chip's navi (actor object #0x50, `sub_80C3CE8`), is a script.
+
+[kind]
+pool = "actor"
+index = 0x50
+script = "bass_anly.luau"
