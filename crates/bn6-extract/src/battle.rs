@@ -670,8 +670,112 @@ fn objects(rom: &Rom) -> ObjectData {
         absorbed_sprites: (0..15).map(|i| sprite_at(0x080E_98C0 + 2 * i)).collect(),
         body_overlays,
         sun_beam_looks: (0..2).map(|i| sprite_at(0x080E_5C28 + 2 * i)).collect(),
+        projectiles: projectiles(rom),
+        flying_shots: flying_shots(rom),
         kinds: Vec::new(),
     }
+}
+
+/// An element byte: the primary element in the low bits, secondary bits
+/// above.
+fn element_byte(v: u8) -> (Element, SecondaryElements) {
+    (element(v & 0x0F), secondary(v & 0xF0))
+}
+
+/// The projectile's kinds (attack object #0, `sub_80C4E58`): the 12-byte
+/// records of `off_80C4C78` by its first parameter, 40 of them up to the
+/// routine's code: collision self type, target type, hit modifier, element
+/// byte, hit spark, sprite category (0xFF: not drawn) and index,
+/// animation, the panel type its hit leaves (0xFF: none), status byte, bug
+/// code and argument. The routine adds what it does by kind number
+/// (`sub_80C4F02`): kinds 7 and 0x15 crack the panel they hit and 0x16
+/// breaks it, whatever their panel type says; 0x22 and 0x24 leave theirs
+/// for the left side's shots and a road the other way (0xC and 0xB) for
+/// the right side's; 0xC bursts (`sub_80C5014`, `sub_80C5050`); 0x1D
+/// climbs (`sub_80C5090`).
+fn projectiles(rom: &Rom) -> Vec<ProjectileKind> {
+    const TABLE: u32 = 0x080C_4C78;
+    const COUNT: u32 = (0x080C_4E58 - TABLE) / 12;
+    let panel_type = |v: u8| PanelType::ALL[v as usize];
+    (0..COUNT)
+        .map(|i| {
+            let r = rom.bytes(TABLE + 12 * i, 12);
+            let id = i as u8;
+            let (element, secondary) = element_byte(r[3]);
+            let hit_panel = match id {
+                0x07 | 0x15 => Some(PanelHit::Crack),
+                0x16 => Some(PanelHit::Break),
+                0x22 => Some(PanelHit::SetType { left_side: panel_type(r[8]), right_side: PanelType::RoadRight }),
+                0x24 => Some(PanelHit::SetType { left_side: panel_type(r[8]), right_side: PanelType::RoadLeft }),
+                _ if r[8] != 0xFF => Some(PanelHit::SetType { left_side: panel_type(r[8]), right_side: panel_type(r[8]) }),
+                _ => None,
+            };
+            let sprite = (r[5] != 0xFF).then_some(SpriteId { category: r[5], index: r[6] });
+            ProjectileKind {
+                id,
+                self_type: r[0],
+                target_type: r[1],
+                hit_mod: r[2],
+                element,
+                secondary,
+                hit_effect: r[4],
+                sprite,
+                anim: if sprite.is_some() { r[7] } else { 0 },
+                status: r[9],
+                bug: r[10],
+                bug_arg: if r[10] != 0 { r[11] } else { 0 },
+                hit_panel,
+                bursts: id == 0x0C,
+                climbs: id == 0x1D,
+            }
+        })
+        .collect()
+}
+
+/// The flying shot's kinds (attack object #0xB, `sub_80C60A8`): the
+/// 16-byte records of `byte_80C6038` by its first parameter, 7 of them up
+/// to the routine's code: collision self type, target type, hit modifier,
+/// element byte, hit spark, sprite category and index, animation,
+/// highlight, range, shadow, status byte, speed (u32, 16.16). The routine
+/// adds by kind number: kind 6 is a thrown obstacle, whose look its
+/// spawner gives; kind 2 shows its spark at its panel's center
+/// (`sub_801A100`) and sounds 0x18A when it sets off; kind 5 leaves effect
+/// 7 when its range runs out.
+fn flying_shots(rom: &Rom) -> Vec<FlyingShotKind> {
+    const TABLE: u32 = 0x080C_6038;
+    const COUNT: u32 = (0x080C_60A8 - TABLE) / 16;
+    (0..COUNT)
+        .map(|i| {
+            let r = rom.bytes(TABLE + 16 * i, 16);
+            let id = i as u8;
+            let (element, secondary) = element_byte(r[3]);
+            let flag = |v: u8| match v {
+                0 => false,
+                1 => true,
+                v => panic!("flying shot {id}: flag byte {v:#x}"),
+            };
+            FlyingShotKind {
+                id,
+                self_type: r[0],
+                target_type: r[1],
+                hit_mod: r[2],
+                element,
+                secondary,
+                hit_effect: r[4],
+                sprite: SpriteId { category: r[5], index: r[6] },
+                anim: r[7],
+                highlight: flag(r[8]),
+                range: r[9],
+                shadow: flag(r[10]),
+                status: r[11],
+                speed: u32at(rom, TABLE + 16 * i + 12) as i32,
+                obstacle: id == 6,
+                panel_spark: id == 2,
+                launch_sound: (id == 2).then_some(0x18A),
+                end_effect: (id == 5).then_some(7),
+            }
+        })
+        .collect()
 }
 
 // ---- Sprite timing ---------------------------------------------------------------------
