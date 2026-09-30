@@ -87,6 +87,8 @@ export type StatusFlag =
     | "using_action"
     | "affected_by_ice"
     | "bubbled"
+    -- Hit even while the battle is dimmed (ElemTrap's trap).
+    | "hit_while_dimmed"
 -- Status timers of an object with collision data.
 export type StatusTimer =
     "paralyze" | "confuse" | "blind" | "immobilize" | "flash" | "submerged" | "invulnerable" | "freeze" | "bubble"
