@@ -490,6 +490,16 @@ named_flags! {
 }
 
 named_flags! {
+    /// A side's SELECT or Cross special in progress (battle flag 0x40
+    /// mode; `sub_802E4B8`).
+    pub enum SideSpecial {
+        None = "none",
+        Select = "select",
+        Cross = "cross",
+    }
+}
+
+named_flags! {
     /// A step of a dimming controller, run by the dimming service
     /// (`dimming.rs`): a dimming chip's controller calls them from its
     /// update, in the order its routine does.
@@ -646,6 +656,8 @@ pub trait CoreApi {
     fn emotion(&self, side: u8) -> Emotion;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
     fn set_mood(&mut self, side: u8, mood: u8);
+    /// `sub_802E4B8`: the side's SELECT or Cross special in progress.
+    fn side_special(&self, side: u8) -> SideSpecial;
     /// A side's player navi.
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.

@@ -47,6 +47,8 @@ export type Lifecycle = "init" | "update" | "destroy"
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
+-- A side's SELECT or Cross special in progress (battle flag 0x40 mode).
+export type SideSpecial = "none" | "select" | "cross"
 export type PanelType =
     "missing"
     | "broken"
@@ -548,6 +550,8 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
+    -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
+    side_special: (side: number) -> SideSpecial,
     player: (side: number) -> Object?,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
@@ -760,6 +764,9 @@ export type PackData = {
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
     },
+    -- Region shapes by number (`PanelOffsetListsPointerTable`): each
+    -- panel's { dx, dy }, dx toward the facing side.
+    regions: { [number]: { { number } } },
 }
 
 declare data: PackData

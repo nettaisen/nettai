@@ -8,6 +8,7 @@ use bn6_content_api::{
     ActorField, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
     FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField,
     Pad, PanelInfo, RequestFlag, Shadow, SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
+    SideSpecial,
 };
 
 use crate::actor::{AbsorbedObstacle, ActorData, ActorType, request, status};
@@ -266,6 +267,17 @@ impl CoreApi for Battle {
 
     fn set_mood(&mut self, side: u8, mood: u8) {
         kinds::player::set_mood(self, side & 1, mood);
+    }
+
+    fn side_special(&self, side: u8) -> SideSpecial {
+        let s = &self.sides[side as usize & 1];
+        if s.select_special != 0 {
+            SideSpecial::Select
+        } else if s.cross_special != 0 {
+            SideSpecial::Cross
+        } else {
+            SideSpecial::None
+        }
     }
 
     fn player(&self, side: u8) -> Option<ObjectRef> {
