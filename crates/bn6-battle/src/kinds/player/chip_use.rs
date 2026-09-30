@@ -126,7 +126,7 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
 
 /// `sub_80127C0(0)`: fill the attack variables for the next chip and
 /// name its action.
-fn prepare(b: &mut Battle, r: ObjectRef) -> u8 {
+pub(super) fn prepare(b: &mut Battle, r: ObjectRef) -> u8 {
     let e = hand_entry(b, r);
     let content = b.content.clone();
     let cd = content.chip(e.chip);

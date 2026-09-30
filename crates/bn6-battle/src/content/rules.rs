@@ -239,6 +239,9 @@ pub struct Lockon {
     /// Column shifts toward the user tried, in order, when no panel next
     /// to the target fits.
     pub column_shifts: Vec<i8>,
+    /// The charged slash's (action 0x41) lock-on mode by its variant
+    /// (`byte_80EB028`, `sub_80EAF26`); 0 takes the chip's.
+    pub slash_modes: Vec<u8>,
 }
 
 impl Lockon {

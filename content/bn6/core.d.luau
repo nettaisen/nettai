@@ -357,6 +357,12 @@ declare class Object
     -- Onto the destination panel of a move (panel, reservation,
     -- coordinates, collision).
     function snap_to_future_panel(self): ()
+    -- `object_setCollisionPanelsToCurrent`: the collision registration's
+    -- panel becomes the object's (its move direction kept).
+    function set_collision_panel(self): ()
+    -- `object_highlightCurrentCollisionPanels`: highlight the panels the
+    -- registration's region covers.
+    function highlight_collision_panels(self): ()
     function reserve_panel(self, x: number, y: number): boolean
     function unreserve_panel(self, x: number, y: number): boolean
     function release_reservations(self): ()
@@ -416,6 +422,15 @@ declare class Object
     function can_move(self): boolean
     -- `sub_801265A`: the buster's damage.
     function buster_damage(self): number
+    -- `sub_80127C0(0)`: fill the attack from the chip at the hand's cursor
+    -- (its damage, bonuses and modifiers); returns the chip's action.
+    function prepare_chip(self): number
+    -- `sub_8011450`: restart the form overlay's animation with the navi's.
+    function refresh_form_overlay(self): ()
+    -- `ho_8026554`: the panel Beast Out lock-on `mode` picks near the target
+    -- panel (x, y), as the routine returns it: the navi's own panel for a
+    -- target off the field, column 0 (and a leftover row) when nothing fits.
+    function lockon_panel(self, x: number, y: number, mode: number): (number, number)
     -- The attack state as content action `action`'s (zeroed unless that
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
@@ -474,6 +489,18 @@ export type HitboxSpec = {
     bug_arg: number?,
 }
 
+-- An afterimage (`battle.afterimage`, effect object #0x28).
+export type AfterimageSpec = {
+    -- Param1 (0xFF: a copy of the owner's sprite, else its category),
+    -- Param2 (the sprite's index), Param3 (the animation), Param4 (the
+    -- flip).
+    params: { number },
+    color_shader: number,
+    -- Ticks it lasts.
+    lifetime: number,
+    shadow: Shadow,
+}
+
 -- A side's defensive-chip record.
 export type LinkedChip = {
     chip: number,
@@ -486,7 +513,7 @@ export type LinkedChip = {
 
 export type Panel = { kind: PanelType, alliance: number, home: number }
 export type Column = { home: number, timer: number }
-export type NaviRecord = { actor_type: ActorType, ai_index: number }
+export type NaviRecord = { actor_type: ActorType, ai_index: number, version: number }
 
 -- What a dimming chip's controller is spawned with: the user's attack.
 export type DimmingChipSpec = {
@@ -579,6 +606,9 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80E33FA`: an afterimage of `owner` at `pos` (effect object
+    -- #0x28, which blinks for its lifetime and keeps running while paused).
+    afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
 }
 
 declare field: {
@@ -737,6 +767,42 @@ export type RockKind = {
 
 export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } }
 
+-- A kind of sword wave (attack object #0x96), by its first parameter.
+export type SwordWave = {
+    id: number,
+    -- Collision types (what it is, what it hits) and hit modifier.
+    self_type: number,
+    target_type: number,
+    hit_mod: number,
+    region: number,
+    sprite: SpriteId,
+    anim: number,
+    -- It animates, restarting its animation after the last frame.
+    animates: boolean,
+    -- It highlights the panels its region covers.
+    highlight: boolean,
+    -- Panel centers it passes before it ends.
+    reach: number,
+    ground_shadow: boolean,
+    palette: number,
+    status: number,
+    -- 16.16 per tick, forward.
+    speed: number,
+}
+
+-- A kind of hit zone (attack object #0x8B), by its first parameter.
+export type HitZone = {
+    id: number,
+    self_type: number,
+    target_type: number,
+    hit_mod: number,
+    hit_effect: number,
+    region: number,
+    status: number,
+    bug: number,
+    bug_arg: number,
+}
+
 export type WeaponData = { id: number, name: string, action: number?, instant_chip: number?, script: string }
 
 -- An object kind a script implements.
@@ -753,6 +819,8 @@ export type PackData = {
         absorbed_sprites: { [number]: SpriteId },
         body_overlays: { [number]: BodyOverlay },
         sun_beam_looks: { [number]: SpriteId },
+        sword_waves: { [number]: SwordWave },
+        hit_zones: { [number]: HitZone },
         kinds: { [string]: ObjectKindData },
     },
     rules: {

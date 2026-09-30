@@ -441,6 +441,7 @@ fn rules() -> Rules {
         lockon: Lockon {
             searches: vec![LockonSearch { mode: 1, offsets: vec![PanelOffset { dx: -1, dy: 0 }], prefers_middle_row: false }],
             column_shifts: vec![-1, -2],
+            slash_modes: vec![1; 0x13],
         },
         custom_screen: custom_screen_layout(),
     }
@@ -519,8 +520,35 @@ fn objects() -> ObjectData {
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
+        sword_waves: (0..0x13).map(sword_wave).collect(),
+        hit_zones: vec![hit_zone(0, 1), hit_zone(1, 0)],
         kinds: kinds(),
     }
+}
+
+/// A made-up sword wave: one panel of region, three panels of reach.
+fn sword_wave(id: u8) -> SwordWave {
+    SwordWave {
+        id,
+        self_type: 7,
+        target_type: 5,
+        hit_mod: 3,
+        region: 1,
+        sprite: SpriteId { category: 0x0C, index: 0x14 },
+        anim: 0,
+        animates: id % 2 == 0,
+        highlight: id == 1,
+        reach: 3,
+        ground_shadow: false,
+        palette: 0,
+        status: 0,
+        speed: 0x8_0000,
+    }
+}
+
+/// A made-up hit zone.
+fn hit_zone(id: u8, hit_effect: u8) -> HitZone {
+    HitZone { id, self_type: 7, target_type: 5, hit_mod: 3, hit_effect, region: 1, status: 0, bug: 0, bug_arg: 0 }
 }
 
 fn regions() -> Vec<Vec<PanelOffset>> {

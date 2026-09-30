@@ -27,6 +27,7 @@ use bn6_content_api::{
     PanelPos, Pool, RequestFlag, SpriteField, SpriteId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use bn6_content_api::ObjectRef;
+use bn6_content_api::{AfterimageSpec, Shadow};
 use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMethods, Value as LuaValue};
 
 type Ctx = (NonNull<dyn CoreApi>, NonNull<Manifest>);
@@ -318,6 +319,10 @@ impl UserData for Object {
             with(|api, _| Ok(api.update_collision_panels(this.0)))
         });
         methods.add_method("snap_to_future_panel", |_, this, ()| with(|api, _| Ok(api.snap_to_future_panel(this.0))));
+        methods.add_method("set_collision_panel", |_, this, ()| with(|api, _| Ok(api.set_collision_panel(this.0))));
+        methods.add_method("highlight_collision_panels", |_, this, ()| {
+            with(|api, _| Ok(api.highlight_collision_panels(this.0)))
+        });
         methods.add_method("reserve_panel", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.reserve_panel(this.0, p)))
@@ -427,6 +432,12 @@ impl UserData for Object {
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
         methods.add_method("buster_damage", |_, this, ()| with(|api, _| Ok(api.buster_damage(this.0))));
+        methods.add_method("prepare_chip", |_, this, ()| with(|api, _| Ok(api.prepare_chip(this.0))));
+        methods.add_method("refresh_form_overlay", |_, this, ()| with(|api, _| Ok(api.refresh_form_overlay(this.0))));
+        methods.add_method("lockon_panel", |_, this, (x, y, mode): (LuaValue, LuaValue, LuaValue)| {
+            let (p, mode) = (panel(x, y)?, u8_arg(mode, "lock-on mode")?);
+            with(|api, _| Ok(api.lockon_panel(this.0, p, mode)))
+        });
         methods.add_method("absorbed", |lua, this, ()| {
             let list = with(|api, _| api.absorbed(this.0).map_err(api_error))?;
             let t = lua.create_table_with_capacity(list.len(), 0)?;
@@ -840,6 +851,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let t = lua.create_table()?;
         t.raw_set("actor_type", ACTOR_TYPES[r.actor_type as usize])?;
         t.raw_set("ai_index", r.ai_index)?;
+        t.raw_set("version", r.version)?;
         Ok(LuaValue::Table(t))
     });
     lib_fn!(
@@ -900,6 +912,18 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             bug_arg: table_int(&spec, "bug_arg")? as u8,
         };
         let o = with(|api, _| Ok(api.spawn_hitbox(owner.0, &s)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "afterimage", |lua, (owner, pos, spec): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, mlua::Table)| {
+        let shadow: mlua::LuaString = spec.raw_get("shadow")?;
+        let shadow = named(&shadow, "shadow", |s| Shadow::NAMES.iter().position(|&n| n == s))?;
+        let s = AfterimageSpec {
+            params: params(spec.raw_get("params")?, "afterimage param")?,
+            color_shader: table_int(&spec, "color_shader")? as u16,
+            lifetime: table_int(&spec, "lifetime")? as u16,
+            shadow: Shadow::ALL[shadow],
+        };
+        let o = with(|api, _| Ok(api.spawn_afterimage(owner.0, pos.0, &s)))?;
         object_value(lua, o)
     });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {

@@ -538,6 +538,19 @@ pub struct HitboxSpec {
     pub bug_arg: u8,
 }
 
+/// An afterimage (effect object #0x28), as `sub_80E33FA` spawns it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AfterimageSpec {
+    /// Param1 (0xFF: a copy of the owner's sprite, else the sprite's
+    /// category), Param2 (the sprite's index), Param3 (the animation),
+    /// Param4 (the flip).
+    pub params: [u8; 4],
+    pub color_shader: u16,
+    /// Ticks it lasts.
+    pub lifetime: u16,
+    pub shadow: Shadow,
+}
+
 /// A panel as content sees it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PanelInfo {
@@ -576,6 +589,8 @@ pub struct NaviRecordInfo {
     /// Index into [`ACTOR_TYPES`].
     pub actor_type: u8,
     pub ai_index: u8,
+    /// The record's version (AIData+0x16 of an actor with it).
+    pub version: u8,
 }
 
 /// Why an API call failed. Content errors are bugs in the content: the
@@ -778,6 +793,9 @@ pub trait CoreApi {
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
     /// `sub_80E08C4`: hit spark `id` at `pos`.
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
+    /// `sub_80E33FA`: an afterimage of `owner` at `pos` (effect object
+    /// #0x28, the ruleset's).
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
@@ -833,6 +851,16 @@ pub trait CoreApi {
     /// `sub_801265A`: the buster's damage (the attack level, with the
     /// navi's and form's bonus, at most 10; 1 when worn out).
     fn buster_damage(&self, o: ObjectRef) -> u16;
+    /// `sub_80127C0(0)`: fill the attack variables from the chip at the
+    /// hand's cursor (its damage, bonuses and modifiers) and name the
+    /// chip's action.
+    fn prepare_chip(&mut self, o: ObjectRef) -> u8;
+    /// `sub_8011450`: restart the form overlay's animation with the navi's.
+    fn refresh_form_overlay(&mut self, o: ObjectRef);
+    /// `ho_8026554`: the panel Beast Out lock-on `mode` picks near the
+    /// target panel `p`, as the routine returns it (the navi's own panel
+    /// for a target off the field; column 0 when nothing fits).
+    fn lockon_panel(&self, o: ObjectRef, p: PanelPos, mode: u8) -> (u8, u8);
     /// Obstacles the navi absorbed, oldest first: (kind, animation).
     fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u8, u8)>>;
     /// Add one (false when the navi has eight).
@@ -868,6 +896,12 @@ pub trait CoreApi {
     /// Unregister, resolving hits against whatever is registered there.
     fn remove_collision(&mut self, o: ObjectRef);
     fn free_collision(&mut self, o: ObjectRef);
+    /// `object_setCollisionPanelsToCurrent`: the registration's panel
+    /// becomes the object's (its move direction kept).
+    fn set_collision_panel(&mut self, o: ObjectRef);
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels the
+    /// registration's region covers.
+    fn highlight_collision_panels(&mut self, o: ObjectRef);
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
     fn hit_spark(&mut self, o: ObjectRef);

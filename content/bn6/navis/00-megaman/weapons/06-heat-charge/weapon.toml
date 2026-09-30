@@ -1,0 +1,6 @@
+# MegaMan's weapon routine 0x06, HeatCross's charged shot (`sub_8011BA2`), is a
+# script. The action it names, 0x27 (FireBrn's), is a standard chip's.
+
+id = 0x06
+name = "Heat charge"
+script = "heat_charge.luau"
