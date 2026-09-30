@@ -1304,6 +1304,13 @@ panel: 16, 13, 11). Update (`sub_80D317C`): remove, spark; battle over or off th
   (region 1 again) hits; then destroy.
 - Fade (`sub_80D32C4`): blink for 10 ticks and destroy. **Nothing sets action 8 (unverified).**
 
+Verified: soundmod round 3 (RskyHny3 at frame 39688, its bee turning into the enemy's row and stinging) and the chip
+lab's RskyHny scenarios (every one that runs as far as the chip matches). **Unverified** (no trace or lab scenario
+reaches them): the bee without a collision slot; its end by battle over, off the field, or an attack's hit
+(0xF3800000); a sting with no navi on the panel; steering while flying along a column (`sub_80D3404`) and reversing
+in a row; the destination behind the user or off the edge (`sub_80D3342`'s fallbacks) and among several rows
+(`sub_80D3374`); the flip in `sub_80D3474`; the fade; the phase-4 branch on params byte 1.
+
 ### 3.8 The dragons (action 0x51, `sub_80EF4B4`)
 
 Content: chips/02e-heatdrgn/chip.luau (the action), objects/dragon-head (T3#0xC9), objects/dragon-body (T3#0xC8),
@@ -1331,6 +1338,11 @@ hit flags & 0xFF800000 → region 0; not while dimmed the action; present; `obje
 **The body (T3#0xC8, `sub_80DE13C`).** Spawned at the registers (the head's row, i, the delay) with Param1 = kind;
 its Z keeps the delay as its fraction. Hidden (anim 7) until its delay is up, then a splash and the head's path
 (`sub_80DE21A`, `sub_80DE266`, `sub_80DE2B0`) without collision, panel types or animation changes.
+
+Verified by the chip lab's dragon scenarios (every one that runs as far as the chip matches). **Unverified**: no
+enemy body ahead (the column right ahead, `sub_80ED040`'s fallback); the head without a collision slot; either part's
+end when the battle is over; a blocked hit (0xFF800000) clearing the head's region; `sub_810FA4C`'s cap at 4;
+`sub_80DE768`'s off-field and not-solid exits.
 
 ---
 

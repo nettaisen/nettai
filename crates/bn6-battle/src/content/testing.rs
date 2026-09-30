@@ -550,7 +550,14 @@ fn objects() -> ObjectData {
     // The buster's muzzle flash and arm.
     let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03), plain(0x28, 0x5E)]).collect(),
+        // Attachments are numbered without gaps: fillers up to the bee
+        // chip's hive (0x28).
+        attachments: (0..5)
+            .map(gun)
+            .chain([plain(5, 0x06), plain(6, 0x03)])
+            .chain((7..0x28).map(|id| plain(id, 0x06)))
+            .chain([plain(0x28, 0x5E)])
+            .collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
