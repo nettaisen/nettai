@@ -165,8 +165,14 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
     match b.objects.get(r).action {
         // The Beast forms' claw (weapon routine 0x1E's action).
         0x52 => 0x0C,
-        // sub_80EAF26
-        0x41 => panic!("the lock-on of action 0x41 (sub_80EAF26) is not implemented yet"),
+        // sub_80EAF26: the charged slash's by its variant, unless 0.
+        0x41 => {
+            let variant = ai(b, r).attack.variant;
+            let Some(&mode) = b.content.rules.lockon.slash_modes.get(variant as usize) else {
+                panic!("charged slash variant {variant:#x} reads past byte_80EB028 (sub_80EAF26)");
+            };
+            if mode != 0 { mode } else { b.content.chip(ai(b, r).attack.chip_id).lockon_mode }
+        }
         _ => b.content.chip(ai(b, r).attack.chip_id).lockon_mode,
     }
 }

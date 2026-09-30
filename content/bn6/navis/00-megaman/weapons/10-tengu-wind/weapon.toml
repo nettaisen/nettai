@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x10, TenguCross's B+Back (`sub_8011CA8`), and the
+# instant chip effect 0x14 it names (`sub_80CD4AC`) are a script.
+
+id = 0x10
+name = "Tengu wind"
+instant_chip = 0x14
+script = "tengu_wind.luau"

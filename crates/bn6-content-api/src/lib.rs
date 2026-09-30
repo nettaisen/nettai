@@ -34,6 +34,7 @@ pub use api::{
     Pad, PanelInfo, RequestFlag, Shadow, SpriteField, StatusFlag, StatusTimer,
     SideSpecial,
 };
+pub use api::AfterimageSpec;
 pub use data::{Data, Key as DataKey};
 pub use host::{
     ActionDef, ActionReg, ContentError, ContentHost, DimmingChipSpec, Hook, HookCall, HookDef, HookId, HookReg, KindId,

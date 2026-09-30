@@ -267,6 +267,7 @@ struct ReactionsFile {
 #[serde(deny_unknown_fields)]
 struct LockonFile {
     column_shifts: Vec<i8>,
+    slash_modes: Vec<u8>,
     search: Vec<LockonSearch>,
 }
 
@@ -550,8 +551,18 @@ pub fn weapon_folder(w: &WeaponData) -> String {
 
 /// The object kinds whose folders hold data of their own (a kind of these
 /// a script implements keeps its `[kind]` in the same file).
-const DATA_OBJECTS: [&str; 8] =
-    ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "boomerang", "projectile", "flying-shot"];
+const DATA_OBJECTS: [&str; 10] = [
+    "rock",
+    "absorbed-obstacle",
+    "body-overlay",
+    "sun-beam",
+    "attachment",
+    "boomerang",
+    "projectile",
+    "flying-shot",
+    "sword-wave",
+    "hit-zone",
+];
 
 /// A script as an entity's file names it: `module` (a path in the pack
 /// without `.luau`) relative to `folder`, with `.luau`.
@@ -640,6 +651,20 @@ pub fn export(c: &Content) -> Files {
         toml_file(
             "The sun beam's (effect object #0x48) sprites by look, its first parameter.",
             &SunBeamFile { look: looks, script_kind: script_kind("sun-beam") },
+        ),
+    );
+    put(
+        "objects/sword-wave/object.toml".into(),
+        toml_file(
+            "Sword waves (attack object #0x96) by kind, its first parameter.",
+            &ObjectFile { variant: o.sword_waves.clone(), script_kind: script_kind("sword-wave") },
+        ),
+    );
+    put(
+        "objects/hit-zone/object.toml".into(),
+        toml_file(
+            "Hit zones (attack object #0x8B) by kind, its first parameter.",
+            &ObjectFile { variant: o.hit_zones.clone(), script_kind: script_kind("hit-zone") },
         ),
     );
     put(
@@ -796,8 +821,12 @@ pub fn export(c: &Content) -> Files {
     );
     put(
         "rules/lockon.toml".into(), toml_file(
-            "The Beast Out lock-on: for the chips' lock-on modes that search, the panels next to the\ntarget tried (dx toward the user's front), whether the middle row is taken afterwards, and the\ncolumn shifts tried when nothing fits.",
-            &LockonFile { column_shifts: r.lockon.column_shifts.clone(), search: r.lockon.searches.clone() },
+            "The Beast Out lock-on: for the chips' lock-on modes that search, the panels next to the\ntarget tried (dx toward the user's front), whether the middle row is taken afterwards, and the\ncolumn shifts tried when nothing fits. slash_modes: the charged slash's (action 0x41) mode by\nits variant (0: the chip's).",
+            &LockonFile {
+                column_shifts: r.lockon.column_shifts.clone(),
+                slash_modes: r.lockon.slash_modes.clone(),
+                search: r.lockon.searches.clone(),
+            },
         ),
     );
     let cs = &r.custom_screen;
@@ -1068,6 +1097,15 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     add_kind("sun-beam", beams.script_kind, report);
     let file = "objects/sun-beam/object.toml";
     let sun_beam_looks = dense(beams.look.into_iter().map(|l| (l.id as usize, l.sprite, file.into())).collect(), "sun beam look", report);
+    let waves: ObjectFile<SwordWave> = read_toml(root, "objects/sword-wave/object.toml", report)?;
+    add_kind("sword-wave", waves.script_kind, report);
+    let file = "objects/sword-wave/object.toml";
+    let sword_waves =
+        dense(waves.variant.into_iter().map(|w| (w.id as usize, w, file.into())).collect(), "sword wave", report);
+    let zones: ObjectFile<HitZone> = read_toml(root, "objects/hit-zone/object.toml", report)?;
+    add_kind("hit-zone", zones.script_kind, report);
+    let file = "objects/hit-zone/object.toml";
+    let hit_zones = dense(zones.variant.into_iter().map(|z| (z.id as usize, z, file.into())).collect(), "hit zone", report);
     let boomerangs: ObjectFile<BoomerangKind> = read_toml(root, "objects/boomerang/object.toml", report)?;
     add_kind("boomerang", boomerangs.script_kind, report);
     let file = "objects/boomerang/object.toml";
@@ -1122,6 +1160,8 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
         boomerangs,
         projectiles,
         flying_shots,
+        sword_waves,
+        hit_zones,
         kinds,
     })
 }
@@ -1306,7 +1346,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         push_vectors: reactions.push,
         ice_vectors: reactions.ice,
         bubble_bob: reactions.bubble_bob,
-        lockon: Lockon { searches: lockon.search, column_shifts: lockon.column_shifts },
+        lockon: Lockon { searches: lockon.search, column_shifts: lockon.column_shifts, slash_modes: lockon.slash_modes },
         sine: math.sine,
     })
 }

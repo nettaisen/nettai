@@ -397,7 +397,7 @@ pub(crate) fn set_coordinates_from_panel(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8011450`: restart the form overlay (`related[1]`) with the navi
 /// after an animation change.
-fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
     let a = ai(b, r);
     if a.actor_type == ActorType::Virus {
         return;
@@ -408,6 +408,13 @@ fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
         14 | 24 | 25.. => panic!("form overlay refresh for AI index {} is not implemented yet", a.ai_index),
         _ => {}
     }
+}
+
+/// `sub_80127C0(0)`: fill the attack variables for the next chip and name
+/// its action (for weapon routines that use the chip, such as SlashCross's
+/// A-charge).
+pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) -> u8 {
+    chip_use::prepare(b, r, 0)
 }
 
 // ---- The transformation sequencer's checks -------------------------------------

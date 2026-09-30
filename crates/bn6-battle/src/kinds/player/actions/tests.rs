@@ -1245,3 +1245,168 @@ fn form_weapons_roll_back() {
         assert!(t < 200, "weapon {routine:#x} never ended");
     }
 }
+
+/// Start weapon routine `routine` for side 0 as a `set_attack` of `kind`
+/// (1 buster, 2 charged shot, 3 B+Back); returns the action it named.
+fn start_weapon_as(b: &mut Battle, p0: ObjectRef, routine: u8, kind: u8) -> u8 {
+    let action = super::super::idle::weapon_routine(b, p0, routine);
+    super::super::set_attack(b, p0, action, kind);
+    action
+}
+
+/// The objects of content kind `name`, in update order.
+fn kind_objects(b: &Battle, name: &str) -> Vec<ObjectRef> {
+    let k = b.content.object_kind(name).unwrap_or_else(|| panic!("no kind {name}"));
+    let (pool, index) = (k.pool, k.index);
+    b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (pool, index)).collect()
+}
+
+/// Put side 0's navi on (x, 2).
+fn stand_at(b: &mut Battle, p0: ObjectRef, x: u8) {
+    let (px, py) = crate::kinds::player::panel_coordinates(x, 2);
+    let o = b.objects.get_mut(p0);
+    (o.panel, o.future_panel) = (PanelPos { x, y: 2 }, PanelPos { x, y: 2 });
+    (o.pos.x, o.pos.y) = (px, py);
+}
+
+#[test]
+fn tengu_cross_back_special_blows_a_gust_down_each_row() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon_as(&mut b, p0, 0x10, 3), 0x1C);
+    assert_eq!(ai_mut(&mut b, p0).attack.variant, 0x14);
+    let mut t = 0;
+    // Its first tick: a gust in each row from the far column, blowing back
+    // toward the navi.
+    run_to(&mut b, p, &mut t, 1, 0);
+    // (Each runs right after its spawner, so the last spawned first.)
+    let gusts = kind_objects(&b, "gust");
+    let panels: Vec<_> = gusts.iter().map(|&g| b.objects.get(g).panel).collect();
+    assert_eq!(panels, [PanelPos { x: 6, y: 3 }, PanelPos { x: 6, y: 2 }, PanelPos { x: 6, y: 1 }]);
+    assert_eq!(b.objects.get(gusts[0]).vel.x, -(10 << 16));
+    // The navi waits 8 ticks, then idles with the B+Back cooldown.
+    run_to(&mut b, p, &mut t, 8, 0);
+    assert_eq!(b.objects.get(p0).action, 0x1C);
+    run_to(&mut b, p, &mut t, 9, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(ai_mut(&mut b, p0).back_special_cooldown, 0x27);
+    // The gusts end at the field's edge at the latest.
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert!(kind_objects(&b, "gust").is_empty());
+}
+
+#[test]
+fn slash_cross_charged_shot_sends_a_sword_wave() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon_as(&mut b, p0, 0x12, 2), 0x41);
+    // 60 damage and 20 per buster damage point (1).
+    assert_eq!(ai_mut(&mut b, p0).attack.damage, 80);
+    let mut t = 0;
+    run_to(&mut b, p, &mut t, 11, 0);
+    assert!(kind_objects(&b, "sword-wave").is_empty());
+    // The slash starts on tick 3; the wave goes out 9 ticks later, from
+    // the panel in front.
+    run_to(&mut b, p, &mut t, 12, 0);
+    let waves = kind_objects(&b, "sword-wave");
+    assert_eq!(waves.len(), 1);
+    assert_eq!(b.objects.get(waves[0]).panel, PanelPos { x: 3, y: 2 });
+    run_to(&mut b, p, &mut t, 29, 0);
+    assert_eq!(b.objects.get(p1).hp, 920);
+    assert_eq!(b.objects.get(p0).action, 0x41);
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+#[test]
+fn erase_cross_charged_shot_beams_the_row_while_the_navi_holds() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon_as(&mut b, p0, 0x14, 2), 0x45);
+    // Outside EraseCross, the beam's second kind, 4 pixels lower.
+    assert_eq!(ai_mut(&mut b, p0).attack.variant, 1);
+    let mut t = 0;
+    run_to(&mut b, p, &mut t, 1, 0);
+    let rays = kind_objects(&b, "erase-ray");
+    assert_eq!(rays.len(), 1);
+    assert_eq!(b.objects.get(rays[0]).pos.z, -(4 << 16));
+    // After its opening animation, a hit zone on each panel from its own
+    // to the field's edge; the one on the enemy hits once and ends.
+    run_to(&mut b, p, &mut t, 10, 0);
+    let mut zones: Vec<_> = kind_objects(&b, "hit-zone").iter().map(|&z| b.objects.get(z).panel.x).collect();
+    zones.sort();
+    assert_eq!(zones, [3, 4, 6]);
+    assert_eq!(b.objects.get(p1).hp, 940);
+    // The navi holds for 71 ticks; then the beam shuts.
+    run_to(&mut b, p, &mut t, 71, 0);
+    assert_eq!(b.objects.get(p0).action, 0x45);
+    run_to(&mut b, p, &mut t, 72, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    run_to(&mut b, p, &mut t, 80, 0);
+    assert!(kind_objects(&b, "hit-zone").is_empty());
+    assert!(kind_objects(&b, "erase-ray").is_empty());
+}
+
+#[test]
+fn tomahawk_cross_charged_shot_swings_ahead() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    stand_at(&mut b, p0, 4);
+    assert_eq!(start_weapon_as(&mut b, p0, 0x16, 2), 0x4A);
+    let mut t = 0;
+    run_to(&mut b, p, &mut t, 15, 0);
+    assert_eq!(b.objects.get(p0).anim, 0x12);
+    run_to(&mut b, p, &mut t, 16, 0);
+    assert_eq!(b.objects.get(p0).anim, 0x13);
+    // The hit on the swing's 10th tick, 40 damage and 20 per buster damage
+    // point.
+    run_to(&mut b, p, &mut t, 25, 0);
+    assert_eq!(b.objects.get(p1).hp, 1000);
+    run_to(&mut b, p, &mut t, 28, 0);
+    assert_eq!(b.objects.get(p1).hp, 940);
+    run_to(&mut b, p, &mut t, 43, 0);
+    assert_eq!(b.objects.get(p0).action, 0x4A);
+    run_to(&mut b, p, &mut t, 44, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+#[test]
+fn ground_cross_charged_shot_burrows_to_the_enemy_and_drills() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    assert_eq!(start_weapon_as(&mut b, p0, 0x19, 2), 0x4D);
+    let mut t = 0;
+    // It leaves the field on its 4th tick.
+    run_to(&mut b, p, &mut t, 4, 0);
+    assert_eq!(b.objects.get(p0).pos.x, 0xB4_0000);
+    // After 30 ticks it comes up in front of the enemy (lock-on mode 0xC)
+    // and drills from tick 40.
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 4, y: 2 });
+    run_to(&mut b, p, &mut t, 41, 0);
+    let mut drills: Vec<_> = kind_objects(&b, "drill-hit").iter().map(|&d| b.objects.get(d).panel.x).collect();
+    drills.sort();
+    assert_eq!(drills, [5, 6]);
+    run_to(&mut b, p, &mut t, 73, 0);
+    assert!(b.objects.get(p1).hp < 1000);
+    // Then it sinks, and is back on its own panel on tick 86.
+    run_to(&mut b, p, &mut t, 85, 0);
+    assert_eq!(b.objects.get(p0).action, 0x4D);
+    run_to(&mut b, p, &mut t, 86, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.action, o.panel), (8, PanelPos { x: 2, y: 2 }));
+    assert!(kind_objects(&b, "drill-hit").is_empty());
+}
+
+#[test]
+fn the_cross_charged_shots_roll_back() {
+    for (routine, kind, from) in [(0x10, 3, 0), (0x12, 2, 8), (0x14, 2, 5), (0x16, 2, 20), (0x19, 2, 35)] {
+        let (mut b, p0, p1) = fight();
+        stand_at(&mut b, p0, if routine == 0x16 { 4 } else { 2 });
+        start_weapon_as(&mut b, p0, routine, kind);
+        for _ in 0..from {
+            tick(&mut b, p0, p1, 0);
+        }
+        assert_rolls_back(&mut b, [p0, p1], 60, 0);
+    }
+}
