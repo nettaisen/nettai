@@ -12,17 +12,23 @@
 
 local follow_effect = {}
 
+type Look = { sprite: SpriteId, anim: number, palette: number }
+
+local function look(sprite: SpriteId, anim: number): Look
+    return { sprite = sprite, anim = anim, palette = 0 }
+end
+
 -- By Param1 (`byte_80E3D44`): sprite, animation and palette.
-local LOOKS = {
-    [0] = { "10-00", 0, 0 },
-    { "10-00", 0, 0 },
-    { "10-00", 0, 0 },
-    { "0C-00", 2, 0 },
-    { "10-0E", 0, 0 },
-    { "10-11", 0, 0 },
-    { "0C-38", 0xE, 0 },
-    { "0C-38", 0xF, 0 },
-    { "10-4A", 1, 0 },
+local LOOKS: { [number]: Look } = {
+    [0] = look("10-00", 0),
+    look("10-00", 0),
+    look("10-00", 0),
+    look("0C-00", 2),
+    look("10-0E", 0),
+    look("10-11", 0),
+    look("0C-38", 0xE),
+    look("0C-38", 0xF),
+    look("10-4A", 1),
 }
 
 -- Variant 3's slide, pixels a tick (`dword_80E3EB0`).
@@ -176,17 +182,17 @@ end
 
 -- `sub_80E3D90`: its look, then its first update.
 local function init(me: Object)
-    local look = LOOKS[me:param(1)]
-    if not look then
+    local l = LOOKS[me:param(1)]
+    if not l then
         error(string.format("follow effect %d reads past byte_80E3D44", me:param(1)))
     end
     local sprite = me.sprite
-    sprite:load(look[1])
+    sprite:load(l.sprite)
     sprite.shadow = "with_sprite"
-    me.anim = look[2]
-    me.anim_loaded = look[2]
-    sprite:set_animation(look[2])
-    sprite.palette = look[3] + me:param(3)
+    me.anim = l.anim
+    me.anim_loaded = l.anim
+    sprite:set_animation(l.anim)
+    sprite.palette = l.palette + me:param(3)
     sprite:set_flip(me:param(2))
     me.visible = true
     me.hp = 0
