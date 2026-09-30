@@ -1540,7 +1540,13 @@ Fields that stop existing in the engine, and how the harness treats them:
   `ChipHand::from_bytes`/`to_bytes`, `TransformRequest::from_bytes`, battle settings, SP times) move with it and
   resolve numbers to handles through compat; a number compat doesn't know is an error naming it. The custom-screen
   check's "damage below 1000" test becomes "a fixed damage" (a formula chip's hand damage comes from the trace, as
-  today).
+  today). *Step 2 did the move:* the codecs are `bn6_compat::codec`'s functions (`navi_stats`/`navi_stats_bytes`,
+  `battle_folder`/`battle_folder_bytes`, `chip_hand`/`chip_hand_bytes`, `transform_request`, `battle_settings`,
+  `later_stages`, `sp_times`) and still produce numbers; `compare` and `run_round` take compat (the kinds'
+  comparison flags, the engine's included, come from kinds.toml); `round_setup`, `start` and
+  `check_custom_screens` take it when the codecs resolve handles (phase C). `Compat::bn6()` is this repository's
+  content/bn6/compat, built in. NaviStats's bug-code byte writes (`sub_80139F6`) are a typed match in the
+  engine, checked against the codec in bn6-compat.
 - **trace-tests**: `trace_tests::content()` becomes `load(content, assets)` (the engine checkout's content/bn6
   and the workspace's extracted assets) plus compat. traces.rs, lab.rs, custom_screen.rs and rollback.rs change
   only their calls. rock_trace.rs's `(Pool::Attack, 0x59)`, `(Pool::Effect, 0x38)` and `0x87` become kind keys

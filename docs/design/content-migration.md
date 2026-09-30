@@ -141,7 +141,7 @@ the trace for the object's `"type"` and `"index"` or the player's `"state":[4,AC
 name something that moved (a Rust kind's `INDEX`, a renamed flag), update them to the content's
 (`b.content.object_kind("sun-beam")`).
 
-Rollback cost: `cargo run --release -p bn6-netplay --example rollback_cost --features trace -- <trace.jsonl> <pack>
+Rollback cost: `cargo run --release -p bn6-netplay --example rollback_cost -- <trace.jsonl> <pack>
 <round>`; today 56 to 110 µs per rendered frame (scripting.md §7.3). Report the change.
 
 ## 5. What is left

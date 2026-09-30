@@ -6,7 +6,9 @@ license.workspace = true
 description = "Draws battles of the native BN6 engine: replays golden traces or plays live"
 
 [dependencies]
-bn6-battle = { path = "../bn6-battle", features = ["trace"] }
+bn6-battle = { path = "../bn6-battle" }
+# Trace playback, and the live driver's setup records.
+bn6-compat = { workspace = true, features = ["trace"] }
 bn6-assets = { path = "../bn6-assets" }
 bn6-audio = { path = "../bn6-audio" }
 bn6-content = { path = "../bn6-content" }
@@ -15,4 +17,4 @@ minifb = "0.28"
 png = "0.17"
 
 [dev-dependencies]
-bn6-battle = { path = "../bn6-battle", features = ["trace", "test-content"] }
+bn6-battle = { path = "../bn6-battle", features = ["test-content"] }
