@@ -232,6 +232,22 @@ impl Compat {
         self.weapons.iter().find(|(_, n)| n.contains(&routine)).map(|(k, _)| k.as_str())
     }
 
+    /// The key of the navi with this number.
+    pub fn navi_key(&self, navi: u8) -> Option<&str> {
+        self.navis.iter().find(|(_, n)| n.navi == navi).map(|(k, _)| k.as_str())
+    }
+
+    /// The key of MegaMan's form with this number.
+    pub fn form_key(&self, form: u8) -> Option<&str> {
+        self.forms.iter().find(|(_, f)| f.form == form).map(|(k, _)| k.as_str())
+    }
+
+    /// The key of the stage a battle settings record (by its index in
+    /// `BattleSettingsList1`) is.
+    pub fn stage_key(&self, settings: u8) -> Option<&str> {
+        self.stages.iter().find(|(_, st)| st.settings.contains(&settings)).map(|(k, _)| k.as_str())
+    }
+
     /// The original's object slot for object `r`'s kind. The engine never
     /// learns it for a kind content defines: the object records the kind's
     /// handle, and compat has the slot by key. The engine's own kinds and

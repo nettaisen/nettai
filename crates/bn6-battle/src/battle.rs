@@ -603,6 +603,7 @@ impl Battle {
         let score = setup.score;
         let stage = *content.stage(setup.settings.stage);
         let field = Field::new(&content, stage.layout, stage.panel_pattern, stage.mode);
+        let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
         let mut b = Battle {
             content,
             stats: setup.navi_stats,
@@ -627,7 +628,7 @@ impl Battle {
             banner: Banner::default(),
             paused: false,
             inputs: [InputRecord::default(); 2],
-            hands: [ChipHand::empty(), ChipHand::empty()],
+            hands,
             transform_requests: [TransformRequest::NONE; 2],
             turn_transforms: [TransformRequest::NONE; 2],
             transform_seq: TransformSequencer::default(),

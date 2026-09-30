@@ -117,6 +117,7 @@ version = "0.1.0"
 dependencies = [
  "bn6-assets",
  "bn6-battle",
+ "bn6-content-api",
  "m4a",
  "miniz_oxide 0.8.9",
  "png",

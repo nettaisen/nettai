@@ -232,6 +232,7 @@ pub fn weapon(n: u8) -> Option<bn6_content_api::WeaponHandle> {
 /// by key: setups reach them by handle.
 pub const TICKER_1: &str = "test/ticker1";
 pub const TICKER_2: &str = "test/ticker2";
+pub const TICKER_3: &str = "test/ticker3";
 pub const TICK_SHOT: &str = "test/tick-shot";
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
@@ -301,8 +302,20 @@ fn make() -> Content {
         animations: animations(),
         weapons: weapons(),
         scripts: scripts(),
+        assets: assets(),
         defs: Default::default(),
     }
+}
+
+/// The asset names the test content has: a few made-up ones for the test
+/// pack's effects, sparks and sounds, and a placeholder.
+fn assets() -> bn6_content_api::AssetNames {
+    let mut a = bn6_content_api::AssetNames::default();
+    a.sprites.insert("test-burst".into(), SpriteId { category: 0x14, index: 0 });
+    a.sprites.insert("test-spark".into(), SpriteId { category: 0x14, index: 1 });
+    a.sprites.insert("sprite-14-02".into(), SpriteId { category: 0x14, index: 2 });
+    a.sounds.insert("test-tick".into(), 0x1A6);
+    a
 }
 
 /// Where the BN6 scripts are (the source overlay in this repository).

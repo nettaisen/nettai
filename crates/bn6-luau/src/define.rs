@@ -22,7 +22,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::c_void;
 use std::rc::Rc;
 
-use bn6_content_api::{Data, DataKey, Definition, Definitions, ModuleExports, Registry, valid_key};
+use bn6_content_api::{AssetKind, AssetNames, Data, DataKey, Definition, Definitions, ModuleExports, Registry, valid_key};
 use mlua::{Lua, Table, Value as LuaValue};
 
 /// A definition as a definer recorded it.
@@ -60,6 +60,89 @@ pub(crate) struct Defined {
 }
 
 type Ptr = *const c_void;
+
+/// Asset values (docs/design/content-model-v2.md §6.3): one frozen table
+/// per asset, `{ name = "bomb" }` with its kind's metatable, made when
+/// content first names the asset. The binding finds an asset by its table's
+/// identity, as it finds a definition.
+pub(crate) struct AssetTables {
+    pub names: AssetNames,
+    metas: Vec<(AssetKind, Table)>,
+    pub by_ptr: HashMap<Ptr, (AssetKind, u16)>,
+    by_handle: HashMap<(AssetKind, u16), Table>,
+}
+
+impl AssetTables {
+    pub fn new(lua: &Lua, names: AssetNames) -> mlua::Result<AssetTables> {
+        let mut metas = Vec::new();
+        for kind in AssetKind::ALL {
+            let meta = lua.create_table()?;
+            meta.raw_set("__metatable", format!("{kind} asset"))?;
+            meta.raw_set("__asset", kind.name())?;
+            meta.set_readonly(true);
+            metas.push((kind, meta));
+        }
+        Ok(AssetTables { names, metas, by_ptr: HashMap::new(), by_handle: HashMap::new() })
+    }
+
+    /// The value of asset `h` of `kind`.
+    pub fn value(&mut self, lua: &Lua, kind: AssetKind, h: u16) -> mlua::Result<Table> {
+        if let Some(t) = self.by_handle.get(&(kind, h)) {
+            return Ok(t.clone());
+        }
+        let name = self.names.names(kind).get(h as usize).map(|s| s.to_string()).ok_or_else(|| {
+            mlua::Error::runtime(format!("no {kind} has handle {h}"))
+        })?;
+        let t = lua.create_table()?;
+        t.raw_set("name", name)?;
+        let meta = self.metas.iter().find(|(k, _)| *k == kind).map(|(_, m)| m.clone()).expect("every kind");
+        t.set_metatable(Some(meta))?;
+        t.set_readonly(true);
+        self.by_ptr.insert(t.to_pointer(), (kind, h));
+        self.by_handle.insert((kind, h), t.clone());
+        Ok(t)
+    }
+
+    /// The asset `v` is, if it is one.
+    pub fn asset(&self, v: &LuaValue) -> Option<(AssetKind, u16)> {
+        match v {
+            LuaValue::Table(t) => self.by_ptr.get(&t.to_pointer()).copied(),
+            _ => None,
+        }
+    }
+}
+
+/// Install `asset`: a resolver per asset kind (`asset.sprite("bomb")`),
+/// working while content loads. An unknown name is an error naming the
+/// module.
+pub(crate) fn install_assets(
+    lua: &Lua,
+    tables: &Rc<RefCell<AssetTables>>,
+    module: Rc<dyn Fn() -> Option<String>>,
+) -> mlua::Result<()> {
+    let asset = lua.create_table()?;
+    for kind in AssetKind::ALL {
+        let tables = Rc::downgrade(tables);
+        let module = module.clone();
+        let f = lua.create_function(move |lua, name: LuaValue| {
+            let what = format!("asset.{kind}");
+            let at = module().ok_or_else(|| mlua::Error::runtime(format!("{what}: assets are named while content loads")))?;
+            let tables = tables.upgrade().ok_or_else(|| mlua::Error::runtime(format!("{what}: content has loaded")))?;
+            let LuaValue::String(name) = name else {
+                return Err(mlua::Error::runtime(format!("{at}: {what} takes a name, not {}", name.type_name())));
+            };
+            let name = name.to_str()?.to_string();
+            let h = tables.borrow().names.handle(kind, &name).ok_or_else(|| {
+                mlua::Error::runtime(format!("{at}: no {kind} is named {name:?}"))
+            })?;
+            tables.borrow_mut().value(lua, kind, h)
+        })?;
+        asset.raw_set(kind.name(), f)?;
+    }
+    asset.set_readonly(true);
+    lua.globals().set("asset", asset)?;
+    Ok(())
+}
 
 /// Install `define`: a definer per registry, recording into `collector`.
 /// `module` names the module loading at the moment of a call (None outside
@@ -142,6 +225,7 @@ pub(crate) fn finish(
     lua: &Lua,
     collector: &RefCell<Collector>,
     modules: &BTreeMap<String, LuaValue>,
+    assets: &AssetTables,
 ) -> Result<Defined, String> {
     let mut c = collector.borrow_mut();
     c.open = false;
@@ -151,9 +235,13 @@ pub(crate) fn finish(
     let index: HashMap<Ptr, usize> = made.iter().enumerate().map(|(i, m)| (m.table.to_pointer(), i)).collect();
     let mut keys: Vec<Option<String>> = vec![None; made.len()];
 
-    // Explicit ids.
+    // Explicit ids (the roles are one definition, `roles`).
     for (i, m) in made.iter().enumerate() {
         let what = format!("{}: define.{}", m.module, m.registry.name());
+        if m.registry == Registry::Roles {
+            keys[i] = Some("roles".to_string());
+            continue;
+        }
         match m.table.raw_get::<LuaValue>("id").map_err(|e| format!("{what}: {e}"))? {
             LuaValue::Nil if m.registry.keyed() => return Err(format!("{what} needs an `id`")),
             LuaValue::Nil => {}
@@ -258,7 +346,7 @@ pub(crate) fn finish(
         made.iter().enumerate().map(|(i, m)| (m.table.to_pointer(), (m.registry, keys[i].clone()))).collect();
 
     // The canonical tree.
-    let refs = Refs { defs: &def_keys, schemas: &schema_keys };
+    let refs = Refs { defs: &def_keys, schemas: &schema_keys, assets };
     let mut defs = Vec::with_capacity(made.len() + schemas.len());
     let mut tables = Vec::with_capacity(made.len() + schemas.len());
     for (&(registry, key), &i) in &by_key {
@@ -314,6 +402,7 @@ pub(crate) fn finish(
 struct Refs<'a> {
     defs: &'a HashMap<Ptr, (Registry, String)>,
     schemas: &'a HashMap<Ptr, String>,
+    assets: &'a AssetTables,
 }
 
 impl Refs<'_> {
@@ -334,6 +423,10 @@ impl Refs<'_> {
             LuaValue::Function(_) => Data::Function,
             LuaValue::Table(t) => {
                 let p = t.to_pointer();
+                if let Some(&(kind, h)) = self.assets.by_ptr.get(&p) {
+                    let name = self.assets.names.names(kind)[h as usize].to_string();
+                    return Ok(Data::Asset(kind, name));
+                }
                 if !top {
                     if let Some((registry, key)) = self.defs.get(&p) {
                         return Ok(Data::Ref(*registry, key.clone()));
