@@ -395,6 +395,9 @@ declare class Object
     function open_counter_window(self): ()
     -- `sub_801056A`, after each phase of an attack.
     function check_reactive_abort(self): ()
+    -- `sub_8011450`: restart the form overlay with the navi after an
+    -- animation change.
+    function refresh_form_overlay(self): ()
     -- `object_exitAttackState`: back to idle with animation 0.
     function exit_attack(self): ()
     -- `sub_801171C`: back to idle, the animation as it is.
@@ -466,6 +469,20 @@ export type HitboxSpec = {
     status: number?,
     bug: number?,
     bug_arg: number?,
+}
+
+-- An afterimage (`battle.afterimage`): a blinking copy of a sprite that
+-- lasts `lifetime` ticks.
+export type AfterimageSpec = {
+    -- A sprite of its own, or nil: a copy of the owner's (with its form's
+    -- overlay).
+    sprite: SpriteId?,
+    anim: number,
+    -- The game's flip value (bit 0 horizontal).
+    flip: number,
+    color_shader: number,
+    lifetime: number,
+    shadow: Shadow,
 }
 
 -- A side's defensive-chip record.
@@ -556,6 +573,9 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80E33FA`: an afterimage (effect object #0x28) of `owner` at
+    -- `pos`.
+    afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
 }
 
 declare field: {
@@ -665,6 +685,27 @@ export type GunDelSol = {
     gun: AttachmentKind,
 }
 
+-- Action 0x13's slash: its hit region and the effect that draws it.
+export type SwordSlash = {
+    region: number,
+    hit_effect: number,
+    target: number,
+    self_type: number,
+    hit_mod: number,
+    status: number,
+    bug: number,
+    bug_arg: number,
+    effect: number,
+}
+
+-- A sword's data (actions 0x13 and 0x49), in its chip's folder.
+export type Sword = {
+    -- The blade the user holds: an attachment kind.
+    blade: number,
+    -- Action 0x13's slash.
+    slash: SwordSlash?,
+}
+
 -- A chip's record and its own data.
 export type ChipData = {
     id: number,
@@ -682,6 +723,7 @@ export type ChipData = {
     lockon_mode: number,
     damage: number,
     gun_del_sol: GunDelSol?,
+    sword: Sword?,
     script: string?,
 }
 

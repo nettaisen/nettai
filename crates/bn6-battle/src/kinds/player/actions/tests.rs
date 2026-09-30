@@ -239,3 +239,115 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     run_to(&mut b, p, &mut t, 70, 0);
     assert_eq!(b.objects.get(p0).action, 8);
 }
+
+/// Side 0 uses `chip` (the first in its hand) from idle: the tick the
+/// action starts.
+fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: crate::content::ChipId) {
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = chip;
+    hand.damage[0] = b.content.chip(chip).damage;
+    b.hands[0] = hand;
+    tick(b, p0, p1, keys::A);
+}
+
+/// The effect objects (effect #0) and afterimages (effect #0x28) there are.
+fn effects(b: &Battle, index: u8) -> Vec<ObjectRef> {
+    b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.objects.get(o).index == index).collect()
+}
+
+#[test]
+fn a_step_sword_steps_in_slashes_and_steps_back() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    let mut t = 0;
+    use_chip(&mut b, p0, p1, testing::STEP_BLADE);
+    assert_eq!(b.objects.get(p0).action, 0x13);
+
+    // Tick 1: an afterimage where it stood, and it is two panels ahead,
+    // its own panel held for the way back.
+    run_to(&mut b, p, &mut t, 1, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.panel, o.future_panel), (PanelPos { x: 4, y: 2 }, PanelPos { x: 2, y: 2 }));
+    assert_eq!(b.field.panel(2, 2).unwrap().reserver, Some(p0));
+    assert_ne!(f1_of(&b, p0) & f1::MOVING, 0);
+    let first = effects(&b, 0x28);
+    assert_eq!(first.len(), 1);
+    assert_eq!(b.objects.get(first[0]).pos.x, crate::kinds::player::panel_coordinates(2, 2).0);
+
+    // Tick 3: the swing, with the blade.
+    run_to(&mut b, p, &mut t, 3, 0);
+    assert_eq!(b.objects.get(p0).anim, 5);
+    let blade = b.objects.get(p0).related[0].expect("the blade");
+    assert_eq!(b.objects.get(blade).params[0], 7);
+    // Tick 8: two more afterimages: the navi's and the blade's.
+    run_to(&mut b, p, &mut t, 8, 0);
+    assert_eq!(effects(&b, 0x28).len(), 3);
+    // Tick 12: the slash on the column ahead hits the target at (5,2) on
+    // its next update, and its effect shows.
+    run_to(&mut b, p, &mut t, 11, 0);
+    assert!(effects(&b, 0).is_empty());
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!(b.objects.get(effects(&b, 0)[0]).params[0], 0x16);
+    run_to(&mut b, p, &mut t, 13, 0);
+    assert_eq!(b.objects.get(p1).hp, 920);
+
+    // Tick 25, once the swing's animation is over: back home, the blade
+    // let go.
+    run_to(&mut b, p, &mut t, 24, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 4, y: 2 });
+    run_to(&mut b, p, &mut t, 25, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 2 });
+    assert_eq!(b.field.panel(2, 2).unwrap().reserver, None);
+    // Tick 31: idle.
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 0x13);
+    run_to(&mut b, p, &mut t, 31, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(b.objects.get(p0).related[0], None);
+    assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
+}
+
+#[test]
+fn a_sword_without_a_target_ahead_swings_at_nothing() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    let mut t = 0;
+    use_chip(&mut b, p0, p1, testing::BLADE);
+    // No step: it swings from where it stands on tick 3, and the slash
+    // (on tick 12) finds nobody at (3,2).
+    run_to(&mut b, p, &mut t, 3, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.panel, o.anim), (PanelPos { x: 2, y: 2 }, 5));
+    assert!(effects(&b, 0x28).is_empty());
+    run_to(&mut b, p, &mut t, 13, 0);
+    assert_eq!(b.objects.get(p1).hp, 1000);
+    // No way back to walk: idle on tick 30.
+    run_to(&mut b, p, &mut t, 29, 0);
+    assert_eq!(b.objects.get(p0).action, 0x13);
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+#[test]
+fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    let c = b.objects.get(p1).collision.unwrap();
+    b.collision.get_mut(c).status_timers[crate::collision::timer::PARALYZE] = 100;
+    let mut t = 0;
+    use_chip(&mut b, p0, p1, testing::STUN_BLADE);
+    assert_eq!(b.objects.get(p0).action, 0x49);
+    // The slashes land on tick 10, on the target's own column.
+    run_to(&mut b, p, &mut t, 10, 0);
+    let slash = effects(&b, 0)[0];
+    let (x, y) = crate::kinds::player::panel_coordinates(5, 2);
+    let o = b.objects.get(slash);
+    assert_eq!((o.params, o.pos.x, o.pos.y), ([0x16, 0, 2 + 7, 0], x, y));
+    run_to(&mut b, p, &mut t, 11, 0);
+    assert_eq!(b.objects.get(p1).hp, 920);
+    // Idle on tick 28.
+    run_to(&mut b, p, &mut t, 27, 0);
+    assert_eq!(b.objects.get(p0).action, 0x49);
+    run_to(&mut b, p, &mut t, 28, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
