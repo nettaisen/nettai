@@ -211,6 +211,9 @@ declare class Collision
     hit_mod_base: number
     -- The damage it deals.
     self_damage: number
+    -- The counter byte (bits 0-6 counter strength, bit 7 can't counter),
+    -- which setup takes from the damage word's high half.
+    counter_byte: number
     -- What the last resolution hit (read-only).
     hit_flags: number
     -- The damage taken this window (read-only).
@@ -690,7 +693,7 @@ export type ActorListEntrySpec = {
     variant: number,
 }
 
-export type ObstacleCrush = "breaks" | "destroys"
+export type ObstacleCrush = "breaks" | "destroys" | "passes"
 export type ObstacleRemoval = "broken" | "removed" | "vanished" | "absorbed"
 export type BlinkOut = "no" | "blinking" | "done"
 
@@ -709,6 +712,8 @@ declare obstacle: {
     unregister: (me: Object) -> (),
     -- `sub_801AD9E`: resolve this tick's hits (a push forgets the damage).
     take_hits: (me: Object) -> (),
+    -- `sub_801AD12`: the same, but a push keeps the damage.
+    take_hits_keeping_damage: (me: Object) -> (),
     -- `sub_800F672`: the lifetime (`timer`): broken when it runs out or
     -- the battle is over, blinking for its last three seconds.
     tick_lifetime: (me: Object) -> (),
@@ -716,10 +721,17 @@ declare obstacle: {
     -- 0) or `sub_801B4D4` ("destroys"): damage, removal and status; the
     -- action the kind's table runs now, nil when a status routine ran.
     react: (me: Object, crush: ObstacleCrush?) -> number?,
+    -- `sub_801B750`: the same (as "breaks"), but while dimmed it holds
+    -- still even while appearing. (`sub_801B878` is "breaks", or
+    -- "passes" while its object says a body's touch does nothing.)
+    react_holding: (me: Object, crush: ObstacleCrush?) -> number?,
     -- The shared table entries: `sub_80165B8` (1), `sub_8017E26` (5, a
     -- push), and the actor reactions obstacles can't take (3, 4, 6, 7).
     return_to_idle: (me: Object) -> (),
     slide: (me: Object) -> (),
+    -- `sub_8017CC0` (5 in the thrown obstacles' tables): pushed along the
+    -- field by a hit.
+    pushed: (me: Object) -> (),
     flinch: (me: Object) -> (),
     paralyzed: (me: Object) -> (),
     frozen: (me: Object) -> (),

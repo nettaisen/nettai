@@ -1070,6 +1070,9 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "unregister", |_, me: Me| with(|api, _| Ok(api.obstacle_unregister(me.0))));
     lib_fn!(lua, t, "take_hits", |_, me: Me| with(|api, _| api.obstacle_take_hits(me.0).map_err(api_error)));
+    lib_fn!(lua, t, "take_hits_keeping_damage", |_, me: Me| {
+        with(|api, _| api.obstacle_take_hits_keeping_damage(me.0).map_err(api_error))
+    });
     lib_fn!(lua, t, "tick_lifetime", |_, me: Me| with(|api, _| api.obstacle_tick_lifetime(me.0).map_err(api_error)));
     lib_fn!(lua, t, "react", |_, (me, crush): (Me, Option<mlua::LuaString>)| {
         let crush = match crush {
@@ -1077,6 +1080,13 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             None => ObstacleCrush::Breaks,
         };
         with(|api, _| api.obstacle_react(me.0, crush).map_err(api_error))
+    });
+    lib_fn!(lua, t, "react_holding", |_, (me, crush): (Me, Option<mlua::LuaString>)| {
+        let crush = match crush {
+            Some(c) => named(&c, "crush", ObstacleCrush::from_name)?,
+            None => ObstacleCrush::Breaks,
+        };
+        with(|api, _| api.obstacle_react_holding(me.0, crush).map_err(api_error))
     });
     for &a in ObstacleAction::ALL {
         t.set(

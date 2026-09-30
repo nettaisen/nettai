@@ -133,6 +133,16 @@ fn key_bit(k: Key) -> u16 {
     }
 }
 
+/// The obstacle framework's crush rule for the API's.
+fn obstacle_crush(crush: ObstacleCrush) -> kinds::obstacle::Crush {
+    use kinds::obstacle::Crush;
+    match crush {
+        ObstacleCrush::Breaks => Crush::Breaks,
+        ObstacleCrush::Destroys => Crush::Destroys,
+        ObstacleCrush::Passes => Crush::Passes,
+    }
+}
+
 /// The header flag behind a boolean object field.
 fn flag_bit(f: ObjectField) -> Option<u8> {
     Some(match f {
@@ -999,6 +1009,7 @@ impl CoreApi for Battle {
             CollisionField::Bugs => c.bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
+            CollisionField::CounterByte => c.counter_byte as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
             CollisionField::GuardDirs => c.guard_dirs as i64,
@@ -1026,6 +1037,7 @@ impl CoreApi for Battle {
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
+            CollisionField::CounterByte => c.counter_byte = x as u8,
             CollisionField::HitFlags | CollisionField::FinalDamage | CollisionField::GuardDirs => unreachable!("read-only"),
         }
         Ok(())
@@ -1125,13 +1137,19 @@ impl CoreApi for Battle {
     }
 
     fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>> {
-        use kinds::obstacle::Crush;
         self.collision_of(o)?;
-        let crush = match crush {
-            ObstacleCrush::Breaks => Crush::Breaks,
-            ObstacleCrush::Destroys => Crush::Destroys,
-        };
-        Ok(kinds::obstacle::react(self, o, crush))
+        Ok(kinds::obstacle::react(self, o, obstacle_crush(crush)))
+    }
+
+    fn obstacle_react_holding(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>> {
+        self.collision_of(o)?;
+        Ok(kinds::obstacle::react_holding(self, o, obstacle_crush(crush)))
+    }
+
+    fn obstacle_take_hits_keeping_damage(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of(o)?;
+        kinds::obstacle::take_hits_keeping_damage(self, o);
+        Ok(())
     }
 
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()> {
@@ -1140,6 +1158,7 @@ impl CoreApi for Battle {
         let a = match a {
             ObstacleAction::ReturnToIdle => S::ReturnToIdle,
             ObstacleAction::Slide => S::Slide,
+            ObstacleAction::Pushed => S::Pushed,
             ObstacleAction::Flinch => S::Flinch,
             ObstacleAction::Paralyzed => S::Paralyzed,
             ObstacleAction::Frozen => S::Frozen,

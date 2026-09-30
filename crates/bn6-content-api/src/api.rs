@@ -283,6 +283,10 @@ named_fields! {
         HitModBase = "hit_mod_base", U8, rw;
         /// The damage it deals (the object's damage at setup).
         SelfDamage = "self_damage", U16, rw;
+        /// The counter byte (CollisionData+0x07: bits 0-6 counter
+        /// strength, bit 7 can't counter), which setup takes from the
+        /// damage word's high half.
+        CounterByte = "counter_byte", U8, rw;
         /// What the last resolution hit.
         HitFlags = "hit_flags", U32, ro;
         /// The damage taken this window.
@@ -543,6 +547,8 @@ named_flags! {
         ReturnToIdle = "return_to_idle",
         /// `sub_8017E26`: pushed or dragged along the field.
         Slide = "slide",
+        /// `sub_8017CC0`: pushed along the field (the thrown obstacles').
+        Pushed = "pushed",
         /// `sub_80166AE`, `sub_8016B02`, `sub_8016B36`, `sub_8016B72`: the
         /// actor hit reactions (they need actor data).
         Flinch = "flinch",
@@ -560,6 +566,9 @@ named_flags! {
         Breaks = "breaks",
         /// `sub_801B4D4`: destroyed, the HP as it is.
         Destroys = "destroys",
+        /// `sub_801B878` while its object says so (a LilBoiler that is
+        /// boiling over): nothing.
+        Passes = "passes",
     }
 }
 
@@ -1017,12 +1026,17 @@ pub trait CoreApi {
     fn obstacle_unregister(&mut self, o: ObjectRef);
     /// `sub_801AD9E`: resolve this tick's hits (a push forgets the damage).
     fn obstacle_take_hits(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_801AD12`: the same, but a push keeps the damage.
+    fn obstacle_take_hits_keeping_damage(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_800F672`: the lifetime; broken when it runs out or the battle
     /// is over, blinking for its last three seconds.
     fn obstacle_tick_lifetime(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_801B394` / `sub_801B4D4`: damage, removal and status; the
     /// action the kind's own table runs now (None: a status routine ran).
     fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>>;
+    /// `sub_801B750`: the same, but while dimmed it holds still even while
+    /// appearing.
+    fn obstacle_react_holding(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>>;
     /// Run a shared entry of the obstacle's action table.
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()>;
     /// How the obstacle is leaving.
