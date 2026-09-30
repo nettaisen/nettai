@@ -306,7 +306,7 @@ fn depart(b: &mut Battle, r: ObjectRef) {
     set_coordinates_from_panel(b, r);
     b.update_collision_panels(r);
     if let Some(t) = ai(b, r).attack.face_target
-        && matches!(b.setup.settings.panel_pattern, 0x31 | 0x23 | 0x33)
+        && matches!(b.panel_pattern(), 0x31 | 0x23 | 0x33)
     {
         crate::kinds::player::face_toward(b, r, t);
     }

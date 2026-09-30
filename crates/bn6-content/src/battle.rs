@@ -27,7 +27,7 @@ use crate::pack::Files;
 use crate::report::Report;
 use bn6_battle::content::*;
 use bn6_battle::field::PanelType;
-use bn6_battle::setup::{ActorEntry, ActorKind, ActorList, ActorListId, BattleSettings};
+use bn6_battle::setup::{ActorEntry, ActorKind, ActorList, ActorListId, StageSettings};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -580,7 +580,7 @@ pub fn navi_folder(n: &NaviData) -> String {
 
 /// A chip's folder.
 pub fn chip_folder(c: &ChipData) -> String {
-    format!("chips/{:03x}-{}", c.id, slug(&c.name))
+    format!("chips/{:03x}-{}", c.id.unwrap_or_default(), slug(&c.name))
 }
 
 /// A form's folder.
@@ -650,7 +650,11 @@ pub fn export(c: &Content) -> Files {
     let mut files = Files::new();
     let mut put = |path: String, bytes: Vec<u8>| files.push((path, bytes));
     for chip in &c.chips {
-        let comment = format!("Chip {:#05x}, {}. See docs/design/content-pack.md for what each field means.", chip.id, chip.name);
+        let comment = format!(
+            "Chip {:#05x}, {}. See docs/design/content-pack.md for what each field means.",
+            chip.id.unwrap_or_default(),
+            chip.name
+        );
         let folder = chip_folder(chip);
         let chip = ChipData { script: chip.script.as_ref().map(|m| script_file(&folder, m)), ..chip.clone() };
         put(format!("{folder}/chip.toml"), toml_file(&comment, &chip));
@@ -1095,7 +1099,11 @@ pub fn load(root: &Path, report: &mut Report) -> Option<Content> {
                     Err(e) => report.error(&file, e),
                 }
             }
-            chips.push((c.id as usize, c, file));
+            let Some(id) = c.id else {
+                report.error(&file, "a chip record needs its `id`".to_string());
+                continue;
+            };
+            chips.push((id as usize, c, file));
         }
     }
     let chips = dense(chips, "chip", report);
@@ -1339,7 +1347,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         s.settings
             .into_iter()
             .map(|b| {
-                let settings = BattleSettings {
+                let settings = StageSettings {
                     layout: b.layout,
                     music: b.music,
                     mode: b.mode,

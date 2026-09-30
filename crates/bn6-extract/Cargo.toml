@@ -10,3 +10,5 @@ bn6-battle.workspace = true
 m4a.workspace = true
 bn6-assets = { path = "../bn6-assets" }
 bn6-content = { path = "../bn6-content" }
+# The assets' names (content/bn6/compat/assets.toml).
+bn6-compat.workspace = true

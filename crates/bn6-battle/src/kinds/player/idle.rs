@@ -7,7 +7,7 @@
 
 use super::actions::movement::{self, MoveKind};
 use super::{
-    Emotion, ai, ai_mut, cross_protected, emotion, exit_attack_state, flag1,
+    Emotion, ai, ai_mut, cross_protected, emotion, exit_attack_state, flag1, form_of, navi_of,
     is_link, reset_charge, set_attack, stats, stats_mut,
 };
 use crate::actor::{request, status};
@@ -16,6 +16,7 @@ use crate::collision::f1;
 use crate::input::keys;
 use crate::object::ObjectRef;
 use crate::setup::Navi;
+use bn6_content_api::{ChipHandle, WeaponHandle};
 
 /// Action 8, `sub_80EA734`.
 pub(super) fn control(b: &mut Battle, r: ObjectRef) {
@@ -56,7 +57,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     // HUD (local side): the chip window follows `sub_800A772`.
     phase_timer(b, r);
     // Beast Over (and any form past it): the berserk controller decides.
-    if stats(b, r).form.0 >= 0x17 {
+    if form_of(b, r).0 >= 0x17 {
         use super::berserk::Outcome;
         match super::berserk::control(b, r) {
             Outcome::Nothing | Outcome::Moved => {}
@@ -66,7 +67,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
             }
             Outcome::Buster => {
                 leave_idle(b, r);
-                let action = weapon_routine(b, r, ai(b, r).buster);
+                let action = buster_routine(b, r);
                 set_attack(b, r, action, 1);
             }
         }
@@ -87,12 +88,12 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         match super::berserk::cross_special(b, r) {
             Outcome::Nothing | Outcome::Moved => {}
             Outcome::Chip => {
-                let chip = ai(b, r).attack.chip_id;
+                let chip = ai(b, r).attack.chip;
                 after_chip(b, r, chip);
             }
             Outcome::Buster => {
                 leave_idle(b, r);
-                let action = weapon_routine(b, r, ai(b, r).buster);
+                let action = buster_routine(b, r);
                 set_attack(b, r, action, 1);
             }
         }
@@ -111,24 +112,25 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     }
     if f & request::BUSTER != 0 {
         leave_idle(b, r);
-        let action = weapon_routine(b, r, ai(b, r).buster);
+        let action = buster_routine(b, r);
         return set_attack(b, r, action, 1);
     }
     if f & request::CHARGED_SHOT != 0 {
         leave_idle(b, r);
         let routine = ai(b, r).charge_shot;
-        let action = weapon_routine(b, r, routine);
-        let kind = if (0x21..=0x26).contains(&ai(b, r).charge_shot) { 2 } else { 1 };
+        let action = weapon_slot_routine(b, r, routine);
+        let special = b.weapon_number(ai(b, r).charge_shot).is_some_and(|n| (0x21..=0x26).contains(&n));
+        let kind = if special { 2 } else { 1 };
         return set_attack(b, r, action, kind);
     }
     if ai(b, r).requests & request::BACK_SPECIAL != 0 {
         leave_idle(b, r);
-        let action = weapon_routine(b, r, ai(b, r).back_special);
+        let action = weapon_slot_routine(b, r, ai(b, r).back_special);
         return set_attack(b, r, action, 3);
     }
     if ai(b, r).requests & request::MODE9_A != 0 {
         leave_idle(b, r);
-        let action = weapon_routine(b, r, ai(b, r).mode9_a);
+        let action = weapon_slot_routine(b, r, ai(b, r).mode9_a);
         return set_attack(b, r, action, 1);
     }
     if let Some(chip) = super::chip_use::use_chip(b, r) {
@@ -230,22 +232,36 @@ fn low_hp_navicust_effect(b: &mut Battle, r: ObjectRef) -> bool {
         return false;
     }
     stats_mut(b, r).support = Some(crate::setup::Supports { tango: false, ..support });
-    summon_support(b, r, Support::Tango, 0);
+    summon_support(b, r, Support::Tango, None);
     true
 }
 
+/// The buster's weapon routine.
+fn buster_routine(b: &mut Battle, r: ObjectRef) -> super::NaviAttack {
+    weapon_slot_routine(b, r, ai(b, r).buster)
+}
+
+/// A weapon slot's routine; an empty slot (0xFF) reads past
+/// `off_80117D4` (the input decoding never requests one).
+fn weapon_slot_routine(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle>) -> super::NaviAttack {
+    let Some(weapon) = weapon else { panic!("weapon routine 0xff reads past off_80117D4") };
+    weapon_routine(b, r, weapon)
+}
+
 /// `off_80117D4[routine]`: set up a weapon's attack variables and name
-/// its action: the content pack's script for the routine
-/// (`Hook::Weapon`).
-pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> super::NaviAttack {
-    use bn6_content_api::{ActionHandle, Hook, HookCall, Registry, Value};
-    if let Some(hook) = b.content.defs.hook(Hook::Weapon(routine)) {
-        return match crate::behavior::call_hook(b, hook, HookCall::Weapon { navi: r }) {
+/// its action: the weapon's `setup`.
+pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle) -> super::NaviAttack {
+    use bn6_content_api::{ActionHandle, HookCall, Registry, Value};
+    if let Some(setup) = b.content.defs.weapon(weapon).setup {
+        return match crate::behavior::call_hook(b, setup, HookCall::Weapon { navi: r }) {
             Value::Int(n) => super::NaviAttack::from(n as u8),
             Value::Def(Registry::Action, h) => super::NaviAttack::content(&b.content.defs, ActionHandle(h)),
-            v => panic!("weapon routine {routine:#x} names {v:?}, not an action"),
+            v => panic!("weapon {:?} names {v:?}, not an action", b.content.defs.weapon(weapon).key),
         };
     }
+    let Some(routine) = b.content.weapon_number(weapon) else {
+        panic!("content error: weapon {:?} has no setup", b.content.defs.weapon(weapon).key)
+    };
     // These entries are `nullsub_44`: the game starts whatever action the
     // register it called through holds. (Forms name them only as charged
     // chip bonuses, which `chip_use` handles before calling here.)
@@ -270,7 +286,7 @@ pub(crate) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
 
 /// `loc_80F057C`: after a chip starts: interception by the opponent's
 /// NaviCust, the chip-in-progress state, and the hand advances.
-fn after_chip(b: &mut Battle, r: ObjectRef, chip: u16) {
+fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     if intercepted(b, r, chip) {
         exit_attack_state(b, r);
         return;
@@ -284,7 +300,7 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: u16) {
         // sub_800FC7C
         let side = b.objects.get(r).alliance as usize;
         let hand = &mut b.hands[side];
-        if hand.cursor < 5 && hand.ids[hand.cursor as usize] != crate::hand::NO_CHIP {
+        if hand.cursor < 5 && hand.ids[hand.cursor as usize].is_some() {
             hand.cursor += 1;
         }
     }
@@ -294,18 +310,20 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: u16) {
 /// turns the chip back, once: Beat (stat 0x0D bit 1) a Mega or Giga
 /// chip, Rush (bit 0) a chip flagged for him. (The game reads the chip's
 /// record with the id as it is, flag bits and all.)
-fn intercepted(b: &mut Battle, r: ObjectRef, chip: u16) -> bool {
+fn intercepted(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
     use crate::content::{ChipClass, ExtraChipFlags};
     if !is_link(b) {
         return false;
     }
+    // The attack's chip; none reads as the pack's chip 0.
+    let record = b.content.chip_field(chip).clone();
     let other = b.objects.get(r).alliance ^ 1;
     let support = match b.stats[other as usize].support {
-        Some(opp) if opp.beat && matches!(b.content.chip(chip).class, ChipClass::Mega | ChipClass::Giga) => {
+        Some(opp) if opp.beat && matches!(record.class, ChipClass::Mega | ChipClass::Giga) => {
             b.stats[other as usize].support = Some(crate::setup::Supports { beat: false, ..opp });
             Support::Beat
         }
-        Some(opp) if opp.rush && b.content.chip(chip).extra_flags.has(ExtraChipFlags::RUSH_CANCELS) => {
+        Some(opp) if opp.rush && record.extra_flags.has(ExtraChipFlags::RUSH_CANCELS) => {
             b.stats[other as usize].support = Some(crate::setup::Supports { rush: false, ..opp });
             Support::Rush
         }
@@ -347,10 +365,11 @@ const SUPPORT_CONTROLLER: &str = "support";
 /// controller on `host`'s panel, its side's, and a dimming its side starts
 /// that no one can cut in on (`host` its user). Rush's controller carries
 /// the chip he eats in its third and fourth parameters.
-fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: u16) {
+fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Option<ChipHandle>) {
     let h = b.objects.get(host);
     let (panel, side) = (h.panel, h.alliance);
-    let chip = if support == Support::Rush { chip } else { 0 };
+    // (The numeric API's chip, as the controller's parameters carry it.)
+    let chip = if support == Support::Rush { b.api_chip_field(chip, 0) } else { 0 };
     let params = [support as u8, 0, chip as u8, (chip >> 8) as u8];
     // The spawn's position is the caller's r1..r3: the host's panel row
     // and two zeros.
@@ -405,7 +424,7 @@ fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
         return 1;
     }
     let s = stats(b, r);
-    if s.navi == Navi::MEGAMAN {
+    if navi_of(b, r) == Navi::MEGAMAN {
         return 4;
     }
     b.content.navi(s.navi).move_lag[s.navi_variant as usize] as u16

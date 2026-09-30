@@ -89,7 +89,7 @@ pub fn script_data(c: &Content) -> Data {
         ("sine", by_id(c.rules.sine.iter().enumerate().map(|(i, &v)| (i as i64, v)), |&v| Data::Int(v as i64))),
     ]);
     Data::map([
-        ("chips", by_id(c.chips.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
+        ("chips", by_id(c.chips.iter().filter_map(|x| Some((x.id? as i64, x))), |x| value(*x))),
         ("navis", by_id(c.navis.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("forms", by_id(c.forms.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("weapons", by_id(c.weapons.iter().map(|x| (x.id as i64, x)), |x| value(*x))),

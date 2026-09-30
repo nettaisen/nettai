@@ -12,7 +12,7 @@ use crate::content::{ChipCode, ChipId, Content, testing};
 use crate::custom::screen::{OK_SLOT, Phase, SlotKind, SlotState};
 use crate::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
 use crate::input::{PlayerTick, keys};
-use crate::setup::{NaviStats, NaviWeapons, RoundSetup, SetScore};
+use crate::setup::{BattleSettings, NaviStats, NaviWeapons, RoundSetup, SetScore};
 use std::sync::Arc;
 
 /// One tick of a tape.
@@ -23,7 +23,7 @@ pub struct Tick {
 }
 
 /// A plain MegaMan with 1000 HP, fighting in the sun.
-fn megaman() -> NaviStats {
+fn megaman(content: &Content) -> NaviStats {
     NaviStats {
         hp: 1000,
         max_hp: 1000,
@@ -34,14 +34,14 @@ fn megaman() -> NaviStats {
         giga_level: 1,
         sun: true,
         weapons: NaviWeapons {
-            buster: 0,
-            charge_shot: 1,
-            back_special: 0xFF,
-            a_charge: 0xFF,
-            mode9_a: 0xFF,
+            buster: testing::weapon_in(content, 0),
+            charge_shot: testing::weapon_in(content, 1),
+            back_special: None,
+            a_charge: None,
+            mode9_a: None,
             ..Default::default()
         },
-        ..Default::default()
+        ..testing::megaman_on(content)
     }
 }
 
@@ -55,7 +55,7 @@ pub fn content() -> Arc<Content> {
 pub fn setup() -> RoundSetup {
     let content = testing::build();
     let mut folder = BattleFolder::empty();
-    folder.chips = [Some(FolderChip::new(testing::SUN_GUN_3, ChipCode(0))); 30];
+    folder.chips = [Some(FolderChip::new(testing::chip_in(&content, testing::SUN_GUN_3), ChipCode(0))); 30];
     let player = PlayerSetup {
         folder: Some(folder),
         unlocks: Unlocks { crosses: [false; 5], beast_out: false, ..Unlocks::everything(GameVersion::Falzar) },
@@ -65,8 +65,8 @@ pub fn setup() -> RoundSetup {
     };
     RoundSetup {
         content: content.hash(),
-        settings: content.rules.stages.settings(testing::LINK_BATTLE),
-        navi_stats: [megaman(); 2],
+        settings: BattleSettings::on(&content, content.stage_numbered(testing::LINK_BATTLE)),
+        navi_stats: [megaman(&content); 2],
         rng: 0x1234_5678,
         local_side: 0,
         score: SetScore::default(),
@@ -82,9 +82,10 @@ pub fn setup() -> RoundSetup {
 /// A) instead.
 pub fn setup_with(chips: &[ChipId]) -> RoundSetup {
     let mut s = setup();
+    let content = testing::content();
     let mut folder = BattleFolder::empty();
     for (slot, &id) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
-        *slot = Some(FolderChip::new(id, ChipCode(0)));
+        *slot = Some(FolderChip::new(testing::chip_in(&content, id), ChipCode(0)));
     }
     for p in &mut s.players {
         p.folder = Some(folder);

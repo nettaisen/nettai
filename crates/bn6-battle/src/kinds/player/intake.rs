@@ -5,7 +5,7 @@
 
 use super::{
     ActorType, ai, ai_mut, battle_mode, clear_flag2, coll, coll_id, coll_mut, flag1, flag2, panel_kind,
-    refresh_navicust_state, reload_base_weapons, set_flag2, stats, stats_mut,
+    form_of, navi_of, refresh_navicust_state, reload_base_weapons, set_flag2, stats, stats_mut,
 };
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, f1, timer};
@@ -38,7 +38,7 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     counter_paralysis(b, r);
     navicust_hit_bug(b, r);
     let s = stats(b, r);
-    if !(s.navi == Navi(7) || matches!(s.form.0, 7 | 0x13) || s.bugs.status_immunity) {
+    if !(navi_of(b, r) == Navi(7) || matches!(form_of(b, r).0, 7 | 0x13) || s.bugs.status_immunity) {
         apply_status(b, r);
     }
     lose_chip(b, r);
@@ -300,7 +300,7 @@ fn hp_bug_drain(b: &mut Battle, r: ObjectRef) {
 /// `sub_802CFF8`: a cursor hit cancels the side's defensive chip.
 fn drop_cursor_trap(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
-    if coll(b, r).acc.damage_elements & 0x40 != 0 && b.linked[side as usize].chip != 0 {
+    if coll(b, r).acc.damage_elements & 0x40 != 0 && b.linked[side as usize].chip.is_some() {
         b.clear_linked(side);
         b.play_sound(crate::sound::SoundId(0x8E));
     }
@@ -319,7 +319,8 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         zero_trapped_hit(b, r);
         return;
     }
-    let chip = b.linked[side].chip;
+    // The record's chip by number (0: none).
+    let chip = b.chip_number(b.linked[side].chip).unwrap_or(0);
     let (trap, min) = if chip == 0xBB || chip == 0x157 {
         (chip, 10)
     } else if ai(b, r).status & crate::actor::status::TRAP_ARMED != 0 {
@@ -422,7 +423,7 @@ const UNINSTALL_SPARK: u8 = 0xE;
 /// body back on the ground), Undershirt, AirShoe and the B+Back special
 /// (in base form, the navi's too). Link navis keep theirs.
 fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
-    if stats(b, r).navi != crate::setup::Navi::MEGAMAN {
+    if navi_of(b, r) != crate::setup::Navi::MEGAMAN {
         return;
     }
     super::clear_flag1(b, r, f1::SUPERARMOR);
@@ -437,9 +438,9 @@ fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
     }
     super::clear_flag1(b, r, f1::AIRSHOE);
     stats_mut(b, r).air_shoes = false;
-    stats_mut(b, r).weapons.back_special = 0xFF;
-    if stats(b, r).form == crate::setup::Form::NONE {
-        ai_mut(b, r).back_special = 0xFF;
+    stats_mut(b, r).weapons.back_special = None;
+    if form_of(b, r) == crate::setup::Form::NONE {
+        ai_mut(b, r).back_special = None;
     }
 }
 
@@ -450,6 +451,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
     let bugs = coll(b, r).acc.inflicted_bugs;
     let (code, arg) = (bugs as u8, (bugs >> 8) as u8);
     let mut edited = false;
+    let content = b.content.clone();
     let s = stats_mut(b, r);
     match code {
         0 => {}
@@ -481,7 +483,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
             // sub_80140EE: the same but Undershirt, then the form's flags
             // come back (`sub_801469C`); a spark of effect 0xE 16 pixels up
             // (sub_80E08C4) and sound 0x8E.
-            if stats(b, r).navi == crate::setup::Navi::MEGAMAN {
+            if navi_of(b, r) == crate::setup::Navi::MEGAMAN {
                 strip_programs(b, r, false);
                 super::form::refresh_form_flags(b, r);
             }
@@ -492,7 +494,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
         }
         0x64.. => {}
         _ => {
-            s.set_byte_by_bug_code(code, arg);
+            s.set_byte_by_bug_code(code, arg, &content);
             edited = true;
         }
     }
@@ -621,13 +623,13 @@ fn lose_chip(b: &mut Battle, r: ObjectRef) {
     if coll(b, r).acc.hit_flags & 0x10 == 0 {
         return;
     }
-    b.objects.get_mut(r).chip = 0xFFFF;
+    b.objects.get_mut(r).chip = None;
     if ai(b, r).actor_type != ActorType::Player {
         b.objects.get_mut(r).chips_held = 0;
         return;
     }
     let hand = &mut b.hands[b.objects.get(r).alliance as usize];
-    if hand.ids.get(hand.cursor as usize).is_some_and(|&id| id != crate::hand::NO_CHIP) {
+    if hand.ids.get(hand.cursor as usize).is_some_and(|id| id.is_some()) {
         hand.cursor += 1;
     }
 }
@@ -702,8 +704,7 @@ fn count_stun_ticks(b: &mut Battle, r: ObjectRef) {
 /// `sub_80142DC`: anger after 120 stunned ticks or a 300+ damage hit
 /// (base MegaMan only).
 fn anger_trigger(b: &mut Battle, r: ObjectRef) {
-    let s = stats(b, r);
-    if battle_mode(b) == 1 || s.navi != Navi::MEGAMAN || s.form != Form::NONE || flag1(b, r) & f1::ANGER != 0 {
+    if battle_mode(b) == 1 || navi_of(b, r) != Navi::MEGAMAN || form_of(b, r) != Form::NONE || flag1(b, r) & f1::ANGER != 0 {
         return;
     }
     if ai(b, r).stun_ticks as i32 >= 0x78 || coll(b, r).acc.final_damage >> 1 >= 0x96 {

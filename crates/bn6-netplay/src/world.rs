@@ -235,7 +235,7 @@ mod tests {
     fn standin() -> StandInBattle {
         use testing::{SUN_GUN_1, SUN_GUN_3};
         let c = testing::content();
-        let f = || folder(&[(SUN_GUN_3, 0), (SUN_GUN_1, 0)]);
+        let f = || folder(&c, &[(SUN_GUN_3, 0), (SUN_GUN_1, 0)]);
         StandInBattle::new(Battle::new(netbattle(&c, 300, 0x1357, [f(), f()]), c))
     }
 
