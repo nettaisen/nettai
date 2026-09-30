@@ -70,6 +70,7 @@ pub(crate) mod testing {
             slot_in_limit: 0,
             dark_substitute: None,
             sp_damage: None,
+            navi_damage: None,
             modifier: None,
             program_advances: Vec::new(),
             gun_del_sol: None,

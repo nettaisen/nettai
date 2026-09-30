@@ -725,9 +725,6 @@ export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } 
 
 export type WeaponData = { id: number, name: string, action: number?, script: string }
 
--- A panel relative to another, dx toward the facing side.
-export type PanelOffset = { dx: number, dy: number }
-
 -- A shock wave's look and timing (attack object #0x16, by its first
 -- parameter): ticks on a panel before the next rolls on, and the panel
 -- type it leaves ("cracked" cracks the panel, "broken" breaks it).
@@ -754,10 +751,11 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
-        -- Region shapes by number (`PanelOffsetListsPointerTable`): the
-        -- panels a region covers, dx toward the facing side.
-        regions: { [number]: { PanelOffset } },
     },
+    -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
+    -- panels a region covers, { dx, dy } from its panel with dx toward the
+    -- facing side, in the game's order.
+    regions: { [number]: { { number } } },
 }
 
 declare data: PackData
