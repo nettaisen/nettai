@@ -9,6 +9,7 @@
 //! (0, 1), `reactions` (2..7) and `idle` (8); 0x10 and up in `actions`.
 
 pub mod actions;
+pub(crate) mod berserk;
 mod chip_use;
 mod entry;
 pub(crate) mod form;
@@ -159,13 +160,28 @@ fn per_player_gauges(b: &Battle) -> bool {
 }
 
 /// `GetBattleMode`.
-fn battle_mode(b: &Battle) -> u8 {
+pub(crate) fn battle_mode(b: &Battle) -> u8 {
     b.round.mode_copy
 }
 
 /// `sub_80107C0`: the hit modifier bodies inflict (3 in link battles).
 fn body_hit_modifier(b: &Battle) -> u8 {
     if is_link(b) { 3 } else { 0 }
+}
+
+/// `sub_800F2FC`: turn to face `target` (its panel column), unless it
+/// stands in the navi's column; the sprite follows (`sub_800F2C6`).
+pub(crate) fn face_toward(b: &mut Battle, r: ObjectRef, target: ObjectRef) {
+    let tx = b.objects.get(target).panel.x as i32;
+    let o = b.objects.get(r);
+    let dx = tx - o.panel.x as i32;
+    if dx == 0 {
+        return;
+    }
+    let flip = (dx < 0) as u8 ^ o.alliance;
+    b.objects.get_mut(r).flip = flip;
+    let facing = b.objects.get(r).alliance ^ flip;
+    b.objects.sprite_mut(r).look.set_flip(facing);
 }
 
 /// `object_getFlipDirection`: +1 facing right, -1 facing left.
@@ -199,6 +215,16 @@ fn panel_kind(b: &Battle, p: PanelPos) -> PanelType {
 fn next_chip(b: &Battle, r: ObjectRef) -> u16 {
     let hand = &b.hands[b.objects.get(r).alliance as usize];
     hand.ids.get(hand.cursor as usize).copied().unwrap_or(NO_CHIP)
+}
+
+/// Whether hand chip `id` is of the Null family. The game looks an empty
+/// hand's chip (0xFFFF) up in the chip table too, reading the record past
+/// its end (`Rules::empty_hand`).
+fn null_family(b: &Battle, id: u16) -> bool {
+    if id == NO_CHIP {
+        return b.content.rules.empty_hand.null_family;
+    }
+    b.content.chip(id).family == crate::content::ChipFamily::Null
 }
 
 /// A navi's emotion, as its mugshot shows it (`sub_8015B54`'s code in
@@ -341,6 +367,23 @@ fn set_element(b: &mut Battle, r: ObjectRef, element: u8) {
     c.secondary_element = element & 0xF0;
 }
 
+/// `object_setInvulnerableTime`: invulnerable for `ticks` (0xFFFF: for
+/// good).
+fn set_invulnerable(b: &mut Battle, r: ObjectRef, ticks: u16) {
+    coll_mut(b, r).status_timers[timer::INVULNERABLE] = ticks;
+    set_flag1(b, r, f1::INVULNERABLE);
+}
+
+/// `sub_801A264`: the statuses end: their flags, requests and timers.
+pub(crate) fn clear_statuses(b: &mut Battle, r: ObjectRef) {
+    clear_flag1(b, r, 0x8001_E800);
+    clear_flag2(b, r, 0x3_00E8);
+    let c = coll_mut(b, r);
+    for t in [timer::PARALYZE, timer::CONFUSE, timer::BLIND, timer::IMMOBILIZE, timer::FREEZE, timer::BUBBLE] {
+        c.status_timers[t] = 0;
+    }
+}
+
 /// `sub_800EB08`: end invulnerability.
 fn clear_invulnerable(b: &mut Battle, r: ObjectRef) {
     coll_mut(b, r).status_timers[timer::INVULNERABLE] = 0;
@@ -396,15 +439,35 @@ pub(crate) fn set_coordinates_from_panel(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8011450`: restart the form overlay (`related[1]`) with the navi
 /// after an animation change.
-fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
     let a = ai(b, r);
     if a.actor_type == ActorType::Virus {
         return;
     }
-    let Some(overlay) = b.objects.get(r).related[1] else { return };
+    // `off_8011470` by the actor data's AI index (MegaMan's stays 0 in
+    // every form).
+    let overlay = b.objects.get(r).related[1];
     match a.ai_index {
-        0 | 1 | 9 | 13 | 16 | 18 | 19 => crate::kinds::form_overlay::restart(b, overlay),
-        14 | 24 | 25.. => panic!("form overlay refresh for AI index {} is not implemented yet", a.ai_index),
+        // sub_80C44D2
+        0 | 1 | 9 | 13 | 16 | 18 | 19 => {
+            if let Some(o) = overlay {
+                crate::kinds::form_overlay::restart(b, o);
+            }
+        }
+        // sub_80FF668: both overlays.
+        14 => {
+            let second = b.objects.get(r).second_overlay;
+            for o in [overlay, second].into_iter().flatten() {
+                crate::kinds::form_overlay::restart(b, o);
+            }
+        }
+        // sub_80C46B6: the animation reloads at its next step.
+        24 => {
+            if let Some(o) = overlay {
+                b.objects.get_mut(o).anim_loaded = 0xFF;
+            }
+        }
+        25.. => panic!("the overlay refresh for AI index {} reads past its table (sub_8011450)", a.ai_index),
         _ => {}
     }
 }
@@ -498,7 +561,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
         panic!("post-init hook sub_80F22F8 is not implemented yet");
     }
     if stats(b, r).form == Form::NONE {
-        navi_init_hook(b, b.objects.get(r).name_id);
+        let name_id = b.objects.get(r).name_id;
+        form::navi_init_hook(b, r, name_id);
     }
     reset_side_state(b, r);
     apply_starting_hp_bug(b, r);
@@ -507,16 +571,6 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.action = 0;
     o.phase = 0;
     o.phase_init = 0;
-}
-
-/// `sub_8010DD0`: the init hook of a NameID's actor record
-/// (`off_8010E0C`, by actor type and AI index). Most navis, MegaMan among
-/// them, have none; the others spawn helper objects.
-pub(crate) fn navi_init_hook(b: &Battle, name_id: u16) {
-    let rec = b.content.navi_record(name_id);
-    if rec.actor_type != ActorType::Virus && matches!(rec.ai_index, 1 | 6 | 9 | 13 | 14 | 16 | 18 | 19 | 24 | 25..) {
-        panic!("navi init hook for AI index {} is not implemented yet", rec.ai_index);
-    }
 }
 
 /// `sub_800FC9E` + `sprite_load`: load the navi's battle sprite.
@@ -573,7 +627,7 @@ fn reset_navicust_state(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.charge_shot = w.charge_shot;
     a.back_special = w.back_special;
-    clear_flag1(b, r, 0x0800_0000);
+    clear_flag1(b, r, f1::UNAFFECTED_BY_POISON);
     clear_invulnerable(b, r);
     if ai(b, r).reset_linked_object.is_some() {
         panic!("ending the status reset's linked object (sub_80E5410) is not implemented yet");
@@ -833,12 +887,15 @@ fn charge_fire_chip(b: &mut Battle, r: ObjectRef, limit: u16) {
     let i = hand.cursor as usize;
     let Some(&chip) = hand.ids.get(i) else { return };
     // With no chip left, the game looks up chip 0xFFFF, far past the
-    // table, and finds flags 0x30: no damage, so nothing happens.
-    if chip == NO_CHIP {
-        return;
-    }
-    let cd = b.content.chip(chip);
-    if !cd.flags.has(crate::content::ChipFlags::HAS_DAMAGE) || cd.element != crate::content::Element::Fire {
+    // table (`Rules::empty_hand`).
+    let (flags, fire) = if chip == NO_CHIP {
+        let e = b.content.rules.empty_hand;
+        (e.flags, e.fire)
+    } else {
+        let cd = b.content.chip(chip);
+        (cd.flags, cd.element == crate::content::Element::Fire)
+    };
+    if !flags.has(crate::content::ChipFlags::HAS_DAMAGE) || !fire {
         return;
     }
     if b.hands[side].charge_bonus[i] >= limit {
@@ -875,7 +932,7 @@ fn full_synchro_effect(b: &mut Battle, r: ObjectRef) {
         return;
     }
     if emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro && a.full_synchro_aura.is_none() {
-        panic!("Full Synchro aura (sub_80C4C12) is not implemented yet");
+        crate::kinds::full_synchro_aura::spawn(b, r);
     }
 }
 

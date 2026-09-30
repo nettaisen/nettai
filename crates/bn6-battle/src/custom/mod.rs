@@ -72,11 +72,21 @@ pub struct PlayerSetup {
     /// The joypad's auto-repeat beat (0-4) on the round's first tick; each
     /// console counts its own.
     pub joypad_phase: u8,
+    /// The save's bug frags (a dark chip spends one) and the link navi's
+    /// level (its chip bonus), which the init exchange shares.
+    pub bug_frags: u32,
+    pub navi_level: u8,
 }
 
 impl Default for PlayerSetup {
     fn default() -> PlayerSetup {
-        PlayerSetup { folder: Some(BattleFolder::empty()), unlocks: Unlocks::everything(GameVersion::Falzar), joypad_phase: 0 }
+        PlayerSetup {
+            folder: Some(BattleFolder::empty()),
+            unlocks: Unlocks::everything(GameVersion::Falzar),
+            joypad_phase: 0,
+            bug_frags: 0,
+            navi_level: 0,
+        }
     }
 }
 
@@ -296,7 +306,7 @@ impl Side {
                 }
             }
         }
-        screen.program_advance = built.program_advance.map(|(_, chips)| chips);
+        screen.program_advance = built.program_advance;
         let hand = (!screen.selection().is_empty()).then_some(built.hand);
         self.built = Some((hand, transform));
     }
