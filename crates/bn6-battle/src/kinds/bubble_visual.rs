@@ -53,7 +53,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).state == state::DESTROY {
         crate::kinds::common::step_sprite(b, r);
     } else {
-        step(b, r);
+        crate::kinds::common::load_or_step_sprite(b, r);
     }
 }
 
@@ -125,24 +125,4 @@ fn pop(b: &mut Battle, r: ObjectRef) {
     if b.objects.sprite(r).frame_parameters() & crate::object::sprite::FRAME_LAST != 0 {
         b.objects.free(r);
     }
-}
-
-/// `sub_801BC24`: load a newly requested animation (without stepping it),
-/// else step the sprite; not while paused, nor while dimmed unless it runs
-/// while dimmed.
-fn step(b: &mut Battle, r: ObjectRef) {
-    let o = b.objects.get(r);
-    if b.paused || o.flags & flags::ACTIVE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
-        return;
-    }
-    if o.flags & flags::RUN_WHILE_DIMMED == 0 && b.is_dimmed() {
-        return;
-    }
-    let (anim, loaded) = (o.anim, o.anim_loaded);
-    if anim != loaded {
-        b.objects.sprite_mut(r).set_animation(anim, &b.content);
-        b.objects.get_mut(r).anim_loaded = anim;
-        return;
-    }
-    b.objects.sprite_mut(r).update(&b.content);
 }

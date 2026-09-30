@@ -29,7 +29,8 @@ impl BattleResult {
         match self {
             BattleResult::Won => BattleResult::Lost,
             BattleResult::Lost => BattleResult::Won,
-            BattleResult::Drawn => BattleResult::Drawn,
+            // The rest end the battle for both alike.
+            r => r,
         }
     }
 }

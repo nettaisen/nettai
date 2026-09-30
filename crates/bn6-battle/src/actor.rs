@@ -208,6 +208,10 @@ pub struct ActorData {
     /// AIData+0x0A: ticks toward the next HP lost to the custom-screen HP
     /// drain bug (`sub_80102AC`).
     pub drain_counter: u8,
+    /// AIData+0x0B: the emotion the NaviCust emotion-swing bug last rolled
+    /// (`sub_8013DA0`): 0 normal (mood 0x99), 1 tired, 2 angry, 3 Full
+    /// Synchro (mood 0xFF).
+    pub swung_emotion: u8,
     /// AIData+0x0F: the turn-start Beast Out check (`sub_80159C6`) runs
     /// only while this is 0, and then sets it to 2. Closing the custom
     /// screen sets it to 1 (`sub_8009338`); a mid-battle custom-screen
@@ -262,6 +266,9 @@ pub struct ActorData {
     /// (5 after a road slide, `sub_80166D0`/`sub_8016730`; counted down
     /// by `sub_801A36A`).
     pub road_cooldown: u16,
+    /// AIData+0x3A: ticks toward the next swing of the NaviCust
+    /// emotion-swing bug (every 60, `sub_8013DA0`).
+    pub emotion_swing_ticks: u16,
     /// AIData+0x3C: the height (Z, whole pixels) a bubble bobs around and
     /// restores when it pops (`sub_8016B72`, `sub_801A2B0`). Viruses
     /// record it every tick (`sub_8108F74`); nothing sets it for players.
@@ -280,6 +287,10 @@ pub struct ActorData {
     /// ends (`sub_801390C` → `sub_80E5410`: state 8, first extra var
     /// cleared). Which object stores itself here was not found.
     pub reset_linked_object: Option<ObjectRef>,
+    /// The navi object's ExtraVars+0x10 and +0x18 in battle mode 9, for
+    /// DustMan (AI index 10): the attack #0xD2 and actor #0x28 his
+    /// post-init hook spawns (`sub_80F22F8`).
+    pub mode9_objects: [Option<ObjectRef>; 2],
     /// The charge-glow effect object.
     pub charge_glow: Option<ObjectRef>,
     /// AIData+0x5C: the Full Synchro aura (actor #0x5E, spawned by

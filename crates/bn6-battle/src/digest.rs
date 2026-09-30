@@ -151,6 +151,7 @@ impl Hash for Battle {
             content: _,
             setup,
             stats,
+            cross_stats,
             rng,
             round,
             fight,
@@ -185,6 +186,7 @@ impl Hash for Battle {
         } = self;
         setup.hash(h);
         stats.hash(h);
+        cross_stats.hash(h);
         rng.hash(h);
         round.hash(h);
         fight.hash(h);

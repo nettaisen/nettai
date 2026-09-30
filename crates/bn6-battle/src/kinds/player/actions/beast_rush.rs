@@ -126,8 +126,7 @@ fn warp(b: &mut Battle, r: ObjectRef) {
     let here = b.objects.get(r).panel;
     super::movement::panel_trail(b, r, here);
     let mode = lockon_mode(b, r);
-    let marker = ai(b, r).lockon_marker.expect("a Beast Out rush without a lock-on marker reads through a null pointer");
-    let target = lockon_marker::panel(b, marker);
+    let target = lockon_marker::panel_of(b, ai(b, r).lockon_marker);
     let dest = destination(b, r, target, mode).unwrap_or(here);
     rush(b, r).home = here;
     b.objects.get_mut(r).panel = dest;

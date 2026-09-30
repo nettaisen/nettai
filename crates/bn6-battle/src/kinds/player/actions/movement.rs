@@ -13,6 +13,7 @@ use super::ActionVars;
 use crate::actor::{ActorType, status};
 use crate::battle::Battle;
 use crate::collision::f1;
+use crate::field::PanelType;
 use crate::object::{ObjectRef, PanelPos};
 
 /// The action number.
@@ -58,6 +59,9 @@ enum Phase {
     Arrive,
     /// The move lag (`sub_80EB1C4`).
     Recover,
+    /// Wait, then land on the destination with collision back on, and on to
+    /// `Arrive` (`sub_80EB1F8`; nothing in the port starts a step here).
+    Land,
 }
 
 impl Phase {
@@ -67,7 +71,8 @@ impl Phase {
             0x4 => Phase::Depart,
             0x8 => Phase::Arrive,
             0xC => Phase::Recover,
-            s => panic!("move phase {s:#x} (sub_80EB1F8) is not implemented yet"),
+            0x10 => Phase::Land,
+            s => panic!("move phase {s:#x} reads past its table (off_80EB074)"),
         }
     }
 
@@ -77,6 +82,7 @@ impl Phase {
             Phase::Depart => 0x4,
             Phase::Arrive => 0x8,
             Phase::Recover => 0xC,
+            Phase::Land => 0x10,
         }
     }
 }
@@ -127,6 +133,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         Phase::Depart => depart(b, r),
         Phase::Arrive => arrive(b, r),
         Phase::Recover => recover(b, r),
+        Phase::Land => land(b, r),
     }
     let dir = vars(b, r).dir;
     if ai(b, r).attack.marker == 0 && super::super::idle::held_direction(b, r) != dir {
@@ -164,13 +171,13 @@ fn begin(b: &mut Battle, r: ObjectRef) {
     let Vars { dir, kind, .. } = *vars(b, r);
     let target = match kind {
         MoveKind::Input => step_target(b, r, dir),
-        MoveKind::Fallback => panic!("fallback steps (sub_800F998) are not implemented yet"),
+        MoveKind::Fallback => fallback_target(b, r, dir),
         // The given destination, unchecked (column 0: none).
         MoveKind::Absolute => {
             let t = vars(b, r).target;
             (t.x != 0).then_some(t)
         }
-        MoveKind::Astray => panic!("astray steps (sub_800FA20) are not implemented yet"),
+        MoveKind::Astray => astray_target(b, r, dir),
     };
     let Some(target) = target else { return leave(b, r) };
     vars(b, r).target = target;
@@ -186,24 +193,84 @@ fn begin(b: &mut Battle, r: ObjectRef) {
     set_phase(b, r, Phase::Depart);
 }
 
-/// `sub_800F964`: one panel toward `dir` (back and forward follow the
-/// side), if the navi may step there; none while sliding.
+/// `sub_800F9DE` (`byte_800FA14`): the panel offset of direction code
+/// `dir` for side `alliance` (back and forward follow the side). Codes 0
+/// and 5 go nowhere.
+fn direction_offset(dir: u8, alliance: u8) -> (i8, i8) {
+    let (dx, dy): (i8, i8) = match dir {
+        0 | 5 => (0, 0),
+        1 => (0, -1),
+        2 => (0, 1),
+        3 => (-1, 0),
+        4 => (1, 0),
+        _ => panic!("direction {dir:#x} reads past its offsets (sub_800F9DE)"),
+    };
+    // object_getAllianceDirection: +1 for the left side, -1 for the right.
+    let forward = 1 - 2 * alliance as i8;
+    (dx * forward, dy)
+}
+
+fn offset(p: PanelPos, (dx, dy): (i8, i8)) -> PanelPos {
+    PanelPos { x: p.x.wrapping_add(dx as u8), y: p.y.wrapping_add(dy as u8) }
+}
+
+/// `sub_800F964`: one panel toward `dir`, if the navi may step there; none
+/// while sliding.
 pub(crate) fn step_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
     if flag1(b, r) & f1::SLIDING != 0 {
         return None;
     }
     let o = b.objects.get(r);
-    let (dx, dy): (i8, i8) = match dir {
-        1 => (0, -1),
-        2 => (0, 1),
-        3 => (-1, 0),
-        4 => (1, 0),
-        _ => (0, 0),
-    };
-    // object_getAllianceDirection: +1 for the left side, -1 for the right.
-    let forward = 1 - 2 * o.alliance as i8;
-    let target = PanelPos { x: o.panel.x.wrapping_add((dx * forward) as u8), y: o.panel.y.wrapping_add(dy as u8) };
+    let target = offset(o.panel, direction_offset(dir, o.alliance));
     b.can_step(r, target.x, target.y).then_some(target)
+}
+
+/// `byte_800FA00`: the directions a buffered step tries, in order, by the
+/// direction it was buffered with (the fifth row is the start of the
+/// offsets table after it: an absolute step's code 5).
+const FALLBACK_ORDERS: [[u8; 4]; 6] =
+    [[0, 0, 0, 0], [1, 3, 2, 4], [2, 4, 1, 3], [3, 2, 4, 1], [4, 1, 3, 2], [0, 0, 0, 0xFF]];
+
+/// `sub_800F998`: a buffered step: toward `dir` if the navi may step there,
+/// else the other directions in `FALLBACK_ORDERS`' order; none while
+/// sliding.
+fn fallback_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
+    if flag1(b, r) & f1::SLIDING != 0 {
+        return None;
+    }
+    let order = *FALLBACK_ORDERS
+        .get(dir as usize)
+        .unwrap_or_else(|| panic!("a buffered step toward {dir:#x} reads past its orders (sub_800F998)"));
+    let o = b.objects.get(r);
+    order.into_iter().map(|d| offset(o.panel, direction_offset(d, o.alliance))).find(|t| b.can_step(r, t.x, t.y))
+}
+
+/// `sub_800FA20`: a step gone astray (the NaviCust processing bug): as far
+/// as it goes toward `dir`, to the farthest panel along the row or column
+/// (through ones in between that don't qualify) that a dash may land on
+/// (`sub_8010368`: `PanelRules::dash_step`, by AirShoes and side); none if
+/// that is where the navi stands.
+fn astray_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
+    let o = b.objects.get(r);
+    let (dx, dy) = direction_offset(dir, o.alliance);
+    if (dx, dy) == (0, 0) {
+        panic!("an astray step toward {dir:#x} walks in place forever (sub_800D15A)");
+    }
+    let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
+    let cond = b.content.rules.panels.dash_step.get(airshoes, o.alliance);
+    // sub_800D120 along the row, sub_800D15A along the column.
+    let mut p = o.panel;
+    let mut farthest = o.panel;
+    loop {
+        if b.field.meets(p.x, p.y, cond) {
+            farthest = p;
+        }
+        p = offset(p, (dx, dy));
+        if !crate::field::is_valid(p.x, p.y) {
+            break;
+        }
+    }
+    (farthest != o.panel).then_some(farthest)
 }
 
 /// `sub_801BE04`: the state bits for a move from `from` to `to` (8 right,
@@ -248,11 +315,52 @@ fn depart(b: &mut Battle, r: ObjectRef) {
     set_phase(b, r, Phase::Arrive);
 }
 
-/// `sub_8013CC4`: the NaviCust panel-trail bug, which breaks or cracks
-/// the panel a player steps off at random.
-pub(super) fn panel_trail(b: &Battle, r: ObjectRef, _from: PanelPos) {
-    if ai(b, r).actor_type == ActorType::Player && stats(b, r).bugs.panel_trail_level != 0 {
-        panic!("the panel-trail bug (sub_8013CC4) is not implemented yet");
+/// `byte_8013D44`: the sound a panel-trail turn makes, by the panel type
+/// it turns the panel into (none for the first four).
+const TRAIL_SOUNDS: [u16; 13] = [0, 0, 0, 0, 0x90, 0xA4, 0x11B, 0x118, 0x11C, 0xFC, 0xFC, 0xFC, 0xFC];
+
+/// `sub_8013CC4`: the NaviCust panel-trail bugs and programs (stats 0x12,
+/// 0x13): at a chance of level in 8, the panel a player steps off (unless
+/// it is missing or broken) breaks (kind 1), cracks (3) or turns to the
+/// kind's panel type, with its sound when the type changes.
+pub(super) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
+    if ai(b, r).actor_type != ActorType::Player {
+        return;
+    }
+    let level = stats(b, r).bugs.panel_trail_level;
+    if level == 0 {
+        return;
+    }
+    if (b.rng.next_positive() & 7) as i32 > level as i32 - 1 {
+        return;
+    }
+    let kind = stats(b, r).bugs.panel_trail_kind;
+    let Some(panel) = b.field.panel(from.x, from.y) else {
+        panic!("the panel trail reads the type of panel {from:?}, off the field (sub_8013CC4)");
+    };
+    let old = panel.kind;
+    if matches!(old, PanelType::Missing | PanelType::Broken) {
+        return;
+    }
+    match kind {
+        1 => {
+            b.break_panel(from.x, from.y);
+        }
+        3 => {
+            b.crack_panel(from.x, from.y);
+        }
+        _ => {
+            let Some(&t) = PanelType::ALL.get(kind as usize) else {
+                panic!("panel-trail kind {kind:#x} is past the panel types (sub_8013CC4)");
+            };
+            b.set_panel_type(from.x, from.y, t);
+            if t != old {
+                let sound = TRAIL_SOUNDS[kind as usize];
+                if sound != 0 {
+                    b.play_sound(crate::sound::SoundId(sound));
+                }
+            }
+        }
     }
 }
 
@@ -285,10 +393,33 @@ fn recover(b: &mut Battle, r: ObjectRef) {
     leave(b, r);
 }
 
-/// `sub_8013FAE`: the NaviCust auto-step bug repeats a step at random.
-fn auto_step(b: &Battle, r: ObjectRef) -> bool {
-    if stats(b, r).bugs.auto_step != 0 {
-        panic!("the auto-step bug (sub_8013FAE) is not implemented yet");
+/// `sub_8013FAE`: the NaviCust auto-step bug (stat 0x11) repeats a step at
+/// a chance of its level in 8.
+fn auto_step(b: &mut Battle, r: ObjectRef) -> bool {
+    let level = stats(b, r).bugs.auto_step;
+    if level == 0 {
+        return false;
     }
-    false
+    (b.rng.next() & 7) as i32 <= level as i32 - 1
+}
+
+/// `sub_80EB1F8`: after the timer, land on the destination with collision
+/// back on (region 1), then five ticks to `Arrive`.
+fn land(b: &mut Battle, r: ObjectRef) {
+    let v = vars(b, r);
+    let t = v.timer as i32 - 1;
+    v.timer = t as u16;
+    if t > 0 {
+        return;
+    }
+    super::super::coll_mut(b, r).region = 1;
+    let o = b.objects.get_mut(r);
+    o.panel = o.future_panel;
+    let p = o.panel;
+    b.unreserve_panel(r, p.x, p.y);
+    set_coordinates_from_panel(b, r);
+    b.update_collision_panels(r);
+    set_animation(b, r, 3);
+    vars(b, r).timer = 5;
+    set_phase(b, r, Phase::Arrive);
 }

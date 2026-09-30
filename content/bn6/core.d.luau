@@ -477,6 +477,10 @@ declare class Object
     function open_counter_window(self): ()
     -- `sub_801056A`, after each phase of an attack.
     function check_reactive_abort(self): ()
+    -- `sub_80105F2`: the stance's own trap (the AntiDmg program's) caught a
+    -- hit: its counter (action 0x47, or 0x48 for a sword hit) starts at the
+    -- next tick with this attack's damage word, lockout and variant.
+    function start_stance_counter(self): ()
     -- `sub_8011450`: restart the form overlay with the navi after an
     -- animation change.
     function refresh_form_overlay(self): ()

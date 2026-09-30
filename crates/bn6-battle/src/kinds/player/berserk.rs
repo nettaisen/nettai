@@ -10,7 +10,7 @@ use super::actions::movement::{self, MoveKind};
 use crate::actor::request;
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::content::PanelCondition;
+use crate::content::{ChipId, PanelCondition};
 use crate::hand::NO_CHIP;
 use crate::object::{ObjectRef, PanelPos};
 
@@ -33,6 +33,9 @@ pub struct State {
     pub step: Step,
     /// +4: moves since the last chip or buster shot.
     pub moves: u16,
+    /// +6: the Cross special's buster volley: shots left while an opponent
+    /// stays in the row (`sub_802D588`).
+    pub volley: u16,
     /// +8: the controller has started (its first step is a move).
     pub started: bool,
 }
@@ -78,8 +81,7 @@ fn set_step(b: &mut Battle, r: ObjectRef, step: Step) {
 /// chip is left or it can't start; then the buster is next.
 fn use_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
     if ai(b, r).berserk.moves <= 3 {
-        let marker = ai(b, r).lockon_marker.expect("Beast Over without a lock-on marker reads through a null pointer");
-        let p = crate::kinds::lockon_marker::panel(b, marker);
+        let p = crate::kinds::lockon_marker::panel_of(b, ai(b, r).lockon_marker);
         let alliance = b.objects.get(r).alliance;
         if let Some(t) = opponent_on(b, p, alliance) {
             let flashing = b.objects.get(t).collision.is_some_and(|c| b.collision.get(c).f1 & f1::FLASHING != 0);
@@ -131,6 +133,110 @@ fn step_toward_opponent(b: &mut Battle, r: ObjectRef) -> Outcome {
     s.moves = s.moves.wrapping_add(1);
     s.step = Step::UseChip;
     Outcome::Moved
+}
+
+// ---- The Cross special (DarkInvs) --------------------------------------------
+
+/// `byte_802D5E4`: the chips the Cross special uses, three by its navi's
+/// base max HP in hundreds (1..=9 and up), and six for 1000 and up.
+///
+/// Game data held in the engine for now: it belongs with the Cross
+/// special in the content (to move there with the content model's next
+/// version).
+const CROSS_SPECIAL_CHIPS: [[ChipId; 3]; 9] = [
+    [0x001, 0x036, 0x048],
+    [0x001, 0x037, 0x048],
+    [0x002, 0x038, 0x049],
+    [0x00C, 0x015, 0x04C],
+    [0x003, 0x019, 0x04D],
+    [0x00D, 0x020, 0x04E],
+    [0x010, 0x029, 0x04F],
+    [0x00E, 0x034, 0x054],
+    [0x00E, 0x032, 0x153],
+];
+const CROSS_SPECIAL_TOP_CHIPS: [ChipId; 6] = [0x016, 0x01A, 0x021, 0x02A, 0x008, 0x153];
+
+/// `sub_802D4C6`: one tick of the Cross special's controller (the dark
+/// chips' auto-battle, while the side's Cross special runs): like Beast
+/// Over's, it moves next to an opponent and attacks, but with chips of its
+/// own, and a buster volley while an opponent stays in its row.
+pub(super) fn cross_special(b: &mut Battle, r: ObjectRef) -> Outcome {
+    match ai(b, r).berserk.step {
+        Step::UseChip => special_chip(b, r),
+        Step::Buster => volley(b, r),
+        Step::Move => step_toward_opponent(b, r),
+    }
+}
+
+/// `sub_802D4F0`: (the first time, sound 0x182) for the first three moves
+/// after an attack, wait with a volley while the opponent under the lock-on
+/// marker flashes; otherwise use one of the Cross special's chips (not the
+/// hand's: the attack variables come from its data, and the chip isn't
+/// consumed) and move next.
+fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
+    if !ai(b, r).berserk.started {
+        ai_mut(b, r).berserk.started = true;
+        b.play_sound(crate::sound::SoundId(0x182));
+    }
+    if ai(b, r).berserk.moves <= 3 {
+        // sub_80E164A (outside Beast Out there is no marker: nobody).
+        let p = crate::kinds::lockon_marker::panel_of(b, ai(b, r).lockon_marker);
+        let target = opponent_on(b, p, b.objects.get(r).alliance);
+        let flashing =
+            target.is_some_and(|t| b.objects.get(t).collision.is_some_and(|c| b.collision.get(c).f1 & f1::FLASHING != 0));
+        if flashing {
+            let form = super::stats(b, r).form.0;
+            let s = &mut ai_mut(b, r).berserk;
+            s.step = Step::Buster;
+            // The game means 6 (2 in Beast Out) but stores the form number
+            // (a register mixup): in base form the volley lasts until the
+            // row is clear (or 65536 shots).
+            s.volley = if matches!(form, 0xB | 0xC) { 2 } else { form as u16 };
+            return Outcome::Nothing;
+        }
+    }
+    ai_mut(b, r).berserk.moves = 0;
+    let chip = pick_special_chip(b, r);
+    let content = b.content.clone();
+    let cd = content.chip(chip);
+    let a = &mut ai_mut(b, r).attack;
+    a.chip_id = chip;
+    a.variant = cd.subtype;
+    a.params = cd.params;
+    a.damage = cd.damage;
+    a.hit_param = (cd.hit_param | 0x80) as u16;
+    if chip == 0x153 {
+        a.damage = content.chip(0x52).damage;
+    }
+    super::set_attack(b, r, cd.action, 5);
+    ai_mut(b, r).attack.beast_lockon = cd.beast_lockon as u8;
+    ai_mut(b, r).berserk.step = Step::Move;
+    Outcome::Chip
+}
+
+/// `sub_802D5A8`: a chip for the Cross special, at random from its navi's
+/// row of `CROSS_SPECIAL_CHIPS` (by the base max HP, NaviStats+0x3E).
+fn pick_special_chip(b: &mut Battle, r: ObjectRef) -> ChipId {
+    let hundreds = super::stats(b, r).max_base_hp / 100;
+    let row = if hundreds <= 1 { 0 } else { (hundreds - 1).min(9) as usize };
+    let chips: &[ChipId] = if row == 9 { &CROSS_SPECIAL_TOP_CHIPS } else { &CROSS_SPECIAL_CHIPS[row] };
+    let i = b.rng.next_positive() % chips.len() as u32;
+    chips[i as usize]
+}
+
+/// `sub_802D588`: the volley: the buster fires while an opponent is in the
+/// navi's row and shots are left; then a move is next.
+fn volley(b: &mut Battle, r: ObjectRef) -> Outcome {
+    let y = b.objects.get(r).panel.y;
+    if opponent_in_row(b, r, y).is_some() {
+        let s = &mut ai_mut(b, r).berserk;
+        s.volley = s.volley.wrapping_sub(1);
+        if s.volley != 0 {
+            return Outcome::Buster;
+        }
+    }
+    ai_mut(b, r).berserk.step = Step::Move;
+    Outcome::Nothing
 }
 
 /// `sub_80E7486`: the opposing player standing on `p` (the panel shows

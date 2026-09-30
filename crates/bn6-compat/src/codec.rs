@@ -8,7 +8,7 @@ use bn6_battle::custom::folder::FOLDER_SIZE;
 use bn6_battle::custom::{BattleFolder, FolderChip};
 use bn6_battle::hand::ChipHand;
 use bn6_battle::setup::{
-    BattleSettings, Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, SupportNavis,
+    BattleSettings, Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
 };
 use bn6_battle::transform::TransformRequest;
 
@@ -33,7 +33,7 @@ pub fn navi_stats(b: &[u8; 0x64]) -> NaviStats {
         custom_level: b[0x0A],
         mega_level: b[0x0B],
         giga_level: b[0x0C],
-        support: (b[0x0D] != 0xFF).then(|| SupportNavis {
+        support: (b[0x0D] != 0xFF).then(|| Supports {
             rush: b[0x0D] & 1 != 0,
             beat: b[0x0D] & 2 != 0,
             tango: b[0x0D] & 4 != 0,
@@ -285,7 +285,7 @@ mod tests {
         assert_eq!(s.form, Form::NONE);
         assert!(s.float_shoes && s.air_shoes && !s.undershirt && !s.super_armor);
         assert_eq!(s.mood, 0x80);
-        assert_eq!(s.support, Some(SupportNavis::default()));
+        assert_eq!(s.support, Some(Supports::default()));
         assert_eq!((s.weapons.buster, s.weapons.charge_shot, s.weapons.back_special), (0, 1, 0xFF));
         assert_eq!(s.beast_out_counter, 3);
     }

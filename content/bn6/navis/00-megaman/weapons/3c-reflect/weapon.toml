@@ -1,0 +1,6 @@
+# MegaMan's weapon routine 0x3C (`sub_8012194`), the Reflect program's B+Back special:
+# Reflector's shield as its subtype 4, which fires a guarded hit back.
+
+id = 0x3C
+name = "Reflect"
+script = "reflect.luau"
