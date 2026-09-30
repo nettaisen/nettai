@@ -3,8 +3,8 @@
 The engine plays no sound. Each tick it reports the sound calls the
 original makes at that point as typed cues (`bn6_battle::sound`); a
 frontend plays them. `bn6-audio` does, with the game's own sound driver
-(the `m4a` crate) and sound data (a sound bank extracted from the user's
-ROM). Cues are output only: nothing in the simulation reads them.
+(the `m4a` crate) and sound data (the sound of a content pack extracted
+from the user's ROM). Cues are output only: nothing in the simulation reads them.
 
 ## 1. Cues
 
@@ -98,19 +98,18 @@ where the GBA driver applies them on their tick.
 
 ## 4. Sound data
 
-`bn6-extract assets <rom> <sound-bank>` reads the ROM's M4A data once
-(`m4a::rom::extract`) into a typed `SoundBank`: songs as command lists
-(running status resolved, jumps as command indices), voicegroups, drum kits,
-key splits, samples and PSG waves, the mixer settings and the player table.
-It is saved in a small binary format (`SoundBank::to_bytes`, about 1 MB)
-that `bn6_audio::load_bank` reads; `data/sound/` is gitignored for it. The
-bank holds the game's recordings, so it is never committed, and the
-frontend never reads the ROM.
-
-`bn6-extract content <rom> <dir>` writes the same data as open, editable
-files instead: songs as MIDI in mid2agb's conventions, voicegroups as TOML,
-samples as WAV (`docs/design/asset-formats.md`); every song renders the same
-samples from them. `--sound <dir>` loads such a pack.
+`bn6-extract content <rom> <dir>` reads the ROM's M4A data
+(`m4a::rom::extract`) into a typed `m4a::SoundBank` (songs as command
+lists with running status resolved and jumps as command indices,
+voicegroups, drum kits, key splits, samples and PSG waves, the mixer
+settings and the player table) and writes it into the content pack as
+open, editable files: songs as MIDI in mid2agb's conventions, voicegroups
+as TOML, samples as WAV (`docs/design/asset-formats.md`). bn6-content reads
+them straight back into a `SoundBank` (`bn6_content::pack::load_sound`),
+and every song renders the same samples from them as from the ROM.
+`SoundBank::validate` checks every reference in a bank before the driver
+trusts it. The pack holds the game's recordings, so it is never committed
+(`data/content/` is gitignored), and nothing reads the ROM at run time.
 
 Every BN6 song reads (397) except two map songs that use MEMACC (0x11,
 0x23), which the port doesn't play. A track whose running status would depend on
@@ -118,13 +117,13 @@ the path into a jump target is refused at extraction (none in BN6).
 
 ## 5. Hearing it
 
-    cargo run -p bn6-extract -- assets <rom> data/sound/bn6.soundbank
-    cargo run -p bn6-audio --example trace_audio -- <trace.jsonl> data/sound/bn6.soundbank
-    cargo run -p bn6-audio --example trace_audio -- <trace.jsonl> data/sound/bn6.soundbank --wav out.wav --frames 600
-    cargo run -p bn6-audio --example play_song -- data/sound/bn6.soundbank 0x15,0x94 --every 120
+    cargo run -p bn6-extract -- content <rom> data/content/bn6
+    cargo run -p bn6-audio --example trace_audio -- <trace.jsonl> data/content/bn6
+    cargo run -p bn6-audio --example trace_audio -- <trace.jsonl> data/content/bn6 --wav out.wav --frames 600
+    cargo run -p bn6-audio --example play_song -- data/content/bn6 0x15,0x94 --every 120
 
 `trace_audio` replays a golden trace's rounds with their recorded inputs,
-prints each cue with its frame and plays them in real time (or renders a
+on the pack's battle data, prints each cue with its frame and plays them in real time (or renders a
 WAV). A round stops where the engine leaves the recording (with
 `--keep-going`, where it panics on something not implemented yet).
 

@@ -1,20 +1,23 @@
 # Asset formats: open, editable, exact
 
-The battle's graphics and sound used to exist only as two binary files our
-own code could read: the graphics bundle (`bn6-assets.bin`) and the M4A sound
-bank. This document describes the formats that replace them as the source of
-truth: a **content pack**, a folder of widely supported files that ordinary
-tools edit, which reads back into exactly the data the engine and frontend
-use. The binary files remain, but only as caches built from a pack.
+A battle's graphics and sound come from a **content pack**: a folder of
+widely supported files that ordinary tools edit, which loads into exactly the
+data the frontend and the audio use. This document describes the graphics and
+sound formats; the pack's battle data (chips, navis, rules, sprite timing:
+what the engine runs on) is described in [content-pack.md](content-pack.md).
+A pack is the only form this data takes: `bn6-extract content` writes it
+from the user's ROM, and everything loads it straight from its files.
 
-The prototype is the `bn6-content` crate, `bn6-extract content`, and pack
-loading in `bn6-frontend`. Everything below was checked on the game's full
-battle graphics and all of its songs; the in-repo tests use synthetic assets.
+The code is the `bn6-content` crate, `bn6-extract content`, and pack
+loading in `bn6-frontend` and the audio examples. Everything below was
+checked on the game's full battle graphics and all of its songs; the in-repo
+tests use synthetic assets.
 
 ## 0. Summary
 
 | Asset | Format | Editors | Fidelity |
 |---|---|---|---|
+| Battle data (chips, navis, rules...) | TOML by owner ([content-pack.md](content-pack.md)) | text editor | exact (equal to the engine's former compiled tables) |
 | Sprites: pixels and palettes | 8-bit indexed PNG part atlas, the palette set as 16 palette rows | Aseprite, GIMP, LibreSprite, Pillow, any indexed editor | byte-exact |
 | Sprites: frame layouts | `sprite.json` (OAM parts: first tile, size, offset, flips, palette offset) | text editor | byte-exact |
 | Sprites: animation timing | `animations.json` (ticks and flag bits per frame), read without images | text editor | exact (checked against the engine's table) |
@@ -26,9 +29,10 @@ battle graphics and all of its songs; the in-repo tests use synthetic assets.
 | Instruments | voicegroups, key maps, PSG waves as TOML | text editor | exact |
 | Samples | 8-bit mono WAV with a `smpl` loop chunk + `samples.toml` | Audacity, sox, any audio editor | exact, also after tools drop the loop chunk |
 
-Results (§6): the graphics bundle rebuilt from a pack is byte-identical
-(5,125,050 bytes); rendered trace frames are pixel-identical; sprite timing
-matches the engine's generated table for all 3,176 animations; all 397 songs
+Results (§6): the graphics a pack loads are identical to the graphics
+decoded from the ROM; rendered trace frames are pixel-identical; sprite
+timing matches the engine's former compiled table for all 3,176 animations;
+all 397 songs
 have identical timelines and render bit-identical PCM (60 s each, 780 million
 stereo samples), and the battle music with all 18 battle effects mixed in is
 bit-identical. Nothing in BN6's data needed an approximation. §7 lists
@@ -36,16 +40,16 @@ precisely what a format can't carry and how each case is handled.
 
 ## 1. Principles
 
-- **The pack is the source; binaries are caches.** The frontend loads a pack
-  directly; `bn6-assets.bin` and the sound bank are derived from it and
-  rebuilt when it changes (§9).
+- **The pack is the only form.** The frontend, the audio and the engine
+  load a pack straight from its files; nothing derived from it is stored
+  (§9).
 - **Open formats first.** Every file is a PNG, JSON, TOML, MIDI, WAV or a
   Tiled or Aseprite document. Where a format can't hold a detail, the detail
   goes in a small text sidecar rather than in a private binary.
 - **Exact by construction, then proved.** Export writes a file, and for songs
   immediately reads it back and compares, refusing anything that wouldn't
-  return the same. `bn6-content verify` checks a whole pack against the data it
-  came from.
+  return the same. `bn6-extract content` reads the battle data back before it
+  finishes, and `bn6-content verify` checks a whole pack against another.
 - **Imports explain, never guess silently.** An import returns a report of
   errors (the pack can't be built as it is), warnings (it builds, but likely
   not as intended) and notes, each naming the file and what to do.
@@ -64,6 +68,7 @@ precisely what a format can't carry and how each case is handled.
 
 ```text
 content.toml                         manifest: format, version, name, what it holds
+chips/ navis/ objects/ rules/ registries/   the battle data (content-pack.md)
 graphics/
   sprites/CC-II/                     one folder per sprite: category, index (hex)
     atlas.png                        part images; palette = the sprite's palette set
@@ -87,10 +92,10 @@ sound/
   voicegroups/vg-NNN.toml            instruments (drum kits and split groups too)
   songs/song-XXX.mid                 a song (XXX = song id in hex)
   songs/song-XXX.toml                its header and stamps
-.cache/                              derived binaries (§9); not part of the source
 ```
 
-BN6's pack is 2,291 files, 10.2 MiB. Writing it from the ROM takes 0.75 s.
+BN6's pack is 2,759 files, 10.6 MiB (468 of the files, about 2 MiB, are
+the battle data). Writing it from the ROM takes about 1 s.
 
 ## 3. Sprites
 
@@ -199,8 +204,8 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
 
 Effect lifetimes and chip timings end on these durations and flags, so timing
 is kept apart from pixels: `bn6_content::timing::load` reads every
-`animations.json` into a table keyed by (sprite, animation) without opening an
-image (298 files in about 50 ms).
+`animations.json` without opening an image (298 files in 10-50 ms), and the
+battle data's loader puts it in the engine's `Content::animations`.
 
 ### 3.4 Editing
 
@@ -490,15 +495,17 @@ files are the instruments.
 ## 6. Fidelity results
 
 On BN6 (US Falzar), everything exported, imported and compared with the data
-it came from (`bn6-content verify`):
+it came from, the data decoded from the ROM:
 
 | Check | Result |
 |---|---|
-| Graphics bundle rebuilt from the pack | byte-identical, 5,125,050 bytes (298 sprites, 21 backgrounds, field, HUD) |
-| Frontend, 9 trace frames (headless), from the rebuilt bundle and from the pack directly | pixel-identical PNGs |
-| Timing loaded from `animations.json` vs the engine's generated table | identical: 298 sprites, 3,176 animations, 8,329 frames |
-| Aseprite views written and read back | byte-identical bundle |
-| Aseprite views re-saved by Aseprite 1.3.2, then read back | byte-identical bundle (all 298) |
+| Graphics loaded from the pack | identical to the ROM's (298 sprites, 21 backgrounds, field, HUD) |
+| Frontend, 9 trace frames (headless), from the ROM's graphics and from the pack | pixel-identical PNGs |
+| Timing loaded from `animations.json` vs the engine's former compiled table | identical: 298 sprites, 3,176 animations, 8,329 frames |
+| Battle data loaded from the pack vs the engine's former compiled tables | identical: 5,841 checks over 67 tables ([content-pack.md](content-pack.md) §7) |
+| Frontend, all 2,405 frames of the machgun trace, from the pack vs before the engine loaded packs | pixel-identical |
+| Aseprite views written and read back | identical sprites |
+| Aseprite views re-saved by Aseprite 1.3.2, then read back | identical sprites (all 298) |
 | Instruments, samples, key maps, waves, mixer, players | identical |
 | Songs as timelines | 397 of 397 identical (186 also command for command) |
 | PCM, each song alone, 60 s | 397 of 397 bit-identical, 780,391,634 stereo samples, the 4 battle songs and 18 battle effects included |
@@ -620,56 +627,49 @@ What breaks with an ordinary tool, and what the importer says:
 
 `bn6-content check <pack>` runs every import and prints the report.
 
-## 9. Loading, caches and the engine
+## 9. Loading
 
-**Frontend.** `--graphics <pack>` and `--sound <pack>` load a pack (a folder
-with `content.toml`); a bundle or bank file still works.
-`bn6_content::pack::load_graphics(pack, cache)` builds the bundle through the
-importer and stores it in `<pack>/.cache/graphics-<key>.bin`; `load_sound`
-does the same for the bank. BN6's pack starts the frontend in 0.38 s the
-first time and 0.14 s from the cache.
+**Straight from the files.** `bn6_content::pack::load_battle(pack)`,
+`load_graphics(pack)` and `load_sound(pack)` read a pack's battle data,
+graphics and sound through the importers, each with a report of what it
+found. Nothing derived is stored: an edit shows up the next time the pack
+loads, and there is no cache to go stale.
 
-**Cache key and invalidation.** The key is a 64-bit FNV-1a hash over every
-source file's path and contents under `graphics/` (or `sound/`), the
-crate's name and version, the pack format version and
-`pack::IMPORTER_REVISION` (bumped when an importer reads the same files
-differently). Any edit, added or removed file, or a new importer
-version gives a new key; the old cache file is deleted when the new one is
-written. The cache holds the same bytes `bn6-assets.bin` and the bank file
-always held, and is checked by their own readers. Hashing the sources costs a
-few tens of milliseconds; a size and modification-time key would be faster but
-trusts file times. `.cache/` is derived and belongs in a pack's ignore list.
+**What it costs.** BN6's full pack loads in about 0.75 s in a release
+build (three runs: 0.75, 0.76, 0.86 s): the battle data in 45-150 ms (the
+sprite timing is 10-100 ms of it), the graphics in 60-110 ms and the sound
+in 520-640 ms. Sound dominates: its MIDI songs are parsed and checked
+against their sidecars, and its WAV samples read. The frontend loads the
+sound only when it plays it (not headless, not with `--mute`). Should the
+total ever pass about a second, the sound import is where to look first.
 
-**Engine timing, loaded at run time.** Content files are loaded at run
-time (the chosen option), so the simulation should read sprite timing from
-`animations.json` when content loads: `timing::load` reads it without any
-image into a table keyed by (sprite, animation), which would replace the
-generated `SPRITES` table behind `data::animation`. The loaded table is
-checked equal to that generated table on every frame (the `engine_timing`
-example); switching the engine over is part of the core/content work. The
-alternative, embedding at build time, would have a build script read the same
-files and generate the Rust table, or include the files and parse them at
-start-up; either keeps one source of truth, at the cost of rebuilding to
-change content.
+**The engine.** The simulation reads its sprite timing from the pack's
+`animations.json` files, loaded with the rest of the battle data into
+`Content::animations` (see [content-pack.md](content-pack.md)); nothing is
+compiled into the engine.
 
-**From the ROM.** `bn6-extract content <rom> <dir>` writes a pack in one step
-(the graphics extraction, the sound extraction, then the exporters), about
-0.75 s. `bn6-extract graphics` and `assets` still write the binaries.
+**From the ROM.** `bn6-extract content <rom> <dir>` writes a pack in one
+step (the battle data, the graphics extraction, the sound extraction, then
+the exporters), about 1 s. It is the only extraction.
 
 ## 10. Commands
 
-    cargo run -p bn6-extract -- content <rom> data/content      # ROM -> pack
-    cargo run -p bn6-frontend -- <trace.jsonl> --graphics data/content --sound data/content
-    cargo run -p bn6-content -- check data/content              # lint every file
-    cargo run -p bn6-content -- build data/content --graphics-out a.bin --sound-out b.bank
-    cargo run -p bn6-content -- export data/content --graphics <bn6-assets.bin> --sound <bank>
-    cargo run -p bn6-content -- verify data/content --graphics <bn6-assets.bin> --sound <bank> [--seconds N]
-    cargo run -p bn6-content -- aseprite-export data/content [CC-II ...]
-    cargo run -p bn6-content -- aseprite-import data/content [CC-II ...]
-    cargo run -p bn6-content --example engine_timing -- data/content
+    cargo run -p bn6-extract -- content <rom> data/content/bn6    # ROM -> pack
+    cargo run -p bn6-frontend -- <trace.jsonl> --pack data/content/bn6
+    cargo run -p bn6-content -- check data/content/bn6            # lint every file
+    cargo run -p bn6-content -- verify data/content/bn6 <reference-pack> [--seconds N]
+    cargo run -p bn6-content -- aseprite-export data/content/bn6 [CC-II ...]
+    cargo run -p bn6-content -- aseprite-import data/content/bn6 [CC-II ...]
     cargo run -p bn6-content --example midi_summary -- a.mid b.mid
-    cargo run -p bn6-content --example stats -- data/graphics/bn6-assets.bin
-    cargo run -p bn6-content --example audio_stats -- data/sound/bn6.soundbank
+    cargo run -p bn6-content --example stats -- data/content/bn6
+    cargo run -p bn6-content --example audio_stats -- data/content/bn6
+
+`verify` compares what two packs load: the battle data record by record,
+the graphics part by part, the sprite timing frame by frame, and the sound
+as instruments, as song timelines and as rendered PCM (each song for
+`--seconds`, default 60, and the battle music with every battle effect).
+Use it after a round trip through an editor, against a pack exported
+before.
 
 `data/content/` is ignored by version control: a pack exported from the ROM
 holds the game's graphics and recordings and is never committed.
@@ -695,7 +695,5 @@ holds the game's graphics and recordings and is never committed.
   the first track, controllers kept) come from their documentation.
 - **The HUD layout and chip names** are BN6 schema; a game-independent HUD
   would describe its elements as data.
-- **The engine still compiles its timing table**; switching `data::animation`
-  to the loaded table is part of the core/content work.
 - **SF2/SFZ export** for auditioning songs outside the game.
 - **Field panels in Tiled** would need one tile per (tile, palette) pair.
