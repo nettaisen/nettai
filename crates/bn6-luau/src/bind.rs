@@ -332,6 +332,7 @@ impl UserData for Object {
         methods.add_method("set_panel_from_coordinates", |_, this, ()| {
             with(|api, _| Ok(api.set_panel_from_coordinates(this.0)))
         });
+        methods.add_method("update_visibility", |_, this, ()| with(|api, _| Ok(api.update_visibility(this.0))));
         methods.add_method("update_collision_panels", |_, this, ()| {
             with(|api, _| Ok(api.update_collision_panels(this.0)))
         });
