@@ -318,6 +318,10 @@ impl UserData for Object {
             with(|api, _| Ok(api.update_collision_panels(this.0)))
         });
         methods.add_method("snap_to_future_panel", |_, this, ()| with(|api, _| Ok(api.snap_to_future_panel(this.0))));
+        methods.add_method("set_collision_panel", |_, this, ()| with(|api, _| Ok(api.set_collision_panel(this.0))));
+        methods.add_method("highlight_collision_panels", |_, this, ()| {
+            with(|api, _| Ok(api.highlight_collision_panels(this.0)))
+        });
         methods.add_method("reserve_panel", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.reserve_panel(this.0, p)))

@@ -1023,6 +1023,26 @@ impl CoreApi for Battle {
         kinds::spark::spawn_collision_effect(self, o);
     }
 
+    fn set_collision_panel(&mut self, o: ObjectRef) {
+        let obj = self.objects.get(o);
+        let (Some(id), panel) = (obj.collision, obj.panel) else { return };
+        self.collision.get_mut(id).panel = panel;
+    }
+
+    fn highlight_collision_panels(&mut self, o: ObjectRef) {
+        let obj = self.objects.get(o);
+        let Some(id) = obj.collision else { return };
+        let c = self.collision.get(id);
+        let dir: i8 = if obj.alliance ^ obj.flip == 0 { 1 } else { -1 };
+        let (x0, y0, region) = (c.panel.x as i8, c.panel.y as i8, c.region);
+        let Some(offsets) = self.content.regions.get(region as usize) else {
+            panic!("highlighting region {region:#x} reads past PanelOffsetListsPointerTable");
+        };
+        for off in offsets.clone() {
+            common::highlight_panel(self, (x0 + off.dx * dir) as u8, (y0 + off.dy) as u8);
+        }
+    }
+
     // ---- Services ------------------------------------------------------------
 
     fn dimming(&mut self, o: ObjectRef, step: DimmingStep, chip: u16) {

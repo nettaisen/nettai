@@ -893,6 +893,12 @@ pub trait CoreApi {
     /// Unregister, resolving hits against whatever is registered there.
     fn remove_collision(&mut self, o: ObjectRef);
     fn free_collision(&mut self, o: ObjectRef);
+    /// `object_setCollisionPanelsToCurrent`: the registration's panel
+    /// becomes the object's (its move direction kept).
+    fn set_collision_panel(&mut self, o: ObjectRef);
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels the
+    /// registration's region covers.
+    fn highlight_collision_panels(&mut self, o: ObjectRef);
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
     fn hit_spark(&mut self, o: ObjectRef);
