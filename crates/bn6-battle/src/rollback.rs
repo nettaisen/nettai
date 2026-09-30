@@ -72,6 +72,7 @@ fn snapshot_holds_only_send_state(battle: Battle) {
         content,
         setup,
         stats,
+        cross_stats,
         rng,
         round,
         fight,
@@ -109,6 +110,7 @@ fn snapshot_holds_only_send_state(battle: Battle) {
     send(content);
     send(setup);
     send(stats);
+    send(cross_stats);
     send(rng);
     send(round);
     send(fight);

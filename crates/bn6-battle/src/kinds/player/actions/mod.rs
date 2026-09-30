@@ -8,6 +8,7 @@
 //! in its own state struct in `AttackVars::action`.
 
 pub mod beast_rush;
+pub mod cross_change;
 pub mod cross_special;
 pub mod instant;
 pub mod movement;
@@ -33,6 +34,7 @@ pub enum ActionVars {
     FormChange(transform::Vars),
     Instant(instant::Vars),
     CrossSpecial(cross_special::Vars),
+    CrossChange(cross_change::Vars),
     /// A content action's declared state (see `content`).
     Content(bn6_content_api::ContentState),
 }

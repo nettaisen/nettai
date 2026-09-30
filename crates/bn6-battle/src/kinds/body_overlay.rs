@@ -131,7 +131,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     };
     let in_front = |anim: u8| {
         *overlay(b, r).in_front.get(anim as usize).unwrap_or_else(|| {
-            panic!("body overlay depth for animation {anim:#x} (past the table) is not implemented yet")
+            panic!("the body overlay depth for animation {anim:#x} reads past the depth tables into their pointers (sub_80C43C4)")
         })
     };
     let nudge = if forced_front {
