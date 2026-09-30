@@ -45,10 +45,11 @@ fn battles_run_the_content_scripts() {
             "bass",
             "blast-fire",
             "blast-man",
+            "blkbomb/bomb",
             "bomb",
             "bomb-slash",
             "boomerang",
-            "bug-bomb",
+            "bugbomb/bomb",
             "charge-car",
             "charge-man",
             "charge-wave",
@@ -68,7 +69,7 @@ fn battles_run_the_content_scripts() {
             "elmnt-ice",
             "elmnt-man",
             "elmnt-vine",
-            "energy-burst",
+            "energbom/burst",
             "erase-beam",
             "erase-drop",
             "erase-man",
@@ -78,7 +79,7 @@ fn battles_run_the_content_scripts() {
             "fire-hit",
             "flame-hook",
             "flame-hook-fire",
-            "flash-bomb",
+            "flshbom/bomb",
             "flying-shot",
             "gauge-speed",
             "golem",
@@ -146,9 +147,9 @@ fn the_duel_fires_scripted_gun_del_sols() {
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            match (r.pool, b.slot_index(r)) {
-                (crate::object::Pool::Effect, 0x48) => beams += 1,
-                (crate::object::Pool::Actor, 5) => guns += 1,
+            match b.kind_key(r) {
+                "sun-beam" => beams += 1,
+                "attachment" => guns += 1,
                 _ => {}
             }
         }
@@ -160,14 +161,14 @@ fn the_duel_fires_scripted_gun_del_sols() {
 
 /// A duel with the eraser navi chip, the grab dimming chip and GunDelSols
 /// in the folders: the ticks each scripted kind was on the field, by
-/// (pool, index).
-fn chip_duel(ticks: usize) -> std::collections::BTreeMap<(crate::object::Pool, u8), usize> {
+/// key.
+fn chip_duel(ticks: usize) -> std::collections::BTreeMap<String, usize> {
     duel_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3], ticks, 11)
 }
 
 /// A duel with `chips` in the folders and the players' moves from `seed`:
-/// the ticks each kind was on the field, by (pool, index).
-fn duel_with(chips: &[crate::content::ChipId], ticks: usize, seed: u32) -> std::collections::BTreeMap<(crate::object::Pool, u8), usize> {
+/// the ticks each kind was on the field, by key.
+fn duel_with(chips: &[crate::content::ChipId], ticks: usize, seed: u32) -> std::collections::BTreeMap<String, usize> {
     let setup = || scenario::setup_with(chips);
     let tape = scenario::record_on(setup(), ticks, seed);
     let mut b = Battle::new(setup(), scenario::content());
@@ -175,7 +176,7 @@ fn duel_with(chips: &[crate::content::ChipId], ticks: usize, seed: u32) -> std::
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
+            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
         }
     }
     seen
@@ -183,21 +184,21 @@ fn duel_with(chips: &[crate::content::ChipId], ticks: usize, seed: u32) -> std::
 
 #[test]
 fn the_scripted_navi_and_dimming_chips_play() {
-    use crate::object::Pool::{Actor, Attack, Effect};
+    
     let seen = chip_duel(2400);
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The eraser navi comes, marks its aim and slashes along it.
-    assert!(ticks((Actor, 0x15)) > 0, "EraseMan: {seen:?}");
-    assert!(ticks((Effect, 0x62)) > 0, "EraseMan's marks: {seen:?}");
-    assert!(ticks((Attack, 0xC3)) > 0, "EraseMan's slash: {seen:?}");
+    assert!(ticks("erase-man") > 0, "EraseMan: {seen:?}");
+    assert!(ticks("erase-mark") > 0, "EraseMan's marks: {seen:?}");
+    assert!(ticks("erase-beam") > 0, "EraseMan's slash: {seen:?}");
     // The grab's controller drops grab shots.
-    assert!(ticks((Effect, 0x03)) > 0, "the grab's controller: {seen:?}");
-    assert!(ticks((Attack, 0x0F)) > 0, "grab shots: {seen:?}");
+    assert!(ticks("area-grab") > 0, "the grab's controller: {seen:?}");
+    assert!(ticks("grab-shot") > 0, "grab shots: {seen:?}");
 }
 
 /// A duel with the bee and dragon chips in the folders: the ticks each
 /// scripted kind was on the field, and the players' HP at the end.
-fn bee_and_dragon_duel(ticks: usize) -> (std::collections::BTreeMap<(crate::object::Pool, u8), usize>, [u16; 2]) {
+fn bee_and_dragon_duel(ticks: usize) -> (std::collections::BTreeMap<String, usize>, [u16; 2]) {
     let setup = || scenario::setup_with(&[testing::BEES, testing::DRAGON]);
     let tape = scenario::record_on(setup(), ticks, 5);
     let mut b = Battle::new(setup(), scenario::content());
@@ -205,7 +206,7 @@ fn bee_and_dragon_duel(ticks: usize) -> (std::collections::BTreeMap<(crate::obje
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
+            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
         }
     }
     let hp = [0, 1].map(|s| b.objects.get(b.player(s).unwrap()).hp);
@@ -214,14 +215,14 @@ fn bee_and_dragon_duel(ticks: usize) -> (std::collections::BTreeMap<(crate::obje
 
 #[test]
 fn the_bees_and_dragons_play() {
-    use crate::object::Pool::{Actor, Attack};
+    
     let (seen, hp) = bee_and_dragon_duel(2400);
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The hive in hand, the bees it sends, the dragon's head and body.
-    assert!(ticks((Actor, 0x05)) > 0, "the hive: {seen:?}");
-    assert!(ticks((Attack, 0x74)) > 0, "bees: {seen:?}");
-    assert!(ticks((Attack, 0xC9)) > 0, "dragon heads: {seen:?}");
-    assert!(ticks((Attack, 0xC8)) >= 4 * ticks((Attack, 0xC9)), "four body segments a head: {seen:?}");
+    assert!(ticks("attachment") > 0, "the hive: {seen:?}");
+    assert!(ticks("honey-bee") > 0, "bees: {seen:?}");
+    assert!(ticks("dragon-head") > 0, "dragon heads: {seen:?}");
+    assert!(ticks("dragon-body") >= 4 * ticks("dragon-head"), "four body segments a head: {seen:?}");
     assert!(hp.iter().any(|&h| h < 1000), "someone got hit: {hp:?}");
 }
 
@@ -245,7 +246,7 @@ fn the_thrown_chips_play_and_roll_back() {
     // Duels with the bomb, seed, flash bomb and bug bomb in the folders:
     // each thrown kind flies, and a copy of the battle at any tick plays
     // on exactly as the battle does.
-    use crate::object::Pool::Attack;
+    
     let setup = || scenario::setup_with(&[testing::BOMB, testing::SEED, testing::FLASH, testing::BUG]);
     let tape = scenario::record_on(setup(), 2400, 5);
     let mut b = Battle::new(setup(), scenario::content());
@@ -258,78 +259,78 @@ fn the_thrown_chips_play_and_roll_back() {
         }
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
+            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
         }
     }
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
-    assert!(ticks((Attack, 0x08)) > 0, "the bomb: {seen:?}");
-    assert!(ticks((Attack, 0x4F)) > 0, "the seed: {seen:?}");
-    assert!(ticks((Attack, 0xA4)) > 0, "the flash bomb: {seen:?}");
-    assert!(ticks((Attack, 0xA5)) > 0, "the bug bomb: {seen:?}");
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
+    assert!(ticks("bomb") > 0, "the bomb: {seen:?}");
+    assert!(ticks("seed") > 0, "the seed: {seen:?}");
+    assert!(ticks("flshbom/bomb") > 0, "the flash bomb: {seen:?}");
+    assert!(ticks("bugbomb/bomb") > 0, "the bug bomb: {seen:?}");
 }
 
 #[test]
 fn the_elements_navi_attacks() {
-    use crate::object::Pool::{Actor, Attack};
+    
     let seen = duel_with(&[testing::ELEMENTS], 2400, 11);
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The elements navi comes with his overlay and attacks with an
     // element: meteors, ice, bolts or vines.
-    assert!(ticks((Actor, 0x10)) > 0, "ElmntMan: {seen:?}");
-    assert!(ticks((Actor, 0x56)) > 0, "ElmntMan's overlay: {seen:?}");
-    let attacks = [0x8D, 0x8E, 0xB8, 0xB9].map(|i| ticks((Attack, i)));
+    assert!(ticks("elmnt-man") > 0, "ElmntMan: {seen:?}");
+    assert!(ticks("engine/body-overlay") > 0, "ElmntMan's overlay: {seen:?}");
+    let attacks = ["meteor", "elmnt-ice", "elmnt-bolt", "elmnt-vine"].map(ticks);
     assert!(attacks.iter().any(|&t| t > 0), "ElmntMan's attacks: {seen:?}");
 }
 
 #[test]
 fn the_water_navi_attacks() {
-    use crate::object::Pool::{Actor, Attack, Effect};
+    
     let seen = duel_with(&[testing::SPOUT], 2400, 11);
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The water navi comes in his water (his layer) and throws his ball
     // or raises his geyser, which marks its column.
-    assert!(ticks((Actor, 0x09)) > 0, "SpoutMan: {seen:?}");
-    assert!(ticks((Actor, 0x55)) > 0, "SpoutMan's layer: {seen:?}");
-    let ball = ticks((Attack, 0x22)) > 0 && ticks((Attack, 0x23)) > 0;
-    let geyser = ticks((Effect, 0x2D)) > 0 && ticks((Attack, 0x17)) > 0 && ticks((Effect, 0x2E)) > 0;
+    assert!(ticks("spout-man") > 0, "SpoutMan: {seen:?}");
+    assert!(ticks("engine/idle-overlay") > 0, "SpoutMan's layer: {seen:?}");
+    let ball = ticks("spout-ball") > 0 && ticks("spout-splash") > 0;
+    let geyser = ticks("spout-pillar") > 0 && ticks("spout-geyser") > 0 && ticks("spout-mark") > 0;
     assert!(ball || geyser, "SpoutMan's attacks: {seen:?}");
 }
 
 #[test]
 fn the_navi_chip_navis_come_and_go() {
-    use crate::object::Pool::Actor;
+    
     // Each navi chip's navi comes (and the duel goes on without a content
     // error); its attacks depend on where the players stand.
     for (chip, navi) in [
-        (testing::HEAT, 0x07),
-        (testing::ELEC, 0x08),
-        (testing::SLASH, 0x0D),
-        (testing::CHARGE, 0x16),
-        (testing::TOMAHAWK, 0x0A),
-        (testing::TENGU, 0x0C),
-        (testing::BLAST, 0x06),
+        (testing::HEAT, "heat-man"),
+        (testing::ELEC, "elec-man"),
+        (testing::SLASH, "slash-man"),
+        (testing::CHARGE, "charge-man"),
+        (testing::TOMAHAWK, "tomahawk-man"),
+        (testing::TENGU, "tengu-man"),
+        (testing::BLAST, "blast-man"),
     ] {
         let seen = duel_with(&[chip], 1500, 11);
-        assert!(seen.get(&(Actor, navi)).copied().unwrap_or(0) > 0, "navi {navi:#x} of chip {chip:#x}: {seen:?}");
+        assert!(seen.get(navi).copied().unwrap_or(0) > 0, "navi {navi} of chip {chip:#x}: {seen:?}");
     }
 }
 
 #[test]
 fn the_shooting_and_sun_moon_navis_attack() {
-    use crate::object::Pool::{Actor, Attack};
+    
     let seen = duel_with(&[testing::BASS], 2400, 11);
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The shooting navi comes with his cape (a form overlay) and fires
     // panel strikes.
-    assert!(ticks((Actor, 0x4F)) > 0, "Bass: {seen:?}");
-    assert!(ticks((Actor, 0x57)) > 0, "Bass's cape: {seen:?}");
-    assert!(ticks((Attack, 0x09)) > 0, "Bass's shots: {seen:?}");
+    assert!(ticks("bass") > 0, "Bass: {seen:?}");
+    assert!(ticks("engine/form-overlay") > 0, "Bass's cape: {seen:?}");
+    assert!(ticks("panel-strike") > 0, "Bass's shots: {seen:?}");
     // The sun-and-moon navi throws meteors, shines and dives.
     let seen = duel_with(&[testing::SUN_MOON], 2400, 11);
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
-    assert!(ticks((Actor, 0x24)) > 0, "SunMoon: {seen:?}");
-    assert!(ticks((Attack, 0xB5)) > 0, "SunMoon's meteors: {seen:?}");
-    assert!(ticks((Attack, 0xB6)) > 0, "SunMoon's moonlight: {seen:?}");
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
+    assert!(ticks("sun-moon") > 0, "SunMoon: {seen:?}");
+    assert!(ticks("sun-meteor") > 0, "SunMoon's meteors: {seen:?}");
+    assert!(ticks("moon-beam") > 0, "SunMoon's moonlight: {seen:?}");
 }
 
 #[test]
@@ -356,8 +357,8 @@ fn scripted_chips_roll_back() {
 const STANDARD_CHIPS: &[crate::content::ChipId] = &[testing::CRACK];
 
 /// A duel with the standard chips: the ticks each kind was on the field,
-/// by (pool, index), and whether a panel was ever broken.
-fn standard_duel() -> (std::collections::BTreeMap<(crate::object::Pool, u8), usize>, bool) {
+/// by key, and whether a panel was ever broken.
+fn standard_duel() -> (std::collections::BTreeMap<String, usize>, bool) {
     let setup = || scenario::setup_with(STANDARD_CHIPS);
     let tape = scenario::record_on(setup(), 2400, 11);
     let mut b = Battle::new(setup(), scenario::content());
@@ -366,7 +367,7 @@ fn standard_duel() -> (std::collections::BTreeMap<(crate::object::Pool, u8), usi
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
+            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
         }
         broken |= (1..=6).any(|x| (1..=3).any(|y| b.field.panel(x, y).unwrap().kind == crate::field::PanelType::Broken));
     }
@@ -375,11 +376,11 @@ fn standard_duel() -> (std::collections::BTreeMap<(crate::object::Pool, u8), usi
 
 #[test]
 fn the_standard_chips_play() {
-    use crate::object::Pool::Attack;
+    
     let (seen, broken) = standard_duel();
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // CrakShot digs up the panel ahead and flings it.
-    assert!(ticks((Attack, 0x33)) > 0, "crack shots: {seen:?}");
+    assert!(ticks("crack-shot") > 0, "crack shots: {seen:?}");
     assert!(broken, "a dug-up panel is broken");
 }
 
@@ -404,7 +405,7 @@ fn the_scripted_swords_play_and_roll_back() {
     // the folders: the navis swing (actions 0x13 and 0x49) holding their
     // blades, the slashes show, the step sword leaves afterimages, and a
     // copy taken at any tick plays on as the battle does.
-    use crate::object::Pool::{Actor, Effect};
+    
     let setup = || scenario::setup_with(&[testing::BLADE, testing::STEP_BLADE, testing::STUN_BLADE]);
     let tape = scenario::record_on(setup(), 2400, 11);
     let whole = digests(&tape, Battle::new(setup(), scenario::content()));
@@ -418,17 +419,19 @@ fn the_scripted_swords_play_and_roll_back() {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
             let o = b.objects.get(r);
-            let index = b.slot_index(r);
-            let key = if (r.pool, index) == (Actor, 0) { (Actor, 0x100 + o.action as u16) } else { (r.pool, index as u16) };
+            let key = match b.kind_key(r) {
+                "engine/player" => format!("engine/player in action {:#04x}", o.action),
+                k => k.to_string(),
+            };
             *seen.entry(key).or_insert(0) += 1;
         }
     }
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
-    assert!(ticks((Actor, 0x113)) > 0, "a sword swung: {seen:?}");
-    assert!(ticks((Actor, 0x149)) > 0, "a strike swung: {seen:?}");
-    assert!(ticks((Actor, 5)) > 0, "a blade: {seen:?}");
-    assert!(ticks((Effect, 0)) > 0, "a slash: {seen:?}");
-    assert!(ticks((Effect, 0x28)) > 0, "a step sword's afterimages: {seen:?}");
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
+    assert!(ticks("engine/player in action 0x13") > 0, "a sword swung: {seen:?}");
+    assert!(ticks("engine/player in action 0x49") > 0, "a strike swung: {seen:?}");
+    assert!(ticks("attachment") > 0, "a blade: {seen:?}");
+    assert!(ticks("engine/effect") > 0, "a slash: {seen:?}");
+    assert!(ticks("engine/afterimage") > 0, "a step sword's afterimages: {seen:?}");
 }
 
 #[test]
@@ -488,7 +491,7 @@ fn scripted_instant_chips_play_and_roll_back() {
             assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
         }
         b.tick(&t.input, t.events.clone());
-        sparkles += b.objects.in_order().filter(|&r| (r.pool, b.slot_index(r)) == (crate::object::Pool::Effect, 0x14)).count();
+        sparkles += b.objects.in_order().filter(|&r| b.kind_key(r) == "rising-bubble").count();
     }
     assert!(sparkles > 0, "no plus chip was used");
 }
@@ -510,11 +513,10 @@ fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
             assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
         }
         b.tick(&t.input, t.events.clone());
-        let content = b.content.clone();
         spawned += b
             .objects
             .in_order()
-            .filter(|&r| content.object_kind_at(r.pool, b.slot_index(r)).is_some_and(|k| k.name != "attachment"))
+            .filter(|&r| !b.kind_key(r).starts_with("engine/") && b.kind_key(r) != "attachment")
             .count();
     }
     assert!(spawned > 0, "no instant chip spawned anything");
@@ -532,9 +534,9 @@ fn dimming_setup() -> crate::setup::RoundSetup {
 }
 
 /// `dimming_setup`'s duel: the ticks each object kind was on the field, by
-/// (pool, index) (and invisible navi-ticks under (Actor, 0xFF)), and the
+/// key (and invisible navi-ticks under "an invisible navi"), and the
 /// battle at the end.
-fn dimming_duel(ticks: usize) -> (std::collections::BTreeMap<(crate::object::Pool, u8), usize>, Battle) {
+fn dimming_duel(ticks: usize) -> (std::collections::BTreeMap<String, usize>, Battle) {
     let setup = dimming_setup;
     let tape = scenario::record_on(setup(), ticks, 5);
     let mut b = Battle::new(setup(), scenario::content());
@@ -543,7 +545,7 @@ fn dimming_duel(ticks: usize) -> (std::collections::BTreeMap<(crate::object::Poo
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
+            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
         }
         for side in 0..2 {
             let Some(p) = b.player(side) else { continue };
@@ -553,23 +555,23 @@ fn dimming_duel(ticks: usize) -> (std::collections::BTreeMap<(crate::object::Poo
             }
         }
     }
-    seen.insert((crate::object::Pool::Actor, 0xFF), invisible);
+    seen.insert("an invisible navi".to_string(), invisible);
     (seen, b)
 }
 
 #[test]
 fn the_scripted_dimming_chips_and_rocks_play() {
-    use crate::object::Pool::{Actor, Attack, Effect};
+    
     let (seen, _) = dimming_duel(2400);
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The cube's controller places rocks, which break into debris.
-    assert!(ticks((Effect, 0x37)) > 0, "the cube's controller: {seen:?}");
-    assert!(ticks((Attack, 0x59)) > 0, "rocks: {seen:?}");
+    assert!(ticks("rock-cube") > 0, "the cube's controller: {seen:?}");
+    assert!(ticks("rock") > 0, "rocks: {seen:?}");
     // The veil's controller makes its user invisible.
-    assert!(ticks((Effect, 0x5D)) > 0, "the veil's controller: {seen:?}");
-    assert!(ticks((Actor, 0xFF)) > 0, "an invisible navi: {seen:?}");
+    assert!(ticks("invisible") > 0, "the veil's controller: {seen:?}");
+    assert!(ticks("an invisible navi") > 0, "an invisible navi: {seen:?}");
     // The trap's controller runs its hidden telop.
-    assert!(ticks((Effect, 0x2A)) > 0, "the trap's controller: {seen:?}");
+    assert!(ticks("trap-chip") > 0, "the trap's controller: {seen:?}");
 }
 
 #[test]
@@ -601,14 +603,14 @@ fn rock_battle() -> Battle {
 
 /// Step the objects of the given kinds, in list order and with the game's
 /// pause and dimming gating (as `Battle::run_objects`).
-fn run_only(b: &mut Battle, kinds: &[(crate::object::Pool, u8)]) {
+fn run_only(b: &mut Battle, kinds: &[&str]) {
     use crate::object::flags;
     let mut cur = b.objects.loop_first();
     while let Some(r) = cur {
         let o = b.objects.get(r);
         let gated = (b.paused && o.flags & flags::RUN_WHILE_PAUSED == 0)
             || (b.is_dimmed() && o.flags & flags::RUN_WHILE_DIMMED == 0);
-        if !gated && kinds.contains(&(r.pool, b.slot_index(r))) {
+        if !gated && kinds.contains(&b.kind_key(r)) {
             crate::kinds::update(b, r);
         }
         cur = b.objects.loop_next();
@@ -643,7 +645,7 @@ fn actor_lists_place_scripted_rocks_outside_the_navi_bookkeeping() {
 #[test]
 fn breaking_a_scripted_rock_throws_debris() {
     use crate::object::{Pool, state};
-    const ROCK_KINDS: [(Pool, u8); 3] = [(Pool::Attack, 0x59), (Pool::Effect, 0x38), (Pool::Effect, 0)];
+    const ROCK_KINDS: [&str; 3] = ["rock", "rock-debris", "engine/effect"];
     let mut b = rock_battle();
     b.spawn_actors();
     let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
@@ -682,7 +684,7 @@ fn breaking_a_scripted_rock_throws_debris() {
 fn a_thrown_rock_flies_to_its_target_and_breaks() {
     use crate::kinds::obstacle::{f2, obstacle_f1};
     use crate::object::{PanelPos, Pool};
-    const ROCK: [(Pool, u8); 1] = [(Pool::Attack, 0x59)];
+    const ROCK: [&str; 1] = ["rock"];
     let mut b = rock_battle();
     b.spawn_actors();
     b.round.flags |= crate::battle::battle_flags::FIGHTING;
@@ -720,7 +722,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
     run_only(&mut b, &ROCK);
     let o = b.objects.get(r);
     assert_eq!((o.panel, o.hp, o.action), (PanelPos { x: 5, y: 2 }, 0, 2), "landed and breaking");
-    let hit = b.objects.in_order().find(|h| h.pool == Pool::Attack && b.slot_index(*h) == 3).unwrap();
+    let hit = b.objects.in_order().find(|&h| b.kind_key(h) == "engine/hitbox").unwrap();
     let h = b.objects.get(hit);
     assert_eq!((h.panel, h.params, h.damage), (PanelPos { x: 5, y: 2 }, [1, 5, 5, 6], 60));
 }
@@ -729,7 +731,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
 
 #[test]
 fn the_navi_changing_chips_change_the_navi() {
-    use crate::object::Pool::Effect;
+    
     let setup = || {
         let mut s = scenario::setup_with(&[testing::BOOST, testing::ARM]);
         s.players[1] = scenario::setup().players[1];
@@ -741,7 +743,7 @@ fn the_navi_changing_chips_change_the_navi() {
     let mut controllers = 0;
     for t in &tape {
         b.tick(&t.input, t.events.clone());
-        controllers += b.objects.in_order().filter(|r| r.pool == Effect && b.slot_index(*r) == 0x84).count();
+        controllers += b.objects.in_order().filter(|&r| b.kind_key(r) == "navi-boost").count();
     }
     assert!(controllers > 0, "the controller ran");
     let after = &b.stats[0];
@@ -1013,7 +1015,7 @@ fn trap_bomb_mine_setup() -> crate::setup::RoundSetup {
 fn trap_bomb_mine_duel(
     ticks: usize,
     mut poke: impl FnMut(&mut Battle),
-) -> std::collections::BTreeMap<(crate::object::Pool, u8), usize> {
+) -> std::collections::BTreeMap<String, usize> {
     let setup = trap_bomb_mine_setup;
     let tape = scenario::record_on(setup(), ticks, 5);
     let mut b = Battle::new(setup(), scenario::content());
@@ -1022,7 +1024,7 @@ fn trap_bomb_mine_duel(
         b.tick(&t.input, t.events.clone());
         poke(&mut b);
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
+            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
         }
     }
     seen
@@ -1030,19 +1032,19 @@ fn trap_bomb_mine_duel(
 
 #[test]
 fn the_trap_bomb_and_mine_chips_play() {
-    use crate::object::Pool::{Attack, Effect};
+    
     let seen = trap_bomb_mine_duel(2400, |_| {});
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The element trap waits on the field.
-    assert!(ticks((Effect, 0x2A)) > 0 && ticks((Attack, 0x4D)) > 0, "the element trap: {seen:?}");
+    assert!(ticks("trap-chip") > 0 && ticks("elem-trap") > 0, "the element trap: {seen:?}");
     // The time bombs' controller sets bombs; the mine's lays mines.
-    assert!(ticks((Effect, 0x27)) > 0 && ticks((Attack, 0x4B)) > 0, "the time bombs: {seen:?}");
-    assert!(ticks((Effect, 0x29)) > 0 && ticks((Attack, 0x4C)) > 0, "the mine: {seen:?}");
+    assert!(ticks("time-bom") > 0 && ticks("countdown-bomb") > 0, "the time bombs: {seen:?}");
+    assert!(ticks("mine") > 0 && ticks("land-mine") > 0, "the mine: {seen:?}");
 }
 
 #[test]
 fn a_sprung_element_trap_strikes_back() {
-    use crate::object::Pool::{Attack, Effect};
+    
     use crate::object::state;
     // Once the trap stands (and the battle isn't dimmed), aqua damage
     // reaches it: its counterattack's dimming strikes, and bursts follow.
@@ -1051,16 +1053,16 @@ fn a_sprung_element_trap_strikes_back() {
         if sprung || b.is_dimmed() {
             return;
         }
-        let trap = b.objects.in_order().find(|&r| r.pool == Attack && b.slot_index(r) == 0x4D);
+        let trap = b.objects.in_order().find(|&r| b.kind_key(r) == "elem-trap");
         let Some(trap) = trap.filter(|&r| b.objects.get(r).state == state::UPDATE) else { return };
         let c = b.objects.get(trap).collision.unwrap();
         b.collision.get_mut(c).acc.element_damage[2] = 10;
         sprung = true;
     });
     assert!(sprung, "no element trap stood: {seen:?}");
-    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
-    assert!(ticks((Effect, 0x2B)) > 0, "the counterattack's controller: {seen:?}");
-    assert!(ticks((Effect, 0x24)) > 0, "the bursts: {seen:?}");
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
+    assert!(ticks("elem-trap-strike") > 0, "the counterattack's controller: {seen:?}");
+    assert!(ticks("panel-bursts") > 0, "the bursts: {seen:?}");
 }
 
 #[test]

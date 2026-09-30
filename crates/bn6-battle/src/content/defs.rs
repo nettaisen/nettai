@@ -1142,6 +1142,7 @@ mod tests {
         let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
         let mut c = Content::default();
         c.scripts.modules = crate::content::testing::modules_under(dir);
+        c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
         // The modules that return a table with a `state` give its layout.
