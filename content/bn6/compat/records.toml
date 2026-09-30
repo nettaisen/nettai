@@ -1,0 +1,26 @@
+# Written by gen-content (the verification workspace) from the ROM, which its `check`
+# compares this with. Edit it when content is renamed or added.
+#
+# Records a setup names by the original's byte.
+
+# The save's SP navi deletion times (`byte_203EB00`, 20 halfwords): the SP chips'
+# damage goes by their slot's time.
+[sp_slots]
+"sp/heatman" = 0
+"sp/elecman" = 1
+"sp/slashman" = 2
+"sp/eraseman" = 3
+"sp/chrgeman" = 4
+"sp/spoutman" = 5
+"sp/tmhkman" = 6
+"sp/tenguman" = 7
+"sp/grndman" = 8
+"sp/dustman" = 9
+"sp/protoman" = 10
+"sp/blastman" = 11
+"sp/diveman" = 12
+"sp/crcusman" = 13
+"sp/judgeman" = 14
+"sp/elmntman" = 15
+"sp/hackjack" = 16
+"sp/colonel" = 17
