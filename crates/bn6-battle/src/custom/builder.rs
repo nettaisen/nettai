@@ -217,19 +217,27 @@ fn remove(entries: &mut [Entry; 6], i: usize) {
     entries[5] = EMPTY;
 }
 
+/// Chips a player sent in a round, by class (`dword_20367E0`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ClassCounts {
+    pub standard: u8,
+    pub mega: u8,
+    pub giga: u8,
+}
+
 /// `sub_802A4FC`: the classes of the chips a sent hand was picked from
 /// (Program Advance parts and modifiers each count; invalid chips don't),
-/// added to the battle's counts. The Mega and Giga counts are what the
+/// added to the round's counts. The Mega and Giga counts are what the
 /// invalid-chip rule checks next time.
-pub fn count_classes(hand: &ChipHand, uses: &mut [u8; 3], library: &dyn Library) {
+pub fn count_classes(hand: &ChipHand, uses: &mut ClassCounts, library: &dyn Library) {
     for &raw in hand.selection.iter().take_while(|&&v| v != NO_CHIP) {
-        let class = match library.chip(raw & 0x1FF).class {
-            ChipClass::Standard => 0,
-            ChipClass::Mega => 1,
-            ChipClass::Giga => 2,
+        let count = match library.chip(raw & 0x1FF).class {
+            ChipClass::Standard => &mut uses.standard,
+            ChipClass::Mega => &mut uses.mega,
+            ChipClass::Giga => &mut uses.giga,
             _ => continue,
         };
-        uses[class] = uses[class].wrapping_add(1);
+        *count = count.wrapping_add(1);
     }
 }
 
@@ -351,8 +359,8 @@ mod tests {
     fn classes_are_counted_from_the_picks() {
         let lib = library();
         let b = built(&[pick(CANNON, 0), pick(CANNON, 1), pick(CANNON, 2), pick(NAVI, 0)]);
-        let mut uses = [0; 3];
+        let mut uses = ClassCounts::default();
         count_classes(&b.hand, &mut uses, &lib);
-        assert_eq!(uses, [3, 1, 0]);
+        assert_eq!(uses, ClassCounts { standard: 3, mega: 1, giga: 0 });
     }
 }

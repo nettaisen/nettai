@@ -6,6 +6,7 @@
 //! docs/engine/custom-screen.md §2-§4.
 
 use super::folder::{BattleFolder, FolderChip};
+use super::builder::ClassCounts;
 use super::library::Library;
 use super::{GameVersion, Unlocks};
 use crate::data::custom::{
@@ -76,8 +77,6 @@ pub enum SlotState {
     Unavailable,
     /// Picked (a chip or Beast Out), or used up (a button).
     Selected,
-    /// DustCross's scrap button while it scraps.
-    Busy,
 }
 
 /// A slot and its neighbours.
@@ -180,8 +179,6 @@ pub struct Screen {
     /// Beast Out is picked (`+0x17`).
     pub beast_out: bool,
     pub crosses: CrossWindow,
-    /// DustCross scrapped this screen.
-    pub scraps: u8,
     /// A Program Advance formed at OK, from this many picked chips: its
     /// animation runs after the window slides out.
     pub program_advance: Option<u8>,
@@ -194,8 +191,8 @@ pub struct PlayerView<'a> {
     pub stats: &'a NaviStats,
     pub emotion: Emotion,
     pub unlocks: &'a Unlocks,
-    /// Mega and Giga chips used this battle (`dword_20367E0`), by class.
-    pub class_uses: &'a [u8; 3],
+    /// Chips sent this round, by class (`dword_20367E0`).
+    pub class_uses: &'a ClassCounts,
     /// The round's Beast Out and Crosses so far.
     pub round: &'a RoundMemory,
     /// The folder's Regular chip hasn't been used yet.
@@ -256,7 +253,6 @@ impl Screen {
             megaman,
             beast_out: false,
             crosses: CrossWindow::default(),
-            scraps: 0,
             program_advance: None,
         };
         if view.crosses_allowed() && view.emotion != Emotion::WornOut {
@@ -639,7 +635,6 @@ impl Screen {
         let Phase::Scrapping { tick, done, mut scrapped, mut count } = self.phase else { unreachable!() };
         if done {
             // sub_802750C
-            self.scraps += 1;
             let button = &mut self.slots[8];
             button.uses_left = button.uses_left.saturating_sub(1);
             button.state = if button.uses_left == 0 { SlotState::Selected } else { SlotState::Selectable };
@@ -731,7 +726,7 @@ impl Screen {
             && matches!(self.slots[self.selection[self.selected as usize - 1] as usize].kind, SlotKind::Chip { .. });
         let button = &mut self.slots[8];
         if matches!(button.kind, SlotKind::Scrap { right_half: false }) && button.state != SlotState::Selected {
-            button.state = if button.state != SlotState::Busy && last_is_chip { SlotState::Selectable } else { SlotState::Unavailable };
+            button.state = if last_is_chip { SlotState::Selectable } else { SlotState::Unavailable };
         }
     }
 
@@ -797,8 +792,8 @@ pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
     let d = view.library.chip(c.id);
     if !SPECIAL_CODES.contains(&c.code) {
         let limit = match d.class {
-            ChipClass::Mega => Some((view.class_uses[1], view.stats.mega_level)),
-            ChipClass::Giga => Some((view.class_uses[2], view.stats.giga_level)),
+            ChipClass::Mega => Some((view.class_uses.mega, view.stats.mega_level)),
+            ChipClass::Giga => Some((view.class_uses.giga, view.stats.giga_level)),
             _ => None,
         };
         if limit.is_some_and(|(used, max)| used > max) {
