@@ -1,7 +1,9 @@
 //! Recorded battles: per-frame inputs and observable state captured from the
 //! original game, as JSON lines, and the comparison the engine is verified
 //! with. A round starts with a `{"setup": ...}` line (battle settings, navi
-//! stats, RNG), followed by one line per frame.
+//! stats, RNG), followed by one line per frame. The setup's records decode
+//! through [`codec`](crate::codec); the comparison maps the engine's objects
+//! to the original's through [`Compat`].
 
 use serde::Deserialize;
 use std::io::BufRead;
@@ -156,16 +158,22 @@ pub fn unhex(s: &str) -> Vec<u8> {
     (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
 }
 
+/// A navi stats block from a trace's hex.
+fn navi_stats(hex: &str) -> NaviStats {
+    codec::navi_stats(&unhex(hex).try_into().expect("a 0x64-byte navi stats block"))
+}
+
 // ---- Replaying a trace through the engine -----------------------------------
 
-use crate::battle::{Battle, CustomResult, TickEvents};
-use crate::content::Content;
-use crate::custom::{BattleFolder, Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
-use crate::link::Link;
-use crate::hand::ChipHand;
-use crate::input::PlayerTick;
-use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage};
-use crate::transform::TransformRequest;
+use crate::Compat;
+use crate::codec;
+use bn6_battle::battle::{Battle, CustomResult, TickEvents};
+use bn6_battle::content::Content;
+use bn6_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
+use bn6_battle::hand::ChipHand;
+use bn6_battle::input::PlayerTick;
+use bn6_battle::link::Link;
+use bn6_battle::setup::{NaviStats, RoundSetup, SetScore};
 
 /// A custom-screen exchange record from a trace.
 #[derive(Clone, Debug, Deserialize)]
@@ -214,10 +222,10 @@ impl Round {
     /// The engine's starting point for this round, on `content`.
     pub fn round_setup(&self, content: &Content) -> RoundSetup {
         let bs = unhex(&self.setup.battle_state);
-        let stats = |s: &str| NaviStats::from_bytes(&unhex(s).try_into().unwrap());
+        let stats = |s: &str| navi_stats(s);
         RoundSetup {
             content: content.hash(),
-            settings: BattleSettings::netbattle_from_bytes(&unhex(&self.setup.settings), content),
+            settings: codec::battle_settings(&unhex(&self.setup.settings), content),
             navi_stats: [stats(&self.setup.navi_stats[0]), stats(&self.setup.navi_stats[1])],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
@@ -225,10 +233,10 @@ impl Round {
             // Unknown stages read as entry 0. A replay never gets to use
             // them: the tick that chains the next round is that round's
             // init, which isn't among the battle frames.
-            later_stages: self.setup.stages.as_deref().map(|s| Stage::pair_from_bytes(&unhex(s))).unwrap_or_default(),
+            later_stages: self.setup.stages.as_deref().map(|s| codec::later_stages(&unhex(s))).unwrap_or_default(),
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
             sp_times: match &self.setup.sp_times {
-                Some([a, b]) => [SpTimes::from_bytes(&unhex(a)), SpTimes::from_bytes(&unhex(b))],
+                Some([a, b]) => [codec::sp_times(&unhex(a)), codec::sp_times(&unhex(b))],
                 None => Default::default(),
             },
             players: std::array::from_fn(|p| self.player_setup(p as u8)),
@@ -256,13 +264,13 @@ impl Round {
     fn player_setup(&self, side: u8) -> PlayerSetup {
         let bs = unhex(&self.setup.battle_state);
         let local = bs[0x0D] == side;
-        let stats = NaviStats::from_bytes(&unhex(&self.setup.navi_stats[side as usize]).try_into().unwrap());
+        let stats = navi_stats(&self.setup.navi_stats[side as usize]);
         // BattleState+0x17 is the local console's Regular-chip flag; the
         // other console's follows from its navi's folder (battle mode 0).
         let regular = if local { bs[0x17] != 0 } else { stats.folder_reg[stats.folder as usize & 1] != 0xFF };
         let folder = match &self.setup.folders {
-            Some(f) => Some(BattleFolder::from_bytes(&unhex(&f[side as usize]), regular)),
-            None if local => Some(BattleFolder::from_bytes(&unhex(&self.setup.folder), regular)),
+            Some(f) => Some(codec::battle_folder(&unhex(&f[side as usize]), regular)),
+            None if local => Some(codec::battle_folder(&unhex(&self.setup.folder), regular)),
             None => None,
         };
         let version = match &self.setup.game_versions {
@@ -342,10 +350,10 @@ impl Round {
                 && f.state[1] == 8
                 && next.state[1] == 0x0C
             {
-                let e = self.exchanges.iter().filter(|e| e.frame <= f.frame).next_back().expect("exchange record");
-                let navi_stats = NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap());
-                let transform = TransformRequest::from_bytes(&unhex(&e.transform[p]));
-                let hand = Some(ChipHand::from_bytes(&unhex(&f.chip_blocks[p])));
+                let e = self.exchanges.iter().rfind(|e| e.frame <= f.frame).expect("exchange record");
+                let navi_stats = navi_stats(&e.navi_stats[p]);
+                let transform = codec::transform_request(&unhex(&e.transform[p]));
+                let hand = Some(codec::chip_hand(&unhex(&f.chip_blocks[p])));
                 result = Some(Box::new(CustomResult { hand, navi_stats, transform }));
             }
             events.recorded[p] = Some(Recorded { in_custom, result });
@@ -354,8 +362,9 @@ impl Round {
     }
 }
 
-/// Differences between the engine and a trace frame.
-pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
+/// Differences between the engine and a trace frame. `compat` names the
+/// original's object slots for the engine's kinds.
+pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
     let mut check = |what: &str, ours: String, theirs: String| {
         if ours != theirs {
@@ -382,12 +391,11 @@ pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
     check("banner", (b.banner.active as u8).to_string(), ((f.hud_tasks >> 15) & 1).to_string());
     // Objects whose X and Y the engine doesn't know are compared without
     // them, on both sides (matched by list position).
-    let order: Vec<crate::object::ObjectRef> = b.objects.in_order().collect();
-    let unknown: Vec<bool> = order.iter().map(|&o| crate::kinds::effect::xy_unknown(b, o)).collect();
-    let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, o, u)).collect();
-    let content = &b.content;
+    let order: Vec<bn6_battle::object::ObjectRef> = b.objects.in_order().collect();
+    let unknown: Vec<bool> = order.iter().map(|&o| bn6_battle::kinds::effect::xy_unknown(b, o)).collect();
+    let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u)).collect();
     let theirs: Vec<String> =
-        f.objects.iter().enumerate().map(|(i, o)| describe_trace(content, o, unknown.get(i).copied().unwrap_or(false))).collect();
+        f.objects.iter().enumerate().map(|(i, o)| describe_trace(compat, o, unknown.get(i).copied().unwrap_or(false))).collect();
     if ours != theirs {
         check(
             "objects",
@@ -404,7 +412,7 @@ pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
         .collect();
     check("panels", format!("{panels:?}"), format!("{:?}", f.panels));
     for p in 0..2 {
-        let ours = b.hands[p].to_bytes().iter().map(|x| format!("{x:02x}")).collect::<String>();
+        let ours = codec::chip_hand_bytes(&b.hands[p]).iter().map(|x| format!("{x:02x}")).collect::<String>();
         check(&format!("hand {p}"), ours, f.chip_blocks[p].clone());
     }
     d
@@ -413,7 +421,7 @@ pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
 /// One object's observable state as the comparison sees it.
 #[allow(clippy::too_many_arguments)]
 fn describe_fields(
-    content: &Content,
+    compat: &Compat,
     kind: u8,
     index: u8,
     flags: u8,
@@ -427,11 +435,11 @@ fn describe_fields(
     status: u32,
     xy_unknown: bool,
 ) -> String {
-    let pos = if pos_is_garbage(content, kind, index, flags) {
+    let pos = if pos_is_garbage(compat, kind, index, flags) {
         "-".to_string()
     } else if xy_unknown {
         format!("-,-,{}", pos[2])
-    } else if z_fraction_is_garbage(content, kind, index) {
+    } else if z_fraction_is_garbage(compat, kind, index) {
         format!("{},{},{}+?", pos[0], pos[1], pos[2] >> 16)
     } else {
         format!("{},{},{}", pos[0], pos[1], pos[2])
@@ -442,56 +450,49 @@ fn describe_fields(
     )
 }
 
-/// Positions that are register garbage in the game and never read:
-/// the intro sequencer's (effect #2, objects-and-player.md §A.4), a
-/// charge glow's before its first unpaused update, while it has no sprite
-/// yet (effect #8, §A.5), and a palette flash's (effect #0x0A, §A.7).
-/// The X and Y of effects the engine marks as not knowing them are skipped
-/// too (`effect::xy_unknown`): the second deletion explosion, which the
-/// game spawns with the object allocator's list-node addresses as X and Y
-/// (§A.3). And the navi chip controller's, spawned with the user's panel
-/// Y, the element and the spawner's address as X, Y and Z (chips.md
-/// §3.6), and any kind a script implements that says so
-/// (`scratch_position`: the dimming chips' controllers, among others).
-fn pos_is_garbage(content: &Content, kind: u8, index: u8, flags: u8) -> bool {
-    use crate::kinds::navi_chip;
-    use crate::object::Pool;
+/// The kind in an object slot of the trace's numbering (type 1, 3, 4).
+fn slot_kind(compat: &Compat, kind: u8, index: u8) -> Option<&crate::KindEntry> {
+    use bn6_battle::object::Pool;
     let pool = match kind {
         1 => Pool::Actor,
         3 => Pool::Attack,
         4 => Pool::Effect,
-        _ => return false,
+        _ => return None,
     };
-    if content.object_kind_at(pool, index).is_some_and(|k| k.scratch_position) {
-        return true;
-    }
-    kind == 4
-        && (index == 2
-            || index == 0x0A
-            || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0)
-            || index == navi_chip::INDEX)
+    compat.kind_at(pool, index).map(|(_, e)| e)
 }
 
-/// Kinds a script implements that keep the fraction of the Z their
-/// spawner left in a register (`scratch_z_fraction`: DustCross's junk ball,
-/// whose is the low half of a RAM address): only their whole pixels are
-/// compared.
-fn z_fraction_is_garbage(content: &Content, kind: u8, index: u8) -> bool {
-    use crate::object::Pool;
-    let pool = match kind {
-        1 => Pool::Actor,
-        3 => Pool::Attack,
-        4 => Pool::Effect,
-        _ => return false,
-    };
-    content.object_kind_at(pool, index).is_some_and(|k| k.scratch_z_fraction)
+/// Positions that are register garbage in the game and never read, by
+/// the kinds' compat entries (`scratch_position`): the intro sequencer's
+/// (objects-and-player.md §A.4), a palette flash's (§A.7), the navi chip
+/// controller's, spawned with the user's panel Y, the element and the
+/// spawner's address as X, Y and Z (chips.md §3.6), the dimming chips'
+/// controllers and the other content kinds that say so; and a charge
+/// glow's before its first unpaused update, while it has no sprite yet
+/// (`scratch_position_without_sprite`, §A.5). The X and Y of effects the
+/// engine marks as not knowing them are skipped too
+/// (`effect::xy_unknown`): the second deletion explosion, which the game
+/// spawns with the object allocator's list-node addresses as X and Y
+/// (§A.3).
+fn pos_is_garbage(compat: &Compat, kind: u8, index: u8, flags: u8) -> bool {
+    slot_kind(compat, kind, index).is_some_and(|k| {
+        k.scratch_position
+            || (k.scratch_position_without_sprite && flags & bn6_battle::object::flags::NO_SPRITE_UPDATE != 0)
+    })
 }
 
-fn describe(b: &Battle, r: crate::object::ObjectRef, xy_unknown: bool) -> String {
+/// Kinds that keep the fraction of the Z their spawner left in a register
+/// (`scratch_z_fraction`: DustCross's junk ball, whose is the low half of
+/// a RAM address): only their whole pixels are compared.
+fn z_fraction_is_garbage(compat: &Compat, kind: u8, index: u8) -> bool {
+    slot_kind(compat, kind, index).is_some_and(|k| k.scratch_z_fraction)
+}
+
+fn describe(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef, xy_unknown: bool) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
     describe_fields(
-        &b.content,
+        compat,
         r.pool.type_number(),
         o.index,
         o.flags,
@@ -507,14 +508,14 @@ fn describe(b: &Battle, r: crate::object::ObjectRef, xy_unknown: bool) -> String
     )
 }
 
-fn describe_trace(content: &Content, o: &Object, xy_unknown: bool) -> String {
+fn describe_trace(compat: &Compat, o: &Object, xy_unknown: bool) -> String {
     let hp = [o.hp, o.max_hp];
-    describe_fields(content, o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, xy_unknown)
+    describe_fields(compat, o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, xy_unknown)
 }
 
 /// Run a round through the engine on `content`; returns the number of
 /// frames that matched before the first difference, and that difference.
-pub fn run_round(round: &Round, content: &Arc<Content>) -> (usize, Option<(u32, Vec<String>)>) {
+pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usize, Option<(u32, Vec<String>)>) {
     let frames: Vec<&Frame> = round.battle_frames().collect();
     let mut b = round.start(content.clone());
     for i in 0..frames.len() {
@@ -524,7 +525,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>) -> (usize, Option<(u32, 
             let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()));
             return (i, Some((frames[i].frame, vec![format!("engine panicked: {}", msg.unwrap_or_default())])));
         }
-        let diffs = compare(&b, frames[i]);
+        let diffs = compare(&b, frames[i], compat);
         if !diffs.is_empty() {
             return (i, Some((frames[i].frame, diffs)));
         }
@@ -561,13 +562,17 @@ pub fn check_custom_screens(round: &Round, content: &Content) -> Vec<ScreenCheck
     let mut checks = Vec::new();
     let mut open: Option<(u32, [Option<u32>; 2], [Option<u32>; 2])> = None;
     let stats_at = |frame: u32, p: usize| -> NaviStats {
-        let e = round.exchanges.iter().filter(|e| e.frame <= frame).next_back().expect("exchange record");
-        NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap())
+        let e = round.exchanges.iter().rfind(|e| e.frame <= frame).expect("exchange record");
+        navi_stats(&e.navi_stats[p])
     };
     for (i, f) in frames.iter().enumerate() {
         let context = |p: usize| {
             let stats = stats_at(f.frame, p);
-            let emotion = if stats.mood == 0 { crate::kinds::player::Emotion::WornOut } else { crate::kinds::player::Emotion::Normal };
+            let emotion = if stats.mood == 0 {
+                bn6_battle::kinds::player::Emotion::WornOut
+            } else {
+                bn6_battle::kinds::player::Emotion::Normal
+            };
             Context {
                 library: content,
                 stats,
@@ -625,9 +630,10 @@ pub fn check_custom_screens(round: &Round, content: &Content) -> Vec<ScreenCheck
             match &side.sent {
                 None => d.push("never sent".to_string()),
                 Some(sent) => {
-                    let block = ChipHand::from_bytes(&unhex(&f.chip_blocks[p]));
-                    let expected = sent.result.hand.clone().unwrap_or_else(|| ChipHand::from_bytes(&unhex(&before.chip_blocks[p])));
-                    let formula = |h: &ChipHand, k: usize| h.ids[k] != crate::hand::NO_CHIP && content.chip(h.ids[k]).damage >= 1000;
+                    let block = codec::chip_hand(&unhex(&f.chip_blocks[p]));
+                    let expected = sent.result.hand.clone().unwrap_or_else(|| codec::chip_hand(&unhex(&before.chip_blocks[p])));
+                    let formula =
+                        |h: &ChipHand, k: usize| h.ids[k] != bn6_battle::hand::NO_CHIP && content.chip(h.ids[k]).damage >= 1000;
                     let mut ours = expected.clone();
                     for k in 0..6 {
                         if formula(&ours, k) {
@@ -637,8 +643,8 @@ pub fn check_custom_screens(round: &Round, content: &Content) -> Vec<ScreenCheck
                     if ours != block {
                         d.push(format!("hand: ours {:?} theirs {:?}", ours, block));
                     }
-                    let e = round.exchanges.iter().filter(|e| e.frame <= f.frame).next_back().expect("exchange record");
-                    let theirs = TransformRequest::from_bytes(&unhex(&e.transform[p]));
+                    let e = round.exchanges.iter().rfind(|e| e.frame <= f.frame).expect("exchange record");
+                    let theirs = codec::transform_request(&unhex(&e.transform[p]));
                     if sent.result.transform.form != theirs.form {
                         d.push(format!("transformation: ours {:?} theirs {:?}", sent.result.transform.form, theirs.form));
                     }

@@ -6,9 +6,10 @@ use bn6_battle::content::{ChipCode, ChipId, Content};
 use bn6_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
 use bn6_battle::input::keys;
 use bn6_battle::link::Link;
-use bn6_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
-use bn6_battle::trace::{self, Frame, Round};
+use bn6_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use bn6_battle::{Battle, PlayerTick, Rng, TickEvents};
+use bn6_compat::trace::{self, Frame, Round};
+use bn6_compat::{Compat, codec};
 use std::sync::Arc;
 
 /// One tick's inputs.
@@ -46,6 +47,8 @@ pub struct TracePlayer {
     round: Round,
     /// The content the trace's battle runs on (BN6's).
     content: Arc<Content>,
+    /// The original's numbers for it, which the comparison reads.
+    compat: &'static Compat,
     /// Indices of the frames the engine simulates.
     frames: Vec<usize>,
     pos: usize,
@@ -63,7 +66,7 @@ impl TracePlayer {
             .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
             .map(|(i, _)| i)
             .collect();
-        TracePlayer { round, content, frames, pos: 0, round_number }
+        TracePlayer { round, content, compat: Compat::bn6(), frames, pos: 0, round_number }
     }
 
     /// Every round of a trace file, on `content`.
@@ -109,7 +112,7 @@ impl Driver for TracePlayer {
     }
 
     fn check(&self, b: &Battle) -> Vec<String> {
-        self.current().map(|f| trace::compare(b, f)).unwrap_or_default()
+        self.current().map(|f| trace::compare(b, f, self.compat)).unwrap_or_default()
     }
 
     fn position(&self) -> String {
@@ -135,14 +138,14 @@ fn unhex(s: &str) -> Vec<u8> {
 /// The live round on BN6's content: the netbattle of the recorded
 /// matches, both players with the live folder (`LIVE_FOLDER`).
 pub fn bn6_live_setup(content: &Content, seed: u32) -> RoundSetup {
-    live_setup(content, BattleSettings::netbattle_from_bytes(&unhex(LIVE_SETTINGS), content), &LIVE_FOLDER, seed)
+    live_setup(content, codec::battle_settings(&unhex(LIVE_SETTINGS), content), &LIVE_FOLDER, seed)
 }
 
 /// A round to play live on `content` with these battle settings: two
 /// MegaMen with 1000 HP who both bring `folder` (chip ids with codes,
 /// repeated to 30 chips), each shuffled from the seed.
 pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(ChipId, u8)], seed: u32) -> RoundSetup {
-    let stats = NaviStats::from_bytes(&unhex(LIVE_NAVI).try_into().unwrap());
+    let stats = codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap());
     let player = |side: u32| {
         let saved = SavedFolder {
             chips: std::array::from_fn(|i| {

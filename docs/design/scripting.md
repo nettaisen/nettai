@@ -59,7 +59,7 @@ Running it:
 cargo test --workspace                                         # engine, runtime, rollback, the type check
 cargo run -p bn6-content-check -- content/bn6                  # type-check the overlay
 cargo run --release -p bn6-extract -- content <rom> <pack>     # a BN6 pack, with the overlay's scripts
-cargo run --release -p bn6-netplay --example rollback_cost --features trace -- <trace.jsonl> <pack> 1
+cargo run --release -p bn6-netplay --example rollback_cost -- <trace.jsonl> <pack> 1
 cargo run --release -p bn6-battle --example luau_ops --features test-content
 ```
 
