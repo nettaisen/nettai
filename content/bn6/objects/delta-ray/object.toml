@@ -1,0 +1,6 @@
+# DeltaRay, the DeltaRay chip's navi (actor object #0x3D, `sub_80C2A78`), is a script.
+
+[kind]
+pool = "actor"
+index = 0x3D
+script = "delta_ray.luau"
