@@ -267,9 +267,23 @@ fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
     }
 }
 
+/// Chip ids up to here exist (the ids no test uses are blanks).
+const CHIP_IDS: ChipId = 0x50;
+
+/// The chips, by id (the content looks chips up by index). Dimming chips
+/// of the subtypes other scripts implement take ids 0x10 and up.
 fn chips() -> Vec<ChipData> {
+    let blank = |id| ChipData { class: ChipClass::Special, codes: vec![], ..chip(id, "Blank", 0, 0) };
+    let mut all: Vec<ChipData> = (0..CHIP_IDS).map(blank).collect();
+    for c in named_chips() {
+        let id = c.id as usize;
+        all[id] = c;
+    }
+    all
+}
+
+fn named_chips() -> Vec<ChipData> {
     vec![
-        ChipData { class: ChipClass::Special, codes: vec![], ..chip(0, "Blank", 0, 0) },
         sun_gun(SUN_GUN_1, "SunGun1", 0, 48),
         sun_gun(SUN_GUN_2, "SunGun2", 1, 72),
         sun_gun(SUN_GUN_3, "SunGun3", 2, 96),
