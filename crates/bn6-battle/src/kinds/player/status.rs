@@ -132,6 +132,11 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
         return actions::dispatch(b, r, action);
     }
     if ai(b, r).ai_index != 0 && action > 8 {
+        // The link navis' own actions (`off_80EA4C8[AIIndex]` past idle):
+        // their chip (0x0A) is content.
+        if let Some(kind) = b.behaviors.action(action) {
+            return crate::behavior::run_action(b, kind, r);
+        }
         panic!("form action {action} is not implemented yet");
     }
     match action {
@@ -269,9 +274,9 @@ fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
 
 // ---- Special states ------------------------------------------------------------
 
-/// `sub_8015766`: Cross lanes.
-fn cross_lane(_b: &mut Battle, _r: ObjectRef) -> bool {
-    panic!("Cross lanes (sub_8015766) are not implemented yet");
+/// `sub_8015766`: a weakness hit breaks the Cross; true while it runs.
+fn cross_lane(b: &mut Battle, r: ObjectRef) -> bool {
+    actions::transform::break_cross(b, r)
 }
 
 /// The Cross/Beast requests in `ai.requests` (none fire for base
@@ -646,7 +651,8 @@ fn bubble_active(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
     if coll(b, r).links[link::BUBBLE].is_some() {
         return false;
     }
-    panic!("the bubble visual (sub_80E4B34) is not implemented yet");
+    crate::kinds::bubble_visual::spawn(b, r);
+    true
 }
 
 /// The confusion's active branch.
@@ -802,7 +808,7 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return actions::transform::form_change(b, r);
     }
     if st & ai_status::REVERTING_FORM != 0 {
-        panic!("pause action (sub_8015614) is not implemented yet");
+        return actions::transform::revert(b, r);
     }
     if st & ai_status::CHANGING_CROSS != 0 {
         panic!("pause action (sub_802D714) is not implemented yet");

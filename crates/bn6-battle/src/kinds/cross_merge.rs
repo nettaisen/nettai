@@ -114,8 +114,15 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.pos.x = o.pos.x.wrapping_add(step.wrapping_mul(swings as i32).wrapping_mul(facing));
     o.pos.y = o.pos.y.wrapping_add(lift);
     o.pos.z = lift.wrapping_add(extra);
-    // sub_8010DD0: the navi's own init hook.
-    crate::kinds::player::navi_init_hook(b, name_id);
+    // sub_8010DD0: the navi's own init hook (some wear an overlay).
+    crate::kinds::player::form::navi_init_hook(b, r, name_id);
+    // SpoutMan's image keeps its idle overlay at its own height (the
+    // hook's result, ExtraVars[0] = 1).
+    if navi == Navi(6)
+        && let Some(o) = b.objects.get(r).related[1]
+    {
+        crate::kinds::player::form::pin_overlay(b, o);
+    }
     let o = b.objects.get_mut(r);
     o.state = state::UPDATE;
     o.action = 0;
@@ -167,9 +174,12 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     common::update_sprite(b, r);
 }
 
-/// It reached MegaMan: its NameID's death hook (a no-op for an object
-/// without overlays), an effect on the panel, and it is freed at once.
+/// It reached MegaMan: its NameID's death hook (`sub_8011020`: its
+/// overlay, if its init hook put one on, comes off), an effect on the
+/// panel, and it is freed at once.
 fn burst(b: &mut Battle, r: ObjectRef) {
+    let name_id = b.objects.get(r).name_id;
+    crate::kinds::player::form::navi_death_hook(b, r, name_id);
     let o = b.objects.get(r);
     let (x, y) = crate::kinds::player::panel_coordinates(o.panel.x, o.panel.y);
     if let Some(e) = effect::spawn(b, Vec3 { x, y, z: 0x10_0000 }, 3, 0, 0, 0) {

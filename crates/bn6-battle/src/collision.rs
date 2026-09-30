@@ -49,6 +49,8 @@ pub mod f1 {
     pub const ANGER: u32 = 0x20_0000;
     pub const USING_ACTION: u32 = 0x40_0000;
     pub const AFFECTED_BY_ICE: u32 = 0x200_0000;
+    /// Poison panels don't hurt (Falzar Beast Over, `sub_8014674`).
+    pub const UNAFFECTED_BY_POISON: u32 = 0x800_0000;
     pub const BUBBLED: u32 = 0x8000_0000;
     /// Hits still reach it while the battle is dimmed (`sub_3007218`; else
     /// only hitters set up while dimmed do): ElemTrap's trap sets it.
