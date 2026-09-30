@@ -34,6 +34,26 @@ pub const VEIL: ChipId = 0x05;
 pub const ERASER: ChipId = 0x06;
 /// A dimming chip (action 0x15, subtype 0) that grabs a column.
 pub const GRAB: ChipId = 0x07;
+/// A dimming chip (action 0x15, subtype 6) that places a rock (variant 1)
+/// in front of its user.
+pub const CUBE: ChipId = 0x08;
+/// A trap chip (action 0x15, subtype 20, Param1 3: no object).
+pub const TRAP: ChipId = 0x09;
+/// Navi-changing dimming chips (action 0x15, subtype 38): the buster and
+/// shoes boost (Param1 0), and a new charged shot (Param1 2: weapon
+/// routine 1).
+pub const BOOST: ChipId = 0x0A;
+pub const ARM: ChipId = 0x0B;
+/// A dimming chip (action 0x15, subtype 25) that slows the custom gauge.
+pub const SLOW_GAUGE: ChipId = 0x0C;
+// Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+/// An element trap (action 0x15, subtype 20, Param1 0: the trap object).
+pub const ELEM_TRAP: ChipId = 0x30;
+/// Time bombs (action 0x15, subtype 10): variant 0 and 1.
+pub const TIME_BOMB: ChipId = 0x31;
+pub const TIME_BOMB_PLUS: ChipId = 0x32;
+/// A mine (action 0x15, subtype 11).
+pub const MINE: ChipId = 0x33;
 /// Standard chip actions (ids 0x100 and up): a CrakShot (action 0x22,
 /// subtype 0: the panel ahead).
 pub const CRACK: ChipId = 0x100;
@@ -147,8 +167,26 @@ pub fn scripts() -> Scripts {
                 ("objects/projectile/projectile", "objects/projectile/projectile"),
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
+                ("objects/invisible/invisible", "objects/invisible/invisible"),
+                ("objects/rock/rock", "objects/rock/rock"),
+                ("objects/rock-cube/rock_cube", "objects/rock-cube/rock_cube"),
+                ("objects/rock-debris/rock_debris", "objects/rock-debris/rock_debris"),
+                ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
+                ("objects/navi-boost/navi_boost", "objects/navi-boost/navi_boost"),
+                ("objects/gauge-speed/gauge_speed", "objects/gauge-speed/gauge_speed"),
                 ("lib/element", "lib/element"),
                 ("lib/projectile", "lib/projectile"),
+                // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+                ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
+                // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+                ("lib/panels", "lib/panels"),
+                ("objects/elem-trap/elem_trap", "objects/elem-trap/elem_trap"),
+                ("objects/elem-trap-strike/elem_trap_strike", "objects/elem-trap-strike/elem_trap_strike"),
+                ("objects/panel-bursts/panel_bursts", "objects/panel-bursts/panel_bursts"),
+                ("objects/time-bom/time_bom", "objects/time-bom/time_bom"),
+                ("objects/countdown-bomb/countdown_bomb", "objects/countdown-bomb/countdown_bomb"),
+                ("objects/mine/mine", "objects/mine/mine"),
+                ("objects/land-mine/land_mine", "objects/land-mine/land_mine"),
                 ("chips/059-crakshot/chip", "chips/059-crakshot/chip"),
                 ("objects/crack-shot/crack_shot", "objects/crack-shot/crack_shot"),
             ];
@@ -192,6 +230,7 @@ fn kinds() -> Vec<ObjectKind> {
         script: script.into(),
         scratch_position: false,
         scratch_z_fraction: false,
+        actor_list_entry: None,
     };
     let mut kinds = vec![
         kind("attachment", Pool::Actor, 0x05, "objects/attachment/attachment"),
@@ -202,10 +241,29 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
         kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
-        kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
-        kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
+        ObjectKind { scratch_position: true, ..kind("invisible", Pool::Effect, 0x5D, "objects/invisible/invisible") },
+        ObjectKind { actor_list_entry: Some(8), ..kind("rock", Pool::Attack, 0x59, "objects/rock/rock") },
+        ObjectKind { scratch_position: true, ..kind("rock-cube", Pool::Effect, 0x37, "objects/rock-cube/rock_cube") },
+        kind("rock-debris", Pool::Effect, 0x38, "objects/rock-debris/rock_debris"),
+        ObjectKind { scratch_position: true, ..kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip") },
+        ObjectKind { scratch_position: true, ..kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost") },
+        ObjectKind { scratch_position: true, ..kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed") },
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
         kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
+        kind("rising-bubble", Pool::Effect, 0x14, "objects/rising-bubble/rising_bubble"),
+        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+        ObjectKind { scratch_position: true, ..kind("elem-trap", Pool::Attack, 0x4D, "objects/elem-trap/elem_trap") },
+        ObjectKind {
+            scratch_position: true,
+            ..kind("elem-trap-strike", Pool::Effect, 0x2B, "objects/elem-trap-strike/elem_trap_strike")
+        },
+        ObjectKind { scratch_position: true, ..kind("panel-bursts", Pool::Effect, 0x24, "objects/panel-bursts/panel_bursts") },
+        ObjectKind { scratch_position: true, ..kind("time-bom", Pool::Effect, 0x27, "objects/time-bom/time_bom") },
+        kind("countdown-bomb", Pool::Attack, 0x4B, "objects/countdown-bomb/countdown_bomb"),
+        ObjectKind { scratch_position: true, ..kind("mine", Pool::Effect, 0x29, "objects/mine/mine") },
+        kind("land-mine", Pool::Attack, 0x4C, "objects/land-mine/land_mine"),
+        kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
+        kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
         kind("crack-shot", Pool::Attack, 0x33, "objects/crack-shot/crack_shot"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
@@ -294,6 +352,7 @@ fn named_chips() -> Vec<ChipData> {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             extra_flags: ExtraChipFlags(ExtraChipFlags::RUSH_CANCELS),
             family: ChipFamily::Plus,
+            script: Some("objects/invisible/invisible".into()),
             ..chip(VEIL, "Veil", 0x15, 1)
         },
         ChipData {
@@ -313,6 +372,65 @@ fn named_chips() -> Vec<ChipData> {
             damage: 10,
             script: Some("objects/area-grab/area_grab".into()),
             ..chip(GRAB, "Grab", 0x15, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            params: [1, 0, 0, 0],
+            damage: 200,
+            script: Some("objects/rock-cube/rock_cube".into()),
+            ..chip(CUBE, "Cube", 0x15, 6)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            params: [3, 0, 0, 0],
+            script: Some("objects/trap-chip/trap_chip".into()),
+            ..chip(TRAP, "Trap", 0x15, 20)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            script: Some("objects/navi-boost/navi_boost".into()),
+            ..chip(BOOST, "Boost", 0x15, 38)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            params: [2, 1, 0, 0],
+            script: Some("objects/navi-boost/navi_boost".into()),
+            ..chip(ARM, "Arm", 0x15, 38)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            script: Some("objects/gauge-speed/gauge_speed".into()),
+            ..chip(SLOW_GAUGE, "SlowGauge", 0x15, 25)
+        },
+        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            damage: 40,
+            script: Some("objects/trap-chip/trap_chip".into()),
+            ..chip(ELEM_TRAP, "ElemTrap", 0x15, 20)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            damage: 50,
+            script: Some("objects/time-bom/time_bom".into()),
+            ..chip(TIME_BOMB, "TimeBomb", 0x15, 10)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            params: [1, 0, 0, 0],
+            damage: 70,
+            script: Some("objects/time-bom/time_bom".into()),
+            ..chip(TIME_BOMB_PLUS, "TimeBomb+", 0x15, 10)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            damage: 60,
+            script: Some("objects/mine/mine".into()),
+            ..chip(MINE, "Mine", 0x15, 11)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
@@ -440,6 +558,10 @@ fn rules() -> Rules {
             PanelCondition { require: 0, forbid: pflags::ALLIANCE_1 },
             PanelCondition { require: pflags::ALLIANCE_1, forbid: 0 },
             PanelCondition { require: pflags::SOLID, forbid: 0 },
+            // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20): side 0's and
+            // side 1's navi's panels (0x84, 0x85).
+            PanelCondition { require: PLAYER[0], forbid: 0 },
+            PanelCondition { require: PLAYER[1], forbid: 0 },
         ],
         panels: PanelRules {
             types,
@@ -729,5 +851,14 @@ fn animations() -> Animations {
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);
+    // The rising bubble.
+    sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(4), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
+    // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20): the countdown
+    // bomb (rising, standing; twice), the mine, the guardian statue
+    // (standing, striking).
+    let rise_and_stand = vec![vec![f(3, 0), f(3, LAST)], vec![f(20, LAST | LOOP)]];
+    sprites.insert(SpriteId { category: 0x0C, index: 0x23 }, [rise_and_stand.clone(), rise_and_stand].concat());
+    sprites.insert(SpriteId { category: 0x0C, index: 0x22 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x35 }, vec![vec![f(20, LAST | LOOP)], vec![f(4, 0), f(8, LAST)]]);
     Animations { sprites }
 }
