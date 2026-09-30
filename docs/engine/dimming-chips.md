@@ -225,6 +225,10 @@ action 0xC. Chips' Param1: PnlRetrn 0, HolyPanl 4, Snctuary 5, ComingRd 0x11, Go
 
 ### 4.2 The panel changer (T4#0x1F, `sub_80E28A8`)
 
+Port: the pack's objects/panel-changer (every kind), spawned by `panel_changer.spawn` (`sub_80E2ACA`: X = the panel's
+Y, Y and Z register garbage). AntiRecv's counterattack uses kind 6 (chips.md §3.6.7); the subtype-5 controller (T4#0x20)
+is not ported yet.
+
 **Init `sub_80E28C8`**: on side 1, kind 0x11 ↔ 0x12 (the roads point the other way). EV+0 = &`byte_80E272C[kind
 * 20]` (a row, below). The row's collector (byte 1, a byte offset into `off_80E291C`) lists the panels meeting the
 side's condition, as bytes y << 4 | x at +0x68, the count in EV+4:
@@ -282,8 +286,8 @@ Timer 0x3F); the change lands on N+63 (state 8); on N+64 the controller still wa
 flag and frees itself; on N+65 the controller goes to 0xC.
 
 **Lab**: PnlRetrn, HolyPanl, Snctuary, ComingRd and GoingRd are reached (soundmod rounds 2 and 3 stop at
-PnlRetrn). **Unverified**: the own-panel collector (kinds 6, 9), kinds 1-3 and 6-16 (no chip; kind 6 is
-`sub_80E376C`'s, an AntiRecv-style trap's), side 1's road swap, a changer with no flag pointer.
+PnlRetrn). Kind 6 (the own-panel collector) matches scratch recordings of AntiRecv's counterattack (chips.md
+§3.6.7). **Unverified**: kind 9, kinds 1-3 and 7-16 (no chip), side 1's road swap, a changer with no flag pointer.
 
 ## 5. Subtype 26: BugFix
 
