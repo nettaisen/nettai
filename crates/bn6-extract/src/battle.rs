@@ -367,6 +367,8 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
         bubble_bob: std::array::from_fn(|i| rom.u8(0x0801_7868 + i as u32) as i8),
         lockon: lockon(rom),
         custom_screen: custom_screen(rom),
+        // `math_sinTable`, running into `math_cosTable` 64 entries on.
+        sine: (0..320).map(|i| rom.u16(0x0800_65E0 + 2 * i) as i16).collect(),
     }
 }
 
@@ -659,12 +661,26 @@ fn objects(rom: &Rom) -> ObjectData {
             BodyOverlay { id: i as u8, sprite: sprite_at(0x080C_4320 + 2 * i), in_front }
         })
         .collect();
+    // Boomerang rows (`byte_80CA26C`, 12 bytes): +3 turns panels to grass,
+    // +4 the speed along a row, +8 along the column.
+    let boomerangs = (0..5u32)
+        .map(|i| {
+            let r = 0x080C_A26C + 12 * i;
+            BoomerangKind {
+                id: i as u8,
+                speed: u32at(rom, r + 4) as i32,
+                turn_speed: u32at(rom, r + 8) as i32,
+                grass: rom.u8(r + 3) != 0,
+            }
+        })
+        .collect();
     ObjectData {
         attachments: (0..ATTACHMENTS).map(|i| attachment(rom, i)).collect(),
         rocks,
         absorbed_sprites: (0..15).map(|i| sprite_at(0x080E_98C0 + 2 * i)).collect(),
         body_overlays,
         sun_beam_looks: (0..2).map(|i| sprite_at(0x080E_5C28 + 2 * i)).collect(),
+        boomerangs,
         projectiles: projectiles(rom),
         flying_shots: flying_shots(rom),
         kinds: Vec::new(),

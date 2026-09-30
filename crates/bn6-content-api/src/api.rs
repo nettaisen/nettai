@@ -281,6 +281,9 @@ named_fields! {
         HitFlags = "hit_flags", U32, ro;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
+        /// Which way the region's anchor last moved (0 none, 1 up, 2 down,
+        /// 3 back, 4 forward, 5 other).
+        Direction = "direction", U8, ro;
     }
 }
 
@@ -553,6 +556,22 @@ pub struct HitboxSpec {
     pub bug_arg: u8,
 }
 
+/// A sprite afterimage (effect object #0x28), as `sub_80E33FA` and its
+/// setters take it: the sprite, its animation and flip (the game's flip
+/// value), how many ticks it lasts, and how it looks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AfterimageSpec {
+    pub sprite: SpriteId,
+    pub anim: u8,
+    pub flip: u8,
+    pub ticks: u16,
+    pub color_shader: u16,
+    pub shadow: Shadow,
+    /// Hidden every other two ticks (unless `sub_80E3422` says not).
+    pub blinks: bool,
+    pub palette: u8,
+}
+
 /// A panel as content sees it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PanelInfo {
@@ -714,6 +733,10 @@ pub trait CoreApi {
     /// registry's three slots at BattleState+0xA0 + side * 0xC), in slot
     /// order, empty slots left out.
     fn side_field_objects(&self, side: u8) -> Vec<ObjectRef>;
+    /// Every registered field object (the registry's eight slots at
+    /// BattleState+0xA0: each side's three, then the stage's two), in slot
+    /// order, empty slots left out.
+    fn all_field_objects(&self) -> Vec<ObjectRef>;
     fn column_info(&self, x: u8) -> ColumnInfo;
     fn set_column_timer(&mut self, x: u8, ticks: u16);
     /// `object_setPanelAlliance`.
@@ -783,6 +806,9 @@ pub trait CoreApi {
     fn update_sprite_while_dimmed(&mut self, o: ObjectRef);
     /// `sub_801BCD0`: the same, paused or not.
     fn step_sprite(&mut self, o: ObjectRef);
+    /// `sub_801BC64`: `update_sprite`'s gating (dimming, holds), but paused
+    /// or not.
+    fn update_sprite_even_paused(&mut self, o: ObjectRef);
     /// `object_updateSpritePaused`: load a newly requested animation and
     /// step the sprite, paused or not, but not while dimmed (and whatever
     /// `no_sprite_update` says).
@@ -813,6 +839,12 @@ pub trait CoreApi {
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
     /// `sub_80E08C4`: hit spark `id` at `pos`.
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
+    /// `sub_80E33FA` with a sprite: an afterimage (effect object #0x28) of
+    /// `owner`'s at `pos`, showing a sprite's animation for a few ticks.
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
+    /// `sub_80E11E0`: a white screen flash (effect object #0x0A) for
+    /// `ticks` ticks, going on while dimmed or paused if it says so.
+    fn spawn_palette_flash(&mut self, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
@@ -903,6 +935,9 @@ pub trait CoreApi {
     /// Unregister, resolving hits against whatever is registered there.
     fn remove_collision(&mut self, o: ObjectRef);
     fn free_collision(&mut self, o: ObjectRef);
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels of
+    /// the registration's region (drawn only).
+    fn highlight_collision_panels(&mut self, o: ObjectRef);
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
     fn hit_spark(&mut self, o: ObjectRef);
@@ -922,4 +957,10 @@ pub trait CoreApi {
     /// field (except NameID 0xDA and those already leaving) toward
     /// `absorber`'s side.
     fn absorb_obstacles(&mut self, absorber: ObjectRef);
+    /// The object has a collision registration and isn't already leaving
+    /// the field (removed by a chip, blinking out or absorbed): the test
+    /// `sub_80C9EE6` and `sub_80EFD8C` make before taking an obstacle.
+    fn obstacle_present(&self, o: ObjectRef) -> bool;
+    /// `sub_800F898`: a chip makes the obstacle `o` blink out.
+    fn vanish_obstacle(&mut self, o: ObjectRef);
 }

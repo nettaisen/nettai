@@ -209,11 +209,17 @@ declare class Collision
     hit_flags: number
     -- The damage taken this window (read-only).
     final_damage: number
+    -- Which way the region's anchor last moved: 0 none, 1 up, 2 down, 3
+    -- back, 4 forward, 5 other (read-only).
+    direction: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
     function remove(self): ()
     function free(self): ()
+    -- `object_highlightCurrentCollisionPanels`: highlight the region's
+    -- panels (drawn only).
+    function highlight(self): ()
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -351,6 +357,9 @@ declare class Object
     function update_sprite_while_dimmed(self): ()
     -- `sub_801BCD0`: the same, paused or not.
     function step_sprite(self): ()
+    -- `sub_801BC64`: `update_sprite`'s gating (dimming, holds), but paused
+    -- or not.
+    function update_sprite_even_paused(self): ()
     -- `object_updateSpritePaused`: the same, paused or not, but not while
     -- dimmed (and whatever `no_sprite_update` says).
     function update_sprite_while_paused(self): ()
@@ -481,6 +490,21 @@ export type HitboxSpec = {
     bug_arg: number?,
 }
 
+-- A sprite afterimage (`battle.afterimage`): the sprite, its animation and
+-- flip (the game's flip value), how many ticks it lasts, its colour
+-- shader, shadow and palette, and whether it blinks (hidden every other two
+-- ticks; the default).
+export type AfterimageSpec = {
+    sprite: SpriteId,
+    anim: number,
+    flip: number,
+    ticks: number,
+    color_shader: number,
+    shadow: Shadow,
+    blinks: boolean?,
+    palette: number?,
+}
+
 -- A side's defensive-chip record.
 export type LinkedChip = {
     chip: number,
@@ -596,10 +620,22 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80E33FA` with a sprite: an afterimage (effect object #0x28) of
+    -- `owner`'s at `pos`. It keeps running while paused.
+    afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
+    -- `sub_80E11E0`: a white screen flash (effect object #0x0A) for `ticks`
+    -- ticks; it goes on while dimmed or paused if it says so.
+    palette_flash: (ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
     -- `sub_80EFD74`: the obstacle framework pulls every obstacle on the
     -- field (but NameID 0xDA and those already leaving) toward
     -- `absorber`'s side; each flies there as an absorbed obstacle.
     absorb_obstacles: (absorber: Object) -> (),
+    -- The object has a collision registration and isn't already leaving the
+    -- field (removed, blinking out or absorbed): the test `sub_80C9EE6` and
+    -- `sub_80EFD8C` make before taking an obstacle.
+    obstacle_present: (o: Object) -> boolean,
+    -- `sub_800F898`: a chip makes the obstacle blink out.
+    vanish_obstacle: (o: Object) -> (),
 }
 
 declare field: {
@@ -614,6 +650,9 @@ declare field: {
     -- A side's registered field objects (the obstacles it owns), in the
     -- registry's slot order.
     objects: (side: number) -> { Object },
+    -- Every registered field object (the registry's eight slots: each
+    -- side's three, then the stage's two), in slot order.
+    all_objects: () -> { Object },
     column: (x: number) -> Column,
     set_column_timer: (x: number, ticks: number) -> (),
     set_alliance: (x: number, y: number, side: number) -> (),
@@ -764,6 +803,9 @@ export type RockKind = {
 
 export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } }
 
+-- A kind of boomerang (objects/boomerang): 16.16 pixels a tick along a row
+-- and along the column, and whether it turns panels it crosses to grass.
+export type BoomerangKind = { id: number, speed: number, turn_speed: number, grass: boolean }
 -- What a projectile's hit does to the panel it hits: crack it
 -- (`object_crackPanel`), break it (`object_breakPanel_dup2`), or make a
 -- solid one a panel of a type (by the shot's side).
@@ -839,6 +881,9 @@ export type ObjectKindData = { pool: Pool, index: number, script: string }
 
 export type PackData = {
     chips: { [number]: ChipData },
+    -- Hit-region shapes by region number: the panels' offsets `{ dx, dy }`
+    -- from the anchor (dx facing right).
+    regions: { [number]: { { number } } },
     navis: { [number]: NaviData },
     forms: { [number]: FormData },
     weapons: { [number]: WeaponData },
@@ -848,6 +893,7 @@ export type PackData = {
         absorbed_sprites: { [number]: SpriteId },
         body_overlays: { [number]: BodyOverlay },
         sun_beam_looks: { [number]: SpriteId },
+        boomerangs: { [number]: BoomerangKind },
         projectiles: { [number]: ProjectileKind },
         flying_shots: { [number]: FlyingShotKind },
         kinds: { [string]: ObjectKindData },
@@ -856,10 +902,10 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- The sine table (`math_sinTable`) by angle, 256 a turn, 1.0 =
+        -- 0x100, with 64 entries more: `math_cosTable` is it 64 on.
+        sine: { [number]: number },
     },
-    -- Region shapes by number (`PanelOffsetListsPointerTable`): each
-    -- panel's { dx, dy }, dx toward the facing side.
-    regions: { [number]: { { number } } },
 }
 
 declare data: PackData

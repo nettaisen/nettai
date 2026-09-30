@@ -5,7 +5,7 @@
 
 use bn6_content_api::api::ApiResult;
 use bn6_content_api::{
-    ActorField, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
+    ActorField, AfterimageSpec, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
     FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField,
     Pad, PanelInfo, RequestFlag, Shadow, SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
     SideSpecial,
@@ -378,6 +378,10 @@ impl CoreApi for Battle {
         crate::field::is_valid(p.x, p.y)
     }
 
+    fn all_field_objects(&self) -> Vec<ObjectRef> {
+        self.field.objects.slots.iter().flatten().copied().collect()
+    }
+
     fn side_field_objects(&self, side: u8) -> Vec<ObjectRef> {
         let first = (side as usize & 1) * 3;
         self.field.objects.slots[first..first + 3].iter().flatten().copied().collect()
@@ -617,6 +621,10 @@ impl CoreApi for Battle {
         common::update_sprite_while_dimmed(self, o);
     }
 
+    fn update_sprite_even_paused(&mut self, o: ObjectRef) {
+        common::update_sprite_even_paused(self, o);
+    }
+
     fn step_sprite(&mut self, o: ObjectRef) {
         common::step_sprite(self, o);
     }
@@ -661,6 +669,29 @@ impl CoreApi for Battle {
 
     fn spawn_effect(&mut self, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
         kinds::effect::spawn(self, pos, id, flip, palette_add, priority)
+    }
+
+    fn spawn_palette_flash(&mut self, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
+        kinds::palette_flash::spawn(self, ticks, while_dimmed, while_paused)
+    }
+
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, s: &AfterimageSpec) -> Option<ObjectRef> {
+        let shadow = match s.shadow {
+            Shadow::Hidden => sprite::Shadow::Hidden,
+            Shadow::Ground => sprite::Shadow::Ground,
+            Shadow::WithSprite => sprite::Shadow::WithSprite,
+        };
+        let spec = kinds::afterimage::SpriteSpec {
+            sprite: s.sprite,
+            anim: s.anim,
+            flip: s.flip,
+            lifetime: s.ticks,
+            color_shader: s.color_shader,
+            shadow,
+            blinks: s.blinks,
+            palette: s.palette,
+        };
+        kinds::afterimage::spawn_sprite(self, owner, pos, spec)
     }
 
     fn spawn_region_effects(&mut self, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32) {
@@ -1008,6 +1039,7 @@ impl CoreApi for Battle {
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
+            CollisionField::Direction => c.direction as i64,
         }))
     }
 
@@ -1022,7 +1054,9 @@ impl CoreApi for Battle {
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
-            CollisionField::HitFlags | CollisionField::FinalDamage => unreachable!("read-only"),
+            CollisionField::HitFlags | CollisionField::FinalDamage | CollisionField::Direction => {
+                unreachable!("read-only")
+            }
         }
         Ok(())
     }
@@ -1044,6 +1078,19 @@ impl CoreApi for Battle {
 
     fn hit_spark(&mut self, o: ObjectRef) {
         kinds::spark::spawn_collision_effect(self, o);
+    }
+
+    fn highlight_collision_panels(&mut self, o: ObjectRef) {
+        let obj = self.objects.get(o);
+        let facing = common::facing(obj.alliance, obj.flip);
+        let c = self.collision.get(obj.collision.expect("highlighting an object without collision data"));
+        let (anchor, region) = (c.panel, c.region);
+        let offsets = self.content.region(region).to_vec();
+        for off in offsets {
+            let x = (anchor.x as i32 + off.dx as i32 * facing) as u8;
+            let y = (anchor.y as i32 + off.dy as i32) as u8;
+            common::highlight_panel(self, x, y);
+        }
     }
 
     // ---- Services ------------------------------------------------------------
@@ -1076,5 +1123,17 @@ impl CoreApi for Battle {
 
     fn absorb_obstacles(&mut self, absorber: ObjectRef) {
         kinds::obstacle::absorb_all(self, absorber);
+    }
+
+    fn obstacle_present(&self, o: ObjectRef) -> bool {
+        use kinds::obstacle::f2;
+        self.objects
+            .get(o)
+            .collision
+            .is_some_and(|c| self.collision.get(c).f2 & (f2::ABSORBED | f2::VANISH | f2::REMOVED) == 0)
+    }
+
+    fn vanish_obstacle(&mut self, o: ObjectRef) {
+        kinds::obstacle::vanish(self, o);
     }
 }
