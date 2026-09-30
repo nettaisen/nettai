@@ -15,6 +15,7 @@ pub fn content(rom: &Rom) -> Content {
     let actor_lists = actor_lists(rom);
     let mut chips = chips(rom);
     attach_gun_del_sol(rom, &mut chips);
+    attach_recovery(rom, &mut chips);
     attach_sp_damage(rom, &mut chips);
     attach_program_advances(rom, &mut chips);
     attach_modifiers(&mut chips);
@@ -93,6 +94,7 @@ fn chips(rom: &Rom) -> Vec<ChipData> {
                 modifier: None,
                 program_advances: Vec::new(),
                 gun_del_sol: None,
+                recovery: None,
                 script: None,
             }
         })
@@ -131,6 +133,15 @@ fn attach_gun_del_sol(rom: &Rom, chips: &mut [ChipData]) {
             beam_in_sun: look(1),
             gun: attachment(rom, 7 + level as u8),
         });
+    }
+}
+
+/// Recovery chips (action 0x20, `sub_80EC844`) heal `byte_80EC870[subtype]`
+/// HP (ten halfwords; past them the routine reads its own code).
+fn attach_recovery(rom: &Rom, chips: &mut [ChipData]) {
+    for c in chips.iter_mut().filter(|c| c.action == 0x20) {
+        assert!(c.subtype < 10, "recovery chip {:#x} of subtype {}", c.id, c.subtype);
+        c.recovery = Some(rom.u16(0x080E_C870 + 2 * c.subtype as u32));
     }
 }
 

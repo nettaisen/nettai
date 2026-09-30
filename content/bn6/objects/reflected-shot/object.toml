@@ -1,0 +1,7 @@
+# A Reflector's counterattack wave (attack object #0x2F, `sub_80C9BC4`) is a
+# script.
+
+[kind]
+pool = "attack"
+index = 0x2F
+script = "reflected_shot.luau"

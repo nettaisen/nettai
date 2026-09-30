@@ -34,6 +34,10 @@ pub const VEIL: ChipId = 0x05;
 pub const ERASER: ChipId = 0x06;
 /// A dimming chip (action 0x15, subtype 0) that grabs a column.
 pub const GRAB: ChipId = 0x07;
+/// A Reflector (action 0x2B, subtype 0): guards for 30 ticks.
+pub const MIRROR: ChipId = 0x08;
+/// A recovery chip (action 0x20): heals 40 HP.
+pub const MEND: ChipId = 0x09;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -140,6 +144,10 @@ pub fn scripts() -> Scripts {
                 ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("lib/buster", "lib/buster"),
+                ("objects/reflector-shield/reflector_shield", "objects/reflector-shield/reflector_shield"),
+                ("objects/reflected-shot/reflected_shot", "objects/reflected-shot/reflected_shot"),
+                ("chips/008-mirror/chip", "chips/083-rflectr1/chip"),
+                ("chips/009-mend/chip", "chips/09a-recov10/chip"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -190,6 +198,8 @@ fn kinds() -> Vec<ObjectKind> {
         ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
         kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
         ObjectKind { scratch_z_fraction: true, ..kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball") },
+        kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
+        kind("reflected-shot", Pool::Attack, 0x2F, "objects/reflected-shot/reflected_shot"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -225,6 +235,7 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         modifier: None,
         program_advances: Vec::new(),
         gun_del_sol: None,
+        recovery: None,
         script: None,
     }
 }
@@ -282,6 +293,15 @@ fn chips() -> Vec<ChipData> {
             script: Some("objects/area-grab/area_grab".into()),
             ..chip(GRAB, "Grab", 0x15, 0)
         },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 20,
+            params: [30, 0, 0, 0],
+            damage: 50,
+            script: Some("chips/008-mirror/chip".into()),
+            ..chip(MIRROR, "Mirror", 0x2B, 0)
+        },
+        ChipData { recovery: Some(40), script: Some("chips/009-mend/chip".into()), ..chip(MEND, "Mend", 0x20, 1) },
     ]
 }
 
@@ -573,6 +593,9 @@ fn animations() -> Animations {
     junk[0x19] = vec![f(4, 0), f(4, LAST | LOOP)];
     junk[0x1A] = vec![f(10, 0), f(20, LAST)];
     sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
+    // The Reflector's shield (up, fading, by look) and its wave.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x1B }, vec![vec![f(8, LAST | LOOP)], vec![f(7, 0), f(7, LAST)]]);
+    sprites.insert(SpriteId { category: 0x14, index: 0x04 }, vec![vec![f(2, 0), f(3, LAST)]]);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
     // Effects and sparks.
