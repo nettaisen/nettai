@@ -530,6 +530,36 @@ fn gc_timing_does_not_reach_the_battle() {
     assert_eq!(have, want);
 }
 
+// ---- Dimming chip subtypes 2, 3, 5, 15 and 27 (the panel changes) ---------------------------
+
+/// The field operations their scripts call: `object_breakPanel_dup2`
+/// breaks an empty panel and cracks an occupied one,
+/// `object_panel_setPoison` poisons a solid one, and a blink
+/// (`object_setPanelTypeBlink`) only changes how the panel is drawn, for
+/// one tick.
+#[test]
+fn panels_break_poison_and_blink() {
+    use crate::field::{PanelType, pflags};
+    let mut b = rock_battle();
+    b.field.refresh_all(&b.content, &b.collision);
+    let (empty, occupied) = ((2, 1), (2, 2));
+    b.field.panels[occupied.1][occupied.0].flags |= pflags::BODY_SIDE0;
+    let kind = |b: &Battle, (x, y): (usize, usize)| b.field.panel(x as u8, y as u8).unwrap().kind;
+    assert!(b.break_panel(empty.0 as u8, empty.1 as u8));
+    assert_eq!(kind(&b, empty), PanelType::Broken);
+    assert!(!b.break_panel(empty.0 as u8, empty.1 as u8), "a broken panel isn't solid");
+    assert!(b.break_panel(occupied.0 as u8, occupied.1 as u8));
+    assert_eq!(kind(&b, occupied), PanelType::Cracked);
+    assert!(b.poison_panel(1, 3));
+    assert_eq!(kind(&b, (1, 3)), PanelType::Poison);
+    assert!(!b.poison_panel(empty.0 as u8, empty.1 as u8));
+    b.blink_panel(4, 2, PanelType::Holy, 0);
+    let p = b.field.panel(4, 2).unwrap();
+    assert_eq!((p.kind, p.blink), (PanelType::Normal, Some((PanelType::Holy, 0))));
+    b.field.clear_one_frame_looks();
+    assert_eq!(b.field.panel(4, 2).unwrap().blink, None);
+}
+
 #[cfg(feature = "luau-jit")]
 #[test]
 fn native_code_plays_the_duel_like_the_interpreter() {
