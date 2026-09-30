@@ -109,7 +109,8 @@ attachment shows), lib/vari_sword.luau, and group G1's lib/region.luau and lib/t
 - **0x3F WindRack.** The rack (attachment 0x2A, 0x33 if variant ≠ 0) and a swirl (effect 0x44); at timer 0xC a
   hit on the column ahead for 10 ticks and an unseen gust down each row; 22 ticks, then 6.
 - **0x40 MoonBld.** The blade rides the navi and sweeps the 8 panels around it, one a tick, each highlighted with a
-  hit (status 0x18, bug 1); 10 ticks. Its spawner leaves register garbage (scratch_position).
+  hit (hit modifier 3, bug 0x18 with argument 1: `dword_80D5D50` is 0x01180003, whose bytes are the hit
+  modifier, the status, the bug and its argument; no status); 10 ticks. Its spawner leaves register garbage (scratch_position).
 - **0x42 ElcPuls, DestPuls.** Attachment 0x2B; a tick later the pulse from the panel ahead, held p3 − 5 ticks, region
   0x15 pulling (self type 0xB); looks by Param4 (2 and 3 carry bugs).
 - **0x43 AuraHed, StreamHd.** A head fires along the row while the navi recoils for 31 ticks (StreamHd five, 16
