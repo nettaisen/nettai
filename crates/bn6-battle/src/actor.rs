@@ -110,7 +110,12 @@ pub mod status {
     pub const CROSS_BREAKING: u32 = 0x4_0000;
     /// A form change holds the navi's sprite still (it is off the field).
     pub const FORM_CHANGE_SPRITE_HELD: u32 = 0x8_0000;
-    /// Anti-damage trap for heat attacks.
+    /// Gone from the field while its navi chip's navi acts (`sub_80E1352`
+    /// sets it, `sub_80E13DC` clears it).
+    pub const VANISHED: u32 = 0x10_0000;
+    /// RskyHny's trap (action 0x39): a hit with no fire damage is
+    /// swallowed and, if it did other damage, sends another bee
+    /// (`sub_802CEF4`).
     pub const HEAT_TRAP: u32 = 0x20_0000;
 }
 
@@ -140,6 +145,10 @@ pub struct AttackVars {
     /// Which `set_attack` slot started the action.
     pub kind: u8,
     pub beast_lockon: u8,
+    /// +0x2C: an object a step or the Beast Out rush turns to face in the
+    /// panel patterns 0x23, 0x31 and 0x33 (`sub_800F2FC`). Players' steps
+    /// clear it (`sub_80116AE`); only the unused `sub_80116F6` sets one.
+    pub face_target: Option<ObjectRef>,
     /// +0x30: a marker: the move's "direction changed", or a heat trap
     /// swallowing a hit.
     pub marker: u32,
@@ -275,6 +284,9 @@ pub struct ActorData {
     /// A sprite overlay attached for the current chip.
     pub overlay: Option<ObjectRef>,
     pub attack: AttackVars,
+    /// AIData+0xF0: the Beast Over berserk controller's state
+    /// (`sub_802D322`), in the 0x10 bytes allocation leaves alone.
+    pub berserk: crate::kinds::player::berserk::State,
     /// Obstacles the obstacle-absorbing chip pulled in, in arrival order
     /// (at most eight; the game keeps them at +0x6C with the count at
     /// +0x0D).
@@ -306,12 +318,13 @@ impl Actors {
         &mut self.slots[id.0 as usize]
     }
 
-    /// Allocate the lowest free slot, cleared. (The game leaves the last
-    /// 0x10 bytes of a slot uncleared; nothing ported reads them.)
+    /// Allocate the lowest free slot, cleared, except for its last 0x10
+    /// bytes, which the game leaves alone (the berserk controller's).
     pub fn allocate(&mut self) -> Option<ActorId> {
         let slot = (0..SLOTS as u8).find(|&i| self.in_use & (1 << i) == 0)?;
         self.in_use |= 1 << slot;
-        self.slots[slot as usize] = ActorData::default();
+        let berserk = self.slots[slot as usize].berserk;
+        self.slots[slot as usize] = ActorData { berserk, ..ActorData::default() };
         Some(ActorId(slot))
     }
 

@@ -1,0 +1,6 @@
+# The energy burst (attack object #0x11, `sub_80C67F8`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x11
+script = "energy_burst.luau"

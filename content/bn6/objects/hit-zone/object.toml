@@ -1,7 +1,0 @@
-# A hit zone (attack object #0x8B, `sub_80D6924`) is a script. Its kinds are the
-# pack's data (the extracted object.toml's [[variant]]).
-
-[kind]
-pool = "attack"
-index = 0x8B
-script = "hit_zone.luau"

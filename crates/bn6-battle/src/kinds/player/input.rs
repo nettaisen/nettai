@@ -298,13 +298,9 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
 }
 
 /// Whether the next chip is of the Null family, which uses the
-/// alternative A-charge routine in Beast forms.
+/// alternative A-charge routine in Beast forms. The game's empty-hand
+/// check tests flags a `ldr` doesn't set (never equal), so an empty hand
+/// reads chip 0xFFFF's record, past the table (`Rules::empty_hand`).
 fn uses_alt_a_charge(b: &Battle, r: ObjectRef) -> bool {
-    let id = next_chip(b, r);
-    // The game's empty-hand check tests stale flags and falls through,
-    // reading chip 0xFFFF's record past the table.
-    if id == NO_CHIP {
-        panic!("charge threshold with an empty hand reads past the chip table");
-    }
-    b.content.chip(id).family == crate::content::ChipFamily::Null
+    super::null_family(b, next_chip(b, r))
 }

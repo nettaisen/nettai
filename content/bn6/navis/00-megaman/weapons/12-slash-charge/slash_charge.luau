@@ -85,10 +85,16 @@ local function dash(me: Object)
         me.step_init = 0
         return
     end
-    -- A copy of the navi's sprite, animation 0 (`sub_800F2AA`'s nullsub
-    -- leaves it), the navi's flip; a shadow kept on the ground.
-    local params = { 0xFF, 0, 0, bit32.bxor(me.alliance, me.flip) }
-    battle.afterimage(me, me.pos, params, AFTERIMAGE_SHADER, bit32.bor(AFTERIMAGE_TICKS, 0x0101_0000))
+    -- A copy of the navi's sprite (Param1 0xFF), animation 0
+    -- (`sub_800F2AA`'s nullsub leaves it), the navi's flip; a shadow kept
+    -- on the ground (the lifetime word's bytes 2 and 3 set).
+    battle.afterimage(me, me.pos, {
+        anim = 0,
+        flip = bit32.bxor(me.alliance, me.flip),
+        lifetime = AFTERIMAGE_TICKS,
+        color_shader = AFTERIMAGE_SHADER,
+        shadow = "ground",
+    })
     me.panel_x, me.panel_y = x, y
     me:set_coordinates_from_panel()
     me:update_collision_panels()

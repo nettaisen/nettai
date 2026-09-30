@@ -1,0 +1,3 @@
+# A navi chip (subtype 7): its navi is SpoutMan.
+
+script = "../../objects/spout-man/spout_man.luau"

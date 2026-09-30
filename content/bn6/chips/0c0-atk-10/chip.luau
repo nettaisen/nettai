@@ -3,12 +3,12 @@
 -- `off_80EC3F0[3]`), run once by action 0x1C: Atk+10, Atk+30, Navi+20,
 -- MegaBstr, WhiCapsl, Uninstll, DarkPlus and the special chips of the
 -- subtype. From a special source (battle flag 0x40 mode) the chip's damage
--- and its third and fourth parameters go into the side's plus bonus (its
--- first parameter: 0 Atk+, 1 Navi+) for the next chips; otherwise a
--- sparkle rises by the navi. The BeastOut chip's effect (0) is that
--- sparkle alone.
+-- and its third and fourth parameters go into a bonus the side stores for
+-- its special chip (its first parameter: 0 the Atk+ bonus, 1 the Navi+);
+-- otherwise a sparkle (the rising bubble, objects/rising-bubble) rises by
+-- the navi. The BeastOut chip's effect (0) is that sparkle alone.
 
-local plus_sparkle = require("../../objects/plus-sparkle/plus_sparkle")
+local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
 
 local plus_chip = {}
 
@@ -23,7 +23,7 @@ local BONUS_SOUND = 0x157
 function plus_chip.sparkle(user: Object)
     local x, y = field.center(user.panel_x, user.panel_y)
     local toward = 1 - 2 * user.alliance
-    plus_sparkle.spawn(Vec3.new(x + int.shl(toward * TOWARD, 16), y, int.shl(HEIGHT, 16)), 0)
+    rising_bubble.spawn(Vec3.new(x + int.shl(toward * TOWARD, 16), y, int.shl(HEIGHT, 16)), 0)
     battle.play_sound(SPARKLE_SOUND)
 end
 
@@ -32,7 +32,7 @@ function plus_chip.instant_chip(user: Object, _spec: InstantChipSpec)
     if user.special_source ~= 0 then
         -- The bonus: the damage, plus the parameters' upper halfword.
         local extra = bit32.bor(user:attack_param(3), bit32.lshift(user:attack_param(4), 8))
-        battle.add_plus_bonus(user.alliance, user:attack_param(1), user.attack_damage + extra)
+        battle.add_special_bonus(user.alliance, user:attack_param(1), user.attack_damage + extra)
         battle.play_sound(BONUS_SOUND)
         return
     end

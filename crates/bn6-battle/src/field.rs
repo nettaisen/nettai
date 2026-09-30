@@ -80,7 +80,10 @@ pub struct Panel {
     pub home: u8,
     pub display_kind: PanelType,
     pub display_alliance: u8,
-    pub display_override: [u8; 3],
+    /// `object_setPanelTypeBlink`: drawn this frame as this type and side
+    /// instead (drawn only; the game's renderer shows it once and clears
+    /// it).
+    pub blink: Option<(PanelType, u8)>,
     pub x: u8,
     pub y: u8,
     pub front_edge: bool,
@@ -130,6 +133,27 @@ pub struct Field {
     pub hole_ticks: u16,
     /// Obstacles on the field, per side.
     pub objects: FieldObjects,
+    /// Each side's wind (Wind and Fan's fan, a navi's own).
+    pub winds: [Wind; 2],
+}
+
+/// A side's wind (BattleState+0xC0 + 4·side, and its source at +0xC8):
+/// the object blowing for the side, one at a time (`sub_80E541A`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Wind {
+    pub object: Option<ObjectRef>,
+    pub source: WindSource,
+}
+
+/// Who placed a side's wind.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum WindSource {
+    /// Wind and Fan's fan (attack object #0x48; the game's 0).
+    #[default]
+    Obstacle,
+    /// A navi's own wind (effect object #0x41; 1), which a fan's can't
+    /// replace (`sub_80E532C`).
+    Navi,
 }
 
 /// The field-object registry (BattleState+0xA0..+0xC0): the obstacles
@@ -232,16 +256,18 @@ impl Field {
             volcano_counter: 0x8C,
             hole_ticks,
             objects: FieldObjects::default(),
+            winds: [Wind::default(); 2],
         };
         f.build_home_runs();
         f
     }
 
-    /// Forget last frame's highlights (presentation only; `sub_800C5E0`
-    /// clears each one it draws).
-    pub fn clear_highlights(&mut self) {
+    /// Forget last frame's highlights and blinks (presentation only;
+    /// `sub_800C5E0` clears each one it draws).
+    pub fn clear_one_frame_looks(&mut self) {
         for p in self.panels.iter_mut().flatten() {
             p.highlight = 0;
+            p.blink = None;
         }
     }
 
@@ -577,8 +603,46 @@ impl Battle {
         true
     }
 
-    /// `object_breakPanel_dup2`: break a solid panel, or crack it while
-    /// something stands on it.
+    /// `object_breakPanel`: break a solid panel nothing stands on, cracked
+    /// or not; nothing else. True when it broke.
+    pub fn break_empty_panel(&mut self, x: u8, y: u8) -> bool {
+        let Some(p) = self.field.panel_mut(x, y) else { return false };
+        let f = p.flags;
+        if f & pflags::SOLID == 0 || f & pflags::OCCUPIED != 0 {
+            return false;
+        }
+        p.flags = (f & !0x3F5F) | 1;
+        p.kind = PanelType::Broken;
+        p.display_kind = PanelType::Broken;
+        self.play_sound(crate::sound::SoundId(0x97));
+        true
+    }
+
+    /// `object_breakPanel_dup1`: break a solid panel, or crack it when
+    /// something stands on it (bodies, blockers, reservations: not neutral
+    /// objects). True only when it broke.
+    pub fn shatter_panel(&mut self, x: u8, y: u8) -> bool {
+        let Some(p) = self.field.panel_mut(x, y) else { return false };
+        let f = p.flags;
+        if f & pflags::SOLID == 0 {
+            return false;
+        }
+        let broke = f & 0x0F08_0080 == 0;
+        if broke {
+            p.flags = (f & !0x3F5F) | 1;
+            p.kind = PanelType::Broken;
+            p.display_kind = PanelType::Broken;
+        } else {
+            p.flags = ((f | pflags::CRACKED) & !0x3F0F) | 3;
+            p.kind = PanelType::Cracked;
+            p.display_kind = PanelType::Cracked;
+        }
+        self.play_sound(crate::sound::SoundId(0x97));
+        broke
+    }
+
+    /// `object_breakPanel_dup2` (and `object_breakPanel_dup3`, the same):
+    /// break a solid panel, or crack it while something stands on it.
     pub fn break_panel(&mut self, x: u8, y: u8) -> bool {
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
@@ -596,6 +660,27 @@ impl Battle {
         }
         self.play_sound(crate::sound::SoundId(0x97));
         true
+    }
+
+    /// `object_panel_setPoison`: a solid panel turns to poison.
+    pub fn poison_panel(&mut self, x: u8, y: u8) -> bool {
+        let Some(p) = self.field.panel_mut(x, y) else { return false };
+        if p.flags & pflags::SOLID == 0 {
+            return false;
+        }
+        p.flags = (p.flags & !0x3F5F) | 0x114;
+        p.kind = PanelType::Poison;
+        p.display_kind = PanelType::Poison;
+        self.play_sound(crate::sound::SoundId(0x90));
+        true
+    }
+
+    /// `object_setPanelTypeBlink`: panel (x, y) is drawn as `kind` of
+    /// `side` this frame (drawn only).
+    pub fn blink_panel(&mut self, x: u8, y: u8, kind: PanelType, side: u8) {
+        if let Some(p) = self.field.panel_mut(x, y) {
+            p.blink = Some((kind, side));
+        }
     }
 
     /// `sub_800E618`: may `obj` step onto (x, y)?

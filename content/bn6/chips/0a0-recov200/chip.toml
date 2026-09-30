@@ -1,0 +1,3 @@
+# Recovery (action 0x20), in Recov10's folder.
+
+script = "../09a-recov10/chip.luau"

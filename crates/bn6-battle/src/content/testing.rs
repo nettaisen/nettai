@@ -2,7 +2,7 @@
 //!
 //! Everything here is made up: a MegaMan-like navi and its base form,
 //! a few chips that use GunDelSol, two dimming chips (one grabs a column)
-//! and a navi chip, rocks,
+//! and ten navi chips, rocks,
 //! sprites with short animations, and rules written from the engine's own
 //! flag semantics (docs/engine/field-collision-damage.md). It is not BN6's
 //! data, which comes only from a content pack extracted from the user's ROM
@@ -34,24 +34,93 @@ pub const VEIL: ChipId = 0x05;
 pub const ERASER: ChipId = 0x06;
 /// A dimming chip (action 0x15, subtype 0) that grabs a column.
 pub const GRAB: ChipId = 0x07;
-/// An instant chip that fills the custom gauge (FullCust's effect).
-pub const FULL_GAUGE: ChipId = 0x08;
+/// Instant chips (action 0x1C, ids 0x40 and up): one that fills the custom
+/// gauge (FullCust's effect).
+pub const FULL_GAUGE: ChipId = 0x40;
 /// Instant chips: a plus chip used on its own (subtype 3), one that raises
 /// the buster's attack by 1 (subtype 10) and one that syncs the navi
 /// (subtype 13).
-pub const PLUS: ChipId = 0x09;
-pub const BUSTER_UP: ChipId = 0x0A;
-pub const SYNC: ChipId = 0x0B;
+pub const PLUS: ChipId = 0x41;
+pub const BUSTER_UP: ChipId = 0x42;
+pub const SYNC: ChipId = 0x43;
 /// Instant chips whose effects spawn objects: a boomerang (subtype 1),
 /// lances (4), fists (8), worms (12), flame hooks (14), a falling fist
 /// (19) and a golem (21).
-pub const BOOMERANG: ChipId = 0x0C;
-pub const LANCE: ChipId = 0x0D;
-pub const FIST: ChipId = 0x0E;
-pub const WORM: ChipId = 0x0F;
-pub const FLAME_HOOK: ChipId = 0x10;
-pub const JUSTICE: ChipId = 0x11;
-pub const GOLEM: ChipId = 0x12;
+pub const BOOMERANG: ChipId = 0x44;
+pub const LANCE: ChipId = 0x45;
+pub const FIST: ChipId = 0x46;
+pub const WORM: ChipId = 0x47;
+pub const FLAME_HOOK: ChipId = 0x48;
+pub const JUSTICE: ChipId = 0x49;
+pub const GOLEM: ChipId = 0x4A;
+/// Standard chip actions (ids 0x100 and up): a CrakShot (action 0x22,
+/// subtype 0: the panel ahead).
+pub const CRACK: ChipId = 0x100;
+/// A Reflector (action 0x2B, subtype 0): guards for 30 ticks.
+pub const MIRROR: ChipId = 0x101;
+/// A recovery chip (action 0x20): heals 40 HP.
+pub const MEND: ChipId = 0x102;
+/// The thrown chips (action 0x12): a bomb (subtype 0), a seed that
+/// poisons panels (subtype 12), a flash bomb (subtype 14) and a bug bomb
+/// (subtype 7).
+pub const BOMB: ChipId = 0x103;
+pub const SEED: ChipId = 0x104;
+pub const FLASH: ChipId = 0x105;
+pub const BUG: ChipId = 0x106;
+/// A chip that sends bees (action 0x39, RskyHny's).
+pub const BEES: ChipId = 0x107;
+/// A chip that sends an elec dragon (action 0x51, subtype 1).
+pub const DRAGON: ChipId = 0x108;
+/// A sword (action 0x13, subtype 1: a column of three panels ahead).
+pub const BLADE: ChipId = 0x109;
+/// A step sword (the same, with its first parameter set: it steps two
+/// panels ahead first).
+pub const STEP_BLADE: ChipId = 0x10a;
+/// A strike at stunned or grounded opponents (action 0x49, subtype 2).
+pub const STUN_BLADE: ChipId = 0x10b;
+/// A dimming chip (action 0x15, subtype 6) that places a rock (variant 1)
+/// in front of its user.
+pub const CUBE: ChipId = 0x08;
+/// A trap chip (action 0x15, subtype 20, Param1 3: no object).
+pub const TRAP: ChipId = 0x09;
+/// Navi-changing dimming chips (action 0x15, subtype 38): the buster and
+/// shoes boost (Param1 0), and a new charged shot (Param1 2: weapon
+/// routine 1).
+pub const BOOST: ChipId = 0x0A;
+pub const ARM: ChipId = 0x0B;
+/// A dimming chip (action 0x15, subtype 25) that slows the custom gauge.
+pub const SLOW_GAUGE: ChipId = 0x0C;
+// Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+/// An element trap (action 0x15, subtype 20, Param1 0: the trap object).
+pub const ELEM_TRAP: ChipId = 0x30;
+/// Time bombs (action 0x15, subtype 10): variant 0 and 1.
+pub const TIME_BOMB: ChipId = 0x31;
+pub const TIME_BOMB_PLUS: ChipId = 0x32;
+/// A mine (action 0x15, subtype 11).
+pub const MINE: ChipId = 0x33;
+// Navi chips.
+/// A navi chip (action 0x1B, subtype 16: the elements navi).
+pub const ELEMENTS: ChipId = 0x110;
+/// A navi chip (action 0x1B, subtype 7: the water navi).
+pub const SPOUT: ChipId = 0x111;
+/// A navi chip (action 0x1B, subtype 2: the heat navi).
+pub const HEAT: ChipId = 0x112;
+/// A navi chip (action 0x1B, subtype 3: the elec navi).
+pub const ELEC: ChipId = 0x113;
+/// A navi chip (action 0x1B, subtype 4: the slash navi).
+pub const SLASH: ChipId = 0x114;
+/// A navi chip (action 0x1B, subtype 6: the charge navi).
+pub const CHARGE: ChipId = 0x115;
+/// A navi chip (action 0x1B, subtype 8: the tomahawk navi).
+pub const TOMAHAWK: ChipId = 0x116;
+/// A navi chip (action 0x1B, subtype 9: the tengu navi).
+pub const TENGU: ChipId = 0x117;
+/// A navi chip (action 0x1B, subtype 12: the blast navi).
+pub const BLAST: ChipId = 0x118;
+/// A navi chip (action 0x1B, subtype 26: the shooting navi, Bass's).
+pub const BASS: ChipId = 0x119;
+/// A navi chip (action 0x1B, subtype 25: the sun-and-moon navi).
+pub const SUN_MOON: ChipId = 0x11a;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -83,6 +152,8 @@ const BLOCKER: u32 = 0x0008_0000;
 const WHILE_DIMMED: u32 = 0x0001_0000;
 const REACHES_FLOATING: u32 = 0x0080;
 const BREAKS: u32 = 0x0002;
+// A panel flag every panel type has.
+const ON_FIELD: u32 = 0x0001_0000;
 
 /// The content set, shared.
 pub fn content() -> Arc<Content> {
@@ -157,6 +228,8 @@ pub fn scripts() -> Scripts {
                 ("objects/area-grab/area_grab", "objects/area-grab/area_grab"),
                 ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
+                ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
+                ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
                 ("objects/projectile/projectile", "objects/projectile/projectile"),
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
@@ -175,7 +248,6 @@ pub fn scripts() -> Scripts {
                 ("chips/0c0-atk-10/chip", "chips/0c0-atk-10/chip"),
                 ("chips/0af-busterup/chip", "chips/0af-busterup/chip"),
                 ("chips/11d-synctrgr/chip", "chips/11d-synctrgr/chip"),
-                ("objects/plus-sparkle/plus_sparkle", "objects/plus-sparkle/plus_sparkle"),
                 ("objects/boomerang/boomerang", "objects/boomerang/boomerang"),
                 ("objects/lance/lance", "objects/lance/lance"),
                 ("objects/fire-hit/fire_hit", "objects/fire-hit/fire_hit"),
@@ -186,16 +258,85 @@ pub fn scripts() -> Scripts {
                 ("objects/flame-hook-fire/flame_hook_fire", "objects/flame-hook-fire/flame_hook_fire"),
                 ("objects/justice-one/justice_one", "objects/justice-one/justice_one"),
                 ("objects/golem/golem", "objects/golem/golem"),
-                ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
-                ("objects/rock-chunk/rock_chunk", "objects/rock-chunk/rock_chunk"),
                 ("lib/element", "lib/element"),
                 ("lib/projectile", "lib/projectile"),
                 ("lib/sword", "lib/sword"),
                 ("objects/gust/gust", "objects/gust/gust"),
                 ("objects/sword-wave/sword_wave", "objects/sword-wave/sword_wave"),
-                ("objects/hit-zone/hit_zone", "objects/hit-zone/hit_zone"),
                 ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
-                ("objects/drill-hit/drill_hit", "objects/drill-hit/drill_hit"),
+                ("objects/reflector-shield/reflector_shield", "objects/reflector-shield/reflector_shield"),
+                ("objects/reflected-shot/reflected_shot", "objects/reflected-shot/reflected_shot"),
+                ("chips/008-mirror/chip", "chips/083-rflectr1/chip"),
+                ("chips/009-mend/chip", "chips/09a-recov10/chip"),
+                ("lib/region", "lib/region"),
+                ("lib/trajectory", "lib/trajectory"),
+                ("lib/hp", "lib/hp"),
+                ("objects/bomb/bomb", "objects/bomb/bomb"),
+                ("objects/bomb-slash/bomb_slash", "objects/bomb-slash/bomb_slash"),
+                ("objects/energy-burst/energy_burst", "objects/energy-burst/energy_burst"),
+                ("objects/seed/seed", "objects/seed/seed"),
+                ("objects/flash-bomb/flash_bomb", "objects/flash-bomb/flash_bomb"),
+                ("objects/bug-bomb/bug_bomb", "objects/bug-bomb/bug_bomb"),
+                ("objects/black-bomb/black_bomb", "objects/black-bomb/black_bomb"),
+                ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
+                ("chips/00e-bees/chip", "chips/025-rskyhny1/chip"),
+                ("objects/honey-bee/honey_bee", "objects/honey-bee/honey_bee"),
+                ("chips/00f-dragon/chip", "chips/02e-heatdrgn/chip"),
+                ("lib/dragon", "lib/dragon"),
+                ("objects/dragon-head/dragon_head", "objects/dragon-head/dragon_head"),
+                ("objects/dragon-body/dragon_body", "objects/dragon-body/dragon_body"),
+                ("chips/010-blade/chip", "chips/047-sword/chip"),
+                ("chips/012-stunblade/chip", "chips/056-mchnswrd/chip"),
+                ("objects/invisible/invisible", "objects/invisible/invisible"),
+                ("objects/rock/rock", "objects/rock/rock"),
+                ("objects/rock-cube/rock_cube", "objects/rock-cube/rock_cube"),
+                ("objects/rock-debris/rock_debris", "objects/rock-debris/rock_debris"),
+                ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
+                ("objects/navi-boost/navi_boost", "objects/navi-boost/navi_boost"),
+                ("objects/gauge-speed/gauge_speed", "objects/gauge-speed/gauge_speed"),
+                // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+                ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
+                // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+                ("lib/panels", "lib/panels"),
+                ("objects/elem-trap/elem_trap", "objects/elem-trap/elem_trap"),
+                ("objects/elem-trap-strike/elem_trap_strike", "objects/elem-trap-strike/elem_trap_strike"),
+                ("objects/panel-bursts/panel_bursts", "objects/panel-bursts/panel_bursts"),
+                ("objects/time-bom/time_bom", "objects/time-bom/time_bom"),
+                ("objects/countdown-bomb/countdown_bomb", "objects/countdown-bomb/countdown_bomb"),
+                ("objects/mine/mine", "objects/mine/mine"),
+                ("objects/land-mine/land_mine", "objects/land-mine/land_mine"),
+                ("chips/059-crakshot/chip", "chips/059-crakshot/chip"),
+                ("objects/crack-shot/crack_shot", "objects/crack-shot/crack_shot"),
+                ("objects/elmnt-man/elmnt_man", "objects/elmnt-man/elmnt_man"),
+                ("objects/meteor/meteor", "objects/meteor/meteor"),
+                ("objects/elmnt-ice/elmnt_ice", "objects/elmnt-ice/elmnt_ice"),
+                ("objects/elmnt-bolt/elmnt_bolt", "objects/elmnt-bolt/elmnt_bolt"),
+                ("objects/elmnt-vine/elmnt_vine", "objects/elmnt-vine/elmnt_vine"),
+                ("objects/spout-man/spout_man", "objects/spout-man/spout_man"),
+                ("objects/spout-ball/spout_ball", "objects/spout-ball/spout_ball"),
+                ("objects/spout-splash/spout_splash", "objects/spout-splash/spout_splash"),
+                ("objects/spout-pillar/spout_pillar", "objects/spout-pillar/spout_pillar"),
+                ("objects/spout-geyser/spout_geyser", "objects/spout-geyser/spout_geyser"),
+                ("objects/spout-mark/spout_mark", "objects/spout-mark/spout_mark"),
+                ("objects/heat-man/heat_man", "objects/heat-man/heat_man"),
+                ("objects/heat-flame/heat_flame", "objects/heat-flame/heat_flame"),
+                ("objects/elec-man/elec_man", "objects/elec-man/elec_man"),
+                ("objects/elec-thunder/elec_thunder", "objects/elec-thunder/elec_thunder"),
+                ("objects/slash-man/slash_man", "objects/slash-man/slash_man"),
+                ("objects/slash-wave/slash_wave", "objects/slash-wave/slash_wave"),
+                ("objects/charge-man/charge_man", "objects/charge-man/charge_man"),
+                ("objects/charge-car/charge_car", "objects/charge-car/charge_car"),
+                ("objects/tomahawk-man/tomahawk_man", "objects/tomahawk-man/tomahawk_man"),
+                ("objects/tengu-man/tengu_man", "objects/tengu-man/tengu_man"),
+                ("objects/blast-man/blast_man", "objects/blast-man/blast_man"),
+                ("objects/blast-fire/blast_fire", "objects/blast-fire/blast_fire"),
+                ("objects/bass/bass", "objects/bass/bass"),
+                ("objects/panel-strike/panel_strike", "objects/panel-strike/panel_strike"),
+                ("objects/sun-moon/sun_moon", "objects/sun-moon/sun_moon"),
+                ("objects/sun-meteor/sun_meteor", "objects/sun-meteor/sun_meteor"),
+                ("objects/moon-beam/moon_beam", "objects/moon-beam/moon_beam"),
+                ("objects/drill/drill", "objects/drill/drill"),
+                ("objects/thunder-column/thunder_column", "objects/thunder-column/thunder_column"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -223,7 +364,6 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x00, "Buster", Some(0x11), "00-buster/buster"),
         weapon(0x01, "Charged shot", Some(0x16), "01-charged-shot/charged_shot"),
         weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
-        weapon(0x18, "Ground charge", None, "18-ground-charge/ground_charge"),
         weapon(0x1B, "Tomahawk throw", Some(0x4E), "1b-tomahawk-throw/tomahawk_throw"),
         weapon(0x1E, "Beast claw", Some(0x52), "1e-beast-claw/beast_claw"),
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
@@ -269,6 +409,7 @@ fn kinds() -> Vec<ObjectKind> {
         script: script.into(),
         scratch_position: false,
         scratch_z_fraction: false,
+        actor_list_entry: None,
     };
     let mut kinds = vec![
         kind("attachment", Pool::Actor, 0x05, "objects/attachment/attachment"),
@@ -289,7 +430,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
         kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
         kind("absorbed-obstacle", Pool::Effect, 0x87, "objects/absorbed-obstacle/absorbed_obstacle"),
-        kind("plus-sparkle", Pool::Effect, 0x14, "objects/plus-sparkle/plus_sparkle"),
         kind("boomerang", Pool::Attack, 0x32, "objects/boomerang/boomerang"),
         kind("lance", Pool::Attack, 0x6F, "objects/lance/lance"),
         kind("fire-hit", Pool::Attack, 0x5B, "objects/fire-hit/fire_hit"),
@@ -301,14 +441,73 @@ fn kinds() -> Vec<ObjectKind> {
         kind("justice-one", Pool::Attack, 0xAE, "objects/justice-one/justice_one"),
         kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
-        kind("rock-chunk", Pool::Effect, 0x09, "objects/rock-chunk/rock_chunk"),
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
         kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
         kind("gust", Pool::Attack, 0x49, "objects/gust/gust"),
         kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
-        kind("hit-zone", Pool::Attack, 0x8B, "objects/hit-zone/hit_zone"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
-        kind("drill-hit", Pool::Attack, 0x71, "objects/drill-hit/drill_hit"),
+        kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
+        kind("reflected-shot", Pool::Attack, 0x2F, "objects/reflected-shot/reflected_shot"),
+        kind("bomb", Pool::Attack, 0x08, "objects/bomb/bomb"),
+        kind("bomb-slash", Pool::Attack, 0x0A, "objects/bomb-slash/bomb_slash"),
+        kind("energy-burst", Pool::Attack, 0x11, "objects/energy-burst/energy_burst"),
+        kind("seed", Pool::Attack, 0x4F, "objects/seed/seed"),
+        kind("flash-bomb", Pool::Attack, 0xA4, "objects/flash-bomb/flash_bomb"),
+        kind("bug-bomb", Pool::Attack, 0xA5, "objects/bug-bomb/bug_bomb"),
+        kind("honey-bee", Pool::Attack, 0x74, "objects/honey-bee/honey_bee"),
+        kind("dragon-head", Pool::Attack, 0xC9, "objects/dragon-head/dragon_head"),
+        kind("dragon-body", Pool::Attack, 0xC8, "objects/dragon-body/dragon_body"),
+        ObjectKind { scratch_position: true, ..kind("invisible", Pool::Effect, 0x5D, "objects/invisible/invisible") },
+        ObjectKind { actor_list_entry: Some(8), ..kind("rock", Pool::Attack, 0x59, "objects/rock/rock") },
+        ObjectKind { scratch_position: true, ..kind("rock-cube", Pool::Effect, 0x37, "objects/rock-cube/rock_cube") },
+        kind("rock-debris", Pool::Effect, 0x38, "objects/rock-debris/rock_debris"),
+        ObjectKind { scratch_position: true, ..kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip") },
+        kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
+        ObjectKind { scratch_position: true, ..kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost") },
+        ObjectKind { scratch_position: true, ..kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed") },
+        kind("rising-bubble", Pool::Effect, 0x14, "objects/rising-bubble/rising_bubble"),
+        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+        ObjectKind { scratch_position: true, ..kind("elem-trap", Pool::Attack, 0x4D, "objects/elem-trap/elem_trap") },
+        ObjectKind {
+            scratch_position: true,
+            ..kind("elem-trap-strike", Pool::Effect, 0x2B, "objects/elem-trap-strike/elem_trap_strike")
+        },
+        ObjectKind { scratch_position: true, ..kind("panel-bursts", Pool::Effect, 0x24, "objects/panel-bursts/panel_bursts") },
+        ObjectKind { scratch_position: true, ..kind("time-bom", Pool::Effect, 0x27, "objects/time-bom/time_bom") },
+        kind("countdown-bomb", Pool::Attack, 0x4B, "objects/countdown-bomb/countdown_bomb"),
+        ObjectKind { scratch_position: true, ..kind("mine", Pool::Effect, 0x29, "objects/mine/mine") },
+        kind("land-mine", Pool::Attack, 0x4C, "objects/land-mine/land_mine"),
+        kind("crack-shot", Pool::Attack, 0x33, "objects/crack-shot/crack_shot"),
+        kind("elmnt-man", Pool::Actor, 0x10, "objects/elmnt-man/elmnt_man"),
+        kind("meteor", Pool::Attack, 0x8D, "objects/meteor/meteor"),
+        kind("elmnt-ice", Pool::Attack, 0x8E, "objects/elmnt-ice/elmnt_ice"),
+        ObjectKind { scratch_z_fraction: true, ..kind("elmnt-bolt", Pool::Attack, 0xB8, "objects/elmnt-bolt/elmnt_bolt") },
+        kind("elmnt-vine", Pool::Attack, 0xB9, "objects/elmnt-vine/elmnt_vine"),
+        kind("spout-man", Pool::Actor, 0x09, "objects/spout-man/spout_man"),
+        kind("spout-ball", Pool::Attack, 0x22, "objects/spout-ball/spout_ball"),
+        kind("spout-splash", Pool::Attack, 0x23, "objects/spout-splash/spout_splash"),
+        ObjectKind { scratch_z_fraction: true, ..kind("spout-pillar", Pool::Effect, 0x2D, "objects/spout-pillar/spout_pillar") },
+        kind("spout-geyser", Pool::Attack, 0x17, "objects/spout-geyser/spout_geyser"),
+        kind("spout-mark", Pool::Effect, 0x2E, "objects/spout-mark/spout_mark"),
+        kind("heat-man", Pool::Actor, 0x07, "objects/heat-man/heat_man"),
+        kind("heat-flame", Pool::Attack, 0x26, "objects/heat-flame/heat_flame"),
+        kind("elec-man", Pool::Actor, 0x08, "objects/elec-man/elec_man"),
+        kind("elec-thunder", Pool::Attack, 0x64, "objects/elec-thunder/elec_thunder"),
+        kind("slash-man", Pool::Actor, 0x0D, "objects/slash-man/slash_man"),
+        kind("slash-wave", Pool::Attack, 0x62, "objects/slash-wave/slash_wave"),
+        kind("charge-man", Pool::Actor, 0x16, "objects/charge-man/charge_man"),
+        kind("charge-car", Pool::Attack, 0xAC, "objects/charge-car/charge_car"),
+        kind("tomahawk-man", Pool::Actor, 0x0A, "objects/tomahawk-man/tomahawk_man"),
+        kind("tengu-man", Pool::Actor, 0x0C, "objects/tengu-man/tengu_man"),
+        kind("blast-man", Pool::Actor, 0x06, "objects/blast-man/blast_man"),
+        kind("blast-fire", Pool::Attack, 0x21, "objects/blast-fire/blast_fire"),
+        kind("bass", Pool::Actor, 0x4F, "objects/bass/bass"),
+        kind("panel-strike", Pool::Attack, 0x09, "objects/panel-strike/panel_strike"),
+        kind("sun-moon", Pool::Actor, 0x24, "objects/sun-moon/sun_moon"),
+        kind("sun-meteor", Pool::Attack, 0xB5, "objects/sun-meteor/sun_meteor"),
+        kind("moon-beam", Pool::Attack, 0xB6, "objects/moon-beam/moon_beam"),
+        kind("drill", Pool::Attack, 0x71, "objects/drill/drill"),
+        kind("thunder-column", Pool::Attack, 0x8B, "objects/thunder-column/thunder_column"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -341,9 +540,12 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         slot_in_limit: 3,
         dark_substitute: None,
         sp_damage: None,
+        navi_damage: None,
         modifier: None,
         program_advances: Vec::new(),
         gun_del_sol: None,
+        recovery: None,
+        sword: None,
         script: None,
     }
 }
@@ -370,9 +572,49 @@ fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
     }
 }
 
+/// A sword chip of `action` holding blade 7; action 0x13's slash hits a
+/// column of three panels.
+fn blade(id: ChipId, name: &str, action: u8, subtype: u8, step: bool) -> ChipData {
+    let slash = SwordSlash {
+        region: 4,
+        hit_effect: 0xFF,
+        target: 5,
+        self_type: 7,
+        hit_mod: 3,
+        status: 0,
+        bug: 0,
+        bug_arg: 0,
+        effect: 0x16,
+    };
+    ChipData {
+        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+        family: ChipFamily::Sword,
+        hit_param: 30,
+        params: [step as u8, 0, 0, 0],
+        damage: 80,
+        sword: Some(Sword { blade: 7, slash: (action == 0x13).then_some(slash) }),
+        script: Some(if action == 0x13 { "chips/010-blade/chip" } else { "chips/012-stunblade/chip" }.into()),
+        ..chip(id, name, action, subtype)
+    }
+}
+
+/// Chip ids up to here exist (the ids no test uses are blanks).
+const CHIP_IDS: ChipId = 0x120;
+
+/// The chips, by id (the content looks chips up by index). Dimming chips
+/// of the subtypes other scripts implement take ids 0x10 and up.
 fn chips() -> Vec<ChipData> {
+    let blank = |id| ChipData { class: ChipClass::Special, codes: vec![], ..chip(id, "Blank", 0, 0) };
+    let mut all: Vec<ChipData> = (0..CHIP_IDS).map(blank).collect();
+    for c in named_chips() {
+        let id = c.id as usize;
+        all[id] = c;
+    }
+    all
+}
+
+fn named_chips() -> Vec<ChipData> {
     vec![
-        ChipData { class: ChipClass::Special, codes: vec![], ..chip(0, "Blank", 0, 0) },
         sun_gun(SUN_GUN_1, "SunGun1", 0, 48),
         sun_gun(SUN_GUN_2, "SunGun2", 1, 72),
         sun_gun(SUN_GUN_3, "SunGun3", 2, 96),
@@ -381,6 +623,7 @@ fn chips() -> Vec<ChipData> {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             extra_flags: ExtraChipFlags(ExtraChipFlags::RUSH_CANCELS),
             family: ChipFamily::Plus,
+            script: Some("objects/invisible/invisible".into()),
             ..chip(VEIL, "Veil", 0x15, 1)
         },
         ChipData {
@@ -400,6 +643,192 @@ fn chips() -> Vec<ChipData> {
             damage: 10,
             script: Some("objects/area-grab/area_grab".into()),
             ..chip(GRAB, "Grab", 0x15, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 20,
+            params: [30, 0, 0, 0],
+            damage: 50,
+            script: Some("chips/008-mirror/chip".into()),
+            ..chip(MIRROR, "Mirror", 0x2B, 0)
+        },
+        ChipData { recovery: Some(40), script: Some("chips/009-mend/chip".into()), ..chip(MEND, "Mend", 0x20, 1) },
+        thrown(BOMB, "Bomb", 0, [0, 0, 0, 0], 50),
+        thrown(SEED, "Seed", 12, [0, 0, 0, 0], 10),
+        thrown(FLASH, "Flash", 14, [1, 0, 0, 0], 40),
+        thrown(BUG, "Bug", 7, [0, 0, 0, 0], 0),
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            element: Element::Wood,
+            hit_param: 30,
+            params: [1, 0, 0, 0],
+            damage: 20,
+            script: Some("chips/00e-bees/chip".into()),
+            ..chip(BEES, "Bees", 0x39, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            element: Element::Elec,
+            hit_param: 30,
+            damage: 100,
+            script: Some("chips/00f-dragon/chip".into()),
+            ..chip(DRAGON, "Dragon", 0x51, 1)
+        },
+        blade(BLADE, "Blade", 0x13, 1, false),
+        blade(STEP_BLADE, "StepBld", 0x13, 1, true),
+        blade(STUN_BLADE, "StunBld", 0x49, 2, false),
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            params: [1, 0, 0, 0],
+            damage: 200,
+            script: Some("objects/rock-cube/rock_cube".into()),
+            ..chip(CUBE, "Cube", 0x15, 6)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            params: [3, 0, 0, 0],
+            script: Some("objects/trap-chip/trap_chip".into()),
+            ..chip(TRAP, "Trap", 0x15, 20)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            script: Some("objects/navi-boost/navi_boost".into()),
+            ..chip(BOOST, "Boost", 0x15, 38)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            params: [2, 1, 0, 0],
+            script: Some("objects/navi-boost/navi_boost".into()),
+            ..chip(ARM, "Arm", 0x15, 38)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            script: Some("objects/gauge-speed/gauge_speed".into()),
+            ..chip(SLOW_GAUGE, "SlowGauge", 0x15, 25)
+        },
+        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            damage: 40,
+            script: Some("objects/trap-chip/trap_chip".into()),
+            ..chip(ELEM_TRAP, "ElemTrap", 0x15, 20)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            damage: 50,
+            script: Some("objects/time-bom/time_bom".into()),
+            ..chip(TIME_BOMB, "TimeBomb", 0x15, 10)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            params: [1, 0, 0, 0],
+            damage: 70,
+            script: Some("objects/time-bom/time_bom".into()),
+            ..chip(TIME_BOMB_PLUS, "TimeBomb+", 0x15, 10)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            damage: 60,
+            script: Some("objects/mine/mine".into()),
+            ..chip(MINE, "Mine", 0x15, 11)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 30,
+            damage: 40,
+            script: Some("chips/059-crakshot/chip".into()),
+            ..chip(CRACK, "Crack", 0x22, 0)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            hit_param: 100,
+            params: [4, 0, 0, 0],
+            damage: 50,
+            script: Some("objects/elmnt-man/elmnt_man".into()),
+            ..chip(ELEMENTS, "Elements", 0x1B, 16)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            element: Element::Aqua,
+            class: ChipClass::Mega,
+            damage: 40,
+            script: Some("objects/spout-man/spout_man".into()),
+            ..chip(SPOUT, "Spout", 0x1B, 7)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/heat-man/heat_man".into()),
+            ..chip(HEAT, "Heat", 0x1B, 2)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/elec-man/elec_man".into()),
+            ..chip(ELEC, "Elec", 0x1B, 3)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/slash-man/slash_man".into()),
+            ..chip(SLASH, "Slash", 0x1B, 4)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/charge-man/charge_man".into()),
+            ..chip(CHARGE, "Charge", 0x1B, 6)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/tomahawk-man/tomahawk_man".into()),
+            ..chip(TOMAHAWK, "Tomahawk", 0x1B, 8)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/tengu-man/tengu_man".into()),
+            ..chip(TENGU, "Tengu", 0x1B, 9)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Mega,
+            params: [10, 0, 0, 0],
+            damage: 40,
+            script: Some("objects/blast-man/blast_man".into()),
+            ..chip(BLAST, "Blast", 0x1B, 12)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Giga,
+            damage: 30,
+            script: Some("objects/bass/bass".into()),
+            ..chip(BASS, "Shooter", 0x1B, 26)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Giga,
+            damage: 90,
+            script: Some("objects/sun-moon/sun_moon".into()),
+            ..chip(SUN_MOON, "SunMoon", 0x1B, 25)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
@@ -449,6 +878,18 @@ fn spawning(id: ChipId, name: &str, subtype: u8, params: [u8; 4], script: &str) 
     }
 }
 
+/// A thrown chip (action 0x12) of `subtype`.
+fn thrown(id: ChipId, name: &str, subtype: u8, params: [u8; 4], damage: u16) -> ChipData {
+    ChipData {
+        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+        hit_param: 30,
+        params,
+        damage,
+        script: Some("chips/00a-bomb/chip".into()),
+        ..chip(id, name, 0x12, subtype)
+    }
+}
+
 fn navi() -> NaviData {
     let mut attach_points = vec![AttachPoint { x: 4, y: 24 }; 34];
     attach_points[3] = GUN_POINT;
@@ -464,6 +905,7 @@ fn navi() -> NaviData {
         lose_banner: BannerId(0x44),
         merge_height: 0,
         own_chip: None,
+        chip_bonus: None,
         name_record: Some(NameData { id: 0x1A0, version: 0, actor_type: ActorType::Player, ai_index: 0, attach_points }),
     }
 }
@@ -491,7 +933,7 @@ fn base_form() -> FormData {
 fn rules() -> Rules {
     // Collision types by what they are.
     let both = |f: &dyn Fn(usize) -> u32| [f(0), f(1)];
-    let mut collision_types = vec![[0, 0]; 0x49];
+    let mut collision_types = vec![[0, 0]; 0x59];
     let attack = both(&|s| ATTACK[s] | REACHES_FLOATING);
     collision_types[0x01] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING);
     collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING | FLOATING);
@@ -502,12 +944,18 @@ fn rules() -> Rules {
     }
     collision_types[0x2A] = collision_types[0x05];
     // The Crosses' attacks (sword waves, hit zones, gusts, drills).
-    collision_types.resize(0x4B, [0, 0]);
     for t in [0x06, 0x07, 0x1E, 0x4A] {
         collision_types[t] = attack;
     }
     collision_types[0x0E] = [NEUTRAL | BLOCKER | WHILE_DIMMED | REACHES_FLOATING | BREAKS; 2];
     collision_types[0x0F] = [ATTACK[0] | ATTACK[1] | BODY[0] | BODY[1] | BREAKS; 2];
+    // Thrown things: a flash's hit, a set-down bomb (an object either side
+    // can hit) and what it reacts to, a bug bomb and its target.
+    collision_types[0x0B] = attack;
+    collision_types[0x0C] = both(&|s| OBJECT[s] | NEUTRAL);
+    collision_types[0x0D] = both(&|s| ATTACK[s ^ 1] | BODY[s ^ 1]);
+    collision_types[0x4E] = both(&|s| OBJECT[s] | NEUTRAL);
+    collision_types[0x14] = both(&|s| ATTACK[s ^ 1] | BODY[s ^ 1]);
 
     // Panels: what each type adds to a panel's flags word.
     let types = PanelType::ALL
@@ -527,9 +975,9 @@ fn rules() -> Rules {
                 PanelType::RoadLeft => (pflags::SOLID | 0x200, Some(SlideVector { dx: -1, dy: 0, tiles: 1 })),
                 PanelType::RoadRight => (pflags::SOLID | 0x200, Some(SlideVector { dx: 1, dy: 0, tiles: 1 })),
             };
-            // Every type has the "a panel" bit (the scatter's panel search
-            // wants it).
-            PanelTypeRule { flags: flags | 0x1_0000, road_slide }
+            // Every panel type is on the field (the step sword looks for
+            // this bit).
+            PanelTypeRule { flags: flags | ON_FIELD, road_slide }
         })
         .collect();
     // Steps: onto a free panel of one's own side, solid unless floor-free.
@@ -571,6 +1019,10 @@ fn rules() -> Rules {
             PanelCondition { require: 0, forbid: pflags::ALLIANCE_1 },
             PanelCondition { require: pflags::ALLIANCE_1, forbid: 0 },
             PanelCondition { require: pflags::SOLID, forbid: 0 },
+            // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20): side 0's and
+            // side 1's navi's panels (0x84, 0x85).
+            PanelCondition { require: PLAYER[0], forbid: 0 },
+            PanelCondition { require: PLAYER[1], forbid: 0 },
         ],
         panels: PanelRules {
             types,
@@ -585,6 +1037,7 @@ fn rules() -> Rules {
         status_effects: vec![[StatusEffect { requests: 0, duration: 60, timer: StatusTimer::Paralyze }; 16]; 6],
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
         weapons: vec![WeaponRoutine { charge_ticks: [120, 100, 80, 60, 50] }; 0x30],
+        empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
         push_vectors: [
@@ -608,50 +1061,48 @@ fn rules() -> Rules {
             SlideVector::NONE,
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
-        lockon: Lockon {
-            searches: vec![
-                LockonSearch {
-                    mode: 1,
-                    offsets: vec![PanelOffset { dx: -1, dy: 0 }],
-                    prefers_middle_row: false,
-                    skips_first_at_edge: false,
-                },
-                LockonSearch {
-                    mode: 2,
-                    offsets: vec![PanelOffset { dx: -1, dy: 0 }, PanelOffset { dx: -1, dy: 1 }],
-                    prefers_middle_row: false,
-                    skips_first_at_edge: false,
-                },
-                LockonSearch {
-                    mode: 0xB,
-                    offsets: vec![PanelOffset { dx: -1, dy: 0 }, PanelOffset { dx: -2, dy: 0 }],
-                    prefers_middle_row: false,
-                    skips_first_at_edge: true,
-                },
-                LockonSearch {
-                    mode: 0xC,
-                    offsets: vec![PanelOffset { dx: -1, dy: 0 }],
-                    prefers_middle_row: false,
-                    skips_first_at_edge: false,
-                },
-            ],
-            column_shifts: vec![-1, -2],
-            slash_modes: vec![1; 0x13],
-        },
-        custom_screen: custom_screen_layout(),
-        // A made-up sine: a triangle wave.
-        sine: (0..320i32)
-            .map(|i| {
-                let q = i % 64;
-                let v = match i / 64 % 4 {
-                    0 => q,
-                    1 => 64 - q,
-                    2 => -q,
-                    _ => q - 64,
-                };
-                (v * 4) as i16
+        // A triangle wave: 256 at a quarter turn, -256 at three quarters,
+        // over a turn and a half.
+        sine: (0..384)
+            .map(|i: i16| {
+                let t = i % 256;
+                if t < 64 { t * 4 } else if t < 192 { 512 - t * 4 } else { t * 4 - 1024 }
             })
             .collect(),
+        lockon: Lockon {
+            // Mode 1 next to the target with the column shifts; made-up
+            // modes for the Crosses' tests: beside the target or diagonally
+            // behind it (2), a panel or two in front of it (0xB, only two
+            // away in the far column), and the claw's (0xC); the rest stay.
+            modes: (0..=0xC)
+                .map(|mode| {
+                    let near = |offsets: Vec<PanelOffset>| LockonMode { mode, rule: LockonRule::Near, offsets, ..Default::default() };
+                    let off = |dx, dy| PanelOffset { dx, dy };
+                    match mode {
+                        1 => LockonMode { column_shifts: true, ..near(vec![off(-1, 0)]) },
+                        2 => near(vec![off(-1, 0), off(-1, 1)]),
+                        0xB => LockonMode { far_column_offsets: Some(vec![off(-2, 0)]), ..near(vec![off(-1, 0), off(-2, 0)]) },
+                        0xC => near(vec![off(-1, 0)]),
+                        _ => LockonMode { mode, rule: LockonRule::Stay, ..Default::default() },
+                    }
+                })
+                .collect(),
+            column_shifts: vec![-1, -2],
+            clear_path: [PanelCondition { require: 0, forbid: pflags::OCCUPIED }; 2],
+            charged_sword_modes: vec![1; 0x13],
+        },
+        berserk: BerserkRules {
+            step,
+            opponent: [
+                PanelCondition { require: BODY[1], forbid: 0 },
+                PanelCondition { require: BODY[0], forbid: 0 },
+            ],
+            blocking: [NEUTRAL | OTHER_BODY[1], NEUTRAL | OTHER_BODY[0]],
+            opposing_player: [PLAYER[1], PLAYER[0]],
+        },
+        custom_screen: custom_screen_layout(),
+        actor_records: Vec::new(),
+        cross_palettes: (0..11).collect(),
     }
 }
 
@@ -723,19 +1174,45 @@ fn objects() -> ObjectData {
     // The buster's muzzle flash and arm.
     let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        // The rest up to the drill arm (0x20).
-        attachments: (0..5).map(gun).chain([plain(5, 0x06), plain(6, 0x03)]).chain((7..=0x20).map(|id| plain(id, 0x20))).collect(),
+        // Attachments are numbered without gaps: the swords' blade (7),
+        // fillers up to the bee chip's hive (0x28), then what the thrown
+        // chips hold (a seed at 0x24, the flash bomb at 0x2E).
+        attachments: (0..5)
+            .map(gun)
+            .chain([plain(5, 0x06), plain(6, 0x03), blade_kind()])
+            .chain((8..0x28).map(|id| if id == 0x24 { plain(id, 0x02) } else { plain(id, 0x06) }))
+            .chain([plain(0x28, 0x5E)])
+            .chain((0x29..0x2F).map(|id| plain(id, 0x02)))
+            .collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
-        body_overlays: Vec::new(),
+        // The elements navi's overlay (variant 0x0F).
+        body_overlays: (0..0x10)
+            .map(|id| BodyOverlay { id, sprite: SpriteId { category: 8, index: 0x11 }, in_front: vec![true; 0x20] })
+            .collect(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
         boomerangs: (0..5).map(|id| BoomerangKind { id, speed: 0x8_0000, turn_speed: 0x6_0000, grass: id < 3 }).collect(),
         projectiles: projectiles(),
         flying_shots: flying_shots(),
         sword_waves: (0..0x13).map(sword_wave).collect(),
-        hit_zones: vec![hit_zone(0, 1), hit_zone(1, 0)],
+        // Made-up looks for NameIDs 0xCD..=0xFF (0xCF has none).
+        name_looks: (0xCD..=0xFF)
+            .map(|name_id| NameLook {
+                name_id,
+                sprite: (name_id != 0xCF).then_some(SpriteId { category: 0x10, index: 0 }),
+                anim: 1,
+                palette: 0,
+                shadow: true,
+            })
+            .collect(),
         kinds: kinds(),
+        shock_waves: (0..16).map(|id| ShockWave { id, sprite: SpriteId { category: 0x10, index: 3 }, anim: 1, ticks: 6, panel: None }).collect(),
     }
+}
+
+/// The swords' blade (attachment 7), held at the gun's point.
+fn blade_kind() -> AttachmentKind {
+    AttachmentKind { id: 7, sprite: SpriteId { category: 0x0C, index: 0x08 }, palette: 0, lift: 0, attach_point: Some(3) }
 }
 
 /// The projectile's kinds: a plain shot (0), one that cracks the panel it
@@ -839,11 +1316,6 @@ fn sword_wave(id: u8) -> SwordWave {
     }
 }
 
-/// A made-up hit zone.
-fn hit_zone(id: u8, hit_effect: u8) -> HitZone {
-    HitZone { id, self_type: 4, target_type: 5, hit_mod: 3, hit_effect, region: 1, status: 0, bug: 0, bug_arg: 0 }
-}
-
 fn regions() -> Vec<Vec<PanelOffset>> {
     let p = |dx, dy| PanelOffset { dx, dy };
     let mut v = vec![vec![p(0, 0)]; 0x2F];
@@ -892,6 +1364,34 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 8, index: 4 }, eraser);
     sprites.insert(SpriteId { category: 0x10, index: 0x50 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x10, index: 0x51 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
+    // The elements navi (appearing, leaving, winding up, attacking, a vine)
+    // and its overlay; its meteor, ice and bolt.
+    let mut elements = vec![once(4); 0x13];
+    elements[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 8, index: 0x10 }, elements);
+    sprites.insert(SpriteId { category: 8, index: 0x11 }, vec![once(4); 0x20]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x0F }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x14, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
+    // The shooting navi (rising, raising his arm, shooting) and his cape
+    // (his animation + 0x14), his shots' bursts; the sun-and-moon navi
+    // and its moonlight.
+    let mut shooter = vec![once(4); 0x21];
+    shooter[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    shooter[0x0C] = vec![f(4, 0), f(4, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 8, index: 0x13 }, shooter);
+    sprites.insert(SpriteId { category: 0x10, index: 0x26 }, vec![vec![f(3, 0), f(3, LAST)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x64 }, vec![vec![f(8, 0), f(8, LAST | LOOP)]; 5]);
+    // The water navi, his ball, splash, pillar, geyser and marks, and his
+    // layer.
+    let mut spout = vec![once(4); 0x16];
+    spout[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 8, index: 6 }, spout);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x23 }, vec![once(4), vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x1A }, vec![vec![f(5, 0), f(5, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x1F }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 4]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x20 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x21 }, vec![vec![f(6, 0), f(6, LAST | LOOP)]]);
     // The buster's muzzle flash, and its arm (by form).
     sprites.insert(SpriteId { category: 0x0C, index: 0x06 }, vec![vec![f(2, 0), f(2, LAST)]]);
     sprites.insert(SpriteId { category: 0x0C, index: 0x03 }, vec![vec![f(30, LAST | LOOP)]; 0x19]);
@@ -900,6 +1400,11 @@ fn animations() -> Animations {
     junk[0x19] = vec![f(4, 0), f(4, LAST | LOOP)];
     junk[0x1A] = vec![f(10, 0), f(20, LAST)];
     sprites.insert(SpriteId { category: 8, index: 0x0A }, junk);
+    // The Reflector's shield (up, fading, by look) and its wave.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x1B }, vec![vec![f(8, LAST | LOOP)], vec![f(7, 0), f(7, LAST)]]);
+    sprites.insert(SpriteId { category: 0x14, index: 0x04 }, vec![vec![f(2, 0), f(3, LAST)]]);
+    // The swords' blade, swinging.
+    sprites.insert(blade_kind().sprite, vec![vec![f(3, 0), f(3, 0), f(8, LAST)]]);
     // The arrow.
     sprites.insert(SpriteId { category: 0x0C, index: 0x21 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // The grab shot: falling, landing.
@@ -914,16 +1419,29 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x10, index: 0x32 }, vec![vec![f(4, LAST | LOOP)], vec![f(2, 0), f(2, LAST)]]);
     sprites.insert(SpriteId { category: 0x10, index: 0x2E }, vec![vec![f(6, LAST | LOOP)]; 3]);
     sprites.insert(SpriteId { category: 0x10, index: 0x44 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
-    // The plus chips' sparkle (animation 1).
-    sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(2), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
     // The gust, the sword waves, EraseCross's beam (opening, beaming,
     // closing) and the drill arm (attachment 0x20).
     sprites.insert(SpriteId { category: 0x0C, index: 0x2E }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x0C, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x10, index: 0x4C }, vec![vec![f(3, 0), f(3, LAST)], vec![f(8, LAST | LOOP)], once(4)]);
     sprites.insert(SpriteId { category: 0x0C, index: 0x20 }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
+    // The hive (closed, open), a bee, and a dragon's animations.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x5E }, vec![vec![f(30, LAST | LOOP)], vec![f(4, 0), f(30, LAST)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x04, index: 0x10 }, vec![vec![f(6, LAST | LOOP)]; 8]);
+    // The crack shot: flying.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x33 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);
+    // The rising bubble.
+    sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(4), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
+    // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20): the countdown
+    // bomb (rising, standing; twice), the mine, the guardian statue
+    // (standing, striking).
+    let rise_and_stand = vec![vec![f(3, 0), f(3, LAST)], vec![f(20, LAST | LOOP)]];
+    sprites.insert(SpriteId { category: 0x0C, index: 0x23 }, [rise_and_stand.clone(), rise_and_stand].concat());
+    sprites.insert(SpriteId { category: 0x0C, index: 0x22 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x35 }, vec![vec![f(20, LAST | LOOP)], vec![f(4, 0), f(8, LAST)]]);
     Animations { sprites }
 }

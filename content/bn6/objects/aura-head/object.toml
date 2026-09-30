@@ -1,0 +1,6 @@
+# The aura head (attack object #0x92, `sub_80D7400`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x92
+script = "aura_head.luau"

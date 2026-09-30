@@ -82,9 +82,16 @@ end
 local function afterimage(me: Object)
     local kind = me:param(2)
     local shader = SHADER[kind] or SHADER[1]
-    -- (Its sprite, 0c-45, as Param1 and Param2; no shadow.)
-    local params = { 0x0C, 0x45, me.anim, bit32.bxor(me.alliance, me.flip) }
-    battle.afterimage(me, me.pos, params, shader, AFTERIMAGE_TICKS, if kind == 1 then 1 else 0)
+    -- (Its sprite as Param1 and Param2; the lifetime word's high bytes
+    -- clear: a shadow at its height. Kind 1's palette, `sub_80E3428`.)
+    battle.afterimage(me, me.pos, {
+        sprite = SPRITE,
+        anim = me.anim,
+        flip = bit32.bxor(me.alliance, me.flip),
+        lifetime = AFTERIMAGE_TICKS,
+        color_shader = shader,
+        palette = if kind == 1 then 1 else 0,
+    })
 end
 
 -- `sub_80DE984`: onto the arc at its angle (the timer's high byte), turn
@@ -133,7 +140,7 @@ local function tick(me: Object)
     c.region = 0
     if c.hit_flags ~= 0 then
         -- A white flash (variant 0) that goes on while dimmed (mode 1).
-        battle.palette_flash({ 0, FLASH_TICKS, 1, 0 })
+        battle.palette_flash(0, FLASH_TICKS, true)
     end
     local x, y = me.panel_x, me.panel_y
     local a = me.action
@@ -144,7 +151,7 @@ local function tick(me: Object)
     if me.lifecycle ~= "destroy" and (me.panel_x ~= x or me.panel_y ~= y) and field.valid(me.panel_x, me.panel_y) then
         c.region = REGION
     end
-    c:highlight()
+    me:highlight_collision_panels()
     c:present()
 end
 

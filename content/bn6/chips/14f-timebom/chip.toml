@@ -1,0 +1,4 @@
+# A program advance (TimeBom+), dimming chip subtype 10: its dimming
+# controller sets a countdown bomb (variant 1).
+
+script = "../../objects/time-bom/time_bom.luau"

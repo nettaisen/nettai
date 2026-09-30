@@ -1,112 +1,48 @@
 --!strict
--- A falling rock (attack object #0x1D, `sub_80C7D78`): GroundCross's
--- A-charge drops them on the enemies (`sub_8012CB2`). It falls from 104
--- pixels, speeding up 0x2000 a tick, and hits its panel once below 30
--- pixels. On a hit, or on landing on a solid panel, it breaks into two
--- chunks (objects/rock-chunk); on a hole it leaves a puff.
+-- A rock falling on a panel (attack object #0x1D, `sub_80C7D78`): it
+-- appears 104 pixels over its panel and falls, faster and faster; its hit
+-- region opens once it is under 30 pixels. What it hits breaks it into two
+-- chips; landing it breaks on a solid panel, or drops into a hole with a
+-- splash (effect 0x14). Spawned by `sub_80C7F20`: the ruleset's GroundCross
+-- barrage (`sub_8012CB2`), with the panel, element and damage word.
+-- ExtraVars[0] may point at a counter of rocks in flight; the barrage
+-- passes none.
 
-local rock_chunk = require("../rock-chunk/rock_chunk")
+local rock_chip = require("../rock-chip/rock_chip")
 
 local falling_rock = {}
 
 local SPRITE = "10-05"
 
--- Where it starts, and how fast its fall speeds up, 16.16.
+-- Its starting height, and its fall's acceleration (16.16).
 local HEIGHT, GRAVITY = 0x68_0000, 0x2000
 
--- Below this height (whole pixels) its hit region is on.
-local HITS_BELOW = 0x1E
+-- It can hit once lower than this, in whole pixels.
+local HIT_HEIGHT = 0x1E
 
--- As a body: collision types 0x15 against 5, hit modifier 1.
-local SELF_TYPE, TARGET, HIT_MOD = 0x15, 5, 1
+-- The chips a rock breaks into: their sideways and upward speeds
+-- (`dword_80C7F00`; the rock uses the first two).
+local CHIPS = { { 0x8000, 0x28000 }, { -0x8000, 0x30000 } }
 
--- The chunks it breaks into (`dword_80C7F00`): X and Z speeds; their
--- priority; the sound.
-local CHUNKS = { { vx = 0x8000, vz = 0x28000 }, { vx = -0x8000, vz = 0x30000 } }
-local CHUNK_PRIORITY = 2
-local BREAK_SOUND = 0xD9
-
--- The puff over a hole.
-local PUFF = 0x14
-
--- `sub_80C7F20`: a rock for `owner` on (x, y), of element `element`, with
--- the damage word `damage`. (Its spawn position is the spawner's
--- registers; its init places it. The game can also give it a counter of
--- live rocks to keep, ExtraVars; its only spawner gives none.)
-function falling_rock.spawn(owner: Object, x: number, y: number, element: number, damage: number): Object?
-    local o = battle.spawn_kind("falling-rock", Vec3.new(y, element, 0))
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.damage = bit32.band(damage, 0xFFFF)
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = owner.alliance, owner.flip
-    end
-    return o
-end
-
--- `sub_80C7EC8`: two chunks from where it is (a draw each), and the sound.
+-- `sub_80C7EC8`: two chips fly off from its position at ground level (in
+-- front at priority 2), and a crash.
 local function shatter(me: Object)
-    local p = me.pos
-    for _, c in CHUNKS do
-        local param = bit32.band(battle.rng(), 3) + 1
-        rock_chunk.spawn(Vec3.new(p.x, p.y, 0), param, CHUNK_PRIORITY, c.vx, c.vz)
+    for i = 1, 2 do
+        -- The chips' Param1 is a draw's low bits plus one (unread).
+        local n = bit32.band(battle.rng(), 3) + 1
+        local p = me.pos
+        rock_chip.spawn(Vec3.new(p.x, p.y, 0), CHIPS[i][1], CHIPS[i][2], 2, n)
     end
-    battle.play_sound(BREAK_SOUND)
+    battle.play_sound(0xD9)
 end
 
--- `sub_80C7E6C`: fall; its hits start below 30 pixels (a tick without
--- moving); at the ground it breaks, or puffs over a hole.
-local function fall(me: Object)
-    if me.phase == 0 and bit32.band(bit32.rshift(me.pos.z, 16), 0xFFFF) < HITS_BELOW then
-        me.collision.region = 1
-        me.phase, me.phase_init = 4, 0
-        return
-    end
-    local v = me.vel
-    local vz = int.i32(v.z + GRAVITY)
-    me.vel = Vec3.new(v.x, v.y, vz)
-    local p = me.pos
-    local z = int.i32(p.z - vz)
-    me.pos = Vec3.new(p.x, p.y, z)
-    if z > 0 then
-        return
-    end
-    if field.solid(me.panel_x, me.panel_y) then
-        shatter(me)
-    else
-        battle.effect(me.pos, PUFF)
-    end
-    me.collision.region = 0
-    me:set_lifecycle("destroy")
-end
-
--- `sub_80C7E24`: take this tick's hits; broken by one, else fall on.
-local function tick(me: Object)
-    local c = me.collision
-    c:remove()
-    me:hit_spark()
-    if c.hit_flags ~= 0 then
-        shatter(me)
-        c.region = 0
-        me:set_lifecycle("destroy")
-        return
-    end
-    local a = me.action
-    if a ~= 0 then
-        error(string.format("falling rock action %#x reads past sub_80C7E24's table", a))
-    end
-    fall(me)
-    me:update_sprite()
-    c:present()
-end
-
--- `sub_80C7D98`: over its panel, high up, as a body without a hit region
--- yet; gone at once if the battle is over or the panel is off the field.
-local function init(me: Object)
+-- `sub_80C7D98`: over its panel, falling from 104 pixels, with its hit
+-- registered (region closed until low enough). Not when the battle is over
+-- or its panel is off the field: it is freed.
+local function init(me: Object): boolean
     if battle.over() or not field.valid(me.panel_x, me.panel_y) then
         me:free()
-        return
+        return false
     end
     local x, y = field.center(me.panel_x, me.panel_y)
     me.pos = Vec3.new(x, y, HEIGHT)
@@ -117,27 +53,70 @@ local function init(me: Object)
     me.anim = 0
     sprite:set_animation(0)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    local v = me.vel
-    me.vel = Vec3.new(v.x, v.y, 0)
+    me.vel = Vec3.new(me.vel.x, me.vel.y, 0)
     if not me:create_collision() then
         me:free()
-        return
+        return false
     end
-    me:setup_collision(SELF_TYPE, TARGET, HIT_MOD)
+    me:setup_collision(0x15, 5, 1)
     me.collision.hit_effect = 0
     me.collision.region = 0
     me.collision:present()
     me:set_lifecycle("update")
-    tick(me)
+    return true
 end
 
--- `sub_80C7D78`.
+-- `sub_80C7E6C`: open the region once under 30 pixels (that tick it
+-- doesn't move); fall; at the ground, break or splash, and go.
+local function fall(me: Object)
+    if me.phase == 0 and bit32.rshift(me.pos.z, 16) < HIT_HEIGHT then
+        me.collision.region = 1
+        me.phase = 4
+        me.phase_init = 0
+        return
+    end
+    local vz = me.vel.z + GRAVITY
+    me.vel = Vec3.new(me.vel.x, me.vel.y, vz)
+    local z = me.pos.z - vz
+    me.pos = Vec3.new(me.pos.x, me.pos.y, z)
+    if z > 0 then
+        return
+    end
+    if field.solid(me.panel_x, me.panel_y) then
+        shatter(me)
+    else
+        battle.effect(me.pos, 0x14)
+    end
+    me.collision.region = 0
+    me:set_lifecycle("destroy")
+end
+
+-- `sub_80C7E24`: resolve its hit (and the spark); a hit breaks it.
+local function update(me: Object)
+    me.collision:remove()
+    me:hit_spark()
+    if me.collision.hit_flags ~= 0 then
+        shatter(me)
+        me.collision.region = 0
+        me:set_lifecycle("destroy")
+        return
+    end
+    if me.action ~= 0 then
+        error("falling rock action " .. me.action .. " runs off its table (sub_80C7E24)")
+    end
+    fall(me)
+    me:update_sprite()
+    me.collision:present()
+end
+
 function falling_rock.update(me: Object)
     local l = me.lifecycle
     if l == "init" then
-        init(me)
+        if init(me) then
+            update(me)
+        end
     elseif l == "update" then
-        tick(me)
+        update(me)
     else
         me:destroy()
     end

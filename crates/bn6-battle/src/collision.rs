@@ -49,7 +49,12 @@ pub mod f1 {
     pub const ANGER: u32 = 0x20_0000;
     pub const USING_ACTION: u32 = 0x40_0000;
     pub const AFFECTED_BY_ICE: u32 = 0x200_0000;
+    /// Poison panels don't hurt (Falzar Beast Over, `sub_8014674`).
+    pub const UNAFFECTED_BY_POISON: u32 = 0x800_0000;
     pub const BUBBLED: u32 = 0x8000_0000;
+    /// Hits still reach it while the battle is dimmed (`sub_3007218`; else
+    /// only hitters set up while dimmed do): ElemTrap's trap sets it.
+    pub const HIT_WHILE_DIMMED: u32 = 0x0100_0000;
 }
 
 /// Per-registration-window hit results (zeroed on present).
@@ -389,7 +394,7 @@ impl Battle {
     fn resolve_hit(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
         let rd = *self.collision.get(r);
-        if self.is_dimmed() && !(rd.f1 & 0x0100_0000 != 0 || hd.self_flags & 0x1_0000 != 0) {
+        if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
         // The hitter's state against the receiver's type.
@@ -512,7 +517,7 @@ impl Battle {
     fn accumulate_raw(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
         let rd = *self.collision.get(r);
-        if self.is_dimmed() && !(rd.f1 & 0x0100_0000 != 0 || hd.self_flags & 0x1_0000 != 0) {
+        if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & 0x1_0000 != 0) {
             return;
         }
         if (hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0) {

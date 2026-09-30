@@ -1,0 +1,6 @@
+# A splash of SpoutMan's water ball (attack object #0x23, `loc_80C86D8`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x23
+script = "spout_splash.luau"
