@@ -150,7 +150,7 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
 /// `sub_80127C0(charged)`: fill the attack variables for the next chip and
 /// name its action. `charged` is the A-charge's argument (0 for a plain
 /// use).
-fn prepare(b: &mut Battle, r: ObjectRef, charged: u8) -> u8 {
+pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charged: u8) -> u8 {
     let e = hand_entry(b, r);
     let content = b.content.clone();
     let cd = content.chip(e.chip);

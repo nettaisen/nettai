@@ -11,7 +11,8 @@
 //! data.regions[n]           a hit region's panel offsets, { dx, dy } each
 //! data.objects.attachments[id], .rocks[id], .absorbed_sprites[kind],
 //!             .body_overlays[id], .sun_beam_looks[look], .boomerangs[id],
-//!             .projectiles[kind], .flying_shots[kind]
+//!             .projectiles[kind], .flying_shots[kind], .sword_waves[kind],
+//!             .hit_zones[kind]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
 //! data.rules.sine[angle]    the sine table (math_sinTable; the cosine is 64 on)
@@ -57,6 +58,8 @@ pub fn script_data(c: &Content) -> Data {
         ("boomerangs", by_id(o.boomerangs.iter().map(|b| (b.id as i64, b)), |b| value(*b))),
         ("projectiles", by_id(o.projectiles.iter().map(|p| (p.id as i64, p)), |p| value(*p))),
         ("flying_shots", by_id(o.flying_shots.iter().map(|p| (p.id as i64, p)), |p| value(*p))),
+        ("sword_waves", by_id(o.sword_waves.iter().map(|w| (w.id as i64, w)), |w| value(*w))),
+        ("hit_zones", by_id(o.hit_zones.iter().map(|z| (z.id as i64, z)), |z| value(*z))),
         (
             "kinds",
             Data::Map(

@@ -321,6 +321,10 @@ impl UserData for Object {
             with(|api, _| Ok(api.update_collision_panels(this.0)))
         });
         methods.add_method("snap_to_future_panel", |_, this, ()| with(|api, _| Ok(api.snap_to_future_panel(this.0))));
+        methods.add_method("set_collision_panel", |_, this, ()| with(|api, _| Ok(api.set_collision_panel(this.0))));
+        methods.add_method("highlight_collision_panels", |_, this, ()| {
+            with(|api, _| Ok(api.highlight_collision_panels(this.0)))
+        });
         methods.add_method("reserve_panel", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.reserve_panel(this.0, p)))
@@ -435,6 +439,8 @@ impl UserData for Object {
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
         methods.add_method("buster_damage", |_, this, ()| with(|api, _| Ok(api.buster_damage(this.0))));
+        methods.add_method("prepare_chip", |_, this, ()| with(|api, _| Ok(api.prepare_chip(this.0))));
+        methods.add_method("refresh_form_overlay", |_, this, ()| with(|api, _| Ok(api.refresh_form_overlay(this.0))));
         methods.add_method("absorbed", |lua, this, ()| {
             let list = with(|api, _| api.absorbed(this.0).map_err(api_error))?;
             let t = lua.create_table_with_capacity(list.len(), 0)?;
@@ -863,6 +869,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let t = lua.create_table()?;
         t.raw_set("actor_type", ACTOR_TYPES[r.actor_type as usize])?;
         t.raw_set("ai_index", r.ai_index)?;
+        t.raw_set("version", r.version)?;
         Ok(LuaValue::Table(t))
     });
     lib_fn!(

@@ -372,6 +372,9 @@ declare class Object
     -- Onto the destination panel of a move (panel, reservation,
     -- coordinates, collision).
     function snap_to_future_panel(self): ()
+    -- `object_setCollisionPanelsToCurrent`: the collision registration's
+    -- panel becomes the object's (its move direction kept).
+    function set_collision_panel(self): ()
     function reserve_panel(self, x: number, y: number): boolean
     function unreserve_panel(self, x: number, y: number): boolean
     function release_reservations(self): ()
@@ -435,6 +438,11 @@ declare class Object
     function can_move(self): boolean
     -- `sub_801265A`: the buster's damage.
     function buster_damage(self): number
+    -- `sub_80127C0(0)`: fill the attack from the chip at the hand's cursor
+    -- (its damage, bonuses and modifiers); returns the chip's action.
+    function prepare_chip(self): number
+    -- `sub_8011450`: restart the form overlay's animation with the navi's.
+    function refresh_form_overlay(self): ()
     -- The attack state as content action `action`'s (zeroed unless that
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
@@ -506,7 +514,7 @@ export type LinkedChip = {
 
 export type Panel = { kind: PanelType, alliance: number, home: number }
 export type Column = { home: number, timer: number }
-export type NaviRecord = { actor_type: ActorType, ai_index: number }
+export type NaviRecord = { actor_type: ActorType, ai_index: number, version: number }
 
 -- What a dimming chip's controller is spawned with: the user's attack.
 export type DimmingChipSpec = {
@@ -796,6 +804,42 @@ export type RockKind = {
 
 export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } }
 
+-- A kind of sword wave (attack object #0x96), by its first parameter.
+export type SwordWave = {
+    id: number,
+    -- Collision types (what it is, what it hits) and hit modifier.
+    self_type: number,
+    target_type: number,
+    hit_mod: number,
+    region: number,
+    sprite: SpriteId,
+    anim: number,
+    -- It animates, restarting its animation after the last frame.
+    animates: boolean,
+    -- It highlights the panels its region covers.
+    highlight: boolean,
+    -- Panel centers it passes before it ends.
+    reach: number,
+    ground_shadow: boolean,
+    palette: number,
+    status: number,
+    -- 16.16 per tick, forward.
+    speed: number,
+}
+
+-- A kind of hit zone (attack object #0x8B), by its first parameter.
+export type HitZone = {
+    id: number,
+    self_type: number,
+    target_type: number,
+    hit_mod: number,
+    hit_effect: number,
+    region: number,
+    status: number,
+    bug: number,
+    bug_arg: number,
+}
+
 -- A kind of boomerang (objects/boomerang): 16.16 pixels a tick along a row
 -- and along the column, and whether it turns panels it crosses to grass.
 export type BoomerangKind = { id: number, speed: number, turn_speed: number, grass: boolean }
@@ -893,6 +937,8 @@ export type PackData = {
         boomerangs: { [number]: BoomerangKind },
         projectiles: { [number]: ProjectileKind },
         flying_shots: { [number]: FlyingShotKind },
+        sword_waves: { [number]: SwordWave },
+        hit_zones: { [number]: HitZone },
         kinds: { [string]: ObjectKindData },
     },
     rules: {

@@ -34,12 +34,14 @@ fn battles_run_the_content_scripts() {
             "boomerang",
             "charge-wave",
             "dash-hit",
+            "drill-hit",
             "dust-ball",
             "element-pillar",
             "erase-beam",
             "erase-drop",
             "erase-man",
             "erase-mark",
+            "erase-ray",
             "falling-rock",
             "fire-hit",
             "flame-hook",
@@ -47,7 +49,9 @@ fn battles_run_the_content_scripts() {
             "flying-shot",
             "golem",
             "grab-shot",
+            "gust",
             "hit-flash",
+            "hit-zone",
             "junk-shot",
             "justice-one",
             "lance",
@@ -59,6 +63,7 @@ fn battles_run_the_content_scripts() {
             "sand-spray",
             "sand-worm",
             "sun-beam",
+            "sword-wave",
             "whirlwind",
         ]
     );
@@ -144,12 +149,14 @@ fn registrations_follow_the_content_data() {
     // buster's alias names none).
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
     let expected = [
-        0x11, 0x16, 0x1A, 0x1D, 0x1E, 0x33, 0x35, 0x37, 0x3A, 0x3C, 0x3D, 0x46, 0x4C, 0x4E, 0x4F, 0x50, 0x52, 0x56, 0x57,
-        0x58,
+        0x11, 0x16, 0x1A, 0x1D, 0x1E, 0x33, 0x35, 0x37, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x4A, 0x4C, 0x4D, 0x4E, 0x4F,
+        0x50, 0x52, 0x56, 0x57, 0x58,
     ];
     assert_eq!(actions, expected, "{:?}", r.actions);
-    // The instant chip registers its subtype's effect.
+    // The instant chip registers its subtype's effect, and a weapon the
+    // subtype it names.
     assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(5)), "{:?}", r.hooks);
+    assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(0x14)), "{:?}", r.hooks);
     // Two chips implementing one action with different scripts is an error.
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
     let e = c.registrations().unwrap_err();

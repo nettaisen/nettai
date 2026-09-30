@@ -369,7 +369,7 @@ impl CoreApi for Battle {
             .chain(self.content.forms.iter().filter_map(|f| f.name_record.as_ref()))
             .find(|n| n.id == name_id)?;
         let r = name.record();
-        Some(NaviRecordInfo { actor_type: actor_type_index(r.actor_type) as u8, ai_index: r.ai_index })
+        Some(NaviRecordInfo { actor_type: actor_type_index(r.actor_type) as u8, ai_index: r.ai_index, version: name.version })
     }
 
     // ---- Panels -----------------------------------------------------------
@@ -931,6 +931,14 @@ impl CoreApi for Battle {
         kinds::player::idle::buster_damage(self, o)
     }
 
+    fn prepare_chip(&mut self, o: ObjectRef) -> u8 {
+        kinds::player::prepare_chip(self, o)
+    }
+
+    fn refresh_form_overlay(&mut self, o: ObjectRef) {
+        kinds::player::refresh_form_overlay(self, o);
+    }
+
     fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u8, u8)>> {
         Ok(self.actor_of(o)?.absorbed.iter().map(|a| (a.kind, a.anim)).collect())
     }
@@ -1079,16 +1087,23 @@ impl CoreApi for Battle {
         kinds::spark::spawn_collision_effect(self, o);
     }
 
+    fn set_collision_panel(&mut self, o: ObjectRef) {
+        let obj = self.objects.get(o);
+        let (Some(id), panel) = (obj.collision, obj.panel) else { return };
+        self.collision.get_mut(id).panel = panel;
+    }
+
     fn highlight_collision_panels(&mut self, o: ObjectRef) {
         let obj = self.objects.get(o);
-        let facing = common::facing(obj.alliance, obj.flip);
-        let c = self.collision.get(obj.collision.expect("highlighting an object without collision data"));
-        let (anchor, region) = (c.panel, c.region);
-        let offsets = self.content.region(region).to_vec();
-        for off in offsets {
-            let x = (anchor.x as i32 + off.dx as i32 * facing) as u8;
-            let y = (anchor.y as i32 + off.dy as i32) as u8;
-            common::highlight_panel(self, x, y);
+        let Some(id) = obj.collision else { return };
+        let c = self.collision.get(id);
+        let dir: i8 = if obj.alliance ^ obj.flip == 0 { 1 } else { -1 };
+        let (x0, y0, region) = (c.panel.x as i8, c.panel.y as i8, c.region);
+        let Some(offsets) = self.content.regions.get(region as usize) else {
+            panic!("highlighting region {region:#x} reads past PanelOffsetListsPointerTable");
+        };
+        for off in offsets.clone() {
+            common::highlight_panel(self, (x0 + off.dx * dir) as u8, (y0 + off.dy) as u8);
         }
     }
 

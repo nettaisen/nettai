@@ -556,6 +556,19 @@ pub struct HitboxSpec {
     pub bug_arg: u8,
 }
 
+/// An afterimage (effect object #0x28), as `sub_80E33FA` spawns it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AfterimageSpec {
+    /// Param1 (0xFF: a copy of the owner's sprite, else the sprite's
+    /// category), Param2 (the sprite's index), Param3 (the animation),
+    /// Param4 (the flip).
+    pub params: [u8; 4],
+    pub color_shader: u16,
+    /// Ticks it lasts.
+    pub lifetime: u16,
+    pub shadow: Shadow,
+}
+
 /// A panel as content sees it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PanelInfo {
@@ -594,6 +607,8 @@ pub struct NaviRecordInfo {
     /// Index into [`ACTOR_TYPES`].
     pub actor_type: u8,
     pub ai_index: u8,
+    /// The record's version (AIData+0x16 of an actor with it).
+    pub version: u8,
 }
 
 /// Why an API call failed. Content errors are bugs in the content: the
@@ -900,6 +915,12 @@ pub trait CoreApi {
     /// `sub_801265A`: the buster's damage (the attack level, with the
     /// navi's and form's bonus, at most 10; 1 when worn out).
     fn buster_damage(&self, o: ObjectRef) -> u16;
+    /// `sub_80127C0(0)`: fill the attack variables from the chip at the
+    /// hand's cursor (its damage, bonuses and modifiers) and name the
+    /// chip's action.
+    fn prepare_chip(&mut self, o: ObjectRef) -> u8;
+    /// `sub_8011450`: restart the form overlay's animation with the navi's.
+    fn refresh_form_overlay(&mut self, o: ObjectRef);
     /// Obstacles the navi absorbed, oldest first: (kind, animation).
     fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u8, u8)>>;
     /// Add one (false when the navi has eight).
@@ -935,8 +956,11 @@ pub trait CoreApi {
     /// Unregister, resolving hits against whatever is registered there.
     fn remove_collision(&mut self, o: ObjectRef);
     fn free_collision(&mut self, o: ObjectRef);
-    /// `object_highlightCurrentCollisionPanels`: highlight the panels of
-    /// the registration's region (drawn only).
+    /// `object_setCollisionPanelsToCurrent`: the registration's panel
+    /// becomes the object's (its move direction kept).
+    fn set_collision_panel(&mut self, o: ObjectRef);
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels the
+    /// registration's region covers.
     fn highlight_collision_panels(&mut self, o: ObjectRef);
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
