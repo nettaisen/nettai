@@ -435,7 +435,7 @@ declare class Object
     function pop_absorbed(self): (number?, number?)
 end
 
--- A side's navi stats (read-only).
+-- A side's navi stats (read-only but for `attack`).
 declare class Navi
     -- Fighting in the sun.
     sun: boolean
@@ -444,6 +444,7 @@ declare class Navi
     navi_variant: number
     -- The base form's element.
     element: number
+    -- The buster's attack level (writable: `SetBattleNaviStatsByte`).
     attack: number
     rapid: number
     charge: number
@@ -590,6 +591,9 @@ declare battle: {
     fill_custom_gauge: () -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
+    -- Add to a side's plus chip bonus `index` (0 Atk+, 1 Navi+), which its
+    -- next chips get (battle flag 0x40 mode's special source).
+    add_plus_bonus: (side: number, index: number, n: number) -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
     navi_record: (name_id: number) -> NaviRecord?,
     -- Spawn into the pool's lowest free slot; it runs later this tick,
@@ -609,6 +613,10 @@ declare battle: {
     -- `sub_80E11E0`: a white screen flash (effect object #0x0A) for `ticks`
     -- ticks; it goes on while dimmed or paused if it says so.
     palette_flash: (ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
+    -- `sub_80EFD74`: the obstacle framework pulls every obstacle on the
+    -- field (but NameID 0xDA and those already leaving) toward
+    -- `absorber`'s side; each flies there as an absorbed obstacle.
+    absorb_obstacles: (absorber: Object) -> (),
 }
 
 declare field: {
@@ -620,6 +628,9 @@ declare field: {
     -- The flags word has every `require` bit and no `forbid` bit.
     check: (x: number, y: number, require: number, forbid: number) -> boolean,
     panel: (x: number, y: number) -> Panel?,
+    -- A side's registered field objects (the obstacles it owns), in the
+    -- registry's slot order.
+    objects: (side: number) -> { Object },
     column: (x: number) -> Column,
     set_column_timer: (x: number, ticks: number) -> (),
     set_alliance: (x: number, y: number, side: number) -> (),
