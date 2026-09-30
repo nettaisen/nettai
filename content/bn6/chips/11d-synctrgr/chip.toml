@@ -1,0 +1,4 @@
+# SyncTrgr, an instant chip (action 0x1C, subtype 13): its effect
+# (`sub_80EC44C`) is in chip.luau.
+
+script = "chip.luau"

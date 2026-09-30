@@ -163,7 +163,8 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
         return 0;
     }
     match b.objects.get(r).action {
-        super::beast_claw::ACTION => 0x0C,
+        // The Beast forms' claw (weapon routine 0x1E's action).
+        0x52 => 0x0C,
         // sub_80EAF26
         0x41 => panic!("the lock-on of action 0x41 (sub_80EAF26) is not implemented yet"),
         _ => b.content.chip(ai(b, r).attack.chip_id).lockon_mode,
