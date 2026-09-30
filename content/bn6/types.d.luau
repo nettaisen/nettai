@@ -60,3 +60,69 @@ export type VariSwordSpec = {
     -- The chip that doesn't turn into the charged sword (action 0x41).
     no_charged: number,
 }
+
+-- An attachment's look (objects/attachment): its sprite (a sprite asset,
+-- or a "CC-II" string from the pack data's rows until their users
+-- convert), its palette, the pixels it sits raised, the owner's attach
+-- point it sits at (none: on the owner's position); `by_owner`: at a fixed
+-- offset by the owner's NameID instead (row 0xF).
+export type AttachmentLook = {
+    sprite: SpriteAsset | string,
+    palette: number,
+    lift: number?,
+    attach_point: number?,
+    by_owner: boolean?,
+}
+
+-- The bombs and seeds (lib/bombs, docs/design/content-model-v2.md §5.1).
+-- A thrower throws its thing from `pos` with the attack's damage word;
+-- `variant` is what it throws (kept as data, so the canonical tree shows
+-- what each chip throws).
+export type Thrower = {
+    throw: (user: Object, pos: Vec3, damage: number) -> Object?,
+    variant: any?,
+}
+
+-- A throw (lib/bombs/throw): what the navi holds while winding up (its
+-- look, animation and palette offset) and what throws it.
+export type ThrowSpec = {
+    held: AttachmentLook,
+    held_anim: number?,
+    held_palette: number?,
+    thrower: Thrower,
+}
+
+-- A thrown bomb (lib/bombs/bomb): its collision, hit modifier, palette and
+-- animation; the region it blasts where it lands (none: no blast); what it
+-- leaves the tick after.
+export type BombVariant = {
+    collision: { is: CollisionType, hits: CollisionType },
+    hit_mod: number,
+    palette: number,
+    anim: number,
+    blast: Region?,
+    after: ((me: Object) -> ())?,
+}
+
+-- A thrown seed (lib/bombs/seed): its element and palette, the panels it
+-- grows, the effect on each and its sound.
+export type SeedVariant = {
+    element: number,
+    palette: number,
+    panel: PanelType,
+    effect: Effect,
+    sound: Sound,
+}
+
+-- A FlashBomb (chips/flshbom/bomb): ticks set down, HP, the flash's status
+-- and a second hit's as it goes (0 none), its palette; `strong`: the flash
+-- hits with damage 20 and counter 0; `own_side`: it flashes its own side.
+export type FlashBombVariant = {
+    ticks: number,
+    hp: number,
+    status: number,
+    final_status: number,
+    palette: number,
+    strong: boolean?,
+    own_side: boolean?,
+}

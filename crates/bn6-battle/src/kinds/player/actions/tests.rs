@@ -68,8 +68,8 @@ fn tick(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, held: u16) {
     b.run_objects();
 }
 
-fn following(b: &Battle, r: ObjectRef) -> Vec<(Pool, u8)> {
-    b.objects.in_order().skip_while(|&o| o != r).skip(1).map(|o| (o.pool, b.slot_index(o))).collect()
+fn following(b: &Battle, r: ObjectRef) -> Vec<&str> {
+    b.objects.in_order().skip_while(|&o| o != r).skip(1).map(|o| b.kind_key(o)).collect()
 }
 
 fn f1_of(b: &Battle, r: ObjectRef) -> u32 {
@@ -132,8 +132,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     // Tick 1: the gun comes out, at its owner's attach point.
     run_to(&mut b, p, &mut t, 1, keys::A);
     assert_eq!(b.objects.get(p0).anim, 0x0A);
-    let attachment = b.content.object_kind("attachment").unwrap();
-    assert_eq!(following(&b, p0)[0], (attachment.pool, attachment.index));
+    assert_eq!(following(&b, p0)[0], "attachment");
     let gun = ai_mut(&mut b, p0).overlay.unwrap();
     let (at, g) = (b.objects.get(p0).pos, b.objects.get(gun).pos);
     let point = testing::GUN_POINT;
@@ -142,8 +141,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     // Tick 7: the beam, two panels ahead.
     run_to(&mut b, p, &mut t, 7, 0);
     let beam = b.objects.get(p0).related[0].unwrap();
-    let sun_beam = b.content.object_kind("sun-beam").unwrap();
-    assert_eq!((beam.pool, b.slot_index(beam)), (sun_beam.pool, sun_beam.index));
+    assert_eq!(b.kind_key(beam), "sun-beam");
     assert_eq!(b.objects.get(beam).pos.x, 60 << 16);
     assert_eq!(b.objects.get(gun).anim, 1);
 
@@ -192,9 +190,9 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     assert_eq!(b.objects.get(p0).anim, 0x0E);
     assert_ne!(f1_of(&b, p0) & f1::USING_ACTION, 0);
     let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
-    let attachment = b.content.object_kind("attachment").unwrap();
-    let o = b.objects.get(arm);
-    assert_eq!((arm.pool, b.slot_index(arm), o.params[0]), (attachment.pool, attachment.index, 6));
+    // The arm is the pack data's attachment row 6.
+    assert_eq!(b.kind_key(arm), "attachment");
+    assert_eq!(b.objects.sprite(arm).id, Some(b.content.attachment(6).sprite));
 
     // Five ticks up, then the recovery by the open panels from its own
     // (its body is off the field while it updates) to the enemy's:
@@ -224,8 +222,7 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
 
     // Tick 2: the ball, in front of the navi.
     run_to(&mut b, p, &mut t, 2, 0);
-    let dust_ball = b.content.object_kind("dust-ball").unwrap();
-    let ball = b.objects.in_order().find(|&o| (o.pool, b.slot_index(o)) == (dust_ball.pool, dust_ball.index));
+    let ball = b.objects.in_order().find(|&o| b.kind_key(o) == "dust-ball");
     let ball = ball.expect("the ball");
     assert_eq!(b.objects.get(ball).panel, PanelPos { x: 3, y: 2 });
 
@@ -242,8 +239,7 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
 
 /// The kind named `name` somewhere on the field.
 fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
-    let k = b.content.object_kind(name).unwrap();
-    b.objects.in_order().find(|&o| (o.pool, b.slot_index(o)) == (k.pool, k.index))
+    b.objects.in_order().find(|&o| b.kind_key(o) == name)
 }
 
 /// Give side `side` the chip `chip` as the next in its hand, with its
@@ -267,7 +263,7 @@ fn a_recovery_chip_heals_its_hp_in_one_tick() {
     tick(&mut b, p0, p1, 0);
     let o = b.objects.get(p0);
     assert_eq!((o.hp, o.action), (540, 8));
-    assert_eq!(following(&b, p0)[0], (Pool::Effect, 0));
+    assert_eq!(following(&b, p0)[0], "engine/effect");
     assert_eq!(b.side_stats[0][5], 1);
     // Never past the maximum.
     b.objects.get_mut(p0).hp = 990;
@@ -347,9 +343,15 @@ fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: crate::content::
     tick(b, p0, p1, keys::A);
 }
 
+/// Whether `r` is an attachment showing the pack data's attachment row
+/// `row` (its sprite).
+fn shows_row(b: &Battle, r: ObjectRef, row: u8) -> bool {
+    b.kind_key(r) == "attachment" && b.objects.sprite(r).id == Some(b.content.attachment(row).sprite)
+}
+
 /// The effect objects (effect #0) and afterimages (effect #0x28) there are.
-fn effects(b: &Battle, index: u8) -> Vec<ObjectRef> {
-    b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.slot_index(o) == index).collect()
+fn effects(b: &Battle, key: &str) -> Vec<ObjectRef> {
+    b.objects.in_order().filter(|&o| b.kind_key(o) == key).collect()
 }
 
 #[test]
@@ -367,7 +369,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     assert_eq!((o.panel, o.future_panel), (PanelPos { x: 4, y: 2 }, PanelPos { x: 2, y: 2 }));
     assert_eq!(b.field.panel(2, 2).unwrap().reserver, Some(p0));
     assert_ne!(f1_of(&b, p0) & f1::MOVING, 0);
-    let first = effects(&b, 0x28);
+    let first = effects(&b, "engine/afterimage");
     assert_eq!(first.len(), 1);
     assert_eq!(b.objects.get(first[0]).pos.x, crate::kinds::player::panel_coordinates(2, 2).0);
 
@@ -375,16 +377,16 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     run_to(&mut b, p, &mut t, 3, 0);
     assert_eq!(b.objects.get(p0).anim, 5);
     let blade = b.objects.get(p0).related[0].expect("the blade");
-    assert_eq!(b.objects.get(blade).params[0], 7);
+    assert!(shows_row(&b, blade, 7), "the blade");
     // Tick 8: two more afterimages: the navi's and the blade's.
     run_to(&mut b, p, &mut t, 8, 0);
-    assert_eq!(effects(&b, 0x28).len(), 3);
+    assert_eq!(effects(&b, "engine/afterimage").len(), 3);
     // Tick 12: the slash on the column ahead hits the target at (5,2) on
     // its next update, and its effect shows.
     run_to(&mut b, p, &mut t, 11, 0);
-    assert!(effects(&b, 0).is_empty());
+    assert!(effects(&b, "engine/effect").is_empty());
     run_to(&mut b, p, &mut t, 12, 0);
-    assert_eq!(b.objects.get(effects(&b, 0)[0]).params[0], 0x16);
+    assert_eq!(b.objects.get(effects(&b, "engine/effect")[0]).params[0], 0x16);
     run_to(&mut b, p, &mut t, 13, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
 
@@ -415,7 +417,7 @@ fn a_sword_without_a_target_ahead_swings_at_nothing() {
     run_to(&mut b, p, &mut t, 3, 0);
     let o = b.objects.get(p0);
     assert_eq!((o.panel, o.anim), (PanelPos { x: 2, y: 2 }, 5));
-    assert!(effects(&b, 0x28).is_empty());
+    assert!(effects(&b, "engine/afterimage").is_empty());
     run_to(&mut b, p, &mut t, 13, 0);
     assert_eq!(b.objects.get(p1).hp, 1000);
     // No way back to walk: idle on tick 30.
@@ -427,8 +429,7 @@ fn a_sword_without_a_target_ahead_swings_at_nothing() {
 
 /// The objects of content kind `name` on the field, in update order.
 fn of_kind(b: &Battle, name: &str) -> Vec<ObjectRef> {
-    let k = b.content.object_kind(name).unwrap();
-    b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (k.pool, k.index)).collect()
+    b.objects.in_order().filter(|&o| b.kind_key(o) == name).collect()
 }
 
 #[test]
@@ -453,7 +454,7 @@ fn a_buster_shot_flies_a_panel_every_two_ticks_and_hits() {
     let o = b.objects.get(shot);
     assert_eq!((o.panel, o.pos.z, o.params[0]), (PanelPos { x: 3, y: 2 }, 0x18 << 16, 0));
     let flash = b.objects.get(p0).related[0].expect("the muzzle flash");
-    assert_eq!(b.objects.get(flash).params[0], 5);
+    assert!(shows_row(&b, flash, 5), "the muzzle flash");
 
     // A panel every two ticks, from the tick after it appears.
     run_to(&mut b, p, &mut t, 3, 0);
@@ -541,7 +542,7 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     let shot = of_kind(&b, "projectile")[0];
     assert_eq!(b.objects.get(shot).params[0], 6);
     let flash = b.objects.get(p0).related[0].expect("the muzzle flash");
-    assert_eq!(b.objects.get(flash).params[0], 5);
+    assert!(shows_row(&b, flash, 5), "the muzzle flash");
     // (Attack + 1) * 10 damage, four ticks later.
     run_to(&mut b, p, &mut t, 10, 0);
     assert_eq!(b.objects.get(p1).hp, 990);
@@ -563,7 +564,7 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     assert_eq!(b.objects.get(p0).action, 0x49);
     // The slashes land on tick 10, on the target's own column.
     run_to(&mut b, p, &mut t, 10, 0);
-    let slash = effects(&b, 0)[0];
+    let slash = effects(&b, "engine/effect")[0];
     let (x, y) = crate::kinds::player::panel_coordinates(5, 2);
     let o = b.objects.get(slash);
     assert_eq!((o.params, o.pos.x, o.pos.y), ([0x16, 0, 2 + 7, 0], x, y));
@@ -606,7 +607,7 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     let o = b.objects.get(thrown);
     assert_eq!((o.params[0], o.anim, o.pos.z, o.pos.y), (6, 2, 0xC << 16, 28 << 16));
     let arm = b.objects.get(p0).related[0].expect("the second arm");
-    assert_eq!(b.objects.get(arm).params[0], 6);
+    assert!(shows_row(&b, arm, 6), "the arm");
     // No shot before: no recovery; the navi idles once the arm is down.
     run_to(&mut b, p, &mut t, 6, 0);
     assert_eq!(b.objects.get(p0).action, 8);
@@ -685,7 +686,7 @@ fn a_bursting_projectile_bursts_on_the_enemy_and_a_missed_one_off_the_field() {
     let mut t = 0;
     run_to(&mut b, p, &mut t, 4, 0);
     assert!(b.objects.get(p1).hp < 1000);
-    let effects = b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.slot_index(o) == 0).count();
+    let effects = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/effect").count();
     assert!(effects > 0, "the burst's effects");
     // Missing (a row away), it bursts over the last two columns.
     let (mut b, p0, p1) = fight();
@@ -698,7 +699,7 @@ fn a_bursting_projectile_bursts_on_the_enemy_and_a_missed_one_off_the_field() {
     assert_eq!(b.objects.get(shot).panel, PanelPos { x: 6, y: 1 });
     run_to(&mut b, p, &mut t, 6, 0);
     assert_eq!(b.objects.get(shot).state, state::DESTROY);
-    let effects = b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.slot_index(o) == 0).count();
+    let effects = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/effect").count();
     assert_eq!(effects, 4, "the burst off the field");
 }
 
@@ -805,7 +806,7 @@ fn chargecross_beast_wave_rolls_through_the_enemy() {
     // 70 damage and 30 per buster Attack point; afterimages behind it.
     run_to(&mut b, p, &mut t, 45, 0);
     assert_eq!(b.objects.get(p1).hp, 900);
-    let afterimages = b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (Pool::Effect, 0x28)).count();
+    let afterimages = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/afterimage").count();
     assert_eq!(afterimages, 2);
     run_to(&mut b, p, &mut t, 82, 0);
     assert_eq!(b.objects.get(p0).action, 8);
@@ -907,9 +908,8 @@ fn start_weapon_as(b: &mut Battle, p0: ObjectRef, routine: u8, kind: u8) -> u8 {
 
 /// The objects of content kind `name`, in update order.
 fn kind_objects(b: &Battle, name: &str) -> Vec<ObjectRef> {
-    let k = b.content.object_kind(name).unwrap_or_else(|| panic!("no kind {name}"));
-    let (pool, index) = (k.pool, k.index);
-    b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (pool, index)).collect()
+    assert!(b.content.defs.kind_by_key(name).is_some(), "no kind {name}");
+    b.objects.in_order().filter(|&o| b.kind_key(o) == name).collect()
 }
 
 /// Put side 0's navi on (x, 2).
@@ -1224,7 +1224,7 @@ fn the_beast_busters_raise_the_arm_for_their_projectile() {
         run_to(&mut b, p, &mut t, 1, 0);
         assert_eq!(b.objects.get(p0).anim, 0x0E);
         let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
-        assert_eq!(b.objects.get(arm).params[0], 6);
+        assert!(shows_row(&b, arm, 6), "the arm");
         // (The shot is the buster's projectile, which isn't content yet.)
     }
 }
@@ -1306,8 +1306,7 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     // Tick 10: the pull. The rocks go on their next update, each leaving
     // an absorbed obstacle that flies to the navi.
     run_to(&mut b, p, &mut t, 11, 0);
-    let absorbed = b.content.object_kind("absorbed-obstacle").unwrap();
-    let flying = b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (absorbed.pool, absorbed.index)).count();
+    let flying = b.objects.in_order().filter(|&o| b.kind_key(o) == "absorbed-obstacle").count();
     assert_eq!(flying, 2);
 
     // They arrive 9 ticks later, while the navi still absorbs, and join
@@ -1339,7 +1338,7 @@ fn the_beast_claw_slashes_the_panel_ahead_twice() {
     // and a hit on the panel ahead, 50 damage and 10 per buster damage
     // point (1).
     let slashes = |b: &Battle| {
-        let looks = b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (Pool::Effect, 0));
+        let looks = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/effect");
         looks.map(|o| b.objects.get(o).params[0]).filter(|&l| l == 0x3A || l == 0x39).collect::<Vec<_>>()
     };
     run_to(&mut b, p, &mut t, 2, 0);
@@ -1412,8 +1411,7 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     use_instant_chip(&mut b, p0, p1, testing::PLUS);
     // 4 pixels toward the enemy from the navi's panel, 48 up, and rising
     // (its first rise at once).
-    let sparkle = b.content.object_kind("rising-bubble").unwrap().clone();
-    let s = b.objects.in_order().find(|&o| (o.pool, b.slot_index(o)) == (sparkle.pool, sparkle.index));
+    let s = b.objects.in_order().find(|&o| b.kind_key(o) == "rising-bubble");
     let s = s.expect("the sparkle");
     let (x, y) = crate::kinds::player::panel_coordinates(2, 2);
     let o = b.objects.get(s);
@@ -1422,7 +1420,7 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     for _ in 0..13 {
         tick(&mut b, p0, p1, 0);
     }
-    assert!(!b.objects.is_allocated(s) || b.slot_index(s) != sparkle.index);
+    assert!(!b.objects.is_allocated(s) || b.kind_key(s) != "rising-bubble");
     // From a special source the damage goes into the side's Atk+ bonus
     // instead.
     let (mut b, p0, p1) = fight();
@@ -1456,8 +1454,8 @@ fn buster_up_and_sync_trigger_change_the_navi() {
 
 /// The objects of content kind `name` alive in `b`.
 fn count_kind(b: &Battle, name: &str) -> usize {
-    let k = b.content.object_kind(name).unwrap_or_else(|| panic!("no kind {name}"));
-    b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (k.pool, k.index)).count()
+    assert!(b.content.defs.kind_by_key(name).is_some(), "no kind {name}");
+    b.objects.in_order().filter(|&o| b.kind_key(o) == name).count()
 }
 
 #[test]
@@ -1507,9 +1505,9 @@ fn lances_thrust_from_the_far_column() {
     use_instant_chip(&mut b, p0, p1, testing::LANCE);
     // Three lances on column 6, one per row, 64 pixels out and one 8-pixel
     // step back already (the init runs the first tick).
-    let lance = b.content.object_kind("lance").unwrap().clone();
+
     let lances: Vec<ObjectRef> =
-        b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (lance.pool, lance.index)).collect();
+        b.objects.in_order().filter(|&o| b.kind_key(o) == "lance").collect();
     let mut rows: Vec<u8> = lances.iter().map(|&l| b.objects.get(l).panel.y).collect();
     rows.sort();
     assert_eq!(rows, [1, 2, 3]);
@@ -1525,8 +1523,7 @@ fn lances_thrust_from_the_far_column() {
 #[test]
 fn the_tomahawk_throw_sends_two_tomahawks() {
     let tomahawks = |b: &Battle| {
-        let k = b.content.object_kind("boomerang").unwrap();
-        let t = b.objects.in_order().filter(|&o| (o.pool, b.slot_index(o)) == (k.pool, k.index));
+        let t = b.objects.in_order().filter(|&o| b.kind_key(o) == "boomerang");
         t.map(|o| (b.objects.get(o).params[0], b.objects.get(o).panel.y)).collect::<Vec<_>>()
     };
     let start = || {
