@@ -51,7 +51,8 @@ framework's gap are listed with it. Branches no scenario reaches are marked **[u
 | 0x54 | `sub_80EF7E2` | 0x53 NeoVari | (hands off to the chosen sword) | chips/053-neovari, lib/vari_sword |
 
 Not yet content: 0x55 (SonicBom, Curse, Punisher, SprSonic, `sub_80EF970`) and 0x5B (Z Saver, `sub_80EFEE0`), which
-share the sonic boom (attack #0x58, `sub_80CF7F0`); and 0x0A, the link navis' chips (below).
+share the sonic boom (attack #0x58, `sub_80CF7F0`), specified in shot-chips.md with the actions that fire a shot;
+and 0x0A, the link navis' chips (below).
 
 Shared helpers: lib/panels.luau (`GetRandomRelativePanelFiltered`, `sub_8109708`), lib/object_setup.luau
 (`sub_8011504`, the collision-panel highlight, the dust puff), lib/arm.luau (`sub_80EBAE8`, the arm a chip
