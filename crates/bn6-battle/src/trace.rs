@@ -30,6 +30,21 @@ pub struct Setup {
     /// each), hex. Traces recorded without them read as the best times.
     #[serde(default)]
     pub sp_times: Option<[String; 2]>,
+    /// Both consoles' battle folders (`eBattleFolder`, 0x50 bytes each,
+    /// by side), as shuffled at the round's init. Traces recorded without
+    /// them have only the local console's (`folder`).
+    #[serde(default)]
+    pub folders: Option<[String; 2]>,
+    /// Both consoles' joypad repeat beats on the round's first frame
+    /// (`eJoypad`+0x13). Traces recorded without them read as the frame
+    /// number modulo 5, which is what the recording tool's consoles show.
+    #[serde(default)]
+    pub joypad_phases: Option<[u8; 2]>,
+    /// Both players' games ("gregar" or "falzar"), by side. Traces
+    /// recorded without them go by the Crosses and Beast Outs the players
+    /// send, else Falzar.
+    #[serde(default)]
+    pub game_versions: Option<[String; 2]>,
 }
 
 /// A battle object as the trace records it.
@@ -130,6 +145,8 @@ pub fn unhex(s: &str) -> Vec<u8> {
 // ---- Replaying a trace through the engine -----------------------------------
 
 use crate::battle::{Battle, CustomResult, TickEvents};
+use crate::custom::{BattleFolder, Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
+use crate::link::Link;
 use crate::hand::ChipHand;
 use crate::input::PlayerTick;
 use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage};
@@ -198,7 +215,67 @@ impl Round {
                 Some([a, b]) => [SpTimes::from_bytes(&unhex(a)), SpTimes::from_bytes(&unhex(b))],
                 None => Default::default(),
             },
+            players: std::array::from_fn(|p| self.player_setup(p as u8)),
+            link_delay: Link::RECORDED_DELAY,
         }
+    }
+
+    /// Whether the trace has this player's folder (else their custom
+    /// screen can't be simulated).
+    pub fn folder_known(&self, side: u8) -> bool {
+        self.setup.folders.is_some() || unhex(&self.setup.battle_state)[0x0D] == side
+    }
+
+    /// A player's folder, game and joypad beat, as far as the trace knows.
+    fn player_setup(&self, side: u8) -> PlayerSetup {
+        let bs = unhex(&self.setup.battle_state);
+        let local = bs[0x0D] == side;
+        let stats = NaviStats::from_bytes(&unhex(&self.setup.navi_stats[side as usize]).try_into().unwrap());
+        // BattleState+0x17 is the local console's Regular-chip flag; the
+        // other console's follows from its navi's folder (battle mode 0).
+        let regular = if local { bs[0x17] != 0 } else { stats.folder_reg[stats.folder as usize & 1] != 0xFF };
+        let folder = match &self.setup.folders {
+            Some(f) => Some(BattleFolder::from_bytes(&unhex(&f[side as usize]), regular)),
+            None if local => Some(BattleFolder::from_bytes(&unhex(&self.setup.folder), regular)),
+            None => None,
+        };
+        let version = match &self.setup.game_versions {
+            Some(v) => match v[side as usize].as_str() {
+                "gregar" => GameVersion::Gregar,
+                "falzar" => GameVersion::Falzar,
+                other => panic!("game version {other:?}"),
+            },
+            None => self.sent_version(side),
+        };
+        PlayerSetup {
+            folder,
+            unlocks: Unlocks::everything(version),
+            joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
+        }
+    }
+
+    /// A player's game, going by the transformations they send: Gregar's
+    /// Crosses are forms 1-5 and its Beast Out 0x0B.
+    fn sent_version(&self, side: u8) -> GameVersion {
+        let gregar = |f: u8| matches!(f, 1..=5 | 0x0B | 0x0D..=0x11 | 0x17);
+        let falzar = |f: u8| matches!(f, 6..=0x0A | 0x0C | 0x12..=0x16 | 0x18);
+        for e in &self.exchanges {
+            let form = unhex(&e.transform[side as usize])[0];
+            if gregar(form) {
+                return GameVersion::Gregar;
+            }
+            if falzar(form) {
+                return GameVersion::Falzar;
+            }
+        }
+        GameVersion::Falzar
+    }
+
+    /// The frame record with this frame number, if the round has it.
+    fn frame(&self, number: u32) -> Option<&Frame> {
+        let first = self.frames.first()?.frame;
+        let f = self.frames.get(number.checked_sub(first)? as usize)?;
+        (f.frame == number).then_some(f).or_else(|| self.frames.iter().find(|f| f.frame == number))
     }
 
     /// Frames of this round the engine simulates (the running and end
@@ -207,41 +284,43 @@ impl Round {
         self.frames.iter().filter(|f| f.frame >= self.setup.frame).take_while(|f| f.state[0] == 4 || f.state[0] == 8)
     }
 
+    /// A player's buttons on a frame. The trace records the input the
+    /// link delivered, which the players pressed `RECORDED_DELAY` frames
+    /// earlier.
+    pub fn joypad(&self, frame: u32, side: usize) -> u16 {
+        self.frame(frame + Link::RECORDED_DELAY as u32).map_or(0, |f| f.input[side][0] & 0x3FF)
+    }
+
     /// Inputs and events for a frame.
     pub fn tick_inputs(&self, i: usize, frames: &[&Frame]) -> ([PlayerTick; 2], TickEvents) {
         let f = frames[i];
-        let bs = unhex(&f.bs);
-        let input = std::array::from_fn(|p| PlayerTick {
-            held: f.input[p][0] & 0x3FF,
-            in_custom: bs.get(0x14 + p).copied().unwrap_or(0) & 4 != 0,
-        });
+        let input = std::array::from_fn(|p| PlayerTick { held: self.joypad(f.frame, p) });
         let mut events = TickEvents::default();
         // The link session closed on the tick the end state moved on.
         if i > 0 && f.state[0] == 8 && f.state[1] == 4 && frames[i - 1].state[1] == 0 {
             events.link_closed = true;
         }
-        // The local player confirmed on the tick before their status bit
-        // cleared.
-        if let Some(next) = frames.get(i + 1) {
-            let status = |fr: &Frame| unhex(&fr.bs).get(0x11).copied().unwrap_or(0);
-            if status(f) & 4 != 0 && status(next) & 4 == 0 && f.state[1] == 8 {
-                events.local_confirm = true;
+        // A player whose folder the trace lacks: their custom screen's
+        // status (as it arrives `RECORDED_DELAY` frames later) and, on
+        // the tick before the mode leaves the custom screen, their result.
+        for p in 0..2 {
+            if self.folder_known(p as u8) {
+                continue;
             }
-            // The exchange installed on the tick before the mode left the
-            // custom screen.
-            if f.state[1] == 8 && next.state[1] == 0x0C {
-                let latest = |p: usize| -> (NaviStats, TransformRequest) {
-                    let e = self.exchanges.iter().filter(|e| e.frame <= f.frame).next_back().expect("exchange record");
-                    let stats = NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap());
-                    (stats, TransformRequest::from_bytes(&unhex(&e.transform[p])))
-                };
-                let result = |p: usize| {
-                    let hand = ChipHand::from_bytes(&unhex(&f.chip_blocks[p]));
-                    let (navi_stats, transform) = latest(p);
-                    CustomResult { hand: Some(hand), navi_stats, transform }
-                };
-                events.exchange = Some(Box::new([result(0), result(1)]));
+            let arriving = self.frame(f.frame + Link::RECORDED_DELAY as u32).unwrap_or(f);
+            let in_custom = unhex(&arriving.bs).get(0x14 + p).copied().unwrap_or(0) & 4 != 0;
+            let mut result = None;
+            if let Some(next) = frames.get(i + 1)
+                && f.state[1] == 8
+                && next.state[1] == 0x0C
+            {
+                let e = self.exchanges.iter().filter(|e| e.frame <= f.frame).next_back().expect("exchange record");
+                let navi_stats = NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap());
+                let transform = TransformRequest::from_bytes(&unhex(&e.transform[p]));
+                let hand = Some(ChipHand::from_bytes(&unhex(&f.chip_blocks[p])));
+                result = Some(Box::new(CustomResult { hand, navi_stats, transform }));
             }
+            events.recorded[p] = Some(Recorded { in_custom, result });
         }
         (input, events)
     }
@@ -269,6 +348,9 @@ pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
         check("battle time", r.battle_time.to_string(), u32::from_le_bytes(bs[0x40..0x44].try_into().unwrap()).to_string());
     }
     check("gauge", format!("{:#x}", b.gauge.value), format!("{:#x}", f.gauge));
+    if bs.len() >= 0xF0 {
+        check("custom screens open (as received)", format!("{:?}", b.round.remote_status), format!("{:?}", [bs[0x14], bs[0x15]]));
+    }
     check("banner", (b.banner.active as u8).to_string(), ((f.hud_tasks >> 15) & 1).to_string());
     // Objects whose X and Y the engine doesn't know are compared without
     // them, on both sides (matched by list position).
@@ -400,4 +482,135 @@ pub fn run_round(round: &Round) -> (usize, Option<(u32, Vec<String>)>) {
         }
     }
     (frames.len(), None)
+}
+
+// ---- The custom screens alone ----------------------------------------------
+
+/// One player's custom screen checked against a trace.
+#[derive(Clone, Debug)]
+pub struct ScreenCheck {
+    pub side: u8,
+    /// The frame the screen opened, and the one the fight resumed on.
+    pub opened: u32,
+    pub resumed: u32,
+    /// The frame the player pressed OK.
+    pub confirmed: Option<u32>,
+    pub differences: Vec<String>,
+}
+
+/// Run every custom screen of a round on its own, from the players'
+/// recorded buttons, and compare what each player sends with the trace:
+/// the hand (as installed), the transformation, when their status bit
+/// arrives cleared, and when the fight resumes. The fight is not
+/// simulated: each screen reads its navi's stats from the trace, and
+/// emotions from the mood alone (a tired navi is not seen). Damage from a
+/// formula is not checked (it needs the battle).
+pub fn check_custom_screens(round: &Round) -> Vec<ScreenCheck> {
+    let frames: Vec<&Frame> = round.battle_frames().collect();
+    let setup = round.round_setup();
+    let mut sides: [Option<Side>; 2] =
+        std::array::from_fn(|p| round.folder_known(p as u8).then(|| Side::new(&setup.players[p])));
+    let mut checks = Vec::new();
+    let mut open: Option<(u32, [Option<u32>; 2], [Option<u32>; 2])> = None;
+    let stats_at = |frame: u32, p: usize| -> NaviStats {
+        let e = round.exchanges.iter().filter(|e| e.frame <= frame).next_back().expect("exchange record");
+        NaviStats::from_bytes(&unhex(&e.navi_stats[p]).try_into().unwrap())
+    };
+    for (i, f) in frames.iter().enumerate() {
+        let context = |p: usize| {
+            let stats = stats_at(f.frame, p);
+            let emotion = if stats.mood == 0 { crate::kinds::player::Emotion::WornOut } else { crate::kinds::player::Emotion::Normal };
+            Context {
+                library: &crate::custom::BuiltIn,
+                stats,
+                emotion,
+                turn: unhex(&f.bs)[7],
+                per_player_gauges: false,
+                random_battle: false,
+                now: f.frame,
+                link_delay: Link::RECORDED_DELAY,
+            }
+        };
+        for (p, side) in sides.iter_mut().enumerate() {
+            if let Some(side) = side {
+                side.joypad.update(round.joypad(f.frame, p));
+            }
+        }
+        let custom = f.state[0] == 4 && f.state[1] == 8;
+        let prev_init = i.checked_sub(1).map(|j| frames[j].state[3]);
+        if custom && f.state[3] == 1 && prev_init == Some(0) {
+            for (p, side) in sides.iter_mut().enumerate() {
+                if let Some(side) = side {
+                    side.open(&context(p));
+                }
+            }
+            open = Some((f.frame, [None; 2], [None; 2]));
+            continue;
+        }
+        let Some((opened, confirmed, cleared)) = open.as_mut() else { continue };
+        if custom {
+            for (p, side) in sides.iter_mut().enumerate() {
+                let Some(side) = side else { continue };
+                let was_open = side.in_custom;
+                let request = side.tick(&context(p), |id| {
+                    let d = crate::data::chip(id).damage;
+                    if d < 1000 { d } else { 0 }
+                });
+                if request == Some(Request::Confirm) {
+                    confirmed[p] = Some(f.frame);
+                }
+                if was_open && !side.in_custom {
+                    cleared[p] = Some(f.frame);
+                }
+            }
+        }
+        let resumes = frames.get(i + 1).is_some_and(|n| custom && n.state[1] == 0x0C);
+        if !resumes {
+            continue;
+        }
+        // The fight resumes next frame: this frame installed the results.
+        let before = frames[i.saturating_sub(1)];
+        let arrivals: Vec<u32> = sides.iter().flatten().filter_map(|s| s.sent.as_ref().map(|x| x.arrives)).collect();
+        for (p, side) in sides.iter().enumerate() {
+            let Some(side) = side else { continue };
+            let mut d = Vec::new();
+            match &side.sent {
+                None => d.push("never sent".to_string()),
+                Some(sent) => {
+                    let block = ChipHand::from_bytes(&unhex(&f.chip_blocks[p]));
+                    let expected = sent.result.hand.clone().unwrap_or_else(|| ChipHand::from_bytes(&unhex(&before.chip_blocks[p])));
+                    let formula = |h: &ChipHand, k: usize| h.ids[k] != crate::hand::NO_CHIP && crate::data::chip(h.ids[k]).damage >= 1000;
+                    let mut ours = expected.clone();
+                    for k in 0..6 {
+                        if formula(&ours, k) {
+                            ours.damage[k] = block.damage[k];
+                        }
+                    }
+                    if ours != block {
+                        d.push(format!("hand: ours {:?} theirs {:?}", ours, block));
+                    }
+                    let e = round.exchanges.iter().filter(|e| e.frame <= f.frame).next_back().expect("exchange record");
+                    let theirs = TransformRequest::from_bytes(&unhex(&e.transform[p]));
+                    if sent.result.transform.form != theirs.form {
+                        d.push(format!("transformation: ours {:?} theirs {:?}", sent.result.transform.form, theirs.form));
+                    }
+                }
+            }
+            // The status bit's clearing reaches both consoles 1 + 4 frames
+            // after it happens.
+            let screen = frames[..=i].iter().filter(|g| g.frame > *opened);
+            let set = |g: &&&Frame| unhex(&g.bs)[0x14 + p] & 4 != 0;
+            let theirs_cleared = screen.skip_while(|g| !set(g)).find(|g| !set(g)).map(|g| g.frame);
+            let ours_cleared = cleared[p].map(|c| c + 1 + Link::RECORDED_DELAY as u32);
+            if ours_cleared != theirs_cleared {
+                d.push(format!("status bit arrives cleared: ours {ours_cleared:?} theirs {theirs_cleared:?}"));
+            }
+            if sides.iter().all(|s| s.is_some()) && arrivals.iter().max() != Some(&f.frame) {
+                d.push(format!("results in: ours {:?} theirs {}", arrivals.iter().max(), f.frame));
+            }
+            checks.push(ScreenCheck { side: p as u8, opened: *opened, resumed: f.frame + 1, confirmed: confirmed[p], differences: d });
+        }
+        open = None;
+    }
+    checks
 }

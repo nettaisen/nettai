@@ -124,7 +124,11 @@ pub struct Form(pub u8);
 
 impl Form {
     pub const NONE: Form = Form(0);
-    /// Crosses are 1..=10.
+    /// Crosses are 1..=10: Gregar's HeatCross, ElecCross, SlashCross,
+    /// EraseCross and ChargeCross, then Falzar's SpoutCross, TomahawkCross,
+    /// TenguCross, GroundCross and DustCross.
+    pub const CHARGE_CROSS: Form = Form(5);
+    pub const DUST_CROSS: Form = Form(0x0A);
     pub const GREGAR_BEAST: Form = Form(0x0B);
     pub const FALZAR_BEAST: Form = Form(0x0C);
     /// Cross + Beast forms are 0x0D..=0x16.
@@ -218,6 +222,9 @@ pub struct NaviCustBugs {
     pub status_immunity: bool,
     /// +0x54: damage at custom-screen open (never kills).
     pub custom_damage: u16,
+    /// +0x63: from this custom screen of a round on, each deals one
+    /// chip fewer per screen (0 = never).
+    pub hand_shrink_turn: u8,
 }
 
 /// A navi's in-battle stats (the game's 0x64-byte NaviStats block). Only
@@ -266,6 +273,8 @@ pub struct NaviStats {
     pub navi_variant: u8,
     /// +0x2C
     pub form: Form,
+    /// +0x2D: the folder the navi brings (0-2).
+    pub folder: u8,
     /// +0x2E / +0x2F: the folders' regular chips.
     pub folder_reg: [u8; 2],
     /// +0x3E / +0x40 / +0x42
@@ -276,6 +285,10 @@ pub struct NaviStats {
     pub chip_recovery: u16,
     /// +0x56..+0x59: the folders' tag chips.
     pub folder_tags: [[u8; 2]; 2],
+    /// +0x60: NaviCust ChpShufl (a custom-screen button re-deals).
+    pub chip_shuffle: bool,
+    /// +0x61: NaviCust NumbrOpn (the custom screen deals 10 chips).
+    pub number_open: bool,
     pub weapons: NaviWeapons,
     pub bugs: NaviCustBugs,
 }
@@ -317,12 +330,15 @@ impl NaviStats {
             navi: Navi(b[0x29]),
             navi_variant: b[0x2B],
             form: Form(b[0x2C]),
+            folder: b[0x2D],
             folder_reg: [b[0x2E], b[0x2F]],
             max_base_hp: u16at(0x3E),
             hp: u16at(0x40),
             max_hp: u16at(0x42),
             chip_recovery: u16at(0x50),
             folder_tags: [[b[0x56], b[0x57]], [b[0x58], b[0x59]]],
+            chip_shuffle: flag(0x60),
+            number_open: b[0x61] == 1,
             weapons: NaviWeapons {
                 buster: b[0x04],
                 charge_shot: b[0x05],
@@ -347,6 +363,7 @@ impl NaviStats {
                 starting_damage: b[0x3D],
                 status_immunity: flag(0x52),
                 custom_damage: u16at(0x54),
+                hand_shrink_turn: b[0x63],
             },
         }
     }
@@ -381,6 +398,7 @@ impl NaviStats {
         b[0x29] = self.navi.0;
         b[0x2B] = self.navi_variant;
         b[0x2C] = self.form.0;
+        b[0x2D] = self.folder;
         b[0x2E] = self.folder_reg[0];
         b[0x2F] = self.folder_reg[1];
         put16(&mut b, 0x3E, self.max_base_hp);
@@ -391,6 +409,8 @@ impl NaviStats {
         b[0x57] = self.folder_tags[0][1];
         b[0x58] = self.folder_tags[1][0];
         b[0x59] = self.folder_tags[1][1];
+        b[0x60] = self.chip_shuffle as u8;
+        b[0x61] = self.number_open as u8;
         let w = &self.weapons;
         b[0x04] = w.buster;
         b[0x05] = w.charge_shot;
@@ -414,6 +434,7 @@ impl NaviStats {
         b[0x3D] = g.starting_damage;
         b[0x52] = g.status_immunity as u8;
         put16(&mut b, 0x54, g.custom_damage);
+        b[0x63] = g.hand_shrink_turn;
         b
     }
 
@@ -491,6 +512,12 @@ pub struct RoundSetup {
     /// navi was deleted (`byte_203EB00`). The SP navi chips' damage goes
     /// by it.
     pub sp_times: [SpTimes; 2],
+    /// Per side: the battle folder and what the save unlocks on the
+    /// custom screen.
+    pub players: [crate::custom::PlayerSetup; 2],
+    /// Ticks from a player's packet going out to its arriving (the link's
+    /// latency; `link::Link::RECORDED_DELAY` in the recorded sessions).
+    pub link_delay: u8,
 }
 
 /// How fast (in frames) a player deleted each SP navi (20 halfwords).

@@ -201,22 +201,37 @@ fn next_chip(b: &Battle, r: ObjectRef) -> u16 {
     hand.ids.get(hand.cursor as usize).copied().unwrap_or(NO_CHIP)
 }
 
-/// `sub_8015B54`: a side's emotion (5 worn out, 3 angry, 1 ..., 2 full
-/// synchro, 0 normal).
-fn emotion(b: &Battle, side: u8) -> u8 {
+/// A navi's emotion, as its mugshot shows it (`sub_8015B54`'s code in
+/// parentheses).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Emotion {
+    /// (0)
+    Normal,
+    /// The Beast Out counter is spent (1).
+    Tired,
+    /// Full Synchro (2).
+    FullSynchro,
+    /// (3)
+    Angry,
+    /// Mood 0, or exhausted after Beast Over (5).
+    WornOut,
+}
+
+/// `sub_8015B54`: a side's emotion.
+pub fn emotion(b: &Battle, side: u8) -> Emotion {
     let mood = b.stats[side as usize].mood;
     let p = b.player(side).expect("side has a player");
     let a = ai(b, p);
     if a.beast_over_exhausted || mood == 0 {
-        5
+        Emotion::WornOut
     } else if a.anger != 0 {
-        3
+        Emotion::Angry
     } else if a.beast_out_spent {
-        1
+        Emotion::Tired
     } else if mood == 0xFF {
-        2
+        Emotion::FullSynchro
     } else {
-        0
+        Emotion::Normal
     }
 }
 
@@ -858,7 +873,7 @@ fn full_synchro_effect(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).hp == 0 || a.actor_type != ActorType::Player || a.ai_index > 0xB {
         return;
     }
-    if emotion(b, b.objects.get(r).alliance) == 2 && a.full_synchro_aura.is_none() {
+    if emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro && a.full_synchro_aura.is_none() {
         panic!("Full Synchro aura (sub_80C4C12) is not implemented yet");
     }
 }
