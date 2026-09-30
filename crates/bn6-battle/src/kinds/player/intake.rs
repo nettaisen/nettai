@@ -414,6 +414,35 @@ fn bug_paralyze_blind(b: &mut Battle, r: ObjectRef) {
     coll_mut(b, r).acc.inflicted_bugs &= 0xFF00;
 }
 
+/// The spark an uninstall shows.
+const UNINSTALL_SPARK: u8 = 0xE;
+
+/// `sub_8014080` (bug code 0xFB) and `sub_80140EE` (an uninstall, without
+/// `undershirt`): MegaMan's body programs go: SuperArmor, FloatShoe (the
+/// body back on the ground), Undershirt, AirShoe and the B+Back special
+/// (in base form, the navi's too). Link navis keep theirs.
+fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
+    if stats(b, r).navi != crate::setup::Navi::MEGAMAN {
+        return;
+    }
+    super::clear_flag1(b, r, f1::SUPERARMOR);
+    stats_mut(b, r).super_armor = false;
+    super::clear_flag1(b, r, f1::FLOATSHOE);
+    let hm = super::body_hit_modifier(b);
+    b.reset_collision_types(r, 1, 2, hm);
+    stats_mut(b, r).float_shoes = false;
+    if undershirt {
+        super::clear_flag1(b, r, f1::UNDERSHIRT);
+        stats_mut(b, r).undershirt = false;
+    }
+    super::clear_flag1(b, r, f1::AIRSHOE);
+    stats_mut(b, r).air_shoes = false;
+    stats_mut(b, r).weapons.back_special = 0xFF;
+    if stats(b, r).form == crate::setup::Form::NONE {
+        ai_mut(b, r).back_special = 0xFF;
+    }
+}
+
 /// `sub_80139F6`: bug codes that edit the NaviCust stats (the code names
 /// the stat byte; a few codes are special); the weapon routines are
 /// reloaded every tick.
@@ -446,8 +475,21 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
         0xFA => (s.bugs.panel_trail_kind, s.bugs.panel_trail_level) = (4, 2),
         0xF9 => (s.bugs.panel_trail_kind, s.bugs.panel_trail_level) = (4, 1),
         0xF5 => (s.bugs.panel_trail_kind, s.bugs.panel_trail_level) = (3, 1),
-        0xFB => panic!("bug code 0xFB (sub_8014080) is not implemented yet"),
-        0xF8 => panic!("uninstall (sub_80140EE) is not implemented yet"),
+        // sub_8014080: MegaMan loses his body programs.
+        0xFB => strip_programs(b, r, true),
+        0xF8 => {
+            // sub_80140EE: the same but Undershirt, then the form's flags
+            // come back (`sub_801469C`); a spark of effect 0xE 16 pixels up
+            // (sub_80E08C4) and sound 0x8E.
+            if stats(b, r).navi == crate::setup::Navi::MEGAMAN {
+                strip_programs(b, r, false);
+                super::form::refresh_form_flags(b, r);
+            }
+            let pos = b.objects.get(r).pos;
+            let at = crate::object::Vec3 { z: pos.z.wrapping_add(0x10_0000), ..pos };
+            crate::kinds::spark::spawn(b, r, at, UNINSTALL_SPARK);
+            b.play_sound(crate::sound::SoundId(0x8E));
+        }
         0x64.. => {}
         _ => {
             s.set_byte_by_bug_code(code, arg);
@@ -456,11 +498,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
     }
     if edited {
         refresh_navicust_state(b, r);
-        let form = stats(b, r).form;
-        // sub_801469C: per-form refresh (none for forms 0..6 and 10).
-        if !matches!(form.0, 0..=6 | 10) {
-            panic!("form {form:?} NaviCust refresh (sub_801469C) is not implemented yet");
-        }
+        super::form::refresh_form_flags(b, r);
     }
     reload_base_weapons(b, r);
 }
