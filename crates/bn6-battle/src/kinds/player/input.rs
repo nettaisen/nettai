@@ -72,13 +72,29 @@ fn chip_charges(b: &Battle, r: ObjectRef, id: u16) -> bool {
     if charges {
         return true;
     }
-    // The link navis' own charged chips (`sub_800F49E`, `byte_8021369`);
-    // MegaMan has none.
-    if stats(b, r).navi != crate::setup::Navi::MEGAMAN {
-        panic!("link navis' charged chips (sub_8013236) are not implemented yet");
+    // The link navis' own charged chips: from a navi level
+    // (`sub_800F49E`; 0xFF: none), ChargeMan's, SpoutMan's, TomahawkMan's
+    // and navi 0xB's damaging chips of their family (MegaMan has none).
+    let level = b.navi_levels[b.objects.get(r).alliance as usize];
+    if level == 0xFF || !damaging {
+        return false;
     }
-    false
+    let (own, i) = match stats(b, r).navi.0 {
+        5 => (F::Fire, 0),
+        6 => (F::Aqua, 1),
+        7 => (F::Wood, 2),
+        0xB => (F::Sword, 3),
+        _ => return false,
+    };
+    family == own && level >= LINK_NAVI_CHARGE_LEVELS[i]
 }
+
+/// `byte_8021369`: the navi level from which ChargeMan, SpoutMan,
+/// TomahawkMan and navi 0xB charge their family's chips.
+///
+/// Game data held in the engine for now: it belongs with those navis in
+/// the content (to move there with the content model's next version).
+const LINK_NAVI_CHARGE_LEVELS: [u8; 4] = [3, 11, 11, 11];
 
 /// `sub_8013396`: the B button charges.
 fn b_chargeable(b: &Battle, r: ObjectRef) -> bool {
