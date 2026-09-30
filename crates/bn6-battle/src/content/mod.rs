@@ -33,6 +33,7 @@
 
 mod chips;
 mod custom;
+mod defs;
 mod flags;
 mod navis;
 mod objects;
@@ -44,6 +45,7 @@ pub mod testing;
 
 pub use chips::*;
 pub use custom::*;
+pub use defs::*;
 pub use navis::*;
 pub use objects::*;
 pub use rules::*;
@@ -157,9 +159,34 @@ pub struct Content {
     pub weapons: Vec<WeaponData>,
     /// The pack's scripts (see `scripts`).
     pub scripts: Scripts,
+    /// What the content defines: the registries and their handles, and the
+    /// functions the scripts implement (see `defs`). Made from the rest by
+    /// [`Content::define`].
+    pub defs: Defs,
 }
 
 impl Content {
+    /// Run the define phase over the scripts and build the registries
+    /// (docs/design/content-model-v2.md §7.3). A battle needs defined
+    /// content; loaders call this once the data and scripts are in.
+    pub fn define(&mut self) -> Result<(), bn6_content_api::ContentError> {
+        let definitions = if self.scripts.modules.is_empty() {
+            Default::default()
+        } else {
+            let pack = bn6_luau::Pack::new(self.scripts.modules.iter().map(|(k, v)| (k.clone(), v.clone())));
+            bn6_luau::define(&pack, &crate::behavior::script_data(self), bn6_luau::Options::default())?
+        };
+        self.defs = Defs::build(self, definitions)?;
+        Ok(())
+    }
+
+    /// The content, defined (see [`Content::define`]); panics on a content
+    /// error.
+    pub fn defined(mut self) -> Content {
+        self.define().unwrap_or_else(|e| panic!("content error: {e}"));
+        self
+    }
+
     /// The content's identity (a stable hash of all of it; computing it
     /// walks everything, so callers keep the value).
     pub fn hash(&self) -> ContentHash {

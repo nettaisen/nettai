@@ -179,11 +179,20 @@ fn low_hp_navicust_effect(b: &mut Battle, r: ObjectRef) -> bool {
 /// `off_80117D4[routine]`: set up a weapon's attack variables and name
 /// its action: the content pack's script for the routine
 /// (`Hook::Weapon`).
-pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
-    use bn6_content_api::{Hook, HookCall};
-    if let Some(hook) = b.behaviors.hook(Hook::Weapon(routine)) {
-        let action = crate::behavior::call_hook(b, hook, HookCall::Weapon { navi: r });
-        return action.int().expect("a weapon routine names its action") as u8;
+pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> super::NaviAttack {
+    use bn6_content_api::{ActionHandle, Hook, HookCall, Registry, Value};
+    if let Some(hook) = b.content.defs.hook(Hook::Weapon(routine)) {
+        return match crate::behavior::call_hook(b, hook, HookCall::Weapon { navi: r }) {
+            Value::Int(n) => super::NaviAttack::from(n as u8),
+            Value::Def(Registry::Action, h) => {
+                let a = b.content.defs.action(ActionHandle(h));
+                let number = a.number.unwrap_or_else(|| {
+                    panic!("weapon routine {routine:#x} names action {}, which has no action number (compat)", a.key)
+                });
+                super::NaviAttack { number, content: Some(ActionHandle(h)) }
+            }
+            v => panic!("weapon routine {routine:#x} names {v:?}, not an action"),
+        };
     }
     // These entries are `nullsub_44`: the game starts whatever action the
     // register it called through holds. (Forms name them only as charged

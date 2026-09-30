@@ -151,11 +151,12 @@ setups written by name (`"minibomb"` with code `"B"`), and for tools.
 
 ### 2.4 Definition values in Luau
 
-A definer returns its spec table, frozen, with a per-registry metatable and two fields the loader sets: `id` (the
-key) and `handle`. Scripts read a definition's fields directly (a frozen table read costs about 24 ns, against
-130 ns for a userdata field). Where the API expects a definition (`battle.spawn(kind, ...)`), the binding checks
-the metatable and reads `handle`. At run time a script only ever sees definitions that exist; it cannot make
-one (definers fail outside the define phase).
+A definer returns its spec table, frozen, with a per-registry metatable; nothing is added to the table. Scripts
+read a definition's fields directly (a frozen table read costs about 24 ns, against 130 ns for a userdata field).
+Where the API expects a definition (`battle.spawn(kind, ...)`, a weapon's `setup` returning an action), the
+binding looks the table up by identity: the runtime keeps each definition table's registry and handle by its
+address (definitions are frozen and live as long as the VM, and the lookup is never iterated). At run time a
+script only ever sees definitions that exist; it cannot make one (definers fail outside the define phase).
 
 ## 3. The definition API
 
@@ -311,7 +312,17 @@ every action, so a missing one is reported.
 shares; the engine models it as "the next action with the same state continues from it, another starts from
 zero". In v2 a builder declares its state table once at its module's top, and every action it builds shares it,
 so MiniBomb's throw continues from EnergBom's as action 0x12 did, and a chip whose action is its own starts from
-zero. The spike checked that three builder-made actions share one schema.
+zero. The spike checked that three builder-made actions share one schema. Each distinct state table is a schema
+definition keyed `<module>#state` (a module's own `state` export, registration by module) or
+`<registry>:<key>/state` (a kind's or action's), claimed in that order; a kind or action without a `state` uses
+the empty layout.
+
+**Which action runs.** Per-chip action instances share their original number (MiniBomb's and BigBomb's both show
+0x12 in the navi's CurAction), so the number can't select the action. Starting an attack sets both: the navi's
+action byte (the number the traces compare) and the attack header's `content_action`, the handle of the action to
+run (`set_attack` takes a `NaviAttack { number, content }`; a plain number means "the engine's action, or the one
+registered by that number"). Chip use takes the handle from the chip's definition, a weapon routine from what its
+`setup` returns, and dispatch runs `content_action` when it is set.
 
 A builder stores its parameters in `args` rather than only capturing them. The canonical tree then shows what
 each chip is made of (`bn6-content show minibomb`), and definitions nested in the arguments get derived keys.
@@ -1174,22 +1185,39 @@ from the tree (the data types already derive `Deserialize`), with references res
 reference to the wrong registry reported with both keys. The asset side (names, animation timing) comes from the
 pack's assets or, for tests, a synthetic index (§7.8).
 
-The runtime (`Behaviors::for_content`, one VM per thread and content hash, as today) runs the same define phase on
-`content.scripts`, checks that its tree hash equals `content.definitions`' (every VM made from the same content
-behaves the same, as scripting.md §3.1 already requires), and keeps the function slots in dense tables: kinds'
-`update` and `place` by `KindHandle`, actions' `update` by `ActionHandle`, chips' `dimming`/`navi`/`instant` by
-`ChipHandle`, weapons' `setup` by `WeaponHandle`. `ContentHost` becomes:
+The runtime runs the same define phase on `content.scripts`, checks that it reads exactly the content's
+definitions (every VM made from the same content behaves the same, as scripting.md §3.1 already requires), and
+binds the functions the engine planned (`BindPlan`): each by definition slot (`FnSource::Slot { registry, key,
+path }`) or, while registration by module lasts, by module export (`FnSource::Export`). The engine keeps the
+function ids in its registries (a kind's `update`, an action's `update`, a weapon's `setup`, a chip's
+`dimming`/`navi`/`instant`), so dispatch is an array index.
+
+**The runtime is not part of a battle.** `Battle` holds no runtime handle: a battle is plain data and `Send` by
+construction, and a snapshot is a clone (the `unsafe impl Send` on snapshots and its guard are gone). Each thread
+keeps runtimes in a small cache keyed by the content hash, which the battle's setup already carries
+(`RoundSetup::content`), and a content call on a battle uses its thread's runtime for that hash; a battle moved to
+another thread steps there with that thread's runtime, identically. Code that wants a particular runtime (one
+loaded with native code, a fresh VM halfway through a battle, edited scripts in tests) runs under
+`behavior::with_runtime(&runtime, ...)`, or steps with `Battle::step_with(&runtime, input)`. `ContentHost`
+becomes:
 
 ```rust
 pub trait ContentHost {
-    fn update_object(&self, api: &mut dyn CoreApi, kind: KindHandle, me: ObjectRef) -> Result<(), ContentError>;
-    fn update_action(&self, api: &mut dyn CoreApi, action: ActionHandle, me: ObjectRef) -> Result<(), ContentError>;
-    fn call(&self, api: &mut dyn CoreApi, slot: FnSlot, call: HookCall) -> Result<Value, ContentError>;
+    fn update_object(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef) -> Result<(), ContentError>;
+    fn update_action(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef, state: StateId) -> Result<(), ContentError>;
+    fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError>;
 }
 ```
 
-`Registrations`, `Hook` by number, `KindReg { pool, index }` and `Content::registrations` are deleted; what the
-content implements is what it defines.
+`Registrations`, `KindReg { pool, index }` and `Content::registrations` are deleted (step 3); `Hook` by number
+stays as the bridge's lookup (`Defs::hook`) until step 13. While the migration runs, a registry also holds the
+engine's own entries (its kinds, keyed `engine/player`, `engine/hitbox`, ...) and the entries registration by
+number makes, keyed from that data: a kind by its folder name, an action `v1/action-12`, a weapon `v1/weapon-02`.
+The bridge from numbers is a set of lookups on the registries (a kind's object slot, an action's number, a
+weapon's routine numbers, a chip's id), filled from registration by number now and from compat later
+(`Defs::bridge_kind`, `bridge_action`, `bridge_weapon`, `bridge_chip`). A definition the bridge gives a chip id
+takes over that chip's use: chip use runs the definition's action, the dimming, navi-chip and instant-chip
+actions call its hook, before registration by subtype is consulted.
 
 **The spike.** A throwaway crate (not committed) ran a define phase on bn6-luau's real sandbox with five modules
 (a bombs library with a shared state table, a bomb kind with a module-level effect, MiniBomb and BigBomb
@@ -1398,9 +1426,10 @@ kind's own state-machine byte, which the traces compare.
   the module sources (the functions' code), the roles, and the assets the simulation reads (asset names and
   every sprite's animation timing). Compat is not in it: it changes no simulation. Pixels, palettes and audio stay
   out, as today.
-- **The VM stays out of snapshots.** A runtime VM is a per-thread cache rebuilt by the same define phase, and it
-  checks its tree hash against the content's. Definitions are frozen; definers fail after loading; the verifier
-  still refuses writes to globals and module locals.
+- **The VM stays out of battles.** A runtime VM is a per-thread cache keyed by the content hash, rebuilt by the
+  same define phase, and it checks it reads the content's definitions. `Battle` holds no handle to it, so a battle
+  and its snapshots are `Send` by construction (§7.3). Definitions are frozen; definers fail after loading; the
+  verifier still refuses writes to globals and module locals.
 - **Content state** keeps its 64-byte budget; a reference field costs two bytes. The attack scratch keeps its
   "same state continues" rule, with state identity by state table (§3.5).
 - **Cost.** A definition read is a frozen-table read (about 24 ns); passing a definition to the API adds a
