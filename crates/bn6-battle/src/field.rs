@@ -80,7 +80,10 @@ pub struct Panel {
     pub home: u8,
     pub display_kind: PanelType,
     pub display_alliance: u8,
-    pub display_override: [u8; 3],
+    /// `object_setPanelTypeBlink`: drawn this frame as this type and side
+    /// instead (drawn only; the game's renderer shows it once and clears
+    /// it).
+    pub blink: Option<(PanelType, u8)>,
     pub x: u8,
     pub y: u8,
     pub front_edge: bool,
@@ -237,11 +240,12 @@ impl Field {
         f
     }
 
-    /// Forget last frame's highlights (presentation only; `sub_800C5E0`
-    /// clears each one it draws).
-    pub fn clear_highlights(&mut self) {
+    /// Forget last frame's highlights and blinks (presentation only;
+    /// `sub_800C5E0` clears each one it draws).
+    pub fn clear_one_frame_looks(&mut self) {
         for p in self.panels.iter_mut().flatten() {
             p.highlight = 0;
+            p.blink = None;
         }
     }
 
@@ -575,6 +579,48 @@ impl Battle {
         p.display_kind = PanelType::Broken;
         self.play_sound(crate::sound::SoundId(0x97));
         true
+    }
+
+    /// `object_breakPanel_dup2` (and `_dup3`, the same code): break a
+    /// solid, unoccupied panel, or crack an occupied one.
+    pub fn break_panel(&mut self, x: u8, y: u8) -> bool {
+        let Some(p) = self.field.panel_mut(x, y) else { return false };
+        let f = p.flags;
+        if f & pflags::SOLID == 0 {
+            return false;
+        }
+        let kind = if f & pflags::OCCUPIED == 0 {
+            p.flags = (f & !0x3F5F) | 1;
+            PanelType::Broken
+        } else {
+            p.flags = ((f | pflags::CRACKED) & !0x3F0F) | 3;
+            PanelType::Cracked
+        };
+        p.kind = kind;
+        p.display_kind = kind;
+        self.play_sound(crate::sound::SoundId(0x97));
+        true
+    }
+
+    /// `object_panel_setPoison`: a solid panel turns to poison.
+    pub fn poison_panel(&mut self, x: u8, y: u8) -> bool {
+        let Some(p) = self.field.panel_mut(x, y) else { return false };
+        if p.flags & pflags::SOLID == 0 {
+            return false;
+        }
+        p.flags = (p.flags & !0x3F5F) | 0x114;
+        p.kind = PanelType::Poison;
+        p.display_kind = PanelType::Poison;
+        self.play_sound(crate::sound::SoundId(0x90));
+        true
+    }
+
+    /// `object_setPanelTypeBlink`: panel (x, y) is drawn as `kind` of
+    /// `side` this frame (drawn only).
+    pub fn blink_panel(&mut self, x: u8, y: u8, kind: PanelType, side: u8) {
+        if let Some(p) = self.field.panel_mut(x, y) {
+            p.blink = Some((kind, side));
+        }
     }
 
     /// `sub_800E618`: may `obj` step onto (x, y)?
