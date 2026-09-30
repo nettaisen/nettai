@@ -39,8 +39,8 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use bn6_content_api::{
-    BindPlan, ContentError, ContentHost, CoreApi, Data, DataKey, Definitions, FnId, FnSource, HookCall, Manifest,
-    ObjectRef, Registry, StateId, Value,
+    AssetKind, AssetNames, BindPlan, ContentError, ContentHost, CoreApi, Data, DataKey, Definitions, FnId, FnSource,
+    HookCall, Manifest, ObjectRef, Registry, StateId, Value,
 };
 use mlua::chunk::ChunkMode;
 use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
@@ -158,13 +158,20 @@ thread_local! {
     static BUDGET: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
-/// What the binding reads while content runs: the state layouts, and which
-/// definition a definition table is.
+/// What the binding reads while content runs: the state layouts, which
+/// definition a definition table is and the other way round, and the asset
+/// values (docs/design/content-model-v2.md §2.4, §6.3).
 pub(crate) struct Bound {
     pub manifest: Manifest,
     /// A definition table's registry and handle, by the table's address
     /// (definitions are frozen and live as long as the VM).
-    pub defs: HashMap<usize, (Registry, u16)>,
+    defs: HashMap<usize, (Registry, u16)>,
+    /// Each definition's table by registry and handle; for an entry that is
+    /// no definition (an engine kind, a v1 kind), a stand-in `{ id = key }`.
+    tables: HashMap<(Registry, u16), Table>,
+    /// Records' types, by handle.
+    record_types: HashMap<u16, String>,
+    assets: RefCell<define::AssetTables>,
 }
 
 impl Bound {
@@ -174,6 +181,31 @@ impl Bound {
             LuaValue::Table(t) => self.defs.get(&(t.to_pointer() as usize)).copied(),
             _ => None,
         }
+    }
+
+    /// Definition `h` of `registry` as a script value.
+    pub fn def_value(&self, registry: Registry, h: u16) -> mlua::Result<Table> {
+        self.tables.get(&(registry, h)).cloned().ok_or_else(|| mlua::Error::runtime(format!("no {registry} has handle {h}")))
+    }
+
+    /// Record `h`'s type.
+    pub fn record_type(&self, h: u16) -> Option<&str> {
+        self.record_types.get(&h).map(String::as_str)
+    }
+
+    /// The asset `v` is, if it is one.
+    pub fn asset(&self, v: &LuaValue) -> Option<(AssetKind, u16)> {
+        self.assets.borrow().asset(v)
+    }
+
+    /// Asset `h` of `kind` as a script value.
+    pub fn asset_value(&self, lua: &Lua, kind: AssetKind, h: u16) -> mlua::Result<Table> {
+        self.assets.borrow_mut().value(lua, kind, h)
+    }
+
+    /// The names content can use.
+    pub fn with_names<R>(&self, f: impl FnOnce(&AssetNames) -> R) -> R {
+        f(&self.assets.borrow().names)
     }
 }
 
@@ -193,7 +225,7 @@ impl LuauContent {
     /// `plan` was made from, and bind the functions `plan` names, with the
     /// pack's data as the global `data`.
     pub fn load(pack: &Pack, plan: &BindPlan, data: &Data, options: Options) -> Result<LuauContent, ContentError> {
-        let (lua, defined, modules, _) = open(pack, data, options)?;
+        let (lua, defined, modules, _, assets) = open(pack, data, &plan.assets, options)?;
         if defined.definitions != plan.definitions {
             return Err(ContentError::new(format!(
                 "loading Luau content: the scripts define something other than what the content was made from ({})",
@@ -203,13 +235,29 @@ impl LuauContent {
         if plan.handles.len() != defined.tables.len() {
             return Err(ContentError::new("loading Luau content: the plan's handles don't match its definitions"));
         }
-        let defs = defined
-            .tables
-            .iter()
-            .zip(&defined.definitions.defs)
-            .zip(&plan.handles)
-            .map(|((t, d), &h)| (t.to_pointer() as usize, (d.registry, h)))
-            .collect();
+        let err = |e: mlua::Error| ContentError::new(format!("loading Luau content: {e}"));
+        let mut defs = HashMap::new();
+        let mut tables = HashMap::new();
+        let mut record_types = HashMap::new();
+        for ((t, d), &h) in defined.tables.iter().zip(&defined.definitions.defs).zip(&plan.handles) {
+            defs.insert(t.to_pointer() as usize, (d.registry, h));
+            tables.insert((d.registry, h), t.clone());
+            if let Some(ty) = &d.record_type {
+                record_types.insert(h, ty.clone());
+            }
+        }
+        // Stand-ins for the entries that are no definition.
+        for (registry, h, key) in &plan.entries {
+            let t = lua.create_table().map_err(err)?;
+            t.raw_set("id", key.as_str()).map_err(err)?;
+            let meta = lua.create_table().map_err(err)?;
+            meta.raw_set("__metatable", format!("{registry} definition")).map_err(err)?;
+            meta.set_readonly(true);
+            t.set_metatable(Some(meta)).map_err(err)?;
+            t.set_readonly(true);
+            defs.insert(t.to_pointer() as usize, (*registry, *h));
+            tables.insert((*registry, *h), t);
+        }
         let mut functions = Vec::with_capacity(plan.functions.len());
         for source in &plan.functions {
             functions.push(
@@ -219,7 +267,13 @@ impl LuauContent {
         }
         Ok(LuauContent {
             lua,
-            bound: Bound { manifest: Manifest { schemas: plan.schemas.clone() }, defs },
+            bound: Bound {
+                manifest: Manifest { schemas: plan.schemas.clone() },
+                defs,
+                tables,
+                record_types,
+                assets: RefCell::new(assets),
+            },
             functions,
             sources: plan.functions.clone(),
             budget: options.budget,
@@ -287,8 +341,13 @@ impl LuauContent {
 /// Read a pack's definitions: the define phase, in a VM of its own (which
 /// is dropped). The engine makes its content from what this returns, and
 /// keeps the modules' bytecode for its runtimes (`Pack::with_compiled`).
-pub fn define(pack: &Pack, data: &Data, options: Options) -> Result<(Definitions, Compiled), ContentError> {
-    open(pack, data, options).map(|(_, defined, _, compiled)| (defined.definitions, compiled))
+pub fn define(
+    pack: &Pack,
+    data: &Data,
+    assets: &AssetNames,
+    options: Options,
+) -> Result<(Definitions, Compiled), ContentError> {
+    open(pack, data, assets, options).map(|(_, defined, _, compiled, _)| (defined.definitions, compiled))
 }
 
 /// The first place two readings of the definitions differ, for messages.
@@ -379,6 +438,7 @@ fn data_value(lua: &Lua, d: &Data) -> mlua::Result<LuaValue> {
         Data::Int(i) => LuaValue::Number(*i as f64),
         Data::Str(s) => LuaValue::String(lua.create_string(s)?),
         Data::Ref(r, k) => LuaValue::String(lua.create_string(format!("{r}:{k}"))?),
+        Data::Asset(kind, name) => LuaValue::String(lua.create_string(format!("{kind}:{name}"))?),
         Data::List(items) => {
             let t = lua.create_table_with_capacity(items.len(), 0)?;
             for (i, v) in items.iter().enumerate() {
@@ -402,9 +462,9 @@ fn data_value(lua: &Lua, d: &Data) -> mlua::Result<LuaValue> {
 
 /// A VM with the content API, `data`, `define` and `require`, every module
 /// of the pack loaded, and the define phase finished.
-type Opened = (Lua, define::Defined, BTreeMap<String, LuaValue>, Compiled);
+type Opened = (Lua, define::Defined, BTreeMap<String, LuaValue>, Compiled, define::AssetTables);
 
-fn open(pack: &Pack, data: &Data, options: Options) -> Result<Opened, ContentError> {
+fn open(pack: &Pack, data: &Data, assets: &AssetNames, options: Options) -> Result<Opened, ContentError> {
     let err = |e: mlua::Error| ContentError::new(format!("loading Luau content: {e}"));
     let lua = sandbox::new_vm(options.debug_print).map_err(err)?;
     #[cfg(feature = "jit")]
@@ -428,7 +488,9 @@ fn open(pack: &Pack, data: &Data, options: Options) -> Result<Opened, ContentErr
         let loader = Rc::downgrade(&loader);
         Rc::new(move || loader.upgrade().and_then(|l| l.borrow().stack.last().cloned()))
     };
-    define::install(&lua, &collector, module).map_err(err)?;
+    define::install(&lua, &collector, module.clone()).map_err(err)?;
+    let assets = Rc::new(RefCell::new(define::AssetTables::new(&lua, assets.clone()).map_err(err)?));
+    define::install_assets(&lua, &assets, module).map_err(err)?;
     let require = {
         let loader = Rc::downgrade(&loader);
         lua.create_function(move |lua, path: String| {
@@ -466,11 +528,12 @@ fn open(pack: &Pack, data: &Data, options: Options) -> Result<Opened, ContentErr
     let modules = std::mem::take(&mut loader.borrow_mut().loaded);
     let compiled = std::mem::take(&mut loader.borrow_mut().compiled);
     drop(loader);
-    let defined = define::finish(&lua, &collector, &modules)
+    let assets = Rc::try_unwrap(assets).ok().expect("the resolvers hold the asset tables weakly").into_inner();
+    let defined = define::finish(&lua, &collector, &modules, &assets)
         .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?;
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);
-    Ok((lua, defined, modules, compiled))
+    Ok((lua, defined, modules, compiled, assets))
 }
 
 /// The function a plan names.

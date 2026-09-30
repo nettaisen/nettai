@@ -9,6 +9,8 @@ description = "Content packs: the battle data, graphics and sound in open, edita
 bn6-assets = { path = "../bn6-assets" }
 # The battle data model the pack's battle files load into.
 bn6-battle.workspace = true
+# The definitions the define phase reads (the lint of `bn6-content check`).
+bn6-content-api = { path = "../bn6-content-api" }
 m4a.workspace = true
 png = "0.17"
 serde = { version = "1", features = ["derive"] }

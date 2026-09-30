@@ -17,6 +17,7 @@ use std::fmt;
 
 use crate::data::{Data, Key};
 use crate::registry::Registry;
+use crate::assets::AssetKind;
 use crate::types::{ObjectRef, Pool, Vec3};
 
 /// Bytes of state one kind or action may declare. (The game gives an
@@ -53,6 +54,8 @@ pub enum FieldType {
     /// `"record:bomb-variant"`): docs/design/content-model-v2.md §3.4. A
     /// record field may name the records' type.
     Ref(Registry, Option<String>),
+    /// An asset of a kind, or none (`"sprite"`, `"sound"`): §3.4.
+    Asset(AssetKind),
 }
 
 impl FieldType {
@@ -81,9 +84,10 @@ impl FieldType {
                 let t = &name["record:".len()..];
                 return (!t.is_empty()).then(|| FieldType::Ref(Registry::Record, Some(t.to_string())));
             }
-            _ if Registry::from_name(name).is_some_and(|r| r != Registry::Schema) => {
+            _ if Registry::from_name(name).is_some_and(|r| !matches!(r, Registry::Schema | Registry::Roles)) => {
                 FieldType::Ref(Registry::from_name(name).expect("a registry"), None)
             }
+            _ if AssetKind::from_name(name).is_some() => FieldType::Asset(AssetKind::from_name(name).expect("an asset kind")),
             _ => return None,
         })
     }
@@ -92,7 +96,7 @@ impl FieldType {
     pub fn size(&self) -> usize {
         match self {
             FieldType::Bool | FieldType::U8 | FieldType::I8 | FieldType::Object | FieldType::Enum(_) => 1,
-            FieldType::U16 | FieldType::I16 | FieldType::OptionalU8 | FieldType::Ref(..) => 2,
+            FieldType::U16 | FieldType::I16 | FieldType::OptionalU8 | FieldType::Ref(..) | FieldType::Asset(_) => 2,
             FieldType::U32 | FieldType::I32 => 4,
             FieldType::Vec3 => 12,
             FieldType::Array(elem, n) => elem.size() * *n as usize,
@@ -115,6 +119,7 @@ impl FieldType {
             FieldType::OptionalU8 => FieldValue::OptionalU8(None),
             FieldType::Array(elem, _) => elem.zero(),
             FieldType::Ref(..) => FieldValue::Ref(None),
+            FieldType::Asset(kind) => FieldValue::Asset(*kind, None),
         }
     }
 
@@ -141,6 +146,8 @@ impl FieldType {
             (FieldType::Array(elem, _), v) => return elem.store(v),
             (FieldType::Ref(r, _), Value::Def(d, h)) if *r == d => FieldValue::Ref(Some((d, h))),
             (FieldType::Ref(..), Value::Nil) => FieldValue::Ref(None),
+            (FieldType::Asset(k), Value::Asset(a, h)) if *k == a => FieldValue::Asset(a, Some(h)),
+            (FieldType::Asset(k), Value::Nil) => FieldValue::Asset(*k, None),
             (ty, v) => return Err(TypeError { expected: ty.clone(), got: v }),
         })
     }
@@ -168,6 +175,7 @@ impl FieldType {
             }
             // The handle plus one; 0 is none.
             FieldValue::Ref(d) => out[..2].copy_from_slice(&d.map_or(0, |(_, h)| h.wrapping_add(1)).to_le_bytes()),
+            FieldValue::Asset(_, h) => out[..2].copy_from_slice(&h.map_or(0, |h| h.wrapping_add(1)).to_le_bytes()),
         }
     }
 
@@ -192,6 +200,7 @@ impl FieldType {
             FieldType::OptionalU8 => FieldValue::OptionalU8((b[0] != 0).then_some(b[1])),
             FieldType::Array(elem, _) => elem.decode(b),
             FieldType::Ref(r, _) => FieldValue::Ref(u16::from_le_bytes([b[0], b[1]]).checked_sub(1).map(|h| (*r, h))),
+            FieldType::Asset(k) => FieldValue::Asset(*k, u16::from_le_bytes([b[0], b[1]]).checked_sub(1)),
         }
     }
 }
@@ -213,6 +222,7 @@ impl fmt::Display for FieldType {
             FieldType::Array(elem, n) => write!(f, "{elem}[{n}]"),
             FieldType::Ref(r, None) => write!(f, "{r}"),
             FieldType::Ref(r, Some(t)) => write!(f, "{r}:{t}"),
+            FieldType::Asset(k) => write!(f, "{k}"),
         }
     }
 }
@@ -229,6 +239,8 @@ pub enum Value {
     /// A definition, by registry and handle (docs/design/content-model-v2.md
     /// §2): what a weapon's `setup` returns, a reference field's value.
     Def(Registry, u16),
+    /// An asset, by kind and handle (§6.3).
+    Asset(AssetKind, u16),
 }
 
 impl Value {
@@ -268,6 +280,8 @@ pub enum FieldValue {
     OptionalU8(Option<u8>),
     /// A definition (registry and handle), or none.
     Ref(Option<(Registry, u16)>),
+    /// An asset of a kind (its handle), or none.
+    Asset(AssetKind, Option<u16>),
 }
 
 impl FieldValue {
@@ -285,6 +299,7 @@ impl FieldValue {
             FieldValue::Enum(i) => Value::Int(i as i64),
             FieldValue::OptionalU8(v) => v.map_or(Value::Nil, |v| Value::Int(v as i64)),
             FieldValue::Ref(d) => d.map_or(Value::Nil, |(r, h)| Value::Def(r, h)),
+            FieldValue::Asset(k, h) => h.map_or(Value::Nil, |h| Value::Asset(k, h)),
         }
     }
 }

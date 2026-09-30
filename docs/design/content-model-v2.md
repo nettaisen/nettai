@@ -1412,6 +1412,46 @@ the running action (an `Action` definition, or the framework state's name: `"idl
 and those kinds store it in an `action` state field and compare definitions. `me.action` stays every other
 kind's own state-machine byte, which the traces compare.
 
+**Step 4 as built** (what the families of step 8 write against; core.d.luau is the reference):
+
+- **Values.** A definition is its frozen spec table; the binding maps it to its registry and handle by identity
+  and back (`Bound::def`, `def_value`). The registries' entries that are no definition (the engine's kinds,
+  what registration by number makes) reach scripts as frozen stand-ins `{ id = key }` (`BindPlan::entries`), so
+  `me.kind` always has a value. An asset is a frozen `{ name = ... }` per asset, one per name, with its kind's
+  metatable; in the canonical tree it is `Data::Asset(kind, name)`.
+- **Names.** `Sprite`, `Navi` and `Collision` were already the object's sprite, a side's stats and an object's
+  registration, so the definition and asset types are `SpriteAsset`, `NaviDef` and `CollisionType`; the rest
+  are as in the list above (`Kind`, `Action`, `Effect`, `Spark`, `Region`, `Sound`, ...).
+- **Assets.** `asset.<kind>(name)` resolves against `Content::assets` (`AssetNames`: name to the engine's id
+  per kind; a handle is the name's place in byte order). The loader leaves it empty until step 6 fills it from
+  the asset root's names; the test content has a few made-up ones. Unknown names fail the define phase naming
+  the module; a placeholder name (`sprite-0c-01`) is a lint error.
+- **State fields.** Reference types (`"kind"`, `"action"`, `"record"`, `"record:<type>"`, ...) and asset types
+  (`"sprite"`, `"sound"`, `"banner"`, `"background"`, `"mugshot"`) are two bytes, the handle plus one; a record
+  of another type is refused when stored.
+- **Objects and navis.** `battle.spawn(kind, pos)`, `spawn_first`, `spawn_at_end`; `me.kind`;
+  `me:set_attack(action, kind)`; `me:navi_action()` (the action definition, the ruleset's own state or action by
+  name: `"idle"`, `"move"`, `"dimming_chip"`, ..., or a link navi's number); `me:set_damage_word(w)`.
+- **Bytes the ruleset still stores.** Effects, sparks, regions and collision types content defines get the
+  engine's own number after the pack data's (`Defs::number`; `Content::effect`, `spark`, `region`,
+  `field_region`, `collision_type` look past the data's tables), so the byte-typed ruleset (the generic effect's
+  parameter, `CollisionData.region`, hit effects, collision types) takes them unchanged until steps 12 and 10
+  make those fields handles. These are engine-internal indices, never an original number, and no script sees
+  them (`CoreApi::def_number` is the binding's). A collision type carries `row_offset`, the register value its
+  row's lookup leaves (index × 8) that a bug code's high byte takes: the quirk materialized in the definition.
+  `collision:set_region(region)` and `set_hit_effect(spark)` take definitions (the properties stay numbers to
+  read).
+- **Roles.** `define.roles { actions = { ... } }`, once, keyed `roles`. The ruleset starts AntiDmg's, AntiSwrd's
+  and BodyGrd's counters by role (`anti_damage_counter`, `anti_sword_counter`, `body_guard_counter`); an
+  unfilled role panics naming itself where it is needed and `bn6-content check` warns, until the BN6 content
+  fills every role (then an unfilled one is a load error). Their compat keys are the role actions' ids, which
+  the chips' conversion chooses (proposed: `antidmg/counter`, `antiswrd/counter`, `bodygrd/counter`, numbers
+  0x47, 0x48, 0x4B in actions.toml).
+- **Not yet.** Chip, navi, form and stage records stay the pack data's (steps 3b and 5); the definers accept
+  their specs, typed loosely (`NaviDef = { id: string, [string]: any }`) until the engine reads them. Statuses
+  and lock-on modes likewise (steps 10 to 12). `me.identity` and `me:attach_point_pos` come with identities
+  (step 11).
+
 ### 7.7 Checking
 
 - **`bn6-content-check`** (the in-process type check, its own binary because its Luau collides with mlua's)
@@ -1422,9 +1462,19 @@ kind's own state-machine byte, which the traces compare.
   folder, no module under `compat/`.
 - **`bn6-content check <content> [<assets>]`** (links the runtime) runs the define phase and reports: duplicate
   keys, references to the wrong registry, unfilled roles, rule sections missing or defined twice, unknown asset
-  names, chips with no usage or two, kinds in `objects/` used by one owner (colocation), and, for a pack with
-  compat, compat entries that don't resolve and definitions compat doesn't cover. `cargo test --workspace` runs
-  both on content/bn6.
+  names, chips with no usage or two, kinds in `objects/` used by one owner (colocation). Compat entries that
+  don't resolve and definitions compat doesn't cover are `bn6-compat`'s check, not the engine's (§7.3).
+  `cargo test --workspace` runs both on content/bn6.
+
+As built in step 4: the lints and the ratchet read the source through a small scanner (comments dropped, string
+contents masked), in `bn6-content-check`'s `lints` module. A deprecated use is a call that exists only in the
+numeric API (`battle.spawn_kind`, `me:param`, `data.`, ...), `battle.spawn` with a pool, or a call whose
+definition-taking argument is a number literal or a module-level numeric constant (`battle.play_sound(SOUND)`
+with `local SOUND = 0x1A6`); it is a count, so an approximate one serves. `tests/deprecated.txt` holds each
+module's allowance (1,263 uses in 221 modules at the start); the test fails on more, and on fewer until the
+allowance is lowered (`BN6_RATCHET_LOWER=1`); `bn6-content-check --deprecated [--list]` prints the counts.
+`bn6-content check` warns on unfilled roles and single-owner kinds (`bn6_content::lint`). The engine's test pack
+type-checks against content/bn6's core.d.luau in bn6-content-check's tests.
 
 ### 7.8 Tests in the repository
 
