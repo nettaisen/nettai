@@ -1261,7 +1261,37 @@ survival alone decides the effect). Its effect (`sub_80E3504`): `sub_802CEA6` cl
 (its object gets Param2 = 1), `sub_80E3560` spawns the trap's object for Param1 0 only (AntiDmg's params are 3: none),
 and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes per side at 0x02036720). Then 61 ticks.
 `sub_802CEC8` clears a record every tick once its user's HP is 0. The trap springs in the damage intake
-(`sub_802CEF4`).
+(`sub_802CEF4`). Note `sub_802CEA6` clears only the low half of the record's damage word. The pack's script:
+objects/trap-chip.
+
+#### 3.6.10 The other dimming chips' controllers (`off_802CCB4`)
+
+Every subtype's controller is a T4 object on the standard dimming phases (`object_timefreezeBegin`, then actions
+0/4/8/0xC: dim, telop, the effect, undim; `object_timefreezeEnd`), spawned with the user's panel, element,
+alliance (and, for most, flip), damage word, and chip and bonus at +0x30/+0x32. `sub_80EBD9C` registers it with
+`sub_800BF16(side, chip >= 0x170, controller)`: r1 is the no-cut-in flag, not the chip. The pack's scripts, by
+subtype:
+
+- 1 (Invisibl, WhiCapsl; T4 0x5D): the user flashes invisible for Param1-2 ticks (`sub_8010474`), 31 ticks.
+  objects/invisible.
+- 6 (RockCube, IceCube; T4 0x37): a rock of variant Param1 (1 a rock cube, 3 an ice block) on the panel in front
+  (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. objects/rock-cube; the rock is objects/rock
+  (field-objects.md).
+- 25 (SloGauge, FstGauge; T4 0x1C, `sub_80E23E8`): the shared custom gauge's rate becomes 0x10 or 0x40 for the rest
+  of the round (`sub_801DF8C`; the round start sets it from the navi stats, `sub_8014178`); the user's side's slow
+  (+0x3C) or fast (+0x3A) gauge timer in `sub_802E070` gets 480 ticks, and, with per-player gauges (battle flag
+  0x40) outside a link battle, the other side's 1080 (`sub_80107D4` counts them down; nothing else PvP reaches
+  reads them); a warning blinks over the gauge (`sub_800AE90`, with sound 0x91 every 16 frames of the game's frame
+  counter, which the port approximates with the effect's own ticks), 70 ticks. objects/gauge-speed.
+- 38 (HubBatc, the arm chips, BugRSwrd, BgDthThd, DarkInvs; T4 0x84, `sub_80E95B4` by Param1): 0 raises the buster
+  to attack 5 at least, rapid and charge 4, the custom level 8, defers the hand-shrink bug a turn, gives a B+Back
+  special (0x3B) if there was none, and the shoes and undershirt (flags 0x40030 and the stats), resetting the
+  body's collision types; 1 and 2 make weapon routine Param2 the charged shot in the stats and the navi
+  (`sub_80E97BE`: a buster of 3 or 4 goes, 0x2C becomes 0x2B); 3 sets the navi's request 0x20000000. The arm
+  effect's height offset is lost to a shift of the wrong register. objects/navi-boost.
+
+Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
+(program advance 0x157: only as its recipe), per-player gauges (not in netbattles).
 
 ---
 
