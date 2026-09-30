@@ -14,7 +14,7 @@
 //! comes from `bn6-extract content <rom> <pack>`.
 
 use bn6_audio::{AudioOut, BattleAudio, FPS, SAMPLE_RATE, SoundCue, wav};
-use bn6_battle::trace;
+use bn6_compat::trace;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -170,7 +170,7 @@ fn main() {
             }
             sink.frame(b.sound_cues());
             if !o.keep_going {
-                let diffs = trace::compare(&b, frames[i]);
+                let diffs = trace::compare(&b, frames[i], bn6_compat::Compat::bn6());
                 if let Some(d) = diffs.first() {
                     eprintln!("  frame {frame}: the engine leaves the recording ({})", d.lines().next().unwrap_or(""));
                     break;
