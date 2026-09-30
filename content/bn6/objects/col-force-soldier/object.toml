@@ -1,0 +1,6 @@
+# A ColForce soldier (attack object #0xCF, `sub_80DF328`) is a script.
+
+[kind]
+pool = "attack"
+index = 0xCF
+script = "col_force_soldier.luau"

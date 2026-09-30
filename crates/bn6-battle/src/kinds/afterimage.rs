@@ -1,16 +1,22 @@
 //! An afterimage (effect object #0x28, `sub_80E32B8`): a blinking copy of
-//! a navi's sprite left behind when the Beast Out rush warps it. Purely
-//! visual, but it holds an effect slot and a place in the update order,
-//! wears the navi's form overlay (its own form overlay object), and ends
-//! early when the navi's form or action changes. See
-//! docs/engine/objects-and-player.md §A.7.
+//! a navi's sprite left behind when the Beast Out rush warps it, or (its
+//! first parameter not 0xFF) a sprite of its own for a few ticks (the
+//! golem's dust, content's `battle.afterimage`). Purely visual, but it
+//! holds an effect slot and a place in the update order, wears the navi's
+//! form overlay (its own form overlay object), and ends early when the
+//! navi's form or action changes. See docs/engine/objects-and-player.md
+//! §A.7.
 
 use crate::battle::Battle;
 use crate::content::{Content, SpriteId};
 use crate::kinds::common::{Progress, set_progress};
 use crate::kinds::form_overlay;
+use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 use crate::setup::Form;
+
+/// The first parameter of an afterimage copying its owner's sprite.
+const COPY: u8 = 0xFF;
 
 pub const INDEX: u8 = 0x28;
 
@@ -37,6 +43,36 @@ pub struct Vars {
     pub tether: Tether,
     /// The animation it holds.
     pub anim: u8,
+    /// How it looks (the spawner's words, `sub_80E33FA`'s r6 and r7).
+    pub look: Look,
+}
+
+/// How an afterimage looks.
+#[derive(Clone, Copy, Debug, Default, Hash)]
+pub struct Look {
+    /// ExtraVars+0: its colour shader.
+    pub color_shader: u16,
+    /// ExtraVars+6 and +7: its shadow.
+    pub shadow: Shadow,
+    /// ExtraVars+8 clear (`sub_80E3422` sets it): it blinks.
+    pub blinks: bool,
+    /// ExtraVars+0x10 (`sub_80E3428`): its palette.
+    pub palette: u8,
+}
+
+/// A sprite afterimage (`sub_80E33FA` with a sprite): the sprite and
+/// animation it shows, which way, for how long, and how.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SpriteSpec {
+    pub sprite: SpriteId,
+    pub anim: u8,
+    /// The game's flip value (bit 0 horizontal).
+    pub flip: u8,
+    pub lifetime: u16,
+    pub color_shader: u16,
+    pub shadow: Shadow,
+    pub blinks: bool,
+    pub palette: u8,
 }
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
@@ -62,7 +98,24 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     o.flags |= flags::RUN_WHILE_PAUSED;
     // sub_80E341E: tied to the Beast form, or to the attack.
     let tether = if b.stats[alliance as usize].form.is_beast() { Tether::BeastForm } else { Tether::Attack };
-    *vars(b, r) = Vars { lifetime, tether, anim };
+    // Its looks: 0x83E0 and a ground shadow (r7's shadow bytes both set).
+    let look = Look { color_shader: COLOR_SHADER, shadow: Shadow::Ground, blinks: true, palette: 0 };
+    *vars(b, r) = Vars { lifetime, tether, anim, look };
+    Some(r)
+}
+
+/// `sub_80E33FA` with a sprite: an afterimage of `owner`'s at `pos`
+/// showing `spec`'s sprite. It keeps running while paused.
+pub fn spawn_sprite(b: &mut Battle, owner: ObjectRef, pos: Vec3, spec: SpriteSpec) -> Option<ObjectRef> {
+    let params = [spec.sprite.category, spec.sprite.index, spec.anim, spec.flip];
+    let alliance = b.objects.get(owner).alliance;
+    let r = b.objects.spawn(Pool::Effect, INDEX, pos, params)?;
+    let o = b.objects.get_mut(r);
+    o.related[0] = Some(owner);
+    o.alliance = alliance;
+    o.flags |= flags::RUN_WHILE_PAUSED;
+    let look = Look { color_shader: spec.color_shader, shadow: spec.shadow, blinks: spec.blinks, palette: spec.palette };
+    *vars(b, r) = Vars { lifetime: spec.lifetime, tether: Tether::None, anim: spec.anim, look };
     Some(r)
 }
 
@@ -85,27 +138,33 @@ fn player_sprite(content: &Content, name_id: u16) -> SpriteId {
     }
 }
 
-/// `sub_80E32D8`: copy the owner's NameID and sprite, put on its form's
-/// overlay, and show `anim`.
+/// `sub_80E32D8`: copy the owner's NameID and sprite and put on its
+/// form's overlay (or load its own sprite), and show `anim`.
 fn init(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).flags |= flags::VISIBLE;
-    let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
-    let name_id = b.objects.get(owner).name_id;
-    b.objects.get_mut(r).name_id = name_id;
-    b.objects.sprite_mut(r).load(player_sprite(&b.content, name_id));
-    b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
-    put_on_layer(b, r, name_id);
-    let anim = vars(b, r).anim;
-    let lifetime = vars(b, r).lifetime;
-    let flip = b.objects.get(r).params[3];
+    let params = b.objects.get(r).params;
+    if params[0] == COPY {
+        let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
+        let name_id = b.objects.get(owner).name_id;
+        b.objects.get_mut(r).name_id = name_id;
+        b.objects.sprite_mut(r).load(player_sprite(&b.content, name_id));
+        b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
+        put_on_layer(b, r, name_id);
+    } else {
+        b.objects.sprite_mut(r).load(SpriteId { category: params[0], index: params[1] });
+        b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
+    }
+    let Vars { anim, lifetime, look, .. } = *vars(b, r);
+    let flip = params[3];
     let s = b.objects.sprite_mut(r);
     s.set_animation(anim, &b.content);
     s.update(&b.content);
-    // A ground shadow, the fourth parameter's flip and the spawner's
-    // colour shader (0x83E0: less green).
-    s.look.shadow = crate::object::sprite::Shadow::Ground;
+    // Its shadow, palette, the fourth parameter's flip and the spawner's
+    // colour shader (the rush's 0x83E0: less green).
+    s.look.shadow = look.shadow;
+    s.look.palette = look.palette;
     s.look.set_flip(flip);
-    s.look.color_shader = COLOR_SHADER;
+    s.look.color_shader = look.color_shader;
     let o = b.objects.get_mut(r);
     o.anim = anim;
     o.anim_loaded = anim;
@@ -153,9 +212,10 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
     b.objects.get_mut(r).timer = timer;
     b.objects.sprite_mut(r).update(&b.content);
+    let blinks = vars(b, r).look.blinks;
     let o = b.objects.get_mut(r);
     o.flags |= flags::VISIBLE;
-    if timer & 2 == 0 {
+    if blinks && timer & 2 == 0 {
         o.flags &= !flags::VISIBLE;
     }
 }
@@ -165,12 +225,15 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 /// afterimage is freed.
 fn destroy(b: &mut Battle, r: ObjectRef) {
     set_progress(b, r, Progress::DESTROY);
-    if let Some(layer) = b.objects.get(r).related[1] {
+    if b.objects.get(r).params[0] == COPY
+        && let Some(layer) = b.objects.get(r).related[1]
+    {
         b.objects.get_mut(layer).flags |= flags::RUN_WHILE_PAUSED;
     }
     // sub_8011044(record, 1): the Falzar beast head comes off (sub_801140E).
+    // A sprite afterimage has NameID 0, a virus record: nothing.
     match b.objects.get(r).name_id {
-        0x1A0 | 0x1B6 | 0x1B8..=0x1BC | 0x1C2 => {}
+        0 | 0x1A0 | 0x1B6 | 0x1B8..=0x1BC | 0x1C2 => {}
         0x1B7 => {
             if let Some(layer) = b.objects.get_mut(r).related[1].take() {
                 set_progress(b, layer, Progress::DESTROY);
