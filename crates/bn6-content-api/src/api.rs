@@ -239,9 +239,10 @@ named_fields! {
         ChipLockout = "chip_lockout", U8, rw;
         /// Ticks before the B+Back special can be input again.
         BackSpecialCooldown = "back_special_cooldown", U8, rw;
-        /// The weapon routines the navi's buttons run (0xFF = none).
-        BusterRoutine = "buster_routine", U8, ro;
-        ChargeShotRoutine = "charge_shot_routine", U8, ro;
+        /// The weapon routines the navi's buttons run (0xFF = none; the
+        /// buster's and charged shot's writable: chips change them).
+        BusterRoutine = "buster_routine", U8, rw;
+        ChargeShotRoutine = "charge_shot_routine", U8, rw;
         BackSpecialRoutine = "back_special_routine", U8, ro;
         AChargeRoutine = "a_charge_routine", U8, ro;
         AltAChargeRoutine = "alt_a_charge_routine", U8, ro;
@@ -321,9 +322,10 @@ named_fields! {
         NaviVariant = "navi_variant", U8, ro;
         /// The base form's element.
         Element = "element", U8, ro;
-        Attack = "attack", U8, ro;
-        Rapid = "rapid", U8, ro;
-        Charge = "charge", U8, ro;
+        /// The buster's levels (writable: chips raise them).
+        Attack = "attack", U8, rw;
+        Rapid = "rapid", U8, rw;
+        Charge = "charge", U8, rw;
         Mood = "mood", U8, ro;
         BeastOutCounter = "beast_out_counter", U8, ro;
         MaxBaseHp = "max_base_hp", U16, ro;
@@ -344,6 +346,19 @@ named_fields! {
         /// The form is a Beast form, Beast Over.
         Beast = "beast", Bool, ro;
         BeastOver = "beast_over", Bool, ro;
+        // Written by the navi-changing dimming chips (off_802CCB4[38]).
+        /// The custom screen's size.
+        CustomLevel = "custom_level", U8, rw;
+        /// NaviCust bug: the hand shrinks from this turn on (0 none).
+        HandShrinkTurn = "hand_shrink_turn", U8, rw;
+        /// The weapon routines the navi starts rounds with: the charged
+        /// shot, the B+Back special (0xFF none).
+        ChargeShotRoutine = "charge_shot_routine", U8, rw;
+        BackSpecialRoutine = "back_special_routine", U8, rw;
+        /// NaviCust: FloatShoes, AirShoes, UnderShirt.
+        FloatShoes = "float_shoes", Bool, rw;
+        AirShoes = "air_shoes", Bool, rw;
+        Undershirt = "undershirt", Bool, rw;
         /// `sub_800FE52`: how many kinds of NaviCust bug the navi has
         /// (astray steps, a panel trail, buster blanks, a hit status,
         /// custom-screen damage, emotion swings, the two HP drains, a
@@ -363,6 +378,11 @@ named_fields! {
         NavisIn = "navis_in", Bool, ro;
         /// Presentation only: the side the simulation's perspective is.
         LocalSide = "local_side", U8, ro;
+        /// Custom screens opened so far.
+        Turn = "turn", U8, ro;
+        /// Battle flag 0x40: each player has a custom gauge (`sub_800A8F8`;
+        /// not in netbattles).
+        PerPlayerGauges = "per_player_gauges", Bool, ro;
         /// Battle flag 1: the fight is on (collision is live).
         Fighting = "fighting", Bool, ro;
     }
@@ -416,6 +436,9 @@ named_flags! {
         UsingAction = "using_action",
         AffectedByIce = "affected_by_ice",
         Bubbled = "bubbled",
+        // Dimming chip subtype 20 (ElemTrap's trap).
+        /// Hit even while the battle is dimmed.
+        HitWhileDimmed = "hit_while_dimmed",
     }
 }
 
@@ -566,30 +589,72 @@ named_flags! {
     pub enum ObstacleAction {
         /// `sub_80165B8`: back to idle.
         ReturnToIdle = "return_to_idle",
-        /// `sub_8017E26`: pushed or dragged along the field.
+        /// `sub_8017E26`: pushed up to six panels, not into bodies or other
+        /// obstacles (and, pulled back, not into the puller's area).
         Slide = "slide",
-        /// `sub_8017CC0`: pushed along the field (the thrown obstacles').
-        Pushed = "pushed",
         /// `sub_80166AE`, `sub_8016B02`, `sub_8016B36`, `sub_8016B72`: the
         /// actor hit reactions (they need actor data).
         Flinch = "flinch",
         Paralyzed = "paralyzed",
         Frozen = "frozen",
         Bubbled = "bubbled",
+        // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
+        /// `sub_8017CC0`: knocked back as far as the hit says, onto free
+        /// panels it reserves on the way.
+        KnockedBack = "knocked_back",
     }
 }
 
 named_flags! {
-    /// What an obstacle's `obstacle.react` does with a body's or another
-    /// obstacle's touch (the two dispatchers differ only there).
+    /// What an obstacle's `obstacle.react` does with a body's, another
+    /// obstacle's or a breaking hit's touch (the dispatchers differ there).
     pub enum ObstacleCrush {
         /// `sub_801B394`: the HP drops to 0.
         Breaks = "breaks",
         /// `sub_801B4D4`: destroyed, the HP as it is.
         Destroys = "destroys",
-        /// `sub_801B878` while its object says so (a LilBoiler that is
-        /// boiling over): nothing.
-        Passes = "passes",
+        // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
+        /// `sub_801B610`: bodies don't break it; obstacles and breaking
+        /// hits drop the HP to 0.
+        SparesBodies = "spares_bodies",
+    }
+}
+
+// Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
+named_flags! {
+    /// When `obstacle.react` holds an obstacle still while dimmed.
+    pub enum ObstacleHold {
+        /// `sub_801B394` and the others: once it has appeared (its
+        /// appearing action runs on while dimmed).
+        AfterAppearing = "after_appearing",
+        /// `sub_801B750`: always.
+        Always = "always",
+    }
+}
+
+named_flags! {
+    /// What a pushing hit (hit modifier 0x40) does in `obstacle.take_hits`.
+    pub enum ObstaclePush {
+        /// `sub_801AD9E`: pushes it, and its damage is forgotten.
+        ForgetsDamage = "forgets_damage",
+        /// `sub_801AD12`: pushes it, and the damage still lands.
+        KeepsDamage = "keeps_damage",
+        /// `sub_801ADFA`: as `keeps_damage`, and any hit from one side (but
+        /// hits of type 0x1000) pushes it a panel away.
+        AnyHit = "any_hit",
+        /// `sub_801AD6A`: it is never pushed.
+        Ignored = "ignored",
+    }
+}
+
+named_flags! {
+    /// Who placed a side's wind (`sub_80E541A`'s third argument).
+    pub enum WindSource {
+        /// Wind and Fan's fan (attack object #0x48).
+        Obstacle = "obstacle",
+        /// A navi's own wind (effect object #0x41, `sub_80E532C`), which a
+        /// fan's can't replace.
+        Navi = "navi",
     }
 }
 
@@ -633,9 +698,9 @@ named_flags! {
 }
 
 named_flags! {
-    /// How a removed field object's blink-out goes (`sub_800F8CE`).
+    /// `sub_800F8CE`: how a removed obstacle's blink-out is going.
     pub enum BlinkOut {
-        /// It isn't blinking out (removed some other way).
+        /// Not blinking out (removed some other way).
         No = "no",
         Blinking = "blinking",
         Done = "done",
@@ -812,6 +877,8 @@ pub trait CoreApi {
     /// Report a sound only `side`'s player hears.
     fn play_sound_for(&mut self, side: u8, sound: u16);
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value;
+    /// Change one of a side's navi stats (the writable ones).
+    fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()>;
     /// A side's emotion (`sub_8015B54`).
     fn emotion(&self, side: u8) -> Emotion;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
@@ -832,6 +899,13 @@ pub trait CoreApi {
     fn hand_cursor(&self, side: u8) -> u8;
     /// `sub_800FC7C`: the cursor moves to the next chip.
     fn advance_hand(&mut self, side: u8);
+    // Subtype 18 (Otenko):
+    /// The turn (custom screens opened before, from 0) the chip at `i` of a
+    /// side's hand was picked in.
+    fn hand_turn(&self, side: u8, i: u8) -> u8;
+    /// Add to the Atk+ bonus of the chip at `i` of a side's hand
+    /// (wrapping).
+    fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
     /// A side's defensive-chip record.
     fn linked(&self, side: u8) -> LinkedChip;
     fn set_linked(&mut self, side: u8, rec: LinkedChip);
@@ -839,12 +913,25 @@ pub trait CoreApi {
     fn clear_linked(&mut self, side: u8);
     /// FullCust: the custom gauge is full.
     fn fill_custom_gauge(&mut self);
+    /// `sub_801DF8C`: the custom gauge fills `rate` a tick (full at
+    /// 0x4000).
+    fn set_gauge_rate(&mut self, rate: u16);
+    /// A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
+    fn set_gauge_speed_ticks(&mut self, side: u8, slow: u16, fast: u16);
     /// `sub_800AB46`: bump a side's statistics counter.
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// `sub_800AB3A`: a side's statistics counter.
     fn side_stat(&self, side: u8, index: u8) -> u8;
     /// A player NameID's actor record, if it is one.
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo>;
+    // Subtype 8 (Wind and Fan):
+    /// `sub_80E543C`: a side's wind (BattleState+0xC0) and who placed it.
+    fn wind(&self, side: u8) -> (Option<ObjectRef>, WindSource);
+    /// `sub_80E541A`: `o` is `side`'s wind; the one there before is
+    /// destroyed at once (`sub_80E5410`).
+    fn set_wind(&mut self, o: ObjectRef, side: u8, source: WindSource);
+    /// `sub_80E544C`: `o` is no side's wind.
+    fn clear_wind(&mut self, o: ObjectRef);
     /// The damage-carry record of the side that takes the damage
     /// (`dword_203CFB0`; CopyDmg's): what that side took this tick and
     /// last tick, the object that set it, and the target that also takes
@@ -892,6 +979,13 @@ pub trait CoreApi {
     fn can_step(&self, o: ObjectRef, p: PanelPos) -> bool;
     /// `sub_800E680`: could `o` stand on `p`, whichever side owns it?
     fn can_stand_any_side(&self, o: ObjectRef, p: PanelPos) -> bool;
+    // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
+    /// `object_panel_setPoison`: a solid panel turns to poison. Whether it
+    /// was solid.
+    fn poison_panel(&mut self, p: PanelPos) -> bool;
+    /// `object_setPanelTypeBlink`: this frame the panel is drawn as type
+    /// `kind` (an index into [`PANEL_TYPES`]) of side `side` (drawn only).
+    fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8);
     /// `object_breakPanel_dup1`: break a solid panel, or crack it when
     /// something stands on it; true only when it broke.
     fn shatter_panel(&mut self, p: PanelPos) -> bool;
@@ -1116,19 +1210,15 @@ pub trait CoreApi {
     fn obstacle_register(&mut self, o: ObjectRef, side: u8, class: u8);
     /// `sub_800F656`: forget `o` in the field-object registry.
     fn obstacle_unregister(&mut self, o: ObjectRef);
-    /// `sub_801AD9E`: resolve this tick's hits (a push forgets the damage).
-    fn obstacle_take_hits(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// `sub_801AD12`: the same, but a push keeps the damage.
-    fn obstacle_take_hits_keeping_damage(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `sub_801AD9E` and its variants (`push`): resolve this tick's hits.
+    fn obstacle_take_hits(&mut self, o: ObjectRef, push: ObstaclePush) -> ApiResult<()>;
     /// `sub_800F672`: the lifetime; broken when it runs out or the battle
     /// is over, blinking for its last three seconds.
     fn obstacle_tick_lifetime(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// `sub_801B394` / `sub_801B4D4`: damage, removal and status; the
-    /// action the kind's own table runs now (None: a status routine ran).
-    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>>;
-    /// `sub_801B750`: the same, but while dimmed it holds still even while
-    /// appearing.
-    fn obstacle_react_holding(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>>;
+    /// `sub_801B394` and its variants (`crush`, `hold`): damage, removal
+    /// and status; the action the kind's own table runs now (None: a status
+    /// routine ran).
+    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush, hold: ObstacleHold) -> ApiResult<Option<u8>>;
     /// Run a shared entry of the obstacle's action table.
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()>;
     /// How the obstacle is leaving.
@@ -1144,6 +1234,8 @@ pub trait CoreApi {
     /// A chip's request of the obstacle `o` (`by`: the requester, whose
     /// side absorbs).
     fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef);
+    // ---- Field objects (obstacles) -------------------------------------------
+
     /// Whether another object asked `flag` of the field object `o`.
     fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool>;
     /// `sub_8018810`: NameID `name_id`'s sprite attach point `point`, in

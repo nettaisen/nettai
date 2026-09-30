@@ -57,10 +57,9 @@ local function region_panels(region: number, x: number, y: number, side: number)
     local dir = 1 - 2 * side
     local list: { number } = {}
     for _, d in offsets do
-        local px, py = d[1] * dir + x, d[2] + y
+        local px: number, py: number = d[1] * dir + x, d[2] + y
         if field.check(px, py, ON_FIELD, 0) then
-            local p = panels.pack(px, py)
-            list[#list + 1] = p
+            list[#list + 1] = panels.pack(px, py)
         end
     end
     return list

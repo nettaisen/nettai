@@ -89,6 +89,8 @@ export type StatusFlag =
     | "using_action"
     | "affected_by_ice"
     | "bubbled"
+    -- Hit even while the battle is dimmed (ElemTrap's trap).
+    | "hit_while_dimmed"
 -- Status timers of an object with collision data.
 export type StatusTimer =
     "paralyze" | "confuse" | "blind" | "immobilize" | "flash" | "submerged" | "invulnerable" | "freeze" | "bubble"
@@ -356,7 +358,8 @@ declare class Object
     buffered_move: number
     chip_lockout: number
     back_special_cooldown: number
-    -- The weapon routines the navi's buttons run (0xFF = none).
+    -- The weapon routines the navi's buttons run (0xFF = none; the
+    -- buster's and the charged shot's writable).
     buster_routine: number
     charge_shot_routine: number
     back_special_routine: number
@@ -490,7 +493,8 @@ declare class Object
     function obstacle_flag(self, flag: ObstacleFlag): boolean
 end
 
--- A side's navi stats (read-only).
+-- A side's navi stats (read-only but the buster's levels, the custom
+-- level, the hand-shrink bug's turn, the start weapons and the shoes).
 declare class Navi
     -- Fighting in the sun.
     sun: boolean
@@ -520,6 +524,15 @@ declare class Navi
     -- The form is a Beast form, Beast Over.
     beast: boolean
     beast_over: boolean
+    custom_level: number
+    -- NaviCust bug: the hand shrinks from this turn on (0 none).
+    hand_shrink_turn: number
+    -- The weapon routines rounds start with (0xFF none).
+    charge_shot_routine: number
+    back_special_routine: number
+    float_shoes: boolean
+    air_shoes: boolean
+    undershirt: boolean
     -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
     bug_kinds: number
 end
@@ -622,6 +635,10 @@ declare battle: {
     navis_in: () -> boolean,
     -- Presentation only: the side the simulation's perspective is.
     local_side: () -> number,
+    -- Custom screens opened so far.
+    turn: () -> number,
+    -- Battle flag 0x40: each player has a custom gauge (not in netbattles).
+    per_player_gauges: () -> boolean,
     -- Battle flag 1: the fight is on (collision is live).
     fighting: () -> boolean,
     -- Sound for both players, or for one side's player (output only).
@@ -647,6 +664,10 @@ declare battle: {
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
     fill_custom_gauge: () -> (),
+    -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
+    set_gauge_rate: (rate: number) -> (),
+    -- A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
+    set_gauge_speed_ticks: (side: number, slow: number, fast: number) -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
     -- `sub_800AB3A`: a side's statistics counter.
     side_stat: (side: number, index: number) -> number,
@@ -681,8 +702,18 @@ declare battle: {
     palette_flash: (variant: number, ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
-    -- `sub_80E33FA`: an afterimage (effect object #0x28) of `owner`'s side
-    -- at `pos`: a copy of a sprite that stays behind.
+    -- Subtype 18 (Otenko): the turn (from 0) a hand's chip at i was picked
+    -- in, and adding to its Atk+ bonus.
+    hand_turn: (side: number, i: number) -> number,
+    add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
+    -- Subtype 8 (Wind and Fan): a side's wind (`sub_80E543C`) and who
+    -- placed it; `sub_80E541A` makes `me` a side's wind (the one there
+    -- before is destroyed at once); `sub_80E544C` makes it no side's.
+    wind: (side: number) -> (Object?, WindSource),
+    set_wind: (me: Object, side: number, source: WindSource) -> (),
+    clear_wind: (me: Object) -> (),
+    -- `sub_80E33FA`: a plain afterimage (effect object #0x28) of `owner`'s
+    -- side at `pos`: a copy of a sprite that stays behind.
     afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
     -- `sub_8018810`: NameID `name_id`'s sprite attach point `point`, in
     -- pixels, facing the way `alliance` and `flip` say.
@@ -720,6 +751,13 @@ declare field: {
     solid: (x: number, y: number) -> boolean,
     -- Drawn only.
     highlight: (x: number, y: number) -> (),
+    -- Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
+    -- `object_panel_setPoison`: a solid panel turns to poison; whether it
+    -- was solid.
+    poison: (x: number, y: number) -> boolean,
+    -- `object_setPanelTypeBlink`: this frame the panel is drawn as `kind`
+    -- of `side` (drawn only).
+    blink: (x: number, y: number, kind: PanelType, side: number) -> (),
 }
 
 -- The dimming service: the steps of a dimming chip's controller, which its
@@ -767,8 +805,13 @@ export type ActorListEntrySpec = {
     variant: number,
 }
 
-export type ObstacleCrush = "breaks" | "destroys" | "passes"
+export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies"
+-- Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
+export type ObstacleHold = "after_appearing" | "always"
+export type ObstaclePush = "forgets_damage" | "keeps_damage" | "any_hit" | "ignored"
+export type WindSource = "obstacle" | "navi"
 export type ObstacleRemoval = "broken" | "removed" | "vanished" | "absorbed"
+-- How a removed field object's blink-out goes.
 export type BlinkOut = "no" | "blinking" | "done"
 
 -- The obstacle framework: the steps of a field obstacle's update (rocks,
@@ -784,28 +827,33 @@ declare obstacle: {
     register: (me: Object, side: number, class: number) -> (),
     -- `sub_800F656`: forget it in the field-object registry.
     unregister: (me: Object) -> (),
-    -- `sub_801AD9E`: resolve this tick's hits (a push forgets the damage).
-    take_hits: (me: Object) -> (),
-    -- `sub_801AD12`: the same, but a push keeps the damage.
-    take_hits_keeping_damage: (me: Object) -> (),
+    -- `sub_801AD9E` and its variants: resolve this tick's hits. What a
+    -- pushing hit (hit modifier 0x40) does: "forgets_damage" (the default,
+    -- `sub_801AD9E`: pushed, its damage forgotten), "keeps_damage"
+    -- (`sub_801AD12`: pushed, the damage lands), "any_hit" (`sub_801ADFA`:
+    -- that, and any one side's hit but type 0x1000 pushes it a panel away),
+    -- "ignored" (`sub_801AD6A`: never pushed).
+    take_hits: (me: Object, push: ObstaclePush?) -> (),
     -- `sub_800F672`: the lifetime (`timer`): broken when it runs out or
     -- the battle is over, blinking for its last three seconds.
     tick_lifetime: (me: Object) -> (),
-    -- `sub_801B394` ("breaks", the default: a body's touch drops the HP to
-    -- 0) or `sub_801B4D4` ("destroys"): damage, removal and status; the
-    -- action the kind's table runs now, nil when a status routine ran.
-    react: (me: Object, crush: ObstacleCrush?) -> number?,
-    -- `sub_801B750`: the same (as "breaks"), but while dimmed it holds
-    -- still even while appearing. (`sub_801B878` is "breaks", or
-    -- "passes" while its object says a body's touch does nothing.)
-    react_holding: (me: Object, crush: ObstacleCrush?) -> number?,
-    -- The shared table entries: `sub_80165B8` (1), `sub_8017E26` (5, a
-    -- push), and the actor reactions obstacles can't take (3, 4, 6, 7).
+    -- `sub_801B394` ("breaks", the default: a body's, another obstacle's
+    -- or a breaking hit's touch drops the HP to 0), `sub_801B4D4`
+    -- ("destroys": destroyed, the HP as it is) or `sub_801B610`
+    -- ("spares_bodies": bodies don't break it): damage, removal and status;
+    -- the action the kind's table runs now, nil when a status routine ran.
+    -- While dimmed it holds the obstacle still once it has appeared
+    -- ("after_appearing", the default) or always ("always", `sub_801B750`).
+    react: (me: Object, crush: ObstacleCrush?, hold: ObstacleHold?) -> number?,
+    -- The shared table entries: `sub_80165B8` (1), the pushes (5:
+    -- `sub_8017E26` slides up to six panels, not into bodies or obstacles
+    -- nor, pulled back, into the puller's area; `sub_8017CC0` is knocked
+    -- back as far as the hit says onto free panels it reserves), and the
+    -- actor reactions nothing starts on an obstacle (3, 4, 6, 7: an
+    -- error).
     return_to_idle: (me: Object) -> (),
     slide: (me: Object) -> (),
-    -- `sub_8017CC0` (5 in the thrown obstacles' tables): pushed along the
-    -- field by a hit.
-    pushed: (me: Object) -> (),
+    knocked_back: (me: Object) -> (),
     flinch: (me: Object) -> (),
     paralyzed: (me: Object) -> (),
     frozen: (me: Object) -> (),

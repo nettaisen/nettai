@@ -1,7 +1,7 @@
 --!strict
--- Panel lists and searches as the original's routines build them. A panel
--- is packed as the game packs it, x | y << 4 (so a list fits a `u8[18]`
--- state field); `panels.x` and `panels.y` unpack it.
+-- Panel lists and searches the chips' objects share. A panel in a list is
+-- packed as the game packs it, x | y << 4 (so a list fits a `u8[18]` state
+-- field); `panels.x` and `panels.y` unpack it.
 
 local panels = {}
 
@@ -64,6 +64,8 @@ end
 
 -- `object_getAllianceDirection`: +1 for side 0, -1 for side 1 (the side's
 -- forward, whatever the object faces).
+-- The game doesn't mask its argument: a caller that passes a side and flip
+-- halfword (objects/seed) gets a step far off the field.
 function panels.side_direction(alliance: number): number
     return -(alliance * 2 - 1)
 end

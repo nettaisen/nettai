@@ -28,6 +28,8 @@ use bn6_content_api::{
     StatusTimer, Value, Vec3,
 };
 use bn6_content_api::ObjectRef;
+// Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMethods, Value as LuaValue};
 
 type Ctx = (NonNull<dyn CoreApi>, NonNull<Manifest>);
@@ -672,6 +674,12 @@ impl UserData for Navi {
                 let v = with(|api, _| Ok(api.navi_stat(this.0, f)))?;
                 from_api(lua, v, &f.ty())
             });
+            if f.writable() {
+                fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
+                    let v = to_api(v, &f.ty(), f.name())?;
+                    with(|api, _| api.set_navi_stat(this.0, f, v).map_err(api_error))
+                });
+            }
         }
     }
 }
@@ -844,6 +852,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.clear_linked(side)))
     });
     lib_fn!(lua, t, "fill_custom_gauge", |_, ()| with(|api, _| Ok(api.fill_custom_gauge())));
+    lib_fn!(lua, t, "set_gauge_rate", |_, rate: LuaValue| {
+        let rate = u16_arg(rate, "gauge rate")?;
+        with(|api, _| Ok(api.set_gauge_rate(rate)))
+    });
+    lib_fn!(lua, t, "set_gauge_speed_ticks", |_, (side, slow, fast): (LuaValue, LuaValue, LuaValue)| {
+        let (side, slow, fast) = (u8_arg(side, "side")? & 1, u16_arg(slow, "ticks")?, u16_arg(fast, "ticks")?);
+        with(|api, _| Ok(api.set_gauge_speed_ticks(side, slow, fast)))
+    });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))
@@ -992,6 +1008,26 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;
         object_value(lua, o)
     });
+    // Subtype 18 (Otenko).
+    lib_fn!(lua, t, "hand_turn", |_, (side, i): (LuaValue, LuaValue)| {
+        let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
+        with(|api, _| Ok(api.hand_turn(side, i)))
+    });
+    lib_fn!(lua, t, "add_hand_attack_bonus", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
+        let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?, u16_arg(n, "bonus")?);
+        with(|api, _| Ok(api.add_hand_attack_bonus(side, i, n)))
+    });
+    // Subtype 8 (Wind and Fan).
+    lib_fn!(lua, t, "wind", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let (o, source) = with(|api, _| Ok(api.wind(side)))?;
+        Ok((object_value(lua, o)?, source.name()))
+    });
+    lib_fn!(lua, t, "set_wind", |_, (o, side, source): (mlua::UserDataRef<Object>, LuaValue, mlua::LuaString)| {
+        let (side, source) = (u8_arg(side, "side")? & 1, named(&source, "wind source", WindSource::from_name)?);
+        with(|api, _| Ok(api.set_wind(o.0, side, source)))
+    });
+    lib_fn!(lua, t, "clear_wind", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.clear_wind(o.0))));
     lib_fn!(
         lua,
         t,
@@ -1108,6 +1144,16 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.highlight_panel(p)))
     });
+    // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
+    lib_fn!(lua, t, "poison", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.poison_panel(p)))
+    });
+    lib_fn!(lua, t, "blink", |_, (x, y, kind, side): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
+        let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);
+        let kind = named(&kind, "panel type", |s| PANEL_TYPES.iter().position(|&n| n == s))? as u8;
+        with(|api, _| Ok(api.blink_panel(p, kind, side)))
+    });
     Ok(t)
 }
 
@@ -1155,24 +1201,24 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.obstacle_register(me.0, side, class)))
     });
     lib_fn!(lua, t, "unregister", |_, me: Me| with(|api, _| Ok(api.obstacle_unregister(me.0))));
-    lib_fn!(lua, t, "take_hits", |_, me: Me| with(|api, _| api.obstacle_take_hits(me.0).map_err(api_error)));
-    lib_fn!(lua, t, "take_hits_keeping_damage", |_, me: Me| {
-        with(|api, _| api.obstacle_take_hits_keeping_damage(me.0).map_err(api_error))
+    lib_fn!(lua, t, "take_hits", |_, (me, push): (Me, Option<mlua::LuaString>)| {
+        let push = match push {
+            Some(p) => named(&p, "push", ObstaclePush::from_name)?,
+            None => ObstaclePush::ForgetsDamage,
+        };
+        with(|api, _| api.obstacle_take_hits(me.0, push).map_err(api_error))
     });
     lib_fn!(lua, t, "tick_lifetime", |_, me: Me| with(|api, _| api.obstacle_tick_lifetime(me.0).map_err(api_error)));
-    lib_fn!(lua, t, "react", |_, (me, crush): (Me, Option<mlua::LuaString>)| {
+    lib_fn!(lua, t, "react", |_, (me, crush, hold): (Me, Option<mlua::LuaString>, Option<mlua::LuaString>)| {
         let crush = match crush {
             Some(c) => named(&c, "crush", ObstacleCrush::from_name)?,
             None => ObstacleCrush::Breaks,
         };
-        with(|api, _| api.obstacle_react(me.0, crush).map_err(api_error))
-    });
-    lib_fn!(lua, t, "react_holding", |_, (me, crush): (Me, Option<mlua::LuaString>)| {
-        let crush = match crush {
-            Some(c) => named(&c, "crush", ObstacleCrush::from_name)?,
-            None => ObstacleCrush::Breaks,
+        let hold = match hold {
+            Some(h) => named(&h, "dimming hold", ObstacleHold::from_name)?,
+            None => ObstacleHold::AfterAppearing,
         };
-        with(|api, _| api.obstacle_react_holding(me.0, crush).map_err(api_error))
+        with(|api, _| api.obstacle_react(me.0, crush, hold).map_err(api_error))
     });
     for &a in ObstacleAction::ALL {
         t.set(

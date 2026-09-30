@@ -1142,8 +1142,14 @@ Special cases:
 - AntiNavi checks (`sub_802CE78(opp) == 0xBA`) in `sub_800BA8A`/`sub_800BDB2` for navi chips 0xDD..0x118.
 - Alliance-swap re-registration in `sub_800BE2C`.
 
-**Quirk.** The r4 value entering `sub_80127C0` from `sub_8017AB4` selects hand vs slot-in (§2.6.4). It was not
-checked at run time. **[unverified]**
+**Quirk.** The r4 value entering `sub_80127C0` from `sub_8017AB4` selects hand vs slot-in (§2.6.4). On this path r4
+is always AIIndex*4 (set in `sub_80EA484`, preserved through `sub_801AF44`), so the cut-in always reads the hand.
+`sub_80127C0`'s side effects all still happen (the Full Synchro / anger doubling with sound 0x87, the use counter,
+heal-on-use, side stat 6 for navi chips, dark-chip costs); it writes every field the spawners read (+2 element, +3
+subtype, +6 bonus, +8 damage, +0xA hit param, +0xC params, +0x14 chip). An action other than 0x15 or 0x1B registers
+nothing and doesn't advance the hand. `loc_800BF30` doesn't check for a registered controller, and a failed spawn
+registers none. `sub_800B8EE(side)`: effect #0 look 0x1E at panel ((side^1)*3+2, 4), z 0x78 px, sound 0xA5. (Not
+ported yet: the engine panics "cut-ins (sub_8017AB4) are not implemented yet".)
 
 When the checks fail (e.g. A pressed while the other side's screen is still dimming, soundmod 3217), `sub_8017AB4`
 just clears requests 0x80C; the navi goes on shaking as usual.
@@ -1266,7 +1272,92 @@ survival alone decides the effect). Its effect (`sub_80E3504`): `sub_802CEA6` cl
 (its object gets Param2 = 1), `sub_80E3560` spawns the trap's object for Param1 0 only (AntiDmg's params are 3: none),
 and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes per side at 0x02036720). Then 61 ticks.
 `sub_802CEC8` clears a record every tick once its user's HP is 0. The trap springs in the damage intake
-(`sub_802CEF4`).
+(`sub_802CEF4`). Note `sub_802CEA6` clears only the low half of the record's damage word. The pack's script:
+objects/trap-chip.
+
+#### 3.6.10 The other dimming chips' controllers (`off_802CCB4`)
+
+Every subtype's controller is a T4 object on the standard dimming phases (`object_timefreezeBegin`, then actions
+0/4/8/0xC: dim, telop, the effect, undim; `object_timefreezeEnd`), spawned with the user's panel, element,
+alliance (and, for most, flip), damage word, and chip and bonus at +0x30/+0x32. `sub_80EBD9C` registers it with
+`sub_800BF16(side, chip >= 0x170, controller)`: r1 is the no-cut-in flag, not the chip. The pack's scripts, by
+subtype:
+
+- 1 (Invisibl, WhiCapsl; T4 0x5D): the user flashes invisible for Param1-2 ticks (`sub_8010474`), 31 ticks.
+  objects/invisible.
+- 6 (RockCube, IceCube; T4 0x37): a rock of variant Param1 (1 a rock cube, 3 an ice block) on the panel in front
+  (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. objects/rock-cube; the rock is objects/rock
+  (field-objects.md).
+- 25 (SloGauge, FstGauge; T4 0x1C, `sub_80E23E8`): the shared custom gauge's rate becomes 0x10 or 0x40 for the rest
+  of the round (`sub_801DF8C`; the round start sets it from the navi stats, `sub_8014178`); the user's side's slow
+  (+0x3C) or fast (+0x3A) gauge timer in `sub_802E070` gets 480 ticks, and, with per-player gauges (battle flag
+  0x40) outside a link battle, the other side's 1080 (`sub_80107D4` counts them down; nothing else PvP reaches
+  reads them); a warning blinks over the gauge (`sub_800AE90`, with sound 0x91 every 16 frames of the game's frame
+  counter, which the port approximates with the effect's own ticks), 70 ticks. objects/gauge-speed.
+- 38 (HubBatc, the arm chips, BugRSwrd, BgDthThd, DarkInvs; T4 0x84, `sub_80E95B4` by Param1): 0 raises the buster
+  to attack 5 at least, rapid and charge 4, the custom level 8, defers the hand-shrink bug a turn, gives a B+Back
+  special (0x3B) if there was none, and the shoes and undershirt (flags 0x40030 and the stats), resetting the
+  body's collision types; 1 and 2 make weapon routine Param2 the charged shot in the stats and the navi
+  (`sub_80E97BE`: a buster of 3 or 4 goes, 0x2C becomes 0x2B); 3 sets the navi's request 0x20000000. The arm
+  effect's height offset is lost to a shift of the wrong register. objects/navi-boost.
+
+Not ported yet, with what is known:
+
+- 4 (Barrier, Barr100, Barr200, BblWrap, LifeAur; T4 0x2F, effect `sub_80E3AFC`): `sub_801A7CC(Param1)` on the user
+  (barrier = type, barrier_weak = `byte_8020B8C[type]`, and from `byte_8020B2C[type*6]` three halfwords: barrier HP
+  (low byte of the first), threshold (low byte of the second), timer (the third); 16 types: pack rules data), then
+  it ends the old barrier visual (AIData+0x60, `sub_80E0DC0`) and spawns the new one (T4 7, `sub_80E0D98`), 61
+  ticks. Its spawner copies only element, user, alliance, damage word and +0x30 (position: register garbage). The
+  FirstBarrier NaviCust (`sub_8013892`) calls the same routine, and a register clobber there gives the charge glow a
+  link pointer into the BIOS (the glow never learns it's linked and never frees itself).
+- The barrier visual (T4 7, `sub_80E0AD4`): driven by the collision data's barrier and the AIData+0x60 link;
+  spawned by FirstBarrier, the Barrier chips, attack #0xC7 and a navi AI. Its look by type from
+  `byte_80E0A14[type*12]`; follows the user; hidden and shown by `sub_80E1352`/`sub_80E13DC`; popped (barrier 0x10)
+  it's blown away; gone with the barrier.
+- 7 (LifeSync; T4 0x5C): in a link battle `sub_80E72C8` branches into another routine's body (`loc_80E73C4`).
+- 26 (BugFix; T4 0x3B): spawns the glow actor T1 0x5D (`sub_80C4AEC`, busy flag Param2), zeroes the stats
+  processing, panel-trail level, buster blanks, hit status, custom damage (halfword), emotion, custom drain, HP
+  drain, battle start and hand-shrink turn (`sub_80E49C4`), calls `sub_801E658`, then `sub_8014446` or `sub_801443C`
+  by stat 0x21, and waits for the glow.
+- The others (and the ElemTrap object): see docs/design/content-migration.md §5.
+
+Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
+(program advance 0x157: only as its recipe), per-player gauges (not in netbattles).
+
+**ElemTrap's trap** (T3 0x4D, `sub_80CDF84`; the pack's `objects/elem-trap`) is a collision over whole-field region
+0x80 with ObjectFlags1 0x01000000 (hit even while dimmed), self type 0, target 0x18. Each tick it resolves its hits
+and reads the per-element damage (CollisionData+0x84, fire to wood); the first element with damage springs it (its
+first update runs unarmed: a hit then just clears the record). Sprung, it waits until the battle isn't dimmed, puts
+sparkles (T4#0 look 0x46, SE 0xA5) on the enemy navi's panels, spawns the counterattack T4 0x2B (`sub_80E35A4`,
+`objects/elem-trap-strike`) at the **head** of the update list (`sub_80033E4`) and registers it with `sub_800BF16`
+(the other side can't cut in), clears its side's record and ends. The counterattack's effect (`sub_80E362C`) hits
+every panel with any of `byte_80E36E4[side]` (the enemy's bodies) in that element (`byte_80E36EC`, damage plus bonus,
+`sub_80C53A6`) and spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel-bursts`: shared by seven callers,
+among them TimeBom's blast) over region 0x80. The lab's ElemTrap scenarios never spring the trap: the spring, the
+sparkles, the counterattack and the bursts are **unverified**.
+
+#### 3.6.10 TimeBom, Mine, Guardian (subtypes 10, 11, 14)
+
+- **TimeBom** (T4 0x27 `sub_80E31D8`, `objects/time-bom`; 31 ticks) sets the countdown bomb T3 0x4B (`sub_80CD8EC`,
+  `objects/countdown-bomb`) on the first panel ahead meeting `off_80E3280[side]` (a free enemy panel). The bomb
+  (variants `byte_80CD8AC`: 0 TimeBom1-3, HP 50; 1 TimeBom+, HP 200) rises, counts 3, 2, 1 (60, 60, 60, 30 ticks,
+  shown by hiding sprite parts), then hits whole-field region 0x82/0x81 (the enemy area of the side opposite its
+  panel's) and sets off bursts; broken first, it only puffs. Variants 2 to 7 (HP 3 to 10; `bursts_when_broken`,
+  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them. The lab's
+  scenarios end during the countdown: the blast, breaking, removal and absorption are **unverified**.
+- **Mine** (T4 0x29 `sub_80E342C`, `objects/mine`; 121 ticks) lays T3 0x4C (`sub_80CDD44`, `objects/land-mine`),
+  which shuffles the enemy's free panels (`byte_80CDF50`, 20 swaps), hops through them every 2 ticks (59 hops, SE
+  0x113), then hides armed (region 1, types 0x33/0x2A) until something touches it, its HP runs out, its panel stops
+  being solid or the battle ends; it blows up (T4#0 look 0x47, SE 0x70) the tick after. It has its own action table
+  and no reaction dispatcher. The lab verifies the hops; arming and blowing up are **unverified**.
+- **Guardian** (T4 0x52 `sub_80E6758`, `objects/guardian`; 30 ticks) places the statue T3 0x7D (`sub_80D4C84`,
+  `objects/guardian-statue`, HP 1, 6000 ticks, `sub_801B4D4`) on the free panel in front; stages place one with
+  actor-list entry type 9 (`sub_800751C`, Param1 1, the panel's side). Broken by one side's hits only
+  (`sub_80D4FF6` on its hit flags), it takes the other side's part: its own dimming T4 0x53 (`sub_80E680C`,
+  `objects/guardian-strike`, the telop of chip 0x175, started with `sub_800BF16`), whose effect sets the statue's
+  Param3; then a hit on whole-field region 0x85/0x84 (the enemy navi's panels) with sparks (`sub_801BD3C`, which the
+  game calls with the panel's Y and the element as its panel). The strike back is **unverified** (no lab scenario
+  breaks the statue).
 
 ### 3.7 RskyHny (action 0x39, `sub_80EDD80`)
 
@@ -1353,7 +1444,7 @@ end when the battle is over; a blocked hit (0xFF800000) clearing the head's regi
 
 Content: chips/036-minibomb/chip.luau (the action; the other chips name it), objects/bomb (T3#8), objects/bomb-slash
 (T3#0xA), objects/energy-burst (T3#0x11), objects/seed (T3#0x4F), objects/flash-bomb (T3#0xA4), objects/bug-bomb
-(T3#0xA5), objects/black-bomb (T3#0x4A), objects/smoke-puff (T4#0x14), objects/panel-bursts (T4#0x24), lib/region.luau
+(T3#0xA5), objects/black-bomb (T3#0x4A), objects/rising-bubble (T4#0x14), objects/panel-bursts (T4#0x24), lib/region.luau
 (`sub_801BD3C`, `sub_80CE468`, `sub_80CE424`), lib/trajectory.luau (`sub_8001330`, `sub_800120E`, `sub_80011A0`,
 `calcAngle_800117C` and the BIOS division, square root and arctangent), lib/hp.luau (`object_applyDamage`).
 

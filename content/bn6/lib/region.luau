@@ -5,13 +5,6 @@
 
 local region = {}
 
--- `object_getAllianceDirection`: the x step of a region's dx, from the
--- value the caller passes (a side, or a side and flip halfword: the game
--- doesn't mask it, so a flipped object's dx lands far off the field).
-function region.direction(side_word: number): number
-    return 1 - 2 * side_word
-end
-
 -- `object_isValidPanel` on whole numbers (the API's panel arguments wrap
 -- to a byte, which could bring a far-off panel back onto the field).
 local function valid(x: number, y: number): boolean
@@ -47,8 +40,8 @@ end
 -- `sub_80CE468`: `sub_801BD3C` (`battle.region_effects`: effect `effect`
 -- on each panel of region `r` around (x, y) at height `z`, or the
 -- whole-field region's), skipping missing panels too, and with dx stepping
--- by `dir` (`region.direction`), which its callers compute from the side
--- and flip halfword.
+-- by `dir` (`panels.side_direction`), which its callers compute from the
+-- side and flip halfword.
 function region.effects_on_panels(x: number, y: number, effect: number, r: number, dir: number, z: number)
     r = bit32.band(r, 0xFF)
     if bit32.btest(r, 0x80) then

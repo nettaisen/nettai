@@ -11,6 +11,8 @@ use bn6_content_api::{
     ObjectField, ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
+// Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 
 use crate::actor::{AbsorbedObstacle, ActorData, ActorType, request, status};
 use crate::battle::{Battle, LinkedRecord};
@@ -51,6 +53,7 @@ fn status_bit(flag: StatusFlag) -> u32 {
         StatusFlag::UsingAction => f1::USING_ACTION,
         StatusFlag::AffectedByIce => f1::AFFECTED_BY_ICE,
         StatusFlag::Bubbled => f1::BUBBLED,
+        StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
     }
 }
 
@@ -131,16 +134,6 @@ fn key_bit(k: Key) -> u16 {
         Key::Down => keys::DOWN,
         Key::R => keys::R,
         Key::L => keys::L,
-    }
-}
-
-/// The obstacle framework's crush rule for the API's.
-fn obstacle_crush(crush: ObstacleCrush) -> kinds::obstacle::Crush {
-    use kinds::obstacle::Crush;
-    match crush {
-        ObstacleCrush::Breaks => Crush::Breaks,
-        ObstacleCrush::Destroys => Crush::Destroys,
-        ObstacleCrush::Passes => Crush::Passes,
     }
 }
 
@@ -228,6 +221,10 @@ impl CoreApi for Battle {
             BattleInfo::PanelPattern => Value::Int(self.setup.settings.panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
             BattleInfo::LocalSide => Value::Int(self.round.local_side as i64),
+            BattleInfo::Turn => Value::Int(self.round.turn as i64),
+            BattleInfo::PerPlayerGauges => {
+                Value::Bool(self.round.flags & crate::battle::battle_flags::PER_PLAYER_GAUGES != 0)
+            }
             BattleInfo::Fighting => Value::Bool(self.round.flags & crate::battle::battle_flags::FIGHTING != 0),
         }
     }
@@ -265,6 +262,13 @@ impl CoreApi for Battle {
             NaviStat::PanelTrail => i(s.bugs.panel_trail_kind as i64),
             NaviStat::Beast => Value::Bool(s.form.is_beast()),
             NaviStat::BeastOver => Value::Bool(s.form.is_beast_over()),
+            NaviStat::CustomLevel => i(s.custom_level as i64),
+            NaviStat::HandShrinkTurn => i(s.bugs.hand_shrink_turn as i64),
+            NaviStat::ChargeShotRoutine => i(s.weapons.charge_shot as i64),
+            NaviStat::BackSpecialRoutine => i(s.weapons.back_special as i64),
+            NaviStat::FloatShoes => Value::Bool(s.float_shoes),
+            NaviStat::AirShoes => Value::Bool(s.air_shoes),
+            NaviStat::Undershirt => Value::Bool(s.undershirt),
             NaviStat::BugKinds => {
                 let b = &s.bugs;
                 let kinds = [
@@ -282,6 +286,25 @@ impl CoreApi for Battle {
                 i(kinds.iter().filter(|&&k| k).count() as i64)
             }
         }
+    }
+
+    fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()> {
+        let v = store(stat.name(), stat.writable(), stat.ty(), v)?;
+        let s = &mut self.stats[side as usize & 1];
+        match (stat, v) {
+            (NaviStat::Attack, FieldValue::U8(x)) => s.attack = x,
+            (NaviStat::Rapid, FieldValue::U8(x)) => s.rapid = x,
+            (NaviStat::Charge, FieldValue::U8(x)) => s.charge = x,
+            (NaviStat::CustomLevel, FieldValue::U8(x)) => s.custom_level = x,
+            (NaviStat::HandShrinkTurn, FieldValue::U8(x)) => s.bugs.hand_shrink_turn = x,
+            (NaviStat::ChargeShotRoutine, FieldValue::U8(x)) => s.weapons.charge_shot = x,
+            (NaviStat::BackSpecialRoutine, FieldValue::U8(x)) => s.weapons.back_special = x,
+            (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
+            (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
+            (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
+            (f, v) => unreachable!("{f:?} stored as {v:?}"),
+        }
+        Ok(())
     }
 
     fn emotion(&self, side: u8) -> Emotion {
@@ -331,6 +354,18 @@ impl CoreApi for Battle {
         self.hands[side as usize & 1].advance();
     }
 
+    // Subtype 18 (Otenko).
+    fn hand_turn(&self, side: u8, i: u8) -> u8 {
+        // (The cursor never passes 5.)
+        self.hands[side as usize & 1].turn.get(i as usize).copied().unwrap_or(0)
+    }
+
+    fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16) {
+        if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
+            *b = b.wrapping_add(n);
+        }
+    }
+
     fn linked(&self, side: u8) -> LinkedChip {
         let r = self.linked[side as usize & 1];
         LinkedChip { chip: r.chip, bonus: r.bonus, damage: r.damage, owner: r.owner, object: r.object }
@@ -349,8 +384,40 @@ impl CoreApi for Battle {
         self.gauge.value = crate::hud::CustomGauge::FULL;
     }
 
+    fn set_gauge_rate(&mut self, rate: u16) {
+        self.gauge.rate = rate;
+    }
+
+    fn set_gauge_speed_ticks(&mut self, side: u8, slow: u16, fast: u16) {
+        let s = &mut self.sides[side as usize & 1];
+        s.slow_gauge_ticks = slow;
+        s.fast_gauge_ticks = fast;
+    }
+
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
+    }
+
+    // Subtype 8 (Wind and Fan).
+    fn wind(&self, side: u8) -> (Option<ObjectRef>, WindSource) {
+        let w = self.field.winds[side as usize & 1];
+        let source = match w.source {
+            crate::field::WindSource::Obstacle => WindSource::Obstacle,
+            crate::field::WindSource::Navi => WindSource::Navi,
+        };
+        (w.object, source)
+    }
+
+    fn set_wind(&mut self, o: ObjectRef, side: u8, source: WindSource) {
+        let source = match source {
+            WindSource::Obstacle => crate::field::WindSource::Obstacle,
+            WindSource::Navi => crate::field::WindSource::Navi,
+        };
+        kinds::obstacle::set_wind(self, o, side & 1, source);
+    }
+
+    fn clear_wind(&mut self, o: ObjectRef) {
+        kinds::obstacle::clear_wind(self, o);
     }
 
     fn side_stat(&self, side: u8, index: u8) -> u8 {
@@ -472,6 +539,16 @@ impl CoreApi for Battle {
         let floor_free = airshoe || !self.field.is_solid(ob.panel.x, ob.panel.y);
         let rule = self.content.rules.panels.any_side_step.get(floor_free, ob.alliance);
         self.field.meets(p.x, p.y, rule)
+    }
+
+    // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
+    fn poison_panel(&mut self, p: PanelPos) -> bool {
+        Battle::poison_panel(self, p.x, p.y)
+    }
+
+    fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8) {
+        let t = PanelType::ALL.get(kind as usize).copied().unwrap_or_else(|| panic!("panel type {kind} doesn't exist"));
+        Battle::blink_panel(self, p.x, p.y, t, side);
     }
 
     fn break_empty_panel(&mut self, p: PanelPos) -> bool {
@@ -836,6 +913,8 @@ impl CoreApi for Battle {
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
             (ActorField::ChipLockout, FieldValue::U8(x)) => a.lockout = x,
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
+            (ActorField::BusterRoutine, FieldValue::U8(x)) => a.buster = x,
+            (ActorField::ChargeShotRoutine, FieldValue::U8(x)) => a.charge_shot = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1210,9 +1289,16 @@ impl CoreApi for Battle {
         kinds::obstacle::unregister(self, o);
     }
 
-    fn obstacle_take_hits(&mut self, o: ObjectRef) -> ApiResult<()> {
+    fn obstacle_take_hits(&mut self, o: ObjectRef, push: ObstaclePush) -> ApiResult<()> {
+        use kinds::obstacle::Push;
         self.collision_of(o)?;
-        kinds::obstacle::take_hits(self, o);
+        let push = match push {
+            ObstaclePush::ForgetsDamage => Push::ForgetsDamage,
+            ObstaclePush::KeepsDamage => Push::KeepsDamage,
+            ObstaclePush::AnyHit => Push::AnyHit,
+            ObstaclePush::Ignored => Push::Ignored,
+        };
+        kinds::obstacle::take_hits(self, o, push);
         Ok(())
     }
 
@@ -1222,20 +1308,19 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>> {
+    fn obstacle_react(&mut self, o: ObjectRef, crush: ObstacleCrush, hold: ObstacleHold) -> ApiResult<Option<u8>> {
+        use kinds::obstacle::{Crush, Hold};
         self.collision_of(o)?;
-        Ok(kinds::obstacle::react(self, o, obstacle_crush(crush)))
-    }
-
-    fn obstacle_react_holding(&mut self, o: ObjectRef, crush: ObstacleCrush) -> ApiResult<Option<u8>> {
-        self.collision_of(o)?;
-        Ok(kinds::obstacle::react_holding(self, o, obstacle_crush(crush)))
-    }
-
-    fn obstacle_take_hits_keeping_damage(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.collision_of(o)?;
-        kinds::obstacle::take_hits_keeping_damage(self, o);
-        Ok(())
+        let crush = match crush {
+            ObstacleCrush::Breaks => Crush::Breaks,
+            ObstacleCrush::Destroys => Crush::Destroys,
+            ObstacleCrush::SparesBodies => Crush::SparesBodies,
+        };
+        let hold = match hold {
+            ObstacleHold::AfterAppearing => Hold::AfterAppearing,
+            ObstacleHold::Always => Hold::Always,
+        };
+        Ok(kinds::obstacle::react(self, o, crush, hold))
     }
 
     fn obstacle_action(&mut self, o: ObjectRef, a: ObstacleAction) -> ApiResult<()> {
@@ -1244,14 +1329,13 @@ impl CoreApi for Battle {
         let a = match a {
             ObstacleAction::ReturnToIdle => S::ReturnToIdle,
             ObstacleAction::Slide => S::Slide,
-            ObstacleAction::Pushed => S::Pushed,
+            ObstacleAction::KnockedBack => S::KnockedBack,
             ObstacleAction::Flinch => S::Flinch,
             ObstacleAction::Paralyzed => S::Paralyzed,
             ObstacleAction::Frozen => S::Frozen,
             ObstacleAction::Bubbled => S::Bubbled,
         };
-        kinds::obstacle::shared_action(self, o, a);
-        Ok(())
+        kinds::obstacle::shared_action(self, o, a).map_err(ApiError::Other)
     }
 
     fn obstacle_removal(&self, o: ObjectRef) -> ApiResult<ObstacleRemoval> {
@@ -1292,6 +1376,8 @@ impl CoreApi for Battle {
             ObstacleRequest::Absorb => kinds::obstacle::absorb(self, o, by),
         }
     }
+
+    // ---- Field objects (obstacles) -------------------------------------------
 
     fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool> {
         use kinds::obstacle::f2;
