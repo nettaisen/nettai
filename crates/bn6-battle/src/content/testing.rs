@@ -46,6 +46,14 @@ pub const BOOST: ChipId = 0x0A;
 pub const ARM: ChipId = 0x0B;
 /// A dimming chip (action 0x15, subtype 25) that slows the custom gauge.
 pub const SLOW_GAUGE: ChipId = 0x0C;
+// Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+/// An element trap (action 0x15, subtype 20, Param1 0: the trap object).
+pub const ELEM_TRAP: ChipId = 0x30;
+/// Time bombs (action 0x15, subtype 10): variant 0 and 1.
+pub const TIME_BOMB: ChipId = 0x31;
+pub const TIME_BOMB_PLUS: ChipId = 0x32;
+/// A mine (action 0x15, subtype 11).
+pub const MINE: ChipId = 0x33;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -165,6 +173,15 @@ pub fn scripts() -> Scripts {
                 ("lib/projectile", "lib/projectile"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
                 ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
+                // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+                ("lib/panels", "lib/panels"),
+                ("objects/elem-trap/elem_trap", "objects/elem-trap/elem_trap"),
+                ("objects/elem-trap-strike/elem_trap_strike", "objects/elem-trap-strike/elem_trap_strike"),
+                ("objects/panel-bursts/panel_bursts", "objects/panel-bursts/panel_bursts"),
+                ("objects/time-bom/time_bom", "objects/time-bom/time_bom"),
+                ("objects/countdown-bomb/countdown_bomb", "objects/countdown-bomb/countdown_bomb"),
+                ("objects/mine/mine", "objects/mine/mine"),
+                ("objects/land-mine/land_mine", "objects/land-mine/land_mine"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -227,6 +244,17 @@ fn kinds() -> Vec<ObjectKind> {
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
         kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
         kind("rising-bubble", Pool::Effect, 0x14, "objects/rising-bubble/rising_bubble"),
+        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+        ObjectKind { scratch_position: true, ..kind("elem-trap", Pool::Attack, 0x4D, "objects/elem-trap/elem_trap") },
+        ObjectKind {
+            scratch_position: true,
+            ..kind("elem-trap-strike", Pool::Effect, 0x2B, "objects/elem-trap-strike/elem_trap_strike")
+        },
+        ObjectKind { scratch_position: true, ..kind("panel-bursts", Pool::Effect, 0x24, "objects/panel-bursts/panel_bursts") },
+        ObjectKind { scratch_position: true, ..kind("time-bom", Pool::Effect, 0x27, "objects/time-bom/time_bom") },
+        kind("countdown-bomb", Pool::Attack, 0x4B, "objects/countdown-bomb/countdown_bomb"),
+        ObjectKind { scratch_position: true, ..kind("mine", Pool::Effect, 0x29, "objects/mine/mine") },
+        kind("land-mine", Pool::Attack, 0x4C, "objects/land-mine/land_mine"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -364,6 +392,35 @@ fn named_chips() -> Vec<ChipData> {
             script: Some("objects/gauge-speed/gauge_speed".into()),
             ..chip(SLOW_GAUGE, "SlowGauge", 0x15, 25)
         },
+        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            damage: 40,
+            script: Some("objects/trap-chip/trap_chip".into()),
+            ..chip(ELEM_TRAP, "ElemTrap", 0x15, 20)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            damage: 50,
+            script: Some("objects/time-bom/time_bom".into()),
+            ..chip(TIME_BOMB, "TimeBomb", 0x15, 10)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            params: [1, 0, 0, 0],
+            damage: 70,
+            script: Some("objects/time-bom/time_bom".into()),
+            ..chip(TIME_BOMB_PLUS, "TimeBomb+", 0x15, 10)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            damage: 60,
+            script: Some("objects/mine/mine".into()),
+            ..chip(MINE, "Mine", 0x15, 11)
+        },
     ]
 }
 
@@ -482,6 +539,10 @@ fn rules() -> Rules {
             PanelCondition { require: 0, forbid: pflags::ALLIANCE_1 },
             PanelCondition { require: pflags::ALLIANCE_1, forbid: 0 },
             PanelCondition { require: pflags::SOLID, forbid: 0 },
+            // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20): side 0's and
+            // side 1's navi's panels (0x84, 0x85).
+            PanelCondition { require: PLAYER[0], forbid: 0 },
+            PanelCondition { require: PLAYER[1], forbid: 0 },
         ],
         panels: PanelRules {
             types,
@@ -747,5 +808,12 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);
     // The rising bubble.
     sprites.insert(SpriteId { category: 0x14, index: 2 }, vec![once(4), vec![f(4, 0), f(4, 0), f(4, LAST)]]);
+    // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20): the countdown
+    // bomb (rising, standing; twice), the mine, the guardian statue
+    // (standing, striking).
+    let rise_and_stand = vec![vec![f(3, 0), f(3, LAST)], vec![f(20, LAST | LOOP)]];
+    sprites.insert(SpriteId { category: 0x0C, index: 0x23 }, [rise_and_stand.clone(), rise_and_stand].concat());
+    sprites.insert(SpriteId { category: 0x0C, index: 0x22 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x35 }, vec![vec![f(20, LAST | LOOP)], vec![f(4, 0), f(8, LAST)]]);
     Animations { sprites }
 }

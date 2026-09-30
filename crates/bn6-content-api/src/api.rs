@@ -397,6 +397,9 @@ named_flags! {
         UsingAction = "using_action",
         AffectedByIce = "affected_by_ice",
         Bubbled = "bubbled",
+        // Dimming chip subtype 20 (ElemTrap's trap).
+        /// Hit even while the battle is dimmed.
+        HitWhileDimmed = "hit_while_dimmed",
     }
 }
 

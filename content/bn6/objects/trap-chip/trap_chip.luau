@@ -10,6 +10,8 @@
 -- The chips' script (all are dimming chip subtype 20): `dimming_chip` is
 -- their controller's spawner, `off_802CCB4[20]`.
 
+local elem_trap = require("../elem-trap/elem_trap")
+
 export type State = {
     -- The chip and the Atk+ / cross bonus the telop shows (object +0x30,
     -- +0x32), kept for the counterattack.
@@ -47,7 +49,8 @@ end
 local function trap_object(me: Object, user: Object): Object?
     local kind = me:param(1)
     if kind == 0 then
-        error("the trap chip object (sub_80CE0EC) is not implemented yet")
+        local s = me.state :: State
+        return elem_trap.spawn(me, user, s.chip, s.bonus)
     elseif kind <= 5 then
         return nil
     end
