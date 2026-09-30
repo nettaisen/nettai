@@ -273,8 +273,8 @@ named_fields! {
         HitModBase = "hit_mod_base", U8, rw;
         /// The damage it deals (the object's damage at setup).
         SelfDamage = "self_damage", U16, rw;
-        /// What the last resolution hit.
-        HitFlags = "hit_flags", U32, ro;
+        /// What the last resolution hit (writable: some kinds clear it).
+        HitFlags = "hit_flags", U32, rw;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
     }
@@ -690,6 +690,11 @@ pub trait CoreApi {
     /// `object_crackPanel`: crack a solid panel, or break a cracked,
     /// unoccupied one.
     fn crack_panel(&mut self, p: PanelPos) -> bool;
+    /// `object_breakPanel`: break a solid, unoccupied panel.
+    fn break_panel(&mut self, p: PanelPos) -> bool;
+    /// `object_breakPanel_dup2`: break a solid panel, or crack it if
+    /// something occupies it.
+    fn break_or_crack_panel(&mut self, p: PanelPos) -> bool;
     /// `object_isPanelSolid`: the panel is solid (something can stand on
     /// it).
     fn panel_solid(&self, p: PanelPos) -> bool;
@@ -775,6 +780,15 @@ pub trait CoreApi {
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
+    /// `sub_8010DF6`: put on the parts an actor record (by actor type, an
+    /// index into [`ACTOR_TYPES`], and AI index) adds to `o`: a body
+    /// overlay, SpoutMan's layer, a beast head, kept in its second related
+    /// slot. `arg`: the parts' sprites step even while paused. Returns the
+    /// second part a record adds (CircusMan's), for `o` to keep.
+    fn add_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, arg: u8) -> Option<ObjectRef>;
+    /// `sub_8011044`: take them off (at their next update); `extra` is the
+    /// second part.
+    fn remove_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, extra: Option<ObjectRef>);
 
     // ---- Navis and the attack in progress -------------------------------------
 

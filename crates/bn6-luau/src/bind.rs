@@ -288,6 +288,24 @@ impl UserData for Object {
             let name_id = u16_arg(name_id, "NameID")?;
             with(|api, _| Ok(api.death_hook(this.0, name_id)))
         });
+        methods.add_method(
+            "add_navi_parts",
+            |lua, this, (actor_type, ai, arg): (mlua::LuaString, LuaValue, LuaValue)| {
+                let t = named(&actor_type, "actor type", |s| ACTOR_TYPES.iter().position(|n| *n == s))? as u8;
+                let (ai, arg) = (u8_arg(ai, "AI index")?, u8_arg(arg, "arg")?);
+                let extra = with(|api, _| Ok(api.add_navi_parts(this.0, t, ai, arg)))?;
+                object_value(lua, extra)
+            },
+        );
+        methods.add_method(
+            "remove_navi_parts",
+            |_, this, (actor_type, ai, extra): (mlua::LuaString, LuaValue, Option<LuaValue>)| {
+                let t = named(&actor_type, "actor type", |s| ACTOR_TYPES.iter().position(|n| *n == s))? as u8;
+                let ai = u8_arg(ai, "AI index")?;
+                let extra = object_arg(&extra.unwrap_or(LuaValue::Nil), "extra part")?;
+                with(|api, _| Ok(api.remove_navi_parts(this.0, t, ai, extra)))
+            },
+        );
 
         // Sprite stepping.
         methods.add_method("set_animation", |_, this, anim: LuaValue| {
@@ -949,6 +967,14 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "crack", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.crack_panel(p)))
+    });
+    lib_fn!(lua, t, "break_panel", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.break_panel(p)))
+    });
+    lib_fn!(lua, t, "break_or_crack", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.break_or_crack_panel(p)))
     });
     lib_fn!(lua, t, "solid", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;

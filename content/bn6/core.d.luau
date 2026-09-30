@@ -201,7 +201,7 @@ declare class Collision
     hit_mod_base: number
     -- The damage it deals.
     self_damage: number
-    -- What the last resolution hit (read-only).
+    -- What the last resolution hit (some kinds clear it).
     hit_flags: number
     -- The damage taken this window (read-only).
     final_damage: number
@@ -332,6 +332,14 @@ declare class Object
     -- `sub_8011044`: what an object with a navi's NameID takes down when it
     -- goes (for most, its form overlay in related2).
     function death_hook(self, name_id: number): ()
+    -- `sub_8010DF6`: put on the parts an actor record adds (a body
+    -- overlay, SpoutMan's layer, a beast head), kept in related2; `arg` 1:
+    -- their sprites step even while paused. Returns the second part a
+    -- record adds (CircusMan's), for the caller to keep.
+    function add_navi_parts(self, actor_type: ActorType, ai_index: number, arg: number): Object?
+    -- `sub_8011044`: take them off (at their next update); `extra` is the
+    -- second part.
+    function remove_navi_parts(self, actor_type: ActorType, ai_index: number, extra: Object?): ()
 
     -- `object_setAnimation`: request an animation, restarting it even if
     -- it is current.
@@ -574,6 +582,11 @@ declare field: {
     -- `object_crackPanel`: crack a solid panel, or break a cracked,
     -- unoccupied one.
     crack: (x: number, y: number) -> boolean,
+    -- `object_breakPanel`: break a solid panel nothing occupies.
+    break_panel: (x: number, y: number) -> boolean,
+    -- `object_breakPanel_dup2`: break a solid panel, or crack it (cracked
+    -- already or not) if something occupies it.
+    break_or_crack: (x: number, y: number) -> boolean,
     -- `object_isPanelSolid`: something can stand on it (not missing or
     -- broken).
     solid: (x: number, y: number) -> boolean,

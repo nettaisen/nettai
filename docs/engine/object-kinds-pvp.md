@@ -9,12 +9,12 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T1 0x05 | 0x080b8cd8 | 9798 |
 | T1 0x09 | 0x080b94bc | 545 |
 | T1 0x0f | 0x080ba708 | 438 |
-| T1 0x10 | 0x080baa8c | 481 (ElmntMan: `kinds::elmnt_man`, chips.md §3.6.7) |
+| T1 0x10 | 0x080baa8c | 481 (ElmntMan: the pack's `objects/elmnt-man`, chips.md §3.6.7) |
 | T1 0x15 | 0x080bb608 | 513 (EraseMan: the pack's `objects/erase-man`, chips.md §3.6.7) |
 | T1 0x1b | 0x080bc650 | 424 (Cross navi image: `kinds::cross_merge`, objects-and-player.md §12.10) |
 | T1 0x2d | 0x080c0e04 | 136 (navi warp: `kinds::navi_warp`, chips.md §3.6.7) |
 | T1 0x50 | 0x080c3ce8 | 454 |
-| T1 0x55 | 0x080c40d8 | 592 |
+| T1 0x55 | 0x080c40d8 | 592 (SpoutMan's layer: `kinds::navi_layer`, the navi parts `kinds::navi_parts`) |
 | T1 0x56 | 0x080c4348 | 72155 (body overlay: `kinds::body_overlay`, objects-and-player.md §12.10) |
 | T1 0x57 | 0x080c4530 | 1148 |
 | T1 0x5d | 0x080c4828 | 300 |
@@ -33,13 +33,14 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x74 | 0x080d30d0 | 350 |
 | T3 0x82 | 0x080d5740 | 48 |
 | T3 0x8b | 0x080d6924 | 225 |
-| T3 0x8d | 0x080d6bd4 | 38 (meteor: `kinds::meteor`, chips.md §3.6.7) |
-| T3 0x8e | 0x080d6d80 | 96 |
+| T3 0x8d | 0x080d6bd4 | 38 (meteor: the pack's `objects/meteor`, chips.md §3.6.7) |
+| T3 0x8e | 0x080d6d80 | 96 (ElmntMan's ice: the pack's `objects/elmnt-ice`, chips.md §3.6.7) |
 | T3 0x94 | 0x080d7acc | 217 |
 | T3 0xaf | 0x080db570 | 2197 |
 | T3 0xb0 | 0x080db6a4 | 1852 (DustCross junk ball: the pack's `objects/dust-ball`, objects-and-player.md §B6) |
 | T3 0xb4 | 0x080dbcec | 512 |
-| T3 0xb9 | 0x080dc4fc | 96 |
+| T3 0xb8 | 0x080dc3f8 | lab only (ElmntMan's bolt: the pack's `objects/elmnt-bolt`, chips.md §3.6.7) |
+| T3 0xb9 | 0x080dc4fc | 96 (ElmntMan's vine: the pack's `objects/elmnt-vine`, chips.md §3.6.7) |
 | T3 0xc1 | 0x080dd34c | 296 |
 | T3 0xc2 | 0x080dd764 | 967 |
 | T3 0xc3 | 0x080dd940 | 732 (EraseMan's slash: the pack's `objects/erase-beam`, chips.md §3.6.7) |

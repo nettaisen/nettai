@@ -143,6 +143,14 @@ fn flag_bit(f: ObjectField) -> Option<u8> {
     })
 }
 
+fn actor_type_of(i: u8) -> ActorType {
+    match i {
+        0 => ActorType::Virus,
+        1 => ActorType::Navi,
+        _ => ActorType::Player,
+    }
+}
+
 fn actor_type_index(t: ActorType) -> i64 {
     match t {
         ActorType::Virus => 0,
@@ -376,6 +384,14 @@ impl CoreApi for Battle {
 
     fn crack_panel(&mut self, p: PanelPos) -> bool {
         Battle::crack_panel(self, p.x, p.y)
+    }
+
+    fn break_panel(&mut self, p: PanelPos) -> bool {
+        Battle::break_panel(self, p.x, p.y)
+    }
+
+    fn break_or_crack_panel(&mut self, p: PanelPos) -> bool {
+        Battle::break_or_crack_panel(self, p.x, p.y)
     }
 
     fn panel_solid(&self, p: PanelPos) -> bool {
@@ -638,6 +654,14 @@ impl CoreApi for Battle {
 
     fn death_hook(&mut self, o: ObjectRef, name_id: u16) {
         kinds::player::form::navi_death_hook(self, o, name_id);
+    }
+
+    fn add_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, arg: u8) -> Option<ObjectRef> {
+        kinds::navi_parts::add(self, o, actor_type_of(actor_type), ai_index, arg)
+    }
+
+    fn remove_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, extra: Option<ObjectRef>) {
+        kinds::navi_parts::remove(self, o, actor_type_of(actor_type), ai_index, extra);
     }
 
     // ---- Navis and the attack in progress -------------------------------------
@@ -962,7 +986,8 @@ impl CoreApi for Battle {
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
-            CollisionField::HitFlags | CollisionField::FinalDamage => unreachable!("read-only"),
+            CollisionField::HitFlags => c.acc.hit_flags = x as u32,
+            CollisionField::FinalDamage => unreachable!("read-only"),
         }
         Ok(())
     }
