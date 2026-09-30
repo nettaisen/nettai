@@ -9,7 +9,7 @@
 use crate::battle::Battle;
 use crate::content::{Content, SpriteId};
 use crate::kinds::common::{Progress, set_progress};
-use crate::kinds::form_overlay;
+use crate::kinds::{body_overlay, form_overlay};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 use crate::setup::Form;
@@ -175,6 +175,14 @@ fn put_on_layer(b: &mut Battle, r: ObjectRef, name_id: u16) {
             let layer = form_overlay::spawn(b, r, form_overlay::BEAST_HEAD, true);
             b.objects.get_mut(r).related[1] = layer;
         }
+        // A Cross's helmet and arm (`sub_80112E0` .. `sub_801133A`), drawn
+        // a pixel in front.
+        0x1AC..=0x1B5 => {
+            crate::kinds::player::form::put_on_overlay_stepping(b, r, Form((name_id - 0x1AB) as u8), false);
+            if let Some(layer) = b.objects.get(r).related[1] {
+                body_overlay::set_forced_front(b, layer);
+            }
+        }
         _ => panic!("afterimage overlays for NameID {name_id:#x} (sub_8010DF6) are not implemented yet"),
     }
 }
@@ -226,7 +234,7 @@ fn destroy(b: &mut Battle, r: ObjectRef) {
         // (nullsub_43).
         0 => {}
         0x1A0 | 0x1B6 | 0x1B8..=0x1BC | 0x1C2 => {}
-        0x1B7 => {
+        0x1B7 | 0x1AC..=0x1B5 => {
             if let Some(layer) = b.objects.get_mut(r).related[1].take() {
                 set_progress(b, layer, Progress::DESTROY);
             }
