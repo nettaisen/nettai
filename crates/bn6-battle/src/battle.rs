@@ -287,6 +287,11 @@ pub struct SideState {
     pub gauge: u16,
     pub select_special: u8,
     pub cross_special: u8,
+    /// +0x36, +0x38: the plus chips' bonuses waiting for the next chips
+    /// (Atk+ for chips with damage, Navi+ for navi chips; `sub_802DED8`
+    /// adds them), which a plus chip used from a special source adds to
+    /// (instant chip effect 3, `sub_8010488`).
+    pub plus_bonus: [u16; 2],
 }
 
 /// A side's defensive-chip record (0x10 bytes per side at 0x02036720):
