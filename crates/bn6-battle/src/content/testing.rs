@@ -49,6 +49,13 @@ pub const BUG: ChipId = 0x0D;
 pub const BEES: ChipId = 0x0E;
 /// A chip that sends an elec dragon (action 0x51, subtype 1).
 pub const DRAGON: ChipId = 0x0F;
+/// A sword (action 0x13, subtype 1: a column of three panels ahead).
+pub const BLADE: ChipId = 0x10;
+/// A step sword (the same, with its first parameter set: it steps two
+/// panels ahead first).
+pub const STEP_BLADE: ChipId = 0x11;
+/// A strike at stunned or grounded opponents (action 0x49, subtype 2).
+pub const STUN_BLADE: ChipId = 0x12;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -80,6 +87,8 @@ const BLOCKER: u32 = 0x0008_0000;
 const WHILE_DIMMED: u32 = 0x0001_0000;
 const REACHES_FLOATING: u32 = 0x0080;
 const BREAKS: u32 = 0x0002;
+// A panel flag every panel type has.
+const ON_FIELD: u32 = 0x0001_0000;
 
 /// The content set, shared.
 pub fn content() -> Arc<Content> {
@@ -176,6 +185,9 @@ pub fn scripts() -> Scripts {
                 ("lib/dragon", "lib/dragon"),
                 ("objects/dragon-head/dragon_head", "objects/dragon-head/dragon_head"),
                 ("objects/dragon-body/dragon_body", "objects/dragon-body/dragon_body"),
+                ("lib/sword", "lib/sword"),
+                ("chips/010-blade/chip", "chips/047-sword/chip"),
+                ("chips/012-stunblade/chip", "chips/056-mchnswrd/chip"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -274,6 +286,7 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         program_advances: Vec::new(),
         gun_del_sol: None,
         recovery: None,
+        sword: None,
         script: None,
     }
 }
@@ -297,6 +310,32 @@ fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
         }),
         script: Some("chips/001-sungun1/chip".into()),
         ..chip(id, name, 0x37, level)
+    }
+}
+
+/// A sword chip of `action` holding blade 7; action 0x13's slash hits a
+/// column of three panels.
+fn blade(id: ChipId, name: &str, action: u8, subtype: u8, step: bool) -> ChipData {
+    let slash = SwordSlash {
+        region: 4,
+        hit_effect: 0xFF,
+        target: 5,
+        self_type: 7,
+        hit_mod: 3,
+        status: 0,
+        bug: 0,
+        bug_arg: 0,
+        effect: 0x16,
+    };
+    ChipData {
+        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+        family: ChipFamily::Sword,
+        hit_param: 30,
+        params: [step as u8, 0, 0, 0],
+        damage: 80,
+        sword: Some(Sword { blade: 7, slash: (action == 0x13).then_some(slash) }),
+        script: Some(if action == 0x13 { "chips/010-blade/chip" } else { "chips/012-stunblade/chip" }.into()),
+        ..chip(id, name, action, subtype)
     }
 }
 
@@ -361,6 +400,9 @@ fn chips() -> Vec<ChipData> {
             script: Some("chips/00f-dragon/chip".into()),
             ..chip(DRAGON, "Dragon", 0x51, 1)
         },
+        blade(BLADE, "Blade", 0x13, 1, false),
+        blade(STEP_BLADE, "StepBld", 0x13, 1, true),
+        blade(STUN_BLADE, "StunBld", 0x49, 2, false),
     ]
 }
 
@@ -424,7 +466,7 @@ fn rules() -> Rules {
     collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING | FLOATING);
     collision_types[0x02] = both(&|s| ATTACK[s ^ 1] | OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
     collision_types[0x05] = both(&|s| OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
-    for t in [0x04, 0x0A, 0x15, 0x16, 0x2C, 0x48] {
+    for t in [0x04, 0x07, 0x0A, 0x15, 0x16, 0x2C, 0x48] {
         collision_types[t] = attack;
     }
     collision_types[0x2A] = collision_types[0x05];
@@ -456,7 +498,9 @@ fn rules() -> Rules {
                 PanelType::RoadLeft => (pflags::SOLID | 0x200, Some(SlideVector { dx: -1, dy: 0, tiles: 1 })),
                 PanelType::RoadRight => (pflags::SOLID | 0x200, Some(SlideVector { dx: 1, dy: 0, tiles: 1 })),
             };
-            PanelTypeRule { flags, road_slide }
+            // Every panel type is on the field (the step sword looks for
+            // this bit).
+            PanelTypeRule { flags: flags | ON_FIELD, road_slide }
         })
         .collect();
     // Steps: onto a free panel of one's own side, solid unless floor-free.
@@ -619,13 +663,13 @@ fn objects() -> ObjectData {
     // The buster's muzzle flash and arm.
     let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        // Attachments are numbered without gaps: fillers up to the bee
-        // chip's hive (0x28), then what the thrown chips hold (a seed at
-        // 0x24, the flash bomb at 0x2E).
+        // Attachments are numbered without gaps: the swords' blade (7),
+        // fillers up to the bee chip's hive (0x28), then what the thrown
+        // chips hold (a seed at 0x24, the flash bomb at 0x2E).
         attachments: (0..5)
             .map(gun)
-            .chain([plain(5, 0x06), plain(6, 0x03)])
-            .chain((7..0x28).map(|id| if id == 0x24 { plain(id, 0x02) } else { plain(id, 0x06) }))
+            .chain([plain(5, 0x06), plain(6, 0x03), blade_kind()])
+            .chain((8..0x28).map(|id| if id == 0x24 { plain(id, 0x02) } else { plain(id, 0x06) }))
             .chain([plain(0x28, 0x5E)])
             .chain((0x29..0x2F).map(|id| plain(id, 0x02)))
             .collect(),
@@ -635,6 +679,11 @@ fn objects() -> ObjectData {
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
         kinds: kinds(),
     }
+}
+
+/// The swords' blade (attachment 7), held at the gun's point.
+fn blade_kind() -> AttachmentKind {
+    AttachmentKind { id: 7, sprite: SpriteId { category: 0x0C, index: 0x08 }, palette: 0, lift: 0, attach_point: Some(3) }
 }
 
 fn regions() -> Vec<Vec<PanelOffset>> {
@@ -691,6 +740,8 @@ fn animations() -> Animations {
     // The Reflector's shield (up, fading, by look) and its wave.
     sprites.insert(SpriteId { category: 0x0C, index: 0x1B }, vec![vec![f(8, LAST | LOOP)], vec![f(7, 0), f(7, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 0x04 }, vec![vec![f(2, 0), f(3, LAST)]]);
+    // The swords' blade, swinging.
+    sprites.insert(blade_kind().sprite, vec![vec![f(3, 0), f(3, 0), f(8, LAST)]]);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
     // The hive (closed, open), a bee, and a dragon's animations.

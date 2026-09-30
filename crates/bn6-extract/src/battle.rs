@@ -16,6 +16,7 @@ pub fn content(rom: &Rom) -> Content {
     let mut chips = chips(rom);
     attach_gun_del_sol(rom, &mut chips);
     attach_recovery(rom, &mut chips);
+    attach_swords(rom, &mut chips);
     attach_sp_damage(rom, &mut chips);
     attach_program_advances(rom, &mut chips);
     attach_modifiers(&mut chips);
@@ -95,6 +96,7 @@ fn chips(rom: &Rom) -> Vec<ChipData> {
                 program_advances: Vec::new(),
                 gun_del_sol: None,
                 recovery: None,
+                sword: None,
                 script: None,
             }
         })
@@ -142,6 +144,34 @@ fn attach_recovery(rom: &Rom, chips: &mut [ChipData]) {
     for c in chips.iter_mut().filter(|c| c.action == 0x20) {
         assert!(c.subtype < 10, "recovery chip {:#x} of subtype {}", c.id, c.subtype);
         c.recovery = Some(rom.u16(0x080E_C870 + 2 * c.subtype as u32));
+    }
+}
+
+/// Swords by their subtype: the blade (`byte_80EBB64`, 20 bytes, which
+/// actions 0x13 and 0x49 both read) and action 0x13's slash (`sub_80EB862`:
+/// the hit region's parameters `byte_80EBA18` and `byte_80EBA58`, four
+/// bytes each, and the effect `byte_80EBAD8`, 16 rows each).
+fn attach_swords(rom: &Rom, chips: &mut [ChipData]) {
+    for c in chips.iter_mut().filter(|c| c.action == 0x13 || c.action == 0x49) {
+        let v = c.subtype as u32;
+        assert!(v < 20, "sword chip {:#x} of subtype {v}", c.id);
+        let slash = (c.action == 0x13).then(|| {
+            assert!(v < 16, "action 0x13 chip {:#x} of subtype {v}", c.id);
+            let region = rom.bytes(0x080E_BA18 + 4 * v, 4);
+            let hit = rom.bytes(0x080E_BA58 + 4 * v, 4);
+            SwordSlash {
+                region: region[0],
+                hit_effect: region[1],
+                target: region[2],
+                self_type: region[3],
+                hit_mod: hit[0],
+                status: hit[1],
+                bug: hit[2],
+                bug_arg: hit[3],
+                effect: rom.u8(0x080E_BAD8 + v),
+            }
+        });
+        c.sword = Some(Sword { blade: rom.u8(0x080E_BB64 + v), slash });
     }
 }
 

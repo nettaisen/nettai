@@ -43,7 +43,7 @@ pub(crate) fn put_on_overlay_stepping(b: &mut Battle, r: ObjectRef, form: Form, 
 }
 
 /// The body overlay a Cross wears (`sub_80112E0` .. `sub_801133A`).
-fn cross_overlay(form: Form) -> u8 {
+pub(crate) fn cross_overlay(form: Form) -> u8 {
     match form.0 {
         1 => 0x04,
         2 => 0x08,

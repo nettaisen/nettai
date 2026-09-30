@@ -74,6 +74,7 @@ pub(crate) mod testing {
             program_advances: Vec::new(),
             gun_del_sol: None,
             recovery: None,
+            sword: None,
             script: None,
         }
     }

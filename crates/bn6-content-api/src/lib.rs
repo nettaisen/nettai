@@ -33,6 +33,7 @@ pub use api::{
     Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField, PANEL_TYPES,
     Pad, PanelInfo, RequestFlag, Shadow, SpriteField, StatusFlag, StatusTimer,
 };
+pub use api::AfterimageSpec;
 pub use data::{Data, Key as DataKey};
 pub use host::{
     ActionDef, ActionReg, ContentError, ContentHost, DimmingChipSpec, Hook, HookCall, HookDef, HookId, HookReg, KindId,
