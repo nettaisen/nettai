@@ -86,7 +86,8 @@ kind, or a numbered hook.
 | A chip's action | `script = "..."` in `chips/NNN-name/chip.toml` | `state`, `update(me, s)` |
 | A dimming chip (action 0x15) | `script` in each chip of the subtype | `dimming_chip(user, spec: DimmingChipSpec) -> Object?`: spawn the controller; its update calls the `dimming` service's steps in its routine's order |
 | A navi chip (action 0x1B) | `script` in each chip of the subtype | `navi_chip(user, controller, spec: NaviChipSpec) -> Object?`: spawn the navi; it calls `navi_chip.navi_left(controller)` when done |
-| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
+| An instant chip (action 0x1C) | `script` in each chip of the subtype, or `instant_chip = N` in a weapon.toml whose routine names the subtype | `instant_chip(user, spec: InstantChipSpec)`: the effect (`off_80EC3F0[subtype]`), run once; the ruleset's action idles after it |
+| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` (the setup can prepare that state before the action starts: `navi:action_state(action)`) |
 
 Scripts are paths relative to the registering file. Two chips of an action or subtype must name the same module;
 a slot, action or hook claimed twice is an error (`Content::registrations`, `Registrations::validate`).
