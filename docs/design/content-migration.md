@@ -185,14 +185,17 @@ Left (each a controller and its objects, every branch; docs/engine/chips.md §3.
 
 - 14 Guardian: objects/guardian, guardian-statue and guardian-strike are written but no chip names them yet and
   they are unverified; register chip 0x097 and check them against the lab.
-- 2 (no chip), 3 Geddon and the capsules, 4 Barrier (with the FirstBarrier framework `sub_801A7CC` and the barrier
-  visual, effect #7), 5 PanlRetrn and the road/holy chips (the `field.poison` and `field.blink` services exist;
-  its 19-row table is pack data to extract), 7 LifeSync, 8 Wind/Fan, 9 Fanfare and kin, 12 Snake, 13 AirRaid, 15
+- 4 Barrier (with the FirstBarrier framework `sub_801A7CC` and the barrier visual, effect #7), 5 PanlRetrn and the
+  road/holy chips (its 19-row table is pack data to extract), 9 Fanfare and kin, 13 AirRaid, 26 BugFix, 27
+  ColorPt/DblPoint, 28 Sensor, 36 SumnBlk (group B2a): specified branch by branch in docs/engine/dimming-chips.md,
+  waiting for content model v2.
+- 2 (no chip), 3 Geddon and the capsules, 7 LifeSync, 8 Wind/Fan, 12 Snake, 15
   GrabBnsh/GrabRvng, 16 Meteors, 17 Anubis/PoisPhar, 18 Otenko, 19 CircGun, 21 BlzrdBal, 22 NumbrBl, 23 BurnSqr,
-  24 Magnum, 26 BugFix, 27 ColorPt/DblPoint, 28 Sensor, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 36 SumnBlk, 37
-  DblBeast; 31, 33 and 41 (no chip; their actors are navi chips' navis).
+  24 Magnum, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 37 DblBeast; 31, 33 and 41 (no chip; their actors are navi
+  chips' navis).
 - Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
-  notes), thrown and encased obstacles (`sub_8018002`, `sub_801813A`), AntiNavi in the dimming service.
+  notes), thrown and encased obstacles (`sub_8018002`, `sub_801813A`). AntiNavi in the dimming service is done
+  (dimming.rs; dimming-chips.md §2).
 
 ### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 
@@ -262,7 +265,8 @@ split the list):
 
 ### Framework gaps (Rust, not content)
 
-These are the ruleset's, and are fixed in Rust by whoever needs them: AntiNavi in the dimming service, the Full
+These are the ruleset's, and are fixed in Rust by whoever needs them: the barrier routine and visual
+(dimming-chips.md §3), the Full
 Synchro aura, Cross changes and Cross Beast, Beast Over, the NaviCust hooks (style, emotion timer, low HP, chip
 interception, the panel trail and auto-step bugs), dark chips, the SELECT/Cross specials, the status visuals (ice,
 bubble, confusion, blindness), reactive defensive chips (`sub_801056A`), mid-battle appearance, link navis' actions.
