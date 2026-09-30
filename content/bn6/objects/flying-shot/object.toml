@@ -1,0 +1,8 @@
+# The flying shot (attack object #0xB, `sub_80C60A8`) is a script. Its kinds
+# (the `[[variant]]` records, by its first parameter) are extracted from the
+# ROM into this file in the pack.
+
+[kind]
+pool = "attack"
+index = 0x0B
+script = "flying_shot.luau"

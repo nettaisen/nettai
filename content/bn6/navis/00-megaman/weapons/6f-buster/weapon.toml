@@ -1,0 +1,6 @@
+# MegaMan's weapon routine 0x6f is the buster's (`off_80117D4[0x6f]` is
+# `sub_8011A26`): the buster's script, whose action (0x11) 00-buster names.
+
+id = 0x6f
+name = "Buster"
+script = "../00-buster/buster.luau"

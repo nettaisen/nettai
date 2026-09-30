@@ -133,9 +133,10 @@ by number, and hooks. A module exports what its registration needs:
 | Registered by | What | The module exports |
 |---|---|---|
 | `objects/KIND/object.toml` `[kind]` | an object kind (pool, index) | `state` (optional), `update(me)` |
-| a chip's `script`, action other than 0x15 and 0x1B | the chip's action | `state`, `update(me, s)` |
+| a chip's `script`, action other than 0x15, 0x1B and 0x1C | the chip's action | `state`, `update(me, s)` |
 | a chip's `script`, action 0x15 | `Hook::DimmingChip(subtype)`: the dimming controller (`off_802CCB4[subtype]`) | `dimming_chip(user, spec) -> Object?` |
 | a chip's `script`, action 0x1B | `Hook::NaviChip(subtype)`: the chip's navi (`off_802CD5C[subtype]`) | `navi_chip(user, controller, spec) -> Object?` |
+| a chip's `script`, action 0x1C; a weapon's `instant_chip` | `Hook::InstantChip(subtype)`: the instant chip's effect (`off_80EC3F0[subtype]`) | `instant_chip(user, spec)` |
 | a weapon's `weapon.toml` | `Hook::Weapon(id)`: the routine (`off_80117D4[id]`), and its `action` if any | `setup(navi) -> action`, and `state`/`update` for the action |
 
 `Content::registrations` builds the table from the data; `Registrations::validate` refuses a slot, action or hook
@@ -351,8 +352,8 @@ handle (an `Rc`); a snapshot copies the handle, and the digest leaves it out.
 
 Scripts read the pack as a frozen global, `data`, built from the `Content` when the modules load
 (`behavior::data`): `data.chips[id]` (each chip's record with its own data), `data.navis`, `data.forms`,
-`data.weapons`, `data.objects.{attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, kinds}`,
-`data.rules.buster_recovery`. Field names are as in the files, enums as names, sprites as `"CC-II"`, keyed by the
+`data.weapons`, `data.objects.{attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, projectiles,
+flying_shots, kinds}`, `data.rules.buster_recovery`. Field names are as in the files, enums as names, sprites as `"CC-II"`, keyed by the
 entities' ids. core.d.luau types the fields scripts read; a type for new data is added there when a script needs
 it.
 
