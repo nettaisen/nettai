@@ -1336,6 +1336,9 @@ fn check_references(c: &Content, report: &mut Report) {
         if chip.damage > 1000 && chip.damage <= 1000 + 18 && chip.sp_damage.is_none() {
             report.error(&file, "an SP navi chip (damage formula 1..=18) needs sp_damage");
         }
+        if (1024..=1044).contains(&chip.damage) && chip.navi_damage.is_none() {
+            report.error(&file, "a link navi's chip (damage formula 24..=44) needs navi_damage");
+        }
         if let Some(d) = &chip.sp_damage
             && d.len() != c.rules.sp_deletion_times.len() + 1
         {
