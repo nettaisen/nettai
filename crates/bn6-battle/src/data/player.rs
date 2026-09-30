@@ -31,7 +31,7 @@ pub struct FormWeapons {
 }
 
 /// The status timer a status effect sets (a CollisionData field).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum StatusTimer {
     Paralyze,
     Confuse,
@@ -128,6 +128,13 @@ pub fn form_weapons(form: Form) -> FormWeapons {
 pub fn charge_threshold(routine: u8, charge: u8) -> u16 {
     let i = routine as usize * 5 + charge as usize;
     tables::CHARGE_THRESHOLDS[i / 5][i % 5]
+}
+
+/// Ticks of recovery after a buster shot at a Rapid stat with `open`
+/// open panels ahead (counted up to 5).
+pub fn buster_recovery(rapid: u8, open: u8) -> u8 {
+    let i = rapid as usize * 6 + open.min(5) as usize;
+    tables::BUSTER_RECOVERY[i / 6][i % 6]
 }
 
 /// A navi's move end lag (`byte_8020FE0`).

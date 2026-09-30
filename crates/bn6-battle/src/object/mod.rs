@@ -71,7 +71,7 @@ pub mod state {
 
 /// An object's lifecycle position: state, action, phase and whether the
 /// phase's entry ran.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StateWord {
     pub state: u8,
     pub action: u8,
@@ -80,7 +80,7 @@ pub struct StateWord {
 }
 
 /// The drag reaction's steps (the game's values 0, 4, 8).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum DragStep {
     /// Set up the push (`sub_80178D4`).
     #[default]
@@ -167,7 +167,7 @@ pub struct Object {
 
 /// A position in the update list: the head, the tail sentinel, or an
 /// object slot.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Node(u8);
 
 const HEAD: Node = Node(0);
@@ -175,14 +175,14 @@ const SENTINEL: Node = Node(1);
 const FIRST_OBJECT_NODE: u8 = 2;
 const NODES: usize = FIRST_OBJECT_NODE as usize + 3 * SLOTS;
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, Hash)]
 struct Links {
     prev: Option<Node>,
     next: Option<Node>,
 }
 
 /// All battle objects and their update order.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct Objects {
     slots: Vec<Object>,
     /// Per-slot sprite state. Kept apart from `Object` because the game

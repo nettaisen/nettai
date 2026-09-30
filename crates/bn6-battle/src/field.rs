@@ -81,7 +81,7 @@ pub mod pflags {
 /// Ticks before a road panel reverts to normal.
 const ROAD_TICKS: u16 = 0x708;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Panel {
     pub visible: bool,
     pub highlight: u8,
@@ -110,7 +110,7 @@ pub struct Panel {
 }
 
 /// Per-column stolen-area bookkeeping.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Column {
     pub home: u8,
     pub return_ready: u8,
@@ -122,7 +122,7 @@ pub struct Column {
 }
 
 /// A run of same-owner columns, for stolen-area return (outermost first).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct HomeRun {
     pub start: u8,
     pub dir: i8,
@@ -130,7 +130,7 @@ pub struct HomeRun {
     pub owner: u8,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct Field {
     /// Indexed [y][x].
     pub panels: [[Panel; 8]; 5],
@@ -151,7 +151,7 @@ pub struct Field {
 /// Slots in the game's order: side 0 has two slots for class-0 obstacles
 /// (oldest first) and one for class 1, then side 1 the same, then two
 /// slots for stage objects.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FieldObjects {
     pub slots: [Option<ObjectRef>; 8],
 }
@@ -426,7 +426,7 @@ impl Battle {
     /// A volcano panel erupts (`sub_80C5B76`): a 50-damage attack object.
     fn erupt(&mut self, x: u8, y: u8) {
         let pos = Vec3 { x: y as i32, y: 0, z: 0 };
-        if let Some(r) = self.objects.spawn(Pool::Attack, 7, pos, [0x28, 0, 0, 0]) {
+        if let Some(r) = self.objects.spawn(Pool::Attack, crate::kinds::eruption::INDEX, pos, [0x28, 0, 0, 0]) {
             let o = self.objects.get_mut(r);
             o.panel = PanelPos { x, y };
             o.element = 0;

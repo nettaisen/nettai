@@ -26,7 +26,14 @@ fn megaman() -> NaviStats {
         max_base_hp: 1000,
         mood: 0x80,
         sun: true,
-        weapons: NaviWeapons { buster: 0, charge_shot: 1, back_special: 0xFF, a_charge: 0xFF, mode9_a: 0xFF, ..Default::default() },
+        weapons: NaviWeapons {
+            buster: 0,
+            charge_shot: 1,
+            back_special: 0xFF,
+            a_charge: 0xFF,
+            mode9_a: 0xFF,
+            ..Default::default()
+        },
         ..Default::default()
     }
 }
@@ -38,7 +45,16 @@ pub fn setup() -> RoundSetup {
         0xE3, 0x64, 0x15, 0x00, 0x0B, 0x00, 0x38, 0x00, 0x8C, 0x0E, 0x00, 0x00, 0x92, 0x19, 0x0B, 0x08,
     ]);
     settings.layout = 0;
-    RoundSetup { settings, navi_stats: [megaman(); 2], rng: 0x1234_5678, local_side: 0, score: SetScore::default() }
+    RoundSetup {
+        settings,
+        navi_stats: [megaman(); 2],
+        rng: 0x1234_5678,
+        local_side: 0,
+        score: SetScore::default(),
+        later_stages: Default::default(),
+        low_hp_music_latched: false,
+        sp_times: Default::default(),
+    }
 }
 
 /// Four GunDelS3 (code N), as the custom screen's chip block.
@@ -108,7 +124,8 @@ pub fn record(ticks: usize) -> Vec<Tick> {
                 hold_for[side] = 2 + (r >> 4) % 12;
             }
             hold_for[side] -= 1;
-            input[side] = PlayerTick { held: if in_custom { 0 } else { held[side] }, in_custom: in_custom && custom_ticks < 20 };
+            input[side] =
+                PlayerTick { held: if in_custom { 0 } else { held[side] }, in_custom: in_custom && custom_ticks < 20 };
         }
         b.tick(&input, events.clone());
         tape.push(Tick { input, events });

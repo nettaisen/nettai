@@ -3,7 +3,7 @@
 -- object lives while the slot holds something, not necessarily the object
 -- itself; the owner ends it by clearing the slot.
 
-export type Slot = "overlay" | "related"
+-- (The `Slot` type is declared for the pack in types.d.luau.)
 
 local slot = {}
 

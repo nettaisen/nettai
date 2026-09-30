@@ -47,7 +47,7 @@ pub struct ObjectRef {
 }
 
 /// A 16.16 fixed-point position or velocity, relative to the field's center.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vec3 {
     pub x: i32,
     pub y: i32,

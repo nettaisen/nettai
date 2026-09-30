@@ -9,7 +9,7 @@ local data = require("../data/attacks")
 local slot = require("../lib/slot")
 
 export type State = {
-    slot: slot.Slot,
+    slot: Slot,
     -- Offset from the owner's position, 16.16.
     offset: Vec3,
     -- Ticks shown (it hums every 11).
@@ -24,7 +24,7 @@ local sun_beam = {
 }
 
 -- `sub_80E5D12`: a beam at `offset` from `owner`, stored in `which`.
-function sun_beam.spawn(owner: Object, look: data.SunBeamLook, offset: Vec3, which: slot.Slot): Object?
+function sun_beam.spawn(owner: Object, look: SunBeamLook, offset: Vec3, which: Slot): Object?
     local o = battle.spawn("effect", sun_beam.index, offset, { look.sprite, look.palette, 0, 0 })
     if not o then
         return nil

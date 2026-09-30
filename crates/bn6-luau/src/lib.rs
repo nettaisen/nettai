@@ -78,6 +78,19 @@ impl Pack {
     pub fn modules(&self) -> impl Iterator<Item = (&str, &str)> {
         self.modules.iter().map(|(k, v)| (k.as_str(), v.as_str()))
     }
+
+    /// A hash of the pack's scripts (paths and sources, in path order):
+    /// what netplay peers compare before a match, with the hashes of the
+    /// rest of the content pack's simulation data. FNV-1a, 64-bit.
+    pub fn content_hash(&self) -> u64 {
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        for (path, source) in &self.modules {
+            for &b in path.as_bytes().iter().chain([0u8].iter()).chain(source.as_bytes()).chain([0u8].iter()) {
+                h = (h ^ b as u64).wrapping_mul(0x100_0000_01b3);
+            }
+        }
+        h
+    }
 }
 
 /// How content runs.
@@ -207,11 +220,16 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
         if l.stack.iter().any(|p| p == path) {
             return Err(mlua::Error::runtime(format!("require cycle: {} -> {path}", l.stack.join(" -> "))));
         }
-        l.pack.modules.get(path).cloned().ok_or_else(|| mlua::Error::runtime(format!("no module {path}.luau in the pack")))?
+        l.pack
+            .modules
+            .get(path)
+            .cloned()
+            .ok_or_else(|| mlua::Error::runtime(format!("no module {path}.luau in the pack")))?
     };
     let bytecode = sandbox::compiler().compile(&source)?;
     verify::check(path, &bytecode).map_err(|v| mlua::Error::runtime(v.to_string()))?;
-    let chunk = lua.load(&bytecode[..]).set_name(format!("@{path}.luau")).set_mode(ChunkMode::Binary).into_function()?;
+    let chunk =
+        lua.load(&bytecode[..]).set_name(format!("@{path}.luau")).set_mode(ChunkMode::Binary).into_function()?;
     loader.borrow_mut().stack.push(path.to_string());
     let result = chunk.call::<LuaValue>(());
     loader.borrow_mut().stack.pop();
@@ -234,7 +252,9 @@ fn load(pack: &Pack, options: Options) -> mlua::Result<LuauContent> {
     let require = {
         let loader = Rc::downgrade(&loader);
         lua.create_function(move |lua, path: String| {
-            let loader = loader.upgrade().ok_or_else(|| mlua::Error::runtime("require is only available while content loads"))?;
+            let loader = loader
+                .upgrade()
+                .ok_or_else(|| mlua::Error::runtime("require is only available while content loads"))?;
             let from = loader.borrow().stack.last().cloned();
             let from = from.ok_or_else(|| mlua::Error::runtime("require is only available at the top of a module"))?;
             let target = resolve(&from, &path).map_err(mlua::Error::runtime)?;
@@ -269,7 +289,14 @@ fn load(pack: &Pack, options: Options) -> mlua::Result<LuauContent> {
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);
     drop(loader);
-    Ok(LuauContent { lua, manifest, objects, actions, budget: options.budget, collect_garbage: options.collect_garbage })
+    Ok(LuauContent {
+        lua,
+        manifest,
+        objects,
+        actions,
+        budget: options.budget,
+        collect_garbage: options.collect_garbage,
+    })
 }
 
 /// A kind's `state` table: field name to type name (`"u16"`), or to a list
@@ -282,8 +309,9 @@ fn read_schema(t: Option<Table>, what: &str) -> mlua::Result<Schema> {
             let ty = match ty {
                 LuaValue::String(s) => {
                     let s = s.to_str()?;
-                    FieldType::scalar(&s)
-                        .ok_or_else(|| mlua::Error::runtime(format!("{what}: state field `{name}` has unknown type {:?}", &*s)))?
+                    FieldType::scalar(&s).ok_or_else(|| {
+                        mlua::Error::runtime(format!("{what}: state field `{name}` has unknown type {:?}", &*s))
+                    })?
                 }
                 LuaValue::Table(variants) => {
                     FieldType::Enum(variants.sequence_values::<String>().collect::<mlua::Result<Vec<_>>>()?)
@@ -307,7 +335,8 @@ fn read_manifest(root: &Table) -> mlua::Result<Kinds> {
             let def = def?;
             let what = format!("objects[{}]", i + 1);
             let pool: String = def.get("pool")?;
-            let pool = Pool::from_name(&pool).ok_or_else(|| mlua::Error::runtime(format!("{what}: {pool:?} is not a pool")))?;
+            let pool = Pool::from_name(&pool)
+                .ok_or_else(|| mlua::Error::runtime(format!("{what}: {pool:?} is not a pool")))?;
             let index: u8 = def.get("index")?;
             let name = def.get::<Option<String>>("name")?.unwrap_or_else(|| format!("{} {index:#x}", pool.name()));
             let schema = read_schema(def.get("state")?, &name)?;
@@ -331,6 +360,16 @@ fn read_manifest(root: &Table) -> mlua::Result<Kinds> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_content_hash_covers_paths_and_sources() {
+        let a = Pack::new([("x".to_string(), "return 1".to_string())]);
+        let b = Pack::new([("x".to_string(), "return 2".to_string())]);
+        let c = Pack::new([("y".to_string(), "return 1".to_string())]);
+        assert_ne!(a.content_hash(), b.content_hash());
+        assert_ne!(a.content_hash(), c.content_hash());
+        assert_eq!(a.content_hash(), a.clone().content_hash());
+    }
 
     #[test]
     fn relative_paths_resolve_within_the_pack() {

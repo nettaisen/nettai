@@ -2,7 +2,7 @@
 //! shared RNG seed, and the set score carried between rounds.
 
 /// Battle settings (the game's 16-byte BattleSettings record).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct BattleSettings {
     /// Panel layout index.
     pub layout: u8,
@@ -31,7 +31,7 @@ pub mod effects {
 
 /// An entry of a battle's actor list: something placed on the field when
 /// the round starts (`sub_8007368`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ActorEntry {
     /// What to spawn.
     pub kind: ActorKind,
@@ -44,7 +44,7 @@ pub struct ActorEntry {
 
 /// What an actor-list entry spawns. These are the kinds the game's lists
 /// use; the spawn loop (`off_80073A0`) knows a few more.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ActorKind {
     /// A player navi (`sub_80073CC`).
     Navi,
@@ -61,7 +61,7 @@ pub enum ActorKind {
 }
 
 /// A battle's actor list, as found in the game's battle settings table.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ActorList {
     /// Identifies the list: the game's address for it, which battle
     /// settings (and so traces and replays) carry.
@@ -148,7 +148,7 @@ impl Form {
 }
 
 /// Custom gauge speed (NaviStats+0x08).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum GaugeSpeed {
     #[default]
     Normal = 0,
@@ -158,7 +158,7 @@ pub enum GaugeSpeed {
 
 /// Support navis that act once in link battles (NaviStats+0x0D bits; the
 /// byte is 0xFF when there are none).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SupportNavis {
     /// Bit 0: cancels one chip with `flags2 & 2`.
     pub rush: bool,
@@ -169,7 +169,7 @@ pub struct SupportNavis {
 }
 
 /// The weapon routine indices (`off_80117D4`; 0xFF = none).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviWeapons {
     /// +0x04: the B-button buster.
     pub buster: u8,
@@ -188,7 +188,7 @@ pub struct NaviWeapons {
 }
 
 /// NaviCust bugs and program side effects.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviCustBugs {
     /// +0x11: random repeat steps after a move.
     pub auto_step: u8,
@@ -223,7 +223,7 @@ pub struct NaviCustBugs {
 /// A navi's in-battle stats (the game's 0x64-byte NaviStats block). Only
 /// the bytes the engine uses are modeled; `from_bytes`/`to_bytes` are the
 /// one place that knows the layout.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviStats {
     /// +0x01: buster attack level.
     pub attack: u8,
@@ -435,7 +435,7 @@ impl NaviStats {
 
 /// Wins/losses/round/max combo, carried between the rounds of a set
 /// (from the local side's perspective).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SetScore {
     pub wins: u8,
     pub losses: u8,
@@ -443,18 +443,90 @@ pub struct SetScore {
     pub max_combo: u8,
 }
 
+/// Where a later round of a set is fought: an entry of the battle
+/// settings table and the background to show (one pair of
+/// `byte_203CA50`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Stage {
+    /// Index into [`crate::data::BATTLE_SETTINGS`].
+    pub settings: u8,
+    pub background: u8,
+}
+
+impl Stage {
+    /// Decode the init exchange's two stage pairs (settings index, then
+    /// background, per round).
+    pub fn pair_from_bytes(b: &[u8]) -> [Stage; 2] {
+        [Stage { settings: b[0], background: b[1] }, Stage { settings: b[2], background: b[3] }]
+    }
+}
+
 /// Everything a round starts from.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct RoundSetup {
     pub settings: BattleSettings,
     /// Both navis' stats, by side.
     pub navi_stats: [NaviStats; 2],
     /// The simulation RNG's state (both consoles agree on it).
     pub rng: u32,
-    /// Which side this engine instance presents (0 = left). A few
-    /// presentation-driven details depend on it (who fades in at the intro).
+    /// The console the simulation reproduces (0 = left). The original
+    /// keeps a little per-console state (who fades in at the intro, what
+    /// a blinded player sees, the chip-name and result banners, some
+    /// sounds, the result as won/lost), and the engine keeps it for this
+    /// side. In netplay both peers must use the same value, whichever
+    /// side they present: it is part of the shared setup, not the viewer
+    /// (docs/design/rollback.md).
     pub local_side: u8,
     pub score: SetScore,
+    /// The stages of the set's next rounds, as player 0 drew them for
+    /// this round's init exchange: when round `n` ends and the set goes
+    /// on, round `n + 1` is fought on `later_stages[n - 1]`.
+    pub later_stages: [Stage; 2],
+    /// The local side's low-HP music latch starts set. The round's init counts the
+    /// frames it waits for the link in the halfword the latch later uses
+    /// (BattleState+0x20), so a round whose init had to wait starts with
+    /// it set, and its first tick plays no pinch cue.
+    pub low_hp_music_latched: bool,
+    /// Per side, from the save via the init exchange: how fast each SP
+    /// navi was deleted (`byte_203EB00`). The SP navi chips' damage goes
+    /// by it.
+    pub sp_times: [SpTimes; 2],
+}
+
+/// How fast (in frames) a player deleted each SP navi (20 halfwords).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SpTimes(pub [u16; 20]);
+
+impl Default for SpTimes {
+    /// Every SP navi deleted in no time (the best damage).
+    fn default() -> SpTimes {
+        SpTimes([0; 20])
+    }
+}
+
+impl SpTimes {
+    /// Decode the 0x28-byte record.
+    pub fn from_bytes(b: &[u8]) -> SpTimes {
+        SpTimes(std::array::from_fn(|i| u16::from_le_bytes([b[2 * i], b[2 * i + 1]])))
+    }
+
+    /// The frames SP navi chip `n` (formula `n + 1`) took to delete.
+    pub fn frames(&self, n: usize) -> u16 {
+        self.0[n]
+    }
+}
+
+impl RoundSetup {
+    /// The settings of the set's next round, fought on `stage` after this
+    /// one (`battleSettings_802D2B2`): that table entry, with this
+    /// round's effects and the stage's background.
+    pub fn next_settings(&self, stage: Stage) -> BattleSettings {
+        BattleSettings {
+            effects: self.settings.effects,
+            background: stage.background,
+            ..crate::data::BATTLE_SETTINGS[stage.settings as usize]
+        }
+    }
 }
 
 #[cfg(test)]

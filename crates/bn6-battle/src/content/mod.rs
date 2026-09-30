@@ -34,6 +34,12 @@ struct Loaded {
     actions: [Option<KindId>; 256],
 }
 
+impl std::fmt::Debug for Content {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("Content").field("runtime", &self.runtime()).finish()
+    }
+}
+
 impl Content {
     /// Only the engine's built-in kinds.
     pub fn builtin() -> Content {
@@ -122,7 +128,15 @@ pub fn luau_pack() -> bn6_luau::Pack {
             ])
         };
     }
-    pack!["pack", "data/attacks", "lib/slot", "objects/attachment", "objects/sun_beam", "objects/hitbox", "chips/gun_del_sol"]
+    pack![
+        "pack",
+        "data/attacks",
+        "lib/slot",
+        "objects/attachment",
+        "objects/sun_beam",
+        "objects/hitbox",
+        "chips/gun_del_sol"
+    ]
 }
 
 /// Run content object `kind` for `r`.
@@ -154,6 +168,22 @@ pub fn spawn_object(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u
         b.objects.get_mut(r).vars = Vars::Content(ContentState::new(id, m.schema(id)));
     }
     Some(r)
+}
+
+/// Set an enum state field of a content object by variant name.
+pub fn set_state_variant(b: &mut Battle, r: ObjectRef, name: &str, variant: &str) {
+    let content = b.content.clone();
+    let m = content.manifest().expect("content state belongs to loaded content");
+    let Vars::Content(state) = &b.objects.get(r).vars else {
+        panic!("{r:?} is not a content object");
+    };
+    let schema = m.schema(state.id());
+    let i = schema.index_of(name).unwrap_or_else(|| panic!("content state has no field `{name}`"));
+    let bn6_content_api::FieldType::Enum(names) = &schema.field(i).ty else {
+        panic!("content state field `{name}` is not an enum");
+    };
+    let v = names.iter().position(|n| n == variant).unwrap_or_else(|| panic!("`{name}` has no variant `{variant}`"));
+    set_state_field(b, r, name, Value::Int(v as i64));
 }
 
 /// Set a state field of a content object by name: how engine code that

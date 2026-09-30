@@ -4,14 +4,7 @@
 -- Do not edit; rerun that test with BN6_WRITE_CONTENT_DATA=1. Tables are keyed by the
 -- game's 0-based indices.
 
-export type SpriteId = { category: number, index: number }
-export type AttachmentKind = {
-    sprite: SpriteId,
-    palette: number,
-    lift: number,
-    attach_point: number?,
-}
-export type SunBeamLook = { sprite: number, palette: number }
+-- (Its row types are declared for the pack in types.d.luau.)
 
 local function attachment(category: number, index: number, palette: number, lift: number, attach_point: number?): AttachmentKind
     return { sprite = { category = category, index = index }, palette = palette, lift = lift, attach_point = attach_point }

@@ -35,8 +35,8 @@ mod op {
 
     /// Opcodes followed by an auxiliary word (`getOpLength`).
     pub const WITH_AUX: [u8; 30] = [
-        7, 8, 12, 15, 16, 20, 27, 28, 29, 30, 31, 32, 53, 55, 58, 66, 74, 75, 60, 77, 78, 79, 80, 83, 84, 85, 86, 87, 88,
-        90,
+        7, 8, 12, 15, 16, 20, 27, 28, 29, 30, 31, 32, 53, 55, 58, 66, 74, 75, 60, 77, 78, 79, 80, 83, 84, 85, 86, 87,
+        88, 90,
     ];
 }
 
@@ -55,7 +55,9 @@ pub struct Violation {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Rule {
     AssignsGlobal,
-    AssignsModuleLocal { name: String },
+    AssignsModuleLocal {
+        name: String,
+    },
     /// The bytecode couldn't be read (the check fails closed).
     Unreadable(String),
 }
@@ -64,7 +66,9 @@ impl fmt::Display for Violation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let at = format!("{}.luau: function `{}` (line {})", self.module, self.function, self.line);
         match &self.rule {
-            Rule::AssignsGlobal => write!(f, "{at} assigns a global; content modules export through their return value"),
+            Rule::AssignsGlobal => {
+                write!(f, "{at} assigns a global; content modules export through their return value")
+            }
             Rule::AssignsModuleLocal { name } => write!(
                 f,
                 "{at} assigns the module-level local `{name}`; state that outlives a call must live in engine-owned fields \
@@ -321,7 +325,8 @@ pub fn check(module: &str, bytecode: &[u8]) -> Result<(), Violation> {
         }
     }
     for (i, p) in protos.iter().enumerate() {
-        let function = p.name.clone().unwrap_or_else(|| if i == main { "(module)".into() } else { "(anonymous)".into() });
+        let function =
+            p.name.clone().unwrap_or_else(|| if i == main { "(module)".into() } else { "(anonymous)".into() });
         let violation = |rule| Violation { module: module.to_string(), function: function.clone(), line: p.line, rule };
         let mut pc = 0;
         while pc < p.code.len() {

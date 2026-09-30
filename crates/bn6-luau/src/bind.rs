@@ -22,8 +22,8 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use bn6_content_api::{
-    ActorField, ApiError, CollisionField, ContentState, CoreApi, FieldType, Lifecycle, Manifest, NaviStat,
-    ObjectField, ObjectRef, PanelPos, Pool, SpriteField, SpriteId, StatusFlag, Value, Vec3,
+    ActorField, ApiError, CollisionField, ContentState, CoreApi, FieldType, Lifecycle, Manifest, NaviStat, ObjectField,
+    ObjectRef, PanelPos, Pool, SpriteField, SpriteId, StatusFlag, Value, Vec3,
 };
 use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMethods, Value as LuaValue};
 
@@ -81,7 +81,9 @@ fn exact(n: f64, what: &str) -> mlua::Result<i64> {
     if n.fract() == 0.0 && n.abs() <= EXACT {
         Ok(n as i64)
     } else {
-        Err(mlua::Error::runtime(format!("{what}: {n} is not an integer (engine values are integers; use // or the int library)")))
+        Err(mlua::Error::runtime(format!(
+            "{what}: {n} is not an integer (engine values are integers; use // or the int library)"
+        )))
     }
 }
 
@@ -120,7 +122,10 @@ fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
             } else if let Ok(p) = ud.borrow::<LVec3>() {
                 Value::Vec3(p.0)
             } else {
-                return Err(mlua::Error::runtime(format!("{what}: expected {ty}, got {}", ud.type_name().map(|s| s.to_string_lossy()).unwrap_or_default())));
+                return Err(mlua::Error::runtime(format!(
+                    "{what}: expected {ty}, got {}",
+                    ud.type_name().map(|s| s.to_string_lossy()).unwrap_or_default()
+                )));
             }
         }
         v @ (LuaValue::Number(_) | LuaValue::Integer(_)) => Value::Int(int(&v, what)?),
@@ -234,15 +239,14 @@ impl UserData for Object {
             with(|api, _| api.set_status(this.0, flag, on).map_err(api_error))
         });
         methods.add_method("open_counter_window", |_, this, ()| with(|api, _| Ok(api.open_counter_window(this.0))));
-        methods.add_method("check_reactive_abort", |_, this, ()| {
-            with(|api, _| Ok(api.check_reactive_abort(this.0)))
-        });
+        methods.add_method("check_reactive_abort", |_, this, ()| with(|api, _| Ok(api.check_reactive_abort(this.0))));
         methods.add_method("exit_attack", |_, this, ()| with(|api, _| Ok(api.exit_attack(this.0))));
         methods.add_method("create_collision", |_, this, ()| with(|api, _| Ok(api.create_collision(this.0))));
         methods.add_method(
             "setup_collision",
             |_, this, (self_type, target_type, hit_mod): (LuaValue, LuaValue, LuaValue)| {
-                let (s, t, h) = (u8_arg(self_type, "self type")?, u8_arg(target_type, "target type")?, u8_arg(hit_mod, "hit mod")?);
+                let (s, t, h) =
+                    (u8_arg(self_type, "self type")?, u8_arg(target_type, "target type")?, u8_arg(hit_mod, "hit mod")?);
                 with(|api, _| Ok(api.setup_collision(this.0, s, t, h)))
             },
         );
@@ -414,12 +418,14 @@ impl UserData for LVec3 {
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-        methods.add_meta_function(MetaMethod::Add, |_, (a, b): (mlua::UserDataRef<LVec3>, mlua::UserDataRef<LVec3>)| {
-            Ok(LVec3(a.0.wrapping_add(b.0)))
-        });
-        methods.add_meta_function(MetaMethod::Sub, |_, (a, b): (mlua::UserDataRef<LVec3>, mlua::UserDataRef<LVec3>)| {
-            Ok(LVec3(a.0.wrapping_sub(b.0)))
-        });
+        methods
+            .add_meta_function(MetaMethod::Add, |_, (a, b): (mlua::UserDataRef<LVec3>, mlua::UserDataRef<LVec3>)| {
+                Ok(LVec3(a.0.wrapping_add(b.0)))
+            });
+        methods
+            .add_meta_function(MetaMethod::Sub, |_, (a, b): (mlua::UserDataRef<LVec3>, mlua::UserDataRef<LVec3>)| {
+                Ok(LVec3(a.0.wrapping_sub(b.0)))
+            });
         methods.add_meta_method(MetaMethod::Eq, |_, this, other: AnyUserData| {
             Ok(other.borrow::<LVec3>().is_ok_and(|o| o.0 == this.0))
         });
@@ -448,22 +454,30 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     battle.set("navi", lua.create_function(|_, side: LuaValue| Ok(Navi(u8_arg(side, "side")? & 1)))?)?;
     battle.set(
         "spawn",
-        lua.create_function(|lua, (pool, index, pos, params): (mlua::LuaString, LuaValue, Option<mlua::UserDataRef<LVec3>>, Option<mlua::Table>)| {
-            let pool = pool.to_str()?;
-            let pool = Pool::from_name(&pool).ok_or_else(|| mlua::Error::runtime(format!("{:?} is not a pool", &*pool)))?;
-            let index = u8_arg(index, "kind index")?;
-            let pos = pos.map_or(Vec3::default(), |p| p.0);
-            let mut p = [0u8; 4];
-            if let Some(t) = params {
-                for (i, slot) in p.iter_mut().enumerate() {
-                    *slot = u8_arg(t.raw_get::<LuaValue>(i + 1)?, "spawn param").or_else(|e| {
-                        if t.raw_get::<LuaValue>(i + 1)?.is_nil() { Ok(0) } else { Err(e) }
-                    })?;
+        lua.create_function(
+            |lua,
+             (pool, index, pos, params): (
+                mlua::LuaString,
+                LuaValue,
+                Option<mlua::UserDataRef<LVec3>>,
+                Option<mlua::Table>,
+            )| {
+                let pool = pool.to_str()?;
+                let pool = Pool::from_name(&pool)
+                    .ok_or_else(|| mlua::Error::runtime(format!("{:?} is not a pool", &*pool)))?;
+                let index = u8_arg(index, "kind index")?;
+                let pos = pos.map_or(Vec3::default(), |p| p.0);
+                let mut p = [0u8; 4];
+                if let Some(t) = params {
+                    for (i, slot) in p.iter_mut().enumerate() {
+                        *slot = u8_arg(t.raw_get::<LuaValue>(i + 1)?, "spawn param")
+                            .or_else(|e| if t.raw_get::<LuaValue>(i + 1)?.is_nil() { Ok(0) } else { Err(e) })?;
+                    }
                 }
-            }
-            let o = with(|api, _| Ok(api.spawn(pool, index, pos, p)))?;
-            object_value(lua, o)
-        })?,
+                let o = with(|api, _| Ok(api.spawn(pool, index, pos, p)))?;
+                object_value(lua, o)
+            },
+        )?,
     )?;
     battle.set(
         "panel_valid",

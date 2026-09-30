@@ -15,7 +15,7 @@ pub const INDEX: u8 = 5;
 
 /// Where an owner keeps an attached object. The object lives while the
 /// slot holds something (not necessarily the object itself).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AttachSlot {
     /// The owner's actor-data overlay slot.
     Overlay(ActorId),
@@ -40,7 +40,7 @@ impl AttachSlot {
 }
 
 /// Attachment-private state.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     pub slot: Option<AttachSlot>,
     /// Offset from the owner's position (its attach point), 16.16.
@@ -61,7 +61,26 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 /// to `owner`, stored in `slot` (which gets None if the pool is full). It
 /// takes the owner's panel and side; its init places it.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, kind: u8, slot: AttachSlot) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), [kind, 0, 0, 0]);
+    spawn_with(b, owner, Params { kind, ..Params::default() }, slot)
+}
+
+/// An attachment's spawn parameters.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Params {
+    /// Param1: which attachment (`data::attacks::attachment`).
+    pub kind: u8,
+    /// Param2: its animation.
+    pub anim: u8,
+    /// Param3: it animates in time stop too.
+    pub in_time_stop: bool,
+    /// Param4: added to its palette (drawn only).
+    pub palette_add: u8,
+}
+
+/// `sub_80B8E30` with all its parameters.
+pub fn spawn_with(b: &mut Battle, owner: ObjectRef, p: Params, slot: AttachSlot) -> Option<ObjectRef> {
+    let params = [p.kind, p.anim, p.in_time_stop as u8, p.palette_add];
+    let r = crate::content::spawn_object(b, Pool::Actor, INDEX, Vec3::default(), params);
     if let Some(r) = r {
         let (panel, alliance, flip) = {
             let o = b.objects.get(owner);
@@ -73,10 +92,25 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, kind: u8, slot: AttachSlot) -> Op
         o.alliance = alliance;
         o.flip = flip;
         o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP;
-        o.vars = crate::kinds::Vars::Attachment(Vars { slot: Some(slot), ..Vars::default() });
+        if b.content.object_kind(Pool::Actor, INDEX).is_some() {
+            // Content implements attachments: its slot names the owner's.
+            crate::content::set_state_variant(b, r, "slot", content_slot(b, owner, slot));
+        } else {
+            b.objects.get_mut(r).vars = crate::kinds::Vars::Attachment(Vars { slot: Some(slot), ..Vars::default() });
+        }
     }
     slot.set(b, r);
     r
+}
+
+/// The content slot (`lib/slot.luau`) for a slot of `owner`'s. Content
+/// only knows its owner's own slots.
+pub(crate) fn content_slot(b: &Battle, owner: ObjectRef, slot: AttachSlot) -> &'static str {
+    match slot {
+        AttachSlot::Overlay(a) if b.objects.get(owner).actor == Some(a) => "overlay",
+        AttachSlot::Related(o) if o == owner => "related",
+        s => panic!("an attachment kept in another object's slot ({s:?}) has no content form"),
+    }
 }
 
 pub fn update(b: &mut Battle, r: ObjectRef) {

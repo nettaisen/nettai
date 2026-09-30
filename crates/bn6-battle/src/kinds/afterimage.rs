@@ -19,7 +19,7 @@ pub const INDEX: u8 = 0x28;
 const COLOR_SHADER: u16 = 0x83E0;
 
 /// What ends an afterimage before its time is up.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Tether {
     /// Nothing.
     #[default]
@@ -31,7 +31,7 @@ pub enum Tether {
 }
 
 /// Afterimage-private state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Ticks it lasts.
     pub lifetime: u16,
@@ -54,8 +54,9 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
         let o = b.objects.get(owner);
         (o.alliance, o.flip)
     };
-    // Param1 0xFF: copy the owner's sprite.
-    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [0xFF, 0, anim, flip])?;
+    // Param1 0xFF: copy the owner's sprite; Param4 its facing
+    // (`object_getFlip`).
+    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [0xFF, 0, anim, alliance ^ flip])?;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;

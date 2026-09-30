@@ -33,7 +33,7 @@ pub struct Spec {
 }
 
 /// Behavior state.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub kind: u8,
     pub side: u8,

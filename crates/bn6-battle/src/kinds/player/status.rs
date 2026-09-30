@@ -6,12 +6,14 @@
 use super::{
     actions, ai, ai_mut, attach_point, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_paralysis, coll,
     coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
-    reactions, reset_attack_links, save_state_word, set_attack, set_flag1, set_flag2, set_mood,
+    coordinates_to_panel, panel_kind, reactions, reset_attack_links, save_state_word, set_attack,
+    set_coordinates_from_panel, set_flag1, set_flag2, set_mood,
 };
 use crate::actor::{ActorType, request, status as ai_status};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
-use crate::object::{DragStep, ObjectRef, Pool, Vec3, flags};
+use crate::field::PanelType;
+use crate::object::{DragStep, ObjectRef, PanelPos, Pool, Vec3, flags};
 use crate::setup::Form;
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
@@ -215,9 +217,14 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
             d = hp - 1;
         }
         crate::kinds::subtract_hp(b, r, d);
-        // The local player's navi hears another hit sound; sprite_forceWhitePalette.
-        let local_player = navi_record(b, r).actor_type == ActorType::Player && !b.is_remote(b.objects.get(r).alliance);
-        b.play_sound(crate::sound::SoundId(if local_player { 0x6B } else { 0x6D }));
+        // A player hears another sound when their own navi is hit;
+        // sprite_forceWhitePalette.
+        let player = navi_record(b, r).actor_type == ActorType::Player;
+        let alliance = b.objects.get(r).alliance;
+        for side in 0..2 {
+            let own = player && side == alliance;
+            b.play_sound_for(side, crate::sound::SoundId(if own { 0x6B } else { 0x6D }));
+        }
         b.objects.sprite_mut(r).look.white = true;
         dead = b.objects.get(r).hp == 0;
     }
@@ -315,9 +322,149 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
     o.drag_step = DragStep::Start;
 }
 
-/// `sub_80166B6`: the ice / road / push slide machine.
-fn slide(_b: &mut Battle, _r: ObjectRef) {
-    panic!("slides (sub_80166B6) are not implemented yet");
+/// `slide_state` values: where the slide machine is.
+mod slide_state {
+    /// Start a slide (`sub_80166D0`).
+    pub const START: u8 = 0;
+    /// Sliding toward the destination panel (`sub_8016730`).
+    pub const SLIDING: u8 = 4;
+}
+
+/// Ticks a slide takes per panel.
+const SLIDE_TICKS: u8 = 4;
+
+/// `sub_80166B6`: the ice / road / push slide machine: a panel every 4
+/// ticks, the navi's panel following its coordinates on the way.
+fn slide(b: &mut Battle, r: ObjectRef) {
+    match b.objects.get(r).slide_state {
+        slide_state::START => start_slide(b, r),
+        _ => continue_slide(b, r),
+    }
+}
+
+/// `object_setCollisionPanelsToCurrent`: the collision anchor moves to the
+/// navi's panel (the move direction is left alone).
+fn anchor_collision(b: &mut Battle, r: ObjectRef) {
+    let p = b.objects.get(r).panel;
+    coll_mut(b, r).panel = p;
+}
+
+/// `sub_80166D0`: onto the destination panel, then off in the slide's
+/// direction, if its first panel is open.
+fn start_slide(b: &mut Battle, r: ObjectRef) {
+    set_flag1(b, r, f1::SLIDING);
+    let o = b.objects.get_mut(r);
+    o.panel = o.future_panel;
+    set_coordinates_from_panel(b, r);
+    anchor_collision(b, r);
+    let fp = b.objects.get(r).future_panel;
+    b.unreserve_panel(r, fp.x, fp.y);
+    let v = reactions::slide_vector(b, r);
+    let o = b.objects.get_mut(r);
+    o.slide_dx = v.dx as u8;
+    o.slide_dy = v.dy as u8;
+    o.slide_tiles = v.tiles;
+    if v.tiles != 0 {
+        let target = offset(o.panel, v.dx, v.dy);
+        o.future_panel = target;
+        b.reserve_panel(r, target.x, target.y);
+        let o = b.objects.get_mut(r);
+        o.slide_timer = SLIDE_TICKS;
+        o.slide_state = slide_state::SLIDING;
+        return;
+    }
+    if o.slide_type == 3 {
+        ai_mut(b, r).road_cooldown = 5;
+    }
+    b.objects.get_mut(r).slide_type = 0;
+    clear_flag1(b, r, f1::SLIDING);
+}
+
+/// `sub_8016730`: move toward the destination; there, go on (one panel
+/// more for each ice panel, onto a road the road's way) or stop.
+fn continue_slide(b: &mut Battle, r: ObjectRef) {
+    let o = b.objects.get_mut(r);
+    let left = o.slide_timer as i32 - 1;
+    o.slide_timer = left as u8;
+    if left > 0 {
+        let (dx, dy) = (o.slide_dx as i8 as i32, o.slide_dy as i8 as i32);
+        o.pos.x = o.pos.x.wrapping_add(dx * 0xA_0000);
+        o.pos.y = o.pos.y.wrapping_add(dy * 0x6_0000);
+        o.panel = coordinates_to_panel(o.pos.x, o.pos.y);
+        anchor_collision(b, r);
+        return;
+    }
+    let fp = b.objects.get(r).future_panel;
+    b.unreserve_panel(r, fp.x, fp.y);
+    b.objects.get_mut(r).panel = fp;
+    set_coordinates_from_panel(b, r);
+    let kind = panel_kind(b, fp);
+    let mut go_on = true;
+    if kind == PanelType::Ice && coll(b, r).element != 2 {
+        let o = b.objects.get_mut(r);
+        o.slide_tiles = o.slide_tiles.wrapping_add(1);
+    } else if kind.is_road() && flag1(b, r) & 0x24 == 0 {
+        if b.objects.get(r).slide_type == 3 {
+            ai_mut(b, r).road_cooldown = 5;
+            go_on = false;
+        } else {
+            // Onto a road: it takes over.
+            let o = b.objects.get(r);
+            let dir = slide_direction(o.slide_dx as i8, o.slide_dy as i8, o.alliance);
+            coll_mut(b, r).direction = dir;
+            b.objects.get_mut(r).slide_type = 3;
+            let v = reactions::slide_vector(b, r);
+            let o = b.objects.get_mut(r);
+            o.slide_dx = v.dx as u8;
+            o.slide_dy = v.dy as u8;
+            if v.tiles == 0 {
+                go_on = false;
+            } else {
+                o.slide_tiles = o.slide_tiles.wrapping_add(1);
+            }
+        }
+    }
+    if go_on {
+        let o = b.objects.get_mut(r);
+        let left = o.slide_tiles as i32 - 1;
+        o.slide_tiles = left as u8;
+        if left > 0 {
+            let next = offset(o.future_panel, o.slide_dx as i8, o.slide_dy as i8);
+            if reactions::can_slide_to(b, r, next) {
+                let o = b.objects.get_mut(r);
+                o.slide_timer = SLIDE_TICKS;
+                o.future_panel = next;
+                b.reserve_panel(r, next.x, next.y);
+                return;
+            }
+        }
+    }
+    let o = b.objects.get(r);
+    let dir = slide_direction(o.slide_dx as i8, o.slide_dy as i8, o.alliance);
+    coll_mut(b, r).direction = dir;
+    let o = b.objects.get_mut(r);
+    o.slide_state = slide_state::START;
+    clear_flag1(b, r, f1::SLIDING);
+    b.objects.get_mut(r).slide_type = 0;
+    anchor_collision(b, r);
+}
+
+/// The panel `(dx, dy)` from `p`.
+fn offset(p: PanelPos, dx: i8, dy: i8) -> PanelPos {
+    PanelPos { x: (p.x as i8).wrapping_add(dx) as u8, y: (p.y as i8).wrapping_add(dy) as u8 }
+}
+
+/// `sub_801683C`: the collision direction a slide leaves (1 up, 2 down,
+/// 3 back, 4 forward, 5 none).
+fn slide_direction(dx: i8, dy: i8, alliance: u8) -> u8 {
+    let dx = if alliance != 0 { -dx } else { dx };
+    match (dx.signum(), dy.signum()) {
+        (1, _) => 4,
+        (-1, _) => 3,
+        (_, -1) => 1,
+        (_, 1) => 2,
+        _ => 5,
+    }
 }
 
 /// Stage B's flinch request (`F2 & 4`): flinch unless paralyzed or frozen
@@ -684,12 +831,33 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
     set_attack(b, r, 0x1C, 0);
 }
 
+/// `sub_800BEDA`: the navi may counter the other side's freeze: its own
+/// side isn't freezing (or it is waiting on a counter), and the other
+/// side's chip, which can be countered, is showing its name.
+fn can_counter_freeze(b: &Battle, r: ObjectRef) -> bool {
+    use crate::time_freeze::FreezeState;
+    let side = b.objects.get(r).alliance as usize;
+    let own = b.freeze[side];
+    let other = b.freeze[side ^ 1];
+    own.user.is_none_or(|u| u == r)
+        && matches!(own.state, FreezeState::Idle | FreezeState::Waiting)
+        && !other.uncounterable
+        && other.state == FreezeState::ShowingName
+}
+
 /// `sub_8017AB4`: in time stop the navi only shakes while hit (one RNG
 /// draw per shaking tick).
 fn time_stop(b: &mut Battle, r: ObjectRef) {
     let player = navi_record(b, r).actor_type == ActorType::Player;
     if player && is_link(b) && ai(b, r).requests & request::TIMESTOP_CHIP != 0 {
-        panic!("time-stop counter chips (sub_8017AB4) are not implemented yet");
+        // The next chip must stop time too.
+        let chip = super::next_chip(b, r);
+        let freezes = chip != crate::hand::NO_CHIP
+            && crate::data::chip(chip).flags.has(crate::data::ChipFlags::TIME_FREEZE);
+        if can_counter_freeze(b, r) && freezes {
+            panic!("time-stop counter chips (sub_8017AB4) are not implemented yet");
+        }
+        ai_mut(b, r).requests &= !(request::TIMESTOP_CHIP | request::CHARGED_CHIP | request::CHIP);
     }
     let o = b.objects.get_mut(r);
     if o.prevent_anim == 0 {

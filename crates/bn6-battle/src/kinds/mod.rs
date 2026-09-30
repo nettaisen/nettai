@@ -3,14 +3,28 @@
 
 pub mod absorbed_obstacle;
 pub mod afterimage;
+pub mod area_grab;
 pub mod attachment;
+pub mod body_overlay;
 pub mod charge_glow;
 pub mod common;
+pub mod dust_ball;
+pub mod cross_merge;
 pub mod effect;
+pub mod elmnt_man;
+pub mod erase_beam;
+pub mod erase_man;
+pub mod erase_mark;
+pub mod eruption;
 pub mod form_overlay;
+pub mod grab_shot;
 pub mod hitbox;
 pub mod intro;
+pub mod invisible;
 pub mod lockon_marker;
+pub mod meteor;
+pub mod navi_chip;
+pub mod navi_warp;
 pub mod obstacle;
 pub mod palette_flash;
 pub mod player;
@@ -18,6 +32,7 @@ pub mod rock;
 pub mod rock_debris;
 pub mod spark;
 pub mod sun_beam;
+pub mod trap_chip;
 
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Pool};
@@ -25,7 +40,7 @@ use crate::object::{ObjectRef, Pool};
 /// Behavior-private state. The game gives every object 0x2C (actors,
 /// attacks) or 0x1C (effects) bytes of scratch; here each behavior gets a
 /// typed struct, zeroed at spawn like the game's.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub enum Vars {
     #[default]
     None,
@@ -41,6 +56,16 @@ pub enum Vars {
     PaletteFlash(palette_flash::Vars),
     Attachment(attachment::Vars),
     SunBeam(sun_beam::Vars),
+    CrossMerge(cross_merge::Vars),
+    BodyOverlay(body_overlay::Vars),
+    Invisible(invisible::Vars),
+    NaviChip(navi_chip::Vars),
+    NaviWarp(navi_warp::Vars),
+    ElmntMan(elmnt_man::Vars),
+    Meteor(meteor::Vars),
+    AreaGrab(area_grab::Vars),
+    TrapChip(trap_chip::Vars),
+    EraseMan(erase_man::Vars),
     /// A content kind's declared state (see `content`).
     Content(bn6_content_api::ContentState),
 }
@@ -58,6 +83,9 @@ impl Vars {
             (Pool::Effect, palette_flash::INDEX) => Vars::PaletteFlash(Default::default()),
             (Pool::Actor, attachment::INDEX) => Vars::Attachment(Default::default()),
             (Pool::Effect, sun_beam::INDEX) => Vars::SunBeam(Default::default()),
+            (Pool::Actor, cross_merge::INDEX) => Vars::CrossMerge(Default::default()),
+            (Pool::Actor, body_overlay::INDEX) => Vars::BodyOverlay(Default::default()),
+            (Pool::Effect, invisible::INDEX) => Vars::Invisible(Default::default()),
             (Pool::Actor, 0) => Vars::None,
             _ => Vars::None,
         }
@@ -86,6 +114,21 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, palette_flash::INDEX) => palette_flash::update(b, r),
         (Pool::Actor, attachment::INDEX) => attachment::update(b, r),
         (Pool::Effect, sun_beam::INDEX) => sun_beam::update(b, r),
+        (Pool::Actor, cross_merge::INDEX) => cross_merge::update(b, r),
+        (Pool::Actor, body_overlay::INDEX) => body_overlay::update(b, r),
+        (Pool::Effect, invisible::INDEX) => invisible::update(b, r),
+        (Pool::Effect, navi_chip::INDEX) => navi_chip::update(b, r),
+        (Pool::Actor, navi_warp::INDEX) => navi_warp::update(b, r),
+        (Pool::Actor, elmnt_man::INDEX) => elmnt_man::update(b, r),
+        (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
+        (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
+        (Pool::Effect, area_grab::INDEX) => area_grab::update(b, r),
+        (Pool::Attack, grab_shot::INDEX) => grab_shot::update(b, r),
+        (Pool::Attack, dust_ball::INDEX) => dust_ball::update(b, r),
+        (Pool::Effect, trap_chip::INDEX) => trap_chip::update(b, r),
+        (Pool::Actor, erase_man::INDEX) => erase_man::update(b, r),
+        (Pool::Effect, erase_mark::INDEX) => erase_mark::update(b, r),
+        (Pool::Attack, erase_beam::INDEX) => erase_beam::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }
@@ -120,9 +163,18 @@ pub fn busting_level(_b: &Battle) -> u8 {
     0x0B
 }
 
-/// `sub_802CEC8`: per-side registry of linked objects; clears an entry
-/// when its object's HP reaches 0.
-pub fn update_linked_registry(_b: &mut Battle) {}
+/// `sub_802CEC8`: a defensive-chip record goes when the navi that used
+/// the chip is deleted (its HP reaches 0).
+pub fn update_linked_registry(b: &mut Battle) {
+    for side in 0..2 {
+        if let Some(owner) = b.linked[side].owner
+            && b.objects.get(owner).hp == 0
+        {
+            let alliance = b.objects.get(owner).alliance;
+            b.clear_linked(alliance);
+        }
+    }
+}
 
 /// `sub_802CDFE`: age the per-side damage-carry records.
 pub fn shift_damage_carry(b: &mut Battle) {
@@ -134,6 +186,44 @@ pub fn shift_damage_carry(b: &mut Battle) {
 }
 
 /// Damage formulas for chips whose damage is 1000 or more (`off_80109DC`).
-pub fn chip_damage_formula(_b: &Battle, id: u16, _side: u8, formula: u16) -> u16 {
-    panic!("damage formula {formula} (chip {id:#x}) is not implemented yet")
+pub fn chip_damage_formula(b: &Battle, id: u16, side: u8, formula: u16) -> u16 {
+    match formula {
+        1..=18 => sp_chip_damage(b, side, formula as usize - 1),
+        _ => panic!("damage formula {formula} (chip {id:#x}) is not implemented yet"),
+    }
+}
+
+/// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user
+/// deleted that SP navi (a step per two seconds past ten).
+fn sp_chip_damage(b: &Battle, side: u8, n: usize) -> u16 {
+    use crate::data::player_generated::{SP_CHIP_DAMAGE, SP_TIME_STEPS};
+    let time = time_bcd(b.setup.sp_times[side as usize].frames(n) as u32);
+    let step = SP_TIME_STEPS.iter().take_while(|&&t| time > t).count();
+    SP_CHIP_DAMAGE[n][step]
+}
+
+/// `sub_8000D84`: frames as a BCD time, hours:minutes:seconds.hundredths
+/// (a byte each), capped at 99:59:59.99.
+fn time_bcd(frames: u32) -> u32 {
+    if frames > 0x149_9727 {
+        return 0x9959_5999;
+    }
+    let bcd = |v: u32| ((v / 10) << 4) | (v % 10);
+    let (hours, rest) = (frames / 216_000, frames % 216_000);
+    let (minutes, rest) = (rest / 3600, rest % 3600);
+    let (seconds, frames) = (rest / 60, rest % 60);
+    (bcd(hours) << 24) | (bcd(minutes) << 16) | (bcd(seconds) << 8) | bcd(frames * 100 / 60)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::time_bcd;
+
+    #[test]
+    fn deletion_times_read_as_bcd_clock_times() {
+        assert_eq!(time_bcd(600), 0x1000, "10 seconds");
+        assert_eq!(time_bcd(203), 0x0338, "3.38 seconds");
+        assert_eq!(time_bcd(216_000 + 3600 * 2 + 61), 0x0102_0101);
+        assert_eq!(time_bcd(0x149_9728), 0x9959_5999, "capped");
+    }
 }

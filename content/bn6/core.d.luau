@@ -11,10 +11,10 @@
 -- 16.16 fixed point, wrapping on + and -. Use `//` (floor division) or the
 -- `int` library, never `/`.
 
-type Pool = "actor" | "attack" | "effect"
-type Lifecycle = "init" | "update" | "destroy"
-type Shadow = "hidden" | "ground" | "with_sprite"
-type StatusFlag =
+export type Pool = "actor" | "attack" | "effect"
+export type Lifecycle = "init" | "update" | "destroy"
+export type Shadow = "hidden" | "ground" | "with_sprite"
+export type StatusFlag =
     "guard"
     | "invisible"
     | "invulnerable"

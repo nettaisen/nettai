@@ -199,3 +199,18 @@ what they start. "No setter found" is from the same heuristic scan as above.
 | `status::CROSS_40000` | `status::CROSS_BREAKING` | 0x40000: set on a weakness hit to a Cross form (NameID 0x1AC..0x1C1); `sub_8015766` ends the Cross over 30 ticks. |
 | `request::ACTION_30` | `request::VOLLEY` | 0x40000000: starts action 0x30 with state 0x10000. No setter found. |
 | `request::ACTION_49` | `request::STUN_STRIKE` | 0x80000: starts action 0x49 (`sub_80EEB4C`: a slash at every opposing navi that is paralyzed, or, variant 1, on a panel with flags 0x1C00). No setter found. The form changes (`sub_8014B18`, `sub_8014D70`...) set **state** bit 0x80000, which is `status::FORM_CHANGE_SPRITE_HELD`, not this request. |
+
+## State added with round chaining, Crosses and time freezes
+
+| Field | Game location | Meaning |
+|---|---|---|
+| `RoundState::low_hp_music` | BattleState+0x20 | Now a `bool` (was `u16`): the pinch latch only tests zero. Code that set it from a trace's BattleState should use `RoundSetup::low_hp_music_latched` instead. |
+| `RoundSetup::low_hp_music_latched` | BattleState+0x20 when init ends | Init's link-wait counter shares the halfword (battle-flow.md §2.2). |
+| `RoundSetup::later_stages` | `byte_203CA50` | The two (settings index, background) pairs of the set's later rounds (battle-flow.md §3.8). |
+| `Battle::round_end()` / `RoundEnd` | BattleState+0x1F, +0x0A | How the round ended (battle-flow.md §3.7). |
+| `Battle::crossed` | `byte_203EAE0` + 0x10·side + 0xB | The navi crossed this battle (set at the end of the Cross and Cross Beast changes, `sub_8014CC0`, `sub_8015128`, `sub_80155CC`); read only for the busting level. |
+| `Battle::freeze` / `FreezeRecord` | `byte_203CF00` + 0x50·side | A side's time freeze: owner +0, state +1, uncounterable +2, initiator +3, controller +8, user +0xC (chips.md §3.6). |
+| `AttackVars::marker` | AIAttackVars+0x30 | Also the Cross change's white-flash count (0..6, `sub_8014B98`). |
+| `attachment::Params` | Param1..4 of T1#5 | Kind, animation, animate in time stop, palette offset (`sub_80B8CF8`). |
+| `cross_merge::Vars` | +0x62, ExtraVars+4/+0xC/+0x10/+0x14, +0x68 of T1#0x1B | Swings left, swing step, lift, extra height, sound played, side of the next swing. |
+| `body_overlay::Vars` | Param1..4 and ExtraVars[0] of T1#0x56 | Variant, own palette, always step, animation offset, forced in front. |

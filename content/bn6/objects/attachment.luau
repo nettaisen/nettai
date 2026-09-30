@@ -9,7 +9,7 @@ local data = require("../data/attacks")
 local slot = require("../lib/slot")
 
 export type State = {
-    slot: slot.Slot,
+    slot: Slot,
     -- Offset from the owner's position (its attach point), 16.16.
     offset_x: number,
     offset_z: number,
@@ -27,7 +27,7 @@ local attachment = {
 -- `sub_80B8E30`: attach an object of `kind` (data.ATTACHMENTS) to `owner`,
 -- stored in `which` (which gets nil if the pool is full). It takes the
 -- owner's panel and side; its init places it.
-function attachment.spawn(owner: Object, kind: number, which: slot.Slot): Object?
+function attachment.spawn(owner: Object, kind: number, which: Slot): Object?
     local o = battle.spawn("actor", attachment.index, Vec3.zero, { kind, 0, 0, 0 })
     if o then
         o.related1 = owner
