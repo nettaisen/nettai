@@ -442,6 +442,8 @@ declare class Navi
     charge: number
     mood: number
     beast_out_counter: number
+    -- The navi's game: 0 Gregar, 1 Falzar.
+    version: number
     max_base_hp: number
     chip_recovery: number
     -- NaviCust: the buster's spread shot, the charged shot's kind, and the

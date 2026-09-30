@@ -49,6 +49,15 @@ pub struct Rules {
     pub lockon: Lockon,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,
+    /// Every NameID's actor record (`byte_80182C4`), by NameID; the player
+    /// ones are also in their navi's or form's `name_record`.
+    pub actor_records: Vec<super::NaviRecord>,
+    /// The palette MegaMan's sprite takes in each Cross, by form (0 for the
+    /// base form; `byte_80203EA`).
+    pub cross_palettes: Vec<u8>,
+    /// The sine table (`math_sinTable`): 8.8 fixed point, 256 steps a turn;
+    /// 320 entries, so that `math_cosTable` is the same table 64 on.
+    pub sine: Vec<i16>,
 }
 
 impl Rules {

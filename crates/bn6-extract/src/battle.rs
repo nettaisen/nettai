@@ -367,6 +367,18 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
         bubble_bob: std::array::from_fn(|i| rom.u8(0x0801_7868 + i as u32) as i8),
         lockon: lockon(rom),
         custom_screen: custom_screen(rom),
+        // Three bytes by NameID, 0..=0x1C3 (`byte_80182C4`).
+        actor_records: (0..0x1C4)
+            .map(|n| {
+                let rec = rom.bytes(0x0801_82C4 + 3 * n, 3);
+                let actor_type = [ActorType::Virus, ActorType::Navi, ActorType::Player][rec[1] as usize];
+                NaviRecord { version: rec[0], actor_type, ai_index: rec[2] }
+            })
+            .collect(),
+        // By form, the base form and the ten Crosses (`byte_80203EA`).
+        cross_palettes: rom.bytes(0x0802_03EA, 11).to_vec(),
+        // `math_sinTable`, then `math_cosTable` 64 entries on.
+        sine: (0..320).map(|i| rom.u16(0x0800_65E0 + 2 * i) as i16).collect(),
     }
 }
 
