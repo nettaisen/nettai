@@ -2,6 +2,7 @@
 //! live input from the keyboard.
 
 use bn6_battle::battle::{mode, top};
+use bn6_battle::console::ConsoleSetup;
 use bn6_battle::content::{ChipCode, ChipId, Content};
 use bn6_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
 use bn6_battle::input::keys;
@@ -159,13 +160,17 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(ChipId
             regular: None,
             tags: None,
         };
+        // Each console shuffles its folder with its own RNG (RNG1), which
+        // goes on from there.
         let mut rng = Rng::new(seed ^ side.wrapping_mul(0x9E37_79B9));
+        let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
         PlayerSetup {
-            folder: Some(BattleFolder::shuffled(&saved, 0, &mut rng, content)),
+            folder: Some(folder),
             unlocks: Unlocks::everything(GameVersion::Falzar),
             joypad_phase: 0,
             bug_frags: 0,
             navi_level: 0,
+            console: ConsoleSetup { rng: rng.state, tag_pair, emotion_window_glitch: false },
         }
     };
     RoundSetup {

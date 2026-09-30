@@ -143,7 +143,7 @@ local function sit(me: Object)
     me.collision.region = BURST_REGION
     me:reset_collision_types(BURST_SELF_TYPE, BURST_TARGET, 0)
     battle.region_effects(me.panel_x, me.panel_y, EFFECTS_REGION, me.alliance, EFFECT_BURST, 0)
-    -- (The camera shakes, which draws the local RNG only.)
+    battle.shake_camera(1, 0xF)
     battle.play_sound(SOUND_HIT_BOMB)
     me.visible = false
     me.action = 8

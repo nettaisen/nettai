@@ -133,12 +133,14 @@ dragon-head = { pool = "attack", index = 0xC9 }
 rising-bubble = { pool = "effect", index = 0x14 }
 dust-storm-mote = { pool = "effect", index = 0x19 }
 gauge-speed = { pool = "effect", index = 0x1C, scratch_position = true }
+panel-changer = { pool = "effect", index = 0x1F, scratch_position = true }
 panel-bursts = { pool = "effect", index = 0x24, scratch_position = true }
 "timebom/bomb" = { pool = "effect", index = 0x27, scratch_position = true }
 "engine/afterimage" = { pool = "effect", index = 0x28 }
 "mine/mine" = { pool = "effect", index = 0x29, scratch_position = true }
 trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 "elemtrap/strike" = { pool = "effect", index = 0x2B, scratch_position = true }
+"antirecv/controller" = { pool = "effect", index = 0x2C, scratch_position = true }
 "spoutman/pillar" = { pool = "effect", index = 0x2D, scratch_z_fraction = true }
 "spoutman/mark" = { pool = "effect", index = 0x2E }
 "deltaray/follow-effect" = { pool = "effect", index = 0x31 }

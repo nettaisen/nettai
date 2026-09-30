@@ -74,9 +74,10 @@ local function finish(me: Object)
 end
 
 -- `sub_80C5050` and `sub_80C5014`: the burst on (x, y): the effect over
--- the `effects` region's panels and a hit over `region`'s. (And a camera
--- shake: presentation only.)
+-- the `effects` region's panels and a hit over `region`'s, after a camera
+-- shake (magnitude 3, 40 ticks).
 local function burst(me: Object, x: number, y: number, effects: number, region: number)
+    battle.shake_camera(3, 0x28)
     battle.play_sound(BURST_SOUND)
     battle.region_effects(x, y, effects, me.alliance, BURST_EFFECT)
     battle.hitbox(me, {

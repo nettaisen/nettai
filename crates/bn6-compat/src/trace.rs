@@ -169,6 +169,7 @@ use crate::Compat;
 use crate::codec::{self, Ids};
 use bn6_battle::battle::{Battle, CustomResult, TickEvents};
 use bn6_battle::content::Content;
+use bn6_battle::console::{Console, ConsoleSetup};
 use bn6_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
 use bn6_battle::hand::ChipHand;
 use bn6_battle::input::PlayerTick;
@@ -289,7 +290,22 @@ impl Round {
             joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
             bug_frags: self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]),
             navi_level: self.setup.navi_levels.map_or(0, |l| l[side as usize]),
+            console: self.console_setup(side),
         }
+    }
+
+    /// A player's console: the recording console's RNG1 and tag pair
+    /// (BattleState+0x44/+0x45) as the setup has them. The other console's
+    /// aren't recorded: its RNG1 reads as 0 and it has no tag pair, which
+    /// only a re-deal on that player's screen would read. The save's
+    /// emotion window glitch (event flag 0x1720) isn't recorded either and
+    /// reads as clear.
+    fn console_setup(&self, side: u8) -> ConsoleSetup {
+        let bs = unhex(&self.setup.battle_state);
+        if bs[0x0D] != side {
+            return ConsoleSetup::default();
+        }
+        ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), emotion_window_glitch: false }
     }
 
     /// A player's game, going by the transformations they send: Gregar's
@@ -574,6 +590,9 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
     let setup = round.round_setup(content, compat);
     let mut sides: [Option<Side>; 2] =
         std::array::from_fn(|p| round.folder_known(p as u8).then(|| Side::new(&setup.players[p])));
+    // Each console's RNG as far as the screens alone go: its draws outside
+    // them (camera shakes, the emotion window) aren't simulated here.
+    let mut consoles = setup.players.each_ref().map(|p| Console::new(&p.console));
     let mut checks = Vec::new();
     let mut open: Option<(u32, [Option<u32>; 2], [Option<u32>; 2])> = None;
     let stats_at = |frame: u32, p: usize| -> NaviStats {
@@ -581,6 +600,12 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
         navi_stats(&e.navi_stats[p], &ids)
     };
     for (i, f) in frames.iter().enumerate() {
+        if i > 0 {
+            // The previous frame's main-loop draw.
+            for c in &mut consoles {
+                c.rng.next();
+            }
+        }
         let context = |p: usize| {
             let stats = stats_at(f.frame, p);
             let emotion = if stats.mood == 0 {
@@ -609,7 +634,7 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
         if custom && f.state[3] == 1 && prev_init == Some(0) {
             for (p, side) in sides.iter_mut().enumerate() {
                 if let Some(side) = side {
-                    side.open(&context(p));
+                    side.open(&context(p), &mut consoles[p]);
                 }
             }
             open = Some((f.frame, [None; 2], [None; 2]));
@@ -620,7 +645,7 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
             for (p, side) in sides.iter_mut().enumerate() {
                 let Some(side) = side else { continue };
                 let was_open = side.in_custom;
-                let request = side.tick(&context(p), |id| {
+                let request = side.tick(&context(p), &mut consoles[p], |id| {
                     let d = content.chip(id).damage;
                     if d < 1000 { d } else { 0 }
                 });
