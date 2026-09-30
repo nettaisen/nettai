@@ -37,16 +37,17 @@ setup and both players' buttons (rollback netplay):
 | The status byte BS+0x11 bit 2 (custom screen open), sent in the link packet; received as BS+0x14/0x15 | `Side::in_custom` per player, carried by the link like the buttons; `RoundState::remote_status` is what arrives |
 | The hand, NaviStats and transform record sent in 50 link words; committed when both magic words are in | `Side::sent` (the result and the tick its last word arrives); the fight resumes when both have arrived |
 | The folder shuffle at the round's init with the console's own RNG1 | `BattleFolder::shuffled` with the RNG it's given; `RoundSetup::players[p].folder` is the shuffled folder |
+| Each console's RNG1, which ChpShufl's re-deal draws from | `Battle::consoles[p]` (`crate::console`): each player's console RNG, seeded from `PlayerSetup::console` and advanced as that console's is (§8) |
 | Save data: owned Crosses, Beast Out unlocked, game version | `custom::Unlocks` in `RoundSetup::players` |
 
 Nothing in the custom screen depends on which side is "local": which screen a frontend draws is presentation.
 `TickEvents` carries only `link_closed` (the end of the round) and, for checking against recordings that lack a
 player's folder, that player's recorded results (`TickEvents::recorded`, §7).
 
-**RNG.** The custom screen draws from neither RNG stream **[dumps]**: RNG2 never moves during a screen, and the
-RNG1 draws seen during screens are presentation (the emotion window's bug flashes, `sub_801CC94`, and the Beast
-Out camera shake). The only RNG in this area is the folder shuffle at the round's init (RNG1, §1), and ChpShufl
-(RNG1, not ported, §8).
+**RNG.** The custom screen never draws from RNG2 **[dumps]**. It draws from its console's RNG1 only for ChpShufl's
+re-deal (§3.7); the other RNG1 draws seen during screens are the emotion window's flicker (`sub_801CC94`) and the
+camera's shakes (Beast Out's), which the port simulates only for their draws (§8). The folder shuffle at the
+round's init is RNG1 too (§1).
 
 **Game data.** The screen reads chip records, the Program Advances, the link navis' own chips and its slot
 layout through `custom::Library`, which the battle's `Content` implements (tests use `TestLibrary`, made-up chips
@@ -72,8 +73,10 @@ at init (`sub_80079F0` → `sub_800A3E4`, the frame the init sub-state goes to 8
    - with tags: `t = rng % 19 + 1`, swap the tags with entries t and t+1.
 
    A plain 30-chip folder takes 60 draws; the recordings' folders took 55, 60, 61 and 63.
-3. BattleState+0x17 = 1 if there is a Regular chip (`BattleFolder::regular_pending`); +0x44/+0x45 note the tag
-   pair (only ChpShufl reads them; not ported).
+3. BattleState+0x17 = 1 if there is a Regular chip (`BattleFolder::regular_pending`); +0x44 = 1 with tags and
+   +0x45 = where the shuffle put the pair (`BattleFolder::shuffled_with_tag_pair`, `ConsoleSetup::tag_pair`). Only
+   ChpShufl's re-deal reads them (§3.7); each opening clears +0x44 once +0x45 is below its hand size
+   (`sub_802A646`). Nothing updates +0x45 as the folder closes up.
 
 Verified **[dumps]** on all 10 shuffles (both consoles, every round of both replays): same folder, same RNG1 after.
 The unit tests in `custom/folder.rs` replay four of them.
@@ -153,7 +156,7 @@ replays (37.5k ticks: 692 moves, 174 picks, 49 take-backs, 88 Cross windows, 40 
 | OK | Build the hand (§5) and slide out (§6); works with nothing picked |
 | Beast Out | If selectable and fewer than 5 picks: pick it (it counts as a pick) and play its animation (§4) |
 | Scrap (slots 8/9) | If usable: scrap (§3.6) |
-| Re-deal (8/9) | ChpShufl: not ported (§8) |
+| Re-deal (8/9) | If usable: ChpShufl's re-deal (§3.7) |
 
 ### 3.4 What can be picked (`sub_8028E32`)
 
@@ -198,6 +201,7 @@ T is the tick that took the key; "input from" is the first tick the grid reads k
 | 0x48 Beast Out picked | A on Beast Out at T | T+71 **[dumps, 5 cases]** |
 | 0x44 BeastOut chip picked (`sub_80275EC`) | A on chip 0x13F at T | as 0x48 but its fade starts 16 ticks later; the chip moves to the front of the selection at T+68 (the Beast Out flag and button stay); T+86 **[lab]** |
 | 0x38 DustCross scrap | A on the scrap button at T | T+4+25k for k chips scrapped **[dumps, 13 cases]** |
+| 0x28 ChpShufl re-deal (`sub_80271F8`) | A on the re-deal button at T | T+34 **[lab, 2 scratch recordings]** |
 
 The chip description's chatbox also closes on B held for 10 frames; that is not ported.
 
@@ -207,6 +211,36 @@ In DustCross (form 0x0A, or its Beast form 0x16) slots 8/9 are one scrap button,
 last pick is a chip. Every 25 ticks (from T+2) it takes the last picked chip out of the folder; when the last pick
 isn't a chip (or none is left), the folder is compacted, the scrapped chips are put in its first holes (so at its
 end, in pick order), the dealt slots show the chips now at the front, and the button is used up. **[dumps]**
+
+### 3.7 ChpShufl's re-deal (`sub_80271F8`, state 0x28)
+
+With ChpShufl (NaviCust, NaviStats+0x60 = 1; MegaMan, battle modes 0, 5, 8, 0xA, 0xB, not DustCross) slots 8/9 are
+one re-deal button (`sub_80280E0`), usable once a screen (its uses are 1 − +0x16, the screen's re-deals so far,
+which each opening zeroes). A on it while it is selectable (`sub_8028DD6`; sound 0x182) enters state 0x28:
+
+- **First tick** (`sub_802721C`): +0x40 = 0; `sub_8029788` shuffles the chips it re-deals into a new order (below)
+  with the console's RNG1; the button's state = selected (in use); availability (`sub_8028E32`).
+- **Then every tick** (`sub_802723A`): +0x40 += 1; every 4th: on the 8th (+0x40 = 32) `sub_802983C` writes the new
+  order into the folder, +0x16 += 1, the button's uses − 1 (state selectable if any are left, else greyed), and the
+  grid takes keys again (state 4); before that, `sub_8029688` shows the chips shuffled once more: the same chips,
+  shuffled in the folder itself with RNG1 (seven times; the final order doesn't depend on them, the RNG does).
+  Either way availability again, and sound 0x113.
+
+**Which chips** (the three routines walk the folder the same way): over the first hand-size slots (+6), each chip
+slot is the next folder entry, re-dealt unless it is picked or the Regular chip (slot +4 bit 0); then as many more
+entries as the screen had chips beyond the hand size (+5 − +6), skipping the tag pair (two entries at +0x45 while
++0x44 is set) where the walk meets it. Each shuffle is `sub_8000D12` over them all, n swaps of two entries (two
+draws each) for n chips (the table that would shuffle the dealt part apart, `byte_80298C8`, is all zeros).
+
+Two quirks come with the walk: with NumbrOpn's ten chips the button covers slots 8 and 9, so the walk counts eight
+dealt entries and leaves the folder's last two out; and +0x45 is the shuffle's index, not updated as the folder
+closes up, so after picks the walk skips whatever is there by then. Where the tag pair straddles the walk's end the
+original runs on past the folder (a buffer overrun); the port stops at the folder's end **[unverified]**.
+
+Port: `Phase::Redealing`, `Screen::redeal` (custom/screen.rs). **Verified** on two scratch chip-lab recordings
+(side 0 re-deals on the first screen with a Regular chip and a tag pair, then picks two re-dealt chips; and on the
+second screen after the other side's Beast Out shook both cameras for 60 ticks): every frame matches, and the
+console's modeled RNG1 keeps step with the recording's throughout. Unit tests: custom/tests.rs.
 
 ## 4. Beast Out and Crosses
 
@@ -342,13 +376,46 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 
 ## 8. Not ported or not verified
 
-- **ChpShufl** (NaviCust, NaviStats+0x60): the re-deal button is laid out, pressing it panics (not implemented).
-  It shuffles with the console's RNG1, which the simulation doesn't have; a port would give each player an RNG
-  stream in the setup.
+- **Each console's RNG1** (ChpShufl's re-deal, §3.7). The re-deal draws from its console's own RNG1, which the
+  original never shares over the link. During a battle it advances once a frame (the main loop's `GetRNG1`, after
+  the battle's), twice a tick while the console's camera shakes (`camera_doShakeEffect_80301e8`), once when the
+  emotion window's timer runs out on a bugged navi (`sub_801CC94`), and by the re-deal itself. All of that is a
+  function of the round's start, the shared simulation and the player's own buttons, so the port simulates it
+  exactly, per player, in `Battle::consoles` (`crate::console`, part of the snapshot and the digest):
+  - the seed is the console's RNG1 on the round's first battle frame, after its folder shuffle
+    (`PlayerSetup::console`, with the tag pair's place and the save's emotion window glitch). In netplay it is part
+    of the setup the peers share; the frontend's and the netplay stand-in's setups carry on from their folder
+    shuffles' RNG. A set's next round needs the console RNG as its init left it (§8.3 of rollback.md);
+  - the camera: two channels (`camera_initShakeEffect_80302a8`'s primary, `sub_80302B6`'s secondary), the primary
+    first unless the battle is paused without dimming while player 0's status byte (BattleState+0x14) has neither
+    bit 0 nor 2 (`sub_80269D0`); run each running tick after the objects. The shared simulation starts shakes on
+    both consoles (`Battle::shake_camera`, content's `battle.shake_camera`; the form changes and GroundCross's rock
+    barrage in Rust); the custom screen's Beast Out (tick 2 of state 0x48, tick 17 of 0x44) on its own. The jitter
+    (`CameraShake::jitter`) is there for a frontend to draw;
+  - the emotion window (HUD task bit 14): started by the intro's HUD setup (`sub_800927C` → `sub_801E5F8`, first
+    check 120 ticks on), stopped by the win, loss and draw states; every 20 ticks it checks the console's own navi,
+    and flickers once or twice (the draw) when the navi has a NaviCust bug (`sub_800FE52`) or, for MegaMan, when the
+    save's event flag 0x1720 is set (`ConsoleSetup::emotion_window_glitch`; BugFix clears it on both consoles,
+    `Battle::clear_emotion_window_glitch`, for when BugFix is ported).
+
+  **Fidelity.** Measured against the recording console's RNG1 column (a scratch probe; the trace comparison doesn't
+  check RNG1): exact on every frame the engine reproduces of machgun, soundmod (all three rounds up to their
+  floors) and 3618 of the chip lab's 3621 rounds. The limits:
+  - link stalls: frames on which a console waits for the link still draw (the main loop) but don't tick. They are
+    the console's own network timing and can't be reproduced; the port's link never stalls, and nor did the
+    recordings (their frames and ticks stay a constant apart through each round);
+  - the save's event flag 0x1720 isn't recorded: bn6-compat reads it as clear. The lab's three support scenarios
+    (navicust/beat, rush, tango) have it set, and their consoles fall one draw behind at the first check;
+  - the other console's RNG1 (and tag pair) isn't recorded either: bn6-compat gives it 0 (and none), which only a
+    re-deal on that player's screen would read;
+  - shakes of content not ported yet (most viruses', and the chips and objects still to come) are missing until
+    their content calls `battle.shake_camera` where the original calls `camera_initShakeEffect_80302a8`;
+  - the run-away check (`sub_8026F1A`, one RNG1 draw on the answer) isn't ported, like the run message's chatbox
+    (§3.5); battle effects 0x20 decide whether it can come up in a netbattle **[unverified]**.
 - **Chip 0x13F picked as a chip** (state 0x44, `Phase::BeastOutChipChosen`): the chip lab's BeastOut scenarios match.
 - **The run message's timing** (L): an estimate; the chatbox's text timing isn't ported.
 - **The Program Advance animation's length**: from the code, not a recording.
-- **Tag chips**: laid out and shuffled; the tag flag is only read by ChpShufl.
+- **Tag chips**: laid out and shuffled; only ChpShufl's re-deal reads the tag pair (§3.7).
 - **Link navis** (NaviStats+0x29 ≠ 0): their own chip in slot 9 is from the code only.
 - The builder's stale-register write on the first fold (chips.md §2.4) is not reproduced.
 - Battle mode 1 paths, tutorials, escape, the Beast Link Gate (state 0x40).

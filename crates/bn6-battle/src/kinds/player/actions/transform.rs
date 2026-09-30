@@ -273,14 +273,15 @@ fn vanish(b: &mut Battle, r: ObjectRef, seq: Sequence, target: Form) {
             // sub_800AB2E
             b.beast_out_used[alliance as usize] = true;
             // The roar is Gregar's for the Gregar beasts and Falzar's
-            // otherwise; a camera shake follows (its jitter uses the
-            // camera's own RNG).
+            // otherwise; the cameras shake at magnitude 2 (`sub_80302B6`),
+            // 60 ticks (75 for Beast Over).
             let gregar = match seq {
                 Sequence::BeastOut => target == Form::GREGAR_BEAST,
                 Sequence::CrossBeast => target.0 < 0x12,
                 _ => target == Form::GREGAR_BEAST_OVER,
             };
             b.play_sound(crate::sound::SoundId(if gregar { 0x1CC } else { 0x1CD }));
+            b.shake_camera_secondary(2, if seq == Sequence::BeastOver { 0x4B } else { 0x3C });
         }
         set_timer(b, r, 0x36);
         if seq == Sequence::BeastOver {

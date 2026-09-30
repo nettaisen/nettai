@@ -179,7 +179,7 @@ local function hop_2(me: Object)
     strike(me, x, y)
     strike(me, x, y - 1)
     strike(me, x, y + 1)
-    -- (And a camera shake: presentation only.)
+    battle.shake_camera(2, 0x1E)
     battle.play_sound(0xC0)
     battle.play_sound(0x10D)
     if me:param(3) ~= 0 then

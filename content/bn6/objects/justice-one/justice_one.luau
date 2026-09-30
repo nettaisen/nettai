@@ -97,9 +97,10 @@ local function init(me: Object)
     me.lifecycle = "update"
 end
 
--- `sub_80DB4CE`: the landing's hits (running while dimmed) and dust. (And
--- a camera shake: presentation only.)
+-- `sub_80DB4CE`: a camera shake (magnitude 3, 45 ticks), the landing's
+-- hits (running while dimmed) and dust.
 local function land(me: Object)
+    battle.shake_camera(3, 0x2D)
     local damage = bit32.band(me.damage, 0xF000) + WAVE_DAMAGE
     for _, region in WAVES do
         local box = battle.hitbox(me, {
