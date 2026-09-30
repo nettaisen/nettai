@@ -154,7 +154,7 @@ fn land(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800F46C` + `sub_800F2C6`: face the default way under the standard
 /// column patterns, and the sprite with it.
-fn face_default(b: &mut Battle, r: ObjectRef) {
+pub(in crate::kinds::player) fn face_default(b: &mut Battle, r: ObjectRef) {
     if matches!(b.setup.settings.panel_pattern, 0x38 | 0x30 | 0x3C) {
         b.objects.get_mut(r).flip = 0;
     }
