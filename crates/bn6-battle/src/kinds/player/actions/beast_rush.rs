@@ -170,6 +170,12 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
     }
 }
 
+/// `ho_8026554` as its callers outside the rush see it: the panel, or
+/// (0, 0x7F) when no panel fits (`sub_80265D0`'s registers then).
+pub(crate) fn lockon_panel(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> PanelPos {
+    destination(b, r, target, mode).unwrap_or(PanelPos { x: 0, y: 0x7F })
+}
+
 /// `ho_8026554`: the panel to attack `target` from in lock-on `mode`;
 /// None to stay.
 fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> Option<PanelPos> {
@@ -181,7 +187,14 @@ fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> Option<P
     let Some(search) = b.content.rules.lockon.search(mode) else {
         panic!("lock-on mode {mode:#x} (jt_8026584) is not implemented yet");
     };
-    let found = search_near(b, r, target, &search.offsets);
+    // sub_80266BA: the target in the far column skips the first offset.
+    let o = b.objects.get(r);
+    let far_column = if facing(o.alliance, o.flip) > 0 { 6 } else { 1 };
+    let offsets = match &search.offsets[..] {
+        [_, rest @ ..] if search.skips_first_at_edge && target.x == far_column => rest,
+        all => all,
+    };
+    let found = search_near(b, r, target, offsets);
     if !search.prefers_middle_row {
         return found;
     }

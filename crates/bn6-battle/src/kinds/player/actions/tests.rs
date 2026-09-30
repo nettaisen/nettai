@@ -239,3 +239,41 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     run_to(&mut b, p, &mut t, 70, 0);
     assert_eq!(b.objects.get(p0).action, 8);
 }
+
+// ---- Form weapons (group C, fork 2) -----------------------------------------------
+
+/// Start weapon routine `routine` for `r` as a charged chip starts it
+/// (`sub_800FB54`'s charged path: attack kind 2).
+fn start_weapon(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
+    ai_mut(b, r).attack.charged = 0;
+    let action = super::super::idle::weapon_routine(b, r, routine);
+    super::super::set_attack(b, r, action, 2);
+    action
+}
+
+fn kind_ticks(b: &Battle, name: &str) -> Vec<ObjectRef> {
+    let k = b.content.object_kind(name).unwrap();
+    b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index)).collect()
+}
+
+#[test]
+fn debug_form_weapons_timelines() {
+    for routine in [0x17u8, 0x15, 0x1C, 0x1D, 0x1A] {
+        let (mut b, p0, p1) = fight();
+        if routine == 0x1A {
+            crate::kinds::lockon_marker::spawn(&mut b, p0);
+            tick(&mut b, p0, p1, 0);
+            tick(&mut b, p0, p1, 0);
+        }
+        let action = start_weapon(&mut b, p0, routine);
+        println!("== routine {routine:#x} action {action:#x}");
+        for t in 1..140 {
+            tick(&mut b, p0, p1, 0);
+            let o = b.objects.get(p0);
+            let a = &ai_mut(&mut b.clone(), p0).attack.clone();
+            let kinds: Vec<String> = b.objects.in_order().filter(|&x| x.pool != Pool::Actor).map(|x| format!("{:?}{:#x}", x.pool, b.objects.get(x).index)).collect();
+            println!("t{t} act {:#x} step {} anim {:#x} panel {:?} pos {:x},{:x},{:x} hp1 {} {:?}", o.action, a.step, o.anim, o.panel, o.pos.x, o.pos.y, o.pos.z, b.objects.get(p1).hp, kinds);
+            if b.objects.get(p0).action == 8 { break; }
+        }
+    }
+}
