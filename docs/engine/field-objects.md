@@ -222,19 +222,69 @@ head for it; else snap onto it, rest 0x14.
 
 ### 4.5 Thrown and encased (`sub_8018002`, `sub_801813A`)
 
-Nothing in the game starts either: their requests (f2 0xC00, 0x3000) are
-set only by `sub_800F6AC` and an unlabeled routine at 0x0800F830, which
-nothing calls. Thrown: steps in PreventAnim: alliance = the thrower's,
-f1 |= 0x04000000, Zvel = (64 px − Z) / 32, Unk_19 = 32, sound 0x12A,
-region 0; rise 32 ticks to Z 64 px; shake Unk_1E ticks (jitter 3, one RNG2
-draw each); then fly to the panel (Unk_1C, Unk_1D) (`sub_800F768`:
-BIOS ArcTan2, cos/sin tables, Sqrt; Zvel = 64 px / ticks) with sound 0x10C;
-land: a region-1 hit (type 6 against type 5, hit modifier 3, the object's
-damage word), HP 0, action 2. Encased: f1 |= 0x10000000 (ice, f2 0x1000)
-or 0x20000000 (bubble), region 0, 60 ticks blinking (hidden, with an effect 0x42,
-on ticks whose bit 1 is clear), then unregister (both registries) and replace it with a
-rock of variant 3 (ice) or attack object #0xA3 (bubble) of the same class
-and damage.
+Nothing in the game starts either: their requests are made only by
+`sub_800F6AC` and by an unlabeled routine at 0x0800F830 (disassembled as
+data after `byte_800F828`), and nothing calls those. **Unverified** (no
+trace can reach them).
+
+The throw request, `sub_800F6AC(obstacle, thrower side r1, target x r2, y
+r3, shake ticks r4, damage word r6)`: +0x1C = x, +0x1D = y, +0x1E = the
+shake ticks, the damage word, f2 |= 0x400 (side 0) or 0x800 (side 1).
+(`sub_800F6C6`, which nothing calls either, would pick a target: a random
+panel with the enemy's body, else one of the enemy's other than its own,
+else any, a `GetPositiveSignedRNG2` draw each.)
+
+**Thrown, `sub_8018002`**, by PreventAnim (`off_8018014`):
+- 0 (`sub_801802C`): Alliance = 0 if f2 has 0x400, else 1; f2 &= ~0xC00;
+  f1 |= 0x04000000 (carried: the dispatcher keeps coming back here);
+  Zvel = (64 px − Z) / 32 (`svc 6`); the FuturePanel reservation dropped;
+  +0x19 = 32; sound 0x12A; region 0; PreventAnim 4.
+- 4 (`sub_8018076`): Z += Zvel; +0x19 −= 1; at 0: Z = 64 px, PreventAnim 8.
+- 8 (`sub_8018094`): +0x19 = the byte at +0x1E; +0x30 = X16, +0x32 = Z16
+  (the whole pixels); PreventAnim 0xC.
+- 0xC (`sub_80180A8`): (X, Y, Z) = (+0x30 px, Y, +0x32 px) jittered
+  (`AddRandomVarianceToTwoCoords(3)`: **one `GetRNG2` draw** a tick, x
+  and z by −1..2 px); +0x19 −= 1; at 0: X16 = +0x30, Z16 = +0x32 (the
+  fractions stay 0); FuturePanel = (+0x1C, +0x1D); +0x19 = the flight's
+  ticks (`sub_800F768`); sound 0x10C; PreventAnim 0x10.
+- `sub_800F768(x, y)`: dx, dy from the whole-pixel X, Y (X16 << 16) to the
+  panel's center; the angle `calcAngle_800117C(dy, dx)` (BIOS ArcTan2 of
+  the whole pixels, >> 8) goes to +0x0C (unread); (Xvel, Yvel) =
+  `sub_80011A0(angle, 8 px)` (cos and −sin from `math_cosTable` and
+  `byte_80066E0`, × speed >> 8); the distance = BIOS Sqrt(((dx lsr 8)² +
+  (dy lsr 8)²) in 32 bits) << 8 (a logical shift and a wrapping square,
+  harmless for whole-pixel offsets), ticks = distance / 8 px (`svc 6`).
+  Ticks ≠ 0: Zvel = 64 px / ticks; else Zvel = 8 px, Xvel = Yvel = 0,
+  ticks 8.
+- 0x10 (`sub_80180EC`): X += Xvel, Y += Yvel, Z −= Zvel; +0x19 −= 1; at
+  0: Panel = FuturePanel, coordinates from it; `sub_80C53A6(x, y, Element,
+  z 0, r4 = 0x06050001, r6 = damage word, r7 = 3)`: region 1, hit spark 5,
+  target 5, self 6, hit modifier 3, resolving while dimmed; HP 0; action 2
+  (the kind's destroyed action).
+- 0x14: `nullsub_57`. Engine: `obstacle::thrown`.
+
+The encase request (0x0800F830, r0 = the obstacle, r1 = 0 ice / else
+bubble, r5 = the encaser): the obstacle takes the encaser's alliance byte
+and damage word; f2 |= 0x1000 (ice) or 0x2000 (bubble).
+
+**Encased, `sub_801813A`**, by PreventAnim (`off_801814C`):
+- 0 (`sub_8018154`): f1 |= 0x10000000 (f2 had 0x1000: ice) or 0x20000000
+  (bubble); f2 &= ~0x3000; +0x19 = 60; the FuturePanel reservation
+  dropped; region 0; PreventAnim 4.
+- 4 (`sub_8018186`): VISIBLE; while bit 1 of +0x19 is clear: VISIBLE off
+  and a T4#0 effect 0x42 at (X, Y, Z) (two ticks of every four, a new
+  effect each). +0x19 −= 1; at 0: its registry class (`sub_800F806`,
+  0 / 1, 0xFF when not registered) → r4 = 0x10000 | class << 8;
+  unregistered (`sub_800F656`) and no side's wind (`sub_80E544C`); ice →
+  r4 += 3: a rock (`sub_80CFBC4`, variant 3 the ice block, the same class,
+  entrance 1 (instant)), bubble → r4 = 1: attack object #0xA3
+  (`sub_80D99EC`: PanelX/Y, element 2 (aqua), the damage word, the
+  alliance byte, flags |= 0x10; its behavior `sub_80D984C`, which only
+  this reaches, isn't described); either at its panel with its alliance
+  and damage word. Then state destroy (word).
+- Engine: still a panic (`obstacle::encased`): the replacement spawns
+  content kinds (the rock's spawner is the pack's `objects/rock`; #0xA3
+  isn't ported).
 
 ### 4.6 Requests from chips
 
@@ -295,8 +345,8 @@ pushes, blink-out, falling/rising entrances, dimming shaking, eviction.
 
 ## 7. Not implemented, unreachable, unverified
 
-- Not implemented (panic): `sub_8018002` (thrown) and `sub_801813A`
-  (encased), which nothing in the game starts (§4.5).
+- Not implemented (panic): `sub_801813A` (encased), which nothing in the
+  game starts (§4.5); ported, unverified: `sub_8018002` (thrown), likewise.
 - An error: actions 3/4/6/7 on obstacles (AIData lookups through a null
   pointer; nothing sets them on an obstacle); a push without direction bits
   (`sub_800F598` reads the BIOS).
