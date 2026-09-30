@@ -15,7 +15,7 @@ fn pack(modules: &[(&str, &str)]) -> Pack {
 }
 
 fn define_pack(modules: &[(&str, &str)]) -> Result<Definitions, String> {
-    define(&pack(modules), &Data::Nil, Options::default()).map(|(d, _)| d).map_err(|e| e.message)
+    define(&pack(modules), &Data::Nil, &AssetNames::default(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
 }
 
 /// A family library, a kind, and chips composing them: MiniBomb's pattern
@@ -134,13 +134,59 @@ fn definition_mistakes_are_load_errors() {
     assert!(e.contains("chip \"x\" is defined twice: in a.luau and in b.luau"), "{e}");
 }
 
+/// Asset names for these tests.
+fn names() -> AssetNames {
+    let mut a = AssetNames::default();
+    a.sprites.insert("bomb".into(), bn6_content_api::SpriteId { category: 0x0C, index: 2 });
+    a.sprites.insert("explosion".into(), bn6_content_api::SpriteId { category: 0x0C, index: 1 });
+    a.sounds.insert("throw".into(), 0x1A6);
+    a
+}
+
+fn define_named(modules: &[(&str, &str)]) -> Result<Definitions, String> {
+    define(&pack(modules), &Data::Nil, &names(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
+}
+
+#[test]
+fn assets_resolve_by_name_while_content_loads() {
+    let d = define_named(&[(
+        "lib/effects",
+        "local SOUND = asset.sound('throw')\n\
+         if asset.sprite('bomb') ~= asset.sprite('bomb') then error('one value per asset') end\n\
+         return { explosion = define.effect { sprite = asset.sprite('explosion'), anim = 3, sound = SOUND } }",
+    )])
+    .unwrap();
+    let e = &d.of(Registry::Effect)[0];
+    assert_eq!(e.spec.field("sprite"), &Data::Asset(bn6_content_api::AssetKind::Sprite, "explosion".into()));
+    assert_eq!(e.spec.field("sound"), &Data::Asset(bn6_content_api::AssetKind::Sound, "throw".into()));
+    // An unknown name is an error naming the module; so is a resolver
+    // called after loading.
+    let e = define_named(&[("chips/x/chip", "return { s = asset.sprite('bom') }")]).unwrap_err();
+    assert!(e.contains("chips/x/chip: no sprite is named \"bom\""), "{e}");
+    let e = define_named(&[("m", "return { f = function() return asset.sound('throw') end }")]);
+    assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
+}
+
+#[test]
+fn the_roles_are_one_definition() {
+    let d = define_named(&[
+        ("lib/counter", "return define.action { id = 'counter', state = {}, update = function(me, s) end }"),
+        ("rules/roles", "return define.roles { actions = { anti_damage_counter = require('../lib/counter') } }"),
+    ])
+    .unwrap();
+    let roles = d.get(Registry::Roles, "roles").expect("keyed roles");
+    assert_eq!(roles.spec.field("actions").field("anti_damage_counter"), &Data::Ref(Registry::Action, "counter".into()));
+    let e = define_named(&[("a", "return define.roles {}"), ("b", "return define.roles {}")]).unwrap_err();
+    assert!(e.contains("roles \"roles\" is defined twice"), "{e}");
+}
+
 #[test]
 fn definitions_are_frozen_and_definers_close_after_loading() {
     let p = pack(&[(
         "m",
         "local d = define.record('r', { n = 1 })\nreturn { d = d, late = function() return define.record('r', {}) end }",
     )]);
-    let (lua, defined, modules, _) = open(&p, &Data::Nil, Options::default()).unwrap();
+    let (lua, defined, modules, _, _) = open(&p, &Data::Nil, &AssetNames::default(), Options::default()).unwrap();
     assert!(defined.tables.iter().all(|t| t.is_readonly()));
     let LuaValue::Table(m) = &modules["m"] else { panic!("a table") };
     let late: Function = m.get("late").unwrap();
@@ -155,7 +201,7 @@ fn a_plan_binds_definition_slots_and_module_exports() {
     let mut modules = BOMBS.to_vec();
     modules.push(("objects/old/old", "return { state = { t = 'u8' }, update = function(me) end }"));
     let p = pack(&modules);
-    let (definitions, compiled) = define(&p, &Data::Nil, Options::default()).unwrap();
+    let (definitions, compiled) = define(&p, &Data::Nil, &AssetNames::default(), Options::default()).unwrap();
     assert_eq!(compiled.len(), modules.len(), "every module compiled");
     let p = p.with_compiled(compiled);
     let handles = (0..definitions.defs.len() as u16).collect();
@@ -168,6 +214,8 @@ fn a_plan_binds_definition_slots_and_module_exports() {
         schemas: Vec::new(),
         definitions,
         handles,
+        entries: Vec::new(),
+        assets: AssetNames::default(),
     };
     assert!(LuauContent::load(&p, &plan, &Data::Nil, Options::default()).is_ok());
     // A plan made from other definitions is refused.
