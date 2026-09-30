@@ -201,8 +201,7 @@ impl Obstacle for Rock {
         let f2 = obstacle::f2_of(b, r);
         if f2 & obstacle::f2::REMOVED != 0 {
             if f2 & obstacle::f2::ABSORBED != 0 {
-                // Rocks never set a sprite palette.
-                obstacle::fly_to_absorber(b, r, ABSORBED_KIND, 0);
+                obstacle::fly_to_absorber(b, r, ABSORBED_KIND);
             } else {
                 match obstacle::blink_out(b, r, f2) {
                     obstacle::BlinkOut::Blinking => return,

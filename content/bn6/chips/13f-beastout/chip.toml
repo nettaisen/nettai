@@ -1,0 +1,4 @@
+# BeastOut used from the hand, an instant chip (action 0x1C, subtype 0): its
+# effect (`sub_80104E0`) is in chip.luau.
+
+script = "chip.luau"
