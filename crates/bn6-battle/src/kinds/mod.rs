@@ -26,6 +26,7 @@ pub mod player;
 pub mod rock;
 pub mod rock_debris;
 pub mod spark;
+pub mod status_visual;
 pub mod trap_chip;
 
 use crate::battle::Battle;
@@ -56,6 +57,7 @@ pub enum Vars {
     ElmntMan(elmnt_man::Vars),
     Meteor(meteor::Vars),
     TrapChip(trap_chip::Vars),
+    StatusVisual(status_visual::Vars),
     /// A content kind's declared state (see `content`).
     Content(bn6_content_api::ContentState),
 }
@@ -109,6 +111,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Attack, meteor::INDEX) => meteor::update(b, r),
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
         (Pool::Effect, trap_chip::INDEX) => trap_chip::update(b, r),
+        (Pool::Effect, status_visual::INDEX) => status_visual::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }

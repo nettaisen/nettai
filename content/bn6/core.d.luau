@@ -451,6 +451,11 @@ declare class Navi
     charge_shot_kind: number
     buster_blanks: number
     buster_charged: number
+    -- NaviCust bugs: the HP drain in the fight and while the custom
+    -- screen is open (levels), and what a step leaves behind.
+    hp_drain: number
+    custom_drain: number
+    panel_trail: number
     -- The form is a Beast form, Beast Over.
     beast: boolean
     beast_over: boolean

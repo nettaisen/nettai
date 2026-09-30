@@ -309,6 +309,11 @@ named_fields! {
         /// NaviCust bugs: buster blanks and buster charged shots (of 16).
         BusterBlanks = "buster_blanks", U8, ro;
         BusterCharged = "buster_charged", U8, ro;
+        /// NaviCust bugs: the HP drain in the fight and while the custom
+        /// screen is open (levels), and what a step leaves behind.
+        HpDrain = "hp_drain", U8, ro;
+        CustomDrain = "custom_drain", U8, ro;
+        PanelTrail = "panel_trail", U8, ro;
         /// The form is a Beast form, Beast Over.
         Beast = "beast", Bool, ro;
         BeastOver = "beast_over", Bool, ro;

@@ -245,6 +245,9 @@ impl CoreApi for Battle {
             NaviStat::ChargeShotKind => i(s.weapons.charge_shot_kind as i64),
             NaviStat::BusterBlanks => i(s.bugs.buster_blanks as i64),
             NaviStat::BusterCharged => i(s.bugs.buster_charged as i64),
+            NaviStat::HpDrain => i(s.bugs.hp_drain as i64),
+            NaviStat::CustomDrain => i(s.bugs.custom_drain as i64),
+            NaviStat::PanelTrail => i(s.bugs.panel_trail_kind as i64),
             NaviStat::Beast => Value::Bool(s.form.is_beast()),
             NaviStat::BeastOver => Value::Bool(s.form.is_beast_over()),
         }
