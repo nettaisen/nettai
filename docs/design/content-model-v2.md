@@ -123,7 +123,7 @@ A key is a string unique within its registry.
   `minibomb`, `atk-10`, `erasemn-ex`, `heatcross-beast`, `megaman/buster`, `eraseman/mark`. The generator (§9)
   makes chip keys from the in-game name (`M-Cannon` is `m-cannon`, `GrndMan[EX]` is `grndman-ex`, `Atk+10` is
   `atk-10`); where two records share a name (StepSwrd, WhiCapsl, BeastOut) or have none, it picks a
-  key from the record's use and lists them in its report for review (§13).
+  key from the record's use and lists them in compat/curation.toml for review (§13).
 - **Derived keys** for definitions made inside another definition's module and nested in it: `<owner key>/<field
   path>`. MiniBomb's action is `minibomb/action`; the bomb variant it throws is `minibomb/action/args/thrown`.
   A definition made while module `M` loads and not nested in a keyed definition of `M` is `M#n`, its place among
@@ -363,9 +363,10 @@ export type StageSpec = {
 ```
 
 Panel layouts and actor lists are inlined into the stages that use them; neither has a number any more. The 192
-battle settings a set's later rounds are drawn from are deduplicated into stages (one per distinct record); compat
-maps each original index and actor-list address to its stage. Stages are named by what they are where that is
-known, else `netbattle-N` in order of first use (§13).
+battle settings a set's later rounds are drawn from are deduplicated into stages (one per distinct record; all 192
+are distinct: 96 pairs of layout and actor list, each with two effect words); compat maps each original index to its
+stage, and gives the address its actor list goes by. Stages are named by what they are where that is known, else
+`netbattle-N` in order of first use (§13).
 
 ### 3.8 Rules
 
@@ -1018,15 +1019,16 @@ need.
 
 | File | Holds |
 |---|---|
-| chips.toml | `minibomb = { id = 0x36, action = 0x12, subtype = 0 }` for every chip; action and subtype are documentation (the traces never compare them) |
-| actions.toml | action key to navi action number: `"minibomb/action" = 0x12`, `"megaman/buster/shot" = 0x11`, `"engine/move" = 0x10`, the roles' actions |
-| navis.toml, forms.toml | `eraseman = { navi = 4, name_id = 0x1A4 }`, `heatcross = { form = 1, name_id = 0x1AC }` |
-| weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon |
-| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`; `scratch_position`, `scratch_z_fraction` and the engine kinds' comparison conditions |
-| stages.toml | battle settings index to stage, actor-list address to stage |
-| records.toml | the few records a setup names by byte: NaviCust buster shots (`0x01 = "buster-spread"`), the save's SP deletion-time slots (`0x03 = "sp/eraseman"`) |
-| assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0xB2`, backgrounds, banners, mugshots; chip icons follow chips.toml |
-| text.toml | the text encoding the generator and the extractor share: font glyph by character (and the EX and SP glyphs) |
+| chips.toml | `minibomb = { id = 0x036, action = 0x12, subtype = 0 }` for every chip; action and subtype are documentation (the traces never compare them) |
+| actions.toml | action key to navi action number: `"minibomb/action" = 0x12` (every chip whose use is an action has `<chip>/action`), `"megaman/buster/shot" = 0x11`, a weapon's `"<weapon>/action"`, `"engine/move" = 0x10`, `"engine/form-change" = 0x1C`. A role action whose number a chip's or weapon's action has is that action (the volley is WideSht's 0x30); only the turn (0x3B) has its own, `"megaman/turn"` |
+| navis.toml, forms.toml | `eraseman = { navi = 0x04, name_id = 0x1A4 }`, `heatcross = { form = 0x01, name_id = 0x1AC }`; the base form has no `name_id` (it is MegaMan's) |
+| weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
+| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (8 for `rock`); the engine's kinds as `"engine/..."` |
+| stages.toml | `"netbattle-1" = { settings = [0x00], actor_list = 0x080B1989 }`: the settings indices that are the stage, and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
+| records.toml | the few records a setup names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); NaviCust buster shots when their producers are known |
+| assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
+| text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
+| curation.toml | the names the generator made up, by file and key, with where each came from: the review list (§13) |
 
 A sample (kinds.toml):
 
@@ -1042,8 +1044,10 @@ bomb = { pool = "attack", index = 0x08 }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 ```
 
-Many-to-one maps are allowed (aliases, deduplicated stages). Every entry must name a key that exists; every chip,
-navi, form, weapon, kind and action of the BN6 content must have an entry (the checker enforces both, §7.7).
+Every file maps a key to its numbers, and many-to-one maps are allowed (aliases, deduplicated stages). Every entry
+must name a key that exists; every chip, navi, form, weapon, kind and action of the BN6 content must have an entry
+(the checker enforces both, §7.7). A chip record with no name (or `????`) that nothing reaches has none: the blank
+library slots 0xCB..0xDC and 0x160..0x170 and the nameless copies of the plus chips' record.
 
 ### 6.2 Who reads it
 
@@ -1067,11 +1071,12 @@ name is a load error naming the module. The resolved value is a handle into the 
 
 - **Names** come from compat/assets.toml, which the generator writes: the disassembly's song and sound enum names
   where they exist (`SONG_VIRUS_BATTLE` is `virus-battle`, `SOUND_HIT_BOMB_1` is `hit-bomb-1`), else a name from
-  the asset's first user (`erase-mark`), else a numbered fallback (`sprite-0c-2d`, `sound-10e`). Content may not
-  use a fallback name (the checker warns); naming one is part of using it.
+  the asset's first user (`erase-mark`), else a numbered placeholder (`sprite-0c-01`, `sound-101`, `banner-54`). The
+  table lists every asset the ROM has, so a placeholder is an entry too. Content may not use a placeholder (the
+  checker warns); naming one is part of using it.
 - **The extractor** reads compat/assets.toml and writes `graphics/sprites/<name>/`, `sound/songs/<name>.mid`,
-  `graphics/hud/chip-icons/<chip key>.png` and so on. Assets the table doesn't list are written under their
-  fallback names, so nothing the ROM has is lost.
+  `graphics/hud/chip-icons/<chip key>.png` and so on. An asset the table doesn't list (one a newer table left out)
+  is written under its placeholder, so nothing the ROM has is lost.
 - **The checker** validates asset names without a ROM: compat/assets.toml is the list of names the BN6 content can
   use. A modded pack without compat lists its own assets' folders.
 - **Animation numbers stay numbers.** An animation is an index into its sprite's own list, observable in the traces
@@ -1091,7 +1096,7 @@ name is a load error naming the module. The resolved value is a handle into the 
   has no compat fields after the migration's last step. A test in `bn6-compat` asserts `bn6-battle`'s
   dependency list doesn't contain it, and a source guard in `bn6-battle`'s tests fails on the word `compat`
   outside comments and the transitional bridge's module (removed in step 13).
-- **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no fallback
+- **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no placeholder
   asset names, once the ratchet reaches zero.
 
 ## 7. The Rust side
@@ -1391,7 +1396,7 @@ kind's own state-machine byte, which the traces compare.
   checks every module against core.d.luau and types.d.luau as today. Library builders' spec types go in
   types.d.luau so chip modules' calls are checked (requires stay typed `any` per module, and a module casts what it
   requires, `require(...) :: BombsLib`). It adds static lints: no deprecated numeric API calls and no `legacy { }`
-  markers beyond the ratchet's allowance (§12), no fallback asset names, kind keys qualified by their owner
+  markers beyond the ratchet's allowance (§12), no placeholder asset names, kind keys qualified by their owner
   folder, no module under `compat/`.
 - **`bn6-content check <content> [<assets>]`** (links the runtime) runs the define phase and reports: duplicate
   keys, references to the wrong registry, unfilled roles, rule sections missing or defined twice, unknown asset
@@ -1479,7 +1484,7 @@ registries, the object tables, the text). It is not committed here.
   extract-and-read-back check and the one-off 5,841-check comparison of the compiled tables.
 - It writes names: chip keys, compat/assets.toml (from the disassembly's enums and first users), stage names, and
   the generated names of collision types and statuses (from what they do where the docs say, else their first
-  user), with a report of every name it had to invent.
+  user), with every name it had to invent in compat/curation.toml.
 
 ### 9.4 The frontend and the audio
 
