@@ -1,0 +1,6 @@
+# DolThdr's doll (attack object #0x82, `sub_80D5740`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x82
+script = "thunder_doll.luau"
