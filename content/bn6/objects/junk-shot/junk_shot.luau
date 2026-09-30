@@ -66,7 +66,7 @@ local function fly(me: Object)
     if bit32.btest(field.flags(x, y), LANDS_ON) then
         battle.effect(me.pos, BURST)
         battle.play_sound(BURST_SOUND)
-        -- (And a camera shake: presentation only.)
+        battle.shake_camera(1, 0xF)
         field.crack(x, y)
         me.collision.region = 1
     end

@@ -713,6 +713,10 @@ declare battle: {
     -- Sound for both players, or for one side's player (output only).
     play_sound: (id: number) -> (),
     play_sound_for: (side: number, id: number) -> (),
+    -- `camera_initShakeEffect_80302a8`: the camera shakes for `ticks` ticks
+    -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
+    -- the consoles' own RNGs, which ChpShufl's re-deal reads.
+    shake_camera: (magnitude: number, ticks: number) -> (),
     navi: (side: number) -> Navi,
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.

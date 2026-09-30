@@ -243,6 +243,10 @@ impl CoreApi for Battle {
         }
     }
 
+    fn shake_camera(&mut self, magnitude: u16, ticks: u16) {
+        Battle::shake_camera(self, magnitude, ticks);
+    }
+
     fn play_sound(&mut self, sound: u16) {
         Battle::play_sound(self, SoundId(sound));
     }
