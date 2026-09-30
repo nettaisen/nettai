@@ -3,8 +3,8 @@
 //!
 //!     bn6-content check <pack>
 //!     bn6-content verify <pack> <reference-pack> [--seconds N]
-//!     bn6-content aseprite-export <pack> [CC-II ...]
-//!     bn6-content aseprite-import <pack> [CC-II ...]
+//!     bn6-content aseprite-export <pack> [NAME ...]
+//!     bn6-content aseprite-import <pack> [NAME ...]
 //!
 //! A pack exported from a ROM (`bn6-extract content`) holds the game's own
 //! data: keep it out of version control (data/ is ignored).
@@ -31,8 +31,8 @@ const USAGE: &str = "usage:
                                                    check that two packs load as the same content
                                                    (battle data, graphics, sprite timing, sound as
                                                    timelines and as N seconds of PCM per song)
-  bn6-content aseprite-export <pack> [CC-II ...]   write sprites' Aseprite views
-  bn6-content aseprite-import <pack> [CC-II ...]   read the views back into the sprites' files";
+  bn6-content aseprite-export <pack> [NAME ...]   write sprites' Aseprite views
+  bn6-content aseprite-import <pack> [NAME ...]   read the views back into the sprites' files";
 
 fn parse() -> Result<Args, String> {
     let mut it = std::env::args().skip(1);

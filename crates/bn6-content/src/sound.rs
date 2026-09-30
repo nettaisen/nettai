@@ -9,8 +9,8 @@
 //!   waves.toml            PSG wave channel shapes: 32 hex digits each
 //!   keymaps.toml          key splits: [first key, last key, voice] ranges
 //!   voicegroups/vg-NNN.toml  128 voices (drum kits and split groups too)
-//!   songs/song-XXX.mid    the song (XXX = song id in hex)
-//!   songs/song-XXX.toml   its header: player, priority, reverb, voicegroup
+//!   songs/NAME.mid        a song, under its name (crate::names)
+//!   songs/NAME.toml       its header: song id, player, priority, reverb, voicegroup
 //! ```
 //!
 //! A WAV header can't hold the GBA's sample rate (Hz in 1/1024 steps), and
@@ -124,7 +124,7 @@ fn ordered<'a>(names: impl Iterator<Item = &'a String>, prefix: &str) -> Vec<Str
 
 /// Files of the `sound/` folder; songs that can't be expressed yet are
 /// left out with the reason.
-pub fn export(bank: &SoundBank) -> (crate::pack::Files, Vec<(SongId, String)>) {
+pub fn export(bank: &SoundBank, names: &crate::names::AssetNames) -> (crate::pack::Files, Vec<(SongId, String)>) {
     let mut files = Vec::new();
     let doc = SoundDoc {
         format: FORMAT.into(),
@@ -189,9 +189,9 @@ pub fn export(bank: &SoundBank) -> (crate::pack::Files, Vec<(SongId, String)>) {
     let mut failures = Vec::new();
     for (id, song) in bank.songs.iter().enumerate() {
         let Some(song) = song else { continue };
-        let base = format!("song-{id:03x}");
+        let base = names.song(id as u16);
         let vg = name("vg", song.voicegroup.0 as usize);
-        match song::export(song, &format!("Song {id:#05x}"), &vg, &format!("{base}.mid")) {
+        match song::export(song, id as u16, &format!("Song {id:#05x}"), &vg, &format!("{base}.mid")) {
             Ok((midi, doc)) => {
                 files.push((format!("songs/{base}.mid"), midi));
                 let text = format!(
@@ -403,11 +403,12 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<SoundBank
     let mut songs: Vec<Option<Song>> = vec![None; doc.song_table];
     for base in files_in(&dir.join("songs"), "toml") {
         let file = f(&format!("songs/{base}.toml"));
-        let Some(id) = base.strip_prefix("song-").and_then(|h| usize::from_str_radix(h, 16).ok()) else {
-            report.warn(&file, "not named song-XXX (the song id in hex); skipped");
-            continue;
-        };
         let sd: SongDoc = read_toml(&dir.join(format!("songs/{base}.toml")), &file, report)?;
+        let id = sd.id as usize;
+        if songs.get(id).is_some_and(Option::is_some) {
+            report.error(&file, format!("another song is song {id:#05x} too"));
+            continue;
+        }
         let Some(&vg) = vg_id.get(sd.voicegroup.as_str()) else {
             report.error(&file, format!("voicegroup {:?} doesn't exist", sd.voicegroup));
             continue;
