@@ -273,7 +273,7 @@ sub_8000D12(base, cnt, sw):
 
 PvP P0 in the trace has no reg, tag or giga: 30 swaps, 60 RNG1 draws (frames 70 and 1222).
 
-**Consequence:** each core shuffles only its *own* folder, with its own unsynchronized RNG1. Only chip *selections* cross the link (§7.3). A two-player engine therefore does not need the opponent's folder at all; each player's custom-screen result is an input.
+**Consequence:** each core shuffles only its *own* folder, with its own unsynchronized RNG1, and only each player's custom-screen *result* crosses the link (§7.3). The port simulates both players' custom screens, so both shuffled folders are part of its round setup (custom-screen.md §0-§1).
 
 ### 3.2 Intro and round banner (mode states 0 and 4)
 
@@ -382,6 +382,8 @@ r == 1: for p in 0,1: if actor(p): actor(p).AIData+0x0F = 1
 - **BS+7 += 1** (custom-screen/turn counter).
 
 #### 3.3.3 The UI (`sub_8026A28`, local only)
+
+The screen's rules and the port's model (both players' screens simulated) are in [`custom-screen.md`](custom-screen.md).
 
 The UI reads the *local* joypad (`eJoypad`), not the link-synced records. It also slides the camera (`Camera+0x34 ±0x18000`). Round 1 on core 0:
 
@@ -800,7 +802,7 @@ The engine's per-tick input is the applied (already delayed) packet pair. Only t
 - status byte (+6);
 - block-transfer index and word (+4/+8).
 
-The recommended model is exactly that 4-tuple per player per tick. Custom-screen results then arrive naturally as block transfers (§7.3).
+The port's model: each player's input is their buttons on that tick; the simulation carries them to the fight through a queue of `link_delay` ticks (4 here), with each player's status bit, and each custom-screen result arrives 50 + `link_delay` ticks after it is sent (custom-screen.md §0, §6).
 
 ### 6.2 Packet layout (0x10 bytes; tx and both rx slots)
 

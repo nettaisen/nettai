@@ -145,7 +145,6 @@ fn every_runtime_plays_the_duel_like_the_engine() {
 #[cfg(feature = "luau")]
 mod luau {
     use super::*;
-    use crate::battle::TickEvents;
     use crate::behavior::luau_pack;
 
     /// Each tick's state digest over a tape.
@@ -293,19 +292,16 @@ mod luau {
         assert_eq!(have, want, "a fresh VM continues the battle identically");
         // Interleave a second battle, playing a different tape, on the
         // same VM.
-        let other = scenario::record(900);
+        let other = scenario::record_seeded(900, 11);
         let (mut a, mut c) = (
             Battle::with_behaviors(scenario::setup(), shared.clone()),
             Battle::with_behaviors(scenario::setup(), shared.clone()),
         );
         let mut have = Vec::new();
-        for (t, u) in tape.iter().zip(other.iter().skip(40)) {
+        for (t, u) in tape.iter().zip(other.iter()) {
             a.tick(&t.input, t.events.clone());
             have.push(a.digest());
-            c.tick(
-                &[u.input[1].clone(), u.input[0].clone()],
-                TickEvents { exchange: u.events.exchange.clone(), ..u.events.clone() },
-            );
+            c.tick(&[u.input[1].clone(), u.input[0].clone()], u.events.clone());
         }
         let first = have.iter().zip(&want).position(|(a, b)| a != b);
         assert_eq!(first, None, "another battle on the same VM changes nothing");
@@ -318,7 +314,7 @@ mod luau {
         let tape = scenario::record(900);
         let shared = Behaviors::luau().unwrap();
         let want = digests(&tape, Battle::with_behaviors(scenario::setup(), shared.clone()));
-        let other: Vec<scenario::Tick> = scenario::record(900).into_iter().skip(20).collect();
+        let other = scenario::record_seeded(900, 11);
         let (mut a, mut c) = (
             Battle::with_behaviors(scenario::setup(), shared.clone()),
             Battle::with_behaviors(scenario::setup(), shared.clone()),
