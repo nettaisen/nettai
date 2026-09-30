@@ -1,0 +1,6 @@
+# MegaMan's weapon routine 0x3B, the Shield program's B+Back special (`sub_801216E`),
+# is a script. The action it names, 0x2B (Reflector's), is a standard chip's.
+
+id = 0x3B
+name = "Shield"
+script = "shield.luau"
