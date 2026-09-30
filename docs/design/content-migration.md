@@ -191,11 +191,12 @@ Left (each a controller and its objects, every branch; docs/engine/chips.md §3.
   waiting for content model v2.
 - 2 (no chip), 3 Geddon and the capsules, 7 LifeSync, 8 Wind/Fan, 12 Snake, 15
   GrabBnsh/GrabRvng, 16 Meteors, 17 Anubis/PoisPhar, 18 Otenko, 19 CircGun, 21 BlzrdBal, 22 NumbrBl, 23 BurnSqr,
-  24 Magnum, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 37 DblBeast; 31, 33 and 41 (no chip; their actors are navi
-  chips' navis).
+  24 Magnum, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 37 DblBeast (group B2b): specified branch by branch in
+  docs/engine/dimming-chip-effects.md (14 Guardian's scripts exist, unregistered), waiting for content model v2;
+  31, 33 and 41 (no chip; their actors are navi chips' navis).
 - Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
-  notes), thrown and encased obstacles (`sub_8018002`, `sub_801813A`). AntiNavi in the dimming service is done
-  (dimming.rs; dimming-chips.md §2).
+  notes), encased obstacles (`sub_801813A`; thrown ones, `sub_8018002`, are ported). AntiNavi in the dimming
+  service is done (dimming.rs; dimming-chips.md §2).
 
 ### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 

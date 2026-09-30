@@ -295,6 +295,23 @@ fn time_bcd(frames: u32) -> u32 {
 mod tests {
     use super::time_bcd;
 
+    /// NumbrBl's damage (formula 21) is the last two digits of its user's
+    /// HP.
+    #[test]
+    fn formula_21_is_the_players_hp_mod_100() {
+        use crate::content::testing;
+        let stats = crate::setup::NaviStats { hp: 1000, max_hp: 1000, max_base_hp: 1000, ..Default::default() };
+        let setup = testing::round_setup(testing::LINK_BATTLE, stats);
+        let mut b = crate::battle::Battle::new(setup, testing::content());
+        b.spawn_actors();
+        b.run_objects();
+        for (hp, want) in [(1234, 34), (100, 0), (99, 99)] {
+            let p = b.player(1).unwrap();
+            b.objects.get_mut(p).hp = hp;
+            assert_eq!(super::chip_damage_formula(&b, testing::SUN_GUN_3, 1, 21), want, "HP {hp}");
+        }
+    }
+
     #[test]
     fn deletion_times_read_as_bcd_clock_times() {
         assert_eq!(time_bcd(600), 0x1000, "10 seconds");
