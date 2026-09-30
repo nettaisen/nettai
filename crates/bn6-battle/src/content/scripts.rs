@@ -61,6 +61,10 @@ pub struct ObjectKind {
     /// init places it (the trace comparison skips it).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub scratch_position: bool,
+    /// The fraction of its Z is whatever its spawner's registers held,
+    /// which its init keeps (the trace comparison skips it).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub scratch_z_fraction: bool,
 }
 
 /// A weapon routine of MegaMan's that a script implements

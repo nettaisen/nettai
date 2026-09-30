@@ -1,0 +1,6 @@
+# MegaMan's weapon routine 0x00, the buster (`sub_8011A26`), is a script. The
+# action it names, 0x11, is not content yet.
+
+id = 0x00
+name = "Buster"
+script = "buster.luau"

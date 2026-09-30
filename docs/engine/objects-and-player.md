@@ -1652,7 +1652,7 @@ Minimum buster cycle: N+7 frames.
 
 **Blank shot, action 0x33 (`sub_80ED748`)**, from `sub_8011ADA` (all AV fields zero):
 - Sub-phase 0 (`sub_80ED764`) is the buster's without the shot: anim 0x0E, the arm, USING_ACTION, AV.Unk_10 = 0; sound 0xF8 on its 2nd tick; after 5 ticks sub-phase 4.
-- Sub-phase 4 (`sub_80ED7A2`) is the buster's recovery, but N = `sub_800FAF6(PanelX, PanelY, Rapid)` counts from the navi's **own** panel, whose body bit is in the mask: k = 0, so N = `byte_80209CC[Rapid*6]`, the shortest.
+- Sub-phase 4 (`sub_80ED7A2`) is the buster's recovery, but N = `sub_800FAF6(PanelX, PanelY, Rapid)` counts from the navi's **own** panel rather than the one in front. The navi's collision is off the field while it updates, so its own panel counts as open: k is one more than a shot from there would count (up to 5).
 - Soundmod round 1, 3367: side 1 (form 0xA) presses B; its buster routine 0x2B (`sub_8011F8C`) has no absorbed obstacle (AIData+0x0D = 0) and falls back to `sub_8011A26`, whose NaviCust roll (one RNG2 step) picks the blank.
 
 **Routines 0x2B and 0x2C (`sub_8011F8C`, `sub_8011FCE`)**: with absorbed obstacles (AIData+0x0D, list at +0x6C), they pop the last and throw it: action 0x11 variant 2, damage 200, AV+0x30 = the obstacle byte | its sprite (`byte_80E98C0`) << 16. Without any, the buster (0x2B) or `sub_8011AF2` (0x2C).
