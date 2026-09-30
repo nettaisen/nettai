@@ -35,14 +35,18 @@ fn battles_run_the_content_scripts() {
             "erase-beam",
             "erase-man",
             "erase-mark",
+            "falling-rock",
             "fire-hit",
             "flame-hook",
             "flame-hook-fire",
+            "flying-shot",
             "golem",
             "grab-shot",
             "justice-one",
             "lance",
             "plus-sparkle",
+            "projectile",
+            "rock-chunk",
             "sand-hole",
             "sand-spray",
             "sand-worm",
@@ -127,9 +131,10 @@ fn scripted_chips_roll_back() {
 fn registrations_follow_the_content_data() {
     let mut c = testing::build();
     let r = c.registrations().unwrap();
-    // The four SunGun chips share one action; four weapons have theirs.
+    // The four SunGun chips share one action; six weapons have theirs (the
+    // buster's alias names none).
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
-    assert_eq!(actions, [0x33, 0x37, 0x4E, 0x52, 0x57, 0x58], "{:?}", r.actions);
+    assert_eq!(actions, [0x11, 0x16, 0x33, 0x37, 0x4E, 0x52, 0x57, 0x58], "{:?}", r.actions);
     // The instant chip registers its subtype's effect.
     assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(5)), "{:?}", r.hooks);
     // Two chips implementing one action with different scripts is an error.

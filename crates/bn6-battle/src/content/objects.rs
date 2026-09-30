@@ -1,6 +1,7 @@
 //! Object kinds' data.
 
-use super::{AttachmentKind, Element, SpriteId};
+use super::{AttachmentKind, Element, SecondaryElements, SpriteId};
+use crate::field::PanelType;
 use serde::{Deserialize, Serialize};
 
 /// Data of the object kinds that have their own.
@@ -19,6 +20,10 @@ pub struct ObjectData {
     pub sun_beam_looks: Vec<SpriteId>,
     /// Boomerangs (attack object #0x32) by variant, its first parameter.
     pub boomerangs: Vec<BoomerangKind>,
+    /// The projectile (attack object #0) by kind, its first parameter.
+    pub projectiles: Vec<ProjectileKind>,
+    /// The flying shot (attack object #0xB) by kind, its first parameter.
+    pub flying_shots: Vec<FlyingShotKind>,
     /// The object kinds scripts implement, by name (see `content::scripts`).
     pub kinds: Vec<super::ObjectKind>,
 }
@@ -79,6 +84,132 @@ pub struct BoomerangKind {
     pub speed: i32,
     pub turn_speed: i32,
     pub grass: bool,
+}
+
+fn is_zero(v: &u8) -> bool {
+    *v == 0
+}
+
+fn no_secondary(v: &SecondaryElements) -> bool {
+    v.0 == 0
+}
+
+/// A kind of projectile (attack object #0, `sub_80C4E58`): the shot the
+/// buster, the cannons and many chips fire. It flies a panel every two
+/// ticks and ends on the first thing it hits or when it leaves the field.
+/// Its first parameter picks the kind (`off_80C4C78`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ProjectileKind {
+    /// The kind number.
+    pub id: u8,
+    /// Its collision types (`Rules::collision_types`): what it is, what
+    /// it hits; and its hit modifier.
+    pub self_type: u8,
+    pub target_type: u8,
+    pub hit_mod: u8,
+    pub element: Element,
+    /// The secondary elements its hits carry.
+    #[serde(default, skip_serializing_if = "no_secondary")]
+    pub secondary: SecondaryElements,
+    /// The hit spark it shows (0xFF: none).
+    pub hit_effect: u8,
+    /// Its sprite, if it is drawn (most are not), and the animation it
+    /// plays.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sprite: Option<SpriteId>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub anim: u8,
+    /// The status byte its hits inflict (`Rules::status_effects`), 0 for
+    /// none.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub status: u8,
+    /// The bug its hits give: the bug's code (0 for none) and argument.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub bug: u8,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub bug_arg: u8,
+    /// What its hit does to the panel it hits.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hit_panel: Option<PanelHit>,
+    /// It bursts: when it hits, over the panels around it (`sub_80C5050`);
+    /// when it leaves the field, over the last two columns it crossed
+    /// (`sub_80C5014`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub bursts: bool,
+    /// Every panel it enters, it sits a pixel further down the field and
+    /// a pixel higher than on the last (`sub_80C5090`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub climbs: bool,
+}
+
+/// What a projectile's hit does to the panel it hits.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "effect", rename_all = "snake_case", deny_unknown_fields)]
+pub enum PanelHit {
+    /// `object_crackPanel`: crack it, or break it if it is cracked and
+    /// nothing stands on it.
+    Crack,
+    /// `object_breakPanel_dup2`: break it, or crack it if something
+    /// stands on it.
+    Break,
+    /// If it is solid, it becomes a panel of this type: the first for the
+    /// left side's shots, the second for the right side's.
+    SetType { left_side: PanelType, right_side: PanelType },
+}
+
+/// A kind of flying shot (attack object #0xB, `sub_80C60A8`): an arrow, a
+/// Beast form's slash wave, a thrown obstacle. It flies at a steady speed
+/// for a number of panels, and ends on the first thing it hits or when it
+/// leaves the field. Its first parameter picks the kind (`byte_80C6038`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FlyingShotKind {
+    /// The kind number.
+    pub id: u8,
+    /// Its collision types (`Rules::collision_types`): what it is, what
+    /// it hits; and its hit modifier.
+    pub self_type: u8,
+    pub target_type: u8,
+    pub hit_mod: u8,
+    pub element: Element,
+    #[serde(default, skip_serializing_if = "no_secondary")]
+    pub secondary: SecondaryElements,
+    /// The hit spark it shows (0xFF: none).
+    pub hit_effect: u8,
+    /// Its sprite and animation (a thrown obstacle's are the obstacle's).
+    pub sprite: SpriteId,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub anim: u8,
+    /// It draws a shadow.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub shadow: bool,
+    /// Pixels a tick (16.16) it flies forward.
+    pub speed: i32,
+    /// How many panel centers it passes before it ends.
+    pub range: u8,
+    /// The status byte its hits inflict (`Rules::status_effects`), 0 for
+    /// none.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub status: u8,
+    /// It highlights the panels it is over.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub highlight: bool,
+    /// It is a thrown obstacle: its look comes from its spawner (the
+    /// obstacle's sprite and animation), not from this record.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub obstacle: bool,
+    /// Its hit spark shows over the center of the panel it is on
+    /// (`sub_801A100`) rather than where it is.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub panel_spark: bool,
+    /// The sound when it sets off after its wait (its second parameter).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub launch_sound: Option<u16>,
+    /// The one-shot effect it leaves on its panel when its range runs
+    /// out.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub end_effect: Option<u8>,
 }
 
 /// A body overlay (actor object #0x56): a second sprite layered on a

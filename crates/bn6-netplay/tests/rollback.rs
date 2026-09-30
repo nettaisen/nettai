@@ -42,13 +42,22 @@ fn start(seed: u64) -> StandInBattle {
 }
 
 fn mashers(seed: u64) -> impl FnMut(usize, u32) -> u16 {
+    mashers_with(seed, false)
+}
+
+/// The same, pressing B too (`buster`): the buster's and the charged
+/// shot's scripts and their projectiles.
+fn mashers_with(seed: u64, buster: bool) -> impl FnMut(usize, u32) -> u16 {
     let mut m = [Masher::new(seed), Masher::new(seed ^ 0xABCD)];
+    for x in &mut m {
+        x.buster = buster;
+    }
     move |p, _| m[p].buttons()
 }
 
 fn play(seed: u64, config: NetConfig) -> (Report, [CueFeed; 2]) {
     let mut feeds = [CueFeed::new(0, 3), CueFeed::new(1, 3)];
-    let report = Match::new(&start(seed), config).run(mashers(seed), &mut feeds, 30_000);
+    let report = Match::new(&start(seed), config).run(mashers_with(seed, true), &mut feeds, 30_000);
     (report, feeds)
 }
 

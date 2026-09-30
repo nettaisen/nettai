@@ -10,7 +10,8 @@
 //! data.weapons[id]          a weapon routine a script implements
 //! data.regions[n]           a hit region's panel offsets, { dx, dy } each
 //! data.objects.attachments[id], .rocks[id], .absorbed_sprites[kind],
-//!             .body_overlays[id], .sun_beam_looks[look], .boomerangs[id]
+//!             .body_overlays[id], .sun_beam_looks[look], .boomerangs[id],
+//!             .projectiles[kind], .flying_shots[kind]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
 //! data.rules.sine[angle]    the sine table (math_sinTable; the cosine is 64 on)
@@ -53,6 +54,8 @@ pub fn script_data(c: &Content) -> Data {
         ("body_overlays", by_id(o.body_overlays.iter().map(|b| (b.id as i64, b)), |b| value(*b))),
         ("sun_beam_looks", by_id(o.sun_beam_looks.iter().enumerate().map(|(i, s)| (i as i64, s)), |s| value(*s))),
         ("boomerangs", by_id(o.boomerangs.iter().map(|b| (b.id as i64, b)), |b| value(*b))),
+        ("projectiles", by_id(o.projectiles.iter().map(|p| (p.id as i64, p)), |p| value(*p))),
+        ("flying_shots", by_id(o.flying_shots.iter().map(|p| (p.id as i64, p)), |p| value(*p))),
         (
             "kinds",
             Data::Map(

@@ -1,0 +1,7 @@
+# GroundCross's falling rock (attack object #0x1D, `sub_80C7D78`) is a script.
+# Its spawn position is its spawner's registers, which its init replaces.
+
+[kind]
+pool = "attack"
+index = 0x1D
+script = "falling_rock.luau"
