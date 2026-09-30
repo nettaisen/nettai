@@ -58,7 +58,7 @@ chips, navis and effects. Both are shown, and they mix kind by kind.
 
 The slice is the whole of GunDelSol: action 0x37 (`sub_80EDAE0`: phases, timers, animation, counter window, the
 reactive abort), the attachment T1#5 (`sub_80B8CD8`, the gun), the sun beam T4#0x48 (`sub_80E5C2C`), the one-tick
-hitbox T3#3 (`object_spawnCollisionRegion`) and the sounds 0xF8 and 0xF9. The engine's own code spawns three of
+hitbox T3#3 (`object_spawnCollisionRegion`) and the sounds 0xF8 and 0xF9. The engine's own code spawns two of
 those kinds too (the buster's arm is an attachment; the claw, meteors, grab shots and dust balls spawn hitboxes).
 When content implements a kind, the engine's spawn helpers create it through the content and pass their arguments
 as its state by field name (`content::set_state_field`), so there is one implementation per kind.
