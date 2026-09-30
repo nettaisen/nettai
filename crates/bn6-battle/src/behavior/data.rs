@@ -12,6 +12,7 @@
 //!             .body_overlays[id], .sun_beam_looks[look]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
+//! data.rules.regions[n]     region shape n's panels, {dx, dy} each (PanelOffsetListsPointerTable)
 //! ```
 
 use bn6_content_api::{Data, DataKey};
@@ -68,7 +69,17 @@ pub fn script_data(c: &Content) -> Data {
         ),
     ]);
     let recovery = c.rules.buster_recovery.iter().flatten().enumerate().map(|(i, &t)| (i as i64, t));
-    let rules = Data::map([("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64)))]);
+    let regions = c.regions.iter().enumerate().map(|(i, r)| (i as i64, r));
+    let rules = Data::map([
+        ("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64))),
+        (
+            "regions",
+            by_id(regions, |r| {
+                let offset = |p: &crate::content::PanelOffset| Data::map([("dx", Data::Int(p.dx as i64)), ("dy", Data::Int(p.dy as i64))]);
+                Data::List(r.iter().map(offset).collect())
+            }),
+        ),
+    ]);
     Data::map([
         ("chips", by_id(c.chips.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("navis", by_id(c.navis.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
