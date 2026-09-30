@@ -34,8 +34,10 @@ fn battles_run_the_content_scripts() {
             "erase-beam",
             "erase-man",
             "erase-mark",
+            "falling-rock",
             "grab-shot",
             "plus-sparkle",
+            "rock-chunk",
             "sun-beam"
         ]
     );
