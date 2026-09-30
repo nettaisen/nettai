@@ -22,7 +22,13 @@ content_state! {
 }
 
 /// `sub_80E5D12`: a beam at `offset` from `owner`, stored in `slot`.
-pub fn spawn(api: &mut dyn CoreApi, owner: ObjectRef, look: SunBeamLook, offset: Vec3, slot: Slot) -> Option<ObjectRef> {
+pub fn spawn(
+    api: &mut dyn CoreApi,
+    owner: ObjectRef,
+    look: SunBeamLook,
+    offset: Vec3,
+    slot: Slot,
+) -> Option<ObjectRef> {
     let r = api.spawn(Pool::Effect, INDEX, offset, [look.sprite, look.palette, 0, 0])?;
     api.set_related1(r, Some(owner));
     let (alliance, flip) = (api.alliance(owner), api.flip(owner));

@@ -53,7 +53,10 @@ fn main() {
         let mut row = format!("| {name} |");
         for &native in natives {
             let options = bn6_luau::Options { native_code: native, budget: u32::MAX, ..Default::default() };
-            let mut b = Battle::with_content(scenario::setup(), Content::new(bn6_luau::LuauContent::load(&pack, options).unwrap()).unwrap());
+            let mut b = Battle::with_content(
+                scenario::setup(),
+                Content::new(bn6_luau::LuauContent::load(&pack, options).unwrap()).unwrap(),
+            );
             for t in &tape[..250] {
                 b.tick(&t.input, t.events.clone());
             }

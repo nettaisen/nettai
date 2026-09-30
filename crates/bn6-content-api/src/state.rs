@@ -86,7 +86,9 @@ impl FieldType {
             (FieldType::Object, Value::Object(o)) => FieldValue::Object(Some(o)),
             (FieldType::Object, Value::Nil) => FieldValue::Object(None),
             (FieldType::Vec3, Value::Vec3(p)) => FieldValue::Vec3(p),
-            (FieldType::Enum(names), Value::Int(i)) if (0..names.len() as i64).contains(&i) => FieldValue::Enum(i as u8),
+            (FieldType::Enum(names), Value::Int(i)) if (0..names.len() as i64).contains(&i) => {
+                FieldValue::Enum(i as u8)
+            }
             (FieldType::OptionalU8, Value::Int(i)) => FieldValue::OptionalU8(Some(i as u8)),
             (FieldType::OptionalU8, Value::Nil) => FieldValue::OptionalU8(None),
             (ty, v) => return Err(TypeError { expected: ty.clone(), got: v }),
@@ -140,7 +142,7 @@ impl From<Option<ObjectRef>> for Value {
 }
 
 /// A stored field value.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FieldValue {
     Bool(bool),
     U8(u8),
@@ -247,7 +249,7 @@ pub struct StateId(pub u16);
 /// The stored state of one object or action: the values of its schema's
 /// fields. A plain `Copy` value, so snapshots copy it like any other
 /// engine state.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ContentState {
     id: StateId,
     len: u8,

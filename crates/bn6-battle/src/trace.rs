@@ -22,6 +22,14 @@ pub struct Setup {
     pub battle_state: String,
     pub rng1: u32,
     pub rng2: u32,
+    /// The stages of the set's later rounds (`byte_203CA50`, 4 bytes), hex.
+    /// Traces recorded without it leave the stages unknown.
+    #[serde(default)]
+    pub stages: Option<String>,
+    /// Both players' SP navi deletion times (`byte_203EB00`, 0x28 bytes
+    /// each), hex. Traces recorded without them read as the best times.
+    #[serde(default)]
+    pub sp_times: Option<[String; 2]>,
 }
 
 /// A battle object as the trace records it.
@@ -124,7 +132,7 @@ pub fn unhex(s: &str) -> Vec<u8> {
 use crate::battle::{Battle, CustomResult, TickEvents};
 use crate::hand::ChipHand;
 use crate::input::PlayerTick;
-use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
+use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, SpTimes, Stage};
 use crate::transform::TransformRequest;
 
 /// A custom-screen exchange record from a trace.
@@ -181,6 +189,15 @@ impl Round {
             rng: self.setup.rng2,
             local_side: bs[0x0D],
             score: SetScore { wins: bs[0x18], losses: bs[0x19], round: bs[0x1A], max_combo: bs[0x1B] },
+            // Unknown stages read as entry 0. A replay never gets to use
+            // them: the tick that chains the next round is that round's
+            // init, which isn't among the battle frames.
+            later_stages: self.setup.stages.as_deref().map(|s| Stage::pair_from_bytes(&unhex(s))).unwrap_or_default(),
+            low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
+            sp_times: match &self.setup.sp_times {
+                Some([a, b]) => [SpTimes::from_bytes(&unhex(a)), SpTimes::from_bytes(&unhex(b))],
+                None => Default::default(),
+            },
         }
     }
 
@@ -302,6 +319,8 @@ fn describe_fields(
         "-".to_string()
     } else if xy_unknown {
         format!("-,-,{}", pos[2])
+    } else if z_fraction_is_garbage(kind, index) {
+        format!("{},{},{}+?", pos[0], pos[1], pos[2] >> 16)
     } else {
         format!("{},{},{}", pos[0], pos[1], pos[2])
     };
@@ -318,9 +337,21 @@ fn describe_fields(
 /// The X and Y of effects the engine marks as not knowing them are skipped
 /// too (`effect::xy_unknown`): the second deletion explosion, which the
 /// game spawns with the object allocator's list-node addresses as X and Y
-/// (§A.3).
+/// (§A.3). And the time-freeze controllers', spawned with the user's
+/// panel Y, the element and the spawner's address as X, Y and Z
+/// (chips.md §3.6).
 fn pos_is_garbage(kind: u8, index: u8, flags: u8) -> bool {
-    kind == 4 && (index == 2 || index == 0x0A || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0))
+    use crate::kinds::{area_grab, invisible, navi_chip, trap_chip};
+    let controller = [invisible::INDEX, navi_chip::INDEX, area_grab::INDEX, trap_chip::INDEX].contains(&index);
+    kind == 4
+        && (index == 2 || index == 0x0A || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0) || controller)
+}
+
+/// DustCross's junk ball (attack #0xB0) keeps the fraction of the Z its
+/// spawner left in a register (the low half of a RAM address); only its
+/// whole pixels are compared.
+fn z_fraction_is_garbage(kind: u8, index: u8) -> bool {
+    kind == 3 && index == crate::kinds::dust_ball::INDEX
 }
 
 fn describe(b: &Battle, r: crate::object::ObjectRef, xy_unknown: bool) -> String {

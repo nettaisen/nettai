@@ -2,8 +2,8 @@
 
 use bn6_content_api::api::ApiResult;
 use bn6_content_api::{
-    ActorField, ApiError, CollisionField, ContentState, CoreApi, FieldValue, Lifecycle, NaviStat, ObjectField,
-    Shadow, SpriteField, SpriteId, StatusFlag, Value,
+    ActorField, ApiError, CollisionField, ContentState, CoreApi, FieldValue, Lifecycle, NaviStat, ObjectField, Shadow,
+    SpriteField, SpriteId, StatusFlag, Value,
 };
 
 use crate::actor::ActorData;
@@ -177,7 +177,10 @@ impl CoreApi for Battle {
             ObjectField::Vel => Value::Vec3(ob.vel),
             ObjectField::Related1 => ob.related[0].into(),
             ObjectField::Related2 => ob.related[1].into(),
-            ObjectField::Visible | ObjectField::RunWhilePaused | ObjectField::RunInTimeStop | ObjectField::NoSpriteUpdate => {
+            ObjectField::Visible
+            | ObjectField::RunWhilePaused
+            | ObjectField::RunInTimeStop
+            | ObjectField::NoSpriteUpdate => {
                 unreachable!("flag fields are read above")
             }
         }

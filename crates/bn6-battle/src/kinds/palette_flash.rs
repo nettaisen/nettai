@@ -11,7 +11,7 @@ use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 pub const INDEX: u8 = 0x0A;
 
 /// Flash-private state (the spawn parameters).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Ticks the flash lasts.
     pub duration: u8,

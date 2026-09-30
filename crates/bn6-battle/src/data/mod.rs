@@ -5,8 +5,11 @@
 mod actor_lists_generated;
 pub mod attacks;
 mod attacks_generated;
+mod battle_settings_generated;
 mod banners_generated;
 mod chips_generated;
+pub mod cross;
+mod cross_generated;
 pub mod collision_generated;
 pub mod effects_generated;
 mod obstacles_generated;
@@ -18,12 +21,13 @@ pub mod player;
 pub mod player_generated;
 
 pub use actor_lists_generated::ACTOR_LISTS;
+pub use battle_settings_generated::BATTLE_SETTINGS;
 pub use banners_generated::{BANNER_HOLDS, LOSE_BANNERS, WIN_BANNERS};
 pub use chips_generated::CHIPS;
 pub use obstacles_generated::{ABSORBED_SPRITES, ROCKS};
 
 /// A kind of rock (one row of `byte_80CF934`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct RockKind {
     /// The rock's standing animation.
     pub anim: u8,
@@ -141,7 +145,7 @@ pub fn chip(id: ChipId) -> &'static ChipData {
 pub use bn6_content_api::SpriteId;
 
 /// One animation frame's timing.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct AnimFrame {
     /// Ticks the frame shows for.
     pub duration: u8,
@@ -176,7 +180,7 @@ pub struct EffectSprite {
 }
 
 /// A HUD banner (the game's UI banner id).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BannerId(pub u8);
 
 impl BannerId {
@@ -194,7 +198,7 @@ pub struct PanelOffset {
 }
 
 /// A test on a panel's flags: all of `require` set and none of `forbid`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PanelCondition {
     pub require: u32,
     pub forbid: u32,

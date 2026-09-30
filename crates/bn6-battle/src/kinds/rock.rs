@@ -28,7 +28,7 @@ const START_DAMAGE: u16 = 200;
 const SPRITE: SpriteId = SpriteId { category: 0x10, index: 0 };
 
 /// How a rock comes onto the field.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Entrance {
     /// Rises out of the panel (its appear animation), then stands.
     Rise = 0,
@@ -53,7 +53,7 @@ pub struct Spec {
 }
 
 /// Rock behavior state.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Hash)]
 pub struct Vars {
     pub kind: &'static RockKind,
     pub entrance: Entrance,

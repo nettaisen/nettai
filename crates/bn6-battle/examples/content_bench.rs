@@ -110,7 +110,9 @@ fn main() {
     black_box(Content::luau().unwrap());
     println!("Loading the Luau pack (VM, compile, verify, freeze): {}\n", us(t.elapsed()));
 
-    println!("| runtime | duel, whole tape (900 ticks) | duel, GunDelSol firing (ticks 300-900) | 30 objects × 10,000 ticks: per object-tick | snapshot (clone) | restore | rollback frame: snapshot + restore + 10 ticks |");
+    println!(
+        "| runtime | duel, whole tape (900 ticks) | duel, GunDelSol firing (ticks 300-900) | 30 objects × 10,000 ticks: per object-tick | snapshot (clone) | restore | rollback frame: snapshot + restore + 10 ticks |"
+    );
     println!("|---|---|---|---|---|---|---|");
     for (name, make) in runtimes() {
         // The whole duel from the start of the round.

@@ -6,13 +6,22 @@ use super::{ai, body_hit_modifier, set_flag1, stats};
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::kinds::common::{Progress, set_progress};
-use crate::kinds::{form_overlay, lockon_marker};
+use crate::kinds::{body_overlay, form_overlay, lockon_marker};
 use crate::object::ObjectRef;
 use crate::setup::Form;
 
 /// `sub_8011268(form, 0)`: put on the overlay sprite `form` wears (kept
 /// in `related[1]`).
 pub(super) fn put_on_overlay(b: &mut Battle, r: ObjectRef, form: Form) {
+    put_on_overlay_stepping(b, r, form, false);
+}
+
+/// `sub_8011268(form, always_step)`: the overlay may step its sprite
+/// even while paused (its Param3).
+pub(crate) fn put_on_overlay_stepping(b: &mut Battle, r: ObjectRef, form: Form, always_step: bool) {
+    if always_step && form.0 == 0x0C {
+        panic!("a stepping beast head (sub_8011366 with Param3) is not implemented yet");
+    }
     match form.0 {
         // nullsub_42 / nullsub_43: no overlay.
         0 | 0x0B | 0x0D..=0x11 | 0x17 => {}
@@ -22,8 +31,50 @@ pub(super) fn put_on_overlay(b: &mut Battle, r: ObjectRef, form: Form) {
             let overlay = form_overlay::spawn(b, r, form_overlay::BEAST_HEAD, true);
             b.objects.get_mut(r).related[1] = overlay;
         }
-        1..=10 => panic!("Cross overlays (T1 #0x56, sub_80C44A8) are not implemented yet"),
+        // sub_80112E0 .. sub_801133A: a Cross's helmet and arm, with its
+        // own palette.
+        1..=10 => {
+            let spec = body_overlay::Vars { variant: cross_overlay(form), own_palette: true, always_step, ..Default::default() };
+            let overlay = body_overlay::spawn_with(b, r, spec);
+            b.objects.get_mut(r).related[1] = overlay;
+        }
         _ => panic!("the form {form:?} overlay (sub_8011268) is not implemented yet"),
+    }
+}
+
+/// The body overlay a Cross wears (`sub_80112E0` .. `sub_801133A`).
+fn cross_overlay(form: Form) -> u8 {
+    match form.0 {
+        1 => 0x04,
+        2 => 0x08,
+        3 => 0x0A,
+        4 => 0x0C,
+        5 => 0x11,
+        6 => 0x05,
+        7 => 0x0E,
+        8 => 0x09,
+        9 => 0x0D,
+        10 => 0x12,
+        _ => unreachable!("form {form:?} is not a Cross"),
+    }
+}
+
+/// `sub_8011020` / `sub_8011044`: what an object with a navi's NameID
+/// takes down when it goes (`off_801105C`, by actor type and AI index):
+/// for most, the overlay in its `related[1]`.
+pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, name_id: u16) {
+    let rec = crate::data::player::navi_record(name_id);
+    if rec.actor_type == crate::actor::ActorType::Virus {
+        return;
+    }
+    match rec.ai_index {
+        0 | 1 | 9 | 13 | 16 | 18 | 19 | 24..=34 | 36 | 42..=46 | 48 => {
+            if let Some(o) = b.objects.get_mut(r).related[1].take() {
+                set_progress(b, o, Progress::DESTROY);
+            }
+        }
+        6 | 14 => panic!("the death hook for AI index {} (off_801105C) is not implemented yet", rec.ai_index),
+        _ => {}
     }
 }
 

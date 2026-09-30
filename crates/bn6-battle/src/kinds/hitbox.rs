@@ -7,7 +7,7 @@ use crate::battle::Battle;
 use crate::kinds::player::panel_coordinates;
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub hit_mod: u8,
     pub status: u8,
