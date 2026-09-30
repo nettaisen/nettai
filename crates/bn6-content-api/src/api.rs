@@ -281,6 +281,9 @@ named_fields! {
         HitFlags = "hit_flags", U32, ro;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
+        /// The directions (1 << the hitter's flip) a guard blocked hits
+        /// from this window (CollisionData+0x03).
+        GuardDirs = "guard_dirs", U8, ro;
     }
 }
 
@@ -450,6 +453,9 @@ named_flags! {
         CrossBreaking = "cross_breaking",
         FormChangeSpriteHeld = "form_change_sprite_held",
         HeatTrap = "heat_trap",
+        /// Gone from the field while its navi chip's navi acts
+        /// (`sub_80E1352` sets it, `sub_80E13DC` clears it).
+        Vanished = "vanished",
     }
 }
 
@@ -833,6 +839,10 @@ pub trait CoreApi {
     fn start_move(&mut self, o: ObjectRef, dir: u8);
     /// `object_canMove`: not immobilized, sliding or moving.
     fn can_move(&self, o: ObjectRef) -> bool;
+    /// `sub_800E2FC`: heal `amount` HP with the recovery sparkle and
+    /// sound; with `anti_recovery`, an opponent's armed AntiRecv turns it
+    /// into damage instead (true when it did).
+    fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool;
     /// `sub_801265A`: the buster's damage (the attack level, with the
     /// navi's and form's bonus, at most 10; 1 when worn out).
     fn buster_damage(&self, o: ObjectRef) -> u16;

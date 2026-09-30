@@ -113,6 +113,7 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::CrossBreaking => status::CROSS_BREAKING,
         NaviState::FormChangeSpriteHeld => status::FORM_CHANGE_SPRITE_HELD,
         NaviState::HeatTrap => status::HEAT_TRAP,
+        NaviState::Vanished => status::VANISHED,
     }
 }
 
@@ -844,6 +845,10 @@ impl CoreApi for Battle {
         self.collision_of(o).is_ok_and(|c| c.f1 & (f1::IMMOBILIZED | f1::SLIDING | f1::MOVING) == 0)
     }
 
+    fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool {
+        kinds::heal::heal(self, o, amount, anti_recovery)
+    }
+
     fn buster_damage(&self, o: ObjectRef) -> u16 {
         kinds::player::idle::buster_damage(self, o)
     }
@@ -957,6 +962,7 @@ impl CoreApi for Battle {
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
+            CollisionField::GuardDirs => c.guard_dirs as i64,
         }))
     }
 
@@ -973,7 +979,7 @@ impl CoreApi for Battle {
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
-            CollisionField::HitFlags | CollisionField::FinalDamage => unreachable!("read-only"),
+            CollisionField::HitFlags | CollisionField::FinalDamage | CollisionField::GuardDirs => unreachable!("read-only"),
         }
         Ok(())
     }

@@ -132,6 +132,8 @@ export type NaviStateFlag =
     | "cross_breaking"
     | "form_change_sprite_held"
     | "heat_trap"
+    -- Gone from the field while its navi chip's navi acts.
+    | "vanished"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 
 -- A sprite: "CC-II" in hex, its folder in the pack's graphics/sprites.
@@ -209,6 +211,9 @@ declare class Collision
     hit_flags: number
     -- The damage taken this window (read-only).
     final_damage: number
+    -- The directions (bit 1 << the hitter's flip) a guard blocked hits
+    -- from this window (read-only).
+    guard_dirs: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
@@ -421,6 +426,10 @@ declare class Object
     function start_move(self, dir: number): ()
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
+    -- `sub_800E2FC`: heal up to the maximum HP, with the recovery sparkle
+    -- and sound; with `anti_recovery`, the opponent's armed AntiRecv turns
+    -- it into damage instead (true when it did).
+    function heal(self, amount: number, anti_recovery: boolean): boolean
     -- `sub_801265A`: the buster's damage.
     function buster_damage(self): number
     -- The obstacles it absorbed, oldest first.
@@ -700,6 +709,8 @@ export type ChipData = {
     lockon_mode: number,
     damage: number,
     gun_del_sol: GunDelSol?,
+    -- The HP a recovery chip restores (action 0x20).
+    recovery: number?,
     script: string?,
 }
 

@@ -75,6 +75,13 @@ impl Battle {
     /// `sub_800BF16`: `side` starts a dimming with `controller`, used by `user`.
     /// Its previous controller, if any, is told to end.
     pub(crate) fn register_dimming(&mut self, side: u8, chip: ChipId, controller: ObjectRef, user: ObjectRef) {
+        self.register_dimming_as(side, chip >= FIRST_NO_CUT_IN, Some(controller), user);
+    }
+
+    /// `sub_800BF16` as its callers other than chip use pass it: whether
+    /// the dimming can be cut in on, and the controller as spawned (none
+    /// when its pool was full).
+    pub(crate) fn register_dimming_as(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef) {
         for r in &mut self.dimming {
             r.initiator = side;
         }
@@ -86,8 +93,8 @@ impl Battle {
             end_controller_now(self, old);
         }
         let rec = self.dimming(side);
-        rec.no_cut_in = chip >= FIRST_NO_CUT_IN;
-        rec.controller = Some(controller);
+        rec.no_cut_in = no_cut_in;
+        rec.controller = controller;
         rec.user = Some(user);
         rec.state = DimmingState::Registered;
     }
@@ -252,6 +259,7 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: ChipId) {
 /// acts (its status visuals and the HUD with it).
 pub fn hide_user(b: &mut Battle, user: ObjectRef) {
     b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
+    set_vanished(b, user, true);
     set_links_visible(b, user, false);
     if b.objects.get(user).actor.is_some_and(|a| b.actors.get(a).full_synchro_aura.is_some()) {
         panic!("hiding the Full Synchro aura (sub_80C4C46) is not implemented yet");
@@ -271,9 +279,22 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
     if f1 & crate::collision::f1::SUBMERGED == 0 && !viewer_blind {
         b.objects.get_mut(user).flags |= crate::object::flags::VISIBLE;
     }
+    set_vanished(b, user, false);
     set_links_visible(b, user, true);
     if b.objects.get(user).actor.is_some_and(|a| b.actors.get(a).full_synchro_aura.is_some()) {
         panic!("showing the Full Synchro aura (sub_80C4C4C) is not implemented yet");
+    }
+}
+
+/// `sub_8010312` / `sub_801031C` with state bit 0x100000: the user is
+/// marked gone (what a Reflector's shield, for one, hides by).
+fn set_vanished(b: &mut Battle, user: ObjectRef, on: bool) {
+    let Some(a) = b.objects.get(user).actor else { return };
+    let status = &mut b.actors.get_mut(a).status;
+    if on {
+        *status |= crate::actor::status::VANISHED;
+    } else {
+        *status &= !crate::actor::status::VANISHED;
     }
 }
 
