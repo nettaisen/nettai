@@ -132,6 +132,11 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
         return actions::dispatch(b, r, action);
     }
     if ai(b, r).ai_index != 0 && action > 8 {
+        // The link navis' own actions (`off_80EA4C8[AIIndex]` past idle):
+        // their chip (0x0A) is content.
+        if let Some(kind) = b.behaviors.action(action) {
+            return crate::behavior::run_action(b, kind, r);
+        }
         panic!("form action {action} is not implemented yet");
     }
     match action {
