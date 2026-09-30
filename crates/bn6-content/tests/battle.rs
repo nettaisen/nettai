@@ -53,7 +53,10 @@ fn battle_data_reads_back_as_the_same_content() {
     assert!(!report.has_errors(), "{report}");
     // The files hold the data and the scripts; defining what they read
     // back gives the same registries (the define phase is deterministic).
+    // (Asset names aren't battle data: the asset index gives them,
+    // docs/design/content-model-v2.md §9.2.)
     let mut back = back.unwrap();
+    back.assets = c.assets.clone();
     back.define().unwrap();
     assert_eq!(bn6_content::verify::compare_battle(&c, &back), Vec::<String>::new());
     assert_eq!(back, c);
