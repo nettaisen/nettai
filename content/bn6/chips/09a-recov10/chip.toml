@@ -1,0 +1,3 @@
+# Recov10 runs recovery (action 0x20, `sub_80EC844`), in chip.luau.
+
+script = "chip.luau"
