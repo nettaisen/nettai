@@ -4,7 +4,7 @@
 //! chips.md §2.6.4 and §2.7.
 
 use super::{Emotion, ai, ai_mut, emotion, flag1, navi_record, set_attack, set_mood, stats};
-use crate::actor::{ActorType, request};
+use crate::actor::{ActorType, AttackVars, request};
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::content::{ChipFamily, ChipFlags, ChipId, Element};
@@ -144,14 +144,32 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
 /// attack as charged (AIAttackVars+4): 1 for the forms' charged chips, 2
 /// after GroundCross's rocks.
 pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> u8 {
-    if ai(b, r).requests & request::ALT_CHIP != 0 {
+    let slot_in = ai(b, r).requests & request::ALT_CHIP != 0;
+    prepare_from(b, r, charge, slot_in)
+}
+
+/// `sub_80127C0(0)` as the counter cut-in calls it (`sub_8017AB4`): into
+/// a scratch copy of the attack variables (a 0x50-byte stack buffer in the
+/// game, r7), so the navi's own attack and action are untouched. The
+/// cut-in's r4 is the AI index times 4, never the slot-in bit, so the
+/// chip always comes from the hand. Every other side effect of a use still
+/// happens (the Full Synchro and anger doubling, the heal on use, the navi
+/// chip count, a dark chip's cost). Returns the chip's action and the
+/// filled variables.
+pub(super) fn prepare_detached(b: &mut Battle, r: ObjectRef) -> (u8, AttackVars) {
+    let own = ai(b, r).attack.clone();
+    let action = prepare_from(b, r, 0, false);
+    let scratch = std::mem::replace(&mut ai_mut(b, r).attack, own);
+    (action, scratch)
+}
+
+/// `sub_80127C0`, reading the slot-in chip (`sub_800EE26`) when `slot_in`
+/// (the caller's r4 bit 0x10000), else the hand (`sub_800EDD0`).
+fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> u8 {
+    if slot_in {
         ai_mut(b, r).attack.special_source = 1;
     }
-    let mut e = if ai(b, r).attack.special_source != 0 && ai(b, r).requests & request::ALT_CHIP != 0 {
-        slot_in_entry(b, r)
-    } else {
-        hand_entry(b, r)
-    };
+    let mut e = if slot_in { slot_in_entry(b, r) } else { hand_entry(b, r) };
     if let Some(sub) = dark_substitute(b, r, e.chip) {
         e = sub;
     }
