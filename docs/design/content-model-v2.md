@@ -123,7 +123,7 @@ A key is a string unique within its registry.
   `minibomb`, `atk-10`, `erasemn-ex`, `heatcross-beast`, `megaman/buster`, `eraseman/mark`. The generator (§9)
   makes chip keys from the in-game name (`M-Cannon` is `m-cannon`, `GrndMan[EX]` is `grndman-ex`, `Atk+10` is
   `atk-10`); where two records share a name (StepSwrd, WhiCapsl, BeastOut) or have none, it picks a
-  key from the record's use and lists them in its report for review (§13).
+  key from the record's use and lists them in compat/curation.toml for review (§13).
 - **Derived keys** for definitions made inside another definition's module and nested in it: `<owner key>/<field
   path>`. MiniBomb's action is `minibomb/action`; the bomb variant it throws is `minibomb/action/args/thrown`.
   A definition made while module `M` loads and not nested in a keyed definition of `M` is `M#n`, its place among
@@ -151,11 +151,12 @@ setups written by name (`"minibomb"` with code `"B"`), and for tools.
 
 ### 2.4 Definition values in Luau
 
-A definer returns its spec table, frozen, with a per-registry metatable and two fields the loader sets: `id` (the
-key) and `handle`. Scripts read a definition's fields directly (a frozen table read costs about 24 ns, against
-130 ns for a userdata field). Where the API expects a definition (`battle.spawn(kind, ...)`), the binding checks
-the metatable and reads `handle`. At run time a script only ever sees definitions that exist; it cannot make
-one (definers fail outside the define phase).
+A definer returns its spec table, frozen, with a per-registry metatable; nothing is added to the table. Scripts
+read a definition's fields directly (a frozen table read costs about 24 ns, against 130 ns for a userdata field).
+Where the API expects a definition (`battle.spawn(kind, ...)`, a weapon's `setup` returning an action), the
+binding looks the table up by identity: the runtime keeps each definition table's registry and handle by its
+address (definitions are frozen and live as long as the VM, and the lookup is never iterated). At run time a
+script only ever sees definitions that exist; it cannot make one (definers fail outside the define phase).
 
 ## 3. The definition API
 
@@ -311,7 +312,17 @@ every action, so a missing one is reported.
 shares; the engine models it as "the next action with the same state continues from it, another starts from
 zero". In v2 a builder declares its state table once at its module's top, and every action it builds shares it,
 so MiniBomb's throw continues from EnergBom's as action 0x12 did, and a chip whose action is its own starts from
-zero. The spike checked that three builder-made actions share one schema.
+zero. The spike checked that three builder-made actions share one schema. Each distinct state table is a schema
+definition keyed `<module>#state` (a module's own `state` export, registration by module) or
+`<registry>:<key>/state` (a kind's or action's), claimed in that order; a kind or action without a `state` uses
+the empty layout.
+
+**Which action runs.** Per-chip action instances share their original number (MiniBomb's and BigBomb's both show
+0x12 in the navi's CurAction), so the number can't select the action. Starting an attack sets both: the navi's
+action byte (the number the traces compare) and the attack header's `content_action`, the handle of the action to
+run (`set_attack` takes a `NaviAttack { number, content }`; a plain number means "the engine's action, or the one
+registered by that number"). Chip use takes the handle from the chip's definition, a weapon routine from what its
+`setup` returns, and dispatch runs `content_action` when it is set.
 
 A builder stores its parameters in `args` rather than only capturing them. The canonical tree then shows what
 each chip is made of (`bn6-content show minibomb`), and definitions nested in the arguments get derived keys.
@@ -352,9 +363,10 @@ export type StageSpec = {
 ```
 
 Panel layouts and actor lists are inlined into the stages that use them; neither has a number any more. The 192
-battle settings a set's later rounds are drawn from are deduplicated into stages (one per distinct record); compat
-maps each original index and actor-list address to its stage. Stages are named by what they are where that is
-known, else `netbattle-N` in order of first use (§13).
+battle settings a set's later rounds are drawn from are deduplicated into stages (one per distinct record; all 192
+are distinct: 96 pairs of layout and actor list, each with two effect words); compat maps each original index to its
+stage, and gives the address its actor list goes by. Stages are named by what they are where that is known, else
+`netbattle-N` in order of first use (§13).
 
 ### 3.8 Rules
 
@@ -1007,15 +1019,16 @@ need.
 
 | File | Holds |
 |---|---|
-| chips.toml | `minibomb = { id = 0x36, action = 0x12, subtype = 0 }` for every chip; action and subtype are documentation (the traces never compare them) |
-| actions.toml | action key to navi action number: `"minibomb/action" = 0x12`, `"megaman/buster/shot" = 0x11`, `"engine/move" = 0x10`, the roles' actions |
-| navis.toml, forms.toml | `eraseman = { navi = 4, name_id = 0x1A4 }`, `heatcross = { form = 1, name_id = 0x1AC }` |
-| weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon |
-| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`; `scratch_position`, `scratch_z_fraction` and the engine kinds' comparison conditions |
-| stages.toml | battle settings index to stage, actor-list address to stage |
-| records.toml | the few records a setup names by byte: NaviCust buster shots (`0x01 = "buster-spread"`), the save's SP deletion-time slots (`0x03 = "sp/eraseman"`) |
-| assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0xB2`, backgrounds, banners, mugshots; chip icons follow chips.toml |
-| text.toml | the text encoding the generator and the extractor share: font glyph by character (and the EX and SP glyphs) |
+| chips.toml | `minibomb = { id = 0x036, action = 0x12, subtype = 0 }` for every chip; action and subtype are documentation (the traces never compare them) |
+| actions.toml | action key to navi action number: `"minibomb/action" = 0x12` (every chip whose use is an action has `<chip>/action`), `"megaman/buster/shot" = 0x11`, a weapon's `"<weapon>/action"`, `"engine/move" = 0x10`, `"engine/form-change" = 0x1C`. A role action whose number a chip's or weapon's action has is that action (the volley is WideSht's 0x30); only the turn (0x3B) has its own, `"megaman/turn"` |
+| navis.toml, forms.toml | `eraseman = { navi = 0x04, name_id = 0x1A4 }`, `heatcross = { form = 0x01, name_id = 0x1AC }`; the base form has no `name_id` (it is MegaMan's) |
+| weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
+| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (8 for `rock`); the engine's kinds as `"engine/..."` |
+| stages.toml | `"netbattle-1" = { settings = [0x00], actor_list = 0x080B1989 }`: the settings indices that are the stage, and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
+| records.toml | the few records a setup names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); NaviCust buster shots when their producers are known |
+| assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
+| text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
+| curation.toml | the names the generator made up, by file and key, with where each came from: the review list (§13) |
 
 A sample (kinds.toml):
 
@@ -1031,8 +1044,10 @@ bomb = { pool = "attack", index = 0x08 }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
 ```
 
-Many-to-one maps are allowed (aliases, deduplicated stages). Every entry must name a key that exists; every chip,
-navi, form, weapon, kind and action of the BN6 content must have an entry (the checker enforces both, §7.7).
+Every file maps a key to its numbers, and many-to-one maps are allowed (aliases, deduplicated stages). Every entry
+must name a key that exists; every chip, navi, form, weapon, kind and action of the BN6 content must have an entry
+(the checker enforces both, §7.7). A chip record with no name (or `????`) that nothing reaches has none: the blank
+library slots 0xCB..0xDC and 0x160..0x170 and the nameless copies of the plus chips' record.
 
 ### 6.2 Who reads it
 
@@ -1056,11 +1071,12 @@ name is a load error naming the module. The resolved value is a handle into the 
 
 - **Names** come from compat/assets.toml, which the generator writes: the disassembly's song and sound enum names
   where they exist (`SONG_VIRUS_BATTLE` is `virus-battle`, `SOUND_HIT_BOMB_1` is `hit-bomb-1`), else a name from
-  the asset's first user (`erase-mark`), else a numbered fallback (`sprite-0c-2d`, `sound-10e`). Content may not
-  use a fallback name (the checker warns); naming one is part of using it.
+  the asset's first user (`erase-mark`), else a numbered placeholder (`sprite-0c-01`, `sound-101`, `banner-54`). The
+  table lists every asset the ROM has, so a placeholder is an entry too. Content may not use a placeholder (the
+  checker warns); naming one is part of using it.
 - **The extractor** reads compat/assets.toml and writes `graphics/sprites/<name>/`, `sound/songs/<name>.mid`,
-  `graphics/hud/chip-icons/<chip key>.png` and so on. Assets the table doesn't list are written under their
-  fallback names, so nothing the ROM has is lost.
+  `graphics/hud/chip-icons/<chip key>.png` and so on. An asset the table doesn't list (one a newer table left out)
+  is written under its placeholder, so nothing the ROM has is lost.
 - **The checker** validates asset names without a ROM: compat/assets.toml is the list of names the BN6 content can
   use. A modded pack without compat lists its own assets' folders.
 - **Animation numbers stay numbers.** An animation is an index into its sprite's own list, observable in the traces
@@ -1080,7 +1096,7 @@ name is a load error naming the module. The resolved value is a handle into the 
   has no compat fields after the migration's last step. A test in `bn6-compat` asserts `bn6-battle`'s
   dependency list doesn't contain it, and a source guard in `bn6-battle`'s tests fails on the word `compat`
   outside comments and the transitional bridge's module (removed in step 13).
-- **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no fallback
+- **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no placeholder
   asset names, once the ratchet reaches zero.
 
 ## 7. The Rust side
@@ -1174,22 +1190,39 @@ from the tree (the data types already derive `Deserialize`), with references res
 reference to the wrong registry reported with both keys. The asset side (names, animation timing) comes from the
 pack's assets or, for tests, a synthetic index (§7.8).
 
-The runtime (`Behaviors::for_content`, one VM per thread and content hash, as today) runs the same define phase on
-`content.scripts`, checks that its tree hash equals `content.definitions`' (every VM made from the same content
-behaves the same, as scripting.md §3.1 already requires), and keeps the function slots in dense tables: kinds'
-`update` and `place` by `KindHandle`, actions' `update` by `ActionHandle`, chips' `dimming`/`navi`/`instant` by
-`ChipHandle`, weapons' `setup` by `WeaponHandle`. `ContentHost` becomes:
+The runtime runs the same define phase on `content.scripts`, checks that it reads exactly the content's
+definitions (every VM made from the same content behaves the same, as scripting.md §3.1 already requires), and
+binds the functions the engine planned (`BindPlan`): each by definition slot (`FnSource::Slot { registry, key,
+path }`) or, while registration by module lasts, by module export (`FnSource::Export`). The engine keeps the
+function ids in its registries (a kind's `update`, an action's `update`, a weapon's `setup`, a chip's
+`dimming`/`navi`/`instant`), so dispatch is an array index.
+
+**The runtime is not part of a battle.** `Battle` holds no runtime handle: a battle is plain data and `Send` by
+construction, and a snapshot is a clone (the `unsafe impl Send` on snapshots and its guard are gone). Each thread
+keeps runtimes in a small cache keyed by the content hash, which the battle's setup already carries
+(`RoundSetup::content`), and a content call on a battle uses its thread's runtime for that hash; a battle moved to
+another thread steps there with that thread's runtime, identically. Code that wants a particular runtime (one
+loaded with native code, a fresh VM halfway through a battle, edited scripts in tests) runs under
+`behavior::with_runtime(&runtime, ...)`, or steps with `Battle::step_with(&runtime, input)`. `ContentHost`
+becomes:
 
 ```rust
 pub trait ContentHost {
-    fn update_object(&self, api: &mut dyn CoreApi, kind: KindHandle, me: ObjectRef) -> Result<(), ContentError>;
-    fn update_action(&self, api: &mut dyn CoreApi, action: ActionHandle, me: ObjectRef) -> Result<(), ContentError>;
-    fn call(&self, api: &mut dyn CoreApi, slot: FnSlot, call: HookCall) -> Result<Value, ContentError>;
+    fn update_object(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef) -> Result<(), ContentError>;
+    fn update_action(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef, state: StateId) -> Result<(), ContentError>;
+    fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError>;
 }
 ```
 
-`Registrations`, `Hook` by number, `KindReg { pool, index }` and `Content::registrations` are deleted; what the
-content implements is what it defines.
+`Registrations`, `KindReg { pool, index }` and `Content::registrations` are deleted (step 3); `Hook` by number
+stays as the bridge's lookup (`Defs::hook`) until step 13. While the migration runs, a registry also holds the
+engine's own entries (its kinds, keyed `engine/player`, `engine/hitbox`, ...) and the entries registration by
+number makes, keyed from that data: a kind by its folder name, an action `v1/action-12`, a weapon `v1/weapon-02`.
+The bridge from numbers is a set of lookups on the registries (a kind's object slot, an action's number, a
+weapon's routine numbers, a chip's id), filled from registration by number now and from compat later
+(`Defs::bridge_kind`, `bridge_action`, `bridge_weapon`, `bridge_chip`). A definition the bridge gives a chip id
+takes over that chip's use: chip use runs the definition's action, the dimming, navi-chip and instant-chip
+actions call its hook, before registration by subtype is consulted.
 
 **The spike.** A throwaway crate (not committed) ran a define phase on bn6-luau's real sandbox with five modules
 (a bombs library with a shared state table, a bomb kind with a module-level effect, MiniBomb and BigBomb
@@ -1363,7 +1396,7 @@ kind's own state-machine byte, which the traces compare.
   checks every module against core.d.luau and types.d.luau as today. Library builders' spec types go in
   types.d.luau so chip modules' calls are checked (requires stay typed `any` per module, and a module casts what it
   requires, `require(...) :: BombsLib`). It adds static lints: no deprecated numeric API calls and no `legacy { }`
-  markers beyond the ratchet's allowance (§12), no fallback asset names, kind keys qualified by their owner
+  markers beyond the ratchet's allowance (§12), no placeholder asset names, kind keys qualified by their owner
   folder, no module under `compat/`.
 - **`bn6-content check <content> [<assets>]`** (links the runtime) runs the define phase and reports: duplicate
   keys, references to the wrong registry, unfilled roles, rule sections missing or defined twice, unknown asset
@@ -1398,9 +1431,10 @@ kind's own state-machine byte, which the traces compare.
   the module sources (the functions' code), the roles, and the assets the simulation reads (asset names and
   every sprite's animation timing). Compat is not in it: it changes no simulation. Pixels, palettes and audio stay
   out, as today.
-- **The VM stays out of snapshots.** A runtime VM is a per-thread cache rebuilt by the same define phase, and it
-  checks its tree hash against the content's. Definitions are frozen; definers fail after loading; the verifier
-  still refuses writes to globals and module locals.
+- **The VM stays out of battles.** A runtime VM is a per-thread cache keyed by the content hash, rebuilt by the
+  same define phase, and it checks it reads the content's definitions. `Battle` holds no handle to it, so a battle
+  and its snapshots are `Send` by construction (§7.3). Definitions are frozen; definers fail after loading; the
+  verifier still refuses writes to globals and module locals.
 - **Content state** keeps its 64-byte budget; a reference field costs two bytes. The attack scratch keeps its
   "same state continues" rule, with state identity by state table (§3.5).
 - **Cost.** A definition read is a frozen-table read (about 24 ns); passing a definition to the API adds a
@@ -1450,7 +1484,7 @@ registries, the object tables, the text). It is not committed here.
   extract-and-read-back check and the one-off 5,841-check comparison of the compiled tables.
 - It writes names: chip keys, compat/assets.toml (from the disassembly's enums and first users), stage names, and
   the generated names of collision types and statuses (from what they do where the docs say, else their first
-  user), with a report of every name it had to invent.
+  user), with every name it had to invent in compat/curation.toml.
 
 ### 9.4 The frontend and the audio
 

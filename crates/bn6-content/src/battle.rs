@@ -1152,7 +1152,7 @@ pub fn load(root: &Path, report: &mut Report) -> Option<Content> {
     let weapons = load_weapons(root, report);
     let scripts = load_scripts(root, report);
     let content =
-        Content { chips, navis, forms, rules, objects, effects, sparks, regions, panel_layouts, animations, weapons, scripts };
+        Content { chips, navis, forms, rules, objects, effects, sparks, regions, panel_layouts, animations, weapons, scripts, defs: Default::default() };
     check_references(&content, report);
     (report.count(crate::report::Level::Error) == errors_before).then_some(content)
 }
@@ -1540,9 +1540,6 @@ pub fn load_scripts(root: &Path, report: &mut Report) -> Scripts {
 
 /// References between records that must resolve.
 fn check_references(c: &Content, report: &mut Report) {
-    if let Err(e) = c.registrations() {
-        report.error("scripts", e);
-    }
     for (i, s) in c.rules.stages.settings.iter().enumerate() {
         if s.actors.0 as usize >= c.rules.stages.actor_lists.len() {
             report.error("rules/stages.toml", format!("battle settings {i:#04x}: actor list {} doesn't exist", s.actors.0));

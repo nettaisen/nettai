@@ -4,9 +4,14 @@
 //! nondeterminism, integers only, bounded work).
 
 use crate::battle::Battle;
-use crate::behavior::{Behaviors, Options};
+use crate::behavior::{Behaviors, Options, with_runtime};
 use crate::content::{Content, testing};
 use crate::scenario;
+
+/// The duel's battle at its start.
+fn battle() -> Battle {
+    Battle::new(scenario::setup(), scenario::content())
+}
 
 /// Each tick's state digest over a tape.
 fn digests(tape: &[scenario::Tick], mut b: Battle) -> Vec<u64> {
@@ -21,9 +26,15 @@ fn digests(tape: &[scenario::Tick], mut b: Battle) -> Vec<u64> {
 #[test]
 fn battles_run_the_content_scripts() {
     let b = Battle::new(scenario::setup(), scenario::content());
-    assert_eq!(b.behaviors.runtime(), "luau");
-    let m = b.behaviors.manifest().expect("the test content has scripts");
-    let kinds: Vec<&str> = m.objects.iter().map(|k| k.name.as_str()).collect();
+    assert_eq!(Behaviors::for_content(&b.content).unwrap().runtime(), "luau");
+    let kinds: Vec<&str> = b
+        .content
+        .defs
+        .kinds
+        .iter()
+        .filter(|k| matches!(k.implementation, crate::content::KindImpl::Script { .. }))
+        .map(|k| k.key.as_str())
+        .collect();
     assert_eq!(
         kinds,
         [
@@ -121,8 +132,8 @@ fn battles_run_the_content_scripts() {
             "whirlwind",
         ]
     );
-    assert!(b.behaviors.action(0x37).is_some(), "GunDelSol is a script");
-    assert!(b.behaviors.action(0x10).is_none(), "the step is the engine's");
+    assert!(b.content.defs.action_numbered(0x37).is_some(), "GunDelSol is a script");
+    assert!(b.content.defs.action_numbered(0x10).is_none(), "the step is the engine's");
 }
 
 #[test]
@@ -421,29 +432,43 @@ fn the_scripted_swords_play_and_roll_back() {
 
 #[test]
 fn registrations_follow_the_content_data() {
-    let mut c = testing::build();
-    let r = c.registrations().unwrap();
+    let c = testing::build();
+    let d = &c.defs;
     // The four SunGun chips share one action, as the thrown chips and the
     // three swords share theirs; the weapons have theirs (the buster's
     // alias names none); the mend, mirror, bee and dragon chips theirs.
-    let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
+    let mut actions: Vec<u8> = d.actions.iter().filter_map(|a| a.number).collect();
+    actions.sort();
     let expected = [
         0x11, 0x12, 0x13, 0x16, 0x1A, 0x1D, 0x1E, 0x20, 0x22, 0x2B, 0x33, 0x35, 0x37, 0x39, 0x3A, 0x3C, 0x3D, 0x41, 0x45,
         0x46, 0x49, 0x4A, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x56, 0x57, 0x58,
     ];
-    assert_eq!(actions, expected, "{:?}", r.actions);
+    assert_eq!(actions, expected, "{:?}", d.actions);
     // The instant chip registers its subtype's effect, and a weapon the
     // subtype it names.
-    assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(5)), "{:?}", r.hooks);
-    assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(0x14)), "{:?}", r.hooks);
+    assert!(d.hook(bn6_content_api::Hook::InstantChip(5)).is_some(), "{:?}", d.hooks);
+    assert!(d.hook(bn6_content_api::Hook::InstantChip(0x14)).is_some(), "{:?}", d.hooks);
+    // Handles number each registry in key order: the engine's kinds and
+    // the content's together.
+    assert!(d.kinds.windows(2).all(|w| w[0].key < w[1].key));
+    let h = d.kind_by_key("engine/hitbox").unwrap();
+    assert_eq!(d.kind_at(crate::object::Pool::Attack, 3), Some(h));
     // Two chips implementing one action with different scripts is an error.
+    let mut c = testing::build();
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
-    let e = c.registrations().unwrap_err();
+    let e = c.define().unwrap_err().message;
     assert!(e.contains("implements action 0x37"), "{e}");
     // So is naming a script the pack doesn't have.
     let mut c = testing::build();
     c.objects.kinds[0].script = "objects/nowhere".into();
-    assert!(c.registrations().unwrap_err().contains("isn't in the pack"));
+    let e = c.define().unwrap_err().message;
+    assert!(e.contains("isn't in the pack"), "{e}");
+    // And a kind two registrations fill.
+    let mut c = testing::build();
+    c.objects.kinds[1].index = c.objects.kinds[0].index;
+    c.objects.kinds[1].pool = c.objects.kinds[0].pool;
+    let e = c.define().unwrap_err().message;
+    assert!(e.contains("both fill"), "{e}");
 }
 
 #[test]
@@ -849,37 +874,35 @@ fn runaway_scripts_stop() {
 fn content_errors_name_the_script() {
     let b = load(&in_update("error(\"boom\")")).unwrap();
     let e = play_error(b).expect("stopped");
-    assert!(e.contains("action 0x37 (chips/001-sungun1/chip)") && e.contains("boom"), "{e}");
+    assert!(e.contains("action v1/action-37 (chips/001-sungun1/chip.luau's update)") && e.contains("boom"), "{e}");
 }
 
 #[test]
 fn the_vm_is_not_part_of_the_battle() {
     let tape = scenario::record(900);
     let shared = load(&testing::build()).unwrap();
-    let want = digests(&tape, Battle::with_behaviors(scenario::setup(), scenario::content(), shared.clone()));
+    let want = with_runtime(&shared, || digests(&tape, battle()));
     // Halfway, move the battle to a fresh VM, as restoring a snapshot on
     // another machine would.
-    let mut b = Battle::with_behaviors(scenario::setup(), scenario::content(), shared.clone());
+    let mut b = battle();
+    let fresh = load(&testing::build()).unwrap();
     let mut have = Vec::new();
     for (i, t) in tape.iter().enumerate() {
-        if i == 450 {
-            b.behaviors = load(&testing::build()).unwrap();
-        }
-        b.tick(&t.input, t.events.clone());
+        let vm = if i < 450 { &shared } else { &fresh };
+        with_runtime(vm, || b.tick(&t.input, t.events.clone()));
         have.push(b.digest());
     }
     assert_eq!(have, want, "a fresh VM continues the battle identically");
     // Interleave a second battle, playing a different tape, on the same VM.
     let other = scenario::record_seeded(900, 11);
-    let (mut a, mut c) = (
-        Battle::with_behaviors(scenario::setup(), scenario::content(), shared.clone()),
-        Battle::with_behaviors(scenario::setup(), scenario::content(), shared.clone()),
-    );
+    let (mut a, mut c) = (battle(), battle());
     let mut have = Vec::new();
     for (t, u) in tape.iter().zip(other.iter()) {
-        a.tick(&t.input, t.events.clone());
-        have.push(a.digest());
-        c.tick(&[u.input[1].clone(), u.input[0].clone()], u.events.clone());
+        with_runtime(&shared, || {
+            a.tick(&t.input, t.events.clone());
+            have.push(a.digest());
+            c.tick(&[u.input[1].clone(), u.input[0].clone()], u.events.clone());
+        });
     }
     let first = have.iter().zip(&want).position(|(a, b)| a != b);
     assert_eq!(first, None, "another battle on the same VM changes nothing");
@@ -891,16 +914,13 @@ fn the_vm_is_not_part_of_the_battle() {
 fn a_panic_inside_content_leaves_the_vm_sound() {
     let tape = scenario::record(900);
     let shared = load(&testing::build()).unwrap();
-    let want = digests(&tape, Battle::with_behaviors(scenario::setup(), scenario::content(), shared.clone()));
+    let want = with_runtime(&shared, || digests(&tape, battle()));
     let other = scenario::record_seeded(900, 11);
-    let (mut a, mut c) = (
-        Battle::with_behaviors(scenario::setup(), scenario::content(), shared.clone()),
-        Battle::with_behaviors(scenario::setup(), scenario::content(), shared.clone()),
-    );
+    let (mut a, mut c) = (battle(), battle());
     let mut have = Vec::new();
     let mut panics = 0;
     for (t, u) in tape.iter().zip(&other) {
-        a.tick(&t.input, t.events.clone());
+        with_runtime(&shared, || a.tick(&t.input, t.events.clone()));
         have.push(a.digest());
         // A Rust panic inside a Luau call: the reactive abort GunDelSol
         // calls isn't ported and panics when a defense triggered.
@@ -910,7 +930,8 @@ fn a_panic_inside_content_leaves_the_vm_sound() {
             let actor = c.objects.get(p).actor.unwrap();
             c.actors.get_mut(actor).requests |= crate::actor::request::ANTI_SWORD_TRIGGERED;
         }
-        if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| c.tick(&u.input, u.events.clone()))).is_err() {
+        let tick = || with_runtime(&shared, || c.tick(&u.input, u.events.clone()));
+        if std::panic::catch_unwind(std::panic::AssertUnwindSafe(tick)).is_err() {
             panics += 1;
         }
     }
@@ -925,7 +946,7 @@ fn gc_timing_does_not_reach_the_battle() {
     let want = digests(&tape, Battle::new(scenario::setup(), scenario::content()));
     let options = Options { collect_garbage: true, ..Default::default() };
     let b = Behaviors::load(&testing::build(), options).unwrap();
-    let have = digests(&tape, Battle::with_behaviors(scenario::setup(), scenario::content(), b));
+    let have = with_runtime(&b, || digests(&tape, battle()));
     assert_eq!(have, want);
 }
 
@@ -969,7 +990,7 @@ fn native_code_plays_the_duel_like_the_interpreter() {
     let want = digests(&tape, Battle::new(scenario::setup(), scenario::content()));
     let options = Options { native_code: true, ..Default::default() };
     let b = Behaviors::load(&testing::build(), options).unwrap();
-    let have = digests(&tape, Battle::with_behaviors(scenario::setup(), scenario::content(), b));
+    let have = with_runtime(&b, || digests(&tape, battle()));
     assert_eq!(have, want);
 }
 

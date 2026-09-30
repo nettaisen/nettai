@@ -400,10 +400,6 @@ pub struct Battle {
     pub(crate) sound: [Vec<SoundCue>; 2],
     /// How the round ended, once the end state is through.
     pub(crate) outcome: Option<RoundEnd>,
-    /// The content's scripts, running the object kinds, actions and hooks
-    /// the content implements (shared code, not state: snapshots share it
-    /// and the digest leaves it out).
-    pub behaviors: Behaviors,
 }
 
 /// How a round ended (`sub_8007CA0`).
@@ -562,19 +558,16 @@ pub struct DamageCarry {
 impl Battle {
     /// Start a round on `content`: the state the game is in when its init
     /// finishes and the first battle tick is about to run, with the
-    /// content's scripts running what they implement. Panics if the setup
-    /// names other content (`RoundSetup::content`), or if the content's
-    /// scripts don't load (a content error, the same on every machine).
+    /// content's scripts running what they implement (a runtime this
+    /// thread keeps: `behavior`). Panics if the setup names other content
+    /// (`RoundSetup::content`), if the content isn't defined
+    /// (`Content::define`), or if its scripts don't load (a content error,
+    /// the same on every machine).
     pub fn new(setup: RoundSetup, content: Arc<Content>) -> Battle {
-        let behaviors = Behaviors::for_content(&content).unwrap_or_else(|e| panic!("{e}"));
-        Battle::with_behaviors(setup, content, behaviors)
-    }
-
-    /// Start a round on `content`, running `behaviors` (its scripts, loaded
-    /// with particular options) for the kinds and actions they implement.
-    pub fn with_behaviors(setup: RoundSetup, content: Arc<Content>, behaviors: Behaviors) -> Battle {
         let hash = content.hash();
         assert_eq!(setup.content, hash, "the round's setup names content {} but runs on content {hash}", setup.content);
+        assert!(content.defs.defined, "a battle runs on defined content (Content::define)");
+        Behaviors::for_content(&content).unwrap_or_else(|e| panic!("{e}"));
         let score = setup.score;
         let field = Field::new(&content, setup.settings.layout, setup.settings.panel_pattern, setup.settings.mode);
         let mut b = Battle {
@@ -625,7 +618,6 @@ impl Battle {
             dimming: Default::default(),
             sound: [Vec::new(), Vec::new()],
             outcome: None,
-            behaviors,
             setup,
         };
         // Init's last steps: refresh every panel, then one unpaused panel
@@ -969,7 +961,7 @@ impl Battle {
         let content = self.content.clone();
         for entry in content.rules.stages.actor_list(self.setup.settings.actors) {
             if entry.kind != ActorKind::Navi {
-                let Some(hook) = self.behaviors.hook(Hook::ActorListEntry(entry.kind.entry_type())) else {
+                let Some(hook) = content.defs.hook(Hook::ActorListEntry(entry.kind.entry_type())) else {
                     panic!("actor list entries of kind {:?} are not implemented yet", entry.kind);
                 };
                 let panel = PanelPos { x: entry.x, y: entry.y };
