@@ -51,7 +51,7 @@ struct Player {
 
 impl Player {
     fn new(chips: &[(ChipId, u8)], version: GameVersion) -> Player {
-        let setup = PlayerSetup { folder: Some(folder(chips)), unlocks: Unlocks::everything(version), joypad_phase: 0 };
+        let setup = PlayerSetup { folder: Some(folder(chips)), unlocks: Unlocks::everything(version), ..PlayerSetup::default() };
         Player { side: Side::new(&setup), lib: library(), stats: stats(), tick: 0 }
     }
 
