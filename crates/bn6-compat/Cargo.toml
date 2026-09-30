@@ -1,0 +1,20 @@
+[package]
+name = "bn6-compat"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "The original game's numbers for BN6's content (content/bn6/compat), and what reads them: the codecs of the game's setup records and the golden-trace harness. The engine never depends on it."
+
+[dependencies]
+bn6-battle.workspace = true
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", optional = true }
+toml = "0.8"
+
+[features]
+# Recorded battles (golden traces): reading them, replaying them through
+# the engine, and comparing it with them.
+trace = ["dep:serde_json"]
+
+[dev-dependencies]
+bn6-battle = { workspace = true, features = ["test-content"] }
