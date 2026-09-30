@@ -417,6 +417,27 @@ impl CoreApi for Battle {
         self.field.meets(p.x, p.y, rule)
     }
 
+    fn shatter_panel(&mut self, p: PanelPos) -> bool {
+        Battle::shatter_panel(self, p.x, p.y)
+    }
+
+    fn highlight_collision_panels(&mut self, o: ObjectRef) {
+        // `object_highlightPanelRegion` over the region's shape, mirrored
+        // by the object's facing, from the registration's panel.
+        let ob = self.objects.get(o);
+        let Some(c) = ob.collision else { return };
+        let dir = common::facing(ob.alliance ^ ob.flip, 0);
+        let (panel, region) = (self.collision.get(c).panel, self.collision.get(c).region);
+        let Some(shape) = self.content.regions.get(region as usize) else { return };
+        for off in shape.clone() {
+            let x = panel.x as i32 + dir * off.dx as i32;
+            let y = panel.y as i32 + off.dy as i32;
+            if (1..=6).contains(&x) && (1..=3).contains(&y) {
+                common::highlight_panel(self, x as u8, y as u8);
+            }
+        }
+    }
+
     // ---- Objects -----------------------------------------------------------
 
     fn spawn(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {

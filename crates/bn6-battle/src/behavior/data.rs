@@ -9,7 +9,7 @@
 //! data.forms[id]            one of MegaMan's forms
 //! data.weapons[id]          a weapon routine a script implements
 //! data.objects.attachments[id], .rocks[id], .absorbed_sprites[kind],
-//!             .body_overlays[id], .sun_beam_looks[look]
+//!             .body_overlays[id], .sun_beam_looks[look], .shock_waves[variant]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
 //! data.regions[region]      a hit region's panels, [dx, dy] each (PanelOffsetListsPointerTable)
@@ -51,6 +51,7 @@ pub fn script_data(c: &Content) -> Data {
         ("absorbed_sprites", by_id(o.absorbed_sprites.iter().enumerate().map(|(i, s)| (i as i64, s)), |s| value(*s))),
         ("body_overlays", by_id(o.body_overlays.iter().map(|b| (b.id as i64, b)), |b| value(*b))),
         ("sun_beam_looks", by_id(o.sun_beam_looks.iter().enumerate().map(|(i, s)| (i as i64, s)), |s| value(*s))),
+        ("shock_waves", by_id(o.shock_waves.iter().map(|w| (w.id as i64, w)), |w| value(*w))),
         (
             "kinds",
             Data::Map(

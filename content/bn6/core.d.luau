@@ -376,6 +376,9 @@ declare class Object
     -- `object_spawnCollisionEffect`: the hit spark after a hit (one RNG
     -- draw when it shows).
     function hit_spark(self): ()
+    -- `object_highlightCurrentCollisionPanels`: highlight the panels its
+    -- collision region covers (drawn only).
+    function highlight_collision_panels(self): ()
 
     -- Navis only.
     function attack_param(self, n: number): number
@@ -576,6 +579,10 @@ declare field: {
     crack: (x: number, y: number) -> boolean,
     -- `object_breakPanel`: break a solid, unoccupied panel, cracked or not.
     break_panel: (x: number, y: number) -> boolean,
+    -- `object_breakPanel_dup1`: break a solid panel, or crack it when
+    -- something stands on it (not a neutral object); true only when it
+    -- broke.
+    shatter: (x: number, y: number) -> boolean,
     -- `object_isPanelSolid`: something can stand on it (not missing or
     -- broken).
     solid: (x: number, y: number) -> boolean,
@@ -718,6 +725,11 @@ export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } 
 
 export type WeaponData = { id: number, name: string, action: number?, script: string }
 
+-- A shock wave's look and timing (attack object #0x16, by its first
+-- parameter): ticks on a panel before the next rolls on, and the panel
+-- type it leaves ("cracked" cracks the panel, "broken" breaks it).
+export type ShockWave = { id: number, sprite: SpriteId, anim: number, ticks: number, panel: PanelType? }
+
 -- An object kind a script implements.
 export type ObjectKindData = { pool: Pool, index: number, script: string }
 
@@ -733,6 +745,7 @@ export type PackData = {
         body_overlays: { [number]: BodyOverlay },
         sun_beam_looks: { [number]: SpriteId },
         kinds: { [string]: ObjectKindData },
+        shock_waves: { [number]: ShockWave },
     },
     rules: {
         -- The buster's recovery in ticks (`byte_80209CC`), at

@@ -68,6 +68,15 @@ struct SunBeamFile {
     script_kind: Option<ObjectKind>,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ShockWaveFile {
+    /// By variant, the wave's first parameter.
+    wave: Vec<ShockWave>,
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
+}
+
 /// An object kind a script implements, in its folder's `object.toml`
 /// (`[kind]`: pool, index, script).
 #[derive(Serialize, Deserialize)]
@@ -535,7 +544,7 @@ pub fn weapon_folder(w: &WeaponData) -> String {
 
 /// The object kinds whose folders hold data of their own (a kind of these
 /// a script implements keeps its `[kind]` in the same file).
-const DATA_OBJECTS: [&str; 5] = ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment"];
+const DATA_OBJECTS: [&str; 6] = ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "shock-wave"];
 
 /// A script as an entity's file names it: `module` (a path in the pack
 /// without `.luau`) relative to `folder`, with `.luau`.
@@ -624,6 +633,13 @@ pub fn export(c: &Content) -> Files {
         toml_file(
             "The sun beam's (effect object #0x48) sprites by look, its first parameter.",
             &SunBeamFile { look: looks, script_kind: script_kind("sun-beam") },
+        ),
+    );
+    put(
+        "objects/shock-wave/object.toml".into(),
+        toml_file(
+            "Shock waves (attack object #0x16) by variant, its first parameter: sprite, animation, ticks on a\npanel before the next wave rolls on, and the panel type it leaves (`cracked` cracks the panel,\n`broken` breaks it or cracks it under something).",
+            &ShockWaveFile { wave: o.shock_waves.clone(), script_kind: script_kind("shock-wave") },
         ),
     );
     let owned: Vec<u8> = c.chips.iter().filter_map(|c| Some(c.gun_del_sol.as_ref()?.gun.id)).collect();
@@ -1026,6 +1042,10 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     add_kind("sun-beam", beams.script_kind, report);
     let file = "objects/sun-beam/object.toml";
     let sun_beam_looks = dense(beams.look.into_iter().map(|l| (l.id as usize, l.sprite, file.into())).collect(), "sun beam look", report);
+    let waves: ShockWaveFile = read_toml(root, "objects/shock-wave/object.toml", report)?;
+    add_kind("shock-wave", waves.script_kind, report);
+    let file = "objects/shock-wave/object.toml";
+    let shock_waves = dense(waves.wave.into_iter().map(|w| (w.id as usize, w, file.into())).collect(), "shock wave", report);
     // Attachments: the chips' own and the rest. A chip may share another's
     // (the same row), but not change it.
     let rest: AttachmentFile = read_toml(root, "objects/attachment/object.toml", report)?;
@@ -1059,7 +1079,7 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     }
     let attachments = dense(all.into_iter().map(|(id, (a, file))| (id as usize, a, file)).collect(), "attachment", report);
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
-    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, kinds })
+    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, kinds, shock_waves })
 }
 
 fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
