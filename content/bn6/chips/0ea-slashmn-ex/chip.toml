@@ -1,0 +1,3 @@
+# A navi chip (subtype 4): its navi is SlashMan.
+
+script = "../../objects/slash-man/slash_man.luau"

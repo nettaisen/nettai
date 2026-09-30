@@ -1,0 +1,6 @@
+# HeatMan, the HeatMan chips' navi (actor object #0x07, `sub_80B9078`), is a script.
+
+[kind]
+pool = "actor"
+index = 0x07
+script = "heat_man.luau"

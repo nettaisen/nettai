@@ -1,0 +1,3 @@
+# A navi chip (subtype 9): its navi is TenguMan.
+
+script = "../../objects/tengu-man/tengu_man.luau"
