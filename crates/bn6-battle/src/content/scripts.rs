@@ -20,14 +20,14 @@
 //!   weapon.toml`) implements the routine, the action it names and the
 //!   instant chip effect it names ([`WeaponData`]).
 //!
-//! [`Content::registrations`] turns that into what the script runtime
-//! loads. Nothing in the engine says which kind, action or hook is a
+//! [`Content::define`] turns that, with what the modules define, into
+//! what the script runtime binds (`content::defs`). Nothing in the engine says which kind, action or hook is a
 //! script: whatever the pack registers runs as content, and the engine's
 //! own Rust runs the rest.
 
 use std::collections::BTreeMap;
 
-use bn6_content_api::{ActionReg, Hook, HookReg, KindReg, Pool, Registrations};
+use bn6_content_api::Pool;
 use serde::{Deserialize, Serialize};
 
 use super::Content;
@@ -111,82 +111,6 @@ mod pool_name {
 }
 
 impl Content {
-    /// What the pack's scripts implement, from its entities' data. Errors
-    /// name the entities that conflict (two scripts for one action, a
-    /// script that isn't in the pack).
-    pub fn registrations(&self) -> Result<Registrations, String> {
-        let mut r = Registrations::default();
-        let exists = |module: &str, whose: &str| {
-            if self.scripts.modules.contains_key(module) {
-                Ok(())
-            } else {
-                Err(format!("{whose} names the script {module}.luau, which isn't in the pack"))
-            }
-        };
-        for k in &self.objects.kinds {
-            exists(&k.script, &format!("object kind {}", k.name))?;
-            r.kinds.push(KindReg { name: k.name.clone(), pool: k.pool, index: k.index, module: k.script.clone() });
-        }
-        let mut actions: BTreeMap<u8, (String, String)> = BTreeMap::new();
-        let mut hooks: BTreeMap<Hook, (String, String)> = BTreeMap::new();
-        let mut add_action = |action: u8, module: &str, whose: String| -> Result<(), String> {
-            match actions.get(&action) {
-                Some((m, first)) if m != module => {
-                    Err(format!("{whose} implements action {action:#x} with {module}.luau, but {first} with {m}.luau"))
-                }
-                Some(_) => Ok(()),
-                None => {
-                    actions.insert(action, (module.to_string(), whose));
-                    Ok(())
-                }
-            }
-        };
-        let mut add_hook = |hook: Hook, module: &str, whose: String| -> Result<(), String> {
-            match hooks.get(&hook) {
-                Some((m, first)) if m != module => {
-                    Err(format!("{whose} implements {hook} with {module}.luau, but {first} with {m}.luau"))
-                }
-                Some(_) => Ok(()),
-                None => {
-                    hooks.insert(hook, (module.to_string(), whose));
-                    Ok(())
-                }
-            }
-        };
-        for c in &self.chips {
-            let Some(module) = &c.script else { continue };
-            let whose = format!("chip {:#05x} ({})", c.id, c.name);
-            exists(module, &whose)?;
-            match c.action {
-                DIMMING_CHIP_ACTION => add_hook(Hook::DimmingChip(c.subtype), module, whose)?,
-                NAVI_CHIP_ACTION => add_hook(Hook::NaviChip(c.subtype), module, whose)?,
-                INSTANT_CHIP_ACTION => add_hook(Hook::InstantChip(c.subtype), module, whose)?,
-                action if action < 0x10 => return Err(format!("{whose}: actions below 0x10 are the engine's")),
-                action => add_action(action, module, whose)?,
-            }
-        }
-        for k in &self.objects.kinds {
-            if let Some(entry) = k.actor_list_entry {
-                add_hook(Hook::ActorListEntry(entry), &k.script, format!("object kind {}", k.name))?;
-            }
-        }
-        for w in &self.weapons {
-            let whose = format!("weapon routine {:#04x} ({})", w.id, w.name);
-            exists(&w.script, &whose)?;
-            add_hook(Hook::Weapon(w.id), &w.script, whose.clone())?;
-            if let Some(subtype) = w.instant_chip {
-                add_hook(Hook::InstantChip(subtype), &w.script, whose.clone())?;
-            }
-            if let Some(action) = w.action {
-                add_action(action, &w.script, whose)?;
-            }
-        }
-        r.actions = actions.into_iter().map(|(action, (module, _))| ActionReg { action, module }).collect();
-        r.hooks = hooks.into_iter().map(|(hook, (module, _))| HookReg { hook, module }).collect();
-        r.validate().map_err(|e| e.message)?;
-        Ok(r)
-    }
-
     /// The object kind named `name`.
     pub fn object_kind(&self, name: &str) -> Option<&ObjectKind> {
         self.objects.kinds.iter().find(|k| k.name == name)

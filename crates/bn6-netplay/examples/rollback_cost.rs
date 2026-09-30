@@ -43,7 +43,7 @@ fn main() {
         .collect();
     // Side 0's world: its input is `local`, side 1's the remote.
     let mut world = BattleWorld::new(round.start(content.clone()), 0);
-    let runtime = world.game().behaviors.runtime().to_string();
+    let runtime = bn6_battle::behavior::Behaviors::for_content(&world.game().content).unwrap().runtime().to_string();
     let step = |w: &mut BattleWorld<_>, [a, b]: &[Bn6Input; 2]| {
         let Ok(()) = w.step(a, std::slice::from_ref(b));
     };
