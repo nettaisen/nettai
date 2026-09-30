@@ -1072,7 +1072,8 @@ From N+2 the user navi is gated into `sub_8017AB4` and stays in CurAction 0x15 f
 
 1. **`object_dimScreen`** (0x0800B94C): `SetScreenFade(0x3C, 4)`, mode stepper `sub_800647C` (+4 per update until
    ≥ 0x40). From level 0 this takes 16 updates, finishing at the end of N+17. At N+18 the fade is idle and the
-   controller moves on. The start level `eScreenFade+6` is history-dependent; it was 0 in the fights observed.
+   controller moves on. The start level `eScreenFade+6` is history-dependent (`SetScreenFade` keeps it): 0 after
+   an earlier undim, and 0x40 for a counter cut-in's dim, which is then done after one step (§3.6.5).
 2. **`object_drawChipName`** (0x0800B9B0), from N+19:
    - Own `[1] = 2`. If opponent `[1] ∉ {0,3}`, retry next frame.
    - Else start the banner: `sub_801E792(0x4C or 0x50, dmg, bonus, chip)`, with damage shown only if flags bit 1.
@@ -1157,8 +1158,24 @@ is always AIIndex*4 (set in `sub_80EA484`, preserved through `sub_801AF44`), so 
 heal-on-use, side stat 6 for navi chips, dark-chip costs); it writes every field the spawners read (+2 element, +3
 subtype, +6 bonus, +8 damage, +0xA hit param, +0xC params, +0x14 chip). An action other than 0x15 or 0x1B registers
 nothing and doesn't advance the hand. `loc_800BF30` doesn't check for a registered controller, and a failed spawn
-registers none. `sub_800B8EE(side)`: effect #0 look 0x1E at panel ((side^1)*3+2, 4), z 0x78 px, sound 0xA5. (Not
-ported yet: the engine panics "cut-ins (sub_8017AB4) are not implemented yet".)
+registers none. `sub_800B8EE(side)`: effect #0 look 0x1E at panel ((side^1)*3+2, 4), z 0x78 px, sound 0xA5.
+
+**The port** (kinds/player/status.rs `cut_in`): `chip_use::prepare_detached` runs `sub_80127C0(0)` on a copy of
+the attack variables and restores the navi's own; the controller comes from the same spawners as actions 0x15
+(`dimming_chip::spawn_controller`, the pack's `Hook::DimmingChip`) and 0x1B (`navi_chip::spawn_controller`);
+`Battle::cut_in_dimming` is `loc_800BF30`, `dimming::cut_in_flash` `sub_800B8EE`. The chip lab's 26 counter cut-in
+scenarios (the other side's copy of the chip, answered during the telop) match every frame, and show the order:
+
+- The cut-in controller's own dim (`object_dimScreen`) starts from the already dimmed screen: the fade level
+  (`eScreenFade+6`) is left at 0x40 by the first dim, and `SetScreenFade` keeps the level, so the dim is done after
+  one step (2 updates, not 16). The engine models the fade's level for this (`battle::Fade`).
+- The cut-in's telop waits for the first one to end (its state 2 until the other side is 3 or idle); the first side
+  then waits in state 3 while the cut-in's effect runs; the cut-in's undim is skipped (the other side isn't done)
+  and its end waits; then the first effect runs, its undim fades the screen back, and its end (the initiator's)
+  frees both.
+
+Unverified: a cut-in whose next chip is a navi chip of subtype 0 against the other side's chip 0xBD, a failed
+controller spawn, a cut-in by a chip of another action, and cut-ins with Full Synchro, anger, or a dark chip.
 
 When the checks fail (e.g. A pressed while the other side's screen is still dimming, soundmod 3217), `sub_8017AB4`
 just clears requests 0x80C; the navi goes on shaking as usual.

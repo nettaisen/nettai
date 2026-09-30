@@ -851,6 +851,26 @@ fn can_cut_in(b: &Battle, r: ObjectRef) -> bool {
         && other.state == DimmingState::ShowingName
 }
 
+/// `sub_8017AB4`'s counter cut-in: the next chip is used without leaving
+/// the current action (its attack variables are a scratch copy); a dimming
+/// chip's (action 0x15) or navi chip's (0x1B) controller is spawned and
+/// takes the dimming over (`loc_800BF30`), with the cut-in flash, and the
+/// hand moves on. A chip of any other action registers nothing and stays
+/// in the hand. See docs/engine/chips.md §3.6.5.
+fn cut_in(b: &mut Battle, r: ObjectRef) {
+    let (action, a) = super::chip_use::prepare_detached(b, r);
+    let controller = match action {
+        actions::dimming_chip::ACTION => actions::dimming_chip::spawn_controller(b, r, &a),
+        actions::navi_chip::ACTION => actions::navi_chip::spawn_controller(b, r, &a),
+        _ => return,
+    };
+    let side = b.objects.get(r).alliance;
+    b.cut_in_dimming(side, controller, r);
+    crate::dimming::cut_in_flash(b, side);
+    // sub_800FC7C
+    b.hands[side as usize].advance();
+}
+
 /// `sub_8017AB4`: while dimmed the navi only shakes while hit (one RNG
 /// draw per shaking tick).
 fn while_dimmed(b: &mut Battle, r: ObjectRef) {
@@ -861,7 +881,7 @@ fn while_dimmed(b: &mut Battle, r: ObjectRef) {
         let freezes = chip != crate::hand::NO_CHIP
             && b.content.chip(chip).flags.has(crate::content::ChipFlags::DIMMING);
         if can_cut_in(b, r) && freezes {
-            panic!("cut-ins (sub_8017AB4) are not implemented yet");
+            cut_in(b, r);
         }
         ai_mut(b, r).requests &= !(request::CUT_IN | request::CHARGED_CHIP | request::CHIP);
     }

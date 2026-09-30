@@ -137,25 +137,142 @@ pub struct FightMachine {
     pub turn_timer: u16,
 }
 
-/// Screen fade progress (only its duration matters to the simulation).
-#[derive(Clone, Copy, Debug, Default, Hash)]
+/// The screen fades a battle starts (`SetScreenFade`'s modes): which
+/// colours, which way the level steps (`off_8005FB4`) and where it stops
+/// (`off_8006040`'s last byte, times 16).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum FadeMode {
+    /// 0: the intro of a set's first battle clears from white.
+    IntroFromWhite = 0x00,
+    /// 4: the end of a round, to white (`sub_80094DA`'s other case).
+    EndToWhite = 0x04,
+    /// 8: the intro of a later battle clears from black.
+    IntroFromBlack = 0x08,
+    /// 0xC: the end of a round, to black.
+    EndToBlack = 0x0C,
+    /// 0x38: a dimming's end (`object_undimScreen`).
+    Undim = 0x38,
+    /// 0x3C: a dimming (`object_dimScreen`): a quarter of the way.
+    Dim = 0x3C,
+    /// 0x40: the transformation sequencer's fade back in.
+    TransformIn = 0x40,
+    /// 0x44: the transformation sequencer's fade out.
+    TransformOut = 0x44,
+    /// 0x6C: battle mode 1's fade back in after a transformation.
+    Mode1TransformIn = 0x6C,
+    /// 0x70: battle mode 1's fade out for a transformation.
+    Mode1TransformOut = 0x70,
+}
+
+impl FadeMode {
+    /// Toward full (`sub_800647C`) rather than toward clear
+    /// (`sub_8006366`), and the level it stops at.
+    fn course(self) -> (bool, u16) {
+        match self {
+            FadeMode::IntroFromWhite | FadeMode::IntroFromBlack => (false, 0),
+            FadeMode::EndToWhite | FadeMode::EndToBlack => (true, 0x100),
+            FadeMode::Undim => (false, 0),
+            FadeMode::Dim => (true, 0x40),
+            FadeMode::TransformIn | FadeMode::Mode1TransformIn => (false, 0),
+            FadeMode::TransformOut | FadeMode::Mode1TransformOut => (true, 0x100),
+        }
+    }
+}
+
+/// The screen fade (`eScreenFade`, the first of its two records): a level
+/// from 0 (clear) to 0x100 (fully faded) that the running fade steps
+/// toward its target once per frame, outside the battle tick
+/// (`subsystem_triggerTransition_800630A`). The level outlives a fade: the
+/// next one starts wherever the last one left it (a counter cut-in's dim
+/// starts from the dimmed screen and is done after one step).
+#[derive(Clone, Copy, Debug, Hash)]
 pub struct Fade {
-    pub remaining: u8,
+    /// +1: the running (or last) fade.
+    pub mode: FadeMode,
+    /// +6: the level.
+    pub level: u16,
+    /// +4: the level's change per step.
+    pub speed: u16,
+    /// +0xA: where the fade stops.
+    pub target: u16,
+    /// +3: the fade is running (`IsScreenFadeActive`).
+    pub active: bool,
+    /// +2: a fade toward clear took its first step (which holds the
+    /// level).
+    pub stepped: bool,
+}
+
+impl Default for Fade {
+    /// A battle starts on a fully faded screen, which its intro clears.
+    fn default() -> Self {
+        Fade { mode: FadeMode::EndToBlack, level: 0x100, speed: 0, target: 0x100, active: false, stepped: false }
+    }
 }
 
 impl Fade {
-    /// Fades take this many ticks at the speed netbattles use.
+    /// The intro's fade takes this many ticks (from a fully faded screen,
+    /// at the speed battles use).
     pub const TICKS: u8 = 17;
 
-    pub fn start(&mut self) {
-        self.remaining = Self::TICKS;
+    /// `SetScreenFade(mode, speed)` (a speed of 0xFF steps by 0x100). The
+    /// level is left where it is.
+    pub fn start(&mut self, mode: FadeMode, speed: u8) {
+        let (_, target) = mode.course();
+        self.mode = mode;
+        self.target = target;
+        self.speed = if speed == 0xFF { 0x100 } else { speed as u16 };
+        self.active = true;
+        self.stepped = false;
     }
+
+    /// `IsScreenFadeActive`.
     pub fn active(&self) -> bool {
-        self.remaining > 0
+        self.active
     }
-    /// Screen fades step once per frame, outside the battle tick.
+
+    /// One step of the running fade (`off_8005FB4[mode]`), once per frame.
     pub fn step(&mut self) {
-        self.remaining = self.remaining.saturating_sub(1);
+        if !self.active {
+            return;
+        }
+        let (up, target) = self.mode.course();
+        if up {
+            // sub_800647C
+            let level = self.level as i32 + self.speed as i32;
+            if level >= target as i32 {
+                self.active = false;
+                self.level = target;
+            } else {
+                self.level = level as u16;
+            }
+        } else {
+            // sub_8006366: the first step holds the level.
+            let mut level = self.level as i32;
+            if self.stepped {
+                level = (level - self.speed as i32).max(0);
+            }
+            self.stepped = true;
+            self.level = level as u16;
+            if level <= target as i32 {
+                self.active = false;
+            }
+        }
+    }
+
+    /// Steps left before the running fade is done (0 when it isn't
+    /// running).
+    pub fn remaining(&self) -> u8 {
+        if !self.active || self.speed == 0 {
+            return 0;
+        }
+        let (up, target) = self.mode.course();
+        let steps = |d: u16| d.div_ceil(self.speed);
+        let left = if up {
+            steps(target.saturating_sub(self.level))
+        } else {
+            steps(self.level.saturating_sub(target)) + u16::from(!self.stepped)
+        };
+        left.min(0xFF) as u8
     }
 }
 
@@ -1236,8 +1353,17 @@ impl Battle {
 
     fn mode_fade_out(&mut self) {
         if self.round.init == 0 {
-            self.fade.start();
-            self.fade.remaining = 16;
+            // sub_80094DA: to white when the battle was won against one of
+            // the navis 0x173..=0x17E (`sub_800A7A6` over side 1's actors,
+            // `sub_800A832`'s result code 1), otherwise to black; either
+            // takes 16 ticks.
+            let bosses = self.round.alive_actors[1]
+                .iter()
+                .flatten()
+                .filter(|&&r| (0x173..=0x17E).contains(&self.objects.get(r).name_id))
+                .count();
+            let white = bosses != 0 && self.round.result & 0xF == 1;
+            self.fade.start(if white { FadeMode::EndToWhite } else { FadeMode::EndToBlack }, 0x10);
             self.round.init = 4;
             return;
         }
@@ -1368,6 +1494,38 @@ mod tests {
     use super::*;
     use crate::content::testing;
     use crate::setup::Stage;
+
+    /// Updates until a fade started now is done (the first update is the
+    /// starter's own, before the frame's step).
+    fn fade_updates(f: &mut Fade, mode: FadeMode, speed: u8) -> u32 {
+        f.start(mode, speed);
+        let mut n = 1;
+        while f.active() {
+            f.step();
+            n += 1;
+        }
+        n
+    }
+
+    #[test]
+    fn screen_fades_keep_their_level() {
+        let mut f = Fade::default();
+        // The intro clears the faded screen in 17 updates.
+        assert_eq!(fade_updates(&mut f, FadeMode::IntroFromBlack, 0x10), 18);
+        assert_eq!(f.level, 0);
+        // A dim from a clear screen: 16 steps; a counter cut-in's dim from
+        // the dimmed screen: 1.
+        assert_eq!(fade_updates(&mut f, FadeMode::Dim, 4), 17);
+        assert_eq!(f.level, 0x40);
+        assert_eq!(fade_updates(&mut f, FadeMode::Dim, 4), 2);
+        // The undim: its first step holds the level.
+        f.start(FadeMode::Undim, 4);
+        assert_eq!(f.remaining(), 17);
+        assert_eq!(fade_updates(&mut f, FadeMode::Undim, 4), 18);
+        assert_eq!(f.level, 0);
+        f.start(FadeMode::TransformOut, 0x10);
+        assert_eq!(f.remaining(), 16);
+    }
 
     /// A best-of-three netbattle round about to leave its end state, with
     /// the set standing at `wins`-`losses` after `round` rounds.
