@@ -282,9 +282,9 @@ enum SetStanding {
 }
 
 /// A side's extra battle state (0x1D0 bytes at `sub_802E070(side)`); only
-/// the fields the engine reads are modeled (the rest are listed in
-/// docs/engine/field-names.md). All zero outside the battle flag 0x40
-/// mode.
+/// the fields the engine reads or writes are modeled (the rest are listed
+/// in docs/engine/field-names.md). The per-player gauges' mode (battle
+/// flag 0x40) uses it; outside it, only SloGauge and FstGauge write it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SideState {
     pub active: u8,
@@ -293,6 +293,13 @@ pub struct SideState {
     pub gauge: u16,
     pub select_special: u8,
     pub cross_special: u8,
+    /// +0x3C / +0x3A: ticks the side's gauge stays slow / fast (SloGauge,
+    /// FstGauge), counted down by `sub_80107D4`.
+    pub slow_gauge_ticks: u16,
+    pub fast_gauge_ticks: u16,
+    /// +0x44: the target the side tracks (an actor of the other side), which
+    /// an obstacle leaving hands on (`sub_802EF74`).
+    pub tracked: Option<ObjectRef>,
     /// +0x34: the special chip the side's SELECT uses (`sub_800EE26`).
     pub special_chip: u16,
     /// +0x36 / +0x38: bonuses stored for the special chip, spent with it
@@ -531,9 +538,9 @@ impl Battle {
         for heard in &mut self.sound {
             heard.clear();
         }
-        // Panel highlights last one frame: the game's field renderer
-        // clears them after drawing.
-        self.field.clear_highlights();
+        // Panel highlights and blinks last one frame: the game's field
+        // renderer clears them after drawing.
+        self.field.clear_one_frame_looks();
         match self.round.top {
             top::RUNNING => self.tick_running(input, events),
             top::END => self.tick_end(input, &events),

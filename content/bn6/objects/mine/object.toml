@@ -1,0 +1,8 @@
+# The Mine chip's dimming controller (effect object #0x29, `sub_80E342C`) is
+# a script. Its position is its spawner's registers, which nothing reads.
+
+[kind]
+pool = "effect"
+index = 0x29
+script = "mine.luau"
+scratch_position = true

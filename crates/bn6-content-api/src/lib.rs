@@ -35,6 +35,8 @@ pub use api::{
     SpriteField, StatusFlag, StatusTimer,
 };
 pub use api::AfterimageSpec;
+// Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
+pub use api::{ObstacleHold, ObstaclePush, WindSource};
 pub use data::{Data, Key as DataKey};
 pub use host::{
     ActionDef, ActionReg, ActorListEntrySpec, ContentError, ContentHost, DimmingChipSpec, Hook, HookCall, HookDef,
