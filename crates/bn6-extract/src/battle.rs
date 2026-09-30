@@ -679,6 +679,7 @@ fn objects(rom: &Rom) -> ObjectData {
         sun_beam_looks: (0..2).map(|i| sprite_at(0x080E_5C28 + 2 * i)).collect(),
         projectiles: projectiles(rom),
         flying_shots: flying_shots(rom),
+        name_looks: name_looks(rom),
         kinds: Vec::new(),
     }
 }
@@ -780,6 +781,26 @@ fn flying_shots(rom: &Rom) -> Vec<FlyingShotKind> {
                 panel_spark: id == 2,
                 launch_sound: (id == 2).then_some(0x18A),
                 end_effect: (id == 5).then_some(7),
+            }
+        })
+        .collect()
+}
+
+/// `byte_8021220`: how a field object looks by NameID, 5 bytes from
+/// NameID 0xCD, for every NameID `sub_800F26C` reads it for (0xCD..=0xFF;
+/// the entries past 0xEB are the bytes that follow the table).
+fn name_looks(rom: &Rom) -> Vec<NameLook> {
+    const TABLE: u32 = 0x0802_1220;
+    (0xCDu16..=0xFF)
+        .map(|name_id| {
+            let a = TABLE + 5 * (name_id as u32 - 0xCD);
+            let category = rom.u8(a);
+            NameLook {
+                name_id,
+                sprite: (category != 0xFF).then(|| SpriteId { category, index: rom.u8(a + 1) }),
+                anim: rom.u8(a + 2),
+                palette: rom.u8(a + 3),
+                shadow: rom.u8(a + 4) != 0,
             }
         })
         .collect()
