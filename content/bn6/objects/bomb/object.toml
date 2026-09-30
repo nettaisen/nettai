@@ -1,0 +1,6 @@
+# The thrown bomb (attack object #8, `sub_80C5BB0`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x08
+script = "bomb.luau"

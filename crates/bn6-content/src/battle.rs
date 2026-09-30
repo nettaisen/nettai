@@ -1451,6 +1451,11 @@ fn check_references(c: &Content, report: &mut Report) {
                 }
             }
         }
+        if let Some(s) = &chip.sword
+            && !c.objects.attachments.iter().any(|a| a.id == s.blade)
+        {
+            report.error(&file, format!("sword blade {:#04x} isn't an attachment", s.blade));
+        }
         if chip.damage > 1000 && chip.damage <= 1000 + 18 && chip.sp_damage.is_none() {
             report.error(&file, "an SP navi chip (damage formula 1..=18) needs sp_damage");
         }

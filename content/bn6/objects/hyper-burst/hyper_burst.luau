@@ -13,7 +13,6 @@ export type State = {
     bursting: boolean,
 }
 
-local region = require("../../lib/region")
 
 local hyper_burst = {
     state = { bursting = "bool" },
@@ -81,7 +80,7 @@ local function burst(me: Object)
         stamina = me.stamina,
         status = HIT.status,
     })
-    region.effects(x, y, EXPLOSION, r, region.direction(me.alliance), EXPLOSION_Z)
+    battle.region_effects(x, y, r, me.alliance, EXPLOSION, EXPLOSION_Z)
     local left = me.timer2 - 1
     me.timer2 = left
     if left == 0 then

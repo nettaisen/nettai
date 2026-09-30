@@ -110,7 +110,12 @@ pub mod status {
     pub const CROSS_BREAKING: u32 = 0x4_0000;
     /// A form change holds the navi's sprite still (it is off the field).
     pub const FORM_CHANGE_SPRITE_HELD: u32 = 0x8_0000;
-    /// Anti-damage trap for heat attacks.
+    /// Gone from the field while its navi chip's navi acts (`sub_80E1352`
+    /// sets it, `sub_80E13DC` clears it).
+    pub const VANISHED: u32 = 0x10_0000;
+    /// RskyHny's trap (action 0x39): a hit with no fire damage is
+    /// swallowed and, if it did other damage, sends another bee
+    /// (`sub_802CEF4`).
     pub const HEAT_TRAP: u32 = 0x20_0000;
 }
 

@@ -125,7 +125,7 @@ fn set_visible(b: &mut Battle, r: ObjectRef, on: bool) {
 
 /// `sub_800EB6C`: the local player sees `alliance`'s effects unless they
 /// belong to the other side and the local navi is blind.
-fn viewer_sees(b: &Battle, alliance: u8) -> bool {
+pub(crate) fn viewer_sees(b: &Battle, alliance: u8) -> bool {
     if !b.is_remote(alliance) {
         return true;
     }

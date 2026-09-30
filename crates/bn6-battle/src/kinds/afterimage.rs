@@ -7,7 +7,9 @@
 //!
 //! A plain afterimage (first parameter not 0xFF) shows a sprite of its own
 //! instead, looking as its spawner says (`PlainLook`): content spawns
-//! these (`spawn_plain`), such as PitHocky's puck trail.
+//! these (`spawn_plain`), such as PitHocky's puck trail. Content also
+//! spawns copies with a look of its own (`spawn_copy`), such as the step
+//! sword's afterimages of its user.
 
 use crate::battle::Battle;
 use crate::content::{Content, SpriteId};
@@ -41,7 +43,7 @@ pub struct Vars {
     pub tether: Tether,
     /// The animation it holds.
     pub anim: u8,
-    /// A plain afterimage's look.
+    /// Its look (a plain one's, or a copy's that its spawner chose).
     pub plain: PlainLook,
 }
 
@@ -69,6 +71,17 @@ pub enum PlainShadow {
     Hidden,
 }
 
+impl PlainShadow {
+    fn shadow(self) -> crate::object::sprite::Shadow {
+        use crate::object::sprite::Shadow;
+        match self {
+            PlainShadow::WithSprite => Shadow::WithSprite,
+            PlainShadow::Ground => Shadow::Ground,
+            PlainShadow::Hidden => Shadow::Hidden,
+        }
+    }
+}
+
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
     match &mut b.objects.get_mut(r).vars {
         crate::kinds::Vars::Afterimage(v) => v,
@@ -92,7 +105,33 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     o.flags |= flags::RUN_WHILE_PAUSED;
     // sub_80E341E: tied to the Beast form, or to the attack.
     let tether = if b.stats[alliance as usize].form.is_beast() { Tether::BeastForm } else { Tether::Attack };
-    *vars(b, r) = Vars { lifetime, tether, anim, ..Default::default() };
+    // Less green, with a ground shadow (the spawner's r7 is 0x01010014 - n).
+    let look = PlainLook { color_shader: COLOR_SHADER, shadow: PlainShadow::Ground, ..Default::default() };
+    *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
+    Some(r)
+}
+
+/// `sub_80E33FA` with Param1 0xFF: a copy of `owner` (its NameID's sprite
+/// and form overlay) at `pos`, holding `anim` flipped by the game's flip
+/// value `flip`, for `lifetime` ticks, looking as `look` says (the step
+/// sword's). It runs while paused.
+pub fn spawn_copy(
+    b: &mut Battle,
+    owner: ObjectRef,
+    pos: Vec3,
+    anim: u8,
+    flip: u8,
+    lifetime: u16,
+    tether: Tether,
+    look: PlainLook,
+) -> Option<ObjectRef> {
+    let alliance = b.objects.get(owner).alliance;
+    let r = b.objects.spawn(Pool::Effect, INDEX, pos, [0xFF, 0, anim, flip])?;
+    let o = b.objects.get_mut(r);
+    o.related[0] = Some(owner);
+    o.alliance = alliance;
+    o.flags |= flags::RUN_WHILE_PAUSED;
+    *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
     Some(r)
 }
 
@@ -162,14 +201,15 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let anim = vars(b, r).anim;
     let lifetime = vars(b, r).lifetime;
     let flip = b.objects.get(r).params[3];
+    let look = vars(b, r).plain;
     let s = b.objects.sprite_mut(r);
     s.set_animation(anim, &b.content);
     s.update(&b.content);
-    // A ground shadow, the fourth parameter's flip and the spawner's
-    // colour shader (0x83E0: less green).
-    s.look.shadow = crate::object::sprite::Shadow::Ground;
+    // The spawner's shadow and colour shader (the Beast rush's: a ground
+    // shadow, 0x83E0 less green), and the fourth parameter's flip.
+    s.look.shadow = look.shadow.shadow();
     s.look.set_flip(flip);
-    s.look.color_shader = COLOR_SHADER;
+    s.look.color_shader = look.color_shader;
     let o = b.objects.get_mut(r);
     o.anim = anim;
     o.anim_loaded = anim;
@@ -183,7 +223,6 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// parameters), animation (the third) and flip (the fourth), and the look
 /// its spawner gave it.
 fn init_plain(b: &mut Battle, r: ObjectRef) {
-    use crate::object::sprite::Shadow;
     b.objects.get_mut(r).flags |= flags::VISIBLE;
     let [category, index, anim, flip] = b.objects.get(r).params;
     let Vars { lifetime, plain, .. } = *vars(b, r);
@@ -191,11 +230,7 @@ fn init_plain(b: &mut Battle, r: ObjectRef) {
     s.load(SpriteId { category, index });
     s.set_animation(anim, &b.content);
     s.update(&b.content);
-    s.look.shadow = match plain.shadow {
-        PlainShadow::WithSprite => Shadow::WithSprite,
-        PlainShadow::Ground => Shadow::Ground,
-        PlainShadow::Hidden => Shadow::Hidden,
-    };
+    s.look.shadow = plain.shadow.shadow();
     s.look.palette = plain.palette;
     s.look.set_flip(flip);
     s.look.color_shader = plain.color_shader;

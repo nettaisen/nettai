@@ -66,7 +66,7 @@ graphics/...  sound/...                   see asset-formats.md
 
 | File | Holds | Engine side |
 |---|---|---|
-| `chips/NNN-name/chip.toml` (411) | the chip record; `[gun_del_sol]` (firing time, beam looks, the gun), `sp_damage`, `[[program_advance]]` recipes that make this chip, `modifier`, `script` | `Content::chips`, `ChipData` |
+| `chips/NNN-name/chip.toml` (411) | the chip record; `[gun_del_sol]` (firing time, beam looks, the gun), `[sword]` (the blade; action 0x13's `[sword.slash]`: hit region and effect), `recovery` (a recovery chip's HP), `sp_damage`, `[[program_advance]]` recipes that make this chip, `modifier`, `script` | `Content::chips`, `ChipData` |
 | `navis/NN-name/navi.toml` (12) | sprite, element, weakness, buster bonus, move lag by variant, result banners, Cross merge height, `[own_chip]`, `[name_record]` (NameID, actor record, attach points) | `Content::navis`, `NaviData` |
 | `navis/00-megaman/forms/NN-name/form.toml` (25) | sprite, element, weakness, `[weapons]`, buster bonus, `[name_record]` | `Content::forms`, `FormData` |
 | `objects/rock/object.toml` | rock variants | `ObjectData::rocks` |
@@ -87,6 +87,7 @@ graphics/...  sound/...                   see asset-formats.md
 | `rules/status.toml` | status effects by status byte; the HP bug's drain periods | `Rules::status_effects`, `hp_bug_periods` |
 | `rules/weapons.toml` | weapon routines' charge times; buster recovery by Rapid | `Rules::weapons`, `buster_recovery` |
 | `rules/reactions.toml` | push and ice slides; the bubble's bob | `Rules::push_vectors`, `ice_vectors`, `bubble_bob` |
+| `rules/math.toml` | the sine table (`math_sinTable`, running on into `math_cosTable`) | `Rules::sine` |
 | `rules/lockon.toml` | the Beast Out lock-on's panel searches by mode; column shifts | `Rules::lockon` |
 | `rules/sp-chips.toml` | the deletion times at which SP navi chips' damage steps down | `Rules::sp_deletion_times` |
 | `rules/custom-screen.toml` | the custom screen's slot grid and neighbour scan lists | `Rules::custom_screen` |
