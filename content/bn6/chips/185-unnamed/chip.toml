@@ -1,0 +1,3 @@
+# An instant chip (action 0x1C, subtype 0): the BeastOut chip's effect.
+
+script = "../13f-beastout/chip.luau"

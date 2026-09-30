@@ -11,6 +11,9 @@ use crate::content::{ChipFamily, ChipFlags, ChipId, Element};
 use crate::object::ObjectRef;
 use crate::setup::Navi;
 
+/// The Beast forms' claw, the action weapon routine 0x1E names.
+const BEAST_CLAW: u8 = 0x52;
+
 /// Damage-word flag bits a chip use can add (see `oBattleObject_Damage`).
 mod damage_flags {
     /// Double damage (Full Synchro, anger, some crosses).
@@ -75,7 +78,9 @@ fn use_charged_chip(b: &mut Battle, r: ObjectRef) -> ChipId {
             let action = super::idle::weapon_routine(b, r, routine);
             set_attack(b, r, action, 2);
             let form = stats(b, r).form;
-            if action == super::actions::beast_claw::ACTION || (action == 0x41 && form.0 == 0x0F) {
+            // The Beast forms' claw (weapon 0x1E) and SlashCross Beast's
+            // charged sword run inside the Beast Out rush.
+            if action == BEAST_CLAW || (action == 0x41 && form.0 == 0x0F) {
                 ai_mut(b, r).attack.beast_lockon = 1;
             }
         }
