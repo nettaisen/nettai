@@ -7,7 +7,7 @@
 use crate::battle::Battle;
 use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress, set_progress};
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 
 pub const INDEX: u8 = 0x57;
 
@@ -87,7 +87,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, sprite: SpriteId, nudged: bool) -
 pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<ObjectRef> {
     let sprite = spec.sprite.expect("a form overlay has a sprite");
     let params = [sprite.category, sprite.index, spec.stepping as u8, spec.anim_offset];
-    let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), params)?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::FormOverlay, Vec3::default(), params)?;
     let alliance = b.objects.get(owner).alliance;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);

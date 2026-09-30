@@ -146,7 +146,7 @@ fn the_duel_fires_scripted_gun_del_sols() {
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            match (r.pool, b.objects.get(r).index) {
+            match (r.pool, b.slot_index(r)) {
                 (crate::object::Pool::Effect, 0x48) => beams += 1,
                 (crate::object::Pool::Actor, 5) => guns += 1,
                 _ => {}
@@ -175,7 +175,7 @@ fn duel_with(chips: &[crate::content::ChipId], ticks: usize, seed: u32) -> std::
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
         }
     }
     seen
@@ -205,7 +205,7 @@ fn bee_and_dragon_duel(ticks: usize) -> (std::collections::BTreeMap<(crate::obje
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
         }
     }
     let hp = [0, 1].map(|s| b.objects.get(b.player(s).unwrap()).hp);
@@ -258,7 +258,7 @@ fn the_thrown_chips_play_and_roll_back() {
         }
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
         }
     }
     let ticks = |k| seen.get(&k).copied().unwrap_or(0);
@@ -366,7 +366,7 @@ fn standard_duel() -> (std::collections::BTreeMap<(crate::object::Pool, u8), usi
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
         }
         broken |= (1..=6).any(|x| (1..=3).any(|y| b.field.panel(x, y).unwrap().kind == crate::field::PanelType::Broken));
     }
@@ -418,7 +418,8 @@ fn the_scripted_swords_play_and_roll_back() {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
             let o = b.objects.get(r);
-            let key = if (r.pool, o.index) == (Actor, 0) { (Actor, 0x100 + o.action as u16) } else { (r.pool, o.index as u16) };
+            let index = b.slot_index(r);
+            let key = if (r.pool, index) == (Actor, 0) { (Actor, 0x100 + o.action as u16) } else { (r.pool, index as u16) };
             *seen.entry(key).or_insert(0) += 1;
         }
     }
@@ -487,7 +488,7 @@ fn scripted_instant_chips_play_and_roll_back() {
             assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
         }
         b.tick(&t.input, t.events.clone());
-        sparkles += b.objects.in_order().filter(|&r| (r.pool, b.objects.get(r).index) == (crate::object::Pool::Effect, 0x14)).count();
+        sparkles += b.objects.in_order().filter(|&r| (r.pool, b.slot_index(r)) == (crate::object::Pool::Effect, 0x14)).count();
     }
     assert!(sparkles > 0, "no plus chip was used");
 }
@@ -513,7 +514,7 @@ fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
         spawned += b
             .objects
             .in_order()
-            .filter(|&r| content.object_kind_at(r.pool, b.objects.get(r).index).is_some_and(|k| k.name != "attachment"))
+            .filter(|&r| content.object_kind_at(r.pool, b.slot_index(r)).is_some_and(|k| k.name != "attachment"))
             .count();
     }
     assert!(spawned > 0, "no instant chip spawned anything");
@@ -542,7 +543,7 @@ fn dimming_duel(ticks: usize) -> (std::collections::BTreeMap<(crate::object::Poo
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
         }
         for side in 0..2 {
             let Some(p) = b.player(side) else { continue };
@@ -604,7 +605,7 @@ fn run_only(b: &mut Battle, kinds: &[(crate::object::Pool, u8)]) {
         let o = b.objects.get(r);
         let gated = (b.paused && o.flags & flags::RUN_WHILE_PAUSED == 0)
             || (b.is_dimmed() && o.flags & flags::RUN_WHILE_DIMMED == 0);
-        if !gated && kinds.contains(&(r.pool, o.index)) {
+        if !gated && kinds.contains(&(r.pool, b.slot_index(r))) {
             crate::kinds::update(b, r);
         }
         cur = b.objects.loop_next();
@@ -627,7 +628,7 @@ fn actor_lists_place_scripted_rocks_outside_the_navi_bookkeeping() {
     let rocks: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
     assert_eq!(rocks.len(), 2);
     let o = b.objects.get(rocks[0]);
-    assert_eq!((o.index, o.params), (0x59, [1, 0, 3, 0]));
+    assert_eq!((b.slot_index(rocks[0]), o.params), (0x59, [1, 0, 3, 0]));
     assert_eq!((o.damage, o.stamina), (200, 0), "the stage's rocks hit with 200 when thrown");
     // Registered on their panels' sides: (3,3) is side 0's, (4,1) side 1's.
     assert_eq!(b.field.objects.slots[0], Some(rocks[0]));
@@ -658,7 +659,7 @@ fn breaking_a_scripted_rock_throws_debris() {
     }
     assert_eq!(b.rng.state, rng.state);
     let order: Vec<_> =
-        b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| (o.pool, b.objects.get(o).index)).collect();
+        b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| (o.pool, b.slot_index(o))).collect();
     assert_eq!(
         &order[..4],
         [(Pool::Attack, 0x59), (Pool::Effect, 0), (Pool::Effect, 0x38), (Pool::Effect, 0x38)],
@@ -716,7 +717,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
     run_only(&mut b, &ROCK);
     let o = b.objects.get(r);
     assert_eq!((o.panel, o.hp, o.action), (PanelPos { x: 5, y: 2 }, 0, 2), "landed and breaking");
-    let hit = b.objects.in_order().find(|h| h.pool == Pool::Attack && b.objects.get(*h).index == 3).unwrap();
+    let hit = b.objects.in_order().find(|h| h.pool == Pool::Attack && b.slot_index(*h) == 3).unwrap();
     let h = b.objects.get(hit);
     assert_eq!((h.panel, h.params, h.damage), (PanelPos { x: 5, y: 2 }, [1, 5, 5, 6], 60));
 }
@@ -737,7 +738,7 @@ fn the_navi_changing_chips_change_the_navi() {
     let mut controllers = 0;
     for t in &tape {
         b.tick(&t.input, t.events.clone());
-        controllers += b.objects.in_order().filter(|r| r.pool == Effect && b.objects.get(*r).index == 0x84).count();
+        controllers += b.objects.in_order().filter(|r| r.pool == Effect && b.slot_index(*r) == 0x84).count();
     }
     assert!(controllers > 0, "the controller ran");
     let after = &b.stats[0];
@@ -1018,7 +1019,7 @@ fn trap_bomb_mine_duel(
         b.tick(&t.input, t.events.clone());
         poke(&mut b);
         for r in b.objects.in_order() {
-            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+            *seen.entry((r.pool, b.slot_index(r))).or_insert(0) += 1;
         }
     }
     seen
@@ -1047,7 +1048,7 @@ fn a_sprung_element_trap_strikes_back() {
         if sprung || b.is_dimmed() {
             return;
         }
-        let trap = b.objects.in_order().find(|&r| r.pool == Attack && b.objects.get(r).index == 0x4D);
+        let trap = b.objects.in_order().find(|&r| r.pool == Attack && b.slot_index(r) == 0x4D);
         let Some(trap) = trap.filter(|&r| b.objects.get(r).state == state::UPDATE) else { return };
         let c = b.objects.get(trap).collision.unwrap();
         b.collision.get_mut(c).acc.element_damage[2] = 10;

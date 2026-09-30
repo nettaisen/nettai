@@ -10,7 +10,7 @@ use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::player::{Emotion, emotion};
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 
 pub const INDEX: u8 = 0x5E;
 
@@ -34,7 +34,7 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 /// `sub_80C4C12`: an aura on `navi`, linked from its actor data
 /// (AIData+0x5C). It runs while paused.
 pub fn spawn(b: &mut Battle, navi: ObjectRef) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), [0; 4])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::FullSynchroAura, Vec3::default(), [0; 4])?;
     let (alliance, flip) = {
         let o = b.objects.get(navi);
         (o.alliance, o.flip)
