@@ -192,7 +192,14 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
     let (panel, element) = (o.panel, o.element);
     let user = user(b, r);
-    let navi = match b.behaviors.hook(Hook::NaviChip(v.navi)) {
+    // The chip's own navi, if content defines the chip; else
+    // off_802CD5C, by the subtype.
+    let defined = match b.content.defs.chip_with_id(v.chip.chip).map(|c| c.usage) {
+        Some(crate::content::ChipUsage::Navi(f)) => Some(f),
+        Some(u) => panic!("chip {:#x} is a navi chip, but its definition uses it as {u:?}", v.chip.chip),
+        None => None,
+    };
+    let navi = match defined.or_else(|| b.content.defs.hook(Hook::NaviChip(v.navi))) {
         Some(hook) => {
             let spec = NaviChipSpec { panel, element, params: v.params, damage };
             crate::behavior::call_hook(b, hook, HookCall::NaviChip { user, controller: r, spec }).object()

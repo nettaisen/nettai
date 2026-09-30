@@ -8,6 +8,7 @@
 use bn6_content_api::{DimmingChipSpec, Hook, HookCall};
 
 use crate::battle::Battle;
+use crate::content::ChipUsage;
 use crate::kinds::player::{ai, ai_mut, exit_attack_state};
 use crate::object::ObjectRef;
 
@@ -20,10 +21,15 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     }
     let a = ai(b, r).attack.clone();
     let damage = a.damage as u32 | (a.hit_param as u32) << 16;
+    // The chip's own controller, if content defines the chip; else
     // off_802CCB4, by the chip's subtype. (Its subtypes 34, 35, 39 and 40
     // are null: the game jumps to address 0.)
-    let Some(hook) = b.behaviors.hook(Hook::DimmingChip(a.variant)) else {
-        panic!("dimming chip subtype {} (off_802CCB4) is not implemented yet", a.variant);
+    let hook = match b.content.defs.chip_with_id(a.chip_id).map(|c| c.usage) {
+        Some(ChipUsage::Dimming(f)) => f,
+        Some(u) => panic!("chip {:#x} is a dimming chip, but its definition uses it as {u:?}", a.chip_id),
+        None => b.content.defs.hook(Hook::DimmingChip(a.variant)).unwrap_or_else(|| {
+            panic!("dimming chip subtype {} (off_802CCB4) is not implemented yet", a.variant)
+        }),
     };
     let spec = DimmingChipSpec { element: a.element, params: a.params, damage, chip: a.chip_id, bonus: a.extra };
     let controller = crate::behavior::call_hook(b, hook, HookCall::DimmingChip { user: r, spec }).object();

@@ -345,8 +345,10 @@ about 5 ms.
 
 The `Arc<Content>` is `Send + Sync` and mlua's `Lua` is not, so each thread that runs battles makes its own VM on
 first use, cached by content hash (`for_content` keeps one per thread). Every VM made from the same content behaves
-identically (the fresh-VM test in §3.1), so VMs are a cache, not part of any battle. `Battle::behaviors` is the
-handle (an `Rc`); a snapshot copies the handle, and the digest leaves it out.
+identically (the fresh-VM test in §3.1), so VMs are a cache, not part of any battle: `Battle` holds no handle to
+one, and a content call uses the thread's runtime for the hash the round's setup carries (`behavior::with_runtime`
+picks another). Since content model v2's step 3 the runtime loads every module of the pack (the define phase) and
+binds what the engine plans from the content's registries (docs/design/content-model-v2.md §7.3).
 
 ### 5.2 Data
 

@@ -182,10 +182,6 @@ impl Hash for Battle {
             dimming,
             sound: _,
             outcome,
-            // Code, not state: the content runtime keeps nothing between
-            // calls (docs/design/scripting.md); content state lives in
-            // `objects` and `actors`.
-            behaviors: _,
         } = self;
         setup.hash(h);
         stats.hash(h);

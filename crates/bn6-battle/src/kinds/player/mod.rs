@@ -305,13 +305,29 @@ fn set_action(b: &mut Battle, r: ObjectRef, action: u8) {
 
 /// `object_setAttack0..5`: start `action`, recording which helper started
 /// it in the attack variables (§M2.2).
-pub(crate) fn set_attack(b: &mut Battle, r: ObjectRef, action: u8, kind: u8) {
-    set_action(b, r, action);
+pub(crate) fn set_attack(b: &mut Battle, r: ObjectRef, action: impl Into<NaviAttack>, kind: u8) {
+    let action = action.into();
+    set_action(b, r, action.number);
     let a = &mut ai_mut(b, r).attack;
     a.step = 0;
     a.step_init = 0;
     a.kind = kind;
+    a.content_action = action.content;
     reset_attack_links(b, r);
+}
+
+/// An attack to start: the navi's action number (its CurAction), and the
+/// content action it runs when the number alone doesn't name it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NaviAttack {
+    pub number: u8,
+    pub content: Option<bn6_content_api::ActionHandle>,
+}
+
+impl From<u8> for NaviAttack {
+    fn from(number: u8) -> NaviAttack {
+        NaviAttack { number, content: None }
+    }
 }
 
 /// `sub_801011A`: clear the attack's link bytes and unfreeze the Beast
@@ -485,7 +501,7 @@ pub(crate) fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
 /// its action (for weapon routines that use the chip, such as SlashCross's
 /// A-charge).
 pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) -> u8 {
-    chip_use::prepare(b, r, 0)
+    chip_use::prepare(b, r, 0).number
 }
 
 // ---- The transformation sequencer's checks -------------------------------------

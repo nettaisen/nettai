@@ -74,8 +74,24 @@ fn main() {
         "check" => {
             let mut r = Report::default();
             let m = pack::read_manifest(&a.pack, &mut r).unwrap_or_else(|| fail(&r));
-            if m.battle.is_some() {
-                battle::load(&a.pack, &mut r);
+            if m.battle.is_some()
+                && let Some(mut c) = battle::load(&a.pack, &mut r)
+            {
+                // The define phase: every module loads, and what the
+                // scripts define and the data registers fits together.
+                let t = std::time::Instant::now();
+                match c.define() {
+                    Ok(()) => r.note(
+                        "scripts",
+                        format!(
+                            "{} modules define {} definitions ({:.1?})",
+                            c.scripts.modules.len(),
+                            c.defs.definitions.defs.len(),
+                            t.elapsed()
+                        ),
+                    ),
+                    Err(e) => r.error("scripts", e.message),
+                }
             }
             if m.graphics.is_some() {
                 pack::import_graphics(&a.pack, &mut r);
