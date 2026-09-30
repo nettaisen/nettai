@@ -686,18 +686,8 @@ impl UserData for Collision {
             });
             if f.writable() {
                 fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
-                    let registry = match f {
-                        CollisionField::Region => Some(Registry::Region),
-                        CollisionField::HitEffect => Some(Registry::Spark),
-                        _ => None,
-                    };
-                    with(|api, b| {
-                        let v = match registry {
-                            Some(r) if matches!(v, LuaValue::Table(_)) => Value::Int(def_or_number(api, b, v, r, f.name())? as i64),
-                            _ => to_api(v, &f.ty(), f.name())?,
-                        };
-                        api.collision_set(this.0, f, v).map_err(api_error)
-                    })
+                    let v = to_api(v, &f.ty(), f.name())?;
+                    with(|api, _| api.collision_set(this.0, f, v).map_err(api_error))
                 });
             }
         }
@@ -705,6 +695,20 @@ impl UserData for Collision {
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("present", |_, this, ()| with(|api, _| Ok(api.present_collision(this.0))));
+        // A region or a hit spark content defines.
+        for (name, field, registry) in
+            [("set_region", CollisionField::Region, Registry::Region), ("set_hit_effect", CollisionField::HitEffect, Registry::Spark)]
+        {
+            methods.add_method(name, move |_, this, v: LuaValue| {
+                if !matches!(v, LuaValue::Table(_)) {
+                    return Err(mlua::Error::runtime(format!("collision:{name}: expected a {registry} definition")));
+                }
+                with(|api, b| {
+                    let n = def_or_number(api, b, v, registry, name)?;
+                    api.collision_set(this.0, field, Value::Int(n as i64)).map_err(api_error)
+                })
+            });
+        }
         methods.add_method("remove", |_, this, ()| with(|api, _| Ok(api.remove_collision(this.0))));
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free_collision(this.0))));
         methods.add_method("element_damage", |_, this, element: LuaValue| {

@@ -27,7 +27,7 @@ launcher.kind = define.kind {
         s.launched = true
         local o = battle.spawn(ticker.kind, me.pos)
         if o then
-            local t = o.state :: ticker.State
+            local t = o.state :: any
             t.variant = SHORT
             t.parent = me.kind
         end
@@ -35,7 +35,7 @@ launcher.kind = define.kind {
         battle.play_sound(TICK)
         me:create_collision()
         me:setup_collision(THROWN, HITS, 0)
-        me.collision.region = WIDE
+        me.collision:set_region(WIDE)
     end,
 }
 
