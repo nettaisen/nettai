@@ -30,6 +30,10 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local _ = data.chips[1].gun_del_sol.firing_tick", "not a data field"),
         ("local _ = data.objects.projectiles[0].hit_efect", "not a projectile field"),
         ("local _: ProjectileShot = { kind = 0, damage = 1 }", "a shot without its height"),
+        (
+            "local function f(me: Object) battle.form_overlay(me, { sprite = \"08-12\", stepping = \"dimmed\" }) end",
+            "not a form overlay stepping",
+        ),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

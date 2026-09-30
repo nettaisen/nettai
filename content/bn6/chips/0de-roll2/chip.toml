@@ -1,0 +1,3 @@
+# A navi chip (subtype 0): its navi is Roll.
+
+script = "../../objects/roll/roll.luau"
