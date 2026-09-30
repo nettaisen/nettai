@@ -574,6 +574,8 @@ declare field: {
     -- `object_crackPanel`: crack a solid panel, or break a cracked,
     -- unoccupied one.
     crack: (x: number, y: number) -> boolean,
+    -- `object_breakPanel`: break a solid, unoccupied panel, cracked or not.
+    break_panel: (x: number, y: number) -> boolean,
     -- `object_isPanelSolid`: something can stand on it (not missing or
     -- broken).
     solid: (x: number, y: number) -> boolean,
@@ -716,6 +718,9 @@ export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } 
 
 export type WeaponData = { id: number, name: string, action: number?, script: string }
 
+-- A panel relative to another, dx toward the facing side.
+export type PanelOffset = { dx: number, dy: number }
+
 -- An object kind a script implements.
 export type ObjectKindData = { pool: Pool, index: number, script: string }
 
@@ -736,6 +741,9 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- Region shapes by number (`PanelOffsetListsPointerTable`): the
+        -- panels a region covers, dx toward the facing side.
+        regions: { [number]: { PanelOffset } },
     },
 }
 

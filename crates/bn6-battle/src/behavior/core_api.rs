@@ -378,6 +378,10 @@ impl CoreApi for Battle {
         Battle::crack_panel(self, p.x, p.y)
     }
 
+    fn break_panel(&mut self, p: PanelPos) -> bool {
+        Battle::break_panel(self, p.x, p.y)
+    }
+
     fn panel_solid(&self, p: PanelPos) -> bool {
         self.field.is_solid(p.x, p.y)
     }

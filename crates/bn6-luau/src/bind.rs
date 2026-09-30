@@ -950,6 +950,10 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.crack_panel(p)))
     });
+    lib_fn!(lua, t, "break_panel", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.break_panel(p)))
+    });
     lib_fn!(lua, t, "solid", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.panel_solid(p)))
