@@ -29,16 +29,23 @@ fn battles_run_the_content_scripts() {
         [
             "area-grab",
             "attachment",
+            "countdown-bomb",
             "dust-ball",
+            "elem-trap",
+            "elem-trap-strike",
             "erase-beam",
             "erase-man",
             "erase-mark",
             "grab-shot",
             "invisible",
+            "land-mine",
+            "mine",
+            "panel-bursts",
             "rock",
             "rock-cube",
             "rock-debris",
             "sun-beam",
+            "time-bom",
             "trap-chip",
         ]
     );
@@ -477,4 +484,84 @@ fn native_code_plays_the_duel_like_the_interpreter() {
     let b = Behaviors::load(&testing::build(), options).unwrap();
     let have = digests(&tape, Battle::with_behaviors(scenario::setup(), scenario::content(), b));
     assert_eq!(have, want);
+}
+
+// ---- ElemTrap (dimming chip subtype 20), TimeBom (10), Mine (11) ------------------------
+
+fn trap_bomb_mine_setup() -> crate::setup::RoundSetup {
+    let mut s = scenario::setup_with(&[testing::ELEM_TRAP, testing::TIME_BOMB, testing::TIME_BOMB_PLUS, testing::MINE]);
+    s.players[1] = scenario::setup().players[1];
+    s
+}
+
+/// A duel with the element trap, the time bombs and the mine in side 0's
+/// folder (and GunDelSols in side 1's): after each tick `poke` may reach
+/// into the battle; the ticks each object kind was on the field, by (pool,
+/// index).
+fn trap_bomb_mine_duel(
+    ticks: usize,
+    mut poke: impl FnMut(&mut Battle),
+) -> std::collections::BTreeMap<(crate::object::Pool, u8), usize> {
+    let setup = trap_bomb_mine_setup;
+    let tape = scenario::record_on(setup(), ticks, 5);
+    let mut b = Battle::new(setup(), scenario::content());
+    let mut seen = std::collections::BTreeMap::new();
+    for t in &tape {
+        b.tick(&t.input, t.events.clone());
+        poke(&mut b);
+        for r in b.objects.in_order() {
+            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+        }
+    }
+    seen
+}
+
+#[test]
+fn the_trap_bomb_and_mine_chips_play() {
+    use crate::object::Pool::{Attack, Effect};
+    let seen = trap_bomb_mine_duel(2400, |_| {});
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // The element trap waits on the field.
+    assert!(ticks((Effect, 0x2A)) > 0 && ticks((Attack, 0x4D)) > 0, "the element trap: {seen:?}");
+    // The time bombs' controller sets bombs; the mine's lays mines.
+    assert!(ticks((Effect, 0x27)) > 0 && ticks((Attack, 0x4B)) > 0, "the time bombs: {seen:?}");
+    assert!(ticks((Effect, 0x29)) > 0 && ticks((Attack, 0x4C)) > 0, "the mine: {seen:?}");
+}
+
+#[test]
+fn a_sprung_element_trap_strikes_back() {
+    use crate::object::Pool::{Attack, Effect};
+    use crate::object::state;
+    // Once the trap stands (and the battle isn't dimmed), aqua damage
+    // reaches it: its counterattack's dimming strikes, and bursts follow.
+    let mut sprung = false;
+    let seen = trap_bomb_mine_duel(2400, |b| {
+        if sprung || b.is_dimmed() {
+            return;
+        }
+        let trap = b.objects.in_order().find(|&r| r.pool == Attack && b.objects.get(r).index == 0x4D);
+        let Some(trap) = trap.filter(|&r| b.objects.get(r).state == state::UPDATE) else { return };
+        let c = b.objects.get(trap).collision.unwrap();
+        b.collision.get_mut(c).acc.element_damage[2] = 10;
+        sprung = true;
+    });
+    assert!(sprung, "no element trap stood: {seen:?}");
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    assert!(ticks((Effect, 0x2B)) > 0, "the counterattack's controller: {seen:?}");
+    assert!(ticks((Effect, 0x24)) > 0, "the bursts: {seen:?}");
+}
+
+#[test]
+fn trap_bomb_and_mine_chips_roll_back() {
+    let setup = trap_bomb_mine_setup;
+    let tape = scenario::record_on(setup(), 2400, 5);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    for (i, t) in tape.iter().enumerate() {
+        if i % 83 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+    }
 }
