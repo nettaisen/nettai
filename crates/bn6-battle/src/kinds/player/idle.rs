@@ -72,7 +72,32 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         }
         return;
     }
-    select_specials(b, r);
+    start_specials(b, r);
+    let side = b.objects.get(r).alliance as usize;
+    // sub_802E4B8: a running special takes the navi over.
+    if b.sides[side].select_special != 0 {
+        return select_special(b, r);
+    }
+    if b.sides[side].cross_special != 0 {
+        if b.sides[side].cross_special_ticks == 0 {
+            b.sides[side].cross_special = 0;
+            return set_attack(b, r, super::actions::cross_special::ACTION, 0);
+        }
+        use super::berserk::Outcome;
+        match super::berserk::cross_special(b, r) {
+            Outcome::Nothing | Outcome::Moved => {}
+            Outcome::Chip => {
+                let chip = ai(b, r).attack.chip_id;
+                after_chip(b, r, chip);
+            }
+            Outcome::Buster => {
+                leave_idle(b, r);
+                let action = weapon_routine(b, r, ai(b, r).buster);
+                set_attack(b, r, action, 1);
+            }
+        }
+        return;
+    }
     if ai(b, r).requests & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED) != 0 {
         return reactive_chip(b, r);
     }
@@ -152,16 +177,47 @@ fn leave_idle(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).status &= !status::CONTROLLABLE;
 }
 
-/// `sub_802E4E4` + `sub_802E4B8`: the SELECT and Cross specials of the
-/// battle flag 0x40 mode.
-fn select_specials(b: &mut Battle, r: ObjectRef) {
-    if ai(b, r).requests & (request::SELECT_SPECIAL | request::CROSS_SPECIAL) != 0 {
-        panic!("SELECT / Cross specials (sub_802E4E4) are not implemented yet");
+/// `sub_802E4E4`: the specials' requests start them: the SELECT special
+/// (the battle flag 0x40 mode's), and the Cross special (DarkInvs'
+/// auto-battle: 0x1E0 ticks, invulnerable meanwhile, its controller's
+/// state cleared).
+fn start_specials(b: &mut Battle, r: ObjectRef) {
+    let side = b.objects.get(r).alliance as usize;
+    if ai(b, r).requests & request::SELECT_SPECIAL != 0 {
+        ai_mut(b, r).requests &= !request::SELECT_SPECIAL;
+        b.sides[side].select_special = 1;
+        clear_special_selection(b, r);
     }
-    let side = &b.sides[b.objects.get(r).alliance as usize];
-    if side.select_special != 0 || side.cross_special != 0 {
-        panic!("SELECT / Cross special controllers (sub_802F068, sub_802D4C6) are not implemented yet");
+    if ai(b, r).requests & request::CROSS_SPECIAL != 0 {
+        ai_mut(b, r).requests &= !request::CROSS_SPECIAL;
+        b.sides[side].cross_special = 1;
+        clear_special_selection(b, r);
+        b.sides[side].cross_special_ticks = 0x1E0;
+        super::set_invulnerable(b, r, 0xFFFF);
+        super::berserk::reset(b, r);
     }
+}
+
+/// `sub_802E1EC`: the special's selection is cleared: requests
+/// 0x100000..=0x1000000 (and side bytes +0x40, +0x41, which nothing ported
+/// reads).
+fn clear_special_selection(b: &mut Battle, r: ObjectRef) {
+    ai_mut(b, r).requests &= !0x01F0_0000;
+}
+
+/// `sub_802F068`: the SELECT special holds the navi for its ticks, then
+/// ends (`sub_802F084`: the gauge would be emptied if side byte +3 were set,
+/// but only `sub_802E07C` writes it, with 0).
+fn select_special(b: &mut Battle, r: ObjectRef) {
+    let s = &mut b.sides[b.objects.get(r).alliance as usize];
+    if s.select_ticks != 0 {
+        s.select_ticks -= 1;
+        if s.select_ticks != 0 {
+            return;
+        }
+    }
+    super::reset_select_special(s);
+    ai_mut(b, r).requests &= !request::SELECT_SPECIAL;
 }
 
 /// `sub_8010660`: a NaviCust program (stat 0x0D bit 4) fires once when

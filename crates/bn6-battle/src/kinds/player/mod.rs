@@ -869,9 +869,15 @@ fn reset_side_state(b: &mut Battle, r: ObjectRef) {
         // docs/engine/field-names.md, SideState).
         s.active = 1;
         s.panel_x = panel_x;
-        // sub_802E07C
-        s.select_special = 0;
+        reset_select_special(s);
     }
+}
+
+/// `sub_802E07C`: the SELECT special is over and its hold rearmed. (It
+/// also clears side bytes nothing ported reads: +3, +0x2A, +0x18..+0x23.)
+pub(crate) fn reset_select_special(s: &mut crate::battle::SideState) {
+    s.select_special = 0;
+    s.select_ticks = 0xB4;
 }
 
 /// `sub_8013FF8`: the NaviCust starting-HP bug (stat 0x3D), which never

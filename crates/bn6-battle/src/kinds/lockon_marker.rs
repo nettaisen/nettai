@@ -64,6 +64,19 @@ pub fn panel(b: &Battle, r: ObjectRef) -> PanelPos {
     b.objects.get(r).panel
 }
 
+/// The lock-on panel read without a marker (outside Beast Out, where the
+/// Cross special's chips rush too): the game reads it through a null
+/// pointer, from BIOS memory, whose open-bus bytes (the BIOS's last opcode
+/// fetched; after an SWI, 0xE3A02004: 0xA0, 0xE3) name no panel on the
+/// field, as any of its values would.
+pub const NO_MARKER_PANEL: PanelPos = PanelPos { x: 0xA0, y: 0xE3 };
+
+/// `sub_80E164A` on the navi's marker slot (AIData+0x40), which may be
+/// empty.
+pub fn panel_of(b: &Battle, marker: Option<ObjectRef>) -> PanelPos {
+    marker.map_or(NO_MARKER_PANEL, |m| panel(b, m))
+}
+
 pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
         state::INIT => {
