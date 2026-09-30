@@ -1,0 +1,7 @@
+# Colonel, the navi of the Colonel chips and CrossDiv (actor object #0x01, `sub_80B8210`), is
+# a script.
+
+[kind]
+pool = "actor"
+index = 0x01
+script = "colonel.luau"

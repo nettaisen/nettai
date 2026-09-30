@@ -789,6 +789,22 @@ pub trait CoreApi {
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
     /// `sub_80E08C4`: hit spark `id` at `pos`.
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
+    /// `sub_80C468C`: a form overlay (actor 0x57) on `owner`: `sprite`,
+    /// following the owner's animation plus `anim_offset`; `stepping` 0
+    /// normal, 1 while dimmed, 2 always (Param3); a pixel nearer when
+    /// `nudged`; wearing the owner's palette when `owner_palette`.
+    fn spawn_form_overlay(
+        &mut self,
+        owner: ObjectRef,
+        sprite: SpriteId,
+        stepping: u8,
+        anim_offset: u8,
+        nudged: bool,
+        owner_palette: bool,
+    ) -> Option<ObjectRef>;
+    /// `sub_80E11E0`: a screen palette flash (effect 0x0A, its white
+    /// variant 0) for `duration` ticks.
+    fn spawn_palette_flash(&mut self, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
@@ -899,4 +915,7 @@ pub trait CoreApi {
     fn show_user(&mut self, user: ObjectRef);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
+    /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
+    /// navi warp, actor 0x2D).
+    fn navi_warp(&mut self, user: ObjectRef, out: bool);
 }

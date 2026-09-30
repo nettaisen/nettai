@@ -665,6 +665,28 @@ impl CoreApi for Battle {
         kinds::spark::spawn(self, owner, pos, id)
     }
 
+    fn spawn_form_overlay(
+        &mut self,
+        owner: ObjectRef,
+        sprite: SpriteId,
+        stepping: u8,
+        anim_offset: u8,
+        nudged: bool,
+        owner_palette: bool,
+    ) -> Option<ObjectRef> {
+        use kinds::form_overlay::{Stepping, Vars, spawn_with};
+        let stepping = match stepping {
+            0 => Stepping::Normal,
+            1 => Stepping::WhileDimmed,
+            _ => Stepping::Always,
+        };
+        spawn_with(self, owner, Vars { sprite: Some(sprite), nudged, anim_offset, stepping, owner_palette })
+    }
+
+    fn spawn_palette_flash(&mut self, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
+        kinds::palette_flash::spawn(self, duration, while_dimmed, while_paused)
+    }
+
     fn death_hook(&mut self, o: ObjectRef, name_id: u16) {
         kinds::player::form::navi_death_hook(self, o, name_id);
     }
@@ -1052,5 +1074,10 @@ impl CoreApi for Battle {
 
     fn navi_chip_left(&mut self, controller: ObjectRef) {
         kinds::navi_chip::navi_left(self, controller);
+    }
+
+    fn navi_warp(&mut self, user: ObjectRef, out: bool) {
+        use kinds::navi_warp::{Warp, spawn};
+        spawn(self, user, if out { Warp::Out } else { Warp::In });
     }
 }

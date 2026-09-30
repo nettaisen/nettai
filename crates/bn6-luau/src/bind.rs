@@ -729,6 +729,9 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     g.set("dimming", dimming_lib(lua)?)?;
 
     let navi_chip = lua.create_table()?;
+    lib_fn!(lua, navi_chip, "warp", |_, (user, out): (mlua::UserDataRef<Object>, bool)| {
+        with(|api, _| Ok(api.navi_warp(user.0, out)))
+    });
     lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.navi_chip_left(c.0)))
     });
@@ -920,6 +923,31 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             bug_arg: table_int(&spec, "bug_arg")? as u8,
         };
         let o = with(|api, _| Ok(api.spawn_hitbox(owner.0, &s)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "form_overlay", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
+        let sprite = sprite_id(spec.raw_get("sprite")?, None)?;
+        let stepping: mlua::LuaString = spec.raw_get("stepping")?;
+        let stepping = named(&stepping, "stepping", |s| ["normal", "while_dimmed", "always"].iter().position(|n| *n == s))?;
+        let offset: Option<LuaValue> = spec.raw_get("anim_offset")?;
+        let anim_offset = offset.map_or(Ok(0), |v| u8_arg(v, "anim_offset"))?;
+        let nudged: Option<bool> = spec.raw_get("nudged")?;
+        let owner_palette: Option<bool> = spec.raw_get("owner_palette")?;
+        let o = with(|api, _| {
+            Ok(api.spawn_form_overlay(
+                owner.0,
+                sprite,
+                stepping as u8,
+                anim_offset,
+                nudged.unwrap_or(false),
+                owner_palette.unwrap_or(false),
+            ))
+        })?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "palette_flash", |lua, (duration, while_dimmed, while_paused): (LuaValue, bool, bool)| {
+        let duration = u8_arg(duration, "duration")?;
+        let o = with(|api, _| Ok(api.spawn_palette_flash(duration, while_dimmed, while_paused)))?;
         object_value(lua, o)
     });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {

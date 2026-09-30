@@ -1,0 +1,6 @@
+# Roll's heart (attack object #0x4E, `sub_80CE118`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x4E
+script = "roll_heart.luau"
