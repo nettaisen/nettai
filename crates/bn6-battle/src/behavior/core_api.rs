@@ -11,7 +11,7 @@ use bn6_content_api::{
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
-use bn6_content_api::{ActionHandle, Registry, StateId};
+use bn6_content_api::{ActionHandle, Registry, SpawnAt, StateId};
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 
@@ -634,6 +634,21 @@ impl CoreApi for Battle {
         Ok(super::spawn_object_at_end(self, pool, index, pos, params))
     }
 
+    fn spawn_def(&mut self, kind: u16, pos: Vec3, at: SpawnAt) -> ApiResult<Option<ObjectRef>> {
+        let k = self.content.defs.kinds.get(kind as usize).ok_or_else(|| ApiError::Other(format!("no kind has handle {kind}")))?;
+        let (pool, index) =
+            k.slot.ok_or_else(|| ApiError::Other(format!("object kind {} fills no object slot yet (compat)", k.key)))?;
+        Ok(match at {
+            SpawnAt::AfterCurrent => super::spawn_object(self, pool, index, pos, [0; 4]),
+            SpawnAt::First => super::spawn_object_first(self, pool, index, pos, [0; 4]),
+            SpawnAt::End => super::spawn_object_at_end(self, pool, index, pos, [0; 4]),
+        })
+    }
+
+    fn object_kind(&self, o: ObjectRef) -> Option<u16> {
+        self.content.defs.kind_at(o.pool, self.objects.get(o).index).map(|h| h.0)
+    }
+
     fn free(&mut self, o: ObjectRef) {
         self.objects.free(o);
     }
@@ -877,6 +892,21 @@ impl CoreApi for Battle {
 
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef> {
         kinds::spark::spawn(self, owner, pos, id)
+    }
+
+    fn spawn_effect_def(&mut self, pos: Vec3, effect: u16, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
+        let look = self.content.defs.effects[effect as usize];
+        kinds::effect::spawn_look(self, pos, look, flip, palette_add, priority)
+    }
+
+    fn spawn_region_effects_def(&mut self, x: i32, y: i32, region: u8, side: u8, effect: u16, z: i32) {
+        let look = self.content.defs.effects[effect as usize];
+        kinds::effect::spawn_look_over_region(self, x, y, region, side, look, z);
+    }
+
+    fn spawn_spark_def(&mut self, owner: ObjectRef, pos: Vec3, spark: u16) -> Option<ObjectRef> {
+        let look = self.content.defs.sparks[spark as usize];
+        kinds::spark::spawn_look(self, owner, pos, look)
     }
 
     fn spawn_form_overlay(
@@ -1139,6 +1169,15 @@ impl CoreApi for Battle {
 
     fn set_attack(&mut self, o: ObjectRef, action: u8, kind: u8) {
         kinds::player::set_attack(self, o, action, kind);
+    }
+
+    fn set_content_attack(&mut self, o: ObjectRef, action: u16, kind: u8) -> ApiResult<()> {
+        let h = ActionHandle(action);
+        let a = self.content.defs.actions.get(h.index()).ok_or_else(|| ApiError::Other(format!("no action has handle {action}")))?;
+        let number =
+            a.number.ok_or_else(|| ApiError::Other(format!("action {} has no action number (compat)", a.key)))?;
+        kinds::player::set_attack(self, o, kinds::player::NaviAttack { number, content: Some(h) }, kind);
+        Ok(())
     }
 
     fn reset_attack_links(&mut self, o: ObjectRef) {

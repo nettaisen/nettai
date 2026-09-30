@@ -427,7 +427,7 @@ pub fn scripts() -> Scripts {
                 (module.clone(), module)
             });
             let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string())).chain(weapons);
-            Scripts { modules: modules.map(|(to, from)| (to, read(&from))).collect() }
+            Scripts::new(modules.map(|(to, from)| (to, read(&from))).collect())
         })
         .clone()
 }
