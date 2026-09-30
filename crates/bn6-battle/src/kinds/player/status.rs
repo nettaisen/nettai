@@ -811,10 +811,11 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return actions::transform::revert(b, r);
     }
     if st & ai_status::CHANGING_CROSS != 0 {
-        panic!("pause action (sub_802D714) is not implemented yet");
+        return actions::cross_change::change(b, r);
     }
     if st & ai_status::CROSS_KNOCKOUT != 0 {
-        panic!("pause action (sub_802D926) is not implemented yet");
+        ai_mut(b, r).attack.variant = 0;
+        return actions::cross_change::knock_out(b, r);
     }
     let f = ai(b, r).requests;
     let (bit, state) = if f & request::FORM_CHANGE != 0 {

@@ -749,6 +749,13 @@ fn update_element(b: &mut Battle, r: ObjectRef) {
 /// hit modifier, region, charge, weapon bytes, element, body damage).
 fn reset_status(b: &mut Battle, r: ObjectRef) {
     reset_navicust_state(b, r);
+    reset_status_tail(b, r, true);
+}
+
+/// `sub_80144CA` (`sub_80144C0` past its NaviCust reset): hand bonuses,
+/// hit modifier, region, charge, weapon bytes (only from `sub_80144C0`),
+/// form flags, element, body damage.
+fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     let side = b.objects.get(r).alliance as usize;
     b.hands[side].charge_bonus = [0; 6];
     ai_mut(b, r).status &= !0x20;
@@ -758,7 +765,9 @@ fn reset_status(b: &mut Battle, r: ObjectRef) {
     c.hit_mod_base = hm;
     c.region = 1;
     reset_charge(b, r);
-    load_weapons(b, r);
+    if reload_weapons {
+        load_weapons(b, r);
+    }
     form::apply_form_flags(b, r);
     update_element(b, r);
     // sub_80142C2
