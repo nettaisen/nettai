@@ -1599,7 +1599,10 @@ The emotion function is `sub_8015B64`. It returns the first matching case:
 
 In the match, Mood = 0x80 for both sides, so emotion = 0.
 
-**Action 0x11, `sub_80EB436`**. It dispatches on AV.Unk_00:
+**Action 0x11, `sub_80EB436`** (the pack's `navis/00-megaman/weapons/00-buster/buster.luau`, with the weapon
+routine; the weapon ids that alias `sub_8011A26` in `off_80117D4`, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D..0x51, 0x6F, 0x70,
+0x77, 0x79, 0x7B, 0x7E and 0x82, name the same module). It dispatches on AV.Unk_00 (a sub-phase past 4 reads
+past its two-entry table):
 
 Sub-phase 0, `sub_80EB450`:
 - On init (AV.Unk_01 == 0):
@@ -1609,10 +1612,21 @@ Sub-phase 0, `sub_80EB450`:
   - AV.Unk_01 = 4, AV.Unk_10 = 0.
 - Every tick, if AV.Unk_10 == 1 (**fire**):
   - `PlaySoundEffect(SOUND_BUSTER_6A)`.
-  - For AV.Unk_03 = 0: `AV.Unk_12 = sub_800FAAC(AV.Unk_0C, AV.u32[0x08], 0x180000)`.
-    - Variant 1 fires two more shots with AV.Unk_0D = 1 and 0xFF, i.e. Param2 = row deltas.
-    - Variant 2 uses `sub_80C6248`.
-  - Then `sub_80B8E30` with r7 = &obj.RelatedObject1Ptr spawns a second T1#5 (muzzle flash).
+  - Variants 0 and 1: `AV.Unk_12 = sub_800FAAC(AV.Unk_0C (ldrb), AV.u32[0x08], 0x180000)`: the projectile (§B8)
+    from the panel in front, 24 pixels up, and the recovery counted from there.
+    - Variant 1 (the spread) fires two more shots with AV.Unk_0D = 1 and then 0xFF (`ldrh` of AV.Unk_0C, so
+      Param2 = the row delta); AV.Unk_0D keeps 0xFF. Their recoveries are discarded. No weapon routine of
+      MegaMan's sets variant 1 (**unverified**: no scenario reaches it).
+    - Variant 2 (the absorbed-obstacle throw of routines 0x2B/0x2C) plays sound 0xFF too and throws
+      (`sub_80C6248`): the flying shot (T3 #0xB, §B8) of kind 6 from the center of the panel in front, 12 pixels
+      up, with damage AV.u32[0x08] and the obstacle word AV+0x30 as its ExtraVars. It sets no recovery: sub-phase
+      4 waits whatever AV.Unk_12 holds from the last action that wrote it. The port keeps AV.Unk_12 as the navi's
+      `recovery` word (`AttackVars::recovery`), which actions 0x11 and 0x16 write; a chip action that writes the
+      same word in the game but keeps its own state in the port would leave it unchanged (**unverified**). A lab
+      scenario (the Falzar side of the gregar base in DustCross: a shot, a blank shot, B+Back, the throw)
+      verified that the throw waits the first shot's recovery through the blank shot and the pull.
+  - Then `sub_80B8E30` with r7 = &obj.RelatedObject1Ptr spawns a second T1#5 with r4 as its parameters: 5, the
+    muzzle flash; after a throw, r4 still holds the throw's 6, so a second buster arm.
 - Every tick: `AV.Unk_10++`. If > 4 → AV.u16[0] = 4 (sub-phase 4, not initialized).
 - So sub-phase 0 lasts 5 ticks and fires on its 2nd tick.
 
@@ -1682,7 +1696,8 @@ Minimum buster cycle: N+7 frames.
 - Store s to AV.Unk_0C as a **u32** (this zeroes Unk_0D..0F).
 - Zero AV.Unk_02, 03, 04, 05, 06, 0A. Return **0x16**.
 
-**Action 0x16, `sub_80EBE00`**:
+**Action 0x16, `sub_80EBE00`** (the pack's `navis/00-megaman/weapons/01-charged-shot/charged_shot.luau`, with the
+weapon routine; a sub-phase past 8 reads past its table):
 - **Sub-phase 0** (`sub_80EBE20`): on init AV.Unk_10 = 5 (`nullsub_12` is a no-op). Each tick `Unk_10--`. When the result ≤ 0, set sub-phase 4 and run `sub_80EBE54` in the same tick.
 - **Sub-phase 4** (`sub_80EBE54`): same as the buster's sub-phase 0 (anim 0x0E, arm T1#5, USING_ACTION, fire on its 2nd tick) with these differences:
   - It fires with `ldrh` damage and Param1 = AV.Unk_0C (6).
@@ -1693,22 +1708,38 @@ Minimum buster cycle: N+7 frames.
 
 #### B8. Projectile: T3 index 0, `sub_80C4E58`
 
-**Spawn**, `sub_80C4FFE`:
-- `object_spawnType3(0, …, Params = AV.Unk_0C | AV.Unk_0D<<8)`.
-- Then `sub_801155A` sets PanelX/PanelY = the panel in front, Damage (u32 at +0x2C) = r6, Alliance/Flip from the player, and RelatedObject1Ptr = the player.
+The pack's `objects/projectile` (`projectile.luau`); actions fire it with `lib/projectile.luau` (`projectile.fire`,
+`sub_800FAAC`; `projectile.spawn`, `sub_80C4FFE`). T3 indices 0x0C, 0x0D and 0x13..0x15 of the T3 jump table run
+the same routine, but nothing spawns them. Its kinds, its first parameter, are `off_80C4C78`'s 12-byte records, 40
+of them up to the routine's code: the pack's `objects/projectile/object.toml` `[[variant]]`s
+(`ObjectData::projectiles`, `data.objects.projectiles`). A record: collision self type, target type, hit modifier
+(0..2); element byte (3); hit effect (4); sprite category (0xFF: not drawn), index and animation (5..7); the panel
+type a hit leaves (8, 0xFF: none); status byte (9); bug code and argument (0xA, 0xB). The routine adds what it does
+by kind number, which the pack writes into the records: kinds 7 and 0x15 crack the panel they hit, 0x16 breaks it,
+0x22 and 0x24 leave the record's type for the left side's shots and a road the other way (0xC, 0xB) for the right
+side's, 0xC bursts, 0x1D climbs. A kind past the table reads on into the code (an error in the port).
+
+**Spawn**, `sub_80C4FFE` (r0/r1 the panel, r3 the Z, r4 the parameters, r6 the damage word):
+- `object_spawnType3(0, …, Params = r4)`: the buster's `AV.Unk_0C | AV.Unk_0D<<8` (Param2 the row delta). The spawn
+  position is registers (X = the panel Y, Y = r2), which the init overwrites; Z = r3 (the buster's 0x180000)
+  stays.
+- Then `sub_801155A` sets PanelX/PanelY, Damage (u32 at +0x2C) = r6, Alliance/Flip from the player, and RelatedObject1Ptr = the player.
 - Element is set from a clobbered register and is overwritten at init.
 - The shot is inserted after the player in the update list, so it initializes and updates in the same tick (§3.3).
+- `sub_800FAAC` spawns it on the panel in front and returns `sub_800FAF6` from that panel (§B6).
 
 **Init**, `sub_80C4E7C` (runs in the spawn tick):
-- `cfg = 0x080C4C78 + Param1*12`, stored into **RelatedObject1Ptr**. This overwrites the parent pointer.
-- If cfg[5] ≠ 0xFF, load the sprite. Element = cfg[3]. Set coordinates from panels. Timer2 = 1.
+- `cfg = 0x080C4C78 + Param1*12`, stored into **RelatedObject1Ptr**. This overwrites the parent pointer (the port
+  clears it).
+- If cfg[5] ≠ 0xFF: load the sprite, no shadow (`sprite_noShadow`), visible, CurAnim = cfg[7], CurAnimCopy = 0xFF.
+  Element = cfg[3]. Set coordinates from panels, then `sub_80C5090` (below). Timer2 = 1.
 - `object_createCollisionData`; on failure `object_freeMemory` and return.
 - `object_setupCollisionData(cfg[0], cfg[1], cfg[2])`. With cfg 4, 5, 0:
   - Region 1.
   - Self type flags = `byte_8019C7C[4][alliance]` = 0x80000080 / 0x40000080.
   - Target type flags = `[5][alliance]` = 0x15800000 / 0x2A800000.
   - HitModifierBase 0, SelfDamage = obj.Damage.
-- Hit effect = cfg[4]. If cfg[9] ≠ 0, set status effect 1. If cfg[0xA] ≠ 0, `sub_801A4D0(cfg[0xA], cfg[0xB])`.
+- Hit effect = cfg[4]. If cfg[9] ≠ 0, the status base = cfg[9]. If cfg[0xA] ≠ 0, `sub_801A4D0(cfg[0xA], cfg[0xB])` (the bug word).
 - `object_presentCollisionData`, CurState = 4, then run the update once.
 
 | cfg | Bytes 0..11 | Used for |
@@ -1720,15 +1751,56 @@ Minimum buster cycle: N+7 frames.
 1. `object_removeCollisionData`.
 2. `object_spawnCollisionEffect`. If `FlagsFromCollision & 0x3F800000` and not bit 0 and HitEffect ≠ 0xFF: `AddRandomVarianceToTwoCoords(0xF, x, y, z)` (**one GetRNG2**; x += ((r & 15) - 7) << 16, z += (((r >> 16) & 15) - 7) << 16), then `sub_80E08C4` spawns the hit-spark T4 (index 4).
 3. If the battle is over → destroy.
-4. If FlagsFromCollision ≠ 0 (hit): apply Param1-specific panel effects (7 and 0x15 crack, 0x16 break, 0x22/0x24/other set panel types; none for 0 or 6), `object_clearCollisionRegion`, CurState = 8.
+4. If FlagsFromCollision ≠ 0 (hit): Param1 0xC first bursts (`sub_80C5050`); then the panel effects by Param1:
+   7 and 0x15 `object_crackPanel`, 0x16 `object_breakPanel_dup2` (break it, or crack it while something stands
+   there), 0x22 and 0x24 on a solid panel set cfg[8] (alliance 0) or 0xC / 0xB (alliance 1), any other on a solid
+   panel set cfg[8] unless it is 0xFF. Then `object_clearCollisionRegion`, CurState = 8.
 5. Else step:
    - If PhaseInitialized == 0: Timer = Timer2 (1), PhaseInitialized = 4.
    - `Timer--`. If ≥ 0 → wait. Else PanelX += front, PanelY += (s8)Param2, Param2 = 0.
-   - If `!object_isValidPanel` → destroy. Param1 12 also calls `sub_80C5014`.
-   - Else set coordinates, `object_updateCollisionPanels`, PhaseInitialized = 0.
+   - If `!object_isValidPanel` → Param1 0xC bursts (`sub_80C5014`); `object_clearCollisionRegion`, CurState = 8.
+   - Else set coordinates, `sub_80C5090`, `object_updateCollisionPanels`, PhaseInitialized = 0.
 6. Always `object_presentCollisionData`. Then `object_updateSprite`.
 
 The shot therefore enters panel X0+k on tick F+2k-1, where F is the spawn tick. Destroy (CurState 8) uses `object_genericDestroy`, and the object is gone the following tick.
+
+**Bursts** (Param1 0xC): a camera shake (3, 0x28; the camera's own RNG, presentation), sound 0xC3, then
+`sub_801BD3C` (effect 0 on each valid panel of a region, turned by the side's direction, Z 0; the port's
+`battle.region_effects`) and a one-tick hit region (`object_spawnCollisionRegion`: target 5, self 4, hit effect
+0xFF, hit modifier 3, the shot's element and damage word). On a hit (`sub_80C5050`), at its panel: effects over
+region 0xF (3x3), the hit over 0x10 (the eight around). Off the field (`sub_80C5014`), from two panels back
+(PanelX − 2·front, where the shot left): effects and the hit over region 0x11 (the last two columns, three rows).
+**Unverified** (no scenario fires kind 0xC).
+
+**Climbing** (`sub_80C5090`, Param1 0x1D): after each set of coordinates, Y += 1 and Z += 1 pixel; Z keeps
+accumulating, so the shot rises a pixel per panel. **Unverified**.
+
+#### B8a. Flying shot: T3 index 0xB, `sub_80C60A8`
+
+The pack's `objects/flying-shot` (`flying_shot.luau`, spawned with `flying_shot.spawn`, `sub_80C6248`: r1..r3 the
+position, r4 the parameters, r6 the damage word, r7 its ExtraVars word). Used by the buster's throw (§B6, kind 6),
+the Beast forms' buster (`sub_80EC710`), TrnArrw (`sub_80ECF00`) and navi AI (`sub_8108EE6`). Its kinds are
+`byte_80C6038`'s 16-byte records (7, up to the code; `objects/flying-shot/object.toml`, `data.objects.flying_shots`):
+collision self type, target type, hit modifier (0..2); element byte (3); hit effect (4); sprite category, index,
+animation (5..7); highlight (8); range (9); shadow (0xA); status byte (0xB); speed (0xC, u32 16.16). The routine
+adds by kind: 6 is a thrown obstacle, 2 sparks over its panel and sounds as it sets off, 5 leaves an effect.
+
+**Init** (`sub_80C60CC`): cfg into RelatedObject1Ptr (the owner forgotten); load the sprite (kind 6: category and
+index from the ExtraVars word's bytes 2 and 3; the port uses the obstacle's, `data.objects.absorbed_sprites` by the
+word's low nibble), shadow by cfg[0xA]; CurAnim = cfg[7] (kind 6: bits 4..7 of the word), CurAnimCopy = 0xFF,
+visible; flip from the object, except kind 6 with sprite index 0x23 (`sub_8002EAC` marks its parts to keep their
+own facing; it is drawn unflipped); palette = Param4; Element = cfg[3]; Param4 = cfg[9] (the range); panel from
+the coordinates; X velocity = front · speed; collision set up from cfg[0..2], hit effect cfg[4], status base cfg[0xB]
+if set; present; Z velocity = −0x12000 if Param3, else 0; CurState 4, and the update runs once.
+
+**Update** (`sub_80C619C`): remove the collision; the hit spark (kind 2: `sub_801A100`, at the center of the panel
+under it, 16 pixels up, with the same RNG draw); on a hit → the end. Else while Param2 (a wait) is set, count it
+down (kind 2 sounds 0x18A as it reaches 0); after that each tick Z += Z velocity, X += X velocity, and when X passes
+the center of its panel (`sub_800E6E8`) Param4 counts down: at 0 the end (kind 5 first spawns effect 7 at its
+panel's center). Otherwise the panel from the coordinates, update the collision's panels, and off the field the
+end. The end: not visible, `object_clearCollisionRegion`, CurState 8. Always present the collision, and with cfg[8]
+highlight its panel. Then `object_updateSprite`. Kinds 2 and 5 and the wait are **unverified** here (TrnArrw and the
+Beast buster are other groups' actions).
 
 **Hit timing (observed).** Collision pairs are resolved when an object *removes* its collision data at the start of its update (§7.3), so the result depends on update order:
 - If the target updates **after** the shot, the target's HP drops in the same tick the shot enters its panel (injected run 4: alliance 1 fires; shot reaches (2,2) at 611; alliance-0 HP 999 at 611).

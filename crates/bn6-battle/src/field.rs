@@ -577,6 +577,27 @@ impl Battle {
         true
     }
 
+    /// `object_breakPanel_dup2`: break a solid panel, or crack it while
+    /// something stands on it.
+    pub fn break_panel(&mut self, x: u8, y: u8) -> bool {
+        let Some(p) = self.field.panel_mut(x, y) else { return false };
+        let f = p.flags;
+        if f & pflags::SOLID == 0 {
+            return false;
+        }
+        if f & pflags::OCCUPIED == 0 {
+            p.flags = (f & !0x3F5F) | 1;
+            p.kind = PanelType::Broken;
+            p.display_kind = PanelType::Broken;
+        } else {
+            p.flags = ((f | pflags::CRACKED) & !0x3F0F) | 3;
+            p.kind = PanelType::Cracked;
+            p.display_kind = PanelType::Cracked;
+        }
+        self.play_sound(crate::sound::SoundId(0x97));
+        true
+    }
+
     /// `sub_800E618`: may `obj` step onto (x, y)?
     pub fn can_step(&self, obj: ObjectRef, x: u8, y: u8) -> bool {
         if !is_valid(x, y) {
