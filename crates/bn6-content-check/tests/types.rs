@@ -28,6 +28,11 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("field.set_type(1, 1, \"lava\")", "not a panel type"),
         ("local function f(me: Object) me:set_status_timer(\"stun\", 3) end", "not a status timer"),
         ("local _ = data.chips[1].gun_del_sol.firing_tick", "not a data field"),
+        ("local function f(me: Object) me.drag_step = \"sliding\" end", "not a drag step"),
+        (
+            "local function f(me: Object) battle.afterimage(me, me.pos, { anim = 0, flip = 0, color_shader = 0, lifetime = 1, shadow = \"soft\" }) end",
+            "an afterimage's shadow that isn't one",
+        ),
         ("local function f(me: Object) local _ = obstacle.react(me, \"shatters\") end", "not an obstacle crush"),
         ("local function f(me: Object) local _: \"gone\" = obstacle.removal(me) end", "not an obstacle removal"),
         ("local _ = data.objects.projectiles[0].hit_efect", "not a projectile field"),

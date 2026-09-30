@@ -1,0 +1,6 @@
+# A dragon's head (attack object #0xC9, `sub_80DE404`) is a script.
+
+[kind]
+pool = "attack"
+index = 0xC9
+script = "dragon_head.luau"

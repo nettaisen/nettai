@@ -2,7 +2,9 @@
 -- The rising bubble (effect object #0x14, `sub_80E1CF8`): a bubble that
 -- floats up two pixels a tick while its animation plays once, then goes.
 -- Only drawn. Anubis and PoisPhar's statue (objects/anubis) sends them up
--- over the poisoned area; Guardian's and Geddon's objects use it too.
+-- over the poisoned area; Guardian's and Geddon's objects use it too, and
+-- a thrown BugBomb or BlkBomb that lands in a hole leaves one as a puff of
+-- smoke (objects/bug-bomb, objects/black-bomb).
 
 local rising_bubble = {}
 

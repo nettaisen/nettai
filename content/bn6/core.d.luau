@@ -138,7 +138,11 @@ export type NaviStateFlag =
     | "cross_breaking"
     | "form_change_sprite_held"
     | "heat_trap"
+    -- Gone from the field while its navi chip's navi acts.
+    | "vanished"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
+-- A navi's drag reaction step.
+export type DragStep = "start" | "slide" | "recover"
 -- What other objects ask of a field object (an obstacle).
 export type ObstacleFlag =
     "destroy"
@@ -151,8 +155,6 @@ export type ObstacleFlag =
     | "absorbed"
     | "absorbed_by_0"
     | "absorbed_by_1"
--- How a removed field object's blink-out goes.
-export type BlinkOut = "no" | "blinking" | "done"
 
 -- A sprite: "CC-II" in hex, its folder in the pack's graphics/sprites.
 export type SpriteId = string
@@ -225,10 +227,16 @@ declare class Collision
     hit_mod_base: number
     -- The damage it deals.
     self_damage: number
+    -- The counter byte (bits 0-6 counter strength, bit 7 can't counter),
+    -- which setup takes from the damage word's high half.
+    counter_byte: number
     -- What the last resolution hit (read-only).
     hit_flags: number
     -- The damage taken this window (read-only).
     final_damage: number
+    -- The directions (bit 1 << the hitter's flip) a guard blocked hits
+    -- from this window (read-only).
+    guard_dirs: number
     -- The secondary elements (sword 0x80, cursor 0x40, wind 0x20, break
     -- 0x10) of what hit it this window (read-only).
     damage_elements: number
@@ -292,6 +300,8 @@ declare class Object
     -- Keeps updating while the battle is dimmed.
     run_while_dimmed: boolean
     no_sprite_update: boolean
+    -- A navi's drag reaction step (the byte other kinds use otherwise).
+    drag_step: DragStep
     -- It holds a panel reservation (released when it is destroyed).
     holds_reservation: boolean
     sprite: Sprite
@@ -447,6 +457,9 @@ declare class Object
     function open_counter_window(self): ()
     -- `sub_801056A`, after each phase of an attack.
     function check_reactive_abort(self): ()
+    -- `sub_8011450`: restart the form overlay with the navi after an
+    -- animation change.
+    function refresh_form_overlay(self): ()
     -- `object_exitAttackState`: back to idle with animation 0.
     function exit_attack(self): ()
     -- `sub_801171C`: back to idle, the animation as it is.
@@ -464,6 +477,10 @@ declare class Object
     function start_move(self, dir: number): ()
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
+    -- `sub_800E2FC`: heal up to the maximum HP, with the recovery sparkle
+    -- and sound; with `anti_recovery`, the opponent's armed AntiRecv turns
+    -- it into damage instead (true when it did).
+    function heal(self, amount: number, anti_recovery: boolean): boolean
     -- `sub_801265A`: the buster's damage.
     function buster_damage(self): number
     -- The obstacles it absorbed, oldest first.
@@ -471,15 +488,9 @@ declare class Object
     function push_absorbed(self, kind: number, anim: number): boolean
     function pop_absorbed(self): (number?, number?)
 
-    -- Field objects (obstacles): whether another object asked this of it.
+    -- Field objects (obstacles): whether another object asked this of it
+    -- (the rest is the `obstacle` service).
     function obstacle_flag(self, flag: ObstacleFlag): boolean
-    -- `sub_802EF5C`: leaving, it updates the sides' target tracking.
-    function release_tracking(self): ()
-    -- `sub_800F8CE`: removed to blink out, it blinks for 20 ticks.
-    function blink_out(self): BlinkOut
-    -- `sub_800F90E`: absorbed, it flies to the absorbing side's navi as
-    -- absorbed kind `kind` (data.objects.absorbed_sprites).
-    function fly_to_absorber(self, kind: number): ()
 end
 
 -- A side's navi stats (read-only but the buster's levels, the custom
@@ -505,6 +516,11 @@ declare class Navi
     charge_shot_kind: number
     buster_blanks: number
     buster_charged: number
+    -- NaviCust bugs: the HP drain in the fight and while the custom
+    -- screen is open (levels), and what a step leaves behind.
+    hp_drain: number
+    custom_drain: number
+    panel_trail: number
     -- The form is a Beast form, Beast Over.
     beast: boolean
     beast_over: boolean
@@ -542,13 +558,14 @@ export type HitboxSpec = {
     bug_arg: number?,
 }
 
--- A plain afterimage (`battle.afterimage`): `anim` of `sprite`, flipped
+-- An afterimage (`battle.afterimage`): `anim` of `sprite` (or, without
+-- one, a copy of the owner's sprite wearing its form's overlay), flipped
 -- by the game's flip value, for `lifetime` ticks, blinking unless
 -- `steady`; its shadow at its height unless said otherwise. It ends early
 -- with its `tether`: when its side leaves the Beast forms, or when its
 -- owner's action drops below 0x10.
 export type AfterimageSpec = {
-    sprite: SpriteId,
+    sprite: SpriteId?,
     anim: number?,
     flip: number?,
     lifetime: number,
@@ -570,6 +587,8 @@ export type LinkedChip = {
 }
 
 export type Panel = { kind: PanelType, alliance: number, home: number }
+-- A panel flags word has every `require` bit and no `forbid` bit.
+export type PanelCondition = { require: number, forbid: number }
 
 -- A side's damage-carry record: the side's largest damage this tick and
 -- last tick, the object that set the record, and the target that takes
@@ -677,6 +696,10 @@ declare battle: {
     region_effects: (x: number, y: number, region: number, side: number, id: number, z: number?) -> (),
     -- The one-tick hit region (attack object #3).
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
+    -- `sub_80E11E0`: a screen palette flash (effect object #0x0A) of a
+    -- variant (0 white or red, 1 white over two layers) for `ticks`,
+    -- optionally going on while dimmed or paused.
+    palette_flash: (variant: number, ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
     -- Subtype 18 (Otenko): the turn (from 0) a hand's chip at i was picked
@@ -735,11 +758,6 @@ declare field: {
     -- `object_setPanelTypeBlink`: this frame the panel is drawn as `kind`
     -- of `side` (drawn only).
     blink: (x: number, y: number, kind: PanelType, side: number) -> (),
-    -- `setFieldBattleObject_800F614`: register a field object of `side`
-    -- in `class` (0: two at most, 1: one); the oldest one it replaces
-    -- loses its HP. `sub_800F656`: forget one.
-    register_object: (o: Object, side: number, class: number) -> (),
-    unregister_object: (o: Object) -> (),
 }
 
 -- The dimming service: the steps of a dimming chip's controller, which its
@@ -793,6 +811,8 @@ export type ObstacleHold = "after_appearing" | "always"
 export type ObstaclePush = "forgets_damage" | "keeps_damage" | "any_hit" | "ignored"
 export type WindSource = "obstacle" | "navi"
 export type ObstacleRemoval = "broken" | "removed" | "vanished" | "absorbed"
+-- How a removed field object's blink-out goes.
+export type BlinkOut = "no" | "blinking" | "done"
 
 -- The obstacle framework: the steps of a field obstacle's update (rocks,
 -- cubes and the like, without actor data), which its update calls in its
@@ -908,6 +928,27 @@ export type GunDelSol = {
     gun: AttachmentKind,
 }
 
+-- Action 0x13's slash: its hit region and the effect that draws it.
+export type SwordSlash = {
+    region: number,
+    hit_effect: number,
+    target: number,
+    self_type: number,
+    hit_mod: number,
+    status: number,
+    bug: number,
+    bug_arg: number,
+    effect: number,
+}
+
+-- A sword's data (actions 0x13 and 0x49), in its chip's folder.
+export type Sword = {
+    -- The blade the user holds: an attachment kind.
+    blade: number,
+    -- Action 0x13's slash.
+    slash: SwordSlash?,
+}
+
 -- A chip's record and its own data.
 export type ChipData = {
     id: number,
@@ -925,6 +966,9 @@ export type ChipData = {
     lockon_mode: number,
     damage: number,
     gun_del_sol: GunDelSol?,
+    -- The HP a recovery chip restores (action 0x20).
+    recovery: number?,
+    sword: Sword?,
     script: string?,
 }
 
@@ -1031,10 +1075,6 @@ export type WeaponData = { id: number, name: string, action: number?, script: st
 -- parameter): ticks on a panel before the next rolls on, and the panel
 -- type it leaves ("cracked" cracks the panel, "broken" breaks it).
 export type ShockWave = { id: number, sprite: SpriteId, anim: number, ticks: number, panel: PanelType? }
--- A panel condition: the flags word has all of `require` and none of
--- `forbid`.
-export type PanelCondition = { require: number, forbid: number }
-
 -- An object kind a script implements.
 export type ObjectKindData = { pool: Pool, index: number, script: string }
 

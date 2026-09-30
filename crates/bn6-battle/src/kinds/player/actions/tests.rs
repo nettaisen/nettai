@@ -240,6 +240,191 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     assert_eq!(b.objects.get(p0).action, 8);
 }
 
+/// The kind named `name` somewhere on the field.
+fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
+    let k = b.content.object_kind(name).unwrap();
+    b.objects.in_order().find(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index))
+}
+
+/// Give side `side` the chip `chip` as the next in its hand, with its
+/// damage.
+fn hand_with(b: &mut Battle, side: usize, chip: crate::content::ChipId) {
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = chip;
+    hand.damage[0] = b.content.chip(chip).damage;
+    b.hands[side] = hand;
+}
+
+#[test]
+fn a_recovery_chip_heals_its_hp_in_one_tick() {
+    let (mut b, p0, p1) = fight();
+    b.objects.get_mut(p0).hp = 500;
+    hand_with(&mut b, 0, testing::MEND);
+    tick(&mut b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x20);
+    // The next tick: 40 HP, the sparkle right after the navi, a recovery
+    // counted, and back to idle.
+    tick(&mut b, p0, p1, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.hp, o.action), (540, 8));
+    assert_eq!(following(&b, p0)[0], (Pool::Effect, 0));
+    assert_eq!(b.side_stats[0][5], 1);
+    // Never past the maximum.
+    b.objects.get_mut(p0).hp = 990;
+    hand_with(&mut b, 0, testing::MEND);
+    tick(&mut b, p0, p1, keys::A);
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(b.objects.get(p0).hp, 1000);
+}
+
+#[test]
+fn a_reflector_guards_for_its_first_parameter_then_its_shield_fades() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    hand_with(&mut b, 0, testing::MIRROR);
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::A);
+    assert_eq!(b.objects.get(p0).action, 0x2B);
+    // Tick 1: the shield, right after the navi at its attach point 6, and
+    // the guard up.
+    run_to(&mut b, p, &mut t, 1, 0);
+    let shield = find_kind(&b, "reflector-shield").expect("the shield");
+    assert_eq!(b.objects.in_order().skip_while(|&o| o != p0).nth(1), Some(shield));
+    assert_ne!(f1_of(&b, p0) & f1::GUARD, 0);
+    let (at, s) = (b.objects.get(p0).pos, b.objects.get(shield).pos);
+    assert_eq!((s.x - at.x, s.y - at.y, s.z - at.z), (4 << 16, 0, 24 << 16));
+    // It guards for 30 ticks after that one.
+    run_to(&mut b, p, &mut t, 31, 0);
+    assert_eq!(b.objects.get(p0).action, 0x2B);
+    run_to(&mut b, p, &mut t, 32, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(f1_of(&b, p0) & f1::GUARD, 0);
+    // The shield fades for 14 ticks and goes.
+    run_to(&mut b, p, &mut t, 47, 0);
+    assert_eq!(find_kind(&b, "reflector-shield"), Some(shield));
+    run_to(&mut b, p, &mut t, 48, 0);
+    assert_eq!(find_kind(&b, "reflector-shield"), None);
+}
+
+#[test]
+fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    // Side 0 steps to (3,2), in the column side 1's GunDelSol hits.
+    let mut t = 0;
+    tick(&mut b, p0, p1, keys::RIGHT);
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
+    hand_with(&mut b, 0, testing::MIRROR);
+    hand_with(&mut b, 1, testing::SUN_GUN_3);
+    // Both use their chips.
+    let both = |b: &mut Battle, held: [u16; 2]| {
+        ai_mut(b, p0).pad.update(held[0] | keys::PRESENT);
+        ai_mut(b, p1).pad.update(held[1] | keys::PRESENT);
+        b.run_objects();
+    };
+    both(&mut b, [keys::A, keys::A]);
+    assert_eq!((b.objects.get(p0).action, b.objects.get(p1).action), (0x2B, 0x37));
+    // The guard blocks the beam's hits (no drain), and the first one sends
+    // a wave back that runs along the row into side 1: 50 damage, once.
+    let mut waves = 0;
+    for _ in 0..30 {
+        both(&mut b, [0, 0]);
+        waves += find_kind(&b, "reflected-shot").is_some() as u32;
+    }
+    assert!(waves > 0, "no wave");
+    assert_eq!(b.objects.get(p0).hp, 1000);
+    assert_eq!(b.objects.get(p1).hp, 950);
+}
+
+/// Side 0 uses `chip` (the first in its hand) from idle: the tick the
+/// action starts.
+fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: crate::content::ChipId) {
+    let mut hand = ChipHand::empty();
+    hand.ids[0] = chip;
+    hand.damage[0] = b.content.chip(chip).damage;
+    b.hands[0] = hand;
+    tick(b, p0, p1, keys::A);
+}
+
+/// The effect objects (effect #0) and afterimages (effect #0x28) there are.
+fn effects(b: &Battle, index: u8) -> Vec<ObjectRef> {
+    b.objects.in_order().filter(|&o| o.pool == Pool::Effect && b.objects.get(o).index == index).collect()
+}
+
+#[test]
+fn a_step_sword_steps_in_slashes_and_steps_back() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    let mut t = 0;
+    use_chip(&mut b, p0, p1, testing::STEP_BLADE);
+    assert_eq!(b.objects.get(p0).action, 0x13);
+
+    // Tick 1: an afterimage where it stood, and it is two panels ahead,
+    // its own panel held for the way back.
+    run_to(&mut b, p, &mut t, 1, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.panel, o.future_panel), (PanelPos { x: 4, y: 2 }, PanelPos { x: 2, y: 2 }));
+    assert_eq!(b.field.panel(2, 2).unwrap().reserver, Some(p0));
+    assert_ne!(f1_of(&b, p0) & f1::MOVING, 0);
+    let first = effects(&b, 0x28);
+    assert_eq!(first.len(), 1);
+    assert_eq!(b.objects.get(first[0]).pos.x, crate::kinds::player::panel_coordinates(2, 2).0);
+
+    // Tick 3: the swing, with the blade.
+    run_to(&mut b, p, &mut t, 3, 0);
+    assert_eq!(b.objects.get(p0).anim, 5);
+    let blade = b.objects.get(p0).related[0].expect("the blade");
+    assert_eq!(b.objects.get(blade).params[0], 7);
+    // Tick 8: two more afterimages: the navi's and the blade's.
+    run_to(&mut b, p, &mut t, 8, 0);
+    assert_eq!(effects(&b, 0x28).len(), 3);
+    // Tick 12: the slash on the column ahead hits the target at (5,2) on
+    // its next update, and its effect shows.
+    run_to(&mut b, p, &mut t, 11, 0);
+    assert!(effects(&b, 0).is_empty());
+    run_to(&mut b, p, &mut t, 12, 0);
+    assert_eq!(b.objects.get(effects(&b, 0)[0]).params[0], 0x16);
+    run_to(&mut b, p, &mut t, 13, 0);
+    assert_eq!(b.objects.get(p1).hp, 920);
+
+    // Tick 25, once the swing's animation is over: back home, the blade
+    // let go.
+    run_to(&mut b, p, &mut t, 24, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 4, y: 2 });
+    run_to(&mut b, p, &mut t, 25, 0);
+    assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 2 });
+    assert_eq!(b.field.panel(2, 2).unwrap().reserver, None);
+    // Tick 31: idle.
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 0x13);
+    run_to(&mut b, p, &mut t, 31, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(b.objects.get(p0).related[0], None);
+    assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
+}
+
+#[test]
+fn a_sword_without_a_target_ahead_swings_at_nothing() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    let mut t = 0;
+    use_chip(&mut b, p0, p1, testing::BLADE);
+    // No step: it swings from where it stands on tick 3, and the slash
+    // (on tick 12) finds nobody at (3,2).
+    run_to(&mut b, p, &mut t, 3, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.panel, o.anim), (PanelPos { x: 2, y: 2 }, 5));
+    assert!(effects(&b, 0x28).is_empty());
+    run_to(&mut b, p, &mut t, 13, 0);
+    assert_eq!(b.objects.get(p1).hp, 1000);
+    // No way back to walk: idle on tick 30.
+    run_to(&mut b, p, &mut t, 29, 0);
+    assert_eq!(b.objects.get(p0).action, 0x13);
+    run_to(&mut b, p, &mut t, 30, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
 /// The objects of content kind `name` on the field, in update order.
 fn of_kind(b: &Battle, name: &str) -> Vec<ObjectRef> {
     let k = b.content.object_kind(name).unwrap();
@@ -364,6 +549,30 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     run_to(&mut b, p, &mut t, 9 + recovery, 0);
     assert_eq!(b.objects.get(p0).action, 0x16);
     run_to(&mut b, p, &mut t, 10 + recovery, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
+
+#[test]
+fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    let c = b.objects.get(p1).collision.unwrap();
+    b.collision.get_mut(c).status_timers[crate::collision::timer::PARALYZE] = 100;
+    let mut t = 0;
+    use_chip(&mut b, p0, p1, testing::STUN_BLADE);
+    assert_eq!(b.objects.get(p0).action, 0x49);
+    // The slashes land on tick 10, on the target's own column.
+    run_to(&mut b, p, &mut t, 10, 0);
+    let slash = effects(&b, 0)[0];
+    let (x, y) = crate::kinds::player::panel_coordinates(5, 2);
+    let o = b.objects.get(slash);
+    assert_eq!((o.params, o.pos.x, o.pos.y), ([0x16, 0, 2 + 7, 0], x, y));
+    run_to(&mut b, p, &mut t, 11, 0);
+    assert_eq!(b.objects.get(p1).hp, 920);
+    // Idle on tick 28.
+    run_to(&mut b, p, &mut t, 27, 0);
+    assert_eq!(b.objects.get(p0).action, 0x49);
+    run_to(&mut b, p, &mut t, 28, 0);
     assert_eq!(b.objects.get(p0).action, 8);
 }
 

@@ -261,6 +261,7 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: ChipId) {
 /// acts (its status visuals and the HUD with it).
 pub fn hide_user(b: &mut Battle, user: ObjectRef) {
     b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
+    set_vanished(b, user, true);
     set_links_visible(b, user, false);
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
         crate::kinds::full_synchro_aura::hide(b, aura);
@@ -280,9 +281,22 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
     if f1 & crate::collision::f1::SUBMERGED == 0 && !viewer_blind {
         b.objects.get_mut(user).flags |= crate::object::flags::VISIBLE;
     }
+    set_vanished(b, user, false);
     set_links_visible(b, user, true);
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
         crate::kinds::full_synchro_aura::show(b, aura);
+    }
+}
+
+/// `sub_8010312` / `sub_801031C` with state bit 0x100000: the user is
+/// marked gone (what a Reflector's shield, for one, hides by).
+fn set_vanished(b: &mut Battle, user: ObjectRef, on: bool) {
+    let Some(a) = b.objects.get(user).actor else { return };
+    let status = &mut b.actors.get_mut(a).status;
+    if on {
+        *status |= crate::actor::status::VANISHED;
+    } else {
+        *status &= !crate::actor::status::VANISHED;
     }
 }
 

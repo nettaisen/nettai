@@ -118,6 +118,7 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::CrossBreaking => status::CROSS_BREAKING,
         NaviState::FormChangeSpriteHeld => status::FORM_CHANGE_SPRITE_HELD,
         NaviState::HeatTrap => status::HEAT_TRAP,
+        NaviState::Vanished => status::VANISHED,
     }
 }
 
@@ -256,6 +257,9 @@ impl CoreApi for Battle {
             NaviStat::ChargeShotKind => i(s.weapons.charge_shot_kind as i64),
             NaviStat::BusterBlanks => i(s.bugs.buster_blanks as i64),
             NaviStat::BusterCharged => i(s.bugs.buster_charged as i64),
+            NaviStat::HpDrain => i(s.bugs.hp_drain as i64),
+            NaviStat::CustomDrain => i(s.bugs.custom_drain as i64),
+            NaviStat::PanelTrail => i(s.bugs.panel_trail_kind as i64),
             NaviStat::Beast => Value::Bool(s.form.is_beast()),
             NaviStat::BeastOver => Value::Bool(s.form.is_beast_over()),
             NaviStat::CustomLevel => i(s.custom_level as i64),
@@ -659,6 +663,11 @@ impl CoreApi for Battle {
             ObjectField::Vel => Value::Vec3(ob.vel),
             ObjectField::Related1 => ob.related[0].into(),
             ObjectField::Related2 => ob.related[1].into(),
+            ObjectField::DragStep => i(match ob.drag_step {
+                crate::object::DragStep::Start => 0,
+                crate::object::DragStep::Slide => 1,
+                crate::object::DragStep::Recover => 2,
+            }),
             ObjectField::Active
             | ObjectField::Visible
             | ObjectField::RunWhilePaused
@@ -703,6 +712,10 @@ impl CoreApi for Battle {
             (ObjectField::Vel, FieldValue::Vec3(p)) => ob.vel = p,
             (ObjectField::Related1, FieldValue::Object(r)) => ob.related[0] = r,
             (ObjectField::Related2, FieldValue::Object(r)) => ob.related[1] = r,
+            (ObjectField::DragStep, FieldValue::Enum(i)) => {
+                use crate::object::DragStep;
+                ob.drag_step = [DragStep::Start, DragStep::Slide, DragStep::Recover][i as usize]
+            }
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -798,6 +811,10 @@ impl CoreApi for Battle {
         kinds::spark::spawn(self, owner, pos, id)
     }
 
+    fn spawn_palette_flash(&mut self, variant: u8, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
+        kinds::palette_flash::spawn_variant(self, variant, ticks, while_dimmed, while_paused)
+    }
+
     fn death_hook(&mut self, o: ObjectRef, name_id: u16) {
         kinds::player::form::navi_death_hook(self, o, name_id);
     }
@@ -819,7 +836,12 @@ impl CoreApi for Battle {
             2 => Tether::Attack,
             _ => Tether::None,
         };
-        kinds::afterimage::spawn_plain(self, owner, pos, spec.sprite, spec.anim, spec.flip, spec.lifetime, tether, look)
+        match spec.sprite {
+            Some(sprite) => {
+                kinds::afterimage::spawn_plain(self, owner, pos, sprite, spec.anim, spec.flip, spec.lifetime, tether, look)
+            }
+            None => kinds::afterimage::spawn_copy(self, owner, pos, spec.anim, spec.flip, spec.lifetime, tether, look),
+        }
     }
 
     // ---- Navis and the attack in progress -------------------------------------
@@ -991,6 +1013,10 @@ impl CoreApi for Battle {
         kinds::player::actions::check_reactive_abort(self, o);
     }
 
+    fn refresh_form_overlay(&mut self, o: ObjectRef) {
+        kinds::player::refresh_form_overlay(self, o);
+    }
+
     fn exit_attack(&mut self, o: ObjectRef) {
         kinds::player::exit_attack_state(self, o);
     }
@@ -1021,6 +1047,10 @@ impl CoreApi for Battle {
 
     fn can_move(&self, o: ObjectRef) -> bool {
         self.collision_of(o).is_ok_and(|c| c.f1 & (f1::IMMOBILIZED | f1::SLIDING | f1::MOVING) == 0)
+    }
+
+    fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool {
+        kinds::heal::heal(self, o, amount, anti_recovery)
     }
 
     fn buster_damage(&self, o: ObjectRef) -> u16 {
@@ -1134,8 +1164,10 @@ impl CoreApi for Battle {
             CollisionField::Bugs => c.bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
+            CollisionField::CounterByte => c.counter_byte as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
+            CollisionField::GuardDirs => c.guard_dirs as i64,
             CollisionField::DamageElements => c.acc.damage_elements as i64,
         }))
     }
@@ -1161,9 +1193,11 @@ impl CoreApi for Battle {
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
-            CollisionField::HitFlags | CollisionField::FinalDamage | CollisionField::DamageElements => {
-                unreachable!("read-only")
-            }
+            CollisionField::CounterByte => c.counter_byte = x as u8,
+            CollisionField::HitFlags
+            | CollisionField::FinalDamage
+            | CollisionField::GuardDirs
+            | CollisionField::DamageElements => unreachable!("read-only"),
         }
         Ok(())
     }
@@ -1198,16 +1232,18 @@ impl CoreApi for Battle {
     }
 
     fn highlight_collision_panels(&mut self, o: ObjectRef) {
-        let obj = self.objects.get(o);
-        let Some(id) = obj.collision else { return };
-        let c = self.collision.get(id);
-        let dir: i8 = if obj.alliance ^ obj.flip == 0 { 1 } else { -1 };
-        let (x0, y0, region) = (c.panel.x as i8, c.panel.y as i8, c.region);
-        let Some(offsets) = self.content.regions.get(region as usize) else {
-            panic!("highlighting region {region:#x} reads past PanelOffsetListsPointerTable");
-        };
-        for off in offsets.clone() {
-            common::highlight_panel(self, (x0 + off.dx * dir) as u8, (y0 + off.dy) as u8);
+        let ob = self.objects.get(o);
+        let c = ob.collision.expect("highlighting the panels of an object without collision data");
+        let dir = common::facing(ob.alliance, ob.flip);
+        let s = self.collision.get(c);
+        let (x, y) = (s.panel.x as i32, s.panel.y as i32);
+        let panels: Vec<(i32, i32)> =
+            self.content.region(s.region).iter().map(|p| (x + p.dx as i32 * dir, y + p.dy as i32)).collect();
+        // `object_highlightPanel` skips panels off the field.
+        for (px, py) in panels {
+            if (1..=6).contains(&px) && (1..=3).contains(&py) {
+                common::highlight_panel(self, px as u8, py as u8);
+            }
         }
     }
 
@@ -1358,31 +1394,6 @@ impl CoreApi for Battle {
             ObstacleFlag::AbsorbedBy1 => f2::ABSORBED_BY_1,
         };
         Ok(self.collision_of(o)?.f2 & mask != 0)
-    }
-
-    fn register_field_object(&mut self, o: ObjectRef, side: u8, class: u8) {
-        kinds::obstacle::register(self, o, side, class);
-    }
-
-    fn unregister_field_object(&mut self, o: ObjectRef) {
-        self.field.objects.unregister(o);
-    }
-
-    fn release_tracking(&mut self, o: ObjectRef) {
-        kinds::obstacle::release_tracking(self, o);
-    }
-
-    fn blink_out(&mut self, o: ObjectRef) -> ApiResult<BlinkOut> {
-        self.collision_of(o)?;
-        Ok(match kinds::obstacle::blink_out(self, o) {
-            kinds::obstacle::BlinkOut::No => BlinkOut::No,
-            kinds::obstacle::BlinkOut::Blinking => BlinkOut::Blinking,
-            kinds::obstacle::BlinkOut::Done => BlinkOut::Done,
-        })
-    }
-
-    fn fly_to_absorber(&mut self, o: ObjectRef, kind: u8) {
-        kinds::obstacle::fly_to_absorber(self, o, kind);
     }
 
     fn name_attach_point(&self, name_id: u16, point: u8, alliance: u8, flip: u8) -> (i32, i32) {

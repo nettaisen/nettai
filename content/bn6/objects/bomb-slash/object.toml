@@ -1,0 +1,6 @@
+# A bomb's lingering hit (attack object #0xA, `sub_80C5F60`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x0A
+script = "bomb_slash.luau"

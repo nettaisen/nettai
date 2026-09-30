@@ -420,6 +420,7 @@ impl UserData for Object {
         }
         methods.add_method("open_counter_window", |_, this, ()| with(|api, _| Ok(api.open_counter_window(this.0))));
         methods.add_method("check_reactive_abort", |_, this, ()| with(|api, _| Ok(api.check_reactive_abort(this.0))));
+        methods.add_method("refresh_form_overlay", |_, this, ()| with(|api, _| Ok(api.refresh_form_overlay(this.0))));
         methods.add_method("exit_attack", |_, this, ()| with(|api, _| Ok(api.exit_attack(this.0))));
         methods.add_method("end_attack", |_, this, ()| with(|api, _| Ok(api.end_attack(this.0))));
         methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, LuaValue)| {
@@ -438,6 +439,10 @@ impl UserData for Object {
             with(|api, _| Ok(api.start_move(this.0, dir)))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
+        methods.add_method("heal", |_, this, (amount, anti_recovery): (LuaValue, bool)| {
+            let amount = u16_arg(amount, "HP")?;
+            with(|api, _| Ok(api.heal(this.0, amount, anti_recovery)))
+        });
         methods.add_method("buster_damage", |_, this, ()| with(|api, _| Ok(api.buster_damage(this.0))));
         methods.add_method("absorbed", |lua, this, ()| {
             let list = with(|api, _| api.absorbed(this.0).map_err(api_error))?;
@@ -458,18 +463,10 @@ impl UserData for Object {
             with(|api, _| api.pop_absorbed(this.0).map_err(api_error)).map(|v| v.map_or((None, None), |(k, a)| (Some(k), Some(a))))
         });
 
-        // Field objects (obstacles).
+        // Field objects (obstacles; the rest is the `obstacle` service).
         methods.add_method("obstacle_flag", |_, this, name: mlua::LuaString| {
             let f = named(&name, "obstacle flag", bn6_content_api::api::ObstacleFlag::from_name)?;
             with(|api, _| api.obstacle_flag(this.0, f).map_err(api_error))
-        });
-        methods.add_method("release_tracking", |_, this, ()| with(|api, _| Ok(api.release_tracking(this.0))));
-        methods.add_method("blink_out", |_, this, ()| {
-            with(|api, _| api.blink_out(this.0).map_err(api_error)).map(|b| b.name())
-        });
-        methods.add_method("fly_to_absorber", |_, this, kind: LuaValue| {
-            let kind = u8_arg(kind, "absorbed kind")?;
-            with(|api, _| Ok(api.fly_to_absorber(this.0, kind)))
         });
     }
 }
@@ -965,6 +962,17 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(
         lua,
         t,
+        "palette_flash",
+        |lua, (variant, ticks, while_dimmed, while_paused): (LuaValue, LuaValue, Option<bool>, Option<bool>)| {
+            let (variant, ticks) = (u8_arg(variant, "palette flash variant")?, u8_arg(ticks, "palette flash ticks")?);
+            let (dimmed, paused) = (while_dimmed.unwrap_or(false), while_paused.unwrap_or(false));
+            let o = with(|api, _| Ok(api.spawn_palette_flash(variant, ticks, dimmed, paused)))?;
+            object_value(lua, o)
+        }
+    );
+    lib_fn!(
+        lua,
+        t,
         "region_effects",
         |_, (x, y, region, side, id, z): (LuaValue, LuaValue, LuaValue, LuaValue, LuaValue, Option<LuaValue>)| {
             let (x, y) = (int(&x, "x")? as i32, int(&y, "y")? as i32);
@@ -1041,7 +1049,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
                 None => 0,
             };
             let s = bn6_content_api::api::AfterimageSpec {
-                sprite: sprite_id(sprite, None)?,
+                sprite: if sprite.is_nil() { None } else { Some(sprite_id(sprite, None)?) },
                 anim: table_int(&spec, "anim")? as u8,
                 flip: table_int(&spec, "flip")? as u8,
                 lifetime: table_int(&spec, "lifetime")? as u16,
@@ -1145,16 +1153,6 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);
         let kind = named(&kind, "panel type", |s| PANEL_TYPES.iter().position(|&n| n == s))? as u8;
         with(|api, _| Ok(api.blink_panel(p, kind, side)))
-    });
-    lib_fn!(lua, t, "register_object", |_, (o, side, class): (mlua::UserDataRef<Object>, LuaValue, LuaValue)| {
-        let (side, class) = (u8_arg(side, "side")? & 1, u8_arg(class, "field object class")?);
-        if class > 1 {
-            return Err(mlua::Error::runtime(format!("field object class {class}: the classes are 0 and 1")));
-        }
-        with(|api, _| Ok(api.register_field_object(o.0, side, class)))
-    });
-    lib_fn!(lua, t, "unregister_object", |_, o: mlua::UserDataRef<Object>| {
-        with(|api, _| Ok(api.unregister_field_object(o.0)))
     });
     Ok(t)
 }
