@@ -133,9 +133,10 @@ fn warp(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).panel = dest;
     set_coordinates_from_panel(b, r);
     b.update_collision_panels(r);
-    if matches!(b.setup.settings.panel_pattern, 0x31 | 0x23 | 0x33) {
-        // sub_800F2FC: face the attack's target object (AIAttackVars+0x2C).
-        panic!("facing the rush target on this panel pattern (sub_800F2FC) is not implemented yet");
+    if let Some(t) = ai(b, r).attack.face_target
+        && matches!(b.setup.settings.panel_pattern, 0x31 | 0x23 | 0x33)
+    {
+        crate::kinds::player::face_toward(b, r, t);
     }
     if here != dest {
         let o = b.objects.get(r);
@@ -156,33 +157,50 @@ fn afterimage_anim(name_id: u16) -> u8 {
 }
 
 /// The lock-on mode: none (stay) while blind or confused outside Beast
-/// Over; 0xC for the claw (`sub_80EAF1A`); else the chip's.
+/// Over; else the claw's 0xC (`sub_80EAF1A`), the charged sword's by its
+/// variant (`sub_80EAF26`), and failing those (0), the chip's.
 fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
     let beast_over = matches!(stats(b, r).form.0, 0x17 | 0x18);
     if !beast_over && flag1(b, r) & (f1::BLIND | f1::CONFUSED) != 0 {
         return 0;
     }
-    match b.objects.get(r).action {
+    let action = b.objects.get(r).action;
+    let attack = &ai(b, r).attack;
+    let special = match action {
         super::beast_claw::ACTION => 0x0C,
-        // sub_80EAF26
-        0x41 => panic!("the lock-on of action 0x41 (sub_80EAF26) is not implemented yet"),
-        _ => b.content.chip(ai(b, r).attack.chip_id).lockon_mode,
+        CHARGED_SWORD => {
+            let modes = &b.content.rules.lockon.charged_sword_modes;
+            *modes.get(attack.variant as usize).unwrap_or_else(|| {
+                panic!("the charged sword's lock-on for variant {:#x} reads past its table (sub_80EAF26)", attack.variant)
+            })
+        }
+        _ => 0,
+    };
+    if special != 0 {
+        return special;
     }
+    b.content.chip(attack.chip_id).lockon_mode
 }
 
+/// The charged sword's action (a sword chip charged in SlashCross's
+/// forms).
+const CHARGED_SWORD: u8 = 0x41;
+
 /// `ho_8026554`: the panel to attack `target` from in lock-on `mode`;
-/// None to stay.
+/// None to stay. A target off the field's playable panels means mode 0.
 fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> Option<PanelPos> {
+    use crate::content::LockonRule;
     let mode = if field::is_valid(target.x, target.y) { mode } else { 0 };
-    if mode == 0 {
-        // sub_802661C: the navi's own panel.
-        return Some(b.objects.get(r).panel);
-    }
-    let Some(search) = b.content.rules.lockon.search(mode) else {
-        panic!("lock-on mode {mode:#x} (jt_8026584) is not implemented yet");
+    let Some(m) = b.content.rules.lockon.mode(mode) else {
+        panic!("lock-on mode {mode:#x} runs off the jump table (jt_8026584)");
     };
-    let found = search_near(b, r, target, &search.offsets);
-    if !search.prefers_middle_row {
+    let found = match m.rule {
+        // sub_802661C: the navi's own panel.
+        LockonRule::Stay => return Some(b.objects.get(r).panel),
+        LockonRule::Row => search_row(b, r, target, m),
+        LockonRule::Near => search_near(b, r, target, m),
+    };
+    if !m.prefers_middle_row {
         return found;
     }
     // sub_80265FE: the middle row of that column, if it will do. (Its
@@ -191,31 +209,81 @@ fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> Option<P
     if can_stand(b, r, x, 2) { Some(PanelPos { x, y: 2 }) } else { found }
 }
 
-/// `sub_80265D0`: the first panel of `offsets` next to the target that
-/// the navi can stand on; if none, the same from columns shifted toward
-/// the navi.
-fn search_near(b: &Battle, r: ObjectRef, target: PanelPos, offsets: &[PanelOffset]) -> Option<PanelPos> {
+/// `sub_8026622`: along the target's row from the navi's own column (the
+/// same-row list when they share a row), then along the rows the mode's
+/// shifts away from the target's, with the plain list.
+fn search_row(b: &Battle, r: ObjectRef, target: PanelPos, m: &crate::content::LockonMode) -> Option<PanelPos> {
+    let own = b.objects.get(r).panel;
+    let first = if target.y == own.y { &m.same_row_offsets } else { &m.offsets };
+    let x = own.x as i32;
+    let rows = std::iter::once((target.y as i32, first)).chain(m.row_shifts.iter().map(|&s| (target.y as i32 + s as i32, &m.offsets)));
+    rows.into_iter().find_map(|(y, offsets)| search_from(b, r, target, x, y, offsets, false))
+}
+
+/// `sub_80265D0` (with the column shifts) or `sub_8026450` /
+/// `sub_80264A8` alone: next to the target, from the far-column list
+/// when the target stands in the column farthest ahead.
+fn search_near(b: &Battle, r: ObjectRef, target: PanelPos, m: &crate::content::LockonMode) -> Option<PanelPos> {
     let o = b.objects.get(r);
     let front = facing(o.alliance, o.flip);
-    let columns = std::iter::once(0).chain(b.content.rules.lockon.column_shifts.iter().copied());
-    for shift in columns {
+    // sub_80266BA: column 6 facing right, 1 facing left.
+    let far_column = if front > 0 { 6 } else { 1 };
+    let offsets = match &m.far_column_offsets {
+        Some(far) if target.x == far_column => far,
+        _ => &m.offsets,
+    };
+    let shifts: &[i8] = if m.column_shifts { &b.content.rules.lockon.column_shifts } else { &[] };
+    std::iter::once(0).chain(shifts.iter().copied()).find_map(|shift| {
         let x = target.x as i32 + front * shift as i32;
-        // sub_8026450
-        for off in offsets {
-            let cx = x + front * off.dx as i32;
-            if !(0..=6).contains(&cx) || cx * front > target.x as i32 * front {
-                continue;
-            }
-            let cy = target.y as i32 + off.dy as i32;
-            if !(0..=3).contains(&cy) {
-                continue;
-            }
-            if can_stand(b, r, cx as u8, cy as u8) {
-                return Some(PanelPos { x: cx as u8, y: cy as u8 });
-            }
+        search_from(b, r, target, x, target.y as i32, offsets, m.clear_path)
+    })
+}
+
+/// `sub_8026450` (`sub_80264A8` with `clear_path`): the first panel of
+/// `offsets` from (x, y) the navi can stand on, on the field's columns,
+/// not past the target's column, and with a clear path to it if asked.
+fn search_from(
+    b: &Battle,
+    r: ObjectRef,
+    target: PanelPos,
+    x: i32,
+    y: i32,
+    offsets: &[PanelOffset],
+    clear_path: bool,
+) -> Option<PanelPos> {
+    let o = b.objects.get(r);
+    let front = facing(o.alliance, o.flip);
+    offsets.iter().find_map(|off| {
+        let cx = x + front * off.dx as i32;
+        if !(0..=6).contains(&cx) || cx * front > target.x as i32 * front {
+            return None;
+        }
+        let cy = y + off.dy as i32;
+        if !(0..=3).contains(&cy) {
+            return None;
+        }
+        let p = PanelPos { x: cx as u8, y: cy as u8 };
+        (can_stand(b, r, p.x, p.y) && (!clear_path || path_clear(b, r, p, target))).then_some(p)
+    })
+}
+
+/// `sub_8026510`: every panel from `from` toward the front, up to the
+/// target's column, meets the clear-path condition (a panel off the field
+/// never does).
+fn path_clear(b: &Battle, r: ObjectRef, from: PanelPos, target: PanelPos) -> bool {
+    let o = b.objects.get(r);
+    let front = facing(o.alliance, o.flip);
+    let rule = b.content.rules.lockon.clear_path[o.alliance as usize & 1];
+    let mut x = from.x as i32;
+    loop {
+        if !(0..=0xFF).contains(&x) || !b.field.meets(x as u8, from.y, rule) {
+            return false;
+        }
+        x += front;
+        if x == target.x as i32 {
+            return true;
         }
     }
-    None
 }
 
 /// `sub_800E680`: the navi could stand on (x, y), whichever side owns it.

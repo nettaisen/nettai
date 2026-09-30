@@ -43,7 +43,9 @@
 -- whole words) are the scripts' constants, named where they're defined.
 
 export type Pool = "actor" | "attack" | "effect"
-export type Lifecycle = "init" | "update" | "destroy"
+-- ("finish" is the fourth state of kinds that have one after "destroy":
+-- for them "destroy" is a last running phase, and "finish" frees them.)
+export type Lifecycle = "init" | "update" | "destroy" | "finish"
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
@@ -139,6 +141,18 @@ export type NaviStateFlag =
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
+-- What other objects ask of a field object (an obstacle).
+export type ObstacleFlag =
+    "destroy"
+    | "flinch"
+    | "pushed"
+    | "thrown"
+    | "encased"
+    | "removed"
+    | "vanish"
+    | "absorbed"
+    | "absorbed_by_0"
+    | "absorbed_by_1"
 
 -- A sprite: "CC-II" in hex, its folder in the pack's graphics/sprites.
 export type SpriteId = string
@@ -221,6 +235,9 @@ declare class Collision
     -- The directions (bit 1 << the hitter's flip) a guard blocked hits
     -- from this window (read-only).
     guard_dirs: number
+    -- The secondary elements (sword 0x80, cursor 0x40, wind 0x20, break
+    -- 0x10) of what hit it this window (read-only).
+    damage_elements: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
@@ -283,10 +300,16 @@ declare class Object
     no_sprite_update: boolean
     -- A navi's drag reaction step (the byte other kinds use otherwise).
     drag_step: DragStep
+    -- It holds a panel reservation (released when it is destroyed).
+    holds_reservation: boolean
     sprite: Sprite
     collision: Collision
     -- The kind's declared state (cast it to the kind's State type).
     state: any
+    -- Navis only: the declared state of the content action it is running
+    -- (cast it to that action's State type), as another object reaches
+    -- into the game's attack variables.
+    attack_state: any
 
     -- Navis (actors) only. The attack in progress: its phase and whether
     -- the phase's entry ran; its variant (a chip's subtype) and chip.
@@ -380,6 +403,12 @@ declare class Object
     -- Onto the destination panel of a move (panel, reservation,
     -- coordinates, collision).
     function snap_to_future_panel(self): ()
+    -- `object_setCollisionPanelsToCurrent`: the collision registration's
+    -- panel becomes the object's (its move direction kept).
+    function set_collision_panel(self): ()
+    -- `object_highlightCurrentCollisionPanels`: highlight the panels the
+    -- registration's region covers.
+    function highlight_collision_panels(self): ()
     function reserve_panel(self, x: number, y: number): boolean
     function unreserve_panel(self, x: number, y: number): boolean
     function release_reservations(self): ()
@@ -406,9 +435,6 @@ declare class Object
     -- (not in mode 1), a white flash while hit, with a sound in modes 0
     -- and 2. -1 when its HP ran out, 1 when hit in another mode, else 0.
     function take_damage(self, mode: number): number
-    -- `object_highlightCurrentCollisionPanels`: highlight the panels its
-    -- collision region covers, facing its way (drawn only).
-    function highlight_collision_panels(self): ()
 
     -- Navis only.
     function attack_param(self, n: number): number
@@ -458,6 +484,10 @@ declare class Object
     function absorbed(self): { { kind: number, anim: number } }
     function push_absorbed(self, kind: number, anim: number): boolean
     function pop_absorbed(self): (number?, number?)
+
+    -- Field objects (obstacles): whether another object asked this of it
+    -- (the rest is the `obstacle` service).
+    function obstacle_flag(self, flag: ObstacleFlag): boolean
 end
 
 -- A side's navi stats (read-only).
@@ -490,6 +520,8 @@ declare class Navi
     -- The form is a Beast form, Beast Over.
     beast: boolean
     beast_over: boolean
+    -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
+    bug_kinds: number
 end
 
 -- A one-tick hit region (`battle.hitbox`).
@@ -513,18 +545,22 @@ export type HitboxSpec = {
     bug_arg: number?,
 }
 
--- An afterimage (`battle.afterimage`): a blinking copy of a sprite that
--- lasts `lifetime` ticks.
+-- An afterimage (`battle.afterimage`): `anim` of `sprite` (or, without
+-- one, a copy of the owner's sprite wearing its form's overlay), flipped
+-- by the game's flip value, for `lifetime` ticks, blinking unless
+-- `steady`; its shadow at its height unless said otherwise. It ends early
+-- with its `tether`: when its side leaves the Beast forms, or when its
+-- owner's action drops below 0x10.
 export type AfterimageSpec = {
-    -- A sprite of its own, or nil: a copy of the owner's (with its form's
-    -- overlay).
     sprite: SpriteId?,
-    anim: number,
-    -- The game's flip value (bit 0 horizontal).
-    flip: number,
-    color_shader: number,
+    anim: number?,
+    flip: number?,
     lifetime: number,
-    shadow: Shadow,
+    color_shader: number?,
+    palette: number?,
+    shadow: Shadow?,
+    steady: boolean?,
+    tether: ("beast_form" | "attack")?,
 }
 
 -- A side's defensive-chip record.
@@ -540,6 +576,11 @@ export type LinkedChip = {
 export type Panel = { kind: PanelType, alliance: number, home: number }
 -- A panel flags word has every `require` bit and no `forbid` bit.
 export type PanelCondition = { require: number, forbid: number }
+
+-- A side's damage-carry record: the side's largest damage this tick and
+-- last tick, the object that set the record, and the target that takes
+-- last tick's damage on top of its own.
+export type DamageCarry = { this_tick: number, previous: number, source: Object?, target: Object? }
 export type Column = { home: number, timer: number }
 export type NaviRecord = { actor_type: ActorType, ai_index: number }
 
@@ -581,6 +622,8 @@ declare battle: {
     navis_in: () -> boolean,
     -- Presentation only: the side the simulation's perspective is.
     local_side: () -> number,
+    -- Battle flag 1: the fight is on (collision is live).
+    fighting: () -> boolean,
     -- Sound for both players, or for one side's player (output only).
     play_sound: (id: number) -> (),
     play_sound_for: (side: number, id: number) -> (),
@@ -605,7 +648,13 @@ declare battle: {
     clear_linked: (side: number) -> (),
     fill_custom_gauge: () -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
+    -- `sub_800AB3A`: a side's statistics counter.
+    side_stat: (side: number, index: number) -> number,
     navi_record: (name_id: number) -> NaviRecord?,
+    -- The damage-carry record of the side that takes the damage
+    -- (`dword_203CFB0`; CopyDmg's).
+    damage_carry: (side: number) -> DamageCarry,
+    set_damage_carry: (side: number, record: DamageCarry) -> (),
     -- Spawn into the pool's lowest free slot; it runs later this tick,
     -- right after the spawner. nil if the pool is full.
     spawn: (pool: Pool, index: number, pos: Vec3?, params: { number }?) -> Object?,
@@ -614,6 +663,9 @@ declare battle: {
     -- `sub_80033E4`: the same at the head of the update list (it first
     -- runs next tick, before everything else).
     spawn_kind_first: (name: string, pos: Vec3?, params: { number }?) -> Object?,
+    -- `sub_8003374` / `sub_800333C`: the same, at the end of the update
+    -- list (it runs after everything else this tick).
+    spawn_kind_at_end: (name: string, pos: Vec3?, params: { number }?) -> Object?,
     -- The generic one-shot effect (effect object #0).
     effect: (pos: Vec3, id: number, flip: number?, palette_add: number?, priority: number?) -> Object?,
     -- `sub_801BD3C`: the one-shot effect `id` on each field panel of hit
@@ -629,9 +681,12 @@ declare battle: {
     palette_flash: (variant: number, ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
-    -- `sub_80E33FA`: an afterimage (effect object #0x28) of `owner` at
-    -- `pos`.
+    -- `sub_80E33FA`: an afterimage (effect object #0x28) of `owner`'s side
+    -- at `pos`: a copy of a sprite that stays behind.
     afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
+    -- `sub_8018810`: NameID `name_id`'s sprite attach point `point`, in
+    -- pixels, facing the way `alliance` and `flip` say.
+    attach_point: (name_id: number, point: number, alliance: number, flip: number) -> (number, number),
 }
 
 declare field: {
@@ -653,6 +708,13 @@ declare field: {
     -- `object_breakPanel_dup2`: break a solid panel, or crack it while
     -- something stands on it.
     break_panel: (x: number, y: number) -> boolean,
+    -- `object_breakPanel_dup1`: break a solid panel, or crack it when
+    -- something stands on it (not a neutral object); true only when it
+    -- broke.
+    shatter: (x: number, y: number) -> boolean,
+    -- `object_breakPanel`: break a solid panel nothing stands on (true);
+    -- leave any other alone.
+    break_empty: (x: number, y: number) -> boolean,
     -- `object_isPanelSolid`: something can stand on it (not missing or
     -- broken).
     solid: (x: number, y: number) -> boolean,
@@ -961,6 +1023,10 @@ export type FlyingShotKind = {
 
 export type WeaponData = { id: number, name: string, action: number?, script: string }
 
+-- A shock wave's look and timing (attack object #0x16, by its first
+-- parameter): ticks on a panel before the next rolls on, and the panel
+-- type it leaves ("cracked" cracks the panel, "broken" breaks it).
+export type ShockWave = { id: number, sprite: SpriteId, anim: number, ticks: number, panel: PanelType? }
 -- An object kind a script implements.
 export type ObjectKindData = { pool: Pool, index: number, script: string }
 
@@ -978,19 +1044,20 @@ export type PackData = {
         projectiles: { [number]: ProjectileKind },
         flying_shots: { [number]: FlyingShotKind },
         kinds: { [string]: ObjectKindData },
+        shock_waves: { [number]: ShockWave },
     },
     rules: {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
-        -- Whole-field hit regions (`byte_8019C34`): region 0x80 + i covers
-        -- every panel whose flags word has all of `require` and none of
-        -- `forbid`.
-        field_regions: { [number]: PanelCondition },
         -- The sine table (`math_sinTable`, which `math_cosTable` continues):
         -- 256 steps a turn, 1.0 = 0x100, over a turn and a half, so the
         -- cosine of step a is entry a + 64.
         sine: { [number]: number },
+        -- Whole-field hit regions (`byte_8019C34`): region 0x80 + i covers
+        -- every panel whose flags word has all of `require` and none of
+        -- `forbid`.
+        field_regions: { [number]: PanelCondition },
     },
     -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
     -- panels a region covers, { dx, dy } from its panel with dx toward the

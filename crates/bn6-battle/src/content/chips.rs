@@ -209,6 +209,9 @@ pub struct ChipData {
     /// 1..=18; `Rules::sp_deletion_times`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sp_damage: Option<Vec<u16>>,
+    /// A link navi's chip's damage (damage formulas 24..=44).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub navi_damage: Option<NaviChipDamage>,
     /// What the chip does to the chip picked before it, as a modifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub modifier: Option<ChipModifier>,
@@ -288,6 +291,16 @@ pub struct SwordSlash {
     pub bug_arg: u8,
     /// The effect (effect object #0) it shows on the panel ahead.
     pub effect: u8,
+}
+
+/// A link navi's chip's damage (`sub_8010C50`, a row of `byte_80212D4`):
+/// `base`, plus `per_level` for each level of its user's buster attack
+/// up to 5.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NaviChipDamage {
+    pub base: u8,
+    pub per_level: u8,
 }
 
 /// GunDelSol's per-chip data.

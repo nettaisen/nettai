@@ -4,7 +4,7 @@
 //! libraries.
 
 use super::folder::FolderChip;
-use crate::content::{ChipData, ChipId, Content, CustomScreenLayout, ProgramAdvance};
+use crate::content::{BannerId, ChipData, ChipId, Content, CustomScreenLayout, ProgramAdvance};
 use crate::setup::Navi;
 
 /// Game data for the custom screen.
@@ -17,6 +17,8 @@ pub trait Library {
     fn navi_chip(&self, navi: Navi) -> Option<FolderChip>;
     /// The screen's slot grid and neighbour scans.
     fn layout(&self) -> &CustomScreenLayout;
+    /// Whether a banner stays up until let go (the Program Advance's).
+    fn banner_holds(&self, id: BannerId) -> bool;
 }
 
 impl Library for Content {
@@ -34,6 +36,10 @@ impl Library for Content {
 
     fn layout(&self) -> &CustomScreenLayout {
         &self.rules.custom_screen
+    }
+
+    fn banner_holds(&self, id: BannerId) -> bool {
+        self.rules.banner_holds(id)
     }
 }
 
@@ -70,6 +76,7 @@ pub(crate) mod testing {
             slot_in_limit: 0,
             dark_substitute: None,
             sp_damage: None,
+            navi_damage: None,
             modifier: None,
             program_advances: Vec::new(),
             gun_del_sol: None,
@@ -119,6 +126,9 @@ pub(crate) mod testing {
         }
         fn layout(&self) -> &CustomScreenLayout {
             &self.layout
+        }
+        fn banner_holds(&self, id: BannerId) -> bool {
+            matches!(id.0, 0x24 | 0x34)
         }
     }
 }

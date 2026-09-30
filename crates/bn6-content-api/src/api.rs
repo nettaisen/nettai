@@ -23,6 +23,10 @@ pub enum Lifecycle {
     Update,
     /// Ending; its next update frees it.
     Destroy,
+    /// The fourth state (the game's 0xC) of kinds that have one after
+    /// `Destroy`: for them `Destroy` is a last running phase, and this one
+    /// frees them.
+    Finish,
 }
 
 impl Lifecycle {
@@ -31,11 +35,12 @@ impl Lifecycle {
             Lifecycle::Init => "init",
             Lifecycle::Update => "update",
             Lifecycle::Destroy => "destroy",
+            Lifecycle::Finish => "finish",
         }
     }
 
     pub fn from_name(s: &str) -> Option<Lifecycle> {
-        [Lifecycle::Init, Lifecycle::Update, Lifecycle::Destroy].into_iter().find(|l| l.name() == s)
+        [Lifecycle::Init, Lifecycle::Update, Lifecycle::Destroy, Lifecycle::Finish].into_iter().find(|l| l.name() == s)
     }
 }
 
@@ -171,6 +176,8 @@ named_fields! {
         NoSpriteUpdate = "no_sprite_update", Bool, rw;
         /// A navi's drag reaction step (BattleObject+0x0D).
         DragStep = "drag_step", enum_type(&DRAG_STEPS), rw;
+        /// It holds a panel reservation (released when it is destroyed).
+        HoldsReservation = "holds_reservation", Bool, rw;
     }
 }
 
@@ -298,6 +305,9 @@ named_fields! {
         /// The directions (1 << the hitter's flip) a guard blocked hits
         /// from this window (CollisionData+0x03).
         GuardDirs = "guard_dirs", U8, ro;
+        /// The secondary elements (sword 0x80, cursor 0x40, wind 0x20,
+        /// break 0x10) of what hit it this window.
+        DamageElements = "damage_elements", U8, ro;
     }
 }
 
@@ -334,6 +344,11 @@ named_fields! {
         /// The form is a Beast form, Beast Over.
         Beast = "beast", Bool, ro;
         BeastOver = "beast_over", Bool, ro;
+        /// `sub_800FE52`: how many kinds of NaviCust bug the navi has
+        /// (astray steps, a panel trail, buster blanks, a hit status,
+        /// custom-screen damage, emotion swings, the two HP drains, a
+        /// battle-start hook, a shrinking hand).
+        BugKinds = "bug_kinds", U8, ro;
     }
 }
 
@@ -348,6 +363,8 @@ named_fields! {
         NavisIn = "navis_in", Bool, ro;
         /// Presentation only: the side the simulation's perspective is.
         LocalSide = "local_side", U8, ro;
+        /// Battle flag 1: the fight is on (collision is live).
+        Fighting = "fighting", Bool, ro;
     }
 }
 
@@ -591,9 +608,34 @@ named_flags! {
 }
 
 named_flags! {
-    /// `sub_800F8CE`: how a removed obstacle's blink-out is going.
+    /// What other objects ask of a field object (an obstacle: a rock, a
+    /// cube, a whirlwind...), in its collision's second flags word.
+    pub enum ObstacleFlag {
+        /// Break it at its next reaction.
+        Destroy = "destroy",
+        /// A hit made it flinch.
+        Flinch = "flinch",
+        /// A hit pushes it.
+        Pushed = "pushed",
+        /// Picked up to be thrown.
+        Thrown = "thrown",
+        /// Encased in ice or a bubble.
+        Encased = "encased",
+        /// A chip removes it.
+        Removed = "removed",
+        /// It blinks out.
+        Vanish = "vanish",
+        /// A side absorbs it (either side, side 0, side 1).
+        Absorbed = "absorbed",
+        AbsorbedBy0 = "absorbed_by_0",
+        AbsorbedBy1 = "absorbed_by_1",
+    }
+}
+
+named_flags! {
+    /// How a removed field object's blink-out goes (`sub_800F8CE`).
     pub enum BlinkOut {
-        /// Not blinking out (removed some other way).
+        /// It isn't blinking out (removed some other way).
         No = "no",
         Blinking = "blinking",
         Done = "done",
@@ -633,19 +675,25 @@ pub struct HitboxSpec {
     pub bug_arg: u8,
 }
 
-/// An afterimage (effect object #0x28), as `sub_80E33FA` takes it.
+/// An afterimage (effect object #0x28, as `sub_80E33FA` spawns it): a copy
+/// of a sprite that stays behind, blinking unless `steady`, for `lifetime`
+/// ticks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct AfterimageSpec {
-    /// A sprite of its own, or None: a copy of the owner's sprite (Param1
-    /// 0xFF), wearing the owner's form overlay.
+    /// A sprite of its own, or None: a copy of the owner's (Param1 0xFF),
+    /// with its NameID and form overlay.
     pub sprite: Option<SpriteId>,
     pub anim: u8,
-    /// The game's flip value (bit 0 horizontal).
+    /// The game's flip value (bit 0 horizontal, bit 1 vertical).
     pub flip: u8,
-    pub color_shader: u16,
-    /// Ticks it lasts.
     pub lifetime: u16,
+    pub color_shader: u16,
+    pub palette: u8,
     pub shadow: Shadow,
+    pub steady: bool,
+    /// It ends early: 1 when its side leaves the Beast forms, 2 when its
+    /// owner's action drops below 0x10 (0 never).
+    pub tether: u8,
 }
 
 /// A panel as content sees it.
@@ -678,6 +726,18 @@ pub struct LinkedChip {
     pub owner: Option<ObjectRef>,
     /// The object that implements it, if any.
     pub object: Option<ObjectRef>,
+}
+
+/// A side's damage-carry record (`dword_203CFB0`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DamageCarryInfo {
+    /// The side's largest damage this tick, and last tick.
+    pub this_tick: u16,
+    pub previous: u16,
+    /// The object that set the record, and the target that takes last
+    /// tick's damage on top of its own.
+    pub source: Option<ObjectRef>,
+    pub target: Option<ObjectRef>,
 }
 
 /// A NameID's actor record.
@@ -781,8 +841,16 @@ pub trait CoreApi {
     fn fill_custom_gauge(&mut self);
     /// `sub_800AB46`: bump a side's statistics counter.
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
+    /// `sub_800AB3A`: a side's statistics counter.
+    fn side_stat(&self, side: u8, index: u8) -> u8;
     /// A player NameID's actor record, if it is one.
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo>;
+    /// The damage-carry record of the side that takes the damage
+    /// (`dword_203CFB0`; CopyDmg's): what that side took this tick and
+    /// last tick, the object that set it, and the target that also takes
+    /// last tick's damage.
+    fn damage_carry(&self, side: u8) -> DamageCarryInfo;
+    fn set_damage_carry(&mut self, side: u8, rec: DamageCarryInfo);
 
     // ---- Panels -----------------------------------------------------------
 
@@ -806,6 +874,9 @@ pub trait CoreApi {
     /// `object_breakPanel_dup2`: break a solid panel, or crack it while
     /// something stands on it.
     fn break_panel(&mut self, p: PanelPos) -> bool;
+    /// `object_breakPanel`: break a solid panel nothing stands on (true);
+    /// leave any other alone.
+    fn break_empty_panel(&mut self, p: PanelPos) -> bool;
     /// `object_isPanelSolid`: the panel is solid (something can stand on
     /// it).
     fn panel_solid(&self, p: PanelPos) -> bool;
@@ -821,6 +892,9 @@ pub trait CoreApi {
     fn can_step(&self, o: ObjectRef, p: PanelPos) -> bool;
     /// `sub_800E680`: could `o` stand on `p`, whichever side owns it?
     fn can_stand_any_side(&self, o: ObjectRef, p: PanelPos) -> bool;
+    /// `object_breakPanel_dup1`: break a solid panel, or crack it when
+    /// something stands on it; true only when it broke.
+    fn shatter_panel(&mut self, p: PanelPos) -> bool;
 
     // ---- Objects -----------------------------------------------------------
 
@@ -833,6 +907,9 @@ pub trait CoreApi {
     /// `sub_80033E4`: the same at the head of the update list (it first
     /// runs next tick, before everything else).
     fn spawn_kind_first(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
+    /// `sub_8003374` (attacks) / `sub_800333C` (actors): the same, at the
+    /// end of the update list rather than right after the spawner.
+    fn spawn_kind_at_end(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
     /// Free the slot now (the object stops running).
     fn free(&mut self, o: ObjectRef);
     /// `object_genericDestroy`: release panel reservations and collision,
@@ -900,12 +977,12 @@ pub trait CoreApi {
     /// `variant` (0 white or red, 1 white over two layers) for `ticks`,
     /// optionally going on while dimmed or paused.
     fn spawn_palette_flash(&mut self, variant: u8, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
-    /// `sub_80E33FA`: an afterimage of `owner` at `pos` (nothing ends it
-    /// early).
-    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
+    /// `sub_80E33FA`: an afterimage of `owner`'s side at `pos` (a sprite of
+    /// its own, or a copy of the owner's).
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
 
     // ---- Navis and the attack in progress -------------------------------------
 
@@ -999,6 +1076,12 @@ pub trait CoreApi {
     /// Unregister, resolving hits against whatever is registered there.
     fn remove_collision(&mut self, o: ObjectRef);
     fn free_collision(&mut self, o: ObjectRef);
+    /// `object_setCollisionPanelsToCurrent`: the registration's panel
+    /// becomes the object's (its move direction kept).
+    fn set_collision_panel(&mut self, o: ObjectRef);
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels the
+    /// registration's region covers.
+    fn highlight_collision_panels(&mut self, o: ObjectRef);
     /// `object_spawnCollisionEffect`: the hit spark of a registration that
     /// just hit something (one RNG draw when it shows).
     fn hit_spark(&mut self, o: ObjectRef);
@@ -1008,9 +1091,6 @@ pub trait CoreApi {
     /// modes 0 and 2. -1 when its HP ran out, 1 when hit in another mode,
     /// else 0.
     fn take_damage(&mut self, o: ObjectRef, mode: u8) -> i32;
-    /// `object_highlightCurrentCollisionPanels`: highlight the panels of
-    /// the registration's region, facing the object's way (drawn only).
-    fn highlight_collision_panels(&mut self, o: ObjectRef);
 
     // ---- Services ------------------------------------------------------------
 
@@ -1064,4 +1144,9 @@ pub trait CoreApi {
     /// A chip's request of the obstacle `o` (`by`: the requester, whose
     /// side absorbs).
     fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef);
+    /// Whether another object asked `flag` of the field object `o`.
+    fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool>;
+    /// `sub_8018810`: NameID `name_id`'s sprite attach point `point`, in
+    /// pixels, facing the way `alliance` and `flip` say.
+    fn name_attach_point(&self, name_id: u16, point: u8, alliance: u8, flip: u8) -> (i32, i32);
 }

@@ -157,6 +157,8 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(ChipId
             folder: Some(BattleFolder::shuffled(&saved, 0, &mut rng, content)),
             unlocks: Unlocks::everything(GameVersion::Falzar),
             joypad_phase: 0,
+            bug_frags: 0,
+            navi_level: 0,
         }
     };
     RoundSetup {

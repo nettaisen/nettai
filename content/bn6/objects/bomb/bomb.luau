@@ -18,7 +18,6 @@
 
 local bomb_slash = require("../bomb-slash/bomb_slash")
 local energy_burst = require("../energy-burst/energy_burst")
-local region = require("../../lib/region")
 
 local bomb = {}
 
@@ -105,7 +104,7 @@ local function fly(me: Object)
     end
     local k = kind_of(me)
     me.collision.region = k.region
-    region.effects(x, y, k.effect, k.region, region.direction(me.alliance), 0)
+    battle.region_effects(x, y, k.region, me.alliance, k.effect, 0)
     battle.play_sound(SOUND_HIT_BOMB)
     me.action = 4
     me.phase, me.phase_init = 0, 0
