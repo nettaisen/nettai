@@ -20,3 +20,18 @@ export type LinkChipState = {
     -- A speed, 16.16 (AIAttackVars+0x34).
     speed: number,
 }
+
+-- What a projectile (attack object #0, objects/projectile) is fired with
+-- (lib/projectile.luau).
+export type ProjectileShot = {
+    -- The kind (data.objects.projectiles): its first parameter.
+    kind: number,
+    -- The damage word: the damage (with its flag bits) | the counter
+    -- byte << 16.
+    damage: number,
+    -- Its height, 16.16 (the buster's shots fly at 24 pixels, 0x18_0000).
+    z: number,
+    -- Rows it also moves on its first step: 1 down, -1 up (its second
+    -- parameter). None by default.
+    row: number?,
+}
