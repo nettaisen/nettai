@@ -9,6 +9,7 @@ mod battle_settings_generated;
 mod banners_generated;
 mod chips_generated;
 pub mod cross;
+pub mod custom;
 mod cross_generated;
 pub mod collision_generated;
 pub mod effects_generated;

@@ -73,10 +73,17 @@ the trace's recorded state is printed too. Frame numbers are the trace's.
 
 **Live play**: you are the left navi; the right one stands still. The round
 uses a built-in netbattle setup (the recorded matches' field and a
-1000-HP MegaMan per side). The custom screen is a stand-in: A takes a fixed
-hand (GunDelS3 twice, Geddon twice), B the same plus Beast Out. Moving,
-chips and Beast Out work; what else works depends on what the engine
-implements (the buster doesn't yet). When the engine stops, F5 starts over.
+1000-HP MegaMan per side, each with a folder of GunDelSols, Geddon,
+Invisibl and EraseMan, shuffled from the seed). The custom screen is the
+engine's (docs/engine/custom-screen.md), shown as text for now: the dealt
+chips in the grid's order (`>` the cursor, `+` picked, `-` greyed), OK and
+Beast Out, the picks and the Cross window. The keys are the game's (A
+picks, B takes back, START goes to OK, UP from the top row opens the Cross
+window, R describes, SELECT hides). The right navi's screen picks its first
+chip and presses OK. As in the original's netbattles, the fight gets your
+buttons 4 ticks late (the link). What else works depends on what the
+engine implements (the buster doesn't yet). When the engine stops, F5
+starts over.
 
 **Headless mode** renders the listed frames (`a,b,c-d`; trace frame
 numbers, or tick numbers in live play) to `frame_NNNNN.png`. It exits

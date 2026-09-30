@@ -5,7 +5,7 @@
 
 use super::{
     actions, ai, ai_mut, attach_point, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_paralysis, coll,
-    coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
+    Emotion, coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
     coordinates_to_panel, panel_kind, reactions, reset_attack_links, save_state_word, set_attack,
     set_coordinates_from_panel, set_flag1, set_flag2, set_mood,
 };
@@ -719,7 +719,7 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let side = b.objects.get(r).alliance;
-    if matches!(emotion(b, side), 5 | 1) {
+    if matches!(emotion(b, side), Emotion::WornOut | Emotion::Tired) {
         clear_flag2(b, r, 0x200);
         clear_flag1(b, r, f1::ANGER);
         return;

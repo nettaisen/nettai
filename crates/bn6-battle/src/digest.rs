@@ -167,7 +167,8 @@ impl Hash for Battle {
             fade,
             fadein_queue,
             damage_carry,
-            custom_ui,
+            custom,
+            link,
             sides,
             side_stats,
             linked,
@@ -202,7 +203,8 @@ impl Hash for Battle {
         fade.hash(h);
         fadein_queue.hash(h);
         damage_carry.hash(h);
-        custom_ui.hash(h);
+        custom.hash(h);
+        link.hash(h);
         sides.hash(h);
         side_stats.hash(h);
         linked.hash(h);

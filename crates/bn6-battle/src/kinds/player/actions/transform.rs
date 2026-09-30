@@ -12,7 +12,7 @@ use super::ActionVars;
 use crate::kinds::common;
 use crate::kinds::player::status::end_anger;
 use crate::kinds::player::{
-    ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, coll_mut, emotion, exit_attack_state, form,
+    Emotion, ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, coll_mut, emotion, exit_attack_state, form,
     reset_charge, reset_status, set_coordinates_from_panel, set_mood, snap_to_future_panel, stats, stats_mut,
 };
 use crate::kinds::{cross_merge, effect, form_overlay, palette_flash};
@@ -229,7 +229,7 @@ fn emerge(b: &mut Battle, r: ObjectRef, target: Form) {
         return;
     }
     let side = b.objects.get(r).alliance;
-    let full_synchro = emotion(b, side) == 2;
+    let full_synchro = emotion(b, side) == Emotion::FullSynchro;
     reset_status(b, r);
     end_anger(b, r);
     if full_synchro {
