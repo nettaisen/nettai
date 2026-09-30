@@ -60,7 +60,14 @@ fn run_effect(b: &mut Battle, r: ObjectRef) {
         damage: (a.damage as u32 | (a.hit_param as u32) << 16).wrapping_add(a.extra as u32 & 0xFF),
     };
     let subtype = a.variant;
-    match b.behaviors.hook(Hook::InstantChip(subtype)) {
+    // The chip's own effect, if content defines the chip; else
+    // off_80EC3F0, by the subtype.
+    let defined = match b.content.defs.chip_with_id(a.chip_id).map(|c| c.usage) {
+        Some(crate::content::ChipUsage::Instant(f)) => Some(f),
+        Some(u) => panic!("chip {:#x} is an instant chip, but its definition uses it as {u:?}", a.chip_id),
+        None => None,
+    };
+    match defined.or_else(|| b.content.defs.hook(Hook::InstantChip(subtype))) {
         Some(hook) => {
             crate::behavior::call_hook(b, hook, HookCall::InstantChip { user: r, spec });
         }

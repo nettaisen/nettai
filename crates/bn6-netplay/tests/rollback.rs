@@ -327,5 +327,7 @@ fn state_outside_the_snapshot_is_caught() {
 /// are also the scripted content under rollback.
 #[test]
 fn the_battles_run_the_content_scripts() {
-    assert_eq!(start(1).battle.behaviors.runtime(), "luau");
+    let battle = start(1).battle;
+    let runtime = bn6_battle::behavior::Behaviors::for_content(&battle.content).unwrap();
+    assert_eq!(runtime.runtime(), "luau");
 }

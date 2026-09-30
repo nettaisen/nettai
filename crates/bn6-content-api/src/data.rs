@@ -1,9 +1,12 @@
-//! [`Data`]: the content pack's data as scripts read it (the `data`
-//! global), a plain tree the engine builds from the pack and a runtime
-//! turns into its own read-only values.
+//! [`Data`]: plain data trees that cross between the engine and a runtime:
+//! the content pack's data as scripts read it (the `data` global, which the
+//! engine builds), and the definitions content makes as the define phase
+//! reads them back ([`crate::definitions`]).
+
+use crate::registry::Registry;
 
 /// A value of the pack's data.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Data {
     Nil,
     Bool(bool),
@@ -11,12 +14,17 @@ pub enum Data {
     Str(String),
     /// A sequence (1-based in Luau).
     List(Vec<Data>),
-    /// A table by keys (ids, names).
+    /// A table by keys (ids, names), in key order.
     Map(Vec<(Key, Data)>),
+    /// Another definition, by registry and key (in definitions only).
+    Ref(Registry, String),
+    /// A function: the definition's function slot at this place (in
+    /// definitions only; the runtime keeps the function itself).
+    Function,
 }
 
 /// A table key.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Key {
     Int(i64),
     Str(String),
@@ -34,9 +42,49 @@ impl From<i64> for Key {
     }
 }
 
+impl std::fmt::Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Key::Int(i) => write!(f, "{i}"),
+            Key::Str(s) => f.write_str(s),
+        }
+    }
+}
+
 impl Data {
     /// A table from (key, value) pairs.
     pub fn map<K: Into<Key>>(entries: impl IntoIterator<Item = (K, Data)>) -> Data {
         Data::Map(entries.into_iter().map(|(k, v)| (k.into(), v)).collect())
+    }
+
+    /// The field `name` of a table (Nil if absent or not a table).
+    pub fn field(&self, name: &str) -> &Data {
+        match self {
+            Data::Map(entries) => entries
+                .iter()
+                .find(|(k, _)| matches!(k, Key::Str(s) if s == name))
+                .map_or(&Data::Nil, |(_, v)| v),
+            _ => &Data::Nil,
+        }
+    }
+
+    /// The string, if this is one.
+    pub fn str(&self) -> Option<&str> {
+        match self {
+            Data::Str(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// The integer, if this is one.
+    pub fn int(&self) -> Option<i64> {
+        match self {
+            Data::Int(i) => Some(*i),
+            _ => None,
+        }
+    }
+
+    pub fn is_nil(&self) -> bool {
+        matches!(self, Data::Nil)
     }
 }
