@@ -242,9 +242,9 @@ pub struct Battle {
     pub(crate) sound: [Vec<SoundCue>; 2],
     /// How the round ended, once the end state is through.
     pub(crate) outcome: Option<RoundEnd>,
-    /// The content running the object kinds and actions the engine
-    /// doesn't implement itself (shared code, not state: snapshots share
-    /// it and the digest leaves it out).
+    /// The content's scripts, running the object kinds, actions and hooks
+    /// the content implements (shared code, not state: snapshots share it
+    /// and the digest leaves it out).
     pub behaviors: Behaviors,
 }
 
@@ -374,15 +374,17 @@ pub struct DamageCarry {
 
 impl Battle {
     /// Start a round on `content`: the state the game is in when its init
-    /// finishes and the first battle tick is about to run. Panics if the
-    /// setup names other content (`RoundSetup::content`).
+    /// finishes and the first battle tick is about to run, with the
+    /// content's scripts running what they implement. Panics if the setup
+    /// names other content (`RoundSetup::content`), or if the content's
+    /// scripts don't load (a content error, the same on every machine).
     pub fn new(setup: RoundSetup, content: Arc<Content>) -> Battle {
-        let behaviors = Behaviors::for_build(&content);
+        let behaviors = Behaviors::for_content(&content).unwrap_or_else(|e| panic!("{e}"));
         Battle::with_behaviors(setup, content, behaviors)
     }
 
-    /// Start a round on `content`, running `behaviors` for the kinds and
-    /// actions they implement.
+    /// Start a round on `content`, running `behaviors` (its scripts, loaded
+    /// with particular options) for the kinds and actions they implement.
     pub fn with_behaviors(setup: RoundSetup, content: Arc<Content>, behaviors: Behaviors) -> Battle {
         let hash = content.hash();
         assert_eq!(setup.content, hash, "the round's setup names content {} but runs on content {hash}", setup.content);

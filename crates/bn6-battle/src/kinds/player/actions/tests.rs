@@ -116,7 +116,8 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     // Tick 1: the gun comes out, at its owner's attach point.
     run_to(&mut b, p, &mut t, 1, keys::A);
     assert_eq!(b.objects.get(p0).anim, 0x0A);
-    assert_eq!(following(&b, p0)[0], (Pool::Actor, crate::kinds::attachment::INDEX));
+    let attachment = b.content.object_kind("attachment").unwrap();
+    assert_eq!(following(&b, p0)[0], (attachment.pool, attachment.index));
     let gun = ai_mut(&mut b, p0).overlay.unwrap();
     let (at, g) = (b.objects.get(p0).pos, b.objects.get(gun).pos);
     let point = testing::GUN_POINT;
@@ -125,7 +126,8 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     // Tick 7: the beam, two panels ahead.
     run_to(&mut b, p, &mut t, 7, 0);
     let beam = b.objects.get(p0).related[0].unwrap();
-    assert_eq!((beam.pool, b.objects.get(beam).index), (Pool::Effect, crate::kinds::sun_beam::INDEX));
+    let sun_beam = b.content.object_kind("sun-beam").unwrap();
+    assert_eq!((beam.pool, b.objects.get(beam).index), (sun_beam.pool, sun_beam.index));
     assert_eq!(b.objects.get(beam).pos.x, 60 << 16);
     assert_eq!(b.objects.get(gun).anim, 1);
 

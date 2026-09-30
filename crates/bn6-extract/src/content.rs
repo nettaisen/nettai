@@ -1,11 +1,14 @@
-//! `bn6-extract content <rom> <pack-dir>`: the game's battle content as a
-//! content pack of open formats (see the bn6-content crate): the battle
-//! data (TOML, by owner), the graphics (indexed PNG, JSON, Tiled maps) and
-//! all of the game's sound (MIDI, TOML, WAV).
+//! `bn6-extract content <rom> <pack-dir> [--overlay <dir>]`: the game's
+//! battle content as a content pack of open formats (see the bn6-content
+//! crate): the battle data (TOML, by owner), the graphics (indexed PNG,
+//! JSON, Tiled maps) and all of the game's sound (MIDI, TOML, WAV), with
+//! the hand-written scripts that implement BN6's content: the source
+//! overlay (`bn6_content::overlay`), this repository's content/bn6 unless
+//! `--overlay` names another.
 //!
 //! The battle data is read back from the written pack and compared with
-//! what was extracted, so a pack that wouldn't load as the same content is
-//! never left behind silently.
+//! what was extracted (and the overlay added), so a pack that wouldn't load
+//! as the same content is never left behind silently.
 //!
 //! The pack holds the game's own data: write it outside version control
 //! (data/content/ is ignored).
@@ -13,22 +16,42 @@
 use bn6_content::report::{Level, Report};
 use std::path::Path;
 
+/// The source overlay in this repository (content/bn6).
+const OVERLAY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+
 pub fn main(args: &[String]) {
+    let usage = "usage: bn6-extract content <rom> <pack-dir> [--overlay <dir>]";
     let (Some(rom), Some(out)) = (args.first(), args.get(1)) else {
-        eprintln!("usage: bn6-extract content <rom> <pack-dir>");
+        eprintln!("{usage}");
         std::process::exit(2);
+    };
+    let overlay_dir = match &args[2..] {
+        [] => OVERLAY.to_string(),
+        [flag, dir] if flag == "--overlay" => dir.clone(),
+        _ => {
+            eprintln!("{usage}");
+            std::process::exit(2);
+        }
     };
     let rom_bytes = crate::load_rom(rom);
     let t = std::time::Instant::now();
     let bundle = crate::graphics::bundle(&rom_bytes);
-    let battle = crate::battle::content(&rom_bytes);
+    let mut battle = crate::battle::content(&rom_bytes);
     check_timing(&battle, &bundle);
+    let mut report = Report::default();
+    let overlay = bn6_content::overlay::read(Path::new(&overlay_dir), &mut report);
+    let overlay = overlay.unwrap_or_else(|| panic!("the overlay {overlay_dir} doesn't read:\n{report}"));
+    overlay.apply(&mut battle, &mut report);
+    if report.has_errors() {
+        panic!("the overlay {overlay_dir} doesn't apply:\n{report}");
+    }
     let (bank, failures) = m4a::rom::extract(&rom_bytes.0).unwrap_or_else(|e| panic!("reading the sound data: {e}"));
     for (song, e) in &failures {
         eprintln!("song {:#05x} left out (it uses a command the driver port doesn't play): {e}", song.0);
     }
     let mut files = vec![bn6_content::pack::manifest("BN6 (US Falzar) battle content", Some(&bundle), true, true)];
     files.extend(bn6_content::battle::export(&battle));
+    files.extend(overlay.files().iter().cloned());
     files.extend(bn6_content::pack::export_graphics(&bundle));
     let (sound, left_out) = bn6_content::pack::export_sound(&bank);
     files.extend(sound);
@@ -50,10 +73,11 @@ pub fn main(args: &[String]) {
     }
     let bytes: usize = files.iter().map(|f| f.1.len()).sum();
     eprintln!(
-        "wrote {out}: {} chips, {} navis, {} forms, {} sprites, {} backgrounds, {} songs, {} samples; {} files, {} KiB in {:.1?} (content {})",
+        "wrote {out}: {} chips, {} navis, {} forms, {} scripts, {} sprites, {} backgrounds, {} songs, {} samples; {} files, {} KiB in {:.1?} (content {})",
         battle.chips.len(),
         battle.navis.len(),
         battle.forms.len(),
+        battle.scripts.modules.len(),
         bundle.sprites.len(),
         bundle.backgrounds.iter().flatten().count(),
         bank.songs.iter().flatten().count() - left_out.len(),

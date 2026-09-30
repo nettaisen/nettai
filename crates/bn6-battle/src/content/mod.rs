@@ -37,6 +37,7 @@ mod flags;
 mod navis;
 mod objects;
 mod rules;
+mod scripts;
 mod sprites;
 #[cfg(any(test, feature = "test-content"))]
 pub mod testing;
@@ -46,6 +47,7 @@ pub use custom::*;
 pub use navis::*;
 pub use objects::*;
 pub use rules::*;
+pub use scripts::*;
 pub use sprites::*;
 
 use serde::{Deserialize, Serialize};
@@ -151,6 +153,10 @@ pub struct Content {
     pub panel_layouts: Vec<PanelLayout>,
     /// Every sprite's animation timing.
     pub animations: Animations,
+    /// MegaMan's weapon routines that scripts implement (see `scripts`).
+    pub weapons: Vec<WeaponData>,
+    /// The pack's scripts (see `scripts`).
+    pub scripts: Scripts,
 }
 
 impl Content {

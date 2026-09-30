@@ -169,8 +169,14 @@ fn low_hp_navicust_effect(b: &mut Battle, r: ObjectRef) -> bool {
 }
 
 /// `off_80117D4[routine]`: set up a weapon's attack variables and name
-/// its action.
+/// its action: the content pack's script for the routine
+/// (`Hook::Weapon`), else the engine's.
 pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
+    use bn6_content_api::{Hook, HookCall};
+    if let Some(hook) = b.behaviors.hook(Hook::Weapon(routine)) {
+        let action = crate::behavior::call_hook(b, hook, HookCall::Weapon { navi: r });
+        return action.int().expect("a weapon routine names its action") as u8;
+    }
     match routine {
         0 => buster_setup(b, r),
         1 => charged_shot_setup(b, r),
@@ -236,7 +242,7 @@ fn buster_variant(b: &mut Battle, r: ObjectRef) -> u8 {
 
 /// `sub_801265A`: buster damage, attack + 1 (+1 in some forms), at most
 /// 10; 1 when worn out.
-pub(super) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
+pub(crate) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
     let s = stats(b, r);
     let mut d = s.attack as u16 + b.content.navi(s.navi).buster_bonus as u16;
     if emotion(b, b.objects.get(r).alliance) == Emotion::WornOut {
@@ -327,7 +333,7 @@ fn intercepted(b: &Battle, r: ObjectRef, chip: u16) -> bool {
 
 /// `sub_800FA54`: the held direction (up, down, right, left in that
 /// priority; swapped when confused), none while sliding.
-pub(super) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
+pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
     if flag1(b, r) & f1::SLIDING != 0 {
         return 0;
     }
@@ -348,7 +354,7 @@ pub(super) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
 
 /// `sub_80116AE(dir, sub_8010332(), sub_80103A8())`: a step toward `dir`
 /// from input (astray with the NaviCust processing bug).
-pub(super) fn start_move(b: &mut Battle, r: ObjectRef, dir: u8) {
+pub(crate) fn start_move(b: &mut Battle, r: ObjectRef, dir: u8) {
     let lag = move_lag(b, r);
     let kind = if stats(b, r).bugs.processing != 0 { MoveKind::Astray } else { MoveKind::Input };
     movement::start(b, r, dir, lag, kind);

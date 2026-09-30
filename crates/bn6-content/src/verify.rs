@@ -64,7 +64,7 @@ pub fn compare_battle(a: &bn6_battle::Content, b: &bn6_battle::Content) -> Vec<S
             out.push(format!("chip {:#05x} {} differs", x.id, x.name));
         }
     }
-    let parts: [(&str, bool); 9] = [
+    let parts: [(&str, bool); 11] = [
         ("navis", a.navis == b.navis),
         ("forms", a.forms == b.forms),
         ("rules", a.rules == b.rules),
@@ -74,6 +74,8 @@ pub fn compare_battle(a: &bn6_battle::Content, b: &bn6_battle::Content) -> Vec<S
         ("regions", a.regions == b.regions),
         ("panel layouts", a.panel_layouts == b.panel_layouts),
         ("sprite timing", a.animations == b.animations),
+        ("weapons", a.weapons == b.weapons),
+        ("scripts", a.scripts == b.scripts),
     ];
     out.extend(parts.iter().filter(|p| !p.1).map(|p| format!("{} differ", p.0)));
     out

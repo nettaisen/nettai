@@ -6,8 +6,7 @@
 use crate::actor::{ActorType, status};
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::kinds::attachment::{self, AttachSlot};
-use crate::kinds::player::{Emotion, actor_id, ai, ai_mut, emotion, exit_attack_state, flag1, stats};
+use crate::kinds::player::{Emotion, ai, ai_mut, emotion, exit_attack_state, flag1, stats};
 use crate::kinds::player::actions::movement;
 use crate::kinds::player::idle;
 use crate::object::ObjectRef;
@@ -19,11 +18,10 @@ const ARM: u8 = 6;
 /// its animation shows the form, its palette the element or state.
 pub(in crate::kinds::player) fn raise_arm(b: &mut Battle, r: ObjectRef) {
     let a = ai(b, r);
-    let slot = AttachSlot::Overlay(actor_id(b, r));
     let params = match a.actor_type {
-        ActorType::Virus => attachment::Params { kind: ARM, ..Default::default() },
+        ActorType::Virus => [ARM, 0, 0, 0],
         ActorType::Navi => {
-            attachment::Params { kind: 0x2B, anim: a.ai_index.wrapping_sub(1), palette_add: 0xD, ..Default::default() }
+            [0x2B, a.ai_index.wrapping_sub(1), 0, 0xD]
         }
         ActorType::Player if a.ai_index != 0 => {
             ai_mut(b, r).overlay = None;
@@ -41,10 +39,25 @@ pub(in crate::kinds::player) fn raise_arm(b: &mut Battle, r: ObjectRef) {
                 0x0D..=0x11 => 5 + form - 0x0D,
                 _ => 0,
             };
-            attachment::Params { kind: ARM, anim: form, palette_add, ..Default::default() }
+            [ARM, form, 0, palette_add]
         }
     };
-    attachment::spawn_with(b, r, params, slot);
+    // The attachment kind (a script), kept in the navi's overlay slot.
+    let o = crate::behavior::spawn_kind(b, "attachment", crate::object::Vec3::default(), params);
+    if let Some(o) = o {
+        let (panel, alliance, flip) = {
+            let n = b.objects.get(r);
+            (n.panel, n.alliance, n.flip)
+        };
+        let ob = b.objects.get_mut(o);
+        ob.related[0] = Some(r);
+        ob.panel = panel;
+        ob.alliance = alliance;
+        ob.flip = flip;
+        ob.flags |= crate::object::flags::RUN_WHILE_PAUSED | crate::object::flags::RUN_WHILE_DIMMED;
+        crate::behavior::set_state_variant(b, o, "slot", "overlay");
+    }
+    ai_mut(b, r).overlay = o;
 }
 
 /// `sub_800FAF6`: ticks of recovery after a shot: by the Rapid stat and

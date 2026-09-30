@@ -1,11 +1,12 @@
 //! Extract the game's battle content from the original ROM (US Falzar,
 //! `MEGAMAN6_FXXBR6E`) into a content pack:
 //!
-//!     bn6-extract content <rom> <pack-dir>
+//!     bn6-extract content <rom> <pack-dir> [--overlay <dir>]
 //!
 //! The pack (see bn6-content and docs/design/content-pack.md) holds the
 //! battle data the engine runs on, the graphics and the sound, in open
-//! formats; everything that plays BN6 loads it. It is the game's own data:
+//! formats, with the scripts of this repository's content/bn6 (the source
+//! overlay); everything that plays BN6 loads it. It is the game's own data:
 //! write it outside version control (data/content/ is ignored).
 
 mod battle;
@@ -114,7 +115,7 @@ fn main() {
     match args.first().map(String::as_str) {
         Some("content") => content::main(&args[1..]),
         _ => {
-            eprintln!("usage: bn6-extract content <rom> <pack-dir>");
+            eprintln!("usage: bn6-extract content <rom> <pack-dir> [--overlay <dir>]");
             std::process::exit(2);
         }
     }

@@ -1,17 +1,22 @@
 //! A small hand-authored content set for tests and examples.
 //!
 //! Everything here is made up: a MegaMan-like navi and its base form,
-//! a few chips that use the engine's GunDelSol, dimming and navi-chip
-//! actions, rocks, sprites with short animations, and rules written from
-//! the engine's own flag semantics (docs/engine/field-collision-damage.md).
-//! It is not BN6's data, which comes only from a content pack extracted
-//! from the user's ROM (`bn6-extract content`), and its numbers are chosen
-//! for tests, not taken from the game. It has just what battles of two
-//! such navis need: stepping, the chips below, custom screens, rocks and
-//! the round's flow.
+//! a few chips that use GunDelSol, a dimming chip and a navi chip, rocks,
+//! sprites with short animations, and rules written from the engine's own
+//! flag semantics (docs/engine/field-collision-damage.md). It is not BN6's
+//! data, which comes only from a content pack extracted from the user's ROM
+//! (`bn6-extract content`), and its numbers are chosen for tests, not taken
+//! from the game. It has just what battles of two such navis need:
+//! stepping, the chips below, custom screens, rocks and the round's flow.
+//!
+//! Its scripts are this repository's BN6 scripts (content/bn6, the source
+//! overlay: this project's own code, not game data), read from the
+//! repository and registered under this content's names, so the tests run
+//! the real scripts on made-up data.
 
 use super::*;
 use crate::actor::ActorType;
+use bn6_content_api::Pool;
 use crate::field::{PanelType, pflags};
 use crate::setup::{ActorEntry, ActorKind, ActorList, ActorListId, BattleSettings, effects};
 use std::sync::Arc;
@@ -101,7 +106,49 @@ pub fn build() -> Content {
         regions: regions(),
         panel_layouts: vec![PanelLayout { rows: [[PanelType::Normal; 6]; 3] }],
         animations: animations(),
+        weapons: Vec::new(),
+        scripts: scripts(),
     }
+}
+
+/// Where the BN6 scripts are (the source overlay in this repository).
+const OVERLAY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
+
+/// The test content's scripts: modules of the BN6 overlay, by the paths
+/// this content registers them under (the ones the overlay's modules
+/// `require` stay where they are).
+pub fn scripts() -> Scripts {
+    static SCRIPTS: std::sync::OnceLock<Scripts> = std::sync::OnceLock::new();
+    SCRIPTS
+        .get_or_init(|| {
+            let read = |path: &str| {
+                let file = format!("{OVERLAY}/{path}.luau");
+                std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{file}: {e}"))
+            };
+            let modules = [
+                ("lib/slot", "lib/slot"),
+                ("objects/attachment/attachment", "objects/attachment/attachment"),
+                ("objects/sun-beam/sun_beam", "objects/sun-beam/sun_beam"),
+                ("chips/001-sungun1/chip", "chips/00f-gundels1/chip"),
+            ];
+            Scripts { modules: modules.iter().map(|(to, from)| (to.to_string(), read(from))).collect() }
+        })
+        .clone()
+}
+
+/// The object kinds scripts implement, by name.
+fn kinds() -> Vec<ObjectKind> {
+    let kind = |name: &str, pool, index, script: &str| ObjectKind {
+        name: name.into(),
+        pool,
+        index,
+        script: script.into(),
+        scratch_position: false,
+    };
+    vec![
+        kind("attachment", Pool::Actor, 0x05, "objects/attachment/attachment"),
+        kind("sun-beam", Pool::Effect, 0x48, "objects/sun-beam/sun_beam"),
+    ]
 }
 
 /// A chip record with the fields tests don't care about filled in.
@@ -134,6 +181,7 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         modifier: None,
         program_advances: Vec::new(),
         gun_del_sol: None,
+        script: None,
     }
 }
 
@@ -154,6 +202,7 @@ fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
                 attach_point: Some(3),
             },
         }),
+        script: Some("chips/001-sungun1/chip".into()),
         ..chip(id, name, 0x37, level)
     }
 }
@@ -414,6 +463,7 @@ fn objects() -> ObjectData {
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
+        kinds: kinds(),
     }
 }
 

@@ -1,0 +1,6 @@
+# The grab shot (attack object #0xF, `sub_80C6414`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x0F
+script = "grab_shot.luau"

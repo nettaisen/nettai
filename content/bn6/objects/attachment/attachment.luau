@@ -1,12 +1,13 @@
 --!strict
 -- Attachments (actor object #5, `sub_80B8CD8`): a sprite a navi holds
--- during an attack, such as GunDelSol's gun. Visual only, but it takes an
--- actor slot and a place in the update order. It follows its owner's
--- position and visibility, and ends itself once the owner clears the slot
--- it was stored in. See objects-and-player.md §A.2.
+-- during an attack, such as GunDelSol's gun or the buster's arm. Visual
+-- only, but it takes an actor slot and a place in the update order. It
+-- follows its owner's position and visibility, and ends itself once the
+-- owner clears the slot it was stored in. See objects-and-player.md §A.2.
+--
+-- Its kinds (the first parameter) are data: data.objects.attachments.
 
-local data = require("../data/pack")
-local slot = require("../lib/slot")
+local slot = require("../../lib/slot")
 
 export type State = {
     slot: Slot,
@@ -18,17 +19,27 @@ export type State = {
 }
 
 local attachment = {
-    name = "attachment",
-    pool = "actor",
-    index = 5,
     state = { slot = slot.TYPE, offset_x = "i32", offset_z = "i32", lift = "i8" },
 }
 
--- `sub_80B8E30`: attach an object of `kind` (data.attachments) to `owner`,
--- stored in `which` (which gets nil if the pool is full). It takes the
--- owner's panel and side; its init places it.
-function attachment.spawn(owner: Object, kind: number, which: Slot): Object?
-    local o = battle.spawn("actor", attachment.index, Vec3.zero, { kind, 0, 0, 0 })
+-- What an attachment is spawned with (its four parameters).
+export type Params = {
+    -- Param1: which attachment (data.objects.attachments).
+    kind: number,
+    -- Param2: its animation.
+    anim: number?,
+    -- Param3: it animates while dimmed too.
+    while_dimmed: boolean?,
+    -- Param4: added to its palette (drawn only).
+    palette_add: number?,
+}
+
+-- `sub_80B8E30`: attach an attachment to `owner`, stored in `which`
+-- (which gets nil if the pool is full). It takes the owner's panel and
+-- side; its init places it.
+function attachment.spawn(owner: Object, p: Params, which: Slot): Object?
+    local params = { p.kind, p.anim or 0, if p.while_dimmed then 1 else 0, p.palette_add or 0 }
+    local o = battle.spawn_kind("attachment", Vec3.zero, params)
     if o then
         o.related1 = owner
         o.panel_x, o.panel_y = owner.panel_x, owner.panel_y
@@ -43,8 +54,8 @@ function attachment.spawn(owner: Object, kind: number, which: Slot): Object?
 end
 
 -- `sub_80B8DA6`: follow the owner's position and visibility; animate,
--- except while paused (or while dimmed, unless param 3 says otherwise);
--- end once the slot is cleared.
+-- except while paused (or dimmed, unless param 3 says otherwise); end once
+-- the slot is cleared.
 local function follow(me: Object)
     local owner = me.related1 :: Object
     local s = me.state :: State
@@ -76,10 +87,13 @@ end
 -- `sub_80B8CF8`.
 local function init(me: Object)
     local kind, anim, palette_add = me:param(1), me:param(2), me:param(4)
-    local k = data.attachments[kind]
+    local k = data.objects.attachments[kind]
+    if not k then
+        error(string.format("attachment kind %#x is not in the content", kind))
+    end
     local owner = me.related1 :: Object
     local sprite = me.sprite
-    sprite:load(k.sprite.category, k.sprite.index)
+    sprite:load(k.sprite)
     sprite.shadow = "with_sprite"
     sprite.palette = k.palette + palette_add
     me.no_sprite_update = false
@@ -92,11 +106,18 @@ local function init(me: Object)
     me.anim_loaded = anim
     me.visible = true
     sprite:set_animation(anim)
-    if kind == 0xF then
-        error("attachment kind 0xF offsets (sub_80B8CF8) are not implemented yet")
-    end
     local x, z = 0, 0
-    if k.attach_point then
+    if kind == 0xF then
+        -- Kind 0xF sits at a fixed offset by its owner's NameID, not at an
+        -- attach point, and not mirrored: none on base MegaMan, (11, -7)
+        -- on NameID 0x1B6, (0, 13) on anyone else.
+        local name = owner.name_id
+        if name == 0x1B6 then
+            x, z = 0xB, -7
+        elseif name ~= 0x1A0 then
+            x, z = 0, 0xD
+        end
+    elseif k.attach_point then
         x, z = owner:attach_point(k.attach_point)
     end
     s.offset_x = x * 0x10000
