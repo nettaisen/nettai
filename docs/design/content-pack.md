@@ -360,12 +360,14 @@ let pas = b.content.program_advances();          // in the order they are tried
   clone the `Arc` first (`let content = b.content.clone();`): it costs an
   atomic increment.
 - Trace replays (bn6-compat's `trace`) take the content and compat:
-  `trace::run_round(round, &content, &compat)`, `round.start(content)`,
-  `round.round_setup(&content)`.
-- `bn6_compat::codec::battle_settings(bytes, &content)` resolves the
-  actor list the record names by its original address;
-  `BattleSettings::actors` is an `ActorListId` into
-  `content.rules.stages.actor_lists`.
+  `trace::run_round(round, &content, &compat)`, `round.start(content, &compat)`,
+  `round.round_setup(&content, &compat)`, `round.tick_inputs(i, &frames, &ids)`.
+- The setup codecs (`bn6_compat::codec`) take an `Ids` (the content and
+  compat), which maps the records' numbers to the engine's handles and
+  back. `codec::battle_settings(bytes, &ids)` finds the stage the record
+  is (its actor list by original address, `StageSettings::actors` an
+  `ActorListId` into `content.rules.stages.actor_lists`); a round's
+  `BattleSettings` is the stage's handle with the background and effects.
 - The scripts run from the content: `Battle::new` loads them with
   `Behaviors::for_content(&content)` (once per thread and content hash;
   the VM is a cache, not battle state), and they read the content as a
