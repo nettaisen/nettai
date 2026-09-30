@@ -817,6 +817,9 @@ export type PackData = {
         sine: { [number]: number },
         -- MegaMan's palette in each Cross, by form (`byte_80203EA`).
         cross_palettes: { [number]: number },
+        -- Whole-field hit regions: region 0x80 + i covers the panels
+        -- meeting condition i (`byte_8019C34`).
+        field_regions: { [number]: { require: number, forbid: number } },
     },
     -- Panel regions by number (`PanelOffsetListsPointerTable`): each
     -- panel's {dx, dy}, dx toward the facing side.
