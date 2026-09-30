@@ -263,17 +263,10 @@ fn state_outside_the_snapshot_is_caught() {
     assert!(m.run(mashers(1), &mut [(), ()], 30_000).in_sync());
 }
 
-/// With a content feature (`luau`, `rust-content`), every battle above
-/// runs the GunDelSol slice as content (docs/design/scripting.md), so these
-/// tests are also the scripted slice under rollback.
+/// Every battle above runs the test content's scripts (GunDelSol, the
+/// eraser navi chip, the buster: docs/design/scripting.md), so these tests
+/// are also the scripted content under rollback.
 #[test]
-fn the_battles_run_the_featured_content() {
-    let want = if cfg!(feature = "luau") {
-        "luau"
-    } else if cfg!(feature = "rust-content") {
-        "rust"
-    } else {
-        "builtin"
-    };
-    assert_eq!(start(1).battle.behaviors.runtime(), want);
+fn the_battles_run_the_content_scripts() {
+    assert_eq!(start(1).battle.behaviors.runtime(), "luau");
 }

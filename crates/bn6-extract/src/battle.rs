@@ -29,6 +29,9 @@ pub fn content(rom: &Rom) -> Content {
         regions: regions(rom),
         panel_layouts: panel_layouts(rom),
         animations: animations(rom),
+        // Scripts come from the source overlay (content.rs), not the ROM.
+        weapons: Vec::new(),
+        scripts: Default::default(),
     }
 }
 
@@ -90,6 +93,7 @@ fn chips(rom: &Rom) -> Vec<ChipData> {
                 modifier: None,
                 program_advances: Vec::new(),
                 gun_del_sol: None,
+                script: None,
             }
         })
         .collect()
@@ -661,6 +665,7 @@ fn objects(rom: &Rom) -> ObjectData {
         absorbed_sprites: (0..15).map(|i| sprite_at(0x080E_98C0 + 2 * i)).collect(),
         body_overlays,
         sun_beam_looks: (0..2).map(|i| sprite_at(0x080E_5C28 + 2 * i)).collect(),
+        kinds: Vec::new(),
     }
 }
 

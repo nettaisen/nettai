@@ -107,8 +107,8 @@ impl Lcg {
     }
 }
 
-/// Record `ticks` ticks of the duel (playing it with the built-in kinds;
-/// the tape is the same whatever content plays it back).
+/// Record `ticks` ticks of the duel (a tape plays back the same with any
+/// runtime options).
 pub fn record(ticks: usize) -> Vec<Tick> {
     record_seeded(ticks, 7)
 }
@@ -117,7 +117,7 @@ pub fn record(ticks: usize) -> Vec<Tick> {
 /// another duel. (A tape drives the custom screens too, so it plays back
 /// only from the start of the round it was recorded on.)
 pub fn record_seeded(ticks: usize, seed: u32) -> Vec<Tick> {
-    let mut b = Battle::with_behaviors(setup(), content(), Behaviors::builtin());
+    let mut b = Battle::new(setup(), content());
     let mut rng = Lcg(seed);
     let mut tape = Vec::with_capacity(ticks);
     // Per side: a held direction and how long to keep it.

@@ -1,0 +1,6 @@
+# The sun beam (effect object #0x48, `sub_80E5C2C`) is a script.
+
+[kind]
+pool = "effect"
+index = 0x48
+script = "sun_beam.luau"

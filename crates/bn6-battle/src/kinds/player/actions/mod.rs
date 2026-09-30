@@ -1,5 +1,7 @@
-//! Player actions 0x10 and up (the game's `JumpTable80EAC60`): movement,
-//! buster, charged shot, and chip attacks.
+//! Player actions 0x10 and up (the game's `JumpTable80EAC60`) the engine
+//! implements itself: movement, and the chip attacks and weapons not yet
+//! content. An action the content pack's scripts implement runs as content
+//! instead (`behavior`).
 //!
 //! Every action runs a phase machine on the attack's `step` / `step_init`
 //! (which `set_attack` resets); what an action keeps besides that lives
@@ -11,7 +13,6 @@ pub mod blank_shot;
 pub mod buster;
 pub mod dust_charge;
 pub mod beast_rush;
-pub mod gun_del_sol;
 pub mod instant;
 pub mod movement;
 pub mod navi_chip;
@@ -32,7 +33,6 @@ pub enum ActionVars {
     #[default]
     None,
     Move(movement::Vars),
-    GunDelSol(gun_del_sol::Vars),
     BeastClaw(beast_claw::Vars),
     FormChange(transform::Vars),
     BlankShot(blank_shot::Vars),
@@ -50,7 +50,6 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
     }
     match action {
         movement::ACTION => movement::update(b, r),
-        gun_del_sol::ACTION => gun_del_sol::update(b, r),
         beast_claw::ACTION => beast_claw::update(b, r),
         dimming_chip::ACTION => dimming_chip::update(b, r),
         blank_shot::ACTION => blank_shot::update(b, r),

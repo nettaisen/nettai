@@ -17,6 +17,8 @@ pub struct ObjectData {
     pub body_overlays: Vec<BodyOverlay>,
     /// The sun beam's sprites by look (`SunBeamLook::look`).
     pub sun_beam_looks: Vec<SpriteId>,
+    /// The object kinds scripts implement, by name (see `content::scripts`).
+    pub kinds: Vec<super::ObjectKind>,
 }
 
 impl ObjectData {

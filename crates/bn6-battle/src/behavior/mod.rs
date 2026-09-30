@@ -1,27 +1,35 @@
-//! Behaviors hosted by a runtime (see docs/design/scripting.md): object kinds
-//! and navi actions whose behavior comes from a [`ContentHost`] instead of
-//! `kinds`. The engine dispatches to it by (pool, index) and by action
-//! number, keeps the content's declared state in the objects
-//! (`Vars::Content`) and the attack state (`ActionVars::Content`), and
-//! serves its calls through [`CoreApi`] (`core_api`).
+//! The battle's content scripts (see docs/design/scripting.md): the Luau
+//! runtime loaded from the content pack's scripts ([`Content::scripts`]),
+//! and dispatch from the engine to what the pack registers
+//! ([`Content::registrations`]): object kinds by (pool, index), navi
+//! actions by number, and hooks (weapon routines, dimming chips' dimming
+//! controllers, navi chips' navis) by number. The engine keeps a content
+//! kind's declared state in the object (`Vars::Content`) and an action's
+//! in the attack state (`ActionVars::Content`), and serves the scripts'
+//! calls through [`CoreApi`] (`core_api`).
 //!
-//! The content handle is shared, immutable code: cloning a `Battle` (a
-//! snapshot) copies the handle, not the runtime.
+//! Whatever the pack doesn't register runs as the engine's own Rust.
+//!
+//! The handle is shared, immutable code: cloning a `Battle` (a snapshot)
+//! copies the handle, not the runtime.
 
 mod core_api;
+mod data;
 
 use std::rc::Rc;
 
-use bn6_content_api::{ContentError, ContentHost, ContentState, CoreApi, KindId, Manifest, Value};
+use bn6_content_api::{ContentError, ContentHost, ContentState, CoreApi, Hook, HookCall, HookId, KindId, Manifest, Value};
 
 use crate::battle::Battle;
-use crate::content::Content;
+use crate::content::{Content, ContentHash};
 use crate::kinds::Vars;
 use crate::object::{ObjectRef, Pool, Vec3};
 
-/// The content a battle runs: a runtime's object kinds and actions, with
-/// lookup tables from engine slots to them. The built-in content has none
-/// (every kind is the engine's own).
+pub use bn6_luau::Options;
+
+/// The content scripts a battle runs, with lookup tables from the
+/// engine's numbering to them. Without scripts (content that registers
+/// none), every kind and action is the engine's own.
 #[derive(Clone, Default)]
 pub struct Behaviors {
     loaded: Option<Rc<Loaded>>,
@@ -33,6 +41,11 @@ struct Loaded {
     objects: [[Option<KindId>; 256]; 3],
     /// Action by number.
     actions: [Option<KindId>; 256],
+    /// Hooks by table and number: weapon routines, dimming chips'
+    /// controllers, navi chips' navis.
+    weapons: [Option<HookId>; 256],
+    dimming_chips: [Option<HookId>; 256],
+    navi_chips: [Option<HookId>; 256],
 }
 
 impl std::fmt::Debug for Behaviors {
@@ -42,15 +55,45 @@ impl std::fmt::Debug for Behaviors {
 }
 
 impl Behaviors {
-    /// Only the engine's built-in kinds.
-    pub fn builtin() -> Behaviors {
+    /// No scripts: every kind and action is the engine's own.
+    pub fn none() -> Behaviors {
         Behaviors { loaded: None }
     }
 
-    /// The kinds and actions `host` defines, taking over those slots.
-    pub fn new(host: impl ContentHost + 'static) -> Result<Behaviors, ContentError> {
+    /// The content's scripts, loaded once per thread and content (a VM is
+    /// a per-thread cache: every VM made from the same content behaves the
+    /// same, and none holds battle state).
+    pub fn for_content(content: &Content) -> Result<Behaviors, ContentError> {
+        use std::cell::RefCell;
+        thread_local!(static CACHE: RefCell<Option<(ContentHash, Behaviors)>> = const { RefCell::new(None) });
+        let hash = content.hash();
+        CACHE.with(|cell| {
+            if let Some((h, b)) = &*cell.borrow()
+                && *h == hash
+            {
+                return Ok(b.clone());
+            }
+            let b = Behaviors::load(content, Options::default())?;
+            *cell.borrow_mut() = Some((hash, b.clone()));
+            Ok(b)
+        })
+    }
+
+    /// Load the content's scripts afresh, with runtime options (native
+    /// code, a garbage collection after every call...).
+    pub fn load(content: &Content, options: Options) -> Result<Behaviors, ContentError> {
+        let registrations = content.registrations().map_err(ContentError::new)?;
+        if registrations == Default::default() {
+            return Ok(Behaviors::none());
+        }
+        let pack = bn6_luau::Pack::new(content.scripts.modules.iter().map(|(k, v)| (k.clone(), v.clone())));
+        let host = bn6_luau::LuauContent::load(&pack, &registrations, &data::script_data(content), options)?;
+        Ok(Behaviors::new(Box::new(host)))
+    }
+
+    /// Dispatch to what `host` loaded.
+    fn new(host: Box<dyn ContentHost>) -> Behaviors {
         let m = host.manifest();
-        m.validate()?;
         let mut objects = [[None; 256]; 3];
         for (i, k) in m.objects.iter().enumerate() {
             objects[k.pool as usize][k.index as usize] = Some(KindId(i as u16));
@@ -59,196 +102,84 @@ impl Behaviors {
         for (i, a) in m.actions.iter().enumerate() {
             actions[a.action as usize] = Some(KindId(i as u16));
         }
-        Ok(Behaviors { loaded: Some(Rc::new(Loaded { host: Box::new(host), objects, actions })) })
-    }
-
-    /// The behaviors this build runs by default on `content`: the Luau
-    /// scripts with the `luau` feature, else the Rust content with
-    /// `rust-content`, else the built-in kinds. The Luau scripts are loaded
-    /// once per thread and content.
-    pub fn for_build(content: &Content) -> Behaviors {
-        #[cfg(feature = "luau")]
-        {
-            use std::cell::RefCell;
-            thread_local!(static LUAU: RefCell<Option<(crate::content::ContentHash, Behaviors)>> = const { RefCell::new(None) });
-            let hash = content.hash();
-            LUAU.with(|cell| {
-                let mut cell = cell.borrow_mut();
-                match &*cell {
-                    Some((h, b)) if *h == hash => b.clone(),
-                    _ => {
-                        let b = Behaviors::luau(content).unwrap_or_else(|e| panic!("{e}"));
-                        *cell = Some((hash, b.clone()));
-                        b
-                    }
-                }
-            })
+        let (mut weapons, mut dimming_chips, mut navi_chips) = ([None; 256], [None; 256], [None; 256]);
+        for (i, h) in m.hooks.iter().enumerate() {
+            let id = Some(HookId(i as u16));
+            match h.hook {
+                Hook::Weapon(n) => weapons[n as usize] = id,
+                Hook::DimmingChip(n) => dimming_chips[n as usize] = id,
+                Hook::NaviChip(n) => navi_chips[n as usize] = id,
+            }
         }
-        #[cfg(all(feature = "rust-content", not(feature = "luau")))]
-        {
-            Behaviors::rust(content)
-        }
-        #[cfg(not(any(feature = "luau", feature = "rust-content")))]
-        {
-            let _ = content;
-            Behaviors::builtin()
-        }
+        Behaviors { loaded: Some(Rc::new(Loaded { host, objects, actions, weapons, dimming_chips, navi_chips })) }
     }
 
-    /// The GunDelSol slice written in Rust against the content API, with
-    /// its data from `content`.
-    #[cfg(feature = "rust-content")]
-    pub fn rust(content: &Content) -> Behaviors {
-        Behaviors::new(bn6_content_rust::RustContent::new(rust_data(content))).expect("the Rust content is consistent")
-    }
-
-    /// The Luau scripts in content/bn6 (compiled into the binary), with
-    /// their data from `content`.
-    #[cfg(feature = "luau")]
-    pub fn luau(content: &Content) -> Result<Behaviors, ContentError> {
-        Behaviors::luau_with(content, bn6_luau::Options::default())
-    }
-
-    /// The Luau scripts, with runtime options (e.g. native code).
-    #[cfg(feature = "luau")]
-    pub fn luau_with(content: &Content, options: bn6_luau::Options) -> Result<Behaviors, ContentError> {
-        Behaviors::new(bn6_luau::LuauContent::load(&luau_pack(content), options)?)
-    }
-
-    /// Which runtime runs the content ("builtin" for none).
+    /// Which runtime runs the content ("none" without scripts).
     pub fn runtime(&self) -> &str {
-        self.loaded.as_ref().map_or("builtin", |l| l.host.runtime())
+        self.loaded.as_ref().map_or("none", |l| l.host.runtime())
     }
 
     pub fn manifest(&self) -> Option<&Manifest> {
         self.loaded.as_ref().map(|l| l.host.manifest())
     }
 
-    /// The content kind in an object slot, if content defines it.
+    /// The content kind in an object slot, if a script implements it.
     pub fn object_kind(&self, pool: Pool, index: u8) -> Option<KindId> {
         self.loaded.as_ref()?.objects[pool as usize][index as usize]
     }
 
-    /// The content action with this number, if content defines it.
+    /// The content action with this number, if a script implements it.
     pub fn action(&self, action: u8) -> Option<KindId> {
         self.loaded.as_ref()?.actions[action as usize]
     }
+
+    /// The content hook for `hook`, if a script implements it.
+    pub fn hook(&self, hook: Hook) -> Option<HookId> {
+        let l = self.loaded.as_ref()?;
+        match hook {
+            Hook::Weapon(n) => l.weapons[n as usize],
+            Hook::DimmingChip(n) => l.dimming_chips[n as usize],
+            Hook::NaviChip(n) => l.navi_chips[n as usize],
+        }
+    }
 }
 
-/// The Luau scripts under content/bn6 (compiled in), with their data
-/// module, `data/pack`, built from `content` (the repository only has its
-/// type stub).
-#[cfg(feature = "luau")]
-pub fn luau_pack(content: &Content) -> bn6_luau::Pack {
-    macro_rules! pack {
-        ($($path:literal),* $(,)?) => {
-            bn6_luau::Pack::new(vec![
-                ("data/pack".to_string(), luau_data(content)),
-                $(($path.to_string(), include_str!(concat!("../../../../content/bn6/", $path, ".luau")).to_string()),)*
-            ])
-        };
-    }
-    pack![
-        "pack",
-        "lib/slot",
-        "objects/attachment",
-        "objects/sun_beam",
-        "objects/hitbox",
-        "chips/gun_del_sol"
-    ]
+fn loaded(b: &Battle) -> Rc<Loaded> {
+    b.behaviors.loaded.clone().expect("content kinds, actions and hooks come from loaded scripts")
 }
 
-/// The scripts' data module (`data/pack`, typed by its stub in
-/// content/bn6): each chip's own data, the attachment kinds and the sun
-/// beam's looks, from `content`.
-#[cfg(feature = "luau")]
-pub fn luau_data(content: &Content) -> String {
-    use crate::content::{AttachmentKind, SunBeamLook};
-    let sprite = |s: crate::content::SpriteId| format!("{{ category = {:#04x}, index = {:#04x} }}", s.category, s.index);
-    let attachment = |k: &AttachmentKind| {
-        let point = k.attach_point.map_or("nil".to_string(), |p| p.to_string());
-        format!(
-            "{{ id = {:#04x}, sprite = {}, palette = {}, lift = {}, attach_point = {point} }}",
-            k.id,
-            sprite(k.sprite),
-            k.palette,
-            k.lift
-        )
-    };
-    let look = |l: SunBeamLook| format!("{{ look = {}, palette = {} }}", l.look, l.palette);
-    let mut s = String::from("--!strict\n-- Built from the content pack by the engine; see the stub in content/bn6/data/pack.luau.\n\nreturn {\n    chips = {\n");
-    for c in content.chips.iter().filter(|c| c.gun_del_sol.is_some()) {
-        let g = c.gun_del_sol.as_ref().expect("filtered");
-        s += &format!(
-            "        [{:#05x}] = {{ gun_del_sol = {{ firing_ticks = {}, beam = {}, beam_in_sun = {}, gun = {} }} }},\n",
-            c.id,
-            g.firing_ticks,
-            look(g.beam),
-            look(g.beam_in_sun),
-            attachment(&g.gun)
-        );
-    }
-    s += "    } :: { [number]: ChipData },\n    attachments = {\n";
-    for k in &content.objects.attachments {
-        s += &format!("        [{:#04x}] = {},\n", k.id, attachment(k));
-    }
-    s += "    } :: { [number]: AttachmentKind },\n    sun_beam_looks = {\n";
-    for (i, &id) in content.objects.sun_beam_looks.iter().enumerate() {
-        s += &format!("        [{i}] = {},\n", sprite(id));
-    }
-    s += "    } :: { [number]: SpriteId },\n}\n";
-    s
-}
-
-/// The Rust content's data, from `content`.
-#[cfg(feature = "rust-content")]
-fn rust_data(content: &Content) -> bn6_content_rust::data::Data {
-    use bn6_content_rust::data as rc;
-    let attachment = |k: &crate::content::AttachmentKind| rc::AttachmentKind {
-        id: k.id,
-        sprite: k.sprite,
-        palette: k.palette,
-        lift: k.lift,
-        attach_point: k.attach_point,
-    };
-    let look = |l: crate::content::SunBeamLook| rc::SunBeamLook { look: l.look, palette: l.palette };
-    rc::Data {
-        gun_del_sol: content
-            .chips
-            .iter()
-            .filter_map(|c| {
-                let g = c.gun_del_sol.as_ref()?;
-                let d = rc::GunDelSol {
-                    firing_ticks: g.firing_ticks,
-                    beam: look(g.beam),
-                    beam_in_sun: look(g.beam_in_sun),
-                    gun: attachment(&g.gun),
-                };
-                Some((c.id, d))
-            })
-            .collect(),
-        attachments: content.objects.attachments.iter().map(attachment).collect(),
-        sun_beam_looks: content.objects.sun_beam_looks.clone(),
-    }
+/// Stop the battle on a content error, the same way on every machine.
+fn content_error(runtime: &str, what: impl std::fmt::Display, r: impl std::fmt::Debug, e: ContentError) -> ! {
+    panic!("{runtime} content error in {what} ({r:?}): {e}")
 }
 
 /// Run content object `kind` for `r`.
 pub(crate) fn run_object(b: &mut Battle, kind: KindId, r: ObjectRef) {
-    let content = b.behaviors.clone();
-    let loaded = content.loaded.as_ref().expect("content kinds come from loaded content");
-    if let Err(e) = loaded.host.update_object(b as &mut dyn CoreApi, kind, r) {
-        let name = &loaded.host.manifest().objects[kind.0 as usize].name;
-        panic!("{} content error in {name} ({r:?}): {e}", loaded.host.runtime());
+    let l = loaded(b);
+    if let Err(e) = l.host.update_object(b as &mut dyn CoreApi, kind, r) {
+        let def = &l.host.manifest().objects[kind.0 as usize];
+        content_error(l.host.runtime(), format!("objects/{} ({})", def.name, def.module), r, e);
     }
 }
 
 /// Run content action `kind` for the navi `r`.
 pub(crate) fn run_action(b: &mut Battle, kind: KindId, r: ObjectRef) {
-    let content = b.behaviors.clone();
-    let loaded = content.loaded.as_ref().expect("content actions come from loaded content");
-    if let Err(e) = loaded.host.update_action(b as &mut dyn CoreApi, kind, r) {
-        let name = &loaded.host.manifest().actions[kind.0 as usize].name;
-        panic!("{} content error in {name} ({r:?}): {e}", loaded.host.runtime());
+    let l = loaded(b);
+    if let Err(e) = l.host.update_action(b as &mut dyn CoreApi, kind, r) {
+        let def = &l.host.manifest().actions[kind.0 as usize];
+        content_error(l.host.runtime(), format!("action {:#x} ({})", def.action, def.module), r, e);
+    }
+}
+
+/// Call content hook `hook`.
+pub(crate) fn call_hook(b: &mut Battle, hook: HookId, call: HookCall) -> Value {
+    let l = loaded(b);
+    match l.host.call_hook(b as &mut dyn CoreApi, hook, call) {
+        Ok(v) => v,
+        Err(e) => {
+            let def = &l.host.manifest().hooks[hook.0 as usize];
+            content_error(l.host.runtime(), format!("{} ({})", def.hook, def.module), call, e)
+        }
     }
 }
 
@@ -256,17 +187,25 @@ pub(crate) fn run_action(b: &mut Battle, kind: KindId, r: ObjectRef) {
 pub fn spawn_object(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
     let r = b.objects.spawn(pool, index, pos, params)?;
     if let Some(kind) = b.behaviors.object_kind(pool, index) {
-        let m = b.behaviors.manifest().expect("content kinds come from loaded content");
-        let id = m.object_state(kind);
-        b.objects.get_mut(r).vars = Vars::Content(ContentState::new(id, m.schema(id)));
+        let m = b.behaviors.manifest().expect("content kinds come from loaded scripts");
+        b.objects.get_mut(r).vars = Vars::Content(ContentState::new(m.object_state(kind)));
     }
     Some(r)
+}
+
+/// Spawn the content object kind named `name` (its folder in the pack):
+/// how engine code spawns a kind a script implements. None if the pool is
+/// full; panics if no script implements the kind.
+pub fn spawn_kind(b: &mut Battle, name: &str, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+    let k = b.content.object_kind(name).unwrap_or_else(|| panic!("no object kind is named {name:?}"));
+    let (pool, index) = (k.pool, k.index);
+    spawn_object(b, pool, index, pos, params)
 }
 
 /// Set an enum state field of a content object by variant name.
 pub fn set_state_variant(b: &mut Battle, r: ObjectRef, name: &str, variant: &str) {
     let content = b.behaviors.clone();
-    let m = content.manifest().expect("content state belongs to loaded content");
+    let m = content.manifest().expect("content state belongs to loaded scripts");
     let Vars::Content(state) = &b.objects.get(r).vars else {
         panic!("{r:?} is not a content object");
     };
@@ -283,7 +222,7 @@ pub fn set_state_variant(b: &mut Battle, r: ObjectRef, name: &str, variant: &str
 /// spawns a content kind passes it arguments.
 pub fn set_state_field(b: &mut Battle, r: ObjectRef, name: &str, v: Value) {
     let content = b.behaviors.clone();
-    let m = content.manifest().expect("content state belongs to loaded content");
+    let m = content.manifest().expect("content state belongs to loaded scripts");
     let Vars::Content(state) = &mut b.objects.get_mut(r).vars else {
         panic!("{r:?} is not a content object");
     };

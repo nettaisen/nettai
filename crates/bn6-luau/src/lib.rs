@@ -1,20 +1,22 @@
 //! Luau content for the bn6 battle engine (docs/design/scripting.md).
 //!
-//! A content pack is a set of Luau modules; its `pack` module returns the
-//! object kinds and actions it defines:
+//! A content pack's scripts are Luau modules, colocated with the data they
+//! implement (`objects/sun-beam/sun_beam.luau`, `chips/00f-gundels1/chip.luau`,
+//! `lib/slot.luau`...). The pack's data registers them (see
+//! `bn6_content_api::Registrations`): which module implements which object
+//! kind, navi action or hook. A module returns a table:
 //!
 //! ```luau
 //! return {
-//!     objects = { require("./objects/sun_beam"), ... },
-//!     actions = { require("./chips/gun_del_sol") },
+//!     state = { timer = "u16", slot = { "overlay", "related" } },
+//!     update = function(me, s) ... end,   -- kinds: update(me); actions: update(me, s)
+//!     setup = function(navi) ... end,     -- a weapon routine
 //! }
 //! ```
 //!
-//! An object kind is a table `{ pool, index, state, update }`; an action is
-//! `{ action, state, update }`. `state` declares the kind's typed state
-//! (`{ timer = "u16", slot = { "overlay", "related" } }`), which the engine
-//! stores and snapshots; `update(me)` / `update(me, state)` run once per
-//! tick and keep nothing themselves.
+//! `state` declares the kind's or action's typed state, which the engine
+//! stores and snapshots; the functions run on demand and keep nothing
+//! themselves. The pack's data is the frozen global `data`.
 //!
 //! Loading enforces that: modules are checked for writes to globals and to
 //! module-level locals (`verify`), everything a module returns or captures
@@ -32,13 +34,13 @@ use std::path::Path;
 use std::rc::Rc;
 
 use bn6_content_api::{
-    ActionDef, ContentError, ContentHost, CoreApi, FieldDef, FieldType, KindId, Manifest, ObjectKindDef, ObjectRef,
-    Pool, Schema,
+    ActionDef, ContentError, ContentHost, CoreApi, Data, DataKey, FieldDef, FieldType, HookCall, HookDef, HookId,
+    KindId, Manifest, ObjectKindDef, ObjectRef, Registrations, Schema, Value,
 };
 use mlua::chunk::ChunkMode;
 use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
 
-/// A content pack's sources: module path (relative to the pack root,
+/// A content pack's scripts: module path (relative to the pack root,
 /// without `.luau`) to source text.
 #[derive(Clone, Debug, Default)]
 pub struct Pack {
@@ -78,19 +80,6 @@ impl Pack {
     pub fn modules(&self) -> impl Iterator<Item = (&str, &str)> {
         self.modules.iter().map(|(k, v)| (k.as_str(), v.as_str()))
     }
-
-    /// A hash of the pack's scripts (paths and sources, in path order):
-    /// what netplay peers compare before a match, with the hashes of the
-    /// rest of the content pack's simulation data. FNV-1a, 64-bit.
-    pub fn content_hash(&self) -> u64 {
-        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-        for (path, source) in &self.modules {
-            for &b in path.as_bytes().iter().chain([0u8].iter()).chain(source.as_bytes()).chain([0u8].iter()) {
-                h = (h ^ b as u64).wrapping_mul(0x100_0000_01b3);
-            }
-        }
-        h
-    }
 }
 
 /// How content runs.
@@ -98,9 +87,9 @@ impl Pack {
 pub struct Options {
     /// Compile to native code where Luau supports it (the `jit` feature).
     pub native_code: bool,
-    /// Interrupt checks (calls, returns, loop back-edges) one update call
-    /// may take before it is stopped as runaway. Deterministic: the same
-    /// bytecode reaches the same count on every machine.
+    /// Interrupt checks (calls, returns, loop back-edges) one call may take
+    /// before it is stopped as runaway. Deterministic: the same bytecode
+    /// reaches the same count on every machine.
     pub budget: u32,
     /// Let `print` write to stderr.
     pub debug_print: bool,
@@ -129,20 +118,23 @@ thread_local! {
     static BUDGET: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
-/// Luau content: the VM and the functions the pack defined.
+/// Luau content: the VM and the functions the pack registered.
 pub struct LuauContent {
     lua: Lua,
     manifest: Manifest,
     objects: Vec<Function>,
     actions: Vec<Function>,
+    hooks: Vec<Function>,
     budget: u32,
     collect_garbage: bool,
 }
 
 impl LuauContent {
-    /// Load and check a pack.
-    pub fn load(pack: &Pack, options: Options) -> Result<LuauContent, ContentError> {
-        load(pack, options).map_err(|e| ContentError::new(format!("loading Luau content: {e}")))
+    /// Load a pack's registered modules (and what they require), with the
+    /// pack's data as the global `data`.
+    pub fn load(pack: &Pack, registrations: &Registrations, data: &Data, options: Options) -> Result<LuauContent, ContentError> {
+        registrations.validate()?;
+        load(pack, registrations, data, options).map_err(|e| ContentError::new(format!("loading Luau content: {e}")))
     }
 
     /// The VM (for tests and tools).
@@ -150,10 +142,15 @@ impl LuauContent {
         &self.lua
     }
 
-    fn call(&self, f: &Function, api: &mut dyn CoreApi, args: impl mlua::IntoLuaMulti) -> Result<(), ContentError> {
+    fn call<R: mlua::FromLuaMulti>(
+        &self,
+        f: &Function,
+        api: &mut dyn CoreApi,
+        args: impl mlua::IntoLuaMulti,
+    ) -> Result<R, ContentError> {
         let _enter = bind::Enter::new(api, &self.manifest);
         BUDGET.with(|b| b.set(self.budget));
-        let result = f.call::<()>(args).map_err(|e| ContentError::new(e.to_string()));
+        let result = f.call::<R>(args).map_err(|e| ContentError::new(e.to_string()));
         if self.collect_garbage {
             self.lua.gc_collect().map_err(|e| ContentError::new(e.to_string()))?;
         }
@@ -179,6 +176,14 @@ impl ContentHost for LuauContent {
         let o = bind::object(&self.lua, me).map_err(|e| ContentError::new(e.to_string()))?;
         let s = bind::action_state(&self.lua, me).map_err(|e| ContentError::new(e.to_string()))?;
         self.call(&self.actions[action.0 as usize], api, (o, s))
+    }
+
+    fn call_hook(&self, api: &mut dyn CoreApi, hook: HookId, call: HookCall) -> Result<Value, ContentError> {
+        let f = &self.hooks[hook.0 as usize];
+        let args = bind::hook_args(&self.lua, call).map_err(|e| ContentError::new(e.to_string()))?;
+        let name = self.manifest.hooks[hook.0 as usize].hook;
+        let v: LuaValue = self.call(f, api, args)?;
+        bind::hook_result(v, call).map_err(|e| ContentError::new(format!("{name}: {e}")))
     }
 }
 
@@ -239,7 +244,35 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
     Ok(value)
 }
 
-fn load(pack: &Pack, options: Options) -> mlua::Result<LuauContent> {
+/// The pack's data as Luau values.
+fn data_value(lua: &Lua, d: &Data) -> mlua::Result<LuaValue> {
+    Ok(match d {
+        Data::Nil => LuaValue::Nil,
+        Data::Bool(b) => LuaValue::Boolean(*b),
+        Data::Int(i) => LuaValue::Number(*i as f64),
+        Data::Str(s) => LuaValue::String(lua.create_string(s)?),
+        Data::List(items) => {
+            let t = lua.create_table_with_capacity(items.len(), 0)?;
+            for (i, v) in items.iter().enumerate() {
+                t.raw_set(i + 1, data_value(lua, v)?)?;
+            }
+            LuaValue::Table(t)
+        }
+        Data::Map(entries) => {
+            let t = lua.create_table_with_capacity(0, entries.len())?;
+            for (k, v) in entries {
+                let v = data_value(lua, v)?;
+                match k {
+                    DataKey::Int(i) => t.raw_set(*i as f64, v)?,
+                    DataKey::Str(s) => t.raw_set(s.as_str(), v)?,
+                }
+            }
+            LuaValue::Table(t)
+        }
+    })
+}
+
+fn load(pack: &Pack, registrations: &Registrations, data: &Data, options: Options) -> mlua::Result<LuauContent> {
     let lua = sandbox::new_vm(options.debug_print)?;
     #[cfg(feature = "jit")]
     lua.enable_jit(options.native_code);
@@ -248,6 +281,9 @@ fn load(pack: &Pack, options: Options) -> mlua::Result<LuauContent> {
         return Err(mlua::Error::runtime("native code needs bn6-luau's `jit` feature"));
     }
     bind::install(&lua)?;
+    let data = data_value(&lua, data)?;
+    sandbox::deep_freeze(&lua, &data)?;
+    lua.globals().set("data", data)?;
     let loader = Rc::new(RefCell::new(Loader { pack: pack.clone(), loaded: HashMap::new(), stack: Vec::new() }));
     let require = {
         let loader = Rc::downgrade(&loader);
@@ -276,16 +312,53 @@ fn load(pack: &Pack, options: Options) -> mlua::Result<LuauContent> {
         })
     });
 
-    // The pack's entry module, loaded as if required from the root.
-    loader.borrow_mut().stack.push("(pack)".into());
-    let root = load_module(&lua, &loader, "pack");
-    loader.borrow_mut().stack.clear();
-    let root = match root? {
-        LuaValue::Table(t) => t,
-        v => return Err(mlua::Error::runtime(format!("pack.luau returned {}, not a table", v.type_name()))),
+    // Each registered module, loaded as if required from the pack's root.
+    let entry = |path: &str| -> mlua::Result<Table> {
+        loader.borrow_mut().stack.push("(pack)".into());
+        let v = load_module(&lua, &loader, path);
+        loader.borrow_mut().stack.clear();
+        match v? {
+            LuaValue::Table(t) => Ok(t),
+            v => Err(mlua::Error::runtime(format!("{path}.luau returned {}, not a table", v.type_name()))),
+        }
     };
-    let (manifest, objects, actions) = read_manifest(&root)?;
-    manifest.validate().map_err(|e| mlua::Error::runtime(e.to_string()))?;
+    let function = |t: &Table, path: &str, name: &str| -> mlua::Result<Function> {
+        match t.get::<LuaValue>(name)? {
+            LuaValue::Function(f) => Ok(f),
+            v => Err(mlua::Error::runtime(format!("{path}.luau: `{name}` is {}, not a function", v.type_name()))),
+        }
+    };
+    let mut manifest = Manifest::default();
+    let (mut objects, mut actions, mut hooks) = (Vec::new(), Vec::new(), Vec::new());
+    for k in &registrations.kinds {
+        let t = entry(&k.module)?;
+        objects.push(function(&t, &k.module, "update")?);
+        let schema = read_schema(t.get("state")?, &k.module)?;
+        manifest.objects.push(ObjectKindDef {
+            name: k.name.clone(),
+            pool: k.pool,
+            index: k.index,
+            module: k.module.clone(),
+            schema,
+        });
+    }
+    for a in &registrations.actions {
+        if manifest.actions.iter().any(|d| d.action == a.action) {
+            continue;
+        }
+        let t = entry(&a.module)?;
+        actions.push(function(&t, &a.module, "update")?);
+        let schema = read_schema(t.get("state")?, &a.module)?;
+        manifest.actions.push(ActionDef { action: a.action, module: a.module.clone(), schema });
+    }
+    for h in &registrations.hooks {
+        if manifest.hooks.iter().any(|d| d.hook == h.hook) {
+            continue;
+        }
+        let t = entry(&h.module)?;
+        hooks.push(function(&t, &h.module, h.hook.function())?);
+        manifest.hooks.push(HookDef { hook: h.hook, module: h.module.clone() });
+    }
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);
     drop(loader);
@@ -294,13 +367,15 @@ fn load(pack: &Pack, options: Options) -> mlua::Result<LuauContent> {
         manifest,
         objects,
         actions,
+        hooks,
         budget: options.budget,
         collect_garbage: options.collect_garbage,
     })
 }
 
-/// A kind's `state` table: field name to type name (`"u16"`), or to a list
-/// of variant names (an enum). Fields are stored in name order.
+/// A module's `state` table: field name to type name (`"u16"`,
+/// `"u8[18]"`), or to a list of variant names (an enum). Fields are stored
+/// in name order.
 fn read_schema(t: Option<Table>, what: &str) -> mlua::Result<Schema> {
     let mut fields = Vec::new();
     if let Some(t) = t {
@@ -310,51 +385,24 @@ fn read_schema(t: Option<Table>, what: &str) -> mlua::Result<Schema> {
                 LuaValue::String(s) => {
                     let s = s.to_str()?;
                     FieldType::scalar(&s).ok_or_else(|| {
-                        mlua::Error::runtime(format!("{what}: state field `{name}` has unknown type {:?}", &*s))
+                        mlua::Error::runtime(format!("{what}.luau: state field `{name}` has unknown type {:?}", &*s))
                     })?
                 }
                 LuaValue::Table(variants) => {
                     FieldType::Enum(variants.sequence_values::<String>().collect::<mlua::Result<Vec<_>>>()?)
                 }
-                v => return Err(mlua::Error::runtime(format!("{what}: state field `{name}` is a {}", v.type_name()))),
+                v => {
+                    return Err(mlua::Error::runtime(format!(
+                        "{what}.luau: state field `{name}` is a {}",
+                        v.type_name()
+                    )));
+                }
             };
             fields.push(FieldDef { name, ty });
         }
     }
     fields.sort_by(|a, b| a.name.cmp(&b.name));
-    Schema::new(fields).map_err(|e| mlua::Error::runtime(format!("{what}: {e}")))
-}
-
-type Kinds = (Manifest, Vec<Function>, Vec<Function>);
-
-fn read_manifest(root: &Table) -> mlua::Result<Kinds> {
-    let mut manifest = Manifest::default();
-    let (mut objects, mut actions) = (Vec::new(), Vec::new());
-    if let Some(list) = root.get::<Option<Table>>("objects")? {
-        for (i, def) in list.sequence_values::<Table>().enumerate() {
-            let def = def?;
-            let what = format!("objects[{}]", i + 1);
-            let pool: String = def.get("pool")?;
-            let pool = Pool::from_name(&pool)
-                .ok_or_else(|| mlua::Error::runtime(format!("{what}: {pool:?} is not a pool")))?;
-            let index: u8 = def.get("index")?;
-            let name = def.get::<Option<String>>("name")?.unwrap_or_else(|| format!("{} {index:#x}", pool.name()));
-            let schema = read_schema(def.get("state")?, &name)?;
-            objects.push(def.get::<Function>("update")?);
-            manifest.objects.push(ObjectKindDef { name, pool, index, schema });
-        }
-    }
-    if let Some(list) = root.get::<Option<Table>>("actions")? {
-        for (i, def) in list.sequence_values::<Table>().enumerate() {
-            let def = def?;
-            let action: u8 = def.get("action")?;
-            let name = def.get::<Option<String>>("name")?.unwrap_or_else(|| format!("actions[{}] {action:#x}", i + 1));
-            let schema = read_schema(def.get("state")?, &name)?;
-            actions.push(def.get::<Function>("update")?);
-            manifest.actions.push(ActionDef { name, action, schema });
-        }
-    }
-    Ok((manifest, objects, actions))
+    Schema::new(fields).map_err(|e| mlua::Error::runtime(format!("{what}.luau: {e}")))
 }
 
 #[cfg(test)]
@@ -362,20 +410,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_content_hash_covers_paths_and_sources() {
-        let a = Pack::new([("x".to_string(), "return 1".to_string())]);
-        let b = Pack::new([("x".to_string(), "return 2".to_string())]);
-        let c = Pack::new([("y".to_string(), "return 1".to_string())]);
-        assert_ne!(a.content_hash(), b.content_hash());
-        assert_ne!(a.content_hash(), c.content_hash());
-        assert_eq!(a.content_hash(), a.clone().content_hash());
-    }
-
-    #[test]
     fn relative_paths_resolve_within_the_pack() {
-        assert_eq!(resolve("chips/gun_del_sol", "../objects/hitbox").unwrap(), "objects/hitbox");
-        assert_eq!(resolve("pack", "./chips/gun_del_sol").unwrap(), "chips/gun_del_sol");
-        assert!(resolve("pack", "../x").is_err());
-        assert!(resolve("pack", "objects/x").is_err());
+        assert_eq!(resolve("chips/00f-gundels1/chip", "../../objects/sun-beam/sun_beam").unwrap(), "objects/sun-beam/sun_beam");
+        assert_eq!(resolve("(pack)", "./lib/slot").unwrap(), "lib/slot");
+        assert!(resolve("lib/slot", "../../x").is_err());
+        assert!(resolve("lib/slot", "objects/x").is_err());
     }
 }

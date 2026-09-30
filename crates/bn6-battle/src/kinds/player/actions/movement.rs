@@ -169,7 +169,7 @@ fn begin(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_800F964`: one panel toward `dir` (back and forward follow the
 /// side), if the navi may step there; none while sliding.
-pub(in crate::kinds::player) fn step_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
+pub(crate) fn step_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
     if flag1(b, r) & f1::SLIDING != 0 {
         return None;
     }
