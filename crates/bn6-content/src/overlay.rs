@@ -15,6 +15,9 @@
 //! *.d.luau                        the API's definitions, copied as they are
 //! ```
 //!
+//! Its compat/ folder (the original's numbers by content key,
+//! docs/design/content-model-v2.md §6) is not content: no pack holds it.
+//!
 //! [`read`] reads one, [`Overlay::apply`] adds it to extracted content (a
 //! chip's `script`, the kinds, the weapons, the modules), and
 //! [`Overlay::files`] are the files copied as they are. `bn6-extract
@@ -63,6 +66,9 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Overlay> {
         return None;
     }
     for rel in paths {
+        if rel.starts_with("compat/") {
+            continue;
+        }
         let full = dir.join(&rel);
         let folder = rel.rsplit_once('/').map_or("", |(f, _)| f).to_string();
         let text = || std::fs::read_to_string(&full).map_err(|e| format!("can't read: {e}"));
