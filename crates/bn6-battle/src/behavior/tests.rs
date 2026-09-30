@@ -132,6 +132,27 @@ fn registrations_follow_the_content_data() {
     assert!(c.registrations().unwrap_err().contains("isn't in the pack"));
 }
 
+#[test]
+fn scripted_instant_chips_play_and_roll_back() {
+    // Folders of instant chips (the gauge filler, a plus chip, BusterUp)
+    // with GunDelSols: the plus chip's sparkle shows, and a copy of the
+    // battle taken at any tick plays on as the battle does.
+    let setup = || scenario::setup_with(&[testing::FULL_GAUGE, testing::PLUS, testing::BUSTER_UP, testing::SUN_GUN_3]);
+    let tape = scenario::record_on(setup(), 2400, 13);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    let mut sparkles = 0;
+    for (i, t) in tape.iter().enumerate() {
+        if i % 101 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+        sparkles += b.objects.in_order().filter(|&r| (r.pool, b.objects.get(r).index) == (crate::object::Pool::Effect, 0x14)).count();
+    }
+    assert!(sparkles > 0, "no plus chip was used");
+}
+
 // ---- Luau keeps no state ----------------------------------------------------------------
 
 /// The test content with text replaced in one module (each `(from, to)`
