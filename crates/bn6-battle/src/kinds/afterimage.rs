@@ -189,17 +189,58 @@ fn init(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `sub_8010DF6(record, 0)` then `sub_80C4526(layer, 1)`: the overlay the
-/// NameID's form wears, on the afterimage.
+/// NameID's navi or form wears (by its record's AI index: `off_8010EA4`
+/// and `off_8010F08` after it), on the afterimage, drawn in front.
 fn put_on_layer(b: &mut Battle, r: ObjectRef, name_id: u16) {
-    match name_id {
-        // Base MegaMan and the forms without an overlay (nullsub).
-        0x1A0 | 0x1B6 | 0x1B8..=0x1BC | 0x1C2 => {}
-        // The Falzar beast head (sub_8011366).
-        0x1B7 => {
+    use crate::kinds::body_overlay;
+    let rec = b.content.navi_record(name_id);
+    // A virus record's table is all nullsubs.
+    if rec.actor_type == crate::actor::ActorType::Virus {
+        return;
+    }
+    let body = |variant: u8, own_palette: bool, anim_offset: u8| body_overlay::Vars {
+        variant,
+        own_palette,
+        anim_offset,
+        ..Default::default()
+    };
+    let layer = match rec.ai_index {
+        // nullsub_42 / nullsub_43.
+        0 | 2..=5 | 7 | 8 | 10..=12 | 15 | 17 | 20..=23 | 35 | 37..=41 | 47 => return,
+        // sub_8010F6A, sub_8010F86, sub_8010F96, sub_8011004, sub_8010FAC,
+        // sub_8010FC2: a body overlay (Param3, stepping while paused, 0).
+        1 => body_overlay::spawn_with(b, r, body(2, false, 0)),
+        9 => body_overlay::spawn_with(b, r, body(0x0B, false, 0)),
+        13 => body_overlay::spawn_with(b, r, body(3, false, 0x0A)),
+        16 => body_overlay::spawn_with(b, r, body(0x0F, true, 9)),
+        18 => body_overlay::spawn_with(b, r, body(0, false, 0x0D)),
+        19 => body_overlay::spawn_with(b, r, body(0x10, false, 0x14)),
+        // sub_80112E0 .. sub_801133A (via sub_8011344): a Cross's helmet
+        // and arm, with its own palette; AI index 24 + the form.
+        25..=34 => {
+            let variant = crate::kinds::player::form::cross_overlay(Form(rec.ai_index - 24));
+            body_overlay::spawn_with(b, r, body(variant, true, 0))
+        }
+        // sub_8011366 and sub_8011352 .. sub_8011362: the Falzar beast head
+        // (for 24, 36 and 48 its palette follows the navi's mood: drawn
+        // only).
+        24 | 36 | 42..=46 | 48 => {
             let layer = form_overlay::spawn(b, r, form_overlay::BEAST_HEAD, true);
             b.objects.get_mut(r).related[1] = layer;
+            return;
         }
-        _ => panic!("afterimage overlays for NameID {name_id:#x} (sub_8010DF6) are not implemented yet"),
+        // sub_8010F7A: SpoutMan's overlay, actor object #0x55, which the
+        // engine doesn't have yet (the navi init hook for AI index 6).
+        6 => panic!("afterimage overlays for AI index 6 (sub_8010F7A, actor object #0x55) are not implemented yet"),
+        // sub_8010FD8: two overlays, the second stored over the
+        // afterimage's colour shader; AI index 14 is a navi AI's, which no
+        // player NameID has.
+        14 => panic!("afterimages of NameID {name_id:#x} (a navi AI's record, sub_8010FD8) are not implemented yet"),
+        n => panic!("NameID {name_id:#x}'s AI index {n} reads past sub_8010DF6's overlay table"),
+    };
+    b.objects.get_mut(r).related[1] = layer;
+    if let Some(l) = layer {
+        body_overlay::force_front(b, l);
     }
 }
 
@@ -241,17 +282,12 @@ fn destroy(b: &mut Battle, r: ObjectRef) {
     if let Some(layer) = b.objects.get(r).related[1] {
         b.objects.get_mut(layer).flags |= flags::RUN_WHILE_PAUSED;
     }
-    // sub_8011044(record, 1): the Falzar beast head comes off (sub_801140E).
-    // One with a sprite of its own keeps NameID 0, a virus's record, whose
-    // hook is a nullsub.
-    match b.objects.get(r).name_id {
-        0 | 0x1A0 | 0x1B6 | 0x1B8..=0x1BC | 0x1C2 => {}
-        0x1B7 => {
-            if let Some(layer) = b.objects.get_mut(r).related[1].take() {
-                set_progress(b, layer, Progress::DESTROY);
-            }
-        }
-        n => panic!("afterimage teardown for NameID {n:#x} (sub_8011044) is not implemented yet"),
+    // sub_8011044(record, 1): the overlay comes off (for the Falzar beast
+    // head, sub_801140E). One with a sprite of its own keeps NameID 0, a
+    // virus's record, whose hook is a nullsub.
+    let name_id = b.objects.get(r).name_id;
+    if name_id != 0 {
+        crate::kinds::player::form::navi_death_hook(b, r, name_id);
     }
     b.objects.free(r);
 }
