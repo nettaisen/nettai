@@ -54,3 +54,26 @@ No reactive-defense check (`sub_801056A`) runs. 22 ticks from the action's first
 
 Matched: every scenario of the three chips except those stopped elsewhere (`counter` by action 0x12, `guard` by
 action 0x2B, `obstacle` by dimming subtype 6, `beast` and `beast-charged` by the empty hand's charge threshold).
+
+## Action 0x0A: the link navis' chips (not yet content)
+
+Chips 0x190 HeatPres to 0x199 DustBrk have action 0x0A, below 0x10, so they run through the user's own action table
+(`off_80EA4C8[AIIndex][0xA]`, chips.md §1.6), not `JumpTable80EAC60`. Only the link navis' tables (AI indices 1 to
+10) have an entry 0xA: 1 HeatMan `sub_80F0778`, 2 ElecMan `sub_80F09B8`, 3 SlashMan `sub_80F0CB0`, 4 EraseMan
+`sub_80F1056`, 5 ChargeMan `sub_80F1334`, 6 SpoutMan `sub_80F15CE`, 7 TomahawkMan `sub_80F18AC`, 8 TenguMan
+`sub_80F1A46`, 9 GroundMan `sub_80F1C1C`, 10 DustMan `sub_80F1FA0`. A content action registered for 0x0A runs for a
+link navi (`status::dispatch`); none is registered yet.
+
+What the port has for them so far: their damage, damage formulas 24 to 44 (`sub_8010C50`): the chip's row of
+`byte_80212D4` (its `navi_damage`: a base and a step), plus the step for each level of the user's buster attack
+(`sub_801265A`) up to 5, and 0 without a player navi on the side.
+
+What stops them, in the lab's link-navi scenarios (navis/navi-01 to navi-10), before the chip runs:
+
+- the init hooks of AI indices 1, 6 and 9 (`off_8010E0C`) and DustMan's post-init hook `sub_80F22F8`;
+- the link navis' chip bonus `sub_800F09E`, at chip use: by AI index, a damaging chip of the navi's family gets a
+  bonus from `byte_8021300`, indexed by a per-side value (`dword_203CFA0`, copied from the battle's link data at the
+  round's start) that the traces don't record; ChargeMan's charge limit (`sub_800F49E`) reads the same value;
+- the objects several of them spawn are the navi chips' too (attack #0x26 HeatMan's, #0x80 GroundMan's, effects
+  #0x09 and #0x61), and EraseMan's is objects/erase-beam with Param3 set (its "navi's" branch, which ends once the
+  navi leaves action 0xA).
