@@ -23,8 +23,9 @@ use std::ptr::NonNull;
 
 use bn6_content_api::{
     ACTOR_TYPES, ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
-    HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, Manifest, NaviStat, NaviState, ObjectField, PANEL_TYPES, Pad,
-    PanelPos, Pool, RequestFlag, SpriteField, SpriteId, StatusFlag, StatusTimer, Value, Vec3,
+    HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, Manifest, NaviStat, NaviState, ObjectField, ObstacleAction,
+    ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Pool, RequestFlag, SpriteField, SpriteId, StatusFlag,
+    StatusTimer, Value, Vec3,
 };
 use bn6_content_api::ObjectRef;
 use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMethods, Value as LuaValue};
@@ -547,6 +548,10 @@ impl UserData for Collision {
         methods.add_method("present", |_, this, ()| with(|api, _| Ok(api.present_collision(this.0))));
         methods.add_method("remove", |_, this, ()| with(|api, _| Ok(api.remove_collision(this.0))));
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free_collision(this.0))));
+        methods.add_method("element_damage", |_, this, element: LuaValue| {
+            let element = u8_arg(element, "element")?;
+            with(|api, _| api.collision_element_damage(this.0, element).map_err(api_error))
+        });
     }
 }
 
@@ -714,12 +719,14 @@ fn table_int(t: &mlua::Table, key: &str) -> mlua::Result<i64> {
     if v.is_nil() { Ok(0) } else { int(&v, key) }
 }
 
-/// Install `battle`, `field`, `dimming`, `navi_chip`, `Vec3` and `int`.
+/// Install `battle`, `field`, `dimming`, `navi_chip`, `obstacle`, `Vec3`
+/// and `int`.
 pub fn install(lua: &Lua) -> mlua::Result<()> {
     let g = lua.globals();
     g.set("battle", battle_lib(lua)?)?;
     g.set("field", field_lib(lua)?)?;
     g.set("dimming", dimming_lib(lua)?)?;
+    g.set("obstacle", obstacle_lib(lua)?)?;
 
     let navi_chip = lua.create_table()?;
     lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| {
@@ -861,6 +868,17 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let name = name.to_str()?.to_string();
             let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
             let o = with(|api, _| api.spawn_kind(&name, pos, p).map_err(api_error))?;
+            object_value(lua, o)
+        }
+    );
+    lib_fn!(
+        lua,
+        t,
+        "spawn_kind_first",
+        |lua, (name, pos, p): (mlua::LuaString, Option<mlua::UserDataRef<LVec3>>, Option<mlua::Table>)| {
+            let name = name.to_str()?.to_string();
+            let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
+            let o = with(|api, _| api.spawn_kind_first(&name, pos, p).map_err(api_error))?;
             object_value(lua, o)
         }
     );
@@ -1025,8 +1043,73 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             })?,
         )?;
     }
+    lib_fn!(
+        lua,
+        t,
+        "start",
+        |_, (side, no_cut_in, controller, user): (LuaValue, bool, LuaValue, mlua::UserDataRef<Object>)| {
+            let side = u8_arg(side, "side")? & 1;
+            let controller = object_arg(&controller, "controller")?;
+            with(|api, _| Ok(api.start_dimming(side, no_cut_in, controller, user.0)))
+        }
+    );
     lib_fn!(lua, t, "hide_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_user(user.0))));
     lib_fn!(lua, t, "show_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.show_user(user.0))));
+    Ok(t)
+}
+
+fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
+    type Me = mlua::UserDataRef<Object>;
+    let t = lua.create_table()?;
+    lib_fn!(lua, t, "register", |_, (me, side, class): (Me, LuaValue, LuaValue)| {
+        let (side, class) = (u8_arg(side, "side")? & 1, u8_arg(class, "class")?);
+        if class > 1 {
+            return Err(mlua::Error::runtime(format!("obstacle.register: class {class} (0 or 1)")));
+        }
+        with(|api, _| Ok(api.obstacle_register(me.0, side, class)))
+    });
+    lib_fn!(lua, t, "unregister", |_, me: Me| with(|api, _| Ok(api.obstacle_unregister(me.0))));
+    lib_fn!(lua, t, "take_hits", |_, me: Me| with(|api, _| api.obstacle_take_hits(me.0).map_err(api_error)));
+    lib_fn!(lua, t, "tick_lifetime", |_, me: Me| with(|api, _| api.obstacle_tick_lifetime(me.0).map_err(api_error)));
+    lib_fn!(lua, t, "react", |_, (me, crush): (Me, Option<mlua::LuaString>)| {
+        let crush = match crush {
+            Some(c) => named(&c, "crush", ObstacleCrush::from_name)?,
+            None => ObstacleCrush::Breaks,
+        };
+        with(|api, _| api.obstacle_react(me.0, crush).map_err(api_error))
+    });
+    for &a in ObstacleAction::ALL {
+        t.set(
+            a.name(),
+            lua.create_function(move |_, me: Me| with(|api, _| api.obstacle_action(me.0, a).map_err(api_error)))?,
+        )?;
+    }
+    lib_fn!(lua, t, "removal", |_, me: Me| {
+        with(|api, _| api.obstacle_removal(me.0).map(|r| r.name()).map_err(api_error))
+    });
+    lib_fn!(lua, t, "blink_out", |_, me: Me| {
+        with(|api, _| api.obstacle_blink_out(me.0).map(|r| r.name()).map_err(api_error))
+    });
+    lib_fn!(lua, t, "fly_to_absorber", |_, (me, kind): (Me, LuaValue)| {
+        let kind = u8_arg(kind, "obstacle kind")?;
+        with(|api, _| api.obstacle_fly_to_absorber(me.0, kind).map_err(api_error))
+    });
+    lib_fn!(lua, t, "release_tracking", |_, me: Me| with(|api, _| Ok(api.obstacle_release_tracking(me.0))));
+    for &r in ObstacleRequest::ALL {
+        t.set(
+            r.name(),
+            lua.create_function(move |_, (o, by): (Me, Option<Me>)| {
+                let by = match (r, by) {
+                    (_, Some(by)) => by.0,
+                    (ObstacleRequest::Absorb, None) => {
+                        return Err(mlua::Error::runtime("obstacle.absorb needs the absorber"));
+                    }
+                    (_, None) => o.0,
+                };
+                with(|api, _| Ok(api.obstacle_request(o.0, r, by)))
+            })?,
+        )?;
+    }
     Ok(t)
 }
 
@@ -1104,6 +1187,14 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
             t.raw_set("damage", spec.damage)?;
             vec![obj(user)?, obj(controller)?, LuaValue::Table(t)]
         }
+        HookCall::ActorListEntry { spec } => {
+            let t = lua.create_table()?;
+            t.raw_set("panel_x", spec.panel.x)?;
+            t.raw_set("panel_y", spec.panel.y)?;
+            t.raw_set("side", spec.side)?;
+            t.raw_set("variant", spec.variant)?;
+            vec![LuaValue::Table(t)]
+        }
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1112,7 +1203,7 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
 pub fn hook_result(v: LuaValue, call: HookCall) -> mlua::Result<Value> {
     match call {
         HookCall::Weapon { .. } => Ok(Value::Int(int(&v, "the action a weapon routine returns")? as u8 as i64)),
-        HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } => {
+        HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::ActorListEntry { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
     }

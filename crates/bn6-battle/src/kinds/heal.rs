@@ -76,7 +76,7 @@ fn spring_anti_recovery(b: &mut Battle, r: ObjectRef, amount: u16) {
     }
     // sub_800BF16, no cut-in allowed, with the spawn's result (none when
     // the effect pool is full: the game registers a null controller).
-    b.register_dimming_as(alliance, true, controller, r);
+    b.start_dimming(alliance, true, controller, r);
     // sub_800ABC6: the mark over the healer's panel, for the local side's
     // look (Param2).
     let (x, y) = crate::kinds::player::panel_coordinates(panel.x, panel.y);

@@ -28,7 +28,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x17 | 0x080c6dcc | 180 |
 | T3 0x22 | 0x080c853c | 16 |
 | T3 0x49 | 0x080cd2ec | 87 |
-| T3 0x59 | 0x080cf954 | 7372 (rock: `kinds::rock`, field-objects.md) |
+| T3 0x59 | 0x080cf954 | 7372 (rock: the pack's `objects/rock`, field-objects.md) |
 | T3 0x5b | 0x080cfcf8 | 96 |
 | T3 0x74 | 0x080d30d0 | 350 (RskyHny's bee: the pack's `objects/honey-bee`, chips.md §3.7) |
 | T3 0x82 | 0x080d5740 | 48 |
@@ -59,14 +59,14 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T4 0x1f | 0x080e28a8 | 192 |
 | T4 0x20 | 0x080e2ae8 | 609 |
 | T4 0x28 | 0x080e32b8 | 500 |
-| T4 0x2a | 0x080e34c0 | 2276 (trap chip dimming controller: `kinds::trap_chip`, chips.md §3.6.9) |
+| T4 0x2a | 0x080e34c0 | 2276 (trap chip dimming controller: the pack's `objects/trap-chip`, chips.md §3.6.9) |
 | T4 0x2d | 0x080e37f4 | 316 |
 | T4 0x2e | 0x080e39a0 | 810 |
 | T4 0x2f | 0x080e3ab8 | 471 |
 | T4 0x3b | 0x080e4910 | 494 |
 | T4 0x48 | 0x080e5c2c | 847 |
 | T4 0x5a | 0x080e70c8 | 184 |
-| T4 0x5d | 0x080e74d4 | 762 (Invisibl dimming controller: `kinds::invisible`, chips.md §3.6) |
+| T4 0x5d | 0x080e74d4 | 762 (Invisibl dimming controller: the pack's `objects/invisible`, chips.md §3.6) |
 | T4 0x62 | 0x080e78bc | 260 (EraseMan's aim mark: the pack's `objects/erase-mark`, chips.md §3.6.7) |
 | T4 0x6b | 0x080e807c | 54 |
 | T4 0x76 | 0x080e8b00 | 595 |

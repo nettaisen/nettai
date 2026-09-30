@@ -3,12 +3,14 @@
 Obstacles are attack-pool (T3) objects without actor data that stand on a
 panel, take hits, and leave the field in several ways. The rock (T3#0x59)
 is the one the netbattle fixtures use: the soundmod trace's round 1 starts
-with two. Engine code: `kinds/obstacle.rs` (shared), `kinds/rock.rs`,
-`kinds/rock_debris.rs` (T4#0x38), `kinds/absorbed_obstacle.rs` (T4#0x87),
-the registry in `field.rs` (`FieldObjects`), generic helpers in
-`kinds/common.rs`. Data: `ObjectData::rocks`, `ObjectData::absorbed_sprites`
-(a content pack's `objects/rock/object.toml` and
-`objects/absorbed-obstacle/object.toml`, extracted by bn6-extract).
+with two. Engine code: `kinds/obstacle.rs` (the shared obstacle framework,
+which content calls through the `obstacle` service), `kinds/absorbed_obstacle.rs`
+(T4#0x87), the registry in `field.rs` (`FieldObjects`), generic helpers in
+`kinds/common.rs`. The rock and its debris (T4#0x38) are the pack's scripts
+`objects/rock` and `objects/rock-debris`; the actor lists' rocks go through
+the rock's `actor_list_entry`. Data: `ObjectData::rocks`,
+`ObjectData::absorbed_sprites` (a content pack's `objects/rock/object.toml`
+and `objects/absorbed-obstacle/object.toml`, extracted by bn6-extract).
 
 Routine names are the original's. "f1"/"f2" are the
 collision data's ObjectFlags1 (+0x3C, the trace's `status`) and
@@ -200,7 +202,7 @@ Z == 0 spawn T4#0 effect 1 and free itself.
 
 ## 6. Trace verification (soundmod round 1)
 
-`kinds/rock_tests.rs` replays frames 72..3800 driving only the rocks and
+The verification workspace's rock_trace test replays frames 72..3800 driving only the rocks and
 what they spawn (navis' positions/actions/status, pause and battle flags
 taken from the trace) and compares flags, params, state, panel, side, flip,
 HP, position, timer, animation and status every frame. It matches:

@@ -1,52 +1,36 @@
-//! What field objects share: obstacles without actor data (rocks, cubes
-//! and the like) taking hits, living out their timer, reacting to status
-//! and chips through one dispatcher, and leaving the field.
-//! See docs/engine/field-objects.md.
+//! The obstacle framework: what field objects share (rocks, cubes and the
+//! like, obstacles without actor data) taking hits, living out their
+//! timer, reacting to status and chips through one dispatcher, and leaving
+//! the field. The kinds themselves are content (objects/rock and the
+//! others); they call these steps through the content API's `obstacle`
+//! service. See docs/engine/field-objects.md.
 //!
 //! An obstacle's update is, in the game's order: [`take_hits`], hit
-//! sparks, [`tick_lifetime`], [`react`] (which runs the current
-//! [`Action`]), the sprite step, and presenting its collision again.
+//! sparks, [`tick_lifetime`], [`react`] (which leaves the kind's own
+//! action table to run: its entries for [`Action::Appear`],
+//! [`Action::Destroyed`] and [`Action::Idle`] are the kind's, the others
+//! the [`shared_action`]s), the sprite step, and presenting its collision
+//! again.
+//!
+//! The framework keeps its state in fields every object has: the dimming
+//! hold in the shake fields (`shake_origin_x`/`z`, `shake_timer`, the
+//! game's +0x30, +0x32, +0x19), the push's step in `drag_step` (+0x0D) and
+//! what to go back to after it in `saved_state` (+0x5C).
 
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionId, f1};
 use crate::kinds::common::{self, Progress};
-use crate::object::{Object, ObjectRef, Vec3, flags};
+use crate::object::{DragStep, ObjectRef, StateWord, Vec3, flags};
 
-/// What an obstacle kind provides to the shared code.
-pub trait Obstacle {
-    /// The obstacle's shared state (kept in its behavior state).
-    fn state(o: &mut Object) -> &mut State;
-    /// [`Action::Appear`].
-    fn appear(b: &mut Battle, r: ObjectRef);
-    /// [`Action::Destroyed`].
-    fn destroyed(b: &mut Battle, r: ObjectRef);
-    /// [`Action::Idle`].
-    fn idle(b: &mut Battle, r: ObjectRef);
-}
-
-/// State every obstacle keeps.
-#[derive(Clone, Debug, Default, Hash)]
-pub struct State {
-    /// During dimming: where the obstacle is held (integer pixels) and
-    /// how many more ticks it shakes after a hit.
-    pub held_x: i16,
-    pub held_z: i16,
-    pub shake: u8,
-    /// What to go back to after a push.
-    pub resume: Option<Progress>,
-    /// Step within a push.
-    pub slide_step: u8,
-}
-
-/// Obstacle actions (the object's `action` byte indexes the game's
-/// per-obstacle table; the entries marked shared are the same for all).
+/// Obstacle actions (the object's `action` byte indexes the kind's
+/// table; the entries marked shared are the same for every kind).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
-    /// Coming onto the field.
+    /// The kind's: coming onto the field.
     Appear = 0,
     /// Shared: go back to idle.
     ReturnToIdle = 1,
-    /// Break apart or leave.
+    /// The kind's: break apart or leave.
     Destroyed = 2,
     /// Shared hit reactions that exist only for objects with actor data.
     Flinch = 3,
@@ -55,31 +39,29 @@ pub enum Action {
     Slide = 5,
     Frozen = 6,
     Bubbled = 7,
-    /// Standing.
+    /// The kind's: standing.
     Idle = 8,
 }
 
 impl Action {
-    pub fn of(b: &Battle, r: ObjectRef) -> Action {
-        const ALL: [Action; 9] = [
-            Action::Appear,
-            Action::ReturnToIdle,
-            Action::Destroyed,
-            Action::Flinch,
-            Action::Paralyzed,
-            Action::Slide,
-            Action::Frozen,
-            Action::Bubbled,
-            Action::Idle,
-        ];
-        let a = b.objects.get(r).action;
-        *ALL.get(a as usize).unwrap_or_else(|| panic!("obstacle action {a} does not exist"))
-    }
-
     /// Switch to this action from its first phase.
     pub fn start(self, b: &mut Battle, r: ObjectRef) {
         common::set_action(b, r, self as u8);
     }
+}
+
+/// The shared entries of an obstacle's action table.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SharedAction {
+    /// `sub_80165B8`.
+    ReturnToIdle,
+    /// `sub_8017E26`.
+    Slide,
+    /// `sub_80166AE`, `sub_8016B02`, `sub_8016B36`, `sub_8016B72`.
+    Flinch,
+    Paralyzed,
+    Frozen,
+    Bubbled,
 }
 
 /// Collision `f2` bits obstacles react to.
@@ -91,7 +73,7 @@ pub mod f2 {
     pub const FLINCH: u32 = 0x4;
     /// Pushed by a hit (hit modifier 0x40).
     pub const PUSHED: u32 = 0x100;
-    /// Picked up to be thrown.
+    /// Picked up to be thrown (by side 0 / side 1).
     pub const THROWN: u32 = 0xC00;
     /// Encased in ice (0x1000) or a bubble (0x2000).
     pub const ENCASED: u32 = 0x3000;
@@ -114,6 +96,29 @@ pub mod obstacle_f1 {
     pub const ENCASED_BUBBLE: u32 = 0x2000_0000;
 }
 
+/// What a hit by a body or another obstacle does (the two dispatchers
+/// differ only there).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Crush {
+    /// `sub_801B394`: the HP drops to 0.
+    Breaks,
+    /// `sub_801B4D4`: destroyed, the HP as it is.
+    Destroys,
+}
+
+/// How an obstacle left the field, as its `Destroyed` action reads it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Removal {
+    /// Broken (HP 0, the battle over, its time up, crushed).
+    Broken,
+    /// A chip removed it.
+    Removed,
+    /// A chip made it blink out.
+    Vanished,
+    /// Absorbed by `side`'s navi.
+    Absorbed { side: u8 },
+}
+
 /// Battle flag: some chips track targets per side; obstacles leaving the
 /// field update that tracking.
 const TARGET_TRACKING: u16 = 0x40;
@@ -124,6 +129,9 @@ const PUSHING_HIT: u8 = 0x40;
 /// Collision types that break an obstacle outright when they touch it:
 /// bodies and other obstacles (0x0C80_0000), and type 0x2.
 const CRUSHING_HITS: u32 = 0x0C80_0002;
+
+/// The damage sound.
+const HIT_SOUND: u16 = 0x85;
 
 fn collision(b: &Battle, r: ObjectRef) -> CollisionId {
     b.objects.get(r).collision.expect("obstacle without collision data")
@@ -168,6 +176,11 @@ pub fn register(b: &mut Battle, r: ObjectRef, side: u8, class: u8) {
     if let Some(evicted) = b.field.objects.register(r, side, class) {
         b.objects.get_mut(evicted).hp = 0;
     }
+}
+
+/// `sub_800F656`: forget `r` in the registry.
+pub fn unregister(b: &mut Battle, r: ObjectRef) {
+    b.field.objects.unregister(r);
 }
 
 // ---- Requests from chips ---------------------------------------------------
@@ -217,10 +230,12 @@ pub fn absorb_all(b: &mut Battle, absorber: ObjectRef) {
 
 // ---- The per-tick steps ----------------------------------------------------
 
-/// `sub_801AD9E`: once the fight is on, resolve this tick's hits and total
-/// the damage. A pushing hit (hit modifier 0x40) starts a push and
-/// forgets the damage.
+/// `sub_801AD9E`: the hit flash ends; once the fight is on, resolve this
+/// tick's hits and total the damage. A pushing hit (hit modifier 0x40)
+/// starts a push and forgets the damage.
 pub fn take_hits(b: &mut Battle, r: ObjectRef) {
+    // sprite_clearFinalPalette
+    b.objects.sprite_mut(r).look.white = false;
     let c = collision(b, r);
     if b.round.flags & battle_flags::FIGHTING == 0 {
         return;
@@ -271,22 +286,24 @@ pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801B394`: apply damage and removal requests, then either run a
-/// status routine or the current action.
-pub fn react<T: Obstacle>(b: &mut Battle, r: ObjectRef) {
+/// `sub_801B394` / `sub_801B4D4`: apply damage and removal requests, then
+/// either run a status routine (None) or leave the current action for the
+/// kind's action table to run (its number).
+pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush) -> Option<u8> {
     let c = collision(b, r);
     let damage = b.collision.get(c).acc.final_damage;
-    // (Damage also flashes the obstacle white.)
-    if damage != 0 {
-        b.play_sound(crate::sound::SoundId(0x85));
-    }
     let killed = damage != 0 && {
+        // sprite_forceWhitePalette
+        b.objects.sprite_mut(r).look.white = true;
+        b.play_sound(crate::sound::SoundId(HIT_SOUND));
         crate::kinds::subtract_hp(b, r, damage);
         b.objects.get(r).hp == 0
     };
     let destroy = killed || {
         if b.collision.get(c).acc.hit_flags & CRUSHING_HITS != 0 {
-            b.objects.get_mut(r).hp = 0;
+            if crush == Crush::Breaks {
+                b.objects.get_mut(r).hp = 0;
+            }
             true
         } else {
             f2_of(b, r) & f2::REMOVED != 0 || b.objects.get(r).hp == 0
@@ -303,49 +320,58 @@ pub fn react<T: Obstacle>(b: &mut Battle, r: ObjectRef) {
             Action::Destroyed.start(b, r);
         } else if f2_of(b, r) & f2::THROWN != 0 {
             b.objects.get_mut(r).prevent_anim = 0;
-            return thrown(b, r);
+            thrown(b, r);
+            return None;
         } else if f1_of(b, r) & obstacle_f1::CARRIED != 0 {
-            return thrown(b, r);
+            thrown(b, r);
+            return None;
         } else if f2_of(b, r) & f2::ENCASED != 0 {
             b.objects.get_mut(r).prevent_anim = 0;
-            return encased(b, r);
+            encased(b, r);
+            return None;
         } else if f1_of(b, r) & (obstacle_f1::ENCASED_ICE | obstacle_f1::ENCASED_BUBBLE) != 0 {
-            return encased(b, r);
+            encased(b, r);
+            return None;
         } else if b.is_dimmed() {
-            if Action::of(b, r) != Action::Appear {
-                return hold_while_dimmed::<T>(b, r);
+            if b.objects.get(r).action != Action::Appear as u8 {
+                hold_while_dimmed(b, r);
+                return None;
             }
         } else {
             b.objects.get_mut(r).prevent_anim = 0;
             if f2_of(b, r) & f2::PUSHED != 0 {
                 clear_f2(b, r, f2::PUSHED);
-                let now = common::progress(b, r);
                 let o = b.objects.get_mut(r);
-                let s = T::state(o);
-                s.resume.get_or_insert(now);
-                s.slide_step = 0;
+                if o.saved_state.is_none() {
+                    o.saved_state =
+                        Some(StateWord { state: o.state, action: o.action, phase: o.phase, phase_init: o.phase_init });
+                }
                 o.action = Action::Slide as u8;
                 o.phase = 0;
+                o.drag_step = DragStep::Start;
             } else if f1_of(b, r) & f1::DRAG != 0 {
                 b.objects.get_mut(r).action = Action::Slide as u8;
             } else {
-                T::state(b.objects.get_mut(r)).slide_step = 0;
+                b.objects.get_mut(r).drag_step = DragStep::Start;
             }
         }
     }
-    // (The color shader is reset here.)
+    // sprite_zeroColorShader
+    b.objects.sprite_mut(r).look.color_shader = 0;
     update_visibility(b, r);
-    match Action::of(b, r) {
-        Action::Appear => T::appear(b, r),
-        Action::ReturnToIdle => return_to_idle(b, r),
-        Action::Destroyed => T::destroyed(b, r),
-        Action::Slide => slide(b, r),
-        Action::Idle => T::idle(b, r),
+    Some(b.objects.get(r).action)
+}
+
+/// Run a shared entry of an obstacle's action table.
+pub fn shared_action(b: &mut Battle, r: ObjectRef, a: SharedAction) {
+    match a {
+        SharedAction::ReturnToIdle => return_to_idle(b, r),
+        SharedAction::Slide => slide(b, r),
         // `sub_80166AE`, `sub_8016B02`, `sub_8016B36`, `sub_8016B72` look up
         // per-actor-type routines through the object's actor data, which
         // obstacles don't have (the game reads through a null pointer).
         // Nothing sets these actions on an obstacle.
-        a @ (Action::Flinch | Action::Paralyzed | Action::Frozen | Action::Bubbled) => {
+        a @ (SharedAction::Flinch | SharedAction::Paralyzed | SharedAction::Frozen | SharedAction::Bubbled) => {
             panic!("obstacle action {a:?} needs actor data, which obstacles don't have")
         }
     }
@@ -371,26 +397,23 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801823C`: while dimmed, stand still, shaking for 30 ticks
 /// after each hit (a simulation RNG draw per shaking tick).
-fn hold_while_dimmed<T: Obstacle>(b: &mut Battle, r: ObjectRef) {
+fn hold_while_dimmed(b: &mut Battle, r: ObjectRef) {
     update_visibility(b, r);
     let o = b.objects.get_mut(r);
     if o.prevent_anim == 0 {
-        let (x, z) = ((o.pos.x >> 16) as i16, (o.pos.z >> 16) as i16);
-        let s = T::state(o);
-        s.held_x = x;
-        s.held_z = z;
-        s.shake = 0;
+        o.shake_origin_x = (o.pos.x >> 16) as i16;
+        o.shake_origin_z = (o.pos.z >> 16) as i16;
+        o.shake_timer = 0;
         o.prevent_anim = 4;
     }
     let hit = b.collision.get(collision(b, r)).acc.final_damage != 0;
     let o = b.objects.get_mut(r);
-    let s = T::state(o);
     if hit {
-        s.shake = 0x1E;
+        o.shake_timer = 0x1E;
     }
-    let (x, z) = ((s.held_x as i32) << 16, (s.held_z as i32) << 16);
-    if s.shake != 0 {
-        s.shake -= 1;
+    let (x, z) = ((o.shake_origin_x as u16 as i32) << 16, (o.shake_origin_z as u16 as i32) << 16);
+    if o.shake_timer != 0 {
+        o.shake_timer -= 1;
         let base = Vec3 { x, y: o.pos.y, z };
         b.objects.get_mut(r).pos = crate::kinds::spark::jitter(b, 3, base);
     } else {
@@ -413,12 +436,12 @@ fn encased(_b: &mut Battle, _r: ObjectRef) {
 // ---- Shared actions -------------------------------------------------------
 
 /// [`Action::ReturnToIdle`], `sub_80165B8`.
-pub fn return_to_idle(b: &mut Battle, r: ObjectRef) {
+fn return_to_idle(b: &mut Battle, r: ObjectRef) {
     Action::Idle.start(b, r);
 }
 
 /// [`Action::Slide`], `sub_8017E26`: pushed or dragged along the field.
-pub fn slide(_b: &mut Battle, _r: ObjectRef) {
+fn slide(_b: &mut Battle, _r: ObjectRef) {
     panic!("pushed obstacles (sub_8017E26) are not implemented yet");
 }
 
@@ -432,6 +455,20 @@ pub fn release_tracking(b: &mut Battle, _r: ObjectRef) {
     }
 }
 
+/// How the obstacle is leaving, from its `f2` word.
+pub fn removal(b: &Battle, r: ObjectRef) -> Removal {
+    let f2 = f2_of(b, r);
+    if f2 & f2::REMOVED == 0 {
+        Removal::Broken
+    } else if f2 & f2::ABSORBED != 0 {
+        Removal::Absorbed { side: (f2 & f2::ABSORBED_BY_1 != 0) as u8 }
+    } else if f2 & f2::VANISH != 0 {
+        Removal::Vanished
+    } else {
+        Removal::Removed
+    }
+}
+
 /// How a removed obstacle's blink-out is going (`sub_800F8CE`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BlinkOut {
@@ -442,9 +479,8 @@ pub enum BlinkOut {
 }
 
 /// `sub_800F8CE`: blink for 20 ticks when removed with `f2::VANISH`.
-/// `f2` is the collision `f2` word as the caller read it.
-pub fn blink_out(b: &mut Battle, r: ObjectRef, f2: u32) -> BlinkOut {
-    if f2 & f2::VANISH == 0 {
+pub fn blink_out(b: &mut Battle, r: ObjectRef) -> BlinkOut {
+    if f2_of(b, r) & f2::VANISH == 0 {
         return BlinkOut::No;
     }
     let o = b.objects.get_mut(r);
@@ -462,10 +498,11 @@ pub fn blink_out(b: &mut Battle, r: ObjectRef, f2: u32) -> BlinkOut {
 }
 
 /// `sub_800F90E`: an absorbed obstacle of kind `kind` (see
-/// `ObjectData::absorbed_sprites`) flies to the absorbing side's navi.
-/// `palette` is the obstacle's sprite palette.
-pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, kind: u8, palette: u8) {
+/// `ObjectData::absorbed_sprites`) flies to the absorbing side's navi,
+/// with the obstacle's animation and sprite palette.
+pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, kind: u8) {
     let side = (f2_of(b, r) & f2::ABSORBED_BY_1 != 0) as u8;
+    let palette = b.objects.sprite(r).look.palette;
     let o = b.objects.get(r);
     let spec = crate::kinds::absorbed_obstacle::Spec { kind, side, anim: o.anim, palette };
     let pos = o.pos;
