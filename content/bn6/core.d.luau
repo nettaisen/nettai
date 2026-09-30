@@ -341,7 +341,9 @@ declare class Object
     attack_state: any
 
     -- Navis (actors) only. The attack in progress: its phase and whether
-    -- the phase's entry ran; its variant (a chip's subtype) and chip.
+    -- the phase's entry ran; its variant (a chip's subtype) and chip (its
+    -- number, 0 for none; a chip content defines is 0x200 + its handle,
+    -- which reads back as that chip).
     step: number
     step_init: number
     variant: number
@@ -646,7 +648,8 @@ export type AfterimageSpec = {
     tether: ("beast_form" | "attack")?,
 }
 
--- A side's defensive-chip record.
+-- A side's defensive-chip record (the chip by number, 0 for none; a chip
+-- content defines is 0x200 + its handle).
 export type LinkedChip = {
     chip: number,
     bonus: number,

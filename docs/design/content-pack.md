@@ -60,7 +60,7 @@ lib/*.luau                                helpers the scripts share
 core.d.luau, types.d.luau                 the scripts' API and shared types (for editors and the checker)
 rules/*.toml                              rules no entity owns
 registries/*.toml                         what many entities name by number
-graphics/sprites/CC-II/animations.json    each sprite's animation timing (with its graphics)
+graphics/sprites/NAME/animations.json     each sprite's animation timing (with its graphics; the file names its sprite)
 graphics/...  sound/...                   see asset-formats.md
 ```
 
@@ -94,7 +94,7 @@ graphics/...  sound/...                   see asset-formats.md
 | `registries/effects.toml`, `sparks.toml` | one-shot effects and hit sparks by id | `Content::effects`, `sparks` |
 | `registries/regions.toml` | hit-region shapes by region number | `Content::regions` |
 | `registries/panel-layouts.toml` | panel layouts by layout number | `Content::panel_layouts` |
-| `graphics/sprites/CC-II/animations.json` (298) | frame durations and flags | `Content::animations` |
+| `graphics/sprites/NAME/animations.json` (298) | frame durations and flags | `Content::animations` |
 
 BN6's battle data is 479 TOML files and 298 timing files (about 2 MiB) of
 the pack's 2,788 files; chips are most of it. Its scripts are 18 Luau
@@ -255,7 +255,7 @@ Conventions:
   region conditions, status requests, battle effects. Their bits are
   documented in docs/engine/field-collision-damage.md; they are matched
   as whole words (`target & self`), so they stay words.
-- **Sprites** as `"CC-II"`, the sprite's folder under `graphics/sprites`.
+- **Sprites** as `"CC-II"`, the sprite's id (its folder under `graphics/sprites` is its name).
 - **Points and offsets** as `[x, y]` / `[dx, dy]`; panel grids as rows of
   `#` and `.`; deletion times as `m:ss.cc`.
 - **Chip codes** as letters (`"*"` for the asterisk).
@@ -360,12 +360,14 @@ let pas = b.content.program_advances();          // in the order they are tried
   clone the `Arc` first (`let content = b.content.clone();`): it costs an
   atomic increment.
 - Trace replays (bn6-compat's `trace`) take the content and compat:
-  `trace::run_round(round, &content, &compat)`, `round.start(content)`,
-  `round.round_setup(&content)`.
-- `bn6_compat::codec::battle_settings(bytes, &content)` resolves the
-  actor list the record names by its original address;
-  `BattleSettings::actors` is an `ActorListId` into
-  `content.rules.stages.actor_lists`.
+  `trace::run_round(round, &content, &compat)`, `round.start(content, &compat)`,
+  `round.round_setup(&content, &compat)`, `round.tick_inputs(i, &frames, &ids)`.
+- The setup codecs (`bn6_compat::codec`) take an `Ids` (the content and
+  compat), which maps the records' numbers to the engine's handles and
+  back. `codec::battle_settings(bytes, &ids)` finds the stage the record
+  is (its actor list by original address, `StageSettings::actors` an
+  `ActorListId` into `content.rules.stages.actor_lists`); a round's
+  `BattleSettings` is the stage's handle with the background and effects.
 - The scripts run from the content: `Battle::new` loads them with
   `Behaviors::for_content(&content)` (once per thread and content hash;
   the VM is a cache, not battle state), and they read the content as a

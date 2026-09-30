@@ -4,8 +4,9 @@
 
 use super::folder::FolderChip;
 use super::library::Library;
-use crate::content::{ChipClass, ChipCode, ChipFlags, ChipId, ChipModifier, PaRecipe};
-use crate::hand::{ChipHand, NO_CHIP};
+use crate::content::{ChipClass, ChipCode, ChipFlags, ChipId, ChipModifier, Recipe};
+use crate::hand::ChipHand;
+use bn6_content_api::ChipHandle;
 
 /// `ChipHand::modifiers` bits.
 pub mod modifier_bits {
@@ -17,8 +18,8 @@ pub mod modifier_bits {
     pub const UNINSTALL: u8 = 0x04;
 }
 
-/// Program Advances a player has formed this round (once each), by
-/// `result - 0x140`.
+/// Program Advances a player has formed this round (once each), by the
+/// result's number `- 0x140`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ProgramAdvancesUsed(pub u32);
 
@@ -45,13 +46,13 @@ pub struct Pick {
 /// One entry of the hand being built (the work area `dword_2033000`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Entry {
-    id: ChipId,
+    id: Option<ChipHandle>,
     damage: u16,
     bonus: u16,
     modifiers: u8,
 }
 
-const EMPTY: Entry = Entry { id: NO_CHIP, damage: 0, bonus: 0, modifiers: 0 };
+const EMPTY: Entry = Entry { id: None, damage: 0, bonus: 0, modifiers: 0 };
 
 /// What the builder made.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -65,7 +66,7 @@ pub struct Built {
 /// (`sub_802B6F2`'s arguments).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FormedAdvance {
-    pub chip: ChipId,
+    pub chip: ChipHandle,
     /// Chips picked (all listed).
     pub picks: u8,
     /// Where the recipe's chips start among them, and how many.
@@ -81,14 +82,14 @@ pub fn build(
     turn: u8,
     pa_used: &mut ProgramAdvancesUsed,
     library: &dyn Library,
-    damage: impl Fn(ChipId) -> u16,
+    damage: impl Fn(ChipHandle) -> u16,
 ) -> Built {
     let mut entries = [EMPTY; 6];
-    let mut raw = [NO_CHIP; 6];
+    let mut raw = [None; 6];
     for (i, p) in picks.iter().enumerate() {
-        raw[i] = p.chip.packed();
+        raw[i] = Some(p.chip);
         entries[i] = Entry {
-            id: p.chip.id,
+            id: Some(p.chip.id),
             damage: damage(p.chip.id),
             bonus: 0,
             modifiers: if p.regular { modifier_bits::REGULAR } else { 0 },
@@ -96,11 +97,12 @@ pub fn build(
     }
     let mut program_advance = None;
     if !picks.is_empty() {
-        if let Some((result, start, len)) = find_program_advance(&raw[..picks.len()], pa_used, library) {
+        let chips: Vec<FolderChip> = picks.iter().map(|p| p.chip).collect();
+        if let Some((result, start, len)) = find_program_advance(&chips, pa_used, library) {
             // sub_80292CC: the recipe's chips become the Program Advance;
             // it is the Regular chip if one of them was.
             let regular = entries[start..start + len].iter().fold(0, |m, e| m | (e.modifiers & modifier_bits::REGULAR));
-            entries[start] = Entry { id: result, damage: damage(result), bonus: 0, modifiers: entries[start].modifiers | regular };
+            entries[start] = Entry { id: Some(result), damage: damage(result), bonus: 0, modifiers: entries[start].modifiers | regular };
             // The entries after the recipe move up behind it, up to and
             // with the end marker; what lay past it stays.
             shift_up(&mut entries, start + 1, start + len);
@@ -125,8 +127,11 @@ pub fn build(
 /// `sub_8029520`: the first Program Advance in the selection, trying each
 /// start position in turn and the recipes in table order; one already
 /// formed this round is passed over. Returns (result, start, length).
-fn find_program_advance(raw: &[u16], used: &mut ProgramAdvancesUsed, library: &dyn Library) -> Option<(ChipId, usize, usize)> {
-    let chips: Vec<FolderChip> = raw.iter().map(|&v| FolderChip::from_packed(v)).collect();
+fn find_program_advance(
+    chips: &[FolderChip],
+    used: &mut ProgramAdvancesUsed,
+    library: &dyn Library,
+) -> Option<(ChipHandle, usize, usize)> {
     for start in 0..chips.len().saturating_sub(2) {
         let rest = &chips[start..];
         for pa in library.program_advances() {
@@ -134,7 +139,10 @@ fn find_program_advance(raw: &[u16], used: &mut ProgramAdvancesUsed, library: &d
             if rest.len() < len || !recipe_matches(&pa.recipe, &rest[..len]) {
                 continue;
             }
-            if used.spend(pa.result) {
+            // The pack's Program Advances all have numbers (a chip content
+            // defines has no recipes yet).
+            let number = library.chip_number(pa.result).expect("a Program Advance the pack numbers");
+            if used.spend(number) {
                 return Some((pa.result, start, len));
             }
         }
@@ -142,10 +150,10 @@ fn find_program_advance(raw: &[u16], used: &mut ProgramAdvancesUsed, library: &d
     None
 }
 
-fn recipe_matches(recipe: &PaRecipe, chips: &[FolderChip]) -> bool {
+fn recipe_matches(recipe: &Recipe, chips: &[FolderChip]) -> bool {
     match *recipe {
-        PaRecipe::Sequence(ref ids) => chips.iter().zip(ids).all(|(c, &id)| c.id == id),
-        PaRecipe::CodeRun { chip, .. } => chips.iter().all(|c| c.id == chip) && codes_run(chips),
+        Recipe::Sequence(ref ids) => chips.iter().zip(ids).all(|(c, &id)| c.id == id),
+        Recipe::CodeRun { chip, .. } => chips.iter().all(|c| c.id == chip) && codes_run(chips),
     }
 }
 
@@ -177,12 +185,14 @@ fn codes_run(chips: &[FolderChip]) -> bool {
 /// folds.
 fn fold_modifiers(entries: &mut [Entry; 6], library: &dyn Library) {
     let mut i = 1;
-    while i < entries.len() && entries[i].id != NO_CHIP {
-        let Some(m) = library.chip(entries[i].id).modifier else {
+    while i < entries.len()
+        && let Some(id) = entries[i].id
+    {
+        let Some(m) = library.chip(id).modifier else {
             i += 1;
             continue;
         };
-        let prev = library.chip(entries[i - 1].id).flags;
+        let prev = entries[i - 1].id.map_or(ChipFlags(0), |p| library.chip(p).flags);
         let applies = match m {
             ChipModifier::AttackPlus => prev.has(ChipFlags::HAS_DAMAGE),
             ChipModifier::NaviPlus => prev.has(ChipFlags::NAVI),
@@ -212,7 +222,7 @@ fn shift_up(entries: &mut [Entry; 6], to: usize, from: usize) {
         let e = entries[src];
         let bonus = entries[dst].bonus;
         entries[dst] = Entry { bonus, ..e };
-        if e.id == NO_CHIP {
+        if e.id.is_none() {
             return;
         }
         dst += 1;
@@ -233,8 +243,8 @@ pub struct ClassCounts {
 /// added to the round's counts. The Mega and Giga counts are what the
 /// invalid-chip rule checks next time.
 pub fn count_classes(hand: &ChipHand, uses: &mut ClassCounts, library: &dyn Library) {
-    for &raw in hand.selection.iter().take_while(|&&v| v != NO_CHIP) {
-        let count = match library.chip(raw & 0x1FF).class {
+    for c in hand.selection.iter().map_while(|c| *c) {
+        let count = match library.chip(c.id).class {
             ChipClass::Standard => &mut uses.standard,
             ChipClass::Mega => &mut uses.mega,
             ChipClass::Giga => &mut uses.giga,
@@ -249,6 +259,14 @@ mod tests {
     use super::*;
     use crate::custom::library::testing::{EVERY_CODE, TestLibrary, chip};
     use crate::content::{ChipData, ProgramAdvance};
+
+    const NONE: u16 = 0xFFFF;
+
+    /// Hand ids from made-up numbers (the test library's handles), NONE
+    /// for an empty entry.
+    fn ids<const N: usize>(v: [u16; N]) -> [Option<ChipHandle>; N] {
+        v.map(|id| (id != NONE).then_some(ChipHandle(id)))
+    }
 
     // Made-up chips: 1 a damaging chip, 2 one without damage, 3 a dimming
     // chip, 4 a navi chip, and the modifiers; the Program Advance 0x140
@@ -274,8 +292,11 @@ mod tests {
                 (0x141, chip(ChipClass::ProgramAdvance, EVERY_CODE, ChipFlags::HAS_DAMAGE, 200)),
             ],
             vec![
-                ProgramAdvance { result: 0x141, recipe: PaRecipe::Sequence(vec![QUIET, CANNON, QUIET]) },
-                ProgramAdvance { result: 0x140, recipe: PaRecipe::CodeRun { chip: CANNON, count: 3 } },
+                ProgramAdvance {
+                    result: ChipHandle(0x141),
+                    recipe: Recipe::Sequence(vec![ChipHandle(QUIET), ChipHandle(CANNON), ChipHandle(QUIET)]),
+                },
+                ProgramAdvance { result: ChipHandle(0x140), recipe: Recipe::CodeRun { chip: ChipHandle(CANNON), count: 3 } },
             ],
         )
     }
@@ -286,7 +307,7 @@ mod tests {
     }
 
     fn pick(id: ChipId, code: u8) -> Pick {
-        Pick { chip: FolderChip::new(id, ChipCode(code)), regular: false }
+        Pick { chip: FolderChip::new(ChipHandle(id), ChipCode(code)), regular: false }
     }
 
     fn built(picks: &[Pick]) -> Built {
@@ -296,7 +317,8 @@ mod tests {
 
     #[test]
     fn code_runs() {
-        let run = |codes: &[u8]| codes_run(&codes.iter().map(|&c| FolderChip::new(1, ChipCode(c))).collect::<Vec<_>>());
+        let run =
+            |codes: &[u8]| codes_run(&codes.iter().map(|&c| FolderChip::new(ChipHandle(1), ChipCode(c))).collect::<Vec<_>>());
         const STAR: u8 = 26;
         assert!(run(&[0, 1, 2]));
         assert!(run(&[0, STAR, 2]));
@@ -317,17 +339,18 @@ mod tests {
         let lib = library();
         let mut used = ProgramAdvancesUsed::default();
         let b = build(&picks, 2, &mut used, &lib, |id| lib.chip(id).damage);
-        assert_eq!(b.program_advance.map(|p| (p.chip, p.picks)), Some((0x140, 3)));
+        assert_eq!(b.program_advance.map(|p| (p.chip, p.picks)), Some((ChipHandle(0x140), 3)));
         // The end marker moves up behind the Program Advance; the third
         // part stays past it, as in the game.
-        assert_eq!(b.hand.ids, [0x140, NO_CHIP, CANNON, NO_CHIP, NO_CHIP, NO_CHIP]);
+        assert_eq!(b.hand.ids, ids([0x140, NONE, CANNON, NONE, NONE, NONE]));
         assert_eq!(b.hand.damage[0], 300);
         assert_eq!(b.hand.modifiers[0], modifier_bits::REGULAR);
-        assert_eq!(b.hand.selection[..4], [0x0001, 0x0201, 0x0401, NO_CHIP]);
+        let picked = |code: u8| Some(FolderChip::new(ChipHandle(CANNON), ChipCode(code)));
+        assert_eq!(b.hand.selection[..4], [picked(0), picked(1), picked(2), None]);
         assert_eq!(b.hand.turn, [1; 6]);
         let again = build(&picks, 3, &mut used, &lib, |id| lib.chip(id).damage);
         assert_eq!(again.program_advance, None);
-        assert_eq!(again.hand.ids[..3], [CANNON; 3]);
+        assert_eq!(again.hand.ids[..3], ids([CANNON; 3]));
     }
 
     #[test]
@@ -335,8 +358,8 @@ mod tests {
         // The sequence 2, 1, 2 starting at the second pick; the chips
         // around it stay.
         let b = built(&[pick(CANNON, 5), pick(QUIET, 0), pick(CANNON, 9), pick(QUIET, 3), pick(CANNON, 1)]);
-        assert_eq!(b.program_advance.map(|p| (p.chip, p.picks, p.start, p.len)), Some((0x141, 5, 1, 3)));
-        assert_eq!(b.hand.ids[..4], [CANNON, 0x141, CANNON, NO_CHIP]);
+        assert_eq!(b.program_advance.map(|p| (p.chip, p.picks, p.start, p.len)), Some((ChipHandle(0x141), 5, 1, 3)));
+        assert_eq!(b.hand.ids[..4], ids([CANNON, 0x141, CANNON, NONE]));
     }
 
     #[test]
@@ -344,25 +367,25 @@ mod tests {
         // Atk+10 twice after a damaging chip stacks; after a chip without
         // damage it stays in the hand.
         let b = built(&[pick(CANNON, 0), pick(0xC0, 26), pick(0xC0, 26), pick(QUIET, 13), pick(0xC0, 26)]);
-        assert_eq!(b.hand.ids, [CANNON, QUIET, 0xC0, NO_CHIP, NO_CHIP, NO_CHIP]);
+        assert_eq!(b.hand.ids, ids([CANNON, QUIET, 0xC0, NONE, NONE, NONE]));
         assert_eq!(b.hand.attack_bonus, [20, 0, 0, 0, 0, 0]);
     }
 
     #[test]
     fn navi_plus_needs_a_navi_chip() {
         let b = built(&[pick(CANNON, 0), pick(0xC1, 26), pick(NAVI, 0), pick(0xC1, 26)]);
-        assert_eq!(b.hand.ids[..4], [CANNON, 0xC1, NAVI, NO_CHIP]);
+        assert_eq!(b.hand.ids[..4], ids([CANNON, 0xC1, NAVI, NONE]));
         assert_eq!(b.hand.attack_bonus[..3], [0, 0, 20]);
     }
 
     #[test]
     fn white_capsule_and_uninstall() {
         let b = built(&[pick(CANNON, 0), pick(0xB8, 26), pick(CANNON, 1), pick(0xB9, 6), pick(DIMMING, 0)]);
-        assert_eq!(b.hand.ids[..4], [CANNON, CANNON, DIMMING, NO_CHIP]);
+        assert_eq!(b.hand.ids[..4], ids([CANNON, CANNON, DIMMING, NONE]));
         assert_eq!(b.hand.modifiers[..2], [modifier_bits::PARALYZE, modifier_bits::UNINSTALL]);
         // Uninstll doesn't fold into a dimming.
         let b = built(&[pick(DIMMING, 0), pick(0xB9, 6)]);
-        assert_eq!(b.hand.ids[..3], [DIMMING, 0xB9, NO_CHIP]);
+        assert_eq!(b.hand.ids[..3], ids([DIMMING, 0xB9, NONE]));
     }
 
     #[test]

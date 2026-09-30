@@ -97,7 +97,7 @@ impl TracePlayer {
 impl Driver for TracePlayer {
     fn start(&mut self) -> Battle {
         self.pos = 0;
-        self.round.start(self.content.clone())
+        self.round.start(self.content.clone(), self.compat)
     }
 
     fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
@@ -107,7 +107,8 @@ impl Driver for TracePlayer {
         if let Some(&j) = self.frames.get(self.pos + 1) {
             window.push(&self.round.frames[j]);
         }
-        let (input, events) = self.round.tick_inputs(0, &window);
+        let ids = codec::Ids::new(&self.content, self.compat);
+        let (input, events) = self.round.tick_inputs(0, &window, &ids);
         self.pos += 1;
         Some(Step { input, events, frame: Some(f.frame) })
     }
@@ -139,19 +140,22 @@ fn unhex(s: &str) -> Vec<u8> {
 /// The live round on BN6's content: the netbattle of the recorded
 /// matches, both players with the live folder (`LIVE_FOLDER`).
 pub fn bn6_live_setup(content: &Content, seed: u32) -> RoundSetup {
-    live_setup(content, codec::battle_settings(&unhex(LIVE_SETTINGS), content), &LIVE_FOLDER, seed)
+    let settings = codec::battle_settings(&unhex(LIVE_SETTINGS), &codec::Ids::new(content, Compat::bn6()));
+    live_setup(content, settings, &LIVE_FOLDER, seed)
 }
 
 /// A round to play live on `content` with these battle settings: two
 /// MegaMen with 1000 HP who both bring `folder` (chip ids with codes,
-/// repeated to 30 chips), each shuffled from the seed.
+/// repeated to 30 chips; BN6's numbers, which a chip content defines under
+/// compat's key takes), each shuffled from the seed.
 pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(ChipId, u8)], seed: u32) -> RoundSetup {
-    let stats = codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap());
+    let ids = codec::Ids::new(content, Compat::bn6());
+    let stats = codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap(), &ids);
     let player = |side: u32| {
         let saved = SavedFolder {
             chips: std::array::from_fn(|i| {
                 let (id, code) = folder[i % folder.len()];
-                FolderChip::new(id, ChipCode(code))
+                FolderChip::new(ids.chip(id), ChipCode(code))
             }),
             regular: None,
             tags: None,
@@ -336,7 +340,8 @@ mod tests {
     #[test]
     fn live_custom_screen() {
         let content = bn6_battle::content::testing::content();
-        let settings = content.rules.stages.settings(bn6_battle::content::testing::LINK_BATTLE);
+        let stage = content.stage_numbered(bn6_battle::content::testing::LINK_BATTLE);
+        let settings = BattleSettings::on(&content, stage);
         let folder = [(bn6_battle::content::testing::SUN_GUN_3, 0)];
         let mut live = LivePlayer::new(live_setup(&content, settings, &folder, 7), content.clone());
         let mut b = live.start();

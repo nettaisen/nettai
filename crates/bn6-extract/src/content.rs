@@ -6,9 +6,13 @@
 //! overlay (`bn6_content::overlay`), this repository's content/bn6 unless
 //! `--overlay` names another.
 //!
-//! The battle data is read back from the written pack and compared with
-//! what was extracted (and the overlay added), so a pack that wouldn't load
-//! as the same content is never left behind silently.
+//! The battle data and the graphics are read back from the written pack
+//! and compared with what was extracted (and the overlay added), so a pack
+//! that wouldn't load as the same content is never left behind silently.
+//!
+//! Sprites, backgrounds, songs and the HUD's mugshots, banners and chip
+//! icons are written under the names the overlay's compat/assets.toml (and
+//! chips.toml, for the icons) gives them; the rest under placeholders.
 //!
 //! The pack holds the game's own data: write it outside version control
 //! (data/content/ is ignored).
@@ -33,6 +37,7 @@ pub fn main(args: &[String]) {
             std::process::exit(2);
         }
     };
+    let names = asset_names(Path::new(&overlay_dir).join("compat").as_path());
     let rom_bytes = crate::load_rom(rom);
     let t = std::time::Instant::now();
     let bundle = crate::graphics::bundle(&rom_bytes);
@@ -52,8 +57,8 @@ pub fn main(args: &[String]) {
     let mut files = vec![bn6_content::pack::manifest("BN6 (US Falzar) battle content", Some(&bundle), true, true)];
     files.extend(bn6_content::battle::export(&battle));
     files.extend(overlay.files().iter().cloned());
-    files.extend(bn6_content::pack::export_graphics(&bundle));
-    let (sound, left_out) = bn6_content::pack::export_sound(&bank);
+    files.extend(bn6_content::pack::export_graphics(&bundle, &names));
+    let (sound, left_out) = bn6_content::pack::export_sound(&bank, &names);
     files.extend(sound);
     for (song, e) in &left_out {
         eprintln!("song {:#05x} left out (no MIDI mapping yet): {e}", song.0);
@@ -71,6 +76,13 @@ pub fn main(args: &[String]) {
         Some(back) => panic!("the pack's battle data reads back differently: {:?}", bn6_content::verify::compare_battle(&battle, &back)),
         None => panic!("the pack's battle data doesn't load"),
     }
+    // So must the graphics, under whatever names they were written.
+    let mut report = Report::default();
+    match bn6_content::pack::import_graphics(root, &mut report) {
+        Some(back) if back == bundle => {}
+        Some(_) => panic!("the pack's graphics read back differently"),
+        None => panic!("the pack's graphics don't load:\n{report}"),
+    }
     let bytes: usize = files.iter().map(|f| f.1.len()).sum();
     eprintln!(
         "wrote {out}: {} chips, {} navis, {} forms, {} scripts, {} sprites, {} backgrounds, {} songs, {} samples; {} files, {} KiB in {:.1?} (content {})",
@@ -87,6 +99,30 @@ pub fn main(args: &[String]) {
         t.elapsed(),
         battle.hash()
     );
+}
+
+/// The names compat gives the assets (placeholders for all of them
+/// without one).
+fn asset_names(compat: &Path) -> bn6_content::names::AssetNames {
+    let mut names = bn6_content::names::AssetNames::default();
+    if !compat.is_dir() {
+        eprintln!("no compat at {}: every asset is written under its placeholder", compat.display());
+        return names;
+    }
+    let c = bn6_compat::Compat::read(compat).unwrap_or_else(|e| panic!("{e}"));
+    for (name, id) in &c.assets.sprites {
+        let parse = |s: &str| u8::from_str_radix(s, 16).ok();
+        let Some((cat, index)) = id.split_once('-').and_then(|(a, b)| Some((parse(a)?, parse(b)?))) else {
+            panic!("assets.toml: sprite {name} is {id:?}, not \"cc-ii\"");
+        };
+        names.sprites.insert((cat, index), name.clone());
+    }
+    names.songs = c.assets.sounds.iter().map(|(k, &v)| (v, k.clone())).collect();
+    names.backgrounds = c.assets.backgrounds.iter().map(|(k, &v)| (v, k.clone())).collect();
+    names.mugshots = c.assets.mugshots.iter().map(|(k, &v)| (v, k.clone())).collect();
+    names.banners = c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect();
+    names.chips = c.chips.iter().map(|(k, e)| (e.id, k.clone())).collect();
+    names
 }
 
 /// The engine's sprite timing and the graphics' animations are the same

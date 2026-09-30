@@ -3,6 +3,7 @@
 //! (each with its navi).
 
 use super::{ChipCode, ChipId};
+use bn6_content_api::ChipHandle;
 use serde::{Deserialize, Serialize};
 
 /// What a slot of the starting grid holds before the chips are dealt.
@@ -85,11 +86,35 @@ impl PaRecipe {
     }
 }
 
-/// A Program Advance: the chip a recipe turns into.
+/// A Program Advance: the chip a recipe turns into, and the recipe, by
+/// chip handles.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProgramAdvance {
-    pub result: ChipId,
-    pub recipe: PaRecipe,
+    pub result: ChipHandle,
+    pub recipe: Recipe,
+}
+
+/// A recipe by chip handles (see [`PaRecipe`]).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Recipe {
+    /// `count` of one chip with consecutive codes.
+    CodeRun { chip: ChipHandle, count: u8 },
+    /// These chips in this order, whatever their codes.
+    Sequence(Vec<ChipHandle>),
+}
+
+impl Recipe {
+    /// How many chips the recipe takes.
+    pub fn len(&self) -> usize {
+        match self {
+            Recipe::CodeRun { count, .. } => *count as usize,
+            Recipe::Sequence(ids) => ids.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// A recipe for the chip that holds it. In a content file,
