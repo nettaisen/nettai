@@ -747,7 +747,7 @@ fn the_navi_changing_chips_change_the_navi() {
     let after = &b.stats[0];
     assert_eq!((after.rapid, after.charge, after.custom_level), (4, 4, 8), "{before:?}");
     assert!(after.float_shoes && after.air_shoes && after.undershirt);
-    assert_eq!(after.weapons.charge_shot, 1, "the arm's charged shot");
+    assert_eq!(after.weapons.charge_shot, testing::weapon(1), "the arm's charged shot");
     let copy = digests(&tape, Battle::new(setup(), scenario::content()));
     let mut b = Battle::new(setup(), scenario::content());
     for (i, t) in tape.iter().enumerate() {

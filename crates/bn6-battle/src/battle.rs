@@ -17,6 +17,7 @@ use crate::content::{BannerId, Content};
 use crate::setup::{BattleSettings, Form, Navi, NaviStats, RoundSetup, SetScore, effects};
 use crate::transform::{TransformRequest, TransformSequencer};
 use crate::sound::{SoundCue, SoundId};
+use bn6_content_api::ChipHandle;
 use std::sync::Arc;
 
 /// Battle flag bits.
@@ -464,8 +465,9 @@ pub struct SideState {
     /// +0x44: the target the side tracks (an actor of the other side), which
     /// an obstacle leaving hands on (`sub_802EF74`).
     pub tracked: Option<ObjectRef>,
-    /// +0x34: the special chip the side's SELECT uses (`sub_800EE26`).
-    pub special_chip: u16,
+    /// +0x34: the special chip the side's SELECT uses (`sub_800EE26`); none
+    /// for the zeroed field, which reads as the pack's chip 0.
+    pub special_chip: Option<ChipHandle>,
     /// +0x36 / +0x38: bonuses stored for the special chip, spent with it
     /// (on a damaging chip, on a navi chip).
     pub special_attack_bonus: u16,
@@ -477,8 +479,8 @@ pub struct SideState {
 /// that used it, and the object that implements it, if any.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct LinkedRecord {
-    /// +0.
-    pub chip: u16,
+    /// +0: the chip; none for an empty record (the game's 0).
+    pub chip: Option<ChipHandle>,
     /// +2: the Atk+ / cross bonus.
     pub bonus: u16,
     /// +4: the damage word.
@@ -503,6 +505,36 @@ impl Battle {
         if let Some(o) = rec.object {
             self.objects.get_mut(o).params[1] = 1;
         }
+    }
+
+    /// The stage's panel column pattern (which columns belong to which
+    /// side).
+    pub fn panel_pattern(&self) -> u8 {
+        self.content.stage(self.setup.settings.stage).panel_pattern
+    }
+
+    /// A chip field's number in the pack's table (the ruleset asks chips by
+    /// number until phase C); none for no chip or a chip content defines.
+    pub fn chip_number(&self, chip: Option<ChipHandle>) -> Option<crate::content::ChipId> {
+        chip.and_then(|h| self.content.chip_number(h))
+    }
+
+    /// A side's form, by number (the ruleset asks forms by number until
+    /// phase C).
+    pub fn form(&self, side: usize) -> Form {
+        self.content.form_number(self.stats[side].form)
+    }
+
+    /// A side's navi, by number.
+    pub fn navi(&self, side: usize) -> Navi {
+        self.content.navi_number(self.stats[side].navi)
+    }
+
+    /// A side's weapon routine number for a weapon slot (the ruleset asks
+    /// them by number until phase C); none for no weapon or one content
+    /// defines.
+    pub fn weapon_number(&self, w: Option<bn6_content_api::WeaponHandle>) -> Option<u8> {
+        w.and_then(|h| self.content.weapon_number(h))
     }
 
     /// `battle_networkInvert`: whether `alliance` is not the local side.
@@ -569,7 +601,8 @@ impl Battle {
         assert!(content.defs.defined, "a battle runs on defined content (Content::define)");
         Behaviors::for_content(&content).unwrap_or_else(|e| panic!("{e}"));
         let score = setup.score;
-        let field = Field::new(&content, setup.settings.layout, setup.settings.panel_pattern, setup.settings.mode);
+        let stage = *content.stage(setup.settings.stage);
+        let field = Field::new(&content, stage.layout, stage.panel_pattern, stage.mode);
         let mut b = Battle {
             content,
             stats: setup.navi_stats,
@@ -581,8 +614,8 @@ impl Battle {
                 wins: score.wins,
                 losses: score.losses,
                 round: score.round,
-                layout: setup.settings.layout,
-                mode_copy: setup.settings.mode,
+                layout: stage.layout,
+                mode_copy: stage.mode,
                 local_side: setup.local_side,
                 intro_bits: 0x0C,
                 low_hp_music: std::array::from_fn(|side| side == setup.local_side as usize && setup.low_hp_music_latched),
@@ -881,7 +914,7 @@ impl Battle {
     /// init, keeping the score.
     fn chain_next_round(&mut self) {
         let stage = self.setup.later_stages[self.round.round as usize - 1];
-        let settings = self.setup.next_settings(stage, &self.content);
+        let settings = self.setup.next_settings(stage);
         let r = &self.round;
         let score = SetScore { wins: r.wins, losses: r.losses, round: r.round, max_combo: r.max_combo };
         self.round.top = top::INIT;
@@ -928,7 +961,7 @@ impl Battle {
         if self.round.init == 0 {
             let s = &self.setup.settings;
             if s.effects & effects::SET == 0 {
-                self.round.round = s.battle_number;
+                self.round.round = self.content.stage(s.stage).battle_number;
             } else {
                 self.round.round += 1;
             }
@@ -939,7 +972,7 @@ impl Battle {
             self.paused = true;
             self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
             let link = self.setup.settings.effects & effects::LINK != 0;
-            let music = if link { SoundId::VIRUS_BATTLE } else { SoundId(self.setup.settings.music as u16) };
+            let music = if link { SoundId::VIRUS_BATTLE } else { SoundId(self.content.stage(self.setup.settings.stage).music as u16) };
             if music != SoundId::NO_MUSIC {
                 self.play_sound(SoundCue::Music(music));
             }
@@ -968,7 +1001,7 @@ impl Battle {
         use crate::setup::ActorKind;
         use bn6_content_api::{ActorListEntrySpec, Hook, HookCall, PanelPos};
         let content = self.content.clone();
-        for entry in content.rules.stages.actor_list(self.setup.settings.actors) {
+        for entry in content.rules.stages.actor_list(content.stage(self.setup.settings.stage).actors) {
             if entry.kind != ActorKind::Navi {
                 let Some(hook) = content.defs.hook(Hook::ActorListEntry(entry.kind.entry_type())) else {
                     panic!("actor list entries of kind {:?} are not implemented yet", entry.kind);
@@ -1349,9 +1382,12 @@ impl Battle {
     /// `sub_8015A38`: a turn in Beast Out uses up one of MegaMan's turns,
     /// unless he started the battle in Beast Out.
     fn count_down_beast_out(&mut self, side: u8) {
+        let started_beast =
+            matches!(self.content.form_number(self.stats[side as usize].starting_form), Form::GREGAR_BEAST | Form::FALZAR_BEAST);
+        let beast = self.form(side as usize).is_beast();
+        let megaman = self.navi(side as usize) == Navi::MEGAMAN;
         let s = &mut self.stats[side as usize];
-        let started_beast = matches!(s.starting_form, Form::GREGAR_BEAST | Form::FALZAR_BEAST);
-        if s.navi == Navi::MEGAMAN && !started_beast && s.form.is_beast() && s.beast_out_counter != 0 {
+        if megaman && !started_beast && beast && s.beast_out_counter != 0 {
             s.beast_out_counter -= 1;
         }
     }
@@ -1360,7 +1396,7 @@ impl Battle {
         for side in 0..2u8 {
             let Some(a) = self.player_actor(side) else { continue };
             let over = self.is_battle_over();
-            let form = self.stats[side as usize].form;
+            let form = self.form(side as usize);
             let held = self.inputs[side as usize].held;
             let dimmed = self.is_dimmed();
             let ad = self.actors.get_mut(a);
@@ -1498,7 +1534,7 @@ impl Battle {
                 // sub_8015A16: a Beast Out check comes due.
                 for side in 0..2u8 {
                     if let Some(a) = self.player_actor(side)
-                        && self.stats[side as usize].navi == Navi::MEGAMAN
+                        && self.navi(side as usize) == Navi::MEGAMAN
                     {
                         let d = &mut self.actors.get_mut(a).beast_out_check_delay;
                         if *d != 0 && *d != 0xFF {
@@ -1564,8 +1600,8 @@ impl Battle {
         if self.is_dimmed() || self.is_battle_over() {
             return false;
         }
-        let berserk = |s: &NaviStats| s.form.is_beast_over();
-        ((berserk(&self.stats[0]) || berserk(&self.stats[1])) && self.round.flags & battle_flags::GAUGE_FULL != 0)
+        let berserk = |side: usize| self.form(side).is_beast_over();
+        ((berserk(0) || berserk(1)) && self.round.flags & battle_flags::GAUGE_FULL != 0)
             || self.round.flags & battle_flags::CUSTOM_REQUESTED != 0
     }
 
@@ -1684,7 +1720,7 @@ impl Battle {
                 let (held, next) = (hand.remaining(), hand.next_chip());
                 let o = self.objects.get_mut(r);
                 o.chips_held = held;
-                o.chip = next.unwrap_or(0xFFFF);
+                o.chip = next;
             }
         }
     }
@@ -1848,7 +1884,11 @@ mod tests {
     fn ending(wins: u8, losses: u8, round: u8) -> Battle {
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(1000));
         setup.settings.effects = 0xE8C;
-        setup.later_stages = [Stage { settings: testing::ROCK_BATTLE, background: 3 }, Stage { settings: 1, background: 0x13 }];
+        let content = testing::content();
+        setup.later_stages = [
+            Stage { stage: content.stage_numbered(testing::ROCK_BATTLE), background: 3 },
+            Stage { stage: content.stage_numbered(1), background: 0x13 },
+        ];
         let mut b = Battle::new(setup, testing::content());
         let r = &mut b.round;
         (r.top, r.mode, r.sub, r.init) = (top::END, 4, 0, 0);
@@ -1869,8 +1909,8 @@ mod tests {
         let Some(RoundEnd::NextRound { settings, score }) = b.round_end() else { panic!("{:?}", b.round_end()) };
         // The drawn table entry, with this round's effects and the drawn
         // background.
-        let drawn = testing::build().rules.stages.settings(testing::ROCK_BATTLE);
-        assert_eq!(*settings, BattleSettings { effects: 0xE8C, background: 3, ..drawn });
+        let drawn = testing::content().stage_numbered(testing::ROCK_BATTLE);
+        assert_eq!(*settings, BattleSettings { stage: drawn, effects: 0xE8C, background: 3 });
         assert_eq!(*score, SetScore { wins: 1, losses: 0, round: 1, max_combo: 1 });
         assert_eq!(b.round.top, top::INIT);
         assert_eq!(b.sound_cues(), [SoundCue::StopMusic]);
@@ -1897,7 +1937,6 @@ mod tests {
     #[test]
     fn a_latched_low_hp_switch_plays_no_pinch_cue_on_the_first_tick() {
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(500));
-        setup.settings.music = 0x15;
         setup.low_hp_music_latched = true;
         let mut b = Battle::new(setup, testing::content());
         tick(&mut b);
