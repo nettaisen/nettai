@@ -9,7 +9,7 @@ use crate::battle::Battle;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::player::form;
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 use crate::setup::Navi;
 use crate::dimming::{hide_user, show_user};
 
@@ -43,7 +43,7 @@ fn vars(b: &Battle, r: ObjectRef) -> &Vars {
 
 /// `sub_80C0F52`: `navi` warps `warp`.
 pub fn spawn(b: &mut Battle, navi: ObjectRef, warp: Warp) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), [0, 0, 0, warp as u8])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::NaviWarp, Vec3::default(), [0, 0, 0, warp as u8])?;
     let (alliance, flip) = {
         let o = b.objects.get(navi);
         (o.alliance, o.flip)

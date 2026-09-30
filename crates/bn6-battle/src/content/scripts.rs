@@ -44,6 +44,47 @@ pub struct Scripts {
     /// Source text by module path: the file's path in the pack without
     /// `.luau` (`objects/sun-beam/sun_beam`).
     pub modules: BTreeMap<String, String>,
+    /// Their bytecode, as the define phase compiled it (a runtime then
+    /// skips the compiler).
+    pub compiled: CompiledModules,
+}
+
+impl Scripts {
+    /// Modules by path, without bytecode.
+    pub fn new(modules: BTreeMap<String, String>) -> Scripts {
+        Scripts { modules, compiled: CompiledModules::default() }
+    }
+
+    /// The modules as a runtime loads them, with the bytecode compiled
+    /// from them.
+    pub fn pack(&self) -> bn6_luau::Pack {
+        let modules = self.modules.iter().map(|(k, v)| (k.clone(), v.clone()));
+        bn6_luau::Pack::new(modules).with_compiled(self.compiled.0.clone())
+    }
+}
+
+/// Bytecode compiled from [`Scripts::modules`]: derived from them (each
+/// module's with the source it was compiled from, which loading checks),
+/// so content equality and the content hash leave it out.
+#[derive(Clone, Default)]
+pub struct CompiledModules(pub bn6_luau::Compiled);
+
+impl std::fmt::Debug for CompiledModules {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "CompiledModules({})", self.0.len())
+    }
+}
+
+impl PartialEq for CompiledModules {
+    fn eq(&self, _: &CompiledModules) -> bool {
+        true
+    }
+}
+
+impl Eq for CompiledModules {}
+
+impl std::hash::Hash for CompiledModules {
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
 }
 
 /// An object kind a script implements (an object folder's `[kind]`).
@@ -62,14 +103,6 @@ pub struct ObjectKind {
     /// The module (see [`Scripts::modules`]); in the file, a path relative
     /// to the folder.
     pub script: String,
-    /// Its position is whatever its spawner's registers held until its
-    /// init places it (the trace comparison skips it).
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub scratch_position: bool,
-    /// The fraction of its Z is whatever its spawner's registers held,
-    /// which its init keeps (the trace comparison skips it).
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub scratch_z_fraction: bool,
     /// The actor lists' entry type it places when a round starts
     /// (`off_80073A0`: 8, a rock), through its `actor_list_entry`.
     #[serde(default, skip_serializing_if = "Option::is_none")]

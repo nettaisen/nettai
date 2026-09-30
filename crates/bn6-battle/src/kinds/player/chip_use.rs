@@ -221,13 +221,16 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         b.bump_side_stat(side, 6, 1);
     }
     dark_chip_side_effect(b, r, e.chip);
-    // A chip content defines runs its own action (its family's actions
-    // share a number, the navi's CurAction).
-    let content_action = match content.defs.chip_with_id(e.chip).map(|c| c.usage) {
-        Some(crate::content::ChipUsage::Action(h)) => Some(h),
-        _ => None,
-    };
-    super::NaviAttack { number: action, content: content_action }
+    // A chip content defines runs its own action, or the engine's action
+    // for its kind of use (which calls its hook).
+    use crate::content::{ChipUsage, DIMMING_CHIP_ACTION, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION};
+    match content.defs.chip_with_id(e.chip).map(|c| c.usage) {
+        Some(ChipUsage::Action(h)) => super::NaviAttack::content(&content.defs, h),
+        Some(ChipUsage::Dimming(_)) => DIMMING_CHIP_ACTION.into(),
+        Some(ChipUsage::Navi(_)) => NAVI_CHIP_ACTION.into(),
+        Some(ChipUsage::Instant(_)) => INSTANT_CHIP_ACTION.into(),
+        None => action.into(),
+    }
 }
 
 /// A chip that deals damage and isn't a dimming chip (the condition every

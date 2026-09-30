@@ -14,7 +14,8 @@ use crate::compose::SpritePart;
 use bn6_assets::{Bundle, Palette};
 use bn6_battle::Battle;
 use bn6_battle::object::sprite::Shadow;
-use bn6_battle::object::{Pool, flags};
+use bn6_battle::kinds::EngineKind;
+use bn6_battle::object::{Object, Pool, flags};
 
 /// Where the camera looks and whether the field is shown mirrored (the
 /// right-hand player sees their side on the left).
@@ -131,14 +132,19 @@ pub fn shade(mut p: Palette, shader: u16) -> Palette {
     p
 }
 
-/// The palette flash effect (effect object #0x0A, `sub_80E10C0`) turns the
-/// tile layers white on the frames its counter has bit 2 clear (measured:
-/// the sprites keep their colours).
+/// The palette flash effect (`sub_80E10C0`) turns the tile layers white on
+/// the frames its counter has bit 2 clear (measured: the sprites keep their
+/// colours).
 pub fn palette_flash(b: &Battle) -> bool {
     b.objects.in_order().any(|r| {
         let o = b.objects.get(r);
-        r.pool == Pool::Effect && o.index == 0x0A && o.state != 0 && o.timer & 4 == 0
+        is(b, o, EngineKind::PaletteFlash) && o.state != 0 && o.timer & 4 == 0
     })
+}
+
+/// Whether `o` is of the engine's kind `kind`.
+fn is(b: &Battle, o: &Object, kind: EngineKind) -> bool {
+    b.content.defs.engine_kind(o.kind) == Some(kind)
 }
 
 /// Queue every visible object's sprite.
@@ -185,12 +191,9 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
             let first_palette = parts.first().map(|p| p.palette).unwrap_or(0);
             // A form overlay shows white with its owner (measured; the
             // overlay itself doesn't run while the battle is paused).
-            let owner_white = || {
-                r.pool == Pool::Actor
-                    && o.index == 0x57
-                    && o.related[0].is_some_and(|w| b.objects.sprite(w).look.white)
-            };
-            let palette = if look.white && (r.pool != Pool::Actor || o.index != 0x57) || owner_white() {
+            let form_overlay = is(b, o, EngineKind::FormOverlay);
+            let owner_white = || form_overlay && o.related[0].is_some_and(|w| b.objects.sprite(w).look.white);
+            let palette = if look.white && !form_overlay || owner_white() {
                 WHITE
             } else {
                 let p = sheet.palette_sets[frame.palette_set as usize]
