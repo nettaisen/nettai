@@ -12,6 +12,7 @@ pub mod cross_special;
 pub mod instant;
 pub mod movement;
 pub mod navi_chip;
+pub mod reactive;
 pub mod dimming_chip;
 #[cfg(test)]
 mod tests;
@@ -60,12 +61,11 @@ pub(crate) fn open_counter_window(b: &mut Battle, r: ObjectRef) {
     super::coll_mut(b, r).counter_timer = 0x10;
 }
 
-/// `sub_801056A`, the reactive-defense abort some chip actions check after
-/// each phase (requests 0x200, 0x400, 0x8000).
-pub(crate) fn check_reactive_abort(b: &Battle, r: ObjectRef) {
-    use crate::actor::request;
-    let f = super::ai(b, r).requests;
-    if f & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED) != 0 {
-        panic!("reactive defensive chips (sub_801056A) are not implemented yet");
+/// The reactive-defense abort some chip actions check after each phase
+/// (requests 0x200, 0x400, 0x8000): a trap's counter takes over
+/// (`sub_801056A`).
+pub(crate) fn check_reactive_abort(b: &mut Battle, r: ObjectRef) {
+    if super::ai(b, r).requests & reactive::TRIGGERS != 0 {
+        reactive::counter(b, r);
     }
 }

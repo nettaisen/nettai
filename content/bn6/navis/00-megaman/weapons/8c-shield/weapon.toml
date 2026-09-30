@@ -1,0 +1,6 @@
+# MegaMan's weapon routine 0x8C (`sub_80125AC`) raises the same shield as 0x3B, the
+# Shield program's.
+
+id = 0x8C
+name = "Shield"
+script = "../3b-shield/shield.luau"
