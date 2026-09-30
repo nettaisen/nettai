@@ -1717,3 +1717,99 @@ fn chips_of_a_series_run_their_own_actions() {
     let second = ticks_in(&mut b, p0, p1, two) + 3;
     assert_eq!(second - first, 3, "Ticker2 stands 9 ticks to Ticker1's 6");
 }
+
+// ---- Content model v2: the v2 API (step 4) ---------------------------------------------------
+
+/// The objects of the kind content defines as `key`.
+fn defined(b: &Battle, key: &str) -> Vec<ObjectRef> {
+    let kind = b.content.defs.kind_by_key(key).unwrap_or_else(|| panic!("no kind {key}"));
+    b.objects.in_order().filter(|&o| b.objects.get(o).kind == kind).collect()
+}
+
+/// A content object's reference field, as the definition it holds.
+fn state_def(b: &Battle, r: ObjectRef, name: &str) -> Option<(bn6_content_api::Registry, u16)> {
+    let crate::kinds::Vars::Content(s) = &b.objects.get(r).vars else { panic!("{r:?} has no content state") };
+    let schema = b.content.defs.schema(s.id());
+    s.get(schema, schema.index_of(name).expect("the field")).load().def()
+}
+
+#[test]
+fn a_kind_spawns_by_definition_and_its_state_holds_definitions() {
+    use bn6_content_api::Registry;
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let launcher = crate::behavior::spawn_kind(&mut b, "test/launcher", crate::object::Vec3::default(), [0; 4]).unwrap();
+    tick(&mut b, p0, p1, 0);
+    let [ticker] = defined(&b, "test/ticker")[..] else { panic!("one ticker") };
+    let defs = &b.content.defs;
+    // Its variant is the launcher's record, its parent the launcher's kind.
+    let (registry, h) = state_def(&b, ticker, "variant").expect("a variant");
+    assert_eq!(registry, Registry::Record);
+    assert_eq!(defs.records[h as usize].record_type, "ticker-variant");
+    assert_eq!(state_def(&b, ticker, "parent"), Some((Registry::Kind, defs.kind_by_key("test/launcher").unwrap().0)));
+    // The effect is the definition's look, and the sound the asset's.
+    let burst = b.objects.in_order().find(|&o| defs.engine_kind(b.objects.get(o).kind) == Some(crate::kinds::EngineKind::Effect));
+    let burst = burst.expect("the burst");
+    assert_eq!(b.objects.sprite(burst).id, Some(bn6_content_api::SpriteId { category: 0x14, index: 0 }));
+    assert!(b.sound_cues().contains(&crate::sound::SoundCue::Effect(crate::sound::SoundId(0x1A6))));
+    // The collision types and region are the definitions'.
+    let c = b.collision.get(b.objects.get(launcher).collision.expect("a collision"));
+    assert_eq!(c.self_flags & 0xFFFE_FFFF, 0x80000088);
+    assert_eq!(c.target_flags, 0x15800000);
+    let wide: Vec<(i8, i8)> = b.content.region(c.region).iter().map(|p| (p.dx, p.dy)).collect();
+    assert_eq!(wide, [(1, -1), (1, 0), (1, 1)]);
+    // The variant's lifetime (5) ends it.
+    for _ in 0..4 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert!(defined(&b, "test/ticker").is_empty(), "the short variant's ticker left after 5 ticks");
+}
+
+#[test]
+#[should_panic(expected = "expected a record:ticker-variant, got a record:other-variant")]
+fn a_reference_field_refuses_a_record_of_another_type() {
+    let (mut b, p0, p1) = fight_on_test_pack();
+    crate::behavior::spawn_kind(&mut b, "test/misuse", crate::object::Vec3::default(), [0; 4]).unwrap();
+    tick(&mut b, p0, p1, 0);
+}
+
+#[test]
+fn an_action_starts_the_next_by_definition() {
+    // Ticker3's action stands 3 ticks, then starts its `next` (2 ticks) with
+    // `set_attack`; each checks the navi runs it (`navi_action`).
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let defs = &b.content.defs;
+    let crate::content::ChipUsage::Action(first) = defs.chip_with_id(testing::TICKER_3).unwrap().usage else {
+        panic!("an action")
+    };
+    let next = bn6_content_api::ActionHandle(
+        defs.actions.iter().position(|a| a.key == "test/ticker3/action/args/next").expect("a derived key") as u16,
+    );
+    use_chip(&mut b, p0, p1, testing::TICKER_3);
+    assert_eq!(ticks_in(&mut b, p0, p1, first), 3);
+    assert_rolls_back(&mut b, [p0, p1], 1, 0);
+    assert_eq!(ticks_in(&mut b, p0, p1, next) + 1, 2);
+}
+
+#[test]
+fn the_ruleset_starts_a_role_action() {
+    // A caught hit starts AntiDmg's counter: the role content fills.
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let role = b.content.defs.roles.actions.anti_damage_counter.expect("the test pack fills it");
+    assert_eq!(b.content.defs.action(role).key, "test/anti-damage-counter");
+    ai_mut(&mut b, p0).requests |= request::ANTI_DAMAGE_TRIGGERED;
+    super::reactive::counter(&mut b, p0);
+    assert_eq!(super::super::running_content_action(&b, p0), Some(role));
+    assert_eq!(b.objects.get(p0).action, super::super::CONTENT_ACTION);
+    use bn6_content_api::CoreApi;
+    assert_eq!(b.navi_action(p0).unwrap(), bn6_content_api::NaviAction::Content(role.0));
+    // It ran its first tick with the counter's set-up; three more.
+    assert_eq!(ticks_in(&mut b, p0, p1, role), 3);
+}
+
+#[test]
+#[should_panic(expected = "the role actions.body_guard_counter is not filled")]
+fn an_unfilled_role_names_itself() {
+    let (mut b, p0, _) = fight_on_test_pack();
+    ai_mut(&mut b, p0).requests |= request::BODY_GUARD_TRIGGERED;
+    super::reactive::counter(&mut b, p0);
+}

@@ -14,6 +14,39 @@ fn the_content_pack_type_checks_against_the_core_api() {
     assert!(problems.is_empty(), "type errors:\n{}", problems.join("\n"));
 }
 
+/// The engine's test pack (crates/bn6-battle/testdata/pack) uses the v2
+/// API throughout: it type-checks against the same definitions.
+#[test]
+fn the_v2_test_pack_type_checks() {
+    let mut checker = bn6_content_check::PackChecker::new(&bn6_content_check::definitions(&pack()).unwrap()).unwrap();
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../bn6-battle/testdata/pack");
+    let modules = bn6_content_check::modules(&dir).unwrap();
+    assert!(modules.len() >= 5, "{} modules", modules.len());
+    let mut problems = Vec::new();
+    for (path, source) in &modules {
+        problems.extend(checker.check(path, source).unwrap());
+    }
+    assert!(problems.is_empty(), "type errors:\n{}", problems.join("\n"));
+}
+
+#[test]
+fn misuse_of_the_v2_api_is_a_type_error() {
+    let mut checker = bn6_content_check::PackChecker::new(&bn6_content_check::definitions(&pack()).unwrap()).unwrap();
+    for (bad, why) in [
+        ("local _ = define.kind { id = 'x', pool = 'water', update = function(me: Object) end }", "not a pool"),
+        ("local _ = define.kind { id = 'x', pool = 'attack' }", "a kind without its update"),
+        ("local _ = asset.sprite(3)", "an asset by number"),
+        ("local _ = define.effect { sprite = 'bomb' }", "a sprite by string"),
+        ("local function f(me: Object) me:set_attack('shot', 1) end", "an action by name"),
+        ("local function f(me: Object) local _ = battle.spawn(me, me.pos) end", "an object for a kind"),
+        ("local _ = define.region { panels = { 'front' } }", "a panel that isn't { dx, dy }"),
+        ("local _ = define.roles { actions = { anti_damage_counter = 3 } }", "a role that isn't an action"),
+    ] {
+        let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
+        assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
+    }
+}
+
 #[test]
 fn misuse_of_the_core_api_is_a_type_error() {
     let mut checker = bn6_content_check::PackChecker::new(&bn6_content_check::definitions(&pack()).unwrap()).unwrap();

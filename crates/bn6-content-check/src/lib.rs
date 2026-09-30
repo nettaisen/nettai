@@ -6,6 +6,9 @@
 //! editor running luau-lsp with `--definitions=<pack>/core.d.luau`
 //! resolves requires and checks across modules too.
 
+pub mod lints;
+
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;
 
@@ -73,14 +76,26 @@ pub fn definitions(dir: &Path) -> Result<String, String> {
     Ok(defs)
 }
 
-/// Check a whole pack directory against its definitions: the number of
-/// modules checked and the problems found.
+/// Check a whole pack directory against its definitions, and lint it: the
+/// number of modules checked and the problems found.
 pub fn check_pack(dir: &Path) -> Result<(usize, Vec<Problem>), String> {
     let mut checker = PackChecker::new(&definitions(dir)?)?;
     let modules = modules(dir).map_err(|e| e.to_string())?;
     let mut problems = Vec::new();
     for (path, source) in &modules {
         problems.extend(checker.check(path, source)?);
+        problems.extend(lints::lints(path, source));
     }
     Ok((modules.len(), problems))
+}
+
+/// Each module's uses of the deprecated numeric API
+/// (docs/design/content-model-v2.md §12, the ratchet), by path.
+pub fn deprecated_uses(dir: &Path) -> Result<BTreeMap<String, Vec<lints::Deprecated>>, String> {
+    let modules = modules(dir).map_err(|e| e.to_string())?;
+    Ok(modules
+        .into_iter()
+        .map(|(path, source)| (path, lints::deprecated(&source)))
+        .filter(|(_, uses)| !uses.is_empty())
+        .collect())
 }
