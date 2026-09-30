@@ -303,6 +303,9 @@ named_fields! {
         HitFlags = "hit_flags", U32, rw;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
+        /// Which way the region's anchor last moved (0 none, 1 up, 2 down,
+        /// 3 back, 4 forward, 5 other).
+        Direction = "direction", U8, ro;
         /// The directions (1 << the hitter's flip) a guard blocked hits
         /// from this window (CollisionData+0x03).
         GuardDirs = "guard_dirs", U8, ro;
@@ -313,7 +316,7 @@ named_fields! {
 }
 
 named_fields! {
-    /// A side's navi stats that content reads.
+    /// A side's navi stats that content reads (and the few it changes).
     pub enum NaviStat {
         /// Fighting in the sun.
         Sun = "sun", Bool, ro;
@@ -554,6 +557,16 @@ named_flags! {
         Angry = "angry",
         /// Mood 0, or exhausted after Beast Over.
         WornOut = "worn_out",
+    }
+}
+
+named_flags! {
+    /// A side's SELECT or Cross special in progress (battle flag 0x40
+    /// mode; `sub_802E4B8`).
+    pub enum SideSpecial {
+        None = "none",
+        Select = "select",
+        Cross = "cross",
     }
 }
 
@@ -890,6 +903,8 @@ pub trait CoreApi {
     fn emotion(&self, side: u8) -> Emotion;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
     fn set_mood(&mut self, side: u8, mood: u8);
+    /// `sub_802E4B8`: the side's SELECT or Cross special in progress.
+    fn side_special(&self, side: u8) -> SideSpecial;
     /// A side's player navi.
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
@@ -925,6 +940,14 @@ pub trait CoreApi {
     fn set_gauge_rate(&mut self, rate: u16);
     /// A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
     fn set_gauge_speed_ticks(&mut self, side: u8, slow: u16, fast: u16);
+    /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
+    /// up to full.
+    fn add_side_gauge(&mut self, side: u8, n: u16);
+    /// `sub_8010488`'s special-source branch: add `n` to one of the bonuses
+    /// a side stores for its special chip (`index` 0: the Atk+ bonus a
+    /// damaging chip spends, +0x36; 1: the Navi+ bonus a navi chip spends,
+    /// +0x38). An index past them is an error.
+    fn add_special_bonus(&mut self, side: u8, index: u8, n: u16) -> ApiResult<()>;
     /// `sub_800AB46`: bump a side's statistics counter.
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// `sub_800AB3A`: a side's statistics counter.
@@ -956,6 +979,14 @@ pub trait CoreApi {
     /// The flags word has every `require` bit and no `forbid` bit.
     fn panel_check(&self, p: PanelPos, require: u32, forbid: u32) -> bool;
     fn panel_info(&self, p: PanelPos) -> Option<PanelInfo>;
+    /// A side's registered field objects (the obstacles it owns: the
+    /// registry's three slots at BattleState+0xA0 + side * 0xC), in slot
+    /// order, empty slots left out.
+    fn side_field_objects(&self, side: u8) -> Vec<ObjectRef>;
+    /// Every registered field object (the registry's eight slots at
+    /// BattleState+0xA0: each side's three, then the stage's two), in slot
+    /// order, empty slots left out.
+    fn all_field_objects(&self) -> Vec<ObjectRef>;
     fn column_info(&self, x: u8) -> ColumnInfo;
     fn set_column_timer(&mut self, x: u8, ticks: u16);
     /// `object_setPanelAlliance`.
@@ -1044,6 +1075,9 @@ pub trait CoreApi {
     fn update_sprite_while_dimmed(&mut self, o: ObjectRef);
     /// `sub_801BCD0`: the same, paused or not.
     fn step_sprite(&mut self, o: ObjectRef);
+    /// `sub_801BC64`: `update_sprite`'s gating (dimming, holds), but paused
+    /// or not.
+    fn update_sprite_even_paused(&mut self, o: ObjectRef);
     /// `object_updateSpritePaused`: load a newly requested animation and
     /// step the sprite, paused or not, but not while dimmed (and whatever
     /// `no_sprite_update` says).
@@ -1127,6 +1161,10 @@ pub trait CoreApi {
     /// The running content action's state, zeroed when a different action
     /// last used it.
     fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ContentState>;
+    /// The attack state as content action `action`'s (zeroed unless that
+    /// action last used it): how a weapon routine sets up the action it
+    /// names before the action starts.
+    fn attack_state_for(&mut self, o: ObjectRef, action: u8) -> ApiResult<&mut ContentState>;
     fn status(&self, o: ObjectRef, flag: StatusFlag) -> ApiResult<bool>;
     fn set_status(&mut self, o: ObjectRef, flag: StatusFlag, on: bool) -> ApiResult<()>;
     fn status_timer(&self, o: ObjectRef, t: StatusTimer) -> ApiResult<u16>;
@@ -1156,6 +1194,10 @@ pub trait CoreApi {
     fn step_target(&self, o: ObjectRef, dir: u8) -> Option<PanelPos>;
     /// `sub_80116AE`: start a step toward `dir` from input.
     fn start_move(&mut self, o: ObjectRef, dir: u8);
+    /// `ho_8026554`: the panel the navi would attack `target` from in
+    /// Beast Out lock-on mode `mode` (its own panel for mode 0 or a
+    /// target off the field; (0, 0x7F) when no panel fits).
+    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: u8) -> PanelPos;
     /// `object_canMove`: not immobilized, sliding or moving.
     fn can_move(&self, o: ObjectRef) -> bool;
     /// `sub_800E2FC`: heal `amount` HP with the recovery sparkle and
@@ -1165,6 +1207,10 @@ pub trait CoreApi {
     /// `sub_801265A`: the buster's damage (the attack level, with the
     /// navi's and form's bonus, at most 10; 1 when worn out).
     fn buster_damage(&self, o: ObjectRef) -> u16;
+    /// `sub_80127C0(0)`: fill the attack variables from the chip at the
+    /// hand's cursor (its damage, bonuses and modifiers) and name the
+    /// chip's action.
+    fn prepare_chip(&mut self, o: ObjectRef) -> u8;
     /// Obstacles the navi absorbed, oldest first: (kind, animation).
     fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u8, u8)>>;
     /// Add one (false when the navi has eight).
@@ -1270,6 +1316,13 @@ pub trait CoreApi {
     /// A chip's request of the obstacle `o` (`by`: the requester, whose
     /// side absorbs).
     fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef);
+    /// `sub_80EFD74`: `absorber` pulls in every registered field object
+    /// (except NameID 0xDA and those already leaving).
+    fn obstacle_absorb_all(&mut self, absorber: ObjectRef);
+    /// `o` has a collision registration and isn't already leaving the field
+    /// (removed by a chip, blinking out or absorbed): the test `sub_80C9EE6`
+    /// and `sub_80EFD8C` make before taking an obstacle.
+    fn obstacle_present(&self, o: ObjectRef) -> bool;
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.

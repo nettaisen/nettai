@@ -14,9 +14,11 @@
 --   chips/NNN-name/chip.toml  script = "chip.luau"          the chip's action:
 --       `state` and `update(me, s)`; for a dimming chip (action 0x15)
 --       `dimming_chip(user, spec)`, for a navi chip (0x1B) `navi_chip(user,
---       controller, spec)`
+--       controller, spec)`, for an instant chip (0x1C) `instant_chip(user,
+--       spec)`
 --   navis/00-megaman/weapons/NN-name/weapon.toml            a weapon routine:
---       `setup(navi) -> action`, and `state`/`update` for its `action`
+--       `setup(navi) -> action`, and `state`/`update` for its `action`,
+--       `instant_chip(user, spec)` for its `instant_chip`
 --
 -- Functions keep nothing between calls: what an object or action keeps
 -- lives in its declared `state` (typed fields the engine stores and
@@ -49,6 +51,8 @@ export type Lifecycle = "init" | "update" | "destroy" | "finish"
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
 export type Emotion = "normal" | "tired" | "full_synchro" | "angry" | "worn_out"
+-- A side's SELECT or Cross special in progress (battle flag 0x40 mode).
+export type SideSpecial = "none" | "select" | "cross"
 export type PanelType =
     "missing"
     | "broken"
@@ -234,6 +238,9 @@ declare class Collision
     hit_flags: number
     -- The damage taken this window (read-only).
     final_damage: number
+    -- Which way the region's anchor last moved: 0 none, 1 up, 2 down, 3
+    -- back, 4 forward, 5 other (read-only).
+    direction: number
     -- The directions (bit 1 << the hitter's flip) a guard blocked hits
     -- from this window (read-only).
     guard_dirs: number
@@ -401,6 +408,9 @@ declare class Object
     function update_sprite_while_dimmed(self): ()
     -- `sub_801BCD0`: the same, paused or not.
     function step_sprite(self): ()
+    -- `sub_801BC64`: `update_sprite`'s gating (dimming, holds), but paused
+    -- or not.
+    function update_sprite_even_paused(self): ()
     -- `object_updateSpritePaused`: the same, paused or not, but not while
     -- dimmed (and whatever `no_sprite_update` says).
     function update_sprite_while_paused(self): ()
@@ -485,6 +495,10 @@ declare class Object
     function step_target(self, dir: number): (number?, number?)
     -- `sub_80116AE`: start a step toward dir.
     function start_move(self, dir: number): ()
+    -- `ho_8026554`: the panel the navi would attack (x, y) from in Beast
+    -- Out lock-on mode `mode` (its own for mode 0 or a target off the
+    -- field; (0, 0x7F) when no panel fits).
+    function lockon_panel(self, x: number, y: number, mode: number): (number, number)
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
     -- `sub_800E2FC`: heal up to the maximum HP, with the recovery sparkle
@@ -493,6 +507,13 @@ declare class Object
     function heal(self, amount: number, anti_recovery: boolean): boolean
     -- `sub_801265A`: the buster's damage.
     function buster_damage(self): number
+    -- `sub_80127C0(0)`: fill the attack from the chip at the hand's cursor
+    -- (its damage, bonuses and modifiers); returns the chip's action.
+    function prepare_chip(self): number
+    -- The attack state as content action `action`'s (zeroed unless that
+    -- action last used it): how a weapon routine sets up the action it
+    -- names before it starts. Cast it to the action's State type.
+    function action_state(self, action: number): any
     -- The obstacles it absorbed, oldest first.
     function absorbed(self): { { kind: number, anim: number } }
     function push_absorbed(self, kind: number, anim: number): boolean
@@ -513,6 +534,7 @@ declare class Navi
     navi_variant: number
     -- The base form's element.
     element: number
+    -- The buster's attack level (writable: `SetBattleNaviStatsByte`).
     attack: number
     rapid: number
     charge: number
@@ -648,6 +670,19 @@ export type NaviChipSpec = {
     damage: number,
 }
 
+-- What an instant chip's effect runs with (`sub_80EC39C`'s registers).
+export type InstantChipSpec = {
+    -- The user's panel and Z (16.16).
+    panel_x: number,
+    panel_y: number,
+    z: number,
+    element: number,
+    params: { number },
+    -- The damage word (damage | hit parameter << 16) plus the bonus's low
+    -- byte.
+    damage: number,
+}
+
 declare battle: {
     -- The battle is dimmed (battle flag 4): objects that don't run while
     -- dimmed stand still.
@@ -678,6 +713,8 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
+    -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
+    side_special: (side: number) -> SideSpecial,
     player: (side: number) -> Object?,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
@@ -698,6 +735,12 @@ declare battle: {
     set_gauge_rate: (rate: number) -> (),
     -- A side's slow and fast gauge timers (`sub_802E070`+0x3C, +0x3A).
     set_gauge_speed_ticks: (side: number, slow: number, fast: number) -> (),
+    -- `sub_802E032`: add to a side's own custom gauge, up to full.
+    add_side_gauge: (side: number, n: number) -> (),
+    -- `sub_8010488`'s special-source branch: add to a bonus a side stores
+    -- for its special chip (`index` 0: the Atk+ bonus a damaging chip
+    -- spends; 1: the Navi+ bonus a navi chip spends).
+    add_special_bonus: (side: number, index: number, n: number) -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
     -- `sub_800AB3A`: a side's statistics counter.
     side_stat: (side: number, index: number) -> number,
@@ -762,6 +805,12 @@ declare field: {
     -- The flags word has every `require` bit and no `forbid` bit.
     check: (x: number, y: number, require: number, forbid: number) -> boolean,
     panel: (x: number, y: number) -> Panel?,
+    -- A side's registered field objects (the obstacles it owns), in the
+    -- registry's slot order.
+    objects: (side: number) -> { Object },
+    -- Every registered field object (the registry's eight slots: each
+    -- side's three, then the stage's two), in slot order.
+    all_objects: () -> { Object },
     column: (x: number) -> Column,
     set_column_timer: (x: number, ticks: number) -> (),
     set_alliance: (x: number, y: number, side: number) -> (),
@@ -907,6 +956,14 @@ declare obstacle: {
     remove: (obj: Object) -> (),
     vanish: (obj: Object) -> (),
     absorb: (obj: Object, absorber: Object) -> (),
+    -- `sub_80EFD74`: `absorber` pulls in every registered field object
+    -- (but NameID 0xDA and those already leaving); each flies to its
+    -- side's navi as an absorbed obstacle.
+    absorb_all: (absorber: Object) -> (),
+    -- It has a collision registration and isn't already leaving the field
+    -- (removed, blinking out or absorbed): the test `sub_80C9EE6` and
+    -- `sub_80EFD8C` make before taking an obstacle.
+    present: (o: Object) -> boolean,
 }
 
 -- Exact integer helpers.
@@ -1036,6 +1093,32 @@ export type RockKind = {
 
 export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } }
 
+-- A kind of sword wave (attack object #0x96), by its first parameter.
+export type SwordWave = {
+    id: number,
+    -- Collision types (what it is, what it hits) and hit modifier.
+    self_type: number,
+    target_type: number,
+    hit_mod: number,
+    region: number,
+    sprite: SpriteId,
+    anim: number,
+    -- It animates, restarting its animation after the last frame.
+    animates: boolean,
+    -- It highlights the panels its region covers.
+    highlight: boolean,
+    -- Panel centers it passes before it ends.
+    reach: number,
+    ground_shadow: boolean,
+    palette: number,
+    status: number,
+    -- 16.16 per tick, forward.
+    speed: number,
+}
+
+-- A kind of boomerang (objects/boomerang): 16.16 pixels a tick along a row
+-- and along the column, and whether it turns panels it crosses to grass.
+export type BoomerangKind = { id: number, speed: number, turn_speed: number, grass: boolean }
 -- What a projectile's hit does to the panel it hits: crack it
 -- (`object_crackPanel`), break it (`object_breakPanel_dup2`), or make a
 -- solid one a panel of a type (by the shot's side).
@@ -1107,7 +1190,7 @@ export type FlyingShotKind = {
 -- 0xCD..=0xFF, as `sub_800F26C` gives it); no sprite is the table's none.
 export type NameLook = { name_id: number, sprite: SpriteId?, anim: number, palette: number, shadow: boolean }
 
-export type WeaponData = { id: number, name: string, action: number?, script: string }
+export type WeaponData = { id: number, name: string, action: number?, instant_chip: number?, script: string }
 
 -- A shock wave's look and timing (attack object #0x16, by its first
 -- parameter): ticks on a panel before the next rolls on, and the panel
@@ -1118,17 +1201,26 @@ export type ObjectKindData = { pool: Pool, index: number, script: string }
 
 export type PackData = {
     chips: { [number]: ChipData },
+    -- Hit-region shapes by region number: the panels' offsets `{ dx, dy }`
+    -- from the anchor (dx facing right).
+    regions: { [number]: { { number } } },
     navis: { [number]: NaviData },
     forms: { [number]: FormData },
     weapons: { [number]: WeaponData },
+    -- Region shapes by region number (`PanelOffsetListsPointerTable`): the
+    -- panels as {dx, dy}, dx toward the facing side, in the order hits and
+    -- panel searches (`object_getPanelRegion`) take them.
+    regions: { [number]: { { number } } },
     objects: {
         attachments: { [number]: AttachmentKind },
         rocks: { [number]: RockKind },
         absorbed_sprites: { [number]: SpriteId },
         body_overlays: { [number]: BodyOverlay },
         sun_beam_looks: { [number]: SpriteId },
+        boomerangs: { [number]: BoomerangKind },
         projectiles: { [number]: ProjectileKind },
         flying_shots: { [number]: FlyingShotKind },
+        sword_waves: { [number]: SwordWave },
         name_looks: { [number]: NameLook },
         kinds: { [string]: ObjectKindData },
         shock_waves: { [number]: ShockWave },

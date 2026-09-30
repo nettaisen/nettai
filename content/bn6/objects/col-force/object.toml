@@ -1,0 +1,6 @@
+# ColForce (effect object #0x80, `sub_80E9460`) is a script.
+
+[kind]
+pool = "effect"
+index = 0x80
+script = "col_force.luau"

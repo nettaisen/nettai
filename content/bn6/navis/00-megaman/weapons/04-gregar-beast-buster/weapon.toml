@@ -1,0 +1,8 @@
+# MegaMan's weapon routine 0x04, the Gregar Beast forms' buster (`sub_8011B4A`),
+# and its action 0x1D (`sub_80EC45E`) are a script. Its shots are the buster's
+# projectile (attack object #0).
+
+id = 0x04
+name = "Gregar Beast buster"
+action = 0x1D
+script = "gregar_beast_buster.luau"

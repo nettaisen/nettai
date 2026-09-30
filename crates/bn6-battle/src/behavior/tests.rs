@@ -27,6 +27,8 @@ fn battles_run_the_content_scripts() {
     assert_eq!(
         kinds,
         [
+            "absorbed-obstacle",
+            "aqua-surge",
             "area-grab",
             "attachment",
             "bass",
@@ -34,36 +36,53 @@ fn battles_run_the_content_scripts() {
             "blast-man",
             "bomb",
             "bomb-slash",
+            "boomerang",
             "bug-bomb",
             "charge-car",
             "charge-man",
+            "charge-wave",
             "countdown-bomb",
             "crack-shot",
+            "dash-hit",
             "dragon-body",
             "dragon-head",
+            "drill",
             "dust-ball",
             "elec-man",
             "elec-thunder",
             "elem-trap",
             "elem-trap-strike",
+            "element-pillar",
             "elmnt-bolt",
             "elmnt-ice",
             "elmnt-man",
             "elmnt-vine",
             "energy-burst",
             "erase-beam",
+            "erase-drop",
             "erase-man",
             "erase-mark",
+            "erase-ray",
             "falling-rock",
+            "fire-hit",
+            "flame-hook",
+            "flame-hook-fire",
             "flash-bomb",
             "flying-shot",
             "gauge-speed",
+            "golem",
             "grab-shot",
+            "gust",
             "heat-flame",
             "heat-man",
+            "hit-flash",
             "honey-bee",
             "invisible",
+            "junk-shot",
+            "justice-one",
+            "lance",
             "land-mine",
+            "lunge-slash",
             "meteor",
             "mine",
             "moon-beam",
@@ -78,6 +97,9 @@ fn battles_run_the_content_scripts() {
             "rock-chip",
             "rock-cube",
             "rock-debris",
+            "sand-hole",
+            "sand-spray",
+            "sand-worm",
             "seed",
             "slash-man",
             "slash-wave",
@@ -90,10 +112,13 @@ fn battles_run_the_content_scripts() {
             "sun-beam",
             "sun-meteor",
             "sun-moon",
+            "sword-wave",
             "tengu-man",
+            "thunder-column",
             "time-bom",
             "tomahawk-man",
             "trap-chip",
+            "whirlwind",
         ]
     );
     assert!(b.behaviors.action(0x37).is_some(), "GunDelSol is a script");
@@ -399,10 +424,18 @@ fn registrations_follow_the_content_data() {
     let mut c = testing::build();
     let r = c.registrations().unwrap();
     // The four SunGun chips share one action, as the thrown chips and the
-    // three swords share theirs; four weapons have theirs (the buster's
+    // three swords share theirs; the weapons have theirs (the buster's
     // alias names none); the mend, mirror, bee and dragon chips theirs.
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
-    assert_eq!(actions, [0x11, 0x12, 0x13, 0x16, 0x20, 0x22, 0x2B, 0x33, 0x37, 0x39, 0x49, 0x51, 0x57], "{:?}", r.actions);
+    let expected = [
+        0x11, 0x12, 0x13, 0x16, 0x1A, 0x1D, 0x1E, 0x20, 0x22, 0x2B, 0x33, 0x35, 0x37, 0x39, 0x3A, 0x3C, 0x3D, 0x41, 0x45,
+        0x46, 0x49, 0x4A, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x56, 0x57, 0x58,
+    ];
+    assert_eq!(actions, expected, "{:?}", r.actions);
+    // The instant chip registers its subtype's effect, and a weapon the
+    // subtype it names.
+    assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(5)), "{:?}", r.hooks);
+    assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(0x14)), "{:?}", r.hooks);
     // Two chips implementing one action with different scripts is an error.
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
     let e = c.registrations().unwrap_err();
@@ -411,6 +444,54 @@ fn registrations_follow_the_content_data() {
     let mut c = testing::build();
     c.objects.kinds[0].script = "objects/nowhere".into();
     assert!(c.registrations().unwrap_err().contains("isn't in the pack"));
+}
+
+#[test]
+fn scripted_instant_chips_play_and_roll_back() {
+    // Folders of instant chips (the gauge filler, a plus chip, BusterUp)
+    // with GunDelSols: the plus chip's sparkle shows, and a copy of the
+    // battle taken at any tick plays on as the battle does.
+    let setup = || scenario::setup_with(&[testing::FULL_GAUGE, testing::PLUS, testing::BUSTER_UP, testing::SUN_GUN_3]);
+    let tape = scenario::record_on(setup(), 2400, 13);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    let mut sparkles = 0;
+    for (i, t) in tape.iter().enumerate() {
+        if i % 101 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+        sparkles += b.objects.in_order().filter(|&r| (r.pool, b.objects.get(r).index) == (crate::object::Pool::Effect, 0x14)).count();
+    }
+    assert!(sparkles > 0, "no plus chip was used");
+}
+
+#[test]
+fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
+    // Folders of instant chips that spawn objects (boomerangs, lances,
+    // fists, flame hooks, falling fists, golems): a copy of the battle taken
+    // at any tick plays on as the battle does.
+    let chips = [testing::BOOMERANG, testing::LANCE, testing::FIST, testing::FLAME_HOOK, testing::JUSTICE, testing::GOLEM];
+    let setup = || scenario::setup_with(&chips);
+    let tape = scenario::record_on(setup(), 2400, 17);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    let mut spawned = 0;
+    for (i, t) in tape.iter().enumerate() {
+        if i % 97 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+        let content = b.content.clone();
+        spawned += b
+            .objects
+            .in_order()
+            .filter(|&r| content.object_kind_at(r.pool, b.objects.get(r).index).is_some_and(|k| k.name != "attachment"))
+            .count();
+    }
+    assert!(spawned > 0, "no instant chip spawned anything");
 }
 
 // ---- Dimming chips and rocks ------------------------------------------------------------

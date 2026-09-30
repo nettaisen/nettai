@@ -21,6 +21,11 @@ pub fn update_sprite(b: &mut Battle, r: ObjectRef) {
     if b.paused {
         return;
     }
+    update_sprite_even_paused(b, r);
+}
+
+/// `sub_801BC64`: `object_updateSprite` without its pause check.
+pub fn update_sprite_even_paused(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
     if o.flags & flags::ACTIVE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
         return;

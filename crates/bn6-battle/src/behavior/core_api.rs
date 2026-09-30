@@ -8,7 +8,7 @@ use bn6_content_api::api::ObstacleFlag;
 use bn6_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep,
     Emotion, FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState,
-    ObjectField, ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
+    ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
@@ -331,6 +331,17 @@ impl CoreApi for Battle {
         kinds::player::set_mood(self, side & 1, mood);
     }
 
+    fn side_special(&self, side: u8) -> SideSpecial {
+        let s = &self.sides[side as usize & 1];
+        if s.select_special != 0 {
+            SideSpecial::Select
+        } else if s.cross_special != 0 {
+            SideSpecial::Cross
+        } else {
+            SideSpecial::None
+        }
+    }
+
     fn player(&self, side: u8) -> Option<ObjectRef> {
         Battle::player(self, side & 1)
     }
@@ -403,6 +414,29 @@ impl CoreApi for Battle {
         s.fast_gauge_ticks = fast;
     }
 
+    fn add_side_gauge(&mut self, side: u8, n: u16) {
+        let s = &mut self.sides[side as usize & 1];
+        s.gauge = (s.gauge as u32 + n as u32).min(crate::hud::CustomGauge::FULL as u32) as u16;
+    }
+
+    fn add_special_bonus(&mut self, side: u8, index: u8, n: u16) -> ApiResult<()> {
+        let s = &mut self.sides[side as usize & 1];
+        let bonus = match index {
+            0 => &mut s.special_attack_bonus,
+            1 => &mut s.special_navi_bonus,
+            _ => {
+                // +0x36 + 2 * index: 2 and 3 would be the fast and slow gauge
+                // timers (+0x3A, +0x3C). No chip is known to reach them.
+                return Err(ApiError::Other(format!(
+                    "special bonus {index}: sub_8010488 would add to the side state's +{:#x}",
+                    0x36 + 2 * index as u32
+                )));
+            }
+        };
+        *bonus = bonus.wrapping_add(n);
+        Ok(())
+    }
+
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
     }
@@ -469,6 +503,15 @@ impl CoreApi for Battle {
 
     fn panel_valid(&self, p: PanelPos) -> bool {
         crate::field::is_valid(p.x, p.y)
+    }
+
+    fn all_field_objects(&self) -> Vec<ObjectRef> {
+        self.field.objects.slots.iter().flatten().copied().collect()
+    }
+
+    fn side_field_objects(&self, side: u8) -> Vec<ObjectRef> {
+        let first = (side as usize & 1) * 3;
+        self.field.objects.slots[first..first + 3].iter().flatten().copied().collect()
     }
 
     fn panel_center(&self, p: PanelPos) -> (i32, i32) {
@@ -748,6 +791,10 @@ impl CoreApi for Battle {
         common::update_sprite_while_dimmed(self, o);
     }
 
+    fn update_sprite_even_paused(&mut self, o: ObjectRef) {
+        common::update_sprite_even_paused(self, o);
+    }
+
     fn step_sprite(&mut self, o: ObjectRef) {
         common::step_sprite(self, o);
     }
@@ -1011,8 +1058,12 @@ impl CoreApi for Battle {
     }
 
     fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ContentState> {
-        let content = self.behaviors.clone();
         let action = self.objects.get(o).action;
+        self.attack_state_for(o, action)
+    }
+
+    fn attack_state_for(&mut self, o: ObjectRef, action: u8) -> ApiResult<&mut ContentState> {
+        let content = self.behaviors.clone();
         let (m, kind) = content.manifest().zip(content.action(action)).ok_or(ApiError::NoState(o))?;
         let id = m.action_state(kind);
         let a = self.actor_of_mut(o)?;
@@ -1091,6 +1142,10 @@ impl CoreApi for Battle {
         kinds::player::idle::start_move(self, o, dir);
     }
 
+    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: u8) -> PanelPos {
+        kinds::player::actions::beast_rush::lockon_panel(self, o, target, mode)
+    }
+
     fn can_move(&self, o: ObjectRef) -> bool {
         self.collision_of(o).is_ok_and(|c| c.f1 & (f1::IMMOBILIZED | f1::SLIDING | f1::MOVING) == 0)
     }
@@ -1101,6 +1156,10 @@ impl CoreApi for Battle {
 
     fn buster_damage(&self, o: ObjectRef) -> u16 {
         kinds::player::idle::buster_damage(self, o)
+    }
+
+    fn prepare_chip(&mut self, o: ObjectRef) -> u8 {
+        kinds::player::prepare_chip(self, o)
     }
 
     fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u8, u8)>> {
@@ -1213,6 +1272,7 @@ impl CoreApi for Battle {
             CollisionField::CounterByte => c.counter_byte as i64,
             CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
+            CollisionField::Direction => c.direction as i64,
             CollisionField::GuardDirs => c.guard_dirs as i64,
             CollisionField::DamageElements => c.acc.damage_elements as i64,
         }))
@@ -1241,7 +1301,10 @@ impl CoreApi for Battle {
             CollisionField::SelfDamage => c.self_damage = x as u16,
             CollisionField::CounterByte => c.counter_byte = x as u8,
             CollisionField::HitFlags => c.acc.hit_flags = x as u32,
-            CollisionField::FinalDamage | CollisionField::GuardDirs | CollisionField::DamageElements => {
+            CollisionField::FinalDamage
+            | CollisionField::GuardDirs
+            | CollisionField::DamageElements
+            | CollisionField::Direction => {
                 unreachable!("read-only")
             }
         }
@@ -1426,6 +1489,18 @@ impl CoreApi for Battle {
             ObstacleRequest::Vanish => kinds::obstacle::vanish(self, o),
             ObstacleRequest::Absorb => kinds::obstacle::absorb(self, o, by),
         }
+    }
+
+    fn obstacle_absorb_all(&mut self, absorber: ObjectRef) {
+        kinds::obstacle::absorb_all(self, absorber);
+    }
+
+    fn obstacle_present(&self, o: ObjectRef) -> bool {
+        use kinds::obstacle::f2;
+        self.objects
+            .get(o)
+            .collision
+            .is_some_and(|c| self.collision.get(c).f2 & (f2::ABSORBED | f2::VANISH | f2::REMOVED) == 0)
     }
 
     // ---- Field objects (obstacles) -------------------------------------------

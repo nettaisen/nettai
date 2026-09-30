@@ -24,6 +24,10 @@ pub enum Hook {
     /// The navi chips' navis by chip subtype (`off_802CD5C`, chips with
     /// action 0x1B). The module's `navi_chip(user, controller, spec)`.
     NaviChip(u8),
+    /// The instant chips' effects by subtype (`off_80EC3F0`, run once by
+    /// action 0x1C: chips with that action, and weapons that name it).
+    /// The module's `instant_chip(user, spec)`.
+    InstantChip(u8),
     /// The field objects actor lists place when a round starts, by entry
     /// type (`off_80073A0`: 8 a rock). The module's
     /// `actor_list_entry(spec)`.
@@ -37,6 +41,7 @@ impl Hook {
             Hook::Weapon(_) => "setup",
             Hook::DimmingChip(_) => "dimming_chip",
             Hook::NaviChip(_) => "navi_chip",
+            Hook::InstantChip(_) => "instant_chip",
             Hook::ActorListEntry(_) => "actor_list_entry",
         }
     }
@@ -48,6 +53,7 @@ impl fmt::Display for Hook {
             Hook::Weapon(n) => write!(f, "weapon routine {n:#04x}"),
             Hook::DimmingChip(n) => write!(f, "dimming chip subtype {n}"),
             Hook::NaviChip(n) => write!(f, "navi chip subtype {n}"),
+            Hook::InstantChip(n) => write!(f, "instant chip subtype {n:#04x}"),
             Hook::ActorListEntry(n) => write!(f, "actor list entry type {n}"),
         }
     }
@@ -224,6 +230,24 @@ pub struct NaviChipSpec {
     pub damage: u32,
 }
 
+/// What an instant chip's effect runs with (the registers `sub_80EC39C`
+/// passes to `off_80EC3F0[subtype]`: the user's panel and Z, and its
+/// attack).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct InstantChipSpec {
+    /// The user's panel.
+    pub panel: PanelPos,
+    /// The attack's element byte.
+    pub element: u8,
+    /// The user's Z, 16.16.
+    pub z: i32,
+    /// The chip's parameters.
+    pub params: [u8; 4],
+    /// The damage word (damage | hit parameter << 16) plus the Atk+ /
+    /// cross bonus's low byte.
+    pub damage: u32,
+}
+
 /// An actor list's entry, as its spawner (`off_80073A0[type]`) reads it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ActorListEntrySpec {
@@ -245,6 +269,8 @@ pub enum HookCall {
     /// `navi_chip(user, controller, spec)`: returns the navi, or nil. The
     /// navi calls `navi_chip.navi_left(controller)` when it is done.
     NaviChip { user: ObjectRef, controller: ObjectRef, spec: NaviChipSpec },
+    /// `instant_chip(user, spec)`: its result is unused.
+    InstantChip { user: ObjectRef, spec: InstantChipSpec },
     /// `actor_list_entry(spec)`: returns what it placed, or nil.
     ActorListEntry { spec: ActorListEntrySpec },
 }

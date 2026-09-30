@@ -257,8 +257,10 @@ impl UserData for Object {
         fields.add_field_method_get("facing", |_, this| with(|api, _| Ok(api.facing(this.0))));
         fields.add_field_method_get("sprite", |_, this| Ok(Sprite(this.0)));
         fields.add_field_method_get("collision", |_, this| Ok(Collision(this.0)));
-        fields.add_field_method_get("state", |_, this| Ok(State { owner: this.0, action: false }));
-        fields.add_field_method_get("attack_state", |_, this| Ok(State { owner: this.0, action: true }));
+        fields.add_field_method_get("state", |_, this| Ok(State { owner: this.0, action: false, of_action: None }));
+        fields.add_field_method_get("attack_state", |_, this| {
+            Ok(State { owner: this.0, action: true, of_action: None })
+        });
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
@@ -316,6 +318,9 @@ impl UserData for Object {
             with(|api, _| Ok(api.update_sprite_while_dimmed(this.0)))
         });
         methods.add_method("step_sprite", |_, this, ()| with(|api, _| Ok(api.step_sprite(this.0))));
+        methods.add_method("update_sprite_even_paused", |_, this, ()| {
+            with(|api, _| Ok(api.update_sprite_even_paused(this.0)))
+        });
         methods.add_method("update_sprite_while_paused", |_, this, ()| {
             with(|api, _| Ok(api.update_sprite_while_paused(this.0)))
         });
@@ -452,12 +457,18 @@ impl UserData for Object {
             let dir = u8_arg(dir, "direction")?;
             with(|api, _| Ok(api.start_move(this.0, dir)))
         });
+        methods.add_method("lockon_panel", |_, this, (x, y, mode): (LuaValue, LuaValue, LuaValue)| {
+            let (p, mode) = (panel(x, y)?, u8_arg(mode, "lock-on mode")?);
+            let p = with(|api, _| Ok(api.lockon_panel(this.0, p, mode)))?;
+            Ok((p.x, p.y))
+        });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
         methods.add_method("heal", |_, this, (amount, anti_recovery): (LuaValue, bool)| {
             let amount = u16_arg(amount, "HP")?;
             with(|api, _| Ok(api.heal(this.0, amount, anti_recovery)))
         });
         methods.add_method("buster_damage", |_, this, ()| with(|api, _| Ok(api.buster_damage(this.0))));
+        methods.add_method("prepare_chip", |_, this, ()| with(|api, _| Ok(api.prepare_chip(this.0))));
         methods.add_method("absorbed", |lua, this, ()| {
             let list = with(|api, _| api.absorbed(this.0).map_err(api_error))?;
             let t = lua.create_table_with_capacity(list.len(), 0)?;
@@ -472,6 +483,10 @@ impl UserData for Object {
         methods.add_method("push_absorbed", |_, this, (kind, anim): (LuaValue, LuaValue)| {
             let (kind, anim) = (u8_arg(kind, "obstacle kind")?, u8_arg(anim, "anim")?);
             with(|api, _| api.push_absorbed(this.0, kind, anim).map_err(api_error))
+        });
+        methods.add_method("action_state", |_, this, action: LuaValue| {
+            let a = u8_arg(action, "action")?;
+            Ok(State { owner: this.0, action: true, of_action: Some(a) })
         });
         methods.add_method("pop_absorbed", |_, this, ()| {
             with(|api, _| api.pop_absorbed(this.0).map_err(api_error)).map(|v| v.map_or((None, None), |(k, a)| (Some(k), Some(a))))
@@ -586,6 +601,9 @@ impl UserData for Collision {
 pub struct State {
     pub owner: ObjectRef,
     pub action: bool,
+    /// The attack state as this action's (`navi:action_state(n)`), rather
+    /// than the running action's.
+    pub of_action: Option<u8>,
 }
 
 impl State {
@@ -595,7 +613,9 @@ impl State {
         f: impl FnOnce(&mut ContentState, &bn6_content_api::Schema, usize) -> mlua::Result<R>,
     ) -> mlua::Result<R> {
         with(|api, manifest| {
-            let s = if self.action {
+            let s = if let Some(a) = self.of_action {
+                api.attack_state_for(self.owner, a).map_err(api_error)?
+            } else if self.action {
                 api.action_state_mut(self.owner).map_err(api_error)?
             } else {
                 api.state_mut(self.owner).ok_or_else(|| api_error(ApiError::NoState(self.owner)))?
@@ -814,6 +834,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
         with(|api, _| Ok(api.set_mood(side, mood)))
     });
+    lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.side_special(side).name()))
+    });
     lib_fn!(lua, t, "player", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         let p = with(|api, _| Ok(api.player(side)))?;
@@ -869,6 +893,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.clear_linked(side)))
     });
     lib_fn!(lua, t, "fill_custom_gauge", |_, ()| with(|api, _| Ok(api.fill_custom_gauge())));
+    lib_fn!(lua, t, "add_side_gauge", |_, (side, n): (LuaValue, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "gauge")?);
+        with(|api, _| Ok(api.add_side_gauge(side, n)))
+    });
+    lib_fn!(lua, t, "add_special_bonus", |_, (side, index, n): (LuaValue, LuaValue, LuaValue)| {
+        let (side, index, n) = (u8_arg(side, "side")? & 1, u8_arg(index, "bonus")?, u16_arg(n, "bonus")?);
+        with(|api, _| api.add_special_bonus(side, index, n).map_err(api_error))
+    });
     lib_fn!(lua, t, "set_gauge_rate", |_, rate: LuaValue| {
         let rate = u16_arg(rate, "gauge rate")?;
         with(|api, _| Ok(api.set_gauge_rate(rate)))
@@ -1128,6 +1160,15 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t.raw_set("home", info.home)?;
         Ok(LuaValue::Table(t))
     });
+    lib_fn!(lua, t, "all_objects", |lua, ()| {
+        let list = with(|api, _| Ok(api.all_field_objects()))?;
+        lua.create_sequence_from(list.into_iter().map(Object))
+    });
+    lib_fn!(lua, t, "objects", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let list = with(|api, _| Ok(api.side_field_objects(side)))?;
+        lua.create_sequence_from(list.into_iter().map(Object))
+    });
     lib_fn!(lua, t, "column", |lua, x: LuaValue| {
         let x = u8_arg(x, "column")?;
         let c = with(|api, _| Ok(api.column_info(x)))?;
@@ -1266,6 +1307,8 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| api.obstacle_fly_to_absorber(me.0, kind).map_err(api_error))
     });
     lib_fn!(lua, t, "release_tracking", |_, me: Me| with(|api, _| Ok(api.obstacle_release_tracking(me.0))));
+    lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
+    lib_fn!(lua, t, "present", |_, o: Me| with(|api, _| Ok(api.obstacle_present(o.0))));
     for &r in ObstacleRequest::ALL {
         t.set(
             r.name(),
@@ -1330,9 +1373,9 @@ pub fn object(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
     lua.create_userdata(Object(o))
 }
 
-/// Wrap an action's state as a script value.
-pub fn action_state(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
-    lua.create_userdata(State { owner: o, action: true })
+/// Wrap the state of action `action`, which `o` runs, as a script value.
+pub fn action_state(lua: &Lua, o: ObjectRef, action: u8) -> mlua::Result<AnyUserData> {
+    lua.create_userdata(State { owner: o, action: true, of_action: Some(action) })
 }
 
 /// A hook call's arguments.
@@ -1358,6 +1401,16 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
             t.raw_set("damage", spec.damage)?;
             vec![obj(user)?, obj(controller)?, LuaValue::Table(t)]
         }
+        HookCall::InstantChip { user, spec } => {
+            let t = lua.create_table()?;
+            t.raw_set("panel_x", spec.panel.x)?;
+            t.raw_set("panel_y", spec.panel.y)?;
+            t.raw_set("element", spec.element)?;
+            t.raw_set("z", spec.z)?;
+            t.raw_set("params", params_table(lua, spec.params)?)?;
+            t.raw_set("damage", spec.damage)?;
+            vec![obj(user)?, LuaValue::Table(t)]
+        }
         HookCall::ActorListEntry { spec } => {
             let t = lua.create_table()?;
             t.raw_set("panel_x", spec.panel.x)?;
@@ -1377,5 +1430,6 @@ pub fn hook_result(v: LuaValue, call: HookCall) -> mlua::Result<Value> {
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::ActorListEntry { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
+        HookCall::InstantChip { .. } => Ok(Value::Nil),
     }
 }

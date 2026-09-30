@@ -1,0 +1,6 @@
+# DustCross Beast's junk (attack object #0xC5, `sub_80DDC10`) is a script.
+
+[kind]
+pool = "attack"
+index = 0xC5
+script = "junk_shot.luau"

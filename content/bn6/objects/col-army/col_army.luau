@@ -1,0 +1,241 @@
+--!strict
+-- ColArmy's soldiers (attack object #0x30, `sub_80C9D00`) and the chip's
+-- effect (instant chip effect 22, `sub_80C9ECE`): every obstacle on the
+-- field (but NameID 0xDA and those already leaving) blinks out and a
+-- soldier takes its panel. Hidden for 18 ticks, it appears, and 30 ticks
+-- later fires three shots (attack object #0x12, the vulcan's hit, at a
+-- random height) at the panel in front of it, 10 ticks apart, then leaves
+-- when its animation ends. It faces the other side's navi if there is one
+-- ahead on its row, else turns around if one is anywhere on its row (a
+-- draw) or it stands on the other side's back column. It holds its panel
+-- and stands still while dimmed.
+
+local col_army = {}
+
+local SPRITE = "10-1d"
+-- The obstacle NameID it leaves.
+local SPARED = 0xDA
+-- Its collision: types, hit modifier.
+local SELF_TYPE, TARGET_TYPE, HIT_MOD = 0xC, 0xD, 3
+-- The other side's navis (by its own side), for its facing
+-- (`off_80C9F64`, `off_8109784`).
+local NAVIS = { [0] = 0x04000000, [1] = 0x08000000 }
+-- The shots: attack object #0x12 (another group's kind: spawned by
+-- number) with Param1 0x11, three of them 10 ticks apart, at one of four
+-- heights (`dword_80C9E84`, in pixels).
+local SHOT_POOL, SHOT_INDEX, SHOT_KIND = "attack", 0x12, 0x11
+local SHOTS, SHOT_TICKS = 3, 0xA
+local HEIGHTS = { [0] = 0x08, 0x10, 0x18, 0x20 }
+local WAIT_TICKS, SHOW_AT = 0x30, 0x1E
+
+-- The actions.
+local WAIT, FIRE, LEAVE = 0, 4, 8
+
+-- `sub_80C9EA6`: a soldier of `user`'s on (x, y); it runs while dimmed.
+-- (It spawns at the registers' values, which its init replaces.)
+local function spawn(user: Object, x: number, y: number, element: number, damage: number): Object?
+    local o = battle.spawn_kind("col-army", Vec3.new(y, element, 0))
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o.alliance, o.flip = user.alliance, user.flip
+        o.damage = damage
+        o.stamina = bit32.rshift(damage, 16)
+        o.related1 = user
+        o.run_while_dimmed = true
+    end
+    return o
+end
+
+-- `sub_80C9ECE`, instant chip effect 22 (ColArmy): the registry's obstacles
+-- (`sub_80C9EE6`).
+function col_army.instant_chip(user: Object, spec: InstantChipSpec)
+    for _, o in field.all_objects() do
+        if o.name_id ~= SPARED and obstacle.present(o) then
+            obstacle.vanish(o)
+            spawn(user, o.panel_x, o.panel_y, spec.element, spec.damage)
+        end
+    end
+end
+
+-- `sub_800D120`: the farthest of the other side's navis ahead on its row
+-- (from its own panel on, the way it faces), unless that is its own panel.
+local function navi_ahead(me: Object): boolean
+    local step = me.facing
+    local x, y = me.panel_x, me.panel_y
+    local found = x
+    local require = NAVIS[me.alliance]
+    while true do
+        if field.check(x, y, require, 0) then
+            found = x
+        end
+        x += step
+        if not field.valid(x, y) then
+            break
+        end
+    end
+    return found ~= me.panel_x
+end
+
+-- `sub_810971A`: whether any of the other side's navis is on its row (one
+-- draw, picking one of them, if so).
+local function navi_on_row(me: Object): boolean
+    local require = NAVIS[me.alliance]
+    local n = 0
+    for x = 1, 6 do
+        if field.check(x, me.panel_y, require, 0) then
+            n += 1
+        end
+    end
+    if n == 0 then
+        return false
+    end
+    battle.rng_positive()
+    return true
+end
+
+-- `sub_80C9F18`: which way it faces; the sprite's flip.
+local function face(me: Object): number
+    local flip = 0
+    if not navi_ahead(me) then
+        if navi_on_row(me) or bit32.bxor(me.alliance, 1) * 5 + 1 == me.panel_x then
+            flip = 1
+        end
+    end
+    me.flip = flip
+    return bit32.bxor(flip, me.alliance)
+end
+
+-- `sub_80C6ADA` and `sub_801155A`: a shot at (x, y), `z` up. (Its X and
+-- Y are the registers' values, which its init replaces.)
+local function shot(me: Object, x: number, y: number, z: number)
+    local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
+    local o = battle.spawn(SHOT_POOL, SHOT_INDEX, Vec3.new(y, me.element, z), { SHOT_KIND, 0, 0, 0 })
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = me.element
+        o.damage = damage
+        o.stamina = bit32.rshift(damage, 16)
+        o.alliance, o.flip = me.alliance, me.flip
+        o.related1 = me
+    end
+end
+
+-- `sub_80C9DE0`: hidden, then shown; then fire.
+local function wait(me: Object)
+    if me.timer == SHOW_AT then
+        me.visible = true
+        me.anim, me.anim_loaded = 0, 0xFF
+        me.collision.region = 0
+        battle.play_sound(0x144)
+    end
+    local left = me.timer - 1
+    me.timer = left
+    if left > 0 then
+        return
+    end
+    me.anim = 1
+    me.timer2 = SHOTS
+    me.action = FIRE
+    me.phase, me.phase_init = 0, 0
+end
+
+-- `sub_80C9E20`: three shots.
+local function fire(me: Object)
+    if me.phase == 0 then
+        me.phase = 1
+        me.timer = SHOT_TICKS
+        local z = bit32.lshift(HEIGHTS[bit32.band(battle.rng_positive(), 3)], 16)
+        shot(me, me.panel_x + me.facing, me.panel_y, z)
+        battle.play_sound(0xB9)
+    end
+    local left = me.timer - 1
+    me.timer = left
+    if left > 0 then
+        return
+    end
+    local shots = me.timer2 - 1
+    me.timer2 = shots
+    if shots > 0 then
+        me.phase = 0
+        return
+    end
+    me.anim = 2
+    me.action = LEAVE
+    me.phase, me.phase_init = 0, 0
+end
+
+-- `sub_80C9E88`: gone when its animation ends.
+local function leave(me: Object)
+    if not bit32.btest(me.sprite.frame_flags, 0x80) then
+        return
+    end
+    me:unreserve_panel(me.future_panel_x, me.future_panel_y)
+    me.collision.region = 0
+    me:set_lifecycle("destroy")
+end
+
+-- `sub_80C9D9E`.
+local function tick(me: Object)
+    local c = me.collision
+    c:remove()
+    me:hit_spark()
+    if not battle.dimmed() then
+        local a = me.action
+        if a == WAIT then
+            wait(me)
+        elseif a == FIRE then
+            fire(me)
+        elseif a == LEAVE then
+            leave(me)
+        else
+            error(string.format("ColArmy soldier action %#x reads past its table", a))
+        end
+    end
+    c:present()
+end
+
+-- `sub_80C9D24`.
+local function init(me: Object)
+    if not field.valid(me.panel_x, me.panel_y) then
+        me:free()
+        return
+    end
+    local sprite = me.sprite
+    sprite:load(SPRITE)
+    sprite.shadow = "with_sprite"
+    sprite:set_flip(face(me))
+    me.anim, me.anim_loaded = 0, 0
+    sprite:set_animation(0)
+    sprite.palette = 0
+    me.timer = WAIT_TICKS
+    me:set_coordinates_from_panel()
+    if not me:create_collision() then
+        me:free()
+        return
+    end
+    me:setup_collision(SELF_TYPE, TARGET_TYPE, HIT_MOD)
+    local c = me.collision
+    c.hit_effect = 0
+    c.region = 0
+    c:present()
+    me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
+    me:reserve_panel(me.panel_x, me.panel_y)
+    me:set_lifecycle("update")
+    tick(me)
+end
+
+-- `sub_80C9D00`.
+function col_army.update(me: Object)
+    local l = me.lifecycle
+    if l == "init" then
+        init(me)
+    elseif l == "update" then
+        tick(me)
+    else
+        me:destroy()
+    end
+    me:update_sprite_while_paused()
+end
+
+return col_army

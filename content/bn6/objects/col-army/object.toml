@@ -1,0 +1,6 @@
+# A ColArmy soldier (attack object #0x30, `sub_80C9D00`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x30
+script = "col_army.luau"
