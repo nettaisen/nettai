@@ -415,6 +415,7 @@ impl UserData for Object {
         }
         methods.add_method("open_counter_window", |_, this, ()| with(|api, _| Ok(api.open_counter_window(this.0))));
         methods.add_method("check_reactive_abort", |_, this, ()| with(|api, _| Ok(api.check_reactive_abort(this.0))));
+        methods.add_method("refresh_form_overlay", |_, this, ()| with(|api, _| Ok(api.refresh_form_overlay(this.0))));
         methods.add_method("exit_attack", |_, this, ()| with(|api, _| Ok(api.exit_attack(this.0))));
         methods.add_method("end_attack", |_, this, ()| with(|api, _| Ok(api.end_attack(this.0))));
         methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, LuaValue)| {
@@ -916,6 +917,29 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;
         object_value(lua, o)
     });
+    lib_fn!(
+        lua,
+        t,
+        "afterimage",
+        |lua, (owner, pos, spec): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, mlua::Table)| {
+            let sprite: LuaValue = spec.raw_get("sprite")?;
+            let sprite = if sprite.is_nil() { None } else { Some(sprite_id(sprite, None)?) };
+            let shadow: mlua::LuaString = spec.raw_get("shadow")?;
+            let shadow = named(&shadow, "shadow", |s| {
+                bn6_content_api::Shadow::NAMES.iter().position(|&n| n == s).map(|i| bn6_content_api::Shadow::ALL[i])
+            })?;
+            let s = bn6_content_api::AfterimageSpec {
+                sprite,
+                anim: table_int(&spec, "anim")? as u8,
+                flip: table_int(&spec, "flip")? as u8,
+                color_shader: table_int(&spec, "color_shader")? as u16,
+                lifetime: table_int(&spec, "lifetime")? as u16,
+                shadow,
+            };
+            let o = with(|api, _| Ok(api.spawn_afterimage(owner.0, pos.0, &s)))?;
+            object_value(lua, o)
+        }
+    );
     Ok(t)
 }
 

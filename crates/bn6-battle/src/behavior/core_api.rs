@@ -653,6 +653,25 @@ impl CoreApi for Battle {
         kinds::palette_flash::spawn_variant(self, variant, ticks, while_dimmed, while_paused)
     }
 
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, s: &bn6_content_api::AfterimageSpec) -> Option<ObjectRef> {
+        use kinds::afterimage::{ShadowFlag, Spec, Tether};
+        let shadow = match s.shadow {
+            Shadow::Hidden => ShadowFlag::Hidden,
+            Shadow::Ground => ShadowFlag::Ground,
+            Shadow::WithSprite => ShadowFlag::WithSprite,
+        };
+        let spec = Spec {
+            sprite: s.sprite,
+            anim: s.anim,
+            flip: s.flip,
+            color_shader: s.color_shader,
+            lifetime: s.lifetime,
+            shadow,
+            tether: Tether::None,
+        };
+        kinds::afterimage::spawn_with(self, owner, pos, &spec)
+    }
+
     fn death_hook(&mut self, o: ObjectRef, name_id: u16) {
         kinds::player::form::navi_death_hook(self, o, name_id);
     }
@@ -820,6 +839,10 @@ impl CoreApi for Battle {
 
     fn check_reactive_abort(&mut self, o: ObjectRef) {
         kinds::player::actions::check_reactive_abort(self, o);
+    }
+
+    fn refresh_form_overlay(&mut self, o: ObjectRef) {
+        kinds::player::refresh_form_overlay(self, o);
     }
 
     fn exit_attack(&mut self, o: ObjectRef) {

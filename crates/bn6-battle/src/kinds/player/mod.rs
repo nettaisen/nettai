@@ -396,7 +396,7 @@ pub(crate) fn set_coordinates_from_panel(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8011450`: restart the form overlay (`related[1]`) with the navi
 /// after an animation change.
-fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
+pub(crate) fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
     let a = ai(b, r);
     if a.actor_type == ActorType::Virus {
         return;
@@ -404,7 +404,9 @@ fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
     let Some(overlay) = b.objects.get(r).related[1] else { return };
     match a.ai_index {
         0 | 1 | 9 | 13 | 16 | 18 | 19 => crate::kinds::form_overlay::restart(b, overlay),
-        14 | 24 | 25.. => panic!("form overlay refresh for AI index {} is not implemented yet", a.ai_index),
+        // sub_80C46B6: reload the animation on its next update only.
+        24 => b.objects.get_mut(overlay).anim_loaded = 0xFF,
+        14 | 25.. => panic!("form overlay refresh for AI index {} is not implemented yet", a.ai_index),
         _ => {}
     }
 }

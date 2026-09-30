@@ -556,6 +556,21 @@ pub struct HitboxSpec {
     pub bug_arg: u8,
 }
 
+/// An afterimage (effect object #0x28), as `sub_80E33FA` takes it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AfterimageSpec {
+    /// A sprite of its own, or None: a copy of the owner's sprite (Param1
+    /// 0xFF), wearing the owner's form overlay.
+    pub sprite: Option<SpriteId>,
+    pub anim: u8,
+    /// The game's flip value (bit 0 horizontal).
+    pub flip: u8,
+    pub color_shader: u16,
+    /// Ticks it lasts.
+    pub lifetime: u16,
+    pub shadow: Shadow,
+}
+
 /// A panel as content sees it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PanelInfo {
@@ -797,6 +812,9 @@ pub trait CoreApi {
     /// `variant` (0 white or red, 1 white over two layers) for `ticks`,
     /// optionally going on while dimmed or paused.
     fn spawn_palette_flash(&mut self, variant: u8, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
+    /// `sub_80E33FA`: an afterimage of `owner` at `pos` (nothing ends it
+    /// early).
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
@@ -826,6 +844,9 @@ pub trait CoreApi {
     /// `sub_801056A`: the reactive-defense abort attacks check after each
     /// phase.
     fn check_reactive_abort(&mut self, o: ObjectRef);
+    /// `sub_8011450`: restart the navi's form overlay with it after an
+    /// animation change.
+    fn refresh_form_overlay(&mut self, o: ObjectRef);
     /// `object_exitAttackState`: back to the idle action with animation 0.
     fn exit_attack(&mut self, o: ObjectRef);
     /// `sub_801171C`: back to the idle action (the animation untouched).

@@ -197,14 +197,46 @@ fn scripted_chips_roll_back() {
 }
 
 #[test]
+fn the_scripted_swords_play_and_roll_back() {
+    // Duels with swords, a step sword and the strike at stunned navis in
+    // the folders: the navis swing (actions 0x13 and 0x49) holding their
+    // blades, the slashes show, the step sword leaves afterimages, and a
+    // copy taken at any tick plays on as the battle does.
+    use crate::object::Pool::{Actor, Effect};
+    let setup = || scenario::setup_with(&[testing::BLADE, testing::STEP_BLADE, testing::STUN_BLADE]);
+    let tape = scenario::record_on(setup(), 2400, 11);
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    let mut b = Battle::new(setup(), scenario::content());
+    let mut seen = std::collections::BTreeMap::new();
+    for (i, t) in tape.iter().enumerate() {
+        if i % 101 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+        for r in b.objects.in_order() {
+            let o = b.objects.get(r);
+            let key = if (r.pool, o.index) == (Actor, 0) { (Actor, 0x100 + o.action as u16) } else { (r.pool, o.index as u16) };
+            *seen.entry(key).or_insert(0) += 1;
+        }
+    }
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    assert!(ticks((Actor, 0x113)) > 0, "a sword swung: {seen:?}");
+    assert!(ticks((Actor, 0x149)) > 0, "a strike swung: {seen:?}");
+    assert!(ticks((Actor, 5)) > 0, "a blade: {seen:?}");
+    assert!(ticks((Effect, 0)) > 0, "a slash: {seen:?}");
+    assert!(ticks((Effect, 0x28)) > 0, "a step sword's afterimages: {seen:?}");
+}
+
+#[test]
 fn registrations_follow_the_content_data() {
     let mut c = testing::build();
     let r = c.registrations().unwrap();
-    // The four SunGun chips share one action, and the thrown chips
-    // theirs; two weapons have theirs; the mend, mirror, bee and dragon
-    // chips theirs.
+    // The four SunGun chips share one action, as the thrown chips and the
+    // three swords share theirs; two weapons have theirs; the mend, mirror,
+    // bee and dragon chips theirs.
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
-    assert_eq!(actions, [0x12, 0x20, 0x2B, 0x33, 0x37, 0x39, 0x51, 0x57], "{:?}", r.actions);
+    assert_eq!(actions, [0x12, 0x13, 0x20, 0x2B, 0x33, 0x37, 0x39, 0x49, 0x51, 0x57], "{:?}", r.actions);
     // Two chips implementing one action with different scripts is an error.
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
     let e = c.registrations().unwrap_err();
