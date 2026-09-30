@@ -14,6 +14,7 @@ local attachment = require("../../objects/attachment/attachment")
 local bomb = require("../../objects/bomb/bomb")
 local seed = require("../../objects/seed/seed")
 local flash_bomb = require("../../objects/flash-bomb/flash_bomb")
+local bug_bomb = require("../../objects/bug-bomb/bug_bomb")
 -- WIP: the throwers not ported yet.
 local function wip(name: string): (Object, Vec3, { number }, number) -> Object?
     return function(_: Object, _: Vec3, _: { number }, _: number): Object?
@@ -21,7 +22,6 @@ local function wip(name: string): (Object, Vec3, { number }, number) -> Object?
     end
 end
 local black_bomb = { throw = wip("BlkBomb") }
-local bug_bomb = { throw = wip("BugBomb") }
 local lil_boiler = { throw = wip("LilBoiler") }
 local voodoo_doll = { throw = wip("VDoll") }
 
