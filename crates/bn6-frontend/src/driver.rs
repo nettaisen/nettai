@@ -1,13 +1,14 @@
 //! What drives the battle each tick: a golden trace's recorded inputs, or
 //! live input from the keyboard.
 
-use bn6_battle::battle::mode;
+use bn6_battle::battle::{mode, top};
+use bn6_battle::custom::{self, BattleFolder, BuiltIn, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
+use bn6_battle::data::{self, ChipCode};
 use bn6_battle::input::keys;
-use bn6_battle::hand::{ChipHand, NO_CHIP};
-use bn6_battle::setup::{BattleSettings, Form, NaviStats, RoundSetup, SetScore};
+use bn6_battle::link::Link;
+use bn6_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
 use bn6_battle::trace::{self, Frame, Round};
-use bn6_battle::transform::TransformRequest;
-use bn6_battle::{Battle, CustomResult, PlayerTick, TickEvents};
+use bn6_battle::{Battle, PlayerTick, Rng, TickEvents};
 
 /// One tick's inputs.
 pub struct Step {
@@ -31,8 +32,8 @@ pub trait Driver {
     }
     /// A short description of where playback is.
     fn position(&self) -> String;
-    /// Something the player has to do now, if anything.
-    fn prompt(&self) -> Option<&str> {
+    /// Something to show the player now, if anything (the custom screen).
+    fn prompt(&self, _b: &Battle) -> Option<String> {
         None
     }
 }
@@ -133,9 +134,26 @@ fn unhex(s: &str) -> Vec<u8> {
     (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
 }
 
-/// A round to play live.
+/// A round to play live: both players bring the same folder, each
+/// shuffled from the seed.
 pub fn live_setup(seed: u32) -> RoundSetup {
     let stats = NaviStats::from_bytes(&unhex(LIVE_NAVI).try_into().unwrap());
+    let player = |side: u32| {
+        let saved = SavedFolder {
+            chips: std::array::from_fn(|i| {
+                let (id, code) = LIVE_FOLDER[i % LIVE_FOLDER.len()];
+                FolderChip::new(id, ChipCode(code))
+            }),
+            regular: None,
+            tags: None,
+        };
+        let mut rng = Rng::new(seed ^ side.wrapping_mul(0x9E37_79B9));
+        PlayerSetup {
+            folder: Some(BattleFolder::shuffled(&saved, 0, &mut rng, &BuiltIn)),
+            unlocks: Unlocks::everything(GameVersion::Falzar),
+            joypad_phase: 0,
+        }
+    };
     RoundSetup {
         settings: BattleSettings::netbattle_from_bytes(&unhex(LIVE_SETTINGS)),
         navi_stats: [stats, stats],
@@ -146,104 +164,62 @@ pub fn live_setup(seed: u32) -> RoundSetup {
         later_stages: Default::default(),
         low_hp_music_latched: false,
         sp_times: Default::default(),
+        players: [player(0), player(1)],
+        link_delay: Link::RECORDED_DELAY,
     }
 }
 
-/// The chips both sides get at every custom screen (chip ids with their
-/// codes, as a custom screen would hand them over): GunDelS3 N twice and
-/// Geddon * twice.
-const LIVE_HAND: [(u16, u8); 4] = [(0x11, 13), (0x11, 13), (0xA7, 26), (0xA7, 26)];
+/// The live folder's chips (ids with their codes), repeated to 30:
+/// GunDelSols, Geddon, Invisibl and EraseMan.
+const LIVE_FOLDER: [(u16, u8); 6] = [(0x11, 13), (0x0F, 2), (0xA7, 26), (0x11, 16), (0xB1, 26), (0xEC, 10)];
 
-/// The live hand as the custom screen's result (the game's chip block).
-pub fn live_hand() -> ChipHand {
-    let mut block = [0u8; 0x50];
-    for i in 0..6 {
-        let (id, selection) = match LIVE_HAND.get(i) {
-            Some(&(id, code)) => (id, (code as u16) << 9 | id),
-            None => (NO_CHIP, NO_CHIP),
-        };
-        block[0x02 + 2 * i..0x04 + 2 * i].copy_from_slice(&id.to_le_bytes());
-        block[0x32 + 2 * i..0x34 + 2 * i].copy_from_slice(&selection.to_le_bytes());
-    }
-    ChipHand::from_bytes(&block)
-}
-
-/// How the live custom screen is going.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Custom {
-    /// Not on the custom screen.
-    Closed,
-    /// Open; waiting for the player to choose.
-    Choosing,
-    /// Confirmed this many ticks ago (with Beast Out or not).
-    Confirmed(u32, bool),
-    /// Results sent; waiting for the fight to resume.
-    Sent,
-}
-
-/// Plays a round from the keyboard: the local player is the left navi;
-/// the right navi stands still. The custom screen is a stand-in: A takes
-/// a fixed hand of chips, B the same and Beast Out.
+/// Plays a round from the keyboard: the local player is the left navi,
+/// with their own custom screen; the right navi stands still, and its
+/// custom screen picks the first chip it can and presses OK.
 pub struct LivePlayer {
     pub setup: RoundSetup,
-    custom: Custom,
-    previous_keys: u16,
     ticks: u32,
 }
 
-/// Ticks between confirming the custom screen and the results arriving
-/// (the link exchange).
-const EXCHANGE_DELAY: u32 = 12;
-
 impl LivePlayer {
     pub fn new(setup: RoundSetup) -> LivePlayer {
-        LivePlayer { setup, custom: Custom::Closed, previous_keys: 0, ticks: 0 }
+        LivePlayer { setup, ticks: 0 }
     }
+}
 
-    /// Whether the stand-in custom screen is waiting for A.
-    pub fn choosing(&self) -> bool {
-        self.custom == Custom::Choosing
+/// The right navi's buttons: on its custom screen, A on the chip under the
+/// cursor (the first one) if it can be picked, then START and A, a press
+/// every other tick.
+fn bot_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
+    let s = &b.custom.sides[side];
+    let Some(screen) = s.screen.as_ref().filter(|_| b.round.mode == mode::CUSTOM && s.in_custom) else { return 0 };
+    if screen.phase != Phase::Choosing || tick % 2 == 0 {
+        return 0;
+    }
+    let here = &screen.slots[screen.cursor as usize];
+    if screen.selected == 0 && matches!(here.kind, SlotKind::Chip { .. }) && here.state == SlotState::Selectable {
+        keys::A
+    } else if screen.cursor != custom::screen::OK_SLOT {
+        keys::START
+    } else {
+        keys::A
     }
 }
 
 impl Driver for LivePlayer {
     fn start(&mut self) -> Battle {
-        self.custom = Custom::Closed;
         self.ticks = 0;
-        self.previous_keys = 0;
         Battle::new(self.setup.clone())
     }
 
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
-        let pressed = keys & !self.previous_keys;
-        self.previous_keys = keys;
         self.ticks += 1;
-        let mut events = TickEvents::default();
-        let in_custom = b.round.mode == mode::CUSTOM;
-        self.custom = match (self.custom, in_custom) {
-            (_, false) => Custom::Closed,
-            (Custom::Closed, true) => Custom::Choosing,
-            (Custom::Choosing, true) if pressed & (keys::A | keys::B) != 0 => {
-                events.local_confirm = true;
-                let beast = pressed & keys::B != 0 && !b.stats[b.setup.local_side as usize].form.is_beast();
-                Custom::Confirmed(0, beast)
-            }
-            (Custom::Confirmed(n, beast), true) if n >= EXCHANGE_DELAY => {
-                let local = b.setup.local_side as usize;
-                let result = |side: usize| {
-                    let form = (side == local && beast).then_some(Form::FALZAR_BEAST);
-                    let transform = TransformRequest { form, ..TransformRequest::NONE };
-                    CustomResult { hand: Some(live_hand()), navi_stats: b.stats[side], transform }
-                };
-                events.exchange = Some(Box::new([result(0), result(1)]));
-                Custom::Sent
-            }
-            (Custom::Confirmed(n, beast), true) => Custom::Confirmed(n + 1, beast),
-            (c, true) => c,
-        };
-        let choosing = self.custom == Custom::Choosing;
-        let held = if in_custom { 0 } else { keys & 0x3FF };
-        let input = [PlayerTick { held, in_custom: choosing }, PlayerTick { held: 0, in_custom: choosing }];
+        let local = b.setup.local_side as usize;
+        let held = |side: usize| if side == local { keys & 0x3FF } else { bot_buttons(b, side, self.ticks) };
+        let input = [PlayerTick { held: held(0) }, PlayerTick { held: held(1) }];
+        // The end state asks the link session to close; it closes at once.
+        let r = &b.round;
+        let events = TickEvents { link_closed: r.top == top::END && r.mode == 0 && r.sub == 4 && r.init == 4, ..TickEvents::default() };
         Some(Step { input, events, frame: Some(self.ticks) })
     }
 
@@ -251,7 +227,122 @@ impl Driver for LivePlayer {
         format!("live tick {}", self.ticks)
     }
 
-    fn prompt(&self) -> Option<&str> {
-        self.choosing().then_some("CUSTOM: A = GUNDELS3 X2 + GEDDON X2, B = THE SAME + BEAST OUT")
+    fn prompt(&self, b: &Battle) -> Option<String> {
+        custom_screen_text(b, b.setup.local_side as usize)
+    }
+}
+
+/// A plain-text custom screen for a player: the dealt chips in the grid's
+/// order with the cursor, the picks, OK and Beast Out, and the Cross
+/// window when it's open.
+pub fn custom_screen_text(b: &Battle, side: usize) -> Option<String> {
+    let s = &b.custom.sides[side];
+    let (screen, folder) = (s.screen.as_ref()?, s.folder.as_ref()?);
+    if b.round.mode != mode::CUSTOM {
+        return None;
+    }
+    let mut out = String::new();
+    if !s.in_custom {
+        out.push_str(if s.sent.is_some() { "CUSTOM: WAITING FOR THE OTHER PLAYER" } else { "CUSTOM: SENDING" });
+        return Some(out);
+    }
+    let title = match screen.phase {
+        Phase::Opening { .. } => "CUSTOM",
+        Phase::Choosing => "CUSTOM: A PICK, B UNDO, START OK, UP CROSS, R INFO",
+        Phase::Hidden { .. } => "CUSTOM (HIDDEN: ANY KEY)",
+        Phase::Description { .. } => "CUSTOM: CHIP INFO (ANY KEY)",
+        Phase::RunMessage { .. } => "CUSTOM: NO TIME TO RUN (A)",
+        Phase::CrossWindow { .. } | Phase::CrossWindowOpening { .. } | Phase::CrossWindowClosing { .. } => {
+            "CUSTOM: CROSS (UP/DOWN, A CHOOSE, B BACK)"
+        }
+        Phase::CrossChosen { .. } => "CUSTOM: CROSS!",
+        Phase::BeastOutChosen { .. } => "CUSTOM: BEAST OUT!",
+        _ => "CUSTOM",
+    };
+    out.push_str(title);
+    let names = |slot: u8| -> String {
+        let x = &screen.slots[slot as usize];
+        let label = match x.kind {
+            SlotKind::Ok => "OK".to_string(),
+            SlotKind::BeastOut => "BEAST OUT".to_string(),
+            SlotKind::Scrap { right_half: false } => "SCRAP".to_string(),
+            SlotKind::Redeal { right_half: false } => "REDEAL".to_string(),
+            SlotKind::Empty | SlotKind::Hidden | SlotKind::Scrap { .. } | SlotKind::Redeal { .. } => return String::new(),
+            _ => screen.chip_in(slot, folder).map(|c| format!("{} {}", data::chip(c.id).name, c.code.letter())).unwrap_or_default(),
+        };
+        let mark = match x.state {
+            SlotState::Selected => "+",
+            SlotState::Unavailable => "-",
+            _ => " ",
+        };
+        let cursor = if screen.cursor == slot && matches!(screen.phase, Phase::Choosing) { ">" } else { " " };
+        format!("{cursor}{mark}{label}")
+    };
+    for row in [[0u8, 1, 2, 3, 4, 10], [5, 6, 7, 8, 9, 11]] {
+        let cells: Vec<String> = row.iter().map(|&s| names(s)).filter(|c| !c.is_empty()).collect();
+        if !cells.is_empty() {
+            out.push('\n');
+            out.push_str(&cells.join(" "));
+        }
+    }
+    let picks: Vec<String> = screen
+        .selection()
+        .iter()
+        .map(|&s| match screen.chip_in(s, folder) {
+            Some(c) => format!("{} {}", data::chip(c.id).name, c.code.letter()),
+            None => "BEAST OUT".to_string(),
+        })
+        .collect();
+    if !picks.is_empty() {
+        out.push_str(&format!("\nPICKED: {}", picks.join(", ")));
+    }
+    let w = &screen.crosses;
+    if matches!(screen.phase, Phase::CrossWindow { .. }) {
+        let entries: Vec<String> = (0..w.count)
+            .map(|i| format!("{}{}CROSS {}", if w.cursor == i { ">" } else { " " }, if w.marked[i as usize] { "+" } else { "" }, w.offered[i as usize] + 1))
+            .collect();
+        out.push_str(&format!("\n{}", entries.join(" ")));
+    }
+    if let Some(c) = w.chosen {
+        out.push_str(&format!("\nCROSS {} CHOSEN", c + 1));
+    }
+    Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Live play through the first custom screen: the local player picks
+    /// the first chip and presses OK, the right navi's screen does the
+    /// same, and the fight starts with both hands.
+    #[test]
+    fn live_custom_screen() {
+        let mut live = LivePlayer::new(live_setup(7));
+        let mut b = live.start();
+        let mut shown = false;
+        for tick in 0..3000u32 {
+            let s = &b.custom.sides[0];
+            let choosing = s.in_custom && s.screen.as_ref().is_some_and(|x| x.phase == Phase::Choosing);
+            shown |= choosing && custom_screen_text(&b, 0).is_some_and(|t| t.contains("OK"));
+            let picked = s.screen.as_ref().is_some_and(|x| x.selected > 0);
+            let on_ok = s.screen.as_ref().is_some_and(|x| x.cursor == custom::screen::OK_SLOT);
+            // A press every other tick: A on the first chip, START, A on OK.
+            let held = match (choosing && tick % 2 == 1, picked, on_ok) {
+                (false, _, _) => 0,
+                (true, false, _) | (true, true, true) => keys::A,
+                (true, true, false) => keys::START,
+            };
+            let step = live.next(&b, held).unwrap();
+            b.tick(&step.input, step.events);
+            if b.round.turn == 1 && b.round.mode == mode::FIGHTING {
+                break;
+            }
+        }
+        assert!(shown);
+        assert_eq!((b.round.turn, b.round.mode), (1, mode::FIGHTING));
+        for side in 0..2 {
+            assert_eq!(b.hands[side].remaining(), 1, "side {side}");
+        }
     }
 }

@@ -131,8 +131,8 @@ pub fn run(
 
         let mut frame = renderer.render(&session.battle);
         let mut lines = Vec::new();
-        if let Some(p) = session.driver.prompt() {
-            lines.push(p.to_string());
+        if let Some(p) = session.driver.prompt(&session.battle) {
+            lines.push(p);
         }
         if status && (paused || session.stopped.is_some()) {
             lines.push(format!(

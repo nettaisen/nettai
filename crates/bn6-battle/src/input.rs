@@ -35,12 +35,101 @@ impl InputRecord {
     }
 }
 
+/// A player's joypad as menus read it (the game's `eJoypad`, updated once
+/// per frame by `main_static_80003E4`): held and newly pressed buttons, and
+/// the held buttons that auto-repeat.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Joypad {
+    pub held: u16,
+    /// Buttons down this frame and not the last.
+    pub pressed: u16,
+    /// Held buttons that repeat this frame: on the second frame of a hold,
+    /// then, from the 17th frame on, every fifth frame.
+    pub repeat: u16,
+    /// Frames each button has been held, capped at `REPEAT_DELAY`.
+    hold_frames: [u8; 10],
+    /// The repeat beat: counts 0..=4, one step per frame (a console-wide
+    /// counter; a held button repeats on the frames it reads 0).
+    phase: u8,
+}
+
+impl Joypad {
+    /// Frames of holding before a button starts repeating.
+    const REPEAT_DELAY: u8 = 16;
+    /// Frames between repeats.
+    const REPEAT_PERIOD: u8 = 5;
+
+    /// A joypad with nothing held whose first update runs at repeat beat
+    /// `phase` (0..=4).
+    pub fn new(phase: u8) -> Joypad {
+        Joypad { phase: (phase + Self::REPEAT_PERIOD - 1) % Self::REPEAT_PERIOD, ..Joypad::default() }
+    }
+
+    /// The repeat beat of the latest update.
+    pub fn phase(&self) -> u8 {
+        self.phase
+    }
+
+    /// One frame with these buttons held (GBA bits, 0..=0x3FF).
+    pub fn update(&mut self, keys: u16) {
+        let keys = keys & 0x3FF;
+        self.phase = (self.phase + 1) % Self::REPEAT_PERIOD;
+        let old = self.held;
+        let mut repeat = keys & old;
+        for (bit, frames) in self.hold_frames.iter_mut().enumerate() {
+            let mask = 1 << bit;
+            if repeat & mask == 0 {
+                *frames = 0;
+            } else if *frames >= Self::REPEAT_DELAY {
+                if self.phase != 0 {
+                    repeat &= !mask;
+                }
+            } else {
+                *frames += 1;
+                if *frames != 1 {
+                    repeat &= !mask;
+                }
+            }
+        }
+        self.held = keys;
+        self.pressed = keys & !old;
+        self.repeat = repeat;
+    }
+}
+
 /// What one player contributes to a tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PlayerTick {
-    /// Buttons held (GBA bits; `keys::PRESENT` is added by the engine).
+    /// The buttons the player holds on this tick (GBA bits, 0..=0x3FF).
+    /// Their custom screen reads them at once; the fight gets them over
+    /// the link, `RoundSetup::link_delay` ticks later.
     pub held: u16,
-    /// The player's custom screen is open (their local UI state, shared
-    /// over the link; drives the NaviCust HP-drain bug).
-    pub in_custom: bool,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn joypad_repeats_on_the_second_frame_then_every_fifth() {
+        // Hold A from the first frame, which runs at beat 3.
+        let mut j = Joypad::new(3);
+        let mut pressed = Vec::new();
+        let mut repeats = Vec::new();
+        for frame in 0..40 {
+            j.update(keys::A);
+            if j.pressed & keys::A != 0 {
+                pressed.push(frame);
+            }
+            if j.repeat & keys::A != 0 {
+                repeats.push(frame);
+            }
+        }
+        assert_eq!(pressed, [0]);
+        // Frame 1, then from frame 16 on the frames at beat 0 (frame f is
+        // at beat (3 + f) % 5).
+        assert_eq!(repeats, [1, 17, 22, 27, 32, 37]);
+        j.update(0);
+        assert_eq!((j.held, j.pressed, j.repeat), (0, 0, 0));
+    }
 }

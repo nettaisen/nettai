@@ -20,8 +20,8 @@
 //!   digests against each other and against a plain lockstep run.
 //!
 //! [`bn6`] adapts the battle engine: [`bn6_battle::Battle`] with the
-//! engine's per-tick input record, and a battle with a stand-in custom
-//! screen for synthetic matches. See docs/design/rollback.md.
+//! engine's per-tick input record; [`standin`] a battle stepped on the
+//! buttons alone, for synthetic matches. See docs/design/rollback.md.
 
 pub mod bn6;
 pub mod network;

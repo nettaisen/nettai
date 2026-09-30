@@ -203,7 +203,7 @@ fn digits4(v: u16) -> [usize; 4] {
 
 /// Whether the local player's custom screen covers the left of the screen.
 fn custom_open(b: &Battle) -> bool {
-    b.round.mode == mode::CUSTOM && b.round.status & 4 != 0
+    b.round.mode == mode::CUSTOM && b.custom.sides[b.setup.local_side as usize].in_custom
 }
 
 /// Whether the round has been decided (the HUD thins out).
@@ -280,10 +280,11 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
         }
     }
 
-    // "Cstmzing...": after confirming, while waiting for the opponent;
-    // it blinks every 32 frames.
-    if let Some(n) = b.custom_ui.since_confirm.filter(|&n| b.round.mode == mode::CUSTOM && n >= 12) {
-        if !b.custom_ui.installed && ((n - 12) / 32) % 2 == 0 {
+    // "Cstmzing...": once the local player's result is sent, while waiting
+    // for the opponent's; it blinks every 32 frames.
+    let sent = b.custom.sides[local as usize].sent.as_ref().filter(|_| b.round.mode == mode::CUSTOM);
+    if let Some(n) = sent.map(|s| b.round.ticks.saturating_sub(s.sent_at + 1)) {
+        if !b.custom.committed && (n / 32) % 2 == 0 {
             for i in 0..16usize {
                 if let Some(t) = hud.waiting.get(i) {
                     layer.draw_tile(t, &hud.waiting_palette, (22 + (i % 8) as i32) * 8, (4 + (i / 8) as i32) * 8, false, false);

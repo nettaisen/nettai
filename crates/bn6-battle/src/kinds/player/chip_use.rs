@@ -3,7 +3,7 @@
 //! the hand, apply the damage modifiers, and start the chip's action. See
 //! chips.md §2.6.4 and §2.7.
 
-use super::{ai, ai_mut, emotion, flag1, navi_record, set_attack, set_mood, stats};
+use super::{Emotion, ai, ai_mut, emotion, flag1, navi_record, set_attack, set_mood, stats};
 use crate::actor::{ActorType, request};
 use crate::battle::Battle;
 use crate::collision::f1;
@@ -254,8 +254,8 @@ fn double_damage(b: &Battle, r: ObjectRef, chip: ChipId, damage: u16) -> (u16, O
         return (damage, None);
     }
     let boost = match emotion(b, b.objects.get(r).alliance) {
-        2 => Some(Boost::FullSynchro),
-        3 => Some(Boost::Anger),
+        Emotion::FullSynchro => Some(Boost::FullSynchro),
+        Emotion::Angry => Some(Boost::Anger),
         _ => {
             check_cross_boost(b, r);
             None
