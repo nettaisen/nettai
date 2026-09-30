@@ -627,7 +627,7 @@ fn effect_table(rom: &Rom, base: u32, n: u32) -> Vec<EffectSprite> {
 /// Object data: attachments (`byte_80B8BD4`), rocks (`byte_80CF934`),
 /// absorbed obstacles' sprites (`byte_80E98C0`), body overlays
 /// (`byte_80C4320` sprites and `off_80C42D4` depth tables) and the sun
-/// beam's sprites (`dword_80E5C28`).
+/// beam's sprites (`dword_80E5C28`), shock waves (`byte_80C6B00`).
 fn objects(rom: &Rom) -> ObjectData {
     // Rock rows: standing animation, (unused), HP / 2, debris palette,
     // break sound (u16), name id (u16). The rock's init (`sub_80CF974`)
@@ -678,7 +678,20 @@ fn objects(rom: &Rom) -> ObjectData {
         body_overlays,
         sun_beam_looks: (0..2).map(|i| sprite_at(0x080E_5C28 + 2 * i)).collect(),
         kinds: Vec::new(),
+        shock_waves: (0..16).map(|i| shock_wave(rom, i)).collect(),
     }
+}
+
+/// A shock wave's row (`byte_80C6B00`, by the wave's first parameter):
+/// the sprite's index in category 0x10, the animation, the ticks, and the
+/// panel type it leaves (0xFF none).
+fn shock_wave(rom: &Rom, id: u8) -> ShockWave {
+    let b = rom.bytes(0x080C_6B00 + 4 * id as u32, 4);
+    let panel = match b[3] {
+        0xFF => None,
+        t => Some(*PanelType::ALL.get(t as usize).unwrap_or_else(|| panic!("shock wave {id}: panel type {t:#x}"))),
+    };
+    ShockWave { id, sprite: SpriteId { category: 0x10, index: b[0] }, anim: b[1], ticks: b[2], panel }
 }
 
 // ---- Sprite timing ---------------------------------------------------------------------
