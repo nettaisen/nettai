@@ -7,6 +7,8 @@
 -- parameter: 0 lasts 70 ticks; 1 (the Beast form's) until it shuts; 2
 -- shuts when its second parameter is set.
 
+local hit_zone = require("../hit-zone/hit_zone")
+
 export type State = {
     -- ExtraVars+0x60..: the zones it laid, and how many (the game ends the
     -- list with -1).
@@ -59,8 +61,8 @@ end
 -- `sub_80D8F66`: a zone on (x, its row), with its timer and whether it
 -- runs while dimmed.
 local function lay(me: Object, x: number, slot: number)
-    local hit_zone = require("../hit-zone/hit_zone")
-    local z = hit_zone.spawn(me, x, me.panel_y, me.element, ZONE_Z, { ZONE_KIND, 0, 0, 0 }, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), me, slot)
+    local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
+    local z = hit_zone.spawn(me, x, me.panel_y, me.element, ZONE_Z, { ZONE_KIND, 0, 0, 0 }, damage, me, slot)
     if z then
         z.run_while_dimmed = me.run_while_dimmed
         z.timer = me.timer
