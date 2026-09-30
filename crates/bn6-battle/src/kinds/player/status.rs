@@ -661,7 +661,7 @@ fn confusion_active(b: &mut Battle, r: ObjectRef, f2: u32) {
     set_flag1(b, r, f1::CONFUSED);
     clear_flag1(b, r, f1::BUBBLED | f1::FROZEN | f1::PARALYZED);
     if coll(b, r).links[link::CONFUSE].is_none() {
-        panic!("the confusion visual (sub_80E09EE) is not implemented yet");
+        crate::kinds::status_visual::spawn(b, r, crate::kinds::status_visual::Status::Confusion);
     }
 }
 
@@ -680,7 +680,7 @@ fn tick_minor_statuses(b: &mut Battle, r: ObjectRef, f2: u32) {
         clear_flag2(b, r, 0x20);
         set_flag1(b, r, f1::BLIND);
         if coll(b, r).links[link::BLIND].is_none() {
-            panic!("the blindness visual (sub_80E09EE) is not implemented yet");
+            crate::kinds::status_visual::spawn(b, r, crate::kinds::status_visual::Status::Blindness);
         }
     }
     if count_down(b, r, timer::INVULNERABLE) {
