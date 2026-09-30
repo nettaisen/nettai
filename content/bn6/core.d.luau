@@ -460,6 +460,56 @@ declare class Navi
     beast_over: boolean
 end
 
+-- How a form overlay's sprite steps once every navi is in: as any object
+-- (not while dimmed), while dimmed too, or paused or not.
+export type OverlayStepping = "normal" | "while_dimmed" | "always"
+
+-- A form overlay (`battle.form_overlay`).
+export type FormOverlaySpec = {
+    sprite: SpriteId,
+    stepping: OverlayStepping?,
+    -- Added to the owner's animation.
+    anim_offset: number?,
+    -- One pixel higher and nearer than the owner.
+    nudged: boolean?,
+}
+
+-- A screen palette flash (`battle.palette_flash`).
+export type PaletteFlashSpec = {
+    duration: number,
+    -- Keeps flashing while dimmed / while paused.
+    while_dimmed: boolean?,
+    while_paused: boolean?,
+    -- Held white rather than blinking (and not kept on while dimmed).
+    steady: boolean?,
+    -- Blinks red rather than white (drawn only).
+    red: boolean?,
+}
+
+-- What ends an afterimage early: nothing, its side leaving the Beast
+-- forms, or its owner leaving its attack.
+export type AfterimageTether = "none" | "beast_form" | "attack"
+
+-- An afterimage (`battle.afterimage`).
+export type AfterimageSpec = {
+    -- Its sprite; nil: its owner's, by NameID, with its form's overlay.
+    sprite: SpriteId?,
+    anim: number,
+    -- The game's flip value.
+    flip: number,
+    -- Ticks it lasts.
+    lifetime: number,
+    -- A ground shadow (else drawn with the sprite); that shadow kept
+    -- (else none).
+    shadow: boolean?,
+    keep_shadow: boolean?,
+    color_shader: number?,
+    palette: number?,
+    -- Shown steadily rather than blinking.
+    steady: boolean?,
+    tether: AfterimageTether?,
+}
+
 -- A one-tick hit region (`battle.hitbox`).
 export type HitboxSpec = {
     panel_x: number,
@@ -569,6 +619,14 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80C468C`: a form overlay (actor object #0x57) on `owner`,
+    -- following it every tick.
+    form_overlay: (owner: Object, spec: FormOverlaySpec) -> Object?,
+    -- `sub_80E11E0`: a screen palette flash (effect object #0x0A).
+    palette_flash: (spec: PaletteFlashSpec) -> Object?,
+    -- `sub_80E33FA`: an afterimage (effect object #0x28) of `owner` at
+    -- `pos`, blinking (unless steady) for its lifetime.
+    afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
 }
 
 declare field: {
@@ -754,6 +812,11 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- The sine table (`math_sinTable`): 8.8 fixed point, 256 steps a
+        -- turn, by 0-based step; cos(i) is sine[i + 64].
+        sine: { [number]: number },
+        -- MegaMan's palette in each Cross, by form (`byte_80203EA`).
+        cross_palettes: { [number]: number },
     },
     -- Panel regions by number (`PanelOffsetListsPointerTable`): each
     -- panel's {dx, dy}, dx toward the facing side.

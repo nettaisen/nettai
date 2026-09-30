@@ -13,12 +13,18 @@ pub const INDEX: u8 = 0x0A;
 /// Flash-private state (the spawn parameters).
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
-    /// Ticks the flash lasts.
+    /// Ticks the flash lasts (Param2).
     pub duration: u8,
-    /// Keeps flashing while dimmed.
+    /// Keeps flashing while dimmed (Param3 bit 0).
     pub while_dimmed: bool,
-    /// Keeps flashing while the battle is paused.
+    /// Keeps flashing while the battle is paused (Param3 bit 1).
     pub while_paused: bool,
+    /// Param1 1 (`sub_80E114C`): the palettes held white rather than
+    /// blinking, and no tick count; it doesn't keep on while dimmed (the
+    /// routine tests the pause bit twice).
+    pub steady: bool,
+    /// Param4: the blinking colour (0 white, 1 red; drawn only).
+    pub color: u8,
 }
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
@@ -30,18 +36,24 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 
 /// `sub_80E11E0`: a white flash (variant 0) for `duration` ticks.
 pub fn spawn(b: &mut Battle, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
-    let mode = while_dimmed as u8 | (while_paused as u8) << 1;
-    let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), [0, duration, mode, 0])?;
+    spawn_with(b, Vars { duration, while_dimmed, while_paused, steady: false, color: 0 })
+}
+
+/// `sub_80E11E0` with all its parameters.
+pub fn spawn_with(b: &mut Battle, v: Vars) -> Option<ObjectRef> {
+    let mode = v.while_dimmed as u8 | (v.while_paused as u8) << 1;
+    let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), [v.steady as u8, v.duration, mode, v.color])?;
     b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
-    *vars(b, r) = Vars { duration, while_dimmed, while_paused };
+    *vars(b, r) = v;
     Some(r)
 }
 
-/// `sub_80E10C0`: count the flash down and free it when done. While the
-/// battle is paused or time is stopped (unless it keeps flashing then), it
-/// only holds the palette.
+/// `sub_80E10C0` (`sub_80E114C` steady): count the flash down and free it
+/// when done. While the battle is paused or dimmed (unless it keeps
+/// flashing then), it only holds the palette.
 pub fn update(b: &mut Battle, r: ObjectRef) {
-    let Vars { duration, while_dimmed, while_paused } = vars(b, r).clone();
+    let Vars { duration, while_dimmed, while_paused, steady, .. } = vars(b, r).clone();
+    let while_dimmed = while_dimmed && !steady;
     let held = !while_paused && (b.paused || (!while_dimmed && b.is_dimmed()));
     if held {
         return;
@@ -57,5 +69,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         return;
     }
     o.timer2 -= 1;
-    o.timer = o.timer.wrapping_add(1);
+    if !steady {
+        o.timer = o.timer.wrapping_add(1);
+    }
 }

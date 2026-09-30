@@ -663,6 +663,42 @@ impl CoreApi for Battle {
         kinds::hitbox::spawn(self, owner, &spec)
     }
 
+    fn spawn_form_overlay(&mut self, owner: ObjectRef, sprite: SpriteId, stepping: u8, anim_offset: u8, nudged: bool) -> Option<ObjectRef> {
+        kinds::form_overlay::spawn_with(self, owner, sprite, stepping, anim_offset, nudged)
+    }
+
+    fn spawn_palette_flash(&mut self, s: &bn6_content_api::PaletteFlashSpec) -> Option<ObjectRef> {
+        let v = kinds::palette_flash::Vars {
+            duration: s.duration,
+            while_dimmed: s.while_dimmed,
+            while_paused: s.while_paused,
+            steady: s.steady,
+            color: s.color,
+        };
+        kinds::palette_flash::spawn_with(self, v)
+    }
+
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, s: &bn6_content_api::AfterimageSpec) -> Option<ObjectRef> {
+        use kinds::afterimage::{Tether, Vars};
+        let tether = match s.tether {
+            1 => Tether::BeastForm,
+            2 => Tether::Attack,
+            _ => Tether::None,
+        };
+        let v = Vars {
+            lifetime: s.lifetime,
+            tether,
+            anim: s.anim,
+            sprite: s.sprite,
+            color_shader: s.color_shader,
+            shadow: s.shadow,
+            keep_shadow: s.keep_shadow,
+            steady: s.steady,
+            palette: s.palette,
+        };
+        kinds::afterimage::spawn_with(self, owner, pos, s.flip, v)
+    }
+
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef> {
         kinds::spark::spawn(self, owner, pos, id)
     }
