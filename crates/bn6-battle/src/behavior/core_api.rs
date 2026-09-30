@@ -341,6 +341,14 @@ impl CoreApi for Battle {
         Some(NaviRecordInfo { actor_type: actor_type_index(r.actor_type) as u8, ai_index: r.ai_index })
     }
 
+    fn field_object(&self, slot: u8) -> Option<ObjectRef> {
+        self.field.objects.slots.get(slot as usize).copied().flatten()
+    }
+
+    fn remove_obstacle(&mut self, o: ObjectRef) {
+        kinds::obstacle::remove(self, o);
+    }
+
     // ---- Panels -----------------------------------------------------------
 
     fn panel_valid(&self, p: PanelPos) -> bool {

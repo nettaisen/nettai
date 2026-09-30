@@ -721,6 +721,13 @@ pub trait CoreApi {
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// A player NameID's actor record, if it is one.
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo>;
+    /// The field-object registry (`setFieldBattleObject_800F614`'s table at
+    /// BattleState+0xA0): slot `slot` of 8 (per side two class-0 obstacles
+    /// and a class-1 one, then two more).
+    fn field_object(&self, slot: u8) -> Option<ObjectRef>;
+    /// `sub_800F884`: a chip removes `o` (an obstacle with collision data
+    /// leaves at its next update).
+    fn remove_obstacle(&mut self, o: ObjectRef);
 
     // ---- Panels -----------------------------------------------------------
 
