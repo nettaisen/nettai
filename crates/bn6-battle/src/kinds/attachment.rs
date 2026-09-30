@@ -80,7 +80,7 @@ pub struct Params {
 /// `sub_80B8E30` with all its parameters.
 pub fn spawn_with(b: &mut Battle, owner: ObjectRef, p: Params, slot: AttachSlot) -> Option<ObjectRef> {
     let params = [p.kind, p.anim, p.in_time_stop as u8, p.palette_add];
-    let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), params);
+    let r = crate::behavior::spawn_object(b, Pool::Actor, INDEX, Vec3::default(), params);
     if let Some(r) = r {
         let (panel, alliance, flip) = {
             let o = b.objects.get(owner);
@@ -92,10 +92,25 @@ pub fn spawn_with(b: &mut Battle, owner: ObjectRef, p: Params, slot: AttachSlot)
         o.alliance = alliance;
         o.flip = flip;
         o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP;
-        o.vars = crate::kinds::Vars::Attachment(Vars { slot: Some(slot), ..Vars::default() });
+        if b.behaviors.object_kind(Pool::Actor, INDEX).is_some() {
+            // Behaviors implements attachments: its slot names the owner's.
+            crate::behavior::set_state_variant(b, r, "slot", content_slot(b, owner, slot));
+        } else {
+            b.objects.get_mut(r).vars = crate::kinds::Vars::Attachment(Vars { slot: Some(slot), ..Vars::default() });
+        }
     }
     slot.set(b, r);
     r
+}
+
+/// The content slot (`lib/slot.luau`) for a slot of `owner`'s. Behaviors
+/// only knows its owner's own slots.
+pub(crate) fn content_slot(b: &Battle, owner: ObjectRef, slot: AttachSlot) -> &'static str {
+    match slot {
+        AttachSlot::Overlay(a) if b.objects.get(owner).actor == Some(a) => "overlay",
+        AttachSlot::Related(o) if o == owner => "related",
+        s => panic!("an attachment kept in another object's slot ({s:?}) has no content form"),
+    }
 }
 
 pub fn update(b: &mut Battle, r: ObjectRef) {

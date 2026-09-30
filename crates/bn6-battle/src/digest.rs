@@ -18,6 +18,9 @@
 //! - which banner is showing ([`Banner::id`](crate::hud::Banner::id));
 //! - the objects' `VISIBLE` header flag.
 //!
+//! Also left out: the content handle (`Battle::content`), which is code.
+//! Behaviors kinds' state is hashed with the objects and actors that hold it.
+//!
 //! The impls below destructure their structs without `..`, so adding a
 //! field to one of them fails to compile until the field is either hashed
 //! or explicitly left out here.
@@ -172,6 +175,10 @@ impl Hash for Battle {
             freeze,
             sound: _,
             outcome,
+            // Code, not state: the content runtime keeps nothing between
+            // calls (docs/design/scripting.md); content state lives in
+            // `objects` and `actors`.
+            behaviors: _,
         } = self;
         setup.hash(h);
         stats.hash(h);
