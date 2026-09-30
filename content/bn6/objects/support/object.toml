@@ -1,0 +1,7 @@
+# The NaviCust supports' dimming controller (effect object #0x79, `sub_80E8FE0`) is a
+# script. The ruleset spawns it (`sub_80E90FE`) when Rush, Beat or Tango acts.
+
+[kind]
+pool = "effect"
+index = 0x79
+script = "support.luau"

@@ -726,20 +726,63 @@ obj.CurAction = 8; av.u16[0] = 0                // obj.CurPhase is NOT reset
 | `sub_800B090` | Called every fighting frame for the **local** player only. It replaces `id[cur]` with 0x185 if the anti-tamper mirror check fails. Its limit check is dead (it compares against the wrong register). **Port: no-op.** |
 | Death/reset handlers (`sub_80165F8`, `sub_8016EE0`, `sub_80170E4`, `sub_801741C`) | Set ChipsHeld = 0 and Chip = 0xFFFF. For players, `sub_800FDC0` overwrites this in the same frame. |
 
-### 2.10 Support-navi cancels (link battles only, NaviStats+0xD bits)
+### 2.10 Supports: Rush, Beat, Tango (link battles only, NaviStats+0xD bits)
 
-Checked in `sub_80F0354` after the action is already set up:
+The NaviCust supports act once per battle. Rush and Beat are checked in `sub_80F0354` after a chip's action is
+already set up (Beat first); Tango every idle frame before any request:
 
 | Support | Function | Trigger | Effect |
 |---|---|---|---|
-| **Beat** | `sub_80106C0` | Opponent `ns[0xD] & 2` and the chip's class is 1 or 2 | Clears the bit and spawns chip object 0x17A at the opponent (`sub_80E90FE`, registered with `sub_800BF16`). |
-| **Rush** | `sub_8010740` | Opponent `ns[0xD] & 1` and `cd.flags2 & 2` | Clears the bit and spawns 0x179. |
-| **Tango** | `sub_8010660` | Own `ns[0xD] & 4` and `HP ≤ MaxHP/4` | Checked every idle frame before any request. Spawns 0x17B; `sub_80F0354` returns 1 without acting. |
+| **Beat** | `sub_80106C0` | Opponent `ns[0xD] & 2` and the chip's class is 1 or 2 (Mega, Giga) | Clears the bit; the controller for the opponent (Param1 1, telop chip 0x17A). |
+| **Rush** | `sub_8010740` | Opponent `ns[0xD] & 1` and `cd.flags2 & 2` (`RUSH_CANCELS`: Invisibl, WhiCapsl) | Clears the bit; the controller for the opponent (Param1 0, the chip in Param3/4, telop chip 0x179). |
+| **Tango** | `sub_8010660` | Own `ns[0xD] & 4` and `HP ≤ MaxHP/4` | Clears the bit; the controller for the navi itself (Param1 2, telop chip 0x17B); `sub_80F0354` returns 1 without acting. |
 
+- The chip's record is read with the id as it is (`getChip8021DA8` without the `& 0x7FFF` the tail of
+  `sub_80F0354` applies), and only when the support's bit is set.
 - On a Beat or Rush cancel, `object_exitAttackState` runs, so the lockout applies and requests are cleared. The
-  index is **not** incremented here; the support object calls `sub_800FC7C` on the victim later.
-- In the trace, `ns[0xD] = 0` for both players.
-- Identification from the chip names at 0x179..0x17B **[unverified]**.
+  hand index is **not** incremented here; Rush and Beat call `sub_800FC7C` on the victim later.
+- `sub_80E90FE` spawns the controller, effect object #0x79 (`sub_80E8FE0`, content kind `objects/support`), on the
+  host's panel (the support's owner: the chip user's opponent for Rush and Beat), with the host in related 1,
+  its side, element 0, no damage and the telop chip at +0x30. Its X, Y and Z are the caller's r1..r3 (the host's
+  panel row, 0, 0). `sub_800BF16(host side, 1, controller)` then starts a dimming the other side can't cut in
+  on (`Battle::start_dimming`), used by the host.
+- The controller (`object_timefreezeBegin`, then by action: `object_dimScreen`, `object_drawChipName`,
+  `sub_80E9024`, `object_undimScreen`; `object_timefreezeEnd`): phase 0 warps the host out
+  (`sub_80E1332(host, 1)`, not for Tango) and waits 31 ticks (`ldrh`/`sub`/`strh`/`bge` counts past zero);
+  phase 4 calls the support's spawner (`off_80E90A4`) with the controller's params and `r7 = &Param2`, which the
+  spawner sets to 1 and the support clears (through its related 1) when it goes, and waits for 0 (a failed spawn
+  leaves it 0); phase 8 waits 31 ticks; phase 0xC warps the host back in (not for Tango), waits 31 ticks and
+  moves on to the undim.
+- **Rush** (actor #0x4B, `sub_80C3218`; sprite 0C-48, no ground shadow): appears on the host's panel if its
+  flags pass `byte_80C34A8` (else (1 or 6, 2)), on the ground, sound 0x112; collision types 0x17/5 with status
+  0x12, region 0. Animation 0 plays out, then his bark (animation 1) for 60 ticks. Then he digs in (hidden, effect
+  #0 look 0x14), 3 ticks later moves under the victim's navi (gone at once without one; Y and Z up a pixel), 3
+  ticks later shows with animation 2; when it ends the victim's hand moves on unless the chip is 0x17E
+  (WhiCapsl), animation 3, region 1 for one tick (sound 0x122 on each loop), and after 60 ticks the dust (8
+  pixels back, 32 up) and his end. Each tick runs between `object_removeCollisionData` and
+  `object_presentCollisionData`. The bite's branch without a victim skips a `pop {r5}` and returns into Rush's
+  own memory (**[unreachable in practice, errors]**).
+- **Beat** (actor #0x4C, `sub_80C34E0`; sprite 0C-4B, ground shadow): starts 240 pixels behind the victim's navi
+  (toward the victim's side's back) and 112 above it, X velocity 12 pixels a tick toward the victim, Z -4. Sound
+  0x120; 20 ticks of swoop; animation 1, Z velocity reversed, 6 ticks of bounce with the X velocity losing 4
+  pixels a tick (`byte_80C3628`, 0x40000); animation 2, the victim's hand moves on, sound 0x126; when the
+  animation ends, animation 3 for 75 ticks; animation 4 and 40 ticks flying off (12 pixels a tick away, Z +4).
+  His first extra variable is set to 1 and only read by the uncalled `sub_80C3700`.
+- **Tango** (actor #0x4D, `sub_80C3734`; sprite 0C-4C, no ground shadow): 33 pixels in front of her navi, 60 up
+  and a pixel down the field (`sub_80C390E`), sound 0x116. Effect #0 look 0x15 and 17 ticks; she drops 4 pixels
+  a tick until at most 16 up, lands (Z 0, animation 1, sound 0xD4), 30 ticks, animation 2; when it ends she
+  throws her heal (below) from 16 pixels back toward her navi, 10 up (sound 0xB2), waits for it to land (her
+  +0x0C flag, which the heal holds), 10 ticks, bows (animation 3); when it ends, animation 0 at 16 up, rising 4
+  pixels a tick for 9 ticks, then effect #0 look 0x14 and her end.
+- **Tango's heal** (attack #0xC7, `sub_80DE000`; sprite 0C-4D): Param3/4 are her navi's panel; it arcs there in
+  20 ticks (`sub_8001330`, gravity 0xFFFF7778), animation 1 once animation 0 ends. Landed, it clears Tango's
+  flag, destroys itself, leaves effect #0 look 6, heals her navi 300 (`object_addHP`), sound 0x8A, and gives it
+  barrier 5 (`sub_801A7CC`) with a new barrier visual (effect #7 `sub_80E0D98`, the old one in AIData+0x60 told
+  to go with `sub_80E0DC0`). **The barrier part isn't ported (FirstBarrier's port, group B2a): the heal errors
+  there.**
+- The supports, their controller and Tango's heal are **[unverified]**: the lab's `navicust/rush`, `beat` and
+  `tango` scenarios never trigger them. A scratch run that forces each (bits and HP set mid-battle) plays them
+  to the end (Tango to her heal's barrier).
 
 ### 2.11 Cross / Beast Out differences (reachable in PvP; trace battle 2)
 
