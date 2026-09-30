@@ -218,6 +218,9 @@ pub struct ChipData {
     /// GunDelSol's data (action 0x37).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gun_del_sol: Option<GunDelSol>,
+    /// A sword's data (actions 0x13 and 0x49).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sword: Option<Sword>,
     /// The script that implements the chip's action, or its part of a
     /// generic one (see `content::scripts`): a module path in the pack
     /// (`chips/00f-gundels1/chip`); in the chip's file, a path relative to
@@ -251,6 +254,37 @@ pub struct AttachmentKind {
 pub struct SunBeamLook {
     pub look: u8,
     pub palette: u8,
+}
+
+/// A sword's per-chip data, by the chip's subtype: the blade its user holds
+/// (actions 0x13 and 0x49) and, for action 0x13 (`sub_80EB776`), its slash.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Sword {
+    /// The blade (`byte_80EBB64`): an attachment kind.
+    pub blade: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slash: Option<SwordSlash>,
+}
+
+/// Action 0x13's slash: its one-tick hit region (`byte_80EBA18`, and
+/// `byte_80EBA58` for what the hit does) and the effect that draws it
+/// (`byte_80EBAD8`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SwordSlash {
+    /// Region shape, hit spark and collision types.
+    pub region: u8,
+    pub hit_effect: u8,
+    pub target: u8,
+    pub self_type: u8,
+    /// Hit modifier, status effect, bug and its argument.
+    pub hit_mod: u8,
+    pub status: u8,
+    pub bug: u8,
+    pub bug_arg: u8,
+    /// The effect (effect object #0) it shows on the panel ahead.
+    pub effect: u8,
 }
 
 /// GunDelSol's per-chip data.
