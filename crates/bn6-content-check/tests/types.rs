@@ -28,6 +28,8 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("field.set_type(1, 1, \"lava\")", "not a panel type"),
         ("local function f(me: Object) me:set_status_timer(\"stun\", 3) end", "not a status timer"),
         ("local _ = data.chips[1].gun_del_sol.firing_tick", "not a data field"),
+        ("local function f(me: Object) local _ = obstacle.react(me, \"shatters\") end", "not an obstacle crush"),
+        ("local function f(me: Object) local _: \"gone\" = obstacle.removal(me) end", "not an obstacle removal"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
