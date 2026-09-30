@@ -18,6 +18,8 @@ pub struct ObjectData {
     pub body_overlays: Vec<BodyOverlay>,
     /// The sun beam's sprites by look (`SunBeamLook::look`).
     pub sun_beam_looks: Vec<SpriteId>,
+    /// Boomerangs (attack object #0x32) by variant, its first parameter.
+    pub boomerangs: Vec<BoomerangKind>,
     /// The projectile (attack object #0) by kind, its first parameter.
     pub projectiles: Vec<ProjectileKind>,
     /// The flying shot (attack object #0xB) by kind, its first parameter.
@@ -68,6 +70,20 @@ pub struct RockKind {
     /// Sound it breaks with.
     pub break_sound: u16,
     pub name_id: u16,
+}
+
+/// A kind of boomerang (attack object #0x32, `byte_80CA26C`): how fast it
+/// flies along a row and along the far column, and whether it turns the
+/// other side's panels it crosses to grass.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BoomerangKind {
+    /// The variant number.
+    pub id: u8,
+    /// Along a row and along the column, 16.16 pixels a tick.
+    pub speed: i32,
+    pub turn_speed: i32,
+    pub grass: bool,
 }
 
 fn is_zero(v: &u8) -> bool {

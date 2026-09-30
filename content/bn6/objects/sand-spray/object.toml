@@ -1,0 +1,6 @@
+# SandWrm's sand (attack object #0xCC, `sub_80DEE60`) is a script.
+
+[kind]
+pool = "attack"
+index = 0xCC
+script = "sand_spray.luau"

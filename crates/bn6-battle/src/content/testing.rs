@@ -42,6 +42,16 @@ pub const FULL_GAUGE: ChipId = 0x08;
 pub const PLUS: ChipId = 0x09;
 pub const BUSTER_UP: ChipId = 0x0A;
 pub const SYNC: ChipId = 0x0B;
+/// Instant chips whose effects spawn objects: a boomerang (subtype 1),
+/// lances (4), fists (8), worms (12), flame hooks (14), a falling fist
+/// (19) and a golem (21).
+pub const BOOMERANG: ChipId = 0x0C;
+pub const LANCE: ChipId = 0x0D;
+pub const FIST: ChipId = 0x0E;
+pub const WORM: ChipId = 0x0F;
+pub const FLAME_HOOK: ChipId = 0x10;
+pub const JUSTICE: ChipId = 0x11;
+pub const GOLEM: ChipId = 0x12;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -160,6 +170,16 @@ pub fn scripts() -> Scripts {
                 ("chips/0af-busterup/chip", "chips/0af-busterup/chip"),
                 ("chips/11d-synctrgr/chip", "chips/11d-synctrgr/chip"),
                 ("objects/plus-sparkle/plus_sparkle", "objects/plus-sparkle/plus_sparkle"),
+                ("objects/boomerang/boomerang", "objects/boomerang/boomerang"),
+                ("objects/lance/lance", "objects/lance/lance"),
+                ("objects/fire-hit/fire_hit", "objects/fire-hit/fire_hit"),
+                ("objects/sand-worm/sand_worm", "objects/sand-worm/sand_worm"),
+                ("objects/sand-hole/sand_hole", "objects/sand-hole/sand_hole"),
+                ("objects/sand-spray/sand_spray", "objects/sand-spray/sand_spray"),
+                ("objects/flame-hook/flame_hook", "objects/flame-hook/flame_hook"),
+                ("objects/flame-hook-fire/flame_hook_fire", "objects/flame-hook-fire/flame_hook_fire"),
+                ("objects/justice-one/justice_one", "objects/justice-one/justice_one"),
+                ("objects/golem/golem", "objects/golem/golem"),
                 ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
                 ("objects/rock-chunk/rock_chunk", "objects/rock-chunk/rock_chunk"),
                 ("lib/element", "lib/element"),
@@ -192,6 +212,7 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x01, "Charged shot", Some(0x16), "01-charged-shot/charged_shot"),
         weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
         weapon(0x18, "Ground charge", None, "18-ground-charge/ground_charge"),
+        weapon(0x1B, "Tomahawk throw", Some(0x4E), "1b-tomahawk-throw/tomahawk_throw"),
         weapon(0x1E, "Beast claw", Some(0x52), "1e-beast-claw/beast_claw"),
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
         weapon(0x2A, "Absorb", Some(0x58), "2a-absorb/absorb"),
@@ -235,6 +256,16 @@ fn kinds() -> Vec<ObjectKind> {
         kind("whirlwind", Pool::Attack, 0x81, "objects/whirlwind/whirlwind"),
         kind("absorbed-obstacle", Pool::Effect, 0x87, "objects/absorbed-obstacle/absorbed_obstacle"),
         kind("plus-sparkle", Pool::Effect, 0x14, "objects/plus-sparkle/plus_sparkle"),
+        kind("boomerang", Pool::Attack, 0x32, "objects/boomerang/boomerang"),
+        kind("lance", Pool::Attack, 0x6F, "objects/lance/lance"),
+        kind("fire-hit", Pool::Attack, 0x5B, "objects/fire-hit/fire_hit"),
+        kind("sand-worm", Pool::Attack, 0xCB, "objects/sand-worm/sand_worm"),
+        kind("sand-hole", Pool::Actor, 0x1C, "objects/sand-hole/sand_hole"),
+        kind("sand-spray", Pool::Attack, 0xCC, "objects/sand-spray/sand_spray"),
+        kind("flame-hook", Pool::Effect, 0x8C, "objects/flame-hook/flame_hook"),
+        kind("flame-hook-fire", Pool::Attack, 0xCA, "objects/flame-hook-fire/flame_hook_fire"),
+        kind("justice-one", Pool::Attack, 0xAE, "objects/justice-one/justice_one"),
+        kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
         kind("rock-chunk", Pool::Effect, 0x09, "objects/rock-chunk/rock_chunk"),
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
@@ -356,7 +387,27 @@ fn chips() -> Vec<ChipData> {
             script: Some("chips/11d-synctrgr/chip".into()),
             ..chip(SYNC, "Sync", 0x1C, 13)
         },
+        spawning(BOOMERANG, "Boomer", 1, [0, 0, 0, 0], "objects/boomerang/boomerang"),
+        spawning(LANCE, "Lance", 4, [0, 0, 0, 0], "objects/lance/lance"),
+        spawning(FIST, "Fist", 8, [0, 3, 0, 0], "objects/fire-hit/fire_hit"),
+        spawning(WORM, "Worm", 12, [0, 0, 0, 0], "objects/sand-worm/sand_worm"),
+        spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "objects/flame-hook/flame_hook"),
+        spawning(JUSTICE, "Justice", 19, [0, 0, 0, 0], "objects/justice-one/justice_one"),
+        spawning(GOLEM, "Golem", 21, [0, 0, 0, 0], "objects/golem/golem"),
     ]
+}
+
+/// An instant chip whose effect spawns an object: made-up damage.
+fn spawning(id: ChipId, name: &str, subtype: u8, params: [u8; 4], script: &str) -> ChipData {
+    ChipData {
+        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+        hit_param: 0x30,
+        params,
+        damage: 40,
+        lockout: 20,
+        script: Some(script.into()),
+        ..chip(id, name, 0x1C, subtype)
+    }
 }
 
 fn navi() -> NaviData {
@@ -516,6 +567,19 @@ fn rules() -> Rules {
             column_shifts: vec![-1, -2],
         },
         custom_screen: custom_screen_layout(),
+        // A made-up sine: a triangle wave.
+        sine: (0..320i32)
+            .map(|i| {
+                let q = i % 64;
+                let v = match i / 64 % 4 {
+                    0 => q,
+                    1 => 64 - q,
+                    2 => -q,
+                    _ => q - 64,
+                };
+                (v * 4) as i16
+            })
+            .collect(),
     }
 }
 
@@ -592,6 +656,7 @@ fn objects() -> ObjectData {
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         body_overlays: Vec::new(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
+        boomerangs: (0..5).map(|id| BoomerangKind { id, speed: 0x8_0000, turn_speed: 0x6_0000, grass: id < 3 }).collect(),
         projectiles: projectiles(),
         flying_shots: flying_shots(),
         kinds: kinds(),

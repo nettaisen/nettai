@@ -49,6 +49,10 @@ pub struct Rules {
     pub lockon: Lockon,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,
+    /// The sine table (`math_sinTable`, 1.0 = 0x100) by angle (256 a
+    /// turn), with 64 entries more: `math_cosTable` is the same table 64
+    /// entries on.
+    pub sine: Vec<i16>,
 }
 
 impl Rules {
