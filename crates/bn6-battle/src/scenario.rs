@@ -176,11 +176,14 @@ pub fn record_on(setup: RoundSetup, ticks: usize, seed: u32) -> Vec<Tick> {
     tape
 }
 
-/// Play a tape from the start of the round with `behaviors`.
+/// Play a tape from the start of the round with `behaviors` running the
+/// content.
 pub fn play(tape: &[Tick], behaviors: Behaviors) -> Battle {
-    let mut b = Battle::with_behaviors(setup(), content(), behaviors);
-    for t in tape {
-        b.tick(&t.input, t.events.clone());
-    }
-    b
+    crate::behavior::with_runtime(&behaviors, || {
+        let mut b = Battle::new(setup(), content());
+        for t in tape {
+            b.tick(&t.input, t.events.clone());
+        }
+        b
+    })
 }

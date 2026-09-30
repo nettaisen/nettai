@@ -135,8 +135,8 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).ai_index != 0 && action > 8 {
         // The link navis' own actions (`off_80EA4C8[AIIndex]` past idle):
         // their chip (0x0A) is content.
-        if let Some(kind) = b.behaviors.action(action) {
-            return crate::behavior::run_action(b, kind, r);
+        if let Some(h) = b.content.defs.action_numbered(action) {
+            return crate::behavior::run_action(b, h, r);
         }
         panic!("form action {action} is not implemented yet");
     }
@@ -860,7 +860,7 @@ fn can_cut_in(b: &Battle, r: ObjectRef) -> bool {
 /// in the hand. See docs/engine/chips.md §3.6.5.
 fn cut_in(b: &mut Battle, r: ObjectRef) {
     let (action, a) = super::chip_use::prepare_detached(b, r);
-    let controller = match action {
+    let controller = match action.number {
         actions::dimming_chip::ACTION => actions::dimming_chip::spawn_controller(b, r, &a),
         actions::navi_chip::ACTION => actions::navi_chip::spawn_controller(b, r, &a),
         _ => return,

@@ -50,24 +50,26 @@ fn main() {
         for &native in natives {
             let options = Options { native_code: native, budget: u32::MAX, ..Default::default() };
             let behaviors = Behaviors::load(&content, options).unwrap();
-            let mut b = Battle::with_behaviors(scenario::setup(), scenario::content(), behaviors);
-            for t in &tape[..250] {
-                b.tick(&t.input, t.events.clone());
-            }
-            // A sun beam on player 0 that runs `op` N times when its timer2 is 7.
-            let owner = b.player(0).unwrap();
-            let r = behavior::spawn_kind(&mut b, "sun-beam", Vec3::default(), [0, 2, 0, 0]).unwrap();
-            b.objects.get_mut(r).related[0] = Some(owner);
-            behavior::set_state_variant(&mut b, r, "slot", "related");
-            b.objects.get_mut(owner).related[0] = Some(r);
-            b.tick(&idle, Default::default());
-            let t = Instant::now();
-            b.tick(&idle, Default::default());
-            let plain = t.elapsed();
-            b.objects.get_mut(r).timer2 = 7;
-            let t = Instant::now();
-            b.tick(&idle, Default::default());
-            let ns = t.elapsed().saturating_sub(plain).as_secs_f64() * 1e9 / N as f64;
+            let ns = behavior::with_runtime(&behaviors, || {
+                let mut b = Battle::new(scenario::setup(), scenario::content());
+                for t in &tape[..250] {
+                    b.tick(&t.input, t.events.clone());
+                }
+                // A sun beam on player 0 that runs `op` N times when its timer2 is 7.
+                let owner = b.player(0).unwrap();
+                let r = behavior::spawn_kind(&mut b, "sun-beam", Vec3::default(), [0, 2, 0, 0]).unwrap();
+                b.objects.get_mut(r).related[0] = Some(owner);
+                behavior::set_state_variant(&mut b, r, "slot", "related");
+                b.objects.get_mut(owner).related[0] = Some(r);
+                b.tick(&idle, Default::default());
+                let t = Instant::now();
+                b.tick(&idle, Default::default());
+                let plain = t.elapsed();
+                b.objects.get_mut(r).timer2 = 7;
+                let t = Instant::now();
+                b.tick(&idle, Default::default());
+                t.elapsed().saturating_sub(plain).as_secs_f64() * 1e9 / N as f64
+            });
             row += &format!(" {ns:.0} ns |");
         }
         println!("{row}");

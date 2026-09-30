@@ -902,7 +902,7 @@ fn form_weapons_roll_back() {
 fn start_weapon_as(b: &mut Battle, p0: ObjectRef, routine: u8, kind: u8) -> u8 {
     let action = super::super::idle::weapon_routine(b, p0, routine);
     super::super::set_attack(b, p0, action, kind);
-    action
+    action.number
 }
 
 /// The objects of content kind `name`, in update order.
@@ -1071,7 +1071,7 @@ fn start_weapon(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
     ai_mut(b, r).attack.charged = 0;
     let action = crate::kinds::player::idle::weapon_routine(b, r, routine);
     crate::kinds::player::set_attack(b, r, action, 2);
-    action
+    action.number
 }
 
 /// A copy of the battle plays the next `n` ticks exactly as the battle
@@ -1332,7 +1332,7 @@ fn the_beast_claw_slashes_the_panel_ahead_twice() {
     (o.panel, o.future_panel) = (PanelPos { x: 4, y: 2 }, PanelPos { x: 4, y: 2 });
     (o.pos.x, o.pos.y) = (x, y);
     let action = super::super::idle::weapon_routine(&mut b, p0, 0x1E);
-    assert_eq!(action, 0x52);
+    assert_eq!(action.number, 0x52);
     super::super::set_attack(&mut b, p0, action, 2);
     let mut t = 0;
     // The claw is up for 3 ticks; the first slash on the third: its effect
@@ -1448,7 +1448,7 @@ fn buster_up_and_sync_trigger_change_the_navi() {
     assert_eq!(b.stats[0].attack, 9);
     // SyncTrgr's effect alone (the Full Synchro aura that follows is the
     // framework's, not ported yet): the mood goes to the top.
-    let hook = b.behaviors.hook(bn6_content_api::Hook::InstantChip(13)).expect("SyncTrgr's effect");
+    let hook = b.content.defs.hook(bn6_content_api::Hook::InstantChip(13)).expect("SyncTrgr's effect");
     let spec = bn6_content_api::InstantChipSpec::default();
     crate::behavior::call_hook(&mut b, hook, bn6_content_api::HookCall::InstantChip { user: p0, spec });
     assert_eq!(b.stats[0].mood, 0xFF);
@@ -1532,7 +1532,7 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
     let start = || {
         let (mut b, p0, p1) = fight();
         let action = super::super::idle::weapon_routine(&mut b, p0, 0x1B);
-        assert_eq!(action, 0x4E);
+        assert_eq!(action.number, 0x4E);
         super::super::set_attack(&mut b, p0, action, 2);
         (b, p0, p1)
     };
@@ -1622,4 +1622,94 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     assert_eq!(b.objects.get(p0).action, 8);
     let st = ai_mut(&mut b, p0).status;
     assert_eq!((st & status::CROSSED != 0, st & status::CHANGING_CROSS), (true, 0));
+}
+
+// ---- Content model v2: definitions in a battle ---------------------------------------------
+
+/// A fight on the test content with the test pack's definitions
+/// (`testing::with_test_pack`).
+fn fight_on_test_pack() -> (Battle, ObjectRef, ObjectRef) {
+    let content = std::sync::Arc::new(testing::with_test_pack());
+    let mut setup = testing::round_setup(testing::LINK_BATTLE, megaman());
+    setup.content = content.hash();
+    setup.settings.effects = 0xE8C;
+    let mut b = Battle::new(setup, content);
+    b.spawn_actors();
+    b.run_objects();
+    b.round.flags |= battle_flags::FIGHTING;
+    let players = [b.player(0).unwrap(), b.player(1).unwrap()];
+    for p in players {
+        let o = b.objects.get_mut(p);
+        (o.action, o.phase, o.phase_init) = (8, 0, 0);
+    }
+    (b, players[0], players[1])
+}
+
+/// A content object's state field.
+fn state_field(b: &Battle, r: ObjectRef, name: &str) -> i64 {
+    let crate::kinds::Vars::Content(s) = &b.objects.get(r).vars else { panic!("{r:?} has no content state") };
+    let schema = b.content.defs.schema(s.id());
+    s.get(schema, schema.index_of(name).expect("the field")).load().int().expect("an integer")
+}
+
+/// How many ticks the navi stays in action `action` from now.
+fn ticks_in(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, action: u8) -> u32 {
+    let mut n = 0;
+    while b.objects.get(p0).action == action {
+        tick(b, p0, p1, 0);
+        n += 1;
+        assert!(n < 100, "the action never ended");
+    }
+    n
+}
+
+#[test]
+fn a_defined_kind_runs_in_its_bridged_slot_with_its_state() {
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let r = crate::behavior::spawn_kind(&mut b, "test/ticker", crate::object::Vec3::default(), [0; 4]).unwrap();
+    assert_eq!((r.pool, b.objects.get(r).index), (Pool::Effect, testing::TICKER_SLOT));
+    for n in 1..=5 {
+        tick(&mut b, p0, p1, 0);
+        assert_eq!(state_field(&b, r, "ticks"), n);
+    }
+    assert_rolls_back(&mut b, [p0, p1], 10, 0);
+    for _ in 0..30 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert!(!b.objects.in_order().any(|o| o == r), "it left after 30 ticks");
+}
+
+#[test]
+fn a_weapon_names_a_defined_action_which_runs_by_handle() {
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let action = super::super::idle::weapon_routine(&mut b, p0, testing::TICK_SHOT);
+    assert_eq!(action.number, testing::TICK_SHOT_ACTION);
+    let h = action.content.expect("a defined action");
+    assert_eq!(b.content.defs.action(h).key, "test/tick-shot/shot");
+    super::super::set_attack(&mut b, p0, action, 1);
+    // The navi's CurAction is the bridged number, and the action's own
+    // update runs: it stands for 12 ticks.
+    assert_eq!(ticks_in(&mut b, p0, p1, testing::TICK_SHOT_ACTION), 12);
+}
+
+#[test]
+fn chips_of_a_series_run_their_own_actions_under_one_number() {
+    // Both chips' records name one action number; each runs the action its
+    // definition composed, with its own length.
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let defs = &b.content.defs;
+    let [one, two] = [testing::TICKER_1, testing::TICKER_2].map(|id| match defs.chip_with_id(id).unwrap().usage {
+        crate::content::ChipUsage::Action(h) => h,
+        u => panic!("{u:?}"),
+    });
+    assert_ne!(one, two);
+    assert_eq!(defs.action(one).schema, defs.action(two).schema, "one builder, one state layout");
+    use_chip(&mut b, p0, p1, testing::TICKER_1);
+    assert_eq!(b.objects.get(p0).action, testing::TICKER_ACTION);
+    let first = ticks_in(&mut b, p0, p1, testing::TICKER_ACTION);
+    let (mut b, p0, p1) = fight_on_test_pack();
+    use_chip(&mut b, p0, p1, testing::TICKER_2);
+    assert_rolls_back(&mut b, [p0, p1], 3, 0);
+    let second = ticks_in(&mut b, p0, p1, testing::TICKER_ACTION) + 3;
+    assert_eq!(second - first, 3, "Ticker2 stands 9 ticks to Ticker1's 6");
 }
