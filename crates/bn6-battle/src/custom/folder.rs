@@ -88,6 +88,17 @@ impl BattleFolder {
     /// shuffle (`sub_8000D12`, [`shuffle`]) takes two draws a round, as
     /// many rounds as chips.
     pub fn shuffled(saved: &SavedFolder, battle_mode: u8, rng: &mut Rng, library: &dyn Library) -> BattleFolder {
+        BattleFolder::shuffled_with_tag_pair(saved, battle_mode, rng, library).0
+    }
+
+    /// `shuffled`, and where the tag pair went (BattleState+0x45, which
+    /// ChpShufl's re-deal reads: `ConsoleSetup::tag_pair`).
+    pub fn shuffled_with_tag_pair(
+        saved: &SavedFolder,
+        battle_mode: u8,
+        rng: &mut Rng,
+        library: &dyn Library,
+    ) -> (BattleFolder, Option<u8>) {
         let (regular, tags) = if battle_mode == 1 { (None, None) } else { (saved.regular, saved.tags) };
         // Lay out: the regular chip first, the tags last.
         let mut laid = [saved.chips[0]; FOLDER_SIZE];
@@ -126,12 +137,16 @@ impl BattleFolder {
                 }
             }
         }
+        let mut tag_pair = None;
         if tags.is_some() && normal.len() == FOLDER_SIZE {
             let at = (rng.next_positive() % 19 + 1) as usize;
             normal.swap(FOLDER_SIZE - 2, at);
             normal.swap(FOLDER_SIZE - 1, at + 1);
+            tag_pair = Some(at as u8);
         }
-        BattleFolder { chips: std::array::from_fn(|i| normal.get(i).copied()), regular_pending: regular.is_some() }
+        let folder =
+            BattleFolder { chips: std::array::from_fn(|i| normal.get(i).copied()), regular_pending: regular.is_some() };
+        (folder, tag_pair)
     }
 }
 
@@ -139,8 +154,9 @@ impl BattleFolder {
 /// from len − 1 down to 1, swap entry i with entry `draw() % (i + 1)`; the
 /// draws after the first len − 1 are taken and dropped (`draws` is at least
 /// len − 1). The game's shuffles take two draws a round: `sub_8000D12` on a
-/// console's RNG1 (the folder) and `sub_8000C72` on RNG2 (panel lists),
-/// whose callers pass 2 × rounds (docs/engine/battle-flow.md §3.1).
+/// console's RNG1 (the folder, the re-deal) and `sub_8000C72` on RNG2
+/// (panel lists), whose callers pass 2 × rounds (docs/engine/battle-flow.md
+/// §3.1).
 pub fn shuffle<T>(items: &mut [T], draws: usize, mut draw: impl FnMut() -> u64) {
     let used = items.len().saturating_sub(1);
     assert!(used <= draws, "a shuffle of {} entries needs {used} draws, not {draws}", items.len());
@@ -177,7 +193,7 @@ mod tests {
     /// folder has them.
     fn check(saved: SavedFolder, rng1: u32, recorded: [u16; FOLDER_SIZE], expected: [u16; FOLDER_SIZE], rng1_next_frame: u32) {
         let mut rng = Rng::new(rng1);
-        let f = BattleFolder::shuffled(&saved, 0, &mut rng, &library());
+        let (f, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, &library());
         rng.next();
         assert_eq!(rng.state, rng1_next_frame, "RNG1 after the shuffle");
         assert_eq!(f.chips, chips(expected).map(Some));
@@ -197,9 +213,10 @@ mod tests {
             assert_eq!(recorded[0], saved.chips[r as usize]);
         }
         if let Some((a, b)) = saved.tags {
-            let pair = [Some(saved.chips[a as usize]), Some(saved.chips[b as usize])];
-            let at = f.chips.windows(2).position(|w| w == pair).expect("the tag pair together");
-            assert_eq!(recorded[at..at + 2], pair.map(Option::unwrap), "the tag pair's place");
+            let at = tag_pair.expect("a tag pair placed") as usize;
+            let pair = [saved.chips[a as usize], saved.chips[b as usize]];
+            assert_eq!([f.chips[at].unwrap(), f.chips[at + 1].unwrap()], pair, "the tag pair together");
+            assert_eq!(recorded[at..at + 2], pair, "the tag pair's place");
         }
     }
 
