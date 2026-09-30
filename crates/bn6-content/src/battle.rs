@@ -5,11 +5,18 @@
 //! chips/NNN-name/chip.toml             a chip, with the data only its action reads
 //! navis/NN-name/navi.toml              a navi
 //! navis/00-megaman/forms/NN-name/form.toml   one of MegaMan's forms
-//! objects/KIND/object.toml             an object kind's data (rocks, overlays...)
+//! navis/00-megaman/weapons/NN-name/weapon.toml   a weapon routine a script implements
+//! objects/KIND/object.toml             an object kind's data (rocks, overlays...) and, for a kind
+//!                                      a script implements, its [kind] (pool, index, script)
 //! rules/*.toml                         rules no entity owns (collision, panels, stages...)
 //! registries/*.toml                    things many entities name by id (effects, regions...)
 //! graphics/sprites/CC-II/animations.json   sprite timing (see crate::sprite)
+//! **/*.luau                            the scripts, next to the data they implement
 //! ```
+//!
+//! An entity names its script in its file (`script = "chip.luau"`, a path
+//! relative to the file's folder); `Content::registrations` says what that
+//! makes the script implement (docs/design/scripting.md).
 //!
 //! Every record carries its original id; [`load`] builds the engine's
 //! dense id-indexed tables and reports duplicate ids, gaps and dangling
@@ -39,18 +46,34 @@ const ATTACH_POINTS: usize = 34;
 struct ObjectFile<T> {
     #[serde(default = "Vec::new", skip_serializing_if = "Vec::is_empty")]
     variant: Vec<T>,
+    /// The object kind a script implements (see `KindFile`).
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct AbsorbedFile {
-    kind: Vec<IdSprite>,
+    /// By obstacle kind.
+    obstacle: Vec<IdSprite>,
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SunBeamFile {
     look: Vec<IdSprite>,
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
+}
+
+/// An object kind a script implements, in its folder's `object.toml`
+/// (`[kind]`: pool, index, script).
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KindFile {
+    kind: ObjectKind,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
@@ -64,6 +87,8 @@ struct IdSprite {
 #[serde(deny_unknown_fields)]
 struct AttachmentFile {
     attachment: Vec<AttachmentKind>,
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -393,6 +418,7 @@ fn parse_grid(rows: &[String; 5], file: &str, what: &str, report: &mut Report) -
 /// few as fit, at least two).
 const HEX_KEYS: &[(&str, usize)] = &[
     ("id", 0),
+    ("index", 0),
     ("action", 0),
     ("music", 0),
     ("layout", 0),
@@ -499,6 +525,50 @@ pub fn form_folder(f: &FormData) -> String {
     format!("{FORMS_OF}/{:02x}-{}", f.id, slug(&f.name))
 }
 
+/// Where MegaMan's weapon routines are.
+const WEAPONS_OF: &str = "navis/00-megaman/weapons";
+
+/// A weapon routine's folder.
+pub fn weapon_folder(w: &WeaponData) -> String {
+    format!("{WEAPONS_OF}/{:02x}-{}", w.id, slug(&w.name))
+}
+
+/// The object kinds whose folders hold data of their own (a kind of these
+/// a script implements keeps its `[kind]` in the same file).
+const DATA_OBJECTS: [&str; 5] = ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment"];
+
+/// A script as an entity's file names it: `module` (a path in the pack
+/// without `.luau`) relative to `folder`, with `.luau`.
+pub fn script_file(folder: &str, module: &str) -> String {
+    let from: Vec<&str> = folder.split('/').collect();
+    let to: Vec<&str> = module.split('/').collect();
+    let common = from.iter().zip(&to).take_while(|(a, b)| a == b).count();
+    let mut parts: Vec<&str> = vec![".."; from.len() - common];
+    parts.extend(&to[common..]);
+    format!("{}.luau", parts.join("/"))
+}
+
+/// The module an entity's `script` names (a path relative to `folder`).
+pub fn script_module(folder: &str, file: &str) -> Result<String, String> {
+    let rel = file.strip_suffix(".luau").ok_or_else(|| format!("script {file:?} is not a .luau file"))?;
+    let mut parts: Vec<&str> = folder.split('/').collect();
+    for seg in rel.split('/') {
+        match seg {
+            "." | "" => {}
+            ".." => {
+                parts.pop().ok_or_else(|| format!("script {file:?} leaves the pack"))?;
+            }
+            s => parts.push(s),
+        }
+    }
+    Ok(parts.join("/"))
+}
+
+/// `k` with its script as its folder names it.
+fn kind_in_file(k: &ObjectKind) -> ObjectKind {
+    ObjectKind { script: script_file(&format!("objects/{}", k.name), &k.script), ..k.clone() }
+}
+
 /// The battle data's files (not the sprite timing: that is written with
 /// the sprites, `animations.json`).
 pub fn export(c: &Content) -> Files {
@@ -506,7 +576,9 @@ pub fn export(c: &Content) -> Files {
     let mut put = |path: String, bytes: Vec<u8>| files.push((path, bytes));
     for chip in &c.chips {
         let comment = format!("Chip {:#05x}, {}. See docs/design/content-pack.md for what each field means.", chip.id, chip.name);
-        put(format!("{}/chip.toml", chip_folder(chip)), toml_file(&comment, chip));
+        let folder = chip_folder(chip);
+        let chip = ChipData { script: chip.script.as_ref().map(|m| script_file(&folder, m)), ..chip.clone() };
+        put(format!("{folder}/chip.toml"), toml_file(&comment, &chip));
     }
     for n in &c.navis {
         let comment = format!("Navi {}, {}.", n.id, n.name);
@@ -516,33 +588,59 @@ pub fn export(c: &Content) -> Files {
         let comment = format!("MegaMan's form {:#04x}, {}.", f.id, f.name);
         put(format!("{}/form.toml", form_folder(f)), toml_file(&comment, f));
     }
+    for w in &c.weapons {
+        let comment = format!("MegaMan's weapon routine {:#04x}, {}: a script implements it.", w.id, w.name);
+        let folder = weapon_folder(w);
+        let w = WeaponData { script: script_file(&folder, &w.script), ..w.clone() };
+        put(format!("{folder}/weapon.toml"), toml_file(&comment, &w));
+    }
     // Object kinds.
     let o = &c.objects;
+    let script_kind = |name: &str| o.kinds.iter().find(|k| k.name == name).map(kind_in_file);
     put(
-        "objects/rock/object.toml".into(), toml_file("Rocks (attack object #0x59) by variant, the rock's first parameter.", &ObjectFile { variant: o.rocks.clone() }),
+        "objects/rock/object.toml".into(),
+        toml_file(
+            "Rocks (attack object #0x59) by variant, the rock's first parameter.",
+            &ObjectFile { variant: o.rocks.clone(), script_kind: script_kind("rock") },
+        ),
     );
     let absorbed = o.absorbed_sprites.iter().enumerate().map(|(i, &sprite)| IdSprite { id: i as u8, sprite }).collect();
     put(
-        "objects/absorbed-obstacle/object.toml".into(), toml_file("The sprite an absorbed obstacle (effect object #0x39) flies with, by obstacle kind.", &AbsorbedFile { kind: absorbed }),
+        "objects/absorbed-obstacle/object.toml".into(),
+        toml_file(
+            "The sprite an absorbed obstacle (effect object #0x39) flies with, by obstacle kind.",
+            &AbsorbedFile { obstacle: absorbed, script_kind: script_kind("absorbed-obstacle") },
+        ),
     );
     put(
         "objects/body-overlay/object.toml".into(), toml_file(
             "Body overlays (actor object #0x56) by variant: a second sprite on a navi, in front of it in the\nanimations `in_front` marks.",
-            &ObjectFile { variant: o.body_overlays.clone() },
+            &ObjectFile { variant: o.body_overlays.clone(), script_kind: script_kind("body-overlay") },
         ),
     );
     let looks = o.sun_beam_looks.iter().enumerate().map(|(i, &sprite)| IdSprite { id: i as u8, sprite }).collect();
     put(
-        "objects/sun-beam/object.toml".into(), toml_file("The sun beam's (effect object #0x48) sprites by look, its first parameter.", &SunBeamFile { look: looks }),
+        "objects/sun-beam/object.toml".into(),
+        toml_file(
+            "The sun beam's (effect object #0x48) sprites by look, its first parameter.",
+            &SunBeamFile { look: looks, script_kind: script_kind("sun-beam") },
+        ),
     );
     let owned: Vec<u8> = c.chips.iter().filter_map(|c| Some(c.gun_del_sol.as_ref()?.gun.id)).collect();
     let rest = o.attachments.iter().filter(|a| !owned.contains(&a.id)).copied().collect();
     put(
         "objects/attachment/object.toml".into(), toml_file(
             "Attachments (actor object #5) by number, its first parameter: the ones no chip folder declares.",
-            &AttachmentFile { attachment: rest },
+            &AttachmentFile { attachment: rest, script_kind: script_kind("attachment") },
         ),
     );
+    for k in o.kinds.iter().filter(|k| !DATA_OBJECTS.contains(&k.name.as_str())) {
+        let comment = format!("{} {} object {:#04x}: a script implements it.", k.name, k.pool.name(), k.index);
+        put(format!("objects/{}/object.toml", k.name), toml_file(&comment, &KindFile { kind: kind_in_file(k) }));
+    }
+    for (module, source) in &c.scripts.modules {
+        put(format!("{module}.luau"), source.clone().into_bytes());
+    }
     // Rules.
     let r = &c.rules;
     let weakness = (0..6).map(|i| (ELEMENT_NAMES[i].to_string(), r.element_weakness[i])).collect();
@@ -833,7 +931,14 @@ pub fn load(root: &Path, report: &mut Report) -> Option<Content> {
     // Chips.
     let mut chips = Vec::new();
     for file in entity_files(root, "chips", "chip.toml") {
-        if let Some(c) = read_toml::<ChipData>(root, &file, report) {
+        if let Some(mut c) = read_toml::<ChipData>(root, &file, report) {
+            let folder = file.trim_end_matches("/chip.toml");
+            if let Some(s) = &c.script {
+                match script_module(folder, s) {
+                    Ok(m) => c.script = Some(m),
+                    Err(e) => report.error(&file, e),
+                }
+            }
             chips.push((c.id as usize, c, file));
         }
     }
@@ -888,27 +993,53 @@ pub fn load(root: &Path, report: &mut Report) -> Option<Content> {
         report,
     );
     let animations = load_animations(root, report)?;
-    let content = Content { chips, navis, forms, rules, objects, effects, sparks, regions, panel_layouts, animations };
+    let weapons = load_weapons(root, report);
+    let scripts = load_scripts(root, report);
+    let content =
+        Content { chips, navis, forms, rules, objects, effects, sparks, regions, panel_layouts, animations, weapons, scripts };
     check_references(&content, report);
     (report.count(crate::report::Level::Error) == errors_before).then_some(content)
 }
 
 fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<ObjectData> {
+    let mut kinds = Vec::new();
+    let mut add_kind = |name: &str, k: Option<ObjectKind>, report: &mut Report| {
+        let Some(k) = k else { return };
+        match script_module(&format!("objects/{name}"), &k.script) {
+            Ok(script) => kinds.push(ObjectKind { name: name.to_string(), script, ..k }),
+            Err(e) => report.error(format!("objects/{name}/object.toml"), e),
+        }
+    };
     let rocks: ObjectFile<RockKind> = read_toml(root, "objects/rock/object.toml", report)?;
+    add_kind("rock", rocks.script_kind, report);
     let file = "objects/rock/object.toml";
     let rocks = dense(rocks.variant.into_iter().map(|r| (r.id as usize, r, file.into())).collect(), "rock variant", report);
     let absorbed: AbsorbedFile = read_toml(root, "objects/absorbed-obstacle/object.toml", report)?;
+    add_kind("absorbed-obstacle", absorbed.script_kind, report);
     let file = "objects/absorbed-obstacle/object.toml";
-    let absorbed_sprites = dense(absorbed.kind.into_iter().map(|k| (k.id as usize, k.sprite, file.into())).collect(), "obstacle kind", report);
+    let absorbed_sprites = dense(absorbed.obstacle.into_iter().map(|k| (k.id as usize, k.sprite, file.into())).collect(), "obstacle kind", report);
     let overlays: ObjectFile<BodyOverlay> = read_toml(root, "objects/body-overlay/object.toml", report)?;
+    add_kind("body-overlay", overlays.script_kind, report);
     let file = "objects/body-overlay/object.toml";
     let body_overlays = dense(overlays.variant.into_iter().map(|o| (o.id as usize, o, file.into())).collect(), "body overlay", report);
     let beams: SunBeamFile = read_toml(root, "objects/sun-beam/object.toml", report)?;
+    add_kind("sun-beam", beams.script_kind, report);
     let file = "objects/sun-beam/object.toml";
     let sun_beam_looks = dense(beams.look.into_iter().map(|l| (l.id as usize, l.sprite, file.into())).collect(), "sun beam look", report);
     // Attachments: the chips' own and the rest. A chip may share another's
     // (the same row), but not change it.
     let rest: AttachmentFile = read_toml(root, "objects/attachment/object.toml", report)?;
+    add_kind("attachment", rest.script_kind, report);
+    // The kinds without data of their own.
+    for file in entity_files(root, "objects", "object.toml") {
+        let name = file.trim_start_matches("objects/").trim_end_matches("/object.toml").to_string();
+        if DATA_OBJECTS.contains(&name.as_str()) {
+            continue;
+        }
+        if let Some(k) = read_toml::<KindFile>(root, &file, report) {
+            add_kind(&name, Some(k.kind), report);
+        }
+    }
     let mut all: BTreeMap<u8, (AttachmentKind, String)> = BTreeMap::new();
     let declared = rest
         .attachment
@@ -927,7 +1058,8 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
         }
     }
     let attachments = dense(all.into_iter().map(|(id, (a, file))| (id as usize, a, file)).collect(), "attachment", report);
-    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks })
+    kinds.sort_by(|a, b| a.name.cmp(&b.name));
+    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, kinds })
 }
 
 fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
@@ -1127,8 +1259,63 @@ fn load_animations(root: &Path, report: &mut Report) -> Option<Animations> {
     Some(Animations { sprites })
 }
 
+/// MegaMan's weapon routines that scripts implement.
+fn load_weapons(root: &Path, report: &mut Report) -> Vec<WeaponData> {
+    let mut out: Vec<WeaponData> = Vec::new();
+    for file in entity_files(root, WEAPONS_OF, "weapon.toml") {
+        let Some(mut w) = read_toml::<WeaponData>(root, &file, report) else { continue };
+        if let Some(first) = out.iter().find(|o| o.id == w.id) {
+            report.error(&file, format!("weapon routine {:#04x} is also {}'s", w.id, weapon_folder(first)));
+            continue;
+        }
+        match script_module(file.trim_end_matches("/weapon.toml"), &w.script) {
+            Ok(m) => w.script = m,
+            Err(e) => report.error(&file, e),
+        }
+        out.push(w);
+    }
+    out.sort_by_key(|w| w.id);
+    out
+}
+
+/// The pack's scripts: every `.luau` file but the definition files
+/// (`.d.luau`), by path without `.luau`. (Graphics and sound hold none.)
+pub fn load_scripts(root: &Path, report: &mut Report) -> Scripts {
+    fn walk(root: &Path, dir: &Path, out: &mut BTreeMap<String, String>, report: &mut Report) {
+        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        let mut paths: Vec<_> = entries.flatten().map(|e| e.path()).collect();
+        paths.sort();
+        for path in paths {
+            let rel = path.strip_prefix(root).expect("walked under the root");
+            let key = rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
+            if path.is_dir() {
+                if key != "graphics" && key != "sound" {
+                    walk(root, &path, out, report);
+                }
+                continue;
+            }
+            let Some(module) = key.strip_suffix(".luau") else { continue };
+            if module.ends_with(".d") {
+                continue;
+            }
+            match std::fs::read_to_string(&path) {
+                Ok(source) => {
+                    out.insert(module.to_string(), source);
+                }
+                Err(e) => report.error(&key, format!("can't read: {e}")),
+            }
+        }
+    }
+    let mut modules = BTreeMap::new();
+    walk(root, root, &mut modules, report);
+    Scripts { modules }
+}
+
 /// References between records that must resolve.
 fn check_references(c: &Content, report: &mut Report) {
+    if let Err(e) = c.registrations() {
+        report.error("scripts", e);
+    }
     for (i, s) in c.rules.stages.settings.iter().enumerate() {
         if s.actors.0 as usize >= c.rules.stages.actor_lists.len() {
             report.error("rules/stages.toml", format!("battle settings {i:#04x}: actor list {} doesn't exist", s.actors.0));

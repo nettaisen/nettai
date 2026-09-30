@@ -1,0 +1,9 @@
+# DustCross's ball of junk (attack object #0xB0, `sub_80DB6A4`) is a script. The
+# fraction of its Z is its spawner's register garbage (the low half of a RAM
+# address), which its init keeps.
+
+[kind]
+pool = "attack"
+index = 0xB0
+script = "dust_ball.luau"
+scratch_z_fraction = true

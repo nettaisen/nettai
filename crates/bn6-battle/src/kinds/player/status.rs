@@ -30,7 +30,7 @@ pub(super) fn update(b: &mut Battle, r: ObjectRef) {
 
 /// Where the top block of `sub_801AF44` continues.
 enum Flow {
-    /// The visuals and the pause/time-stop/dispatch choice (`loc_801B142`).
+    /// The visuals and the pause/dimming/dispatch choice (`loc_801B142`).
     Tail,
     /// Straight to the action dispatch.
     Dispatch,
@@ -66,7 +66,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if st & ai_status::CROSS_BREAKING != 0 && cross_lane(b, r) {
         return Flow::Return;
     }
-    if b.is_time_stop() {
+    if b.is_dimmed() {
         return Flow::Tail;
     }
     b.objects.get_mut(r).prevent_anim = 0;
@@ -103,7 +103,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     Flow::Tail
 }
 
-/// `loc_801B142`: visibility, then the action (or the pause / time-stop
+/// `loc_801B142`: visibility, then the action (or the pause / dimming
 /// handler).
 fn tail(b: &mut Battle, r: ObjectRef) {
     // sprite_zeroColorShader and the colour-shader helpers are
@@ -116,8 +116,8 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     if b.paused && b.objects.get(r).action != 0 {
         return pause_requests(b, r);
     }
-    if b.is_time_stop() {
-        return time_stop(b, r);
+    if b.is_dimmed() {
+        return while_dimmed(b, r);
     }
     dispatch(b, r);
 }
@@ -772,7 +772,7 @@ fn drain_hp(b: &mut Battle, r: ObjectRef) {
 /// `sub_8016934`: visible unless flashing (2 ticks off, 2 on) or the
 /// local navi is blind and this is the other side's.
 fn update_visibility(b: &mut Battle, r: ObjectRef) {
-    if !b.is_time_stop() {
+    if !b.is_dimmed() {
         b.objects.get_mut(r).flags |= flags::VISIBLE;
     }
     let f = flag1(b, r);
@@ -831,33 +831,33 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
     set_attack(b, r, 0x1C, 0);
 }
 
-/// `sub_800BEDA`: the navi may counter the other side's freeze: its own
+/// `sub_800BEDA`: the navi may cut in on the other side's dimming: its own
 /// side isn't freezing (or it is waiting on a counter), and the other
-/// side's chip, which can be countered, is showing its name.
-fn can_counter_freeze(b: &Battle, r: ObjectRef) -> bool {
-    use crate::time_freeze::FreezeState;
+/// side's chip, which can be cut in on, is showing its telop.
+fn can_cut_in(b: &Battle, r: ObjectRef) -> bool {
+    use crate::dimming::DimmingState;
     let side = b.objects.get(r).alliance as usize;
-    let own = b.freeze[side];
-    let other = b.freeze[side ^ 1];
+    let own = b.dimming[side];
+    let other = b.dimming[side ^ 1];
     own.user.is_none_or(|u| u == r)
-        && matches!(own.state, FreezeState::Idle | FreezeState::Waiting)
-        && !other.uncounterable
-        && other.state == FreezeState::ShowingName
+        && matches!(own.state, DimmingState::Idle | DimmingState::Waiting)
+        && !other.no_cut_in
+        && other.state == DimmingState::ShowingName
 }
 
-/// `sub_8017AB4`: in time stop the navi only shakes while hit (one RNG
+/// `sub_8017AB4`: while dimmed the navi only shakes while hit (one RNG
 /// draw per shaking tick).
-fn time_stop(b: &mut Battle, r: ObjectRef) {
+fn while_dimmed(b: &mut Battle, r: ObjectRef) {
     let player = navi_record(b, r).actor_type == ActorType::Player;
-    if player && is_link(b) && ai(b, r).requests & request::TIMESTOP_CHIP != 0 {
-        // The next chip must stop time too.
+    if player && is_link(b) && ai(b, r).requests & request::CUT_IN != 0 {
+        // The next chip must be a dimming chip too.
         let chip = super::next_chip(b, r);
         let freezes = chip != crate::hand::NO_CHIP
-            && b.content.chip(chip).flags.has(crate::content::ChipFlags::TIME_FREEZE);
-        if can_counter_freeze(b, r) && freezes {
-            panic!("time-stop counter chips (sub_8017AB4) are not implemented yet");
+            && b.content.chip(chip).flags.has(crate::content::ChipFlags::DIMMING);
+        if can_cut_in(b, r) && freezes {
+            panic!("cut-ins (sub_8017AB4) are not implemented yet");
         }
-        ai_mut(b, r).requests &= !(request::TIMESTOP_CHIP | request::CHARGED_CHIP | request::CHIP);
+        ai_mut(b, r).requests &= !(request::CUT_IN | request::CHARGED_CHIP | request::CHIP);
     }
     let o = b.objects.get_mut(r);
     if o.prevent_anim == 0 {

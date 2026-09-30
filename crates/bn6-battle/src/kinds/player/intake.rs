@@ -90,7 +90,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     if b.paused {
         return;
     }
-    let timestop = b.is_time_stop();
+    let dimmed = b.is_dimmed();
     let action = b.objects.get(r).action;
     let holy = {
         let c = coll(b, r);
@@ -112,8 +112,8 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     match barrier {
         8 => {
             if barrier_hp16(c) == 0 {
-                // Regrows after 240 ticks (not in time stop, frozen or bubbled).
-                if timestop || matches!(action, 6 | 7) {
+                // Regrows after 240 ticks (not while dimmed, frozen or bubbled).
+                if dimmed || matches!(action, 6 | 7) {
                     return;
                 }
                 c.barrier_timer = c.barrier_timer.wrapping_add(1);
@@ -126,7 +126,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
         0xA => {
             let hp = barrier_hp16(c);
             if hp == 0 {
-                if timestop {
+                if dimmed {
                     return;
                 }
                 let t = ((c.barrier_timer >> 8) as u8).wrapping_add(1);
@@ -151,8 +151,8 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
             };
             c.barrier_timer = (c.barrier_timer & 0xFF00) | t as u16;
         }
-        // A popped barrier times out even in time stop.
-        _ if (c.barrier == 0x10 || !timestop) && c.barrier_timer != 0xFFFF => {
+        // A popped barrier times out even while dimmed.
+        _ if (c.barrier == 0x10 || !dimmed) && c.barrier_timer != 0xFFFF => {
             let t = c.barrier_timer as i32 - 1;
             c.barrier_timer = t as u16;
             if t <= 0 {
@@ -203,7 +203,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
 /// `sub_801A186`: poison panels hurt 1 HP every 7 ticks (through
 /// element 5); wood navis on grass heal.
 fn standing_effects(b: &mut Battle, r: ObjectRef) {
-    if b.is_time_stop() || b.paused || coll(b, r).region == 0 {
+    if b.is_dimmed() || b.paused || coll(b, r).region == 0 {
         return;
     }
     let p = coll(b, r).panel;
@@ -241,7 +241,7 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
 /// (consuming MOVE_COMPLETE).
 fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     let mut cooldown_ended = false;
-    if !b.paused && !b.is_time_stop() && ai(b, r).road_cooldown != 0 {
+    if !b.paused && !b.is_dimmed() && ai(b, r).road_cooldown != 0 {
         let a = ai_mut(b, r);
         a.road_cooldown -= 1;
         cooldown_ended = a.road_cooldown == 0;
@@ -281,7 +281,7 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
 /// `sub_8010230`: the NaviCust HP bug drains 1 HP every so many ticks
 /// (never below 1).
 fn hp_bug_drain(b: &mut Battle, r: ObjectRef) {
-    if b.is_time_stop() || b.paused || b.objects.get(r).hp <= 1 {
+    if b.is_dimmed() || b.paused || b.objects.get(r).hp <= 1 {
         return;
     }
     let level = stats(b, r).bugs.hp_drain as usize;
@@ -653,7 +653,7 @@ fn tick_counter_window(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80143FC`: count the ticks spent flinching or paralyzed.
 fn count_stun_ticks(b: &mut Battle, r: ObjectRef) {
-    if b.is_time_stop() || b.paused {
+    if b.is_dimmed() || b.paused {
         return;
     }
     let stunned = flag1(b, r) & (f1::FLINCHING | f1::PARALYZED) != 0;

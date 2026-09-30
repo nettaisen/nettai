@@ -9,10 +9,6 @@ description = "Rollback netplay (GGPO-style) for the battle engine, with a simul
 bn6-battle.workspace = true
 
 [features]
-# Run the battles with the GunDelSol slice as content (docs/design/scripting.md):
-# the Luau pack, or the same slice in Rust against the content API.
-luau = ["bn6-battle/luau"]
-rust-content = ["bn6-battle/rust-content"]
 # Reading golden traces (examples/rollback_cost).
 trace = ["bn6-battle/trace"]
 

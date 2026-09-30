@@ -101,7 +101,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     if shown {
         o.flags |= flags::VISIBLE;
     }
-    if b.is_time_stop() {
+    if b.is_dimmed() {
         return;
     }
     if b.is_battle_over() {
@@ -122,7 +122,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         b.objects.free(r);
         return;
     }
-    common::update_sprite_in_time_stop(b, r);
+    common::update_sprite_while_dimmed(b, r);
 }
 
 /// Over the target: its attach point, raised 8 pixels (none for the

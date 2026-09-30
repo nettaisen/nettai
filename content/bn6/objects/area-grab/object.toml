@@ -1,0 +1,8 @@
+# AreaGrab and PanelGrab's dimming controller (effect object #3, `sub_80E0710`) is
+# a script. Its position is its spawner's registers, which nothing reads.
+
+[kind]
+pool = "effect"
+index = 0x03
+script = "area_grab.luau"
+scratch_position = true

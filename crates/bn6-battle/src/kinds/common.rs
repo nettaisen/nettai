@@ -14,8 +14,8 @@ pub fn set_animation(b: &mut Battle, r: ObjectRef, anim: u8) {
 }
 
 /// `object_updateSprite`: load a newly requested animation and step the
-/// sprite one tick. Skipped while paused, during time stop (unless the
-/// object runs in time stop), while `prevent_anim` holds an object with
+/// sprite one tick. Skipped while paused, while dimmed (unless the
+/// object runs while dimmed), while `prevent_anim` holds an object with
 /// collision still, and for inactive or non-animating objects.
 pub fn update_sprite(b: &mut Battle, r: ObjectRef) {
     if b.paused {
@@ -25,7 +25,7 @@ pub fn update_sprite(b: &mut Battle, r: ObjectRef) {
     if o.flags & flags::ACTIVE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
         return;
     }
-    if o.flags & flags::RUN_IN_TIME_STOP == 0 && b.is_time_stop() {
+    if o.flags & flags::RUN_WHILE_DIMMED == 0 && b.is_dimmed() {
         return;
     }
     if o.collision.is_some() && o.prevent_anim != 0 {
@@ -148,8 +148,8 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `object_updateSpriteTimestop`: like `update_sprite`, but it also steps
-/// in time stop and whatever the object's collision says.
-pub fn update_sprite_in_time_stop(b: &mut Battle, r: ObjectRef) {
+/// while dimmed and whatever the object's collision says.
+pub fn update_sprite_while_dimmed(b: &mut Battle, r: ObjectRef) {
     if b.paused {
         return;
     }
@@ -158,6 +158,22 @@ pub fn update_sprite_in_time_stop(b: &mut Battle, r: ObjectRef) {
         return;
     }
     step_sprite(b, r);
+}
+
+/// `object_updateSpritePaused`: load a newly requested animation and step
+/// the sprite, paused or not, but not while dimmed. (It skips only
+/// inactive objects: `NO_SPRITE_UPDATE` doesn't stop it.)
+pub fn update_sprite_while_paused(b: &mut Battle, r: ObjectRef) {
+    if b.objects.get(r).flags & flags::ACTIVE == 0 || b.is_dimmed() {
+        return;
+    }
+    let o = b.objects.get(r);
+    let (anim, loaded) = (o.anim, o.anim_loaded);
+    if anim != loaded {
+        b.objects.sprite_mut(r).set_animation(anim, &b.content);
+        b.objects.get_mut(r).anim_loaded = anim;
+    }
+    b.objects.sprite_mut(r).update(&b.content);
 }
 
 /// `sub_801BCD0`: load a newly requested animation and step the sprite,

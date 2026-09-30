@@ -17,12 +17,12 @@ pub const BEAST_HEAD: SpriteId = SpriteId { category: 0x0C, index: 0x0A };
 /// How the overlay's sprite steps once it runs (Param3).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Stepping {
-    /// `object_updateSprite`, and not in time stop. The overlay stops
+    /// `object_updateSprite`, and not while dimmed. The overlay stops
     /// running while the battle is paused.
     #[default]
     Normal,
     /// `object_updateSpriteTimestop`; keeps running while paused.
-    InTimeStop,
+    WhileDimmed,
     /// `sub_801BCD0`, paused or not; keeps running while paused.
     Always,
 }
@@ -149,11 +149,11 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
     match stepping {
         Stepping::Normal => {
-            if !b.is_time_stop() {
+            if !b.is_dimmed() {
                 common::update_sprite(b, r);
             }
         }
-        Stepping::InTimeStop => common::update_sprite_in_time_stop(b, r),
+        Stepping::WhileDimmed => common::update_sprite_while_dimmed(b, r),
         Stepping::Always => common::step_sprite(b, r),
     }
 }

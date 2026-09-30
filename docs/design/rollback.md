@@ -133,7 +133,7 @@ of every confirmed frame. The simulator also compares both with a plain lockstep
 
 Each console of the original runs the whole battle, but a few things depend on which side it is: the local navi
 appears at once at the intro while the other queues for a fade-in, a blinded player's console hides the other
-side's navi and effects, the chip-name banner says whose chip it is, the result banner and music are the local
+side's navi and effects, the telop says whose chip it is, the result banner and music are the local
 player's, the charge sounds and the "own navi hit" sound are the local player's, the low-HP music follows the
 local navi, and the round's result and score are "won/lost" from the local side. The engine reproduces this for
 `RoundSetup::local_side`, because the golden traces are recorded on one console and compare exactly that.
@@ -181,12 +181,12 @@ the content the round runs on, so peers whose setups agree run the same data.
 | `charge_glow.rs` `charge_sound` | Only the charging player hears an A-charge | Compute both: `play_sound_for(alliance, ...)` | Done |
 | `player/status.rs` hit sound | 0x6B for the local navi, 0x6D otherwise | Compute both: each viewer hears its own | Done |
 | `player/input.rs` | "Can't" sound for SELECT without enough per-side gauge (battle flag 0x40 mode) | Compute both: the pressing player's viewer | Done |
-| `time_freeze.rs` `show_name` | Chip-name banner 0x4C (own) / 0x50 (other's) | Presentation: `Battle::banner_for(viewer)` swaps them | Done |
+| `dimming.rs` `telop` | The telop: banner 0x4C (own) / 0x50 (other's) | Presentation: `Battle::banner_for(viewer)` swaps them | Done |
 | `battle.rs` `fight_result` | Result banner of the local navi, won or lost | Presentation: `banner_for(viewer)` picks the viewer's navi's | Done |
 | `battle.rs` `round_result`, `finish_round`, `chain_next_round` | Won/lost, wins/losses, `BattleResult`, `SetScore` | Shared (identical on both peers, relative to `local_side`); presentation: `round_end_for(viewer)` | Done |
 | `battle.rs` `finish_round` | `exit_hp`: the local navi's HP after the round | Shared; per-viewer is the viewer's navi's HP (read it from `stats`/the object) | Documented |
 | `player/entry.rs` | Which navi appears at once and which fades in | Shared: it is object state (phase, timers) and gates the intro; the non-local viewer sees the mirror image of the original (its own navi fades in) | Accepted, cosmetic |
-| `charge_glow.rs` `viewer_sees`, `obstacle.rs` `update_visibility`, `player/status.rs` blind visibility, `time_freeze.rs` `show_user` | A blinded local player doesn't see the other side's navi, effects and obstacles (`VISIBLE`) | Should be presentation: record "hidden from a blinded viewer" per viewer instead of clearing `VISIBLE` for the local one | Open (cosmetic; the digest leaves `VISIBLE` out) |
+| `charge_glow.rs` `viewer_sees`, `obstacle.rs` `update_visibility`, `player/status.rs` blind visibility, `dimming.rs` `show_user` | A blinded local player doesn't see the other side's navi, effects and obstacles (`VISIBLE`) | Should be presentation: record "hidden from a blinded viewer" per viewer instead of clearing `VISIBLE` for the local one | Open (cosmetic; the digest leaves `VISIBLE` out) |
 | `lockon_marker.rs`, `charge_glow.rs` `shown_to_side` | The Beast Out lock-on marker and the A-charge glow show only on the owner's console | Same as above | Open (cosmetic: the other viewer sees the local player's marker, not its own) |
 | `battle.rs` custom screen (`local_confirm`, `round.status`, `custom_ui`) | The local player's custom-screen progress; the gauge task restarts 11 ticks after the local confirmation | Both players' screens are simulated (`custom`); the gauge restarts when either player sends and when the screen closes | Done |
 | RNG1 (the per-console stream) | Folder shuffle and other local decisions | Not in the engine: each player's shuffled folder is round setup (`RoundSetup::players`); the custom screen draws no RNG | Done |
@@ -251,7 +251,7 @@ seeded button masher.
 
 `crates/bn6-netplay/tests/rollback.rs`: two navis with 300 HP on the battle settings 0 of the engine's test content
 (`content::testing`, hand-authored, not BN6's data). Its chips are made up but run the engine's own actions: side
-0's folder holds a level-3 GunDelSol, an eraser navi chip, a level-1 GunDelSol, an invisibility freeze and a level-3
+0's folder holds a level-3 GunDelSol, an eraser navi chip, a level-1 GunDelSol, an invisibility dimming chip and a level-3
 GunDelSol over and over (GunDelSol is action 0x37; the invisibility freeze 0x15 with subtype 1, as Invisibl; the
 eraser navi chip 0x1B with subtype 5, as EraseMan), side 1's GunDelSols only (no Crosses or Beast Out). Both players
 mash (held buttons change every four frames on average: a direction, A, L or R; B and START are never pressed, see
@@ -344,7 +344,7 @@ work. (Measure with `cargo run --release -p bn6-netplay --example rollback_cost 
 - **Speculative panics.** The engine panics on content that isn't ported yet. A peer simulating a predicted input
   explores input sequences no player made, so it can reach an unported path the real match never does, and crash
   a peer that is otherwise in sync. The synthetic tests avoid the paths that mashing reaches: the buster (B,
-  actions 0x11 and 0x16), counters to a time freeze with a freeze chip, ElmntMan's random elements, and Beast
+  actions 0x11 and 0x16), cut-ins (a dimming chip during the other side's dimming), ElmntMan's random elements, and Beast
   Out's head and rush (so the synthetic players have no Beast Out or Crosses), and the damage judge after the
   15th turn (so their battles are short). The simulator reports a panic as speculative when the
   lockstep run gets through the frame. For netplay, unported paths must become unreachable (content that can't

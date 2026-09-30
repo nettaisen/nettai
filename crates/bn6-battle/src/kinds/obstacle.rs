@@ -27,7 +27,7 @@ pub trait Obstacle {
 /// State every obstacle keeps.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct State {
-    /// During time stop: where the obstacle is held (integer pixels) and
+    /// During dimming: where the obstacle is held (integer pixels) and
     /// how many more ticks it shakes after a hit.
     pub held_x: i16,
     pub held_z: i16,
@@ -255,7 +255,7 @@ pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).hp = 0;
         return;
     }
-    if b.is_time_stop() || b.paused {
+    if b.is_dimmed() || b.paused {
         return;
     }
     let o = b.objects.get_mut(r);
@@ -311,9 +311,9 @@ pub fn react<T: Obstacle>(b: &mut Battle, r: ObjectRef) {
             return encased(b, r);
         } else if f1_of(b, r) & (obstacle_f1::ENCASED_ICE | obstacle_f1::ENCASED_BUBBLE) != 0 {
             return encased(b, r);
-        } else if b.is_time_stop() {
+        } else if b.is_dimmed() {
             if Action::of(b, r) != Action::Appear {
-                return hold_in_time_stop::<T>(b, r);
+                return hold_while_dimmed::<T>(b, r);
             }
         } else {
             b.objects.get_mut(r).prevent_anim = 0;
@@ -351,10 +351,10 @@ pub fn react<T: Obstacle>(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_80181F6`: visible unless in time stop; hidden from a blinded
+/// `sub_80181F6`: visible unless while dimmed; hidden from a blinded
 /// local player when on the other side.
 fn update_visibility(b: &mut Battle, r: ObjectRef) {
-    if !b.is_time_stop() {
+    if !b.is_dimmed() {
         b.objects.get_mut(r).flags |= flags::VISIBLE;
     }
     let alliance = b.objects.get(r).alliance;
@@ -369,9 +369,9 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_801823C`: during time stop, stand still, shaking for 30 ticks
+/// `sub_801823C`: while dimmed, stand still, shaking for 30 ticks
 /// after each hit (a simulation RNG draw per shaking tick).
-fn hold_in_time_stop<T: Obstacle>(b: &mut Battle, r: ObjectRef) {
+fn hold_while_dimmed<T: Obstacle>(b: &mut Battle, r: ObjectRef) {
     update_visibility(b, r);
     let o = b.objects.get_mut(r);
     if o.prevent_anim == 0 {

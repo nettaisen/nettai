@@ -370,8 +370,9 @@ pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
     let order: Vec<crate::object::ObjectRef> = b.objects.in_order().collect();
     let unknown: Vec<bool> = order.iter().map(|&o| crate::kinds::effect::xy_unknown(b, o)).collect();
     let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, o, u)).collect();
+    let content = &b.content;
     let theirs: Vec<String> =
-        f.objects.iter().enumerate().map(|(i, o)| describe_trace(o, unknown.get(i).copied().unwrap_or(false))).collect();
+        f.objects.iter().enumerate().map(|(i, o)| describe_trace(content, o, unknown.get(i).copied().unwrap_or(false))).collect();
     if ours != theirs {
         check(
             "objects",
@@ -397,6 +398,7 @@ pub fn compare(b: &Battle, f: &Frame) -> Vec<String> {
 /// One object's observable state as the comparison sees it.
 #[allow(clippy::too_many_arguments)]
 fn describe_fields(
+    content: &Content,
     kind: u8,
     index: u8,
     flags: u8,
@@ -410,11 +412,11 @@ fn describe_fields(
     status: u32,
     xy_unknown: bool,
 ) -> String {
-    let pos = if pos_is_garbage(kind, index, flags) {
+    let pos = if pos_is_garbage(content, kind, index, flags) {
         "-".to_string()
     } else if xy_unknown {
         format!("-,-,{}", pos[2])
-    } else if z_fraction_is_garbage(kind, index) {
+    } else if z_fraction_is_garbage(content, kind, index) {
         format!("{},{},{}+?", pos[0], pos[1], pos[2] >> 16)
     } else {
         format!("{},{},{}", pos[0], pos[1], pos[2])
@@ -432,27 +434,46 @@ fn describe_fields(
 /// The X and Y of effects the engine marks as not knowing them are skipped
 /// too (`effect::xy_unknown`): the second deletion explosion, which the
 /// game spawns with the object allocator's list-node addresses as X and Y
-/// (§A.3). And the time-freeze controllers', spawned with the user's
-/// panel Y, the element and the spawner's address as X, Y and Z
-/// (chips.md §3.6).
-fn pos_is_garbage(kind: u8, index: u8, flags: u8) -> bool {
-    use crate::kinds::{area_grab, invisible, navi_chip, trap_chip};
-    let controller = [invisible::INDEX, navi_chip::INDEX, area_grab::INDEX, trap_chip::INDEX].contains(&index);
+/// (§A.3). And the dimming controllers', spawned with the user's panel Y,
+/// the element and the spawner's address as X, Y and Z (chips.md §3.6),
+/// and any kind a script implements that says so (`scratch_position`).
+fn pos_is_garbage(content: &Content, kind: u8, index: u8, flags: u8) -> bool {
+    use crate::kinds::{invisible, navi_chip, trap_chip};
+    use crate::object::Pool;
+    let pool = match kind {
+        1 => Pool::Actor,
+        3 => Pool::Attack,
+        4 => Pool::Effect,
+        _ => return false,
+    };
+    if content.object_kind_at(pool, index).is_some_and(|k| k.scratch_position) {
+        return true;
+    }
+    let controller = [invisible::INDEX, navi_chip::INDEX, trap_chip::INDEX].contains(&index);
     kind == 4
         && (index == 2 || index == 0x0A || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0) || controller)
 }
 
-/// DustCross's junk ball (attack #0xB0) keeps the fraction of the Z its
-/// spawner left in a register (the low half of a RAM address); only its
-/// whole pixels are compared.
-fn z_fraction_is_garbage(kind: u8, index: u8) -> bool {
-    kind == 3 && index == crate::kinds::dust_ball::INDEX
+/// Kinds a script implements that keep the fraction of the Z their
+/// spawner left in a register (`scratch_z_fraction`: DustCross's junk ball,
+/// whose is the low half of a RAM address): only their whole pixels are
+/// compared.
+fn z_fraction_is_garbage(content: &Content, kind: u8, index: u8) -> bool {
+    use crate::object::Pool;
+    let pool = match kind {
+        1 => Pool::Actor,
+        3 => Pool::Attack,
+        4 => Pool::Effect,
+        _ => return false,
+    };
+    content.object_kind_at(pool, index).is_some_and(|k| k.scratch_z_fraction)
 }
 
 fn describe(b: &Battle, r: crate::object::ObjectRef, xy_unknown: bool) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
     describe_fields(
+        &b.content,
         r.pool.type_number(),
         o.index,
         o.flags,
@@ -468,9 +489,9 @@ fn describe(b: &Battle, r: crate::object::ObjectRef, xy_unknown: bool) -> String
     )
 }
 
-fn describe_trace(o: &Object, xy_unknown: bool) -> String {
+fn describe_trace(content: &Content, o: &Object, xy_unknown: bool) -> String {
     let hp = [o.hp, o.max_hp];
-    describe_fields(o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, xy_unknown)
+    describe_fields(content, o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, xy_unknown)
 }
 
 /// Run a round through the engine on `content`; returns the number of

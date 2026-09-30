@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x2B, the buster that throws the last obstacle the
+# navi absorbed (`sub_8011F8C`), is a script. The action it names, 0x11, is not
+# content yet.
+
+id = 0x2B
+name = "Throw absorbed"
+script = "throw_absorbed.luau"

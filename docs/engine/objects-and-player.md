@@ -20,7 +20,7 @@ Related specs in this folder: `battle-flow.md` (tick structure, battle/mode stat
 1. Memory map
 2. The battle object structure (header flags)
 3. Pools and spawning (slot choice, list insertion, freeing, destroy convention)
-4. `RunBattleObjectLogic`, tick order, pause and time stop
+4. `RunBattleObjectLogic`, tick order, pause and dimming
 5. State-machine convention and action helpers
 6. AIData pool
 7. CollisionData pool and the per-tick collision protocol
@@ -50,7 +50,7 @@ Related specs in this folder: `battle-flow.md` (tick structure, battle/mode stat
 | Panel data | 0x02039AE0 | 0x20 bytes per panel, address = 0x02039AE0 + ((y*8+x)<<5), valid x 1..6, y 1..3 | `_object_getPanelDataOffset` |
 | BattleState | 0x02034880 | see §9 | the original `BattleState` struct |
 | GameState.BattlePaused | 0x02001B8A (u8) | nonzero = battle paused | `PauseBattle` |
-| Battle flags | BattleState+0x32 = 0x020348B2 (u16) | bit0 = fight active (collision on), bit2 = time stop | `battle_getFlags` |
+| Battle flags | BattleState+0x32 = 0x020348B2 (u16) | bit0 = fight active (collision on), bit2 = dimming | `battle_getFlags` |
 | Per-player input records | 0x02036820 + 8*side | +2 held, +4 pressed, +6 released (u16) | written by `sub_800A0D6` |
 | Battle navi stats | 0x0203CE00 + 0x64*alliance | NaviStats | `GetBattleNaviStatsAddr` |
 | Per-alliance chip hand ("chip block") | 0x020349C0 + 0x50*alliance | byte0 = cursor, then u16 chip entries, 0xFFFF-terminated | `sub_8010018` |
@@ -116,11 +116,11 @@ Offsets are relative to the object pointer (`r5` in all handlers); the 16-byte l
 | 0x02 | VISIBLE | drawn this frame (render only; toggled by flashing code) |
 | 0x04 | PAUSE_UPDATE | **update even while `GameState.BattlePaused`** (see §4) |
 | 0x08 | STOP_SPRITE_UPDATE | set at spawn for T1/T3/T4; `sprite_load` clears it (e.g. player 0x1D -> 0x15 in `sub_80172F0`) |
-| 0x10 | UPDATE_DURING_TIMESTOP | **update even while battle flag 0x4 (time stop) is set** |
+| 0x10 | UPDATE_DURING_TIMESTOP | **update even while battle flag 0x4 (dimming) is set** |
 | 0x20 | (UNK_20) | set by `object_reservePanel` (object holds a panel reservation); observed on the player from its first move (0x17 -> 0x37) |
 | 0x40, 0x80 | unknown | not observed in the trace |
 
-Spawn writes the whole byte: 0x19 for T1 and T4, 0x09 for T3 (table `dword_80032D0`). So by default T1/T4 objects run during time stop but not during pause, and T3 objects run in neither. Spawners that must run during pause OR in `|= 4` themselves (players: `sub_800753C`; T4 objects spawned by the player: e.g. `sub_80EA438`).
+Spawn writes the whole byte: 0x19 for T1 and T4, 0x09 for T3 (table `dword_80032D0`). So by default T1/T4 objects run while dimmed but not during pause, and T3 objects run in neither. Spawners that must run during pause OR in `|= 4` themselves (players: `sub_800753C`; T4 objects spawned by the player: e.g. `sub_80EA438`).
 
 ## 3. Pools and spawning
 
@@ -171,7 +171,7 @@ The update loop continues with `cur.Next` read **after** the handler returns, so
 - pathological: if an object frees itself and then spawns into a *lower* free slot, `sub_8003400` inserts after the dead node: the child runs this tick (reached through the dead node's `Next`) but is not reachable from the live predecessor afterwards (orphaned; its node's Prev points at a dead node). Likewise freeing self and then freeing the old successor leaves `cur.Next` pointing at a freed object that the loop still calls. **Implement the list exactly as the game does (per-slot Prev/Next "pointers", nothing cleared on free, `Next` of the current node read after the handler) and these corner cases reproduce automatically.**
 
 ### 3.5 Destroy convention (CurState 8)
-Handlers request destruction by `str #8 -> CurStateActionPhaseAndPhaseInitialized` (CurState = 8, CurAction/CurPhase/PhaseInitialized = 0) or by another object writing CurState=8 into them. Nothing happens immediately: the object's **next** update runs its destroy entry, which usually is `object_freeMemory` directly (e.g. T4#0 `off_80E055C`) or `object_genericDestroy`. The slot therefore stays allocated until the object's next executed update (later if the object is skipped by pause/time stop). The player's destroy entry `sub_8016C4E` is special (§12.8): it never frees the player object.
+Handlers request destruction by `str #8 -> CurStateActionPhaseAndPhaseInitialized` (CurState = 8, CurAction/CurPhase/PhaseInitialized = 0) or by another object writing CurState=8 into them. Nothing happens immediately: the object's **next** update runs its destroy entry, which usually is `object_freeMemory` directly (e.g. T4#0 `off_80E055C`) or `object_genericDestroy`. The slot therefore stays allocated until the object's next executed update (later if the object is skipped by pause/dimming). The player's destroy entry `sub_8016C4E` is special (§12.8): it never frees the player object.
 
 ## 4. `RunBattleObjectLogic` (0x080031AC)
 
@@ -206,19 +206,19 @@ One game tick = one call of `battle_8007800`. In the fighting top state (BattleS
 | 4 | battle-mode handler (`off_8007B50[GetBattleMode]`, PvP = `sub_8009158`) running the sub-state BattleState[1] (0 intro: spawns T4#2 and the players via `sub_80091F0`->`sub_8007358`; 8 custom screen; 12 fighting; 20 end...). The running sub-states call `sub_8012DFC(0)` and `sub_8012DFC(1)`, which copy each side's held keys into its player's AIData joypad words (§M3.1) | spawns before logic are appended at the tail; player input for this tick |
 | 5 | **`RunBattleObjectLogic`** | all object logic |
 | 6 | `sub_802FFF4` camera, incl. `camera_doShakeEffect_80301e8` | **consumes RNG1 while a shake is active** |
-| 7 | `sub_800BFC4` panel timers (skipped if paused or time stop) | panels |
+| 7 | `sub_800BFC4` panel timers (skipped if paused or dimming) | panels |
 | 8 | `sub_800FDC0`: for each of the 8 "alive actor" pointers at BattleState+0x80 whose AIData.ActorType == 2 -> `sub_800FDEA` (ChipsHeld = number of chips left in the hand, Chip = current hand entry) | chip state for this tick |
 | 9 | `sub_801BEE0` HUD tasks, `sub_802CEC8`, `chip_800AEE8` | |
-| 10 | if !paused: { if !timestop: BattleState[0x0E] = (v+1)%20, BattleState[0x16] = (v+1)%180 }; `sub_802CDFE` | global cycle counters |
+| 10 | if !paused: { if !dimmed: BattleState[0x0E] = (v+1)%20, BattleState[0x16] = (v+1)%180 }; `sub_802CDFE` | global cycle counters |
 | 11 | `sub_80102AC(0)` and, in netbattle, `sub_80102AC(1)`: HP-bug drain, only if `BattleState[0x14+side] & 5`: period = {0,40,30,20,10,5,3,2}[navi stats[0x19]]; if period != 0 and the side's player has HP > 1, AIData+0x0A += 1 and when it reaches the period subtract 1 HP and reset it (a second, per-player-tick drain keyed on stats[0x18] is `sub_8010230`, §H2) | HP |
 | 12 | BattleState+0x64 += 1 ("ticks" in the trace) | |
 | 13 | presentation only: `sub_80027B4`, `sub_800286C`, `sub_8003E18` (T1 draw), `sub_8004218` (T3), `sub_8004510` (T4), ... | none |
 
 Then `battle_8007800` increments BattleState+0x60 ("frames"). In the end-of-battle top state (BattleState[0] = 8, `sub_8007B9C`) `RunBattleObjectLogic` still runs every tick.
 
-### 4.2 Pause and time stop in practice
+### 4.2 Pause and dimming in practice
 - `GameState.BattlePaused` (0x02001B8A) is set from the first fighting-state tick (trace frame 72) through the intro, custom screen and "battle start" banner, and cleared at frame 593 together with battle flag bit 0 (fight active). During that time only flag-0x04 objects (players, their T4 helpers, T4#2...) run.
-- Time stop (battle flag 0x04) is set by time-freeze chips; only flag-0x10 objects run (default for T1/T4). Not exercised in the reference match.
+- Dimming (battle flag 0x04) is set by dimming chips; only flag-0x10 objects run (default for T1/T4). Not exercised in the reference match.
 
 ## 5. State-machine convention
 
@@ -254,7 +254,7 @@ Because the phase entry runs in the same tick as the phase switch only if the sw
 - `sub_801986C` (battle init): bitfield (0x02035310) = 0; for k = 0..31 zero the 0xA8 bytes and set CollisionIndexBit (+0x44) = 0x80000000 >> k; zero the 40 panel masks at 0x02034F60 (`sub_8019FA4`).
 - `object_createCollisionData`: lowest free slot; zero [0x00,0x44) and [0x48,0xA8) (keeps +0x44); Enabled (+0x00) = 1; obj.CollisionDataPtr = it; returns it (0 if pool full — the player init then frees itself).
 - `object_freeCollisionData(cd)`: if cd: Enabled = 0; bitfield &= ~cd.CollisionIndexBit. (Panel mask bits are not cleared here.)
-- `object_setupCollisionData(cd, selfType, targetType, hitModifier)`: ParentObjectPtr (+0x38) = obj; HitModifierBase (+0x0E) = r3; PrimaryElement = obj.Element & 0xF, SecondaryElement (+0x19) = obj.Element & 0xF0; Alliance/Flip (+0x04) = obj's; PanelX/Y (+0x0A) = obj's; Region (+0x01) = 1; StaminaDamageCounterDisabler (+0x07) = (u8)obj+0x2E; SelfDamage (+0x2E) = obj.Damage; SelfCollisionTypeFlags (+0x30) = `byte_8019C7C[selfType*2 + alliance]` (plus bit 0x10000 if time stop); TargetCollisionTypeFlags (+0x34) = `byte_8019C7C[targetType*2 + alliance]`; then `sub_8019F44` decodes the SelfDamage flag bits (keep low 11 bits; bit 0x8000 -> double; 0x4000 -> paralyze: StatusEffectBase = 0x10, HitModifierBase = 1; 0x2000 -> uninstall `sub_801A4D0(0xF8)`; 0x1000 -> erase-cross `sub_801A4D0(0xF7)`; 0x0800 -> nothing). (Corrected per field-collision-damage.md.) `sub_801A082` redoes only the modifier/damage/type-flag part.
+- `object_setupCollisionData(cd, selfType, targetType, hitModifier)`: ParentObjectPtr (+0x38) = obj; HitModifierBase (+0x0E) = r3; PrimaryElement = obj.Element & 0xF, SecondaryElement (+0x19) = obj.Element & 0xF0; Alliance/Flip (+0x04) = obj's; PanelX/Y (+0x0A) = obj's; Region (+0x01) = 1; StaminaDamageCounterDisabler (+0x07) = (u8)obj+0x2E; SelfDamage (+0x2E) = obj.Damage; SelfCollisionTypeFlags (+0x30) = `byte_8019C7C[selfType*2 + alliance]` (plus bit 0x10000 if dimmed); TargetCollisionTypeFlags (+0x34) = `byte_8019C7C[targetType*2 + alliance]`; then `sub_8019F44` decodes the SelfDamage flag bits (keep low 11 bits; bit 0x8000 -> double; 0x4000 -> paralyze: StatusEffectBase = 0x10, HitModifierBase = 1; 0x2000 -> uninstall `sub_801A4D0(0xF8)`; 0x1000 -> erase-cross `sub_801A4D0(0xF7)`; 0x0800 -> nothing). (Corrected per field-collision-damage.md.) `sub_801A082` redoes only the modifier/damage/type-flag part.
 - Other setters: `object_setCollisionRegion`/`object_clearCollisionRegion` (+0x01), `object_updateCollisionPanels` (copy obj PanelX/Y to +0x0A, Direction +0x0C = `sub_800E994`(old,new)), `object_setCollisionPanelsToCurrent`, `object_setCollisionHitEffect` (+0x09), `sub_8019F86` (HitModifierBase), `sub_8019F8C` (element), `sub_8019F9E` (+0x18 SecondaryElementWeakness).
 
 ### 7.2 Status flag words (the trace's "status" field)
@@ -265,7 +265,7 @@ Collision is resolved through the 40 panel masks at 0x02034F60, not through a gl
 
 1. **remove/resolve** at the start (`object_removeCollisionData` -> IWRAM `_object_removeCollisionData`): for every panel P covered by its region (Region index -> `PanelOffsetListsPointerTable` list of (dx,dy) pairs terminated by 0x7F, dx multiplied by `object_getFlipDirection(cd.Alliance, cd.Flip)` = +1 facing right/-1 facing left, added to cd.PanelX/Y; Region with bit 0x80 = field-wide pattern from `byte_8019C34` via `object_checkPanelParameters`), if valid: clear own bit in mask[P] (`sub_3007880`), recompute the panel's flag word (`_object_updatePanelParameters`), then **pair** with every other collision slot c whose bit is still in mask[P] (`sub_30075FC`, skipped while paused): if `(self.Unk_68 & c.bit) == 0` then `self.Unk_68 |= c.bit; c.Unk_68 |= self.bit;` `sub_3007650(self, c)`; `sub_3007650(c, self)`. `sub_3007650(d, a)`: if `d.TargetCollisionTypeFlags & a.SelfCollisionTypeFlags` then `sub_3007218(d, a)` (hit registration on d: filters on invis/guard/etc., ORs a's SelfCollisionTypeFlags into d.FlagsFromCollision (+0x70), a.bit into d.Unk_7c, a.SecondaryElement into d.DamageElements (+0x76), StatusEffectFinal, counter-hit bit 0x40, ...) and `sub_3007692(d, a)` (d.Unk_6c |= a.SelfType; d.Unk_77 |= a.SecondaryElement; d.ElementDamage[a.PrimaryElement] (+0x94+2e) += a.SelfDamage; +bonus for heat on grass). Finally `sub_3007708` applies panel side effects (grass + heat -> normal, ice + aqua, holes...) unless paused.
 2. read and act on the accumulated results (players: `sub_801AC6C`, §H2).
-3. **present** at the end (`object_presentCollisionData`): (quirk: stores the caller's r1 into Unk_54, then) unless time stop: HitModifierFinal (+0x0F) = 0, Unk_03 = 0, Unk_54 = 0; always: StatusEffectFinal (+0x11) = 0 and zero the result area [0x68, 0xA8); then (`sub_300777C`) set own bit in mask[P] for every covered valid panel and recompute panel flags.
+3. **present** at the end (`object_presentCollisionData`): (quirk: stores the caller's r1 into Unk_54, then) unless dimmed: HitModifierFinal (+0x0F) = 0, Unk_03 = 0, Unk_54 = 0; always: StatusEffectFinal (+0x11) = 0 and zero the result area [0x68, 0xA8); then (`sub_300777C`) set own bit in mask[P] for every covered valid panel and recompute panel flags.
 
 Quirk (code-derived, not exercised): for field-wide regions (Region & 0x80) the present path `sub_300777C` recomputes the panel flag word with the wrong arguments (`_object_updatePanelParameters(row, r8)`, r8 = the caller's r8) instead of (x, y), so those panels' stored flag words are not refreshed on present; the function also returns with r8 = the collision-data pointer (it pushes r0 where it meant r8). The remove path is correct.
 
@@ -300,7 +300,7 @@ So a pair (A, B) is processed exactly once per "cycle", during whichever of the 
 | +0x0D | local side (network inversion): 0 on the P1 console, 1 on the P2 console |
 | +0x12, +0x13 | alive counts of alliance 0 / 1 (initialised from +0x04/+0x05 after spawning; decremented by `sub_800A11C` at deletion). `battle_isBattleOver` = !(+0x12 && +0x13 && +0x0B == 0) |
 | +0x0E, +0x16 | cycle counters mod 20 / mod 180 (§4.1 step 10) |
-| +0x32 | battle flags (bit0 fight active, bit2 time stop) |
+| +0x32 | battle flags (bit0 fight active, bit2 dimming) |
 | +0x3C | BattleSettings pointer; settings+0x0C = entity spawn list |
 | +0x5C | intro/chip-enable bits (`sub_8001382` ORs, `sub_800139A` reads): 0x10/0x01/0x02 set by T4#2 (§A.4), 0x04/0x08 = chips enabled for alliance 0/1 |
 | +0x60 / +0x64 | frame counters |
@@ -354,7 +354,7 @@ Update order at frame 72: `T4#2, T1#0(alliance 1), T4#8, T1#0(alliance 0), T4#8`
 
 **Spawn helper** `sub_80B8E30`. Inputs: r1–r3 = X/Y/Z (don't care, overwritten at init), r4 = Params, r5 = owner, r7 = address of a pointer slot in the owner.
 - `object_spawnType1(5, …)`.
-- On success: `RelatedObject1Ptr = owner`, `ExtraVars[0x60] = r7` (the slot address), `PanelXY` and `AllianceAndDirectionFlip` copied from the owner, `Flags |= 0x14` (update during pause and during time-stop).
+- On success: `RelatedObject1Ptr = owner`, `ExtraVars[0x60] = r7` (the slot address), `PanelXY` and `AllianceAndDirectionFlip` copied from the owner, `Flags |= 0x14` (update during pause and while dimmed).
 - **Always** `*r7 = new object or 0`.
 
 For GunDelSol (`sub_80EDB14`): `r4 = 7 + AIAttackVars.Unk_03` (Param1 = 9 here: GunDelSol level byte 2) and `r7 = AIData + 0x68`. The object pointer therefore lives in `AIData.Unk_68`.
@@ -362,7 +362,7 @@ For GunDelSol (`sub_80EDB14`): `r4 = 7 + AIAttackVars.Unk_03` (Param1 = 9 here: 
 **Params:**
 - Param1 indexes `byte_80B8BD4` (0x080B8BD4), 5 bytes per entry: `[sprite category byte-offset, sprite index, palette, Unk_0c (Y/Z lift, s8), attach-flag]`. Entry 9 is `0C 3B 06 00 0D`.
 - Param2 = initial animation.
-- Param3 ≠ 0 means it keeps animating during time-stop.
+- Param3 ≠ 0 means it keeps animating while dimmed.
 - Param4 is added to the palette.
 
 **CurState 0** `sub_80B8CF8`, runs in the spawn tick because the object is inserted after the current object:
@@ -379,7 +379,7 @@ For GunDelSol (`sub_80EDB14`): `r4 = 7 + AIAttackVars.Unk_03` (Param1 = 9 here: 
 - `X = owner.X + XVel`, `Y = owner.Y − (s8)Unk_0c<<16`, `Z = owner.Z + ZVel − (s8)Unk_0c<<16`.
 - Copies the owner's VISIBLE bit, color shader, final palette, alpha/mosaic and flip.
 - If `*ExtraVars[0] == 0`: clear VISIBLE and set CurState 8.
-- Otherwise, if not paused and (Param3 ≠ 0 or not time-stop), call `object_updateSprite`.
+- Otherwise, if not paused and (Param3 ≠ 0 or not dimming), call `object_updateSprite`.
 
 **CurState 8**: `object_freeMemory`. It is therefore freed on the **tick after** the owner zeroes the slot (and in the same tick as the zeroing if the overlay runs later in the list than the owner, which is always the case when the owner spawned it).
 
@@ -393,7 +393,7 @@ Trace check: spawned 639 (state [4,0,0,0], flags 0x17, pos = player + (24, 0, 24
 
 ### A.3 T4#0: generic effect (`loc_80E0548`)
 
-**Spawn** `SpawnT4BattleObjectWithId0`: `object_spawnType4(0, X=r1, Y=r2, Z=r3, Params=r4)`, returns r0 = object or 0. Flags stay at the T4 default (0x19, and 0x08 is cleared by `sprite_load`), so the object runs during time-stop but **not during pause** unless the caller ORs in 0x04 (for example `sub_8014D70`).
+**Spawn** `SpawnT4BattleObjectWithId0`: `object_spawnType4(0, X=r1, Y=r2, Z=r3, Params=r4)`, returns r0 = object or 0. Flags stay at the T4 default (0x19, and 0x08 is cleared by `sprite_load`), so the object runs while dimmed but **not during pause** unless the caller ORs in 0x04 (for example `sub_8014D70`).
 
 **Params:**
 - Param1 = effect id into `byte_80E0398` (0x080E0398, 4 bytes per entry: `[sprite category byte-offset, sprite index, animation, palette]`).
@@ -534,7 +534,7 @@ GunDelSol (`sub_80EDB14`) calls it with:
 **CurState 0** `sub_80E5C4C`: `sprite_load`, anim 0, load, `sprite_update` once, flip, palette, `Timer2 = 0`, VISIBLE, CurState 4, then the update.
 
 **CurState 4** `sub_80E5CA0`:
-- If `Param3 ≠ 1 && time-stop`: hide and return.
+- If `Param3 ≠ 1 && dimming`: hide and return.
 - Show.
 - If `*slot == 0`: hide, CurState 8 (freed next tick).
 - Otherwise: if `Timer2 % 11 == 0` play SE 0xF9; `Timer2++`; `pos = owner.pos + (XVel, YVel, ZVel)`; `object_updateSprite`.
@@ -561,7 +561,7 @@ Later, the Beast Out chip-use routine (`sub_80EAD9C` → `sub_80EAE28` → `sub_
   - `CurAnim = owner.CurAnim + Param4`. If that differs from CurAnimCopy it calls `sprite_setAnimation` **without updating CurAnimCopy**, so the animation restarts every tick until the sprite step below records it (while paused, with Param3 = 0, that step never comes).
   - `pos = owner.pos`, minus 1 px on Y and Z when ExtraVars ≠ 0.
   - Copies VISIBLE, palette, shader, final palette, mosaic/alpha and flip from the owner.
-  - Action 0 waits for `Unk_5c` bit 0x02 and then clears header flag 0x04 unless Param3 ≠ 0 (trace flags 0x13 at 1857). Action 4 steps the sprite with gating chosen by Param3 (0: `object_updateSprite` unless time-stop; 1: `object_updateSpriteTimestop`; 2: `sub_801BCD0`). If ExtraVars+0xC ≠ 0 and the owner has flags `0x100800` (DRAG | PARALYZED), it skips.
+  - Action 0 waits for `Unk_5c` bit 0x02 and then clears header flag 0x04 unless Param3 ≠ 0 (trace flags 0x13 at 1857). Action 4 steps the sprite with gating chosen by Param3 (0: `object_updateSprite` unless dimmed; 1: `object_updateSpriteTimestop`; 2: `sub_801BCD0`). If ExtraVars+0xC ≠ 0 and the owner has flags `0x100800` (DRAG | PARALYZED), it skips.
 - **Other writers:** `sub_80C44D2` (the owner's `sub_8011450` after an animation change, and MegaMan's flinch/drag hook `sub_80F06CE`) sets CurAnimCopy = 0xFF and steps the overlay's sprite at once with `sub_801BCD0`. The form change sets Param3 = 1 and flags |= 0x14 on an existing overlay (`sub_8014D08`) and Param3 = 0 on the new one (`sub_8014E08`). `sub_80C46C0` sets ExtraVars+8 = 1 (palette from the navi's mood; render only).
 - **Beast Out spawn:** the object is inserted after the navi (spawned during its update) with flag 0x04, so its init runs in the same, paused tick: flags 0x13, anim 0, pos = navi pos − (0, 1, 1) px. From then on it does not run until the pause ends.
 - **Lifetime:** freed via CurState 8, set through `sub_80C46B0(obj)` by the owner. The form overlay lived 1857 → battle-end `FreeAll` at 2521. The afterimage layers were freed at 2353/2361, in the same tick their T4#0x28 was destroyed (they come after it in the list).
@@ -569,7 +569,7 @@ Later, the Beast Out chip-use routine (`sub_80EAD9C` → `sub_80EAE28` → `sub_
 
 **T4#0x0A** `sub_80E10A4`: screen palette flash.
 - **Spawner** `sub_80E11E0`: `object_spawnType4(0x0A, r1..r3, r4)`, `ExtraVars = r7`, `Flags |= 0x14`.
-- **Spawn values:** `sub_8014E08` passes `r4 = 0x00030E00`. The resulting fields are Param1 = 0 (variant `sub_80E10C0`), Param2 = 14 (duration), Param3 = 3 (bit 0 = run in time-stop, bit 1 = ignore pause). Without bit 1 it does nothing while paused (nor, without bit 0, in time stop) except hold the palette; CurState stays 0 until it first runs. Its X/Y/Z are leftover registers from `SetBattleNaviStatsByte_AllianceFromBattleObject`: X = `eBattleNaviStats0` (0x0203CE00), Y = the form value written (0x0C), Z = earlier r3 (observed 1).
+- **Spawn values:** `sub_8014E08` passes `r4 = 0x00030E00`. The resulting fields are Param1 = 0 (variant `sub_80E10C0`), Param2 = 14 (duration), Param3 = 3 (bit 0 = run while dimmed, bit 1 = ignore pause). Without bit 1 it does nothing while paused (nor, without bit 0, while dimmed) except hold the palette; CurState stays 0 until it first runs. Its X/Y/Z are leftover registers from `SetBattleNaviStatsByte_AllianceFromBattleObject`: X = `eBattleNaviStats0` (0x0203CE00), Y = the form value written (0x0C), Z = earlier r3 (observed 1).
 - **Behaviour:** the handler dispatches on **Param1, not CurState**. On the first call it sets `Timer2 = Param2`, `Timer = 0`, CurState = 4. Then, every tick, `Timer2 -= 1`; while ≥ 0 it writes palette-transform entries (`sub_8002378` into `iPalette3001B60`, blinking every 4 ticks); when it goes < 0 it calls `Terminate_ePalette20097a0_Transform(0x14)` and **`object_freeMemory` directly**.
 - **Lifetime:** spawn T → freed at T + Param2 (1857 → 1871).
 - **Verdict:** visual (palette RAM only). Slot and list position only. It has no sprite, so flag 0x08 stays set (trace flags 0x1D).
@@ -579,7 +579,7 @@ Later, the Beast Out chip-use routine (`sub_80EAD9C` → `sub_80EAE28` → `sub_
 - **Init** `sub_80E1540`: loads sprite (0x0C, 9) and sets VISIBLE.
 - **Update** `sub_80E1566`:
   - VISIBLE only if navi-stat 0x29 == 0, form in [0xB, 0x18], and `!battle_networkInvert(alliance)`.
-  - During time-stop: return (no movement).
+  - During dimming: return (no movement).
   - If `battle_isBattleOver()` or `*slot == 0`: **zero `*slot` itself and `object_freeMemory` directly**.
   - Unless frozen (ExtraVars+4 ≠ 0; set/cleared by `sub_80E1654`/`sub_80E1662`):
     - Picks a target with `sub_80E1670`. `object_getEnemyByNameRange` lists the opposing side's four alive-actor slots (BattleState+0x80 + 0x10·side) in slot order, keeping NameIDs 0..0x1C3. `sub_80E16CC` then tries three column ranges relative to the owner's PanelX: ahead of it (`[x+1, 6]` when facing right, `[1, x−1]` when facing left), then behind it, then its own column. The first range with a candidate wins. With several candidates in a range, `sub_80E1730`/`sub_80E175C`/`sub_80E17AC` break the tie by row and distance relative to the owner (not needed in PvP, where each side has one navi). If there is no candidate at all, the result is 0 and the code reads through a null pointer.
@@ -691,10 +691,10 @@ Each wrapper loads `CurAnim` if it differs from `CurAnimCopy`, then does one `up
 
 | Wrapper | Address | Extra gating |
 |---|---|---|
-| `object_updateSprite` | 0x0801BBAC | skip if paused; skip if time-stop unless header 0x10; skip if `CollisionDataPtr ≠ 0 && PreventAnim ≠ 0` |
+| `object_updateSprite` | 0x0801BBAC | skip if paused; skip if dimmed unless header 0x10; skip if `CollisionDataPtr ≠ 0 && PreventAnim ≠ 0` |
 | `sub_801BCF4` | 0x0801BCF4 | identical to `object_updateSprite`. Called by the player handler `sub_80EA460` after its CurState handler, every tick and every CurState |
-| `object_updateSpriteTimestop` | 0x0801BBF4 | skip if paused (no time-stop or PreventAnim check) |
-| `object_updateSpritePaused` | 0x0801BCA6 | skip if time-stop only (steps during pause) |
+| `object_updateSpriteTimestop` | 0x0801BBF4 | skip if paused (no dimming or PreventAnim check) |
+| `object_updateSpritePaused` | 0x0801BCA6 | skip if dimmed only (steps during pause) |
 | bare `sprite_update` | 0x080026C4 | none (T4#0 update and T4#0/T4#0x48 init) |
 
 `object_setAnimation(a)` (0x0800F2B6) sets `CurAnim = a, CurAnimCopy = 0xFF`, which restarts the animation even if it is the same index. Writing `CurAnim` directly restarts only on a change. The change is applied the next time the object's wrapper runs, which is the same tick when the writer is the object itself or runs earlier in the list.
@@ -855,7 +855,7 @@ Scope: the PvP player (T1 index 0, `AIData.ActorType == 2`, `AIData.AIIndex == 0
 
   So a held direction repeats a move every **13 ticks**.
 - **Inputs are never mirrored.** "Right" means forward, toward the enemy, for both alliances. World dx = +1 for alliance 0 and −1 for alliance 1 (`object_getAllianceDirection`). `battle_networkInvert` only tells whether an object is the local player; it is used for HUD, sound and intro visuals.
-- **No RNG is used on the normal movement or idle path.** Four RNG calls exist on side paths, gated by NaviCust bug stats or time-stop; see chapter 13.
+- **No RNG is used on the normal movement or idle path.** Four RNG calls exist on side paths, gated by NaviCust bug stats or dimming; see chapter 13.
 
 #### M1. Per-tick player pipeline (what runs, in order)
 
@@ -875,7 +875,7 @@ sub_80EA460: jump off_80EA478[CurState]   ; 0:sub_80172F0 init, 4:sub_80EA484 up
 | 3 | `sub_801AC6C` | Removes this object's collision from the panel occupancy grid (`object_removeCollisionData`, only if `battle_getFlags & 1`). It then processes the hits accumulated since its last present (§7.3, §H2), and runs `sub_801A36A`, which consumes `MOVE_COMPLETE` and triggers ice/road slides (§M6.8). | 12.H |
 | 4 | `sub_801AF44(off_80EA4C8[AIIndex])` | Status handling, then **action dispatch** (§M2). For AIIndex 0 the table is `off_80EA52C`. | 12.M / 12.H |
 | 5 | `off_80EA93C[AIIndex]`, which is `sub_80F0608` for AIIndex 0 | Per-form hook. For base MegaMan its only effect is Z = 0 each tick (§B10). | 12.B |
-| 6 | `sub_80107D4` | Skipped during time stop. Otherwise decrements, saturating at 0, `AIData.Unk_19`, `AIData.Unk_15`, and three u16 counters at `sub_802E070(alliance)+0x2E/+0x3A/+0x3C`. | shared |
+| 6 | `sub_80107D4` | Skipped while dimmed. Otherwise decrements, saturating at 0, `AIData.Unk_19`, `AIData.Unk_15`, and three u16 counters at `sub_802E070(alliance)+0x2E/+0x3A/+0x3C`. | shared |
 | 7 | `sub_80139C4` | Emotion/beast visual spawn when `sub_8015B54(alliance)==2`. Not seen in PvP. | other |
 | 8 | `sub_80100EC` | Palette refresh only (visual). | sprite |
 | 9 | `object_presentCollisionData` (only if not paused) | Re-registers the collision on its current collision panel. This re-sets the panel occupancy bits (§M7). | collision |
@@ -892,7 +892,7 @@ The full status logic is in §H3. What matters for idle and movement:
 4. Visual helpers run. Then:
    - Flag 0x100 (dead): go to dispatch.
    - Paused with `CurAction != 0`: `sub_8017BC0`, the pause-time request handler.
-   - Time stop: `sub_8017AB4`.
+   - Dimming: `sub_8017AB4`.
    - Otherwise: **`sub_801B9E6(table)`**.
 
 `sub_801B9E6` sets `r6 = AIData+0x80`, `r7 = AttackVars`, then dispatches:
@@ -950,7 +950,7 @@ Consequence: a move does **not** clear pending buster/chip intents or the charge
     AIData[0x24] = held & ~prev      // pressed
     AIData[0x26] = prev & ~held      // released
     ```
-  - During time stop it also maintains a second set: `+0x2A` held, `+0x30` prev, `+0x2C` pressed, `+0x2E` released. Outside time stop those four are zeroed.
+  - During dimming it also maintains a second set: `+0x2A` held, `+0x30` prev, `+0x2C` pressed, `+0x2E` released. Outside dimming those four are zeroed.
 - True field meanings, which differ from the struct names: 0x22 = held, 0x24 = pressed, **0x26 = released** (named `JoypadUp`), **0x28 = previous held** (named `JoypadReleased`).
 - The held word carries 0xFC00 in its upper bits, as the trace shows. Only the key bits matter: A=0x1, B=0x2, Select=0x4, Right=0x10, Left=0x20, Up=0x40, Down=0x80, R=0x100, L=0x200.
 
@@ -1239,7 +1239,7 @@ Frames F..F+12 all show `CurPhase = 0` in the object header. Move phases live in
 ##### M6.8 After the move: ice and road slides (`sub_801A36A` `sub_80166B6`)
 
 **Trigger check.** `sub_801A36A` runs inside step 3 (`sub_801AC6C`) every tick.
-1. If not paused, not in time stop, and `AIData.Unk_38 != 0`: decrement it. When it reaches 0, go directly to the MOVE_COMPLETE/ice check below. `Unk_38` is the road cooldown.
+1. If not paused, not dimmed, and `AIData.Unk_38 != 0`: decrement it. When it reaches 0, go directly to the MOVE_COMPLETE/ice check below. `Unk_38` is the road cooldown.
 2. Return if `ObjectFlags1 & 0x100040` (DRAG or MOVING).
 3. Look up the current collision panel type:
    - **Types 9..0xC (road/conveyor):** `sub_801A400`. If `AIData.Unk_38 == 0` and `!(ObjectFlags1 & 0x24)`: `ObjectFlags2 |= 0x10`, `Unk_0f = 3`.
@@ -1448,7 +1448,7 @@ Terms used below:
 
 #### B3. Input decode: `sub_8012E74` → `sub_8012FC8` (buttons → flags44)
 
-`sub_80EA484` (the player update) calls `sub_8012E74` first, before any action logic. If the battle is over it clears the four joypad words. If paused it does nothing. Otherwise it calls `sub_8012FC8` (decode) and **then** `sub_8012EBC` (charge accumulate). In time stop, `sub_8012FC8` takes a separate branch that only handles flag 0x800, and `sub_8012EBC` returns immediately.
+`sub_80EA484` (the player update) calls `sub_8012E74` first, before any action logic. If the battle is over it clears the four joypad words. If paused it does nothing. Otherwise it calls `sub_8012FC8` (decode) and **then** `sub_8012EBC` (charge accumulate). In dimming, `sub_8012FC8` takes a separate branch that only handles flag 0x800, and `sub_8012EBC` returns immediately.
 
 Let `f0` = flags44 as read at the entry of `sub_8012FC8`. The decode runs in this order:
 
@@ -1485,7 +1485,7 @@ Let `f0` = flags44 as read at the entry of `sub_8012FC8`. The decode runs in thi
 
 #### B4. Charge accumulation: `sub_8012EBC`
 
-Each non-paused, non-time-stop frame, after the decode:
+Each non-paused, undimmed frame, after the decode:
 - If `!sub_8012F3E()` → Unk_1E = Unk_1B = Unk_1D = 0 (reset).
 - Else `thr = sub_8012F62(old Unk_1E)`:
   - The row index is `AI[7]` (Unk_07) if old Unk_1E == 2, else `AI[5]` (Unk_05).
@@ -1652,14 +1652,14 @@ Minimum buster cycle: N+7 frames.
 
 **Blank shot, action 0x33 (`sub_80ED748`)**, from `sub_8011ADA` (all AV fields zero):
 - Sub-phase 0 (`sub_80ED764`) is the buster's without the shot: anim 0x0E, the arm, USING_ACTION, AV.Unk_10 = 0; sound 0xF8 on its 2nd tick; after 5 ticks sub-phase 4.
-- Sub-phase 4 (`sub_80ED7A2`) is the buster's recovery, but N = `sub_800FAF6(PanelX, PanelY, Rapid)` counts from the navi's **own** panel, whose body bit is in the mask: k = 0, so N = `byte_80209CC[Rapid*6]`, the shortest.
+- Sub-phase 4 (`sub_80ED7A2`) is the buster's recovery, but N = `sub_800FAF6(PanelX, PanelY, Rapid)` counts from the navi's **own** panel rather than the one in front. The navi's collision is off the field while it updates, so its own panel counts as open: k is one more than a shot from there would count (up to 5).
 - Soundmod round 1, 3367: side 1 (form 0xA) presses B; its buster routine 0x2B (`sub_8011F8C`) has no absorbed obstacle (AIData+0x0D = 0) and falls back to `sub_8011A26`, whose NaviCust roll (one RNG2 step) picks the blank.
 
 **Routines 0x2B and 0x2C (`sub_8011F8C`, `sub_8011FCE`)**: with absorbed obstacles (AIData+0x0D, list at +0x6C), they pop the last and throw it: action 0x11 variant 2, damage 200, AV+0x30 = the obstacle byte | its sprite (`byte_80E98C0`) << 16. Without any, the buster (0x2B) or `sub_8011AF2` (0x2C).
 
 **DustCross (form 0xA): charged shot 0x28 and B+Back 0x2A** (both trace-verified in soundmod).
 - Routine 0x28 (`sub_8011F64`): damage 0x32 + 10·min(`sub_801265A`, 5), hit param 0x94, element 0x10, action 0x57. Action 0x57 (`sub_80EFC1C`): sub-phase 0 as the buster's (anim 0x0E, the arm, `object_setDefaultCounterTime`, USING_ACTION, sound 0xFF) and on its 2nd tick `sub_80DB800` rolls a junk ball one panel ahead; after 5 ticks sub-phase 4: 31 ticks, then the pointers cleared and `object_exitAttackState`.
-- The ball, T3 0xB0 (`sub_80DB6A4`, Param1 0: frozen in time stop): 18 pixels ahead of its panel's centre, sprite (8, 0xA) anim 0x19. It rolls 6 pixels a tick toward the far column (Timer = the distance to column 6/1 over 6 pixels); on its first tick, and whenever it reaches or passes a panel's centre, it stops if the panel's flags meet `byte_80DB888` (the other side's body, objects); then anim 0x1A, 30 ticks, and on the 5th a hit region (region 1, hit effect 0xA, target 5, self 0x15, modifier 3) and, on a solid panel, sound 0xC0 and `object_crackPanel`. Its Z at spawn is the caller's r3 (the low half of a RAM address), of which the init keeps the fraction; the trace comparison ignores it.
+- The ball, T3 0xB0 (`sub_80DB6A4`, Param1 0: frozen while dimmed): 18 pixels ahead of its panel's centre, sprite (8, 0xA) anim 0x19. It rolls 6 pixels a tick toward the far column (Timer = the distance to column 6/1 over 6 pixels); on its first tick, and whenever it reaches or passes a panel's centre, it stops if the panel's flags meet `byte_80DB888` (the other side's body, objects); then anim 0x1A, 30 ticks, and on the 5th a hit region (region 1, hit effect 0xA, target 5, self 0x15, modifier 3) and, on a solid panel, sound 0xC0 and `object_crackPanel`. Its Z at spawn is the caller's r3 (the low half of a RAM address), of which the init keeps the fraction; the trace comparison ignores it.
 - Routine 0x2A (`sub_8011F84`): lockout 0x28, action 0x58 (`sub_80EFCB4`): anim 0x17 (0x19 in form 0x16), USING_ACTION and MOVING, a vortex (T4#0 effect 0x63, flip = the side) 7 pixels behind and 4 lower with flags 0x14 cleared, sound 0xAD; on the 10th tick `sub_80EFD74` pulls in the obstacles (field-objects.md §4.4); 11 ticks later MOVING off and `object_exitAttackState`. Every tick the vortex's Timer is set to 2, so it lasts two ticks past the action.
 
 **Action 0x1C outside a pause (`sub_80EC39C`)** runs a chip's routine once (`off_80EC3F0[subtype]`, with the attack variables in registers) and idles, 8 ticks later for subtype 0x14. FullCust (0xAE, subtype 5, `sub_800AF34`) sets the custom gauge to 0x4000 (`sub_801DFA2`; in the flag-0x40 mode the side's gauge gets 0x1555 instead); the gauge task then raises the full flag.
@@ -1822,7 +1822,7 @@ Scope: the PvP player (T1 index 0, `AIData.ActorType == 2`, `AIIndex == 0` = Meg
 
 **Hit-result lifetime.** `object_presentCollisionData` runs at the end of each unpaused tick. It does the following:
 - It stores the caller's r1 into +0x54 (the code computes `+0x54 | FlagsFromCollision` into r0 but stores r1; verified in the ROM: `str r1, [r4,#0x54]` at 0x0801A022).
-- If there is no time stop, it zeroes `HitModifierFinal` (+0x0F), +0x03 and +0x54.
+- If there is no dimming, it zeroes `HitModifierFinal` (+0x0F), +0x03 and +0x54.
 - It always zeroes `StatusEffectFinal` (+0x11) and the 0x40 bytes at +0x68..+0xA7. That range holds +0x70 flags, +0x74..0x77, +0x80 FinalDamage, +0x82..0x8D PanelDamage1..6, +0x8E/+0x90/+0x92 and +0xA4.
 - It then re-registers the collision (`sub_300777C`).
 
@@ -1841,10 +1841,10 @@ The function runs these steps in order:
 
 | # | Function | Effect |
 |---|---|---|
-| a | `sub_801A802` (21369) | Barrier (`coll.Barrier` +0x06, chip-defined). If a barrier is up, it subtracts the summed element damage (+0x94..+0x9C, halved rounding up on holy panel type 5) from barrier HP `+0x16` when the damage is at least threshold `+0x17`. When barrier HP reaches 0 or below the barrier breaks. It then **zeroes** PanelDamage1..5, +0x8E/+0x90/+0x92, HitModifierFinal, StatusEffectFinal, +0xA4, +0x74, +0x76, and clears `FlagsFromCollision & 0x50`, so the hit is absorbed. **+0x8C is not zeroed.** Barrier timer `+0x1A` (u16, 0xFFFF = infinite) is decremented when not in time stop. Types 8 and 10 have special regeneration rules. Returns immediately while paused. Barrier = 0 means no-op. |
-| b | `sub_801A186` (20433) | Skipped if time stop, paused or `coll.Region == 0`. **Poison panel** (type 4, unless `f1 & 0x08000028`): `PoisonPanelTimer` (+0x08) -= 1; when it drops below 0, set it to 6 and do `coll+0x8C += 1`, i.e. 1 HP every 7 ticks. On any other panel the timer is reset to 0. **Grass panel** (type 6) with `obj.Element & 0xF == 4` (wood): +1 HP (`object_addHP`) when `BattleState[0x0E] == 0` (a 0..19 cycle), or when HP ≤ 9 and `BattleState[0x16] == 0` (a 0..179 cycle). |
-| c | `sub_801A36A` (20703) | Ice/conveyor. If not paused/time stop and `ai+0x38 != 0`: decrement it; if it reaches ≤ 0, jump straight to **X**. Otherwise: return if `f1 & 0x100040` (DRAG or CANNOT_SLIDE). On a conveyor (panel types 9..0xC), if `ai+0x38 == 0` and not `f1 & 0x24`, set `f2 \|= 0x10` and `Unk_0f = 3`, then return. Else, if `f1 & MOVE_COMPLETE (0x80000)`, go to **X**. **X**: clear MOVE_COMPLETE. If the panel is ice (type 7), the primary element is not aqua, not `f1 & 0x24`, and `f1 & AFFECTED_BY_ICE (0x2000000)` (both players have it), set `f2 \|= 0x10` and `Unk_0f = 2`. |
-| d | `sub_8010230` (2796) | HP-bug navicust drain. If not paused/time stop and HP > 1: with `n = [0,40,35,30,25,20,15,10][NaviStats[0x18]]`, `ai+0x09` counts up and every n ticks does HP -= 1. If n == 0, `ai+0x09 = 0`. The trace has NaviStats[0x18] = 0. |
+| a | `sub_801A802` (21369) | Barrier (`coll.Barrier` +0x06, chip-defined). If a barrier is up, it subtracts the summed element damage (+0x94..+0x9C, halved rounding up on holy panel type 5) from barrier HP `+0x16` when the damage is at least threshold `+0x17`. When barrier HP reaches 0 or below the barrier breaks. It then **zeroes** PanelDamage1..5, +0x8E/+0x90/+0x92, HitModifierFinal, StatusEffectFinal, +0xA4, +0x74, +0x76, and clears `FlagsFromCollision & 0x50`, so the hit is absorbed. **+0x8C is not zeroed.** Barrier timer `+0x1A` (u16, 0xFFFF = infinite) is decremented when not dimmed. Types 8 and 10 have special regeneration rules. Returns immediately while paused. Barrier = 0 means no-op. |
+| b | `sub_801A186` (20433) | Skipped if dimmed, paused or `coll.Region == 0`. **Poison panel** (type 4, unless `f1 & 0x08000028`): `PoisonPanelTimer` (+0x08) -= 1; when it drops below 0, set it to 6 and do `coll+0x8C += 1`, i.e. 1 HP every 7 ticks. On any other panel the timer is reset to 0. **Grass panel** (type 6) with `obj.Element & 0xF == 4` (wood): +1 HP (`object_addHP`) when `BattleState[0x0E] == 0` (a 0..19 cycle), or when HP ≤ 9 and `BattleState[0x16] == 0` (a 0..179 cycle). |
+| c | `sub_801A36A` (20703) | Ice/conveyor. If not paused/dimming and `ai+0x38 != 0`: decrement it; if it reaches ≤ 0, jump straight to **X**. Otherwise: return if `f1 & 0x100040` (DRAG or CANNOT_SLIDE). On a conveyor (panel types 9..0xC), if `ai+0x38 == 0` and not `f1 & 0x24`, set `f2 \|= 0x10` and `Unk_0f = 3`, then return. Else, if `f1 & MOVE_COMPLETE (0x80000)`, go to **X**. **X**: clear MOVE_COMPLETE. If the panel is ice (type 7), the primary element is not aqua, not `f1 & 0x24`, and `f1 & AFFECTED_BY_ICE (0x2000000)` (both players have it), set `f2 \|= 0x10` and `Unk_0f = 2`. |
+| d | `sub_8010230` (2796) | HP-bug navicust drain. If not paused/dimming and HP > 1: with `n = [0,40,35,30,25,20,15,10][NaviStats[0x18]]`, `ai+0x09` counts up and every n ticks does HP -= 1. If n == 0, `ai+0x09 = 0`. The trace has NaviStats[0x18] = 0. |
 | e | `sub_802CFF8` | If `coll+0x76 & 0x40` and the own-side defensive-chip record `unk_2036720[alliance]` is active, cancel that record (`sub_802CEA6`, sound 0x8E). |
 | f | `sub_802CEF4` | Defensive-chip hooks: chip IDs 0xBB, 0x157, 0xBC, and `ai+0x48 & 0x200000/0x800`. These may set `ai+0x44` bits 0x200/0x8000/0x400 and wipe the whole hit (same zero list as (a), plus +0x74, +0x1C/+0x2A/+0x2C and `f2 &= ~0x301BE`). **No-op in plain PvP** (the record is empty). Chips spec. |
 | g | `sub_801A6B4` / `sub_801A720` (21176/21244) | Bug infliction by the attack (`coll+0xA4`). 0xF4, or 0xF7 when a hex digit of HP is 4: NaviStats[0x18] += 1 (max 7). 0xF6: NaviStats[0x18] += 2 and [0x19] += 2 (max 7), then paralysis `+0x1C = 150` with `f2 \|= 8`, and unless NameID ∈ [0x173, 0x17E] also `f2 \|= 0x20` with `+0x20 = 1200`. |
@@ -1857,7 +1857,7 @@ The function runs these steps in order:
 | n | `sub_801A324` (20667) | Drain-heal credits. `opp.ai+0x10 += coll+0x92`. Then `k = self.ai+0x10` and `self.ai+0x10 = 0`. If `(MaxHP/10)*k != 0`: heal that much, spawn a T4 kind 0 with params 6, play sound 0x8A. |
 | o | **`object_calculateFinalDamage1`** | `s = 1` if the player stands on a holy panel (type 5), else 0. Each PanelDamage1..5 (+0x82..+0x8A) becomes `(d + (1<<s) - 1) >> s` and is written back. The sum goes through **`sub_802CE10`**, which uses the per-side record `dword_203CFB0 + 0xC*alliance`: if `rec+8 == this object`, it adds `rec+2`; otherwise it sets `rec+0 = max(rec+0, sum)`. The result is stored in **`FinalDamage` (+0x80)**. **+0x8C (PanelDamage6) is not included and not halved.** |
 | p | `sub_801A420` (20799) | If `CounterTimer` (+0x0D) != 0, decrement it. |
-| q | `sub_80143FC` (11691) | If not paused/time stop: when `f1 & 0xC00` (FLINCHING or PARALYZED), `ai+0x4C += 1`; otherwise `ai+0x4C = 0`. |
+| q | `sub_80143FC` (11691) | If not paused/dimming: when `f1 & 0xC00` (FLINCHING or PARALYZED), `ai+0x4C += 1`; otherwise `ai+0x4C = 0`. |
 | r | `sub_80142DC` (11539) | Anger trigger. If battle mode != 1, NaviStats[0x29] == 0, [0x2C] == 0, not already `f1 & ANGER (0x200000)`, and (`ai+0x4C ≥ 120` or `FinalDamage ≥ 300`): `f2 \|= 0x200`. |
 | s | `sub_8010198` (2708) | If `coll+0x26 != 0 && FlagsFromCollision != 0`: `coll+0x26 = 0` (cancels the timed "UNK_4" invisibility, see §H6). |
 | t | `sub_801A648` (21106) | If not paused, `coll+0x24 != 0`, `FlagsFromCollision & 4` and not `& 0x1000`: `coll+0x24 = 0`. This lets a mercy-piercing hit end mercy early. |
@@ -1883,12 +1883,12 @@ The function runs these steps in order:
    - Always (and after the fall-through): `object_subtractHP(coll+0x8C)`. If HP == 0, go to DEATH.
    - DEATH: if `sub_802DD2A()` (Cross form with `ai+0x48 & 0x4000`; 0 for base MegaMan), set `ai+0x44 |= 0x8000000`; otherwise set **`f2 |= 1`**.
    - Finally `sub_801A200` (20496): Full-Synchro/emotion bookkeeping. If `coll+0x90 & 0x8000` (a counter was landed on this player) and the opponent is in normal/beast form without an active synchro, call `sub_8015BEC(opp, 0xFF)`. Then `NaviStats.Mood -= coll+0x8E` (minimum 1, only if Mood != 0).
-   - This step runs every tick in the top block, including time stop. It is **not** gated on battle-over or DEAD.
+   - This step runs every tick in the top block, including dimming. It is **not** gated on battle-over or DEAD.
 6. `sub_801BADE` (23577): if `CurAction == 7` (bubble) and `FinalDamage != 0`, pop the bubble (`sub_801A2B0`).
 7. If `f1 & DEAD` → TAIL.
 8. If `f2 & 1`: clear it, set `f1 |= DEAD (0x100)`, call **`object_setAttack0(2)`** → TAIL.
 9. If `ai+0x48 & 0x2000`, `& 0x10000` or `& 0x20000` → **DISPATCH** directly, skipping the TAIL. If `ai+0x48 & 0x40000` and `sub_8015766()` → return (Cross-form lanes).
-10. If time stop → TAIL.
+10. If dimming → TAIL.
 11. `obj.PreventAnim (+0x18) = 0`.
 12. `ai+0x44` special requests (Cross/Beast): 0x8000000 → `ai+0x48 |= 0x2000`, action 0x4C → DISPATCH. 0x40000000 → `|= 0x10000`, action 0x30 → DISPATCH. 0x80000000 → cleared; if NameID ∈ [0x1AC, 0x1C1], un-cross → return. None of these fire for base MegaMan.
 13. **Drag request** `f2 & 0x100`:
@@ -1924,7 +1924,7 @@ The function runs these steps in order:
 - Then choose one:
   - DEAD → DISPATCH.
   - Paused and `CurAction != 0` → `sub_8017BC0` (the pause handler, used for chips and transformations; out of scope here).
-  - Time stop → **`sub_8017AB4`** (§H4.4).
+  - Dimming → **`sub_8017AB4`** (§H4.4).
   - Otherwise → DISPATCH.
 
 **DISPATCH** is `sub_801B9E6` (23444). If `CurAction < 0x10`, it calls `table[CurAction]`, which for AIIndex 0 is `off_80EA52C` = [0 `sub_8016380`, 1 `sub_8017888`, 2 `sub_80173F4`, 3 `sub_80174FE`, 4 `sub_80175B8`, 5 `sub_80178B6`, 6 `sub_8017688`, 7 `sub_8017768`, 8 `sub_80EA734`]. Otherwise it calls `JumpTable80EAC60[CurAction-0x10]`, or `sub_80EAD9C` if `AttackVars+0x1D == 1`. The **new action runs in the same tick** as the `setAttack0` call.
@@ -1972,14 +1972,14 @@ Action-specific extras:
   - The flinch lasts 24 ticks: the Timer reads 22, 21, …, 0 at the end of ticks t0…t0+22, and at the end of t0+23 the state is `[4,8,0,0]` with Timer 65535.
   - A new flinching hit during a flinch calls `setAttack0(3)` again, which restarts all 24 ticks.
   - Experimental check: the machgun battle under emulation with HP poked to 1000 at frame 2340. The first hit at 2346 gave `[4,3,0,4]`, t = 22, f1 = 0x02400400. The re-hit at 2361 gave t = 22 again. At 2383, t = 0. At 2384 the state was `[4,8,0,0]` with t = 65535.
-- **Mercy invincibility** (`sub_801A5EE`) uses **`coll+0x24` (u16)** and is gated on `battle_getFlags() & 1`. It runs in step 17 of the normal path, so it does not tick while paused, in time stop, or once DEAD.
+- **Mercy invincibility** (`sub_801A5EE`) uses **`coll+0x24` (u16)** and is gated on `battle_getFlags() & 1`. It runs in step 17 of the normal path, so it does not tick while paused, while dimmed, or once DEAD.
   - If `coll+0x24 == 0 && f2 & 2`, set `coll+0x24 = 120`. Then always clear `f2 & 2`.
   - If `coll+0x24 != 0`, decrement it. While the result is > 0, set `f1 |= FLASHING (0x200)`. When it reaches 0, play sound 0x94 if `f1 & INVIS (0x2)`, then clear `f1 & 0x202`.
   - The trace matches: the dumped counter was 119 at the end of the hit tick.
   - Mercy comes from `HitModifier & 2`, independent of flinch (`& 1`). Chip 0x52's first hit had hm = 1 (flinch only); its later hit had hm & 2.
   - While `f1 & 0x202` is set, the collision engine ignores attackers without `SelfCollisionTypeFlags & 4` (`sub_3007218`).
 - **Visibility bit (object header Flags & 0x02)** is part of the traced "flags" byte. `sub_8016934` (16238) runs in the TAIL:
-  - If not in time stop, set VISIBLE.
+  - If not dimmed, set VISIBLE.
   - Then, if not DEAD, `f1 & 0x202` and **`coll+0x24 & 2`** (the value after this tick's decrement), clear VISIBLE. Counter values 119 and 118 are hidden, 117 and 116 are shown, and so on: 2 ticks off, 2 on. This is trace-verified: flags alternate 0x15,0x15,0x17,0x17,…
   - Also, if `obj.Alliance != BattleState[0x0D]` (the local side; 0 on core 0) and the local navi (`sub_80103BC(alliance^1)`) has `f1 & BLIND (0x2000)`, VISIBLE is cleared. **This is view-dependent**: the two consoles differ here.
   - The deletion sequence clears VISIBLE itself.
@@ -2030,16 +2030,16 @@ A count of 6 means "until blocked". `Unk_0f` = 2 (ice) and 3 (conveyor) use othe
   - Otherwise: clear `f1 & 0x501800`, `ai+0x44 &= ~0x1000043F`, `ai+0x48 &= ~0x200000`, `f2 &= ~0x10`, `Unk_1f = 0`, anim 0, `CurAction = 8`.
 - Because step 14 re-asserts `CurAction = 5` while DRAG is set, drag cannot be overridden by flinch.
 
-##### H4.4 Time stop — RNG use
+##### H4.4 Dimming — RNG use
 
 `sub_8017AB4` (18237) replaces the action while `battle_isTimeStop()` (`battle_getFlags() & 4`). The first part handles multiplayer chip-trigger logic (the chips spec). The shake part works as follows:
 - If `PreventAnim == 0`: save `X16` in +0x30 and `Z16` in +0x32, set `Unk_19 = 0` and `PreventAnim = 4`.
 - If `FinalDamage != 0`, set `Unk_19 = 30`.
 - If `Unk_19 != 0`: decrement it, then write `X = (Unk_30 << 16) + ((r & 3) - 1) << 16` and `Z = (Unk_32 << 16) + (((r >> 16) & 3) - 1) << 16`, with **one `GetRNG2` per tick** (mask 3). Y is kept.
 - Otherwise restore X16 and Z16.
-- Step 11 resets `PreventAnim = 0` on the first non-time-stop tick. If time stop ends while `Unk_19 > 0`, the perturbed X/Z are not restored here. UNCERTAIN whether a later handler fixes them.
+- Step 11 resets `PreventAnim = 0` on the first undimmed tick. If dimming ends while `Unk_19 > 0`, the perturbed X/Z are not restored here. UNCERTAIN whether a later handler fixes them.
 
-Damage is still applied in time stop (step 5 runs before step 10). Status timers, mercy and flinch requests are not processed until time stop ends. Requests (f2 bits) persist.
+Damage is still applied while dimmed (step 5 runs before step 10). Status timers, mercy and flinch requests are not processed until dimming ends. Requests (f2 bits) persist.
 
 #### H5. Status effects
 
@@ -2092,7 +2092,7 @@ Timeline, where t0 is the tick in which `applyDamageToPlayer` leaves HP == 0. Th
 | Tick | What happens | Trace |
 |---|---|---|
 | t0 | Set `f2 \|= 1`. In the same `sub_801AF44`: DEAD is set and `setAttack0(2)`. The TAIL dispatches phase 0 (`sub_801741C`, 17499), which does: clear collision Region, `sub_801A5E2` (coll+0x48/+0x4C = 0), cancel the invis timer, `sub_8012EA8`, `sub_801DC36` (HUD), `ChipsHeld = 0`, `Chip = 0xFFFF`, re-flip, remove the FuturePanel reserve, `sub_801A7F4` (`ai+0x60 = 0`, Barrier = 0), `ai+0x58 = 0` if set, and **`sub_800A11C`** if `Param2 < 1`. `sub_800A11C` does `BattleState[0x12+alliance] -= 1` and removes self from `BattleState+0x80[0..7]`, so **the battle is over from here on**. Then `sub_802EF5C` and phase 4. | `[4,2,4,0]`, f1 \|= 0x100 |
-| t0+1 | Phase 4 (`sub_801746E`, 17535), which waits while in time stop: anim 2, `RelatedObject1Ptr = 0`, `PreventAnim = 0`, `ai+0x5C = ai+0x68 = 0`, sound 0x6C, **2× `SpawnT4BattleObjectWithId0`** (T4 kind 0) at (X, Y, Z) with params 3, `Timer = 21`, phase 8. | `[4,2,8,0]` t = 21 |
+| t0+1 | Phase 4 (`sub_801746E`, 17535), which waits while while dimmed: anim 2, `RelatedObject1Ptr = 0`, `PreventAnim = 0`, `ai+0x5C = ai+0x68 = 0`, sound 0x6C, **2× `SpawnT4BattleObjectWithId0`** (T4 kind 0) at (X, Y, Z) with params 3, `Timer = 21`, phase 8. | `[4,2,8,0]` t = 21 |
 | t0+2 … t0+22 | Phase 8 (`sub_80174AA`): `Timer -= 1`; at 0 → phase 12 (Timer 0). | t0+22: `[4,2,12,0]` |
 | t0+23 … t0+54 | Phase 12 (`sub_80174BE`): `Timer += 1`; mosaic = Timer>>1 and alpha (render only). At `Timer == 32`: clear mosaic/alpha, `sub_802CDD0`, **clear VISIBLE**, `sub_8011020` (per-NameID death hook; not analysed), then **`CurStateActionPhaseAndPhaseInitialized = 8`**. | t0+54: `[8,0,0,0]` flags 0x15 |
 | t0+55 | CurState 8, `sub_8016C4E` (16585), runs once (PhaseInitialized): `sub_801BB78`, `object_freeCollisionData` (the traced status reads 0 from here), `ai+0x0E = 0xFF`, PhaseInitialized = 4. The object is freed only if `ai+0x02 != 0`; **for players it is 0, so the object stays allocated** in `[8,0,0,4]` until the end-of-battle cleanup frees every object (trace: flags → 0 at 1113 and 2521). | `[8,0,0,4]` |
@@ -2115,8 +2115,8 @@ The shake is not player code, but it consumes RNG1. `camera_doShakeEffect_80301e
 - Secondary: +0x10 timer, +0x12 type. Set by `sub_80302B6(type, dur)`.
 
 Path selection each tick:
-- If `sub_80269D0() != 0`, or `IsCurSubsystemInUse()` is false, or `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4()` is nonzero: try the primary first, then the secondary. That last function returns 1 for time stop, *not paused*, or battle flags & 0x20. So in a running battle the primary counter is used first.
-- Otherwise (paused, no time stop, no flag 0x20): secondary only.
+- If `sub_80269D0() != 0`, or `IsCurSubsystemInUse()` is false, or `battle_isTimeStopPauseOrBattleFlags0x20_800a0a4()` is nonzero: try the primary first, then the secondary. That last function returns 1 for dimming, *not paused*, or battle flags & 0x20. So in a running battle the primary counter is used first.
+- Otherwise (paused, no dimming, no flag 0x20): secondary only.
 
 For the chosen counter, if timer != 0: `timer -= 1`, then **2× `GetRNG1`**:
 - `nextX = X + ((r1 & m) << 16) - b`
@@ -2160,7 +2160,7 @@ Beast Out steps (timer = AIAttackVars+0x10, a u16):
 - Weapons (`sub_800FEEC` from `byte_8020354 + 6·form`): buster 3, A-charge 5, charged shot 0xFF (so B does not charge), B+Back none, alternative A-charge 0x1E for Null-family chips.
 - Element Null and no weakness (`sub_801086C` tables).
 - Form flags (`sub_8014536` → `sub_8014606`): ObjectFlags1 \|= AirShoe | FloatShoe, the collision self type becomes 0x10 (as with FloatShoe), and the lock-on marker T4#0x0F is spawned unless AIData+0x40 already holds one.
-- A charges chips: `sub_801336C` asks `sub_8013236`, which in forms 0x0B..0x16 accepts any family-0xA (Null) chip. The other forms accept damaging, non-time-freeze chips of one family: form 2 Null, forms 3/0xF Sword (or chips 0x4C..0x4F), 7/0x13 Wood, 6/0x12 Aqua, 9/0x15 Break, 5/0x11 Fire. Link navis 5/6/7/0xB have their own rule (`sub_800F49E`, `byte_8021369`); MegaMan's always fails it.
+- A charges chips: `sub_801336C` asks `sub_8013236`, which in forms 0x0B..0x16 accepts any family-0xA (Null) chip. The other forms accept damaging, non-dimming chips of one family: form 2 Null, forms 3/0xF Sword (or chips 0x4C..0x4F), 7/0x13 Wood, 6/0x12 Aqua, 9/0x15 Break, 5/0x11 Fire. Link navis 5/6/7/0xB have their own rule (`sub_800F49E`, `byte_8021369`); MegaMan's always fails it.
 - The beast-out counter (NaviStats+0x21) goes down at the next fighting state 0 (battle-flow.md §3.4).
 - The overlay follows the navi: with AIIndex 0, every `sub_8011450` call and the flinch/drag hook restart the overlay's animation (`sub_80C44D2`).
 
@@ -2182,7 +2182,7 @@ Trace: soundmod, every round's first turn. Both navis cross at once: side 0 (Gre
 
 **T1#0x56, a body overlay (`sub_80C4348`).** A second sprite on its owner (RelatedObject1Ptr), spawned by `sub_80C44A8` (flags \|= 0x14, alliance and flip copied) with r4 = params: Param1 the variant, Param2 nonzero = its own palette (else its owner's), Param3 how it steps, Param4 an animation offset. The Crosses use `sub_80112E0`..`sub_801133A` with Param2 = 1: forms 1..10 get variants 4, 8, 0xA, 0xC, 0x11, 5, 0xE, 9, 0xD, 0x12.
 - Init (`sub_80C4368`): stores `off_80C42D4[Param1]` (a per-animation byte table) **in its CollisionDataPtr slot**, so a trace reading ObjectFlags1 through it reads 0 (it points into ROM); the sprite `byte_80C4320[Param1]`; CurAnim = Param4 and CurAnimCopy = 0 (one halfword store); state 4, then the update.
-- Update (`sub_80C43C4`): CurAnim = owner's + Param4; position = owner's; then if ExtraVars[0] (`sub_80C4526`): Y and Z + 1 pixel; else if the table's byte for the owner's animation is 0: Y and Z − 1 pixel (same place on screen, drawn behind the owner). Visibility follows the owner unless PhaseInitialized is set (`sub_80C44E4`/`sub_80C44FA` force it); the flip follows the owner. Action 0: Param3 = 0 → `object_updateSprite` unless in time stop; else `sub_801BCD0`.
+- Update (`sub_80C43C4`): CurAnim = owner's + Param4; position = owner's; then if ExtraVars[0] (`sub_80C4526`): Y and Z + 1 pixel; else if the table's byte for the owner's animation is 0: Y and Z − 1 pixel (same place on screen, drawn behind the owner). Visibility follows the owner unless PhaseInitialized is set (`sub_80C44E4`/`sub_80C44FA` force it); the flip follows the owner. Action 0: Param3 = 0 → `object_updateSprite` unless while dimmed; else `sub_801BCD0`.
 - Removal (`sub_80C44C8`): state 8, freed at its next update.
 - The tables: `ObjectData::body_overlays` (a content pack's `objects/body-overlay/object.toml`; the byte tables run back to back up to the pointer table; an animation past a table's end reads the next one, so each row is extracted to the block's end).
 
@@ -2208,7 +2208,7 @@ No object consumed RNG in this match otherwise, because nobody fired the buster 
 | `sub_8011A7E` (charged shot) | RNG2 (pos.) | 1 | navi stat 0x4F not in {0, 6} | §B7 |
 | `object_spawnCollisionEffect` / `sub_801A100` -> `AddRandomVarianceToTwoCoords` | RNG2 | 1 per hit | attacker side (projectiles, T3 regions): `FlagsFromCollision & 0x3F800000`, not bit 0, HitEffect != 0xFF | §B8 |
 | `object_spawnHiteffect` (in `sub_801AC6C`) | RNG2 | 1 | victim side: `FlagsFromCollision & 0x20000`, not paused | §H2 |
-| `sub_8017AB4` time-stop shake | RNG2 | 1 per tick | 30 ticks after a damaging tick during time stop | §H4.4 |
+| `sub_8017AB4` dimming shake | RNG2 | 1 per tick | 30 ticks after a damaging tick while dimmed | §H4.4 |
 | camera shake `camera_doShakeEffect_80301e8` | RNG1 | 2 per tick | while a shake counter (eCamera+0x0C / +0x10) runs; ~40 chip/virus objects start shakes via `camera_initShakeEffect_80302a8` | §H7 |
 | `sub_8013E58` (player init) | RNG2 | 1 | navi stat 0x1A is 9 or 10 | §12.2 |
 | `sub_8013DA0` (player tick) | RNG2 (pos.) | 1 per 60 ticks | navi stats 0x24 and 0x21 both nonzero | §M1 |
@@ -2264,7 +2264,7 @@ Other confirmed facts:
 
 Object system:
 1. The pathological list cases of §3.4 (free-self-then-spawn into a lower slot, free-self-then-free-successor) are derived from code; not seen in any trace. Replicating the list pointer semantics exactly covers them.
-2. `object_presentCollisionData` stores the caller's r1 into cd+0x54 before clearing it (except during time stop, when the garbage survives). Only matters if +0x54 is read during time stop. For the player the value is the GameState pointer (r1 left by `battle_isPaused`).
+2. `object_presentCollisionData` stores the caller's r1 into cd+0x54 before clearing it (except while dimmed, when the garbage survives). Only matters if +0x54 is read while dimmed. For the player the value is the GameState pointer (r1 left by `battle_isPaused`).
 3. The dangling CollisionDataPtr of a deleted player (§12.8) and freed objects in general: any reader aliases the slot's new owner.
 4. Register-garbage spawn arguments (T4#8, T4#2, T4#0x0A, the second death explosion): values documented only for the observed configuration; they depend on the local side (`BattleState[0x0D]`), battle effects and panel pattern. They are visual (overwritten or never read) but are part of the traced object state.
 5. `sub_8013892`'s `pop {r4}` clobbers the AIData pointer in `sub_80172F0` when navi stat 0x06 (FirstBarrier) is nonzero, so the T4#8 pointer would be stored through a bogus address. Code-derived, not observed.
@@ -2277,7 +2277,7 @@ Player:
 10. Who sets request flags 0x20, 0x600/0x8600 (reactive defensive chips), state flag 0x200 and the SELECT special (flags44 0x2000000) - form/Beast/chip features, unused in base PvP (§B5).
 11. HitModifier bit semantics (1 flinch, 2 mercy, 0x04-0x20 push, 0x40 drag, 0x80 vertical) are inferred from the player-side consumers; the attacker side belongs to the chip/collision specs. MegaMan's charged shot has HitModifier 0 (no flinch).
 12. Not analysed: `sub_8011020` (per-NameID death hook), `sub_802EF5C` (deletion link bookkeeping), `sub_801BB78` (reservation cleanup scan), `sub_800A104`. The pause-time handler `sub_8017BC0` is in §M4.2; of its actions only Beast Out is analysed (§12.9).
-13. Time-stop shake: X/Z may be left perturbed if time stop ends while the 30-tick shake counter is still running (§H4.4).
+13. Dimming shake: X/Z may be left perturbed if dimmed ends while the 30-tick shake counter is still running (§H4.4).
 14. `sub_800E730` status timers: on the first frozen/bubbled tick with a stale effect-object pointer, execution jumps into the next status's active branch (§H5). Code-derived.
 15. Animation: the claim that MegaMan's own actions never depend on animation data rests on this match's coverage; 12 player chip/form routines do end on end-of-animation (§S.4). Compressed sprites missing from the cache fall back to a one-dot sprite (would change animation lengths) - assumed never to happen in battle (§S.4).
 16. Screen fades: the T4#2 intro fade and the transformation fade-in (type 0x40) take 17 ticks; the transformation fade-out (0x44) and the end-of-round fade (0xC) take 16 (§A.4, battle-flow.md §3.4.1). Other fade types are unmeasured.

@@ -57,7 +57,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, navi: Navi, swings: u16) -> Optio
     o.flip = flip;
     o.related[0] = Some(owner);
     o.timer = 6;
-    o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_IN_TIME_STOP;
+    o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
     let v = vars(b, r);
     v.navi = navi;
     v.swings_left = swings;
