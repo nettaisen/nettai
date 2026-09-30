@@ -13,6 +13,7 @@
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
 //! data.rules.field_regions[region - 0x80]        a whole-field region's panel condition
+//! data.rules.sine[step]     the sine table: 256 steps a turn, 1.0 = 0x100 (math_sinTable)
 //! data.regions[region]      a hit region's panels, [dx, dy] each (PanelOffsetListsPointerTable)
 //! ```
 
@@ -74,6 +75,7 @@ pub fn script_data(c: &Content) -> Data {
     let rules = Data::map([
         ("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64))),
         ("field_regions", by_id(field_regions, |r| value(*r))),
+        ("sine", by_id(c.rules.sine.iter().enumerate().map(|(i, &v)| (i as i64, v)), |&v| Data::Int(v as i64))),
     ]);
     Data::map([
         ("chips", by_id(c.chips.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
