@@ -524,9 +524,9 @@ impl Battle {
         for heard in &mut self.sound {
             heard.clear();
         }
-        // Panel highlights last one frame: the game's field renderer
-        // clears them after drawing.
-        self.field.clear_highlights();
+        // Panel highlights and blinks last one frame: the game's field
+        // renderer clears them after drawing.
+        self.field.clear_one_frame_looks();
         match self.round.top {
             top::RUNNING => self.tick_running(input, events),
             top::END => self.tick_end(input, &events),
