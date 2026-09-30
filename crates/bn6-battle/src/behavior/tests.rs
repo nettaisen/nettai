@@ -29,13 +29,20 @@ fn battles_run_the_content_scripts() {
         [
             "area-grab",
             "attachment",
+            "bomb",
+            "bomb-slash",
+            "bug-bomb",
             "dust-ball",
+            "energy-burst",
             "erase-beam",
             "erase-man",
             "erase-mark",
+            "flash-bomb",
             "grab-shot",
             "reflected-shot",
             "reflector-shield",
+            "seed",
+            "smoke-puff",
             "sun-beam",
         ]
     );
@@ -97,6 +104,34 @@ fn the_scripted_navi_and_dimming_chips_play() {
 }
 
 #[test]
+fn the_thrown_chips_play_and_roll_back() {
+    // Duels with the bomb, seed, flash bomb and bug bomb in the folders:
+    // each thrown kind flies, and a copy of the battle at any tick plays
+    // on exactly as the battle does.
+    use crate::object::Pool::Attack;
+    let setup = || scenario::setup_with(&[testing::BOMB, testing::SEED, testing::FLASH, testing::BUG]);
+    let tape = scenario::record_on(setup(), 2400, 5);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    let mut seen = std::collections::BTreeMap::new();
+    for (i, t) in tape.iter().enumerate() {
+        if i % 131 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+        for r in b.objects.in_order() {
+            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+        }
+    }
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    assert!(ticks((Attack, 0x08)) > 0, "the bomb: {seen:?}");
+    assert!(ticks((Attack, 0x4F)) > 0, "the seed: {seen:?}");
+    assert!(ticks((Attack, 0xA4)) > 0, "the flash bomb: {seen:?}");
+    assert!(ticks((Attack, 0xA5)) > 0, "the bug bomb: {seen:?}");
+}
+
+#[test]
 fn scripted_chips_roll_back() {
     // A copy of the battle taken at any tick plays on exactly as the
     // battle does: the scripts' state is all in the battle.
@@ -120,7 +155,7 @@ fn registrations_follow_the_content_data() {
     // The four SunGun chips share one action; two weapons have theirs;
     // the mend and mirror chips theirs.
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
-    assert_eq!(actions, [0x20, 0x2B, 0x33, 0x37, 0x57], "{:?}", r.actions);
+    assert_eq!(actions, [0x12, 0x20, 0x2B, 0x33, 0x37, 0x57], "{:?}", r.actions);
     // Two chips implementing one action with different scripts is an error.
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
     let e = c.registrations().unwrap_err();
