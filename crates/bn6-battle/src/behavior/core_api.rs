@@ -247,6 +247,7 @@ impl CoreApi for Battle {
             NaviStat::Charge => i(s.charge as i64),
             NaviStat::Mood => i(s.mood as i64),
             NaviStat::BeastOutCounter => i(s.beast_out_counter as i64),
+            NaviStat::Version => i(s.version as i64),
             NaviStat::MaxBaseHp => i(s.max_base_hp as i64),
             NaviStat::ChipRecovery => i(s.chip_recovery as i64),
             NaviStat::BusterShot => i(s.weapons.buster_shot as i64),
@@ -328,14 +329,15 @@ impl CoreApi for Battle {
     }
 
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo> {
-        let name = self
+        let r = self
             .content
             .navis
             .iter()
             .filter_map(|n| n.name_record.as_ref())
             .chain(self.content.forms.iter().filter_map(|f| f.name_record.as_ref()))
-            .find(|n| n.id == name_id)?;
-        let r = name.record();
+            .find(|n| n.id == name_id)
+            .map(crate::content::NameData::record)
+            .or_else(|| self.content.rules.actor_records.get(name_id as usize).copied())?;
         Some(NaviRecordInfo { actor_type: actor_type_index(r.actor_type) as u8, ai_index: r.ai_index })
     }
 
@@ -661,6 +663,38 @@ impl CoreApi for Battle {
         kinds::hitbox::spawn(self, owner, &spec)
     }
 
+    fn spawn_palette_flash(&mut self, s: &bn6_content_api::PaletteFlashSpec) -> Option<ObjectRef> {
+        let v = kinds::palette_flash::Vars {
+            duration: s.duration,
+            while_dimmed: s.while_dimmed,
+            while_paused: s.while_paused,
+            steady: s.steady,
+            color: s.color,
+        };
+        kinds::palette_flash::spawn_with(self, v)
+    }
+
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, s: &bn6_content_api::AfterimageSpec) -> Option<ObjectRef> {
+        use kinds::afterimage::{Tether, Vars};
+        let tether = match s.tether {
+            1 => Tether::BeastForm,
+            2 => Tether::Attack,
+            _ => Tether::None,
+        };
+        let v = Vars {
+            lifetime: s.lifetime,
+            tether,
+            anim: s.anim,
+            sprite: s.sprite,
+            color_shader: s.color_shader,
+            shadow: s.shadow,
+            keep_shadow: s.keep_shadow,
+            steady: s.steady,
+            palette: s.palette,
+        };
+        kinds::afterimage::spawn_with(self, owner, pos, s.flip, v)
+    }
+
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef> {
         kinds::spark::spawn(self, owner, pos, id)
     }
@@ -681,10 +715,6 @@ impl CoreApi for Battle {
             _ => Stepping::Always,
         };
         spawn_with(self, owner, Vars { sprite: Some(sprite), nudged, anim_offset, stepping, owner_palette })
-    }
-
-    fn spawn_palette_flash(&mut self, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
-        kinds::palette_flash::spawn(self, duration, while_dimmed, while_paused)
     }
 
     fn death_hook(&mut self, o: ObjectRef, name_id: u16) {

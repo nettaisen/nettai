@@ -22,6 +22,7 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use bn6_content_api::{
+    AFTERIMAGE_TETHERS, AfterimageSpec, OVERLAY_STEPPINGS, PaletteFlashSpec,
     ACTOR_TYPES, ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
     HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, Manifest, NaviStat, NaviState, ObjectField, PANEL_TYPES, Pad,
     PanelPos, Pool, RequestFlag, SpriteField, SpriteId, StatusFlag, StatusTimer, Value, Vec3,
@@ -925,34 +926,58 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let o = with(|api, _| Ok(api.spawn_hitbox(owner.0, &s)))?;
         object_value(lua, o)
     });
-    lib_fn!(lua, t, "form_overlay", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
-        let sprite = sprite_id(spec.raw_get("sprite")?, None)?;
-        let stepping: mlua::LuaString = spec.raw_get("stepping")?;
-        let stepping = named(&stepping, "stepping", |s| ["normal", "while_dimmed", "always"].iter().position(|n| *n == s))?;
-        let offset: Option<LuaValue> = spec.raw_get("anim_offset")?;
-        let anim_offset = offset.map_or(Ok(0), |v| u8_arg(v, "anim_offset"))?;
-        let nudged: Option<bool> = spec.raw_get("nudged")?;
-        let owner_palette: Option<bool> = spec.raw_get("owner_palette")?;
-        let o = with(|api, _| {
-            Ok(api.spawn_form_overlay(
-                owner.0,
-                sprite,
-                stepping as u8,
-                anim_offset,
-                nudged.unwrap_or(false),
-                owner_palette.unwrap_or(false),
-            ))
-        })?;
-        object_value(lua, o)
-    });
-    lib_fn!(lua, t, "palette_flash", |lua, (duration, while_dimmed, while_paused): (LuaValue, bool, bool)| {
-        let duration = u8_arg(duration, "duration")?;
-        let o = with(|api, _| Ok(api.spawn_palette_flash(duration, while_dimmed, while_paused)))?;
-        object_value(lua, o)
-    });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {
         let id = u8_arg(id, "hit spark")?;
         let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "form_overlay", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
+        let sprite = sprite_id(spec.raw_get("sprite")?, None)?;
+        let stepping = match spec.raw_get::<Option<mlua::LuaString>>("stepping")? {
+            Some(s) => named(&s, "overlay stepping", |n| OVERLAY_STEPPINGS.iter().position(|x| *x == n))? as u8,
+            None => 0,
+        };
+        let anim_offset = table_int(&spec, "anim_offset")? as u8;
+        let nudged = spec.raw_get::<Option<bool>>("nudged")?.unwrap_or(false);
+        let owner_palette = spec.raw_get::<Option<bool>>("owner_palette")?.unwrap_or(false);
+        let o = with(|api, _| Ok(api.spawn_form_overlay(owner.0, sprite, stepping, anim_offset, nudged, owner_palette)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "palette_flash", |lua, spec: mlua::Table| {
+        let flag = |k: &str| spec.raw_get::<Option<bool>>(k).map(|b| b.unwrap_or(false));
+        let s = PaletteFlashSpec {
+            duration: table_int(&spec, "duration")? as u8,
+            while_dimmed: flag("while_dimmed")?,
+            while_paused: flag("while_paused")?,
+            steady: flag("steady")?,
+            color: if flag("red")? { 1 } else { 0 },
+        };
+        let o = with(|api, _| Ok(api.spawn_palette_flash(&s)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "afterimage", |lua, (owner, pos, spec): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, mlua::Table)| {
+        let flag = |k: &str| spec.raw_get::<Option<bool>>(k).map(|b| b.unwrap_or(false));
+        let sprite = match spec.raw_get::<LuaValue>("sprite")? {
+            LuaValue::Nil => None,
+            v => Some(sprite_id(v, None)?),
+        };
+        let tether = match spec.raw_get::<Option<mlua::LuaString>>("tether")? {
+            Some(s) => named(&s, "afterimage tether", |n| AFTERIMAGE_TETHERS.iter().position(|x| *x == n))? as u8,
+            None => 0,
+        };
+        let s = AfterimageSpec {
+            sprite,
+            anim: table_int(&spec, "anim")? as u8,
+            flip: table_int(&spec, "flip")? as u8,
+            lifetime: table_int(&spec, "lifetime")? as u16,
+            shadow: flag("shadow")?,
+            keep_shadow: flag("keep_shadow")?,
+            color_shader: table_int(&spec, "color_shader")? as u16,
+            palette: table_int(&spec, "palette")? as u8,
+            steady: flag("steady")?,
+            tether,
+        };
+        let o = with(|api, _| Ok(api.spawn_afterimage(owner.0, pos.0, &s)))?;
         object_value(lua, o)
     });
     Ok(t)

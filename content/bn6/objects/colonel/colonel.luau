@@ -227,7 +227,7 @@ local function screen_divide(me: Object)
     hit(me, x, y, 0x29)
     local cx, cy = field.center(x + me.facing, y)
     battle.effect(Vec3.new(cx, cy, 0), 0x38, me.alliance)
-    battle.palette_flash(0x14, true, false)
+    battle.palette_flash({ duration = 0x14, while_dimmed = true, while_paused = false })
 end
 
 -- `sub_80B8564`: CrossDiv: a cross on the enemy's panel (regions 0x0B and
@@ -243,7 +243,7 @@ local function cross_divide(me: Object)
     local pos = Vec3.new(cx, cy, 0xC_0000)
     battle.effect(pos, 0x36, me.alliance)
     battle.effect(pos, 0x37, me.alliance)
-    battle.palette_flash(0x28, true, false)
+    battle.palette_flash({ duration = 0x28, while_dimmed = true, while_paused = false })
 end
 
 -- Action 4 (`sub_80B8376`): the strike.

@@ -1,0 +1,3 @@
+# A navi chip (subtype 26): its navi is Bass.
+
+script = "../../objects/bass/bass.luau"

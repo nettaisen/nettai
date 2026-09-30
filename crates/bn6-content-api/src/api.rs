@@ -299,6 +299,8 @@ named_fields! {
         Charge = "charge", U8, ro;
         Mood = "mood", U8, ro;
         BeastOutCounter = "beast_out_counter", U8, ro;
+        /// The navi's game: 0 Gregar, 1 Falzar.
+        Version = "version", U8, ro;
         MaxBaseHp = "max_base_hp", U16, ro;
         /// The NaviCust's heal on chip use.
         ChipRecovery = "chip_recovery", U16, ro;
@@ -515,6 +517,51 @@ named_flags! {
         /// dimming once both sides are done, and frees the controller.
         Finish = "finish",
     }
+}
+
+/// How a form overlay's sprite steps once every navi is in (its Param3):
+/// `object_updateSprite` (and not while dimmed), `object_updateSpriteTimestop`,
+/// or `sub_801BCD0` (paused or not).
+pub const OVERLAY_STEPPINGS: [&str; 3] = ["normal", "while_dimmed", "always"];
+
+/// What ends an afterimage early (its ExtraVars[3]).
+pub const AFTERIMAGE_TETHERS: [&str; 3] = ["none", "beast_form", "attack"];
+
+/// A screen palette flash (effect object #0x0A), as `sub_80E11E0` takes it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct PaletteFlashSpec {
+    /// Ticks it lasts (Param2).
+    pub duration: u8,
+    /// Keeps on while dimmed, while paused (Param3's bits).
+    pub while_dimmed: bool,
+    pub while_paused: bool,
+    /// Param1 1: held white, not blinking (`sub_80E114C`).
+    pub steady: bool,
+    /// Param4: the blinking colour, 0 white, 1 red (drawn only).
+    pub color: u8,
+}
+
+/// An afterimage (effect object #0x28), as `sub_80E33FA` takes it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AfterimageSpec {
+    /// Its sprite (Param1/Param2); None (Param1 0xFF): the owner's, by its
+    /// NameID, wearing the overlay the NameID's form wears.
+    pub sprite: Option<SpriteId>,
+    /// Param3, Param4.
+    pub anim: u8,
+    pub flip: u8,
+    /// ExtraVars[1]: ticks it lasts; a ground shadow (else drawn with the
+    /// sprite); that shadow kept (else none).
+    pub lifetime: u16,
+    pub shadow: bool,
+    pub keep_shadow: bool,
+    /// ExtraVars[0], [4].
+    pub color_shader: u16,
+    pub palette: u8,
+    /// ExtraVars[2] set: shown steadily rather than blinking.
+    pub steady: bool,
+    /// ExtraVars[3]: an index into [`AFTERIMAGE_TETHERS`].
+    pub tether: u8,
 }
 
 /// A one-tick hit region (attack object #3), as `object_spawnCollisionRegion`
@@ -802,9 +849,10 @@ pub trait CoreApi {
         nudged: bool,
         owner_palette: bool,
     ) -> Option<ObjectRef>;
-    /// `sub_80E11E0`: a screen palette flash (effect 0x0A, its white
-    /// variant 0) for `duration` ticks.
-    fn spawn_palette_flash(&mut self, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
+    /// `sub_80E11E0`: a screen palette flash (effect object #0x0A).
+    fn spawn_palette_flash(&mut self, spec: &PaletteFlashSpec) -> Option<ObjectRef>;
+    /// `sub_80E33FA`: an afterimage (effect object #0x28) of `owner` at `pos`.
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);

@@ -29,6 +29,7 @@ fn battles_run_the_content_scripts() {
         [
             "area-grab",
             "attachment",
+            "bass",
             "blast-fire",
             "blast-man",
             "charge-car",
@@ -48,6 +49,8 @@ fn battles_run_the_content_scripts() {
             "heat-flame",
             "heat-man",
             "meteor",
+            "moon-beam",
+            "panel-strike",
             "projectile",
             "slash-man",
             "slash-wave",
@@ -58,6 +61,8 @@ fn battles_run_the_content_scripts() {
             "spout-pillar",
             "spout-splash",
             "sun-beam",
+            "sun-meteor",
+            "sun-moon",
             "tengu-man",
             "tomahawk-man"
         ]
@@ -172,10 +177,28 @@ fn the_navi_chip_navis_come_and_go() {
 }
 
 #[test]
+fn the_shooting_and_sun_moon_navis_attack() {
+    use crate::object::Pool::{Actor, Attack};
+    let seen = duel_with(&[testing::BASS], 2400, 11);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // The shooting navi comes with his cape (a form overlay) and fires
+    // panel strikes.
+    assert!(ticks((Actor, 0x4F)) > 0, "Bass: {seen:?}");
+    assert!(ticks((Actor, 0x57)) > 0, "Bass's cape: {seen:?}");
+    assert!(ticks((Attack, 0x09)) > 0, "Bass's shots: {seen:?}");
+    // The sun-and-moon navi throws meteors, shines and dives.
+    let seen = duel_with(&[testing::SUN_MOON], 2400, 11);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    assert!(ticks((Actor, 0x24)) > 0, "SunMoon: {seen:?}");
+    assert!(ticks((Attack, 0xB5)) > 0, "SunMoon's meteors: {seen:?}");
+    assert!(ticks((Attack, 0xB6)) > 0, "SunMoon's moonlight: {seen:?}");
+}
+
+#[test]
 fn scripted_chips_roll_back() {
     // A copy of the battle taken at any tick plays on exactly as the
     // battle does: the scripts' state is all in the battle.
-    for chips in [&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3][..], &[testing::ELEMENTS], &[testing::SPOUT], &[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST]] {
+    for chips in [&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3][..], &[testing::ELEMENTS], &[testing::SPOUT], &[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST], &[testing::BASS], &[testing::SUN_MOON]] {
         let setup = || scenario::setup_with(chips);
         let tape = scenario::record_on(setup(), 2400, 11);
         let mut b = Battle::new(setup(), scenario::content());
