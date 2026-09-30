@@ -6,7 +6,7 @@
 //! corrected tick and the 10 speculated after it, saving each, then digest
 //! the settled state), against the 16.7 ms a frame has at 60 fps.
 //!
-//! cargo run --release -p bn6-netplay --example rollback_cost --features trace -- <trace.jsonl> <pack> [round]
+//! cargo run --release -p bn6-netplay --example rollback_cost -- <trace.jsonl> <pack> [round]
 //!
 //! (`<pack>`: the BN6 content pack the trace's battle runs on, from
 //! `bn6-extract content`.)
@@ -15,7 +15,7 @@
 
 use std::time::{Duration, Instant};
 
-use bn6_battle::trace;
+use bn6_compat::trace;
 use bn6_netplay::bn6::Bn6Input;
 use bn6_netplay::getgud::World;
 use bn6_netplay::{BattleState, BattleWorld};
@@ -34,7 +34,7 @@ fn main() {
     let rounds = trace::rounds(path).expect("a readable trace");
     let round = &rounds[n - 1];
     let frames: Vec<&trace::Frame> = round.battle_frames().collect();
-    let (limit, _) = trace::run_round(round, &content);
+    let (limit, _) = trace::run_round(round, &content, bn6_compat::Compat::bn6());
     let inputs: Vec<[Bn6Input; 2]> = (0..limit)
         .map(|i| {
             let (players, events) = round.tick_inputs(i, &frames);

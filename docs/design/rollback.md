@@ -431,7 +431,7 @@ digest the new settled state. On soundmod round 1 (the 2,000 frames around its b
 builds; its numbers moved by up to 60% with the load between runs. The last row runs the two paths side by side,
 alternating, and takes each frame's fastest of 7 runs, which leaves the scheduling noise out: the two are the
 same.) That is under 0.5% of the 16.7 ms a frame has at 60 fps. (Measure with `cargo run --release -p bn6-netplay
---example rollback_cost --features trace -- <trace.jsonl> <pack> [round]`.) The digest dominates and is needed
+--example rollback_cost -- <trace.jsonl> <pack> [round]`.) The digest dominates and is needed
 once per settle, not per re-simulated frame.
 
 A real session costs far less than the worst case, since most frames promote their prediction: soundmod round 1
