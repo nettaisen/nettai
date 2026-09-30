@@ -43,7 +43,7 @@ local function dig(me: Object, s: State)
         if region == nil then
             error(string.format("CrakShot variant %d reads past dword_80ECA08", me.variant))
         end
-        local panels = data.rules.regions[region]
+        local panels = data.regions[region]
         if panels == nil then
             error(string.format("CrakShot region %d is not in the content", region))
         end
@@ -54,7 +54,7 @@ local function dig(me: Object, s: State)
         -- The region is taken from the panel ahead.
         local x, y = me.panel_x + dir, me.panel_y
         for _, p in panels do
-            crack_shot.spawn(me, x + dir * p.dx, y + p.dy, me.attack_element, damage, CENTERS)
+            crack_shot.spawn(me, x + dir * p[1], y + p[2], me.attack_element, damage, CENTERS)
         end
     end
     local t = s.timer - 1
