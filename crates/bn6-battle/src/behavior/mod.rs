@@ -3,10 +3,11 @@
 //! and dispatch from the engine to what the pack registers
 //! ([`Content::registrations`]): object kinds by (pool, index), navi
 //! actions by number, and hooks (weapon routines, dimming chips' dimming
-//! controllers, navi chips' navis) by number. The engine keeps a content
-//! kind's declared state in the object (`Vars::Content`) and an action's
-//! in the attack state (`ActionVars::Content`), and serves the scripts'
-//! calls through [`CoreApi`] (`core_api`).
+//! controllers, navi chips' navis, instant chips' effects) by number. The
+//! engine keeps a content kind's declared state in the object
+//! (`Vars::Content`) and an action's in the attack state
+//! (`ActionVars::Content`), and serves the scripts' calls through
+//! [`CoreApi`] (`core_api`).
 //!
 //! Whatever the pack doesn't register runs as the engine's own Rust.
 //!
@@ -42,10 +43,11 @@ struct Loaded {
     /// Action by number.
     actions: [Option<KindId>; 256],
     /// Hooks by table and number: weapon routines, dimming chips'
-    /// controllers, navi chips' navis.
+    /// controllers, navi chips' navis, instant chips' effects.
     weapons: [Option<HookId>; 256],
     dimming_chips: [Option<HookId>; 256],
     navi_chips: [Option<HookId>; 256],
+    instant_chips: [Option<HookId>; 256],
 }
 
 impl std::fmt::Debug for Behaviors {
@@ -103,15 +105,18 @@ impl Behaviors {
             actions[a.action as usize] = Some(KindId(i as u16));
         }
         let (mut weapons, mut dimming_chips, mut navi_chips) = ([None; 256], [None; 256], [None; 256]);
+        let mut instant_chips = [None; 256];
         for (i, h) in m.hooks.iter().enumerate() {
             let id = Some(HookId(i as u16));
             match h.hook {
                 Hook::Weapon(n) => weapons[n as usize] = id,
                 Hook::DimmingChip(n) => dimming_chips[n as usize] = id,
                 Hook::NaviChip(n) => navi_chips[n as usize] = id,
+                Hook::InstantChip(n) => instant_chips[n as usize] = id,
             }
         }
-        Behaviors { loaded: Some(Rc::new(Loaded { host, objects, actions, weapons, dimming_chips, navi_chips })) }
+        let loaded = Loaded { host, objects, actions, weapons, dimming_chips, navi_chips, instant_chips };
+        Behaviors { loaded: Some(Rc::new(loaded)) }
     }
 
     /// Which runtime runs the content ("none" without scripts).
@@ -140,6 +145,7 @@ impl Behaviors {
             Hook::Weapon(n) => l.weapons[n as usize],
             Hook::DimmingChip(n) => l.dimming_chips[n as usize],
             Hook::NaviChip(n) => l.navi_chips[n as usize],
+            Hook::InstantChip(n) => l.instant_chips[n as usize],
         }
     }
 }

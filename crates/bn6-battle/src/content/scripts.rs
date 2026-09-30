@@ -11,10 +11,11 @@
 //! - a chip's `script` implements the chip's action, or for the ruleset's
 //!   generic actions its part of them by the chip's subtype: action 0x15
 //!   (dimming chips) its dimming controller, action 0x1B (navi chips) its
-//!   navi ([`ChipData::script`](super::ChipData::script));
+//!   navi, action 0x1C (instant chips) its effect
+//!   ([`ChipData::script`](super::ChipData::script));
 //! - a weapon routine of MegaMan's (`navis/00-megaman/weapons/NN-name/
-//!   weapon.toml`) implements the routine and the action it names
-//!   ([`WeaponData`]).
+//!   weapon.toml`) implements the routine, the action it names and the
+//!   instant chip effect it names ([`WeaponData`]).
 //!
 //! [`Content::registrations`] turns that into what the script runtime
 //! loads. Nothing in the engine says which kind, action or hook is a
@@ -32,6 +33,7 @@ use super::Content;
 /// chip's script by its subtype.
 pub const DIMMING_CHIP_ACTION: u8 = 0x15;
 pub const NAVI_CHIP_ACTION: u8 = 0x1B;
+pub const INSTANT_CHIP_ACTION: u8 = 0x1C;
 
 /// The pack's Luau modules.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -79,6 +81,11 @@ pub struct WeaponData {
     /// `setup` names), if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub action: Option<u8>,
+    /// The instant chip effect (action 0x1C's subtype, `off_80EC3F0`) the
+    /// script implements, when the routine names action 0x1C with a
+    /// subtype no chip has.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instant_chip: Option<u8>,
     /// The module; in the file, a path relative to the folder.
     pub script: String,
 }
@@ -146,6 +153,7 @@ impl Content {
             match c.action {
                 DIMMING_CHIP_ACTION => add_hook(Hook::DimmingChip(c.subtype), module, whose)?,
                 NAVI_CHIP_ACTION => add_hook(Hook::NaviChip(c.subtype), module, whose)?,
+                INSTANT_CHIP_ACTION => add_hook(Hook::InstantChip(c.subtype), module, whose)?,
                 action if action < 0x10 => return Err(format!("{whose}: actions below 0x10 are the engine's")),
                 action => add_action(action, module, whose)?,
             }
@@ -154,6 +162,9 @@ impl Content {
             let whose = format!("weapon routine {:#04x} ({})", w.id, w.name);
             exists(&w.script, &whose)?;
             add_hook(Hook::Weapon(w.id), &w.script, whose.clone())?;
+            if let Some(subtype) = w.instant_chip {
+                add_hook(Hook::InstantChip(subtype), &w.script, whose.clone())?;
+            }
             if let Some(action) = w.action {
                 add_action(action, &w.script, whose)?;
             }

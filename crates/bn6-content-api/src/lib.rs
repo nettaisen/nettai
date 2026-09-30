@@ -37,6 +37,7 @@ pub use data::{Data, Key as DataKey};
 pub use host::{
     ActionDef, ActionReg, ContentError, ContentHost, DimmingChipSpec, Hook, HookCall, HookDef, HookId, HookReg, KindId,
     KindReg, Manifest, NaviChipSpec, ObjectKindDef, Registrations,
+    InstantChipSpec,
 };
 pub use state::{ContentState, FieldDef, FieldType, FieldValue, MAX_BYTES, Schema, StateId, Value};
 pub use types::{ObjectRef, PanelPos, Pool, SpriteId, Vec3};

@@ -159,6 +159,7 @@ fn weapons() -> Vec<WeaponData> {
         id,
         name: name.into(),
         action,
+        instant_chip: None,
         script: format!("navis/00-megaman/weapons/{script}"),
     };
     vec![
