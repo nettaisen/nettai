@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x2C, DustCross Beast's buster (`sub_8011FCE`), is a
+# script: it throws the last obstacle absorbed through action 0x11 (not content
+# yet), or fires the Falzar Beast buster (weapon 3).
+
+id = 0x2C
+name = "Beast throw absorbed"
+script = "beast_throw_absorbed.luau"
