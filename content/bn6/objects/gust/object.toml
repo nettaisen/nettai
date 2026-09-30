@@ -1,4 +1,5 @@
-# The gust (attack object #0x49, `sub_80CD2EC`) is a script.
+# A gust (attack object #0x49, `sub_80CD2EC`) is a script. Its spawn position is
+# its spawner's registers, which its init overwrites before anything reads it.
 
 [kind]
 pool = "attack"
