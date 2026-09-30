@@ -3,7 +3,8 @@
 //! - one record of everything from outside the simulation that a tick
 //!   consumes, [`TickInput`], and [`Battle::step`] to run a tick on it;
 //! - snapshots: [`Battle::save_state`] and [`Battle::load_state`] (a
-//!   battle is plain data, so a snapshot is a copy of it);
+//!   battle is plain data, so a snapshot is a copy of it, less the
+//!   behaviors handle, which makes it `Send`);
 //! - a digest of the simulation state for desync detection,
 //!   [`Battle::digest`] (in `digest`);
 //! - what each viewer is shown when the peers present one simulation from
@@ -15,6 +16,7 @@
 //! addresses.
 
 use crate::battle::{Battle, TickEvents};
+use crate::behavior::Behaviors;
 use crate::input::PlayerTick;
 
 /// Everything from outside the simulation that one tick consumes. Two
@@ -37,11 +39,112 @@ pub struct TickInput {
 }
 
 /// A saved battle: everything needed to resume the simulation exactly.
+///
+/// A snapshot is plain data and `Send`, so a netplay layer can keep it
+/// wherever it needs to (getgud requires its saved states to be `Send`).
+/// It holds the battle without its behaviors handle: that is shared code
+/// on the battle's thread, not state (an `Rc`), and
+/// [`Battle::load_state`] keeps the live battle's own. So the saved
+/// battle can be read (drawn, digested, compared) but not stepped:
+/// restore it into a live battle to go on.
+///
+/// The battle is boxed: a netplay layer moves snapshots around (into its
+/// buffers, out of them) more often than it makes them, and a battle is
+/// several KB inline.
 #[derive(Clone, Debug)]
-pub struct Snapshot(Battle);
+pub struct Snapshot(Box<Battle>);
+
+// SAFETY: a `Battle` is `Send` but for its behaviors handle, which holds
+// an `Rc`. A snapshot never holds one: the field is private, and every
+// way to make or fill a snapshot (`save_state`, `save_state_into`)
+// detaches the handle, leaving `Behaviors::none()`, which holds nothing.
+// `snapshot_holds_only_send_state` below stops compiling if any other
+// part of a battle stops being `Send`.
+unsafe impl Send for Snapshot {}
+
+/// What makes [`Snapshot`]'s `Send` sound: every part of a battle but the
+/// behaviors handle is `Send`. The destructuring has no `..`, so a new
+/// field doesn't compile until it is listed here.
+#[allow(dead_code)]
+fn snapshot_holds_only_send_state(battle: Battle) {
+    fn send<T: Send>(_: T) {}
+    let Battle {
+        content,
+        setup,
+        stats,
+        rng,
+        round,
+        fight,
+        gauge,
+        banner,
+        paused,
+        inputs,
+        hands,
+        transform_requests,
+        turn_transforms,
+        transform_seq,
+        custom_reversion,
+        beast_out_used,
+        crossed,
+        bug_frags,
+        navi_levels,
+        objects,
+        actors,
+        collision,
+        field,
+        fade,
+        fadein_queue,
+        damage_carry,
+        custom,
+        link,
+        sides,
+        side_stats,
+        linked,
+        dimming,
+        sound,
+        outcome,
+        // Detached in every snapshot (see above).
+        behaviors: _,
+    } = battle;
+    send(content);
+    send(setup);
+    send(stats);
+    send(rng);
+    send(round);
+    send(fight);
+    send(gauge);
+    send(banner);
+    send(paused);
+    send(inputs);
+    send(hands);
+    send(transform_requests);
+    send(turn_transforms);
+    send(transform_seq);
+    send(custom_reversion);
+    send(beast_out_used);
+    send(crossed);
+    send(bug_frags);
+    send(navi_levels);
+    send(objects);
+    send(actors);
+    send(collision);
+    send(field);
+    send(fade);
+    send(fadein_queue);
+    send(damage_carry);
+    send(custom);
+    send(link);
+    send(sides);
+    send(side_stats);
+    send(linked);
+    send(dimming);
+    send(sound);
+    send(outcome);
+}
 
 impl Snapshot {
-    /// The saved battle.
+    /// The saved battle, to read (its behaviors handle is detached: see
+    /// the type's docs).
     pub fn battle(&self) -> &Battle {
         &self.0
     }
@@ -55,18 +158,25 @@ impl Battle {
 
     /// Save the whole simulation state.
     pub fn save_state(&self) -> Snapshot {
-        Snapshot(self.clone())
+        let mut saved = Box::new(self.clone());
+        saved.behaviors = Behaviors::none();
+        Snapshot(saved)
     }
 
     /// Save into an existing snapshot.
     pub fn save_state_into(&self, snapshot: &mut Snapshot) {
-        snapshot.0.clone_from(self);
+        Battle::clone_from(&mut snapshot.0, self);
+        snapshot.0.behaviors = Behaviors::none();
     }
 
     /// Go back to a saved state. The next tick continues from it exactly
-    /// as the saved battle would have.
+    /// as the saved battle would have. The battle keeps its own behaviors
+    /// handle (the content is the same: `RoundSetup::content` is part of
+    /// the saved state).
     pub fn load_state(&mut self, snapshot: &Snapshot) {
+        let behaviors = std::mem::take(&mut self.behaviors);
         self.clone_from(&snapshot.0);
+        self.behaviors = behaviors;
     }
 }
 
@@ -110,6 +220,37 @@ mod tests {
         }
         b.load_state(&snapshot);
         let again: Vec<u64> = (40..120).map(|f| {
+            b.step(&input(f));
+            b.digest()
+        }).collect();
+        assert_eq!(again, ahead);
+    }
+
+    #[test]
+    fn a_snapshot_is_send_and_the_restored_battle_keeps_its_scripts() {
+        fn send<T: Send>(_: &T) {}
+        let mut b = battle();
+        assert_eq!(b.behaviors.runtime(), "luau");
+        for f in 0..20 {
+            b.step(&input(f));
+        }
+        let snapshot = b.save_state();
+        send(&snapshot);
+        // The saved battle is for reading: it holds no handle.
+        assert_eq!(snapshot.battle().behaviors.runtime(), "none");
+        assert_eq!(snapshot.battle().digest(), b.digest());
+        let mut refilled = battle().save_state();
+        b.save_state_into(&mut refilled);
+        assert_eq!(refilled.battle().behaviors.runtime(), "none");
+        // A snapshot crosses threads and comes back unchanged.
+        let snapshot = std::thread::spawn(move || snapshot).join().unwrap();
+        let ahead: Vec<u64> = (20..60).map(|f| {
+            b.step(&input(f));
+            b.digest()
+        }).collect();
+        b.load_state(&snapshot);
+        assert_eq!(b.behaviors.runtime(), "luau", "the live battle keeps its scripts");
+        let again: Vec<u64> = (20..60).map(|f| {
             b.step(&input(f));
             b.digest()
         }).collect();

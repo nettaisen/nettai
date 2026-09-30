@@ -1,23 +1,28 @@
 # Rollback netplay
 
-The engine supports rollback netplay (GGPO-style): each peer runs the whole battle, predicts the other player's
-input, snapshots every frame, and when the real input arrives and differs, restores the snapshot of the first
-wrong frame and simulates again. This document describes the engine's side of that contract, the rollback
-simulator that proves it (crates/bn6-netplay), what the original's per-console ("local side") state means for
-it, how sound works under rollback, what it costs, the hazards found, and what the custom screen and scripting
-layers must guarantee to keep it working.
+The engine supports rollback netplay: each peer runs the whole battle, predicts the other player's input,
+speculates ahead of the frames both players' inputs are known for, and when the real input arrives and differs,
+goes back to the last confirmed state and simulates again. The netcode core is getgud, Tango's rollback library;
+crates/bn6-netplay implements its `World` for the battle. This document describes the engine's side of that
+contract, how getgud's model maps onto the engine, the simulator that proves it, what the original's per-console
+("local side") state means for it, how sound works under rollback, what it costs, the hazards found, and what the
+custom screen and scripting layers must guarantee to keep it working.
 
 Frames are counted from the start of a round; "frame `f`" is the `f`-th tick, and "the state after frame `f`"
-is the battle once `f + 1` ticks have run.
+is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after `t` ticks.
 
 ## 0. Summary
 
-- **Snapshots**: `Battle` is plain data and `Clone`; a snapshot is a copy (`save_state` / `load_state`), about
-  22 KB (8.6 KB inline plus the object pools); saving takes about 2 µs, restoring 2-8 µs (release). The battle's
-  content (`Battle::content`, an `Arc<Content>`) never changes and is shared by every snapshot.
+- **Netcode**: getgud (a workspace dependency from its repository, the revision pinned in Cargo.lock) keeps the
+  input queues, the settled state, the speculative tail, promotion and rollback, and the clock skew. bn6-netplay
+  supplies its `World`, `BattleWorld`: one peer's battle, its player's side, snapshots and prediction (§4).
+- **Snapshots**: `Battle` is plain data and `Clone`; a snapshot (`save_state` / `load_state`) is a boxed copy
+  without the behaviors handle, which makes it `Send`, as getgud requires. About 22 KB (8.6 KB inline plus the
+  object pools); saving takes about 2-3 µs, restoring 3-5 µs (release). The battle's content
+  (`Battle::content`, an `Arc<Content>`) never changes and is shared by every snapshot.
 - **Digest**: `Battle::digest()` hashes the simulation state (presentation left out) with a platform-independent
-  hasher. Peers compare it every confirmed frame. It covers the round's setup, which carries the content's hash
-  (`RoundSetup::content`), rather than the content itself.
+  hasher. Peers compare their settled states' digests. It covers the round's setup, which carries the content's
+  hash (`RoundSetup::content`), rather than the content itself.
 - **Input**: `Battle::step(&TickInput)`. A `TickInput` is both players' buttons plus the link-closed event at
   the end of a round, which netplay carries in a player's input so both peers step every frame with the same
   record. Both players' custom screens are simulated from their buttons (engine/custom-screen.md).
@@ -25,14 +30,14 @@ is the battle once `f + 1` ticks have run.
   it for their own player (`sound_cues_for`, `banner_for`, `round_end_for`). §2 explains why and lists every
   per-console detail with its decision.
 - **Sound**: `cues::CueTracker` turns every simulated tick's cues, tagged with their frame, into Play and Cancel
-  actions, so a confirmed cue plays once and a mispredicted one is stopped or undone. bn6-audio takes the actions
-  (`BattleAudio::handle_actions`).
+  actions, so a confirmed cue plays once and a mispredicted one is stopped or undone. The peer's world reports
+  every tick it simulates; bn6-audio takes the actions (`BattleAudio::handle_actions`).
 - **Results**: synthetic netbattles on the engine's test content (random button mashing, fixed hands) run to the KO
-  without a single divergence at latencies of 0 to 10 frames with jitter and input delay, with hundreds to thousands
-  of rollbacks each. The golden traces, replayed through two rollback peers at latencies 0, 2, 5 and 10 (plus
-  jitter), match the trace on every confirmed frame, with the peers in agreement throughout.
-- **Cost**: the worst case, a 10-frame rollback on every rendered frame, costs about 60-90 µs per frame in
-  release (under 0.6% of the 16.7 ms budget).
+  without a single divergence at latencies of 0 to 10 frames with jitter and present delay, with hundreds to
+  thousands of rollbacks each. The golden traces, replayed through two getgud sessions at latencies 0, 2, 5 and 10
+  (plus jitter), match the trace on every confirmed frame, with the peers in agreement throughout.
+- **Cost**: the worst case, a 10-frame rollback on every rendered frame, costs about 60-80 µs per frame in
+  release, the same as before getgud (under 0.5% of the 16.7 ms budget).
 
 ## 1. The model
 
@@ -72,25 +77,35 @@ Prediction repeats the buttons and never repeats events (`Game::predict` for `Ba
 
 The simulated link also delays the fight's view of the buttons by `RoundSetup::link_delay` ticks (4 in the
 recordings, as the original's link queue); the custom screens read them at once. This is part of the game, not
-of the netplay layer, whose own input delay and prediction come on top.
+of the netplay layer, whose own present delay and prediction come on top.
 
 For synthetic matches, `standin::StandInBattle` closes the link at once at the end of a round; everything else is
 the engine, so the players' buttons are the whole input.
 
 ### 1.2 Prediction
 
-A missing remote input is predicted as the latest known input of that player (buttons held, events dropped).
-Frames are simulated ahead up to `max_prediction` frames past the last contiguous remote input; beyond that the
-peer waits.
+A missing remote input is predicted as the latest known input of that player: buttons held, events dropped
+(`Game::predict`, which getgud calls through `World::predict` per remote slot, only where the real input hasn't
+arrived). A peer presents the frame `present_delay` ticks behind its newest local input; the ticks between the
+last confirmed one and that frame are speculated on predicted input. getgud sets no limit on how far: clock sync
+keeps the peers' leads even, and a host adds a stall guard (§4.1).
 
 ### 1.3 Snapshots
 
-A snapshot is a copy of the battle: `Battle::save_state()` / `save_state_into()` / `load_state()`, or `Clone`
-directly. `Battle` derives `Clone`; every part of its state is plain data (fixed arrays and a few vectors). Copies
-share only what never changes: the content the round runs on (`Battle::content`, an `Arc<Content>`: the pack's
-battle data and animation timing) and the behaviors handle (code, docs/design/scripting.md). State refers to
-content by id, never by reference. So a restored battle continues exactly as the saved one would have: in-repo
-tests roll a battle back mid-fight, simulate a wrong future, restore, and compare digests frame by frame.
+A snapshot is a copy of the battle: `Battle::save_state()` / `save_state_into()` / `load_state()`. `Battle`
+derives `Clone`; every part of its state is plain data (fixed arrays and a few vectors). Copies share only what
+never changes: the content the round runs on (`Battle::content`, an `Arc<Content>`: the pack's battle data and
+animation timing) and the behaviors handle (code, docs/design/scripting.md). State refers to content by id, never
+by reference. So a restored battle continues exactly as the saved one would have: in-repo tests roll a battle back
+mid-fight, simulate a wrong future, restore, and compare digests frame by frame.
+
+A `Snapshot` leaves the behaviors handle out. The handle holds an `Rc` (the Luau runtime lives on the battle's
+thread), which would make every snapshot `!Send`, and getgud requires the states it keeps to be `Send`.
+`load_state` keeps the live battle's own handle, and a saved battle (`Snapshot::battle`) is for reading (drawing,
+digests, comparisons), not for stepping. `Snapshot` implements `Send` by hand; next to it, a compile-time check
+destructures `Battle` without `..` and requires every other field to be `Send`, so a new field that isn't fails
+to compile there. The battle is boxed in the snapshot: getgud moves saved states into and out of its buffers more
+often than it makes them, and a battle is 8.6 KB inline.
 
 The per-tick sound cues are part of the copy (they are the cues of the tick that produced the state); a consumer
 reads them right after each tick.
@@ -123,9 +138,15 @@ freed navi's HP at the end of the round; sprites the game doesn't clear on spawn
 
 ### 1.5 Confirmation and desync detection
 
-A frame is confirmed once both players' inputs for it are known and it was simulated with them (bn6-netplay's
-`Observer::confirmed` is called once per frame, in order, with the state after it). The peers compare the digest
-of every confirmed frame. The simulator also compares both with a plain lockstep run of the same inputs.
+A frame is confirmed once both players' inputs for it are known. getgud folds confirmed frames into the *settled
+state*, the authoritative state built from confirmed input rows only, and returns the rows (`Advance::confirmed`)
+once each, in order, as they settle; a settled frame is never simulated again. After each advance that settled
+frames, the peer digests its settled state (`Session::settled_state`), and the peers compare. One advance can
+settle several frames (a burst of remote input) and getgud keeps only the latest settled state, so a check that
+needs every confirmed frame follows the world instead: the world reports every frame it simulates
+(`Observer::simulated`), and the last simulation of a frame before it settles is the one on the confirmed inputs.
+The simulator compares both peers' settled digests with each other and with a plain lockstep run of the same
+inputs, and checks that each peer's confirmed rows are the inputs the players decided.
 
 ## 2. Perspective: the local side
 
@@ -194,9 +215,10 @@ the content the round runs on, so peers whose setups agree run the same data.
 
 ## 3. Presentation under rollback
 
-### 3.1 Draw the newest state
+### 3.1 Draw the presented frame
 
-A frontend draws the peer's newest state (predicted past the confirmed frame). Visual effects are objects in the
+A frontend draws the frame getgud presents (`Advance::frame`, `present_delay` ticks behind the newest local input:
+speculated past the confirmed frames when the remote input lags further). Visual effects are objects in the
 state, so a re-simulation that removes or moves one corrects the picture on the next frame (a visible pop at
 worst). The frontend's own presentation state (the HUD remembers whether the gauge was on, whether the round was
 over) must tolerate jumps back and forth.
@@ -207,7 +229,10 @@ Sound cues are the one event-like output: a re-simulated tick produces its cues 
 produced cues that didn't happen. `cues::CueTracker` handles that:
 
 - the netplay layer tells it about every rollback (`rolled_back(frame)`) and every simulated tick
-  (`simulated(frame, cues)`, first time or again) and confirmation (`confirmed(frame)`);
+  (`simulated(frame, cues)`, first time or again) and confirmation (`confirmed(frame)`). Only the world sees
+  the first two (getgud shows the host the presented frame and the settled state, not the ticks in between), so
+  the peer's `BattleWorld` reports them to its observer; the host reports the third after each advance, from the
+  count of rows getgud settled;
 - a cue plays as soon as a tick first makes it, predicted or not (waiting for confirmation would delay every
   sound by the latency);
 - a cue a re-simulated tick makes again is recognised as the one already played if it was played for a frame at
@@ -217,33 +242,115 @@ produced cues that didn't happen. `cues::CueTracker` handles that:
 The result is a list of `CueAction::Play(cue)` / `Cancel(cue)`. bn6-audio's `BattleAudio::handle_actions`
 plays the plays like `handle` and takes back cancels: a sound effect stops if its player is still playing it
 (`m4aSongNumStop`), a music change goes back to the previous music (restarted), a pinch switch is switched back.
-`bn6_netplay::bn6::CueFeed` connects a peer to a tracker for one viewer.
+`bn6_netplay::bn6::CueFeed` is the observer that connects a peer to a tracker for one viewer: the peer's world
+holds it and the host shares it (`BattleWorld::with_observer` with an `Rc<RefCell<CueFeed>>`, since getgud owns
+the world). It also keeps each unconfirmed frame's cues from its latest simulation, which are the confirmed
+frame's cues once it settles.
 
 The synthetic tests check, for each peer, that plays minus cancels equals the cues of the confirmed frames, cue
-by cue. (On the synthetic battle as it was before it moved to the test content, at 10 frames of latency a battle
-of 7,726 frames played 542 and 558 cues on the two peers, of which 1 and 16 were cancelled predictions.)
+by cue. The behaviour is the same as on the rollback peer bn6-netplay had before getgud: at 10 + 3 frames of
+latency, seed 1's battle (11,912 frames) played 588 and 607 cues on the two peers, of which 75 and 93 were
+cancelled predictions; the old peer played 587 and 608 and cancelled 74 and 94.
 
 ### 3.3 Per viewer
 
 `Battle::sound_cues_for(side)` is what that side's player hears (the engine records both); `sound_cues()` stays
 the local side's, which the golden sound recordings check. A peer feeds its tracker with its own player's cues.
 
-## 4. The rollback simulator
+## 4. Netplay on getgud
 
-crates/bn6-netplay is generic over a `Game` (advance on two inputs, digest, `Clone` for snapshots, prediction):
+Each peer runs a getgud `Session` (Tango's rollback core) on a `World` that bn6-netplay implements for the battle.
+getgud keeps the input queues and matches them into confirmed rows, speculates, promotes or rolls back, keeps the
+settled state and computes the clock skew; it has no game logic and speaks of one local player and remote slots.
 
-- `Peer`: one peer's session: both players' inputs by frame, prediction, a snapshot of every unconfirmed frame,
-  rollback to the first wrong frame and re-simulation, confirmation, statistics, and an `Observer` for
-  presentation and checks;
-- `network::Link`: a one-way link with latency and jitter (packets can overtake each other);
-- `sim::Match`: two peers over two links plus a lockstep reference run. Each wall-clock frame every peer decides
-  its input `input_delay` frames ahead and sends it, then receives what arrived and updates. Every confirmed
-  frame's digest is compared across the peers and with the lockstep run; a panic in a peer is reported, marked
-  speculative if the lockstep run gets through that frame.
+### 4.1 getgud's model on the engine
 
-`bn6` implements `Game` for `Battle` (the engine's input record, events carried in the inputs) and `standin`
-provides the link closing, a MegaMan built in code, a netbattle setup on given content with given folders and a
-seeded button masher.
+| getgud | Here |
+|---|---|
+| `World` | `BattleWorld<G, O>`: one peer's live battle (a `Game`), its player's side, the tick it is parked at, and an observer |
+| `World::step(local, remotes)` | `Game::step([side 0's input, side 1's input])`: `local` goes to the world's side, the one remote slot to the other |
+| `World::Input` | `Bn6Input` for `Battle` (buttons and the frame's events), the buttons for `StandInBattle`; `Default` is the input before any has arrived (`initial_remotes`) |
+| `World::State`, `save`, `load` | `BattleState`: a `Snapshot` (§1.3) and its tick. `load` copies nothing and reports no rollback when the world is parked at that tick already: getgud loads the settled state before simulating confirmed rows even when nothing was speculated past it, and then the world is that state |
+| `World::predict` | `Game::predict`: buttons carry on, events happen once |
+| `World::recycle` | Not implemented: `Battle`'s `clone_from` is the derived one, which reuses no allocation, so pooling snapshots would save nothing |
+| Present delay | `NetConfig::present_delay`, the input delay: a peer presents the frame that many ticks behind its newest local input, so that much of the lead needs no prediction |
+| Settled state, `Advance::confirmed` | The confirmed state and rows (§1.5): the digest checks, and the confirmation the sound feed and the trace checks need (`Observer::confirmed`) |
+| Speculative tail, promote or roll back | The frames a peer speculates to present. A prefix whose predictions held is promoted without simulating it again; from the first wrong prediction, getgud loads the settled state and simulates the rest again. `last_misprediction_depth` is the number of frames it threw away |
+| `skew`, `local_tick_advantage` | Clock sync: every input goes out with the sender's advantage (`add_remote_input(slot, input, advantage)`), and a peer that runs ahead stalls frames (§4.3) |
+| `matchable`, `local_queue_length` | The stall guard: a peer with `max_lead` unconfirmed local inputs waits, unless remote input it has can still be matched |
+
+### 4.2 What bn6-netplay implements
+
+- `world`: `Game` (a battle stepped on both players' inputs by side, and its prediction), `Observer`
+  (`rolled_back`, `simulated`, `confirmed`, implemented for `&mut`, `&RefCell` and `Rc<RefCell>` of an observer
+  so that the world and the host can share one), `BattleWorld` and `BattleState`. `BattleWorld::session` makes the
+  session.
+- `bn6`: `Battle` as a `Game` on the engine's input record (`Bn6Input`, `tick_input`), and the sound feed
+  (`CueFeed`).
+- `standin`: `StandInBattle` as a `Game` on the buttons alone; a MegaMan built in code, a netbattle setup on given
+  content with given folders, and a seeded button masher.
+- `network::Link`: a one-way link with latency and jitter that delivers in order, as the ordered channel netplay
+  runs on does (getgud takes each remote's inputs in tick order): a packet that would overtake the one before it
+  waits for it.
+- `sim::Match`: two sessions over two links plus a lockstep reference run (§4.3).
+
+A host does each frame what the simulator does for a peer: add the packets that arrived, read `skew` and stall if
+running ahead, send its input with `local_tick_advantage()`, `advance`, tell its observer what settled, and draw
+`frame.state.battle()`.
+
+### 4.3 The simulator
+
+`sim::Match` runs two peers in one process. Each wall-clock frame, every peer takes the packets that have
+arrived; every peer that doesn't wait (the stall guard, or a clock-sync stall) decides its player's input for its
+next tick and sends it with its advantage; then every peer that decided takes what arrived meanwhile (with no
+latency, the other's input of the same frame) and advances.
+
+**Clock sync.** A peer adds its skew up every frame while its presented frame speculates
+(`speculation_balance() >= 0`; until then the present delay absorbs the lead) and stalls a frame for every 60 of
+it (`SKEW_PER_STALL`), never two in a row, so that it keeps sending its advantage and the two peers can't wait on
+each other. That is a frame-rate adjustment of a frame a second per tick of skew; a peer one frame ahead shows a
+skew of 2. Stalling at once on any positive skew doesn't work: a stall shows in the skew in full only a round
+trip later (the peer's own lead drops at once, the advantage the other peer reports only once it has missed the
+input and said so), and jitter makes the skew noisy, so the peers took turns stalling, a third of all frames at 1
+to 10 frames of latency. At the rate above, peers that start even stall about one frame in 500 to 1,000, and a
+peer that starts 6 or 20 frames ahead gives the frames back (stalls, and waits at the stall guard) until both
+speculate as deep as from an even start.
+
+**Checks.** Every advance: each confirmed row must be the inputs the two players decided for that tick, and the
+settled state's digest must equal the lockstep run's at that tick and the other peer's where it settled the same
+tick. The observers see every frame each world simulates and every settle. A panic in a peer is reported with the
+frame being simulated, marked speculative if the lockstep run gets through that frame. The inputs end at
+`max_frames`: near it a peer's present delay grows so that it presents and speculates nothing past the end, while
+its settled state still reaches it.
+
+**Statistics**, per peer: rollbacks, the deepest, and the frames they threw away (getgud's
+`last_misprediction_depth`); frames simulated for the first time; the deepest and the mean speculation
+(`speculation_balance`); stalls and waits at the guard.
+
+### 4.4 What was deleted
+
+bn6-netplay's own GGPO-style session: `Peer` (both players' inputs by frame, prediction, a snapshot of every
+unconfirmed frame, rollback to the first wrong frame and re-simulation, confirmation, statistics), the `Game`
+trait it drove (snapshots by `Clone`, `advance` on both inputs, `digest`, `is_over`, `blank_input`) and
+`HasBattle`. `Observer::confirmed` used to come once per frame with that frame's state; it now comes once per
+settle with the settled state. `NetConfig::input_delay` and `max_prediction` became `present_delay` and the stall
+guard's `max_lead`, and the simulated link no longer reorders packets.
+
+### 4.5 What doesn't fit getgud
+
+- **`State` must be `Send`.** A battle holds its behaviors handle (an `Rc`), so snapshots leave it out and are
+  `Send` by hand (§1.3).
+- **The host can't reach the world.** `Session` has no accessor for its `World`, so what only the world sees
+  (every simulated tick, for sound and checks) reaches the host through a handle the two share. A
+  `Session::world()` (and `world_mut()`) would do without it.
+- **Only the latest settled state.** An advance that settles several ticks keeps only the last state, so
+  per-frame checks follow the world instead (§1.5). Returning the settled tick with each row would at least say
+  which rows were promoted and which simulated again.
+- **Loading the parked state.** getgud loads the settled state before simulating confirmed rows even when the
+  world is parked there; its own test world skips that, as `BattleWorld` does, but `World::load`'s contract
+  doesn't say it may.
+- **No end of input.** A session runs as long as it is advanced; to settle the last ticks without speculating
+  past them, the simulator raises the present delay at the end.
 
 ## 5. Results
 
@@ -254,23 +361,26 @@ seeded button masher.
 0's folder holds a level-3 GunDelSol, an eraser navi chip, a level-1 GunDelSol, an invisibility dimming chip and a level-3
 GunDelSol over and over (GunDelSol is action 0x37; the invisibility freeze 0x15 with subtype 1, as Invisibl; the
 eraser navi chip 0x1B with subtype 5, as EraseMan), side 1's GunDelSols only (no Crosses or Beast Out). Both players
-mash (held buttons change every four frames on average: a direction, A, L or R; B and START are never pressed, see
-§7.2), and the mashing drives their custom screens too. Three seeds, each under every configuration:
+mash (held buttons change every four frames on average: a direction, A, B, L or R; START is never pressed), and the
+mashing drives their custom screens too. Three seeds, each under every configuration, over getgud sessions:
 
-| Latency + jitter | Input delay | Seed 1 / 2 / 3: frames to the KO | Rollbacks per peer (seed 3) | Deepest rollback | Diverged |
-|---|---|---|---|---|---|
-| 0 | 0 | 4,848 / 7,490 / 6,204 | 0 | 0 | never |
-| 1 + 1 | 0 | same | ~1,390 | 2 | never |
-| 2 + 1 | 0 | same | ~1,400 | 3 | never |
-| 5 + 2 | 0 | same | ~1,500 | 7 | never |
-| 10 + 3 | 0 | same | ~1,550 | 13 | never |
-| 10 + 2 | 3 | same | ~1,450 | 10 | never |
+| Latency + jitter | Present delay | Seed 1 / 2 / 3: frames to the KO | Rollbacks per peer (seed 3) | Deepest rollback | Clock-sync stalls per peer (seed 3) | Diverged |
+|---|---|---|---|---|---|---|
+| 0 | 0 | 11,912 / 16,821 / 5,786 | 0 | 0 | 0 | never |
+| 1 + 1 | 0 | same | ~725 | 2 | 4 | never |
+| 2 + 1 | 0 | same | ~1,320 | 3 | 2 | never |
+| 5 + 2 | 0 | same | ~1,270 | 7 | 5 | never |
+| 10 + 3 | 0 | same | ~1,220 | 13 | 15 | never |
+| 10 + 2 | 3 | same | ~1,270 | 9 | 8 | never |
 
-Every battle runs to the end with both peers' digests equal to each other and to the lockstep run on every frame,
-and ends the same way as without rollback. The other tests: the engine's own input record with the recorded events
-riding in player 0's input (latencies 3 and 8, in sync), confirmation order, and the two negative tests below. (With
-500 HP a mashed battle can reach the 15th custom screen, whose turn timer ends in the damage judge, which the engine
-doesn't have yet.)
+Every battle runs to the end with both peers' settled digests equal to each other and to the lockstep run at every
+advance, and ends the same way as without rollback. getgud rolls back less often than the peer bn6-netplay had
+before (seed 3 at 10 + 3: about 1,220 rollbacks per peer against 1,500, and 13,000 frames simulated again
+against 17,000): it checks predictions as rows settle, promotes the prefix that held, and catches up on a burst
+of arrivals in one rollback. The other tests: the engine's own input record with the recorded events riding in
+player 0's input (latencies 3 and 8, in sync), observers seeing every simulated and settled frame, clock sync (a
+peer that starts 6 or 20 frames ahead), and the two negative tests below. (With 500 HP a mashed battle can reach
+the 15th custom screen, whose turn timer ends in the damage judge, which the engine doesn't have yet.)
 
 ### 5.2 How long before a divergence, and why
 
@@ -279,50 +389,55 @@ would break it:
 
 - **Peers simulating from their own side**: out of sync from the intro's first frames (the fade-in, §2).
 - **State outside the snapshot** (a counter shared between a game and its snapshots, as an `Rc` or a static
-  would be): out of sync at frame 36 at 4 frames of latency, on the first rollback that re-simulated a frame
+  would be): out of sync at tick 37 at 4 frames of latency, on the first rollback that re-simulated a frame
   reading it.
 
 ### 5.3 The golden traces under rollback (verification workspace)
 
-The golden-trace suite outside this repository replays each round's recorded inputs through two rollback peers
+The golden-trace suite outside this repository replays each round's recorded inputs through two getgud sessions
 (both simulating the trace's side, the custom-screen events in player 0's input), up to the frames the plain
-replay matches. Every confirmed frame of both peers must match the trace exactly, and the peers must agree:
+replay matches. Every frame either peer confirms (its last simulation before it settles, which the world reports)
+and every settled state must match the trace exactly, and the peers must agree:
 
 | Round | Frames | Latency 0 | 2 + 1 | 5 + 2 | 10 + 3 |
 |---|---|---|---|---|---|
-| machgun 1 | 1,074 | all match | all match (84 rollbacks) | all match (90) | all match (100, depth 13) |
-| machgun 2 | 1,331 | all match | all match (64) | all match (72) | all match (77) |
-| soundmod 1 | 4,513 | all match | all match (220) | all match (244) | all match (260) |
-| soundmod 2 | 6,284 | all match | all match (333) | all match (371) | all match (391) |
-| soundmod 3 | 2,566 | all match | all match (280) | all match (307) | all match (338) |
+| machgun 1 | 1,074 | all match | all match (78 rollbacks) | all match (82) | all match (81, depth 12) |
+| machgun 2 | 1,331 | all match | all match (62) | all match (61) | all match (61) |
+| soundmod 1 | 6,728 | all match | all match (305) | all match (305) | all match (301, depth 13) |
+| soundmod 2 | 6,857 | all match | all match (337) | all match (340) | all match (337) |
+| soundmod 3 | 3,088 | all match | all match (306) | all match (306) | all match (305) |
 
 (Rollbacks are counted on player 1's peer, which receives player 0's buttons and the custom-screen events; in
-the machgun rounds player 0's peer rolls back far less often, since player 1 changes buttons less.)
-
-Since the engine moved to content packs, the rounds run on the pack extracted from the ROM, and every round still
-matches its full length (machgun 1,074 and 1,331, soundmod 4,513, 6,284 and 2,566 frames) on every confirmed frame
-at every latency. The rollback counts above are from the earlier run.
+the machgun rounds player 0's peer rolls back far less often, since player 1 changes buttons less.) An advance
+settles one frame at no latency and about two at 10 + 3, where late packets hold later ones up: soundmod round 1
+settled 3,748 times for its 6,728 frames. Clock sync stalled each peer 17 frames of that round's 6,758 wall
+frames.
 
 ## 6. Performance
 
-Worst case per rendered frame: restore a snapshot, simulate 10 frames again saving a snapshot after each, then
-the new frame, and digest it. Release build:
+The worst case per rendered frame, a 10-frame rollback every frame, through the battle's `World` the way getgud
+drives a rollback: load the settled state, step the corrected tick and the 10 speculated after it saving each, and
+digest the new settled state. On soundmod round 1 (the 2,000 frames around its busiest frame), release build:
 
-| | Synthetic battle (mashing, whole battle) | soundmod round 1 (the 2,000 frames around its busiest frame) |
+| | Before getgud (clone-based peer) | getgud (`BattleWorld`) |
 |---|---|---|
-| Restore | 5-8 µs | 4.1 µs |
-| Simulate one frame | 1.0-1.2 µs | 0.68 µs |
-| Save one frame | 2.1-2.8 µs | 2.5 µs |
-| Digest | 26-30 µs | 21 µs |
-| **Per rendered frame** | **67-91 µs** | **~61 µs** |
+| Restore | 2.83 µs | 3.04 µs |
+| Step one frame | 2.68 µs | 2.94 µs |
+| Save one frame | 2.10 µs | 1.95 µs |
+| Digest | 21.2 µs | 21.2 µs |
+| **Per rendered frame** | **77.3 µs** | **80.1 µs** |
+| Per rendered frame, each frame's fastest of 7 alternating runs | 60.0 µs | 60.4 µs |
 
-(Synthetic: ranges over repeated runs, measured on the synthetic battle before it moved to the test content.
-soundmod: measured on the content pack, after the engine moved to packs; the round's battle is the same.)
+(The verification workspace's `soundmod_rollback_cost`, before and after the port, on a machine running other
+builds; its numbers moved by up to 60% with the load between runs. The last row runs the two paths side by side,
+alternating, and takes each frame's fastest of 7 runs, which leaves the scheduling noise out: the two are the
+same.) That is under 0.5% of the 16.7 ms a frame has at 60 fps. (Measure with `cargo run --release -p bn6-netplay
+--example rollback_cost --features trace -- <trace.jsonl> <pack> [round]`.) The digest dominates and is needed
+once per settle, not per re-simulated frame.
 
-That is under 0.6% of the 16.7 ms a frame has at 60 fps. The 99th percentiles (0.2-0.6 ms) and the worst frames (a
-few ms) were measured on a machine running other builds (load average 20-38) and are scheduling noise, not engine
-work. (Measure with `cargo run --release -p bn6-netplay --example rollback_cost --features trace -- <trace.jsonl>
-<pack> [round]`.) The digest dominates and is needed once per confirmed frame, not per re-simulated one.
+A real session costs far less than the worst case, since most frames promote their prediction: soundmod round 1
+through two sessions at 10 frames of latency (no jitter, the netcode alone) cost 5.7 to 6.1 µs per rendered frame
+with getgud and 6.2 to 6.6 µs with the old peer, measured side by side.
 
 ## 7. Hazards
 
@@ -343,12 +458,13 @@ work. (Measure with `cargo run --release -p bn6-netplay --example rollback_cost 
 
 - **Speculative panics.** The engine panics on content that isn't ported yet. A peer simulating a predicted input
   explores input sequences no player made, so it can reach an unported path the real match never does, and crash
-  a peer that is otherwise in sync. The synthetic tests avoid the paths that mashing reaches: the buster (B,
-  actions 0x11 and 0x16), cut-ins (a dimming chip during the other side's dimming), ElmntMan's random elements, and Beast
-  Out's head and rush (so the synthetic players have no Beast Out or Crosses), and the damage judge after the
-  15th turn (so their battles are short). The simulator reports a panic as speculative when the
-  lockstep run gets through the frame. For netplay, unported paths must become unreachable (content that can't
-  run isn't allowed in a netplay folder) or end the battle deterministically on both peers instead of panicking.
+  a peer that is otherwise in sync. The synthetic tests avoid the paths that mashing reaches: cut-ins (a dimming
+  chip during the other side's dimming), ElmntMan's random elements, and Beast Out's head and rush (so the
+  synthetic players have no Beast Out or Crosses), and the damage judge after the 15th turn (so their battles are
+  short). The simulator reports a panic as speculative when the lockstep run gets through the frame. A panic
+  inside `Session::advance` leaves getgud's session between a load and a save, so the match can't go on. For
+  netplay, unported paths must become unreachable (content that can't run isn't allowed in a netplay folder) or
+  end the battle deterministically on both peers instead of panicking.
 - **Per-viewer visibility**: the blindness rules and the lock-on marker and A-charge glow still decide `VISIBLE`
   for the local side (§2.3). Cosmetic for the other viewer; the digest leaves `VISIBLE` out.
 
@@ -407,4 +523,6 @@ The rules of the core/content boundary (docs/design/core-content-boundary.md, §
 `RoundEnd::NextRound` hands over the next round's settings and score; the next `Battle` also needs its RNG seed
 and navi stats, which the original's init exchange provides. A netplay session must derive them from shared data
 (the previous round's state, or values exchanged before the match), and keep rolling back across the boundary or
-confirm it before starting the next round.
+confirm it before starting the next round. A getgud session has no end of its own: a host ends the round's
+session once its settled state is over (`round_end`), and starts the next round's from that settled state and
+the shared data.
