@@ -16,7 +16,7 @@ export type State = {
     timer: number,
 }
 
-local ground_charge = {
+local ground_drill = {
     state = { timer = "u16" },
 }
 
@@ -47,7 +47,7 @@ local DRILL_ARM, DRILL_ANIM = 0x20, 1
 
 -- `sub_8011D74`: 10 damage and 10 more per point of buster Attack (up to
 -- 5), Break.
-function ground_charge.setup(navi: Object): number
+function ground_drill.setup(navi: Object): number
     navi.attack_damage = weapon.charge_damage(navi, 0x0A, 0x0A)
     navi.hit_param = HIT_PARAM
     navi.attack_element = BREAK
@@ -237,7 +237,7 @@ local function return_(me: Object, s: State)
 end
 
 -- `sub_80EEFDC`.
-function ground_charge.update(me: Object, s: State)
+function ground_drill.update(me: Object, s: State)
     local step = me.step
     if step == BURROW then
         burrow(me, s)
@@ -256,4 +256,4 @@ function ground_charge.update(me: Object, s: State)
     end
 end
 
-return ground_charge
+return ground_drill

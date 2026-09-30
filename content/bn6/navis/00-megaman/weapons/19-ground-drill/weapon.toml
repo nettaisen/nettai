@@ -2,6 +2,6 @@
 # its action (0x4D, `sub_80EEFDC`) are a script.
 
 id = 0x19
-name = "Ground charge"
+name = "Ground drill"
 action = 0x4D
-script = "ground_charge.luau"
+script = "ground_drill.luau"
