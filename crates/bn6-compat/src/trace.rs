@@ -159,14 +159,14 @@ pub fn unhex(s: &str) -> Vec<u8> {
 }
 
 /// A navi stats block from a trace's hex.
-fn navi_stats(hex: &str) -> NaviStats {
-    codec::navi_stats(&unhex(hex).try_into().expect("a 0x64-byte navi stats block"))
+fn navi_stats(hex: &str, ids: &Ids) -> NaviStats {
+    codec::navi_stats(&unhex(hex).try_into().expect("a 0x64-byte navi stats block"), ids)
 }
 
 // ---- Replaying a trace through the engine -----------------------------------
 
 use crate::Compat;
-use crate::codec;
+use crate::codec::{self, Ids};
 use bn6_battle::battle::{Battle, CustomResult, TickEvents};
 use bn6_battle::content::Content;
 use bn6_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
@@ -219,13 +219,15 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
 }
 
 impl Round {
-    /// The engine's starting point for this round, on `content`.
-    pub fn round_setup(&self, content: &Content) -> RoundSetup {
+    /// The engine's starting point for this round, on `content` (whose
+    /// numbers `compat` gives).
+    pub fn round_setup(&self, content: &Content, compat: &Compat) -> RoundSetup {
+        let ids = Ids::new(content, compat);
         let bs = unhex(&self.setup.battle_state);
-        let stats = |s: &str| navi_stats(s);
+        let stats = |s: &str| navi_stats(s, &ids);
         RoundSetup {
             content: content.hash(),
-            settings: codec::battle_settings(&unhex(&self.setup.settings), content),
+            settings: codec::battle_settings(&unhex(&self.setup.settings), &ids),
             navi_stats: [stats(&self.setup.navi_stats[0]), stats(&self.setup.navi_stats[1])],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
@@ -233,21 +235,21 @@ impl Round {
             // Unknown stages read as entry 0. A replay never gets to use
             // them: the tick that chains the next round is that round's
             // init, which isn't among the battle frames.
-            later_stages: self.setup.stages.as_deref().map(|s| codec::later_stages(&unhex(s))).unwrap_or_default(),
+            later_stages: self.setup.stages.as_deref().map(|s| codec::later_stages(&unhex(s), &ids)).unwrap_or_default(),
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
             sp_times: match &self.setup.sp_times {
                 Some([a, b]) => [codec::sp_times(&unhex(a)), codec::sp_times(&unhex(b))],
                 None => Default::default(),
             },
-            players: std::array::from_fn(|p| self.player_setup(p as u8)),
+            players: std::array::from_fn(|p| self.player_setup(p as u8, &ids)),
             link_delay: Link::RECORDED_DELAY,
         }
     }
 
     /// The round's battle at its start on `content`, with the counters
     /// its init carried in.
-    pub fn start(&self, content: Arc<Content>) -> Battle {
-        let mut b = Battle::new(self.round_setup(&content), content);
+    pub fn start(&self, content: Arc<Content>, compat: &Compat) -> Battle {
+        let mut b = Battle::new(self.round_setup(&content, compat), content);
         let bs = unhex(&self.setup.battle_state);
         b.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
         b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
@@ -261,16 +263,16 @@ impl Round {
     }
 
     /// A player's folder, game and joypad beat, as far as the trace knows.
-    fn player_setup(&self, side: u8) -> PlayerSetup {
+    fn player_setup(&self, side: u8, ids: &Ids) -> PlayerSetup {
         let bs = unhex(&self.setup.battle_state);
         let local = bs[0x0D] == side;
-        let stats = navi_stats(&self.setup.navi_stats[side as usize]);
+        let stats = navi_stats(&self.setup.navi_stats[side as usize], ids);
         // BattleState+0x17 is the local console's Regular-chip flag; the
         // other console's follows from its navi's folder (battle mode 0).
         let regular = if local { bs[0x17] != 0 } else { stats.folder_reg[stats.folder as usize & 1] != 0xFF };
         let folder = match &self.setup.folders {
-            Some(f) => Some(codec::battle_folder(&unhex(&f[side as usize]), regular)),
-            None if local => Some(codec::battle_folder(&unhex(&self.setup.folder), regular)),
+            Some(f) => Some(codec::battle_folder(&unhex(&f[side as usize]), regular, ids)),
+            None if local => Some(codec::battle_folder(&unhex(&self.setup.folder), regular, ids)),
             None => None,
         };
         let version = match &self.setup.game_versions {
@@ -327,8 +329,9 @@ impl Round {
         self.frame(frame + Link::RECORDED_DELAY as u32).map_or(0, |f| f.input[side][0] & 0x3FF)
     }
 
-    /// Inputs and events for a frame.
-    pub fn tick_inputs(&self, i: usize, frames: &[&Frame]) -> ([PlayerTick; 2], TickEvents) {
+    /// Inputs and events for a frame (the players' results decoded with
+    /// `ids`).
+    pub fn tick_inputs(&self, i: usize, frames: &[&Frame], ids: &Ids) -> ([PlayerTick; 2], TickEvents) {
         let f = frames[i];
         let input = std::array::from_fn(|p| PlayerTick { held: self.joypad(f.frame, p) });
         let mut events = TickEvents::default();
@@ -351,9 +354,9 @@ impl Round {
                 && next.state[1] == 0x0C
             {
                 let e = self.exchanges.iter().rfind(|e| e.frame <= f.frame).expect("exchange record");
-                let navi_stats = navi_stats(&e.navi_stats[p]);
-                let transform = codec::transform_request(&unhex(&e.transform[p]));
-                let hand = Some(codec::chip_hand(&unhex(&f.chip_blocks[p])));
+                let navi_stats = navi_stats(&e.navi_stats[p], ids);
+                let transform = codec::transform_request(&unhex(&e.transform[p]), ids);
+                let hand = Some(codec::chip_hand(&unhex(&f.chip_blocks[p]), ids));
                 result = Some(Box::new(CustomResult { hand, navi_stats, transform }));
             }
             events.recorded[p] = Some(Recorded { in_custom, result });
@@ -411,8 +414,9 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         })
         .collect();
     check("panels", format!("{panels:?}"), format!("{:?}", f.panels));
+    let ids = Ids::new(&b.content, compat);
     for p in 0..2 {
-        let ours = codec::chip_hand_bytes(&b.hands[p]).iter().map(|x| format!("{x:02x}")).collect::<String>();
+        let ours = codec::chip_hand_bytes(&b.hands[p], &ids).iter().map(|x| format!("{x:02x}")).collect::<String>();
         check(&format!("hand {p}"), ours, f.chip_blocks[p].clone());
     }
     d
@@ -526,9 +530,10 @@ fn describe_trace(compat: &Compat, o: &Object, xy_unknown: bool) -> String {
 /// frames that matched before the first difference, and that difference.
 pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usize, Option<(u32, Vec<String>)>) {
     let frames: Vec<&Frame> = round.battle_frames().collect();
-    let mut b = round.start(content.clone());
+    let mut b = round.start(content.clone(), compat);
+    let ids = Ids::new(content, compat);
     for i in 0..frames.len() {
-        let (input, events) = round.tick_inputs(i, &frames);
+        let (input, events) = round.tick_inputs(i, &frames, &ids);
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events)));
         if let Err(e) = result {
             let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()));
@@ -563,16 +568,17 @@ pub struct ScreenCheck {
 /// simulated: each screen reads its navi's stats from the trace, and
 /// emotions from the mood alone (a tired navi is not seen). Damage from a
 /// formula is not checked (it needs the battle).
-pub fn check_custom_screens(round: &Round, content: &Content) -> Vec<ScreenCheck> {
+pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -> Vec<ScreenCheck> {
+    let ids = Ids::new(content, compat);
     let frames: Vec<&Frame> = round.battle_frames().collect();
-    let setup = round.round_setup(content);
+    let setup = round.round_setup(content, compat);
     let mut sides: [Option<Side>; 2] =
         std::array::from_fn(|p| round.folder_known(p as u8).then(|| Side::new(&setup.players[p])));
     let mut checks = Vec::new();
     let mut open: Option<(u32, [Option<u32>; 2], [Option<u32>; 2])> = None;
     let stats_at = |frame: u32, p: usize| -> NaviStats {
         let e = round.exchanges.iter().rfind(|e| e.frame <= frame).expect("exchange record");
-        navi_stats(&e.navi_stats[p])
+        navi_stats(&e.navi_stats[p], &ids)
     };
     for (i, f) in frames.iter().enumerate() {
         let context = |p: usize| {
@@ -639,10 +645,10 @@ pub fn check_custom_screens(round: &Round, content: &Content) -> Vec<ScreenCheck
             match &side.sent {
                 None => d.push("never sent".to_string()),
                 Some(sent) => {
-                    let block = codec::chip_hand(&unhex(&f.chip_blocks[p]));
-                    let expected = sent.result.hand.clone().unwrap_or_else(|| codec::chip_hand(&unhex(&before.chip_blocks[p])));
-                    let formula =
-                        |h: &ChipHand, k: usize| h.ids[k] != bn6_battle::hand::NO_CHIP && content.chip(h.ids[k]).damage >= 1000;
+                    let block = codec::chip_hand(&unhex(&f.chip_blocks[p]), &ids);
+                    let expected =
+                        sent.result.hand.clone().unwrap_or_else(|| codec::chip_hand(&unhex(&before.chip_blocks[p]), &ids));
+                    let formula = |h: &ChipHand, k: usize| h.ids[k].is_some_and(|id| content.chip(id).damage >= 1000);
                     let mut ours = expected.clone();
                     for k in 0..6 {
                         if formula(&ours, k) {
@@ -653,7 +659,7 @@ pub fn check_custom_screens(round: &Round, content: &Content) -> Vec<ScreenCheck
                         d.push(format!("hand: ours {:?} theirs {:?}", ours, block));
                     }
                     let e = round.exchanges.iter().rfind(|e| e.frame <= f.frame).expect("exchange record");
-                    let theirs = codec::transform_request(&unhex(&e.transform[p]));
+                    let theirs = codec::transform_request(&unhex(&e.transform[p]), &ids);
                     if sent.result.transform.form != theirs.form {
                         d.push(format!("transformation: ours {:?} theirs {:?}", sent.result.transform.form, theirs.form));
                     }

@@ -144,6 +144,59 @@ pub struct StageDef {
     pub number: u8,
 }
 
+/// A collision type content defines (`define.collision`): what an object is
+/// or what it hits, as the flag words for each side.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct CollisionTypeDef {
+    pub flags: [u32; 2],
+    /// The offset the original's lookup of this type's row leaves in a
+    /// register (the row's index times 8), which a damage word's bug code
+    /// takes as its high byte (`sub_801A00E`): a quirk materialized where
+    /// it is used (docs/design/content-model-v2.md §3.3).
+    pub row_offset: u16,
+}
+
+/// What the ruleset needs from content by role (docs/design/
+/// content-model-v2.md §7.4): `define.roles { ... }`, once. A role content
+/// hasn't filled yet is `None` until the BN6 content fills every one (then
+/// an unfilled role is a load error).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Roles {
+    pub actions: RoleActions,
+}
+
+/// The actions the ruleset starts by role.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct RoleActions {
+    /// AntiDmg's counter (`sub_801056A`, `sub_80105F2`).
+    pub anti_damage_counter: Option<ActionHandle>,
+    /// AntiSwrd's counter.
+    pub anti_sword_counter: Option<ActionHandle>,
+    /// BodyGrd's counter.
+    pub body_guard_counter: Option<ActionHandle>,
+}
+
+impl RoleActions {
+    /// The roles by name, as `rules/roles.luau` names them.
+    const NAMES: [&str; 3] = ["anti_damage_counter", "anti_sword_counter", "body_guard_counter"];
+
+    fn slot(&mut self, name: &str) -> Option<&mut Option<ActionHandle>> {
+        match name {
+            "anti_damage_counter" => Some(&mut self.anti_damage_counter),
+            "anti_sword_counter" => Some(&mut self.anti_sword_counter),
+            "body_guard_counter" => Some(&mut self.body_guard_counter),
+            _ => None,
+        }
+    }
+}
+
+impl Roles {
+    /// An action role, or a panic naming it when content hasn't filled it.
+    pub fn action(role: Option<ActionHandle>, name: &str) -> ActionHandle {
+        role.unwrap_or_else(|| panic!("the role actions.{name} is not filled (define.roles in rules/roles.luau)"))
+    }
+}
+
 /// A record only content reads: the engine keeps its handle and type.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RecordDef {
@@ -179,8 +232,24 @@ pub struct Defs {
     pub stages: Vec<StageDef>,
     pub records: Vec<RecordDef>,
     /// One-shot effects' and hit sparks' looks content defines, by handle.
+    /// Each has the engine's number after the pack data's
+    /// (`Content::effect`, `Content::spark`): see [`Defs::number`].
     pub effects: Vec<super::EffectSprite>,
     pub sparks: Vec<super::EffectSprite>,
+    /// Hit regions content defines, by handle, with the engine's number for
+    /// each (a shape's after the pack data's shapes, a whole-field region's
+    /// after its field regions, from 0x80).
+    pub regions: Vec<(super::Region, u8)>,
+    /// Collision types content defines, by handle: the engine's number for
+    /// each comes after the pack data's (`Content::collision_type`).
+    pub collisions: Vec<CollisionTypeDef>,
+    /// What the ruleset needs from content by role (`define.roles`).
+    pub roles: Roles,
+    /// The engine's numbers for the first effect, spark and collision type
+    /// content defines.
+    effect_base: u8,
+    spark_base: u8,
+    collision_base: u8,
     /// State layouts by [`StateId`].
     pub schemas: Vec<SchemaDef>,
     /// The functions the runtime binds, by [`FnId`].
@@ -332,6 +401,38 @@ impl Defs {
         self.records.binary_search_by(|r| r.key.as_str().cmp(key)).ok().map(|i| RecordHandle(i as u16))
     }
 
+    /// The engine's number for a definition the ruleset still stores as a
+    /// byte (an effect, a spark, a region, a collision type): its own,
+    /// after the pack data's, never an original number.
+    pub fn number(&self, registry: Registry, h: u16) -> Option<u8> {
+        let i = h as usize;
+        match registry {
+            Registry::Effect => (i < self.effects.len()).then(|| self.effect_base + h as u8),
+            Registry::Spark => (i < self.sparks.len()).then(|| self.spark_base + h as u8),
+            Registry::Region => self.regions.get(i).map(|&(_, n)| n),
+            Registry::Collision => (i < self.collisions.len()).then(|| self.collision_base + h as u8),
+            _ => None,
+        }
+    }
+
+    /// A defined effect, spark or collision type by the engine's number.
+    pub(crate) fn effect_numbered(&self, n: u8) -> Option<super::EffectSprite> {
+        n.checked_sub(self.effect_base).and_then(|i| self.effects.get(i as usize)).copied()
+    }
+
+    pub(crate) fn spark_numbered(&self, n: u8) -> Option<super::EffectSprite> {
+        n.checked_sub(self.spark_base).and_then(|i| self.sparks.get(i as usize)).copied()
+    }
+
+    pub(crate) fn collision_numbered(&self, n: u8) -> Option<CollisionTypeDef> {
+        n.checked_sub(self.collision_base).and_then(|i| self.collisions.get(i as usize)).copied()
+    }
+
+    /// A defined region by the engine's number.
+    pub(crate) fn region_numbered(&self, n: u8) -> Option<&super::Region> {
+        self.regions.iter().find(|(_, m)| *m == n).map(|(r, _)| r)
+    }
+
     /// The layout with this key.
     pub fn schema_named(&self, key: &str) -> Option<StateId> {
         self.schemas.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| StateId(i as u16))
@@ -390,6 +491,16 @@ impl Functions {
         self.ids.insert(f.clone(), id);
         self.list.push(f);
         id
+    }
+}
+
+/// A byte field of a definition (0 when absent).
+fn byte(d: &Definition, field: &str) -> Result<u8, ContentError> {
+    let what = |e: String| ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key));
+    match d.spec.field(field) {
+        Data::Nil => Ok(0),
+        Data::Int(i) => u8::try_from(*i).map_err(|_| what(format!("`{field}` {i} is not a byte"))),
+        _ => Err(what(format!("`{field}` is not a number"))),
     }
 }
 
@@ -808,20 +919,90 @@ impl Defs {
         }
         let stages: Vec<StageDef> = stages.sorted()?.into_iter().map(|(_, s)| s).collect();
 
+        // Effects, sparks, regions and collision types: each gets the
+        // engine's number after the pack data's.
         let look = |d: &Definition| -> Result<super::EffectSprite, ContentError> {
             let what = |e: String| ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key));
-            let sprite = d.spec.field("sprite").str().ok_or_else(|| what("needs a `sprite`".into()))?;
-            let byte = |field: &str| -> Result<u8, ContentError> {
-                match d.spec.field(field) {
-                    Data::Nil => Ok(0),
-                    Data::Int(i) => u8::try_from(*i).map_err(|_| what(format!("`{field}` {i} is not a byte"))),
-                    _ => Err(what(format!("`{field}` is not a number"))),
-                }
+            let sprite = match d.spec.field("sprite") {
+                Data::Asset(bn6_content_api::AssetKind::Sprite, name) => content.assets.sprites[name],
+                _ => return Err(what("needs a `sprite` (asset.sprite(...))".into())),
             };
-            Ok(super::EffectSprite { sprite: sprite.parse().map_err(what)?, anim: byte("anim")?, palette: byte("palette")? })
+            Ok(super::EffectSprite { sprite, anim: byte(d, "anim")?, palette: byte(d, "palette")? })
         };
         let effects = definitions.of(Registry::Effect).iter().map(look).collect::<Result<Vec<_>, _>>()?;
         let sparks = definitions.of(Registry::Spark).iter().map(look).collect::<Result<Vec<_>, _>>()?;
+        let base = |len: usize, n: usize, what: &str| -> Result<u8, ContentError> {
+            u8::try_from(len)
+                .ok()
+                .filter(|&b| b as usize + n <= 0x100)
+                .ok_or_else(|| ContentError::new(format!("too many {what}: {len} in the pack's data and {n} defined")))
+        };
+        let effect_base = base(content.effects.len(), effects.len(), "effects")?;
+        let spark_base = base(content.sparks.len(), sparks.len(), "hit sparks")?;
+        let (mut shapes, mut fields) = (content.regions.len(), content.rules.field_regions.len());
+        let mut regions = Vec::new();
+        for d in definitions.of(Registry::Region) {
+            let what = |e: &str| ContentError::new(format!("{}.luau: region {}: {e}", d.module, d.key));
+            let (region, number) = match (d.spec.field("panels"), d.spec.field("field")) {
+                (Data::List(items), Data::Nil) => {
+                    let mut panels = Vec::new();
+                    for p in items {
+                        let (Some(dx), Some(dy)) = (p.item(1).int(), p.item(2).int()) else {
+                            return Err(what("each of `panels` is { dx, dy }"));
+                        };
+                        panels.push(super::PanelOffset { dx: dx as i8, dy: dy as i8 });
+                    }
+                    shapes += 1;
+                    (super::Region::Panels(panels), shapes - 1)
+                }
+                (Data::Nil, Data::Map(_)) => {
+                    let word = |k: &str| d.spec.field("field").field(k).int().unwrap_or(0) as u32;
+                    fields += 1;
+                    (super::Region::Field(super::PanelCondition { require: word("require"), forbid: word("forbid") }), 0x80 + fields - 1)
+                }
+                _ => return Err(what("needs exactly one of `panels` and `field`")),
+            };
+            if shapes > 0x80 || fields > 0x80 {
+                return Err(what("too many regions for the engine's region byte"));
+            }
+            regions.push((region, number as u8));
+        }
+        let mut collisions = Vec::new();
+        for d in definitions.of(Registry::Collision) {
+            let word = |k: &str| -> Result<u32, ContentError> {
+                d.spec.field(k).int().map(|i| i as u32).ok_or_else(|| {
+                    ContentError::new(format!("{}.luau: collision {} needs `{k}` (a flag word)", d.module, d.key))
+                })
+            };
+            let row_offset = d.spec.field("row_offset").int().unwrap_or(0) as u16;
+            collisions.push(CollisionTypeDef { flags: [word("side0")?, word("side1")?], row_offset });
+        }
+        let collision_base = base(content.rules.collision_types.len(), collisions.len(), "collision types")?;
+
+        // The roles.
+        let mut roles = Roles::default();
+        if let [d] = definitions.of(Registry::Roles) {
+            let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
+            let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
+            for (group, entries) in groups {
+                if group.to_string() != "actions" {
+                    return Err(what(format!("the ruleset has no role group `{group}`")));
+                }
+                let Data::Map(entries) = entries else { return Err(what("`actions` is a table".into())) };
+                for (name, v) in entries {
+                    let name = name.to_string();
+                    let slot = roles.actions.slot(&name).ok_or_else(|| {
+                        what(format!("the ruleset has no role actions.{name} (it has {})", RoleActions::NAMES.join(", ")))
+                    })?;
+                    let Data::Ref(Registry::Action, key) = v else {
+                        return Err(what(format!("actions.{name} is not an action")));
+                    };
+                    *slot = Some(ActionHandle(
+                        actions.binary_search_by(|a| a.key.as_str().cmp(key)).expect("a defined action") as u16,
+                    ));
+                }
+            }
+        }
 
         let records: Vec<RecordDef> = definitions
             .of(Registry::Record)
@@ -880,6 +1061,12 @@ impl Defs {
             records,
             effects,
             sparks,
+            regions,
+            collisions,
+            roles,
+            effect_base,
+            spark_base,
+            collision_base,
             schemas,
             functions: Vec::new(),
             hooks: BTreeMap::new(),

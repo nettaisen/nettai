@@ -113,6 +113,14 @@ pub struct PanelCondition {
     pub forbid: u32,
 }
 
+/// A hit region content defines (`define.region`): panels around the
+/// anchor, or the whole field's panels that meet a condition.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Region {
+    Panels(Vec<PanelOffset>),
+    Field(PanelCondition),
+}
+
 /// A HUD banner (the game's UI banner id).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -156,6 +164,10 @@ pub struct Content {
     pub panel_layouts: Vec<PanelLayout>,
     /// Every sprite's animation timing.
     pub animations: Animations,
+    /// The assets content can name (`asset.sprite("bomb")`): the loader
+    /// fills it from the pack's asset names (docs/design/
+    /// content-model-v2.md §6.3).
+    pub assets: bn6_content_api::AssetNames,
     /// MegaMan's weapon routines that scripts implement (see `scripts`).
     pub weapons: Vec<WeaponData>,
     /// The pack's scripts (see `scripts`).
@@ -175,7 +187,8 @@ impl Content {
             Default::default()
         } else {
             let data = crate::behavior::script_data(self);
-            let (definitions, compiled) = bn6_luau::define(&self.scripts.pack(), &data, bn6_luau::Options::default())?;
+            let (definitions, compiled) =
+                bn6_luau::define(&self.scripts.pack(), &data, &self.assets, bn6_luau::Options::default())?;
             self.scripts.compiled = CompiledModules(compiled);
             definitions
         };
@@ -320,19 +333,59 @@ impl Content {
         self.animations.get(sprite, anim)
     }
 
-    /// A generic effect's look.
+    /// A generic effect's look: the pack data's, else one content defines
+    /// (by the engine's number for it, `Defs::number`).
     pub fn effect(&self, id: u8) -> EffectSprite {
-        *self.effects.get(id as usize).unwrap_or_else(|| panic!("effect {id:#x} is not in the content"))
+        self.effects
+            .get(id as usize)
+            .copied()
+            .or_else(|| self.defs.effect_numbered(id))
+            .unwrap_or_else(|| panic!("effect {id:#x} is not in the content"))
     }
 
-    /// A hit spark's look.
+    /// A hit spark's look (likewise).
     pub fn spark(&self, id: u8) -> EffectSprite {
-        *self.sparks.get(id as usize).unwrap_or_else(|| panic!("hit spark {id:#x} is not in the content"))
+        self.sparks
+            .get(id as usize)
+            .copied()
+            .or_else(|| self.defs.spark_numbered(id))
+            .unwrap_or_else(|| panic!("hit spark {id:#x} is not in the content"))
     }
 
     /// A hit-region shape (empty for regions the content doesn't have).
     pub fn region(&self, region: u8) -> &[PanelOffset] {
-        self.regions.get(region as usize).map(Vec::as_slice).unwrap_or(&[])
+        match self.regions.get(region as usize) {
+            Some(r) => r,
+            None => match self.defs.region_numbered(region) {
+                Some(Region::Panels(p)) => p,
+                _ => &[],
+            },
+        }
+    }
+
+    /// A whole-field region's panel condition (region 0x80 and up).
+    pub fn field_region(&self, region: u8) -> PanelCondition {
+        let i = (region & 0x7F) as usize;
+        match self.rules.field_regions.get(i) {
+            Some(&c) => c,
+            None => match self.defs.region_numbered(region) {
+                Some(&Region::Field(c)) => c,
+                _ => panic!("field region {region:#x} is not in the content"),
+            },
+        }
+    }
+
+    /// Collision type `index`'s flag word for `alliance`'s side, and the
+    /// offset the original's lookup of its row leaves in a register (a bug
+    /// code's high byte, `sub_801A00E`).
+    pub fn collision_type(&self, index: u8, alliance: u8) -> (u32, u16) {
+        match self.rules.collision_types.get(index as usize) {
+            Some(t) => (t[alliance as usize & 1], index as u16 * 8),
+            None => match self.defs.collision_numbered(index) {
+                Some(t) => (t.flags[alliance as usize & 1], t.row_offset),
+                None => panic!("collision type {index:#x} is not in the content"),
+            },
+        }
     }
 
     /// A panel layout.

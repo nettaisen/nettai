@@ -3,18 +3,30 @@
 //! navi drops what it was doing and counterattacks: the ruleset's
 //! `sub_801056A` (from idle and after each phase of some attacks) and
 //! `sub_80105F2` (from the stance) set up the counter's attack and start
-//! its action, AntiDmg's (0x47), AntiSwrd's (0x48) or BodyGrd's (0x4B),
-//! which are the chips' content. See docs/engine/chips.md §3.6.10.
+//! its action, AntiDmg's, AntiSwrd's or BodyGrd's (the original's 0x47,
+//! 0x48 and 0x4B), which are the chips' content: the roles
+//! `actions.anti_damage_counter`, `anti_sword_counter` and
+//! `body_guard_counter` (`define.roles`). See docs/engine/chips.md §3.6.10.
 
 use crate::actor::{request, status};
 use crate::battle::Battle;
-use crate::kinds::player::{ai, ai_mut, clear_flag2, coll_mut, set_attack};
+use crate::content::Roles;
+use crate::kinds::player::{NaviAttack, ai, ai_mut, clear_flag2, coll_mut, set_attack};
 use crate::object::ObjectRef;
 
-/// The counters' actions (AntiDmg's, AntiSwrd's, BodyGrd's).
-const ANTI_DAMAGE_COUNTER: u8 = 0x47;
-const ANTI_SWORD_COUNTER: u8 = 0x48;
-const BODY_GUARD_COUNTER: u8 = 0x4B;
+/// The counter action a trap's request starts: AntiDmg's, AntiSwrd's, or
+/// (neither) BodyGrd's.
+fn counter_action(b: &Battle, requests: u32, body_guard: bool) -> NaviAttack {
+    let roles = &b.content.defs.roles.actions;
+    let h = if requests & request::ANTI_DAMAGE_TRIGGERED != 0 {
+        Roles::action(roles.anti_damage_counter, "anti_damage_counter")
+    } else if requests & request::ANTI_SWORD_TRIGGERED != 0 || !body_guard {
+        Roles::action(roles.anti_sword_counter, "anti_sword_counter")
+    } else {
+        Roles::action(roles.body_guard_counter, "body_guard_counter")
+    };
+    NaviAttack::content(&b.content.defs, h)
+}
 
 /// The trap requests that start a counter from idle or mid-attack.
 pub(crate) const TRIGGERS: u32 =
@@ -51,15 +63,9 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     a.element = 0;
     a.lockout = 0;
     a.variant = 0;
-    let action = if requests & request::ANTI_DAMAGE_TRIGGERED != 0 {
-        ANTI_DAMAGE_COUNTER
-    } else if requests & request::ANTI_SWORD_TRIGGERED != 0 {
-        ANTI_SWORD_COUNTER
-    } else {
-        BODY_GUARD_COUNTER
-    };
+    let action = counter_action(b, requests, true);
     set_attack(b, r, action, 0);
-    super::dispatch(b, r, action);
+    super::dispatch(b, r, action.number);
 }
 
 /// `sub_80105F2(requests, lockout, variant, damage)`: the AntiDmg
@@ -81,7 +87,6 @@ pub(crate) fn stance_counter(b: &mut Battle, r: ObjectRef) {
     a.element = 0;
     a.lockout = lockout;
     a.variant = variant;
-    let action =
-        if requests & request::ANTI_DAMAGE_TRIGGERED != 0 { ANTI_DAMAGE_COUNTER } else { ANTI_SWORD_COUNTER };
+    let action = counter_action(b, requests, false);
     set_attack(b, r, action, 0);
 }

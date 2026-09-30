@@ -10,6 +10,7 @@ use std::fmt;
 use crate::api::CoreApi;
 use crate::definitions::Definitions;
 use crate::registry::Registry;
+use crate::assets::AssetNames;
 use crate::state::{Schema, StateId, Value};
 use crate::types::{ObjectRef, PanelPos};
 
@@ -118,6 +119,12 @@ pub struct BindPlan {
     /// registry's handles also number the engine's own entries, so they are
     /// not the definitions' positions).
     pub handles: Vec<u16>,
+    /// The registries' entries that are no definition (the engine's own,
+    /// and what registration by number makes), by registry, handle and key:
+    /// a script reaches them as stand-in values (`me.kind` of a v1 object).
+    pub entries: Vec<(Registry, u16, String)>,
+    /// The assets content can name (`asset.sprite("bomb")`).
+    pub assets: AssetNames,
 }
 
 /// What a runtime loaded that the binding reads: the state layouts.
