@@ -531,6 +531,8 @@ declare battle: {
     navis_in: () -> boolean,
     -- Presentation only: the side the simulation's perspective is.
     local_side: () -> number,
+    -- Battle flag 1: the fight is on (collision is live).
+    fighting: () -> boolean,
     -- Sound for both players, or for one side's player (output only).
     play_sound: (id: number) -> (),
     play_sound_for: (side: number, id: number) -> (),
@@ -736,6 +738,10 @@ export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } 
 
 export type WeaponData = { id: number, name: string, action: number?, script: string }
 
+-- A panel condition: the flags word has all of `require` and none of
+-- `forbid`.
+export type PanelCondition = { require: number, forbid: number }
+
 -- An object kind a script implements.
 export type ObjectKindData = { pool: Pool, index: number, script: string }
 
@@ -756,6 +762,10 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- Whole-field hit regions (`byte_8019C34`): region 0x80 + i covers
+        -- every panel whose flags word has all of `require` and none of
+        -- `forbid`.
+        field_regions: { [number]: PanelCondition },
     },
     -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
     -- panels a region covers, { dx, dy } from its panel with dx toward the

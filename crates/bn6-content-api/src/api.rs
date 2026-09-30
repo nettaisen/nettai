@@ -331,6 +331,8 @@ named_fields! {
         NavisIn = "navis_in", Bool, ro;
         /// Presentation only: the side the simulation's perspective is.
         LocalSide = "local_side", U8, ro;
+        /// Battle flag 1: the fight is on (collision is live).
+        Fighting = "fighting", Bool, ro;
     }
 }
 

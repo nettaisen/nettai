@@ -214,6 +214,7 @@ impl CoreApi for Battle {
             BattleInfo::PanelPattern => Value::Int(self.setup.settings.panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
             BattleInfo::LocalSide => Value::Int(self.round.local_side as i64),
+            BattleInfo::Fighting => Value::Bool(self.round.flags & crate::battle::battle_flags::FIGHTING != 0),
         }
     }
 
