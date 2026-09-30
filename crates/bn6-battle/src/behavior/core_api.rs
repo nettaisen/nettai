@@ -11,7 +11,7 @@ use bn6_content_api::{
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
-use bn6_content_api::{ActionHandle, KindHandle, Registry, SpawnAt, StateId};
+use bn6_content_api::{ActionHandle, KindHandle, NaviAction, Registry, SpawnAt, StateId};
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 
@@ -651,6 +651,44 @@ impl CoreApi for Battle {
         Some(self.objects.get(o).kind.0)
     }
 
+    fn def_number(&self, registry: Registry, h: u16) -> ApiResult<u8> {
+        self.content.defs.number(registry, h).ok_or_else(|| ApiError::Other(format!("no {registry} has handle {h}")))
+    }
+
+    fn navi_action(&self, o: ObjectRef) -> ApiResult<NaviAction> {
+        let a = self.actor_of(o)?;
+        if let Some(h) = kinds::player::running_content_action(self, o) {
+            return Ok(NaviAction::Content(h.0));
+        }
+        let action = self.objects.get(o).action;
+        if action >= 0x10 {
+            if let Some(h) = self.content.defs.action_numbered(action) {
+                return Ok(NaviAction::Content(h.0));
+            }
+            return Ok(match action {
+                kinds::player::actions::movement::ACTION => NaviAction::Engine("move"),
+                kinds::player::actions::dimming_chip::ACTION => NaviAction::Engine("dimming_chip"),
+                kinds::player::actions::navi_chip::ACTION => NaviAction::Engine("navi_chip"),
+                kinds::player::actions::instant::ACTION if matches!(a.attack.action, ActionVars::FormChange(_)) => {
+                    NaviAction::Engine("form_change")
+                }
+                kinds::player::actions::instant::ACTION => NaviAction::Engine("instant_chip"),
+                kinds::player::actions::cross_special::ACTION => NaviAction::Engine("cross_special"),
+                n => NaviAction::Number(n),
+            });
+        }
+        // The framework's states; a link navi's actions past idle are its own.
+        const STATES: [&str; 9] =
+            ["entry", "take_control", "deletion", "flinch", "paralysis", "drag", "freeze", "bubble", "idle"];
+        Ok(match STATES.get(action as usize) {
+            Some(name) if a.ai_index == 0 || action <= 8 => NaviAction::Engine(name),
+            _ => match self.content.defs.action_numbered(action) {
+                Some(h) => NaviAction::Content(h.0),
+                None => NaviAction::Number(action),
+            },
+        })
+    }
+
     fn free(&mut self, o: ObjectRef) {
         self.objects.free(o);
     }
@@ -901,20 +939,6 @@ impl CoreApi for Battle {
         kinds::spark::spawn(self, owner, pos, id)
     }
 
-    fn spawn_effect_def(&mut self, pos: Vec3, effect: u16, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
-        let look = self.content.defs.effects[effect as usize];
-        kinds::effect::spawn_look(self, pos, look, flip, palette_add, priority)
-    }
-
-    fn spawn_region_effects_def(&mut self, x: i32, y: i32, region: u8, side: u8, effect: u16, z: i32) {
-        let look = self.content.defs.effects[effect as usize];
-        kinds::effect::spawn_look_over_region(self, x, y, region, side, look, z);
-    }
-
-    fn spawn_spark_def(&mut self, owner: ObjectRef, pos: Vec3, spark: u16) -> Option<ObjectRef> {
-        let look = self.content.defs.sparks[spark as usize];
-        kinds::spark::spawn_look(self, owner, pos, look)
-    }
 
     fn spawn_form_overlay(
         &mut self,

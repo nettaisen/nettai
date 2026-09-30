@@ -24,6 +24,7 @@ use std::ptr::NonNull;
 use bn6_content_api::{
     ACTOR_TYPES, ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
     HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
+    AssetKind, SpawnAt,
     ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Pool, Registry, RequestFlag, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
@@ -74,6 +75,41 @@ fn with<R>(f: impl FnOnce(&mut dyn CoreApi, &Bound) -> mlua::Result<R>) -> mlua:
     // SAFETY: set by a live `Enter`, which holds the exclusive borrow.
     // Callbacks don't nest `with` calls, so this is the only reference.
     f(unsafe { &mut *api.as_ptr() }, unsafe { &*bound.as_ptr() })
+}
+
+/// Read what the binding knows (definitions, assets) during the running
+/// call.
+fn bound<R>(f: impl FnOnce(&Bound) -> mlua::Result<R>) -> mlua::Result<R> {
+    let (_, bound) = CTX
+        .with(|c| c.get())
+        .ok_or_else(|| mlua::Error::runtime("the battle is only reachable while content runs"))?;
+    // SAFETY: set by a live `Enter`; the binding only ever reads it.
+    f(unsafe { &*bound.as_ptr() })
+}
+
+/// A definition of `registry` the ruleset still stores as a byte (a region,
+/// a collision type, an effect, a spark), or a number (the deprecated
+/// numeric API): the engine's byte for it.
+fn def_or_number(api: &dyn CoreApi, b: &Bound, v: LuaValue, registry: Registry, what: &str) -> mlua::Result<u8> {
+    match b.def(&v) {
+        Some((r, h)) if r == registry => api.def_number(r, h).map_err(api_error),
+        Some((r, _)) => Err(mlua::Error::runtime(format!("{what}: a {r} is not a {registry}"))),
+        None if matches!(v, LuaValue::Table(_)) => {
+            Err(mlua::Error::runtime(format!("{what}: expected a {registry} definition, got a table")))
+        }
+        None => u8_arg(v, what),
+    }
+}
+
+/// A sound asset, or a sound number (deprecated).
+fn sound_arg(v: LuaValue) -> mlua::Result<u16> {
+    if let LuaValue::Table(_) = v {
+        return bound(|b| match b.asset(&v) {
+            Some((AssetKind::Sound, h)) => b.with_names(|n| n.sound(h)).ok_or_else(|| mlua::Error::runtime("no such sound")),
+            _ => Err(mlua::Error::runtime("expected a sound (asset.sound)")),
+        });
+    }
+    u16_arg(v, "sound")
 }
 
 fn api_error(e: ApiError) -> mlua::Error {
@@ -127,6 +163,24 @@ fn named<T>(s: &mlua::LuaString, what: &str, parse: impl Fn(&str) -> Option<T>) 
 fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
     Ok(match v {
         LuaValue::Nil => Value::Nil,
+        LuaValue::Table(_) => bound(|b| {
+            if let Some((registry, h)) = b.def(&v) {
+                if let FieldType::Ref(Registry::Record, Some(want)) = ty
+                    && registry == Registry::Record
+                    && b.record_type(h) != Some(want.as_str())
+                {
+                    return Err(mlua::Error::runtime(format!(
+                        "{what}: expected a record:{want}, got a record:{}",
+                        b.record_type(h).unwrap_or("?")
+                    )));
+                }
+                return Ok(Value::Def(registry, h));
+            }
+            if let Some((kind, h)) = b.asset(&v) {
+                return Ok(Value::Asset(kind, h));
+            }
+            Err(mlua::Error::runtime(format!("{what}: expected {ty}, got a table that is no definition or asset")))
+        })?,
         LuaValue::Boolean(b) => Value::Bool(b),
         LuaValue::String(s) => match ty {
             FieldType::Enum(names) => {
@@ -166,7 +220,8 @@ fn from_api(lua: &Lua, v: Value, ty: &FieldType) -> mlua::Result<LuaValue> {
         },
         Value::Object(o) => LuaValue::UserData(lua.create_userdata(Object(o))?),
         Value::Vec3(p) => LuaValue::UserData(lua.create_userdata(LVec3(p))?),
-        Value::Def(r, _) => return Err(mlua::Error::runtime(format!("a {r} can't be read from a state field yet"))),
+        Value::Def(r, h) => LuaValue::Table(bound(|b| b.def_value(r, h))?),
+        Value::Asset(k, h) => LuaValue::Table(bound(|b| b.asset_value(lua, k, h))?),
     })
 }
 
@@ -203,8 +258,15 @@ fn params_table(lua: &Lua, p: [u8; 4]) -> mlua::Result<mlua::Table> {
     lua.create_sequence_from(p.iter().map(|&b| b as f64))
 }
 
-/// A sprite id: `"CC-II"` in hex, or its category and index as numbers.
+/// A sprite: an asset (`asset.sprite("bomb")`), or (deprecated) `"CC-II"`
+/// in hex or its category and index as numbers.
 fn sprite_id(a: LuaValue, b: Option<LuaValue>) -> mlua::Result<SpriteId> {
+    if let LuaValue::Table(_) = a {
+        return bound(|bd| match bd.asset(&a) {
+            Some((AssetKind::Sprite, h)) => bd.with_names(|n| n.sprite(h)).ok_or_else(|| mlua::Error::runtime("no such sprite")),
+            _ => Err(mlua::Error::runtime("expected a sprite (asset.sprite)")),
+        });
+    }
     match (a, b) {
         (LuaValue::String(s), None) => s.to_str()?.parse().map_err(mlua::Error::runtime),
         (c, Some(i)) => Ok(SpriteId { category: u8_arg(c, "sprite category")?, index: u8_arg(i, "sprite index")? }),
@@ -253,6 +315,13 @@ impl UserData for Object {
             }
         }
         fields.add_field_method_get("pool", |_, this| Ok(this.0.pool.name()));
+        fields.add_field_method_get("kind", |lua, this| {
+            let kind = with(|api, _| Ok(api.object_kind(this.0)))?;
+            match kind {
+                Some(h) => from_api(lua, Value::Def(Registry::Kind, h), &FieldType::Ref(Registry::Kind, None)),
+                None => Ok(LuaValue::Nil),
+            }
+        });
         fields.add_field_method_get("lifecycle", |_, this| with(|api, _| Ok(api.lifecycle(this.0).name())));
         fields.add_field_method_set("lifecycle", |_, this, name: mlua::LuaString| {
             let l = named(&name, "lifecycle state", Lifecycle::from_name)?;
@@ -391,17 +460,23 @@ impl UserData for Object {
         methods.add_method(
             "setup_collision",
             |_, this, (self_type, target_type, hit_mod): (LuaValue, LuaValue, LuaValue)| {
-                let (s, t, h) =
-                    (u8_arg(self_type, "self type")?, u8_arg(target_type, "target type")?, u8_arg(hit_mod, "hit mod")?);
-                with(|api, _| Ok(api.setup_collision(this.0, s, t, h)))
+                let h = u8_arg(hit_mod, "hit mod")?;
+                with(|api, b| {
+                    let s = def_or_number(api, b, self_type, Registry::Collision, "setup_collision")?;
+                    let t = def_or_number(api, b, target_type, Registry::Collision, "setup_collision")?;
+                    Ok(api.setup_collision(this.0, s, t, h))
+                })
             },
         );
         methods.add_method(
             "reset_collision_types",
             |_, this, (self_type, target_type, hit_mod): (LuaValue, LuaValue, LuaValue)| {
-                let (s, t, h) =
-                    (u8_arg(self_type, "self type")?, u8_arg(target_type, "target type")?, u8_arg(hit_mod, "hit mod")?);
-                with(|api, _| Ok(api.reset_collision_types(this.0, s, t, h)))
+                let h = u8_arg(hit_mod, "hit mod")?;
+                with(|api, b| {
+                    let s = def_or_number(api, b, self_type, Registry::Collision, "reset_collision_types")?;
+                    let t = def_or_number(api, b, target_type, Registry::Collision, "reset_collision_types")?;
+                    Ok(api.reset_collision_types(this.0, s, t, h))
+                })
             },
         );
         methods.add_method("hit_spark", |_, this, ()| with(|api, _| Ok(api.hit_spark(this.0))));
@@ -448,8 +523,31 @@ impl UserData for Object {
         methods.add_method("exit_attack", |_, this, ()| with(|api, _| Ok(api.exit_attack(this.0))));
         methods.add_method("end_attack", |_, this, ()| with(|api, _| Ok(api.end_attack(this.0))));
         methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, LuaValue)| {
-            let (action, kind) = (u8_arg(action, "action")?, u8_arg(kind, "attack kind")?);
-            with(|api, _| Ok(api.set_attack(this.0, action, kind)))
+            let kind = u8_arg(kind, "attack kind")?;
+            with(|api, b| match b.def(&action) {
+                Some((Registry::Action, h)) => api.set_content_attack(this.0, h, kind).map_err(api_error),
+                Some((r, _)) => Err(mlua::Error::runtime(format!("set_attack: a {r} is not an action"))),
+                None => Ok(api.set_attack(this.0, u8_arg(action, "action")?, kind)),
+            })
+        });
+        methods.add_method("navi_action", |lua, this, ()| {
+            let a = with(|api, _| api.navi_action(this.0).map_err(api_error))?;
+            match a {
+                bn6_content_api::NaviAction::Content(h) => {
+                    from_api(lua, Value::Def(Registry::Action, h), &FieldType::Ref(Registry::Action, None))
+                }
+                bn6_content_api::NaviAction::Engine(name) => Ok(LuaValue::String(lua.create_string(name)?)),
+                bn6_content_api::NaviAction::Number(n) => Ok(LuaValue::Number(n as f64)),
+            }
+        });
+        methods.add_method("set_damage_word", |_, this, word: LuaValue| {
+            // The damage (with its flag bits) and, above it, the counter
+            // byte a hit carries: the object's damage and stamina.
+            let word = int(&word, "damage word")? as u32;
+            with(|api, _| {
+                api.set(this.0, ObjectField::Damage, Value::Int((word & 0xFFFF) as i64)).map_err(api_error)?;
+                api.set(this.0, ObjectField::Stamina, Value::Int((word >> 16) as i64)).map_err(api_error)
+            })
         });
         methods.add_method("reset_attack_links", |_, this, ()| with(|api, _| Ok(api.reset_attack_links(this.0))));
         methods.add_method("held_direction", |_, this, ()| with(|api, _| Ok(api.held_direction(this.0))));
@@ -597,6 +695,20 @@ impl UserData for Collision {
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("present", |_, this, ()| with(|api, _| Ok(api.present_collision(this.0))));
+        // A region or a hit spark content defines.
+        for (name, field, registry) in
+            [("set_region", CollisionField::Region, Registry::Region), ("set_hit_effect", CollisionField::HitEffect, Registry::Spark)]
+        {
+            methods.add_method(name, move |_, this, v: LuaValue| {
+                if !matches!(v, LuaValue::Table(_)) {
+                    return Err(mlua::Error::runtime(format!("collision:{name}: expected a {registry} definition")));
+                }
+                with(|api, b| {
+                    let n = def_or_number(api, b, v, registry, name)?;
+                    api.collision_set(this.0, field, Value::Int(n as i64)).map_err(api_error)
+                })
+            });
+        }
         methods.add_method("remove", |_, this, ()| with(|api, _| Ok(api.remove_collision(this.0))));
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free_collision(this.0))));
         methods.add_method("element_damage", |_, this, element: LuaValue| {
@@ -766,6 +878,25 @@ fn vec3_arg(v: Option<mlua::UserDataRef<LVec3>>) -> Vec3 {
     v.map_or(Vec3::default(), |p| p.0)
 }
 
+/// An optional `Vec3` argument from a loose value.
+fn vec3_value(v: Option<LuaValue>) -> mlua::Result<Vec3> {
+    match v {
+        None | Some(LuaValue::Nil) => Ok(Vec3::default()),
+        Some(LuaValue::UserData(ud)) => ud.borrow::<LVec3>().map(|p| p.0).map_err(|_| mlua::Error::runtime("expected a Vec3")),
+        Some(v) => Err(mlua::Error::runtime(format!("expected a Vec3, got {}", v.type_name()))),
+    }
+}
+
+/// Spawn a kind content defines (or an engine or v1 kind's stand-in).
+fn spawn_kind_def(lua: &Lua, kind: LuaValue, pos: Vec3, at: SpawnAt) -> mlua::Result<LuaValue> {
+    let o = with(|api, b| match b.def(&kind) {
+        Some((Registry::Kind, h)) => api.spawn_def(h, pos, at).map_err(api_error),
+        Some((r, _)) => Err(mlua::Error::runtime(format!("battle.spawn: a {r} is not a kind"))),
+        None => Err(mlua::Error::runtime("battle.spawn: expected a kind definition")),
+    })?;
+    object_value(lua, o)
+}
+
 // ---- Libraries -------------------------------------------------------------------------------------
 
 /// Add `name = function` to a library table.
@@ -830,11 +961,11 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         )?;
     }
     lib_fn!(lua, t, "play_sound", |_, id: LuaValue| {
-        let id = u16_arg(id, "sound")?;
+        let id = sound_arg(id)?;
         with(|api, _| Ok(api.play_sound(id)))
     });
     lib_fn!(lua, t, "play_sound_for", |_, (side, id): (LuaValue, LuaValue)| {
-        let (side, id) = (u8_arg(side, "side")? & 1, u16_arg(id, "sound")?);
+        let (side, id) = (u8_arg(side, "side")? & 1, sound_arg(id)?);
         with(|api, _| Ok(api.play_sound_for(side, id)))
     });
     lib_fn!(lua, t, "shake_camera", |_, (magnitude, ticks): (LuaValue, LuaValue)| {
@@ -968,14 +1099,34 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         lua,
         t,
         "spawn",
-        |lua, (pool, index, pos, p): (mlua::LuaString, LuaValue, Option<mlua::UserDataRef<LVec3>>, Option<mlua::Table>)| {
+        |lua, args: mlua::MultiValue| {
+            let mut args = args.into_iter();
+            let first = args.next().unwrap_or(LuaValue::Nil);
+            // `battle.spawn(kind, pos)`, or (deprecated) by pool and index.
+            if let LuaValue::Table(_) = first {
+                let pos = vec3_value(args.next())?;
+                return spawn_kind_def(lua, first, pos, SpawnAt::AfterCurrent);
+            }
+            let LuaValue::String(pool) = first else {
+                return Err(mlua::Error::runtime("battle.spawn: expected a kind"));
+            };
             let pool = named(&pool, "pool", Pool::from_name)?;
-            let index = u8_arg(index, "kind index")?;
-            let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
+            let index = u8_arg(args.next().unwrap_or(LuaValue::Nil), "kind index")?;
+            let pos = vec3_value(args.next())?;
+            let p = match args.next() {
+                Some(LuaValue::Table(t)) => params(Some(t), "spawn param")?,
+                _ => [0; 4],
+            };
             let o = with(|api, _| Ok(api.spawn(pool, index, pos, p)))?;
             object_value(lua, o)
         }
     );
+    lib_fn!(lua, t, "spawn_first", |lua, (kind, pos): (LuaValue, Option<mlua::UserDataRef<LVec3>>)| {
+        spawn_kind_def(lua, kind, vec3_arg(pos), SpawnAt::First)
+    });
+    lib_fn!(lua, t, "spawn_at_end", |lua, (kind, pos): (LuaValue, Option<mlua::UserDataRef<LVec3>>)| {
+        spawn_kind_def(lua, kind, vec3_arg(pos), SpawnAt::End)
+    });
     lib_fn!(
         lua,
         t,
@@ -1020,10 +1171,12 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             Option<LuaValue>,
             Option<LuaValue>
         )| {
-            let id = u8_arg(id, "effect")?;
             let opt = |v: Option<LuaValue>, what| v.map_or(Ok(0), |v| u8_arg(v, what));
             let (flip, add, prio) = (opt(flip, "flip")?, opt(palette_add, "palette")?, opt(priority, "priority")?);
-            let o = with(|api, _| Ok(api.spawn_effect(pos.0, id, flip, add, prio)))?;
+            let o = with(|api, b| {
+                let id = def_or_number(api, b, id, Registry::Effect, "battle.effect")?;
+                Ok(api.spawn_effect(pos.0, id, flip, add, prio))
+            })?;
             object_value(lua, o)
         }
     );
@@ -1044,23 +1197,35 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         "region_effects",
         |_, (x, y, region, side, id, z): (LuaValue, LuaValue, LuaValue, LuaValue, LuaValue, Option<LuaValue>)| {
             let (x, y) = (int(&x, "x")? as i32, int(&y, "y")? as i32);
-            let (region, side, id) = (u8_arg(region, "region")?, u8_arg(side, "side")? & 1, u8_arg(id, "effect")?);
+            let side = u8_arg(side, "side")? & 1;
             let z = match z {
                 Some(z) => int(&z, "z")? as i32,
                 None => 0,
             };
-            with(|api, _| Ok(api.spawn_region_effects(x, y, region, side, id, z)))
+            with(|api, b| {
+                let region = def_or_number(api, b, region, Registry::Region, "battle.region_effects")?;
+                let id = def_or_number(api, b, id, Registry::Effect, "battle.region_effects")?;
+                Ok(api.spawn_region_effects(x, y, region, side, id, z))
+            })
         }
     );
     lib_fn!(lua, t, "hitbox", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
+        // A definition or (deprecated) a number; absent is 0.
+        let byte = |key: &str, registry: Registry| -> mlua::Result<u8> {
+            let v: LuaValue = spec.raw_get(key)?;
+            if v.is_nil() {
+                return Ok(0);
+            }
+            with(|api, b| def_or_number(api, b, v, registry, key))
+        };
         let s = HitboxSpec {
             panel: PanelPos { x: table_int(&spec, "panel_x")? as u8, y: table_int(&spec, "panel_y")? as u8 },
             element: table_int(&spec, "element")? as u8,
             z: table_int(&spec, "z")? as i32,
-            region: table_int(&spec, "region")? as u8,
-            hit_effect: table_int(&spec, "hit_effect")? as u8,
-            target: table_int(&spec, "target")? as u8,
-            self_type: table_int(&spec, "self_type")? as u8,
+            region: byte("region", Registry::Region)?,
+            hit_effect: byte("hit_effect", Registry::Spark)?,
+            target: byte("target", Registry::Collision)?,
+            self_type: byte("self_type", Registry::Collision)?,
             damage: table_int(&spec, "damage")? as u16,
             stamina: table_int(&spec, "stamina")? as u16,
             hit_mod: table_int(&spec, "hit_mod")? as u8,
@@ -1072,8 +1237,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         object_value(lua, o)
     });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {
-        let id = u8_arg(id, "hit spark")?;
-        let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;
+        let o = with(|api, b| {
+            let id = def_or_number(api, b, id, Registry::Spark, "battle.spark")?;
+            Ok(api.spawn_spark(owner.0, pos.0, id))
+        })?;
         object_value(lua, o)
     });
     lib_fn!(lua, t, "form_overlay", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {

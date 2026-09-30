@@ -4,8 +4,18 @@
 -- crates/bn6-luau/src/bind.rs over the Rust `CoreApi` trait
 -- (crates/bn6-content-api), and docs/design/scripting.md describes it.
 --
--- How content runs. A content pack's scripts are modules next to the data
--- they implement; the data registers them (docs/design/content-pack.md):
+-- How content runs (content model v2, docs/design/content-model-v2.md).
+-- Every module of a pack loads once, and while it loads it makes
+-- definitions with `define.<registry>(spec)` (a chip, a kind, an action, an
+-- effect...) and names assets with `asset.<kind>(name)`; a definition is its
+-- spec table, frozen, and scripts pass it where the API takes one
+-- (`battle.spawn(bomb.kind, pos)`, `me:set_attack(action, 2)`). The
+-- definitions and their types are at the end of this file.
+--
+-- Until the migration ends, the pack's data also registers modules by
+-- number (docs/design/content-pack.md), and the numeric API those modules
+-- use stays, marked "Deprecated" below and counted per module by
+-- bn6-content-check's ratchet (tests/deprecated.txt), which only shrinks:
 --
 --   objects/NAME/object.toml  [kind] pool, index, script   an object kind:
 --       the module exports `state` and `update(me)`; with `actor_list_entry
@@ -205,8 +215,9 @@ declare class Sprite
     -- The animation has played to its end (read-only).
     finished: boolean
     -- `sprite_load`: load a sprite (resets the animation and the look) and
-    -- let it animate (the object's `no_sprite_update` off).
-    function load(self, id: SpriteId): ()
+    -- let it animate (the object's `no_sprite_update` off). Deprecated: a
+    -- sprite by number ("CC-II"); use an asset (asset.sprite).
+    function load(self, sprite: SpriteAsset | SpriteId): ()
     -- Start an animation from its first frame.
     function set_animation(self, anim: number): ()
     -- Advance the animation one tick (no gating).
@@ -217,13 +228,19 @@ end
 
 -- An object's collision registration.
 declare class Collision
-    -- Region shape.
+    -- The region shape (a region definition) and hit spark (a spark
+    -- definition).
+    function set_region(self, region: Region): ()
+    function set_hit_effect(self, spark: Spark): ()
+    -- Region shape, as the engine's byte (`set_region` takes a
+    -- definition). Deprecated: setting it to a number.
     region: number
     -- The panel the region is anchored on (`update_collision_panels`
     -- copies the object's).
     panel_x: number
     panel_y: number
-    -- Hit spark effect (0xFF = none).
+    -- Hit spark (0xFF = none), as the engine's byte (`set_hit_effect` takes
+    -- a definition). Deprecated: setting it to a number.
     hit_effect: number
     status_base: number
     -- Bug code (low byte) and argument (high byte).
@@ -261,7 +278,10 @@ end
 -- object (and then names whatever takes the slot next).
 declare class Object
     pool: Pool
-    -- Which behavior within the pool (read-only).
+    -- Its kind (read-only): compare with a kind definition
+    -- (`me.kind == bomb.kind`).
+    kind: Kind
+    -- Deprecated: which behavior within the pool (read-only); use `kind`.
     index: number
     -- Setting it changes only the lifecycle state (the game's byte store);
     -- `set_lifecycle` also starts from the first action and phase.
@@ -447,9 +467,14 @@ declare class Object
 
     function create_collision(self): boolean
     -- Set up the registration from the object (side, panel, element,
-    -- damage word) with collision types by index.
-    function setup_collision(self, self_type: number, target_type: number, hit_mod: number): ()
-    function reset_collision_types(self, self_type: number, target_type: number, hit_mod: number): ()
+    -- damage word): what it is and what it hits, as collision types
+    -- (define.collision). Deprecated: collision types by index.
+    function setup_collision(self, self_type: CollisionType | number, target_type: CollisionType | number, hit_mod: number): ()
+    function reset_collision_types(self, self_type: CollisionType | number, target_type: CollisionType | number, hit_mod: number): ()
+    -- The damage word a hit carries: the damage (with its flag bits) in
+    -- the low half, the counter byte above (the object's damage and
+    -- stamina).
+    function set_damage_word(self, word: number): ()
     -- `object_spawnCollisionEffect`: the hit spark after a hit (one RNG
     -- draw when it shows).
     function hit_spark(self): ()
@@ -488,9 +513,16 @@ declare class Object
     function exit_attack(self): ()
     -- `sub_801171C`: back to idle, the animation as it is.
     function end_attack(self): ()
-    -- `object_setAttack0..5`: start an action; kind 1 buster, 2 chip or
-    -- charged shot, 3 special, 4 move.
-    function set_attack(self, action: number, kind: number): ()
+    -- `object_setAttack0..5`: start an action (a definition); kind 1
+    -- buster, 2 chip or charged shot, 3 special, 4 move. Deprecated: an
+    -- action by number.
+    function set_attack(self, action: Action | number, kind: number): ()
+    -- What the navi runs: an action definition, one of the ruleset's own
+    -- ("entry", "take_control", "deletion", "flinch", "paralysis", "drag",
+    -- "freeze", "bubble", "idle", "move", "dimming_chip", "navi_chip",
+    -- "instant_chip", "form_change", "cross_special"), or a number the
+    -- ruleset doesn't name (a link navi's own action).
+    function navi_action(self): Action | string | number
     function reset_attack_links(self): ()
     -- `sub_800FA54`: the held direction (1 up, 2 down, 3 back, 4 forward;
     -- 0 none).
@@ -581,12 +613,12 @@ export type HitboxSpec = {
     panel_y: number,
     element: number,
     z: number?,
-    -- Region shape.
-    region: number,
-    hit_effect: number,
-    -- Collision type indices.
-    target: number,
-    self_type: number,
+    -- Region shape (a definition; deprecated: a number).
+    region: Region | number,
+    hit_effect: Spark | number,
+    -- Collision types (definitions; deprecated: indices).
+    target: CollisionType | number,
+    self_type: CollisionType | number,
     -- The damage word: damage (with flag bits) and the counter byte.
     damage: number,
     stamina: number?,
@@ -710,9 +742,10 @@ declare battle: {
     per_player_gauges: () -> boolean,
     -- Battle flag 1: the fight is on (collision is live).
     fighting: () -> boolean,
-    -- Sound for both players, or for one side's player (output only).
-    play_sound: (id: number) -> (),
-    play_sound_for: (side: number, id: number) -> (),
+    -- Sound for both players, or for one side's player (output only): a
+    -- sound asset (asset.sound). Deprecated: a sound number.
+    play_sound: (sound: Sound | number) -> (),
+    play_sound_for: (side: number, sound: Sound | number) -> (),
     -- `camera_initShakeEffect_80302a8`: the camera shakes for `ticks` ticks
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
@@ -757,32 +790,41 @@ declare battle: {
     -- (`dword_203CFB0`; CopyDmg's).
     damage_carry: (side: number) -> DamageCarry,
     set_damage_carry: (side: number, record: DamageCarry) -> (),
-    -- Spawn into the pool's lowest free slot; it runs later this tick,
-    -- right after the spawner. nil if the pool is full.
-    spawn: (pool: Pool, index: number, pos: Vec3?, params: { number }?) -> Object?,
-    -- The same for a content kind, by name (its folder under objects/).
-    spawn_kind: (name: string, pos: Vec3?, params: { number }?) -> Object?,
+    -- Spawn an object of a kind into its pool's lowest free slot, its
+    -- state zeroed; it runs later this tick, right after the spawner. nil
+    -- if the pool is full. Deprecated: by pool and index.
+    -- (Typed loosely past the kind: the deprecated form is `(pool, index,
+    -- pos?, params?)`.)
+    spawn: (kind: Kind | Pool, ...any) -> Object?,
     -- `sub_80033E4`: the same at the head of the update list (it first
     -- runs next tick, before everything else).
-    spawn_kind_first: (name: string, pos: Vec3?, params: { number }?) -> Object?,
+    spawn_first: (kind: Kind, pos: Vec3?) -> Object?,
     -- `sub_8003374` / `sub_800333C`: the same, at the end of the update
     -- list (it runs after everything else this tick).
+    spawn_at_end: (kind: Kind, pos: Vec3?) -> Object?,
+    -- Deprecated: a content kind by name (its folder under objects/); use
+    -- `spawn(kind, pos)`.
+    spawn_kind: (name: string, pos: Vec3?, params: { number }?) -> Object?,
+    -- Deprecated: use `spawn_first(kind, pos)`, `spawn_at_end(kind, pos)`.
+    spawn_kind_first: (name: string, pos: Vec3?, params: { number }?) -> Object?,
     spawn_kind_at_end: (name: string, pos: Vec3?, params: { number }?) -> Object?,
-    -- The generic one-shot effect (effect object #0).
-    effect: (pos: Vec3, id: number, flip: number?, palette_add: number?, priority: number?) -> Object?,
+    -- The generic one-shot effect (effect object #0) an effect definition
+    -- describes. Deprecated: an effect by number.
+    effect: (pos: Vec3, effect: Effect | number, flip: number?, palette_add: number?, priority: number?) -> Object?,
     -- `sub_801BD3C`: the one-shot effect `id` on each field panel of hit
     -- region `region` around (x, y), turned the way side `side` faces, at
     -- height z (default 0); a whole-field region's (0x80 and up) from the
     -- bottom right, on the ground.
-    region_effects: (x: number, y: number, region: number, side: number, id: number, z: number?) -> (),
+    region_effects: (x: number, y: number, region: Region | number, side: number, effect: Effect | number, z: number?) -> (),
     -- The one-tick hit region (attack object #3).
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- `sub_80E11E0`: a screen palette flash (effect object #0x0A) of a
     -- variant (0 white or red, 1 white over two layers) for `ticks`,
     -- optionally going on while dimmed or paused.
     palette_flash: (variant: number, ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
-    -- A hit spark (effect object #4).
-    spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- A hit spark (effect object #4) a spark definition describes.
+    -- Deprecated: a spark by number.
+    spark: (owner: Object, pos: Vec3, spark: Spark | number) -> Object?,
     -- `sub_80C468C`: a form overlay (actor object #0x57) on `owner`,
     -- following it every tick.
     form_overlay: (owner: Object, spec: FormOverlaySpec) -> Object?,
@@ -1255,3 +1297,162 @@ export type PackData = {
 }
 
 declare data: PackData
+
+-- ---- Definitions and assets (docs/design/content-model-v2.md §3) -----------------------------
+
+-- Assets, named while content loads (`asset.sprite("bomb")`; names are
+-- compat/assets.toml's): one value per asset. (`SpriteAsset`, since
+-- `Sprite` is an object's sprite.)
+declare class SpriteAsset
+    name: string
+end
+declare class Sound
+    name: string
+end
+declare class Banner
+    name: string
+end
+declare class Background
+    name: string
+end
+declare class Mugshot
+    name: string
+end
+
+declare asset: {
+    sprite: (name: string) -> SpriteAsset,
+    sound: (name: string) -> Sound,
+    banner: (name: string) -> Banner,
+    background: (name: string) -> Background,
+    mugshot: (name: string) -> Mugshot,
+}
+
+-- A state layout: each field's type, "bool", "u8", "u16", "u32", "i8",
+-- "i16", "i32", "object", "vec3", an array ("u8[18]"), a list of variant
+-- names, or a reference: "kind", "action", "effect", "spark", "region",
+-- "collision", "chip", "weapon", "record", "record:<type>" (records of one
+-- type), "sprite", "sound", "banner", "background", "mugshot". A reference
+-- field holds a definition or an asset, or nil.
+export type StateSchema = { [string]: string | { string } }
+
+-- An object kind: one behaviour; what differs between uses goes in its
+-- state when spawned. `id` is qualified by its owner's folder when it lives
+-- in one ("minibomb/held").
+export type KindSpec = {
+    id: string,
+    pool: Pool,
+    state: StateSchema?,
+    update: (me: Object) -> (),
+}
+export type Kind = KindSpec
+
+-- A navi action. Actions sharing a state table continue each other's
+-- attack state (the original's actions of one number do). An action a
+-- role or a weapon names needs an `id`; a chip's is derived.
+export type ActionSpec = {
+    id: string?,
+    state: StateSchema?,
+    args: any?,
+    update: (me: Object, s: any) -> (),
+    traits: { string }?,
+}
+export type Action = ActionSpec
+
+export type WeaponSpec = {
+    id: string,
+    name: string,
+    charge_ticks: { number },
+    -- `off_80117D4[n]`: prepare the attack, name its action.
+    setup: (navi: Object) -> Action | number,
+    sticky: boolean?,
+    traits: { string }?,
+}
+export type Weapon = WeaponSpec
+
+-- A chip: its record, and exactly one use.
+export type ChipSpec = {
+    id: string,
+    name: string,
+    description: string?,
+    codes: { string }?,
+    element: string?,
+    family: string?,
+    class: string?,
+    rarity: number?,
+    mb: number?,
+    damage: any?,
+    hit_param: number?,
+    lockout: number?,
+    flags: { string }?,
+    extra_flags: { string }?,
+    beast: { lockon: any }?,
+    library: { number: number, index: number, sort: number }?,
+    slot_in_limit: number?,
+    traits: { string }?,
+    dark_substitute: any?,
+    modifier: any?,
+    program_advances: { any }?,
+    action: Action?,
+    dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
+    navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
+    instant: ((user: Object, spec: InstantChipSpec) -> ())?,
+}
+export type Chip = ChipSpec
+
+-- Navis, forms, stages, statuses and lock-on modes: their specs are the
+-- generator's (§3.2, §3.7), typed field by field when the engine reads
+-- them (steps 5 and 10 to 12). (`NaviDef`, since `Navi` is a side's stats.)
+export type NaviDef = { id: string, [string]: any }
+export type FormDef = { id: string, [string]: any }
+export type StageDef = { id: string, [string]: any }
+export type StatusDef = { id: string, [string]: any }
+export type LockonDef = { id: string, [string]: any }
+
+-- A one-shot effect's or hit spark's look.
+export type EffectSpec = { sprite: SpriteAsset, anim: number?, palette: number? }
+export type Effect = EffectSpec
+export type Spark = EffectSpec
+
+-- A hit region: panels around the anchor (`{ dx, dy }`, dx toward the
+-- side's front), or the whole field's panels that meet a condition.
+export type RegionSpec = { panels: { { number } }?, field: PanelCondition? }
+export type Region = RegionSpec
+
+-- A collision type: what an object is or what it hits, as a flag word per
+-- side. `row_offset`: the offset the original's lookup of the type's row
+-- leaves in a register (the row's index times 8), which a damage word's
+-- bug code takes as its high byte. (`CollisionType`, since `Collision` is
+-- an object's registration.)
+export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_offset: number? }
+export type CollisionType = CollisionTypeSpec
+
+-- What the ruleset needs from content by role (rules/roles.luau, once).
+export type RolesSpec = {
+    actions: {
+        anti_damage_counter: Action?,
+        anti_sword_counter: Action?,
+        body_guard_counter: Action?,
+    }?,
+}
+
+-- The definers: each records its spec (frozen) and returns it. They work
+-- while content loads (a module's top level and what it calls).
+declare define: {
+    chip: (spec: ChipSpec) -> Chip,
+    navi: (spec: NaviDef) -> NaviDef,
+    form: (spec: FormDef) -> FormDef,
+    weapon: (spec: WeaponSpec) -> Weapon,
+    kind: (spec: KindSpec) -> Kind,
+    action: (spec: ActionSpec) -> Action,
+    stage: (spec: StageDef) -> StageDef,
+    effect: (spec: EffectSpec) -> Effect,
+    spark: (spec: EffectSpec) -> Spark,
+    region: (spec: RegionSpec) -> Region,
+    collision: (spec: CollisionTypeSpec) -> CollisionType,
+    status: (spec: StatusDef) -> StatusDef,
+    lockon: (spec: LockonDef) -> LockonDef,
+    roles: (spec: RolesSpec) -> RolesSpec,
+    -- Luau-only data with a handle and a type name, which a reference field
+    -- ("record:<type>") can hold.
+    record: <T>(record_type: string, spec: T) -> T,
+}
