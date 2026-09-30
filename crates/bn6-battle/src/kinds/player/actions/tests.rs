@@ -452,3 +452,114 @@ fn buster_up_and_sync_trigger_change_the_navi() {
     crate::behavior::call_hook(&mut b, hook, bn6_content_api::HookCall::InstantChip { user: p0, spec });
     assert_eq!(b.stats[0].mood, 0xFF);
 }
+
+/// The objects of content kind `name` alive in `b`.
+fn count_kind(b: &Battle, name: &str) -> usize {
+    let k = b.content.object_kind(name).unwrap_or_else(|| panic!("no kind {name}"));
+    b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index)).count()
+}
+
+#[test]
+fn spawning_instant_chips_run_their_objects_and_roll_back() {
+    // Each effect's object appears the tick the chip's effect runs, plays
+    // out, rolls back at any point, and is gone within 200 ticks.
+    let chips = [
+        (testing::BOOMERANG, "boomerang"),
+        (testing::LANCE, "lance"),
+        (testing::FIST, "fire-hit"),
+        (testing::WORM, "sand-worm"),
+        (testing::FLAME_HOOK, "flame-hook"),
+        (testing::JUSTICE, "justice-one"),
+        (testing::GOLEM, "golem"),
+    ];
+    for (chip, name) in chips {
+        let (mut b, p0, p1) = fight();
+        if chip == testing::WORM {
+            // The worm comes out behind the enemy, on a panel with the flag
+            // the test content's panel types don't give.
+            let mut hand = ChipHand::empty();
+            hand.ids[0] = chip;
+            b.hands[0] = hand;
+            tick(&mut b, p0, p1, keys::A);
+            b.field.panel_mut(6, 2).unwrap().flags |= 0x1_0000;
+            tick(&mut b, p0, p1, 0);
+        } else {
+            use_instant_chip(&mut b, p0, p1, chip);
+        }
+        assert!(count_kind(&b, name) > 0, "{name} didn't appear");
+        for _ in 0..8 {
+            assert_rolls_back(&mut b, [p0, p1], 5, 0);
+            for _ in 0..7 {
+                tick(&mut b, p0, p1, 0);
+            }
+        }
+        for _ in 0..200 {
+            tick(&mut b, p0, p1, 0);
+        }
+        assert_eq!(count_kind(&b, name), 0, "{name} didn't go");
+    }
+}
+
+#[test]
+fn lances_thrust_from_the_far_column() {
+    let (mut b, p0, p1) = fight();
+    use_instant_chip(&mut b, p0, p1, testing::LANCE);
+    // Three lances on column 6, one per row, 64 pixels out and one 8-pixel
+    // step back already (the init runs the first tick).
+    let lance = b.content.object_kind("lance").unwrap().clone();
+    let lances: Vec<ObjectRef> =
+        b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (lance.pool, lance.index)).collect();
+    let mut rows: Vec<u8> = lances.iter().map(|&l| b.objects.get(l).panel.y).collect();
+    rows.sort();
+    assert_eq!(rows, [1, 2, 3]);
+    let (x, _) = crate::kinds::player::panel_coordinates(6, 1);
+    assert!(lances.iter().all(|&l| b.objects.get(l).pos.x == x + (56 << 16)));
+    // Column 6 is empty: the enemy at (5,2) is untouched.
+    for _ in 0..30 {
+        tick(&mut b, p0, p1, 0);
+    }
+    assert_eq!(b.objects.get(p1).hp, 1000);
+}
+
+#[test]
+fn the_tomahawk_throw_sends_two_tomahawks() {
+    let tomahawks = |b: &Battle| {
+        let k = b.content.object_kind("boomerang").unwrap();
+        let t = b.objects.in_order().filter(|&o| (o.pool, b.objects.get(o).index) == (k.pool, k.index));
+        t.map(|o| (b.objects.get(o).params[0], b.objects.get(o).panel.y)).collect::<Vec<_>>()
+    };
+    let start = || {
+        let (mut b, p0, p1) = fight();
+        let action = super::super::idle::weapon_routine(&mut b, p0, 0x1B);
+        assert_eq!(action, 0x4E);
+        super::super::set_attack(&mut b, p0, action, 2);
+        (b, p0, p1)
+    };
+    let (mut b, p0, p1) = start();
+    // 50 damage and 20 per buster damage point (1), Wood.
+    assert_eq!(ai_mut(&mut b, p0).attack.damage, 70);
+    let mut t = 0;
+    let mut first = None;
+    while t < 40 {
+        let next = t + 1;
+        run_to(&mut b, [p0, p1], &mut t, next, 0);
+        if first.is_none() && !tomahawks(&b).is_empty() {
+            first = Some(t);
+        }
+    }
+    let first = first.expect("no tomahawk");
+    // Two tomahawks (boomerang kind 4); the second 10 ticks after the
+    // first, on row 3.
+    let (mut b, p0, p1) = start();
+    let mut t = 0;
+    run_to(&mut b, [p0, p1], &mut t, first + 9, 0);
+    assert_eq!(tomahawks(&b).len(), 1);
+    run_to(&mut b, [p0, p1], &mut t, first + 10, 0);
+    let mut both = tomahawks(&b);
+    both.sort();
+    assert_eq!(both, [(4, 1), (4, 3)]);
+    assert_rolls_back(&mut b, [p0, p1], 20, 0);
+    // 96 ticks into the swing, idle.
+    run_to(&mut b, [p0, p1], &mut t, first + 120, 0);
+    assert_eq!(b.objects.get(p0).action, 8);
+}
