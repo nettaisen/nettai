@@ -11,6 +11,23 @@ local regions = {}
 -- The anchor panel (region 0x01).
 regions.single = define.region { panels = { { 0, 0 } } }
 
+-- The anchor and the panel ahead (region 0x02: LongSwrd).
+regions.long = define.region { panels = { { 0, 0 }, { 1, 0 } } }
+
+-- The anchor and the panels above and below (region 0x04: WideSwrd).
+regions.wide = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 } } }
+
+-- Three in a row from the anchor (region 0x06: FtrSword).
+regions.line = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 } } }
+
+-- The anchor and its four diagonals (region 0x0B: CrosSwrd).
+regions.x = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
+
+-- The anchor's column and the one ahead (region 0x11: LifeSrd).
+regions.wide_long = define.region {
+    panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { 1, -1 }, { 1, 1 } },
+}
+
 -- The 3x3 around the anchor, the anchor first (region 0x0F).
 regions.square = define.region {
     panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } },

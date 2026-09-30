@@ -23,6 +23,9 @@ collision.attack = define.collision { id = "attack", side0 = 0x80000080, side1 =
 -- burst's hits).
 collision.thrown = define.collision { id = "thrown", side0 = 0x80000088, side1 = 0x40000088, row_offset = 0x50 }
 
+-- A slash (row 0x07: the swords' hits).
+collision.slash = define.collision { id = "slash", side0 = 0x80002080, side1 = 0x40002080, row_offset = 0x38 }
+
 -- An attack that pierces invisibility and flashing (row 0x0B: the
 -- FlashBomb's flash).
 collision.piercing = define.collision { id = "piercing", side0 = 0x80000084, side1 = 0x40000084, row_offset = 0x58 }
