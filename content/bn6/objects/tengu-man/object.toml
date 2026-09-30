@@ -1,0 +1,6 @@
+# TenguMan, the TenguMan chips' navi (actor object #0x0C, `sub_80B9C14`), is a script.
+
+[kind]
+pool = "actor"
+index = 0x0C
+script = "tengu_man.luau"

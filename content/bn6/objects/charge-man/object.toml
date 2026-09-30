@@ -1,0 +1,6 @@
+# ChargeMan, the ChrgeMan chips' navi (actor object #0x16, `sub_80BB914`), is a script.
+
+[kind]
+pool = "actor"
+index = 0x16
+script = "charge_man.luau"
