@@ -97,6 +97,7 @@ fn an_edit_comes_through() {
     let (back, report) = load(&dir);
     assert!(!report.has_errors(), "{report}");
     let mut back = back.unwrap();
+    back.assets = content().assets;
     back.define().unwrap();
     assert_eq!(back.chip(back.chip_numbered(testing::SUN_GUN_3).unwrap()).gun_del_sol.unwrap().firing_ticks, 55);
     assert_ne!(back.hash(), content().hash(), "the content's identity changes with it");

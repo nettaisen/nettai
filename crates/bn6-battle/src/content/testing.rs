@@ -516,6 +516,7 @@ pub fn scripts() -> Scripts {
                 ("chips/elecswrd/chip", "chips/elecswrd/chip"),
                 ("chips/bambswrd/chip", "chips/bambswrd/chip"),
                 ("chips/stepswrd/chips", "chips/stepswrd/chips"),
+                ("chips/stepswrd/protoman", "chips/stepswrd/protoman"),
                 ("chips/mchnswrd/chip", "chips/mchnswrd/chip"),
                 ("chips/elemswrd/chip", "chips/elemswrd/chip"),
                 ("chips/assnswrd/chip", "chips/assnswrd/chip"),

@@ -86,6 +86,8 @@ export type Thrower = {
 -- A throw (lib/bombs/throw): what the navi holds while winding up (its
 -- look, animation and palette offset) and what throws it.
 export type ThrowSpec = {
+    -- The action's key when no chip definition holds it (its compat key).
+    id: string?,
     held: AttachmentLook,
     held_anim: number?,
     held_palette: number?,
@@ -131,6 +133,8 @@ export type SwordHit = {
 -- palette offset), its swing's sound; DblDream swings twice, CrosSwrd adds
 -- a single-panel hit, StepSwrd steps two panels ahead first.
 export type SlashSpec = {
+    -- The action's key when no chip definition holds it (its compat key).
+    id: string?,
     blade: AttachmentLook,
     hit: SwordHit,
     effect: Effect,
