@@ -839,6 +839,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
         with(|api, _| Ok(api.bump_side_stat(side, i, n)))
     });
+    lib_fn!(lua, t, "field_object", |lua, slot: LuaValue| {
+        let slot = u8_arg(slot, "field object slot")?;
+        let o = with(|api, _| Ok(api.field_object(slot)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "remove_obstacle", |_, o: mlua::UserDataRef<Object>| {
+        with(|api, _| Ok(api.remove_obstacle(o.0)))
+    });
     lib_fn!(lua, t, "navi_record", |lua, name_id: LuaValue| {
         let name_id = u16_arg(name_id, "NameID")?;
         let Some(r) = with(|api, _| Ok(api.navi_record(name_id)))? else { return Ok(LuaValue::Nil) };

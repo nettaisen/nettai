@@ -553,6 +553,13 @@ declare battle: {
     fill_custom_gauge: () -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
     navi_record: (name_id: number) -> NaviRecord?,
+    -- The field-object registry (`setFieldBattleObject_800F614`'s table):
+    -- slot 0..7 (per side two class-0 obstacles and a class-1 one, then
+    -- two more).
+    field_object: (slot: number) -> Object?,
+    -- `sub_800F884`: a chip removes an obstacle (with collision data, it
+    -- leaves at its next update).
+    remove_obstacle: (o: Object) -> (),
     -- Spawn into the pool's lowest free slot; it runs later this tick,
     -- right after the spawner. nil if the pool is full.
     spawn: (pool: Pool, index: number, pos: Vec3?, params: { number }?) -> Object?,
@@ -727,6 +734,10 @@ export type RockKind = {
 
 export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } }
 
+-- How a field object looks by its NameID (`byte_8021220`, NameIDs
+-- 0xCD..=0xFF, as `sub_800F26C` gives it); no sprite is the table's none.
+export type NameLook = { name_id: number, sprite: SpriteId?, anim: number, palette: number, shadow: boolean }
+
 export type WeaponData = { id: number, name: string, action: number?, script: string }
 
 -- An object kind a script implements.
@@ -743,6 +754,7 @@ export type PackData = {
         absorbed_sprites: { [number]: SpriteId },
         body_overlays: { [number]: BodyOverlay },
         sun_beam_looks: { [number]: SpriteId },
+        name_looks: { [number]: NameLook },
         kinds: { [string]: ObjectKindData },
     },
     rules: {

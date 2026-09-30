@@ -60,6 +60,15 @@ struct AbsorbedFile {
     script_kind: Option<ObjectKind>,
 }
 
+/// DustMan's junk's file: how field objects look, by NameID.
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NameLookFile {
+    look: Vec<NameLook>,
+    #[serde(default, rename = "kind", skip_serializing_if = "Option::is_none")]
+    script_kind: Option<ObjectKind>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SunBeamFile {
@@ -535,7 +544,7 @@ pub fn weapon_folder(w: &WeaponData) -> String {
 
 /// The object kinds whose folders hold data of their own (a kind of these
 /// a script implements keeps its `[kind]` in the same file).
-const DATA_OBJECTS: [&str; 5] = ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment"];
+const DATA_OBJECTS: [&str; 6] = ["rock", "absorbed-obstacle", "body-overlay", "sun-beam", "attachment", "dust-junk"];
 
 /// A script as an entity's file names it: `module` (a path in the pack
 /// without `.luau`) relative to `folder`, with `.luau`.
@@ -624,6 +633,13 @@ pub fn export(c: &Content) -> Files {
         toml_file(
             "The sun beam's (effect object #0x48) sprites by look, its first parameter.",
             &SunBeamFile { look: looks, script_kind: script_kind("sun-beam") },
+        ),
+    );
+    put(
+        "objects/dust-junk/object.toml".into(),
+        toml_file(
+            "How a field object looks by its NameID (`byte_8021220`, NameIDs 0xCD..=0xFF): what DustMan's junk\n(attack object #0xB3) shows; no sprite is the table's \"none\".",
+            &NameLookFile { look: o.name_looks.clone(), script_kind: script_kind("dust-junk") },
         ),
     );
     let owned: Vec<u8> = c.chips.iter().filter_map(|c| Some(c.gun_del_sol.as_ref()?.gun.id)).collect();
@@ -1026,6 +1042,9 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     add_kind("sun-beam", beams.script_kind, report);
     let file = "objects/sun-beam/object.toml";
     let sun_beam_looks = dense(beams.look.into_iter().map(|l| (l.id as usize, l.sprite, file.into())).collect(), "sun beam look", report);
+    let looks: NameLookFile = read_toml(root, "objects/dust-junk/object.toml", report)?;
+    add_kind("dust-junk", looks.script_kind, report);
+    let name_looks = looks.look;
     // Attachments: the chips' own and the rest. A chip may share another's
     // (the same row), but not change it.
     let rest: AttachmentFile = read_toml(root, "objects/attachment/object.toml", report)?;
@@ -1059,7 +1078,7 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     }
     let attachments = dense(all.into_iter().map(|(id, (a, file))| (id as usize, a, file)).collect(), "attachment", report);
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
-    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, kinds })
+    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, name_looks, kinds })
 }
 
 fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
