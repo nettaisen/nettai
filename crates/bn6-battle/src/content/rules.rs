@@ -65,12 +65,6 @@ pub struct Rules {
 }
 
 impl Rules {
-    /// Collision type flags for `alliance`.
-    pub fn collision_type(&self, index: u8, alliance: u8) -> u32 {
-        let t = self.collision_types.get(index as usize).unwrap_or_else(|| panic!("collision type {index:#x} is not in the content"));
-        t[alliance as usize & 1]
-    }
-
     /// Whether a banner stays up until removed.
     pub fn banner_holds(&self, id: BannerId) -> bool {
         self.holding_banners.contains(&id)

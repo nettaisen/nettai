@@ -236,7 +236,7 @@ impl Collision {
                 .filter(|&(x, y)| field::is_valid(x, y))
                 .collect()
         } else {
-            let cond = content.rules.field_regions[(s.region & 0x7F) as usize];
+            let cond = content.field_region(s.region);
             let mut v = Vec::new();
             for y in 1..=3 {
                 for x in 1..=6 {
@@ -280,11 +280,12 @@ impl Battle {
         s.region = 1;
         s.counter_byte = o.stamina as u8;
         s.self_damage = o.damage;
-        s.self_flags = self.content.rules.collision_type(self_idx, o.alliance) | if dimmed { 0x1_0000 } else { 0 };
-        s.target_flags = self.content.rules.collision_type(target_idx, o.alliance);
+        s.self_flags = self.content.collision_type(self_idx, o.alliance).0 | if dimmed { 0x1_0000 } else { 0 };
+        let (target_flags, row_offset) = self.content.collision_type(target_idx, o.alliance);
+        s.target_flags = target_flags;
         // The garbage high byte of any bug code: the table offset the
         // target lookup left in r1.
-        let r1 = target_idx as u16 * 8 + o.alliance as u16 * 4;
+        let r1 = row_offset + o.alliance as u16 * 4;
         decode_damage_word(s, r1);
     }
 
@@ -298,8 +299,8 @@ impl Battle {
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
         s.self_damage = damage;
-        s.self_flags = self.content.rules.collision_type(self_idx, alliance) | if dimmed { 0x1_0000 } else { 0 };
-        s.target_flags = self.content.rules.collision_type(target_idx, alliance);
+        s.self_flags = self.content.collision_type(self_idx, alliance).0 | if dimmed { 0x1_0000 } else { 0 };
+        s.target_flags = self.content.collision_type(target_idx, alliance).0;
         // A bug code's garbage high byte is what `battle_isTimeStop` left in
         // r1 (4, or 0x10000 while dimmed).
         let r1 = if dimmed { 0 } else { 4 };

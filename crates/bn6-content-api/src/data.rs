@@ -3,6 +3,7 @@
 //! engine builds), and the definitions content makes as the define phase
 //! reads them back ([`crate::definitions`]).
 
+use crate::assets::AssetKind;
 use crate::registry::Registry;
 
 /// A value of the pack's data.
@@ -18,6 +19,9 @@ pub enum Data {
     Map(Vec<(Key, Data)>),
     /// Another definition, by registry and key (in definitions only).
     Ref(Registry, String),
+    /// An asset, by kind and name (`asset.sprite("bomb")`; in definitions
+    /// only).
+    Asset(AssetKind, String),
     /// A function: the definition's function slot at this place (in
     /// definitions only; the runtime keeps the function itself).
     Function,
@@ -64,6 +68,15 @@ impl Data {
                 .iter()
                 .find(|(k, _)| matches!(k, Key::Str(s) if s == name))
                 .map_or(&Data::Nil, |(_, v)| v),
+            _ => &Data::Nil,
+        }
+    }
+
+    /// Item `i` (from 1, as in Luau) of a list (Nil if absent or not a
+    /// list).
+    pub fn item(&self, i: usize) -> &Data {
+        match self {
+            Data::List(items) => i.checked_sub(1).and_then(|i| items.get(i)).unwrap_or(&Data::Nil),
             _ => &Data::Nil,
         }
     }
