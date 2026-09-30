@@ -32,6 +32,7 @@ fn battles_run_the_content_scripts() {
             "bomb",
             "bomb-slash",
             "bug-bomb",
+            "crack-shot",
             "dragon-body",
             "dragon-head",
             "dust-ball",
@@ -39,6 +40,7 @@ fn battles_run_the_content_scripts() {
             "erase-beam",
             "erase-man",
             "erase-mark",
+            "falling-rock",
             "flash-bomb",
             "flying-shot",
             "grab-shot",
@@ -48,6 +50,7 @@ fn battles_run_the_content_scripts() {
             "reflected-shot",
             "reflector-shield",
             "rock",
+            "rock-chip",
             "rock-cube",
             "rock-debris",
             "seed",
@@ -203,6 +206,53 @@ fn scripted_chips_roll_back() {
     }
 }
 
+/// The standard chips the test content has scripts for (actions that
+/// don't fire the buster's projectile), in the folders of a duel.
+const STANDARD_CHIPS: &[crate::content::ChipId] = &[testing::CRACK];
+
+/// A duel with the standard chips: the ticks each kind was on the field,
+/// by (pool, index), and whether a panel was ever broken.
+fn standard_duel() -> (std::collections::BTreeMap<(crate::object::Pool, u8), usize>, bool) {
+    let setup = || scenario::setup_with(STANDARD_CHIPS);
+    let tape = scenario::record_on(setup(), 2400, 11);
+    let mut b = Battle::new(setup(), scenario::content());
+    let mut seen = std::collections::BTreeMap::new();
+    let mut broken = false;
+    for t in &tape {
+        b.tick(&t.input, t.events.clone());
+        for r in b.objects.in_order() {
+            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+        }
+        broken |= (1..=6).any(|x| (1..=3).any(|y| b.field.panel(x, y).unwrap().kind == crate::field::PanelType::Broken));
+    }
+    (seen, broken)
+}
+
+#[test]
+fn the_standard_chips_play() {
+    use crate::object::Pool::Attack;
+    let (seen, broken) = standard_duel();
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // CrakShot digs up the panel ahead and flings it.
+    assert!(ticks((Attack, 0x33)) > 0, "crack shots: {seen:?}");
+    assert!(broken, "a dug-up panel is broken");
+}
+
+#[test]
+fn the_standard_chips_roll_back() {
+    let setup = || scenario::setup_with(STANDARD_CHIPS);
+    let tape = scenario::record_on(setup(), 2400, 11);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    for (i, t) in tape.iter().enumerate() {
+        if i % 97 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+    }
+}
+
 #[test]
 fn the_scripted_swords_play_and_roll_back() {
     // Duels with swords, a step sword and the strike at stunned navis in
@@ -243,7 +293,7 @@ fn registrations_follow_the_content_data() {
     // three swords share theirs; four weapons have theirs (the buster's
     // alias names none); the mend, mirror, bee and dragon chips theirs.
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
-    assert_eq!(actions, [0x11, 0x12, 0x13, 0x16, 0x20, 0x2B, 0x33, 0x37, 0x39, 0x49, 0x51, 0x57], "{:?}", r.actions);
+    assert_eq!(actions, [0x11, 0x12, 0x13, 0x16, 0x20, 0x22, 0x2B, 0x33, 0x37, 0x39, 0x49, 0x51, 0x57], "{:?}", r.actions);
     // Two chips implementing one action with different scripts is an error.
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
     let e = c.registrations().unwrap_err();

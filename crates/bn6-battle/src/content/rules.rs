@@ -34,6 +34,8 @@ pub struct Rules {
     pub hp_bug_periods: [u8; 8],
     /// Weapon routines by number (`off_80117D4`): their charge times.
     pub weapons: Vec<WeaponRoutine>,
+    /// What the charge rules read for an empty hand's chip.
+    pub empty_hand: EmptyHandChip,
     /// Ticks of recovery after a buster shot, by Rapid stat, then by open
     /// panels ahead (0..=5).
     pub buster_recovery: Vec<[u8; 6]>,
@@ -54,6 +56,7 @@ pub struct Rules {
     /// A bubbled navi's height, by bubble timer.
     pub bubble_bob: [i8; 32],
     pub lockon: Lockon,
+    pub berserk: BerserkRules,
     /// The custom screen's slot layout.
     pub custom_screen: CustomScreenLayout,
 }
@@ -222,6 +225,23 @@ pub struct WeaponRoutine {
     pub charge_ticks: [u16; 5],
 }
 
+/// The chip record an empty hand reads. A hand with no chip left holds
+/// chip 0xFFFF, and some of the game's checks look it up in the chip table
+/// without testing for that (`getChip8021DA8(0xFFFF)`), reading whatever
+/// ROM data lies 0xFFFF records past the table. It is the same in both
+/// versions; these are the bytes the engine's readers look at, decoded.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EmptyHandChip {
+    /// Its family byte is the Null family's (`sub_8012F62`: in the Beast
+    /// forms the alternative A-charge routine's threshold applies).
+    pub null_family: bool,
+    /// Its element byte is Fire's (`sub_80F0608`, ChargeCross).
+    pub fire: bool,
+    /// Its flags byte.
+    pub flags: super::ChipFlags,
+}
+
 /// A slide or push: a direction and how many panels. In a content file,
 /// `{ dx, dy, panels }`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -238,32 +258,98 @@ impl SlideVector {
     pub const NONE: SlideVector = SlideVector { dx: 0, dy: 0, tiles: 0 };
 }
 
-/// The Beast Out lock-on: where the Beast rush attacks from.
+/// The panels Beast Over's berserk controller (`sub_802D322`) looks at,
+/// each by alliance.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct BerserkRules {
+    /// Where its steps may land (`byte_802D410`, and `byte_802D420` with
+    /// AirShoe).
+    pub step: StepRuleSet,
+    /// A panel with an opponent on it (`off_8109784`, `sub_810971A`).
+    pub opponent: [PanelCondition; 2],
+    /// Panel flags that end the look behind an opponent (`byte_8015D78`,
+    /// `sub_8015CC0`).
+    pub blocking: [u32; 2],
+    /// The panel flag of the opposing player (`byte_80E74C4`,
+    /// `sub_80E7486`).
+    pub opposing_player: [u32; 2],
+}
+
+/// The Beast Out lock-on: where the Beast rush attacks from (`ho_8026554`,
+/// by the chip's lock-on mode through `jt_8026584`).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Lockon {
-    /// The lock-on modes that look for a panel near the target.
-    pub searches: Vec<LockonSearch>,
+    /// The lock-on modes, by number (`jt_8026584`). A mode past the list
+    /// runs off the jump table.
+    pub modes: Vec<LockonMode>,
     /// Column shifts toward the user tried, in order, when no panel next
-    /// to the target fits.
+    /// to the target fits (`byte_8026735`).
     pub column_shifts: Vec<i8>,
+    /// What every panel between the chosen one and the target must be for
+    /// the modes that need a clear path, by alliance (`byte_8026544`).
+    pub clear_path: [PanelCondition; 2],
+    /// The charged sword's (action 0x41) lock-on mode by its variant
+    /// (`byte_80EB028`, read by `sub_80EAF26`).
+    pub charged_sword_modes: Vec<u8>,
 }
 
 impl Lockon {
-    /// The search lock-on `mode` does (None for the modes that do
-    /// something else).
-    pub fn search(&self, mode: u8) -> Option<&LockonSearch> {
-        self.searches.iter().find(|s| s.mode == mode)
+    /// What lock-on `mode` does; None past the jump table.
+    pub fn mode(&self, mode: u8) -> Option<&LockonMode> {
+        self.modes.get(mode as usize)
     }
 }
 
-/// A lock-on mode that looks for a panel near the target to attack from.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// How a lock-on mode picks the panel to attack from.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LockonRule {
+    /// Stay on the navi's own panel (`sub_802661C`, mode 0).
+    #[default]
+    Stay,
+    /// Along the target's row, counting from the navi's own column
+    /// (`sub_8026622`): `offsets` (or `same_row_offsets` when the target
+    /// stands in the navi's row), then the same in the rows `row_shifts`
+    /// away from the target's.
+    Row,
+    /// Next to the target (`sub_8026450`): the first panel of `offsets`
+    /// the navi can stand on, then with the column shifts if
+    /// `column_shifts` (`sub_80265D0`), and only with a clear path to the
+    /// target if `clear_path` (`sub_80264A8`).
+    Near,
+}
+
+/// A lock-on mode (`jt_8026584[mode]`). Offsets are relative to where the
+/// rule counts from, dx toward the user's front; a panel past the
+/// target's column never fits.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct LockonSearch {
+pub struct LockonMode {
     /// The chips' lock-on mode (`ChipData::lockon_mode`).
     pub mode: u8,
-    /// Panels tried, relative to the target, dx toward the user's front.
+    pub rule: LockonRule,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub offsets: Vec<PanelOffset>,
-    /// Afterwards, the middle row of the chosen column is taken if free.
+    /// `Row`: the offsets when the target is in the navi's row.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub same_row_offsets: Vec<PanelOffset>,
+    /// `Row`: the rows tried after the target's, relative to it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub row_shifts: Vec<i8>,
+    /// `Near`: the offsets when the target stands in the column farthest
+    /// ahead of the user (`sub_80266BA`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub far_column_offsets: Option<Vec<PanelOffset>>,
+    /// `Near`: try the column shifts too.
+    #[serde(default)]
+    pub column_shifts: bool,
+    /// `Near`: every panel from the chosen one up to the target's column
+    /// must meet `Lockon::clear_path`.
+    #[serde(default)]
+    pub clear_path: bool,
+    /// Afterwards, the middle row of the chosen column is taken if the
+    /// navi can stand there (`sub_80265FE`).
+    #[serde(default)]
     pub prefers_middle_row: bool,
 }
+

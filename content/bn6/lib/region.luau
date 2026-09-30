@@ -44,28 +44,11 @@ local function field_effects(r: number, effect: number)
     end
 end
 
--- `sub_801BD3C`: effect `effect` on each panel of region `r` around
--- (x, y) at height `z`, dx stepping by `dir` (`region.direction`);
--- panels off the field are skipped. With bit 7, the whole-field region
--- instead.
-function region.effects(x: number, y: number, effect: number, r: number, dir: number, z: number)
-    r = bit32.band(r, 0xFF)
-    if bit32.btest(r, 0x80) then
-        return field_effects(bit32.band(r, 0x7F), effect)
-    end
-    if r == 0 then
-        return
-    end
-    for _, p in shape(r) do
-        local px, py = x + p[1] * dir, y + p[2]
-        if valid(px, py) then
-            local cx, cy = field.center(px, py)
-            battle.effect(Vec3.new(cx, cy, z), effect)
-        end
-    end
-end
-
--- `sub_80CE468`: the same, skipping missing panels too.
+-- `sub_80CE468`: `sub_801BD3C` (`battle.region_effects`: effect `effect`
+-- on each panel of region `r` around (x, y) at height `z`, or the
+-- whole-field region's), skipping missing panels too, and with dx stepping
+-- by `dir` (`region.direction`), which its callers compute from the side
+-- and flip halfword.
 function region.effects_on_panels(x: number, y: number, effect: number, r: number, dir: number, z: number)
     r = bit32.band(r, 0xFF)
     if bit32.btest(r, 0x80) then

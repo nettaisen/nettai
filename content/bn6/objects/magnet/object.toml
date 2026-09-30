@@ -1,0 +1,6 @@
+# MagCoil's magnet (attack object #0x95, `sub_80D7DE4`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x95
+script = "magnet.luau"

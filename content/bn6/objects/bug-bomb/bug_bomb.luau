@@ -7,7 +7,6 @@
 -- or a crushing hit first ends it in an explosion; landing in a hole, in
 -- a puff of smoke.
 
-local region = require("../../lib/region")
 local smoke_puff = require("../smoke-puff/smoke_puff")
 local trajectory = require("../../lib/trajectory")
 
@@ -143,7 +142,7 @@ local function sit(me: Object)
     end
     me.collision.region = BURST_REGION
     me:reset_collision_types(BURST_SELF_TYPE, BURST_TARGET, 0)
-    region.effects(me.panel_x, me.panel_y, EFFECT_BURST, EFFECTS_REGION, region.direction(me.alliance), 0)
+    battle.region_effects(me.panel_x, me.panel_y, EFFECTS_REGION, me.alliance, EFFECT_BURST, 0)
     -- (The camera shakes, which draws the local RNG only.)
     battle.play_sound(SOUND_HIT_BOMB)
     me.visible = false

@@ -46,7 +46,20 @@ pub struct Setup {
     /// send, else Falzar.
     #[serde(default)]
     pub game_versions: Option<[String; 2]>,
+    /// Both players' bug frags (`dword_203F7E0`). Traces recorded without
+    /// them read as `RECORDED_BUG_FRAGS`.
+    #[serde(default)]
+    pub bug_frags: Option<[u32; 2]>,
+    /// Both players' link navi levels (`dword_203CFA0`). Traces recorded
+    /// without them read as 0.
+    #[serde(default)]
+    pub navi_levels: Option<[u8; 2]>,
 }
+
+/// The bug frags a trace without them reads as: the recording tool's
+/// saves have frags to spare (their dark chips are used as themselves),
+/// so the most a save holds.
+pub const RECORDED_BUG_FRAGS: u32 = 9999;
 
 /// A battle object as the trace records it.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
@@ -264,6 +277,8 @@ impl Round {
             folder,
             unlocks: Unlocks::everything(version),
             joypad_phase: self.setup.joypad_phases.map(|p| p[side as usize]).unwrap_or((self.setup.frame % 5) as u8),
+            bug_frags: self.setup.bug_frags.map_or(RECORDED_BUG_FRAGS, |f| f[side as usize]),
+            navi_level: self.setup.navi_levels.map_or(0, |l| l[side as usize]),
         }
     }
 
