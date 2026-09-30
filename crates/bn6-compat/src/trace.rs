@@ -491,12 +491,21 @@ fn z_fraction_is_garbage(compat: &Compat, kind: u8, index: u8) -> bool {
 fn describe(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef, xy_unknown: bool) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+    // The engine's identities as the original's numbers: the object's kind
+    // as its slot, a navi's content action as its action number.
+    let (index, action) = match (compat.object_slot(b, r), compat.navi_action(b, r)) {
+        (Ok((_, index)), Ok(action)) => (index, action),
+        (Err(e), _) | (_, Err(e)) => {
+            let kind = &b.content.defs.kind(o.kind).key;
+            return format!("T{} {kind}: {e}", r.pool.type_number());
+        }
+    };
     describe_fields(
         compat,
         r.pool.type_number(),
-        o.index,
+        index,
         o.flags,
-        [o.state, o.action, o.phase, o.phase_init],
+        [o.state, action, o.phase, o.phase_init],
         [o.panel.x, o.panel.y],
         o.alliance,
         [o.hp, o.max_hp],

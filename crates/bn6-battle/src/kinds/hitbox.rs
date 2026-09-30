@@ -5,7 +5,7 @@
 
 use crate::battle::Battle;
 use crate::kinds::player::panel_coordinates;
-use crate::object::{ObjectRef, PanelPos, Pool, Vec3, state};
+use crate::object::{ObjectRef, PanelPos, Vec3, state};
 
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
@@ -45,7 +45,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, s: &HitboxSpec) -> Option<ObjectR
     // until init places it.
     let pos = Vec3 { x: s.panel.y as i32, y: s.element as i32, z: s.z };
     let params = [s.region, s.hit_effect, s.target, s.self_type];
-    let r = b.objects.spawn(Pool::Attack, 3, pos, params)?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Hitbox, pos, params)?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)

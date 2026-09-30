@@ -173,8 +173,10 @@ impl Content {
         let definitions = if self.scripts.modules.is_empty() {
             Default::default()
         } else {
-            let pack = bn6_luau::Pack::new(self.scripts.modules.iter().map(|(k, v)| (k.clone(), v.clone())));
-            bn6_luau::define(&pack, &crate::behavior::script_data(self), bn6_luau::Options::default())?
+            let data = crate::behavior::script_data(self);
+            let (definitions, compiled) = bn6_luau::define(&self.scripts.pack(), &data, bn6_luau::Options::default())?;
+            self.scripts.compiled = CompiledModules(compiled);
+            definitions
         };
         self.defs = Defs::build(self, definitions)?;
         Ok(())

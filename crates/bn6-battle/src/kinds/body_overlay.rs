@@ -10,7 +10,7 @@ use crate::battle::Battle;
 use crate::content::BodyOverlay;
 use crate::kinds::common;
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 
 pub const INDEX: u8 = 0x56;
 
@@ -58,7 +58,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, variant: u8, own_palette: bool) -
 pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<ObjectRef> {
     let Vars { variant, own_palette, always_step, anim_offset, .. } = spec;
     let params = [variant, own_palette as u8, always_step as u8, anim_offset];
-    let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), params)?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::BodyOverlay, Vec3::default(), params)?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)

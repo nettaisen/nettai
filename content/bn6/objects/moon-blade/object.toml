@@ -6,4 +6,3 @@
 pool = "attack"
 index = 0x85
 script = "moon_blade.luau"
-scratch_position = true

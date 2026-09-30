@@ -6,7 +6,7 @@
 use crate::battle::Battle;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::effect;
-use crate::object::{ObjectRef, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 
 pub const INDEX: u8 = 0x90;
 
@@ -32,7 +32,7 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 
 /// `sub_80EA438`: a burst around `navi`'s panel. It runs while paused.
 pub fn spawn(b: &mut Battle, navi: ObjectRef) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Effect, INDEX, Vec3::default(), [0; 4])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::BeastOverBurst, Vec3::default(), [0; 4])?;
     let (alliance, flip, panel) = {
         let n = b.objects.get(navi);
         (n.alliance, n.flip, n.panel)

@@ -20,7 +20,9 @@ pub mod codec;
 #[cfg(feature = "trace")]
 pub mod trace;
 
-use bn6_battle::object::Pool;
+use bn6_battle::Battle;
+use bn6_battle::kinds::player::{CONTENT_ACTION, running_content_action};
+use bn6_battle::object::{ObjectRef, Pool};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -228,5 +230,35 @@ impl Compat {
     /// The key of the weapon a routine number names.
     pub fn weapon_key(&self, routine: u8) -> Option<&str> {
         self.weapons.iter().find(|(_, n)| n.contains(&routine)).map(|(k, _)| k.as_str())
+    }
+
+    /// The original's object slot for object `r`'s kind. The engine never
+    /// learns it for a kind content defines: the object records the kind's
+    /// handle, and compat has the slot by key. The engine's own kinds and
+    /// the kinds the pack registers by number (keyed by their folders)
+    /// carry the slot their registration gives.
+    pub fn object_slot(&self, b: &Battle, r: ObjectRef) -> Result<(Pool, u8), String> {
+        let kind = b.content.defs.kind(b.objects.get(r).kind);
+        if let Some(slot) = kind.slot {
+            return Ok(slot);
+        }
+        let e = self.kinds.get(&kind.key).ok_or_else(|| format!("kinds.toml has no {:?}", kind.key))?;
+        match Pool::from_name(&e.pool) {
+            Some(pool) if pool == kind.pool => Ok((pool, e.index)),
+            _ => Err(format!("kinds.toml puts {} in the {} pool; it is defined in the {}", kind.key, e.pool, kind.pool.name())),
+        }
+    }
+
+    /// The original's action number for navi `r`'s CurAction. The engine
+    /// runs an action content defines under [`CONTENT_ACTION`], by handle;
+    /// compat has its number by key. Any other CurAction is the original's.
+    pub fn navi_action(&self, b: &Battle, r: ObjectRef) -> Result<u8, String> {
+        let action = b.objects.get(r).action;
+        if action != CONTENT_ACTION {
+            return Ok(action);
+        }
+        let Some(h) = running_content_action(b, r) else { return Ok(action) };
+        let key = &b.content.defs.action(h).key;
+        self.actions.get(key).copied().ok_or_else(|| format!("actions.toml has no {key:?}"))
     }
 }

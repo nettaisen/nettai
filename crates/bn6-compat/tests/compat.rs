@@ -11,6 +11,45 @@ fn the_engine_does_not_depend_on_compat() {
     assert!(!manifest.contains("bn6-compat"), "bn6-battle's Cargo.toml names bn6-compat");
 }
 
+/// What content defines has no number in the engine: an object records its
+/// kind's handle and a navi its content action's. Compat gives them the
+/// original's numbers (docs/design/content-model-v2.md §7.3); the engine's
+/// own kinds and actions keep theirs.
+#[test]
+fn compat_numbers_what_the_engine_runs_by_handle() {
+    use bn6_battle::content::testing;
+    use bn6_battle::kinds::player::CONTENT_ACTION;
+    use bn6_content_api::CoreApi;
+
+    let content = std::sync::Arc::new(testing::with_test_pack());
+    let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(1000));
+    setup.content = content.hash();
+    let mut b = bn6_battle::Battle::new(setup, content);
+    b.spawn_actors();
+    let player = b.player(0).unwrap();
+    let ticker = bn6_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default(), [0; 4]).unwrap();
+    let shot = b.content.defs.actions.iter().position(|a| a.key == "test/tick-shot/shot").unwrap() as u16;
+    b.set_content_attack(player, shot, 1).unwrap();
+    assert_eq!(b.objects.get(player).action, CONTENT_ACTION);
+
+    let mut compat = Compat::default();
+    // Without entries, compat says what it lacks.
+    assert_eq!(compat.object_slot(&b, ticker), Err("kinds.toml has no \"test/ticker\"".into()));
+    assert_eq!(compat.navi_action(&b, player), Err("actions.toml has no \"test/tick-shot/shot\"".into()));
+    compat.kinds.insert(
+        "test/ticker".into(),
+        bn6_compat::KindEntry { pool: "effect".into(), index: 0xF0, ..Default::default() },
+    );
+    compat.actions.insert("test/tick-shot/shot".into(), 0x11);
+    assert_eq!(compat.object_slot(&b, ticker), Ok((Pool::Effect, 0xF0)));
+    assert_eq!(compat.navi_action(&b, player), Ok(0x11));
+    // The engine's own kind has its slot in its definition.
+    assert_eq!(compat.object_slot(&b, player), Ok((Pool::Actor, 0)));
+    // A kind in the wrong pool is compat's mistake.
+    compat.kinds.get_mut("test/ticker").unwrap().pool = "attack".into();
+    assert!(compat.object_slot(&b, ticker).is_err());
+}
+
 /// BN6's compat reads, built in and from its folder, the same.
 #[test]
 fn bn6_compat_reads() {

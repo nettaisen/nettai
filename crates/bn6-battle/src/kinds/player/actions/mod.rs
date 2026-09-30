@@ -41,7 +41,7 @@ pub enum ActionVars {
 
 /// Run action `action` (>= 0x10) for the player `r` this tick.
 pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
-    if let Some(h) = super::ai(b, r).attack.content_action {
+    if let Some(h) = super::running_content_action(b, r) {
         return crate::behavior::run_action(b, h, r);
     }
     if let Some(h) = b.content.defs.action_numbered(action) {
