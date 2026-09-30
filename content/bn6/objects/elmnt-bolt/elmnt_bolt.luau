@@ -67,7 +67,7 @@ local function strike(me: Object)
     if me.phase == 0 then
         me.phase = 4
         hit(me)
-        field.break_or_crack(me.panel_x, me.panel_y)
+        field.break_panel(me.panel_x, me.panel_y)
         battle.play_sound(0x12E)
         me.timer = 0x10
         return
