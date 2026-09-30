@@ -13,7 +13,7 @@ use crate::actor::{ActorType, request, status as ai_status};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
 use crate::field::PanelType;
-use crate::object::{DragStep, ObjectRef, PanelPos, Pool, Vec3, flags};
+use crate::object::{DragStep, ObjectRef, PanelPos, Vec3, flags};
 use crate::setup::Form;
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
@@ -98,8 +98,9 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     tick_submerged(b, r);
     tick_anger(b, r);
     drain_hp(b, r);
-    // sub_802E1D8 counts down a battle flag 0x40 mode timer (`sub_802E070`
-    // +0x30) that nothing ported reads.
+    // sub_802E1D8: the side's Cross special runs down.
+    let side = &mut b.sides[b.objects.get(r).alliance as usize];
+    side.cross_special_ticks = side.cross_special_ticks.saturating_sub(1);
     Flow::Tail
 }
 
@@ -157,26 +158,24 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
 
 /// Spawn the weakness / bug "!" marker (`sub_80E8124`, effect #0x6B) at
 /// the navi's attach point 5.
-fn spawn_marker(b: &mut Battle, r: ObjectRef, param: u8) {
+fn spawn_marker(b: &mut Battle, r: ObjectRef, mark: crate::kinds::hit_marker::Mark) {
     let (dx, dy) = attach_point(b, r, 5);
-    let pos = Vec3 { x: dx << 16, y: 0, z: dy << 16 };
-    if let Some(m) = b.objects.spawn(Pool::Effect, 0x6B, pos, [param, 0, 0, 0]) {
-        b.objects.get_mut(m).related[0] = Some(r);
-    }
+    let offset = Vec3 { x: dx << 16, y: 0, z: dy << 16 };
+    crate::kinds::hit_marker::spawn(b, r, offset, mark);
 }
 
 /// `sub_801A42E`: a weakness hit that did damage shows "!!".
 fn weakness_effect(b: &mut Battle, r: ObjectRef) {
     let c = coll(b, r);
     if c.acc.exclamation != 0 && c.acc.final_damage != 0 {
-        spawn_marker(b, r, 0);
+        spawn_marker(b, r, crate::kinds::hit_marker::Mark::Weakness);
     }
 }
 
 /// `sub_801A4A6`: an HP-bug hit shows its marker.
 fn bug_effect(b: &mut Battle, r: ObjectRef) {
     if matches!(coll(b, r).acc.inflicted_bugs as u8, 0xF4 | 0xF7) {
-        spawn_marker(b, r, 3);
+        spawn_marker(b, r, crate::kinds::hit_marker::Mark::Bug);
     }
 }
 
@@ -605,7 +604,7 @@ fn tick_paralysis(b: &mut Battle, r: ObjectRef, f2: u32) {
 
 /// Freeze: like paralysis with action 6 and the ice visual. Returns true
 /// when a stale ice visual makes the game jump into the bubble's active
-/// branch.
+/// branch (after spawning one it goes on to the bubble's countdown).
 fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
     if !count_down(b, r, timer::FREEZE) {
         clear_flag1(b, r, f1::FROZEN);
@@ -628,7 +627,8 @@ fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
     if coll(b, r).links[link::FREEZE].is_some() {
         return true;
     }
-    panic!("the ice visual (sub_80E9BDC) is not implemented yet");
+    crate::kinds::ice_visual::spawn(b, r);
+    false
 }
 
 /// The bubble's active branch. Returns false when a stale bubble visual
@@ -811,10 +811,11 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return actions::transform::revert(b, r);
     }
     if st & ai_status::CHANGING_CROSS != 0 {
-        panic!("pause action (sub_802D714) is not implemented yet");
+        return actions::cross_change::change(b, r);
     }
     if st & ai_status::CROSS_KNOCKOUT != 0 {
-        panic!("pause action (sub_802D926) is not implemented yet");
+        ai_mut(b, r).attack.variant = 0;
+        return actions::cross_change::knock_out(b, r);
     }
     let f = ai(b, r).requests;
     let (bit, state) = if f & request::FORM_CHANGE != 0 {
@@ -851,6 +852,26 @@ fn can_cut_in(b: &Battle, r: ObjectRef) -> bool {
         && other.state == DimmingState::ShowingName
 }
 
+/// `sub_8017AB4`'s counter cut-in: the next chip is used without leaving
+/// the current action (its attack variables are a scratch copy); a dimming
+/// chip's (action 0x15) or navi chip's (0x1B) controller is spawned and
+/// takes the dimming over (`loc_800BF30`), with the cut-in flash, and the
+/// hand moves on. A chip of any other action registers nothing and stays
+/// in the hand. See docs/engine/chips.md §3.6.5.
+fn cut_in(b: &mut Battle, r: ObjectRef) {
+    let (action, a) = super::chip_use::prepare_detached(b, r);
+    let controller = match action.number {
+        actions::dimming_chip::ACTION => actions::dimming_chip::spawn_controller(b, r, &a),
+        actions::navi_chip::ACTION => actions::navi_chip::spawn_controller(b, r, &a),
+        _ => return,
+    };
+    let side = b.objects.get(r).alliance;
+    b.cut_in_dimming(side, controller, r);
+    crate::dimming::cut_in_flash(b, side);
+    // sub_800FC7C
+    b.hands[side as usize].advance();
+}
+
 /// `sub_8017AB4`: while dimmed the navi only shakes while hit (one RNG
 /// draw per shaking tick).
 fn while_dimmed(b: &mut Battle, r: ObjectRef) {
@@ -861,7 +882,7 @@ fn while_dimmed(b: &mut Battle, r: ObjectRef) {
         let freezes = chip != crate::hand::NO_CHIP
             && b.content.chip(chip).flags.has(crate::content::ChipFlags::DIMMING);
         if can_cut_in(b, r) && freezes {
-            panic!("cut-ins (sub_8017AB4) are not implemented yet");
+            cut_in(b, r);
         }
         ai_mut(b, r).requests &= !(request::CUT_IN | request::CHARGED_CHIP | request::CHIP);
     }

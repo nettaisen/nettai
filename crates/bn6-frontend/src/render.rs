@@ -74,7 +74,7 @@ pub fn layer_fade(b: &Battle) -> Fade {
     if objects::palette_flash(b) {
         return Fade::White(16);
     }
-    let left = b.fade.remaining;
+    let left = b.fade.remaining();
     match b.transform_seq.state {
         SequencerState::Transform { phase: TransformPhase::FadeOut, started: true } => Fade::Black(16u8.saturating_sub(left)),
         SequencerState::Transform { phase: TransformPhase::Change, .. } => Fade::Black(16),
@@ -89,7 +89,7 @@ pub fn layer_fade(b: &Battle) -> Fade {
 /// next vblank).
 pub fn screen_fade(b: &Battle) -> Fade {
     let total = bn6_battle::battle::Fade::TICKS as u32;
-    let left = (b.fade.remaining as u32 + 1).min(total);
+    let left = (b.fade.remaining() as u32 + 1).min(total);
     if b.round.intro_bits & 0x01 == 0 {
         // The first battle of a set fades in from white, later ones from
         // black (`sub_80E0684`).

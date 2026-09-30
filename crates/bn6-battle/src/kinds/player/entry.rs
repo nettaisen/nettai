@@ -1,7 +1,7 @@
 //! Actions 0 (battle entry: appear / fade in) and 1 (hand over to the
 //! idle controller). See objects-and-player.md §M4.
 
-use super::{ai, per_player_gauges, navi_record};
+use super::{ai, clear_invulnerable, coll_mut, navi_record, per_player_gauges, set_invulnerable};
 use crate::actor::ActorType;
 use crate::battle::Battle;
 use crate::object::{ObjectRef, flags};
@@ -9,13 +9,90 @@ use crate::object::{ObjectRef, flags};
 /// Action 0, `sub_8016380`.
 pub(super) fn entry(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).not_counted != 0 {
-        panic!("mid-battle appearance (sub_80164A0) is not implemented yet");
+        return appear(b, r);
     }
     match b.objects.get(r).phase {
         0 => wait_for_fade(b, r),
         4 => fade_in(b, r),
         _ => wait_for_intro(b, r),
     }
+}
+
+/// `sub_80164A0`: a navi that isn't one of the battle's combatants
+/// appears mid-battle: hidden and untouchable, it flashes in (effect #0
+/// looks 6 and, after 20 ticks, 3, with sound 0x129), shows from the next
+/// tick on, and after 30 ticks takes control.
+fn appear(b: &mut Battle, r: ObjectRef) {
+    match b.objects.get(r).phase {
+        // sub_80164C0
+        0 => {
+            let o = b.objects.get_mut(r);
+            o.flags &= !flags::VISIBLE;
+            o.future_panel = o.panel;
+            let p = o.panel;
+            b.reserve_panel(r, p.x, p.y);
+            coll_mut(b, r).region = 0;
+            b.objects.get_mut(r).phase_init = 4;
+            b.play_sound(crate::sound::SoundId(0x94));
+            let o = b.objects.get_mut(r);
+            o.timer = 0x14;
+            o.timer2 = 0x1E;
+            // (A white colour shader: presentation.)
+            set_invulnerable(b, r, 0xFFFF);
+            let pos = b.objects.get(r).pos;
+            flash(b, pos, APPEAR_LOOK);
+            b.objects.get_mut(r).phase = 4;
+        }
+        // sub_8016520
+        4 => {
+            let o = b.objects.get_mut(r);
+            if o.timer != 0 {
+                o.timer -= 1;
+                if o.timer != 0 {
+                    return show(b, r);
+                }
+                let pos = o.pos;
+                flash(b, crate::object::Vec3 { z: pos.z.wrapping_add(0x10_0000), ..pos }, ARRIVE_LOOK);
+                b.play_sound(crate::sound::SoundId(0x129));
+            }
+            let o = b.objects.get_mut(r);
+            o.timer2 = o.timer2.wrapping_sub(1);
+            if o.timer2 != 0 {
+                return show(b, r);
+            }
+            // (The colour shader goes.)
+            o.phase = 8;
+            o.phase_init = 0;
+        }
+        // sub_801657E: (battle mode 6 or the remote navi: the HP HUD.)
+        8 => {
+            clear_invulnerable(b, r);
+            let fp = b.objects.get(r).future_panel;
+            b.unreserve_panel(r, fp.x, fp.y);
+            coll_mut(b, r).region = 1;
+            let o = b.objects.get_mut(r);
+            o.action = 1;
+            o.phase = 0;
+            o.phase_init = 0;
+        }
+        p => panic!("mid-battle appearance phase {p:#x} reads past its table (off_80164B4)"),
+    }
+}
+
+/// The effect #0 looks of a mid-battle appearance.
+const APPEAR_LOOK: u8 = 6;
+const ARRIVE_LOOK: u8 = 3;
+
+/// An effect #0 that runs while paused.
+fn flash(b: &mut Battle, pos: crate::object::Vec3, look: u8) {
+    if let Some(e) = crate::kinds::effect::spawn(b, pos, look, 0, 0, 0) {
+        b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
+    }
+}
+
+/// `loc_801655A`: the navi shows (in the fading colour shader).
+fn show(b: &mut Battle, r: ObjectRef) {
+    b.objects.get_mut(r).flags |= flags::VISIBLE;
 }
 
 /// `sub_80163B4`: the local navi shows at once; the other one queues for
@@ -89,7 +166,7 @@ fn wait_for_intro(b: &mut Battle, r: ObjectRef) {
 /// the Beast Out lock-on marker in the battle flag 0x40 mode).
 pub(super) fn take_control(b: &mut Battle, r: ObjectRef) {
     if per_player_gauges(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).lockon_marker.is_none() {
-        panic!("Beast Out lock-on marker (sub_80E1620) is not implemented yet");
+        crate::kinds::lockon_marker::spawn(b, r);
     }
     let o = b.objects.get_mut(r);
     o.action = 8;
