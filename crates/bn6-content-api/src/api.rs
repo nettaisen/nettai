@@ -771,6 +771,11 @@ pub trait CoreApi {
     fn set_panel_from_coordinates(&mut self, o: ObjectRef);
     /// `object_updateCollisionPanels`.
     fn update_collision_panels(&mut self, o: ObjectRef);
+    /// `sub_80169BE`: show `o` unless the battle is dimmed, then hide it if
+    /// it is the remote side's and the local player is blind (the
+    /// original's perspective, as `sub_800EB6C`; the HUD flash it also
+    /// drives for a player in an action is presentation).
+    fn update_visibility(&mut self, o: ObjectRef);
     /// Onto the destination panel of a move: the panel, the reservation,
     /// the coordinates and the collision.
     fn snap_to_future_panel(&mut self, o: ObjectRef);
