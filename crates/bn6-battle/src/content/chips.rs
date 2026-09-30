@@ -218,6 +218,9 @@ pub struct ChipData {
     /// GunDelSol's data (action 0x37).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub gun_del_sol: Option<GunDelSol>,
+    /// The HP a recovery chip restores (action 0x20).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub recovery: Option<u16>,
     /// The script that implements the chip's action, or its part of a
     /// generic one (see `content::scripts`): a module path in the pack
     /// (`chips/00f-gundels1/chip`); in the chip's file, a path relative to

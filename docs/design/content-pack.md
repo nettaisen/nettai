@@ -66,7 +66,7 @@ graphics/...  sound/...                   see asset-formats.md
 
 | File | Holds | Engine side |
 |---|---|---|
-| `chips/NNN-name/chip.toml` (411) | the chip record; `[gun_del_sol]` (firing time, beam looks, the gun), `sp_damage`, `[[program_advance]]` recipes that make this chip, `modifier`, `script` | `Content::chips`, `ChipData` |
+| `chips/NNN-name/chip.toml` (411) | the chip record; `[gun_del_sol]` (firing time, beam looks, the gun), `recovery` (a recovery chip's HP), `sp_damage`, `[[program_advance]]` recipes that make this chip, `modifier`, `script` | `Content::chips`, `ChipData` |
 | `navis/NN-name/navi.toml` (12) | sprite, element, weakness, buster bonus, move lag by variant, result banners, Cross merge height, `[own_chip]`, `[name_record]` (NameID, actor record, attach points) | `Content::navis`, `NaviData` |
 | `navis/00-megaman/forms/NN-name/form.toml` (25) | sprite, element, weakness, `[weapons]`, buster bonus, `[name_record]` | `Content::forms`, `FormData` |
 | `objects/rock/object.toml` | rock variants | `ObjectData::rocks` |

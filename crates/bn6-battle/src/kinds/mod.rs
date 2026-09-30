@@ -13,6 +13,7 @@ pub mod effect;
 pub mod elmnt_man;
 pub mod eruption;
 pub mod form_overlay;
+pub mod heal;
 pub mod hitbox;
 pub mod intro;
 pub mod invisible;
