@@ -1,0 +1,6 @@
+# Rock debris (effect object #0x38, `sub_80E46D8`) is a script.
+
+[kind]
+pool = "effect"
+index = 0x38
+script = "rock_debris.luau"

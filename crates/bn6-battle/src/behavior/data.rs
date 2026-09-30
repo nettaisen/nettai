@@ -10,13 +10,13 @@
 //! data.weapons[id]          a weapon routine a script implements
 //! data.objects.attachments[id], .rocks[id], .absorbed_sprites[kind],
 //!             .body_overlays[id], .sun_beam_looks[look], .projectiles[kind],
-//!             .flying_shots[kind], .name_looks[name_id]
+//!             .flying_shots[kind], .shock_waves[variant], .name_looks[name_id]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
-//! data.rules.sine[i]        the sine table (math_sinTable; cos is i + 64)
+//! data.rules.field_regions[region - 0x80]        a whole-field region's panel condition
 //! data.rules.cross_palettes[form]   MegaMan's palette in each Cross (byte_80203EA)
-//! data.rules.field_regions[i]       whole-field region 0x80 + i's condition (byte_8019C34)
-//! data.regions[n]           a panel region's offsets, each [dx, dy] (PanelOffsetListsPointerTable)
+//! data.rules.sine[step]     the sine table: 256 steps a turn, 1.0 = 0x100 (math_sinTable)
+//! data.regions[region]      a hit region's panels, [dx, dy] each (PanelOffsetListsPointerTable)
 //! ```
 
 use bn6_content_api::{Data, DataKey};
@@ -58,6 +58,7 @@ pub fn script_data(c: &Content) -> Data {
         ("projectiles", by_id(o.projectiles.iter().map(|p| (p.id as i64, p)), |p| value(*p))),
         ("flying_shots", by_id(o.flying_shots.iter().map(|p| (p.id as i64, p)), |p| value(*p))),
         ("name_looks", by_id(o.name_looks.iter().map(|l| (l.name_id as i64, l)), |l| value(*l))),
+        ("shock_waves", by_id(o.shock_waves.iter().map(|w| (w.id as i64, w)), |w| value(*w))),
         (
             "kinds",
             Data::Map(
@@ -76,13 +77,13 @@ pub fn script_data(c: &Content) -> Data {
         ),
     ]);
     let recovery = c.rules.buster_recovery.iter().flatten().enumerate().map(|(i, &t)| (i as i64, t));
-    let sine = c.rules.sine.iter().enumerate().map(|(i, &v)| (i as i64, v));
+    let field_regions = c.rules.field_regions.iter().enumerate().map(|(i, r)| (i as i64, r));
     let palettes = c.rules.cross_palettes.iter().enumerate().map(|(i, &v)| (i as i64, v));
     let rules = Data::map([
         ("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64))),
-        ("sine", by_id(sine, |&v| Data::Int(v as i64))),
+        ("field_regions", by_id(field_regions, |r| value(*r))),
         ("cross_palettes", by_id(palettes, |&v| Data::Int(v as i64))),
-        ("field_regions", by_id(c.rules.field_regions.iter().enumerate().map(|(i, r)| (i as i64, r)), |r| value(*r))),
+        ("sine", by_id(c.rules.sine.iter().enumerate().map(|(i, &v)| (i as i64, v)), |&v| Data::Int(v as i64))),
     ]);
     Data::map([
         ("chips", by_id(c.chips.iter().map(|x| (x.id as i64, x)), |x| value(*x))),

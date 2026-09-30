@@ -241,8 +241,8 @@ local function dive(me: Object)
         end
         panels.crack_region(x, y, DIVE_REGION)
         -- sub_801BD3C, with the 3 left in r7 as the marks' Z.
-        panels.effects_on_region(x, y, 5, DIVE_REGION, me.alliance, 3)
-        battle.palette_flash({ duration = 0x1E, while_dimmed = true })
+        battle.region_effects(x, y, DIVE_REGION, me.alliance, 5, 3)
+        battle.palette_flash(0, 0x1E, true)
     end
     me.phase, me.phase_init = 8, 0
     me.visible = false

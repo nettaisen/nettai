@@ -3,12 +3,14 @@
 Obstacles are attack-pool (T3) objects without actor data that stand on a
 panel, take hits, and leave the field in several ways. The rock (T3#0x59)
 is the one the netbattle fixtures use: the soundmod trace's round 1 starts
-with two. Engine code: `kinds/obstacle.rs` (shared), `kinds/rock.rs`,
-`kinds/rock_debris.rs` (T4#0x38), `kinds/absorbed_obstacle.rs` (T4#0x87),
-the registry in `field.rs` (`FieldObjects`), generic helpers in
-`kinds/common.rs`. Data: `ObjectData::rocks`, `ObjectData::absorbed_sprites`
-(a content pack's `objects/rock/object.toml` and
-`objects/absorbed-obstacle/object.toml`, extracted by bn6-extract).
+with two. Engine code: `kinds/obstacle.rs` (the shared obstacle framework,
+which content calls through the `obstacle` service), `kinds/absorbed_obstacle.rs`
+(T4#0x87), the registry in `field.rs` (`FieldObjects`), generic helpers in
+`kinds/common.rs`. The rock and its debris (T4#0x38) are the pack's scripts
+`objects/rock` and `objects/rock-debris`; the actor lists' rocks go through
+the rock's `actor_list_entry`. Data: `ObjectData::rocks`,
+`ObjectData::absorbed_sprites` (a content pack's `objects/rock/object.toml`
+and `objects/absorbed-obstacle/object.toml`, extracted by bn6-extract).
 
 Routine names are the original's. "f1"/"f2" are the
 collision data's ObjectFlags1 (+0x3C, the trace's `status`) and
@@ -134,6 +136,15 @@ halved rounding up on a holy panel, into +0x80), `object_spawnHiteffect`
 (if not paused and hit flags & 0x20000, i.e. it blocked a hit: spark 8 at
 Z + 16 px, jittered: one RNG2 draw).
 
+Variants (`obstacle.take_hits(me, push)`): `sub_801AD12` ("keeps_damage":
+the same without `sub_801A6A6`, so a pushed obstacle still takes the hit's
+damage; Wind's fan, TimeBom, Mine, Anubis, AirRaid, Fanfare, Guardian,
+Sensor and others), `sub_801ADFA` ("any_hit": first `sub_801AE56`, which
+for a hit from exactly one side's attacks/objects/bodies (0xA2000000 or
+0x51000000) that isn't type 0x1000 and isn't a push ORs 0x61 into
+HitModifierFinal, a one-panel push; only T3#0x3E, unreferenced), and
+`sub_801AD6A` ("ignored": no push at all; Otenko's statue).
+
 ### 4.2 `sub_800F672` (lifetime)
 
 Battle over → region 0, HP 0. Else, unless dimmed or paused: Timer −= 1
@@ -161,6 +172,14 @@ VISIBLE (blinks the last 3 s).
    dimming; if the object is not on the local side and the local player
    is BLIND, VISIBLE off), then action table[CurAction].
 
+Variants (`obstacle.react(me, crush, hold)`): `sub_801B4D4` ("destroys":
+step 1's crushing hits destroy without zeroing HP; Guardian),
+`sub_801B610` ("spares_bodies": the crushing mask is 0x00800002, so bodies
+don't break it; Otenko), `sub_801B750` (hold "always": step 5 holds even in
+action 0; BlkBomb), `sub_801B878` (LilBolr: crushing hits destroy without
+zeroing HP while its ExtraVars+4 is nonzero, i.e. "destroys" or "breaks"
+by the kind's own state).
+
 `sub_801823C` (dimming hold): `sub_80181F6`; first time (PreventAnim ==
 0) save X16/Z16 in Unk_30/Unk_32, Unk_19 = 0, PreventAnim = 4 (which also
 freezes the sprite); final damage != 0 → Unk_19 = 30; while Unk_19 counts
@@ -168,7 +187,55 @@ down, position = (Unk_30, Y, Unk_32) jittered by mask 3 (one RNG2 draw per
 tick); else restore X16/Z16. Engine: `obstacle::State { held_x, held_z,
 shake }`.
 
-### 4.4 Requests from chips
+### 4.4 The pushes (action 5)
+
+Both step through Unk_0d (0 start, 4 slide, 8 rest), keep the panels left
+in PhaseInitialized and the rest in CurPhase, and on the rest's end clear
+f1 DRAG and restore the state word saved in Unk_5c (zeroing it).
+
+Start (`sub_8017E44`, `sub_8017CE0`): f1 |= DRAG; RelatedObject1 = 0; Panel
+= FuturePanel, coordinates and collision panels from it; f1 &= ~0x1040;
+drop the FuturePanel reservation; `sub_800F598` gives the push: side = +1
+if hit flags (| collision +0x54) have side 0's attack/object/other-body
+bits (0xA2000000) only, −1 for side 1's (0x51000000) only, else nothing;
+the vector is `byte_800F604[i]` for the lowest set bit i of
+HitModifierFinal >> 2 (0x04 (−1,0,6), 0x08 (1,0,6), 0x10 (−1,0,1), 0x20
+(1,0,1)) with dx times the side. With the direction bits all clear it reads
+address 4 (the BIOS): the port stops there. (+0x54 is meant to keep the hit
+flags while dimmed, but `object_presentCollisionData` stores the caller's
+r1: 0 undimmed, 0x10 for a held obstacle, neither with pusher bits.)
+`sub_8017E26` then always goes 6 panels, its bounds in Unk_0c from
+`byte_8017F24`: pushed back toward its pusher (dx != side) it stays on the
+far side's panels (+0x0C 1: side 1's, SOLID|0x20 required; 2: side 0's,
+0x20 forbidden), else anywhere; entering needs SOLID and none of
+0x03800000 (other bodies, neutral objects); no reservations.
+`sub_8017CC0` goes the vector's panel count (0 → rest), needs SOLID and
+none of 0x0F880080, and reserves each panel it heads for. Blocked at the
+start: rest 0x18.
+
+Slide (`sub_8017F38`, `sub_8017D64`): X += Xvel (10 px), Y += Yvel (6 px)
+until one passes the panel's center (`sub_800E6E8`), else panels from
+coordinates. There: drop the reservation; an ice panel adds a panel unless
+the collision's element is aqua; panels −1 > 0 and the next panel open →
+head for it; else snap onto it, rest 0x14.
+
+### 4.5 Thrown and encased (`sub_8018002`, `sub_801813A`)
+
+Nothing in the game starts either: their requests (f2 0xC00, 0x3000) are
+set only by `sub_800F6AC` and an unlabeled routine at 0x0800F830, which
+nothing calls. Thrown: steps in PreventAnim: alliance = the thrower's,
+f1 |= 0x04000000, Zvel = (64 px − Z) / 32, Unk_19 = 32, sound 0x12A,
+region 0; rise 32 ticks to Z 64 px; shake Unk_1E ticks (jitter 3, one RNG2
+draw each); then fly to the panel (Unk_1C, Unk_1D) (`sub_800F768`:
+BIOS ArcTan2, cos/sin tables, Sqrt; Zvel = 64 px / ticks) with sound 0x10C;
+land: a region-1 hit (type 6 against type 5, hit modifier 3, the object's
+damage word), HP 0, action 2. Encased: f1 |= 0x10000000 (ice, f2 0x1000)
+or 0x20000000 (bubble), region 0, 60 ticks blinking (hidden, with an effect 0x42,
+on ticks whose bit 1 is clear), then unregister (both registries) and replace it with a
+rock of variant 3 (ice) or attack object #0xA3 (bubble) of the same class
+and damage.
+
+### 4.6 Requests from chips
 
 `sub_800F884` f2 |= 0x8000 (removed); `sub_800F898` also 0x40000
 (blink out); `sub_800F8B0` also 0x100000 << absorber's side. The absorbing
@@ -200,7 +267,7 @@ Z == 0 spawn T4#0 effect 1 and free itself.
 
 ## 6. Trace verification (soundmod round 1)
 
-`kinds/rock_tests.rs` replays frames 72..3800 driving only the rocks and
+The verification workspace's rock_trace test replays frames 72..3800 driving only the rocks and
 what they spawn (navis' positions/actions/status, pause and battle flags
 taken from the trace) and compares flags, params, state, panel, side, flip,
 HP, position, timer, animation and status every frame. It matches:
@@ -220,10 +287,16 @@ HP, position, timer, animation and status every frame. It matches:
 Not exercised by any trace: damage and breaking (debris, 6 RNG2 draws),
 pushes, blink-out, falling/rising entrances, dimming shaking, eviction.
 
-## 7. Not implemented (panic)
+## 7. Not implemented, unreachable, unverified
 
-- `sub_8018002` (thrown), `sub_801813A` (encased), action 5 `sub_8017E26`
-  (push/drag slide).
-- Actions 3/4/6/7 on obstacles (AIData lookups, unreachable).
-- `sub_802EF74` (battle flag 0x40 target tracking; not set in netbattles).
+- Not implemented (panic): `sub_8018002` (thrown) and `sub_801813A`
+  (encased), which nothing in the game starts (§4.5).
+- An error: actions 3/4/6/7 on obstacles (AIData lookups through a null
+  pointer; nothing sets them on an obstacle); a push without direction bits
+  (`sub_800F598` reads the BIOS).
+- Ported, unverified by any trace: `sub_802EF74` (battle flag 0x40 target
+  tracking, never in netbattles; the side's tracked target is
+  `SideState::tracked`), `sub_8017CC0` (no scenario pushes a fan, statue or
+  other obstacle with it), the pushes' ice and bounds branches, the
+  take-hits and dispatcher variants but the default ones.
 - Actor-list types other than 0 and 8.

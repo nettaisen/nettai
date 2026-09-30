@@ -1,0 +1,6 @@
+# The BugBomb (attack object #0xA5, `sub_80D9D4C`) is a script.
+
+[kind]
+pool = "attack"
+index = 0xA5
+script = "bug_bomb.luau"

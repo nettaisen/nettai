@@ -7,12 +7,12 @@
 
 use super::actions::movement::{self, MoveKind};
 use super::{
-    Emotion, ai, ai_mut, clear_flag1, clear_flag2, coll_mut, cross_protected, emotion, exit_attack_state, flag1,
+    Emotion, ai, ai_mut, cross_protected, emotion, exit_attack_state, flag1,
     is_link, reset_charge, set_attack, stats, stats_mut,
 };
 use crate::actor::{request, status};
 use crate::battle::Battle;
-use crate::collision::{f1, timer};
+use crate::collision::f1;
 use crate::input::keys;
 use crate::object::ObjectRef;
 use crate::setup::Navi;
@@ -37,13 +37,7 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
 /// stands still (a Cross navi returns to base form).
 fn battle_over(b: &mut Battle, r: ObjectRef) {
     reset_charge(b, r);
-    // sub_801A264
-    clear_flag1(b, r, 0x8001_E800);
-    clear_flag2(b, r, 0x3_00E8);
-    let c = coll_mut(b, r);
-    for t in [timer::PARALYZE, timer::CONFUSE, timer::BLIND, timer::IMMOBILIZE, timer::FREEZE, timer::BUBBLE] {
-        c.status_timers[t] = 0;
-    }
+    super::clear_statuses(b, r);
     // sub_801DACC(0x42): HUD.
     if cross_protected(b, r) {
         ai_mut(b, r).attack.variant = 1;
@@ -61,8 +55,22 @@ fn reactive_chip(_b: &mut Battle, _r: ObjectRef) {
 fn decide(b: &mut Battle, r: ObjectRef) {
     // HUD (local side): the chip window follows `sub_800A772`.
     phase_timer(b, r);
-    if stats(b, r).form.is_beast_over() {
-        panic!("berserk form controller (sub_802D322) is not implemented yet");
+    // Beast Over (and any form past it): the berserk controller decides.
+    if stats(b, r).form.0 >= 0x17 {
+        use super::berserk::Outcome;
+        match super::berserk::control(b, r) {
+            Outcome::Nothing | Outcome::Moved => {}
+            Outcome::Chip => {
+                let chip = super::next_chip(b, r);
+                after_chip(b, r, chip);
+            }
+            Outcome::Buster => {
+                leave_idle(b, r);
+                let action = weapon_routine(b, r, ai(b, r).buster);
+                set_attack(b, r, action, 1);
+            }
+        }
+        return;
     }
     select_specials(b, r);
     if ai(b, r).requests & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED) != 0 {

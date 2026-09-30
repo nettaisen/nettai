@@ -50,7 +50,8 @@ pub struct ActorEntry {
 pub enum ActorKind {
     /// A player navi (`sub_80073CC`).
     Navi,
-    /// A rock (attack object #0x59, `sub_80074FA`), placed at the start.
+    /// A rock (attack object #0x59, `sub_80074FA`), placed at the start
+    /// (by content: objects/rock).
     Rock {
         /// Which rock (`ObjectData::rocks`).
         variant: u8,
@@ -60,6 +61,26 @@ pub enum ActorKind {
     Object6E,
     /// Attack object #0x7D (`sub_800751C`).
     Object7D { variant: u8 },
+}
+
+impl ActorKind {
+    /// The entry's type: its spawn routine in `off_80073A0`.
+    pub fn entry_type(self) -> u8 {
+        match self {
+            ActorKind::Navi => 0,
+            ActorKind::Object6E => 3,
+            ActorKind::Rock { .. } => 8,
+            ActorKind::Object7D { .. } => 9,
+        }
+    }
+
+    /// The entry's argument (a rock's variant).
+    pub fn variant(self) -> u8 {
+        match self {
+            ActorKind::Rock { variant } | ActorKind::Object7D { variant } => variant,
+            ActorKind::Navi | ActorKind::Object6E => 0,
+        }
+    }
 }
 
 /// A battle's actor list (`Stages::actor_lists`).

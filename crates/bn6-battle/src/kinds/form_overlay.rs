@@ -20,27 +20,53 @@ pub enum Stepping {
     /// `object_updateSprite`, and not while dimmed. The overlay stops
     /// running while the battle is paused.
     #[default]
-    Normal,
+    Normal = 0,
     /// `object_updateSpriteTimestop`; keeps running while paused.
-    WhileDimmed,
+    WhileDimmed = 1,
     /// `sub_801BCD0`, paused or not; keeps running while paused.
-    Always,
+    Always = 2,
+}
+
+impl Stepping {
+    /// Param3's value (anything but 1 and 2 steps normally).
+    pub fn from_param(v: u8) -> Stepping {
+        match v {
+            1 => Stepping::WhileDimmed,
+            2 => Stepping::Always,
+            _ => Stepping::Normal,
+        }
+    }
+}
+
+/// The palette the overlay wears (ExtraVars+4 and +8, `sub_80C46CC`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Palette {
+    /// Its owner's (ExtraVars+4 = 0xFF).
+    Owner,
+    /// Its own.
+    #[default]
+    Own,
+    /// Its own, but 0xC while its side's mood is Full Synchro
+    /// (`sub_80C46C0`: the Falzar beast head).
+    Mood,
 }
 
 /// Overlay-private state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub sprite: Option<SpriteId>,
-    /// Sits one pixel higher and nearer than its owner.
+    /// ExtraVars[0]: sits one pixel higher and nearer than its owner.
     pub nudged: bool,
     /// Added to the owner's animation.
     pub anim_offset: u8,
+    /// Param3.
     pub stepping: Stepping,
-    /// ExtraVars[1] = 0xFF: it wears its owner's palette (`sub_80C46CC`).
-    /// (Its other palette modes are presentation the port leaves out.)
-    pub owner_palette: bool,
-    // (`sub_80C46C6` can make an overlay hold its sprite still while the
-    // owner is dragged or paralyzed; no ported spawner uses it.)
+    pub palette: Palette,
+    /// ExtraVars+4: its own palette.
+    pub palette_index: u8,
+    /// ExtraVars+0xC (`sub_80C46C6`): the sprite holds still while the
+    /// owner is dragged or paralyzed.
+    pub holds_while_stunned: bool,
 }
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
@@ -53,28 +79,39 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 /// `sub_80C468C`: layer `sprite` on `owner`. It runs its first update
 /// right after the owner's, even while paused.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, sprite: SpriteId, nudged: bool) -> Option<ObjectRef> {
-    let params = [sprite.category, sprite.index, 0, 0];
+    spawn_with(b, owner, Vars { sprite: Some(sprite), nudged, ..Vars::default() })
+}
+
+/// `sub_80C468C` with all of its parameters (Param3 from `stepping`,
+/// ExtraVars from the rest).
+pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<ObjectRef> {
+    let sprite = spec.sprite.expect("a form overlay has a sprite");
+    let params = [sprite.category, sprite.index, spec.stepping as u8, spec.anim_offset];
     let r = b.objects.spawn(Pool::Actor, INDEX, Vec3::default(), params)?;
     let alliance = b.objects.get(owner).alliance;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
     o.alliance = alliance;
     o.flags |= flags::RUN_WHILE_PAUSED;
-    let v = vars(b, r);
-    v.sprite = Some(sprite);
-    v.nudged = nudged;
+    *vars(b, r) = spec;
     Some(r)
 }
 
-/// `sub_80C468C` with all its parameters: `sprite` (Param1, Param2),
-/// `stepping` (Param3), `anim_offset` (Param4), `nudged` (ExtraVars[0])
-/// and `owner_palette` (ExtraVars[1] = 0xFF).
-pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<ObjectRef> {
-    let sprite = spec.sprite.expect("a form overlay has a sprite");
-    let r = spawn(b, owner, sprite, spec.nudged)?;
-    b.objects.get_mut(r).params = [sprite.category, sprite.index, spec.stepping as u8, spec.anim_offset];
-    *vars(b, r) = spec;
-    Some(r)
+/// `sub_80C4526(overlay, 1)`: sit one pixel higher and nearer.
+pub fn nudge(b: &mut Battle, r: ObjectRef) {
+    vars(b, r).nudged = true;
+}
+
+/// `sub_80C46CC`: the palette the overlay shows.
+fn palette(b: &Battle, r: ObjectRef, v: &Vars) -> u8 {
+    match v.palette {
+        Palette::Owner => b.objects.sprite(owner(b, r)).look.palette,
+        Palette::Own => v.palette_index,
+        Palette::Mood => {
+            let side = b.objects.get(r).alliance as usize;
+            if b.stats[side].mood == 0xFF { 0x0C } else { v.palette_index }
+        }
+    }
 }
 
 /// Make the overlay step its sprite `stepping`'s way from now on.
@@ -104,15 +141,14 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 
 /// `sub_80C4550`: load the sprite on the owner's animation.
 fn init(b: &mut Battle, r: ObjectRef) {
-    let sprite = vars(b, r).sprite.expect("form overlay has a sprite");
-    let anim = b.objects.get(owner(b, r)).anim.wrapping_add(vars(b, r).anim_offset);
-    let owner_palette = vars(b, r).owner_palette.then(|| b.objects.sprite(owner(b, r)).look.palette);
+    let v = vars(b, r).clone();
+    let sprite = v.sprite.expect("form overlay has a sprite");
+    let anim = b.objects.get(owner(b, r)).anim.wrapping_add(v.anim_offset);
+    let palette = palette(b, r, &v);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
-    if let Some(palette) = owner_palette {
-        s.look.palette = palette;
-    }
+    s.look.palette = palette;
     s.set_animation(anim, &b.content);
     s.update(&b.content);
     let o = b.objects.get_mut(r);
@@ -127,7 +163,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
 /// the sprite.
 fn tick(b: &mut Battle, r: ObjectRef) {
     let owner = owner(b, r);
-    let Vars { nudged, anim_offset, stepping, owner_palette, .. } = vars(b, r).clone();
+    let v = vars(b, r).clone();
+    let Vars { nudged, anim_offset, stepping, holds_while_stunned, .. } = v;
+    let palette = palette(b, r, &v);
     let (owner_anim, owner_pos, owner_flags, owner_flip) = {
         let o = b.objects.get(owner);
         (o.anim, o.pos, o.flags, o.flip)
@@ -147,9 +185,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     // The owner's colour shader, white flash and mosaic, and its facing.
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
-    if owner_palette {
-        look.palette = owner_look.palette;
-    }
+    look.palette = palette;
     look.color_shader = owner_look.color_shader;
     look.white = owner_look.white;
     look.mosaic = owner_look.mosaic;
@@ -167,6 +203,13 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         o.action = 4;
         o.phase = 0;
         o.phase_init = 0;
+    }
+    // sub_80C464C: held still while the owner is dragged or paralyzed.
+    if holds_while_stunned {
+        let stunned = b.objects.get(owner).collision.is_some_and(|c| b.collision.get(c).f1 & (crate::collision::f1::DRAG | crate::collision::f1::PARALYZED) != 0);
+        if stunned {
+            return;
+        }
     }
     match stepping {
         Stepping::Normal => {

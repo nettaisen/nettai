@@ -1,0 +1,8 @@
+# The trap chips' dimming controller (effect object #0x2A, `sub_80E34C0`) is a
+# script. Its position is its spawner's registers, which nothing reads.
+
+[kind]
+pool = "effect"
+index = 0x2A
+script = "trap_chip.luau"
+scratch_position = true
