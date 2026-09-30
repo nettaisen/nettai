@@ -708,6 +708,12 @@ pub trait CoreApi {
     fn can_step(&self, o: ObjectRef, p: PanelPos) -> bool;
     /// `sub_800E680`: could `o` stand on `p`, whichever side owns it?
     fn can_stand_any_side(&self, o: ObjectRef, p: PanelPos) -> bool;
+    /// `object_breakPanel_dup1`: break a solid panel, or crack it when
+    /// something stands on it; true only when it broke.
+    fn shatter_panel(&mut self, p: PanelPos) -> bool;
+    /// `object_highlightCurrentCollisionPanels`: highlight the panels of
+    /// `o`'s collision region (drawn only).
+    fn highlight_collision_panels(&mut self, o: ObjectRef);
 
     // ---- Objects -----------------------------------------------------------
 

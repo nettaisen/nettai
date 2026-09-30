@@ -374,6 +374,9 @@ impl UserData for Object {
             },
         );
         methods.add_method("hit_spark", |_, this, ()| with(|api, _| Ok(api.hit_spark(this.0))));
+        methods.add_method("highlight_collision_panels", |_, this, ()| {
+            with(|api, _| Ok(api.highlight_collision_panels(this.0)))
+        });
 
         // Navis: the attack, requests, state, buttons.
         methods.add_method("attack_param", |_, this, n: LuaValue| {
@@ -953,6 +956,10 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "break_panel", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
         with(|api, _| Ok(api.break_panel(p)))
+    });
+    lib_fn!(lua, t, "shatter", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.shatter_panel(p)))
     });
     lib_fn!(lua, t, "solid", |_, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
