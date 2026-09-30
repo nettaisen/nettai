@@ -4,6 +4,7 @@
 
 use crate::actor::{ActorId, Actors};
 use crate::collision::Collision;
+use crate::behavior::Behaviors;
 use crate::custom::{CustomScreens, Recorded};
 use crate::field::Field;
 use crate::hand::ChipHand;
@@ -236,6 +237,10 @@ pub struct Battle {
     pub(crate) sound: [Vec<SoundCue>; 2],
     /// How the round ended, once the end state is through.
     pub(crate) outcome: Option<RoundEnd>,
+    /// The content running the object kinds and actions the engine
+    /// doesn't implement itself (shared code, not state: snapshots share
+    /// it and the digest leaves it out).
+    pub behaviors: Behaviors,
 }
 
 /// How a round ended (`sub_8007CA0`).
@@ -366,6 +371,11 @@ impl Battle {
     /// Start a round: the state the game is in when its init finishes and
     /// the first battle tick is about to run.
     pub fn new(setup: RoundSetup) -> Battle {
+        Battle::with_behaviors(setup, Behaviors::for_build())
+    }
+
+    /// Start a round running `content`.
+    pub fn with_behaviors(setup: RoundSetup, behaviors: Behaviors) -> Battle {
         let score = setup.score;
         let mut b = Battle {
             stats: setup.navi_stats,
@@ -411,6 +421,7 @@ impl Battle {
             freeze: Default::default(),
             sound: [Vec::new(), Vec::new()],
             outcome: None,
+            behaviors,
             setup,
         };
         // Init's last steps: refresh every panel, then one unpaused panel

@@ -31,7 +31,7 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 
 /// `sub_80E5D12`: a beam at `offset` from `owner`, stored in `slot`.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, look: SunBeamLook, offset: Vec3, slot: AttachSlot) -> Option<ObjectRef> {
-    let r = b.objects.spawn(Pool::Effect, INDEX, offset, [look.sprite, look.palette, 0, 0])?;
+    let r = crate::behavior::spawn_object(b, Pool::Effect, INDEX, offset, [look.sprite, look.palette, 0, 0])?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)
@@ -40,7 +40,14 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, look: SunBeamLook, offset: Vec3, 
     o.related[0] = Some(owner);
     o.alliance = alliance;
     o.flip = flip;
-    o.vars = crate::kinds::Vars::SunBeam(Vars { slot: Some(slot), offset, ticks: 0 });
+    if b.behaviors.object_kind(Pool::Effect, INDEX).is_some() {
+        // Behaviors implements the beam: pass the rest as its state.
+        let which = crate::kinds::attachment::content_slot(b, owner, slot);
+        crate::behavior::set_state_variant(b, r, "slot", which);
+        crate::behavior::set_state_field(b, r, "offset", bn6_content_api::Value::Vec3(offset));
+    } else {
+        b.objects.get_mut(r).vars = crate::kinds::Vars::SunBeam(Vars { slot: Some(slot), offset, ticks: 0 });
+    }
     slot.set(b, Some(r));
     Some(r)
 }

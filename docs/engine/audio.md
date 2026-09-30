@@ -107,6 +107,11 @@ that `bn6_audio::load_bank` reads; `data/sound/` is gitignored for it. The
 bank holds the game's recordings, so it is never committed, and the
 frontend never reads the ROM.
 
+`bn6-extract content <rom> <dir>` writes the same data as open, editable
+files instead: songs as MIDI in mid2agb's conventions, voicegroups as TOML,
+samples as WAV (`docs/design/asset-formats.md`); every song renders the same
+samples from them. `--sound <dir>` loads such a pack.
+
 Every BN6 song reads (397) except two map songs that use MEMACC (0x11,
 0x23), which the port doesn't play. A track whose running status would depend on
 the path into a jump target is refused at extraction (none in BN6).
