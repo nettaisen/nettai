@@ -27,6 +27,7 @@ fn battles_run_the_content_scripts() {
     assert_eq!(
         kinds,
         [
+            "absorbed-obstacle",
             "aqua-surge",
             "area-grab",
             "attachment",
@@ -36,6 +37,7 @@ fn battles_run_the_content_scripts() {
             "erase-man",
             "erase-mark",
             "grab-shot",
+            "plus-sparkle",
             "sun-beam",
             "whirlwind",
         ]
@@ -120,7 +122,9 @@ fn registrations_follow_the_content_data() {
     let r = c.registrations().unwrap();
     // The four SunGun chips share one action; the weapons have theirs.
     let actions: Vec<u8> = r.actions.iter().map(|a| a.action).collect();
-    assert_eq!(actions, [0x1D, 0x1E, 0x33, 0x35, 0x37, 0x3A, 0x3C, 0x3D, 0x57], "{:?}", r.actions);
+    assert_eq!(actions, [0x1D, 0x1E, 0x33, 0x35, 0x37, 0x3A, 0x3C, 0x3D, 0x52, 0x57, 0x58], "{:?}", r.actions);
+    // The instant chip registers its subtype's effect.
+    assert!(r.hooks.iter().any(|h| h.hook == bn6_content_api::Hook::InstantChip(5)), "{:?}", r.hooks);
     // Two chips implementing one action with different scripts is an error.
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
     let e = c.registrations().unwrap_err();
@@ -129,6 +133,27 @@ fn registrations_follow_the_content_data() {
     let mut c = testing::build();
     c.objects.kinds[0].script = "objects/nowhere".into();
     assert!(c.registrations().unwrap_err().contains("isn't in the pack"));
+}
+
+#[test]
+fn scripted_instant_chips_play_and_roll_back() {
+    // Folders of instant chips (the gauge filler, a plus chip, BusterUp)
+    // with GunDelSols: the plus chip's sparkle shows, and a copy of the
+    // battle taken at any tick plays on as the battle does.
+    let setup = || scenario::setup_with(&[testing::FULL_GAUGE, testing::PLUS, testing::BUSTER_UP, testing::SUN_GUN_3]);
+    let tape = scenario::record_on(setup(), 2400, 13);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    let mut sparkles = 0;
+    for (i, t) in tape.iter().enumerate() {
+        if i % 101 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+        sparkles += b.objects.in_order().filter(|&r| (r.pool, b.objects.get(r).index) == (crate::object::Pool::Effect, 0x14)).count();
+    }
+    assert!(sparkles > 0, "no plus chip was used");
 }
 
 // ---- Luau keeps no state ----------------------------------------------------------------
