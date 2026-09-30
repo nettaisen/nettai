@@ -34,6 +34,7 @@ pub use api::{
     OVERLAY_STEPPINGS,
     ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, PANEL_TYPES, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, StatusFlag, StatusTimer,
+    SideSpecial,
 };
 pub use api::AfterimageSpec;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
@@ -42,6 +43,7 @@ pub use data::{Data, Key as DataKey};
 pub use host::{
     ActionDef, ActionReg, ActorListEntrySpec, ContentError, ContentHost, DimmingChipSpec, Hook, HookCall, HookDef,
     HookId, HookReg, KindId, KindReg, Manifest, NaviChipSpec, ObjectKindDef, Registrations,
+    InstantChipSpec,
 };
 pub use state::{ContentState, FieldDef, FieldType, FieldValue, MAX_BYTES, Schema, StateId, Value};
 pub use types::{ObjectRef, PanelPos, Pool, SpriteId, Vec3};

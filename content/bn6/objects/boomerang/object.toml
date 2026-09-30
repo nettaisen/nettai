@@ -1,0 +1,7 @@
+# The boomerang (attack object #0x32, `sub_80CA2A8`): Boomer's and
+# TomahawkCross Beast's tomahawks, a script.
+
+[kind]
+pool = "attack"
+index = 0x32
+script = "boomerang.luau"

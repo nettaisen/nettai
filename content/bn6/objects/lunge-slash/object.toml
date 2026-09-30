@@ -1,0 +1,6 @@
+# SlashCross Beast's lunge's slash (attack object #0xB1, `sub_80DB8CC`) is a script.
+
+[kind]
+pool = "attack"
+index = 0xB1
+script = "lunge_slash.luau"

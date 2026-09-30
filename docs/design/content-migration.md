@@ -86,7 +86,8 @@ kind, or a numbered hook.
 | A chip's action | `script = "..."` in `chips/NNN-name/chip.toml` | `state`, `update(me, s)` |
 | A dimming chip (action 0x15) | `script` in each chip of the subtype | `dimming_chip(user, spec: DimmingChipSpec) -> Object?`: spawn the controller; its update calls the `dimming` service's steps in its routine's order |
 | A navi chip (action 0x1B) | `script` in each chip of the subtype | `navi_chip(user, controller, spec: NaviChipSpec) -> Object?`: spawn the navi; it calls `navi_chip.navi_left(controller)` when done |
-| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
+| An instant chip (action 0x1C) | `script` in each chip of the subtype, or `instant_chip = N` in a weapon.toml whose routine names the subtype | `instant_chip(user, spec: InstantChipSpec)`: the effect (`off_80EC3F0[subtype]`), run once; the ruleset's action idles after it |
+| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` (the setup can prepare that state before the action starts: `navi:action_state(action)`) |
 
 Scripts are paths relative to the registering file. Two chips of an action or subtype must name the same module;
 a slot, action or hook claimed twice is an error (`Content::registrations`, `Registrations::validate`).
@@ -193,16 +194,23 @@ Left (each a controller and its objects, every branch; docs/engine/chips.md §3.
 - Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
   notes), thrown and encased obstacles (`sub_8018002`, `sub_801813A`), AntiNavi in the dimming service.
 
-### Group C: DustCross and the Beast forms' weapons
+### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 
-- DustCross's B+Back: weapon 0x2A and action 0x58 (`kinds/player/actions/absorb.rs`), the absorbed obstacle
-  (effect #0x87, `kinds/absorbed_obstacle.rs`, whose spawn the obstacle framework calls: through
-  `behavior::spawn_kind`).
-- The Beast forms' claw: weapon 0x1E and action 0x52 (`kinds/player/actions/beast_claw.rs`).
-- Weapon 0x2C (`sub_8011FCE`, the other absorbed-obstacle throw) and `sub_8011AF2` it falls back to; the forms'
-  other routines (0x03, 0x04, and the charged shots 0x0B, 0x0C, 0x0F, 0x12, 0x14, 0x16, 0x19, 0x27, the A-charges).
-- Owns: actions/absorb.rs, actions/beast_claw.rs, kinds/absorbed_obstacle.rs (deleted), the fallback in
-  kinds/player/idle.rs `weapon_routine`, navis/00-megaman/weapons/ (new folders only).
+Ported (navis/00-megaman/weapons/, objects/): every form weapon routine of `off_80117D4` the forms name (0x03,
+0x04, 0x06, 0x07..0x0C, 0x0F..0x12, 0x14..0x17, 0x19..0x1E, 0x27, 0x2A, 0x2C; 0x06, 0x0B, 0x0C and 0x0F are setups
+whose actions are standard chips'), their actions (0x1A, 0x1D, 0x1E, 0x35, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x4A,
+0x4C..0x50, 0x52, 0x56, 0x58) and kinds, and the absorbed obstacle. The chip-use framework's charged paths
+(`sub_80127C0(charged)`, `sub_8012C7C`, the cross doubles of `sub_8012A38`, GroundCross's A-charge 0x18
+`sub_8012CB2`) are group H's `chip_use.rs`, with the A-charge 0xFF path's argument (the chip's family byte) from
+this group; GroundCross's drill uses objects/drill and EraseCross's beam objects/thunder-column (one script per
+kind). Left:
+
+- Blocked by the framework: a charged use of the empty hand in a form without an A-charge routine (it needs the
+  empty hand's family byte, which `rules/weapons.toml [empty_hand]` doesn't carry), Cross Beast (`sub_8014F40`),
+  form flags of forms 7, 8, 0xB, the reactive abort (`sub_801056A`).
+- Unverified (no scenario reaches them yet): every Beast Cross A-charge and the Beast busters past their first tick;
+  the Cross charged shots 0x41, 0x45, 0x4A, 0x4D; `lockon_panel`'s not-found result ((0, 0x7F) here; the cross
+  fork's reading was column 0 and a leftover row).
 
 ### Group D: the buster's shots
 
@@ -220,13 +228,17 @@ Left (each a controller and its objects, every branch; docs/engine/chips.md §3.
   `data.objects.flying_shots`), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16 in
   `weapons/00-buster` and `weapons/01-charged-shot`; the aliases as `weapons/NN-buster`.
 
-### Group E: instant chips
+### Group E: instant chips (ported; what is left)
 
-- Action 0x1C (`sub_80EC39C`, `kinds/player/actions/instant.rs`) runs a chip routine by subtype (`off_80EC3F0`):
-  a new hook (§3), then FullCust and the rest (Boomer, MegaBstr and the Atk+ chips, Lance, FireHit, BusterUp,
-  SandWrm, SyncTrgr, FlmHook, ColForce, JustcOne, GolmHit, ColArmy, BeastOut).
-- Owns: actions/instant.rs (deleted), the new hook in bn6-content-api's host.rs, content/scripts.rs and
-  behavior/mod.rs.
+Action 0x1C calls `Hook::InstantChip(subtype)` (§3). Every entry of `off_80EC3F0` is ported: 0, 3 (chips/13f-beastout,
+chips/0c0-atk-10, objects/rising-bubble), 1 (objects/boomerang), 4 (objects/lance), 5 (chips/0ae-fullcust), 8
+(objects/fire-hit), 10 (chips/0af-busterup), 12 (objects/sand-worm, sand-spray, sand-hole), 13 (chips/11d-synctrgr),
+14 (objects/flame-hook, flame-hook-fire), 15 (objects/col-force, col-force-soldier), 19 (objects/justice-one), 20
+(weapons/10-tengu-wind, objects/gust), 21 (objects/golem), 22 (objects/col-army); 7 and 0x12 are NULL (an explicit
+panic). 2, 6, 9, 11 (lib/instant-chips) and 16, 17 (objects/meteor-shower, dust-storm) have no chip or MegaMan weapon:
+the link navis' weapons (0x71, 0x83) and actions that use them register or require them when ported. Left: the Full
+Synchro aura after SyncTrgr (framework), attack #0x12 (the soldiers' vulcan hit) and #0x56 (the meteor), which these
+spawn by number.
 
 ### Group F: rocks
 

@@ -18,10 +18,14 @@ pub struct ObjectData {
     pub body_overlays: Vec<BodyOverlay>,
     /// The sun beam's sprites by look (`SunBeamLook::look`).
     pub sun_beam_looks: Vec<SpriteId>,
+    /// Boomerangs (attack object #0x32) by variant, its first parameter.
+    pub boomerangs: Vec<BoomerangKind>,
     /// The projectile (attack object #0) by kind, its first parameter.
     pub projectiles: Vec<ProjectileKind>,
     /// The flying shot (attack object #0xB) by kind, its first parameter.
     pub flying_shots: Vec<FlyingShotKind>,
+    /// Sword waves (attack object #0x96) by kind, its first parameter.
+    pub sword_waves: Vec<SwordWave>,
     /// How a field object looks by its NameID (`byte_8021220`, NameIDs
     /// 0xCD..=0xFF), as `sub_800F26C` gives it: what DustMan throws.
     pub name_looks: Vec<NameLook>,
@@ -91,6 +95,20 @@ pub struct RockKind {
     /// Sound it breaks with.
     pub break_sound: u16,
     pub name_id: u16,
+}
+
+/// A kind of boomerang (attack object #0x32, `byte_80CA26C`): how fast it
+/// flies along a row and along the far column, and whether it turns the
+/// other side's panels it crosses to grass.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BoomerangKind {
+    /// The variant number.
+    pub id: u8,
+    /// Along a row and along the column, 16.16 pixels a tick.
+    pub speed: i32,
+    pub turn_speed: i32,
+    pub grass: bool,
 }
 
 fn is_zero(v: &u8) -> bool {
@@ -217,6 +235,35 @@ pub struct FlyingShotKind {
     /// out.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_effect: Option<u8>,
+}
+
+/// A kind of sword wave (attack object #0x96, `byte_80D7F4C`): what
+/// SlashCross's charged slashes send along the row.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SwordWave {
+    /// The kind number.
+    pub id: u8,
+    /// Its collision types (what it is, what it hits) and hit modifier.
+    pub self_type: u8,
+    pub target_type: u8,
+    pub hit_mod: u8,
+    pub region: u8,
+    pub sprite: SpriteId,
+    pub anim: u8,
+    /// It animates, restarting its animation after the last frame.
+    pub animates: bool,
+    /// It highlights the panels its region covers.
+    pub highlight: bool,
+    /// Panel centers it passes before it ends.
+    pub reach: u8,
+    /// Its shadow is on the ground (else drawn with the sprite).
+    pub ground_shadow: bool,
+    pub palette: u8,
+    /// The status its hit inflicts (0: none).
+    pub status: u8,
+    /// Pixels (16.16) it moves forward per tick.
+    pub speed: i32,
 }
 
 /// How a field object looks, by NameID (`byte_8021220`, 5 bytes a NameID

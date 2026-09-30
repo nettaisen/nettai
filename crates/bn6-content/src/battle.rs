@@ -270,6 +270,12 @@ struct WeaponRecord {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct MathFile {
+    sine: Vec<i16>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ReactionsFile {
     push: [SlideVector; 10],
     ice: [SlideVector; 6],
@@ -332,12 +338,6 @@ struct SlotRecord {
     vertical: u8,
     left: u8,
     right: u8,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct MathFile {
-    sine: Vec<i16>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -598,14 +598,16 @@ pub fn weapon_folder(w: &WeaponData) -> String {
 
 /// The object kinds whose folders hold data of their own (a kind of these
 /// a script implements keeps its `[kind]` in the same file).
-const DATA_OBJECTS: [&str; 9] = [
+const DATA_OBJECTS: [&str; 11] = [
     "rock",
     "absorbed-obstacle",
     "body-overlay",
     "sun-beam",
     "attachment",
+    "boomerang",
     "projectile",
     "flying-shot",
+    "sword-wave",
     "shock-wave",
     "dust-junk",
 ];
@@ -681,7 +683,7 @@ pub fn export(c: &Content) -> Files {
     put(
         "objects/absorbed-obstacle/object.toml".into(),
         toml_file(
-            "The sprite an absorbed obstacle (effect object #0x39) flies with, by obstacle kind.",
+            "The sprite an absorbed obstacle (effect object #0x87) flies with, by obstacle kind.",
             &AbsorbedFile { obstacle: absorbed, script_kind: script_kind("absorbed-obstacle") },
         ),
     );
@@ -697,6 +699,20 @@ pub fn export(c: &Content) -> Files {
         toml_file(
             "The sun beam's (effect object #0x48) sprites by look, its first parameter.",
             &SunBeamFile { look: looks, script_kind: script_kind("sun-beam") },
+        ),
+    );
+    put(
+        "objects/sword-wave/object.toml".into(),
+        toml_file(
+            "Sword waves (attack object #0x96) by kind, its first parameter.",
+            &ObjectFile { variant: o.sword_waves.clone(), script_kind: script_kind("sword-wave") },
+        ),
+    );
+    put(
+        "objects/boomerang/object.toml".into(),
+        toml_file(
+            "Boomerangs (attack object #0x32) by variant, its first parameter: 16.16 pixels a tick along a\nrow and along the column, and whether it turns the other side's panels to grass.",
+            &ObjectFile { variant: o.boomerangs.clone(), script_kind: script_kind("boomerang") },
         ),
     );
     put(
@@ -1166,6 +1182,15 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     add_kind("sun-beam", beams.script_kind, report);
     let file = "objects/sun-beam/object.toml";
     let sun_beam_looks = dense(beams.look.into_iter().map(|l| (l.id as usize, l.sprite, file.into())).collect(), "sun beam look", report);
+    let waves: ObjectFile<SwordWave> = read_toml(root, "objects/sword-wave/object.toml", report)?;
+    add_kind("sword-wave", waves.script_kind, report);
+    let file = "objects/sword-wave/object.toml";
+    let sword_waves =
+        dense(waves.variant.into_iter().map(|w| (w.id as usize, w, file.into())).collect(), "sword wave", report);
+    let boomerangs: ObjectFile<BoomerangKind> = read_toml(root, "objects/boomerang/object.toml", report)?;
+    add_kind("boomerang", boomerangs.script_kind, report);
+    let file = "objects/boomerang/object.toml";
+    let boomerangs = dense(boomerangs.variant.into_iter().map(|b| (b.id as usize, b, file.into())).collect(), "boomerang", report);
     let waves: ShockWaveFile = read_toml(root, "objects/shock-wave/object.toml", report)?;
     add_kind("shock-wave", waves.script_kind, report);
     let file = "objects/shock-wave/object.toml";
@@ -1214,7 +1239,20 @@ fn load_objects(root: &Path, chips: &[ChipData], report: &mut Report) -> Option<
     }
     let attachments = dense(all.into_iter().map(|(id, (a, file))| (id as usize, a, file)).collect(), "attachment", report);
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
-    Some(ObjectData { attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, projectiles, flying_shots, kinds, shock_waves, name_looks })
+    Some(ObjectData {
+        attachments,
+        rocks,
+        absorbed_sprites,
+        body_overlays,
+        sun_beam_looks,
+        sword_waves,
+        boomerangs,
+        projectiles,
+        flying_shots,
+        kinds,
+        shock_waves,
+        name_looks,
+    })
 }
 
 fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {

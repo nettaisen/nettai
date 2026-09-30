@@ -3,7 +3,6 @@
 //! formulas). A kind the content pack's scripts implement runs as content
 //! instead (`behavior`).
 
-pub mod absorbed_obstacle;
 pub mod afterimage;
 pub mod beast_over_burst;
 pub mod body_overlay;
@@ -42,7 +41,6 @@ pub enum Vars {
     ChargeGlow(charge_glow::Vars),
     Effect(effect::Vars),
     Hitbox(hitbox::Vars),
-    AbsorbedObstacle(absorbed_obstacle::Vars),
     FormOverlay(form_overlay::Vars),
     Afterimage(afterimage::Vars),
     LockonMarker(lockon_marker::Vars),
@@ -95,7 +93,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Attack, 3) => hitbox::update(b, r),
         (Pool::Effect, 4) => spark::update(b, r),
         (Pool::Effect, bubble_visual::INDEX) => bubble_visual::update(b, r),
-        (Pool::Effect, absorbed_obstacle::INDEX) => absorbed_obstacle::update(b, r),
         (Pool::Actor, form_overlay::INDEX) => form_overlay::update(b, r),
         (Pool::Effect, afterimage::INDEX) => afterimage::update(b, r),
         (Pool::Effect, lockon_marker::INDEX) => lockon_marker::update(b, r),
