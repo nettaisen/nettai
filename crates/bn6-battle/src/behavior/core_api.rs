@@ -605,6 +605,19 @@ impl CoreApi for Battle {
         common::set_panels_from_coordinates(self, o);
     }
 
+    fn update_visibility(&mut self, o: ObjectRef) {
+        if !self.is_dimmed() {
+            self.objects.get_mut(o).flags |= flags::VISIBLE;
+        }
+        let alliance = self.objects.get(o).alliance;
+        if self.is_remote(alliance) {
+            let blind = self.player(alliance ^ 1).and_then(|p| self.objects.get(p).collision).is_some_and(|c| self.collision.get(c).f1 & f1::BLIND != 0);
+            if blind {
+                self.objects.get_mut(o).flags &= !flags::VISIBLE;
+            }
+        }
+    }
+
     fn update_collision_panels(&mut self, o: ObjectRef) {
         Battle::update_collision_panels(self, o);
     }
