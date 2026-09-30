@@ -247,6 +247,22 @@ impl CoreApi for Battle {
             NaviStat::BusterCharged => i(s.bugs.buster_charged as i64),
             NaviStat::Beast => Value::Bool(s.form.is_beast()),
             NaviStat::BeastOver => Value::Bool(s.form.is_beast_over()),
+            NaviStat::BugKinds => {
+                let b = &s.bugs;
+                let kinds = [
+                    b.processing == 1,
+                    b.panel_trail_level != 0,
+                    b.buster_blanks != 0,
+                    b.hit_status != 0,
+                    b.custom_damage != 0,
+                    b.emotion != 0,
+                    b.hp_drain != 0,
+                    b.custom_drain != 0,
+                    b.battle_start != 0,
+                    b.hand_shrink_turn != 0,
+                ];
+                i(kinds.iter().filter(|&&k| k).count() as i64)
+            }
         }
     }
 
@@ -317,6 +333,10 @@ impl CoreApi for Battle {
 
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8) {
         Battle::bump_side_stat(self, side & 1, index as usize & 0xF, n);
+    }
+
+    fn side_stat(&self, side: u8, index: u8) -> u8 {
+        self.side_stats[side as usize & 1][index as usize & 0xF]
     }
 
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo> {
@@ -966,6 +986,8 @@ impl CoreApi for Battle {
         let c = self.collision_of(o)?;
         Ok(Value::Int(match f {
             CollisionField::Region => c.region as i64,
+            CollisionField::PanelX => c.panel.x as i64,
+            CollisionField::PanelY => c.panel.y as i64,
             CollisionField::HitEffect => c.hit_effect as i64,
             CollisionField::StatusBase => c.status_base as i64,
             CollisionField::Bugs => c.bugs as i64,
@@ -982,6 +1004,8 @@ impl CoreApi for Battle {
         let x = int(v);
         match f {
             CollisionField::Region => c.region = x as u8,
+            CollisionField::PanelX => c.panel.x = x as u8,
+            CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::HitEffect => c.hit_effect = x as u8,
             CollisionField::StatusBase => c.status_base = x as u8,
             CollisionField::Bugs => c.bugs = x as u16,

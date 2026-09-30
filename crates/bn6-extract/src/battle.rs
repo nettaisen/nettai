@@ -372,6 +372,8 @@ fn rules(rom: &Rom, actor_lists: &(Vec<u32>, Vec<ActorList>)) -> Rules {
         buster_recovery: (0..5).map(|n| rom.bytes(0x0802_09CC + 6 * n, 6).try_into().unwrap()).collect(),
         // BCD times (`byte_8010B2C`).
         sp_deletion_times: (0..10).map(|i| u32at(rom, 0x0801_0B2C + 4 * i)).collect(),
+        // `math_sinTable` through `math_cosTable`'s end: 384 halfwords.
+        sine: (0..384).map(|i| rom.u16(0x0800_65E0 + 2 * i) as i16).collect(),
         // By hit-modifier bit (`byte_800E58C`, three bytes each) and by
         // collision direction (`byte_800E4E8`, four bytes each).
         push_vectors: std::array::from_fn(|i| slide(rom, 0x0800_E58C + 3 * i as u32)),

@@ -193,6 +193,10 @@ end
 declare class Collision
     -- Region shape.
     region: number
+    -- The panel the region is anchored on (`update_collision_panels`
+    -- copies the object's).
+    panel_x: number
+    panel_y: number
     -- Hit spark effect (0xFF = none).
     hit_effect: number
     status_base: number
@@ -448,6 +452,8 @@ declare class Navi
     -- The form is a Beast form, Beast Over.
     beast: boolean
     beast_over: boolean
+    -- `sub_800FE52`: how many kinds of NaviCust bug the navi has.
+    bug_kinds: number
 end
 
 -- A one-tick hit region (`battle.hitbox`).
@@ -547,6 +553,8 @@ declare battle: {
     clear_linked: (side: number) -> (),
     fill_custom_gauge: () -> (),
     bump_side_stat: (side: number, index: number, n: number) -> (),
+    -- `sub_800AB3A`: a side's statistics counter.
+    side_stat: (side: number, index: number) -> number,
     navi_record: (name_id: number) -> NaviRecord?,
     -- Spawn into the pool's lowest free slot; it runs later this tick,
     -- right after the spawner. nil if the pool is full.
@@ -751,6 +759,10 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- The sine table (`math_sinTable`, which `math_cosTable` continues):
+        -- 256 steps a turn, 1.0 = 0x100, over a turn and a half, so the
+        -- cosine of step a is entry a + 64.
+        sine: { [number]: number },
     },
     -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
     -- panels a region covers, { dx, dy } from its panel with dx toward the

@@ -297,6 +297,12 @@ struct SlotRecord {
 
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct MathFile {
+    sine: Vec<i16>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SpChipsFile {
     /// Deletion times, `[h:]m:ss.cc`.
     deletion_times: Vec<String>,
@@ -810,6 +816,12 @@ neighbour is looked for along the scan lists, each slot starting at its *_scan_s
             &SpChipsFile { deletion_times: r.sp_deletion_times.iter().map(|&t| bcd_time(t)).collect() },
         ),
     );
+    put(
+        "rules/math.toml".into(), toml_file(
+            "The sine table (math_sinTable, which math_cosTable continues): 256 steps a turn, 1.0 = 0x100,\nover a turn and a half (the cosine of step a is entry a + 64).",
+            &MathFile { sine: r.sine.clone() },
+        ),
+    );
     // Registries.
     let effect = |i: usize, e: &EffectSprite| EffectRecord { id: i as u8, sprite: e.sprite, anim: e.anim, palette: e.palette };
     put(
@@ -1212,6 +1224,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
     let weapons = dense(w.weapon.into_iter().map(|w| (w.id as usize, WeaponRoutine { charge_ticks: w.charge_ticks }, file.into())).collect(), "weapon routine", report);
     let reactions: ReactionsFile = read_toml(root, "rules/reactions.toml", report)?;
     let lockon: LockonFile = read_toml(root, "rules/lockon.toml", report)?;
+    let math: MathFile = read_toml(root, "rules/math.toml", report)?;
     let file = "rules/sp-chips.toml";
     let sp: SpChipsFile = read_toml(root, file, report)?;
     let mut sp_deletion_times = Vec::new();
@@ -1258,6 +1271,7 @@ fn load_rules(root: &Path, report: &mut Report) -> Option<Rules> {
         weapons,
         buster_recovery: w.buster_recovery,
         sp_deletion_times,
+        sine: math.sine,
         push_vectors: reactions.push,
         ice_vectors: reactions.ice,
         bubble_bob: reactions.bubble_bob,
