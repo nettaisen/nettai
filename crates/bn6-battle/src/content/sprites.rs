@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 /// A sprite: (category byte offset, index) into the game's sprite table.
-/// In a content file, `"CC-II"` in hex, the name of the sprite's folder
-/// in the pack's `graphics/sprites`.
+/// In a content file, `"CC-II"` in hex (the sprite's `sprite.json` holds
+/// it; its folder in a pack's `graphics/sprites` is its name).
 pub use bn6_content_api::SpriteId;
 
 /// One animation frame's timing.

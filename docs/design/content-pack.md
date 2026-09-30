@@ -60,7 +60,7 @@ lib/*.luau                                helpers the scripts share
 core.d.luau, types.d.luau                 the scripts' API and shared types (for editors and the checker)
 rules/*.toml                              rules no entity owns
 registries/*.toml                         what many entities name by number
-graphics/sprites/CC-II/animations.json    each sprite's animation timing (with its graphics)
+graphics/sprites/NAME/animations.json     each sprite's animation timing (with its graphics; the file names its sprite)
 graphics/...  sound/...                   see asset-formats.md
 ```
 
@@ -94,7 +94,7 @@ graphics/...  sound/...                   see asset-formats.md
 | `registries/effects.toml`, `sparks.toml` | one-shot effects and hit sparks by id | `Content::effects`, `sparks` |
 | `registries/regions.toml` | hit-region shapes by region number | `Content::regions` |
 | `registries/panel-layouts.toml` | panel layouts by layout number | `Content::panel_layouts` |
-| `graphics/sprites/CC-II/animations.json` (298) | frame durations and flags | `Content::animations` |
+| `graphics/sprites/NAME/animations.json` (298) | frame durations and flags | `Content::animations` |
 
 BN6's battle data is 479 TOML files and 298 timing files (about 2 MiB) of
 the pack's 2,788 files; chips are most of it. Its scripts are 18 Luau
@@ -256,7 +256,7 @@ Conventions:
   region conditions, status requests, battle effects. Their bits are
   documented in docs/engine/field-collision-damage.md; they are matched
   as whole words (`target & self`), so they stay words.
-- **Sprites** as `"CC-II"`, the sprite's folder under `graphics/sprites`.
+- **Sprites** as `"CC-II"`, the sprite's id (its folder under `graphics/sprites` is its name).
 - **Points and offsets** as `[x, y]` / `[dx, dy]`; panel grids as rows of
   `#` and `.`; deletion times as `m:ss.cc`.
 - **Chip codes** as letters (`"*"` for the asterisk).
