@@ -50,6 +50,7 @@ fn status_bit(flag: StatusFlag) -> u32 {
         StatusFlag::UsingAction => f1::USING_ACTION,
         StatusFlag::AffectedByIce => f1::AFFECTED_BY_ICE,
         StatusFlag::Bubbled => f1::BUBBLED,
+        StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
     }
 }
 

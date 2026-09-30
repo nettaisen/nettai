@@ -87,6 +87,8 @@ export type StatusFlag =
     | "using_action"
     | "affected_by_ice"
     | "bubbled"
+    -- Hit even while the battle is dimmed (ElemTrap's trap).
+    | "hit_while_dimmed"
 -- Status timers of an object with collision data.
 export type StatusTimer =
     "paralyze" | "confuse" | "blind" | "immobilize" | "flash" | "submerged" | "invulnerable" | "freeze" | "bubble"
@@ -639,6 +641,11 @@ export type ActorListEntrySpec = {
 export type ObstacleCrush = "breaks" | "destroys"
 export type ObstacleRemoval = "broken" | "removed" | "vanished" | "absorbed"
 export type BlinkOut = "no" | "blinking" | "done"
+-- How `obstacle.take_hits` takes a pushing hit: `sub_801AD9E` starts the
+-- push and forgets the damage, `sub_801AD12` keeps it, `sub_801AD6A`
+-- ignores pushes. (Declared for dimming chip subtypes 10, 11 and 14; the
+-- obstacle framework's branch implements it.)
+export type ObstaclePush = "forgets_damage" | "keeps_damage" | "ignored"
 
 -- The obstacle framework: the steps of a field obstacle's update (rocks,
 -- cubes and the like, without actor data), which its update calls in its
@@ -653,8 +660,9 @@ declare obstacle: {
     register: (me: Object, side: number, class: number) -> (),
     -- `sub_800F656`: forget it in the field-object registry.
     unregister: (me: Object) -> (),
-    -- `sub_801AD9E`: resolve this tick's hits (a push forgets the damage).
-    take_hits: (me: Object) -> (),
+    -- `sub_801AD9E` and its variants: resolve this tick's hits (`push`:
+    -- what a pushing hit does, "forgets_damage" by default).
+    take_hits: (me: Object, push: ObstaclePush?) -> (),
     -- `sub_800F672`: the lifetime (`timer`): broken when it runs out or
     -- the battle is over, blinking for its last three seconds.
     tick_lifetime: (me: Object) -> (),
@@ -684,6 +692,10 @@ declare obstacle: {
     remove: (obj: Object) -> (),
     vanish: (obj: Object) -> (),
     absorb: (obj: Object, absorber: Object) -> (),
+    -- Dimming chip subtypes 10, 11 and 14 (the obstacle framework's branch
+    -- implements it): `sub_8017CC0`, the other shared entry 5: knocked
+    -- back along the hit's push direction (on across ice), then a wait.
+    knocked_back: (me: Object) -> (),
 }
 
 -- Exact integer helpers.

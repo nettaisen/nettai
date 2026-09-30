@@ -1263,6 +1263,41 @@ and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes p
 `sub_802CEC8` clears a record every tick once its user's HP is 0. The trap springs in the damage intake
 (`sub_802CEF4`).
 
+**ElemTrap's trap** (T3 0x4D, `sub_80CDF84`; the pack's `objects/elem-trap`) is a collision over whole-field region
+0x80 with ObjectFlags1 0x01000000 (hit even while dimmed), self type 0, target 0x18. Each tick it resolves its hits
+and reads the per-element damage (CollisionData+0x84, fire to wood); the first element with damage springs it (its
+first update runs unarmed: a hit then just clears the record). Sprung, it waits until the battle isn't dimmed, puts
+sparkles (T4#0 look 0x46, SE 0xA5) on the enemy navi's panels, spawns the counterattack T4 0x2B (`sub_80E35A4`,
+`objects/elem-trap-strike`) at the **head** of the update list (`sub_80033E4`) and registers it with `sub_800BF16`
+(the other side can't cut in), clears its side's record and ends. The counterattack's effect (`sub_80E362C`) hits
+every panel with any of `byte_80E36E4[side]` (the enemy's bodies) in that element (`byte_80E36EC`, damage plus bonus,
+`sub_80C53A6`) and spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel-bursts`: shared by seven callers,
+among them TimeBom's blast) over region 0x80. The lab's ElemTrap scenarios never spring the trap: the spring, the
+sparkles, the counterattack and the bursts are **unverified**.
+
+#### 3.6.10 TimeBom, Mine, Guardian (subtypes 10, 11, 14)
+
+- **TimeBom** (T4 0x27 `sub_80E31D8`, `objects/time-bom`; 31 ticks) sets the countdown bomb T3 0x4B (`sub_80CD8EC`,
+  `objects/countdown-bomb`) on the first panel ahead meeting `off_80E3280[side]` (a free enemy panel). The bomb
+  (variants `byte_80CD8AC`: 0 TimeBom1-3, HP 50; 1 TimeBom+, HP 200) rises, counts 3, 2, 1 (60, 60, 60, 30 ticks,
+  shown by hiding sprite parts), then hits whole-field region 0x82/0x81 (the enemy area of the side opposite its
+  panel's) and sets off bursts; broken first, it only puffs. Variants 2 to 7 (HP 3 to 10; `bursts_when_broken`,
+  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them. The lab's
+  scenarios end during the countdown: the blast, breaking, removal and absorption are **unverified**.
+- **Mine** (T4 0x29 `sub_80E342C`, `objects/mine`; 121 ticks) lays T3 0x4C (`sub_80CDD44`, `objects/land-mine`),
+  which shuffles the enemy's free panels (`byte_80CDF50`, 20 swaps), hops through them every 2 ticks (59 hops, SE
+  0x113), then hides armed (region 1, types 0x33/0x2A) until something touches it, its HP runs out, its panel stops
+  being solid or the battle ends; it blows up (T4#0 look 0x47, SE 0x70) the tick after. It has its own action table
+  and no reaction dispatcher. The lab verifies the hops; arming and blowing up are **unverified**.
+- **Guardian** (T4 0x52 `sub_80E6758`, `objects/guardian`; 30 ticks) places the statue T3 0x7D (`sub_80D4C84`,
+  `objects/guardian-statue`, HP 1, 6000 ticks, `sub_801B4D4`) on the free panel in front; stages place one with
+  actor-list entry type 9 (`sub_800751C`, Param1 1, the panel's side). Broken by one side's hits only
+  (`sub_80D4FF6` on its hit flags), it takes the other side's part: its own dimming T4 0x53 (`sub_80E680C`,
+  `objects/guardian-strike`, the telop of chip 0x175, started with `sub_800BF16`), whose effect sets the statue's
+  Param3; then a hit on whole-field region 0x85/0x84 (the enemy navi's panels) with sparks (`sub_801BD3C`, which the
+  game calls with the panel's Y and the element as its panel). The strike back is **unverified** (no lab scenario
+  breaks the statue).
+
 ---
 
 ## 4. Worked example: GunDelS3 (chip 0x11) in the machgun trace
