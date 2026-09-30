@@ -87,6 +87,19 @@ fn files_are_plain_toml_with_names_and_hex_ids() {
     assert!(collision.contains("side0 = 0x08410080"), "{collision}");
 }
 
+/// The loader fills the content's asset names from the pack's index.
+#[test]
+fn the_loader_names_the_assets_from_the_index() {
+    let dir = temp("index");
+    let c = content();
+    write(&dir, &c);
+    pack::write_files(&dir, &vec![bn6_content::names::index_file(&c.assets)]).unwrap();
+    let (loaded, report) = pack::load_battle(&dir).unwrap_or_else(|r| panic!("{r}"));
+    assert!(!report.has_errors(), "{report}");
+    assert_eq!(loaded.assets, c.assets);
+    assert!(loaded.assets.sounds.contains_key("test-tick"));
+}
+
 #[test]
 fn an_edit_comes_through() {
     let dir = temp("edit");
