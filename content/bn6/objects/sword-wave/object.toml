@@ -1,0 +1,7 @@
+# A sword wave (attack object #0x96, `sub_80D807C`) is a script. Its kinds are
+# the pack's data (the extracted object.toml's [[variant]]).
+
+[kind]
+pool = "attack"
+index = 0x96
+script = "sword_wave.luau"

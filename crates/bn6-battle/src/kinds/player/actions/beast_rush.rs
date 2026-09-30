@@ -164,8 +164,14 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
     }
     match b.objects.get(r).action {
         super::beast_claw::ACTION => 0x0C,
-        // sub_80EAF26
-        0x41 => panic!("the lock-on of action 0x41 (sub_80EAF26) is not implemented yet"),
+        // sub_80EAF26: the charged slash's by its variant, unless 0.
+        0x41 => {
+            let variant = ai(b, r).attack.variant;
+            let Some(&mode) = b.content.rules.lockon.slash_modes.get(variant as usize) else {
+                panic!("charged slash variant {variant:#x} reads past byte_80EB028 (sub_80EAF26)");
+            };
+            if mode != 0 { mode } else { b.content.chip(ai(b, r).attack.chip_id).lockon_mode }
+        }
         _ => b.content.chip(ai(b, r).attack.chip_id).lockon_mode,
     }
 }
@@ -189,6 +195,62 @@ fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> Option<P
     // not-found test reads flags a `mov` just set, so it always runs.)
     let x = found.map_or(0, |p| p.x);
     if can_stand(b, r, x, 2) { Some(PanelPos { x, y: 2 }) } else { found }
+}
+
+/// `ho_8026554` as its callers outside the rush see it: the panel it
+/// returns in r0 and r1 for the target (x, y) and lock-on `mode`. A
+/// target off the field gives the navi's own panel; a search that finds
+/// nothing gives column 0 and whatever row its last try left in r1.
+pub(crate) fn lockon_panel(b: &Battle, r: ObjectRef, x: u8, y: u8, mode: u8) -> (u8, u8) {
+    let o = b.objects.get(r);
+    if !(1..=6).contains(&x) || !(1..=3).contains(&y) || mode == 0 {
+        // sub_802661C
+        return (o.panel.x, o.panel.y);
+    }
+    let Some(search) = b.content.rules.lockon.search(mode) else {
+        panic!("lock-on mode {mode:#x} (jt_8026584) is not implemented yet");
+    };
+    let front = facing(o.alliance, o.flip);
+    // sub_80265D0: the target's column, then the shifts toward the navi.
+    let (tx, ty) = (x as i32, y as i32);
+    let mut found = (0, ty);
+    for shift in std::iter::once(0).chain(b.content.rules.lockon.column_shifts.iter().map(|&s| s as i32)) {
+        found = scan_registers(b, r, tx + front * shift, ty, tx, front, &search.offsets);
+        if found.0 != 0 {
+            break;
+        }
+    }
+    if search.prefers_middle_row && can_stand(b, r, found.0 as u8, 2) {
+        // sub_80265FE (its not-found test reads flags a `mov` just set).
+        found = (found.0, 2);
+    }
+    (found.0 as u8, found.1 as u8)
+}
+
+/// `sub_8026450` with its registers: the first panel of `offsets` from
+/// column `x` and row `y` that the navi can stand on, not past the
+/// target's column `tx`; else column 0 and the row register as the last
+/// try left it.
+fn scan_registers(b: &Battle, r: ObjectRef, x: i32, y: i32, tx: i32, front: i32, offsets: &[PanelOffset]) -> (i32, i32) {
+    let mut r1 = y;
+    for off in offsets {
+        let cx = off.dx as i32 * front + x;
+        if !(0..=6).contains(&cx) {
+            continue;
+        }
+        r1 = cx * front;
+        if r1 > tx * front {
+            continue;
+        }
+        r1 = off.dy as i32 + y;
+        if !(0..=3).contains(&r1) {
+            continue;
+        }
+        if can_stand(b, r, cx as u8, r1 as u8) {
+            return (cx, r1);
+        }
+    }
+    (0, r1)
 }
 
 /// `sub_80265D0`: the first panel of `offsets` next to the target that

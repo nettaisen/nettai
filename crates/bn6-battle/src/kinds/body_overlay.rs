@@ -72,6 +72,12 @@ pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<Object
     Some(r)
 }
 
+/// `sub_80C4526(overlay, 1)`: draw it a pixel in front whatever its
+/// owner's animation.
+pub fn set_forced_front(b: &mut Battle, r: ObjectRef) {
+    vars_mut(b, r).forced_front = true;
+}
+
 /// `sub_80C44C8`: remove the overlay at its next update.
 pub fn remove(b: &mut Battle, r: ObjectRef) {
     common::set_progress(b, r, common::Progress::DESTROY);
