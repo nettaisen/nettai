@@ -12,7 +12,7 @@ local slash = {}
 
 export type State = { ticks: number }
 
-local SPRITE = asset.sprite("bomb-slash")
+local SPRITE = asset.sprite("sword")
 local HIT_MOD = 3
 
 -- `sub_80C5FDE`: resolve last tick's hits; end with the battle, the timer

@@ -38,7 +38,7 @@ export type ProjectileShot = {
     row: number?,
 }
 
--- The state of VarSwrd's and NeoVari's actions (lib/vari_sword.luau).
+-- The state of VarSwrd's and NeoVari's actions (lib/swords/vari.luau).
 export type VariSwordState = {
     -- Ticks left to enter a sequence (AIAttackVars+0x12).
     countdown: number,
@@ -48,7 +48,7 @@ export type VariSwordState = {
     progress: { number },
 }
 
--- What differs between VarSwrd and NeoVari (lib/vari_sword.luau).
+-- What differs between VarSwrd and NeoVari (lib/swords/vari.luau).
 export type VariSwordSpec = {
     -- The sequences by direction flip (0, 1), each a list of joypad words
     -- ending in 0.
@@ -112,6 +112,43 @@ export type SeedVariant = {
     panel: PanelType,
     effect: Effect,
     sound: Sound,
+}
+
+-- A sword's hit (lib/swords): its region on the panel ahead, what it is and
+-- hits, its hit modifier, and the status and bug it inflicts (none by
+-- default).
+export type SwordHit = {
+    region: Region,
+    collision: { is: CollisionType, hits: CollisionType },
+    hit_mod: number,
+    status: number?,
+    bug: number?,
+    bug_arg: number?,
+}
+
+-- A sword's slash (lib/swords/slash, the original's action 0x13): the blade
+-- it holds, its hit and the slash drawn over the panel ahead (with a
+-- palette offset), its swing's sound; DblDream swings twice, CrosSwrd adds
+-- a single-panel hit, StepSwrd steps two panels ahead first.
+export type SlashSpec = {
+    blade: AttachmentLook,
+    hit: SwordHit,
+    effect: Effect,
+    effect_palette: number?,
+    sound: Sound,
+    swings: number?,
+    second_hit: SwordHit?,
+    step: boolean?,
+}
+
+-- A machine sword's strike (lib/swords/strike, the original's action 0x49):
+-- the blade it holds, which opposing navis it slashes where they stand
+-- (paralyzed ones, ones on a grass, ice or volcano panel, or either), and
+-- the slash's palette offset.
+export type StrikeSpec = {
+    blade: AttachmentLook,
+    finds: "paralyzed" | "on_element_panels" | "either",
+    effect_palette: number,
 }
 
 -- A FlashBomb (chips/flshbom/bomb): ticks set down, HP, the flash's status
