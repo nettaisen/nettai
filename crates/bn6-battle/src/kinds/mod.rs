@@ -5,6 +5,7 @@
 
 pub mod absorbed_obstacle;
 pub mod afterimage;
+pub mod beast_over_burst;
 pub mod body_overlay;
 pub mod charge_glow;
 pub mod common;
@@ -13,7 +14,9 @@ pub mod effect;
 pub mod elmnt_man;
 pub mod eruption;
 pub mod form_overlay;
+pub mod full_synchro_aura;
 pub mod hitbox;
+pub mod idle_overlay;
 pub mod intro;
 pub mod invisible;
 pub mod lockon_marker;
@@ -56,6 +59,9 @@ pub enum Vars {
     ElmntMan(elmnt_man::Vars),
     Meteor(meteor::Vars),
     TrapChip(trap_chip::Vars),
+    IdleOverlay(idle_overlay::Vars),
+    FullSynchroAura(full_synchro_aura::Vars),
+    BeastOverBurst(beast_over_burst::Vars),
     /// A content kind's declared state (see `content`).
     Content(bn6_content_api::ContentState),
 }
@@ -73,6 +79,9 @@ impl Vars {
             (Pool::Effect, palette_flash::INDEX) => Vars::PaletteFlash(Default::default()),
             (Pool::Actor, cross_merge::INDEX) => Vars::CrossMerge(Default::default()),
             (Pool::Actor, body_overlay::INDEX) => Vars::BodyOverlay(Default::default()),
+            (Pool::Actor, idle_overlay::INDEX) => Vars::IdleOverlay(Default::default()),
+            (Pool::Actor, full_synchro_aura::INDEX) => Vars::FullSynchroAura(Default::default()),
+            (Pool::Effect, beast_over_burst::INDEX) => Vars::BeastOverBurst(Default::default()),
             (Pool::Effect, invisible::INDEX) => Vars::Invisible(Default::default()),
             (Pool::Actor, 0) => Vars::None,
             _ => Vars::None,
@@ -102,6 +111,9 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, palette_flash::INDEX) => palette_flash::update(b, r),
         (Pool::Actor, cross_merge::INDEX) => cross_merge::update(b, r),
         (Pool::Actor, body_overlay::INDEX) => body_overlay::update(b, r),
+        (Pool::Actor, idle_overlay::INDEX) => idle_overlay::update(b, r),
+        (Pool::Actor, full_synchro_aura::INDEX) => full_synchro_aura::update(b, r),
+        (Pool::Effect, beast_over_burst::INDEX) => beast_over_burst::update(b, r),
         (Pool::Effect, invisible::INDEX) => invisible::update(b, r),
         (Pool::Effect, navi_chip::INDEX) => navi_chip::update(b, r),
         (Pool::Actor, navi_warp::INDEX) => navi_warp::update(b, r),
