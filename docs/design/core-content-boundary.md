@@ -16,6 +16,15 @@ content pack, loaded at run time into `Content` (docs/design/content-pack.md). T
 and no embedded BN6 pack; the engine has no default content, and BN6's pack comes only from the user's ROM. Where
 the inventory below says "generated", read: then, generated Rust tables; now, the pack's battle data.
 
+Step 10 has begun, in its own form: content is Luau, the only runtime, in the content pack beside its data and
+registered by it (docs/design/scripting.md), and a script replaces its Rust version outright, the golden traces
+being the reference. The ruleset stays Rust (decision 1, as recommended). The first content moved: GunDelSol,
+AreaGrab and PanelGrab, EraseMan, MegaMan's buster weapons with the blank shot, and DustCross's charged shot, with
+the object kinds they spawn. docs/design/content-migration.md is the plan for the rest, and its checklist supersedes
+§6's order where they differ. The API is the `CoreApi` trait (§2's `Ctx`, with the dependency inverted), and a
+kind's register-garbage position is declared in its `[kind]` table (`scratch_position`, `scratch_z_fraction`;
+decision 4 kept the garbage that can be reproduced).
+
 Routine names are the original's (`sub_80EDAE0`). "Tick" is one call of `Battle::tick`.
 
 ## 0. Summary

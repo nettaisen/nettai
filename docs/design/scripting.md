@@ -1,11 +1,17 @@
-# Scripting battle content: a prototype
+# Scripting battle content
 
-The request was to make chips, attacks, actions and navis content that sits on a core that knows nothing about
-them, instead of code compiled into the engine. docs/design/core-content-boundary.md (the boundary audit) draws
-the line between core, ruleset and content; docs/design/rollback.md covers rollback netplay. This document answers
-the runtime question: what content is written in, and how it stays frame-exact, deterministic and cheap to
-snapshot under rollback. It answers by building one vertical slice, GunDelSol, twice on one content API, and
-measuring it.
+Chips, weapons, navi-chip navis and the object kinds they spawn are content: Luau scripts in the content pack,
+next to the data they implement, running on a typed content API. The engine is a content-independent core (object
+pools, collision, the damage pipeline, statuses, battle flow, rollback) plus the BN6 ruleset's frameworks in Rust
+(the navi framework, movement, the custom screen, and the services content calls: dimming, form changes, the
+navi-chip controller, the Beast rush wrapper, the one-tick hitbox, effects and sparks, obstacles, the intro).
+docs/design/core-content-boundary.md draws that line; docs/design/rollback.md covers rollback netplay;
+docs/design/content-pack.md the pack's files; docs/design/content-migration.md how to move the rest of the content.
+
+This document is the runtime's design: what content is written in, how it registers and loads, the API it sees,
+and how it stays frame-exact, deterministic and cheap to snapshot under rollback. It began as a prototype that
+built GunDelSol twice (Luau and Rust against the same API) to choose a runtime; §3 keeps the comparison. Luau was
+chosen, and it is now the only runtime.
 
 "Tick" is one call of `Battle::tick`. Routine names are the original's. Measurements were taken on an Apple M1 Max
 in release builds, on a machine shared with other work, so single runs vary by up to 2x; figures are the best of
@@ -13,167 +19,182 @@ several runs.
 
 ## 0. Summary
 
-**Recommendation: Luau, through a narrow typed content API, with stateless scripts over engine-owned state.**
+- **Luau is the only runtime**, through a narrow typed API (`CoreApi`), with stateless scripts over engine-owned
+  state. There is no build feature for it and no Rust version of anything a script implements.
+- **Scripts live in the pack** beside their data (`objects/grab-shot/grab_shot.luau`, `chips/00f-gundels1/
+  chip.luau`, `navis/00-megaman/weapons/02-blank-shot/blank_shot.luau`, `lib/buster.luau`). The data registers
+  them: an object folder's `[kind]`, a chip's `script`, a weapon's `weapon.toml`. The engine loads them from the
+  `Content` it runs on (`Content::scripts`); nothing is compiled in and nothing in the engine names a script. The
+  content hash covers them. BN6's scripts are this repository's source overlay (content/bn6), which `bn6-extract
+  content` merges into the pack.
+- **Fidelity.** With GunDelSol, AreaGrab and PanelGrab, EraseMan, MegaMan's buster weapons, the blank shot and
+  DustCross's charged shot as scripts, every golden trace matches as far as it did with the Rust: machgun 1074/1074
+  and 1331/1331, soundmod 4513/6284/2566, also under rollback at every tested latency; the sound calls match.
+- **Rollback.** Content declares its state; the engine stores it inside `Battle` (64 bytes per object or action),
+  so snapshots and the digest cover it unchanged. The VM holds no battle state: rejected at load (writes to
+  globals and module locals), frozen at run time (module tables and data).
+- **Cost.** A 10-frame rollback every rendered frame costs 56 to 110 µs per frame on the golden-trace rounds
+  (0.3 to 0.7% of a 16.7 ms frame), against 51 to 56 µs with everything in Rust (§7.3).
+- **Typing.** `core.d.luau` types the whole API for luau-lsp and for an in-process type check
+  (`bn6-content-check`) that runs in `cargo test`.
 
-- **Fidelity.** The GunDelSol slice runs as Luau and matches every golden trace the built-in Rust matches:
-  machgun rounds 1 and 2 complete (1074/1074, 1331/1331; round 2 runs GunDelSol inside Beast Out's rush), soundmod
-  4513/6284/2566. Soundmod also runs the Luau attachment and hitbox kinds, spawned by engine code (the buster's
-  arm, other attacks' hitboxes): sabotaging either script breaks it. The same slice in Rust against the same API
-  matches too.
-- **Determinism.** Scripts compute with Luau numbers (doubles, exact to 2^53); the engine applies the game's
-  integer rules when a value is stored (wrap to the field's width, reject fractions). Nondeterministic and stateful
-  libraries are removed, from the environment and from the compiler's builtin folding. An in-repo test shows the
-  built-in kinds, the Rust content and the Luau content (interpreted and native) give the same engine state and
-  sound cues on every tick of a 900-tick duel.
-- **Rollback.** Content declares its state schema; the engine stores the values as typed fields inside `Battle`,
-  so `save_state`/`load_state` and `Battle::digest` cover them unchanged. The Luau VM holds no battle state and is
-  never snapshotted. This is enforced at load (a bytecode check rejects writes to globals and module-level
-  locals) and at run time (everything a module returns or captures is frozen). Under bn6-netplay the scripted
-  slice stays in sync: the golden traces through two rollback peers at latencies of 0 to 10 frames match on
-  every confirmed frame, as do bn6-netplay's synthetic netbattles (thousands of rollbacks each).
-- **Cost.** The worst case of rollback, a 10-frame rollback on every rendered frame, measured as
-  `soundmod_rollback_cost` does: machgun round 1, the GunDelSol round, 151 µs per frame with Luau against 54 µs
-  with the built-in Rust (0.9% of a 16.7 ms frame); soundmod round 1, 56 µs against 55 µs. Luau costs about 25 to
-  35 µs a tick while GunDelSols fire, against about 1 µs for Rust. Nearly all of it is the generic mlua binding (80
-  to 130 ns per API call); a raw-FFI binding would cut it an estimated 3 to 5 times.
-- **Approachability.** Scripts are short and read like the Rust (§4). `core.d.luau` types the whole API for
-  luau-lsp and for an in-process type check (`bn6-content-check`) that runs in `cargo test`.
-
-The Rust-content path (the same API, compiled in) suits the ruleset and hot paths; Luau suits the long tail of
-chips, navis and effects. Both are shown, and they mix kind by kind.
-
-## 1. What was built
+## 1. Where it lives
 
 | Where | What |
 |---|---|
-| crates/bn6-content-api | The contract. `CoreApi`: what content can see and do (objects, the attack in progress, sprites, collision, sounds). `ContentHost`: what a runtime provides (a manifest of kinds and actions, update functions). Typed content state: `Schema`, `ContentState`, `FieldType`. The shared value types (`ObjectRef`, `Vec3`, `PanelPos`, `Pool`, `SpriteId`), which the engine re-exports. |
-| crates/bn6-battle/src/behavior | The engine side: `impl CoreApi for Battle`, dispatch of object kinds and actions to a content host (`Behaviors`), the behaviors a build runs by default (features `luau`, `luau-jit`, `rust-content`), and the scripts' data built from the battle's `Content` (`luau_pack`, `luau_data`). |
-| crates/bn6-battle/src/scenario.rs | A synthetic duel on the engine's hand-authored test content (`content::testing`: two navis whose folders hold a made-up level-3 GunDelSol chip) recorded as an input tape, for self-contained tests and benchmarks (feature `test-content` outside the crate's own tests). |
-| crates/bn6-luau | The Luau runtime: the VM and freezing (`sandbox`), the bytecode check (`verify`), the API binding (`bind`), module loading, the pack's content hash. |
-| crates/bn6-content-rust | The slice in Rust against the content API: the comparison point. Its data (`data::Data`) comes from the battle's `Content` (`Behaviors::rust(&content)`). |
-| crates/bn6-content-check | Type-checks a Luau pack against its definitions with Luau's analysis, in process (library, binary and the test for content/bn6). |
-| content/bn6 | The Luau pack: `pack.luau` (manifest), `chips/gun_del_sol.luau`, `objects/{attachment,sun_beam,hitbox}.luau`, `lib/slot.luau`, `data/pack.luau` (a type stub: at load the engine replaces the module with one built from the battle's `Content`), `core.d.luau` (the API) and `types.d.luau` (types shared by the pack's modules). |
-| crates/bn6-netplay | Features `luau` and `rust-content` run its rollback tests on the scripted slice; `examples/rollback_cost` measures a trace round as `soundmod_rollback_cost` does. |
-| crates/bn6-battle/examples | `content_bench` (costs per runtime), `luau_ops` (cost per API operation). |
-
-The slice is the whole of GunDelSol: action 0x37 (`sub_80EDAE0`: phases, timers, animation, counter window, the
-reactive abort), the attachment T1#5 (`sub_80B8CD8`, the gun), the sun beam T4#0x48 (`sub_80E5C2C`), the one-tick
-hitbox T3#3 (`object_spawnCollisionRegion`) and the sounds 0xF8 and 0xF9. The engine's own code spawns two of
-those kinds too (the buster's arm is an attachment; the claw, meteors, grab shots and dust balls spawn hitboxes).
-When content implements a kind, the engine's spawn helpers create it through the content and pass their arguments
-as its state by field name (`behavior::set_state_field`), so there is one implementation per kind.
+| crates/bn6-content-api | The contract. `CoreApi`: what content can see and do. `ContentHost`: what a runtime provides (a manifest; update functions for kinds and actions; hook calls). `Registrations` (what a pack registers) and `Manifest` (what loaded). Typed content state: `Schema`, `ContentState`, `FieldType`. `Data` (the pack's data as the scripts see it). The shared value types (`ObjectRef`, `Vec3`, `PanelPos`, `Pool`, `SpriteId`), which the engine re-exports. |
+| crates/bn6-battle/src/behavior | The engine side: `impl CoreApi for Battle` (`core_api`), dispatch of object kinds, actions and hooks to the runtime (`Behaviors`), and the scripts' `data` built from the battle's `Content` (`data`). |
+| crates/bn6-battle/src/content/scripts.rs | `Scripts` (the pack's modules), `ObjectKind`, `WeaponData`, and `Content::registrations`: what the data registers. |
+| crates/bn6-luau | The runtime: the VM and freezing (`sandbox`), the bytecode check (`verify`), the API binding (`bind`), module loading. |
+| crates/bn6-content | Reads and writes packs, scripts included; `overlay` reads a source overlay and merges it into extracted content. |
+| crates/bn6-content-check | Type-checks a pack's (or overlay's) Luau against its definitions with Luau's analysis, in process. |
+| content/bn6 | BN6's scripts: the source overlay, laid out like a pack (`chips/`, `objects/`, `navis/00-megaman/weapons/`, `lib/`), with `core.d.luau` (the API) and `types.d.luau` (types the modules share). |
+| crates/bn6-battle/src/content/testing.rs | The hand-written test content; its scripts are content/bn6's, read from the repository (§5.4). |
+| crates/bn6-netplay | Rollback tests on the test content; `examples/rollback_cost` measures a golden-trace round. |
+| crates/bn6-battle/examples | `content_bench` (duel and snapshot costs), `luau_ops` (cost per API operation). |
 
 Running it:
 
 ```sh
-cargo test -p bn6-battle --features luau,rust-content        # the runtimes agree; Luau's rules
-cargo test -p bn6-netplay --features luau                    # rollback on the scripted slice
-cargo test -p bn6-luau -p bn6-content-check                  # bytecode check; the pack type-checks
-cargo run --release -p bn6-battle --example content_bench --features luau-jit,rust-content,test-content
-cargo run --release -p bn6-netplay --example rollback_cost --features trace,luau -- <trace.jsonl> <pack> 1
+cargo test --workspace                                         # engine, runtime, rollback, the type check
+cargo run -p bn6-content-check -- content/bn6                  # type-check the overlay
+cargo run --release -p bn6-extract -- content <rom> <pack>     # a BN6 pack, with the overlay's scripts
+cargo run --release -p bn6-netplay --example rollback_cost --features trace -- <trace.jsonl> <pack> 1
+cargo run --release -p bn6-battle --example luau_ops --features test-content
 ```
 
-The golden-trace suite outside this repository runs against the branch with `--features bn6-battle/luau` (or
-`rust-content`).
+`luau-jit` (optional) enables Luau's native code generation where it is supported (§3.1).
 
 ## 2. The content API
 
 ### 2.1 Shape
 
-`CoreApi` is a trait the engine implements and runtimes call through `&mut dyn CoreApi`. The boundary audit
-proposes a concrete `Ctx<'a>` struct; a trait is the same surface with the dependency inverted. The runtimes live
-in their own crates, which can't depend on the engine because the engine depends on them (to pick its default
-content), so the contract has to sit below both. It also lets tests drive content against a fake engine.
+`CoreApi` is a trait the engine implements and runtimes call through `&mut dyn CoreApi`. The runtime lives in its
+own crate, which can't depend on the engine because the engine depends on it, so the contract sits below both.
 
-Conventions, all shared with the audit:
+Conventions:
 
 - **Handles are raw slots.** `ObjectRef { pool, slot }`, not generational. A handle can outlive its object and
   then names the slot's next occupant, as the game's pointers do.
-- **Effects are immediate.** Every call changes engine state at once. An object spawned by content runs later
-  in the same tick, right after its spawner, as the engine's own spawns do (the traces check this: the hitbox
-  GunDelSol spawns resolves in the same tick).
-- **Fields are named and typed.** Engine fields are enums with a name, a type and a writability
-  (`ObjectField::Anim` is `anim`, `u8`, writable). Content-declared fields go through a `Schema`. A value crosses
-  the API as a `Value` (`Nil`, `Bool`, `Int(i64)`, `Object`, `Vec3`) and is converted by the field's type on store.
-  Integers wrap to the width, as the game's `strb`/`strh`/`str` do; anything else of the wrong kind is an error.
+- **Effects are immediate.** Every call changes engine state at once. An object spawned by content runs later in
+  the same tick, right after its spawner, as the engine's own spawns do; a hit resolves when the later of two
+  objects removes its collision. Nothing is batched.
+- **Fields are named and typed.** Engine fields are enums with a name, a type and a writability. Content-declared
+  fields go through a `Schema`. A value crosses the API as a `Value` (`Nil`, `Bool`, `Int(i64)`, `Object`, `Vec3`)
+  and is converted by the field's type on store: integers wrap to the width, as the game's `strb`/`strh`/`str` do;
+  anything else of the wrong kind is an error.
+- **Names, not numbers.** Status flags, status timers, navi requests and state bits, buttons, panel types,
+  lifecycle states and shadows are names (`"using_action"`, `"paralyze"`, `"a"`, `"cracked"`, `"destroy"`); the
+  engine's bit values and offsets stay in the engine. The original's numbers that are the game's own data (sound
+  ids, animation numbers, collision types, hit regions, panel flag words it matches as whole words) are the
+  scripts' named constants.
 - **No floats anywhere.** `Vec3` is three `i32` in 16.16 fixed point with wrapping `+` and `-`.
+- **Faithful stores.** Where the game's store width matters, the API has both: `me:set_lifecycle("destroy")` is
+  the word store (state, action, phase and phase-init: the game's `str CUR_STATE_DESTROY`), `me.lifecycle =
+  "destroy"` the byte store that keeps the action and phase (`strb`). The sprite-stepping routines are distinct
+  calls (`update_sprite`, `update_sprite_while_dimmed`, `update_sprite_while_paused`, `step_sprite`), each gated
+  as its routine is.
 
-What the slice needed (the list of what content touches): spawn, free, destroy, lifecycle, params; the object
-header fields (panel, side, flip, animation, element, timers, damage, stamina, position, related objects, flags);
-facing; `set_animation`, `update_sprite`, attach points; the actor's overlay slot, the attack's step, step-init,
-variant and chip; status flags; the counter window, the reactive abort, `exit_attack`; sprite load, animation,
-stepping and look; collision create, set-up, present, remove, free and hit spark; navi stats (`sun`, form); panel
-validity and centers; sound cues. Nothing names GunDelSol.
+### 2.2 What it covers
 
-The audit's API is larger (panels and their types, RNG draws, input, the chip hand, damage words, dimming,
-forms). Those extend the same pattern and weren't needed by this slice.
+core.d.luau is the reference; in outline:
 
-### 2.2 Content state: schemas the engine owns
+- **Objects**: spawn (by pool and index, or a content kind by name), free, `destroy`
+  (`object_genericDestroy`), lifecycle, action and phase, params; the header (panel, future panel, side, flip,
+  facing, animation, element, timers, HP, damage word, position, velocity, related objects, flags); coordinates
+  from panels and back; panel reservations; step checks; status flags and timers; collision (create, set-up,
+  present, remove, the hit spark, the region, status base, hit effect, results).
+- **Sprites**: load, animation, stepping, look (palette, flip, shadow, white, shader, alpha, mosaic, priority,
+  hidden parts), frame flags, attach points.
+- **Navis**: the attack in progress (step, step-init, variant, chip, element, damage, hit parameter, charged,
+  lockout, bonus, parameters, marker), requests and state bits, the buttons (held, pressed, released, and the
+  record kept while dimmed), the counter window, the reactive abort, `exit_attack`/`end_attack`/`set_attack`,
+  the held direction, step targets and `start_move`, the buster's damage, absorbed obstacles, the actor data
+  (type, AI index, overlay, links, charge, the weapon routines).
+- **The battle** (`battle`): dimmed, paused, over, time up, mode, sound cues, the side's navi stats and emotion,
+  players and alive actors, the simulation RNG, the chip hand, the defensive-chip record, the custom gauge, the
+  primitives content spawns (`effect`, `hitbox`, `spark`).
+- **The field** (`field`): validity, centers, flags words and checks, panels and columns, alliance and column
+  timers, types, cracking, solidity, highlights.
+- **Services** the ruleset provides: `dimming` (the steps of a dimming chip's controller: begin, dim, the telop and
+  the wait for a cut-in, AntiNavi, undim, finish, hiding and showing a navi chip's user) and `navi_chip` (a navi
+  chip's navi reports it is done).
+- **`int`**: width wrappers, 32-bit shifts, truncating division, wrapping product. **`data`**: the pack (§5.2).
 
-Each object kind and action declares its state as named, typed fields. In Luau:
+Nothing in the API names a chip or a kind. What it lacks today is added as content needs it
+(content-migration.md §3): in `CoreApi` and the engine's `core_api.rs`, in the binding (`bind.rs`), and typed and
+documented in core.d.luau.
+
+### 2.3 Registration and dispatch
+
+What a pack registers (content-pack.md §1.3) becomes `Registrations`: object kinds by (pool, index), navi actions
+by number, and hooks. A module exports what its registration needs:
+
+| Registered by | What | The module exports |
+|---|---|---|
+| `objects/KIND/object.toml` `[kind]` | an object kind (pool, index) | `state` (optional), `update(me)` |
+| a chip's `script`, action other than 0x15 and 0x1B | the chip's action | `state`, `update(me, s)` |
+| a chip's `script`, action 0x15 | `Hook::DimmingChip(subtype)`: the dimming controller (`off_802CCB4[subtype]`) | `dimming_chip(user, spec) -> Object?` |
+| a chip's `script`, action 0x1B | `Hook::NaviChip(subtype)`: the chip's navi (`off_802CD5C[subtype]`) | `navi_chip(user, controller, spec) -> Object?` |
+| a weapon's `weapon.toml` | `Hook::Weapon(id)`: the routine (`off_80117D4[id]`), and its `action` if any | `setup(navi) -> action`, and `state`/`update` for the action |
+
+`Content::registrations` builds the table from the data; `Registrations::validate` refuses a slot, action or hook
+claimed by two modules (chips sharing an action or a subtype must name the same module); loading refuses a module
+without the function. `behavior::Behaviors` holds the runtime and lookup tables (objects by pool and index,
+actions and each hook table by number). `kinds::update`, `actions::dispatch` and the ruleset's hook sites (the
+weapon routine, the dimming chip action, the navi chip controller) consult them first; what the pack doesn't
+register runs as the engine's own Rust. A kind keeps its original (pool, index) as its identity, so traces and the
+frontend see the same objects.
+
+Rust that needs a content kind (no engine code today; the benchmarks do) spawns it by name with
+`behavior::spawn_kind` and sets its state by field name (`set_state_field`, `set_state_variant`), so a kind has one
+implementation.
+
+### 2.4 Content state: schemas the engine owns
+
+Each object kind and action declares its state as named, typed fields:
 
 ```luau
-state = { slot = { "overlay", "related" }, offset_x = "i32", offset_z = "i32", lift = "i8" }
+state = { slot = slot.TYPE, offset_x = "i32", offset_z = "i32", lift = "i8" }
 ```
 
-and in Rust:
+Field types are `bool`, `u8`...`i32`, `object`, `vec3`, an enum (a list of names) and fixed arrays (`"u8[18]"`).
+The engine stores a `ContentState`: the schema's id and 64 bytes the fields are packed into in name order (the
+layout is private to the store; fields have names and types, never offsets). It is a `Copy` value kept in
+`kinds::Vars::Content` for objects and `ActionVars::Content` for actions, so `Battle: Clone` is still the whole
+snapshot and `#[derive(Hash)]` still covers it for the digest. A script sees it as `me.state` (objects) or its
+update's second argument (actions), and casts it to its declared type (`local s = me.state :: State`).
 
-```rust
-content_state! {
-    pub struct State { slot: Slot, offset_x: i32, offset_z: i32, lift: i8 }
-}
-```
-
-The engine stores a `ContentState`: up to eight `FieldValue`s (`Bool`, `U8`...`I32`, `Object`, `Vec3`, an enum
-index) and the schema's id. It is a `Copy` value of 136 bytes kept in `kinds::Vars::Content` for objects and in
-`ActionVars::Content` for actions, where the built-in kinds keep their typed structs. So `Battle: Clone` is still
-the whole snapshot and `#[derive(Hash)]` still covers it for the digest. The typed-state rule carries over: fields
-have names and types, never offsets (they are stored in name order, which is private to the store).
-
-The boundary audit's hard cases hold:
+Two properties of the game carry over:
 
 - **The attack scratch outlives the action.** An action's state stays in the actor's attack state after the
   action ends; the next action with the same schema continues from it, a different one starts from zero. Beast
   Out's rush wraps the scripted GunDelSol in machgun round 2 and the trace matches.
 - **Content reaches into other objects.** GunDelSol steps its gun's animation (`gun.anim += 1`); the attachment
-  copies its owner's sprite look. Both are plain field access on another handle.
+  copies its owner's sprite look; EraseMan's slash reads its navi's action. All are plain field access on another
+  handle.
 
-### 2.3 Dispatch
+### 2.5 Register garbage
 
-`behavior::Behaviors` holds the runtime and two lookup tables: object kinds by (pool, index) and actions by number.
-`kinds::update` and `actions::dispatch` consult them first; unclaimed slots fall through to the engine's kinds,
-so content can take over one kind at a time. A kind keeps its original (pool, index) as its identity, so traces
-and the frontend see the same objects. `Battle::digest` leaves the behaviors handle out (it is code); the
-content's state is hashed with the objects and actors that hold it.
+Some objects spawn with their spawner's registers as their position, which their init overwrites or partly keeps
+(a Z whose fraction survives). The port spawns them with what the registers held where that is knowable and
+observable (EraseMan's marks at Z 1), and otherwise declares it: `scratch_position = true` or `scratch_z_fraction =
+true` in the kind's `[kind]`, which the trace comparison reads to skip the garbage.
 
-The handle (`Battle::behaviors`) is an `Rc`, because mlua's `Lua` isn't `Send`. It sits beside the battle's data,
-`Battle::content` (the loaded content pack, an `Arc<Content>`); §9.4 describes how the two fit together.
-
-## 3. Candidates
-
-| | Luau (mlua) | Rust content | WASM (not built) | Rhai (not built) | Data timelines (not built) |
-|---|---|---|---|---|---|
-| Fidelity | All traces match | All traces match | Would match (same API) | Would match | Only with code hooks |
-| Integers | Doubles, exact to 2^53; wrap on store | Native | Native i32/i64 | i64, checked | n/a |
-| Snapshot | VM not included; checked stateless | Nothing to snapshot | Linear memory, or stateless | Stateless by design (no captures) | Nothing to snapshot |
-| Cost per active object-tick | ~4.5 µs | ~0.1 µs | ~0.3 µs est. (wasmtime), ~2 µs (wasmi) | ~20 µs est. | ~0.1 µs |
-| Sandbox | Designed for it (Roblox) | None (trusted code) | Strongest | Good | Total |
-| Hot reload | Yes | No (rebuild) | Yes | Yes | Yes |
-| Authoring | Small, typed, familiar; luau-lsp | Rust toolchain | Rust toolchain plus wasm | Unfamiliar, weak tooling | Easy for simple chips only |
+## 3. The runtime
 
 ### 3.1 Luau
 
 Luau is Roblox's Lua dialect: sandboxing built in, a gradual type system with an LSP, a fast interpreter and native
 code generation. It is embedded through `mlua` (0.12, feature `luau`, Luau 0.736).
 
-**Numbers.** Luau numbers are IEEE doubles; there is no integer subtype (this Luau has an experimental 64-bit
-`integer` type behind feature flags, library calls only; not used). Doubles are exact for integers up to 2^53, far
-beyond the engine's 32-bit values, and `+ - *` and `//` on such integers are exact on every IEEE machine. So
+**Numbers.** Luau numbers are IEEE doubles; there is no integer subtype. Doubles are exact for integers up to 2^53,
+far beyond the engine's 32-bit values, and `+ - *` and `//` on such integers are exact on every IEEE machine. So
 scripts compute with plain numbers and the engine applies the game's rules at the boundary:
 
 - every number entering the engine must be an integer: `s.timer = 13 / 2` fails with "6.5 is not an integer";
-- a store wraps to the field's width: `s.timer = t` with `t = -1` stores 0xFFFF into a `u16`, which is the Rust
-  version's `t as u16`, and the script keeps testing its local `t < 0`;
+- a store wraps to the field's width: `s.timer = t` with `t = -1` stores 0xFFFF into a `u16`, and the script keeps
+  testing its local `t < 0`;
 - `Vec3` is a Rust value (three `i32`) with wrapping `+`/`-`, so fixed-point positions can't drift;
 - `int` covers what plain arithmetic can't: `tdiv`/`tmod` (truncating, the ARM's), `asr`/`shl`/`lsr` (32-bit
   shifts), `mul32`, and width wrappers (`int.i32(x)`); `bit32` gives bitwise operations (u32 results).
@@ -185,19 +206,18 @@ The rule a modder learns is one line: use `//` or `int`, never `/`.
 - `math` keeps only exact functions (`abs`, `ceil`, `floor`, `max`, `min`, `clamp`, `sign`, `round`). No `random`
   (the RNG is the engine's), no `noise`, no transcendental functions (C libraries disagree in the last bits).
 - Luau's compiler folds calls to known builtins with constant arguments and, under `safeenv`, calls builtins
-  directly (`FASTCALL`) without looking them up. So removing `math.sin` from the environment does not stop
-  `math.sin(1)`: the first version of this sandbox let it through, and a test caught it. The removed functions
-  (and `setmetatable`, so calls reach the guarded version) are now also disabled builtins for the compiler.
-- No `os`, `io`, `debug`, `coroutine` (a suspended coroutine is hidden state), `buffer` (mutable memory), `utf8`,
-  `vector`; no `collectgarbage`/`gcinfo` (they observe the GC), `getfenv`/`setfenv`, `loadstring`, `newproxy`.
+  directly (`FASTCALL`). Removing `math.sin` from the environment doesn't stop `math.sin(1)`, so the removed
+  functions (and `setmetatable`, so calls reach the guarded version) are also disabled builtins for the compiler.
+- No `os`, `io`, `debug`, `coroutine` (a suspended coroutine is hidden state), `buffer`, `utf8`, `vector`; no
+  `collectgarbage`/`gcinfo`, `getfenv`/`setfenv`, `loadstring`, `newproxy`.
 - Weak tables (`__mode`) are refused: their contents depend on when the GC ran.
-- Tables keyed by strings iterate deterministically (Luau's string hash is unseeded), but tables keyed by handles
-  or tables iterate in address order. The API hands out no collections, so this only matters for tables a script
-  builds itself; content should iterate arrays, and a lint is the remaining guard.
-- Runaway scripts stop on a budget of interrupt checks (calls, returns, loop back-edges): a count rather than a
-  clock, so every machine stops at the same point. Hitting it is a content error.
-- Native code (`luau-jit`) builds and runs here (aarch64) and gives bit-identical battles. It doesn't pay off for
-  this content (§7), so the interpreter is the default.
+- Tables keyed by strings iterate deterministically (Luau's string hash is unseeded); tables keyed by handles or
+  tables iterate in address order. The API hands out no such collections, so this only matters for tables a
+  script builds itself: iterate arrays.
+- Runaway scripts stop on a budget of interrupt checks (calls, returns, loop back-edges): a count, not a clock, so
+  every machine stops at the same point. Hitting it is a content error.
+- Native code (`luau-jit`) gives bit-identical battles; it doesn't pay off for this content (§7), so the
+  interpreter is the default.
 
 **Statelessness, enforced.** A script function could keep state in three places, and each is closed:
 
@@ -209,441 +229,257 @@ The rule a modder learns is one line: use `//` or `int`, never `/`.
    Luau bytecode as `lvmload.cpp` does and fails closed on anything it doesn't understand.
 3. *Tables reachable from a module* (`local seen = {}`, then `seen[1] = x`). Everything a module returns or its
    functions capture is deep-frozen after it loads, so the write fails at run time with "attempt to modify a
-   readonly table". Data tables are frozen the same way.
+   readonly table". The `data` tables are frozen the same way.
 
-`require` works only while modules load, so dependencies are static. Between calls the VM holds only frozen code
-and data, and nothing in it can differ between machines or between a run and its rollback. The tests
-(`behavior::tests::luau`) show each rule fires: module-local counters and global writes are rejected at load;
-writes to module tables, data tables, captured tables and `math` fail; `math.random`, `math.sin`, `os.time`,
-`collectgarbage`, `coroutine` and `buffer` are absent; weak tables are refused; fractions can't enter state;
-runaway loops stop. They also show the VM carries nothing: a battle moved to a fresh VM halfway continues
-identically; a second battle interleaved on the same VM changes nothing, even when 593 of its updates panic inside
-a Luau call; a full GC after every call changes nothing. bn6-netplay's `state_outside_the_snapshot_is_caught` shows
-what a leak would do (the peers diverge within a few hundred frames); the load-time rules are what keep scripts
-from leaking.
+`require` works only while modules load (paths relative to the requiring file), so dependencies are static.
+Between calls the VM holds only frozen code and data, and nothing in it can differ between machines or between a
+run and its rollback. The tests (`behavior::tests`) show each rule fires, and that the VM carries nothing: a battle
+moved to a fresh VM halfway continues identically; a second battle interleaved on the same VM changes nothing,
+even when its updates panic inside a Luau call; a full GC after every call changes nothing. bn6-netplay's
+`state_outside_the_snapshot_is_caught` shows what a leak would do (the peers diverge within a few hundred frames).
 
-**Typing.** `content/bn6/core.d.luau` declares the API (`Object`, `Sprite`, `Collision`, `Vec3`, `battle`, `int`,
-string-literal types for pools, lifecycle states, shadows and status flags); `types.d.luau` declares the types the
-pack's modules share. Scripts are `--!strict` and declare their state types (`export type State = { timer: number
-}`). `bn6-content-check` type-checks every module with Luau's own analysis (the `luau-analyze` crate, new solver,
-in process) and its test also checks that API misuse (a misspelled field, a lifecycle state that doesn't exist,
-`Vec3 + number`, an unknown pool) is a type error. An editor with luau-lsp and both definition files gets
-completion and the same errors, with `require` resolved across modules.
+**Typing.** `content/bn6/core.d.luau` declares the API; `types.d.luau` the types the pack's modules share. Scripts
+are `--!strict` and declare their state types (`export type State = { timer: number }`). `bn6-content-check`
+type-checks every module with Luau's own analysis (the `luau-analyze` crate, new solver, in process), and its test
+also checks that API misuse (a misspelled field, a lifecycle state or status flag or button that doesn't exist,
+`Vec3 + number`, an unknown pool or panel type, a data field that isn't there) is a type error. An editor with
+luau-lsp and both definition files gets completion and the same errors, with `require` resolved across modules.
 
 The checker bundles its own Luau (0.710), whose C++ symbols collide with mlua's (0.736), so it lives in its own
-crate and must never share a binary with bn6-luau. (A first version linked both into one test binary; the checker
-hung, running against the other copy's code.)
+crate and must never share a binary with bn6-luau.
 
-The state schema (`state = { timer = "u16" }`) and the Luau type (`State = { timer: number }`) are written twice.
-A generator could emit one from the other; here the duel tests check they agree.
+The state schema (`state = { timer = "u16" }`) and the Luau type (`State = { timer: number }`) are written twice. A
+generator could emit one from the other.
 
-### 3.2 Rust content
+### 3.2 The alternatives
 
-`crates/bn6-content-rust` is the same slice in Rust, calling only `CoreApi` (with typed accessors,
-`api.anim(gun)`, and `content_state!` structs). It matches every trace and costs about 1.5 times the built-in kinds
-(the API's dynamic dispatch and field conversions). It has no sandbox and needs a rebuild, so it is for trusted
-content: the ruleset (the navi framework, the hit kernel) and the hottest kinds (hitboxes).
+| | Luau (mlua) | Rust content (removed) | WASM (not built) | Rhai (not built) | Data timelines (not built) |
+|---|---|---|---|---|---|
+| Integers | Doubles, exact to 2^53; wrap on store | Native | Native i32/i64 | i64, checked | n/a |
+| Snapshot | VM not included; checked stateless | Nothing to snapshot | Linear memory, or stateless | Stateless by design | Nothing to snapshot |
+| Sandbox | Designed for it (Roblox) | None (trusted code) | Strongest | Good | Total |
+| Hot reload | Yes | No (rebuild) | Yes | Yes | Yes |
+| Authoring | Small, typed, familiar; luau-lsp | Rust toolchain | Rust toolchain plus wasm | Unfamiliar, weak tooling | Easy for simple chips only |
 
-### 3.3 Not built
+The prototype also ran GunDelSol as Rust against the same API (it matched every trace at about 1.5 times the cost
+of built-in code). It was removed when Luau became the runtime: the engine's own Rust is for the core and the
+ruleset's frameworks, and content has one implementation. WASM remains the fallback if native-speed sandboxed
+content is ever needed. Many chips are "after N ticks spawn X; hit pattern P for M ticks"; the better form for them
+is a Luau library of combinators (phases, waits, per-tick hits) rather than a second runtime.
 
-- **WASM** (content in Rust compiled to wasm32, run by wasmtime or wasmi). The guest would be the Rust content
-  above with `CoreApi` implemented over host imports; integer semantics are native and sandboxing is the
-  strongest. If guests follow the same stateless rule, snapshots copy nothing; otherwise each snapshot copies the
-  guest's linear memory (tens of KiB at least). The cost for modders is the Rust-plus-wasm toolchain, which is why
-  it loses to Luau for the long tail. It remains the fallback if native-speed sandboxed content is ever needed.
-- **Rhai.** Pure Rust, `i64` integers, can be built without floats, and script functions can't capture outer
-  variables, so statelessness comes free. But it is a tree-walking interpreter (several times slower than Luau),
-  with little tooling and an unfamiliar language for this community.
-- **Lua 5.4** (dropped at the user's direction). Its integer subtype would remove the "no `/`" rule, but it lacks
-  Luau's sandbox, type checker and speed.
-- **Declarative timelines.** Many chips are "after N ticks spawn X; hit pattern P for M ticks". GunDelSol fits
-  partly: its phases and durations are data, but the level- and sun-dependent beam, the EX region and the
-  wrap-around timer quirks need code. The better form is a Luau library of combinators (phases, waits, per-tick
-  hits) that simple chips use as data and complex ones mix with code, in one runtime.
+Open Net Battle, the open Battle Network-style engine, scripts content in Lua with callbacks on engine objects and
+per-object state in the Lua heap. That makes the heap part of the battle state (its network play is lockstep). The
+design here keeps its authoring shape (a module per card or entity, an update function per kind) and moves the
+state out of the VM, which is what rollback needs.
 
-### 3.4 Open Net Battle
+## 4. An example
 
-Open Net Battle (ONB), the open Battle Network-style engine, scripts cards, characters and spells in Lua through
-sol2. Content attaches callbacks to engine objects (`on_update_func`, `on_execute_func`, `add_anim_action(frame,
-fn)` on card actions, and so on), and per-object state lives in the Lua heap: in closure upvalues and in tables
-hung on entities. That is approachable, but it makes the Lua heap part of the battle state, so a snapshot would
-have to serialize or fork the VM; ONB's network play is lockstep. The design here keeps ONB's authoring shape (a
-module per card or entity, an update function per kind) and moves the state out of the VM, which is what rollback
-needs.
-
-## 4. GunDelSol, as content
-
-The wind-up and firing phases, Luau (content/bn6/chips/gun_del_sol.luau):
+EraseMan (content/bn6/objects/erase-man/erase_man.luau) is a navi chip's navi: an object kind (actor 0x15) whose
+module also implements the EraseMan chips' `navi_chip` hook. The spawner and one of his actions:
 
 ```luau
--- The chip's GunDelSol data (its gun, firing time and beam), from the
--- content pack.
-local function chip_data(me: Object): GunDelSol
-    local chip = data.chips[me.chip]
-    local d = chip and chip.gun_del_sol
-    if not d then
-        error(string.format("chip %#x runs GunDelSol without its data", me.chip))
+-- `sub_80BB7F6`: EraseMan for `user`, reporting to `controller`.
+function erase_man.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
+    local o = battle.spawn_kind("erase-man", Vec3.zero, spec.params)
+    if not o then
+        return nil
     end
-    return d
+    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+    o.element = spec.element
+    o.related1 = user
+    o.alliance, o.flip = user.alliance, user.flip
+    o.damage = spec.damage
+    o.stamina = bit32.rshift(spec.damage, 16)
+    local s = o.state :: State
+    s.controller = controller
+    return o
 end
 
--- `sub_80EDB14`: the gun comes out; 6 ticks later the beam lights up.
-local function wind_up(me: Object, s: State)
-    if me.step_init == 0 then
-        me:set_status("using_action", true)
-        me:set_animation(0x0A)
-        me:open_counter_window()
-        attachment.spawn(me, chip_data(me).gun.id, "overlay")
-        battle.play_sound(0xF8)
-        s.timer = 6
-        me.step_init = 4
+-- `sub_80BB710`: aim, switching every Param1 ticks, until the user
+-- presses A while dimmed (`sub_80BB89C`), or for 360 ticks.
+local function aim(me: Object)
+    if me.phase == 0 then
+        me.phase = 4;
+        (me.state :: State).cycle = 3
+        next_aim(me)
+        mark(me)
+        me.timer = AIM_TICKS
+        me.timer2 = me:param(1)
         return
     end
-    local t = s.timer - 1
-    s.timer = t
-    if t > 0 then
+    local user = me.related1 :: Object
+    if user:dimmed_pressed("a") or ran_out(me) then
+        me:set_action(0xC)
         return
     end
-    local d = chip_data(me)
-    s.timer = d.firing_ticks
-    advance_gun(me)
-    local look = if battle.navi(me.alliance).sun then d.beam_in_sun else d.beam
-    me.related1 = sun_beam.spawn(me, look, Vec3.px(me.facing * 0x50, 0, 0), "related")
-    set_phase(me, FIRING)
-end
-
--- `sub_80EDBCC`: one hit this tick, until the timer runs out.
-local function fire(me: Object, s: State)
-    local t = s.timer - 1
-    s.timer = t
-    if t < 0 then
-        local beam = me.related1
-        if beam then
-            sun_beam.stop(beam)
-        end
-        set_phase(me, RECOVER)
+    local left = me.timer2 - 1
+    me.timer2 = left
+    if left > 0 then
         return
     end
-    hitbox.spawn(me, {
-        panel_x = me.panel_x + 2 * me.facing,
-        panel_y = me.panel_y,
-        element = 5,
-        region = if me.variant < 3 then 0x04 else 0x11, -- EX covers two columns.
-        hit_effect = 0xFF,
-        target = 0x05,
-        self_type = 0x2C,
-        damage = if battle.navi(me.alliance).sun then 4 else 2,
-    })
+    next_aim(me)
+    mark(me)
+    me.timer2 = me:param(1)
 end
 ```
 
-The same, Rust content (crates/bn6-content-rust/src/gun_del_sol.rs):
+The three EraseMan chips' `chip.toml` say `script = "../../objects/erase-man/erase_man.luau"`; the kind's
+`object.toml` says `[kind] pool = "actor", index = 0x15, script = "erase_man.luau"`. The navi chip controller (the
+ruleset's, Rust) calls the hook for subtype 5 when the navi comes, and waits for `navi_chip.navi_left`.
 
-```rust
-/// The chip's GunDelSol data (its gun, firing time and beam).
-fn chip_data(data: &Data, api: &dyn CoreApi, me: ObjectRef) -> GunDelSol {
-    use bn6_content_api::api::OtherFields;
-    let chip = api.chip(me);
-    *data.gun_del_sol.get(&chip).unwrap_or_else(|| panic!("chip {chip:#x} runs GunDelSol without its data"))
-}
+The numbers that differ between entities are data: GunDelSol's gun, firing time and beam looks come from the chip
+being used (`data.chips[me.chip].gun_del_sol`), the buster's recovery from `data.rules.buster_recovery`. A routine's
+own immediates (EraseMan's sprite `"08-04"`, his 0x168-tick aim limit, his aim table) are the script's constants,
+as they are the routine's in the game.
 
-/// `sub_80EDB14`: the gun comes out; 6 ticks later the beam lights up.
-fn wind_up(data: &Data, api: &mut dyn CoreApi, me: ObjectRef) {
-    if api.step_init(me) == 0 {
-        api.set_status(me, StatusFlag::UsingAction, true).expect("a navi has collision");
-        api.set_animation(me, 0x0A);
-        api.open_counter_window(me);
-        let gun = chip_data(data, api, me).gun.id;
-        attachment::spawn(api, me, gun, Slot::Overlay);
-        api.play_sound(0xF8);
-        store(api, me, State { timer: 6 });
-        api.set_step_init(me, 4);
-        return;
-    }
-    let mut s = load(api, me);
-    let t = s.timer as i32 - 1;
-    s.timer = t as u16;
-    store(api, me, s);
-    if t > 0 {
-        return;
-    }
-    let d = chip_data(data, api, me);
-    store(api, me, State { timer: d.firing_ticks });
-    advance_gun(api, me);
-    let look = if in_sun(api, me) { d.beam_in_sun } else { d.beam };
-    let offset = Vec3 { x: (api.facing(me) * 0x50) << 16, y: 0, z: 0 };
-    let beam = sun_beam::spawn(api, me, look, offset, Slot::Related);
-    api.set_related1(me, beam);
-    set_phase(api, me, FIRING);
-}
+## 5. Loading
 
-/// `sub_80EDBCC`: one hit this tick, until the timer runs out.
-fn fire(api: &mut dyn CoreApi, me: ObjectRef) {
-    let mut s = load(api, me);
-    let t = s.timer as i32 - 1;
-    s.timer = t as u16;
-    store(api, me, s);
-    if t < 0 {
-        if let Some(beam) = api.related1(me) {
-            sun_beam::end(api, beam);
-        }
-        return set_phase(api, me, RECOVER);
-    }
-    let damage = if in_sun(api, me) { 4 } else { 2 };
-    // EX covers two columns.
-    let region = if api.variant(me) < 3 { 0x04 } else { 0x11 };
-    let ahead = (2 * api.facing(me)) as u8;
-    let spec = hitbox::Spec {
-        panel: PanelPos { x: api.panel_x(me).wrapping_add(ahead), y: api.panel_y(me) },
-        element: 5,
-        region,
-        hit_effect: 0xFF,
-        target: 0x05,
-        self_type: 0x2C,
-        damage,
-        ..hitbox::Spec::default()
-    };
-    hitbox::spawn(api, me, &spec);
-}
-```
+### 5.1 From the pack to a battle
 
-Both follow the engine's built-in version (kinds/player/actions/gun_del_sol.rs) line for line. The numbers that
-differ between the chip's levels (the gun, how long it fires, the beam in and out of the sun) are the chip's own
-data in the content pack: `chip_data` looks them up by the chip being used (`data.chips[me.chip].gun_del_sol` in
-Luau, `Data::gun_del_sol` in Rust) and fails loudly for a chip without them. The Luau is the shortest and needs no
-casts: `s.timer = t` wraps because `timer` is declared `u16`, and `me.panel_x + 2 * me.facing` wraps into the `u8`
-panel field. A pack's manifest registers its modules:
+A pack's modules are `Content::scripts` (source by module path); the entities' records carry what they register
+(`ChipData::script`, `ObjectData::kinds`, `Content::weapons`). `Battle::new(setup, content)` gets the runtime with
+`Behaviors::for_content(&content)`: it builds the registrations, loads the modules (compile, `verify`, run once,
+freeze the result, look up the registered functions and schemas), and builds the lookup tables. Loading takes
+about 5 ms.
 
-```luau
-return {
-    objects = { require("./objects/attachment"), require("./objects/sun_beam"), require("./objects/hitbox") },
-    actions = { require("./chips/gun_del_sol") },
-}
-```
+The `Arc<Content>` is `Send + Sync` and mlua's `Lua` is not, so each thread that runs battles makes its own VM on
+first use, cached by content hash (`for_content` keeps one per thread). Every VM made from the same content behaves
+identically (the fresh-VM test in §3.1), so VMs are a cache, not part of any battle. `Battle::behaviors` is the
+handle (an `Rc`); a snapshot copies the handle, and the digest leaves it out.
 
-where an object kind is `{ pool, index, state, update }` and an action `{ action, state, update }`.
+### 5.2 Data
 
-## 5. Fidelity
+Scripts read the pack as a frozen global, `data`, built from the `Content` when the modules load
+(`behavior::data`): `data.chips[id]` (each chip's record with its own data), `data.navis`, `data.forms`,
+`data.weapons`, `data.objects.{attachments, rocks, absorbed_sprites, body_overlays, sun_beam_looks, kinds}`,
+`data.rules.buster_recovery`. Field names are as in the files, enums as names, sprites as `"CC-II"`, keyed by the
+entities' ids. core.d.luau types the fields scripts read; a type for new data is added there when a script needs
+it.
 
-Golden traces, replayed straight by the golden-trace suite outside this repository, on this branch (main at
-ca12dcb merged):
+### 5.3 The content hash
 
-| Trace | Built-in | Rust content | Luau |
-|---|---|---|---|
-| machgun round 1 | 1074/1074 | 1074/1074 | 1074/1074 |
-| machgun round 2 | 1331/1331 | 1331/1331 | 1331/1331 |
-| soundmod rounds 1/2/3 | 4513/6284/2566 | 4513/6284/2566 | 4513/6284/2566 |
+`Content::hash` covers the battle data, the animation timing and the scripts (their paths and source). The round's
+setup carries it (`RoundSetup::content`) and `Battle::new` checks it, so peers whose setups agree run the same data
+and code. Pixels, palettes and audio are presentation and are left out.
 
-On the branch's original base (b2875dc, before the merge) the same held: 1074, 1330 of 1331 and 2952/3481/1966
-for all three. To be sure the traces ran the content, each runtime was sabotaged (the Rust content made to panic;
-the Luau GunDelSol's damage changed from 4 to 3): machgun round 1 then stops at frame 647, the first hit. Shifting
-the Luau attachment by a pixel, or adding 1 to every Luau hitbox's damage, also breaks soundmod (rounds 1 to 3 stop
-at 3296/6123/2368 and 3524/3852/2377). Traces don't compare sound, so a change to the sun beam's hum timing didn't
-show.
+### 5.4 The BN6 scripts and the tests
 
-In this repository, `every_runtime_plays_the_duel_like_the_engine` plays the 900-tick duel with each runtime and
-compares, every tick, the engine state all of them represent alike (the digest with the kinds' own state structs
-cleared, since their representation differs) and the tick's sound cues. Built-in, Rust, Luau and Luau native
-agree on all 900.
+BN6's scripts are not ROM-derived: they are this project's port of the game's routines. They are the source
+overlay content/bn6, laid out like a pack (content-pack.md §1.3), versioned and reviewed with the engine and
+type-checked by `bn6-content-check` in `cargo test`. `bn6-extract content <rom> <pack>` writes the ROM-derived data
+and assets, merges the overlay (`bn6_content::overlay`), and writes the pack, scripts included; the engine never
+reads content/bn6.
 
-## 6. Rollback
+In-repo tests can't use the ROM. The test content (`content::testing`) is small hand-written data whose records
+register the overlay's modules (read from the repository at test time), so the engine's, netplay's and the
+frontend's tests run the real scripts on made-up data: the GunDelSol duel, the eraser navi chip and the grab chip
+(`behavior::tests`), the blank shot and DustCross's charged shot (`actions::tests`), and bn6-netplay's rollback
+netbattles with the eraser navi chip in the folders. The frame-exact tests run in the verification workspace, on
+an extracted pack.
 
-### 6.1 What the scripting layer guarantees
+## 6. Fidelity
 
-rollback.md §8.2 lists what content must guarantee. The prototype does each:
+Golden traces, replayed by the verification workspace on an extracted pack:
+
+| Trace | All Rust (before) | Scripts |
+|---|---|---|
+| machgun round 1 | 1074/1074 | 1074/1074 |
+| machgun round 2 | 1331/1331 | 1331/1331 |
+| soundmod rounds 1/2/3 | 4513/6284/2566 | 4513/6284/2566 |
+
+Soundmod stops where the engine does (navi chip navi 7 and action 0x39, not yet ported). The scripts it runs
+before that: GunDelSol (machgun round 2 inside Beast Out's rush), the attachment and sun beam, AreaGrab's controller
+and grab shots, EraseMan with his marks and slash, the buster's weapon routine with the NaviCust's blank (the blank
+shot, round 1) and DustCross's charged shot with its junk ball (round 2). The sound calls match the original's
+(machgun 53 calls over 1651 frames, soundmod 35 over 8596). Sabotaging a script breaks the trace where the script
+runs.
+
+## 7. Rollback and cost
+
+### 7.1 What the scripting layer guarantees
+
+rollback.md §8.2 lists what content must guarantee:
 
 | Requirement | How |
 |---|---|
-| All content state in engine-owned typed storage inside `Battle`, snapshotted and digested; no VM heap, globals, closures or coroutines holding battle state | `ContentState` in `Vars`/`ActionVars` (`Hash`, `Copy`); the VM checked and frozen at load (§3.1); `Battle::digest` skips only the behaviors handle and the content, whose hash the round's setup carries (`RoundSetup::content`) |
+| All content state in engine-owned typed storage inside `Battle`, snapshotted and digested; no VM heap, globals, closures or coroutines holding battle state | `ContentState` in `Vars`/`ActionVars` (`Hash`, `Copy`); the VM checked and frozen at load (§3.1); `Battle::digest` skips only the behaviors handle and the content, whose hash the round's setup carries |
 | Integers only; one simulation RNG; no hash-map iteration | Integer-only boundary with wrapping stores; no `math.random`; the API hands out no maps |
-| Outputs write-only | `battle.play_sound` only adds a cue; scripts can't read cues or looks back |
-| Content immutable during a battle, identified by a hash both peers compare | Modules frozen after load; `Pack::content_hash()` and `Content::hash` (§9.3) |
+| Outputs write-only | `battle.play_sound` only adds a cue; scripts can't read cues back |
+| Content immutable during a battle, identified by a hash both peers compare | Modules frozen after load; `Content::hash` covers the scripts |
 | Bounded work that fails the same way on every peer | The interrupt budget counts VM checkpoints, not time |
-| No perspective in simulated state | The API has no "local player"; sound goes to both sides' cue lists |
+| No perspective in simulated state | `battle.local_side` is for presentation only; sound goes to both sides' cue lists (or one side's player's, `play_sound_for`) |
 | Re-running a tick free of side effects outside `Battle` | Scripts can't reach the host; the VM keeps nothing |
 
-### 6.2 Results
+### 7.2 Results
 
-- **Golden traces through two rollback peers** (bn6-netplay; the golden-trace suite's rollback test, latencies
-  0, 2+1, 5+2 and 10+3 frames): with Luau content, every confirmed frame of machgun rounds 1 and 2 and soundmod
-  rounds 1 to 3 matches the trace on both peers, and the peers' digests agree with each other and a lockstep run.
-  Rust content likewise.
-- **Synthetic netbattles** (bn6-netplay's tests, run with `--features luau` or `rust-content`): two navis of the
-  test content (`content::testing`) mashing buttons with its made-up chips, which use the same actions as
-  GunDelS1/S2/S3, Invisibl and EraseMan (GunDelSol, the invisibility dimming chip, the eraser navi chip), three seeds,
-  latencies 0 to 10 with jitter and input delay, up to about 2,000 rollbacks and 22,000 re-simulated frames per run:
-  in sync to the KO in every configuration; sound plays each confirmed cue once.
-  `the_battles_run_the_featured_content` checks the feature took effect.
+- **Golden traces through two rollback peers** (the verification workspace's rollback test, latencies 0, 2+1, 5+2
+  and 10+3 frames): every confirmed frame of machgun rounds 1 and 2 and soundmod rounds 1 to 3 matches the trace on
+  both peers.
+- **Synthetic netbattles** (bn6-netplay's tests): two navis of the test content mashing buttons with its chips
+  (GunDelSol, the invisibility dimming chip, the eraser navi chip), several seeds, latencies 0 to 10 with jitter and
+  input delay: in sync to the KO in every configuration; sound plays each confirmed cue once.
+- **In-repo**: `scripted_chips_roll_back` copies a battle every 97 ticks of a duel with the eraser, grab and
+  GunDelSol chips and checks the copy plays on exactly as the battle does.
 
-### 6.3 Cost
+### 7.3 Cost
 
-The worst case, a 10-frame rollback on every rendered frame, measured as `soundmod_rollback_cost` does (over the
-2000 frames around the round's busiest one: restore, 11 advances each followed by a save, a digest), with
-`bn6-netplay/examples/rollback_cost`. Best of three runs:
+The worst case, a 10-frame rollback on every rendered frame, measured as the verification workspace's
+`soundmod_rollback_cost` does (restore, 11 advances each followed by a save, a digest), with
+`bn6-netplay/examples/rollback_cost`, best of three runs, per rendered frame:
 
-| Per rendered frame | Built-in | Rust content | Luau |
+| Round (frames measured) | All Rust | GunDelSol slice as Luau (before) | Scripts now |
 |---|---|---|---|
-| soundmod round 1 (frames 2525-4512) | 54.5 µs | 54.9 µs | 55.5 µs |
-| machgun round 1 (whole round; three GunDelSols) | 53.8 µs | 55.1 µs | 150.8 µs |
-| of which an advance, machgun | 0.49 µs | 0.66 µs | 9.2 µs |
+| machgun 1 (10-1073; three GunDelSols) | 50.9 µs | 146.9 µs | 109.5 µs |
+| machgun 2 (129-1330; GunDelSol in Beast Out) | 51.0 µs | 110.9 µs | 86.9 µs |
+| soundmod 1 (2525-4512; EraseMan, the blank shot, AreaGrab) | 56.3 µs | 55.7 µs | 56.5 µs |
+| soundmod 2 (5153-6283) | 53.3 µs | 57.1 µs | 65.3 µs |
+| soundmod 3 (1525-2565) | 53.2 µs | 56.5 µs | 65.7 µs |
 
-The frame budget is 16,667 µs; the Luau worst case is 0.9% of it. The rest is the same for all runtimes: a
-restore (3 µs), a save per advance (2.5 µs) and the digest (18 µs). Luau's 99th-percentile frame on machgun is
-about 0.7 ms, when both navis fire at once.
+The frame budget is 16,667 µs; the worst case is 0.7% of it. The part every runtime shares: a restore (3 µs), a
+save per advance (2 µs) and the digest (19 µs). The one-tick hitbox, which GunDelSol spawns every firing tick, is
+the engine's again (the prototype ran it as a script). 99th-percentile frames are 0.2 to 0.5 ms.
 
-## 7. Performance
+## 8. Performance
 
-`examples/content_bench`, on the synthetic duel (measured when the duel still ran on BN6's data; it now runs on
-the test content):
-
-| Runtime | Duel, 900 ticks | While GunDelSol fires | Per object-tick, 30 objects × 10,000 ticks | Snapshot | Restore | Snapshot + restore + 10 ticks |
-|---|---|---|---|---|---|---|
-| Built-in | 0.79 µs/tick | 0.88 µs/tick | 0.02 µs | 2.3 µs | 2.4 µs | 12 µs |
-| Rust content | 1.05 µs/tick | 1.46 µs/tick | 0.10 µs | 1.9 µs | 3.2 µs | 26 µs |
-| Luau | 23 µs/tick | 34 µs/tick | 4.9 µs | 1.9 µs | 2.0 µs | 421 µs |
-| Luau native | 30 µs/tick | 31 µs/tick | 4.8 µs | 2.0 µs | 2.1 µs | 422 µs |
-
-Snapshots cost the same whatever the runtime: the content's state is inside `Battle` and the VM is not copied. The
-30-object case is 15 guns and 15 sun beams following their owner, each making about 20 API calls a tick: about 150
-µs a tick, 1.6 ms for a frame with a 10-tick rollback, 10% of the frame. That is the budget to watch as more
-content becomes scripts.
-
-Where the time goes (`examples/luau_ops`):
+Where the time goes (`examples/luau_ops`, interpreted):
 
 | Operation | Cost |
 |---|---|
-| Loop iteration (the VM itself) | 10 ns |
-| Library call `battle.dimmed()` | 39 ns |
-| Method `me:param(1)` | 80 ns |
-| Field read `me.anim` / write | 117 / 126 ns |
-| Content state read `s.ticks` / write | 122 / 136 ns |
-| Enum state read `s.slot` | 219 ns |
-| A field that makes a handle (`me.pos`, `me.related1`, `me.sprite`) | 205 to 220 ns |
-| `Vec3.new(1, 2, 3)` | 176 ns |
-| A 9-field table literal (the hitbox spec) | 85 ns (9 ns native) |
+| Loop iteration (the VM itself) | 12 ns |
+| Library call `battle.dimmed()` | 38 ns |
+| `field.flags(3, 2)` | 62 ns |
+| Method `me:param(1)` | 93 ns |
+| Field read `me.anim` / write | 131 / 155 ns |
+| Content state read `s.ticks` / write | 138 / 141 ns |
+| Enum state read `s.slot` | 234 ns |
+| A field that makes a handle or a `Vec3` (`me.pos`, `me.related1`, `me.sprite`) | 229 to 244 ns |
+| `Vec3.new(1, 2, 3)` | 199 ns |
+| A data read `data.objects.sun_beam_looks[0]` | 24 ns |
+| A 9-field table literal (a hitbox spec) | 92 ns |
 
 The VM is fast; the binding isn't. mlua dispatches every userdata field through a Lua-side `__index` closure, then
-its generic callback machinery (stack checks, argument conversion, a userdata type check). A sampling profile of
-the firing window puts the interpreter at 18% of the time, allocation and GC at about 5%, the budget interrupt at
-about 5%, and the rest in mlua's call path. Native code only speeds up the VM's share, which is why it doesn't help
-here. (Method calls already use mlua's `__namecall` path, which cut them from 126 to 80 ns.)
+its generic callback machinery (stack checks, argument conversion, a userdata type check). The next step is a
+raw-FFI binding: tagged userdata (`lua_newuserdatatagged`) for handles, a `__namecall` that dispatches on Luau's
+string atoms, and field access through a C `__index` that switches on the atom instead of calling a Lua closure.
+That is how Roblox's own bindings work; 20 to 40 ns per call is a reasonable target. Native code only speeds up the
+VM's share, which is why it doesn't help here.
 
-The next step, if Luau is chosen, is a raw-FFI binding: tagged userdata (`lua_newuserdatatagged`) for handles, a
-`__namecall` that dispatches on Luau's string atoms, and field access through a C `__index` that switches on the
-atom instead of calling a Lua closure. That is how Roblox's own bindings work; 20 to 40 ns per call is a reasonable
-target, 3 to 5 times less. Handles could also be cached per call to avoid allocations.
-
-Loading the pack (VM, compiling, checking, freezing) takes about 5 ms, once per process.
-
-## 8. Sandboxing
+## 9. Sandboxing
 
 A pack can only call the API: no `io`, `os`, `debug`, no loading code at run time (`load`, `loadstring`, `require`
 after loading), no FFI. Libraries and the global table are read-only (Luau's `sandbox`). Scripts can't reach the
 host, can't keep state, can't hang the engine (the interrupt budget) and can't grow without bound unnoticed
 (mlua's memory limit is available; a hit must be a fatal content error, since GC timing decides exactly when it
-triggers). A content error (a script error, a type error at the API, the budget) stops the battle with a message
-naming the module and object, identically on every peer; a production engine would end the round with an error
-result rather than panic.
+triggers). A content error (a script error, a type error at the API, the budget, a routine the game would run off
+the end of a table) stops the battle with a message naming the module and object, identically on every peer; a
+production engine would end the round with an error result rather than panic.
 
-## 9. Scripts in the content pack
+## 10. Next steps
 
-The project has since decided that game data comes only from content packs: the engine ships alone, BN6's pack is
-extracted from the user's ROM into open formats (docs/design/content-pack.md), and the battle holds the loaded pack
-as a `Content` value behind an `Arc`. That is done for the data. Scripts belong in that pack next to the data they
-describe; that part is not done yet.
-
-### 9.1 Layout
-
-```
-<pack>/
-  content.toml                    manifest (name, format version); gains the engine API version and entry modules
-  core.d.luau                     the API definitions the pack was written against (for editors and the checker)
-  types.d.luau                    types the pack's modules share
-  chips/010-gundels2/chip.toml    a chip's data, with its GunDelSol data: firing ticks, beam looks, gun (extracted)
-  objects/attachment/object.toml  the attachment kinds (extracted)
-  scripts/
-    chips/gun_del_sol.luau        the action (0x37) and its helpers
-    objects/attachment.luau, sun_beam.luau, hitbox.luau
-    lib/slot.luau
-  graphics/, sound/, ...          assets (extracted)
-```
-
-Today the scripts are still `content/bn6` in the repo, compiled into the engine, but the numbers they need come
-from the content pack. Their data module, `data/pack`, is built from the battle's `Content` when the scripts load
-(`behavior::luau_pack(&content)`, which renders it with `luau_data`); the repository only has its type stub,
-`content/bn6/data/pack.luau`. GunDelSol reads its chip's entry, `data.chips[me.chip].gun_del_sol` (the firing
-ticks, the beam's looks in and out of the sun, and the gun attachment with the id it is observable by); the
-attachment and sun beam kinds read `data.attachments` and `data.sun_beam_looks`. The Rust slice gets the same
-numbers as a `data::Data` built by `Behaviors::rust(&content)`. `Behaviors::for_build`, `luau`, `luau_with` and
-`rust` all take the `&Content` the battle runs on. With one data source there is nothing left to cross-check (the
-old tests that compared the scripts' data with the engine's tables are gone), and the in-repo duel that compares
-the runtimes runs on the test content. What remains is loading the scripts from disk.
-
-### 9.2 Found, loaded, versioned
-
-- **Found.** The manifest names the entry modules (for BN6, one per chip action and object kind, or a single
-  `battle/init.luau` returning the `objects`/`actions` lists as `pack.luau` does here). The loader compiles
-  those and whatever they `require` (paths relative to the requiring file); nothing else runs.
-- **Data.** Scripts read extracted data through the pack, as frozen tables: `local d = pack.data("battle/chips/
-  gun_del_sol")` returning the data file as Luau values, typed by a declaration in `types.d.luau`. Numbers never
-  live in scripts. (The prototype has one such module, `data/pack`, built by the engine from the loaded `Content`;
-  §9.1.)
-- **Loaded.** Each module is compiled, checked (`verify`), run once, and its result frozen (§3.1). The loader
-  builds the manifest of kinds and actions and their state schemas; a kind's (pool, index) or an action number
-  claimed twice is an error.
-- **Versioned.** `core.d.luau` carries the API version; the manifest records the version it targets, and the
-  engine refuses a pack for a different major version. Within a version, additions only.
-
-### 9.3 The content hash
-
-Before a match both peers compare one hash of everything the simulation reads: the scripts (path and source, as
-`Pack::content_hash()` does for the prototype), the battle data files, and the simulation-relevant parts of assets
-(sprite animation timing: frame durations and flags decide when effects end). Pixels, palettes and audio are
-presentation and can be left out, so a player could use restyled sprites without desyncing. The engine build is
-compared separately (the digest covers the state's layout). Mismatched hashes refuse the match with the differing
-file names, rather than desyncing later.
-
-The data's part exists: `Content::hash` covers the battle data and the animation timing (the loaded `Content`
-holds no pixels or sound), the round's setup carries it (`RoundSetup::content`), and `Battle::new` checks it
-against the content it is given, so peers whose setups agree run the same data. The scripts, compiled into the
-engine for now, are covered by the engine build.
-
-### 9.4 Where the VM lives
-
-The pack's `Content` is shared behind an `Arc`, so it must be `Send + Sync`, and mlua's `Lua` is not (without mlua's
-`send` feature, which adds a lock to every call). Statelessness settles it: the `Arc<Content>` holds the compiled
-bytecode, the manifest and the schemas, and each thread that runs battles creates its own VM from them on first
-use. Every VM made from the same pack behaves identically (the fresh-VM test in §3.1), so VMs are a per-thread
-cache, not part of any battle.
-
-The engine already keeps the two apart for the data: `Battle::content` is the `Arc<Content>`, and the scripts'
-runtime is a separate handle, `Battle::behaviors` (an `Rc`). `Behaviors::for_build` loads the Luau scripts once per
-thread and content hash and hands every battle on that thread a clone of the handle.
-
-### 9.5 The hand-written BN6 scripts
-
-The BN6 scripts are not ROM-derived: they are this project's reimplementation of the game's routines, like the
-engine's Rust. They describe BN6 content, so they belong in the BN6 pack, but they should not be generated
-(there is nothing to generate them from) and must not be committed alongside ROM data.
-
-Recommendation: **ship them in the repo as a source overlay that the extractor merges into the extracted pack.** The
-overlay is `content/bn6/` (scripts, `types.d.luau`, the manifest template), versioned and reviewed with the engine,
-type-checked in CI by `bn6-content-check`, and covered by in-repo tests against small hand-written data (in-repo
-tests can't use the ROM; the engine's test content, `content::testing`, is that data today). The extractor writes
-the ROM-derived data and assets, copies the overlay in, and stamps the manifest with the overlay's version and the
-pack's content hash. The frame-exact tests run in the verify workspace, on the extracted pack. A modder's pack is
-the same shape, without the extractor.
-
-## 10. Recommendation and next steps
-
-1. **Adopt the content API and the stateless-content rule** as the boundary, whatever the runtime: declared
-   schemas, engine-owned typed state, immediate effects, raw-slot handles. It costs the engine nothing (snapshots
-   and the digest are unchanged) and it is what makes rollback work with scripted content.
-2. **Write the ruleset and the hottest kinds in Rust against the API**, starting where the audit's migration plan
-   starts (hitboxes, effects, attachments); the Rust-content path costs about 1.5 times the built-in code.
-3. **Write chips, navis and effects in Luau** in the pack (§9), with the load-time rules, versioned
-   `core.d.luau`, and the type check in CI.
-4. Before much content moves: the raw-FFI binding (§7), scripts loaded from the pack on disk with their compiled
-   form in the `Arc<Content>` (§9.4), `pack.data` per data file (§9.2; the prototype builds one data module from
-   the `Content`), the scripts in the content hash (§9.3), a generator for state schemas from the Luau types, and
-   a content error that ends the round instead of panicking.
+1. Move the rest of the content (content-migration.md): the remaining chip actions, navi chips' navis, dimming
+   chips, weapons and object kinds, each with the API it needs.
+2. The raw-FFI binding (§8), before much more content moves: every scripted object costs its API calls every tick.
+3. Versioning: `core.d.luau` carries the API version, the manifest records the version a pack targets, and the
+   engine refuses a pack for a different major version.
+4. A generator for state schemas from the Luau types, and a content error that ends the round instead of
+   panicking.
