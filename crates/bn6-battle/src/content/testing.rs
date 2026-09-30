@@ -54,6 +54,9 @@ pub const TIME_BOMB: ChipId = 0x31;
 pub const TIME_BOMB_PLUS: ChipId = 0x32;
 /// A mine (action 0x15, subtype 11).
 pub const MINE: ChipId = 0x33;
+/// Standard chip actions (ids 0x100 and up): a CrakShot (action 0x22,
+/// subtype 0: the panel ahead).
+pub const CRACK: ChipId = 0x100;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -159,6 +162,8 @@ pub fn scripts() -> Scripts {
                 ("objects/area-grab/area_grab", "objects/area-grab/area_grab"),
                 ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
+                ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
+                ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
                 ("objects/projectile/projectile", "objects/projectile/projectile"),
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
@@ -182,6 +187,8 @@ pub fn scripts() -> Scripts {
                 ("objects/countdown-bomb/countdown_bomb", "objects/countdown-bomb/countdown_bomb"),
                 ("objects/mine/mine", "objects/mine/mine"),
                 ("objects/land-mine/land_mine", "objects/land-mine/land_mine"),
+                ("chips/059-crakshot/chip", "chips/059-crakshot/chip"),
+                ("objects/crack-shot/crack_shot", "objects/crack-shot/crack_shot"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -255,6 +262,9 @@ fn kinds() -> Vec<ObjectKind> {
         kind("countdown-bomb", Pool::Attack, 0x4B, "objects/countdown-bomb/countdown_bomb"),
         ObjectKind { scratch_position: true, ..kind("mine", Pool::Effect, 0x29, "objects/mine/mine") },
         kind("land-mine", Pool::Attack, 0x4C, "objects/land-mine/land_mine"),
+        kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
+        kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
+        kind("crack-shot", Pool::Attack, 0x33, "objects/crack-shot/crack_shot"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -287,6 +297,7 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         slot_in_limit: 3,
         dark_substitute: None,
         sp_damage: None,
+        navi_damage: None,
         modifier: None,
         program_advances: Vec::new(),
         gun_del_sol: None,
@@ -317,7 +328,7 @@ fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
 }
 
 /// Chip ids up to here exist (the ids no test uses are blanks).
-const CHIP_IDS: ChipId = 0x50;
+const CHIP_IDS: ChipId = 0x120;
 
 /// The chips, by id (the content looks chips up by index). Dimming chips
 /// of the subtypes other scripts implement take ids 0x10 and up.
@@ -421,6 +432,13 @@ fn named_chips() -> Vec<ChipData> {
             script: Some("objects/mine/mine".into()),
             ..chip(MINE, "Mine", 0x15, 11)
         },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 30,
+            damage: 40,
+            script: Some("chips/059-crakshot/chip".into()),
+            ..chip(CRACK, "Crack", 0x22, 0)
+        },
     ]
 }
 
@@ -439,6 +457,7 @@ fn navi() -> NaviData {
         lose_banner: BannerId(0x44),
         merge_height: 0,
         own_chip: None,
+        chip_bonus: None,
         name_record: Some(NameData { id: 0x1A0, version: 0, actor_type: ActorType::Player, ai_index: 0, attach_points }),
     }
 }
@@ -557,8 +576,11 @@ fn rules() -> Rules {
         status_effects: vec![[StatusEffect { requests: 0, duration: 60, timer: StatusTimer::Paralyze }; 16]; 6],
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
         weapons: vec![WeaponRoutine { charge_ticks: [120, 100, 80, 60, 50] }; 0x30],
+        empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
+        // A made-up sine: a triangle wave, 0x100 at a quarter turn.
+        sine: (0..384).map(|i: i32| [i % 128, 128 - i % 128][(i / 64 % 2) as usize] * 4 * if i / 128 % 2 == 0 { 1 } else { -1 }).map(|v| v.clamp(-256, 256) as i16).collect(),
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
             SlideVector { dx: -1, dy: 0, tiles: 6 },
@@ -581,8 +603,28 @@ fn rules() -> Rules {
         ],
         bubble_bob: std::array::from_fn(|i| [0, 1, 2, 3, 3, 2, 1, 0][i % 8] * if i < 16 { 1 } else { -1 }),
         lockon: Lockon {
-            searches: vec![LockonSearch { mode: 1, offsets: vec![PanelOffset { dx: -1, dy: 0 }], prefers_middle_row: false }],
+            modes: vec![
+                LockonMode { mode: 0, rule: LockonRule::Stay, ..Default::default() },
+                LockonMode {
+                    mode: 1,
+                    rule: LockonRule::Near,
+                    offsets: vec![PanelOffset { dx: -1, dy: 0 }],
+                    column_shifts: true,
+                    ..Default::default()
+                },
+            ],
             column_shifts: vec![-1, -2],
+            clear_path: [PanelCondition { require: 0, forbid: pflags::OCCUPIED }; 2],
+            charged_sword_modes: vec![1; 4],
+        },
+        berserk: BerserkRules {
+            step,
+            opponent: [
+                PanelCondition { require: BODY[1], forbid: 0 },
+                PanelCondition { require: BODY[0], forbid: 0 },
+            ],
+            blocking: [NEUTRAL | OTHER_BODY[1], NEUTRAL | OTHER_BODY[0]],
+            opposing_player: [PLAYER[1], PLAYER[0]],
         },
         custom_screen: custom_screen_layout(),
     }
@@ -664,6 +706,7 @@ fn objects() -> ObjectData {
         projectiles: projectiles(),
         flying_shots: flying_shots(),
         kinds: kinds(),
+        shock_waves: (0..16).map(|id| ShockWave { id, sprite: SpriteId { category: 0x10, index: 3 }, anim: 1, ticks: 6, panel: None }).collect(),
     }
 }
 
@@ -803,6 +846,8 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x21 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // The grab shot: falling, landing.
     sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
+    // The crack shot: flying.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x33 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);

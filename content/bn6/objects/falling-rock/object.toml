@@ -1,0 +1,7 @@
+# A rock falling on a panel (attack object #0x1D, `sub_80C7D78`): GroundCross's charged chip
+# drops three (`sub_8012CB2`, the ruleset's), and another chip spawns them too.
+
+[kind]
+pool = "attack"
+index = 0x1D
+script = "falling_rock.luau"
