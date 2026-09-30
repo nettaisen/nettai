@@ -198,7 +198,8 @@ pub fn import_sound(root: &Path, report: &mut Report) -> Option<SoundBank> {
 
 // ---- Loading -------------------------------------------------------------------
 
-/// A pack's battle data, for the engine.
+/// A pack's battle data, for the engine: loaded and defined
+/// (`Content::define`).
 pub fn load_battle(root: &Path) -> Result<(bn6_battle::Content, Report), Report> {
     let mut report = Report::default();
     let m = read_manifest(root, &mut report).ok_or_else(|| report.clone())?;
@@ -206,10 +207,13 @@ pub fn load_battle(root: &Path) -> Result<(bn6_battle::Content, Report), Report>
         report.error(MANIFEST, "the pack has no battle data");
         return Err(report);
     }
-    match crate::battle::load(root, &mut report) {
-        Some(c) => Ok((c, report)),
-        None => Err(report),
+    let Some(mut c) = crate::battle::load(root, &mut report) else { return Err(report) };
+    // The define phase: what the scripts define, and the registries.
+    if let Err(e) = c.define() {
+        report.error("scripts", e.message);
+        return Err(report);
     }
+    Ok((c, report))
 }
 
 /// A pack's graphics, for a frontend.

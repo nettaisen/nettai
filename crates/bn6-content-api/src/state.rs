@@ -15,6 +15,8 @@
 
 use std::fmt;
 
+use crate::data::{Data, Key};
+use crate::registry::Registry;
 use crate::types::{ObjectRef, Pool, Vec3};
 
 /// Bytes of state one kind or action may declare. (The game gives an
@@ -27,7 +29,7 @@ pub const MAX_BYTES: usize = 64;
 pub const MAX_ARRAY: usize = 64;
 
 /// The type of a state field.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FieldType {
     Bool,
     U8,
@@ -205,11 +207,19 @@ pub enum Value {
     Int(i64),
     Object(ObjectRef),
     Vec3(Vec3),
+    /// A definition, by registry and handle (docs/design/content-model-v2.md
+    /// §2): what a weapon's `setup` returns, a reference field's value.
+    Def(Registry, u16),
 }
 
 impl Value {
     pub fn int(self) -> Option<i64> {
         if let Value::Int(i) = self { Some(i) } else { None }
+    }
+
+    /// The definition this value is, if it is one.
+    pub fn def(self) -> Option<(Registry, u16)> {
+        if let Value::Def(r, h) = self { Some((r, h)) } else { None }
     }
 
     pub fn object(self) -> Option<ObjectRef> {
@@ -273,14 +283,14 @@ impl fmt::Display for TypeError {
 impl std::error::Error for TypeError {}
 
 /// One declared field.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FieldDef {
     pub name: String,
     pub ty: FieldType,
 }
 
 /// The fields a kind's state declares, in storage order.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Schema {
     fields: Vec<FieldDef>,
     /// Where each field starts in a state's bytes.
@@ -314,6 +324,39 @@ impl Schema {
             return Err(format!("the state's fields take {at} bytes; at most {MAX_BYTES} are allowed"));
         }
         Ok(Schema { fields, offsets })
+    }
+
+    /// A schema from a `state` table as data: field name to a type name
+    /// (`"u16"`, `"u8[18]"`, `"object"`) or to a list of variant names (an
+    /// enum). Fields are stored in name order.
+    pub fn from_data(d: &Data) -> Result<Schema, String> {
+        let Data::Map(entries) = d else {
+            return match d {
+                Data::List(l) if l.is_empty() => Schema::new(Vec::new()),
+                _ => Err("a state is a table of field names to types".into()),
+            };
+        };
+        let mut fields = Vec::with_capacity(entries.len());
+        for (k, v) in entries {
+            let Key::Str(name) = k else {
+                return Err(format!("state field names are strings, not {k}"));
+            };
+            let ty = match v {
+                Data::Str(t) => {
+                    FieldType::scalar(t).ok_or_else(|| format!("state field `{name}` has unknown type {t:?}"))?
+                }
+                Data::List(variants) => FieldType::Enum(
+                    variants
+                        .iter()
+                        .map(|v| v.str().map(str::to_string).ok_or_else(|| format!("state field `{name}`: variants are names")))
+                        .collect::<Result<_, _>>()?,
+                ),
+                _ => return Err(format!("state field `{name}` needs a type name or a list of variants")),
+            };
+            fields.push(FieldDef { name: name.clone(), ty });
+        }
+        fields.sort_by(|a, b| a.name.cmp(&b.name));
+        Schema::new(fields)
     }
 
     pub fn fields(&self) -> &[FieldDef] {

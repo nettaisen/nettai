@@ -35,6 +35,7 @@ pub fn content(rom: &Rom) -> Content {
         // Scripts come from the source overlay (content.rs), not the ROM.
         weapons: Vec::new(),
         scripts: Default::default(),
+        defs: Default::default(),
     }
 }
 
