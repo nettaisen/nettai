@@ -14,7 +14,7 @@ chips/02e-heatdrgn/chip.luau 1
 chips/032-airhocky/chip.luau 4
 chips/033-drilarm/chip.luau 6
 chips/034-tornado/chip.luau 6
-chips/036-minibomb/chip.luau 9
+chips/036-minibomb/chip.luau 3
 chips/03d-aquandl1/chip.luau 4
 chips/047-sword/chip.luau 7
 chips/050-windrack/chip.luau 3
@@ -39,6 +39,7 @@ chips/193-edeletbm/erase_delete.luau 1
 chips/196-etomahwk/eagle_tomahawk.luau 1
 chips/197-ftornado/tengu_tornado.luau 2
 chips/199-dustbrk/dust_break.luau 2
+chips/blkbomb/bomb.luau 2
 lib/buster.luau 1
 lib/dragon.luau 4
 lib/hp.luau 2
@@ -46,7 +47,6 @@ lib/instant-chips/02-invisible.luau 1
 lib/instant-chips/06-repair-obstacles.luau 2
 lib/object_setup.luau 2
 lib/panels.luau 2
-lib/region.luau 2
 lib/sword.luau 1
 lib/trajectory.luau 1
 lib/vari_sword.luau 4
@@ -82,20 +82,16 @@ objects/air-spin/air_spin.luau 15
 objects/aqua-needle/aqua_needle.luau 7
 objects/aqua-surge/aqua_surge.luau 7
 objects/area-grab/area_grab.luau 2
-objects/attachment/attachment.luau 8
+objects/attachment/attachment.luau 4
 objects/aura-head/aura_head.luau 9
 objects/bass-anly-shot/bass_anly_shot.luau 18
 objects/bass-anly/bass_anly.luau 4
 objects/bass/bass.luau 4
 objects/beat/beat.luau 5
-objects/black-bomb/black_bomb.luau 16
 objects/blast-fire/blast_fire.luau 11
 objects/blast-man/blast_man.luau 3
-objects/bomb-slash/bomb_slash.luau 3
-objects/bomb/bomb.luau 8
 objects/boomerang/boomerang.luau 12
 objects/bubble-star/bubble_star.luau 4
-objects/bug-bomb/bug_bomb.luau 14
 objects/charge-car/charge_car.luau 11
 objects/charge-man/charge_man.luau 3
 objects/charge-wave/charge_wave.luau 3
@@ -127,7 +123,6 @@ objects/elmnt-bolt/elmnt_bolt.luau 2
 objects/elmnt-ice/elmnt_ice.luau 5
 objects/elmnt-man/elmnt_man.luau 22
 objects/elmnt-vine/elmnt_vine.luau 2
-objects/energy-burst/energy_burst.luau 2
 objects/erase-beam/erase_beam.luau 6
 objects/erase-drop/erase_drop.luau 7
 objects/erase-man/erase_man.luau 7
@@ -138,7 +133,6 @@ objects/fire-hit/fire_hit.luau 3
 objects/flame-hook-fire/flame_hook_fire.luau 14
 objects/flame-hook/flame_hook.luau 5
 objects/flame/flame.luau 17
-objects/flash-bomb/flash_bomb.luau 12
 objects/flying-shot/flying_shot.luau 11
 objects/follow-effect/follow_effect.luau 10
 objects/gauge-speed/gauge_speed.luau 4
@@ -191,7 +185,6 @@ objects/rush/rush.luau 9
 objects/sand-hole/sand_hole.luau 1
 objects/sand-spray/sand_spray.luau 7
 objects/sand-worm/sand_worm.luau 6
-objects/seed/seed.luau 7
 objects/seeking-whirl/seeking_whirl.luau 3
 objects/shock-wave/shock_wave.luau 15
 objects/slash-man/slash_man.luau 9

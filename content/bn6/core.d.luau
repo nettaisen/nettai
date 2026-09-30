@@ -228,10 +228,10 @@ end
 
 -- An object's collision registration.
 declare class Collision
-    -- The region shape (a region definition) and hit spark (a spark
-    -- definition).
-    function set_region(self, region: Region): ()
-    function set_hit_effect(self, spark: Spark): ()
+    -- The region shape (a region definition; nil, none) and hit spark (a
+    -- spark definition; nil, none).
+    function set_region(self, region: Region?): ()
+    function set_hit_effect(self, spark: Spark?): ()
     -- Region shape, as the engine's byte (`set_region` takes a
     -- definition). Deprecated: setting it to a number.
     region: number

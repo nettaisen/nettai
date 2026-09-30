@@ -695,16 +695,19 @@ impl UserData for Collision {
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("present", |_, this, ()| with(|api, _| Ok(api.present_collision(this.0))));
-        // A region or a hit spark content defines.
-        for (name, field, registry) in
-            [("set_region", CollisionField::Region, Registry::Region), ("set_hit_effect", CollisionField::HitEffect, Registry::Spark)]
-        {
+        // A region or a hit spark content defines; nil is none (region 0,
+        // hit spark 0xFF).
+        for (name, field, registry, none) in [
+            ("set_region", CollisionField::Region, Registry::Region, 0),
+            ("set_hit_effect", CollisionField::HitEffect, Registry::Spark, 0xFF),
+        ] {
             methods.add_method(name, move |_, this, v: LuaValue| {
-                if !matches!(v, LuaValue::Table(_)) {
-                    return Err(mlua::Error::runtime(format!("collision:{name}: expected a {registry} definition")));
-                }
                 with(|api, b| {
-                    let n = def_or_number(api, b, v, registry, name)?;
+                    let n = match v {
+                        LuaValue::Nil => none,
+                        LuaValue::Table(_) => def_or_number(api, b, v, registry, name)?,
+                        _ => return Err(mlua::Error::runtime(format!("collision:{name}: expected a {registry} definition or nil"))),
+                    };
                     api.collision_set(this.0, field, Value::Int(n as i64)).map_err(api_error)
                 })
             });
