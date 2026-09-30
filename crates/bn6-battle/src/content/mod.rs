@@ -191,9 +191,17 @@ impl Content {
             .unwrap_or_else(|| panic!("NameID {name_id:#x} is not a player navi"))
     }
 
-    /// The actor record of a player NameID.
+    /// The actor record of a NameID (a player's from its name record,
+    /// any other from the rules' table).
     pub fn navi_record(&self, name_id: u16) -> NaviRecord {
-        self.name(name_id).record()
+        self.navis
+            .iter()
+            .filter_map(|n| n.name_record.as_ref())
+            .chain(self.forms.iter().filter_map(|f| f.name_record.as_ref()))
+            .find(|n| n.id == name_id)
+            .map(NameData::record)
+            .or_else(|| self.rules.actor_records.get(name_id as usize).copied())
+            .unwrap_or_else(|| panic!("NameID {name_id:#x} has no actor record in the content"))
     }
 
     /// A player NameID's sprite attach point `index`.

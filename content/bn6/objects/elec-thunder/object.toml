@@ -1,0 +1,6 @@
+# A thunderbolt (attack object #0x64, `sub_80D0D7C`) is a script.
+
+[kind]
+pool = "attack"
+index = 0x64
+script = "elec_thunder.luau"

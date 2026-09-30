@@ -3,9 +3,10 @@
 -- a module and the modules that require it both name, declared once for
 -- the pack. (The engine's API and data types are in core.d.luau.)
 
--- Where an owner keeps an attached object: its actor overlay slot, or its
--- first related object (lib/slot.luau).
-export type Slot = "overlay" | "related"
+-- Where an owner keeps an attached object: its actor overlay slot, its
+-- first related object, or its content state's `held` field
+-- (lib/slot.luau).
+export type Slot = "overlay" | "related" | "held"
 
 -- What the link navis' chips (action 0x0A, chips/190-heatpres) keep in the
 -- attack's variables: one schema for the ten navis' routines.

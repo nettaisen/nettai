@@ -1,0 +1,6 @@
+# ProtoMan, the ProtoMan chips' navi (actor object #0x3C, `sub_80C26F0`), is a script.
+
+[kind]
+pool = "actor"
+index = 0x3C
+script = "proto_man.luau"

@@ -287,6 +287,9 @@ pub struct NaviStats {
     pub air_shoes: bool,
     pub undershirt: bool,
     pub super_armor: bool,
+    /// +0x20: the navi's game (0 Gregar, 1 Falzar): MstrCros picks its
+    /// Crosses by it.
+    pub version: u8,
     /// +0x21
     pub beast_out_counter: u8,
     /// +0x22: fighting outdoors in the sun (some chips hit harder).
@@ -349,6 +352,7 @@ impl NaviStats {
             air_shoes: flag(0x1C),
             undershirt: flag(0x1D),
             super_armor: flag(0x23),
+            version: b[0x20],
             beast_out_counter: b[0x21],
             sun: flag(0x22),
             navi: Navi(b[0x29]),
@@ -417,6 +421,7 @@ impl NaviStats {
         b[0x1C] = self.air_shoes as u8;
         b[0x1D] = self.undershirt as u8;
         b[0x23] = self.super_armor as u8;
+        b[0x20] = self.version;
         b[0x21] = self.beast_out_counter;
         b[0x22] = self.sun as u8;
         b[0x29] = self.navi.0;
