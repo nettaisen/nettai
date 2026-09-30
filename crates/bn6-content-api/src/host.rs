@@ -24,6 +24,10 @@ pub enum Hook {
     /// The navi chips' navis by chip subtype (`off_802CD5C`, chips with
     /// action 0x1B). The module's `navi_chip(user, controller, spec)`.
     NaviChip(u8),
+    /// The field objects actor lists place when a round starts, by entry
+    /// type (`off_80073A0`: 8 a rock). The module's
+    /// `actor_list_entry(spec)`.
+    ActorListEntry(u8),
 }
 
 impl Hook {
@@ -33,6 +37,7 @@ impl Hook {
             Hook::Weapon(_) => "setup",
             Hook::DimmingChip(_) => "dimming_chip",
             Hook::NaviChip(_) => "navi_chip",
+            Hook::ActorListEntry(_) => "actor_list_entry",
         }
     }
 }
@@ -43,6 +48,7 @@ impl fmt::Display for Hook {
             Hook::Weapon(n) => write!(f, "weapon routine {n:#04x}"),
             Hook::DimmingChip(n) => write!(f, "dimming chip subtype {n}"),
             Hook::NaviChip(n) => write!(f, "navi chip subtype {n}"),
+            Hook::ActorListEntry(n) => write!(f, "actor list entry type {n}"),
         }
     }
 }
@@ -218,6 +224,17 @@ pub struct NaviChipSpec {
     pub damage: u32,
 }
 
+/// An actor list's entry, as its spawner (`off_80073A0[type]`) reads it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ActorListEntrySpec {
+    pub panel: PanelPos,
+    /// The entry's side (the one navis take; field objects take their
+    /// panel's).
+    pub side: u8,
+    /// The entry's argument (a rock's variant).
+    pub variant: u8,
+}
+
 /// A call of a hook, with its arguments.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HookCall {
@@ -228,6 +245,8 @@ pub enum HookCall {
     /// `navi_chip(user, controller, spec)`: returns the navi, or nil. The
     /// navi calls `navi_chip.navi_left(controller)` when it is done.
     NaviChip { user: ObjectRef, controller: ObjectRef, spec: NaviChipSpec },
+    /// `actor_list_entry(spec)`: returns what it placed, or nil.
+    ActorListEntry { spec: ActorListEntrySpec },
 }
 
 /// A content error: a bug in the content, or a script breaking the

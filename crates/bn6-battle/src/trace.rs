@@ -434,11 +434,12 @@ fn describe_fields(
 /// The X and Y of effects the engine marks as not knowing them are skipped
 /// too (`effect::xy_unknown`): the second deletion explosion, which the
 /// game spawns with the object allocator's list-node addresses as X and Y
-/// (§A.3). And the dimming controllers', spawned with the user's panel Y,
-/// the element and the spawner's address as X, Y and Z (chips.md §3.6),
-/// and any kind a script implements that says so (`scratch_position`).
+/// (§A.3). And the navi chip controller's, spawned with the user's panel
+/// Y, the element and the spawner's address as X, Y and Z (chips.md
+/// §3.6), and any kind a script implements that says so
+/// (`scratch_position`: the dimming chips' controllers, among others).
 fn pos_is_garbage(content: &Content, kind: u8, index: u8, flags: u8) -> bool {
-    use crate::kinds::{invisible, navi_chip, trap_chip};
+    use crate::kinds::navi_chip;
     use crate::object::Pool;
     let pool = match kind {
         1 => Pool::Actor,
@@ -449,9 +450,11 @@ fn pos_is_garbage(content: &Content, kind: u8, index: u8, flags: u8) -> bool {
     if content.object_kind_at(pool, index).is_some_and(|k| k.scratch_position) {
         return true;
     }
-    let controller = [invisible::INDEX, navi_chip::INDEX, trap_chip::INDEX].contains(&index);
     kind == 4
-        && (index == 2 || index == 0x0A || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0) || controller)
+        && (index == 2
+            || index == 0x0A
+            || (index == 8 && flags & crate::object::flags::NO_SPRITE_UPDATE != 0)
+            || index == navi_chip::INDEX)
 }
 
 /// Kinds a script implements that keep the fraction of the Z their

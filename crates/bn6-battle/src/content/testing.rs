@@ -56,6 +56,11 @@ pub const BLADE: ChipId = 0x10;
 pub const STEP_BLADE: ChipId = 0x11;
 /// A strike at stunned or grounded opponents (action 0x49, subtype 2).
 pub const STUN_BLADE: ChipId = 0x12;
+/// A dimming chip (action 0x15, subtype 6) that places a rock (variant 1)
+/// in front of its user.
+pub const CUBE: ChipId = 0x13;
+/// A trap chip (action 0x15, subtype 20, Param1 3: no object).
+pub const TRAP: ChipId = 0x14;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -188,6 +193,11 @@ pub fn scripts() -> Scripts {
                 ("lib/sword", "lib/sword"),
                 ("chips/010-blade/chip", "chips/047-sword/chip"),
                 ("chips/012-stunblade/chip", "chips/056-mchnswrd/chip"),
+                ("objects/invisible/invisible", "objects/invisible/invisible"),
+                ("objects/rock/rock", "objects/rock/rock"),
+                ("objects/rock-cube/rock_cube", "objects/rock-cube/rock_cube"),
+                ("objects/rock-debris/rock_debris", "objects/rock-debris/rock_debris"),
+                ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -228,6 +238,7 @@ fn kinds() -> Vec<ObjectKind> {
         script: script.into(),
         scratch_position: false,
         scratch_z_fraction: false,
+        actor_list_entry: None,
     };
     let mut kinds = vec![
         kind("attachment", Pool::Actor, 0x05, "objects/attachment/attachment"),
@@ -250,6 +261,11 @@ fn kinds() -> Vec<ObjectKind> {
         kind("honey-bee", Pool::Attack, 0x74, "objects/honey-bee/honey_bee"),
         kind("dragon-head", Pool::Attack, 0xC9, "objects/dragon-head/dragon_head"),
         kind("dragon-body", Pool::Attack, 0xC8, "objects/dragon-body/dragon_body"),
+        ObjectKind { scratch_position: true, ..kind("invisible", Pool::Effect, 0x5D, "objects/invisible/invisible") },
+        ObjectKind { actor_list_entry: Some(8), ..kind("rock", Pool::Attack, 0x59, "objects/rock/rock") },
+        ObjectKind { scratch_position: true, ..kind("rock-cube", Pool::Effect, 0x37, "objects/rock-cube/rock_cube") },
+        kind("rock-debris", Pool::Effect, 0x38, "objects/rock-debris/rock_debris"),
+        ObjectKind { scratch_position: true, ..kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip") },
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -350,6 +366,7 @@ fn chips() -> Vec<ChipData> {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             extra_flags: ExtraChipFlags(ExtraChipFlags::RUSH_CANCELS),
             family: ChipFamily::Plus,
+            script: Some("objects/invisible/invisible".into()),
             ..chip(VEIL, "Veil", 0x15, 1)
         },
         ChipData {
@@ -403,6 +420,20 @@ fn chips() -> Vec<ChipData> {
         blade(BLADE, "Blade", 0x13, 1, false),
         blade(STEP_BLADE, "StepBld", 0x13, 1, true),
         blade(STUN_BLADE, "StunBld", 0x49, 2, false),
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            params: [1, 0, 0, 0],
+            damage: 200,
+            script: Some("objects/rock-cube/rock_cube".into()),
+            ..chip(CUBE, "Cube", 0x15, 6)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            params: [3, 0, 0, 0],
+            script: Some("objects/trap-chip/trap_chip".into()),
+            ..chip(TRAP, "Trap", 0x15, 20)
+        },
     ]
 }
 
