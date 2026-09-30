@@ -44,6 +44,8 @@ pub const TRAP: ChipId = 0x09;
 /// routine 1).
 pub const BOOST: ChipId = 0x0A;
 pub const ARM: ChipId = 0x0B;
+/// A dimming chip (action 0x15, subtype 25) that slows the custom gauge.
+pub const SLOW_GAUGE: ChipId = 0x0C;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -156,6 +158,7 @@ pub fn scripts() -> Scripts {
                 ("objects/rock-debris/rock_debris", "objects/rock-debris/rock_debris"),
                 ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
                 ("objects/navi-boost/navi_boost", "objects/navi-boost/navi_boost"),
+                ("objects/gauge-speed/gauge_speed", "objects/gauge-speed/gauge_speed"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -213,6 +216,7 @@ fn kinds() -> Vec<ObjectKind> {
         kind("rock-debris", Pool::Effect, 0x38, "objects/rock-debris/rock_debris"),
         ObjectKind { scratch_position: true, ..kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip") },
         ObjectKind { scratch_position: true, ..kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost") },
+        ObjectKind { scratch_position: true, ..kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed") },
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -344,6 +348,11 @@ fn named_chips() -> Vec<ChipData> {
             params: [2, 1, 0, 0],
             script: Some("objects/navi-boost/navi_boost".into()),
             ..chip(ARM, "Arm", 0x15, 38)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            script: Some("objects/gauge-speed/gauge_speed".into()),
+            ..chip(SLOW_GAUGE, "SlowGauge", 0x15, 25)
         },
     ]
 }

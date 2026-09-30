@@ -33,6 +33,7 @@ fn battles_run_the_content_scripts() {
             "erase-beam",
             "erase-man",
             "erase-mark",
+            "gauge-speed",
             "grab-shot",
             "invisible",
             "navi-boost",
@@ -316,6 +317,25 @@ fn the_navi_changing_chips_change_the_navi() {
         }
         b.tick(&t.input, t.events.clone());
     }
+}
+
+// ---- The gauge chips (subtype 25) -----------------------------------------------------------
+
+#[test]
+fn the_slow_gauge_chip_slows_the_gauge() {
+    let setup = || {
+        let mut s = scenario::setup_with(&[testing::SLOW_GAUGE]);
+        s.players[1] = scenario::setup().players[1];
+        s
+    };
+    let tape = scenario::record_on(setup(), 2400, 5);
+    let mut b = Battle::new(setup(), scenario::content());
+    let mut slowed = false;
+    for t in &tape {
+        b.tick(&t.input, t.events.clone());
+        slowed |= b.gauge.rate == 0x10 && b.sides[0].slow_gauge_ticks > 0;
+    }
+    assert!(slowed, "the gauge slowed");
 }
 
 // ---- Luau keeps no state ----------------------------------------------------------------
