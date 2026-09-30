@@ -351,6 +351,9 @@ declare class Object
     function update_sprite_while_dimmed(self): ()
     -- `sub_801BCD0`: the same, paused or not.
     function step_sprite(self): ()
+    -- `sub_801BC64`: `update_sprite`'s gating (dimming, holds), but paused
+    -- or not.
+    function update_sprite_even_paused(self): ()
     -- `object_updateSpritePaused`: the same, paused or not, but not while
     -- dimmed (and whatever `no_sprite_update` says).
     function update_sprite_while_paused(self): ()
@@ -480,6 +483,21 @@ export type HitboxSpec = {
     bug_arg: number?,
 }
 
+-- A sprite afterimage (`battle.afterimage`): the sprite, its animation and
+-- flip (the game's flip value), how many ticks it lasts, its colour
+-- shader, shadow and palette, and whether it blinks (hidden every other two
+-- ticks; the default).
+export type AfterimageSpec = {
+    sprite: SpriteId,
+    anim: number,
+    flip: number,
+    ticks: number,
+    color_shader: number,
+    shadow: Shadow,
+    blinks: boolean?,
+    palette: number?,
+}
+
 -- A side's defensive-chip record.
 export type LinkedChip = {
     chip: number,
@@ -585,6 +603,12 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80E33FA` with a sprite: an afterimage (effect object #0x28) of
+    -- `owner`'s at `pos`. It keeps running while paused.
+    afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
+    -- `sub_80E11E0`: a white screen flash (effect object #0x0A) for `ticks`
+    -- ticks; it goes on while dimmed or paused if it says so.
+    palette_flash: (ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
 }
 
 declare field: {
@@ -773,6 +797,9 @@ export type PackData = {
         -- The buster's recovery in ticks (`byte_80209CC`), at
         -- rapid * 6 + min(open panels ahead, 5).
         buster_recovery: { [number]: number },
+        -- The sine table (`math_sinTable`) by angle, 256 a turn, 1.0 =
+        -- 0x100, with 64 entries more: `math_cosTable` is it 64 on.
+        sine: { [number]: number },
     },
 }
 

@@ -22,9 +22,9 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use bn6_content_api::{
-    ACTOR_TYPES, ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
+    ACTOR_TYPES, ActorField, AfterimageSpec, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
     HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, Manifest, NaviStat, NaviState, ObjectField, PANEL_TYPES, Pad,
-    PanelPos, Pool, RequestFlag, SpriteField, SpriteId, StatusFlag, StatusTimer, Value, Vec3,
+    PanelPos, Pool, RequestFlag, Shadow, SpriteField, SpriteId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use bn6_content_api::ObjectRef;
 use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMethods, Value as LuaValue};
@@ -299,6 +299,9 @@ impl UserData for Object {
             with(|api, _| Ok(api.update_sprite_while_dimmed(this.0)))
         });
         methods.add_method("step_sprite", |_, this, ()| with(|api, _| Ok(api.step_sprite(this.0))));
+        methods.add_method("update_sprite_even_paused", |_, this, ()| {
+            with(|api, _| Ok(api.update_sprite_even_paused(this.0)))
+        });
         methods.add_method("update_sprite_while_paused", |_, this, ()| {
             with(|api, _| Ok(api.update_sprite_while_paused(this.0)))
         });
@@ -901,6 +904,30 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             bug_arg: table_int(&spec, "bug_arg")? as u8,
         };
         let o = with(|api, _| Ok(api.spawn_hitbox(owner.0, &s)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "palette_flash", |lua, (ticks, while_dimmed, while_paused): (LuaValue, Option<bool>, Option<bool>)| {
+        let ticks = u8_arg(ticks, "ticks")?;
+        let (d, p) = (while_dimmed.unwrap_or(false), while_paused.unwrap_or(false));
+        let o = with(|api, _| Ok(api.spawn_palette_flash(ticks, d, p)))?;
+        object_value(lua, o)
+    });
+    lib_fn!(lua, t, "afterimage", |lua, (owner, pos, spec): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, mlua::Table)| {
+        let sprite = sprite_id(spec.raw_get("sprite")?, None)?;
+        let shadow: mlua::LuaString = spec.raw_get("shadow")?;
+        let shadow = named(&shadow, "shadow", |s| Shadow::NAMES.iter().position(|&n| n == s).map(|i| Shadow::ALL[i]))?;
+        let blinks: Option<bool> = spec.raw_get("blinks")?;
+        let s = AfterimageSpec {
+            sprite,
+            anim: table_int(&spec, "anim")? as u8,
+            flip: table_int(&spec, "flip")? as u8,
+            ticks: table_int(&spec, "ticks")? as u16,
+            color_shader: table_int(&spec, "color_shader")? as u16,
+            shadow,
+            blinks: blinks.unwrap_or(true),
+            palette: table_int(&spec, "palette")? as u8,
+        };
+        let o = with(|api, _| Ok(api.spawn_afterimage(owner.0, pos.0, &s)))?;
         object_value(lua, o)
     });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {

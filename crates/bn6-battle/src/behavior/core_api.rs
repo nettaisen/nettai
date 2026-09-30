@@ -5,7 +5,7 @@
 
 use bn6_content_api::api::ApiResult;
 use bn6_content_api::{
-    ActorField, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
+    ActorField, AfterimageSpec, ApiError, BattleInfo, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep, Emotion,
     FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField,
     Pad, PanelInfo, RequestFlag, Shadow, SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
@@ -575,6 +575,10 @@ impl CoreApi for Battle {
         common::update_sprite_while_dimmed(self, o);
     }
 
+    fn update_sprite_even_paused(&mut self, o: ObjectRef) {
+        common::update_sprite_even_paused(self, o);
+    }
+
     fn step_sprite(&mut self, o: ObjectRef) {
         common::step_sprite(self, o);
     }
@@ -619,6 +623,29 @@ impl CoreApi for Battle {
 
     fn spawn_effect(&mut self, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
         kinds::effect::spawn(self, pos, id, flip, palette_add, priority)
+    }
+
+    fn spawn_palette_flash(&mut self, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
+        kinds::palette_flash::spawn(self, ticks, while_dimmed, while_paused)
+    }
+
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, s: &AfterimageSpec) -> Option<ObjectRef> {
+        let shadow = match s.shadow {
+            Shadow::Hidden => sprite::Shadow::Hidden,
+            Shadow::Ground => sprite::Shadow::Ground,
+            Shadow::WithSprite => sprite::Shadow::WithSprite,
+        };
+        let spec = kinds::afterimage::SpriteSpec {
+            sprite: s.sprite,
+            anim: s.anim,
+            flip: s.flip,
+            lifetime: s.ticks,
+            color_shader: s.color_shader,
+            shadow,
+            blinks: s.blinks,
+            palette: s.palette,
+        };
+        kinds::afterimage::spawn_sprite(self, owner, pos, spec)
     }
 
     fn spawn_hitbox(&mut self, owner: ObjectRef, s: &HitboxSpec) -> Option<ObjectRef> {

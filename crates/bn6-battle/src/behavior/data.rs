@@ -13,6 +13,7 @@
 //!             .body_overlays[id], .sun_beam_looks[look], .boomerangs[id]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
+//! data.rules.sine[angle]    the sine table (math_sinTable; the cosine is 64 on)
 //! ```
 
 use bn6_content_api::{Data, DataKey};
@@ -70,7 +71,11 @@ pub fn script_data(c: &Content) -> Data {
         ),
     ]);
     let recovery = c.rules.buster_recovery.iter().flatten().enumerate().map(|(i, &t)| (i as i64, t));
-    let rules = Data::map([("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64)))]);
+    let sine = c.rules.sine.iter().enumerate().map(|(i, &s)| (i as i64, s));
+    let rules = Data::map([
+        ("buster_recovery", by_id(recovery, |&t| Data::Int(t as i64))),
+        ("sine", by_id(sine, |&s| Data::Int(s as i64))),
+    ]);
     Data::map([
         ("chips", by_id(c.chips.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("navis", by_id(c.navis.iter().map(|x| (x.id as i64, x)), |x| value(*x))),

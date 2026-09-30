@@ -541,6 +541,22 @@ pub struct HitboxSpec {
     pub bug_arg: u8,
 }
 
+/// A sprite afterimage (effect object #0x28), as `sub_80E33FA` and its
+/// setters take it: the sprite, its animation and flip (the game's flip
+/// value), how many ticks it lasts, and how it looks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AfterimageSpec {
+    pub sprite: SpriteId,
+    pub anim: u8,
+    pub flip: u8,
+    pub ticks: u16,
+    pub color_shader: u16,
+    pub shadow: Shadow,
+    /// Hidden every other two ticks (unless `sub_80E3422` says not).
+    pub blinks: bool,
+    pub palette: u8,
+}
+
 /// A panel as content sees it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PanelInfo {
@@ -756,6 +772,9 @@ pub trait CoreApi {
     fn update_sprite_while_dimmed(&mut self, o: ObjectRef);
     /// `sub_801BCD0`: the same, paused or not.
     fn step_sprite(&mut self, o: ObjectRef);
+    /// `sub_801BC64`: `update_sprite`'s gating (dimming, holds), but paused
+    /// or not.
+    fn update_sprite_even_paused(&mut self, o: ObjectRef);
     /// `object_updateSpritePaused`: load a newly requested animation and
     /// step the sprite, paused or not, but not while dimmed (and whatever
     /// `no_sprite_update` says).
@@ -781,6 +800,12 @@ pub trait CoreApi {
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
     /// `sub_80E08C4`: hit spark `id` at `pos`.
     fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
+    /// `sub_80E33FA` with a sprite: an afterimage (effect object #0x28) of
+    /// `owner`'s at `pos`, showing a sprite's animation for a few ticks.
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
+    /// `sub_80E11E0`: a white screen flash (effect object #0x0A) for
+    /// `ticks` ticks, going on while dimmed or paused if it says so.
+    fn spawn_palette_flash(&mut self, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
