@@ -8,8 +8,9 @@
 //! data.navis[id]            a navi
 //! data.forms[id]            one of MegaMan's forms
 //! data.weapons[id]          a weapon routine a script implements
+//! data.regions[n]           a hit region's panel offsets, { dx, dy } each
 //! data.objects.attachments[id], .rocks[id], .absorbed_sprites[kind],
-//!             .body_overlays[id], .sun_beam_looks[look]
+//!             .body_overlays[id], .sun_beam_looks[look], .boomerangs[id]
 //! data.objects.kinds[name]  an object kind a script implements: pool, index, script
 //! data.rules.buster_recovery[rapid * 6 + open]   the buster's recovery (byte_80209CC)
 //! ```
@@ -50,6 +51,7 @@ pub fn script_data(c: &Content) -> Data {
         ("absorbed_sprites", by_id(o.absorbed_sprites.iter().enumerate().map(|(i, s)| (i as i64, s)), |s| value(*s))),
         ("body_overlays", by_id(o.body_overlays.iter().map(|b| (b.id as i64, b)), |b| value(*b))),
         ("sun_beam_looks", by_id(o.sun_beam_looks.iter().enumerate().map(|(i, s)| (i as i64, s)), |s| value(*s))),
+        ("boomerangs", by_id(o.boomerangs.iter().map(|b| (b.id as i64, b)), |b| value(*b))),
         (
             "kinds",
             Data::Map(
@@ -74,6 +76,7 @@ pub fn script_data(c: &Content) -> Data {
         ("navis", by_id(c.navis.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("forms", by_id(c.forms.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("weapons", by_id(c.weapons.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
+        ("regions", by_id(c.regions.iter().enumerate().map(|(i, r)| (i as i64, r)), |r| value(*r))),
         ("objects", objects),
         ("rules", rules),
     ])
