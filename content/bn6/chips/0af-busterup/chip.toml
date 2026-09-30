@@ -1,0 +1,4 @@
+# BusterUp, an instant chip (action 0x1C, subtype 10): its effect
+# (`sub_8010820`) is in chip.luau.
+
+script = "chip.luau"
