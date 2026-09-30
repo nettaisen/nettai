@@ -49,6 +49,10 @@ pub enum FieldType {
     /// A fixed number of elements of a scalar type (`"u8[18]"`): read and
     /// written element by element.
     Array(Box<FieldType>, u8),
+    /// A definition of a registry, or none (`"kind"`, `"record"`,
+    /// `"record:bomb-variant"`): docs/design/content-model-v2.md §3.4. A
+    /// record field may name the records' type.
+    Ref(Registry, Option<String>),
 }
 
 impl FieldType {
@@ -73,6 +77,13 @@ impl FieldType {
             "i32" => FieldType::I32,
             "object" => FieldType::Object,
             "vec3" => FieldType::Vec3,
+            _ if name.starts_with("record:") => {
+                let t = &name["record:".len()..];
+                return (!t.is_empty()).then(|| FieldType::Ref(Registry::Record, Some(t.to_string())));
+            }
+            _ if Registry::from_name(name).is_some_and(|r| r != Registry::Schema) => {
+                FieldType::Ref(Registry::from_name(name).expect("a registry"), None)
+            }
             _ => return None,
         })
     }
@@ -81,7 +92,7 @@ impl FieldType {
     pub fn size(&self) -> usize {
         match self {
             FieldType::Bool | FieldType::U8 | FieldType::I8 | FieldType::Object | FieldType::Enum(_) => 1,
-            FieldType::U16 | FieldType::I16 | FieldType::OptionalU8 => 2,
+            FieldType::U16 | FieldType::I16 | FieldType::OptionalU8 | FieldType::Ref(..) => 2,
             FieldType::U32 | FieldType::I32 => 4,
             FieldType::Vec3 => 12,
             FieldType::Array(elem, n) => elem.size() * *n as usize,
@@ -103,6 +114,7 @@ impl FieldType {
             FieldType::Enum(_) => FieldValue::Enum(0),
             FieldType::OptionalU8 => FieldValue::OptionalU8(None),
             FieldType::Array(elem, _) => elem.zero(),
+            FieldType::Ref(..) => FieldValue::Ref(None),
         }
     }
 
@@ -127,6 +139,8 @@ impl FieldType {
             (FieldType::OptionalU8, Value::Int(i)) => FieldValue::OptionalU8(Some(i as u8)),
             (FieldType::OptionalU8, Value::Nil) => FieldValue::OptionalU8(None),
             (FieldType::Array(elem, _), v) => return elem.store(v),
+            (FieldType::Ref(r, _), Value::Def(d, h)) if *r == d => FieldValue::Ref(Some((d, h))),
+            (FieldType::Ref(..), Value::Nil) => FieldValue::Ref(None),
             (ty, v) => return Err(TypeError { expected: ty.clone(), got: v }),
         })
     }
@@ -152,6 +166,8 @@ impl FieldType {
                 out[0] = v.is_some() as u8;
                 out[1] = v.unwrap_or(0);
             }
+            // The handle plus one; 0 is none.
+            FieldValue::Ref(d) => out[..2].copy_from_slice(&d.map_or(0, |(_, h)| h.wrapping_add(1)).to_le_bytes()),
         }
     }
 
@@ -175,6 +191,7 @@ impl FieldType {
             FieldType::Enum(_) => FieldValue::Enum(b[0]),
             FieldType::OptionalU8 => FieldValue::OptionalU8((b[0] != 0).then_some(b[1])),
             FieldType::Array(elem, _) => elem.decode(b),
+            FieldType::Ref(r, _) => FieldValue::Ref(u16::from_le_bytes([b[0], b[1]]).checked_sub(1).map(|h| (*r, h))),
         }
     }
 }
@@ -194,6 +211,8 @@ impl fmt::Display for FieldType {
             FieldType::Enum(names) => write!(f, "enum {}", names.join(" | ")),
             FieldType::OptionalU8 => f.write_str("u8?"),
             FieldType::Array(elem, n) => write!(f, "{elem}[{n}]"),
+            FieldType::Ref(r, None) => write!(f, "{r}"),
+            FieldType::Ref(r, Some(t)) => write!(f, "{r}:{t}"),
         }
     }
 }
@@ -247,6 +266,8 @@ pub enum FieldValue {
     Vec3(Vec3),
     Enum(u8),
     OptionalU8(Option<u8>),
+    /// A definition (registry and handle), or none.
+    Ref(Option<(Registry, u16)>),
 }
 
 impl FieldValue {
@@ -263,6 +284,7 @@ impl FieldValue {
             FieldValue::Vec3(p) => Value::Vec3(p),
             FieldValue::Enum(i) => Value::Int(i as i64),
             FieldValue::OptionalU8(v) => v.map_or(Value::Nil, |v| Value::Int(v as i64)),
+            FieldValue::Ref(d) => d.map_or(Value::Nil, |(r, h)| Value::Def(r, h)),
         }
     }
 }
