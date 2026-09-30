@@ -526,9 +526,195 @@ fn hold_while_dimmed(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_8018002`: picked up and thrown at the enemy.
-fn thrown(_b: &mut Battle, _r: ObjectRef) {
-    panic!("thrown obstacles (sub_8018002) are not implemented yet");
+/// How high a thrown obstacle is lifted, and how fast it flies.
+const THROW_HEIGHT: i32 = 0x40_0000;
+const THROW_RISE_TICKS: u8 = 0x20;
+const THROW_SPEED: i32 = 0x8_0000;
+const THROW_LIFT_SOUND: u16 = 0x12A;
+const THROW_FLIGHT_SOUND: u16 = 0x10C;
+/// The landing's hit (`sub_80C53A6`'s r4 = 0x06050001, r7 = 3): region 1,
+/// hit spark 5, target type 5, self type 6, hit modifier 3.
+const THROW_HIT_REGION: u8 = 1;
+const THROW_HIT_EFFECT: u8 = 5;
+const THROW_HIT_TARGET: u8 = 5;
+const THROW_HIT_SELF: u8 = 6;
+const THROW_HIT_MOD: u8 = 3;
+
+/// `sub_8018002`: picked up and thrown, the request `sub_800F6AC` makes
+/// (which nothing in the game calls): the thrower's side (`f2::THROWN`),
+/// the target panel in `slide_dx`/`slide_dy` (+0x1C, +0x1D), the ticks it
+/// shakes in `slide_timer` (+0x1E) and the damage word. It rises 64 px in
+/// 32 ticks, shakes, flies onto the target panel at 8 px a tick and breaks
+/// there with a hit. Steps on `prevent_anim`; the step counter is
+/// `shake_timer` (+0x19) and the shake's origin `shake_origin_x`/`z`
+/// (+0x30, +0x32), as the dimming hold's. See field-objects.md §4.5.
+fn thrown(b: &mut Battle, r: ObjectRef) {
+    match b.objects.get(r).prevent_anim {
+        // sub_801802C: taken by the thrower's side.
+        0 => {
+            let side = if f2_of(b, r) & f2::THROWN_BY_0 != 0 { 0 } else { 1 };
+            b.objects.get_mut(r).alliance = side;
+            clear_f2(b, r, f2::THROWN);
+            set_f1(b, r, obstacle_f1::CARRIED);
+            let o = b.objects.get_mut(r);
+            o.vel.z = bios_div(THROW_HEIGHT.wrapping_sub(o.pos.z), THROW_RISE_TICKS as i32);
+            let fp = o.future_panel;
+            b.unreserve_panel(r, fp.x, fp.y);
+            b.objects.get_mut(r).shake_timer = THROW_RISE_TICKS;
+            b.play_sound(crate::sound::SoundId(THROW_LIFT_SOUND));
+            set_region(b, r, 0);
+            b.objects.get_mut(r).prevent_anim = 4;
+        }
+        // sub_8018076: up.
+        4 => {
+            let o = b.objects.get_mut(r);
+            o.pos.z = o.pos.z.wrapping_add(o.vel.z);
+            o.shake_timer = o.shake_timer.wrapping_sub(1);
+            if o.shake_timer == 0 {
+                o.pos.z = THROW_HEIGHT;
+                o.prevent_anim = 8;
+            }
+        }
+        // sub_8018094: the shake's length and origin (whole pixels).
+        8 => {
+            let o = b.objects.get_mut(r);
+            o.shake_timer = o.slide_timer;
+            o.shake_origin_x = (o.pos.x >> 16) as i16;
+            o.shake_origin_z = (o.pos.z >> 16) as i16;
+            o.prevent_anim = 0xC;
+        }
+        // sub_80180A8: shake (a simulation RNG draw a tick), then aim.
+        0xC => {
+            let o = b.objects.get(r);
+            let (x, z) = ((o.shake_origin_x as u16 as i32) << 16, (o.shake_origin_z as u16 as i32) << 16);
+            let base = Vec3 { x, y: o.pos.y, z };
+            let pos = crate::kinds::spark::jitter(b, 3, base);
+            let o = b.objects.get_mut(r);
+            o.pos = pos;
+            o.shake_timer = o.shake_timer.wrapping_sub(1);
+            if o.shake_timer != 0 {
+                return;
+            }
+            // Only the whole pixels are restored.
+            o.pos.x = (o.pos.x & 0xFFFF) | x;
+            o.pos.z = (o.pos.z & 0xFFFF) | z;
+            o.future_panel = PanelPos { x: o.slide_dx, y: o.slide_dy };
+            let ticks = aim_throw(b, r);
+            b.objects.get_mut(r).shake_timer = ticks;
+            b.play_sound(crate::sound::SoundId(THROW_FLIGHT_SOUND));
+            b.objects.get_mut(r).prevent_anim = 0x10;
+        }
+        // sub_80180EC: fly, land with a hit, break.
+        0x10 => {
+            let o = b.objects.get_mut(r);
+            o.pos.x = o.pos.x.wrapping_add(o.vel.x);
+            o.pos.y = o.pos.y.wrapping_add(o.vel.y);
+            o.pos.z = o.pos.z.wrapping_sub(o.vel.z);
+            o.shake_timer = o.shake_timer.wrapping_sub(1);
+            if o.shake_timer != 0 {
+                return;
+            }
+            o.panel = o.future_panel;
+            common::set_coordinates_from_panels(b, r);
+            let o = b.objects.get(r);
+            let spec = crate::kinds::hitbox::HitboxSpec {
+                panel: o.panel,
+                element: o.element,
+                z: 0,
+                region: THROW_HIT_REGION,
+                hit_effect: THROW_HIT_EFFECT,
+                target: THROW_HIT_TARGET,
+                self_type: THROW_HIT_SELF,
+                damage: o.damage,
+                stamina: o.stamina,
+                hit_mod: THROW_HIT_MOD,
+                ..Default::default()
+            };
+            // sub_80C53A6: the hit resolves while dimmed too.
+            if let Some(h) = crate::kinds::hitbox::spawn(b, r, &spec) {
+                b.objects.get_mut(h).flags |= flags::RUN_WHILE_DIMMED;
+            }
+            b.objects.get_mut(r).hp = 0;
+            Action::Destroyed.start(b, r);
+        }
+        // nullsub_57.
+        0x14 => {}
+        step => panic!("sub_8018002: step {step:#x} reads past off_8018014"),
+    }
+}
+
+/// `sub_800F768`: aim a thrown obstacle at its target panel: 8 px a tick
+/// along the ground toward the panel's center from its whole-pixel
+/// position, rising at 64 px over the flight; the flight's ticks. (The
+/// angle also goes to +0x0C, where nothing reads it.) The distance is
+/// taken from the offsets shifted **logically** by 8 and squared in 32
+/// bits: a negative offset wraps, harmlessly, as the offsets are whole
+/// pixels (multiples of 1 << 16).
+fn aim_throw(b: &mut Battle, r: ObjectRef) -> u8 {
+    let o = b.objects.get(r);
+    let (px, py) = crate::kinds::player::panel_coordinates(o.future_panel.x, o.future_panel.y);
+    let dx = px.wrapping_sub(((o.pos.x as u32 >> 16) << 16) as i32);
+    let dy = py.wrapping_sub(((o.pos.y as u32 >> 16) << 16) as i32);
+    let angle = bios_arctan2(dx >> 16, dy >> 16) >> 8;
+    let sine = &b.content.rules.sine;
+    let (cos, sin) = (sine[angle as usize + 64] as i32, -(sine[angle as usize + 128] as i32));
+    let (vx, vy) = (cos.wrapping_mul(THROW_SPEED) >> 8, sin.wrapping_mul(THROW_SPEED) >> 8);
+    let (ax, ay) = (dx as u32 >> 8, dy as u32 >> 8);
+    let distance = (bios_sqrt(ay.wrapping_mul(ay).wrapping_add(ax.wrapping_mul(ax))) << 8) as i32;
+    let ticks = bios_div(distance, THROW_SPEED);
+    let o = b.objects.get_mut(r);
+    if ticks == 0 {
+        o.vel = Vec3 { x: 0, y: 0, z: THROW_SPEED };
+        return 8;
+    }
+    o.vel = Vec3 { x: vx, y: vy, z: bios_div(THROW_HEIGHT, ticks) };
+    ticks as u8
+}
+
+/// `SWI_Div` (BIOS call 6): the quotient, truncated toward zero. (The BIOS
+/// loops forever dividing by zero; no caller here does.)
+fn bios_div(num: i32, den: i32) -> i32 {
+    num.wrapping_div(den)
+}
+
+/// `SWI_Sqrt` (BIOS call 8): the whole square root of an unsigned word.
+fn bios_sqrt(x: u32) -> u32 {
+    (x as u64).isqrt() as u32
+}
+
+/// `SWI_ArcTan2` (BIOS call 10): the angle of (x, y), 0x10000 a turn, as the
+/// BIOS computes it (its polynomial on the quotient of the smaller over the
+/// larger coordinate, 1.0 = 1 << 14).
+fn bios_arctan2(x: i32, y: i32) -> u32 {
+    fn arctan(i: i32) -> i32 {
+        let a = -(i.wrapping_mul(i) >> 14);
+        let mut b = (0xA9i32.wrapping_mul(a) >> 14) + 0x390;
+        for c in [0x91C, 0xFB6, 0x16AA, 0x2081, 0x3651, 0xA2F9] {
+            b = (b.wrapping_mul(a) >> 14) + c;
+        }
+        (i.wrapping_mul(b) >> 16) as i16 as i32
+    }
+    let q = |n: i32, d: i32| n.wrapping_shl(14).wrapping_div(d);
+    let r = if y == 0 {
+        if x >= 0 { 0 } else { 0x8000 }
+    } else if x == 0 {
+        if y >= 0 { 0x4000 } else { 0xC000 }
+    } else if y >= 0 {
+        if x >= 0 && x >= y {
+            arctan(q(y, x))
+        } else if x < 0 && -x >= y {
+            arctan(q(y, x)) + 0x8000
+        } else {
+            0x4000 - arctan(q(x, y))
+        }
+    } else if x <= 0 && -x > -y {
+        arctan(q(y, x)) + 0x8000
+    } else if x > 0 && x >= -y {
+        arctan(q(y, x)) + 0x10000
+    } else {
+        0xC000 - arctan(q(x, y))
+    };
+    r as u32 & 0xFFFF
 }
 
 /// `sub_801813A`: encased in ice or a bubble, then replaced.
