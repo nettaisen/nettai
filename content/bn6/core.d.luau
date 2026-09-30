@@ -622,6 +622,8 @@ declare dimming: {
 declare navi_chip: {
     -- The navi is done: its controller moves on.
     navi_left: (controller: Object) -> (),
+    -- `sub_80E1332`: the user warps out (`out`) or back in.
+    warp: (user: Object, out: boolean) -> (),
 }
 
 -- Exact integer helpers.

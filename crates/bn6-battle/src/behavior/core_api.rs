@@ -1038,4 +1038,9 @@ impl CoreApi for Battle {
     fn navi_chip_left(&mut self, controller: ObjectRef) {
         kinds::navi_chip::navi_left(self, controller);
     }
+
+    fn navi_warp(&mut self, user: ObjectRef, out: bool) {
+        use kinds::navi_warp::{Warp, spawn};
+        spawn(self, user, if out { Warp::Out } else { Warp::In });
+    }
 }

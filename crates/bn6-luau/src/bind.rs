@@ -728,6 +728,9 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     g.set("dimming", dimming_lib(lua)?)?;
 
     let navi_chip = lua.create_table()?;
+    lib_fn!(lua, navi_chip, "warp", |_, (user, out): (mlua::UserDataRef<Object>, bool)| {
+        with(|api, _| Ok(api.navi_warp(user.0, out)))
+    });
     lib_fn!(lua, navi_chip, "navi_left", |_, c: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.navi_chip_left(c.0)))
     });

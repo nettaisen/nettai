@@ -887,4 +887,7 @@ pub trait CoreApi {
     fn show_user(&mut self, user: ObjectRef);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
+    /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
+    /// navi warp, actor 0x2D).
+    fn navi_warp(&mut self, user: ObjectRef, out: bool);
 }
