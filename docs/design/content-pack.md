@@ -70,10 +70,12 @@ graphics/...  sound/...                   see asset-formats.md
 | `navis/NN-name/navi.toml` (12) | sprite, element, weakness, buster bonus, move lag by variant, result banners, Cross merge height, `[own_chip]`, `[name_record]` (NameID, actor record, attach points) | `Content::navis`, `NaviData` |
 | `navis/00-megaman/forms/NN-name/form.toml` (25) | sprite, element, weakness, `[weapons]`, buster bonus, `[name_record]` | `Content::forms`, `FormData` |
 | `objects/rock/object.toml` | rock variants | `ObjectData::rocks` |
-| `navis/00-megaman/weapons/NN-name/weapon.toml` | a weapon routine a script implements: its number, name, the action it brings and the script | `Content::weapons`, `WeaponData` |
+| `navis/00-megaman/weapons/NN-name/weapon.toml` | a weapon routine a script implements: its number, name, the action it brings, the instant chip effect it names (`instant_chip`) and the script | `Content::weapons`, `WeaponData` |
 | `objects/absorbed-obstacle/object.toml` | `[[obstacle]]`: the sprite an absorbed obstacle flies with, by obstacle kind | `ObjectData::absorbed_sprites` |
 | `objects/body-overlay/object.toml` | Cross body overlays: sprite, in front by animation | `ObjectData::body_overlays` |
 | `objects/sun-beam/object.toml` | the sun beam's sprites by look | `ObjectData::sun_beam_looks` |
+| `objects/projectile/object.toml` | the projectile's kinds (attack object #0, by its first parameter): collision, element, spark, look, status, bug, what its hit does to the panel, bursting, climbing | `ObjectData::projectiles` |
+| `objects/flying-shot/object.toml` | the flying shot's kinds (attack object #0xB): collision, element, spark, look, speed, range, status, highlight, the thrown obstacle's look, panel spark, launch sound, end effect | `ObjectData::flying_shots` |
 | `objects/attachment/object.toml` | attachments no chip declares | `ObjectData::attachments` (with the chips' own) |
 | `objects/KIND/object.toml` `[kind]` | the object slot a script implements: pool, index, script, whether its spawn position is register garbage | `ObjectData::kinds`, `ObjectKind` |
 | `**/*.luau` | the scripts, by path without `.luau` | `Content::scripts` |
