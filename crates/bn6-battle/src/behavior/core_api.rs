@@ -366,6 +366,10 @@ impl CoreApi for Battle {
         crate::field::is_valid(p.x, p.y)
     }
 
+    fn all_field_objects(&self) -> Vec<ObjectRef> {
+        self.field.objects.slots.iter().flatten().copied().collect()
+    }
+
     fn side_field_objects(&self, side: u8) -> Vec<ObjectRef> {
         let first = (side as usize & 1) * 3;
         self.field.objects.slots[first..first + 3].iter().flatten().copied().collect()
@@ -1097,5 +1101,17 @@ impl CoreApi for Battle {
 
     fn absorb_obstacles(&mut self, absorber: ObjectRef) {
         kinds::obstacle::absorb_all(self, absorber);
+    }
+
+    fn obstacle_present(&self, o: ObjectRef) -> bool {
+        use kinds::obstacle::f2;
+        self.objects
+            .get(o)
+            .collision
+            .is_some_and(|c| self.collision.get(c).f2 & (f2::ABSORBED | f2::VANISH | f2::REMOVED) == 0)
+    }
+
+    fn vanish_obstacle(&mut self, o: ObjectRef) {
+        kinds::obstacle::vanish(self, o);
     }
 }

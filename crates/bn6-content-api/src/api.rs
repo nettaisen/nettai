@@ -717,6 +717,10 @@ pub trait CoreApi {
     /// registry's three slots at BattleState+0xA0 + side * 0xC), in slot
     /// order, empty slots left out.
     fn side_field_objects(&self, side: u8) -> Vec<ObjectRef>;
+    /// Every registered field object (the registry's eight slots at
+    /// BattleState+0xA0: each side's three, then the stage's two), in slot
+    /// order, empty slots left out.
+    fn all_field_objects(&self) -> Vec<ObjectRef>;
     fn column_info(&self, x: u8) -> ColumnInfo;
     fn set_column_timer(&mut self, x: u8, ticks: u16);
     /// `object_setPanelAlliance`.
@@ -929,4 +933,10 @@ pub trait CoreApi {
     /// field (except NameID 0xDA and those already leaving) toward
     /// `absorber`'s side.
     fn absorb_obstacles(&mut self, absorber: ObjectRef);
+    /// The object has a collision registration and isn't already leaving
+    /// the field (removed by a chip, blinking out or absorbed): the test
+    /// `sub_80C9EE6` and `sub_80EFD8C` make before taking an obstacle.
+    fn obstacle_present(&self, o: ObjectRef) -> bool;
+    /// `sub_800F898`: a chip makes the obstacle `o` blink out.
+    fn vanish_obstacle(&mut self, o: ObjectRef);
 }

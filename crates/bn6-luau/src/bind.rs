@@ -943,6 +943,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "absorb_obstacles", |_, absorber: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.absorb_obstacles(absorber.0)))
     });
+    lib_fn!(lua, t, "obstacle_present", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.obstacle_present(o.0))));
+    lib_fn!(lua, t, "vanish_obstacle", |_, o: mlua::UserDataRef<Object>| {
+        with(|api, _| Ok(api.vanish_obstacle(o.0)))
+    });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {
         let id = u8_arg(id, "hit spark")?;
         let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;
@@ -978,6 +982,10 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t.raw_set("alliance", info.alliance)?;
         t.raw_set("home", info.home)?;
         Ok(LuaValue::Table(t))
+    });
+    lib_fn!(lua, t, "all_objects", |lua, ()| {
+        let list = with(|api, _| Ok(api.all_field_objects()))?;
+        lua.create_sequence_from(list.into_iter().map(Object))
     });
     lib_fn!(lua, t, "objects", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;

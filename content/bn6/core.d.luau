@@ -617,6 +617,12 @@ declare battle: {
     -- field (but NameID 0xDA and those already leaving) toward
     -- `absorber`'s side; each flies there as an absorbed obstacle.
     absorb_obstacles: (absorber: Object) -> (),
+    -- The object has a collision registration and isn't already leaving the
+    -- field (removed, blinking out or absorbed): the test `sub_80C9EE6` and
+    -- `sub_80EFD8C` make before taking an obstacle.
+    obstacle_present: (o: Object) -> boolean,
+    -- `sub_800F898`: a chip makes the obstacle blink out.
+    vanish_obstacle: (o: Object) -> (),
 }
 
 declare field: {
@@ -631,6 +637,9 @@ declare field: {
     -- A side's registered field objects (the obstacles it owns), in the
     -- registry's slot order.
     objects: (side: number) -> { Object },
+    -- Every registered field object (the registry's eight slots: each
+    -- side's three, then the stage's two), in slot order.
+    all_objects: () -> { Object },
     column: (x: number) -> Column,
     set_column_timer: (x: number, ticks: number) -> (),
     set_alliance: (x: number, y: number, side: number) -> (),
