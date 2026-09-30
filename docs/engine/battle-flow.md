@@ -437,6 +437,22 @@ A transform record: +0 requested form (0xFF none), +4 Cross change (0xFF none), 
   - 8 `sub_801498E`: on init, `SetScreenFade(0x40, 0x10)` (0x6C in mode 1). When done: HUD back, [0..3] = 8 (word store). Fade 0x40 takes **17** ticks: 1889 → 1906.
 - **State 8, `sub_8014A00`**: wait while either navi reverts (`sub_80159A2`: AIData+0x48 bit 0x100 or request 0x40). Then, per side in order, wait while it changes Cross (`sub_802DCEC`: +0x48 bit 0x1000 or request 0x4000000), clearing that side's +4. Then busy = 0.
 
+**The Cross change** (a navi switch; ported in kinds/player/actions/cross_change.rs, **[unverified]**: the custom
+screen never sends one, custom-screen.md §6): the pause handler runs `sub_802D714` as action 0x1C with state 0x1000.
+Step 0 (`sub_802D738`, 4 ticks): onto the destination panel on the ground, facing the default way, flags and
+requests 0x1C41 cleared (the requests' clear passes the flags' mask again), animation 4, links cut, region 1.
+Step 4 (`sub_802D7A0`, one tick): the form's overlay and the navi's death hook, anger ends; the side's second
+NaviStats block (`eBattleNaviStats2034A60`, a copy of the battle-start stats: `Battle::cross_stats`) takes the
+current stats (with the object's HP) when it holds the same navi; the navi becomes the record's navi from that block
+when it holds it, else fresh (`init_8013B64`: the defaults and `byte_80210DD`'s row); AI index and NameID from the
+navi, its sprite (animation 3), overlay or init hook, the post-init hook, statuses and anger cleared, HP from the
+stats (MegaMan) or `byte_802DD88[navi][side]` (a by-level table the game indexes by side), the hit dropped, element,
+`sub_8014216`, no invulnerability. Step 8 (`sub_802D8F0`, 21 ticks): state 0x4000 (crossed) on, 0x1800 off, requests
+0x8600 off, idle. A crossed link navi that loses its HP falls back (`sub_802DD2A`): `sub_802D926` lands the same way
+(ending the Full Synchro aura's link instead of setting the region), takes the kept block back (`sub_802D9B0`, with
+the full status reset and the link navis' own chips dropped from the hand, `sub_80108FC`), and settles (state
+0x6800 off). `sub_802DAA8`, a third variant with the dimming flag, has no caller.
+
 The navi's side of the change is action 0x1C, run by the pause handler (objects-and-player.md §M4.2, and §12.9 for Beast Out). Round 2 timeline: sequencer init 1776, fade-out 1777–1793, request 1794 (the navi enters action 0x1C in the same tick), change done 1887, fade-in 1889–1906, busy cleared 1906, second (reset) run 1907–1908, fighting state 4 at 1909.
 
 Neither `sub_801486C` nor `sub_8014A00` is affected by the custom screen's close setting AIData+0x0F = 1 for both navis (§3.3.2): that value is correct, and it makes the first `sub_80159C6` of the turn return early. The Beast Out end check only runs after a mid-battle custom screen, whose state 0x20 decrements +0x0F to 0 (`sub_8015A16`).
@@ -476,7 +492,9 @@ The first fighting tick is when the battle unpauses: frames 593 / 1970.
 - else 1 if P1's has;
 - else 0xFF.
 
-Nothing gates it on link, so **pause is reachable in PvP** (the trace never pauses).
+Nothing gates it on link, so **pause is reachable in PvP** (the trace never pauses). Ported as `Battle::fight_pause`
+(unverified), with the draw state 0x14 (`fight_draw`) and the escape (`sub_800AAD6`: result code 4, then 2, straight
+to the fade-out).
 
 State 0x1C, `sub_80083E4`: only the pausing player [5] can resume, with a new START edge (`sub_800A07C([5])`). On that edge: sound 0x9F, [0]=8, `sub_801DACC(0x200)`. The pause byte stays 1 for the rest of that tick; `sub_80080D2` unpauses at the top of the next tick. While in 0x1C, `sub_8012DFC` is not called, so actor inputs are frozen. What runs while paused is listed in §8.3.
 
@@ -568,7 +586,7 @@ display [0xA]/60 (sub_801E398)
 
 After exactly 600 decrements (659 → 59), the next tick sets BS+0x0B. Later in the same tick `sub_800A152()` returns 7 → [0]=0x18; a KO seen in the same tick takes precedence. The timer is re-armed on every fighting entry. Also, from turn 15 on the gauge never arms (§7.1), so custom screens stop.
 
-#### Damage judge, state 0x18 `sub_800834A` (static only)
+#### Damage judge, state 0x18 `sub_800834A` (static only; ported as `Battle::fight_judge`, unverified)
 
 T is the tick that set 0x18.
 

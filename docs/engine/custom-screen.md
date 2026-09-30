@@ -149,7 +149,7 @@ replays (37.5k ticks: 692 moves, 174 picks, 49 take-backs, 88 Cross windows, 40 
 
 | Slot | Action |
 |---|---|
-| A chip | If selectable and fewer than 5 picks: pick it (`sub_8028CCC`). Chip 0x13F ("BeastOut" as a folder chip) would go to state 0x44 (not ported) |
+| A chip | If selectable and fewer than 5 picks: pick it (`sub_8028CCC`). Chip 0x13F ("BeastOut" as a folder chip) goes to state 0x44 (§3.5) |
 | OK | Build the hand (§5) and slide out (§6); works with nothing picked |
 | Beast Out | If selectable and fewer than 5 picks: pick it (it counts as a pick) and play its animation (§4) |
 | Scrap (slots 8/9) | If usable: scrap (§3.6) |
@@ -196,6 +196,7 @@ T is the tick that took the key; "input from" is the first tick the grid reads k
 | 0x50 Cross window closing | B or START in the window at T | T+7 |
 | 0x5C Cross chosen | A in the window at T | T+35 **[dumps, 15 cases]** |
 | 0x48 Beast Out picked | A on Beast Out at T | T+71 **[dumps, 5 cases]** |
+| 0x44 BeastOut chip picked (`sub_80275EC`) | A on chip 0x13F at T | as 0x48 but its fade starts 16 ticks later; the chip moves to the front of the selection at T+68 (the Beast Out flag and button stay); T+86 **[lab]** |
 | 0x38 DustCross scrap | A on the scrap button at T | T+4+25k for k chips scrapped **[dumps, 13 cases]** |
 
 The chip description's chatbox also closes on B held for 10 frames; that is not ported.
@@ -344,7 +345,7 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 - **ChpShufl** (NaviCust, NaviStats+0x60): the re-deal button is laid out, pressing it panics (not implemented).
   It shuffles with the console's RNG1, which the simulation doesn't have; a port would give each player an RNG
   stream in the setup.
-- **Chip 0x13F picked as a chip** (state 0x44): panics (not implemented); not seen in netbattles.
+- **Chip 0x13F picked as a chip** (state 0x44, `Phase::BeastOutChipChosen`): the chip lab's BeastOut scenarios match.
 - **The run message's timing** (L): an estimate; the chatbox's text timing isn't ported.
 - **The Program Advance animation's length**: from the code, not a recording.
 - **Tag chips**: laid out and shuffled; the tag flag is only read by ChpShufl.
