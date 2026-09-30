@@ -645,6 +645,57 @@ fn breaking_a_scripted_rock_throws_debris() {
     assert!(!b.objects.is_allocated(r));
 }
 
+/// A rock picked up and thrown (`sub_8018002`, the request `sub_800F6AC`
+/// makes) rises for 32 ticks, shakes for its ticks (a jitter draw each),
+/// flies to its target panel (10 ticks from (3,3) to (5,2)) and breaks
+/// there with a hit.
+#[test]
+fn a_thrown_rock_flies_to_its_target_and_breaks() {
+    use crate::kinds::obstacle::{f2, obstacle_f1};
+    use crate::object::{PanelPos, Pool};
+    const ROCK: [(Pool, u8); 1] = [(Pool::Attack, 0x59)];
+    let mut b = rock_battle();
+    b.spawn_actors();
+    b.round.flags |= crate::battle::battle_flags::FIGHTING;
+    let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
+    run_only(&mut b, &ROCK);
+    assert_eq!(b.objects.get(r).panel, PanelPos { x: 3, y: 3 });
+    // sub_800F6AC(rock, side 0, (5, 2), 10 ticks of shaking, 60 damage).
+    let c = b.objects.get(r).collision.unwrap();
+    b.collision.get_mut(c).f2 |= f2::THROWN_BY_0;
+    let o = b.objects.get_mut(r);
+    (o.slide_dx, o.slide_dy, o.slide_timer, o.damage) = (5, 2, 10, 60);
+    run_only(&mut b, &ROCK);
+    assert_eq!(b.collision.get(c).f2 & f2::THROWN, 0);
+    assert_ne!(b.collision.get(c).f1 & obstacle_f1::CARRIED, 0);
+    assert_eq!(b.objects.get(r).alliance, 0);
+    for _ in 0..32 {
+        run_only(&mut b, &ROCK);
+    }
+    assert_eq!(b.objects.get(r).pos.z, 0x40_0000, "lifted 64 px");
+    run_only(&mut b, &ROCK);
+    let before = b.rng.state;
+    for _ in 0..10 {
+        run_only(&mut b, &ROCK);
+    }
+    let mut rng = crate::rng::Rng::new(before);
+    for _ in 0..10 {
+        rng.next();
+    }
+    assert_eq!(b.rng.state, rng.state, "a jitter draw a shaking tick");
+    assert_eq!(b.objects.get(r).future_panel, PanelPos { x: 5, y: 2 });
+    for _ in 0..9 {
+        run_only(&mut b, &ROCK);
+        assert_ne!(b.objects.get(r).action, 2, "still flying");
+    }
+    run_only(&mut b, &ROCK);
+    let o = b.objects.get(r);
+    assert_eq!((o.panel, o.hp, o.action), (PanelPos { x: 5, y: 2 }, 0, 2), "landed and breaking");
+    let hit = b.objects.in_order().find(|h| h.pool == Pool::Attack && b.objects.get(*h).index == 3).unwrap();
+    let h = b.objects.get(hit);
+    assert_eq!((h.panel, h.params, h.damage), (PanelPos { x: 5, y: 2 }, [1, 5, 5, 6], 60));
+}
+
 // ---- The navi-changing chips (subtype 38) ----------------------------------------------------
 
 #[test]
