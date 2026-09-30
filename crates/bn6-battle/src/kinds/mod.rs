@@ -1,7 +1,7 @@
-//! Object behaviors the engine implements itself, chosen by pool and
-//! index, plus helpers shared by many behaviors (HP changes, damage
-//! formulas). A kind the content pack's scripts implement runs as content
-//! instead (`behavior`).
+//! Object behaviors the engine implements itself (`EngineKind`), reached
+//! through the content's kind registry (`content::defs`), plus helpers
+//! shared by many behaviors (HP changes, damage formulas). A kind the
+//! content pack's scripts implement runs as content instead (`behavior`).
 
 pub mod afterimage;
 pub mod beast_over_burst;
@@ -79,34 +79,89 @@ impl Vars {
     }
 }
 
-/// Run one object's update.
+/// The object kinds the engine implements itself (the rest are content's:
+/// `content::defs`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum EngineKind {
+    Player,
+    Intro,
+    ChargeGlow,
+    Effect,
+    Hitbox,
+    Spark,
+    BubbleVisual,
+    FormOverlay,
+    Afterimage,
+    LockonMarker,
+    PaletteFlash,
+    CrossMerge,
+    BodyOverlay,
+    IdleOverlay,
+    FullSynchroAura,
+    BeastOverBurst,
+    NaviChip,
+    NaviWarp,
+    Eruption,
+    StatusVisual,
+}
+
+/// The engine's kinds: their keys (`engine/...`), pools, and the object
+/// slots they fill (the original's pool and index, which the traces
+/// compare).
+pub const ENGINE_KINDS: [(EngineKind, &str, Pool, u8); 20] = [
+    (EngineKind::Player, "engine/player", Pool::Actor, 0),
+    (EngineKind::Intro, "engine/intro", Pool::Effect, 2),
+    (EngineKind::ChargeGlow, "engine/charge-glow", Pool::Effect, 8),
+    (EngineKind::Effect, "engine/effect", Pool::Effect, 0),
+    (EngineKind::Hitbox, "engine/hitbox", Pool::Attack, 3),
+    (EngineKind::Spark, "engine/spark", Pool::Effect, 4),
+    (EngineKind::BubbleVisual, "engine/bubble-visual", Pool::Effect, bubble_visual::INDEX),
+    (EngineKind::FormOverlay, "engine/form-overlay", Pool::Actor, form_overlay::INDEX),
+    (EngineKind::Afterimage, "engine/afterimage", Pool::Effect, afterimage::INDEX),
+    (EngineKind::LockonMarker, "engine/lockon-marker", Pool::Effect, lockon_marker::INDEX),
+    (EngineKind::PaletteFlash, "engine/palette-flash", Pool::Effect, palette_flash::INDEX),
+    (EngineKind::CrossMerge, "engine/cross-merge", Pool::Actor, cross_merge::INDEX),
+    (EngineKind::BodyOverlay, "engine/body-overlay", Pool::Actor, body_overlay::INDEX),
+    (EngineKind::IdleOverlay, "engine/idle-overlay", Pool::Actor, idle_overlay::INDEX),
+    (EngineKind::FullSynchroAura, "engine/full-synchro-aura", Pool::Actor, full_synchro_aura::INDEX),
+    (EngineKind::BeastOverBurst, "engine/beast-over-burst", Pool::Effect, beast_over_burst::INDEX),
+    (EngineKind::NaviChip, "engine/navi-chip", Pool::Effect, navi_chip::INDEX),
+    (EngineKind::NaviWarp, "engine/navi-warp", Pool::Actor, navi_warp::INDEX),
+    (EngineKind::Eruption, "engine/eruption", Pool::Attack, eruption::INDEX),
+    (EngineKind::StatusVisual, "engine/status-visual", Pool::Effect, status_visual::INDEX),
+];
+
+/// Run one object's update: its kind's (by the object slot it fills).
 pub fn update(b: &mut Battle, r: ObjectRef) {
+    use crate::content::KindImpl;
     let index = b.objects.get(r).index;
-    if let Some(kind) = b.behaviors.object_kind(r.pool, index) {
-        return crate::behavior::run_object(b, kind, r);
-    }
-    match (r.pool, index) {
-        (Pool::Actor, 0) => player::update(b, r),
-        (Pool::Effect, 2) => intro::update(b, r),
-        (Pool::Effect, 8) => charge_glow::update(b, r),
-        (Pool::Effect, 0) => effect::update(b, r),
-        (Pool::Attack, 3) => hitbox::update(b, r),
-        (Pool::Effect, 4) => spark::update(b, r),
-        (Pool::Effect, bubble_visual::INDEX) => bubble_visual::update(b, r),
-        (Pool::Actor, form_overlay::INDEX) => form_overlay::update(b, r),
-        (Pool::Effect, afterimage::INDEX) => afterimage::update(b, r),
-        (Pool::Effect, lockon_marker::INDEX) => lockon_marker::update(b, r),
-        (Pool::Effect, palette_flash::INDEX) => palette_flash::update(b, r),
-        (Pool::Actor, cross_merge::INDEX) => cross_merge::update(b, r),
-        (Pool::Actor, body_overlay::INDEX) => body_overlay::update(b, r),
-        (Pool::Actor, idle_overlay::INDEX) => idle_overlay::update(b, r),
-        (Pool::Actor, full_synchro_aura::INDEX) => full_synchro_aura::update(b, r),
-        (Pool::Effect, beast_over_burst::INDEX) => beast_over_burst::update(b, r),
-        (Pool::Effect, navi_chip::INDEX) => navi_chip::update(b, r),
-        (Pool::Actor, navi_warp::INDEX) => navi_warp::update(b, r),
-        (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
-        (Pool::Effect, status_visual::INDEX) => status_visual::update(b, r),
-        (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
+    let Some(kind) = b.content.defs.kind_at(r.pool, index) else {
+        panic!("object kind {:?} {index:#x} is not implemented yet", r.pool)
+    };
+    match b.content.defs.kind(kind).implementation {
+        KindImpl::Script { update } => crate::behavior::run_object(b, kind, update, r),
+        KindImpl::Engine(k) => match k {
+            EngineKind::Player => player::update(b, r),
+            EngineKind::Intro => intro::update(b, r),
+            EngineKind::ChargeGlow => charge_glow::update(b, r),
+            EngineKind::Effect => effect::update(b, r),
+            EngineKind::Hitbox => hitbox::update(b, r),
+            EngineKind::Spark => spark::update(b, r),
+            EngineKind::BubbleVisual => bubble_visual::update(b, r),
+            EngineKind::FormOverlay => form_overlay::update(b, r),
+            EngineKind::Afterimage => afterimage::update(b, r),
+            EngineKind::LockonMarker => lockon_marker::update(b, r),
+            EngineKind::PaletteFlash => palette_flash::update(b, r),
+            EngineKind::CrossMerge => cross_merge::update(b, r),
+            EngineKind::BodyOverlay => body_overlay::update(b, r),
+            EngineKind::IdleOverlay => idle_overlay::update(b, r),
+            EngineKind::FullSynchroAura => full_synchro_aura::update(b, r),
+            EngineKind::BeastOverBurst => beast_over_burst::update(b, r),
+            EngineKind::NaviChip => navi_chip::update(b, r),
+            EngineKind::NaviWarp => navi_warp::update(b, r),
+            EngineKind::Eruption => eruption::update(b, r),
+            EngineKind::StatusVisual => status_visual::update(b, r),
+        },
     }
 }
 

@@ -25,9 +25,8 @@ fn runtimes() -> Vec<(&'static str, Options)> {
     v
 }
 
-fn at(tape: &[Tick], options: Options, ticks: usize) -> Battle {
-    let behaviors = Behaviors::load(&testing::build(), options).unwrap();
-    let mut b = Battle::with_behaviors(scenario::setup(), scenario::content(), behaviors);
+fn at(tape: &[Tick], ticks: usize) -> Battle {
+    let mut b = Battle::new(scenario::setup(), scenario::content());
     for t in &tape[..ticks] {
         b.tick(&t.input, t.events.clone());
     }
@@ -98,13 +97,23 @@ fn main() {
     println!("|---|---|---|---|---|---|---|");
     for (name, options) in runtimes() {
         let behaviors = Behaviors::load(&testing::build(), options).unwrap();
+        // Everything below runs on this runtime.
+        behavior::with_runtime(&behaviors, || row(name, &behaviors, &tape, idle));
+    }
+    println!("
+Frame budget at 60 Hz: 16,667 µs.");
+}
+
+/// One runtime's row of the table.
+fn row(name: &str, behaviors: &Behaviors, tape: &[Tick], idle: [PlayerTick; 2]) {
+    {
         // The whole duel from the start of the round.
         let whole = time(20, || {
-            black_box(scenario::play(&tape, behaviors.clone()));
+            black_box(scenario::play(tape, behaviors.clone()));
         }) / tape.len() as u32;
 
         // Steady state while GunDelSols fire.
-        let base = at(&tape, options, 300);
+        let base = at(tape, 300);
         let mut b = base.clone();
         let firing = time(50, || {
             b.clone_from(&base);
@@ -117,7 +126,7 @@ fn main() {
         // the same battle without them.
         let ticks = 10_000;
         let run = |n: usize| {
-            let mut b = at(&tape, options, 250);
+            let mut b = at(tape, 250);
             attach(&mut b, n);
             let t = Instant::now();
             for _ in 0..ticks {
@@ -130,7 +139,7 @@ fn main() {
 
         // Snapshots mid-GunDelSol, and a rollback frame: take a snapshot,
         // restore an older one, re-simulate 10 ticks.
-        let base = at(&tape, options, 400);
+        let base = at(tape, 400);
         let mut b = base.clone();
         let snapshot = time(2000, || {
             black_box(b.clone());

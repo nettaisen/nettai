@@ -157,6 +157,11 @@ pub struct AttackVars {
     /// (action 0x11's variant 2) fires without writing it and waits
     /// whatever the last shot left, whatever ran in between.
     pub recovery: u16,
+    /// The content action the attack runs, when it isn't reached by the
+    /// navi's action number (the chips of one family each compose their
+    /// own action, so a number names several: docs/design/content-model-v2.md
+    /// §3.5). The number stays the navi's CurAction.
+    pub content_action: Option<bn6_content_api::ActionHandle>,
     /// The running action's own state (timers, destinations).
     pub action: crate::kinds::player::actions::ActionVars,
     /// +0x1E..+0x27: the Beast Out rush around the action, when

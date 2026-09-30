@@ -51,7 +51,10 @@ fn battle_data_reads_back_as_the_same_content() {
     write(&dir, &c);
     let (back, report) = load(&dir);
     assert!(!report.has_errors(), "{report}");
-    let back = back.unwrap();
+    // The files hold the data and the scripts; defining what they read
+    // back gives the same registries (the define phase is deterministic).
+    let mut back = back.unwrap();
+    back.define().unwrap();
     assert_eq!(bn6_content::verify::compare_battle(&c, &back), Vec::<String>::new());
     assert_eq!(back, c);
     assert_eq!(back.hash(), c.hash());

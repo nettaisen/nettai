@@ -74,7 +74,7 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<ChipId> {
                 let form = stats(b, r).form;
                 // The Beast forms' claw (weapon 0x1E) and SlashCross Beast's
                 // charged sword run inside the Beast Out rush.
-                if action == BEAST_CLAW || (action == 0x41 && form.0 == 0x0F) {
+                if action.number == BEAST_CLAW || (action.number == 0x41 && form.0 == 0x0F) {
                     ai_mut(b, r).attack.beast_lockon = 1;
                 }
                 ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
@@ -143,7 +143,7 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
 /// the dark chip's substitute) and name its action. `charge` marks the
 /// attack as charged (AIAttackVars+4): 1 for the forms' charged chips, 2
 /// after GroundCross's rocks.
-pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> u8 {
+pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> super::NaviAttack {
     if ai(b, r).requests & request::ALT_CHIP != 0 {
         ai_mut(b, r).attack.special_source = 1;
     }
@@ -203,7 +203,13 @@ pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> u8 {
         b.bump_side_stat(side, 6, 1);
     }
     dark_chip_side_effect(b, r, e.chip);
-    action
+    // A chip content defines runs its own action (its family's actions
+    // share a number, the navi's CurAction).
+    let content_action = match content.defs.chip_with_id(e.chip).map(|c| c.usage) {
+        Some(crate::content::ChipUsage::Action(h)) => Some(h),
+        _ => None,
+    };
+    super::NaviAttack { number: action, content: content_action }
 }
 
 /// A chip that deals damage and isn't a dimming chip (the condition every

@@ -1,17 +1,22 @@
-//! [`ContentHost`]: a runtime holding content (Luau). The engine tells it
-//! what the content pack registers ([`Registrations`]: which module
-//! implements which object kind, navi action or hook, from the pack's
-//! data), the runtime loads those modules into a [`Manifest`], and the
-//! engine calls their functions.
+//! [`ContentHost`]: a runtime holding content (Luau). The engine plans what
+//! the runtime binds from its content ([`BindPlan`]: the functions it will
+//! call, found by module export or by definition slot, and the state
+//! layouts); the runtime loads the pack's modules, checks it reads the same
+//! definitions the content was made from, and the engine calls the
+//! functions by [`FnId`].
 
 use std::fmt;
 
 use crate::api::CoreApi;
+use crate::definitions::Definitions;
+use crate::registry::Registry;
 use crate::state::{Schema, StateId, Value};
-use crate::types::{ObjectRef, PanelPos, Pool};
+use crate::types::{ObjectRef, PanelPos};
 
 /// A ruleset table that content fills by number, instead of an object
-/// kind or a navi action.
+/// kind or a navi action. (Registration by number, until the content model
+/// v2 migration ends: docs/design/content-model-v2.md §3.10 has the
+/// definition slots that replace it.)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Hook {
     /// Weapon routine `n` (`off_80117D4`): sets up the attack from the
@@ -59,147 +64,71 @@ impl fmt::Display for Hook {
     }
 }
 
-/// What a content pack registers: which module (a path in the pack,
-/// without `.luau`) implements each object kind, navi action and hook.
-/// Built by the engine from the pack's data; nothing in the engine or the
+/// Where a function content implements is.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum FnSource {
+    /// A function a module's table exports: registration by module
+    /// (content-pack.md §1.3), until the content model v2 migration ends.
+    Export { module: String, name: String },
+    /// A function slot of a definition: `update` of kind `bomb`, `dimming`
+    /// of chip `areagrab` (docs/design/content-model-v2.md §3.10). `path`
+    /// is the field's place in the spec, dot-separated.
+    Slot { registry: Registry, key: String, path: String },
+}
+
+impl FnSource {
+    /// A definition's slot.
+    pub fn slot(registry: Registry, key: &str, path: &str) -> FnSource {
+        FnSource::Slot { registry, key: key.to_string(), path: path.to_string() }
+    }
+
+    /// A module's export.
+    pub fn export(module: &str, name: &str) -> FnSource {
+        FnSource::Export { module: module.to_string(), name: name.to_string() }
+    }
+}
+
+impl fmt::Display for FnSource {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            FnSource::Export { module, name } => write!(f, "{module}.luau's {name}"),
+            FnSource::Slot { registry, key, path } => write!(f, "{registry} {key}'s {path}"),
+        }
+    }
+}
+
+/// An index into [`BindPlan::functions`]: a function the engine calls.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct FnId(pub u32);
+
+/// What a runtime loads, as the engine planned it from its content: the
+/// functions it will call, the state layouts, and the definitions the
+/// runtime's define phase must read back. Nothing in the engine or the
 /// runtime names a particular kind, action or module.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Registrations {
-    pub kinds: Vec<KindReg>,
-    pub actions: Vec<ActionReg>,
-    pub hooks: Vec<HookReg>,
+#[derive(Clone, Debug, Default)]
+pub struct BindPlan {
+    /// The functions the engine calls, by [`FnId`].
+    pub functions: Vec<FnSource>,
+    /// Content state layouts, by [`StateId`].
+    pub schemas: Vec<Schema>,
+    /// What the define phase read when the content was made; a runtime must
+    /// read the same.
+    pub definitions: Definitions,
+    /// The handle of each definition, in `definitions.defs`' order (a
+    /// registry's handles also number the engine's own entries, so they are
+    /// not the definitions' positions).
+    pub handles: Vec<u16>,
 }
 
-/// An object kind: the module exports `state` (its schema) and
-/// `update(me)`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct KindReg {
-    /// The kind's name in the pack (its folder under `objects/`).
-    pub name: String,
-    pub pool: Pool,
-    pub index: u8,
-    pub module: String,
-}
-
-/// A navi action: the module exports `state` and `update(me, state)`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ActionReg {
-    /// The action number (0x10 and up).
-    pub action: u8,
-    pub module: String,
-}
-
-/// A hook: the module exports the hook's function ([`Hook::function`]).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HookReg {
-    pub hook: Hook,
-    pub module: String,
-}
-
-/// An object kind the content implements, loaded.
-#[derive(Clone, Debug)]
-pub struct ObjectKindDef {
-    /// The kind's name in the pack.
-    pub name: String,
-    pub pool: Pool,
-    pub index: u8,
-    pub module: String,
-    pub schema: Schema,
-}
-
-/// A navi action the content implements, loaded.
-#[derive(Clone, Debug)]
-pub struct ActionDef {
-    pub action: u8,
-    pub module: String,
-    pub schema: Schema,
-}
-
-/// A hook the content implements, loaded.
-#[derive(Clone, Debug)]
-pub struct HookDef {
-    pub hook: Hook,
-    pub module: String,
-}
-
-/// Everything a content set defines, as loaded.
+/// What a runtime loaded that the binding reads: the state layouts.
 #[derive(Clone, Debug, Default)]
 pub struct Manifest {
-    pub objects: Vec<ObjectKindDef>,
-    pub actions: Vec<ActionDef>,
-    pub hooks: Vec<HookDef>,
+    pub schemas: Vec<Schema>,
 }
-
-/// An index into [`Manifest::objects`] or [`Manifest::actions`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct KindId(pub u16);
-
-/// An index into [`Manifest::hooks`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct HookId(pub u16);
 
 impl Manifest {
-    /// The state id of object kind `k`.
-    pub fn object_state(&self, k: KindId) -> StateId {
-        StateId(k.0)
-    }
-
-    /// The state id of action `a`.
-    pub fn action_state(&self, a: KindId) -> StateId {
-        StateId(self.objects.len() as u16 + a.0)
-    }
-
     pub fn schema(&self, id: StateId) -> &Schema {
-        let i = id.0 as usize;
-        match self.objects.get(i) {
-            Some(k) => &k.schema,
-            None => &self.actions[i - self.objects.len()].schema,
-        }
-    }
-
-    /// The object kind named `name`.
-    pub fn kind_by_name(&self, name: &str) -> Option<KindId> {
-        self.objects.iter().position(|k| k.name == name).map(|i| KindId(i as u16))
-    }
-}
-
-impl Registrations {
-    /// Check the registrations don't overlap: each kind slot, kind name,
-    /// action number and hook is implemented once.
-    pub fn validate(&self) -> Result<(), ContentError> {
-        for (i, k) in self.kinds.iter().enumerate() {
-            for o in &self.kinds[..i] {
-                if (o.pool, o.index) == (k.pool, k.index) {
-                    return Err(ContentError::new(format!(
-                        "objects/{} and objects/{} both implement {} object {:#x}",
-                        o.name,
-                        k.name,
-                        k.pool.name(),
-                        k.index
-                    )));
-                }
-                if o.name == k.name {
-                    return Err(ContentError::new(format!("two object kinds are named {}", k.name)));
-                }
-            }
-        }
-        for (i, a) in self.actions.iter().enumerate() {
-            if a.action < 0x10 {
-                return Err(ContentError::new(format!("{}: actions below 0x10 are the engine's", a.module)));
-            }
-            if let Some(o) = self.actions[..i].iter().find(|o| o.action == a.action && o.module != a.module) {
-                return Err(ContentError::new(format!(
-                    "{} and {} both implement action {:#x}",
-                    o.module, a.module, a.action
-                )));
-            }
-        }
-        for (i, h) in self.hooks.iter().enumerate() {
-            if let Some(o) = self.hooks[..i].iter().find(|o| o.hook == h.hook && o.module != h.module) {
-                return Err(ContentError::new(format!("{} and {} both implement {}", o.module, h.module, h.hook)));
-            }
-        }
-        Ok(())
+        &self.schemas[id.0 as usize]
     }
 }
 
@@ -262,7 +191,8 @@ pub struct ActorListEntrySpec {
 /// A call of a hook, with its arguments.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HookCall {
-    /// `setup(navi)`: returns the action number.
+    /// `setup(navi)`: returns the action, a number (registration by number)
+    /// or an action definition.
     Weapon { navi: ObjectRef },
     /// `dimming_chip(user, spec)`: returns the controller, or nil.
     DimmingChip { user: ObjectRef, spec: DimmingChipSpec },
@@ -304,10 +234,13 @@ pub trait ContentHost {
     /// A short name for messages ("luau").
     fn runtime(&self) -> &str;
     fn manifest(&self) -> &Manifest;
-    /// One tick of object `me`, of kind `kind`.
-    fn update_object(&self, api: &mut dyn CoreApi, kind: KindId, me: ObjectRef) -> Result<(), ContentError>;
-    /// One tick of action `action` for the navi `me`.
-    fn update_action(&self, api: &mut dyn CoreApi, action: KindId, me: ObjectRef) -> Result<(), ContentError>;
-    /// Call hook `hook`.
-    fn call_hook(&self, api: &mut dyn CoreApi, hook: HookId, call: HookCall) -> Result<Value, ContentError>;
+    /// One tick of object `me`: function `f` is its kind's `update`.
+    fn update_object(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef) -> Result<(), ContentError>;
+    /// One tick of an action for the navi `me`: function `f` is the
+    /// action's `update`, and its second argument is the attack state as a
+    /// state of layout `state`.
+    fn update_action(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef, state: StateId)
+    -> Result<(), ContentError>;
+    /// Call function `f` for a hook.
+    fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError>;
 }
