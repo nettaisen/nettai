@@ -149,10 +149,13 @@ impl Battle {
             let req = self.transform_seq.requests[side as usize];
             let navi = self.player(side);
             if req.cross_change.is_some() {
-                // sub_802DCDE
-                panic!("Cross changes (sub_802DCDE) are not implemented yet");
-            }
-            if req.form.is_some() {
+                // A Cross change is asked for, and the Beast Out check runs
+                // too (the form isn't looked at).
+                if let Some(p) = navi {
+                    player::actions::cross_change::request_change(self, p);
+                    player::check_beast_out_end(self, p);
+                }
+            } else if req.form.is_some() {
                 transforming = true;
             } else if let Some(p) = navi {
                 player::check_beast_out_end(self, p);

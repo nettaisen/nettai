@@ -336,6 +336,12 @@ pub struct Battle {
     pub content: Arc<Content>,
     pub setup: RoundSetup,
     pub stats: [NaviStats; 2],
+    /// Each side's other navi's stats for a Cross change
+    /// (`eBattleNaviStats2034A60`): a copy of the side's stats at the
+    /// battle's start; a change keeps the navi it leaves here when it is
+    /// this one, and takes the navi it goes to from here when it is that
+    /// one (`sub_802D7A0`); a Cross knockout takes it back (`sub_802D9B0`).
+    pub cross_stats: [NaviStats; 2],
     pub rng: Rng,
     pub round: RoundState,
     pub fight: FightMachine,
@@ -574,6 +580,7 @@ impl Battle {
         let mut b = Battle {
             content,
             stats: setup.navi_stats,
+            cross_stats: setup.navi_stats,
             rng: Rng::new(setup.rng),
             round: RoundState {
                 running: 1,

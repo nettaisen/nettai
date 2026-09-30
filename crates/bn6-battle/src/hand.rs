@@ -92,6 +92,37 @@ impl ChipHand {
         }
     }
 
+    /// `sub_80108FC`: from the cursor on, the link navis' own chips
+    /// (0x190..=0x19A) leave the hand; the entries after each move up one
+    /// (`sub_801092C`), the last staying where it was.
+    pub fn drop_link_navi_chips(&mut self) {
+        let mut i = self.cursor as usize;
+        let mut removed = 0;
+        while let Some(&id) = self.ids.get(i) {
+            if id == NO_CHIP {
+                return;
+            }
+            if !(0x190..=0x19A).contains(&id) {
+                i += 1;
+                continue;
+            }
+            removed += 1;
+            if removed > self.ids.len() {
+                panic!("dropping the link navis' chips from the hand loops forever (sub_80108FC)");
+            }
+            for j in i..self.ids.len() - 1 {
+                self.ids[j] = self.ids[j + 1];
+                self.damage[j] = self.damage[j + 1];
+                self.attack_bonus[j] = self.attack_bonus[j + 1];
+                self.charge_bonus[j] = self.charge_bonus[j + 1];
+                self.selection[j] = self.selection[j + 1];
+                self.turn[j] = self.turn[j + 1];
+                self.modifiers[j] = self.modifiers[j + 1];
+            }
+        }
+        panic!("dropping the link navis' chips reads past the hand (sub_80108FC)");
+    }
+
     /// Chips left, counting from the cursor.
     pub fn remaining(&self) -> u8 {
         self.ids.iter().skip(self.cursor as usize).take_while(|&&id| id != NO_CHIP).count() as u8
