@@ -247,6 +247,7 @@ impl CoreApi for Battle {
             NaviStat::Charge => i(s.charge as i64),
             NaviStat::Mood => i(s.mood as i64),
             NaviStat::BeastOutCounter => i(s.beast_out_counter as i64),
+            NaviStat::Version => i(s.version as i64),
             NaviStat::MaxBaseHp => i(s.max_base_hp as i64),
             NaviStat::ChipRecovery => i(s.chip_recovery as i64),
             NaviStat::BusterShot => i(s.weapons.buster_shot as i64),
@@ -328,14 +329,15 @@ impl CoreApi for Battle {
     }
 
     fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo> {
-        let name = self
+        let r = self
             .content
             .navis
             .iter()
             .filter_map(|n| n.name_record.as_ref())
             .chain(self.content.forms.iter().filter_map(|f| f.name_record.as_ref()))
-            .find(|n| n.id == name_id)?;
-        let r = name.record();
+            .find(|n| n.id == name_id)
+            .map(crate::content::NameData::record)
+            .or_else(|| self.content.rules.actor_records.get(name_id as usize).copied())?;
         Some(NaviRecordInfo { actor_type: actor_type_index(r.actor_type) as u8, ai_index: r.ai_index })
     }
 

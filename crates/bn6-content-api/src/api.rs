@@ -295,6 +295,8 @@ named_fields! {
         Charge = "charge", U8, ro;
         Mood = "mood", U8, ro;
         BeastOutCounter = "beast_out_counter", U8, ro;
+        /// The navi's game: 0 Gregar, 1 Falzar.
+        Version = "version", U8, ro;
         MaxBaseHp = "max_base_hp", U16, ro;
         /// The NaviCust's heal on chip use.
         ChipRecovery = "chip_recovery", U16, ro;
