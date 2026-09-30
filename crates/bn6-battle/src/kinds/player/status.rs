@@ -651,7 +651,8 @@ fn bubble_active(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
     if coll(b, r).links[link::BUBBLE].is_some() {
         return false;
     }
-    panic!("the bubble visual (sub_80E4B34) is not implemented yet");
+    crate::kinds::bubble_visual::spawn(b, r);
+    true
 }
 
 /// The confusion's active branch.

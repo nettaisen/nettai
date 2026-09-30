@@ -6,6 +6,7 @@
 pub mod absorbed_obstacle;
 pub mod afterimage;
 pub mod body_overlay;
+pub mod bubble_visual;
 pub mod charge_glow;
 pub mod common;
 pub mod cross_merge;
@@ -93,6 +94,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Effect, 0) => effect::update(b, r),
         (Pool::Attack, 3) => hitbox::update(b, r),
         (Pool::Effect, 4) => spark::update(b, r),
+        (Pool::Effect, bubble_visual::INDEX) => bubble_visual::update(b, r),
         (Pool::Attack, rock::INDEX) => rock::update(b, r),
         (Pool::Effect, rock_debris::INDEX) => rock_debris::update(b, r),
         (Pool::Effect, absorbed_obstacle::INDEX) => absorbed_obstacle::update(b, r),

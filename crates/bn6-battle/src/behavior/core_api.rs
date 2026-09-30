@@ -723,6 +723,26 @@ impl CoreApi for Battle {
         kinds::player::form::navi_death_hook(self, o, name_id);
     }
 
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &bn6_content_api::api::AfterimageSpec) -> Option<ObjectRef> {
+        use kinds::afterimage::{PlainLook, PlainShadow, Tether};
+        let look = PlainLook {
+            color_shader: spec.color_shader,
+            shadow: match spec.shadow {
+                Shadow::WithSprite => PlainShadow::WithSprite,
+                Shadow::Ground => PlainShadow::Ground,
+                Shadow::Hidden => PlainShadow::Hidden,
+            },
+            palette: spec.palette,
+            steady: spec.steady,
+        };
+        let tether = match spec.tether {
+            1 => Tether::BeastForm,
+            2 => Tether::Attack,
+            _ => Tether::None,
+        };
+        kinds::afterimage::spawn_plain(self, owner, pos, spec.sprite, spec.anim, spec.flip, spec.lifetime, tether, look)
+    }
+
     // ---- Navis and the attack in progress -------------------------------------
 
     fn actor_get(&self, o: ObjectRef, f: ActorField) -> ApiResult<Value> {

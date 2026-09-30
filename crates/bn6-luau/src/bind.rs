@@ -947,6 +947,41 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let o = with(|api, _| Ok(api.spawn_spark(owner.0, pos.0, id)))?;
         object_value(lua, o)
     });
+    lib_fn!(
+        lua,
+        t,
+        "afterimage",
+        |lua, (owner, pos, spec): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, mlua::Table)| {
+            let sprite: LuaValue = spec.raw_get("sprite")?;
+            let shadow: Option<mlua::LuaString> = spec.raw_get("shadow")?;
+            let shadow = match shadow {
+                Some(s) => named(&s, "shadow", |n| bn6_content_api::Shadow::NAMES.iter().position(|&m| m == n).map(|i| bn6_content_api::Shadow::ALL[i]))?,
+                None => bn6_content_api::Shadow::WithSprite,
+            };
+            let tether: Option<mlua::LuaString> = spec.raw_get("tether")?;
+            let tether = match tether {
+                Some(s) => named(&s, "afterimage tether", |n| match n {
+                    "beast_form" => Some(1),
+                    "attack" => Some(2),
+                    _ => None,
+                })?,
+                None => 0,
+            };
+            let s = bn6_content_api::api::AfterimageSpec {
+                sprite: sprite_id(sprite, None)?,
+                anim: table_int(&spec, "anim")? as u8,
+                flip: table_int(&spec, "flip")? as u8,
+                lifetime: table_int(&spec, "lifetime")? as u16,
+                color_shader: table_int(&spec, "color_shader")? as u16,
+                palette: table_int(&spec, "palette")? as u8,
+                shadow,
+                steady: spec.raw_get::<Option<bool>>("steady")?.unwrap_or(false),
+                tether,
+            };
+            let o = with(|api, _| Ok(api.spawn_afterimage(owner.0, pos.0, &s)))?;
+            object_value(lua, o)
+        }
+    );
     Ok(t)
 }
 

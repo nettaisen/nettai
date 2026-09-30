@@ -555,6 +555,25 @@ pub struct HitboxSpec {
     pub bug_arg: u8,
 }
 
+/// A plain afterimage (effect object #0x28 with a sprite of its own, as
+/// `sub_80E33FA` spawns it): a copy of a sprite that stays behind, blinking
+/// unless `steady`, for `lifetime` ticks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AfterimageSpec {
+    pub sprite: SpriteId,
+    pub anim: u8,
+    /// The game's flip value (bit 0 horizontal, bit 1 vertical).
+    pub flip: u8,
+    pub lifetime: u16,
+    pub color_shader: u16,
+    pub palette: u8,
+    pub shadow: Shadow,
+    pub steady: bool,
+    /// It ends early: 1 when its side leaves the Beast forms, 2 when its
+    /// owner's action drops below 0x10 (0 never).
+    pub tether: u8,
+}
+
 /// A panel as content sees it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PanelInfo {
@@ -835,6 +854,8 @@ pub trait CoreApi {
     /// `sub_8011044`: what an object with a navi's NameID takes down when
     /// it goes (for most, the overlay in its second related slot).
     fn death_hook(&mut self, o: ObjectRef, name_id: u16);
+    /// `sub_80E33FA`: a plain afterimage of `owner`'s side at `pos`.
+    fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
 
     // ---- Navis and the attack in progress -------------------------------------
 

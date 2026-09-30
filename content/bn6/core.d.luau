@@ -489,6 +489,23 @@ export type HitboxSpec = {
     bug_arg: number?,
 }
 
+-- A plain afterimage (`battle.afterimage`): `anim` of `sprite`, flipped
+-- by the game's flip value, for `lifetime` ticks, blinking unless
+-- `steady`; its shadow at its height unless said otherwise. It ends early
+-- with its `tether`: when its side leaves the Beast forms, or when its
+-- owner's action drops below 0x10.
+export type AfterimageSpec = {
+    sprite: SpriteId,
+    anim: number?,
+    flip: number?,
+    lifetime: number,
+    color_shader: number?,
+    palette: number?,
+    shadow: Shadow?,
+    steady: boolean?,
+    tether: ("beast_form" | "attack")?,
+}
+
 -- A side's defensive-chip record.
 export type LinkedChip = {
     chip: number,
@@ -596,6 +613,9 @@ declare battle: {
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- A hit spark (effect object #4).
     spark: (owner: Object, pos: Vec3, id: number) -> Object?,
+    -- `sub_80E33FA`: a plain afterimage (effect object #0x28) of `owner`'s
+    -- side at `pos`: a copy of a sprite that stays behind.
+    afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
 }
 
 declare field: {
