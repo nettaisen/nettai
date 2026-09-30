@@ -24,7 +24,7 @@ fn battles_run_the_content_scripts() {
     assert_eq!(b.behaviors.runtime(), "luau");
     let m = b.behaviors.manifest().expect("the test content has scripts");
     let kinds: Vec<&str> = m.objects.iter().map(|k| k.name.as_str()).collect();
-    assert_eq!(kinds, ["attachment", "sun-beam"]);
+    assert_eq!(kinds, ["attachment", "sun-beam", "erase-man", "erase-mark", "erase-beam", "area-grab", "grab-shot"]);
     assert!(b.behaviors.action(0x37).is_some(), "GunDelSol is a script");
     assert!(b.behaviors.action(0x10).is_none(), "the step is the engine's");
 }
@@ -49,6 +49,54 @@ fn the_duel_fires_scripted_gun_del_sols() {
     assert!(beams > 0 && guns > 0, "{beams} beam and {guns} gun object-ticks");
     let hp: Vec<u16> = (0..2).map(|s| b.objects.get(b.player(s).unwrap()).hp).collect();
     assert!(hp.iter().any(|&h| h < 1000), "someone got hit: {hp:?}");
+}
+
+/// A duel with the eraser navi chip, the grab dimming chip and GunDelSols
+/// in the folders: the ticks each scripted kind was on the field, by
+/// (pool, index).
+fn chip_duel(ticks: usize) -> std::collections::BTreeMap<(crate::object::Pool, u8), usize> {
+    let setup = || scenario::setup_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3]);
+    let tape = scenario::record_on(setup(), ticks, 11);
+    let mut b = Battle::new(setup(), scenario::content());
+    let mut seen = std::collections::BTreeMap::new();
+    for t in &tape {
+        b.tick(&t.input, t.events.clone());
+        for r in b.objects.in_order() {
+            *seen.entry((r.pool, b.objects.get(r).index)).or_insert(0) += 1;
+        }
+    }
+    seen
+}
+
+#[test]
+fn the_scripted_navi_and_dimming_chips_play() {
+    use crate::object::Pool::{Actor, Attack, Effect};
+    let seen = chip_duel(2400);
+    let ticks = |k| seen.get(&k).copied().unwrap_or(0);
+    // The eraser navi comes, marks its aim and slashes along it.
+    assert!(ticks((Actor, 0x15)) > 0, "EraseMan: {seen:?}");
+    assert!(ticks((Effect, 0x62)) > 0, "EraseMan's marks: {seen:?}");
+    assert!(ticks((Attack, 0xC3)) > 0, "EraseMan's slash: {seen:?}");
+    // The grab's controller drops grab shots.
+    assert!(ticks((Effect, 0x03)) > 0, "the grab's controller: {seen:?}");
+    assert!(ticks((Attack, 0x0F)) > 0, "grab shots: {seen:?}");
+}
+
+#[test]
+fn scripted_chips_roll_back() {
+    // A copy of the battle taken at any tick plays on exactly as the
+    // battle does: the scripts' state is all in the battle.
+    let setup = || scenario::setup_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3]);
+    let tape = scenario::record_on(setup(), 2400, 11);
+    let mut b = Battle::new(setup(), scenario::content());
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    for (i, t) in tape.iter().enumerate() {
+        if i % 97 == 0 {
+            let copy = digests(&tape[i..], b.clone());
+            assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+    }
 }
 
 #[test]

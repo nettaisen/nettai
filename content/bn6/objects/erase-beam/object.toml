@@ -1,0 +1,7 @@
+# A segment of EraseMan's slash (attack object #0xC3, `sub_80DD940`) is a
+# script.
+
+[kind]
+pool = "attack"
+index = 0xC3
+script = "erase_beam.luau"

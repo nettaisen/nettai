@@ -343,6 +343,9 @@ declare class Object
     function update_sprite_while_dimmed(self): ()
     -- `sub_801BCD0`: the same, paused or not.
     function step_sprite(self): ()
+    -- `object_updateSpritePaused`: the same, paused or not, but not while
+    -- dimmed (and whatever `no_sprite_update` says).
+    function update_sprite_while_paused(self): ()
     -- The sprite's attach point n, in pixels facing the object's way.
     function attach_point(self, n: number): (number, number)
 

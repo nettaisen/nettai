@@ -65,8 +65,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     if while_dimmed(b, r) {
         common::update_sprite_while_dimmed(b, r);
     } else {
-        // object_updateSpritePaused
-        panic!("meteors outside a dimming (object_updateSpritePaused) are not implemented yet");
+        common::update_sprite_while_paused(b, r);
     }
 }
 

@@ -299,6 +299,9 @@ impl UserData for Object {
             with(|api, _| Ok(api.update_sprite_while_dimmed(this.0)))
         });
         methods.add_method("step_sprite", |_, this, ()| with(|api, _| Ok(api.step_sprite(this.0))));
+        methods.add_method("update_sprite_while_paused", |_, this, ()| {
+            with(|api, _| Ok(api.update_sprite_while_paused(this.0)))
+        });
         methods.add_method("attach_point", |_, this, n: LuaValue| {
             let n = u8_arg(n, "attach point")?;
             with(|api, _| Ok(api.attach_point(this.0, n)))

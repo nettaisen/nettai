@@ -1,7 +1,8 @@
 //! A small hand-authored content set for tests and examples.
 //!
 //! Everything here is made up: a MegaMan-like navi and its base form,
-//! a few chips that use GunDelSol, a dimming chip and a navi chip, rocks,
+//! a few chips that use GunDelSol, two dimming chips (one grabs a column)
+//! and a navi chip, rocks,
 //! sprites with short animations, and rules written from the engine's own
 //! flag semantics (docs/engine/field-collision-damage.md). It is not BN6's
 //! data, which comes only from a content pack extracted from the user's ROM
@@ -31,6 +32,8 @@ pub const SUN_GUN_EX: ChipId = 0x04;
 pub const VEIL: ChipId = 0x05;
 /// A navi chip (action 0x1B, subtype 5: the eraser navi).
 pub const ERASER: ChipId = 0x06;
+/// A dimming chip (action 0x15, subtype 0) that grabs a column.
+pub const GRAB: ChipId = 0x07;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -130,6 +133,11 @@ pub fn scripts() -> Scripts {
                 ("objects/attachment/attachment", "objects/attachment/attachment"),
                 ("objects/sun-beam/sun_beam", "objects/sun-beam/sun_beam"),
                 ("chips/001-sungun1/chip", "chips/00f-gundels1/chip"),
+                ("objects/erase-man/erase_man", "objects/erase-man/erase_man"),
+                ("objects/erase-mark/erase_mark", "objects/erase-mark/erase_mark"),
+                ("objects/erase-beam/erase_beam", "objects/erase-beam/erase_beam"),
+                ("objects/area-grab/area_grab", "objects/area-grab/area_grab"),
+                ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
             ];
             Scripts { modules: modules.iter().map(|(to, from)| (to.to_string(), read(from))).collect() }
         })
@@ -148,6 +156,11 @@ fn kinds() -> Vec<ObjectKind> {
     vec![
         kind("attachment", Pool::Actor, 0x05, "objects/attachment/attachment"),
         kind("sun-beam", Pool::Effect, 0x48, "objects/sun-beam/sun_beam"),
+        kind("erase-man", Pool::Actor, 0x15, "objects/erase-man/erase_man"),
+        kind("erase-mark", Pool::Effect, 0x62, "objects/erase-mark/erase_mark"),
+        kind("erase-beam", Pool::Attack, 0xC3, "objects/erase-beam/erase_beam"),
+        ObjectKind { scratch_position: true, ..kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab") },
+        kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
     ]
 }
 
@@ -227,7 +240,16 @@ fn chips() -> Vec<ChipData> {
             hit_param: 100,
             params: [16, 0, 0, 0],
             damage: 60,
+            script: Some("objects/erase-man/erase_man".into()),
             ..chip(ERASER, "Eraser", 0x1B, 5)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
+            hit_param: 100,
+            params: [1, 0, 0, 0],
+            damage: 10,
+            script: Some("objects/area-grab/area_grab".into()),
+            ..chip(GRAB, "Grab", 0x15, 0)
         },
     ]
 }
@@ -502,6 +524,16 @@ fn animations() -> Animations {
         vec![vec![f(3, 0), f(3, 0), f(3, LAST)], vec![f(30, LAST | LOOP)], vec![f(30, LAST | LOOP)]],
     );
     sprites.insert(SpriteId { category: 0x10, index: 1 }, vec![once(6), once(6), once(6), once(6)]);
+    // The eraser navi (standing, appearing, leaving, raising, slashing), its
+    // marks and its slash.
+    let mut eraser = vec![once(4); 0x13];
+    eraser[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    eraser[0x12] = vec![f(4, 0), f(40, LAST)];
+    sprites.insert(SpriteId { category: 8, index: 4 }, eraser);
+    sprites.insert(SpriteId { category: 0x10, index: 0x50 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
+    sprites.insert(SpriteId { category: 0x10, index: 0x51 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]; 3]);
+    // The grab shot: falling, landing.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x13 }, vec![vec![f(8, LAST | LOOP)], vec![f(3, 0), f(3, LAST)]]);
     // Effects and sparks.
     sprites.insert(SpriteId { category: 0x14, index: 0 }, vec![vec![f(3, 0), f(3, 0), f(3, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 1 }, vec![vec![f(2, 0), f(2, LAST)]]);

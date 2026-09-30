@@ -567,6 +567,10 @@ impl CoreApi for Battle {
         common::step_sprite(self, o);
     }
 
+    fn update_sprite_while_paused(&mut self, o: ObjectRef) {
+        common::update_sprite_while_paused(self, o);
+    }
+
     fn attach_point(&self, o: ObjectRef, n: u8) -> (i32, i32) {
         kinds::player::attach_point(self, o, n as usize)
     }

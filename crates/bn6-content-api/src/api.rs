@@ -744,6 +744,10 @@ pub trait CoreApi {
     fn update_sprite_while_dimmed(&mut self, o: ObjectRef);
     /// `sub_801BCD0`: the same, paused or not.
     fn step_sprite(&mut self, o: ObjectRef);
+    /// `object_updateSpritePaused`: load a newly requested animation and
+    /// step the sprite, paused or not, but not while dimmed (and whatever
+    /// `no_sprite_update` says).
+    fn update_sprite_while_paused(&mut self, o: ObjectRef);
     /// The object's sprite attach point `n`, in pixels, facing its way.
     fn attach_point(&self, o: ObjectRef, n: u8) -> (i32, i32);
     /// `object_setCoordinatesFromPanels`: x and y from the panel.

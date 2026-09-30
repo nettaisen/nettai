@@ -12,9 +12,6 @@ pub mod dust_ball;
 pub mod cross_merge;
 pub mod effect;
 pub mod elmnt_man;
-pub mod erase_beam;
-pub mod erase_man;
-pub mod erase_mark;
 pub mod eruption;
 pub mod form_overlay;
 pub mod hitbox;
@@ -60,7 +57,6 @@ pub enum Vars {
     ElmntMan(elmnt_man::Vars),
     Meteor(meteor::Vars),
     TrapChip(trap_chip::Vars),
-    EraseMan(erase_man::Vars),
     /// A content kind's declared state (see `content`).
     Content(bn6_content_api::ContentState),
 }
@@ -115,9 +111,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         (Pool::Attack, eruption::INDEX) => eruption::update(b, r),
         (Pool::Attack, dust_ball::INDEX) => dust_ball::update(b, r),
         (Pool::Effect, trap_chip::INDEX) => trap_chip::update(b, r),
-        (Pool::Actor, erase_man::INDEX) => erase_man::update(b, r),
-        (Pool::Effect, erase_mark::INDEX) => erase_mark::update(b, r),
-        (Pool::Attack, erase_beam::INDEX) => erase_beam::update(b, r),
         (pool, index) => panic!("object kind {pool:?} {index:#x} is not implemented yet"),
     }
 }

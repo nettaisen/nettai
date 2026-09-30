@@ -1,0 +1,7 @@
+# The mark on a panel EraseMan aims at (effect object #0x62, `sub_80E78BC`) is a
+# script.
+
+[kind]
+pool = "effect"
+index = 0x62
+script = "erase_mark.luau"
