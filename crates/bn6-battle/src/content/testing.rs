@@ -52,6 +52,10 @@ pub const TOMAHAWK: ChipId = 0x0E;
 pub const TENGU: ChipId = 0x0F;
 /// A navi chip (action 0x1B, subtype 12: the blast navi).
 pub const BLAST: ChipId = 0x10;
+/// A navi chip (action 0x1B, subtype 26: the shooting navi, Bass's).
+pub const BASS: ChipId = 0x11;
+/// A navi chip (action 0x1B, subtype 25: the sun-and-moon navi).
+pub const SUN_MOON: ChipId = 0x12;
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -186,6 +190,11 @@ pub fn scripts() -> Scripts {
                 ("objects/blast-fire/blast_fire", "objects/blast-fire/blast_fire"),
                 ("lib/element", "lib/element"),
                 ("lib/projectile", "lib/projectile"),
+                ("objects/bass/bass", "objects/bass/bass"),
+                ("objects/panel-strike/panel_strike", "objects/panel-strike/panel_strike"),
+                ("objects/sun-moon/sun_moon", "objects/sun-moon/sun_moon"),
+                ("objects/sun-meteor/sun_meteor", "objects/sun-meteor/sun_meteor"),
+                ("objects/moon-beam/moon_beam", "objects/moon-beam/moon_beam"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -262,6 +271,11 @@ fn kinds() -> Vec<ObjectKind> {
         kind("blast-fire", Pool::Attack, 0x21, "objects/blast-fire/blast_fire"),
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
         kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
+        kind("bass", Pool::Actor, 0x4F, "objects/bass/bass"),
+        kind("panel-strike", Pool::Attack, 0x09, "objects/panel-strike/panel_strike"),
+        kind("sun-moon", Pool::Actor, 0x24, "objects/sun-moon/sun_moon"),
+        kind("sun-meteor", Pool::Attack, 0xB5, "objects/sun-meteor/sun_meteor"),
+        kind("moon-beam", Pool::Attack, 0xB6, "objects/moon-beam/moon_beam"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -427,6 +441,20 @@ fn chips() -> Vec<ChipData> {
             script: Some("objects/blast-man/blast_man".into()),
             ..chip(BLAST, "Blast", 0x1B, 12)
         },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Giga,
+            damage: 30,
+            script: Some("objects/bass/bass".into()),
+            ..chip(BASS, "Shooter", 0x1B, 26)
+        },
+        ChipData {
+            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
+            class: ChipClass::Giga,
+            damage: 90,
+            script: Some("objects/sun-moon/sun_moon".into()),
+            ..chip(SUN_MOON, "SunMoon", 0x1B, 25)
+        },
     ]
 }
 
@@ -587,6 +615,10 @@ fn rules() -> Rules {
             column_shifts: vec![-1, -2],
         },
         custom_screen: custom_screen_layout(),
+        actor_records: Vec::new(),
+        cross_palettes: (0..11).collect(),
+        // A made-up triangle wave, 64 steps a quarter turn.
+        sine: (0..320i16).map(|i| [i % 64 * 4, 256 - i % 64 * 4, -(i % 64 * 4), -256 + i % 64 * 4][(i / 64 % 4) as usize]).collect(),
     }
 }
 
@@ -805,6 +837,15 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x31 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x10, index: 0x0F }, vec![once(4), vec![f(4, 0), f(4, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x14, index: 0x14 }, vec![vec![f(3, 0), f(3, LAST | LOOP)]]);
+    // The shooting navi (rising, raising his arm, shooting) and his cape
+    // (his animation + 0x14), his shots' bursts; the sun-and-moon navi
+    // and its moonlight.
+    let mut shooter = vec![once(4); 0x21];
+    shooter[0] = vec![f(8, 0), f(8, LAST | LOOP)];
+    shooter[0x0C] = vec![f(4, 0), f(4, LAST | LOOP)];
+    sprites.insert(SpriteId { category: 8, index: 0x13 }, shooter);
+    sprites.insert(SpriteId { category: 0x10, index: 0x26 }, vec![vec![f(3, 0), f(3, LAST)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x64 }, vec![vec![f(8, 0), f(8, LAST | LOOP)]; 5]);
     // The water navi, his ball, splash, pillar, geyser and marks, and his
     // layer.
     let mut spout = vec![once(4); 0x16];
