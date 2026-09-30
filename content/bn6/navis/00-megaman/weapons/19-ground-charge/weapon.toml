@@ -1,0 +1,7 @@
+# MegaMan's weapon routine 0x19, GroundCross's charged shot (`sub_8011D74`), and
+# its action (0x4D, `sub_80EEFDC`) are a script.
+
+id = 0x19
+name = "Ground charge"
+action = 0x4D
+script = "ground_charge.luau"
