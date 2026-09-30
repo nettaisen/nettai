@@ -287,7 +287,7 @@ PvP P0 in the trace has no reg, tag or giga: 30 swaps, 60 RNG1 draws (frames 70 
    - Type 0 goes `sub_80073CC` → `sub_800753C`: spawn T1 index 0 (navi), flags |= 4, AIData+0 = 2 (player), NameID = navistats+0x29 + 0x1A0.
    - `sub_8007778` puts the navi into the alive list (BS+0x80 + 0x10·alliance) and does BS+4+alliance += 1.
    - `sub_80077D2` does BS+8+alliance += 1 and stores the NameID at BS+0x4C + 8·alliance + 2k.
-   - Other entry types (`off_80073A0[type]`): 1 virus/navi (`sub_80073E2`), 2 T3#0xA9 with a probability (draws RNG2), 3 T3#0x6E, 4/5 nothing, 6 T4#0x41, 7 T3#0x9C, **8 rock T3#0x59** (`sub_80074FA`), 9 T3#0x7D, 0xA T3#0x98. Only types 0, 3, 8 and 9 occur in the lists `BattleSettingsList1` (0x080B0D88, 192 records) refers to: 28 distinct lists at 0x080B1989..0x080B1B46, extracted to `data::ACTOR_LISTS` (keyed by address; settings bytes 12..16 carry it unchanged even when the runtime patches other settings bytes).
+   - Other entry types (`off_80073A0[type]`): 1 virus/navi (`sub_80073E2`), 2 T3#0xA9 with a probability (draws RNG2), 3 T3#0x6E, 4/5 nothing, 6 T4#0x41, 7 T3#0x9C, **8 rock T3#0x59** (`sub_80074FA`), 9 T3#0x7D, 0xA T3#0x98. Only types 0, 3, 8 and 9 occur in the lists `BattleSettingsList1` (0x080B0D88, 192 records) refers to: 28 distinct lists at 0x080B1989..0x080B1B46, extracted to the content's actor lists (`Stages::actor_lists`, a pack's `rules/stages.toml`), each keeping its address as `original_address` (settings bytes 12..16 carry it unchanged even when the runtime patches other settings bytes; `BattleSettings::netbattle_from_bytes` resolves it).
    - Type 8, rock: x/y from byte1, variant = byte2, side = the panel's current owner (PanelData+3); spawns via `sub_80CFBC4` with params {variant, 0, 3, 0} and damage 200. Rocks do **not** go through `sub_8007778`/`sub_80077D2`: no alive entry, no actor count, no NameID. See field-objects.md.
    - After the list: BS+0x12/0x13 = BS+4/5 (a halfword copy), and BS+0x80..0x9F is copied to BS+0xD0..0xEF.
    - Navi init spawns a T4 index-8 helper per navi.
@@ -656,7 +656,7 @@ Carried over between rounds:
 - the effects dword of the settings;
 - anything outside the re-initialized structures.
 
-`byte_203CA50` is not carried: every init copies it from player 0's init exchange (`battle_copyStructsIncludingBattleStats_800b2d8`, from `dword_203F568`). It holds two (settings index, background) pairs: the pair used after round n is entry n−1 of the copy made for round n. Machgun round 1 had `11 03 46 13` (round 2 on List1[0x11], background 3) and round 2 `3D 13 59 00`. Soundmod rounds 1 and 2 had `43 0B 02 0D` and `48 11 14 04`: rounds 2 and 3 were List1[0x43] background 0x0B and List1[0x14] background 4, as their setups show. The engine takes the pairs as `RoundSetup::later_stages` and the table as `data::BATTLE_SETTINGS` (all 192 records).
+`byte_203CA50` is not carried: every init copies it from player 0's init exchange (`battle_copyStructsIncludingBattleStats_800b2d8`, from `dword_203F568`). It holds two (settings index, background) pairs: the pair used after round n is entry n−1 of the copy made for round n. Machgun round 1 had `11 03 46 13` (round 2 on List1[0x11], background 3) and round 2 `3D 13 59 00`. Soundmod rounds 1 and 2 had `43 0B 02 0D` and `48 11 14 04`: rounds 2 and 3 were List1[0x43] background 0x0B and List1[0x14] background 4, as their setups show. The engine takes the pairs as `RoundSetup::later_stages` and the table from the content (`Stages::settings`, all 192 records).
 
 BS+0x20 is not carried either (§2.2).
 

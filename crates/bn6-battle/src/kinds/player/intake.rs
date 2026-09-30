@@ -9,8 +9,7 @@ use super::{
 };
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, f1, timer};
-use crate::data::player::{self as pdata, StatusTimer};
-use crate::data::player_generated::HP_BUG_PERIODS;
+use crate::content::StatusTimer;
 use crate::field::PanelType;
 use crate::object::{ObjectRef, Vec3};
 use crate::setup::{Form, Navi};
@@ -286,7 +285,7 @@ fn hp_bug_drain(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let level = stats(b, r).bugs.hp_drain as usize;
-    let period = *HP_BUG_PERIODS.get(level).expect("HP bug level");
+    let period = *b.content.rules.hp_bug_periods.get(level).expect("HP bug level");
     let a = ai_mut(b, r);
     if period != 0 {
         a.hp_drain_counter = a.hp_drain_counter.wrapping_add(1);
@@ -551,7 +550,7 @@ fn apply_status(b: &mut Battle, r: ObjectRef) {
     if s == 0 {
         return;
     }
-    let e = pdata::status_effect(s).unwrap_or_else(|| panic!("status {s:#x} reads outside the status table"));
+    let e = b.content.rules.status_effect(s).unwrap_or_else(|| panic!("status {s:#x} reads outside the status table"));
     let c = coll_mut(b, r);
     let t = match e.timer {
         StatusTimer::Paralyze => timer::PARALYZE,

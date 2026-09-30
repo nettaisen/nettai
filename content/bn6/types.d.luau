@@ -10,8 +10,10 @@ export type Slot = "overlay" | "related"
 export type SpriteId = { category: number, index: number }
 
 -- What an attachment looks like and where it sits on its owner
--- (data/attacks.luau ATTACHMENTS).
+-- (data/pack.luau `attachments`).
 export type AttachmentKind = {
+    -- The attachment's number (its first spawn parameter).
+    id: number,
     sprite: SpriteId,
     palette: number,
     -- Pixels raised by (subtracted from y and z).
@@ -20,6 +22,22 @@ export type AttachmentKind = {
     attach_point: number?,
 }
 
--- Which sun beam sprite and palette GunDelSol shows
--- (data/attacks.luau GUN_DEL_SOL_BEAMS).
-export type SunBeamLook = { sprite: number, palette: number }
+-- Which sun beam look (data/pack.luau `sun_beam_looks`) and palette
+-- GunDelSol shows.
+export type SunBeamLook = { look: number, palette: number }
+
+-- GunDelSol's data, in its chip's folder of the content pack.
+export type GunDelSol = {
+    -- Ticks of hits under the beam.
+    firing_ticks: number,
+    -- The sun beam in the shade and in the sun.
+    beam: SunBeamLook,
+    beam_in_sun: SunBeamLook,
+    -- The gun attached to the user.
+    gun: AttachmentKind,
+}
+
+-- A chip's own data (data/pack.luau `chips`).
+export type ChipData = {
+    gun_del_sol: GunDelSol?,
+}

@@ -3,7 +3,7 @@
 //! §1).
 
 use super::library::Library;
-use crate::data::{ChipClass, ChipCode, ChipId};
+use crate::content::{ChipClass, ChipCode, ChipId};
 use crate::rng::Rng;
 
 /// Chips in a folder.

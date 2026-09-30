@@ -7,7 +7,7 @@
 //! read on their next update. See docs/engine/field-collision-damage.md §3.
 
 use crate::battle::Battle;
-use crate::data::collision_generated as tables;
+use crate::content::Content;
 use crate::field::{self, PanelType};
 use crate::object::{ObjectRef, PanelPos};
 
@@ -81,7 +81,8 @@ pub struct Accumulators {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct CollisionData {
     pub enabled: u8,
-    /// Region shape (`data::REGIONS`; 0x80.. = filtered whole field).
+    /// Region shape (`Content::region`; 0x80.. = filtered whole field,
+    /// `Rules::field_regions`).
     pub region: u8,
     pub element: u8,
     /// Directions a guard blocked from.
@@ -219,20 +220,18 @@ impl Collision {
     }
 
     /// The panels a registration covers, in processing order.
-    fn region_panels(&self, field: &field::Field, id: CollisionId) -> Vec<(u8, u8)> {
+    fn region_panels(&self, content: &Content, field: &field::Field, id: CollisionId) -> Vec<(u8, u8)> {
         let s = &self.slots[id.0 as usize];
         if s.region & 0x80 == 0 {
             let dir: i8 = if s.alliance ^ s.flip == 0 { 1 } else { -1 };
-            tables::REGIONS
-                .get(s.region as usize)
-                .copied()
-                .unwrap_or(&[])
+            content
+                .region(s.region)
                 .iter()
                 .map(|o| ((s.panel.x as i8 + o.dx * dir) as u8, (s.panel.y as i8 + o.dy) as u8))
                 .filter(|&(x, y)| field::is_valid(x, y))
                 .collect()
         } else {
-            let cond = tables::FIELD_REGIONS[(s.region & 0x7F) as usize];
+            let cond = content.rules.field_regions[(s.region & 0x7F) as usize];
             let mut v = Vec::new();
             for y in 1..=3 {
                 for x in 1..=6 {
@@ -250,11 +249,6 @@ impl Default for Collision {
     fn default() -> Collision {
         Collision::new()
     }
-}
-
-/// Collision types by index and alliance (`sub_801A0BA`).
-pub fn collision_type(index: u8, alliance: u8) -> u32 {
-    tables::COLLISION_TYPES[index as usize][alliance as usize & 1]
 }
 
 impl Battle {
@@ -281,8 +275,8 @@ impl Battle {
         s.region = 1;
         s.counter_byte = o.stamina as u8;
         s.self_damage = o.damage;
-        s.self_flags = collision_type(self_idx, o.alliance) | if timestop { 0x1_0000 } else { 0 };
-        s.target_flags = collision_type(target_idx, o.alliance);
+        s.self_flags = self.content.rules.collision_type(self_idx, o.alliance) | if timestop { 0x1_0000 } else { 0 };
+        s.target_flags = self.content.rules.collision_type(target_idx, o.alliance);
         // The garbage high byte of any bug code: the table offset the
         // target lookup left in r1.
         let r1 = target_idx as u16 * 8 + o.alliance as u16 * 4;
@@ -299,8 +293,8 @@ impl Battle {
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
         s.self_damage = damage;
-        s.self_flags = collision_type(self_idx, alliance) | if timestop { 0x1_0000 } else { 0 };
-        s.target_flags = collision_type(target_idx, alliance);
+        s.self_flags = self.content.rules.collision_type(self_idx, alliance) | if timestop { 0x1_0000 } else { 0 };
+        s.target_flags = self.content.rules.collision_type(target_idx, alliance);
         // A bug code's garbage high byte is what `battle_isTimeStop` left in
         // r1 (4, or 0x10000 in time stop).
         let r1 = if timestop { 0 } else { 4 };
@@ -319,11 +313,11 @@ impl Battle {
         s.acc = Accumulators::default();
         let bit = s.bit;
         let whole_field = s.region & 0x80 != 0;
-        for (x, y) in self.collision.region_panels(&self.field, id) {
+        for (x, y) in self.collision.region_panels(&self.content, &self.field, id) {
             self.collision.masks[(y * 8 + x) as usize] |= bit;
             // Whole-field registrations refresh the wrong panel (a no-op).
             if !whole_field {
-                self.field.refresh(&self.collision, x, y);
+                self.field.refresh(&self.content, &self.collision, x, y);
             }
         }
     }
@@ -341,7 +335,7 @@ impl Battle {
             }
             v
         } else {
-            self.collision.region_panels(&self.field, id)
+            self.collision.region_panels(&self.content, &self.field, id)
         };
         for (x, y) in panels {
             let i = (y * 8 + x) as usize;
@@ -350,7 +344,7 @@ impl Battle {
             if whole_field && !was {
                 continue;
             }
-            self.field.refresh(&self.collision, x, y);
+            self.field.refresh(&self.content, &self.collision, x, y);
             self.pair_test(x, y, id);
             self.convert_panel(x, y, id);
         }
@@ -476,7 +470,10 @@ impl Battle {
             rm.acc.inflicted_bugs = hd.bugs;
         }
         // Multiplier.
-        let w1 = tables::ELEMENT_WEAKNESS
+        let w1 = self
+            .content
+            .rules
+            .element_weakness
             .get(rd.element as usize)
             .and_then(|row| row.get(hd.element as usize))
             .copied()

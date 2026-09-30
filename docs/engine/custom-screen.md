@@ -48,9 +48,13 @@ RNG1 draws seen during screens are presentation (the emotion window's bug flashe
 Out camera shake). The only RNG in this area is the folder shuffle at the round's init (RNG1, §1), and ChpShufl
 (RNG1, not ported, §8).
 
-**Game data.** The screen reads chip records, the Program Advances and the link navis' own chips through
-`custom::Library` (today `BuiltIn`, the engine's tables). The slot grid and its scan lists are layout tables in
-`data::custom`.
+**Game data.** The screen reads chip records, the Program Advances, the link navis' own chips and its slot
+layout through `custom::Library`, which the battle's `Content` implements (tests use `TestLibrary`, made-up chips
+on the hand-authored test content's layout). In a content pack: the slot grid and its scan lists are a rule,
+`Rules::custom_screen` (`rules/custom-screen.toml`); each Program Advance recipe sits with the chip it makes
+(`[[program_advance]]` in that chip's `chip.toml`, with an explicit `order`, the original's table order), and
+`Content::program_advances()` puts them back in order; a link navi's own chip is `NaviData::own_chip`
+(`[own_chip]` in its `navi.toml`); a modifier chip says what it does, `ChipData::modifier` (§5).
 
 ## 1. The folder and its shuffle
 
@@ -106,14 +110,14 @@ The forms are literal (ChargeCross is Gregar's, DustCross Falzar's). Checked on 
 dealt, slot i showing folder entry i. Chips dealt but not picked stay where they are, so they are dealt again
 first next turn.
 
-**Slots.** 12 slots: 0-4 the top row, 5-9 the bottom row, 10 = OK (right end of the top row), 11 = the button
-under OK. The grid starts from `dword_802A7CC` (`data::custom::SLOT_TEMPLATE`); dealt chips fill slots 0, 1, …;
-slot 11 is the Beast Out button when the player has it (§4); slots 8/9 are DustCross's scrap button (form 0x0A or
-0x16) or ChpShufl's re-deal button; a link navi's own chip goes in slot 9 once a round. Then `sub_8027F42` points
-every neighbour that is an empty slot at the next slot present along fixed scan lists
-(`data::custom::LEFT_SCAN_*`, `RIGHT_SCAN_*`): with 5 chips, LEFT from slot 0 wraps to OK, RIGHT from OK to slot
-0, OK and slot 11 are each other's UP/DOWN, and the chips have no UP/DOWN. The cursor starts on the first slot
-present (slot 0 when a chip was dealt). All neighbour bytes of all openings match **[dumps]**.
+**Slots.** 12 slots: 0-4 the top row, 5-9 the bottom row, 10 = OK (right end of the top row), 11 = the button under
+OK. The grid starts from `dword_802A7CC` (`Rules::custom_screen`); dealt chips fill slots 0, 1, …; slot 11 is the
+Beast Out button when the player has it (§4); slots 8/9 are DustCross's scrap button (form 0x0A or 0x16) or
+ChpShufl's re-deal button; a link navi's own chip goes in slot 9 once a round. Then `sub_8027F42` points every
+neighbour that is an empty slot at the next slot present along fixed scan lists (`CustomScreenLayout::left_scan_*`,
+`right_scan_*`): with 5 chips, LEFT from slot 0 wraps to OK, RIGHT from OK to slot 0, OK and slot 11 are each
+other's UP/DOWN, and the chips have no UP/DOWN. The cursor starts on the first slot present (slot 0 when a chip was
+dealt). All neighbour bytes of all openings match **[dumps]**.
 
 ## 3. Choosing
 
@@ -239,7 +243,7 @@ Built on the OK tick from the picks in order, with each chip as checked (§3.4):
    raw pick (`code << 9 | id`) goes in the hand's `selection`. Beast Out adds no entry. Navi chips (ids ≥ 0x190)
    are noted for the round.
 2. **Program Advance** (`sub_8029520`): for each start position (at least 3 chips left), the 43 recipes of
-   `off_802BCB0` in order (`data::custom::PROGRAM_ADVANCES`):
+   `off_802BCB0` in order (`Content::program_advances()`):
    - a sequence recipe: those ids in that order, any codes;
    - a code-run recipe: 3 of one chip with codes going up by one in pick order; one `*` stands in for the code
      it needs (`[A,B,C]`, `[A,*,C]`, `[*,B,C]`, `[A,B,*]` match; `[*,A,B]`, `[A,A,A]` don't).
@@ -247,15 +251,15 @@ Built on the OK tick from the picks in order, with each chip as checked (§3.4):
    The first match not formed yet this round is formed (once per round per player, `dword_203CA48`); the recipe's
    entries become the Program Advance (damage recomputed; Regular if any part was). The veto `sub_8029328` can't
    fire (no slot carries the flags it tests).
-3. **Modifiers** (`sub_8029224`, `builder::MODIFIERS`): from the second entry on, a modifier right after a chip it
-   applies to folds into that chip and leaves the hand; chained ones stack.
+3. **Modifiers** (`sub_8029224`; `ChipData::modifier`, below): from the second entry on, a modifier right after a
+   chip it applies to folds into that chip and leaves the hand; chained ones stack.
 
-   | Modifier | Applies to | Effect |
-   |---|---|---|
-   | Atk+10 (0xC0), Atk+30 (0xC3) | damaging chips (flag 2) | attack bonus += its damage |
-   | Navi+20 (0xC1) | navi chips (flag 4) | attack bonus += 20 |
-   | WhiCapsl (0xB8) | damaging chips | paralyzes (modifier bit 2) |
-   | Uninstll (0xB9) | damaging chips, not time freezes | uninstalls (bit 4) |
+   | Modifier | `modifier` | Applies to | Effect |
+   |---|---|---|---|
+   | Atk+10 (0xC0), Atk+30 (0xC3) | `attack_plus` | damaging chips (flag 2) | attack bonus += its damage |
+   | Navi+20 (0xC1) | `navi_plus` | navi chips (flag 4) | attack bonus += 20 |
+   | WhiCapsl (0xB8) | `paralyze` | damaging chips | paralyzes (modifier bit 2) |
+   | Uninstll (0xB9) | `uninstall` | damaging chips, not time freezes | uninstalls (bit 4) |
 
 4. The hand: ids, damage, attack bonus, charge bonus 0, `selection` (the raw picks, not changed by steps 2-3),
    turn = BS+7 − 1, modifier bits (bit 1 = the Regular chip). With nothing picked, nothing is sent and the

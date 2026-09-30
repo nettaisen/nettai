@@ -1,4 +1,4 @@
-//! A sound bank as files: songs as MIDI (see [`crate::song`]), instruments
+//! The sound (an `m4a::SoundBank`) as files: songs as MIDI (see [`crate::song`]), instruments
 //! as TOML, samples as WAV.
 //!
 //! ```text

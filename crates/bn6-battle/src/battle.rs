@@ -13,10 +13,11 @@ use crate::input::{InputRecord, PlayerTick, keys};
 use crate::link::{Link, Packet};
 use crate::object::{ObjectRef, Objects};
 use crate::rng::Rng;
-use crate::data::BannerId;
+use crate::content::{BannerId, Content};
 use crate::setup::{BattleSettings, Form, Navi, NaviStats, RoundSetup, SetScore, effects};
 use crate::transform::{TransformRequest, TransformSequencer};
 use crate::sound::{SoundCue, SoundId};
+use std::sync::Arc;
 
 /// Battle flag bits.
 pub mod battle_flags {
@@ -183,6 +184,10 @@ pub struct TickEvents {
 
 #[derive(Clone, Debug)]
 pub struct Battle {
+    /// The content the battle runs on (read-only and shared: snapshots
+    /// share it, and it is not part of the digest; `setup.content` is its
+    /// identity).
+    pub content: Arc<Content>,
     pub setup: RoundSetup,
     pub stats: [NaviStats; 2],
     pub rng: Rng,
@@ -368,16 +373,23 @@ pub struct DamageCarry {
 }
 
 impl Battle {
-    /// Start a round: the state the game is in when its init finishes and
-    /// the first battle tick is about to run.
-    pub fn new(setup: RoundSetup) -> Battle {
-        Battle::with_behaviors(setup, Behaviors::for_build())
+    /// Start a round on `content`: the state the game is in when its init
+    /// finishes and the first battle tick is about to run. Panics if the
+    /// setup names other content (`RoundSetup::content`).
+    pub fn new(setup: RoundSetup, content: Arc<Content>) -> Battle {
+        let behaviors = Behaviors::for_build(&content);
+        Battle::with_behaviors(setup, content, behaviors)
     }
 
-    /// Start a round running `content`.
-    pub fn with_behaviors(setup: RoundSetup, behaviors: Behaviors) -> Battle {
+    /// Start a round on `content`, running `behaviors` for the kinds and
+    /// actions they implement.
+    pub fn with_behaviors(setup: RoundSetup, content: Arc<Content>, behaviors: Behaviors) -> Battle {
+        let hash = content.hash();
+        assert_eq!(setup.content, hash, "the round's setup names content {} but runs on content {hash}", setup.content);
         let score = setup.score;
+        let field = Field::new(&content, setup.settings.layout, setup.settings.panel_pattern, setup.settings.mode);
         let mut b = Battle {
+            content,
             stats: setup.navi_stats,
             rng: Rng::new(setup.rng),
             round: RoundState {
@@ -409,7 +421,7 @@ impl Battle {
             objects: Objects::new(),
             actors: Actors::default(),
             collision: Collision::new(),
-            field: Field::new(setup.settings.layout, setup.settings.panel_pattern, setup.settings.mode),
+            field,
             fade: Fade::default(),
             fadein_queue: [None; 8],
             damage_carry: [DamageCarry::default(); 2],
@@ -426,9 +438,15 @@ impl Battle {
         };
         // Init's last steps: refresh every panel, then one unpaused panel
         // update.
-        b.field.refresh_all(&b.collision);
+        b.field.refresh_all(&b.content, &b.collision);
         b.tick_panels();
         b
+    }
+
+    /// Start a banner unless one is showing (`Banner::start`). Returns
+    /// false if one was.
+    pub fn start_banner(&mut self, id: BannerId) -> bool {
+        self.banner.start(id, self.content.rules.banner_holds(id))
     }
 
     pub fn is_time_stop(&self) -> bool {
@@ -659,7 +677,7 @@ impl Battle {
     /// init, keeping the score.
     fn chain_next_round(&mut self) {
         let stage = self.setup.later_stages[self.round.round as usize - 1];
-        let settings = self.setup.next_settings(stage);
+        let settings = self.setup.next_settings(stage, &self.content);
         let r = &self.round;
         let score = SetScore { wins: r.wins, losses: r.losses, round: r.round, max_combo: r.max_combo };
         self.round.top = top::INIT;
@@ -742,7 +760,8 @@ impl Battle {
     /// alive/actor bookkeeping; rocks and other field objects don't.
     pub fn spawn_actors(&mut self) {
         use crate::setup::ActorKind;
-        for entry in self.setup.settings.actors {
+        let content = self.content.clone();
+        for entry in content.rules.stages.actor_list(self.setup.settings.actors) {
             match entry.kind {
                 ActorKind::Navi => {}
                 ActorKind::Rock { variant } => {
@@ -792,7 +811,7 @@ impl Battle {
             }
             4 => {
                 if self.round.init == 0 {
-                    self.banner.start(BannerId(0x30));
+                    self.start_banner(BannerId(0x30));
                     self.round.init = 4;
                 } else if self.banner.status() == BannerStatus::Done {
                     self.round.sub = 8;
@@ -970,9 +989,9 @@ impl Battle {
             self.fight.init = 4;
             if self.late_turns() {
                 self.fight.turn_timer = 0xA5 * 4 - 1;
-                self.banner.start(BannerId(0x10));
+                self.start_banner(BannerId(0x10));
             } else if self.setup.settings.effects & effects::LINK != 0 {
-                self.banner.start(BannerId(0x0C));
+                self.start_banner(BannerId(0x0C));
             }
         }
         if self.banner.status() == BannerStatus::Done {
@@ -1171,10 +1190,10 @@ impl Battle {
             }
             self.fight.init = 4;
             self.fight.timer = 0x66;
-            // Netbattle win/lose banners come from per-navi tables.
-            let navi = self.stats[self.round.local_side as usize].navi.index();
-            let id = if win { crate::data::WIN_BANNERS[navi] } else { crate::data::LOSE_BANNERS[navi] };
-            self.banner.start(id);
+            // Netbattle win/lose banners are the navi's.
+            let navi = self.content.navi(self.stats[self.round.local_side as usize].navi);
+            let id = if win { navi.win_banner } else { navi.lose_banner };
+            self.start_banner(id);
         }
         self.fight.timer -= 1;
         if self.banner.status() == BannerStatus::Done && self.fight.timer <= 0 {
@@ -1311,25 +1330,16 @@ impl Battle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::BATTLE_SETTINGS;
+    use crate::content::testing;
     use crate::setup::Stage;
 
     /// A best-of-three netbattle round about to leave its end state, with
     /// the set standing at `wins`-`losses` after `round` rounds.
     fn ending(wins: u8, losses: u8, round: u8) -> Battle {
-        let stats = NaviStats { hp: 1000, max_hp: 1000, max_base_hp: 1000, ..NaviStats::default() };
-        let mut b = Battle::new(RoundSetup {
-            settings: BattleSettings { effects: 0xE8C, ..BATTLE_SETTINGS[0x0B] },
-            navi_stats: [stats; 2],
-            rng: 1,
-            local_side: 0,
-            score: SetScore::default(),
-            later_stages: [Stage { settings: 0x11, background: 3 }, Stage { settings: 0x46, background: 0x13 }],
-            low_hp_music_latched: false,
-            sp_times: Default::default(),
-            players: Default::default(),
-            link_delay: 0,
-        });
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(1000));
+        setup.settings.effects = 0xE8C;
+        setup.later_stages = [Stage { settings: testing::ROCK_BATTLE, background: 3 }, Stage { settings: 1, background: 0x13 }];
+        let mut b = Battle::new(setup, testing::content());
         let r = &mut b.round;
         (r.top, r.mode, r.sub, r.init) = (top::END, 4, 0, 0);
         (r.wins, r.losses, r.round, r.max_combo) = (wins, losses, round, 1);
@@ -1349,7 +1359,8 @@ mod tests {
         let Some(RoundEnd::NextRound { settings, score }) = b.round_end() else { panic!("{:?}", b.round_end()) };
         // The drawn table entry, with this round's effects and the drawn
         // background.
-        assert_eq!(*settings, BattleSettings { effects: 0xE8C, background: 3, ..BATTLE_SETTINGS[0x11] });
+        let drawn = testing::build().rules.stages.settings(testing::ROCK_BATTLE);
+        assert_eq!(*settings, BattleSettings { effects: 0xE8C, background: 3, ..drawn });
         assert_eq!(*score, SetScore { wins: 1, losses: 0, round: 1, max_combo: 1 });
         assert_eq!(b.round.top, top::INIT);
         assert_eq!(b.sound_cues(), [SoundCue::StopMusic]);
@@ -1375,19 +1386,10 @@ mod tests {
 
     #[test]
     fn a_latched_low_hp_switch_plays_no_pinch_cue_on_the_first_tick() {
-        let stats = NaviStats { hp: 500, max_hp: 500, max_base_hp: 500, ..NaviStats::default() };
-        let mut b = Battle::new(RoundSetup {
-            settings: BattleSettings { effects: effects::LINK, ..BATTLE_SETTINGS[0] },
-            navi_stats: [stats; 2],
-            rng: 1,
-            local_side: 0,
-            score: SetScore::default(),
-            later_stages: Default::default(),
-            low_hp_music_latched: true,
-            sp_times: Default::default(),
-            players: Default::default(),
-            link_delay: 0,
-        });
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(500));
+        setup.settings.music = 0x15;
+        setup.low_hp_music_latched = true;
+        let mut b = Battle::new(setup, testing::content());
         tick(&mut b);
         assert_eq!(b.sound_cues(), [SoundCue::Music(SoundId::VIRUS_BATTLE)]);
         tick(&mut b);

@@ -63,7 +63,7 @@ fn cross_overlay(form: Form) -> u8 {
 /// takes down when it goes (`off_801105C`, by actor type and AI index):
 /// for most, the overlay in its `related[1]`.
 pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, name_id: u16) {
-    let rec = crate::data::player::navi_record(name_id);
+    let rec = b.content.navi_record(name_id);
     if rec.actor_type == crate::actor::ActorType::Virus {
         return;
     }

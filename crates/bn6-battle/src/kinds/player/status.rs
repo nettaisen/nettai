@@ -853,7 +853,7 @@ fn time_stop(b: &mut Battle, r: ObjectRef) {
         // The next chip must stop time too.
         let chip = super::next_chip(b, r);
         let freezes = chip != crate::hand::NO_CHIP
-            && crate::data::chip(chip).flags.has(crate::data::ChipFlags::TIME_FREEZE);
+            && b.content.chip(chip).flags.has(crate::content::ChipFlags::TIME_FREEZE);
         if can_counter_freeze(b, r) && freezes {
             panic!("time-stop counter chips (sub_8017AB4) are not implemented yet");
         }

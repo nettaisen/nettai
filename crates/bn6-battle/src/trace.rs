@@ -5,6 +5,7 @@
 
 use serde::Deserialize;
 use std::io::BufRead;
+use std::sync::Arc;
 
 /// The static inputs of a round, captured when its battle state machine
 /// starts running.
@@ -145,6 +146,7 @@ pub fn unhex(s: &str) -> Vec<u8> {
 // ---- Replaying a trace through the engine -----------------------------------
 
 use crate::battle::{Battle, CustomResult, TickEvents};
+use crate::content::Content;
 use crate::custom::{BattleFolder, Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
 use crate::link::Link;
 use crate::hand::ChipHand;
@@ -196,12 +198,13 @@ pub fn rounds(path: impl AsRef<std::path::Path>) -> std::io::Result<Vec<Round>> 
 }
 
 impl Round {
-    /// The engine's starting point for this round.
-    pub fn round_setup(&self) -> RoundSetup {
+    /// The engine's starting point for this round, on `content`.
+    pub fn round_setup(&self, content: &Content) -> RoundSetup {
         let bs = unhex(&self.setup.battle_state);
         let stats = |s: &str| NaviStats::from_bytes(&unhex(s).try_into().unwrap());
         RoundSetup {
-            settings: BattleSettings::netbattle_from_bytes(&unhex(&self.setup.settings)),
+            content: content.hash(),
+            settings: BattleSettings::netbattle_from_bytes(&unhex(&self.setup.settings), content),
             navi_stats: [stats(&self.setup.navi_stats[0]), stats(&self.setup.navi_stats[1])],
             rng: self.setup.rng2,
             local_side: bs[0x0D],
@@ -218,6 +221,16 @@ impl Round {
             players: std::array::from_fn(|p| self.player_setup(p as u8)),
             link_delay: Link::RECORDED_DELAY,
         }
+    }
+
+    /// The round's battle at its start on `content`, with the counters
+    /// its init carried in.
+    pub fn start(&self, content: Arc<Content>) -> Battle {
+        let mut b = Battle::new(self.round_setup(&content), content);
+        let bs = unhex(&self.setup.battle_state);
+        b.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
+        b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
+        b
     }
 
     /// Whether the trace has this player's folder (else their custom
@@ -460,15 +473,11 @@ fn describe_trace(o: &Object, xy_unknown: bool) -> String {
     describe_fields(o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, xy_unknown)
 }
 
-/// Run a round through the engine; returns the number of frames that
-/// matched before the first difference, and that difference.
-pub fn run_round(round: &Round) -> (usize, Option<(u32, Vec<String>)>) {
+/// Run a round through the engine on `content`; returns the number of
+/// frames that matched before the first difference, and that difference.
+pub fn run_round(round: &Round, content: &Arc<Content>) -> (usize, Option<(u32, Vec<String>)>) {
     let frames: Vec<&Frame> = round.battle_frames().collect();
-    let mut b = Battle::new(round.round_setup());
-    // Counters carried in from init.
-    let bs = unhex(&round.setup.battle_state);
-    b.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
-    b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
+    let mut b = round.start(content.clone());
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames);
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events)));
@@ -505,9 +514,9 @@ pub struct ScreenCheck {
 /// simulated: each screen reads its navi's stats from the trace, and
 /// emotions from the mood alone (a tired navi is not seen). Damage from a
 /// formula is not checked (it needs the battle).
-pub fn check_custom_screens(round: &Round) -> Vec<ScreenCheck> {
+pub fn check_custom_screens(round: &Round, content: &Content) -> Vec<ScreenCheck> {
     let frames: Vec<&Frame> = round.battle_frames().collect();
-    let setup = round.round_setup();
+    let setup = round.round_setup(content);
     let mut sides: [Option<Side>; 2] =
         std::array::from_fn(|p| round.folder_known(p as u8).then(|| Side::new(&setup.players[p])));
     let mut checks = Vec::new();
@@ -521,7 +530,7 @@ pub fn check_custom_screens(round: &Round) -> Vec<ScreenCheck> {
             let stats = stats_at(f.frame, p);
             let emotion = if stats.mood == 0 { crate::kinds::player::Emotion::WornOut } else { crate::kinds::player::Emotion::Normal };
             Context {
-                library: &crate::custom::BuiltIn,
+                library: content,
                 stats,
                 emotion,
                 turn: unhex(&f.bs)[7],
@@ -553,7 +562,7 @@ pub fn check_custom_screens(round: &Round) -> Vec<ScreenCheck> {
                 let Some(side) = side else { continue };
                 let was_open = side.in_custom;
                 let request = side.tick(&context(p), |id| {
-                    let d = crate::data::chip(id).damage;
+                    let d = content.chip(id).damage;
                     if d < 1000 { d } else { 0 }
                 });
                 if request == Some(Request::Confirm) {
@@ -579,7 +588,7 @@ pub fn check_custom_screens(round: &Round) -> Vec<ScreenCheck> {
                 Some(sent) => {
                     let block = ChipHand::from_bytes(&unhex(&f.chip_blocks[p]));
                     let expected = sent.result.hand.clone().unwrap_or_else(|| ChipHand::from_bytes(&unhex(&before.chip_blocks[p])));
-                    let formula = |h: &ChipHand, k: usize| h.ids[k] != crate::hand::NO_CHIP && crate::data::chip(h.ids[k]).damage >= 1000;
+                    let formula = |h: &ChipHand, k: usize| h.ids[k] != crate::hand::NO_CHIP && content.chip(h.ids[k]).damage >= 1000;
                     let mut ours = expected.clone();
                     for k in 0..6 {
                         if formula(&ours, k) {

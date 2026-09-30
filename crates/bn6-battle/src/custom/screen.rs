@@ -9,11 +9,7 @@ use super::folder::{BattleFolder, FolderChip};
 use super::builder::ClassCounts;
 use super::library::Library;
 use super::{GameVersion, Unlocks};
-use crate::data::custom::{
-    LEFT_SCAN_BOTTOM, LEFT_SCAN_START, LEFT_SCAN_TOP, RIGHT_SCAN_BOTTOM, RIGHT_SCAN_START, RIGHT_SCAN_TOP,
-    SLOT_TEMPLATE, TemplateSlot,
-};
-use crate::data::{ChipClass, ChipCode, ChipId};
+use crate::content::{ChipClass, ChipCode, ChipId, CustomScreenLayout, TemplateSlot};
 use crate::input::{Joypad, keys};
 use crate::kinds::player::Emotion;
 use crate::setup::{Form, NaviStats};
@@ -265,7 +261,8 @@ impl Screen {
 
     /// `sub_8027E2C`: the slots, the dealt chips and the cursor.
     fn lay_out(&mut self, view: &PlayerView) {
-        for (slot, t) in self.slots.iter_mut().zip(SLOT_TEMPLATE.iter()) {
+        let layout = view.library.layout();
+        for (slot, t) in self.slots.iter_mut().zip(layout.slots.iter()) {
             *slot = Slot {
                 kind: match t.kind {
                     TemplateSlot::ChipPosition => SlotKind::Empty,
@@ -302,13 +299,13 @@ impl Screen {
             // sub_80280A2: a link navi's own chip, once a round.
             self.slots[9].kind = SlotKind::NaviChip(chip);
         }
-        self.fix_neighbours();
+        self.fix_neighbours(layout);
         self.cursor = (0..SLOTS as u8).find(|&s| !self.slots[s as usize].kind.is_absent()).unwrap_or(OK_SLOT);
     }
 
     /// `sub_8027F42`: point neighbours that are absent at the next slot
     /// present along the row's scan list.
-    fn fix_neighbours(&mut self) {
+    fn fix_neighbours(&mut self, layout: &CustomScreenLayout) {
         let absent = |slots: &[Slot; SLOTS], s: u8| slots[s as usize].kind.is_absent();
         for s in (0..SLOTS as u8).rev() {
             let d = self.slots[s as usize];
@@ -322,14 +319,14 @@ impl Screen {
             }
             if d.left.is_some_and(|l| absent(&self.slots, l)) {
                 let from = if bottom && matches!(d.kind, SlotKind::Scrap { right_half: true } | SlotKind::Redeal { right_half: true }) { s - 1 } else { s };
-                let list: &[u8] = if bottom { &LEFT_SCAN_BOTTOM } else { &LEFT_SCAN_TOP };
-                let n = scan(list, LEFT_SCAN_START[from as usize], |x| absent(&self.slots, x));
+                let list: &[u8] = if bottom { &layout.left_scan_bottom } else { &layout.left_scan_top };
+                let n = scan(list, layout.left_scan_start[from as usize], |x| absent(&self.slots, x));
                 fixed.left = (n != from).then_some(n);
             }
             if d.right.is_some_and(|r| absent(&self.slots, r)) {
                 let from = if bottom && matches!(d.kind, SlotKind::Scrap { right_half: false } | SlotKind::Redeal { right_half: false }) { s + 1 } else { s };
-                let list: &[u8] = if bottom { &RIGHT_SCAN_BOTTOM } else { &RIGHT_SCAN_TOP };
-                let n = scan(list, RIGHT_SCAN_START[from as usize], |x| absent(&self.slots, x));
+                let list: &[u8] = if bottom { &layout.right_scan_bottom } else { &layout.right_scan_top };
+                let n = scan(list, layout.right_scan_start[from as usize], |x| absent(&self.slots, x));
                 fixed.right = (n != from).then_some(n);
             }
             self.slots[s as usize] = fixed;

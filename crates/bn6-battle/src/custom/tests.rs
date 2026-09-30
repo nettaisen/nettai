@@ -4,7 +4,7 @@
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
-use crate::data::{ChipClass, ChipCode, ChipFlags};
+use crate::content::{ChipClass, ChipCode, ChipFlags};
 use crate::input::keys;
 
 const STAR: u8 = 26;

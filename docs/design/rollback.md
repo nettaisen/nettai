@@ -13,9 +13,11 @@ is the battle once `f + 1` ticks have run.
 ## 0. Summary
 
 - **Snapshots**: `Battle` is plain data and `Clone`; a snapshot is a copy (`save_state` / `load_state`), about
-  22 KB (8.6 KB inline plus the object pools); saving takes about 2 µs, restoring 2-8 µs (release).
+  22 KB (8.6 KB inline plus the object pools); saving takes about 2 µs, restoring 2-8 µs (release). The battle's
+  content (`Battle::content`, an `Arc<Content>`) never changes and is shared by every snapshot.
 - **Digest**: `Battle::digest()` hashes the simulation state (presentation left out) with a platform-independent
-  hasher. Peers compare it every confirmed frame.
+  hasher. Peers compare it every confirmed frame. It covers the round's setup, which carries the content's hash
+  (`RoundSetup::content`), rather than the content itself.
 - **Input**: `Battle::step(&TickInput)`. A `TickInput` is both players' buttons plus the link-closed event at
   the end of a round, which netplay carries in a player's input so both peers step every frame with the same
   record. Both players' custom screens are simulated from their buttons (engine/custom-screen.md).
@@ -25,11 +27,11 @@ is the battle once `f + 1` ticks have run.
 - **Sound**: `cues::CueTracker` turns every simulated tick's cues, tagged with their frame, into Play and Cancel
   actions, so a confirmed cue plays once and a mispredicted one is stopped or undone. bn6-audio takes the actions
   (`BattleAudio::handle_actions`).
-- **Results**: synthetic netbattles built in code (random button mashing, fixed hands) run to the KO without a
-  single divergence at latencies of 0 to 10 frames with jitter and input delay, with hundreds to thousands of
-  rollbacks each. The golden traces, replayed through two rollback peers at latencies 0, 2, 5 and 10 (plus
+- **Results**: synthetic netbattles on the engine's test content (random button mashing, fixed hands) run to the KO
+  without a single divergence at latencies of 0 to 10 frames with jitter and input delay, with hundreds to thousands
+  of rollbacks each. The golden traces, replayed through two rollback peers at latencies 0, 2, 5 and 10 (plus
   jitter), match the trace on every confirmed frame, with the peers in agreement throughout.
-- **Cost**: the worst case, a 10-frame rollback on every rendered frame, costs about 45-90 µs per frame in
+- **Cost**: the worst case, a 10-frame rollback on every rendered frame, costs about 60-90 µs per frame in
   release (under 0.6% of the 16.7 ms budget).
 
 ## 1. The model
@@ -84,9 +86,11 @@ peer waits.
 ### 1.3 Snapshots
 
 A snapshot is a copy of the battle: `Battle::save_state()` / `save_state_into()` / `load_state()`, or `Clone`
-directly. `Battle` derives `Clone`; every part of it is plain data (fixed arrays and a few vectors). Nothing is
-shared between copies, so a restored battle continues exactly as the saved one would have: in-repo tests roll a
-battle back mid-fight, simulate a wrong future, restore, and compare digests frame by frame.
+directly. `Battle` derives `Clone`; every part of its state is plain data (fixed arrays and a few vectors). Copies
+share only what never changes: the content the round runs on (`Battle::content`, an `Arc<Content>`: the pack's
+battle data and animation timing) and the behaviors handle (code, docs/design/scripting.md). State refers to
+content by id, never by reference. So a restored battle continues exactly as the saved one would have: in-repo
+tests roll a battle back mid-fight, simulate a wrong future, restore, and compare digests frame by frame.
 
 The per-tick sound cues are part of the copy (they are the cues of the tick that produced the state); a consumer
 reads them right after each tick.
@@ -105,6 +109,10 @@ reads them right after each tick.
 banner's id (`Banner::id`; its lifetime is in), and the objects' `VISIBLE` header flag. With one shared
 perspective (§2) these are identical on both peers anyway; leaving them out keeps presentation free to become
 per-viewer later without touching desync detection.
+
+**Left out, as immutable input**: the content (`Battle::content`) and the behaviors handle. The digest covers
+the round's setup, and the setup carries the content's hash (`RoundSetup::content`, which `Battle::new` checks
+against the content it is given), so peers on different content have different digests from the first frame.
 
 **Coverage is enforced.** The `Hash` impls for `Battle`, `Object`, `Sprite` and `Banner` destructure their
 structs without `..`: a new field doesn't compile until it is hashed or explicitly left out. Everything else
@@ -161,7 +169,8 @@ digest covers all of it. Peer-specific presentation is derived per viewer instea
 
 Related shared setup: the battle settings. Netbattle settings come in pairs that differ only in which navi the
 actor list spawns first (for example entries 0 and 1), which decides object slots and update order; both peers
-must use the same entry.
+must use the same entry. The content is shared setup too: `RoundSetup::content` is the hash (`Content::hash`) of
+the content the round runs on, so peers whose setups agree run the same data.
 
 ### 2.3 Each per-console detail
 
@@ -211,8 +220,8 @@ plays the plays like `handle` and takes back cancels: a sound effect stops if it
 `bn6_netplay::bn6::CueFeed` connects a peer to a tracker for one viewer.
 
 The synthetic tests check, for each peer, that plays minus cancels equals the cues of the confirmed frames, cue
-by cue. At 10 frames of latency a battle of 7,726 frames played 542 and 558 cues on the two peers, of which 1
-and 16 were cancelled predictions.
+by cue. (On the synthetic battle as it was before it moved to the test content, at 10 frames of latency a battle
+of 7,726 frames played 542 and 558 cues on the two peers, of which 1 and 16 were cancelled predictions.)
 
 ### 3.3 Per viewer
 
@@ -233,33 +242,35 @@ crates/bn6-netplay is generic over a `Game` (advance on two inputs, digest, `Clo
   speculative if the lockstep run gets through that frame.
 
 `bn6` implements `Game` for `Battle` (the engine's input record, events carried in the inputs) and `standin`
-provides the link closing, a MegaMan built in code, a netbattle setup with given folders and a seeded button
-masher.
+provides the link closing, a MegaMan built in code, a netbattle setup on given content with given folders and a
+seeded button masher.
 
 ## 5. Results
 
 ### 5.1 Synthetic netbattles (in this repository)
 
-`crates/bn6-netplay/tests/rollback.rs`: two MegaMen with 300 HP on netbattle settings 0; side 0's folder holds
-GunDelS3, EraseMan, GunDelS1, Invisibl, GunDelS3 over and over, side 1's GunDelSols only (no Crosses or Beast
-Out). Both players mash (held buttons change every four frames on average: a direction, A, L or R; B and START
-are never pressed, see §7.2), and the mashing drives their custom screens too. Three seeds, each under every
-configuration:
+`crates/bn6-netplay/tests/rollback.rs`: two navis with 300 HP on the battle settings 0 of the engine's test content
+(`content::testing`, hand-authored, not BN6's data). Its chips are made up but run the engine's own actions: side
+0's folder holds a level-3 GunDelSol, an eraser navi chip, a level-1 GunDelSol, an invisibility freeze and a level-3
+GunDelSol over and over (GunDelSol is action 0x37; the invisibility freeze 0x15 with subtype 1, as Invisibl; the
+eraser navi chip 0x1B with subtype 5, as EraseMan), side 1's GunDelSols only (no Crosses or Beast Out). Both players
+mash (held buttons change every four frames on average: a direction, A, L or R; B and START are never pressed, see
+§7.2), and the mashing drives their custom screens too. Three seeds, each under every configuration:
 
-| Latency + jitter | Input delay | Seed 1 / 2 / 3: frames to the KO | Rollbacks per peer (seed 2) | Deepest rollback | Diverged |
+| Latency + jitter | Input delay | Seed 1 / 2 / 3: frames to the KO | Rollbacks per peer (seed 3) | Deepest rollback | Diverged |
 |---|---|---|---|---|---|
-| 0 | 0 | 3,106 / 6,706 / 1,988 | 0 | 0 | never |
-| 1 + 1 | 0 | same | ~1,450 | 2 | never |
-| 2 + 1 | 0 | same | ~1,450 | 3 | never |
-| 5 + 2 | 0 | same | ~1,550 | 7 | never |
-| 10 + 3 | 0 | same | ~1,650 | 13 | never |
-| 10 + 2 | 3 | same | ~1,550 | 10 | never |
+| 0 | 0 | 4,848 / 7,490 / 6,204 | 0 | 0 | never |
+| 1 + 1 | 0 | same | ~1,390 | 2 | never |
+| 2 + 1 | 0 | same | ~1,400 | 3 | never |
+| 5 + 2 | 0 | same | ~1,500 | 7 | never |
+| 10 + 3 | 0 | same | ~1,550 | 13 | never |
+| 10 + 2 | 3 | same | ~1,450 | 10 | never |
 
-Every battle runs to the end with both peers' digests equal to each other and to the lockstep run on every
-frame, and ends the same way as without rollback. The other tests: the engine's own input record with the
-recorded events riding in player 0's input (latencies 3 and 8, 8,803 frames, ~2,000 rollbacks, in sync),
-confirmation order, and the two negative tests below. (With 500 HP a mashed battle can reach the 15th custom
-screen, whose turn timer ends in the damage judge, which the engine doesn't have yet.)
+Every battle runs to the end with both peers' digests equal to each other and to the lockstep run on every frame,
+and ends the same way as without rollback. The other tests: the engine's own input record with the recorded events
+riding in player 0's input (latencies 3 and 8, in sync), confirmation order, and the two negative tests below. (With
+500 HP a mashed battle can reach the 15th custom screen, whose turn timer ends in the damage judge, which the engine
+doesn't have yet.)
 
 ### 5.2 How long before a divergence, and why
 
@@ -288,6 +299,10 @@ replay matches. Every confirmed frame of both peers must match the trace exactly
 (Rollbacks are counted on player 1's peer, which receives player 0's buttons and the custom-screen events; in
 the machgun rounds player 0's peer rolls back far less often, since player 1 changes buttons less.)
 
+Since the engine moved to content packs, the rounds run on the pack extracted from the ROM, and every round still
+matches its full length (machgun 1,074 and 1,331, soundmod 4,513, 6,284 and 2,566 frames) on every confirmed frame
+at every latency. The rollback counts above are from the earlier run.
+
 ## 6. Performance
 
 Worst case per rendered frame: restore a snapshot, simulate 10 frames again saving a snapshot after each, then
@@ -295,18 +310,19 @@ the new frame, and digest it. Release build:
 
 | | Synthetic battle (mashing, whole battle) | soundmod round 1 (the 2,000 frames around its busiest frame) |
 |---|---|---|
-| Restore | 5-8 µs | 2 µs |
-| Simulate one frame | 1.0-1.2 µs | 0.2-0.6 µs |
-| Save one frame | 2.1-2.8 µs | 1.8-2.0 µs |
-| Digest | 26-30 µs | 18-19 µs |
-| **Per rendered frame** | **67-91 µs** | **43-50 µs** |
+| Restore | 5-8 µs | 4.1 µs |
+| Simulate one frame | 1.0-1.2 µs | 0.68 µs |
+| Save one frame | 2.1-2.8 µs | 2.5 µs |
+| Digest | 26-30 µs | 21 µs |
+| **Per rendered frame** | **67-91 µs** | **~61 µs** |
 
-(Ranges over repeated runs.)
+(Synthetic: ranges over repeated runs, measured on the synthetic battle before it moved to the test content.
+soundmod: measured on the content pack, after the engine moved to packs; the round's battle is the same.)
 
-That is under 0.6% of the 16.7 ms a frame has at 60 fps. The 99th percentiles (0.2-0.6 ms) and the worst frames
-(a few ms) were measured on a machine running other builds (load average 20-38) and are scheduling noise, not
-engine work. (Measure with `cargo run --release -p bn6-netplay --example rollback_cost`.) The digest dominates
-and is needed once per confirmed frame, not per re-simulated one.
+That is under 0.6% of the 16.7 ms a frame has at 60 fps. The 99th percentiles (0.2-0.6 ms) and the worst frames (a
+few ms) were measured on a machine running other builds (load average 20-38) and are scheduling noise, not engine
+work. (Measure with `cargo run --release -p bn6-netplay --example rollback_cost --features trace -- <trace.jsonl>
+<pack> [round]`.) The digest dominates and is needed once per confirmed frame, not per re-simulated one.
 
 ## 7. Hazards
 
@@ -319,6 +335,9 @@ and is needed once per confirmed frame, not per re-simulated one.
 - **Per-console sound**: the engine recorded only the local player's cues; it records what each side hears.
 - **Per-console presentation read from state**: per-viewer banners and results (§2.3).
 - **Re-simulated sound cues**: the cue tracker (§3.2).
+- **`&'static` references in state** (`BattleSettings::actors`, a rock's kind): they are ids now
+  (`BattleSettings::actors` is an `ActorListId`, a rock's kind a variant id), resolved against the battle's
+  `Content`, so a snapshot holds no pointers and a serialized snapshot (spectators, desync reports) is possible.
 
 ### 7.2 Found, still open
 
@@ -332,14 +351,12 @@ and is needed once per confirmed frame, not per re-simulated one.
   run isn't allowed in a netplay folder) or end the battle deterministically on both peers instead of panicking.
 - **Per-viewer visibility**: the blindness rules and the lock-on marker and A-charge glow still decide `VISIBLE`
   for the local side (§2.3). Cosmetic for the other viewer; the digest leaves `VISIBLE` out.
-- **`&'static` references in state** (`BattleSettings::actors`): fine for in-process snapshots (a copy keeps
-  pointing at the same table) and hashed by content, but a serialized snapshot (spectators, desync reports)
-  needs ids. The core/content boundary plan replaces them.
 
 ### 7.3 Checked, not a problem
 
 - No floats, statics, thread-locals, `Rc`/`RefCell`/`Cell`, hash maps, clocks or I/O in the simulation (the
-  frontend's thread-local panic flag and bn6-audio's floats are presentation).
+  frontend's thread-local panic flag and bn6-audio's floats are presentation; the content's `Arc` and the
+  behaviors handle's `Rc` point at immutable data and code, not state).
 - No address-dependent behavior: the values the original takes from addresses and registers (list-node addresses
   as a deletion effect's position, register garbage in spawn positions and bug codes) are modeled as fixed values
   or marked unknown.
@@ -377,7 +394,8 @@ The rules of the core/content boundary (docs/design/core-content-boundary.md, §
   digest; a script VM's heap, globals, closures or coroutines hold no battle state between calls;
 - integers only; one simulation RNG stream through the core; list or slot order, never hash-map iteration;
 - outputs (cues, looks) are write-only;
-- content is immutable during a battle and identified by a hash both peers compare before the match;
+- content is immutable during a battle and identified by a hash both peers compare before the match (the
+  battle data's hash is in the shared setup, `RoundSetup::content`);
 - bounded work that fails the same way on every peer;
 - no perspective in simulated state: a script that wants "the local player" asks for the viewer at presentation
   time;

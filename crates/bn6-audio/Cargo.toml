@@ -16,7 +16,9 @@ default = ["playback"]
 playback = ["dep:cpal"]
 
 [dev-dependencies]
-bn6-battle = { workspace = true, features = ["trace"] }
+bn6-battle = { workspace = true, features = ["trace", "test-content"] }
+# The examples load a content pack.
+bn6-content = { path = "../bn6-content" }
 
 [[example]]
 name = "trace_audio"

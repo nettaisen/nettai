@@ -6,7 +6,6 @@
 
 use crate::actor::ActorId;
 use crate::battle::Battle;
-use crate::data::attacks;
 use crate::kinds::common::{Progress, set_progress, update_sprite};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
@@ -57,7 +56,7 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
     }
 }
 
-/// `sub_80B8E30`: attach an object of `kind` (`data::attacks::attachment`)
+/// `sub_80B8E30`: attach an object of `kind` (`Content::attachment`)
 /// to `owner`, stored in `slot` (which gets None if the pool is full). It
 /// takes the owner's panel and side; its init places it.
 pub fn spawn(b: &mut Battle, owner: ObjectRef, kind: u8, slot: AttachSlot) -> Option<ObjectRef> {
@@ -67,7 +66,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, kind: u8, slot: AttachSlot) -> Op
 /// An attachment's spawn parameters.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Params {
-    /// Param1: which attachment (`data::attacks::attachment`).
+    /// Param1: which attachment (`Content::attachment`).
     pub kind: u8,
     /// Param2: its animation.
     pub anim: u8,
@@ -124,7 +123,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// `sub_80B8CF8`.
 fn init(b: &mut Battle, r: ObjectRef) {
     let [kind, anim, ..] = b.objects.get(r).params;
-    let k = attacks::attachment(kind);
+    let k = *b.content.attachment(kind);
     let owner = owner(b, r);
     let palette_add = b.objects.get(r).params[3];
     let sprite = b.objects.sprite_mut(r);
@@ -141,7 +140,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.anim = anim;
     o.anim_loaded = anim;
     o.flags |= flags::VISIBLE;
-    b.objects.sprite_mut(r).set_animation(anim);
+    b.objects.sprite_mut(r).set_animation(anim, &b.content);
     if kind == 0xF {
         panic!("attachment kind 0xF offsets (sub_80B8CF8) are not implemented yet");
     }

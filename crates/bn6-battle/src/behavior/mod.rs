@@ -15,6 +15,7 @@ use std::rc::Rc;
 use bn6_content_api::{ContentError, ContentHost, ContentState, CoreApi, KindId, Manifest, Value};
 
 use crate::battle::Battle;
+use crate::content::Content;
 use crate::kinds::Vars;
 use crate::object::{ObjectRef, Pool, Vec3};
 
@@ -61,41 +62,57 @@ impl Behaviors {
         Ok(Behaviors { loaded: Some(Rc::new(Loaded { host: Box::new(host), objects, actions })) })
     }
 
-    /// The content this build runs by default: the Luau content pack with
-    /// the `luau` feature, else the Rust content with `rust-content`, else
-    /// the built-in kinds. Loaded once per thread.
-    pub fn for_build() -> Behaviors {
+    /// The behaviors this build runs by default on `content`: the Luau
+    /// scripts with the `luau` feature, else the Rust content with
+    /// `rust-content`, else the built-in kinds. The Luau scripts are loaded
+    /// once per thread and content.
+    pub fn for_build(content: &Content) -> Behaviors {
         #[cfg(feature = "luau")]
         {
-            thread_local!(static LUAU: Behaviors = Behaviors::luau().unwrap_or_else(|e| panic!("{e}")));
-            LUAU.with(Behaviors::clone)
+            use std::cell::RefCell;
+            thread_local!(static LUAU: RefCell<Option<(crate::content::ContentHash, Behaviors)>> = const { RefCell::new(None) });
+            let hash = content.hash();
+            LUAU.with(|cell| {
+                let mut cell = cell.borrow_mut();
+                match &*cell {
+                    Some((h, b)) if *h == hash => b.clone(),
+                    _ => {
+                        let b = Behaviors::luau(content).unwrap_or_else(|e| panic!("{e}"));
+                        *cell = Some((hash, b.clone()));
+                        b
+                    }
+                }
+            })
         }
         #[cfg(all(feature = "rust-content", not(feature = "luau")))]
         {
-            Behaviors::rust()
+            Behaviors::rust(content)
         }
         #[cfg(not(any(feature = "luau", feature = "rust-content")))]
         {
+            let _ = content;
             Behaviors::builtin()
         }
     }
 
-    /// The GunDelSol slice written in Rust against the content API.
+    /// The GunDelSol slice written in Rust against the content API, with
+    /// its data from `content`.
     #[cfg(feature = "rust-content")]
-    pub fn rust() -> Behaviors {
-        Behaviors::new(bn6_content_rust::RustContent::new()).expect("the Rust content is consistent")
+    pub fn rust(content: &Content) -> Behaviors {
+        Behaviors::new(bn6_content_rust::RustContent::new(rust_data(content))).expect("the Rust content is consistent")
     }
 
-    /// The Luau content pack in content/bn6 (compiled into the binary).
+    /// The Luau scripts in content/bn6 (compiled into the binary), with
+    /// their data from `content`.
     #[cfg(feature = "luau")]
-    pub fn luau() -> Result<Behaviors, ContentError> {
-        Behaviors::luau_with(bn6_luau::Options::default())
+    pub fn luau(content: &Content) -> Result<Behaviors, ContentError> {
+        Behaviors::luau_with(content, bn6_luau::Options::default())
     }
 
-    /// The Luau content pack, with runtime options (e.g. native code).
+    /// The Luau scripts, with runtime options (e.g. native code).
     #[cfg(feature = "luau")]
-    pub fn luau_with(options: bn6_luau::Options) -> Result<Behaviors, ContentError> {
-        Behaviors::new(bn6_luau::LuauContent::load(&luau_pack(), options)?)
+    pub fn luau_with(content: &Content, options: bn6_luau::Options) -> Result<Behaviors, ContentError> {
+        Behaviors::new(bn6_luau::LuauContent::load(&luau_pack(content), options)?)
     }
 
     /// Which runtime runs the content ("builtin" for none).
@@ -118,25 +135,101 @@ impl Behaviors {
     }
 }
 
-/// The content pack under content/bn6, compiled in.
+/// The Luau scripts under content/bn6 (compiled in), with their data
+/// module, `data/pack`, built from `content` (the repository only has its
+/// type stub).
 #[cfg(feature = "luau")]
-pub fn luau_pack() -> bn6_luau::Pack {
+pub fn luau_pack(content: &Content) -> bn6_luau::Pack {
     macro_rules! pack {
         ($($path:literal),* $(,)?) => {
             bn6_luau::Pack::new(vec![
+                ("data/pack".to_string(), luau_data(content)),
                 $(($path.to_string(), include_str!(concat!("../../../../content/bn6/", $path, ".luau")).to_string()),)*
             ])
         };
     }
     pack![
         "pack",
-        "data/attacks",
         "lib/slot",
         "objects/attachment",
         "objects/sun_beam",
         "objects/hitbox",
         "chips/gun_del_sol"
     ]
+}
+
+/// The scripts' data module (`data/pack`, typed by its stub in
+/// content/bn6): each chip's own data, the attachment kinds and the sun
+/// beam's looks, from `content`.
+#[cfg(feature = "luau")]
+pub fn luau_data(content: &Content) -> String {
+    use crate::content::{AttachmentKind, SunBeamLook};
+    let sprite = |s: crate::content::SpriteId| format!("{{ category = {:#04x}, index = {:#04x} }}", s.category, s.index);
+    let attachment = |k: &AttachmentKind| {
+        let point = k.attach_point.map_or("nil".to_string(), |p| p.to_string());
+        format!(
+            "{{ id = {:#04x}, sprite = {}, palette = {}, lift = {}, attach_point = {point} }}",
+            k.id,
+            sprite(k.sprite),
+            k.palette,
+            k.lift
+        )
+    };
+    let look = |l: SunBeamLook| format!("{{ look = {}, palette = {} }}", l.look, l.palette);
+    let mut s = String::from("--!strict\n-- Built from the content pack by the engine; see the stub in content/bn6/data/pack.luau.\n\nreturn {\n    chips = {\n");
+    for c in content.chips.iter().filter(|c| c.gun_del_sol.is_some()) {
+        let g = c.gun_del_sol.as_ref().expect("filtered");
+        s += &format!(
+            "        [{:#05x}] = {{ gun_del_sol = {{ firing_ticks = {}, beam = {}, beam_in_sun = {}, gun = {} }} }},\n",
+            c.id,
+            g.firing_ticks,
+            look(g.beam),
+            look(g.beam_in_sun),
+            attachment(&g.gun)
+        );
+    }
+    s += "    } :: { [number]: ChipData },\n    attachments = {\n";
+    for k in &content.objects.attachments {
+        s += &format!("        [{:#04x}] = {},\n", k.id, attachment(k));
+    }
+    s += "    } :: { [number]: AttachmentKind },\n    sun_beam_looks = {\n";
+    for (i, &id) in content.objects.sun_beam_looks.iter().enumerate() {
+        s += &format!("        [{i}] = {},\n", sprite(id));
+    }
+    s += "    } :: { [number]: SpriteId },\n}\n";
+    s
+}
+
+/// The Rust content's data, from `content`.
+#[cfg(feature = "rust-content")]
+fn rust_data(content: &Content) -> bn6_content_rust::data::Data {
+    use bn6_content_rust::data as rc;
+    let attachment = |k: &crate::content::AttachmentKind| rc::AttachmentKind {
+        id: k.id,
+        sprite: k.sprite,
+        palette: k.palette,
+        lift: k.lift,
+        attach_point: k.attach_point,
+    };
+    let look = |l: crate::content::SunBeamLook| rc::SunBeamLook { look: l.look, palette: l.palette };
+    rc::Data {
+        gun_del_sol: content
+            .chips
+            .iter()
+            .filter_map(|c| {
+                let g = c.gun_del_sol.as_ref()?;
+                let d = rc::GunDelSol {
+                    firing_ticks: g.firing_ticks,
+                    beam: look(g.beam),
+                    beam_in_sun: look(g.beam_in_sun),
+                    gun: attachment(&g.gun),
+                };
+                Some((c.id, d))
+            })
+            .collect(),
+        attachments: content.objects.attachments.iter().map(attachment).collect(),
+        sun_beam_looks: content.objects.sun_beam_looks.clone(),
+    }
 }
 
 /// Run content object `kind` for `r`.

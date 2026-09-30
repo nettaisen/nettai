@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 
 use bn6_battle::Battle;
 use bn6_battle::behavior::{self, Behaviors};
-use bn6_battle::data::attacks::SunBeamLook;
+use bn6_battle::content::SunBeamLook;
 use bn6_battle::input::PlayerTick;
 use bn6_battle::kinds::attachment::{self, AttachSlot};
 use bn6_battle::kinds::sun_beam;
@@ -22,20 +22,20 @@ use bn6_content_api::Value;
 fn runtimes() -> Vec<(&'static str, Box<dyn Fn() -> Behaviors>)> {
     let mut v: Vec<(&'static str, Box<dyn Fn() -> Behaviors>)> = vec![
         ("built-in", Box::new(Behaviors::builtin)),
-        ("rust content", Box::new(Behaviors::rust)),
-        ("luau", Box::new(|| Behaviors::luau().unwrap())),
+        ("rust content", Box::new(|| Behaviors::rust(&scenario::content()))),
+        ("luau", Box::new(|| Behaviors::luau(&scenario::content()).unwrap())),
     ];
     if bn6_luau::native_code_supported() {
         v.push((
             "luau native",
-            Box::new(|| Behaviors::luau_with(bn6_luau::Options { native_code: true, ..Default::default() }).unwrap()),
+            Box::new(|| Behaviors::luau_with(&scenario::content(), bn6_luau::Options { native_code: true, ..Default::default() }).unwrap()),
         ));
     }
     v
 }
 
 fn at(tape: &[Tick], content: Behaviors, ticks: usize) -> Battle {
-    let mut b = Battle::with_behaviors(scenario::setup(), content);
+    let mut b = Battle::with_behaviors(scenario::setup(), scenario::content(), content);
     for t in &tape[..ticks] {
         b.tick(&t.input, t.events.clone());
     }
@@ -64,7 +64,7 @@ fn attach(b: &mut Battle, n: usize) {
     let owner = b.player(0).unwrap();
     let actor = b.objects.get(owner).actor.unwrap();
     let offset = Vec3::px(80, 0, 0);
-    let look = SunBeamLook { sprite: 0, palette: 2 };
+    let look = SunBeamLook { look: 0, palette: 2 };
     for i in 0..n {
         let beam = i % 2 == 1;
         if b.behaviors.object_kind(Pool::Actor, attachment::INDEX).is_none() {
@@ -80,7 +80,7 @@ fn attach(b: &mut Battle, n: usize) {
             (o.panel, o.alliance, o.flip)
         };
         let r = if beam {
-            behavior::spawn_object(b, Pool::Effect, sun_beam::INDEX, offset, [look.sprite, look.palette, 0, 0]).unwrap()
+            behavior::spawn_object(b, Pool::Effect, sun_beam::INDEX, offset, [look.look, look.palette, 0, 0]).unwrap()
         } else {
             behavior::spawn_object(b, Pool::Actor, attachment::INDEX, Vec3::default(), [9, 0, 0, 0]).unwrap()
         };
@@ -107,7 +107,7 @@ fn main() {
     println!("size_of::<Battle>() = {} bytes (plus heap: objects and sprites)\n", std::mem::size_of::<Battle>());
 
     let t = Instant::now();
-    black_box(Behaviors::luau().unwrap());
+    black_box(Behaviors::luau(&scenario::content()).unwrap());
     println!("Loading the Luau pack (VM, compile, verify, freeze): {}\n", us(t.elapsed()));
 
     println!(

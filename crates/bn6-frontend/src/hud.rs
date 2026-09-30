@@ -455,7 +455,7 @@ fn icon_parts<'a>(b: &Battle, hud: &'a Hud, r: ObjectRef, local: bool, view: &Vi
     let f = bn6_battle::kinds::common::facing(o.alliance, o.flip);
     // Attach point 3 of the navi's sprite (player NameIDs 0x1A0..=0x1C3).
     let (ax, ay) = if (0x1A0..=0x1C3).contains(&o.name_id) {
-        let p = bn6_battle::data::player::attach_point(o.name_id, 3);
+        let p = b.content.attach_point(o.name_id, 3);
         (p.x as i32, p.y as i32)
     } else {
         (8, 48)

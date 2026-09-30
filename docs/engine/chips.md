@@ -786,9 +786,10 @@ Checked in `sub_80F0354` after the action is already set up:
     required unless AirShoe or standing off solid ground, and no other body). Modes 3, 6, 9 and 0x10 then take the
     middle row of the found column if it passes `sub_800E680` (`sub_80265FE`; its "not found" test reads flags that
     a `mov r1, #2` just set, so it always runs; with nothing found it tests column 0 and fails). A result with
-    column 0 means "not found", and the caller keeps the navi's panel. The offset lists are extracted into
-    `lockon_generated`: mode 9 (GunDelSol) is two columns before the target, same row, then above, then below;
-    mode 0xC (the claw) is the panel right in front of it. Modes 1, 0xA, 0xB, 0xE, 0x11 and 0x12 work differently.
+    column 0 means "not found", and the caller keeps the navi's panel. The offset lists are extracted into the
+    lock-on rules (`Rules::lockon`, a content pack's `rules/lockon.toml`): mode 9 (GunDelSol) is two columns before
+    the target, same row, then above, then below; mode 0xC (the claw) is the panel right in front of it. Modes 1,
+    0xA, 0xB, 0xE, 0x11 and 0x12 work differently.
   - **Phase 8** (`sub_80EAF36`): calls `JumpTable80EAC60[CurAction−0x10]` each frame. When the handler has returned
     to CurAction 8:
     - if `s[4]` is set: `sub_800FC30` **chains** the next chip (it rejects 0xFFFF, 0x52, 0x53 and TFCs, then

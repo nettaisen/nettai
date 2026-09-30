@@ -6,7 +6,6 @@
 
 use crate::actor::ActorType;
 use crate::battle::Battle;
-use crate::data::player as pdata;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::player::form;
 use crate::object::sprite::Shadow;
@@ -73,7 +72,7 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 /// steps even while paused), at its position.
 fn init(b: &mut Battle, r: ObjectRef) {
     let navi = owner(b, r);
-    let owner_type = pdata::navi_record(b.objects.get(navi).name_id).actor_type;
+    let owner_type = b.content.navi_record(b.objects.get(navi).name_id).actor_type;
     if let crate::kinds::Vars::NaviWarp(v) = &mut b.objects.get_mut(r).vars {
         v.owner_type = owner_type;
     }
@@ -82,7 +81,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     }
     let side = b.objects.get(navi).alliance as usize;
     let (navi_id, form) = (b.stats[side].navi, b.stats[side].form);
-    let sprite = if navi_id == Navi::MEGAMAN { pdata::form_sprite(form) } else { pdata::navi_sprite(navi_id) };
+    let sprite = if navi_id == Navi::MEGAMAN { b.content.form(form).sprite } else { b.content.navi(navi_id).sprite };
     let (pos, palette) = (b.objects.get(navi).pos, b.objects.sprite(navi).look.palette);
     let flip = {
         let o = b.objects.get(r);

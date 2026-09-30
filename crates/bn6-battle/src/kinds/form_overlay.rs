@@ -5,7 +5,7 @@
 //! update order. See docs/engine/objects-and-player.md §A.7.
 
 use crate::battle::Battle;
-use crate::data::SpriteId;
+use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress, set_progress};
 use crate::object::{ObjectRef, Pool, Vec3, flags, state};
 
@@ -94,8 +94,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let anim = b.objects.get(owner(b, r)).anim.wrapping_add(vars(b, r).anim_offset);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
-    s.set_animation(anim);
-    s.update();
+    s.set_animation(anim, &b.content);
+    s.update(&b.content);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
@@ -118,7 +118,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).anim = anim;
     if anim != b.objects.get(r).anim_loaded {
         // Restarts every tick until the sprite step below records it.
-        b.objects.sprite_mut(r).set_animation(anim);
+        b.objects.sprite_mut(r).set_animation(anim, &b.content);
     }
     let nudge = if nudged { 0x1_0000 } else { 0 };
     let o = b.objects.get_mut(r);

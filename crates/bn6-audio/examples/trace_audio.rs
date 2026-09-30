@@ -1,6 +1,6 @@
 //! Replay a golden trace through the engine and play its sound.
 //!
-//!     trace_audio <trace.jsonl> <sound-bank> [--round N] [--wav OUT.wav]
+//!     trace_audio <trace.jsonl> <pack> [--round N] [--wav OUT.wav]
 //!                 [--frames N] [--keep-going] [--tail SECONDS]
 //!
 //! Each round is replayed with the recorded inputs and its sound cues are
@@ -10,10 +10,13 @@
 //! where the engine leaves the recording (or, with `--keep-going`, where it
 //! panics on something it doesn't implement yet).
 //!
-//! The sound bank comes from `bn6-extract assets <rom> <sound-bank>`.
+//! The content pack (the battle data the engine runs on, and the sound)
+//! comes from `bn6-extract content <rom> <pack>`.
 
-use bn6_audio::{AudioOut, BattleAudio, FPS, SAMPLE_RATE, SoundCue, load_bank, wav};
-use bn6_battle::{Battle, trace};
+use bn6_audio::{AudioOut, BattleAudio, FPS, SAMPLE_RATE, SoundCue, wav};
+use bn6_battle::trace;
+use std::path::Path;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// Where the audio goes: rendered into memory for a WAV file, or played on
@@ -48,7 +51,7 @@ impl Sink {
 
 struct Options {
     trace: String,
-    bank: String,
+    pack: String,
     round: Option<usize>,
     wav: Option<String>,
     frames: Option<usize>,
@@ -58,7 +61,7 @@ struct Options {
 
 fn usage() -> ! {
     eprintln!(
-        "usage: trace_audio <trace.jsonl> <sound-bank> [--round N] [--wav OUT.wav] [--frames N] [--keep-going] [--tail SECONDS]"
+        "usage: trace_audio <trace.jsonl> <pack> [--round N] [--wav OUT.wav] [--frames N] [--keep-going] [--tail SECONDS]"
     );
     std::process::exit(2);
 }
@@ -67,7 +70,7 @@ fn options() -> Options {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut o = Options {
         trace: String::new(),
-        bank: String::new(),
+        pack: String::new(),
         round: None,
         wav: None,
         frames: None,
@@ -97,9 +100,9 @@ fn options() -> Options {
         }
         i += 2;
     }
-    let [trace, bank] = <[String; 2]>::try_from(positional).unwrap_or_else(|_| usage());
+    let [trace, pack] = <[String; 2]>::try_from(positional).unwrap_or_else(|_| usage());
     o.trace = trace;
-    o.bank = bank;
+    o.pack = pack;
     o
 }
 
@@ -115,10 +118,15 @@ fn describe(c: &SoundCue) -> String {
 
 fn main() {
     let o = options();
-    let bank = load_bank(&o.bank).unwrap_or_else(|e| {
-        eprintln!("{e}\n(write a sound bank with `bn6-extract assets <rom> <sound-bank>`)");
+    let fail = |r: bn6_content::report::Report| -> ! {
+        eprintln!("{}: {r}
+(write a content pack with `bn6-extract content <rom> <pack>`)", o.pack);
         std::process::exit(1);
-    });
+    };
+    let (bank, _) = bn6_content::pack::load_sound(Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
+    let bank = Arc::new(bank);
+    let (content, _) = bn6_content::pack::load_battle(Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
+    let content = Arc::new(content);
     let rounds = trace::rounds(&o.trace).unwrap_or_else(|e| {
         eprintln!("{}: {e}", o.trace);
         std::process::exit(1);
@@ -141,12 +149,7 @@ fn main() {
             continue;
         }
         let frames: Vec<&trace::Frame> = round.battle_frames().collect();
-        let mut b = Battle::new(round.round_setup());
-        // Counters carried in from the round's init, as trace::run_round
-        // does.
-        let bs = trace::unhex(&round.setup.battle_state);
-        b.round.frames = u32::from_le_bytes(bs[0x60..0x64].try_into().unwrap());
-        b.round.ticks = u32::from_le_bytes(bs[0x64..0x68].try_into().unwrap());
+        let mut b = round.start(content.clone());
         eprintln!("round {}: {} frames from frame {}", n + 1, frames.len(), round.setup.frame);
         for i in 0..frames.len() {
             if budget == 0 {
