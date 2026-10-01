@@ -42,9 +42,6 @@ local ENEMY_PANEL = { [0] = { 0x20, 0x00 }, [1] = { 0x00, 0x20 } }
 -- The Beast Out lock-on mode it uses.
 local LOCKON = 0xC
 
--- The drill arm (data.objects.attachments), in its drilling animation.
-local DRILL_ARM, DRILL_ANIM = 0x20, 1
-
 -- `sub_8011D74`: 10 damage and 10 more per point of buster Attack (up to
 -- 5), Break.
 function ground_drill.setup(navi: Object): number
@@ -170,10 +167,12 @@ local function drill(me: Object, s: State)
     if me.step_init == 0 then
         me:set_status("using_action", true)
         me:set_animation(0xA)
-        attachment.spawn(me, { kind = DRILL_ARM, anim = DRILL_ANIM }, "overlay")
+        attachment.attach(me, drill_object.arm, "overlay", { anim = drill_object.ARM_DRILLING })
         local damage = int.u32(bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16)) + me.extra)
-        local params = { me:attack_param(1), me:attack_param(2), me:attack_param(3), me:attack_param(4) }
-        drill_object.spawn(me, me.attack_element, 0x10_0000, damage, params, "related")
+        drill_object.spawn(me, me.attack_element, 0x10_0000, damage, {
+            ticks = me:attack_param(2),
+            light = me:attack_param(3) == 1,
+        })
         me:open_counter_window()
         s.timer = me:attack_param(2) + 0xA
         battle.play_sound(0x1BF)
