@@ -35,6 +35,7 @@ mod chips;
 mod custom;
 mod defs;
 mod flags;
+pub mod legacy;
 mod navis;
 mod objects;
 mod rules;
@@ -141,7 +142,9 @@ impl std::fmt::Display for ContentHash {
 /// the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Content {
-    /// Chips by chip id (0..=0x19A).
+    /// The chips the pack numbers, by chip id (`ChipData::id`; ids no
+    /// content names are left out). Content defining the pack's chips
+    /// (`legacy { number }`) fills it (`Content::define`).
     pub chips: Vec<ChipData>,
     /// Navis by [`Navi`](crate::setup::Navi) number (MegaMan is 0).
     pub navis: Vec<NaviData>,
@@ -192,7 +195,10 @@ impl Content {
             self.scripts.compiled = CompiledModules(compiled);
             definitions
         };
-        self.defs = Defs::build(self, definitions)?;
+        // What registration by number reads of the definitions: the tables
+        // by number, and the pack's chips, navis, forms, weapons and stages.
+        let legacy = legacy::build(self, &definitions)?;
+        self.defs = Defs::build(self, definitions, &legacy)?;
         Ok(())
     }
 

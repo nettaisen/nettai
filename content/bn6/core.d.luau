@@ -1454,8 +1454,19 @@ declare define: {
     collision: (spec: CollisionTypeSpec) -> CollisionType,
     status: (spec: StatusDef) -> StatusDef,
     lockon: (spec: LockonDef) -> LockonDef,
+    -- A rule section (§3.8): one table of rules no entity owns, by its
+    -- section name (`define.rules("elements", { ... })`).
+    rules: <T>(section: string, spec: T) -> T,
     roles: (spec: RolesSpec) -> RolesSpec,
     -- Luau-only data with a handle and a type name, which a reference field
     -- ("record:<type>") can hold.
     record: <T>(record_type: string, spec: T) -> T,
 }
+
+-- `legacy { ... }`: data only registration by number reads (a chip's action
+-- number, subtype and parameters, its v1 module; the original's numbering
+-- of a table), until its family converts (docs/design/content-model-v2.md
+-- §12). As data it is the table itself; the checker counts each use. It
+-- is typed `any` so a marker can stand where the converted field will be (a
+-- chip's `action`, a weapon's `setup`).
+declare function legacy(t: any): any
