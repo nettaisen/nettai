@@ -113,12 +113,12 @@ farmer.kind = define.kind {
 }
 
 -- `sub_80BCCDC`: the farmer for `user` on `controller`'s panel, with the
--- damage word `damage`. He takes the user's NameID (the gun sits at that
+-- damage word `damage`. He takes the user's identity (the gun sits at that
 -- sprite's attach point).
 function farmer.spawn(controller: Object, user: Object, damage: number): Object?
     local o = stand_in.spawn(farmer.kind, controller, user, damage)
     if o then
-        o.name_id = user.name_id
+        o.identity = user.identity
     end
     return o
 end

@@ -35,6 +35,15 @@ export type State = {
 }
 
 local SPRITE = asset.sprite("air-raid-plane")
+-- Its identity: a field object, with the look something that takes its
+-- place shows (DustMan's junk).
+local IDENTITY = define.identity {
+    id = "airraid-plane",
+    class = "field_object",
+    version = 2,
+    ai_index = 1,
+    look = { sprite = asset.sprite("air-raid-plane"), anim = 0, palette = 0, shadow = true },
+}
 local FLAME = asset.sprite("jet-flame")
 -- Its collision: another body of its side, reached by the other side.
 local HIT_MOD = 3
@@ -272,7 +281,7 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
-    me.name_id = 0xE7
+    me.identity = IDENTITY
     me.hp, me.max_hp = p.hp, p.hp
     me.timer = p.lifetime
     sprite.palette = p.palette

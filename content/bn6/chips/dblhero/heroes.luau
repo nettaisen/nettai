@@ -14,6 +14,7 @@ local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("../../lib/regions")
 local parts = require("../../lib/swords/parts")
+local protoman = require("../../navis/protoman/navi")
 
 local heroes = {}
 
@@ -31,10 +32,10 @@ export type State = {
     white: number,
 }
 
--- ProtoMan's look and identity (the NameID his parts and attach points
--- come by).
+-- ProtoMan's look and identity (which his parts and attach points come
+-- by).
 local PROTOMAN_SPRITE = asset.sprite("protoman")
-local PROTOMAN_NAME = 0x1AB
+local PROTOMAN = protoman.identity
 -- Where each stands from the user's spot (`dword_80BCE44`, pixels; x
 -- toward its front).
 local OFFSET: { [string]: { number } } = { megaman = { -10, -10 }, protoman = { 10, 10 } }
@@ -441,7 +442,7 @@ local function spawn(user: Object, x: number, y: number, element: number, damage
     o:set_damage_word(damage)
     o.related1 = user
     o.alliance, o.flip = user.alliance, user.flip
-    o.name_id = user.name_id
+    o.identity = user.identity
     o.run_while_dimmed = true
     (o.state :: State).protoman = protoman
     return o
@@ -454,7 +455,7 @@ local function init(me: Object)
     local s = me.state :: State
     local user = me.related1 :: Object
     if s.protoman then
-        me.name_id = PROTOMAN_NAME
+        me.identity = PROTOMAN
     end
     local sprite = me.sprite
     if s.protoman then

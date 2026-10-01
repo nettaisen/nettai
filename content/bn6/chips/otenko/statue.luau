@@ -26,7 +26,14 @@ export type State = {
 
 -- (`sub_8011504`'s word: sprite 0C-00, with a shadow, animation 0.)
 local SPRITE = asset.sprite("sword")
-local NAME = 0xCF
+-- Its identity: a field object with no look of its own.
+local IDENTITY = define.identity {
+    id = "otenko",
+    class = "field_object",
+    version = 2,
+    ai_index = 1,
+    look = { anim = 0, palette = 0, shadow = false },
+}
 local LIFETIME, HP = 0x708, 100
 -- It takes its panel after 5 ticks; it blesses every 5.
 local APPEAR_TICKS, EVERY = 5, 5
@@ -177,7 +184,7 @@ local function init(me: Object)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.collision:present()
     me.timer = LIFETIME
-    me.name_id = NAME
+    me.identity = IDENTITY
     me.hp, me.max_hp = HP, HP
     local s = me.state :: State
     s.entry, s.count, s.turn = 0xFF, 0, 0
