@@ -1,3 +1,3 @@
-# A navi chip (subtype 9): its navi is TenguMan.
+# A navi chip (subtype 9): TenguMan, as chips/0f8-tenguman summons him.
 
-script = "../../objects/tengu-man/tengu_man.luau"
+script = "../0f8-tenguman/chip.luau"

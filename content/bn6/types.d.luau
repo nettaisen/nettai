@@ -569,3 +569,72 @@ export type DblBeastHit = {
     damage: number,
     z: number?,
 }
+
+-- ---- The navi chips' navis (content model v2: the earlier navis) ---------
+
+-- A flame (chips/heatman/flame): the ticks it burns; whether it acts while
+-- the battle is dimmed (HeatMan's, BurnSqr's); whether it counts as a
+-- thrown attack.
+export type HeatFlame = {
+    ticks: number,
+    while_dimmed: boolean?,
+    thrown: boolean?,
+}
+
+-- A thunderbolt (chips/elecman/thunder): whether it acts while the battle
+-- is dimmed (the navi chip's; one that doesn't cracks its panel), and
+-- whether it also hits the eight panels around it.
+export type Thunderbolt = {
+    while_dimmed: boolean?,
+    spreads: boolean?,
+}
+
+-- A sword wave (chips/slashman/wave): its wind-up and swing in ticks, its
+-- speed (16.16 a tick); whether it hits its panel as it winds up, whether
+-- its owner can steer it with B, whether it acts while the battle is
+-- dimmed.
+export type SlashWave = {
+    wind_up: number,
+    swing: number,
+    speed: number,
+    hits_early: boolean?,
+    steers: boolean?,
+    while_dimmed: boolean?,
+}
+
+-- A train car (chips/chrgeman/car): whether it is the navi chip's (it
+-- waits before it rolls, and acts while the battle is dimmed), its place
+-- in the train, the ticks it waits, and its owner's action it is tied to
+-- (none: it never checks).
+export type ChargeCar = {
+    while_dimmed: boolean?,
+    place: number,
+    wait: number,
+    owner_action: number?,
+}
+
+-- SpoutMan's water ball and its splashes (chips/spoutman/ball, splash):
+-- whether it acts while the battle is dimmed (the navi chip's), and
+-- whether it cracks the panel it lands on.
+export type WaterBall = {
+    while_dimmed: boolean?,
+    cracks: boolean?,
+}
+
+-- SpoutMan's geyser (chips/spoutman/geyser): whether it acts while the
+-- battle is dimmed (the navi chip's), how long it erupts, and the column
+-- its spawner aims it at.
+export type Geyser = {
+    while_dimmed: boolean?,
+    ticks: number,
+    target: number,
+}
+
+-- A mark of SpoutMan's geyser (chips/spoutman/mark): the geyser's column
+-- (else the trail to it), how long it shows, and whether it counts down
+-- while the battle is dimmed.
+export type GeyserMark = {
+    column: boolean?,
+    ticks: number,
+    while_dimmed: boolean?,
+}

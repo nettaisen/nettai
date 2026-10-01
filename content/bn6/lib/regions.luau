@@ -56,6 +56,18 @@ regions.tall = define.region { panels = { { 0, 0 }, { 0, -1 } } }
 -- The anchor and the column ahead of it (region 0x15: ElcPuls's pulse).
 regions.fan = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 }, { 1, 0 } } }
 
+-- The 5x5 around the anchor, row by row from the far back corner (region
+-- 0x26: ElecMan's reach).
+regions.big_square = define.region {
+    panels = {
+        { -2, -2 }, { -1, -2 }, { 0, -2 }, { 1, -2 }, { 2, -2 },
+        { -2, -1 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 2, -1 },
+        { -2, 0 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { 2, 0 },
+        { -2, 1 }, { -1, 1 }, { 0, 1 }, { 1, 1 }, { 2, 1 },
+        { -2, 2 }, { -1, 2 }, { 0, 2 }, { 1, 2 }, { 2, 2 },
+    },
+}
+
 -- A side's area: side 0's (region 0x81, the panels without flag 0x20) and
 -- side 1's (0x82, with it).
 regions.area = {

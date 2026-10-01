@@ -1,3 +1,4 @@
-# A navi chip (subtype 8): its navi is TomahawkMan.
+# TmhkMan, TmhkMan[EX] and TmhkMan[SP] (navi chip subtype 8) summon
+# TomahawkMan (chips/tmhkman/navi.luau), through chip.luau.
 
-script = "../../objects/tomahawk-man/tomahawk_man.luau"
+script = "chip.luau"

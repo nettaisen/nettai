@@ -30,4 +30,8 @@ effects.flash = define.effect { sprite = asset.sprite("reflected-shot"), anim = 
 -- the dragons).
 effects.ripple = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
 
+-- A burst of smoke: a train car blowing up, a navi coming or going in a
+-- puff (effect 0x12).
+effects.smoke = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
+
 return effects

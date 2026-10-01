@@ -1,3 +1,4 @@
-# A navi chip (subtype 3): its navi is ElecMan.
+# ElecMan, ElecMan[EX] and ElecMan[SP] (navi chip subtype 3) summon ElecMan
+# (chips/elecman/navi.luau), through chip.luau.
 
-script = "../../objects/elec-man/elec_man.luau"
+script = "chip.luau"
