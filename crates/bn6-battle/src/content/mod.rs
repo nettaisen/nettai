@@ -1,8 +1,8 @@
 //! Game content: the typed data a battle runs on.
 //!
 //! [`Content`] holds everything the simulation reads that isn't rules
-//! code: chips, navis and forms, the ruleset's tables (collision types,
-//! panel rules, battle settings, status effects...), object data (rocks,
+//! code: chips, navis and forms, stages, the ruleset's tables (collision
+//! types, panel rules, status effects...), object data (rocks,
 //! attachments, overlays), the effect and region registries, and every
 //! sprite's animation timing. It never changes during a battle and is
 //! shared between battles and their snapshots through an `Arc`:
@@ -42,6 +42,7 @@ mod roles;
 mod rules;
 mod scripts;
 mod sprites;
+mod stages;
 #[cfg(any(test, feature = "test-content"))]
 pub mod testing;
 
@@ -54,6 +55,7 @@ pub use roles::*;
 pub use rules::*;
 pub use scripts::*;
 pub use sprites::*;
+pub use stages::*;
 
 use bn6_content_api::{ChipHandle, FormHandle, NaviHandle, StageHandle, WeaponHandle};
 use serde::{Deserialize, Serialize};
@@ -165,8 +167,6 @@ pub struct Content {
     /// Hit-region shapes by region number (below 0x80): the panels a hit
     /// covers, relative to its panel.
     pub regions: Vec<Vec<PanelOffset>>,
-    /// Panel layouts by layout number (the battle settings' `layout`).
-    pub panel_layouts: Vec<PanelLayout>,
     /// Every sprite's animation timing.
     pub animations: Animations,
     /// The assets content can name (`asset.sprite("bomb")`): the loader
@@ -310,14 +310,14 @@ impl Content {
         self.defs.weapon_numbered(routine).unwrap_or_else(|| panic!("weapon routine {routine:#04x} is not in the content"))
     }
 
-    /// A stage's battle settings record.
-    pub fn stage(&self, h: StageHandle) -> &crate::setup::StageSettings {
+    /// A stage.
+    pub fn stage(&self, h: StageHandle) -> &StageData {
         &self.defs.stage(h).record
     }
 
-    /// The pack's stage at this place in the settings table.
-    pub fn stage_numbered(&self, index: u8) -> StageHandle {
-        self.defs.stage_numbered(index).unwrap_or_else(|| panic!("battle settings {index:#x} are not in the content"))
+    /// The stage with this key (setups by name, tools and tests).
+    pub fn stage_by_key(&self, key: &str) -> StageHandle {
+        self.defs.stage_by_key(key).unwrap_or_else(|| panic!("stage {key:?} is not in the content"))
     }
 
     /// The navi or form that has a player NameID, and its name record.
@@ -407,11 +407,6 @@ impl Content {
                 None => panic!("collision type {index:#x} is not in the content"),
             },
         }
-    }
-
-    /// A panel layout.
-    pub fn panel_layout(&self, layout: u8) -> &PanelLayout {
-        self.panel_layouts.get(layout as usize).unwrap_or_else(|| panic!("panel layout {layout:#x} is not in the content"))
     }
 
     /// The Program Advances, in the order they are tried (each chip holds

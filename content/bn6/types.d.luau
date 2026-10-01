@@ -303,6 +303,8 @@ export type FlashBombVariant = {
 -- into, the sound it breaks with, and its NameID (the field objects' look,
 -- a number until identities come).
 export type RockVariant = {
+    -- Its key (`rock/cube`): stages name their rocks' variants.
+    id: string?,
     anim: number,
     hp: number,
     element: string,
