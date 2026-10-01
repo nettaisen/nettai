@@ -17,6 +17,7 @@ fn voice(kind: VoiceKind, sustain: u8) -> m4a::bank::Voice {
         kind,
         key: 60,
         pan: None,
+        length: 0,
         envelope: Envelope {
             attack: if matches!(kind, VoiceKind::DirectSound { .. }) { 255 } else { 0 },
             decay: 0,
@@ -30,7 +31,7 @@ fn voice(kind: VoiceKind, sustain: u8) -> m4a::bank::Voice {
 /// music player (any song replaces its song, 4 tracks).
 fn bank(songs: Vec<(u8, u8, Vec<Vec<Command>>)>, ds_channels: u8) -> Arc<SoundBank> {
     let voices = vec![
-        voice(VoiceKind::Square1 { duty: 2 }, 15),
+        voice(VoiceKind::Square1 { duty: 2, sweep: NO_SWEEP, fixed: false }, 15),
         voice(VoiceKind::DirectSound { sample: SampleId(0), fixed: false }, 255),
     ];
     let songs = songs
@@ -54,9 +55,10 @@ fn bank(songs: Vec<(u8, u8, Vec<Vec<Command>>)>, ds_channels: u8) -> Arc<SoundBa
         rate: 13379 * 1024,
         loop_start: Some(0),
         data: (0..64).map(|i| if i < 32 { 60 } else { -60 }).collect(),
+        tail: 60,
     };
     let bank = SoundBank {
-        mixer: MixerConfig { mix_rate: 13379, ds_channels, master_volume: 15, reverb: 0 },
+        mixer: MixerConfig { mix_rate: 13379, ds_channels, master_volume: 15, reverb: 0, dac_resolution: 1 },
         players,
         songs,
         voicegroups: vec![Voicegroup { voices }],
@@ -123,6 +125,31 @@ fn output_runs_at_32768_hz() {
     d.start(SongId(0));
     let n = frames(&mut d, 597).len() as f64;
     assert!((n - 32768.0 * 597.0 / m4a::FPS).abs() < 600.0, "{n} samples");
+}
+
+#[test]
+fn the_fifos_play_each_frames_mix_during_the_next() {
+    let mut d = Driver::new(bank(vec![(2, 20, vec![note_track(SAMPLE, 60, 90, 90)])], 4));
+    assert_eq!(d.dac_rate(), 65536);
+    d.start(SongId(0));
+    let mut dac = Vec::new();
+    d.step_frame();
+    d.take_dac_output(&mut dac);
+    // The note's first frame is mixed, but the DAC still plays silence.
+    let (right, left) = d.last_mix().unwrap();
+    assert!(right.iter().chain(left).any(|&s| s != 0));
+    assert!(dac.iter().all(|s| *s == [0, 0]), "the mix sounds in the frame it is mixed");
+    let (right, _) = d.last_mix().map(|(r, l)| (r.to_vec(), l.to_vec())).unwrap();
+    dac.clear();
+    d.step_frame();
+    d.take_dac_output(&mut dac);
+    // Each byte of it, held a timer period, four DAC steps a level (the
+    // FIFOs' latency moves it by a few samples).
+    let level = |b: i8| (((b as i32) << 2) * 0x100 * 3 >> 4) as i16;
+    let heard: Vec<i16> = dac.iter().map(|s| s[1]).collect();
+    let first = right.iter().position(|&b| b != 0).unwrap();
+    assert!(heard.contains(&level(right[first])));
+    assert_eq!(dac.len(), 1097);
 }
 
 #[test]
@@ -279,10 +306,11 @@ fn pitch_control_shifts_sounding_notes() {
     frames(&mut d, 2);
     d.set_pitch(PlayerId(2), 0xFFFF, 0x100);
     frames(&mut d, 1);
-    assert_eq!(psg1(&d).unwrap().key, 61);
+    let freq = |key| m4a::tables::midi_key_to_cgb_freq(1, key, 0);
+    assert_eq!(psg1(&d).unwrap().frequency, freq(61));
     d.set_pitch(PlayerId(2), 0xFFFF, -0x200);
     frames(&mut d, 1);
-    assert_eq!(psg1(&d).unwrap().key, 58);
+    assert_eq!(psg1(&d).unwrap().frequency, freq(58));
 }
 
 #[test]
@@ -293,7 +321,7 @@ fn a_starting_song_clears_earlier_controls() {
     d.set_pitch(PlayerId(2), 0xFFFF, 0x100);
     d.set_tempo(PlayerId(2), 0x200);
     frames(&mut d, 1);
-    assert_eq!(psg1(&d).unwrap().key, 60);
+    assert_eq!(psg1(&d).unwrap().frequency, m4a::tables::midi_key_to_cgb_freq(1, 60, 0));
     assert_eq!(d.player(PlayerId(2)).unwrap().tempo_step(), 300);
 }
 
@@ -322,7 +350,8 @@ fn stopping_ends_notes_at_once() {
     d.stop_all();
     let out = frames(&mut d, 2);
     assert!(d.channels().is_empty());
-    assert!(!loud(&out[out.len() / 2..]));
+    // (The hardware plays a frame behind the mix.)
+    assert!(!loud(&out[out.len() * 3 / 4..]));
     assert!(!d.player(PlayerId(2)).unwrap().is_playing());
 }
 
@@ -389,6 +418,32 @@ fn patterns_repeats_and_loops() {
     assert_eq!(keys[..3], [60, 60, 60]);
     assert!(keys[3..].iter().all(|&k| k == 72) && keys.len() >= 8, "{keys:?}");
     assert!(d.player(PlayerId(2)).unwrap().is_playing(), "loops forever");
+}
+
+#[test]
+fn memacc_writes_the_memory_area_and_jumps_on_it() {
+    let jump = MemOp::JumpIf { test: MemTest::Equal, with_memory: false, target: 7 };
+    let track = vec![
+        Tempo(75),
+        Volume(127),
+        Voice(SQUARE),
+        MemAcc { op: MemOp::Set, address: 3, operand: 9 },
+        MemAcc { op: jump, address: 3, operand: 9 },
+        Note { gate: 4, key: Some(60), velocity: Some(127) },
+        Fine,
+        Note { gate: 4, key: Some(72), velocity: Some(127) },
+        Wait(8),
+        MemAcc { op: MemOp::AddFromMemory, address: 3, operand: 4 },
+        Fine,
+    ];
+    let mut d = Driver::new(bank(vec![(2, 20, vec![track])], 4));
+    d.set_memory(4, 2);
+    d.start(SongId(0));
+    frames(&mut d, 1);
+    assert_eq!(d.memory()[3], 9);
+    assert_eq!(psg1(&d).unwrap().midi_key, 72, "the jump skipped key 60");
+    frames(&mut d, 10);
+    assert_eq!(d.memory()[3], 11, "plus the game's byte");
 }
 
 /// A command with its jump targets moved by `n`.
