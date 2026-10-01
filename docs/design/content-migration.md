@@ -16,8 +16,9 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | AreaGrab and PanelGrab | A dimming chip: the `dimming` hook spawning a controller kind whose update is `dimming_chips.phases { effect }`; a chip parameter that becomes the hook | lib/dimming.luau, lib/grab/, chips/areagrab, chips/panlgrab |
 | EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; chips kept on records behind a registration shim | chips/eraseman/, chips/0ec-eraseman |
 | BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library with the records' path beside it | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau, chips/0c0-atk-10 |
+| MegaMan's buster, charged shot and blank shot; HeatCross's charged shot | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a role the ruleset starts (`forced_charged_shot`, rules/roles.luau) | navis/00-megaman/weapons/{buster,charged-shot,blank-shot}, navis/00-megaman/forms/heatcross/charge.luau, lib/buster.luau |
 
-MegaMan's buster (navis/00-megaman/weapons/*, lib/buster.luau) is still v1: weapon routines registered by number.
+The other weapon routines (navis/00-megaman/weapons/NN-name) are still v1, registered by number.
 
 ## 1. What moves and what stays
 
@@ -108,7 +109,7 @@ weapon, a role) and, until the migration ends, through registration by number (Â
 | A dimming chip | `define.chip { ..., dimming = function(user, spec: DimmingChipSpec): Object? }` | action 0x15's framework spawns the controller through it; its update calls the `dimming` service (lib/dimming) |
 | A navi chip | `define.chip { ..., navi = function(user, controller, spec: NaviChipSpec): Object? }` | the navi chip controller brings the navi through it; the navi calls `navi_chip.navi_left(controller)` |
 | An instant chip | `define.chip { ..., instant = function(user, spec: InstantChipSpec) }` | action 0x1C runs it once |
-| A weapon | `define.weapon { id, name, charge_ticks, setup }` | `setup(navi)` names the action |
+| A weapon | `define.weapon { id, name, charge_ticks, setup }` (and, while forms name weapons by number, `legacy = { routines }`) | `setup(navi)` names the action |
 | A role the ruleset starts | `define.roles { actions = { ... } }` | the ruleset's by-role starts (the trap chips' counters) |
 
 A definition's key is its `id` (or the key it derives: `minibomb/action`); two of one key is an error.
@@ -258,13 +259,13 @@ kind). Left:
   (`off_80C4C78`) become pack data (a rules or object file), with every branch (the panel crack, break and type
   changes by Param1, `sub_80C5014`, `sub_80C5050`).
 - The weapon ids that alias the buster (`off_80117D4` entries pointing at `sub_8011A26`: 0x2E, 0x2F, 0x3E, 0x3F,
-  0x4D..0x51, 0x6F, 0x70, 0x77, 0x79, 0x7B, 0x7E, 0x82) as weapons naming 00-buster's module.
+  0x4D..0x51, 0x6F, 0x70, 0x77, 0x79, 0x7B, 0x7E, 0x82): the buster definition's `legacy` routines.
 - Owns: new objects/ and weapons/ folders, the extractor and pack IO for the projectile table.
 - Done: `objects/projectile` (kinds in its `object.toml`, `data.objects.projectiles`), fired with
   `lib/projectile.luau` (`projectile.fire(navi, shot)`, `projectile.spawn(owner, x, y, shot)`, the shot typed as
   `ProjectileShot` in types.d.luau); `objects/flying-shot` (attack #0xB, `sub_80C6248`'s object, with its kinds,
-  `data.objects.flying_shots`), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16 in
-  `weapons/00-buster` and `weapons/01-charged-shot`; the aliases as `weapons/NN-buster`.
+  `data.objects.flying_shots`), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16, now the
+  definitions in `weapons/buster` and `weapons/charged-shot` (step 7).
 
 ### Group E: instant chips (ported; what is left)
 
