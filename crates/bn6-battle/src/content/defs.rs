@@ -610,6 +610,7 @@ fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
     Ok(ChipData {
         id: None,
         name: name_of("name")?.unwrap_or_else(|| d.key.clone()),
+        description: name_of("description")?,
         codes,
         element,
         rarity: int("rarity", 0xFF)? as u8,
