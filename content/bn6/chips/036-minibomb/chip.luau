@@ -7,10 +7,11 @@
 -- thrower (and LilBoiler's level, also its first parameter). A chip
 -- content defines runs its action without it; records still reach it
 -- where something names a chip by number: the pack's PoisSeed (PoisPhar's
--- recipe names it), MiniBomb, EnergBom and MegEnBom when the Cross special
--- picks them (the ruleset's table of numbers), and the test content's
--- numbered bombs. It goes when those are definitions or roles (step 5,
--- phase C).
+-- recipe names it) and VDoll (Darkness's recipes name it), MiniBomb,
+-- EnergBom and MegEnBom when the Cross special picks them (the ruleset's
+-- table of numbers), LilBolr1-3's records (which nothing names), and the
+-- test content's numbered bombs. It goes when those are definitions or
+-- roles (step 5, phase C).
 
 local throw = require("../../lib/bombs/throw")
 local minibomb = require("../minibomb/chip")

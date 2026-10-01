@@ -90,8 +90,8 @@ local function sine(i: number): number
     return v
 end
 
--- `math_sinTable[i]`: 256 steps a turn, 1.0 = 0x100, over a turn and a
--- half (the cosine of step a is entry a + 64).
+-- `math_sinTable[i]` (signed, 1.0 = 0x100; `math_cosTable[i]` is entry
+-- i + 64).
 trajectory.sine = sine
 
 -- `calcAngle_800117C`: the angle toward (dx, dy), 256 steps a turn.
