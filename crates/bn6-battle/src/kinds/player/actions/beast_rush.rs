@@ -17,6 +17,7 @@ use crate::kinds::player::{
 };
 use crate::kinds::{afterimage, lockon_marker};
 use crate::object::{ObjectRef, PanelPos, Vec3};
+use bn6_content_api::LockonHandle;
 
 /// Ticks after the rush starts before an A press can queue the next chip.
 const CHAIN_BLOCK_TICKS: u8 = 12;
@@ -156,47 +157,45 @@ fn afterimage_anim(name_id: u16) -> u8 {
 }
 
 /// The lock-on mode: none (stay) while blind or confused outside Beast
-/// Over; else the claw's 0xC (`sub_80EAF1A`), the charged sword's own
-/// (`sub_80EAF26`: a table by the attack's variant in the original; here
-/// the mode the charged sword's setup gave with its slash,
-/// `AttackVars::rush_lockon`), and failing those (0), the chip's.
-fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
+/// Over; else the claw's own (`sub_80EAF1A`: the role `lockon.beast_claw`),
+/// the charged sword's (`sub_80EAF26`: a table by the attack's variant in
+/// the original; here the mode the charged sword's setup gave with its
+/// slash, `AttackVars::rush_lockon`), and failing those, the chip's.
+fn lockon_mode(b: &Battle, r: ObjectRef) -> Option<LockonHandle> {
     let beast_over = matches!(form_of(b, r).0, 0x17 | 0x18);
     if !beast_over && flag1(b, r) & (f1::BLIND | f1::CONFUSED) != 0 {
-        return 0;
+        return None;
     }
-    use crate::content::ActionRole;
+    use crate::content::{ActionRole, LockonRole};
     let attack = &ai(b, r).attack;
     let special = if crate::kinds::player::runs_role(b, r, ActionRole::BeastClaw) {
-        0x0C
+        Some(b.content.defs.roles.lockon(LockonRole::BeastClaw))
     } else if crate::kinds::player::runs_role(b, r, ActionRole::ChargedSword) {
         attack.rush_lockon
     } else {
-        0
+        None
     };
-    if special != 0 {
-        return special;
-    }
-    b.content.chip_field(attack.chip).lockon_mode
+    special.or(b.content.chip_field(attack.chip).lockon_mode)
 }
 
 /// `ho_8026554` as its callers outside the rush see it (the claw's and
 /// the Beast lunge's setups): the panel, or (0, 0x7F) when no panel fits
 /// (`sub_80265D0`'s registers then).
-pub(crate) fn lockon_panel(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> PanelPos {
+pub(crate) fn lockon_panel(b: &Battle, r: ObjectRef, target: PanelPos, mode: Option<LockonHandle>) -> PanelPos {
     destination(b, r, target, mode).unwrap_or(PanelPos { x: 0, y: 0x7F })
 }
 
 /// `ho_8026554`: the panel to attack `target` from in lock-on `mode`;
-/// None to stay. A target off the field's playable panels means mode 0.
-fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: u8) -> Option<PanelPos> {
+/// None to stay. No mode (the original's mode 0), or a target off the
+/// field's playable panels, is the navi's own panel.
+fn destination(b: &Battle, r: ObjectRef, target: PanelPos, mode: Option<LockonHandle>) -> Option<PanelPos> {
     use crate::content::LockonRule;
-    let mode = if field::is_valid(target.x, target.y) { mode } else { 0 };
-    let Some(m) = b.content.rules.lockon.mode(mode) else {
-        panic!("lock-on mode {mode:#x} runs off the jump table (jt_8026584)");
-    };
-    let found = match m.rule {
+    let Some(mode) = mode.filter(|_| field::is_valid(target.x, target.y)) else {
         // sub_802661C: the navi's own panel.
+        return Some(b.objects.get(r).panel);
+    };
+    let m = b.content.lockon(mode);
+    let found = match m.rule {
         LockonRule::Stay => return Some(b.objects.get(r).panel),
         LockonRule::Row => search_row(b, r, target, m),
         LockonRule::Near => search_near(b, r, target, m),

@@ -1,0 +1,27 @@
+# Written by gen-content (the verification workspace) from the ROM, which its `check`
+# compares this with. Edit it when content is renamed or added.
+#
+# The original's numbers of rule definitions: nothing the traces compare reads them;
+# `gen-content check` rebuilds the ROM's tables from the definitions through them.
+
+# Beast Out lock-on modes (`jt_8026584`): a chip record's lock-on mode byte.
+[lockon]
+stay = 0x00
+cannon = 0x01
+thunder = 0x02
+widesht = 0x03
+firebrn1 = 0x04
+yoyo = 0x05
+drksword = 0x06
+crakshot = 0x07
+dublshot = 0x08
+gundels1 = 0x09
+trnarrw1 = 0x0A
+beast-lunge = 0x0B
+beast-claw = 0x0C
+crosswrd = 0x0D
+sprsonic = 0x0E
+bigbomb = 0x0F
+gundelex = 0x10
+elcpuls1 = 0x11
+moonbld = 0x12

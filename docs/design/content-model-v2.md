@@ -351,6 +351,16 @@ Shared ones live in `lib/effects.luau`, `lib/sparks.luau`, `lib/regions.luau`, `
 disappear: nothing compared reads them (the generic effect's first parameter was its effect id; parameters are
 not compared, §10). Region 0 ("none") is `nil`, and region 1 (the anchor panel) is `regions.single`.
 
+**As built** (step 12, lock-on modes). A lock-on mode is `LockonMode` by `LockonHandle` (`Content::lockon`,
+`Defs::lockons`): the definitions carry no number. A chip's `beast.lockon`, a charged slash's `lockon`, the
+navi's `rush_lockon` and `me:lockon_panel(x, y, mode)` take the definition (nil: the navi stays where it is,
+the original's mode 0), `ChipData::lockon_mode` and `AttackVars::rush_lockon` are `Option<LockonHandle>`, and
+the one mode the ruleset names itself, the Beast claw's, is the role `lockon.beast_claw`. The modes nobody's
+chip names are `beast-claw` and `beast-lunge`. The rule section keeps what the modes share (the column shifts
+and the clear-path condition); the charged sword's table by variant went, since each charged slash names its
+mode. The numbers are compat's rules.toml, for `gen-content check` alone. The engine's test content defines
+its made-up modes under the same names (crates/bn6-battle/testdata/content/rules/lockon.luau).
+
 ### 3.7 Stages
 
 ```luau
@@ -1572,8 +1582,9 @@ need.
 | navis.toml, forms.toml | `eraseman = { navi = 0x04, name_id = 0x1A4 }`, `heatcross = { form = 0x01, name_id = 0x1AC }`; the base form has no `name_id` (it is MegaMan's) |
 | weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
 | kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
-| stages.toml | `"netbattle-1" = { settings = [0x00], actor_list = 0x080B1989 }`: the settings indices that are the stage, and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
-| records.toml | the few records a setup names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); NaviCust buster shots when their producers are known |
+| stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
+| records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rock/cube" = 1`); NaviCust buster shots when their producers are known |
+| rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`) |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
 | text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
 | curation.toml | the names the generator made up, by file and key, with where each came from: the review list (§13) |
@@ -1859,8 +1870,8 @@ trait on the definition instead (§7.5).
 **As built** (steps 4 and 9): content::roles has typed roles, `ActionRole` (the trap counters, the forced charged
 shot, the stun strike, the Cross protect, the turn, the Cross death, the volley, the charged sword, the beast
 claw, DustCross Beast's scatter), `KindRole` (the absorbed obstacle, the falling rock, the supports' controller, AntiRecv's counterattack; until
-step 12 also what an actor list places, which stages name now) and `HookRole` (the FirstBarrier, the encased
-obstacle). A role names a definition, or, while its
+step 12 also what an actor list places, which stages name now), `HookRole` (the FirstBarrier, the encased
+obstacle) and, since step 12, `LockonRole` (the Beast claw's lock-on mode). A role names a definition, or, while its
 target is still a v1 registration, that registration through the transitional legacy marker (`{ legacy = {
 action = 0x49 } }`, `{ legacy = { kind = "a-v1-kind" } }`; counted by the ratchet); a legacy action number nothing
 implements leaves the role `Unported`, and starting it fails as the number did. The charged sword, the beast claw
@@ -2143,6 +2154,14 @@ registries, the object tables, the text). It is not committed here.
   the generated names of collision types and statuses (from what they do where the docs say, else their first
   user), with every name it had to invent in compat/curation.toml.
 
+**The committed definitions are the source.** Nothing regenerates a module once it is written, and the
+generator can't run over a content root that has people's modules at its paths, so a writer whose modules
+people have since reshaped is dead code. With step 12 the stages' and the lock-on modes' writers are retired
+(`gen_stages`, `gen_lockon`: the definitions lost their legacy markers and name kinds, variants and each other
+in forms the generator never wrote): content/bn6/stages/netbattle.luau and rules/lockon.luau are edited by
+hand, and `gen-content check` compares them with the ROM through compat. `gen-content write` still writes
+compat's numbers for them (stages.toml, records.toml, rules.toml), keeping the committed keys.
+
 ### 9.4 The frontend and the audio
 
 `bn6-assets` keys sprites, backgrounds, mugshots, banners and chip icons by name; `Hud::chip_names` (font codes
@@ -2383,7 +2402,7 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    subtype, params, script` (with what the ruleset and v1 modules read of it by number: a damage formula,
    `sp_damage`, `navi_damage`, `dark_substitute`, `recovery`, `sword`); a weapon still a v1
    module has no `setup` and its marker gives `routines, script, action, instant_chip`; a navi's and a form's
-   give `number, name_id`, a stage's `number, layout, actor_list` (until step 12: compat has them), a status's and a lock-on mode's `id`. The
+   give `number, name_id`, a stage's `number, layout, actor_list` (until step 12: compat has them), a status's and (until step 12) a lock-on mode's `id`. The
    generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
    definitions from people's. The tables v1 modules read by number are legacy rule
    sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and
