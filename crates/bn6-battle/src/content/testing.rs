@@ -35,11 +35,9 @@ pub const ERASER: ChipId = 0x06;
 /// Instant chips (action 0x1C, ids 0x40 and up): one that fills the custom
 /// gauge (FullCust's effect).
 pub const FULL_GAUGE: ChipId = 0x40;
-/// Instant chips: a plus chip used on its own (subtype 3), one that raises
-/// the buster's attack by 1 (subtype 10) and one that syncs the navi
-/// (subtype 13).
+/// Instant chips: a plus chip used on its own (subtype 3, the plus chips'
+/// effect by number) and one that syncs the navi (subtype 13).
 pub const PLUS: ChipId = 0x41;
-pub const BUSTER_UP: ChipId = 0x42;
 pub const SYNC: ChipId = 0x43;
 /// Instant chips whose effects spawn objects: a boomerang (subtype 1),
 /// lances (4), fists (8), worms (12), flame hooks (14), a falling fist
@@ -240,6 +238,11 @@ pub const TICKER_3: &str = "test/ticker3";
 /// chips content defines, which grab a column and a panel.
 pub const AREA_GRAB: &str = "areagrab";
 pub const PANEL_GRAB: &str = "panlgrab";
+/// BN6's BusterUp, Atk+10 and Navi+20 (chips/busterup, chips/atk-10,
+/// chips/navi-20): instant chips content defines.
+pub const BUSTER_UP: &str = "busterup";
+pub const ATTACK_10: &str = "atk-10";
+pub const NAVI_20: &str = "navi-20";
 pub const TICK_SHOT: &str = "test/tick-shot";
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
@@ -381,6 +384,7 @@ fn assets() -> bn6_content_api::AssetNames {
         ("cross-slash", sprite(0x10, 0x41)),
         ("reflected-shot", sprite(0x14, 0x04)),
         ("eraseman", sprite(0x08, 0x04)),
+        ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
         ("erase-beam", sprite(0x10, 0x51)),
     ] {
@@ -405,6 +409,8 @@ fn assets() -> bn6_content_api::AssetNames {
         ("appear", 0x94),
         ("erase-man", 0x10E),
         ("erase-man-2", 0xBA),
+        ("hub", 0x119),
+        ("bonus", 0x157),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -457,8 +463,11 @@ pub fn scripts() -> Scripts {
                 ("objects/junk-shot/junk_shot", "objects/junk-shot/junk_shot"),
                 ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
                 ("chips/0ae-fullcust/chip", "chips/0ae-fullcust/chip"),
+                ("lib/instant/plus", "lib/instant/plus"),
                 ("chips/0c0-atk-10/chip", "chips/0c0-atk-10/chip"),
-                ("chips/0af-busterup/chip", "chips/0af-busterup/chip"),
+                ("chips/atk-10/chip", "chips/atk-10/chip"),
+                ("chips/navi-20/chip", "chips/navi-20/chip"),
+                ("chips/busterup/chip", "chips/busterup/chip"),
                 ("chips/11d-synctrgr/chip", "chips/11d-synctrgr/chip"),
                 ("objects/boomerang/boomerang", "objects/boomerang/boomerang"),
                 ("objects/lance/lance", "objects/lance/lance"),
@@ -1071,13 +1080,6 @@ fn named_chips() -> Vec<ChipData> {
             damage: 10,
             script: Some("chips/0c0-atk-10/chip".into()),
             ..chip(PLUS, "Plus", 0x1C, 3)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
-            family: ChipFamily::Plus,
-            params: [1, 0, 0, 0],
-            script: Some("chips/0af-busterup/chip".into()),
-            ..chip(BUSTER_UP, "BustUp", 0x1C, 10)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
