@@ -366,10 +366,6 @@ impl UserData for Object {
         });
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free(this.0))));
         methods.add_method("destroy", |_, this, ()| with(|api, _| Ok(api.destroy(this.0))));
-        methods.add_method("death_hook", |_, this, name_id: LuaValue| {
-            let name_id = u16_arg(name_id, "NameID")?;
-            with(|api, _| Ok(api.death_hook(this.0, name_id)))
-        });
         methods.add_method(
             "add_navi_parts",
             |_, this, (actor_type, ai, arg): (mlua::LuaString, LuaValue, LuaValue)| {
@@ -624,7 +620,11 @@ impl UserData for Object {
         });
         methods.add_method("navi_image_parts", |_, this, on: bool| with(|api, _| Ok(api.navi_image_parts(this.0, on))));
         methods.add_method("wear_junk_look", |_, this, look: LuaValue| {
-            let look = u16_arg(look, "junk look")?;
+            let look = bound(|b| match b.def(&look) {
+                Some((Registry::Identity, h)) => Ok(bn6_content_api::IdentityHandle(h)),
+                Some((r, _)) => Err(mlua::Error::runtime(format!("wear_junk_look: a {r} is not an identity"))),
+                None => Err(mlua::Error::runtime(format!("wear_junk_look: expected an identity, got {}", look.type_name()))),
+            })?;
             with(|api, _| api.wear_junk_look(this.0, look).map_err(api_error))
         });
         methods.add_method("heal", |_, this, (amount, anti_recovery): (LuaValue, bool)| {
@@ -1200,14 +1200,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.set_damage_carry(side, rec)))
     });
     lib_fn!(lua, t, "loop_register", |_, ()| with(|api, _| Ok(api.loop_register())));
-    lib_fn!(lua, t, "navi_record", |lua, name_id: LuaValue| {
-        let name_id = u16_arg(name_id, "NameID")?;
-        let Some(r) = with(|api, _| Ok(api.navi_record(name_id)))? else { return Ok(LuaValue::Nil) };
-        let t = lua.create_table()?;
-        t.raw_set("actor_type", ACTOR_TYPES[r.actor_type as usize])?;
-        t.raw_set("ai_index", r.ai_index)?;
-        Ok(LuaValue::Table(t))
-    });
     lib_fn!(
         lua,
         t,
@@ -1439,11 +1431,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             object_value(lua, o)
         }
     );
-    lib_fn!(lua, t, "attach_point", |_, (name_id, point, alliance, flip): (LuaValue, LuaValue, LuaValue, LuaValue)| {
-        let (name_id, point) = (u16_arg(name_id, "NameID")?, u8_arg(point, "attach point")?);
-        let (alliance, flip) = (u8_arg(alliance, "side")?, u8_arg(flip, "flip")?);
-        with(|api, _| Ok(api.name_attach_point(name_id, point, alliance, flip)))
-    });
     Ok(t)
 }
 
@@ -1632,7 +1619,12 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "leave_stage", |_, me: Me| with(|api, _| Ok(api.obstacle_leave_stage(me.0))));
     lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
     lib_fn!(lua, t, "present", |_, o: Me| with(|api, _| Ok(api.obstacle_present(o.0))));
-    lib_fn!(lua, t, "junk_look", |_, o: Me| with(|api, _| Ok(api.junk_look(o.0))));
+    lib_fn!(lua, t, "junk_look", |_, o: Me| {
+        match with(|api, _| Ok(api.junk_look(o.0)))? {
+            Some(h) => Ok(LuaValue::Table(bound(|b| b.def_value(Registry::Identity, h.0))?)),
+            None => Ok(LuaValue::Nil),
+        }
+    });
     lib_fn!(lua, t, "swallowable", |_, o: Me| with(|api, _| Ok(api.obstacle_swallowable(o.0))));
     for &r in ObstacleRequest::ALL {
         t.set(

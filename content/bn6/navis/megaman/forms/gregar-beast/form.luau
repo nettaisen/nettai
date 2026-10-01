@@ -16,7 +16,10 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = beast_claw.weapon },
     mugshot = asset.mugshot("falzar-beast"),
-    identity = {
+    identity = define.identity {
+        class = "beast",
+        -- Where a held thing with no attach point sits (BatCan's cannon).
+        held_offset = { 11, -7 },
         version = 0,
         actor_type = "player",
         ai_index = 35,

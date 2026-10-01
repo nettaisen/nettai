@@ -25,7 +25,8 @@ return define.form {
         alt_a_charge = charge.weapon,
     },
     mugshot = asset.mugshot("tengucross-beast"),
-    identity = {
+    identity = define.identity {
+        class = "cross_beast",
         version = 0,
         actor_type = "player",
         ai_index = 44,

@@ -62,7 +62,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80E9C06`: the block's size for the owner, by its actor record.
 fn size(b: &Battle, owner: ObjectRef) -> u8 {
-    let rec = b.content.navi_record(b.objects.get(owner).name_id);
+    let rec = b.content.navi_record(b.objects.get(owner).identity);
     let sizes: &[u8] = if rec.actor_type == ActorType::Virus { &VIRUS_SIZES } else { &NAVI_SIZES };
     *sizes.get(rec.ai_index as usize).unwrap_or_else(|| {
         panic!("the ice block's size for AI index {} reads past its table (sub_80E9C06)", rec.ai_index)

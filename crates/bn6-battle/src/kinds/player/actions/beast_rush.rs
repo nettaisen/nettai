@@ -142,7 +142,7 @@ fn warp(b: &mut Battle, r: ObjectRef) {
         let o = b.objects.get(r);
         let (x, y, z) = (o.pos.x, o.pos.y, o.pos.z);
         let (hx, hy) = panel_coordinates(here.x, here.y);
-        let anim = afterimage_anim(o.name_id);
+        let anim = afterimage_anim(b.content.identity(o.identity).class);
         afterimage::spawn(b, r, Vec3 { x: hx, y: hy, z }, anim, 12);
         let mid = Vec3 { x: hx.wrapping_add(x) >> 1, y: hy.wrapping_add(y) >> 1, z };
         afterimage::spawn(b, r, mid, anim, 20);
@@ -152,8 +152,8 @@ fn warp(b: &mut Battle, r: ObjectRef) {
 }
 
 /// The afterimage's animation: 0xF, or 0 for the link navis.
-fn afterimage_anim(name_id: u16) -> u8 {
-    if (0x1A1..=0x1AB).contains(&name_id) { 0 } else { 0xF }
+fn afterimage_anim(class: crate::content::IdentityClass) -> u8 {
+    if class == crate::content::IdentityClass::LinkNavi { 0 } else { 0xF }
 }
 
 /// The lock-on mode: none (stay) while blind or confused outside Beast

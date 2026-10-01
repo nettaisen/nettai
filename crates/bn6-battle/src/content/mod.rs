@@ -35,6 +35,7 @@ mod chips;
 mod custom;
 mod defs;
 mod flags;
+mod identity;
 pub mod legacy;
 mod navis;
 mod objects;
@@ -49,6 +50,7 @@ pub mod testing;
 pub use chips::*;
 pub use custom::*;
 pub use defs::*;
+pub use identity::{FieldLook, Identity, IdentityClass, IdentityOwner};
 pub use navis::*;
 pub use objects::*;
 pub use roles::*;
@@ -318,32 +320,31 @@ impl Content {
         self.defs.stage_by_key(key).unwrap_or_else(|| panic!("stage {key:?} is not in the content"))
     }
 
-    /// The navi or form that has a player NameID, and its name record.
-    pub fn name(&self, name_id: u16) -> &NameData {
-        self.navis
-            .iter()
-            .filter_map(|n| n.name_record.as_ref())
-            .chain(self.forms.iter().filter_map(|f| f.name_record.as_ref()))
-            .find(|n| n.id == name_id)
-            .unwrap_or_else(|| panic!("NameID {name_id:#x} is not a player navi"))
+    /// An identity; what an object without one is taken for, for none.
+    pub fn identity(&self, h: Option<bn6_content_api::IdentityHandle>) -> &Identity {
+        match h {
+            Some(h) => &self.defs.identities[h.index()],
+            None => Identity::none(),
+        }
     }
 
-    /// The actor record of a NameID (a player's from its name record,
-    /// any other from the rules' table).
-    pub fn navi_record(&self, name_id: u16) -> NaviRecord {
-        self.navis
-            .iter()
-            .filter_map(|n| n.name_record.as_ref())
-            .chain(self.forms.iter().filter_map(|f| f.name_record.as_ref()))
-            .find(|n| n.id == name_id)
-            .map(NameData::record)
-            .or_else(|| self.rules.actor_records.get(name_id as usize).copied())
-            .unwrap_or_else(|| panic!("NameID {name_id:#x} has no actor record in the content"))
+    /// The actor record of an identity (`sub_80182B4`).
+    pub fn navi_record(&self, h: Option<bn6_content_api::IdentityHandle>) -> NaviRecord {
+        self.identity(h).record
     }
 
-    /// A player NameID's sprite attach point `index`.
-    pub fn attach_point(&self, name_id: u16, index: usize) -> AttachPoint {
-        self.name(name_id).attach_points[index]
+    /// An identity's sprite attach point `index` (`sub_8018810`): a navi's;
+    /// every point of a field object is (0, 7), which the caller handles.
+    pub fn attach_point(&self, h: Option<bn6_content_api::IdentityHandle>, index: usize) -> AttachPoint {
+        let id = self.identity(h);
+        *id.attach_points.get(index).unwrap_or_else(|| {
+            panic!("identity {:?} has no attach point {index} (sub_8018810 reads another actor's table)", id.key)
+        })
+    }
+
+    /// The identity with this key (tools and tests).
+    pub fn identity_by_key(&self, key: &str) -> bn6_content_api::IdentityHandle {
+        self.defs.identity_by_key(key).unwrap_or_else(|| panic!("identity {key:?} is not in the content"))
     }
 
     /// An animation's frames (empty when the sprite has no animation

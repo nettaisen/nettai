@@ -409,7 +409,8 @@ fn bug_paralyze_blind(b: &mut Battle, r: ObjectRef) {
     // sub_801A77A
     set_flag2(b, r, 0x8);
     coll_mut(b, r).status_timers[timer::PARALYZE] = 150;
-    if !(0x173..=0x17E).contains(&b.objects.get(r).name_id) {
+    // (Not the Cybeasts.)
+    if !b.content.identity(b.objects.get(r).identity).class.is_cybeast() {
         set_flag2(b, r, 0x20);
         coll_mut(b, r).status_timers[timer::BLIND] = 1200;
     }

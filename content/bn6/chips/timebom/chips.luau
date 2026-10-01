@@ -14,13 +14,19 @@ local countdown = require("./countdown")
 local BODY = { is = collision.neutral_body, hits = collision.everything }
 
 -- The bombs (the original's rows 0 and 1): the animations they rise and
--- stand with, their HP and their NameIDs (the field objects' looks,
--- numbers until identities come).
+-- stand with, their HP and their identities (field objects, with looks
+-- that keep the flip of what wears them).
 local BOMB = countdown.variant {
     appear_anim = 0,
     idle_anim = 1,
     hp = 50,
-    name = 0xD8,
+    identity = define.identity {
+        id = "timebomb",
+        class = "field_object",
+        version = 5,
+        ai_index = 1,
+        look = { sprite = asset.sprite("countdown-bomb"), anim = 1, palette = 0, shadow = true, keeps_flip = true },
+    },
     class = 1,
     collision = BODY,
 }
@@ -28,7 +34,13 @@ local BIG_BOMB = countdown.variant {
     appear_anim = 2,
     idle_anim = 3,
     hp = 200,
-    name = 0xD9,
+    identity = define.identity {
+        id = "timebomb-big",
+        class = "field_object",
+        version = 0,
+        ai_index = 1,
+        look = { sprite = asset.sprite("countdown-bomb"), anim = 3, palette = 0, shadow = true, keeps_flip = true },
+    },
     class = 1,
     collision = BODY,
     strong_shake = true,
