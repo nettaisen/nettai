@@ -508,13 +508,11 @@ impl Battle {
         *v = v.saturating_add(n);
     }
 
-    /// `sub_802CEA6`: clear a side's defensive-chip record, telling its
-    /// object to end (Param2 = 1).
+    /// `sub_802CEA6`: clear a side's defensive-chip record. Its object
+    /// (ElemTrap's trap) ends when it sees that the record no longer names
+    /// it; the original tells it through its second parameter.
     pub fn clear_linked(&mut self, side: u8) {
-        let rec = std::mem::take(&mut self.linked[side as usize]);
-        if let Some(o) = rec.object {
-            self.objects.get_mut(o).params[1] = 1;
-        }
+        self.linked[side as usize] = Default::default();
     }
 
     /// The stage's panel column pattern (which columns belong to which

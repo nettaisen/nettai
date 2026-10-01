@@ -31,8 +31,8 @@ use bn6_content_api::{
 };
 
 use super::{
-    ChipClass, ChipCode, ChipData, ChipFamily, ChipFlags, ChipId, ChipModifier, Content, DIMMING_CHIP_ACTION, Element,
-    ExtraChipFlags, FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
+    ChipData, ChipId, Content, DIMMING_CHIP_ACTION,
+    FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
 };
 use super::roles::{ActionRole, HookRole, KindRole, RoleAction, RoleKind, Roles};
 use crate::setup::{Form, Navi, StageSettings};
@@ -88,11 +88,12 @@ pub struct WeaponDef {
     /// `setup(navi) -> action`; none for a routine number nothing
     /// implements yet.
     pub setup: Option<FnId>,
-    /// The weapon routine numbers that name it: a `weapon.toml`'s, the
-    /// number of a routine nothing implements, or the routines a weapon
+    /// The weapon routine numbers that name it: the routines a weapon
     /// content defines takes with its transitional `legacy = { routines }`
     /// marker (the pack's forms and the ruleset still name weapons by
-    /// number). Registration by number finds it by any of them.
+    /// number; a weapon's alias routines with the same charge times are one
+    /// weapon), the test content's `WeaponData`, or the number of a routine
+    /// nothing implements. Registration by number finds it by any of them.
     pub routines: Vec<u8>,
     /// Its first routine number: what the ruleset's numeric logic asks
     /// until phase C (none for a weapon content defines without routines).
@@ -168,8 +169,9 @@ pub struct FormDef {
 pub struct StageDef {
     pub key: String,
     pub record: StageSettings,
-    /// Its place in the pack's settings table.
-    pub number: u8,
+    /// Its place in the pack's settings table (the test content's); none
+    /// for a stage content defines.
+    pub number: Option<u8>,
 }
 
 /// A collision type content defines (`define.collision`): what an object is
@@ -220,21 +222,33 @@ pub struct Defs {
     pub stages: Vec<StageDef>,
     pub records: Vec<RecordDef>,
     /// One-shot effects' and hit sparks' looks content defines, by handle.
-    /// Each has the engine's number after the pack data's
-    /// (`Content::effect`, `Content::spark`): see [`Defs::number`].
+    /// Each has the engine's number (`Content::effect`, `Content::spark`):
+    /// the numbered table's row with the same look, else one after the
+    /// table's. See [`Defs::number`].
     pub effects: Vec<super::EffectSprite>,
     pub sparks: Vec<super::EffectSprite>,
     /// Hit regions content defines, by handle, with the engine's number for
-    /// each (a shape's after the pack data's shapes, a whole-field region's
-    /// after its field regions, from 0x80).
+    /// each: the numbered table's region of the same shape or condition,
+    /// else one after the table's (a shape's after its shapes, a
+    /// whole-field region's after its field regions, from 0x80).
     pub regions: Vec<(super::Region, u8)>,
-    /// Collision types content defines, by handle: the engine's number for
-    /// each comes after the pack data's (`Content::collision_type`).
+    /// Collision types content defines, by handle. The engine's number for
+    /// each (`Content::collision_type`) is its row in the numbered table
+    /// (the row its `row_offset` names, with the same flags), else one
+    /// after the table's.
     pub collisions: Vec<CollisionTypeDef>,
     /// What the ruleset needs from content by role (`define.roles`).
     pub roles: Roles,
-    /// The engine's numbers for the first effect, spark and collision type
-    /// content defines.
+    /// The engine's number for each effect, spark and collision type
+    /// content defines, by handle; and those past the numbered tables, by
+    /// number from the table's length (the same look or type defined twice
+    /// is one number).
+    effect_numbers: Vec<u8>,
+    spark_numbers: Vec<u8>,
+    collision_numbers: Vec<u8>,
+    effect_extra: Vec<super::EffectSprite>,
+    spark_extra: Vec<super::EffectSprite>,
+    collision_extra: Vec<CollisionTypeDef>,
     effect_base: u8,
     spark_base: u8,
     collision_base: u8,
@@ -380,30 +394,34 @@ impl Defs {
     }
 
     /// The engine's number for a definition the ruleset still stores as a
-    /// byte (an effect, a spark, a region, a collision type): its own,
-    /// after the pack data's, never an original number.
+    /// byte (an effect, a spark, a region, a collision type): the numbered
+    /// table's entry that is the same thing (the content's own table by
+    /// number, which v1 modules and the ruleset still read), else its own
+    /// after the table's. The engine learns no number from it: the table is
+    /// content's, and a definition only shares its entry.
     pub fn number(&self, registry: Registry, h: u16) -> Option<u8> {
         let i = h as usize;
         match registry {
-            Registry::Effect => (i < self.effects.len()).then(|| self.effect_base + h as u8),
-            Registry::Spark => (i < self.sparks.len()).then(|| self.spark_base + h as u8),
+            Registry::Effect => self.effect_numbers.get(i).copied(),
+            Registry::Spark => self.spark_numbers.get(i).copied(),
             Registry::Region => self.regions.get(i).map(|&(_, n)| n),
-            Registry::Collision => (i < self.collisions.len()).then(|| self.collision_base + h as u8),
+            Registry::Collision => self.collision_numbers.get(i).copied(),
             _ => None,
         }
     }
 
-    /// A defined effect, spark or collision type by the engine's number.
+    /// A defined effect, spark or collision type past the numbered table,
+    /// by the engine's number.
     pub(crate) fn effect_numbered(&self, n: u8) -> Option<super::EffectSprite> {
-        n.checked_sub(self.effect_base).and_then(|i| self.effects.get(i as usize)).copied()
+        n.checked_sub(self.effect_base).and_then(|i| self.effect_extra.get(i as usize)).copied()
     }
 
     pub(crate) fn spark_numbered(&self, n: u8) -> Option<super::EffectSprite> {
-        n.checked_sub(self.spark_base).and_then(|i| self.sparks.get(i as usize)).copied()
+        n.checked_sub(self.spark_base).and_then(|i| self.spark_extra.get(i as usize)).copied()
     }
 
     pub(crate) fn collision_numbered(&self, n: u8) -> Option<CollisionTypeDef> {
-        n.checked_sub(self.collision_base).and_then(|i| self.collisions.get(i as usize)).copied()
+        n.checked_sub(self.collision_base).and_then(|i| self.collision_extra.get(i as usize)).copied()
     }
 
     /// A defined region by the engine's number.
@@ -520,144 +538,77 @@ fn record_action<'d>(definitions: &'d Definitions, module: &str, whose: &str) ->
 }
 
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
-/// fields the engine reads. Damage formulas, Program Advance recipes, dark
-/// chips' substitutes and lock-on modes by definition come with the v2 API
-/// (steps 4 and 10); a definition that gives one is refused.
+/// fields the engine reads, with the lock-on mode and the Program Advance
+/// recipes' chips by the numbers `r` gives them. Damage formulas and dark
+/// chips' substitutes by definition come with the v2 API (a chip still read
+/// by number gives them in its legacy marker); a definition that gives one
+/// is refused.
 ///
 /// The transitional `legacy = { subtype, params }` marker gives the record
 /// the original's subtype and parameter bytes, for what still reads them
 /// of a chip besides its own action (SlashCross's charged slash reads a
-/// sword's); its `action` and `script` (a behaviour still a v1 module)
-/// come with step 5.
-fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
+/// sword's); a chip whose behaviour is still a v1 module gives its number,
+/// action and module there too (`content::legacy` reads those).
+pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result<ChipData, ContentError> {
+    use serde_json::{Map, Value as Json};
     let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
     let spec = &d.spec;
-    let int = |field: &str, max: i64| -> Result<i64, ContentError> {
-        match spec.field(field) {
-            Data::Nil => Ok(0),
-            Data::Int(i) if (0..=max).contains(i) => Ok(*i),
-            other => Err(what(format!("`{field}` is {other:?}, not a number from 0 to {max}"))),
-        }
-    };
-    let name_of = |field: &str| -> Result<Option<String>, ContentError> {
-        match spec.field(field) {
-            Data::Nil => Ok(None),
-            Data::Str(s) => Ok(Some(s.clone())),
-            other => Err(what(format!("`{field}` is {other:?}, not a name"))),
-        }
-    };
-    fn named<T: serde::de::DeserializeOwned>(name: &str) -> Option<T> {
-        serde_json::from_value(serde_json::Value::String(name.to_string())).ok()
+    if !spec.field("dark_substitute").is_nil() {
+        return Err(what("`dark_substitute` in a definition comes with the v2 API".into()));
     }
-    let enum_field = |field: &str| -> Result<Option<String>, ContentError> { name_of(field) };
-    let element = match enum_field("element")? {
-        None => Element::Null,
-        Some(n) => named(&n).ok_or_else(|| what(format!("`element` {n:?} is not an element")))?,
-    };
-    let family = match enum_field("family")? {
-        None => ChipFamily::Null,
-        Some(n) => named(&n).ok_or_else(|| what(format!("`family` {n:?} is not a chip family")))?,
-    };
-    let class = match enum_field("class")? {
-        None => ChipClass::Standard,
-        Some(n) => named(&n).ok_or_else(|| what(format!("`class` {n:?} is not a chip class")))?,
-    };
-    let modifier: Option<ChipModifier> = match enum_field("modifier")? {
-        None => None,
-        Some(n) => Some(named(&n).ok_or_else(|| what(format!("`modifier` {n:?} is not a modifier")))?),
-    };
-    let flags = |field: &str, names: &[(u32, &str)]| -> Result<u8, ContentError> {
-        let mut bits = 0u8;
-        match spec.field(field) {
-            Data::Nil => {}
-            Data::List(items) => {
-                for item in items {
-                    let n = item.str().ok_or_else(|| what(format!("`{field}` holds {item:?}, not a flag's name")))?;
-                    let (bit, _) = names.iter().find(|(_, f)| *f == n).ok_or_else(|| what(format!("`{field}`: no flag {n:?}")))?;
-                    bits |= *bit as u8;
-                }
-            }
-            other => Err(what(format!("`{field}` is {other:?}, not a list of flags")))?,
+    let json = |field: &str| -> Result<Json, ContentError> { r.json(spec.field(field), &format!("chip {}.{field}", d.key)).map_err(what) };
+    let mut o = Map::new();
+    o.insert("name".into(), Json::String(spec.field("name").str().unwrap_or(&d.key).to_string()));
+    // (The custom screen reads its lines: none given counts as three.)
+    match json("description")? {
+        Json::Null => {}
+        text @ Json::String(_) => {
+            o.insert("description".into(), text);
         }
-        Ok(bits)
-    };
-    let codes = match spec.field("codes") {
-        Data::Nil => Vec::new(),
-        Data::List(items) => items
-            .iter()
-            .map(|c| {
-                c.str()
-                    .and_then(|s| {
-                        let mut chars = s.chars();
-                        match (chars.next().and_then(ChipCode::from_letter), chars.next()) {
-                            (Some(code), None) => Some(code),
-                            _ => None,
-                        }
-                    })
-                    .ok_or_else(|| what(format!("`codes` holds {c:?}, not a code (A-Z or *)")))
-            })
-            .collect::<Result<Vec<_>, _>>()?,
-        other => return Err(what(format!("`codes` is {other:?}, not a list"))),
-    };
-    for field in ["program_advances", "dark_substitute"] {
-        if !spec.field(field).is_nil() {
-            return Err(what(format!("`{field}` in a definition comes with the v2 API")));
-        }
+        other => return Err(what(format!("`description` is {other}, not text"))),
     }
-    let damage = match spec.field("damage") {
-        Data::Nil => 0,
-        Data::Int(i) if (0..1000).contains(i) => *i as u16,
-        other => return Err(what(format!("`damage` is {other:?}: a number below 1000 (formulas come with the v2 API)"))),
-    };
-    let (beast_lockon, lockon_mode) = match spec.field("beast") {
-        Data::Nil => (false, 0),
-        beast => {
-            let rush = !matches!(beast.field("rush"), Data::Bool(false));
-            let mode = match beast.field("lockon") {
-                Data::Nil => 0,
-                Data::Int(i) if (0..=0xFF).contains(i) => *i as u8,
-                other => return Err(what(format!("`beast.lockon` is {other:?}: a lock-on mode's number until the v2 API"))),
-            };
-            (rush, mode)
-        }
-    };
-    let (subtype, params) = legacy_bytes(spec).map_err(|e| what(e))?;
+    let defaults: [(&str, Json); 13] = [
+        ("codes", Json::Array(Vec::new())),
+        ("element", "null".into()),
+        ("family", "null".into()),
+        ("class", "standard".into()),
+        ("rarity", 0.into()),
+        ("mb", 0.into()),
+        ("flags", Json::Array(Vec::new())),
+        ("extra_flags", Json::Array(Vec::new())),
+        ("hit_param", 0.into()),
+        ("lockout", 0.into()),
+        ("damage", 0.into()),
+        ("slot_in_limit", 0.into()),
+        ("modifier", Json::Null),
+    ];
+    for (field, default) in defaults {
+        let v = json(field)?;
+        o.insert(field.into(), if v.is_null() { default } else { v });
+    }
+    if o["damage"].as_i64().is_some_and(|v| v >= 1000) {
+        return Err(what("`damage` is a number below 1000 (formulas come with the v2 API)".into()));
+    }
     let library = spec.field("library");
-    let lib_int = |field: &str| library.field(field).int().unwrap_or(0);
-    Ok(ChipData {
-        id: None,
-        name: name_of("name")?.unwrap_or_else(|| d.key.clone()),
-        description: name_of("description")?,
-        codes,
-        element,
-        rarity: int("rarity", 0xFF)? as u8,
-        family,
-        class,
-        mb: int("mb", 0xFF)? as u8,
-        flags: ChipFlags(flags("flags", ChipFlags::NAMES)?),
-        hit_param: int("hit_param", 0xFF)? as u8,
-        action: 0,
-        subtype,
-        beast_lockon,
-        params,
-        lockout: int("lockout", 0xFF)? as u8,
-        extra_flags: ExtraChipFlags(flags("extra_flags", ExtraChipFlags::NAMES)?),
-        lockon_mode,
-        damage,
-        library_number: lib_int("number") as u16,
-        library_index: lib_int("index") as u8,
-        sort_key: lib_int("sort") as u16,
-        slot_in_limit: int("slot_in_limit", 0xFF)? as u8,
-        dark_substitute: None,
-        sp_damage: None,
-        navi_damage: None,
-        modifier,
-        program_advances: Vec::new(),
-        gun_del_sol: None,
-        recovery: None,
-        sword: None,
-        script: None,
-    })
+    for (field, from) in [("library_number", "number"), ("library_index", "index"), ("sort_key", "sort")] {
+        o.insert(field.into(), library.field(from).int().unwrap_or(0).into());
+    }
+    let beast = spec.field("beast");
+    o.insert("beast_lockon".into(), Json::Bool(!beast.is_nil() && !matches!(beast.field("rush"), Data::Bool(false))));
+    let mode = match beast.field("lockon") {
+        Data::Nil => 0,
+        v => r.json(v, &format!("chip {}.beast.lockon", d.key)).map_err(what)?.as_i64().unwrap_or(0),
+    };
+    o.insert("lockon_mode".into(), mode.into());
+    o.insert("program_advance".into(), json("program_advances")?);
+    if o["program_advance"].is_null() {
+        o.insert("program_advance".into(), Json::Array(Vec::new()));
+    }
+    let (subtype, params) = legacy_bytes(spec).map_err(what)?;
+    o.insert("action".into(), 0.into());
+    o.insert("subtype".into(), subtype.into());
+    o.insert("params".into(), Json::Array(params.iter().map(|&p| p.into()).collect()));
+    serde_json::from_value(Json::Object(o)).map_err(|e| what(e.to_string()))
 }
 
 /// `define.roles { actions = { ... }, kinds = { ... } }` (content::roles):
@@ -774,11 +725,6 @@ fn legacy_bytes(spec: &Data) -> Result<(u8, [u8; 4]), String> {
         Data::List(l) if l.is_empty() => return Ok((0, [0; 4])),
         other => return Err(format!("`legacy` is {other:?}, not a table")),
     }
-    for field in ["action", "script"] {
-        if !legacy.field(field).is_nil() {
-            return Err(format!("`legacy.{field}` (a behaviour still a v1 module) comes with step 5"));
-        }
-    }
     let byte = |d: &Data, what: &str| match d {
         Data::Int(i) if (0..=0xFF).contains(i) => Ok(*i as u8),
         other => Err(format!("`legacy.{what}` holds {other:?}, not a byte")),
@@ -803,7 +749,8 @@ fn legacy_bytes(spec: &Data) -> Result<(u8, [u8; 4]), String> {
 impl Defs {
     /// What `content` (its data's registrations and the engine's own) and
     /// `definitions` (what its modules define) make.
-    pub fn build(content: &Content, definitions: Definitions) -> Result<Defs, ContentError> {
+    pub fn build(content: &Content, definitions: Definitions, legacy: &super::legacy::Legacy) -> Result<Defs, ContentError> {
+        let resolver = super::legacy::Resolver::new(&content.assets, &definitions);
         let mut functions = Functions::default();
 
         // Layouts: the definitions' and modules' state tables, and the
@@ -968,9 +915,40 @@ impl Defs {
         }
         let actions: Vec<ActionDef> = actions.sorted()?.into_iter().map(|(_, a)| a).collect();
 
-        // Weapons.
+        // Weapons: those a definition gives by routine number (its legacy
+        // setup marker: every routine number it is, the v1 module that
+        // implements it), the test content's by routine, the other routine
+        // numbers (a weapon nothing implements yet, with the charge times
+        // the content gives them), and the ones content defines.
         let mut weapons = Entries::new(Registry::Weapon);
-        for w in &content.weapons {
+        let mut claimed: BTreeMap<u8, &str> = BTreeMap::new();
+        for (key, w) in &legacy.weapons {
+            let whose = format!("weapon {key}");
+            for &n in &w.routines {
+                if let Some(first) = claimed.insert(n, key) {
+                    return Err(ContentError::new(format!("weapons {first} and {key} are both routine {n:#04x}")));
+                }
+            }
+            let setup = match &w.script {
+                Some(script) => Some(functions.id(export(&definitions, script, "setup", &whose)?)),
+                None => None,
+            };
+            let instant = match (&w.script, w.instant_chip) {
+                (Some(script), Some(_)) => Some(functions.id(export(&definitions, script, "instant_chip", &whose)?)),
+                _ => None,
+            };
+            let def = WeaponDef {
+                key: key.clone(),
+                name: w.name.clone(),
+                setup,
+                number: w.routines.first().copied(),
+                routines: w.routines.clone(),
+                charge_ticks: w.charge_ticks.clone(),
+                instant,
+            };
+            weapons.add(key.clone(), def, whose);
+        }
+        for w in content.weapons.iter().filter(|w| !claimed.contains_key(&w.id)) {
             let whose = format!("weapon routine {:#04x} ({})", w.id, w.name);
             let setup = export(&definitions, &w.script, "setup", &whose)?;
             let instant = match w.instant_chip {
@@ -988,28 +966,34 @@ impl Defs {
             };
             weapons.add(def.key.clone(), def, whose);
         }
-        // The routines the definitions take (their `legacy` markers).
+        // The routines the other definitions take (their `legacy` markers).
         let mut defined_routines = Vec::new();
         for d in definitions.of(Registry::Weapon) {
-            defined_routines.extend(weapon_routines(d)?);
+            if !legacy.weapons.contains_key(&d.key) {
+                defined_routines.extend(weapon_routines(d)?);
+            }
         }
         // Every other routine number a navi's stats may name: a weapon
-        // nothing implements yet (using it is the ruleset's error).
+        // nothing implements yet (using it is the ruleset's error), with the
+        // charge times the content gives its routine.
         for n in 0..=0xFEu8 {
-            if !content.weapons.iter().any(|w| w.id == n) && !defined_routines.contains(&n) {
+            if !claimed.contains_key(&n) && !content.weapons.iter().any(|w| w.id == n) && !defined_routines.contains(&n) {
                 let def = WeaponDef {
                     key: format!("v1/weapon-{n:02x}"),
                     name: String::new(),
                     setup: None,
                     routines: vec![n],
                     number: Some(n),
-                    charge_ticks: Vec::new(),
+                    charge_ticks: legacy.routine_charges.get(&n).cloned().unwrap_or_default(),
                     instant: None,
                 };
                 weapons.add(def.key.clone(), def, "a weapon routine number".into());
             }
         }
         for d in definitions.of(Registry::Weapon) {
+            if legacy.weapons.contains_key(&d.key) {
+                continue;
+            }
             let name = d.spec.field("name").str().unwrap_or(&d.key).to_string();
             let charge_ticks = match d.spec.field("charge_ticks") {
                 Data::Nil => Vec::new(),
@@ -1043,32 +1027,9 @@ impl Defs {
             actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
         };
         let mut chips = Entries::new(Registry::Chip);
-        for c in &content.chips {
-            let key = format!("v1/chip-{:03x}", c.id.unwrap_or_default());
-            // Registration by number: the record's action, or for the
-            // ruleset's generic chip actions its subtype's registration. A
-            // record whose module exports an action runs that instead, as
-            // a chip definition's `action` does.
-            let by_subtype = |table: &BTreeMap<u8, FnId>, f: fn(FnId) -> ChipUsage, unported: fn(u8) -> Unported| {
-                table.get(&c.subtype).map_or(ChipUsage::Unported(unported(c.subtype)), |&h| f(h))
-            };
-            let exported = match &c.script {
-                Some(module) => record_action(&definitions, module, &key)?,
-                None => None,
-            };
-            let usage = match (exported, c.action) {
-                (Some(a), _) => ChipUsage::Action(action_handle(a).expect("a defined action")),
-                (None, DIMMING_CHIP_ACTION) => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
-                (None, NAVI_CHIP_ACTION) => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
-                (None, INSTANT_CHIP_ACTION) => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
-                (None, n) => match actions.iter().position(|a| a.number == Some(n)) {
-                    Some(i) => ChipUsage::Action(ActionHandle(i as u16)),
-                    None => ChipUsage::Unported(Unported::Action(n)),
-                },
-            };
-            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage }, "the pack's chip record".into());
-        }
-        for d in definitions.of(Registry::Chip) {
+        // A chip definition's own use: exactly one of its `action`,
+        // `dimming`, `navi` and `instant` (none: `Ok(None)`).
+        let own_usage = |d: &Definition, functions: &mut Functions| -> Result<Option<ChipUsage>, ContentError> {
             let mut usages = Vec::new();
             match d.spec.field("action") {
                 Data::Nil => {}
@@ -1084,34 +1045,95 @@ impl Defs {
                     usages.push(usage(functions.id(slot(d, field)?)));
                 }
             }
-            let [usage] = usages[..] else {
-                return Err(ContentError::new(format!(
+            match usages[..] {
+                [] => Ok(None),
+                [usage] => Ok(Some(usage)),
+                _ => Err(ContentError::new(format!(
                     "{}.luau: chip {} needs exactly one of `action`, `dimming`, `navi` and `instant`",
+                    d.module, d.key
+                ))),
+            }
+        };
+        // The pack's chips: those a definition gives by number (its legacy
+        // marker) under its key, the others' records (the test content's)
+        // under a transitional key. A numbered definition's use is its own
+        // where it has one, else what registration by number resolves from
+        // the record's action and subtype (a behaviour still a v1 module).
+        let chip_keys: BTreeMap<ChipId, &str> =
+            legacy.chips.iter().filter_map(|(k, c)| Some((c.id?, k.as_str()))).collect();
+        for c in &content.chips {
+            let n = c.id.unwrap_or_default();
+            let (key, whose, own) = match chip_keys.get(&n) {
+                Some(k) => {
+                    let d = definitions.get(Registry::Chip, k).expect("a numbered chip's definition");
+                    (k.to_string(), format!("defined in {}.luau", d.module), own_usage(d, &mut functions)?)
+                }
+                None => (format!("v1/chip-{n:03x}"), "the pack's chip record".to_string(), None),
+            };
+            // Registration by number: the record's action, or for the
+            // ruleset's generic chip actions its subtype's registration. A
+            // record whose module exports an action runs that instead, as
+            // a chip definition's `action` does.
+            let by_subtype = |table: &BTreeMap<u8, FnId>, f: fn(FnId) -> ChipUsage, unported: fn(u8) -> Unported| {
+                table.get(&c.subtype).map_or(ChipUsage::Unported(unported(c.subtype)), |&h| f(h))
+            };
+            let exported = match (&own, &c.script) {
+                (None, Some(module)) => record_action(&definitions, module, &key)?,
+                _ => None,
+            };
+            let usage = match (own, exported, c.action) {
+                (Some(usage), _, _) => usage,
+                (None, Some(a), _) => ChipUsage::Action(action_handle(a).expect("a defined action")),
+                (None, None, DIMMING_CHIP_ACTION) => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
+                (None, None, NAVI_CHIP_ACTION) => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
+                (None, None, INSTANT_CHIP_ACTION) => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
+                (None, None, n) => match actions.iter().position(|a| a.number == Some(n)) {
+                    Some(i) => ChipUsage::Action(ActionHandle(i as u16)),
+                    None => ChipUsage::Unported(Unported::Action(n)),
+                },
+            };
+            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage }, whose);
+        }
+        for d in definitions.of(Registry::Chip) {
+            if legacy.chips.contains_key(&d.key) {
+                continue;
+            }
+            let Some(usage) = own_usage(d, &mut functions)? else {
+                return Err(ContentError::new(format!(
+                    "{}.luau: chip {} needs exactly one of `action`, `dimming`, `navi` and `instant` (or, for a behaviour still a v1 module, a legacy marker with its `number`)",
                     d.module, d.key
                 )));
             };
-            let record = chip_record(d)?;
+            let record = chip_record(d, &resolver)?;
             chips.add(d.key.clone(), ChipDef { key: d.key.clone(), record, usage }, format!("defined in {}.luau", d.module));
         }
         let chips: Vec<ChipDef> = chips.sorted()?.into_iter().map(|(_, c)| c).collect();
 
         // The pack's navis, forms and stages.
+        let key_of = |defined: &BTreeMap<String, u8>, n: u8, v1: String| -> String {
+            defined.iter().find(|(_, m)| **m == n).map_or(v1, |(k, _)| k.clone())
+        };
+        let navi_keys: BTreeMap<String, u8> = legacy.navis.iter().map(|(k, n)| (k.clone(), n.id)).collect();
+        let form_keys: BTreeMap<String, u8> = legacy.forms.iter().map(|(k, f)| (k.clone(), f.id)).collect();
         let mut navis = Entries::new(Registry::Navi);
         for n in &content.navis {
-            let key = format!("v1/navi-{:02x}", n.id);
+            let key = key_of(&navi_keys, n.id, format!("v1/navi-{:02x}", n.id));
             navis.add(key.clone(), NaviDef { key, record: n.clone() }, "the pack's navi".into());
         }
         let navis: Vec<NaviDef> = navis.sorted()?.into_iter().map(|(_, n)| n).collect();
         let mut forms = Entries::new(Registry::Form);
         for f in &content.forms {
-            let key = format!("v1/form-{:02x}", f.id);
+            let key = key_of(&form_keys, f.id, format!("v1/form-{:02x}", f.id));
             forms.add(key.clone(), FormDef { key, record: f.clone() }, "the pack's form".into());
         }
         let forms: Vec<FormDef> = forms.sorted()?.into_iter().map(|(_, f)| f).collect();
         let mut stages = Entries::new(Registry::Stage);
         for (i, st) in content.rules.stages.settings.iter().enumerate() {
             let key = format!("v1/stage-{i:02x}");
-            stages.add(key.clone(), StageDef { key, record: *st, number: i as u8 }, "the pack's battle settings".into());
+            stages.add(key.clone(), StageDef { key, record: *st, number: Some(i as u8) }, "the pack's battle settings".into());
+        }
+        for (key, (st, number)) in &legacy.stages {
+            stages.add(key.clone(), StageDef { key: key.clone(), record: *st, number: *number }, "a stage".into());
         }
         let stages: Vec<StageDef> = stages.sorted()?.into_iter().map(|(_, s)| s).collect();
 
@@ -1127,16 +1149,43 @@ impl Defs {
         };
         let effects = definitions.of(Registry::Effect).iter().map(look).collect::<Result<Vec<_>, _>>()?;
         let sparks = definitions.of(Registry::Spark).iter().map(look).collect::<Result<Vec<_>, _>>()?;
-        let base = |len: usize, n: usize, what: &str| -> Result<u8, ContentError> {
-            u8::try_from(len)
-                .ok()
-                .filter(|&b| b as usize + n <= 0x100)
-                .ok_or_else(|| ContentError::new(format!("too many {what}: {len} in the pack's data and {n} defined")))
-        };
-        let effect_base = base(content.effects.len(), effects.len(), "effects")?;
-        let spark_base = base(content.sparks.len(), sparks.len(), "hit sparks")?;
+        // The engine's numbers for what content defines: the numbered
+        // table's entry that is the same thing, else a number after the
+        // table's (one per distinct thing).
+        fn numbers<T: PartialEq + Copy>(
+            table_len: usize,
+            defined: &[T],
+            in_table: impl Fn(&T) -> Option<usize>,
+            what: &str,
+        ) -> Result<(u8, Vec<u8>, Vec<T>), ContentError> {
+            let mut extra: Vec<T> = Vec::new();
+            let mut out = Vec::with_capacity(defined.len());
+            for x in defined {
+                let n = match in_table(x) {
+                    Some(i) => i,
+                    None => match extra.iter().position(|e| e == x) {
+                        Some(i) => table_len + i,
+                        None => {
+                            extra.push(*x);
+                            table_len + extra.len() - 1
+                        }
+                    },
+                };
+                out.push(u8::try_from(n).map_err(|_| {
+                    ContentError::new(format!(
+                        "too many {what}: {table_len} in the numbered table and more than {} others defined",
+                        0x100usize.saturating_sub(table_len)
+                    ))
+                })?);
+            }
+            Ok((table_len.min(0xFF) as u8, out, extra))
+        }
+        let (effect_base, effect_numbers, effect_extra) =
+            numbers(content.effects.len(), &effects, |e| content.effects.iter().position(|t| t == e), "effects")?;
+        let (spark_base, spark_numbers, spark_extra) =
+            numbers(content.sparks.len(), &sparks, |e| content.sparks.iter().position(|t| t == e), "hit sparks")?;
         let (mut shapes, mut fields) = (content.regions.len(), content.rules.field_regions.len());
-        let mut regions = Vec::new();
+        let mut regions: Vec<(super::Region, u8)> = Vec::new();
         for d in definitions.of(Registry::Region) {
             let what = |e: &str| ContentError::new(format!("{}.luau: region {}: {e}", d.module, d.key));
             let (region, number) = match (d.spec.field("panels"), d.spec.field("field")) {
@@ -1148,13 +1197,38 @@ impl Defs {
                         };
                         panels.push(super::PanelOffset { dx: dx as i8, dy: dy as i8 });
                     }
-                    shapes += 1;
-                    (super::Region::Panels(panels), shapes - 1)
+                    // The numbered table's region of this shape (region
+                    // 0 is none), else one a definition before it made,
+                    // else a new one.
+                    let region = super::Region::Panels(panels);
+                    let super::Region::Panels(panels) = &region else { unreachable!() };
+                    let number = match content.regions.iter().skip(1).position(|r| r == panels) {
+                        Some(i) => i + 1,
+                        None => match regions.iter().find(|(r, _)| *r == region) {
+                            Some(&(_, n)) => n as usize,
+                            None => {
+                                shapes += 1;
+                                shapes - 1
+                            }
+                        },
+                    };
+                    (region, number)
                 }
                 (Data::Nil, Data::Map(_)) => {
                     let word = |k: &str| d.spec.field("field").field(k).int().unwrap_or(0) as u32;
-                    fields += 1;
-                    (super::Region::Field(super::PanelCondition { require: word("require"), forbid: word("forbid") }), 0x80 + fields - 1)
+                    let condition = super::PanelCondition { require: word("require"), forbid: word("forbid") };
+                    let region = super::Region::Field(condition);
+                    let number = match content.rules.field_regions.iter().position(|c| *c == condition) {
+                        Some(i) => 0x80 + i,
+                        None => match regions.iter().find(|(r, _)| *r == region) {
+                            Some(&(_, n)) => n as usize,
+                            None => {
+                                fields += 1;
+                                0x80 + fields - 1
+                            }
+                        },
+                    };
+                    (region, number)
                 }
                 _ => return Err(what("needs exactly one of `panels` and `field`")),
             };
@@ -1173,7 +1247,18 @@ impl Defs {
             let row_offset = d.spec.field("row_offset").int().unwrap_or(0) as u16;
             collisions.push(CollisionTypeDef { flags: [word("side0")?, word("side1")?], row_offset });
         }
-        let collision_base = base(content.rules.collision_types.len(), collisions.len(), "collision types")?;
+        // A collision type is its row of the numbered table when its
+        // `row_offset` names one with its flags.
+        let rows = &content.rules.collision_types;
+        let (collision_base, collision_numbers, collision_extra) = numbers(
+            rows.len(),
+            &collisions,
+            |c| {
+                let row = (c.row_offset / 8) as usize;
+                (c.row_offset % 8 == 0 && rows.get(row) == Some(&c.flags)).then_some(row)
+            },
+            "collision types",
+        )?;
 
         // The roles.
         let mut roles = Roles::default();
@@ -1241,6 +1326,12 @@ impl Defs {
             regions,
             collisions,
             roles,
+            effect_numbers,
+            spark_numbers,
+            collision_numbers,
+            effect_extra,
+            spark_extra,
+            collision_extra,
             effect_base,
             spark_base,
             collision_base,
@@ -1296,7 +1387,9 @@ impl Defs {
         }
         defs.stage_numbers = vec![None; 256];
         for (i, st) in defs.stages.iter().enumerate() {
-            defs.stage_numbers[st.number as usize] = Some(StageHandle(i as u16));
+            if let Some(n) = st.number {
+                defs.stage_numbers[n as usize] = Some(StageHandle(i as u16));
+            }
         }
         defs.functions = functions.list;
         Ok(defs)
@@ -1318,9 +1411,62 @@ mod tests {
         c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        // The modules that return a table with a `state` give its layout
-        // (v1 modules: fewer as families become definitions).
+        // The modules that return a table with a `state` (the v1 modules
+        // registration by number runs: fewer as families convert) give its
+        // layout.
         let states = c.defs.definitions.modules.iter().filter(|m| m.state.is_some()).count();
-        assert!(states > 50, "{states} module states");
+        assert!(states > 0, "{states} module states");
+        // The numbered tables are the definitions' (step 5): what the
+        // modules define of them shares their entries, so the engine's
+        // byte holds them all.
+        assert!(c.effects.len() > 100 && c.defs.effects.len() > c.effects.len(), "{} effects defined", c.defs.effects.len());
+        numbers_give_the_definitions_back(&c);
+    }
+
+    /// The engine's number for each effect, spark, region and collision
+    /// type content defines reads back as what was defined; one the
+    /// numbered table holds is that entry, another comes after the table.
+    fn numbers_give_the_definitions_back(c: &Content) {
+        let d = &c.defs;
+        for (h, look) in d.effects.iter().enumerate() {
+            let n = d.number(Registry::Effect, h as u16).expect("an effect's number");
+            assert_eq!(c.effect(n), *look, "effect {h}");
+            assert_eq!(c.effects.iter().position(|e| e == look).unwrap_or(n as usize), n as usize, "effect {h}");
+        }
+        for (h, look) in d.sparks.iter().enumerate() {
+            let n = d.number(Registry::Spark, h as u16).expect("a spark's number");
+            assert_eq!(c.spark(n), *look, "spark {h}");
+            assert_eq!(c.sparks.iter().position(|e| e == look).unwrap_or(n as usize), n as usize, "spark {h}");
+        }
+        for (h, t) in d.collisions.iter().enumerate() {
+            let n = d.number(Registry::Collision, h as u16).expect("a collision type's number");
+            for side in 0..2 {
+                assert_eq!(c.collision_type(n, side), (t.flags[side as usize], t.row_offset), "collision type {h}");
+            }
+        }
+        for (h, (region, n)) in d.regions.iter().enumerate() {
+            assert_eq!(d.number(Registry::Region, h as u16), Some(*n));
+            match region {
+                crate::content::Region::Panels(p) => assert_eq!(c.region(*n), &p[..], "region {h}"),
+                crate::content::Region::Field(f) => assert_eq!(c.field_region(*n), *f, "region {h}"),
+            }
+        }
+    }
+
+    #[test]
+    fn a_definition_shares_the_numbered_tables_entry_it_is() {
+        // The test content's tables are its own; the modules it loads
+        // define some of the same looks, regions and collision types.
+        let c = crate::content::testing::with_test_pack();
+        assert!(!c.defs.effects.is_empty() && !c.defs.collisions.is_empty() && !c.defs.regions.is_empty());
+        numbers_give_the_definitions_back(&c);
+        // The same look defined twice is one number.
+        for (i, a) in c.defs.effects.iter().enumerate() {
+            for (j, b) in c.defs.effects.iter().enumerate() {
+                if a == b {
+                    assert_eq!(c.defs.number(Registry::Effect, i as u16), c.defs.number(Registry::Effect, j as u16));
+                }
+            }
+        }
     }
 }

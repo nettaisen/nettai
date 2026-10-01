@@ -7,6 +7,7 @@ local controller = require("./controller")
 return define.chip {
     id = "snake",
     name = "Snake",
+    description = "Call snke\nfrom hole\nin area.",
     codes = { "H", "M", "L" },
     element = "null", family = "null", class = "standard",
     rarity = 3, mb = 34, damage = 30, hit_param = 133, lockout = 0,

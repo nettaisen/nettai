@@ -1,4 +1,0 @@
-# JudgeMan, JudgeMn[EX] and JudgeMn[SP] (navi chip subtype 15) summon JudgeMan
-# (chips/judgeman/navi.luau), through chip.luau.
-
-script = "chip.luau"

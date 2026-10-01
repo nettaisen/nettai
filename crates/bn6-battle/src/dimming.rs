@@ -586,7 +586,7 @@ mod tests {
 
     /// The navi chip controller, and the test navi chip's navi.
     const CONTROLLER: &str = "engine/navi-chip";
-    const HEAT_NAVI: &str = "heat-man";
+    const HEAT_NAVI: &str = "heatman/navi";
 
     /// Play a duel with the test navi chip; once a side uses it, the other
     /// side gets AntiNavi (with `bounce`, the user's side too, so the chip

@@ -8,6 +8,7 @@ local barriers = require("../../lib/barriers/barriers")
 return define.chip {
     id = "bblwrap",
     name = "BblWrap",
+    description = "Weak\nagainst\nelec atk",
     codes = { "I", "Q", "Z" },
     element = "null", family = "aqua", class = "standard",
     rarity = 2, mb = 58, damage = 0, hit_param = 0, lockout = 0,

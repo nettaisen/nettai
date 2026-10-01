@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x28, DustCross's charged shot (`sub_8011F64`), and
-# its action (`sub_80EFC1C`) are a script.
-
-id = 0x28
-name = "Dust charge"
-action = 0x57
-script = "dust_charge.luau"

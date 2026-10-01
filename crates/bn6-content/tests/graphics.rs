@@ -135,7 +135,7 @@ fn temp(name: &str) -> PathBuf {
 }
 
 fn write_pack(dir: &Path, b: &Bundle) {
-    let mut files = vec![pack::manifest("test", Some(b), false, false)];
+    let mut files = vec![pack::manifest("test", Some(b), false)];
     files.extend(pack::export_graphics(b, &bn6_content::names::AssetNames::default()));
     pack::write_files(dir, &files).unwrap();
 }
@@ -174,7 +174,7 @@ fn named_assets_read_back_by_their_numbers() {
     }
     names.backgrounds.insert(0, "clouds".into());
     names.mugshots.insert(0, "megaman".into());
-    let mut files = vec![pack::manifest("test", Some(&b), false, false)];
+    let mut files = vec![pack::manifest("test", Some(&b), false)];
     files.extend(pack::export_graphics(&b, &names));
     pack::write_files(&dir, &files).unwrap();
     assert!(dir.join("graphics/sprites/sprite-named-0/sprite.json").is_file());

@@ -1,6 +1,0 @@
-# MegaMan's weapon routine 0x8B (`sub_8012586`) raises the same shield as 0x3C, the
-# Reflect program's.
-
-id = 0x8B
-name = "Reflect"
-script = "../3c-reflect/reflect.luau"

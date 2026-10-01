@@ -1,4 +1,0 @@
-# MegaBstr, the pack's chip 0, which a zeroed chip field reads (the side's special
-# chip, a non-player's carried chip): the plus chips' effect by number.
-
-script = "../0c0-atk-10/chip.luau"

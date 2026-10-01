@@ -17,13 +17,17 @@ export type Phases = {
     -- The chip's effect, run each tick of its action until it calls
     -- `dimming_chips.done`.
     effect: (me: Object) -> (),
+    -- The telop is a hidden chip's (`sub_800BBA8`, the trap chips': the
+    -- other player sees "????").
+    hidden: boolean?,
 }
 
 -- A controller's update: `object_timefreezeBegin` at its init; by its
 -- action `object_dimScreen`, `object_drawChipName` (the telop and the wait
--- for a cut-in), the effect and `object_undimScreen`; and
--- `object_timefreezeEnd` when it is destroyed.
+-- for a cut-in; a hidden chip's is `sub_800BBA8`), the effect and
+-- `object_undimScreen`; and `object_timefreezeEnd` when it is destroyed.
 function dimming_chips.phases(spec: Phases): (me: Object) -> ()
+    local hidden = spec.hidden == true
     return function(me: Object)
         local l = me.lifecycle
         if l == "init" then
@@ -33,7 +37,11 @@ function dimming_chips.phases(spec: Phases): (me: Object) -> ()
             if a == DIM then
                 dimming.dim_screen(me)
             elseif a == TELOP then
-                dimming.show_telop(me)
+                if hidden then
+                    dimming.show_hidden_telop(me)
+                else
+                    dimming.show_telop(me)
+                end
             elseif a == EFFECT then
                 spec.effect(me)
             elseif a == UNDIM then
