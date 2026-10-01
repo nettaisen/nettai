@@ -124,8 +124,8 @@ refer to by number.**
 - A script sits next to the data it implements: a chip's action in the
   chip's folder, an object kind's in the kind's, a weapon routine's in
   the weapon's. A script several entities share lives with one of them
-  (GunDelSol's in GunDelS1's folder; AreaGrab's in its controller's object
-  folder, `objects/area-grab`, which both grab chips name), and helpers
+  (GunDelSol's in GunDelS1's folder; the plus chips' effect in Atk+10's
+  folder, `chips/0c0-atk-10`, which the other plus chips name), and helpers
   no entity owns in `lib/`.
 - `rules/` holds what no entity owns: element weakness, collision types,
   panel rules, battle settings, statuses, the custom screen's layout.
@@ -174,7 +174,7 @@ export):
   `script`.
 
 Scripts are paths relative to the file's folder (`script =
-"../../objects/area-grab/area_grab.luau"`); the loader resolves them to
+"../0c0-atk-10/chip.luau"`); the loader resolves them to
 module paths.
 
 BN6's scripts aren't in the ROM: they are this project's port of the

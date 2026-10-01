@@ -84,10 +84,14 @@ pub struct WeaponDef {
     /// `setup(navi) -> action`; none for a routine number nothing
     /// implements yet.
     pub setup: Option<FnId>,
-    /// The weapon routine number registration by number gives it (a
-    /// `weapon.toml`'s, or the number of a routine nothing implements): the
-    /// ruleset's numeric logic asks it until phase C. A weapon content
-    /// defines has none.
+    /// The weapon routine numbers that name it: a `weapon.toml`'s, the
+    /// number of a routine nothing implements, or the routines a weapon
+    /// content defines takes with its transitional `legacy = { routines }`
+    /// marker (the pack's forms and the ruleset still name weapons by
+    /// number). Registration by number finds it by any of them.
+    pub routines: Vec<u8>,
+    /// Its first routine number: what the ruleset's numeric logic asks
+    /// until phase C (none for a weapon content defines without routines).
     pub number: Option<u8>,
     /// Ticks to a full charge by Charge stat, for a weapon content defines
     /// (the pack's routines' are the charge table's, by number).
@@ -163,6 +167,27 @@ pub struct CollisionTypeDef {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Roles {
     pub actions: RoleActions,
+    pub hooks: RoleHooks,
+}
+
+/// The functions the ruleset calls by role.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct RoleHooks {
+    /// `(navi)`: the NaviCust FirstBarrier's barrier and its visual
+    /// (`sub_8013892`: `sub_801A7CC` with the navi stat, which the game's
+    /// program sets to 1, and `sub_80E0D98`).
+    pub first_barrier: Option<FnId>,
+}
+
+impl RoleHooks {
+    const NAMES: [&str; 1] = ["first_barrier"];
+
+    fn slot(&mut self, name: &str) -> Option<&mut Option<FnId>> {
+        match name {
+            "first_barrier" => Some(&mut self.first_barrier),
+            _ => None,
+        }
+    }
 }
 
 /// The actions the ruleset starts by role.
@@ -174,17 +199,22 @@ pub struct RoleActions {
     pub anti_sword_counter: Option<ActionHandle>,
     /// BodyGrd's counter.
     pub body_guard_counter: Option<ActionHandle>,
+    /// The charged shot a navi's request starts from idle without its
+    /// weapon's setup (`sub_8010312`'s request 0x20; the original's action
+    /// 0x16, MegaMan's charged shot).
+    pub forced_charged_shot: Option<ActionHandle>,
 }
 
 impl RoleActions {
     /// The roles by name, as `rules/roles.luau` names them.
-    const NAMES: [&str; 3] = ["anti_damage_counter", "anti_sword_counter", "body_guard_counter"];
+    const NAMES: [&str; 4] = ["anti_damage_counter", "anti_sword_counter", "body_guard_counter", "forced_charged_shot"];
 
     fn slot(&mut self, name: &str) -> Option<&mut Option<ActionHandle>> {
         match name {
             "anti_damage_counter" => Some(&mut self.anti_damage_counter),
             "anti_sword_counter" => Some(&mut self.anti_sword_counter),
             "body_guard_counter" => Some(&mut self.body_guard_counter),
+            "forced_charged_shot" => Some(&mut self.forced_charged_shot),
             _ => None,
         }
     }
@@ -194,6 +224,11 @@ impl Roles {
     /// An action role, or a panic naming it when content hasn't filled it.
     pub fn action(role: Option<ActionHandle>, name: &str) -> ActionHandle {
         role.unwrap_or_else(|| panic!("the role actions.{name} is not filled (define.roles in rules/roles.luau)"))
+    }
+
+    /// A hook role, or a panic naming it when content hasn't filled it.
+    pub fn hook(role: Option<FnId>, name: &str) -> FnId {
+        role.unwrap_or_else(|| panic!("the role hooks.{name} is not filled (define.roles in rules/roles.luau)"))
     }
 }
 
@@ -664,6 +699,28 @@ fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
     })
 }
 
+/// A weapon definition's `legacy = { routines = { ... } }` marker: the
+/// routine numbers it takes (none without one).
+fn weapon_routines(d: &Definition) -> Result<Vec<u8>, ContentError> {
+    let what = |e: String| ContentError::new(format!("{}.luau: weapon {}: {e}", d.module, d.key));
+    let legacy = d.spec.field("legacy");
+    match legacy {
+        Data::Nil => return Ok(Vec::new()),
+        Data::Map(_) => {}
+        other => return Err(what(format!("`legacy` is {other:?}, not a table"))),
+    }
+    match legacy.field("routines") {
+        Data::List(items) if !items.is_empty() => items
+            .iter()
+            .map(|r| match r {
+                Data::Int(i) if (0..0xFF).contains(i) => Ok(*i as u8),
+                other => Err(what(format!("`legacy.routines` holds {other:?}, not a routine number below 0xFF"))),
+            })
+            .collect(),
+        other => Err(what(format!("`legacy.routines` is {other:?}, not a list of routine numbers"))),
+    }
+}
+
 /// A chip definition's `legacy` marker: the subtype and parameter bytes
 /// (none: 0).
 fn legacy_bytes(spec: &Data) -> Result<(u8, [u8; 4]), String> {
@@ -860,19 +917,26 @@ impl Defs {
                 key: format!("v1/weapon-{:02x}", w.id),
                 name: w.name.clone(),
                 setup: Some(functions.id(setup)),
+                routines: vec![w.id],
                 number: Some(w.id),
                 charge_ticks: Vec::new(),
             };
             weapons.add(def.key.clone(), def, whose);
         }
+        // The routines the definitions take (their `legacy` markers).
+        let mut defined_routines = Vec::new();
+        for d in definitions.of(Registry::Weapon) {
+            defined_routines.extend(weapon_routines(d)?);
+        }
         // Every other routine number a navi's stats may name: a weapon
         // nothing implements yet (using it is the ruleset's error).
         for n in 0..=0xFEu8 {
-            if !content.weapons.iter().any(|w| w.id == n) {
+            if !content.weapons.iter().any(|w| w.id == n) && !defined_routines.contains(&n) {
                 let def = WeaponDef {
                     key: format!("v1/weapon-{n:02x}"),
                     name: String::new(),
                     setup: None,
+                    routines: vec![n],
                     number: Some(n),
                     charge_ticks: Vec::new(),
                 };
@@ -901,7 +965,9 @@ impl Defs {
                 }
             };
             let setup = Some(functions.id(slot(d, "setup")?));
-            let def = WeaponDef { key: d.key.clone(), name, setup, number: None, charge_ticks };
+            let routines = weapon_routines(d)?;
+            let number = routines.first().copied();
+            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks };
             weapons.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let weapons: Vec<WeaponDef> = weapons.sorted()?.into_iter().map(|(_, w)| w).collect();
@@ -1028,6 +1094,20 @@ impl Defs {
             let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
             let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
             for (group, entries) in groups {
+                if group.to_string() == "hooks" {
+                    let Data::Map(entries) = entries else { return Err(what("`hooks` is a table".into())) };
+                    for (name, v) in entries {
+                        let name = name.to_string();
+                        let slot = roles.hooks.slot(&name).ok_or_else(|| {
+                            what(format!("the ruleset has no role hooks.{name} (it has {})", RoleHooks::NAMES.join(", ")))
+                        })?;
+                        if !matches!(v, Data::Function) {
+                            return Err(what(format!("hooks.{name} is not a function")));
+                        }
+                        *slot = Some(functions.id(FnSource::slot(Registry::Roles, &d.key, &format!("hooks.{name}"))));
+                    }
+                    continue;
+                }
                 if group.to_string() != "actions" {
                     return Err(what(format!("the ruleset has no role group `{group}`")));
                 }
@@ -1136,7 +1216,7 @@ impl Defs {
         }
         for (i, w) in defs.weapons.iter().enumerate() {
             defs.weapon_keys.insert(w.key.clone(), WeaponHandle(i as u16));
-            if let Some(id) = w.number {
+            for &id in &w.routines {
                 if let Some(other) = defs.weapon_ids[id as usize] {
                     return Err(ContentError::new(format!(
                         "weapons {} and {} both are routine {id:#04x}",

@@ -383,6 +383,8 @@ fn assets() -> bn6_content_api::AssetNames {
         ("big-slash", sprite(0x0C, 0x15)),
         ("cross-slash", sprite(0x10, 0x41)),
         ("reflected-shot", sprite(0x14, 0x04)),
+        ("muzzle-flash", sprite(0x0C, 0x06)),
+        ("buster-arm", sprite(0x0C, 0x03)),
         ("eraseman", sprite(0x08, 0x04)),
         ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
@@ -418,6 +420,9 @@ fn assets() -> bn6_content_api::AssetNames {
         ("erase-man", 0x10E),
         ("erase-man-2", 0xBA),
         ("hub", 0x119),
+        ("buster-6a", 0x6A),
+        ("junk-shot", 0xFF),
+        ("gundels1", 0xF8),
         ("bonus", 0x157),
         ("twang", 0x18A),
         ("boiler-erupt", 0x184),
@@ -465,6 +470,14 @@ pub fn scripts() -> Scripts {
                 ("objects/projectile/variants", "objects/projectile/variants"),
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
+                // MegaMan's buster, charged and blank shots and HeatCross's
+                // charged shot are weapon definitions (their routine numbers
+                // their `legacy` markers). (BN6's rules/roles isn't here: the
+                // test pack fills the roles.)
+                ("navis/00-megaman/weapons/blank-shot/weapon", "navis/00-megaman/weapons/blank-shot/weapon"),
+                ("navis/00-megaman/weapons/charged-shot/weapon", "navis/00-megaman/weapons/charged-shot/weapon"),
+                ("navis/00-megaman/weapons/buster/weapon", "navis/00-megaman/weapons/buster/weapon"),
+                ("navis/00-megaman/forms/heatcross/charge", "navis/00-megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
                 ("objects/aqua-surge/aqua_surge", "objects/aqua-surge/aqua_surge"),
@@ -632,10 +645,10 @@ pub fn scripts() -> Scripts {
         .clone()
 }
 
-/// MegaMan's weapon routines scripts implement: the BN6 overlay's buster
-/// (and a routine that aliases it), charged shot, blank shot, GroundCross's
-/// A-charge, the Beast claw, DustCross's charged shot, its obstacle
-/// absorbing and the absorbed obstacle throw.
+/// MegaMan's weapon routines v1 modules implement, registered by number:
+/// the Beast claw, DustCross's charged shot, its obstacle absorbing and the
+/// absorbed obstacle throw, the Beast and Cross charges. (The buster, the
+/// charged and blank shots and HeatCross's charge are definitions.)
 fn weapons() -> Vec<WeaponData> {
     let weapon = |id: u8, name: &str, action: Option<u8>, script: &str| WeaponData {
         id,
@@ -645,9 +658,6 @@ fn weapons() -> Vec<WeaponData> {
         script: format!("navis/00-megaman/weapons/{script}"),
     };
     let mut weapons = vec![
-        weapon(0x00, "Buster", Some(0x11), "00-buster/buster"),
-        weapon(0x01, "Charged shot", Some(0x16), "01-charged-shot/charged_shot"),
-        weapon(0x02, "Blank shot", Some(0x33), "02-blank-shot/blank_shot"),
         weapon(0x1B, "Tomahawk throw", Some(0x4E), "1b-tomahawk-throw/tomahawk_throw"),
         weapon(0x1E, "Beast claw", Some(0x52), "1e-beast-claw/beast_claw"),
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
@@ -659,7 +669,6 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x1C, "ChargeCross Beast wave", Some(0x4F), "1c-charge-beast-wave/charge_beast_wave"),
         weapon(0x1D, "DustCross Beast scatter", Some(0x50), "1d-dust-beast-scatter/dust_beast_scatter"),
         weapon(0x27, "ChargeCross tackle", Some(0x56), "27-charge-cross-tackle/charge_cross_tackle"),
-        weapon(0x2E, "Buster", None, "00-buster/buster"),
         weapon(0x03, "Falzar Beast buster", Some(0x1E), "03-falzar-beast-buster/falzar_beast_buster"),
         weapon(0x04, "Gregar Beast buster", Some(0x1D), "04-gregar-beast-buster/gregar_beast_buster"),
         weapon(0x2C, "Beast throw absorbed", None, "2c-beast-throw-absorbed/beast_throw_absorbed"),
@@ -667,7 +676,6 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x08, "SpoutCross Beast charge", Some(0x3A), "08-spout-beast-charge/spout_beast_charge"),
         weapon(0x09, "ElecCross Beast charge", Some(0x3C), "09-elec-beast-charge/elec_beast_charge"),
         weapon(0x0A, "TenguCross Beast charge", Some(0x3D), "0a-tengu-beast-charge/tengu_beast_charge"),
-        weapon(0x06, "Heat charge", None, "06-heat-charge/heat_charge"),
         weapon(0x0B, "Elec charge", None, "0b-elec-charge/elec_charge"),
         weapon(0x0C, "Spout charge", None, "0c-spout-charge/spout_charge"),
         weapon(0x0F, "Tengu charge", None, "0f-tengu-charge/tengu_charge"),
