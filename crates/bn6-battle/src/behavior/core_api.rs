@@ -452,6 +452,11 @@ impl CoreApi for Battle {
         }
     }
 
+    fn hand_chip_damages(&self, side: u8, i: u8) -> bool {
+        let chip = self.hands[side as usize & 1].ids.get(i as usize).copied().flatten();
+        chip.is_some_and(|h| self.content.chip(h).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0)
+    }
+
     fn linked(&self, side: u8) -> LinkedChip {
         let r = self.linked[side as usize & 1];
         let chip = self.api_chip_field(r.chip, 0);

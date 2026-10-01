@@ -993,6 +993,9 @@ pub trait CoreApi {
     /// Add to the Atk+ bonus of the chip at `i` of a side's hand
     /// (wrapping).
     fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
+    /// A side's hand has a chip at `i` and it does damage (its record's
+    /// flag 0x02, "has_damage").
+    fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
     /// A side's defensive-chip record.
     fn linked(&self, side: u8) -> LinkedChip;
     fn set_linked(&mut self, side: u8, rec: LinkedChip);
