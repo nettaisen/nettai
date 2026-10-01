@@ -134,7 +134,7 @@ instrument = { pool = "attack", index = 0x78 }
 "chargeman/volcano-rock" = { pool = "attack", index = 0x86 }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
-thunder-column = { pool = "attack", index = 0x8B }
+"dolthdr/thunder-column" = { pool = "attack", index = 0x8B }
 "elcpuls/pulse" = { pool = "attack", index = 0x8C }
 "elmntman/meteor" = { pool = "attack", index = 0x8D }
 "elmntman/ice" = { pool = "attack", index = 0x8E }

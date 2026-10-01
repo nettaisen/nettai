@@ -1191,7 +1191,7 @@ pub fn scripts() -> Scripts {
                 ("chips/grndman/rock", "chips/grndman/rock"),
                 ("objects/panel-strike/panel_strike", "objects/panel-strike/panel_strike"),
                 ("chips/drilarm/drill", "chips/drilarm/drill"),
-                ("objects/thunder-column/thunder_column", "objects/thunder-column/thunder_column"),
+                ("chips/dolthdr/column", "chips/dolthdr/column"),
                 // The dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36
                 // (content model v2): the barriers, the panel chips, the
                 // instruments, AirRaid, BugFix, ColorPt, Sensor and SumnBlk.

@@ -1257,7 +1257,7 @@ fn erase_cross_charged_shot_beams_the_row_while_the_navi_holds() {
     // After its opening animation, a hit zone on each panel from its own
     // to the field's edge; the one on the enemy hits once and ends.
     run_to(&mut b, p, &mut t, 10, 0);
-    let mut zones: Vec<_> = kind_objects(&b, "thunder-column").iter().map(|&z| b.objects.get(z).panel.x).collect();
+    let mut zones: Vec<_> = kind_objects(&b, "dolthdr/thunder-column").iter().map(|&z| b.objects.get(z).panel.x).collect();
     zones.sort();
     assert_eq!(zones, [3, 4, 6]);
     assert_eq!(b.objects.get(p1).hp, 940);
@@ -1267,7 +1267,7 @@ fn erase_cross_charged_shot_beams_the_row_while_the_navi_holds() {
     run_to(&mut b, p, &mut t, 72, 0);
     assert_eq!(act(&b, p0), IDLE);
     run_to(&mut b, p, &mut t, 80, 0);
-    assert!(kind_objects(&b, "thunder-column").is_empty());
+    assert!(kind_objects(&b, "dolthdr/thunder-column").is_empty());
     assert!(kind_objects(&b, "erasecross/ray").is_empty());
 }
 

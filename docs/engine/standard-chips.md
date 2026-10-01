@@ -41,7 +41,7 @@ framework's gap are listed with it. Branches no scenario reaches are marked **[u
 | 0x34 | `sub_80ED810` | 0x152 H-Burst | attack #0x9E hyper burst | chips/h-burst (action, burst) |
 | 0x36 | `sub_80ED9AE` | 0x28..0x2A RlngLog | attack #0x66 rolling log | chips/rlnglog (action, log) |
 | 0x38 | `sub_80EDCC0` | 0x7E..0x80 AirSpin | attack #0x9B whirlwind, attack #0xD4 seeking whirlwind | chips/airspin (action, top, whirl) |
-| 0x3E | `sub_80EE0BC` | 0x1F..0x21 DolThdr | attack #0x82 thunder doll, attack #0x8B thunder column | chips/dolthdr (action, doll), objects/thunder-column |
+| 0x3E | `sub_80EE0BC` | 0x1F..0x21 DolThdr | attack #0x82 thunder doll, attack #0x8B thunder column | chips/dolthdr (action, doll, column) |
 | 0x3F | `sub_80EE192` | 0x50 WindRack | attack #0x49 gust | chips/windrack (action), objects/gust |
 | 0x40 | `sub_80EE2A0` | 0x54 MoonBld | attack #0x85 moon blade | chips/moonbld (action, blade) |
 | 0x42 | `sub_80EE55E` | 0x22..0x24 ElcPuls, 0x14E DestPuls | attack #0x8C electric pulse | chips/elcpuls (action, pulse) |
