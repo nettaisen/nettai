@@ -77,7 +77,7 @@ impl<'a> Resolver<'a> {
                 numbers.insert((d.registry, d.key.clone()), n);
             }
         };
-        for d in definitions.of(Registry::Chip).iter().chain(definitions.of(Registry::Navi)).chain(definitions.of(Registry::Form)) {
+        for d in definitions.of(Registry::Navi).iter().chain(definitions.of(Registry::Form)) {
             put(d, d.spec.field("legacy").field("number").int());
         }
         for d in definitions.of(Registry::Weapon) {
@@ -125,6 +125,9 @@ impl<'a> Resolver<'a> {
                 }
                 Json::Object(out)
             }
+            // A chip by its key: the registry resolves it to a handle
+            // (no chip has a number the tables hold).
+            Data::Ref(Registry::Chip, key) => Json::String(key.clone()),
             Data::Ref(registry, key) => match self.number(*registry, key) {
                 Some(n) => Json::from(n),
                 None => return Err(format!("{at}: {registry} {key:?} has no number the tables can hold")),
@@ -258,6 +261,24 @@ struct LockonSection {
 struct SpChipsSection {
     /// BCD hours:minutes:seconds.hundredths.
     deletion_times: Vec<u32>,
+    /// The SP navis whose deletion times a setup carries, in its order.
+    #[serde(default)]
+    slots: Vec<String>,
+}
+
+/// One of the Cross special's chips: a chip, or `{ chip, damage_of }`.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum SpecialChipEntry {
+    Chip(String),
+    With(SpecialChip),
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CrossSpecialSection {
+    /// A row of chips by the hundreds of the navi's base max HP.
+    rows: Vec<Vec<SpecialChipEntry>>,
 }
 
 #[derive(Deserialize)]
@@ -429,7 +450,25 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
                 rules.lockon.clear_path = s.clear_path;
                 rules.lockon.charged_sword_modes = s.charged_sword_modes;
             }
-            "sp-chips" => rules.sp_deletion_times = r.read::<SpChipsSection>(spec, &at).map_err(e)?.deletion_times,
+            "sp-chips" => {
+                let s: SpChipsSection = r.read(spec, &at).map_err(e)?;
+                (rules.sp_deletion_times, rules.sp_slots) = (s.deletion_times, s.slots);
+            }
+            "cross-special" => {
+                let s: CrossSpecialSection = r.read(spec, &at).map_err(e)?;
+                rules.cross_special = s
+                    .rows
+                    .into_iter()
+                    .map(|row| {
+                        row.into_iter()
+                            .map(|c| match c {
+                                SpecialChipEntry::Chip(chip) => SpecialChip { chip, damage_of: None },
+                                SpecialChipEntry::With(c) => c,
+                            })
+                            .collect()
+                    })
+                    .collect();
+            }
             "identities" => {
                 let records: Vec<ActorRecordRow> = numbered(r, spec.field("actor_records"), &format!("{at}.actor_records"), None).map_err(e)?;
                 rules.actor_records = records
