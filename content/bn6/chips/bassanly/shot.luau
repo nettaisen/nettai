@@ -328,14 +328,14 @@ shot.kind = define.kind {
     id = "bassanly/shot",
     pool = "attack",
     state = {
-            hit_panel = "u32",
-            trails = "bool",
-            trail_ticks = "u32",
-            level = "u8",
-            slant = "i8",
-            homing = { "none", "diagonal", "seeking" },
-            turn = "u8",
-        },
+        hit_panel = "u32",
+        trails = "bool",
+        trail_ticks = "u32",
+        level = "u8",
+        slant = "i8",
+        homing = { "none", "diagonal", "seeking" },
+        turn = "u8",
+    },
     -- `sub_80DD34C`.
     update = function(me: Object)
         local l = me.lifecycle
