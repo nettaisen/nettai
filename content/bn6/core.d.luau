@@ -995,8 +995,9 @@ declare field: {
 }
 
 -- What the telop of a dimming content starts itself names (`dimming.start`):
--- a chip, and the Atk+ / cross bonus shown after its damage (0 if nil).
-export type DimmingTelop = { chip: Chip, bonus: number? }
+-- a chip (nil: a zeroed chip field's, the roles' `zeroed` chip), and the
+-- Atk+ / cross bonus shown after its damage (0 if nil).
+export type DimmingTelop = { chip: Chip?, bonus: number? }
 
 -- The dimming service: the steps of a dimming chip's controller, which its
 -- update calls in its routine's order.

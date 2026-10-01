@@ -1466,12 +1466,14 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         |_, (side, no_cut_in, controller, user, telop): (LuaValue, bool, LuaValue, mlua::UserDataRef<Object>, Option<mlua::Table>)| {
             let side = u8_arg(side, "side")? & 1;
             let controller = object_arg(&controller, "controller")?;
-            // What the telop names: `{ chip = <chip>, bonus = n? }`.
+            // What the telop names: `{ chip = <chip>?, bonus = n? }`.
             let telop = match telop {
                 None => None,
                 Some(t) => {
-                    let chip: LuaValue = t.get("chip")?;
-                    let chip = ChipHandle(bound(|b| def_arg(b, &chip, Registry::Chip, "dimming.start's telop chip"))?);
+                    let chip = match t.get::<LuaValue>("chip")? {
+                        LuaValue::Nil => None,
+                        c => Some(ChipHandle(bound(|b| def_arg(b, &c, Registry::Chip, "dimming.start's telop chip"))?)),
+                    };
                     let bonus = match t.get::<LuaValue>("bonus")? {
                         LuaValue::Nil => 0,
                         v => u16_arg(v, "dimming.start's telop bonus")?,

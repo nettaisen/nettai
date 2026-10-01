@@ -1418,8 +1418,9 @@ pub trait CoreApi {
     /// `sub_800BF16`: `side` starts a dimming with `controller` (None: its
     /// spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     /// in on it. For controllers that aren't a chip's (a trap springing).
-    /// `telop`: the chip its telop names and the bonus shown with it (what
-    /// the controller's spawn stored at its +0x30 and +0x32; presentation
+    /// `telop`: the chip its telop names (None: a zeroed chip field's, the
+    /// roles' `zeroed` chip) and the bonus shown with it (what the
+    /// controller's spawn stored at its +0x30 and +0x32; presentation
     /// only).
     fn start_dimming(
         &mut self,
@@ -1427,7 +1428,7 @@ pub trait CoreApi {
         no_cut_in: bool,
         controller: Option<ObjectRef>,
         user: ObjectRef,
-        telop: Option<(ChipHandle, u16)>,
+        telop: Option<(Option<ChipHandle>, u16)>,
     );
     /// `sub_80E1352`: a navi chip's user vanishes while its navi acts.
     fn hide_user(&mut self, user: ObjectRef);
