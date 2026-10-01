@@ -1149,8 +1149,8 @@ buster alias folders) went. What it settled:
 - **The muzzle flash and the arm a throw leaves are looks** in lib/buster (`buster.flash`, `buster.arm`), on the
   newly named `muzzle-flash` and `buster-arm` sprites; the shot's sounds are assets.
 - **HeatCross is partial.** Its form stays the pack's record until step 5's form reader; its charged shot is a
-  weapon definition (routine 0x06) whose setup still returns FireBrn's action by number, 0x27 (FireBrn is v1),
-  which the ratchet counts (a weapon definition's `return ACTION`) until FireBrn converts.
+  weapon definition (routine 0x06) whose setup returns its own burn (lib/burner, FireBrn's action, with
+  HeatCross's burner and flame: `heatcross/charge/action`, step 8g).
 - **What the attack keeps stays numeric for now**: the shot's kind in the attack's first parameter (the
   projectile family's, §5.3), the throw as the shot's variant 2, the arm `raise_arm` raises by attachment row.
 - **SlashCross's charged slash** (weapons 0x11 and 0x12, action 0x41) is left to family 8e. It reads the
@@ -1160,6 +1160,60 @@ buster alias folders) went. What it settled:
   wave's variants as records (it spawns the wave with the chip's subtype as its first parameter).
 - **Verified** on the test content (the shots' timelines, the throw, the aliases, the role, the definitions'
   routines and charge times), the type check, and the traces and the chip lab on a real pack.
+
+### 5.8 Standard chip actions (step 8g, part 1)
+
+**As built** (YoYo, Thunder, the recovery chips, CrakShot, CopyDmg, AirHocky, FireBrn, TrnArrw, Reflectr,
+IronShl, BblStar, DrilArm, Tornado and WaveArm, from v1 to v2): each action is a builder in its family's folder,
+taking what the original's subtype and parameters chose, and each object a kind beside it with those choices in
+its typed state or a variant record:
+
+| Family | Builder | Kinds (records) | Chips |
+|---|---|---|---|
+| YoYo | chips/yoyo/throw (`{ id, yoyo = { great?, panels, rounds } }`) | `yoyo/yoyo`, `yoyo/great-yoyo` (both in chips/yoyo/yoyo, which each name) | YoYo and GreatYo: records (chips/yoyo/chip, chips/greatyo/chip) |
+| Thunder | chips/thunder/shoot (`{ ball = { fast?, panels, status?, bug? } }`) | `thunder/ball` | Thunder: a definition; DarkThnd: a record (chips/darkthnd) |
+| Recovery | chips/recov/heal (`{ hp }`) | | Recov10 to Recov300: definitions (chips/recov/chips); DrkRecov: a record |
+| CrakShot | chips/crakshot/chips' `dig(region)` | `crakshot/shot` | CrakShot, DublShot, TrplShot: definitions |
+| CopyDmg | | `copydmg/mark` | a definition |
+| AirHocky | chips/airhocky/flick (`{ puck, down }`) | `airhocky/puck` (`hockey-puck-variant`: `byte_80C9818`'s rows) | AirHocky, PitHocky: records |
+| FireBrn | lib/burner/burn (`{ burner, flame = { ticks, spread, wide?, cracks?, anim?, on_panel? } }`) | `flame` (lib/burner/flame) | FireBrn1-3, WideBrn1-3: records; HeatCross's charge returns its own burn |
+| TrnArrw | chips/trnarrw/chips | `flying-shot` (objects/flying-shot: `flying-shot-variant`, `byte_80C6038`'s rows, also the buster's throw and the Falzar Beast buster's) | TrnArrw1-3: definitions |
+| Reflectr | chips/rflectr/guard (`{ ticks, look, counter?, heedless? }`) | `rflectr/shield` (`reflector-shield-look`: `byte_80C9664`'s rows), `rflectr/shot` | Rflectr1-3: definitions; the NaviCust Shield and Reflect (weapons 0x3B, 0x3C, 0x8B, 0x8C) return their own guards, `megaman/shield/action` and `megaman/reflect/action` |
+| IronShl | chips/ironshl/throw (`{ shell = { palette, speed, bumps, para? } }`) | `ironshl/shell` | IronShl1-3, ParaShl: records |
+| BblStar | chips/bblstar/chips' `blow { speed, palette }` | `bblstar/star` | BblStar1-3: definitions |
+| DrilArm | | `drill` (objects/drill, with GroundCross's drill and the drill arm look) | a definition |
+| Tornado | chips/tornado/chips' `blow { fan, single? / spread? }` | `tornado/tornado` (`tornado-variant`: `byte_80CA064`'s rows) | Tornado, Static: definitions; the action's subtype 3 (no chip) is `tornado/back-spread` |
+| WaveArm | chips/wavearm/strike (`{ wave, three_rows? }`) | `wavearm/wave` (`shock-wave-variant`: `byte_80C6B00`'s rows, the viruses' too) | WaveArm1-3, PwrWave1-3: records |
+
+What it settled:
+
+- **Which chips are records.** A Program Advance's ingredient or result (YoYo, GreatYo, AirHocky, PitHocky,
+  FireBrn1-3, WideBrn1-3, IronShl1-3, ParaShl, WaveArm1-3, PwrWave1-3) and a dark chip (DarkThnd, DrkRecov) keep
+  the pack's record, their modules giving the action with the compat key as `id`. A chip the ruleset reaches by
+  number but only as the record's own use (the Cross special's TrnArrw2, TrnArrw3, Tornado; the dark
+  substitutes Thunder and Recov10) is a definition, and its record still runs through the shim.
+- **The shims** (§12): chips/013-yoyo (0x18), chips/01e-thunder (0x1F), chips/09a-recov10 (0x20),
+  chips/032-airhocky (0x26), chips/014-firebrn1 (0x27), chips/018-trnarrw1 (0x28), chips/07b-ironshl1 (0x2C),
+  chips/034-tornado (0x2F), chips/05c-wavearm1 (0x31) run a record's action by its subtype, or by the parameter
+  that tells the records apart where the subtype doesn't (DarkThnd's 12 panels, PitHocky's puck, WideBrn's wide
+  bit, IronShl's speed, ParaShl's third). Records within a series that differ only in damage (FireBrn1-3,
+  WideBrn1-3, PwrWave1-3, TrnArrw1-3, WaveArm1-3, whose waves are identical rows) run the first one's action.
+  CrakShot's, CopyDmg's, BblStar's, DrilArm's and Reflectr's numbered registrations went: nothing names their
+  records by number any more.
+- **Shared definitions added**: collision types `breaking` (row 0x06), `second-drill` (0x4A), `tornado` (0x12)
+  and `piercing-break-thrown` (0x17), named by what they do where the flags say, else by their first user (to
+  review); sparks `null`, `fire`, `aqua`, `elec`, `impact` (hit effects 0 to 3 and 5) and `breaking` (0x0A);
+  `trajectory.sine` (the sine table, which stays the pack data's until rules/math.luau); lib/panels'
+  `random_in_region` takes a region definition.
+- **Asset names**: the sprites `yoyo-arm`, `burner`, `burner-2`, `bow`, `drill-arm`, `fan`, `shock-wave` and
+  `beast-shot` (compat/assets.toml and curation.toml).
+- **What stays numeric**: the NameID attach points (TrnArrw's arrows, the flame at its owner's hand), the
+  absorbed obstacle's sprite (objects/absorbed-obstacle's `sprite`, by its kind number), statuses and bug codes,
+  the NaviCust Reflect's shot (lib/projectile's kind 6, until the projectile's variants are records), Beast forms
+  by number (the Reflector's head animation).
+- **Verified** on the test content (CrakShot's duel and its rollback, Recov50's heal, Rflectr1's guard and
+  wave), the type check, and the traces and the chip lab on a pack extracted with asset names: every scenario of
+  these families matches as before.
 
 ## 6. Compat: the original's numbers
 
@@ -1838,18 +1892,20 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
 - **The weapon legacy marker.** A weapon definition may carry `legacy = { routines = { ... } }`, the routine
   numbers the pack's forms, the navis' rows and the ruleset name it by (MegaMan's buster, charged shot and blank
   shot, HeatCross's charge). Counted by the ratchet; it goes when the forms are definitions (step 5's form
-  reader) and the ruleset names weapons by handle (phase C). HeatCross's charge also returns FireBrn's action by
-  number (counted) until FireBrn converts.
+  reader) and the ruleset names weapons by handle (phase C).
 - **Registration-by-number shims.** chips/036-minibomb (action 0x12), chips/047-sword (0x13) and
   chips/056-mchnswrd (0x49) run a record's action by its subtype for records something still names by number:
   the Cross special's chips (berserk.rs `CROSS_SPECIAL_CHIPS`: MiniBomb, EnergBom, MegEnBom and swords), the
   Program Advance recipes' ingredients (PoisSeed, the swords), records not ported (LilBoiler, VDoll), the test
   content's numbered chips. The 0x12 and 0x13 shims go when the Cross special's list and the recipes go by
   handle (phase C, step 10); the 0x49 one when the stun strike (idle.rs `set_attack(0x49)`) is
-  `roles.actions.stun_strike`.
+  `roles.actions.stun_strike`. The standard chips' shims (§5.8: chips/013-yoyo, 01e-thunder, 09a-recov10,
+  032-airhocky, 014-firebrn1, 018-trnarrw1, 07b-ironshl1, 034-tornado, 05c-wavearm1) run the records the Program
+  Advance recipes, the dark chips and their substitutes, and the Cross special name by number; they go with
+  those lists (phase C, step 10) and the records (step 5).
 - **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
-  above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
-  (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
+  above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd, GreatYo, PitHocky,
+  WideBrn, ParaShl, PwrWave), `dark_substitute` (DrkSword, DarkThnd, DrkRecov) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
   anyway), and those chips become definitions.
 
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)

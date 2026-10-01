@@ -1,89 +1,28 @@
 --!strict
--- FireBrn1/2/3 and WideBrn1/2/3: action 0x27 (`sub_80ECD28`). The navi
--- holds out the burner (attachment 0x16, or 0x1E for a variant other than
--- 0) and lights a flame (attack object #0x04, objects/flame) on the panel
--- ahead with the chip's parameters: it burns Param1 ticks and spreads
--- forward Param2 panels (three rows for WideBrn), cracking the panels it
--- leaves. The navi keeps the pose for Param1 ticks, the burner roaring
--- every 16, then recovers for 6.
+-- Registration by number (docs/design/content-model-v2.md §12,
+-- "Transitional"): a record that names the original's action 0x27 runs
+-- this module, which runs the chip's own burn (chips/firebrn,
+-- chips/widebrn). The records that reach it are FireBrn1 to 3 (WideBrn's
+-- recipes and the Cross special name them by number) and WideBrn1 to 3
+-- (Program Advances). Within each series the records differ only in their
+-- damage, which the attack holds, so the first one's burn runs for each;
+-- WideBrn's flame is the wide one (the bit 0x80 of the record's second
+-- parameter). It goes when the records are definitions (step 5, phase C).
 
-local attachment = require("../../objects/attachment/attachment")
-local flame = require("../../objects/flame/flame")
+local burn = require("../../lib/burner/burn")
+local firebrn = require("../firebrn/chips")
+local widebrn = require("../widebrn/chips")
 
-export type State = {
-    -- Ticks of the pose so far, then the recovery's (AIAttackVars+0x10).
-    timer: number,
-    -- The burner's roar, every 16 ticks (AIAttackVars+0x12). The game
-    -- doesn't set it first: it continues from what the last action left
-    -- there, so the first roar's tick depends on that action.
-    roar: number,
+local by_number = {
+    state = burn.STATE,
 }
 
-local chip = {
-    state = { timer = "u16", roar = "u16" },
-}
+-- A wide flame's bit in the second parameter.
+local WIDE = 0x80
 
--- The phases, on the attack's step.
-local BURN, RECOVER = 0x0, 0x4
-
--- The burner (data.objects.attachments), for variant 0 and the others.
-local BURNER, OTHER_BURNER = 0x16, 0x1E
-local SOUND_ROAR = 0x12B
-
--- `sub_80ECD44`: light the flame, then hold the pose for Param1 ticks.
-local function burn(me: Object, s: State)
-    if me.step_init == 0 then
-        -- The Atk+ bonus goes into the attack's damage word.
-        local word = me.attack_damage + me.hit_param * 0x10000 + me.extra
-        me.attack_damage = bit32.band(word, 0xFFFF)
-        me.hit_param = bit32.rshift(word, 16)
-        local params = { me:attack_param(1), me:attack_param(2), me:attack_param(3), me:attack_param(4) }
-        flame.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, params, word)
-        me.anim = 0x0A
-        me:open_counter_window()
-        attachment.spawn(me, { kind = if me.variant == 0 then BURNER else OTHER_BURNER, anim = 1 }, "overlay")
-        me:set_status("using_action", true)
-        s.timer = 0
-        me.step_init = 4
-    end
-    local roar = bit32.band(s.roar + 1, 0xF)
-    s.roar = roar
-    if roar == 1 then
-        battle.play_sound(SOUND_ROAR)
-    end
-    local t = s.timer + 1
-    s.timer = t
-    if t >= me:attack_param(1) then
-        me.step = RECOVER
-        me.step_init = 0
-    end
+function by_number.update(me: Object, s: any)
+    local a = if bit32.btest(me:attack_param(2), WIDE) then widebrn[1].action else firebrn[1].action
+    a.update(me, s)
 end
 
--- `sub_80ECDD6`: 6 ticks, then the burner goes and back to idle.
-local function recover(me: Object, s: State)
-    if me.step_init == 0 then
-        s.timer = 5
-        me.step_init = 4
-    end
-    local t = s.timer - 1
-    s.timer = t
-    if t < 0 then
-        me.related1 = nil
-        me.overlay = nil
-        me:exit_attack()
-    end
-end
-
--- `sub_80ECD28`.
-function chip.update(me: Object, s: State)
-    local step = me.step
-    if step == BURN then
-        burn(me, s)
-    elseif step == RECOVER then
-        recover(me, s)
-    else
-        error(string.format("FireBrn phase %#x reads past its phase table", step))
-    end
-end
-
-return chip
+return by_number

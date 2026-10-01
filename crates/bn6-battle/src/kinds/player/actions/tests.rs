@@ -261,52 +261,50 @@ fn hand_with(b: &mut Battle, side: usize, chip: crate::content::ChipId) {
 #[test]
 fn a_recovery_chip_heals_its_hp_in_one_tick() {
     let (mut b, p0, p1) = fight();
+    let recov = testing::defined_chip(testing::RECOV_50);
     b.objects.get_mut(p0).hp = 500;
-    hand_with(&mut b, 0, testing::MEND);
-    tick(&mut b, p0, p1, keys::A);
-    assert_eq!(b.objects.get(p0).action, 0x20);
-    // The next tick: 40 HP, the sparkle right after the navi, a recovery
+    use_chip_handle(&mut b, p0, p1, recov);
+    assert_eq!(runs(&b, p0), "recov50/action");
+    // The next tick: 50 HP, the sparkle right after the navi, a recovery
     // counted, and back to idle.
     tick(&mut b, p0, p1, 0);
     let o = b.objects.get(p0);
-    assert_eq!((o.hp, o.action), (540, 8));
+    assert_eq!((o.hp, o.action), (550, 8));
     assert_eq!(following(&b, p0)[0], "engine/effect");
     assert_eq!(b.side_stats[0][5], 1);
     // Never past the maximum.
     b.objects.get_mut(p0).hp = 990;
-    hand_with(&mut b, 0, testing::MEND);
-    tick(&mut b, p0, p1, keys::A);
+    use_chip_handle(&mut b, p0, p1, recov);
     tick(&mut b, p0, p1, 0);
     assert_eq!(b.objects.get(p0).hp, 1000);
 }
 
 #[test]
-fn a_reflector_guards_for_its_first_parameter_then_its_shield_fades() {
+fn a_reflector_guards_for_its_ticks_then_its_shield_fades() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    hand_with(&mut b, 0, testing::MIRROR);
     let mut t = 0;
-    tick(&mut b, p0, p1, keys::A);
-    assert_eq!(b.objects.get(p0).action, 0x2B);
+    use_chip_handle(&mut b, p0, p1, testing::defined_chip(testing::REFLECTOR_1));
+    assert_eq!(runs(&b, p0), "rflectr1/action");
     // Tick 1: the shield, right after the navi at its attach point 6, and
     // the guard up.
     run_to(&mut b, p, &mut t, 1, 0);
-    let shield = find_kind(&b, "reflector-shield").expect("the shield");
+    let shield = find_kind(&b, "rflectr/shield").expect("the shield");
     assert_eq!(b.objects.in_order().skip_while(|&o| o != p0).nth(1), Some(shield));
     assert_ne!(f1_of(&b, p0) & f1::GUARD, 0);
     let (at, s) = (b.objects.get(p0).pos, b.objects.get(shield).pos);
     assert_eq!((s.x - at.x, s.y - at.y, s.z - at.z), (4 << 16, 0, 24 << 16));
-    // It guards for 30 ticks after that one.
-    run_to(&mut b, p, &mut t, 31, 0);
-    assert_eq!(b.objects.get(p0).action, 0x2B);
-    run_to(&mut b, p, &mut t, 32, 0);
+    // It guards for 60 ticks after that one.
+    run_to(&mut b, p, &mut t, 61, 0);
+    assert_eq!(runs(&b, p0), "rflectr1/action");
+    run_to(&mut b, p, &mut t, 62, 0);
     assert_eq!(b.objects.get(p0).action, 8);
     assert_eq!(f1_of(&b, p0) & f1::GUARD, 0);
     // The shield fades for 14 ticks and goes.
-    run_to(&mut b, p, &mut t, 47, 0);
-    assert_eq!(find_kind(&b, "reflector-shield"), Some(shield));
-    run_to(&mut b, p, &mut t, 48, 0);
-    assert_eq!(find_kind(&b, "reflector-shield"), None);
+    run_to(&mut b, p, &mut t, 77, 0);
+    assert_eq!(find_kind(&b, "rflectr/shield"), Some(shield));
+    run_to(&mut b, p, &mut t, 78, 0);
+    assert_eq!(find_kind(&b, "rflectr/shield"), None);
 }
 
 #[test]
@@ -318,7 +316,11 @@ fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
     tick(&mut b, p0, p1, keys::RIGHT);
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
-    hand_with(&mut b, 0, testing::MIRROR);
+    let reflector = testing::defined_chip(testing::REFLECTOR_1);
+    let mut hand = ChipHand::empty(&b.content);
+    hand.ids[0] = Some(reflector);
+    hand.damage[0] = b.content.chip(reflector).damage;
+    b.hands[0] = hand;
     hand_with(&mut b, 1, testing::SUN_GUN_3);
     // Both use their chips.
     let both = |b: &mut Battle, held: [u16; 2]| {
@@ -327,17 +329,17 @@ fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
         b.run_objects();
     };
     both(&mut b, [keys::A, keys::A]);
-    assert_eq!((b.objects.get(p0).action, b.objects.get(p1).action), (0x2B, 0x37));
+    assert_eq!((runs(&b, p0).as_str(), b.objects.get(p1).action), ("rflectr1/action", 0x37));
     // The guard blocks the beam's hits (no drain), and the first one sends
-    // a wave back that runs along the row into side 1: 50 damage, once.
+    // a wave back that runs along the row into side 1: 60 damage, once.
     let mut waves = 0;
     for _ in 0..30 {
         both(&mut b, [0, 0]);
-        waves += find_kind(&b, "reflected-shot").is_some() as u32;
+        waves += find_kind(&b, "rflectr/shot").is_some() as u32;
     }
     assert!(waves > 0, "no wave");
     assert_eq!(b.objects.get(p0).hp, 1000);
-    assert_eq!(b.objects.get(p1).hp, 950);
+    assert_eq!(b.objects.get(p1).hp, 940);
 }
 
 /// Side 0 uses `chip` (the first in its hand) from idle: the tick the

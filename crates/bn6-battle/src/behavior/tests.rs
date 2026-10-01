@@ -53,7 +53,7 @@ fn battles_run_the_content_scripts() {
             "charge-man",
             "charge-wave",
             "countdown-bomb",
-            "crack-shot",
+            "crakshot/shot",
             "dash-hit",
             "dragon-body",
             "dragon-head",
@@ -76,6 +76,7 @@ fn battles_run_the_content_scripts() {
             "eraseman/navi",
             "falling-rock",
             "fire-hit",
+            "flame",
             "flame-hook",
             "flame-hook-fire",
             "flshbom/bomb",
@@ -102,8 +103,8 @@ fn battles_run_the_content_scripts() {
             "panel-bursts",
             "panel-strike",
             "projectile",
-            "reflected-shot",
-            "reflector-shield",
+            "rflectr/shield",
+            "rflectr/shot",
             "rising-bubble",
             "rock",
             "rock-chip",
@@ -372,14 +373,17 @@ fn scripted_chips_roll_back() {
     }
 }
 
-/// The standard chips the test content has scripts for (actions that
-/// don't fire the buster's projectile), in the folders of a duel.
-const STANDARD_CHIPS: &[crate::content::ChipId] = &[testing::CRACK];
+/// The standard chips content defines that the test content has (actions
+/// that don't fire the buster's projectile), for the folders of a duel.
+fn standard_chips() -> Vec<bn6_content_api::ChipHandle> {
+    vec![testing::defined_chip(testing::CRAK_SHOT)]
+}
 
 /// A duel with the standard chips: the ticks each kind was on the field,
 /// by key, and whether a panel was ever broken.
 fn standard_duel() -> (std::collections::BTreeMap<String, usize>, bool) {
-    let setup = || scenario::setup_with(STANDARD_CHIPS);
+    let chips = standard_chips();
+    let setup = || scenario::setup_with_handles(&chips);
     let tape = scenario::record_on(setup(), 2400, 11);
     let mut b = Battle::new(setup(), scenario::content());
     let mut seen = std::collections::BTreeMap::new();
@@ -400,13 +404,14 @@ fn the_standard_chips_play() {
     let (seen, broken) = standard_duel();
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // CrakShot digs up the panel ahead and flings it.
-    assert!(ticks("crack-shot") > 0, "crack shots: {seen:?}");
+    assert!(ticks("crakshot/shot") > 0, "crack shots: {seen:?}");
     assert!(broken, "a dug-up panel is broken");
 }
 
 #[test]
 fn the_standard_chips_roll_back() {
-    let setup = || scenario::setup_with(STANDARD_CHIPS);
+    let chips = standard_chips();
+    let setup = || scenario::setup_with_handles(&chips);
     let tape = scenario::record_on(setup(), 2400, 11);
     let mut b = Battle::new(setup(), scenario::content());
     let whole = digests(&tape, Battle::new(setup(), scenario::content()));

@@ -1,18 +1,32 @@
 --!strict
--- A hockey puck (attack object #0x2E, `sub_80C9824`): AirHocky's and
--- PitHocky's. It slides diagonally from panel center to panel center,
--- one step per kind's ticks, bouncing off the field's top and bottom rows
--- and side columns (sound 0xB6). Once it has been over the other side's
--- panels it bounces off its own side's too. Its collision moves to the
--- next panel halfway through each step; a hit takes its region away until
--- it reaches another panel. It lasts its kind's number of steps and bursts
--- (effect 0x14) off solid ground or when the battle ends. PitHocky's
--- (kind 3) leaves an afterimage trail.
---
--- Parameters: 1 the kind (`byte_80C9818`), 2 down (1) or up (0); 3 and 4
--- are its own (steps taken, and whether it has been across).
+-- A hockey puck (the original's attack object #0x2E, `sub_80C9824`):
+-- AirHocky's and PitHocky's. It slides diagonally from panel center to
+-- panel center, one step per its variant's ticks, bouncing off the field's
+-- top and bottom rows and side columns. Once it has been over the other
+-- side's panels it bounces off its own side's too. Its collision moves to
+-- the next panel halfway through each step; a hit takes its region away
+-- until it reaches another panel. It lasts its variant's number of steps
+-- and bursts off solid ground or when the battle ends. PitHocky's leaves
+-- an afterimage trail.
+
+local collision = require("../../rules/collision")
+local effects = require("../../lib/effects")
+local regions = require("../../lib/regions")
+local sparks = require("../../lib/sparks")
+
+local puck = {}
+
+-- A puck's variant (`HockeyPuckVariant`, types.d.luau; a row of
+-- `byte_80C9818`).
+export type Variant = HockeyPuckVariant
 
 export type State = {
+    variant: Variant,
+    -- It goes down the field (1) or up (0) (Param2).
+    down: boolean,
+    -- Steps taken (Param3), and whether it has been across (Param4).
+    steps: number,
+    across: boolean,
     -- The panel the step started from (ExtraVars+4, +8), and the center of
     -- the panel it goes to, 16.16 (ExtraVars+0xC, +0x10).
     from_x: number,
@@ -21,60 +35,27 @@ export type State = {
     to_y: number,
 }
 
-local hockey_puck = {
-    state = { from_x = "i32", from_y = "i32", to_x = "i32", to_y = "i32" },
+function puck.variant(v: Variant): Variant
+    return define.record("hockey-puck-variant", v)
+end
+
+-- `byte_80C9818`'s rows: the steps it lasts (0: no limit), how it bounces
+-- (1: off its own side too, once across; the game also divides by it, see
+-- `slide`), and the ticks per step; the trail is PitHocky's (row 3).
+-- AirHocky's is row 2; rows 0 and 1 no chip has.
+puck.variants = {
+    [0] = puck.variant { steps = 6, own_side = 1, ticks = 6 },
+    [1] = puck.variant { steps = 0x0A, own_side = 1, ticks = 6 },
+    [2] = puck.variant { steps = 0x0A, own_side = 1, ticks = 6 },
+    [3] = puck.variant { steps = 0x12, own_side = 1, ticks = 6, trail = true },
 }
 
-local SPRITE = "10-06"
--- By kind (`byte_80C9818`): the steps it lasts (0: no limit), how it
--- bounces (1: off its own side too, once across), and the ticks per step.
-local KINDS = {
-    [0] = { steps = 6, own_side = 1, ticks = 6 },
-    { steps = 0x0A, own_side = 1, ticks = 6 },
-    { steps = 0x0A, own_side = 1, ticks = 6 },
-    { steps = 0x12, own_side = 1, ticks = 6 },
-}
-local PIT = 3
-local BOUNCE = 0xB6
+local SPRITE = asset.sprite("hockey-puck")
+local SOUND = asset.sound("hockey-puck")
+local SOUND_BOUNCE = asset.sound("bounce")
 -- PitHocky's trail: every fourth tick, an afterimage of the puck for 8
 -- ticks, tinted.
 local TRAIL_TINT, TRAIL_TICKS = 0x8318, 8
--- The parameters it keeps its own counts in.
-local STEPS, ACROSS = 3, 4
-
--- `sub_80C9BA4`: a puck for `owner` on (x, y) at height `z` (the
--- spawner's registers: the panel Y and the element are its X and Y until
--- its init places it), with the damage word `damage` and the chip's
--- `params`.
-function hockey_puck.spawn(
-    owner: Object,
-    x: number,
-    y: number,
-    element: number,
-    z: number,
-    damage: number,
-    params: { number }
-): Object?
-    local o = battle.spawn_kind("hockey-puck", Vec3.new(y, element, z), params)
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.alliance, o.flip = owner.alliance, owner.flip
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-    end
-    return o
-end
-
-type Kind = { steps: number, own_side: number, ticks: number }
-
-local function kind_of(me: Object): Kind
-    local k = KINDS[me:param(1)]
-    if k == nil then
-        error(string.format("hockey puck kind %d reads past byte_80C9818", me:param(1)))
-    end
-    return k
-end
 
 -- The panel's owner is the other side (`object_getPanelDataOffset`).
 local function other_side(me: Object, x: number, y: number): boolean?
@@ -91,49 +72,49 @@ end
 local function bounce_simple(me: Object, x: number, y: number, dx: number, dy: number): (number, number, number, number)
     if y + dy < 1 or y + dy > 3 then
         dy = -dy
-        battle.play_sound(BOUNCE)
+        battle.play_sound(SOUND_BOUNCE)
     end
     local nx = x + dx
     if me.alliance == 0 then
         if nx > 6 then
             dx = -dx
-            battle.play_sound(BOUNCE)
+            battle.play_sound(SOUND_BOUNCE)
         end
     elseif nx < 1 then
         dx = -dx
-        battle.play_sound(BOUNCE)
+        battle.play_sound(SOUND_BOUNCE)
     end
     local cx, cy = field.center(x + dx, y + dy)
     return cx, cy, dx, dy
 end
 
--- `sub_80C9AAA`: the same off every side of the field; once across (the
--- fourth parameter), a step onto its own side's panels turns back, and
--- if it can't, the puck ends (the steps come back 0).
+-- `sub_80C9AAA`: the same off every side of the field; once across, a step
+-- onto its own side's panels turns back, and if it can't, the puck ends
+-- (the steps come back 0).
 local function bounce_across(me: Object, x: number, y: number, dx: number, dy: number): (number, number, number, number)
     if y + dy < 1 or y + dy > 3 then
         dy = -dy
-        battle.play_sound(BOUNCE)
+        battle.play_sound(SOUND_BOUNCE)
     end
     if x + dx < 1 or x + dx > 6 then
         dx = -dx
-        battle.play_sound(BOUNCE)
+        battle.play_sound(SOUND_BOUNCE)
     end
-    if me:param(ACROSS) ~= 0 and other_side(me, x + dx, y + dy) ~= true then
+    if (me.state :: State).across and other_side(me, x + dx, y + dy) ~= true then
         dx = -dx
         if other_side(me, x + dx, y + dy) ~= true then
             return 0, 0, 0, dy
         end
-        battle.play_sound(BOUNCE)
+        battle.play_sound(SOUND_BOUNCE)
     end
     local cx, cy = field.center(x + dx, y + dy)
     return cx, cy, dx, dy
 end
 
 -- Plan the next step from the panel it's on. False when it can't go on.
-local function plan(me: Object, s: State, k: Kind): boolean
+local function plan(me: Object, s: State): boolean
     local tx, ty, dx, dy
-    if k.own_side == 0 then
+    if s.variant.own_side == 0 then
         tx, ty, dx, dy = bounce_simple(me, s.from_x, s.from_y, me.vel.x, me.vel.y)
     else
         tx, ty, dx, dy = bounce_across(me, s.from_x, s.from_y, me.vel.x, me.vel.y)
@@ -161,8 +142,8 @@ local function between(s: State, timer: number, ticks: number): (number, number)
 end
 
 -- `sub_80C9B64`: PitHocky's trail.
-local function trail(me: Object)
-    if me:param(1) ~= PIT then
+local function trail(me: Object, s: State)
+    if not s.variant.trail then
         return
     end
     local t = int.u16(me.timer2 + 1)
@@ -180,8 +161,8 @@ end
 
 -- Burst: the dust, and the destroy state.
 local function burst(me: Object)
-    battle.effect(me.pos, 0x14)
-    me.collision.region = 0
+    battle.effect(me.pos, effects.puff)
+    me.collision:set_region(nil)
     me:set_lifecycle("destroy")
 end
 
@@ -192,16 +173,16 @@ end
 
 -- `sub_80C9964`: step along, re-planning at each panel.
 local function slide(me: Object)
-    trail(me)
     local s = me.state :: State
-    local k = kind_of(me)
+    trail(me, s)
+    local v = s.variant
     if me.phase_init == 0 then
-        if not plan(me, s, k) then
+        if not plan(me, s) then
             return burst(me)
         end
         me.phase_init = 4
     end
-    local ticks = k.ticks
+    local ticks = v.ticks
     local t = me.timer + 1
     me.timer = t
     if t == bit32.rshift(ticks, 1) then
@@ -209,20 +190,20 @@ local function slide(me: Object)
         c.panel_x, c.panel_y = panel_at(s.to_x, s.to_y)
     end
     if t == ticks then
-        if k.steps ~= 0 then
-            local taken = me:param(STEPS) + 1
-            me:set_param(STEPS, taken)
-            if taken >= k.steps then
+        if v.steps ~= 0 then
+            local taken = int.u8(s.steps + 1)
+            s.steps = taken
+            if taken >= v.steps then
                 return burst(me)
             end
         end
         s.from_x, s.from_y = me.panel_x, me.panel_y
-        if not plan(me, s, k) then
+        if not plan(me, s) then
             return burst(me)
         end
-        -- (The game divides the next position by the kind's bounce mode
+        -- (The game divides the next position by the variant's bounce mode
         -- here: the timer is 0, so it lands on the panel it's on.)
-        ticks = k.own_side
+        ticks = v.own_side
     end
     local x, y = between(s, me.timer, ticks)
     local p = me.pos
@@ -244,7 +225,7 @@ local function tick(me: Object)
         return burst(me)
     end
     if c.hit_flags ~= 0 then
-        c.region = 0
+        c:set_region(nil)
     end
     local was_x, was_y = c.panel_x, c.panel_y
     local a = me.action
@@ -252,11 +233,12 @@ local function tick(me: Object)
         error(string.format("hockey puck action %#x reads past off_80C9960", a))
     end
     slide(me)
-    if me:param(ACROSS) == 0 and other_side(me, c.panel_x, c.panel_y) then
-        me:set_param(ACROSS, 1)
+    local s = me.state :: State
+    if not s.across and other_side(me, c.panel_x, c.panel_y) then
+        s.across = true
     end
     if me.lifecycle ~= "destroy" and (c.panel_x ~= was_x or c.panel_y ~= was_y) then
-        c.region = 1
+        c:set_region(regions.single)
     end
     c:present()
     field.highlight(c.panel_x, c.panel_y)
@@ -276,39 +258,78 @@ local function init(me: Object)
     me.pos = Vec3.new(p.x, p.y, 0)
     local s = me.state :: State
     s.from_x, s.from_y = me.panel_x, me.panel_y
-    kind_of(me)
     -- Its step, in panels.
-    me.vel = Vec3.new(me.facing, me:param(2) * 2 - 1, me.vel.z)
-    me:set_param(ACROSS, 0)
-    me:set_param(STEPS, 0)
+    me.vel = Vec3.new(me.facing, if s.down then 1 else -1, me.vel.z)
+    s.across = false
+    s.steps = 0
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     if not me:create_collision() then
         me:free()
         return
     end
-    me:setup_collision(6, 5, 1)
-    me.collision.hit_effect = 0x0A
+    me:setup_collision(collision.breaking, collision.hits_navis, 1)
+    me.collision:set_hit_effect(sparks.breaking)
     me.collision:present()
-    battle.play_sound(0xB4)
+    battle.play_sound(SOUND)
     me:set_lifecycle("update")
     tick(me)
 end
 
--- `sub_80C9824`.
-function hockey_puck.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-        if not me.active then
+puck.kind = define.kind {
+    id = "airhocky/puck",
+    pool = "attack",
+    state = {
+        variant = "record:hockey-puck-variant",
+        down = "bool",
+        steps = "u8",
+        across = "bool",
+        from_x = "i32",
+        from_y = "i32",
+        to_x = "i32",
+        to_y = "i32",
+    },
+    -- `sub_80C9824`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+            if not me.active then
+                return
+            end
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
             return
         end
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
-        return
+        me:update_sprite()
+    end,
+}
+
+-- `sub_80C9BA4`: a puck of `variant` for `owner` on (x, y) at height `z`
+-- (the spawner's registers: the panel Y and the element are its X and Y
+-- until its init places it), with the damage word `damage`, going down
+-- the field or up.
+function puck.spawn(
+    owner: Object,
+    x: number,
+    y: number,
+    element: number,
+    z: number,
+    damage: number,
+    variant: Variant,
+    down: boolean
+): Object?
+    local o = battle.spawn(puck.kind, Vec3.new(y, element, z))
+    if o then
+        local s = o.state :: State
+        s.variant, s.down = variant, down
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o.alliance, o.flip = owner.alliance, owner.flip
+        o:set_damage_word(damage)
     end
-    me:update_sprite()
+    return o
 end
 
-return hockey_puck
+return puck

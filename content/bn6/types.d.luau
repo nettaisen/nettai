@@ -307,3 +307,48 @@ export type FlyingShotVariant = {
     launch_sound: Sound?,
     end_effect: Effect?,
 }
+
+-- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
+-- together), the panels it rolls out and its spinning rounds.
+export type YoyoSpec = { great: boolean?, panels: number, rounds: number }
+
+-- A hockey puck (chips/airhocky/puck, a row of the original's
+-- `byte_80C9818`): the steps it lasts (0: no limit), how it bounces (1:
+-- off its own side too once across, 0: not), the ticks per step, and
+-- whether it leaves an afterimage trail.
+export type HockeyPuckVariant = { steps: number, own_side: number, ticks: number, trail: boolean? }
+
+-- How an iron shell slides (chips/ironshl/shell): its palette and speed
+-- (16.16 a tick), how many times it bumps at the far column, and whether
+-- it is ParaShl's (four panels, then back).
+export type IronShell = { palette: number, speed: number, bumps: number, para: boolean? }
+
+-- What a flame burns like (lib/burner/flame): its ticks, the panels it
+-- spreads forward, whether its first spread takes three rows (`wide`),
+-- whether it cracks its panel as it goes out, and its look: its animation
+-- (0 by default) and whether it starts on its panel rather than at its
+-- owner's hand.
+export type Flame = { ticks: number, spread: number, wide: boolean?, cracks: boolean?, anim: number?, on_panel: boolean? }
+
+-- A burn (lib/burner/burn, the original's action 0x27): the burner the navi
+-- holds and the flame it lights (the pose lasts the flame's ticks); `id`,
+-- the action's key when no chip definition holds it.
+export type BurnSpec = { id: string?, burner: AttachmentLook, flame: Flame }
+
+-- A Reflector's shield's look (chips/rflectr/shield, a row of the
+-- original's `byte_80C9664`): the sprite, its animation while up, the
+-- animation and ticks of its fade, and its palette.
+export type ReflectorShieldLook = { sprite: SpriteAsset, anim: number, fade_anim: number, fade_ticks: number, palette: number }
+
+-- A Reflector's guard (chips/rflectr/guard, the original's action 0x2B):
+-- how long it guards and the shield it holds up; the counterattack the
+-- first blocked hit sends (`wave`: the Reflectors' wave; `shot`: the
+-- buster's projectile; none); `heedless`: it heeds nothing it blocks (the
+-- NaviCust Shield's). `id`: the action's key when no chip holds it.
+export type ReflectorGuard = {
+    id: string?,
+    ticks: number,
+    look: ReflectorShieldLook,
+    counter: ("wave" | "shot")?,
+    heedless: boolean?,
+}
