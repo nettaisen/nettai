@@ -112,6 +112,7 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
             mode9_a: weapon(0),
             buster_shot: 0,
             charge_shot_kind: 0,
+            back_special_damage: 0,
         },
         bugs: NaviCustBugs { panel_trail_kind: 0xFF, ..NaviCustBugs::default() },
     }

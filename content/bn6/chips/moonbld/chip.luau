@@ -3,7 +3,7 @@
 -- navi (./action, ./blade).
 
 local action = require("./action")
-local slashes = require("../../navis/00-megaman/forms/slashcross/slashes")
+local slashes = require("../../navis/megaman/forms/slashcross/slashes")
 local lockon = require("../../rules/lockon")
 
 return define.chip {
