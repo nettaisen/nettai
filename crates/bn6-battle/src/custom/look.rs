@@ -32,8 +32,37 @@ pub struct ScreenLook {
     pub fade: Fade,
     /// What this tick drew.
     pub drawn: Drawn,
+    /// What the chip window shows: what it was drawn for last
+    /// (`sub_8028476`).
+    pub chip_window: ChipWindow,
+    /// The window has the Cross tab (MegaMan, with a Cross he owns and
+    /// hasn't used this round: `sub_8029EC8`).
+    pub cross_tab: bool,
+    /// The picked column's icons, as the screen copied them (`sub_80281D4`:
+    /// each pick's chip as checked, Beast Out's the BeastOut chip's; a
+    /// Beast Out puts the picks back in their new order, unchecked).
+    pub column: [Option<super::FolderChip>; 5],
+    /// The chips the slots' tiles show, as checked when the screen last
+    /// drew them (`sub_8028250`, on opening and after every pick or take
+    /// back: the chips OK takes out of the folder stay drawn).
+    pub slot_chips: [Option<super::FolderChip>; 12],
+    /// The form whose face the emotion window shows while the screen is up:
+    /// the Beast Out or Cross chosen (`sub_802A040`, `sub_802A088`;
+    /// `sub_802A0EC` takes it back).
+    pub face: Option<bn6_content_api::FormHandle>,
     /// The battle's last turns have come (`sub_800A97A`).
     pub late_turns: bool,
+}
+
+/// What the chip window was last drawn for (`sub_8028476`): the slot
+/// under the cursor and how many picks there were then (OK's picture
+/// shows whether there are any), and the last chip it showed, whose
+/// element's colours palette 11 keeps.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ChipWindow {
+    pub slot: u8,
+    pub picks: u8,
+    pub last_chip: Option<super::FolderChip>,
 }
 
 /// The sprites a tick of the screen queued.
@@ -77,7 +106,7 @@ const EMBLEM_HIDDEN_PAST: u32 = 0x67;
 const SPIN_STEPS: u8 = 0x14;
 
 impl ScreenLook {
-    pub fn new(late_turns: bool) -> ScreenLook {
+    pub fn new(late_turns: bool, cross_tab: bool, last_chip: Option<super::FolderChip>) -> ScreenLook {
         ScreenLook {
             frame: 0,
             spin: 0,
@@ -87,6 +116,11 @@ impl ScreenLook {
             regular_frame: 0,
             fade: Fade { mode: FadeMode::BeastOutBack, level: 0, speed: 0, target: 0, active: false, stepped: false },
             drawn: Drawn::default(),
+            chip_window: ChipWindow { slot: 0, picks: 0, last_chip },
+            cross_tab,
+            column: [None; 5],
+            slot_chips: [None; 12],
+            face: None,
             late_turns,
         }
     }

@@ -346,13 +346,20 @@ impl Screen {
             crosses: CrossWindow::default(),
             program_advance: None,
             hud: Banner::default(),
-            look: ScreenLook::new(view.late_turns),
+            look: ScreenLook::new(view.late_turns, false, None),
         };
         if view.crosses_allowed() && view.emotion != Emotion::WornOut {
             screen.crosses = view.offered_crosses();
         }
         screen.hand_size = hand_size(view, turn, round.charge_cross_screens, false);
         screen.lay_out(view);
+        // sub_8026840: the window with the Cross tab while MegaMan has a
+        // Cross left this round; sub_8028476: the chip window shows the
+        // first slot.
+        screen.look.cross_tab =
+            screen.megaman && view.crosses_allowed() && view.emotion != Emotion::WornOut && view.crosses_left() != 0;
+        screen.show_chip_window(folder, view);
+        screen.draw_slots(folder, view);
         screen
     }
 
@@ -582,13 +589,16 @@ impl Screen {
                     }
                     // sub_802777C
                     3..=52 => self.look.frame += 1,
-                    // sub_8027796: the screen fades back in.
+                    // sub_8027796: the screen fades back in, and the
+                    // emotion window shows the Beast form (sub_802A040).
                     53 => {
                         self.look.fade.start(FadeMode::BeastOutBack, BEAST_OUT_FADE_SPEED);
+                        self.look.face = beast_face(view, view.emotion == Emotion::Tired);
                         // Beast Out goes first in the selection, so B takes
                         // it back last.
                         let n = self.selected as usize;
                         self.selection[..n].rotate_right(1);
+                        self.reorder_column(folder, beast_out_icon(view));
                         self.slots[SPECIAL_SLOT as usize].state = SlotState::Selected;
                         self.update_availability(view, folder);
                     }
@@ -622,6 +632,9 @@ impl Screen {
                     68 => {
                         let n = self.selected as usize;
                         self.selection[..n].rotate_right(1);
+                        let first = self.chip_in(self.selection[0], folder);
+                        self.reorder_column(folder, first);
+                        self.look.face = beast_face(view, false);
                         self.update_availability(view, folder);
                         self.look.fade.start(FadeMode::BeastOutBack, BEAST_OUT_FADE_SPEED);
                     }
@@ -781,6 +794,7 @@ impl Screen {
         if let Some(target) = target {
             if let Some(t) = target {
                 self.cursor = t;
+                self.show_chip_window(folder, view);
             }
             return None;
         }
@@ -791,6 +805,7 @@ impl Screen {
             self.deselect(view, folder);
         } else if p & keys::START != 0 {
             self.cursor = OK_SLOT;
+            self.show_chip_window(folder, view);
         } else if p & keys::SELECT != 0 {
             self.phase = Phase::Hidden { stage: HiddenStage::Hiding };
         } else if p & keys::R != 0 {
@@ -819,7 +834,8 @@ impl Screen {
                 self.push_selection(cursor);
                 self.slots[cursor as usize].state = SlotState::Selected;
                 self.update_availability(view, folder);
-                // The emblem spins.
+                // The pick's icon in the column, and the emblem spins.
+                self.look.column[self.selected as usize - 1] = self.chip_in(cursor, folder).map(|c| checked(c, view));
                 self.look.spin = 1;
                 // sub_802A00C
                 if self.chip_in(cursor, folder).is_some_and(|c| is_beast_out(c, view)) {
@@ -839,6 +855,8 @@ impl Screen {
                 }
                 self.push_selection(cursor);
                 self.phase = Phase::BeastOutChosen { tick: 0 };
+                // (sub_802A034: the column shows the BeastOut chip.)
+                self.look.column[self.selected as usize - 1] = beast_out_icon(view);
             }
             SlotKind::Scrap { right_half } => {
                 // sub_8028E04
@@ -860,6 +878,33 @@ impl Screen {
         None
     }
 
+    /// `sub_8027796`, `sub_8027672`: the column's icons in the picks' new
+    /// order, `first` first (the picks' chips as dealt, unchecked).
+    fn reorder_column(&mut self, folder: &BattleFolder, first: Option<FolderChip>) {
+        for j in 1..self.selected as usize {
+            self.look.column[j] = self.chip_in(self.selection[j], folder);
+        }
+        self.look.column[0] = first;
+    }
+
+    /// `sub_8028250`: the slots' tiles show the chips dealt now.
+    fn draw_slots(&mut self, folder: &BattleFolder, view: &PlayerView) {
+        for s in 0..SLOTS as u8 {
+            self.look.slot_chips[s as usize] = self.chip_in(s, folder).map(|c| checked(c, view));
+        }
+    }
+
+    /// `sub_8028476`: the chip window shows the slot under the cursor.
+    fn show_chip_window(&mut self, folder: &BattleFolder, view: &PlayerView) {
+        let chip = self.chip_in(self.cursor, folder).map(|c| checked(c, view));
+        let w = &mut self.look.chip_window;
+        w.slot = self.cursor;
+        w.picks = self.selected;
+        if chip.is_some() {
+            w.last_chip = chip;
+        }
+    }
+
     fn push_selection(&mut self, slot: u8) {
         self.selection[self.selected as usize] = slot;
         self.selected += 1;
@@ -871,6 +916,7 @@ impl Screen {
             let Some(_) = self.crosses.chosen else { return };
             self.crosses.marked[self.crosses.cursor as usize] = false;
             self.crosses.chosen = None;
+            self.look.face = None;
         } else {
             let last = self.selection[self.selected as usize - 1];
             self.selected -= 1;
@@ -878,8 +924,16 @@ impl Screen {
                 self.beast_out = false;
             }
             self.slots[last as usize].state = SlotState::Selectable;
+            self.look.column[self.selected as usize] = None;
+            // sub_802A0EC: taking Beast Out (or the BeastOut chip) back
+            // takes its face back.
+            let beast_chip = self.chip_in(last, folder).is_some_and(|c| is_beast_out(c, view));
+            if self.slots[last as usize].kind == SlotKind::BeastOut || beast_chip {
+                self.look.face = None;
+            }
         }
         self.update_availability(view, folder);
+        self.show_chip_window(folder, view);
     }
 
     /// The Cross window's keys (`sub_8028A78`).
@@ -1116,6 +1170,8 @@ impl Screen {
         if matches!(button.kind, SlotKind::Scrap { right_half: false }) && button.state != SlotState::Selected {
             button.state = if last_is_chip { SlotState::Selectable } else { SlotState::Unavailable };
         }
+        // sub_8028250: the slots are drawn again.
+        self.draw_slots(folder, view);
     }
 
     /// `sub_8028F48`: Beast Out can be picked with room left, no Cross
@@ -1168,6 +1224,24 @@ fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
         i += 1;
     }
     list[i]
+}
+
+/// `sub_802A040`: the face of the Beast form Beast Out takes the navi to
+/// (when `tired` counts, Beast Over's).
+fn beast_face(view: &PlayerView, tired: bool) -> Option<bn6_content_api::FormHandle> {
+    let (navi, form, version) = (view.stats.navi, view.stats.form, view.unlocks.version);
+    if tired {
+        view.library.beast_over_form(navi, version)
+    } else if view.library.form_kind(form) == crate::content::FormKind::Base {
+        view.library.beast_out_form(navi, version)
+    } else {
+        view.library.form_in_beast_out(form)
+    }
+}
+
+/// The BeastOut chip, as the column shows Beast Out.
+fn beast_out_icon(view: &PlayerView) -> Option<FolderChip> {
+    view.library.beast_out_chip().map(|id| FolderChip { id, code: ChipCode(0) })
 }
 
 /// `getChipID_802A54E`: a chip as it counts in a selection. It is the
@@ -1246,6 +1320,12 @@ impl PlayerView<'_> {
             } else {
                 !self.per_player_gauges
             }
+    }
+
+    /// `sub_8029EC8`: how many Crosses the navi owns and hasn't used this
+    /// round.
+    fn crosses_left(&self) -> usize {
+        (0..CROSSES).filter(|&i| self.unlocks.crosses[i] && !self.round.crosses_used[i]).count()
     }
 
     /// `sub_8029EF8`: the Crosses owned, not used this round, and not the
