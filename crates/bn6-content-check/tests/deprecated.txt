@@ -154,7 +154,7 @@ objects/lance/lance.luau 3
 objects/land-mine/land_mine.luau 10
 objects/lunge-slash/lunge_slash.luau 2
 objects/magnet/magnet.luau 2
-objects/meteor-shower/meteor_shower.luau 3
+objects/meteor-shower/meteor_shower.luau 2
 objects/meteor/meteor.luau 6
 objects/mine/mine.luau 1
 objects/moon-beam/moon_beam.luau 2
