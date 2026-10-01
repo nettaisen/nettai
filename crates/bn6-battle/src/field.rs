@@ -523,14 +523,20 @@ impl Battle {
                 }
                 c += run.dir;
             }
-            for (c, mask) in ready {
-                self.field.columns[c as usize].return_ready = 0;
-                for y in 1..=3u8 {
-                    if mask & (1 << y) != 0 {
-                        let p = &mut self.field.panels[y as usize][c as usize];
-                        p.alliance = run.owner;
-                        p.return_blink = (p.return_blink & 0xFF00) | 0x5A;
-                        self.field.refresh(&self.content, &self.collision, c, y);
+            // The original's loop over the list restarts its index at 0 on
+            // every pass, so it returns the list's first column once per
+            // listed column and the others wait: a run's columns that come
+            // due together return one a tick, the frontmost first.
+            if let Some(&(c, mask)) = ready.first() {
+                for _ in 0..ready.len() {
+                    self.field.columns[c as usize].return_ready = 0;
+                    for y in 1..=3u8 {
+                        if mask & (1 << y) != 0 {
+                            let p = &mut self.field.panels[y as usize][c as usize];
+                            p.alliance = run.owner;
+                            p.return_blink = (p.return_blink & 0xFF00) | 0x5A;
+                            self.field.refresh(&self.content, &self.collision, c, y);
+                        }
                     }
                 }
             }
@@ -720,5 +726,32 @@ impl Battle {
         let airshoes = o.collision.map(|c| self.collision.get(c).f1 & crate::collision::f1::AIRSHOE != 0).unwrap_or(false);
         let floor_free = airshoes || !self.field.is_solid(o.panel.x, o.panel.y);
         self.field.meets(x, y, self.content.rules.panels.step.get(floor_free, o.alliance))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::battle::Battle;
+    use crate::scenario;
+
+    /// Stolen columns of one side that come due together return one a
+    /// tick, the frontmost first (the original's list loop restarts at its
+    /// first entry on every pass).
+    #[test]
+    fn columns_due_together_return_a_tick_apart() {
+        let mut b = Battle::new(scenario::setup(), scenario::content());
+        // Side 0 holds column 4 and one panel of column 5.
+        for y in 1..=3 {
+            b.set_panel_alliance(4, y, 0);
+        }
+        b.set_panel_alliance(5, 3, 0);
+        b.field.columns[4].timer = 1;
+        b.field.columns[5].timer = 1;
+        let held = |b: &Battle| (b.field.panels[1][4].alliance, b.field.panels[3][4].alliance, b.field.panels[3][5].alliance);
+        b.return_stolen_area();
+        assert_eq!(held(&b), (1, 1, 0), "column 4 first");
+        assert_eq!(b.field.columns[5].return_ready, 1);
+        b.return_stolen_area();
+        assert_eq!(held(&b), (1, 1, 1), "column 5 a tick later");
     }
 }

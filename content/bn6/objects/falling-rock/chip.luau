@@ -2,7 +2,8 @@
 -- A chip of broken rock (the original's effect object #9, `sub_80E0FA0`):
 -- spawned with a sideways and an upward speed (`sub_80E1084`), it flies and
 -- falls; below the ground it blinks for 10 ticks and is gone. A falling
--- rock (falling_rock.luau) breaks into two.
+-- rock (falling_rock.luau) breaks into two, as GroundMan's rocks do
+-- (chips/grndman/rock).
 
 local chip = {}
 

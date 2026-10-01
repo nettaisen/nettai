@@ -35,7 +35,7 @@ pub const ERASER: ChipId = 0x06;
 /// Instant chips (action 0x1C, ids 0x40 and up) by number, which reach
 /// the registration shims of BN6's records: a plus chip used on its own
 /// (subtype 3, the plus chips' effect by number) and fists (8, FireHit's);
-/// and flame hooks (14, FlmHook's, v1).
+/// and flame hooks (14, FlmHook's).
 pub const PLUS: ChipId = 0x41;
 pub const FIST: ChipId = 0x46;
 pub const FLAME_HOOK: ChipId = 0x48;
@@ -399,6 +399,7 @@ fn assets() -> bn6_content_api::AssetNames {
         ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
         ("erase-beam", sprite(0x10, 0x51)),
+        ("flame-hook-fire", sprite(0x0C, 0x45)),
         ("impact", sprite(0x14, 0x01)),
         ("bat-impact", sprite(0x14, 0x07)),
         ("shot-impact", sprite(0x14, 0x0C)),
@@ -448,6 +449,7 @@ fn assets() -> bn6_content_api::AssetNames {
         ("junk-shot", 0xFF),
         ("gundels1", 0xF8),
         ("bonus", 0x157),
+        ("flame-hook-fire", 0x158),
         ("twang", 0x18A),
         ("boiler-erupt", 0x184),
         ("boiler-steam", 0x185),
@@ -527,7 +529,7 @@ pub fn scripts() -> Scripts {
                 // The instant chips (content model v2): BN6's definitions,
                 // and the numbered test chips that reach the shims of the
                 // records kept for Program Advances (FireHit) and the plus
-                // chips' records (FlmHook's hook is still v1).
+                // chips' records (FlmHook's records' shim too).
                 ("lib/instant/plus", "lib/instant/plus"),
                 ("chips/0c0-atk-10/chip", "chips/0c0-atk-10/chip"),
                 ("chips/atk-10/chip", "chips/atk-10/chip"),
@@ -545,8 +547,9 @@ pub fn scripts() -> Scripts {
                 ("chips/sandwrm/hole", "chips/sandwrm/hole"),
                 ("chips/sandwrm/spray", "chips/sandwrm/spray"),
                 ("chips/sandwrm/chips", "chips/sandwrm/chips"),
-                ("objects/flame-hook/flame_hook", "objects/flame-hook/flame_hook"),
-                ("objects/flame-hook-fire/flame_hook_fire", "objects/flame-hook-fire/flame_hook_fire"),
+                ("chips/flmhook/fire", "chips/flmhook/fire"),
+                ("chips/flmhook/hook", "chips/flmhook/hook"),
+                ("chips/146-flmhook1/chip", "chips/146-flmhook1/chip"),
                 ("chips/justcone/strike", "chips/justcone/strike"),
                 ("chips/justcone/chip", "chips/justcone/chip"),
                 ("chips/golmhit/golem", "chips/golmhit/golem"),
@@ -763,8 +766,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash"),
         kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
         kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
-        kind("flame-hook", Pool::Effect, 0x8C, "objects/flame-hook/flame_hook"),
-        kind("flame-hook-fire", Pool::Attack, 0xCA, "objects/flame-hook-fire/flame_hook_fire"),
         kind("gust", Pool::Attack, 0x49, "objects/gust/gust"),
         kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
@@ -1130,7 +1131,7 @@ fn named_chips() -> Vec<ChipData> {
             ..chip(PLUS, "Plus", 0x1C, 3)
         },
         spawning(FIST, "Fist", 8, [0, 3, 0, 0], "chips/06b-firehit1/chip"),
-        spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "objects/flame-hook/flame_hook"),
+        spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "chips/146-flmhook1/chip"),
     ]
 }
 

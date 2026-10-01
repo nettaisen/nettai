@@ -352,11 +352,15 @@ for run in byte_203F6B0 until 0xFF:            // {start, dir, cnt, owner}
          if colinfo[c].returnReady && stolenMask == freeMask: list[k++] = (c, freeMask)
          else k = 0
       c += (s8)run.dir
-   for i < k: colinfo[list[i].c].returnReady = 0; sub_800C81E(list[i].c, list[i].mask, run.owner)
+   repeat k: colinfo[list[0].c].returnReady = 0; sub_800C81E(list[0].c, list[0].mask, run.owner)
 for y in 1..3, x in 1..6:                       // display only
    p[7] = p[3]; if p.u10: p.u10 -= 1; p[7] ^= (p.u10 & 4) >> 2
 ```
 
+- The last loop resets its index to 0 on every pass (`loc_800C7BE`), so only the list's first column returns
+  (k times over); the others return on later ticks, one a tick. Columns of one run that come due together
+  (JudgeMan's give-back sets every stolen column's timer to 1) so return front to back a tick apart
+  (soundmod round 3: column 4, then column 5 a tick later).
 - `sub_800C81E(c, mask, al)`: for each row bit, sets `p[3]=al` and byte `p[0x10]=0x5A`, then `update`.
 - Effect: stolen columns return starting from the outermost. A column that is still occupied cancels the return of the inner columns collected so far in that run.
 - `returnReady` is not cleared when n drops to 0.
