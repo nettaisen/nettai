@@ -7,7 +7,7 @@ use bn6_content_api::api::ApiResult;
 use bn6_content_api::api::ObstacleFlag;
 use bn6_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, ContentState, CoreApi, DimmingStep,
-    Emotion, FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState,
+    Emotion, FieldType, FieldValue, HitboxSpec, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
@@ -277,7 +277,7 @@ impl CoreApi for Battle {
     fn next_chip_damages(&self, user: ObjectRef) -> bool {
         use crate::content::ChipFlags;
         let o = self.objects.get(user);
-        let flags = if self.content.navi_record(o.name_id).actor_type == crate::actor::ActorType::Player {
+        let flags = if self.content.navi_record(o.identity).actor_type == crate::actor::ActorType::Player {
             let hand = &self.hands[o.alliance as usize & 1];
             match hand.ids.get(hand.cursor as usize).copied().flatten() {
                 Some(h) => self.content.chip(h).flags,
@@ -585,19 +585,6 @@ impl CoreApi for Battle {
         };
     }
 
-    fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo> {
-        let r = self
-            .content
-            .navis
-            .iter()
-            .filter_map(|n| n.name_record.as_ref())
-            .chain(self.content.forms.iter().filter_map(|f| f.name_record.as_ref()))
-            .find(|n| n.id == name_id)
-            .map(crate::content::NameData::record)
-            .or_else(|| self.content.rules.actor_records.get(name_id as usize).copied())?;
-        Some(NaviRecordInfo { actor_type: actor_type_index(r.actor_type) as u8, ai_index: r.ai_index })
-    }
-
     // ---- Panels -----------------------------------------------------------
 
     fn panel_valid(&self, p: PanelPos) -> bool {
@@ -827,7 +814,7 @@ impl CoreApi for Battle {
             ObjectField::MaxHp => i(ob.max_hp as i64),
             ObjectField::Damage => i(ob.damage as i64),
             ObjectField::Stamina => i(ob.stamina as i64),
-            ObjectField::NameId => i(ob.name_id as i64),
+            ObjectField::Identity => ob.identity.map_or(Value::Nil, |h| Value::Def(Registry::Identity, h.0)),
             ObjectField::PreventAnim => i(ob.prevent_anim as i64),
             ObjectField::Pos => Value::Vec3(ob.pos),
             ObjectField::Vel => Value::Vec3(ob.vel),
@@ -880,7 +867,10 @@ impl CoreApi for Battle {
             (ObjectField::MaxHp, FieldValue::U16(x)) => ob.max_hp = x,
             (ObjectField::Damage, FieldValue::U16(x)) => ob.damage = x,
             (ObjectField::Stamina, FieldValue::U16(x)) => ob.stamina = x,
-            (ObjectField::NameId, FieldValue::U16(x)) => ob.name_id = x,
+            (ObjectField::Identity, FieldValue::Ref(None)) => ob.identity = None,
+            (ObjectField::Identity, FieldValue::Ref(Some((Registry::Identity, h)))) => {
+                ob.identity = Some(bn6_content_api::IdentityHandle(h));
+            }
             (ObjectField::PreventAnim, FieldValue::U8(x)) => ob.prevent_anim = x,
             (ObjectField::Pos, FieldValue::Vec3(p)) => ob.pos = p,
             (ObjectField::Vel, FieldValue::Vec3(p)) => ob.vel = p,
@@ -1026,10 +1016,6 @@ impl CoreApi for Battle {
         kinds::palette_flash::spawn_variant(self, variant, ticks, while_dimmed, while_paused)
     }
 
-    fn death_hook(&mut self, o: ObjectRef, name_id: u16) {
-        kinds::player::form::navi_death_hook(self, o, name_id);
-    }
-
     fn add_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, arg: u8) {
         kinds::player::form::record_init_hook(self, o, actor_type_of(actor_type), ai_index, arg);
     }
@@ -1039,7 +1025,7 @@ impl CoreApi for Battle {
     }
 
     fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool, paused_stepping: bool) {
-        let rec = self.content.navi_record(self.objects.get(owner).name_id);
+        let rec = self.content.navi_record(self.objects.get(owner).identity);
         let r2 = if paused_stepping { 1 } else { rec.version };
         kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, r2);
         if keep_stepping && let Some(part) = self.objects.get(o).related[1] {
@@ -1048,7 +1034,7 @@ impl CoreApi for Battle {
     }
 
     fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef) {
-        let rec = self.content.navi_record(self.objects.get(owner).name_id);
+        let rec = self.content.navi_record(self.objects.get(owner).identity);
         kinds::player::form::record_death_hook(self, o, rec.actor_type, rec.ai_index);
     }
 
@@ -1388,24 +1374,21 @@ impl CoreApi for Battle {
     }
 
     fn sprite_load_look_of(&mut self, o: ObjectRef, owner: ObjectRef) {
-        let name_id = self.objects.get(owner).name_id;
-        let id = if self.content.navi_record(name_id).actor_type == crate::actor::ActorType::Player {
+        let identity = self.content.identity(self.objects.get(owner).identity);
+        let id = if identity.record.actor_type == crate::actor::ActorType::Player {
             kinds::player::stats_sprite(self, self.objects.get(owner).alliance)
         } else {
-            self.content
-                .objects
-                .name_looks
-                .iter()
-                .find(|l| l.name_id == name_id)
+            identity
+                .look
                 .and_then(|l| l.sprite)
-                .unwrap_or_else(|| panic!("NameID {name_id:#x} has no look (sub_800F26C)"))
+                .unwrap_or_else(|| panic!("identity {:?} has no look (sub_800F26C)", identity.key))
         };
         self.sprite_load(o, id);
     }
 
     fn sprite_load_like(&mut self, o: ObjectRef, like: ObjectRef) -> ApiResult<()> {
-        let name_id = self.objects.get(like).name_id;
-        let id = if self.content.navi_record(name_id).actor_type == crate::actor::ActorType::Player {
+        let identity = self.content.identity(self.objects.get(like).identity);
+        let id = if identity.record.actor_type == crate::actor::ActorType::Player {
             // sub_800FC9E(navi stat 0x29, form stat 0x2C): MegaMan's form's
             // sprite, or the link navi's.
             let side = self.objects.get(like).alliance as usize & 1;
@@ -1416,13 +1399,13 @@ impl CoreApi for Battle {
                 self.content.navi(s.navi).sprite
             }
         } else {
-            // sub_800F26C: a field object's look by its NameID (0xCD and
-            // up); other NameIDs' sprites (viruses, bosses) aren't in the
-            // pack: no netbattle object stands in for one.
-            let look = self.content.objects.name_looks.iter().find(|l| l.name_id == name_id);
-            look.and_then(|l| l.sprite).ok_or_else(|| {
+            // sub_800F26C: a field object's look by its identity (NameID
+            // 0xCD and up); other identities' sprites (viruses, bosses)
+            // aren't in the content: no netbattle object stands in for one.
+            identity.look.and_then(|l| l.sprite).ok_or_else(|| {
                 ApiError::Other(format!(
-                    "sub_800F26C: NameID {name_id:#x} has no sprite in the pack (a netbattle's stand-in copies a player)"
+                    "sub_800F26C: identity {:?} has no sprite in the content (a netbattle's stand-in copies a player)",
+                    identity.key
                 ))
             })?
         };
@@ -1439,16 +1422,18 @@ impl CoreApi for Battle {
     }
 
     fn name_look_is(&self, o: ObjectRef, sprite: SpriteId) -> ApiResult<bool> {
-        let name_id = self.objects.get(o).name_id;
-        let look = if (0xCD..=0xFF).contains(&name_id) {
-            self.content.objects.name_looks.iter().find(|l| l.name_id == name_id).map(|l| l.sprite)
-        } else {
-            let navis = self.content.navis.iter().filter_map(|n| n.name_record.as_ref().map(|r| (r.id, n.sprite)));
-            let forms = self.content.forms.iter().filter_map(|f| f.name_record.as_ref().map(|r| (r.id, f.sprite)));
-            navis.chain(forms).find(|&(id, _)| id == name_id).map(|(_, s)| Some(s))
+        use crate::content::{IdentityClass, IdentityOwner};
+        let identity = self.content.identity(self.objects.get(o).identity);
+        // A field object's look (none: no sprite), or a navi's or form's
+        // own sprite.
+        let look = match (identity.class, identity.owner) {
+            (IdentityClass::FieldObject, _) => identity.look.map(|l| l.sprite),
+            (_, Some(IdentityOwner::Navi(n))) => Some(Some(self.content.navi(n).sprite)),
+            (_, Some(IdentityOwner::Form(f))) => Some(Some(self.content.form(f).sprite)),
+            _ => None,
         };
         look.map(|l| l == Some(sprite))
-            .ok_or_else(|| ApiError::Other(format!("NameID {name_id:#x} has no look in the content (sub_800F26C)")))
+            .ok_or_else(|| ApiError::Other(format!("identity {:?} has no look in the content (sub_800F26C)", identity.key)))
     }
 
     fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32) {
@@ -1865,13 +1850,12 @@ impl CoreApi for Battle {
 
     fn obstacle_swallowable(&self, o: ObjectRef) -> bool {
         let ob = self.objects.get(o);
-        // The NameID word's high half: an actor's next chip (0xFFFF for
-        // none), nothing else's (0). Only whether it is zero matters: the
-        // chip the original's chip 0 is (the zeroed chip) or no actor.
-        let zero = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.content.zeroed_chip());
-        let high: u32 = if zero { 0 } else { 0xFFFF };
-        let word = ob.name_id as u32 | high << 16;
-        (0xCD..=0xFF).contains(&word) && !matches!(word, 0xD3 | 0xDA | 0xE9 | 0xEA)
+        // The original tests the NameID word, whose high half is an
+        // actor's next chip (0xFFFF for none) and 0 for anything else: an
+        // actor's word is a field object's only with chip 0 next.
+        let plain = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.content.zeroed_chip());
+        let identity = self.content.identity(ob.identity);
+        plain && identity.class == crate::content::IdentityClass::FieldObject && identity.scrap
     }
 
     fn obstacle_present(&self, o: ObjectRef) -> bool {
@@ -1887,17 +1871,23 @@ impl CoreApi for Battle {
     }
 
     fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef) -> ApiResult<bool> {
-        const MEGAMAN: u16 = 0x1A0;
-        let user_name = self.objects.get(user).name_id;
-        let own = user_name == MEGAMAN || user_name > 0x1AB;
-        let name = if own { user_name } else { MEGAMAN };
+        // The user's identity when it is MegaMan's or one of his forms'
+        // (the original's NameID 0x1A0, or past the link navis'), else
+        // MegaMan's.
+        use crate::content::IdentityClass;
+        let megaman = self.content.navi_data(crate::setup::Navi::MEGAMAN).identity;
+        let user_name = self.objects.get(user).identity;
+        let class = self.content.identity(user_name).class;
+        let own = class == IdentityClass::MegaMan || class.is_form();
+        let name = if own { user_name } else { megaman };
         let sprite = if !own {
             self.content.form_data(crate::setup::Form::NONE).sprite
         } else if self.content.navi_record(name).actor_type == crate::actor::ActorType::Player {
             kinds::player::stats_sprite(self, self.objects.get(user).alliance)
         } else {
             return Err(ApiError::Other(format!(
-                "NameID {name:#x} is no player's: its sprite would be sub_800F26C's (enemy_getStruct1)"
+                "identity {:?} is no player's: its sprite would be sub_800F26C's (enemy_getStruct1)",
+                self.content.identity(name).key
             )));
         };
         let side = self.objects.get(o).alliance;
@@ -1907,7 +1897,7 @@ impl CoreApi for Battle {
         let palette = self.content.rules.cross_palettes.get(form.0 as usize).copied().unwrap_or(0);
         self.sprite_load(o, sprite);
         let obj = self.objects.get_mut(o);
-        obj.name_id = name;
+        obj.identity = name;
         obj.anim = 0;
         obj.anim_loaded = 0xFF;
         let look = &mut self.objects.sprite_mut(o).look;
@@ -1921,17 +1911,16 @@ impl CoreApi for Battle {
             return Err(ApiError::Other(format!("form {form:#x} is not in the content")));
         };
         let data = self.content.form(h);
-        // The base form has no NameID of its own: it is MegaMan's.
-        let own = data.name_record.as_ref().map(|n| n.id);
-        let megaman = || self.content.navi_data(crate::setup::Navi::MEGAMAN).name_record.as_ref().map(|n| n.id);
-        let Some(name) = own.or_else(megaman) else {
-            return Err(ApiError::Other(format!("form {form:#x} has no NameID (nor has MegaMan)")));
+        // The base form has no identity of its own: it is MegaMan's.
+        let megaman = || self.content.navi_data(crate::setup::Navi::MEGAMAN).identity;
+        let Some(name) = data.identity.or_else(megaman) else {
+            return Err(ApiError::Other(format!("form {form:#x} has no identity (nor has MegaMan)")));
         };
         let sprite = data.sprite;
         let palette = self.content.rules.cross_palettes.get(form as usize).copied().unwrap_or(0);
         self.sprite_load(o, sprite);
         let obj = self.objects.get_mut(o);
-        obj.name_id = name;
+        obj.identity = Some(name);
         obj.anim = 0;
         obj.anim_loaded = 0xFF;
         let look = &mut self.objects.sprite_mut(o).look;
@@ -1941,7 +1930,7 @@ impl CoreApi for Battle {
     }
 
     fn navi_image_parts(&mut self, o: ObjectRef, on: bool) {
-        let rec = self.content.navi_record(self.objects.get(o).name_id);
+        let rec = self.content.navi_record(self.objects.get(o).identity);
         if on {
             kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, 1);
         } else {
@@ -1949,20 +1938,23 @@ impl CoreApi for Battle {
         }
     }
 
-    fn junk_look(&self, o: ObjectRef) -> Option<u16> {
-        // sub_800F486: the NameIDs DustMan leaves.
-        let name = self.objects.get(o).name_id;
-        (!matches!(name, 0xD3 | 0xDA | 0xE9 | 0xEA)).then_some(name)
+    fn junk_look(&self, o: ObjectRef) -> Option<bn6_content_api::IdentityHandle> {
+        // sub_800F486: the identities DustMan leaves. (An object with no
+        // identity has none to give either; the original's junk would
+        // then look up a virus's sprite, which no field object is.)
+        let identity = self.objects.get(o).identity;
+        identity.filter(|_| self.content.identity(identity).scrap)
     }
 
-    fn wear_junk_look(&mut self, o: ObjectRef, look: u16) -> ApiResult<bool> {
-        // sub_800F26C: NameIDs 0xCD..=0xFF by byte_8021220; any other is an
-        // actor's (enemy_getStruct1), which no field object is.
-        if !(0xCD..=0xFF).contains(&look) {
-            return Err(ApiError::Other(format!("NameID {look:#x} has no junk look (enemy_getStruct1's sprite)")));
-        }
-        let Some(l) = self.content.objects.name_looks.iter().find(|l| l.name_id == look).copied() else {
-            return Err(ApiError::Other(format!("NameID {look:#x}'s look (byte_8021220) is not in the content")));
+    fn wear_junk_look(&mut self, o: ObjectRef, look: bn6_content_api::IdentityHandle) -> ApiResult<bool> {
+        // sub_800F26C: a field object's look (byte_8021220); any other
+        // identity is an actor's (enemy_getStruct1), which no field object
+        // is.
+        let Some(identity) = self.content.defs.identities.get(look.index()) else {
+            return Err(ApiError::Other(format!("no identity has handle {}", look.0)));
+        };
+        let Some(l) = identity.look.filter(|_| identity.class == crate::content::IdentityClass::FieldObject) else {
+            return Err(ApiError::Other(format!("identity {:?} has no junk look (enemy_getStruct1's sprite)", identity.key)));
         };
         let Some(id) = l.sprite else { return Ok(false) };
         self.sprite_load(o, id);
@@ -1977,9 +1969,9 @@ impl CoreApi for Battle {
         s.look.shadow = if l.shadow { sprite::Shadow::Ground } else { sprite::Shadow::WithSprite };
         s.set_animation(l.anim, &self.content);
         s.look.palette = l.palette;
-        // NameIDs 0xD8 and 0xD9 keep their own flip and set a drawing bit
+        // The time bombs' looks keep their own flip and set a drawing bit
         // instead (sub_8002EAC: presentation).
-        if !matches!(look, 0xD8 | 0xD9) {
+        if !l.keeps_flip {
             s.look.set_flip(alliance);
         }
         Ok(true)
@@ -2002,9 +1994,5 @@ impl CoreApi for Battle {
             ObstacleFlag::AbsorbedBy1 => f2::ABSORBED_BY_1,
         };
         Ok(self.collision_of(o)?.f2 & mask != 0)
-    }
-
-    fn name_attach_point(&self, name_id: u16, point: u8, alliance: u8, flip: u8) -> (i32, i32) {
-        kinds::player::name_attach_point(self, name_id, point as usize, alliance, flip)
     }
 }

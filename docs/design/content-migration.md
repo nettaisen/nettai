@@ -80,7 +80,9 @@ the migration ends, registration by number (§3.2) resolves the pack's records i
      `battle.effect(pos, effects.explosion)`, `collision:set_hit_effect(sparks.erase)`. The numeric API
      (`spawn_kind`, `me:param`, `me.variant`, numbers for sounds) is deprecated and counted by the ratchet; new
      code doesn't use it. Effects, sparks, regions, collision types and statuses are definitions only (a hitbox
-     with no spark or status gives `nil`). Bug codes and NameIDs have no v2 form yet and stay numbers.
+     with no spark or status gives `nil`). Bug codes have no v2 form yet and stay numbers. An object that the
+     original gives a NameID takes an identity (`me.identity = IDENTITY`, a `define.identity` in its module:
+     content-model-v2.md §3.2).
    - Mind the game's store widths (`me.lifecycle = "destroy"` is `strb`, `me:set_lifecycle(...)` the word store),
      its sprite-stepping routine (`update_sprite`, `update_sprite_while_dimmed`, `update_sprite_while_paused`,
      `step_sprite`), and the order of RNG draws.

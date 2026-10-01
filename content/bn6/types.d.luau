@@ -306,8 +306,8 @@ export type FlashBombVariant = {
 
 -- A rock's variant (objects/rock, a row of the original's `byte_80CF934`):
 -- its standing animation, HP, element, the palette of the debris it breaks
--- into, the sound it breaks with, and its NameID (the field objects' look,
--- a number until identities come).
+-- into, the sound it breaks with, and its identity (what it is taken for:
+-- a rock, an ice block).
 export type RockVariant = {
     -- Its key (`rock/cube`): stages name their rocks' variants.
     id: string?,
@@ -316,7 +316,7 @@ export type RockVariant = {
     element: string,
     debris_palette: number,
     break_sound: Sound,
-    name: number,
+    identity: Identity,
 }
 
 -- How a rock comes onto the field (objects/rock, the original's third
@@ -339,14 +339,14 @@ export type RockSpec = {
 -- A Wind's or Fan's fan (chips/wind/fan): its palette; `pulls`: it blows
 -- Fan's pulling gust from the far column rather than Wind's pushing one
 -- from the enemy's front column; ticks from becoming its side's wind to
--- the first gust; HP; its NameID (the field objects' look) and how it
--- looks absorbed (objects/absorbed-obstacle's `look`).
+-- the first gust; HP; its identity (what it is taken for) and how it looks
+-- absorbed (objects/absorbed-obstacle's `look`).
 export type FanVariant = {
     palette: number,
     pulls: boolean,
     wait: number,
     hp: number,
-    name: number,
+    identity: Identity,
     absorbed: AbsorbedLook,
 }
 
@@ -360,14 +360,14 @@ export type CircGunVariant = {
 }
 
 -- An Anubis statue (chips/anubis/statue, `byte_80CF0C0`): its animation,
--- the ticks between its drains, HP, lifetime, and NameID (the field
--- objects' look).
+-- the ticks between its drains, HP, lifetime, and identity (what it is
+-- taken for).
 export type AnubisVariant = {
     anim: number,
     period: number,
     hp: number,
     lifetime: number,
-    name: number,
+    identity: Identity,
 }
 
 -- A panel change (objects/panel-changer, a row of the original's
@@ -413,11 +413,11 @@ export type Barrier = {
 }
 
 -- An instrument (lib/instruments, a row of the original's `byte_80D4078`):
--- its identity (its NameID, a number until identities come) and palette,
+-- its identity (what it is taken for) and palette,
 -- how long it plays and pauses, its tune, and the effect it has every
 -- third tick of playing (`off_80D4298`).
 export type Instrument = {
-    identity: number,
+    identity: Identity,
     palette: number,
     play_ticks: number,
     pause_ticks: number,
@@ -480,7 +480,7 @@ export type CountdownVariant = {
     appear_anim: number,
     idle_anim: number,
     hp: number,
-    name: number,
+    identity: Identity,
     class: number,
     collision: { is: CollisionType, hits: CollisionType },
     strong_shake: boolean?,

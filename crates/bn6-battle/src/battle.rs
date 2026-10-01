@@ -112,8 +112,9 @@ pub struct RoundState {
     pub battle_time: u32,
     pub has_tags: u8,
     pub tag_index: u8,
-    /// Navi name ids per side (four each).
-    pub name_ids: [[u16; 4]; 2],
+    /// What each side's navis are taken for (their identities; four
+    /// each).
+    pub identities: [[Option<bn6_content_api::IdentityHandle>; 4]; 2],
     /// Intro progress bits (0x10 fade started, 0x01 fade done, 0x02 all
     /// navis in); 0x04/0x08 chips enabled per side.
     pub intro_bits: u8,
@@ -1030,7 +1031,7 @@ impl Battle {
                 }
                 let n = self.round.name_counts[side] as usize;
                 if n < 4 {
-                    self.round.name_ids[side][n] = self.objects.get(r).name_id;
+                    self.round.identities[side][n] = self.objects.get(r).identity;
                 }
                 self.round.name_counts[side] += 1;
             }
@@ -1699,13 +1700,13 @@ impl Battle {
     fn mode_fade_out(&mut self) {
         if self.round.init == 0 {
             // sub_80094DA: to white when the battle was won against one of
-            // the navis 0x173..=0x17E (`sub_800A7A6` over side 1's actors,
+            // the Cybeasts (NameIDs 0x173..=0x17E; `sub_800A7A6` over side 1's actors,
             // `sub_800A832`'s result code 1), otherwise to black; either
             // takes 16 ticks.
             let bosses = self.round.alive_actors[1]
                 .iter()
                 .flatten()
-                .filter(|&&r| (0x173..=0x17E).contains(&self.objects.get(r).name_id))
+                .filter(|&&r| self.content.identity(self.objects.get(r).identity).class.is_cybeast())
                 .count();
             let white = bosses != 0 && self.round.result & 0xF == 1;
             self.fade.start(if white { FadeMode::EndToWhite } else { FadeMode::EndToBlack }, 0x10);

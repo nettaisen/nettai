@@ -12,11 +12,10 @@
 -- (`battle.spawn(bomb.kind, pos)`, `me:set_attack(action, 2)`). The
 -- definitions and their types are at the end of this file.
 --
--- What is left of the numeric API (an object's NameID, effects, sparks,
--- regions, collision types and sounds by number, the `data` global and
--- the `legacy` markers) is marked "Deprecated" below and counted per
--- module by bn6-content-check's ratchet (tests/deprecated.txt), which only
--- shrinks.
+-- What is left of the numeric API (sounds by number, and the `legacy`
+-- markers of the navis, the forms and the body overlays) is marked
+-- "Deprecated" below and counted per module by bn6-content-check's ratchet
+-- (tests/deprecated.txt), which only shrinks.
 --
 -- Functions keep nothing between calls: what an object or action keeps
 -- lives in its declared `state` (typed fields the engine stores and
@@ -324,7 +323,9 @@ declare class Object
     -- half (the counter byte in its low byte) in stamina.
     damage: number
     stamina: number
-    name_id: number
+    -- What it is taken for (nil: a virus, as the original's NameID 0): a
+    -- navi's or a form's identity, a field object's.
+    identity: Identity?
     -- Holds an object's sprite (and more, by kind).
     prevent_anim: number
     pos: Vec3
@@ -432,9 +433,6 @@ declare class Object
     -- `object_genericDestroy`: release panel reservations and collision,
     -- then free.
     function destroy(self): ()
-    -- `sub_8011044`: what an object with a navi's NameID takes down when it
-    -- goes (for most, its form overlay in related2).
-    function death_hook(self, name_id: number): ()
     -- `sub_8010DF6`: put on the overlays an actor record adds (a body
     -- overlay, SpoutMan's idle overlay, a beast head), kept in related2
     -- (CircusMan's second one kept by the engine); `arg` 1: their sprites
@@ -585,7 +583,7 @@ declare class Object
     -- the sprite, a shadow if the look has one, its animation and palette,
     -- flipped by the object's side unless the look keeps its own; false
     -- when the look is the table's none.
-    function wear_junk_look(self, look: number): boolean
+    function wear_junk_look(self, look: Identity): boolean
     -- CrosOver's MegaMan (`sub_80BDBC8`): take the user's identity when the
     -- user is MegaMan or one of his forms (true), else MegaMan's own: its
     -- sprite (a ground shadow, animation 0 loaded by the next sprite
@@ -734,7 +732,6 @@ export type PanelCondition = { require: number, forbid: number }
 -- last tick's damage on top of its own.
 export type DamageCarry = { this_tick: number, previous: number, source: Object?, target: Object? }
 export type Column = { home: number, timer: number }
-export type NaviRecord = { actor_type: ActorType, ai_index: number }
 
 -- How a form overlay's sprite steps once the navis are in (its Param3):
 -- `object_updateSprite` (not while dimmed; it stops running while paused),
@@ -889,7 +886,6 @@ declare battle: {
     bump_side_stat: (side: number, index: number, n: number) -> (),
     -- `sub_800AB3A`: a side's statistics counter.
     side_stat: (side: number, index: number) -> number,
-    navi_record: (name_id: number) -> NaviRecord?,
     -- The damage-carry record of the side that takes the damage
     -- (`dword_203CFB0`; CopyDmg's).
     damage_carry: (side: number) -> DamageCarry,
@@ -944,9 +940,6 @@ declare battle: {
     -- `sub_80E33FA`: a plain afterimage (effect object #0x28) of `owner`'s
     -- side at `pos`: a copy of a sprite that stays behind.
     afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
-    -- `sub_8018810`: NameID `name_id`'s sprite attach point `point`, in
-    -- pixels, facing the way `alliance` and `flip` say.
-    attach_point: (name_id: number, point: number, alliance: number, flip: number) -> (number, number),
 }
 
 declare field: {
@@ -1146,13 +1139,13 @@ declare obstacle: {
     -- `sub_80EFD8C` make before taking an obstacle.
     present: (o: Object) -> boolean,
     -- DustMan's take (`sub_80BC100`): what field object `o` would look like
-    -- thrown back as junk, an opaque look its taker keeps in a "u16" state
-    -- field (`me:wear_junk_look`); nil for the objects DustMan leaves
-    -- (`sub_800F486`).
-    junk_look: (o: Object) -> number?,
-    -- `sub_80DC3B2`'s test: a field object by its NameID (0xCD to 0xFF)
-    -- but those `sub_800F486` excludes (0xD3, 0xDA, 0xE9, 0xEA): what
-    -- BlzrdBal's ball swallows.
+    -- thrown back as junk: its identity, which its taker keeps in an
+    -- "identity" state field (`me:wear_junk_look`); nil for the objects
+    -- DustMan leaves (`sub_800F486`: an identity with `scrap = false`).
+    junk_look: (o: Object) -> Identity?,
+    -- `sub_80DC3B2`'s test: a field object by its identity, but those
+    -- `sub_800F486` excludes (`scrap = false`): what BlzrdBal's ball
+    -- swallows.
     swallowable: (o: Object) -> boolean,
 }
 
@@ -1406,6 +1399,51 @@ export type LockonDef = {
 }
 export type Lockon = LockonDef
 
+-- What an object is taken for (§3.2): the original's NameID record. A
+-- navi's and a form's is nested in its definition (`identity =
+-- define.identity { ... }`); a field object's is its kind's.
+--   megaman, link_navi, cross, beast, cross_beast, beast_over: a player's
+--     navi (MegaMan in his base form, a link navi, MegaMan's forms);
+--   field_object: a rock, a statue, a mine;
+--   virus, navi, gregar, falzar: what no netbattle object is (an object
+--     with no identity is a virus).
+export type IdentityClass =
+    "megaman"
+    | "link_navi"
+    | "cross"
+    | "beast"
+    | "cross_beast"
+    | "beast_over"
+    | "field_object"
+    | "virus"
+    | "navi"
+    | "gregar"
+    | "falzar"
+export type IdentitySpec = {
+    id: string?,
+    class: IdentityClass,
+    -- The actor record (`byte_80182C4`): its version, its actor type (by
+    -- default its class's), and the AI index that picks its hooks.
+    version: number?,
+    actor_type: ActorType?,
+    ai_index: number?,
+    -- A navi's sprite attach points, in pixels, x toward the facing side.
+    attach_points: { { number } }?,
+    -- Where a held thing with no attach point sits ({ x, z }; none: 13
+    -- pixels up).
+    held_offset: { number }?,
+    -- A field object's look (`byte_8021220`): what something that takes
+    -- its place shows (no sprite: nothing). `keeps_flip`: what wears it
+    -- keeps its own flip.
+    look: { sprite: SpriteAsset?, anim: number?, palette: number?, shadow: boolean?, keeps_flip: boolean? }?,
+    -- A field object the obstacle-absorbing action and ColArmy leave
+    -- (`absorbable = false`), and one nothing swallows or leaves as junk
+    -- (`scrap = false`).
+    absorbable: boolean?,
+    scrap: boolean?,
+}
+export type Identity = IdentitySpec
+
 -- A one-shot effect's or hit spark's look.
 export type EffectSpec = { sprite: SpriteAsset, anim: number?, palette: number? }
 export type Effect = EffectSpec
@@ -1548,6 +1586,7 @@ declare define: {
     collision: (spec: CollisionTypeSpec) -> CollisionType,
     status: (spec: StatusDef) -> StatusDef,
     lockon: (spec: LockonDef) -> LockonDef,
+    identity: (spec: IdentitySpec) -> Identity,
     -- A rule section (§3.8): one table of rules no entity owns, by its
     -- section name (`define.rules("elements", { ... })`).
     rules: <T>(section: string, spec: T) -> T,
