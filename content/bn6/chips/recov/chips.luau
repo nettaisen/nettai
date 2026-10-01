@@ -4,7 +4,7 @@
 
 local heal = require("./heal")
 
-return {
+local chips = {
     define.chip {
         id = "recov10",
         name = "Recov10",
@@ -94,3 +94,9 @@ return {
         action = heal.action { hp = 300 },
     },
 }
+
+-- The heal table's last row, which heals nothing and no chip has
+-- (`byte_80EC870`'s tenth entry, after DrkRecov's).
+chips.none = heal.action { id = "recov/none", hp = 0 }
+
+return chips

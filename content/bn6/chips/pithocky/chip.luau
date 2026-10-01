@@ -11,5 +11,5 @@ local flick = require("../airhocky/flick")
 local puck = require("../airhocky/puck")
 
 return {
-    action = flick.action { id = "pithocky/action", puck = puck.variants[3], down = true },
+    action = flick.action { id = "pithocky/action", puck = puck.variants.pithocky, down = true },
 }

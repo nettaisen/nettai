@@ -28,9 +28,9 @@ function wave.variant(v: Variant): Variant
     return define.record("shock-wave-variant", v)
 end
 
--- `byte_80C6B00`'s rows: 0 to 0xB the viruses' (no chip has them), 0xC to
--- 0xE WaveArm1's to WaveArm3's, 0xF PwrWave's.
-wave.variants = {
+-- `byte_80C6B00`'s rows: the first twelve the viruses' (no chip has them),
+-- then WaveArm1's to WaveArm3's and PwrWave's.
+local ROWS: { [number]: Variant } = {
     [0x0] = wave.variant { anim = 0, ticks = 22 },
     [0x1] = wave.variant { anim = 1, ticks = 16 },
     [0x2] = wave.variant { anim = 1, ticks = 11 },
@@ -48,6 +48,8 @@ wave.variants = {
     [0xE] = wave.variant { anim = 1, ticks = 6, quick = true, steers = true },
     [0xF] = wave.variant { anim = 1, ticks = 6, quick = true },
 }
+-- The chips' waves.
+wave.variants = { wavearm1 = ROWS[0xC], wavearm2 = ROWS[0xD], wavearm3 = ROWS[0xE], pwrwave = ROWS[0xF] }
 
 local SPRITE = asset.sprite("shock-wave")
 local SOUND = asset.sound("shock-wave")

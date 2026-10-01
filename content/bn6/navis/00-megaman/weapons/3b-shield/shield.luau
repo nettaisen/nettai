@@ -22,13 +22,13 @@ local TICKS = 0x14
 local SHIELD = guard.action {
     id = "megaman/shield/action",
     ticks = TICKS,
-    look = reflector_shield.looks[2],
+    look = reflector_shield.looks.navicust_shield,
     heedless = true,
 }
 local REFLECT = guard.action {
     id = "megaman/reflect/action",
     ticks = TICKS,
-    look = reflector_shield.looks[1],
+    look = reflector_shield.looks.navicust_reflect,
     counter = "shot",
 }
 

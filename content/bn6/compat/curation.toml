@@ -9,6 +9,7 @@
 "engine/cross-special" = "0x59: the Cross special's controller (the ruleset's cross_special)"
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
 "tornado/back-spread" = "0x2F: action 0x2F's subtype 3, which no chip has (chips/tornado/chips.luau)"
+"recov/none" = "0x20: action 0x20's subtype 9, the heal table's last row, which no chip has (chips/recov/chips.luau)"
 "megaman/shield/action" = "0x2B: the NaviCust Shield's guard, weapons 0x3B and 0x8C (navis/00-megaman/weapons/3b-shield)"
 "megaman/reflect/action" = "0x2B: the NaviCust Reflect's guard, weapons 0x3C and 0x8B (navis/00-megaman/weapons/3b-shield)"
 "heatcross/charge/action" = "0x27: HeatCross's charged shot, FireBrn's burn (navis/00-megaman/forms/heatcross/charge.luau)"
