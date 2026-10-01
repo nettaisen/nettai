@@ -1,0 +1,3 @@
+# TankCan1 runs the tank cannons (action 0x24, `sub_80ECACA`), in chip.luau.
+
+script = "chip.luau"
