@@ -134,8 +134,8 @@ local function blow(me: Object)
         if x == 0 then
             return
         end
-        local pull = if s.variant.pulls then 1 else 0
-        gust.spawn(x, row, me.alliance, me.flip, { pull, 0, 0, 0 }, 0, nil, 0)
+        -- The gust pulls with Fan's (its first parameter, 1 or 0).
+        gust.spawn(x, row, me.alliance, me.flip, { pulls = s.variant.pulls }, 0, nil, 0)
         me.timer2 = GUST_INTERVAL
         me.phase = 4
         return

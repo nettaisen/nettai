@@ -1,3 +1,3 @@
-# AquaNdl's action (0x32), in AquaNdl1's folder.
+# AquaNdl's action (0x32) for the records that name it, in chip.luau.
 
-script = "../03d-aquandl1/chip.luau"
+script = "chip.luau"

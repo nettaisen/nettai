@@ -1,8 +1,0 @@
-# MoonBld's blade (attack object #0x85, `sub_80D5C48`) is a script. Its
-# spawner leaves registers in its position (the last one unknowable), which
-# its first update overwrites.
-
-[kind]
-pool = "attack"
-index = 0x85
-script = "moon_blade.luau"
