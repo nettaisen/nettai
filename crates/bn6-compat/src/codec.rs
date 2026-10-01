@@ -90,11 +90,9 @@ impl<'a> Ids<'a> {
 
     /// A navi's number.
     pub fn navi_number(&self, h: NaviHandle) -> u8 {
-        let def = self.content.defs.navi(h);
-        if def.key.starts_with("v1/") {
-            return def.record.id;
-        }
-        self.compat.navis.get(&def.key).map(|n| n.navi).unwrap_or_else(|| panic!("navis.toml has no {:?}", def.key))
+        // The engine's navis are the pack's, by number (content defines
+        // none of its own yet).
+        self.content.defs.navi(h).record.id
     }
 
     /// MegaMan's form with this number.
@@ -109,11 +107,8 @@ impl<'a> Ids<'a> {
 
     /// A form's number.
     pub fn form_number(&self, h: FormHandle) -> u8 {
-        let def = self.content.defs.form(h);
-        if def.key.starts_with("v1/") {
-            return def.record.id;
-        }
-        self.compat.forms.get(&def.key).map(|f| f.form).unwrap_or_else(|| panic!("forms.toml has no {:?}", def.key))
+        // MegaMan's forms are the pack's, by number.
+        self.content.defs.form(h).record.id
     }
 
     /// The weapon a routine number names; none for 0xFF.
@@ -156,8 +151,8 @@ impl<'a> Ids<'a> {
     /// A stage's battle settings index.
     pub fn stage_index(&self, h: StageHandle) -> u8 {
         let def = self.content.defs.stage(h);
-        if def.key.starts_with("v1/") {
-            return def.number;
+        if let Some(n) = def.number {
+            return n;
         }
         let e = self.compat.stages.get(&def.key).unwrap_or_else(|| panic!("stages.toml has no {:?}", def.key));
         *e.settings.first().unwrap_or_else(|| panic!("stages.toml gives {:?} no settings", def.key))

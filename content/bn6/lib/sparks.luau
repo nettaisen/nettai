@@ -70,4 +70,10 @@ function sparks.of_element(element: number): Spark
     return s
 end
 
+-- The rest of the original's sparks (gen-content).
+-- Spark 0x08.
+sparks.hit = define.spark { sprite = asset.sprite("hit"), anim = 0, palette = 0 }
+-- Spark 0x0E.
+sparks.spark_0e = define.spark { sprite = asset.sprite("spark-0e"), anim = 0, palette = 0 }
+
 return sparks

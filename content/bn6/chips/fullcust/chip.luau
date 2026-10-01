@@ -20,6 +20,7 @@ end
 return define.chip {
     id = "fullcust",
     name = "FullCust",
+    description = "CustGauge\ninstantly\nrefills",
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 3, mb = 50, damage = 0, hit_param = 0, lockout = 20,

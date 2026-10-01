@@ -1,8 +1,10 @@
 --!strict
 -- What the ruleset needs from the test pack by role
--- (docs/design/content-model-v2.md §7.4): AntiDmg's counter, and the
--- charged shot a navi's request starts.
+-- (docs/design/content-model-v2.md §7.4): AntiDmg's counter, the
+-- charged shot a navi's request starts, and what an encased obstacle
+-- becomes (the BN6 content's).
 
+local encased_bubble = require("../../objects/encased-bubble/bubble")
 local ticker = require("../lib/ticker")
 
 return define.roles {
@@ -35,5 +37,8 @@ return define.roles {
         boulder = { legacy = { kind = "boulder" } },
         absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
         falling_rock = { legacy = { kind = "falling-rock" } },
+    },
+    hooks = {
+        encased = encased_bubble.replace,
     },
 }

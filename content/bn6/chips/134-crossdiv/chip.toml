@@ -1,3 +1,0 @@
-# A navi chip (subtype 17): its navi is Colonel (Param3 1: his CrossDiv).
-
-script = "../../objects/colonel/colonel.luau"

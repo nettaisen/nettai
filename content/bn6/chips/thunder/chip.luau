@@ -10,6 +10,7 @@ local PARALYZE = 0x10
 return define.chip {
     id = "thunder",
     name = "Thunder",
+    description = "Pralyzing\nelectric\nattack!",
     codes = { "B", "R", "S", "*" },
     element = "elec", family = "elec", class = "standard",
     rarity = 1, mb = 7, damage = 40, hit_param = 20, lockout = 0,

@@ -749,7 +749,8 @@ already set up (Beat first); Tango every idle frame before any request:
   `sub_80F0354` applies), and only when the support's bit is set.
 - On a Beat or Rush cancel, `object_exitAttackState` runs, so the lockout applies and requests are cleared. The
   hand index is **not** incremented here; Rush and Beat call `sub_800FC7C` on the victim later.
-- `sub_80E90FE` spawns the controller, effect object #0x79 (`sub_80E8FE0`, content kind `objects/support`), on the
+- `sub_80E90FE` spawns the controller, effect object #0x79 (`sub_80E8FE0`, content kind `support/controller`,
+  lib/supports/controller: the role `kinds.support`; the ruleset sets its `support`, `eaten` and `telop_chip`), on the
   host's panel (the support's owner: the chip user's opponent for Rush and Beat), with the host in related 1,
   its side, element 0, no damage and the telop chip at +0x30. Its X, Y and Z are the caller's r1..r3 (the host's
   panel row, 0, 0). `sub_800BF16(host side, 1, controller)` then starts a dimming the other side can't cut in
@@ -977,7 +978,7 @@ Representative handlers, all code-derived. Frame counts assume the attack is not
 | Navi chips (0x1B → `sub_80EC350`) | 1 | `sub_80E192C(panelX, panelY, av+2, av3, av.u32[0xC], av.u32[8], chip \| av6<<16)` spawns T4 0x10 (summon controller → `off_802CD5C[subtype]`). Registers the dimming exactly as 0x15, then exits **in the same frame**. |
 | GunDelSol (0x37 → `sub_80EDAE0`) | 140 (S3) | §4 |
 | Reflector (0x2B → `sub_80ED13E`; the pack's `chips/rflectr`) | params[0] + 2 (62) | One phase. f1: the shield (T3 0x2B, `sub_80C97E0`: at attach point 6, look `byte_80C9664[params[1]]`, stored in RelatedObject1Ptr), ObjectFlags1 GUARD and 0x400000, anim 0 (and the Beast head's, `sub_80101D4`), av+0x30 = 0, timer = 0. **Every tick after:** unless subtype 3, if CollisionData+0x03 (the directions the guard blocked) has bit `1 << flip`: a guard-breaking hit (FlagsFromCollision & 2) drops the shield and the guard; otherwise the first such tick (av+0x30 0 → 1) sends the wave back: subtypes 0..2 the T3 0x2F wave (`sub_80C9CDA`: one panel ahead, Z 16, damage word `av.u32[8] + av.u16[6]`, sound 0xC5), subtype 4 the buster's projectile (T3 #0 with Param1 6, Z 20), others nothing. Then timer + 1; past params[0]: the shield and guard go, exit. No reactive abort, no counter window. |
-| Recovery (0x20 → `sub_80EC844`; chips/recov, chips/drkrecov) | 1 | f1: `sub_800E2FC(byte_80EC870[subtype], 1)` (10, 30, 50, 80, 120, 150, 200, 300, 1000; each chip's `hp` in chips/recov/chips.luau): unless the opponent's defensive-chip record is AntiRecv (0xBD), HP += n up to the maximum, effect #0 look 6 at the navi, sound 0x8A; if it is, AntiRecv's controller (T4 0x2C, `sub_80E3728`) starts a dimming (`sub_800BF16` with no cut-in) that takes n from the navi, the trap mark (effect #0 look 0x46, Param2 = the local side, sound 0xA5) and the record is spent. Then side statistic 5 + 1, exit. The ruleset's heal (`kinds::heal`) runs it; T4 0x2C is the pack's objects/anti-recovery (§3.6.7). The AntiRecv branch matches a scratch chip-lab recording (Recov10 against AntiRecv). |
+| Recovery (0x20 → `sub_80EC844`; chips/recov, chips/drkrecov) | 1 | f1: `sub_800E2FC(byte_80EC870[subtype], 1)` (10, 30, 50, 80, 120, 150, 200, 300, 1000; each chip's `hp` in chips/recov/chips.luau): unless the opponent's defensive-chip record is AntiRecv (0xBD), HP += n up to the maximum, effect #0 look 6 at the navi, sound 0x8A; if it is, AntiRecv's controller (T4 0x2C, `sub_80E3728`) starts a dimming (`sub_800BF16` with no cut-in) that takes n from the navi, the trap mark (effect #0 look 0x46, Param2 = the local side, sound 0xA5) and the record is spent. Then side statistic 5 + 1, exit. The ruleset's heal (`kinds::heal`) runs it; T4 0x2C is BN6's chips/antirecv/controller, the role `kinds.anti_recovery` (§3.6.7). The AntiRecv branch matches a scratch chip-lab recording (Recov10 against AntiRecv). |
 | Reflector's shield (T3 0x2B, `sub_80C96A0`; chips/rflectr/shield.luau) | - | Init: sprite, anim, palette from its look row, panel from its spawn position (the attach-point offset), flip, sound 0xA0, the offset kept in its velocity. Action 0: its owner's position + offset, until the owner's RelatedObject1Ptr is cleared; action 4: the fade animation for the row's ticks, then state 8 (`object_freeMemory`). After the action: visible, unless the local navi is blind to it (`sub_800EB6C`) or its owner vanished for a navi chip (state bit 0x100000). Runs while paused and dimmed; the sprite stands still while dimmed. |
 | Reflector's wave (T3 0x2F, `sub_80C9BC4`) | - | Init: off the field, freed; else sprite 0x14/4, timer 2, collision (4, 5, 0) region 1 on its panel. Each tick: resolve, hit spark; battle over: gone. A hit clears its region. Action 0: timer − 1; at 0 the next segment one panel ahead (same Z and damage), action 4. Action 4: gone when the animation's last frame ends. |
 
@@ -1231,9 +1232,15 @@ scenarios (the other side's copy of the chip, answered during the telop) match e
   and its end waits; then the first effect runs, its undim fades the screen back, and its end (the initiator's)
   frees both.
 
-Unverified: a cut-in whose next chip is a navi chip of subtype 0 against the other side's chip 0xBD (AntiRecv's
-counterattack takes the dimming over), a failed
-controller spawn, a cut-in by a chip of another action, and cut-ins with Full Synchro, anger, or a dark chip.
+The coverage scenarios (docs/engine/unverified.md) verified the rest of the cut-ins: by a chip of another
+subtype or action, in chains of up to four (`chips/0x0a3-areagrab/cut-in-invisibl`, `cut-in-chain`,
+`chips/0x0dd-roll/cut-in-heatman`, `chips/0x0e3-heatman/cut-in-barrier`); with Full Synchro and with anger, the
+cut-in's damage doubled and the mood spent (`chips/0x0e3-heatman/cut-in-full-synchro`, `cut-in-anger`,
+`chips/0x08b-meteors/cut-in-full-synchro`); with a dark chip, which goes in as its substitute
+(`chips/0x121-darkinvs/cut-in`); Roll cut in against the other side's AntiRecv, whose counterattack takes the
+dimming over (`chips/0x0bd-antirecv/roll-cut-in`); a cut-in that deletes the first chip's user before its telop
+(`chips/0x0e3-heatman/user-deleted`); and A during a dimming with a chip that doesn't dim next
+(`chips/0x0b1-invisibl/cut-in-not-dimming`). Unverified: a failed controller spawn.
 
 When the checks fail (e.g. A pressed while the other side's screen is still dimming, soundmod 3217), `sub_8017AB4`
 just clears requests 0x80C; the navi goes on shaking as usual.
@@ -1274,7 +1281,7 @@ and hit parameter 0x1E, in the chip's parameters (Z = the mark's, left in r3). A
 dimming like the navi chip's controller; nothing else starts one (unlike a recovery chip's heal). Port:
 `kinds::navi_chip`, `kinds::heal`.
 
-**AntiRecv's counterattack, T4 0x2C (`sub_80E3728`; the pack's objects/anti-recovery).** Spawned by `sub_80E37D2`
+**AntiRecv's counterattack, T4 0x2C (`sub_80E3728`; BN6's chips/antirecv/controller, which the ruleset spawns by the role `kinds.anti_recovery`).** Spawned by `sub_80E37D2`
 (r0/r1 the healer's panel, r2 element 0, r6 the damage word, r7 = 0xBD for the telop; RelatedObject1 = the healer,
 the healer's alliance; its position the spawner's registers). A dimming controller: states `object_timefreezeBegin`,
 `sub_80E3748`, `object_timefreezeEnd`; actions (`off_80E375C`) 0 `object_dimScreen`, 4 `object_drawChipName`, 8
@@ -1283,7 +1290,9 @@ the healer by the damage (down to 0), two rising bubbles (T4 0x14, palette 1) 16
 center at Z 0, the panel changer (T4 0x1F, kind 6: the own panel turns to poison; dimming-chips.md §4.2) handed
 Param2's address, Param2 = 1. Every tick: once Param2 is 0 (the changer cleared the four parameters), action 0xC.
 **Lab** (`chips/0x0bd-antirecv/roll` and `chips/0x0bd-antirecv/recov10`): AntiRecv set by side 0, then side 1's
-Roll (this branch) or Recov10 (the heal's) springs it; both match every frame (1170). Unverified: Roll's damage with the double-damage flag, a full effect pool.
+Roll (this branch) or Recov10 (the heal's) springs it; both match every frame (1170). Roll's damage with the
+double-damage flag is verified too (`chips/0x0bd-antirecv/roll-full-synchro`: Roll used in Full Synchro, 120 for
+60). Unverified: a full effect pool.
 
 **The controller, T4 0x10 (`sub_80E17E8`).** Spawned with r1..r3 = panel Y, element, subtype as its position (so
 Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is
@@ -1349,7 +1358,7 @@ while dimmed (region 1, target 5, self 0xA; the bolt hit effect 3, modifier 3, t
 the bolt breaks its panel (`object_breakPanel_dup2`: cracks it if something occupies it), sound 0x12E, and shows 16
 ticks; the vine (ElmntMan's sprite, animation 0x12), sound 0x181, 30 ticks.
 
-All of these are the pack's scripts (objects/elmnt-man, meteor, elmnt-ice, elmnt-bolt, elmnt-vine). The navi AI's
+All of these are the pack's scripts (chips/elmntman: navi, meteor, ice, bolt, vine). The navi AI's
 meteors and ice (Param1/Param3 0) are ported but no trace reaches them (unverified).
 
 **Cut-ins.** `sub_8017AB4` also needs the next chip to have the dimming flag; soundmod 25828 (side 1 presses A
@@ -1396,8 +1405,34 @@ survival alone decides the effect). Its effect (`sub_80E3504`): `sub_802CEA6` cl
 (its object gets Param2 = 1), `sub_80E3560` spawns the trap's object for Param1 0 only (AntiDmg's params are 3: none),
 and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes per side at 0x02036720). Then 61 ticks.
 `sub_802CEC8` clears a record every tick once its user's HP is 0. The trap springs in the damage intake
-(`sub_802CEF4`). Note `sub_802CEA6` clears only the low half of the record's damage word. The pack's script:
-objects/trap-chip.
+(`sub_802CEF4`). Note `sub_802CEA6` clears only the low half of the record's damage word. The pack's module:
+lib/traps/controller (a chip's `dimming` hook is `traps.hook(trap?)`; the port's trap object sees that its side's
+record no longer names it, where the original tells it through Param2).
+
+**The traps' counters.** A trap that caught a hit sets its request on the navi, and the ruleset (`sub_801056A`,
+`sub_80105F2`; kinds/player/actions/reactive.rs) starts the counter by role (`define.roles`, rules/roles.luau).
+The counters are content:
+
+- AntiDmg's (action 0x47, `sub_80EE90C`; chips/antidmg/counter): the navi vanishes and throws a shuriken (attack
+  object #0xC2, `sub_80DD764`; chips/antidmg/shuriken) at a random enemy, or by the attack's variant 1 at the
+  nearest one ahead.
+- AntiSwrd's (action 0x48, `sub_80EEA3C`; chips/antiswrd/counter): three swings, each throwing a sonic boom
+  (attack object #0x58, lib/swords/sonic_boom; shot-chips.md §12.1).
+- BodyGrd's (action 0x4B, `sub_80EED56`; chips/bodygrd/counter): the navi vanishes and leaves a striker (effect
+  object #0x6E, `sub_80E8268`; chips/bodygrd/striker), a field object that drops ten shurikens (attack object
+  #0x5C, `sub_80CFEC4`; chips/bodygrd/shuriken) on the enemy navi.
+
+**Lab**: the scenarios that spring a trap match every frame: `chips/0x0bb-antidmg/counter`, `sprung` and
+`sprung-side0` (AntiDmg's counter and its shuriken, variant 0), `chips/0x0bc-antiswrd/sprung` (the three swings and
+their sonic booms: every block of `sub_80EEA78`) and `pa/0x157-bodygrd/sprung` (the counter, the striker and its
+shurikens); and the traps sprung by other hits: AntiDmg by a sword, a volley, a bomb, a flame, a charged
+shot and hits inside a dimming, by both sides in turn, and deleting its target (`chips/0x0bb-antidmg/sprung-sword`,
+`-vulcan`, `-minibomb`, `-firebrn`, `-charge-shot`, `-heatman`, `-meteors`, `-twice`, `-ko`); AntiSwrd by the
+other swords and by ProtoMan's and SlashMan's slashes (`chips/0x0bc-antiswrd/sprung-sword`, `-wideswrd`,
+`-fireswrd`, `-stepswrd`, `-moonbld`, `-protoman`, `-slashman`); BodyGrd by a sword and a navi chip
+(`pa/0x157-bodygrd/sprung-sword`, `-heatman`). **Unverified**: AntiDmg's variant 1 (two blocks of the throw, `sub_80EE996`), the striker's offline
+target (`sub_80E8326`'s other branches: a netbattle takes the player navi) and three branch sides of its tick
+(`sub_80E82D4`).
 
 #### 3.6.10 The other dimming chips' controllers (`off_802CCB4`)
 
@@ -1408,7 +1443,7 @@ alliance (and, for most, flip), damage word, and chip and bonus at +0x30/+0x32. 
 subtype:
 
 - 1 (Invisibl, WhiCapsl; T4 0x5D): the user flashes invisible for Param1-2 ticks (`sub_8010474`), 31 ticks.
-  objects/invisible.
+  objects/invisible (`invisible.hook(ticks)`).
 - 6 (RockCube, IceCube; T4 0x37): a rock of variant Param1 (1 a rock cube, 3 an ice block) on the panel in front
   (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. chips/rockcube; the rock is objects/rock
   (field-objects.md).
@@ -1417,13 +1452,15 @@ subtype:
   (+0x3C) or fast (+0x3A) gauge timer in `sub_802E070` gets 480 ticks, and, with per-player gauges (battle flag
   0x40) outside a link battle, the other side's 1080 (`sub_80107D4` counts them down; nothing else PvP reaches
   reads them); a warning blinks over the gauge (`sub_800AE90`, with sound 0x91 every 16 frames of the game's frame
-  counter, which the port approximates with the effect's own ticks), 70 ticks. objects/gauge-speed.
+  counter, which the port approximates with the effect's own ticks), 70 ticks. lib/gauge-speed/controller
+  (`gauge_speed.slow`, `gauge_speed.fast`).
 - 38 (HubBatc, the arm chips, BugRSwrd, BgDthThd, DarkInvs; T4 0x84, `sub_80E95B4` by Param1): 0 raises the buster
   to attack 5 at least, rapid and charge 4, the custom level 8, defers the hand-shrink bug a turn, gives a B+Back
   special (0x3B) if there was none, and the shoes and undershirt (flags 0x40030 and the stats), resetting the
   body's collision types; 1 and 2 make weapon routine Param2 the charged shot in the stats and the navi
   (`sub_80E97BE`: a buster of 3 or 4 goes, 0x2C becomes 0x2B); 3 sets the navi's request 0x20000000. The arm
-  effect's height offset is lost to a shift of the wrong register. objects/navi-boost.
+  effect's height offset is lost to a shift of the wrong register. lib/navi-boost/controller (`navi_boost.hub`,
+  `bug(routine)`, `arm(routine, palette)`, `dark`).
 
 Not ported yet, with what is known:
 
@@ -1439,12 +1476,12 @@ Not ported yet, with what is known:
 Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
 (program advance 0x157: only as its recipe), per-player gauges (not in netbattles).
 
-**ElemTrap's trap** (T3 0x4D, `sub_80CDF84`; the pack's `objects/elem-trap`) is a collision over whole-field region
+**ElemTrap's trap** (T3 0x4D, `sub_80CDF84`; the pack's `chips/elemtrap/trap`) is a collision over whole-field region
 0x80 with ObjectFlags1 0x01000000 (hit even while dimmed), self type 0, target 0x18. Each tick it resolves its hits
 and reads the per-element damage (CollisionData+0x84, fire to wood); the first element with damage springs it (its
 first update runs unarmed: a hit then just clears the record). Sprung, it waits until the battle isn't dimmed, puts
 sparkles (T4#0 look 0x46, SE 0xA5) on the enemy navi's panels, spawns the counterattack T4 0x2B (`sub_80E35A4`,
-`objects/elem-trap-strike`) at the **head** of the update list (`sub_80033E4`) and registers it with `sub_800BF16`
+`chips/elemtrap/strike`) at the **head** of the update list (`sub_80033E4`) and registers it with `sub_800BF16`
 (the other side can't cut in), clears its side's record and ends. The counterattack's effect (`sub_80E362C`) hits
 every panel with any of `byte_80E36E4[side]` (the enemy's bodies) in that element (`byte_80E36EC`, damage plus bonus,
 `sub_80C53A6`) and spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel-bursts`: shared by seven callers,
@@ -1454,15 +1491,18 @@ leaves the trap).
 
 #### 3.6.10 TimeBom, Mine, Guardian (subtypes 10, 11, 14)
 
-- **TimeBom** (T4 0x27 `sub_80E31D8`, `objects/time-bom`; 31 ticks) sets the countdown bomb T3 0x4B (`sub_80CD8EC`,
-  `objects/countdown-bomb`) on the first panel ahead meeting `off_80E3280[side]` (a free enemy panel). The bomb
+- **TimeBom** (T4 0x27 `sub_80E31D8`, `chips/timebom/controller`; 31 ticks) sets the countdown bomb T3 0x4B
+  (`sub_80CD8EC`, `chips/timebom/countdown`) on the first panel ahead meeting `off_80E3280[side]` (a free enemy panel). The bomb
   (variants `byte_80CD8AC`: 0 TimeBom1-3, HP 50; 1 TimeBom+, HP 200) rises, counts 3, 2, 1 (60, 60, 60, 30 ticks,
   shown by hiding sprite parts), then hits whole-field region 0x82/0x81 (the enemy area of the side opposite its
   panel's) and sets off bursts; broken first, it only puffs. Variants 2 to 7 (HP 3 to 10; `bursts_when_broken`,
-  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them. The
+  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them (a variant
+  is a `CountdownVariant` record its chip passes; no chip passes those rows, whose branches are the record's
+  `allows_bodies`, `bursts_when_broken` and `linked`). The
   blast (`chips/0x090-timebom1/blast`), the bomb broken first (`broken`), pushed (`pushed`) and the battle's end
-  (`round-end`) are **verified**; removal and absorption are **unverified**.
-- **Mine** (T4 0x29 `sub_80E342C`, `objects/mine`; 121 ticks) lays T3 0x4C (`sub_80CDD44`, `objects/land-mine`),
+  (`round-end`) are **verified**, and removal, blink-out and absorption (`dustman`, `colarmy`, `absorbed`).
+- **Mine** (T4 0x29 `sub_80E342C`, `chips/mine/controller`; 121 ticks) lays T3 0x4C (`sub_80CDD44`,
+  `chips/mine/land_mine`),
   which shuffles the enemy's free panels (`byte_80CDF50`, 20 swaps), hops through them every 2 ticks (59 hops, SE
   0x113), then hides armed (region 1, types 0x33/0x2A) until something touches it, its HP runs out, its panel stops
   being solid or the battle ends; it blows up (T4#0 look 0x47, SE 0x70) the tick after. It has its own action table
@@ -1614,8 +1654,8 @@ and T4#0x11); their throws raise a content error. shot-chips.md §14 specifies b
 #### 3.6.11 SpoutMan (navi chip subtype 7, T1 0x09)
 
 Trace: soundmod rounds 1 and 2 (side 0's SpoutMan); the scratch lab's navis/0x0f2-spoutman/long{,-miss,-adjacent,
--holes} and the EX and SP `long`s match every frame. The pack's scripts: objects/spout-man, spout-ball,
-spout-splash, spout-pillar, spout-geyser, spout-mark.
+-holes} and the EX and SP `long`s match every frame. The pack's scripts: chips/spoutman (navi, ball, splash,
+pillar, geyser, mark).
 
 **SpoutMan, T1 0x09 (`sub_80B94BC`)**, spawned by `sub_80B9750` like ElmntMan (the controller's flag pointer in his
 CollisionDataPtr slot). His position is the spawner's registers: X, Y = panel Y and element (overwritten), Z = r3 =
@@ -1679,7 +1719,8 @@ Timer and Timer2 as one word. Where the scratch lab says "all match", every scen
 (long, long-miss, long-adjacent, long-holes) matches every frame. The battle ending mid-attack (each navi chip's
 `ko`: an opponent of 10 HP deleted by the first hit) and no footing for the navi (each one's `no-footing`: the
 user, with AirShoes, over a missing panel of the holes stage, where the navi's action 0 goes straight to its
-leave) are verified for every navi chip (docs/engine/unverified.md lists them). Unverified everywhere: a pool
+leave) are verified for every navi chip (docs/engine/unverified.md lists them), and so is each one against an
+opponent it can't hit (`invisible`), behind its own RockCube (`rock-front`) and behind a barrier (`barrier`). Unverified everywhere: a pool
 with no free slot (the spawns' failure branches).
 
 #### 3.6.12 TomahawkMan (subtype 8, T1 0x0A `sub_80B97C0`)
@@ -1856,9 +1897,11 @@ cross-ground-charged}: the dig meets the opponent (8 → 0x10). The lab's long s
 until he has gone) chips/0x0fb-grndman/long, long-adjacent, long-holes, long-side1 and the EX's and SP's long do
 too; in long-rocks, long-rocks-miss and long-side1-rocks the dig meets the user's RockCube instead; long-miss and
 long-side1-miss (nothing in his row) reach the rockfall, both rock searches and a rock's hit. All match every frame.
-navi-09-rc-brakr reaches the drill's Param1 0 (its owner never leaves). **Unverified**: action 0 → 0x10 (no
-footing); no rock candidate at all; the rock's no-collision, battle-over and non-solid landing paths, Param2 0,
-Param3 0, Param4 set; the drill's battle-over path and its Param1-0 leave.
+navi-09-rc-brakr reaches the drill's Param1 0 (its owner never leaves). The coverage scenarios verified action
+0 → 0x10 (`chips/0x0fb-grndman/no-footing`), the rock's non-solid landing (`rockfall-holes`,
+`rockfall-after-geddon`) and the rocks' and the drill's battle-over paths (`rockfall-ko`, `ko`). **Unverified**:
+no rock candidate at all; the rock's no-collision path, Param2 0, Param3 0, Param4 set; the drill's Param1-0
+leave.
 
 #### 3.6.26 DustMan (navi chip subtype 11, T1 0x18)
 
@@ -1914,9 +1957,12 @@ none; 0xDB 0C 30 00 00 1; 0xDC 0C 30 01 00 1; 0xDD..0xE1 04 0A 00 with palettes 
 Lab: the official chips/0x0fe and 0x100 {counter, guard, cross-charge-charged}, and the long scenarios
 chips/0x0fe-dustman/long{,-miss,-adjacent,-holes,-rocks,-rocks-miss,-side1,-side1-miss,-side1-rocks} and the EX's
 and SP's long; junk only where there are rocks to take (long-rocks, long-rocks-miss, long-side1-rocks, and
-cross-charge-charged). All match every frame. **Unverified**:
-action 0 → 0x10; the excluded NameIDs; the junk's none look, a look without a shadow, NameIDs 0xD8/0xD9 and outside
-0xCD..0xFF, no collision, the battle's end, and the flag check after moving.
+cross-charge-charged). All match every frame. The coverage scenarios verified action 0 → 0x10
+(`chips/0x0fe-dustman/no-footing`), the battle's end (`ko`), and his junk for every field object a chip of a
+netbattle leaves (each one's `dustman`: the instruments, Sensor's turret, both fans, Anubis's and Guardian's
+statues, TimeBom, BlkBomb, LilBoiler, VDoll: looks with and without a shadow, the none look), with the excluded
+NameIDs (`chips/0x091-mine/dustman`). **Unverified**: NameIDs 0xD8/0xD9 and outside 0xCD..0xFF, no collision,
+and the flag check after moving.
 
 #### 3.6.27 DiveMan (navi chip subtype 13, T1 0xB)
 
@@ -2067,9 +2113,11 @@ books), the long scenarios chips/0x10a-judgeman/long{,-miss,-adjacent,-holes,-ro
 -side1-rocks} and the EX's and SP's long; the books in long-grabbed, long-grabbed-up, long-side1-grabbed and the
 EX's and SP's long-grabbed{,-up} (the opponent's AreaGrab took his front column first). All match every frame, and
 soundmod round 3 has both sides' JudgeMan in one dimming (a counter cut-in), the first with three books and his
-columns coming back a tick apart (field-collision-damage.md §2.6.3). **Unverified**: action 0 → 0x18;
-the whip's Param1 0 (the navi AI's) and battle-over paths; a book's failed spawn or collision, the battle's end,
-arriving at its target, leaving solid ground, the heading's reversal, and the target past the far edge (no enemy
+columns coming back a tick apart (field-collision-damage.md §2.6.3). The coverage scenarios verified action 0
+→ 0x18 (`chips/0x10a-judgeman/no-footing`), the whip's battle-over path (`ko`), and a book arriving at its target
+(`books-invisible`: an invisible navi keeps its body on its panel, so the books fly there and end), leaving solid
+ground (`books-holes`) and ending with the battle (`books-ko`). **Unverified**: the whip's Param1 0 (the navi
+AI's); a book's failed spawn or collision, the heading's reversal, and the target past the far edge (no enemy
 navi at all).
 
 #### 3.6.30 TwinLdrs (navi chip subtype 20, PA chip 0x15C, T1 0x20)
@@ -2151,9 +2199,10 @@ shadow at its height), then always his own (sprite (8, 0xB), animation n, his fl
 
 Lab: the official pa/0x15c-twinldrs recipes (which now match every frame, group H's banner and hand being ported)
 end during the controller's 30-tick warp-out, before he appears; the long scenarios pa/0x15c-twinldrs/long{,-miss,
--adjacent,-holes} reach both, with every slash landing (one target), and match every frame. **Unverified**: his footing failing (0 → 0xC) and Colonel's (the
-40-tick wait); ProtoMan leaving without a slash (anim 3) or with more than one target; Colonel's target off the
-field; a failed Colonel spawn.
+-adjacent,-holes} reach both, with every slash landing (one target), and match every frame. The coverage
+scenarios verified his footing failing and Colonel's (`pa/0x15c-twinldrs/no-footing`), ProtoMan leaving without a
+slash (`rock-front`: the opponent's RockCube on the panel in front of it) and the battle's end (`ko`).
+**Unverified**: more than one target; Colonel's target off the field; a failed Colonel spawn.
 
 #### 3.6.31 CrosOver (navi chip subtype 21, PA chip 0x15D, T1 0x21)
 
@@ -2230,7 +2279,7 @@ either one's front panel refused, the far-column fallback, a missing beam.
 
 #### 3.6.32 SunMoon (navi chip subtype 25, PA chip 0x15B, T1 0x24)
 
-The pack's objects/sun-moon, sun-meteor and moon-beam. **SunMoon, T1 0x24 (`sub_80BF260`)**, spawned by `sub_80BF6AE`
+The pack's chips/sunmoon (sun, meteor, moon_beam). **SunMoon, T1 0x24 (`sub_80BF260`)**, spawned by `sub_80BF6AE`
 on the user's panel (related1 the user, the controller's flag pointer in ExtraVars[0], flags \|= 0x10), its sprite
 (0x0C, 0x64) 64 pixels up; its sprite steps as `object_updateSprite` (not while dimmed). Its handlers set their
 timer on entry and count it the same tick. Actions:
@@ -2265,7 +2314,7 @@ an uninstall.
 
 #### 3.6.33 Bass (navi chip subtype 26, Giga chip 0x12D, T1 0x4F)
 
-The pack's objects/bass and panel-strike. **Bass, T1 0x4F (`sub_80C3970`)**, spawned by `sub_80C3B30` on the user's
+The pack's chips/bass/navi and objects/panel-strike. **Bass, T1 0x4F (`sub_80C3970`)**, spawned by `sub_80C3B30` on the user's
 panel (no related1: the controller's flag pointer is kept in his X velocity). Init: sprite (8, 0x13), a ground
 shadow, his cape (`sub_80C468C`: form overlay T1 0x57 of the same sprite, animation + 0x14, stepping while dimmed;
 related1), sound 0x94, 100 ticks, and his first tick at once; he goes when his panel is off the field.

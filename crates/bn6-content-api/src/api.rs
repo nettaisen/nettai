@@ -379,6 +379,9 @@ named_fields! {
         /// The secondary elements (sword 0x80, cursor 0x40, wind 0x20,
         /// break 0x10) of what hit it this window.
         DamageElements = "damage_elements", U8, ro;
+        /// The hit modifiers of what hit it this window (+0x0E,
+        /// HitModifierFinal): 0x3C the pushes, 0x40 a pushing hit.
+        HitModFinal = "hit_mod_final", U8, ro;
         /// Its barrier ([`BARRIER_STATES`]), the barrier's HP byte, and the
         /// hit modifier that popped it (+0x15).
         Barrier = "barrier", enum_type(&BARRIER_STATES), ro;
@@ -974,6 +977,10 @@ pub trait CoreApi {
     /// `sub_800EB6C`: the local player sees `side`'s objects (unless they
     /// are the other side's and the local navi is blind).
     fn viewer_sees(&self, side: u8) -> bool;
+    /// `sub_800ED90` and the chip record's flags (bit 1): the chip `user`
+    /// would use next deals damage (a player's at its hand's cursor, whose
+    /// empty hand reads `Rules::empty_hand`; another object's own chip).
+    fn next_chip_damages(&self, user: ObjectRef) -> bool;
     fn battle_info(&self, f: BattleInfo) -> Value;
     /// Report a sound effect both players hear (output only; nothing in
     /// the simulation reads it).
@@ -1020,6 +1027,9 @@ pub trait CoreApi {
     /// Add to the Atk+ bonus of the chip at `i` of a side's hand
     /// (wrapping).
     fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
+    /// A side's hand has a chip at `i` and it does damage (its record's
+    /// flag 0x02, "has_damage").
+    fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
     /// A side's defensive-chip record.
     fn linked(&self, side: u8) -> LinkedChip;
     fn set_linked(&mut self, side: u8, rec: LinkedChip);
@@ -1381,6 +1391,13 @@ pub trait CoreApi {
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8);
     /// Advance the animation one tick (no gating).
     fn sprite_step(&mut self, o: ObjectRef);
+    /// `sub_800F26C`: whether the look `o`'s NameID gives is `sprite` (an
+    /// object's NameID look; a navi's or form's NameID gives its sprite).
+    /// An error for a NameID the content has no look for.
+    fn name_look_is(&self, o: ObjectRef, sprite: SpriteId) -> ApiResult<bool>;
+    /// `sub_80030BA`: where part `n` of the current frame sits, in pixels
+    /// from the object, unflipped; (0, 0) when the frame has fewer parts.
+    fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32);
     fn sprite_get(&self, o: ObjectRef, f: SpriteField) -> Value;
     fn sprite_set(&mut self, o: ObjectRef, f: SpriteField, v: Value) -> ApiResult<()>;
 

@@ -107,8 +107,10 @@ halfword's low byte, class 1)` (one a side: a second fan replaces the first, who
 place no fan; the others place one and blow Wind's rows 2, 1, 3 from the enemy's front column and Fan's from
 the far column. `chips/0x081-wind/counter` and `chips/0x082-fan/broken` break a fan (the broken branch);
 `chips/0x081-wind/then-fan` and `both-sides` have a second fan (the replaced fan's HP 0 and the wind registry's
-destroy) and `chips/0x081-wind/lifetime` runs the 1440 ticks out: all **verified**. **Unverified**: no gust
-(an obstacle on the target panel, `sub_80CD160`'s wait), removal, blink-out, absorption, pushes (action 5:
+destroy) and `chips/0x081-wind/lifetime` runs the 1440 ticks out; no gust on a row whose first enemy panel
+holds an obstacle (`chips/0x081-wind/no-gust`), Fan's gust starting a panel nearer (`chips/0x082-fan/
+gust-past-bomb`), and removal, blink-out and absorption (both fans' `dustman`, `colarmy`, `absorbed`): all
+**verified**. **Unverified**: `sub_80CD160`'s wait (nothing sets its bytes), pushes (action 5:
 `chips/0x082-fan/pushed`'s AirShot breaks the fan instead), a flipped fan.
 
 ## 2. Subtype 23: BurnSqr1–3 (T4#0x59, T1#0x13)
@@ -171,7 +173,10 @@ each.
 
 **Lab**: 28 scenarios (BurnSqr1 20, BurnSqr2 and 3 4 each). Every one fires at the 300-tick
 timeout on four solid panels. A to fire (`chips/0x06e-burnsqr1/a-fires`) and a non-solid panel under the square
-(`a-fires-holes`) are **verified**. **Unverified**: a non-player user (`sub_800F26C`), the blind viewer, the
+(`a-fires-holes`) are **verified**, as are the blind viewer (`blind-viewer`: the opponent's Silence, then its
+BurnSqr) and what the user takes with it while it is away: its barrier's, confusion's and blindness's visuals,
+its charge glow and its aura (`user-barrier`, `user-confused`, `user-blind`, `user-charging`,
+`user-full-synchro`; Magnum's and HeatMan's likewise). **Unverified**: a non-player user (`sub_800F26C`), the
 failed spawn.
 
 ## 3. Subtype 15: GrabBnsh and GrabRvng (T4#0x22, T3#0x46)
@@ -308,8 +313,9 @@ Param3 = 1; Timer = 0x3C; ends when Timer −= 1 reaches 0 (60 ticks).
 **Lab**: 20 scenarios; `adjacent` and `obstacle` place no statue, the other 18 place one on a free panel
 (Param1 0) that stands through the scenario. Breaking it (the crumble and the strike back, the strike's dimming
 and hit) is **verified** from both sides (`chips/0x097-guardian/punish`, `own-hit`), with AirShot at it
-(`pushed`) and a second statue (`replaced`). **Unverified**: the stage statue (Param1 1), its lifetime
-running out, removal, blink-out, absorption.
+(`pushed`) and a second statue (`replaced`); its lifetime running out (`lifetime`: 6000 ticks), removal,
+blink-out and absorption (`dustman`, `colarmy`, `absorbed`) are **verified** too. The stage statue (Param1 1) is
+the stage scenarios' (field-objects.md).
 
 ## 6. Subtype 16: Meteors (T4#0x34, T3#0x56, T4#0x35)
 
@@ -438,8 +444,8 @@ player is flipped in PvP scenarios).
 `obstacle` the statue lands on an occupied panel and breaks (sound 0x70, effect 0); in the others (and the
 recipe) it poisons, with bubbles, through the scenario. Breaking by damage (`chips/0x098-anubis/broken`), the
 lifetime running out (`lifetime`), AirShot at it (`pushed`) and a second statue (`replaced`) are **verified**.
-**Unverified**: a non-solid landing panel, time up, removal, blink-out, absorption, the flipped user, an
-enemy with no panel for a bubble.
+A non-solid landing panel (`hole-ahead`) and removal, blink-out and absorption (`dustman`, `colarmy`,
+`absorbed`) are **verified** too. **Unverified**: time up, the flipped user, an enemy with no panel for a bubble.
 
 ## 8. Subtype 19: CircGun (T4#0x5E, T3#0x89, T3#0x8A)
 
@@ -502,8 +508,8 @@ alliance byte (no flip), RelatedObject1 = r7 and `*r7 = 1`, flags |= 0x10.
 
 **Lab**: 20 scenarios, all firing at the 360-tick timeout, every shot on a solid panel. A to fire
 (`chips/0x08e-circgun/a-fires`, `a-fires-late`), the cursor after an AreaGrab (`after-areagrab`) and shots on
-non-solid panels (`holes`) are **verified**. **Unverified**: a start column without enemy panels, Param3 1 (no
-chip), a non-player first actor.
+non-solid panels (`holes`) are **verified**, and the cursor after the opponent's two AreaGrabs (`grabbed`).
+**Unverified**: Param3 1 (no chip), a non-player first actor.
 
 ## 9. Subtype 18: Otenko (T4#0x5F, T3#0xAD)
 
@@ -550,10 +556,11 @@ sprite twice a tick).
   off, state destroy (word).
 
 **Lab**: 19 scenarios; `adjacent` and `obstacle` place no statue; in the other 17 it stands and blesses, but
-the next chip is never a damaging one. `chips/0x099-otenko/bonus` (a Cannon next), `broken` and `pushed` are
-recorded for the bonus and the statue's ends; the port doesn't replay them yet. **Unverified**: the bonus itself,
-the 50 cap, a new hand entry, the non-player user, the body check at appearing, the slide, breaking, removal,
-blink-out, absorption, eviction by a third field object, the lifetime.
+the next chip is never a damaging one. `chips/0x099-otenko/bonus` (a Cannon next, 700 ticks on: the blessing up to
+its cap), `broken` (M-Cannons break it) and `pushed` (AirShot at it) match every frame, as do removal by a
+chip, blink-out and absorption (`dustman`, `colarmy`, `absorbed`), the lifetime (`lifetime`), a second statue
+(`replaced`) and the blessing on two chips in turn (`bonus-two-chips`). **Unverified**: a new hand entry, the
+non-player user, the body check at appearing.
 
 ## 10. Subtype 21: BlzrdBal (T4#0x58, T1#4, T3#0xB2, T3#0xB7)
 
@@ -1263,8 +1270,10 @@ Actions (`off_80C21C0`):
 
 **Lab**: 19 scenarios (18 reach the effect); every attack runs. `obstacle`: Falzar's breath finds no panel;
 `adjacent` and the Cross scenarios meet the user's panel among the candidates, but a free panel always
-turns up. **Unverified**: the user's-panel fallback, no target at all (straight to the end), a failed
-spawn, the unused pattern entries.
+turns up. The user's-panel fallback is **verified** (`chips/0x137-dblbeast/user-panel`: from column 5 after
+two AreaGrabs, the opponent in the back column), and patterns whose first panels are taken (`rock-front`).
+**Unverified**: no target at all (an invisible navi still has its body on its panel: `invisible` runs the usual
+attacks), a failed spawn, the unused pattern entries.
 
 **Ported**: chips/dblbeast (`dblbeast/controller`, `dblbeast/gregar`, `dblbeast/falzar`, sharing
 chips/dblbeast/beast). Of the attacks that find no panel, only the first of each beast (Gregar's claw, Falzar's

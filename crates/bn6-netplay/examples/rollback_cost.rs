@@ -8,10 +8,11 @@
 //!
 //! cargo run --release -p bn6-netplay --example rollback_cost -- <trace.jsonl> <pack> [round]
 //!
-//! (`<pack>`: the BN6 content pack the trace's battle runs on, from
-//! `bn6-extract content`.)
+//! (`<pack>`: the BN6 content pack whose assets the trace's battle names,
+//! from `bn6-extract content`; the battle content is this repository's
+//! content/bn6, or `$BN6_CONTENT`.)
 //!
-//! The pack's scripts (Luau) run the content they implement.
+//! The content's modules (Luau) run what they define.
 
 use std::time::{Duration, Instant};
 
@@ -27,7 +28,8 @@ fn main() {
     let usage = "usage: rollback_cost <trace.jsonl> <pack> [round]";
     let path = args.get(1).expect(usage);
     let pack = args.get(2).expect(usage);
-    let (content, _) = bn6_content::pack::load_battle(std::path::Path::new(pack)).unwrap_or_else(|r| panic!("{pack}: {r}"));
+    let (content, _) =
+        bn6_content::pack::load_battle(&bn6_content::root::bn6(), std::path::Path::new(pack)).unwrap_or_else(|r| panic!("{pack}: {r}"));
     let content = std::sync::Arc::new(content);
     let n: usize = args.get(3).map_or(1, |s| s.parse().expect("a round number"));
     std::panic::set_hook(Box::new(|_| {}));

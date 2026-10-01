@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x16, TomahawkCross's charged shot (`sub_8011D38`),
-# and its action (0x4A, `sub_80EEC70`) are a script.
-
-id = 0x16
-name = "Tomahawk charge"
-action = 0x4A
-script = "tomahawk_charge.luau"

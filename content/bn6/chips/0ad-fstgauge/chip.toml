@@ -1,3 +1,0 @@
-# A dimming chip (subtype 25): its dimming controller changes the custom gauge's speed.
-
-script = "../../objects/gauge-speed/gauge_speed.luau"

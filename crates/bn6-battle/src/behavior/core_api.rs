@@ -298,6 +298,25 @@ impl CoreApi for Battle {
         kinds::charge_glow::viewer_sees(self, side & 1)
     }
 
+    fn next_chip_damages(&self, user: ObjectRef) -> bool {
+        use crate::content::ChipFlags;
+        let o = self.objects.get(user);
+        let flags = if self.content.navi_record(o.name_id).actor_type == crate::actor::ActorType::Player {
+            let hand = &self.hands[o.alliance as usize & 1];
+            match hand.ids.get(hand.cursor as usize).copied().flatten() {
+                Some(h) => self.content.chip(h).flags,
+                None => self.content.rules.empty_hand.flags,
+            }
+        } else {
+            // Another object's chip word: zeroed, the pack's chip 0.
+            match o.chip.or_else(|| self.content.chip_numbered(0)) {
+                Some(h) => self.content.chip(h).flags,
+                None => ChipFlags(0),
+            }
+        };
+        flags.0 & ChipFlags::HAS_DAMAGE != 0
+    }
+
     fn battle_info(&self, f: BattleInfo) -> Value {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
@@ -475,6 +494,11 @@ impl CoreApi for Battle {
         if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
             *b = b.wrapping_add(n);
         }
+    }
+
+    fn hand_chip_damages(&self, side: u8, i: u8) -> bool {
+        let chip = self.hands[side as usize & 1].ids.get(i as usize).copied().flatten();
+        chip.is_some_and(|h| self.content.chip(h).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0)
     }
 
     fn linked(&self, side: u8) -> LinkedChip {
@@ -1477,6 +1501,26 @@ impl CoreApi for Battle {
         self.objects.sprite_mut(o).update(&self.content);
     }
 
+    fn name_look_is(&self, o: ObjectRef, sprite: SpriteId) -> ApiResult<bool> {
+        let name_id = self.objects.get(o).name_id;
+        let look = if (0xCD..=0xFF).contains(&name_id) {
+            self.content.objects.name_looks.iter().find(|l| l.name_id == name_id).map(|l| l.sprite)
+        } else {
+            let navis = self.content.navis.iter().filter_map(|n| n.name_record.as_ref().map(|r| (r.id, n.sprite)));
+            let forms = self.content.forms.iter().filter_map(|f| f.name_record.as_ref().map(|r| (r.id, f.sprite)));
+            navis.chain(forms).find(|&(id, _)| id == name_id).map(|(_, s)| Some(s))
+        };
+        look.map(|l| l == Some(sprite))
+            .ok_or_else(|| ApiError::Other(format!("NameID {name_id:#x} has no look in the content (sub_800F26C)")))
+    }
+
+    fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32) {
+        let s = self.objects.sprite(o);
+        s.id
+            .and_then(|id| self.content.animations.part_offset(id, s.anim, s.frame, n as usize))
+            .map_or((0, 0), |(x, y)| (x as i32, y as i32))
+    }
+
     fn sprite_get(&self, o: ObjectRef, f: SpriteField) -> Value {
         let s = self.objects.sprite(o);
         let look = &s.look;
@@ -1559,6 +1603,7 @@ impl CoreApi for Battle {
             CollisionField::Direction => c.direction as i64,
             CollisionField::GuardDirs => c.guard_dirs as i64,
             CollisionField::DamageElements => c.acc.damage_elements as i64,
+            CollisionField::HitModFinal => c.hit_mod_final as i64,
             // BARRIER_STATES
             CollisionField::Barrier => match c.barrier {
                 0 => 0,
@@ -1604,6 +1649,7 @@ impl CoreApi for Battle {
             CollisionField::FinalDamage
             | CollisionField::GuardDirs
             | CollisionField::DamageElements
+            | CollisionField::HitModFinal
             | CollisionField::Direction
             | CollisionField::Barrier
             | CollisionField::BarrierHp

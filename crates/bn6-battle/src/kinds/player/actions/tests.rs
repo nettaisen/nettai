@@ -1081,18 +1081,21 @@ fn tengu_cross_back_special_blows_a_gust_down_each_row() {
 fn slash_cross_charged_shot_sends_a_sword_wave() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
+    // The charged shot's own wave reaches one panel past the one it starts
+    // on: two columns from the navi.
+    stand_at(&mut b, p0, 3);
     assert_eq!(start_weapon_as(&mut b, p0, 0x12, 2), 0x41);
     // 60 damage and 20 per buster damage point (1).
     assert_eq!(ai_mut(&mut b, p0).attack.damage, 80);
     let mut t = 0;
     run_to(&mut b, p, &mut t, 11, 0);
-    assert!(kind_objects(&b, "sword-wave").is_empty());
+    assert!(kind_objects(&b, "slashcross/sword-wave").is_empty());
     // The slash starts on tick 3; the wave goes out 9 ticks later, from
     // the panel in front.
     run_to(&mut b, p, &mut t, 12, 0);
-    let waves = kind_objects(&b, "sword-wave");
+    let waves = kind_objects(&b, "slashcross/sword-wave");
     assert_eq!(waves.len(), 1);
-    assert_eq!(b.objects.get(waves[0]).panel, PanelPos { x: 3, y: 2 });
+    assert_eq!(b.objects.get(waves[0]).panel, PanelPos { x: 4, y: 2 });
     run_to(&mut b, p, &mut t, 29, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
     assert_eq!(act(&b, p0), 0x41);
@@ -1243,8 +1246,8 @@ fn heat_beast_charge_raises_fire_pillars_on_its_region() {
     run_to(&mut b, p, &mut t, 1, 0);
     assert_eq!(b.objects.get(p0).anim, 0x12);
     assert_eq!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), f1::USING_ACTION | f1::MOVING);
-    // When the wind-up ends: pillars on the test region 0x1A from the
-    // panel in front (it and two past it).
+    // When the wind-up ends: pillars on the panel in front and the two
+    // columns past it.
     while of_kind(&b, "element-pillar").is_empty() {
         let next = t + 1;
         run_to(&mut b, p, &mut t, next, 0);
@@ -1253,8 +1256,9 @@ fn heat_beast_charge_raises_fire_pillars_on_its_region() {
     assert_eq!(b.objects.get(p0).anim, 0x13);
     // (Each runs right after its spawner: the later one first.)
     let panels: Vec<PanelPos> = of_kind(&b, "element-pillar").iter().map(|&o| b.objects.get(o).panel).collect();
-    assert_eq!(panels, [PanelPos { x: 5, y: 2 }, PanelPos { x: 3, y: 2 }]);
-    let pillar = of_kind(&b, "element-pillar")[1];
+    let at = |x, y| PanelPos { x, y };
+    assert_eq!(panels, [at(5, 3), at(5, 2), at(5, 1), at(4, 3), at(4, 2), at(4, 1), at(3, 2)]);
+    let pillar = of_kind(&b, "element-pillar")[6];
     let (x, y) = crate::kinds::player::panel_coordinates(3, 2);
     let o = b.objects.get(pillar);
     assert_eq!((o.pos.x, o.pos.y, o.pos.z, o.timer), (x, y + (2 << 16), 2 << 16, 0x5A - 1));
@@ -1936,6 +1940,31 @@ fn a_legacy_marker_gives_a_definitions_record_its_bytes() {
     assert_eq!((a.variant, a.params), (7, [1, 2, 0, 0]));
 }
 
+#[test]
+fn a_numbered_definition_runs_its_own_action() {
+    // A definition whose legacy marker gives its number is the chip that
+    // number names (recipes, the ruleset's tables), with the marker's
+    // bytes in its record; its use is still its own action.
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let defs = &b.content.defs;
+    let [ticker1, ticker4] = [testing::TICKER_1, testing::TICKER_4].map(|key| defs.chip_by_key(key).unwrap());
+    assert_eq!(b.content.chip_numbered(0x1F0), Some(ticker4));
+    assert_eq!(b.content.chip_number(ticker4), Some(0x1F0));
+    let record = b.content.chip(ticker4);
+    assert_eq!((record.action, record.subtype), (0x70, 3));
+    let [one, four] = [ticker1, ticker4].map(|h| match defs.chip(h).usage {
+        crate::content::ChipUsage::Action(h) => h,
+        u => panic!("{u:?}"),
+    });
+    assert_eq!((defs.action(four).key.as_str(), defs.action(four).number), ("test/ticker4/action", None));
+    use_chip_handle(&mut b, p0, p1, ticker1);
+    let first = ticks_in(&mut b, p0, p1, one);
+    let (mut b, p0, p1) = fight_on_test_pack();
+    use_chip_handle(&mut b, p0, p1, ticker4);
+    assert_eq!(act(&b, p0), super::super::CONTENT_ACTION);
+    assert_eq!(first - ticks_in(&mut b, p0, p1, four), 2, "Ticker4 stands 4 ticks to Ticker1's 6");
+}
+
 // ---- Content model v2: the v2 API (step 4) ---------------------------------------------------
 
 /// The objects of the kind content defines as `key`.
@@ -2037,16 +2066,23 @@ fn a_forced_charged_shot_starts_its_role() {
 
 #[test]
 fn a_weapon_definition_takes_its_legacy_routines() {
-    // The buster's definition is what every routine number aliasing it
-    // names (the pack's forms name weapons by number), and the ruleset's
-    // numeric logic reads its first; the charged shot's charge times are
-    // its own, with Charge 5 read on into the next row.
+    // A weapon definition is what the routine numbers of its legacy marker
+    // name (the pack's forms name weapons by number), and the ruleset's
+    // numeric logic reads its first. The buster's alias routines read
+    // other charge rows, so they are weapons of their own with its setup
+    // (routines 0x2E, 0x2F... one, 0x82 another); the charged shot's
+    // charge times are its own, with Charge 5 read on into the next row.
     let c = testing::content();
     let buster = c.defs.weapon_by_key("megaman/buster").expect("the buster's definition");
-    for n in [0x00, 0x2E, 0x82] {
-        assert_eq!(c.weapon_numbered(n), buster, "routine {n:#x}");
-    }
+    assert_eq!(c.weapon_numbered(0x00), buster);
     assert_eq!(c.weapon_number(buster), Some(0));
+    for (key, routines) in [("megaman/buster-2e", &[0x2E, 0x2F, 0x51][..]), ("megaman/buster-82", &[0x82][..])] {
+        let alias = c.defs.weapon_by_key(key).expect("an alias of the buster");
+        for &n in routines {
+            assert_eq!(c.weapon_numbered(n), alias, "routine {n:#x}");
+        }
+        assert!(c.defs.weapon(alias).setup.is_some(), "{key} runs the buster's setup");
+    }
     let charged = c.defs.weapon(c.weapon_numbered(1));
     assert_eq!((charged.key.as_str(), &charged.charge_ticks[..]), ("megaman/charged-shot", &[100, 90, 80, 70, 60, 180][..]));
     // A routine nobody implements is still a placeholder of its own.
