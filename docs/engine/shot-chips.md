@@ -711,11 +711,11 @@ definition, each table row a variant record written out in Luau.
   the layer); VDoll: chips/vdoll (the doll, the curse and the sparkles); the rapid buster: lib/rapid_buster.
 - **Records.** The chips other records or the ruleset name by number keep the pack's records, and their modules
   give the actions with their compat keys: the cannons and GigaCans, the Vulcans, the Spreaders, CornSht, WideSht
-  and SuprSpr (Program Advances), the sonic boom's four (the variable swords' picks, VDoll's telop) and Z Saver
-  (weapon 0x6E). Registration by number reaches them through one module per action (chips/001-cannon,
-  005-vulcan1, 009-spreadr1, 00c-tankcan1, 017-widesht, 040-cornsht1, 173-sonicbom, 17d-zsaver; the bombs' 036-
-  minibomb for LilBoiler and VDoll), which picks the chip's action by the subtype or the record's parameters.
-  AirShot, the BatCans, the TankCans, MachGun, LilBoiler and VDoll are definitions.
+  and SuprSpr (Program Advances), VDoll (Darkness's recipes), the sonic boom's four (the variable swords' picks,
+  VDoll's telop) and Z Saver (weapon 0x6E). Registration by number reaches them through one module per action
+  (chips/001-cannon, 005-vulcan1, 009-spreadr1, 00c-tankcan1, 017-widesht, 040-cornsht1, 173-sonicbom,
+  17d-zsaver; the bombs' 036-minibomb for LilBoiler and VDoll), which picks the chip's action by the subtype or
+  the record's parameters. AirShot, the BatCans, the TankCans, MachGun and LilBoiler are definitions.
 - **LilBoiler's registry side** (§14.1). The bonus picks the field-object slot `setFieldBattleObject_800F614`
   writes, BattleState+0xA8 + 12 · bonus: 0 is side 0's class-1 slot whoever threw it, 1 side 1's. Atk+10's lands
   on BattleState+0x120, the word right after BattleState (`dword_20349A0`): the battle's used-crosses mask, a bit
