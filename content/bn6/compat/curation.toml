@@ -9,6 +9,7 @@
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
 
 ["assets.toml"]
+"sprites.django" = "0c-0f: Django, chips/crosover/navi.luau"
 "sounds.drumroll" = "0x114: chips/crcusman/navi.luau"
 "sounds.circus-catch" = "0x1AA: chips/crcusman/navi.luau"
 "sprites.judgeman" = "08-0f: JudgeMan, chips/judgeman"
@@ -265,9 +266,9 @@
 "sprites.circusman" = "08-0e: CircusMan, chips/crcusman; used by body overlay 0x06, body overlay 0x07"
 "sprites.sprite-08-14" = "unnamed; used by effect 0x4B"
 "sprites.sprite-0c-01" = "unnamed; used by attachment 0x00, attachment 0x01, attachment 0x02"
-"sprites.sprite-0c-03" = "unnamed; used by attachment 0x06"
+"sprites.buster-arm" = "0c-03: the buster arm (attachment 6), lib/buster.luau and chips/crosover/navi.luau"
 "sprites.sprite-0c-04" = "unnamed; used by body overlay 0x04"
-"sprites.sprite-0c-06" = "unnamed; used by attachment 0x05"
+"sprites.muzzle-flash" = "0c-06: the buster's muzzle flash (attachment 5), chips/crosover/navi.luau"
 "sprites.sprite-0c-08" = "unnamed; used by attachment 0x14, attachment 0x30"
 "sprites.sprite-0c-0c" = "unnamed; used by attachment 0x0E"
 "sprites.sprite-0c-0d" = "unnamed; used by body overlay 0x0E"
