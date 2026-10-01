@@ -511,9 +511,11 @@ takes off 519..548, bombs from 550 (overlay) with the first strike at 551, then 
 
 **Lab**: the plane, its propeller and overlay, the bombs with and without the neighbour pick are reached.
 The plane shot down, the battle's end and the bombs against a barrier and an invisible navi
-(`chips/0x068-airraid1/broken`, `ko`, `barrier`, `invisible`) match every frame. **Unverified**: the destroyed
-action's removal paths (absorb, blink), the no-target branch (step 2), a failed collision, the overlay's
-EV+0x10/0x14/0x18 and Param3-0 branches (LilBoiler's).
+(`chips/0x068-airraid1/broken`, `ko`, `barrier`, `invisible`) match every frame, as do the destroyed action's
+removal paths (`dustman`, `colarmy`, `absorbed`), the plane's lifetime (`lifetime`), the bombs' panel list as the
+opponent walks (`moving-target`) and AirRaid3's plane shot down (`chips/0x06a-airraid3/broken`). **Unverified**:
+the no-target branch (step 2), a failed collision, the overlay's EV+0x10/0x14/0x18 and Param3-0 branches
+(LilBoiler's).
 
 ## 8. Subtype 28: Sensor1-3
 
@@ -648,7 +650,10 @@ controller, damage word, +0x64 = Param1, EV+0 = the flag pointer, `*flag = 1` (w
 
 **Lab**: `chips/0x087-sumnblk1/hole-ahead`, `after-geddon` and `chips/0x089-sumnblk3/hole-ahead` have a hole in
 front of the user and reach the whole navi (§9.2, §9.3: 127 blocks and branch sides the lab didn't have); they
-match every frame.
+match every frame. The target search with the opponent elsewhere matches too: in the hole's row and the bottom
+row, a column nearer, in the back column (`hole-ahead-up`, `-down`, `-near`, `-back`), behind its own RockCube
+(`hole-ahead-rock`: no panel to strike from, and the navi leaves), from side 1 (`hole-ahead-side1`), with the
+battle ending at its strike (`hole-ahead-ko`), and SumnBlk2's (`chips/0x088-sumnblk2/hole-ahead`).
 
 ## 10. Subtype 27: ColorPt, DblPoint
 
