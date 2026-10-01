@@ -9,7 +9,9 @@
 pub mod app;
 pub mod audit;
 pub mod compose;
+pub mod custom;
 pub mod driver;
+pub mod fonts;
 pub mod headless;
 pub mod hud;
 pub mod objects;
