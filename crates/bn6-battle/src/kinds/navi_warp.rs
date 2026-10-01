@@ -13,8 +13,6 @@ use crate::object::{ObjectRef, Vec3, flags, state};
 use crate::setup::Navi;
 use crate::dimming::{hide_user, show_user};
 
-pub const INDEX: u8 = 0x2D;
-
 /// Which way the navi warps (Param4).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Warp {
