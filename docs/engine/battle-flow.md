@@ -492,9 +492,10 @@ The first fighting tick is when the battle unpauses: frames 593 / 1970.
 - else 1 if P1's has;
 - else 0xFF.
 
-Nothing gates it on link, so **pause is reachable in PvP** (the trace never pauses). Ported as `Battle::fight_pause`
-(unverified), with the draw state 0x14 (`fight_draw`) and the escape (`sub_800AAD6`: result code 4, then 2, straight
-to the fade-out).
+Nothing gates it on link, so **pause is reachable in PvP**. Ported as `Battle::fight_pause` (the chip lab's
+`flow/pause`, `pause-both`, `pause-dimmed` and `pause-over` match), with the draw state 0x14 (`fight_draw`;
+`flow/judge-draw`, `flow/double-ko`) and the escape (`sub_800AAD6`: result code 4, then 2, straight to the fade-out;
+a netbattle has no running, so no recording reaches it).
 
 State 0x1C, `sub_80083E4`: only the pausing player [5] can resume, with a new START edge (`sub_800A07C([5])`). On that edge: sound 0x9F, [0]=8, `sub_801DACC(0x200)`. The pause byte stays 1 for the rest of that tick; `sub_80080D2` unpauses at the top of the next tick. While in 0x1C, `sub_8012DFC` is not called, so actor inputs are frozen. What runs while paused is listed in §8.3.
 
@@ -586,7 +587,7 @@ display [0xA]/60 (sub_801E398)
 
 After exactly 600 decrements (659 → 59), the next tick sets BS+0x0B. Later in the same tick `sub_800A152()` returns 7 → [0]=0x18; a KO seen in the same tick takes precedence. The timer is re-armed on every fighting entry. Also, from turn 15 on the gauge never arms (§7.1), so custom screens stop.
 
-#### Damage judge, state 0x18 `sub_800834A` (static only; ported as `Battle::fight_judge`, unverified)
+#### Damage judge, state 0x18 `sub_800834A` (ported as `Battle::fight_judge`; the chip lab's `flow/judge-win`, `judge-lose` and `judge-draw` match)
 
 T is the tick that set 0x18.
 
@@ -1255,17 +1256,17 @@ These are already delayed 4 ticks; a player's chip hand, stats and transform rec
 
 ## 11. Uncertainties and unverified points
 
-1. **Mid-battle custom screen** (flag 0x10 → states 0x20/0x24 → mode 8) is static analysis only; the trace's gauge never fills. The tick counts T2–T6 in §3.3.1, especially with a cross/beast revert, are unverified.
-2. **Turn timer (turn ≥ 15), damage judge and draw state** are static only. The judge's tick timeline was derived by hand. The draw banner (0x1C) and judge banners were never measured, and the draw state's length depends entirely on its banner. The judge's write of the loser to 0x0203CA80 overlaps another array; its reader is unknown.
+1. **Mid-battle custom screen** (flag 0x10 → states 0x20/0x24 → mode 8): since verified by the chip lab's multi-turn recordings, with Cross and Beast Out reverts (`forms/`), opened mid-attack and by both players on one tick (`flow/custom-open-busy`, `custom-open-both`).
+2. **Turn timer (turn ≥ 15), damage judge and draw state**: since verified by the chip lab's `flow/judge-win`, `judge-lose` and `judge-draw` (every frame, banners included). The judge's write of the loser to 0x0203CA80 overlaps another array; its reader is unknown.
 3. **Banner lengths:** the 59-tick rule was measured for the round banner (0x30), the turn banner (0xC) and the link win banner. Held banner types 2/4 are never removed by the task itself; which ids have those types was not enumerated.
 4. **Link layer:** the 4-tick latency was measured, not traced. Status 1/8 semantics are inferred. The engine should assume status 2 on every tick.
 5. **NaviStats+0x08** (gauge speed class) and **+0x2C values 0x17/0x18** (inputs ignored and auto custom-open) have no confirmed meaning.
 6. **Render-pass side effects:** `sub_3006028`/`sub_30061E8` write sprite sub-struct bytes, and `sub_800C5E0` clears panel latches +0x01/+0x0D. These are assumed never read by simulation code; this was not proven exhaustively.
 7. **Intro length** (52 ticks) is driven by object code: the remote navi's mosaic fade and the intro controller's 17-tick fade wait. It was measured; no closed formula was derived. The intro object state differs between the two cores.
-8. **`sub_801CC94`**'s RNG1 draw condition was never exercised; its exact timing is unmodelled.
+8. **`sub_801CC94`**'s RNG1 draw (the emotion window's flicker on a bugged navi) is modelled per console (custom-screen.md §8) and checked against the recordings' RNG1 column.
 9. **Settings +1 and +7, and effects bits 0x200/0x800:** no battle-code reader was found.
 10. **`sub_80AA88C`** writes only when the drop table has a non-0xFFFF entry. This was checked only for NameID 0x1A0 (the PvP navi); other navis' IDs were not checked.
-11. **Chip block +0x44 semantics**, and "choosing no chips keeps the previous remaining hand": the latter follows from the 0xFF skip in `sub_800B3D8` and was only observed with an empty previous hand.
+11. **Chip block +0x44 semantics**, and "choosing no chips keeps the previous remaining hand": the latter follows from the 0xFF skip in `sub_800B3D8`; the chip lab's `flow/keep-hand` has it with chips left in the hand.
 12. **Battle flag 0x20** has no setter found; flag 0x08 is set only by a special object. BS+0xA0..0xCF is unused as far as observed.
 13. **`sub_80103BC` loop bug:** only BS+0xD0 + 0x10·p is ever returned. A missing actor would make `sub_8012DFC` dereference NULL; this never happens in PvP.
 14. **Only core 0 was traced.** Claims about the other core rest on the code's symmetry. This includes `sub_8027D78` running at each core's own local confirm tick, which is believed idempotent.
