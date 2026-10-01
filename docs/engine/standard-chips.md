@@ -158,7 +158,7 @@ The navi digs into the panels ahead and flings them. Two phases (`off_80EC974`):
 
 - **Dig** (`sub_80EC97C`). Entry: animation 0xC, sound 0xD8, the counter window, `using_action`, timer 0xF. On the
   tick the timer reads 0xD (the third tick) it spawns a crack shot on every panel of a hit region
-  (`PanelOffsetListsPointerTable`, `data.regions` in the pack) chosen by the variant (`dword_80ECA08`: CrakShot
+  (`PanelOffsetListsPointerTable`; content's region definitions) chosen by the variant (`dword_80ECA08`: CrakShot
   region 1, the panel; DublShot 2, two in a row; TrplShot 4, three in a column), taken from the panel ahead, dx
   toward the front. Each gets the element, the damage word and Param1 5. The timer then runs out (16 ticks in all).
 - **Recover** (`sub_80ECA0C`): timer 5, then `object_exitAttackState` (6 ticks).

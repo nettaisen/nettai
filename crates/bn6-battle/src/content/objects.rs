@@ -128,7 +128,7 @@ fn no_secondary(v: &SecondaryElements) -> bool {
 pub struct ProjectileKind {
     /// The kind number.
     pub id: u8,
-    /// Its collision types (`Rules::collision_types`): what it is, what
+    /// Its collision types (the original's rows by number): what it is, what
     /// it hits; and its hit modifier.
     pub self_type: u8,
     pub target_type: u8,
@@ -192,7 +192,7 @@ pub enum PanelHit {
 pub struct FlyingShotKind {
     /// The kind number.
     pub id: u8,
-    /// Its collision types (`Rules::collision_types`): what it is, what
+    /// Its collision types (the original's rows by number): what it is, what
     /// it hits; and its hit modifier.
     pub self_type: u8,
     pub target_type: u8,
