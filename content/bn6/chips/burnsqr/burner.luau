@@ -3,10 +3,11 @@
 -- docs/engine/dimming-chip-effects.md §2): a stand-in for the user
 -- (lib/dimming/stand_in) that moves a 2x2 square over the whole field, a
 -- step every 6 ticks, until the user presses A or 300 ticks pass, then
--- sets the square's solid panels on fire (flames: objects/heat-flame).
+-- sets the square's solid panels on fire (flames: chips/heatman/flame).
 
 local stand_in = require("../../lib/dimming/stand_in")
-local heat_flame = require("../../objects/heat-flame/heat_flame")
+local collision = require("../../rules/collision")
+local heat_flame = require("../../chips/heatman/flame")
 
 local burner = {}
 
@@ -41,7 +42,7 @@ local ACROSS, DOWN = 0x28_0000, 0x18_0000
 -- Its flames (`sub_80C8DE0`): fire, HeatMan's (acting while dimmed), 30
 -- ticks.
 local FIRE = 1
-local FLAME_PARAMS = { 4, 0x1E, 0, 0 }
+local FLAME = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
 local SOLID = 0x10
 
 -- `sub_80BB23E`: the square's four corners at its panels' centers.
@@ -141,7 +142,7 @@ local function fire(me: Object, s: State)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
     for _, p in { { s.x, s.y }, { s.x + d, s.y }, { s.x + d, s.y + 1 }, { s.x, s.y + 1 } } do
         if bit32.btest(field.flags(p[1], p[2]), SOLID) then
-            heat_flame.spawn(me, p[1], p[2], FIRE, FLAME_PARAMS, damage, z)
+            heat_flame.spawn(me, p[1], p[2], FIRE, FLAME, damage, Vec3.new(p[2], FIRE, z))
         end
     end
     me.timer = AFTER

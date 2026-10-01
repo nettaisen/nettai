@@ -538,12 +538,12 @@ pub fn end(b: &mut Battle, r: ObjectRef) {
 mod tests {
     use crate::battle::{Battle, LinkedRecord};
     use crate::content::testing;
-    use crate::object::Pool;
     use crate::scenario;
 
-    /// The navi chip controller, and the test navi chip's navi.
-    const CONTROLLER: u8 = crate::kinds::navi_chip::INDEX;
-    const HEAT_NAVI: u8 = 0x07;
+    /// The navi chip controller, and the test navi chip's navi, by kind
+    /// (the scene has kinds content defines, which have no slot number).
+    const CONTROLLER: &str = "engine/navi-chip";
+    const HEAT_NAVI: &str = "heat-man";
 
     /// Play a duel with the test navi chip; once a side uses it, the other
     /// side gets AntiNavi (with `bounce`, the user's side too, so the chip
@@ -562,16 +562,16 @@ mod tests {
         };
         for t in &tape {
             b.tick(&t.input, t.events.clone());
-            let seen: Vec<_> = b.objects.in_order().map(|r| (r.pool, b.slot_index(r), b.objects.get(r).alliance)).collect();
-            for (pool, index, alliance) in seen {
-                if pool == Pool::Effect && index == CONTROLLER && user.is_none() {
+            let seen: Vec<_> = b.objects.in_order().map(|r| (b.kind_key(r).to_string(), b.objects.get(r).alliance)).collect();
+            for (kind, alliance) in seen {
+                if kind == CONTROLLER && user.is_none() {
                     user = Some(alliance);
                     arm(&mut b, alliance ^ 1);
                     if bounce {
                         arm(&mut b, alliance);
                     }
                 }
-                if pool == Pool::Actor && index == HEAT_NAVI && !came_for.contains(&alliance) {
+                if kind == HEAT_NAVI && !came_for.contains(&alliance) {
                     came_for.push(alliance);
                 }
             }

@@ -3,14 +3,15 @@
 -- `sub_80B9078`), brought by their navi chip controller. He appears (with
 -- his parts: a body overlay, AI index 1) and breathes fire in a widening
 -- cone ahead of him: a flame on the panel ahead, three on the next column,
--- five on the one after (objects/heat-flame), on each panel that can hold
+-- five on the one after (chips/heatman/flame), on each panel that can hold
 -- one. Then he leaves, and the controller moves on. See
 -- docs/engine/chips.md §3.6.15.
 --
 -- The chips' script (navi chip subtype 2): `navi_chip` is his spawner,
 -- `off_802CD5C[2]`.
 
-local heat_flame = require("../heat-flame/heat_flame")
+local collision = require("../../rules/collision")
+local heat_flame = require("../../chips/heatman/flame")
 
 export type State = {
     -- The controller waiting for him (its pointer sits in his collision
@@ -35,8 +36,8 @@ local CAN_STAND = 0x10010
 -- its address with the Thumb bit, whose fraction his Z keeps.
 local SPAWNER_ADDRESS = 0x080B921B
 
--- His flames' Param1 and burning time.
-local FLAME_PARAM1, FLAME_TICKS = 4, 0x1E
+-- His flames act while dimmed and last 30 ticks, as attacks.
+local FLAME = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
 
 -- `sub_80B921A`: HeatMan for `user`, reporting to `controller`.
 function heat_man.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
@@ -131,8 +132,9 @@ local function flame(me: Object, x: number, y: number)
         return
     end
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    -- r3 (0 << 16) becomes its Z.
-    heat_flame.spawn(me, x, y, me.element, { FLAME_PARAM1, FLAME_TICKS, 0 }, damage, 0)
+    -- The registers (the row, the element and r3, 0 << 16) are its
+    -- position until its init.
+    heat_flame.spawn(me, x, y, me.element, FLAME, damage, Vec3.new(y, me.element, 0))
 end
 
 -- `sub_80B9240`: the cone: one, three, then five panels wide.
