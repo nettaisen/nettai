@@ -1,16 +1,30 @@
 --!strict
 -- AquaSwrd: an aqua slash on the column ahead.
---
--- Its record stays the pack's for now (SlashCross charges chips 0x4C to 0x4F by number (phase C
--- gives them a trait)): this is its action, which registration by number runs
--- (docs/design/content-model-v2.md §5.1, "As built").
 
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
 local slashes = require("../../navis/00-megaman/forms/slashcross/slashes")
+local lockon = require("../../rules/lockon")
 
-return {
+return define.chip {
+    id = "aquaswrd",
+    name = "AquaSwrd",
+    description = "Cut enmy\n3sq fwrd\nw/aqua!",
+    codes = { "A", "I", "Y" },
+    element = "aqua",
+    family = "aqua",
+    class = "standard",
+    rarity = 2,
+    mb = 32,
+    damage = 160,
+    hit_param = 30,
+    lockout = 0,
+    flags = { "has_damage", "standard_library", "library" },
+    beast = { lockon = lockon.widesht },
+    library = { number = 76, index = 76, sort = 18 },
+    slot_in_limit = 3,
+    traits = { "element_sword" },
     action = slash.action {
         id = "aquaswrd/action",
         blade = parts.blades.aqua,

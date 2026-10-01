@@ -206,11 +206,10 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
 /// the chip whose damage it strikes with, if another's.
 fn pick_special_chip(b: &mut Battle, r: ObjectRef) -> (ChipHandle, Option<ChipHandle>) {
     let hundreds = super::stats(b, r).max_base_hp / 100;
-    let row = if hundreds <= 1 { 0 } else { (hundreds - 1).min(9) as usize };
     let content = b.content.clone();
-    let chips = content
-        .defs
-        .cross_special
+    let rows = &content.defs.cross_special;
+    let row = (hundreds.saturating_sub(1) as usize).min(rows.len().saturating_sub(1));
+    let chips = rows
         .get(row)
         .filter(|chips| !chips.is_empty())
         .unwrap_or_else(|| panic!("content error: the Cross special has no chips for row {row} (rules cross-special)"));

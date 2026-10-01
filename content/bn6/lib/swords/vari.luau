@@ -88,24 +88,22 @@ local function advance(s: State, sequences: { { number } }, held: number): numbe
 end
 
 -- `loc_80EF788`: the attack becomes pick `i` (0: Sword). Its action is the
--- chip's, and the attack's chip the pick's (transitional: by its number,
--- with its record's Beast flag, until the picks are chip definitions the
--- spec names: the Beast rush reads the attack's chip for its lock-on
--- mode). A charged pick starts as SlashCross's charged slash of it (unless
--- it is the no-charge pick), which the game does by writing the action
--- over the one it just started. (The game also copies the pick's subtype
--- and parameters into the attack, which its charged slash and the Beast
--- rush read there: here the pick's slash names what they need.)
+-- chip's, and the attack's chip the pick (the Beast rush reads the
+-- attack's chip for its lock-on mode, and whether it rushes at all: the
+-- chip's `beast`). A charged pick starts as SlashCross's charged slash of
+-- it (unless it is the no-charge pick), which the game does by writing the
+-- action over the one it just started. (The game also copies the pick's
+-- subtype and parameters into the attack, which its charged slash and the
+-- Beast rush read there: here the pick's slash names what they need.)
 local function become(me: Object, spec: Spec, i: number)
-    local action = if i == 0 then spec.sword else spec.picks[i]
-    local number = if i == 0 then spec.legacy.sword else spec.legacy.chips[i]
-    me.chip = number
-    local c = data.chips[number]
-    if c == nil then
-        error(string.format("the variable sword's chip %#x is not in the content", number))
+    local chip = if i == 0 then spec.sword else spec.picks[i]
+    local action = chip.action
+    if action == nil then
+        error(string.format("the variable sword's pick %s has no action", chip.id))
     end
+    me.attack_chip = chip
     me:set_attack(action, 0)
-    local lockon = if c.beast_lockon then 1 else 0
+    local lockon = if chip.beast ~= nil and chip.beast.rush ~= false then 1 else 0
     if me.special_source ~= 0 then
         me.beast_lockon = lockon
         return
@@ -114,7 +112,7 @@ local function become(me: Object, spec: Spec, i: number)
     if stats.navi == WAITING_NAVI then
         return
     end
-    if action ~= spec.no_charged and me.charged ~= 0 then
+    if chip ~= spec.no_charged and me.charged ~= 0 then
         me:set_attack(slash_charge.of_action(me, action), 0)
     end
     if stats.form >= FIRST_BEAST and stats.form <= LAST_BEAST then
