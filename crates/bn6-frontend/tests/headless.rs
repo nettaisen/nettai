@@ -75,7 +75,7 @@ fn renders_a_live_battle_to_png() {
     let mut renderer = Renderer::new(&assets);
     // A live battle on the engine's hand-authored test content.
     let content = testing::content();
-    let settings = bn6_battle::BattleSettings::on(&content, content.stage_numbered(testing::LINK_BATTLE));
+    let settings = bn6_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
     let setup = live_setup(&content, settings, &[(testing::SUN_GUN_3, 0)], 1);
     let session = Session::new(Box::new(LivePlayer::new(setup, content.clone())));
     let out = std::env::temp_dir().join(format!("bn6-frontend-test-{}", std::process::id()));

@@ -49,8 +49,8 @@ pub use assets::{AssetKind, AssetNames};
 pub use data::{Data, Key as DataKey};
 pub use definitions::{Definition, Definitions, ModuleExports};
 pub use host::{
-    ActorListEntrySpec, BindPlan, ContentError, ContentHost, DimmingChipSpec, FnId, FnSource, HookCall,
-    InstantChipSpec, Manifest, NaviChipSpec,
+    BindPlan, ContentError, ContentHost, DimmingChipSpec, FnId, FnSource, HookCall,
+    InstantChipSpec, Manifest, NaviChipSpec, PlaceSpec,
 };
 pub use registry::{
     ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FormHandle, KindHandle, LockonHandle, NaviHandle,
