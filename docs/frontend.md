@@ -258,7 +258,7 @@ What differs:
 **A second match**, three rounds traced on the right-hand player's console
 (so the field is drawn mirrored), with Crosses, rock cubes, ice and grass
 panels, traps and Invisibl: of the 6397 frames outside the custom screen
-that have screenshots, **@SOUNDMOD@ are pixel-exact** (rows 152-159 left
+that have screenshots, **6395 are pixel-exact** (rows 152-159 left
 out, below). What differs: on two frames (7498, 25885) the whole
 background is the next frame's, which is how the screenshots were taken
 (below), not the game.
