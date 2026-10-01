@@ -1,6 +1,0 @@
-# MegaMan's weapon routine 0x0B, ElecCross's charged shot (`sub_8011C38`), is a
-# script. The action it names, 0x3E (DolThdr's), is a standard chip's.
-
-id = 0x0B
-name = "Elec charge"
-script = "elec_charge.luau"

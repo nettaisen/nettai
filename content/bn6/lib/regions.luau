@@ -104,4 +104,88 @@ function regions.set_types(x: number, y: number, kind: PanelType, r: Region)
     end
 end
 
+-- The rest of the original's regions (gen-content).
+-- Region 0x03.
+regions.region_03 = define.region { panels = { { 1, 0 } } }
+-- Region 0x05.
+regions.region_05 = define.region { panels = { { 0, -1 }, { 0, 1 } } }
+-- Region 0x07.
+regions.region_07 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 } } }
+-- Region 0x08.
+regions.region_08 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
+-- Region 0x09.
+regions.region_09 = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+-- Region 0x0A.
+regions.region_0a = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+-- Region 0x0C.
+regions.region_0c = define.region { panels = { { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
+-- Region 0x0D.
+regions.region_0d = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 } } }
+-- Region 0x0E.
+regions.region_0e = define.region { panels = { { 1, -1 }, { 1, 1 } } }
+-- Region 0x12.
+regions.region_12 = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 } } }
+-- Region 0x13.
+regions.region_13 = define.region { panels = { { 0, 0 }, { -1, -1 }, { 1, 1 } } }
+-- Region 0x14.
+regions.region_14 = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } } }
+-- Region 0x15.
+regions.region_15 = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 }, { 1, 0 } } }
+-- Region 0x16.
+regions.region_16 = define.region { panels = { { 0, 0 }, { 1, -1 } } }
+-- Region 0x17.
+regions.region_17 = define.region { panels = { { 0, 0 }, { 1, 1 } } }
+-- Region 0x18.
+regions.region_18 = define.region { panels = { { 0, 0 }, { 0, -1 } } }
+-- Region 0x19.
+regions.region_19 = define.region { panels = { { 0, 0 }, { 0, 1 } } }
+-- Region 0x1A.
+regions.region_1a = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 } } }
+-- Region 0x1B.
+regions.region_1b = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 }, { 3, -1 }, { 3, 0 }, { 3, 1 } } }
+-- Region 0x1C.
+regions.region_1c = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 }, { 3, -1 }, { 3, 0 }, { 3, 1 }, { 4, -1 }, { 4, 0 }, { 4, 1 } } }
+-- Region 0x1D.
+regions.region_1d = define.region { panels = { { 0, 0 }, { 1, 0 }, { -1, 0 } } }
+-- Region 0x1E.
+regions.region_1e = define.region { panels = { { 1, 0 }, { -1, 0 } } }
+-- Region 0x1F.
+regions.region_1f = define.region { panels = { { 0, 0 }, { -1, -1 }, { -1, 1 } } }
+-- Region 0x20.
+regions.region_20 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 } } }
+-- Region 0x21.
+regions.region_21 = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { 1, -1 }, { 1, 1 }, { 2, 0 }, { 2, -1 }, { 2, 1 }, { 3, 0 }, { 3, -1 }, { 3, 1 } } }
+-- Region 0x22.
+regions.region_22 = define.region { panels = { { -1, -1 }, { 0, -1 }, { 1, -1 }, { 0, 0 }, { -1, 1 }, { 0, 1 }, { 1, 1 } } }
+-- Region 0x23.
+regions.region_23 = define.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 3, -1 }, { 4, -1 }, { 5, -1 }, { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 }, { 3, 1 }, { 4, 1 }, { 5, 1 } } }
+-- Region 0x24.
+regions.region_24 = define.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { -2, 1 }, { -1, 1 }, { 0, 1 } } }
+-- Region 0x25.
+regions.region_25 = define.region { panels = { { -2, -1 }, { -1, -1 }, { 0, -1 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } } }
+-- Region 0x26.
+regions.region_26 = define.region { panels = { { -2, -2 }, { -1, -2 }, { 0, -2 }, { 1, -2 }, { 2, -2 }, { -2, -1 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 2, -1 }, { -2, 0 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { 2, 0 }, { -2, 1 }, { -1, 1 }, { 0, 1 }, { 1, 1 }, { 2, 1 }, { -2, 2 }, { -1, 2 }, { 0, 2 }, { 1, 2 }, { 2, 2 } } }
+-- Region 0x27.
+regions.region_27 = define.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 3, -1 }, { 4, -1 }, { 5, -1 }, { 5, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 }, { 3, 1 }, { 4, 1 }, { 5, 1 } } }
+-- Region 0x28.
+regions.region_28 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 2, -1 }, { 2, 1 } } }
+-- Region 0x29.
+regions.region_29 = define.region { panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } } }
+-- Region 0x2A.
+regions.region_2a = define.region { panels = { { 0, -1 }, { 0, 1 }, { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
+-- Region 0x2B.
+regions.region_2b = define.region { panels = { { 0, 0 }, { -1, 0 }, { -2, 0 } } }
+-- Region 0x2C.
+regions.region_2c = define.region { panels = { { 5, -2 }, { 4, -2 }, { 3, -2 }, { 2, -2 }, { 1, -2 }, { 0, -2 }, { -1, -2 }, { -2, -2 }, { -3, -2 }, { -4, -2 }, { -5, -2 }, { 5, 2 }, { 4, 2 }, { 3, 2 }, { 2, 2 }, { 1, 2 }, { 0, 2 }, { -1, 2 }, { -2, 2 }, { -3, 2 }, { -4, 2 }, { -5, 2 }, { 5, -1 }, { 4, -1 }, { 3, -1 }, { 2, -1 }, { -2, -1 }, { -3, -1 }, { -4, -1 }, { -5, -1 }, { 5, 1 }, { 4, 1 }, { 3, 1 }, { 2, 1 }, { -2, 1 }, { -3, 1 }, { -4, 1 }, { -5, 1 }, { 5, 0 }, { 4, 0 }, { 3, 0 }, { 2, 0 }, { -2, 0 }, { -3, 0 }, { -4, 0 }, { -5, 0 } } }
+-- Region 0x2D.
+regions.region_2d = define.region { panels = { { 0, 0 }, { 0, -2 }, { 0, -1 }, { 0, 1 }, { 0, 2 } } }
+-- Region 0x2E.
+regions.region_2e = define.region { panels = { { 0, -2 }, { 0, -1 }, { 0, 1 }, { 0, 2 } } }
+-- Region 0x86: the field's panels with every `require` bit and no `forbid` bit.
+regions.field_no_navi = define.region { field = { require = 0x00000000, forbid = 0x00600000 } }
+-- Region 0x87: the field's panels with every `require` bit and no `forbid` bit.
+regions.field_solid_left = define.region { field = { require = 0x00000010, forbid = 0x00000020 } }
+-- Region 0x88: the field's panels with every `require` bit and no `forbid` bit.
+regions.field_solid_right = define.region { field = { require = 0x00000030, forbid = 0x00000000 } }
+
 return regions

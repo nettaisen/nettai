@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x09, ElecCross Beast's charged chip (`sub_8011C00`),
-# and its action 0x3C (`sub_80EDF5C`) are a script.
-
-id = 0x09
-name = "ElecCross Beast charge"
-action = 0x3C
-script = "elec_beast_charge.luau"

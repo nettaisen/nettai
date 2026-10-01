@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x15, EraseCross Beast's charged Null chip
-# (`sub_8011D20`), and its action 0x46 (`sub_80EE840`) are a script.
-
-id = 0x15
-name = "EraseCross Beast drop"
-action = 0x46
-script = "erase_beast_drop.luau"

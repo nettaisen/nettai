@@ -1,4 +1,0 @@
-# Lance, an instant chip (action 0x1C, subtype 4): its effect thrusts three
-# lances (`sub_80D2596`).
-
-script = "../../objects/lance/lance.luau"

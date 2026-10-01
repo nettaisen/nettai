@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x1C, ChargeCross Beast's charged Null chip
-# (`sub_8011DDC`), and its action 0x4F (`sub_80EF282`) are a script.
-
-id = 0x1C
-name = "ChargeCross Beast wave"
-action = 0x4F
-script = "charge_beast_wave.luau"

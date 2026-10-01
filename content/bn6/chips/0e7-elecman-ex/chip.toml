@@ -1,3 +1,0 @@
-# A navi chip (subtype 3): its navi is ElecMan.
-
-script = "../../objects/elec-man/elec_man.luau"
