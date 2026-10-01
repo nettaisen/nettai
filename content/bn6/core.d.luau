@@ -456,14 +456,14 @@ declare class Object
     function add_parts(self, identity: Identity, arg: number): ()
     -- `sub_8011044`: take them off (at their next update).
     function remove_parts(self, identity: Identity): ()
-    -- `sub_8010DF6` with `owner`'s NameID record: put on the parts that
-    -- record adds (a navi's body overlay), kept in related2; with
+    -- `sub_8010DF6` with `owner`'s identity: put on the parts it wears (a
+    -- navi's body overlay), kept in related2; with
     -- `keep_stepping`, a part that came steps even while paused and dimmed.
     -- With `paused_stepping`, `sub_8010DF6`'s r2 is 1 rather than the
     -- record's first byte (the dimming chips' stand-ins): the parts step
     -- even while paused.
     function add_parts_of(self, owner: Object, keep_stepping: boolean?, paused_stepping: boolean?): ()
-    -- `sub_8011044` with `owner`'s NameID record: take them off.
+    -- `sub_8011044` with `owner`'s identity: take them off.
     function remove_parts_of(self, owner: Object): ()
 
     -- `object_setAnimation`: request an animation, restarting it even if
