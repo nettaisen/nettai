@@ -118,7 +118,7 @@ element-pillar = { pool = "attack", index = 0x61 }
 "tomahawkman/strike" = { pool = "attack", index = 0x6A }
 boulder = { pool = "attack", index = 0x6E, actor_list_entry = 3 }
 "lance/lance" = { pool = "attack", index = 0x6F }
-drill = { pool = "attack", index = 0x71 }
+"drilarm/drill" = { pool = "attack", index = 0x71 }
 "snake/nest" = { pool = "attack", index = 0x72 }
 "snake/snake" = { pool = "attack", index = 0x73 }
 "rskyhny/bee" = { pool = "attack", index = 0x74 }

@@ -1308,7 +1308,7 @@ fn ground_cross_charged_shot_burrows_to_the_enemy_and_drills() {
     run_to(&mut b, p, &mut t, 30, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 4, y: 2 });
     run_to(&mut b, p, &mut t, 41, 0);
-    let mut drills: Vec<_> = kind_objects(&b, "drill").iter().map(|&d| b.objects.get(d).panel.x).collect();
+    let mut drills: Vec<_> = kind_objects(&b, "drilarm/drill").iter().map(|&d| b.objects.get(d).panel.x).collect();
     drills.sort();
     assert_eq!(drills, [5, 6]);
     run_to(&mut b, p, &mut t, 73, 0);
@@ -1319,7 +1319,7 @@ fn ground_cross_charged_shot_burrows_to_the_enemy_and_drills() {
     run_to(&mut b, p, &mut t, 86, 0);
     let o = b.objects.get(p0);
     assert_eq!((act(&b, p0), o.panel), (IDLE, PanelPos { x: 2, y: 2 }));
-    assert!(kind_objects(&b, "drill").is_empty());
+    assert!(kind_objects(&b, "drilarm/drill").is_empty());
 }
 
 #[test]
