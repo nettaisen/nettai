@@ -33,12 +33,12 @@ export type State = {
     -- The support is out: it sets this as it comes and clears it as it
     -- goes (the original's second parameter).
     out: boolean,
-    -- The chip Rush eats, as the ruleset's numeric API gives it.
-    eaten: number,
-    -- The chip record the telop names (+0x30: Rush's, Beat's or Tango's),
-    -- by its number, which the ruleset sets. (The port's telop banner
-    -- doesn't show a name yet.)
-    telop_chip: number,
+    -- The chip Rush eats, if any.
+    eaten: Chip?,
+    -- The chip the telop names (+0x30: Rush's, Beat's or Tango's, the
+    -- roles' `chips.rush`, `beat` and `tango`), which the ruleset sets.
+    -- (The port's telop banner doesn't show a name yet.)
+    telop_chip: Chip?,
 }
 
 local supports = {}
@@ -127,7 +127,7 @@ end
 supports.kind = define.kind {
     id = "support/controller",
     pool = "effect",
-    state = { support = { "rush", "beat", "tango" }, out = "bool", eaten = "u16", telop_chip = "u16" },
+    state = { support = { "rush", "beat", "tango" }, out = "bool", eaten = "chip", telop_chip = "chip" },
     -- `sub_80E8FE0`.
     update = dimming_chips.phases { name = "the supports", effect = effect },
 }

@@ -43,8 +43,6 @@ heat_charge.weapon = define.weapon {
     -- entry, as the original's table does.
     charge_ticks = { 70, 60, 50, 45, 40, 90 },
     setup = setup,
-    -- (Transitional: the routine number HeatCross's form names it by.)
-    legacy = { routines = { 0x06 } },
 }
 
 return heat_charge

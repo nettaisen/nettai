@@ -122,8 +122,8 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         leave_idle(b, r);
         let routine = ai(b, r).charge_shot;
         let action = weapon_slot_routine(b, r, routine);
-        let special = b.weapon_number(ai(b, r).charge_shot).is_some_and(|n| (0x21..=0x26).contains(&n));
-        let kind = if special { 2 } else { 1 };
+        let sticky = ai(b, r).charge_shot.is_some_and(|w| b.content.weapon(w).sticky);
+        let kind = if sticky { 2 } else { 1 };
         return set_attack(b, r, action, kind);
     }
     if ai(b, r).requests & request::BACK_SPECIAL != 0 {
@@ -273,16 +273,15 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
         }
         return action;
     }
-    let Some(routine) = b.content.weapon_number(weapon) else {
-        panic!("content error: weapon {:?} has no setup", b.content.defs.weapon(weapon).key)
-    };
-    // These entries are `nullsub_44`: the game starts whatever action the
-    // register it called through holds. (Forms name them only as charged
-    // chip bonuses, which `chip_use` handles before calling here.)
-    if matches!(routine, 0x05 | 0x0D | 0x0E | 0x13 | 0x18 | 0x1F | 0x20 | 0x29 | 0x2D | 0x38) {
-        panic!("weapon routine {routine:#x} is nullsub_44 (off_80117D4): the game starts an action from a stale register")
+    let w = b.content.weapon(weapon);
+    // An A-charge that is its chip has no routine (the original's entry is
+    // `nullsub_44`): started as a weapon, the game starts whatever action
+    // the register it called through holds. (Forms name them only as
+    // A-charges, which `chip_use` handles before calling here.)
+    if w.charged_chip.is_some() {
+        panic!("weapon {:?} is no routine (nullsub_44, off_80117D4): the game starts an action from a stale register", w.key)
     }
-    panic!("weapon routine {routine:#x} (off_80117D4) has no script in the content pack")
+    panic!("weapon {:?} has no setup: nothing implements it yet", w.key)
 }
 
 /// `sub_801265A`: buster damage, attack + 1 (+1 in some forms), at most
@@ -371,12 +370,12 @@ impl Support {
         }
     }
 
-    /// The chip record the controller's telop names (its +0x30).
-    fn telop_chip(self) -> u16 {
+    /// The role of the chip the controller's telop names (its +0x30).
+    fn telop_chip(self) -> crate::content::ChipRole {
         match self {
-            Support::Rush => 0x179,
-            Support::Beat => 0x17A,
-            Support::Tango => 0x17B,
+            Support::Rush => crate::content::ChipRole::Rush,
+            Support::Beat => crate::content::ChipRole::Beat,
+            Support::Tango => crate::content::ChipRole::Tango,
         }
     }
 }
@@ -391,8 +390,12 @@ impl Support {
 fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Option<ChipHandle>) {
     let h = b.objects.get(host);
     let (panel, side) = (h.panel, h.alliance);
-    // (The numeric API's chip, as the controller's state carries it.)
-    let chip = if support == Support::Rush { b.api_chip_field(chip, 0) } else { 0 };
+    // (The chip Rush eats, which the controller's state carries.)
+    let chip_value = |h: Option<ChipHandle>| {
+        h.map_or(bn6_content_api::Value::Nil, |h| bn6_content_api::Value::Def(bn6_content_api::Registry::Chip, h.0))
+    };
+    let eaten = chip_value(chip.filter(|_| support == Support::Rush));
+    let telop = chip_value(b.content.defs.roles.try_chip(support.telop_chip()));
     // The spawn's position is the caller's r1..r3: the host's panel row
     // and two zeros.
     let pos = crate::object::Vec3 { x: panel.y as i32, y: 0, z: 0 };
@@ -406,10 +409,9 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
         o.alliance = side;
         o.damage = 0;
         o.stamina = 0;
-        let telop = bn6_content_api::Value::Int(support.telop_chip() as i64);
         crate::behavior::set_state_field(b, c, "telop_chip", telop);
         crate::behavior::set_state_variant(b, c, "support", support.name());
-        crate::behavior::set_state_field(b, c, "eaten", bn6_content_api::Value::Int(chip as i64));
+        crate::behavior::set_state_field(b, c, "eaten", eaten);
     }
     b.start_dimming(side, true, controller, host);
 }

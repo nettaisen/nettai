@@ -146,10 +146,6 @@ impl std::fmt::Display for ContentHash {
 /// the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Content {
-    /// The chips the pack numbers, by chip id (`ChipData::id`; ids no
-    /// content names are left out). Content defining the pack's chips
-    /// (`legacy { number }`) fills it (`Content::define`).
-    pub chips: Vec<ChipData>,
     /// Navis by [`Navi`](crate::setup::Navi) number (MegaMan is 0).
     pub navis: Vec<NaviData>,
     /// MegaMan's forms by [`Form`](crate::setup::Form) number (0 is the
@@ -165,8 +161,6 @@ pub struct Content {
     /// fills it from the pack's asset names (docs/design/
     /// content-model-v2.md §6.3).
     pub assets: bn6_content_api::AssetNames,
-    /// MegaMan's weapon routines that scripts implement (see `scripts`).
-    pub weapons: Vec<WeaponData>,
     /// The pack's scripts (see `scripts`).
     pub scripts: Scripts,
     /// What the content defines: the registries and their handles, and the
@@ -229,28 +223,26 @@ impl Content {
         &self.defs.chip(h).record
     }
 
-    /// The original's number of a chip the pack numbers (the ruleset's
-    /// numeric logic asks it until phase C); none for a chip content
-    /// defines.
-    pub fn chip_number(&self, h: ChipHandle) -> Option<ChipId> {
-        self.defs.chip(h).record.id
+    /// What a chip's record names, by handle.
+    pub fn chip_links(&self, h: ChipHandle) -> &ChipLinks {
+        &self.defs.chip(h).links
     }
 
-    /// The pack's chip with this number (registration by number).
-    pub fn chip_numbered(&self, id: ChipId) -> Option<ChipHandle> {
-        self.defs.chip_numbered(id)
+    /// The chip a zeroed chip field reads (`roles.chips.zeroed`: the chip
+    /// the original's chip 0 is), if the content has one.
+    pub fn zeroed_chip(&self) -> Option<ChipHandle> {
+        self.defs.roles.try_chip(ChipRole::Zeroed)
     }
 
-    /// The record a chip field names: the chip's, or for none (a zeroed
-    /// field) the pack's chip 0's, which is what the game reads.
+    /// The chip a chip field names: itself, or for none (a zeroed field)
+    /// the zeroed chip, which is what the game reads.
+    pub fn chip_or_zeroed(&self, h: Option<ChipHandle>) -> ChipHandle {
+        h.unwrap_or_else(|| self.defs.roles.chip(ChipRole::Zeroed))
+    }
+
+    /// The record a chip field names (see [`Content::chip_or_zeroed`]).
     pub fn chip_field(&self, h: Option<ChipHandle>) -> &ChipData {
-        let h = h.or_else(|| self.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
-        self.chip(h)
-    }
-
-    /// Whether `h` is the pack's chip number `id`.
-    pub fn is_chip(&self, h: ChipHandle, id: ChipId) -> bool {
-        self.chip_number(h) == Some(id)
+        self.chip(self.chip_or_zeroed(h))
     }
 
     /// A navi's data.
@@ -293,15 +285,14 @@ impl Content {
         self.defs.form_numbered(form).unwrap_or_else(|| panic!("form {:#x} is not in the content", form.0))
     }
 
-    /// A weapon's routine number (the ruleset's numeric logic asks it until
-    /// phase C); none for a weapon content defines.
-    pub fn weapon_number(&self, h: WeaponHandle) -> Option<u8> {
-        self.defs.weapon(h).number
+    /// A weapon.
+    pub fn weapon(&self, h: WeaponHandle) -> &WeaponDef {
+        self.defs.weapon(h)
     }
 
-    /// The weapon a routine number names.
-    pub fn weapon_numbered(&self, routine: u8) -> WeaponHandle {
-        self.defs.weapon_numbered(routine).unwrap_or_else(|| panic!("weapon routine {routine:#04x} is not in the content"))
+    /// The weapon with this key (setups by name, tools and tests).
+    pub fn weapon_by_key(&self, key: &str) -> WeaponHandle {
+        self.defs.weapon_by_key(key).unwrap_or_else(|| panic!("weapon {key:?} is not in the content"))
     }
 
     /// A status effect.
@@ -393,28 +384,13 @@ impl Content {
 
     /// The Program Advances, in the order they are tried (each chip holds
     /// the recipes that make it).
-    pub fn program_advances(&self) -> Vec<ProgramAdvance> {
-        let mut v: Vec<(u8, ProgramAdvance)> = self
-            .chips
-            .iter()
-            .filter_map(|c| Some((self.chip_numbered(c.id?)?, c)))
-            .flat_map(|(h, c)| c.program_advances.iter().map(move |r| (r.order, h, &r.recipe)))
-            .map(|(order, result, recipe)| {
-                let chip = |id: ChipId| self.chip_numbered(id).unwrap_or_else(|| panic!("a Program Advance names chip {id:#x}"));
-                let recipe = match recipe {
-                    PaRecipe::CodeRun { chip: c, count } => Recipe::CodeRun { chip: chip(*c), count: *count },
-                    PaRecipe::Sequence(ids) => Recipe::Sequence(ids.iter().map(|&c| chip(c)).collect()),
-                };
-                (order, ProgramAdvance { result, recipe })
-            })
-            .collect();
-        v.sort_by_key(|(order, _)| *order);
-        v.into_iter().map(|(_, pa)| pa).collect()
+    pub fn program_advances(&self) -> &[ProgramAdvance] {
+        &self.defs.program_advances
     }
 
     /// A link navi's own chip (none for MegaMan).
-    pub fn navi_chip(&self, navi: NaviHandle) -> Option<CodedChip> {
-        self.navi(navi).own_chip
+    pub fn navi_chip(&self, navi: NaviHandle) -> Option<(ChipHandle, ChipCode)> {
+        self.defs.navi(navi).own_chip
     }
 
     /// An attachment kind (the attachment object's first parameter).

@@ -6,7 +6,6 @@
 
 local weapon = require("../../lib/weapon")
 local wideswrd = require("../../chips/wideswrd/chip")
-local wideswrd_chip = require("../../chips/wideswrd/record")
 
 local charge = {}
 
@@ -18,7 +17,7 @@ local SWORD, HIT_PARAM = 0x80, 0x8A
 -- bonus; not charged), with 60 damage and 20 more per point of buster
 -- Attack (up to 5).
 local function setup(navi: Object): Action
-    navi.attack_chip = wideswrd_chip
+    navi.attack_chip = wideswrd
     navi.attack_element = SWORD
     navi.attack_lockout = 0
     navi.extra = 0
@@ -35,8 +34,6 @@ charge.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 35, 30, 25, 20, 50, 50, 50 },
     setup = setup,
-    -- (Transitional: the routine number the navi's row names it by.)
-    legacy = { routines = { 0x32 } },
 }
 
 return charge

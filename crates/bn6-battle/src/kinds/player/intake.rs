@@ -319,14 +319,15 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         zero_trapped_hit(b, r);
         return;
     }
-    // The record's chip by number (0: none).
-    let chip = b.chip_number(b.linked[side].chip).unwrap_or(0);
-    let (trap, min) = if chip == 0xBB || chip == 0x157 {
-        (chip, 10)
+    // The trap the side's defensive-chip record holds.
+    use crate::content::Trap;
+    let chip = b.linked_trap(side as u8);
+    let (trap, min) = if let Some(trap @ (Trap::AntiDamage | Trap::BodyGuard)) = chip {
+        (trap, 10)
     } else if ai(b, r).status & crate::actor::status::TRAP_ARMED != 0 {
-        (0xBB, 1)
+        (Trap::AntiDamage, 1)
     } else {
-        if chip == 0xBC {
+        if chip == Some(Trap::AntiSword) {
             use crate::actor::request::ANTI_SWORD_TRIGGERED;
             if ai(b, r).requests & ANTI_SWORD_TRIGGERED != 0 {
                 zero_trapped_hit(b, r);
@@ -355,7 +356,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         return;
     }
     ai_mut(b, r).requests |=
-        if trap == 0xBB { crate::actor::request::ANTI_DAMAGE_TRIGGERED } else { crate::actor::request::BODY_GUARD_TRIGGERED };
+        if trap == Trap::AntiDamage { crate::actor::request::ANTI_DAMAGE_TRIGGERED } else { crate::actor::request::BODY_GUARD_TRIGGERED };
     zero_trapped_hit(b, r);
 }
 

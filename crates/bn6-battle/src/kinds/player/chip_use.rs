@@ -7,7 +7,7 @@ use super::{Emotion, ai, ai_mut, emotion, flag1, form_of, navi_of, navi_record, 
 use crate::actor::{ActorType, AttackVars, request};
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::content::{ChipData, ChipFamily, ChipFlags, ChipId, Content, Element};
+use crate::content::{ChipData, ChipFamily, ChipFlags, ChipTraits, Content, Element};
 use crate::object::{ObjectRef, PanelPos, Vec3};
 use crate::setup::Navi;
 use bn6_content_api::ChipHandle;
@@ -49,10 +49,11 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
         } else {
             ai(b, r).a_charge
         };
-        match routine.map(|w| b.content.weapon_number(w)) {
+        use crate::content::ChargedChip;
+        match routine.map(|w| b.content.weapon(w).charged_chip) {
             // sub_8012CB2: GroundCross's rocks fall first; its leftover r0
             // (2 after a barrage, 0 without targets) marks the chip.
-            Some(Some(0x18)) => charge = rock_barrage(b, r),
+            Some(Some(ChargedChip::RockBarrage)) => charge = rock_barrage(b, r),
             // No routine: the chip is used with the register that held its
             // family byte as the argument (cleared with the chip id for the
             // Null family).
@@ -64,9 +65,9 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 charge = b.content.chip(chip).family as u8;
             }
             // These forms' charged chips are the chip with a bonus.
-            Some(Some(0x05 | 0x0D | 0x1F | 0x20 | 0x29 | 0x2D)) => charge = 1,
+            Some(Some(ChargedChip::Bonus)) => charge = 1,
             // The rest run a weapon routine instead of the chip.
-            Some(_) => {
+            Some(None) => {
                 let weapon = routine.expect("a weapon");
                 ai_mut(b, r).attack.charged = 0;
                 let action = super::idle::weapon_routine(b, r, weapon);
@@ -97,11 +98,11 @@ pub(super) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
 }
 
 /// `sub_800FC30`: the Beast Out rush chains the next chip, starting its
-/// action (inside the rush again). Not the claw's chips 0x52/0x53, dimming
-/// chips, or an empty hand. True if it did.
+/// action (inside the rush again). Not the chips with the `no_chain` trait
+/// (the variable swords), dimming chips, or an empty hand. True if it did.
 pub(super) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
     let Some(chip) = hand_entry(b, r).chip else { return false };
-    if matches!(b.content.chip_number(chip), Some(0x52 | 0x53)) {
+    if b.content.chip(chip).traits.has(ChipTraits::NO_CHAIN) {
         return false;
     }
     if b.content.chip(chip).flags.has(ChipFlags::DIMMING) {
@@ -143,9 +144,9 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
 }
 
 /// The chip an object other than a player carries: its zeroed chip field,
-/// the pack's chip 0 (nothing else sets it).
+/// the zeroed chip (nothing else sets it).
 fn carried_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
-    b.objects.get(r).chip.or_else(|| b.content.chip_numbered(0))
+    b.objects.get(r).chip.or_else(|| b.content.zeroed_chip())
 }
 
 /// The record of a hand entry's chip; the empty hand's (0xFFFF) is past
@@ -240,29 +241,24 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     chip_action(b, r, e.chip)
 }
 
-/// The action chip `chip` starts by its usage (none: the pack's chip 0,
+/// The action chip `chip` starts by its usage (none: the zeroed chip,
 /// which a zeroed chip field reads): its own action, or the engine's action
 /// for its kind of use (which calls its hook); an instant chip's effect
 /// goes into the attack.
 pub(super) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> super::NaviAction {
-    use crate::content::{ChipUsage, Unported};
+    use crate::content::ChipUsage;
     use super::actions::instant::Effect;
     use super::{EngineAction as E, NaviAction as A};
     let content = b.content.clone();
-    let chip = chip.or_else(|| content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
+    let chip = content.chip_or_zeroed(chip);
     match content.defs.chip(chip).usage {
         ChipUsage::Action(h) => A::Content(h),
-        ChipUsage::Dimming(_) | ChipUsage::Unported(Unported::Dimming(_)) => A::Engine(E::DimmingChip),
-        ChipUsage::Navi(_) | ChipUsage::Unported(Unported::Navi(_)) => A::Engine(E::NaviChip),
+        ChipUsage::Dimming(_) => A::Engine(E::DimmingChip),
+        ChipUsage::Navi(_) => A::Engine(E::NaviChip),
         ChipUsage::Instant(f) => {
             ai_mut(b, r).attack.instant = Some(Effect::Runs(f));
             A::Engine(E::InstantChip)
         }
-        ChipUsage::Unported(Unported::Instant(subtype)) => {
-            ai_mut(b, r).attack.instant = Some(Effect::Unported(subtype));
-            A::Engine(E::InstantChip)
-        }
-        ChipUsage::Unported(Unported::Action(n)) => A::numbered(&content.defs, n),
     }
 }
 
@@ -273,22 +269,21 @@ fn deals_damage(flags: ChipFlags) -> bool {
 }
 
 /// `sub_8010D58`: a dark chip (one with a substitute) costs a bug frag; with
-/// none left the player gets the substitute instead (`off_8010D84`: Sword,
-/// Thunder, Recov10, Invisibl, 0xC0), through `sub_800EF02`, with its own
-/// damage and bonus and no modifiers.
+/// none left the player gets the substitute instead (the chip's own:
+/// `off_8010D84`, Sword, Thunder, Recov10, Invisibl and Atk+10 for the five
+/// dark chips), through `sub_800EF02`, with its own damage and bonus and no
+/// modifiers.
 fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Option<HandEntry> {
-    let sub = entry_record(&b.content, chip).dark_substitute?;
+    // (The empty hand's chip reads past the chip table, as for the record.)
+    entry_record(&b.content, chip);
+    let sub = b.content.chip_links(chip.expect("a chip")).dark_substitute?;
     let side = b.objects.get(r).alliance as usize;
     if b.bug_frags[side] >= 1 {
         // sub_800F4B2 (the local player's save loses one too).
         b.bug_frags[side] -= 1;
         return None;
     }
-    const SUBSTITUTES: [ChipId; 5] = [0x47, 0x1E, 0x9A, 0xB1, 0xC0];
-    let chip = *SUBSTITUTES
-        .get(sub as usize)
-        .unwrap_or_else(|| panic!("dark chip substitute {sub} reads past its table (sub_8010D58)"));
-    let chip = Some(b.content.chip_numbered(chip).unwrap_or_else(|| panic!("a dark chip's substitute, chip {chip:#x}")));
+    let chip = Some(sub);
     // sub_800EF02: anything but a player keeps the chip it carries.
     if navi_record(b, r).actor_type != ActorType::Player {
         return Some(HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0 });
@@ -298,18 +293,16 @@ fn dark_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> Op
     Some(HandEntry { chip, damage, extra, modifiers: 0 })
 }
 
-/// `sub_800B79A`: the dark chips (0x11E..=0x122) worsen the user's HP bug
-/// (NaviStats+0x18, at most 7): +2, +1, to 7, nothing, +4.
+/// `sub_800B79A`: the dark chips worsen the user's HP bug (NaviStats+0x18,
+/// at most 7) by their `hp_bug`: DrkSword +2, DarkThnd +1, DrkRecov to 7,
+/// DarkInvs nothing, DarkPlus +4.
 fn dark_chip_side_effect(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
-    let number = b.chip_number(chip);
+    let cost = chip.map_or(0, |h| b.content.chip(h).hp_bug);
+    if cost == 0 {
+        return;
+    }
     let s = &mut super::stats_mut(b, r).bugs.hp_drain;
-    *s = match number {
-        Some(0x11E) => (*s + 2).min(7),
-        Some(0x11F) => (*s + 1).min(7),
-        Some(0x120) => 7,
-        Some(0x122) => (*s + 4).min(7),
-        _ => return,
-    };
+    *s = s.saturating_add(cost).min(7);
 }
 
 /// `sub_800EE26`: the battle flag 0x40 mode's special chip (the side
@@ -320,8 +313,8 @@ fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
     if navi_record(b, r).actor_type != ActorType::Player {
         return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0 };
     }
-    // The zeroed field is the pack's chip 0.
-    let chip = b.sides[side].special_chip.or_else(|| b.content.chip_numbered(0));
+    // The zeroed field is the zeroed chip.
+    let chip = b.sides[side].special_chip.or_else(|| b.content.zeroed_chip());
     pay_for_special_chip(b, side, chip);
     let extra = chip_bonus(b, r, chip);
     let content = b.content.clone();
@@ -370,12 +363,14 @@ fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let damage = crate::hand::chip_damage(b, chip, side);
     let a = &mut ai_mut(b, r).attack;
     a.chip = chip;
-    a.params = cd.params;
+    // (The original copies the record's subtype and parameter bytes: a
+    // chip has neither here; what its action needs is its definition's.)
+    a.params = [0; 4];
     a.damage = damage;
     a.hit_param = cd.hit_param as u16;
     a.lockout = cd.lockout;
     a.extra = 0;
-    a.variant = cd.subtype;
+    a.variant = 0;
     a.element = cd.element as u8 | content.rules.family_elements(cd.family).0;
     a.charged = 0;
 }
@@ -433,7 +428,7 @@ fn link_navi_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
 /// `sub_800F1DC`: StreamHd and the AuraHed chips hit harder while the
 /// user's barrier holds.
 fn aura_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
-    if !b.chip_number(chip).is_some_and(|n| n == 0x150 || (0x5F..=0x61).contains(&n)) {
+    if !chip.is_some_and(|h| b.content.chip(h).traits.has(ChipTraits::AURA_BONUS)) {
         return 0;
     }
     let c = super::coll(b, r);

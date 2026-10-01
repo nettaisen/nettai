@@ -13,9 +13,8 @@
 //!   (dimming chips) its dimming controller, action 0x1B (navi chips) its
 //!   navi, action 0x1C (instant chips) its effect
 //!   ([`ChipData::script`](super::ChipData::script));
-//! - a weapon routine of MegaMan's (`navis/megaman/weapons/NN-name/
-//!   weapon.toml`) implements the routine, the action it names and the
-//!   instant chip effect it names ([`WeaponData`]).
+//! - a weapon is a definition (`define.weapon`): nothing registers one by
+//!   number.
 //!
 //! [`Content::define`] turns that, with what the modules define, into
 //! what the script runtime binds (`content::defs`). Nothing in the engine says which kind, action or hook is a
@@ -28,12 +27,6 @@ use bn6_content_api::Pool;
 use serde::{Deserialize, Serialize};
 
 use super::Content;
-
-/// The chips' actions the ruleset implements itself and dispatches to a
-/// chip's script by its subtype.
-pub const DIMMING_CHIP_ACTION: u8 = 0x15;
-pub const NAVI_CHIP_ACTION: u8 = 0x1B;
-pub const INSTANT_CHIP_ACTION: u8 = 0x1C;
 
 /// The pack's Luau modules.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -99,27 +92,6 @@ pub struct ObjectKind {
     pub index: u8,
     /// The module (see [`Scripts::modules`]); in the file, a path relative
     /// to the folder.
-    pub script: String,
-}
-
-/// A weapon routine of MegaMan's that a script implements
-/// (`off_80117D4`: what a button's weapon does).
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct WeaponData {
-    /// The routine number (a form's or the navi stats' weapon byte).
-    pub id: u8,
-    pub name: String,
-    /// The action the script implements besides the routine (the one its
-    /// `setup` names), if any.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub action: Option<u8>,
-    /// The instant chip effect (action 0x1C's subtype, `off_80EC3F0`) the
-    /// script implements, when the routine names action 0x1C with a
-    /// subtype no chip has.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub instant_chip: Option<u8>,
-    /// The module; in the file, a path relative to the folder.
     pub script: String,
 }
 

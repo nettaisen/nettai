@@ -32,7 +32,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) -> Option<ObjectRef> {
     let spec = Spec {
         element: a.element,
-        navi: a.variant,
         params: a.params,
         damage: a.damage as u32 | (a.hit_param as u32) << 16,
         chip: DimmingChip { chip: a.chip, bonus: a.extra },

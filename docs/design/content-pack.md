@@ -32,10 +32,11 @@ in [asset-formats.md](asset-formats.md); the definitions and their API in
 - **Content is definitions.** The chips, navis, forms, weapons, stages,
   rule sections, collision types, statuses, lock-on modes, effects, sparks
   and regions are `define.*` calls in the content root's modules. What
-  only registration by number still reads (a chip's number, action and v1
-  module; the original's numbering of a table) sits in a definition's
-  `legacy` marker, which goes when its family converts
-  (content-model-v2.md §12).
+  only registration by number still reads (a navi's or a form's number, a
+  weapon's routine numbers, the original's numbering of a table) sits in a
+  definition's `legacy` marker, which goes when its family converts
+  (content-model-v2.md §12). A chip has none: it is its definition, with
+  its own use.
 - **Exact.** The tables the definitions build equal the ROM's, field by
   field (`gen-content check`, §3), and every golden trace, the sound calls
   and the chip lab hold.
@@ -49,9 +50,7 @@ in [asset-formats.md](asset-formats.md); the definitions and their API in
 
 ```text
 chips/KEY/chip.luau, chips.luau           a chip or a series (`define.chip`), with its use
-chips/KEY/record.luau, records.luau       a chip's definition beside the action module people wrote there
-chips/v1.luau                             the numbered records of the chips content defines (`v1/<key>`)
-chips/NNN-name/*.luau                     v1 modules a chip's legacy marker names (until step 6's moves)
+chips/KEY/*.luau                          what only that chip or series uses (its action's builder, its kinds)
 navis/KEY/navi.luau, chip.luau, *.luau    a navi, its own chip, its weapons
 navis/megaman/navi.luau                   MegaMan
 navis/megaman/forms/KEY/form.luau         MegaMan's forms, with their weapons next to them
@@ -61,8 +60,7 @@ objects/KIND/object.toml, *.luau          `[kind]`: the object kind a v1 module 
 objects/attachment/rows.luau              the attachments by number (a legacy rule section: the last kind table something reads)
 stages/netbattle.luau                     the stages (`define.stage`), with their layouts and actors
 rules/*.luau                              rule sections (`define.rules`), collision types, statuses,
-                                          lock-on modes, the roles (roles.luau), the charge times of the
-                                          weapon routines no weapon names (numbers.luau)
+                                          lock-on modes, the roles (roles.luau)
 lib/*.luau                                helpers, and the shared effects, sparks and regions
 core.d.luau, types.d.luau                 the API's definitions (for editors and the checker)
 compat/*.toml                             the original's numbers by key: tools' data, never the engine's
@@ -101,8 +99,8 @@ and, from the pack, the asset index (`Content::assets`) and the sprites'
 timing (`Content::animations`), then runs the define phase
 (`Content::define`): every module once, what they define into the
 registries, and, from the definitions, the tables registration by number
-reads (bn6-battle's `content::legacy`: the chips, navis and forms by
-number, the weapons' charge times, the stages' panel layouts and actor
+reads (bn6-battle's `content::legacy`: the navis and forms by
+number, the stages' panel layouts and actor
 lists, the rule sections, collision types by row, statuses, lock-on modes,
 effects, sparks, regions and the object kinds' rows). It reports, by
 module, a definition that doesn't read (a missing field, a gap in a
@@ -114,9 +112,10 @@ the define phase.
 define phase with its lints. The verification workspace's `gen-content
 check <rom> <content>` defines the content root with compat's asset names
 and compares every table it builds with the ROM's, field by field: chips,
-navis, forms, the charge times of all 148 weapon routines, the stages with
-their layouts and actors, every rule section, the registries and the
-object kinds' rows.
+navis, forms, the weapons by the routine numbers compat gives them (their
+charge times, the traits the ruleset asks, the forms' and navis' weapon
+slots, the navis' fresh stats), the stages with their layouts and actors,
+every rule section, the registries and the object kinds' rows.
 
 Loading is straight from the files: there is no derived cache. A frontend
 that doesn't play sound (headless rendering, `--mute`) skips the sound.
@@ -234,6 +233,7 @@ content-model-v2.md §12's step 5: `gen-content luau` wrote the same data
 as definitions into content/bn6, and `gen-content check` compares what
 they build with the ROM, field by field, as §7's check did for the
 compiled tables. The 56 chip records with no name (`????`) that nothing
-reaches have no definition. The weapon routines' charge times now cover
-all 148 routines (the TOML's `rules/weapons.toml` had 50 of them): a weapon
-holds its own, and the routines no weapon names are a legacy table.
+reaches have no definition. A weapon holds its own charge times (the
+TOML's `rules/weapons.toml` had 50 routines' rows); since step 11 a
+routine no weapon names (70 of the original's 148) has nothing in the
+content: nothing names a weapon by number.

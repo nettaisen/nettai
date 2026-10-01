@@ -5,7 +5,7 @@ use crate::field::PanelType;
 use serde::{Deserialize, Serialize};
 
 /// Global rules: element weakness, collision types, panels, banners,
-/// statuses, weapons and the Beast Out lock-on.
+/// statuses and the Beast Out lock-on.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Rules {
     /// Extra damage multiplier by the receiver's element, then the
@@ -20,16 +20,22 @@ pub struct Rules {
     pub holding_banners: Vec<BannerId>,
     /// The HP bug's drain period by bug level.
     pub hp_bug_periods: [u8; 8],
-    /// Weapon routines by number (`off_80117D4`): their charge times.
-    pub weapons: Vec<WeaponRoutine>,
     /// What the charge rules read for an empty hand's chip.
     pub empty_hand: EmptyHandChip,
     /// Ticks of recovery after a buster shot, by Rapid stat, then by open
     /// panels ahead (0..=5).
     pub buster_recovery: Vec<[u8; 6]>,
     /// The deletion times (BCD hours:minutes:seconds.hundredths) at which
-    /// an SP navi chip's damage steps down (`ChipData::sp_damage`).
+    /// an SP navi chip's damage steps down (`DamageFormula::SpNavi`).
     pub sp_deletion_times: Vec<u32>,
+    /// The SP navis whose deletion times a round's setup carries, in its
+    /// order (`RoundSetup::sp_times`): an SP navi chip's formula names its
+    /// slot by these names.
+    pub sp_slots: Vec<String>,
+    /// The Cross special's chips (`sub_802D5A8`): a row by the hundreds of
+    /// the navi's base max HP (the first row up to 199, the last from its
+    /// place on), each chip by key.
+    pub cross_special: Vec<Vec<SpecialChip>>,
     /// The sine table (`math_sinTable`, which `math_cosTable` continues):
     /// 256 steps a turn, 1.0 = 0x100, over a turn and a half, so that the
     /// cosine of step `a` is entry `a + 64`.
@@ -52,6 +58,17 @@ pub struct Rules {
     pub cross_palettes: Vec<u8>,
 }
 
+/// One of the Cross special's chips (`sub_802D4F0`): the chip its
+/// controller uses, by key, with another chip's damage where the original
+/// takes it from one (the last row's LifeSrd strikes with VarSwrd's).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpecialChip {
+    pub chip: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub damage_of: Option<String>,
+}
+
 impl Rules {
     /// Whether a banner stays up until removed.
     pub fn banner_holds(&self, id: BannerId) -> bool {
@@ -61,13 +78,6 @@ impl Rules {
     /// The secondary elements a chip family adds.
     pub fn family_elements(&self, family: ChipFamily) -> SecondaryElements {
         self.family_elements[family as usize]
-    }
-
-    /// Ticks to a full charge for a charge routine at a Charge stat. A
-    /// Charge past 4 reads the next routine's times, as in the game.
-    pub fn charge_threshold(&self, routine: u8, charge: u8) -> u16 {
-        let i = routine as usize * 5 + charge as usize;
-        self.weapons[i / 5].charge_ticks[i % 5]
     }
 
     /// Ticks of recovery after a buster shot at a Rapid stat with `open`
@@ -171,13 +181,6 @@ pub struct StatusEffect {
     /// 0x65).
     #[serde(default)]
     pub survives_counter: bool,
-}
-
-/// A weapon routine's data.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct WeaponRoutine {
-    /// Ticks to a full charge, by Charge stat (0..=4).
-    pub charge_ticks: [u16; 5],
 }
 
 /// The chip record an empty hand reads. A hand with no chip left holds
