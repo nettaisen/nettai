@@ -37,11 +37,12 @@ mod custom;
 mod defs;
 mod flags;
 mod identity;
-pub mod legacy;
 mod navis;
+mod reader;
 mod roles;
 mod rules;
 mod scripts;
+mod sections;
 mod sprites;
 mod stages;
 #[cfg(any(test, feature = "test-content"))]
@@ -173,15 +174,14 @@ impl Content {
     pub fn define(&mut self) -> Result<(), bn6_content_api::ContentError> {
         if self.scripts.modules.is_empty() {
             let definitions = Default::default();
-            legacy::build(self, &definitions)?;
+            sections::build(self, &definitions)?;
             self.defs = Defs::build(self, definitions)?;
             return Ok(());
         }
         let (definitions, compiled) = bn6_luau::define(&self.scripts.pack(), &self.assets, bn6_luau::Options::default())?;
         self.scripts.compiled = CompiledModules(compiled);
-        // What the ruleset still reads by number of the definitions: the
-        // tables by number.
-        legacy::build(self, &definitions)?;
+        // The rule sections into the ruleset's typed tables.
+        sections::build(self, &definitions)?;
         self.defs = Defs::build(self, definitions)?;
         Ok(())
     }

@@ -8,9 +8,7 @@
 //! - content's definitions (`define.kind { ... }`), keyed by their keys.
 //!
 //! Each registry's keys are sorted byte-wise; an entry's handle is its
-//! place. (Navis and forms still carry the original's numbers in their
-//! `legacy` markers, by which the ruleset finds them, until the
-//! migration's last step.)
+//! place.
 //!
 //! The engine never learns the original's numbers for what content
 //! defines: an object records its kind's handle, a navi its content
@@ -483,7 +481,7 @@ fn slot(d: &Definition, path: &str) -> Result<FnSource, ContentError> {
 /// it, and the chips it names (its Program Advance recipes' ingredients, a
 /// dark chip's substitute) by key: the registry resolves those to handles
 /// once every chip has one (`ChipDef::links`).
-pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result<ChipData, ContentError> {
+pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Result<ChipData, ContentError> {
     use serde_json::{Map, Value as Json};
     let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
     let spec = &d.spec;
@@ -542,7 +540,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
     }
     let beast = spec.field("beast");
     o.insert("beast_lockon".into(), Json::Bool(!beast.is_nil() && !matches!(beast.field("rush"), Data::Bool(false))));
-    // (A lock-on mode's number is its handle: `Resolver::new`.)
+    // (A lock-on mode reads as its handle: `SpecReader::new`.)
     let mode = match beast.field("lockon") {
         Data::Nil => Json::Null,
         v @ Data::Ref(Registry::Lockon, _) => r.json(v, &format!("chip {}.beast.lockon", d.key)).map_err(what)?,
@@ -552,11 +550,6 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
     o.insert("program_advance".into(), json("program_advances")?);
     if o["program_advance"].is_null() {
         o.insert("program_advance".into(), Json::Array(Vec::new()));
-    }
-    // (A chip is its definition: it has no number, subtype or parameter
-    // bytes for a marker to give.)
-    if !spec.field("legacy").is_nil() {
-        return Err(what("a chip takes no `legacy` marker: its use is its `action`, `dimming`, `navi` or `instant`".into()));
     }
     serde_json::from_value(Json::Object(o)).map_err(|e| what(e.to_string()))
 }
@@ -757,7 +750,7 @@ impl Defs {
     /// What `content` (its data's registrations and the engine's own) and
     /// `definitions` (what its modules define) make.
     pub fn build(content: &Content, definitions: Definitions) -> Result<Defs, ContentError> {
-        let resolver = super::legacy::Resolver::new(&content.assets, &definitions);
+        let reader = super::reader::SpecReader::new(&content.assets, &definitions);
         let mut functions = Functions::default();
 
         // Layouts: the definitions' and modules' state tables, and the
@@ -954,7 +947,7 @@ impl Defs {
                     d.module, d.key
                 )));
             };
-            let record = chip_record(d, &resolver)?;
+            let record = chip_record(d, &reader)?;
             chips.add(
                 d.key.clone(),
                 ChipDef { key: d.key.clone(), record, usage, links: ChipLinks::default() },
@@ -1077,7 +1070,7 @@ impl Defs {
         };
         let mut navis = Vec::new();
         for d in definitions.of(Registry::Navi) {
-            let mut record = super::navis::read_navi(d, &resolver)?;
+            let mut record = super::navis::read_navi(d, &reader)?;
             record.weapons = read_weapons(d)?;
             record.fresh = super::navis::read_fresh(d)?;
             record.cross_hp = super::navis::read_cross_hp(d)?;
@@ -1128,7 +1121,7 @@ impl Defs {
         }
         let mut forms = Vec::new();
         for d in definitions.of(Registry::Form) {
-            let mut record = super::navis::read_form(d, &resolver)?;
+            let mut record = super::navis::read_form(d, &reader)?;
             record.weapons = read_weapons(d)?;
             record.identity = identity_of(d, &identities)?;
             record.cross_of = match d.spec.field("cross_of") {
@@ -1215,7 +1208,7 @@ impl Defs {
             if let Data::Map(entries) = &mut spec {
                 entries.retain(|(k, _)| !matches!(k, bn6_content_api::DataKey::Str(s) if s == "id"));
             }
-            let mode: super::LockonMode = resolver.read(&spec, &d.key).map_err(what)?;
+            let mode: super::LockonMode = reader.read(&spec, &d.key).map_err(what)?;
             lockons.push(LockonDef { key: d.key.clone(), mode });
         }
         if lockons.windows(2).any(|w| w[0].key >= w[1].key) {
@@ -1230,7 +1223,7 @@ impl Defs {
             if let Data::Map(entries) = &mut spec {
                 entries.retain(|(k, _)| !matches!(k, bn6_content_api::DataKey::Str(s) if s == "id"));
             }
-            let effect: super::StatusEffect = resolver.read(&spec, &d.key).map_err(what)?;
+            let effect: super::StatusEffect = reader.read(&spec, &d.key).map_err(what)?;
             statuses.push(StatusDef { key: d.key.clone(), effect });
         }
         if statuses.windows(2).any(|w| w[0].key >= w[1].key) {

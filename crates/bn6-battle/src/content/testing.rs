@@ -842,9 +842,8 @@ pub fn scripts() -> Scripts {
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
                 // MegaMan's buster, charged and blank shots and HeatCross's
-                // charged shot are weapon definitions (their routine numbers
-                // their `legacy` markers). (BN6's rules/roles isn't here: the
-                // test pack fills the roles.)
+                // charged shot are weapon definitions. (BN6's rules/roles
+                // isn't here: the test pack fills the roles.)
                 ("navis/megaman/weapons/blank-shot/weapon", "navis/megaman/weapons/blank-shot/weapon"),
                 ("navis/megaman/weapons/charged-shot/weapon", "navis/megaman/weapons/charged-shot/weapon"),
                 ("navis/megaman/weapons/buster/weapon", "navis/megaman/weapons/buster/weapon"),
@@ -856,8 +855,8 @@ pub fn scripts() -> Scripts {
                 ("lib/weapon", "lib/weapon"),
                 ("lib/order", "lib/order"),
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
-                // The form weapons content defines (their routine numbers
-                // their `legacy` markers), with the kinds only they spawn.
+                // The form weapons content defines, with the kinds only they
+                // spawn.
                 (
                     "navis/megaman/weapons/falzar-beast-buster/weapon",
                     "navis/megaman/weapons/falzar-beast-buster/weapon",
