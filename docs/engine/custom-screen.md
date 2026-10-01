@@ -76,7 +76,9 @@ at init (`sub_80079F0` → `sub_800A3E4`, the frame the init sub-state goes to 8
 3. BattleState+0x17 = 1 if there is a Regular chip (`BattleFolder::regular_pending`); +0x44 = 1 with tags and
    +0x45 = where the shuffle put the pair (`BattleFolder::shuffled_with_tag_pair`, `ConsoleSetup::tag_pair`). Only
    ChpShufl's re-deal reads them (§3.7); each opening clears +0x44 once +0x45 is below its hand size
-   (`sub_802A646`). Nothing updates +0x45 as the folder closes up.
+   (`sub_802A646`). While +0x44 is set, OK takes one off +0x45 for each chip it takes out of the folder
+   (`sub_80293F8`, §5), so the index follows the pair as the folder closes up (the picks are all before it).
+   DustCross's scrap (§3.6) doesn't.
 
 Verified **[dumps]** on all 10 shuffles (both consoles, every round of both replays): same folder, same RNG1 after.
 The unit tests in `custom/folder.rs` replay four of them.
@@ -201,7 +203,7 @@ T is the tick that took the key; "input from" is the first tick the grid reads k
 | 0x48 Beast Out picked | A on Beast Out at T | T+71 **[dumps, 5 cases]** |
 | 0x44 BeastOut chip picked (`sub_80275EC`) | A on chip 0x13F at T | as 0x48 but its fade starts 16 ticks later; the chip moves to the front of the selection at T+68 (the Beast Out flag and button stay); T+86 **[lab]** |
 | 0x38 DustCross scrap | A on the scrap button at T | T+4+25k for k chips scrapped **[dumps, 13 cases]** |
-| 0x28 ChpShufl re-deal (`sub_80271F8`) | A on the re-deal button at T | T+34 **[lab, 2 scratch recordings]** |
+| 0x28 ChpShufl re-deal (`sub_80271F8`) | A on the re-deal button at T | T+34 **[lab: navicust/chpshufl-redeal*]** |
 
 The chip description's chatbox also closes on B held for 10 frames; that is not ported.
 
@@ -232,15 +234,23 @@ entries as the screen had chips beyond the hand size (+5 − +6), skipping the t
 +0x44 is set) where the walk meets it. Each shuffle is `sub_8000D12` over them all, n swaps of two entries (two
 draws each) for n chips (the table that would shuffle the dealt part apart, `byte_80298C8`, is all zeros).
 
-Two quirks come with the walk: with NumbrOpn's ten chips the button covers slots 8 and 9, so the walk counts eight
-dealt entries and leaves the folder's last two out; and +0x45 is the shuffle's index, not updated as the folder
-closes up, so after picks the walk skips whatever is there by then. Where the tag pair straddles the walk's end the
-original runs on past the folder (a buffer overrun); the port stops at the folder's end **[unverified]**.
+A quirk comes with the walk: with NumbrOpn's ten chips the button covers slots 8 and 9, so the walk counts eight
+dealt entries and leaves the folder's last two out **[unverified]**. The pair's index is kept up as OK takes chips
+out (§1), so the walk skips the pair on later screens too; a pair in the hand is dealt again like any chips (+0x44 is
+clear by then). Where the tag pair straddles the walk's end the original runs on past the folder (a buffer overrun);
+the port stops at the folder's end **[unverified]**.
 
-Port: `Phase::Redealing`, `Screen::redeal` (custom/screen.rs). **Verified** on two scratch chip-lab recordings
-(side 0 re-deals on the first screen with a Regular chip and a tag pair, then picks two re-dealt chips; and on the
-second screen after the other side's Beast Out shook both cameras for 60 ticks): every frame matches, and the
-console's modeled RNG1 keeps step with the recording's throughout. Unit tests: custom/tests.rs.
+Port: `Phase::Redealing`, `Screen::redeal` (custom/screen.rs); the index's upkeep is in `Side::confirm`
+(custom/mod.rs). **Verified** on three chip-lab scenarios, every frame of each: `navicust/chpshufl-redeal` (side 0
+re-deals on three screens running, with a Regular chip it never picks and the tag pair beyond the hand, picking two,
+three and five of the re-dealt chips: the second and third re-deals only match with the index kept up),
+`navicust/chpshufl-redeal-tags-dealt` (the pair in the first hand is taken apart; a chip picked before the re-deal
+stays) and `navicust/chpshufl-redeal-shaken` (the second screen, after the other side's Beast Out shook both cameras
+for 60 ticks). The console's modeled RNG1 keeps step with the recordings' throughout (it leaves them for a frame at a
+time, or for as long as a camera shake lasts, where the trace's sample already has the next frame's draws: the
+emotion window's flicker, the re-deal's shows, the shake). The custom screens' check on their own (§7) doesn't
+simulate the draws outside the screens; it takes the recording console's RNG1 from the trace on every frame, so
+all twelve player-screens of the three scenarios match there too. Unit tests: custom/tests.rs.
 
 ## 4. Beast Out and Crosses
 
@@ -299,6 +309,9 @@ Built on the OK tick from the picks in order, with each chip as checked (§3.4):
 4. The hand: ids, damage, attack bonus, charge bonus 0, `selection` (the raw picks, not changed by steps 2-3),
    turn = BS+7 − 1, modifier bits (bit 1 = the Regular chip). With nothing picked, nothing is sent and the
    player's hand stays; with only Beast Out picked, an empty hand is sent and replaces it.
+5. The picked chips leave the folder (`sub_80293F8`): each entry becomes a hole (the next opening closes them
+   up); the Regular chip's clears BattleState+0x17; and while the folder has its tag pair (+0x44), each takes one
+   off the pair's index (+0x45, a byte: §1, §3.7).
 
 **5.4 Class counts** (`sub_802A4FC`, on the sending tick): each raw pick's class (standard, mega, giga; invalid
 chips don't count) is added to the player's counts for the round; the invalid-chip rule reads them from the next
@@ -370,7 +383,8 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   (the fight isn't simulated; each screen reads its navi's stats from the trace). With both consoles' folders all
   40 player-screens match: the OK tick, the hand as installed, the transformation, the status bit's clearing, and
   the tick the fight resumes. The check reads emotions from the mood only, so a tired navi isn't seen, and
-  doesn't check damage from formulas.
+  doesn't check damage from formulas. The recording console's RNG1 (a re-deal's) is the trace's, frame by frame;
+  the other console's only has the draws the screens and the main loop make.
 - The recorded traces carry only the recording console's folder. `folders`, `joypad_phases` and `game_versions`
   in setup lines come from recording both consoles.
 

@@ -90,8 +90,9 @@ The end (`object_timefreezeEnd`) then runs for T: T started the dimming, so it e
 
 Port: crates/bn6-battle/src/dimming.rs (`check_anti_navi`, `show_navi_telop`), with unit tests
 (`anti_navi_turns_a_navi_chip_around`, `two_anti_navis_send_the_chip_back`). **Verified** against two scenarios
-recorded for it (not yet in the lab library): AntiNavi (side 1) then HeatMan (side 0), 1170/1170 frames; both
-AntiNavis armed, then HeatMan, 1708/1708 frames (the bounce). Their TOML files are in §12. Unverified: a turn
+recorded for it, in the lab library as `chips/0x0ba-antinavi/heatman` and `chips/0x0ba-antinavi/bounce`: AntiNavi
+(side 1) then HeatMan (side 0), 1170/1170 frames; both AntiNavis armed, then HeatMan, 1708/1708 frames (the
+bounce). Their TOML files are in §12. Unverified: a turn
 when T has its own controller registered, a turn with AntiNavi's user deleted (owner null), a user without HP
 before the turn.
 
@@ -675,11 +676,11 @@ controllers use `sub_80E1352` with a mask (BugFix: 0xF). AntiNavi is done (§2).
 
 ## 12. Scenarios recorded for this document
 
-In a scratch library for the verification workspace's chiplab (`run --lib DIR --out DIR`), with the lab's
-bases.toml:
+In the verification workspace's chiplab library, as `chips/0x0ba-antinavi/heatman` and
+`chips/0x0ba-antinavi/bounce`:
 
 ```toml
-# chips/b2a/antinavi-heatman.toml
+# chips/0x0ba-antinavi/heatman.toml
 description = "AntiNavi (side 1) armed, then HeatMan (side 0): AntiNavi turns the navi chip around."
 base = "falzar"
 max_frames = 1500
@@ -692,7 +693,7 @@ script = "custom 0E3:H\nfight\nwait 200\nuse\nwait 600\nsettle\n"
 folder = ["0BA:F"]
 script = "custom 0BA:F\nfight\nuse\nsettle\n"
 
-# chips/b2a/antinavi-bounce.toml
+# chips/0x0ba-antinavi/bounce.toml
 description = "Both sides arm AntiNavi, then side 0 uses HeatMan: turned around, then back."
 base = "falzar"
 max_frames = 2000
