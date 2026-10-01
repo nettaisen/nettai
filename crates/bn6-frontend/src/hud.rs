@@ -42,20 +42,76 @@ pub struct HudState {
     gauge_is_on: bool,
 }
 
-/// The mugshot's mood (0 normal, 1 Beast Out spent, 2 Full Synchro,
-/// 3 angry, 5 worn out) and, for 12 frames after it changes, a blink back
-/// to the previous one (`sub_801CB38`).
+/// The local navi's face in the emotion window (`sub_801E6A8`): its
+/// emotion's picture (`byte_801E6F4`: 0 normal, 1 angry, 2 Beast Out spent,
+/// 3 Full Synchro, 4 worn out), its form's number and the count beside it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Face {
+    emotion: u8,
+    form: u8,
+    count: u8,
+}
+
+impl Face {
+    fn of(b: &Battle, r: ObjectRef) -> Face {
+        let stats = &b.stats[b.objects.get(r).alliance as usize];
+        Face {
+            emotion: [0u8, 2, 3, 1, 5, 4][mood_index(b, r) as usize],
+            // The pack's faces are by the form's number (the record's,
+            // until forms name their own).
+            form: b.content.form_number(stats.form).0,
+            count: stats.beast_out_counter,
+        }
+    }
+
+    /// The pack's picture: the emotion's, or the form's (a Beast's has an
+    /// angry one, a Cross's a spent one).
+    fn picture(self, hud: &Hud) -> u8 {
+        if self.form == 0 {
+            return self.emotion;
+        }
+        let base = hud.form_emotions.get(self.form as usize).copied().unwrap_or(0);
+        match self.form {
+            11 | 12 if self.emotion == 3 => base + 1,
+            1..=10 if self.emotion == 2 => base + 5,
+            _ => base,
+        }
+    }
+
+    /// What tells two pictures apart without the pack.
+    fn key(self) -> (u8, u8) {
+        match self.form {
+            0 => (0, self.emotion),
+            11 | 12 => (self.form, (self.emotion == 3) as u8),
+            1..=10 => (self.form, (self.emotion == 2) as u8),
+            f => (f, 0),
+        }
+    }
+
+    /// Whether the picture is one of MegaMan's own emotions' (the forms'
+    /// come after them).
+    fn plain(self) -> bool {
+        self.form == 0 && self.emotion < 5
+    }
+}
+
+/// The emotion window's face and, for 12 ticks after its picture changes,
+/// its blink (`sub_801CB38`): back to the picture (and count) before on
+/// two ticks of every four; to Full Synchro, white on those instead. The
+/// forms' pictures change at once.
 #[derive(Clone, Copy, Debug)]
 struct Mood {
-    now: u8,
-    before: u8,
+    now: Face,
+    before: Face,
     blink: u8,
     /// Show `before` this frame.
     flash: bool,
+    /// Show the face white this frame.
+    white: bool,
 }
 
 impl Mood {
-    fn shown(self) -> u8 {
+    fn shown(self) -> Face {
         if self.flash { self.before } else { self.now }
     }
 }
@@ -114,15 +170,23 @@ impl HudState {
             self.frame = if self.frame + 1 >= 0x70 { 0 } else { self.frame + 1 };
         }
         if let Some(r) = b.player(b.setup.local_side) {
-            let now = mood_index(b, r);
-            let m = self.mood.get_or_insert(Mood { now, before: now, blink: 0, flash: false });
-            if now != m.now {
-                *m = Mood { now, before: m.now, blink: 12, flash: false };
+            let now = Face::of(b, r);
+            let m = self.mood.get_or_insert(Mood { now, before: now, blink: 0, flash: false, white: false });
+            if now.key() != m.now.key() {
+                *m = Mood { now, before: m.now, blink: 12, flash: false, white: false };
+            } else if now.count != m.now.count {
+                m.before.count = m.now.count;
+                m.now = now;
             }
-            m.flash = false;
-            if m.now < 5 && m.now != 3 && m.blink > 0 {
-                m.flash = m.blink & 2 != 0;
+            (m.flash, m.white) = (false, false);
+            if m.now.plain() && m.blink > 0 {
+                let on = m.blink & 2 != 0;
                 m.blink -= 1;
+                if m.now.emotion == 3 {
+                    m.white = on;
+                } else {
+                    m.flash = on;
+                }
             }
         }
         (self.is_over, self.gauge_is_on) = (decided(b), b.gauge.enabled);
@@ -228,11 +292,15 @@ fn decided(b: &Battle) -> bool {
 
 /// While the navis change form the HUD steps aside: the mugshot from the
 /// start of the fade out, the HP box and gauge once the screen is dark.
+/// The mugshot of a player who chose a form on the custom screen is gone
+/// from the tick the fight resumes: the screen showed the form's face in
+/// the window, and closing takes the window down with it (`sub_802A0F8`).
 fn transform_hides(b: &Battle) -> (bool, bool) {
+    let chose = b.transform_requests[b.setup.local_side as usize & 1].form.is_some();
     match b.transform_seq.state {
-        SequencerState::Transform { phase: TransformPhase::FadeOut, .. } => (true, false),
+        SequencerState::Transform { phase: TransformPhase::FadeOut, started } => (started || chose, false),
         SequencerState::Transform { .. } => (true, true),
-        _ => (false, false),
+        _ => (chose && b.round.mode == mode::FIGHTING && b.round.init == 0, false),
     }
 }
 
@@ -338,8 +406,10 @@ pub fn draw<'a>(
         let pal = &hud.hp_palettes[0];
         let j = &b.fight.judge;
         // While the digits roll the numbers are random; then the damage
-        // the other side took and the local side took.
-        let rolling = j.step == 4 && j.sub == 4;
+        // the other side took and the local side took. The numbers are
+        // drawn on the ticks that roll and the ticks that show the damage:
+        // the tick between leaves what was there.
+        let rolling = j.step == 4 && (j.sub == 4 && j.timer != 0x3C || j.sub == 8 && !j.sub_init);
         let taken = |side: u8| j.damage[1 - (side as usize & 1)];
         let (left, right) = if rolling { (j.rolled[0], j.rolled[1]) } else { (taken(local ^ 1), taken(local)) };
         let digit = |layer: &mut Layer, d: u8, col: i32| {
@@ -364,6 +434,28 @@ pub fn draw<'a>(
         }
     }
 
+    // The HUD's text lines, in the HP box's palette as the chip's name is.
+    // The turn timer's seconds (from the 15th turn of a netbattle), then
+    // "TIME UP!", at the top (`sub_801E398`: 8 glyphs from column 11),
+    // while the fight runs.
+    // "TIME UP!" stays for the judge's first second.
+    let text_palette = &hud.hp_palettes[colour.min(2)];
+    let timed = match b.fight.state {
+        fight::FIGHTING | fight::PAUSE => b.fight.turn_timer != TURN_TICKS,
+        fight::JUDGE => b.fight.sub == 0,
+        _ => false,
+    };
+    if b.late_turns() && b.round.mode == mode::FIGHTING && timed {
+        draw_text(layer, hud, text_palette, TEXT_TIME_UP + (b.fight.turn_timer / 60) as usize, 11, 0, 8, problems);
+    }
+    // The message (`sub_801E270`: 17 glyphs from column 7, under the gauge).
+    if let Some(m) = b.message {
+        let text = match m.message {
+            bn6_battle::hud::Message::CounterHit => TEXT_COUNTER_HIT,
+        };
+        draw_text(layer, hud, text_palette, text, 7, 2, 17, problems);
+    }
+
     // The next chip's name (and damage) at the bottom left, while the
     // navi stands holding chips.
     if let Some(r) = player {
@@ -373,7 +465,8 @@ pub fn draw<'a>(
             && o.chips_held != 0
             && let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten()
         {
-            draw_chip_name(b, layer, hud, &hud.hp_palettes[colour.min(2)], hand, chip, problems);
+            let bonus = bn6_battle::kinds::player::next_chip_bonus(b, r);
+            draw_chip_name(b, layer, hud, &hud.hp_palettes[colour.min(2)], hand, chip, bonus, problems);
         }
     }
 
@@ -418,7 +511,10 @@ pub fn draw<'a>(
     // two of the flicker's twelve (`sub_801CDEC`).
     let window = b.consoles[local as usize & 1].emotion_window;
     let flicker = window.flicker_ticks;
-    if let Some(r) = player.filter(|_| !state.was_over && !hide_mugshot && !matches!(flicker, 5 | 6)) {
+    // (The window stays through the damage judge, under its banner: its
+    // task stops with the round's result.)
+    let over = state.was_over && !window.running;
+    if let Some(r) = player.filter(|_| !over && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         let mut group = Vec::new();
         mugshot_parts(b, hud, state, r, if open { 120 } else { 0 }, &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {
@@ -504,6 +600,7 @@ fn draw_chip_name(
     pal: &Palette,
     hand: &bn6_battle::hand::ChipHand,
     chip: ChipHandle,
+    bonus: u16,
     problems: &mut Problems,
 ) {
     let mut col = 0;
@@ -531,7 +628,6 @@ fn draw_chip_name(
     };
     let damage = hand.damage.get(i).copied().unwrap_or(0);
     number(layer, damage, &mut col);
-    let bonus = hand.attack_bonus.get(i).copied().unwrap_or(0) + hand.charge_bonus.get(i).copied().unwrap_or(0);
     if bonus != 0 {
         for half in 0..2u16 {
             let e = MapEntry { tile: 0x1CE + half, hflip: false, vflip: false, palette: 13 };
@@ -539,6 +635,38 @@ fn draw_chip_name(
         }
         col += 1;
         number(layer, bonus, &mut col);
+    }
+}
+
+/// The pack's text lines (`Hud::texts`): "TIME UP!", then the seconds 1-10;
+/// and "COUNTER HIT!".
+const TEXT_TIME_UP: usize = 3;
+/// The turn timer's start: it shows once it has counted.
+const TURN_TICKS: u16 = 0xA5 * 4 - 1;
+const TEXT_COUNTER_HIT: usize = 14;
+
+/// Draw the pack's text line `text` on the HUD layer: up to `width` glyphs
+/// from tile column `col`, on tile rows `row` and `row + 1`.
+fn draw_text(
+    layer: &mut Layer,
+    hud: &Hud,
+    pal: &Palette,
+    text: usize,
+    col: i32,
+    row: i32,
+    width: usize,
+    problems: &mut Problems,
+) {
+    let Some(glyphs) = hud.texts.get(text) else {
+        problems.note(format!("the pack has no HUD text line {text}"));
+        return;
+    };
+    for (i, &g) in glyphs.iter().take(width).enumerate() {
+        for half in 0..2 {
+            if let Some(t) = hud.font.get(2 * g as usize + half) {
+                layer.draw_tile(t, pal, (col + i as i32) * 8, (row + half as i32) * 8, false, false);
+            }
+        }
     }
 }
 
@@ -565,9 +693,9 @@ fn block(tiles: &Tiles, w: u8, h: u8, palette: Palette, x: i32, y: i32) -> Sprit
     SpritePart { width: w, height: h, first_tile: 0, ..glyph(tiles, 0, palette, x, y, 2, None) }
 }
 
-/// The mugshot (by the navi's mood and form) and the count box beside it;
-/// a link navi's own face (plain, or angry) and the box beside it
-/// (`sub_801CC34`).
+/// The mugshot (by the navi's emotion and form) and the count box beside
+/// it; a link navi's own face (plain, or in Full Synchro) and the box
+/// beside it (`sub_801CC34`).
 fn mugshot_parts<'a>(
     b: &Battle,
     hud: &'a Hud,
@@ -586,29 +714,25 @@ fn mugshot_parts<'a>(
             problems.note(format!("navi {navi} has no mugshot in the pack"));
             return;
         };
-        let angry = state.mood.map(|m| m.now).unwrap_or_else(|| mood_index(b, r)) == 3;
-        let pal = face.palettes[angry as usize];
+        let full_synchro = Face::of(b, r).emotion == 3;
+        let pal = face.palettes[full_synchro as usize];
         out.push(block(&face.tiles, 32, 16, pal, x, 18));
         out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
         return;
     }
-    let m = state.mood.map(|m| m.shown()).unwrap_or_else(|| mood_index(b, r));
-    let mut e = [0u8, 2, 3, 1, 5, 4][m as usize];
-    // A Beast Out chosen on the custom screen shows before it happens.
-    let form = stats.form.0;
-    if form != 0 {
-        let base = hud.form_emotions.get(form as usize).copied().unwrap_or(0);
-        e = match form {
-            11 | 12 if e == 3 => base + 1,
-            1..=10 if e == 2 => base + 5,
-            _ => base,
-        };
+    let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
+    // A form chosen on the custom screen shows in the window until the
+    // screens close (`sub_802A040`, `sub_802A088`).
+    let chosen = (b.round.mode == mode::CUSTOM).then(|| b.custom.sides[side].sent.as_ref()).flatten();
+    if let Some(form) = chosen.and_then(|sent| sent.result.transform.form) {
+        face = Face { form: b.content.form_number(form).0, ..Face::of(b, r) };
     }
-    let Some((gfx, pal)) = hud.mugshots.get(e as usize) else { return };
-    out.push(block(gfx, 32, 16, *pal, x, 18));
-    let count = stats.beast_out_counter as usize;
-    let tiles = hud.counts.get(count).unwrap_or(&hud.count_box);
-    out.push(block(tiles, 16, 16, *pal, x + 32, 18));
+    let Some((gfx, pal)) = hud.mugshots.get(face.picture(hud) as usize) else { return };
+    // (The white of a change to Full Synchro: `byte_801CD80`.)
+    let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { *pal };
+    out.push(block(gfx, 32, 16, pal, x, 18));
+    let tiles = hud.counts.get(face.count as usize).unwrap_or(&hud.count_box);
+    out.push(block(tiles, 16, 16, pal, x + 32, 18));
 }
 
 /// Whether an object's HUD pieces show (`sub_800362C`): its position

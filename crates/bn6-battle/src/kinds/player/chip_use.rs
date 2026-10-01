@@ -142,6 +142,13 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
     HandEntry { chip, damage: hand.damage[i], extra, modifiers: hand.modifiers[i] }
 }
 
+/// What the chip window shows after the next chip's damage (the bonus
+/// `sub_800ED90` returns): the hand's bonuses on it and the navi's own for
+/// it (presentation).
+pub fn next_chip_bonus(b: &Battle, r: ObjectRef) -> u16 {
+    hand_entry(b, r).extra
+}
+
 /// The chip an object other than a player carries: its zeroed chip field,
 /// the pack's chip 0 (nothing else sets it).
 fn carried_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {

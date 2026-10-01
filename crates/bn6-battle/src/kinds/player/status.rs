@@ -191,8 +191,9 @@ fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
     }
     b.bump_side_stat(opp, 8, 1);
     coll_mut(b, r).counter_timer = 0;
-    // Unless the battle is over: the "COUNTER" HUD text and a sound.
+    // Unless the battle is over: the HUD's "COUNTER HIT!" and a sound.
     if !b.is_battle_over() {
+        b.show_message(crate::hud::Message::CounterHit);
         b.play_sound(crate::sound::SoundId(0x86));
     }
 }
