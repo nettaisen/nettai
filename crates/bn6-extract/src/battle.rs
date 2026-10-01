@@ -1081,5 +1081,5 @@ fn animations(rom: &Rom) -> Animations {
             }
         }
     }
-    Animations { sprites }
+    Animations { sprites, ..Default::default() }
 }

@@ -7,6 +7,7 @@
 
 "engine/player" = { pool = "actor", index = 0x00 }
 "colonel/navi" = { pool = "actor", index = 0x01 }
+"airraid/propeller" = { pool = "actor", index = 0x03 }
 attachment = { pool = "actor", index = 0x05 }
 "blastman/navi" = { pool = "actor", index = 0x06 }
 "heatman/navi" = { pool = "actor", index = 0x07 }
@@ -30,6 +31,7 @@ beat = { pool = "actor", index = 0x4C }
 tango = { pool = "actor", index = 0x4D }
 "bass/navi" = { pool = "actor", index = 0x4F }
 "bassanly/navi" = { pool = "actor", index = 0x50 }
+overlay = { pool = "actor", index = 0x54 }
 "engine/idle-overlay" = { pool = "actor", index = 0x55 }
 "engine/body-overlay" = { pool = "actor", index = 0x56 }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
@@ -83,6 +85,7 @@ rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 "lance/lance" = { pool = "attack", index = 0x6F }
 drill = { pool = "attack", index = 0x71 }
 "rskyhny/bee" = { pool = "attack", index = 0x74 }
+"airraid/plane" = { pool = "attack", index = 0x75 }
 "spoutcross-beast/surge" = { pool = "attack", index = 0x76 }
 instrument = { pool = "attack", index = 0x78 }
 "tengucross-beast/whirlwind" = { pool = "attack", index = 0x81 }
@@ -161,6 +164,7 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
 "instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
+"airraid/controller" = { pool = "effect", index = 0x4B, scratch_position = true }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "sensor/controller" = { pool = "effect", index = 0x65, scratch_position = true }

@@ -226,6 +226,10 @@ declare class Sprite
     function set_animation(self, anim: number): ()
     -- Advance the animation one tick (no gating).
     function step(self): ()
+    -- `sub_80030BA`: where part n (from 0) of the current frame sits, in
+    -- pixels from the object, unflipped; (0, 0) when the frame has fewer
+    -- parts. Objects attach to them.
+    function part_offset(self, n: number): (number, number)
     -- The game's flip value: bit 0 horizontal, bit 1 vertical.
     function set_flip(self, flip: number): ()
 end
