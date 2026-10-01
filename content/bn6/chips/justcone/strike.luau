@@ -33,7 +33,7 @@ local LANDS = 0x0F800010
 -- its diagonals, no spark, attacks that hit navis, 100 damage (with the
 -- damage's flag bits) and hit modifier 3.
 local WAVES = { regions.beside, regions.diagonals }
-local NO_SPARK = 0xFF
+local NO_SPARK: Spark? = nil
 local WAVE_DAMAGE, WAVE_HIT_MOD = 0x64, 3
 -- The dust (effect 0) around its panel (`byte_80DB540`: dx facing
 -- forward, dy).

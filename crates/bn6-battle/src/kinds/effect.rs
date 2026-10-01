@@ -4,13 +4,17 @@
 //! See docs/engine/objects-and-player.md §A.3.
 
 use crate::battle::Battle;
-use crate::content::EffectSprite;
+use crate::content::{EffectSprite, Region};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Vec3, flags, state};
+use bn6_content_api::{EffectHandle, RegionHandle};
 
 /// Effect-private state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
+    /// What it shows (the original's first spawn parameter, a row of its
+    /// table of looks).
+    pub look: Option<EffectHandle>,
     /// Visibility follows `related[0]`.
     pub follow_related: bool,
     /// The game spawned it with X and Y left in registers by the spawn
@@ -20,9 +24,13 @@ pub struct Vars {
     pub xy_unknown: bool,
 }
 
-/// `SpawnT4BattleObjectWithId0`: effect `id` at `pos`.
-pub fn spawn(b: &mut Battle, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
-    crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Effect, pos, [id, flip, palette_add, priority])
+/// `SpawnT4BattleObjectWithId0`: the effect `look` at `pos`.
+pub fn spawn(b: &mut Battle, pos: Vec3, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Effect, pos, [0, flip, palette_add, priority])?;
+    if let crate::kinds::Vars::Effect(v) = &mut b.objects.get_mut(r).vars {
+        v.look = Some(look);
+    }
+    Some(r)
 }
 
 /// `SpawnT4BattleObjectWithId0` called again straight after a spawn at
@@ -30,41 +38,51 @@ pub fn spawn(b: &mut Battle, pos: Vec3, id: u8, flip: u8, palette_add: u8, prior
 /// spawn's, but X and Y hold what the object allocator left in those
 /// registers (list-node addresses, objects-and-player.md §A.3). The effect
 /// gets placeholder X and Y and is marked as not knowing them.
-pub fn spawn_after_spawn(b: &mut Battle, z: i32, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
-    let r = spawn(b, Vec3 { x: 0, y: 0, z }, id, flip, palette_add, priority)?;
+pub fn spawn_after_spawn(b: &mut Battle, z: i32, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
+    let r = spawn(b, Vec3 { x: 0, y: 0, z }, look, flip, palette_add, priority)?;
     if let crate::kinds::Vars::Effect(v) = &mut b.objects.get_mut(r).vars {
         v.xy_unknown = true;
     }
     Some(r)
 }
 
-/// `sub_801BD3C`: effect `id` on each field panel of hit region `region`
-/// around (x, y), turned the way side `side` faces, at height `z`; for a
-/// whole-field region (0x80 and up), on each panel it covers from the
-/// bottom right, on the ground.
-pub fn spawn_over_region(b: &mut Battle, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32) {
+/// `sub_801BD3C`: the effect `look` on each field panel of hit region
+/// `region` around (x, y), turned the way side `side` faces, at height
+/// `z`; for a whole-field region, on each panel it covers from the bottom
+/// right, on the ground.
+pub fn spawn_over_region(b: &mut Battle, x: i32, y: i32, region: RegionHandle, side: u8, look: EffectHandle, z: i32) {
     let at = |b: &mut Battle, px: u8, py: u8, z: i32| {
         let (cx, cy) = crate::kinds::player::panel_coordinates(px, py);
-        spawn(b, Vec3 { x: cx, y: cy, z }, id, 0, 0, 0);
+        spawn(b, Vec3 { x: cx, y: cy, z }, look, 0, 0, 0);
     };
-    if region & 0x80 != 0 {
-        let cond = b.content.field_region(region);
-        for py in (1..=3).rev() {
-            for px in (1..=6).rev() {
-                if b.field.check(px, py, cond.require, cond.forbid) {
-                    at(b, px, py, 0);
+    match b.content.region(region).clone() {
+        Region::Field(cond) => {
+            for py in (1..=3).rev() {
+                for px in (1..=6).rev() {
+                    if b.field.check(px, py, cond.require, cond.forbid) {
+                        at(b, px, py, 0);
+                    }
                 }
             }
         }
-        return;
-    }
-    // `object_getAllianceDirection`: by side alone, whatever the flip.
-    let dir = if side == 0 { 1 } else { -1 };
-    for o in b.content.region(region).to_vec() {
-        let (px, py) = (x + o.dx as i32 * dir, y + o.dy as i32);
-        if (1..=6).contains(&px) && (1..=3).contains(&py) {
-            at(b, px as u8, py as u8, z);
+        Region::Panels(offsets) => {
+            // `object_getAllianceDirection`: by side alone, whatever the flip.
+            let dir = if side == 0 { 1 } else { -1 };
+            for o in offsets {
+                let (px, py) = (x + o.dx as i32 * dir, y + o.dy as i32);
+                if (1..=6).contains(&px) && (1..=3).contains(&py) {
+                    at(b, px as u8, py as u8, z);
+                }
+            }
         }
+    }
+}
+
+/// What the effect `r` shows.
+pub fn look(b: &Battle, r: ObjectRef) -> Option<EffectHandle> {
+    match &b.objects.get(r).vars {
+        crate::kinds::Vars::Effect(v) => v.look,
+        _ => None,
     }
 }
 
@@ -91,8 +109,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 }
 
 fn init(b: &mut Battle, r: ObjectRef) {
-    let [id, flip, palette_add, priority] = b.objects.get(r).params;
-    let EffectSprite { sprite: id, anim, palette } = b.content.effect(id);
+    let [_, flip, palette_add, priority] = b.objects.get(r).params;
+    let EffectSprite { sprite: id, anim, palette } = b.content.effect(look(b, r).expect("an effect spawned with its look"));
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
     sprite.set_animation(anim, &b.content);

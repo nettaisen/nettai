@@ -4,7 +4,7 @@
 //! once it has hit something. See docs/engine/field-collision-damage.md.
 
 use crate::battle::Battle;
-use crate::content::SpriteId;
+use crate::content::{CollisionRole, SparkRole, SpriteId};
 use crate::field;
 use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
@@ -50,10 +50,13 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let Some(c) = b.create_collision(r) else {
         return b.objects.free(r);
     };
-    b.setup_collision(r, 0x48, 0x2A, 1);
+    let roles = &b.content.defs.roles;
+    let (is, hits, spark) =
+        (roles.collision(CollisionRole::Eruption), roles.collision(CollisionRole::EruptionTarget), roles.spark(SparkRole::Eruption));
+    b.setup_collision(r, is, hits, 1);
     let s = b.collision.get_mut(c);
-    s.hit_effect = 1;
-    s.region = 0;
+    s.hit_effect = Some(spark);
+    s.region = None;
     b.present_collision(c);
     common::set_progress(b, r, Progress::UPDATE);
     tick(b, r);
@@ -68,14 +71,14 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     b.remove_collision(c);
     crate::kinds::spark::spawn_collision_effect(b, r);
     if b.is_battle_over() {
-        b.collision.get_mut(c).region = 0;
+        b.collision.get_mut(c).region = None;
         common::set_progress(b, r, Progress::DESTROY);
         return b.present_collision(c);
     }
     let p = b.objects.get(r).panel;
     let panel = b.field.flags(p.x, p.y);
     let end = if panel & 0x1000 == 0 {
-        if b.collision.get(c).region != 0 {
+        if b.collision.get(c).region.is_some() {
             b.objects.get_mut(r).timer = 3;
             true
         } else {
@@ -85,7 +88,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         b.collision.get(c).acc.hit_flags != 0
     };
     if end {
-        b.collision.get_mut(c).region = 0;
+        b.collision.get_mut(c).region = None;
         if b.field.flags(p.x, p.y) & 0x0380_0000 != 0 {
             b.objects.get_mut(r).flags &= !flags::VISIBLE;
         }
@@ -94,7 +97,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let left = o.timer as i32 - 1;
     o.timer = left as u16;
     if left <= 0 {
-        b.collision.get_mut(c).region = 0;
+        b.collision.get_mut(c).region = None;
         common::set_progress(b, r, Progress::DESTROY);
     } else {
         by_timer(b, r, c);
@@ -109,7 +112,7 @@ fn by_timer(b: &mut Battle, r: ObjectRef, c: crate::collision::CollisionId) {
     let o = b.objects.get(r);
     let (t, start) = (o.timer as i32, o.params[0] as i32 - LIFETIME as i32);
     let anim = if t == start {
-        b.collision.get_mut(c).region = 1;
+        b.collision.get_mut(c).region = b.anchor_region();
         let o = b.objects.get_mut(r);
         o.pos.y = o.pos.y.wrapping_add(0x1_0000);
         o.pos.z = 0;

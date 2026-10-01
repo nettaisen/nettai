@@ -194,7 +194,7 @@ local function hit(me: Object, x: number, y: number, region: Region)
         element = 0,
         z = 0x10_0000,
         region = region,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.slash,
         damage = me.damage,

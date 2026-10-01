@@ -6,6 +6,7 @@
 
 local encased_bubble = require("../../objects/encased-bubble/bubble")
 local lockon = require("../../rules/lockon")
+local ruleset = require("../../rules/ruleset")
 local statuses = require("../../rules/status")
 local ticker = require("../lib/ticker")
 
@@ -38,8 +39,8 @@ return define.roles {
         absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
         falling_rock = { legacy = { kind = "falling-rock" } },
     },
-    -- The engine's test content's statuses and lock-on modes, which this
-    -- pack's content comes with.
+    -- The engine's test content's statuses, lock-on modes, effects, sparks,
+    -- region and collision types, which this pack's content comes with.
     statuses = {
         damage_word_paralysis = statuses.paralyze_90,
         counter_paralysis = statuses.paralyze_150,
@@ -50,6 +51,10 @@ return define.roles {
     lockon = {
         beast_claw = lockon.beast_claw,
     },
+    effects = ruleset.effects,
+    sparks = ruleset.sparks,
+    regions = ruleset.regions,
+    collision = ruleset.collision,
     hooks = {
         encased = encased_bubble.replace,
     },

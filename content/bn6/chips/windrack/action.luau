@@ -76,7 +76,7 @@ function action.action(spec: WindRackSpec): Action
                 z = HEIGHT,
                 region = regions.wide,
                 -- None.
-                hit_effect = 0xFF,
+                hit_effect = nil,
                 target = collision.hits_navis,
                 self_type = collision.pushing,
                 damage = damage,

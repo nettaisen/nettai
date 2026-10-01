@@ -60,7 +60,7 @@ local function effect(me: Object)
             element = me.element,
             z = 0,
             region = regions.area[1 - me.alliance],
-            hit_effect = 0xFF,
+            hit_effect = nil,
             target = collision.hits_navis,
             self_type = IS,
             damage = 0,

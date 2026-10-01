@@ -531,7 +531,8 @@ fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     }
     super::intake::add_hp(b, r, total);
     let pos = b.objects.get(r).pos;
-    crate::kinds::effect::spawn(b, pos, 6, 0, 0, 0);
+    let look = b.content.defs.roles.effect(crate::content::EffectRole::Recovery);
+    crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     b.play_sound(crate::sound::SoundId(0x8A));
 }
 

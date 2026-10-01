@@ -349,14 +349,14 @@ named_fields! {
 named_fields! {
     /// An object's collision registration.
     pub enum CollisionField {
-        /// Region shape.
-        Region = "region", U8, rw;
+        /// The region its hits cover (a region definition), or none.
+        Region = "region", Ref(Registry::Region, None), rw;
         /// The panel the region is anchored on (the game's CollisionData
         /// PanelX/PanelY; `update_collision_panels` copies the object's).
         PanelX = "panel_x", U8, rw;
         PanelY = "panel_y", U8, rw;
-        /// Hit spark effect (0xFF = none).
-        HitEffect = "hit_effect", U8, rw;
+        /// The spark its hits show (a spark definition), or none.
+        HitEffect = "hit_effect", Ref(Registry::Spark, None), rw;
         /// The primary element its hits carry (CollisionData+0x02; setup
         /// takes the object's element's low nibble), and the secondary
         /// elements (+0x19: its high nibble), which `sub_8019F8C` sets
@@ -840,12 +840,12 @@ pub struct HitboxSpec {
     pub panel: PanelPos,
     pub element: u8,
     pub z: i32,
-    /// Region shape.
-    pub region: u8,
-    pub hit_effect: u8,
-    /// Collision type indices.
-    pub target: u8,
-    pub self_type: u8,
+    /// The region it covers and the spark its hits show, or none.
+    pub region: Option<crate::RegionHandle>,
+    pub hit_effect: Option<crate::SparkHandle>,
+    /// Its collision types: what it reaches, what it is.
+    pub target: crate::CollisionHandle,
+    pub self_type: crate::CollisionHandle,
     /// The damage word (damage | flag bits) and the counter byte.
     pub damage: u16,
     pub stamina: u16,
@@ -1167,13 +1167,6 @@ pub trait CoreApi {
     fn spawn_def(&mut self, kind: u16, pos: Vec3, at: SpawnAt) -> ApiResult<Option<ObjectRef>>;
     /// The object's kind (a handle of the kind registry).
     fn object_kind(&self, o: ObjectRef) -> Option<u16>;
-    /// The byte the ruleset still stores for a region, collision type,
-    /// one-shot effect or hit spark content defines (a hitbox's region, a
-    /// collision's types, an effect object's look): the engine's own
-    /// number for it, which it gives each after the pack data's
-    /// (docs/design/content-model-v2.md §12, step 4). Only the binding
-    /// reads it; content never sees it.
-    fn def_number(&self, registry: Registry, h: u16) -> ApiResult<u8>;
     /// What navi `o` runs: a content action (by handle), one of the
     /// ruleset's own states and actions (by name), or a number neither
     /// names (a link navi's own action).
@@ -1240,18 +1233,18 @@ pub trait CoreApi {
     /// The object's content state (None for kinds the engine implements).
     fn state(&self, o: ObjectRef) -> Option<&ContentState>;
     fn state_mut(&mut self, o: ObjectRef) -> Option<&mut ContentState>;
-    /// `SpawnT4BattleObjectWithId0`: the one-shot effect `id`.
-    fn spawn_effect(&mut self, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
-    /// `sub_801BD3C`: the one-shot effect `id` on each field panel of hit
-    /// region `region` around (x, y), turned the way side `side` faces,
-    /// at height `z`; a whole-field region's (0x80 and up) from the
-    /// bottom right, on the ground.
-    fn spawn_region_effects(&mut self, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32);
+    /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`.
+    fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
+    /// `sub_801BD3C`: the one-shot effect `look` on each field panel of
+    /// hit region `region` around (x, y), turned the way side `side`
+    /// faces, at height `z`; a whole-field region's from the bottom right,
+    /// on the ground.
+    fn spawn_region_effects(&mut self, x: i32, y: i32, region: crate::RegionHandle, side: u8, look: crate::EffectHandle, z: i32);
     /// `object_spawnCollisionRegion`: a one-tick hit region spawned by
     /// `owner`.
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
-    /// `sub_80E08C4`: hit spark `id` at `pos`.
-    fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
+    /// `sub_80E08C4`: hit spark `look` at `pos`.
+    fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, look: crate::SparkHandle) -> Option<ObjectRef>;
     /// `sub_80C468C`: a form overlay (actor 0x57) on `owner`: `sprite`,
     /// following the owner's animation plus `anim_offset`; `stepping` 0
     /// normal, 1 while dimmed, 2 always (Param3); a pixel nearer when
@@ -1417,10 +1410,10 @@ pub trait CoreApi {
     /// Give the object a collision slot; false if none is free.
     fn create_collision(&mut self, o: ObjectRef) -> bool;
     /// Set up the registration from the object: its side, panel, element
-    /// and damage, and what it is and reacts to (collision type indices).
-    fn setup_collision(&mut self, o: ObjectRef, self_type: u8, target_type: u8, hit_mod: u8);
+    /// and damage, and what it is and reacts to (collision types).
+    fn setup_collision(&mut self, o: ObjectRef, self_type: crate::CollisionHandle, target_type: crate::CollisionHandle, hit_mod: u8);
     /// `sub_801A082`: redo the types (and damage) of a registration.
-    fn reset_collision_types(&mut self, o: ObjectRef, self_type: u8, target_type: u8, hit_mod: u8);
+    fn reset_collision_types(&mut self, o: ObjectRef, self_type: crate::CollisionHandle, target_type: crate::CollisionHandle, hit_mod: u8);
     fn collision_get(&self, o: ObjectRef, f: CollisionField) -> ApiResult<Value>;
     /// The damage taken this window in element `element` (0 null, 1 fire,
     /// 2 aqua, 3 elec, 4 wood, 5 the sixth slot), as totaled.
