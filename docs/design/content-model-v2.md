@@ -787,7 +787,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | tengu-man | TenguMan series | chips/tenguman/ |
 | tengu-tornado | FTornado (TenguMan's link chip) | navis/tenguman/ |
 | thunder-ball | Thunder, DarkThnd | chips/thunder/ (DarkThnd's folder requires it) |
-| thunder-column | EraseCross's ray, DolThdr's doll | objects/thunder-column |
+| thunder-column | EraseCross's ray, DolThdr's doll | chips/dolthdr/column (as built; EraseCross's ray requires it) |
 | thunder-doll | DolThdr1-3 | chips/dolthdr/ |
 | time-bom | TimeBom1-3, TimeBom+ | chips/timebom/ |
 | tomahawk-man | TmhkMan series | chips/tmhkman/ |
@@ -806,9 +806,9 @@ folder, keyed under it, even when other chips or forms use it too; they `require
 controller is chips/invisibl/controller (`invisibl/controller`, which the second WhiCapsl requires), and the
 boomerang chips/boomer/boomerang (`boomer/boomerang`, which TomahawkCross Beast's throw and BoomrArm's charged
 shot use), the drill chips/drilarm/drill (`drilarm/drill`, which GroundCross's charged shot and MstrCros's
-GroundCross use), and the falling meteor with its panel marker chips/meteors/falling_meteor and marker
+GroundCross use), the falling meteor with its panel marker chips/meteors/falling_meteor and marker
 (`meteors/falling-meteor`, `meteors/marker`; the instant chips' meteor shower, lib/instant/meteor_shower, uses
-them).
+them), and the thunder column chips/dolthdr/column (`dolthdr/thunder-column`, which EraseCross's ray lays).
 
 The rest of v1's layout moves as follows: `lib/sword.luau` and `lib/vari_sword.luau` into `lib/swords/`,
 `lib/dragon.luau` into `lib/dragons/`, `lib/instant-chips/` into `lib/instant/`, `lib/buster.luau` into
