@@ -3,11 +3,10 @@
 -- while it plays, the other side is blinded (lib/instruments).
 
 local collision = require("../../rules/collision")
+local regions = require("../../lib/regions")
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
 
--- Every panel (whole-field region 0x80).
-local ALL_PANELS = define.region { field = { require = 0, forbid = 0 } }
 -- Blinded (status 0x33: 4 ticks), with the sixth element's damage 0.
 local BLIND, ELEMENT_NONE = 0x33, 5
 
@@ -19,7 +18,7 @@ local function hush(me: Object)
         panel_y = me.panel_y,
         element = ELEMENT_NONE,
         z = 0,
-        region = ALL_PANELS,
+        region = regions.field,
         -- None.
         hit_effect = 0xFF,
         target = collision.hits_navis,

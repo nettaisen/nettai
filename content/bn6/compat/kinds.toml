@@ -98,9 +98,12 @@ thunder-column = { pool = "attack", index = 0x8B }
 "airspin/top" = { pool = "attack", index = 0x9B }
 "erasecross/ray" = { pool = "attack", index = 0x9D }
 "h-burst/burst" = { pool = "attack", index = 0x9E }
+"sensor/scanner" = { pool = "attack", index = 0x9F, scratch_z_fraction = true }
+"sensor/laser" = { pool = "attack", index = 0xA0, scratch_z_fraction = true }
 "erasecross-beast/drop" = { pool = "attack", index = 0xA1 }
 "flshbom/bomb" = { pool = "attack", index = 0xA4 }
 "bugbomb/bomb" = { pool = "attack", index = 0xA5 }
+"sensor/turret" = { pool = "attack", index = 0xA6 }
 "chrgeman/car" = { pool = "attack", index = 0xAC }
 "justcone/strike" = { pool = "attack", index = 0xAE }
 "megaman/dash-hit" = { pool = "attack", index = 0xAF }
@@ -160,6 +163,7 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
+"sensor/controller" = { pool = "effect", index = 0x65, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
