@@ -60,8 +60,7 @@ navis/slashman/navi.luau 1
 navis/spoutman/navi.luau 1
 navis/tenguman/navi.luau 1
 navis/tomahawkman/navi.luau 1
-objects/attachment/attachment.luau 4
-objects/attachment/rows.luau 1
+objects/attachment/attachment.luau 2
 objects/boulder/boulder.luau 1
 objects/rock/rock.luau 1
 rules/body-overlays.luau 1

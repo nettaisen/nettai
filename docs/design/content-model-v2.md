@@ -857,8 +857,9 @@ lib/sparks.luau, lib/regions.luau). What it settled:
   `ThrowSpec`, `BombVariant`, `SeedVariant`, `FlashBombVariant` and `AttachmentLook` are in types.d.luau.
 - **Attachment looks are records** (`attachment.look { sprite, palette, lift?, attach_point?, by_owner? }`,
   `attachment.attach(owner, look, slot, { anim, while_dimmed, palette_add })`); the attachment kind is a
-  definition. Its numeric API (`spawn`, `spawn_with`, by the pack data's rows) stays for its 23 other users:
-  the rows become looks at load, from `data`.
+  definition. Its numeric API (`spawn`, `spawn_with`, by the pack data's rows) stayed for its 23 other users,
+  the rows becoming looks at load, from `data`. *Gone with step 12*: the last user, the buster's arm, names its
+  two looks (lib/buster.luau), and the rows (objects/attachment/rows.luau, `data.objects.attachments`) went.
 - **The chip records** are the pack data's values field by field. `beast = { lockon = 5 }` (the Beast rush and
   its lock-on mode) takes the mode's number, as 3b reads it, until step 5's generator writes rules/lockon.luau
   and the chips name its modes.
@@ -2557,9 +2558,9 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (until steps 11 and 12: the effects, sparks and regions by number, and
    the charge times of the routines no weapon names), rules/identities.luau, rules/body-overlays.luau and a
    kind's objects/KIND/rows.luau while something still reads its table by number (`data.objects.<table>` in a
-   module, or the engine: the attachments' is the last; the rocks', the absorbed obstacles', the sun beam's,
-   the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with their
-   readers, and GunDelSol's data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
+   module, or the engine: the body overlays' is the last; the attachments', the rocks', the absorbed obstacles',
+   the sun beam's, the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with
+   their readers, and GunDelSol's data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
    are a routine's numbers with the same address *and* charge times (alias routines whose rows differ are
    weapons of their own: `megaman/buster` is routine 0 alone, and `megaman/buster-2e` and five more take its
    `setup` with their own charge times), and every routine has its charge times (the TOML's
