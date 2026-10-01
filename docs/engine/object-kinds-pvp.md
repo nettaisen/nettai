@@ -42,8 +42,8 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x5b | 0x080cfcf8 | 96 |
 | T3 0x62 | 0x080d07cc | lab only (SlashMan's sword wave: the pack's `objects/slash-wave`, chips.md §3.6.18) |
 | T3 0x64 | 0x080d0d7c | lab only (ElecMan's thunderbolt: the pack's `objects/elec-thunder`, chips.md §3.6.16) |
-| T3 0x74 | 0x080d30d0 | 350 (RskyHny's bee: the pack's `objects/honey-bee`, chips.md §3.7) |
-| T3 0x82 | 0x080d5740 | 48 (DolThdr's doll: the pack's `objects/thunder-doll`, standard-chips.md) |
+| T3 0x74 | 0x080d30d0 | 350 (RskyHny's bee: the pack's `chips/rskyhny/bee`, chips.md §3.7) |
+| T3 0x82 | 0x080d5740 | 48 (DolThdr's doll: the pack's `chips/dolthdr/doll`, standard-chips.md) |
 | T3 0x8b | 0x080d6924 | 225 (DolThdr's thunder column: the pack's `objects/thunder-column`, standard-chips.md) |
 | T3 0x8d | 0x080d6bd4 | 38 (meteor: the pack's `objects/meteor`, chips.md §3.6.7) |
 | T3 0x8e | 0x080d6d80 | 96 (ElmntMan's ice: the pack's `objects/elmnt-ice`, chips.md §3.6.7) |
@@ -57,8 +57,8 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0xc1 | 0x080dd34c | 296 |
 | T3 0xc2 | 0x080dd764 | 967 |
 | T3 0xc3 | 0x080dd940 | 732 (EraseMan's slash: the pack's `chips/eraseman/beam`, chips.md §3.6.7) |
-| T3 0xc8 | 0x080de13c | 2774 (a dragon's body segment: the pack's `objects/dragon-body`, chips.md §3.8) |
-| T3 0xc9 | 0x080de404 | 579 (a dragon's head: the pack's `objects/dragon-head`, chips.md §3.8) |
+| T3 0xc8 | 0x080de13c | 2774 (a dragon's body segment: the pack's `lib/dragons/body`, chips.md §3.8) |
+| T3 0xc9 | 0x080de404 | 579 (a dragon's head: the pack's `lib/dragons/head`, chips.md §3.8) |
 | T3 0xcf | 0x080df328 | 4170 |
 | T4 0x00 | 0x080e0548 | 3910 |
 | T4 0x02 | 0x080e0638 | 250 |
@@ -78,7 +78,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T4 0x2e | 0x080e39a0 | 810 (SpoutMan's geyser marks: the pack's `objects/spout-mark`, chips.md §3.6.11) |
 | T4 0x2f | 0x080e3ab8 | 471 |
 | T4 0x3b | 0x080e4910 | 494 |
-| T4 0x48 | 0x080e5c2c | 847 |
+| T4 0x48 | 0x080e5c2c | 847 (GunDelSol's sun beam: the pack's `chips/gundels/beam`, chips.md §4) |
 | T4 0x5a | 0x080e70c8 | 184 |
 | T4 0x5d | 0x080e74d4 | 762 (Invisibl dimming controller: the pack's `objects/invisible`, chips.md §3.6) |
 | T4 0x62 | 0x080e78bc | 260 (EraseMan's aim mark: the pack's `chips/eraseman/mark`, chips.md §3.6.7) |

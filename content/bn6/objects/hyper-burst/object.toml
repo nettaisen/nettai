@@ -1,6 +1,0 @@
-# H-Burst's shot (attack object #0x9E, `sub_80D8FC4`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x9E
-script = "hyper_burst.luau"
