@@ -144,7 +144,8 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 fn aim(b: &Battle, r: ObjectRef) -> Vec3 {
     let target = target(b, r);
     let t = b.objects.get(target);
-    let (dx, dz) = if (0x173..=0x178).contains(&t.name_id) && t.anim == 0x4F {
+    let gregar = b.content.identity(t.identity).class == crate::content::IdentityClass::Gregar;
+    let (dx, dz) = if gregar && t.anim == 0x4F {
         (0, 0)
     } else {
         crate::kinds::player::attach_point(b, target, TARGET_ATTACH_POINT)
@@ -161,8 +162,9 @@ fn aim(b: &Battle, r: ObjectRef) -> Vec3 {
 fn target(b: &Battle, r: ObjectRef) -> ObjectRef {
     let owner = b.objects.get(owner(b, r));
     let opponents = b.round.alive_actors[(b.objects.get(r).alliance ^ 1) as usize];
-    let candidates: Vec<ObjectRef> =
-        opponents.iter().flatten().copied().filter(|&c| b.objects.get(c).name_id <= 0x1C3).collect();
+    // (The original takes the actors with a NameID up to 0x1C3, the last
+    // there is: all of them.)
+    let candidates: Vec<ObjectRef> = opponents.iter().flatten().copied().collect();
     let facing_right = owner.alliance ^ owner.flip == 0;
     let x = owner.panel.x;
     let ahead = if facing_right { (x + 1, 6) } else { (1, x.wrapping_sub(1)) };

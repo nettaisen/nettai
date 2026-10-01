@@ -1,27 +1,8 @@
 # Deprecated numeric API uses allowed per module (crates/bn6-content-check/tests/ratchet.rs).
 # Only ever lowered: BN6_RATCHET_LOWER=1 cargo test -p bn6-content-check --test ratchet
-chips/airraid/plane.luau 1
-chips/airspin/top.luau 1
 chips/antidmg/counter.luau 1
 chips/antiswrd/counter.luau 1
-chips/anubis/statue.luau 1
-chips/aquandl/volley.luau 1
-chips/blkbomb/bomb.luau 1
-chips/bodygrd/striker.luau 1
-chips/colarmy/army.luau 1
-chips/cornfsta/farmer.luau 2
-chips/dblbeast/beast.luau 1
-chips/dblhero/heroes.luau 3
-chips/guardian/statue.luau 1
-chips/lilbolr/boiler.luau 1
-chips/mine/land_mine.luau 1
-chips/otenko/statue.luau 1
-chips/sensor/turret.luau 1
-chips/timebom/countdown.luau 1
-chips/vdoll/doll.luau 1
-chips/wind/fan.luau 1
 lib/buster.luau 1
-lib/instruments/instrument.luau 1
 lib/trajectory.luau 1
 navis/chargeman/navi.luau 1
 navis/dustman/navi.luau 1
@@ -60,9 +41,5 @@ navis/slashman/navi.luau 1
 navis/spoutman/navi.luau 1
 navis/tenguman/navi.luau 1
 navis/tomahawkman/navi.luau 1
-objects/attachment/attachment.luau 2
-objects/boulder/boulder.luau 1
-objects/rock/rock.luau 1
 rules/body-overlays.luau 1
-rules/identities.luau 1
 rules/roles.luau 2
