@@ -216,9 +216,9 @@ falzar_beast_buster.action = define.action {
 falzar_beast_buster.weapon = define.weapon {
     id = "megaman/falzar-beast-buster",
     name = "Falzar Beast buster",
-    -- The charge table's row 3; Charge 5 reads on into row 4's first
-    -- entry, as the original's table does.
-    charge_ticks = { 40, 60, 90, 120, 150, 80 },
+    -- The charge table's row 3, by Charge 0 to 7: past 4 it reads on
+    -- into the next routine's row, as the original's table does.
+    charge_ticks = { 40, 60, 90, 120, 150, 80, 75, 70 },
     setup = falzar_beast_buster.setup,
     -- (Transitional: the routine number the pack's forms name it by.)
     legacy = { routines = { 0x03 } },

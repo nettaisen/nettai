@@ -121,6 +121,7 @@ return {
     define.chip {
         id = "batcan1",
         name = "BatCan1",
+        description = "MegaBstr\nattk with\nMegaMan!",
         codes = { "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -134,6 +135,7 @@ return {
     define.chip {
         id = "batcan2",
         name = "BatCan2",
+        description = "ZapRing\nattk with\nMegaMan!",
         codes = { "S" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -147,6 +149,7 @@ return {
     define.chip {
         id = "batcan3",
         name = "BatCan3",
+        description = "LifeSrd\nattk with\nMegaMan!",
         codes = { "R" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,
@@ -160,6 +163,7 @@ return {
     define.chip {
         id = "batcan4",
         name = "BatCan4",
+        description = "Snd all 3\ntypes of\nDstb Atks",
         codes = { "Z" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 40, hit_param = 30, lockout = 0,

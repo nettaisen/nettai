@@ -1,3 +1,0 @@
-# A navi chip (subtype 7): SpoutMan, as chips/0f2-spoutman summons him.
-
-script = "../0f2-spoutman/chip.luau"

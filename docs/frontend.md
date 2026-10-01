@@ -13,20 +13,21 @@ played live from the keyboard, and can render chosen frames to PNG.
 
 ## 1. The content pack
 
-Everything the frontend shows and plays comes from a content pack made from
-your own ROM (US Falzar, `MEGAMAN6_FXXBR6E`), never checked in: the battle
-data the engine runs on, the graphics and the sound, in open formats
-(TOML, indexed PNG, JSON, Tiled maps, MIDI, WAV; see
-`docs/design/content-pack.md` and `docs/design/asset-formats.md`). Extract
-it once:
+The battle content the engine runs on is this repository's content/bn6 (its
+definitions; `--content <dir>` or `$BN6_CONTENT` for another). What the
+frontend shows and plays comes from a content pack made from your own ROM
+(US Falzar, `MEGAMAN6_FXXBR6E`), never checked in: the graphics and the
+sound, in open formats (indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
+`docs/design/content-pack.md` and `docs/design/asset-formats.md`), by the
+names the content gives them. Extract it once:
 
     cargo run -p bn6-extract -- content <rom> data/content/bn6
 
 (`data/content/` is gitignored.) The frontend loads the pack at start-up
 from `--pack <dir>`, else `$BN6_PACK`, else `data/content/bn6`, straight
-from its files: the battle data into the engine's `Content`, the graphics
-through bn6-content's importer, and, when a window opens, the sound.
-`BN6_LOAD_TIMES=1` prints how long each part took.
+from its files: the content with the pack's asset index into the engine's
+`Content`, the graphics through bn6-content's importer, and, when a window
+opens, the sound. `BN6_LOAD_TIMES=1` prints how long each part took.
 
 The graphics load into the types of the `bn6-assets` crate, decoded
 (tiles as palette indices, colours as BGR555):

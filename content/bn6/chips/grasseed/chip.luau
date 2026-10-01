@@ -7,6 +7,7 @@ local throw = require("../../lib/bombs/throw")
 return define.chip {
     id = "grasseed",
     name = "GrasSeed",
+    description = "Makes 9sq\nmeadow\n3sq ahead",
     codes = { "A", "F", "S", "*" },
     element = "wood", family = "wood", class = "standard",
     rarity = 1, mb = 19, damage = 10, hit_param = 10, lockout = 10,

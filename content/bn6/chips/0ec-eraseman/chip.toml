@@ -1,4 +1,0 @@
-# EraseMan, EraseMn[EX] and EraseMn[SP] (navi chip subtype 5) summon EraseMan
-# (chips/eraseman/navi.luau), through chip.luau.
-
-script = "chip.luau"

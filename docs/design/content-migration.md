@@ -19,7 +19,12 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | The link navis' own chips | A record that runs the action its module exports (`{ action = define.action { ... } }`), for an action number registration can't claim; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds), chips/190-heatpres ... chips/199-dustbrk |
 | MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it; a weapon that asks the attack's chip for its part (`navi.attack_chip`: SlashCross's charged slash, a record a sword's slash names) | navis/00-megaman/weapons/`<name>`/weapon.luau, navis/00-megaman/forms/`<form>`/, navis/00-megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
 
-No weapon routine is a v1 module any more.
+Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e); the ones nothing
+implements yet (the link navis' charges, the sticky charges, the charged-chip bonuses) are the generated stubs of
+step 5 (navis/00-megaman/weapons/NAME/weapon.luau, a form's or navi's own beside its `form.luau` or
+`navi.luau`), whose legacy marker names the routines. The navis, MegaMan's forms, the stages
+(stages/) and the rule sections (rules/) are definitions too, generated from the ROM once and checked against it
+(`gen-content check`, in the verification workspace).
 
 ## 1. What moves and what stays
 
@@ -80,19 +85,19 @@ the migration ends, registration by number (§3.2) resolves the pack's records i
    `scratch_position` for a position the spawner's registers leave), an action's (actions.toml: a chip's action
    is `<chip>/action`, which is the key it gets by default; give `id` when no chip holds it). compat/ is
    gen-content's; a key or name you add goes into compat/curation.toml too, for review.
-5. **What stays numbered for now** (content-model-v2.md §12, "Transitional"). A chip the ruleset or another record
-   names by number keeps the pack's record (a Program Advance's ingredient, a dark chip, a navi chip AntiNavi
-   checks, a chip with a damage formula): its module returns its action with the compat key as `id`, and a
-   registration-by-number shim runs it (chips/036-minibomb, chips/047-sword, chips/056-mchnswrd, chips/0ec-eraseman,
-   chips/0c0-atk-10). A definition whose subtype or parameters a v1 module still reads may carry
-   `legacy = { subtype, params }` (none does since SlashCross's charged slash asks a sword's slash for its
-   charged slash). Both are counted and go with the numbers.
+Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e); the ones nothing
+implements yet (the link navis' charges, the sticky charges, the charged-chip bonuses) are the generated stubs of
+step 5 (navis/00-megaman/weapons/NAME/weapon.luau, a form's or navi's own beside its `form.luau` or
+`navi.luau`), whose legacy marker names the routines. The navis, MegaMan's forms, the stages
+(stages/) and the rule sections (rules/) are definitions too, generated from the ROM once and checked against it
+(`gen-content check`, in the verification workspace).
 6. **API.** When a script needs something the API lacks, add it: a `CoreApi` method (crates/bn6-content-api/src/
    api.rs, documented with the routine it is), its implementation (crates/bn6-battle/src/behavior/core_api.rs),
    its binding (crates/bn6-luau/src/bind.rs), and its declaration with a comment in content/bn6/core.d.luau
    (types.d.luau for the families' types). Names, not numbers: a new set of flags or states is an enum with names
    in the API and a string-literal type in core.d.luau, and gets a misuse case in bn6-content-check's test.
-7. **Delete the old.** The v1 module and its registration (`object.toml`, a `chip.toml`'s `script`), the Rust
+7. **Delete the old.** The v1 module and its registration (`object.toml`, the `script` of a chip's or weapon's
+   legacy marker), the Rust
    kind's module, its `kinds::Vars` variant, its arms in `kinds::update` and `actions::dispatch`, its
    `ActionVars` variant. Nothing exists twice. Lower the ratchet (`BN6_RATCHET_LOWER=1 cargo test -p
    bn6-content-check --test ratchet`); it may only shrink, except for a counted transitional use the design names.
@@ -119,18 +124,18 @@ A definition's key is its `id` (or the key it derives: `minibomb/action`); two o
 
 ### 3.2 Registration by number (transitional)
 
-What the pack's records and the ruleset still name by number reaches v1 modules through registration files, until
-step 13 removes them:
+What the definitions' legacy markers and the ruleset still name by number reaches v1 modules through
+registration, until step 13 removes it (`script` is a module's path from the content root, without `.luau`):
 
 | To implement | Write | The module exports |
 |---|---|---|
 | An object kind | `objects/NAME/object.toml`: `[kind] pool, index, script` | `state` (optional), `update(me)` |
-| A chip's action | `script = "..."` in `chips/NNN-name/chip.toml` | `state`, `update(me, s)` |
-| A dimming chip (action 0x15) | `script` in each chip of the subtype | `dimming_chip(user, spec)` |
-| A navi chip (action 0x1B) | `script` in each chip of the subtype | `navi_chip(user, controller, spec)` |
-| An instant chip (action 0x1C) | `script` in each chip of the subtype, or `instant_chip = N` in a weapon.toml | `instant_chip(user, spec)` |
-| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
-| A record's own action (a link navi's chip, action 0x0A) | `script` in the chip | `action`, an action definition (`define.action { id = "<chip>/action", ... }`); no `update` |
+| A chip's action | `script` in the chip definition's marker, `legacy { number, action, subtype, params, script }` | `state`, `update(me, s)` |
+| A dimming chip (action 0x15) | `script` in the marker of each chip of the subtype | `dimming_chip(user, spec)` |
+| A navi chip (action 0x1B) | `script` in the marker of each chip of the subtype | `navi_chip(user, controller, spec)` |
+| An instant chip (action 0x1C) | `script` in the marker of each chip of the subtype, or `instant_chip = N` in a weapon's marker | `instant_chip(user, spec)` |
+| A weapon routine | the weapon definition's marker, `legacy { routines, script }` and optionally `action` (and no `setup`) | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
+| A record's own action (a link navi's chip, action 0x0A) | `script` in the chip definition's marker | `action`, an action definition (`define.action { id = "<chip>/action", ... }`); no `update` |
 
 A shim is such a module that runs the definitions' own code for the records (chips/036-minibomb runs each bomb
 chip's action by subtype). Scripts are paths relative to the registering file; a slot, action or hook claimed twice
