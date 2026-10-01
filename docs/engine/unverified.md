@@ -335,6 +335,11 @@ first only, and the second takes what the spawner leaves in that register, the e
   per-player gauges and the special chips are not a netbattle's); ColForce from a real Gregar side 1 (the
   lab's bases have none; `chips/0x130-colforce/side1` gives a Falzar side the chip). Effects 2, 6, 9, 11, 16
   and 17 are called only by the link navis' weapons (not surveyed here).
+- The chips' charged shots are not ported: BugRSwrd, BgDthThd and the four arm chips make their own weapon the
+  navi's charged shot (`bugrswrd/charge`, `bgdththd/charge`, `puncharm/charge`, `needlarm/charge`,
+  `puzzlarm/charge`, `boomrarm/charge`: the original's weapon routines 0x21 to 0x26), and those weapons have no
+  `setup` yet, so firing the charged shot after one of these chips stops with an error. Reachable with the two
+  Giga chips (a folder can hold them); the arm chips are in no folder.
 - The link navis' charged attacks beyond the one scenario each (standard-chips.md, "Action 9", lists them):
   HeatMan with no floor ahead, ElecMan's bolts with no enemy on a panel, ChargeMan stopped where the floor ends
   (his cars' burst), GroundMan's drills stopped by a hit, off the field or orphaned by a flinch, the higher
@@ -407,4 +412,5 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 | A navi appearing mid-battle (`sub_80164A0`) | Only for actors whose AIData+2 is set, which a netbattle's players' isn't. |
 | The Beast Out lock-on's tie-break between several targets | Its candidates are a side's alive-actor slots, and a netbattle fills one a side. |
 | Bug code 0xFB (the body programs go, UnderShirt too), and the charged shot's and the buster's other projectile kinds | Only projectile kind 0x1A carries the code, and a player's shots take their kind from NaviStats+0x4F (the charged shot) and +0x4D (the buster), which nothing writes: not the stats' init (`initNaviStats_WithDefaultStatsMaybe_8013438`, `init_8013B64`), not a NaviCust program's or bug's routine, and no attack a netbattle has carries bug code 0x4D or 0x4F (a code below 0x64 stores to the stat of that number). Both are 0 in all 8,798 navi stat blocks of the lab's 4,399 setups (every program, bug, navi and form). |
+| A hit's bug code that sets a weapon byte or a shot program of the navi's stats to a number (NaviStats+0x04, +0x05, +0x07, +0x39, +0x44 other than 0xFF; +0x4D, +0x4F other than 0) | No hit of the game's carries such a code (the codes hits give are 0x18 with a level, and the special ones from 0xF4 up); the engine holds weapons and projectile variants by handle and has no number for them, so it refuses the write. Clearing one (0xFF, 0) works. |
 
