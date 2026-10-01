@@ -9,8 +9,8 @@
 //!   `bn6_battle::Content` ([`pack::load_battle`]).
 //! - Sprites: an indexed-PNG part atlas, part layouts (`sprite.json`) and
 //!   animation timing (`animations.json`) per sprite ([`sprite`]).
-//! - Field, backgrounds (Tiled maps), HUD: indexed PNGs and JSON ([`stage`],
-//!   [`hud`]).
+//! - Field, backgrounds (Tiled maps), HUD, the custom screen: indexed PNGs
+//!   and JSON ([`stage`], [`hud`], [`custom`]).
 //! - Sound: songs as MIDI in mid2agb's conventions plus a TOML sidecar
 //!   ([`song`]), voicegroups, key maps and PSG waves as TOML, samples as
 //!   WAV ([`sound`]).
@@ -20,10 +20,11 @@
 //! it found in a [`report::Report`]; nothing is silently approximated.
 //!
 //! The graphics and sound modules know GBA-style data (4bpp tiles,
-//! 16-colour palettes, OAM parts, M4A songs) but no BN6 rule; only [`hud`]
-//! and the field's panel tables are BN6-shaped.
+//! 16-colour palettes, OAM parts, M4A songs) but no BN6 rule; only [`hud`],
+//! [`custom`] and the field's panel tables are BN6-shaped.
 
 pub mod aseprite;
+pub mod custom;
 pub mod hud;
 pub mod image;
 pub mod lint;
