@@ -2,14 +2,25 @@
 
 The chip lab verifies what its recordings reach. This is the other question: **is there battle code in the
 original that the port doesn't have at all?** The answer at the audited commit: no routine of the simulation that
-a netbattle can reach is left without a counterpart. The one group the audit found (the link navis' charged
-attacks, 65 routines, §4) was ported while it ran. What is left are caveats (§7) and code that is ported but that
-no recording runs (§6).
+a netbattle can reach is left without a counterpart. The audit found two groups, both ported since: the link
+navis' charged attacks (65 routines, §4) and six chip weapons that were defined without behaviour (§9), which
+its first run missed. What is left are caveats (§7) and code that is ported but that no recording runs (§6).
 
-The audit is a tool in the verification workspace (`tools/audit/audit.py`, with its exclusion rules in `excl.py`
-and the hand-read classes in `manual.py`); it runs against an engine checkout and should be run again after large
-merges. Figures here are for the engine with the link navis' charged attacks and lock-on modes by handle merged,
-and a lab of 4,997 recordings, all of which the engine reproduces in full.
+Two things this document said before were wrong or weaker than they read, and are corrected here:
+
+- **"Missing: 0" was false** while the six chip weapons had no `setup` (§9). The audit now follows the weapon
+  table and has a stub check; both report none.
+- **"All of which the engine reproduces in full" covered less than it said.** 670 of the lab's recordings ended
+  inside a cut-in chip's telop, about 80 frames after the chip was used and before it did anything (§10). A match
+  on those vouched for the telop's start and nothing of the chip. They are recorded to the end now, and match.
+
+The audit is a tool in the verification workspace (`tools/audit/audit.py`, with its exclusion rules in `excl.py`,
+the hand-read classes in `manual.py` and the stub check in `stubs.py`); it runs against an engine checkout and
+should be run again after large merges. Figures here are for the engine with chips, weapons, navis and statuses
+by handle (content model v2's steps 10 to 12) and the six chip weapons merged, and a lab of 5,078 scenarios:
+5,058 recorded (the other 20 can't be: 18 skipped, 2 where the original itself stops advancing). The engine
+reproduced every recording on every frame at the lab's last full run; the 684 recorded again or added since
+(§10, §6.1) were replayed on their own and match.
 
 ## 1. Method
 
@@ -42,8 +53,10 @@ and a lab of 4,997 recordings, all of which the engine reproduces in full.
 5. **Reachability.** Starting from everything cited or run, follow calls, a routine's own tables (40 entries or
    fewer: its states) and its spawns. The big dispatch tables are followed by what indexes them: the kind tables
    through spawns; the chips' action table (`JumpTable80EAC60`) whole, since every chip is a netbattle's; the
-   hook tables indexed by actor type (`sub_800F35C` and its six siblings) through the player's table only. A
-   routine that the rules of §5 say a netbattle never enters is not followed. The audit stops with an error if a
+   hook tables indexed by actor type (`sub_800F35C` and its six siblings) through the player's table only; the
+   weapon table (`off_80117D4`) through the numbers the data names (the forms' rows, the navis' rows and the
+   NaviStats bytes: `compat/weapons.toml`, which the verification workspace's generator checks against the ROM).
+   A routine that the rules of §5 say a netbattle never enters is not followed. The audit stops with an error if a
    recording runs a routine a rule excludes: that caught a wrong rule once (the tutorial checks' callers run on
    every pick; only what they call is the tutorial's).
 6. **Classes**, in this order:
@@ -60,19 +73,23 @@ and a lab of 4,997 recordings, all of which the engine reproduces in full.
    | Presentation | HUD tasks (0x0801BE28–0x0801EC97), the IWRAM draw pass, custom screen drawing and camera routines read by hand |
    | Folded into a caller | every caller is ported (or documented): a table entry or helper of a routine the port has as one function |
    | Run in matching recordings | run, uncited, none of the above: its effects are reproduced or it has none on the simulation, since every recording that runs it matches frame for frame |
-   | Missing | run only in recordings the engine stops in, or left over |
+   | Missing | run only in recordings the engine stops in; a weapon routine the data names that nothing cites; the routine of a weapon defined without behaviour (§9); or left over |
+
+7. **The stub check** (`tools/audit/stubs.py`, §9): what the engine has by name without behaviour, from the
+   loaded content and from the sources' own "not implemented" errors. A citation counts as ported in step 6;
+   this is the check that a cited thing does something.
 
 ## 2. Counts
 
-8,116 routines are in the inventory; 3,991 of them run in the lab.
+8,116 routines are in the inventory; 4,033 of them run in the lab.
 
 | Class | Routines |
 |---|---|
-| Ported: cited in the engine's source or content (3,152 run, 260 don't: §6.1) | 3,412 |
-| Out of scope: not reachable from a netbattle's code | 3,181 |
+| Ported: cited in the engine's source or content (3,193 run, 225 don't: §6.1) | 3,418 |
+| Out of scope: not reachable from a netbattle's code | 3,175 |
 | Documented: cited in docs/engine only (288 run, 153 don't) | 441 |
 | Out of scope: excluded by a rule (§5) | 349 |
-| Folded into a ported caller (28 of them never run) | 197 |
+| Folded into a ported caller (27 of them never run) | 197 |
 | Infrastructure a netbattle runs | 126 |
 | Presentation: HUD tasks | 125 |
 | Trivial: empty or an accessor | 117 |
@@ -90,7 +107,7 @@ By area:
 | Object system | 8 | 15 | 3 | 0 | 0 | 0 | 0 | 0 | 5 |
 | Battle flow | 64 | 89 | 11 | 2 | 0 | 0 | 16 | 0 | 136 |
 | Battle objects and panels | 100 | 27 | 3 | 2 | 0 | 0 | 6 | 0 | 35 |
-| Actors, collision, status, HUD | 512 | 98 | 41 | 12 | 123 | 0 | 36 | 2 | 160 |
+| Actors, collision, status, HUD | 518 | 98 | 41 | 12 | 123 | 0 | 36 | 2 | 154 |
 | Link status, battle settings | 2 | 10 | 1 | 0 | 0 | 2 | 1 | 0 | 15 |
 | Custom screen, gauge, camera | 168 | 29 | 66 | 57 | 16 | 0 | 30 | 3 | 371 |
 | Link layer | 1 | 11 | 0 | 0 | 0 | 51 | 16 | 0 | 110 |
@@ -139,8 +156,11 @@ table:
 | DustMan | 0x49 `sub_80122C2` | `sub_80F1F18` | 3 | DustCross's junk ball (T3 0xB0) |
 | ProtoMan | 0x32 `sub_801206E`, 0x30 `sub_8012018`, 0x34 | the sword's and the shield's actions | 2 | none of his own |
 
-All are in the content now (`navis/*/charge.luau` and ProtoMan's specials) and the 11 recordings match. The
-audit's rerun finds nothing in the class.
+All are in the content now (`navis/*/charge.luau` and ProtoMan's specials) and the 11 recordings match.
+
+A second group was there all along and the audit didn't see it: weapon routines 0x21 to 0x26 (`sub_8011E40` to
+`sub_8011F10`), the charged shots BugRSwrd, BgDthThd and the four arm chips give. §9 has what happened and the
+check that now covers it. They are ported too, and the audit's rerun finds nothing in the class.
 
 ## 5. Out of scope, by rule
 
@@ -174,36 +194,41 @@ Two more things are out of scope without a rule in the audit, since no routine i
   of the lab's setups have it 0. The port has the stat, the code, the variant and the action
   (`tornado/back-spread`), all unreachable.
 
-The 3,181 unreachable routines are mostly the other 138 object kinds' (viruses, bosses, story objects) and what
+The 3,175 unreachable routines are mostly the other 138 object kinds' (viruses, bosses, story objects) and what
 only they call.
 
 ## 6. The other direction: is a ported routine's port complete?
 
 ### 6.1 Ported routines no recording runs
 
-260 routines the source cites are never run by the lab. A citation is not a test: these are the port's
-unverified parts, or content for something a netbattle can't do. By the file that cites them:
+225 routines the source cites are never run by the lab (260 before the cut-in chips' recordings ran to their
+end and the first scenarios written from this list). A citation is not a test: these are the port's unverified
+parts, or content for something a netbattle can't do. By the file that cites them, with whether a netbattle can
+run them where that has been read:
 
-| Where | Routines | What |
-|---|---|---|
-| `content/bn6/lib/instant` | 26 | instant effects no recorded chip has: the dust storm and its motes, the immobilizer, the invisibility, repair and side-special weapons |
-| `content/bn6/chips/elmntman` | 25 | ElmntMan's meteor, ice and part of his body: run by the soundmod golden trace, not by the lab |
-| `crates/bn6-battle/src/kinds/obstacle.rs` | 14 | obstacle routines (`sub_801802C` to `sub_8018186`, `sub_8016B02`, `sub_8016B36` and others) |
-| `content/bn6/chips/airspin` | 13 | the seeking whirlwind (T3 0xD4): AirSpin's variant 1, which no chip record sends |
-| `crates/bn6-battle/src/battle.rs` | 13 | the communication error (`sub_8007EB8`) and escape (`sub_800AAD6`) results, the set's second init entry, the per-player gauge mode's routines |
-| `crates/bn6-battle/src/kinds/player/actions/cross_change.rs` | 11 | the Cross change: no live writer (unverified.md) |
-| `crates/bn6-battle/src/kinds/player/form.rs`, `actor.rs` | 20 | form hooks, the appearing navi, the bubble's bob |
-| `content/bn6/objects/encased-bubble`, `follow-effect`, `chips/lifesync`, `chips/bugfix`, `lib/dimming`, `lib/rapid_buster.luau`, `lib/bombs`, `chips/lilbolr` | 41 | phases or variants of objects the lab runs otherwise |
-| `crates/bn6-battle/src/collision.rs`, `field.rs`, `crates/bn6-frontend/src/objects.rs` | 16 | IWRAM routines: the lab's coverage doesn't instrument IWRAM, so these are run but not counted |
-| `content/bn6/navis/chargeman`, `protoman`, `tomahawkman` | 4 | ChargeMan stopped where the floor ends (`sub_80F1284`, `sub_80F1500`), ProtoMan's B+Back (`sub_80120A6`), `sub_8012278` |
-| the rest, one to four each (40 files) | 77 | single phases and helpers |
+| Where | Routines | What | A netbattle |
+|---|---|---|---|
+| `content/bn6/lib/instant` | 26 | instant effects 2, 6, 9, 11, 16 and 17: the invisibility, repair, the immobilizer, the side special, the meteor shower, the dust storm and its motes | can't: no chip has them, and the weapon routines that name two of them (0x71, 0x83) are named by no form's or navi's row and no NaviStats byte |
+| `crates/bn6-battle/src/kinds/obstacle.rs`, `content/bn6/objects/encased-bubble` | 21 | an obstacle thrown (`sub_8018002`'s steps) or encased in ice or a bubble (`sub_801813A`'s, and the bubble it becomes); the actors' hit reactions on an obstacle | can't: the two requests are made only by routines nothing calls (field-objects.md §4.5), and nothing starts those reactions on an obstacle |
+| `content/bn6/chips/airspin` | 13 | the seeking whirlwind (T3 0xD4): AirSpin's variant 1 | can't: no chip record sends it |
+| `crates/bn6-battle/src/battle.rs` | 13 | the communication error (`sub_8007EB8`) and escape (`sub_800AAD6`) results, the set's second init entry, the per-player gauge mode's routines | not the simulation's (the link is the port's netplay), or battle flag 0x40 |
+| `kinds/player/actions/cross_change.rs`, `entry.rs`, `hand.rs` | 17 | the Cross change and knockout while paused, the navi that appears mid-battle, the link navis' chips leaving the hand | can't: no live writer of the Cross change (unverified.md) |
+| `content/bn6/lib/rapid_buster.luau`, `lib/dimming/blinding_flash.luau`, `chips/bugfix/glow.luau`, `navis/megaman/weapons/shield`, `navis/tomahawkman`, `chips/tornado`, `chips/mstrcros`, `chips/rskyhny` | 21 | weapon routines 0x39, 0x3C, 0x8C and 0x46; dimming effect 2; the glow's two other variants; the Tornado action's subtype 3; a sword phase and a bee action nothing sets | can't: nothing names the routine, effect, variant or phase (the NaviCust writes weapon routines 0x3B, 0x8B and 0x3D only; the link navis' level tables 0x30 and 0x34) |
+| `crates/bn6-battle/src/collision.rs`, `field.rs`, `crates/bn6-frontend/src/objects.rs` | 16 | IWRAM routines | run, not counted: the lab's coverage doesn't instrument IWRAM |
+| `kinds/player/form.rs`, `actor.rs` | 20 | the forms' NaviCust refresh hooks (`sub_801469C`'s table), fields the viruses use | not read yet |
+| the rest, one to four each (about 45 files) | 78 | single phases and helpers: LifeSync's marker, the follow effect's other looks, LilBoiler's layer, a bomb's lingering hit, the lock-on marker's choice between two targets, and others | not read yet: the next scenarios |
 
-The audit's `unrun.txt` lists them. Worth scenarios first: the link navis' three, the obstacle hooks, and the
-single phases of chips the lab already records.
+The audit's `unrun.txt` lists them. Scenarios written from this list so far (all match): ChargeMan stopped
+where the floor ends, with his cars out and with none (`navis/navi-05-volcchrg/charge-hole-*`); ProtoMan as the game
+has him below level 10, whose B+Back is the shield that only guards (`navi-11-stepswrd/level-5`: weapon routine
+0x34); ElmntMan's four elements by the user's A press (`chips/0x10d-elmntman/press-*`: the lab had only the one
+his timeout draws); EraseMan's aim taken at each step (`chips/0x0ec-eraseman/press-*`); DeltaRay's three strikes,
+his return and burst (`chips/0x12f-deltaray/three-strikes`, on the falzar base: the gregar base's stage has rocks
+on two of the delta's corners).
 
 ### 6.2 Branches that ran one way only
 
-Of the ported routines' 7,472 branches that ran, 2,183 (in 1,254 routines) ran one way only (`onesided.tsv`, with
+Of the ported routines' 7,546 branches that ran, 2,171 (in 1,257 routines) ran one way only (`onesided.tsv`, with
 the instructions before each). A sample of them against the port:
 
 | Routine | The side never taken | The port |
@@ -219,7 +244,7 @@ the instructions before each). A sample of them against the port:
 | `sub_801002C` | NaviStats+0x10 nonzero | a palette index: presentation |
 | `sub_80D6BD4` (ElmntMan's meteor) | its third state, a plain destroy (the lab never runs the meteor; the soundmod trace does) | the definition's destroy lifecycle |
 
-No sampled branch that a netbattle can take is missing from the port. The sample is small (10 of 1,254
+No sampled branch that a netbattle can take is missing from the port. The sample is small (10 of 1,257
 routines); the one-sided list is the place to look for the next coverage scenarios.
 
 ### 6.3 Custom screen keys
@@ -244,7 +269,8 @@ NaviStats+0x54 is unreachable (§5).
 
 ## 8. Limits
 
-- **Names, not behaviour.** A cited routine is taken as ported. §6 samples that; it doesn't prove it.
+- **Names, not behaviour.** A cited routine is taken as ported. §6 samples that and §9 checks the definitions
+  that have no behaviour at all; neither proves a ported routine right. That is the lab's job, branch by branch.
 - **The call graph is static.** A call through a pointer kept in memory is seen only if its table is a literal
   of some routine. The kind tables, action table and hook tables are handled explicitly; a callback stored by
   one routine and called by another through RAM would be missed. The lab's coverage is the check on that: every
@@ -254,5 +280,67 @@ NaviStats+0x54 is unreachable (§5).
   citation and by their callers.
 - **Coverage starts with the fight.** The set's init (`sub_80071D4`) runs before it, so its helpers count as
   never run.
-- **Recordings prove the paths they take.** "Run in matching recordings" says nothing about a branch no
-  recording takes; that is §6.2's list.
+- **Recordings prove the paths they take, for as long as they last.** "Run in matching recordings" says nothing
+  about a branch no recording takes (§6.2's list), and a recording that ends early proves nothing past its end
+  (§10). A scenario's own expectations are the check on that: 380 of the lab's recordings are marked `unmet` in
+  its index (the chip never damaged the opponent, mostly because it can't from where the scenario stands), and
+  those recordings match without showing what their descriptions say.
+
+## 9. Defined without behaviour: the stub check
+
+The audit's first run reported nothing missing while six weapons a netbattle can fire had no behaviour:
+BugRSwrd's and BgDthThd's charged shots and the four arm chips' (the original's weapon routines 0x21 to 0x26,
+`sub_8011E40` to `sub_8011F10`). Each was a weapon definition with its charge times and no `setup`; the chip made
+it the navi's charged shot, and a full B charge stopped the engine. The audit missed them twice over: it didn't
+follow the weapon table (123 entries, past its limit for a routine's own table), so their routines came out
+"not reachable"; and had it followed the table, a citation in the weapon's file would have classed them
+"ported". Both are fixed in the tool (§1, steps 5 and 7), and the six are ported since
+(`chips/bugrswrd/charge` and the others, with 25 recordings).
+
+The stub check lists everything of that shape: a definition, a role or a dispatch entry that exists by name with
+nothing behind it. It reads the loaded content (through the engine's own loader) and the sources:
+
+| Checked | How | Result |
+|---|---|---|
+| Weapons without a `setup` | every `WeaponDef` of the loaded content | none without, apart from the seven below |
+| Weapons whose `charged_chip` says the ruleset handles them | the same; and where the forms name them | seven (`megaman/charged-chip-bonus` and its three siblings, `eleccross/a-charge`, `megaman/rock-barrage`, `protoman/a-charge`): not stubs. The original's entries are `nullsub_44`, and `sub_800FB54` tells these A-charges apart by number before it would call one (5, 0x0D, 0x1F, 0x20, 0x29, 0x2D: the chip with its bonus; 0x18: GroundCross's rocks first), as chip_use.rs does. The forms name them only as A-charges; ProtoMan's is his NaviStats+0x39 |
+| Chips without a use | a chip definition needs exactly one of `action`, `dimming`, `navi` and `instant` (the define phase's error) | none can exist. Gregar's, Falzar's, HackJack's and Django's uses are `lib/unusable`: `off_802CCB4[34]` and `[35]` and `off_802CD5C[18]` and `[19]` are NULL, and the game jumps to address 0 (the lab's recordings of Gregar, Falzar and HackJack end on that frame; the lab has no Django scenario) |
+| Actions and kinds whose update only errors | every function of the content whose body is an `error` | none |
+| Roles unfilled, or naming an action nothing implements | the loaded roles | `actions.turn` and `actions.volley`, each a `legacy` action number with no registration (0x3B, 0x30). Neither can start in a netbattle: turning is enabled only without the standard column patterns (`sub_80141F4`), and all 192 stages have pattern 0x38; no routine was found that raises the volley's request (0x40000000), and the port raises it nowhere |
+| Errors that say something is not implemented, ported, modelled or supported | every `panic!`, `unreachable!` and Luau `error(` with that wording (12) | none reachable: the four bug-code writes in setup.rs (no hit carries such a code, unverified.md); a spawn by slot number (battle mode 9's two, and no content module spawns by number); an action by number (the two roles above); a weapon without a `setup` (none now); the mode states past the fade-out (battle effects 2); `sub_80EBB78`'s AI navi version byte |
+| | | one unproven: CrosOver reads its partner's Param4 through a link that outlives him, and the port models the one actor known to take his slot before the read (the user's sword). No other was found that can spawn inside the chip's dimming |
+
+The check fails when it finds a stub its notes (`stub_notes.py`) don't cover, so a new one has to be read. The
+other errors in the sources (about 400 in the content, 180 in the engine) say what the original does at that
+point: a read past a table, a null pointer, a division by zero. They are the port's record of the original's
+undefined behaviour, not gaps.
+
+## 10. How deep the recordings went: the cut-in chips
+
+Until this audit's follow-up, 670 of the lab's recordings ended inside a cut-in chip's telop. The scenario
+library's templates end with `settle` ("wait until both navis are idle and the attacks are gone"), and both navis
+stand idle from the moment a cut-in chip is used until its dimming ends, so `settle` returned 20 frames after the
+use and the recording stopped a second later: about 80 frames after the chip was used, as its navi or controller
+was about to appear.
+
+| | Recordings | What they were |
+|---|---|---|
+| Ended inside the telop | 661 | of 62 chips (every navi chip and several other cut-in chips), 7 Program Advance recordings and 5 others: `stage-*` 174, `cross-*` 84, `hit`, `miss` and `adjacent` 62 each, `beast` 47, `obstacle` 42, `beast-charged` 29, `counter-cut-in` 23, `atk10` and `navi20` 19 each, and a few hand-written ones |
+| Ended early in a second cut-in | 9 | `counter-cut-in` of BurnSqr, Meteors, Magnum, CircGun and DblBeast, ElmntMan's `counter` and `guard`, BigHook's `beast-charged`, `navicust/tango-quarter-hp` |
+
+362 of the 661 were marked `ok` in the lab's index (their expectation was only that the chip was used) and 299
+`unmet`. The engine matched all of them, which said that the telop starts on the right frame and nothing about
+the chip. What those chips do was verified only by the scenarios that wait on their own: the survey's
+(unverified.md) and the templates with a second side acting (`counter`, `guard`, `barrier`, `invisible`). So
+"the navi chips on every stage", "against an obstacle", "in Beast Out", "in their Cross", "with Atk+10" and
+"missing" were not verified at all, whatever the lab's match count said.
+
+`settle` now waits out a cut-in (and through a chip that waits for a key, up to three times its limit), and the
+670 are recorded again to their ends: 687,917 frames for the 661 where there were 456,716. The engine matches
+every one. 80 of the 661 are still `unmet`: the chip runs to its end and doesn't damage the opponent from where
+the scenario stands (ElecMan's and TomahawkMan's in several templates, HackJack's because the original stops).
+The other 1,576 recordings that have a `settle` and a cut-in were recorded again too and came out frame for
+frame as before.
+
+With these and the scenarios added since, the lab runs 4,033 of the inventory's routines where it ran 3,991, and
+the ported routines no recording runs fell from 260 to 225.

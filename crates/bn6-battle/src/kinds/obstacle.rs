@@ -24,7 +24,7 @@ use bn6_content_api::RecordHandle;
 
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionId, f1};
-use crate::content::{CollisionRole, EffectRole, SparkRole};
+use crate::content::{CollisionRole, EffectRole, SoundRole, SparkRole};
 use crate::field::{self, PanelType, pflags};
 use crate::kinds::common::{self, Progress};
 use crate::object::{DragStep, ObjectRef, PanelPos, SlideBounds, StateWord, Vec3, flags};
@@ -199,9 +199,6 @@ const SLIDE_PANELS: u8 = 6;
 /// went.
 const BLOCKED_REST: u8 = 0x18;
 const SLID_REST: u8 = 0x14;
-
-/// The damage sound.
-const HIT_SOUND: u16 = 0x85;
 
 fn collision(b: &Battle, r: ObjectRef) -> CollisionId {
     b.objects.get(r).collision.expect("obstacle without collision data")
@@ -393,7 +390,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
     let killed = damage != 0 && {
         // sprite_forceWhitePalette
         b.objects.sprite_mut(r).look.white = true;
-        b.play_sound(crate::sound::SoundId(HIT_SOUND));
+        b.sound(SoundRole::Damage);
         crate::kinds::subtract_hp(b, r, damage);
         b.objects.get(r).hp == 0
     };
@@ -536,8 +533,6 @@ fn hold_while_dimmed(b: &mut Battle, r: ObjectRef) {
 const THROW_HEIGHT: i32 = 0x40_0000;
 const THROW_RISE_TICKS: u8 = 0x20;
 const THROW_SPEED: i32 = 0x8_0000;
-const THROW_LIFT_SOUND: u16 = 0x12A;
-const THROW_FLIGHT_SOUND: u16 = 0x10C;
 /// The landing's hit (`sub_80C53A6`'s r4 = 0x06050001, r7 = 3): its own
 /// panel, the thrown obstacle's spark and collision types (the roles
 /// `sparks.thrown_obstacle`, `collision.thrown_obstacle` and
@@ -565,7 +560,7 @@ fn thrown(b: &mut Battle, r: ObjectRef) {
             let fp = o.future_panel;
             b.unreserve_panel(r, fp.x, fp.y);
             b.objects.get_mut(r).shake_timer = THROW_RISE_TICKS;
-            b.play_sound(crate::sound::SoundId(THROW_LIFT_SOUND));
+            b.sound(SoundRole::ObstacleLift);
             clear_region(b, r);
             b.objects.get_mut(r).prevent_anim = 4;
         }
@@ -605,7 +600,7 @@ fn thrown(b: &mut Battle, r: ObjectRef) {
             o.future_panel = PanelPos { x: o.slide_dx, y: o.slide_dy };
             let ticks = aim_throw(b, r);
             b.objects.get_mut(r).shake_timer = ticks;
-            b.play_sound(crate::sound::SoundId(THROW_FLIGHT_SOUND));
+            b.sound(SoundRole::ObstacleThrow);
             b.objects.get_mut(r).prevent_anim = 0x10;
         }
         // sub_80180EC: fly, land with a hit, break.

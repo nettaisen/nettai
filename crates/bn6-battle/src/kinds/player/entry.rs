@@ -34,7 +34,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             b.reserve_panel(r, p.x, p.y);
             coll_mut(b, r).region = None;
             b.objects.get_mut(r).phase_init = 4;
-            b.play_sound(crate::sound::SoundId(0x94));
+            b.sound(crate::content::SoundRole::Appear);
             let o = b.objects.get_mut(r);
             o.timer = 0x14;
             o.timer2 = 0x1E;
@@ -54,7 +54,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
                 }
                 let pos = o.pos;
                 flash(b, crate::object::Vec3 { z: pos.z.wrapping_add(0x10_0000), ..pos }, ARRIVE_LOOK);
-                b.play_sound(crate::sound::SoundId(0x129));
+                b.sound(crate::content::SoundRole::Arrive);
             }
             let o = b.objects.get_mut(r);
             o.timer2 = o.timer2.wrapping_sub(1);
@@ -109,7 +109,7 @@ fn wait_for_fade(b: &mut Battle, r: ObjectRef) {
         b.fadein_enqueue(r);
         b.objects.get_mut(r).phase_init = 4;
     } else if b.round.intro_bits & 0x01 != 0 && b.fadein_is_head(r) {
-        b.play_sound(crate::sound::SoundId(0x94));
+        b.sound(crate::content::SoundRole::Appear);
         // The sprite starts transparent.
         b.objects.sprite_mut(r).look.alpha = Some(0);
         let o = b.objects.get_mut(r);

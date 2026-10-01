@@ -1724,7 +1724,7 @@ need.
 | kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
 | records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rock/cube" = 1`); NaviCust buster shots when their producers are known |
-| rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`); and for the roles that name an effect, a spark, a region or a collision type (rules/roles.luau), the number the original's routines name each by, by role: `[effects] deletion = 0x03`, `[sparks] guard = 0x08`, `[regions] anchor = 0x01`, `[collision] navi = 0x01` |
+| rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`); and for the roles that name an effect, a spark, a region or a collision type (rules/roles.luau), the number the original's routines name each by, by role: `[effects] deletion = 0x03`, `[sparks] guard = 0x08`, `[regions] anchor = 0x01`, `[collision] navi = 0x01`; and likewise for the roles that name assets, `[sounds] hit = 0x06D`, `[music] link_battle = 0x015`, `[sprites] eruption = "10-24"`, `[banners] draw = 0x1C` |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
 | text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
 | curation.toml | the names the generator made up, by file and key, with where each came from: the review list (§13) |
@@ -2015,8 +2015,13 @@ obstacle) and, since step 12, `LockonRole` (the Beast claw's lock-on mode), `Sta
 ruleset inflicts itself), `EffectRole` (the effects it shows itself: a deletion's, a recovery's, the cut-in
 flash, a trap's mark, an encased obstacle's, a form change's and Beast Over's four), `SparkRole` (a new
 registration's hit spark, a blocked hit's, an eruption's, a thrown obstacle's, an uninstall's), `RegionRole`
-(`anchor`, a registration's own panel, which every setup gives it) and `CollisionRole` (a navi's body, its
-floating body and what it reacts to; an eruption's and a thrown obstacle's types and targets). One role per look
+(`anchor`, a registration's own panel, which every setup gives it), `CollisionRole` (a navi's body, its
+floating body and what it reacts to; an eruption's and a thrown obstacle's types and targets), and the roles
+that name assets: `SoundRole` (what the ruleset plays: `Battle::sound(role)`), `MusicRole` (a link battle's,
+the winner's two and the loser's), `BannerRole` (a round's start, a turn's, the final turns', a draw, the
+judge's, the two telops, the Program Advance's two) and `SpriteRole` (the engine's own kinds' sprites: the
+charge glows, the Full Synchro aura, the status visuals, the ice block, the bubble, the hit marker, the
+eruption, the lock-on marker, the Beast head, the idle overlay). One role per look
 or type the original named by one number, whatever uses it (the deletion effect also shows where a cross merges
 and a navi arrives). A role names a definition, or, while its
 target is still a v1 registration, that registration through the transitional legacy marker (`{ legacy = {
@@ -2155,6 +2160,13 @@ original's routines.
 - Collision types 1, 2, 0x48, 0x2A and regions 0 and 1 (player/mod.rs, eruption.rs, hitbox.rs, collision.rs). →
   `roles.collision`, `roles.regions`; region 0 is `None`.
 
+*As built (step 12).* All five are roles (§7.4): 38 `sounds`, 4 `music`, 9 `banners`, 13 `sprites`, and the
+effects, sparks, regions and collision types of §3.6. `SoundId` and `BannerId` are a pack's ids for its assets,
+with no constants: the ruleset has none of either outside its tests. Two things are not roles. The sound a
+NaviCust panel trail makes turning a panel into a type (`byte_8013D44`, by panel type) is the panel type's
+`trail_sound` in rules/panels.luau. And the original's "no music" song, which the ruleset never plays (a stage
+without music has none), is the audio player's (`bn6_audio::NO_MUSIC`): there is no `music.none`.
+
 **Stages and setup.**
 - `BattleSettings::netbattle_from_bytes`, `actor_list_at(address)`, `Stage { settings: u8 }`, `settings(index)`,
   `ActorKind::{Rock { variant }, Object6E, Object7D}` and their entry types. → `StageHandle`s; the codec in
@@ -2181,6 +2193,11 @@ sound), `battle.effect(pos, number)`, `battle.spark(owner, pos, number)`, `battl
 `form`/`navi`/`buster_shot` numbers, `obstacle.fly_to_absorber(me, kind)`, `lockon_panel(x, y, mode)`, and the
 `data` global. Each has a typed replacement in core.d.luau; `bump_side_stat`, `add_special_bonus` and
 `take_damage` get named enums for their index and mode arguments.
+
+(Gone already with step 12, with their lints: the numeric forms of `battle.play_sound` and `play_sound_for`,
+`battle.effect`, `battle.spark`, `battle.region_effects`, `setup_collision` and `reset_collision_types`, the
+numeric `collision.region`, `hit_effect` and `status_base`, a hitbox's numeric fields, `lockon_panel`'s mode
+number, and `data.regions`, `data.rules.field_regions` and `data.objects.attachments`.)
 
 Added: `define`, `asset`, definition types (`Chip`, `Navi`, `Form`, `Weapon`, `Kind`, `Action`, `Effect`,
 `Spark`, `Region`, `Collision`, `Status`, `Lockon`, `Stage`, `Sprite`, `Sound`, ...), reference state field types,
@@ -2691,6 +2708,13 @@ family's packet, in gen-content, and checked by `gen-content check`.
     their `legacy { number, name_id }` markers.
 12. **Assets and stages**: sounds, music, banners, effects, sparks, collision types and regions through roles;
     stages on handles. **M.**
+
+    *As built.* Stages place kinds and variants from their definitions (§3.7); lock-on modes, statuses,
+    effects, sparks, regions and collision types are handles (§3.6); what the ruleset names of them, and the
+    sounds, music, banners and sprites it plays and shows, are roles (§7.4, §7.5). The engine's kinds' sprites
+    went with the rest of the assets. Compat's rules.toml holds the original's number for each numbered
+    definition and each role, for `gen-content check` alone (§6.1, §9.3). Left for step 11: the body overlays'
+    rows (rules/body-overlays.luau), which the ruleset names per form and per navi.
 
 Phase C packets touch the ruleset and `core_api.rs`; the content API they expose is step 4's, so phase B isn't
 disturbed. Each deletes registration by number's use for its category.
