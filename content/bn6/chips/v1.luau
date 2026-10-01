@@ -367,6 +367,60 @@ local assnswrd = define.chip {
     },
 }
 
+local burnsqr1 = define.chip {
+    id = "v1/burnsqr1",
+    name = "BurnSqr1",
+    codes = { "H", "P", "V" },
+    element = "fire",
+    family = "fire",
+    class = "standard",
+    rarity = 0,
+    mb = 24,
+    damage = 100,
+    hit_param = 30,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 108, index = 108, sort = 48 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x06E, action = 0x15, subtype = 23, params = { 0, 0, 0, 0 } },
+}
+
+local burnsqr2 = define.chip {
+    id = "v1/burnsqr2",
+    name = "BurnSqr2",
+    codes = { "D", "M", "T" },
+    element = "fire",
+    family = "fire",
+    class = "standard",
+    rarity = 1,
+    mb = 30,
+    damage = 120,
+    hit_param = 30,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 109, index = 109, sort = 49 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x06F, action = 0x15, subtype = 23, params = { 0, 0, 0, 0 } },
+}
+
+local burnsqr3 = define.chip {
+    id = "v1/burnsqr3",
+    name = "BurnSqr3",
+    codes = { "E", "O", "Z" },
+    element = "fire",
+    family = "fire",
+    class = "standard",
+    rarity = 2,
+    mb = 36,
+    damage = 140,
+    hit_param = 30,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 110, index = 110, sort = 50 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x070, action = 0x15, subtype = 23, params = { 0, 0, 0, 0 } },
+}
+
 local sensor1 = define.chip {
     id = "v1/sensor1",
     name = "Sensor1",
@@ -419,6 +473,80 @@ local sensor3 = define.chip {
     library = { number = 118, index = 118, sort = 406 },
     slot_in_limit = 3,
     legacy = legacy { number = 0x073, action = 0x15, subtype = 28, params = { 6, 40, 0, 0 } },
+}
+
+local wind = define.chip {
+    id = "v1/wind",
+    name = "Wind",
+    codes = { "*" },
+    element = "null",
+    family = "wind",
+    class = "standard",
+    rarity = 1,
+    mb = 10,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    extra_flags = { "free_slot_in" },
+    library = { number = 134, index = 134, sort = 510 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x081, action = 0x15, subtype = 8, params = { 0, 0, 0, 0 } },
+}
+
+local fan = define.chip {
+    id = "v1/fan",
+    name = "Fan",
+    codes = { "*" },
+    element = "null",
+    family = "wind",
+    class = "standard",
+    rarity = 1,
+    mb = 10,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    extra_flags = { "free_slot_in" },
+    library = { number = 135, index = 135, sort = 201 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x082, action = 0x15, subtype = 8, params = { 1, 0, 0, 0 } },
+}
+
+local magnum = define.chip {
+    id = "v1/magnum",
+    name = "Magnum",
+    codes = { "F", "L", "W" },
+    element = "null",
+    family = "cursor",
+    class = "standard",
+    rarity = 2,
+    mb = 31,
+    damage = 130,
+    hit_param = 148,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 136, index = 136, sort = 309 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x08D, action = 0x15, subtype = 24, params = { 0, 0, 0, 0 } },
+}
+
+local circgun = define.chip {
+    id = "v1/circgun",
+    name = "CircGun",
+    codes = { "P", "T", "V" },
+    element = "null",
+    family = "cursor",
+    class = "standard",
+    rarity = 2,
+    mb = 35,
+    damage = 150,
+    hit_param = 148,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 137, index = 137, sort = 102 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x08E, action = 0x15, subtype = 19, params = { 2, 4, 0, 0 } },
 }
 
 local fanfare = define.chip {
@@ -493,6 +621,24 @@ local silence = define.chip {
     legacy = legacy { number = 0x095, action = 0x15, subtype = 9, params = { 3, 0, 0, 0 } },
 }
 
+local guardian = define.chip {
+    id = "v1/guardian",
+    name = "Guardian",
+    codes = { "O" },
+    element = "null",
+    family = "summon",
+    class = "standard",
+    rarity = 4,
+    mb = 64,
+    damage = 200,
+    hit_param = 158,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 154, index = 154, sort = 226 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x097, action = 0x15, subtype = 14, params = { 0, 0, 0, 0 } },
+}
+
 local panlgrab = define.chip {
     id = "v1/panlgrab",
     name = "PanlGrab",
@@ -527,6 +673,42 @@ local areagrab = define.chip {
     library = { number = 165, index = 165, sort = 19 },
     slot_in_limit = 1,
     legacy = legacy { number = 0x0A3, action = 0x15, subtype = 0, params = { 1, 0, 0, 0 } },
+}
+
+local grabbnsh = define.chip {
+    id = "v1/grabbnsh",
+    name = "GrabBnsh",
+    codes = { "B", "M", "S" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 2,
+    mb = 24,
+    damage = 20,
+    hit_param = 138,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    library = { number = 166, index = 166, sort = 220 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x0A4, action = 0x15, subtype = 15, params = { 0, 0, 0, 0 } },
+}
+
+local grabrvng = define.chip {
+    id = "v1/grabrvng",
+    name = "GrabRvng",
+    codes = { "I", "Q", "Z" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 3,
+    mb = 50,
+    damage = 40,
+    hit_param = 138,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    library = { number = 167, index = 167, sort = 221 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x0A5, action = 0x15, subtype = 15, params = { 0, 0, 0, 0 } },
 }
 
 local pnlretrn = define.chip {
@@ -799,6 +981,24 @@ local navi_20 = define.chip {
     },
 }
 
+local blzrdbal = define.chip {
+    id = "v1/blzrdbal",
+    name = "BlzrdBal",
+    codes = { "H", "N", "T" },
+    element = "aqua",
+    family = "aqua",
+    class = "standard",
+    rarity = 3,
+    mb = 39,
+    damage = 150,
+    hit_param = 158,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 115, index = 115, sort = 43 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x0C7, action = 0x15, subtype = 21, params = { 0, 0, 0, 0 } },
+}
+
 local bigbomb = define.chip {
     id = "v1/bigbomb",
     name = "BigBomb",
@@ -956,15 +1156,25 @@ return {
     mchnswrd = mchnswrd,
     elemswrd = elemswrd,
     assnswrd = assnswrd,
+    burnsqr1 = burnsqr1,
+    burnsqr2 = burnsqr2,
+    burnsqr3 = burnsqr3,
     sensor1 = sensor1,
     sensor2 = sensor2,
     sensor3 = sensor3,
+    wind = wind,
+    fan = fan,
+    magnum = magnum,
+    circgun = circgun,
     fanfare = fanfare,
     discord = discord,
     timpani = timpani,
     silence = silence,
+    guardian = guardian,
     panlgrab = panlgrab,
     areagrab = areagrab,
+    grabbnsh = grabbnsh,
+    grabrvng = grabrvng,
     pnlretrn = pnlretrn,
     holypanl = holypanl,
     snctuary = snctuary,
@@ -979,6 +1189,7 @@ return {
     lifeaur = lifeaur,
     atk_10 = atk_10,
     navi_20 = navi_20,
+    blzrdbal = blzrdbal,
     bigbomb = bigbomb,
     ftrsword = ftrsword,
     crosswrd = crosswrd,
