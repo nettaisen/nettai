@@ -1,7 +1,9 @@
 --!strict
--- MegaMan's charged shot: weapon routine 1 (`sub_8011A7E`), which sets up
--- action 0x16 with (Attack + 1) * 10 damage (10 when worn out), and action
--- 0x16 (`sub_80EBE00`), the shot. The NaviCust's charged-shot program
+-- MegaMan's charged shot (`megaman/charged-shot`): the original's weapon
+-- routine 1 (`sub_8011A7E`), which sets up action 0x16 with (Attack + 1) *
+-- 10 damage (10 when worn out), and action 0x16 (`sub_80EBE00`), the shot.
+-- The ruleset also starts the shot without the setup (the role
+-- `forced_charged_shot`, rules/roles.luau). The NaviCust's charged-shot program
 -- changes the shot's kind on a lucky draw. See
 -- docs/engine/objects-and-player.md §B7.
 --
@@ -22,26 +24,21 @@ export type State = {
     timer: number,
 }
 
-local charged_shot = {
-    state = { timer = "u16" },
-}
-
-local ACTION = 0x16
+local charged_shot = {}
 
 -- The phases, on the attack's step.
 local WAIT, SHOOT, RECOVER = 0x0, 0x4, 0x8
 
 -- The wait before the buster comes up, in ticks.
 local WAIT_TICKS = 5
--- The shot's sound and height (16.16), and the muzzle flash (attachment
--- 5).
-local SHOT_SOUND, SHOT_Z, FLASH = 0x6A, 0x18_0000, 5
+-- The shot's sound and height (16.16).
+local SHOT_SOUND, SHOT_Z = asset.sound("buster-6a"), 0x18_0000
 
 -- The plain charged shot's kind.
 local PLAIN = 6
 
 -- `sub_8011A7E`.
-function charged_shot.setup(navi: Object): number
+function charged_shot.setup(navi: Object): Action
     local side = navi.alliance
     local stats = battle.navi(side)
     local base = stats.attack + 1
@@ -69,7 +66,7 @@ function charged_shot.setup(navi: Object): number
     navi.extra = 0
     navi.hit_param = 0
     navi.attack_lockout = 0
-    return ACTION
+    return charged_shot.action
 end
 
 -- `sub_80EBE54`: raise the buster; on the second tick the shot (its kind
@@ -86,7 +83,7 @@ local function shoot(me: Object, s: State)
     if s.timer == 1 then
         battle.play_sound(SHOT_SOUND)
         me.recovery = projectile.fire(me, { kind = me:attack_param(1), damage = me.attack_damage, z = SHOT_Z })
-        attachment.spawn(me, { kind = FLASH }, "related")
+        attachment.attach(me, lib.flash, "related")
     end
     s.timer += 1
     if s.timer > 4 then
@@ -129,7 +126,7 @@ local function recover(me: Object, s: State)
 end
 
 -- `sub_80EBE00`.
-function charged_shot.update(me: Object, s: State)
+local function update(me: Object, s: State)
     local step = me.step
     if step == WAIT then
         wait(me, s)
@@ -141,5 +138,18 @@ function charged_shot.update(me: Object, s: State)
         error(string.format("charged shot phase %#x reads past its phase table", step))
     end
 end
+
+charged_shot.action = define.action { id = "megaman/charged-shot/action", state = { timer = "u16" }, update = update }
+
+charged_shot.weapon = define.weapon {
+    id = "megaman/charged-shot",
+    name = "Charged shot",
+    -- The charge table's row 1; Charge 5 reads on into row 2's first
+    -- entry, as the original's table does.
+    charge_ticks = { 100, 90, 80, 70, 60, 180 },
+    setup = charged_shot.setup,
+    -- (Transitional: the routine number the pack's forms name it by.)
+    legacy = { routines = { 0x01 } },
+}
 
 return charged_shot
