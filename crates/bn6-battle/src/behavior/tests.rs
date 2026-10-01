@@ -94,6 +94,8 @@ fn battles_run_the_content_scripts() {
             "justice-one",
             "lance",
             "land-mine",
+            "lilbolr/boiler",
+            "lilbolr/layer",
             "lunge-slash",
             "meteor",
             "mine",
@@ -130,6 +132,9 @@ fn battles_run_the_content_scripts() {
             "time-bom",
             "tomahawk-man",
             "trap-chip",
+            "vdoll/curse",
+            "vdoll/doll",
+            "vdoll/sparkles",
             "whirlwind",
         ]
     );
@@ -1212,7 +1217,7 @@ fn air_raid_bombs() {
     let d = duel(AIR_RAID_CHIPS);
     assert!(d.ticks("airraid/plane") > 0, "a plane: {:?}", d.seen);
     assert!(d.ticks("airraid/propeller") > 0, "its propeller: {:?}", d.seen);
-    assert!(d.ticks("overlay") > 0, "its jet flame: {:?}", d.seen);
+    assert!(d.ticks("lilbolr/layer") > 0, "its jet flame: {:?}", d.seen);
     assert!(d.ticks("panel-strike") > 0, "its bombs: {:?}", d.seen);
 }
 
