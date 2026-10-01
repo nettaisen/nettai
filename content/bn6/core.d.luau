@@ -279,6 +279,9 @@ declare class Collision
     -- The secondary elements (sword 0x80, cursor 0x40, wind 0x20, break
     -- 0x10) of what hit it this window (read-only).
     damage_elements: number
+    -- The hit modifiers of what hit it this window (HitModifierFinal; 0x3C
+    -- the pushes, 0x40 a pushing hit; read-only).
+    hit_mod_final: number
     -- Its barrier (read-only): none, up, or popped (blown away by wind);
     -- the barrier's HP byte; the hit modifier that popped it.
     barrier: BarrierState
@@ -827,6 +830,9 @@ declare battle: {
     -- are the other side's and the local navi is blind). Presentation, as
     -- the original keeps it in the objects' visibility.
     viewer_sees: (side: number) -> boolean,
+    -- `sub_800ED90` and its record's flags: the chip `user` would use next
+    -- deals damage (a player's at its hand's cursor; another object's own).
+    next_chip_damages: (user: Object) -> boolean,
     link: () -> boolean,
     -- A battle against a ranked boss (battle effect 1).
     boss_rank: () -> boolean,
@@ -1617,6 +1623,10 @@ export type RolesSpec = {
         -- The NaviCust FirstBarrier: raise its barrier and the barrier's
         -- visual on the navi as it enters (`sub_8013892`).
         first_barrier: ((navi: Object) -> ())?,
+        -- `sub_801813A`'s end: what an obstacle encased in ice (`ice`) or a
+        -- bubble becomes on its panel; its field-object registry class (nil:
+        -- it wasn't registered).
+        encased: ((obstacle: Object, ice: boolean, class: number?) -> ())?,
     }?,
 }
 

@@ -1029,6 +1029,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
+    lib_fn!(lua, t, "next_chip_damages", |_, user: mlua::UserDataRef<Object>| {
+        with(|api, _| Ok(api.next_chip_damages(user.0)))
+    });
     lib_fn!(lua, t, "viewer_sees", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.viewer_sees(side)))
@@ -1712,6 +1715,10 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } => vec![obj(navi)?],
+        HookCall::RoleEncased { obstacle, ice, class } => {
+            let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
+            vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
+        }
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1728,6 +1735,6 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::ActorListEntry { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
-        HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } => Ok(Value::Nil),
+        HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } => Ok(Value::Nil),
     }
 }

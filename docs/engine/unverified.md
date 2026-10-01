@@ -90,7 +90,7 @@ standard chip action…), whichever section below the family belongs to:
 | CircGun (subtype 19) | A to fire | no scenario presses A | yes | chips/0x08e-circgun/a-fires, a-fires-late: verified |
 | CircGun | a start column of the user's own panels, shots on non-solid panels | the timeout's place | yes | chips/0x08e-circgun/after-areagrab, holes: verified |
 | CircGun | Param3 1, a non-player first actor | no chip | unreachable | |
-| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: **differs** (subtype 18 isn't implemented: being ported) |
+| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: verified |
 | BlzrdBal (subtype 21) | a non-solid thrower panel, the roller's battle-over end, three swallows | | yes | chips/0x0c7-blzrdbal/no-footing, ko, three-rocks: verified |
 | BlzrdBal | the excluded NameIDs, more than 4 hit objects | | hard | open |
 | Magnum (subtype 24) | A to fire, the cursor's later rows | no scenario presses A | yes | chips/0x08d-magnum/a-fires, a-fires-late: verified |
@@ -119,10 +119,10 @@ standard chip action…), whichever section below the family belongs to:
 | Counter cut-ins | a failed controller spawn | pool full | unreachable | |
 | AntiRecv | the heal turned to damage, Roll's dimming taken over | scratch recordings were lost | yes | chips/0x0bd-antirecv/recov10, roll: verified |
 | AntiRecv | Roll's damage with the double-damage flag, a full effect pool | | hard / unreachable | open |
-| AntiDmg | the trap sprung: the stars thrown back | the lab never hits a trap's user | yes | chips/0x0bb-antidmg/sprung, sprung-side0, small-hit, turn-end: **differs** (the role `actions.anti_damage_counter` isn't filled: being ported); replaced: verified |
-| AntiSwrd | the trap sprung by a sword | | yes | chips/0x0bc-antiswrd/sprung: **differs** (`actions.anti_sword_counter`: being ported); not-a-sword: verified |
+| AntiDmg | the trap sprung: the stars thrown back | the lab never hits a trap's user | yes | chips/0x0bb-antidmg/sprung, sprung-side0, small-hit, turn-end, replaced: verified (the counter is chips/antidmg/counter) |
+| AntiSwrd | the trap sprung by a sword | | yes | chips/0x0bc-antiswrd/sprung, not-a-sword: verified (the counter is chips/antiswrd/counter) |
 | ElemTrap (§3.6.10) | the spring, the sparkles, the counterattack, the panel bursts | the lab never hits the trap with an element | yes | chips/0x0c5-elemtrap/sprung-fire, sprung-elec, null-hit: verified |
-| BodyGrd (PA 0x157) | the trap itself | recorded only as its recipe | yes | pa/0x157-bodygrd/sprung: **differs** (`actions.body_guard_counter`: being ported) |
+| BodyGrd (PA 0x157) | the trap itself | recorded only as its recipe | yes | pa/0x157-bodygrd/sprung: verified (the counter is chips/bodygrd/counter) |
 | IceCube (0x17C) | its record | no folder holds it | yes (save edit) | chips/0x17c-icecube/hit, pushed, broken, melted: verified |
 | WhiCapsl (0x17E) | its dimming record | no folder can hold it (no codes: chip 0x185 instead) | unreachable | chips/0x17e-whicapsl/hit shows the 0x185: verified |
 | Invisibl | shots and swords through an invisible navi | | yes | chips/0x0b1-invisibl/shot-at, the `invisible` template: verified |
