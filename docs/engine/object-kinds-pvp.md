@@ -16,7 +16,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T1 0x0d | 0x080b9f44 | lab only (SlashMan: the pack's `objects/slash-man`, chips.md §3.6.18) |
 | T1 0x0f | 0x080ba708 | 438 |
 | T1 0x10 | 0x080baa8c | 481 (ElmntMan: the pack's `objects/elmnt-man`, chips.md §3.6.7) |
-| T1 0x15 | 0x080bb608 | 513 (EraseMan: the pack's `objects/erase-man`, chips.md §3.6.7) |
+| T1 0x15 | 0x080bb608 | 513 (EraseMan: the pack's `chips/eraseman/navi`, chips.md §3.6.7) |
 | T1 0x16 | 0x080bb914 | lab only (ChargeMan: the pack's `objects/charge-man`, chips.md §3.6.17) |
 | T1 0x1b | 0x080bc650 | 424 (Cross navi image: `kinds::cross_merge`, objects-and-player.md §12.10) |
 | T1 0x2d | 0x080c0e04 | 136 (navi warp: `kinds::navi_warp`, chips.md §3.6.7) |
@@ -56,7 +56,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0xb9 | 0x080dc4fc | 96 (ElmntMan's vine: the pack's `objects/elmnt-vine`, chips.md §3.6.7) |
 | T3 0xc1 | 0x080dd34c | 296 |
 | T3 0xc2 | 0x080dd764 | 967 |
-| T3 0xc3 | 0x080dd940 | 732 (EraseMan's slash: the pack's `objects/erase-beam`, chips.md §3.6.7) |
+| T3 0xc3 | 0x080dd940 | 732 (EraseMan's slash: the pack's `chips/eraseman/beam`, chips.md §3.6.7) |
 | T3 0xc8 | 0x080de13c | 2774 (a dragon's body segment: the pack's `objects/dragon-body`, chips.md §3.8) |
 | T3 0xc9 | 0x080de404 | 579 (a dragon's head: the pack's `objects/dragon-head`, chips.md §3.8) |
 | T3 0xcf | 0x080df328 | 4170 |
@@ -81,7 +81,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T4 0x48 | 0x080e5c2c | 847 |
 | T4 0x5a | 0x080e70c8 | 184 |
 | T4 0x5d | 0x080e74d4 | 762 (Invisibl dimming controller: the pack's `objects/invisible`, chips.md §3.6) |
-| T4 0x62 | 0x080e78bc | 260 (EraseMan's aim mark: the pack's `objects/erase-mark`, chips.md §3.6.7) |
+| T4 0x62 | 0x080e78bc | 260 (EraseMan's aim mark: the pack's `chips/eraseman/mark`, chips.md §3.6.7) |
 | T4 0x6b | 0x080e807c | 54 |
 | T4 0x76 | 0x080e8b00 | 595 |
 | T4 0x80 | 0x080e9460 | 1192 |

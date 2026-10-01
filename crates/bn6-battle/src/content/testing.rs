@@ -380,6 +380,9 @@ fn assets() -> bn6_content_api::AssetNames {
         ("big-slash", sprite(0x0C, 0x15)),
         ("cross-slash", sprite(0x10, 0x41)),
         ("reflected-shot", sprite(0x14, 0x04)),
+        ("eraseman", sprite(0x08, 0x04)),
+        ("erase-mark", sprite(0x10, 0x50)),
+        ("erase-beam", sprite(0x10, 0x51)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -399,6 +402,9 @@ fn assets() -> bn6_content_api::AssetNames {
         ("big-sword-swing", 0xCE),
         ("grab-shot", 0xA2),
         ("grab-shot-2", 0xA1),
+        ("appear", 0x94),
+        ("erase-man", 0x10E),
+        ("erase-man-2", 0xBA),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -424,9 +430,10 @@ pub fn scripts() -> Scripts {
                 ("objects/attachment/attachment", "objects/attachment/attachment"),
                 ("objects/sun-beam/sun_beam", "objects/sun-beam/sun_beam"),
                 ("chips/001-sungun1/chip", "chips/00f-gundels1/chip"),
-                ("objects/erase-man/erase_man", "objects/erase-man/erase_man"),
-                ("objects/erase-mark/erase_mark", "objects/erase-mark/erase_mark"),
-                ("objects/erase-beam/erase_beam", "objects/erase-beam/erase_beam"),
+                ("chips/eraseman/mark", "chips/eraseman/mark"),
+                ("chips/eraseman/beam", "chips/eraseman/beam"),
+                ("chips/eraseman/navi", "chips/eraseman/navi"),
+                ("chips/0ec-eraseman/chip", "chips/0ec-eraseman/chip"),
                 ("lib/dimming", "lib/dimming"),
                 ("lib/grab/shot", "lib/grab/shot"),
                 ("lib/grab/controller", "lib/grab/controller"),
@@ -658,9 +665,6 @@ fn kinds() -> Vec<ObjectKind> {
     };
     let mut kinds = vec![
         kind("sun-beam", Pool::Effect, 0x48, "objects/sun-beam/sun_beam"),
-        kind("erase-man", Pool::Actor, 0x15, "objects/erase-man/erase_man"),
-        kind("erase-mark", Pool::Effect, 0x62, "objects/erase-mark/erase_mark"),
-        kind("erase-beam", Pool::Attack, 0xC3, "objects/erase-beam/erase_beam"),
         kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball"),
         kind("element-pillar", Pool::Attack, 0x61, "objects/element-pillar/element_pillar"),
         kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
@@ -866,7 +870,7 @@ fn named_chips() -> Vec<ChipData> {
             hit_param: 100,
             params: [16, 0, 0, 0],
             damage: 60,
-            script: Some("objects/erase-man/erase_man".into()),
+            script: Some("chips/0ec-eraseman/chip".into()),
             ..chip(ERASER, "Eraser", 0x1B, 5)
         },
         ChipData {

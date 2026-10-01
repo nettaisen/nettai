@@ -1,12 +1,12 @@
 --!strict
 -- EraseMan's own chip, EDeletBm (action 0x0A for AI index 4,
 -- `sub_80F1056`): he raises his scythe (10 ticks), slashes an erase beam
--- (attack object #0xC3, objects/erase-beam) onto each panel ahead to the
+-- (attack object #0xC3, chips/eraseman/beam) onto each panel ahead to the
 -- field's edge, up to five, that lasts while he stays in the action (60
 -- ticks), then 30 ticks of recovery. [unverified: no lab scenario reaches
 -- it; docs/engine/standard-chips.md]
 
-local erase_beam = require("../../objects/erase-beam/erase_beam")
+local beam = require("../eraseman/beam")
 local link = require("../190-heatpres/state")
 type State = LinkChipState
 
@@ -15,7 +15,7 @@ local erase_delete = {}
 local RAISE, SLASH, RECOVER = 0x0, 0x4, 0x8
 -- The beams' parameters: the middle aim, 60 ticks, the navi's (they end
 -- once he leaves action 0xA).
-local BEAM = { 1, 0x3C, 1 }
+local BEAM = { aim = 1, ticks = 0x3C, navis = true }
 
 -- `sub_80F1074`: animation 0x11 for 10 ticks.
 local function raise(me: Object, s: State)
@@ -39,7 +39,7 @@ local function beams(me: Object)
             return
         end
         local element = me.attack_element
-        erase_beam.spawn(me, x, y, element, BEAM, link.damage_word(me), Vec3.new(y, element, 0x10000))
+        beam.spawn(me, x, y, element, BEAM, link.damage_word(me), Vec3.new(y, element, 0x10000))
     end
 end
 
