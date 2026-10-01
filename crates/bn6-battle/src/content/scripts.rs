@@ -1,5 +1,5 @@
 //! The content pack's scripts: its Luau modules, which live next to what
-//! they define (`chips/minibomb/chip.luau`, `objects/rock/rock.luau`,
+//! they define (`chips/minibomb/chip.luau`, `chips/rockcube/rock.luau`,
 //! `navis/megaman/weapons/absorb/weapon.luau`, `lib/...`).
 //!
 //! [`Content::define`](super::Content::define) turns what the modules
