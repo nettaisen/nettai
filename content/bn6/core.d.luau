@@ -680,6 +680,9 @@ declare class Navi
     -- buster's blank and charged slots (of 16).
     buster_shot: number
     charge_shot_kind: number
+    -- The damage a B+Back special takes from the navi's stats (ProtoMan's
+    -- reflecting guard).
+    back_special_damage: number
     buster_blanks: number
     buster_charged: number
     -- NaviCust bugs: the HP drain in the fight and while the custom

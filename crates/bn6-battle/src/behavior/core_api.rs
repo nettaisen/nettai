@@ -364,6 +364,7 @@ impl CoreApi for Battle {
             NaviStat::ChipRecovery => i(s.chip_recovery as i64),
             NaviStat::BusterShot => i(s.weapons.buster_shot as i64),
             NaviStat::ChargeShotKind => i(s.weapons.charge_shot_kind as i64),
+            NaviStat::BackSpecialDamage => i(s.weapons.back_special_damage as i64),
             NaviStat::BusterBlanks => i(s.bugs.buster_blanks as i64),
             NaviStat::BusterCharged => i(s.bugs.buster_charged as i64),
             NaviStat::HpDrain => i(s.bugs.hp_drain as i64),
