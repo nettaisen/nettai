@@ -392,9 +392,4 @@ impl Content {
     pub fn navi_chip(&self, navi: NaviHandle) -> Option<(ChipHandle, ChipCode)> {
         self.defs.navi(navi).own_chip
     }
-
-    /// An attachment kind (the attachment object's first parameter).
-    pub fn attachment(&self, kind: u8) -> &AttachmentKind {
-        self.objects.attachment(kind)
-    }
 }

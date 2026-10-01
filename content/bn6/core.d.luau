@@ -1207,18 +1207,6 @@ declare int: {
 -- names, sprites as "CC-II", keyed by the entities' ids. Only the fields
 -- scripts read are typed here; the rest are there too.
 
--- What an attachment looks like and where it sits on its owner.
-export type AttachmentKind = {
-    -- The attachment's number (its first spawn parameter).
-    id: number,
-    sprite: SpriteId,
-    palette: number,
-    -- Pixels raised by (subtracted from y and z).
-    lift: number,
-    -- The owner's sprite attach point it follows (nil: its origin).
-    attach_point: number?,
-}
-
 export type RockKind = {
     id: number,
     anim: number,
@@ -1337,7 +1325,6 @@ export type ObjectKindData = { pool: Pool, index: number, script: string }
 
 export type PackData = {
     objects: {
-        attachments: { [number]: AttachmentKind },
         rocks: { [number]: RockKind },
         absorbed_sprites: { [number]: SpriteId },
         body_overlays: { [number]: BodyOverlay },

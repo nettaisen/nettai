@@ -1335,27 +1335,8 @@ pub fn custom_screen_layout() -> CustomScreenLayout {
 }
 
 fn objects() -> ObjectData {
-    let gun = |id: u8| AttachmentKind {
-        id,
-        sprite: SpriteId { category: 0x0C, index: 0x01 },
-        palette: id.saturating_sub(1),
-        lift: 0,
-        attach_point: (id != 0).then_some(3),
-    };
     let rock = |id, anim, element| RockKind { id, anim, hp: 100, element, debris_palette: id, break_sound: 0x118, name_id: 0x100 };
-    // The buster's muzzle flash and arm.
-    let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        // Attachments are numbered without gaps: the swords' blade (7),
-        // fillers up to the bee chip's hive (0x28), then what the thrown
-        // chips hold (a seed at 0x24, the flash bomb at 0x2E).
-        attachments: (0..5)
-            .map(gun)
-            .chain([plain(5, 0x06), plain(6, 0x03), blade_kind()])
-            .chain((8..0x28).map(|id| if id == 0x24 { plain(id, 0x02) } else { plain(id, 0x06) }))
-            .chain([plain(0x28, 0x5E)])
-            .chain((0x29..0x2F).map(|id| plain(id, 0x02)))
-            .collect(),
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         // The elements navi's overlay (variant 0x0F).
@@ -1380,11 +1361,6 @@ fn objects() -> ObjectData {
         kinds: kinds(),
         shock_waves: (0..16).map(|id| ShockWave { id, sprite: SpriteId { category: 0x10, index: 3 }, anim: 1, ticks: 6, panel: None }).collect(),
     }
-}
-
-/// The swords' blade (attachment 7), held at the gun's point.
-fn blade_kind() -> AttachmentKind {
-    AttachmentKind { id: 7, sprite: SpriteId { category: 0x0C, index: 0x08 }, palette: 0, lift: 0, attach_point: Some(3) }
 }
 
 /// The projectile's kinds: a plain shot (0), one that cracks the panel it
@@ -1564,7 +1540,7 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x1B }, vec![vec![f(8, LAST | LOOP)], vec![f(7, 0), f(7, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 0x04 }, vec![vec![f(2, 0), f(3, LAST)]]);
     // The swords' blade, swinging.
-    sprites.insert(blade_kind().sprite, vec![vec![f(3, 0), f(3, 0), f(8, LAST)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x08 }, vec![vec![f(3, 0), f(3, 0), f(8, LAST)]]);
     // The arrow.
     sprites.insert(SpriteId { category: 0x0C, index: 0x21 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // The grab shot: falling, landing.
