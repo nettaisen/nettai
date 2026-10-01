@@ -41,12 +41,14 @@ chips/blkbomb/bomb.luau 2
 chips/crosswrd/chip.luau 1
 chips/dbldream/chip.luau 1
 chips/ftrsword/chip.luau 1
+chips/sensor/turret.luau 2
 chips/stepswrd/chip.luau 1
 lib/buster.luau 1
 lib/dragon.luau 4
 lib/hp.luau 2
 lib/instant-chips/02-invisible.luau 1
 lib/instant-chips/06-repair-obstacles.luau 2
+lib/instruments/instrument.luau 2
 lib/object_setup.luau 2
 lib/panels.luau 2
 lib/swords/vari.luau 4
@@ -80,7 +82,6 @@ navis/00-megaman/weapons/buster/weapon.luau 7
 navis/00-megaman/weapons/charged-shot/weapon.luau 4
 objects/absorbed-obstacle/absorbed_obstacle.luau 8
 objects/air-spin/air_spin.luau 15
-objects/anti-recovery/anti_recovery.luau 2
 objects/aqua-needle/aqua_needle.luau 7
 objects/aqua-surge/aqua_surge.luau 7
 objects/attachment/attachment.luau 4
@@ -164,7 +165,6 @@ objects/navi-boost/navi_boost.luau 15
 objects/navi-effect/navi_effect.luau 8
 objects/needle-volley/needle_volley.luau 6
 objects/panel-bursts/panel_bursts.luau 11
-objects/panel-changer/panel_changer.luau 6
 objects/panel-strike/panel_strike.luau 7
 objects/projectile/projectile.luau 7
 objects/proto-man/proto_man.luau 8
