@@ -107,15 +107,12 @@ fn record_arg(b: &Bound, v: &LuaValue, what: &str) -> mlua::Result<u16> {
     }
 }
 
-/// A sound asset, or a sound number (deprecated).
+/// A sound asset: the pack's id for it.
 fn sound_arg(v: LuaValue) -> mlua::Result<u16> {
-    if let LuaValue::Table(_) = v {
-        return bound(|b| match b.asset(&v) {
-            Some((AssetKind::Sound, h)) => b.with_names(|n| n.sound(h)).ok_or_else(|| mlua::Error::runtime("no such sound")),
-            _ => Err(mlua::Error::runtime("expected a sound (asset.sound)")),
-        });
-    }
-    u16_arg(v, "sound")
+    bound(|b| match b.asset(&v) {
+        Some((AssetKind::Sound, h)) => b.with_names(|n| n.sound(h)).ok_or_else(|| mlua::Error::runtime("no such sound")),
+        _ => Err(mlua::Error::runtime(format!("expected a sound (asset.sound), got {}", v.type_name()))),
+    })
 }
 
 fn api_error(e: ApiError) -> mlua::Error {

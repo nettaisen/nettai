@@ -855,9 +855,9 @@ declare battle: {
     -- Battle flag 1: the fight is on (collision is live).
     fighting: () -> boolean,
     -- Sound for both players, or for one side's player (output only): a
-    -- sound asset (asset.sound). Deprecated: a sound number.
-    play_sound: (sound: Sound | number) -> (),
-    play_sound_for: (side: number, sound: Sound | number) -> (),
+    -- sound asset (asset.sound).
+    play_sound: (sound: Sound) -> (),
+    play_sound_for: (side: number, sound: Sound) -> (),
     -- `camera_initShakeEffect_80302a8`: the camera shakes for `ticks` ticks
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
@@ -1733,6 +1733,91 @@ export type RolesSpec = {
         eruption_target: CollisionType?,
         thrown_obstacle: CollisionType?,
         thrown_obstacle_target: CollisionType?,
+    }?,
+    -- The sounds the ruleset plays itself (rules/roles.luau says what each
+    -- is for).
+    sounds: {
+        panel_crack: Sound?,
+        panel_poison: Sound?,
+        own_hit: Sound?,
+        hit: Sound?,
+        damage: Sound?,
+        guard: Sound?,
+        counter_hit: Sound?,
+        deleted: Sound?,
+        recovery: Sound?,
+        damage_bonus: Sound?,
+        pause: Sound?,
+        gauge_full: Sound?,
+        low_hp: Sound?,
+        cut_in: Sound?,
+        telop: Sound?,
+        buster_charge: Sound?,
+        buster_charged: Sound?,
+        freeze: Sound?,
+        bubble: Sound?,
+        bubble_pop: Sound?,
+        confusion: Sound?,
+        invisible: Sound?,
+        appear: Sound?,
+        arrive: Sound?,
+        fade: Sound?,
+        obstacle_lift: Sound?,
+        obstacle_throw: Sound?,
+        cross_merge: Sound?,
+        form_change: Sound?,
+        cross_change: Sound?,
+        cross_change_chime: Sound?,
+        beast_out: Sound?,
+        gregar_roar: Sound?,
+        falzar_roar: Sound?,
+        beast_over_rumble: Sound?,
+        beast_over_burst: Sound?,
+        cross_special: Sound?,
+        refused: Sound?,
+    }?,
+    -- The music the ruleset starts itself: a link battle's, the winner's
+    -- (in special battles, and otherwise) and the loser's. A stage's music
+    -- is its own.
+    music: {
+        link_battle: Sound?,
+        winner_special: Sound?,
+        winner: Sound?,
+        loser: Sound?,
+    }?,
+    -- The sprites of the engine's own kinds: the charge glows, the Full
+    -- Synchro aura, the status visuals, the ice block and the bubble, the
+    -- hit marker, the eruption, the lock-on marker, the Beast head, the
+    -- idle overlay.
+    sprites: {
+        charge_glow: SpriteAsset?,
+        charge_glow_a: SpriteAsset?,
+        full_synchro_aura: SpriteAsset?,
+        confusion: SpriteAsset?,
+        blindness: SpriteAsset?,
+        immobilized: SpriteAsset?,
+        ice: SpriteAsset?,
+        bubble: SpriteAsset?,
+        hit_marker: SpriteAsset?,
+        eruption: SpriteAsset?,
+        lockon_marker: SpriteAsset?,
+        idle_overlay: SpriteAsset?,
+        beast_head: SpriteAsset?,
+    }?,
+    -- The banners the ruleset shows itself: a round's start, a turn's, the
+    -- final turns', a draw, the damage judge's, a telop's on either side,
+    -- a Program Advance's and an empty selection's. The win and lose
+    -- banners are the navi's.
+    banners: {
+        round_start: Banner?,
+        turn_start: Banner?,
+        final_turn: Banner?,
+        draw: Banner?,
+        judge: Banner?,
+        telop: Banner?,
+        telop_remote: Banner?,
+        program_advance: Banner?,
+        program_advance_empty: Banner?,
     }?,
     hooks: {
         -- The NaviCust FirstBarrier: raise its barrier and the barrier's
