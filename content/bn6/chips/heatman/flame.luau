@@ -1,37 +1,39 @@
 --!strict
--- A flame (the original's attack object #0x26, `sub_80C8C74`): HeatMan's
--- breath, and what BurnSqr's burner sets (chips/burnsqr). It flares up on
--- its panel (5 ticks), burns hitting it (its ticks less 5, its region gone
--- once it has hit something), and dies down (2 ticks). A thrown one counts
--- as a different attacker. HeatMan's act and step their sprite while
--- dimmed; others wait a dimming out, collision on. What it is spawned with
--- is a `HeatFlame` (types.d.luau). See docs/engine/chips.md §3.6.15.
+-- A flame (the original's attack object #0x26, `sub_80C8C74`): it flares up
+-- on its panel (5 ticks), burns hitting it (its time less those 5, its
+-- region gone once it has hit something), and dies down (2 ticks).
+-- HeatMan's (the HeatMan chips' navi, objects/heat-man) acts and steps its
+-- sprite while dimmed; his link navi's HeatPres flames (navis/heatman)
+-- wait a dimming out, collision on. See docs/engine/chips.md §3.6.15.
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
 
 local flame = {}
 
-export type State = {
-    -- Ticks it burns, flaring up included (Param2).
-    ticks: number,
-    -- It acts, and animates, while the battle is dimmed (Param1 4:
-    -- HeatMan's).
+-- What a flame is spawned with (the original's three parameters).
+export type Spec = {
+    -- It acts and steps its sprite while dimmed (Param1 4: the navi
+    -- chip's).
     while_dimmed: boolean,
-    -- It counts as a thrown attack (Param3: collision type `thrown`, else
-    -- `attack`).
-    thrown: boolean,
+    -- How long it lasts (Param2).
+    ticks: number,
+    -- What it is: an attack, or (Param3 set) a thrown attack.
+    is: CollisionType,
 }
+export type State = Spec
 
 local SPRITE = asset.sprite("heat-flame")
 local SOUND = asset.sound("form-change")
-local HIT_MOD = 3
 
 -- Its actions.
-local FLARE, BURN, DIE_DOWN = 0, 4, 8
+local FLARE, BURN, DIE_DOWN = 0x0, 0x4, 0x8
+local FLARE_TICKS, DIE_DOWN_TICKS = 5, 2
 
--- `sub_80C8CA4`: on its panel on the ground, collision on.
+-- `sub_80C8CA4`: on its panel on the ground (its Z's fraction kept),
+-- collision on.
 local function init(me: Object)
+    local s = me.state :: State
     me:set_coordinates_from_panel()
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, bit32.band(p.z, 0xFFFF))
@@ -48,19 +50,18 @@ local function init(me: Object)
         me:free()
         return
     end
-    local s = me.state :: State
-    me:setup_collision(if s.thrown then collision.thrown else collision.attack, collision.hits_navis, HIT_MOD)
+    me:setup_collision(s.is, collision.hits_navis, 3)
     me.collision:set_hit_effect(sparks.fire)
     me.collision:present()
     me:set_lifecycle("update")
 end
 
--- `sub_80C8D64`: flaring up, 5 ticks (sound 0xF7).
+-- `sub_80C8D64`: flaring up, 5 ticks.
 local function flare(me: Object)
     if me.phase == 0 then
         me.phase = 4
         battle.play_sound(SOUND)
-        me.timer = 5
+        me.timer = FLARE_TICKS
         return
     end
     local left = me.timer - 1
@@ -70,12 +71,13 @@ local function flare(me: Object)
     end
 end
 
--- `sub_80C8D8E`: burning, its ticks less 5; then its region goes.
+-- `sub_80C8D8E`: burning for its time less the flare's; then its region
+-- goes.
 local function burn(me: Object)
     if me.phase == 0 then
         me.phase = 4
         me.anim = 1
-        me.timer = (me.state :: State).ticks - 5
+        me.timer = (me.state :: State).ticks - FLARE_TICKS
         return
     end
     local left = me.timer - 1
@@ -92,7 +94,7 @@ local function die_down(me: Object)
     if me.phase == 0 then
         me.phase = 4
         me.anim = 2
-        me.timer = 2
+        me.timer = DIE_DOWN_TICKS
         return
     end
     local left = me.timer - 1
@@ -105,7 +107,7 @@ end
 local ACTIONS = { [FLARE] = flare, [BURN] = burn, [DIE_DOWN] = die_down }
 
 -- `sub_80C8D10`: resolve the hits (its region goes once it hit), act
--- (outside a dimming unless it is HeatMan's), register again.
+-- (outside a dimming unless it acts while dimmed), register again.
 local function tick(me: Object)
     local c = me.collision
     c:remove()
@@ -131,7 +133,7 @@ end
 flame.kind = define.kind {
     id = "heatman/flame",
     pool = "attack",
-    state = { ticks = "u8", while_dimmed = "bool", thrown = "bool" },
+    state = { while_dimmed = "bool", ticks = "u8", is = "collision" },
     -- `sub_80C8C74`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -150,11 +152,12 @@ flame.kind = define.kind {
     end,
 }
 
--- `sub_80C8DE0`: a flame on (x, y) from `owner` with `element`, the damage
--- word and what it is. `z` is the spawner's register that becomes its Z,
--- whose fraction it keeps.
-function flame.spawn(owner: Object, x: number, y: number, element: number, what: HeatFlame, damage: number, z: number): Object?
-    local o = battle.spawn(flame.kind, Vec3.new(y, element, z))
+-- `sub_80C8DE0`: a flame on (x, y) from `owner`, with `element` and the
+-- damage word `damage`. It runs while dimmed. `pos` is where the spawner's
+-- registers leave it (its panel's row, the element and its Z), of which
+-- its init keeps the Z's fraction.
+function flame.spawn(owner: Object, x: number, y: number, element: number, spec: Spec, damage: number, pos: Vec3): Object?
+    local o = battle.spawn(flame.kind, pos)
     if o then
         o.panel_x, o.panel_y = x, y
         o.element = element
@@ -162,9 +165,7 @@ function flame.spawn(owner: Object, x: number, y: number, element: number, what:
         o.alliance, o.flip = owner.alliance, owner.flip
         o.run_while_dimmed = true
         local s = o.state :: State
-        s.ticks = what.ticks
-        s.while_dimmed = what.while_dimmed == true
-        s.thrown = what.thrown == true
+        s.while_dimmed, s.ticks, s.is = spec.while_dimmed, spec.ticks, spec.is
     end
     return o
 end
