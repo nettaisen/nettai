@@ -462,7 +462,7 @@ return define.rules("identities", legacy {
     },
     name_looks = {
         [205] = { sprite = asset.sprite("immobilized"), anim = 0, palette = 0, shadow = false },
-        [206] = { sprite = asset.sprite("absorbed-obstacle-05"), anim = 0, palette = 0, shadow = false },
+        [206] = { sprite = asset.sprite("boulder"), anim = 0, palette = 0, shadow = false },
         [207] = { anim = 0, palette = 0, shadow = false },
         [208] = { sprite = asset.sprite("immobilized"), anim = 1, palette = 0, shadow = true },
         [209] = { sprite = asset.sprite("immobilized"), anim = 2, palette = 0, shadow = true },

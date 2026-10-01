@@ -3,13 +3,13 @@
 -- `sub_80D535C`): GroundMan's rockfall, and his link navi's RC Brakr
 -- (navis/groundman). Its panel blinks for a while, then the rock drops
 -- from 160 pixels in 25 ticks and hits the panel it lands on; on a solid
--- panel it breaks into two chips (objects/rock-chip), cracking the panel if
--- it cracks. A hit on the way throws chips off too, but it falls on. See
--- docs/engine/chips.md §3.6.25.
+-- panel it breaks into two chips (objects/falling-rock/chip), cracking the
+-- panel if it cracks. A hit on the way throws chips off too, but it falls
+-- on. See docs/engine/chips.md §3.6.25.
 
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
-local rock_chip = require("../../objects/rock-chip/rock_chip")
+local rock_chip = require("../../objects/falling-rock/chip")
 local sparks = require("../../lib/sparks")
 
 local rock = {}
@@ -41,13 +41,14 @@ local CHIPS = { [0] = { 0x8000, 0x2_8000 }, [1] = { -0x8000, 0x3_0000 }, [2] = {
 local WARN, FALL, LAND = 0, 4, 8
 
 -- `sub_80D5516`: two chips from where it is, drawn in front (priority
--- 2), Param1 their number; one draw picks the first pair.
+-- 2); one draw picks the first pair. (Their Param1, their number, nothing
+-- reads.)
 local function break_up(me: Object)
     local k = bit32.band(battle.rng_positive(), 3)
     for n = 0, 1 do
         local v = CHIPS[bit32.band(k + n, 3)]
         local p = me.pos
-        rock_chip.spawn(Vec3.new(p.x, p.y, 0), v[1], v[2], 2, n)
+        rock_chip.spawn(Vec3.new(p.x, p.y, 0), v[1], v[2], 2)
     end
 end
 
