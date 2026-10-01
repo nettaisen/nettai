@@ -19,7 +19,8 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = falzar_beast_buster.weapon, a_charge = rock_barrage, alt_a_charge = dash.weapon },
     mugshot = asset.mugshot("groundcross-beast"),
-    identity = {
+    identity = define.identity {
+        class = "cross_beast",
         version = 0,
         actor_type = "player",
         ai_index = 45,

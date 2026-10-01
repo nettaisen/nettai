@@ -164,10 +164,6 @@ pub struct Deprecated {
 /// Uses deprecated whatever their arguments: pattern, what, instead. (What
 /// the API no longer has isn't here: a use of it is a type error.)
 const ALWAYS: &[(&str, &str, &str)] = &[
-    (".name_id", "name_id", "the identity (step 11)"),
-    ("battle.navi_record(", "battle.navi_record", "the identity (step 11)"),
-    (":death_hook(", "me:death_hook", "the identity (step 11)"),
-    ("battle.attach_point(", "battle.attach_point", "me:attach_point_pos"),
     ("legacy {", "a legacy marker", "the v2 form it stands for"),
     ("legacy = {", "a legacy marker", "the v2 form it stands for"),
 ];
@@ -345,8 +341,8 @@ mod tests {
 
     #[test]
     fn comments_and_strings_are_not_code() {
-        let s = Scanned::new("local x = 'me:death_hook(1)' -- me:death_hook(2)\n--[[ me:death_hook(3) ]] me:death_hook(4)\n");
-        assert_eq!(s.find(":death_hook(").count(), 1);
+        let s = Scanned::new("local x = 'me:set_action(1)' -- me:set_action(2)\n--[[ me:set_action(3) ]] me:set_action(4)\n");
+        assert_eq!(s.find(":set_action(").count(), 1);
         assert_eq!(s.code.len(), s.source.len());
     }
 

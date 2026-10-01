@@ -1002,7 +1002,8 @@ fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
     assert_eq!(b.field.objects.class_of(block), Some(0));
     run_only(&mut b, &["rock", "encased-bubble"]);
     let o = b.objects.get(block);
-    assert_eq!((o.panel, o.name_id, o.element, o.hp), (panel, 0xD1, 2, 200));
+    let ice = b.content.identity_by_key("ice-block");
+    assert_eq!((o.panel, o.identity, o.element, o.hp), (panel, Some(ice), 2, 200));
 }
 
 #[test]

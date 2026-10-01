@@ -37,9 +37,15 @@ export type State = {
 }
 
 local SPRITE = asset.sprite("guardian-statue")
--- Its NameID (the field objects' look) and its kind among absorbed
--- obstacles.
-local NAME = 0xE3
+-- Its identity: a field object, with the look something that takes its
+-- place shows (DustMan's junk).
+local IDENTITY = define.identity {
+    id = "guardian",
+    class = "field_object",
+    version = 4,
+    ai_index = 1,
+    look = { sprite = asset.sprite("guardian-statue"), anim = 0, palette = 0, shadow = true },
+}
 -- How it looks absorbed (the original's obstacle kind's sprite: its own).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 local LIFETIME = 0x1770
@@ -305,7 +311,7 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
-    me.name_id = NAME
+    me.identity = IDENTITY
     me.hp, me.max_hp = 1, 1
     me.timer = LIFETIME
     me.timer2 = APPEAR_TICKS
