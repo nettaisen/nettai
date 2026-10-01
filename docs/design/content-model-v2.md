@@ -2069,6 +2069,11 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   link navi has which chip is the navi record's `own_chip`, not the original's table by AI index: any navi that
   holds the chip runs its action. It goes when chip definitions take damage formulas (step 10): each chip
   becomes a `define.chip` beside its action and its navi's definition names it as `own_chip` (step 5's navis).
+  *Since step 5* each is a definition already (navis/<navi>/record.luau, which the navi's `own_chip` names),
+  numbered by its legacy marker, whose `script` names the action's module and whose `damage` and `navi_damage`
+  give the formula; the same resolution applies to it (a numbered definition without a use of its own runs the
+  action its marker's module exports). Folding the action into the definition (`action = ...`, no `script`)
+  retires the mechanism for that chip.
 - **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
   above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
   (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
