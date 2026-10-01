@@ -180,8 +180,8 @@ const ALWAYS: &[(&str, &str, &str)] = &[
     ("battle.hand_chip(", "battle.hand_chip", "chips by handle (step 3b)"),
     ("data.", "the data global", "definitions"),
     (":load(\"", "sprite:load(id)", "asset.sprite"),
-    ("legacy {", "a legacy marker", "the chip's v2 form"),
-    ("legacy = {", "a legacy marker", "the chip's v2 form"),
+    ("legacy {", "a legacy marker", "the v2 form it stands for"),
+    ("legacy = {", "a legacy marker", "the v2 form it stands for"),
 ];
 
 /// Calls deprecated when an argument is a number: pattern, the arguments
@@ -211,6 +211,17 @@ pub fn deprecated(source: &str) -> Vec<Deprecated> {
     for at in s.find("battle.spawn(") {
         if s.args(at + "battle.spawn".len()).first().is_some_and(|a| a.starts_with('"') || a.starts_with('\'')) {
             out.push(Deprecated { line: s.line(at), what: "battle.spawn(pool, index)", instead: "battle.spawn(kind, pos)" });
+        }
+    }
+    // A weapon definition's setup that names its action by number (the
+    // v1 modules' `return ACTION`): a numeric constant whose name says it
+    // is an action.
+    if s.find("define.weapon").next().is_some() {
+        for at in s.find("return ") {
+            let name = s.code[at + "return ".len()..].split(|c: char| !(c.is_alphanumeric() || c == '_')).next().unwrap_or("");
+            if name.contains("ACTION") && constants.contains(name) {
+                out.push(Deprecated { line: s.line(at), what: "an action by number", instead: "an action definition" });
+            }
         }
     }
     for &(pattern, positions, what, instead) in BY_ARGUMENT {
@@ -301,6 +312,19 @@ mod tests {
             d,
             ["battle.play_sound(number)", "battle.play_sound(number)", "battle.spawn(pool, index)", "me:set_attack(number)", "the data global"]
         );
+    }
+
+    #[test]
+    fn a_weapon_definition_naming_its_action_by_number_counts() {
+        let setup = "local ACTION, DAMAGE = 0x27, 30\n\
+                     local function setup(navi: Object): number\n    return ACTION\nend\n";
+        let weapon = format!("{setup}local W = define.weapon {{ id = 'w', name = 'W', charge_ticks = {{}}, setup = setup }}\n");
+        let d: Vec<&str> = deprecated(&weapon).iter().map(|d| d.what).collect();
+        assert_eq!(d, ["an action by number"]);
+        // (A v1 weapon module's whole registration is the transitional part.)
+        assert!(deprecated(setup).is_empty());
+        let named = weapon.replace("return ACTION", "return SHOT");
+        assert!(deprecated(&named).is_empty());
     }
 
     #[test]

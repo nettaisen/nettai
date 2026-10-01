@@ -11,6 +11,13 @@ local buster = {}
 -- The buster arm (data.objects.attachments), and an enemy navi's.
 local ARM, NAVI_ARM = 6, 0x2B
 
+-- The muzzle flash a shot leaves in the navi's first related slot (the
+-- original's attachment row 5, at attach point 0x10), and the buster arm a
+-- thrown obstacle leaves there instead (row 6, the arm `raise_arm`
+-- raises).
+buster.flash = attachment.look { sprite = asset.sprite("muzzle-flash"), palette = 0, attach_point = 0x10 }
+buster.arm = attachment.look { sprite = asset.sprite("buster-arm"), palette = 0 }
+
 -- The arm's palette additions: the charge disabled, and a Full Synchro
 -- Beast form.
 local NO_CHARGE_PALETTE = 0xE

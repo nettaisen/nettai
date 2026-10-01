@@ -1,18 +1,18 @@
 --!strict
 -- Weapon routine 0x2B (`sub_8011F8C`), the buster of a navi that absorbs
--- obstacles: it throws the last obstacle absorbed (action 0x11, variant 2,
--- 200 damage), or fires the plain buster when there is none.
+-- obstacles: it throws the last obstacle absorbed (the buster's shot,
+-- action 0x11, variant 2, 200 damage), or fires the plain buster when
+-- there is none.
 
-local buster = require("../00-buster/buster")
+local buster = require("../buster/weapon")
 
 local throw_absorbed = {}
 
-local ACTION = 0x11
 local THROW = 2
 local DAMAGE = 200
 
 -- `sub_8011F8C`.
-function throw_absorbed.setup(navi: Object): number
+function throw_absorbed.setup(navi: Object): Action
     local kind, anim = navi:pop_absorbed()
     if kind == nil then
         return buster.setup(navi)
@@ -30,7 +30,7 @@ function throw_absorbed.setup(navi: Object): number
     navi.extra = 0
     navi.attack_lockout = 0
     navi.variant = THROW
-    return ACTION
+    return buster.shot
 end
 
 return throw_absorbed

@@ -400,22 +400,24 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
 }
 
 /// `sub_80E1352(user, 0)`: the user vanishes while its navi chip's navi
-/// acts (its status visuals, charge glow, Full Synchro aura and the HUD
-/// with it). (Its barrier visual too, once the port has one:
-/// docs/engine/dimming-chips.md §3.3.)
+/// acts (its barrier visual, status visuals, charge glow, Full Synchro
+/// aura and the HUD with it).
 pub fn hide_user(b: &mut Battle, user: ObjectRef) {
-    hide_user_with(b, user, false);
-}
-
-/// `sub_80E1352(user, mask)`: with `keep_visuals` (mask 0xF, CrosOver's),
-/// the confusion and blindness visuals stay on (the status visual and the
-/// HUD the mask also keeps are not modelled).
-pub fn hide_user_with(b: &mut Battle, user: ObjectRef, keep_visuals: bool) {
     b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
     set_vanished(b, user, true);
-    if !keep_visuals {
-        set_links_visible(b, user, false);
+    set_barrier_visual_shown(b, user, false);
+    set_links_visible(b, user, false);
+    set_charge_glow(b, user, false);
+    if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
+        crate::kinds::full_synchro_aura::hide(b, aura);
     }
+}
+
+/// `sub_80E1352(user, 0xF)`: the user vanishes, but its barrier visual,
+/// its confusion and blindness visuals and the HUD stay (BugFix's glow).
+pub fn hide_user_sparing(b: &mut Battle, user: ObjectRef) {
+    b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
+    set_vanished(b, user, true);
     set_charge_glow(b, user, false);
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
         crate::kinds::full_synchro_aura::hide(b, aura);
@@ -436,6 +438,7 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
         b.objects.get_mut(user).flags |= crate::object::flags::VISIBLE;
     }
     set_vanished(b, user, false);
+    set_barrier_visual_shown(b, user, true);
     set_links_visible(b, user, true);
     set_charge_glow(b, user, true);
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
@@ -452,6 +455,17 @@ fn set_vanished(b: &mut Battle, user: ObjectRef, on: bool) {
         *status |= crate::actor::status::VANISHED;
     } else {
         *status &= !crate::actor::status::VANISHED;
+    }
+}
+
+/// The barrier's visual (AIData+0x60, a content kind) is hidden and shown
+/// with its navi (`sub_80E0DCA`, `sub_80E0DD0`: its `shown` byte).
+fn set_barrier_visual_shown(b: &mut Battle, user: ObjectRef, on: bool) {
+    let Some(v) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).barrier_visual) else { return };
+    // (The game writes the byte of whatever object the link names; a link
+    // names a visual while the visual lives.)
+    if crate::behavior::has_state_field(b, v, "shown") {
+        crate::behavior::set_state_field(b, v, "shown", bn6_content_api::Value::Bool(on));
     }
 }
 

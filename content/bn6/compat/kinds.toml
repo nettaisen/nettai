@@ -41,6 +41,7 @@ tango = { pool = "actor", index = 0x4D }
 "engine/idle-overlay" = { pool = "actor", index = 0x55 }
 "engine/body-overlay" = { pool = "actor", index = 0x56 }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
+"bugfix/glow" = { pool = "actor", index = 0x5D }
 "engine/full-synchro-aura" = { pool = "actor", index = 0x5E }
 projectile = { pool = "attack", index = 0x00 }
 "engine/hitbox" = { pool = "attack", index = 0x03 }
@@ -92,6 +93,7 @@ rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 drill = { pool = "attack", index = 0x71 }
 "rskyhny/bee" = { pool = "attack", index = 0x74 }
 "spoutcross-beast/surge" = { pool = "attack", index = 0x76 }
+instrument = { pool = "attack", index = 0x78 }
 "grndman/rock" = { pool = "attack", index = 0x80 }
 "tengucross-beast/whirlwind" = { pool = "attack", index = 0x81 }
 "dolthdr/doll" = { pool = "attack", index = 0x82 }
@@ -107,9 +109,12 @@ thunder-column = { pool = "attack", index = 0x8B }
 "airspin/top" = { pool = "attack", index = 0x9B }
 "erasecross/ray" = { pool = "attack", index = 0x9D }
 "h-burst/burst" = { pool = "attack", index = 0x9E }
+"sensor/scanner" = { pool = "attack", index = 0x9F, scratch_z_fraction = true }
+"sensor/laser" = { pool = "attack", index = 0xA0, scratch_z_fraction = true }
 "erasecross-beast/drop" = { pool = "attack", index = 0xA1 }
 "flshbom/bomb" = { pool = "attack", index = 0xA4 }
 "bugbomb/bomb" = { pool = "attack", index = 0xA5 }
+"sensor/turret" = { pool = "attack", index = 0xA6 }
 "chrgeman/car" = { pool = "attack", index = 0xAC }
 "justcone/strike" = { pool = "attack", index = 0xAE }
 "megaman/dash-hit" = { pool = "attack", index = 0xAF }
@@ -137,6 +142,7 @@ dragon-head = { pool = "attack", index = 0xC9 }
 "grab/controller" = { pool = "effect", index = 0x03, scratch_position = true }
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06 }
+barrier-visual = { pool = "effect", index = 0x07 }
 "engine/charge-glow" = { pool = "effect", index = 0x08, scratch_position_without_sprite = true }
 "falling-rock/chip" = { pool = "effect", index = 0x09 }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
@@ -146,6 +152,7 @@ rising-bubble = { pool = "effect", index = 0x14 }
 dust-storm-mote = { pool = "effect", index = 0x19 }
 gauge-speed = { pool = "effect", index = 0x1C, scratch_position = true }
 panel-changer = { pool = "effect", index = 0x1F, scratch_position = true }
+"panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
 panel-bursts = { pool = "effect", index = 0x24, scratch_position = true }
 "timebom/bomb" = { pool = "effect", index = 0x27, scratch_position = true }
 "engine/afterimage" = { pool = "effect", index = 0x28 }
@@ -155,18 +162,22 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 "antirecv/controller" = { pool = "effect", index = 0x2C, scratch_position = true }
 "spoutman/pillar" = { pool = "effect", index = 0x2D, scratch_z_fraction = true }
 "spoutman/mark" = { pool = "effect", index = 0x2E }
+"barriers/controller" = { pool = "effect", index = 0x2F, scratch_position = true }
 "deltaray/follow-effect" = { pool = "effect", index = 0x31 }
 "rockcube/cube" = { pool = "effect", index = 0x37, scratch_position = true }
 "rock/debris" = { pool = "effect", index = 0x38 }
+"bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
 "engine/bubble-visual" = { pool = "effect", index = 0x3C }
 "golmhit/golem" = { pool = "effect", index = 0x3F }
 "aquandl/volley" = { pool = "effect", index = 0x40, scratch_position = true }
 meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
+"instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
 "judgeman/whip" = { pool = "effect", index = 0x5A }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "grndman/drill" = { pool = "effect", index = 0x61 }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
+"sensor/controller" = { pool = "effect", index = 0x65, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }

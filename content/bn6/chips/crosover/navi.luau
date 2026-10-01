@@ -610,7 +610,7 @@ local function init_megaman(me: Object)
     local s = me.state :: State
     local user = me.related1 :: Object
     s.user_image = me:wear_navi_image(user)
-    dimming.hide_user(user, true)
+    dimming.hide_user_sparing(user)
     me:set_coordinates_from_panel()
     me.pos = user.pos
     me:set_panel_from_coordinates()
