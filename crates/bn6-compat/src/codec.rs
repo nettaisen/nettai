@@ -522,7 +522,9 @@ mod tests {
                 })
                 .ok()
             };
-            let modeled = values.iter().any(|&v| decoded(v).is_some_and(|d| d != base));
+            // (A value that doesn't decode is read as naming content: the
+            // byte is modeled.)
+            let modeled = values.iter().any(|&v| decoded(v).is_none_or(|d| d != base));
             // The engine has no numbers for weapons or shot programs: a
             // bug code can only clear those bytes.
             let by_handle = |v: u8| match offset {
