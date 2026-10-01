@@ -40,6 +40,9 @@ variants.charged = v { collision = SHOT, hit_mod = 0, element = "null", spark = 
 -- GigaCan's shot (row 0xC): it bursts around what it hits, and over the
 -- last two columns when it leaves the field.
 variants.gigacan = v { collision = SHOT, hit_mod = 3, element = "null", spark = sparks.blast, bursts = true }
+-- CrosOver's MegaMan's shot (row 0x1D): it staggers, and climbs a pixel a
+-- panel.
+variants.climbing = v { collision = SHOT, hit_mod = 3, element = "null", spark = sparks.charged, climbs = true }
 
 -- The rest of the rows, which only the NaviCust's programs name.
 local function panel(kind: PanelType): PanelHit
@@ -91,7 +94,7 @@ local ROWS: { [number]: ProjectileVariant } = {
     [0x1A] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0xFB },
     [0x1B] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0x18, bug_arg = 1 },
     [0x1C] = v { collision = SHOT, hit_mod = 1, element = "null", spark = sparks.charged },
-    [0x1D] = v { collision = SHOT, hit_mod = 3, element = "null", spark = sparks.charged, climbs = true },
+    [0x1D] = variants.climbing,
     [0x1E] = v { collision = SHOT, hit_mod = 0x61, element = "null", spark = sparks.plain },
     [0x1F] = v { collision = SHOT, hit_mod = 0x49, element = "null", spark = sparks.plain },
     [0x20] = v { collision = SHOT, hit_mod = 0x45, element = "null", spark = sparks.charged },
