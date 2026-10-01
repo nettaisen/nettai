@@ -15,4 +15,8 @@ effects.splash = define.effect { sprite = asset.sprite("rising-bubble"), anim = 
 -- object a chip removes (effect 0x14).
 effects.puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 
+-- A small splash: something diving into or out of the field (effect 0x02:
+-- the dragons).
+effects.ripple = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
 return effects
