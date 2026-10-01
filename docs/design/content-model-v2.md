@@ -1128,6 +1128,39 @@ return define.form {
 
 The per-form tables the Rust ruleset holds as `match form.0` today (§7.5) become these fields.
 
+**As built** (step 7): navis/00-megaman/weapons/buster, charged-shot and blank-shot (`weapon.luau` each: the
+weapon definition `megaman/buster` with its shot `megaman/buster/shot`, `megaman/charged-shot` with
+`megaman/charged-shot/action`, `megaman/blank-shot` with `megaman/blank-shot/action`), and
+navis/00-megaman/forms/heatcross/charge.luau (`heatcross/charge`). The v1 registrations (`weapon.toml`, the 16
+buster alias folders) went. What it settled:
+
+- **A weapon definition takes routine numbers** with the transitional `legacy = { routines = { ... } }`
+  marker: the pack's forms, the navis' rows and the ruleset still name weapons by number, and
+  `weapon_numbered(n)` finds the definition by any of its routines (the buster's are the 17 numbers whose
+  `off_80117D4` entries are `sub_8011A26`); `weapon_number(h)`, which the ruleset's numeric logic asks, is the
+  first. Counted by the ratchet; it goes when the forms (step 5's form reader) and the ruleset (phase C) name
+  weapons by handle.
+- **Charge times are the definition's own**: the charge table's row, plus the next row's first entry for
+  Charge 5, which the original's table reads on into (written out and commented in each definition).
+- **A role for the forced charged shot**: idle.rs's request 0x20 starts `roles.actions.forced_charged_shot`
+  (rules/roles.luau, BN6's first roles file: the charged shot's action), not action 0x16 by number. The trap
+  counters' roles stay unfilled until those chips convert. DustCross's throws (weapons 0x2B, 0x2C) return the
+  buster's shot definition.
+- **The muzzle flash and the arm a throw leaves are looks** in lib/buster (`buster.flash`, `buster.arm`), on the
+  newly named `muzzle-flash` and `buster-arm` sprites; the shot's sounds are assets.
+- **HeatCross is partial.** Its form stays the pack's record until step 5's form reader; its charged shot is a
+  weapon definition (routine 0x06) whose setup still returns FireBrn's action by number, 0x27 (FireBrn is v1),
+  which the ratchet counts (a weapon definition's `return ACTION`) until FireBrn converts.
+- **What the attack keeps stays numeric for now**: the shot's kind in the attack's first parameter (the
+  projectile family's, §5.3), the throw as the shot's variant 2, the arm `raise_arm` raises by attachment row.
+- **SlashCross's charged slash** (weapons 0x11 and 0x12, action 0x41) is left to family 8e. It reads the
+  charged chip's subtype and first parameter (the four Sword-family definitions' `legacy` marker gives them).
+  Its proper hook needs a runtime read of the attack chip's definition (so the charge can ask the chip for its
+  slash: StepSwrd's dash, CrosSwrd's two waves, DblDream's two slashes, the blade and the sound) and the sword
+  wave's variants as records (it spawns the wave with the chip's subtype as its first parameter).
+- **Verified** on the test content (the shots' timelines, the throw, the aliases, the role, the definitions'
+  routines and charge times), the type check, and the traces and the chip lab on a real pack.
+
 ## 6. Compat: the original's numbers
 
 ### 6.1 What it holds
@@ -1802,6 +1835,11 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   DblDream's two slashes) as a trait or spec field SlashCross's weapon reads: with HeatCross's exemplar (step 7)
   or when family 8e converts the forms. The marker's `action` and `script` (a behaviour still a v1 module) are
   step 5's; the reader refuses them until then.
+- **The weapon legacy marker.** A weapon definition may carry `legacy = { routines = { ... } }`, the routine
+  numbers the pack's forms, the navis' rows and the ruleset name it by (MegaMan's buster, charged shot and blank
+  shot, HeatCross's charge). Counted by the ratchet; it goes when the forms are definitions (step 5's form
+  reader) and the ruleset names weapons by handle (phase C). HeatCross's charge also returns FireBrn's action by
+  number (counted) until FireBrn converts.
 - **Registration-by-number shims.** chips/036-minibomb (action 0x12), chips/047-sword (0x13) and
   chips/056-mchnswrd (0x49) run a record's action by its subtype for records something still names by number:
   the Cross special's chips (berserk.rs `CROSS_SPECIAL_CHIPS`: MiniBomb, EnergBom, MegEnBom and swords), the

@@ -51,7 +51,7 @@ collision.hit_by_other_side_or_blockers = define.collision {
 }
 
 -- An attack that pierces invisibility and flashing and breaks guards and
--- ice (row 0x16: the erase beams).
+-- ice (row 0x16: the erase beams, Sensor's laser).
 collision.piercing_break = define.collision {
     id = "piercing-break",
     side0 = 0x80000086,
@@ -113,5 +113,21 @@ collision.thrown_piercing = define.collision { id = "thrown-piercing", side0 = 0
 
 -- A pull of no side (row 0x1E: DustMan's DustBrk drawing things in).
 collision.pull = define.collision { id = "pull", side0 = 0x00004280, side1 = 0x00004280, row_offset = 0xF0 }
+
+-- Nothing (row 0x00: a target that reaches nothing; Discord's notes, which
+-- confuse without learning they hit).
+collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1 = 0x00000000, row_offset = 0x00 }
+
+-- Another body of its side, while dimmed too (row 0x13: the obstacles a
+-- chip sets down: the instruments, AirRaid's plane, Sensor's turret).
+collision.own_body = define.collision { id = "own-body", side0 = 0x02010080, side1 = 0x01010080, row_offset = 0x98 }
+
+-- An attack that breaks guards (row 0x32: the instruments' notes).
+collision.guard_breaking = define.collision {
+    id = "guard-breaking",
+    side0 = 0x80005080,
+    side1 = 0x40005080,
+    row_offset = 0x190,
+}
 
 return collision
