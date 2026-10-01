@@ -554,6 +554,42 @@ pub fn draw<'a>(
         let group = (0..5).map(|k| glyph(&hud.pause, k, hud.enemy_palette, 100 + 8 * k as i32, 63, 0, None)).collect();
         list.insert_at(FRONT_LAYER, NAME_BUCKET, group);
     }
+    warning_parts(b, hud, &view, list, problems);
+}
+
+/// Where a warning marker over the custom gauge is.
+const GAUGE_WARNING: (i32, i32) = (0x78, 0x0C);
+
+/// The warning markers the console shows this tick (`sub_800AE90`), which
+/// the main loop queues after the HUD's sprites (`sub_8009FCC`): a 16x16
+/// arrow over the custom gauge or over a place on the field (projected as
+/// the HUD's pieces are), the second frame while bit 3 of the console's
+/// frame counter is set; none unless its place is within 16 pixels of the
+/// screen's top left and its bottom right below (x + 16, y + 16) < (0xFF,
+/// 0xB0). (A place left of or above the screen, within 16 pixels, makes
+/// the original write a garbled sprite: not drawn here, and no netbattle
+/// marker goes there.)
+fn warning_parts<'a>(b: &Battle, hud: &'a Hud, view: &View, list: &mut SpriteList<'a>, problems: &mut Problems) {
+    let console = b.setup.local_side as usize & 1;
+    for w in &b.warnings[console] {
+        let (x, y) = match w.at {
+            None => GAUGE_WARNING,
+            Some(at) => {
+                let p = project_hud((at.x, at.y, at.z), view);
+                (p.x, p.y)
+            }
+        };
+        if !(0..0xFF - 16).contains(&x) || !(0..0xB0 - 16).contains(&y) {
+            continue;
+        }
+        if hud.warning.is_empty() {
+            problems.note("the pack has no warning marker (extract it again)".into());
+            continue;
+        }
+        let frame = if b.consoles[console].frames & 8 != 0 { 4 } else { 0 };
+        let part = SpritePart { first_tile: frame, priority: 0, ..block(&hud.warning, 16, 16, hud.warning_palette, x, y) };
+        list.insert_at(FRONT_LAYER, 0, vec![part]);
+    }
 }
 
 /// The sprite layers the HUD's tasks insert into (`sub_802FE28`'s r2), and
