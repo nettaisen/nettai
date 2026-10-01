@@ -1,16 +1,17 @@
 --!strict
 -- A dragon's head (attack object #0xC9, `sub_80DE404`): HeatDrgn's,
--- ElecDrgn's, AquaDrgn's or WoodDrgn's (Param1, the chip's subtype). It
--- rises from the row above the field, dives down its column hitting each
--- panel it passes, swims a panel forward, and climbs back out; the elec,
--- aqua and wood dragons leave the panels behind them cracked, frozen or
--- grassy. Four body segments follow it (objects/dragon-body). See
--- lib/dragon.luau and docs/engine/chips.md §3.8.
+-- ElecDrgn's, AquaDrgn's or WoodDrgn's (its variant). It rises from the
+-- row above the field, dives down its column hitting each panel it passes,
+-- swims a panel forward, and climbs back out; the elec, aqua and wood
+-- dragons leave the panels behind them cracked, frozen or grassy. Four body
+-- segments follow it (./body). See ./dragon and docs/engine/chips.md §3.8.
 
-local dragon = require("../../lib/dragon")
-local dragon_body = require("../dragon-body/dragon_body")
+local body = require("./body")
+local collision = require("../../rules/collision")
+local dragon = require("./dragon")
+local regions = require("../regions")
 
-local dragon_head = {}
+local head = {}
 
 export type State = {
     -- The panel it was last on (EV+0, EV+1).
@@ -27,28 +28,12 @@ export type State = {
     angle: number,
     -- Its height where the dip starts (EV+8).
     base_y: number,
-}
-
-dragon_head.state = {
-    last_x = "u8",
-    last_y = "u8",
-    steps = "u8",
-    leg = "u8",
-    ticks_per_panel = "u8",
-    angle_step = "u8",
-    angle = "u8",
-    base_y = "i32",
+    -- Its dragon (the original's first parameter, the chip's subtype).
+    variant: DragonVariant,
 }
 
 -- Collision: what it is and hits.
-local SELF_TYPE, TARGET_TYPE = 0x04, 0x05
--- By kind (Param1): the hit modifier (`byte_80DE4C8`), the hit spark
--- (`byte_80DE4DC`), the panel it leaves behind (`dword_80DE79C`; false:
--- none) and its body segments' delays (`byte_80DE3F4`).
-local HIT_MODS = { [0] = 3, 3, 3, 3 }
-local HIT_SPARKS = { [0] = 1, 3, 2, 4 }
-local PANELS: { [number]: PanelType | false } = { [0] = false, "cracked", "ice", "grass" }
-local DELAYS = { [0] = { 3, 6, 9, 12 }, { 3, 6, 9, 12 }, { 3, 6, 9, 12 }, { 3, 6, 9, 12 } }
+local HIT = { is = collision.attack, hits = collision.hits_navis }
 -- What ends its hits (`dword_80DE540`).
 local BLOCKED = 0xFF80_0000
 -- Its swimming animations: the first, and which way they run, by leg
@@ -56,36 +41,17 @@ local BLOCKED = 0xFF80_0000
 local SWIM_ANIM = { [0] = 2, 6 }
 local SWIM_ANIM_DIR = { [0] = 1, -1 }
 local HEAD_ANIM = 2
-local ROAR = 0xF7
+local ROAR = asset.sound("form-change")
 -- Its actions: dive or climb, swim, leave.
 local COLUMN, SWIM, LEAVE = 0, 4, 8
 
--- `sub_80DE660`: a dragon of kind `kind` in column x for `owner`, with the
--- damage word `damage`. Its position is the spawner's registers (the row,
--- the element and z) until its init places it.
-function dragon_head.spawn(owner: Object, x: number, y: number, element: number, kind: number, damage: number): Object?
-    local o = battle.spawn_kind("dragon-head", Vec3.new(y, element, 0), { kind })
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = owner.alliance, owner.flip
-    end
-    return o
-end
-
--- `sub_80DE768`: the kind's panel on (x, y), if that is a solid field
+-- `sub_80DE768`: the variant's panel on (x, y), if that is a solid field
 -- panel.
 local function mark(me: Object, x: number, y: number)
     if x <= 0 or x >= 7 or y <= 0 or y >= 4 or not field.solid(x, y) then
         return
     end
-    local kind = me:param(1)
-    local panel = PANELS[kind]
-    if panel == nil then
-        error(string.format("dragon kind %d reads past its panel table", kind))
-    end
+    local panel = (me.state :: State).variant.panel
     if panel then
         field.set_type(x, y, panel)
     end
@@ -100,7 +66,7 @@ local function crossed(me: Object)
     end
     mark(me, s.last_x, s.last_y)
     s.last_x, s.last_y = x, y
-    me.collision.region = 1
+    me.collision:set_region(regions.single)
 end
 
 -- `sub_80DE544`: down (or up) its column; at the bottom row, swim; at the
@@ -177,7 +143,7 @@ local function leave(me: Object)
         me.phase = 1
         dragon.splash(me, s.leg)
     end
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me.visible = false
     me:set_lifecycle("destroy")
 end
@@ -190,12 +156,12 @@ local function tick(me: Object)
     c:remove()
     me:hit_spark()
     if battle.over() then
-        c.region = 0
+        c:set_region(nil)
         me:set_lifecycle("destroy")
         return
     end
     if bit32.btest(c.hit_flags, BLOCKED) then
-        c.region = 0
+        c:set_region(nil)
     end
     if not battle.dimmed() then
         local a = me.action
@@ -216,26 +182,22 @@ end
 -- `sub_80DE430`: in the row above the field, with its body behind; a
 -- splash and a roar.
 local function init(me: Object): boolean
-    dragon.place(me, HEAD_ANIM)
+    local s = me.state :: State
+    local v = s.variant
+    dragon.place(me, v, HEAD_ANIM)
     me.visible = true
     if not me:create_collision() then
         me:free()
         return false
     end
-    local kind = me:param(1)
-    local hit_mod, spark, delays = HIT_MODS[kind], HIT_SPARKS[kind], DELAYS[kind]
-    if not hit_mod then
-        error(string.format("dragon kind %d reads past its collision tables", kind))
-    end
-    me:setup_collision(SELF_TYPE, TARGET_TYPE, hit_mod)
+    me:setup_collision(HIT.is, HIT.hits, v.hit_mod)
     local c = me.collision
-    c.region = 1
-    c.hit_effect = spark
+    c:set_region(regions.single)
+    c:set_hit_effect(v.spark)
     c:present()
     -- sub_80DE67E
-    local s = me.state :: State
     s.last_x, s.last_y = me.panel_x, me.panel_y
-    local per_panel, step = dragon.start(me)
+    local per_panel, step = dragon.start(me, v)
     s.ticks_per_panel = per_panel
     if per_panel ~= 0 then
         s.angle_step = step
@@ -244,7 +206,7 @@ local function init(me: Object): boolean
     s.steps = 0
     -- sub_80DE7C8
     for i = 0, 3 do
-        dragon_body.spawn(me, i, delays[i + 1])
+        body.spawn(me, v, i, v.delays[i + 1])
     end
     dragon.splash(me, 1)
     battle.play_sound(ROAR)
@@ -253,20 +215,51 @@ local function init(me: Object): boolean
     return true
 end
 
--- `sub_80DE404`.
-function dragon_head.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        if not init(me) then
+head.kind = define.kind {
+    id = "dragon-head",
+    pool = "attack",
+    state = {
+        last_x = "u8",
+        last_y = "u8",
+        steps = "u8",
+        leg = "u8",
+        ticks_per_panel = "u8",
+        angle_step = "u8",
+        angle = "u8",
+        base_y = "i32",
+        variant = "record:dragon-variant",
+    },
+    -- `sub_80DE404`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            if not init(me) then
+                return
+            end
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
             return
         end
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
-        return
+        me:update_sprite_while_paused()
+    end,
+}
+
+-- `sub_80DE660`: dragon `v` in column x for `owner`, with the damage word
+-- `damage`. Its position is the spawner's registers (the row, the element
+-- and z) until its init places it.
+function head.spawn(owner: Object, x: number, y: number, element: number, v: DragonVariant, damage: number): Object?
+    local o = battle.spawn(head.kind, Vec3.new(y, element, 0))
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o:set_damage_word(damage)
+        o.alliance, o.flip = owner.alliance, owner.flip
+        local s = o.state :: State
+        s.variant = v
     end
-    me:update_sprite_while_paused()
+    return o
 end
 
-return dragon_head
+return head
