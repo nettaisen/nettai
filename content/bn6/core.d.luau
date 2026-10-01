@@ -870,6 +870,10 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
+    -- A side's bug frags, and spending some (its callers check there are
+    -- enough: the count wraps below 0).
+    bug_frags: (side: number) -> number,
+    spend_bug_frags: (side: number, count: number) -> (),
     -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
     side_special: (side: number) -> SideSpecial,
     player: (side: number) -> Object?,
@@ -1459,9 +1463,12 @@ export type WeaponSpec = {
     -- (Typed loosely: Luau's checker doesn't check a function against an
     -- optional function type.)
     setup: ((navi: Object) -> any)?,
-    -- Its own instant effect (one no chip has: TenguCross's wind), which
-    -- the instant chips' action runs once.
+    -- Its instant effect, which the instant chips' action runs once: a
+    -- chip's (the arm chips' weapons run Boomer's and FireHit's), or one no
+    -- chip has (TenguCross's wind), after which the navi waits 8 ticks
+    -- (`instant_waits`).
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
+    instant_waits: boolean?,
     -- As a charged shot: it stays when a form's own would replace it (a
     -- chip's weapon, `sub_800FFAA`), and its attack runs through a dimming.
     sticky: boolean?,
