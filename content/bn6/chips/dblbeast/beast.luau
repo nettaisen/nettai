@@ -20,7 +20,7 @@ beast.STATE = {
     missed = "bool",
     targets = "u8[18]",
     held = "object",
-    held_2 = "object",
+    held2 = "object",
 }
 
 -- The ticks of an attack and of a wait.

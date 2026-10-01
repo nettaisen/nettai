@@ -45,8 +45,8 @@ local SHOT_SPARK = define.spark { sprite = asset.sprite("reflected-shot"), anim 
 local SHOT: DblBeastHit = { ahead = 0, region = regions.single, spark = SHOT_SPARK, is = collision.attack, damage = 5, z = 0x10_0000 }
 local SHOT_TARGET = { [0] = 0x05800000, [1] = 0x0A800000 }
 
--- The bite's mouth (attachment row 0x20).
-local MOUTH = attachment.look { sprite = asset.sprite("gregar-bite"), palette = 0, attach_point = 19 }
+-- The bite's drill (attachment row 0x20: GroundCross's drill arm).
+local MOUTH = attachment.look { sprite = asset.sprite("drill-arm"), palette = 0, attach_point = 19 }
 -- The claw's swipe and the slam's two blows (effects 0x16, 0x3A, 0x39),
 -- 16 pixels up on the panel in front.
 local SLAM_FX = define.effect { sprite = asset.sprite("slash-man-effect"), anim = 1, palette = 0 }
@@ -210,7 +210,7 @@ local function gun(me: Object)
             me.anim = ANIM_GUN
             shoot(me)
             attachment.attach(me, buster.arm, "held", { anim = 0xB, while_dimmed = true })
-            attachment.attach(me, buster.flash, "held_2", { anim = 0, while_dimmed = true })
+            attachment.attach(me, buster.flash, "held2", { anim = 0, while_dimmed = true })
             battle.play_sound(SOUND_GUN)
             me.timer2 = GUN_EVERY
         else
@@ -237,14 +237,14 @@ local function gun(me: Object)
         if s.held then
             s.held.anim_loaded = 0xFF
         end
-        if s.held_2 then
-            s.held_2.anim_loaded = 0xFF
+        if s.held2 then
+            s.held2.anim_loaded = 0xFF
         end
         return
     end
     me.anim = ANIM_IDLE
     detach(s.held)
-    detach(s.held_2)
+    detach(s.held2)
     finish(me, 0x1C)
 end
 

@@ -26,7 +26,7 @@ export type State = {
     partner: Object?,
     -- Their attachments (ExtraVars+4, +0xC).
     held: Object?,
-    held_2: Object?,
+    held2: Object?,
     -- ProtoMan's whiteness as he appears (Unk_0c, 0x1F down to 0).
     white: number,
 }
@@ -186,7 +186,7 @@ local function charge(me: Object)
         return
     end
     local s = me.state :: State
-    s.held, s.held_2 = nil, nil
+    s.held, s.held2 = nil, nil
     me.action, me.phase, me.phase_init = me.action + 4, 0, 0
 end
 
@@ -238,9 +238,9 @@ local function volley(me: Object)
         me.timer = VOLLEY_TICKS
         battle.play_sound(SOUND_VOLLEY)
         detach(s.held)
-        buster.attach_arm(me.related1 :: Object, me, "held", true)
-        detach(s.held_2)
-        attachment.attach(me, buster.flash, "held_2", { anim = 0, while_dimmed = true })
+        buster.raise_arm_for(me.related1 :: Object, me, "held", true)
+        detach(s.held2)
+        attachment.attach(me, buster.flash, "held2", { anim = 0, while_dimmed = true })
         -- sub_80C44D2: the form overlay restarts.
         local overlay = me.related2
         if overlay then
@@ -279,7 +279,7 @@ local function megaman_done(me: Object)
         end
         me.anim = ANIM_IDLE
         detach(s.held)
-        detach(s.held_2)
+        detach(s.held2)
         me.pos = (me.related1 :: Object).pos
         me:set_panel_from_coordinates()
         me.timer = AFTER
@@ -495,7 +495,7 @@ heroes.kind = define.kind {
         protoman = "bool",
         partner = "object",
         held = "object",
-        held_2 = "object",
+        held2 = "object",
         white = "u8",
     },
     -- `sub_80BCD14`: by state, then the sprite.
