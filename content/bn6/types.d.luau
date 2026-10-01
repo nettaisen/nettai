@@ -185,3 +185,27 @@ export type PanelChange = {
     tick_sound: Sound?,
     change_sound: Sound?,
 }
+
+-- A barrier (lib/barriers): `sub_801A7CC`'s row (how it behaves, its HP,
+-- the damage a hit must reach to wear it, its timer (0xFFFF: none), the
+-- element that breaks it), and its visual (`byte_80E0A14`'s look: sprite,
+-- animation, palette, the owner's attach point it sits at, the sprite
+-- parts it hides; LifeAur's aura hides part 6 but for the local MegaMan),
+-- with its sounds as it rises (and grows back) and as it goes down.
+export type Barrier = {
+    behavior: BarrierBehavior,
+    hp: number,
+    threshold: number,
+    timer: number,
+    weak: string?,
+    look: {
+        sprite: SpriteAsset,
+        anim: number,
+        palette: number,
+        attach_point: number,
+        hidden_parts: number,
+    },
+    hidden_unless_local_megaman: boolean?,
+    sound: Sound,
+    down_sound: Sound?,
+}

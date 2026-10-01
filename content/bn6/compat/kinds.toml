@@ -126,6 +126,7 @@ dragon-head = { pool = "attack", index = 0xC9 }
 "grab/controller" = { pool = "effect", index = 0x03, scratch_position = true }
 "engine/spark" = { pool = "effect", index = 0x04 }
 "engine/status-visual" = { pool = "effect", index = 0x06 }
+barrier-visual = { pool = "effect", index = 0x07 }
 "engine/charge-glow" = { pool = "effect", index = 0x08, scratch_position_without_sprite = true }
 "falling-rock/chip" = { pool = "effect", index = 0x09 }
 "engine/palette-flash" = { pool = "effect", index = 0x0A, scratch_position = true }
@@ -145,6 +146,7 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 "antirecv/controller" = { pool = "effect", index = 0x2C, scratch_position = true }
 "spoutman/pillar" = { pool = "effect", index = 0x2D, scratch_z_fraction = true }
 "spoutman/mark" = { pool = "effect", index = 0x2E }
+"barriers/controller" = { pool = "effect", index = 0x2F, scratch_position = true }
 "deltaray/follow-effect" = { pool = "effect", index = 0x31 }
 "rockcube/cube" = { pool = "effect", index = 0x37, scratch_position = true }
 "rock/debris" = { pool = "effect", index = 0x38 }

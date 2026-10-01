@@ -163,6 +163,27 @@ pub struct CollisionTypeDef {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Roles {
     pub actions: RoleActions,
+    pub hooks: RoleHooks,
+}
+
+/// The functions the ruleset calls by role.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct RoleHooks {
+    /// `(navi)`: the NaviCust FirstBarrier's barrier and its visual
+    /// (`sub_8013892`: `sub_801A7CC` with the navi stat, which the game's
+    /// program sets to 1, and `sub_80E0D98`).
+    pub first_barrier: Option<FnId>,
+}
+
+impl RoleHooks {
+    const NAMES: [&str; 1] = ["first_barrier"];
+
+    fn slot(&mut self, name: &str) -> Option<&mut Option<FnId>> {
+        match name {
+            "first_barrier" => Some(&mut self.first_barrier),
+            _ => None,
+        }
+    }
 }
 
 /// The actions the ruleset starts by role.
@@ -194,6 +215,11 @@ impl Roles {
     /// An action role, or a panic naming it when content hasn't filled it.
     pub fn action(role: Option<ActionHandle>, name: &str) -> ActionHandle {
         role.unwrap_or_else(|| panic!("the role actions.{name} is not filled (define.roles in rules/roles.luau)"))
+    }
+
+    /// A hook role, or a panic naming it when content hasn't filled it.
+    pub fn hook(role: Option<FnId>, name: &str) -> FnId {
+        role.unwrap_or_else(|| panic!("the role hooks.{name} is not filled (define.roles in rules/roles.luau)"))
     }
 }
 
@@ -985,6 +1011,20 @@ impl Defs {
             let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
             let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
             for (group, entries) in groups {
+                if group.to_string() == "hooks" {
+                    let Data::Map(entries) = entries else { return Err(what("`hooks` is a table".into())) };
+                    for (name, v) in entries {
+                        let name = name.to_string();
+                        let slot = roles.hooks.slot(&name).ok_or_else(|| {
+                            what(format!("the ruleset has no role hooks.{name} (it has {})", RoleHooks::NAMES.join(", ")))
+                        })?;
+                        if !matches!(v, Data::Function) {
+                            return Err(what(format!("hooks.{name} is not a function")));
+                        }
+                        *slot = Some(functions.id(FnSource::slot(Registry::Roles, &d.key, &format!("hooks.{name}"))));
+                    }
+                    continue;
+                }
                 if group.to_string() != "actions" {
                     return Err(what(format!("the ruleset has no role group `{group}`")));
                 }
