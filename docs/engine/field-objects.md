@@ -402,7 +402,7 @@ and damage word; f2 |= 0x1000 (ice) or 0x2000 (bubble).
 `sub_800F884` f2 |= 0x8000 (removed); `sub_800F898` also 0x40000
 (blink out); `sub_800F8B0` also 0x100000 << absorber's side. DustCross's
 B+Back (weapon routine 0x2A, player action 0x58 `sub_80EFCB4`: the pack's
-`navis/00-megaman/weapons/2a-absorb`) calls `sub_80EFD74` on its 10th tick
+`navis/00-megaman/weapons/absorb`) calls `sub_80EFD74` on its 10th tick
 (`obstacle.absorb_all`): for all eight registry slots, skip empty,
 NameID 0xDA, no collision, or f2 & 0x348000, else `sub_800F8B0`.
 

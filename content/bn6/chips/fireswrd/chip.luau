@@ -8,6 +8,7 @@
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
+local slashes = require("../../navis/00-megaman/forms/slashcross/slashes")
 
 return {
     action = slash.action {
@@ -17,5 +18,6 @@ return {
         effect = parts.effects.wide,
         effect_palette = 1,
         sound = parts.sounds.swing,
+        charged = slashes.fire,
     },
 }

@@ -18,7 +18,7 @@ return define.form {
     element = "null",
     weakness = { "wind" },
     buster_bonus = 0,
-    weapons = { buster = buster.weapon, charge_shot = charge },
+    weapons = { buster = buster.weapon, charge_shot = charge.weapon },
     palette = 13,
     mugshot = asset.mugshot("groundcross"),
     identity = {
