@@ -85,6 +85,6 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let look = b.content.defs.roles.effect(crate::content::EffectRole::BeastOverBurst);
     if let Some(e) = effect::spawn(b, Vec3 { x: px, y: py, z: 0 }, look, 0, 0, 0) {
         b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
-        b.play_sound(crate::sound::SoundId(0x12E));
+        b.sound(crate::content::SoundRole::BeastOverBurst);
     }
 }
