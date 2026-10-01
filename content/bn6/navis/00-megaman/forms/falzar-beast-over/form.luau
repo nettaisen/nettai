@@ -15,7 +15,7 @@ return define.form {
     sprite = asset.sprite("falzar-beast"),
     element = "null",
     buster_bonus = 0,
-    weapons = { buster = falzar_beast_buster, alt_a_charge = beast_claw },
+    weapons = { buster = falzar_beast_buster.weapon, alt_a_charge = beast_claw.weapon },
     mugshot = asset.mugshot("falzar-beast-over"),
     identity = {
         version = 0,

@@ -5,9 +5,11 @@
 -- each step the whole joypad word); letting go of A or 48 ticks without a
 -- sequence gives a plain Sword. In a Beast Over form, or as a special (the
 -- attack's special source), the sword is random. The chosen chip's action
--- starts in place (`object_setAttack0`) with its subtype and parameters
--- but the original damage. Each chip composes its own (`vari.action {
--- ... }`, a `VariSwordSpec`): its sequences, and the actions they give.
+-- starts in place (`object_setAttack0`) as that chip's, with the original
+-- damage; charged (SlashCross's A-charge), it starts as the charged slash
+-- of the pick instead (navis/00-megaman/forms/slashcross/charge). Each
+-- chip composes its own (`vari.action { ... }`, a `VariSwordSpec`): its
+-- sequences, and the actions they give.
 
 -- The state (`VariSwordState`, types.d.luau): the ticks left to enter a
 -- sequence (AIAttackVars+0x12), the navi's direction flip (which set of
@@ -16,6 +18,8 @@
 -- attack's marker word, which every later reader sets before reading).
 type State = VariSwordState
 type Spec = VariSwordSpec
+
+local slash_charge = require("../../navis/00-megaman/forms/slashcross/charge")
 
 local vari = {}
 
@@ -28,10 +32,6 @@ local COUNTDOWN = 0x30
 -- The phases, on the attack's step.
 local START, PICK = 0, 4
 local SOUND = asset.sound("ok-8b")
--- What a charged pick turns into (unless it is the no-charge pick):
--- SlashCross's charged sword (the original's action 0x41, a v1 weapon
--- action, by number until SlashCross's weapons convert).
-local CHARGED_SWORD = 0x41
 -- Forms: SlashCross and its Beast (wait while A is up), the Beast Overs
 -- (random), and the Beast forms (0xB to 0x18: the pick's Beast lock-on).
 local SLASH_CROSS, SLASH_CROSS_BEAST = 0x03, 0x0F
@@ -88,10 +88,14 @@ local function advance(s: State, sequences: { { number } }, held: number): numbe
 end
 
 -- `loc_80EF788`: the attack becomes pick `i` (0: Sword). Its action is the
--- chip's; the attack's chip, subtype and parameters are its record's
--- (transitional: the Beast rush reads the chip's lock-on mode, and
--- SlashCross's charged sword its subtype and first parameter, until the
--- chips are definitions and those readers ask them).
+-- chip's, and the attack's chip the pick's (transitional: by its number,
+-- with its record's Beast flag, until the picks are chip definitions the
+-- spec names: the Beast rush reads the attack's chip for its lock-on
+-- mode). A charged pick starts as SlashCross's charged slash of it (unless
+-- it is the no-charge pick), which the game does by writing the action
+-- over the one it just started. (The game also copies the pick's subtype
+-- and parameters into the attack, which its charged slash and the Beast
+-- rush read there: here the pick's slash names what they need.)
 local function become(me: Object, spec: Spec, i: number)
     local action = if i == 0 then spec.sword else spec.picks[i]
     local number = if i == 0 then spec.legacy.sword else spec.legacy.chips[i]
@@ -99,10 +103,6 @@ local function become(me: Object, spec: Spec, i: number)
     local c = data.chips[number]
     if c == nil then
         error(string.format("the variable sword's chip %#x is not in the content", number))
-    end
-    me.variant = c.subtype
-    for n = 1, 4 do
-        me:set_attack_param(n, c.params[n])
     end
     me:set_attack(action, 0)
     local lockon = if c.beast_lockon then 1 else 0
@@ -115,7 +115,7 @@ local function become(me: Object, spec: Spec, i: number)
         return
     end
     if action ~= spec.no_charged and me.charged ~= 0 then
-        me.action = CHARGED_SWORD
+        me:set_attack(slash_charge.of_action(me, action), 0)
     end
     if stats.form >= FIRST_BEAST and stats.form <= LAST_BEAST then
         me.beast_lockon = lockon

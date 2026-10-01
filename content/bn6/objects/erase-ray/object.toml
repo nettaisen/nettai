@@ -1,7 +1,0 @@
-# EraseCross's charged beam (attack object #0x9D, `sub_80D8E10`) is a script.
-# Its X and Y are its spawner's registers until its init places it.
-
-[kind]
-pool = "attack"
-index = 0x9D
-script = "erase_ray.luau"
