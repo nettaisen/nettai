@@ -1059,7 +1059,6 @@ pub fn scripts() -> Scripts {
                 // The NaviCust supports (content model v2): the controller the
                 // ruleset spawns by role, Rush, Beat, Tango and her heal, with
                 // the barrier it raises.
-                ("lib/viewer", "lib/viewer"),
                 ("lib/barriers/visual", "lib/barriers/visual"),
                 ("lib/barriers/barriers", "lib/barriers/barriers"),
                 ("lib/supports/heal", "lib/supports/heal"),

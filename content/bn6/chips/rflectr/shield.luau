@@ -54,17 +54,6 @@ local SOUND = asset.sound("follow-effect")
 -- The actions: held up, then fading.
 local UP, FADING = 0, 4
 
--- `sub_800EB6C`: the local player sees the other side's things unless
--- their navi is blind.
-local function viewer_sees(alliance: number): boolean
-    local viewer = battle.local_side()
-    if alliance == viewer then
-        return true
-    end
-    local p = battle.player(viewer)
-    return not (p and p:status("blind"))
-end
-
 -- `sub_80C9774`: at the owner's position plus the offset kept in the
 -- velocity, shown as the owner is; once the slot is cleared, fade.
 local function follow(me: Object)
@@ -106,7 +95,7 @@ local function tick(me: Object)
         error(string.format("reflector shield action %#x reads past its table", a))
     end
     me.visible = true
-    if not viewer_sees(me.alliance) then
+    if not battle.viewer_sees(me.alliance) then
         me.visible = false
     end
     local owner = me.related1 :: Object

@@ -289,7 +289,7 @@ impl CoreApi for Battle {
     }
 
     fn viewer_sees(&self, side: u8) -> bool {
-        kinds::charge_glow::viewer_sees(self, side & 1)
+        Battle::viewer_sees(self, side & 1)
     }
 
     fn next_chip_damages(&self, user: ObjectRef) -> bool {

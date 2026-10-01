@@ -72,6 +72,23 @@ impl SetScore {
 }
 
 impl Battle {
+    /// `sub_800EB6C`: the local player sees `alliance`'s objects unless
+    /// they are the other side's and the local navi (`sub_80103BC`) is
+    /// blind. A navi whose init hasn't run yet has no collision data: the
+    /// game reads its status word through the null pointer, from the BIOS,
+    /// which gives the opcode it last fetched (`f1::NULL_READ`), and that
+    /// has the blind bit. It happens on a round's first tick when the
+    /// other side's navi inits first and its FirstBarrier's visual asks.
+    pub fn viewer_sees(&self, alliance: u8) -> bool {
+        use crate::collision::f1;
+        if !self.is_remote(alliance) {
+            return true;
+        }
+        let Some(viewer) = self.player(alliance ^ 1) else { return true };
+        let status = self.objects.get(viewer).collision.map_or(f1::NULL_READ, |c| self.collision.get(c).f1);
+        status & f1::BLIND == 0
+    }
+
     /// The banner on screen as `viewer`'s console shows it.
     pub fn banner_for(&self, viewer: u8) -> Option<BannerId> {
         let id = self.banner.id.filter(|_| self.banner.active)?;
