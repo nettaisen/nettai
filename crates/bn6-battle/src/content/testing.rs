@@ -32,23 +32,13 @@ pub const SUN_GUN_EX: ChipId = 0x04;
 pub const VEIL: ChipId = 0x05;
 /// A navi chip (action 0x1B, subtype 5: the eraser navi).
 pub const ERASER: ChipId = 0x06;
-/// Instant chips (action 0x1C, ids 0x40 and up): one that fills the custom
-/// gauge (FullCust's effect).
-pub const FULL_GAUGE: ChipId = 0x40;
-/// Instant chips: a plus chip used on its own (subtype 3, the plus chips'
-/// effect by number) and one that syncs the navi (subtype 13).
+/// Instant chips (action 0x1C, ids 0x40 and up) by number, which reach
+/// the registration shims of BN6's records: a plus chip used on its own
+/// (subtype 3, the plus chips' effect by number), fists (8, FireHit's) and
+/// flame hooks (14, FlmHook's).
 pub const PLUS: ChipId = 0x41;
-pub const SYNC: ChipId = 0x43;
-/// Instant chips whose effects spawn objects: a boomerang (subtype 1),
-/// lances (4), fists (8), worms (12), flame hooks (14), a falling fist
-/// (19) and a golem (21).
-pub const BOOMERANG: ChipId = 0x44;
-pub const LANCE: ChipId = 0x45;
 pub const FIST: ChipId = 0x46;
-pub const WORM: ChipId = 0x47;
 pub const FLAME_HOOK: ChipId = 0x48;
-pub const JUSTICE: ChipId = 0x49;
-pub const GOLEM: ChipId = 0x4A;
 /// Standard chip actions (ids 0x100 and up): a CrakShot (action 0x22,
 /// subtype 0: the panel ahead).
 pub const CRACK: ChipId = 0x100;
@@ -243,6 +233,16 @@ pub const PANEL_GRAB: &str = "panlgrab";
 pub const BUSTER_UP: &str = "busterup";
 pub const ATTACK_10: &str = "atk-10";
 pub const NAVI_20: &str = "navi-20";
+/// BN6's instant chips content defines whose effects fill the gauge, sync
+/// the navi, and spawn objects: FullCust, SyncTrgr, Boomer, Lance,
+/// SandWrm1, JustcOne, GolmHit1 (chips/fullcust ... chips/golmhit).
+pub const FULL_CUST: &str = "fullcust";
+pub const SYNC_TRIGGER: &str = "synctrgr";
+pub const BOOMER: &str = "boomer";
+pub const LANCE: &str = "lance";
+pub const SAND_WORM: &str = "sandwrm1";
+pub const JUSTICE_ONE: &str = "justcone";
+pub const GOLEM_HIT: &str = "golmhit1";
 pub const TICK_SHOT: &str = "test/tick-shot";
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
@@ -390,6 +390,16 @@ fn assets() -> bn6_content_api::AssetNames {
         ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
         ("erase-beam", sprite(0x10, 0x51)),
+        ("boomerang", sprite(0x10, 0x07)),
+        ("boomerang-tomahawk", sprite(0x10, 0x57)),
+        ("lance", sprite(0x0C, 0x44)),
+        ("fire-hit", sprite(0x14, 0x1A)),
+        ("sand-worm", sprite(0x04, 0x1A)),
+        ("sand-hole", sprite(0x10, 0x48)),
+        ("flame-hook-fire", sprite(0x0C, 0x45)),
+        ("justice-one", sprite(0x0C, 0x62)),
+        ("golem", sprite(0x10, 0x30)),
+        ("dust-2", sprite(0x10, 0x2C)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -417,6 +427,15 @@ fn assets() -> bn6_content_api::AssetNames {
         ("junk-shot", 0xFF),
         ("gundels1", 0xF8),
         ("bonus", 0x157),
+        ("cross-change", 0x8D),
+        ("boomerang", 0xB7),
+        ("fire-hit", 0xED),
+        ("sand-worm", 0xE1),
+        ("sand-worm-2", 0x1BE),
+        ("flame-hook-fire", 0x158),
+        ("justice-one", 0xC4),
+        ("golem", 0x10D),
+        ("golem-2", 0x188),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -476,23 +495,34 @@ pub fn scripts() -> Scripts {
                 ("objects/charge-wave/charge_wave", "objects/charge-wave/charge_wave"),
                 ("objects/junk-shot/junk_shot", "objects/junk-shot/junk_shot"),
                 ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
-                ("chips/0ae-fullcust/chip", "chips/0ae-fullcust/chip"),
+                // The instant chips (content model v2): BN6's definitions,
+                // and the numbered test chips that reach the shims of the
+                // records kept for Program Advances (FireHit, FlmHook) and
+                // the plus chips' records.
                 ("lib/instant/plus", "lib/instant/plus"),
                 ("chips/0c0-atk-10/chip", "chips/0c0-atk-10/chip"),
                 ("chips/atk-10/chip", "chips/atk-10/chip"),
                 ("chips/navi-20/chip", "chips/navi-20/chip"),
                 ("chips/busterup/chip", "chips/busterup/chip"),
-                ("chips/11d-synctrgr/chip", "chips/11d-synctrgr/chip"),
+                ("chips/fullcust/chip", "chips/fullcust/chip"),
+                ("chips/synctrgr/chip", "chips/synctrgr/chip"),
                 ("objects/boomerang/boomerang", "objects/boomerang/boomerang"),
-                ("objects/lance/lance", "objects/lance/lance"),
-                ("objects/fire-hit/fire_hit", "objects/fire-hit/fire_hit"),
-                ("objects/sand-worm/sand_worm", "objects/sand-worm/sand_worm"),
-                ("objects/sand-hole/sand_hole", "objects/sand-hole/sand_hole"),
-                ("objects/sand-spray/sand_spray", "objects/sand-spray/sand_spray"),
-                ("objects/flame-hook/flame_hook", "objects/flame-hook/flame_hook"),
-                ("objects/flame-hook-fire/flame_hook_fire", "objects/flame-hook-fire/flame_hook_fire"),
-                ("objects/justice-one/justice_one", "objects/justice-one/justice_one"),
-                ("objects/golem/golem", "objects/golem/golem"),
+                ("chips/boomer/chips", "chips/boomer/chips"),
+                ("chips/lance/lance", "chips/lance/lance"),
+                ("chips/lance/chip", "chips/lance/chip"),
+                ("chips/firehit/fist", "chips/firehit/fist"),
+                ("chips/06b-firehit1/chip", "chips/06b-firehit1/chip"),
+                ("chips/sandwrm/worm", "chips/sandwrm/worm"),
+                ("chips/sandwrm/hole", "chips/sandwrm/hole"),
+                ("chips/sandwrm/spray", "chips/sandwrm/spray"),
+                ("chips/sandwrm/chips", "chips/sandwrm/chips"),
+                ("chips/flmhook/hook", "chips/flmhook/hook"),
+                ("chips/flmhook/fire", "chips/flmhook/fire"),
+                ("chips/146-flmhook1/chip", "chips/146-flmhook1/chip"),
+                ("chips/justcone/strike", "chips/justcone/strike"),
+                ("chips/justcone/chip", "chips/justcone/chip"),
+                ("chips/golmhit/golem", "chips/golmhit/golem"),
+                ("chips/golmhit/chips", "chips/golmhit/chips"),
                 ("lib/element", "lib/element"),
                 ("lib/projectile", "lib/projectile"),
                 ("lib/sword", "lib/sword"),
@@ -694,16 +724,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
         kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
         kind("absorbed-obstacle", Pool::Effect, 0x87, "objects/absorbed-obstacle/absorbed_obstacle"),
-        kind("boomerang", Pool::Attack, 0x32, "objects/boomerang/boomerang"),
-        kind("lance", Pool::Attack, 0x6F, "objects/lance/lance"),
-        kind("fire-hit", Pool::Attack, 0x5B, "objects/fire-hit/fire_hit"),
-        kind("sand-worm", Pool::Attack, 0xCB, "objects/sand-worm/sand_worm"),
-        kind("sand-hole", Pool::Actor, 0x1C, "objects/sand-hole/sand_hole"),
-        kind("sand-spray", Pool::Attack, 0xCC, "objects/sand-spray/sand_spray"),
-        kind("flame-hook", Pool::Effect, 0x8C, "objects/flame-hook/flame_hook"),
-        kind("flame-hook-fire", Pool::Attack, 0xCA, "objects/flame-hook-fire/flame_hook_fire"),
-        kind("justice-one", Pool::Attack, 0xAE, "objects/justice-one/justice_one"),
-        kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
         kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
@@ -723,7 +743,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
         kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost"),
         kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed"),
-        kind("rising-bubble", Pool::Effect, 0x14, "objects/rising-bubble/rising_bubble"),
         // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
         kind("elem-trap", Pool::Attack, 0x4D, "objects/elem-trap/elem_trap"),
         kind("elem-trap-strike", Pool::Effect, 0x2B, "objects/elem-trap-strike/elem_trap_strike"),
@@ -1079,29 +1098,13 @@ fn named_chips() -> Vec<ChipData> {
         },
         ChipData {
             flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
-            lockout: 20,
-            script: Some("chips/0ae-fullcust/chip".into()),
-            ..chip(FULL_GAUGE, "FullGage", 0x1C, 5)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
             family: ChipFamily::Plus,
             damage: 10,
             script: Some("chips/0c0-atk-10/chip".into()),
             ..chip(PLUS, "Plus", 0x1C, 3)
         },
-        ChipData {
-            flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
-            script: Some("chips/11d-synctrgr/chip".into()),
-            ..chip(SYNC, "Sync", 0x1C, 13)
-        },
-        spawning(BOOMERANG, "Boomer", 1, [0, 0, 0, 0], "objects/boomerang/boomerang"),
-        spawning(LANCE, "Lance", 4, [0, 0, 0, 0], "objects/lance/lance"),
-        spawning(FIST, "Fist", 8, [0, 3, 0, 0], "objects/fire-hit/fire_hit"),
-        spawning(WORM, "Worm", 12, [0, 0, 0, 0], "objects/sand-worm/sand_worm"),
-        spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "objects/flame-hook/flame_hook"),
-        spawning(JUSTICE, "Justice", 19, [0, 0, 0, 0], "objects/justice-one/justice_one"),
-        spawning(GOLEM, "Golem", 21, [0, 0, 0, 0], "objects/golem/golem"),
+        spawning(FIST, "Fist", 8, [0, 3, 0, 0], "chips/06b-firehit1/chip"),
+        spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "chips/146-flmhook1/chip"),
     ]
 }
 

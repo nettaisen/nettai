@@ -1456,7 +1456,9 @@ export type ChipSpec = {
     lockout: number?,
     flags: { string }?,
     extra_flags: { string }?,
-    beast: { lockon: any }?,
+    -- Its lock-on mode, and whether it goes through the Beast rush (`rush
+    -- = false`: a mode without the rush, as some records have).
+    beast: { lockon: any, rush: boolean? }?,
     library: { number: number, index: number, sort: number }?,
     slot_in_limit: number?,
     traits: { string }?,
