@@ -1,0 +1,3 @@
+# SpoutMan's own chip runs the action navis/spoutman/chip.luau exports.
+
+script = "../../navis/spoutman/chip.luau"

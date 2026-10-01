@@ -16,6 +16,7 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | AreaGrab and PanelGrab | A dimming chip: the `dimming` hook spawning a controller kind whose update is `dimming_chips.phases { effect }`; a chip parameter that becomes the hook | lib/dimming.luau, lib/grab/, chips/areagrab, chips/panlgrab |
 | EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; chips kept on records behind a registration shim | chips/eraseman/, chips/0ec-eraseman |
 | BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library with the records' path beside it | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau, chips/0c0-atk-10 |
+| The link navis' own chips | A record that runs the action its module exports (`{ action = define.action { ... } }`), for an action number registration can't claim; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds), chips/190-heatpres ... chips/199-dustbrk |
 | MegaMan's buster, charged shot and blank shot; HeatCross's charged shot | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a role the ruleset starts (`forced_charged_shot`, rules/roles.luau) | navis/00-megaman/weapons/{buster,charged-shot,blank-shot}, navis/00-megaman/forms/heatcross/charge.luau, lib/buster.luau |
 
 The other weapon routines (navis/00-megaman/weapons/NN-name) are still v1, registered by number.
@@ -128,6 +129,7 @@ step 13 removes them:
 | A navi chip (action 0x1B) | `script` in each chip of the subtype | `navi_chip(user, controller, spec)` |
 | An instant chip (action 0x1C) | `script` in each chip of the subtype, or `instant_chip = N` in a weapon.toml | `instant_chip(user, spec)` |
 | A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
+| A record's own action (a link navi's chip, action 0x0A) | `script` in the chip | `action`, an action definition (`define.action { id = "<chip>/action", ... }`); no `update` |
 
 A shim is such a module that runs the definitions' own code for the records (chips/036-minibomb runs each bomb
 chip's action by subtype). Scripts are paths relative to the registering file; a slot, action or hook claimed twice
@@ -269,8 +271,8 @@ kind). Left:
 - Owns: new objects/ and weapons/ folders, the extractor and pack IO for the projectile table.
 - Done: `objects/projectile` (kinds in its `object.toml`, `data.objects.projectiles`), fired with
   `lib/projectile.luau` (`projectile.fire(navi, shot)`, `projectile.spawn(owner, x, y, shot)`, the shot typed as
-  `ProjectileShot` in types.d.luau); `objects/flying-shot` (attack #0xB, `sub_80C6248`'s object, with its kinds,
-  `data.objects.flying_shots`), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16, now the
+  `ProjectileShot` in types.d.luau); `objects/flying-shot` (attack #0xB, `sub_80C6248`'s object; a definition,
+  its rows variant records), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16, now the
   definitions in `weapons/buster` and `weapons/charged-shot` (step 7).
 
 ### Group E: instant chips (ported; what is left)
@@ -311,11 +313,14 @@ split the list):
   MachGun 0x29, CornSht 0x2A, Reflectr 0x2B, IronShl 0x2C, BblStar 0x2D, DrilArm 0x2E, Tornado 0x2F, WideSht 0x30,
   WaveArm 0x31, AquaNdl 0x32, H-Burst 0x34, RlngLog 0x36, AirSpin 0x38, DolThdr 0x3E, WindRack 0x3F, MoonBld 0x40,
   ElcPuls 0x42, AuraHed 0x43, MagCoil 0x44, the sword family 0x49, the dragons 0x51, VarSwrd 0x53, NeoVari 0x54,
-  SonicBom 0x55, ZSaver 0x5B, and the Cross and Beast chips' actions (0x0A).
+  SonicBom 0x55, ZSaver 0x5B. The link navis' chips (action 0x0A) are done: navis/<navi>/chip.luau, on
+  lib/link_chips.luau (docs/engine/standard-chips.md, "Action 0x0A").
 - Many fire the projectile of group D; start with the ones that don't, or after it.
-- In content model v2 (step 8g; content-model-v2.md §5.8): AquaNdl, H-Burst, RlngLog, AirSpin, DolThdr, WindRack,
-  MoonBld, ElcPuls, AuraHed, MagCoil, the dragons (lib/dragons), VarSwrd and NeoVari (lib/swords/vari), RskyHny and
-  GunDelSol, each a builder in its chip's folder with its kinds beside it.
+- In content model v2 (step 8g; content-model-v2.md §5.8): YoYo, Thunder, recovery, CrakShot, CopyDmg,
+  AirHocky, FireBrn, TrnArrw, Reflectr, IronShl, BblStar, DrilArm, Tornado and WaveArm, with their objects;
+  AquaNdl, H-Burst, RlngLog, AirSpin, DolThdr, WindRack, MoonBld, ElcPuls, AuraHed, MagCoil, the dragons
+  (lib/dragons), VarSwrd and NeoVari (lib/swords/vari), RskyHny and GunDelSol, each a builder in its chip's
+  folder with its kinds beside it.
 
 ### Framework gaps (Rust, not content)
 

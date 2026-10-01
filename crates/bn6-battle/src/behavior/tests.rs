@@ -55,13 +55,16 @@ fn battles_run_the_content_scripts() {
             "charge-car",
             "charge-man",
             "charge-wave",
-            "crack-shot",
+            "chargeman/volcano-rock",
+            "crakshot/shot",
             "dash-hit",
             "dolthdr/doll",
             "dragon-body",
             "dragon-head",
             "drill",
             "dust-ball",
+            "dustman/cloud",
+            "dustman/overlay",
             "elec-man",
             "elec-thunder",
             "element-pillar",
@@ -80,18 +83,22 @@ fn battles_run_the_content_scripts() {
             "falling-rock",
             "falling-rock/chip",
             "firehit/fist",
+            "flame",
             "flmhook/fire",
             "flmhook/hook",
             "flshbom/bomb",
             "flying-shot",
+            "follow-effect",
             "gauge-speed",
             "golmhit/golem",
             "grab/controller",
             "grab/shot",
+            "grndman/drill",
+            "grndman/rock",
             "gundels/beam",
             "gust",
-            "heat-flame",
             "heat-man",
+            "heatman/flame",
             "hit-flash",
             "invisible",
             "junk-shot",
@@ -107,8 +114,8 @@ fn battles_run_the_content_scripts() {
             "panel-bursts",
             "panel-strike",
             "projectile",
-            "reflected-shot",
-            "reflector-shield",
+            "rflectr/shield",
+            "rflectr/shot",
             "rising-bubble",
             "rock",
             "rock/debris",
@@ -121,6 +128,7 @@ fn battles_run_the_content_scripts() {
             "seed",
             "slash-man",
             "slashcross/sword-wave",
+            "slashman/riding-hit",
             "slashman/wave",
             "spout-ball",
             "spout-geyser",
@@ -128,6 +136,7 @@ fn battles_run_the_content_scripts() {
             "spout-mark",
             "spout-pillar",
             "spout-splash",
+            "spoutman/drip-shower",
             "sunmoon/meteor",
             "sunmoon/moon-beam",
             "sunmoon/navi",
@@ -135,10 +144,13 @@ fn battles_run_the_content_scripts() {
             "tango",
             "tango/heal",
             "tengu-man",
+            "tenguman/tornado",
             "thunder-column",
             "timebom/controller",
             "timebom/countdown",
             "tomahawk-man",
+            "tomahawkman/axe",
+            "tomahawkman/strike",
             "trap-chip",
             "vdoll/curse",
             "vdoll/doll",
@@ -406,14 +418,17 @@ fn scripted_chips_roll_back() {
     }
 }
 
-/// The standard chips the test content has scripts for (actions that
-/// don't fire the buster's projectile), in the folders of a duel.
-const STANDARD_CHIPS: &[crate::content::ChipId] = &[testing::CRACK];
+/// The standard chips content defines that the test content has (actions
+/// that don't fire the buster's projectile), for the folders of a duel.
+fn standard_chips() -> Vec<bn6_content_api::ChipHandle> {
+    vec![testing::defined_chip(testing::CRAK_SHOT)]
+}
 
 /// A duel with the standard chips: the ticks each kind was on the field,
 /// by key, and whether a panel was ever broken.
 fn standard_duel() -> (std::collections::BTreeMap<String, usize>, bool) {
-    let setup = || scenario::setup_with(STANDARD_CHIPS);
+    let chips = standard_chips();
+    let setup = || scenario::setup_with_handles(&chips);
     let tape = scenario::record_on(setup(), 2400, 11);
     let mut b = Battle::new(setup(), scenario::content());
     let mut seen = std::collections::BTreeMap::new();
@@ -434,13 +449,14 @@ fn the_standard_chips_play() {
     let (seen, broken) = standard_duel();
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // CrakShot digs up the panel ahead and flings it.
-    assert!(ticks("crack-shot") > 0, "crack shots: {seen:?}");
+    assert!(ticks("crakshot/shot") > 0, "crack shots: {seen:?}");
     assert!(broken, "a dug-up panel is broken");
 }
 
 #[test]
 fn the_standard_chips_roll_back() {
-    let setup = || scenario::setup_with(STANDARD_CHIPS);
+    let chips = standard_chips();
+    let setup = || scenario::setup_with_handles(&chips);
     let tape = scenario::record_on(setup(), 2400, 11);
     let mut b = Battle::new(setup(), scenario::content());
     let whole = digests(&tape, Battle::new(setup(), scenario::content()));
@@ -489,19 +505,79 @@ fn the_scripted_swords_play_and_roll_back() {
     assert!(ticks("engine/afterimage") > 0, "a step sword's afterimages: {seen:?}");
 }
 
+/// Two link navis with some of the link navis' own chips (`LINK_CHIPS`'
+/// entries `chips`) in their folders.
+fn link_chip_setup(chips: &[usize]) -> crate::setup::RoundSetup {
+    let chips: Vec<_> = chips.iter().map(|&i| testing::chip_handle(testing::LINK_CHIPS[i].0)).collect();
+    let mut s = scenario::setup_with_handles(&chips);
+    let navi = testing::content().navi_numbered(testing::LINK_NAVI);
+    for stats in &mut s.navi_stats {
+        stats.navi = navi;
+    }
+    s
+}
+
+#[test]
+fn the_link_navis_chips_play_and_roll_back() {
+    // Each link navi chip's record runs the action its module exports (its
+    // CurAction the content action's): every one runs, with what it
+    // spawns, and a copy taken at any tick plays on as the battle does.
+    let mut seen = std::collections::BTreeMap::new();
+    for chips in [&[0, 1, 2][..], &[3, 4, 5], &[6, 7, 8], &[9]] {
+        let setup = || link_chip_setup(chips);
+        let tape = scenario::record_on(setup(), 2000, 11);
+        let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+        let mut b = Battle::new(setup(), scenario::content());
+        for (i, t) in tape.iter().enumerate() {
+            if i % 211 == 0 {
+                let copy = digests(&tape[i..], b.clone());
+                assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way ({chips:?})");
+            }
+            b.tick(&t.input, t.events.clone());
+            for r in b.objects.in_order() {
+                let key = match crate::kinds::player::running_content_action(&b, r) {
+                    Some(h) => format!("action {}", b.content.defs.action(h).key),
+                    None => b.kind_key(r).to_string(),
+                };
+                *seen.entry(key).or_insert(0) += 1;
+            }
+        }
+    }
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
+    for chip in
+        ["heatpres", "delecswd", "rslash", "edeletbm", "volcchrg", "dripshwr", "etomahwk", "ftornado", "rc-brakr", "dustbrk"]
+    {
+        assert!(ticks(&format!("action {chip}/action")) > 0, "{chip} ran: {seen:?}");
+    }
+    for kind in [
+        "heatman/flame",
+        "follow-effect",
+        "slashman/riding-hit",
+        "eraseman/beam",
+        "chargeman/volcano-rock",
+        "tomahawkman/axe",
+        "tomahawkman/strike",
+        "grndman/drill",
+        "dustman/cloud",
+        "dustman/overlay",
+    ] {
+        assert!(ticks(kind) > 0, "{kind}: {seen:?}");
+    }
+}
+
 #[test]
 fn registrations_follow_the_content_data() {
     let c = testing::build();
     let d = &c.defs;
     // The four SunGun chips share one action, as the thrown chips and the
     // three swords share theirs; the v1 weapons have theirs (the buster's,
-    // the charged shot's and the blank shot's are definitions); the mend
-    // and mirror chips theirs. (The bee and dragon chips are definitions.)
+    // the charged shot's and the blank shot's are definitions). (The mend,
+    // mirror, bee and dragon chips are definitions.)
     let mut actions: Vec<u8> = d.actions.iter().filter_map(|a| a.number).collect();
     actions.sort();
     let expected = [
-        0x12, 0x13, 0x1A, 0x1D, 0x1E, 0x20, 0x22, 0x2B, 0x35, 0x37, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x49, 0x4A, 0x4C,
-        0x4D, 0x4E, 0x4F, 0x50, 0x52, 0x56, 0x57, 0x58,
+        0x12, 0x13, 0x1A, 0x1D, 0x1E, 0x35, 0x37, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x49, 0x4A, 0x4C, 0x4D, 0x4E, 0x4F,
+        0x50, 0x52, 0x56, 0x57, 0x58,
     ];
     assert_eq!(actions, expected, "{:?}", d.actions);
     // An instant chip's record resolves its subtype's effect (the plus
@@ -510,6 +586,16 @@ fn registrations_follow_the_content_data() {
     let plus = d.chip(c.chip_numbered(testing::PLUS).unwrap());
     assert!(matches!(plus.usage, crate::content::ChipUsage::Instant(_)), "{:?}", plus.usage);
     assert!(d.weapon(c.weapon_numbered(0x10)).instant.is_some());
+    // A record whose module exports an action runs it, whatever its
+    // action number names (the link navis' chips: action 0x0A).
+    for (id, _, module) in testing::LINK_CHIPS {
+        let chip = d.chip(c.chip_numbered(id).unwrap());
+        assert_eq!(chip.record.action, 0x0A);
+        match chip.usage {
+            crate::content::ChipUsage::Action(h) => assert!(d.action(h).number.is_none(), "{module}: {:?}", d.action(h)),
+            ref other => panic!("{module}: {other:?}"),
+        }
+    }
     // Handles number each registry in key order: the engine's kinds and
     // the content's together.
     assert!(d.kinds.windows(2).all(|w| w[0].key < w[1].key));
