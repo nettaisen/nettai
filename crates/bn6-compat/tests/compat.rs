@@ -27,7 +27,7 @@ fn compat_numbers_what_the_engine_runs_by_handle() {
     let mut b = bn6_battle::Battle::new(setup, content);
     b.spawn_actors();
     let player = b.player(0).unwrap();
-    let ticker = bn6_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default(), [0; 4]).unwrap();
+    let ticker = bn6_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default()).unwrap();
     let shot = b.content.defs.actions.iter().position(|a| a.key == "test/tick-shot/shot").unwrap() as u16;
     b.set_content_attack(player, shot, 1).unwrap();
     assert_eq!(navi_action(&b, player), NaviAction::Content(bn6_content_api::ActionHandle(shot)));
@@ -66,4 +66,27 @@ fn bn6_compat_reads() {
     assert_eq!(built_in.weapon_key(0x00), Some("megaman/buster"));
     assert_eq!(built_in.weapon_key(0x2F), Some("megaman/buster-2e"));
     assert_eq!(built_in.actions["engine/move"], 0x10);
+}
+
+/// Two definitions with one of the original's numbers: reading compat
+/// refuses it (several actions may share a number; nothing else).
+#[test]
+fn a_number_belongs_to_one_definition() {
+    let file = |name: &str| std::fs::read_to_string(format!("{}/../../content/bn6/compat/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap();
+    for (name, extra, both) in [
+        ("chips.toml", "\n[cannon-twin]\nid = 0x001\naction = 0\nsubtype = 0\n", "are both"),
+        ("navis.toml", "\n[megaman-twin]\nnavi = 0x00\nname_id = 0x7FF\n", "are both"),
+        ("kinds.toml", "\n[rock-twin]\npool = \"attack\"\nindex = 0x59\n", "both fill"),
+        ("weapons.toml", "\nbuster-twin = [0x00]\n", "are both"),
+    ] {
+        let text = file(name) + extra;
+        match Compat::bn6_with(name, &text) {
+            Err(e) => assert!(e.contains(name) && e.contains(both) && e.contains("-twin"), "{name}: {e}"),
+            Ok(_) => panic!("{name}: a second definition of a number read"),
+        }
+    }
+    // (Several actions on one number are the original's own: the chips of
+    // one action handler.)
+    let c = Compat::bn6();
+    assert!(c.actions.values().filter(|&&n| n == c.actions["widesht/action"]).count() > 1);
 }

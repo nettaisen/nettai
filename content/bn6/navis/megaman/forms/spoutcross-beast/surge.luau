@@ -12,7 +12,7 @@ local surge = {}
 
 -- What a surge is spawned with: how long it lasts (the original's first
 -- parameter) and how often its region comes back (its second), in ticks.
-export type Spec = { ticks: number, beat: number }
+type Spec = AquaSurge
 
 export type State = { ticks: number, beat: number }
 

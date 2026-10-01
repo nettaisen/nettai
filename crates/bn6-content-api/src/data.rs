@@ -1,12 +1,11 @@
-//! [`Data`]: plain data trees that cross between the engine and a runtime:
-//! the content pack's data as scripts read it (the `data` global, which the
-//! engine builds), and the definitions content makes as the define phase
-//! reads them back ([`crate::definitions`]).
+//! [`Data`]: plain data trees that cross between a runtime and the engine:
+//! the definitions content makes, as the define phase reads them back
+//! ([`crate::definitions`]).
 
 use crate::assets::AssetKind;
 use crate::registry::Registry;
 
-/// A value of the pack's data.
+/// A value of a definition's spec.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Data {
     Nil,

@@ -1,9 +1,11 @@
 //! What `bn6-content check` reports about the definitions once the define
 //! phase has run (docs/design/content-model-v2.md §7.7): the roles content
-//! hasn't filled, and kinds under `objects/` that one owner alone uses
-//! (colocation, §4). Duplicate keys, references to the wrong registry,
-//! unknown asset names and chips without exactly one use are the define
-//! phase's own errors.
+//! hasn't filled, kinds under `objects/` that one owner alone uses
+//! (colocation, §4), and collision types defined twice (two definitions of
+//! one row of the original's table). Duplicate keys, references to the
+//! wrong registry, unknown asset names and chips without exactly one use
+//! are the define phase's own errors; two keys with one of the original's
+//! numbers is compat's (`bn6_compat::Compat` refuses to read it).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -16,25 +18,15 @@ use crate::report::Report;
 pub fn definitions(c: &Content, r: &mut Report) {
     let defs = &c.defs;
     if !defs.definitions.is_empty() {
-        use bn6_battle::content::{ActionRole, KindRole, RoleAction, RoleKind};
+        use bn6_battle::content::{ActionRole, KindRole};
         for role in ActionRole::ALL {
-            match defs.roles.actions.get(&role) {
-                None => r.warn("rules/roles.luau", format!("the role actions.{} is not filled", role.name())),
-                Some(RoleAction::Unported(n)) => r.warn(
-                    "rules/roles.luau",
-                    format!("the role actions.{} names action {n:#x}, which nothing implements yet", role.name()),
-                ),
-                Some(RoleAction::Action(_)) => {}
+            if !defs.roles.actions.contains_key(&role) {
+                r.warn("rules/roles.luau", format!("the role actions.{} is not filled", role.name()));
             }
         }
         for role in KindRole::ALL {
-            match defs.roles.kinds.get(&role) {
-                None => r.warn("rules/roles.luau", format!("the role kinds.{} is not filled", role.name())),
-                Some(RoleKind::Missing(key)) => r.warn(
-                    "rules/roles.luau",
-                    format!("the role kinds.{} names the kind {key:?}, which the content doesn't have", role.name()),
-                ),
-                Some(RoleKind::Kind(_)) => {}
+            if !defs.roles.kinds.contains_key(&role) {
+                r.warn("rules/roles.luau", format!("the role kinds.{} is not filled", role.name()));
             }
         }
         // The roles that name a definition of their registry, or an asset.
@@ -79,12 +71,37 @@ pub fn definitions(c: &Content, r: &mut Report) {
             unfilled("sprites", role.name(), roles.sprites.contains_key(&role));
         }
     }
+    for (row, twins) in duplicate_collision_types(c) {
+        let (first, rest) = twins.split_first().expect("two or more");
+        let others: Vec<String> = rest.iter().map(|(key, module)| format!("{key} ({module}.luau)")).collect();
+        r.error(
+            format!("{}.luau", first.1),
+            format!(
+                "collision type {} is row {row:#04x} of the original's table, and so is {}: define a type once and share it",
+                first.0,
+                others.join(", ")
+            ),
+        );
+    }
     for (kind, owners) in single_owner_kinds(c) {
         r.warn(
             format!("{kind}"),
             format!("only {owners} uses this kind: move it into {owners}'s folder (docs/design/content-model-v2.md §4)"),
         );
     }
+}
+
+/// Collision types that are one row of the original's table (their
+/// `row_offset`, the row times 8): the row, and each definition's key and
+/// module, for the rows two or more define.
+pub fn duplicate_collision_types(c: &Content) -> Vec<(u8, Vec<(String, String)>)> {
+    let mut rows: BTreeMap<i64, Vec<(String, String)>> = BTreeMap::new();
+    for d in c.defs.definitions.of(Registry::Collision) {
+        if let Some(offset) = d.spec.field("row_offset").int() {
+            rows.entry(offset).or_default().push((d.key.clone(), d.module.clone()));
+        }
+    }
+    rows.into_iter().filter(|(_, twins)| twins.len() > 1).map(|(offset, twins)| ((offset / 8) as u8, twins)).collect()
 }
 
 /// Kinds defined under `objects/` whose every referring definition lives in

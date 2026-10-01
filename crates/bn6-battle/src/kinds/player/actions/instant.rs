@@ -15,8 +15,6 @@ use crate::battle::Battle;
 use crate::kinds::player::{ai, ai_mut, exit_attack_state};
 use crate::object::ObjectRef;
 
-pub const ACTION: u8 = 0x1C;
-
 /// What the instant chips' action runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Effect {
@@ -57,8 +55,9 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `off_80EC3F0[subtype]`, with the registers `sub_80EC39C` passes: the
-/// user's panel and Z, the attack's element and parameters, and its damage
-/// word plus the bonus's low byte.
+/// user's panel and Z, the attack's element, and its damage word plus the
+/// bonus's low byte (the chip record's parameters are the chip's
+/// definition's here).
 fn run_effect(b: &mut Battle, r: ObjectRef) {
     let a = &ai(b, r).attack;
     let o = b.objects.get(r);
@@ -66,7 +65,6 @@ fn run_effect(b: &mut Battle, r: ObjectRef) {
         panel: o.panel,
         element: a.element,
         z: o.pos.z,
-        params: a.params,
         damage: (a.damage as u32 | (a.hit_param as u32) << 16).wrapping_add(a.extra as u32 & 0xFF),
     };
     match a.instant {
