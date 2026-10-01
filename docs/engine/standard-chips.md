@@ -233,7 +233,7 @@ subtype 3 and params 0.
   down to his row.
 - **EDeletBm (AI 4, `sub_80F1056`).** 0 (`sub_80F1074`): the bonus; anim 0x11; 9 ticks → 4. 4 (`sub_80F10A0`): anim
   0x12; the beams (`sub_80F1148`: on the panels 1..5 ahead in his row, stopping at the field's edge, attack #0xC3,
-  objects/erase-beam, Param1 1 (aimed straight), Param2 60, Param3 1 (it ends with his action 0xA, and stands still
+  chips/eraseman/beam, Param1 1 (aimed straight), Param2 60, Param3 1 (it ends with his action 0xA, and stands still
   while dimmed), the damage word); sound 0xBA; 60 ticks → 8. 8 (`sub_80F10CE`): 30 ticks → anim 0, exit.
 - **VolcChrg (AI 5, `sub_80F1334`).** 0 (`sub_80F1350`): the bonus; anim 6; Timer 30; the tick it reaches 11, the
   volcano (`sub_80F13B4`) and sound 0x146; 30 ticks → 4. 4 (`sub_80F1390`): 30 ticks → anim 0, exit. The volcano: a
@@ -303,7 +303,7 @@ subtype 3 and params 0.
 
 Ported but not registered, from group G2 (chips/19x folders, their shared state in chips/190-heatpres/state.luau and
 `LinkChipState` in types.d.luau, **[unverified]**, agreeing with the reading above where checked): EraseMan's,
-SpoutMan's, ElecMan's, SlashMan's, TomahawkMan's, TenguMan's and DustMan's, with their objects (objects/erase-beam,
+SpoutMan's, ElecMan's, SlashMan's, TomahawkMan's, TenguMan's and DustMan's, with their objects (chips/eraseman/beam,
 drip-shower, navi-effect, riding-hit, eagle-tomahawk, tomahawk-strike, tengu-tornado, dust-cloud). Not written:
 HeatPres (lib/trajectory for the arc, objects/heat-flame for the flames), VolcChrg (the volcano rock, attack #0x86)
 and RC Brakr (objects/ground-drill and the rock of chips.md §3.6.25, effect #9 = objects/rock-chip), and the action

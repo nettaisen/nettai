@@ -132,7 +132,8 @@ Common values:
 |---|---|
 | 0x80 | No slot-in gauge cost (`sub_800EE98`, 0x0800EE98; slot-in only). |
 | 0x02 | Cancelled by the opponent's **Rush** support (`sub_8010740`, 0x08010740). Set on Invisibl and WhiCapsl. See §2.10. |
-| 0x01, 0x10, 0x20, 0x40 | Menu classification only. |
+| 0x40 | Menu classification: the modifier chips (WhiCapsl, Uninstll, Atk+10, Navi+20, Atk+30; `ExtraChipFlags::MODIFIER`). |
+| 0x01, 0x10, 0x20 | Menu classification only. |
 
 ### 1.4 Fields copied into `AIAttackVars` (`sub_80126E4`, 0x080126E4)
 
