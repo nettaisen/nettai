@@ -5,6 +5,7 @@
 -- hole in front, nothing happens.
 
 local controller = require("./controller")
+local lockon = require("../../rules/lockon")
 
 return {
     define.chip {
@@ -17,7 +18,7 @@ return {
         flags = { "dimming", "has_damage", "standard_library", "library" },
         library = { number = 100, index = 100, sort = 422 },
         slot_in_limit = 3,
-        beast = { rush = false, lockon = 1 },
+        beast = { rush = false, lockon = lockon.cannon },
         dimming = controller.hook(0),
     },
     define.chip {
@@ -30,7 +31,7 @@ return {
         flags = { "dimming", "has_damage", "standard_library", "library" },
         library = { number = 101, index = 101, sort = 423 },
         slot_in_limit = 3,
-        beast = { rush = false, lockon = 1 },
+        beast = { rush = false, lockon = lockon.cannon },
         dimming = controller.hook(1),
     },
     define.chip {
@@ -43,7 +44,7 @@ return {
         flags = { "dimming", "has_damage", "standard_library", "library" },
         library = { number = 102, index = 102, sort = 424 },
         slot_in_limit = 3,
-        beast = { rush = false, lockon = 1 },
+        beast = { rush = false, lockon = lockon.cannon },
         dimming = controller.hook(2),
     },
 }

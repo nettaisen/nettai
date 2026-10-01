@@ -11,6 +11,7 @@
 -- another palette. 42 ticks, then 21 to put the fan away.
 
 local attachment = require("../../objects/attachment/attachment")
+local lockon = require("../../rules/lockon")
 local tornado = require("./tornado")
 
 export type State = {
@@ -159,8 +160,8 @@ local chips = {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 53, index = 53, sort = 442 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 4 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.firebrn1 },
         action = blow {
             fan = FAN,
             single = { variant = tornado.variants.plain, status = 0, ticks = 0x20 },
@@ -176,8 +177,8 @@ local chips = {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 54, index = 54, sort = 420 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 4 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.firebrn1 },
         action = blow {
             fan = CHARGED_FAN,
             spread = {

@@ -5,6 +5,7 @@
 -- it hits in a bubble. The three differ in the star's speed and palette.
 -- 32 ticks in all.
 
+local lockon = require("../../rules/lockon")
 local star = require("./star")
 
 export type State = {
@@ -91,8 +92,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 26, index = 26, sort = 32 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = blow { speed = 0x1_8000, palette = 0 },
     },
     define.chip {
@@ -105,8 +106,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 27, index = 27, sort = 33 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = blow { speed = 0x2_4000, palette = 1 },
     },
     define.chip {
@@ -119,8 +120,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 28, index = 28, sort = 34 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = blow { speed = 0x3_0000, palette = 2 },
     },
 }

@@ -11,6 +11,7 @@
 -- subtype for each of these: the wave's rows, the blade `byte_80EBB64`,
 -- the lock-on mode `byte_80EB028`, and tests of the subtype for the rest.)
 
+local lockon = require("../../../../rules/lockon")
 local parts = require("../../../../lib/swords/parts")
 local sword_wave = require("./sword_wave")
 
@@ -23,25 +24,24 @@ end
 local waves = sword_wave.waves
 local blades, sounds = parts.blades, parts.sounds
 
--- (The lock-on modes are numbers until rules/lockon.luau.)
-slashes.sword = slash { wave = waves.sword, blade = blades.sword, sound = sounds.swing, lockon = 2 }
-slashes.wide = slash { wave = waves.wide, blade = blades.sword, sound = sounds.swing, lockon = 3 }
-slashes.long = slash { wave = waves.long, blade = blades.sword, sound = sounds.swing, lockon = 4 }
-slashes.wide_blade = slash { wave = waves.wide_blade, blade = blades.sword, sound = sounds.swing, lockon = 3 }
-slashes.long_blade = slash { wave = waves.long_blade, blade = blades.sword, sound = sounds.swing, lockon = 4 }
-slashes.life = slash { wave = waves.life, blade = blades.sword, sound = sounds.big_swing, lockon = 6 }
-slashes.dark = slash { wave = waves.dark, blade = blades.sword, sound = sounds.big_swing, lockon = 6 }
+slashes.sword = slash { wave = waves.sword, blade = blades.sword, sound = sounds.swing, lockon = lockon.thunder }
+slashes.wide = slash { wave = waves.wide, blade = blades.sword, sound = sounds.swing, lockon = lockon.widesht }
+slashes.long = slash { wave = waves.long, blade = blades.sword, sound = sounds.swing, lockon = lockon.firebrn1 }
+slashes.wide_blade = slash { wave = waves.wide_blade, blade = blades.sword, sound = sounds.swing, lockon = lockon.widesht }
+slashes.long_blade = slash { wave = waves.long_blade, blade = blades.sword, sound = sounds.swing, lockon = lockon.firebrn1 }
+slashes.life = slash { wave = waves.life, blade = blades.sword, sound = sounds.big_swing, lockon = lockon.drksword }
+slashes.dark = slash { wave = waves.dark, blade = blades.sword, sound = sounds.big_swing, lockon = lockon.drksword }
 -- Row 7, a sword no chip is.
-slashes.unused = slash { wave = waves.unused, blade = blades.sword, sound = sounds.swing, lockon = 6 }
-slashes.muramasa = slash { wave = waves.muramasa, blade = blades.sword, sound = sounds.swing, lockon = 4 }
-slashes.fighter = slash { wave = waves.fighter, blade = blades.sword, sound = sounds.swing, lockon = 5 }
+slashes.unused = slash { wave = waves.unused, blade = blades.sword, sound = sounds.swing, lockon = lockon.drksword }
+slashes.muramasa = slash { wave = waves.muramasa, blade = blades.sword, sound = sounds.swing, lockon = lockon.firebrn1 }
+slashes.fighter = slash { wave = waves.fighter, blade = blades.sword, sound = sounds.swing, lockon = lockon.yoyo }
 -- CrosSwrd's: its X, and the plain sword's wave unseen under it.
 slashes.cross = slash {
     wave = waves.cross,
     hidden_wave = waves.sword,
     blade = blades.sword,
     sound = sounds.swing,
-    lockon = 2,
+    lockon = lockon.thunder,
 }
 -- DblDream's: two slashes. (The second's lock-on mode is the table's
 -- entry; the rush has locked on by then.)
@@ -49,22 +49,22 @@ slashes.double_dream_second = slash {
     wave = waves.double_dream_second,
     blade = blades.sword,
     sound = sounds.big_swing,
-    lockon = 6,
+    lockon = lockon.drksword,
 }
 slashes.double_dream = slash {
     wave = waves.double_dream,
     blade = blades.sword,
     sound = sounds.big_swing,
     again = slashes.double_dream_second,
-    lockon = 6,
+    lockon = lockon.drksword,
 }
-slashes.fire = slash { wave = waves.fire, blade = blades.fire, sound = sounds.swing, lockon = 3 }
-slashes.aqua = slash { wave = waves.aqua, blade = blades.aqua, sound = sounds.swing, lockon = 3 }
-slashes.elec = slash { wave = waves.elec, blade = blades.elec, sound = sounds.swing, lockon = 3 }
-slashes.bamboo = slash { wave = waves.bamboo, blade = blades.bamboo, sound = sounds.swing, lockon = 3 }
+slashes.fire = slash { wave = waves.fire, blade = blades.fire, sound = sounds.swing, lockon = lockon.widesht }
+slashes.aqua = slash { wave = waves.aqua, blade = blades.aqua, sound = sounds.swing, lockon = lockon.widesht }
+slashes.elec = slash { wave = waves.elec, blade = blades.elec, sound = sounds.swing, lockon = lockon.widesht }
+slashes.bamboo = slash { wave = waves.bamboo, blade = blades.bamboo, sound = sounds.swing, lockon = lockon.widesht }
 -- The charged shot's own (./charge), and MoonBld's ring: no blade.
-slashes.charge = slash { wave = waves.charge, sound = sounds.swing, lockon = 3 }
-slashes.moon = slash { wave = waves.moon, sound = sounds.swing, lockon = 18 }
+slashes.charge = slash { wave = waves.charge, sound = sounds.swing, lockon = lockon.widesht }
+slashes.moon = slash { wave = waves.moon, sound = sounds.swing, lockon = lockon.moonbld }
 
 -- Transitional: the slashes by the original's row, a sword chip's subtype
 -- (rows 0x10 to 0x12 are the charge's own, MoonBld's and DblDream's

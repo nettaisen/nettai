@@ -6,6 +6,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local drill = require("../../objects/drill/drill")
+local lockon = require("../../rules/lockon")
 
 export type State = {
     -- Ticks left in the current phase (AIAttackVars+0x10).
@@ -107,7 +108,7 @@ return define.chip {
     flags = { "has_damage", "library" },
     library = { number = 52, index = 52, sort = 131 },
     slot_in_limit = 3,
-    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-    beast = { lockon = 2 },
+    -- The Beast rush, and its lock-on mode (rules/lockon).
+    beast = { lockon = lockon.thunder },
     action = define.action { state = { timer = "u16" }, update = update },
 }

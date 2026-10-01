@@ -610,7 +610,13 @@ impl UserData for Object {
             with(|api, _| Ok(api.start_move(this.0, dir)))
         });
         methods.add_method("lockon_panel", |_, this, (x, y, mode): (LuaValue, LuaValue, LuaValue)| {
-            let (p, mode) = (panel(x, y)?, u8_arg(mode, "lock-on mode")?);
+            let p = panel(x, y)?;
+            // A lock-on mode (rules/lockon), or nil: the navi's own panel.
+            let mode = bound(|b| match (&mode, b.def(&mode)) {
+                (LuaValue::Nil, _) => Ok(None),
+                (_, Some((Registry::Lockon, h))) => Ok(Some(bn6_content_api::LockonHandle(h))),
+                _ => Err(mlua::Error::runtime("lockon_panel: expected a lock-on mode definition or nil")),
+            })?;
             let p = with(|api, _| Ok(api.lockon_panel(this.0, p, mode)))?;
             Ok((p.x, p.y))
         });
