@@ -292,7 +292,11 @@ fn waiting_ticks(b: &Battle) -> Option<u32> {
 
 /// Whether the custom gauge is drawn.
 fn gauge_shown(b: &Battle, state: &HudState) -> bool {
-    (b.gauge.enabled || state.gauge_was_on) && !state.was_over && !custom_open(b) && !transform_hides(b).1
+    (b.gauge.enabled || state.gauge_was_on)
+        && !state.was_over
+        && !custom_open(b)
+        && !crate::custom::gauge_held(b)
+        && !transform_hides(b).1
 }
 
 /// Whether the round has been decided (the HUD thins out).
