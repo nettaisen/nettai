@@ -1,7 +1,7 @@
 --!strict
--- The blank shot: weapon routine 2 (`sub_8011ADA`) and action 0x33
--- (`sub_80ED748`), what the buster fires when the NaviCust's buster bug
--- picks a blank. The navi raises the buster and it clicks, but nothing is
+-- The blank shot (`megaman/blank-shot`): the original's weapon routine 2
+-- (`sub_8011ADA`) and action 0x33 (`sub_80ED748`), what the buster fires
+-- when the NaviCust's buster bug picks a blank. The navi raises the buster and it clicks, but nothing is
 -- fired; then the buster's recovery, counted from the navi's own panel (a
 -- shot's counts from the panel in front; the navi's body is off the field
 -- while it updates, so its own panel counts as open). See
@@ -14,17 +14,16 @@ export type State = {
     timer: number,
 }
 
-local blank_shot = {
-    state = { timer = "u16" },
-}
+local blank_shot = {}
 
-local ACTION = 0x33
+-- The click: GunDelSol's sound.
+local CLICK = asset.sound("gundels1")
 
 -- The phases, on the attack's step.
 local RAISE, RECOVER = 0x0, 0x4
 
 -- `sub_8011ADA`: nothing to fire.
-function blank_shot.setup(navi: Object): number
+function blank_shot.setup(navi: Object): Action
     navi.attack_element = 0
     navi.variant = 0
     navi.charged = 0
@@ -35,7 +34,7 @@ function blank_shot.setup(navi: Object): number
     for i = 1, 4 do
         navi:set_attack_param(i, 0)
     end
-    return ACTION
+    return blank_shot.action
 end
 
 -- `sub_80ED764`: raise the buster; the click on the second tick; after 5
@@ -49,7 +48,7 @@ local function raise(me: Object, s: State)
         me.step_init = 4
     end
     if s.timer == 1 then
-        battle.play_sound(0xF8)
+        battle.play_sound(CLICK)
     end
     s.timer += 1
     if s.timer > 4 then
@@ -76,7 +75,7 @@ local function recover(me: Object, s: State)
 end
 
 -- `sub_80ED748`.
-function blank_shot.update(me: Object, s: State)
+local function update(me: Object, s: State)
     local step = me.step
     if step == RAISE then
         raise(me, s)
@@ -86,5 +85,18 @@ function blank_shot.update(me: Object, s: State)
         error(string.format("blank shot phase %#x reads past its phase table", step))
     end
 end
+
+blank_shot.action = define.action { id = "megaman/blank-shot/action", state = { timer = "u16" }, update = update }
+
+blank_shot.weapon = define.weapon {
+    id = "megaman/blank-shot",
+    name = "Blank shot",
+    -- The charge table's row 2; Charge 5 reads on into row 3's first
+    -- entry, as the original's table does.
+    charge_ticks = { 180, 180, 180, 180, 180, 40 },
+    setup = blank_shot.setup,
+    -- (Transitional: the routine number the pack's data names it by.)
+    legacy = { routines = { 0x02 } },
+}
 
 return blank_shot
