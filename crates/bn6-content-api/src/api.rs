@@ -345,6 +345,12 @@ named_fields! {
         PanelY = "panel_y", U8, rw;
         /// Hit spark effect (0xFF = none).
         HitEffect = "hit_effect", U8, rw;
+        /// The primary element its hits carry (CollisionData+0x02; setup
+        /// takes the object's element's low nibble), and the secondary
+        /// elements (+0x19: its high nibble), which `sub_8019F8C` sets
+        /// again from an element byte.
+        Element = "element", U8, rw;
+        SecondaryElement = "secondary_element", U8, rw;
         StatusBase = "status_base", U8, rw;
         /// Bug code (low byte) and argument (high byte).
         Bugs = "bugs", U16, rw;
@@ -508,6 +514,9 @@ named_flags! {
         // Dimming chip subtype 20 (ElemTrap's trap).
         /// Hit even while the battle is dimmed.
         HitWhileDimmed = "hit_while_dimmed",
+        // VDoll's doll.
+        /// A field object being carried to be thrown (0x04000000).
+        Carried = "carried",
     }
 }
 
@@ -701,6 +710,9 @@ named_flags! {
         /// `sub_801B610`: bodies don't break it; obstacles and breaking
         /// hits drop the HP to 0.
         SparesBodies = "spares_bodies",
+        /// `sub_801B878` while its object's ExtraVars+4 is set (LilBoiler
+        /// erupting): such a touch is as any hit.
+        Ignores = "ignores",
     }
 }
 
@@ -980,6 +992,10 @@ pub trait CoreApi {
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef>;
+    /// The objects of content kind `kind` (a kind handle) in the update
+    /// list, in update order, whatever their lifecycle state (the game's
+    /// walks of the list, such as `sub_80C67A4`).
+    fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef>;
     /// `GetRNG2`: one draw of the simulation's RNG.
     fn rng(&mut self) -> u32;
     /// `GetPositiveSignedRNG2`: one draw, bit 31 cleared.
@@ -1170,6 +1186,9 @@ pub trait CoreApi {
     /// step the sprite, paused or not, but not while dimmed (and whatever
     /// `no_sprite_update` says).
     fn update_sprite_while_paused(&mut self, o: ObjectRef);
+    /// `sub_801BC24`: load a newly requested animation (without stepping
+    /// it), else step the sprite; `update_sprite`'s gating but for holds.
+    fn load_or_step_sprite(&mut self, o: ObjectRef);
     /// The object's sprite attach point `n`, in pixels, facing its way.
     fn attach_point(&self, o: ObjectRef, n: u8) -> (i32, i32);
     /// `object_setCoordinatesFromPanels`: x and y from the panel.
@@ -1269,6 +1288,8 @@ pub trait CoreApi {
     fn action_schema(&self, action: Value) -> ApiResult<StateId>;
     fn status(&self, o: ObjectRef, flag: StatusFlag) -> ApiResult<bool>;
     fn set_status(&mut self, o: ObjectRef, flag: StatusFlag, on: bool) -> ApiResult<()>;
+    /// Clear the whole status word (CollisionData ObjectFlags1 = 0).
+    fn clear_statuses(&mut self, o: ObjectRef) -> ApiResult<()>;
     fn status_timer(&self, o: ObjectRef, t: StatusTimer) -> ApiResult<u16>;
     fn set_status_timer(&mut self, o: ObjectRef, t: StatusTimer, v: u16) -> ApiResult<()>;
     /// `object_setDefaultCounterTime`: open the attack's counter window.

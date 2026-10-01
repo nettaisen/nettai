@@ -60,6 +60,7 @@ fn status_bit(flag: StatusFlag) -> u32 {
         StatusFlag::AffectedByIce => f1::AFFECTED_BY_ICE,
         StatusFlag::Bubbled => f1::BUBBLED,
         StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
+        StatusFlag::Carried => kinds::obstacle::obstacle_f1::CARRIED,
     }
 }
 
@@ -417,6 +418,10 @@ impl CoreApi for Battle {
 
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef> {
         self.round.alive_actors[side as usize & 1].iter().flatten().copied().collect()
+    }
+
+    fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef> {
+        self.objects.in_order().filter(|&r| self.objects.get(r).kind.0 == kind).collect()
     }
 
     fn rng(&mut self) -> u32 {
@@ -924,6 +929,10 @@ impl CoreApi for Battle {
         common::update_sprite_while_paused(self, o);
     }
 
+    fn load_or_step_sprite(&mut self, o: ObjectRef) {
+        common::load_or_step_sprite(self, o);
+    }
+
     fn attach_point(&self, o: ObjectRef, n: u8) -> (i32, i32) {
         kinds::player::attach_point(self, o, n as usize)
     }
@@ -1261,6 +1270,11 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn clear_statuses(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of_mut(o)?.f1 = 0;
+        Ok(())
+    }
+
     fn status_timer(&self, o: ObjectRef, t: StatusTimer) -> ApiResult<u16> {
         Ok(self.collision_of(o)?.status_timers[timer_index(t)])
     }
@@ -1489,6 +1503,8 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x as i64,
             CollisionField::PanelY => c.panel.y as i64,
             CollisionField::HitEffect => c.hit_effect as i64,
+            CollisionField::Element => c.element as i64,
+            CollisionField::SecondaryElement => c.secondary_element as i64,
             CollisionField::StatusBase => c.status_base as i64,
             CollisionField::Bugs => c.bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
@@ -1533,6 +1549,8 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::HitEffect => c.hit_effect = x as u8,
+            CollisionField::Element => c.element = x as u8,
+            CollisionField::SecondaryElement => c.secondary_element = x as u8,
             CollisionField::StatusBase => c.status_base = x as u8,
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
@@ -1708,6 +1726,7 @@ impl CoreApi for Battle {
             ObstacleCrush::Breaks => Crush::Breaks,
             ObstacleCrush::Destroys => Crush::Destroys,
             ObstacleCrush::SparesBodies => Crush::SparesBodies,
+            ObstacleCrush::Ignores => Crush::Ignores,
         };
         let hold = match hold {
             ObstacleHold::AfterAppearing => Hold::AfterAppearing,
