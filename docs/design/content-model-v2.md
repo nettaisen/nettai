@@ -1981,8 +1981,8 @@ kind's own state-machine byte, which the traces compare.
 
 - **Values.** A definition is its frozen spec table; the binding maps it to its registry and handle by identity
   and back (`Bound::def`, `def_value`). The registries' entries that are no definition (the engine's kinds,
-  what registration by number makes) reach scripts as frozen stand-ins `{ id = key }` (`BindPlan::entries`), so
-  `me.kind` always has a value. An asset is a frozen `{ name = ... }` per asset, one per name, with its kind's
+  what registration by number makes, the pack's chip records) reach scripts as frozen stand-ins `{ id = key }`
+  (`BindPlan::entries`), so `me.kind` and a navi's `attack_chip` always have a value. An asset is a frozen `{ name = ... }` per asset, one per name, with its kind's
   metatable; in the canonical tree it is `Data::Asset(kind, name)`.
 - **Names.** `Sprite`, `Navi` and `Collision` were already the object's sprite, a side's stats and an object's
   registration, so the definition and asset types are `SpriteAsset`, `NaviDef` and `CollisionType`; the rest
@@ -1997,6 +1997,9 @@ kind's own state-machine byte, which the traces compare.
 - **Objects and navis.** `battle.spawn(kind, pos)`, `spawn_first`, `spawn_at_end`; `me.kind`;
   `me:set_attack(action, kind)`; `me:navi_action()` (the action definition, the ruleset's own state or action by
   name: `"idle"`, `"move"`, `"dimming_chip"`, ..., or a link navi's number); `me:set_damage_word(w)`.
+  Since step 8e: `navi:action_state(action)` (the state of the action a weapon's setup is about to return),
+  `navi.attack_chip` (the attack's chip as its definition, read and write: §5.7) and `navi.rush_lockon` (the
+  lock-on mode the attack's own action asks the Beast rush for).
 - **Bytes the ruleset still stores.** Effects, sparks, regions and collision types content defines get the
   engine's own number after the pack data's (`Defs::number`; `Content::effect`, `spark`, `region`,
   `field_region`, `collision_type` look past the data's tables), so the byte-typed ruleset (the generic effect's
