@@ -1,5 +1,5 @@
-//! Comparing what packs load into: battle data record by record, graphics
-//! part by part, sprite timing frame for frame, songs command for command
+//! Comparing what packs load into: graphics part by part, sprite timing
+//! frame for frame, songs command for command
 //! (as timelines) and sample for sample (rendered PCM). `bn6-content
 //! verify` uses these to check a pack against a reference pack (after an
 //! editor round trip, say); the extractor checks its own export.
@@ -50,34 +50,6 @@ pub fn compare_graphics(a: &Bundle, b: &Bundle) -> Vec<String> {
     if a.hud != b.hud {
         out.push("HUD differs".into());
     }
-    out
-}
-
-/// Differences between two battle contents, by part (empty: identical).
-pub fn compare_battle(a: &bn6_battle::Content, b: &bn6_battle::Content) -> Vec<String> {
-    let mut out = Vec::new();
-    if a.chips.len() != b.chips.len() {
-        out.push(format!("{} chips, {} after", a.chips.len(), b.chips.len()));
-    }
-    for (x, y) in a.chips.iter().zip(&b.chips) {
-        if x != y {
-            out.push(format!("chip {:#05x} {} differs", x.id.unwrap_or_default(), x.name));
-        }
-    }
-    let parts: [(&str, bool); 11] = [
-        ("navis", a.navis == b.navis),
-        ("forms", a.forms == b.forms),
-        ("rules", a.rules == b.rules),
-        ("objects", a.objects == b.objects),
-        ("effects", a.effects == b.effects),
-        ("sparks", a.sparks == b.sparks),
-        ("regions", a.regions == b.regions),
-        ("panel layouts", a.panel_layouts == b.panel_layouts),
-        ("sprite timing", a.animations == b.animations),
-        ("weapons", a.weapons == b.weapons),
-        ("scripts", a.scripts == b.scripts),
-    ];
-    out.extend(parts.iter().filter(|p| !p.1).map(|p| format!("{} differ", p.0)));
     out
 }
 
