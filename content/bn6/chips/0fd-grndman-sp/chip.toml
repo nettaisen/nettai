@@ -1,3 +1,3 @@
-# GroundMan (navi chip subtype 10), in chips/grndman.
+# A navi chip (subtype 10): GroundMan, as chips/0fb-grndman summons him.
 
-script = "../grndman/chip.luau"
+script = "../0fb-grndman/chip.luau"

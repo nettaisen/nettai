@@ -9,7 +9,7 @@
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 
-local navi = {}
+local crcusman = {}
 
 export type State = {
     -- The controller waiting for him.
@@ -187,7 +187,7 @@ local function hit(me: Object)
         region = regions.single,
         hit_effect = 0xFF,
         target = collision.hits_navis,
-        self_type = collision.breaking_piercing,
+        self_type = collision.piercing_break,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = 3,
@@ -294,7 +294,7 @@ local ACTIONS = {
     [NO_FOOTING] = no_footing,
 }
 
-navi.kind = define.kind {
+crcusman.kind = define.kind {
     id = "crcusman/navi",
     pool = "actor",
     state = { controller = "object" },
@@ -318,8 +318,8 @@ navi.kind = define.kind {
 
 -- `sub_80BA660`: CircusMan for `user`, reporting to `controller` (the
 -- CrcusMan chips' navi hook, `off_802CD5C[14]`).
-function navi.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(navi.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+function crcusman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
+    local o = battle.spawn(crcusman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
     if not o then
         return nil
     end
@@ -333,4 +333,4 @@ function navi.summon(user: Object, controller: Object, spec: NaviChipSpec): Obje
     return o
 end
 
-return navi
+return crcusman
