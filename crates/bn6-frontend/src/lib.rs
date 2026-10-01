@@ -7,6 +7,7 @@
 //! its layer and sprite ordering rules.
 
 pub mod app;
+pub mod audit;
 pub mod compose;
 pub mod driver;
 pub mod headless;
