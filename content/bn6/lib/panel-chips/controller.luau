@@ -8,7 +8,7 @@
 --
 -- A chip's `dimming` hook is `panel_chips.hook(change)`, with its change.
 
-local controller = require("../dimming/controller")
+local dimming_chips = require("../dimming")
 local panel_changer = require("../../objects/panel-changer/panel_changer")
 
 local panel_chips = {}
@@ -28,7 +28,7 @@ local function effect(me: Object)
         me.phase_init = 4
     end
     if not s.busy then
-        controller.undim(me)
+        dimming_chips.done(me)
     end
 end
 
@@ -36,13 +36,13 @@ panel_chips.kind = define.kind {
     id = "panel-chips/controller",
     pool = "effect",
     state = { change = "record:panel-change", busy = "bool" },
-    update = controller.update("the panel chips' controller", effect),
+    update = dimming_chips.phases { name = "the panel chips", effect = effect },
 }
 
 -- `sub_80E2B5A`: a chip's `dimming` hook, for its change.
 function panel_chips.hook(change: PanelChange): (user: Object, spec: DimmingChipSpec) -> Object?
     return function(user: Object, spec: DimmingChipSpec): Object?
-        local o = controller.spawn(panel_chips.kind, user, spec)
+        local o = dimming_chips.spawn(panel_chips.kind, user, spec)
         if o then
             (o.state :: State).change = change
         end
