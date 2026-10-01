@@ -34,7 +34,7 @@ local CAN_HOLD = 0x10010
 local SPAWNER_ADDRESS = 0x080B921B
 
 -- His flames act while dimmed and last 30 ticks, as attacks.
-local FLAME = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
+local FLAME: HeatFlame = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
 
 -- His actions.
 local APPEAR, STAND, INHALE, FIRE, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10

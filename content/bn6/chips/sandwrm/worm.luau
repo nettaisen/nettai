@@ -48,8 +48,8 @@ local FORBID = { [0] = 0x05800000, [1] = 0x0A800000 }
 local HIT_MOD = 3
 -- By level: the arc's length (`byte_80DEA50`) and the holes' timers
 -- (`byte_80DEA70`); the same for all three.
-local LENGTH = { [0] = 0x10, 0x10, 0x10 }
-local HOLE_TICKS = { [0] = { 0x14, 0x14 }, { 0x14, 0x14 }, { 0x14, 0x14 } }
+local LENGTH: { [number]: number } = { [0] = 0x10, 0x10, 0x10 }
+local HOLE_TICKS: { [number]: { number } } = { [0] = { 0x14, 0x14 }, { 0x14, 0x14 }, { 0x14, 0x14 } }
 -- The sand it throws (`byte_80DEDD8`, its looks; the fourth's Param3 1,
 -- which nothing reads; `byte_80DEA58`: delays, the same for all three
 -- levels).

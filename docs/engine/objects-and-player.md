@@ -1711,8 +1711,8 @@ weapon routine; a sub-phase past 8 reads past its table):
 The pack's `objects/projectile` (`projectile.luau`); actions fire it with `lib/projectile.luau` (`projectile.fire`,
 `sub_800FAAC`; `projectile.spawn`, `sub_80C4FFE`). T3 indices 0x0C, 0x0D and 0x13..0x15 of the T3 jump table run
 the same routine, but nothing spawns them. Its kinds, its first parameter, are `off_80C4C78`'s 12-byte records, 40
-of them up to the routine's code: the pack's `objects/projectile/object.toml` `[[variant]]`s
-(`ObjectData::projectiles`, `data.objects.projectiles`). A record: collision self type, target type, hit modifier
+of them up to the routine's code: the content's `objects/projectile/variants.luau` (`ProjectileVariant`
+records). A record: collision self type, target type, hit modifier
 (0..2); element byte (3); hit effect (4); sprite category (0xFF: not drawn), index and animation (5..7); the panel
 type a hit leaves (8, 0xFF: none); status byte (9); bug code and argument (0xA, 0xB). The routine adds what it does
 by kind number, which the pack writes into the records: kinds 7 and 0x15 crack the panel they hit, 0x16 breaks it,
@@ -2266,7 +2266,7 @@ Trace: soundmod, every round's first turn. Both navis cross at once: side 0 (Gre
 - Init (`sub_80C4368`): stores `off_80C42D4[Param1]` (a per-animation byte table) **in its CollisionDataPtr slot**, so a trace reading ObjectFlags1 through it reads 0 (it points into ROM); the sprite `byte_80C4320[Param1]`; CurAnim = Param4 and CurAnimCopy = 0 (one halfword store); state 4, then the update.
 - Update (`sub_80C43C4`): CurAnim = owner's + Param4; position = owner's; then if ExtraVars[0] (`sub_80C4526`): Y and Z + 1 pixel; else if the table's byte for the owner's animation is 0: Y and Z − 1 pixel (same place on screen, drawn behind the owner). Visibility follows the owner unless PhaseInitialized is set (`sub_80C44E4`/`sub_80C44FA` force it); the flip follows the owner. Action 0: Param3 = 0 → `object_updateSprite` unless while dimmed; else `sub_801BCD0`.
 - Removal (`sub_80C44C8`): state 8, freed at its next update.
-- The tables: `ObjectData::body_overlays` (a content pack's `objects/body-overlay/object.toml`; the byte tables run back to back up to the pointer table; an animation past a table's end reads the next one, so each row is extracted to the block's end).
+- The tables: `ObjectData::body_overlays` (the content's `rules/body-overlays.luau`; the byte tables run back to back up to the pointer table; an animation past a table's end reads the next one, so each row is extracted to the block's end).
 
 ## 13. RNG uses (all that touch objects or battle setup)
 

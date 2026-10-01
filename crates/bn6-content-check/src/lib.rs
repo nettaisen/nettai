@@ -1,4 +1,4 @@
-//! Type-check a Luau content pack (docs/design/scripting.md §3.1) against
+//! Type-check a Luau content pack (docs/design/scripting.md §3.3) against
 //! the content API definitions in its `core.d.luau`, with Luau's own
 //! analysis (strict mode, the new solver), in process.
 //!
