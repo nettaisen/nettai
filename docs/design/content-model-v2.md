@@ -109,9 +109,10 @@ Every definition belongs to one registry. The engine knows the registries and th
 | sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3) | the asset's name | names; sprites' animation timing | the ROM's numbers, in compat/assets.toml |
 
 Singletons, defined once per pack: `define.rules(section, spec)` for each rule table (§3.8) and `define.roles`
-for what the ruleset needs by role (§7.4). Two more registries are internal: **identities** (the NameID records,
-§3.2), nested in the navi, form or kind they belong to and keyed by it (`heatcross/identity`), which compat maps
-to NameIDs through navis.toml and forms.toml; and **state schemas**, one per distinct state table (§3.5), which
+for what the ruleset needs by role (§7.4). **Identities** (the NameID records, §3.2) are `define.identity`,
+nested in the navi or form they belong to and keyed by it (`heatcross/identity`) or a field object's own (with
+an `id`), which compat maps to NameIDs through navis.toml, forms.toml and rules.toml. One more registry is
+internal: **state schemas**, one per distinct state table (§3.5), which
 the content state store is keyed by.
 
 ### 2.2 Keys
@@ -256,6 +257,56 @@ export type FormSpec = {
 parts an actor record puts on (`sub_8010DF6`), and the classification the ruleset used NameID ranges for
 (`player`, `cross`, `boss`, `obstacle`). A navi's or form's identity is nested in it; a kind that has one
 (rocks, field objects) holds it in its definition or its variants. NameIDs themselves are compat.
+
+**As built** (step 11, identities). `define.identity` is a registry of its own (`Registry::Identity`,
+`IdentityHandle`): an object holds `identity: Option<IdentityHandle>` where it held a NameID, and an object with
+none is what the original's NameID 0 is, a virus with a zeroed actor record.
+
+```luau
+export type IdentitySpec = {
+    id: string?,                 -- a field object's; a navi's or form's is keyed by its owner (`heatcross/identity`)
+    class: "megaman" | "link_navi" | "cross" | "beast" | "cross_beast" | "beast_over"
+         | "field_object" | "virus" | "navi" | "gregar" | "falzar",
+    version: number?, actor_type: ActorType?, ai_index: number?,   -- the actor record (`byte_80182C4`)
+    attach_points: { { number } }?,                                 -- a navi's sprite's
+    held_offset: { number }?,    -- where a held thing with no attach point sits (BatCan's cannon)
+    look: { sprite: SpriteAsset?, anim: number?, palette: number?, shadow: boolean?, keeps_flip: boolean? }?,
+    absorbable: boolean?,        -- false: the obstacle-absorbing action and ColArmy leave it (the mine)
+    scrap: boolean?,             -- false: nothing swallows it or leaves it as junk (the mine, BodyGrd's striker)
+}
+```
+
+- **The class is the original's NameID range**, stated in the definition: MegaMan in his base form (0x1A0), a
+  link navi (0x1A1 to 0x1AB), a Cross, Beast Out, a Cross in Beast Out, Beast Over (0x1AC to 0x1C3), a field
+  object (0xCD to 0xFF); and what no netbattle object is: a virus (up to 0xBA), another navi, the Cybeasts
+  (0x173 to 0x17E, which the end fade, the HP bug's blindness and the lock-on marker test). The ruleset's range
+  tests are tests of the class (`is_player`, `is_navi`, `is_cybeast`, a form's). A navi's or a form's identity
+  is `identity = define.identity { class = ..., ... }` in its definition, and belongs to that one navi or form
+  (the engine checks its class is a player's); the afterimage and the stand-ins find the owner's sprite through
+  it.
+- **A field object defines its own** in its kind's module, or in the variants that differ by it (the rocks, the
+  fans, the time bombs, the Anubis statues, the instruments): `local IDENTITY = define.identity { id =
+  "boulder", class = "field_object", version = 1, ai_index = 1, look = { ... } }`, then `me.identity =
+  IDENTITY`. Its `look` is the original's `byte_8021220` row: what stands in for the object (DustMan's junk).
+  Only the 23 NameIDs an object of the content takes are identities; the table's other rows had no reader.
+- **Content reads the definition**: `o.identity` is the identity's table or nil, so `o.identity.class`,
+  `.absorbable`, `.held_offset` are plain field reads, and one object takes another's by assignment
+  (`o.identity = user.identity`: the heroes, the farmer). DblBeast's beasts take the Beast Out forms' and
+  DblHero's ProtoMan the navi's (`gregar_beast.identity`, `protoman.identity`). DustMan keeps what he took as
+  identities (`"identity[8]"` state).
+- **Gone**: `me.name_id`, `battle.navi_record`, `me:death_hook(name_id)`, `battle.attach_point(name_id, ...)`,
+  rules/identities.luau (the actor records and looks by NameID), `Rules::actor_records`,
+  `ObjectData::name_looks`, `NameData`.
+- **Compat** has the NameIDs: a navi's and a form's in navis.toml and forms.toml, a field object's in rules.toml
+  (`[identities]`). No trace compares an object's NameID, so they serve `gen-content check` alone, which
+  compares each identity's actor record, attach points, look and traits with the ROM's.
+- **One class for what no netbattle has**: the original tests viruses by more than one upper bound (the
+  volleys' targets, the rock barrage's, the lock-on marker's), and every object of the content with a NameID in
+  those ranges has none at all; `virus` is the one class for them, and `navi`, `gregar` and `falzar` exist so a
+  pack with such objects can say so. The afterimage with its own sprite and the junk DustMan throws before it
+  wears a look keep no identity, as the original's keep NameID 0.
+- **Not yet**: the hooks an actor record's AI index picks (`parts`, `death`, `flinch`, `drag`: §7.5) are still by
+  `ai_index`, a field of the identity.
 
 ### 3.3 Weapons
 
@@ -866,8 +917,9 @@ lib/sparks.luau, lib/regions.luau). What it settled:
   match a hand's VDoll, and Darkness doesn't form); LilBolr1-3's records; the Cross special's MiniBomb,
   EnergBom and MegEnBom, which the ruleset's table picks by number and so gets the pack's records; and the
   test content's numbered bombs. The shim goes when those are definitions or roles (step 5, phase C).
-- **What stays numeric**, having no v2 form yet: statuses (the flash's blinding, the bug bomb's 0x20), bug codes,
-  NameIDs (the BlkBomb's 0xD5, the attachment's Cross check) and the absorbed-obstacle kind; the hitbox's
+- **What stays numeric**, having no v2 form yet: statuses (the flash's blinding, the bug bomb's 0x20), bug codes
+  and the absorbed-obstacle kind (the BlkBomb's NameID and the attachment's Cross check are identities since
+  step 11, §3.2); the hitbox's
   `hit_effect = 0xFF` ("none"). The ratchet counts what it can see of them.
 - **Verified** on the test content (the thrown chips' duel under rollback, the engine's tests), the type
   check, and the traces (at every latency) and chip lab on a pack extracted with asset names (step 6): the
@@ -1092,8 +1144,8 @@ chips/numbrbl, chips/cornfsta and chips/dblhero. What it settled:
   as CrosOver's MegaMan's). A second attachment (Gregar's, MegaMan's copy's) is in lib/slot's `held2`.
 - **A family's kind reused**: CornFsta's bursts are CornSht's corns (chips/cornsht/corn, generation 0xFF), and
   its farmer holds CornSht's gun (`cornsht.gun`).
-- **Still numbers**: the beasts', heroes' and farmer's NameIDs (`me.name_id`, six uses the ratchet counts), whose
-  attachments sit at their sprites' attach points; the shots' `hit_effect = 0xFF`. LifeSync's immune virus is
+- **Still numbers**: the shots' `hit_effect = 0xFF`. (The beasts', heroes' and farmer's NameIDs, whose
+  attachments sit at their sprites' attach points, are identities since step 11: §3.2.) LifeSync's immune virus is
   told by its actor data (AI 13). `battle.boss_rank` (battle effect 1) joins `battle.link` for LifeSync.
 
 **As built** (phase B, group C5: dimming subtypes 1, 10, 11, 20, 25 and 38, converted from their v1 modules;
@@ -1125,7 +1177,7 @@ objects/invisible, lib/navi-boost/controller, and objects/panel-bursts. What it 
 - **The shims** (registration by number, §12): chips/0ba-antinavi (subtype 20, by the trap's row),
   090-timebom1 (10, by the bomb's row), 0b1-invisibl (1, by the time) and 121-darkinvs (38: DarkInvs's hook;
   the other rows, whose chips are definitions, from their parameter bytes for the test content's records).
-- **Still numbers**: the mine's and the bombs' NameIDs (`me.name_id`, counted), the statuses the strike's hits
+- **Still numbers** (the mine's and the bombs' NameIDs are identities since step 11, §3.2): the statuses the strike's hits
   carry, `hit_effect = 0xFF`, the linked record's chip (`LinkedChip.chip`, the numeric API's), and the weapon
   routines the navi-changing chips install (0x21 to 0x26, the B+Back shield 0x3B, the busters `sub_80E97BE`
   replaces): the navi's weapon slots take numbers until the weapons are definitions (family 8e).
@@ -1511,7 +1563,8 @@ What it settled:
   chips/sonicbom), started with `me:set_attack(action, 0)`. The attack still takes the pick's chip number, with
   its record's subtype and parameters (`legacy = { chips, sword }`, §12): the Beast rush reads the chip's
   lock-on mode, and SlashCross's charged sword (action 0x41, v1) the subtype and first parameter.
-- **What stays numeric**, having no v2 form yet: NameIDs (the volley's and the top's target tests), statuses
+- **What stays numeric**, having no v2 form yet (the volley's and the top's target tests are by the identity's
+  class since step 11): statuses
   and bug codes, forms and navis by number in the variable
   swords, the charged sword's action (0x41, a v1 weapon action) a charged pick becomes.
 - **The test content** runs BN6's GunDelSol through its numbered SunGuns (chips/010-gundels2's registration),
@@ -2525,7 +2578,8 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
    definitions from people's. The tables v1 modules read by number are legacy rule
    sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and
-   the charge times of the routines no weapon names), rules/identities.luau, rules/body-overlays.luau and a
+   the charge times of the routines no weapon names), rules/body-overlays.luau (rules/identities.luau went with
+   step 11: identities are definitions, §3.2) and a
    kind's objects/KIND/rows.luau while something still reads its table by number (`data.objects.<table>` in a
    module, or the engine: the attachments' is the last; the rocks', the absorbed obstacles', the sun beam's,
    the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with their
@@ -2535,8 +2589,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    `setup` with their own charge times), and every routine has its charge times (the TOML's
    rules/weapons.toml had 50 of the 148; a routine a navi's or form's stats name and nothing implements, like
    ProtoMan's 0x32, now charges as the game does). Content may not use a placeholder asset
-   name, so compat names what the tables use for its first user (`effect-0e`, `held-28`), for curation; a
-   NameID look past the table's real ones names a sprite with no animation data as `"cc-ii"`. The loader is
+   name, so compat names what the tables use for its first user (`effect-0e`, `held-28`), for curation. The loader is
    `bn6_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
    check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
    A chip's `description` (what R shows on the custom screen: the battle reads its line count) and a navi's
@@ -2600,7 +2653,9 @@ family's packet, in gen-content, and checked by `gen-content check`.
     shim folders, chips/v1.luau, `record.luau`/`records.luau` and the chips' legacy markers are gone, and the
     engine has no chip by number.
 11. **Navis, forms, identities and weapons**: `NaviStats` on handles, the form and navi traits, identities for
-    NameIDs, weapon traits. **L.**
+    NameIDs, weapon traits. **L.** Done but the form and navi traits: weapons by handle (§3.3, "As built"),
+    identities (§3.2, "As built"); navis and forms still have their numbers in the engine (`Form`, `Navi`) and
+    their `legacy { number, name_id }` markers.
 12. **Assets and stages**: sounds, music, banners, effects, sparks, collision types and regions through roles;
     stages on handles. **M.**
 
