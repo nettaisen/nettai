@@ -9,7 +9,6 @@ local controller = require("./controller")
 return define.chip {
     id = "dblbeast",
     name = "DblBeast",
-    description = "",
     codes = { "W" },
     element = "null", family = "null", class = "mega",
     rarity = 4, mb = 99, damage = 0, hit_param = 138, lockout = 0,

@@ -2809,7 +2809,6 @@ local metrknuk = define.chip {
 local dblbeast = define.chip {
     id = "v1/dblbeast",
     name = "DblBeast",
-    description = "",
     codes = { "W" },
     element = "null",
     family = "null",
