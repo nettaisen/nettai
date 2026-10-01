@@ -1226,6 +1226,9 @@ What it settled:
   variant and parameters for it.
 - **The target column is a helper**: `panels.enemy_column(me)` (lib/panels, `sub_80ED040`), MachGun's and the
   dragons' (which fall back to the column right ahead when no enemy is found).
+- **A kind another series borrows stays with its series** (§4.1, rule 3): GunDelSol's beam (`gundels/beam`,
+  spawned with its look, a `SunBeam`, and whether it shows while dimmed) is chips/gundels', and CrosOver's
+  Django (chips/crosover) requires it.
 - **Which chips are definitions.** AquaNdl1-2, RlngLog1-3, AirSpin1-3, DolThdr1-3, WindRack, MagCoil, the four
   dragons, RskyHny1-2, GunDelS1-3 and GunDelEX. The others keep the pack's records, their modules giving the
   action with its compat key as `id`: AquaNdl3 and RskyHny3 (MstrCros's recipe names them by number), H-Burst,
