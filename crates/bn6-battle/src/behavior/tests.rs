@@ -1637,6 +1637,30 @@ fn first_barrier_raises_a_barrier() {
 }
 
 #[test]
+fn the_other_sides_first_barrier_is_hidden_until_the_local_navi_is_in() {
+    // The other side's navi inits first: its FirstBarrier's visual asks
+    // whether the local navi is blind before that navi has collision data,
+    // and the game's read through the null pointer (BIOS open bus) has the
+    // blind bit, so the visual is hidden on that tick only.
+    let mut s = scenario::setup();
+    s.navi_stats[1].first_barrier = 1;
+    let mut b = Battle::new(s, scenario::content());
+    let visual = |b: &Battle| b.player(1).and_then(|p| b.objects.get(p).actor).and_then(|a| b.actors.get(a).barrier_visual);
+    let mut ticks = 0;
+    while visual(&b).is_none() {
+        b.tick(&Default::default(), Default::default());
+        ticks += 1;
+        assert!(ticks < 10, "no visual");
+    }
+    let v = visual(&b).unwrap();
+    let local = b.objects.get(b.player(0).unwrap());
+    assert!(b.objects.get(v).flags & crate::object::flags::VISIBLE == 0, "hidden on its first tick");
+    assert!(local.collision.is_some(), "the local navi is in by the tick's end");
+    b.tick(&Default::default(), Default::default());
+    assert!(b.objects.get(v).flags & crate::object::flags::VISIBLE != 0, "shown from the next");
+}
+
+#[test]
 fn the_support_dimming_chips_roll_back() {
     // A copy of the battle taken at any tick plays on exactly as the
     // battle does.

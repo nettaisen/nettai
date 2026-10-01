@@ -127,8 +127,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).anim = anim;
     let alliance = b.objects.get(r).alliance;
     // sub_800EB6C: hidden from a blind local navi.
-    let viewer_blind = b.is_remote(alliance)
-        && b.player(alliance ^ 1).and_then(|p| b.objects.get(p).collision).is_some_and(|c| b.collision.get(c).f1 & f1::BLIND != 0);
+    let viewer_blind = !b.viewer_sees(alliance);
     let shown = !viewer_blind && vars(b, r).shown;
     let submerged = b.objects.get(navi).collision.is_some_and(|c| b.collision.get(c).f1 & f1::SUBMERGED != 0);
     let (pos, flip) = {
