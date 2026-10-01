@@ -96,9 +96,9 @@ effects.blast_fire_12 = define.effect { sprite = asset.sprite("blast-fire"), ani
 -- Effect 0x2A.
 effects.spout_man_effect = define.effect { sprite = asset.sprite("spout-man-effect"), anim = 0, palette = 0 }
 -- Effect 0x2B.
-effects.effect_2b_21 = define.effect { sprite = asset.sprite("effect-2b"), anim = 21, palette = 0 }
+effects.diveman_21 = define.effect { sprite = asset.sprite("diveman"), anim = 21, palette = 0 }
 -- Effect 0x2C.
-effects.effect_2b_25 = define.effect { sprite = asset.sprite("effect-2b"), anim = 25, palette = 0 }
+effects.diveman_25 = define.effect { sprite = asset.sprite("diveman"), anim = 25, palette = 0 }
 -- Effect 0x2D.
 effects.sword_slash_1_2d = define.effect { sprite = asset.sprite("sword-slash"), anim = 1, palette = 6 }
 -- Effect 0x2E.

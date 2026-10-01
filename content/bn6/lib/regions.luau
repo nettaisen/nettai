@@ -23,6 +23,11 @@ regions.line = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 } } }
 -- The anchor and its four diagonals (region 0x0B: CrosSwrd).
 regions.x = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
 
+-- The halves of that X: the diagonal rising forward (region 0x12) and the
+-- one falling forward (0x13), TwinLdrs's Colonel striking both.
+regions.rising = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 } } }
+regions.falling = define.region { panels = { { 0, 0 }, { -1, -1 }, { 1, 1 } } }
+
 -- The anchor and the two panels diagonally ahead (region 0x0D: a bullet's
 -- burst).
 regions.fork = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 } } }
@@ -125,10 +130,6 @@ regions.region_0a = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { 
 regions.region_0c = define.region { panels = { { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
 -- Region 0x0E.
 regions.region_0e = define.region { panels = { { 1, -1 }, { 1, 1 } } }
--- Region 0x12.
-regions.region_12 = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 } } }
--- Region 0x13.
-regions.region_13 = define.region { panels = { { 0, 0 }, { -1, -1 }, { 1, 1 } } }
 -- Region 0x14.
 regions.region_14 = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } } }
 -- Region 0x15.

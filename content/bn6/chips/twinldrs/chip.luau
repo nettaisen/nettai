@@ -25,5 +25,11 @@ return define.chip {
         { order = 9, sequence = { protoman_chips.protomn_sp, antinavi, colonel_chips.colonel } },
         { order = 10, sequence = { colonel_chips.colonel_sp, antinavi, protoman_chips.protoman } },
     },
-    legacy = legacy { number = 0x15C, action = 0x1B, subtype = 20, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x15C,
+        action = 0x1B,
+        subtype = 20,
+        params = { 0, 0, 0, 0 },
+        script = "chips/15c-twinldrs/chip",
+    },
 }

@@ -17,7 +17,13 @@ local dustman = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 239, index = 19, sort = 133 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x0FE, action = 0x1B, subtype = 11, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x0FE,
+        action = 0x1B,
+        subtype = 11,
+        params = { 0, 0, 0, 0 },
+        script = "chips/0fe-dustman/chip",
+    },
 }
 
 local dustman_ex = define.chip {
@@ -35,7 +41,13 @@ local dustman_ex = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 240, index = 20, sort = 134 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x0FF, action = 0x1B, subtype = 11, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x0FF,
+        action = 0x1B,
+        subtype = 11,
+        params = { 0, 0, 0, 0 },
+        script = "chips/0fe-dustman/chip",
+    },
 }
 
 local dustman_sp = define.chip {
@@ -57,6 +69,7 @@ local dustman_sp = define.chip {
         action = 0x1B,
         subtype = 11,
         params = { 4, 0, 0, 0 },
+        script = "chips/0fe-dustman/chip",
         damage = 1010,
         sp_damage = { 200, 195, 190, 185, 180, 175, 170, 165, 160, 155, 150 },
     },

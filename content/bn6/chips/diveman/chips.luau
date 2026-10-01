@@ -17,7 +17,13 @@ local diveman = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 260, index = 25, sort = 122 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x104, action = 0x1B, subtype = 13, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x104,
+        action = 0x1B,
+        subtype = 13,
+        params = { 0, 0, 0, 0 },
+        script = "chips/104-diveman/chip",
+    },
 }
 
 local diveman_ex = define.chip {
@@ -35,7 +41,13 @@ local diveman_ex = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 261, index = 26, sort = 123 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x105, action = 0x1B, subtype = 13, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x105,
+        action = 0x1B,
+        subtype = 13,
+        params = { 0, 0, 0, 0 },
+        script = "chips/104-diveman/chip",
+    },
 }
 
 local diveman_sp = define.chip {
@@ -57,6 +69,7 @@ local diveman_sp = define.chip {
         action = 0x1B,
         subtype = 13,
         params = { 0, 0, 0, 0 },
+        script = "chips/104-diveman/chip",
         damage = 1013,
         sp_damage = { 270, 260, 250, 240, 230, 220, 210, 200, 190, 180, 170 },
     },

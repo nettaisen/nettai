@@ -17,7 +17,13 @@ local judgeman = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 266, index = 31, sort = 248 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x10A, action = 0x1B, subtype = 15, params = { 20, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x10A,
+        action = 0x1B,
+        subtype = 15,
+        params = { 20, 0, 0, 0 },
+        script = "chips/10a-judgeman/chip",
+    },
 }
 
 local judgemn_ex = define.chip {
@@ -35,7 +41,13 @@ local judgemn_ex = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 267, index = 32, sort = 249 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x10B, action = 0x1B, subtype = 15, params = { 30, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x10B,
+        action = 0x1B,
+        subtype = 15,
+        params = { 30, 0, 0, 0 },
+        script = "chips/10a-judgeman/chip",
+    },
 }
 
 local judgemn_sp = define.chip {
@@ -57,6 +69,7 @@ local judgemn_sp = define.chip {
         action = 0x1B,
         subtype = 15,
         params = { 40, 0, 0, 0 },
+        script = "chips/10a-judgeman/chip",
         damage = 1015,
         sp_damage = { 190, 185, 180, 175, 170, 165, 160, 155, 150, 145, 140 },
     },
