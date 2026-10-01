@@ -99,6 +99,10 @@ pub struct Records {
     /// entry (`byte_80CF934`'s row).
     #[serde(default)]
     pub rock_variants: BTreeMap<String, u8>,
+    /// The projectile's variants a navi's stats name as a shot program
+    /// (NaviStats+0x4D, +0x4F), by the row of `off_80C4C78`.
+    #[serde(default)]
+    pub projectile_variants: BTreeMap<String, u8>,
 }
 
 /// The original's numbers of rule definitions (rules.toml): only

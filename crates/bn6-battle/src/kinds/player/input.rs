@@ -56,16 +56,17 @@ pub(super) fn a_chargeable(b: &Battle, r: ObjectRef) -> bool {
 /// attack family matches the form (damaging, not dimming chips; any
 /// Null-family chip in Beast Out).
 fn chip_charges(b: &Battle, r: ObjectRef, chip: ChipHandle) -> bool {
-    use crate::content::{ChipFamily as F, ChipFlags};
-    let id = b.content.chip_number(chip);
-    if id.is_some_and(|id| id >= 0x190) {
+    use crate::content::{ChipFamily as F, ChipFlags, ChipTraits};
+    // (A link navi's own chip, the original's last block of chips, never
+    // charges.)
+    if b.content.chip_links(chip).own_chip_of.is_some() {
         return false;
     }
     let c = b.content.chip(chip);
     let (family, form) = (c.family, form_of(b, r).0);
     let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::DIMMING);
     let charges = (form == 2 && family == F::Null && damaging)
-        || (matches!(form, 3 | 0xF) && (id.is_some_and(|id| (0x4C..=0x4F).contains(&id)) || family == F::Sword) && damaging)
+        || (matches!(form, 3 | 0xF) && (c.traits.has(ChipTraits::ELEMENT_SWORD) || family == F::Sword) && damaging)
         || ((0x0B..=0x16).contains(&form) && family == F::Null)
         || (matches!(form, 7 | 0x13) && family == F::Wood && damaging)
         || (matches!(form, 6 | 0x12) && family == F::Aqua && damaging)
@@ -225,7 +226,9 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
     if a.buster.is_none() || f0 & (request::BUSTER | request::CHARGED_SHOT) != 0 {
         return;
     }
-    let edge = if matches!(b.weapon_number(a.buster), Some(3 | 4 | 0x2C)) {
+    // A buster that fires while B is held (the Beast busters, the Beast
+    // form's throw).
+    let edge = if a.buster.is_some_and(|w| b.content.weapon(w).held) {
         if matches!(form.0, 0x14 | 0x16) && a.requests & request::BACK_SPECIAL != 0 {
             return;
         }
@@ -310,16 +313,12 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
         a.a_charge
     };
     let Some(routine) = routine else { return 0xFF };
-    // A weapon's own charge times (by Charge stat, those past its row the
-    // next routine's, as the game reads them); the test content's table by
-    // routine number.
-    let w = b.content.defs.weapon(routine);
-    if let Some(&ticks) = w.charge_ticks.get(s.charge as usize) {
-        return ticks;
-    }
-    match b.content.weapon_number(routine) {
-        Some(number) if !b.content.rules.weapons.is_empty() => b.content.rules.charge_threshold(number, s.charge),
-        _ => panic!("content error: weapon {:?} has no charge time at Charge {}", w.key, s.charge),
+    // The weapon's own charge times, by Charge stat (those past its row
+    // the next routine's, as the game reads them).
+    let w = b.content.weapon(routine);
+    match w.charge_ticks.get(s.charge as usize) {
+        Some(&ticks) => ticks,
+        None => panic!("content error: weapon {:?} has no charge time at Charge {}", w.key, s.charge),
     }
 }
 

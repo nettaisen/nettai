@@ -5,10 +5,6 @@
 -- over the whole field (which, at panel (0, 0), never lands), and a gust
 -- of wind on him; 30 ticks, then 20 of recovery. See
 -- docs/engine/standard-chips.md, "Action 0x0A".
---
--- Its record stays the pack's (its damage grows with his level, which
--- chip definitions take with step 10's damage formulas) and names this
--- module, whose `action` it runs (docs/design/content-model-v2.md §12).
 
 local collision = require("../../rules/collision")
 local link = require("../../lib/link_chips")
@@ -99,7 +95,22 @@ end
 
 local PHASES = { [BLOW] = blow, [RECOVER] = recover }
 
-return {
+return define.chip {
+    id = "ftornado",
+    name = "FTornado",
+    description = "Attk enmy\nw/spnning\ntwister!",
+    codes = { "T" },
+    element = "null",
+    family = "wind",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = { formula = "navi_level", base = 10, per_level = 10 },
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "library", "variable_damage" },
+    library = { number = 407, index = 0, sort = 7 },
+    slot_in_limit = 1,
     -- `sub_80F1A46` (`off_80F1A58`).
     action = define.action {
         id = "ftornado/action",

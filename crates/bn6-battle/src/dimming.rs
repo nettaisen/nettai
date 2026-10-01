@@ -8,7 +8,7 @@
 //! on each other. See docs/engine/chips.md §3.6.
 
 use crate::battle::{Battle, FadeMode, battle_flags};
-use crate::content::{BannerId, ChipId};
+use crate::content::{BannerId, ChipFlags, ChipTraits, Trap};
 use bn6_content_api::ChipHandle;
 use crate::hud::BannerStatus;
 use crate::kinds::common::{self, Progress};
@@ -57,9 +57,6 @@ const FADE_SPEED: u8 = 4;
 pub(crate) const LOCAL_TELOP: BannerId = BannerId(0x4C);
 pub(crate) const REMOTE_TELOP: BannerId = BannerId(0x50);
 
-/// Chips from this id on can't be cut in on.
-const FIRST_NO_CUT_IN: ChipId = 0x170;
-
 /// What every controller knows about its chip (object +0x30 / +0x32): for
 /// the name the HUD shows.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -71,6 +68,12 @@ pub struct DimmingChip {
 }
 
 impl Battle {
+    /// The trap `side`'s defensive-chip record holds, if its chip is one
+    /// (`sub_802CE78` and the chip's trap).
+    pub(crate) fn linked_trap(&self, side: u8) -> Option<Trap> {
+        self.linked[side as usize & 1].chip.and_then(|h| self.content.chip(h).trap)
+    }
+
     fn dimming(&mut self, side: u8) -> &mut DimmingRecord {
         &mut self.dimming[side as usize]
     }
@@ -79,7 +82,9 @@ impl Battle {
     /// (action 0x15's and 0x1B's registration: `sub_800BF16` with the
     /// chip's cut-in rule).
     pub(crate) fn register_dimming(&mut self, side: u8, chip: Option<ChipHandle>, controller: ObjectRef, user: ObjectRef) {
-        let no_cut_in = self.chip_number(chip).is_some_and(|n| n >= FIRST_NO_CUT_IN);
+        // (The original's test is the chip's place in its table: the chips
+        // past the Program Advances.)
+        let no_cut_in = chip.is_some_and(|h| self.content.chip(h).traits.has(ChipTraits::NO_CUT_IN));
         self.start_dimming(side, no_cut_in, Some(controller), user);
     }
 
@@ -231,17 +236,20 @@ fn telop(b: &mut Battle, r: ObjectRef, no_cut_in_runs: bool) {
     advance(b, r, if (no_cut_in_runs && rec.no_cut_in) || user_alive { 1 } else { 2 });
 }
 
-/// Navi chips (0xDD..=0x118) that AntiNavi turns back.
+/// The navi chips AntiNavi turns back: the original's block of them in its
+/// chip table, which is every chip with the `navi` flag and Django's three
+/// (the `navi_slot` trait), which lack it.
 fn is_navi_chip(b: &Battle, chip: Option<ChipHandle>) -> bool {
-    b.chip_number(chip).is_some_and(|n| (0xDD..=0x118).contains(&n))
+    chip.is_some_and(|h| {
+        let c = b.content.chip(h);
+        c.flags.has(ChipFlags::NAVI) || c.traits.has(ChipTraits::NAVI_SLOT)
+    })
 }
 
-/// AntiNavi, the defensive chip that turns a navi chip around.
-const ANTI_NAVI: ChipId = 0xBA;
-
-/// AntiNavi (chip 0xBA) is the other side's defensive chip.
+/// AntiNavi (the trap that turns a navi chip around) is the other side's
+/// defensive chip.
 fn anti_navi_waits(b: &Battle, side: u8) -> bool {
-    b.chip_number(b.linked[(side ^ 1) as usize].chip) == Some(ANTI_NAVI)
+    b.linked_trap(side ^ 1) == Some(Trap::AntiNavi)
 }
 
 /// How long the sparkle shows before AntiNavi's telop, in ticks after the
@@ -556,7 +564,7 @@ mod tests {
         let mut came_for = Vec::new();
         let arm = |b: &mut Battle, s: u8| {
             let owner = b.player(s);
-            let chip = b.content.chip_numbered(super::ANTI_NAVI);
+            let chip = Some(testing::chip_handle(testing::ANTI_NAVI));
             b.linked[s as usize] = LinkedRecord { chip, owner, ..LinkedRecord::default() };
         };
         for t in &tape {

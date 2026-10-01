@@ -12,12 +12,12 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | Exemplar | What it shows | Where |
 |---|---|---|
 | The bombs and seeds | A chip action as a builder (`throw.action { held, thrower }`); a thrown kind with its variant as a record (`bomb.variant { ... }`, `define.record`); a series in one module; shared definitions (collision types, effects, sparks, regions); an attachment look | lib/bombs/, chips/minibomb, bigbomb, energbom, flshbom, blkbomb, bugbomb, grasseed, iceseed, poisseed; rules/collision.luau, lib/{effects,sparks,regions}.luau, objects/attachment |
-| The swords | One action builder for a family (`slash.action { blade, hit, effect, sound, ... }`); the transitional `legacy` marker; chips kept on records with their actions by compat key | lib/swords/, chips/sword ... chips/assnswrd |
+| The swords | One action builder for a family (`slash.action { blade, hit, effect, sound, ... }`); what SlashCross's charge makes of a sword as an argument (`charged`) | lib/swords/, chips/sword ... chips/assnswrd |
 | AreaGrab and PanelGrab | A dimming chip: the `dimming` hook spawning a controller kind whose update is `dimming_chips.phases { effect }`; a chip parameter that becomes the hook | lib/dimming.luau, lib/grab/, chips/areagrab, chips/panlgrab |
-| EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; chips kept on records behind a registration shim | chips/eraseman/, chips/0ec-eraseman |
-| BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library with the records' path beside it | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau, chips/0c0-atk-10 |
-| The link navis' own chips | A record that runs the action its module exports (`{ action = define.action { ... } }`), for an action number registration can't claim; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds), chips/190-heatpres ... chips/199-dustbrk |
-| MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it; a weapon that asks the attack's chip for its part (`navi.attack_chip`: SlashCross's charged slash, a record a sword's slash names) | navis/megaman/weapons/`<name>`/weapon.luau, navis/megaman/forms/`<form>`/, navis/megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
+| EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; a series' chips composing the hook with their own arguments, an SP chip's damage a formula | chips/eraseman/ (navi, chips) |
+| BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau |
+| The link navis' own chips | A chip in its navi's folder, its damage by the navi's level (`damage = { formula = "navi_level", ... }`), which the navi's `own_chip` names; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds) |
+| MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the traits the ruleset asks (`held`, `plain`, `sticky`, `charged_chip`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it; a weapon that asks the attack's chip for its part (`navi.attack_chip`: SlashCross's charged slash, a record a sword's slash names) | navis/megaman/weapons/`<name>`/weapon.luau, navis/megaman/forms/`<form>`/, navis/megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
 | The link navis' charged attacks | A weapon whose action is the navi's own (the original's entry 9 of his action table): the setup gives the damage by the buster's Attack, the counter byte and the element; the phased routine of his chip (lib/link_chips); a kind of his AI's with the variant the attack names (a record or an options table); a kind that lasts while its owner's action does; a weapon that runs a chip's action with the chip as the attack's (ProtoMan's WideSwrd) | navis/heatman/charge.luau ... navis/dustman/charge.luau, navis/groundman/drill.luau, navis/protoman/charge.luau, back_special.luau |
 
 Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e), and so are the
@@ -122,7 +122,7 @@ step 5 (navis/megaman/weapons/NAME/weapon.luau, a form's or navi's own beside it
 | A dimming chip | `define.chip { ..., dimming = function(user, spec: DimmingChipSpec): Object? }` | action 0x15's framework spawns the controller through it; its update calls the `dimming` service (lib/dimming) |
 | A navi chip | `define.chip { ..., navi = function(user, controller, spec: NaviChipSpec): Object? }` | the navi chip controller brings the navi through it; the navi calls `navi_chip.navi_left(controller)` |
 | An instant chip | `define.chip { ..., instant = function(user, spec: InstantChipSpec) }` | action 0x1C runs it once |
-| A weapon | `define.weapon { id, name, charge_ticks, setup }` (and, while forms name weapons by number, `legacy = { routines }`) | `setup(navi)` names the action |
+| A weapon | `define.weapon { id, name, charge_ticks, setup }`, with what the ruleset asks of it as fields (`sticky`, `held`, `plain`, `charged_chip`) | `setup(navi)` names the action; a form or a navi names the weapon in its `weapons` |
 | A role the ruleset starts | `define.roles { actions = { ... } }` | the ruleset's by-role starts (the trap chips' counters) |
 
 A definition's key is its `id` (or the key it derives: `minibomb/action`); two of one key is an error.
@@ -135,35 +135,29 @@ registration, until step 13 removes it (`script` is a module's path from the con
 | To implement | Write | The module exports |
 |---|---|---|
 | An object kind | `objects/NAME/object.toml`: `[kind] pool, index, script` | `state` (optional), `update(me)` |
-| A chip's action | `script` in the chip definition's marker, `legacy { number, action, subtype, params, script }` | `state`, `update(me, s)` |
-| A dimming chip (action 0x15) | `script` in the marker of each chip of the subtype | `dimming_chip(user, spec)` |
-| A navi chip (action 0x1B) | `script` in the marker of each chip of the subtype | `navi_chip(user, controller, spec)` |
-| An instant chip (action 0x1C) | `script` in the marker of each chip of the subtype, or `instant_chip = N` in a weapon's marker | `instant_chip(user, spec)` |
-| A weapon routine | the weapon definition's marker, `legacy { routines, script }` and optionally `action` (and no `setup`) | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
-| A record's own action (a link navi's chip, action 0x0A) | `script` in the chip definition's marker | `action`, an action definition (`define.action { id = "<chip>/action", ... }`); no `update` |
 
-A shim is such a module that runs the definitions' own code for the records (chips/036-minibomb runs each bomb
-chip's action by subtype). Scripts are paths relative to the registering file; a slot, action or hook claimed twice
-is an error. At load each record gets its usage from these (its action's module, or its subtype's
-`dimming_chip`, `navi_chip` or `instant_chip`), a weapon its `instant_chip`: the ruleset reads only the
-definitions' slots. When the ruleset needs a kind or an action itself
-(the absorbed obstacle, the stun strike), rules/roles.luau names it, a v1 one through a legacy marker
-(`{ legacy = { action = 0x49 } }`); a family that converts it names its definition there instead.
+No chip or weapon is registered this way: a chip is its definition, with its own `action`, `dimming`, `navi` or
+`instant` (content-model-v2.md §7.5, "As built", step 10), and a weapon is a `define.weapon`. Scripts are paths
+relative to the registering file; a slot claimed twice is an error. The ruleset reads only the definitions' slots. When the ruleset
+needs a kind, an action or a chip itself (the absorbed obstacle, the stun strike, the chip a zeroed field
+reads), rules/roles.luau names it, a v1 action through a legacy marker (`{ legacy = { action = 0x3B } }`); a
+family that converts it names its definition there instead.
 
 ## 4. Testing
 
 ### 4.1 In the repository
 
 In-repo tests never load game data. The test content (crates/bn6-battle/src/content/testing.rs) is made-up
-records plus the overlay's modules, which it reads from content/bn6 at test time:
+data plus the overlay's modules, which it reads from content/bn6 at test time, and its own modules
+(crates/bn6-battle/testdata/content: the test chips, stages, lock-on modes and roles):
 
-- add the modules (and their `require`s) to `scripts()`'s list; the asset names they resolve to `assets()` (BN6's
-  names with BN6's numbers); whatever they read (an attachment row, a rule) made-up values; the sprites they load
-  short animations in `animations()`;
-- a chip content defines is in the test content by its module (`testing::defined_chip(testing::AREA_GRAB)`);
-  folders hold it by handle (`scenario::setup_with_handles`, in code A, else `*`); a test uses it with
-  `use_chip_handle` or `use_instant_chip_handle`. A v1 kind keeps its `kind(...)` line, a numbered chip its
-  `chips()` record;
+- add the modules to `scripts()`'s list (what they `require` of the overlay comes with them); the asset names
+  they resolve to `assets()` (BN6's names with BN6's numbers); whatever they read (an attachment row, a rule)
+  made-up values; the sprites they load short animations in `animations()`;
+- a chip is in the test content by its key: BN6's own by its module (`testing::chip_handle(testing::AREA_GRAB)`),
+  or a test chip of made-up data composing BN6's builders (testdata/content/chips/test/chips.luau,
+  `testing::SUN_GUN_3`). Folders hold it by handle (`scenario::setup_with`, in code A, else `*`); a test uses it
+  with `use_chip` or `use_instant_chip`. A v1 kind keeps its `kind(...)` line;
 - test it: `behavior/tests.rs` plays duels (`duel_with`, `scenario::record_on`) and checks the kinds appear and
   roll back (`scripted_chips_roll_back`); `kinds/player/actions/tests.rs` runs one navi's action tick by tick and
   checks its timeline;
@@ -295,14 +289,12 @@ kind). Left:
 
 ### Group E: instant chips (ported; what is left)
 
-Action 0x1C runs the attack's instant effect (a chip definition's `instant` hook, a record's subtype's registration,
-or a weapon's; §3). Every entry of `off_80EC3F0` is ported, in content model v2 (content-model-v2.md §5.6, "As
+Action 0x1C runs the attack's instant effect (a chip definition's `instant` hook, or a weapon's; §3). Every entry of `off_80EC3F0` is ported, in content model v2 (content-model-v2.md §5.6, "As
 built", step 8d): 0, 3 (lib/instant/plus with chips/atk-10, chips/navi-20, chips/whicapsl, chips/finalgun,
-chips/numtrap; the records' shims chips/13f-beastout and chips/0c0-atk-10; objects/rising-bubble), 1
-(objects/boomerang, chips/boomer), 4 (chips/lance), 5 (chips/fullcust), 8 (chips/firehit; the records' shim
-chips/06b-firehit1), 10 (chips/busterup), 12 (chips/sandwrm), 13 (chips/synctrgr), 14 (chips/flmhook, the navi
-chips'; the records' shim chips/146-flmhook1), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/tengu-wind, objects/gust), 21
-(chips/golmhit), 22 (chips/colarmy); 7 and 0x12 are NULL (an explicit panic). 2, 6, 9, 11, 16 and 17 have no chip or
+chips/numtrap, the BeastOut and invalid chips; objects/rising-bubble), 1
+(objects/boomerang, chips/boomer), 4 (chips/lance), 5 (chips/fullcust), 8 (chips/firehit), 10 (chips/busterup), 12 (chips/sandwrm), 13 (chips/synctrgr), 14 (chips/flmhook, the navi
+chips'), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/tengu-wind, objects/gust), 21
+(chips/golmhit), 22 (chips/colarmy); 7 and 0x12 are NULL (no chip names them). 2, 6, 9, 11, 16 and 17 have no chip or
 MegaMan weapon: they are builders in lib/instant, which the link navis' weapons (0x71, 0x83) and actions call when
 ported. Left: the Full Synchro aura after SyncTrgr (framework).
 

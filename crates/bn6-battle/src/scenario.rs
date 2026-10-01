@@ -8,7 +8,7 @@
 
 use crate::battle::{Battle, TickEvents, mode};
 use crate::behavior::Behaviors;
-use crate::content::{ChipCode, ChipId, Content, testing};
+use crate::content::{ChipCode, Content, testing};
 use bn6_content_api::ChipHandle;
 use crate::custom::screen::{OK_SLOT, Phase, SlotKind, SlotState};
 use crate::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
@@ -35,8 +35,8 @@ fn megaman(content: &Content) -> NaviStats {
         giga_level: 1,
         sun: true,
         weapons: NaviWeapons {
-            buster: testing::weapon_in(content, 0),
-            charge_shot: testing::weapon_in(content, 1),
+            buster: testing::weapon_in(content, "megaman/buster"),
+            charge_shot: testing::weapon_in(content, "megaman/charged-shot"),
             back_special: None,
             a_charge: None,
             mode9_a: None,
@@ -82,15 +82,15 @@ pub fn setup() -> RoundSetup {
 
 /// The same round with both folders holding `chips` (in turn, all code
 /// A) instead.
-pub fn setup_with(chips: &[ChipId]) -> RoundSetup {
+pub fn setup_with(chips: &[&str]) -> RoundSetup {
     let content = testing::content();
-    let handles: Vec<ChipHandle> = chips.iter().map(|&id| testing::chip_in(&content, id)).collect();
+    let handles: Vec<ChipHandle> = chips.iter().map(|&key| testing::chip_in(&content, key)).collect();
     setup_with_handles(&handles)
 }
 
 /// The same round with both folders holding `chips` by handle (in turn),
 /// so they may be chips content defines: each in code A if it comes in
-/// it (the test content's numbered chips all do), else `*`, else its
+/// it (the test content's own chips all do), else `*`, else its
 /// first code.
 pub fn setup_with_handles(chips: &[ChipHandle]) -> RoundSetup {
     let mut s = setup();

@@ -14,8 +14,10 @@ export type Slot = "overlay" | "related" | "held" | "held2"
 -- status and bug its hits carry (nil or 0: none), what its hit does
 -- to the panel, whether it bursts (around what it hits, and over the last
 -- two columns when it leaves the field), whether it climbs (a pixel lower
--- down the field and higher on each panel).
+-- down the field and higher on each panel). One a navi's stats can name
+-- (a shot program) has a key.
 export type ProjectileVariant = {
+    id: string?,
     collision: { is: CollisionType, hits: CollisionType },
     hit_mod: number,
     element: string,
@@ -153,22 +155,18 @@ export type VariSwordSpec = {
     -- The sequences by direction flip (0, 1), each a list of joypad words
     -- ending in 0.
     sequences: { [number]: { { number } } },
-    -- The action of the chip each sequence gives, and Sword's (what A let
-    -- go of, or the time running out, gives).
-    picks: { Action },
-    sword: Action,
+    -- The chip each sequence gives, and Sword (what A let go of, or the
+    -- time running out, gives): the attack becomes the pick's (its chip,
+    -- which the Beast rush reads for its lock-on, and its action).
+    picks: { Chip },
+    sword: Chip,
     -- A random pick is `picks` by `rng % random`, a Sword past them.
     random: number,
     -- The pick that doesn't turn into SlashCross's charged slash.
-    no_charged: Action,
+    no_charged: Chip,
     -- What SlashCross's A-charge makes of the chip: `"own"`, its own
     -- action, charged (its pick becomes the charged slash).
     charged: "own",
-    -- Transitional (counted by the ratchet): the picks' chips' numbers
-    -- (`picks`' in order, and Sword's), which the attack's chip takes (the
-    -- Beast rush reads its lock-on mode) until those chips are definitions
-    -- the spec can name (`navi.attack_chip`).
-    legacy: { chips: { number }, sword: number },
 }
 
 -- An attachment's look (objects/attachment): its sprite (a sprite asset,
