@@ -28,7 +28,8 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
         return reactive_chip(b, r);
     }
     if f & request::STUN_STRIKE != 0 {
-        return set_attack(b, r, 0x49, 0);
+        let strike = super::role_action(b, crate::content::ActionRole::StunStrike);
+        return set_attack(b, r, strike, 0);
     }
     // JumpTable80EA7B0[enemy struct byte 4]: every entry is sub_80F0354.
     decide(b, r);
@@ -42,7 +43,8 @@ fn battle_over(b: &mut Battle, r: ObjectRef) {
     // sub_801DACC(0x42): HUD.
     if cross_protected(b, r) {
         ai_mut(b, r).attack.variant = 1;
-        return set_attack(b, r, 0x4D, 0);
+        let protect = super::role_action(b, crate::content::ActionRole::CrossProtect);
+        return set_attack(b, r, protect, 0);
     }
     b.objects.get_mut(r).anim = 0;
 }
@@ -82,7 +84,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if b.sides[side].cross_special != 0 {
         if b.sides[side].cross_special_ticks == 0 {
             b.sides[side].cross_special = 0;
-            return set_attack(b, r, super::actions::cross_special::ACTION, 0);
+            return set_attack(b, r, super::EngineAction::CrossSpecial, 0);
         }
         use super::berserk::Outcome;
         match super::berserk::cross_special(b, r) {
@@ -108,8 +110,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let f = ai(b, r).requests;
     if f & request::FORCED_CHARGED_SHOT != 0 {
         leave_idle(b, r);
-        let role = b.content.defs.roles.action(crate::content::ActionRole::ForcedChargedShot);
-        let shot = super::NaviAttack::content(&b.content.defs, role);
+        let shot = super::role_action(b, crate::content::ActionRole::ForcedChargedShot);
         return set_attack(b, r, shot, 1);
     }
     if f & request::BUSTER != 0 {
@@ -143,7 +144,8 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         return start_move(b, r, dir);
     }
     if ai(b, r).requests & (request::TURN_L | request::TURN_R) != 0 {
-        return set_attack(b, r, 0x3B, 4);
+        let turn = super::role_action(b, crate::content::ActionRole::Turn);
+        return set_attack(b, r, turn, 4);
     }
     let buffered = ai(b, r).buffered_move;
     if buffered != 0 {
@@ -239,25 +241,25 @@ fn low_hp_navicust_effect(b: &mut Battle, r: ObjectRef) -> bool {
 }
 
 /// The buster's weapon routine.
-fn buster_routine(b: &mut Battle, r: ObjectRef) -> super::NaviAttack {
+fn buster_routine(b: &mut Battle, r: ObjectRef) -> super::NaviAction {
     weapon_slot_routine(b, r, ai(b, r).buster)
 }
 
 /// A weapon slot's routine; an empty slot (0xFF) reads past
 /// `off_80117D4` (the input decoding never requests one).
-fn weapon_slot_routine(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle>) -> super::NaviAttack {
+fn weapon_slot_routine(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle>) -> super::NaviAction {
     let Some(weapon) = weapon else { panic!("weapon routine 0xff reads past off_80117D4") };
     weapon_routine(b, r, weapon)
 }
 
 /// `off_80117D4[routine]`: set up a weapon's attack variables and name
 /// its action: the weapon's `setup`.
-pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle) -> super::NaviAttack {
+pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle) -> super::NaviAction {
     use bn6_content_api::{ActionHandle, HookCall, Registry, Value};
     if let Some(setup) = b.content.defs.weapon(weapon).setup {
         let action = match crate::behavior::call_hook(b, setup, HookCall::Weapon { navi: r }) {
-            Value::Int(n) => super::NaviAttack::from(n as u8),
-            Value::Def(Registry::Action, h) => super::NaviAttack::content(&b.content.defs, ActionHandle(h)),
+            Value::Int(n) => super::NaviAction::numbered(&b.content.defs, n as u8),
+            Value::Def(Registry::Action, h) => super::NaviAction::Content(ActionHandle(h)),
             v => panic!("weapon {:?} names {v:?}, not an action", b.content.defs.weapon(weapon).key),
         };
         // A weapon that names an instant effect no chip has (TenguCross's

@@ -15,6 +15,23 @@ return define.roles {
         -- The charged shot a navi's request starts from idle without its
         -- weapon's setup (the original's action 0x16).
         forced_charged_shot = charged_shot.action,
+        -- The strike the navi's request 0x80000 starts from idle (the
+        -- machine swords' strike by the attack's variant).
+        stun_strike = { legacy = { action = 0x49 } },
+        -- What a Cross navi protected at the battle's end runs.
+        cross_protect = { legacy = { action = 0x4D } },
+        -- The turn L or R starts where turning is enabled.
+        turn = { legacy = { action = 0x3B } },
+        -- A Cross navi's knock-out.
+        cross_death = { legacy = { action = 0x4C } },
+        -- A Cross navi's volley.
+        volley = { legacy = { action = 0x30 } },
+        -- SlashCross's charged slash, which the Beast rush recognizes.
+        charged_sword = { legacy = { action = 0x41 } },
+        -- The Beast forms' charged claw.
+        beast_claw = { legacy = { action = 0x52 } },
+        -- DustCross Beast's scatter, during which the navi isn't grounded.
+        dust_beast_scatter = { legacy = { action = 0x50 } },
     },
     kinds = {
         -- The rock a stage's actor list places (entry type 8).

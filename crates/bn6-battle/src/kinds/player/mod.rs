@@ -10,6 +10,7 @@
 
 pub mod actions;
 pub(crate) mod berserk;
+mod navi_action;
 mod chip_use;
 mod entry;
 pub(crate) mod form;
@@ -28,7 +29,9 @@ use crate::field::PanelType;
 use crate::content::NaviRecord;
 use bn6_content_api::{ChipHandle, WeaponHandle};
 use crate::content::Content;
-use crate::object::{ObjectRef, PanelPos, Pool, StateWord, Vec3, flags, state};
+
+pub use navi_action::{EngineAction, NaviAction, NaviWord};
+use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
 use crate::setup::{ActorEntry, Form, Navi, NaviStats, effects};
 
 /// Panel center coordinates (`object_getCoordinatesForPanels`, which
@@ -292,12 +295,39 @@ pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
     b.stats[side as usize].mood = mood;
 }
 
-/// Save the object's lifecycle position (`obj+0x5C`) unless one is saved.
+/// Save the navi's lifecycle position (`obj+0x5C`) unless one is saved.
 fn save_state_word(b: &mut Battle, r: ObjectRef) {
-    let o = b.objects.get_mut(r);
-    if o.saved_state.is_none() {
-        o.saved_state = Some(StateWord { state: o.state, action: o.action, phase: o.phase, phase_init: o.phase_init });
+    if ai(b, r).saved_word.is_some() {
+        return;
     }
+    let o = b.objects.get(r);
+    let word = NaviWord { state: o.state, action: ai(b, r).navi_action, phase: o.phase, phase_init: o.phase_init };
+    ai_mut(b, r).saved_word = Some(word);
+}
+
+/// What navi `r` runs.
+pub fn navi_action(b: &Battle, r: ObjectRef) -> NaviAction {
+    ai(b, r).navi_action
+}
+
+/// Set what navi `r` runs, its phase untouched (the game's byte stores).
+pub fn set_navi_action(b: &mut Battle, r: ObjectRef, action: NaviAction) {
+    ai_mut(b, r).navi_action = action;
+}
+
+/// The action of `role`: the role's content action, or the number it names
+/// that nothing implements yet (running it is "not implemented yet").
+pub(crate) fn role_action(b: &Battle, role: crate::content::ActionRole) -> NaviAction {
+    match b.content.defs.roles.actions.get(&role) {
+        Some(crate::content::RoleAction::Action(h)) => NaviAction::Content(*h),
+        Some(crate::content::RoleAction::Unported(n)) => NaviAction::Unported(*n),
+        None => panic!("the role actions.{} is not filled (define.roles in rules/roles.luau)", role.name()),
+    }
+}
+
+/// Whether navi `r` runs the action of `role`.
+pub(crate) fn runs_role(b: &Battle, r: ObjectRef, role: crate::content::ActionRole) -> bool {
+    matches!(navi_action(b, r), NaviAction::Content(h) if b.content.defs.roles.is_action(role, h))
 }
 
 /// `sub_802DD2A`: a Cross navi that falls back to base form instead of
@@ -307,63 +337,42 @@ fn cross_protected(b: &Battle, r: ObjectRef) -> bool {
 }
 
 /// Switch to `action` at phase 0 (the game's direct CurAction stores).
-fn set_action(b: &mut Battle, r: ObjectRef, action: u8) {
+pub(crate) fn set_action(b: &mut Battle, r: ObjectRef, action: NaviAction) {
+    set_navi_action(b, r, action);
     let o = b.objects.get_mut(r);
-    o.action = action;
     o.phase = 0;
     o.phase_init = 0;
 }
 
 /// `object_setAttack0..5`: start `action`, recording which helper started
 /// it in the attack variables (§M2.2).
-pub(crate) fn set_attack(b: &mut Battle, r: ObjectRef, action: impl Into<NaviAttack>, kind: u8) {
-    let action = action.into();
-    set_action(b, r, action.number);
+pub(crate) fn set_attack(b: &mut Battle, r: ObjectRef, action: impl Into<NaviAction>, kind: u8) {
+    set_action(b, r, action.into());
     let a = &mut ai_mut(b, r).attack;
     a.step = 0;
     a.step_init = 0;
     a.kind = kind;
-    a.content_action = action.content;
     reset_attack_links(b, r);
 }
 
-/// An attack to start: the navi's action number (its CurAction), and the
-/// content action it runs when the number alone doesn't name it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct NaviAttack {
-    pub number: u8,
-    pub content: Option<bn6_content_api::ActionHandle>,
-}
-
-/// The navi's CurAction while it runs an action content defines. Such an
-/// action has no number in the engine: the running action is the attack's
-/// `content_action`, and the validator maps it to the original's number
-/// with compat (docs/design/content-model-v2.md §7.3). A value above every
-/// action number the original has; `NaviAction::Content` replaces it
-/// (§7.2).
+/// The numeric API's number for a content action content defines, which
+/// has none (transitional: content model v2 step 13 removes it with the
+/// numeric API). Above every action number the original has.
 pub const CONTENT_ACTION: u8 = 0xFF;
 
-impl NaviAttack {
-    /// Start the content action `h`: under the number registration by
-    /// number gave it, else as [`CONTENT_ACTION`].
-    pub fn content(defs: &crate::content::Defs, h: bn6_content_api::ActionHandle) -> NaviAttack {
-        NaviAttack { number: defs.action(h).number.unwrap_or(CONTENT_ACTION), content: Some(h) }
-    }
-}
-
-/// The content action the navi `r` is running: the one its attack started,
-/// while its CurAction is still that action's. None for an object that
+/// The content action the navi `r` is running. None for an object that
 /// isn't an actor.
 pub fn running_content_action(b: &Battle, r: ObjectRef) -> Option<bn6_content_api::ActionHandle> {
     let id = b.objects.get(r).actor?;
-    let h = b.actors.get(id).attack.content_action?;
-    let number = b.content.defs.action(h).number.unwrap_or(CONTENT_ACTION);
-    (b.objects.get(r).action == number).then_some(h)
+    match b.actors.get(id).navi_action {
+        NaviAction::Content(h) => Some(h),
+        _ => None,
+    }
 }
 
-impl From<u8> for NaviAttack {
-    fn from(number: u8) -> NaviAttack {
-        NaviAttack { number, content: None }
+impl From<EngineAction> for NaviAction {
+    fn from(e: EngineAction) -> NaviAction {
+        NaviAction::Engine(e)
     }
 }
 
@@ -401,7 +410,7 @@ pub(crate) fn end_attack(b: &mut Battle, r: ObjectRef) {
         reset_charge(b, r);
         clear_flag1(b, r, f1::USING_ACTION);
     }
-    b.objects.get_mut(r).action = 8;
+    set_navi_action(b, r, NaviAction::Idle);
     let a = ai_mut(b, r);
     a.attack.step = 0;
     a.attack.step_init = 0;
@@ -536,9 +545,9 @@ pub(crate) fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80127C0(0)`: fill the attack variables for the next chip and name
 /// its action (for weapon routines that use the chip, such as SlashCross's
-/// A-charge).
+/// A-charge), by number for the numeric API.
 pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) -> u8 {
-    chip_use::prepare(b, r, 0).number
+    chip_use::prepare(b, r, 0).number(&b.content.defs)
 }
 
 // ---- The transformation sequencer's checks -------------------------------------
@@ -639,11 +648,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
     }
     reset_side_state(b, r);
     apply_starting_hp_bug(b, r);
-    let o = b.objects.get_mut(r);
-    o.state = state::UPDATE;
-    o.action = 0;
-    o.phase = 0;
-    o.phase_init = 0;
+    b.objects.get_mut(r).state = state::UPDATE;
+    set_action(b, r, NaviAction::Entry);
 }
 
 /// `sub_800F378`: the post-init hook by actor type and AI index. For
@@ -1105,7 +1111,7 @@ fn per_form_tick(b: &mut Battle, r: ObjectRef) {
     if navi == Navi::MEGAMAN {
         if form == Form::FALZAR_BEAST_OVER {
             b.objects.get_mut(r).pos.z = 0x14_0000;
-        } else if b.objects.get(r).action != 0x50 && flag1(b, r) & f1::BUBBLED == 0 {
+        } else if !runs_role(b, r, crate::content::ActionRole::DustBeastScatter) && flag1(b, r) & f1::BUBBLED == 0 {
             b.objects.get_mut(r).pos.z = 0;
         }
     }
