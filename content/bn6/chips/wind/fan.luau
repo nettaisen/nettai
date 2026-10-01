@@ -32,7 +32,7 @@ local SOUND_BLOW = asset.sound("dustbrk")
 local SOUND_BREAK = asset.sound("hit-bomb-1")
 -- What it reaches: its side's obstacles' (the other side's attacks,
 -- objects and bodies, and neutral objects).
-local IS, HITS, HIT_MOD = collision.field_object, collision.hit_by_other_side, 0
+local IS, HITS, HIT_MOD = collision.own_body, collision.hit_by_other_side, 0
 -- Where the gust blows from (`byte_80CD2A4`, by side): the fan's side's
 -- own panels.
 local OWN_PANELS: { [number]: { number } } = { [0] = { 0, 0x20 }, [1] = { 0x20, 0 } }

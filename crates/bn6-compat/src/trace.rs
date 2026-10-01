@@ -408,13 +408,17 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
         check("custom screens open (as received)", format!("{:?}", b.round.remote_status), format!("{:?}", [bs[0x14], bs[0x15]]));
     }
     check("banner", (b.banner.active as u8).to_string(), ((f.hud_tasks >> 15) & 1).to_string());
-    // Objects whose X and Y the engine doesn't know are compared without
-    // them, on both sides (matched by list position).
+    // Objects whose X and Y the engine doesn't know, and hit sparks with
+    // their hitter's garbage Z fraction, are compared without them, on
+    // both sides (matched by list position).
     let order: Vec<bn6_battle::object::ObjectRef> = b.objects.in_order().collect();
-    let unknown: Vec<bool> = order.iter().map(|&o| bn6_battle::kinds::effect::xy_unknown(b, o)).collect();
+    let unknown: Vec<Unknown> = order
+        .iter()
+        .map(|&o| Unknown { xy: bn6_battle::kinds::effect::xy_unknown(b, o), z_fraction: spark_z_fraction_unknown(b, compat, o) })
+        .collect();
     let ours: Vec<String> = order.iter().zip(&unknown).map(|(&o, &u)| describe(b, compat, o, u)).collect();
     let theirs: Vec<String> =
-        f.objects.iter().enumerate().map(|(i, o)| describe_trace(compat, o, unknown.get(i).copied().unwrap_or(false))).collect();
+        f.objects.iter().enumerate().map(|(i, o)| describe_trace(compat, o, unknown.get(i).copied().unwrap_or_default())).collect();
     if ours != theirs {
         check(
             "objects",
@@ -438,6 +442,32 @@ pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
     d
 }
 
+/// What of an object's position the engine can't know (and the
+/// comparison skips on both sides).
+#[derive(Clone, Copy, Default)]
+struct Unknown {
+    /// X and Y (`effect::xy_unknown`).
+    xy: bool,
+    /// Z's fraction (`spark_z_fraction_unknown`).
+    z_fraction: bool,
+}
+
+/// A hit spark (effect object #4) starts at its hitter's position moved by
+/// whole pixels (`object_spawnCollisionEffect`), so it keeps its hitter's
+/// Z fraction, which is garbage when the hitter's kind keeps a spawner's
+/// register there (`scratch_z_fraction`: Sensor's laser).
+fn spark_z_fraction_unknown(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef) -> bool {
+    use bn6_battle::object::Pool;
+    if compat.object_slot(b, r) != Ok((Pool::Effect, 4)) {
+        return false;
+    }
+    let Some(hitter) = b.objects.get(r).related[0] else { return false };
+    b.objects.is_allocated(hitter)
+        && compat
+            .object_slot(b, hitter)
+            .is_ok_and(|(pool, index)| compat.kind_at(pool, index).is_some_and(|(_, k)| k.scratch_z_fraction))
+}
+
 /// One object's observable state as the comparison sees it.
 #[allow(clippy::too_many_arguments)]
 fn describe_fields(
@@ -453,13 +483,13 @@ fn describe_fields(
     timer: u16,
     anim: u8,
     status: u32,
-    xy_unknown: bool,
+    unknown: Unknown,
 ) -> String {
     let pos = if pos_is_garbage(compat, kind, index, flags) {
         "-".to_string()
-    } else if xy_unknown {
+    } else if unknown.xy {
         format!("-,-,{}", pos[2])
-    } else if z_fraction_is_garbage(compat, kind, index) {
+    } else if unknown.z_fraction || z_fraction_is_garbage(compat, kind, index) {
         format!("{},{},{}+?", pos[0], pos[1], pos[2] >> 16)
     } else {
         format!("{},{},{}", pos[0], pos[1], pos[2])
@@ -508,7 +538,7 @@ fn z_fraction_is_garbage(compat: &Compat, kind: u8, index: u8) -> bool {
     slot_kind(compat, kind, index).is_some_and(|k| k.scratch_z_fraction)
 }
 
-fn describe(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef, xy_unknown: bool) -> String {
+fn describe(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef, unknown: Unknown) -> String {
     let o = b.objects.get(r);
     let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
     // The engine's identities as the original's numbers: the object's kind
@@ -533,13 +563,13 @@ fn describe(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef, xy_un
         o.timer,
         o.anim,
         status,
-        xy_unknown,
+        unknown,
     )
 }
 
-fn describe_trace(compat: &Compat, o: &Object, xy_unknown: bool) -> String {
+fn describe_trace(compat: &Compat, o: &Object, unknown: Unknown) -> String {
     let hp = [o.hp, o.max_hp];
-    describe_fields(compat, o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, xy_unknown)
+    describe_fields(compat, o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, unknown)
 }
 
 /// Run a round through the engine on `content`; returns the number of

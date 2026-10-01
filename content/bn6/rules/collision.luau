@@ -15,9 +15,6 @@
 
 local collision = {}
 
--- Nothing (row 0x00): what a hit that reaches by what it is alone (the
--- Anubis statue's drain) targets.
-collision.none = define.collision { id = "none", side0 = 0, side1 = 0, row_offset = 0 }
 -- An attack of its side that also reaches objects with status 0x20 (row
 -- 0x04: a seed, a bomb's lingering hit, the bug and black bombs' bursts).
 collision.attack = define.collision { id = "attack", side0 = 0x80000080, side1 = 0x40000080, row_offset = 0x20 }
@@ -54,7 +51,7 @@ collision.hit_by_other_side_or_blockers = define.collision {
 }
 
 -- An attack that pierces invisibility and flashing and breaks guards and
--- ice (row 0x16: the erase beams).
+-- ice (row 0x16: the erase beams, Sensor's laser).
 collision.piercing_break = define.collision {
     id = "piercing-break",
     side0 = 0x80000086,
@@ -83,17 +80,25 @@ collision.neutral_object = define.collision {
     row_offset = 0x278,
 }
 
--- A field obstacle of its side, an "other body" of it, while dimmed too
--- (row 0x13: a fan, a statue, a Snake nest; what its target,
--- `hit_by_other_side`, reaches is the other side's and neutral objects').
-collision.field_object = define.collision {
-    id = "field-object",
-    side0 = 0x02010080,
-    side1 = 0x01010080,
-    row_offset = 0x98,
-}
 -- What reaches everything: attacks, objects and bodies of both sides and
 -- neutral objects (row 0x0F: what a BlkBomb reacts to).
 collision.everything = define.collision { id = "everything", side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
+
+-- Nothing (row 0x00: a target that reaches nothing; Discord's notes, which
+-- confuse without learning they hit).
+collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1 = 0x00000000, row_offset = 0x00 }
+
+-- Another body of its side, while dimmed too (row 0x13: the obstacles a
+-- chip sets down: the instruments, AirRaid's plane, Sensor's turret, Wind's fan,
+-- the Anubis statue).
+collision.own_body = define.collision { id = "own-body", side0 = 0x02010080, side1 = 0x01010080, row_offset = 0x98 }
+
+-- An attack that breaks guards (row 0x32: the instruments' notes).
+collision.guard_breaking = define.collision {
+    id = "guard-breaking",
+    side0 = 0x80005080,
+    side1 = 0x40005080,
+    row_offset = 0x190,
+}
 
 return collision
