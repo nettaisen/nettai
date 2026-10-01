@@ -720,13 +720,10 @@ definition, each table row a variant record written out in Luau.
   chips/spreadr, chips/tankcan (with its shell), chips/cornsht (with the corn), chips/widesht (with the wave); the
   sonic boom: lib/swords/sonic_boom with chips/sonicbom and chips/z-saver; LilBoiler: chips/lilbolr (the boiler and
   the layer); VDoll: chips/vdoll (the doll, the curse and the sparkles); the rapid buster: lib/rapid_buster.
-- **Records.** The chips other records or the ruleset name by number keep the pack's records, and their modules
-  give the actions with their compat keys: the cannons and GigaCans, the Vulcans, the Spreaders, CornSht, WideSht
-  and SuprSpr (Program Advances), VDoll (Darkness's recipes), the sonic boom's four (the variable swords' picks,
-  VDoll's telop) and Z Saver (weapon 0x6E). Registration by number reaches them through one module per action
-  (chips/001-cannon, 005-vulcan1, 009-spreadr1, 00c-tankcan1, 017-widesht, 040-cornsht1, 173-sonicbom,
-  17d-zsaver; the bombs' 036-minibomb for LilBoiler and VDoll), which picks the chip's action by the subtype or
-  the record's parameters. AirShot, the BatCans, the TankCans, MachGun and LilBoiler are definitions.
+- **Chips.** Every chip is a definition naming its own action (the cannons and GigaCans, the Vulcans, the
+  Spreaders, CornSht, WideSht and SuprSpr, VDoll, the sonic boom's four, Z Saver, AirShot, the BatCans, the
+  TankCans, MachGun, LilBoiler). What the original picks by the record's subtype or parameters is the action's
+  arguments.
 - **LilBoiler's registry side** (§14.1). The boiler registers as its user's side's class-1 field object. The
   port first took the side from the Atk+ bonus (the register `sub_80D7A78` pops it into, which the spawner
   overwrites with the user's alliance before the registration): with no bonus that made every boiler side 0's,

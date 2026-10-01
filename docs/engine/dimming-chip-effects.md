@@ -922,8 +922,7 @@ and Cross scenarios use the index − 0x18 attachment. `counter-cut-in` reaches 
 non-player user, the user deleted before the effect, no player for formula 21.
 
 **Ported**: chips/numbrbl (`numbrbl/controller` with the navi chip phases, `numbrbl/numberman` on
-lib/dimming/stand_in, `numbrbl/ball`); the record stays (formula 21) and chips/08a-numbrbl registers its hook by
-number. The arm's record index comes from the user's NameID: MegaMan's (0x1A0) is 0 and his forms' (0x1AB + form)
+lib/dimming/stand_in, `numbrbl/ball`); the chip's damage is the formula `hp_last_digits` (21). The arm's record index comes from the user's NameID: MegaMan's (0x1A0) is 0 and his forms' (0x1AB + form)
 0x18 + form, so the arm's animation is the form; other navis' (1 to 11) get none. Lab: 22/22.
 
 ## 16. Subtype 29: CornFsta (T4#0x68, T1#0x1E, T3#0xAA, T3#0x10)
@@ -1021,8 +1020,7 @@ panels leave them. **Unverified**: no panel for a burst, the free panels all in 
 
 **Ported**: chips/cornfsta (`cornfsta/controller`, `cornfsta/farmer` on lib/dimming/stand_in with the
 user's NameID, `cornfsta/sower` for T3#0xAA); the bursts are CornSht's corns (chips/cornsht/corn, generation
-0xFF) and the farmer holds CornSht's gun. The record stays (a Program Advance) and chips/14c-cornfsta registers its
-hook by number. Lab: 8/8.
+0xFF) and the farmer holds CornSht's gun. Lab: 8/8.
 
 ## 17. Subtype 30: DblHero (T4#0x6A, T1#0x1F)
 
@@ -1105,8 +1103,7 @@ the opponent first) start the shots one, two, four and five panels from the far 
 0x20). **Unverified**: the failed spawns, a field with no enemy panel, a row with no panel of another side
 ahead (distance 0: no region). (Six and seven panels can't be: the walk starts in front of the user.)
 
-**Ported**: chips/dblhero (`dblhero/controller`, `dblhero/heroes`); the record stays (a Program
-Advance) and chips/158-dblhero registers its hook by number. `sub_80EB572`'s second argument (1) is the
+**Ported**: chips/dblhero (`dblhero/controller`, `dblhero/heroes`). `sub_80EB572`'s second argument (1) is the
 attachment's third byte, animating while dimmed, not its animation: the arm's animation is the side's form, as
 the buster's (lib/buster `raise_arm_for`, by the user's actor data, which MegaMan's copy shares; a player's second
 actor would clear the user's overlay slot). A field with no panel of the other side's makes the flash divide by
