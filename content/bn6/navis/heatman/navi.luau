@@ -4,7 +4,7 @@
 
 local buster = require("../megaman/weapons/buster/weapon")
 local charge = require("./charge")
-local heatman = require("./record")
+local heatman = require("./chip")
 
 return define.navi {
     id = "heatman",

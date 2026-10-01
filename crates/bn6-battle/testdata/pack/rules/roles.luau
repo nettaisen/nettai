@@ -5,6 +5,7 @@
 -- becomes (the BN6 content's).
 
 local encased_bubble = require("../../objects/encased-bubble/bubble")
+local test_chips = require("../../chips/test/chips")
 local lockon = require("../../rules/lockon")
 local statuses = require("../../rules/status")
 local ticker = require("../lib/ticker")
@@ -37,6 +38,10 @@ return define.roles {
     kinds = {
         absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
         falling_rock = { legacy = { kind = "falling-rock" } },
+    },
+    chips = {
+        -- What a zeroed chip field reads: the test content's blank chip.
+        zeroed = test_chips.blank,
     },
     -- The engine's test content's statuses and lock-on modes, which this
     -- pack's content comes with.

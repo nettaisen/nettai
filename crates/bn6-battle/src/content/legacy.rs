@@ -1,12 +1,12 @@
 //! The tables the ruleset and v1 modules still read by number, built from
 //! what the content defines (docs/design/content-model-v2.md §12, step 5):
-//! the pack's chips, navis and forms by number,
+//! the pack's navis and forms by number,
 //! the rule sections, collision types, statuses and lock-on modes, and the numbered tables (effects,
 //! sparks, regions, the object kinds' rows).
 //!
 //! Where a definition still carries what only registration by number reads
-//! (a chip's number, action, subtype and v1 module; a navi's number and
-//! NameID; a table's original numbering), it sits in a `legacy { ... }`
+//! (a navi's number and NameID; a weapon's routine numbers; a table's
+//! original numbering), it sits in a `legacy { ... }`
 //! marker, which goes when its family converts (§12, phase B) or the
 //! ruleset stops asking numbers (phase C).
 //!
@@ -24,12 +24,11 @@ use serde_json::{Map, Value as Json};
 use super::*;
 use crate::field::PanelType;
 
-/// What registration by number reads of the chips, navis and forms the
-/// content defines, by their definitions' keys.
+/// What registration by number reads of the navis and forms the content
+/// defines, by their definitions' keys. (A chip is its definition: nothing
+/// reads one by number.)
 #[derive(Clone, Debug, Default)]
 pub struct Legacy {
-    /// The pack's chips: each definition's record, with its number.
-    pub chips: BTreeMap<String, ChipData>,
     pub navis: BTreeMap<String, NaviData>,
     pub forms: BTreeMap<String, FormData>,
 }
@@ -57,7 +56,7 @@ impl<'a> Resolver<'a> {
                 numbers.insert((d.registry, d.key.clone()), n);
             }
         };
-        for d in definitions.of(Registry::Chip).iter().chain(definitions.of(Registry::Navi)).chain(definitions.of(Registry::Form)) {
+        for d in definitions.of(Registry::Navi).iter().chain(definitions.of(Registry::Form)) {
             put(d, d.spec.field("legacy").field("number").int());
         }
         // A lock-on mode reads as its handle (its place among the
@@ -104,6 +103,9 @@ impl<'a> Resolver<'a> {
                 }
                 Json::Object(out)
             }
+            // A chip by its key: the registry resolves it to a handle
+            // (no chip has a number the tables hold).
+            Data::Ref(Registry::Chip, key) => Json::String(key.clone()),
             Data::Ref(registry, key) => match self.number(*registry, key) {
                 Some(n) => Json::from(n),
                 None => return Err(format!("{at}: {registry} {key:?} has no number the tables can hold")),
@@ -236,6 +238,24 @@ struct LockonSection {
 struct SpChipsSection {
     /// BCD hours:minutes:seconds.hundredths.
     deletion_times: Vec<u32>,
+    /// The SP navis whose deletion times a setup carries, in its order.
+    #[serde(default)]
+    slots: Vec<String>,
+}
+
+/// One of the Cross special's chips: a chip, or `{ chip, damage_of }`.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum SpecialChipEntry {
+    Chip(String),
+    With(SpecialChip),
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CrossSpecialSection {
+    /// A row of chips by the hundreds of the navi's base max HP.
+    rows: Vec<Vec<SpecialChipEntry>>,
 }
 
 #[derive(Deserialize)]
@@ -406,7 +426,25 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
                 rules.lockon.column_shifts = s.column_shifts;
                 rules.lockon.clear_path = s.clear_path;
             }
-            "sp-chips" => rules.sp_deletion_times = r.read::<SpChipsSection>(spec, &at).map_err(e)?.deletion_times,
+            "sp-chips" => {
+                let s: SpChipsSection = r.read(spec, &at).map_err(e)?;
+                (rules.sp_deletion_times, rules.sp_slots) = (s.deletion_times, s.slots);
+            }
+            "cross-special" => {
+                let s: CrossSpecialSection = r.read(spec, &at).map_err(e)?;
+                rules.cross_special = s
+                    .rows
+                    .into_iter()
+                    .map(|row| {
+                        row.into_iter()
+                            .map(|c| match c {
+                                SpecialChipEntry::Chip(chip) => SpecialChip { chip, damage_of: None },
+                                SpecialChipEntry::With(c) => c,
+                            })
+                            .collect()
+                    })
+                    .collect();
+            }
             "identities" => {
                 let records: Vec<ActorRecordRow> = numbered(r, spec.field("actor_records"), &format!("{at}.actor_records"), None).map_err(e)?;
                 rules.actor_records = records
@@ -500,38 +538,6 @@ fn strip(spec: &mut Data, fields: &[&str]) {
 
 // ---- Chips, navis, forms ---------------------------------------------------------------
 
-/// Whether a chip definition is a numbered record whose behaviour is still
-/// a v1 module: its `legacy` marker gives its `number`.
-fn numbered_chip(d: &Definition) -> bool {
-    !d.spec.field("legacy").field("number").is_nil()
-}
-
-/// A numbered chip definition's record: `chip_record`'s fields, and its
-/// `legacy = legacy { number, action, subtype, params, script, ... }`
-/// marker's (the record's other fields, by their names). Its use is its
-/// own (`action`, `dimming`, `navi` or `instant`), or the v1 module its
-/// marker names (`script`), not both.
-fn chip(d: &Definition, r: &Resolver) -> Result<ChipData, ContentError> {
-    let own = ["action", "dimming", "navi", "instant"].iter().any(|f| !d.spec.field(f).is_nil());
-    if own && !d.spec.field("legacy").field("script").is_nil() {
-        return Err(err(d, "a chip's use is its own (`action`, `dimming`, `navi` or `instant`) or the v1 module its legacy marker names (`script`), not both"));
-    }
-    let record = super::defs::chip_record(d, r)?;
-    let mut j = serde_json::to_value(&record).expect("a chip record serializes");
-    let Json::Object(o) = &mut j else { unreachable!("a record is a table") };
-    let mut marker = d.spec.field("legacy").clone();
-    let number = marker.field("number").int().ok_or_else(|| err(d, "its legacy marker needs the chip's `number`"))?;
-    strip(&mut marker, &["number"]);
-    let Json::Object(extra) = r.json(&marker, &format!("chip {}.legacy", d.key)).map_err(|m| err(d, m))? else {
-        return Err(err(d, "its legacy marker is a table"));
-    };
-    o.insert("id".into(), Json::from(number));
-    for (k, v) in extra {
-        o.insert(k, v);
-    }
-    serde_json::from_value(j).map_err(|m| err(d, format!("its legacy marker: {m}")))
-}
-
 /// A navi or form definition's identity (`identity`, with its NameID from
 /// the legacy marker) as a record's `name_record`.
 fn name_record(d: &Definition, r: &Resolver) -> Result<Option<Json>, ContentError> {
@@ -614,26 +620,6 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<Legacy,
     sections(content, &r, definitions)?;
     registries(content, definitions)?;
 
-    // Chips with a number in their legacy marker: the pack's, by number.
-    for d in definitions.of(Registry::Chip) {
-        if numbered_chip(d) {
-            legacy.chips.insert(d.key.clone(), chip(d, &r)?);
-        }
-    }
-    if !legacy.chips.is_empty() {
-        let claimed: BTreeMap<ChipId, &str> = legacy.chips.iter().map(|(k, c)| (c.id.expect("numbered"), k.as_str())).collect();
-        if claimed.len() != legacy.chips.len() {
-            let mut seen = BTreeMap::new();
-            for (k, c) in &legacy.chips {
-                if let Some(first) = seen.insert(c.id, k) {
-                    return Err(ContentError::new(format!("chips {first} and {k} are both chip {:#x}", c.id.unwrap_or_default())));
-                }
-            }
-        }
-        content.chips.retain(|c| c.id.is_none_or(|id| !claimed.contains_key(&id)));
-        content.chips.extend(legacy.chips.values().cloned());
-        content.chips.sort_by_key(|c| c.id);
-    }
 
     // Navis and forms.
     for d in definitions.of(Registry::Navi) {
