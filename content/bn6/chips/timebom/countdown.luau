@@ -86,7 +86,7 @@ local function explode(me: Object)
         z = me.pos.z,
         region = area,
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.attack,
         damage = me.damage,

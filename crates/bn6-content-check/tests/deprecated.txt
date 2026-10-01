@@ -3,7 +3,6 @@
 chips/antidmg/counter.luau 1
 chips/antiswrd/counter.luau 1
 lib/buster.luau 1
-lib/panels.luau 2
 lib/trajectory.luau 1
 navis/chargeman/navi.luau 1
 navis/dustman/navi.luau 1
@@ -42,8 +41,5 @@ navis/slashman/navi.luau 1
 navis/spoutman/navi.luau 1
 navis/tenguman/navi.luau 1
 navis/tomahawkman/navi.luau 1
-objects/attachment/attachment.luau 2
-objects/attachment/rows.luau 1
 rules/body-overlays.luau 1
-rules/numbers.luau 3
 rules/roles.luau 2

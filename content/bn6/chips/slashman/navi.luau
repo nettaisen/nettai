@@ -240,7 +240,7 @@ local function slash(me: Object)
         element = me.element,
         z = 0,
         region = regions.wide,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.nothing,
         self_type = collision.slash,
         damage = me.damage,

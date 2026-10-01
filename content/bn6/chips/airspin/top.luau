@@ -177,7 +177,7 @@ local function gust(me: Object)
         element = me.element,
         region = regions.ring,
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.pushing,
         damage = me.damage,

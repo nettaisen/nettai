@@ -216,7 +216,7 @@ local function dive(me: Object)
             element = 0,
             z = 0,
             region = DIVE_REGION,
-            hit_effect = 0xFF,
+            hit_effect = nil,
             target = collision.hits_navis,
             self_type = collision.thrown,
             damage = me.damage,

@@ -12,7 +12,7 @@ local immobilizer = {}
 
 -- The hit (`dword_80CC0C8`, `dword_80CC0CC`): one panel, no spark, a
 -- guard-breaking attack against navis, with status 0x42.
-local NO_SPARK = 0xFF
+local NO_SPARK: Spark? = nil
 local STATUS = statuses.immobilize_120
 
 local SOUND = asset.sound("immobilizer")

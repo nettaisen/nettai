@@ -21,7 +21,7 @@ local function confuse(me: Object)
         z = 0,
         region = regions.other_navi[me.alliance],
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.nothing,
         self_type = collision.guard_breaking,
         damage = 0,

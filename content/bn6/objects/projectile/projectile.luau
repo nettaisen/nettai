@@ -69,7 +69,7 @@ local function burst(me: Object, x: number, y: number, shown: Region, hit: Regio
         panel_y = y,
         element = me.element,
         region = hit,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.attack,
         damage = me.damage,

@@ -17,6 +17,7 @@
 use crate::actor::{request, status};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
+use crate::content::EffectRole;
 use super::ActionVars;
 use crate::kinds::common;
 use crate::kinds::player::status::end_anger;
@@ -261,7 +262,8 @@ fn vanish(b: &mut Battle, r: ObjectRef, seq: Sequence, target: Form) {
             beast_over_effects(b, r, pos, alliance, target)
         } else {
             b.play_sound(crate::sound::SoundId(0xF7));
-            effect::spawn(b, pos, 0x2E, alliance, 0, 0).inspect(|&e| {
+            let look = b.content.defs.roles.effect(EffectRole::FormChange);
+            effect::spawn(b, pos, look, alliance, 0, 0).inspect(|&e| {
                 let o = b.objects.get_mut(e);
                 o.timer = 0x36;
                 o.flags |= flags::RUN_WHILE_PAUSED;
@@ -300,18 +302,26 @@ fn vanish(b: &mut Battle, r: ObjectRef, seq: Sequence, target: Form) {
     set_step(b, r, Step::Emerge);
 }
 
-/// Beast Over's two effects (`sub_80151D4`): its beast's (0x3F or 0x40)
-/// and the burst (0x3E, palette by the beast), 32 pixels up. The second
-/// only after the first, and the rest only after both.
+/// Beast Over's two effects (`sub_80151D4`): its beast's (the roles
+/// `effects.beast_over_gregar` and `effects.beast_over_falzar`) and the
+/// blast (`effects.beast_over_blast`, palette by the beast), 32 pixels up.
+/// The second only after the first, and the rest only after both.
 fn beast_over_effects(b: &mut Battle, _r: ObjectRef, pos: Vec3, alliance: u8, target: Form) -> Option<ObjectRef> {
     let which = target.0 - 0x17;
     let pos = Vec3 { z: pos.z.wrapping_add(0x20_0000), ..pos };
-    let first = effect::spawn(b, pos, 0x3F + which, alliance, 0, 0)?;
+    let roles = &b.content.defs.roles;
+    let beast = roles.effect(match which {
+        0 => EffectRole::BeastOverGregar,
+        1 => EffectRole::BeastOverFalzar,
+        _ => panic!("form {target:?} has no Beast Over effect (sub_80151D4)"),
+    });
+    let blast = roles.effect(EffectRole::BeastOverBlast);
+    let first = effect::spawn(b, pos, beast, alliance, 0, 0)?;
     let o = b.objects.get_mut(first);
     o.timer = 0x36;
     o.flags |= flags::RUN_WHILE_PAUSED;
     b.play_sound(crate::sound::SoundId(0x19A));
-    let second = effect::spawn(b, pos, 0x3E, alliance, 2 * which, 0)?;
+    let second = effect::spawn(b, pos, blast, alliance, 2 * which, 0)?;
     let o = b.objects.get_mut(second);
     o.timer = 0x45;
     o.flags |= flags::RUN_WHILE_PAUSED;
@@ -517,7 +527,8 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         land(b, r);
         face_default(b, r);
         let pos = b.objects.get(r).pos;
-        if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, 3, 0, 0, 0) {
+        let look = b.content.defs.roles.effect(EffectRole::Deletion);
+        if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }
         clear_flag1(b, r, f1::UNAFFECTED_BY_POISON | f1::SLIDING | f1::FLINCHING | f1::MOVING);
@@ -623,7 +634,8 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         crate::kinds::player::refresh_form_overlay(b, r);
         face_default(b, r);
         let pos = b.objects.get(r).pos;
-        if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, 3, 0, 0, 0) {
+        let look = b.content.defs.roles.effect(EffectRole::Deletion);
+        if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }
         clear_flag1(
@@ -668,7 +680,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
         b.objects.get_mut(r).related[0] = None;
         ai_mut(b, r).overlay = None;
         // object_clearCollisionRegion
-        coll_mut(b, r).region = 0;
+        coll_mut(b, r).region = None;
         set_timer(b, r, 0x1E);
         ai_mut(b, r).attack.step_init = 4;
     }
@@ -681,7 +693,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
     }
     b.clear_flags(battle_flags::DIMMED);
     // object_setCollisionRegion(1)
-    coll_mut(b, r).region = 1;
+    coll_mut(b, r).region = b.anchor_region();
     let a = &mut ai_mut(b, r).attack;
     a.step = 0;
     a.step_init = 0;
