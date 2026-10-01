@@ -1,11 +1,11 @@
 --!strict
--- HeatCross Beast's charged chip: weapon routine 7 (`sub_8011BD0`) and
--- action 0x35 (`sub_80ED8C4`). A charged Null-family chip becomes a wall of
--- flames: when the navi's wind-up animation ends, fire pillars
--- (objects/element-pillar) rise on the panels ahead
--- (the three rows of the two columns past the panel in front, and that
--- panel); the navi holds for 90 ticks, humming every 17, and the flames die
--- down once it stops.
+-- HeatCross Beast's charged chip (`heatcross-beast/charge`): the original's
+-- weapon routine 7 (`sub_8011BD0`) and action 0x35 (`sub_80ED8C4`). A
+-- charged Null-family chip becomes a wall of flames: when the navi's
+-- wind-up animation ends, fire pillars (objects/element-pillar) rise on
+-- the panels ahead (the three rows of the two columns past the panel in
+-- front, and that panel); the navi holds for 90 ticks, humming every 17,
+-- and the flames die down once it stops.
 
 local element_pillar = require("../../../../objects/element-pillar/element_pillar")
 local regions = require("../../../../lib/regions")
@@ -20,11 +20,7 @@ export type State = {
     hum: number,
 }
 
-local heat_beast_charge = {
-    state = { timer = "u16", hum = "u16" },
-}
-
-local ACTION = 0x35
+local heat_beast_charge = {}
 
 -- The phases, on the attack's step.
 local WIND_UP, BURN = 0x0, 0x4
@@ -38,13 +34,15 @@ local PILLARS: ElementPillar = { ticks = 0x5A, after = 4 }
 local REGION = regions.deep_fan
 local TICKS = 0x5A
 
+local HUM = asset.sound("roar")
+
 -- `sub_8011BD0`: 50 damage and 30 more per point of buster Attack (up to
 -- 5), Fire.
-function heat_beast_charge.setup(navi: Object): number
+local function setup(navi: Object): Action
     navi.attack_damage = weapon.charge_damage(navi, 0x32, 0x1E)
     navi.hit_param = HIT_PARAM
     navi.attack_element = FIRE
-    return ACTION
+    return heat_beast_charge.action
 end
 
 -- `sub_80ED8E0`: the wind-up; when its animation ends, the flames.
@@ -73,7 +71,7 @@ local function burn(me: Object, s: State)
     s.hum = h
     if h < 0 then
         s.hum = 0x10
-        battle.play_sound(0x12B)
+        battle.play_sound(HUM)
     end
     local t = s.timer - 1
     s.timer = t
@@ -83,16 +81,31 @@ local function burn(me: Object, s: State)
     end
 end
 
--- `sub_80ED8C4`.
-function heat_beast_charge.update(me: Object, s: State)
-    local step = me.step
-    if step == WIND_UP then
-        wind_up(me, s)
-    elseif step == BURN then
-        burn(me, s)
-    else
-        error(string.format("HeatCross Beast charge phase %#x reads past its phase table", step))
-    end
-end
+heat_beast_charge.action = define.action {
+    id = "heatcross-beast/charge/action",
+    state = { timer = "u16", hum = "u16" },
+    -- `sub_80ED8C4`.
+    update = function(me: Object, s: State)
+        local step = me.step
+        if step == WIND_UP then
+            wind_up(me, s)
+        elseif step == BURN then
+            burn(me, s)
+        else
+            error(string.format("HeatCross Beast charge phase %#x reads past its phase table", step))
+        end
+    end,
+}
+
+heat_beast_charge.weapon = define.weapon {
+    id = "heatcross-beast/charge",
+    name = "HeatCross Beast charge",
+    -- The charge table's row 7; Charge 5 reads on into row 8's first
+    -- entry, as the original's table does.
+    charge_ticks = { 90, 90, 90, 90, 90, 20 },
+    setup = setup,
+    -- (Transitional: the routine number the pack's forms name it by.)
+    legacy = { routines = { 0x07 } },
+}
 
 return heat_beast_charge
