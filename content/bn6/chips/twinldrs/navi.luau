@@ -327,7 +327,7 @@ local function slash(me: Object)
 end
 
 -- `sub_80BD586`: the slashes.
-local SLASH_PHASES = { [0] = search, [4] = blink_out, [8] = blink_in, [0xC] = slash }
+local SLASH_PHASES: { [number]: (me: Object) -> () } = { [0] = search, [4] = blink_out, [8] = blink_in, [0xC] = slash }
 
 -- `sub_80BD760`: his sword goes; 3 ticks from now.
 local function put_away(me: Object)
@@ -375,7 +375,7 @@ local function wait_for_colonel(me: Object)
 end
 
 -- `sub_80BD742`: back.
-local BACK_PHASES = { [0] = put_away, [4] = come_back, [8] = wait_for_colonel }
+local BACK_PHASES: { [number]: (me: Object) -> () } = { [0] = put_away, [4] = come_back, [8] = wait_for_colonel }
 
 -- ---- Colonel ------------------------------------------------------------
 
@@ -413,7 +413,7 @@ local function no_footing(me: Object)
 end
 
 -- `sub_80BD81A`.
-local COLONEL_APPEAR_PHASES = { [0] = colonel_appear, [4] = no_footing }
+local COLONEL_APPEAR_PHASES: { [number]: (me: Object) -> () } = { [0] = colonel_appear, [4] = no_footing }
 
 -- `sub_80BDA08`: the first panel with an enemy navi along his row ahead;
 -- none: his side's fallback column (a column further when he stands
@@ -478,7 +478,7 @@ local function after_strike(me: Object)
 end
 
 -- `sub_80BD89C`.
-local STRIKE_PHASES = { [0] = strike, [4] = after_strike }
+local STRIKE_PHASES: { [number]: (me: Object) -> () } = { [0] = strike, [4] = after_strike }
 
 -- An effect at his attach point 0.
 local function at_hand(me: Object, effect: Effect): Object?
@@ -625,7 +625,7 @@ local function init(me: Object)
     me:add_navi_parts("navi", look.ai_index, 1)
     if not s.colonel then
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-        local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = me.element, params = { 1, 0, 0, 0 }, damage = damage }
+        local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = me.element, damage = damage }
         local colonel = spawn(me.related1 :: Object, spec, nil, true, nil)
         if colonel then
             (colonel.state :: State).partner = me

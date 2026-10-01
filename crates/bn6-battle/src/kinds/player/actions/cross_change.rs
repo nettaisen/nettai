@@ -103,9 +103,9 @@ pub(in crate::kinds::player) fn knock_out(b: &mut Battle, r: ObjectRef) {
         }
         s => panic!("Cross knockout step {s:#x} reads past its table (off_802D944)"),
     }
-    if ai(b, r).attack.variant == 0 {
-        common::step_sprite(b, r);
-    }
+    // (The original steps the sprite when the attack's variant byte is 0,
+    // which its only caller, the pause handler, stores first.)
+    common::step_sprite(b, r);
 }
 
 /// `sub_802D738` / `sub_802D950`: onto the destination panel on the

@@ -263,7 +263,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let alliance = b.objects.get(r).alliance;
     let cut = match tether {
         Tether::BeastForm => !b.form(alliance as usize).is_beast(),
-        Tether::Attack => !crate::kinds::player::navi_action(b, owner).is_attack(&b.content.defs),
+        Tether::Attack => !crate::kinds::player::navi_action(b, owner).is_attack(),
         Tether::None => false,
     };
     if cut {

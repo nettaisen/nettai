@@ -24,29 +24,11 @@ pub struct Definition {
     pub spec: Data,
 }
 
-/// What a module returns that registration by module still uses (the v1
-/// registration of content-pack.md §1.3, until the migration ends): the
-/// names of the functions its table exports, its `state` table's schema,
-/// and the action definition it exports as `action`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ModuleExports {
-    pub path: String,
-    /// Function fields of the module's table, sorted.
-    pub functions: Vec<String>,
-    /// The key of the schema its `state` field declares.
-    pub state: Option<String>,
-    /// The key of the action definition its `action` field holds: a chip
-    /// record that names the module runs it (docs/design/content-model-v2.md
-    /// §12, "A record's action by its module").
-    pub action: Option<String>,
-}
-
 /// Everything the define phase read, in a canonical order: definitions by
-/// registry then key, modules by path.
+/// registry then key.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Definitions {
     pub defs: Vec<Definition>,
-    pub modules: Vec<ModuleExports>,
 }
 
 impl Definitions {
@@ -63,12 +45,7 @@ impl Definitions {
         defs.binary_search_by(|d| d.key.as_str().cmp(key)).ok().map(|i| &defs[i])
     }
 
-    /// A module's exports.
-    pub fn module(&self, path: &str) -> Option<&ModuleExports> {
-        self.modules.binary_search_by(|m| m.path.as_str().cmp(path)).ok().map(|i| &self.modules[i])
-    }
-
     pub fn is_empty(&self) -> bool {
-        self.defs.is_empty() && self.modules.is_empty()
+        self.defs.is_empty()
     }
 }

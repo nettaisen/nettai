@@ -24,7 +24,7 @@ local AQUA, HIT_PARAM = 2, 0x86
 local SOUND_SURGE, SOUND_WATER = asset.sound("spout-beast-charge"), asset.sound("aqua-surge")
 
 -- The surge: 60 ticks, its region back every 12.
-local SURGE = { ticks = 0x3C, beat = 0x0C }
+local SURGE: AquaSurge = { ticks = 0x3C, beat = 0x0C }
 
 -- `sub_8011BE8`: 10 damage and 10 more per point of buster Attack (up to
 -- 5), Aqua.

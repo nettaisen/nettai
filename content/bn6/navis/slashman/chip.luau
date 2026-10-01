@@ -37,7 +37,7 @@ local CURL_TICKS, LAUNCH_TICKS, LAND_TICKS = 0x14, 0x0A, 0x14
 
 -- The riding hit: a slash at navis, hit modifier 3, no spark; it goes on
 -- after hitting a body.
-local HIT = { is = collision.slash, hits = collision.hits_navis, hit_mod = 3, spark = nil, keeps_going = true }
+local HIT: RidingHit = { is = collision.slash, hits = collision.hits_navis, hit_mod = 3, spark = nil, keeps_going = true }
 
 -- What he rolls onto (`dword_80F0DE4`): on the field and solid, with no
 -- neutral object.
@@ -212,7 +212,7 @@ local function land(me: Object, s: State)
     end
 end
 
-local PHASES = { [CURL] = curl, [LAUNCH] = launch, [ROLL] = roll, [LAND] = land }
+local PHASES: { [number]: (me: Object, s: State) -> () } = { [CURL] = curl, [LAUNCH] = launch, [ROLL] = roll, [LAND] = land }
 
 return define.chip {
     id = "rslash",

@@ -1,9 +1,5 @@
 # Deprecated numeric API uses allowed per module (crates/bn6-content-check/tests/ratchet.rs).
 # Only ever lowered: BN6_RATCHET_LOWER=1 cargo test -p bn6-content-check --test ratchet
-chips/antidmg/counter.luau 1
-chips/antiswrd/counter.luau 1
-lib/buster.luau 1
-lib/trajectory.luau 1
 navis/chargeman/navi.luau 1
 navis/dustman/navi.luau 1
 navis/elecman/navi.luau 1
@@ -42,4 +38,3 @@ navis/spoutman/navi.luau 1
 navis/tenguman/navi.luau 1
 navis/tomahawkman/navi.luau 1
 rules/body-overlays.luau 1
-rules/roles.luau 2
