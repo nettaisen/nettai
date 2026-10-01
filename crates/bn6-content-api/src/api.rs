@@ -918,6 +918,9 @@ pub trait CoreApi {
     /// `battle_isBattleOver` as the routines that read its Z flag see it:
     /// over only once time is up (a KO reads as not over).
     fn is_time_up(&self) -> bool;
+    /// `sub_800EB6C`: the local player sees `side`'s objects (unless they
+    /// are the other side's and the local navi is blind).
+    fn viewer_sees(&self, side: u8) -> bool;
     fn battle_info(&self, f: BattleInfo) -> Value;
     /// Report a sound effect both players hear (output only; nothing in
     /// the simulation reads it).
@@ -1193,6 +1196,10 @@ pub trait CoreApi {
     fn add_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, arg: u8);
     /// `sub_8011044`: take them off (at their next update).
     fn remove_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8);
+    /// The same with the actor record of `of`'s NameID (`sub_800F29C`): a
+    /// stand-in wearing its user's parts.
+    fn add_navi_parts_of(&mut self, o: ObjectRef, of: ObjectRef, arg: u8);
+    fn remove_navi_parts_of(&mut self, o: ObjectRef, of: ObjectRef);
 
     // ---- Navis and the attack in progress -------------------------------------
 
@@ -1286,6 +1293,11 @@ pub trait CoreApi {
     /// `sprite_load`: load a sprite (its animation and look reset) and let
     /// it animate (`no_sprite_update` off).
     fn sprite_load(&mut self, o: ObjectRef, id: SpriteId);
+    /// `sub_800F29C`, then `sub_800FC9E` or `sub_800F26C`, and
+    /// `sprite_load`: load the sprite `like` is drawn with (a player navi's
+    /// by its side's navi and form, a field object's by its NameID's
+    /// look): a stand-in for its user.
+    fn sprite_load_like(&mut self, o: ObjectRef, like: ObjectRef) -> ApiResult<()>;
     /// Start animation `anim` from its first frame.
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8);
     /// Advance the animation one tick (no gating).
@@ -1337,8 +1349,9 @@ pub trait CoreApi {
     /// spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     /// in on it. For controllers that aren't a chip's (a trap springing).
     fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef);
-    /// `sub_80E1352`: a navi chip's user vanishes while its navi acts.
-    fn hide_user(&mut self, user: ObjectRef);
+    /// `sub_80E1352`: a navi chip's user vanishes while its navi acts;
+    /// `keep_visuals` (the mask 0xF): its status visuals and the HUD stay.
+    fn hide_user(&mut self, user: ObjectRef, keep_visuals: bool);
     /// `sub_80E13DC`: and comes back.
     fn show_user(&mut self, user: ObjectRef);
     /// A navi chip's navi is done: its controller moves on.

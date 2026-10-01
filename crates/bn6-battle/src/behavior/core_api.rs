@@ -278,6 +278,10 @@ impl CoreApi for Battle {
         self.is_battle_over_flag_quirk()
     }
 
+    fn viewer_sees(&self, side: u8) -> bool {
+        kinds::charge_glow::viewer_sees(self, side & 1)
+    }
+
     fn battle_info(&self, f: BattleInfo) -> Value {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
@@ -1029,6 +1033,16 @@ impl CoreApi for Battle {
         kinds::player::form::record_death_hook(self, o, actor_type_of(actor_type), ai_index);
     }
 
+    fn add_navi_parts_of(&mut self, o: ObjectRef, of: ObjectRef, arg: u8) {
+        let rec = self.content.navi_record(self.objects.get(of).name_id);
+        kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, arg);
+    }
+
+    fn remove_navi_parts_of(&mut self, o: ObjectRef, of: ObjectRef) {
+        let rec = self.content.navi_record(self.objects.get(of).name_id);
+        kinds::player::form::record_death_hook(self, o, rec.actor_type, rec.ai_index);
+    }
+
     fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &bn6_content_api::api::AfterimageSpec) -> Option<ObjectRef> {
         use kinds::afterimage::{PlainLook, PlainShadow, Tether};
         let look = PlainLook {
@@ -1345,6 +1359,33 @@ impl CoreApi for Battle {
         self.objects.get_mut(o).flags &= !flags::NO_SPRITE_UPDATE;
     }
 
+    fn sprite_load_like(&mut self, o: ObjectRef, like: ObjectRef) -> ApiResult<()> {
+        let name_id = self.objects.get(like).name_id;
+        let id = if self.content.navi_record(name_id).actor_type == crate::actor::ActorType::Player {
+            // sub_800FC9E(navi stat 0x29, form stat 0x2C): MegaMan's form's
+            // sprite, or the link navi's.
+            let side = self.objects.get(like).alliance as usize & 1;
+            let s = &self.stats[side];
+            if self.navi(side) == crate::setup::Navi::MEGAMAN {
+                self.content.form(s.form).sprite
+            } else {
+                self.content.navi(s.navi).sprite
+            }
+        } else {
+            // sub_800F26C: a field object's look by its NameID (0xCD and
+            // up); other NameIDs' sprites (viruses, bosses) aren't in the
+            // pack: no netbattle object stands in for one.
+            let look = self.content.objects.name_looks.iter().find(|l| l.name_id == name_id);
+            look.and_then(|l| l.sprite).ok_or_else(|| {
+                ApiError::Other(format!(
+                    "sub_800F26C: NameID {name_id:#x} has no sprite in the pack (a netbattle's stand-in copies a player)"
+                ))
+            })?
+        };
+        self.sprite_load(o, id);
+        Ok(())
+    }
+
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8) {
         self.objects.sprite_mut(o).set_animation(anim, &self.content);
     }
@@ -1536,8 +1577,12 @@ impl CoreApi for Battle {
         Battle::start_dimming(self, side & 1, no_cut_in, controller, user);
     }
 
-    fn hide_user(&mut self, user: ObjectRef) {
-        crate::dimming::hide_user(self, user);
+    fn hide_user(&mut self, user: ObjectRef, keep_visuals: bool) {
+        if keep_visuals {
+            crate::dimming::hide_user_keeping_visuals(self, user);
+        } else {
+            crate::dimming::hide_user(self, user);
+        }
     }
 
     fn show_user(&mut self, user: ObjectRef) {

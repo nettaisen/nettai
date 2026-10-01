@@ -380,6 +380,12 @@ impl UserData for Object {
             let ai = u8_arg(ai, "AI index")?;
             with(|api, _| Ok(api.remove_navi_parts(this.0, t, ai)))
         });
+        methods.add_method("add_parts_of", |_, this, (of, paused): (mlua::UserDataRef<Object>, bool)| {
+            with(|api, _| Ok(api.add_navi_parts_of(this.0, of.0, paused as u8)))
+        });
+        methods.add_method("remove_parts_of", |_, this, of: mlua::UserDataRef<Object>| {
+            with(|api, _| Ok(api.remove_navi_parts_of(this.0, of.0)))
+        });
 
         // Sprite stepping.
         methods.add_method("set_animation", |_, this, anim: LuaValue| {
@@ -651,6 +657,9 @@ impl UserData for Sprite {
         methods.add_method("load", |_, this, (a, b): (LuaValue, Option<LuaValue>)| {
             let id = sprite_id(a, b)?;
             with(|api, _| Ok(api.sprite_load(this.0, id)))
+        });
+        methods.add_method("load_like", |_, this, like: mlua::UserDataRef<Object>| {
+            with(|api, _| api.sprite_load_like(this.0, like.0).map_err(api_error))
         });
         methods.add_method("set_animation", |_, this, anim: LuaValue| {
             let anim = u8_arg(anim, "anim")?;
@@ -954,6 +963,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
+    lib_fn!(lua, t, "viewer_sees", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.viewer_sees(side)))
+    });
     for &f in BattleInfo::ALL {
         t.set(
             f.name(),
@@ -1444,7 +1457,9 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             with(|api, _| Ok(api.start_dimming(side, no_cut_in, controller, user.0)))
         }
     );
-    lib_fn!(lua, t, "hide_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_user(user.0))));
+    lib_fn!(lua, t, "hide_user", |_, (user, keep): (mlua::UserDataRef<Object>, Option<bool>)| {
+        with(|api, _| Ok(api.hide_user(user.0, keep.unwrap_or(false))))
+    });
     lib_fn!(lua, t, "show_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.show_user(user.0))));
     Ok(t)
 }

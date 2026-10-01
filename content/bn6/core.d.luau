@@ -218,6 +218,10 @@ declare class Sprite
     -- let it animate (the object's `no_sprite_update` off). Deprecated: a
     -- sprite by number ("CC-II"); use an asset (asset.sprite).
     function load(self, sprite: SpriteAsset | SpriteId): ()
+    -- `sub_800F29C` with `sub_800FC9E` or `sub_800F26C`, then `load`: the
+    -- sprite `like` is drawn with (a player navi's by its side's navi and
+    -- form; a field object's by its look): a stand-in for a chip's user.
+    function load_like(self, like: Object): ()
     -- Start an animation from its first frame.
     function set_animation(self, anim: number): ()
     -- Advance the animation one tick (no gating).
@@ -419,6 +423,10 @@ declare class Object
     function add_navi_parts(self, actor_type: ActorType, ai_index: number, arg: number): ()
     -- `sub_8011044`: take them off (at their next update).
     function remove_navi_parts(self, actor_type: ActorType, ai_index: number): ()
+    -- The same with the actor record of `of`'s NameID (`sub_800F29C`): a
+    -- stand-in wears its user's parts (`stepping_while_paused`: r2 = 1).
+    function add_parts_of(self, of: Object, stepping_while_paused: boolean): ()
+    function remove_parts_of(self, of: Object): ()
 
     -- `object_setAnimation`: request an animation, restarting it even if
     -- it is current.
@@ -732,6 +740,10 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
+    -- `sub_800EB6C`: the local player sees `side`'s objects (unless they
+    -- are the other side's and the local navi is blind). Presentation, as
+    -- the original keeps it in the objects' visibility.
+    viewer_sees: (side: number) -> boolean,
     link: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
@@ -919,8 +931,9 @@ declare dimming: {
     -- `object_timefreezeEnd` (the controller's destroy state).
     finish: (controller: Object) -> (),
     -- `sub_80E1352` / `sub_80E13DC`: a navi chip's user vanishes and comes
-    -- back.
-    hide_user: (user: Object) -> (),
+    -- back. `keep_visuals` (the mask 0xF): its barrier, confusion and
+    -- blindness visuals and the HUD stay.
+    hide_user: (user: Object, keep_visuals: boolean?) -> (),
     show_user: (user: Object) -> (),
 }
 

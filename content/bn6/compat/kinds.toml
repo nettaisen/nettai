@@ -16,6 +16,7 @@ attachment = { pool = "actor", index = 0x05 }
 "tenguman/navi" = { pool = "actor", index = 0x0C }
 "slashman/navi" = { pool = "actor", index = 0x0D }
 "elmntman/navi" = { pool = "actor", index = 0x10 }
+"burnsqr/burner" = { pool = "actor", index = 0x13 }
 "eraseman/navi" = { pool = "actor", index = 0x15 }
 "chrgeman/navi" = { pool = "actor", index = 0x16 }
 "engine/cross-merge" = { pool = "actor", index = 0x1B }
@@ -156,6 +157,7 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
 "guardian/controller" = { pool = "effect", index = 0x52, scratch_position = true }
 "guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
+"burnsqr/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
