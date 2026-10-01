@@ -82,8 +82,12 @@ fn chip_description(rom: &Rom, id: u32) -> Option<String> {
             }
             b if (b as usize) < crate::CHARSET.len() => text.push_str(crate::CHARSET[b as usize]),
             b if b < 0xE4 => text.push('?'),
-            // The key wait, or a command this reader doesn't know (three
-            // Giga chips print a value with `FF`): the text so far.
+            // `FF`: the text is copied from the console's memory (DblBeast's,
+            // Gregar's and Falzar's, which the game keeps outside their
+            // scripts): the pack has none for them.
+            0xFF => return None,
+            // The key wait (or a command this reader doesn't know): the
+            // text so far.
             _ => return Some(text),
         }
         a += 1;

@@ -248,7 +248,11 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 | Every Cross knocked out by its weakness (the next screen no longer offers it) | `forms/falzar/cross-{spout,tomahawk,tengu,ground,dust}-weakness`, `forms/gregar/cross-{heat,elec,slash,erase,charge}-weakness` | match |
 | A Cross Beast's three turns running out | `forms/falzar/cross-spout-beast-spent` | matches |
 | Both sides transforming on one turn; a Cross to another Cross (the used one no longer offered); a weakness hit on a Cross Beast; Beast Out out of Full Synchro; the tired turns after Beast Out's three | `forms/falzar/beast-both`, `beast-vs-cross`, `cross-to-cross`, `cross-spout-beast-weakness`, `beast-full-synchro`, `beast-out-spent` | match |
-| Invalid chips (custom-screen.md §3.4): a code the chip doesn't have; Mega chips past the Mega level | `custom/invalid-code`, `invalid-mega-count` | match |
+| Invalid chips (custom-screen.md §3.4): a code the chip doesn't have; Mega chips past the Mega level, and within it with MegFldr2 | `custom/invalid-code`, `invalid-mega-count`, `navicust/megfldr2` | match |
+| The descriptions copied from the console's memory (DblBeast's and the Falzar chip's: the chatbox's `FF` command) | `custom/description-arm-137-5..9`, `description-arm-139-7`, `-8` | match (three lines, the default for a chip without text in the pack) |
+| The hand's builder (custom-screen.md §5): a code run with one `*` (first, middle, last: it forms), with two, shifted (`*`, A, B) or in one code (it doesn't); a recipe out of order; a recipe between two other chips; the same recipe on the next screen (once a round); a modifier on a Program Advance; modifiers chained, mixed, on a navi chip, picked first and after a chip they don't apply to | `custom/pa-star-first`, `-middle`, `-last`, `-shifted`, `pa-two-stars`, `pa-same-code`, `pa-wrong-order`, `pa-in-the-middle`, `pa-two-in-a-hand`, `pa-once-a-round`, `pa-modifier`, `custom/modifier-chain`, `-mixed`, `-navi`, `-whicapsl`, `-first`, `-wrong-chip` | match |
+| The Regular chip as a recipe's part (the Program Advance carries its bit); the tag pair and the Regular chip dealt together and forming a recipe; picks from the middle of the hand over four screens (the holes close up), picked in reverse on the last; a folder emptied five chips a screen (the sixth screen deals the last five, the next two none) | `custom/pa-regular`, `pa-tags`, `folder-odd-picks`, `folder-runs-out` | match |
+| The worse status bug (six colours) and the emotion bug in Beast Out (no swings in a form) | `navicust/bug-status-6`, `bug-emotion-beast` | match |
 | The chatbox the custom screen waits on (custom-screen.md §3.5): the tick a description takes keys from, by its text's lines (Cannon R+8, Recov10 R+7, the invalid chip R+6, a Cross R+8); B held; the L message's printing, rushed by A or held B, for MegaMan and three link navis | `custom/description-arm-*`, `description-invalid-*`, `description-cross-*`, `description-b-held-12`, `-30`, `description-keys`, `run-message`, `-b`, `-wait`, `-taps-0`, `-taps-1`, `-b-held`, `run-message-navi-*` | match, since the chatbox's port (the engine took a description's key from R+6 whatever its lines, had no held B, and estimated the message at 72 ticks) |
 
 ### Not reachable in a netbattle (documented, no scenario)
@@ -264,10 +268,5 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 | Rush with chip 0x17E (the hand left alone) | Chip 0x17E, the other WhiCapsl, comes in no code: it can't be in a folder. |
 | A navi appearing mid-battle (`sub_80164A0`) | Only for actors whose AIData+2 is set, which a netbattle's players' isn't. |
 | The Beast Out lock-on's tie-break between several targets | Its candidates are a side's alive-actor slots, and a netbattle fills one a side. |
+| Bug code 0xFB (the body programs go, UnderShirt too), and the charged shot's and the buster's other projectile kinds | Only projectile kind 0x1A carries the code, and a player's shots take their kind from NaviStats+0x4F (the charged shot) and +0x4D (the buster), which nothing writes: not the stats' init (`initNaviStats_WithDefaultStatsMaybe_8013438`, `init_8013B64`), not a NaviCust program's or bug's routine, and no attack a netbattle has carries bug code 0x4D or 0x4F (a code below 0x64 stores to the stat of that number). Both are 0 in all 8,798 navi stat blocks of the lab's 4,399 setups (every program, bug, navi and form). |
 
-### Not attempted yet
-
-| Branch | Note |
-|---|---|
-| Bug code 0xFB (the body programs go, UnderShirt too) | It comes from a charged shot kind (NaviStats+0x4F), whose writer isn't found among the NaviCust's routines. |
-| The descriptions of DblBeast, Gregar and Falzar | Their scripts print a value with a command (`FF`) the chatbox's port counts as text; Giga chips, so a dig of several turns. |
