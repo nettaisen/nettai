@@ -36,7 +36,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x21 | 0x080c8388 | lab only (BlastMan's fire blast: the pack's `objects/blast-fire`, chips.md §3.6.14) |
 | T3 0x22 | 0x080c853c | 16 (SpoutMan's ball: the pack's `objects/spout-ball`, chips.md §3.6.11) |
 | T3 0x23 | 0x080c86d8 | lab only (its splash: the pack's `objects/spout-splash`, chips.md §3.6.11) |
-| T3 0x26 | 0x080c8c74 | lab only (HeatMan's flame: the pack's `objects/heat-flame`, chips.md §3.6.15) |
+| T3 0x26 | 0x080c8c74 | lab only (HeatMan's flame: the pack's `chips/heatman/flame`, chips.md §3.6.15) |
 | T3 0x49 | 0x080cd2ec | 87 (WindRack's gust: the pack's `objects/gust`, standard-chips.md) |
 | T3 0x59 | 0x080cf954 | 7372 (rock: the content's `objects/rock`, a definition with its variants and debris, field-objects.md §3) |
 | T3 0x5b | 0x080cfcf8 | 96 |

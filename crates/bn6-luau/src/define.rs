@@ -380,16 +380,25 @@ pub(crate) fn finish(
         let LuaValue::Table(t) = v else { continue };
         let mut functions = Vec::new();
         let mut state = None;
+        let mut action = None;
         for (k, v) in fields(t, path)? {
             match (k, v) {
                 (DataKey::Str(name), LuaValue::Function(_)) => functions.push(name),
                 (DataKey::Str(name), LuaValue::Table(s)) if name == "state" => {
                     state = schema_keys.get(&s.to_pointer()).cloned();
                 }
+                // An action definition the module exports (a chip record
+                // that names the module runs it).
+                (DataKey::Str(name), LuaValue::Table(a)) if name == "action" => {
+                    action = match def_keys.get(&a.to_pointer()) {
+                        Some((Registry::Action, key)) => Some(key.clone()),
+                        _ => None,
+                    };
+                }
                 _ => {}
             }
         }
-        exports.push(ModuleExports { path: path.clone(), functions, state });
+        exports.push(ModuleExports { path: path.clone(), functions, state, action });
     }
 
     for t in &tables {

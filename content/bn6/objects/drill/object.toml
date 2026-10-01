@@ -1,7 +1,0 @@
-# The drill (attack object #0x71, `sub_80D2A94`) is a script. Its X is the register
-# its spawner left, until its init places it.
-
-[kind]
-pool = "attack"
-index = 0x71
-script = "drill.luau"
