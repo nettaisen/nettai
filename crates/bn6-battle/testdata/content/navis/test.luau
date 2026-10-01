@@ -18,7 +18,7 @@ local function attach_points(): { { number } }
     return points
 end
 
-local WEAPONS = { buster = buster.weapon, charge_shot = charged_shot.weapon }
+local WEAPONS: FormWeapons = { buster = buster.weapon, charge_shot = charged_shot.weapon }
 
 -- `megaman`: the navi that changes form (it has forms, though this content
 -- defines none but the base form).
