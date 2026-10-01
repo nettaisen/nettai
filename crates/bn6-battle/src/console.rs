@@ -25,7 +25,6 @@
 
 use crate::battle::Battle;
 use crate::rng::Rng;
-use crate::setup::Navi;
 
 /// What a player's console brings to a round besides the folder.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -151,10 +150,11 @@ impl Console {
         c.jitter = (dx, dy);
     }
 
-    /// `sub_801CC94`: count down to a check; on a bugged navi (or MegaMan
-    /// with the save's glitch) flicker once or twice (an RNG1 draw), 12
-    /// ticks each, then 20 ticks to the next check.
-    fn update_emotion_window(&mut self, navi: Navi, bugged: bool) {
+    /// `sub_801CC94`: count down to a check; on a bugged navi (or MegaMan,
+    /// the navi that changes form, with the save's glitch) flicker once or
+    /// twice (an RNG1 draw), 12 ticks each, then 20 ticks to the next
+    /// check.
+    fn update_emotion_window(&mut self, megaman: bool, bugged: bool) {
         let w = &mut self.emotion_window;
         if w.flickers != 0 {
             w.flicker_ticks -= 1;
@@ -170,7 +170,7 @@ impl Console {
         }
         // The window shows the side's navi (+0x15; +0x17, which would
         // show another, is never set in a battle).
-        let flickers = if navi == Navi::MEGAMAN { w.glitch || bugged } else { bugged };
+        let flickers = if megaman { w.glitch || bugged } else { bugged };
         if flickers {
             w.flickers = (self.rng.next_positive() & 1) as u8 + 1;
             w.flicker_ticks = FLICKER_TICKS;
@@ -274,8 +274,8 @@ impl Battle {
             if !self.consoles[side].emotion_window.running {
                 continue;
             }
-            let (navi, bugged) = (self.navi(side), bugs(&self.stats[side]) != 0);
-            self.consoles[side].update_emotion_window(navi, bugged);
+            let (megaman, bugged) = (self.navi(side).changes_form(), bugs(&self.stats[side]) != 0);
+            self.consoles[side].update_emotion_window(megaman, bugged);
         }
     }
 
@@ -327,20 +327,20 @@ mod tests {
         let mut c = console();
         c.emotion_window = EmotionWindow { running: true, timer: 3, ..EmotionWindow::default() };
         let start = c.rng;
-        c.update_emotion_window(Navi::MEGAMAN, true);
-        c.update_emotion_window(Navi::MEGAMAN, true);
+        c.update_emotion_window(true, true);
+        c.update_emotion_window(true, true);
         assert_eq!(c.rng, start);
-        c.update_emotion_window(Navi::MEGAMAN, true);
+        c.update_emotion_window(true, true);
         let mut expected = start;
         let flickers = (expected.next_positive() & 1) as u8 + 1;
         assert_eq!(c.rng, expected);
         assert_eq!(c.emotion_window.flickers, flickers);
         // 12 ticks a flicker, then 20 to the next check.
         for _ in 0..12 * flickers as u32 + 19 {
-            c.update_emotion_window(Navi::MEGAMAN, true);
+            c.update_emotion_window(true, true);
         }
         assert_eq!(c.rng, expected);
-        c.update_emotion_window(Navi::MEGAMAN, true);
+        c.update_emotion_window(true, true);
         expected.next();
         assert_eq!(c.rng, expected);
     }
@@ -350,10 +350,10 @@ mod tests {
         let mut c = console();
         c.emotion_window = EmotionWindow { running: true, timer: 1, glitch: true, ..EmotionWindow::default() };
         let start = c.rng;
-        c.update_emotion_window(Navi(3), false);
+        c.update_emotion_window(false, false);
         assert_eq!(c.rng, start);
         c.emotion_window.timer = 1;
-        c.update_emotion_window(Navi::MEGAMAN, false);
+        c.update_emotion_window(true, false);
         assert_ne!(c.rng, start);
     }
 }

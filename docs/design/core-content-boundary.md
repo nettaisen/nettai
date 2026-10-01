@@ -278,10 +278,10 @@ again; the frontend plays a cue once it is confirmed or first predicted and canc
 
 ## 6. Where the line isn't clean yet
 
-- **Navis and forms by number.** The ruleset still tests navi and form numbers where it applies a rule to one
-  (a form's chip-use rules, a link navi's Cross fallback, Beast Over's berserk), and finds a navi or a form by
-  the number in its definition's `legacy` marker. The body overlays are a table by number for the same reason.
-- **AI-index hooks.** The per-AI-index post-init, flinch and drag hooks are Rust matches on the index.
+- **The post-init hook by AI index.** `sub_800F378`'s battle-mode-9 spawns are a Rust match on the actor
+  record's AI index (10); the flinch, drag and overlay-refresh hooks and the other tables by AI index are the
+  identity's (`parts`, `overlay_hooks`, `aura_anim`, `ice`: content-model-v2.md §3.2), and navis and forms are
+  definitions by handle whose fields and traits the ruleset asks.
 - **The engine's kinds' spawn parameters.** The engine's own object kinds (the effect, the spark, the hitbox,
   the afterimage, the eruption) still read the four parameter bytes they are spawned with; content kinds have
   none.

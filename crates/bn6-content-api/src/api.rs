@@ -393,8 +393,9 @@ named_fields! {
     pub enum NaviStat {
         /// Fighting in the sun.
         Sun = "sun", Bool, ro;
-        Form = "form", U8, ro;
-        Navi = "navi", U8, ro;
+        /// The form and the navi, as their definitions.
+        Form = "form", Ref(Registry::Form, None), ro;
+        Navi = "navi", Ref(Registry::Navi, None), ro;
         NaviVariant = "navi_variant", U8, ro;
         /// The base form's element.
         Element = "element", U8, ro;
@@ -1247,14 +1248,14 @@ pub trait CoreApi {
     /// `sub_80E33FA`: an afterimage of `owner`'s side at `pos` (a sprite of
     /// its own, or a copy of the owner's).
     fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
-    /// `sub_8010DF6`: put on the overlays an actor record (by actor type,
-    /// an index into [`ACTOR_TYPES`], and AI index) adds to `o` (the navi
-    /// init hook's routine, kept in its second related slot; CircusMan's
-    /// second one in its second overlay). `arg` (r2): they step even while
-    /// paused.
-    fn add_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, arg: u8);
-    /// `sub_8011044`: take them off (at their next update).
-    fn remove_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8);
+    /// `sub_8010DF6`: put on `o` what `identity` wears (its `parts`: the
+    /// original's actor record's init hook's routine), kept in `o`'s second
+    /// related slot (CircusMan's second one in its second overlay). `arg`
+    /// (r2): they step even while paused.
+    fn add_parts(&mut self, o: ObjectRef, identity: crate::IdentityHandle, arg: u8);
+    /// `sub_8011044`: take them off (at their next update), if the
+    /// identity's death hook does.
+    fn remove_parts(&mut self, o: ObjectRef, identity: crate::IdentityHandle);
     /// `sub_8010DF6` with `owner`'s NameID record (`sub_800F29C`: its
     /// actor type, AI index and first byte): put on the parts that record
     /// adds, kept in `o`'s related2; with `keep_stepping`, a part that came
@@ -1515,19 +1516,20 @@ pub trait CoreApi {
     /// r3 spawn with it as a position (DustMan's junk).
     fn loop_register(&self) -> u32;
     /// CrosOver's MegaMan (`sub_80BDBC8`): `o` takes its user's identity
-    /// when the user is MegaMan or one of his forms, else MegaMan's
-    /// own; that identity's sprite (a player's by its side's navi and form,
-    /// `sub_800FC9E`; MegaMan's base sprite for another user's), with a
-    /// ground shadow at animation 0 (loaded by the next sprite update); and
-    /// its side's form's palette (`byte_80203EA`). True when it took the
-    /// user's.
-    fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef) -> ApiResult<bool>;
+    /// when the user is MegaMan (`megaman`) or one of his forms, else
+    /// MegaMan's own; that identity's sprite (a player's by its side's navi
+    /// and form, `sub_800FC9E`; MegaMan's base sprite for another user's),
+    /// with a ground shadow at animation 0 (loaded by the next sprite
+    /// update); and its side's form's palette (`byte_80203EA`). True when
+    /// it took the user's.
+    fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef, megaman: crate::NaviHandle) -> ApiResult<bool>;
     /// MstrCros's Crosses (`sub_80BE7BC`) and Darkness's Dark MegaMan
-    /// (`sub_80BF710`): `o` takes the identity of MegaMan in form `form` (the
-    /// form's; MegaMan's for his base form 0), the form's sprite
-    /// (`sub_800FC9E(0, form)`) with a ground shadow at animation 0 (loaded
-    /// by the next sprite update), and the form's palette (`byte_80203EA`).
-    fn wear_megaman_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()>;
+    /// (`sub_80BF710`): `o` takes the identity of `navi` (MegaMan) in
+    /// `form` (the form's; the navi's own for his base form), the form's
+    /// sprite (`sub_800FC9E(0, form)`) with a ground shadow at animation 0
+    /// (loaded by the next sprite update), and the form's palette
+    /// (`byte_80203EA`).
+    fn wear_form_image(&mut self, o: ObjectRef, navi: crate::NaviHandle, form: crate::FormHandle) -> ApiResult<()>;
     /// `sub_8010DF6` (`on`, its r2 1) or `sub_8011044` by the actor record
     /// of `o`'s identity: the parts the navi image wears.
     fn navi_image_parts(&mut self, o: ObjectRef, on: bool);

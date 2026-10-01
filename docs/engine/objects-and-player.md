@@ -2266,7 +2266,7 @@ Trace: soundmod, every round's first turn. Both navis cross at once: side 0 (Gre
 - Init (`sub_80C4368`): stores `off_80C42D4[Param1]` (a per-animation byte table) **in its CollisionDataPtr slot**, so a trace reading ObjectFlags1 through it reads 0 (it points into ROM); the sprite `byte_80C4320[Param1]`; CurAnim = Param4 and CurAnimCopy = 0 (one halfword store); state 4, then the update.
 - Update (`sub_80C43C4`): CurAnim = owner's + Param4; position = owner's; then if ExtraVars[0] (`sub_80C4526`): Y and Z + 1 pixel; else if the table's byte for the owner's animation is 0: Y and Z − 1 pixel (same place on screen, drawn behind the owner). Visibility follows the owner unless PhaseInitialized is set (`sub_80C44E4`/`sub_80C44FA` force it); the flip follows the owner. Action 0: Param3 = 0 → `object_updateSprite` unless while dimmed; else `sub_801BCD0`.
 - Removal (`sub_80C44C8`): state 8, freed at its next update.
-- The tables: `ObjectData::body_overlays` (the content's `rules/body-overlays.luau`; the byte tables run back to back up to the pointer table; an animation past a table's end reads the next one, so each row is extracted to the block's end).
+- The tables: the identities' `parts` (content-model-v2.md §3.2): a body part names its sprite (`byte_80C4320[Param1]`), how many of the wearer's animations its depth table covers and those it is drawn behind in (the byte tables run back to back up to the pointer table; an animation past a table's end reads the next one, so each covers up to the block's end), its own palette (Param2) and its animation offset (Param4). The engine spawns the overlay with Param1 = 0 and keeps the part it is in its state.
 
 ## 13. RNG uses (all that touch objects or battle setup)
 

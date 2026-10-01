@@ -143,8 +143,6 @@ return {
         hit_marker = asset.sprite("test-sprite-hit-marker"),
         eruption = asset.sprite("test-sprite-eruption"),
         lockon_marker = asset.sprite("test-sprite-lockon-marker"),
-        idle_overlay = asset.sprite("test-sprite-idle-overlay"),
-        beast_head = asset.sprite("test-sprite-beast-head"),
     },
     banners = {
         round_start = asset.banner("test-banner-round-start"),

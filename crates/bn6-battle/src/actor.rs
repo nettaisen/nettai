@@ -199,8 +199,12 @@ impl Pad {
 #[derive(Clone, Debug, Default, Hash)]
 pub struct ActorData {
     pub actor_type: ActorType,
-    /// Form or AI variant: selects per-form action tables.
+    /// The actor record's AI index.
     pub ai_index: u8,
+    /// The identity whose actor record this is (a navi's: it stays the
+    /// navi's through its forms). What the original's tables by actor
+    /// type and AI index hold, the ruleset reads of it.
+    pub identity: Option<bn6_content_api::IdentityHandle>,
     /// 1 = not counted as a combatant.
     pub not_counted: u8,
     /// Weapons (the game's routine bytes; none for 0xFF): battle-mode-9 A

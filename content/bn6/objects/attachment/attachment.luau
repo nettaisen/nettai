@@ -79,7 +79,7 @@ local function init(me: Object)
     me.no_sprite_update = false
     -- A Cross's identity raises it by 8 pixels.
     local identity = owner.identity
-    local cross = identity ~= nil and identity.class == "cross" and battle.navi(me.alliance).form ~= 0
+    local cross = identity ~= nil and identity.class == "cross" and battle.navi(me.alliance).form.kind ~= "base"
     s.lift = if cross then -8 else k.lift or 0
     local anim = s.anim
     me.anim = anim

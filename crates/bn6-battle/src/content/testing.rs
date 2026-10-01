@@ -92,7 +92,9 @@ pub const LINK_CHIPS: [&str; 10] = [
 ];
 /// A link navi (the content's navi 1; AI index 4, whose actor record has
 /// no hooks).
-pub const LINK_NAVI: crate::setup::Navi = crate::setup::Navi(1);
+pub const LINK_NAVI: &str = "test/link-navi";
+/// MegaMan, the navi that changes form.
+pub const MEGAMAN: &str = "megaman";
 
 /// The test stages (testdata/content/stages/test.luau), link battles on
 /// the plain field: two navis, side 1's placed first (the usual netbattle
@@ -163,15 +165,15 @@ pub fn stats(hp: u16) -> crate::setup::NaviStats {
 
 /// The link navi's stats (`LINK_NAVI`), by `content`'s handles.
 pub fn link_navi_on(content: &Content) -> crate::setup::NaviStats {
-    crate::setup::NaviStats { navi: content.navi_numbered(LINK_NAVI), ..megaman_on(content) }
+    crate::setup::NaviStats { navi: content.navi_by_key(LINK_NAVI), ..megaman_on(content) }
 }
 
 /// Stats with nothing of note but MegaMan in his base form, by `content`'s
 /// handles.
 pub fn megaman_on(content: &Content) -> crate::setup::NaviStats {
-    let base = content.form_numbered(crate::setup::Form::NONE);
+    let base = content.base_form();
     crate::setup::NaviStats {
-        navi: content.navi_numbered(crate::setup::Navi::MEGAMAN),
+        navi: content.navi_by_key(MEGAMAN),
         form: base,
         starting_form: base,
         ..Default::default()
@@ -303,10 +305,7 @@ fn make() -> Content {
     Content {
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
-        navis: Vec::new(),
-        forms: Vec::new(),
         rules: rules(),
-        objects: objects(),
         animations: animations(),
         scripts: scripts(),
         assets: assets(),
@@ -1393,7 +1392,6 @@ fn rules() -> Rules {
             opposing_player: [PLAYER[1], PLAYER[0]],
         },
         custom_screen: custom_screen_layout(),
-        cross_palettes: (0..11).collect(),
     }
 }
 
@@ -1427,15 +1425,6 @@ pub fn custom_screen_layout() -> CustomScreenLayout {
         right_scan_bottom: vec![5, 6, 7, 8, 9, 11, 10],
         left_scan_start: [5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 0, 0],
         right_scan_start: [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 0, 0],
-    }
-}
-
-fn objects() -> ObjectData {
-    ObjectData {
-        // The elements navi's overlay (variant 0x0F).
-        body_overlays: (0..0x10)
-            .map(|id| BodyOverlay { id, sprite: SpriteId { category: 8, index: 0x11 }, in_front: vec![true; 0x20] })
-            .collect(),
     }
 }
 

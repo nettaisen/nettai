@@ -6,17 +6,17 @@
 //! holds an actor slot and a place in the update order.
 
 use crate::battle::Battle;
-use crate::content::SpriteRole;
+use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, flags, state};
 
-/// Its sprites by Param1 (`dword_80C40D4`: one entry).
-const SPRITES: [SpriteRole; 1] = [SpriteRole::IdleOverlay];
-
 /// Overlay-private state.
 #[derive(Clone, Copy, Debug, Default, Hash)]
 pub struct Vars {
+    /// Its sprite (the original's by Param1, `dword_80C40D4`: one entry;
+    /// here what the identity that wears it says).
+    pub sprite: Option<SpriteId>,
     /// ExtraVars[0] (`sub_80C4526`): the height is left as the owner's
     /// rather than dropped to the ground or lifted out of sight.
     pub pinned: bool,
@@ -29,19 +29,19 @@ fn vars(b: &Battle, r: ObjectRef) -> Vars {
     }
 }
 
-/// `sub_80C41D8`: overlay `variant` on `owner`, at its position. It runs
-/// while paused and dimmed.
-pub fn spawn(b: &mut Battle, owner: ObjectRef, variant: u8) -> Option<ObjectRef> {
+/// `sub_80C41D8`: the overlay `sprite` on `owner`, at its position. It
+/// runs while paused and dimmed.
+pub fn spawn(b: &mut Battle, owner: ObjectRef, sprite: SpriteId) -> Option<ObjectRef> {
     let (pos, alliance) = {
         let o = b.objects.get(owner);
         (o.pos, o.alliance)
     };
-    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::IdleOverlay, pos, [variant, 0, 0, 0])?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::IdleOverlay, pos, [0; 4])?;
     let o = b.objects.get_mut(r);
     o.alliance = alliance;
     o.related[0] = Some(owner);
     o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
-    o.vars = crate::kinds::Vars::IdleOverlay(Vars::default());
+    o.vars = crate::kinds::Vars::IdleOverlay(Vars { sprite: Some(sprite), pinned: false });
     Some(r)
 }
 
@@ -68,11 +68,7 @@ fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
 /// animation 0, the owner's palette, its facing), visible.
 fn init(b: &mut Battle, r: ObjectRef) {
     common::set_panels_from_coordinates(b, r);
-    let variant = b.objects.get(r).params[0];
-    let sprite = *SPRITES
-        .get(variant as usize)
-        .unwrap_or_else(|| panic!("idle overlay variant {variant} reads past its sprite table (sub_80C40F8)"));
-    let sprite = b.content.defs.roles.sprite(sprite);
+    let sprite = vars(b, r).sprite.expect("an idle overlay has a sprite");
     let owner_palette = b.objects.sprite(owner(b, r)).look.palette;
     let flip = {
         let o = b.objects.get(r);
