@@ -246,7 +246,7 @@
 "sprites.rolling-log" = "10-34: objects/rolling-log/rolling_log.luau"
 "sprites.rush" = "0c-48: objects/rush/rush.luau"
 "sprites.sand-hole" = "10-48: objects/sand-hole/sand_hole.luau"
-"sprites.sand-spray" = "04-1a: objects/sand-spray/sand_spray.luau"
+"sprites.sand-worm" = "04-1a: SandWrm's worm and the sand it throws (chips/sandwrm)"
 "sprites.sight" = "10-45: the target sights of CircGun (chips/circgun/gun.luau) and Magnum; used by effect 0x49, effect 0x56"
 "sprites.cross-slash" = "10-41: CrosSwrd's slash, effect 0x5F (the swords exemplar)"
 "sprites.slash-man-effect" = "10-38: effect 0x39 in objects/slash-man/slash_man.luau"

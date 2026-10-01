@@ -29,7 +29,6 @@ chips/083-rflectr1/chip.luau 9
 chips/09a-recov10/chip.luau 1
 chips/0b7-magcoil/chip.luau 5
 chips/0be-copydmg/chip.luau 5
-chips/11d-synctrgr/chip.luau 1
 chips/152-h-burst/chip.luau 5
 chips/191-delecswd/elec_sword.luau 2
 chips/192-rslash/rolling_slash.luau 9
@@ -49,8 +48,6 @@ chips/wind/fan.luau 2
 lib/buster.luau 1
 lib/dragon.luau 4
 lib/hp.luau 2
-lib/instant-chips/02-invisible.luau 1
-lib/instant-chips/06-repair-obstacles.luau 2
 lib/instruments/instrument.luau 2
 lib/object_setup.luau 2
 lib/panels.luau 2
@@ -95,7 +92,6 @@ objects/bass/bass.luau 4
 objects/beat/beat.luau 5
 objects/blast-fire/blast_fire.luau 11
 objects/blast-man/blast_man.luau 3
-objects/boomerang/boomerang.luau 12
 objects/bubble-star/bubble_star.luau 4
 objects/charge-car/charge_car.luau 11
 objects/charge-man/charge_man.luau 3
@@ -115,8 +111,6 @@ objects/drill/drill.luau 10
 objects/drip-shower/drip_shower.luau 5
 objects/dust-ball/dust_ball.luau 5
 objects/dust-cloud/dust_cloud.luau 5
-objects/dust-storm-mote/dust_storm_mote.luau 4
-objects/dust-storm/dust_storm.luau 6
 objects/eagle-tomahawk/eagle_tomahawk.luau 3
 objects/elec-man/elec_man.luau 4
 objects/elec-pulse/elec_pulse.luau 7
@@ -131,14 +125,10 @@ objects/elmnt-vine/elmnt_vine.luau 2
 objects/erase-drop/erase_drop.luau 7
 objects/erase-ray/erase_ray.luau 6
 objects/falling-rock/falling_rock.luau 3
-objects/fire-hit/fire_hit.luau 3
-objects/flame-hook-fire/flame_hook_fire.luau 14
-objects/flame-hook/flame_hook.luau 5
 objects/flame/flame.luau 17
 objects/flying-shot/flying_shot.luau 11
 objects/follow-effect/follow_effect.luau 10
 objects/gauge-speed/gauge_speed.luau 4
-objects/golem/golem.luau 11
 objects/great-yoyo/great_yoyo.luau 5
 objects/gust/gust.luau 4
 objects/heat-flame/heat_flame.luau 7
@@ -147,16 +137,12 @@ objects/hit-flash/hit_flash.luau 4
 objects/hockey-puck/hockey_puck.luau 21
 objects/honey-bee/honey_bee.luau 6
 objects/hyper-burst/hyper_burst.luau 5
-objects/immobilizer/immobilizer.luau 2
 objects/invisible/invisible.luau 4
 objects/iron-shell/iron_shell.luau 12
 objects/junk-shot/junk_shot.luau 6
-objects/justice-one/justice_one.luau 8
-objects/lance/lance.luau 3
 objects/land-mine/land_mine.luau 10
 objects/lunge-slash/lunge_slash.luau 2
 objects/magnet/magnet.luau 2
-objects/meteor-shower/meteor_shower.luau 2
 objects/meteor/meteor.luau 6
 objects/mine/mine.luau 1
 objects/moon-beam/moon_beam.luau 2
@@ -171,7 +157,6 @@ objects/proto-man/proto_man.luau 8
 objects/reflected-shot/reflected_shot.luau 2
 objects/reflector-shield/reflector_shield.luau 4
 objects/riding-hit/riding_hit.luau 4
-objects/rising-bubble/rising_bubble.luau 2
 objects/rock-chip/rock_chip.luau 1
 objects/rock-cube/rock_cube.luau 6
 objects/rock-debris/rock_debris.luau 3
@@ -180,9 +165,6 @@ objects/roll-heart/roll_heart.luau 4
 objects/roll/roll.luau 12
 objects/rolling-log/rolling_log.luau 15
 objects/rush/rush.luau 9
-objects/sand-hole/sand_hole.luau 1
-objects/sand-spray/sand_spray.luau 7
-objects/sand-worm/sand_worm.luau 6
 objects/seeking-whirl/seeking_whirl.luau 3
 objects/shock-wave/shock_wave.luau 15
 objects/slash-man/slash_man.luau 9

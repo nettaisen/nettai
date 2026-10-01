@@ -23,6 +23,11 @@ regions.line = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 } } }
 -- The anchor and its four diagonals (region 0x0B: CrosSwrd).
 regions.x = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
 
+-- The four panels beside the anchor, and its four diagonals (regions 0x0A
+-- and 0x0C: JustcOne's landing waves).
+regions.beside = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+regions.diagonals = define.region { panels = { { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } } }
+
 -- The anchor's column and the one ahead (region 0x11: LifeSrd).
 regions.wide_long = define.region {
     panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { 1, -1 }, { 1, 1 } },
