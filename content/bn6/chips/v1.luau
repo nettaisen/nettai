@@ -834,6 +834,24 @@ local fan = define.chip {
     legacy = legacy { number = 0x082, action = 0x15, subtype = 8, params = { 1, 0, 0, 0 } },
 }
 
+local snake = define.chip {
+    id = "v1/snake",
+    name = "Snake",
+    codes = { "H", "M", "L" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 3,
+    mb = 34,
+    damage = 30,
+    hit_param = 133,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 103, index = 103, sort = 412 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x086, action = 0x15, subtype = 12, params = { 0, 0, 0, 0 } },
+}
+
 local magnum = define.chip {
     id = "v1/magnum",
     name = "Magnum",
@@ -1051,6 +1069,24 @@ local pnlretrn = define.chip {
     legacy = legacy { number = 0x0A6, action = 0x15, subtype = 5, params = { 0, 0, 0, 0 } },
 }
 
+local geddon = define.chip {
+    id = "v1/geddon",
+    name = "Geddon",
+    codes = { "A", "L", "R", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 2,
+    mb = 47,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    library = { number = 169, index = 169, sort = 215 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x0A7, action = 0x15, subtype = 3, params = { 1, 0, 0, 0 } },
+}
+
 local holypanl = define.chip {
     id = "v1/holypanl",
     name = "HolyPanl",
@@ -1250,6 +1286,26 @@ local lifeaur = define.chip {
     legacy = legacy { number = 0x0B6, action = 0x15, subtype = 4, params = { 9, 0, 0, 0 } },
 }
 
+local lifesync = define.chip {
+    id = "v1/lifesync",
+    name = "LifeSync",
+    codes = { "*" },
+    element = "null",
+    family = "cursor",
+    class = "standard",
+    rarity = 1,
+    mb = 12,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    extra_flags = { "free_slot_in" },
+    beast = { lockon = lockon.firebrn1 },
+    library = { number = 195, index = 195, sort = 254 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x0BF, action = 0x15, subtype = 7, params = { 0, 0, 0, 0 } },
+}
+
 local atk_10 = define.chip {
     id = "v1/atk-10",
     name = "Atk+10",
@@ -1343,6 +1399,44 @@ local bigbomb = define.chip {
         params = { 3, 0, 0, 0 },
         script = "chips/036-minibomb/chip",
     },
+}
+
+local metrknuk = define.chip {
+    id = "v1/metrknuk",
+    name = "MetrKnuk",
+    codes = { "N" },
+    element = "null",
+    family = "break",
+    class = "giga",
+    rarity = 4,
+    mb = 90,
+    damage = 100,
+    hit_param = 148,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "library" },
+    extra_flags = { 4, 16 },
+    library = { number = 307, index = 2, sort = 315 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x133, action = 0x15, subtype = 32, params = { 0, 0, 0, 0 } },
+}
+
+local dblbeast = define.chip {
+    id = "v1/dblbeast",
+    name = "DblBeast",
+    codes = { "W" },
+    element = "null",
+    family = "null",
+    class = "mega",
+    rarity = 4,
+    mb = 99,
+    damage = 0,
+    hit_param = 138,
+    lockout = 0,
+    flags = { "dimming" },
+    extra_flags = { 16 },
+    library = { number = 281, index = 11, sort = 137 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x137, action = 0x15, subtype = 37, params = { 0, 0, 0, 0 } },
 }
 
 local batcan1 = define.chip {
@@ -1538,6 +1632,112 @@ local dbldream = define.chip {
     },
 }
 
+local prpcapsl = define.chip {
+    id = "v1/prpcapsl",
+    name = "PrpCapsl",
+    codes = {},
+    element = "null",
+    family = "summon",
+    class = "special",
+    rarity = 0,
+    mb = 6,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    library = { number = 383, index = 0, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x17F, action = 0x15, subtype = 3, params = { 0, 0, 0, 0 } },
+}
+
+local pnkcapsl = define.chip {
+    id = "v1/pnkcapsl",
+    name = "PnkCapsl",
+    codes = {},
+    element = "null",
+    family = "summon",
+    class = "special",
+    rarity = 0,
+    mb = 6,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    library = { number = 384, index = 0, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x180, action = 0x15, subtype = 3, params = { 1, 0, 0, 0 } },
+}
+
+local healball = define.chip {
+    id = "v1/healball",
+    name = "HealBall",
+    codes = {},
+    element = "null",
+    family = "special",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming" },
+    library = { number = 385, index = 0, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x181, action = 0x15, subtype = 3, params = { 0, 0, 0, 0 } },
+}
+
+local magpanl = define.chip {
+    id = "v1/magpanl",
+    name = "MagPanl",
+    codes = {},
+    element = "null",
+    family = "special",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming" },
+    library = { number = 386, index = 0, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x182, action = 0x15, subtype = 3, params = { 0, 0, 0, 0 } },
+}
+
+local beastout_dimming_1 = define.chip {
+    id = "v1/beastout-dimming-1",
+    name = "BeastOut",
+    codes = {},
+    element = "null",
+    family = "special",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming" },
+    library = { number = 390, index = 0, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x186, action = 0x15, subtype = 3, params = { 0, 0, 0, 0 } },
+}
+
+local beastout_dimming_2 = define.chip {
+    id = "v1/beastout-dimming-2",
+    name = "BeastOut",
+    codes = {},
+    element = "null",
+    family = "special",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming" },
+    library = { number = 391, index = 0, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x187, action = 0x15, subtype = 3, params = { 0, 0, 0, 0 } },
+}
+
 return {
     airshot = airshot,
     vulcan1 = vulcan1,
@@ -1575,6 +1775,7 @@ return {
     sensor3 = sensor3,
     wind = wind,
     fan = fan,
+    snake = snake,
     magnum = magnum,
     circgun = circgun,
     fanfare = fanfare,
@@ -1587,6 +1788,7 @@ return {
     grabbnsh = grabbnsh,
     grabrvng = grabrvng,
     pnlretrn = pnlretrn,
+    geddon = geddon,
     holypanl = holypanl,
     snctuary = snctuary,
     comingrd = comingrd,
@@ -1598,10 +1800,13 @@ return {
     barr200 = barr200,
     bblwrap = bblwrap,
     lifeaur = lifeaur,
+    lifesync = lifesync,
     atk_10 = atk_10,
     navi_20 = navi_20,
     blzrdbal = blzrdbal,
     bigbomb = bigbomb,
+    metrknuk = metrknuk,
+    dblbeast = dblbeast,
     batcan1 = batcan1,
     batcan2 = batcan2,
     batcan3 = batcan3,
@@ -1609,4 +1814,10 @@ return {
     ftrsword = ftrsword,
     crosswrd = crosswrd,
     dbldream = dbldream,
+    prpcapsl = prpcapsl,
+    pnkcapsl = pnkcapsl,
+    healball = healball,
+    magpanl = magpanl,
+    beastout_dimming_1 = beastout_dimming_1,
+    beastout_dimming_2 = beastout_dimming_2,
 }
