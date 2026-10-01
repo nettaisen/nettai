@@ -1812,6 +1812,10 @@ impl CoreApi for Battle {
         b.hand_shrink_turn = 0;
     }
 
+    fn clear_emotion_window_glitch(&mut self) {
+        Battle::clear_emotion_window_glitch(self);
+    }
+
     fn navi_chip_left(&mut self, controller: ObjectRef) {
         kinds::navi_chip::navi_left(self, controller);
     }

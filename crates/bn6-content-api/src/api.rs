@@ -1458,6 +1458,10 @@ pub trait CoreApi {
     /// on-hit status, the custom damage, the emotion, the custom and HP
     /// drains, the battle-start bug and the hand-shrink turn are zeroed.
     fn clear_navicust_bugs(&mut self, side: u8);
+    /// `sub_801E658` (BugFix): the save's emotion window glitch is gone
+    /// from every console's emotion window, which then flickers (and
+    /// draws its console's RNG1) for NaviCust bugs only.
+    fn clear_emotion_window_glitch(&mut self);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
