@@ -5,9 +5,10 @@
 -- docs/engine/shot-chips.md §12). SprSonic's goes through what it hits.
 --
 -- Their records stay the pack's for now (VarSwrd and NeoVari start
--- SonicBom and SprSonic by number, keeping the sword's damage; Curse is
--- VDoll's curse's telop): these are their actions, which registration by
--- number runs (docs/design/content-model-v2.md §5.1, "As built").
+-- SonicBom's and SprSonic's actions, keeping the sword's damage, with the
+-- attack's chip theirs by number, lib/swords/vari; Curse is VDoll's curse's
+-- telop): these are their actions, which registration by number runs too
+-- (docs/design/content-model-v2.md §5.1, "As built").
 
 local parts = require("../../lib/swords/parts")
 local sonic_boom = require("../../lib/swords/sonic_boom")

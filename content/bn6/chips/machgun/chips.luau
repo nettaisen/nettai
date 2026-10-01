@@ -8,6 +8,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local panel_strike = require("../../objects/panel-strike/panel_strike")
+local panels = require("../../lib/panels")
 
 export type State = {
     -- The countdown to the next strike (AIAttackVars+0x10).
@@ -44,26 +45,12 @@ local GUN_FIRE = 1
 -- The machine gun (the original's attachment row 0x1D).
 local GUN = attachment.look { sprite = asset.sprite("machine-gun"), palette = 0, attach_point = 26 }
 
--- The other side's bodies on a field panel (`byte_80ED080`, by side).
-local ENEMY = { [0] = 0x04010000, [1] = 0x08010000 }
-
--- `sub_80ED040`: from the column ahead forward, the first with an enemy in
--- some row; none, the last column ahead.
+-- `sub_80ED040` (lib/panels, the dragons' too): from the column ahead
+-- forward, the first with an enemy in some row; none, the last column
+-- ahead.
 local function target_column(me: Object): number
-    local dir, x = me.facing, me.panel_x
-    local enemy = ENEMY[me.alliance]
-    while true do
-        x += dir
-        if x == 0 or x >= 7 then
-            break
-        end
-        for y = 1, 3 do
-            if field.check(x, y, enemy, 0) then
-                return x
-            end
-        end
-    end
-    return if dir > 0 then 6 else 1
+    local x = panels.enemy_column(me)
+    return x
 end
 
 -- `sub_80ECF48`: the Atk+ bonus goes into the damage word; aim at the
