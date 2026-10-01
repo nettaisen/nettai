@@ -5,7 +5,7 @@
 -- buster bugs may make a shot a blank or a charged shot instead (one RNG
 -- draw every shot), and its buster-shot program the shot's kind (another
 -- draw). The routine numbers that alias it (0x2E, 0x2F, 0x3E, ...) are
--- this weapon's (its `legacy` marker). See docs/engine/objects-and-player.md
+-- this weapon's in compat (weapons.toml). See docs/engine/objects-and-player.md
 -- §B6.
 --
 -- Action 0x11 raises the buster; on its second tick the projectile flies

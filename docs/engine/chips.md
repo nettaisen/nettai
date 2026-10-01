@@ -1443,7 +1443,7 @@ alliance (and, for most, flip), damage word, and chip and bonus at +0x30/+0x32. 
 subtype:
 
 - 1 (Invisibl, WhiCapsl; T4 0x5D): the user flashes invisible for Param1-2 ticks (`sub_8010474`), 31 ticks.
-  objects/invisible (`invisible.hook(ticks)`).
+  chips/invisibl/controller (`invisible.hook(ticks)`).
 - 6 (RockCube, IceCube; T4 0x37): a rock of variant Param1 (1 a rock cube, 3 an ice block) on the panel in front
   (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. chips/rockcube; the rock is objects/rock
   (field-objects.md).
