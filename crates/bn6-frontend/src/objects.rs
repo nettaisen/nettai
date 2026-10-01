@@ -200,6 +200,10 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
             if l.hidden_parts != 0 {
                 notes.push(format!("hidden parts {:#010x}", l.hidden_parts));
             }
+            if o.chips_held != 0 {
+                let hud = b.chip_hud_for(o.alliance);
+                notes.push(format!("{} chips (icons {}, window {})", o.chips_held, hud.icons, hud.window));
+            }
             lines.push(format!(
                 "{:?} {:2} {} side {} at ({}, {}) ground {}: {sprite}; {}",
                 r.pool,

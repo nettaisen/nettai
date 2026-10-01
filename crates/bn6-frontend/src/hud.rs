@@ -413,12 +413,19 @@ pub fn draw<'a>(
         }
     }
     list.insert_at(FIELD_LAYER, HP_BUCKET, group);
-    // The emotion window flickers out on two ticks of every flicker
-    // (`sub_801CDEC`).
-    let flicker = b.consoles[local as usize & 1].emotion_window.flicker_ticks;
+    // A flickering emotion window is black two ticks of every four
+    // (`sub_801CC94`: its palette blanks), and isn't drawn on the middle
+    // two of the flicker's twelve (`sub_801CDEC`).
+    let window = b.consoles[local as usize & 1].emotion_window;
+    let flicker = window.flicker_ticks;
     if let Some(r) = player.filter(|_| !state.was_over && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         let mut group = Vec::new();
         mugshot_parts(b, hud, state, r, if open { 120 } else { 0 }, &mut group, problems);
+        if window.flickers != 0 && (flicker + 1) & 2 != 0 {
+            for part in &mut group {
+                part.palette = [0; 16];
+            }
+        }
         list.insert_at(FRONT_LAYER, 0, group);
     }
     if let Some(id) = b.banner_for(local) {
@@ -588,7 +595,7 @@ fn mugshot_parts<'a>(
     let m = state.mood.map(|m| m.shown()).unwrap_or_else(|| mood_index(b, r));
     let mut e = [0u8, 2, 3, 1, 5, 4][m as usize];
     // A Beast Out chosen on the custom screen shows before it happens.
-    let form = b.transform_requests[side].form.filter(|f| f.0 <= 0x18).unwrap_or(stats.form).0;
+    let form = stats.form.0;
     if form != 0 {
         let base = hud.form_emotions.get(form as usize).copied().unwrap_or(0);
         e = match form {
