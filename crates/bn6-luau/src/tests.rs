@@ -129,7 +129,7 @@ fn definition_mistakes_are_load_errors() {
         // The migration's markers are gone: neither the global nor the
         // field.
         ("return define.navi { id = 'x', legacy = { number = 1 } }", "takes no `legacy` field"),
-        ("return define.navi { id = 'x', marker = legacy { number = 1 } }", "legacy"),
+        ("return define.navi { id = 'x', marker = legacy { number = 1 } }", "attempt to call a nil value"),
     ];
     for (source, want) in cases {
         let e = define_pack(&[("chips/x/chip", source)]).unwrap_err();
