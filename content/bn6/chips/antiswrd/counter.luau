@@ -6,7 +6,6 @@
 -- one's hit knocks back. The ruleset starts it by role (`actions.anti_sword_counter`,
 -- rules/roles.luau).
 
-local attachment = require("../../objects/attachment/attachment")
 local parts = require("../../lib/swords/parts")
 local sonic_boom = require("../../lib/swords/sonic_boom")
 
@@ -32,18 +31,12 @@ local BOOMS: { [number]: SonicBoom } = {
     { hit_mod = 1, pierces = false },
     { hit_mod = 1, pierces = false },
 }
--- The blade by the attack's variant (`byte_80EBB64`): a sword, the
--- elemental swords' for variants 0xC to 0xF, the cannon arm (attachment
--- row 0) for 0x10 and 0x13.
-local CANNON_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 0, attach_point = 7 }
-local BLADES: { [number]: AttachmentLook } = {
-    [0xC] = parts.blades.fire,
-    [0xD] = parts.blades.aqua,
-    [0xE] = parts.blades.elec,
-    [0xF] = parts.blades.bamboo,
-    [0x10] = CANNON_ARM,
-    [0x13] = CANNON_ARM,
-}
+-- The blade: a sword. (The original takes it from `byte_80EBB64` by the
+-- attack's variant, the swords' table: the elemental swords' blades for
+-- 0xC to 0xF, the cannon arm for 0x10 and 0x13, a sword for the rest.
+-- Both of the counter's starters, a trap chip's catch and the stance,
+-- leave the variant 0.)
+local BLADE = parts.blades.sword
 
 local function set_step(me: Object, step: number)
     me.step, me.step_init = step, 0
@@ -68,11 +61,7 @@ local function swing(me: Object, s: State)
         me:refresh_form_overlay()
         battle.clear_linked(me.alliance)
         battle.play_sound(SOUND_SWING)
-        local variant = me.variant
-        if variant >= 0x14 then
-            error(string.format("AntiSwrd's counter: variant %#x reads past byte_80EBB64", variant))
-        end
-        parts.hold(me, BLADES[variant] or parts.blades.sword, 0)
+        parts.hold(me, BLADE, 0)
         me:set_status("using_action", true)
         s.timer = SWING_TICKS
         me.step_init = 4

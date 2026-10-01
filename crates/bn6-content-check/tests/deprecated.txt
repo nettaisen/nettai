@@ -2,8 +2,6 @@
 # Only ever lowered: BN6_RATCHET_LOWER=1 cargo test -p bn6-content-check --test ratchet
 chips/airraid/plane.luau 1
 chips/airspin/top.luau 1
-chips/antidmg/counter.luau 1
-chips/antiswrd/counter.luau 1
 chips/anubis/statue.luau 1
 chips/aquandl/volley.luau 1
 chips/blkbomb/bomb.luau 1
