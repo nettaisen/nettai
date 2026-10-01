@@ -177,14 +177,20 @@ pub struct RoleHooks {
     /// (`sub_8013892`: `sub_801A7CC` with the navi stat, which the game's
     /// program sets to 1, and `sub_80E0D98`).
     pub first_barrier: Option<FnId>,
+    /// `(obstacle, ice, class)`: what an obstacle encased in ice or a
+    /// bubble becomes (`sub_801813A`'s end: an ice block, `sub_80CFBC4`
+    /// variant 3 in its registry class; or the bubble, attack #0xA3
+    /// `sub_80D99EC`).
+    pub encased: Option<FnId>,
 }
 
 impl RoleHooks {
-    const NAMES: [&str; 1] = ["first_barrier"];
+    const NAMES: [&str; 2] = ["first_barrier", "encased"];
 
     fn slot(&mut self, name: &str) -> Option<&mut Option<FnId>> {
         match name {
             "first_barrier" => Some(&mut self.first_barrier),
+            "encased" => Some(&mut self.encased),
             _ => None,
         }
     }
