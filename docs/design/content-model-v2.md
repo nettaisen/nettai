@@ -422,6 +422,22 @@ they read (`confuse-480-past-paralyze`); the bytes are compat's rules.toml. A ch
 (v1 record data nothing reads) keeps its raw status byte. The engine's test content defines dummy statuses
 under the same names (crates/bn6-battle/testdata/content/rules/status.luau).
 
+**As built** (step 12, effects, sparks, regions and collision types). They are definitions the engine holds by
+handle (`Defs::effects`, `sparks`, `regions`, `collisions`; `Content::effect`, `spark`, `region`,
+`collision_type`), with no number anywhere in the engine: an effect object and a hit spark hold their look, a
+collision registration its region and its hit spark (`Option`: no region, no spark), a setup takes two collision
+types, a hitbox all four. The content API takes definitions only (`battle.effect`, `battle.spark`,
+`battle.region_effects`, `me:setup_collision`, `me:reset_collision_types`, `battle.hitbox`; `collision.region`
+and `collision.hit_effect` read and write a definition or nil), so a hitbox with no spark says `hit_effect =
+nil` where it said 0xFF, and a kind asks `c.region == nil` where it asked for region 0. What the ruleset shows
+and registers itself are roles (§7.4): `effects.*`, `sparks.*`, `regions.anchor`, `collision.*`. A collision
+type keeps `row_offset`, the bug code's garbage byte. rules/numbers.luau, which numbered the effects, sparks and
+regions for v1 modules and the ruleset, is gone (weapons by handle took its last table), and `data.regions` and
+`data.rules.field_regions` went with it. The engine's test content defines its own for the roles
+(crates/bn6-battle/testdata/content/rules/ruleset.luau: one made-up look for every effect, one for every spark,
+and collision types by what they are). Compat's rules.toml gives each role the original's number, for
+`gen-content check` alone (§9.3).
+
 ### 3.7 Stages
 
 ```luau
@@ -845,8 +861,9 @@ lib/sparks.luau, lib/regions.luau). What it settled:
   `ThrowSpec`, `BombVariant`, `SeedVariant`, `FlashBombVariant` and `AttachmentLook` are in types.d.luau.
 - **Attachment looks are records** (`attachment.look { sprite, palette, lift?, attach_point?, by_owner? }`,
   `attachment.attach(owner, look, slot, { anim, while_dimmed, palette_add })`); the attachment kind is a
-  definition. Its numeric API (`spawn`, `spawn_with`, by the pack data's rows) stays for its 23 other users:
-  the rows become looks at load, from `data`.
+  definition. Its numeric API (`spawn`, `spawn_with`, by the pack data's rows) stayed for its 23 other users,
+  the rows becoming looks at load, from `data`. *Gone with step 12*: the last user, the buster's arm, names its
+  two looks (lib/buster.luau), and the rows (objects/attachment/rows.luau, `data.objects.attachments`) went.
 - **The chip records** are the pack data's values field by field. `beast = { lockon = 5 }` (the Beast rush and
   its lock-on mode) takes the mode's number, as 3b reads it, until step 5's generator writes rules/lockon.luau
   and the chips name its modes.
@@ -868,7 +885,7 @@ lib/sparks.luau, lib/regions.luau). What it settled:
   test content's numbered bombs. The shim goes when those are definitions or roles (step 5, phase C).
 - **What stays numeric**, having no v2 form yet: statuses (the flash's blinding, the bug bomb's 0x20), bug codes,
   NameIDs (the BlkBomb's 0xD5, the attachment's Cross check) and the absorbed-obstacle kind; the hitbox's
-  `hit_effect = 0xFF` ("none"). The ratchet counts what it can see of them.
+  `hit_effect = 0xFF` ("none"; nil since step 12). The ratchet counts what it can see of them.
 - **Verified** on the test content (the thrown chips' duel under rollback, the engine's tests), the type
   check, and the traces (at every latency) and chip lab on a pack extracted with asset names (step 6): the
   lab's matches are unchanged.
@@ -1093,7 +1110,7 @@ chips/numbrbl, chips/cornfsta and chips/dblhero. What it settled:
 - **A family's kind reused**: CornFsta's bursts are CornSht's corns (chips/cornsht/corn, generation 0xFF), and
   its farmer holds CornSht's gun (`cornsht.gun`).
 - **Still numbers**: the beasts', heroes' and farmer's NameIDs (`me.name_id`, six uses the ratchet counts), whose
-  attachments sit at their sprites' attach points; the shots' `hit_effect = 0xFF`. LifeSync's immune virus is
+  attachments sit at their sprites' attach points; the shots' `hit_effect = 0xFF` (nil since step 12). LifeSync's immune virus is
   told by its actor data (AI 13). `battle.boss_rank` (battle effect 1) joins `battle.link` for LifeSync.
 
 **As built** (phase B, group C5: dimming subtypes 1, 10, 11, 20, 25 and 38, converted from their v1 modules;
@@ -1126,7 +1143,7 @@ objects/invisible, lib/navi-boost/controller, and objects/panel-bursts. What it 
   090-timebom1 (10, by the bomb's row), 0b1-invisibl (1, by the time) and 121-darkinvs (38: DarkInvs's hook;
   the other rows, whose chips are definitions, from their parameter bytes for the test content's records).
 - **Still numbers**: the mine's and the bombs' NameIDs (`me.name_id`, counted), the statuses the strike's hits
-  carry, `hit_effect = 0xFF`, the linked record's chip (`LinkedChip.chip`, the numeric API's), and the weapon
+  carry, `hit_effect = 0xFF` (nil since step 12), the linked record's chip (`LinkedChip.chip`, the numeric API's), and the weapon
   routines the navi-changing chips install (0x21 to 0x26, the B+Back shield 0x3B, the busters `sub_80E97BE`
   replaces): the navi's weapon slots take numbers until the weapons are definitions (family 8e).
 
@@ -1654,7 +1671,7 @@ need.
 | kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
 | records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rock/cube" = 1`); NaviCust buster shots when their producers are known |
-| rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`) |
+| rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`); and for the roles that name an effect, a spark, a region or a collision type (rules/roles.luau), the number the original's routines name each by, by role: `[effects] deletion = 0x03`, `[sparks] guard = 0x08`, `[regions] anchor = 0x01`, `[collision] navi = 0x01` |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
 | text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
 | curation.toml | the names the generator made up, by file and key, with where each came from: the review list (§13) |
@@ -1941,8 +1958,14 @@ trait on the definition instead (§7.5).
 shot, the stun strike, the Cross protect, the turn, the Cross death, the volley, the charged sword, the beast
 claw, DustCross Beast's scatter), `KindRole` (the absorbed obstacle, the falling rock, the supports' controller, AntiRecv's counterattack; until
 step 12 also what an actor list places, which stages name now), `HookRole` (the FirstBarrier, the encased
-obstacle) and, since step 12, `LockonRole` (the Beast claw's lock-on mode) and `StatusRole` (the statuses the
-ruleset inflicts itself). A role names a definition, or, while its
+obstacle) and, since step 12, `LockonRole` (the Beast claw's lock-on mode), `StatusRole` (the statuses the
+ruleset inflicts itself), `EffectRole` (the effects it shows itself: a deletion's, a recovery's, the cut-in
+flash, a trap's mark, an encased obstacle's, a form change's and Beast Over's four), `SparkRole` (a new
+registration's hit spark, a blocked hit's, an eruption's, a thrown obstacle's, an uninstall's), `RegionRole`
+(`anchor`, a registration's own panel, which every setup gives it) and `CollisionRole` (a navi's body, its
+floating body and what it reacts to; an eruption's and a thrown obstacle's types and targets). One role per look
+or type the original named by one number, whatever uses it (the deletion effect also shows where a cross merges
+and a navi arrives). A role names a definition, or, while its
 target is still a v1 registration, that registration through the transitional legacy marker (`{ legacy = {
 action = 0x49 } }`, `{ legacy = { kind = "a-v1-kind" } }`; counted by the ratchet); a legacy action number nothing
 implements leaves the role `Unported`, and starting it fails as the number did. The charged sword, the beast claw
@@ -2140,15 +2163,18 @@ kind's own state-machine byte, which the traces compare.
   Since step 8e: `navi:action_state(action)` (the state of the action a weapon's setup is about to return),
   `navi.attack_chip` (the attack's chip as its definition, read and write: §5.7) and `navi.rush_lockon` (the
   lock-on mode the attack's own action asks the Beast rush for).
-- **Bytes the ruleset still stores.** Effects, sparks, regions and collision types content defines get the
-  engine's own number after the pack data's (`Defs::number`; `Content::effect`, `spark`, `region`,
-  `field_region`, `collision_type` look past the data's tables), so the byte-typed ruleset (the generic effect's
-  parameter, `CollisionData.region`, hit effects, collision types) takes them unchanged until steps 12 and 10
-  make those fields handles. These are engine-internal indices, never an original number, and no script sees
-  them (`CoreApi::def_number` is the binding's). A collision type carries `row_offset`, the register value its
+- **Effects, sparks, regions and collision types.** Until step 12 the ruleset stored these as bytes and gave
+  what content defined a number of its own (`Defs::number`). *Since step 12* they are handles everywhere: an
+  effect object's and a spark's look, `CollisionData.region` and `hit_effect` (`Option`: none is no region, no
+  spark), the collision types a setup takes, a hitbox's four. `Content::effect`, `spark`, `region` and
+  `collision_type` take handles; there are no numbered tables and no numeric API for them (a number is a type
+  error and a runtime error). A collision type carries `row_offset`, the register value its
   row's lookup leaves (index × 8) that a bug code's high byte takes: the quirk materialized in the definition.
-  `collision:set_region(region)` and `set_hit_effect(spark)` take definitions (the properties stay numbers to
-  read).
+  `collision.region` and `collision.hit_effect` read and write definitions or nil (`set_region` and
+  `set_hit_effect` are the same as methods); a hitbox's `region` and `hit_effect` may be nil (none), and its
+  `target` and `self_type` are collision types. A new registration starts with no region and the plain spark
+  (`sparks.plain`, the original's zeroed hit-effect byte), and its setup gives it its own panel
+  (`regions.anchor`).
 - **Roles.** `define.roles { actions = { ... } }`, once, keyed `roles`. The ruleset starts AntiDmg's, AntiSwrd's
   and BodyGrd's counters by role (`anti_damage_counter`, `anti_sword_counter`, `body_guard_counter`); an
   unfilled role panics naming itself where it is needed and `bn6-content check` warns, until the BN6 content
@@ -2273,6 +2299,15 @@ writers are retired (`gen_stages`, `gen_lockon`, `gen_status`: the definitions l
 name kinds, variants and each other in forms the generator never wrote): content/bn6/stages/netbattle.luau,
 rules/lockon.luau and rules/status.luau are edited by hand, and `gen-content check` compares them with the ROM through compat. `gen-content write` still writes
 compat's numbers for them (stages.toml, records.toml, rules.toml), keeping the committed keys.
+
+So are the writers that extended the shared modules (`gen_collision`, `gen_regions`, `gen_effects`) and the
+numbered effect, spark and region tables of rules/numbers.luau, which the engine no longer has:
+rules/collision.luau, lib/effects.luau, lib/sparks.luau and lib/regions.luau are the committed definitions.
+`gen-content check` has its own model of the ROM's tables for them: a collision type must be the row its
+`row_offset` names, and every row must be defined; every effect and spark look and every region of the ROM's
+must be defined by something; and each role of rules/roles.luau that names one must name the ROM's entry of
+the number rules.toml gives the role (the numbers the ruleset's code held until step 12, which the generator
+writes from its own list).
 
 ### 9.4 The frontend and the audio
 
@@ -2524,12 +2559,12 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    give `number, name_id`, a stage's `number, layout, actor_list` (until step 12: compat has them), (until step 12) a status's and a lock-on mode's `id`. The
    generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
    definitions from people's. The tables v1 modules read by number are legacy rule
-   sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and
+   sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (until steps 11 and 12: the effects, sparks and regions by number, and
    the charge times of the routines no weapon names), rules/identities.luau, rules/body-overlays.luau and a
    kind's objects/KIND/rows.luau while something still reads its table by number (`data.objects.<table>` in a
-   module, or the engine: the attachments' is the last; the rocks', the absorbed obstacles', the sun beam's,
-   the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with their
-   readers, and GunDelSol's data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
+   module, or the engine: the body overlays' is the last; the attachments', the rocks', the absorbed obstacles',
+   the sun beam's, the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with
+   their readers, and GunDelSol's data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
    are a routine's numbers with the same address *and* charge times (alias routines whose rows differ are
    weapons of their own: `megaman/buster` is routine 0 alone, and `megaman/buster-2e` and five more take its
    `setup` with their own charge times), and every routine has its charge times (the TOML's
@@ -2543,11 +2578,9 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    `run_message` (the no-running message's lines) are the definitions' alone since the extractor's battle data
    went: the generator writes them, and gave the chips people had defined without a description theirs
    (`gen-content describe`, once).
-   The engine's byte for an effect, spark, region or collision type content defines (`Defs::number`) is the
-   numbered table's entry that is the same thing (the same look, shape, condition, or the row a collision
-   type's `row_offset` names with its flags), and only another gets a number after the table's: the tables
-   are the definitions' own now, lib/effects.luau defines every look rules/numbers.luau numbers, and the two
-   together would not fit a byte twice (108 effects in the table, 152 defined).
+   Until step 12 the engine had a byte for an effect, spark, region or collision type content defines
+   (`Defs::number`): the numbered table's entry that is the same thing, and only another got a number after
+   the table's. Step 12 made them handles and removed the numbered tables.
    Registration by number resolves a numbered definition's use as step 9 does a record's (its action's
    registration, or its subtype's `dimming_chip`, `navi_chip` or `instant_chip`; `Unported` for what nothing
    implements), unless the definition has its own. While step 5 was a branch, its content was made again on

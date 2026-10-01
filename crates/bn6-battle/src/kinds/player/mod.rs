@@ -189,6 +189,22 @@ fn body_hit_modifier(b: &Battle) -> u8 {
     if is_link(b) { 3 } else { 0 }
 }
 
+/// A navi's body's collision types: what it is (floating or not) and what
+/// it reacts to.
+fn body_types(b: &Battle, floating: bool) -> (bn6_content_api::CollisionHandle, bn6_content_api::CollisionHandle) {
+    use crate::content::CollisionRole;
+    let roles = &b.content.defs.roles;
+    let body = if floating { CollisionRole::FloatingNavi } else { CollisionRole::Navi };
+    (roles.collision(body), roles.collision(CollisionRole::NaviTarget))
+}
+
+/// `sub_801A082` for a navi's body: it becomes the floating body or the
+/// plain one again.
+fn reset_body_types(b: &mut Battle, r: ObjectRef, floating: bool, hit_mod: u8) {
+    let (body, target) = body_types(b, floating);
+    b.reset_collision_types(r, body, target, hit_mod);
+}
+
 /// `sub_800F2FC`: turn to face `target` (its panel column), unless it
 /// stands in the navi's column; the sprite follows (`sub_800F2C6`).
 pub(crate) fn face_toward(b: &mut Battle, r: ObjectRef, target: ObjectRef) {
@@ -618,7 +634,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let hm = body_hit_modifier(b);
-    b.setup_collision(r, 1, 2, hm);
+    let (body, target) = body_types(b, false);
+    b.setup_collision(r, body, target, hm);
     init_hp(b, r);
     init_navicust(b, r);
     update_element(b, r);
@@ -796,10 +813,10 @@ fn apply_navicust_flags(b: &mut Battle, r: ObjectRef) {
     let hm = body_hit_modifier(b);
     if s.float_shoes {
         set_flag1(b, r, f1::FLOATSHOE);
-        b.reset_collision_types(r, 0x10, 2, hm);
+        reset_body_types(b, r, true, hm);
     } else {
         clear_flag1(b, r, f1::FLOATSHOE);
-        b.reset_collision_types(r, 1, 2, hm);
+        reset_body_types(b, r, false, hm);
     }
     let set = |b: &mut Battle, bit: u32, on: bool| {
         if on { set_flag1(b, r, bit) } else { clear_flag1(b, r, bit) }
@@ -842,9 +859,10 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     ai_mut(b, r).status &= !0x20;
     // (Netbattle, local player: removes the opponent's HUD entry.)
     let hm = body_hit_modifier(b);
+    let anchor = b.anchor_region();
     let c = coll_mut(b, r);
     c.hit_mod_base = hm;
-    c.region = 1;
+    c.region = anchor;
     reset_charge(b, r);
     if reload_weapons {
         load_weapons(b, r);

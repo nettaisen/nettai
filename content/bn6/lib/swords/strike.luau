@@ -46,7 +46,7 @@ function strike.action(spec: StrikeSpec): Action
             element = me.attack_element,
             region = regions.wide,
             -- None.
-            hit_effect = 0xFF,
+            hit_effect = nil,
             target = collision.hits_navis,
             self_type = collision.slash,
             damage = bit32.band(word, 0xFFFF),

@@ -151,7 +151,7 @@ local function slash(me: Object, s: State)
                 element = me.attack_element,
                 z = 0,
                 region = hit.region,
-                hit_effect = 0xFF,
+                hit_effect = nil,
                 target = collision.hits_navis,
                 self_type = collision.slash,
                 damage = bit32.band(damage, 0xFFFF),

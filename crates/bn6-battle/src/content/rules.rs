@@ -15,13 +15,6 @@ pub struct Rules {
     /// The secondary elements each chip family adds to its attacks, by
     /// family.
     pub family_elements: [SecondaryElements; 13],
-    /// Collision type flags by collision type, for side 0 and side 1
-    /// (`sub_801A0BA`). A reacts to B when A's target flags meet B's self
-    /// flags.
-    pub collision_types: Vec<[u32; 2]>,
-    /// Whole-field hit regions: region `0x80 + i` covers every panel that
-    /// meets condition `i`.
-    pub field_regions: Vec<PanelCondition>,
     pub panels: PanelRules,
     /// Banners that stay up until removed.
     pub holding_banners: Vec<BannerId>,
