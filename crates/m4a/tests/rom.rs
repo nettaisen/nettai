@@ -100,7 +100,7 @@ fn image() -> Image {
 #[test]
 fn a_rom_reads_into_a_bank() {
     let (bank, failures) = extract(&image().0).unwrap();
-    assert_eq!(bank.mixer, MixerConfig { mix_rate: 10512, ds_channels: 4, master_volume: 15, reverb: 0 });
+    assert_eq!(bank.mixer, MixerConfig { mix_rate: 10512, ds_channels: 4, master_volume: 15, reverb: 0, dac_resolution: 1 });
     assert_eq!(
         bank.players,
         [
@@ -143,10 +143,10 @@ fn a_rom_reads_into_a_bank() {
     let sample = SampleId(0);
     assert_eq!(voices[0].kind, VoiceKind::DirectSound { sample, fixed: false });
     assert_eq!(voices[0].envelope, Envelope { attack: 255, decay: 0, sustain: 255, release: 200 });
-    assert_eq!(voices[1].kind, VoiceKind::Square2 { duty: 1 });
+    assert_eq!(voices[1].kind, VoiceKind::Square2 { duty: 1, fixed: false });
     let VoiceKind::Drums { kit } = voices[2].kind else { panic!("{:?}", voices[2]) };
     let kit = &bank.voicegroups[kit.0 as usize].voices;
-    assert_eq!(kit[1].kind, VoiceKind::Square2 { duty: 1 });
+    assert_eq!(kit[1].kind, VoiceKind::Square2 { duty: 1, fixed: false });
     assert_eq!(kit[2].kind, VoiceKind::Silent, "a kit in a kit plays nothing");
     let VoiceKind::Split { group, map } = voices[3].kind else { panic!("{:?}", voices[3]) };
     assert_eq!(bank.voicegroups[group.0 as usize].voices.len(), 2);
@@ -167,4 +167,26 @@ fn a_bank_with_a_dangling_reference_is_refused() {
 fn not_a_rom() {
     assert_eq!(extract(&[0; 16]).err(), Some(RomError::TooSmall));
     assert_eq!(extract(&[0; 0x1000]).err(), Some(RomError::NoDriver));
+}
+
+#[test]
+fn memacc_and_the_unused_commands_decode() {
+    let mut rom = image();
+    // MEMACC set [0] = 7; MEMACC jump if [0] == 7; FINE; then the jump's
+    // target, an unused command byte the driver runs as FINE.
+    rom.put(TRACK1, &[0xB9, 0, 0, 7, 0xB9, 6, 0, 7]);
+    rom.word(TRACK1 + 8, TRACK1 + 13);
+    rom.put(TRACK1 + 12, &[0xB1, 0xB6]);
+    let (bank, _) = extract(&rom.0).unwrap();
+    let song = bank.song(SongId(0)).unwrap();
+    let jump = MemOp::JumpIf { test: MemTest::Equal, with_memory: false, target: 3 };
+    assert_eq!(
+        song.tracks[1].commands,
+        [
+            Command::MemAcc { op: MemOp::Set, address: 0, operand: 7 },
+            Command::MemAcc { op: jump, address: 0, operand: 7 },
+            Command::Fine,
+            Command::Fine,
+        ]
+    );
 }

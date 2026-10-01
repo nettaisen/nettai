@@ -1,39 +1,19 @@
-//! The hardware channels and the mixer: the M4A envelope for Direct Sound
-//! and the 16-level CGB envelope for PSG voices, pseudo-echo, sample
-//! resampling into the 8-bit Direct Sound mix buffer with its ring-buffer
-//! reverb, PSG synthesis, and the output at 32768 Hz. Ported from
-//! m4a-engine's `render.rs`; operations follow m4a.py's order in f64.
+//! The hardware channels and what the driver does with them each frame
+//! once the sequencers have run:
+//!
+//! - `CgbSound`: the PSG channels' envelopes (counted in frames) and the
+//!   register writes that start, steer and stop the PSG voices;
+//! - `SoundMainRAM`: the Direct Sound channels' envelopes and their mix
+//!   into the PCM ring buffer, eight bits a sample, with the ring's reverb.
+//!
+//! Both follow the driver's code step for step, in its integer arithmetic,
+//! so the PCM buffer holds the bytes the game's buffer holds.
 
-use crate::bank::{MixerConfig, SoundBank, Voice, VoiceKind};
-use crate::{FPS, OUT_RATE};
+use crate::apu::{Apu, Reg};
+use crate::bank::{Envelope, NO_SWEEP, Sample, SampleId, SoundBank, VoiceKind, WaveId};
+use crate::tables;
 
-/// The driver's PCM DMA buffer, in samples (it sets the reverb delay).
-const PCM_DMA_BUF_SIZE: usize = 1584;
-/// NR43 (noise clock) for keys 21 and up.
-const NOISE_NR43: [u8; 60] = [
-    0xD7, 0xD6, 0xD5, 0xD4, 0xC7, 0xC6, 0xC5, 0xC4, 0xB7, 0xB6, 0xB5, 0xB4, 0xA7, 0xA6, 0xA5, 0xA4, 0x97, 0x96, 0x95,
-    0x94, 0x87, 0x86, 0x85, 0x84, 0x77, 0x76, 0x75, 0x74, 0x67, 0x66, 0x65, 0x64, 0x57, 0x56, 0x55, 0x54, 0x47, 0x46,
-    0x45, 0x44, 0x37, 0x36, 0x35, 0x34, 0x27, 0x26, 0x25, 0x24, 0x17, 0x16, 0x15, 0x14, 0x07, 0x06, 0x05, 0x04, 0x03,
-    0x02, 0x01, 0x00,
-];
-/// Wave-channel output level per envelope level.
-const WAVE_LEVEL: [f64; 16] = [0.0, 0.0, 0.25, 0.25, 0.25, 0.25, 0.5, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75, 0.75, 1.0, 1.0];
-const DUTY: [f64; 4] = [0.125, 0.25, 0.5, 0.75];
-/// PSG level -> 10-bit units (Direct Sound is x4).
-const PSG_SCALE: f64 = 16.0;
-
-fn lfsr(width: u32) -> Vec<f64> {
-    let mut reg: u32 = (1 << width) - 1;
-    let mut out = Vec::with_capacity((1 << width) - 1);
-    for _ in 0..(1u32 << width) - 1 {
-        let bit = (reg ^ (reg >> 1)) & 1;
-        reg = (reg >> 1) | (bit << (width - 1));
-        out.push((!reg & 1) as f64);
-    }
-    out
-}
-
-/// A track of a music player.
+/// A track of a music player, as a channel names its owner.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct TrackRef {
     pub player: u8,
@@ -45,530 +25,698 @@ pub(crate) struct TrackRef {
 /// none and sorts first).
 pub(crate) type TrackOrder = Option<(u8, u8)>;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Stage {
-    Start,
-    Attack,
-    Decay,
-    Sustain,
+/// A channel's envelope phase (the status byte's low two bits).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Phase {
+    /// Releasing, or idle.
+    #[default]
     Release,
-    Echo,
+    Sustain,
+    Decay,
+    Attack,
 }
 
-/// A hardware channel playing one note.
-#[derive(Clone, Debug)]
-pub(crate) struct Channel {
-    /// The track whose note it plays, until the track lets it go.
+impl Phase {
+    /// The phase after this one (attack, decay, sustain).
+    fn next(self) -> Phase {
+        match self {
+            Phase::Attack => Phase::Decay,
+            Phase::Decay => Phase::Sustain,
+            _ => Phase::Release,
+        }
+    }
+}
+
+/// A channel's status (the driver's status byte).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Status {
+    /// A note to start: set by `ply_note`, started by the mixer.
+    pub start: bool,
+    /// Released (gate end, EOT, FINE): the envelope releases.
+    pub stop: bool,
+    /// Its sample loops (Direct Sound).
+    pub looping: bool,
+    /// Pseudo-echo: held at the echo volume for its length.
+    pub echo: bool,
+    pub phase: Phase,
+}
+
+impl Status {
+    /// Sounding or about to (the driver's `status & 0xC7`).
+    pub fn active(&self) -> bool {
+        self.start || self.stop || self.echo || self.phase != Phase::Release
+    }
+    /// What EOT may release (`status & 0x83` and not stopped).
+    pub fn holding(&self) -> bool {
+        (self.start || self.phase != Phase::Release) && !self.stop
+    }
+    fn off() -> Status {
+        Status::default()
+    }
+    /// The driver's status byte (for comparing with the game's memory).
+    pub fn driver_byte(&self) -> u8 {
+        (self.start as u8) << 7
+            | (self.stop as u8) << 6
+            | (self.looping as u8) << 4
+            | (self.echo as u8) << 2
+            | self.phase as u8
+    }
+}
+
+/// What every channel has: the note and the track it belongs to.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct Note {
     pub owner: Option<TrackRef>,
     pub order: TrackOrder,
     pub priority: u8,
-    pub voice: Voice,
     /// The key the note named (what EOT matches).
     pub midi_key: u8,
+    /// The key it plays (a drum's own key), before the track's shifts.
+    pub key: u8,
     pub velocity: u8,
-    pub rhythm_pan: i32,
+    pub rhythm_pan: i8,
     /// Ticks until release; 0 holds (a tie).
     pub gate: u8,
+    pub right_volume: u8,
+    pub left_volume: u8,
+    pub envelope: Envelope,
+    pub envelope_volume: u8,
     pub echo_volume: u8,
     pub echo_length: u8,
-    /// Right and left volume (0..=255), from the track.
-    pub right: i64,
-    pub left: i64,
-    /// Key with the track's shifts, and the fraction above it (1/256).
-    pub key: i32,
-    pub pitch: u8,
-    /// Sounding (the driver's status flags are non-zero).
-    pub on: bool,
-    /// Released (the driver's STOP flag).
-    pub stopping: bool,
-    stage: Stage,
-    env: i64,
-    level: i64,
-    counter: i64,
-    echo_left: i64,
-    pos: f64,
-    phase: f64,
-    noise_at: f64,
+    pub frequency: u32,
 }
 
-impl Channel {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        owner: TrackRef,
-        order: (u8, u8),
-        priority: u8,
-        voice: Voice,
-        midi_key: u8,
-        velocity: u8,
-        rhythm_pan: i32,
-        gate: u8,
-        echo: (u8, u8),
-    ) -> Channel {
-        Channel {
-            owner: Some(owner),
-            order: Some(order),
-            priority,
+/// A Direct Sound channel (the driver's `SoundChannel`).
+#[derive(Clone, Debug)]
+pub(crate) struct DsChannel {
+    pub status: Status,
+    pub note: Note,
+    pub sample: SampleId,
+    /// Played at the mixing rate whatever the key.
+    pub fixed: bool,
+    /// The envelope times the volumes, for the mix.
+    pub mix_right: u8,
+    pub mix_left: u8,
+    /// Samples left to the end of the data, from `position`.
+    pub remaining: i32,
+    /// The sample being played and the fraction past it (23 bits).
+    pub position: u32,
+    pub fraction: u32,
+}
+
+impl DsChannel {
+    pub fn new() -> DsChannel {
+        DsChannel {
+            status: Status::off(),
+            note: Note::default(),
+            sample: SampleId(0),
+            fixed: false,
+            mix_right: 0,
+            mix_left: 0,
+            remaining: 0,
+            position: 0,
+            fraction: 0,
+        }
+    }
+}
+
+/// A PSG channel (the driver's `CgbChannel`).
+#[derive(Clone, Debug)]
+pub(crate) struct CgbChannel {
+    pub status: Status,
+    pub note: Note,
+    /// The voice it plays (duty, wave, noise width, fixed frequency).
+    pub voice: VoiceKind,
+    /// The level the envelope goes up to and the one it sustains at.
+    pub envelope_goal: u8,
+    pub sustain_goal: u8,
+    /// Frames until the envelope's next step.
+    pub envelope_counter: u8,
+    /// NR51's bits for it, and the mask of its own bits.
+    pub pan: u8,
+    pub pan_mask: u8,
+    /// The NRx4 value it writes: length enable (bit 6), the frequency's
+    /// high bits; the wave channel's restart (bit 7) until its next
+    /// volume write.
+    pub nrx4: u8,
+    /// Its volume or its pitch changed since the last frame.
+    pub volume_changed: bool,
+    pub pitch_changed: bool,
+    pub length: u8,
+    pub sweep: u8,
+    /// The wave in wave RAM (the wave channel).
+    pub loaded_wave: Option<WaveId>,
+}
+
+impl CgbChannel {
+    /// PSG channel `n` (1..=4) as `MPlayExtender` sets it up.
+    pub fn new(n: usize) -> CgbChannel {
+        let voice = match n {
+            1 => VoiceKind::Square1 { duty: 0, sweep: NO_SWEEP, fixed: false },
+            2 => VoiceKind::Square2 { duty: 0, fixed: false },
+            3 => VoiceKind::Wave { wave: WaveId(0), fixed: false },
+            _ => VoiceKind::Noise { narrow: false },
+        };
+        CgbChannel {
+            status: Status::off(),
+            note: Note::default(),
             voice,
-            midi_key,
-            velocity,
-            rhythm_pan,
-            gate,
-            echo_volume: echo.0,
-            echo_length: echo.1,
-            right: 0,
-            left: 0,
-            key: 0,
-            pitch: 0,
-            on: true,
-            stopping: false,
-            stage: Stage::Start,
-            env: 0,
-            level: 0,
-            counter: 0,
-            echo_left: 0,
-            pos: 0.0,
-            phase: 0.0,
-            noise_at: 0.0,
-        }
-    }
-
-    /// Semitones above C4-relative key 0 the note sounds at, with the fraction.
-    fn semis(&self) -> f64 {
-        self.key as f64 + self.pitch as f64 / 256.0
-    }
-}
-
-/// Stereo samples addressed by absolute index, with an offset so old ones
-/// can be dropped.
-#[derive(Default)]
-struct Buf {
-    data: Vec<[f64; 2]>,
-    off: usize,
-}
-
-impl Buf {
-    fn ensure(&mut self, end: usize) {
-        if end > self.off + self.data.len() {
-            self.data.resize(end - self.off, [0.0; 2]);
-        }
-    }
-    fn get(&self, i: usize) -> [f64; 2] {
-        if i < self.off { [0.0; 2] } else { self.data.get(i - self.off).copied().unwrap_or([0.0; 2]) }
-    }
-    fn set(&mut self, i: usize, v: [f64; 2]) {
-        self.ensure(i + 1);
-        self.data[i - self.off] = v;
-    }
-    fn add(&mut self, i: usize, v: [f64; 2]) {
-        self.ensure(i + 1);
-        let x = &mut self.data[i - self.off];
-        x[0] += v[0];
-        x[1] += v[1];
-    }
-    /// Drop everything before absolute index `keep_from`.
-    fn trim(&mut self, keep_from: usize) {
-        if keep_from > self.off {
-            let n = (keep_from - self.off).min(self.data.len());
-            self.data.drain(..n);
-            self.off += n;
+            envelope_goal: 0,
+            sustain_goal: 0,
+            envelope_counter: 0,
+            pan: 0,
+            pan_mask: 0x11 << (n - 1),
+            nrx4: 0,
+            volume_changed: false,
+            pitch_changed: false,
+            length: 0,
+            sweep: 0,
+            loaded_wave: None,
         }
     }
 }
 
-pub(crate) struct Mixer {
-    /// Direct Sound channels.
-    pub ds: Vec<Option<Channel>>,
-    /// PSG channels: square 1, square 2, wave, noise.
-    pub psg: [Option<Channel>; 4],
-    /// Reverb level (0 = off).
-    pub reverb: u8,
-    master: i64,
-    mr: f64,
-    per_frame: f64,
-    taps: (usize, usize),
-    noise: [Vec<f64>; 2],
-    ds_buf: Buf,
-    psg_buf: Buf,
-    frame: usize,
-    /// Output samples handed out so far.
-    produced: usize,
+/// `ChnVolSetAsm`: a channel's volumes from its track's, its velocity and
+/// its drum pan.
+pub(crate) fn set_volume(note: &mut Note, track_right: u8, track_left: u8) {
+    let (vel, rpan) = (note.velocity as i32, note.rhythm_pan as i32);
+    note.right_volume = (((0x80 + rpan) * vel * track_right as i32) >> 14).min(255) as u8;
+    note.left_volume = (((0x7F - rpan) * vel * track_left as i32) >> 14).min(255) as u8;
 }
 
-impl Mixer {
-    pub fn new(cfg: &MixerConfig) -> Mixer {
-        let mr = cfg.mix_rate as f64;
-        let per_frame = mr / FPS;
-        let spf = per_frame.round_ties_even() as usize;
-        let ring = PCM_DMA_BUF_SIZE / spf.max(1);
-        Mixer {
-            ds: vec![None; cfg.ds_channels as usize],
-            psg: [None, None, None, None],
-            reverb: cfg.reverb,
-            master: cfg.master_volume as i64,
-            mr,
-            per_frame,
-            taps: ((ring - 1) * spf, ring * spf),
-            noise: [lfsr(15), lfsr(7)],
-            ds_buf: Buf::default(),
-            psg_buf: Buf::default(),
-            frame: 0,
-            produced: 0,
-        }
-    }
+/// The Direct Sound PCM buffer: a ring of frames, right and left, eight
+/// bits a sample (the driver's `pcmBuffer`, which the FIFOs play from).
+#[derive(Clone, Debug)]
+pub(crate) struct PcmRing {
+    pub right: Vec<i8>,
+    pub left: Vec<i8>,
+    pub samples_per_frame: usize,
+    /// Frames the ring holds (`pcmDmaPeriod`).
+    pub frames: usize,
+}
 
-    /// Mix one frame: Direct Sound at the mixing rate, PSG at the output rate.
-    pub fn mix_frame(&mut self, bank: &SoundBank) {
-        let f = self.frame;
-        let a = (f as f64 * self.per_frame) as usize;
-        let b = ((f + 1) as f64 * self.per_frame) as usize;
-        let n = b - a;
-        let mut mix = vec![[0.0f64; 2]; n];
-        if self.reverb != 0 && a >= self.taps.1 {
-            for (k, m) in mix.iter_mut().enumerate() {
-                let p = self.ds_buf.get(a + k - self.taps.0);
-                let q = self.ds_buf.get(a + k - self.taps.1);
-                let fb = (((p[0] + p[1]) + (q[0] + q[1])) * self.reverb as f64 / 512.0).trunc();
-                m[0] += fb;
-                m[1] += fb;
-            }
-        }
-        for slot in self.ds.iter_mut() {
-            let Some(ch) = slot.as_mut() else { continue };
-            if !ch.on {
-                continue;
-            }
-            ds_env(ch);
-            if !ch.on {
-                continue;
-            }
-            let VoiceKind::DirectSound { sample, fixed } = ch.voice.kind else {
-                ch.on = false;
-                continue;
-            };
-            let y = mix_ds(ch, &bank.samples[sample.0 as usize], fixed, n, self.master, self.mr);
-            for (m, v) in mix.iter_mut().zip(&y) {
-                m[0] += v[0];
-                m[1] += v[1];
-            }
-        }
-        for (k, m) in mix.iter().enumerate() {
-            self.ds_buf.set(a + k, [m[0].clamp(-128.0, 127.0), m[1].clamp(-128.0, 127.0)]);
-        }
+/// The driver's PCM buffer, in samples a side.
+const PCM_DMA_BUF_SIZE: usize = 1584;
 
-        let a = ((f * OUT_RATE as usize) as f64 / FPS) as usize;
-        let b = (((f + 1) * OUT_RATE as usize) as f64 / FPS) as usize;
-        let n = b - a;
-        self.psg_buf.ensure(b);
-        for slot in self.psg.iter_mut() {
-            let Some(ch) = slot.as_mut() else { continue };
-            if !ch.on {
-                continue;
-            }
-            if let Some(y) = mix_psg(ch, bank, n, &self.noise) {
-                for (k, v) in y.iter().enumerate() {
-                    self.psg_buf.add(a + k, *v);
-                }
-            }
-        }
-        self.frame += 1;
-    }
-
-    /// Output samples (32768 Hz, +-1.0 full scale) that are final, appended
-    /// to `out`; drops buffered data older than reverb and the next call need.
-    pub fn take_output(&mut self, out: &mut Vec<[f32; 2]>) {
-        let from = self.produced;
-        let ds_ready = (self.frame as f64 * self.per_frame) as usize;
-        let ds_index = |k: usize| ((k as u64 * self.mr as u64) as f64 / OUT_RATE as f64) as usize;
-        // An output sample needs its held Direct Sound sample written.
-        let mut to = ((self.frame * OUT_RATE as usize) as f64 / FPS) as usize;
-        while to > from && ds_index(to - 1) >= ds_ready {
-            to -= 1;
-        }
-        for k in from..to {
-            let d = self.ds_buf.get(ds_index(k));
-            let p = self.psg_buf.get(k);
-            out.push([((d[0] * 4.0 + p[0]) / 512.0) as f32, ((d[1] * 4.0 + p[1]) / 512.0) as f32]);
-        }
-        self.produced = to;
-        self.psg_buf.trim(to);
-        let keep = ds_index(to);
-        self.ds_buf.trim(keep.min(ds_ready.saturating_sub(self.taps.1 + 1)));
+impl PcmRing {
+    pub fn new(samples_per_frame: usize) -> PcmRing {
+        let frames = (PCM_DMA_BUF_SIZE / samples_per_frame).max(1);
+        PcmRing { right: vec![0; PCM_DMA_BUF_SIZE], left: vec![0; PCM_DMA_BUF_SIZE], samples_per_frame, frames }
     }
 }
 
-fn ds_env(ch: &mut Channel) {
-    let (echo_vol, echo_len) = (ch.echo_volume as i64, ch.echo_length as i64);
-    if ch.stage == Stage::Start {
-        // A note released before it ever sounded doesn't start.
-        if ch.stopping {
-            ch.on = false;
+// ---- SoundMainRAM: Direct Sound --------------------------------------------------
+
+/// The reverb into, or clearing of, frame slot `slot`, from the slot
+/// itself (mixed a ring ago) and `next` (mixed a ring ago less a frame).
+pub(crate) fn reverb_or_clear(ring: &mut PcmRing, slot: usize, next: usize, reverb: u8) {
+    let n = ring.samples_per_frame;
+    let (cur, nxt) = (slot * n, next * n);
+    if reverb == 0 {
+        ring.right[cur..cur + n].fill(0);
+        ring.left[cur..cur + n].fill(0);
+        return;
+    }
+    for k in 0..n {
+        let sum = ring.left[cur + k] as i32 + ring.right[cur + k] as i32 + ring.left[nxt + k] as i32 + ring.right[nxt + k] as i32;
+        let mut v = (sum * reverb as i32) >> 9;
+        // (A negative result rounds toward zero, but one less than a
+        // multiple of 512 rounds to zero too.)
+        if v & 0x80 != 0 {
+            v += 1;
+        }
+        ring.right[cur + k] = v as i8;
+        ring.left[cur + k] = v as i8;
+    }
+}
+
+/// One Direct Sound channel for a frame: its envelope, then its mix into
+/// frame slot `slot` of the ring.
+pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq: u32, ring: &mut PcmRing, slot: usize) {
+    if !ch.status.active() {
+        return;
+    }
+    let sample = &bank.samples[ch.sample.0 as usize];
+    let e = ch.note.envelope;
+    let mut env: u32;
+    if ch.status.start {
+        if ch.status.stop {
+            ch.status = Status::off();
             return;
         }
-        ch.env = 0;
-        ch.stage = Stage::Attack;
-    }
-    if ch.stage == Stage::Echo {
-        ch.echo_left -= 1;
-        if ch.echo_left <= 0 {
-            ch.on = false;
+        ch.status = Status { phase: Phase::Attack, looping: sample.loop_start.is_some(), ..Status::off() };
+        ch.position = 0;
+        ch.remaining = sample.data.len() as i32;
+        ch.fraction = 0;
+        env = e.attack as u32;
+        if env >= 0xFF {
+            env = 0xFF;
+            ch.status.phase = Phase::Decay;
         }
-        return;
-    }
-    if ch.stopping && ch.stage != Stage::Release {
-        ch.stage = Stage::Release;
-    }
-    let e = ch.voice.envelope;
-    match ch.stage {
-        Stage::Release => {
-            ch.env = (ch.env * e.release as i64) >> 8;
-            if ch.env <= echo_vol {
-                if echo_vol != 0 && echo_len != 0 {
-                    ch.env = echo_vol;
-                    ch.stage = Stage::Echo;
-                    ch.echo_left = echo_len;
-                } else {
-                    ch.on = false;
+    } else {
+        env = ch.note.envelope_volume as u32;
+        if ch.status.echo {
+            let was = ch.note.echo_length;
+            ch.note.echo_length = was.wrapping_sub(1);
+            if was <= 1 {
+                ch.status = Status::off();
+                return;
+            }
+        } else if ch.status.stop {
+            env = (env * e.release as u32) >> 8;
+            if env <= ch.note.echo_volume as u32 {
+                env = ch.note.echo_volume as u32;
+                if env == 0 {
+                    ch.status = Status::off();
+                    return;
                 }
+                ch.status.echo = true;
             }
-        }
-        Stage::Attack => {
-            ch.env += e.attack as i64;
-            if ch.env >= 255 {
-                ch.env = 255;
-                ch.stage = Stage::Decay;
-            }
-        }
-        Stage::Decay => {
-            ch.env = (ch.env * e.decay as i64) >> 8;
-            if ch.env <= e.sustain as i64 {
-                ch.env = e.sustain as i64;
-                ch.stage = Stage::Sustain;
-                if ch.env == 0 {
-                    ch.on = false;
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
-fn cgb_env(ch: &mut Channel, goal: i64, sus: i64) {
-    let (echo_vol, echo_len) = (ch.echo_volume as i64, ch.echo_length as i64);
-    let e = ch.voice.envelope;
-    let (a, d, r) = (e.attack as i64, e.decay as i64, e.release as i64);
-    let echo_or_stop = |ch: &mut Channel| {
-        let level = if echo_vol != 0 && echo_len != 0 { (goal * echo_vol + 0xFF) >> 8 } else { 0 };
-        if level != 0 {
-            ch.level = level;
-            ch.stage = Stage::Echo;
-            ch.echo_left = echo_len;
         } else {
-            ch.on = false;
+            match ch.status.phase {
+                Phase::Decay => {
+                    env = (env * e.decay as u32) >> 8;
+                    if env <= e.sustain as u32 {
+                        env = e.sustain as u32;
+                        if env == 0 {
+                            env = ch.note.echo_volume as u32;
+                            if env == 0 {
+                                ch.status = Status::off();
+                                return;
+                            }
+                            ch.status.echo = true;
+                        } else {
+                            ch.status.phase = Phase::Sustain;
+                        }
+                    }
+                }
+                Phase::Attack => {
+                    env += e.attack as u32;
+                    if env >= 0xFF {
+                        env = 0xFF;
+                        ch.status.phase = Phase::Decay;
+                    }
+                }
+                _ => {}
+            }
         }
+    }
+    ch.note.envelope_volume = env as u8;
+    let level = (env * (master as u32 + 1)) >> 4;
+    ch.mix_right = ((ch.note.right_volume as u32 * level) >> 8) as u8;
+    ch.mix_left = ((ch.note.left_volume as u32 * level) >> 8) as u8;
+
+    let n = ring.samples_per_frame;
+    let base = slot * n;
+    let (vr, vl) = (ch.mix_right as i32, ch.mix_left as i32);
+    let mut out = |k: usize, s: i32| {
+        let r = &mut ring.right[base + k];
+        *r = r.wrapping_add(((vr * s) >> 8) as i8);
+        let l = &mut ring.left[base + k];
+        *l = l.wrapping_add(((vl * s) >> 8) as i8);
     };
-    if ch.stage == Stage::Start {
-        if a == 0 {
-            ch.level = goal;
-            ch.stage = Stage::Decay;
-            ch.counter = d;
-            if d == 0 {
-                ch.level = sus;
-                ch.stage = Stage::Sustain;
-            }
-        } else {
-            ch.level = 0;
-            ch.stage = Stage::Attack;
-            ch.counter = a;
-        }
-        return;
-    }
-    if ch.stage == Stage::Echo {
-        ch.echo_left -= 1;
-        if ch.echo_left <= 0 {
-            ch.on = false;
-        }
-        return;
-    }
-    if ch.stopping && ch.stage != Stage::Release {
-        ch.stage = Stage::Release;
-        ch.counter = r;
-        if r == 0 {
-            echo_or_stop(ch);
-        }
-        return;
-    }
-    if ch.stage == Stage::Sustain {
-        ch.level = sus;
-        return;
-    }
-    ch.counter -= 1;
-    if ch.counter > 0 {
-        return;
-    }
-    match ch.stage {
-        Stage::Attack => {
-            ch.level += 1;
-            if ch.level >= goal {
-                ch.level = goal;
-                ch.stage = Stage::Decay;
-                ch.counter = d;
-                if d == 0 {
-                    ch.level = sus;
-                    ch.stage = Stage::Sustain;
+    let data = &sample.data;
+    let at = |i: u32| -> i32 { data.get(i as usize).copied().unwrap_or(sample.tail) as i32 };
+    let loop_start = if ch.status.looping { sample.loop_start } else { None };
+    let loop_len = loop_start.map(|l| data.len() as i32 - l as i32);
+    if ch.fixed {
+        // One sample of the data per output sample.
+        let mut pos = ch.position;
+        let mut remaining = ch.remaining;
+        for k in 0..n {
+            out(k, at(pos));
+            pos += 1;
+            remaining -= 1;
+            if remaining <= 0 {
+                match (loop_start, loop_len) {
+                    (Some(l), Some(len)) => {
+                        pos = l;
+                        remaining = len;
+                    }
+                    _ => {
+                        ch.status = Status::off();
+                        return;
+                    }
                 }
-            } else {
-                ch.counter = a;
             }
         }
-        Stage::Decay => {
-            ch.level -= 1;
-            if ch.level <= sus {
-                ch.level = sus;
-                ch.stage = Stage::Sustain;
-                if sus == 0 {
-                    echo_or_stop(ch);
-                }
-            } else {
-                ch.counter = d;
-            }
-        }
-        Stage::Release => {
-            ch.level -= 1;
-            if ch.level <= 0 {
-                echo_or_stop(ch);
-            } else {
-                ch.counter = r;
-            }
-        }
-        _ => {}
+        ch.position = pos;
+        ch.remaining = remaining;
+        return;
     }
-}
-
-fn mix_ds(ch: &mut Channel, smp: &crate::bank::Sample, fixed: bool, n: usize, master: i64, mr: f64) -> Vec<[f64; 2]> {
-    let data = &smp.data;
-    let size = data.len();
-    let loop_start = smp.loop_start.map(|l| l as usize);
-    let e = (ch.env * (master + 1)) >> 4;
-    let er = ((ch.right * e) >> 8).min(255);
-    let el = ((ch.left * e) >> 8).min(255);
-    let step = if fixed { 1.0 } else { smp.rate as f64 / 1024.0 * 2f64.powf((ch.semis() - 60.0) / 12.0) / mr };
-    let mut out = Vec::with_capacity(n);
-    let mut last_pos = ch.pos;
+    // Linear interpolation, the position in 23-bit fixed point.
+    let step = div_freq.wrapping_mul(ch.note.frequency);
+    let mut frac = ch.fraction;
+    let mut remaining = ch.remaining;
+    let mut pos = ch.position;
+    let mut cur = at(pos);
+    let mut delta = at(pos + 1) - cur;
     for k in 0..n {
-        let mut pos = ch.pos + step * k as f64;
-        let live;
-        match loop_start {
-            None => {
-                live = pos < size as f64;
-                if !live {
-                    pos = (size - 1) as f64;
-                }
-            }
-            Some(lp) => {
-                live = true;
-                if pos >= size as f64 {
-                    let span = (size - lp) as f64;
-                    pos = lp as f64 + (pos - lp as f64) % span;
-                }
-            }
+        out(k, cur + ((frac as i32).wrapping_mul(delta) >> 23));
+        frac = frac.wrapping_add(step);
+        let advance = frac >> 23;
+        if advance == 0 {
+            continue;
         }
-        let i = pos as usize;
-        let s = if fixed {
-            data[i] as f64
+        frac &= !0x3F80_0000;
+        remaining -= advance as i32;
+        if remaining <= 0 {
+            let (Some(l), Some(len)) = (loop_start, loop_len) else {
+                ch.status = Status::off();
+                return;
+            };
+            let mut over = -remaining;
+            loop {
+                remaining += len;
+                if remaining > 0 {
+                    break;
+                }
+                over -= len;
+            }
+            pos = (l as i32 + over) as u32;
+            cur = at(pos);
+        } else if advance == 1 {
+            pos += 1;
+            cur += delta;
         } else {
-            let mut j = i + 1;
-            if j >= size {
-                j = loop_start.unwrap_or(size - 1);
-            }
-            let (x, y) = (data[i] as f64, data[j] as f64);
-            (x + (y - x) * (pos - i as f64)).floor()
-        };
-        let s = if live { s } else { s * 0.0 };
-        out.push([(s * el as f64 / 256.0).floor(), (s * er as f64 / 256.0).floor()]);
-        last_pos = pos;
+            pos += advance;
+            cur = at(pos);
+        }
+        delta = at(pos + 1) - cur;
     }
-    ch.pos = last_pos + step;
-    match loop_start {
+    ch.fraction = frac;
+    ch.remaining = remaining;
+    ch.position = pos;
+}
+
+/// A sample's playback rate for a note (`MidiKeyToFreq` of its wave).
+pub(crate) fn ds_frequency(sample: &Sample, key: u8, fine: u8) -> u32 {
+    tables::midi_key_to_freq(sample.rate, key, fine)
+}
+
+// ---- CgbSound: the PSG -----------------------------------------------------------
+
+/// The registers a PSG channel drives: (NRx0, NRx1, NRx2, NRx3, NRx4).
+fn registers(n: usize) -> (Reg, Reg, Reg, Reg, Reg) {
+    match n {
+        1 => (Reg::Nr10, Reg::Nr11, Reg::Nr12, Reg::Nr13, Reg::Nr14),
+        2 => (Reg::Nr10, Reg::Nr21, Reg::Nr22, Reg::Nr23, Reg::Nr24),
+        3 => (Reg::Nr30, Reg::Nr31, Reg::Nr32, Reg::Nr33, Reg::Nr34),
+        _ => (Reg::Nr10, Reg::Nr41, Reg::Nr42, Reg::Nr43, Reg::Nr44),
+    }
+}
+
+/// `CgbOscOff`: silence PSG channel `n` at once.
+pub(crate) fn cgb_off(apu: &mut Apu, n: usize) {
+    match n {
+        1 => {
+            apu.write(Reg::Nr12, 8);
+            apu.write(Reg::Nr14, 0x80);
+        }
+        2 => {
+            apu.write(Reg::Nr22, 8);
+            apu.write(Reg::Nr24, 0x80);
+        }
+        3 => apu.write(Reg::Nr30, 0),
+        _ => {
+            apu.write(Reg::Nr42, 8);
+            apu.write(Reg::Nr44, 0x80);
+        }
+    }
+}
+
+/// `CgbModVol`: the pan bits and the envelope's goals from the volumes.
+fn cgb_mod_volume(ch: &mut CgbChannel) {
+    let (r, l) = (ch.note.right_volume as u32, ch.note.left_volume as u32);
+    let one_sided = if r >= l {
+        (r >> 1 >= l).then_some(0x0F)
+    } else {
+        (l >> 1 >= r).then_some(0xF0)
+    };
+    match one_sided {
+        Some(pan) => {
+            ch.pan = pan;
+            ch.envelope_goal = ((r + l) >> 4).min(15) as u8;
+        }
         None => {
-            if ch.pos >= size as f64 {
-                ch.on = false;
-            }
-        }
-        Some(lp) => {
-            if ch.pos >= size as f64 {
-                ch.pos = lp as f64 + (ch.pos - lp as f64) % (size - lp) as f64;
-            }
+            // (Centred notes aren't capped at 15.)
+            ch.pan = 0xFF;
+            ch.envelope_goal = ((r + l) >> 4) as u8;
         }
     }
-    out
+    ch.sustain_goal = ((ch.envelope_goal as u32 * ch.note.envelope.sustain as u32 + 15) >> 4) as u8;
+    ch.pan &= ch.pan_mask;
 }
 
-/// The GB frequency register for a key (MidiKeyToCgbFreq).
-fn cgb_register(key: f64) -> f64 {
-    let k = if key > 36.0 { key } else { 36.0 };
-    let f = 440.0 * 2f64.powf((k - 69.0) / 12.0);
-    (2048.0 - 131072.0 / f).round_ties_even().clamp(0.0, 2047.0)
+/// `CgbSound`: every PSG channel's frame. `tick` is the driver's 15-frame
+/// counter (SoundInfo's c15): when it is 0, each envelope counts down twice.
+pub(crate) fn cgb_sound(channels: &mut [CgbChannel; 4], apu: &mut Apu, bank: &SoundBank, tick: &mut u8, dac_resolution: u8) {
+    if *tick != 0 {
+        *tick -= 1;
+    } else {
+        *tick = 14;
+    }
+    for (i, ch) in channels.iter_mut().enumerate() {
+        if ch.status.active() {
+            cgb_channel(ch, i + 1, apu, bank, *tick == 0, dac_resolution);
+        }
+    }
 }
 
-fn mix_psg(ch: &mut Channel, bank: &SoundBank, n: usize, noise: &[Vec<f64>; 2]) -> Option<Vec<[f64; 2]>> {
-    let (rv, lv) = (ch.right, ch.left);
-    let goal = ((rv + lv) >> 4).min(15);
-    let sus = (goal * ch.voice.envelope.sustain as i64 + 15) >> 4;
-    cgb_env(ch, goal, sus);
-    if !ch.on {
-        return None;
-    }
-    let level = ch.level as f64;
-    let mut out: Vec<f64> = Vec::with_capacity(n);
-    match ch.voice.kind {
-        VoiceKind::Noise { narrow } => {
-            let k = ch.key;
-            let nr43 = NOISE_NR43[if k <= 20 { 0 } else { ((k - 21) as usize).min(59) }] as u32;
-            let (shift, ratio) = (nr43 >> 4, nr43 & 7);
-            let r = if ratio == 0 { 0.5 } else { ratio as f64 };
-            let clock = 524288.0 / r / 2f64.powi(shift as i32 + 1);
-            let bits = &noise[narrow as usize];
-            let inc = clock / OUT_RATE as f64;
-            for k in 0..n {
-                let idx = ((ch.noise_at + inc * k as f64) as usize) % bits.len();
-                out.push((bits[idx] - 0.5) * PSG_SCALE * level);
-            }
-            ch.noise_at += inc * n as f64;
-        }
-        kind => {
-            let wave = match kind {
-                VoiceKind::Wave { wave } => Some(&bank.waves[wave.0 as usize].0),
-                VoiceKind::Square1 { .. } | VoiceKind::Square2 { .. } => None,
-                _ => {
-                    ch.on = false;
-                    return None;
+/// Where `CgbSound` goes next for a channel (its labels).
+enum At {
+    /// `loc_814F768`: step the envelope if its counter ran out.
+    CheckCounter,
+    /// `loc_814F79A`: released to the end; the echo, or silence.
+    EchoOrOff,
+    /// `loc_814F7F2`: the decay reached the sustain level.
+    DecayDone,
+    /// `loc_814F82E`: the attack reached its goal (or there was none).
+    AttackDone,
+    /// `loc_814F85A`: the counter starts over.
+    SetCounter(u8),
+    /// `loc_814F85C`: the counter counts.
+    CountDown,
+    /// `loc_814F86E`: the register writes.
+    Write,
+    /// `loc_814F714`: the channel ends.
+    Off,
+}
+
+fn cgb_channel(ch: &mut CgbChannel, n: usize, apu: &mut Apu, bank: &SoundBank, mut extra_count: bool, dac_resolution: u8) {
+    let (r0, r1, r2, r3, r4) = registers(n);
+    // NRx2's direction and period bits as written last, unless changed.
+    let mut env_bits = apu.read(r2);
+    let e = ch.note.envelope;
+    let mut at = if ch.status.start {
+        if ch.status.stop {
+            At::Off
+        } else {
+            ch.status = Status { phase: Phase::Attack, ..Status::off() };
+            ch.volume_changed = true;
+            ch.pitch_changed = true;
+            cgb_mod_volume(ch);
+            match ch.voice {
+                VoiceKind::Wave { wave, .. } => {
+                    if ch.loaded_wave != Some(wave) {
+                        apu.write(r0, 0x40);
+                        let w = &bank.waves[wave.0 as usize].0;
+                        let bytes: [u8; 16] = std::array::from_fn(|j| (w[2 * j] << 4) | (w[2 * j + 1] & 15));
+                        apu.write_wave_ram(&bytes);
+                        ch.loaded_wave = Some(wave);
+                    }
+                    apu.write(r0, 0);
+                    apu.write(r1, ch.length);
+                    ch.nrx4 = if ch.length != 0 { 0xC0 } else { 0x80 };
                 }
-            };
-            let duty = match kind {
-                VoiceKind::Square1 { duty } | VoiceKind::Square2 { duty } => DUTY[(duty & 3) as usize],
-                _ => 0.0,
-            };
-            let x = cgb_register(ch.semis());
-            let freq = (if wave.is_none() { 131072.0 } else { 65536.0 }) / (2048.0 - x);
-            let inc = freq / OUT_RATE as f64;
-            let mut last = ch.phase;
-            for k in 1..=n {
-                let ph = ch.phase + inc * k as f64;
-                let frac = ph % 1.0;
-                match wave {
-                    Some(w) => out.push(
-                        (w[(frac * 32.0) as usize] as f64 - 7.5)
-                            * WAVE_LEVEL[ch.level.clamp(0, 15) as usize]
-                            * PSG_SCALE,
-                    ),
-                    None => out.push(((if frac < duty { 1.0 } else { 0.0 }) - duty) * PSG_SCALE * level),
+                voice => {
+                    match voice {
+                        VoiceKind::Noise { narrow } => {
+                            apu.write(r1, ch.length);
+                            apu.write(r3, (narrow as u8) << 3);
+                        }
+                        VoiceKind::Square1 { duty, .. } | VoiceKind::Square2 { duty, .. } => {
+                            if n == 1 {
+                                apu.write(r0, ch.sweep);
+                            }
+                            apu.write(r1, (duty << 6).wrapping_add(ch.length));
+                        }
+                        _ => {}
+                    }
+                    env_bits = e.attack.wrapping_add(8);
+                    ch.nrx4 = if ch.length != 0 { 0x40 } else { 0 };
                 }
-                last = ph;
             }
-            ch.phase = last % 1.0;
+            ch.envelope_counter = e.attack;
+            if e.attack != 0 {
+                ch.note.envelope_volume = 0;
+                At::CountDown
+            } else {
+                At::AttackDone
+            }
+        }
+    } else if ch.status.echo || (apu.read(Reg::Nr52) >> (n - 1)) & 1 == 0 {
+        // The echo counts down; so does a channel the hardware stopped
+        // (with no echo it ends now).
+        ch.note.echo_length = ch.note.echo_length.wrapping_sub(1);
+        if (ch.note.echo_length as i8) <= 0 { At::Off } else { At::Write }
+    } else if ch.status.stop && ch.status.phase != Phase::Release {
+        ch.status.phase = Phase::Release;
+        ch.envelope_counter = e.release;
+        if e.release != 0 {
+            ch.volume_changed = true;
+            if n != 3 {
+                env_bits = e.release;
+            }
+            At::CountDown
+        } else {
+            At::EchoOrOff
+        }
+    } else {
+        At::CheckCounter
+    };
+    loop {
+        at = match at {
+            At::CheckCounter => {
+                if ch.envelope_counter != 0 {
+                    At::CountDown
+                } else {
+                    if n == 3 {
+                        ch.volume_changed = true;
+                    }
+                    cgb_mod_volume(ch);
+                    let v = &mut ch.note.envelope_volume;
+                    match ch.status.phase {
+                        Phase::Release => {
+                            *v = v.wrapping_sub(1);
+                            if (*v as i8) > 0 { At::SetCounter(e.release) } else { At::EchoOrOff }
+                        }
+                        Phase::Sustain => {
+                            *v = ch.sustain_goal;
+                            At::SetCounter(7)
+                        }
+                        Phase::Decay => {
+                            *v = v.wrapping_sub(1);
+                            if (*v as i8) > (ch.sustain_goal as i8) { At::SetCounter(e.decay) } else { At::DecayDone }
+                        }
+                        Phase::Attack => {
+                            *v = v.wrapping_add(1);
+                            if *v < ch.envelope_goal { At::SetCounter(e.attack) } else { At::AttackDone }
+                        }
+                    }
+                }
+            }
+            At::EchoOrOff => {
+                let v = ((ch.envelope_goal as u32 * ch.note.echo_volume as u32 + 0xFF) >> 8) as u8;
+                ch.note.envelope_volume = v;
+                if v == 0 {
+                    At::Off
+                } else {
+                    ch.status.echo = true;
+                    ch.volume_changed = true;
+                    if n != 3 {
+                        env_bits = 8;
+                    }
+                    At::Write
+                }
+            }
+            At::DecayDone => {
+                if e.sustain == 0 {
+                    ch.status.phase = Phase::Release;
+                    At::EchoOrOff
+                } else {
+                    ch.status.phase = Phase::Sustain;
+                    ch.volume_changed = true;
+                    if n != 3 {
+                        env_bits = 8;
+                    }
+                    ch.note.envelope_volume = ch.sustain_goal;
+                    At::SetCounter(7)
+                }
+            }
+            At::AttackDone => {
+                ch.status.phase = ch.status.phase.next();
+                ch.envelope_counter = e.decay;
+                if e.decay == 0 {
+                    At::DecayDone
+                } else {
+                    ch.volume_changed = true;
+                    ch.note.envelope_volume = ch.envelope_goal;
+                    if n != 3 {
+                        env_bits = e.decay;
+                    }
+                    At::CountDown
+                }
+            }
+            At::SetCounter(v) => {
+                ch.envelope_counter = v;
+                At::CountDown
+            }
+            At::CountDown => {
+                ch.envelope_counter = ch.envelope_counter.wrapping_sub(1);
+                if extra_count {
+                    extra_count = false;
+                    At::CheckCounter
+                } else {
+                    At::Write
+                }
+            }
+            At::Write => {
+                write_registers(ch, apu, n, (r0, r2, r3, r4), env_bits, dac_resolution);
+                break;
+            }
+            At::Off => {
+                cgb_off(apu, n);
+                ch.status = Status::off();
+                break;
+            }
+        };
+    }
+    ch.volume_changed = false;
+    ch.pitch_changed = false;
+}
+
+/// The frame's register writes for a channel whose pitch or volume changed.
+fn write_registers(ch: &mut CgbChannel, apu: &mut Apu, n: usize, regs: (Reg, Reg, Reg, Reg), env_bits: u8, dac_resolution: u8) {
+    let (r0, r2, r3, r4) = regs;
+    if ch.pitch_changed {
+        let fixed = match ch.voice {
+            VoiceKind::Square1 { fixed, .. } | VoiceKind::Square2 { fixed, .. } | VoiceKind::Wave { fixed, .. } => fixed,
+            _ => false,
+        };
+        if n <= 3 && fixed {
+            // Rounded to what the DAC's resolution plays exactly.
+            match dac_resolution {
+                0 => ch.note.frequency = (ch.note.frequency + 2) & 0x7FC,
+                1 => ch.note.frequency = (ch.note.frequency + 1) & 0x7FE,
+                _ => {}
+            }
+        }
+        let low = if n == 4 { (apu.read(r3) & 8) | ch.note.frequency as u8 } else { ch.note.frequency as u8 };
+        apu.write(r3, low);
+        ch.nrx4 = (ch.nrx4 & 0xC0).wrapping_add(((ch.note.frequency & 0x3F00) >> 8) as u8);
+        apu.write(r4, ch.nrx4);
+    }
+    if ch.volume_changed {
+        let nr51 = (apu.read(Reg::Nr51) & !ch.pan_mask) | ch.pan;
+        apu.write(Reg::Nr51, nr51);
+        if n == 3 {
+            // (Levels past 15, which a centred note can reach, read the
+            // table after gCgb3Vol: the clock table.)
+            let v = ch.note.envelope_volume as usize;
+            let level = if v < 16 { tables::WAVE_VOLUME[v] } else { tables::CLOCK[v - 16] };
+            apu.write(r2, level);
+            if ch.nrx4 & 0x80 != 0 {
+                apu.write(r0, 0x80);
+                apu.write(r4, ch.nrx4);
+                ch.nrx4 &= 0x7F;
+            }
+        } else {
+            apu.write(r2, (ch.note.envelope_volume << 4).wrapping_add(env_bits & 15));
+            apu.write(r4, ch.nrx4 | 0x80);
+            if n == 1 && apu.read(Reg::Nr10) & 8 == 0 {
+                apu.write(r4, ch.nrx4 | 0x80);
+            }
         }
     }
-    let right = rv >= lv && rv / 2 >= lv;
-    let left = lv > rv && lv / 2 >= rv;
-    Some(out.into_iter().map(|v| [if right { 0.0 } else { v }, if left { 0.0 } else { v }]).collect())
 }
