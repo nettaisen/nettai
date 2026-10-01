@@ -43,6 +43,7 @@ chips/197-ftornado/tengu_tornado.luau 2
 chips/199-dustbrk/dust_break.luau 2
 chips/anubis/statue.luau 2
 chips/blkbomb/bomb.luau 2
+chips/colarmy/army.luau 1
 chips/crosswrd/chip.luau 1
 chips/dbldream/chip.luau 1
 chips/ftrsword/chip.luau 1
@@ -103,9 +104,6 @@ objects/bubble-star/bubble_star.luau 4
 objects/charge-car/charge_car.luau 11
 objects/charge-man/charge_man.luau 3
 objects/charge-wave/charge_wave.luau 3
-objects/col-army/col_army.luau 5
-objects/col-force-soldier/col_force_soldier.luau 3
-objects/col-force/col_force.luau 1
 objects/colonel/colonel.luau 9
 objects/copy-mark/copy_mark.luau 3
 objects/countdown-bomb/countdown_bomb.luau 15

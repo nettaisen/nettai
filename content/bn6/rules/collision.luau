@@ -106,7 +106,7 @@ collision.attack_480 = define.collision { id = "attack-480", side0 = 0x80000480,
 -- An attack of row 0x47 (a projectile variant nothing names yet).
 collision.attack_a0 = define.collision { id = "attack-a0", side0 = 0x800000a0, side1 = 0x400000a0, row_offset = 0x238 }
 
--- A neutral body, while dimmed too (row 0x0E: a VDoll that landed).
+-- A neutral body, while dimmed too (row 0x0E: a VDoll that landed, a rock).
 collision.neutral_body = define.collision { id = "neutral-body", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
 
 -- A probe (row 0x3D): what finds the first thing its target type reaches
@@ -133,8 +133,5 @@ collision.guard_breaking = define.collision {
 -- A thrown attack that breaks (row 0x15: GolmHit's golem landing,
 -- JustcOne's fist).
 collision.thrown_break = define.collision { id = "thrown-break", side0 = 0x8000008a, side1 = 0x4000008a, row_offset = 0xA8 }
-
--- A neutral body, while dimmed too (row 0x0E: a rock).
-collision.neutral_body = define.collision { id = "neutral-body", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
 
 return collision
