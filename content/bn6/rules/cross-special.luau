@@ -2,7 +2,8 @@
 -- The Cross special's chips (`sub_802D5A8`, the battle flag 0x40 mode's
 -- berserk controller): a row by the hundreds of the navi's base max HP
 -- (the first up to 199, the last from 1000), and a chip of it at random.
--- The last row's LifeSrd strikes with VarSwrd's damage (`damage_of`).
+-- LifeSrd, in the last two rows, strikes with VarSwrd's damage
+-- (`damage_of`).
 
 local airhocky = require("../chips/airhocky/chip")
 local aquaswrd = require("../chips/aquaswrd/chip")
@@ -39,7 +40,7 @@ return define.rules("cross-special", {
         -- GunDelS2.
         { gundels[2], rlnglog[2], bambswrd },
         { tankcan[3], tornado[1], moonbld },
-        { tankcan[3], airhocky, lifesrd },
+        { tankcan[3], airhocky, { chip = lifesrd, damage_of = varswrd } },
         -- (SuprVulc.)
         {
             firebrn.firebrn3,

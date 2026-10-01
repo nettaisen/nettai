@@ -4,7 +4,8 @@
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
-use crate::content::{ChipClass, ChipCode, ChipFlags, ChipId};
+use crate::content::{ChipClass, ChipCode, ChipFlags};
+use crate::custom::library::testing::ChipId;
 use crate::input::keys;
 use bn6_content_api::{ChipHandle, FormHandle};
 

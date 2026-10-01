@@ -5,6 +5,7 @@
 -- becomes (the BN6 content's).
 
 local encased_bubble = require("../../objects/encased-bubble/bubble")
+local test_chips = require("../../chips/test/chips")
 local ticker = require("../lib/ticker")
 
 return define.roles {
@@ -37,9 +38,8 @@ return define.roles {
         falling_rock = { legacy = { kind = "falling-rock" } },
     },
     chips = {
-        -- What a zeroed chip field reads: the test content's chip 0 (a
-        -- Rust-built record, which no module holds: by its key).
-        zeroed = { legacy = { chip = "v1/chip-000" } },
+        -- What a zeroed chip field reads: the test content's blank chip.
+        zeroed = test_chips.blank,
     },
     hooks = {
         encased = encased_bubble.replace,

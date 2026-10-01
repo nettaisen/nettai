@@ -8,7 +8,7 @@
 
 use crate::battle::{Battle, TickEvents, mode};
 use crate::behavior::Behaviors;
-use crate::content::{ChipCode, ChipId, Content, testing};
+use crate::content::{ChipCode, Content, testing};
 use bn6_content_api::ChipHandle;
 use crate::custom::screen::{OK_SLOT, Phase, SlotKind, SlotState};
 use crate::custom::{BattleFolder, FolderChip, GameVersion, PlayerSetup, Unlocks};
@@ -82,9 +82,9 @@ pub fn setup() -> RoundSetup {
 
 /// The same round with both folders holding `chips` (in turn, all code
 /// A) instead.
-pub fn setup_with(chips: &[ChipId]) -> RoundSetup {
+pub fn setup_with(chips: &[&str]) -> RoundSetup {
     let content = testing::content();
-    let handles: Vec<ChipHandle> = chips.iter().map(|&id| testing::chip_in(&content, id)).collect();
+    let handles: Vec<ChipHandle> = chips.iter().map(|&key| testing::chip_in(&content, key)).collect();
     setup_with_handles(&handles)
 }
 

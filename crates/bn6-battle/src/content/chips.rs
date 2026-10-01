@@ -1,11 +1,8 @@
-//! Chips: the chip record, and the data only one chip's action uses.
+//! Chips: the chip record.
 
 use super::flags::serde_flags;
 use super::{ChipModifier, Element, ProgramAdvanceRecipe, SpriteId};
 use serde::{Deserialize, Serialize};
-
-/// A chip id (0..=0x19A in BN6).
-pub type ChipId = u16;
 
 /// A chip code: A-Z are 0-25, `*` is 26. In a content file, the letter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -255,15 +252,12 @@ pub enum DamageFormula {
     NaviLevel { base: u8, per_level: u8 },
 }
 
-/// One battle chip (docs/engine/chips.md §1.2), with the data that only
-/// its action uses.
+/// One battle chip's record (docs/engine/chips.md §1.2): what the ruleset
+/// reads of it. Its use (an action, or a dimming, navi or instant hook) is
+/// its definition's (`ChipDef::usage`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChipData {
-    /// The chip's number in the pack's table (its place in the original's
-    /// chip table); a chip content defines has none.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub id: Option<ChipId>,
     pub name: String,
     /// The description the custom screen shows (R), its lines apart by
     /// `\n`. The battle reads only how many lines it has
@@ -285,14 +279,8 @@ pub struct ChipData {
     /// Counter/stagger strength carried to the attack's hitbox (the high
     /// half of its damage word).
     pub hit_param: u8,
-    /// The attack action the user performs.
-    pub action: u8,
-    /// Variant within the action (e.g. Cannon/HiCannon/M-Cannon = 0/1/2).
-    pub subtype: u8,
     /// In Beast Out, the chip's attack goes through the Beast rush.
     pub beast_lockon: bool,
-    /// Action-specific parameters.
-    pub params: [u8; 4],
     /// Input lockout after the attack ends, in ticks.
     pub lockout: u8,
     #[serde(default)]
@@ -334,21 +322,6 @@ pub struct ChipData {
     /// The Program Advances that make this chip, their ingredients by key.
     #[serde(default, rename = "program_advance", skip_serializing_if = "Vec::is_empty")]
     pub program_advances: Vec<ProgramAdvanceRecipe>,
-    /// GunDelSol's data (action 0x37).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub gun_del_sol: Option<GunDelSol>,
-    /// The HP a recovery chip restores (action 0x20).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub recovery: Option<u16>,
-    /// A sword's data (actions 0x13 and 0x49).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sword: Option<Sword>,
-    /// The script that implements the chip's action, or its part of a
-    /// generic one (see `content::scripts`): a module path in the pack
-    /// (`chips/00f-gundels1/chip`); in the chip's file, a path relative to
-    /// its folder (`chip.luau`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub script: Option<String>,
 }
 
 impl ChipData {
@@ -377,59 +350,6 @@ pub struct AttachmentKind {
     /// origin).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attach_point: Option<u8>,
-}
-
-/// Which sun beam look (`ObjectData::sun_beam_looks`, the beam object's
-/// first parameter) and palette GunDelSol shows.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SunBeamLook {
-    pub look: u8,
-    pub palette: u8,
-}
-
-/// A sword's per-chip data, by the chip's subtype: the blade its user holds
-/// (actions 0x13 and 0x49) and, for action 0x13 (`sub_80EB776`), its slash.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Sword {
-    /// The blade (`byte_80EBB64`): an attachment kind.
-    pub blade: u8,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub slash: Option<SwordSlash>,
-}
-
-/// Action 0x13's slash: its one-tick hit region (`byte_80EBA18`, and
-/// `byte_80EBA58` for what the hit does) and the effect that draws it
-/// (`byte_80EBAD8`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct SwordSlash {
-    /// Region shape, hit spark and collision types.
-    pub region: u8,
-    pub hit_effect: u8,
-    pub target: u8,
-    pub self_type: u8,
-    /// Hit modifier, status effect, bug and its argument.
-    pub hit_mod: u8,
-    pub status: u8,
-    pub bug: u8,
-    pub bug_arg: u8,
-    /// The effect (effect object #0) it shows on the panel ahead.
-    pub effect: u8,
-}
-
-/// GunDelSol's per-chip data.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct GunDelSol {
-    /// Ticks of hits under the beam.
-    pub firing_ticks: u16,
-    /// The sun beam, in the shade and in the sun.
-    pub beam: SunBeamLook,
-    pub beam_in_sun: SunBeamLook,
-    /// The gun, attached to the user.
-    pub gun: AttachmentKind,
 }
 
 /// A lock-on mode's handle in a record's data form: its index, or nothing.

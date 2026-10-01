@@ -185,8 +185,10 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
     let cd = content.chip(chip);
     let a = &mut ai_mut(b, r).attack;
     a.chip = Some(chip);
-    a.variant = cd.subtype;
-    a.params = cd.params;
+    // (The original copies the record's subtype and parameter bytes: a
+    // chip has neither here; what its action needs is its definition's.)
+    a.variant = 0;
+    a.params = [0; 4];
     a.damage = cd.damage;
     a.hit_param = (cd.hit_param | 0x80) as u16;
     // (The last rows' LifeSrd strikes with VarSwrd's damage.)

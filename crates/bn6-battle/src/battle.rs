@@ -469,7 +469,8 @@ pub struct SideState {
     /// an obstacle leaving hands on (`sub_802EF74`).
     pub tracked: Option<ObjectRef>,
     /// +0x34: the special chip the side's SELECT uses (`sub_800EE26`); none
-    /// for the zeroed field, which reads as the pack's chip 0.
+    /// for the zeroed field, which reads as the zeroed chip
+    /// (`roles.chips.zeroed`).
     pub special_chip: Option<ChipHandle>,
     /// +0x36 / +0x38: bonuses stored for the special chip, spent with it
     /// (on a damaging chip, on a navi chip).

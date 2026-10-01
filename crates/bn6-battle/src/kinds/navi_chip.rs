@@ -211,30 +211,22 @@ fn effect(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `off_802CD5C[navi]`: bring the chip's navi, with the damage and the
-/// bonus: the chip's `navi` hook, or a pack record's subtype's
-/// registration. (The
-/// game also records the last navi chip used, `byte_203C960`, which
-/// nothing in a battle reads.)
+/// bonus: the chip's `navi` hook. (HackJack's and Django's entries of the
+/// original's table are null, and the game jumps to address 0: their
+/// chips' hooks say so. The game also records the last navi chip used,
+/// `byte_203C960`, which nothing in a battle reads.)
 fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let v = vars(b, r).clone();
     let damage = v.damage.wrapping_add(v.chip.bonus as u32);
     let o = b.objects.get(r);
     let (panel, element) = (o.panel, o.element);
     let user = user(b, r);
-    use crate::content::{ChipUsage, Unported};
+    use crate::content::ChipUsage;
     let chip = b.content.chip_or_zeroed(v.chip.chip);
     let navi = match b.content.defs.chip(chip).usage {
         ChipUsage::Navi(hook) => {
             let spec = NaviChipSpec { panel, element, params: v.params, damage };
             crate::behavior::call_hook(b, hook, HookCall::NaviChip { user, controller: r, spec }).object()
-        }
-        // HackJack's and Django's entries are NULL: the game jumps to
-        // address 0.
-        ChipUsage::Unported(Unported::Navi(navi @ (0x12 | 0x13))) => {
-            panic!("navi chip navi {navi:#x} is NULL in off_802CD5C (the game jumps to address 0)")
-        }
-        ChipUsage::Unported(Unported::Navi(navi)) => {
-            panic!("content error: no script implements navi chip subtype {navi} (off_802CD5C)")
         }
         u => panic!("chip {:?} is a navi chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),
     };

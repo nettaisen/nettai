@@ -14,14 +14,16 @@ local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local lockon = require("./lockon")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
+local stun_strike = require("../lib/swords/stun_strike")
 local supports = require("../lib/supports/controller")
+local test_chips = require("../chips/test/chips")
 
 return define.roles {
     actions = {
         forced_charged_shot = charged_shot.action,
-        -- The strike the navi's request 0x80000 starts from idle (the
-        -- machine swords' strike by the attack's variant).
-        stun_strike = { legacy = { action = 0x49 } },
+        -- The strike the navi's request 0x80000 starts from idle (a
+        -- machine sword's).
+        stun_strike = stun_strike.action,
         -- What a Cross navi protected at the battle's end runs
         -- (GroundCross's drill).
         cross_protect = ground_drill.action,
@@ -46,9 +48,8 @@ return define.roles {
         support = supports.kind,
     },
     chips = {
-        -- What a zeroed chip field reads: the test content's chip 0 (a
-        -- Rust-built record, which no module holds: by its key).
-        zeroed = { legacy = { chip = "v1/chip-000" } },
+        -- What a zeroed chip field reads: the blank chip.
+        zeroed = test_chips.blank,
     },
     lockon = {
         beast_claw = lockon.beast_claw,

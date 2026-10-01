@@ -79,8 +79,6 @@ fn plan(content: &Content) -> BindPlan {
     add(Registry::Kind, &mut d.kinds.iter().map(|k| &k.key));
     add(Registry::Action, &mut d.actions.iter().map(|a| &a.key));
     add(Registry::Weapon, &mut d.weapons.iter().map(|w| &w.key));
-    // (The pack's chip records: what `attack_chip` gives for one.)
-    add(Registry::Chip, &mut d.chips.iter().map(|c| &c.key));
     BindPlan {
         functions: d.functions.clone(),
         schemas: d.schemas.iter().map(|s| s.schema.clone()).collect(),
