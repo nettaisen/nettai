@@ -1,0 +1,3 @@
+# DustMan (navi chip subtype 11), in chips/dustman.
+
+script = "../dustman/chip.luau"

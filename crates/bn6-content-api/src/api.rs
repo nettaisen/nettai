@@ -1386,6 +1386,21 @@ pub trait CoreApi {
     /// (removed by a chip, blinking out or absorbed): the test `sub_80C9EE6`
     /// and `sub_80EFD8C` make before taking an obstacle.
     fn obstacle_present(&self, o: ObjectRef) -> bool;
+    /// DustMan's take (`sub_80BC100`): the look the field object `o` would
+    /// have thrown back as junk, an opaque value its taker keeps (the
+    /// object's NameID, `sub_800F26C`'s argument, until identities); None
+    /// for the objects DustMan leaves (`sub_800F486`).
+    fn junk_look(&self, o: ObjectRef) -> Option<u16>;
+    /// The r3 the object update loop (`object_800372A`) leaves for the
+    /// object updating now: 4 × how many objects of the previous object's
+    /// pool it passed before that one this tick. Routines that never set
+    /// r3 spawn with it as a position (DustMan's junk).
+    fn loop_register(&self) -> u32;
+    /// `sub_80DBB64`: put the junk look `look` on `o`'s sprite (`sub_800F26C`:
+    /// the sprite, a shadow if the look has one, its animation and
+    /// palette; flipped by `o`'s side unless the look keeps its own);
+    /// false when the look is the table's none (category 0xFF).
+    fn wear_junk_look(&mut self, o: ObjectRef, look: u16) -> ApiResult<bool>;
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.

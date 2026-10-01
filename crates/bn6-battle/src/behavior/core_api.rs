@@ -1663,6 +1663,46 @@ impl CoreApi for Battle {
             .is_some_and(|c| self.collision.get(c).f2 & (f2::ABSORBED | f2::VANISH | f2::REMOVED) == 0)
     }
 
+    fn loop_register(&self) -> u32 {
+        self.objects.loop_register()
+    }
+
+    fn junk_look(&self, o: ObjectRef) -> Option<u16> {
+        // sub_800F486: the NameIDs DustMan leaves.
+        let name = self.objects.get(o).name_id;
+        (!matches!(name, 0xD3 | 0xDA | 0xE9 | 0xEA)).then_some(name)
+    }
+
+    fn wear_junk_look(&mut self, o: ObjectRef, look: u16) -> ApiResult<bool> {
+        // sub_800F26C: NameIDs 0xCD..=0xFF by byte_8021220; any other is an
+        // actor's (enemy_getStruct1), which no field object is.
+        if !(0xCD..=0xFF).contains(&look) {
+            return Err(ApiError::Other(format!("NameID {look:#x} has no junk look (enemy_getStruct1's sprite)")));
+        }
+        let Some(l) = self.content.objects.name_looks.iter().find(|l| l.name_id == look).copied() else {
+            return Err(ApiError::Other(format!("NameID {look:#x}'s look (byte_8021220) is not in the content")));
+        };
+        let Some(id) = l.sprite else { return Ok(false) };
+        self.sprite_load(o, id);
+        let alliance = {
+            let obj = self.objects.get_mut(o);
+            obj.flags |= flags::VISIBLE;
+            obj.anim = l.anim;
+            obj.anim_loaded = l.anim;
+            obj.alliance
+        };
+        let s = self.objects.sprite_mut(o);
+        s.look.shadow = if l.shadow { sprite::Shadow::Ground } else { sprite::Shadow::WithSprite };
+        s.set_animation(l.anim, &self.content);
+        s.look.palette = l.palette;
+        // NameIDs 0xD8 and 0xD9 keep their own flip and set a drawing bit
+        // instead (sub_8002EAC: presentation).
+        if !matches!(look, 0xD8 | 0xD9) {
+            s.look.set_flip(alliance);
+        }
+        Ok(true)
+    }
+
     // ---- Field objects (obstacles) -------------------------------------------
 
     fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool> {

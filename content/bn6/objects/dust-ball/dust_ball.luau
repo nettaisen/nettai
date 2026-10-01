@@ -21,10 +21,12 @@ local STOPS = { [0] = 0x05800000, [1] = 0x0A800000 }
 local ROLL, BURST = 0, 4
 
 -- `sub_80DB800`: a ball from `owner` starting on (x, y), with the damage
--- word `damage`. It runs while dimmed. (Its Z is the spawner's register
--- garbage, of which the init keeps the fraction.)
-function dust_ball.spawn(owner: Object, x: number, y: number, element: number, damage: number): Object?
-    local o = battle.spawn_kind("dust-ball", Vec3.zero, { 0, 0, 0, 0 })
+-- word `damage`; DustMan's (`while_dimmed`, Param1 1) runs on while dimmed.
+-- It runs while dimmed. (Its Z is the spawner's register garbage, of which
+-- the init keeps the fraction.)
+function dust_ball.spawn(owner: Object, x: number, y: number, element: number, damage: number, while_dimmed: boolean?): Object?
+    -- Param1: DustMan's (1) runs on while dimmed; DustCross's (0) doesn't.
+    local o = battle.spawn_kind("dust-ball", Vec3.zero, { if while_dimmed then 1 else 0, 0, 0, 0 })
     if o then
         o.panel_x, o.panel_y = x, y
         o.element = element
