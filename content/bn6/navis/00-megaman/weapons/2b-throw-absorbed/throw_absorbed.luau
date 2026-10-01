@@ -13,15 +13,14 @@ local DAMAGE = 200
 
 -- `sub_8011F8C`.
 function throw_absorbed.setup(navi: Object): Action
-    local kind, anim = navi:pop_absorbed()
-    if kind == nil then
+    local look, anim = navi:pop_absorbed()
+    if look == nil then
         return buster.setup(navi)
     end
-    -- What it throws, as the game keeps it in the action's marker word: the
-    -- absorbed list's byte (kind | animation << 4). (The game also puts the
-    -- obstacle's sprite in the word's high half; the sprite is the kind's,
-    -- data.objects.absorbed_sprites.)
-    navi.marker = bit32.band(bit32.bor(kind, bit32.lshift(anim :: number, 4)), 0xFF)
+    -- What it throws, which the game keeps in the action's marker word (the
+    -- absorbed list's byte, kind | animation << 4, and the kind's sprite in
+    -- the high half): the obstacle's look and animation.
+    navi.thrown_look, navi.thrown_anim = look, anim :: number
     navi.attack_damage = DAMAGE
     -- (The game sets the hit parameter to 0x94 and then clears it.)
     navi.hit_param = 0

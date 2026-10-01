@@ -20,6 +20,8 @@
 //! `phase` (+0x0B, +0x0A), and what to go back to after it in
 //! `saved_state` (+0x5C).
 
+use bn6_content_api::RecordHandle;
+
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionId, f1};
 use crate::field::{self, PanelType, pflags};
@@ -1049,21 +1051,30 @@ pub fn blink_out(b: &mut Battle, r: ObjectRef) -> BlinkOut {
     if t > 0 { BlinkOut::Blinking } else { BlinkOut::Done }
 }
 
-/// `sub_800F90E`: an absorbed obstacle of kind `kind` (see
-/// `ObjectData::absorbed_sprites`) flies from `r` to the absorbing side's
-/// navi: the content pack's absorbed obstacle (`sub_80E996E`, effect
-/// #0x87, objects/absorbed-obstacle), spawned where `r` is with its
-/// animation, sprite palette, hidden sprite parts and facing, running
-/// neither while paused nor while dimmed.
-pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, kind: u8) {
+/// `sub_800F90E`: an absorbed obstacle of look `look` (content's
+/// absorbed-look record; the original's obstacle kind, an index into
+/// `byte_80E98C0`'s sprites) flies from `r` to the absorbing side's navi:
+/// the content pack's absorbed obstacle (`sub_80E996E`, effect #0x87,
+/// objects/absorbed-obstacle), spawned where `r` is with its look, the side
+/// that absorbs it, its animation, sprite palette, hidden sprite parts and
+/// facing, running neither while paused nor while dimmed.
+pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, look: RecordHandle) {
+    use bn6_content_api::{Registry, Value};
     let side = (f2_of(b, r) & f2::ABSORBED_BY_1 != 0) as u8;
     let o = b.objects.get(r);
     let (pos, anim, alliance, flip) = (o.pos, o.anim, o.alliance, o.flip);
-    let look = b.objects.sprite(r).look;
-    let params = [kind, side, anim, look.palette];
+    let sprite = b.objects.sprite(r).look;
     let kind = b.content.defs.roles.kind(crate::content::KindRole::AbsorbedObstacle);
-    let Some(e) = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, params) else { return };
-    crate::behavior::set_state_field(b, e, "hidden_parts", bn6_content_api::Value::Int(look.hidden_parts as i64));
+    let Some(e) = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, [0; 4]) else { return };
+    for (field, v) in [
+        ("look", Value::Def(Registry::Record, look.0)),
+        ("side", Value::Int(side as i64)),
+        ("anim", Value::Int(anim as i64)),
+        ("palette", Value::Int(sprite.palette as i64)),
+        ("hidden_parts", Value::Int(sprite.hidden_parts as i64)),
+    ] {
+        crate::behavior::set_state_field(b, e, field, v);
+    }
     let o = b.objects.get_mut(e);
     o.alliance = alliance;
     o.flip = flip;
