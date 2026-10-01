@@ -32,7 +32,7 @@ local SWING_TICKS, BLADE_AT = 0x15, 0x12
 local SWING_ROUTINE_LOW = 0xCF
 
 -- MoonBld's swing.
-function action.action(spec: { id: string? }): Action
+function action.action(spec: { id: string?, charged: ChargedSlash? }): Action
     -- `sub_80EE2C0`: one swing; the marker cleared.
     local function ready(me: Object, s: State)
         s.swings = SWINGS

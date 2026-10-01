@@ -19,7 +19,7 @@ return define.form {
     element = "null",
     weakness = { "cursor" },
     buster_bonus = 0,
-    weapons = { buster = buster.weapon, charge_shot = drill, a_charge = rock_barrage },
+    weapons = { buster = buster.weapon, charge_shot = drill.weapon, a_charge = rock_barrage },
     palette = 15,
     mugshot = asset.mugshot("groundcross"),
     identity = {

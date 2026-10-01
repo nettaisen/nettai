@@ -16,7 +16,7 @@ return define.form {
     sprite = asset.sprite("spoutcross-beast"),
     element = "aqua",
     buster_bonus = 0,
-    weapons = { buster = falzar_beast_buster, a_charge = charged_chip_bonus, alt_a_charge = charge },
+    weapons = { buster = falzar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = charge.weapon },
     mugshot = asset.mugshot("spoutcross-beast"),
     identity = {
         version = 0,

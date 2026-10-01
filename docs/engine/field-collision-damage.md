@@ -1317,7 +1317,14 @@ So a paralyzed or frozen navi is only flinched by a hit that also requests flash
   hit adds nothing to cd+0x8E (§3.8), so it takes no mood.
 - **[verified]** At tick 2346: 0x80 → 0x62, with the hitbox's counter byte 30.
 
-A barrier (which clears FFC 0x50) or a trap ZERO (which clears 0x40) cancels a counter. Counters are code only.
+A barrier (which clears FFC 0x50) or a trap ZERO (which clears 0x40) cancels a counter.
+
+**Verified** by the chip lab: 109 chips' hits counter (`chips/*/counter` where the user is fast enough,
+`chips/*/counter-hit` with the opponent's MiniBomb timed to the hit), with the banner (HUD task bit 0x100, 50
+ticks) and the 150-tick paralysis. BblStar's bubble and DrilArm's drag take the paralysis's place, and an
+attack's next hit ends it with a flinch (AquaNdl's second needle, EnergBom's third blast). AirRaid's shots, JustCone,
+DarkInvs's strikes and Anubis's poison land in the window without a counter, as does every hit during a dimming
+(the dimming holds the window open: the navi doesn't run). docs/engine/unverified.md has the list.
 
 ### 4.10 Invincibility (flash) and pierce
 
