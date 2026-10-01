@@ -1387,6 +1387,9 @@ export type WeaponSpec = {
     charge_ticks: { number },
     -- `off_80117D4[n]`: prepare the attack, name its action.
     setup: (navi: Object) -> Action | number,
+    -- Transitional (counted by the ratchet): the routine numbers the pack's
+    -- forms and the ruleset still name it by (`weapon_numbered`).
+    legacy: { routines: { number } }?,
     sticky: boolean?,
     traits: { string }?,
 }
@@ -1460,6 +1463,7 @@ export type RolesSpec = {
         anti_damage_counter: Action?,
         anti_sword_counter: Action?,
         body_guard_counter: Action?,
+        forced_charged_shot: Action?,
     }?,
 }
 
