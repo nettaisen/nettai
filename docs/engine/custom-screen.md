@@ -418,8 +418,11 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   - link stalls: frames on which a console waits for the link still draw (the main loop) but don't tick. They are
     the console's own network timing and can't be reproduced; the port's link never stalls, and nor did the
     recordings (their frames and ticks stay a constant apart through each round);
-  - the save's event flag 0x1720 isn't recorded: bn6-compat reads it as clear. The lab's three support scenarios
-    (navicust/beat, rush, tango) have it set, and their consoles fall one draw behind at the first check;
+  - the save's event flag 0x1720 is in the setups of traces recorded since the coverage push
+    (`emotion_window_glitches`, both consoles'); bn6-compat reads it as clear in older ones. The NaviCust sets it
+    at load when a bug's routine ran (`sub_813CBCC`), also for the bugs the navi's stats don't show in battle (the
+    support bug, the result bug): the lab's `navicust/bug-support` has it set and keeps step (the three support
+    scenarios had it, unintended, until their parts were moved off the grid's outer ring);
   - the other console's RNG1 (and tag pair) isn't recorded either: bn6-compat gives it 0 (and none), which only a
     re-deal on that player's screen would read;
   - shakes of content not ported yet (most viruses', and the chips and objects still to come) are missing until
