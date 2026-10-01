@@ -1,19 +1,23 @@
 # Moving content to scripts
 
 The engine is a content-independent core and the BN6 ruleset's frameworks, in Rust; everything specific (a chip's
-attack, a dimming chip's controller, a navi chip's navi, a weapon routine, the objects they spawn) is a Luau script
-in the content pack, with its data (docs/design/scripting.md, docs/design/content-pack.md). This is how to move a
-piece of content from Rust, or from the disassembly, to a script, and what is left to move.
+attack, a dimming chip's controller, a navi chip's navi, a weapon routine, the objects they spawn) is Luau in the
+content pack (docs/design/scripting.md, docs/design/content-pack.md). Content is written in the content model's
+second version (docs/design/content-model-v2.md): definitions with keys, composed by builders, with assets by name
+and no numbers of the original's. This is how to move a piece of content from Rust, from a v1 module or from the
+disassembly to a v2 definition, and what is left to move.
 
-Three exemplars show the pattern end to end, and are the models to copy:
+The exemplars (content model v2, step 7) show the patterns end to end, and are the models to copy:
 
 | Exemplar | What it shows | Where |
 |---|---|---|
-| AreaGrab and PanelGrab | A dimming chip: the controller's `dimming_chip` hook calling the dimming service; the object it spawns; a chip whose script is an object's module; register-garbage position (`scratch_position`) | content/bn6/objects/area-grab, objects/grab-shot, chips/0a2-panlgrab, chips/0a3-areagrab |
-| EraseMan | A navi chip: the navi's `navi_chip` hook and `navi_chip.navi_left`; three kinds that spawn each other; branches the Rust never had (the slash's navi-AI variant) | objects/erase-man, objects/erase-mark, objects/erase-beam, chips/0ec-eraseman (and EX, SP) |
-| MegaMan's buster | Weapon routines (`setup`) and the actions they bring (`state`/`update`); a shared library (`lib/buster.luau`); rules data (`data.rules.buster_recovery`); an object kind with a garbage Z fraction (`scratch_z_fraction`) | navis/00-megaman/weapons/*, lib/buster.luau, objects/dust-ball |
+| The bombs and seeds | A chip action as a builder (`throw.action { held, thrower }`); a thrown kind with its variant as a record (`bomb.variant { ... }`, `define.record`); a series in one module; shared definitions (collision types, effects, sparks, regions); an attachment look | lib/bombs/, chips/minibomb, bigbomb, energbom, flshbom, blkbomb, bugbomb, grasseed, iceseed, poisseed; rules/collision.luau, lib/{effects,sparks,regions}.luau, objects/attachment |
+| The swords | One action builder for a family (`slash.action { blade, hit, effect, sound, ... }`); the transitional `legacy` marker; chips kept on records with their actions by compat key | lib/swords/, chips/sword ... chips/assnswrd |
+| AreaGrab and PanelGrab | A dimming chip: the `dimming` hook spawning a controller kind whose update is `dimming_chips.phases { effect }`; a chip parameter that becomes the hook | lib/dimming.luau, lib/grab/, chips/areagrab, chips/panlgrab |
+| EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; chips kept on records behind a registration shim | chips/eraseman/, chips/0ec-eraseman |
+| BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library with the records' path beside it | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau, chips/0c0-atk-10 |
 
-GunDelSol (chips/00f-gundels1, objects/attachment, objects/sun-beam) is the plain chip action.
+MegaMan's buster (navis/00-megaman/weapons/*, lib/buster.luau) is still v1: weapon routines registered by number.
 
 ## 1. What moves and what stays
 
@@ -33,113 +37,143 @@ the digest), and the ruleset's frameworks and services:
 A gap in any of these ("not implemented yet" in the framework) is fixed in Rust, not in content.
 
 **Moves**: every chip action, every dimming chip's controller and navi chip's navi, every weapon routine, and the
-object kinds they spawn. The ruleset reaches content only through registration (§3): a script for an action, a
-kind, or a numbered hook.
+object kinds they spawn. The ruleset reaches content through definitions (a chip's use, a kind, an action, a
+weapon, a role) and, until the migration ends, through registration by number (§3.2).
 
 ## 2. The pattern
 
-1. **Read the original.** Port from the disassembly, routine by routine, and every branch of it: the Rust version
-   (if there is one) is a guide, not the scope. Branches the Rust left as "not implemented" panics get ported. A
+1. **Read the original.** Port from the disassembly, routine by routine, and every branch of it: a v1 module or
+   the Rust (if there is one) is a guide, not the scope. Branches left as "not implemented" panics get ported. A
    branch the game can only take by running off a table or looping forever becomes an explicit `error(...)` naming
    the routine (AreaGrab's `sub_800D5BA`); one the game crashes on (a stack overflow) likewise.
-2. **Place it by owner.** A chip's own action goes in the chip's folder (`chips/NNN-name/chip.luau`, and
-   `script = "chip.luau"` in its `chip.toml`); chips that share it name that module. An object kind goes in
-   `objects/NAME/` (`object.toml` with `[kind]`, and `NAME.luau`). A dimming chip's controller or a navi chip's
-   navi is an object kind; its module also exports the hook, and the chips name the module. A weapon routine
-   goes in `navis/00-megaman/weapons/NN-name/` (`weapon.toml`, the module). Helpers several modules share go in
-   `lib/`. All of it is in content/bn6, the source overlay, which mirrors the pack.
-3. **Write the module.** `--!strict`; a header saying what it is, with the routine and object numbers; one local
-   function per routine, commented with its name; the game's immediates as named constants; `export type State`
-   and the `state` schema for what it keeps (the object's own fields first: timers, params, the header). Export
-   the kind's spawner (`erase_mark.spawn(owner, x, y, ticks)`, the game's `sub_80E7942`) for its callers to
-   `require`. Mind the game's store widths (`me.lifecycle = "destroy"` is `strb`, `me:set_lifecycle(...)` is the
-   word store), its sprite-stepping routine (`update_sprite`, `update_sprite_while_dimmed`,
-   `update_sprite_while_paused`, `step_sprite`), and the order of RNG draws.
-4. **Data.** Numbers that differ between entities of the same code are pack data, read through `data` (a chip's
-   own table in its `chip.toml`, a rule in `rules/`). A table the ROM has that the pack doesn't yet: extract it
-   (bn6-extract's battle.rs), write and read it (bn6-content's battle.rs, into the entity's folder by the
-   by-owner rule), hold it in `Content` (bn6-battle's content module), expose it to scripts (behavior/data.rs) and
-   type it (`PackData` in core.d.luau). Nothing ROM-derived is committed: the test content gets made-up values.
-5. **API.** When a script needs something the API lacks, add it: a `CoreApi` method (crates/bn6-content-api/src/
-   api.rs, documented with the routine it is), its implementation (crates/bn6-battle/src/behavior/core_api.rs,
-   calling the engine's existing function), its binding (crates/bn6-luau/src/bind.rs), and its declaration with a
-   comment in content/bn6/core.d.luau. Names, not numbers: a new set of flags or states is an enum with names in
-   the API and a string-literal type in core.d.luau, and gets a misuse case in bn6-content-check's test.
-6. **Register garbage.** An object whose position is its spawner's registers: reproduce the value when it is
-   knowable (spawn with it), else declare `scratch_position = true` (or `scratch_z_fraction = true`) in its
-   `[kind]`, which the trace comparison reads.
-7. **Delete the Rust.** The kind's module, its `kinds::Vars` variant, its arms in `kinds::update` and
-   `actions::dispatch` or in the hook's fallback (`idle::weapon_routine`, `dimming_chip::update`,
-   `navi_chip::bring_navi`), its `ActionVars` variant, and references in trace.rs. Rust callers of the deleted
-   code call the script through its registration, or move to content too. Nothing exists twice.
-8. **Test in the repository** (§4.1): register the module in the test content and exercise it.
-9. **Test against the traces** (§4.2): the frame floors must not drop, and a trace that now runs further records
-   its new floor.
-10. **Docs.** docs/engine describes the game; point its "Rust" mentions at the pack's module
-    (object-kinds-pvp.md's table, for one). Commit messages end with the session's attribution lines.
+2. **Place it by owner** (content-model-v2.md §4): a chip's definition in `chips/<key>/chip.luau` (a series in
+   `chips/<key>/chips.luau`), the key compat's (compat/chips.toml); the kinds only it spawns beside it
+   (`chips/eraseman/beam.luau`), keyed under it (`eraseman/beam`); what a family shares in `lib/<family>/`
+   (builders, shared kinds: lib/bombs, lib/swords, lib/grab). The shared definitions are rules/collision.luau,
+   lib/effects.luau, lib/sparks.luau and lib/regions.luau: add the entry you need there, named by what it does.
+3. **Write the definitions.** `--!strict`; a header saying what it is, with the routine and object numbers; one
+   local function per routine, commented with its name; the game's immediates as named constants.
+   - A kind is `define.kind { id, pool, state, update }`; its state is typed fields, references included
+     (`"object"`, `"record:bomb-variant"`, `"bool"`), and what the original passed as parameters becomes state
+     the spawner sets (`eraseman/mark`'s `ticks`). Export its spawner (`mark.spawn(owner, x, y, ticks)`, the game's
+     `sub_80E7942`).
+   - An action is `define.action { id?, state, args, update }`, usually from a family's builder: what differs
+     between chips is the builder's arguments, and a variant several kinds read is a record (`define.record`).
+     Anything a definition holds is in the canonical tree, so a thrower is `{ throw = fn, variant = record }`,
+     not a bare closure.
+   - A chip is `define.chip { id, ...its record..., <one use> }`: `action`, `dimming`, `navi` or `instant`. The
+     record is the pack's chip record field by field (`beast = { lockon = n }`, flags by name).
+   - Assets by name: `asset.sprite("bomb")`, `asset.sound("sword-swing")`; the names are compat/assets.toml's (a
+     placeholder such as `sprite-14-1b` is named first, with an entry in compat/curation.toml).
+   - The API by definition and handle: `battle.spawn(kind, pos)`, `me:setup_collision(collision.thrown, ...)`,
+     `battle.effect(pos, effects.explosion)`, `collision:set_hit_effect(sparks.erase)`. The numeric API
+     (`spawn_kind`, `me:param`, `me.variant`, numbers for sounds, effects and collision types) is deprecated and
+     counted by the ratchet; new code doesn't use it. Statuses, bug codes, NameIDs and `hit_effect = 0xFF` have no
+     v2 form yet and stay numbers.
+   - Mind the game's store widths (`me.lifecycle = "destroy"` is `strb`, `me:set_lifecycle(...)` the word store),
+     its sprite-stepping routine (`update_sprite`, `update_sprite_while_dimmed`, `update_sprite_while_paused`,
+     `step_sprite`), and the order of RNG draws.
+4. **Compat.** Every key the traces see must be compat's: a chip's (chips.toml), a kind's (kinds.toml, with
+   `scratch_position` for a position the spawner's registers leave), an action's (actions.toml: a chip's action
+   is `<chip>/action`, which is the key it gets by default; give `id` when no chip holds it). compat/ is
+   gen-content's; a key or name you add goes into compat/curation.toml too, for review.
+5. **What stays numbered for now** (content-model-v2.md §12, "Transitional"). A chip the ruleset or another record
+   names by number keeps the pack's record (a Program Advance's ingredient, a dark chip, a navi chip AntiNavi
+   checks, a chip with a damage formula): its module returns its action with the compat key as `id`, and a
+   registration-by-number shim runs it (chips/036-minibomb, chips/047-sword, chips/056-mchnswrd, chips/0ec-eraseman,
+   chips/0c0-atk-10). A definition whose subtype or parameters a v1 module still reads carries
+   `legacy = { subtype, params }` (the swords SlashCross charges). Both are counted and go with the numbers.
+6. **API.** When a script needs something the API lacks, add it: a `CoreApi` method (crates/bn6-content-api/src/
+   api.rs, documented with the routine it is), its implementation (crates/bn6-battle/src/behavior/core_api.rs),
+   its binding (crates/bn6-luau/src/bind.rs), and its declaration with a comment in content/bn6/core.d.luau
+   (types.d.luau for the families' types). Names, not numbers: a new set of flags or states is an enum with names
+   in the API and a string-literal type in core.d.luau, and gets a misuse case in bn6-content-check's test.
+7. **Delete the old.** The v1 module and its registration (`object.toml`, a `chip.toml`'s `script`), the Rust
+   kind's module, its `kinds::Vars` variant, its arms in `kinds::update` and `actions::dispatch`, its
+   `ActionVars` variant. Nothing exists twice. Lower the ratchet (`BN6_RATCHET_LOWER=1 cargo test -p
+   bn6-content-check --test ratchet`); it may only shrink, except for a counted transitional use the design names.
+8. **Test in the repository** (§4.1) and **against the traces and the chip lab** (§4.2).
+9. **Docs.** docs/engine describes the game; point its mentions of content at the pack's module
+   (object-kinds-pvp.md's table, for one), and add the family's "As built" notes to content-model-v2.md §5.
+   Commit messages end with the session's attribution lines.
 
 ## 3. Registration
 
+### 3.1 Definitions
+
+| To implement | Write | The engine runs |
+|---|---|---|
+| An object kind | `define.kind { id, pool, state?, update }` | `update(me)` each tick it runs |
+| A chip's action | `define.chip { ..., action = <Action> }` (`define.action { id?, state, args, update }`, usually a builder's) | the action as the navi's attack (CurAction reads as compat's number) |
+| A dimming chip | `define.chip { ..., dimming = function(user, spec: DimmingChipSpec): Object? }` | action 0x15's framework spawns the controller through it; its update calls the `dimming` service (lib/dimming) |
+| A navi chip | `define.chip { ..., navi = function(user, controller, spec: NaviChipSpec): Object? }` | the navi chip controller brings the navi through it; the navi calls `navi_chip.navi_left(controller)` |
+| An instant chip | `define.chip { ..., instant = function(user, spec: InstantChipSpec) }` | action 0x1C runs it once |
+| A weapon | `define.weapon { id, name, charge_ticks, setup }` | `setup(navi)` names the action |
+| A role the ruleset starts | `define.roles { actions = { ... } }` | the ruleset's by-role starts (the trap chips' counters) |
+
+A definition's key is its `id` (or the key it derives: `minibomb/action`); two of one key is an error.
+
+### 3.2 Registration by number (transitional)
+
+What the pack's records and the ruleset still name by number reaches v1 modules through registration files, until
+step 13 removes them:
+
 | To implement | Write | The module exports |
 |---|---|---|
-| An object kind | `objects/NAME/object.toml`: `[kind] pool, index, script` (`scratch_position`, `scratch_z_fraction`) | `state` (optional), `update(me)` |
+| An object kind | `objects/NAME/object.toml`: `[kind] pool, index, script` | `state` (optional), `update(me)` |
 | A chip's action | `script = "..."` in `chips/NNN-name/chip.toml` | `state`, `update(me, s)` |
-| A dimming chip (action 0x15) | `script` in each chip of the subtype | `dimming_chip(user, spec: DimmingChipSpec) -> Object?`: spawn the controller; its update calls the `dimming` service's steps in its routine's order |
-| A navi chip (action 0x1B) | `script` in each chip of the subtype | `navi_chip(user, controller, spec: NaviChipSpec) -> Object?`: spawn the navi; it calls `navi_chip.navi_left(controller)` when done |
-| An instant chip (action 0x1C) | `script` in each chip of the subtype, or `instant_chip = N` in a weapon.toml whose routine names the subtype | `instant_chip(user, spec: InstantChipSpec)`: the effect (`off_80EC3F0[subtype]`), run once; the ruleset's action idles after it |
-| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` (the setup can prepare that state before the action starts: `navi:action_state(action)`) |
+| A dimming chip (action 0x15) | `script` in each chip of the subtype | `dimming_chip(user, spec)` |
+| A navi chip (action 0x1B) | `script` in each chip of the subtype | `navi_chip(user, controller, spec)` |
+| An instant chip (action 0x1C) | `script` in each chip of the subtype, or `instant_chip = N` in a weapon.toml | `instant_chip(user, spec)` |
+| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
 
-Scripts are paths relative to the registering file. Two chips of an action or subtype must name the same module;
-a slot, action or hook claimed twice is an error (`Content::registrations`, `Registrations::validate`).
-
-A new kind of registration (a ruleset table that dispatches by number, like the instant chips' `off_80EC3F0`) is a
-new `Hook` variant: crates/bn6-content-api/src/host.rs (the variant and its function name), the argument struct and
-`HookCall` variant, content/scripts.rs (what registers it), behavior/mod.rs (its lookup table), bind.rs (the call),
-core.d.luau (the spec type), and the ruleset's call site with its Rust fallback until nothing uses it.
+A shim is such a module that runs the definitions' own code for the records (chips/036-minibomb runs each bomb
+chip's action by subtype). Scripts are paths relative to the registering file; a slot, action or hook claimed twice
+is an error.
 
 ## 4. Testing
 
 ### 4.1 In the repository
 
 In-repo tests never load game data. The test content (crates/bn6-battle/src/content/testing.rs) is made-up
-records that register the overlay's modules, which it reads from content/bn6 at test time:
+records plus the overlay's modules, which it reads from content/bn6 at test time:
 
-- add the module (and its `require`s) to `scripts()`'s list, the kind to `kinds()` (in name order), a chip with
-  the action and subtype to `chips()` (a new `pub const` id, the next free), or a weapon to `weapons()`;
-- give the sprites it loads short animations in `animations()`, and whatever data it reads (an attachment row, a
-  rule) made-up values;
-- test it: `behavior/tests.rs` plays duels (`scenario::setup_with(&[chips])`, `scenario::record_on`) and checks
-  the kinds appear and roll back (`scripted_chips_roll_back`); `kinds/player/actions/tests.rs` runs one navi's
-  action tick by tick (`fight_with(megaman_with(|s| ...))`) and checks its timeline;
-- `battles_run_the_content_scripts` and `registrations_follow_the_content_data` list what the test content
-  registers: update them.
+- add the modules (and their `require`s) to `scripts()`'s list; the asset names they resolve to `assets()` (BN6's
+  names with BN6's numbers); whatever they read (an attachment row, a rule) made-up values; the sprites they load
+  short animations in `animations()`;
+- a chip content defines is in the test content by its module (`testing::defined_chip(testing::AREA_GRAB)`);
+  folders hold it by handle (`scenario::setup_with_handles`, in code A, else `*`); a test uses it with
+  `use_chip_handle` or `use_instant_chip_handle`. A v1 kind keeps its `kind(...)` line, a numbered chip its
+  `chips()` record;
+- test it: `behavior/tests.rs` plays duels (`duel_with`, `scenario::record_on`) and checks the kinds appear and
+  roll back (`scripted_chips_roll_back`); `kinds/player/actions/tests.rs` runs one navi's action tick by tick and
+  checks its timeline;
+- `battles_run_the_content_scripts` lists the test content's kinds by key: update it.
 
 Then:
 
 ```sh
-cargo run -p bn6-content-check -- content/bn6     # every module type-checks
+cargo run -p bn6-content-check -- content/bn6     # every module type-checks, the lints
 cargo build --workspace --all-targets             # no warnings
-cargo test --workspace                            # includes the netplay rollback tests and the type check
+cargo test --workspace                            # includes the rollback tests, the type check and the ratchet
 ```
 
-### 4.2 Against the traces
+### 4.2 Against the traces and the chip lab
 
-The golden traces are in the verification workspace, a separate checkout that builds this repository's crates by
-path and reads an extracted pack at `data/content/bn6`:
+The golden traces and the chip lab are in the verification workspace, a separate checkout that builds this
+repository's crates by path. Extract a pack from your checkout (it carries the asset name index) and run the
+workspace's tests against your checkout on it:
 
 ```sh
-cargo run --release -p bn6-extract -- content <rom> <verification>/data/content/bn6
-cargo test --release -p trace-tests      # traces, rollback at every latency, rock_trace, bn6_data, custom_screen
-cargo test --release -p sound-tests      # the sound calls
+cargo run --release -p bn6-extract -- content <rom> <pack>
+BN6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release
+BN6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release --test lab -- --ignored
 ```
 
-(run in the verification workspace). The floors today: machgun rounds 1 and 2 complete (1074/1074, 1331/1331),
-soundmod 6728/6761/2744 (round 1 stops at dimming chip subtype 26, round 2 at chip effect 0x8, round 3 at weapon
-routine 0x27), the rollback test matching every confirmed frame at latencies 0+0 to 10+3, and the sound calls
-(machgun 53 over 1651 frames, soundmod 35 over 8596). A trace exercises a script only where it reaches it: grep
-the trace for the object's `"type"` and `"index"` or the player's `"state":[4,ACTION,` to see whether and when. Where the workspace's tests
-name something that moved (a Rust kind's `INDEX`, a renamed flag), update them to the content's
-(`b.content.object_kind("sun-beam")`).
+The floors today: machgun 1074/1074 and 1331/1331, soundmod 6728/6857/3088, the rollback test matching every
+confirmed frame at latencies 0+0 to 10+3; the chip lab 2572 of 3621 scenarios fully matched (2,018,981 frames).
+Compare the lab's summary.md with the workspace's: the families you converted must match as before. Where the
+workspace's tests name something that moved, the change goes into a patch for the workspace's owner (don't edit it).
 
 Rollback cost: `cargo run --release -p bn6-netplay --example rollback_cost -- <trace.jsonl> <pack>
 <round>`; today 56 to 110 µs per rendered frame (scripting.md §7.3). Report the change.
@@ -235,8 +269,8 @@ kind). Left:
 ### Group E: instant chips (ported; what is left)
 
 Action 0x1C calls `Hook::InstantChip(subtype)` (§3). Every entry of `off_80EC3F0` is ported: 0, 3 (chips/13f-beastout,
-chips/0c0-atk-10, objects/rising-bubble), 1 (objects/boomerang), 4 (objects/lance), 5 (chips/0ae-fullcust), 8
-(objects/fire-hit), 10 (chips/0af-busterup), 12 (objects/sand-worm, sand-spray, sand-hole), 13 (chips/11d-synctrgr),
+lib/instant/plus with chips/atk-10, chips/navi-20 and chips/0c0-atk-10, objects/rising-bubble), 1 (objects/boomerang), 4 (objects/lance), 5 (chips/0ae-fullcust), 8
+(objects/fire-hit), 10 (chips/busterup, a definition), 12 (objects/sand-worm, sand-spray, sand-hole), 13 (chips/11d-synctrgr),
 14 (objects/flame-hook, flame-hook-fire), 15 (objects/col-force, col-force-soldier), 19 (objects/justice-one), 20
 (weapons/10-tengu-wind, objects/gust), 21 (objects/golem), 22 (objects/col-army); 7 and 0x12 are NULL (an explicit
 panic). 2, 6, 9, 11 (lib/instant-chips) and 16, 17 (objects/meteor-shower, dust-storm) have no chip or MegaMan weapon:
