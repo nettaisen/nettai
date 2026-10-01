@@ -87,7 +87,7 @@ standard chip action…), whichever section below the family belongs to:
 | Panel chips | a holy panel cracked from under its user in the same dimming | no cut-in on a panel chip | yes | chips/0x0a8-holypanl/cut-in-geddon: verified |
 | BugFix (subtype 26) | a navi with parts | every lab user is MegaMan | yes (a link navi) | chips/0x0b0-bugfix/link-navi: verified |
 | BugFix | a non-player navi's sprite, stat 0x21 = 0, variants 1 and 2 | no such user; no caller | unreachable | |
-| Instruments (subtype 9) | the destroyed action (broken, and pushed) | no instrument broken or removed | yes | chips/0x092-fanfare/broken, pushed; chips/0x093-discord/broken, chips/0x094-timpani/broken, chips/0x095-silence/broken: verified |
+| Instruments (subtype 9) | the destroyed action (broken, and pushed) | no instrument broken or removed | yes | chips/0x092-fanfare/broken, pushed-by-enemy (side 1's AirShot knocks it back; side 0's own `pushed` moves none of its side's objects); chips/0x093-discord/broken, chips/0x094-timpani/broken, chips/0x095-silence/broken: verified |
 | Instruments | the tune played to its end | scenarios end first | yes | chips/0x092-fanfare/lifetime: verified |
 | Instruments | Fanfare's Beast Over test (both versions' Beast Over), and Beast Out for contrast | no Beast Over | yes | chips/0x092-fanfare/beast-over, beast-over-gregar, beast-shot-at: verified |
 | Instruments | the battle-over branches (playing, resting) | no KO with an instrument out | yes | chips/0x092-fanfare/round-end, chips/0x095-silence/round-end-rest: verified |
@@ -96,7 +96,7 @@ standard chip action…), whichever section below the family belongs to:
 | AirRaid (subtype 13) | the plane shot down, the battle-over branch, the bombs against a barrier or no body | the plane is never hit | yes | chips/0x068-airraid1/broken, ko, barrier, invisible: verified |
 | AirRaid | the plane removed, absorbed, blinking out | no remover | yes | chips/0x068-airraid1/dustman, colarmy, absorbed: verified |
 | AirRaid | the plane's lifetime, AirRaid3's plane shot down, the bombs' panel list as the opponent walks | | yes | chips/0x068-airraid1/lifetime, moving-target, chips/0x06a-airraid3/broken: verified |
-| Sensor (subtype 28) | the pushed turret, the broken turret | the turret is never hit or pushed | yes | chips/0x071-sensor1/broken, pushed: verified |
+| Sensor (subtype 28) | the pushed turret, the broken turret | the turret is never hit or pushed | yes | chips/0x071-sensor1/broken, chips/0x073-sensor3/pushed (side 1's AirShot on Sensor3's 40-HP turret, `sub_80DA37A`; Sensor1's 20-HP turret breaks to it, and side 0's own shot in `sensor1/pushed` doesn't move it): verified |
 | Sensor | the laser's re-arming | one firing per scenario | yes | chips/0x071-sensor1/twice: verified |
 | Sensor | the battle-over branches | no KO | yes | chips/0x071-sensor1/ko: verified (the comparison now keeps a spark's garbage Z fraction after its laser is freed) |
 | Sensor | the scanner blocked by an object, where it starts and on its step; the scanner off the top and bottom rows and the far column | the opponent always stands in its line | yes | chips/0x071-sensor1/blocked-rock, blocked-rock-far, row1, row3, long-miss: verified |
@@ -113,7 +113,7 @@ standard chip action…), whichever section below the family belongs to:
 |---|---|---|---|---|
 | Wind, Fan (subtype 8) | a second fan replacing the first | one fan per scenario | yes | chips/0x081-wind/twice: verified (the second, from another row, evicts the first through the field-object registry, class 1, before it becomes its side's wind, so the wind registry's own replacement never runs: completeness.md §6.2). `then-fan` places no Fan: the panel in front is the Wind's; `both-sides` is one fan a side |
 | Wind, Fan | the lifetime running out (1440 ticks) | scenarios end first | yes | chips/0x081-wind/lifetime: verified |
-| Wind, Fan | Fan's fan broken; AirShot at it | only Wind's `counter` breaks one | yes | chips/0x082-fan/broken, pushed: verified (the shot breaks it: no push branch) |
+| Wind, Fan | Fan's fan broken; AirShot at it | only Wind's `counter` breaks one | yes | chips/0x082-fan/broken, pushed-by-enemy (side 1's AirShot knocks the 40-HP fan back; side 0's own `pushed` doesn't move it): verified |
 | Wind, Fan | no gust (an obstacle on the row's first enemy panel; Fan's start a panel nearer) | no obstacle there | yes | chips/0x081-wind/no-gust, chips/0x082-fan/gust-past-bomb: verified |
 | Wind, Fan | removal, blink-out, absorption | no remover | yes | chips/0x081-wind, chips/0x082-fan/{dustman, colarmy, absorbed}: verified |
 | Wind, Fan | pushes (action 5), a flipped fan | AirShot breaks the fan; no player is flipped | hard / unreachable | open |
@@ -130,7 +130,7 @@ standard chip action…), whichever section below the family belongs to:
 | Guardian | the lifetime (6000 ticks), removal, blink-out, absorption | too long; no remover | yes | chips/0x097-guardian/lifetime, dustman, colarmy, absorbed: verified |
 | Meteors (subtype 16) | the lists after area changes, a marker at battle end | no AreaGrab first, no KO | yes | chips/0x08b-meteors/after-areagrab, grabbed, ko: verified |
 | Meteors | an empty list, a marker off the field, rows other than Param1 1 | the enemy always owns panels; no chip | unreachable | |
-| Anubis, PoisPhar (subtype 17) | breaking by damage, AirShot at it, the lifetime, a second statue | the statue is never hit; scenarios end first | yes | chips/0x098-anubis/broken, pushed, lifetime, replaced: verified |
+| Anubis, PoisPhar (subtype 17) | breaking by damage, AirShot at it, the lifetime, a second statue | the statue is never hit; scenarios end first | yes | chips/0x098-anubis/broken, pushed-by-enemy (side 1's AirShot knocks it back), lifetime, replaced: verified |
 | Anubis | a non-solid landing panel, removal, blink-out, absorption | | yes | chips/0x098-anubis/hole-ahead, dustman, colarmy, absorbed: verified |
 | Anubis | time up, an enemy with no panel for a bubble | needs the judge with a statue out; the enemy always owns panels | hard / unreachable | open |
 | Anubis | the flipped user's registry store | no player is flipped | unreachable | |
@@ -138,7 +138,7 @@ standard chip action…), whichever section below the family belongs to:
 | CircGun | a start column of the user's own panels, shots on non-solid panels | the timeout's place | yes | chips/0x08e-circgun/after-areagrab, holes: verified |
 | CircGun | a start column holding none of the enemy's home panels (the opponent's two AreaGrabs) | | yes | chips/0x08e-circgun/grabbed: verified |
 | CircGun | Param3 1, a non-player first actor | no chip | unreachable | |
-| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: verified |
+| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken: verified. No push: the statue takes hits and is never pushed (`sub_801AD6A`); `chips/0x099-otenko/pushed` is side 0's own shot, which doesn't move it, and side 1's AirShot hits it (100 HP to 80) without a move |
 | Otenko | the statue removed, absorbed, blinking out | no remover | yes | chips/0x099-otenko/dustman, colarmy, absorbed: verified |
 | Otenko | the lifetime (1800 ticks), a second statue, the blessing on two chips in turn | | yes | chips/0x099-otenko/lifetime, replaced, bonus-two-chips: verified |
 | BlzrdBal (subtype 21) | a non-solid thrower panel, the roller's battle-over end, three swallows | | yes | chips/0x0c7-blzrdbal/no-footing, ko, three-rocks: verified |
@@ -251,7 +251,7 @@ The first batch of the survey's scenarios covered the rows below; the rest of th
 | VarSwrd, NeoVari | the random pick; the charged sword (0x41) | Beast Over; SlashCross and the Beast's charge | yes | chips/0x052-varswrd/beast-over, chips/0x053-neovari/beast-over, beast-charged: verified |
 | MoonBld | the repeat swings | no trigger found in a netbattle | check | open |
 | CopyDmg | the time-up path; an obstacle as the target (NameIDs 0xCD..0xFF) | | yes | chips/0x0be-copydmg/time-up, on-rock, rock-hit: verified |
-| RlngLog | the log's stop and break; no ground under it | no shot meets a log | yes | chips/0x028-rlnglog1/shot, holes: verified |
+| RlngLog | the log's stop and break; no ground under it | no shot meets a log | yes | chips/0x028-rlnglog1/shot (the Vulcan breaks a log), buster-stops (a buster hit stops a landed log for 60 ticks, `sub_80D141A`), holes: verified |
 | RlngLog | the drop-in path | | check | open |
 | Static | the larger spreads (the user's NaviCust bug kinds) | no bugged user | yes | chips/0x035-static/bugs-1, bugs-2, bugs-3: verified |
 | Tornado | subtype 3 | no chip record gives it (the chips are subtypes 1 and 2) | unreachable | |
@@ -270,7 +270,7 @@ The first batch of the survey's scenarios covered the rows below; the rest of th
 
 | family | branch | why it was unreached | reachable | scenario and status |
 |---|---|---|---|---|
-| Obstacles | pushes (`sub_8017CC0`, `sub_800F598`, `sub_8017CE0`, `sub_8017D64`, `sub_8017E0A`) | nothing is pushed | yes | chips/0x090-timebom1/pushed, chips/0x03c-blkbomb/pushed, chips/0x062-lilbolr1/pushed, chips/0x08f-rockcube/pushed-by-enemy, chips/0x097-guardian/pushed, chips/0x071-sensor1/pushed, chips/0x17c-icecube/pushed: verified |
+| Obstacles | pushes (`sub_8017CC0`, `sub_800F598`, `sub_8017CE0`, `sub_8017D64`, `sub_8017E0A`) | nothing is pushed | yes | chips/0x090-timebom1/pushed, chips/0x03c-blkbomb/pushed, chips/0x062-lilbolr1/pushed, chips/0x08f-rockcube/pushed-by-enemy, chips/0x073-sensor3/pushed, chips/0x092-fanfare/pushed-by-enemy, chips/0x098-anubis/pushed-by-enemy, chips/0x082-fan/pushed-by-enemy, chips/0x17c-icecube/pushed: verified (a side's own AirShot doesn't move the objects it sets on its own panels, so Guardian's, Sensor1's, Fanfare's, Anubis's, Fan's and Otenko's `pushed` show no push) |
 | Obstacles | the pushes' ice and bounds branches | | yes | stages/ice-50-rockcube-airshot, iceblocks-2c-airshot, ice-52-icecube, fan-airshot-ice (over ice), chips/0x077-lance/stage-ice (a pull stops at the edge of the puller's area), chips/0x023-elcpuls2/obstacle: verified |
 | Obstacles | the field-object slots: a third class-0 object, a second class-1 one | | yes | chips/0x08f-rockcube/replaced, chips/0x098-anubis/replaced, chips/0x062-lilbolr1/replaced: verified |
 | Obstacles | thrown and encased (`sub_8018002`, `sub_801813A`) | nothing in the game starts them | unreachable | |

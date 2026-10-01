@@ -85,15 +85,15 @@ agents' runs).
 
 ## 2. Counts
 
-8,116 routines are in the inventory; 4,060 of them run in the lab.
+8,116 routines are in the inventory; 4,063 of them run in the lab.
 
 | Class | Routines |
 |---|---|
-| Ported: cited in the engine's source or content (3,232 run, 208 don't: §6.1) | 3,440 |
+| Ported: cited in the engine's source or content (3,236 run, 205 don't: §6.1) | 3,441 |
 | Out of scope: not reachable from a netbattle's code | 3,175 |
-| Documented: cited in docs/engine only (269 run, 152 don't) | 421 |
+| Documented: cited in docs/engine only (268 run, 154 don't) | 422 |
 | Out of scope: excluded by a rule (§5) | 349 |
-| Folded into a ported caller (24 of them never run) | 205 |
+| Folded into a ported caller (22 of them never run) | 203 |
 | Infrastructure a netbattle runs | 126 |
 | Trivial: empty or an accessor | 122 |
 | Presentation: HUD tasks | 112 |
@@ -115,7 +115,7 @@ By area:
 | Object system | 9 | 14 | 3 | 0 | 0 | 0 | 0 | 0 | 5 |
 | Battle flow | 65 | 88 | 11 | 2 | 0 | 0 | 16 | 0 | 136 |
 | Battle objects and panels | 100 | 27 | 3 | 2 | 0 | 0 | 6 | 0 | 35 |
-| Actors, collision, status, HUD | 531 | 82 | 50 | 13 | 110 | 0 | 42 | 2 | 154 |
+| Actors, collision, status, HUD | 532 | 83 | 48 | 13 | 110 | 0 | 42 | 2 | 154 |
 | Link status, battle settings | 2 | 10 | 1 | 0 | 0 | 2 | 1 | 0 | 15 |
 | Custom screen, gauge, camera | 173 | 28 | 65 | 55 | 16 | 0 | 29 | 3 | 371 |
 | Link layer | 1 | 11 | 0 | 0 | 0 | 51 | 16 | 0 | 110 |
@@ -222,8 +222,9 @@ only they call.
 
 ### 6.1 Ported routines no recording runs
 
-208 routines the source cites are never run by the lab (260 before the cut-in chips' recordings ran to their
-end, 225 before the scenarios of the second batch below). A citation is not a test: these are the port's
+205 routines the source cites are never run by the lab (260 before the cut-in chips' recordings ran to their
+end, 225 before the scenarios of the second batch below, 208 before the third's). Every one has been read: three
+of the last 76 could run and have scenarios now, and none of the 205 can run in a netbattle. A citation is not a test: these are the port's
 unverified parts, or content for something a netbattle can't do. By the file that cites them, with whether a
 netbattle can run them where that has been read:
 
@@ -237,7 +238,17 @@ netbattle can run them where that has been read:
 | `content/bn6/lib/rapid_buster.luau`, `lib/dimming/blinding_flash.luau`, `chips/bugfix/glow.luau`, `navis/megaman/weapons/shield`, `navis/tomahawkman`, `chips/tornado`, `chips/mstrcros`, `chips/rskyhny` | 22 | weapon routines 0x39, 0x3C, 0x8C and 0x46; dimming effect 2; the glow's two other variants; the Tornado action's subtype 3; a sword phase and a bee action nothing sets | can't: nothing names the routine, effect, variant or phase (the NaviCust writes weapon routines 0x3B, 0x8B and 0x3D only; the link navis' level tables 0x30 and 0x34) |
 | `crates/bn6-battle/src/collision.rs`, `field.rs`, `crates/bn6-frontend/src/objects.rs`, `chips/elecman` | 15 | IWRAM routines | run, not counted: the lab's coverage doesn't instrument IWRAM |
 | `navis/megaman/turn.luau`, `chips/antidmg/counter.luau`, `kinds/player/chip_use.rs` | 4 | the turn (`sub_80EDF0C`); AntiDmg's counter aimed at the nearest enemy (`sub_8016218`); the special chip's gauge cost (`sub_800EE98`, `sub_802E830`) | can't: L and R never turn on a link stage (§5); the counter's variant is 0 wherever it starts (below); the special chip is battle flag 0x40's |
-| the rest, one to four each (about 40 files) | 76 | single phases and helpers: LifeSync's marker, the follow effect's other looks, LilBoiler's layer, a bomb's lingering hit, the lock-on marker's choice between two targets, and others | not read yet: the next batches |
+| `content/chips.rs` | 3 | damage formulas 0, 19 and 22: the opponent's HP, the custom gauge, half the opponent's max HP | can't: no chip record's damage is 1000, 1019 or 1022 (`gen-content check` reads them all) |
+| `chips/lifesync` | 6 | LifeSync's aim, marker, warning and sync | can't: a link battle skips them (dimming-chip-effects.md §14) |
+| `kinds/lockon_marker.rs` | 3 | the lock-on marker's choice between two targets | can't: a side has one combatant |
+| `lib/bombs/slash.luau` | 4 | a bomb's lingering hit (attack object #0xA) | can't: no chip throws bomb kind 1 |
+| `objects/follow-effect` | 4 | the follow effect's looks 3, 5, 6 and 8 | can't: no spawner passes look 3, and looks 5, 6 and 8 come from an AI navi's actions and an out-of-scope object (DeltaRay's 4 and ElecMan's 7 run) |
+| `chips/lilbolr/layer.luau` | 4 | a layer's own flip, row offset, held sprite and visibility | can't: the viruses' settings |
+| `chips/timebom`, `spoutman`, `airhocky`, `geddon`, `wavearm`, `objects/panel-bursts`, `objects/rock`, `chips/sandwrm` | 9 | TimeBom's blinking away, SpoutMan's water standing again, the puck's simple bounce, Geddon's poison and its row builder, the bursts' panels by offsets, a breaking wave, the rock's fall, SandWrm's hole waiting open | can't: the variants no chip sets (countdown rows 2 to 7, every puck crossing, no poison or breaking row), a second spout only his AI gives, every caller of the bursts passing an area, and the two documented in unverified.md |
+| uncalled, or called only by code out of scope | 15 | the end-of-list spawn's twin (`sub_800333C`), the body overlay's held visibility, SlashCross's wave while dimmed, Beat's unread flag, an effect following its owner, the form overlay's stun hold, a push by any hit (`sub_801ADFA`), a navi's own wind, the overlay refreshes of other actor records (MegaMan's is `sub_80C44D2` in every form), DiveMan's AI, the virus update, the drain hits' healing | can't: nothing references them, or only routines the audit finds unreachable or a rule excludes |
+| the ruleset's | 21 | turning to face an object (panel patterns 0x23, 0x31, 0x33), its unused setter, the HP bug of an actor without stats, an obstacle's bubble and its return to idle, the encased flicker, the rock thrown, the class lookup of an encased obstacle, the step that doesn't animate, the step's Land phase, the buffered step (both entries), the Cross change while paused (3), the linked object the status reset ends, bug code 0xFB, the Cross Beast table's step 0xC, the SELECT special's end, FullCust's side gauge, `nullsub_44` | can't: no link stage has those patterns; nothing sets the state bit, NaviStats+0x11, the Cross change, the linked object or bug code 0xFB; the obstacles' reactions and action 1 come only from the actors' and out-of-scope kinds' code; a Cross Beast's change writes its new form at step 8, and from then the Beast's Cross table runs (`sub_80154C8`, `sub_80155CC`); the SELECT special and the side gauge are battle flag 0x40's; §9 has `nullsub_44` |
+| battle mode 9's | 2 | the objects the player of AI index 10 spawns | can't: a netbattle's mode is 0 |
+| outside the simulation | 2 | `GetBattleSettingsUnk01` (settings byte 1), `LoadBGAnimData` (the extractor's backgrounds) | not the simulation's |
 
 The audit's `unrun.txt` lists them. Scenarios written from this list (all match):
 
@@ -270,6 +281,14 @@ The audit's `unrun.txt` lists them. Scenarios written from this list (all match)
     enemy (`sub_8016004`). The counter's other aim, the nearest enemy ahead (`sub_8016218`, its variant 1), is not
     reachable: the stance's weapon routine (0x3D, `sub_80121BC`) writes variant 0, and every trap's counter
     (`sub_801056A`'s six callers) passes 0.
+- Third batch, the last 76 read: RlngLog's log stopped by a hit and rolling on (`chips/0x028-rlnglog1/buster-stops`:
+  a buster hit on a landed log; the `shot` scenario's Vulcan breaks it at once, `sub_80D141A`); Sensor's turret
+  pushed (`chips/0x073-sensor3/pushed`: side 1's AirShot on Sensor3's 40-HP turret, `sub_80DA37A`; Sensor1's
+  breaks to it); GigaCan's shell flying off the field and bursting over the last two columns
+  (`pa/0x140-gigacan1/miss`, `sub_80C5014`). Reading them also showed that the lab's generated `pushed`
+  scenarios pushed only the RockCube and the countdown bomb: a side's own AirShot moves none of the objects it
+  sets on its own panels. Fanfare, Anubis and Fan are pushed by side 1's now (`pushed-by-enemy`), and the
+  descriptions say what the others show.
 
 ### 6.2 Branches that ran one way only
 
