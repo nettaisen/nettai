@@ -25,7 +25,7 @@ local firehit1 = define.chip {
         action = 0x1C,
         subtype = 8,
         params = { 0, 3, 0, 0 },
-        script = "objects/fire-hit/fire_hit",
+        script = "chips/06b-firehit1/chip",
     },
 }
 
@@ -50,7 +50,7 @@ local firehit2 = define.chip {
         action = 0x1C,
         subtype = 8,
         params = { 0, 3, 0, 0 },
-        script = "objects/fire-hit/fire_hit",
+        script = "chips/06b-firehit1/chip",
     },
 }
 
@@ -75,7 +75,7 @@ local firehit3 = define.chip {
         action = 0x1C,
         subtype = 8,
         params = { 0, 3, 0, 0 },
-        script = "objects/fire-hit/fire_hit",
+        script = "chips/06b-firehit1/chip",
     },
 }
 

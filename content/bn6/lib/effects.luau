@@ -11,6 +11,9 @@ effects.explosion = define.effect { sprite = asset.sprite("explosion"), anim = 0
 -- A splash of bubbles: something landing in a hole (effect 0x01).
 effects.splash = define.effect { sprite = asset.sprite("rising-bubble"), anim = 0, palette = 0 }
 
+-- Dust: a rock breaking (effect 0x02).
+effects.dust = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
 -- A puff of smoke: a thrown thing gone when the battle ends, a field
 -- object a chip removes (effect 0x14).
 effects.puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
@@ -108,7 +111,7 @@ effects.form_change = define.effect { sprite = asset.sprite("form-change"), anim
 -- Effect 0x2F.
 effects.reticle = define.effect { sprite = asset.sprite("reticle"), anim = 0, palette = 0 }
 -- Effect 0x30.
-effects.dust = define.effect { sprite = asset.sprite("dust"), anim = 0, palette = 0 }
+effects.dust_2 = define.effect { sprite = asset.sprite("dust"), anim = 0, palette = 0 }
 -- Effect 0x31.
 effects.buster_up = define.effect { sprite = asset.sprite("buster-up"), anim = 0, palette = 0 }
 -- Effect 0x32.
@@ -116,7 +119,7 @@ effects.lil_boiler_10 = define.effect { sprite = asset.sprite("lil-boiler"), ani
 -- Effect 0x33.
 effects.big_slash_1 = define.effect { sprite = asset.sprite("big-slash"), anim = 1, palette = 0 }
 -- Effect 0x34.
-effects.dust_2 = define.effect { sprite = asset.sprite("dust-2"), anim = 0, palette = 0 }
+effects.dust_2_2 = define.effect { sprite = asset.sprite("dust-2"), anim = 0, palette = 0 }
 -- Effect 0x35.
 effects.colonel_effect = define.effect { sprite = asset.sprite("colonel-effect"), anim = 0, palette = 0 }
 -- Effect 0x36.

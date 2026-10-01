@@ -8,7 +8,7 @@ return define.rules("absorbed-sprites", legacy {
     [2] = asset.sprite("countdown-bomb"),
     [3] = asset.sprite("anubis"),
     [4] = asset.sprite("immobilized"),
-    [5] = asset.sprite("absorbed-obstacle-05"),
+    [5] = asset.sprite("boulder"),
     [6] = asset.sprite("absorbed-obstacle-06"),
     [7] = asset.sprite("instrument"),
     [8] = asset.sprite("voodoo-doll"),
