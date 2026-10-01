@@ -1,0 +1,1111 @@
+# The curation proposal (docs/design/curation-proposal.md): one row per invented or unclear name.
+# A row whose proposed name is its current one settles the name. Apply with the verification
+# workspace's tools/curation/apply.py.
+registry	current	proposed	confidence	flag	evidence
+sprite	air-raid-plane	air-raid-plane	high		04-18: used by chips/airraid/plane.
+sprite	air-shooter	air-shooter	high		0c-18: used by chips/airshot/chip.
+sprite	air-spin	air-spin	high		0c-41: used by chips/airspin/top, chips/otenko/statue.
+sprite	anubis	anubis	high		0c-30: used by chips/anubis/statue.
+sprite	aqua-needle	aqua-needle	high		10-17: used by chips/aquandl/needle.
+sprite	aqua-surge	aqua-surge	high		10-2e: used by navis/megaman/forms/spoutcross-beast/surge.
+sprite	aqua-sword	aqua-sword	high		0c-37: used by lib/swords/parts.
+sprite	aura-head	aura-head	high		04-03: used by chips/aurahed/head.
+sprite	bass-anly	bass-anly	high		08-13: used by chips/bass/navi, chips/bassanly/navi, chips/darkness/navi.
+sprite	bass-anly-shot	bass-anly-shot	high		10-0d: used by chips/airspin/whirl, chips/bassanly/shot.
+sprite	bat-cannon	bat-cannon	high		0c-4f: used by chips/batcan/chips.
+sprite	bat-impact	hit-marker	medium	wrong	The role sprites.hit_marker (the "!!" over a navi), the cut-in flash (effect 0x1E) and BatCan's spark (animation 1). Shows bursts, "!!" marks and bats: BatCan is one user of three.
+sprite	beast-head	beast-head	high		0c-0a: used by navis/megaman/forms/dustcross-beast/form, navis/megaman/forms/falzar-beast-over/form, navis/megaman/forms/falzar-beast/form, navis/megaman/forms/groundcross-beast/form and 3 more.
+sprite	beast-over-burst	lightning	high	wrong	Shows lightning bolts. ElecMan's thunder, ElemTrap's and ElmntMan's bolts, and Beast Over's burst (effect 0x45) use it.
+sprite	beast-shot	beast-shot	high		0c-21: used by objects/flying-shot/flying_shot.
+sprite	beat	beat	high		0c-4b: used by lib/supports/beat.
+sprite	big-slash	big-slash	high		0c-15: used by chips/tmhkman/navi, lib/effects, lib/swords/parts, navis/megaman/forms/slashcross/sword_wave and 2 more.
+sprite	black-bomb	black-bomb	high		0c-24: used by chips/blkbomb/bomb.
+sprite	blast	blast	high		14-13: used by chips/mine/land_mine, lib/effects.
+sprite	blast-fire	blast-fire	high		08-0c: used by chips/blastman/fire, chips/blastman/navi, lib/effects.
+sprite	blindness	blindness	high		14-09: role sprites.blindness.
+sprite	blizzard-ball	blizzard-ball	high		10-47: used by chips/blzrdbal/ball.
+sprite	body-overlay-02	heatman-overlay	high	number	Only HeatMan wears it (navis/heatman/navi.luau): his flames.
+sprite	body-overlay-04	heatcross-overlay	high	number	Only the heatcross form wears it (navis/megaman/forms/heatcross/form.luau, `parts`); named for the body overlay row it had.
+sprite	body-overlay-05	spoutcross-overlay	high	number	Only the spoutcross form wears it (navis/megaman/forms/spoutcross/form.luau, `parts`); named for the body overlay row it had.
+sprite	body-overlay-08	eleccross-overlay	high	number	Only the eleccross form wears it (navis/megaman/forms/eleccross/form.luau, `parts`); named for the body overlay row it had.
+sprite	body-overlay-09	tengucross-overlay	high	number	Only the tengucross form wears it (navis/megaman/forms/tengucross/form.luau, `parts`); named for the body overlay row it had.
+sprite	body-overlay-0a	slashcross-overlay	high	number	Only the slashcross form wears it (navis/megaman/forms/slashcross/form.luau, `parts`); named for the body overlay row it had.
+sprite	body-overlay-0b	groundman-overlay	high	number	Only GroundMan wears it (navis/groundman/navi.luau).
+sprite	body-overlay-0c	erasecross-overlay	high	number	Only the erasecross form wears it (navis/megaman/forms/erasecross/form.luau, `parts`); named for the body overlay row it had.
+sprite	body-overlay-0d	groundcross-overlay	high	number	Only the groundcross form wears it (navis/megaman/forms/groundcross/form.luau, `parts`); named for the body overlay row it had.
+sprite	body-overlay-0e	tomahawkcross-overlay	high	number	Only the tomahawkcross form wears it (navis/megaman/forms/tomahawkcross/form.luau, `parts`); named for the body overlay row it had.
+sprite	body-overlay-11	chargecross-overlay	high	number	Only the chargecross form wears it (navis/megaman/forms/chargecross/form.luau, `parts`); named for the body overlay row it had.
+sprite	body-overlay-12	dustcross-overlay	high	number	Only the dustcross form wears it (navis/megaman/forms/dustcross/form.luau, `parts`); named for the body overlay row it had.
+sprite	bomb	bomb	high		0c-02: used by chips/blkbomb/bomb, chips/bugbomb/bomb, lib/bombs/bomb, lib/bombs/seed.
+sprite	boomerang	boomerang	high		10-07: used by chips/boomer/boomerang.
+sprite	boomerang-tomahawk	boomerang-tomahawk	high		10-57: used by chips/boomer/boomerang.
+sprite	boulder	boulder	high		10-08: used by objects/boulder/boulder.
+sprite	bow	bow	high		0c-2a: used by chips/trnarrw/chips, objects/flying-shot/flying_shot.
+sprite	bubble	bubble	high		0c-20: role sprites.bubble; used by lib/barriers/barriers.
+sprite	bubble-star	bubble-star	high		04-0f: used by chips/bblstar/star.
+sprite	bug	bug	high		14-1f: used by lib/effects, lib/navi-boost/controller.
+sprite	burner	burner	high		0c-29: used by lib/burner/burn.
+sprite	burner-2	heatcross-burner	high		HeatCross's burner (lib/burner/burn.luau, attachment row 0x1E); `burner` is FireBrn's.
+sprite	burst	burst	high		14-0a: used by lib/effects.
+sprite	buster-arm	buster-arm	high		0c-03: used by lib/buster.
+sprite	buster-up	buster-up	high		14-1b: used by chips/busterup/chip, lib/effects.
+sprite	cannon	cannon	high		0c-01: used by lib/cannon.
+sprite	charge-car	charge-car	high		10-54: used by chips/chrgeman/car.
+sprite	charge-glow	charge-glow	high		14-08: role sprites.charge_glow; used by chips/darkness/navi, chips/dblhero/heroes, chips/mstrcros/navi, chips/twinldrs/navi and 1 more.
+sprite	charge-glow-a	charge-glow-a	high		14-15: role sprites.charge_glow_a; used by lib/effects, lib/navi-boost/controller.
+sprite	charge-wave	charge-wave	high		10-09: used by navis/megaman/forms/chargecross-beast/charge_wave.
+sprite	charged-slash	charged-slash	high		10-3b: used by navis/megaman/forms/slashcross/sword_wave.
+sprite	circusman	circusman	high		08-0e: used by chips/crcusman/navi.
+sprite	col-army	col-army	high		10-1d: used by chips/colarmy/army, chips/colforce/soldier.
+sprite	colonel	colonel	high		08-12: used by chips/colonel/navi, chips/twinldrs/navi.
+sprite	colonel-effect	colonel-slashes	medium		Shows green and white slashes: Colonel's (chips/colonel), his screen divide among them.
+sprite	colonel-sword	colonel-sword	high		10-5a: used by chips/colonel/navi, chips/twinldrs/navi.
+sprite	confusion	confusion	high		14-0b: role sprites.confusion.
+sprite	copy-mark	hit-sparks	high	wrong	Shows the hit sparks (plain, breaking, and one per element: sparks by element use its animations 0, 2-5) and the TRAP! mark (animation 7); 30 uses, CopyDmg's mark only one of them.
+sprite	corn-shooter	corn-shooter	high		0c-2b: used by chips/cornsht/action.
+sprite	countdown-bomb	countdown-bomb	high		0c-23: used by chips/spoutman/ball, chips/timebom/chips, chips/timebom/countdown.
+sprite	crack-shot	crack-shot	high		0c-33: used by chips/crakshot/shot.
+sprite	cross-slash	cross-slash	high		10-41: used by lib/effects, lib/swords/parts, navis/megaman/forms/slashcross-beast/lunge, navis/megaman/forms/slashcross/sword_wave.
+sprite	dark-aura	dark-aura	high		0c-43: used by chips/darkness/navi.
+sprite	deletion	deletion	high		14-03: used by chips/deltaray/navi, lib/effects.
+sprite	diveman	diveman	high		08-0d: used by chips/diveman/navi, chips/diveman/wave, lib/effects.
+sprite	django	django	high		Django (chips/crosover). The US ROM holds the dummy sprite here: Django is the JP version's.
+sprite	dragon	dragon	high		04-10: used by lib/dragons/dragon.
+sprite	drill-arm	drill-arm	high		0c-58: used by chips/dblbeast/gregar, chips/drilarm/drill, chips/mstrcros/navi.
+sprite	drip-shower	drip-shower	high		10-22: used by navis/spoutman/drip_shower.
+sprite	dust	dust	high		14-0e: used by chips/crakshot/shot, lib/effects.
+sprite	dust-2	dust-spray	low		Shows white and blue sprays: GolmHit's golem landing and TomahawkMan's strike (effect 0x34).
+sprite	dust-cloud	dust-cloud	high		10-59: used by lib/effects, navis/dustman/clouds, navis/megaman/weapons/absorb/weapon.
+sprite	dust-storm-mote	dust-storm-mote	high		10-10: used by lib/instant/dust_storm_mote.
+sprite	eagle-tomahawk	eagle-tomahawk	high		10-2a: used by navis/tomahawkman/axe.
+sprite	effect-55	effect-55	low	number	A virus's sheet (a green creature with blades); only effect 0x55 uses it (animation 12). No use names it better.
+sprite	effect-61	grey-shards	low	number	Shows grey shard shapes; only effect 0x61 uses it.
+sprite	elec-coil	elec-coil	high		0c-5f: used by chips/elcpuls/action, lib/buster.
+sprite	elec-pulse	elec-pulse	high		10-40: used by chips/elcpuls/pulse.
+sprite	elec-sword	elec-sword	high		0c-38: used by lib/swords/parts, navis/elecman/chip.
+sprite	element-pillar-flames	element-pillar-flames	high		0c-1c: used by objects/element-pillar/element_pillar.
+sprite	element-pillar-lightning	element-pillar-lightning	high		10-32: used by objects/element-pillar/element_pillar.
+sprite	elmnt-ice	sparkle	medium		Shows twinkling sparkles: Roll's heart's sparkle, ElmntMan's ice, effect 0x26.
+sprite	elmnt-man	elmnt-man	high		08-10: used by chips/elmntman/navi, chips/elmntman/vine.
+sprite	energy-burst	energy-burst	high		14-12: used by chips/cornsht/corn, chips/energbom/burst, lib/effects.
+sprite	erase-beam	erase-beam	high		10-51: used by chips/eraseman/beam, chips/sensor/laser.
+sprite	erase-drop	erase-drop	high		10-4d: used by navis/megaman/forms/erasecross-beast/erase_drop.
+sprite	erase-mark	erase-mark	high		10-50: used by chips/eraseman/mark, chips/sensor/scanner.
+sprite	erase-ray	erase-ray	high		10-4c: used by navis/megaman/forms/erasecross/ray.
+sprite	eruption	eruption	high		10-24: role sprites.eruption.
+sprite	explosion	explosion	high		14-00: used by chips/bugbomb/bomb, chips/vdoll/curse, lib/effects, lib/sparks.
+sprite	falling-rock	falling-rock	high		10-05: used by chips/grndman/rock, objects/falling-rock/chip, objects/falling-rock/falling_rock.
+sprite	fan	fan	high		04-09: used by chips/wind/chips, chips/wind/fan.
+sprite	fire-hit	fire-hit	high		14-1a: used by chips/firehit/fist.
+sprite	fire-sword	fire-sword	high		0c-36: used by lib/swords/parts.
+sprite	flame	flame	high		0c-0e: used by lib/burner/flame.
+sprite	flame-hook-fire	flame-hook-fire	high		0c-45: used by chips/flmhook/fire.
+sprite	flash-bomb	flash-bomb	high		10-52: used by chips/flshbom/bomb.
+sprite	follow-effect	follow-effect	high		10-0e: used by chips/deltaray/navi.
+sprite	follow-effect-2	follow-effect-2	medium		Unused by content (an orange ball and a white burst); named for the follow effect's looks, like follow-effect.
+sprite	follow-effect-4	follow-effect-4	medium		Unused by content (pink marks); named for the follow effect's looks.
+sprite	form-change	form-change	high		0c-05: used by lib/effects, objects/bullet/bullet.
+sprite	full-synchro-aura	full-synchro-aura	high		14-16: role sprites.full_synchro_aura.
+sprite	golem	golem	high		10-30: used by chips/golmhit/golem.
+sprite	grab-shot	grab-shot	high		0c-13: used by chips/colorpt/point, chips/grabbnsh/controller, chips/grabbnsh/hand, lib/bombs/seed and 2 more.
+sprite	ground-drill	ground-drill	high		10-4f: used by chips/grndman/drill.
+sprite	ground-drill-effect	ground-drill-effect	high		0c-2d: used by lib/effects, navis/megaman/forms/groundcross/drill.
+sprite	guardian-statue	guardian-statue	high		0c-35: used by chips/guardian/statue.
+sprite	gun-del-sol	gun-del-sol	high		0c-3b: used by chips/gundels/action.
+sprite	gust	gust	high		0c-2e: used by objects/gust/gust.
+sprite	hand-fan	hand-fan	high		0c-16: used by chips/dblbeast/falzar, chips/tornado/chips.
+sprite	heal	heal	high		0c-12: used by chips/roll/heart, lib/effects, lib/instant/repair, lib/supports/heal.
+sprite	heat-flame	heat-flame	high		10-02: used by chips/heatman/flame.
+sprite	hit	guard-ripple	medium		Shows cyan ripples. Its one spark (0x08) is the role sparks.guard, a blocked hit.
+sprite	hive	hive	high		0c-5e: used by chips/rskyhny/action.
+sprite	hockey-puck	hockey-puck	high		10-06: used by chips/airhocky/puck.
+sprite	honey-bee	honey-bee	high	number	10-31: used by chips/rskyhny/bee.
+sprite	hub	hub	high		14-1e: used by lib/effects, lib/navi-boost/controller.
+sprite	ice-block	ice-block	high		14-1c: role sprites.ice.
+sprite	idle-overlay	idle-overlay	high		10-21: used by navis/spoutman/navi.
+sprite	immobilized	rock-cubes	medium	wrong	Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it.
+sprite	impact	impact	high		14-01: used by lib/effects, lib/sparks.
+sprite	instrument	instrument	high		04-0a: used by chips/discord/chip, chips/fanfare/chip, chips/silence/chip, chips/timpani/chip and 1 more.
+sprite	iron-shell	iron-shell	high		04-1b: used by chips/ironshl/shell.
+sprite	jet-flame	jet-flame	high		10-28: used by chips/airraid/plane.
+sprite	judgeman	judgeman	high		08-0f: used by chips/judgeman/book, chips/judgeman/navi, chips/judgeman/whip.
+sprite	junk-shot	junk-shot	high		10-56: used by navis/megaman/forms/dustcross-beast/junk_shot.
+sprite	justice-one	justice-one	high		0c-62: used by chips/justcone/strike, chips/metrknuk/fist.
+sprite	lance	lance	high		0c-44: used by chips/lance/lance.
+sprite	land-mine	land-mine	high		0c-22: used by chips/mine/land_mine.
+sprite	lil-boiler	lil-boiler	high		04-0d: used by chips/lilbolr/boiler, lib/effects.
+sprite	lockon-marker	lockon-marker	high		0c-09: role sprites.lockon_marker.
+sprite	log-thrower	log-thrower	high		0c-5d: used by chips/rlnglog/action.
+sprite	machine-gun	machine-gun	high		0c-40: used by chips/machgun/chips.
+sprite	magnet	magnet	high		10-43: used by chips/magcoil/magnet.
+sprite	magnet-coil	magnet-coil	high		0c-61: used by chips/magcoil/chip.
+sprite	meteor	meteor	high		0c-31: used by chips/elmntman/meteor, chips/meteors/falling_meteor, chips/sunmoon/meteor.
+sprite	moon-beam	moon-beam	high		0c-64: used by chips/sunmoon/moon_beam, chips/sunmoon/sun.
+sprite	moon-blade	moon-blade	high		10-3c: used by chips/airspin/top, chips/moonbld/blade, lib/effects, navis/megaman/forms/slashcross/sword_wave.
+sprite	muzzle-flash	muzzle-flash	high		0c-06: used by lib/buster.
+sprite	number-ball	number-ball	high		10-46: used by chips/numbrbl/ball.
+sprite	panel-strike	panel-strike	high		10-26: used by lib/effects, objects/panel-strike/panel_strike.
+sprite	propeller	propeller	high		10-3d: used by chips/airraid/propeller.
+sprite	puff	puff	high		14-0d: used by chips/golmhit/golem, chips/guardian/statue, chips/sumnblk/navi, lib/effects and 6 more.
+sprite	reflected-shot	pink-flash	medium	wrong	Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it.
+sprite	reflector-shield	reflector-shield	high		0c-1b: used by chips/rflectr/shield.
+sprite	reflector-shield-2	dummy-shield	low	wrong	The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up.
+sprite	reticle	reticle	high		10-27: used by chips/machgun/chips, lib/effects.
+sprite	rising-bubble	small-puff	medium	wrong	Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble.
+sprite	rock-debris	rock-debris	high		10-01: used by chips/rockcube/debris.
+sprite	roll-heart	roll-heart	high		0c-50: used by chips/roll/heart, chips/roll/navi.
+sprite	rolling-log	rolling-log	high		10-34: used by chips/rlnglog/log.
+sprite	rush	rush	high		0c-48: used by lib/supports/rush.
+sprite	sand-hole	sand-hole	high		10-48: used by chips/sandwrm/hole, lib/effects.
+sprite	sand-worm	sand-worm	high		04-1a: used by chips/sandwrm/spray, chips/sandwrm/worm.
+sprite	sensor	sensor	high		04-05: used by chips/sensor/turret.
+sprite	shell-burst	shell-burst	high		14-11: used by lib/effects.
+sprite	shock-wave	shock-wave	high		10-03: used by chips/wavearm/wave.
+sprite	shot-impact	shot-impact	high		14-0c: used by lib/sparks.
+sprite	shuriken	shuriken	high		0c-2f: used by chips/antidmg/shuriken, chips/bodygrd/shuriken.
+sprite	sight	sight	high		10-45: used by chips/circgun/gun, chips/circgun/shot, chips/magnum/gunner, lib/effects.
+sprite	slash-man-effect	claw-slash	medium		Shows cyan claw slashes: SlashMan's slash and DblBeast's Gregar claw and slam.
+sprite	slash-wave	slash-wave	high		10-39: used by chips/slashman/wave.
+sprite	small-ring	wide-navi	medium	wrong	The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide.
+sprite	snake	snake	high		0c-2c: used by chips/snake/snake.
+sprite	spark-0e	uninstall-spark	medium	number	Its spark (0x0E) is the role sparks.uninstall: a navi's programs uninstalled.
+sprite	spout-geyser	spout-geyser	high		10-20: used by chips/spoutman/geyser, chips/spoutman/mark.
+sprite	spout-man-effect	water-ring	low		Shows a splash of water rings: SpoutMan's throw and charge (effect 0x2A).
+sprite	spout-pillar	spout-pillar	high		10-1f: used by chips/spoutman/pillar.
+sprite	spout-splash	spout-splash	high		0c-1a: used by chips/elemtrap/strike, chips/spoutman/splash, lib/effects, objects/bullet/bullet.
+sprite	spreader	spreader	high		0c-19: used by chips/h-burst/action, chips/spreadr/action.
+sprite	sprite-00-0d	sprite-00-0d	high	number	00-0d: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-04-01	sprite-04-01	high	number	04-01: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-02	sprite-04-02	high	number	04-02: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-04	sprite-04-04	high	number	04-04: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-06	sprite-04-06	high	number	04-06: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-07	sprite-04-07	high	number	04-07: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-08	sprite-04-08	high	number	04-08: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-0b	sprite-04-0b	high	number	04-0b: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-0c	sprite-04-0c	high	number	04-0c: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-0e	sprite-04-0e	high	number	04-0e: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-11	sprite-04-11	high	number	04-11: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-12	sprite-04-12	high	number	04-12: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-13	sprite-04-13	high	number	04-13: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-14	sprite-04-14	high	number	04-14: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-15	sprite-04-15	high	number	04-15: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-16	sprite-04-16	high	number	04-16: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-17	sprite-04-17	high	number	04-17: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-1c	sprite-04-1c	high	number	04-1c: a virus's sheet; no netbattle shows it.
+sprite	sprite-04-1e	sprite-04-1e	high	number	04-1e: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-04-1f	sprite-04-1f	high	number	04-1f: a virus's sheet; no netbattle shows it.
+sprite	sprite-08-11	sprite-08-11	high	number	08-11: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-08-15	sprite-08-15	high	number	08-15: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-08-16	sprite-08-16	high	number	08-16: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-25	sprite-0c-25	high	number	0c-25: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-0c-26	sprite-0c-26	high	number	0c-26: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-32	sprite-0c-32	high	number	0c-32: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-39	sprite-0c-39	high	number	0c-39: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-3a	sprite-0c-3a	high	number	0c-3a: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-3e	sprite-0c-3e	high	number	0c-3e: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-3f	sprite-0c-3f	high	number	0c-3f: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-42	sprite-0c-42	high	number	0c-42: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-46	sprite-0c-46	high	number	0c-46: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-49	sprite-0c-49	high	number	0c-49: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-4a	sprite-0c-4a	high	number	0c-4a: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-4e	sprite-0c-4e	high	number	0c-4e: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-56	sprite-0c-56	high	number	0c-56: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-57	sprite-0c-57	high	number	0c-57: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-5a	sprite-0c-5a	high	number	0c-5a: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-5b	sprite-0c-5b	high	number	0c-5b: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-65	sprite-0c-65	high	number	0c-65: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-66	sprite-0c-66	high	number	0c-66: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-0c-67	sprite-0c-67	high	number	0c-67: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-0c-68	sprite-0c-68	high	number	0c-68: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-04	sprite-10-04	high	number	10-04: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-0c	sprite-10-0c	high	number	10-0c: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-13	sprite-10-13	high	number	10-13: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-14	sprite-10-14	high	number	10-14: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-15	sprite-10-15	high	number	10-15: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-18	sprite-10-18	high	number	10-18: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-1a	sprite-10-1a	high	number	10-1a: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-1b	sprite-10-1b	high	number	10-1b: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-1c	sprite-10-1c	high	number	10-1c: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-1e	sprite-10-1e	high	number	10-1e: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-25	sprite-10-25	high	number	10-25: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-29	sprite-10-29	high	number	10-29: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-2b	sprite-10-2b	high	number	10-2b: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-2d	sprite-10-2d	high	number	10-2d: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-33	sprite-10-33	high	number	10-33: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-35	sprite-10-35	high	number	10-35: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-36	sprite-10-36	high	number	10-36: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-3a	sprite-10-3a	high	number	10-3a: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-3e	sprite-10-3e	high	number	10-3e: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-3f	sprite-10-3f	high	number	10-3f: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-49	sprite-10-49	high	number	10-49: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-4b	sprite-10-4b	high	number	10-4b: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-53	sprite-10-53	high	number	10-53: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	sprite-10-58	sprite-10-58	high	number	10-58: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-10-5b	sprite-10-5b	high	number	10-5b: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-14-10	sprite-14-10	high	number	14-10: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-14-17	sprite-14-17	high	number	14-17: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-14-19	sprite-14-19	high	number	14-19: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.
+sprite	sprite-14-1d	sprite-14-1d	high	number	14-1d: a sheet no netbattle shows (content and the engine name only what they show).
+sprite	summon-black	summon-black	high		04-1d: used by chips/sumnblk/navi.
+sprite	sun-beam	sun-beam	high		0c-3c: used by chips/gundels/beam, lib/effects.
+sprite	sun-beam-ex	sun-beam-ex	high		0c-47: used by chips/gundels/beam.
+sprite	swirl	swirl	high		0c-28: used by chips/mstrcros/navi, chips/windrack/action, lib/effects, navis/tenguman/chip.
+sprite	sword	sword	high		0c-00: used by chips/otenko/statue, chips/rflectr/shield, lib/bombs/slash, lib/swords/parts and 2 more.
+sprite	sword-slash	sword-slash	high		0c-14: used by chips/sumnblk/navi, chips/z-saver/action, lib/effects, lib/swords/parts and 3 more.
+sprite	tango	tango	high		0c-4c: used by lib/supports/tango.
+sprite	tango-heal	tango-heal	high		0c-4d: used by lib/supports/heal.
+sprite	tank-blast	tank-blast	high		10-0a: used by chips/tankcan/shell, lib/effects.
+sprite	tank-cannon	tank-cannon	high		0c-08: used by chips/tankcan/action.
+sprite	tengu-fan	tengu-fan	high		0c-5c: used by chips/windrack/action.
+sprite	tengu-tornado	tengu-tornado	high		10-42: used by navis/tenguman/tornado.
+sprite	thunder-ball	thunder-ball	high		10-16: used by chips/thunder/ball.
+sprite	thunder-doll	thunder-doll	high		10-12: used by chips/dolthdr/doll.
+sprite	thunder-doll-hand	thunder-doll-hand	high		0c-60: used by chips/dolthdr/action.
+sprite	tornado	tornado	high		0c-17: used by chips/dblbeast/falzar, chips/tornado/tornado, lib/effects.
+sprite	volcano-rock	volcano-rock	high		10-55: used by navis/chargeman/volcano_rock.
+sprite	voodoo-doll	voodoo-doll	high		0c-34: used by chips/vdoll/doll.
+sprite	vulcan	vulcan	high		0c-1d: used by chips/vulcan/action.
+sprite	vulcan-hit	vulcan-hit	high		14-0f: used by lib/effects, objects/bullet/bullet.
+sprite	water-cannon	water-cannon	high		0c-10: used by chips/spreadr/action.
+sprite	whirlwind	whirlwind	high		10-44: used by navis/megaman/forms/tengucross-beast/whirlwind.
+sprite	wide-shooter	wide-shooter	high		0c-59: used by chips/widesht/action.
+sprite	wide-wave	wide-wave	high		10-37: used by chips/widesht/wave.
+sprite	wind-rack	wind-rack	high		0c-27: used by chips/mstrcros/navi, chips/windrack/action.
+sprite	yoyo	yoyo	high		0c-0b: used by chips/yoyo/yoyo.
+sprite	yoyo-arm	yoyo-arm	high		0c-0c: used by chips/yoyo/throw.
+sound	appear	appear	high		0x094: role sounds.appear; used by chips/airraid/plane, chips/bass/navi, chips/bassanly/navi, chips/blastman/navi and 33 more.
+sound	aqua-needle	needle-land	medium		AquaNdl's needle landing.
+sound	aqua-needle-2	drop	low		AquaNdl's needle falling, SlashMan's wave, Snake's leap.
+sound	aqua-surge	aqua-surge	high		0x0b8: used by chips/dblbeast/falzar, chips/tornado/tornado, navis/megaman/forms/spoutcross-beast/charge, navis/megaman/forms/spoutcross-beast/surge and 2 more.
+sound	arrive	arrive	high		0x116: used by lib/supports/tango.
+sound	bass-anly	bass-anly	high		0x0fd: used by chips/bassanly/navi.
+sound	bass-anly-shot	bass-anly-shot	high		0x140: used by chips/airspin/whirl, chips/bassanly/shot.
+sound	bblstar1	blow	low	number	BblStar's blow, CrakShot, WaveArm's strike (named for BblStar1).
+sound	beast-claw	beast-claw	high		0x1c5: used by navis/megaman/weapons/beast-claw/weapon.
+sound	beast-claw-2	beast-claw-2	high	number	0x1c6: used by navis/megaman/weapons/beast-claw/weapon.
+sound	beast-out	beast-out	high		0x100: role sounds.beast_out.
+sound	beast-over	beast-over	high		0x19a: role sounds.beast_over_rumble; used by chips/dolthdr/action, chips/sensor/turret, navis/megaman/forms/eleccross-beast/charge.
+sound	beast-over-burst	thunder	medium		ElecMan's thunder, ElemTrap's and ElmntMan's bolts, Guardian's strike; also the role sounds.beast_over_burst. Its sprite shows lightning (proposed `lightning`).
+sound	beep-64	beep-64	high	number	The disassembly's SOUND_BEEP_64: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	beep-75	beep-75	high	number	The disassembly's SOUND_BEEP_75: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	big-sword-swing	big-sword-swing	high		0x0ce: used by chips/darkness/navi, lib/swords/parts.
+sound	bite	bite	high		0x122: used by lib/supports/rush.
+sound	blast-man	blast-man	high		0x17f: used by chips/blastman/navi, chips/sunmoon/sun.
+sound	blinding-flash	blinding-flash	high		0x0bc: used by lib/dimming/blinding_flash.
+sound	blizzard-grow	blizzard-grow	high		0x196: used by chips/blzrdbal/ball.
+sound	blizzard-throw	blizzard-throw	high		0x1ab: used by chips/blzrdbal/thrower.
+sound	blizzard-windup	blizzard-windup	high		0x132: used by chips/blzrdbal/thrower.
+sound	boiler-erupt	boiler-erupt	high		0x184: used by chips/lilbolr/boiler.
+sound	boiler-steam	boiler-steam	high		0x185: used by chips/lilbolr/boiler.
+sound	bonus	bonus	high		0x157: used by lib/instant/plus.
+sound	boomerang	boomerang	high		0x0b7: used by chips/antidmg/counter, chips/bodygrd/striker, chips/boomer/boomerang, chips/slashman/wave.
+sound	bounce	bounce	high		0x0b6: used by chips/airhocky/puck.
+sound	bubble	bubble	high		0x12d: role sounds.bubble; used by chips/bblstar/star, chips/spoutman/navi, lib/barriers/barriers, navis/spoutman/charge.
+sound	bubble-pop	bubble-pop	high		0x124: role sounds.bubble_pop; used by lib/barriers/barriers.
+sound	bug	bug	high		0x143: used by chips/sumnblk/navi, lib/navi-boost/controller.
+sound	bug-bomb-land	bug-bomb-land	high		0x115: used by chips/bugbomb/bomb.
+sound	burst	burst	high		0x0c3: used by chips/blkbomb/bomb, chips/mstrcros/navi, chips/sunmoon/sun, chips/tankcan/shell and 2 more.
+sound	buster-6a	buster-shot	high	number	The disassembly's SOUND_BUSTER_6A: a buster shot (CopyDmg, CrosOver's MegaMan, DblHero's volley).
+sound	buster-charged	buster-charged	high		0x072: role sounds.buster_charged; used by chips/darkness/navi, chips/dblhero/heroes, chips/mstrcros/navi, chips/twinldrs/navi.
+sound	buzz	buzz	high		0x1a8: used by chips/rskyhny/action.
+sound	cannon	cannon	high		0x0ae: used by chips/batcan/chips, chips/tankcan/shell, lib/cannon.
+sound	charge-man	charge-man	high		0x0e3: used by chips/chrgeman/navi.
+sound	charge-train	charge-train	high		0x0e4: used by navis/chargeman/charge.
+sound	circus-catch	circus-catch	high		0x1aa: used by chips/crcusman/navi.
+sound	col-army	army-appear	medium		ColArmy's soldiers appearing.
+sound	col-army-2	rifle-shot	medium		ColArmy's and ColForce's shots, CircGun's hit.
+sound	confusion	confusion	high		0x088: role sounds.confusion.
+sound	copy-mark	mark	medium	wrong	A mark set: BurnSqr's fire, CircGun's and CopyDmg's marks. CopyDmg is one user of three.
+sound	corn-shot	corn-shot	high		0x180: used by chips/cornfsta/farmer, chips/cornsht/action.
+sound	crack-shot	crack-shot	high		0x0da: used by chips/crakshot/shot.
+sound	cross-change	cross-change	high		0x08d: role sounds.cross_change; used by chips/synctrgr/chip.
+sound	cross-merge	cross-merge	high		0x08c: role sounds.cross_merge; used by chips/colorpt/point.
+sound	cur-move-80	cur-move-80	high	number	The disassembly's SOUND_CUR_MOVE_80: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	damage	damage	high		0x085: role sounds.damage; used by chips/numbrbl/ball.
+sound	delta-ray-2	delta-burst	low		DeltaRay's bursts and their flash.
+sound	dimming-sparkle	cut-in	medium		The role sounds.cut_in: a side cuts in, a trap springs.
+sound	drilarm	drill	medium		DrilArm, MstrCros's drill, DblBeast's Gregar bite.
+sound	drill-launch	drill-launch	high		0x14c: used by navis/groundman/charge.
+sound	drill-out	drill-out	high		0x0e6: used by chips/grndman/navi.
+sound	drill-spin	drill-spin	high		0x1c0: used by chips/grndman/navi, navis/groundman/chip.
+sound	drip-shower	drip-shower	high		0x128: used by navis/spoutman/drip_shower.
+sound	drumroll	drumroll	high		0x114: used by chips/crcusman/navi.
+sound	dustbrk	suction	medium		DustMan drawing things in (DustBrk), Wind's fan blowing.
+sound	dustbrk-2	crush	medium		DustMan crushing what he drew in (DustBrk).
+sound	elec-man	elec-man	high		0x0c6: used by chips/elecman/navi, chips/thunder/ball.
+sound	elec-pulse	elec-pulse	high		0x0f3: used by chips/elcpuls/pulse, chips/magcoil/chip.
+sound	elmnt-man	element-cycle	medium		ElmntMan's element changing while he cycles (chips/elmntman/navi.luau, `cycle`).
+sound	elmnt-man-2	element-chosen	medium		ElmntMan's element chosen (A pressed); also the role sounds.cross_special.
+sound	elmnt-man-3	grass	high		The grass panel's trail sound (rules/panels.luau), GrassSeed, ElmntMan turning the field to grass.
+sound	elmnt-man-4	ice-form	medium		ElmntMan's Aqua attack: ice forming in the column ahead.
+sound	elmnt-vine	elmnt-vine	high		0x181: used by chips/elmntman/vine.
+sound	energy-burst	energy-burst	high		0x0bb: used by chips/energbom/burst.
+sound	erase-man	cursor-step	medium		A cursor stepping: BurnSqr's and CircGun's cursors, EraseMan's mark.
+sound	erase-man-2	beam	low		EraseMan's slash, JudgeMan's lash, MstrCros's beam, Thunder's ball.
+sound	err-select-91	error	medium	number	The disassembly's SOUND_ERR_SELECT_91: GrabBnsh's return, LifeSync's warning, VDoll's marks.
+sound	etomahwk	obstacle-throw	medium		The role sounds.obstacle_throw; ETomahwk's throw.
+sound	fade-8e	fade	high	number	The disassembly's SOUND_FADE_8E; the role sounds.fade.
+sound	falling-rock	rock-break	medium		A rock breaking: the falling rocks, GroundMan's rocks, a rock, an encased bubble bursting.
+sound	falzar-roar	falzar-roar	high		0x1cd: role sounds.falzar_roar.
+sound	fire-hit	fire-hit	high		0x0ed: used by chips/firehit/fist.
+sound	flame-hook-fire	flame-hook-fire	high		0x158: used by chips/dblbeast/gregar, chips/flmhook/fire, chips/slashman/navi, navis/megaman/forms/slashcross-beast/lunge.
+sound	flash	flash	high		0x1bd: used by chips/flshbom/bomb.
+sound	follow-effect	slide	low		The follow effect sliding, Rflectr's shield.
+sound	form-change	form-change	high		0x0f7: role sounds.form_change; used by chips/heatman/flame, lib/dragons/head.
+sound	freeze	freeze	high		0x118: role sounds.freeze; used by chips/iceseed/chip, rules/panels.
+sound	gauge-full	gauge-full	high		0x08f: role sounds.gauge_full.
+sound	golem	golem-hit	medium		GolmHit's golem hitting.
+sound	golem-2	golem-leap	medium		GolmHit's golem leaping.
+sound	grab-shot	grab-land	medium		The grab shot landing (lib/grab/shot.luau's SOUND_LAND), GrabBnsh's hand.
+sound	grab-shot-2	grab-fall	medium		The grab shot falling (lib/grab/shot.luau's SOUND_FALL), GrabBnsh's hand.
+sound	gregar-roar	gregar-roar	high		0x1cc: role sounds.gregar_roar.
+sound	ground-beast-dash	ground-beast-dash	high		0x1bf: used by navis/megaman/forms/groundcross-beast/dash, navis/megaman/forms/groundcross/drill.
+sound	ground-beast-dash-2	rumble	medium		GroundCross Beast's dash's rumble, ChargeCross Beast's wave.
+sound	gundels1	gun-click	medium	number	GunDelSol's gun, CrosOver's gun, the blank shot's click (named for GunDelS1).
+sound	h-burst	h-burst	high		0x0af: used by chips/airshot/chip, chips/h-burst/action, chips/spreadr/action, objects/bullet/bullet.
+sound	heal	heal	high		0x08a: role sounds.recovery; used by chips/roll/heart, lib/instant/repair, lib/supports/heal.
+sound	hit-6b	own-hit	high	number	The disassembly's SOUND_HIT_6B; the role sounds.own_hit: a navi hit, as its own player hears it.
+sound	hit-6d	hit	high	number	The disassembly's SOUND_HIT_6D; the role sounds.hit: a navi hit, as the other player hears it.
+sound	hit-6e	guard-hit	high	number	The disassembly's SOUND_HIT_6E; the role sounds.guard: a blocked hit.
+sound	hit-87	damage-bonus	high	number	The disassembly's SOUND_HIT_87; the role sounds.damage_bonus.
+sound	hit-bomb-0	hit-bomb-0	high	number	0x06f: used by chips/vdoll/sparkles.
+sound	hit-bomb-1	hit-bomb-1	high	number	0x070: used by chips/airraid/plane, chips/airspin/top, chips/anubis/statue, chips/blkbomb/bomb and 16 more.
+sound	hockey-puck	hockey-puck	high		0x0b4: used by chips/airhocky/puck, chips/bblstar/chips, chips/magnum/gunner.
+sound	hop	hop	high		0x113: used by chips/mine/land_mine.
+sound	hub	power-up	low		BusterUp, LifeSync's HP going up, the navi boosts' hub.
+sound	immobilizer	immobilizer	high		0x0fc: used by chips/darkness/navi, lib/instant/immobilizer, rules/panels.
+sound	invisible	invisible	high		0x093: role sounds.invisible; used by chips/bugfix/glow, chips/invisibl/controller, lib/instant/invisible.
+sound	iron-shell	iron-shell	high		0x187: used by chips/ironshl/shell, navis/megaman/forms/chargecross/tackle.
+sound	junk-shot	junk-shot	high		0x0ff: used by chips/dustman/navi, chips/elemtrap/strike, navis/dustman/charge, navis/megaman/forms/dustcross-beast/junk_shot and 2 more.
+sound	justice-one	heavy-impact	medium		A heavy landing: JustcOne's fist, MetrKnuk's fists, ElmntMan's and SunMoon's meteors.
+sound	land	land	high		0x0c0: used by chips/anubis/statue, chips/blkbomb/bomb, chips/golmhit/golem, chips/lilbolr/boiler and 3 more.
+sound	last	last	high		0x0c2: used by chips/timebom/countdown.
+sound	lifesync	lifesync	high		0x11a: used by chips/lifesync/controller.
+sound	log-in-77	log-in	high	number	The disassembly's SOUND_LOG_IN_77: the Cross change's chime (a role), AntiSwrd's counter, BugFix, DeltaRay, the navi boosts.
+sound	log-out-76	log-out	medium	number	The disassembly's SOUND_LOG_OUT_76; the battle doesn't play it.
+sound	minibomb-throw	bomb-throw	medium		Every bomb's throw (lib/bombs/throw.luau) and Tango's.
+sound	moon-beam	moon-beam	high		0x111: used by chips/sunmoon/moon_beam, navis/megaman/forms/erasecross/charge.
+sound	ok-8b	ok	medium	number	The disassembly's SOUND_OK_8B: SlashMan's wave, Z Saver's command, VariSwrd.
+sound	panel-crack	panel-crack	high		0x097: role sounds.panel_crack; used by chips/antidmg/shuriken, chips/bodygrd/shuriken, chips/geddon/quake, chips/rockcube/rock.
+sound	panel-poison	panel-poison	high		0x090: role sounds.panel_poison; used by chips/geddon/quake, chips/guardian/statue, chips/otenko/statue, chips/poisseed/chip and 4 more.
+sound	panel-volcano	panel-volcano	high		0x11c: used by rules/panels.
+sound	pause	pause	high		0x09f: role sounds.pause.
+sound	place	place	high		0x112: used by chips/numbrbl/ball, chips/rockcube/cube, lib/supports/rush, objects/encased-bubble/bubble.
+sound	point-appear	point-appear	high		0x129: role sounds.arrive; used by chips/colorpt/point.
+sound	point-rise	point-rise	high		0x12a: role sounds.obstacle_lift; used by chips/colorpt/point.
+sound	rlnglog1-roll	log-roll	medium	number	RlngLog's log rolling (named for RlngLog1).
+sound	roar	roar	high		0x12b: used by chips/darkness/navi, lib/burner/burn, navis/megaman/forms/heatcross-beast/charge.
+sound	rockfall	rockfall	high		0x0e5: used by chips/grndman/navi, navis/groundman/chip.
+sound	roll	roll-warp	medium		Roll's warp (chips/roll/navi.luau, `vanish`).
+sound	roll-2	whip	medium		Roll's ribbon whip swishing.
+sound	rslash	rslash	high		0x164: used by navis/slashman/chip.
+sound	sand-worm	emerge	medium		SandWrm's worm emerging, DiveMan surfacing.
+sound	sand-worm-2	dive	medium		SandWrm's worm diving.
+sound	select-67	select-67	high	number	The disassembly's SOUND_SELECT_67: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	select-79	select-79	high	number	The disassembly's SOUND_SELECT_79: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	select-7a	select-7a	high	number	The disassembly's SOUND_SELECT_7A: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	select-82	select-82	high	number	The disassembly's SOUND_SELECT_82: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	select-86	counter-hit	high	number	The disassembly's SOUND_SELECT_86 (a menu name); the role sounds.counter_hit.
+sound	set-down	set-down	high		0x120: used by chips/airspin/top, chips/aurahed/head, chips/yoyo/yoyo, lib/supports/beat.
+sound	shock-wave	shock-wave	high		0x0a6: used by chips/wavearm/wave.
+sound	snatch	snatch	high		0x126: used by lib/supports/beat.
+sound	sound-066	sound-066	high	number	0x066: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-073	sound-073	high	number	0x073: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-074	sound-074	high	number	0x074: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-07d	sound-07d	high	number	0x07d: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-07e	sound-07e	high	number	0x07e: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-095	sound-095	high	number	0x095: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-096	sound-096	high	number	0x096: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-098	sound-098	high	number	0x098: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-09a	sound-09a	high	number	0x09a: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-09b	sound-09b	high	number	0x09b: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-09c	sound-09c	high	number	0x09c: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-09d	sound-09d	high	number	0x09d: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-09e	sound-09e	high	number	0x09e: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0ac	sound-0ac	high	number	0x0ac: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0b1	sound-0b1	high	number	0x0b1: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0b5	sound-0b5	high	number	0x0b5: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0c8	sound-0c8	high	number	0x0c8: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0c9	sound-0c9	high	number	0x0c9: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0ca	sound-0ca	high	number	0x0ca: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0cb	sound-0cb	high	number	0x0cb: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0cc	sound-0cc	high	number	0x0cc: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0cd	sound-0cd	high	number	0x0cd: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0cf	sound-0cf	high	number	0x0cf: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0d2	sound-0d2	high	number	0x0d2: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0d3	sound-0d3	high	number	0x0d3: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0d5	sound-0d5	high	number	0x0d5: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0d6	sound-0d6	high	number	0x0d6: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0d7	sound-0d7	high	number	0x0d7: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0db	sound-0db	high	number	0x0db: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0dc	sound-0dc	high	number	0x0dc: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0dd	sound-0dd	high	number	0x0dd: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0de	sound-0de	high	number	0x0de: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0df	sound-0df	high	number	0x0df: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0e2	sound-0e2	high	number	0x0e2: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0e7	sound-0e7	high	number	0x0e7: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0e8	sound-0e8	high	number	0x0e8: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0e9	sound-0e9	high	number	0x0e9: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0ea	sound-0ea	high	number	0x0ea: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0eb	sound-0eb	high	number	0x0eb: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0ec	sound-0ec	high	number	0x0ec: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0ee	sound-0ee	high	number	0x0ee: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0ef	sound-0ef	high	number	0x0ef: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0f1	sound-0f1	high	number	0x0f1: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0f2	sound-0f2	high	number	0x0f2: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0f5	sound-0f5	high	number	0x0f5: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0f6	sound-0f6	high	number	0x0f6: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0fa	sound-0fa	high	number	0x0fa: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-0fe	sound-0fe	high	number	0x0fe: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-101	sound-101	high	number	0x101: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-102	sound-102	high	number	0x102: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-103	sound-103	high	number	0x103: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-105	sound-105	high	number	0x105: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-106	sound-106	high	number	0x106: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-108	sound-108	high	number	0x108: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-109	sound-109	high	number	0x109: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-10b	sound-10b	high	number	0x10b: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-11e	sound-11e	high	number	0x11e: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-121	sound-121	high	number	0x121: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-123	sound-123	high	number	0x123: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-125	sound-125	high	number	0x125: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-127	sound-127	high	number	0x127: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-12c	sound-12c	high	number	0x12c: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-12f	sound-12f	high	number	0x12f: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-130	sound-130	high	number	0x130: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-133	sound-133	high	number	0x133: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-135	sound-135	high	number	0x135: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-136	sound-136	high	number	0x136: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-137	sound-137	high	number	0x137: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-138	sound-138	high	number	0x138: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-139	sound-139	high	number	0x139: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-13a	sound-13a	high	number	0x13a: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-13d	sound-13d	high	number	0x13d: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-13e	sound-13e	high	number	0x13e: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-13f	sound-13f	high	number	0x13f: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-141	sound-141	high	number	0x141: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-142	sound-142	high	number	0x142: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-145	sound-145	high	number	0x145: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-147	sound-147	high	number	0x147: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-149	sound-149	high	number	0x149: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-14a	sound-14a	high	number	0x14a: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-14b	sound-14b	high	number	0x14b: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-14d	sound-14d	high	number	0x14d: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-14e	sound-14e	high	number	0x14e: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-14f	sound-14f	high	number	0x14f: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-151	sound-151	high	number	0x151: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-152	sound-152	high	number	0x152: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-153	sound-153	high	number	0x153: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-154	sound-154	high	number	0x154: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-156	sound-156	high	number	0x156: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-15a	sound-15a	high	number	0x15a: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-15b	sound-15b	high	number	0x15b: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-15c	sound-15c	high	number	0x15c: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-15e	sound-15e	high	number	0x15e: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-15f	sound-15f	high	number	0x15f: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-160	sound-160	high	number	0x160: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-161	sound-161	high	number	0x161: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-162	sound-162	high	number	0x162: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-163	sound-163	high	number	0x163: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-165	sound-165	high	number	0x165: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-166	sound-166	high	number	0x166: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-168	sound-168	high	number	0x168: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-169	sound-169	high	number	0x169: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-16a	sound-16a	high	number	0x16a: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-16c	sound-16c	high	number	0x16c: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-16d	sound-16d	high	number	0x16d: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-16f	sound-16f	high	number	0x16f: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-170	sound-170	high	number	0x170: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-171	sound-171	high	number	0x171: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-174	sound-174	high	number	0x174: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-175	sound-175	high	number	0x175: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-176	sound-176	high	number	0x176: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-177	sound-177	high	number	0x177: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-178	sound-178	high	number	0x178: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-179	sound-179	high	number	0x179: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-17a	sound-17a	high	number	0x17a: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-17c	sound-17c	high	number	0x17c: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-17d	sound-17d	high	number	0x17d: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-17e	sound-17e	high	number	0x17e: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-183	sound-183	high	number	0x183: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-186	sound-186	high	number	0x186: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-18b	sound-18b	high	number	0x18b: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-18c	sound-18c	high	number	0x18c: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-18d	sound-18d	high	number	0x18d: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-18e	sound-18e	high	number	0x18e: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-18f	sound-18f	high	number	0x18f: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-190	sound-190	high	number	0x190: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-191	sound-191	high	number	0x191: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-192	sound-192	high	number	0x192: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-193	sound-193	high	number	0x193: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-194	sound-194	high	number	0x194: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-195	sound-195	high	number	0x195: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-197	sound-197	high	number	0x197: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-198	sound-198	high	number	0x198: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-199	sound-199	high	number	0x199: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-19b	sound-19b	high	number	0x19b: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-19c	sound-19c	high	number	0x19c: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-19d	sound-19d	high	number	0x19d: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-19e	sound-19e	high	number	0x19e: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-19f	sound-19f	high	number	0x19f: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1a0	sound-1a0	high	number	0x1a0: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1a1	sound-1a1	high	number	0x1a1: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1a2	sound-1a2	high	number	0x1a2: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1a3	sound-1a3	high	number	0x1a3: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1a4	sound-1a4	high	number	0x1a4: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1a5	sound-1a5	high	number	0x1a5: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1ac	sound-1ac	high	number	0x1ac: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1ad	sound-1ad	high	number	0x1ad: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1ae	sound-1ae	high	number	0x1ae: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1af	sound-1af	high	number	0x1af: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b0	sound-1b0	high	number	0x1b0: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b1	sound-1b1	high	number	0x1b1: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b2	sound-1b2	high	number	0x1b2: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b3	sound-1b3	high	number	0x1b3: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b4	sound-1b4	high	number	0x1b4: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b5	sound-1b5	high	number	0x1b5: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b6	sound-1b6	high	number	0x1b6: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b7	sound-1b7	high	number	0x1b7: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b8	sound-1b8	high	number	0x1b8: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1b9	sound-1b9	high	number	0x1b9: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1ba	sound-1ba	high	number	0x1ba: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1bb	sound-1bb	high	number	0x1bb: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1bc	sound-1bc	high	number	0x1bc: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1c1	sound-1c1	high	number	0x1c1: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1c2	sound-1c2	high	number	0x1c2: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1c3	sound-1c3	high	number	0x1c3: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1c4	sound-1c4	high	number	0x1c4: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1c8	sound-1c8	high	number	0x1c8: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1c9	sound-1c9	high	number	0x1c9: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1ca	sound-1ca	high	number	0x1ca: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1cb	sound-1cb	high	number	0x1cb: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1ce	sound-1ce	high	number	0x1ce: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1cf	sound-1cf	high	number	0x1cf: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1d1	sound-1d1	high	number	0x1d1: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1d2	sound-1d2	high	number	0x1d2: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1d3	sound-1d3	high	number	0x1d3: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1d4	sound-1d4	high	number	0x1d4: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1d5	sound-1d5	high	number	0x1d5: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1d6	sound-1d6	high	number	0x1d6: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1d7	sound-1d7	high	number	0x1d7: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1d8	sound-1d8	high	number	0x1d8: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	sound-1d9	sound-1d9	high	number	0x1d9: nothing in the port plays it (content may not name a placeholder, and the ruleset plays only its roles' named sounds).
+sound	spin	spin	high		0x0c7: used by chips/airspin/top, chips/colonel/navi, chips/dblbeast/gregar, chips/moonbld/action and 2 more.
+sound	spout-ball	spout-ball	high		0x11d: used by chips/elemtrap/strike, chips/spoutman/ball, objects/bullet/bullet.
+sound	spout-beast-charge	spout-beast-charge	high		0x0f4: used by navis/megaman/forms/spoutcross-beast/charge.
+sound	spout-man	geyser	medium		SpoutMan's geyser erupting.
+sound	stop-music	stop-music	high		0x063: no use in content (the engine's or nothing's). Curation: 0x063: the engine's
+sound	sun-beam	sun-beam	high		0x0f9: used by chips/gundels/beam.
+sound	sun-moon	sun-moon	high		0x110: used by chips/mstrcros/navi, chips/sunmoon/sun.
+sound	swoop	swoop	high		0x13b: used by chips/darkness/navi.
+sound	sword-swing	sword-swing	high		0x0b0: used by chips/dblbeast/falzar, chips/dblbeast/gregar, chips/dblhero/heroes, chips/lance/lance and 2 more.
+sound	take-off	take-off	high		0x1a9: used by chips/airraid/plane.
+sound	tango-land	tango-land	high		0x0d4: used by lib/supports/tango.
+sound	target-move	target-move	high		0x10f: used by chips/elemtrap/strike, chips/magnum/gunner, objects/bullet/bullet.
+sound	telop	telop	high		0x173: role sounds.telop.
+sound	tengu-man	tengu-man	high		0x13c: used by chips/tenguman/navi.
+sound	tenguman-nose	tenguman-nose	high		0x0fb: used by navis/tenguman/charge.
+sound	throw	throw	high		0x1a6: used by chips/rlnglog/action.
+sound	tick	tick	high		0x0c1: used by chips/timebom/countdown.
+sound	tomahawk-man	axe-swing	low		TomahawkMan's swing (chip and charge), TomahawkCross's charge, SumnBlk's claw.
+sound	trap-vanish	trap-vanish	high		AntiDmg's and BodyGrd's counters: the navi vanishing. (Its curation note says 0x108; assets.toml has it at 0x107, which the presentation check corrected.)
+sound	twang	twang	high		0x18a: used by chips/trnarrw/chips, objects/flying-shot/flying_shot.
+sound	unselect-68	unselect-68	high	number	The disassembly's SOUND_UNSELECT_68: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	unselect-7b	unselect-7b	high	number	The disassembly's SOUND_UNSELECT_7B: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	unselect-7c	unselect-7c	high	number	The disassembly's SOUND_UNSELECT_7C: a menu sound the battle doesn't play; the number tells its variants apart.
+sound	volcano	volcano	high		0x146: used by navis/chargeman/chip.
+sound	wave	wave	high		0x0c5: used by chips/rflectr/guard.
+sound	wide-shot	wide-shot	high		0x0a7: used by chips/diveman/wave, chips/widesht/wave.
+sound	windrack	windrack	high		0x11f: used by chips/mstrcros/navi, chips/windrack/action.
+sound	winner-0	winner-special	medium	number	The disassembly's SONG_WINNER_0; the role music.winner_special.
+sound	winner-1	winner	medium	number	The disassembly's SONG_WINNER_1; the role music.winner.
+sound	z-saver	z-saver	high		0x131: used by chips/z-saver/action.
+banner	banner-54	time-up	high	number	Reads "TIME UP!"; no netbattle shows it.
+banner	banner-58	liberate-success	high	number	Reads "LIBERATE SUCCESS!"; no netbattle shows it.
+banner	banner-5c	liberate-failed	high	number	Reads "LIBERATE FAILED!"; no netbattle shows it.
+banner	banner-60	turn-liberate	high	number	Reads "TURN LIBERATE!"; no netbattle shows it.
+banner	held-28	hit-damage-judge	high	number	Reads "HIT DAMAGE JUDGE" (the role banners.judge).
+background	calendar-blue	calendar-blue	high		0x0a: no use in content (the engine's or nothing's). Curation: 0x0A: by what it shows
+background	calendar-bright-blue	calendar-bright-blue	high		0x0e: no use in content (the engine's or nothing's). Curation: 0x0E: by what it shows
+background	calendar-checkers	calendar-checkers	high		0x06: no use in content (the engine's or nothing's). Curation: 0x06: by what it shows
+background	calendar-cyan	calendar-cyan	high		0x0b: no use in content (the engine's or nothing's). Curation: 0x0B: by what it shows
+background	calendar-green	calendar-green	high		0x0d: no use in content (the engine's or nothing's). Curation: 0x0D: by what it shows
+background	calendar-lavender	calendar-lavender	high		0x08: no use in content (the engine's or nothing's). Curation: 0x08: by what it shows
+background	calendar-mint	calendar-mint	high		0x07: used by stages/netbattle.
+background	calendar-navy	calendar-navy	high		0x09: no use in content (the engine's or nothing's). Curation: 0x09: by what it shows
+background	calendar-purple	calendar-purple	high		0x13: no use in content (the engine's or nothing's). Curation: 0x13: by what it shows
+background	clouds	clouds	high		0x04: no use in content (the engine's or nothing's). Curation: 0x04: by what it shows
+background	code	code	high		0x0f: no use in content (the engine's or nothing's). Curation: 0x0F: by what it shows
+background	code-2	code-2	high	number	0x11: no use in content (the engine's or nothing's). Curation: 0x11: by what it shows
+background	globes	globes	high		0x10: no use in content (the engine's or nothing's). Curation: 0x10: by what it shows
+background	globes-2	globes-2	high	number	0x15: no use in content (the engine's or nothing's). Curation: 0x15: by what it shows
+background	honeycomb	honeycomb	high		0x00: no use in content (the engine's or nothing's). Curation: 0x00: by what it shows
+background	seals	seals	high		0x03: no use in content (the engine's or nothing's). Curation: 0x03: by what it shows
+background	sprouts	sprouts	high		0x05: no use in content (the engine's or nothing's). Curation: 0x05: by what it shows
+background	statues	statues	high		0x01: no use in content (the engine's or nothing's). Curation: 0x01: by what it shows
+background	storm-clouds	storm-clouds	high		0x14: no use in content (the engine's or nothing's). Curation: 0x14: by what it shows
+background	swirls	swirls	high		0x12: no use in content (the engine's or nothing's). Curation: 0x12: by what it shows
+background	trees	trees	high		0x0c: no use in content (the engine's or nothing's). Curation: 0x0C: by what it shows
+effect	bat_impact	cut_in_flash	high	wrong	The role effects.cut_in_flash: the flash where a side cut in (effect 0x1E).
+effect	beast_over_blast	beast_over_blast	high		effect 0x3E: Effect 0x3E.
+effect	beast_over_burst_45	beast_over_burst	high	number	The role effects.beast_over_burst (effect 0x45).
+effect	beast_over_falzar	beast_over_falzar	high		effect 0x40: Effect 0x40.
+effect	beast_over_gregar	beast_over_gregar	high		effect 0x3F: Effect 0x3F.
+effect	big_slash	big_slash	high		effect 0x1B: Effect 0x1B.
+effect	big_slash_1	earth_splash	medium		Effect 0x33: the earth TomahawkMan's strike splashes (big-slash animation 1).
+effect	big_slash_1c	big_slash_p2	medium	number	Effect 0x1C: big-slash, palette 2. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	blast	blast	high		effect 0x47: Effect 0x47.
+effect	blast_fire_12	blast_fire_12	high		effect 0x29: Effect 0x29.
+effect	bug	bug	high		effect 0x5B: Effect 0x5B.
+effect	buster_up	buster_up	high		effect 0x31: Effect 0x31.
+effect	charge_glow	charge_glow	high		effect 0x4E: Effect 0x4E.
+effect	charge_glow_2	charged_flash	medium		Effect 0x4F: the flash when a charge is full (docs/engine/chips.md).
+effect	charge_glow_a_3	charge_glow_a_3	high		effect 0x5C: Effect 0x5C.
+effect	colonel_effect	colonel_slashes	medium		Effect 0x35: colonel-slashes animation 0. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	colonel_effect_1	colonel_slashes_1	medium		Effect 0x36: colonel-slashes animation 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	colonel_effect_2	colonel_slashes_2	medium		Effect 0x37: colonel-slashes animation 2. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	colonel_effect_3	screen_divide	medium		Effect 0x38: Colonel's screen divide (chips/colonel/navi.luau's DIVIDE).
+effect	colonel_effect_5	colonel_slashes_5	medium		Effect 0x62: colonel-slashes animation 5. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	copy_mark	hit_spark	medium		Effect 0x07: the plain hit spark's look (hit-sparks animation 0). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	copy_mark_1	breaking_spark	medium		Effect 0x0C: the breaking spark's look (hit-sparks animation 1). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	copy_mark_11	target_mark	medium		Effect 0x28: DeltaRay's mark on his target (chips/deltaray). Hit-sparks animation 11, palette 1.
+effect	copy_mark_12	hit_sparks_12	low		Effect 0x48: hit-sparks animation 12 (BurnSqr's corners). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	copy_mark_1_53	breaking_spark_p6	low	number	Effect 0x53: hit-sparks animation 1, palette 6. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	copy_mark_2	fire_spark	medium		Effect 0x08: the fire spark's look (animation 2). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	copy_mark_3	aqua_spark	medium		Effect 0x09: the aqua spark's look (animation 3). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	copy_mark_4	elec_spark	medium		Effect 0x0A: the elec spark's look (animation 4). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	copy_mark_5	wood_spark	medium		Effect 0x0B: the wood spark's look (animation 5). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	copy_mark_7	trap_mark	high		The role effects.trap_mark: the TRAP! mark over a navi whose trap sprang (effect 0x46).
+effect	copy_mark_8	hand_flash	medium		Effect 0x57: a shot's flash at the hand (Bass, chips/bass/navi.luau).
+effect	copy_mark_9	hit_sparks_9	low		Effect 0x0D: hit-sparks animation 9. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	cross_slash	cross_slash	high		effect 0x52: Effect 0x52.
+effect	deletion	deletion	high		effect 0x03: The rest of the original's effects (gen-content). Effect 0x03.
+effect	diveman_21	diveman_21	high		effect 0x2B: Effect 0x2B.
+effect	diveman_25	diveman_25	high		effect 0x2C: Effect 0x2C.
+effect	dust_2	crack_dust	medium		Effect 0x30: the dust CrakShot raises on its panel.
+effect	dust_2_2	dust_spray	low		Effect 0x34: the dust-spray sprite (GolmHit's landing).
+effect	dust_cloud	dust_cloud	high		effect 0x63: Effect 0x63.
+effect	dustman_24	dustman_24	high		effect 0x51: Effect 0x51.
+effect	dustman_30	dustman_30	high		effect 0x5E: Effect 0x5E.
+effect	effect_55_12	effect_55_12	low	number	Effect 0x55: a virus sheet's animation 12. Nothing names it better.
+effect	effect_61	grey_shards	low	number	Effect 0x61: the grey-shards sprite. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	elmnt_ice	sparkle	medium		Effect 0x26: the sparkle sprite (proposed `sparkle`). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	energy_burst	energy_burst	high		effect 0x23: Effect 0x23.
+effect	explosion_24	explosion_p1	medium	number	Effect 0x24: explosion, palette 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	explosion_4a	explosion_p2	medium	number	Effect 0x4A: explosion, palette 2 (BugBomb's). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	form_change	form_change	high		effect 0x2E: Effect 0x2E.
+effect	grab_shot_1	grab_shot_1	high		effect 0x3B: Effect 0x3B.
+effect	grab_shot_1_3c	grab_shot_1_p8	medium	number	Effect 0x3C: grab-shot animation 1, palette 8. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	ground_drill_effect	ground_drill_effect	high		effect 0x04: Effect 0x04.
+effect	heal	heal	high		effect 0x06: Effect 0x06.
+effect	hit	guard_ripple	medium		Effect 0x0F: the guard ripple's look (sprite `hit`, proposed guard-ripple). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	hub	hub	high		effect 0x5A: Effect 0x5A.
+effect	hub_1	hub_1	high		effect 0x69: Effect 0x69.
+effect	impact	impact	high		effect 0x0E: Effect 0x0E.
+effect	lil_boiler_10	lil_boiler_10	high		effect 0x32: Effect 0x32.
+effect	moon_blade	moon_blade	high		effect 0x43: Effect 0x43.
+effect	panel_strike	panel_strike	high		effect 0x54: Effect 0x54.
+effect	puff_1	puff_1	high		effect 0x13: Effect 0x13.
+effect	puff_3	puff_3	high		effect 0x15: Effect 0x15.
+effect	reflected_shot_1	pink_flash_1	low		Effect 0x10: pink-flash animation 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	reflected_shot_3d	pink_flash_p2	medium	number	Effect 0x3D: pink-flash, palette 2 (H-Burst's explosion on each panel). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	reticle	reticle	high		effect 0x2F: Effect 0x2F.
+effect	reticle_1	reticle_1	high		effect 0x58: Effect 0x58.
+effect	sand_hole	sand_hole	high		effect 0x50: Effect 0x50.
+effect	sight	sight	high		effect 0x49: Effect 0x49.
+effect	sight_4	sight_4	high		effect 0x56: Effect 0x56.
+effect	slash_man_effect	claw_slash	medium		Effect 0x39: claw-slash animation 0. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	slash_man_effect_1	claw_slash_1	medium		Effect 0x3A: claw-slash animation 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	slash_man_effect_2	claw_slash_2	medium		Effect 0x4C: claw-slash animation 2. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	slash_man_effect_3	claw_slash_3	medium		Effect 0x4D: claw-slash animation 3. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	small_ring_82	dummy_look	low	wrong	Effect 0x4B reads animation 82, palette 16 of the dummy sprite: a row of the original's table that names no real look.
+effect	spout_man_effect	water_ring	low		Effect 0x2A: the water-ring sprite (SpoutMan's throw). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	spout_splash	spout_splash	high		effect 0x1F: Effect 0x1F.
+effect	sun_beam	sun_beam	high		effect 0x5D: Effect 0x5D.
+effect	swirl	swirl	high		effect 0x44: Effect 0x44.
+effect	swirl_1	swirl_1_p1	low		Effect 0x41: swirl animation 1, palette 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	sword_slash	sword_slash	high		effect 0x16: Effect 0x16.
+effect	sword_slash_1	sword_slash_1	high		effect 0x17: Effect 0x17.
+effect	sword_slash_19	sword_slash_p5	medium	number	Effect 0x19: sword-slash, palette 5. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	sword_slash_1_1a	sword_slash_1_p5	medium	number	Effect 0x1A: sword-slash animation 1, palette 5. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	sword_slash_1_2d	sword_slash_1_p6	medium	number	Effect 0x2D: sword-slash animation 1, palette 6. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	sword_slash_1_65	sword_slash_1_p4	medium	number	Effect 0x65: sword-slash animation 1, palette 4. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	sword_slash_2	sword_slash_2	high		effect 0x18: Effect 0x18.
+effect	sword_slash_3	sword_slash_3	high		effect 0x25: Effect 0x25.
+effect	sword_slash_3_67	sword_slash_3_p4	medium	number	Effect 0x67: sword-slash animation 3, palette 4. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	sword_slash_64	sword_slash_p6	medium	number	Effect 0x64: sword-slash, palette 6. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	sword_slash_66	sword_slash_p4	medium	number	Effect 0x66: sword-slash, palette 4. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+effect	tank_blast	tank_blast	high		effect 0x60: Effect 0x60.
+effect	tornado	tornado	high		effect 0x59: Effect 0x59.
+effect	vulcan_hit	vulcan_hit	high		effect 0x20: Effect 0x20.
+effect	vulcan_hit_6a	vulcan_hit_p1	medium	number	Effect 0x6A: vulcan-hit, palette 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.
+spark	hit	guard	high		Spark 0x08 is the role sparks.guard: a blocked hit.
+spark	spark_0e	uninstall	high	number	Spark 0x0E is the role sparks.uninstall: a navi's programs uninstalled.
+region	region_03	ahead	medium	number	Region 0x03: the panel ahead, not the anchor. Unused by content; named for its shape.
+region	region_05	above_below	medium	number	Region 0x05: the panels above and below the anchor. Unused by content; named for its shape.
+region	region_07	line_4	medium	number	Region 0x07: the anchor and three ahead (`line` is three, `long` two). Unused by content; named for its shape.
+region	region_08	line_6	medium	number	Region 0x08: the anchor and five ahead. Unused by content; named for its shape.
+region	region_0e	diagonals_ahead	medium	number	Region 0x0E: the two panels diagonally ahead (the `fork` without its anchor). Unused by content; named for its shape.
+region	region_14	tee	medium	number	Region 0x14: the anchor, above, below and ahead: `wide` and the panel ahead. Unused by content; named for its shape.
+region	region_16	up_ahead	medium	number	Region 0x16: the anchor and the panel diagonally ahead and up. Unused by content; named for its shape.
+region	region_17	down_ahead	medium	number	Region 0x17: the anchor and the panel diagonally ahead and down. Unused by content; named for its shape.
+region	region_19	tall_down	medium	number	Region 0x19: the anchor and the panel below (`tall` is the one above). Unused by content; named for its shape.
+region	region_1b	fan_3	medium	number	Region 0x1B: the anchor and the three columns ahead (`fan` is one, `deep_fan` two). Unused by content; named for its shape.
+region	region_1c	fan_4	medium	number	Region 0x1C: the anchor and the four columns ahead. Unused by content; named for its shape.
+region	region_1d	across	medium	number	Region 0x1D: the anchor, ahead and behind. Unused by content; named for its shape.
+region	region_1e	across_ends	medium	number	Region 0x1E: ahead and behind, not the anchor. Unused by content; named for its shape.
+region	region_1f	fork_back	medium	number	Region 0x1F: the anchor and the two panels diagonally behind (`fork` reversed). Unused by content; named for its shape.
+region	region_20	line_5	medium	number	Region 0x20: the anchor and four ahead. Unused by content; named for its shape.
+region	region_21	wide_long_4	medium	number	Region 0x21: the anchor's column and three ahead (`wide_long` is two). Unused by content; named for its shape.
+region	region_22	hourglass	medium	number	Region 0x22: three above, the anchor, three below. Unused by content; named for its shape.
+region	region_23	wide_long_6	medium	number	Region 0x23: the anchor's column and five ahead: three rows by six. Unused by content; named for its shape.
+region	region_24	rising_band	medium	number	Region 0x24: a band of three by three leaning forward and up. Unused by content; named for its shape.
+region	region_25	falling_band	medium	number	Region 0x25: a band of three by three leaning forward and down. Unused by content; named for its shape.
+region	region_27	bracket	medium	number	Region 0x27: the rows above and below, six long, closed at the far end. Unused by content; named for its shape.
+region	region_28	hammer	medium	number	Region 0x28: three ahead in line, with the far end's above and below. Unused by content; named for its shape.
+region	region_29	hourglass_ahead	medium	number	Region 0x29: three above and below, starting at the anchor's column, and the panel ahead between. Unused by content; named for its shape.
+region	region_2a	long_tee	medium	number	Region 0x2A: above, below, the anchor and five ahead. Unused by content; named for its shape.
+region	region_2b	line_back	medium	number	Region 0x2B: the anchor and two behind. Unused by content; named for its shape.
+region	region_2c	rows_two_away	medium	number	Region 0x2C: the rows two above and two below, eleven long. Unused by content; named for its shape.
+region	region_2d	column	medium	number	Region 0x2D: the anchor's column, five tall. Unused by content; named for its shape.
+region	region_2e	column_ends	medium	number	Region 0x2E: the anchor's column, five tall, without the anchor. Unused by content; named for its shape.
+collision	attack-480	attack-480	low	number	Row 0x25: an attack with the flag 0x400, whose test no routine was found for; nothing names a better reading.
+collision	attack-90	chip-erasing	medium	number	Row 0x08: an attack that erases the held chip (flag 0x10). A projectile variant uses it (shot/attack-90).
+collision	attack-a0	attack-a0	low	number	Row 0x47: an attack with the flag 0x20 (untested by any routine found); a projectile variant uses it.
+collision	collision-03	collision-03	low	number	Row 0x03: what reaches the other side's attacks, objects and other bodies and the neutral objects, with 0x100. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-09	collision-09	low	number	Row 0x09: an attack with the flag 0x100 (counted into the receiver's drain total). Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-11	collision-11	low	number	Row 0x11: a slash with the flag 0x400, whose test no routine was found for. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-1a	thrown-piercing-break-chip-erasing	medium	number	Row 0x1A: a thrown attack that pierces, breaks and erases the held chip (0x10). Unused by content; named for its flags.
+collision	collision-1b	collision-1b	high		type 0x1B: Row 0x1B.
+collision	collision-1d	thrown-piercing-chip-erasing	medium	number	Row 0x1D: a thrown attack that pierces and erases the held chip. Unused by content; named for its flags.
+collision	collision-1f	collision-1f	low	number	Row 0x1F: a breaking attack with the bit 0x40000 (the mine's and the hitbox's). Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-20	thrown-pushing	medium	number	Row 0x20: a thrown attack that pushes. Unused by content; named for its flags.
+collision	collision-21	collision-21	low	number	Row 0x21: a thrown breaking attack with the bit 0x40000. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-22	collision-22	low	number	Row 0x22: an attack of both sides with the bit 0x40000, ground-only, thrown, piercing and breaking: the mine's, ground-only. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-23	blocker	medium	number	Row 0x23: only the blocker bit (0x00080000). Unused by content; named for its flags.
+collision	collision-24	collision-24	low	number	Row 0x24: a thrown pushing attack with the flag 0x400. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-26	both-sides-thrown	medium	number	Row 0x26: a thrown attack of both sides (with the bit 0x40000). Unused by content; named for its flags.
+collision	collision-27	both-sides-ground-breaking	medium	number	Row 0x27: an attack of both sides (with 0x40000), ground-only and breaking. Unused by content; named for its flags.
+collision	collision-28	piercing-break-slash	medium	number	Row 0x28: a slash that pierces and breaks. Unused by content; named for its flags.
+collision	collision-29	own-breaking-body	medium	number	Row 0x29: another body of its side that breaks, while dimmed too. Unused by content; named for its flags.
+collision	collision-2d	thrown-break-drain	medium	number	Row 0x2D: a thrown breaking drain. Unused by content; named for its flags.
+collision	collision-2e	piercing-break-drain	medium	number	Row 0x2E: a piercing breaking drain. Unused by content; named for its flags.
+collision	collision-2f	thrown-drain	medium	number	Row 0x2F: a thrown drain. Unused by content; named for its flags.
+collision	collision-31	piercing-guard-breaking	medium	number	Row 0x31: a piercing attack that breaks guards. Unused by content; named for its flags.
+collision	collision-35	breaking-navi	medium	number	Row 0x35: a navi's body that breaks (the navi chips' and link navis' bodies). Unused by content; named for its flags.
+collision	collision-36	collision-36	low	number	Row 0x36: a breaking drain (0x4000 and 0x02 alone); `breaking-drain` already names row 0x30, which is thrown and piercing too. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-37	own-thrown-breaking-body	medium	number	Row 0x37: another body of its side, thrown and breaking, while dimmed too. Unused by content; named for its flags.
+collision	collision-38	hits-bodies	medium	number	Row 0x38: what reaches every body and the neutral objects. Unused by content; named for its flags.
+collision	collision-39	breaking-floating-navi	medium	number	Row 0x39: a floating navi's body that breaks. Unused by content; named for its flags.
+collision	collision-3a	thrown-breaking-navi	medium	number	Row 0x3A: a navi's body, thrown and breaking. Unused by content; named for its flags.
+collision	collision-3b	own-breaking-object	medium	number	Row 0x3B: an object of its side that breaks, while dimmed too. Unused by content; named for its flags.
+collision	collision-3c	thrown-break-drain-2	medium	number	Row 0x3C: the same flags as row 0x2D (a thrown breaking drain): a second row. Unused by content; named for its flags.
+collision	collision-3e	own-floating-body	medium	number	Row 0x3E: another body of its side that floats, while dimmed too. Unused by content; named for its flags.
+collision	collision-3f	thrown-breaking-floating-navi	medium	number	Row 0x3F: a floating navi's body, thrown and breaking. Unused by content; named for its flags.
+collision	collision-40	own-slash-object	medium	number	Row 0x40: an object of its side that slashes, while dimmed too. Unused by content; named for its flags.
+collision	collision-41	other-side-body	medium	number	Row 0x41: only the body bit of side 1 (0x04000000) for side 0, and the reverse. Unused by content; named for its flags.
+collision	collision-42	chip-erasing-slash	medium	number	Row 0x42: a slash that erases the held chip. Unused by content; named for its flags.
+collision	collision-43	collision-43	low	number	Row 0x43: the bit 0x40000 and 0x80, no side. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-44	collision-44	low	number	Row 0x44: an object of its side with the bit 0x40000, while dimmed too. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-45	thrown-break-slash	medium	number	Row 0x45: a thrown breaking slash. Unused by content; named for its flags.
+collision	collision-46	collision-46	low	number	Row 0x46: a drain with the flag 0x20, while dimmed too. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-4b	collision-4b	low	number	Row 0x4B: the same flags as row 0x24: a second row. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-4c	own-breaking-drain-body	medium	number	Row 0x4C: another body of its side, breaking and draining, while dimmed too. Unused by content; named for its flags.
+collision	collision-4d	collision-4d	low	number	Row 0x4D: what a navi hits, but the neutral objects (row 0x02 without 0x00800000). Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+collision	collision-50	slash-navi	medium	number	Row 0x50: a navi's body that slashes. Unused by content; named for its flags.
+collision	collision-51	chip-erasing-breaking-navi	medium	number	Row 0x51: a navi's body that breaks and erases the held chip. Unused by content; named for its flags.
+collision	collision-53	breaking-slash-navi	medium	number	Row 0x53: a navi's body that slashes and breaks. Unused by content; named for its flags.
+collision	collision-54	chip-erasing-breaking-slash	medium	number	Row 0x54: a breaking slash that erases the held chip. Unused by content; named for its flags.
+collision	collision-55	thrown-chip-erasing-breaking-navi	medium	number	Row 0x55: a navi's body, thrown, breaking, erasing the held chip. Unused by content; named for its flags.
+collision	collision-56	piercing-pushing	medium	number	Row 0x56: a piercing pushing attack. Unused by content; named for its flags.
+collision	collision-57	collision-57	low	number	Row 0x57: a breaking attack that erases the held chip, with the flag 0x20. Unused by content; a flag whose test no routine was found for leaves no clear name, so it keeps its row.
+status	blind-1200	blind-1200	high		status byte 0x32: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-1200-past-confuse	blind-1200-past-confuse	high		status byte 0x28: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-1200-past-paralyze	blind-1200-past-paralyze	high		status byte 0x1E: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-300	blind-300	high		status byte 0x34: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-300-past-confuse	blind-300-past-confuse	high		status byte 0x2A: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-4	blind-4	high		status byte 0x33: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-4-past-confuse	blind-4-past-confuse	high		status byte 0x29: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-4-past-paralyze	blind-4-past-paralyze	high		status byte 0x1F: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-480	blind-480	high		status byte 0x30: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-480-past-confuse	blind-480-past-confuse	high		status byte 0x26: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-480-past-paralyze	blind-480-past-paralyze	high		status byte 0x1C: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-600	blind-600	high		status byte 0x35: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-600-past-confuse	blind-600-past-confuse	high		status byte 0x2B: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-720	blind-720	high		status byte 0x31: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-720-past-confuse	blind-720-past-confuse	high		status byte 0x27: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	blind-720-past-paralyze	blind-720-past-paralyze	high		status byte 0x1D: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-150	bubble-150	high		status byte 0x60: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-150-2	bubble-150-2	high		status byte 0x61: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-150-2-past-freeze	bubble-150-2-past-freeze	high		status byte 0x57: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-150-2-past-immobilize	bubble-150-2-past-immobilize	high		status byte 0x4E: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-150-3	bubble-150-3	high		status byte 0x62: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-150-3-past-freeze	bubble-150-3-past-freeze	high		status byte 0x58: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-150-3-past-immobilize	bubble-150-3-past-immobilize	high		status byte 0x4F: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-150-past-freeze	bubble-150-past-freeze	high		status byte 0x56: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-150-past-immobilize	bubble-150-past-immobilize	high		status byte 0x4D: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-300	bubble-300	high		status byte 0x64: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-300-past-freeze	bubble-300-past-freeze	high		status byte 0x5A: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-4	bubble-4	high		status byte 0x63: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-4-past-freeze	bubble-4-past-freeze	high		status byte 0x59: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-600	bubble-600	high		status byte 0x65: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	bubble-600-past-freeze	bubble-600-past-freeze	high		status byte 0x5B: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	collision-panel-65535	after-table-1-past-freeze	medium	wrong	Status 0x5C: the freeze group's entry 12, past the bubble rows it also reads, reads row 1 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`).
+status	collision-panel-65535-2	after-table-1-past-bubble	medium	wrong	Status 0x66: the bubble group's entry 6 reads row 1 after the table (the same bytes as the freeze group's overflow, for the first four).
+status	confuse-300	confuse-300	high		status byte 0x24: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-300-past-paralyze	confuse-300-past-paralyze	high		status byte 0x1A: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-4	confuse-4	high		status byte 0x23: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-4-past-paralyze	confuse-4-past-paralyze	high		status byte 0x19: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-480	confuse-480	high		status byte 0x20: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-480-past-paralyze	confuse-480-past-paralyze	high		status byte 0x16: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-600	confuse-600	high		status byte 0x25: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-600-past-paralyze	confuse-600-past-paralyze	high		status byte 0x1B: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-720	confuse-720	high		status byte 0x21: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-720-past-paralyze	confuse-720-past-paralyze	high		status byte 0x17: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-960	confuse-960	high		status byte 0x22: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	confuse-960-past-paralyze	confuse-960-past-paralyze	high		status byte 0x18: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-150	freeze-150	high		status byte 0x50: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-150-2	freeze-150-2	high		status byte 0x51: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-150-2-past-blind	freeze-150-2-past-blind	high		status byte 0x3E: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-150-2-past-immobilize	freeze-150-2-past-immobilize	high		status byte 0x48: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-150-3	freeze-150-3	high		status byte 0x52: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-150-3-past-blind	freeze-150-3-past-blind	high		status byte 0x3F: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-150-3-past-immobilize	freeze-150-3-past-immobilize	high		status byte 0x49: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-150-past-blind	freeze-150-past-blind	high		status byte 0x3D: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-150-past-immobilize	freeze-150-past-immobilize	high		status byte 0x47: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-300	freeze-300	high		status byte 0x54: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-300-past-immobilize	freeze-300-past-immobilize	high		status byte 0x4B: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-4	freeze-4	high		status byte 0x53: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-4-past-immobilize	freeze-4-past-immobilize	high		status byte 0x4A: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-600	freeze-600	high		status byte 0x55: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	freeze-600-past-immobilize	freeze-600-past-immobilize	high		status byte 0x4C: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-120	immobilize-120	high		status byte 0x42: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-120-past-blind	immobilize-120-past-blind	high		status byte 0x38: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-120-past-confuse	immobilize-120-past-confuse	high		status byte 0x2E: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-2	immobilize-2	high		status byte 0x40: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-2-past-blind	immobilize-2-past-blind	high		status byte 0x36: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-2-past-confuse	immobilize-2-past-confuse	high		status byte 0x2C: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-30	immobilize-30	high		status byte 0x46: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-30-past-blind	immobilize-30-past-blind	high		status byte 0x3C: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-300	immobilize-300	high		status byte 0x44: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-300-past-blind	immobilize-300-past-blind	high		status byte 0x3A: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-4	immobilize-4	high		status byte 0x43: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-4-past-blind	immobilize-4-past-blind	high		status byte 0x39: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-4-past-confuse	immobilize-4-past-confuse	high		status byte 0x2F: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-60	immobilize-60	high		status byte 0x41: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-60-past-blind	immobilize-60-past-blind	high		status byte 0x37: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-60-past-confuse	immobilize-60-past-confuse	high		status byte 0x2D: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-600	immobilize-600	high		status byte 0x45: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	immobilize-600-past-blind	immobilize-600-past-blind	high		status byte 0x3B: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	paralyze-120	paralyze-120	high		status byte 0x11: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	paralyze-150	paralyze-150	high		status byte 0x12: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	paralyze-300	paralyze-300	high		status byte 0x14: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	paralyze-4	paralyze-4	high		status byte 0x13: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	paralyze-600	paralyze-600	high		status byte 0x15: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	paralyze-90	paralyze-90	high		status byte 0x10: the group, its duration in ticks, and for an overflow read the group it reads past (rules/status.luau's convention).
+status	timer-00-150	after-table-5-past-bubble	medium	wrong	Status 0x6A: the bubble group's entry 10 reads row 5 after the table (the same bytes as the freeze group's overflow, for the first four).
+status	timer-00-200	after-table-8-past-bubble	medium	wrong	Status 0x6D: the bubble group's entry 13 reads row 8 after the table (the same bytes as the freeze group's overflow, for the first four).
+status	timer-00-30	after-table-2-past-freeze	medium	wrong	Status 0x5D: the freeze group's entry 13, past the bubble rows it also reads, reads row 2 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`).
+status	timer-00-30-2	after-table-2-past-bubble	medium	wrong	Status 0x67: the bubble group's entry 7 reads row 2 after the table (the same bytes as the freeze group's overflow, for the first four).
+status	timer-01-65535	after-table-7-past-bubble	medium	wrong	Status 0x6C: the bubble group's entry 12 reads row 7 after the table (the same bytes as the freeze group's overflow, for the first four).
+status	timer-01-65535-2	after-table-10-past-bubble	medium	wrong	Status 0x6F: the bubble group's entry 15 reads row 10 after the table (the same bytes as the freeze group's overflow, for the first four).
+status	timer-64-65535	after-table-4-past-freeze	medium	wrong	Status 0x5F: the freeze group's entry 15, past the bubble rows it also reads, reads row 4 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`).
+status	timer-64-65535-2	after-table-4-past-bubble	medium	wrong	Status 0x69: the bubble group's entry 9 reads row 4 after the table (the same bytes as the freeze group's overflow, for the first four).
+status	timer-ff-0	after-table-3-past-freeze	medium	wrong	Status 0x5E: the freeze group's entry 14, past the bubble rows it also reads, reads row 3 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`).
+status	timer-ff-0-2	after-table-3-past-bubble	medium	wrong	Status 0x68: the bubble group's entry 8 reads row 3 after the table (the same bytes as the freeze group's overflow, for the first four).
+status	timer-ff-0-3	after-table-6-past-bubble	medium	wrong	Status 0x6B: the bubble group's entry 11 reads row 6 after the table (the same bytes as the freeze group's overflow, for the first four).
+status	timer-ff-100	after-table-9-past-bubble	medium	wrong	Status 0x6E: the bubble group's entry 14 reads row 9 after the table (the same bytes as the freeze group's overflow, for the first four).
+lockon	beast-claw	beast-claw	high		mode 0x0C: The Beast forms' charged claw's and GroundCross's drill's.
+lockon	beast-lunge	beast-lunge	high		mode 0x0B: SlashCross Beast's lunge at a target off its row: a panel in front of it or two (two, in the far column).
+lockon	bigbomb	bigbomb	high		mode 0x0F: named as it is defined; see the module.
+lockon	cannon	cannon	high		mode 0x01: named as it is defined; see the module.
+lockon	crakshot	crakshot	high		mode 0x07: named as it is defined; see the module.
+lockon	crosswrd	crosswrd	high		mode 0x0D: named as it is defined; see the module.
+lockon	drksword	drksword	high		mode 0x06: named as it is defined; see the module.
+lockon	dublshot	dublshot	high		mode 0x08: named as it is defined; see the module.
+lockon	elcpuls1	elcpuls	medium		Named for the first chip that uses it (elcpuls1); its other levels use it too, so the level digit says nothing.
+lockon	firebrn1	firebrn	medium		Named for the first chip that uses it (firebrn1); its other levels use it too, so the level digit says nothing.
+lockon	gundelex	gundelex	high		mode 0x10: named as it is defined; see the module.
+lockon	gundels1	gundels	medium		Named for the first chip that uses it (gundels1); its other levels use it too, so the level digit says nothing.
+lockon	moonbld	moonbld	high		mode 0x12: named as it is defined; see the module.
+lockon	sprsonic	sprsonic	high		mode 0x0E: named as it is defined; see the module.
+lockon	stay	stay	high		mode 0x00: named as it is defined; see the module.
+lockon	thunder	thunder	high		mode 0x02: named as it is defined; see the module.
+lockon	trnarrw1	trnarrw	medium		Named for the first chip that uses it (trnarrw1); its other levels use it too, so the level digit says nothing.
+lockon	widesht	widesht	high		mode 0x03: named as it is defined; see the module.
+lockon	yoyo	yoyo	high		mode 0x05: named as it is defined; see the module.
+projectile-variant	shot/attack-90	shot/chip-erasing	medium	number	Projectile row 0x09: its collision type erases the held chip (row 0x08's flag 0x10).
+projectile-variant	shot/blade	shot/blade	high		projectile row 0x02: A sword's blade for a shot; it flinches.
+projectile-variant	shot/blinding	shot/blinding	high		projectile row 0x0B: status 0x30: named as it is defined; see the module.
+projectile-variant	shot/breaking	shot/breaking	high		projectile row 0x05: A breaking shot.
+projectile-variant	shot/bright	shot/bright	high		projectile row 0x03: A plain shot with the charged shot's spark.
+projectile-variant	shot/charged-attack-a0	shot/charged-attack-a0	low	number	Projectile row 0x19: its collision type's flag 0x20 has no known meaning.
+projectile-variant	shot/charged-blinding	shot/charged-blinding	high		projectile row 0x14: status 0x30: named as it is defined; see the module.
+projectile-variant	shot/charged-bubbling	shot/charged-bubbling	high		projectile row 0x21: status 0x60: named as it is defined; see the module.
+projectile-variant	shot/charged-confusing	shot/charged-confusing	high		projectile row 0x12: Charged shots with a status: confusion, paralysis, blindness, a bubble, ice.
+projectile-variant	shot/charged-cracking	shot/charged-cracking	high		projectile row 0x15: Charged shots that change the panel they hit on: cracked, broken, volcano, poison, grass, ice.
+projectile-variant	shot/charged-flinching	shot/charged-flinching	high		projectile row 0x1C: A charged shot that flinches.
+projectile-variant	shot/charged-freezing	shot/charged-freezing	high		projectile row 0x26: status 0x50: named as it is defined; see the module.
+projectile-variant	shot/charged-grass	shot/charged-grass	high		projectile row 0x25: makes its panel grass: named as it is defined; see the module.
+projectile-variant	shot/charged-hp-bug	shot/charged-hp-bug	high		projectile row 0x1B: bug code 0x18 with 1: named as it is defined; see the module.
+projectile-variant	shot/charged-hp-bug-marked	shot/charged-hp-bug-marked	high		projectile row 0x23: bug code 0xF4: named as it is defined; see the module.
+projectile-variant	shot/charged-ice	shot/charged-ice	high		projectile row 0x27: makes its panel ice: named as it is defined; see the module.
+projectile-variant	shot/charged-panel-breaking	shot/charged-panel-breaking	high		projectile row 0x16: breaks its panel: named as it is defined; see the module.
+projectile-variant	shot/charged-paralyzing	shot/charged-paralyzing	high		projectile row 0x13: status 0x10: named as it is defined; see the module.
+projectile-variant	shot/charged-poisoning	shot/charged-poisoning	high		projectile row 0x18: makes its panel poison: named as it is defined; see the module.
+projectile-variant	shot/charged-pulling	shot/charged-pulling	high		projectile row 0x20: hit modifier 0x45: named as it is defined; see the module.
+projectile-variant	shot/charged-road	shot/charged-road	high		projectile row 0x22: Charged shots that lay a road: the way the shot flies for the left side's shots and the other way for the right side's (the routine's own values, 0xC and 0xB, for side 1), and the reverse.
+projectile-variant	shot/charged-road-back	shot/charged-road-back	high		projectile row 0x24: a road against the way the shot flies: named as it is defined; see the module.
+projectile-variant	shot/charged-uninstalling	shot/charged-uninstalling	high		projectile row 0x1A: Charged shots with a bug code: the body's programs go (0xFB), the HP bug a level up (0x18 with 1), the HP bug a level up with its mark (0xF4).
+projectile-variant	shot/charged-volcano	shot/charged-volcano	high		projectile row 0x17: makes its panel volcano: named as it is defined; see the module.
+projectile-variant	shot/confusing	shot/confusing	high		projectile row 0x0A: Shots with a status: confusion, blindness, paralysis.
+projectile-variant	shot/cracking	shot/cracking	high		projectile row 0x07: Shots that change the panel they hit on: cracked, poison, grass, ice.
+projectile-variant	shot/erasing	shot/erasing	high		projectile row 0x10: the erasing spark: named as it is defined; see the module.
+projectile-variant	shot/flinching	shot/flinching	high		projectile row 0x0F: A shot that flinches, and one with the erasing spark.
+projectile-variant	shot/grass	shot/grass	high		projectile row 0x0D: makes its panel grass: named as it is defined; see the module.
+projectile-variant	shot/ice	shot/ice	high		projectile row 0x0E: makes its panel ice: named as it is defined; see the module.
+projectile-variant	shot/paralyzing	shot/paralyzing	high		projectile row 0x11: status 0x10: named as it is defined; see the module.
+projectile-variant	shot/poisoning	shot/poisoning	high		projectile row 0x08: makes its panel poison: named as it is defined; see the module.
+projectile-variant	shot/pushing	shot/pushing	high		projectile row 0x1E: Shots that move what they hit: a panel away (hit modifier 0x61), six panels away (0x49), and a charged one six panels toward the shooter (0x45).
+projectile-variant	shot/shoving	shot/shoving	high		projectile row 0x1F: hit modifier 0x49: named as it is defined; see the module.
+rock-variant	rockcube/brittle	rockcube/rock/brittle	high		The rock's variant (a rock cube anything breaks): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency.
+rock-variant	rockcube/cube	rockcube/rock/cube	high	wrong	The rock's variant (RockCube's and the stages' cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency.
+rock-variant	rockcube/hard	rockcube/rock/hard	high		The rock's variant (a hard cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency.
+rock-variant	rockcube/ice	rockcube/rock/ice	high		The rock's variant (the ice block): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency.
+weapon	bgdththd/charge	bgdththd/charge	high		0x22: the weapon BgDthThd makes the charged shot (the chip's second parameter)
+weapon	boomrarm/charge	boomrarm/charge	high		0x26: the weapon BoomrArm makes the charged shot (the chip's second parameter)
+weapon	bugrswrd/charge	bugrswrd/charge	high		0x21: the weapon BugRSwrd makes the charged shot (the chip's second parameter)
+weapon	chargecross-beast/wave	chargecross-beast/wave	high		v1's 1c-charge-beast-wave
+weapon	chargecross/tackle	chargecross/tackle	high		v1's 27-charge-cross-tackle
+weapon	chargeman/charge	chargeman/charge	high		0x48: chargeman charge
+weapon	dustcross-beast/scatter	dustcross-beast/scatter	high		v1's 1d-dust-beast-scatter
+weapon	dustcross-beast/throw-absorbed	dustcross-beast/throw-absorbed	high		v1's 2c-beast-throw-absorbed
+weapon	dustcross/charge	dustcross/charge	high		v1's 28-dust-charge
+weapon	dustcross/throw-absorbed	dustcross/throw-absorbed	high		v1's 2b-throw-absorbed
+weapon	dustman/charge	dustman/charge	high		0x49: dustman charge
+weapon	eleccross-beast/charge	eleccross-beast/charge	high		v1's 09-elec-beast-charge
+weapon	eleccross/a-charge	eleccross/a-charge	high		0x0D: nullsub_44's, with its own charge times
+weapon	eleccross/charge	eleccross/charge	high		v1's 0b-elec-charge
+weapon	elecman/charge	elecman/charge	high		0x44: elecman charge
+weapon	erasecross-beast/drop	erasecross-beast/drop	high		v1's 15-erase-beast-drop
+weapon	erasecross/charge	erasecross/charge	high		v1's 14-erase-charge
+weapon	eraseman/charge	eraseman/charge	high		0x47: eraseman charge
+weapon	groundcross-beast/dash	groundcross-beast/dash	high		v1's 17-ground-beast-dash
+weapon	groundcross/drill	groundcross/drill	high		v1's 19-ground-drill
+weapon	groundman/charge	groundman/charge	high		0x4A: groundman charge
+weapon	heatcross-beast/charge	heatcross-beast/charge	high		v1's 07-heat-beast-charge
+weapon	heatman/charge	heatman/charge	high		0x40: heatman charge
+weapon	megaman/absorb	megaman/absorb	high		v1's 2a-absorb
+weapon	megaman/anti-damage	megaman/anti-damage	high		v1's 3d-anti-damage
+weapon	megaman/beast-claw	megaman/beast-claw	high		v1's 1e-beast-claw
+weapon	megaman/blank-shot	megaman/blank-shot	high		v1's 02-blank-shot
+weapon	megaman/buster-2e	megaman/buster-2e	low	number	The buster's routine with its own charge times, which no form, navi or program names; its routine numbers are its only identity. Renamed by hand if a user is found.
+weapon	megaman/buster-3f	megaman/buster-3f	low	number	The buster's routine with its own charge times, which no form, navi or program names; its routine numbers are its only identity. Renamed by hand if a user is found.
+weapon	megaman/buster-6f	megaman/buster-6f	low	number	The buster's routine with its own charge times, which no form, navi or program names; its routine numbers are its only identity. Renamed by hand if a user is found.
+weapon	megaman/buster-70	megaman/buster-70	low	number	The buster's routine with its own charge times, which no form, navi or program names; its routine numbers are its only identity. Renamed by hand if a user is found.
+weapon	megaman/buster-79	megaman/buster-79	low	number	The buster's routine with its own charge times, which no form, navi or program names; its routine numbers are its only identity. Renamed by hand if a user is found.
+weapon	megaman/buster-7e	megaman/buster-7e	low	number	The buster's routine with its own charge times, which no form, navi or program names; its routine numbers are its only identity. Renamed by hand if a user is found.
+weapon	megaman/buster-82	megaman/buster-82	low	number	The buster's routine with its own charge times, which no form, navi or program names; its routine numbers are its only identity. Renamed by hand if a user is found.
+weapon	megaman/charged-chip-bonus	megaman/charged-chip-bonus	high		nullsub_44's numbers, by what the ruleset does with them
+weapon	megaman/charged-chip-bonus-1f	megaman/charged-chip-bonus-1f	low	number	nullsub_44's charged-chip bonus with its own charge times, used by TomahawkMan and SpoutCross; nothing distinguishes it but its charge row.
+weapon	megaman/charged-chip-bonus-20	megaman/charged-chip-bonus-20	low	number	nullsub_44's charged-chip bonus with its own charge times, used by TomahawkCross and SpoutMan; nothing distinguishes it but its charge row.
+weapon	megaman/charged-chip-bonus-29	megaman/charged-chip-bonus-29	low	number	nullsub_44's charged-chip bonus with its own charge times, used by ChargeMan and ChargeCross; nothing distinguishes it but its charge row.
+weapon	megaman/charged-shot	megaman/charged-shot	high		v1's 01-charged-shot
+weapon	megaman/falzar-beast-buster	megaman/falzar-beast-buster	high		v1's 03-falzar-beast-buster
+weapon	megaman/gregar-beast-buster	megaman/gregar-beast-buster	high		v1's 04-gregar-beast-buster
+weapon	megaman/reflect	megaman/reflect	high		v1's 8b-reflect
+weapon	megaman/reflect-2	megaman/reflect-2	medium		Routine 0x3C: the Reflect's guard; nothing names it (the NaviCust writes 0x8B).
+weapon	megaman/rock-barrage	megaman/rock-barrage	high		nullsub_44's numbers, by what the ruleset does with them
+weapon	megaman/shield	megaman/shield	high		v1's 3b-shield
+weapon	megaman/shield-2	megaman/shield-2	medium		Routine 0x8C: the Shield's guard; nothing names it (the NaviCust writes 0x3B).
+weapon	megaman/slash-a-charge	megaman/slash-a-charge	high		v1's 11-slash-a-charge
+weapon	megaman/tengu-wind	megaman/tengu-wind	high		v1's 10-tengu-wind
+weapon	needlarm/charge	needlarm/charge	high		0x24: the weapon NeedlArm makes the charged shot (the chip's second parameter)
+weapon	protoman/a-charge	protoman/a-charge	high		0x2D: nullsub_44's, with its own charge times
+weapon	protoman/back-special	protoman/back-special	high		0x34: protoman back-special
+weapon	protoman/back-special-2	protoman/back-special-2	medium		Routine 0x30: ProtoMan's other B+Back, named in NaviStats.
+weapon	protoman/charge	protoman/charge	high		0x32: protoman charge
+weapon	puncharm/charge	puncharm/charge	high		0x23: the weapon PunchArm makes the charged shot (the chip's second parameter)
+weapon	puzzlarm/charge	puzzlarm/charge	high		0x25: the weapon PuzzlArm makes the charged shot (the chip's second parameter)
+weapon	slashcross-beast/lunge	slashcross-beast/lunge	high		v1's 1a-slash-beast-lunge
+weapon	slashcross/charge	slashcross/charge	high		v1's 12-slash-charge
+weapon	slashman/charge	slashman/charge	high		0x43: slashman charge
+weapon	spoutcross-beast/charge	spoutcross-beast/charge	high		v1's 08-spout-beast-charge
+weapon	spoutcross/charge	spoutcross/charge	high		v1's 0c-spout-charge
+weapon	spoutman/charge	spoutman/charge	high		0x41: spoutman charge
+weapon	tengucross-beast/charge	tengucross-beast/charge	high		v1's 0a-tengu-beast-charge
+weapon	tengucross/charge	tengucross/charge	high		v1's 0f-tengu-charge
+weapon	tenguman/charge	tenguman/charge	high		0x42: tenguman charge
+weapon	tomahawkcross-beast/throw	tomahawkcross-beast/throw	high		v1's 1b-tomahawk-throw
+weapon	tomahawkcross/charge	tomahawkcross/charge	high		v1's 16-tomahawk-charge
+weapon	tomahawkman/charge	tomahawkman/charge	high		0x45: tomahawkman charge
+action	bgdththd/charge/action	bgdththd/charge/action	high		0x1F: Thunder's action with a fast ball of 12 panels, which BgDthThd's charged shot (weapon 0x22) starts with a bug frag
+action	eleccross/charge/thunder	eleccross/charge/thunder	high		0x3E: DolThdr's action with the buster arm held up, which ElecCross's charged shot (weapon 0x0B) starts
+action	engine/cross-special	engine/cross-special	high		0x59: the Cross special's controller (the ruleset's cross_special)
+action	heatcross/charge/action	heatcross/charge/action	high		0x27: HeatCross's charged shot, FireBrn's burn (navis/megaman/forms/heatcross/charge.luau)
+action	megaman/reflect/action	megaman/reflect/action	high		0x2B: the NaviCust Reflect's guard, weapons 0x3C and 0x8B (navis/megaman/weapons/shield)
+action	megaman/shield/action	megaman/shield/action	high		0x2B: the NaviCust Shield's guard, weapons 0x3B and 0x8C (navis/megaman/weapons/shield)
+action	megaman/turn	megaman/turn	high		0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)
+action	protoman/back-special/action	protoman/back-special/action	high		0x2B: the guard ProtoMan's B+Back raises, weapon 0x34 (navis/protoman/back_special.luau)
+action	puzzlarm/charge/action	puzzlarm/charge/action	high		0x42: ElcPuls's action with the pulse of PuzzlArm's charged shot (weapon 0x25)
+action	recov/none	recov/none	high		0x20: action 0x20's subtype 9, the heal table's last row, which no chip has (chips/recov/chips.luau)
+action	spoutcross/charge/action	spoutcross/charge/action	high		0x25: Spreader's action with the water cannon and SpoutCross's bullet, which its charged shot (weapon 0x0C) starts
+action	tengucross/charge/gust	tengucross/charge/gust	high		0x3F: WindRack's action with TenguCross's fan, which its charged shot (weapon 0x0F) starts
+action	tornado/back-spread	tornado/back-spread	high		0x2F: action 0x2F's subtype 3, which no chip has (chips/tornado/chips.luau)
+kind	blkbomb/bomb	blkbomb/bomb	high		v1's objects/black-bomb (§4.2)
+kind	bomb-slash	bomb-slash	high		v1's objects/bomb-slash (§4.2)
+kind	bugbomb/bomb	bugbomb/bomb	high		v1's objects/bug-bomb (§4.2)
+kind	chargecross-beast/wave	chargecross-beast/wave	high		v1's objects/charge-wave (§4.2)
+kind	dustcross-beast/junk-shot	dustcross-beast/junk-shot	high		v1's objects/junk-shot (§4.2)
+kind	energbom/burst	energbom/burst	high		v1's objects/energy-burst (§4.2)
+kind	erasecross-beast/drop	erasecross-beast/drop	high		v1's objects/erase-drop (§4.2)
+kind	erasecross/ray	erasecross/ray	high		v1's objects/erase-ray (§4.2)
+kind	flshbom/bomb	flshbom/bomb	high		v1's objects/flash-bomb (§4.2)
+kind	groundman/drill	groundman/drill	high		attack #0xC6: the drills of GroundMan's charged attack (navis/groundman/drill.luau)
+kind	megaman/dash-hit	megaman/dash-hit	high		v1's objects/dash-hit (§4.2)
+kind	seed	seed	high		v1's objects/seed (§4.2)
+kind	slashcross-beast/hit-flash	slashcross-beast/hit-flash	high		v1's objects/hit-flash (§4.2)
+kind	slashcross-beast/lunge-slash	slashcross-beast/lunge-slash	high		v1's objects/lunge-slash (§4.2)
+kind	spoutcross-beast/surge	spoutcross-beast/surge	high		v1's objects/aqua-surge (§4.2)
+kind	tengucross-beast/whirlwind	tengucross-beast/whirlwind	high		v1's objects/whirlwind (§4.2)
+chip	beastout-dimming-1	beastout-dimming-1	high		0x186: the second BeastOut: a dimming chip (off_802CCB4[3])
+chip	beastout-dimming-2	beastout-dimming-2	high		0x187: the third BeastOut: a dimming chip (off_802CCB4[3])
+chip	hidden	hidden	high		0x171: "????": the name the other side's telop shows for a trap chip (sub_800BBA8)
+chip	invalid	invalid	high		0x185: nameless: the chip an illegal selection becomes (sub_800B022)
+chip	stepswrd-protoman	stepswrd-protoman	high		0x19A: the second StepSwrd: ProtoMan's own chip as a link navi (navi 11)
+chip	whicapsl-invisible	whicapsl-invisible	high		0x17E: the second WhiCapsl: a dimming chip that makes its user invisible (off_802CCB4[1])
+chip-series	chips/aurahed	chips/aurahed	high		The series' module (aurahed1, aurahed2, aurahed3): named for what its chips share.
+chip-series	chips/blastman	chips/blastman	high		The series' module (blastman, blastmn-ex, blastmn-sp): named for what its chips share.
+chip-series	chips/cannon	chips/cannon	high		The series' module (cannon, hicannon, m-cannon): named for what its chips share.
+chip-series	chips/chrgeman	chips/chrgeman	high		The series' module (chrgeman, chrgemn-ex, chrgemn-sp): named for what its chips share.
+chip-series	chips/colonel	chips/colonel	high		The series' module (colonel, colonel-ex, colonel-sp): named for what its chips share.
+chip-series	chips/cornsht	chips/cornsht	high		The series' module (cornsht1, cornsht2, cornsht3): named for what its chips share.
+chip-series	chips/crcusman	chips/crcusman	high		The series' module (crcusman, crcusmn-ex, crcusmn-sp): named for what its chips share.
+chip-series	chips/diveman	chips/diveman	high		The series' module (diveman, diveman-ex, diveman-sp): named for what its chips share.
+chip-series	chips/django	chips/django	high		The series' module (django, django2, django3): named for what its chips share.
+chip-series	chips/dustman	chips/dustman	high		The series' module (dustman, dustman-ex, dustman-sp): named for what its chips share.
+chip-series	chips/elcpuls	chips/elcpuls	high		The series' module (elcpuls1, elcpuls2, elcpuls3): named for what its chips share.
+chip-series	chips/elecman	chips/elecman	high		The series' module (elecman, elecman-ex, elecman-sp): named for what its chips share.
+chip-series	chips/elmntman	chips/elmntman	high		The series' module (elmntman, elmntmn-ex, elmntmn-sp): named for what its chips share.
+chip-series	chips/eraseman	chips/eraseman	high		The series' module (eraseman, erasemn-ex, erasemn-sp): named for what its chips share.
+chip-series	chips/firebrn	chips/firebrn	high		The series' module (firebrn1, firebrn2, firebrn3): named for what its chips share.
+chip-series	chips/firehit	chips/firehit	high		The series' module (firehit1, firehit2, firehit3): named for what its chips share.
+chip-series	chips/flmhook	chips/flmhook	high		The series' module (flmhook1, flmhook2, flmhook3): named for what its chips share.
+chip-series	chips/gigacan	chips/gigacan	high		The series' module (gigacan1, gigacan2, gigacan3): named for what its chips share.
+chip-series	chips/grndman	chips/grndman	high		The series' module (grndman, grndman-ex, grndman-sp): named for what its chips share.
+chip-series	chips/hackjack	chips/hackjack	high		The series' module (hackjack, hackjck-ex, hackjck-sp): named for what its chips share.
+chip-series	chips/heatman	chips/heatman	high		The series' module (heatman, heatman-ex, heatman-sp): named for what its chips share.
+chip-series	chips/ironshl	chips/ironshl	high		The series' module (ironshl1, ironshl2, ironshl3): named for what its chips share.
+chip-series	chips/judgeman	chips/judgeman	high		The series' module (judgeman, judgemn-ex, judgemn-sp): named for what its chips share.
+chip-series	chips/protoman	chips/protoman	high		The series' module (protoman, protomn-ex, protomn-sp): named for what its chips share.
+chip-series	chips/pwrwave	chips/pwrwave	high		The series' module (pwrwave1, pwrwave2, pwrwave3): named for what its chips share.
+chip-series	chips/roll	chips/roll	high		The series' module (roll, roll2, roll3): named for what its chips share.
+chip-series	chips/slashman	chips/slashman	high		The series' module (slashman, slashmn-ex, slashmn-sp): named for what its chips share.
+chip-series	chips/spoutman	chips/spoutman	high		The series' module (spoutman, spoutmn-ex, spoutmn-sp): named for what its chips share.
+chip-series	chips/spreadr	chips/spreadr	high		The series' module (spreadr1, spreadr2, spreadr3): named for what its chips share.
+chip-series	chips/tenguman	chips/tenguman	high		The series' module (tenguman, tengumn-ex, tengumn-sp): named for what its chips share.
+chip-series	chips/timebom	chips/timebom	high		The series' module (timebom1, timebom2, timebom3, timebom): named for what its chips share.
+chip-series	chips/tmhkman	chips/tmhkman	high		The series' module (tmhkman, tmhkman-ex, tmhkman-sp): named for what its chips share.
+chip-series	chips/wavearm	chips/wavearm	high		The series' module (wavearm1, wavearm2, wavearm3): named for what its chips share.
+chip-series	chips/widebrn	chips/widebrn	high		The series' module (widebrn1, widebrn2, widebrn3): named for what its chips share.
+stage	netbattle-*	netbattle-*	medium	number	The 192 settings records, deduplicated and numbered in order of first use; the ROM gives no names and the stages differ only by panels and placements.
