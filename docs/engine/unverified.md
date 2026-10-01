@@ -364,10 +364,13 @@ first only, and the second takes what the spawner leaves in that register, the e
   recorded there); a second navi's hit ending one mid-attack (the actions' own flinch paths are their chips');
   the bug frags running out between two players' uses (each side has its own count).
 - The link navis' charged attacks beyond the one scenario each (standard-chips.md, "Action 9", lists them):
-  HeatMan with no floor ahead, ElecMan's bolts with no enemy on a panel, ChargeMan stopped where the floor ends
-  (his cars' burst), GroundMan's drills stopped by a hit, off the field or orphaned by a flinch, the higher
-  Charge levels and buster Attack; ProtoMan's other B+Back special (0x34). All reachable with a link navi
-  scenario; none written.
+  HeatMan with no floor ahead, ElecMan's bolts with no enemy on a panel, GroundMan's drills stopped by a hit,
+  off the field or orphaned by a flinch, the higher Charge levels and buster Attack. All reachable with a link
+  navi scenario; none written. Verified since: ChargeMan stopped where the floor ends, his cars' burst
+  (`navis/navi-05-volcchrg/charge-hole-ahead`, `-far`, `-next`, on the holes stage), and ProtoMan's other B+Back
+  special, weapon routine 0x34 (`navis/navi-11-stepswrd/level-5`: the game gives him that shield below level 10
+  and the reflecting one, 0x30, from level 10; the lab's link navis are level 14, as Tango's save editor makes
+  them, so the scenario pokes the save's level index and the stats that level gives).
 - The gregar base's side 0 has SuprArmr, UnderSht, AttckMAX, ChargMAX and HP+1200 in its NaviCust, so Gregar's
   Cross and Beast scenarios never show side 0 flinching: the same blind spot as the falzar base's shoes, not
   surveyed yet.
