@@ -93,7 +93,7 @@ fn explode(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.full_synchro_aura = None;
     a.overlay = None;
-    b.play_sound(crate::sound::SoundId(0x6C));
+    b.sound(crate::content::SoundRole::Deleted);
     // The second call reuses whatever registers the first left: Z, but
     // list-node addresses from the allocator for X and Y
     // (objects-and-player.md §A.3).
@@ -304,7 +304,7 @@ pub(super) fn freeze(b: &mut Battle, r: ObjectRef) {
         // sub_800F3B0: no per-form hook.
         coll_mut(b, r).status_timers[timer::FLASH] = 0;
         clear_invulnerable(b, r);
-        b.play_sound(crate::sound::SoundId(0x118));
+        b.sound(crate::content::SoundRole::Freeze);
         enter_reaction(b, r, 2);
         finish_reaction_entry(b, r);
     }
@@ -318,7 +318,7 @@ pub(super) fn bubble(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init == 0 {
         // sub_800F3CC: no per-form hook.
         clear_invulnerable(b, r);
-        b.play_sound(crate::sound::SoundId(0x12D));
+        b.sound(crate::content::SoundRole::Bubble);
         enter_reaction(b, r, 2);
         finish_reaction_entry(b, r);
     }
@@ -327,7 +327,7 @@ pub(super) fn bubble(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).pos.z = (b.content.rules.bubble_bob[((t >> 2) & 0x1F) as usize] as i32) << 16;
     if popped {
         b.objects.get_mut(r).pos.z = 0;
-        b.play_sound(crate::sound::SoundId(0x124));
+        b.sound(crate::content::SoundRole::BubblePop);
         end_reaction(b, r);
     }
 }
