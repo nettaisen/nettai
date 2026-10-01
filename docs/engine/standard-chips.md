@@ -484,6 +484,7 @@ Lab: navis/navi-01-heatpres to navi-11-stepswrd run each navi's charged attack t
 from the row above, the opponent standing still on his own row) and B+Back, and match on every frame. Not
 reached by a recording: HeatMan with no floor ahead (no flames), or a column of fewer than three; ElecMan with
 no enemy on a panel or more than one; SlashMan's and GroundMan's rows off the field (the charge from row 1 covers
-the upper one only); ChargeMan stopped by a hole or a broken panel (his cars' burst) and his second car's
-absence from a column near the edge; GroundMan's drills stopped by a hit, flown off the field, or orphaned by a
-flinch; the charge at Charge levels past 0 and buster Attack past 1; routine 0x46; ProtoMan's 0x34.
+the upper one only); ChargeMan's second car's absence from a column near the edge; GroundMan's drills stopped by
+a hit, flown off the field, or orphaned by a flinch; the charge at Charge levels past 0 and buster Attack past 1;
+routine 0x46 (which no navi's stats name). ChargeMan stopped by a hole (his cars' burst) and ProtoMan's 0x34 are
+recorded since (`navis/navi-05-volcchrg/charge-hole-*`, `navis/navi-11-stepswrd/level-5`) and match.

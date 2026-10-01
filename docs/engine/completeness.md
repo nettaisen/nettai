@@ -18,8 +18,9 @@ The audit is a tool in the verification workspace (`tools/audit/audit.py`, with 
 the hand-read classes in `manual.py` and the stub check in `stubs.py`); it runs against an engine checkout and
 should be run again after large merges. Figures here are for the engine with chips, weapons, navis and statuses
 by handle (content model v2's steps 10 to 12) and the six chip weapons merged, and a lab of 5,078 scenarios:
-5,058 recorded (the other 20 can't be: 18 skipped, 2 where the original itself stops advancing), all of which
-the engine reproduces on every frame.
+5,058 recorded (the other 20 can't be: 18 skipped, 2 where the original itself stops advancing). The engine
+reproduced every recording on every frame at the lab's last full run; the 684 recorded again or added since
+(§10, §6.1) were replayed on their own and match.
 
 ## 1. Method
 
