@@ -3,13 +3,13 @@
 //! uses give: the HP go up to the maximum, with a sparkle and a sound. When
 //! the healer's opponent has AntiRecv armed (its defensive-chip record)
 //! and the caller asks for the check, the trap springs instead: the heal
-//! becomes a dimming whose controller (effect #0x2C, `sub_80E3728`) takes
-//! the amount from the healer.
+//! becomes a dimming whose controller (the role `kinds.anti_recovery`; the
+//! original's effect #0x2C, `sub_80E3728`) takes the amount from the healer.
 
 use crate::battle::Battle;
 use crate::content::ChipId;
 use crate::kinds::effect;
-use crate::object::{ObjectRef, Pool, Vec3};
+use crate::object::{ObjectRef, Vec3};
 use crate::sound::SoundId;
 
 /// AntiRecv, the trap chip that turns a heal into damage.
@@ -17,10 +17,8 @@ pub const ANTI_RECOVERY: ChipId = 0xBD;
 /// The recovery sparkle (effect #0's look), and its sound.
 const SPARKLE: u8 = 6;
 const HEAL_SOUND: u16 = 0x8A;
-/// AntiRecv's counterattack: its dimming controller, the counter byte
-/// its damage carries, the "trap!" mark (effect #0's look) raised over
-/// the healer, and its sound.
-const TRAP_CONTROLLER: u8 = 0x2C;
+/// AntiRecv's counterattack: the counter byte its damage carries, the
+/// "trap!" mark (effect #0's look) raised over the healer, and its sound.
 pub(crate) const TRAP_HIT_PARAM: u32 = 0x1E;
 const TRAP_MARK: u8 = 0x46;
 /// The mark's height, 32 pixels.
@@ -68,19 +66,20 @@ fn spring_anti_recovery(b: &mut Battle, r: ObjectRef, amount: u16) {
     b.clear_linked(alliance ^ 1);
 }
 
-/// `sub_80E37D2`: AntiRecv's counterattack (effect #0x2C, the pack's
-/// objects/anti-recovery) against `healer`, on its panel and side, dealing
-/// the damage word `damage` (damage | hit parameter << 16). Its telop is
-/// AntiRecv's (object +0x30). None when the effect pool is full. Its
-/// position is the spawner's registers: the panel's Y, the element (0) and
-/// `z`, which nothing reads.
+/// `sub_80E37D2`: AntiRecv's counterattack (the role `kinds.anti_recovery`:
+/// BN6's chips/antirecv/controller, the original's effect #0x2C) against
+/// `healer`, on its panel and side, dealing the damage word `damage`
+/// (damage | hit parameter << 16). Its telop is AntiRecv's (object +0x30).
+/// None when the effect pool is full. Its position is the spawner's
+/// registers: the panel's Y, the element (0) and `z`, which nothing reads.
 pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32, params: [u8; 4], z: i32) -> Option<ObjectRef> {
     let (panel, alliance) = {
         let o = b.objects.get(healer);
         (o.panel, o.alliance)
     };
     let pos = Vec3 { x: panel.y as i32, y: 0, z };
-    let c = crate::behavior::spawn_object(b, Pool::Effect, TRAP_CONTROLLER, pos, params)?;
+    let kind = b.content.defs.roles.kind(crate::content::KindRole::AntiRecovery);
+    let c = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, params)?;
     let o = b.objects.get_mut(c);
     o.panel = panel;
     o.element = 0;

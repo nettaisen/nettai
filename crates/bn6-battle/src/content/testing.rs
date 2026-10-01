@@ -60,16 +60,12 @@ pub const TRAP: ChipId = 0x09;
 /// routine 1).
 pub const BOOST: ChipId = 0x0A;
 pub const ARM: ChipId = 0x0B;
-/// A dimming chip (action 0x15, subtype 25) that slows the custom gauge.
-pub const SLOW_GAUGE: ChipId = 0x0C;
-// Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+// Dimming chip subtypes 10 and ElemTrap's (20).
 /// An element trap (action 0x15, subtype 20, Param1 0: the trap object).
 pub const ELEM_TRAP: ChipId = 0x30;
 /// Time bombs (action 0x15, subtype 10): variant 0 and 1.
 pub const TIME_BOMB: ChipId = 0x31;
 pub const TIME_BOMB_PLUS: ChipId = 0x32;
-/// A mine (action 0x15, subtype 11).
-pub const MINE: ChipId = 0x33;
 // Navi chips.
 /// A navi chip (action 0x1B, subtype 16: the elements navi).
 pub const ELEMENTS: ChipId = 0x110;
@@ -268,6 +264,10 @@ pub const TICK_SHOT: &str = "test/tick-shot";
 pub const CRAK_SHOT: &str = "crakshot";
 pub const REFLECTOR_1: &str = "rflectr1";
 pub const RECOV_50: &str = "recov50";
+/// BN6's SloGauge and Mine (chips/slogauge, chips/mine): dimming chips
+/// content defines, which slow the custom gauge and lay a mine.
+pub const SLOW_GAUGE: &str = "slogauge";
+pub const MINE: &str = "mine";
 /// BN6's RskyHny2 and ElecDrgn (chips/rskyhny, chips/elecdrgn): chips
 /// content defines, which send bees and an elec dragon.
 pub const BEES: &str = "rskyhny2";
@@ -476,6 +476,29 @@ fn assets() -> bn6_content_api::AssetNames {
         ("dust-cloud", sprite(0x10, 0x59)),
         ("dustman", sprite(0x08, 0x0A)),
         ("swirl", sprite(0x0C, 0x28)),
+        // The traps, mines, time bombs and navi-changing chips.
+        ("spout-splash", sprite(0x0C, 0x1A)),
+        ("beast-over-burst", sprite(0x14, 0x14)),
+        ("land-mine", sprite(0x0C, 0x22)),
+        ("blast", sprite(0x14, 0x13)),
+        ("hub", sprite(0x14, 0x1E)),
+        ("bug", sprite(0x14, 0x1F)),
+        ("charge-glow-a", sprite(0x14, 0x15)),
+        // The waves and pillars.
+        ("slash-wave", sprite(0x10, 0x39)),
+        ("charged-slash", sprite(0x10, 0x3B)),
+        ("moon-blade", sprite(0x10, 0x3C)),
+        ("element-pillar-flames", sprite(0x0C, 0x1C)),
+        ("element-pillar-lightning", sprite(0x10, 0x32)),
+        // The supports, and the barrier Tango's heal raises.
+        ("rush", sprite(0x0C, 0x48)),
+        ("beat", sprite(0x0C, 0x4B)),
+        ("tango", sprite(0x0C, 0x4C)),
+        ("tango-heal", sprite(0x0C, 0x4D)),
+        ("heal", sprite(0x0C, 0x12)),
+        // SunMoon and its meteors.
+        ("moon-beam", sprite(0x0C, 0x64)),
+        ("meteor", sprite(0x0C, 0x31)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -557,6 +580,28 @@ fn assets() -> bn6_content_api::AssetNames {
         ("dustbrk-2", 0x17B),
         ("rockfall", 0xE5),
         ("drill-spin", 0x1C0),
+        // The traps, mines, time bombs, gauge and navi-changing chips.
+        ("dimming-sparkle", 0xA5),
+        ("target-move", 0x10F),
+        ("spout-ball", 0x11D),
+        ("beast-over-burst", 0x12E),
+        ("hop", 0x113),
+        ("tick", 0xC1),
+        ("last", 0xC2),
+        // The waves.
+        ("ok-8b", 0x8B),
+        ("aqua-needle-2", 0xB3),
+        // The supports, and the barrier Tango's heal raises.
+        ("bite", 0x122),
+        ("set-down", 0x120),
+        ("snatch", 0x126),
+        ("arrive", 0x116),
+        ("tango-land", 0xD4),
+        ("heal", 0x8A),
+        // SunMoon.
+        ("sun-moon", 0x110),
+        ("moon-beam", 0x111),
+        ("blast-man", 0x17F),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -744,7 +789,10 @@ pub fn scripts() -> Scripts {
                 ("chips/windrack/action", "chips/windrack/action"),
                 ("chips/dolthdr/action", "chips/dolthdr/action"),
                 ("chips/dolthdr/doll", "chips/dolthdr/doll"),
-                ("objects/sword-wave/sword_wave", "objects/sword-wave/sword_wave"),
+                (
+                    "navis/00-megaman/forms/slashcross/sword_wave",
+                    "navis/00-megaman/forms/slashcross/sword_wave",
+                ),
                 ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
                 // The Reflectors, the recovery chips and HeatCross's charged
                 // shot's burner (content model v2).
@@ -827,7 +875,12 @@ pub fn scripts() -> Scripts {
                 ("chips/assnswrd/chip", "chips/assnswrd/chip"),
                 ("chips/010-blade/chip", "chips/047-sword/chip"),
                 ("chips/012-stunblade/chip", "chips/056-mchnswrd/chip"),
+                // Invisibl (content model v2): its hook, which the numbered
+                // veil reaches through the numbered registration's module.
                 ("objects/invisible/invisible", "objects/invisible/invisible"),
+                ("chips/invisibl/chip", "chips/invisibl/chip"),
+                ("chips/whicapsl-invisible/chip", "chips/whicapsl-invisible/chip"),
+                ("chips/0b1-invisibl/chip", "chips/0b1-invisibl/chip"),
                 // The field objects (content model v2): the rock with its
                 // debris, RockCube and IceCube, and the stages' boulder.
                 ("objects/rock/rock", "objects/rock/rock"),
@@ -836,20 +889,51 @@ pub fn scripts() -> Scripts {
                 ("chips/rockcube/chips", "chips/rockcube/chips"),
                 ("objects/boulder/boulder", "objects/boulder/boulder"),
                 ("objects/encased-bubble/bubble", "objects/encased-bubble/bubble"),
-                ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
-                ("objects/navi-boost/navi_boost", "objects/navi-boost/navi_boost"),
-                ("objects/gauge-speed/gauge_speed", "objects/gauge-speed/gauge_speed"),
+                // The NaviCust supports (content model v2): the controller the
+                // ruleset spawns by role, Rush, Beat, Tango and her heal, with
+                // the barrier it raises.
+                ("lib/viewer", "lib/viewer"),
+                ("lib/barriers/visual", "lib/barriers/visual"),
+                ("lib/barriers/barriers", "lib/barriers/barriers"),
+                ("lib/supports/heal", "lib/supports/heal"),
+                ("lib/supports/tango", "lib/supports/tango"),
+                ("lib/supports/beat", "lib/supports/beat"),
+                ("lib/supports/rush", "lib/supports/rush"),
+                ("lib/supports/controller", "lib/supports/controller"),
+                // The trap chips, the navi-changing chips and the gauge chips
+                // (content model v2): the numbered trap and boosts reach
+                // theirs through the numbered registrations' modules;
+                // SloGauge is a definition.
+                ("lib/traps/controller", "lib/traps/controller"),
+                ("chips/antinavi/chip", "chips/antinavi/chip"),
+                ("chips/antidmg/chip", "chips/antidmg/chip"),
+                ("chips/antiswrd/chip", "chips/antiswrd/chip"),
+                ("chips/antirecv/chip", "chips/antirecv/chip"),
+                ("chips/bodygrd/chip", "chips/bodygrd/chip"),
+                ("chips/0ba-antinavi/chip", "chips/0ba-antinavi/chip"),
+                ("lib/navi-boost/controller", "lib/navi-boost/controller"),
+                ("chips/darkinvs/chip", "chips/darkinvs/chip"),
+                ("chips/121-darkinvs/chip", "chips/121-darkinvs/chip"),
+                ("lib/gauge-speed/controller", "lib/gauge-speed/controller"),
+                ("chips/slogauge/chip", "chips/slogauge/chip"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
                 ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
-                // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+                // Dimming chip subtypes 10, 11 and ElemTrap's (20), in content
+                // model v2: ElemTrap and Mine are definitions; the numbered
+                // traps and time bombs reach theirs through the numbered
+                // registrations' modules.
                 ("lib/panels", "lib/panels"),
-                ("objects/elem-trap/elem_trap", "objects/elem-trap/elem_trap"),
-                ("objects/elem-trap-strike/elem_trap_strike", "objects/elem-trap-strike/elem_trap_strike"),
+                ("chips/elemtrap/trap", "chips/elemtrap/trap"),
+                ("chips/elemtrap/strike", "chips/elemtrap/strike"),
+                ("chips/elemtrap/chip", "chips/elemtrap/chip"),
                 ("objects/panel-bursts/panel_bursts", "objects/panel-bursts/panel_bursts"),
-                ("objects/time-bom/time_bom", "objects/time-bom/time_bom"),
-                ("objects/countdown-bomb/countdown_bomb", "objects/countdown-bomb/countdown_bomb"),
-                ("objects/mine/mine", "objects/mine/mine"),
-                ("objects/land-mine/land_mine", "objects/land-mine/land_mine"),
+                ("chips/timebom/controller", "chips/timebom/controller"),
+                ("chips/timebom/countdown", "chips/timebom/countdown"),
+                ("chips/timebom/chips", "chips/timebom/chips"),
+                ("chips/090-timebom1/chip", "chips/090-timebom1/chip"),
+                ("chips/mine/controller", "chips/mine/controller"),
+                ("chips/mine/land_mine", "chips/mine/land_mine"),
+                ("chips/mine/chip", "chips/mine/chip"),
                 ("chips/crakshot/shot", "chips/crakshot/shot"),
                 ("chips/crakshot/chips", "chips/crakshot/chips"),
                 // The navi chips' navis (content model v2): each navi and his
@@ -923,9 +1007,6 @@ pub fn scripts() -> Scripts {
                 // The dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36
                 // (content model v2): the barriers, the panel chips, the
                 // instruments, AirRaid, BugFix, ColorPt, Sensor and SumnBlk.
-                ("lib/viewer", "lib/viewer"),
-                ("lib/barriers/visual", "lib/barriers/visual"),
-                ("lib/barriers/barriers", "lib/barriers/barriers"),
                 ("lib/barriers/controller", "lib/barriers/controller"),
                 ("chips/barrier/chips", "chips/barrier/chips"),
                 ("chips/bblwrap/chip", "chips/bblwrap/chip"),
@@ -1031,7 +1112,6 @@ fn kinds() -> Vec<ObjectKind> {
     };
     let mut kinds = vec![
         kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball"),
-        kind("element-pillar", Pool::Attack, 0x61, "objects/element-pillar/element_pillar"),
         kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
         kind("whirlwind", Pool::Attack, 0x81, "objects/whirlwind/whirlwind"),
         kind("dash-hit", Pool::Attack, 0xAF, "objects/dash-hit/dash_hit"),
@@ -1040,20 +1120,7 @@ fn kinds() -> Vec<ObjectKind> {
         kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash"),
         kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
         kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
-        kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
-        kind("invisible", Pool::Effect, 0x5D, "objects/invisible/invisible"),
-        kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip"),
-        kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost"),
-        kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed"),
-        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
-        kind("elem-trap", Pool::Attack, 0x4D, "objects/elem-trap/elem_trap"),
-        kind("elem-trap-strike", Pool::Effect, 0x2B, "objects/elem-trap-strike/elem_trap_strike"),
-        kind("panel-bursts", Pool::Effect, 0x24, "objects/panel-bursts/panel_bursts"),
-        kind("time-bom", Pool::Effect, 0x27, "objects/time-bom/time_bom"),
-        kind("countdown-bomb", Pool::Attack, 0x4B, "objects/countdown-bomb/countdown_bomb"),
-        kind("mine", Pool::Effect, 0x29, "objects/mine/mine"),
-        kind("land-mine", Pool::Attack, 0x4C, "objects/land-mine/land_mine"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -1174,7 +1241,10 @@ fn named_chips() -> Vec<ChipData> {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             extra_flags: ExtraChipFlags(ExtraChipFlags::RUSH_CANCELS),
             family: ChipFamily::Plus,
-            script: Some("objects/invisible/invisible".into()),
+            // Invisibl's time (360 ticks), which the numbered registration
+            // finds its hook by.
+            params: [104, 1, 0, 0],
+            script: Some("chips/0b1-invisibl/chip".into()),
             ..chip(VEIL, "Veil", 0x15, 1)
         },
         ChipData {
@@ -1197,37 +1267,32 @@ fn named_chips() -> Vec<ChipData> {
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             params: [3, 0, 0, 0],
-            script: Some("objects/trap-chip/trap_chip".into()),
+            script: Some("chips/0ba-antinavi/chip".into()),
             ..chip(TRAP, "Trap", 0x15, 20)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            script: Some("objects/navi-boost/navi_boost".into()),
+            script: Some("chips/121-darkinvs/chip".into()),
             ..chip(BOOST, "Boost", 0x15, 38)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             params: [2, 1, 0, 0],
-            script: Some("objects/navi-boost/navi_boost".into()),
+            script: Some("chips/121-darkinvs/chip".into()),
             ..chip(ARM, "Arm", 0x15, 38)
         },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            script: Some("objects/gauge-speed/gauge_speed".into()),
-            ..chip(SLOW_GAUGE, "SlowGauge", 0x15, 25)
-        },
-        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+        // Dimming chip subtype 10 and ElemTrap's (20).
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
             damage: 40,
-            script: Some("objects/trap-chip/trap_chip".into()),
+            script: Some("chips/0ba-antinavi/chip".into()),
             ..chip(ELEM_TRAP, "ElemTrap", 0x15, 20)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
             hit_param: 100,
             damage: 50,
-            script: Some("objects/time-bom/time_bom".into()),
+            script: Some("chips/090-timebom1/chip".into()),
             ..chip(TIME_BOMB, "TimeBomb", 0x15, 10)
         },
         ChipData {
@@ -1235,15 +1300,8 @@ fn named_chips() -> Vec<ChipData> {
             hit_param: 100,
             params: [1, 0, 0, 0],
             damage: 70,
-            script: Some("objects/time-bom/time_bom".into()),
+            script: Some("chips/090-timebom1/chip".into()),
             ..chip(TIME_BOMB_PLUS, "TimeBomb+", 0x15, 10)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 100,
-            damage: 60,
-            script: Some("objects/mine/mine".into()),
-            ..chip(MINE, "Mine", 0x15, 11)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),

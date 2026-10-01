@@ -56,9 +56,10 @@ Not yet content: 0x55 (SonicBom, Curse, Punisher, SprSonic, `sub_80EF970`) and 0
 share the sonic boom (attack #0x58, `sub_80CF7F0`), specified in shot-chips.md with the actions that fire a shot;
 and 0x0A, the link navis' chips (below).
 
-Shared helpers: lib/panels.luau (`GetRandomRelativePanelFiltered`, `sub_8109708`), lib/object_setup.luau
-(`sub_8011504`, the collision-panel highlight, the dust puff), lib/arm.luau (`sub_80EBAE8`, the arm a chip
-attachment shows), lib/swords/vari.luau, and group G1's lib/region.luau and lib/trajectory.luau.
+Shared helpers: lib/panels.luau (`GetRandomRelativePanelFiltered`, `sub_8109708`), lib/arm.luau (`sub_80EBAE8`,
+the arm a chip attachment shows), lib/swords/vari.luau, and group G1's lib/region.luau and lib/trajectory.luau.
+(v1's lib/object_setup.luau, `sub_8011504` with the collision-panel highlight and the dust puff, went when its
+last users became definitions that set themselves up.)
 
 ## The other actions, in brief
 
