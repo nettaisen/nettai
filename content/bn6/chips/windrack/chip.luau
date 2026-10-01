@@ -3,6 +3,7 @@
 -- gusts down every row from it (./action).
 
 local action = require("./action")
+local lockon = require("../../rules/lockon")
 
 return define.chip {
     id = "windrack",
@@ -14,7 +15,7 @@ return define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 79, index = 79, sort = 511 },
     slot_in_limit = 3,
-    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-    beast = { lockon = 3 },
+    -- The Beast rush, and its lock-on mode (rules/lockon).
+    beast = { lockon = lockon.widesht },
     action = action.action { rack = action.racks.wind_rack },
 }

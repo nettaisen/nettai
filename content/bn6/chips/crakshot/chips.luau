@@ -7,6 +7,7 @@
 -- that can't be dug (not solid, or something on it) only cracks. 21 ticks
 -- in all.
 
+local lockon = require("../../rules/lockon")
 local regions = require("../../lib/regions")
 local shot = require("./shot")
 
@@ -94,8 +95,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 88, index = 88, sort = 114 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 7 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.crakshot },
         action = dig(regions.single),
     },
     define.chip {
@@ -108,8 +109,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 89, index = 89, sort = 132 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 8 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.dublshot },
         action = dig(regions.long),
     },
     define.chip {
@@ -122,8 +123,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 90, index = 90, sort = 447 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 9 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.gundels1 },
         action = dig(regions.wide),
     },
 }
