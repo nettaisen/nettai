@@ -1,12 +1,20 @@
 --!strict
--- Registration by number (docs/design/content-model-v2.md §5.6, "As
--- built"): the records of instant chip effect 3 (`off_80EC3F0[3]`: MegaBstr,
--- Atk+30, WhiCapsl, Uninstll, DarkPlus and the special chips of the
--- subtype, which stay records while something names them by number) run
--- this module's `instant_chip`, the plus chips' effect with its bonus and
--- extra from the record's parameters (lib/instant/plus). Atk+10 and
--- Navi+20 are definitions (chips/atk-10, chips/navi-20) and don't come
--- here. It goes when the rest are definitions.
+-- Registration by number (docs/design/content-model-v2.md §5.6 and §12):
+-- the records of instant chip effect 3 (`off_80EC3F0[3]`) that something
+-- still names by number run this module's `instant_chip`, the plus chips'
+-- effect with its bonus and extra from the record's parameters
+-- (lib/instant/plus):
+--
+--   MegaBstr, the pack's chip 0, which a zeroed chip field reads;
+--   Atk+10's record, the dark chips' fifth substitute (Atk+10 itself is a
+--     definition, chips/atk-10);
+--   Atk+30 and Uninstll, SunMoon's Program Advance's ingredients;
+--   DarkPlus, a dark chip with a substitute.
+--
+-- Navi+20, WhiCapsl, FinalGun and NumTrap are definitions and don't come
+-- here. It goes when the ruleset names these by handle (phase C: the
+-- zeroed chip, the substitutes, the dark chips) and the recipes name their
+-- ingredients (step 10).
 
 local plus = require("../../lib/instant/plus")
 
