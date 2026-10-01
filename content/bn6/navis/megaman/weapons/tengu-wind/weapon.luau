@@ -49,8 +49,6 @@ tengu_wind.weapon = define.weapon {
     charge_ticks = { 0, 0, 0, 0, 0, 60, 60, 60 },
     setup = setup,
     instant = blow,
-    -- (Transitional: the routine number the pack's forms name it by.)
-    legacy = { routines = { 0x10 } },
 }
 
 return tengu_wind

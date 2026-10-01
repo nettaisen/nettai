@@ -208,8 +208,6 @@ tackle.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 90, 80, 70, 65, 60, 80, 70, 60 },
     setup = setup,
-    -- (Transitional: the routine number the pack's forms name it by.)
-    legacy = { routines = { 0x27 } },
 }
 
 return tackle

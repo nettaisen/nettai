@@ -302,14 +302,11 @@ named_fields! {
         ChipLockout = "chip_lockout", U8, rw;
         /// Ticks before the B+Back special can be input again.
         BackSpecialCooldown = "back_special_cooldown", U8, rw;
-        /// The weapon routines the navi's buttons run (0xFF = none; the
+        /// The weapons the navi's buttons run (none: no weapon; the
         /// buster's and charged shot's writable: chips change them).
-        BusterRoutine = "buster_routine", U8, rw;
-        ChargeShotRoutine = "charge_shot_routine", U8, rw;
-        BackSpecialRoutine = "back_special_routine", U8, ro;
-        AChargeRoutine = "a_charge_routine", U8, ro;
-        AltAChargeRoutine = "alt_a_charge_routine", U8, ro;
-        Mode9ARoutine = "mode9_a_routine", U8, ro;
+        BusterWeapon = "buster_weapon", Ref(Registry::Weapon, None), rw;
+        ChargeShotWeapon = "charge_shot_weapon", Ref(Registry::Weapon, None), rw;
+        BackSpecialWeapon = "back_special_weapon", Ref(Registry::Weapon, None), ro;
         /// AIData+0x32: the Beast Out counter is spent (BugFix sets it by
         /// the navi's counter, `sub_8014446` / `sub_801443C`).
         BeastOutSpent = "beast_out_spent", Bool, rw;
@@ -418,10 +415,11 @@ named_fields! {
         MaxBaseHp = "max_base_hp", U16, ro;
         /// The NaviCust's heal on chip use.
         ChipRecovery = "chip_recovery", U16, ro;
-        /// NaviCust weapon stats: the buster's spread shot, the charged
-        /// shot's kind.
-        BusterShot = "buster_shot", U8, ro;
-        ChargeShotKind = "charge_shot_kind", U8, ro;
+        /// NaviCust weapon stats: the buster shot's and the charged
+        /// shot's programs, each the projectile variant a shot is on a
+        /// lucky draw (none: no program).
+        BusterShot = "buster_shot", Ref(Registry::Record, Some("projectile-variant".into())), ro;
+        ChargeShotKind = "charge_shot_kind", Ref(Registry::Record, Some("projectile-variant".into())), ro;
         /// The damage a B+Back special takes from the navi's stats
         /// (NaviStats+0x48).
         BackSpecialDamage = "back_special_damage", U16, ro;
@@ -441,10 +439,10 @@ named_fields! {
         CustomLevel = "custom_level", U8, rw;
         /// NaviCust bug: the hand shrinks from this turn on (0 none).
         HandShrinkTurn = "hand_shrink_turn", U8, rw;
-        /// The weapon routines the navi starts rounds with: the charged
-        /// shot, the B+Back special (0xFF none).
-        ChargeShotRoutine = "charge_shot_routine", U8, rw;
-        BackSpecialRoutine = "back_special_routine", U8, rw;
+        /// The weapons the navi starts rounds with: the charged shot, the
+        /// B+Back special (none: no weapon).
+        ChargeShotWeapon = "charge_shot_weapon", Ref(Registry::Weapon, None), rw;
+        BackSpecialWeapon = "back_special_weapon", Ref(Registry::Weapon, None), rw;
         /// NaviCust: FloatShoes, AirShoes, UnderShirt.
         FloatShoes = "float_shoes", Bool, rw;
         AirShoes = "air_shoes", Bool, rw;
