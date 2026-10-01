@@ -32,7 +32,8 @@ local ACCELERATION = 0x1_0000
 -- Where the navi waits while off the field, 16.16.
 local OFF_FIELD_X = 0xDC_0000
 
--- How high the dash's hits ride, 16.16.
+-- How high the dash's first hit rides, 16.16 (the second's height is the
+-- element: see the wind-up).
 local HIT_Z = 0x18_0000
 
 -- The dust it lands in (effect 0x13), 16.16 up.
@@ -83,7 +84,10 @@ local function wind_up(me: Object, s: State)
     me:reserve_panel(me.panel_x, me.panel_y)
     local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
     dash_hit.spawn(me, me.attack_element, damage, 0, false, HIT_Z)
-    dash_hit.spawn(me, me.attack_element, damage, 1, false, HIT_Z)
+    -- The original doesn't load the height again for the second hit: its
+    -- register holds what the first spawn left there, the element (as a
+    -- 16.16 height: a fraction of a pixel).
+    dash_hit.spawn(me, me.attack_element, damage, 1, false, me.attack_element)
     me.step = DASH
     me.step_init = 0
 end
