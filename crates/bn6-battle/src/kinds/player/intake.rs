@@ -91,7 +91,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let dimmed = b.is_dimmed();
-    let action = b.objects.get(r).action;
+    let action = super::navi_action(b, r);
     let holy = {
         let c = coll(b, r);
         c.barrier != 0 && panel_kind(b, c.panel) == PanelType::Holy
@@ -113,7 +113,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
         8 => {
             if barrier_hp16(c) == 0 {
                 // Regrows after 240 ticks (not while dimmed, frozen or bubbled).
-                if dimmed || matches!(action, 6 | 7) {
+                if dimmed || matches!(action, super::NaviAction::Freeze | super::NaviAction::Bubble) {
                     return;
                 }
                 c.barrier_timer = c.barrier_timer.wrapping_add(1);

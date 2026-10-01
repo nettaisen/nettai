@@ -10,22 +10,22 @@
 
 use crate::actor::{request, status};
 use crate::battle::Battle;
-use crate::content::Roles;
-use crate::kinds::player::{NaviAttack, ai, ai_mut, clear_flag2, coll_mut, set_attack};
+use crate::content::ActionRole;
+use crate::kinds::player::{NaviAction, ai, ai_mut, clear_flag2, coll_mut, set_attack};
 use crate::object::ObjectRef;
 
 /// The counter action a trap's request starts: AntiDmg's, AntiSwrd's, or
 /// (neither) BodyGrd's.
-fn counter_action(b: &Battle, requests: u32, body_guard: bool) -> NaviAttack {
-    let roles = &b.content.defs.roles.actions;
+fn counter_action(b: &Battle, requests: u32, body_guard: bool) -> NaviAction {
+    let roles = &b.content.defs.roles;
     let h = if requests & request::ANTI_DAMAGE_TRIGGERED != 0 {
-        Roles::action(roles.anti_damage_counter, "anti_damage_counter")
+        roles.action(ActionRole::AntiDamageCounter)
     } else if requests & request::ANTI_SWORD_TRIGGERED != 0 || !body_guard {
-        Roles::action(roles.anti_sword_counter, "anti_sword_counter")
+        roles.action(ActionRole::AntiSwordCounter)
     } else {
-        Roles::action(roles.body_guard_counter, "body_guard_counter")
+        roles.action(ActionRole::BodyGuardCounter)
     };
-    NaviAttack::content(&b.content.defs, h)
+    NaviAction::Content(h)
 }
 
 /// The trap requests that start a counter from idle or mid-attack.
@@ -65,7 +65,7 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     a.variant = 0;
     let action = counter_action(b, requests, true);
     set_attack(b, r, action, 0);
-    super::dispatch(b, r, action.number);
+    super::dispatch(b, r, action);
 }
 
 /// `sub_80105F2(requests, lockout, variant, damage)`: the AntiDmg

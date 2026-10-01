@@ -443,9 +443,10 @@ fn the_scripted_swords_play_and_roll_back() {
         }
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            let o = b.objects.get(r);
             let key = match b.kind_key(r) {
-                "engine/player" => format!("engine/player in action {:#04x}", o.action),
+                "engine/player" => {
+                    format!("engine/player in action {:#04x}", crate::kinds::player::navi_action(&b, r).number(&b.content.defs))
+                }
                 k => k.to_string(),
             };
             *seen.entry(key).or_insert(0) += 1;
@@ -474,15 +475,18 @@ fn registrations_follow_the_content_data() {
         0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x56, 0x57, 0x58,
     ];
     assert_eq!(actions, expected, "{:?}", d.actions);
-    // The instant chip registers its subtype's effect, and a weapon the
-    // subtype it names.
-    assert!(d.hook(bn6_content_api::Hook::InstantChip(5)).is_some(), "{:?}", d.hooks);
-    assert!(d.hook(bn6_content_api::Hook::InstantChip(0x14)).is_some(), "{:?}", d.hooks);
+    // An instant chip's record resolves its subtype's effect, and a weapon
+    // that names an effect no chip has (TenguCross's wind) has its own.
+    let gauge = d.chip(c.chip_numbered(testing::FULL_GAUGE).unwrap());
+    assert!(matches!(gauge.usage, crate::content::ChipUsage::Instant(_)), "{:?}", gauge.usage);
+    assert!(d.weapon(c.weapon_numbered(0x10)).instant.is_some());
     // Handles number each registry in key order: the engine's kinds and
     // the content's together.
     assert!(d.kinds.windows(2).all(|w| w[0].key < w[1].key));
+    // The engine's kinds have no object slot (the validator has theirs).
     let h = d.kind_by_key("engine/hitbox").unwrap();
-    assert_eq!(d.kind_at(crate::object::Pool::Attack, 3), Some(h));
+    assert_eq!(d.kind(h).slot, None);
+    assert_eq!(d.kind_at(crate::object::Pool::Attack, 3), None);
     // Two chips implementing one action with different scripts is an error.
     let mut c = testing::build();
     c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
@@ -695,11 +699,10 @@ fn breaking_a_scripted_rock_throws_debris() {
         rng.next();
     }
     assert_eq!(b.rng.state, rng.state);
-    let order: Vec<_> =
-        b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| (o.pool, b.slot_index(o))).collect();
+    let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
     assert_eq!(
         &order[..4],
-        [(Pool::Attack, 0x59), (Pool::Effect, 0), (Pool::Effect, 0x38), (Pool::Effect, 0x38)],
+        ["rock", "engine/effect", "rock-debris", "rock-debris"],
         "the rock, then what it spawned in reverse order"
     );
     assert_eq!(b.objects.get(r).state, state::DESTROY);
@@ -963,7 +966,7 @@ fn a_panic_inside_content_leaves_the_vm_sound() {
         // A Rust panic inside a Luau call: the reactive abort GunDelSol
         // calls isn't ported and panics when a defense triggered.
         if let Some(p) = c.player(0)
-            && c.objects.get(p).action == 0x37
+            && crate::kinds::player::navi_action(&c, p).number(&c.content.defs) == 0x37
         {
             let actor = c.objects.get(p).actor.unwrap();
             c.actors.get_mut(actor).requests |= crate::actor::request::ANTI_SWORD_TRIGGERED;
