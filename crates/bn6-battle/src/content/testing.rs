@@ -32,16 +32,12 @@ pub const SUN_GUN_EX: ChipId = 0x04;
 pub const VEIL: ChipId = 0x05;
 /// A navi chip (action 0x1B, subtype 5: the eraser navi).
 pub const ERASER: ChipId = 0x06;
-/// A dimming chip (action 0x15, subtype 0) that grabs a column.
-pub const GRAB: ChipId = 0x07;
 /// Instant chips (action 0x1C, ids 0x40 and up): one that fills the custom
 /// gauge (FullCust's effect).
 pub const FULL_GAUGE: ChipId = 0x40;
-/// Instant chips: a plus chip used on its own (subtype 3), one that raises
-/// the buster's attack by 1 (subtype 10) and one that syncs the navi
-/// (subtype 13).
+/// Instant chips: a plus chip used on its own (subtype 3, the plus chips'
+/// effect by number) and one that syncs the navi (subtype 13).
 pub const PLUS: ChipId = 0x41;
-pub const BUSTER_UP: ChipId = 0x42;
 pub const SYNC: ChipId = 0x43;
 /// Instant chips whose effects spawn objects: a boomerang (subtype 1),
 /// lances (4), fists (8), worms (12), flame hooks (14), a falling fist
@@ -218,6 +214,11 @@ pub fn chip_handle(id: ChipId) -> bn6_content_api::ChipHandle {
     chip_in(&content(), id)
 }
 
+/// The chip the shared test content defines as `key`.
+pub fn defined_chip(key: &str) -> bn6_content_api::ChipHandle {
+    content().defs.chip_by_key(key).unwrap_or_else(|| panic!("the test content defines no chip {key:?}"))
+}
+
 /// Weapon routine `n` in the content (none for 0xFF).
 pub fn weapon_in(content: &Content, n: u8) -> Option<bn6_content_api::WeaponHandle> {
     (n != 0xFF).then(|| content.weapon_numbered(n))
@@ -233,6 +234,15 @@ pub fn weapon(n: u8) -> Option<bn6_content_api::WeaponHandle> {
 pub const TICKER_1: &str = "test/ticker1";
 pub const TICKER_2: &str = "test/ticker2";
 pub const TICKER_3: &str = "test/ticker3";
+/// BN6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
+/// chips content defines, which grab a column and a panel.
+pub const AREA_GRAB: &str = "areagrab";
+pub const PANEL_GRAB: &str = "panlgrab";
+/// BN6's BusterUp, Atk+10 and Navi+20 (chips/busterup, chips/atk-10,
+/// chips/navi-20): instant chips content defines.
+pub const BUSTER_UP: &str = "busterup";
+pub const ATTACK_10: &str = "atk-10";
+pub const NAVI_20: &str = "navi-20";
 pub const TICK_SHOT: &str = "test/tick-shot";
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
@@ -373,6 +383,10 @@ fn assets() -> bn6_content_api::AssetNames {
         ("big-slash", sprite(0x0C, 0x15)),
         ("cross-slash", sprite(0x10, 0x41)),
         ("reflected-shot", sprite(0x14, 0x04)),
+        ("eraseman", sprite(0x08, 0x04)),
+        ("buster-up", sprite(0x14, 0x1B)),
+        ("erase-mark", sprite(0x10, 0x50)),
+        ("erase-beam", sprite(0x10, 0x51)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -390,6 +404,13 @@ fn assets() -> bn6_content_api::AssetNames {
         ("energy-burst", 0xBB),
         ("sword-swing", 0xB0),
         ("big-sword-swing", 0xCE),
+        ("grab-shot", 0xA2),
+        ("grab-shot-2", 0xA1),
+        ("appear", 0x94),
+        ("erase-man", 0x10E),
+        ("erase-man-2", 0xBA),
+        ("hub", 0x119),
+        ("bonus", 0x157),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -415,11 +436,15 @@ pub fn scripts() -> Scripts {
                 ("objects/attachment/attachment", "objects/attachment/attachment"),
                 ("objects/sun-beam/sun_beam", "objects/sun-beam/sun_beam"),
                 ("chips/001-sungun1/chip", "chips/00f-gundels1/chip"),
-                ("objects/erase-man/erase_man", "objects/erase-man/erase_man"),
-                ("objects/erase-mark/erase_mark", "objects/erase-mark/erase_mark"),
-                ("objects/erase-beam/erase_beam", "objects/erase-beam/erase_beam"),
-                ("objects/area-grab/area_grab", "objects/area-grab/area_grab"),
-                ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
+                ("chips/eraseman/mark", "chips/eraseman/mark"),
+                ("chips/eraseman/beam", "chips/eraseman/beam"),
+                ("chips/eraseman/navi", "chips/eraseman/navi"),
+                ("chips/0ec-eraseman/chip", "chips/0ec-eraseman/chip"),
+                ("lib/dimming", "lib/dimming"),
+                ("lib/grab/shot", "lib/grab/shot"),
+                ("lib/grab/controller", "lib/grab/controller"),
+                ("chips/areagrab/chip", "chips/areagrab/chip"),
+                ("chips/panlgrab/chip", "chips/panlgrab/chip"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
                 ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
@@ -438,8 +463,11 @@ pub fn scripts() -> Scripts {
                 ("objects/junk-shot/junk_shot", "objects/junk-shot/junk_shot"),
                 ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
                 ("chips/0ae-fullcust/chip", "chips/0ae-fullcust/chip"),
+                ("lib/instant/plus", "lib/instant/plus"),
                 ("chips/0c0-atk-10/chip", "chips/0c0-atk-10/chip"),
-                ("chips/0af-busterup/chip", "chips/0af-busterup/chip"),
+                ("chips/atk-10/chip", "chips/atk-10/chip"),
+                ("chips/navi-20/chip", "chips/navi-20/chip"),
+                ("chips/busterup/chip", "chips/busterup/chip"),
                 ("chips/11d-synctrgr/chip", "chips/11d-synctrgr/chip"),
                 ("objects/boomerang/boomerang", "objects/boomerang/boomerang"),
                 ("objects/lance/lance", "objects/lance/lance"),
@@ -646,11 +674,6 @@ fn kinds() -> Vec<ObjectKind> {
     };
     let mut kinds = vec![
         kind("sun-beam", Pool::Effect, 0x48, "objects/sun-beam/sun_beam"),
-        kind("erase-man", Pool::Actor, 0x15, "objects/erase-man/erase_man"),
-        kind("erase-mark", Pool::Effect, 0x62, "objects/erase-mark/erase_mark"),
-        kind("erase-beam", Pool::Attack, 0xC3, "objects/erase-beam/erase_beam"),
-        kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab"),
-        kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
         kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball"),
         kind("element-pillar", Pool::Attack, 0x61, "objects/element-pillar/element_pillar"),
         kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
@@ -856,16 +879,8 @@ fn named_chips() -> Vec<ChipData> {
             hit_param: 100,
             params: [16, 0, 0, 0],
             damage: 60,
-            script: Some("objects/erase-man/erase_man".into()),
+            script: Some("chips/0ec-eraseman/chip".into()),
             ..chip(ERASER, "Eraser", 0x1B, 5)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 100,
-            params: [1, 0, 0, 0],
-            damage: 10,
-            script: Some("objects/area-grab/area_grab".into()),
-            ..chip(GRAB, "Grab", 0x15, 0)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
@@ -1065,13 +1080,6 @@ fn named_chips() -> Vec<ChipData> {
             damage: 10,
             script: Some("chips/0c0-atk-10/chip".into()),
             ..chip(PLUS, "Plus", 0x1C, 3)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
-            family: ChipFamily::Plus,
-            params: [1, 0, 0, 0],
-            script: Some("chips/0af-busterup/chip".into()),
-            ..chip(BUSTER_UP, "BustUp", 0x1C, 10)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),

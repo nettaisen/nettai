@@ -181,6 +181,7 @@ const ALWAYS: &[(&str, &str, &str)] = &[
     ("data.", "the data global", "definitions"),
     (":load(\"", "sprite:load(id)", "asset.sprite"),
     ("legacy {", "a legacy marker", "the chip's v2 form"),
+    ("legacy = {", "a legacy marker", "the chip's v2 form"),
 ];
 
 /// Calls deprecated when an argument is a number: pattern, the arguments

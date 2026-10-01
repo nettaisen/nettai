@@ -6,7 +6,7 @@
 -- draws), with an effect that tells the statue to strike and waits 60
 -- ticks.
 
-local controller = require("../../lib/dimming/controller")
+local dimming_chips = require("../../lib/dimming")
 
 local strike = {}
 
@@ -29,7 +29,7 @@ local function effect(me: Object)
     local t = me.timer - 1
     me.timer = t
     if t == 0 then
-        controller.end_effect(me)
+        dimming_chips.done(me)
     end
 end
 
@@ -37,7 +37,7 @@ local kind = define.kind {
     id = "guardian/strike",
     pool = "effect",
     -- `sub_80E680C`.
-    update = controller.phases { name = "the Guardian strike", effect = effect },
+    update = dimming_chips.phases { name = "the Guardian strike", effect = effect },
 }
 
 -- `sub_80E6878`: the controller for `statue`, on its panel and side, with
