@@ -1,23 +1,35 @@
 --!strict
--- Rush (actor object #0x4B, `sub_80C3218`), the NaviCust support that
--- stops a chip: the opponent used a chip Rush cancels (its data's flag
--- `RUSH_CANCELS`), the ruleset turned the use back (`sub_8010740`) and
--- summoned him through the supports' controller (objects/support). He appears by his navi (or at his side's middle), barks
+-- Rush (the original's actor object #0x4B, `sub_80C3218`), the NaviCust
+-- support that stops a chip: the opponent used a chip Rush cancels (its
+-- record's flag `rush_cancels`), the ruleset turned the use back
+-- (`sub_8010740`) and summoned him through the supports' controller
+-- (./controller). He appears by his navi (or at his side's middle), barks
 -- for a second, digs in, pops up under the opponent's navi and eats the
--- chip (the opponent's hand moves on, unless the chip is 0x17E), with a
--- bite that hits for one tick; a second later he digs away. Then the
--- controller moves on. See docs/engine/chips.md §2.10.
+-- chip (the opponent's hand moves on, unless the chip is the second
+-- WhiCapsl, which doesn't come from the hand), with a bite that hits for
+-- one tick; a second later he digs away. Then the controller moves on. See
+-- docs/engine/chips.md §2.10.
+
+local collision = require("../../rules/collision")
+local effects = require("../effects")
+local regions = require("../regions")
+
+export type State = {
+    -- The chip he eats, as the ruleset's numeric API gives it (the
+    -- original's third and fourth parameters).
+    eaten: number,
+}
 
 local rush = {}
 
-local SPRITE = "0C-48"
-local APPEAR_SOUND = 0x112
-local BITE_SOUND = 0x122
--- Digging in and out: effect #0 look 0x14.
-local DUST = 0x14
--- Collision: self type 0x17, target 5, status 0x12.
-local SELF_TYPE, TARGET_TYPE, STATUS = 0x17, 5, 0x12
--- A chip he leaves in the hand.
+local SPRITE = asset.sprite("rush")
+local APPEAR_SOUND = asset.sound("place")
+local BITE_SOUND = asset.sound("bite")
+-- The status byte his bite carries.
+local STATUS = 0x12
+-- The chip he leaves in the hand: the second WhiCapsl
+-- (chips/whicapsl-invisible). A chip's number until that chip is a
+-- definition (its record stays for the dimming service).
 local SPARED_CHIP = 0x17E
 
 -- `byte_80C34A8`: what his navi's panel must be for him to appear there,
@@ -26,21 +38,6 @@ local STAND = {
     [0] = { require = 0x0001_0000, forbid = 0x20 },
     [1] = { require = 0x0001_0020, forbid = 0 },
 }
-
--- `sub_80C34B8`: Rush, for `controller` (whose second parameter is the
--- flag he clears when he goes), with its parameters (the third and fourth
--- the chip he eats).
-function rush.spawn(controller: Object, params: { number }): Object?
-    local o = battle.spawn_kind("rush", Vec3.zero, params)
-    if not o then
-        return nil
-    end
-    o.alliance = controller.alliance
-    o.related1 = controller
-    controller:set_param(2, 1)
-    o.run_while_dimmed = true
-    return o
-end
 
 -- `sub_80C3460`: on his navi's panel if it will do, else at (1 or 6, 2);
 -- on the ground.
@@ -82,8 +79,9 @@ local function appear(me: Object)
     end
 end
 
+-- Digging in and out.
 local function dust(at: Vec3)
-    battle.effect(at, DUST)
+    battle.effect(at, effects.puff)
 end
 
 -- Action 4 (`sub_80C3322`): dig in, come up under the opponent, eat the
@@ -129,7 +127,7 @@ local function bite(me: Object)
         if bit32.band(me.sprite.frame_flags, 0x80) == 0 then
             return
         end
-        if me:param(3) + me:param(4) * 0x100 ~= SPARED_CHIP then
+        if (me.state :: State).eaten ~= SPARED_CHIP then
             local target = battle.player(bit32.bxor(me.alliance, 1))
             if not target then
                 -- The branch skips the `pop {r5}`: the game goes on with a
@@ -140,14 +138,14 @@ local function bite(me: Object)
         end
         me.anim = 3
         me.timer = 0x3C
-        me.collision.region = 1
+        me.collision:set_region(regions.single)
         me.phase, me.phase_init = 0x10, 0
     elseif p == 0x10 then
         -- sub_80C3408: the bite hits for a tick; he digs away after 60.
         if bit32.band(me.sprite.frame_flags, 0x40) ~= 0 then
             battle.play_sound(BITE_SOUND)
         end
-        me.collision.region = 0
+        me.collision:set_region(nil)
         me.timer -= 1
         if me.timer ~= 0 then
             return
@@ -193,9 +191,9 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(SELF_TYPE, TARGET_TYPE, 0)
+    me:setup_collision(collision.thrown_piercing_break, collision.hits_navis, 0)
     me.collision.status_base = STATUS
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me:set_lifecycle("update")
     tick(me)
 end
@@ -205,14 +203,15 @@ local function leave(me: Object)
     me.collision:free()
     local controller = me.related1
     if controller then
-        controller:set_param(2, 0)
+        local c = controller.state :: { out: boolean }
+        c.out = false
     end
     me:free()
 end
 
 -- `sub_80C3218`: by state, then his sprite (a freed slot's too, which
 -- does nothing).
-function rush.update(me: Object)
+local function update(me: Object)
     local l = me.lifecycle
     if l == "init" then
         init(me)
@@ -222,6 +221,30 @@ function rush.update(me: Object)
         leave(me)
     end
     me:update_sprite()
+end
+
+rush.kind = define.kind {
+    id = "rush",
+    pool = "actor",
+    state = { eaten = "u16" },
+    update = update,
+}
+
+-- `sub_80C34B8`: Rush, for `controller` (whose `out` flag he sets, and
+-- clears when he goes), eating chip `eaten`.
+function rush.spawn(controller: Object, eaten: number): Object?
+    local o = battle.spawn(rush.kind, Vec3.zero)
+    if not o then
+        return nil
+    end
+    local s = o.state :: State
+    s.eaten = eaten
+    o.alliance = controller.alliance
+    o.related1 = controller
+    local c = controller.state :: { out: boolean }
+    c.out = true
+    o.run_while_dimmed = true
+    return o
 end
 
 return rush

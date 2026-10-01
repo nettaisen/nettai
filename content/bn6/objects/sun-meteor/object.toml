@@ -1,6 +1,0 @@
-# SunMoon's meteor (attack object #0xB5, `sub_80DBEE6`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xB5
-script = "sun_meteor.luau"

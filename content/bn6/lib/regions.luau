@@ -56,6 +56,12 @@ regions.tall = define.region { panels = { { 0, 0 }, { 0, -1 } } }
 -- The anchor and the column ahead of it (region 0x15: ElcPuls's pulse).
 regions.fan = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 }, { 1, 0 } } }
 
+-- The anchor and the two columns ahead of it (region 0x1A: the Beast
+-- charged chips' pillars).
+regions.deep_fan = define.region {
+    panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 } },
+}
+
 -- A side's area: side 0's (region 0x81, the panels without flag 0x20) and
 -- side 1's (0x82, with it).
 regions.area = {

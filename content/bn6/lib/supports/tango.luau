@@ -1,32 +1,28 @@
 --!strict
--- Tango (actor object #0x4D, `sub_80C3734`), the NaviCust support that
--- heals her navi once, in link battles, when its HP drops to a
--- quarter (`sub_8010660`): summoned through the supports' controller
--- (objects/support), she drops in 33 pixels in front of her navi,
--- lands, sings, and throws a heal (objects/tango-heal) that arcs onto her
--- navi's panel; once it has landed she waits 10 ticks, bows, and rises
--- away. Then the controller moves on. See docs/engine/chips.md §2.10.
+-- Tango (the original's actor object #0x4D, `sub_80C3734`), the NaviCust
+-- support that heals her navi once, in link battles, when its HP drops to
+-- a quarter (`sub_8010660`): summoned through the supports' controller
+-- (./controller), she drops in 33 pixels in front of her navi, lands,
+-- sings, and throws a heal (./heal) that arcs onto her navi's panel; once
+-- it has landed she waits 10 ticks, bows, and rises away. Then the
+-- controller moves on. See docs/engine/chips.md §2.10.
 
-local tango_heal = require("../tango-heal/tango_heal")
+local effects = require("../effects")
+local heal = require("./heal")
 
 export type State = {
     -- Her heal is out (object +0x0C: the heal clears it when it lands).
-    healing: number,
+    healing: boolean,
 }
 
-local tango = {
-    state = {
-        healing = "u8",
-    },
-}
+local tango = {}
 
-local SPRITE = "0C-4C"
-local ARRIVE_SOUND = 0x116
-local LAND_SOUND = 0xD4
-local THROW_SOUND = 0xB2
--- Effect #0 looks: her arrival sparkle, and the puff she leaves in.
-local ARRIVE = 0x15
-local PUFF = 0x14
+local SPRITE = asset.sprite("tango")
+local ARRIVE_SOUND = asset.sound("arrive")
+local LAND_SOUND = asset.sound("tango-land")
+local THROW_SOUND = asset.sound("minibomb-throw")
+-- Her arrival sparkle (the original's effect 0x15); she leaves in a puff.
+local ARRIVE = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
 
 -- Where she drops from: 33 pixels in front of her navi, 60 up; how fast
 -- she drops and rises (Z, 16.16 a tick), and where she lands.
@@ -37,20 +33,6 @@ local LAND_Z = 0x10
 -- The heal: from 16 pixels back toward her navi, 10 up.
 local HEAL_FRONT = 0x10_0000
 local HEAL_Z = 0xA_0000
-
--- `sub_80C3946`: Tango, for `controller` (whose second parameter is the
--- flag she clears when she goes), with its parameters.
-function tango.spawn(controller: Object, params: { number }): Object?
-    local o = battle.spawn_kind("tango", Vec3.zero, params)
-    if not o then
-        return nil
-    end
-    o.alliance = controller.alliance
-    o.related1 = controller
-    controller:set_param(2, 1)
-    o.run_while_dimmed = true
-    return o
-end
 
 -- `object_getEnemyDirection`: +1 for the left side, -1 for the right.
 local function enemy_direction(me: Object): number
@@ -127,14 +109,14 @@ local function tick(me: Object)
         if navi then
             local at = me.pos
             local from = Vec3.new(int.i32(at.x - enemy_direction(me) * HEAL_FRONT), at.y, HEAL_Z)
-            tango_heal.spawn(me, from, navi.panel_x, navi.panel_y)
+            heal.spawn(me, from, navi.panel_x, navi.panel_y)
         end
         me.timer = 0xA
         battle.play_sound(THROW_SOUND)
         next_phase(me, 0x10)
     elseif p == 0x10 then
         -- sub_80C38A0: once the heal has landed, 10 ticks; then her bow.
-        if s.healing ~= 0 then
+        if s.healing then
             return
         end
         me.timer -= 1
@@ -160,7 +142,7 @@ local function tick(me: Object)
             me.pos = Vec3.new(at.x, at.y, int.i32(at.z + STEP_Z))
             return
         end
-        battle.effect(me.pos, PUFF)
+        battle.effect(me.pos, effects.puff)
         me:set_lifecycle("destroy")
     else
         error(string.format("Tango's phase %#x reads past its table (off_80C37D0)", p))
@@ -185,7 +167,7 @@ end
 
 -- `sub_80C3734`: by state, then her sprite (a freed slot's too, which
 -- does nothing).
-function tango.update(me: Object)
+local function update(me: Object)
     local l = me.lifecycle
     if l == "init" then
         init(me)
@@ -194,10 +176,33 @@ function tango.update(me: Object)
     else
         -- sub_80C3900: the controller's flag cleared, gone.
         local controller = me.related1 :: Object
-        controller:set_param(2, 0)
+        local c = controller.state :: { out: boolean }
+        c.out = false
         me:free()
     end
     me:update_sprite()
+end
+
+tango.kind = define.kind {
+    id = "tango",
+    pool = "actor",
+    state = { healing = "bool" },
+    update = update,
+}
+
+-- `sub_80C3946`: Tango, for `controller` (whose `out` flag she sets, and
+-- clears when she goes).
+function tango.spawn(controller: Object): Object?
+    local o = battle.spawn(tango.kind, Vec3.zero)
+    if not o then
+        return nil
+    end
+    o.alliance = controller.alliance
+    o.related1 = controller
+    local c = controller.state :: { out: boolean }
+    c.out = true
+    o.run_while_dimmed = true
+    return o
 end
 
 return tango

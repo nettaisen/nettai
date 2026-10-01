@@ -1,7 +1,7 @@
 --!strict
 -- SlashMan, the navi of the SlashMan chips (actor object #0x0D,
 -- `sub_80B9F44`), brought by their navi chip controller. He appears and
--- sends sword waves (objects/slash-wave) down the columns: from the
+-- sends sword waves (chips/slashman/wave) down the columns: from the
 -- farthest column with something of the other side's in it back toward
 -- himself, a column every 15 ticks, one wave on each free panel of it
 -- (the user's waves, hitting for the chip's Param1). Then he leaps to the
@@ -12,7 +12,7 @@
 -- `off_802CD5C[4]`.
 
 local panels = require("../../lib/panels")
-local slash_wave = require("../slash-wave/slash_wave")
+local slash_wave = require("../../chips/slashman/wave")
 
 export type State = {
     -- The controller waiting for him (its pointer sits in his collision
@@ -160,7 +160,7 @@ local function waves(me: Object, x: number)
     for y = 1, 3 do
         if field.check(x, y, w[1], w[2]) then
             -- r3 (his damage's flag bits) becomes its Z.
-            slash_wave.spawn(user, x, y, 0, { 1 }, damage, bit32.band(me.damage, 0xF000))
+            slash_wave.spawn(user, x, y, 0, slash_wave.chip, damage, bit32.band(me.damage, 0xF000))
         end
     end
 end

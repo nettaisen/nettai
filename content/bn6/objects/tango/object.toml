@@ -1,7 +1,0 @@
-# Tango, the NaviCust support that heals her navi at low HP (actor object #0x4D,
-# `sub_80C3734`), is a script.
-
-[kind]
-pool = "actor"
-index = 0x4D
-script = "tango.luau"

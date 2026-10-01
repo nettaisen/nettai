@@ -2,12 +2,13 @@
 -- HeatCross Beast's charged chip: weapon routine 7 (`sub_8011BD0`) and
 -- action 0x35 (`sub_80ED8C4`). A charged Null-family chip becomes a wall of
 -- flames: when the navi's wind-up animation ends, fire pillars
--- (objects/element-pillar, Param1 0) rise on region 0x1A's panels ahead
+-- (objects/element-pillar) rise on the panels ahead
 -- (the three rows of the two columns past the panel in front, and that
 -- panel); the navi holds for 90 ticks, humming every 17, and the flames die
 -- down once it stops.
 
 local element_pillar = require("../../../../objects/element-pillar/element_pillar")
+local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -31,10 +32,10 @@ local WIND_UP, BURN = 0x0, 0x4
 -- Fire (the attack's element) and the hits' counter byte.
 local FIRE, HIT_PARAM = 1, 0x8A
 
--- The pillars: fire (Param1 0), 90 ticks (Param2), 4 once the navi stops
--- (Param3), on region 0x1A.
-local PILLARS = { 0, 0x5A, 4, 0 }
-local REGION = 0x1A
+-- The pillars: flames, 90 ticks, 4 once the navi stops, on the panel in
+-- front and the two columns past it.
+local PILLARS: ElementPillar = { ticks = 0x5A, after = 4 }
+local REGION = regions.deep_fan
 local TICKS = 0x5A
 
 -- `sub_8011BD0`: 50 damage and 30 more per point of buster Attack (up to

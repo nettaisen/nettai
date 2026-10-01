@@ -1,39 +1,29 @@
 --!strict
--- Tango's heal (attack object #0xC7, `sub_80DE000`): thrown by Tango
--- (objects/tango), it arcs onto her navi's panel in 20 ticks; landed, it
--- tells her (her `healing` flag), leaves a sparkle, heals her navi 300 HP
--- and gives it barrier 5 (Barr100's, lib/barriers) with the barrier's
--- visual. See
--- docs/engine/chips.md §2.10.
+-- Tango's heal (the original's attack object #0xC7, `sub_80DE000`): thrown
+-- by Tango (./tango), it arcs onto her navi's panel in 20 ticks; landed,
+-- it tells her (her `healing` flag), leaves a sparkle, heals her navi 300
+-- HP and gives it Barr100's barrier (lib/barriers) with the barrier's
+-- visual. See docs/engine/chips.md §2.10.
 
-local barriers = require("../../lib/barriers/barriers")
-local trajectory = require("../../lib/trajectory")
+local barriers = require("../barriers/barriers")
+local trajectory = require("../trajectory")
 
-local tango_heal = {}
+export type State = {
+    -- The panel it lands on (the original's third and fourth parameters).
+    target_x: number,
+    target_y: number,
+}
 
-local SPRITE = "0C-4D"
+local heal = {}
+
+local SPRITE = asset.sprite("tango-heal")
 local FLIGHT_TICKS = 0x14
 -- The arc's gravity (Z velocity, 16.16 a tick: 0xFFFF7778).
 local GRAVITY = -0x8888
 local HEAL = 300
-local HEAL_SOUND = 0x8A
--- Effect #0's look as it lands.
-local SPARKLE = 6
-
--- `sub_80DE112`: the heal from `tango` at `pos`, for her navi's panel
--- (x, y) (its third and fourth parameters).
-function tango_heal.spawn(tango: Object, pos: Vec3, x: number, y: number): Object?
-    local o = battle.spawn_kind("tango-heal", pos, { 0, 0, x, y })
-    if not o then
-        return nil
-    end
-    o.alliance = tango.alliance
-    o.related1 = tango
-    local s = tango.state :: { healing: number }
-    s.healing = 1
-    o.run_while_dimmed = true
-    return o
-end
+local HEAL_SOUND = asset.sound("heal")
+-- The sparkle as it lands (the original's effect 6: a recovery's).
+local SPARKLE = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
 
 -- `sub_80DE024`: its look, and the arc onto the panel.
 local function init(me: Object)
@@ -45,7 +35,8 @@ local function init(me: Object)
     sprite:set_animation(0)
     sprite:step()
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    local x, y = field.center(me:param(3), me:param(4))
+    local s = me.state :: State
+    local x, y = field.center(s.target_x, s.target_y)
     me.vel = trajectory.in_ticks(me.pos, x, y, 0, FLIGHT_TICKS, GRAVITY)
     me.timer = FLIGHT_TICKS
     me.lifecycle = "update"
@@ -66,8 +57,8 @@ local function tick(me: Object)
         return
     end
     local tango = me.related1 :: Object
-    local s = tango.state :: { healing: number }
-    s.healing = 0
+    local her = tango.state :: { healing: boolean }
+    her.healing = false
     me:set_lifecycle("destroy")
     battle.effect(me.pos, SPARKLE)
     local navi = battle.player(me.alliance)
@@ -84,7 +75,7 @@ local function tick(me: Object)
 end
 
 -- `sub_80DE000`: by state, then its sprite.
-function tango_heal.update(me: Object)
+local function update(me: Object)
     local l = me.lifecycle
     if l == "init" then
         init(me)
@@ -96,4 +87,28 @@ function tango_heal.update(me: Object)
     me:update_sprite()
 end
 
-return tango_heal
+heal.kind = define.kind {
+    id = "tango/heal",
+    pool = "attack",
+    state = { target_x = "u8", target_y = "u8" },
+    update = update,
+}
+
+-- `sub_80DE112`: the heal from `tango` at `pos`, for her navi's panel
+-- (x, y).
+function heal.spawn(tango: Object, pos: Vec3, x: number, y: number): Object?
+    local o = battle.spawn(heal.kind, pos)
+    if not o then
+        return nil
+    end
+    local s = o.state :: State
+    s.target_x, s.target_y = x, y
+    o.alliance = tango.alliance
+    o.related1 = tango
+    local her = tango.state :: { healing: boolean }
+    her.healing = true
+    o.run_while_dimmed = true
+    return o
+end
+
+return heal

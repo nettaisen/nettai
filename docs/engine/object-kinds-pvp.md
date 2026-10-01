@@ -40,7 +40,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x49 | 0x080cd2ec | 87 (WindRack's gust: the pack's `objects/gust`, standard-chips.md) |
 | T3 0x59 | 0x080cf954 | 7372 (rock: the pack's `objects/rock`, field-objects.md) |
 | T3 0x5b | 0x080cfcf8 | 96 |
-| T3 0x62 | 0x080d07cc | lab only (SlashMan's sword wave: the pack's `objects/slash-wave`, chips.md §3.6.18) |
+| T3 0x62 | 0x080d07cc | lab only (SlashMan's sword wave: the pack's `chips/slashman/wave`, chips.md §3.6.18) |
 | T3 0x64 | 0x080d0d7c | lab only (ElecMan's thunderbolt: the pack's `objects/elec-thunder`, chips.md §3.6.16) |
 | T3 0x74 | 0x080d30d0 | 350 (RskyHny's bee: the pack's `chips/rskyhny/bee`, chips.md §3.7) |
 | T3 0x82 | 0x080d5740 | 48 (DolThdr's doll: the pack's `chips/dolthdr/doll`, standard-chips.md) |
