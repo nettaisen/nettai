@@ -274,7 +274,11 @@ sounds are left out.
   actions, played on the frame it decided them, through `SoundCalls` and
   the driver: the same music changes as the plain replay, each at most
   the latency later, and every song the replay starts started once within
-  that (the rest predictions stopped again).
+  that (the rest predictions stopped again). On the golden traces at
+  latencies of 2, 5 and 10 frames (with 1-3 of jitter): every round's
+  three music changes in step, effects at most 7 frames late at 10 frames'
+  latency, and up to 17 effects in a round started on a prediction and
+  stopped again.
 
 In this repo, tests cover the cue plumbing on a battle built in code, the
 driver on synthesized songs (priorities, channel stealing, controls, the
