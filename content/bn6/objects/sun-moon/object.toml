@@ -1,7 +1,0 @@
-# SunMoon, the SunMoon Program Advance's navi (actor object #0x24, `sub_80BF260`), is a
-# script.
-
-[kind]
-pool = "actor"
-index = 0x24
-script = "sun_moon.luau"

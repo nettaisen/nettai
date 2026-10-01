@@ -158,7 +158,13 @@ pub fn record_seeded(ticks: usize, seed: u32) -> Vec<Tick> {
 /// The duel's players on another round (`setup_with`), with the steps and
 /// shots from `seed`.
 pub fn record_on(setup: RoundSetup, ticks: usize, seed: u32) -> Vec<Tick> {
-    let mut b = Battle::new(setup, content());
+    record_on_content(setup, content(), ticks, seed)
+}
+
+/// The same on other content (the setup naming it): a field with holes,
+/// say.
+pub fn record_on_content(setup: RoundSetup, content: Arc<Content>, ticks: usize, seed: u32) -> Vec<Tick> {
+    let mut b = Battle::new(setup, content);
     let mut rng = Lcg(seed);
     let mut tape = Vec::with_capacity(ticks);
     // Per side: a held direction and how long to keep it.

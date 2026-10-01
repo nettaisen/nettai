@@ -1,6 +1,0 @@
-# ElmntMan's vine (attack object #0xB9, `sub_80DC4FC`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xB9
-script = "elmnt_vine.luau"
