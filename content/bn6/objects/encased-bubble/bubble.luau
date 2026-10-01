@@ -8,8 +8,8 @@
 
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
-local rock = require("../rock/rock")
-local rock_debris = require("../rock/debris")
+local rock = require("../../chips/rockcube/rock")
+local rock_debris = require("../../chips/rockcube/debris")
 local sparks = require("../../lib/sparks")
 
 local bubble = {}

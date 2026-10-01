@@ -4,11 +4,11 @@
 -- burrows (its body leaves the field 3 ticks in), comes up on the panel
 -- Beast Out lock-on mode 0xC picks in front of the first enemy in its row
 -- (or of the other side's front column there), drills there with a drill
--- arm (objects/drill) for 24 ticks and waits 10 more, then burrows back to
+-- arm (DrilArm's drill, chips/drilarm/drill) for 24 ticks and waits 10 more, then burrows back to
 -- the panel it left.
 
 local attachment = require("../../../../objects/attachment/attachment")
-local drill_object = require("../../../../objects/drill/drill")
+local drill_object = require("../../../../chips/drilarm/drill")
 local lockon = require("../../../../rules/lockon")
 local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")

@@ -10,9 +10,10 @@ const WINNER: SoundId = SoundId(0x1F);
 /// music player and an effect (0x94) on player 16.
 fn bank() -> Arc<SoundBank> {
     let square = Voice {
-        kind: VoiceKind::Square1 { duty: 2 },
+        kind: VoiceKind::Square1 { duty: 2, sweep: m4a::bank::NO_SWEEP, fixed: false },
         key: 60,
         pan: None,
+        length: 0,
         envelope: Envelope { sustain: 15, ..Envelope::default() },
     };
     let track = |key| Track {
@@ -42,7 +43,7 @@ fn bank() -> Arc<SoundBank> {
         .map(|p| PlayerConfig { max_tracks: if p == 31 { 8 } else { 2 }, uses_priority: p != 31, track_order: p as u8 })
         .collect();
     Arc::new(SoundBank {
-        mixer: m4a::bank::MixerConfig { mix_rate: 10512, ds_channels: 4, master_volume: 15, reverb: 0 },
+        mixer: m4a::bank::MixerConfig { mix_rate: 10512, ds_channels: 4, master_volume: 15, reverb: 0, dac_resolution: 1 },
         players,
         songs,
         voicegroups: vec![Voicegroup { voices: vec![square] }],
