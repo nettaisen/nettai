@@ -433,7 +433,8 @@ its hit modifier; with Param2 set it goes through what it hits (palette 0xB), el
 - It never calls a sprite-stepping routine after the init: the sprite stays on its first frame.
 - Destroy state: `object_genericDestroy`.
 
-Action 0x48 (`sub_80EEA3C`) also spawns it; nothing starts that action in this game.
+Action 0x48 (`sub_80EEA3C`), AntiSwrd's counter (chips/antiswrd/counter, which the ruleset starts by the role
+`actions.anti_sword_counter`), also throws it: three booms, hit modifier 1, 1 and 3.
 
 ## 13. Action 0x5B: Z Saver (`sub_80EFEE0`)
 

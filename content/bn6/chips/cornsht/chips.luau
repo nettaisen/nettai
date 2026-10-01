@@ -97,6 +97,9 @@ local function action(id: string): Action
     }
 end
 
+-- The corn gun, which CornFsta's farmer (chips/cornfsta) holds too.
+cornsht.gun = GUN
+
 cornsht.actions = {
     cornsht1 = action("cornsht1/action"),
     cornsht2 = action("cornsht2/action"),
