@@ -13,6 +13,7 @@ attachment = { pool = "actor", index = 0x05 }
 "elecman/navi" = { pool = "actor", index = 0x08 }
 "spoutman/navi" = { pool = "actor", index = 0x09 }
 "tmhkman/navi" = { pool = "actor", index = 0x0A }
+"diveman/navi" = { pool = "actor", index = 0x0B }
 "tenguman/navi" = { pool = "actor", index = 0x0C }
 "slashman/navi" = { pool = "actor", index = 0x0D }
 "elmntman/navi" = { pool = "actor", index = 0x10 }
@@ -63,6 +64,7 @@ falling-rock = { pool = "attack", index = 0x1D }
 boomerang = { pool = "attack", index = 0x32 }
 "crakshot/shot" = { pool = "attack", index = 0x33 }
 "ironshl/shell" = { pool = "attack", index = 0x34 }
+"diveman/wave" = { pool = "attack", index = 0x39 }
 immobilizer = { pool = "attack", index = 0x3F }
 "bblstar/star" = { pool = "attack", index = 0x42 }
 gust = { pool = "attack", index = 0x49 }

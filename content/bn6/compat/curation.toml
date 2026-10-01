@@ -9,6 +9,8 @@
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
 
 ["assets.toml"]
+"sprites.judgeman" = "08-0f: JudgeMan, chips/judgeman"
+"sounds.tidal-wave" = "0x0A7: chips/diveman/wave.luau"
 "sprites.ground-drill" = "10-4f: chips/grndman/drill.luau"
 "sounds.rockfall" = "0x0E5: chips/grndman/navi.luau"
 "sounds.drill-spin" = "0x1C0: chips/grndman/navi.luau"
@@ -257,8 +259,8 @@
 "sprites.sprite-04-0d" = "unnamed; used by effect 0x32, absorbed obstacle 0x0A, NameID 0x0EB's look"
 "sprites.sprite-04-18" = "unnamed; used by absorbed obstacle 0x06, NameID 0x0E7's look"
 "sprites.sprite-04-19" = "unnamed; used by effect 0x55"
-"sprites.sprite-08-0d" = "unnamed; used by effect 0x2B, effect 0x2C, body overlay 0x03"
-"sprites.sprite-08-0e" = "unnamed; used by body overlay 0x06, body overlay 0x07"
+"sprites.diveman" = "08-0d: DiveMan, chips/diveman; used by effect 0x2B, effect 0x2C, body overlay 0x03"
+"sprites.circusman" = "08-0e: CircusMan, chips/crcusman; used by body overlay 0x06, body overlay 0x07"
 "sprites.sprite-08-14" = "unnamed; used by effect 0x4B"
 "sprites.sprite-0c-01" = "unnamed; used by attachment 0x00, attachment 0x01, attachment 0x02"
 "sprites.sprite-0c-03" = "unnamed; used by attachment 0x06"
