@@ -7,9 +7,10 @@
 //! read on their next update. See docs/engine/field-collision-damage.md §3.
 
 use crate::battle::Battle;
-use crate::content::Content;
+use crate::content::{Content, StatusRole};
 use crate::field::{self, PanelType};
 use crate::object::{ObjectRef, PanelPos};
+use bn6_content_api::StatusHandle;
 
 pub const SLOTS: usize = 32;
 
@@ -107,8 +108,9 @@ pub struct CollisionData {
     pub counter_timer: u8,
     pub hit_mod_base: u8,
     pub hit_mod_final: u8,
-    pub status_base: u8,
-    pub status_final: u8,
+    /// The status its hits carry, and the one the hits it took landed.
+    pub status_base: Option<StatusHandle>,
+    pub status_final: Option<StatusHandle>,
     /// Bug code (low byte) and argument (high byte).
     pub bugs: u16,
     pub barrier_weak: u8,
@@ -286,7 +288,7 @@ impl Battle {
         // The garbage high byte of any bug code: the table offset the
         // target lookup left in r1.
         let r1 = row_offset + o.alliance as u16 * 4;
-        decode_damage_word(s, r1);
+        decode_damage_word(s, r1, &self.content);
     }
 
     /// `sub_801A082`: redo the damage and collision-type part of the setup
@@ -304,7 +306,7 @@ impl Battle {
         // A bug code's garbage high byte is what `battle_isTimeStop` left in
         // r1 (4, or 0x10000 while dimmed).
         let r1 = if dimmed { 0 } else { 4 };
-        decode_damage_word(s, r1);
+        decode_damage_word(s, r1, &self.content);
     }
 
     /// `object_presentCollisionData`: clear the accumulators and register.
@@ -315,7 +317,7 @@ impl Battle {
             s.hit_mod_final = 0;
             s.guard_dirs = 0;
         }
-        s.status_final = 0;
+        s.status_final = None;
         s.acc = Accumulators::default();
         let bit = s.bit;
         let whole_field = s.region & 0x80 != 0;
@@ -445,7 +447,7 @@ impl Battle {
         rm.acc.hit_by |= hd.bit;
         rm.acc.hit_flags |= hs;
         rm.acc.damage_elements |= hd.secondary_element;
-        if hd.status_base != 0 {
+        if hd.status_base.is_some() {
             rm.status_final = hd.status_base;
         }
         // Aqua on ice: freeze a body standing on ice.
@@ -457,7 +459,7 @@ impl Battle {
             && self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind) == Some(PanelType::Ice)
         {
             self.set_panel_type(hd.panel.x, hd.panel.y, PanelType::Normal);
-            self.collision.get_mut(h).status_final = 0x50;
+            self.collision.get_mut(h).status_final = Some(self.content.defs.roles.status(StatusRole::IceFreeze));
         }
         let c = hd.counter_byte;
         let rm = self.collision.get_mut(r);
@@ -594,14 +596,14 @@ pub fn move_direction(old: PanelPos, new: PanelPos, alliance: u8) -> u8 {
 }
 
 /// `sub_8019F44`: decode the flag bits of a damage word.
-fn decode_damage_word(s: &mut CollisionData, r1: u16) {
+fn decode_damage_word(s: &mut CollisionData, r1: u16, content: &Content) {
     let d = s.self_damage;
     s.self_damage = d & 0x7FF;
     if d & 0x8000 != 0 {
         s.self_damage = s.self_damage.wrapping_mul(2);
     }
     if d & 0x4000 != 0 {
-        s.status_base = 0x10;
+        s.status_base = Some(content.defs.roles.status(StatusRole::DamageWordParalysis));
         s.hit_mod_base = 1;
     }
     if d & 0x2000 != 0 {

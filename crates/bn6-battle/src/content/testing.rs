@@ -1703,7 +1703,7 @@ fn rules() -> Rules {
             any_side_step: StepRuleSet { grounded: [solid(any_side); 2], floor_free: [any_side; 2] },
         },
         holding_banners: vec![BannerId(0x24)],
-        status_effects: vec![[StatusEffect { requests: 0, duration: 60, timer: StatusTimer::Paralyze }; 16]; 6],
+        // (The statuses are testdata/content/rules/status.luau's.)
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
         weapons: vec![WeaponRoutine { charge_ticks: [120, 100, 80, 60, 50] }; 0x30],
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },

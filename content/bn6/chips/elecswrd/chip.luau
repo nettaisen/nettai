@@ -9,12 +9,13 @@ local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
 local slashes = require("../../navis/megaman/forms/slashcross/slashes")
+local statuses = require("../../rules/status")
 
 return {
     action = slash.action {
         id = "elecswrd/action",
         blade = parts.blades.elec,
-        hit = { region = regions.wide, collision = parts.slashes_navis, hit_mod = 1, status = 0x10 },
+        hit = { region = regions.wide, collision = parts.slashes_navis, hit_mod = 1, status = statuses.paralyze_90 },
         effect = parts.effects.wide,
         effect_palette = 3,
         sound = parts.sounds.swing,

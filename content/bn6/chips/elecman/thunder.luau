@@ -12,6 +12,7 @@
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 local thunder = {}
 
 export type State = {
@@ -26,7 +27,7 @@ local SPRITE = asset.sprite("beast-over-burst")
 local SOUND_BEAST_OVER_BURST = asset.sound("beast-over-burst")
 -- The hit modifier of its own hit and of the hits around it, and their
 -- status.
-local HIT_MOD, AROUND_HIT_MOD, AROUND_STATUS = 3, 1, 0x12
+local HIT_MOD, AROUND_HIT_MOD, AROUND_STATUS = 3, 1, statuses.paralyze_150
 
 -- Its actions.
 local WARN, STRIKE = 0, 4
