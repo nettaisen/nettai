@@ -1777,13 +1777,16 @@ impl CoreApi for Battle {
         Ok(own)
     }
 
-    fn wear_cross_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()> {
+    fn wear_megaman_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()> {
         let Some(h) = self.content.defs.form_numbered(crate::setup::Form(form)) else {
             return Err(ApiError::Other(format!("form {form:#x} is not in the content")));
         };
         let data = self.content.form(h);
-        let Some(name) = data.name_record.as_ref().map(|n| n.id) else {
-            return Err(ApiError::Other(format!("form {form:#x} has no NameID of its own (0x1AB + form)")));
+        // The base form has no NameID of its own: it is MegaMan's.
+        let own = data.name_record.as_ref().map(|n| n.id);
+        let megaman = || self.content.navi_data(crate::setup::Navi::MEGAMAN).name_record.as_ref().map(|n| n.id);
+        let Some(name) = own.or_else(megaman) else {
+            return Err(ApiError::Other(format!("form {form:#x} has no NameID (nor has MegaMan)")));
         };
         let sprite = data.sprite;
         let palette = self.content.rules.cross_palettes.get(form as usize).copied().unwrap_or(0);

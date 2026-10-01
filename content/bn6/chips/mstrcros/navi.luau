@@ -759,7 +759,7 @@ end
 local function init(me: Object)
     local s = me.state :: State
     if s.form ~= 0 then
-        me:wear_cross_image(s.form)
+        me:wear_megaman_image(s.form)
         me:set_coordinates_from_panel()
         local p = me.pos
         me.pos = Vec3.new(p.x, p.y, 0)

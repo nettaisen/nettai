@@ -1459,11 +1459,12 @@ pub trait CoreApi {
     /// its side's form's palette (`byte_80203EA`). True when it took the
     /// user's.
     fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef) -> ApiResult<bool>;
-    /// MstrCros's Crosses (`sub_80BE7BC`): `o` takes the identity of
-    /// MegaMan's form `form` (its NameID), the form's sprite (`sub_800FC9E(0,
-    /// form)`) with a ground shadow at animation 0 (loaded by the next
-    /// sprite update), and the form's palette (`byte_80203EA`).
-    fn wear_cross_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()>;
+    /// MstrCros's Crosses (`sub_80BE7BC`) and Darkness's Dark MegaMan
+    /// (`sub_80BF710`): `o` takes the identity of MegaMan in form `form` (the
+    /// form's NameID; MegaMan's for his base form 0), the form's sprite
+    /// (`sub_800FC9E(0, form)`) with a ground shadow at animation 0 (loaded
+    /// by the next sprite update), and the form's palette (`byte_80203EA`).
+    fn wear_megaman_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()>;
     /// `sub_8010DF6` (`on`, its r2 1) or `sub_8011044` by the actor record
     /// of `o`'s identity: the parts the navi image wears.
     fn navi_image_parts(&mut self, o: ObjectRef, on: bool);

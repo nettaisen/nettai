@@ -29,6 +29,7 @@ attachment = { pool = "actor", index = 0x05 }
 "crosover/navi" = { pool = "actor", index = 0x21 }
 "mstrcros/navi" = { pool = "actor", index = 0x23 }
 "sunmoon/sun" = { pool = "actor", index = 0x24 }
+"darkness/navi" = { pool = "actor", index = 0x25 }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
 "protoman/navi" = { pool = "actor", index = 0x3C }
