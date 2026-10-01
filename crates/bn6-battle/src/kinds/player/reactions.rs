@@ -187,45 +187,40 @@ fn reset_form_overlay(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// The player rows of the flinch and drag hook tables (`off_80EAB94`,
-/// `off_80EABF8`): AI indices 0..=24.
-const PLAYER_HOOK_ROWS: u8 = 25;
-
-/// The AI index whose player row a hook table reads; the other actor
-/// types' rows (`off_81094D0`, `off_80F27F8`, ...) belong to the virus and
-/// navi AI.
-fn player_hook_row(b: &Battle, r: ObjectRef, table: &str) -> u8 {
+/// The hooks a player's actor record has for what it wears (the player
+/// rows of the flinch and drag hook tables, `off_80EAB94` and
+/// `off_80EABF8`: its identity's `overlay_hooks`), and whether it wears
+/// parts of its own; the other actor types' rows (`off_81094D0`,
+/// `off_80F27F8`, ...) belong to the virus and navi AI.
+fn player_hooks(b: &Battle, r: ObjectRef, table: &str) -> (crate::content::OverlayHooks, bool) {
     let a = ai(b, r);
     if a.actor_type != crate::actor::ActorType::Player {
         panic!("the {table} of {:?} actors belongs to the virus and navi AI", a.actor_type);
     }
-    if a.ai_index >= PLAYER_HOOK_ROWS {
-        panic!("the {table} for AI index {} reads past its table", a.ai_index);
-    }
-    a.ai_index
+    let identity = b.content.identity(a.identity);
+    (identity.overlay_hooks, identity.parts.is_some())
 }
 
 /// `sub_800F3E8`: the per-form flinch hook (`off_80EAB94`): MegaMan's
-/// restarts his form overlay (`sub_80F06CE`), AI index 1's its body overlay
+/// restarts his form overlay (`sub_80F06CE`), HeatMan's his body overlay
 /// (`sub_80F0700`, `sub_80C44D2`).
 fn flinch_hook(b: &mut Battle, r: ObjectRef) {
-    match player_hook_row(b, r, "flinch hook (sub_800F3E8)") {
-        0 => reset_form_overlay(b, r),
-        1 => {
-            // Without its overlay, sub_80F0700 jumps into the middle of
-            // sub_80F0728 with another stack frame.
-            if b.objects.get(r).related[1].is_none() {
-                panic!("the flinch hook of AI index 1 without its overlay jumps into sub_80F0728 (sub_80F0700)");
-            }
-            reset_form_overlay(b, r);
-        }
-        _ => {}
+    let (hooks, own_parts) = player_hooks(b, r, "flinch hook (sub_800F3E8)");
+    if !hooks.flinch {
+        return;
     }
+    // A navi that wears its own overlay restarts it unchecked: without
+    // it, sub_80F0700 jumps into the middle of sub_80F0728 with another
+    // stack frame.
+    if own_parts && b.objects.get(r).related[1].is_none() {
+        panic!("the flinch hook of a navi without the overlay it wears jumps into sub_80F0728 (sub_80F0700)");
+    }
+    reset_form_overlay(b, r);
 }
 
 /// `sub_800F404`: the per-form drag hook (`off_80EABF8`: MegaMan's only).
 fn drag_hook(b: &mut Battle, r: ObjectRef) {
-    if player_hook_row(b, r, "drag hook (sub_800F404)") == 0 {
+    if player_hooks(b, r, "drag hook (sub_800F404)").0.drag {
         reset_form_overlay(b, r);
     }
 }

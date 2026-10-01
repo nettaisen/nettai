@@ -93,7 +93,9 @@ pub const LINK_CHIPS: [&str; 10] = [
 ];
 /// A link navi (the content's navi 1; AI index 4, whose actor record has
 /// no hooks).
-pub const LINK_NAVI: crate::setup::Navi = crate::setup::Navi(1);
+pub const LINK_NAVI: &str = "test/link-navi";
+/// MegaMan, the navi that changes form.
+pub const MEGAMAN: &str = "megaman";
 
 /// The test stages (testdata/content/stages/test.luau), link battles on
 /// the plain field: two navis, side 1's placed first (the usual netbattle
@@ -164,15 +166,15 @@ pub fn stats(hp: u16) -> crate::setup::NaviStats {
 
 /// The link navi's stats (`LINK_NAVI`), by `content`'s handles.
 pub fn link_navi_on(content: &Content) -> crate::setup::NaviStats {
-    crate::setup::NaviStats { navi: content.navi_numbered(LINK_NAVI), ..megaman_on(content) }
+    crate::setup::NaviStats { navi: content.navi_by_key(LINK_NAVI), ..megaman_on(content) }
 }
 
 /// Stats with nothing of note but MegaMan in his base form, by `content`'s
 /// handles.
 pub fn megaman_on(content: &Content) -> crate::setup::NaviStats {
-    let base = content.form_numbered(crate::setup::Form::NONE);
+    let base = content.base_form();
     crate::setup::NaviStats {
-        navi: content.navi_numbered(crate::setup::Navi::MEGAMAN),
+        navi: content.navi_by_key(MEGAMAN),
         form: base,
         starting_form: base,
         ..Default::default()
@@ -304,8 +306,6 @@ fn make() -> Content {
     Content {
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
-        navis: Vec::new(),
-        forms: Vec::new(),
         rules: rules(),
         objects: objects(),
         animations: animations(),
@@ -1318,7 +1318,6 @@ fn rules() -> Rules {
             opposing_player: [PLAYER[1], PLAYER[0]],
         },
         custom_screen: custom_screen_layout(),
-        cross_palettes: (0..11).collect(),
     }
 }
 
@@ -1360,10 +1359,6 @@ fn objects() -> ObjectData {
     ObjectData {
         rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
         absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
-        // The elements navi's overlay (variant 0x0F).
-        body_overlays: (0..0x10)
-            .map(|id| BodyOverlay { id, sprite: SpriteId { category: 8, index: 0x11 }, in_front: vec![true; 0x20] })
-            .collect(),
         sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
         boomerangs: (0..5).map(|id| BoomerangKind { id, speed: 0x8_0000, turn_speed: 0x6_0000, grass: id < 3 }).collect(),
         projectiles: projectiles(),

@@ -56,48 +56,35 @@ pub(super) fn a_chargeable(b: &Battle, r: ObjectRef) -> bool {
 /// attack family matches the form (damaging, not dimming chips; any
 /// Null-family chip in Beast Out).
 fn chip_charges(b: &Battle, r: ObjectRef, chip: ChipHandle) -> bool {
-    use crate::content::{ChipFamily as F, ChipFlags, ChipTraits};
+    use crate::content::{ChipFlags, ChipTraits};
     // (A link navi's own chip, the original's last block of chips, never
     // charges.)
     if b.content.chip_links(chip).own_chip_of.is_some() {
         return false;
     }
     let c = b.content.chip(chip);
-    let (family, form) = (c.family, form_of(b, r).0);
+    let family = c.family;
     let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::DIMMING);
-    let charges = (form == 2 && family == F::Null && damaging)
-        || (matches!(form, 3 | 0xF) && (c.traits.has(ChipTraits::ELEMENT_SWORD) || family == F::Sword) && damaging)
-        || ((0x0B..=0x16).contains(&form) && family == F::Null)
-        || (matches!(form, 7 | 0x13) && family == F::Wood && damaging)
-        || (matches!(form, 6 | 0x12) && family == F::Aqua && damaging)
-        || (matches!(form, 9 | 0x15) && family == F::Break && damaging)
-        || (matches!(form, 5 | 0x11) && family == F::Fire && damaging);
+    // The form's `charged_chips`: a family's damaging chips (ElecCross's
+    // Null, SlashCross's Sword and the element swords, TomahawkCross's
+    // Wood, SpoutCross's Aqua, GroundCross's Break, ChargeCross's Fire),
+    // and in Beast Out any Null chip.
+    let charges = form_of(b, r).charged_chips.iter().any(|rule| {
+        (family == rule.family || (rule.element_swords && c.traits.has(ChipTraits::ELEMENT_SWORD))) && (damaging || !rule.damaging)
+    });
     if charges {
         return true;
     }
     // The link navis' own charged chips: from a navi level
     // (`sub_800F49E`; 0xFF: none), ChargeMan's, SpoutMan's, TomahawkMan's
-    // and navi 0xB's damaging chips of their family (MegaMan has none).
+    // and ProtoMan's damaging chips of their family (`byte_8021369`: the
+    // navi's `charged_chips`; MegaMan has none).
     let level = b.navi_levels[b.objects.get(r).alliance as usize];
     if level == 0xFF || !damaging {
         return false;
     }
-    let (own, i) = match navi_of(b, r).0 {
-        5 => (F::Fire, 0),
-        6 => (F::Aqua, 1),
-        7 => (F::Wood, 2),
-        0xB => (F::Sword, 3),
-        _ => return false,
-    };
-    family == own && level >= LINK_NAVI_CHARGE_LEVELS[i]
+    navi_of(b, r).charged_chips.is_some_and(|own| family == own.family && level >= own.from_level)
 }
-
-/// `byte_8021369`: the navi level from which ChargeMan, SpoutMan,
-/// TomahawkMan and navi 0xB charge their family's chips.
-///
-/// Game data held in the engine for now: it belongs with those navis in
-/// the content (to move there with the content model's next version).
-const LINK_NAVI_CHARGE_LEVELS: [u8; 4] = [3, 11, 11, 11];
 
 /// `sub_8013396`: the B button charges.
 fn b_chargeable(b: &Battle, r: ObjectRef) -> bool {
@@ -221,7 +208,7 @@ fn decode_back_special(b: &mut Battle, r: ObjectRef) {
 /// some rapid busters). A full B charge from last tick makes it a charged
 /// shot.
 fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
-    let form = form_of(b, r);
+    let special_holds = form_of(b, r).traits.has(crate::content::FormTraits::SPECIAL_HOLDS_BUSTER);
     let a = ai(b, r);
     if a.buster.is_none() || f0 & (request::BUSTER | request::CHARGED_SHOT) != 0 {
         return;
@@ -229,7 +216,7 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
     // A buster that fires while B is held (the Beast busters, the Beast
     // form's throw).
     let edge = if a.buster.is_some_and(|w| b.content.weapon(w).held) {
-        if matches!(form.0, 0x14 | 0x16) && a.requests & request::BACK_SPECIAL != 0 {
+        if special_holds && a.requests & request::BACK_SPECIAL != 0 {
             return;
         }
         if a.requests & request::ALT_CHIP != 0 {
@@ -307,7 +294,7 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
     let a = ai(b, r);
     let routine = if source == 2 {
         a.charge_shot
-    } else if form_of(b, r).is_beast() && uses_alt_a_charge(b, r) {
+    } else if form_of(b, r).kind.is_beast() && uses_alt_a_charge(b, r) {
         a.alt_a_charge
     } else {
         a.a_charge

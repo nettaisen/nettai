@@ -538,7 +538,7 @@ fn the_scripted_swords_play_and_roll_back() {
 fn link_chip_setup(chips: &[usize]) -> crate::setup::RoundSetup {
     let chips: Vec<_> = chips.iter().map(|&i| testing::chip_handle(testing::LINK_CHIPS[i])).collect();
     let mut s = scenario::setup_with_handles(&chips);
-    let navi = testing::content().navi_numbered(testing::LINK_NAVI);
+    let navi = testing::content().navi_by_key(testing::LINK_NAVI);
     for stats in &mut s.navi_stats {
         stats.navi = navi;
     }

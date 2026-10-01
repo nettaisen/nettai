@@ -22,7 +22,7 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use bn6_content_api::{
-    ACTOR_TYPES, ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
+    ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
     HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
     AssetKind, SpawnAt,
     ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Pool, Registry, RequestFlag, SpriteField, SpriteId,
@@ -369,18 +369,14 @@ impl UserData for Object {
         });
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free(this.0))));
         methods.add_method("destroy", |_, this, ()| with(|api, _| Ok(api.destroy(this.0))));
-        methods.add_method(
-            "add_navi_parts",
-            |_, this, (actor_type, ai, arg): (mlua::LuaString, LuaValue, LuaValue)| {
-                let t = named(&actor_type, "actor type", |s| ACTOR_TYPES.iter().position(|n| *n == s))? as u8;
-                let (ai, arg) = (u8_arg(ai, "AI index")?, u8_arg(arg, "arg")?);
-                with(|api, _| Ok(api.add_navi_parts(this.0, t, ai, arg)))
-            },
-        );
-        methods.add_method("remove_navi_parts", |_, this, (actor_type, ai): (mlua::LuaString, LuaValue)| {
-            let t = named(&actor_type, "actor type", |s| ACTOR_TYPES.iter().position(|n| *n == s))? as u8;
-            let ai = u8_arg(ai, "AI index")?;
-            with(|api, _| Ok(api.remove_navi_parts(this.0, t, ai)))
+        methods.add_method("add_parts", |_, this, (identity, arg): (LuaValue, LuaValue)| {
+            let identity = bn6_content_api::IdentityHandle(bound(|b| def_arg(b, &identity, Registry::Identity, "add_parts"))?);
+            let arg = u8_arg(arg, "arg")?;
+            with(|api, _| Ok(api.add_parts(this.0, identity, arg)))
+        });
+        methods.add_method("remove_parts", |_, this, identity: LuaValue| {
+            let identity = bn6_content_api::IdentityHandle(bound(|b| def_arg(b, &identity, Registry::Identity, "remove_parts"))?);
+            with(|api, _| Ok(api.remove_parts(this.0, identity)))
         });
         methods.add_method(
             "add_parts_of",
@@ -614,12 +610,14 @@ impl UserData for Object {
             Ok((p.x, p.y))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
-        methods.add_method("wear_navi_image", |_, this, user: mlua::UserDataRef<Object>| {
-            with(|api, _| api.wear_navi_image(this.0, user.0).map_err(api_error))
+        methods.add_method("wear_navi_image", |_, this, (user, megaman): (mlua::UserDataRef<Object>, LuaValue)| {
+            let megaman = bn6_content_api::NaviHandle(bound(|b| def_arg(b, &megaman, Registry::Navi, "wear_navi_image"))?);
+            with(|api, _| api.wear_navi_image(this.0, user.0, megaman).map_err(api_error))
         });
-        methods.add_method("wear_megaman_image", |_, this, form: LuaValue| {
-            let form = u8_arg(form, "form")?;
-            with(|api, _| api.wear_megaman_image(this.0, form).map_err(api_error))
+        methods.add_method("wear_form_image", |_, this, (navi, form): (LuaValue, LuaValue)| {
+            let navi = bn6_content_api::NaviHandle(bound(|b| def_arg(b, &navi, Registry::Navi, "wear_form_image"))?);
+            let form = bn6_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "wear_form_image"))?);
+            with(|api, _| api.wear_form_image(this.0, navi, form).map_err(api_error))
         });
         methods.add_method("navi_image_parts", |_, this, on: bool| with(|api, _| Ok(api.navi_image_parts(this.0, on))));
         methods.add_method("wear_junk_look", |_, this, look: LuaValue| {

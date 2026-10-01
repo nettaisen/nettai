@@ -88,18 +88,14 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_80C4C52`: the aura's animation by its navi's AI index: the index
-/// itself below 0x23, 0xC for the Gregar beasts, 0xD for the Falzar ones.
+/// `sub_80C4C52`: the aura's animation by its navi's identity (the
+/// original's by the actor record's AI index: the index itself below
+/// 0x23, a navi's or a Cross's own; 0xC for the Gregar beasts, 0xD for the
+/// Falzar ones): the identity's `aura_anim`. (Every player's identity has
+/// one; an object with no identity reads as the record of zeros.)
 fn animation(b: &Battle, r: ObjectRef) -> u8 {
     let identity = b.objects.get(owner(b, r)).identity;
-    let ai = b.content.navi_record(identity).ai_index;
-    match ai {
-        0..=0x22 => ai,
-        0x23 | 0x2F => 0x0C,
-        0x24 => 0x0D,
-        0x25..=0x29 => 0x0C,
-        _ => 0x0D,
-    }
+    b.content.identity(identity).aura_anim.unwrap_or(0)
 }
 
 /// `sub_80C4B48`: the sprite, visible, on its animation.
