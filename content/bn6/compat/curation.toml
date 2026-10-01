@@ -322,7 +322,7 @@
 "sprites.machine-gun" = "0c-40: MachGun's arm, attachment 0x1D (G3)"
 "sprites.magnet" = "10-43: objects/magnet/magnet.luau"
 "sprites.magnet-coil" = "0c-61: MagCoil's coil, attachment row 0x2C"
-"sprites.meteor" = "0c-31: objects/meteor/meteor.luau"
+"sprites.meteor" = "0c-31: chips/meteors/falling_meteor.luau (ElmntMan's and SunMoon's meteors too)"
 "sprites.moon-beam" = "0c-64: objects/moon-beam/moon_beam.luau"
 "sprites.moon-blade" = "10-3c: objects/moon-blade/moon_blade.luau"
 "sprites.muzzle-flash" = "0c-06: attachment 0x05, the buster's muzzle flash (lib/buster.luau)"

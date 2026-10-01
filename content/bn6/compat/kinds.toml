@@ -104,7 +104,7 @@ seed = { pool = "attack", index = 0x4F }
 "aquandl/needle" = { pool = "attack", index = 0x50 }
 "yoyo/yoyo" = { pool = "attack", index = 0x52 }
 "anubis/statue" = { pool = "attack", index = 0x55 }
-falling-meteor = { pool = "attack", index = 0x56 }
+"meteors/falling-meteor" = { pool = "attack", index = 0x56 }
 sonic-boom = { pool = "attack", index = 0x58 }
 rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 "firehit/fist" = { pool = "attack", index = 0x5B }
@@ -219,7 +219,7 @@ follow-effect = { pool = "effect", index = 0x31 }
 "tomahawkman/axe" = { pool = "effect", index = 0x32 }
 "anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
 "meteors/controller" = { pool = "effect", index = 0x34, scratch_position = true }
-"falling-meteor/marker" = { pool = "effect", index = 0x35, scratch_position = true }
+"meteors/marker" = { pool = "effect", index = 0x35, scratch_position = true }
 "rockcube/cube" = { pool = "effect", index = 0x37, scratch_position = true }
 "rock/debris" = { pool = "effect", index = 0x38 }
 "bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
