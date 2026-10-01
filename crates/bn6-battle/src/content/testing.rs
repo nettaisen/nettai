@@ -1318,7 +1318,6 @@ fn rules() -> Rules {
             opposing_player: [PLAYER[1], PLAYER[0]],
         },
         custom_screen: custom_screen_layout(),
-        actor_records: Vec::new(),
         cross_palettes: (0..11).collect(),
     }
 }
@@ -1370,16 +1369,6 @@ fn objects() -> ObjectData {
         projectiles: projectiles(),
         flying_shots: flying_shots(),
         sword_waves: (0..0x13).map(sword_wave).collect(),
-        // Made-up looks for NameIDs 0xCD..=0xFF (0xCF has none).
-        name_looks: (0xCD..=0xFF)
-            .map(|name_id| NameLook {
-                name_id,
-                sprite: (name_id != 0xCF).then_some(SpriteId { category: 0x10, index: 0 }),
-                anim: 1,
-                palette: 0,
-                shadow: true,
-            })
-            .collect(),
         kinds: kinds(),
         shock_waves: (0..16).map(|id| ShockWave { id, sprite: SpriteId { category: 0x10, index: 3 }, anim: 1, ticks: 6, panel: None }).collect(),
     }

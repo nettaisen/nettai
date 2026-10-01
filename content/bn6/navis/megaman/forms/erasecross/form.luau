@@ -21,7 +21,8 @@ return define.form {
     weapons = { buster = buster.weapon, charge_shot = charge.weapon },
     palette = 13,
     mugshot = asset.mugshot("groundcross"),
-    identity = {
+    identity = define.identity {
+        class = "cross",
         version = 0,
         actor_type = "player",
         ai_index = 28,

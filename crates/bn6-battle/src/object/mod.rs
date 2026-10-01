@@ -172,7 +172,8 @@ pub struct Object {
     pub timer2: u16,
     pub hp: u16,
     pub max_hp: u16,
-    pub name_id: u16,
+    /// What it is taken for (the original's NameID); none: a virus.
+    pub identity: Option<bn6_content_api::IdentityHandle>,
     /// Players: the next chip in the hand (none: the game's 0xFFFF). Other
     /// objects keep the zeroed field, which the chip use reads as the
     /// zeroed chip (`roles.chips.zeroed`).

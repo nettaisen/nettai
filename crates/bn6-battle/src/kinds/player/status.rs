@@ -297,7 +297,10 @@ fn cross_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     }
     if f & request::WEAKNESS_HIT != 0 {
         ai_mut(b, r).requests &= !request::WEAKNESS_HIT;
-        if (0x1AC..=0x1C1).contains(&b.objects.get(r).name_id) {
+        // A Cross, Beast Out or a Cross in Beast Out (NameIDs 0x1AC..=0x1C1).
+        use crate::content::IdentityClass;
+        let class = b.content.identity(b.objects.get(r).identity).class;
+        if matches!(class, IdentityClass::Cross | IdentityClass::Beast | IdentityClass::CrossBeast) {
             ai_mut(b, r).status |= ai_status::CROSS_BREAKING;
             exit_attack_state(b, r);
             cross_lane(b, r);

@@ -20,7 +20,7 @@ end
 
 local WEAPONS = { buster = buster.weapon, charge_shot = charged_shot.weapon }
 
-local function navi(id: string, name: string, sprite: string, ai_index: number, number: number): NaviDef
+local function navi(id: string, name: string, sprite: string, class: IdentityClass, ai_index: number, number: number): NaviDef
     return define.navi {
         id = id,
         name = name,
@@ -35,14 +35,20 @@ local function navi(id: string, name: string, sprite: string, ai_index: number, 
         -- What a Cross change brings it with.
         fresh = { hp = 100, first_barrier = 0, mega_level = 5, giga_level = 1 },
         cross_hp = { 100, 150 },
-        identity = { version = 0, actor_type = "player", ai_index = ai_index, attach_points = attach_points() },
+        identity = define.identity {
+            class = class,
+            version = 0,
+            actor_type = "player",
+            ai_index = ai_index,
+            attach_points = attach_points(),
+        },
         legacy = legacy { number = number, name_id = 0x1A0 + number },
     }
 end
 
 return {
-    megaman = navi("megaman", "MegaMan", "test-megaman", 0, 0),
-    link_navi = navi("test/link-navi", "LinkNavi", "test-navi", 4, 1),
+    megaman = navi("megaman", "MegaMan", "test-megaman", "megaman", 0, 0),
+    link_navi = navi("test/link-navi", "LinkNavi", "test-navi", "link_navi", 4, 1),
     base = define.form {
         id = "base",
         name = "Base",
