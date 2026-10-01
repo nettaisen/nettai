@@ -140,6 +140,9 @@ pub struct FightMachine {
     pub judge: Judge,
 }
 
+/// The ticks between a console's low-HP sounds.
+const LOW_HP_SOUND_TICKS: u8 = 0x2D;
+
 /// What opening the custom screen costs a side in the battle flag 0x40
 /// mode (`sub_800A29A`).
 const GAUGE_CUSTOM_COST: u16 = 0x2900;
@@ -1786,6 +1789,7 @@ impl Battle {
         if self.gauge.enabled {
             self.fill_gauge();
         }
+        self.low_hp_sound();
         // sub_801D1D8: the used chips' names run out.
         for used in &mut self.used_chips {
             if let Some(u) = used {
@@ -1866,6 +1870,29 @@ impl Battle {
         if ad.drain_counter >= period {
             ad.drain_counter = 0;
             crate::kinds::subtract_hp(self, r, 1);
+        }
+    }
+
+    /// The HP box's alarm (`sub_801C840`, the HUD's task bit 7; sound
+    /// only): every 45 ticks a console's own navi is at a quarter of its HP
+    /// or less, while the battle is neither over nor paused, that console
+    /// sounds 0x84. The count stops where the HP recovers.
+    fn low_hp_sound(&mut self) {
+        if self.is_battle_over() || self.paused {
+            return;
+        }
+        for side in 0..2u8 {
+            let Some(r) = self.player(side) else { continue };
+            let o = self.objects.get(r);
+            if o.hp > o.max_hp >> 2 {
+                continue;
+            }
+            let ticks = &mut self.consoles[side as usize].low_hp_ticks;
+            *ticks += 1;
+            if *ticks >= LOW_HP_SOUND_TICKS {
+                *ticks = 0;
+                self.play_sound_for(side, SoundId(0x84));
+            }
         }
     }
 
@@ -2016,5 +2043,34 @@ mod tests {
         assert_eq!(b.sound_cues(), [SoundCue::Music(SoundId::VIRUS_BATTLE)]);
         tick(&mut b);
         assert_eq!(b.sound_cues(), [SoundCue::Pinch(false)]);
+    }
+
+    #[test]
+    fn a_console_sounds_every_45_ticks_its_navi_is_low() {
+        let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::stats(500)), testing::content());
+        tick(&mut b);
+        tick(&mut b);
+        let navi = b.player(0).expect("side 0's navi");
+        b.objects.get_mut(navi).hp = 125;
+        b.paused = false;
+        let alarm = SoundCue::from(SoundId(0x84));
+        let heard = |b: &Battle, side: u8| b.sound_cues_for(side).iter().filter(|&&c| c == alarm).count();
+        for _ in 0..44 {
+            b.low_hp_sound();
+        }
+        assert_eq!(heard(&b, 0), 0);
+        // Not while paused; then on the 45th tick, on its own console only.
+        b.paused = true;
+        b.low_hp_sound();
+        assert_eq!(heard(&b, 0), 0);
+        b.paused = false;
+        b.low_hp_sound();
+        assert_eq!((heard(&b, 0), heard(&b, 1)), (1, 0));
+        // Above a quarter the count waits.
+        b.objects.get_mut(navi).hp = 126;
+        for _ in 0..90 {
+            b.low_hp_sound();
+        }
+        assert_eq!(heard(&b, 0), 1);
     }
 }
