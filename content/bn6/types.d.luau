@@ -82,7 +82,10 @@ export type FlyingShot = {
     falls: boolean?,
     palette: number?,
     damage: number,
-    obstacle: number?,
+    -- A thrown obstacle: its look and animation (the original's ExtraVars
+    -- word, kind | animation << 4).
+    obstacle: AbsorbedLook?,
+    obstacle_anim: number?,
 }
 
 -- A bullet's variant (objects/bullet, the original's `byte_80C68D4` rows):
