@@ -21,7 +21,7 @@
 
 use crate::names::AssetNames;
 use crate::report::Report;
-use crate::{hud, sound, sprite, stage};
+use crate::{custom, hud, sound, sprite, stage};
 use bn6_assets::Bundle;
 use m4a::SoundBank;
 use serde::{Deserialize, Serialize};
@@ -131,6 +131,7 @@ pub fn export_graphics(b: &Bundle, names: &AssetNames) -> Files {
         }
     }
     files.extend(hud::export(&b.hud, names).into_iter().map(|(n, d)| (format!("graphics/hud/{n}"), d)));
+    files.extend(custom::export(&b.custom).into_iter().map(|(n, d)| (format!("graphics/custom/{n}"), d)));
     files
 }
 
@@ -185,10 +186,11 @@ pub fn import_graphics(root: &Path, report: &mut Report) -> Option<Bundle> {
         }
     }
     let hud = hud::import(&root.join("graphics/hud"), "graphics/hud", report)?;
+    let custom = custom::import(&root.join("graphics/custom"), "graphics/custom", report)?;
     if report.has_errors() {
         return None;
     }
-    Some(Bundle { sprites, field, backgrounds, hud })
+    Some(Bundle { sprites, field, backgrounds, hud, custom })
 }
 
 pub fn export_sound(bank: &SoundBank, names: &AssetNames) -> (Files, Vec<(m4a::SongId, String)>) {

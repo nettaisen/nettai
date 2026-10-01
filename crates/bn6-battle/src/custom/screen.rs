@@ -9,8 +9,10 @@ use super::folder::{BattleFolder, FOLDER_SIZE, FolderChip, shuffle};
 use super::builder::{ClassCounts, FormedAdvance};
 use super::chatbox::{Chatbox, Script};
 use super::library::Library;
+use super::look::ScreenLook;
 use super::{GameVersion, Unlocks};
 use crate::console::Console;
+use crate::battle::FadeMode;
 use crate::content::{ChipClass, ChipCode, CustomScreenLayout, TemplateSlot};
 use crate::hud::{Banner, BannerStatus};
 use crate::input::{Joypad, keys};
@@ -266,6 +268,8 @@ pub struct Screen {
     /// Advance's), stepped after the screen's logic each tick as the HUD
     /// task is.
     pub hud: Banner,
+    /// What the screen shows (presentation).
+    pub look: ScreenLook,
 }
 
 /// What the screen reads of its player when it opens and while it runs.
@@ -285,6 +289,8 @@ pub struct PlayerView<'a> {
     pub per_player_gauges: bool,
     /// Battle effects 0x200000 (random battles).
     pub random_battle: bool,
+    /// A netbattle's last turns (presentation: the window's block).
+    pub late_turns: bool,
 }
 
 /// What a player's screens remember through a round (`dword_20349A0`,
@@ -338,6 +344,7 @@ impl Screen {
             crosses: CrossWindow::default(),
             program_advance: None,
             hud: Banner::default(),
+            look: ScreenLook::new(view.late_turns),
         };
         if view.crosses_allowed() && view.emotion != Emotion::WornOut {
             screen.crosses = view.offered_crosses();
@@ -449,35 +456,68 @@ impl Screen {
     /// (its RNG, for ChpShufl's re-deal, and its camera), then the
     /// console's HUD banner.
     pub fn tick(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console) -> Option<Request> {
+        self.look.drawn = Default::default();
         let request = self.step(joy, view, folder, console);
         self.hud.tick();
         if let Phase::ProgramAdvance { anim } = &mut self.phase {
             anim.fade = anim.fade.saturating_sub(1);
         }
+        self.look.fade.step();
         request
     }
 
     fn step(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console) -> Option<Request> {
         match self.phase {
             Phase::Opening { tick } => {
+                // sub_8026B04: the window moves in 12 pixels a tick.
                 let tick = tick + 1;
                 self.phase = if tick >= 10 { Phase::Choosing } else { Phase::Opening { tick } };
+                self.look.frame = SLIDE - SLIDE_STEP * tick as u32;
+                self.look.draw_emblem(self.look.frame);
                 None
             }
-            Phase::Choosing => self.choose(joy, view, folder),
+            Phase::Choosing => {
+                // sub_8026CCC: the keys, then the cursor, the emblem, the
+                // Regular chip's frame and the last turns' block are drawn,
+                // and the frame counts on.
+                let request = self.choose(joy, view, folder);
+                // (OK takes the Regular chip out of the folder before the
+                // frame is drawn: `sub_80293F8`.)
+                let regular_taken = request == Some(Request::Confirm)
+                    && self.selection().iter().any(|&s| matches!(self.slots[s as usize].kind, SlotKind::Chip { regular: true, .. }));
+                self.look.draw_cursor();
+                self.look.draw_emblem(0);
+                self.look.draw_regular(folder.regular_pending && !regular_taken);
+                self.look.draw_turn_limit();
+                self.look.frame += 1;
+                request
+            }
             Phase::Hidden { stage } => {
+                // sub_8026D06: hiding takes the last turns' block off;
+                // coming back draws the emblem on that tick and the next.
                 self.phase = match stage {
-                    HiddenStage::Hiding => Phase::Hidden { stage: HiddenStage::Waiting },
-                    HiddenStage::Waiting if joy.pressed != 0 => Phase::Hidden { stage: HiddenStage::Restoring },
+                    HiddenStage::Hiding => {
+                        self.look.turn_limit = false;
+                        Phase::Hidden { stage: HiddenStage::Waiting }
+                    }
+                    HiddenStage::Waiting if joy.pressed != 0 => {
+                        self.look.draw_emblem(0);
+                        Phase::Hidden { stage: HiddenStage::Restoring }
+                    }
                     HiddenStage::Waiting => self.phase,
-                    HiddenStage::Restoring => Phase::Choosing,
+                    HiddenStage::Restoring => {
+                        self.look.draw_emblem(0);
+                        Phase::Choosing
+                    }
                 };
                 None
             }
             Phase::Description { from_cross_window, mut chatbox } => {
                 // The screen sees the chatbox closed the tick after it
                 // closes, and reads keys again the tick after that; the
-                // chatbox runs after the screen, each tick.
+                // chatbox runs after the screen, each tick. The emblem is
+                // drawn every tick (`sub_8026E4C`).
+                self.look.draw_emblem(0);
                 if !chatbox.is_open() {
                     self.phase = if from_cross_window { Phase::CrossWindow { entered: false } } else { Phase::Choosing };
                     return None;
@@ -487,6 +527,7 @@ impl Screen {
                 None
             }
             Phase::RunMessage { chatbox } => {
+                self.look.draw_emblem(0);
                 let mut chatbox = match chatbox {
                     None => Chatbox::new(Script::RunMessage { lines: view.library.run_message(view.stats.navi) }),
                     Some(c) if !c.is_open() => {
@@ -525,12 +566,24 @@ impl Screen {
             Phase::BeastOutChosen { tick } => {
                 let tick = tick + 1;
                 match tick {
-                    // sub_8027738
-                    1 => self.beast_out = true,
+                    // sub_8027738: the emblem spins.
+                    1 => {
+                        self.beast_out = true;
+                        self.look.frame = 0;
+                        self.look.spin = 1;
+                    }
                     // sub_802774C: the screen fades (0x64) and this
                     // console's camera shakes, 40 ticks at magnitude 1.
-                    2 => console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1),
+                    2 => {
+                        console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
+                        self.look.frame = 0;
+                        self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
+                    }
+                    // sub_802777C
+                    3..=52 => self.look.frame += 1,
+                    // sub_8027796: the screen fades back in.
                     53 => {
+                        self.look.fade.start(FadeMode::BeastOutBack, BEAST_OUT_FADE_SPEED);
                         // Beast Out goes first in the selection, so B takes
                         // it back last.
                         let n = self.selected as usize;
@@ -541,6 +594,7 @@ impl Screen {
                     _ => {}
                 }
                 self.phase = if tick >= 70 { Phase::Choosing } else { Phase::BeastOutChosen { tick } };
+                self.look.draw_emblem(0);
                 None
             }
             Phase::BeastOutChipChosen { tick } => {
@@ -551,17 +605,29 @@ impl Screen {
                 // flag stay as they are: the hand's chip is the Beast Out),
                 // and the fade back in (0x60) ends it.
                 let tick = tick + 1;
-                if tick == 17 {
-                    // sub_8027624: this console's camera shakes as for
-                    // Beast Out.
-                    console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
-                }
-                if tick == 68 {
-                    let n = self.selected as usize;
-                    self.selection[..n].rotate_right(1);
-                    self.update_availability(view, folder);
+                match tick {
+                    // sub_8027618
+                    1 => self.look.frame = 0,
+                    // sub_8027624
+                    2..=16 | 18..=67 => self.look.frame += 1,
+                    // sub_8027624's last tick: this console's camera
+                    // shakes as for Beast Out, and the screen fades.
+                    17 => {
+                        console.shake_secondary(BEAST_OUT_SHAKE.0, BEAST_OUT_SHAKE.1);
+                        self.look.frame = 0;
+                        self.look.fade.start(FadeMode::BeastOut, BEAST_OUT_FADE_SPEED);
+                    }
+                    // sub_8027672
+                    68 => {
+                        let n = self.selected as usize;
+                        self.selection[..n].rotate_right(1);
+                        self.update_availability(view, folder);
+                        self.look.fade.start(FadeMode::BeastOutBack, BEAST_OUT_FADE_SPEED);
+                    }
+                    _ => {}
                 }
                 self.phase = if tick >= 85 { Phase::Choosing } else { Phase::BeastOutChipChosen { tick } };
+                self.look.draw_emblem(0);
                 None
             }
             Phase::Scrapping { .. } => {
@@ -573,7 +639,14 @@ impl Screen {
                 None
             }
             Phase::Closing { tick } => {
+                // sub_8026BF4: the window moves out 12 pixels a tick; its
+                // first tick takes the last turns' block off.
                 let tick = tick + 1;
+                if tick == 1 {
+                    self.look.turn_limit = false;
+                }
+                self.look.frame = SLIDE_STEP * tick as u32;
+                self.look.draw_emblem(self.look.frame);
                 self.phase = match tick {
                     10 if self.program_advance.is_some() => Phase::ProgramAdvance { anim: Default::default() },
                     10 => Phase::Sending { started: false },
@@ -745,6 +818,8 @@ impl Screen {
                 self.push_selection(cursor);
                 self.slots[cursor as usize].state = SlotState::Selected;
                 self.update_availability(view, folder);
+                // The emblem spins.
+                self.look.spin = 1;
                 // sub_802A00C
                 if self.chip_in(cursor, folder).is_some_and(|c| is_beast_out(c, view)) {
                     self.phase = Phase::BeastOutChipChosen { tick: 0 };
@@ -1071,6 +1146,12 @@ impl<T: PartialEq + Copy> Common<T> {
         }
     }
 }
+
+/// The window's offset off the screen, and its slide a tick.
+const SLIDE: u32 = 0x78;
+const SLIDE_STEP: u32 = 12;
+/// Beast Out's screen fades step 8 a frame.
+const BEAST_OUT_FADE_SPEED: u8 = 8;
 
 /// The re-deal's steps: every 4 ticks, the 8th lands.
 const REDEAL_STEP: u8 = 4;
