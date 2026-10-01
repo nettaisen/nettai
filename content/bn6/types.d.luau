@@ -167,3 +167,58 @@ export type FlashBombVariant = {
     strong: boolean?,
     own_side: boolean?,
 }
+
+-- A panel change (objects/panel-changer, a row of the original's
+-- `byte_80E272C`): which panels (all, the changer's row, the panel in
+-- front of it, its own) meeting its side's condition become `panel` (on
+-- side 1 `side1_panel` if set: the roads point the other way) after
+-- `ticks`, showing as it meanwhile (every tick, or with `flicker` every
+-- other four), with a tick sound every fourth tick and a sound as they
+-- change (nil: none).
+export type PanelChange = {
+    panel: PanelType,
+    side1_panel: PanelType?,
+    panels: "all" | "row" | "front" | "own",
+    flicker: boolean,
+    ticks: number,
+    sides: { [number]: PanelCondition },
+    tick_sound: Sound?,
+    change_sound: Sound?,
+}
+
+-- A barrier (lib/barriers): `sub_801A7CC`'s row (how it behaves, its HP,
+-- the damage a hit must reach to wear it, its timer (0xFFFF: none), the
+-- element that breaks it), and its visual (`byte_80E0A14`'s look: sprite,
+-- animation, palette, the owner's attach point it sits at, the sprite
+-- parts it hides; LifeAur's aura hides part 6 but for the local MegaMan),
+-- with its sounds as it rises (and grows back) and as it goes down.
+export type Barrier = {
+    behavior: BarrierBehavior,
+    hp: number,
+    threshold: number,
+    timer: number,
+    weak: string?,
+    look: {
+        sprite: SpriteAsset,
+        anim: number,
+        palette: number,
+        attach_point: number,
+        hidden_parts: number,
+    },
+    hidden_unless_local_megaman: boolean?,
+    sound: Sound,
+    down_sound: Sound?,
+}
+
+-- An instrument (lib/instruments, a row of the original's `byte_80D4078`):
+-- its identity (its NameID, a number until identities come) and palette,
+-- how long it plays and pauses, its tune, and the effect it has every
+-- third tick of playing (`off_80D4298`).
+export type Instrument = {
+    identity: number,
+    palette: number,
+    play_ticks: number,
+    pause_ticks: number,
+    tune: Sound,
+    effect: (me: Object) -> (),
+}
