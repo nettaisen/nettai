@@ -5,6 +5,7 @@
 -- recovery after the 11th.
 
 local attachment = require("../../objects/attachment/attachment")
+local lockon = require("../../rules/lockon")
 local projectile = require("../../lib/projectile")
 local variants = require("../../objects/projectile/variants")
 
@@ -107,7 +108,7 @@ return define.chip {
     extra_flags = { "free_slot_in" },
     library = { number = 4, index = 4, sort = 5 },
     slot_in_limit = 3,
-    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-    beast = { lockon = 1 },
+    -- The Beast rush, and its lock-on mode (rules/lockon).
+    beast = { lockon = lockon.cannon },
     action = action,
 }

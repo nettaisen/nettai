@@ -4,6 +4,7 @@
 -- column and sets off three explosions there. The three differ only in
 -- their damage.
 
+local lockon = require("../../rules/lockon")
 local tankcan = require("./action")
 
 -- The shell: kind 0's hit modifier, cracking, no damage shift (the chips'
@@ -21,8 +22,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 12, index = 12, sort = 427 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = tankcan.action { shell = SHELL },
     },
     define.chip {
@@ -35,8 +36,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 13, index = 13, sort = 428 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = tankcan.action { shell = SHELL },
     },
     define.chip {
@@ -49,8 +50,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 14, index = 14, sort = 429 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = tankcan.action { shell = SHELL },
     },
 }

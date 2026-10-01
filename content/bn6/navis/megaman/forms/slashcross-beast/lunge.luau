@@ -8,6 +8,7 @@
 -- action for a Cross navi's knock-out (the role `cross_death`).
 
 local collision = require("../../../../rules/collision")
+local lockon = require("../../../../rules/lockon")
 local lunge_slash = require("./lunge_slash")
 local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
@@ -27,7 +28,7 @@ local SWORD, HIT_PARAM = 0x80, 0x9E
 
 -- The lock-on searches: beside a target in the navi's row, and in the
 -- navi's row otherwise.
-local SAME_ROW, OWN_ROW = 2, 0xB
+local SAME_ROW, OWN_ROW = lockon.thunder, lockon.beast_lunge
 
 local SOUND = asset.sound("flame-hook-fire")
 

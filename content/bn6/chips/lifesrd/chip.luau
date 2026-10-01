@@ -9,7 +9,7 @@
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
-local slashes = require("../../navis/00-megaman/forms/slashcross/slashes")
+local slashes = require("../../navis/megaman/forms/slashcross/slashes")
 
 return {
     action = slash.action {

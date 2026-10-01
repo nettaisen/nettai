@@ -259,18 +259,18 @@ export type SlashSpec = {
 }
 
 -- What SlashCross's charged slash is, of one sword
--- (navis/00-megaman/forms/slashcross/slashes): the sword wave it sends,
+-- (navis/megaman/forms/slashcross/slashes): the sword wave it sends,
 -- and a second one unseen under it (CrosSwrd's); the blade the navi
 -- raises (none: it swings its arm alone, without one); the swing's sound;
 -- the slash that follows it (DblDream's second); and the lock-on mode the
--- Beast Out rush takes for it (a number until rules/lockon.luau).
+-- Beast Out rush takes for it (rules/lockon).
 export type ChargedSlash = {
     wave: SwordWaveVariant,
     hidden_wave: SwordWaveVariant?,
     blade: AttachmentLook?,
     sound: Sound,
     again: ChargedSlash?,
-    lockon: number,
+    lockon: Lockon,
 }
 
 -- A machine sword's strike (lib/swords/strike, the original's action 0x49):
@@ -419,7 +419,7 @@ export type Instrument = {
     effect: (me: Object) -> (),
 }
 
--- A sword wave (navis/00-megaman/forms/slashcross/sword_wave, a row of the
+-- A sword wave (navis/megaman/forms/slashcross/sword_wave, a row of the
 -- original's `byte_80D7F4C`): what it is and hits, its hit modifier and
 -- region, its look, the panel centers it passes before it ends and its
 -- speed (16.16 a tick, forward), the status byte and bug its hits carry
