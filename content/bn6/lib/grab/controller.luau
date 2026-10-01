@@ -1,45 +1,25 @@
 --!strict
--- The AreaGrab and PanelGrab chips' dimming controller (effect object #3,
--- `sub_80E0710`): the usual dimming phases (the dimming service), with an
--- effect that drops grab shots (objects/grab-shot) on the first column in
--- front not wholly the user's side's (AreaGrab: Param1 set) or on the
--- first panel past the user's side's front in the user's row (PanelGrab),
--- then waits 61 ticks. See docs/engine/chips.md §3.6.8.
---
--- The chips' script (both are dimming chip subtype 0): `dimming_chip` is
--- their controller's spawner, `off_802CCB4[0]`.
+-- AreaGrab's and PanelGrab's dimming controller (the original's effect
+-- object #3, `sub_80E0710`): the usual dimming phases (lib/dimming), with an
+-- effect that drops grab shots (lib/grab/shot) on the first column in front
+-- not wholly the user's side's (AreaGrab) or on the first panel past the
+-- user's side's front in the user's row (PanelGrab), then waits 61 ticks.
+-- See docs/engine/chips.md §3.6.8. Each chip's `dimming` hook is
+-- `grab.area` or `grab.panel` (`sub_80E07E0`, `off_802CCB4[0]`).
 
-local grab_shot = require("../grab-shot/grab_shot")
+local dimming_chips = require("../dimming")
+local shot = require("./shot")
+
+local grab = {}
 
 export type State = {
-    -- The chip and the Atk+ / cross bonus the telop shows (object +0x30,
-    -- +0x32); the bonus adds to the grab shots' damage.
-    chip: number,
+    -- The Atk+ / cross bonus the telop shows (object +0x32); it adds to
+    -- the grab shots' damage.
     bonus: number,
+    -- AreaGrab's whole column (the original's first chip parameter, 1),
+    -- or PanelGrab's one panel (0).
+    whole_column: boolean,
 }
-
-local area_grab = {
-    state = { chip = "u16", bonus = "u16" },
-}
-
--- `sub_80E07E0`: the controller for `user`, on its panel, with the chip's
--- parameters and damage word. (Its position is the spawner's registers,
--- which nothing reads.)
-function area_grab.dimming_chip(user: Object, spec: DimmingChipSpec): Object?
-    local o = battle.spawn_kind("area-grab", Vec3.zero, spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = user.panel_x, user.panel_y
-    o.element = spec.element
-    o.related1 = user
-    o.alliance, o.flip = user.alliance, user.flip
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    local s = o.state :: State
-    s.chip, s.bonus = spec.chip, spec.bonus
-    return o
-end
 
 -- `sub_800D5F0`: how many panels of column `x` aren't `side`'s.
 local function foreign_panels(x: number, side: number): number
@@ -127,61 +107,67 @@ local function edge_panel(me: Object): (number?, number?)
     return nil, nil
 end
 
+-- The ticks the controller waits after dropping the shots (61: the count
+-- runs out below 0).
+local WAIT = 0x3C
+
 -- `sub_80E0754`: the grab shots (running while dimmed), then 61 ticks.
 local function effect(me: Object)
+    local s = me.state :: State
     if me.phase_init == 0 then
-        local s = me.state :: State
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16)) + s.bonus
         local function drop(x: number, y: number)
-            local shot = grab_shot.spawn(me, x, y, me.element, damage)
-            if shot then
-                shot.run_while_dimmed = true
+            local o = shot.spawn(me, x, y, me.element, damage)
+            if o then
+                o.run_while_dimmed = true
             end
         end
-        if me:param(1) == 0 then
-            local x, y = edge_panel(me)
-            if x and y then
-                drop(x, y)
-            end
-        else
+        if s.whole_column then
             local x = column_to_grab(me)
             if x then
                 for y = 1, 3 do
                     drop(x, y)
                 end
             end
+        else
+            local x, y = edge_panel(me)
+            if x and y then
+                drop(x, y)
+            end
         end
-        me.timer = 0x3C
+        me.timer = WAIT
         me.phase_init = 4
     end
     local t = me.timer - 1
     me.timer = t
     if t < 0 then
-        me:set_action(0xC)
+        dimming_chips.done(me)
     end
 end
 
--- `sub_80E0710`: the dimming's phases around the effect.
-function area_grab.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        dimming.begin(me)
-    elseif l == "update" then
-        local a = me.action
-        if a == 0 then
-            dimming.dim_screen(me)
-        elseif a == 4 then
-            dimming.show_telop(me)
-        elseif a == 8 then
-            effect(me)
-        elseif a == 0xC then
-            dimming.undim_screen(me)
-        else
-            error(string.format("AreaGrab's action %#x reads past its table", a))
+grab.kind = define.kind {
+    id = "grab/controller",
+    pool = "effect",
+    state = { bonus = "u16", whole_column = "bool" },
+    update = dimming_chips.phases { name = "AreaGrab", effect = effect },
+}
+
+-- A chip's `dimming` hook (`sub_80E07E0`): the controller for `user`.
+local function hook(whole_column: boolean): (user: Object, spec: DimmingChipSpec) -> Object?
+    return function(user: Object, spec: DimmingChipSpec): Object?
+        local o = dimming_chips.spawn(grab.kind, user, spec)
+        if o then
+            local s = o.state :: State
+            s.bonus = spec.bonus
+            s.whole_column = whole_column
         end
-    else
-        dimming.finish(me)
+        return o
     end
 end
 
-return area_grab
+-- AreaGrab's: the first column in front not wholly the user's side's.
+grab.area = hook(true)
+-- PanelGrab's: the first panel past the user's side's front, in its row.
+grab.panel = hook(false)
+
+return grab

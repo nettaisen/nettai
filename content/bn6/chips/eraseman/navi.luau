@@ -1,16 +1,25 @@
 --!strict
--- EraseMan, the navi of the EraseMan chips (actor object #0x15,
--- `sub_80BB608`), brought by their navi chip controller. He appears and
--- aims a line of marks (objects/erase-mark) up-forward, forward or
--- down-forward from his row, switching every Param1 ticks, until his user
--- presses A (or 360 ticks pass); then he slashes along the line
--- (objects/erase-beam), and leaves. See docs/engine/chips.md §3.6.10.
+-- EraseMan, the navi of the EraseMan chips (the original's actor object
+-- #0x15, `sub_80BB608`), brought by their navi chip controller. He appears
+-- and aims a line of marks (chips/eraseman/mark) up-forward, forward or
+-- down-forward from his row, switching every `aim_ticks` ticks, until his
+-- user presses A (or 360 ticks pass); then he slashes along the line
+-- (chips/eraseman/beam), and leaves. See docs/engine/chips.md §3.6.10.
 --
--- The chips' script (navi chip subtype 5): `navi_chip` is his spawner,
--- `off_802CD5C[5]`.
+-- Each chip's `navi` hook is `eraseman.summon { aim_ticks = n }`
+-- (`sub_80BB7F6`, `off_802CD5C[5]`): EraseMan 20, EraseMn[EX] 16,
+-- EraseMn[SP] 12.
 
-local erase_mark = require("../erase-mark/erase_mark")
-local erase_beam = require("../erase-beam/erase_beam")
+local beam = require("./beam")
+local mark = require("./mark")
+
+local eraseman = {}
+
+-- What a chip summons him with.
+export type Summon = {
+    -- How often his aim switches (the original's first chip parameter).
+    aim_ticks: number,
+}
 
 export type State = {
     -- Where in his row's cycle the aim is (ExtraVars[0]).
@@ -20,13 +29,11 @@ export type State = {
     -- The controller waiting for him (its pointer sits in his collision
     -- data slot).
     controller: Object?,
+    aim_ticks: number,
 }
 
-local erase_man = {
-    state = { cycle = "u8", aim = "u8", controller = "object" },
-}
-
-local SPRITE = "08-04"
+local SPRITE = asset.sprite("eraseman")
+local SOUND_APPEAR, SOUND_MARK, SOUND_SLASH = asset.sound("appear"), asset.sound("erase-man"), asset.sound("erase-man-2")
 
 -- The aims each row cycles through, five bytes a row, 0xFF ending a row
 -- early (`byte_80BB88C`).
@@ -42,22 +49,8 @@ local AIM_TICKS, SLASH_TICKS = 0x168, 0x3C
 -- Panel flags he needs to stay (as one word).
 local CAN_STAND = 0x10010
 
--- `sub_80BB7F6`: EraseMan for `user`, reporting to `controller`.
-function erase_man.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn_kind("erase-man", Vec3.zero, spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.related1 = user
-    o.alliance, o.flip = user.alliance, user.flip
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    local s = o.state :: State
-    s.controller = controller
-    return o
-end
+-- His actions.
+local APPEAR, STAND, AIM, RAISE, SLASH, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10, 0x14
 
 -- `sub_80BB62C`: on his panel, on the ground.
 local function init(me: Object)
@@ -125,26 +118,26 @@ local function each_panel(me: Object, f: (x: number, y: number) -> ())
 end
 
 -- `sub_80BB81C` and its sound: mark the aim's panels.
-local function mark(me: Object)
-    local ticks = me:param(1)
+local function mark_aim(me: Object)
+    local ticks = (me.state :: State).aim_ticks
     each_panel(me, function(x, y)
-        erase_mark.spawn(me, x, y, ticks)
+        mark.spawn(me, x, y, ticks)
     end)
-    battle.play_sound(0x10E)
+    battle.play_sound(SOUND_MARK)
 end
 
 -- `sub_80BB694`: he appears; 3 ticks; on to standing, or straight to
 -- leaving if his panel can't hold him.
 local function appear(me: Object)
     if enter(me, 3, 3) then
-        battle.play_sound(0x94)
+        battle.play_sound(SOUND_APPEAR)
         me.visible = true
         return
     end
     if not ran_out(me) then
         return
     end
-    me:set_action(if field.check(me.panel_x, me.panel_y, CAN_STAND, 0) then 4 else 0x14)
+    me:set_action(if field.check(me.panel_x, me.panel_y, CAN_STAND, 0) then STAND else LEAVE)
 end
 
 -- `sub_80BB6E8`: 30 ticks standing.
@@ -153,25 +146,26 @@ local function stand(me: Object)
         return
     end
     if ran_out(me) then
-        me:set_action(8)
+        me:set_action(AIM)
     end
 end
 
--- `sub_80BB710`: aim, switching every Param1 ticks, until the user
+-- `sub_80BB710`: aim, switching every `aim_ticks` ticks, until the user
 -- presses A while dimmed (`sub_80BB89C`), or for 360 ticks.
 local function aim(me: Object)
+    local s = me.state :: State
     if me.phase == 0 then
-        me.phase = 4;
-        (me.state :: State).cycle = 3
+        me.phase = 4
+        s.cycle = 3
         next_aim(me)
-        mark(me)
+        mark_aim(me)
         me.timer = AIM_TICKS
-        me.timer2 = me:param(1)
+        me.timer2 = s.aim_ticks
         return
     end
     local user = me.related1 :: Object
     if user:dimmed_pressed("a") or ran_out(me) then
-        me:set_action(0xC)
+        me:set_action(RAISE)
         return
     end
     local left = me.timer2 - 1
@@ -180,8 +174,8 @@ local function aim(me: Object)
         return
     end
     next_aim(me)
-    mark(me)
-    me.timer2 = me:param(1)
+    mark_aim(me)
+    me.timer2 = s.aim_ticks
 end
 
 -- `sub_80BB772`: 10 ticks with the scythe raised.
@@ -190,7 +184,7 @@ local function raise(me: Object)
         return
     end
     if ran_out(me) then
-        me:set_action(0x10)
+        me:set_action(SLASH)
     end
 end
 
@@ -203,14 +197,14 @@ local function slash(me: Object)
         local s = me.state :: State
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
         each_panel(me, function(x, y)
-            erase_beam.spawn(me, x, y, me.element, { s.aim, SLASH_TICKS, 0 }, damage)
+            beam.spawn(me, x, y, me.element, { aim = s.aim, ticks = SLASH_TICKS, navis = false }, damage)
         end)
-        battle.play_sound(0xBA)
+        battle.play_sound(SOUND_SLASH)
         me.timer = SLASH_TICKS
         return
     end
     if ran_out(me) then
-        me:set_action(0x14)
+        me:set_action(LEAVE)
     end
 end
 
@@ -231,23 +225,48 @@ local function leave(me: Object)
     me:set_lifecycle("destroy")
 end
 
-local ACTIONS = { [0] = appear, [4] = stand, [8] = aim, [0xC] = raise, [0x10] = slash, [0x14] = leave }
+local ACTIONS = { [APPEAR] = appear, [STAND] = stand, [AIM] = aim, [RAISE] = raise, [SLASH] = slash, [LEAVE] = leave }
 
--- `sub_80BB608`.
-function erase_man.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        local action = ACTIONS[me.action]
-        if not action then
-            error(string.format("EraseMan action %#x reads past his table", me.action))
+eraseman.kind = define.kind {
+    id = "eraseman/navi",
+    pool = "actor",
+    state = { cycle = "u8", aim = "u8", controller = "object", aim_ticks = "u8" },
+    -- `sub_80BB608`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            local action = ACTIONS[me.action]
+            if not action then
+                error(string.format("EraseMan action %#x reads past his table", me.action))
+            end
+            action(me)
+        else
+            me:free()
         end
-        action(me)
-    else
-        me:free()
+        me:update_sprite_while_dimmed()
+    end,
+}
+
+-- A chip's `navi` hook (`sub_80BB7F6`): EraseMan for the user, on the
+-- panel the controller picked, reporting to `controller`.
+function eraseman.summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+    return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
+        local o = battle.spawn(eraseman.kind, Vec3.zero)
+        if not o then
+            return nil
+        end
+        o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+        o.element = spec.element
+        o.related1 = user
+        o.alliance, o.flip = user.alliance, user.flip
+        o:set_damage_word(spec.damage)
+        local s = o.state :: State
+        s.controller = controller
+        s.aim_ticks = args.aim_ticks
+        return o
     end
-    me:update_sprite_while_dimmed()
 end
 
-return erase_man
+return eraseman
