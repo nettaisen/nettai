@@ -41,7 +41,9 @@ fn battles_run_the_content_scripts() {
             "absorbed-obstacle",
             "aqua-surge",
             "attachment",
+            "barrier-visual",
             "bass",
+            "beat",
             "blast-fire",
             "blast-man",
             "blkbomb/bomb",
@@ -112,6 +114,7 @@ fn battles_run_the_content_scripts() {
             "rock/debris",
             "rockcube/cube",
             "rskyhny/bee",
+            "rush",
             "sandwrm/hole",
             "sandwrm/spray",
             "sandwrm/worm",
@@ -128,6 +131,9 @@ fn battles_run_the_content_scripts() {
             "sunmoon/meteor",
             "sunmoon/moon-beam",
             "sunmoon/navi",
+            "support/controller",
+            "tango",
+            "tango/heal",
             "tengu-man",
             "thunder-column",
             "timebom/controller",
@@ -906,6 +912,75 @@ fn the_slow_gauge_chip_slows_the_gauge() {
         slowed |= b.gauge.rate == 0x10 && b.sides[0].slow_gauge_ticks > 0;
     }
     assert!(slowed, "the gauge slowed");
+}
+
+// ---- The NaviCust supports (Rush, Beat, Tango) -------------------------------------------
+
+/// A duel with `chips` in side 0's folder (and GunDelSols in side 1's),
+/// the navis' stats changed by `stats`: the ticks each object kind was on
+/// the field, by key, the battle at the end, and whether copies taken
+/// along the way played on as the battle did.
+fn support_duel(
+    chips: &[bn6_content_api::ChipHandle],
+    stats: impl Fn(&mut [crate::setup::NaviStats; 2]),
+) -> (std::collections::BTreeMap<String, usize>, Battle) {
+    let setup = || {
+        let mut s = scenario::setup_with_handles(chips);
+        s.players[1] = scenario::setup().players[1];
+        stats(&mut s.navi_stats);
+        s
+    };
+    let tape = scenario::record_on(setup(), 1500, 5);
+    let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+    let mut b = Battle::new(setup(), scenario::content());
+    let mut seen = std::collections::BTreeMap::new();
+    for (i, t) in tape.iter().enumerate() {
+        if i % 211 == 0 {
+            assert_eq!(digests(&tape[i..], b.clone()), whole[i..], "the copy from tick {i} went its own way");
+        }
+        b.tick(&t.input, t.events.clone());
+        for r in b.objects.in_order() {
+            *seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+        }
+    }
+    (seen, b)
+}
+
+#[test]
+fn rush_eats_a_chip_he_cancels_and_beat_snatches_a_mega_chip() {
+    use crate::setup::Supports;
+    // The veil is a chip Rush cancels: side 1's Rush comes for side 0's
+    // first, once, and the veil's own controller only for a later one.
+    let (seen, b) = support_duel(&[testing::chip_handle(testing::VEIL)], |s| {
+        s[1].support = Some(Supports { rush: true, ..Default::default() });
+    });
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
+    assert!(ticks("support/controller") > 0 && ticks("rush") > 0, "Rush: {seen:?}");
+    assert_eq!((ticks("beat"), ticks("tango")), (0, 0), "{seen:?}");
+    assert_eq!(b.stats[1].support, Some(Supports::default()), "Rush came once");
+    // The eraser is a Mega chip: side 1's Beat comes for it.
+    let (seen, b) = support_duel(&[testing::chip_handle(testing::ERASER)], |s| {
+        s[1].support = Some(Supports { beat: true, ..Default::default() });
+    });
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
+    assert!(ticks("support/controller") > 0 && ticks("beat") > 0, "Beat: {seen:?}");
+    assert_eq!(ticks("rush"), 0, "{seen:?}");
+    assert_eq!(b.stats[1].support, Some(Supports::default()), "Beat came once");
+}
+
+#[test]
+fn tango_heals_her_navi_at_a_quarter_of_its_hp() {
+    use crate::setup::Supports;
+    // Side 0 starts at a quarter of its HP: Tango comes at once, throws her
+    // heal, and it raises a barrier.
+    let (seen, b) = support_duel(&[testing::chip_handle(testing::SUN_GUN_1)], |s| {
+        s[0].support = Some(Supports { tango: true, ..Default::default() });
+        s[0].hp = s[0].max_hp / 4;
+    });
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
+    assert!(ticks("support/controller") > 0 && ticks("tango") > 0, "Tango: {seen:?}");
+    assert!(ticks("tango/heal") > 0 && ticks("barrier-visual") > 0, "her heal and its barrier: {seen:?}");
+    assert_eq!(b.stats[0].support, Some(Supports::default()), "Tango came once");
 }
 
 // ---- Luau keeps no state ----------------------------------------------------------------
