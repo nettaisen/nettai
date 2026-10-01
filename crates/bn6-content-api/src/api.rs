@@ -379,6 +379,9 @@ named_fields! {
         /// The secondary elements (sword 0x80, cursor 0x40, wind 0x20,
         /// break 0x10) of what hit it this window.
         DamageElements = "damage_elements", U8, ro;
+        /// The hit modifiers of what hit it this window (+0x0E,
+        /// HitModifierFinal): 0x3C the pushes, 0x40 a pushing hit.
+        HitModFinal = "hit_mod_final", U8, ro;
         /// Its barrier ([`BARRIER_STATES`]), the barrier's HP byte, and the
         /// hit modifier that popped it (+0x15).
         Barrier = "barrier", enum_type(&BARRIER_STATES), ro;
@@ -974,6 +977,10 @@ pub trait CoreApi {
     /// `sub_800EB6C`: the local player sees `side`'s objects (unless they
     /// are the other side's and the local navi is blind).
     fn viewer_sees(&self, side: u8) -> bool;
+    /// `sub_800ED90` and the chip record's flags (bit 1): the chip `user`
+    /// would use next deals damage (a player's at its hand's cursor, whose
+    /// empty hand reads `Rules::empty_hand`; another object's own chip).
+    fn next_chip_damages(&self, user: ObjectRef) -> bool;
     fn battle_info(&self, f: BattleInfo) -> Value;
     /// Report a sound effect both players hear (output only; nothing in
     /// the simulation reads it).
