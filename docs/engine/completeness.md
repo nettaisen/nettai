@@ -160,6 +160,20 @@ condition that keeps a netbattle out; `excl.py` has all 50.
 | The end exchange and results (mode state 0x10), and the rewards (`sub_802CAA6`) | 9 | battle effects 2, which no link settings record has (they are 0x8C, 0x88C or 0x20088C) |
 | The battle's end for link types 4 and 8 (`sub_8007C50`) | 1 | a cable netbattle is type 0 |
 
+Two more things are out of scope without a rule in the audit, since no routine is theirs alone:
+
+- **The random battle** (battle effects 0x200000; the 96 settings records from 0x60 on, another match type's) is
+  out of scope by decision. The port keeps the flag (`setup::effects::RANDOM`) and what already reads it (the
+  custom screen); the stats and folder the original takes from a second place for it (`sub_800B144`,
+  `sub_800A3E4`) would be the setup's to supply, and nothing records it.
+- **NaviStats+0x54** (HP lost when the custom screen opens, `sub_8013FD0`) stays 0 in a netbattle. Its one setter
+  by name, `sub_813CF2C`, sits in a block of NaviCust stat setters (0x0813CEF8–0x0813CF6C) that no pointer word
+  and no call in the ROM reaches. In a fight only bug code 0x54 raises it (`sub_80139F6`), and the one hit that
+  carries that code is the tornado's variant 3 (`sub_80C9F98`), which only the Tornado action's subtype 3 spawns
+  (`sub_80CA19E`); Tornado is subtype 1, Static 2, and no weapon routine starts the action. All 9,994 stat blocks
+  of the lab's setups have it 0. The port has the stat, the code, the variant and the action
+  (`tornado/back-spread`), all unreachable.
+
 The 3,181 unreachable routines are mostly the other 138 object kinds' (viruses, bosses, story objects) and what
 only they call.
 
@@ -198,7 +212,7 @@ the instructions before each). A sample of them against the port:
 | `sub_8029224` (modifiers) | Uninstll after a damaging chip that dims | has it. New recording `custom/modifier-uninstll-dimming`: Roll then Uninstll stay two chips |
 | `sub_8013E58` (the status bug) | six of its eight outcomes (one RNG draw a recording) | has all eight |
 | `sub_801A45C` (counter bookkeeping) | the gauge bonus under battle flag 0x40; the battle over | has both; the first is not a netbattle's |
-| `sub_8013FD0` (HP lost at the custom screen's opening) | NaviStats+0x54 nonzero, in 1,292 openings | has it (`custom_hp_bug`, and bug code 0x54 that raises the stat); nothing recorded inflicts the code (§7) |
+| `sub_8013FD0` (HP lost at the custom screen's opening) | NaviStats+0x54 nonzero, in 1,292 openings | has it (`custom_hp_bug`, and bug code 0x54 that raises the stat); a netbattle can't make it nonzero (§5) |
 | `sub_8015C12` (mood wear) | a mood of 0, in 4.2 million calls | has the test |
 | `sub_8029520` (Program Advances) | the veto (+0x1C nonzero) | documented as unable to fire |
 | `sub_8009338` (the custom screen's mode state) | the UI's result 2, the escape | not ported; a netbattle has no running |
@@ -217,25 +231,16 @@ DustCross's scrap (`sub_8027406`). The lab now has `custom/hide-window`, `custom
 
 ## 7. Open points
 
-Nothing here is a known missing behaviour; each is a place where the audit can't close the question.
+Nothing here is a known missing behaviour; each is a place where the audit can't close the question. Two
+earlier points are closed: the statements in other documents that the audit found out of date are corrected, and
+NaviStats+0x54 is unreachable (§5).
 
-1. **Battle effects 0x200000** (the random battle). The 96 settings records from 0x60 on have it, for another
-   match type than the lab's bases. The port carries the flag (`setup::effects::RANDOM`) and the custom screen
-   reads it; the original also takes the navi's stats and folder from a second place for it (`sub_800B144`,
-   `sub_800A3E4`), which is the setup's to supply. No recording has it. To verify: a lab base of that match type.
-2. **NaviStats+0x54** (HP lost when the custom screen opens). The port has the stat, the loss and bug code 0x54;
-   the audit found no hit that inflicts that code and no NaviCust routine that writes the stat. To settle: search
-   the attack objects' bug codes for 0x54, then either a scenario or an "unreachable" row in unverified.md.
-3. **The documented class** (441 routines) rests on docs/engine being the port's specification. 288 of them run
+1. **The documented class** (441 routines) rests on docs/engine being the port's specification. 288 of them run
    in matching recordings. Of the 153 that don't, most are the IWRAM kernel's helpers (uninstrumented), the
    battle's init (before the lab's coverage begins) and states the docs mark "not PvP". A citation in a comment
    also counts as ported; `sub_8108F74`, the virus's update, is cited only to say viruses do it.
-4. **Link loss.** Top states 0x0C (communication error) and 0x10 (terminate) are documented; the port has the
+2. **Link loss.** Top states 0x0C (communication error) and 0x10 (terminate) are documented; the port has the
    result codes and leaves the detection to its netplay.
-5. **Statements in other documents that this audit found out of date** (the code is ported and matches):
-   chips.md's "Not ported yet" list in §3.6 (the barriers, the panel chips, the instruments, AirRaid, BugFix,
-   ColorPt, Sensor, SumnBlk) and its "Not ported: LilBoiler … VDoll"; field-names.md on the emotion-swing bug
-   (`sub_8013DA0`) and the Beast Out wrapper (`sub_80EAD9C`); object-kinds-pvp.md's row for T3 0x12.
 
 ## 8. Limits
 
