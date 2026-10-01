@@ -43,8 +43,9 @@ local SOUND_CHARGE, SOUND_CHARGED = asset.sound("buster-charge"), asset.sound("b
 local DARK_PALETTE = 0x19
 local AURA = attachment.look { sprite = asset.sprite("dark-aura"), palette = 0, attach_point = 24 }
 
--- The dark flames (`sub_80BFD02`): element pillars of the fifth kind
--- (objects/element-pillar), fire, 6 pixels up, by wave (`off_80BFD68`: the
+-- The dark flames (`sub_80BFD02`): element pillars (objects/element-pillar;
+-- the original's fifth kind: flames that stand back by their wave and last
+-- through his own action 4), fire, 6 pixels up, by wave (`off_80BFD68`: the
 -- panels from his, dx toward the front); they last 0x5A ticks and 8 per
 -- wave still to come, then 8 once he is done.
 local FLAME_ELEMENT, FLAME_Z, FLAME_TICKS = 1, 0x6_0000, 0x5A
@@ -161,10 +162,10 @@ end
 -- `sub_80BFD02(wave)`: the wave's dark flames (they run while dimmed).
 local function dark_flames(me: Object, wave: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local params = { 5, (2 - wave) * 8 + FLAME_TICKS, 8, wave }
+    local flames: ElementPillar = { ticks = (2 - wave) * 8 + FLAME_TICKS, after = 8, back = wave, owner_state = FLAMES }
     for _, d in FLAME_PANELS[wave] do
         local x, y = me.panel_x + d[1] * me.facing, me.panel_y + d[2]
-        local pillar = element_pillar.spawn(me, x, y, FLAME_ELEMENT, params, damage, FLAME_Z)
+        local pillar = element_pillar.spawn(me, x, y, FLAME_ELEMENT, flames, damage, FLAME_Z)
         if pillar then
             pillar.run_while_dimmed = true
         end

@@ -749,7 +749,8 @@ already set up (Beat first); Tango every idle frame before any request:
   `sub_80F0354` applies), and only when the support's bit is set.
 - On a Beat or Rush cancel, `object_exitAttackState` runs, so the lockout applies and requests are cleared. The
   hand index is **not** incremented here; Rush and Beat call `sub_800FC7C` on the victim later.
-- `sub_80E90FE` spawns the controller, effect object #0x79 (`sub_80E8FE0`, content kind `objects/support`), on the
+- `sub_80E90FE` spawns the controller, effect object #0x79 (`sub_80E8FE0`, content kind `support/controller`,
+  lib/supports/controller: the role `kinds.support`; the ruleset sets its `support`, `eaten` and `telop_chip`), on the
   host's panel (the support's owner: the chip user's opponent for Rush and Beat), with the host in related 1,
   its side, element 0, no damage and the telop chip at +0x30. Its X, Y and Z are the caller's r1..r3 (the host's
   panel row, 0, 0). `sub_800BF16(host side, 1, controller)` then starts a dimming the other side can't cut in
@@ -977,7 +978,7 @@ Representative handlers, all code-derived. Frame counts assume the attack is not
 | Navi chips (0x1B → `sub_80EC350`) | 1 | `sub_80E192C(panelX, panelY, av+2, av3, av.u32[0xC], av.u32[8], chip \| av6<<16)` spawns T4 0x10 (summon controller → `off_802CD5C[subtype]`). Registers the dimming exactly as 0x15, then exits **in the same frame**. |
 | GunDelSol (0x37 → `sub_80EDAE0`) | 140 (S3) | §4 |
 | Reflector (0x2B → `sub_80ED13E`; the pack's `chips/rflectr`) | params[0] + 2 (62) | One phase. f1: the shield (T3 0x2B, `sub_80C97E0`: at attach point 6, look `byte_80C9664[params[1]]`, stored in RelatedObject1Ptr), ObjectFlags1 GUARD and 0x400000, anim 0 (and the Beast head's, `sub_80101D4`), av+0x30 = 0, timer = 0. **Every tick after:** unless subtype 3, if CollisionData+0x03 (the directions the guard blocked) has bit `1 << flip`: a guard-breaking hit (FlagsFromCollision & 2) drops the shield and the guard; otherwise the first such tick (av+0x30 0 → 1) sends the wave back: subtypes 0..2 the T3 0x2F wave (`sub_80C9CDA`: one panel ahead, Z 16, damage word `av.u32[8] + av.u16[6]`, sound 0xC5), subtype 4 the buster's projectile (T3 #0 with Param1 6, Z 20), others nothing. Then timer + 1; past params[0]: the shield and guard go, exit. No reactive abort, no counter window. |
-| Recovery (0x20 → `sub_80EC844`; chips/recov, chips/drkrecov) | 1 | f1: `sub_800E2FC(byte_80EC870[subtype], 1)` (10, 30, 50, 80, 120, 150, 200, 300, 1000; each chip's `hp` in chips/recov/chips.luau): unless the opponent's defensive-chip record is AntiRecv (0xBD), HP += n up to the maximum, effect #0 look 6 at the navi, sound 0x8A; if it is, AntiRecv's controller (T4 0x2C, `sub_80E3728`) starts a dimming (`sub_800BF16` with no cut-in) that takes n from the navi, the trap mark (effect #0 look 0x46, Param2 = the local side, sound 0xA5) and the record is spent. Then side statistic 5 + 1, exit. The ruleset's heal (`kinds::heal`) runs it; T4 0x2C is the pack's objects/anti-recovery (§3.6.7). The AntiRecv branch matches a scratch chip-lab recording (Recov10 against AntiRecv). |
+| Recovery (0x20 → `sub_80EC844`; chips/recov, chips/drkrecov) | 1 | f1: `sub_800E2FC(byte_80EC870[subtype], 1)` (10, 30, 50, 80, 120, 150, 200, 300, 1000; each chip's `hp` in chips/recov/chips.luau): unless the opponent's defensive-chip record is AntiRecv (0xBD), HP += n up to the maximum, effect #0 look 6 at the navi, sound 0x8A; if it is, AntiRecv's controller (T4 0x2C, `sub_80E3728`) starts a dimming (`sub_800BF16` with no cut-in) that takes n from the navi, the trap mark (effect #0 look 0x46, Param2 = the local side, sound 0xA5) and the record is spent. Then side statistic 5 + 1, exit. The ruleset's heal (`kinds::heal`) runs it; T4 0x2C is BN6's chips/antirecv/controller, the role `kinds.anti_recovery` (§3.6.7). The AntiRecv branch matches a scratch chip-lab recording (Recov10 against AntiRecv). |
 | Reflector's shield (T3 0x2B, `sub_80C96A0`; chips/rflectr/shield.luau) | - | Init: sprite, anim, palette from its look row, panel from its spawn position (the attach-point offset), flip, sound 0xA0, the offset kept in its velocity. Action 0: its owner's position + offset, until the owner's RelatedObject1Ptr is cleared; action 4: the fade animation for the row's ticks, then state 8 (`object_freeMemory`). After the action: visible, unless the local navi is blind to it (`sub_800EB6C`) or its owner vanished for a navi chip (state bit 0x100000). Runs while paused and dimmed; the sprite stands still while dimmed. |
 | Reflector's wave (T3 0x2F, `sub_80C9BC4`) | - | Init: off the field, freed; else sprite 0x14/4, timer 2, collision (4, 5, 0) region 1 on its panel. Each tick: resolve, hit spark; battle over: gone. A hit clears its region. Action 0: timer − 1; at 0 the next segment one panel ahead (same Z and damage), action 4. Action 4: gone when the animation's last frame ends. |
 
@@ -1274,7 +1275,7 @@ and hit parameter 0x1E, in the chip's parameters (Z = the mark's, left in r3). A
 dimming like the navi chip's controller; nothing else starts one (unlike a recovery chip's heal). Port:
 `kinds::navi_chip`, `kinds::heal`.
 
-**AntiRecv's counterattack, T4 0x2C (`sub_80E3728`; the pack's objects/anti-recovery).** Spawned by `sub_80E37D2`
+**AntiRecv's counterattack, T4 0x2C (`sub_80E3728`; BN6's chips/antirecv/controller, which the ruleset spawns by the role `kinds.anti_recovery`).** Spawned by `sub_80E37D2`
 (r0/r1 the healer's panel, r2 element 0, r6 the damage word, r7 = 0xBD for the telop; RelatedObject1 = the healer,
 the healer's alliance; its position the spawner's registers). A dimming controller: states `object_timefreezeBegin`,
 `sub_80E3748`, `object_timefreezeEnd`; actions (`off_80E375C`) 0 `object_dimScreen`, 4 `object_drawChipName`, 8
@@ -1396,8 +1397,9 @@ survival alone decides the effect). Its effect (`sub_80E3504`): `sub_802CEA6` cl
 (its object gets Param2 = 1), `sub_80E3560` spawns the trap's object for Param1 0 only (AntiDmg's params are 3: none),
 and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes per side at 0x02036720). Then 61 ticks.
 `sub_802CEC8` clears a record every tick once its user's HP is 0. The trap springs in the damage intake
-(`sub_802CEF4`). Note `sub_802CEA6` clears only the low half of the record's damage word. The pack's script:
-objects/trap-chip.
+(`sub_802CEF4`). Note `sub_802CEA6` clears only the low half of the record's damage word. The pack's module:
+lib/traps/controller (a chip's `dimming` hook is `traps.hook(trap?)`; the port's trap object sees that its side's
+record no longer names it, where the original tells it through Param2).
 
 **The traps' counters.** A trap that caught a hit sets its request on the navi, and the ruleset (`sub_801056A`,
 `sub_80105F2`; kinds/player/actions/reactive.rs) starts the counter by role (`define.roles`, rules/roles.luau).
@@ -1428,7 +1430,7 @@ alliance (and, for most, flip), damage word, and chip and bonus at +0x30/+0x32. 
 subtype:
 
 - 1 (Invisibl, WhiCapsl; T4 0x5D): the user flashes invisible for Param1-2 ticks (`sub_8010474`), 31 ticks.
-  objects/invisible.
+  objects/invisible (`invisible.hook(ticks)`).
 - 6 (RockCube, IceCube; T4 0x37): a rock of variant Param1 (1 a rock cube, 3 an ice block) on the panel in front
   (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. chips/rockcube; the rock is objects/rock
   (field-objects.md).
@@ -1437,13 +1439,15 @@ subtype:
   (+0x3C) or fast (+0x3A) gauge timer in `sub_802E070` gets 480 ticks, and, with per-player gauges (battle flag
   0x40) outside a link battle, the other side's 1080 (`sub_80107D4` counts them down; nothing else PvP reaches
   reads them); a warning blinks over the gauge (`sub_800AE90`, with sound 0x91 every 16 frames of the game's frame
-  counter, which the port approximates with the effect's own ticks), 70 ticks. objects/gauge-speed.
+  counter, which the port approximates with the effect's own ticks), 70 ticks. lib/gauge-speed/controller
+  (`gauge_speed.slow`, `gauge_speed.fast`).
 - 38 (HubBatc, the arm chips, BugRSwrd, BgDthThd, DarkInvs; T4 0x84, `sub_80E95B4` by Param1): 0 raises the buster
   to attack 5 at least, rapid and charge 4, the custom level 8, defers the hand-shrink bug a turn, gives a B+Back
   special (0x3B) if there was none, and the shoes and undershirt (flags 0x40030 and the stats), resetting the
   body's collision types; 1 and 2 make weapon routine Param2 the charged shot in the stats and the navi
   (`sub_80E97BE`: a buster of 3 or 4 goes, 0x2C becomes 0x2B); 3 sets the navi's request 0x20000000. The arm
-  effect's height offset is lost to a shift of the wrong register. objects/navi-boost.
+  effect's height offset is lost to a shift of the wrong register. lib/navi-boost/controller (`navi_boost.hub`,
+  `bug(routine)`, `arm(routine, palette)`, `dark`).
 
 Not ported yet, with what is known:
 
@@ -1459,12 +1463,12 @@ Not ported yet, with what is known:
 Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
 (program advance 0x157: only as its recipe), per-player gauges (not in netbattles).
 
-**ElemTrap's trap** (T3 0x4D, `sub_80CDF84`; the pack's `objects/elem-trap`) is a collision over whole-field region
+**ElemTrap's trap** (T3 0x4D, `sub_80CDF84`; the pack's `chips/elemtrap/trap`) is a collision over whole-field region
 0x80 with ObjectFlags1 0x01000000 (hit even while dimmed), self type 0, target 0x18. Each tick it resolves its hits
 and reads the per-element damage (CollisionData+0x84, fire to wood); the first element with damage springs it (its
 first update runs unarmed: a hit then just clears the record). Sprung, it waits until the battle isn't dimmed, puts
 sparkles (T4#0 look 0x46, SE 0xA5) on the enemy navi's panels, spawns the counterattack T4 0x2B (`sub_80E35A4`,
-`objects/elem-trap-strike`) at the **head** of the update list (`sub_80033E4`) and registers it with `sub_800BF16`
+`chips/elemtrap/strike`) at the **head** of the update list (`sub_80033E4`) and registers it with `sub_800BF16`
 (the other side can't cut in), clears its side's record and ends. The counterattack's effect (`sub_80E362C`) hits
 every panel with any of `byte_80E36E4[side]` (the enemy's bodies) in that element (`byte_80E36EC`, damage plus bonus,
 `sub_80C53A6`) and spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel-bursts`: shared by seven callers,
@@ -1474,15 +1478,18 @@ leaves the trap).
 
 #### 3.6.10 TimeBom, Mine, Guardian (subtypes 10, 11, 14)
 
-- **TimeBom** (T4 0x27 `sub_80E31D8`, `objects/time-bom`; 31 ticks) sets the countdown bomb T3 0x4B (`sub_80CD8EC`,
-  `objects/countdown-bomb`) on the first panel ahead meeting `off_80E3280[side]` (a free enemy panel). The bomb
+- **TimeBom** (T4 0x27 `sub_80E31D8`, `chips/timebom/controller`; 31 ticks) sets the countdown bomb T3 0x4B
+  (`sub_80CD8EC`, `chips/timebom/countdown`) on the first panel ahead meeting `off_80E3280[side]` (a free enemy panel). The bomb
   (variants `byte_80CD8AC`: 0 TimeBom1-3, HP 50; 1 TimeBom+, HP 200) rises, counts 3, 2, 1 (60, 60, 60, 30 ticks,
   shown by hiding sprite parts), then hits whole-field region 0x82/0x81 (the enemy area of the side opposite its
   panel's) and sets off bursts; broken first, it only puffs. Variants 2 to 7 (HP 3 to 10; `bursts_when_broken`,
-  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them. The
+  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them (a variant
+  is a `CountdownVariant` record its chip passes; no chip passes those rows, whose branches are the record's
+  `allows_bodies`, `bursts_when_broken` and `linked`). The
   blast (`chips/0x090-timebom1/blast`), the bomb broken first (`broken`), pushed (`pushed`) and the battle's end
   (`round-end`) are **verified**; removal and absorption are **unverified**.
-- **Mine** (T4 0x29 `sub_80E342C`, `objects/mine`; 121 ticks) lays T3 0x4C (`sub_80CDD44`, `objects/land-mine`),
+- **Mine** (T4 0x29 `sub_80E342C`, `chips/mine/controller`; 121 ticks) lays T3 0x4C (`sub_80CDD44`,
+  `chips/mine/land_mine`),
   which shuffles the enemy's free panels (`byte_80CDF50`, 20 swaps), hops through them every 2 ticks (59 hops, SE
   0x113), then hides armed (region 1, types 0x33/0x2A) until something touches it, its HP runs out, its panel stops
   being solid or the battle ends; it blows up (T4#0 look 0x47, SE 0x70) the tick after. It has its own action table
