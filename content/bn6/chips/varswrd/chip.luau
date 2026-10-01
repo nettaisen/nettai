@@ -51,6 +51,9 @@ return {
             sonicbom.actions.sonicbom,
         },
         sword = sword.action,
+        -- SlashCross's A-charge runs it charged: its pick is what becomes
+        -- the charged slash.
+        charged = "own",
         random = 6,
         no_charged = sonicbom.actions.sonicbom,
         -- The picks' chips, by number until they are definitions (§12).

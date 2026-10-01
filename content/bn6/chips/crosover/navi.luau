@@ -14,6 +14,7 @@ local collision = require("../../rules/collision")
 local navi_chips = require("../../lib/navi-chips/navi")
 local parts = require("../../lib/swords/parts")
 local projectile = require("../../lib/projectile")
+local variants = require("../../objects/projectile/variants")
 local regions = require("../../lib/regions")
 local sun_beam = require("../gundels/beam")
 
@@ -46,10 +47,9 @@ local SOUND_GUN = asset.sound("gundels1")
 -- lib/buster's, attachments 6 and 5; Django's gun is on the blades' sheet,
 -- attachment 0xB, as the sword's.)
 
--- MegaMan's shots: projectile kind 0x1D (the projectile's data, by
--- number until the projectiles convert), 30 damage with hit parameter
--- 0x83, 16 pixels up; twelve, 10 ticks apart.
-local SHOT = { kind = 0x1D, damage = 0x0083_001E, z = 0x10_0000 }
+-- MegaMan's shots: the climbing projectile (the original's row 0x1D), 30
+-- damage with hit parameter 0x83, 16 pixels up; twelve, 10 ticks apart.
+local SHOT: ProjectileShot = { variant = variants.climbing, damage = 0x0083_001E, z = 0x10_0000 }
 local SHOTS, SHOT_TICKS = 0xC, 0xA
 
 -- Django's sun beam (GunDelSol's, chips/gundels/beam: its plain look), 80

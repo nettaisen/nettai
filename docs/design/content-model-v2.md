@@ -856,9 +856,9 @@ StepSwrd's step and the elemental swords' colours are arguments (`swings`, `seco
 - **Which chips are definitions.** StepSwrd, FtrSword, CrosSwrd, DblDream, MchnSwrd, ElemSwrd and AssnSwrd.
   SlashCross charges every Sword-family chip, and its charged slash (weapons 0x11 and 0x12, action 0x41) reads
   the chip's subtype (the blade, the wave, CrosSwrd's two waves, DblDream's two slashes) and first parameter
-  (StepSwrd's dash) from its record: the four Sword-family definitions carry them in the transitional
-  `legacy = { subtype, params }` marker (the lab's `chips/0x051-stepswrd/cross-slash-charged` fails without
-  it). The other swords keep the pack's records, each module giving its chip's action with its compat key as
+  (StepSwrd's dash) from its record: until step 8e the four Sword-family definitions carried them in the
+  transitional `legacy = { subtype, params }` marker (the lab's `chips/0x051-stepswrd/cross-slash-charged`
+  failed without it); since then each sword's slash names its charged slash (§5.7). The other swords keep the pack's records, each module giving its chip's action with its compat key as
   `id`, because the ruleset or other records name them by number: Sword, WideSwrd, LongSwrd, WideBlde,
   LongBlde and LifeSrd are Program Advance ingredients or results; DrkSword is one of the ruleset's dark chips
   (0x11E to 0x122) and has a substitute chip; SlashCross charges FireSwrd to BambSwrd by number (0x4C to 0x4F);
@@ -872,8 +872,8 @@ StepSwrd's step and the elemental swords' colours are arguments (`swings`, `seco
   holds) and the test content's StunBld. Both go with the 0x12 shim (step 5, phase C: a role for the stun
   strike).
 - **SlashCross's blade.** The charged slash (action 0x41) raises the blade by the attack's variant
-  (`byte_80EBB64`), which an earlier merge lost; lib/sword's `sword.raise` has it again, and goes into
-  lib/swords when SlashCross's weapons convert.
+  (`byte_80EBB64`), which an earlier merge lost; lib/sword's `sword.raise` had it again until step 8e, when
+  each charged slash's record took its blade (§5.7).
 - **Asset names** for the family: `sword`, `fire-sword`, `aqua-sword`, `elec-sword`, `sword-slash`,
   `big-slash`, `cross-slash`, `sword-swing`, `big-sword-swing` (compat/assets.toml and curation.toml).
 - **Verified** on the test content (the blades' duel under rollback, the engine's tests), the type check, and
@@ -1285,15 +1285,69 @@ buster alias folders) went. What it settled:
 - **HeatCross is partial.** Its form stays the pack's record until step 5's form reader; its charged shot is a
   weapon definition (routine 0x06) whose setup returns its own burn (lib/burner, FireBrn's action, with
   HeatCross's burner and flame: `heatcross/charge/action`, step 8g).
-- **What the attack keeps stays numeric for now**: the shot's kind in the attack's first parameter (the
-  projectile family's, §5.3), the throw as the shot's variant 2, the arm `raise_arm` raises by attachment row.
-- **SlashCross's charged slash** (weapons 0x11 and 0x12, action 0x41) is left to family 8e. It reads the
-  charged chip's subtype and first parameter (the four Sword-family definitions' `legacy` marker gives them).
-  Its proper hook needs a runtime read of the attack chip's definition (so the charge can ask the chip for its
-  slash: StepSwrd's dash, CrosSwrd's two waves, DblDream's two slashes, the blade and the sound) and the sword
-  wave's variants as records (it spawns the wave with the chip's subtype as its first parameter).
+- **What the attack keeps** was numeric at step 7 (the shot's kind in the attack's first parameter, the throw as
+  the shot's variant 2); it is the shot's state since step 8e (below).
+- **SlashCross's charged slash** (weapons 0x11 and 0x12, action 0x41) was left to family 8e (below): it read
+  the charged chip's subtype and first parameter, which the four Sword-family definitions' `legacy` marker
+  gave.
 - **Verified** on the test content (the shots' timelines, the throw, the aliases, the role, the definitions'
   routines and charge times), the type check, and the traces and the chip lab on a real pack.
+
+**As built** (step 8e, MegaMan's weapons): every weapon routine a v1 module implemented is a `define.weapon`
+with its action a `define.action`, in the module the weapon's key names: a form's own under
+navis/00-megaman/forms/`<form>`/ (`charge`, `drop`, `wave`, `lunge`, `scatter`, `dash`, `drill`, `tackle`,
+`throw`, `throw_absorbed`, beside the kinds only it spawns: SpoutCross Beast's `surge`, TenguCross Beast's
+`whirlwind`, EraseCross's `ray`, EraseCross Beast's `erase_drop`, SlashCross Beast's `lunge_slash`, ChargeCross
+Beast's `charge_wave`, DustCross Beast's `junk_shot`, DustCross's `junk_ball`, SlashCross's `sword_wave` and
+`slashes`), one several forms or the NaviCust name under navis/00-megaman/weapons/`<name>`/weapon.luau (the
+Beast busters, the Beast claw, `tengu-wind`, `absorb`, `anti-damage`, `slash-a-charge`, and `shield`, which
+defines the four NaviCust shields and reflects), and
+the hit the dash and the tackle share in navis/00-megaman/dash_hit.luau (`megaman/dash-hit`). (The folder stays
+`00-megaman` until the navis are definitions.) What it settled:
+
+- **A setup writes its action's state**, not attack parameters: `navi:action_state(action)` gives the state of
+  the action the setup is about to return (zeroed unless that action ran last), and the setup fills what the
+  original put in the attack's variant and parameter bytes (the Beast busters' volleys, EraseCross's beam for
+  its Beast form, the claw's slashes). The buster's shot keeps what it fires as `mode` (`"shot"`, `"spread"`,
+  `"throw"`) and its projectile as a variant record; the charged shot its projectile. The NaviCust's shot
+  programs are still the navi stats' bytes (rows of the projectile's table), which the setups turn into
+  variants (`variants.by_number`); `lib/projectile`'s shots are variants only.
+- **A weapon without an action**: TenguCross's wind names no action of its own. Its definition has an
+  `instant` slot (`instant = function(user, spec)`), its setup returns nothing, and the instant chips' action
+  runs the effect once and waits its 8 ticks (`Effect::RunsThenWaits`, where the original tested the attack's
+  variant).
+- **A kind that follows its owner's action keeps the action**: where the original compared the owner's action
+  number (the whirlwind, the erase ray, the dash hit), the kind's state holds the action it was spawned under
+  and compares `owner:navi_action()` with it; the absorbed obstacle asks whether its navi runs
+  `megaman/absorb`'s action.
+- **Roles name the definitions**: `cross_protect` is GroundCross's drill's action, `cross_death` SlashCross
+  Beast's lunge's, `beast_claw` the claw's, `dust_beast_scatter` the scatter's (rules/roles.luau; the test
+  content's roles too).
+- **Kind keys by form**: a kind in navis/`<navi>`/forms/`<form>`/ is keyed `<form>/<name>` (the lint takes
+  the form as the owner), one beside the navi `megaman/<name>`.
+- **Charge times** are each definition's own row with the next row's first entry, as step 7's; a B+Back
+  special, which nothing charges, still gives its row (zeros).
+- **SlashCross's charged slash asks the chip for its slash.** What the slash is (the wave it sends, a second
+  hidden wave, the blade or none, the swing's sound, a second slash, the Beast rush's lock-on mode) is a
+  `ChargedSlash` record (navis/00-megaman/forms/slashcross/slashes), where the original read a table by the
+  attack's variant for each part. A sword names its own in its action's spec (`slash.action { ...,
+  charged = slashes.wide }`; MoonBld's swing its ring; a step sword's `step` is the dash), and the A-charge
+  (`megaman/slash-a-charge`) reads it of the attack's chip: `navi.attack_chip`, the attack's chip as its
+  definition, is the run-time read (`chip.action.args.charged`). A variable sword says `charged = "own"`: it
+  runs its own action, charged, and its pick starts as the charged slash of the pick's action
+  (`slash_charge.of_action`). The charged slash's action keeps the record and the dash in its state; the
+  charged shot (`slashcross/charge`) starts it with its own (`slashes.charge`). The sword wave's rows are named
+  variants (`sword_wave.waves`). The Beast rush takes the charged sword's lock-on mode from the attack
+  (`AttackVars::rush_lockon`, which the charge sets from the slash's `lockon`) instead of the rules' table by
+  the variant (`charged_sword_modes`, which nothing reads any more and goes with the pack's rules). The four
+  Sword-family definitions' `legacy = { subtype, params }` markers and lib/sword went.
+- **A chip still on a record** has no definition to ask (`attack_chip` reads as a stand-in with only its
+  `id`), and its action is a registration by number: the A-charge then does as the original, by the action's
+  number (the variable swords', MoonBld's) and the record's subtype and first parameter (`slashes.by_row`,
+  the one table by number left). It goes when the swords SlashCross charges are definitions.
+- **Still numeric**: `lockon_panel(x, y, mode)` in GroundCross's drill and SlashCross Beast's lunge and the
+  slashes' `lockon` (lock-on modes are step 10's), the forms by number (`battle.navi(side).form`), each
+  weapon's `legacy = { routines }`, and the variable swords' picks' chips (§12).
 
 ### 5.8 Standard chip actions: a builder per action, the chips' parameters its arguments
 
@@ -1475,10 +1529,9 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   which the support sets and clears) is the controller's `out`. Rush leaves the second WhiCapsl in the hand by
   its chip number still (that chip is a record, §5.4): the one chip number left in these modules.
 - **SlashCross's sword wave** (navis/00-megaman/forms/slashcross/sword_wave): its rows (`byte_80D7F4C`) are
-  `SwordWaveVariant` records, `sword_wave.spawn(owner, variant, x, y, element, damage, hidden?)`. The charged
-  slash (weapons 0x11 and 0x12, a v1 module) still names a wave by the number of the sword it charges, so the
-  rows are kept by that number (`sword_wave.by_slash`) until the charge asks the chip for its slash (family
-  8e). The pack's `sword_waves` data is read by no script any more.
+  `SwordWaveVariant` records, `sword_wave.spawn(owner, variant, x, y, element, damage, hidden?)`, named by the
+  sword each is of (`sword_wave.waves`; each charged slash's record names its own since step 8e, §5.7). The
+  pack's `sword_waves` data is read by no script any more.
 - **The element pillar** stays in objects/ (HeatCross Beast's and ElecCross Beast's charged chips and
   Darkness's dark flames share it), keyed `element-pillar`. What its kind number picked is the spawner's
   `ElementPillar`: lightning or flames, its times, how far back it stands, and the owner's action it lasts
@@ -1928,8 +1981,8 @@ kind's own state-machine byte, which the traces compare.
 
 - **Values.** A definition is its frozen spec table; the binding maps it to its registry and handle by identity
   and back (`Bound::def`, `def_value`). The registries' entries that are no definition (the engine's kinds,
-  what registration by number makes) reach scripts as frozen stand-ins `{ id = key }` (`BindPlan::entries`), so
-  `me.kind` always has a value. An asset is a frozen `{ name = ... }` per asset, one per name, with its kind's
+  what registration by number makes, the pack's chip records) reach scripts as frozen stand-ins `{ id = key }`
+  (`BindPlan::entries`), so `me.kind` and a navi's `attack_chip` always have a value. An asset is a frozen `{ name = ... }` per asset, one per name, with its kind's
   metatable; in the canonical tree it is `Data::Asset(kind, name)`.
 - **Names.** `Sprite`, `Navi` and `Collision` were already the object's sprite, a side's stats and an object's
   registration, so the definition and asset types are `SpriteAsset`, `NaviDef` and `CollisionType`; the rest
@@ -1944,6 +1997,9 @@ kind's own state-machine byte, which the traces compare.
 - **Objects and navis.** `battle.spawn(kind, pos)`, `spawn_first`, `spawn_at_end`; `me.kind`;
   `me:set_attack(action, kind)`; `me:navi_action()` (the action definition, the ruleset's own state or action by
   name: `"idle"`, `"move"`, `"dimming_chip"`, ..., or a link navi's number); `me:set_damage_word(w)`.
+  Since step 8e: `navi:action_state(action)` (the state of the action a weapon's setup is about to return),
+  `navi.attack_chip` (the attack's chip as its definition, read and write: §5.7) and `navi.rush_lockon` (the
+  lock-on mode the attack's own action asks the Beast rush for).
 - **Bytes the ruleset still stores.** Effects, sparks, regions and collision types content defines get the
   engine's own number after the pack data's (`Defs::number`; `Content::effect`, `spark`, `region`,
   `field_region`, `collision_type` look past the data's tables), so the byte-typed ruleset (the generic effect's
@@ -2178,15 +2234,13 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
 - **The legacy marker in a v2 definition.** A chip definition may carry `legacy = { subtype, params }`: the
   original's subtype and parameter bytes in its record, for what reads them of a chip besides its own use.
   Counted by the ratchet (the lint matches `legacy = {` and `legacy {`). StepSwrd, FtrSword, CrosSwrd and
-  DblDream carry it for SlashCross's charged slash (weapons 0x11/0x12, action 0x41), which reads a chip's
-  subtype and first parameter: exactly the coupling v2 removes. It goes when the charged slash gets a proper
-  hook, the sword chips' actions exposing what the charge needs (StepSwrd's dash, CrosSwrd's two waves,
-  DblDream's two slashes) as a trait or spec field SlashCross's weapon reads: with HeatCross's exemplar (step 7)
-  or when family 8e converts the forms. The marker's `action` and `script` (a behaviour still a v1 module) are
-  step 5's; the reader refuses them until then.
+  DblDream carried it for SlashCross's charged slash, which read a chip's subtype and first parameter; since
+  step 8e the sword chips' slashes say what the charge needs in a spec field (`charged`, §5.7) and no BN6 chip
+  carries the marker (the test pack's tickers do). The marker's `action` and `script` (a behaviour still a v1
+  module) are step 5's; the reader refuses them until then.
 - **The weapon legacy marker.** A weapon definition may carry `legacy = { routines = { ... } }`, the routine
-  numbers the pack's forms, the navis' rows and the ruleset name it by (MegaMan's buster, charged shot and blank
-  shot, HeatCross's charge). Counted by the ratchet; it goes when the forms are definitions (step 5's form
+  numbers the pack's forms, the navis' rows and the ruleset name it by (every weapon content defines: step 8e).
+  Counted by the ratchet; it goes when the forms are definitions (step 5's form
   reader) and the ruleset names weapons by handle (phase C).
 - **Registration-by-number shims.** chips/036-minibomb (action 0x12), chips/047-sword (0x13) and
   chips/056-mchnswrd (0x49) run a record's action by its subtype for records something still names by number:
@@ -2242,15 +2296,20 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   0b1-invisibl (1: Invisibl, a dark chip's substitute; the second WhiCapsl, past 0x170) and 121-darkinvs (38:
   DarkInvs, a dark chip). They go when the ruleset names those chips by trait and the recipes by handle (phase
   C, step 10). Rush's spared chip (lib/supports/rush: the second WhiCapsl's number) goes with them.
-- **The sword waves by number.** `sword_wave.by_slash` (navis/00-megaman/forms/slashcross/sword_wave) keeps
-  the waves by the charged slash's variant, the sword chip's subtype, for the v1 weapon module that names them
-  so (weapons 0x11 and 0x12). It goes when the charged slash asks the chip for its slash (family 8e).
+- **The charged slashes by row.** `slashes.by_row` (navis/00-megaman/forms/slashcross/slashes) keeps the
+  charged slashes by the original's row, a sword chip's subtype, and SlashCross's A-charge
+  (navis/00-megaman/weapons/slash-a-charge) the variable swords' and MoonBld's action numbers, for a charged
+  chip that is still a pack record (counted by the ratchet: the attack's variant and first parameter). They go
+  when the swords SlashCross charges are definitions (step 5 for their records; their slashes already name
+  their charged slash).
 - **The variable swords' picks by number.** `VariSwordSpec.legacy = { chips, sword }` (chips/varswrd,
   chips/neovari; counted by the ratchet): the chip numbers of the picks, in the picks' order, and Sword's. A
-  pick starts its action by definition, but the attack's chip, subtype and parameters are still the pick's
-  record's (lib/swords/vari reads it from `data.chips`): the Beast rush reads the attack's chip for its lock-on
-  mode, and SlashCross's charged sword (v1, action 0x41) the subtype and first parameter. It goes when the
-  attack's chip is set by definition (step 10) and the charged sword asks the chip for its slash (family 8e).
+  pick starts its action by definition, but the attack's chip is still the pick's record (lib/swords/vari
+  reads its Beast flag from `data.chips`): the Beast rush reads the attack's chip for its lock-on mode. A
+  charged pick's slash is its action's (`charged`, since step 8e), so the record's subtype and parameters are
+  no longer copied. It goes when every pick is a chip definition the spec can name (LifeSrd, Sword, LongSwrd,
+  WideSwrd and the sonic booms are still records: step 5): `become` then sets `me.attack_chip`, which exists
+  for it.
 
   *Since step 5* they are definitions under their compat keys (the generated `record.luau` beside the
   action's module), numbered by their legacy marker: `program_advances` names its ingredients by value, and

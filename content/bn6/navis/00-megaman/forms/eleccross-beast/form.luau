@@ -16,7 +16,7 @@ return define.form {
     sprite = asset.sprite("eleccross-beast"),
     element = "elec",
     buster_bonus = 0,
-    weapons = { buster = gregar_beast_buster, a_charge = charged_chip_bonus, alt_a_charge = charge },
+    weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = charge.weapon },
     mugshot = asset.mugshot("tomahawkcross-beast"),
     identity = {
         version = 0,
