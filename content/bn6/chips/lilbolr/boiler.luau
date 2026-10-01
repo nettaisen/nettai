@@ -40,7 +40,15 @@ export type State = {
 }
 
 local SPRITE = asset.sprite("lil-boiler")
-local NAME_ID = 0xEB
+-- Its identity: a field object, with the look something that takes its
+-- place shows (DustMan's junk).
+local IDENTITY = define.identity {
+    id = "lilbolr",
+    class = "field_object",
+    version = 0,
+    ai_index = 1,
+    look = { sprite = asset.sprite("lil-boiler"), anim = 0, palette = 0, shadow = true },
+}
 local MAX_HP, LIFETIME = 4000, 0xB4
 -- Its HP never goes below this: it deals 999 at most.
 local MIN_HP = 3001
@@ -216,7 +224,7 @@ local function erupt(me: Object)
                     element = AQUA,
                     z = 0,
                     region = regions.ring,
-                    hit_effect = 0xFF,
+                    hit_effect = nil,
                     target = collision.hits_navis,
                     self_type = collision.attack,
                     damage = bit32.band(word, 0xFFFF),
@@ -344,7 +352,7 @@ local function init(me: Object)
     sprite.shadow = "ground"
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     sprite.palette = 3 * s.level
-    me.name_id = NAME_ID
+    me.identity = IDENTITY
     local x, y = s.target_x, s.target_y
     me.future_panel_x, me.future_panel_y = x, y
     local tx, ty = field.center(x, y)

@@ -63,7 +63,7 @@ local function blast(me: Object)
         element = me.element,
         region = r,
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = HIT.hits,
         self_type = HIT.is,
         damage = me.damage,

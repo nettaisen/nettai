@@ -40,7 +40,7 @@ pub(super) fn deletion(b: &mut Battle, r: ObjectRef) {
 /// from here.
 fn begin_deletion(b: &mut Battle, r: ObjectRef) {
     let c = coll_mut(b, r);
-    c.region = 0;
+    c.region = None;
     // sub_801A5E2
     c.links[crate::collision::link::CONFUSE] = None;
     c.links[crate::collision::link::BLIND] = None;
@@ -97,8 +97,9 @@ fn explode(b: &mut Battle, r: ObjectRef) {
     // The second call reuses whatever registers the first left: Z, but
     // list-node addresses from the allocator for X and Y
     // (objects-and-player.md §A.3).
-    crate::kinds::effect::spawn(b, pos, 3, 0, 0, 0);
-    crate::kinds::effect::spawn_after_spawn(b, pos.z, 3, 0, 0, 0);
+    let look = b.content.defs.roles.effect(crate::content::EffectRole::Deletion);
+    crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
+    crate::kinds::effect::spawn_after_spawn(b, pos.z, look, 0, 0, 0);
     let o = b.objects.get_mut(r);
     o.timer = 0x15;
     o.phase = 8;
@@ -135,8 +136,8 @@ fn fade_out(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8011020`: the navi's death hook (its overlays come down).
 fn death_hook(b: &mut Battle, r: ObjectRef) {
-    let name_id = b.objects.get(r).name_id;
-    super::form::navi_death_hook(b, r, name_id);
+    let identity = b.objects.get(r).identity;
+    super::form::navi_death_hook(b, r, identity);
 }
 
 // ---- Common reaction entry ---------------------------------------------------------
