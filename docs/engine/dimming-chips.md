@@ -210,9 +210,11 @@ Port: kinds/player/mod.rs
 ### 3.5 Lab coverage
 
 Every Barrier-family scenario reaches the controller, `sub_801A7CC` and the visual's init, action 0 and action
-4's going down and freeing. **Unverified**: ending an old visual (`sub_80E0DC0`: no scenario raises a barrier
-over another), the visual's regrowth (action 4 back to 0: BblWrap's bubble isn't popped and regrown in any
-scenario), action 8 (a popped barrier blown away), the hidden-parts rule for type 9 on the remote side, the
+4's going down and freeing. The coverage scenarios add, all **verified**: ending an old visual (`sub_80E0DC0`,
+`chips/0x0b3-barr100/over-barrier`), the visual's regrowth (`chips/0x0b5-bblwrap/popped`), action 8, a barrier
+blown away (`chips/0x0b3-barr100/blown-away`, `chips/0x0b6-lifeaur/weak-and-strong`, and AirShot, WindRack and
+AirSpin against Barr100), and a barrier broken with damage to spare (`chips/0x0b3-barr100/broken`, and every
+family's first chip against Barr100). **Unverified**: the hidden-parts rule for type 9 on the remote side, the
 blind viewer and off-field owner branches.
 
 ## 4. Subtype 5: the panel chips (PnlRetrn, HolyPanl, Snctuary, ComingRd, GoingRd)
@@ -288,7 +290,9 @@ flag and frees itself; on N+65 the controller goes to 0xC.
 
 **Lab**: PnlRetrn, HolyPanl, Snctuary, ComingRd and GoingRd are reached (soundmod rounds 2 and 3 stop at
 PnlRetrn). Kind 6 (the own-panel collector) matches scratch recordings of AntiRecv's counterattack (chips.md
-§3.6.7). **Unverified**: kind 9, kinds 1-3 and 7-16 (no chip), side 1's road swap, a changer with no flag pointer.
+§3.6.7). Side 1's road swap is **verified** (`chips/0x0aa-comingrd/side1`, `chips/0x0ab-goingrd/side1`), and a
+holy panel cracked under its user in the same dimming (`chips/0x0a8-holypanl/cut-in-geddon`). **Unverified**: kind
+9, kinds 1-3 and 7-16 (no chip), a changer with no flag pointer.
 
 ## 5. Subtype 26: BugFix
 
@@ -347,8 +351,9 @@ tick `sub_80E1352(navi, 0xF)`, Timer 0x1E, sounds 0x77 and 0xD1; count to 0 → 
 `sub_80C4AAC`: as variant 0's.
 
 **Lab**: variant 0 is **verified** as far as the trace records it (19 scenarios; blocked today by the panic).
-**Unverified**: a non-player navi's sprite, a navi with parts, the stat 0x21 = 0 branch (`sub_801443C`: every
-lab navi has a Beast Out counter), variants 1 and 2 (no caller).
+A navi with parts is **verified** (`chips/0x0b0-bugfix/link-navi`: HeatMan uses it). **Unverified**: a non-player
+navi's sprite, the stat 0x21 = 0 branch (`sub_801443C`: every lab navi has a Beast Out counter), variants 1 and 2
+(no caller).
 
 ## 6. Subtype 9: the instruments (Fanfare, Discord, Timpani, Silence)
 
@@ -408,9 +413,10 @@ present. Its table: 0 `sub_80D4198`, 1 `sub_80165B8`, 2 `sub_80D42E8`, 3 `sub_80
 `byte_80D4078` (4-byte rows by Param1: play length /2, effect period, palette, tune period):
 Fanfare [0x55, 3, 0, 0x40], Discord [0x37, 3, 2, 0x40], Timpani [0x3C, 3, 4, 0x40], Silence [0x78, 3, 6, 0x40].
 
-**Lab**: the four instruments' appear, rest and play with every effect are reached. **Unverified**: the
-destroyed action (0/9 blocks: no scenario breaks or removes an instrument), Fanfare's Beast Over test, the
-battle-over branches, a failed collision.
+**Lab**: the four instruments' appear, rest and play with every effect are reached; the destroyed action
+(`chips/0x092-fanfare/broken`, `pushed`, and Discord's, Timpani's and Silence's `broken`) and a tune played to its
+end (`chips/0x092-fanfare/lifetime`) are **verified**. **Unverified**: the removal paths (absorb, blink),
+Fanfare's Beast Over test, the battle-over branches, a failed collision.
 
 ## 7. Subtype 13: AirRaid1-3
 
@@ -492,7 +498,9 @@ takes off 519..548, bombs from 550 (overlay) with the first strike at 551, then 
 
 **Lab**: the plane, its propeller and overlay, the bombs with and without the neighbour pick are reached.
 **Unverified**: the destroyed action's removal paths (absorb, blink), the battle-over branch, the no-target
-branch (step 2), a failed collision, the overlay's EV+0x10/0x14/0x18 and Param3-0 branches (LilBoiler's).
+branch (step 2), a failed collision, the overlay's EV+0x10/0x14/0x18 and Param3-0 branches (LilBoiler's). The lab
+has recordings for the plane shot down, the battle's end and the bombs against a barrier and an invisible navi
+(`chips/0x068-airraid1/broken`, `ko`, `barrier`, `invisible`), which the port doesn't replay yet.
 
 ## 8. Subtype 28: Sensor1-3
 
@@ -575,8 +583,9 @@ at once) → VISIBLE, action 4; 4 `sub_80D94B8`: region 1; 8 `sub_80D94C2`: when
 `sub_80D94E6`: region 0, state 8. Then present.
 
 **Lab**: the scan, the fire and the laser are reached (Sensor1-3, 21/22 scenarios per chip before the panic).
-**Unverified**: the pushed turret (0/3 blocks), the removal and absorb paths and the broken turret, the laser's
-re-arming, the scanner's blocked-by-object and edge branches, the battle-over branches, failed collisions.
+The pushed turret (`chips/0x071-sensor1/pushed`), the broken turret (`broken`), the laser's re-arming (`twice`)
+and the battle-over branches (`ko`) are **verified**. **Unverified**: the removal and absorb paths, the scanner's
+blocked-by-object and edge branches, failed collisions.
 
 ## 9. Subtype 36: SumnBlk1-3
 
@@ -621,8 +630,9 @@ controller, damage word, +0x64 = Param1, EV+0 = the flag pointer, `*flag = 1` (w
 4. None: not found. One: it. More: the one with the smallest row (a later one on a tie).
 5. The result: the panel in front of the chosen one (as in step 2).
 
-**Lab**: no scenario has a hole in front of the user: only the controller's early exit is reached (9/14
-blocks). **Unverified**: the whole navi (§9.2, §9.3).
+**Lab**: `chips/0x087-sumnblk1/hole-ahead`, `after-geddon` and `chips/0x089-sumnblk3/hole-ahead` have a hole in
+front of the user and reach the whole navi (§9.2, §9.3: 127 blocks and branch sides the lab didn't have); the port
+doesn't replay them yet, so the navi stays **unverified**.
 
 ## 10. Subtype 27: ColorPt, DblPoint
 
@@ -661,9 +671,10 @@ Param1 · 4; coordinates from the panel; sound 0x129; state 4 and the update run
 
 Parameters: ColorPt [0, 0x0A] (+10), DblPoint [1, 0x14] (+20).
 
-**Lab**: the points, the steal and the flight are reached. **Unverified**: the bonus itself (the lab's next chip
-is none or has no damage: 080E66E0, 080E66EC, 080E66F6 unreached), the special-source branch, a missing navi,
-`sub_800D53C` running off the field.
+**Lab**: the points, the steal and the flight are reached, and the bonus itself by `chips/0x0c2-colorpt/bonus`,
+`chips/0x0c4-dblpoint/bonus` and `chips/0x062-lilbolr1/colorpt` (a Cannon or a LilBoiler next), which the port
+doesn't replay yet. **Unverified**: the bonus, the special-source branch, a missing navi, `sub_800D53C` running
+off the field.
 
 ## 11. What the port needs (data and framework)
 
