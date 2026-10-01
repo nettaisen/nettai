@@ -22,6 +22,7 @@ attachment = { pool = "actor", index = 0x05 }
 "eraseman/navi" = { pool = "actor", index = 0x15 }
 "chrgeman/navi" = { pool = "actor", index = 0x16 }
 "grndman/navi" = { pool = "actor", index = 0x17 }
+"dustman/navi" = { pool = "actor", index = 0x18 }
 "engine/cross-merge" = { pool = "actor", index = 0x1B }
 "sandwrm/hole" = { pool = "actor", index = 0x1C }
 "sunmoon/sun" = { pool = "actor", index = 0x24 }
@@ -111,6 +112,7 @@ thunder-column = { pool = "attack", index = 0x8B }
 "megaman/dash-hit" = { pool = "attack", index = 0xAF }
 "dustcross/junk-ball" = { pool = "attack", index = 0xB0, scratch_z_fraction = true }
 "slashcross-beast/lunge-slash" = { pool = "attack", index = 0xB1 }
+"dustman/junk" = { pool = "attack", index = 0xB3 }
 "sunmoon/meteor" = { pool = "attack", index = 0xB5 }
 "sunmoon/moon-beam" = { pool = "attack", index = 0xB6 }
 "elmntman/bolt" = { pool = "attack", index = 0xB8, scratch_z_fraction = true }
