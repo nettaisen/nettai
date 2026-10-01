@@ -45,9 +45,11 @@ templates in which the other side acts (`counter`, `guard`, `barrier`, `invisibl
 The lab's driver now waits out a cut-in, and the 670 are recorded to their ends. The engine matches every one on
 every frame, so the tables below stand and the templates now cover what their names say. Two things remain true
 of any recording and are worth checking before leaning on one: its last frame (a recording proves nothing past
-it), and its status in the lab's index. 380 recordings are `unmet`: they ran to their end without doing what
-their description says, usually because the chip can't reach the opponent from where the template stands
-(ElecMan's and TomahawkMan's `hit`, a sword's `hit` from three columns away).
+it), and its status in the lab's index. 380 recordings were `unmet` until completeness.md §11's work: they ran to
+their end without doing what their description said, usually because the chip can't reach the opponent from
+where the template stood (ElecMan's and TomahawkMan's `hit`, a sword's `hit` from three columns away). The
+templates now stand the navis where the chip lands, or say in their description and expectations what they show
+(no damage out of reach; the use alone, with the scenario that records the hit), and none is `unmet`.
 
 ## Templates over every action handler family
 
@@ -194,7 +196,7 @@ standard chip action…), whichever section below the family belongs to:
 | FlashBomb | landed, broken before the flash | | yes | chips/0x039-flshbom1/landed, shot: verified |
 | Bombs | bomb kind 1, seed kind 3, FlashBomb levels 3 to 8 | no chip | unreachable | |
 | Navi chips (§3.6.7-§3.6.36) | no footing for the navi (action 0 to its leave) | the user always stands on solid ground | yes (AirShoes over a hole) | chips/…/no-footing for Roll, ProtoMan, HeatMan, ElecMan, SlashMan, EraseMan, ChrgeMan, SpoutMan, TmhkMan, TenguMan, GrndMan, DustMan, BlastMan, DiveMan, CrcusMan, JudgeMan, ElmntMan, Colonel, HackJack, Bass, BigHook, DeltaRay, BassAnly, CrossDiv: verified |
-| Navi chips | the battle ending mid-attack | no KO inside a navi chip | yes | chips/…/ko for the same navis (but ElecMan, TmhkMan and HackJack, which don't reach a standing opponent), pa/0x15c-twinldrs/ko, pa/0x15d-crosover/ko, pa/0x15a-mstrcros/ko: verified |
+| Navi chips | the battle ending mid-attack | no KO inside a navi chip | yes | chips/…/ko for the same navis (ElecMan's and TmhkMan's from the adjacent column, the only one their strikes reach; none for HackJack, whose original stops), pa/0x15c-twinldrs/ko, pa/0x15d-crosover/ko, pa/0x15a-mstrcros/ko: verified |
 | Navi chips | an opponent the navi can't find or reach, and one behind a barrier | the opponent always stands in the open | yes | chips/…/invisible, rock-front and barrier for each of the nineteen navi chips: verified |
 | Navi chips | a pool with no free slot, a missing collision slot | pool full | unreachable | |
 | Navi chips | the navi AI's variants (Param1 0 and the like): SpoutMan's, BlastMan's, ElecMan's, ChargeMan's, SlashMan's, DiveMan's, JudgeMan's whip | only the bosses' AI spawns them | unreachable | |
@@ -393,6 +395,18 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 | FlotShoe on every stage (grass, ice, poison, volcano, holy, cracked, holes, roads) and AirShoes over holes, cracked, ice and poison panels | `navicust/flotshoe-stage-*`, `airshoes-stage-*` | match |
 | The four bugs a BugBomb gives (bug codes 0x18, 0x19, 0xF5 and stat 0x14), one after another on one navi, and the navi living with them (blank shots, the HP drain, the panel trail, the custom screen's drain) | `chips/0x043-bugbomb/four` | matches |
 | An uninstall (bug code 0xF8) landing on BodyPack's programs (UnderShirt stays), on a navi in Beast Out (the form's shoes come back), on a link navi (it keeps what it has), and on UnderShirt at 30 HP | `chips/0x0b9-uninstll/folded`, `folded-beast`, `folded-navi`, `folded-undershirt` | match |
+| An uninstall on a navi in each Cross and Cross Beast of both versions and in Gregar Beast Out: each form's NaviCust refresh (`sub_801469C`'s table: its `navicust_refresh`) gives its flags back | `chips/0x0b9-uninstll/folded-cross-{spout,tomahawk,tengu,ground,dust,heat,elec,slash,erase,charge}` and each `-beast`, `folded-beast-gregar` | match |
+| An Uninstll'd Cannon at a navi in Beast Over: nothing lands (Falzar Beast Over untouchable, Gregar's invulnerable), so nothing is uninstalled; the Falzar navi has no shoes of its own, and the form gives it AirShoe and FloatShoe | `chips/0x0b9-uninstll/folded-beast-over`, `folded-beast-over-gregar` | match, since the fix below |
+| A Cross chosen on a later screen while in Beast Out (the Beast's Cross: `sub_80153EC`, `sub_801544C`) | `forms/falzar/beast-then-cross` | matches |
+| The Beast rush chaining the next chip on an A press (it runs inside the rush), and not chaining a variable sword, a dimming chip or an empty hand (`sub_800FC30`) | `forms/falzar/beast-rush-chain`, `-sword`, `-varswrd`, `-dimming` | match |
+| The dark chips with no BugFrags: each is its substitute (DrkSword's Sword, DarkThnd's Thunder, DrkRecov's Recov10, DarkInvs's Invisibl, DarkPlus's Atk+10: `sub_8010D58`, `sub_800EF02`); two DrkSwords with one frag | `chips/0x11e-drksword/no-frags`, `last-frag`, `chips/0x11f-darkthnd/no-frags`, `0x120-drkrecov/no-frags`, `0x121-darkinvs/no-frags`, `0x122-darkplus/no-frags` | match |
+| Full Synchro's aura hidden while its navi is away for BugFix's glow, and shown again; BugFix does no damage, so the synchro stays for the next chip (`sub_80C4C46`, `sub_80C4C4C`) | `flow/synchro-bugfix` | matches |
+| The AntiDmg program's B+Back stance catching a Cannon, and a Sword (AntiDmg's counter either way: `sub_80105F2`; the shuriken at a random enemy, `sub_8016004`) | `navicust/antidmg-caught`, `antidmg-caught-sword` | match |
+
+Fixed from these: Falzar Beast Over's form flags (`sub_8014674`) are one literal, 0x08000030 (the disassembly
+renders it as a pointer): AirShoe and FloatShoe with the untouchable flag. The port had the untouchable flag
+alone, which no recording showed, since every earlier Falzar Beast Over navi had its own AirShoes and FlotShoe.
+
 | START pause (battle-flow.md §3.5): only the pausing player resumes; both on one tick (side 0 pauses); during a dimming and once the battle is over (nothing) | `flow/pause`, `pause-both`, `pause-dimmed`, `pause-over` | match |
 | A screen confirmed with nothing picked keeps the hand's chips; only Beast Out picked empties it | `flow/keep-hand` | matches |
 | The custom screen opened while an attack is under way (a Vulcan mid-burst), and by both players on the tick the gauge fills (L and R) | `flow/custom-open-busy`, `custom-open-both` | match |
@@ -440,6 +454,8 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 | A step starting in its Land phase (0x10) | Nothing starts a step there. |
 | Result codes 4 (escape), 5 (communication error), 9 and 0xA (terminate) | No running in a netbattle (L gives the message); the others are the link's, which the lab's emulated cable never trips. |
 | Rush with chip 0x17E (the hand left alone) | Chip 0x17E, the other WhiCapsl, comes in no code: it can't be in a folder. |
+| A form's NaviCust refresh in Beast Over (`sub_801479C`, `sub_80147B2`) | The refresh follows a bug code a hit brings, and no hit lands on Beast Over: Falzar's form flags make the navi untouchable (ObjectFlags1 0x08000000, which the collision kernel drops every pair on), Gregar's invulnerable for 0xFFFF ticks (`chips/0x0b9-uninstll/folded-beast-over` and `-gregar` show it). |
+| AntiDmg's counter aimed at the nearest enemy ahead (`sub_8016218`, the counter's variant 1) | The variant is the counter's caller's: every trap's (`sub_801056A`, six callers) passes 0, and the AntiDmg program's stance passes its own, which its weapon routine (0x3D, `sub_80121BC`) sets to 0. |
 | A navi appearing mid-battle (`sub_80164A0`) | Only for actors whose AIData+2 is set, which a netbattle's players' isn't. |
 | The Beast Out lock-on's tie-break between several targets | Its candidates are a side's alive-actor slots, and a netbattle fills one a side. |
 | Bug code 0xFB (the body programs go, UnderShirt too), and the charged shot's and the buster's other projectile kinds | Only projectile kind 0x1A carries the code, and a player's shots take their kind from NaviStats+0x4F (the charged shot) and +0x4D (the buster), which nothing writes: not the stats' init (`initNaviStats_WithDefaultStatsMaybe_8013438`, `init_8013B64`), not a NaviCust program's or bug's routine, and no attack a netbattle has carries bug code 0x4D or 0x4F (a code below 0x64 stores to the stat of that number). Both are 0 in all 8,798 navi stat blocks of the lab's 4,399 setups (every program, bug, navi and form). |

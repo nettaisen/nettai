@@ -6,21 +6,25 @@ a netbattle can reach is left without a counterpart. The audit found two groups,
 navis' charged attacks (65 routines, §4) and six chip weapons that were defined without behaviour (§9), which
 its first run missed. What is left are caveats (§7) and code that is ported but that no recording runs (§6).
 
-Two things this document said before were wrong or weaker than they read, and are corrected here:
+Three things this document said before were wrong or weaker than they read, and are corrected here:
 
 - **"Missing: 0" was false** while the six chip weapons had no `setup` (§9). The audit now follows the weapon
   table and has a stub check; both report none.
 - **"All of which the engine reproduces in full" covered less than it said.** 670 of the lab's recordings ended
   inside a cut-in chip's telop, about 80 frames after the chip was used and before it did anything (§10). A match
   on those vouched for the telop's start and nothing of the chip. They are recorded to the end now, and match.
+- **380 recordings didn't do what their names said** (`unmet` in the lab's index: the chip never reached the
+  opponent from where its template stood). They are placed where the chip lands, or their goal says what they
+  show (§11); none is left. One of the recordings written for this found a port bug: Falzar Beast Over's form
+  flags lacked AirShoe and FloatShoe (§11).
 
 The audit is a tool in the verification workspace (`tools/audit/audit.py`, with its exclusion rules in `excl.py`,
 the hand-read classes in `manual.py` and the stub check in `stubs.py`); it runs against an engine checkout and
-should be run again after large merges. Figures here are for the engine with chips, weapons, navis and statuses
-by handle (content model v2's steps 10 to 12) and the six chip weapons merged, and a lab of 5,078 scenarios:
-5,058 recorded (the other 20 can't be: 18 skipped, 2 where the original itself stops advancing). The engine
-reproduced every recording on every frame at the lab's last full run; the 684 recorded again or added since
-(§10, §6.1) were replayed on their own and match.
+should be run again after large merges. Figures here are for the engine after content model v2 (step 13: forms,
+navis and everything else by handle) with the Falzar Beast Over fix, and a lab of 5,169 scenarios: 5,149
+recorded (the other 20 can't be: 18 skipped, 2 where the original itself stops advancing). The engine reproduces
+every recording on every frame (5,125 of them in the last full run on this branch, and the others in their own
+agents' runs).
 
 ## 1. Method
 
@@ -81,37 +85,41 @@ reproduced every recording on every frame at the lab's last full run; the 684 re
 
 ## 2. Counts
 
-8,116 routines are in the inventory; 4,033 of them run in the lab.
+8,116 routines are in the inventory; 4,060 of them run in the lab.
 
 | Class | Routines |
 |---|---|
-| Ported: cited in the engine's source or content (3,193 run, 225 don't: §6.1) | 3,418 |
+| Ported: cited in the engine's source or content (3,232 run, 208 don't: §6.1) | 3,440 |
 | Out of scope: not reachable from a netbattle's code | 3,175 |
-| Documented: cited in docs/engine only (288 run, 153 don't) | 441 |
+| Documented: cited in docs/engine only (269 run, 152 don't) | 421 |
 | Out of scope: excluded by a rule (§5) | 349 |
-| Folded into a ported caller (27 of them never run) | 197 |
+| Folded into a ported caller (24 of them never run) | 205 |
 | Infrastructure a netbattle runs | 126 |
-| Presentation: HUD tasks | 125 |
-| Trivial: empty or an accessor | 117 |
-| Run in matching recordings, no counterpart by name | 74 |
+| Trivial: empty or an accessor | 122 |
+| Presentation: HUD tasks | 112 |
+| Run in matching recordings, no counterpart by name | 73 |
 | Link transport: replaced by the port's netplay | 53 |
 | Folded into a documented caller (6 of them never run) | 20 |
-| Presentation: custom screen drawing, the IWRAM draw pass, camera | 21 |
+| Presentation: custom screen drawing, the IWRAM draw pass, camera | 20 |
 | **Missing** | **0** |
+
+Since content model v2's step 13 a form's flags and its NaviCust refresh are data of its definition (its
+`status_reset` and `navicust_refresh`), so the per-form routines of `sub_8014536` and `sub_801469C` count as
+folded into those two, which the engine cites.
 
 By area:
 
 | Area | Ported | Documented | Folded | Run, matching | Presentation | Link transport | Trivial | Infrastructure | Out of scope |
 |---|---|---|---|---|---|---|---|---|---|
-| IWRAM routines | 14 | 13 | 3 | 0 | 7 | 0 | 0 | 0 | 48 |
-| Object system | 8 | 15 | 3 | 0 | 0 | 0 | 0 | 0 | 5 |
-| Battle flow | 64 | 89 | 11 | 2 | 0 | 0 | 16 | 0 | 136 |
+| IWRAM routines | 15 | 13 | 3 | 0 | 6 | 0 | 0 | 0 | 48 |
+| Object system | 9 | 14 | 3 | 0 | 0 | 0 | 0 | 0 | 5 |
+| Battle flow | 65 | 88 | 11 | 2 | 0 | 0 | 16 | 0 | 136 |
 | Battle objects and panels | 100 | 27 | 3 | 2 | 0 | 0 | 6 | 0 | 35 |
-| Actors, collision, status, HUD | 518 | 98 | 41 | 12 | 123 | 0 | 36 | 2 | 154 |
+| Actors, collision, status, HUD | 531 | 82 | 50 | 13 | 110 | 0 | 42 | 2 | 154 |
 | Link status, battle settings | 2 | 10 | 1 | 0 | 0 | 2 | 1 | 0 | 15 |
-| Custom screen, gauge, camera | 168 | 29 | 66 | 57 | 16 | 0 | 30 | 3 | 371 |
+| Custom screen, gauge, camera | 173 | 28 | 65 | 55 | 16 | 0 | 29 | 3 | 371 |
 | Link layer | 1 | 11 | 0 | 0 | 0 | 51 | 16 | 0 | 110 |
-| Object kinds, chips, navis | 2,482 | 105 | 89 | 1 | 0 | 0 | 12 | 0 | 2,650 |
+| Object kinds, chips, navis | 2,483 | 104 | 89 | 1 | 0 | 0 | 12 | 0 | 2,650 |
 | Elsewhere, run in a netbattle | 61 | 44 | 0 | 0 | 0 | 0 | 0 | 121 | 0 |
 
 Object kinds, by handler:
@@ -128,7 +136,7 @@ references; T4 0x0C, 0x4C and 0x4D from nowhere).
 
 ## 3. What "run in matching recordings" covers
 
-74 routines run in netbattles, are cited nowhere, and fall under no other class: the custom screen's drawing
+73 routines run in netbattles, are cited nowhere, and fall under no other class: the custom screen's drawing
 helpers (the hand's chip icons, the cursor, the chip window: 0x080279C8–0x0802A394, about 50 routines), the
 camera's update, stat accessors, save flag tests, and fragments of ported routines that the symbol table names
 separately (`loc_801083E` inside the buster's shot, `sub_8010D04` behind the link navis' damage tables). Every
@@ -194,18 +202,18 @@ Three more things are out of scope without a rule in the audit, since no routine
   of the lab's setups have it 0. The port has the stat, the code, the variant and the action
   (`tornado/back-spread`), all unreachable.
 
-- **Two ruleset roles name actions the port doesn't have**, and neither can start in a netbattle. They are
-  left as they are for content model v2's step 13 to keep as documented stubs or remove:
-  - `actions.turn`, the turn L or R starts (the original's action 0x3B, `sub_80EDF0C`, documented in
-    chip-table.md and not ported). The ruleset decodes L and R as a turn only for a navi that can turn
-    (`sub_80141F4` sets the bit at the navi's init), and that routine returns without setting it when the
-    stage's panel pattern is one of the standard columns (0x38, 0x30, 0x3C) or the battle is DustMan's
-    mini-game. All 192 link stages have pattern 0x38, so L and R only ask for the custom screen.
+- **Two of the ruleset's actions can't start in a netbattle:**
+  - `actions.turn`, the turn L or R starts (the original's action 0x3B, `sub_80EDF0C`), is ported since content
+    model v2's step 13 (navis/megaman/turn.luau) and runs in no recording. The ruleset decodes L and R as a turn
+    only for a navi that can turn (`sub_80141F4` sets the bit at the navi's init), and that routine returns
+    without setting it when the stage's panel pattern is one of the standard columns (0x38, 0x30, 0x3C) or the
+    battle is DustMan's mini-game. All 192 link stages have pattern 0x38, so L and R only ask for the custom
+    screen.
   - `actions.volley`, a volley of buster shots (the original's action 0x30 entered from the status routine,
-    `loc_801B006`, on request bit 0x40000000 of AIData+0x44). That bit is tested there and nowhere raised: of
-    the 26 calls of the request setter (`SetAIData_Unk_44_Flag`) none passes it, as a literal or as a shift, and
-    the literal's six other uses are sprite attributes and object flags. The port's content API can name the
-    request (`"volley"`), and nothing does.
+    `loc_801B006`, on request bit 0x40000000 of AIData+0x44), is a role left unfilled. That bit is tested there
+    and nowhere raised: of the 26 calls of the request setter (`SetAIData_Unk_44_Flag`) none passes it, as a
+    literal or as a shift, and the literal's six other uses are sprite attributes and object flags. The port's
+    content API can name the request (`"volley"`), and nothing does.
 
 The 3,175 unreachable routines are mostly the other 138 object kinds' (viruses, bosses, story objects) and what
 only they call.
@@ -214,30 +222,54 @@ only they call.
 
 ### 6.1 Ported routines no recording runs
 
-225 routines the source cites are never run by the lab (260 before the cut-in chips' recordings ran to their
-end and the first scenarios written from this list). A citation is not a test: these are the port's unverified
-parts, or content for something a netbattle can't do. By the file that cites them, with whether a netbattle can
-run them where that has been read:
+208 routines the source cites are never run by the lab (260 before the cut-in chips' recordings ran to their
+end, 225 before the scenarios of the second batch below). A citation is not a test: these are the port's
+unverified parts, or content for something a netbattle can't do. By the file that cites them, with whether a
+netbattle can run them where that has been read:
 
 | Where | Routines | What | A netbattle |
 |---|---|---|---|
 | `content/bn6/lib/instant` | 26 | instant effects 2, 6, 9, 11, 16 and 17: the invisibility, repair, the immobilizer, the side special, the meteor shower, the dust storm and its motes | can't: no chip has them, and the weapon routines that name two of them (0x71, 0x83) are named by no form's or navi's row and no NaviStats byte |
-| `crates/bn6-battle/src/kinds/obstacle.rs`, `content/bn6/objects/encased-bubble` | 21 | an obstacle thrown (`sub_8018002`'s steps) or encased in ice or a bubble (`sub_801813A`'s, and the bubble it becomes); the actors' hit reactions on an obstacle | can't: the two requests are made only by routines nothing calls (field-objects.md §4.5), and nothing starts those reactions on an obstacle |
+| `crates/bn6-battle/src/kinds/obstacle.rs`, `content/bn6/objects/encased-bubble`, and the two requests' citations | 22 | an obstacle thrown (`sub_8018002`'s steps) or encased in ice or a bubble (`sub_801813A`'s, and the bubble it becomes); the actors' hit reactions on an obstacle | can't: the two requests are made only by routines nothing calls (field-objects.md §4.5), and nothing starts those reactions on an obstacle |
 | `content/bn6/chips/airspin` | 13 | the seeking whirlwind (T3 0xD4): AirSpin's variant 1 | can't: no chip record sends it |
 | `crates/bn6-battle/src/battle.rs` | 13 | the communication error (`sub_8007EB8`) and escape (`sub_800AAD6`) results, the set's second init entry, the per-player gauge mode's routines | not the simulation's (the link is the port's netplay), or battle flag 0x40 |
 | `kinds/player/actions/cross_change.rs`, `entry.rs`, `hand.rs` | 17 | the Cross change and knockout while paused, the navi that appears mid-battle, the link navis' chips leaving the hand | can't: no live writer of the Cross change (unverified.md) |
-| `content/bn6/lib/rapid_buster.luau`, `lib/dimming/blinding_flash.luau`, `chips/bugfix/glow.luau`, `navis/megaman/weapons/shield`, `navis/tomahawkman`, `chips/tornado`, `chips/mstrcros`, `chips/rskyhny` | 21 | weapon routines 0x39, 0x3C, 0x8C and 0x46; dimming effect 2; the glow's two other variants; the Tornado action's subtype 3; a sword phase and a bee action nothing sets | can't: nothing names the routine, effect, variant or phase (the NaviCust writes weapon routines 0x3B, 0x8B and 0x3D only; the link navis' level tables 0x30 and 0x34) |
-| `crates/bn6-battle/src/collision.rs`, `field.rs`, `crates/bn6-frontend/src/objects.rs` | 16 | IWRAM routines | run, not counted: the lab's coverage doesn't instrument IWRAM |
-| `kinds/player/form.rs`, `actor.rs` | 20 | the forms' NaviCust refresh hooks (`sub_801469C`'s table), fields the viruses use | not read yet |
-| the rest, one to four each (about 45 files) | 78 | single phases and helpers: LifeSync's marker, the follow effect's other looks, LilBoiler's layer, a bomb's lingering hit, the lock-on marker's choice between two targets, and others | not read yet: the next scenarios |
+| `content/bn6/lib/rapid_buster.luau`, `lib/dimming/blinding_flash.luau`, `chips/bugfix/glow.luau`, `navis/megaman/weapons/shield`, `navis/tomahawkman`, `chips/tornado`, `chips/mstrcros`, `chips/rskyhny` | 22 | weapon routines 0x39, 0x3C, 0x8C and 0x46; dimming effect 2; the glow's two other variants; the Tornado action's subtype 3; a sword phase and a bee action nothing sets | can't: nothing names the routine, effect, variant or phase (the NaviCust writes weapon routines 0x3B, 0x8B and 0x3D only; the link navis' level tables 0x30 and 0x34) |
+| `crates/bn6-battle/src/collision.rs`, `field.rs`, `crates/bn6-frontend/src/objects.rs`, `chips/elecman` | 15 | IWRAM routines | run, not counted: the lab's coverage doesn't instrument IWRAM |
+| `navis/megaman/turn.luau`, `chips/antidmg/counter.luau`, `kinds/player/chip_use.rs` | 4 | the turn (`sub_80EDF0C`); AntiDmg's counter aimed at the nearest enemy (`sub_8016218`); the special chip's gauge cost (`sub_800EE98`, `sub_802E830`) | can't: L and R never turn on a link stage (§5); the counter's variant is 0 wherever it starts (below); the special chip is battle flag 0x40's |
+| the rest, one to four each (about 40 files) | 76 | single phases and helpers: LifeSync's marker, the follow effect's other looks, LilBoiler's layer, a bomb's lingering hit, the lock-on marker's choice between two targets, and others | not read yet: the next batches |
 
-The audit's `unrun.txt` lists them. Scenarios written from this list so far (all match): ChargeMan stopped
-where the floor ends, with his cars out and with none (`navis/navi-05-volcchrg/charge-hole-*`); ProtoMan as the game
-has him below level 10, whose B+Back is the shield that only guards (`navi-11-stepswrd/level-5`: weapon routine
-0x34); ElmntMan's four elements by the user's A press (`chips/0x10d-elmntman/press-*`: the lab had only the one
-his timeout draws); EraseMan's aim taken at each step (`chips/0x0ec-eraseman/press-*`); DeltaRay's three strikes,
-his return and burst (`chips/0x12f-deltaray/three-strikes`, on the falzar base: the gregar base's stage has rocks
-on two of the delta's corners).
+The audit's `unrun.txt` lists them. Scenarios written from this list (all match):
+
+- First batch: ChargeMan stopped where the floor ends, with his cars out and with none
+  (`navis/navi-05-volcchrg/charge-hole-*`); ProtoMan as the game has him below level 10, whose B+Back is the
+  shield that only guards (`navi-11-stepswrd/level-5`: weapon routine 0x34); ElmntMan's four elements by the
+  user's A press (`chips/0x10d-elmntman/press-*`: the lab had only the one his timeout draws); EraseMan's aim taken
+  at each step (`chips/0x0ec-eraseman/press-*`); DeltaRay's three strikes, his return and burst
+  (`chips/0x12f-deltaray/three-strikes`, on the falzar base: the gregar base's stage has rocks on two of the
+  delta's corners).
+- Second batch, the ones a real match is most likely to reach:
+  - An Uninstll landing on a navi in each Cross and Cross Beast of both versions and in Gregar Beast Out
+    (`chips/0x0b9-uninstll/folded-cross-*`, `folded-beast-gregar`): every form's NaviCust refresh
+    (`sub_801469C`'s table) runs, but Beast Over's two. Those can't be reached by a hit: Falzar Beast Over is
+    untouchable (§11) and Gregar Beast Over invulnerable for 0xFFFF ticks, and `folded-beast-over` and
+    `folded-beast-over-gregar` show the Cannon landing nothing. (The Falzar one found the port's missing shoes.)
+  - A Cross chosen while in Beast Out (`forms/falzar/beast-then-cross`: the Beast's Cross, `sub_80153EC` and
+    `sub_801544C`).
+  - The Beast rush chaining the next chip on an A press, and not chaining a variable sword, a dimming chip or an
+    empty hand (`forms/falzar/beast-rush-chain`, `-sword`, `-varswrd`, `-dimming`: every branch of
+    `sub_800FC30`).
+  - Each dark chip with no BugFrags, which is its substitute (`chips/0x11e-drksword/no-frags` and the other four
+    dark chips': `sub_8010D58`'s substitution, `sub_800EF02`), and DrkSword's last frag
+    (`chips/0x11e-drksword/last-frag`).
+  - Full Synchro's aura hidden while its navi is away for BugFix's glow, and shown again
+    (`flow/synchro-bugfix`: `sub_80C4C46`, `sub_80C4C4C`). A damaging cut-in chip spends Full Synchro at its use,
+    so the aura is gone before any of them hides its user; BugFix does no damage.
+  - The AntiDmg program's stance catching a Cannon and a Sword (`navicust/antidmg-caught`, `-sword`:
+    `sub_80105F2`). A sword is caught as AntiDmg's counter, not AntiSwrd's, and the shuriken goes at a random
+    enemy (`sub_8016004`). The counter's other aim, the nearest enemy ahead (`sub_8016218`, its variant 1), is not
+    reachable: the stance's weapon routine (0x3D, `sub_80121BC`) writes variant 0, and every trap's counter
+    (`sub_801056A`'s six callers) passes 0.
 
 ### 6.2 Branches that ran one way only
 
@@ -295,9 +327,9 @@ NaviStats+0x54 is unreachable (§5).
   never run.
 - **Recordings prove the paths they take, for as long as they last.** "Run in matching recordings" says nothing
   about a branch no recording takes (§6.2's list), and a recording that ends early proves nothing past its end
-  (§10). A scenario's own expectations are the check on that: 380 of the lab's recordings are marked `unmet` in
-  its index (the chip never damaged the opponent, mostly because it can't from where the scenario stands), and
-  those recordings match without showing what their descriptions say.
+  (§10). A scenario's own expectations are the check on that, and they are only as good as the template that
+  wrote them: 380 recordings were `unmet` until they were sorted (§11). None is now, but an expectation says
+  only "damaged" or "used", so a recording can still meet it on another path than its name suggests.
 
 ## 9. Defined without behaviour: the stub check
 
@@ -319,8 +351,8 @@ nothing behind it. It reads the loaded content (through the engine's own loader)
 | Weapons whose `charged_chip` says the ruleset handles them | the same; and where the forms name them | seven (`megaman/charged-chip-bonus` and its three siblings, `eleccross/a-charge`, `megaman/rock-barrage`, `protoman/a-charge`): not stubs. The original's entries are `nullsub_44`, and `sub_800FB54` tells these A-charges apart by number before it would call one (5, 0x0D, 0x1F, 0x20, 0x29, 0x2D: the chip with its bonus; 0x18: GroundCross's rocks first), as chip_use.rs does. The forms name them only as A-charges; ProtoMan's is his NaviStats+0x39 |
 | Chips without a use | a chip definition needs exactly one of `action`, `dimming`, `navi` and `instant` (the define phase's error) | none can exist. Gregar's, Falzar's, HackJack's and Django's uses are `lib/unusable`: `off_802CCB4[34]` and `[35]` and `off_802CD5C[18]` and `[19]` are NULL, and the game jumps to address 0 (the lab's recordings of Gregar, Falzar and HackJack end on that frame; the lab has no Django scenario) |
 | Actions and kinds whose update only errors | every function of the content whose body is an `error` | none |
-| Roles unfilled, or naming an action nothing implements | the loaded roles | `actions.turn` and `actions.volley`, each a `legacy` action number with no registration (0x3B, 0x30). Neither can start in a netbattle: turning is enabled only without the standard column patterns (`sub_80141F4`), and all 192 stages have pattern 0x38; no routine was found that raises the volley's request (0x40000000), and the port raises it nowhere |
-| Errors that say something is not implemented, ported, modelled or supported | every `panic!`, `unreachable!` and Luau `error(` with that wording (12) | none reachable: the four bug-code writes in setup.rs (no hit carries such a code, unverified.md); a spawn by slot number (battle mode 9's two, and no content module spawns by number); an action by number (the two roles above); a weapon without a `setup` (none now); the mode states past the fade-out (battle effects 2); `sub_80EBB78`'s AI navi version byte |
+| Roles unfilled, or naming an action nothing implements | the loaded roles | `actions.volley` unfilled: no routine was found that raises the volley's request (0x40000000), and the port raises it nowhere (§5). (`actions.turn` is filled since step 13, with the turn, which no link stage enables.) The battle mode 9 kinds `kinds.mode9_actor` and `kinds.mode9_attack` unfilled: no content defines them, and a netbattle's mode isn't 9 |
+| Errors that say something is not implemented, ported, modelled or supported | every `panic!`, `unreachable!` and Luau `error(` with that wording (12) | none reachable: the six bug-code writes in setup.rs (a weapon routine, a shot program, a form or a navi by number, the gauge speed, an unmodelled stat: no hit carries such a code, unverified.md); a weapon without a `setup` (none now); the mode states past the fade-out (battle effects 2); `sub_80EBB78`'s AI navi version byte |
 | | | one unproven: CrosOver reads its partner's Param4 through a link that outlives him, and the port models the one actor known to take his slot before the read (the user's sword). No other was found that can spawn inside the chip's dimming |
 
 The check fails when it finds a stub its notes (`stub_notes.py`) don't cover, so a new one has to be read. The
@@ -350,10 +382,38 @@ the chip. What those chips do was verified only by the scenarios that wait on th
 
 `settle` now waits out a cut-in (and through a chip that waits for a key, up to three times its limit), and the
 670 are recorded again to their ends: 687,917 frames for the 661 where there were 456,716. The engine matches
-every one. 80 of the 661 are still `unmet`: the chip runs to its end and doesn't damage the opponent from where
-the scenario stands (ElecMan's and TomahawkMan's in several templates, HackJack's because the original stops).
-The other 1,576 recordings that have a `settle` and a cut-in were recorded again too and came out frame for
+every one. 80 of the 661 were still `unmet`: the chip ran to its end and didn't damage the opponent from where
+the scenario stood (ElecMan's and TomahawkMan's in several templates, HackJack's because the original stops);
+§11 has what became of them. The other 1,576 recordings that have a `settle` and a cut-in were recorded again too and came out frame for
 frame as before.
 
 With these and the scenarios added since, the lab runs 4,033 of the inventory's routines where it ran 3,991, and
 the ported routines no recording runs fell from 260 to 225.
+
+## 11. Scenarios whose goal wasn't met
+
+The lab's index marks a recording `unmet` when the scenario's expectations (`damaged:1`, `used:0`, ...) fail at
+its end. Until this section's work 380 were: the scenario ran, the engine matched it, and it didn't do what its
+name said, nearly always because the generated template stood the opponent where the chip can't reach (a sword
+three columns away, a bomb in the adjacent column, ElecMan's strike a column off) or needed something first (a
+trap a hit, Snake a hole). A match on those vouched for less than it read. The verification workspace's
+`tools/chiplab/reach.py` now records where each chip's attack lands, from the recordings, and the generator
+places the templates by it. The 380 were sorted so:
+
+| | Recordings | What |
+|---|---|---|
+| The template was wrong: placed where the chip lands | 142 | the templates that mean "the chip hits" (Beast Out, the Cross, Atk+10, Navi+20, the counter cut-in) stand the navis where the chip lands: the adjacent column for the swords and the short reaches, two columns for Tornado, Static and MoonBld charged in SlashCross (its moon blade's ring is centred a panel ahead of its user), the gregar base's grass stage where its unseeded stage's ice blocks stop the attack (Colonel); EraseMn EX's A press comes at the aim that points down the row |
+| The goal was wrong: no damage where the chip can't reach | 65 | `hit` from three columns and `adjacent` from the next: each says the chip is out of reach there and expects the opponent undamaged |
+| The goal was wrong: the use alone | 140 | chips whose hit needs something first: a trap a hit on its user, TimeBom its countdown, Mine a step onto it, Guardian a hit on the statue, Snake and SumnBlk a hole, CircGun and Magnum an A press, the boomerangs an edge row, Lance the far column, Muramasa lost HP, MchnSwrd a paralyzed target, ElemSwrd and AssnSwrd a panel, Rflectr a shot to reflect, ColArmy an obstacle; each description names the scenario where the hit is recorded. And Sensor's counter cut-in, whose two sensors face each other, each laser ending on the other |
+| Can't be met | 30 | HackJack's three chips and the Gregar and Falzar chips stop the original (their handlers are NULL, §9); DarkPlus alone only sparkles; ElmntMan's undirected element at the adjacent column is a draw |
+| Stale | 3 | `ko` recordings of ElecMan, TomahawkMan and HackJack whose scenarios had been dropped: the first two are from the adjacent column now, HackJack's is gone |
+
+443 recordings were made again or added for this and the scenarios of §6.1's second batch, and the engine matches
+them. One didn't match at first, and it was the port's: `chips/0x0b9-uninstll/folded-beast-over`, an Uninstll at
+a side-1 navi in Falzar Beast Over that has no shoes of its own. Beast Over's form flags (`sub_8014674`) are one
+literal, 0x08000030, which the disassembly renders as a pointer; the port had taken 0x08000000 alone and so left
+out AirShoe and FloatShoe. Every Falzar Beast Over recording before had a navi with AirShoes and FlotShoe
+programs, which set the two bits anyway. The remaining bit is the collision kernel's "untouchable"
+(`sub_3007218` drops every pair in which either side has it, and poison panels skip it), the form effect
+`untouchable` since: nothing can hit a navi in Falzar Beast Over.
+
