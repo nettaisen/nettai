@@ -463,17 +463,19 @@ struct Unknown {
 /// A hit spark (effect object #4) starts at its hitter's position moved by
 /// whole pixels (`object_spawnCollisionEffect`), so it keeps its hitter's
 /// Z fraction, which is garbage when the hitter's kind keeps a spawner's
-/// register there (`scratch_z_fraction`: Sensor's laser).
+/// register there (`scratch_z_fraction`: Sensor's laser). The spark
+/// outlives a hitter that ends with the battle (the lab's
+/// chips/0x071-sensor1/ko): a freed slot keeps its object's kind until it
+/// is used again, as in the game, and that kind is asked.
 fn spark_z_fraction_unknown(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef) -> bool {
     use bn6_battle::object::Pool;
     if compat.object_slot(b, r) != Ok((Pool::Effect, 4)) {
         return false;
     }
     let Some(hitter) = b.objects.get(r).related[0] else { return false };
-    b.objects.is_allocated(hitter)
-        && compat
-            .object_slot(b, hitter)
-            .is_ok_and(|(pool, index)| compat.kind_at(pool, index).is_some_and(|(_, k)| k.scratch_z_fraction))
+    compat
+        .object_slot(b, hitter)
+        .is_ok_and(|(pool, index)| compat.kind_at(pool, index).is_some_and(|(_, k)| k.scratch_z_fraction))
 }
 
 /// One object's observable state as the comparison sees it.

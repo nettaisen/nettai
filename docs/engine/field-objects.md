@@ -450,8 +450,13 @@ pushes, blink-out, falling/rising entrances, dimming shaking, eviction.
   (`sub_800F598` reads the BIOS).
 - Ported, unverified by any trace: `sub_802EF74` (battle flag 0x40 target
   tracking, never in netbattles; the side's tracked target is
-  `SideState::tracked`), `sub_8017CC0` (no scenario pushes a fan, statue or
-  other obstacle with it), the pushes' ice and bounds branches, the
+  `SideState::tracked`), the pushes' ice and bounds branches, the
   take-hits and dispatcher variants but the default ones.
+- Verified by the coverage scenarios (docs/engine/unverified.md): the pushes
+  (`sub_8017CC0`, `sub_800F598` and the slide: AirShot at a TimeBom, a
+  BlkBomb, a LilBoiler, a Guardian, a Sensor, an IceCube, and a RockCube
+  pushed back by the other side), obstacles broken by damage, and the
+  registry's evictions (a third RockCube, a second Anubis, a RockCube after
+  a LilBoiler).
 - Actor-list types other than 0, 3, 8 and 9 (§1): no netbattle stage's
   list has them.

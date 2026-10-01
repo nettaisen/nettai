@@ -1448,8 +1448,9 @@ sparkles (T4#0 look 0x46, SE 0xA5) on the enemy navi's panels, spawns the counte
 (the other side can't cut in), clears its side's record and ends. The counterattack's effect (`sub_80E362C`) hits
 every panel with any of `byte_80E36E4[side]` (the enemy's bodies) in that element (`byte_80E36EC`, damage plus bonus,
 `sub_80C53A6`) and spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel-bursts`: shared by seven callers,
-among them TimeBom's blast) over region 0x80. The lab's ElemTrap scenarios never spring the trap: the spring, the
-sparkles, the counterattack and the bursts are **unverified**.
+among them TimeBom's blast) over region 0x80. The spring, the sparkles, the counterattack and the bursts are
+**verified** by `chips/0x0c5-elemtrap/sprung-fire` and `sprung-elec` (and `null-hit`: a hit without an element
+leaves the trap).
 
 #### 3.6.10 TimeBom, Mine, Guardian (subtypes 10, 11, 14)
 
@@ -1458,21 +1459,23 @@ sparkles, the counterattack and the bursts are **unverified**.
   (variants `byte_80CD8AC`: 0 TimeBom1-3, HP 50; 1 TimeBom+, HP 200) rises, counts 3, 2, 1 (60, 60, 60, 30 ticks,
   shown by hiding sprite parts), then hits whole-field region 0x82/0x81 (the enemy area of the side opposite its
   panel's) and sets off bursts; broken first, it only puffs. Variants 2 to 7 (HP 3 to 10; `bursts_when_broken`,
-  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them. The lab's
-  scenarios end during the countdown: the blast, breaking, removal and absorption are **unverified**.
+  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them. The
+  blast (`chips/0x090-timebom1/blast`), the bomb broken first (`broken`), pushed (`pushed`) and the battle's end
+  (`round-end`) are **verified**; removal and absorption are **unverified**.
 - **Mine** (T4 0x29 `sub_80E342C`, `objects/mine`; 121 ticks) lays T3 0x4C (`sub_80CDD44`, `objects/land-mine`),
   which shuffles the enemy's free panels (`byte_80CDF50`, 20 swaps), hops through them every 2 ticks (59 hops, SE
   0x113), then hides armed (region 1, types 0x33/0x2A) until something touches it, its HP runs out, its panel stops
   being solid or the battle ends; it blows up (T4#0 look 0x47, SE 0x70) the tick after. It has its own action table
-  and no reaction dispatcher. The lab verifies the hops; arming and blowing up are **unverified**.
+  and no reaction dispatcher. The lab verifies the hops, and arming and blowing up: stepped on
+  (`chips/0x091-mine/stepped-on`), its panel broken under it (`panel-broken`), the battle's end (`round-end`).
 - **Guardian** (T4 0x52 `sub_80E6758`, `objects/guardian`; 30 ticks) places the statue T3 0x7D (`sub_80D4C84`,
   `objects/guardian-statue`, HP 1, 6000 ticks, `sub_801B4D4`) on the free panel in front; stages place one with
   actor-list entry type 9 (`sub_800751C`, Param1 1, the panel's side). Broken by one side's hits only
   (`sub_80D4FF6` on its hit flags), it takes the other side's part: its own dimming T4 0x53 (`sub_80E680C`,
   `objects/guardian-strike`, the telop of chip 0x175, started with `sub_800BF16`), whose effect sets the statue's
   Param3; then a hit on whole-field region 0x85/0x84 (the enemy navi's panels) with sparks (`sub_801BD3C`, which the
-  game calls with the panel's Y and the element as its panel). The strike back is **unverified** (no lab scenario
-  breaks the statue).
+  game calls with the panel's Y and the element as its panel). The strike back is **verified**, on either side
+  (`chips/0x097-guardian/punish`, `own-hit`).
 
 ### 3.7 RskyHny (action 0x39, `sub_80EDD80`)
 
@@ -1517,11 +1520,11 @@ panel: 16, 13, 11). Update (`sub_80D317C`): remove, spark; battle over or off th
 - Fade (`sub_80D32C4`): blink for 10 ticks and destroy. **Nothing sets action 8 (unverified).**
 
 Verified: soundmod round 3 (RskyHny3 at frame 39688, its bee turning into the enemy's row and stinging) and the chip
-lab's RskyHny scenarios (every one that runs as far as the chip matches). **Unverified** (no trace or lab scenario
-reaches them): the bee without a collision slot; its end by battle over, off the field, or an attack's hit
-(0xF3800000); a sting with no navi on the panel; steering while flying along a column (`sub_80D3404`) and reversing
-in a row; the destination behind the user or off the edge (`sub_80D3342`'s fallbacks) and among several rows
-(`sub_80D3374`); the flip in `sub_80D3474`; the fade; the phase-4 branch on params byte 1.
+lab's RskyHny scenarios (every one that runs as far as the chip matches), with the bee's end by battle over
+(`chips/0x025-rskyhny1/ko`), its destinations with no body to find (`invisible`: `sub_80D3342`'s fallbacks,
+`sub_80D3374`, the flip in `sub_80D3474`) and with the opponent walking or shooting on (`moving-target`,
+`bee-shot`). **Unverified**: the bee without a collision slot; its end off the field or by an attack's hit
+(0xF3800000); the fade; the phase-4 branch on params byte 1.
 
 ### 3.8 The dragons (action 0x51, `sub_80EF4B4`)
 
@@ -1553,10 +1556,10 @@ hit flags & 0xFF800000 → region 0; not while dimmed the action; present; `obje
 its Z keeps the delay as its fraction. Hidden (anim 7) until its delay is up, then a splash and the head's path
 (`sub_80DE21A`, `sub_80DE266`, `sub_80DE2B0`) without collision, panel types or animation changes.
 
-Verified by the chip lab's dragon scenarios (every one that runs as far as the chip matches). **Unverified**: no
-enemy body ahead (the column right ahead, `sub_80ED040`'s fallback); the head without a collision slot; either part's
-end when the battle is over; a blocked hit (0xFF800000) clearing the head's region; `sub_810FA4C`'s cap at 4;
-`sub_80DE768`'s off-field and not-solid exits.
+Verified by the chip lab's dragon scenarios (every one that runs as far as the chip matches), with either
+part's end when the battle is over (`chips/0x02e-heatdrgn/ko`), no enemy body ahead (`invisible`) and a hit on a
+barrier (`barrier`). **Unverified**: the head without a collision slot; `sub_810FA4C`'s cap at 4; `sub_80DE768`'s
+off-field and not-solid exits.
 
 ### 3.9 The bombs and seeds (action 0x12, `sub_80EB628`)
 
@@ -1598,10 +1601,13 @@ The confusion and blindness a BugBomb or FlashBomb gives show the status visual 
 
 Verified by the chip lab's bomb and seed scenarios (every one that runs as far as the chip matches, including every
 chip's counter variant, which throws a MiniBomb). **Unverified**: bomb kind 1 and the lingering hit (no chip throws
-it); a bomb or seed ending on a hit it made or the battle's end; seed kind 3; FlashBomb levels 3 to 8, its Param2,
-setting down onto its own body, and breaking before the flash; the BugBomb broken or crushed, in a hole, and its bug
-choices beyond the lab's; the BlkBomb set off by fire (its burst and the panel bursts), placed (Param1), with no ticks
-to fly, removed, absorbed, blinking out, or pushed (`sub_8017CC0` and `sub_800F598` are unreached). **Not ported**:
+it); seed kind 3; FlashBomb levels 3 to 8, its Param2 and setting down onto its own body; the BugBomb crushed or
+in a hole; the BlkBomb placed (Param1), with no ticks to fly, removed, absorbed or blinking out. The coverage
+scenarios verified: a bomb ending at the battle's end (`chips/0x036-minibomb/ko`); the BlkBomb set off by fire of
+either side (`chips/0x03c-blkbomb/fire`, `enemy-fire`), pushed (`pushed`: `sub_8017CC0`), broken without fire
+(`shot`), left to its lifetime (`lifetime`) and thrown at a hole (`holes`); the BugBomb's other bug choices
+(`chips/0x043-bugbomb/seed-1` to `seed-4`) and a landed one broken (`landed`); FlashBomb landed and broken before
+the flash (`chips/0x039-flshbom1/landed`, `shot`). **Not ported**:
 LilBoiler (subtype 3: T3#0x93 and what it spawns, T1#0x54) and VDoll (subtype 8: T3#0x7A, its curse controller T4#0x4E
 and T4#0x11); their throws raise a content error. shot-chips.md §14 specifies both.
 
@@ -1670,8 +1676,11 @@ registers (panel Y, element, and in r3 the spawner's own address, which the cont
 init clears only Z's whole part (a halfword store) keep that address's low half as their Z fraction (SpoutMan
 0x9751, TomahawkMan 0x999B, TenguMan 0x9F0F, HeatMan 0x921B). Most actions enter on CurPhase 0 (4) and some store
 Timer and Timer2 as one word. Where the scratch lab says "all match", every scenario of the chip and its EX and SP
-(long, long-miss, long-adjacent, long-holes) matches every frame. Unverified everywhere: a pool with no free slot
-(the spawns' failure branches) and the battle ending mid-attack.
+(long, long-miss, long-adjacent, long-holes) matches every frame. The battle ending mid-attack (each navi chip's
+`ko`: an opponent of 10 HP deleted by the first hit) and no footing for the navi (each one's `no-footing`: the
+user, with AirShoes, over a missing panel of the holes stage, where the navi's action 0 goes straight to its
+leave) are verified for every navi chip (docs/engine/unverified.md lists them). Unverified everywhere: a pool
+with no free slot (the spawns' failure branches).
 
 #### 3.6.12 TomahawkMan (subtype 8, T1 0x0A `sub_80B97C0`)
 
@@ -2365,9 +2374,9 @@ A Cross (Param4 = its place in its wave):
 
 Lab: the official pa/0x15a-mstrcros/recipe1 ends before (it matches every frame); the long scenarios
 pa/0x15a-mstrcros/long{,-miss,-adjacent,-holes} reach the Falzar tables (sword, drill, fan, finale) and every
-wave's target, and match every frame. **Unverified**: the Gregar tables (so the
-beam, move 1), no target for a Cross, a leader without the controller's flag, a failed spawn, the sword's dead
-phase 4.
+wave's target, and match every frame; `pa/0x15a-mstrcros/gregar` (the Gregar side of the gregar base uses it)
+reaches the Gregar tables, the beam and move 1, and matches every frame. **Unverified**: no target for a Cross, a
+leader without the controller's flag, a failed spawn, the sword's dead phase 4.
 
 #### 3.6.35 BigHook (navi chip subtype 23, Giga chip 0x12E, effect T4 0x8C)
 
