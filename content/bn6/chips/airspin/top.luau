@@ -33,7 +33,15 @@ local SPRITE = asset.sprite("air-spin")
 local HIT_MOD = 0x03
 -- Rolling speed (16.16), panels it rolls at most, HP.
 local SPEED, MAX_PANELS, HP = 0x4_0000, 4, 0x190
-local NAME_ID = 0xE5
+-- Its identity: a field object, with the look something that takes its
+-- place shows (DustMan's junk).
+local IDENTITY = define.identity {
+    id = "airspin-top",
+    class = "field_object",
+    version = 0,
+    ai_index = 1,
+    look = { sprite = asset.sprite("air-spin"), anim = 1, palette = 0, shadow = false },
+}
 -- Its field-object class, and how it looks absorbed (the original's
 -- obstacle kind 0x0C: its own sprite).
 local CLASS = 1
@@ -312,7 +320,7 @@ local function init(me: Object)
     me.visible = true
     me.vel = Vec3.new(me.facing * SPEED, me.vel.y, me.vel.z)
     me.timer2 = MAX_PANELS
-    me.name_id = NAME_ID
+    me.identity = IDENTITY
     me.hp = HP
     me.max_hp = HP
     aim(me)
