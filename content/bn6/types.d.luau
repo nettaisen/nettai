@@ -167,3 +167,19 @@ export type FlashBombVariant = {
     strong: boolean?,
     own_side: boolean?,
 }
+
+-- ---- The dimming chips (chips/wind, chips/guardian, ...) -------------------
+
+-- A Wind's or Fan's fan (chips/wind/fan): its palette; `pulls`: it blows
+-- Fan's pulling gust from the far column rather than Wind's pushing one
+-- from the enemy's front column; ticks from becoming its side's wind to
+-- the first gust; HP; its NameID (the field objects' look) and its kind
+-- among absorbed obstacles.
+export type FanVariant = {
+    palette: number,
+    pulls: boolean,
+    wait: number,
+    hp: number,
+    name: number,
+    absorbed_kind: number,
+}

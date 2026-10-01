@@ -71,6 +71,15 @@ collision.neutral_object = define.collision {
     row_offset = 0x278,
 }
 
+-- A field obstacle of its side, an "other body" of it, while dimmed too
+-- (row 0x13: a fan, a statue, a Snake nest; what its target,
+-- `hit_by_other_side`, reaches is the other side's and neutral objects').
+collision.field_object = define.collision {
+    id = "field-object",
+    side0 = 0x02010080,
+    side1 = 0x01010080,
+    row_offset = 0x98,
+}
 -- What reaches everything: attacks, objects and bodies of both sides and
 -- neutral objects (row 0x0F: what a BlkBomb reacts to).
 collision.everything = define.collision { id = "everything", side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
