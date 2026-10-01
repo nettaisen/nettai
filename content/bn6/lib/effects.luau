@@ -11,6 +11,9 @@ effects.explosion = define.effect { sprite = asset.sprite("explosion"), anim = 0
 -- A splash of bubbles: something landing in a hole (effect 0x01).
 effects.splash = define.effect { sprite = asset.sprite("rising-bubble"), anim = 0, palette = 0 }
 
+-- Dust: a rock breaking (effect 0x02).
+effects.dust = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
 -- A puff of smoke: a thrown thing gone when the battle ends, a field
 -- object a chip removes (effect 0x14).
 effects.puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
