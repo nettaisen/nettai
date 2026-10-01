@@ -41,14 +41,16 @@ end
 
 -- `byte_80C9818`'s rows: the steps it lasts (0: no limit), how it bounces
 -- (1: off its own side too, once across; the game also divides by it, see
--- `slide`), and the ticks per step; the trail is PitHocky's (row 3).
--- AirHocky's is row 2; rows 0 and 1 no chip has.
-puck.variants = {
+-- `slide`), and the ticks per step; the trail is PitHocky's. The first two
+-- rows no chip has.
+local ROWS: { [number]: Variant } = {
     [0] = puck.variant { steps = 6, own_side = 1, ticks = 6 },
     [1] = puck.variant { steps = 0x0A, own_side = 1, ticks = 6 },
     [2] = puck.variant { steps = 0x0A, own_side = 1, ticks = 6 },
     [3] = puck.variant { steps = 0x12, own_side = 1, ticks = 6, trail = true },
 }
+-- The chips' pucks.
+puck.variants = { airhocky = ROWS[2], pithocky = ROWS[3] }
 
 local SPRITE = asset.sprite("hockey-puck")
 local SOUND = asset.sound("hockey-puck")
