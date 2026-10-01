@@ -236,7 +236,7 @@ mod tests {
         use testing::{SUN_GUN_1, SUN_GUN_3};
         let c = testing::content();
         let f = || folder(&c, &[(SUN_GUN_3, 0), (SUN_GUN_1, 0)]);
-        StandInBattle::new(Battle::new(netbattle(&c, 300, 0x1357, [f(), f()]), c))
+        StandInBattle::new(Battle::new(netbattle(&c, bn6_battle::content::testing::LINK_BATTLE, 300, 0x1357, [f(), f()]), c))
     }
 
     #[derive(Default)]
