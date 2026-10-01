@@ -1021,6 +1021,22 @@ navi chip controller (effect #0x10, `sub_80E1880`) stays the ruleset's; it calls
 chip's `navi` hook, and the navi calls `navi_chip.navi_left(controller)` as today. `lib/navi-chips/` holds what
 the navis share (appearing, leaving, the SP deletion-time damage).
 
+**As built** (step 7): chips/eraseman/navi.luau (the `eraseman/navi` kind, state `{ cycle, aim, controller,
+aim_ticks }`, and `eraseman.summon { aim_ticks }`, the `navi` hook), chips/eraseman/mark.luau (`eraseman/mark`)
+and chips/eraseman/beam.luau (`eraseman/beam`, spawned with `{ aim, ticks, navis }`; EraseMan's own EDeletBm,
+chips/193-edeletbm, spawns it too). The beam's collision type (`piercing-break`, row 0x16) and spark
+(`sparks.erase`, hit effect 0x0C) are definitions. What it settled:
+
+- **The chips stay records.** The ruleset turns navi chips back by number (AntiNavi, `is_navi_chip`: 0xDD to
+  0x118, which isn't the `navi` flag: 0x116 to 0x118 lack it), and EraseMn[SP]'s damage is a formula. Their
+  records' navi chip subtype 5 runs chips/0ec-eraseman/chip.luau, which summons EraseMan with the record's first
+  parameter as `aim_ticks`; it goes when the chips are definitions (a navi-chip trait for AntiNavi, step 10,
+  and damage formulas in definitions) and each is `navi = eraseman.summon { aim_ticks = n }`. No
+  `lib/navi-chips` yet: EraseMan shares nothing with another navi so far (A2 starts it).
+- **Parameters became state**: the mark's time, the beam's aim, time and owner kind, EraseMan's switching time.
+- **Verified** on the test content (the navi chip duel and its rollback), the type check, and the traces and the
+  chip lab on a real pack: every EraseMan scenario matches.
+
 ### 5.6 Instant chips: a hook per chip
 
 v1: action 0x1C calls `Hook::InstantChip(subtype)`; one module serves the 30 chips of subtype 3.
