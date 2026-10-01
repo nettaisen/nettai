@@ -84,7 +84,7 @@ falling-rock = { pool = "attack", index = 0x1D }
 "rflectr/shot" = { pool = "attack", index = 0x2F }
 "colarmy/army" = { pool = "attack", index = 0x30 }
 "tornado/tornado" = { pool = "attack", index = 0x31 }
-boomerang = { pool = "attack", index = 0x32 }
+"boomer/boomerang" = { pool = "attack", index = 0x32 }
 "crakshot/shot" = { pool = "attack", index = 0x33 }
 "ironshl/shell" = { pool = "attack", index = 0x34 }
 "diveman/wave" = { pool = "attack", index = 0x39 }
@@ -104,9 +104,9 @@ seed = { pool = "attack", index = 0x4F }
 "aquandl/needle" = { pool = "attack", index = 0x50 }
 "yoyo/yoyo" = { pool = "attack", index = 0x52 }
 "anubis/statue" = { pool = "attack", index = 0x55 }
-falling-meteor = { pool = "attack", index = 0x56 }
+"meteors/falling-meteor" = { pool = "attack", index = 0x56 }
 sonic-boom = { pool = "attack", index = 0x58 }
-rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
+"rockcube/rock" = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 "firehit/fist" = { pool = "attack", index = 0x5B }
 "bodygrd/shuriken" = { pool = "attack", index = 0x5C }
 "tenguman/tornado" = { pool = "attack", index = 0x60 }
@@ -118,7 +118,7 @@ element-pillar = { pool = "attack", index = 0x61 }
 "tomahawkman/strike" = { pool = "attack", index = 0x6A }
 boulder = { pool = "attack", index = 0x6E, actor_list_entry = 3 }
 "lance/lance" = { pool = "attack", index = 0x6F }
-drill = { pool = "attack", index = 0x71 }
+"drilarm/drill" = { pool = "attack", index = 0x71 }
 "snake/nest" = { pool = "attack", index = 0x72 }
 "snake/snake" = { pool = "attack", index = 0x73 }
 "rskyhny/bee" = { pool = "attack", index = 0x74 }
@@ -134,7 +134,7 @@ instrument = { pool = "attack", index = 0x78 }
 "chargeman/volcano-rock" = { pool = "attack", index = 0x86 }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
-thunder-column = { pool = "attack", index = 0x8B }
+"dolthdr/thunder-column" = { pool = "attack", index = 0x8B }
 "elcpuls/pulse" = { pool = "attack", index = 0x8C }
 "elmntman/meteor" = { pool = "attack", index = 0x8D }
 "elmntman/ice" = { pool = "attack", index = 0x8E }
@@ -219,9 +219,9 @@ follow-effect = { pool = "effect", index = 0x31 }
 "tomahawkman/axe" = { pool = "effect", index = 0x32 }
 "anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
 "meteors/controller" = { pool = "effect", index = 0x34, scratch_position = true }
-"falling-meteor/marker" = { pool = "effect", index = 0x35, scratch_position = true }
+"meteors/marker" = { pool = "effect", index = 0x35, scratch_position = true }
 "rockcube/cube" = { pool = "effect", index = 0x37, scratch_position = true }
-"rock/debris" = { pool = "effect", index = 0x38 }
+"rockcube/debris" = { pool = "effect", index = 0x38 }
 "bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
 "engine/bubble-visual" = { pool = "effect", index = 0x3C }
 "golmhit/golem" = { pool = "effect", index = 0x3F }

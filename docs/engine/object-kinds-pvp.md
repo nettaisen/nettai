@@ -38,7 +38,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x23 | 0x080c86d8 | lab only (its splash: the pack's `chips/spoutman/splash`, chips.md §3.6.11) |
 | T3 0x26 | 0x080c8c74 | lab only (HeatMan's flame: the pack's `chips/heatman/flame`, chips.md §3.6.15) |
 | T3 0x49 | 0x080cd2ec | 87 (WindRack's gust: the pack's `objects/gust`, standard-chips.md) |
-| T3 0x59 | 0x080cf954 | 7372 (rock: the content's `objects/rock`, a definition with its variants and debris, field-objects.md §3) |
+| T3 0x59 | 0x080cf954 | 7372 (rock: the content's `chips/rockcube/rock`, kind `rockcube/rock`, a definition with its variants and debris, field-objects.md §3) |
 | T3 0x5b | 0x080cfcf8 | 96 |
 | T3 0x62 | 0x080d07cc | lab only (SlashMan's sword wave: the pack's `chips/slashman/wave`, chips.md §3.6.18) |
 | T3 0x64 | 0x080d0d7c | lab only (ElecMan's thunderbolt: the pack's `chips/elecman/thunder`, chips.md §3.6.16) |
@@ -46,7 +46,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x74 | 0x080d30d0 | 350 (RskyHny's bee: the pack's `chips/rskyhny/bee`, chips.md §3.7) |
 | T3 0x7d | 0x080d4c84 | lab only (the Guardian statue, a stage's too: the content's `chips/guardian/statue`, dimming-chip-effects.md §5) |
 | T3 0x82 | 0x080d5740 | 48 (DolThdr's doll: the pack's `chips/dolthdr/doll`, standard-chips.md) |
-| T3 0x8b | 0x080d6924 | 225 (DolThdr's thunder column: the pack's `objects/thunder-column`, standard-chips.md) |
+| T3 0x8b | 0x080d6924 | 225 (DolThdr's thunder column: the pack's `chips/dolthdr/column`, kind `dolthdr/thunder-column`, standard-chips.md) |
 | T3 0x8d | 0x080d6bd4 | 38 (meteor: the pack's `chips/elmntman/meteor`, chips.md §3.6.7) |
 | T3 0x8e | 0x080d6d80 | 96 (ElmntMan's ice: the pack's `chips/elmntman/ice`, chips.md §3.6.7) |
 | T3 0x94 | 0x080d7acc | 217 |
