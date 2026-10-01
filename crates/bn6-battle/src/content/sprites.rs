@@ -20,10 +20,20 @@ pub struct AnimFrame {
 }
 
 /// Every sprite's animations (from the pack's `animations.json` files),
-/// each a list of frames.
+/// each a list of frames; and where each frame's parts sit.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Animations {
     pub sprites: BTreeMap<SpriteId, Vec<Vec<AnimFrame>>>,
+    pub parts: BTreeMap<SpriteId, SpriteParts>,
+}
+
+/// A sprite's frames' parts, as far as the simulation reads them: each
+/// frame's layout (by animation, then frame) and each layout's parts'
+/// offsets from the object, in pixels, in the order the frame lists them.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SpriteParts {
+    pub frame_layouts: Vec<Vec<u16>>,
+    pub layouts: Vec<Vec<(i8, i8)>>,
 }
 
 impl Animations {
@@ -31,6 +41,14 @@ impl Animations {
     /// data).
     pub fn get(&self, sprite: SpriteId, anim: u8) -> &[AnimFrame] {
         self.sprites.get(&sprite).and_then(|a| a.get(anim as usize)).map(Vec::as_slice).unwrap_or(&[])
+    }
+
+    /// Part `n`'s offset in frame `frame` of animation `anim` (none when
+    /// the frame has fewer parts, or no data).
+    pub fn part_offset(&self, sprite: SpriteId, anim: u8, frame: u16, n: usize) -> Option<(i8, i8)> {
+        let parts = self.parts.get(&sprite)?;
+        let layout = *parts.frame_layouts.get(anim as usize)?.get(frame as usize)?;
+        parts.layouts.get(layout as usize)?.get(n).copied()
     }
 }
 

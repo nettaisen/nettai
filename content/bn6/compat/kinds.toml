@@ -7,6 +7,7 @@
 
 "engine/player" = { pool = "actor", index = 0x00 }
 "colonel/navi" = { pool = "actor", index = 0x01 }
+"airraid/propeller" = { pool = "actor", index = 0x03 }
 "blzrdbal/thrower" = { pool = "actor", index = 0x04 }
 attachment = { pool = "actor", index = 0x05 }
 "blastman/navi" = { pool = "actor", index = 0x06 }
@@ -37,6 +38,7 @@ attachment = { pool = "actor", index = 0x05 }
 "darkness/navi" = { pool = "actor", index = 0x25 }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
+"sumnblk/navi" = { pool = "actor", index = 0x32 }
 "dblbeast/gregar" = { pool = "actor", index = 0x33 }
 "dblbeast/falzar" = { pool = "actor", index = 0x34 }
 "protoman/navi" = { pool = "actor", index = 0x3C }
@@ -120,6 +122,7 @@ drill = { pool = "attack", index = 0x71 }
 "snake/nest" = { pool = "attack", index = 0x72 }
 "snake/snake" = { pool = "attack", index = 0x73 }
 "rskyhny/bee" = { pool = "attack", index = 0x74 }
+"airraid/plane" = { pool = "attack", index = 0x75 }
 "spoutcross-beast/surge" = { pool = "attack", index = 0x76 }
 instrument = { pool = "attack", index = 0x78 }
 "vdoll/doll" = { pool = "attack", index = 0x7A }
@@ -226,6 +229,9 @@ follow-effect = { pool = "effect", index = 0x31 }
 meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
 "instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
+"airraid/controller" = { pool = "effect", index = 0x4B, scratch_position = true }
+"colorpt/controller" = { pool = "effect", index = 0x50, scratch_position = true }
+"colorpt/point" = { pool = "effect", index = 0x51, scratch_z_fraction = true }
 "vdoll/curse" = { pool = "effect", index = 0x4E, scratch_position = true }
 "guardian/controller" = { pool = "effect", index = 0x52, scratch_position = true }
 "guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
@@ -252,6 +258,7 @@ invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
 "metrknuk/controller" = { pool = "effect", index = 0x76, scratch_position = true }
 "support/controller" = { pool = "effect", index = 0x79 }
+"sumnblk/controller" = { pool = "effect", index = 0x7C, scratch_position = true }
 "dblbeast/controller" = { pool = "effect", index = 0x7F, scratch_position = true }
 "colforce/force" = { pool = "effect", index = 0x80 }
 navi-boost = { pool = "effect", index = 0x84, scratch_position = true }

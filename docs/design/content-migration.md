@@ -330,8 +330,7 @@ split the list):
 
 ### Framework gaps (Rust, not content)
 
-These are the ruleset's, and are fixed in Rust by whoever needs them: the barrier routine and visual
-(dimming-chips.md §3), the Full
+These are the ruleset's, and are fixed in Rust by whoever needs them: the Full
 Synchro aura, Cross changes and Cross Beast, Beast Over, the NaviCust hooks (style, emotion timer, low HP, chip
 interception, the panel trail and auto-step bugs), dark chips, the SELECT/Cross specials, the status visuals (ice,
 bubble, confusion, blindness), reactive defensive chips (`sub_801056A`), mid-battle appearance, link navis' actions.
