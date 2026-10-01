@@ -25,7 +25,7 @@ local flmhook1 = define.chip {
         action = 0x1C,
         subtype = 14,
         params = { 0, 1, 0, 0 },
-        script = "objects/flame-hook/flame_hook",
+        script = "chips/146-flmhook1/chip",
     },
 }
 
@@ -50,7 +50,7 @@ local flmhook2 = define.chip {
         action = 0x1C,
         subtype = 14,
         params = { 0, 1, 0, 0 },
-        script = "objects/flame-hook/flame_hook",
+        script = "chips/146-flmhook1/chip",
     },
 }
 
@@ -75,7 +75,7 @@ local flmhook3 = define.chip {
         action = 0x1C,
         subtype = 14,
         params = { 0, 1, 0, 0 },
-        script = "objects/flame-hook/flame_hook",
+        script = "chips/146-flmhook1/chip",
     },
 }
 

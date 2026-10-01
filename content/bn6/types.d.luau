@@ -4,9 +4,9 @@
 -- the pack. (The engine's API and data types are in core.d.luau.)
 
 -- Where an owner keeps an attached object: its actor overlay slot, its
--- first related object, or its content state's `held` field
+-- first related object, or its content state's `held` or `held2` field
 -- (lib/slot.luau).
-export type Slot = "overlay" | "related" | "held"
+export type Slot = "overlay" | "related" | "held" | "held2"
 
 -- What the link navis' chips (action 0x0A, chips/190-heatpres) keep in the
 -- attack's variables: one schema for the ten navis' routines.

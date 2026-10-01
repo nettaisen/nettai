@@ -33,5 +33,11 @@ return define.chip {
             },
         },
     },
-    legacy = legacy { number = 0x15A, action = 0x1B, subtype = 22, params = { 0, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x15A,
+        action = 0x1B,
+        subtype = 22,
+        params = { 0, 0, 0, 0 },
+        script = "chips/15a-mstrcros/chip",
+    },
 }

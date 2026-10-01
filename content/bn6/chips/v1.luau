@@ -942,30 +942,6 @@ local silence = define.chip {
     legacy = legacy { number = 0x095, action = 0x15, subtype = 9, params = { 3, 0, 0, 0 } },
 }
 
-local vdoll = define.chip {
-    id = "v1/vdoll",
-    name = "VDoll",
-    codes = { "F", "N", "S", "*" },
-    element = "null",
-    family = "summon",
-    class = "standard",
-    rarity = 3,
-    mb = 39,
-    damage = 10,
-    hit_param = 10,
-    lockout = 0,
-    flags = { "standard_library", "library" },
-    library = { number = 153, index = 153, sort = 450 },
-    slot_in_limit = 3,
-    legacy = legacy {
-        number = 0x096,
-        action = 0x12,
-        subtype = 8,
-        params = { 0, 0, 0, 0 },
-        script = "chips/036-minibomb/chip",
-    },
-}
-
 local guardian = define.chip {
     id = "v1/guardian",
     name = "Guardian",
@@ -1605,7 +1581,6 @@ return {
     discord = discord,
     timpani = timpani,
     silence = silence,
-    vdoll = vdoll,
     guardian = guardian,
     panlgrab = panlgrab,
     areagrab = areagrab,

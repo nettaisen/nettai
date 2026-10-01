@@ -17,7 +17,13 @@ local grndman = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 236, index = 16, sort = 223 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x0FB, action = 0x1B, subtype = 10, params = { 0, 8, 1, 32 } },
+    legacy = legacy {
+        number = 0x0FB,
+        action = 0x1B,
+        subtype = 10,
+        params = { 0, 8, 1, 32 },
+        script = "chips/0fb-grndman/chip",
+    },
 }
 
 local grndman_ex = define.chip {
@@ -35,7 +41,13 @@ local grndman_ex = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 237, index = 17, sort = 224 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x0FC, action = 0x1B, subtype = 10, params = { 3, 8, 1, 32 } },
+    legacy = legacy {
+        number = 0x0FC,
+        action = 0x1B,
+        subtype = 10,
+        params = { 3, 8, 1, 32 },
+        script = "chips/0fb-grndman/chip",
+    },
 }
 
 local grndman_sp = define.chip {
@@ -57,6 +69,7 @@ local grndman_sp = define.chip {
         action = 0x1B,
         subtype = 10,
         params = { 4, 8, 1, 32 },
+        script = "chips/0fb-grndman/chip",
         damage = 1009,
         sp_damage = { 130, 125, 120, 115, 110, 105, 100, 95, 90, 85, 80 },
     },

@@ -84,8 +84,31 @@ collision.neutral_object = define.collision {
 -- neutral objects (row 0x0F: what a BlkBomb reacts to).
 collision.everything = define.collision { id = "everything", side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
 
+-- The navi chips' and link navis' types (named by what their flags add
+-- to an attack's: 0x02 breaks guards and ice; 0x04 pierces invisibility
+-- and flashing; 0x08 as a thrown attack's).
+
+-- A navi's body (row 0x01), and what a navi hits (row 0x02).
+collision.navi = define.collision { id = "navi", side0 = 0x08410080, side1 = 0x04210080, row_offset = 0x08 }
+collision.navi_target = define.collision { id = "navi-target", side0 = 0x55800200, side1 = 0xaa800200, row_offset = 0x10 }
+
+-- A thrown attack that breaks (row 0x15: GroundMan's drill and rocks).
+collision.thrown_break = define.collision { id = "thrown-break", side0 = 0x8000008a, side1 = 0x4000008a, row_offset = 0xA8 }
+
+-- A thrown attack that pierces and breaks (row 0x17: Django's Gun del
+-- Sol, a flying shot variant).
+collision.thrown_piercing_break = define.collision {
+    id = "thrown-piercing-break",
+    side0 = 0x8000008e,
+    side1 = 0x4000008e,
+    row_offset = 0xB8,
+}
+
+-- A pull of no side (row 0x1E: DustMan's DustBrk drawing things in).
+collision.pull = define.collision { id = "pull", side0 = 0x00004280, side1 = 0x00004280, row_offset = 0xF0 }
+
 -- A breaking attack (row 0x06: a shot that breaks guards; the break
--- family's shots, a thrown obstacle).
+-- family's shots, a thrown obstacle; DustMan's junk, BigHook's flames).
 collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
 
 -- An attack of row 0x08 (a projectile variant nothing names yet).
@@ -94,10 +117,8 @@ collision.attack_90 = define.collision { id = "attack-90", side0 = 0x80000090, s
 -- A pushing attack (row 0x12: AirShot's shot).
 collision.pushing = define.collision { id = "pushing", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
 
--- An attack of row 0x17 (a flying shot variant nothing names yet).
-collision.attack_8e = define.collision { id = "attack-8e", side0 = 0x8000008e, side1 = 0x4000008e, row_offset = 0xB8 }
-
--- The VDoll curse's hits (row 0x19).
+-- The VDoll curse's hits (row 0x19: a thrown attack that pierces; JudgeMan's
+-- lash too).
 collision.curse = define.collision { id = "curse", side0 = 0x8000008c, side1 = 0x4000008c, row_offset = 0xC8 }
 
 -- An attack of row 0x25 (the wide shot's variant nothing fires).
@@ -131,10 +152,6 @@ collision.guard_breaking = define.collision {
 }
 
 -- The rest of the original's rows (gen-content).
--- Row 0x01.
-collision.player = define.collision { id = "player", side0 = 0x08410080, side1 = 0x04210080, row_offset = 0x8 }
--- Row 0x02.
-collision.hits_player = define.collision { id = "hits-player", side0 = 0x55800200, side1 = 0xAA800200, row_offset = 0x10 }
 -- Row 0x03.
 collision.collision_03 = define.collision { id = "collision-03", side0 = 0x51800100, side1 = 0xA2800100, row_offset = 0x18 }
 -- Row 0x09.
@@ -143,8 +160,6 @@ collision.collision_09 = define.collision { id = "collision-09", side0 = 0x80000
 collision.collision_10 = define.collision { id = "collision-10", side0 = 0x08510080, side1 = 0x04310080, row_offset = 0x80 }
 -- Row 0x11.
 collision.collision_11 = define.collision { id = "collision-11", side0 = 0x80002480, side1 = 0x40002480, row_offset = 0x88 }
--- Row 0x15.
-collision.collision_15 = define.collision { id = "collision-15", side0 = 0x8000008A, side1 = 0x4000008A, row_offset = 0xA8 }
 -- Row 0x18.
 collision.collision_18 = define.collision { id = "collision-18", side0 = 0x50000000, side1 = 0xA0000000, row_offset = 0xC0 }
 -- Row 0x1A.
@@ -155,8 +170,6 @@ collision.collision_1b = define.collision { id = "collision-1b", side0 = 0x80004
 collision.collision_1c = define.collision { id = "collision-1c", side0 = 0x80002088, side1 = 0x40002088, row_offset = 0xE0 }
 -- Row 0x1D.
 collision.collision_1d = define.collision { id = "collision-1d", side0 = 0x8000009C, side1 = 0x4000009C, row_offset = 0xE8 }
--- Row 0x1E.
-collision.collision_1e = define.collision { id = "collision-1e", side0 = 0x00004280, side1 = 0x00004280, row_offset = 0xF0 }
 -- Row 0x1F.
 collision.collision_1f = define.collision { id = "collision-1f", side0 = 0x80040082, side1 = 0x40040082, row_offset = 0xF8 }
 -- Row 0x20.

@@ -205,9 +205,10 @@ chips/tornado/chip.luau 1
 chips/trnarrw/chips.luau 3
 chips/twinldrs/chip.luau 1
 chips/uninstll/chip.luau 1
-chips/v1.luau 71
+chips/v1.luau 70
 chips/varswrd/chip.luau 1
 chips/vdoll/doll.luau 2
+chips/vdoll/record.luau 1
 chips/wavearm/chips.luau 3
 chips/whicapsl-invisible/chip.luau 1
 chips/whicapsl/chip.luau 1
@@ -422,8 +423,6 @@ objects/erase-drop/erase_drop.luau 7
 objects/erase-ray/erase_ray.luau 6
 objects/falling-rock/falling_rock.luau 3
 objects/fire-hit/fire_hit.luau 3
-objects/flame-hook-fire/flame_hook_fire.luau 14
-objects/flame-hook/flame_hook.luau 5
 objects/flame/flame.luau 17
 objects/flying-shot/flying_shot.luau 1
 objects/flying-shot/rows.luau 1

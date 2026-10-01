@@ -18,5 +18,11 @@ return define.chip {
     extra_flags = { 8, 16 },
     library = { number = 302, index = 2, sort = 38 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x12E, action = 0x1B, subtype = 23, params = { 1, 10, 0, 0 } },
+    legacy = legacy {
+        number = 0x12E,
+        action = 0x1B,
+        subtype = 23,
+        params = { 1, 10, 0, 0 },
+        script = "chips/12e-bighook/chip",
+    },
 }

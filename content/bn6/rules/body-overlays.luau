@@ -686,7 +686,7 @@ return define.rules("body-overlays", legacy {
             true,
             false,
         },
-        sprite = asset.sprite("effect-2b"),
+        sprite = asset.sprite("diveman"),
     },
     [4] = {
         in_front = {
@@ -1049,7 +1049,7 @@ return define.rules("body-overlays", legacy {
             true,
             false,
         },
-        sprite = asset.sprite("body-overlay-06"),
+        sprite = asset.sprite("circusman"),
     },
     [7] = {
         in_front = {
@@ -1134,7 +1134,7 @@ return define.rules("body-overlays", legacy {
             true,
             false,
         },
-        sprite = asset.sprite("body-overlay-06"),
+        sprite = asset.sprite("circusman"),
     },
     [8] = {
         in_front = {
