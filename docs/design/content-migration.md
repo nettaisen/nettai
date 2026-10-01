@@ -216,14 +216,16 @@ objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts)
 objects/countdown-bomb), 11 (objects/mine, objects/land-mine), 25 (objects/gauge-speed), 38 (objects/navi-boost).
 Shared: lib/panels (the game's panel lists and shuffle), objects/rising-bubble (effect #0x14).
 
+Ported in content model v2 (group B2a; docs/engine/dimming-chips.md, branch by branch, with where each lives):
+4 the barriers (lib/barriers, chips/barrier, chips/bblwrap, chips/lifeaur; FirstBarrier through rules/roles), 5
+the panel chips (lib/panel-chips, objects/panel-changer, chips/pnlretrn and kin), 9 the instruments
+(lib/instruments, chips/fanfare and kin), 13 AirRaid (chips/airraid), 26 BugFix (chips/bugfix), 27 ColorPt and
+DblPoint (chips/colorpt), 28 Sensor (chips/sensor), 36 SumnBlk (chips/sumnblk).
+
 Left (each a controller and its objects, every branch; docs/engine/chips.md §3.6.10 has what is known):
 
 - 14 Guardian: objects/guardian, guardian-statue and guardian-strike are written but no chip names them yet and
   they are unverified; register chip 0x097 and check them against the lab.
-- 4 Barrier (with the FirstBarrier framework `sub_801A7CC` and the barrier visual, effect #7), 5 PanlRetrn and the
-  road/holy chips (its 19-row table is pack data to extract), 9 Fanfare and kin, 13 AirRaid, 26 BugFix, 27
-  ColorPt/DblPoint, 28 Sensor, 36 SumnBlk (group B2a): specified branch by branch in docs/engine/dimming-chips.md,
-  waiting for content model v2.
 - 2 (no chip), 3 Geddon and the capsules, 7 LifeSync, 8 Wind/Fan, 12 Snake, 15
   GrabBnsh/GrabRvng, 16 Meteors, 17 Anubis/PoisPhar, 18 Otenko, 19 CircGun, 21 BlzrdBal, 22 NumbrBl, 23 BurnSqr,
   24 Magnum, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 37 DblBeast (group B2b): specified branch by branch in
@@ -301,8 +303,7 @@ split the list):
 
 ### Framework gaps (Rust, not content)
 
-These are the ruleset's, and are fixed in Rust by whoever needs them: the barrier routine and visual
-(dimming-chips.md §3), the Full
+These are the ruleset's, and are fixed in Rust by whoever needs them: the Full
 Synchro aura, Cross changes and Cross Beast, Beast Over, the NaviCust hooks (style, emotion timer, low HP, chip
 interception, the panel trail and auto-step bugs), dark chips, the SELECT/Cross specials, the status visuals (ice,
 bubble, confusion, blindness), reactive defensive chips (`sub_801056A`), mid-battle appearance, link navis' actions.
