@@ -18,6 +18,7 @@ local PALETTE = 2
 return define.chip {
     id = "puzzlarm",
     name = "PuzzlArm",
+    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 40, damage = 0, hit_param = 30, lockout = 20,

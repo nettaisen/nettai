@@ -13,6 +13,7 @@ local ROUTINE = 0x21
 return define.chip {
     id = "bugrswrd",
     name = "BugRSwrd",
+    description = "Use Bug\nFrag with\nDrkSword!",
     codes = { "V" },
     element = "null", family = "sword", class = "giga",
     rarity = 4, mb = 80, damage = 0, hit_param = 168, lockout = 0,

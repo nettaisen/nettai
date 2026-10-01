@@ -8,6 +8,7 @@ local controller = require("./controller")
 return define.chip {
     id = "mine",
     name = "Mine",
+    description = "Place a\nmine in\nenmy area",
     codes = { "A", "S", "T" },
     element = "null", family = "summon", class = "standard",
     rarity = 2, mb = 28, damage = 200, hit_param = 178, lockout = 0,
