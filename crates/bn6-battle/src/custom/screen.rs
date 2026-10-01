@@ -7,6 +7,7 @@
 
 use super::folder::{BattleFolder, FOLDER_SIZE, FolderChip, shuffle};
 use super::builder::{ClassCounts, FormedAdvance};
+use super::chatbox::{Chatbox, Script};
 use super::library::Library;
 use super::{GameVersion, Unlocks};
 use crate::console::Console;
@@ -115,10 +116,13 @@ pub enum Phase {
     /// SELECT hid the window to look at the field (`sub_8026D06`).
     Hidden { stage: HiddenStage },
     /// R shows the chip's description (`sub_8026E4C`); `from_cross_window`
-    /// for a Cross's description (`sub_8026E78`).
-    Description { from_cross_window: bool, elapsed: u16, dismissed_at: Option<u16> },
-    /// L: the "no time to run" message (`sub_8026E98`).
-    RunMessage { elapsed: u16, dismissed_at: Option<u16> },
+    /// for a Cross's description (`sub_8026E78`). The screen waits for its
+    /// chatbox to close.
+    Description { from_cross_window: bool, chatbox: Chatbox },
+    /// L: the "no time to run" message (`sub_8026E98`), whose chatbox
+    /// starts on the state's first tick (`sub_8026EC8`) and is waited for
+    /// from the next (`sub_8026FAA`).
+    RunMessage { chatbox: Option<Chatbox> },
     /// The Cross window opens (`sub_8027834`, 12 ticks).
     CrossWindowOpening { tick: u8 },
     /// The Cross window (`sub_802794A`); `entered`: its first tick, which
@@ -469,27 +473,29 @@ impl Screen {
                 };
                 None
             }
-            Phase::Description { from_cross_window, elapsed, dismissed_at } => {
-                // The screen waits for the chatbox to close; the chatbox
-                // (after the screen, each tick) takes any key once armed.
-                let elapsed = elapsed + 1;
-                if dismissed_at.is_some_and(|d| elapsed >= d + DISMISS_TICKS) {
+            Phase::Description { from_cross_window, mut chatbox } => {
+                // The screen sees the chatbox closed the tick after it
+                // closes, and reads keys again the tick after that; the
+                // chatbox runs after the screen, each tick.
+                if !chatbox.is_open() {
                     self.phase = if from_cross_window { Phase::CrossWindow { entered: false } } else { Phase::Choosing };
                     return None;
                 }
-                let dismissed_at = dismissed_at.or((elapsed >= DESCRIPTION_ARM && joy.pressed != 0).then_some(elapsed));
-                self.phase = Phase::Description { from_cross_window, elapsed, dismissed_at };
+                chatbox.update(joy.held, joy.pressed);
+                self.phase = Phase::Description { from_cross_window, chatbox };
                 None
             }
-            Phase::RunMessage { elapsed, dismissed_at } => {
-                let elapsed = elapsed + 1;
-                if dismissed_at.is_some_and(|d| elapsed >= d + DISMISS_TICKS) {
-                    self.phase = Phase::Choosing;
-                    return None;
-                }
-                let answered = joy.pressed & (keys::A | keys::B) != 0;
-                let dismissed_at = dismissed_at.or((elapsed >= RUN_MESSAGE_ARM && answered).then_some(elapsed));
-                self.phase = Phase::RunMessage { elapsed, dismissed_at };
+            Phase::RunMessage { chatbox } => {
+                let mut chatbox = match chatbox {
+                    None => Chatbox::new(Script::RunMessage { lines: view.library.run_message(view.stats.navi) }),
+                    Some(c) if !c.is_open() => {
+                        self.phase = Phase::Choosing;
+                        return None;
+                    }
+                    Some(c) => c,
+                };
+                chatbox.update(joy.held, joy.pressed);
+                self.phase = Phase::RunMessage { chatbox: Some(chatbox) };
                 None
             }
             Phase::CrossWindowOpening { tick } => {
@@ -713,11 +719,14 @@ impl Screen {
         } else if p & keys::SELECT != 0 {
             self.phase = Phase::Hidden { stage: HiddenStage::Hiding };
         } else if p & keys::R != 0 {
-            if matches!(here.kind, SlotKind::Chip { .. } | SlotKind::NaviChip(_)) {
-                self.phase = Phase::Description { from_cross_window: false, elapsed: 0, dismissed_at: None };
+            // The chip as the screen checks it: an invalid chip shows the
+            // invalid chip's description.
+            if let Some(c) = self.chip_in(self.cursor, folder) {
+                let lines = view.library.chip(checked(c, view).id).description_lines();
+                self.describe(joy, lines, false);
             }
         } else if p & keys::L != 0 {
-            self.phase = Phase::RunMessage { elapsed: 0, dismissed_at: None };
+            self.phase = Phase::RunMessage { chatbox: None };
         }
         None
     }
@@ -829,8 +838,17 @@ impl Screen {
             self.cursor = OK_SLOT;
             self.phase = Phase::CrossWindowClosing { tick: 0 };
         } else if p & keys::R != 0 {
-            self.phase = Phase::Description { from_cross_window: true, elapsed: 0, dismissed_at: None };
+            // Every Cross's description has three lines.
+            self.describe(joy, 3, true);
         }
+    }
+
+    /// R: a description's chatbox (`chatbox_runScript` in the key's
+    /// handler), which runs its first tick this tick.
+    fn describe(&mut self, joy: &Joypad, lines: u8, from_cross_window: bool) {
+        let mut chatbox = Chatbox::new(Script::Description { breaks: lines.saturating_sub(1) });
+        chatbox.update(joy.held, joy.pressed);
+        self.phase = Phase::Description { from_cross_window, chatbox };
     }
 
     /// DustCross's scrap (`sub_8027406`): every 25 ticks the last picked
@@ -1060,15 +1078,6 @@ const REDEAL_STEPS: u8 = 8;
 /// 0x28)`): magnitude 1, 40 ticks.
 const BEAST_OUT_SHAKE: (u16, u16) = (1, 0x28);
 
-/// A chip description's chatbox (`chatbox_onUpdate`): it takes a key from
-/// the 6th tick after R; the screen sees it closed 5 ticks after the key
-/// and reads input again the tick after.
-const DESCRIPTION_ARM: u16 = 6;
-const DISMISS_TICKS: u16 = 5;
-/// [unverified] The run message ("no time to run away!") takes A or B once
-/// printed; this is an estimate of its printing time (the chatbox's text
-/// timing isn't ported; no recording has one).
-const RUN_MESSAGE_ARM: u16 = 72;
 /// Scan `list` from `start` for the first slot present.
 fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
     let mut i = start as usize;
