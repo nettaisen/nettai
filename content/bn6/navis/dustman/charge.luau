@@ -2,10 +2,10 @@
 -- DustMan's charged attack (`dustman/charge`): the original's weapon
 -- routine 0x49 (`sub_80122C2`) and his action table's entry 9
 -- (`sub_80F1F18`). He rolls a ball of junk out from his own panel
--- (DustCross's junk ball, navis/00-megaman/forms/dustcross, the kind that
+-- (DustCross's junk ball, navis/megaman/forms/dustcross, the kind that
 -- stands still while dimmed); 35 ticks, then 30 more.
 
-local junk_ball = require("../00-megaman/forms/dustcross/junk_ball")
+local junk_ball = require("../megaman/forms/dustcross/junk_ball")
 local link = require("../../lib/link_chips")
 local weapon = require("../../lib/weapon")
 

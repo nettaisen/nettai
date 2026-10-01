@@ -652,7 +652,7 @@ references. Which parts are data:
 | Kinds | per kind: pool, trace index, flags, state schema, script; attachment kinds (52); effect and spark sprites (108 + 16); rocks (4); absorbed-obstacle sprites (15) | Rust code + generated tables | Rust code + `objects/<kind>/object.toml`, `registries/effects.toml`, `registries/sparks.toml` |
 | Sprites | animation timing: `(SpriteId, anim) -> [(duration, flags)]` for 298 sprites | generated Rust | `graphics/sprites/*/animations.json` |
 | Navis | navi records (36 NameIDs), sprites, elements, weaknesses, attach points (36 × 34), move lag, buster bonus, win/lose banners | generated Rust | `navis/NN-name/navi.toml` |
-| Forms | sprite, element, weakness, weapons, per form (25) | generated Rust | `navis/00-megaman/forms/NN-name/form.toml` |
+| Forms | sprite, element, weakness, weapons, per form (25) | generated Rust | `navis/megaman/forms/NN-name/form.toml` |
 | Stages | panel layouts (237), actor lists (28), battle settings | generated Rust | `rules/stages.toml`, `registries/panel-layouts.toml` |
 
 Scripts implement object kinds, actions, weapon routines, damage formulas, hooks and form-change sequences. The
