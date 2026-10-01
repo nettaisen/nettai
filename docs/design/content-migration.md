@@ -206,7 +206,8 @@ crates/bn6-battle/src/behavior/tests.rs (the registration lists); docs/engine/ob
 ### Group A: navi chips
 
 Done (wave 2): the navi parts service (`me:add_navi_parts` / `me:remove_navi_parts`, `sub_8010DF6`/`sub_8011044`
-by actor record: the navi hooks in `kinds::player::form`, with SpoutMan's idle overlay `kinds::idle_overlay`), and
+by actor record: the navi hooks in `kinds::player::form`, with SpoutMan's idle overlay `kinds::idle_overlay`; since
+step 11, `me:add_parts(identity, arg)` / `me:remove_parts(identity)`, what an identity wears), and
 as pack scripts with every kind they spawn: ElmntMan (all four elements; `kinds/elmnt_man.rs` and `kinds/meteor.rs` deleted), SpoutMan, HeatMan,
 ElecMan, SlashMan, ChargeMan, TomahawkMan, TenguMan, BlastMan, Roll, ProtoMan, Colonel (and CrossDiv), Bass,
 BassAnly, DeltaRay, SunMoon. `bring_navi`'s fallback is a content error (HackJack's and Django's entries are NULL:
