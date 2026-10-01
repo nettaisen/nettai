@@ -317,7 +317,7 @@
 "sprites.sprite-10-3b" = "unnamed; used by sword wave 0x10"
 "sprites.sprite-10-45" = "unnamed; used by effect 0x49, effect 0x56"
 "sprites.sprite-10-4e" = "unnamed; used by body overlay 0x0B"
-"sprites.sprite-10-5a" = "unnamed; used by attachment 0x1F"
+"sprites.colonel-sword" = "10-5a: Colonel's sword (attachment 0x1F), chips/twinldrs/colonel.luau"
 "sprites.sprite-14-01" = "unnamed; used by effect 0x0E, spark 0x07"
 "sprites.sprite-14-07" = "unnamed; used by effect 0x1E, spark 0x0D"
 "sprites.sprite-14-0c" = "unnamed; used by spark 0x09"
