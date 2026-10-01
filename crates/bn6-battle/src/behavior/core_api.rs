@@ -11,7 +11,12 @@ use bn6_content_api::{
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
-use bn6_content_api::{ActionHandle, ChipHandle, KindHandle, NaviAction, Registry, SpawnAt, StateId, WeaponHandle};
+use bn6_content_api::{
+    ActionHandle, ChipHandle, KindHandle, NaviAction, RecordHandle, Registry, SpawnAt, StateId, WeaponHandle,
+};
+
+/// The record type of an absorbed obstacle's look (objects/absorbed-obstacle).
+const ABSORBED_LOOK: &str = "absorbed-look";
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use bn6_content_api::{ObstacleHold, ObstaclePush, WindSource};
 
@@ -182,6 +187,16 @@ impl Battle {
     fn actor_of_mut(&mut self, o: ObjectRef) -> ApiResult<&mut ActorData> {
         let a = self.objects.get(o).actor.ok_or(ApiError::NoActor(o))?;
         Ok(self.actors.get_mut(a))
+    }
+
+    /// An absorbed obstacle's look: record `h`, which must be an
+    /// absorbed-look record (objects/absorbed-obstacle's `look`).
+    fn absorbed_look(&self, h: u16) -> ApiResult<RecordHandle> {
+        match self.content.defs.records.get(h as usize) {
+            Some(r) if r.record_type == ABSORBED_LOOK => Ok(RecordHandle(h)),
+            Some(r) => Err(ApiError::Other(format!("record {} is a {}, not an {ABSORBED_LOOK}", r.key, r.record_type))),
+            None => Err(ApiError::Other(format!("no record has handle {h}"))),
+        }
     }
 
     fn collision_of(&self, o: ObjectRef) -> ApiResult<&CollisionData> {
@@ -664,6 +679,10 @@ impl CoreApi for Battle {
         common::highlight_panel(self, p.x, p.y);
     }
 
+    fn set_header_flags(&mut self, o: ObjectRef, flags: u8) {
+        self.objects.get_mut(o).flags = flags;
+    }
+
     fn reserve_panel(&mut self, o: ObjectRef, p: PanelPos) -> bool {
         Battle::reserve_panel(self, o, p.x, p.y)
     }
@@ -1134,6 +1153,8 @@ impl CoreApi for Battle {
             ActorField::AttackKind => i(at.kind as i64),
             ActorField::BeastLockon => i(at.beast_lockon as i64),
             ActorField::Marker => i(at.marker as i64),
+            ActorField::ThrownLook => at.thrown_look.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0)),
+            ActorField::ThrownAnim => i(at.thrown_anim as i64),
             ActorField::Recovery => i(at.recovery as i64),
             ActorField::ActorType => i(actor_type_index(a.actor_type)),
             ActorField::AiIndex => i(a.ai_index as i64),
@@ -1169,6 +1190,14 @@ impl CoreApi for Battle {
             }
             _ => None,
         };
+        // A thrown obstacle's look: an absorbed-look record, or none.
+        let thrown_look = match (f, v) {
+            (ActorField::ThrownLook, FieldValue::Ref(Some((Registry::Record, h)))) => Some(self.absorbed_look(h)?),
+            (ActorField::ThrownLook, FieldValue::Ref(Some((other, _)))) => {
+                return Err(ApiError::Other(format!("thrown_look: a {other} is not a record")));
+            }
+            _ => None,
+        };
         let a = self.actor_of_mut(o)?;
         let at = &mut a.attack;
         match (f, v) {
@@ -1186,6 +1215,8 @@ impl CoreApi for Battle {
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
             (ActorField::BeastLockon, FieldValue::U8(x)) => at.beast_lockon = x,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
+            (ActorField::ThrownLook, FieldValue::Ref(_)) => at.thrown_look = thrown_look,
+            (ActorField::ThrownAnim, FieldValue::U8(x)) => at.thrown_anim = x,
             (ActorField::Recovery, FieldValue::U16(x)) => at.recovery = x,
             (ActorField::LockonMarker, FieldValue::Object(r)) => a.lockon_marker = r,
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
@@ -1388,21 +1419,22 @@ impl CoreApi for Battle {
         kinds::player::prepare_chip(self, o)
     }
 
-    fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u8, u8)>> {
-        Ok(self.actor_of(o)?.absorbed.iter().map(|a| (a.kind, a.anim)).collect())
+    fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u16, u8)>> {
+        Ok(self.actor_of(o)?.absorbed.iter().map(|a| (a.look.0, a.anim)).collect())
     }
 
-    fn push_absorbed(&mut self, o: ObjectRef, kind: u8, anim: u8) -> ApiResult<bool> {
+    fn push_absorbed(&mut self, o: ObjectRef, look: u16, anim: u8) -> ApiResult<bool> {
+        let look = self.absorbed_look(look)?;
         let list = &mut self.actor_of_mut(o)?.absorbed;
         if list.len() >= 8 {
             return Ok(false);
         }
-        list.push(AbsorbedObstacle { kind, anim });
+        list.push(AbsorbedObstacle { look, anim });
         Ok(true)
     }
 
-    fn pop_absorbed(&mut self, o: ObjectRef) -> ApiResult<Option<(u8, u8)>> {
-        Ok(self.actor_of_mut(o)?.absorbed.pop().map(|a| (a.kind, a.anim)))
+    fn pop_absorbed(&mut self, o: ObjectRef) -> ApiResult<Option<(u16, u8)>> {
+        Ok(self.actor_of_mut(o)?.absorbed.pop().map(|a| (a.look.0, a.anim)))
     }
 
     // ---- Sprites -------------------------------------------------------------------
@@ -1804,14 +1836,31 @@ impl CoreApi for Battle {
         })
     }
 
-    fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, kind: u8) -> ApiResult<()> {
+    fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, look: u16) -> ApiResult<()> {
         self.collision_of(o)?;
-        kinds::obstacle::fly_to_absorber(self, o, kind);
+        let look = self.absorbed_look(look)?;
+        kinds::obstacle::fly_to_absorber(self, o, look);
         Ok(())
     }
 
     fn obstacle_release_tracking(&mut self, o: ObjectRef) {
         kinds::obstacle::release_tracking(self, o);
+    }
+
+    fn obstacle_stage_slot_free(&self) -> bool {
+        self.field.objects.stage_slot_free()
+    }
+
+    fn obstacle_enter_stage(&mut self, o: ObjectRef) -> ApiResult<()> {
+        if self.field.objects.enter_stage(o) {
+            Ok(())
+        } else {
+            Err(ApiError::Other("both stage-object slots are taken".into()))
+        }
+    }
+
+    fn obstacle_leave_stage(&mut self, o: ObjectRef) {
+        self.field.objects.leave_stage(o);
     }
 
     fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef) {

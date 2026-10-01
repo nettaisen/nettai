@@ -94,6 +94,12 @@ impl ActionRole {
 pub enum KindRole {
     /// The rock a stage's actor list places (entry type 8; its `place`).
     Rock,
+    /// The boulder a stage's actor list places (entry type 3; its
+    /// `place`), one of the field's stage objects.
+    Boulder,
+    /// The Guardian statue a stage's actor list places (entry type 9; its
+    /// `place`).
+    Statue,
     /// What an obstacle absorbed flies off as (`obstacle.fly_to_absorber`).
     AbsorbedObstacle,
     /// GroundCross's charged chips' falling rocks (`sub_8012CB2`).
@@ -104,12 +110,21 @@ pub enum KindRole {
 }
 
 impl KindRole {
-    pub const ALL: [KindRole; 4] = [KindRole::Rock, KindRole::AbsorbedObstacle, KindRole::FallingRock, KindRole::Support];
+    pub const ALL: [KindRole; 6] = [
+        KindRole::Rock,
+        KindRole::Boulder,
+        KindRole::Statue,
+        KindRole::AbsorbedObstacle,
+        KindRole::FallingRock,
+        KindRole::Support,
+    ];
 
     /// Its name in `rules/roles.luau`'s `kinds`.
     pub fn name(self) -> &'static str {
         match self {
             KindRole::Rock => "rock",
+            KindRole::Boulder => "boulder",
+            KindRole::Statue => "statue",
             KindRole::AbsorbedObstacle => "absorbed_obstacle",
             KindRole::FallingRock => "falling_rock",
             KindRole::Support => "support",
