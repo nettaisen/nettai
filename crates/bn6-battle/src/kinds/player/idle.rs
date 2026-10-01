@@ -276,10 +276,13 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
             Value::Nil if instant.is_some() => super::EngineAction::InstantChip.into(),
             v => panic!("weapon {:?} names {v:?}, not an action", b.content.defs.weapon(weapon).key),
         };
-        // A weapon that names an instant effect no chip has (TenguCross's
-        // wind) runs its own, and waits after it.
+        // A weapon's instant effect: a chip's (it runs, and the navi
+        // idles), or one no chip has (TenguCross's wind), after which the
+        // navi waits.
         if let Some(f) = instant {
-            ai_mut(b, r).attack.instant = Some(super::actions::instant::Effect::RunsThenWaits(f));
+            use super::actions::instant::Effect;
+            let waits = b.content.defs.weapon(weapon).instant_waits;
+            ai_mut(b, r).attack.instant = Some(if waits { Effect::RunsThenWaits(f) } else { Effect::Runs(f) });
         }
         return action;
     }
