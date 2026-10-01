@@ -1,0 +1,3 @@
+# A navi chip (subtype 14): CircusMan, as chips/107-crcusman summons him.
+
+script = "../107-crcusman/chip.luau"
