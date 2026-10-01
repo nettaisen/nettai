@@ -6,6 +6,7 @@
 -- definition here instead.
 
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
+local anti_recovery = require("../chips/antirecv/controller")
 local antidmg_counter = require("../chips/antidmg/counter")
 local antiswrd_counter = require("../chips/antiswrd/counter")
 local barriers = require("../lib/barriers/barriers")
@@ -16,6 +17,7 @@ local encased_bubble = require("../objects/encased-bubble/bubble")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local guardian_statue = require("../chips/guardian/statue")
 local rock = require("../objects/rock/rock")
+local supports = require("../lib/supports/controller")
 
 return define.roles {
     actions = {
@@ -55,8 +57,11 @@ return define.roles {
         absorbed_obstacle = absorbed_obstacle.kind,
         -- GroundCross's charged chips' falling rocks.
         falling_rock = falling_rock.kind,
-        -- The NaviCust supports' controller (effect object #0x79).
-        support = { legacy = { kind = "support" } },
+        -- The NaviCust supports' controller (Rush's, Beat's and Tango's).
+        support = supports.kind,
+        -- AntiRecv's counterattack, which a heal meets when the other side
+        -- has AntiRecv armed.
+        anti_recovery = anti_recovery.kind,
     },
     hooks = {
         -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with
