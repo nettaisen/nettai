@@ -1939,7 +1939,7 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     // Side 0 changes to the navi it already is (the test content has only
     // MegaMan): kept, then taken back from the kept stats.
     let (mut b, p0, p1) = fight();
-    b.turn_transforms[0].cross_change = Some(b.content.navi_numbered(crate::setup::Navi(0)));
+    b.turn_transforms[0].cross_change = Some(b.content.navi_by_key(testing::MEGAMAN));
     super::cross_change::request_change(&mut b, p0);
     b.paused = true;
     b.objects.get_mut(p0).hp = 700;
@@ -2224,9 +2224,9 @@ fn weapon_definitions_carry_their_charge_times_and_traits() {
     let a_charge = c.weapon(c.weapon_by_key("eleccross/a-charge"));
     assert_eq!((a_charge.charged_chip, a_charge.setup), (Some(crate::content::ChargedChip::Bonus), None));
     // A navi's and a form's weapons are handles.
-    let megaman = c.navi(c.navi_numbered(crate::setup::Navi::MEGAMAN));
+    let megaman = c.navi(c.navi_by_key(testing::MEGAMAN));
     assert_eq!(megaman.weapons.buster, Some(buster));
-    assert_eq!(c.form_data(crate::setup::Form::NONE).weapons.charge_shot, Some(c.weapon_by_key("megaman/charged-shot")));
+    assert_eq!(c.form(c.base_form()).weapons.charge_shot, Some(c.weapon_by_key("megaman/charged-shot")));
 }
 
 #[test]

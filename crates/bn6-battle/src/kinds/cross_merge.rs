@@ -11,13 +11,13 @@ use crate::kinds::common;
 use crate::kinds::effect;
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
-use crate::setup::Navi;
+use bn6_content_api::NaviHandle;
 
 /// The image's own state.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Which navi it shows (Param1).
-    pub navi: Navi,
+    pub navi: Option<NaviHandle>,
     /// +0x62: swings left; each is `swing_step` narrower than the last.
     pub swings_left: u16,
     /// ExtraVars+4: how much narrower each swing gets.
@@ -43,8 +43,8 @@ fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 
 /// `sub_80BC844`: `navi`'s image over MegaMan (`owner`), `swings` swings
 /// from his panel.
-pub fn spawn(b: &mut Battle, owner: ObjectRef, navi: Navi, swings: u16) -> Option<ObjectRef> {
-    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::CrossMerge, Vec3::default(), [navi.0, 0, 0, 0])?;
+pub fn spawn(b: &mut Battle, owner: ObjectRef, navi: NaviHandle, swings: u16) -> Option<ObjectRef> {
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::CrossMerge, Vec3::default(), [0; 4])?;
     let (panel, alliance, flip) = {
         let o = b.objects.get(owner);
         (o.panel, o.alliance, o.flip)
@@ -57,7 +57,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, navi: Navi, swings: u16) -> Optio
     o.timer = 6;
     o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
     let v = vars(b, r);
-    v.navi = navi;
+    v.navi = Some(navi);
     v.swings_left = swings;
     Some(r)
 }
@@ -72,12 +72,11 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80BC670`: the navi's sprite, ahead of MegaMan by a full swing.
 fn init(b: &mut Battle, r: ObjectRef) {
-    let navi = vars(b, r).navi;
-    let identity = b.content.navi_data(navi).identity;
+    let navi = vars(b, r).navi.expect("a cross merge shows a navi");
+    let identity = b.content.navi(navi).identity;
     b.objects.get_mut(r).identity = identity;
     // sub_800FC9E(navi, no form)
-    let sprite =
-        if navi == Navi::MEGAMAN { b.content.form_data(crate::setup::Form::NONE).sprite } else { b.content.navi_data(navi).sprite };
+    let sprite = b.content.navi_sprite(navi, b.content.base_form());
     let flip = {
         let o = b.objects.get(r);
         o.alliance ^ o.flip
@@ -101,7 +100,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // The game's svc Div, with a zero divisor never passed.
     let step = 0x28_0000 / swings as i32;
     let lift = (4 - panel_y as i32) * 0x18_0000;
-    let extra = (b.content.navi_data(navi).merge_height as i32) << 16;
+    let extra = (b.content.navi(navi).merge_height as i32) << 16;
     let v = vars(b, r);
     v.swing_side = -1;
     v.swing_step = step;
@@ -116,8 +115,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // sub_8010DD0: the navi's own init hook (some wear an overlay).
     crate::kinds::player::form::navi_init_hook(b, r, identity);
     // SpoutMan's image keeps its idle overlay at its own height (the
-    // hook's result, ExtraVars[0] = 1).
-    if navi == Navi(6)
+    // hook's result, ExtraVars[0] = 1; the original tests his navi
+    // number: the one navi that wears an idle overlay).
+    if matches!(b.content.identity(identity).parts, Some(crate::content::Parts::Idle { .. }))
         && let Some(o) = b.objects.get(r).related[1]
     {
         crate::kinds::player::form::pin_overlay(b, o);

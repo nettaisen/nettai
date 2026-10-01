@@ -29,7 +29,7 @@ local VORTEX = define.effect { sprite = asset.sprite("dust-cloud"), anim = 0, pa
 local VORTEX_TICKS = 2
 
 -- DustCross's Beast form (the navi stats' form).
-local DUST_BEAST = 0x16
+local DUST_BEAST = "dustcross-beast"
 
 local SOUND = asset.sound("dustbrk")
 
@@ -42,7 +42,7 @@ end
 -- `sub_80EFCD8`: the pose and the vortex, then the pull on the 10th tick.
 local function pull(me: Object, s: State)
     if me.step_init == 0 then
-        local beast = battle.navi(me.alliance).form == DUST_BEAST
+        local beast = battle.navi(me.alliance).form.id == DUST_BEAST
         me:set_animation(if beast then 0x19 else 0x17)
         me:set_status("using_action", true)
         me:set_status("moving", true)

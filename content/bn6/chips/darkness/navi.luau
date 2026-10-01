@@ -6,6 +6,8 @@
 -- flames ahead of him, and vanishes; then Bass swoops in, charges and
 -- slashes, and fades out. See docs/engine/chips.md §3.6.36.
 
+local base_form = require("../../navis/megaman/forms/base/form")
+local megaman = require("../../navis/megaman/navi")
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local element_pillar = require("../../objects/element-pillar/element_pillar")
@@ -32,8 +34,21 @@ export type State = {
 -- in his base form (NameID 0x1A0: no parts), whose attach points his aura
 -- takes.
 local BASS_SPRITE = asset.sprite("bass-anly")
-local BASS_ACTOR: ActorType, BASS_AI = "navi", 0x13
-local BASE_FORM = 0
+local BASS = define.identity {
+    id = "bass",
+    class = "navi",
+    version = 0,
+    ai_index = 0x13,
+    ice = "medium",
+    parts = {
+        body = {
+            sprite = asset.sprite("bass-anly"),
+            anims = 20,
+            behind = { { 0x13, 0x13 } },
+            anim_offset = 0x14,
+        },
+    },
+}
 
 local SOUND_DARK, SOUND_APPEAR, SOUND_ROAR = asset.sound("immobilizer"), asset.sound("appear"), asset.sound("roar")
 local SOUND_SWOOP, SOUND_SLASH = asset.sound("swoop"), asset.sound("big-sword-swing")
@@ -485,7 +500,7 @@ local function init(me: Object)
         me.anim = 0
         me.anim_loaded = 0xFF
     else
-        me:wear_megaman_image(BASE_FORM)
+        me:wear_form_image(megaman, base_form)
     end
     local p = (me.related1 :: Object).pos
     me.pos = p
@@ -495,7 +510,7 @@ local function init(me: Object)
     me.visible = true
     sprite:set_flip(flip_of(me))
     if s.bass then
-        me:add_navi_parts(BASS_ACTOR, BASS_AI, 1)
+        me:add_parts(BASS, 1)
     else
         me:navi_image_parts(true)
     end
@@ -508,7 +523,7 @@ end
 local function destroy(me: Object)
     local s = me.state :: State
     if s.bass then
-        me:remove_navi_parts(BASS_ACTOR, BASS_AI)
+        me:remove_parts(BASS)
     else
         me:navi_image_parts(false)
     end

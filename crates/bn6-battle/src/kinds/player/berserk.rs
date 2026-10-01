@@ -169,13 +169,14 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
         let flashing =
             target.is_some_and(|t| b.objects.get(t).collision.is_some_and(|c| b.collision.get(c).f1 & f1::FLASHING != 0));
         if flashing {
-            let form = super::form_of(b, r).0;
+            let volley = super::form_of(b, r).special_volley;
             let s = &mut ai_mut(b, r).berserk;
             s.step = Step::Buster;
-            // The game means 6 (2 in Beast Out) but stores the form number
-            // (a register mixup): in base form the volley lasts until the
-            // row is clear (or 65536 shots).
-            s.volley = if matches!(form, 0xB | 0xC) { 2 } else { form as u16 };
+            // The game means 6 (2 in Beast Out) but stores the form's
+            // number (a register mixup), which is what a form's
+            // `special_volley` says: in the base form (0) the volley
+            // lasts until the row is clear (or 65536 shots).
+            s.volley = volley;
             return Outcome::Nothing;
         }
     }
