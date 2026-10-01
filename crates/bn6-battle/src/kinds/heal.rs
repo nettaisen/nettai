@@ -84,7 +84,10 @@ pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32
     o.alliance = alliance;
     o.damage = damage as u16;
     o.stamina = (damage >> 16) as u16;
-    // (+0x30 also gets the trap's chip id, for the telop only.)
+    // +0x30 also gets the trap's chip id, for the telop only: the chip the
+    // other side's record holds, which sprang.
+    let named = b.linked[(alliance ^ 1) as usize & 1].chip;
+    b.objects.get_mut(c).telop_chip = named.map(|chip| crate::hud::TelopChip { chip: Some(chip), ..Default::default() });
     Some(c)
 }
 
