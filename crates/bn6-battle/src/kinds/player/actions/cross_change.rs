@@ -24,6 +24,7 @@ use crate::kinds::player::{
 };
 use crate::object::ObjectRef;
 use crate::content::Content;
+use bn6_content_api::NaviHandle;
 use crate::setup::{Form, Navi, NaviStats, NaviWeapons};
 
 /// The action's own state.
@@ -185,8 +186,7 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
         panic!("a Cross change without a navi reads 0xFF as one (sub_802DCCC)");
     };
     let kept = b.cross_stats[side].navi == target;
-    let fresh = b.content.navi_number(target).0;
-    b.stats[side] = if kept { b.cross_stats[side] } else { fresh_stats(fresh, &b.content) };
+    b.stats[side] = if kept { b.cross_stats[side] } else { fresh_stats(target, &b.content) };
     super::super::refresh_navicust_state(b, r);
     take_identity(b, r);
     let s = *stats(b, r);
@@ -199,7 +199,7 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
     post_init_hook(b, r);
     clear_statuses(b, r);
     navi_status::end_anger(b, r);
-    let (hp, max_hp) = if navi == Navi::MEGAMAN { (s.hp, s.max_hp) } else { changed_hp(navi, side as u8) };
+    let (hp, max_hp) = if navi == Navi::MEGAMAN { (s.hp, s.max_hp) } else { changed_hp(b, s.navi, side as u8) };
     let o = b.objects.get_mut(r);
     o.hp = hp;
     o.max_hp = max_hp;
@@ -258,38 +258,16 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     clear_invulnerable(b, r);
 }
 
-/// `byte_80210DD`: a navi's stats when a Cross change brings it fresh, by
-/// navi: half its HP, SuperArmor, FloatShoe, AirShoe, Undershirt, first
-/// barrier, Mega and Giga levels, buster, charged shot, B+Back special,
-/// A charge (and three words and a byte nothing ported reads).
-///
-/// Game data held in the engine for now: it belongs with the navis in the
-/// content (to move there with the content model's next version).
-const FRESH: [[u8; 16]; 12] = [
-    [0x32, 0, 0, 0, 0, 0, 5, 1, 0, 0x01, 0xFF, 1, 0xA, 0, 8, 0xFF],
-    [0x32, 0, 1, 0, 0, 0, 5, 1, 0, 0x40, 0xFF, 1, 0xA, 0, 8, 0xFF],
-    [0x64, 0, 1, 0, 0, 0, 5, 1, 0, 0x44, 0xFF, 1, 0xA, 0, 8, 0xFF],
-    [0x4B, 0, 0, 0, 0, 0, 5, 1, 0, 0x43, 0xFF, 1, 0xA, 0, 8, 0xFF],
-    [0x96, 0, 0, 0, 0, 0, 5, 1, 0, 0x47, 0xFF, 1, 0xA, 0, 8, 0xFF],
-    [0x7D, 0, 0, 0, 0, 0, 5, 1, 0, 0x48, 0xFF, 1, 0xA, 0, 8, 0x29],
-    [0x32, 0, 0, 0, 0, 0, 5, 1, 0, 0x41, 0xFF, 1, 0xA, 0, 8, 0x20],
-    [0x64, 1, 0, 0, 0, 0, 5, 1, 0, 0x45, 0xFF, 1, 0xA, 0, 8, 0x1F],
-    [0x4B, 0, 1, 1, 0, 0, 5, 1, 0, 0x42, 0x10, 1, 0xA, 0, 8, 0xFF],
-    [0x96, 1, 0, 0, 0, 0, 5, 1, 0, 0x4A, 0xFF, 1, 0xA, 0, 8, 0xFF],
-    [0x7D, 1, 0, 0, 0, 0, 5, 1, 0, 0x49, 0xFF, 1, 0xA, 0, 8, 0xFF],
-    [0x7D, 0, 0, 0, 0, 0, 5, 1, 0, 0x32, 0x34, 1, 0xA, 0x32, 8, 0x2D],
-];
-
-/// `init_8013B64`: navi `navi`'s stats, fresh: the defaults
-/// (`initNaviStats_WithDefaultStatsMaybe_8013438`) with its `FRESH` row.
-fn fresh_stats(navi: u8, content: &Content) -> NaviStats {
-    let Some(row) = FRESH.get(navi as usize) else {
-        panic!("navi {navi:#x}'s fresh stats read past their table (init_8013B64)");
+/// `init_8013B64`: `navi`'s stats, fresh: the defaults
+/// (`initNaviStats_WithDefaultStatsMaybe_8013438`) with what the navi comes
+/// with (`byte_80210DD`'s row: the navi's `fresh` and `weapons`).
+fn fresh_stats(navi: NaviHandle, content: &Content) -> NaviStats {
+    let data = content.navi(navi);
+    let Some(fresh) = data.fresh else {
+        panic!("navi {:?}'s fresh stats read past their table (init_8013B64)", content.defs.navi(navi).key);
     };
-    let hp = row[0] as u16 * 2;
     let defaults = NaviStats::default();
     let base = content.form_numbered(Form::NONE);
-    let weapon = |n: u8| (n != 0xFF).then(|| content.weapon_numbered(n));
     NaviStats {
         version: 1,
         reg_up: 4,
@@ -302,23 +280,23 @@ fn fresh_stats(navi: u8, content: &Content) -> NaviStats {
         folder: 0,
         folder_reg: [0xFF; 2],
         folder_tags: [[0xFF; 2]; 2],
-        navi: content.navi_numbered(Navi(navi)),
-        max_base_hp: hp,
-        hp,
-        max_hp: hp,
-        super_armor: row[1] != 0,
-        float_shoes: row[2] != 0,
-        air_shoes: row[3] != 0,
-        undershirt: row[4] != 0,
-        first_barrier: row[5],
-        mega_level: row[6],
-        giga_level: row[7],
+        navi,
+        max_base_hp: fresh.hp,
+        hp: fresh.hp,
+        max_hp: fresh.hp,
+        super_armor: fresh.super_armor,
+        float_shoes: fresh.float_shoes,
+        air_shoes: fresh.air_shoes,
+        undershirt: fresh.undershirt,
+        first_barrier: fresh.first_barrier,
+        mega_level: fresh.mega_level,
+        giga_level: fresh.giga_level,
         weapons: NaviWeapons {
-            buster: weapon(row[8]),
-            charge_shot: weapon(row[9]),
-            back_special: weapon(row[10]),
-            a_charge: weapon(row[15]),
-            back_special_damage: row[13] as u16,
+            buster: data.weapons.buster,
+            charge_shot: data.weapons.charge_shot,
+            back_special: data.weapons.back_special,
+            a_charge: data.weapons.a_charge,
+            back_special_damage: fresh.back_special_damage,
             ..defaults.weapons
         },
         bugs: crate::setup::NaviCustBugs { panel_trail_kind: 0xFF, ..defaults.bugs },
@@ -326,31 +304,12 @@ fn fresh_stats(navi: u8, content: &Content) -> NaviStats {
     }
 }
 
-/// `byte_802DD88`: a navi's HP after a Cross change, by navi and (the game
-/// passes the side where the table's column is the navi's level) the
-/// first two columns.
-///
-/// Game data held in the engine for now (see `FRESH`).
-const CHANGED_HP: [[u16; 2]; 13] = [
-    [999, 999],
-    [100, 150],
-    [130, 130],
-    [150, 150],
-    [150, 150],
-    [200, 200],
-    [150, 150],
-    [100, 150],
-    [100, 150],
-    [180, 180],
-    [150, 150],
-    [200, 200],
-    [150, 150],
-];
-
-/// `sub_802DD70(navi, side)`: a link navi's HP (and max) after a change.
-fn changed_hp(navi: Navi, side: u8) -> (u16, u16) {
-    let Some(row) = CHANGED_HP.get(navi.0 as usize) else {
-        panic!("navi {:#x}'s HP after a Cross change reads past its table (sub_802DD70)", navi.0);
+/// `sub_802DD70(navi, side)`: a link navi's HP (and max) after a change
+/// (`byte_802DD88`: the navi's `cross_hp`; the game passes the side where
+/// the table's column is the navi's level).
+fn changed_hp(b: &Battle, navi: NaviHandle, side: u8) -> (u16, u16) {
+    let Some(row) = b.content.navi(navi).cross_hp else {
+        panic!("navi {:?}'s HP after a Cross change reads past its table (sub_802DD70)", b.content.defs.navi(navi).key);
     };
     let hp = row[side as usize & 1];
     (hp, hp)

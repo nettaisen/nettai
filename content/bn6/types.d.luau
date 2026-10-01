@@ -14,8 +14,10 @@ export type Slot = "overlay" | "related" | "held" | "held2"
 -- status byte and bug its hits carry (nil or 0: none), what its hit does
 -- to the panel, whether it bursts (around what it hits, and over the last
 -- two columns when it leaves the field), whether it climbs (a pixel lower
--- down the field and higher on each panel).
+-- down the field and higher on each panel). One a navi's stats can name
+-- (a shot program) has a key.
 export type ProjectileVariant = {
+    id: string?,
     collision: { is: CollisionType, hits: CollisionType },
     hit_mod: number,
     element: string,

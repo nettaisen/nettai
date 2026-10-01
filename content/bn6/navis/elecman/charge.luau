@@ -91,8 +91,6 @@ charge.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 110, 100, 90, 85, 80, 140, 130, 120 },
     setup = setup,
-    -- (Transitional: the routine number the navi's row names it by.)
-    legacy = { routines = { 0x44 } },
 }
 
 return charge
