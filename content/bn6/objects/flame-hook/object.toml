@@ -1,0 +1,6 @@
+# FlmHook's hook (effect object #0x8C, `sub_80EA010`) is a script.
+
+[kind]
+pool = "effect"
+index = 0x8C
+script = "flame_hook.luau"

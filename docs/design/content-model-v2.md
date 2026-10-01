@@ -1076,6 +1076,32 @@ settled:
 - **Verified** on the test content (the instant chips' duel and its rollback, the plus chips' bonuses from a
   special source, BusterUp's cap), the type check, and the traces and the chip lab on a real pack.
 
+**As built** (step 8d, the instant chips): every chip of action 0x1C is a definition with an `instant` hook
+where nothing names it by number: Boomer, HiBoomer and M-Boomer (chips/boomer, `boomerang.instant(variant)`,
+the boomerang's speeds a `boomerang-variant` record; objects/boomerang also holds `boomerang.tomahawk`, which
+TomahawkCross Beast's throw names), Lance (chips/lance), SandWrm1-3 (chips/sandwrm, `worm.instant(level)`, with
+the hole and the sand), GolmHit1-3 (chips/golmhit, `golem.instant { palette }`), JustcOne (chips/justcone),
+FullCust, SyncTrgr, WhiCapsl (`plus.attack_with(plus.PARALYZE)`), FinalGun and NumTrap. What settled:
+
+- **A record's parameter is the builder's argument**, and a branch only another record or caller reaches is
+  an argument too: the golem's `own_panel` and `cracks` (Param2 to Param4), the lance's palette, the
+  boomerang's `turns`, `column` and `strong`. The effects no chip names (2, 6, 9, 11, 16, 17) are builders in
+  lib/instant (`invisible.instant(ticks)`, `repair.instant`, `immobilize.instant`, `side_special.instant`,
+  `meteor_shower.instant(drops)`, `dust_storm.instant { ticks, tied }`), which a link navi's weapon calls when
+  it is ported; the dust storm's tie to its user's action (the game's table of action numbers by mode) is the
+  action itself, compared with `navi_action()`.
+- **Records kept, and their shims**: FireHit1-3 (FlmHook's and MstrCros's Program Advances name them) run
+  `fist.instant(hit_mod)` through chips/06b-firehit1; MegaBstr (chip 0), Atk+10's record (the dark chips'
+  substitute), Atk+30 and Uninstll (SunMoon's ingredients) and DarkPlus (a dark chip) run `plus.by_record`
+  through chips/0c0-atk-10; BeastOut and the invalid chip (the custom screen's 0x13F and 0x185) run
+  `plus.sparkle` through chips/13f-beastout. The nameless copies of the plus chips' record and the records
+  that became definitions no longer register (any record of a subtype reaches the subtype's one registration).
+- **Bytes no battle routine reads stay out**: SyncTrgr's and ColForce's menu classification flags (0x04,
+  0x10, 0x20 of the second flag byte) aren't in their definitions; a lock-on mode without the Beast rush is
+  `beast = { rush = false, lockon = n }` (SandWrm's).
+- **Verified** on the test content (the spawning chips' duels and their rollback, the lances, the tomahawks),
+  the type check, and the chip lab on a real pack.
+
 ### 5.7 Weapons and forms
 
 ```luau
@@ -1851,6 +1877,12 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
   (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
   anyway), and those chips become definitions.
+- **The instant chips' record shims** (step 8d): chips/0c0-atk-10 (subtype 3: MegaBstr, chip 0, which a zeroed
+  chip field reads; Atk+10's record, the dark chips' fifth substitute; Atk+30 and Uninstll, SunMoon's
+  ingredients; DarkPlus, a dark chip), chips/06b-firehit1 (subtype 8: FireHit1-3, Program Advance ingredients)
+  and chips/13f-beastout (subtype 0: BeastOut and the invalid chip, which the custom screen names by number).
+  They go when the zeroed chip, the substitutes, the dark chips, the custom screen's chips and the recipes
+  name chips by handle (phase C, step 10).
 
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 

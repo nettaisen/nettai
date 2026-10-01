@@ -208,15 +208,21 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
 4. Action **0x1C** `sub_80EC39C` (0x080EC39C) is the "instant" handler. It calls `off_80EC3F0[av[3]]` once and exits
    (subtype 0x14, TenguCross's B+Back, waits 8 more ticks). It is used by 54 chips: the MegaBuster pseudo-chip 0,
    Atk+/Navi+ left unfolded, FullCust, Boomer, Lance, FireHit, the error chip 0x185, and others. `off_80EC3F0` has 23
-   entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are the content pack's scripts
-   (`Hook::InstantChip`, the `instant_chip` of the module a chip of the subtype names, or a weapon's `instant_chip`):
-   0 BeastOut `sub_80104E0` and 3 the plus chips `sub_8010488` (chips/13f-beastout, lib/instant/plus, with their
-   sparkle, effect #0x14, objects/rising-bubble), 5 FullCust `sub_800AF34` (chips/0ae-fullcust), 10 BusterUp
-   `sub_8010820` (chips/busterup), 13 SyncTrgr `sub_80EC44C` (chips/11d-synctrgr). Subtypes 2 (`sub_8010474`,
-   invisibility), 6 (`sub_801050C`, repairs the side's obstacles), 9 (`sub_8015AA6`, an immobilizing hit, attack
-   #0x3F, on every enemy body in the row ahead) and 11 (`sub_802E1BE`, writes side state nothing reads) are named by
-   no chip: 2 and 9 by the link navis' weapon routines 0x71 and 0x83; they are in lib/instant-chips for those to
-   register.
+   entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are content's: a chip definition's
+   `instant` hook, or for a record the chips still keep (§12 of content-model-v2.md) the `instant_chip` its
+   subtype's shim module gives, or a weapon's `instant_chip`. 0 BeastOut `sub_80104E0` and 3 the plus chips
+   `sub_8010488` (lib/instant/plus, with their sparkle, effect #0x14, objects/rising-bubble; the records' shims
+   chips/13f-beastout and chips/0c0-atk-10), 1 the boomerang (objects/boomerang, chips/boomer), 4 Lance
+   (chips/lance), 5 FullCust `sub_800AF34` (chips/fullcust), 8 FireHit (chips/firehit, the records' shim
+   chips/06b-firehit1), 10 BusterUp `sub_8010820` (chips/busterup), 12 SandWrm (chips/sandwrm), 13 SyncTrgr
+   `sub_80EC44C` (chips/synctrgr), 19 JustcOne (chips/justcone), 21 GolmHit (chips/golmhit). Subtypes 2
+   (`sub_8010474`, invisibility), 6 (`sub_801050C`, repairs the side's obstacles), 9 (`sub_8015AA6`, an
+   immobilizing hit, attack #0x3F, on every enemy body in the row ahead), 11 (`sub_802E1BE`, writes side state
+   nothing reads), 16 (`sub_80E5A64`, a meteor shower) and 17 (`sub_80C6330`, a dust storm) are named by no chip
+   (2 and 9 by the link navis' weapon routines 0x71 and 0x83): they are builders in lib/instant (`invisible`,
+   `repair`, `immobilize`, `side_special`, `meteor_shower`, `dust_storm`), which take what the game reads from
+   the attack's parameters as arguments (the ticks, the drops, the storm's tie to its user's action), for those
+   to call. Unverified: no scenario reaches them.
 
 `chip-table.md` lists the handler of every chip and, per action, the handler address and the chips that use it.
 It also lists the spawner tables `off_802CCB4` and `off_802CD5C` and the formula table `off_80109DC`.
@@ -2352,13 +2358,13 @@ phase 4.
 #### 3.6.35 BigHook (navi chip subtype 23, Giga chip 0x12E, effect T4 0x8C)
 
 BigHook's navi spawner, `off_802CD5C[23]` = `sub_80EA11C`, is instant chip effect 14 (FlmHook's, `off_80EC3F0[14]`)
-too: it spawns the hook, effect #0x8C (`sub_80EA010`, objects/flame-hook, content since group E), with the chip's
+too: it spawns the hook, effect #0x8C (`sub_80EA010`, FlmHook's hook, content since group E), with the chip's
 params as its Params (BigHook's 0x00000A01: Param1 1, Param2 0xA), on the user's panel (also kept in bytes +0x0C and
 +0x0D), with its element, side and flip, damage word and RelatedObject1. With Param1 set it keeps r7 in
 ExtraVars[1] and stores 1 there: from the navi chip controller that is its flag; from action 0x1C r7 is a ROM
 pointer and the write does nothing. Its destroy (`sub_80EA10A`) stores 0 through ExtraVars[1] unconditionally
 (clearing the controller's flag; 0 or ROM otherwise). The controller neither warps the user out nor back in for
-navi 0x17 (§3.6.7). With Param1 1 the hook's flames (attack #0xCA, objects/flame-hook-fire) swing from columns 4
+navi 0x17 (§3.6.7). With Param1 1 the hook's flames (attack #0xCA, FlmHook's flames) swing from columns 4
 then 5 (side 1: 3 then 2), their kind (Param2) 1 (faster, the other palette and shader, running while dimmed) and
 hit spark (Param3) 0xA.
 
