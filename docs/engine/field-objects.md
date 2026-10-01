@@ -359,6 +359,5 @@ pushes, blink-out, falling/rising entrances, dimming shaking, eviction.
   BlkBomb, a LilBoiler, a Guardian, a Sensor, an IceCube, and a RockCube
   pushed back by the other side), obstacles broken by damage, and the
   registry's evictions (a third RockCube, a second Anubis, a RockCube after
-  a LilBoiler). A registration with a side past the registry is §18 of
-  shot-chips.md (LilBoiler's bonus).
+  a LilBoiler).
 - Actor-list types other than 0 and 8.
