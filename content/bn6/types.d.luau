@@ -184,6 +184,15 @@ export type FanVariant = {
     absorbed_kind: number,
 }
 
+-- CircGun's gun (chips/circgun/gun; the original's chip parameters): the
+-- ticks between its steps less one, its shots, and its look (the palette;
+-- look 1's shots hit as another attacker with a bug).
+export type CircGunVariant = {
+    period: number,
+    shots: number,
+    look: number,
+}
+
 -- An Anubis statue (chips/anubis/statue, `byte_80CF0C0`): its animation,
 -- the ticks between its drains, HP, lifetime, and NameID (the field
 -- objects' look).

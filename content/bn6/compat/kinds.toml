@@ -92,6 +92,8 @@ drill = { pool = "attack", index = 0x71 }
 "tengucross-beast/whirlwind" = { pool = "attack", index = 0x81 }
 "dolthdr/doll" = { pool = "attack", index = 0x82 }
 "moonbld/blade" = { pool = "attack", index = 0x85, scratch_position = true }
+"circgun/gun" = { pool = "attack", index = 0x89 }
+"circgun/shot" = { pool = "attack", index = 0x8A }
 thunder-column = { pool = "attack", index = 0x8B }
 "elcpuls/pulse" = { pool = "attack", index = 0x8C }
 "elmntman/meteor" = { pool = "attack", index = 0x8D }
@@ -166,6 +168,7 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
 "burnsqr/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
+"circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
