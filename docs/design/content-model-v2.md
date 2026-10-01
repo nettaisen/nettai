@@ -1876,6 +1876,17 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
   anyway), and those chips become definitions.
 
+  *Since step 5* they are definitions under their compat keys (the generated `record.luau` beside the
+  action's module), numbered by their legacy marker: `program_advances` names its ingredients by value, and
+  the marker carries the number with what the ruleset still reads by it (a damage formula as `damage = 1000 +
+  n` with its `sp_damage` or `navi_damage` table, `dark_substitute`, the subtype and parameters). Such a
+  definition's behaviour is the v1 module its marker names (`script`: the shim, which runs the chip's action
+  by subtype) or, once its module is folded into it, its own: a numbered definition may carry its own
+  `action`, `dimming`, `navi` or `instant` (then without `script`), and what names the chip by number
+  (recipes, the Cross special, a navi's own chip) reaches that definition. So a record chip converts by moving
+  its action into the generated definition and dropping `script`; the number stays in the marker until phase
+  C's step 10.
+
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 
 1. **Compat and the generator** (verification workspace, then this repository). gen-content with the ROM
@@ -1936,6 +1947,12 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    NameID look past the table's real ones names a sprite with no animation data as `"cc-ii"`. The loader is
    `bn6_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
    check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
+   Registration by number resolves a numbered definition's use as step 9 does a record's (its action's
+   registration, or its subtype's `dimming_chip`, `navi_chip` or `instant_chip`; `Unported` for what nothing
+   implements), unless the definition has its own. While step 5 was a branch, its content was made again on
+   each main it merged (the verification workspace's `tools/regen-step5.sh`: main's content with its v1
+   files, the branch's edits of people's files, then the generator), so chips, kinds and shared entries main
+   had gained by hand were skipped; on main the generated modules are people's and nothing regenerates them.
 6. **Assets by name and the codemod.** The extractor names assets from compat and writes the asset index, which
    the loader fills `Content::assets` from (done first, so real packs resolve `asset.*`); sprites and sounds become asset
    handles in the engine; the codemod of §11 runs over every module (asset strings and numbers to names,
