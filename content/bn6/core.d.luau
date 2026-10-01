@@ -842,6 +842,12 @@ declare battle: {
     -- counter; on `side`'s console only, or on both. Call it every tick the
     -- warning shows.
     warn: (sound: Sound, at: Vec3?, side: number?) -> (),
+    -- `sub_801DC7C`: every console's HUD numbers `object`'s HP under it
+    -- (drawn only; one of four places, none when they are taken), rolling
+    -- to it as it changes, until its HP is 0 or `hide_hp`.
+    show_hp: (object: Object, spec: HpNumberSpec) -> (),
+    -- `sub_801DD34`: the object's HP number goes.
+    hide_hp: (object: Object) -> (),
     -- `camera_initShakeEffect_80302a8`: the camera shakes for `ticks` ticks
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
@@ -993,6 +999,13 @@ declare field: {
     -- of `side` (drawn only).
     blink: (x: number, y: number, kind: PanelType, side: number) -> (),
 }
+
+-- Where an object's HP number shows (`battle.show_hp`): `dx`, `dy` pixels
+-- from where the HUD projects its position (0 if nil), the digits centred
+-- there; with `damage`, the damage it took (its max HP less its HP), its
+-- digits right-aligned in four places from there (what the original does
+-- for LilBoiler).
+export type HpNumberSpec = { dx: number?, dy: number?, damage: boolean? }
 
 -- What the telop of a dimming content starts itself names (`dimming.start`):
 -- a chip (nil: a zeroed chip field's, the roles' `zeroed` chip), and the

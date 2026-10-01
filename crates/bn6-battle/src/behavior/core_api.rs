@@ -325,6 +325,14 @@ impl CoreApi for Battle {
         Battle::warn(self, SoundId(sound), at, side);
     }
 
+    fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool) {
+        Battle::show_hp(self, o, dx, dy, damage, None);
+    }
+
+    fn hide_hp(&mut self, o: ObjectRef) {
+        Battle::hide_hp(self, o);
+    }
+
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value {
         let s = &self.stats[side as usize & 1];
         let i = |v: i64| Value::Int(v);

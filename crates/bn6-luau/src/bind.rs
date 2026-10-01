@@ -1030,6 +1030,21 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = side.map(|s| u8_arg(s, "side")).transpose()?.map(|s| s & 1);
         with(|api, _| Ok(api.warn(id, at.map(|p| p.0), side)))
     });
+    lib_fn!(lua, t, "show_hp", |_, (o, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
+        let offset = |key: &str| -> mlua::Result<i8> {
+            match spec.get::<LuaValue>(key)? {
+                LuaValue::Nil => Ok(0),
+                v => {
+                    let n = int(&v, key)?;
+                    i8::try_from(n).map_err(|_| mlua::Error::runtime(format!("battle.show_hp: {key} {n} is past a signed byte")))
+                }
+            }
+        };
+        let (dx, dy) = (offset("dx")?, offset("dy")?);
+        let damage = spec.get::<Option<bool>>("damage")?.unwrap_or(false);
+        with(|api, _| Ok(api.show_hp(o.0, dx, dy, damage)))
+    });
+    lib_fn!(lua, t, "hide_hp", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_hp(o.0))));
     lib_fn!(lua, t, "shake_camera", |_, (magnitude, ticks): (LuaValue, LuaValue)| {
         let (magnitude, ticks) = (u16_arg(magnitude, "magnitude")?, u16_arg(ticks, "ticks")?);
         if magnitude > 3 {

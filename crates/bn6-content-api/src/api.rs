@@ -984,6 +984,13 @@ pub trait CoreApi {
     /// `sound` on every 16th frame of a console's own frame counter; on
     /// `side`'s console only, or on both.
     fn warn(&mut self, sound: u16, at: Option<Vec3>, side: Option<u8>);
+    /// `sub_801DC7C(dx, dy)`: every console's HUD numbers `o`'s HP under
+    /// it (output only), `dx`, `dy` pixels from where it projects `o`'s
+    /// position; `damage`: the damage `o` took instead (its max HP less its
+    /// HP), uncentred.
+    fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool);
+    /// `sub_801DD34`: `o`'s HP number goes.
+    fn hide_hp(&mut self, o: ObjectRef);
     /// `camera_initShakeEffect_80302a8`: both consoles' cameras shake for
     /// `ticks` ticks at `magnitude` (0-3). Each shaking tick draws from
     /// the consoles' own RNGs, which ChpShufl's re-deal reads.
