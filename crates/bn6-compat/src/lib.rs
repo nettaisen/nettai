@@ -286,6 +286,22 @@ impl Compat {
         }
     }
 
+    /// What a navi runs when its CurAction is the original's `number`: one
+    /// of the framework's states, else the ruleset's own action or the
+    /// content action compat gives the number (the first by key, where
+    /// several share it). None for a number nothing here has.
+    pub fn navi_action_numbered(&self, content: &bn6_battle::Content, number: u8) -> Option<NaviAction> {
+        use bn6_battle::kinds::player::EngineAction;
+        if let Some(state) = NaviAction::state(number) {
+            return Some(state);
+        }
+        let keys = || self.actions.iter().filter(|&(_, &n)| n == number).map(|(key, _)| key.as_str());
+        if let Some(e) = EngineAction::ALL.into_iter().find(|e| keys().any(|k| k == e.key())) {
+            return Some(NaviAction::Engine(e));
+        }
+        keys().find_map(|key| content.defs.action_by_key(key)).map(NaviAction::Content)
+    }
+
     /// The original's action number for object `r`'s CurAction: a navi's
     /// NaviAction (the framework's states as themselves, the ruleset's
     /// actions and content's by key), any other object's its own byte.

@@ -59,6 +59,15 @@ pub enum EngineAction {
 }
 
 impl EngineAction {
+    pub const ALL: [EngineAction; 6] = [
+        EngineAction::Move,
+        EngineAction::DimmingChip,
+        EngineAction::NaviChip,
+        EngineAction::InstantChip,
+        EngineAction::FormChange,
+        EngineAction::CrossSpecial,
+    ];
+
     /// Its key, by which the validator numbers it.
     pub fn key(self) -> &'static str {
         match self {
