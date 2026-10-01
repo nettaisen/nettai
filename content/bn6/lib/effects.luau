@@ -26,9 +26,11 @@ effects.burst = define.effect { sprite = asset.sprite("burst"), anim = 0, palett
 -- burst (objects/bullet's rows 0 to 3) (effect 0x21).
 effects.flash = define.effect { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 }
 
+-- A small splash: something diving into or out of the field (effect 0x02:
+-- the dragons).
+effects.ripple = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
 -- The rest of the original's effects (gen-content).
--- Effect 0x02.
-effects.rising_bubble_1 = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
 -- Effect 0x03.
 effects.deletion = define.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 }
 -- Effect 0x04.
@@ -194,7 +196,7 @@ effects.bug = define.effect { sprite = asset.sprite("bug"), anim = 0, palette = 
 -- Effect 0x5C.
 effects.charge_glow_a_3 = define.effect { sprite = asset.sprite("charge-glow-a"), anim = 3, palette = 1 }
 -- Effect 0x5D.
-effects.effect_5d = define.effect { sprite = asset.sprite("effect-5d"), anim = 0, palette = 0 }
+effects.sun_beam = define.effect { sprite = asset.sprite("sun-beam"), anim = 0, palette = 0 }
 -- Effect 0x5E.
 effects.dustman_30 = define.effect { sprite = asset.sprite("dustman"), anim = 30, palette = 0 }
 -- Effect 0x60.

@@ -14,8 +14,9 @@ local ACTION = 0x1C
 local SUBTYPE = 0x14
 local COOLDOWN = 0x28
 
--- The gusts' first parameter: the weak push, turned toward the navi.
-local GUST_KIND = 1
+-- The gusts pull: the weak push, turned toward the navi (their first
+-- parameter, 1).
+local PULL = { pulls = true }
 
 -- `sub_8011CA8`.
 function tengu_wind.setup(navi: Object): number
@@ -35,7 +36,7 @@ function tengu_wind.instant_chip(user: Object, _spec: InstantChipSpec)
     local word = if flip < 32 then bit32.lshift(user.alliance, flip) else 0
     local side, side_flip = bit32.band(word, 0xFF), bit32.band(bit32.rshift(word, 8), 0xFF)
     for y = 1, 3 do
-        gust.spawn(x, y, side, side_flip, { GUST_KIND, 0, 0, 0 }, 0, nil, 0)
+        gust.spawn(x, y, side, side_flip, PULL, 0, nil, 0)
     end
     battle.play_sound(0xAD)
 end

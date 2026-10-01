@@ -32,9 +32,10 @@ local OPENING, BEAMING, CLOSING = 0x0, 0x4, 0x8
 -- Its navi's action while the beam lasts.
 local CHARGED_SHOT_ACTION = 0x45
 
--- The columns' kind and how many at most. (They stand 16 pixels up, the
--- thunder column's height.)
-local ZONE_KIND, MAX_ZONES = 1, 5
+-- How many columns at most (pulls: the thunder column's second variant,
+-- `byte_80D6914`'s row 1). (They stand 16 pixels up, the thunder column's
+-- height.)
+local MAX_ZONES = 5
 
 -- `sub_80D8F98`: a beam of `owner`'s on (x, y) at height `z` with `params`
 -- and the damage word `damage`. (Its X and Y are its spawner's registers
@@ -63,7 +64,7 @@ end
 -- runs while dimmed.
 local function lay(me: Object, x: number, slot: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local z = thunder_column.spawn(me, x, me.panel_y, me.element, { ZONE_KIND, 0, 0, 0 }, damage, me, slot + 1)
+    local z = thunder_column.spawn(me, x, me.panel_y, me.element, thunder_column.pull, damage, me, slot + 1)
     if z then
         z.run_while_dimmed = me.run_while_dimmed
         z.timer = me.timer

@@ -1,97 +1,39 @@
 --!strict
--- AuraHed1/2/3 and StreamHd: action 0x43 (`sub_80EE634`). The navi raises
--- its buster and fires an aura head (attack object #0x92,
--- objects/aura-head) along its row, recoiling half a panel and back over
--- 31 ticks. StreamHd (variant 1) fires five in a row, 16 ticks apart: its
--- first attack parameter counts them (and is each head's palette), and
--- the last one gets its third (the stronger hit modifier) and the longer
--- recoil.
+-- Registration by number (docs/design/content-model-v2.md §12): the
+-- records that name the original's action 0x43 (AuraHed1-3 and StreamHd,
+-- kept as records: the ruleset knows them by number as the aura chips,
+-- and StreamHd is a Program Advance) run this module, which runs the
+-- chip's own action (chips/aurahed): StreamHd's for the stream (the
+-- record's subtype 1), else the AuraHed of the head's palette (its first
+-- parameter). It goes when the records are definitions (step 5, and an
+-- aura trait for the ruleset, phase C).
 
-local buster = require("../../lib/buster")
-local aura_head = require("../../objects/aura-head/aura_head")
+local action = require("../aurahed/action")
+local aurahed = require("../aurahed/chips")
 
-export type State = {
-    -- Ticks left in the recoil (AIAttackVars+0x10).
-    timer: number,
+local by_number = {
+    state = action.STATE,
 }
 
-local aura_hed = {
-    state = { timer = "u16" },
+-- The AuraHeds by palette.
+local BY_PALETTE: { [number]: Action } = {
+    [0] = aurahed.aurahed1.action,
+    [1] = aurahed.aurahed2.action,
+    [2] = aurahed.aurahed3.action,
 }
 
--- The phases, on the attack's step.
-local RAISE, FIRE, RECOIL = 0x0, 0x4, 0x8
--- StreamHd's variant fires until its count reaches this.
-local LAST = 4
--- The recoil's start speed and slowdown, 16.16.
-local RECOIL_SPEED, RECOIL_DRAG = 0x3_0000, 0x8000
-
--- More heads to come (StreamHd, not yet at its last).
-local function streaming(me: Object): boolean
-    return me.variant ~= 0 and me:attack_param(1) ~= LAST
-end
-
--- `sub_80EE654`: raise the buster.
-local function raise(me: Object)
-    me:set_animation(0x0E)
-    buster.raise_arm(me)
-    me:set_status("using_action", true)
-    me.step = FIRE
-    me.step_init = 0
-end
-
--- `sub_80EE66E`: fire a head from the navi's panel, and start the recoil.
-local function fire(me: Object, s: State)
-    local params = { me:attack_param(1), me:attack_param(2), me:attack_param(3), me:attack_param(4) }
-    local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
-    aura_head.spawn(me, me.panel_x, me.panel_y, me.attack_element, params, damage)
-    s.timer = if streaming(me) then 0x0F else 0x1E
-    me.vel = Vec3.new(RECOIL_SPEED, me.vel.y, me.vel.z)
-    me.step = RECOIL
-    me.step_init = 0
-end
-
--- `sub_80EE6A4`: slide back, slowing; then (StreamHd) the next head, or
--- back to the panel and to idle.
-local function recoil(me: Object, s: State)
-    local v = me.vel.x
-    if v ~= 0 then
-        local p = me.pos
-        me.pos = Vec3.new(p.x - me.facing * v, p.y, p.z)
-        me.vel = Vec3.new(v - RECOIL_DRAG, me.vel.y, me.vel.z)
-    end
-    local t = s.timer - 1
-    s.timer = t
-    if t >= 0 then
+function by_number.update(me: Object, s: any)
+    -- (The original streams for any subtype but 0.)
+    if me.variant ~= 0 then
+        aurahed.streamhd.action.update(me, s)
         return
     end
-    me:set_coordinates_from_panel()
-    if streaming(me) then
-        local n = me:attack_param(1) + 1
-        me:set_attack_param(1, n)
-        if n == LAST then
-            me:set_attack_param(3, 1)
-        end
-        me.step = FIRE
-        me.step_init = 0
-        return
+    local palette = me:attack_param(1)
+    local a = BY_PALETTE[palette]
+    if not a then
+        error(string.format("AuraHed palette %d has no chip", palette))
     end
-    me.overlay = nil
-    me:exit_attack()
+    a.update(me, s)
 end
 
--- `sub_80EE634`.
-function aura_hed.update(me: Object, s: State)
-    local step = me.step
-    if step == RAISE then
-        raise(me)
-    elseif step == FIRE then
-        fire(me, s)
-    elseif step == RECOIL then
-        recoil(me, s)
-    else
-        error(string.format("AuraHed phase %#x reads past its phase table", step))
-    end
-end
-
-return aura_hed
+return by_number

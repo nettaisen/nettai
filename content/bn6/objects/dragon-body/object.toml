@@ -1,6 +1,0 @@
-# A dragon's body segment (attack object #0xC8, `sub_80DE13C`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xC8
-script = "dragon_body.luau"

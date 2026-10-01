@@ -15,7 +15,7 @@ local navi_chips = require("../../lib/navi-chips/navi")
 local parts = require("../../lib/swords/parts")
 local projectile = require("../../lib/projectile")
 local regions = require("../../lib/regions")
-local sun_beam = require("../../objects/sun-beam/sun_beam")
+local sun_beam = require("../gundels/beam")
 
 local crosover = {}
 
@@ -52,10 +52,10 @@ local SOUND_GUN = asset.sound("gundels1")
 local SHOT = { kind = 0x1D, damage = 0x0083_001E, z = 0x10_0000 }
 local SHOTS, SHOT_TICKS = 0xC, 0xA
 
--- Django's sun beam (look 0 of the GunDelSol beam's data), 80 pixels
--- ahead of him, and its drain on the target's column: element 5, 3
+-- Django's sun beam (GunDelSol's, chips/gundels/beam: its plain look), 80
+-- pixels ahead of him, and its drain on the target's column: element 5, 3
 -- damage, under it for 120 ticks.
-local BEAM: SunBeamLook = { look = 0, palette = 0 }
+local BEAM: SunBeam = { sprite = sun_beam.sprites.plain, palette = 0 }
 local DRAIN_ELEMENT, DRAIN_DAMAGE, DRAIN_TICKS = 5, 3, 0x78
 
 -- The slashes: a plain one, or half of an X when the other stands in
