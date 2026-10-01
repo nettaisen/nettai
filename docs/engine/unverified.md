@@ -335,6 +335,11 @@ first only, and the second takes what the spawner leaves in that register, the e
   per-player gauges and the special chips are not a netbattle's); ColForce from a real Gregar side 1 (the
   lab's bases have none; `chips/0x130-colforce/side1` gives a Falzar side the chip). Effects 2, 6, 9, 11, 16
   and 17 are called only by the link navis' weapons (not surveyed here).
+- The link navis' charged attacks beyond the one scenario each (standard-chips.md, "Action 9", lists them):
+  HeatMan with no floor ahead, ElecMan's bolts with no enemy on a panel, ChargeMan stopped where the floor ends
+  (his cars' burst), GroundMan's drills stopped by a hit, off the field or orphaned by a flinch, the higher
+  Charge levels and buster Attack; ProtoMan's other B+Back special (0x34). All reachable with a link navi
+  scenario; none written.
 - The gregar base's side 0 has SuprArmr, UnderSht, AttckMAX, ChargMAX and HP+1200 in its NaviCust, so Gregar's
   Cross and Beast scenarios never show side 0 flinching: the same blind spot as the falzar base's shoes, not
   surveyed yet.
@@ -386,6 +391,7 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 | The Gregar forms' own busters and charge shots, and their weakness knock-outs with the flinch (re-recorded without the save's programs); the Gregar Giga chips' users hit back by a Reflector or a MiniBomb | `forms/gregar/base`, `beast`, `beast-over`, `cross-*`, `cross-*-beast`, `cross-*-weakness`; `chips/0x12d-bass`, `0x12e-bighook`, `0x12f-deltaray`, `0x130-colforce`, `0x131-bugrswrd` `/guard`, `/counter` | match |
 | The worse status bug (six colours) and the emotion bug in Beast Out (no swings in a form) | `navicust/bug-status-6`, `bug-emotion-beast` | match |
 | The chatbox the custom screen waits on (custom-screen.md §3.5): the tick a description takes keys from, by its text's lines (Cannon R+8, Recov10 R+7, the invalid chip R+6, a Cross R+8); B held; the L message's printing, rushed by A or held B, for MegaMan and all eleven link navis | `custom/description-arm-*`, `description-invalid-*`, `description-cross-*`, `description-b-held-12`, `-30`, `description-keys`, `run-message`, `-b`, `-wait`, `-taps-0`, `-taps-1`, `-b-held`, `run-message-navi-1` to `-11` and their `-wait` | match, since the chatbox's port (the engine took a description's key from R+6 whatever its lines, had no held B, and estimated the message at 72 ticks) |
+| The link navis' charged attacks (their action table's entry 9, weapon routines 0x40 to 0x45 and 0x47 to 0x4A; standard-chips.md, "Action 9") and ProtoMan's (0x32, WideSwrd's slash) and his B+Back Reflect (0x30): each twice, from the start panel and a row up, the opponent standing still | `navis/navi-01-heatpres` to `navi-11-stepswrd` | match |
 
 ### Not reachable in a netbattle (documented, no scenario)
 

@@ -253,8 +253,7 @@ navis/heatman/charge.luau 1
 navis/heatman/navi.luau 1
 navis/heatman/record.luau 1
 navis/protoman/a-charge.luau 1
-navis/protoman/back-special-2.luau 1
-navis/protoman/back-special.luau 1
+navis/protoman/back_special.luau 2
 navis/protoman/charge.luau 1
 navis/protoman/chip.luau 1
 navis/protoman/navi.luau 1

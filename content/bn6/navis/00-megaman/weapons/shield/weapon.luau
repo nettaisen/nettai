@@ -33,6 +33,10 @@ local REFLECT = guard.action {
     counter = "shot",
 }
 
+-- The reflecting guard, which ProtoMan's B+Back raises too
+-- (navis/protoman/back_special).
+shield.reflect_action = REFLECT
+
 local function raise(navi: Object, damage: number)
     navi.attack_element = 0
     navi.charged = 0
