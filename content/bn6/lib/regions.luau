@@ -67,6 +67,18 @@ regions.deep_fan = define.region {
     panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 } },
 }
 
+-- The 5x5 around the anchor, row by row from the far back corner (region
+-- 0x26: ElecMan's reach).
+regions.big_square = define.region {
+    panels = {
+        { -2, -2 }, { -1, -2 }, { 0, -2 }, { 1, -2 }, { 2, -2 },
+        { -2, -1 }, { -1, -1 }, { 0, -1 }, { 1, -1 }, { 2, -1 },
+        { -2, 0 }, { -1, 0 }, { 0, 0 }, { 1, 0 }, { 2, 0 },
+        { -2, 1 }, { -1, 1 }, { 0, 1 }, { 1, 1 }, { 2, 1 },
+        { -2, 2 }, { -1, 2 }, { 0, 2 }, { 1, 2 }, { 2, 2 },
+    },
+}
+
 -- A side's area: side 0's (region 0x81, the panels without flag 0x20) and
 -- side 1's (0x82, with it).
 regions.area = {
@@ -86,6 +98,29 @@ regions.other_navi = {
     [0] = define.region { field = { require = 0x00200000, forbid = 0x00000000 } },
     [1] = define.region { field = { require = 0x00400000, forbid = 0x00000000 } },
 }
+
+-- The four around the anchor (region 0x0A).
+regions.neighbours = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+
+-- `GetRandomRelativePanelFiltered`: of region `r`'s panels around (x, y),
+-- dx stepping by `dir`, one whose flags have every `require` bit and no
+-- `forbid` bit, at random (one `rng_positive` draw, only when there is
+-- one); nil if none.
+function regions.random_panel(x: number, y: number, r: Region, dir: number, require: number, forbid: number): (number?, number?)
+    local found: { number } = {}
+    for _, p in r.panels or {} do
+        local px: number, py: number = x + p[1] * dir, y + p[2]
+        if field.check(px, py, require, forbid) then
+            local packed: number = px + py * 0x10
+            table.insert(found, packed)
+        end
+    end
+    if #found == 0 then
+        return nil, nil
+    end
+    local pick = found[battle.rng_positive() % #found + 1]
+    return bit32.band(pick, 7), bit32.rshift(pick, 4)
+end
 
 -- `object_isValidPanel` on whole numbers (the API's panel arguments wrap
 -- to a byte, which could bring a far-off panel back onto the field).

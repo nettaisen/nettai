@@ -1,3 +1,4 @@
-# SunMoon (a Program Advance, navi chip subtype 25) is a record: chip.luau gives registration by number its hook.
+# SunMoon (navi chip subtype 25) summon SunMoon (chips/sunmoon/sun.luau),
+# through chip.luau.
 
 script = "chip.luau"
