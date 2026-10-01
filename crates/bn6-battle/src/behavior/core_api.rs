@@ -209,12 +209,11 @@ impl Battle {
         Ok(self.collision.get_mut(c))
     }
 
-    /// A chip as the numeric API gives it: a pack record's number
-    /// (registration by number: the engine's test content), or for a chip
-    /// content defines (which has none) [`DEFINED_CHIPS`] plus its handle,
-    /// so a script can hand it back.
+    /// A chip as the numeric API gives it: [`DEFINED_CHIPS`] plus its
+    /// handle (a number a script can hand back, and nothing else: no chip
+    /// has a number of its own).
     pub(crate) fn api_chip(&self, h: ChipHandle) -> u16 {
-        self.content.defs.chip(h).record.id.unwrap_or(DEFINED_CHIPS + h.0)
+        DEFINED_CHIPS + h.0
     }
 
     /// A chip field as the numeric API gives it; `none` for no chip (the
@@ -229,13 +228,11 @@ impl Battle {
         if n == none {
             return Ok(None);
         }
-        if n >= DEFINED_CHIPS {
-            let h = ChipHandle(n - DEFINED_CHIPS);
-            return (h.index() < self.content.defs.chips.len())
-                .then_some(Some(h))
-                .ok_or_else(|| ApiError::Other(format!("chip {n:#x} is not in the content")));
-        }
-        self.content.defs.chip_numbered(n).map(Some).ok_or_else(|| ApiError::Other(format!("chip {n:#x} is not in the content")))
+        n.checked_sub(DEFINED_CHIPS)
+            .map(ChipHandle)
+            .filter(|h| h.index() < self.content.defs.chips.len())
+            .map(Some)
+            .ok_or_else(|| ApiError::Other(format!("{n:#x} is not a chip the numeric API gave")))
     }
 
     /// A weapon as the numeric API gives it: its routine number (0xFF for
@@ -257,8 +254,8 @@ impl Battle {
     }
 }
 
-/// Where the numeric API's chips content defines start: past every chip id
-/// the original has (nine bits).
+/// Where the numeric API's chips start: its number for a chip is this plus
+/// the chip's handle, clear of the fields' "none"s (0 and 0xFFFF).
 pub const DEFINED_CHIPS: u16 = 0x200;
 
 /// Check a write and convert it by the field's type.

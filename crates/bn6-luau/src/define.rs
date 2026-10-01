@@ -200,8 +200,8 @@ pub(crate) fn install(
     }
     define.set_readonly(true);
     lua.globals().set("define", define)?;
-    // `legacy { ... }`: data only registration by number reads (a chip's
-    // action number and subtype, the original's numbering of a table),
+    // `legacy { ... }`: data only registration by number reads (a navi's
+    // or a form's number, the original's numbering of a table),
     // marked for the ratchet and step 13 (docs/design/content-model-v2.md
     // §12); as data it is the table itself.
     let legacy = lua.create_function(|_, t: LuaValue| match t {

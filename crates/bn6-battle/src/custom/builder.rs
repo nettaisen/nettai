@@ -252,7 +252,7 @@ pub fn count_classes(hand: &ChipHand, uses: &mut ClassCounts, library: &dyn Libr
 
 #[cfg(test)]
 mod tests {
-    use crate::content::ChipId;
+    use crate::custom::library::testing::ChipId;
     use super::*;
     use crate::custom::library::testing::{EVERY_CODE, TestLibrary, chip};
     use crate::content::{ChipData, ProgramAdvance};

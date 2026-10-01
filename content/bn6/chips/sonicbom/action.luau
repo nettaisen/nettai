@@ -10,6 +10,7 @@
 -- VDoll's curse's telop.)
 
 local parts = require("../../lib/swords/parts")
+local slashes = require("../../navis/megaman/forms/slashcross/slashes")
 local sonic_boom = require("../../lib/swords/sonic_boom")
 
 local sonicbom = {}
@@ -30,7 +31,12 @@ local ANIM_SWING = 5
 local SWING_TICKS, THROW_TICK, RECOVER_TICKS = 0x15, 0xC, 5
 local SLASHES = 1
 
-local function action(id: string, boom: SonicBoom): Action
+-- What SlashCross's A-charge makes of the chip (forms/slashcross/charge
+-- reads the action's `charged` and `step`): the slash, and whether the
+-- navi dashes in first.
+type Charged = { charged: ChargedSlash, step: boolean }
+
+local function action(id: string, boom: SonicBoom, charged: Charged?): Action
     -- `sub_80EF990`: one slash (the shots word, AIAttackVars+0x12).
     local function count(me: Object)
         me.recovery = SLASHES
@@ -85,7 +91,7 @@ local function action(id: string, boom: SonicBoom): Action
     return define.action {
         id = id,
         state = sonicbom.STATE,
-        args = boom,
+        args = charged,
         -- `sub_80EF970`.
         update = function(me: Object, s: State)
             local step = me.step
@@ -104,9 +110,15 @@ end
 
 -- The booms: SonicBom's staggers (hit modifier 3), SprSonic's goes
 -- through (modifier 1), Curse's and Punisher's are plain.
+--
+-- Charged in SlashCross, a chip becomes the charged slash its record's
+-- bytes read as, a sword's subtype and its step flag: SonicBom's (subtype
+-- 0, first parameter 3) the plain slash after a dash, SprSonic's (1 and 1)
+-- WideSwrd's after a dash; Curse's and Punisher's (all zero) the plain
+-- slash where the navi stands, what an action that names none gets.
 sonicbom.actions = {
-    sonicbom = action("sonicbom/action", { hit_mod = 3, pierces = false }),
-    sprsonic = action("sprsonic/action", { hit_mod = 1, pierces = true }),
+    sonicbom = action("sonicbom/action", { hit_mod = 3, pierces = false }, { charged = slashes.sword, step = true }),
+    sprsonic = action("sprsonic/action", { hit_mod = 1, pierces = true }, { charged = slashes.wide, step = true }),
     curse = action("curse/action", { hit_mod = 0, pierces = false }),
     punisher = action("punisher/action", { hit_mod = 0, pierces = false }),
 }

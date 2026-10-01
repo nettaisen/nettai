@@ -100,12 +100,14 @@ impl Library for Content {
 #[cfg(test)]
 pub(crate) mod testing {
     use super::*;
-    use crate::content::{ChipClass, ChipCode, ChipFamily, ChipFlags, ChipId, Element, ExtraChipFlags};
+    use crate::content::{ChipClass, ChipCode, ChipFamily, ChipFlags, Element, ExtraChipFlags};
+
+    /// A test library's chip: the number its handle is.
+    pub type ChipId = u16;
 
     /// A chip record with only what the custom screen reads.
     pub fn chip(class: ChipClass, codes: &[ChipCode], flags: u8, damage: u16) -> ChipData {
         ChipData {
-            id: None,
             name: String::new(),
             codes: codes.to_vec(),
             element: Element::Null,
@@ -116,10 +118,7 @@ pub(crate) mod testing {
             mb: 0,
             flags: ChipFlags(flags),
             hit_param: 0,
-            action: 0,
-            subtype: 0,
             beast_lockon: false,
-            params: [0; 4],
             lockout: 0,
             extra_flags: ExtraChipFlags::default(),
             lockon_mode: None,
@@ -135,10 +134,6 @@ pub(crate) mod testing {
             dark_substitute: None,
             modifier: None,
             program_advances: Vec::new(),
-            gun_del_sol: None,
-            recovery: None,
-            sword: None,
-            script: None,
         }
     }
 

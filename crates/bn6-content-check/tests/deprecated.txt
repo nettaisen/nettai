@@ -106,7 +106,7 @@ navis/megaman/weapons/falzar-beast-buster/weapon.luau 1
 navis/megaman/weapons/gregar-beast-buster/weapon.luau 1
 navis/megaman/weapons/rock-barrage/weapon.luau 1
 navis/megaman/weapons/shield/weapon.luau 4
-navis/megaman/weapons/slash-a-charge/weapon.luau 2
+navis/megaman/weapons/slash-a-charge/weapon.luau 1
 navis/megaman/weapons/sticky-charge-21/weapon.luau 1
 navis/megaman/weapons/sticky-charge-22/weapon.luau 1
 navis/megaman/weapons/sticky-charge-23/weapon.luau 1
