@@ -24,6 +24,31 @@ scenario sets `navicust` (side 1 has none). A scenario that means a panel to act
 take effect, sets side 0's `navicust` (as the `no-footing` and `static/bugs` scenarios here do) or uses side 1.
 None of this section's other scenarios depends on a panel acting on side 0.
 
+## What the lab's match counts did not cover: the cut-in chips' templates
+
+Read every "verified" in this file, and every "the lab matches completely", with this in mind. Until the
+completeness audit's follow-up, the scenario library's generated templates recorded almost nothing of a cut-in
+chip. Their scripts end with `settle`, and both navis stand idle through a cut-in chip's telop and dimming, so
+the recording stopped about 80 frames after the chip was used, before its navi or controller appeared. 670
+recordings ended that way (completeness.md §10 has the list by template):
+
+- of every navi chip and several other cut-in chips (62 chips): `hit`, `miss`, `adjacent`, `obstacle`, the eight
+  `stage-*`, `beast`, `beast-charged`, `cross-*`, `atk10`, `navi20`, and most `counter-cut-in`;
+- seven Program Advance recordings and a few hand-written scenarios that end on a cut-in chip.
+
+The engine matched all 670, and 362 of them were `ok` in the lab's index. That match covered the chip's use and
+the telop's first frames. It did not cover the chip's attack, its hits, its panels, its behaviour on a stage,
+against an obstacle, in Beast Out or in a Cross, or its damage with Atk+10 and Navi+20. Before the fix those were
+verified only where a scenario waited on its own: this survey's scenarios (the tables below name them) and the
+templates in which the other side acts (`counter`, `guard`, `barrier`, `invisible`).
+
+The lab's driver now waits out a cut-in, and the 670 are recorded to their ends. The engine matches every one on
+every frame, so the tables below stand and the templates now cover what their names say. Two things remain true
+of any recording and are worth checking before leaning on one: its last frame (a recording proves nothing past
+it), and its status in the lab's index. 380 recordings are `unmet`: they ran to their end without doing what
+their description says, usually because the chip can't reach the opponent from where the template stands
+(ElecMan's and TomahawkMan's `hit`, a sword's `hit` from three columns away).
+
 ## Templates over every action handler family
 
 Four templates run over the first damaging chip of each action handler family that the lab's `hit` or `adjacent`
