@@ -53,6 +53,81 @@ fn chip_name(rom: &Rom, id: u32) -> String {
     if id <= 0xFF { crate::archive_string(rom, NAMES0, id) } else { crate::archive_string(rom, NAMES1, id & 0xFF) }
 }
 
+/// A chip's description, as R on the custom screen shows it
+/// (`chip_getScript_8027D34`: `TextScriptChipDescriptions0` for chips up
+/// to 0xFF, `TextScriptChipDesc1` after): its script opens the box at once
+/// (`E8 06`), prints at speed 0 (`F1 00 00`) up to three lines (`E9`
+/// between them) and waits for a key (`E7 01`). The lines are joined by
+/// `\n`; a glyph the charset doesn't have reads as `?`.
+fn chip_description(rom: &Rom, id: u32) -> Option<String> {
+    const DESCRIPTIONS0: u32 = 0x086E_B8B8;
+    const DESCRIPTIONS1: u32 = 0x086E_E0CC;
+    let (archive, index) = if id <= 0xFF { (DESCRIPTIONS0, id) } else { (DESCRIPTIONS1, id & 0xFF) };
+    if index >= rom.u16(archive) as u32 / 2 {
+        return None;
+    }
+    let mut a = archive + rom.u16(archive + 2 * index) as u32;
+    if rom.bytes(a, 2) != [0xE8, 0x06] || rom.bytes(a + 4, 3) != [0xF1, 0x00, 0x00] {
+        return None;
+    }
+    a += 7;
+    let mut text = String::new();
+    loop {
+        match rom.u8(a) {
+            0xE9 => text.push('\n'),
+            // A glyph of the second page.
+            0xE4 => {
+                text.push('?');
+                a += 1;
+            }
+            b if (b as usize) < crate::CHARSET.len() => text.push_str(crate::CHARSET[b as usize]),
+            b if b < 0xE4 => text.push('?'),
+            // The key wait, or a command this reader doesn't know (three
+            // Giga chips print a value with `FF`): the text so far.
+            _ => return Some(text),
+        }
+        a += 1;
+    }
+}
+
+/// A navi's no-running message (L on the custom screen in a netbattle):
+/// the characters in each of its lines. `TextScriptBattleRunDialog`'s
+/// script 3 is MegaMan's and sends each link navi to its own script (`EF
+/// 2F` and a script a navi, 0xFF for none); each shows the operator's
+/// portrait (`F5`), opens the box (`E8 00`), prints the lines and waits for
+/// A or B (`E7 00`).
+fn run_message(rom: &Rom, navi: u32) -> Vec<u8> {
+    const RUN_DIALOG: u32 = 0x086E_F78C;
+    let script = |i: u32| RUN_DIALOG + rom.u16(RUN_DIALOG + 2 * i) as u32;
+    let mut a = script(3);
+    assert_eq!(rom.bytes(a, 2), [0xEF, 0x2F], "the no-running message doesn't start with the navi's jump");
+    a = match rom.u8(a + 2 + navi) {
+        0xFF => a + 14,
+        own => script(own as u32),
+    };
+    assert_eq!(rom.u8(a), 0xF5, "navi {navi}'s no-running message: no portrait");
+    assert_eq!(rom.bytes(a + 3, 2), [0xE8, 0x00], "navi {navi}'s no-running message: no box");
+    a += 5;
+    let mut lines = vec![0u8];
+    loop {
+        match rom.u8(a) {
+            0xE9 => lines.push(0),
+            0xE4 => {
+                *lines.last_mut().unwrap() += 1;
+                a += 1;
+            }
+            b if b < 0xE4 => *lines.last_mut().unwrap() += 1,
+            0xE7 => {
+                assert_eq!(rom.bytes(a + 1, 2), [0x00, 0xE6], "navi {navi}'s no-running message: its end");
+                assert!(lines.len() <= 3, "navi {navi}'s no-running message has {} lines", lines.len());
+                return lines;
+            }
+            b => panic!("navi {navi}'s no-running message: command {b:#x}"),
+        }
+        a += 1;
+    }
+}
+
 fn element(v: u8) -> Element {
     [Element::Null, Element::Fire, Element::Aqua, Element::Elec, Element::Wood][v as usize]
 }
@@ -67,6 +142,7 @@ fn chips(rom: &Rom) -> Vec<ChipData> {
             ChipData {
                 id: Some(id as ChipId),
                 name: chip_name(rom, id),
+                description: chip_description(rom, id),
                 codes: rom.bytes(r, 4).iter().filter(|&&c| c != 0xFF).map(|&c| ChipCode(c)).collect(),
                 element: element(b(0x04)),
                 rarity: b(0x05),
@@ -322,6 +398,7 @@ fn navis(rom: &Rom) -> Vec<NaviData> {
                 merge_height: (merge >> 16) as i16,
                 own_chip,
                 chip_bonus: navi_chip_bonus(rom, n as u8),
+                run_message: run_message(rom, n),
                 name_record: Some(name_record(rom, FIRST_NAME + n as u16)),
             }
         })
