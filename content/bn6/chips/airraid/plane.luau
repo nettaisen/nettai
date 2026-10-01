@@ -12,6 +12,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local layer = require("../lilbolr/layer")
@@ -37,8 +38,8 @@ local SPRITE = asset.sprite("air-raid-plane")
 local FLAME = asset.sprite("jet-flame")
 -- Its collision: another body of its side, reached by the other side.
 local HIT_MOD = 3
--- Its kind among absorbed obstacles (`data.objects.absorbed_sprites`).
-local ABSORBED_KIND = 6
+-- How it looks absorbed (the original's obstacle kind 6: its own sprite).
+local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 local APPEAR_SOUND, BREAK_SOUND = asset.sound("appear"), asset.sound("hit-bomb-1")
 local TAKE_OFF_SOUND = asset.sound("take-off")
 -- Taking off: 30 ticks, rising 0.625 pixels a tick.
@@ -209,7 +210,7 @@ local function destroyed(me: Object)
         local p = me.pos
         battle.effect(Vec3.new(p.x, p.y, p.z + 0x14_0000), effects.explosion)
     elseif how == "absorbed" then
-        obstacle.fly_to_absorber(me, ABSORBED_KIND)
+        obstacle.fly_to_absorber(me, ABSORBED)
     else
         local blink = obstacle.blink_out(me)
         if blink == "blinking" then

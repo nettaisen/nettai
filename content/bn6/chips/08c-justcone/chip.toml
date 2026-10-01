@@ -1,4 +1,0 @@
-# JustcOne, an instant chip (action 0x1C, subtype 19): its effect drops a fist
-# (`sub_80DB4B4`).
-
-script = "../../objects/justice-one/justice_one.luau"

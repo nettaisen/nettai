@@ -1,6 +1,0 @@
-# A sand hole (actor object #0x1C, `sub_80BC87C`) is a script.
-
-[kind]
-pool = "actor"
-index = 0x1C
-script = "sand_hole.luau"
