@@ -597,10 +597,13 @@ fn numbered_chip(d: &Definition) -> bool {
 
 /// A numbered chip definition's record: `chip_record`'s fields, and its
 /// `legacy = legacy { number, action, subtype, params, script, ... }`
-/// marker's (the record's other fields, by their names).
+/// marker's (the record's other fields, by their names). Its use is its
+/// own (`action`, `dimming`, `navi` or `instant`), or the v1 module its
+/// marker names (`script`), not both.
 fn chip(d: &Definition, r: &Resolver) -> Result<ChipData, ContentError> {
-    if !d.spec.field("action").is_nil() {
-        return Err(err(d, "a chip is its own `action` or a numbered record whose legacy marker names its v1 module, not both"));
+    let own = ["action", "dimming", "navi", "instant"].iter().any(|f| !d.spec.field(f).is_nil());
+    if own && !d.spec.field("legacy").field("script").is_nil() {
+        return Err(err(d, "a chip's use is its own (`action`, `dimming`, `navi` or `instant`) or the v1 module its legacy marker names (`script`), not both"));
     }
     let record = super::defs::chip_record(d, r)?;
     let mut j = serde_json::to_value(&record).expect("a chip record serializes");
