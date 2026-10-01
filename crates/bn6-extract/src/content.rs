@@ -43,7 +43,7 @@ pub fn main(args: &[String]) {
     let names = asset_names(Path::new(&overlay_dir).join("compat").as_path());
     let rom_bytes = crate::load_rom(rom);
     let t = std::time::Instant::now();
-    let bundle = crate::graphics::bundle(&rom_bytes);
+    let bundle = crate::graphics::bundle(&rom_bytes, &names);
     let mut battle = crate::battle::content(&rom_bytes);
     check_timing(&battle, &bundle);
     let mut report = Report::default();
@@ -139,6 +139,7 @@ fn asset_names(compat: &Path) -> bn6_content::names::AssetNames {
     names.mugshots = c.assets.mugshots.iter().map(|(k, &v)| (v, k.clone())).collect();
     names.banners = c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect();
     names.chips = c.chips.iter().map(|(k, e)| (e.id, k.clone())).collect();
+    names.glyphs = c.text.glyphs.clone();
     names
 }
 

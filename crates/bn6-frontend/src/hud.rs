@@ -5,6 +5,7 @@
 //! The rolling numbers are presentation state the engine doesn't keep, so
 //! `HudState` follows them tick by tick (`sub_801C840`, `sub_801C168`).
 
+use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::objects::{SpriteList, View, project};
 use bn6_assets::{Bundle, Hud, MapEntry, Palette, Tiles};
@@ -12,7 +13,10 @@ use bn6_battle::Battle;
 use bn6_battle::actor::status;
 use bn6_battle::transform::{SequencerState, TransformPhase};
 use bn6_battle::battle::{fight, mode, top};
+use bn6_battle::content::ChipFlags;
+use bn6_content_api::ChipHandle;
 use bn6_battle::object::{ObjectRef, flags};
+use bn6_battle::perspective::{ShownTelop, TelopName};
 
 /// The player navi's action while it stands waiting for input.
 const FULL: u16 = bn6_battle::hud::CustomGauge::FULL;
@@ -227,8 +231,17 @@ fn transform_hides(b: &Battle) -> (bool, bool) {
     }
 }
 
-/// Draw the HUD layer and queue the HUD sprites.
-pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut Layer, list: &mut SpriteList<'a>) {
+/// Draw the HUD layer and queue the HUD sprites. What the HUD needs and
+/// the pack or the content doesn't have (a chip's icon, a character of its
+/// name, a banner's glyphs) goes to `problems`.
+pub fn draw<'a>(
+    b: &Battle,
+    assets: &'a Bundle,
+    state: &HudState,
+    layer: &mut Layer,
+    list: &mut SpriteList<'a>,
+    problems: &mut Problems,
+) {
     let hud = &assets.hud;
     if hud.tiles.is_empty() {
         return;
@@ -301,21 +314,22 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
     if let Some(r) = player {
         let o = b.objects.get(r);
         let hand = &b.hands[local as usize];
-        // The HUD's names and icons are the pack's, by chip number.
-        let chip = hand.ids.get(hand.cursor as usize).copied().flatten().and_then(|h| b.content.chip_number(h));
         if state.chip_name
             && o.chips_held != 0
-            && let Some(chip) = chip
+            && let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten()
         {
-            draw_chip_name(layer, hud, &hud.hp_palettes[colour.min(2)], hand, chip);
+            draw_chip_name(b, layer, hud, &hud.hp_palettes[colour.min(2)], hand, chip, problems);
         }
     }
 
     // Sprites: the banner in front, then the mugshot, the opponents' HP
     // and the chip icons (all in front of the field's sprites).
     let mut group = Vec::new();
-    if let Some(id) = b.banner.id.filter(|_| b.banner.active) {
-        banner_parts(b, hud, id.0, &mut group);
+    if let Some(id) = b.banner_for(local) {
+        match b.telop_for(local) {
+            Some(telop) => telop_parts(b, hud, id.0, telop, &mut group, problems),
+            None => banner_parts(b, hud, id.0, &mut group, problems),
+        }
     }
     if let Some(r) = player.filter(|_| !state.was_over && !hide_mugshot) {
         mugshot_parts(b, hud, state, r, if open { 120 } else { 0 }, &mut group);
@@ -338,7 +352,7 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
     if !state.was_over {
         for side in 0..2u8 {
             if let Some(r) = b.player(side) {
-                icon_parts(b, hud, r, side == local, &view, &mut group);
+                icon_parts(b, hud, r, side == local, &view, &mut group, problems);
             }
         }
     }
@@ -356,10 +370,36 @@ fn put(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, tx: i32, ty: i3
     }
 }
 
-fn draw_chip_name(layer: &mut Layer, hud: &Hud, pal: &Palette, hand: &bn6_battle::hand::ChipHand, chip: u16) {
-    let Some(name) = hud.chip_names.get(chip as usize) else { return };
+/// A chip's name in the font's glyphs: the content's name for it, written
+/// in the characters the pack's font has (`sub_8027D10`'s text for the
+/// chip, at most eight glyphs).
+fn name_glyphs(b: &Battle, hud: &Hud, chip: ChipHandle, problems: &mut Problems) -> Vec<u16> {
+    let name = &b.content.chip(chip).name;
+    let (mut glyphs, missing) = hud.glyphs(name);
+    if !missing.is_empty() {
+        let key = &b.content.defs.chip(chip).key;
+        problems.note(format!("chip {key:?} is named {name:?}, but the pack's font has no glyph for {missing:?}"));
+    }
+    glyphs.truncate(8);
+    glyphs
+}
+
+/// Whether a chip's damage shows after its name.
+fn shows_damage(b: &Battle, chip: ChipHandle) -> bool {
+    b.content.chip(chip).flags.0 & ChipFlags::HAS_DAMAGE != 0
+}
+
+fn draw_chip_name(
+    b: &Battle,
+    layer: &mut Layer,
+    hud: &Hud,
+    pal: &Palette,
+    hand: &bn6_battle::hand::ChipHand,
+    chip: ChipHandle,
+    problems: &mut Problems,
+) {
     let mut col = 0;
-    for &c in name {
+    for c in name_glyphs(b, hud, chip, problems) {
         for half in 0..2 {
             if let Some(t) = hud.font.get(2 * c as usize + half) {
                 layer.draw_tile(t, pal, col * 8, (18 + half as i32) * 8, false, false);
@@ -367,7 +407,7 @@ fn draw_chip_name(layer: &mut Layer, hud: &Hud, pal: &Palette, hand: &bn6_battle
         }
         col += 1;
     }
-    if !hud.chip_shows_damage.get(chip as usize).copied().unwrap_or(false) {
+    if !shows_damage(b, chip) {
         return;
     }
     let i = hand.cursor as usize;
@@ -442,17 +482,31 @@ fn mugshot_parts<'a>(b: &Battle, hud: &'a Hud, state: &HudState, r: ObjectRef, x
 
 /// The chip icons stacked over a navi: the local player sees its next
 /// chip; the opponent's show as hidden.
-fn icon_parts<'a>(b: &Battle, hud: &'a Hud, r: ObjectRef, local: bool, view: &View, out: &mut Vec<SpritePart<'a>>) {
+fn icon_parts<'a>(
+    b: &Battle,
+    hud: &'a Hud,
+    r: ObjectRef,
+    local: bool,
+    view: &View,
+    out: &mut Vec<SpritePart<'a>>,
+    problems: &mut Problems,
+) {
     let o = b.objects.get(r);
     if o.flags & flags::VISIBLE == 0 || o.chips_held == 0 {
         return;
     }
     let tiles = if local {
         let hand = &b.hands[o.alliance as usize];
-        let chip = hand.ids.get(hand.cursor as usize).copied().flatten().and_then(|h| b.content.chip_number(h));
-        match chip.and_then(|c| hud.chip_icons.get(c as usize)) {
-            Some(t) if !t.is_empty() => t,
-            _ => return,
+        let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten() else { return };
+        // A chip's icon is the pack's image under the chip's key (a record
+        // the pack numbers is found by its number).
+        let def = b.content.defs.chip(chip);
+        match hud.chip_icon(&def.key, def.record.id) {
+            Some(t) => t,
+            None => {
+                problems.note(format!("chip {:?} ({}) has no icon in the pack", def.key, def.record.name));
+                return;
+            }
         }
     } else {
         &hud.hidden_icon
@@ -479,22 +533,12 @@ fn icon_parts<'a>(b: &Battle, hud: &'a Hud, r: ObjectRef, local: bool, view: &Vi
 
 /// The banner's five 32x16 sprites (as 8x16 glyphs) with its vertical
 /// squash: grow over 5 frames, hold, shrink (`sub_801CE28`).
-fn banner_parts<'a>(b: &Battle, hud: &'a Hud, id: u8, out: &mut Vec<SpritePart<'a>>) {
-    let Some(layout) = hud.banners.get(id as usize / 4) else { return };
-    if layout.kind > 2 {
+fn banner_parts<'a>(b: &Battle, hud: &'a Hud, id: u8, out: &mut Vec<SpritePart<'a>>, problems: &mut Problems) {
+    let Some(layout) = hud.banners.get(id as usize / 4).filter(|l| !l.glyphs.is_empty()) else {
+        problems.note(format!("banner {id:#04x} has no glyphs in the pack"));
         return;
-    }
-    let (step, t) = (b.banner.step, b.banner.timer as i32);
-    let scale = match step {
-        0 => 0xE0 - 0x20 * t,
-        4 => match t {
-            1 | 0x2F => 0x34,
-            2 | 0x2E => 0x38,
-            _ => 0x40,
-        },
-        _ => 0x40 + 0x20 * t,
-    } * 4;
-    let vscale = Some(scale);
+    };
+    let vscale = Some(banner_scale(b));
     let pal = hud.banner_palette;
     for k in 0..20usize {
         out.push(glyph(&layout.glyphs, k, pal, layout.x as i32 + 8 * k as i32, layout.y as i32, 0, vscale));
@@ -508,3 +552,84 @@ fn banner_parts<'a>(b: &Battle, hud: &'a Hud, id: u8, out: &mut Vec<SpritePart<'
         out.insert(0, glyph(&hud.banner_digits, tens, pal, nx, ny as i32, 0, vscale));
     }
 }
+
+/// A banner's vertical scale this frame (`sub_801CE28`: the texture rows
+/// step by this over 256 per screen row).
+fn banner_scale(b: &Battle) -> i32 {
+    let t = b.banner.timer as i32;
+    let scale = match b.banner.step {
+        0 => 0xE0 - 0x20 * t,
+        4 => match t {
+            1 | 0x2F => 0x34,
+            2 | 0x2E => 0x38,
+            _ => 0x40,
+        },
+        _ => 0x40 + 0x20 * t,
+    };
+    scale * 4
+}
+
+/// A telop (`sub_801E95C` lays it out, `sub_801CF9E` draws it): the chip's
+/// name in the font's glyphs, then for a chip whose damage shows the
+/// damage, "+bonus" and "x2", centred in the viewer's half of the screen,
+/// with the banners' squash.
+fn telop_parts<'a>(
+    b: &Battle,
+    hud: &'a Hud,
+    id: u8,
+    telop: ShownTelop,
+    out: &mut Vec<SpritePart<'a>>,
+    problems: &mut Problems,
+) {
+    let Some(layout) = hud.banners.get(id as usize / 4) else {
+        problems.note(format!("the telop's banner {id:#04x} is not in the pack"));
+        return;
+    };
+    let name = match telop.name {
+        TelopName::Chip(chip) => name_glyphs(b, hud, chip, problems),
+        TelopName::Hidden => hud.glyphs("????").0,
+        TelopName::Unknown => {
+            problems.note("a telop names a chip the engine wasn't told (a dimming content starts itself)".into());
+            Vec::new()
+        }
+    };
+    // Digits right to left, as the game's BCD: glyph d of the HUD layer's
+    // damage digits, '+' before a bonus.
+    let digits = |v: u16| -> Vec<usize> { v.to_string().bytes().map(|c| DAMAGE_DIGIT + (c - b'0') as usize).collect() };
+    let damage = if telop.damage != 0 { digits(telop.damage) } else { Vec::new() };
+    let bonus = if telop.damage != 0 && telop.bonus != 0 {
+        std::iter::once(PLUS_GLYPH).chain(digits(telop.bonus)).collect()
+    } else {
+        Vec::new()
+    };
+    let doubled = telop.doubled && telop.damage != 0;
+    // The name's place: centred as fifteen glyphs are; the other player's
+    // moves over for the "x2".
+    let width = (name.len() + damage.len() + bonus.len()) as i32;
+    let mut x = (layout.x as i32 + (15 - width) * 4) & 0xFF;
+    if telop.remote && doubled {
+        x = (x - 16) & 0xFF;
+    }
+    let y = layout.y as i32;
+    let vscale = Some(banner_scale(b));
+    let pal = hud.hp_palettes[0];
+    for c in name {
+        out.push(glyph(&hud.font, c as usize, pal, x, y, 0, vscale));
+        x += 8;
+    }
+    for g in damage.into_iter().chain(bonus) {
+        out.push(glyph(&hud.tiles, g, pal, x, y, 0, vscale));
+        x += 8;
+    }
+    if doubled {
+        out.push(glyph(&hud.tiles, TIMES_GLYPH, pal, x, y, 0, vscale));
+        out.push(glyph(&hud.tiles, TIMES_GLYPH + 1, pal, x + 8, y, 0, vscale));
+    }
+}
+
+/// Glyphs of the HUD layer's tiles (tile `first_tile + 2k`): the damage
+/// digits (tiles 0x1B8..), '+' (0x1CE), and the 'x' and '2' of a doubled
+/// chip (0x1D2, 0x1D4).
+const DAMAGE_DIGIT: usize = (0x1B8 - 0x1A0) / 2;
+const PLUS_GLYPH: usize = (0x1CE - 0x1A0) / 2;
+const TIMES_GLYPH: usize = (0x1D2 - 0x1A0) / 2;

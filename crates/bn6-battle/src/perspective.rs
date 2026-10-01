@@ -10,7 +10,9 @@
 //!   hears: its charge sounds, its hit sound, its pinch music, its
 //!   victory or defeat music);
 //! - banners: [`Battle::banner_for`] (the telops say whose chip
-//!   it is, the result banner shows the viewer's navi winning or losing);
+//!   it is, the result banner shows the viewer's navi winning or losing)
+//!   and [`Battle::telop_for`] (a hidden chip's telop names it only to its
+//!   user, if to anyone);
 //! - the result: [`Battle::round_end_for`].
 //!
 //! Still shown only as the local side sees it (docs/design/rollback.md):
@@ -22,6 +24,32 @@ use crate::battle::{Battle, BattleResult, RoundEnd, fight};
 use crate::content::BannerId;
 use crate::setup::SetScore;
 use crate::dimming::{LOCAL_TELOP, REMOTE_TELOP};
+use crate::hud::TelopHidden;
+use bn6_content_api::ChipHandle;
+
+/// A telop as one player's console shows it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ShownTelop {
+    /// It is the other player's chip (the banner on the right).
+    pub remote: bool,
+    pub name: TelopName,
+    /// The damage after the name (0: none).
+    pub damage: u16,
+    /// "+N" after the damage (0: none).
+    pub bonus: u16,
+    /// "x2" after the numbers.
+    pub doubled: bool,
+}
+
+/// The name a telop shows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TelopName {
+    Chip(ChipHandle),
+    /// "????": a hidden chip (the game shows chip 0x171's name).
+    Hidden,
+    /// The engine wasn't told which chip the telop names.
+    Unknown,
+}
 
 impl BattleResult {
     /// The same result for the other side.
@@ -63,6 +91,22 @@ impl Battle {
             return Some(if won { navi(viewer).win_banner } else { navi(viewer).lose_banner });
         }
         Some(id)
+    }
+
+    /// The telop on screen as `viewer`'s console shows it.
+    pub fn telop_for(&self, viewer: u8) -> Option<ShownTelop> {
+        let t = self.banner.telop.filter(|_| self.banner.active)?;
+        let remote = t.side != viewer;
+        let hidden = match t.hidden {
+            TelopHidden::No => false,
+            TelopHidden::FromOpponent => remote,
+            TelopHidden::FromBoth => true,
+        };
+        if hidden {
+            return Some(ShownTelop { remote, name: TelopName::Hidden, damage: 0, bonus: 0, doubled: false });
+        }
+        let name = t.chip.map_or(TelopName::Unknown, TelopName::Chip);
+        Some(ShownTelop { remote, name, damage: t.damage, bonus: t.bonus, doubled: t.doubled })
     }
 
     /// How the round ended, for `viewer` (the result and the score are
