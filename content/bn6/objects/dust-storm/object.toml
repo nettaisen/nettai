@@ -1,6 +1,0 @@
-# A dust storm (attack object #0x0E, `sub_80C6280`), instant chip effect 17's, is a script.
-
-[kind]
-pool = "attack"
-index = 0x0E
-script = "dust_storm.luau"

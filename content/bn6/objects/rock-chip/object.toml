@@ -1,7 +1,0 @@
-# A chip of broken rock (effect object #9, `sub_80E0FA0`): it flies off and falls, then
-# blinks out.
-
-[kind]
-pool = "effect"
-index = 0x09
-script = "rock_chip.luau"

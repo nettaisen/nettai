@@ -337,7 +337,7 @@ Chip 0x8B Meteors (fire, damage 40, hit param 138, params 0).
 
 **The meteor's spawner `sub_80CF5B2`** → `sub_80CF594`: T3#0x56 (position = registers), PanelX/Y, Element,
 damage word, the spawner's alliance/flip halfword; then flags |= 0x10 (acts while dimmed). (The instant
-chips' meteor shower, `objects/meteor-shower`, spawns the same kind through `sub_80CF594` without the flag.)
+chips' meteor shower, `lib/instant/meteor_shower`, spawns the same kind through `sub_80CF594` without the flag.)
 
 **The meteor, T3#0x56 (`sub_80CF3BE`)**: states init `sub_80CF3DC`, update `sub_80CF488`,
 `object_genericDestroy`.
