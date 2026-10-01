@@ -128,7 +128,10 @@ pub enum Region {
     Field(PanelCondition),
 }
 
-/// A HUD banner (the game's UI banner id).
+/// A banner asset as the pack identifies it (for BN6's pack, the game's UI
+/// banner id). The engine names none itself: what the ruleset shows it
+/// gets by role (`Roles::banner`) or from a definition (a navi's win and
+/// lose banners, the banners that hold).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct BannerId(pub u8);

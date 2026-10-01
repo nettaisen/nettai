@@ -153,7 +153,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
     if !vars(b, r).sounded {
         vars(b, r).sounded = true;
-        b.play_sound(crate::sound::SoundId(0x8C));
+        b.sound(crate::content::SoundRole::CrossMerge);
     }
     let v = vars(b, r);
     v.swings_left = v.swings_left.wrapping_sub(1);
