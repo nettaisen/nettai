@@ -13,7 +13,7 @@ Status:
 - **unreachable**: no netbattle can take the branch (a full object pool, a path only offline battles or the navi
   AI take, a record no chip names, a caller that doesn't exist).
 
-Scenario names are the chip lab library's (`chips/…`, `pa/…`, `navis/…`, `forms/…`, `navicust/…`). The scenarios of
+Scenario names are the chip lab library's (`chips/…`, `pa/…`, `navis/…`, `forms/…`, `navicust/…`, `stages/…`). The scenarios of
 this survey are written by the library's `gen_coverage.py` from its tables (`coverage_scenarios/`). A scenario
 "reaches" a branch when its coverage file has the block or branch side; where a scenario adds no block the lab
 didn't have, it still checks data the others don't (another table row, another side, another timing), and the
@@ -77,7 +77,8 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | Subtype 2 | everything | no chip | unreachable | |
 | Guardian (subtype 14) | breaking it: the crumble, the strike back, the strike's dimming and hit | the statue is never hit | yes | chips/0x097-guardian/punish, own-hit: verified |
 | Guardian | AirShot at it, a second statue | | yes | chips/0x097-guardian/pushed, replaced: verified |
-| Guardian | the stage statue (Param1 1), the lifetime (6000 ticks), removal, blink-out, absorption | no netbattle stage has one; too long | partly | open |
+| Guardian | the stage statue (Param1 1), its strikes, absorption | | yes | the stage scenarios (stages/statue-…, stages/statues-stand): see field-objects.md |
+| Guardian | the lifetime (6000 ticks), removal, blink-out | too long; no remover | partly | open |
 | Meteors (subtype 16) | the lists after area changes, a marker at battle end | no AreaGrab first, no KO | yes | chips/0x08b-meteors/after-areagrab, grabbed, ko: verified |
 | Meteors | an empty list, a marker off the field, rows other than Param1 1 | the enemy always owns panels; no chip | unreachable | |
 | Anubis, PoisPhar (subtype 17) | breaking by damage, AirShot at it, the lifetime, a second statue | the statue is never hit; scenarios end first | yes | chips/0x098-anubis/broken, pushed, lifetime, replaced: verified |
