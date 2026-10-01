@@ -12,14 +12,11 @@ local antiswrd_counter = require("../chips/antiswrd/counter")
 local barriers = require("../lib/barriers/barriers")
 local beast_claw = require("../navis/00-megaman/weapons/beast-claw/weapon")
 local bodygrd_counter = require("../chips/bodygrd/counter")
-local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
 local dust_beast_scatter = require("../navis/00-megaman/forms/dustcross-beast/scatter")
 local encased_bubble = require("../objects/encased-bubble/bubble")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/00-megaman/forms/groundcross/drill")
-local guardian_statue = require("../chips/guardian/statue")
-local rock = require("../objects/rock/rock")
 local slash_beast_lunge = require("../navis/00-megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/00-megaman/forms/slashcross/charge")
 local supports = require("../lib/supports/controller")
@@ -54,11 +51,6 @@ return define.roles {
         dust_beast_scatter = dust_beast_scatter.action,
     },
     kinds = {
-        -- What a stage's actor list places, by its `place`: the rock (entry
-        -- type 8), the boulder (3) and the Guardian statue (9).
-        rock = rock.kind,
-        boulder = boulder.kind,
-        statue = guardian_statue.kind,
         -- What an obstacle absorbed flies off as.
         absorbed_obstacle = absorbed_obstacle.kind,
         -- GroundCross's charged chips' falling rocks.

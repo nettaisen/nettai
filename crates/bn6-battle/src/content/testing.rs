@@ -19,7 +19,7 @@ use super::*;
 use crate::actor::ActorType;
 use bn6_content_api::Pool;
 use crate::field::{PanelType, pflags};
-use crate::setup::{ActorEntry, ActorKind, ActorList, ActorListId, StageSettings, effects};
+
 use std::sync::Arc;
 
 /// Chips: three GunDelSol levels (action 0x37 with subtypes 0..=2) and
@@ -110,22 +110,17 @@ pub const LINK_CHIPS: [(ChipId, &str, &str); 10] = [
 /// no hooks).
 pub const LINK_NAVI: crate::setup::Navi = crate::setup::Navi(1);
 
-/// Actor lists: two navis, side 1's first (the usual netbattle order)...
-pub const TWO_NAVIS: ActorListId = ActorListId(0);
-/// ...side 0's first...
-pub const TWO_NAVIS_SIDE0_FIRST: ActorListId = ActorListId(1);
-/// ...two navis with two rocks, one on each side...
-pub const NAVIS_AND_ROCKS: ActorListId = ActorListId(2);
-/// ...and two navis with three boulders (the field has two stage slots).
-pub const NAVIS_AND_BOULDERS: ActorListId = ActorListId(3);
+/// The test stages (testdata/content/stages/test.luau), link battles on
+/// the plain field: two navis, side 1's placed first (the usual netbattle
+/// order); side 0's first; two navis with two rocks, one on each side; and
+/// two navis with three boulders (the field has two stage slots).
+pub const LINK_BATTLE: &str = "test/link-battle";
+pub const LINK_BATTLE_SIDE0_FIRST: &str = "test/link-battle-side0-first";
+pub const ROCK_BATTLE: &str = "test/rock-battle";
+pub const BOULDER_BATTLE: &str = "test/boulder-battle";
 
-/// Battle settings: a link battle on the plain field with `TWO_NAVIS`,
-/// the same with `TWO_NAVIS_SIDE0_FIRST`, with `NAVIS_AND_ROCKS` and with
-/// `NAVIS_AND_BOULDERS`.
-pub const LINK_BATTLE: u8 = 0;
-pub const LINK_BATTLE_SIDE0_FIRST: u8 = 1;
-pub const ROCK_BATTLE: u8 = 2;
-pub const BOULDER_BATTLE: u8 = 3;
+/// The test stages' music (the asset `test-stage-music`).
+pub const STAGE_MUSIC: crate::sound::SoundId = crate::sound::SoundId(0x16);
 
 /// The navi's sprite (base form).
 pub const NAVI_SPRITE: SpriteId = SpriteId { category: 0, index: 0 };
@@ -163,14 +158,13 @@ fn shared() -> &'static (Arc<Content>, crate::content::ContentHash) {
     })
 }
 
-/// A round on this content with battle settings `settings`, both navis
-/// with `stats`: RNG seed 1, side 0's perspective, no set score, no
-/// folders.
-pub fn round_setup(settings: u8, stats: crate::setup::NaviStats) -> crate::setup::RoundSetup {
+/// A round on this content on stage `stage` (its key), both navis with
+/// `stats`: RNG seed 1, side 0's perspective, no set score, no folders.
+pub fn round_setup(stage: &str, stats: crate::setup::NaviStats) -> crate::setup::RoundSetup {
     let (content, hash) = shared();
     crate::setup::RoundSetup {
         content: *hash,
-        settings: crate::setup::BattleSettings::on(content, content.stage_numbered(settings)),
+        settings: crate::setup::BattleSettings::on(content, content.stage_by_key(stage)),
         navi_stats: [stats; 2],
         rng: 1,
         local_side: 0,
@@ -317,11 +311,10 @@ pub fn with_test_pack() -> Content {
     c
 }
 
-/// The content set with stage `stage`'s record changed by `f` (its music,
-/// say).
-pub fn restaged(stage: u8, f: impl FnOnce(&mut StageSettings)) -> Content {
+/// The content set with stage `stage` changed by `f` (its music, say).
+pub fn restaged(stage: &str, f: impl FnOnce(&mut StageData)) -> Content {
     let mut c = build();
-    let h = c.stage_numbered(stage);
+    let h = c.stage_by_key(stage);
     f(&mut c.defs.stages[h.index()].record);
     c
 }
@@ -343,7 +336,6 @@ fn make() -> Content {
         effects: vec![EffectSprite { sprite: SpriteId { category: 0x14, index: 0 }, anim: 0, palette: 0 }; 0x70],
         sparks: vec![EffectSprite { sprite: SpriteId { category: 0x14, index: 1 }, anim: 0, palette: 0 }; 16],
         regions: regions(),
-        panel_layouts: vec![PanelLayout { rows: [[PanelType::Normal; 6]; 3] }],
         animations: animations(),
         // (Every weapon the test content has is a definition.)
         weapons: Vec::new(),
@@ -413,6 +405,9 @@ fn assets() -> bn6_content_api::AssetNames {
 /// The test content's assets with BN6's numbers.
 fn numbered_assets() -> bn6_content_api::AssetNames {
     let mut a = bn6_content_api::AssetNames::default();
+    // The test stages' (testdata/content/stages/test.luau).
+    a.sounds.insert("test-stage-music".into(), STAGE_MUSIC.0);
+    a.backgrounds.insert("test-background".into(), 0);
     let sprite = |c, i| SpriteId { category: c, index: i };
     for (name, id) in [
         ("test-burst", sprite(0x14, 0)),
@@ -1177,7 +1172,6 @@ fn kinds() -> Vec<ObjectKind> {
         pool: Pool::Effect,
         index,
         script: "objects/numbered/numbered".into(),
-        actor_list_entry: None,
     };
     vec![kind("numbered", 0xF0), kind("numbered-2", 0xF1)]
 }
@@ -1657,7 +1651,6 @@ fn rules() -> Rules {
             dash_step: step,
             any_side_step: StepRuleSet { grounded: [solid(any_side); 2], floor_free: [any_side; 2] },
         },
-        stages: stages(),
         holding_banners: vec![BannerId(0x24)],
         status_effects: vec![[StatusEffect { requests: 0, duration: 60, timer: StatusTimer::Paralyze }; 16]; 6],
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
@@ -1761,39 +1754,6 @@ pub fn custom_screen_layout() -> CustomScreenLayout {
         right_scan_bottom: vec![5, 6, 7, 8, 9, 11, 10],
         left_scan_start: [5, 4, 3, 2, 1, 5, 4, 3, 2, 1, 0, 0],
         right_scan_start: [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 0, 0],
-    }
-}
-
-fn stages() -> Stages {
-    let navi = |alliance, x| ActorEntry { kind: ActorKind::Navi, alliance, x, y: 2 };
-    let rock = |x, y| ActorEntry { kind: ActorKind::Rock { variant: 1 }, alliance: 0, x, y };
-    let boulder = |x, y| ActorEntry { kind: ActorKind::Object6E, alliance: 0, x, y };
-    let settings = |actors| StageSettings {
-        layout: 0,
-        music: 0x16,
-        mode: 0,
-        background: 0,
-        battle_number: 0,
-        panel_pattern: 0x38,
-        effects: effects::LINK,
-        actors,
-    };
-    Stages {
-        settings: vec![
-            settings(TWO_NAVIS),
-            settings(TWO_NAVIS_SIDE0_FIRST),
-            settings(NAVIS_AND_ROCKS),
-            settings(NAVIS_AND_BOULDERS),
-        ],
-        actor_lists: vec![
-            ActorList { original_address: 1, entries: vec![navi(1, 5), navi(0, 2)] },
-            ActorList { original_address: 2, entries: vec![navi(0, 2), navi(1, 5)] },
-            ActorList { original_address: 3, entries: vec![navi(0, 1), navi(1, 6), rock(3, 3), rock(4, 1)] },
-            ActorList {
-                original_address: 4,
-                entries: vec![navi(0, 1), navi(1, 6), boulder(2, 2), boulder(5, 2), boulder(3, 1)],
-            },
-        ],
     }
 }
 

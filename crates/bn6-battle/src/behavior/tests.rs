@@ -799,15 +799,16 @@ fn run_only(b: &mut Battle, kinds: &[&str]) {
 }
 
 #[test]
-fn actor_lists_place_scripted_rocks_outside_the_navi_bookkeeping() {
+fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
+    use crate::content::Place;
     use crate::object::Pool;
-    use crate::setup::ActorKind;
     let mut b = rock_battle();
-    let list = b.content.rules.stages.actor_list(testing::NAVIS_AND_ROCKS).clone();
-    assert_eq!(
-        list.entries.iter().map(|e| e.kind).collect::<Vec<_>>(),
-        [ActorKind::Navi, ActorKind::Navi, ActorKind::Rock { variant: 1 }, ActorKind::Rock { variant: 1 }]
-    );
+    let stage = b.content.stage(b.content.stage_by_key(testing::ROCK_BATTLE)).clone();
+    let rock = Place::Kind(b.content.defs.kind_by_key("rock").expect("the rock"));
+    assert_eq!(stage.actors.iter().map(|e| e.place).collect::<Vec<_>>(), [Place::Navi, Place::Navi, rock, rock]);
+    // Each rock names its variant, a record of the rock's.
+    let cube = b.content.defs.record("rock/cube");
+    assert!(cube.is_some() && stage.actors[2..].iter().all(|e| e.variant == cube));
     b.spawn_actors();
     assert_eq!(b.round.alive, [1, 1]);
     assert_eq!(b.round.name_counts, [1, 1]);
@@ -861,7 +862,7 @@ fn breaking_a_scripted_rock_throws_debris() {
 /// spawner's bug leaves; they stand once the fight is on, and break into
 /// two debris chunks and dust, leaving their slot.
 #[test]
-fn actor_lists_place_boulders_in_the_stage_slots() {
+fn a_stage_places_boulders_in_the_stage_slots() {
     use crate::object::{PanelPos, Pool, flags, state};
     use crate::setup::NaviStats;
     const BOULDER_KINDS: [&str; 3] = ["boulder", "rock/debris", "engine/effect"];
@@ -1487,8 +1488,10 @@ fn defined(keys: &[&str]) -> Vec<bn6_content_api::ChipHandle> {
 /// front of either navi, once side 0 steps up, is a hole.
 fn holed_content() -> std::sync::Arc<Content> {
     let mut c = testing::build();
-    for row in &mut c.panel_layouts[0].rows {
-        row[3] = crate::field::PanelType::Missing;
+    for stage in &mut c.defs.stages {
+        for row in &mut stage.record.layout.rows {
+            row[3] = crate::field::PanelType::Missing;
+        }
     }
     std::sync::Arc::new(c)
 }

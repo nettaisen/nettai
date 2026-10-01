@@ -1686,7 +1686,7 @@ pub fn action_state(lua: &Lua, o: ObjectRef, state: StateId) -> mlua::Result<Any
 }
 
 /// A hook call's arguments.
-pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
+pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua::MultiValue> {
     let obj = |o: ObjectRef| -> mlua::Result<LuaValue> { Ok(LuaValue::UserData(lua.create_userdata(Object(o))?)) };
     let values = match call {
         HookCall::Weapon { navi } => vec![obj(navi)?],
@@ -1718,12 +1718,15 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
             t.raw_set("damage", spec.damage)?;
             vec![obj(user)?, LuaValue::Table(t)]
         }
-        HookCall::ActorListEntry { spec } => {
+        HookCall::Place { spec } => {
             let t = lua.create_table()?;
             t.raw_set("panel_x", spec.panel.x)?;
             t.raw_set("panel_y", spec.panel.y)?;
             t.raw_set("side", spec.side)?;
-            t.raw_set("variant", spec.variant)?;
+            if let Some(v) = spec.variant {
+                t.raw_set("variant", bound.def_value(Registry::Record, v.0)?)?;
+            }
+            t.raw_set("argument", spec.argument)?;
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } => vec![obj(navi)?],
@@ -1746,7 +1749,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             Some((r, _)) => Err(mlua::Error::runtime(format!("a weapon routine returns an action, not a {r}"))),
             None => Ok(Value::Int(int(&v, "the action a weapon routine returns")? as u8 as i64)),
         },
-        HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::ActorListEntry { .. } => {
+        HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::Place { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
         HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } => Ok(Value::Nil),
