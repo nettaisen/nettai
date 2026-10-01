@@ -7,7 +7,7 @@
 -- (`panel_changer.change { ... }`, a row of the original's `byte_80E272C`),
 -- defined by its users: the panel chips (lib/panel-chips: PnlRetrn,
 -- HolyPanl, Snctuary, ComingRd, GoingRd) and AntiRecv's counterattack
--- (objects/anti-recovery).
+-- (chips/antirecv/controller).
 
 local panels = require("../../lib/panels")
 
