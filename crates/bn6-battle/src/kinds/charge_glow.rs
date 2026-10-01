@@ -16,6 +16,10 @@ pub struct Vars {
     /// The owner's charge level this tick and last tick.
     pub level: u8,
     pub previous_level: u8,
+    /// Its link slot is a BIOS address (FirstBarrier's register clobber):
+    /// the navi never learns of it, and its link test (the slot nonzero)
+    /// always passes, so it never ends itself.
+    pub bios_link: bool,
 }
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
@@ -40,6 +44,18 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     o.related[0] = Some(owner);
     o.flags |= flags::RUN_WHILE_PAUSED;
     b.actors.get_mut(actor).charge_glow = Some(r);
+    Some(r)
+}
+
+/// `sub_80E0F02` with its link slot in the BIOS (FirstBarrier): the glow
+/// for `owner`, which the navi's AIData doesn't record.
+pub fn spawn_unlinked(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
+    b.objects.get(owner).actor?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::ChargeGlow, Vec3::default(), [0; 4])?;
+    let o = b.objects.get_mut(r);
+    o.related[0] = Some(owner);
+    o.flags |= flags::RUN_WHILE_PAUSED;
+    vars(b, r).bios_link = true;
     Some(r)
 }
 
@@ -69,7 +85,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         }
         return;
     }
-    if b.actors.get(actor).charge_glow.is_none() {
+    if b.actors.get(actor).charge_glow.is_none() && !vars(b, r).bios_link {
         let o = b.objects.get_mut(r);
         o.state = state::DESTROY;
         o.action = 0;

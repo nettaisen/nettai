@@ -624,7 +624,14 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // sub_801DB84, sub_8018856, sub_801DC06, sub_801DC36: the HP number
     // HUD table.
     enable_turning(b, r);
-    crate::kinds::charge_glow::spawn(b, r);
+    if stats(b, r).first_barrier != 0 {
+        // sub_8013892's `pop {r4}` left the barrier type in r4, so the glow's
+        // link slot (r4 + 0x58) is a BIOS address (docs/engine/dimming-
+        // chips.md §3.4).
+        crate::kinds::charge_glow::spawn_unlinked(b, r);
+    } else {
+        crate::kinds::charge_glow::spawn(b, r);
+    }
     post_init_hook(b, r);
     if form_of(b, r) == Form::NONE {
         let name_id = b.objects.get(r).name_id;
@@ -685,10 +692,16 @@ fn post_init_hook(b: &mut Battle, r: ObjectRef) {
     }
 }
 
+/// `sub_800FC9E`: a side's navi's battle sprite by its stats (MegaMan's by
+/// his form, another navi's his own).
+pub(crate) fn stats_sprite(b: &Battle, side: u8) -> crate::content::SpriteId {
+    let s = &b.stats[side as usize & 1];
+    if b.content.navi_number(s.navi) == Navi::MEGAMAN { b.content.form(s.form).sprite } else { b.content.navi(s.navi).sprite }
+}
+
 /// `sub_800FC9E` + `sprite_load`: load the navi's battle sprite.
 fn load_sprite(b: &mut Battle, r: ObjectRef) {
-    let s = stats(b, r);
-    let id = if navi_of(b, r) == Navi::MEGAMAN { b.content.form(s.form).sprite } else { b.content.navi(s.navi).sprite };
+    let id = stats_sprite(b, b.objects.get(r).alliance);
     let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
@@ -723,9 +736,14 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         stats_mut(b, r).mood = 0x80;
     }
     if stats(b, r).first_barrier != 0 {
-        // Also clobbers the AIData pointer the charge-glow spawn uses
-        // (objects-and-player.md §15 item 5).
-        panic!("FirstBarrier (sub_801A7CC) is not implemented yet");
+        // sub_801A7CC(stat 6) and the barrier's visual (sub_80E0D98): the
+        // content's FirstBarrier (the role hooks.first_barrier). The game's
+        // FirstBarrier program sets the stat to 1, the Barrier chip's
+        // barrier; the role raises that one. (The `pop {r4}` after it
+        // clobbers the AIData pointer the charge glow's spawn uses: `init`
+        // spawns the glow unlinked.)
+        let hook = b.content.defs.roles.hook(crate::content::HookRole::FirstBarrier);
+        crate::behavior::call_hook(b, hook, bn6_content_api::HookCall::RoleNavi { navi: r });
     }
     if stats(b, r).beast_out_counter == 0 {
         ai_mut(b, r).beast_out_spent = true;
