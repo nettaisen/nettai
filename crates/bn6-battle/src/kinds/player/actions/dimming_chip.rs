@@ -37,17 +37,12 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// 0x15 and the counter cut-in (`sub_8017AB4`) both call it.
 pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) -> Option<ObjectRef> {
     let damage = a.damage as u32 | (a.hit_param as u32) << 16;
-    // The chip's controller. (off_802CCB4's subtypes 34, 35, 39 and 40
-    // are null: the game jumps to address 0.)
-    let chip = a.chip.or_else(|| b.content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
+    // The chip's controller. (The original's table, off_802CCB4, has null
+    // entries, 34, 35, 39 and 40, where the game jumps to address 0:
+    // Gregar's and Falzar's chips' hooks say so; no chip names the others.)
+    let chip = b.content.chip_or_zeroed(a.chip);
     let hook = match b.content.defs.chip(chip).usage {
         ChipUsage::Dimming(f) => f,
-        ChipUsage::Unported(crate::content::Unported::Dimming(subtype @ (34 | 35 | 39 | 40))) => {
-            panic!("dimming chip subtype {subtype} is NULL in off_802CCB4 (the game jumps to address 0)")
-        }
-        ChipUsage::Unported(crate::content::Unported::Dimming(subtype)) => {
-            panic!("content error: no script implements dimming chip subtype {subtype} (off_802CCB4)")
-        }
         u => panic!("chip {:?} is a dimming chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),
     };
     // (The numeric API's chip: 0 for none.)

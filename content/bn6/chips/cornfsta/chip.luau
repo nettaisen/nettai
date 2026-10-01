@@ -2,11 +2,30 @@
 -- CornFsta: the Program Advance of three CornShts of a code (or of a
 -- run): a cut-in in which the user's stand-in sows a field of bursting
 -- corn among the enemies (docs/engine/dimming-chip-effects.md §16).
---
--- Its record stays the pack's for now (its Program Advance recipes come to
--- definitions with the chips they name): this is its `dimming` hook, which
--- registration by number runs (chips/14c-cornfsta).
 
 local controller = require("./controller")
+local cornsht = require("../cornsht/chips")
 
-return { dimming = controller.hook }
+return define.chip {
+    id = "cornfsta",
+    name = "CornFsta",
+    description = "Explosive\ncorn with\n9pnl rch!",
+    codes = { "A", "B", "C", "*" },
+    element = "wood",
+    family = "program_advance",
+    class = "program_advance",
+    rarity = 0,
+    mb = 5,
+    damage = 40,
+    hit_param = 10,
+    lockout = 20,
+    flags = { "dimming", "has_damage", "library" },
+    library = { number = 332, index = 13, sort = 0 },
+    slot_in_limit = 1,
+    program_advances = {
+        { order = 34, code_run = { chip = cornsht.cornsht1, count = 3 } },
+        { order = 35, code_run = { chip = cornsht.cornsht2, count = 3 } },
+        { order = 36, code_run = { chip = cornsht.cornsht3, count = 3 } },
+    },
+    dimming = controller.hook,
+}

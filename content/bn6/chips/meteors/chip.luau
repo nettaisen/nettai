@@ -2,9 +2,6 @@
 -- Meteors: thirty meteors (objects/falling-meteor) fall on the enemy's
 -- area, one every 10 ticks, cycling through its panels from the far column
 -- (docs/engine/dimming-chip-effects.md §6).
---
--- Its record stays the pack's for now (SunMoon's recipe names it): this is
--- its `dimming` hook, which registration by number runs (chips/08b-meteors).
 
 local dimming_chips = require("../../lib/dimming")
 local falling_meteor = require("../../objects/falling-meteor/falling_meteor")
@@ -135,4 +132,21 @@ local function hook(user: Object, spec: DimmingChipSpec): Object?
     return o
 end
 
-return { dimming = hook }
+return define.chip {
+    id = "meteors",
+    name = "Meteors",
+    description = "Drop many\nmeteor on\nenmy area",
+    codes = { "R" },
+    element = "fire",
+    family = "fire",
+    class = "standard",
+    rarity = 4,
+    mb = 73,
+    damage = 40,
+    hit_param = 138,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 111, index = 111, sort = 314 },
+    slot_in_limit = 1,
+    dimming = hook,
+}
