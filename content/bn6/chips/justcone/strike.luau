@@ -55,7 +55,7 @@ local function init(me: Object)
         -- The game goes on without one, writing through a null pointer.
         error("JustcOne's fist without a collision slot (sub_80DB324 doesn't check)")
     end
-    me:setup_collision(collision.thrown_breaking, collision.hits_navis, HIT_MOD)
+    me:setup_collision(collision.thrown_break, collision.hits_navis, HIT_MOD)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:set_coordinates_from_panel()
     local facing = me.facing

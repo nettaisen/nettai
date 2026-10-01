@@ -82,17 +82,17 @@ end
 
 -- ---- The game's helpers ---------------------------------------------------------
 
--- The sine table's entry `i` (`math_sinTable`, 256 steps a turn, 1.0 =
--- 0x100, over a turn and a half: the cosine of step a is entry a + 64), as
--- the game's signed load reads it.
-function trajectory.sine(i: number): number
+local function sine(i: number): number
     local v = data.rules.sine[i]
     if v == nil then
         error(string.format("sine table entry %d is not in the content", i))
     end
     return v
 end
-local sine = trajectory.sine
+
+-- `math_sinTable[i]` (signed, 1.0 = 0x100; `math_cosTable[i]` is entry
+-- i + 64).
+trajectory.sine = sine
 
 -- `calcAngle_800117C`: the angle toward (dx, dy), 256 steps a turn.
 function trajectory.angle(dx: number, dy: number): number

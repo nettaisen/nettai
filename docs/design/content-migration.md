@@ -269,15 +269,17 @@ kind). Left:
 
 ### Group E: instant chips (ported; what is left)
 
-Action 0x1C calls `Hook::InstantChip(subtype)` (§3). Every entry of `off_80EC3F0` is ported: 0, 3 (chips/13f-beastout,
-lib/instant/plus with chips/atk-10, chips/navi-20 and chips/0c0-atk-10, objects/rising-bubble), 1 (objects/boomerang), 4 (objects/lance), 5 (chips/0ae-fullcust), 8
-(objects/fire-hit), 10 (chips/busterup, a definition), 12 (objects/sand-worm, sand-spray, sand-hole), 13 (chips/11d-synctrgr),
-14 (objects/flame-hook, flame-hook-fire), 15 (objects/col-force, col-force-soldier), 19 (objects/justice-one), 20
-(weapons/10-tengu-wind, objects/gust), 21 (objects/golem), 22 (objects/col-army); 7 and 0x12 are NULL (an explicit
-panic). 2, 6, 9, 11 (lib/instant-chips) and 16, 17 (objects/meteor-shower, dust-storm) have no chip or MegaMan weapon:
-the link navis' weapons (0x71, 0x83) and actions that use them register or require them when ported. Left: the Full
-Synchro aura after SyncTrgr (framework), attack #0x12 (the soldiers' vulcan hit) and #0x56 (the meteor), which these
-spawn by number.
+Action 0x1C runs a chip definition's `instant` hook, or a record's subtype's registration (§3). Every entry of
+`off_80EC3F0` is ported, in content model v2 (content-model-v2.md §5.6, "As built", step 8d): 0, 3
+(lib/instant/plus with chips/atk-10, chips/navi-20, chips/whicapsl, chips/finalgun, chips/numtrap; the records'
+shims chips/13f-beastout and chips/0c0-atk-10; objects/rising-bubble), 1 (objects/boomerang, chips/boomer), 4
+(chips/lance), 5 (chips/fullcust), 8 (chips/firehit; the records' shim chips/06b-firehit1), 10 (chips/busterup), 12
+(chips/sandwrm), 13 (chips/synctrgr), 14 (objects/flame-hook, flame-hook-fire), 15 (objects/col-force,
+col-force-soldier), 19 (chips/justcone), 20 (weapons/10-tengu-wind, objects/gust), 21 (chips/golmhit), 22
+(objects/col-army); 7 and 0x12 are NULL (an explicit panic). 2, 6, 9, 11, 16 and 17 have no chip or MegaMan weapon:
+they are builders in lib/instant, which the link navis' weapons (0x71, 0x83) and actions call when ported. Left: the
+Full Synchro aura after SyncTrgr (framework), attack #0x12 (the soldiers' vulcan hit), which ColArmy's and
+ColForce's soldiers spawn by number.
 
 ### Group F: rocks
 
