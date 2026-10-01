@@ -18,8 +18,8 @@ export type Variant = TornadoVariant
 
 export type State = {
     variant: Variant,
-    -- The status its hits inflict (0: none).
-    status: number,
+    -- The status its hits inflict (nil: none).
+    status: Status?,
     -- How much of the re-arm count one tick uses (ExtraVars+0), and the
     -- count (ExtraVars+4).
     rearm_step: number,
@@ -27,7 +27,7 @@ export type State = {
 }
 
 -- What a tornado is spawned with (`TornadoSpec`, types.d.luau): its
--- variant, the status its hits inflict (0: none; the original's second
+-- variant, the status its hits inflict (nil: none; the original's second
 -- parameter) and its ticks (the third and fourth).
 export type Spec = TornadoSpec
 
@@ -155,7 +155,7 @@ local function init(me: Object)
     local c = me.collision
     c:set_hit_effect(sparks.of_element(me.element))
     local status = s.status
-    if status ~= 0 then
+    if status then
         c.status_base = status
     end
     if v.bug then
@@ -170,7 +170,7 @@ end
 tornado.kind = define.kind {
     id = "tornado/tornado",
     pool = "attack",
-    state = { variant = "record:tornado-variant", status = "u8", rearm_step = "u32", rearm_ticks = "u32" },
+    state = { variant = "record:tornado-variant", status = "status", rearm_step = "u32", rearm_ticks = "u32" },
     -- `sub_80C9F78`.
     update = function(me: Object)
         local l = me.lifecycle

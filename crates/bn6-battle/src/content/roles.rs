@@ -13,7 +13,7 @@
 
 use std::collections::BTreeMap;
 
-use bn6_content_api::{ActionHandle, FnId, KindHandle, LockonHandle};
+use bn6_content_api::{ActionHandle, FnId, KindHandle, LockonHandle, StatusHandle};
 
 /// The actions the ruleset starts or recognizes by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -151,6 +151,48 @@ impl LockonRole {
     }
 }
 
+/// The status effects the ruleset inflicts itself, by role.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum StatusRole {
+    /// What a damage word's paralysis bit (0x4000) makes its hits carry
+    /// (`sub_8019F44`).
+    DamageWordParalysis,
+    /// What a counter hit lands instead of a flinch (`sub_800EB26`).
+    CounterParalysis,
+    /// What an aqua hit gives a body standing on ice (`sub_801A0E0`'s
+    /// freeze).
+    IceFreeze,
+    /// The NaviCust on-hit bug's statuses (`sub_8013F1E`, bug levels 1 and
+    /// 2).
+    HitBugBlind,
+    HitBugConfuse,
+}
+
+impl StatusRole {
+    pub const ALL: [StatusRole; 5] = [
+        StatusRole::DamageWordParalysis,
+        StatusRole::CounterParalysis,
+        StatusRole::IceFreeze,
+        StatusRole::HitBugBlind,
+        StatusRole::HitBugConfuse,
+    ];
+
+    /// Its name in `rules/roles.luau`'s `statuses`.
+    pub fn name(self) -> &'static str {
+        match self {
+            StatusRole::DamageWordParalysis => "damage_word_paralysis",
+            StatusRole::CounterParalysis => "counter_paralysis",
+            StatusRole::IceFreeze => "ice_freeze",
+            StatusRole::HitBugBlind => "hit_bug_blind",
+            StatusRole::HitBugConfuse => "hit_bug_confuse",
+        }
+    }
+
+    pub fn named(name: &str) -> Option<StatusRole> {
+        StatusRole::ALL.into_iter().find(|r| r.name() == name)
+    }
+}
+
 /// The functions the ruleset calls by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HookRole {
@@ -206,6 +248,7 @@ pub struct Roles {
     pub kinds: BTreeMap<KindRole, RoleKind>,
     pub hooks: BTreeMap<HookRole, FnId>,
     pub lockons: BTreeMap<LockonRole, LockonHandle>,
+    pub statuses: BTreeMap<StatusRole, StatusHandle>,
 }
 
 impl Roles {
@@ -241,6 +284,15 @@ impl Roles {
             .hooks
             .get(&role)
             .unwrap_or_else(|| panic!("the role hooks.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    /// The status of `role`; a role content hasn't filled is a panic naming
+    /// it.
+    pub fn status(&self, role: StatusRole) -> StatusHandle {
+        *self
+            .statuses
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role statuses.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 
     /// The lock-on mode of `role`; a role content hasn't filled is a panic

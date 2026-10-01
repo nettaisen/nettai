@@ -11,6 +11,7 @@
 
 local collision = require("../../../../rules/collision")
 local regions = require("../../../../lib/regions")
+local statuses = require("../../../../rules/status")
 
 export type State = {
     variant: SwordWaveVariant,
@@ -127,7 +128,7 @@ local function init(me: Object)
     c:set_hit_effect(nil)
     c:set_region(v.region)
     local status = v.status
-    if status and status ~= 0 then
+    if status then
         c.status_base = status
     end
     local bug = v.bug
@@ -229,7 +230,7 @@ local function wave(v: {
     anim: number,
     palette: number?,
     hit_mod: number?,
-    status: number?,
+    status: Status?,
     reach: number?,
     animates: boolean?,
     steps: boolean?,
@@ -274,7 +275,7 @@ sword_wave.waves = {
     fire = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 1 },
     aqua = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 2 },
     -- (It paralyzes.)
-    elec = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 3, hit_mod = 1, status = 0x10 },
+    elec = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 3, hit_mod = 1, status = statuses.paralyze_90 },
     bamboo = wave { region = regions.wide, sprite = SWORD_SLASH, anim = 0, palette = 4, hit_mod = 1 },
     charge = wave { region = regions.wide, sprite = asset.sprite("charged-slash"), anim = 0, reach = 1, steps = true },
     moon = wave {

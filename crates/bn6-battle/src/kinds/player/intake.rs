@@ -9,7 +9,7 @@ use super::{
 };
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, f1, timer};
-use crate::content::StatusTimer;
+use crate::content::{StatusRole, StatusTimer};
 use crate::field::PanelType;
 use crate::object::{ObjectRef, Vec3};
 use crate::setup::{Form, Navi};
@@ -68,7 +68,7 @@ fn absorb_hit(c: &mut CollisionData) {
     c.acc.counter = 0;
     c.acc.drain_hits = 0;
     c.hit_mod_final = 0;
-    c.status_final = 0;
+    c.status_final = None;
     c.acc.inflicted_bugs = 0;
 }
 
@@ -534,10 +534,10 @@ fn hit_modifier_requests(b: &mut Battle, r: ObjectRef) {
 /// or flashing, unless a bubble status landed.
 fn counter_paralysis(b: &mut Battle, r: ObjectRef) {
     let c = coll(b, r);
-    if c.acc.hit_flags & 0x40 == 0 || (0x60..=0x65).contains(&c.status_final) {
+    if c.acc.hit_flags & 0x40 == 0 || c.status_final.is_some_and(|s| b.content.status(s).survives_counter) {
         return;
     }
-    coll_mut(b, r).status_final = 0x12;
+    coll_mut(b, r).status_final = Some(b.content.defs.roles.status(StatusRole::CounterParalysis));
     set_flag2(b, r, 0x4000);
     clear_flag2(b, r, 0x6);
 }
@@ -571,8 +571,8 @@ fn navicust_hit_bug(b: &mut Battle, r: ObjectRef) {
     }
     match stats(b, r).bugs.hit_status {
         0 => {}
-        1 => coll_mut(b, r).status_final = 0x32,
-        2 => coll_mut(b, r).status_final = 0x22,
+        1 => coll_mut(b, r).status_final = Some(b.content.defs.roles.status(StatusRole::HitBugBlind)),
+        2 => coll_mut(b, r).status_final = Some(b.content.defs.roles.status(StatusRole::HitBugConfuse)),
         3 => {
             let bugs = &mut stats_mut(b, r).bugs;
             if bugs.hp_drain < 7 {
@@ -586,11 +586,10 @@ fn navicust_hit_bug(b: &mut Battle, r: ObjectRef) {
 /// `sub_801A554`: apply the status the hit carried: set its timer and
 /// raise its request (§4.8).
 fn apply_status(b: &mut Battle, r: ObjectRef) {
-    let s = coll(b, r).status_final;
-    if s == 0 {
+    let Some(s) = coll(b, r).status_final else {
         return;
-    }
-    let e = b.content.rules.status_effect(s).unwrap_or_else(|| panic!("status {s:#x} reads outside the status table"));
+    };
+    let e = b.content.status(s);
     let c = coll_mut(b, r);
     let t = match e.timer {
         StatusTimer::Paralyze => timer::PARALYZE,
@@ -603,16 +602,17 @@ fn apply_status(b: &mut Battle, r: ObjectRef) {
         StatusTimer::Freeze => timer::FREEZE,
         StatusTimer::Bubble => timer::BUBBLE,
         StatusTimer::CollisionPanel => {
-            // Garbage entries (status 0x66/0x67) write the collision panel.
+            // Garbage entries (the original's statuses past a group's end)
+            // write the collision panel.
             c.panel.x = e.duration as u8;
             c.panel.y = (e.duration >> 8) as u8;
             return set_flag2(b, r, e.requests);
         }
-        StatusTimer::Other(off) => panic!("status {s:#x} writes CollisionData+{off:#x}"),
+        StatusTimer::Other(off) => panic!("status {} writes CollisionData+{off:#x}", b.content.defs.statuses[s.index()].key),
     };
     c.status_timers[t] = e.duration;
     set_flag2(b, r, e.requests);
-    if (0x50..=0x55).contains(&s) {
+    if e.cancels_flinch {
         clear_flag2(b, r, 0x6);
     }
 }
