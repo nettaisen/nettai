@@ -22,14 +22,13 @@ const ROOTS: [&str; 3] = ["content/bn6", "crates/bn6-battle/testdata/content", "
 const NUMBERED_FOLDERS: &[&str] = &[];
 
 /// The modules that still hold `legacy` markers, by path (`*`: any one
-/// folder): the navis' and forms' numbers and NameIDs, and the original's
-/// numbering of the two tables the ruleset still reads by number. Step
-/// 13's second part converts them and empties this list.
+/// folder): the navis' and forms' numbers, and the original's numbering of
+/// the body overlays, which the ruleset still reads by number. Step 13's
+/// second part converts them and empties this list.
 const LEGACY_MARKERS: &[&str] = &[
     "content/bn6/navis/*/navi.luau",
     "content/bn6/navis/megaman/forms/*/form.luau",
     "content/bn6/rules/body-overlays.luau",
-    "content/bn6/rules/identities.luau",
     "crates/bn6-battle/testdata/content/navis/test.luau",
 ];
 

@@ -548,10 +548,11 @@ fn rock_barrage(b: &mut Battle, r: ObjectRef) -> u8 {
     let opp = side ^ 1;
     // object_getEnemyByNameRange: the other side's viruses (NameID
     // 0..=0xBA) then its navis (0x100..=0x1C3), in actor-list order.
+    use crate::content::IdentityClass;
+    let class = |o: ObjectRef| b.content.identity(b.objects.get(o).identity).class;
     let actors = b.round.alive_actors[opp as usize];
-    let mut targets: Vec<ObjectRef> =
-        actors.iter().flatten().copied().filter(|&o| b.objects.get(o).name_id <= 0xBA).collect();
-    targets.extend(actors.iter().flatten().copied().filter(|&o| (0x100..=0x1C3).contains(&b.objects.get(o).name_id)));
+    let mut targets: Vec<ObjectRef> = actors.iter().flatten().copied().filter(|&o| class(o) == IdentityClass::Virus).collect();
+    targets.extend(actors.iter().flatten().copied().filter(|&o| class(o).is_navi()));
     if targets.is_empty() {
         return 0;
     }

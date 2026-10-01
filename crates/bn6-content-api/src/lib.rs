@@ -36,7 +36,7 @@ pub mod types;
 
 pub use api::{
     ACTOR_TYPES, ActorField, ApiError, ApiResult, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi,
-    DimmingStep, Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviRecordInfo, NaviStat, NaviState, ObjectField, NaviAction, SpawnAt,
+    DimmingStep, Emotion, HitboxSpec, Key, Lifecycle, LinkedChip, NaviStat, NaviState, ObjectField, NaviAction, SpawnAt,
     OVERLAY_STEPPINGS,
     ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, PANEL_TYPES, Pad, PanelInfo, RequestFlag, Shadow,
     SpriteField, StatusFlag, StatusTimer,
@@ -53,7 +53,7 @@ pub use host::{
     InstantChipSpec, Manifest, NaviChipSpec, PlaceSpec,
 };
 pub use registry::{
-    ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FormHandle, KindHandle, LockonHandle, NaviHandle,
+    ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FormHandle, IdentityHandle, KindHandle, LockonHandle, NaviHandle,
     RecordHandle, RegionHandle, Registry, SparkHandle, StageHandle, StatusHandle, WeaponHandle, valid_key,
 };
 pub use state::{ContentState, FieldDef, FieldType, FieldValue, MAX_BYTES, Schema, StateId, Value};

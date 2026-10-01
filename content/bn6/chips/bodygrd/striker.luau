@@ -9,8 +9,16 @@ local shuriken = require("./shuriken")
 
 local striker = {}
 
--- Its NameID (the field objects' look).
-local NAME = 0xD3
+-- Its identity: a field object nothing swallows or leaves as junk, with
+-- no look.
+local IDENTITY = define.identity {
+    id = "bodygrd-striker",
+    class = "field_object",
+    version = 0,
+    ai_index = 1,
+    scrap = false,
+    look = { anim = 0, palette = 0, shadow = false },
+}
 local EVERY, STRIKES = 0x14, 0xB
 local SOUND_THROW = asset.sound("boomerang")
 local HIT_MOD = 1
@@ -106,7 +114,7 @@ striker.kind = define.kind {
         local l = me.lifecycle
         if l == "init" then
             -- sub_80E8288
-            me.name_id = NAME
+            me.identity = IDENTITY
             me.hp, me.max_hp = 1, 1
             me:set_lifecycle("update")
             tick(me)

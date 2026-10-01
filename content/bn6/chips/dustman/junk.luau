@@ -13,7 +13,7 @@ local junk = {}
 
 export type State = {
     -- Its look (`obstacle.junk_look` of the object it was, ExtraVars[0]).
-    look: number,
+    look: Identity?,
 }
 
 -- How far in front of its panel's centre it starts, how fast it flies
@@ -25,7 +25,11 @@ local AHEAD, SPEED, HEIGHT = 0x12_0000, 0x6_0000, 0x10
 -- gone at once if it has no look (or collision can't be had).
 local function init(me: Object)
     local s = me.state :: State
-    if not me:wear_junk_look(s.look) then
+    local look = s.look
+    if not look then
+        error("junk with no look (sub_80DBB64 would take a virus's sprite)")
+    end
+    if not me:wear_junk_look(look) then
         me:free()
         return
     end
@@ -96,7 +100,7 @@ end
 junk.kind = define.kind {
     id = "dustman/junk",
     pool = "attack",
-    state = { look = "u16" },
+    state = { look = "identity" },
     -- `sub_80DBB40`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -115,7 +119,7 @@ junk.kind = define.kind {
 -- `element` and the damage word; it runs while dimmed (flag 0x10). `z` is
 -- the spawner's r3 (DustMan's: the object loop's, `battle.loop_register`),
 -- which becomes its Z, of which the init keeps the fraction.
-function junk.throw(owner: Object, x: number, y: number, element: number, damage: number, look: number, z: number): Object?
+function junk.throw(owner: Object, x: number, y: number, element: number, damage: number, look: Identity, z: number): Object?
     local o = battle.spawn(junk.kind, Vec3.new(y, element, z))
     if o then
         o.panel_x, o.panel_y = x, y
