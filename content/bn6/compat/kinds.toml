@@ -200,7 +200,7 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 "spoutman/pillar" = { pool = "effect", index = 0x2D, scratch_z_fraction = true }
 "spoutman/mark" = { pool = "effect", index = 0x2E }
 "barriers/controller" = { pool = "effect", index = 0x2F, scratch_position = true }
-"deltaray/follow-effect" = { pool = "effect", index = 0x31 }
+follow-effect = { pool = "effect", index = 0x31 }
 "anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
 "meteors/controller" = { pool = "effect", index = 0x34, scratch_position = true }
 "falling-meteor/marker" = { pool = "effect", index = 0x35, scratch_position = true }

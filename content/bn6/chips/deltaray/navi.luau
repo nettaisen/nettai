@@ -1,22 +1,29 @@
 --!strict
--- DeltaRay, the navi of the DeltaRay chip (actor object #0x3D,
--- `sub_80C2A78`), brought by its navi chip controller. He fades in on his
--- user's panel, flashing, then looks for the first enemy navi ahead
+-- DeltaRay, the navi of the DeltaRay chip (the original's actor object
+-- #0x3D, `sub_80C2A78`), brought by its navi chip controller. He fades in
+-- on his user's panel, flashing, then looks for the first enemy navi ahead
 -- (column by column, rows 1 to 3) and a free panel diagonally behind and
--- above it; there he strikes with his sword (a hit region 4 in front of
+-- above it; there he strikes with his sword (a column of three in front of
 -- him, with a slash effect). Each time his user presses A while dimmed
 -- during a strike, he goes on to the next corner of the delta (up to three
 -- strikes), as long as the panel is free; then he returns home, flashes
 -- the screen with a burst, and leaves. Without an enemy navi ahead, he
 -- only marks the air. See docs/engine/chips.md §3.6.36.
---
--- The chip's script (navi chip subtype 28): `navi_chip` is his spawner,
--- `off_802CD5C[28]`.
 
-local attachment = require("../attachment/attachment")
-local follow_effect = require("../follow-effect/follow_effect")
+local attachment = require("../../objects/attachment/attachment")
+local follow_effect = require("../../objects/follow-effect/follow_effect")
+local parts = require("../../lib/swords/parts")
+local collision = require("../../rules/collision")
+local effects = require("../../lib/effects")
+local regions = require("../../lib/regions")
+
+-- What a chip summons him with: his palette (the chip's first parameter
+-- picks it).
+export type Summon = { palette: number }
 
 export type State = {
+    -- His palette (from Param1).
+    palette: number,
     -- The controller waiting for him (its pointer sits in his
     -- ExtraVars[1]).
     controller: Object?,
@@ -37,26 +44,18 @@ export type State = {
     glow: number,
 }
 
-local delta_ray = {
-    state = {
-        controller = "object",
-        facing = "u8",
-        home = "u16",
-        target_x = "u8",
-        target_y = "u8",
-        first_x = "u8",
-        first_y = "u8",
-        first_found = "u8",
-        again = "u8",
-        glow = "u8",
-    },
-}
+local deltaray = {}
 
-local SPRITE = "08-0B"
+local SPRITE = asset.sprite("protoman")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_COPY_MARK = asset.sound("copy-mark")
+local SOUND_DELTA_RAY_2 = asset.sound("delta-ray-2")
+local SOUND_LOG_IN_77 = asset.sound("log-in-77")
 
--- His palette by Param1 (`sub_800FCFC(0xB)`: byte_80212BB[0xB], 1, times
--- `byte_800FD5C[Param1]`).
-local PALETTES = { [0] = 0, 0, 0, 2, 3, 0, 0, 0 }
+-- The flash above him as he arrives (effect 0x03), and the mark on his
+-- target (effect 0x28).
+local FLASH = define.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 }
+local MARK = define.effect { sprite = asset.sprite("copy-mark"), anim = 11, palette = 1 }
 
 -- What he looks for (by side, `off_80C2F2C`: an enemy navi's body), and a
 -- panel he can stand on: solid, and none of these (by side).
@@ -67,28 +66,15 @@ local STAND_FORBID = { [0] = 0x0788_0080, 0x0B88_0080 }
 -- (`byte_80C2F20`), by strike.
 local STEPS = { [0] = { -1, -1 }, { 2, 1 }, { -2, 1 }, { 0, 0 } }
 
--- His sword: the attachment he holds (kind 3, animation 0x0B, stepping
--- while dimmed).
-local SWORD = { 3, 0x0B, 1, 0 }
+-- His sword: the swords' blade (the original's attachment 3), its
+-- animation 0x0B, stepping while dimmed; his slash drawn over the column
+-- (effect 0x27).
+local SWORD = parts.blades.sword
+local SWORD_ANIM = 0x0B
+local SLASH = parts.effects.wide
 
--- `sub_80C2F96`: DeltaRay for `user`, reporting to `controller`. (His
--- position is the spawner's registers, all of which his init
--- overwrites.)
-function delta_ray.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn_kind("delta-ray", Vec3.zero, spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.alliance, o.flip = user.alliance, user.flip
-    o.related1 = user
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    local s = o.state :: State
-    s.controller = controller
-    return o
-end
+-- His bursts' look (the follow effect's look 4).
+local BURST = follow_effect.look { sprite = asset.sprite("follow-effect"), anim = 0, palette = 0, behavior = "flash" }
 
 local function st(me: Object): State
     return me.state :: State
@@ -115,7 +101,7 @@ local function fade_in(me: Object)
     local s = st(me)
     if me.phase_init == 0 then
         s.glow = 0x1F
-        battle.play_sound(0x94)
+        battle.play_sound(SOUND_APPEAR)
         me.timer = 0
         me.phase_init = 4
         return
@@ -136,14 +122,14 @@ local function fade_in(me: Object)
     next_phase(me, 4)
 end
 
--- `sub_80C2B8C`: a flash above him (effect 3, sound 0x77), 60 ticks; then
+-- `sub_80C2B8C`: a flash above him, 60 ticks; then
 -- on to the attack, or gone if his panel isn't solid.
 local function arrive(me: Object)
     if me.phase_init == 0 then
         me.timer = 0x3C
         local p = me.pos
-        battle.effect(Vec3.new(p.x, p.y, p.z + 0x14_0000), 3)
-        battle.play_sound(0x77)
+        battle.effect(Vec3.new(p.x, p.y, p.z + 0x14_0000), FLASH)
+        battle.play_sound(SOUND_LOG_IN_77)
         me.phase_init = 4
         return
     end
@@ -215,16 +201,16 @@ local function search(me: Object)
     next_phase(me, 4)
 end
 
--- `sub_80C2CB4`: a mark (effect 0x28, lasting his timer) on the target
--- panel, sound 0xBD; then the strike, or (no target) the end.
+-- `sub_80C2CB4`: a mark (lasting his timer) on the target panel; then the
+-- strike, or (no target) the end.
 local function mark(me: Object)
     if me.phase_init == 0 then
         local cx, cy = field.center(me.future_panel_x, me.future_panel_y)
-        local fx = battle.effect(Vec3.new(cx, cy, 0), 0x28)
+        local fx = battle.effect(Vec3.new(cx, cy, 0), MARK)
         if fx then
             fx.timer = me.timer
         end
-        battle.play_sound(0xBD)
+        battle.play_sound(SOUND_COPY_MARK)
         me.phase_init = 4
         return
     end
@@ -307,17 +293,17 @@ local function asked_again(me: Object): boolean
     return p:dimmed_pressed("a")
 end
 
--- `sub_80C2D8C`: the strike: his sword out (animation 5, sound 0xB0), 20
--- ticks; at 10 left a flash, the hit (region 4, 16 pixels up) and the
--- slash on the panel he faces. A press while more than 5 are left asks
+-- `sub_80C2D8C`: the strike: his sword out (animation 5), 20 ticks; at 10
+-- left a flash, the hit (a column of three, 16 pixels up) and the slash on
+-- the panel he faces. A press while more than 5 are left asks
 -- for another.
 local function strike(me: Object)
     local s = st(me)
     if me.phase_init == 0 then
         me.anim = 5
         me.anim_loaded = 6
-        attachment.spawn_with(me, SWORD, "related")
-        battle.play_sound(0xB0)
+        attachment.attach(me, SWORD, "related", { anim = SWORD_ANIM, while_dimmed = true })
+        battle.play_sound(parts.sounds.swing)
         me.timer = 0x14
         me.phase_init = 4
         return
@@ -334,10 +320,10 @@ local function strike(me: Object)
             panel_y = y,
             element = 0,
             z = 0x10_0000,
-            region = 4,
+            region = regions.wide,
             hit_effect = 0xFF,
-            target = 5,
-            self_type = 7,
+            target = collision.hits_navis,
+            self_type = collision.slash,
             damage = me.damage,
             stamina = me.stamina,
             hit_mod = 3,
@@ -346,7 +332,7 @@ local function strike(me: Object)
             box.run_while_dimmed = true
         end
         local cx, cy = field.center(x, y)
-        battle.effect(Vec3.new(cx, cy, 0x10_0000), 0x27, s.facing)
+        battle.effect(Vec3.new(cx, cy, 0x10_0000), SLASH, s.facing)
     end
     local left = t - 1
     me.timer = left
@@ -375,15 +361,15 @@ local function home(me: Object)
     end
 end
 
--- `sub_80C2FBC`: a burst (follow effect 4, 60 ticks, sound 0x92) on (x,
--- y), and a white flash of 20 ticks.
+-- `sub_80C2FBC`: a burst (a follow effect's look 4, 60 ticks) on (x, y),
+-- and a white flash of 20 ticks.
 local function burst(me: Object, x: number, y: number)
     local cx, cy = field.center(x, y)
-    local fx = follow_effect.spawn(me, Vec3.new(cx, cy, 0), { 4, bit32.bxor(me.alliance, me.flip) })
+    local fx = follow_effect.spawn(me, Vec3.new(cx, cy, 0), BURST, bit32.bxor(me.alliance, me.flip))
     if fx then
         fx.timer = 0x3C
     end
-    battle.play_sound(0x92)
+    battle.play_sound(SOUND_DELTA_RAY_2)
     battle.palette_flash(0, 0x14, true)
 end
 
@@ -474,11 +460,7 @@ local function init(me: Object)
     me.pos = Vec3.new(p.x, p.y, 0)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     st(me).home = bit32.bor(me.panel_x, bit32.lshift(me.panel_y, 8))
-    local palette = PALETTES[me:param(1)]
-    if palette == nil then
-        error(string.format("DeltaRay's palette %d reads past byte_800FD5C", me:param(1)))
-    end
-    sprite.palette = palette
+    sprite.palette = st(me).palette
     sprite.color_shader = 0x7FFF
     me.visible = true
     me:set_lifecycle("update")
@@ -494,16 +476,54 @@ local function gone(me: Object)
     me:free()
 end
 
--- `sub_80C2A78`.
-function delta_ray.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        gone(me)
+deltaray.kind = define.kind {
+    id = "deltaray/navi",
+    pool = "actor",
+    state = {
+            controller = "object",
+            facing = "u8",
+            home = "u16",
+            target_x = "u8",
+            target_y = "u8",
+            first_x = "u8",
+            first_y = "u8",
+            first_found = "u8",
+            again = "u8",
+            glow = "u8",
+            palette = "u8",
+        },
+    -- `sub_80C2A78`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            gone(me)
+        end
+    end,
+}
+
+-- `sub_80C2F96`: the DeltaRay chip's navi hook (`off_802CD5C[28]`):
+-- DeltaRay for `user`, reporting to `controller`. (His position is the
+-- spawner's registers, all of which his init overwrites.)
+function deltaray.summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+    return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
+        local o = battle.spawn(deltaray.kind, Vec3.zero)
+        if not o then
+            return nil
+        end
+        o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+        o.element = spec.element
+        o.alliance, o.flip = user.alliance, user.flip
+        o.related1 = user
+        o:set_damage_word(spec.damage)
+        local s = o.state :: State
+        s.controller = controller
+        s.palette = args.palette
+        return o
     end
 end
 
-return delta_ray
+return deltaray

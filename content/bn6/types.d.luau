@@ -572,15 +572,6 @@ export type DblBeastHit = {
 
 -- ---- The navi chips' navis (content model v2: the earlier navis) ---------
 
--- A flame (chips/heatman/flame): the ticks it burns; whether it acts while
--- the battle is dimmed (HeatMan's, BurnSqr's); whether it counts as a
--- thrown attack.
-export type HeatFlame = {
-    ticks: number,
-    while_dimmed: boolean?,
-    thrown: boolean?,
-}
-
 -- A thunderbolt (chips/elecman/thunder): whether it acts while the battle
 -- is dimmed (the navi chip's; one that doesn't cracks its panel), and
 -- whether it also hits the eight panels around it.
