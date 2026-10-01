@@ -313,14 +313,11 @@ fn depart(b: &mut Battle, r: ObjectRef) {
     set_phase(b, r, Phase::Arrive);
 }
 
-/// `byte_8013D44`: the sound a panel-trail turn makes, by the panel type
-/// it turns the panel into (none for the first four).
-const TRAIL_SOUNDS: [u16; 13] = [0, 0, 0, 0, 0x90, 0xA4, 0x11B, 0x118, 0x11C, 0xFC, 0xFC, 0xFC, 0xFC];
-
 /// `sub_8013CC4`: the NaviCust panel-trail bugs and programs (stats 0x12,
 /// 0x13): at a chance of level in 8, the panel a player steps off (unless
 /// it is missing or broken) breaks (kind 1), cracks (3) or turns to the
-/// kind's panel type, with its sound when the type changes.
+/// kind's panel type, with the type's trail sound (`byte_8013D44`, the
+/// panel rules' `trail_sound`) when the type changes.
 pub(super) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
     if ai(b, r).actor_type != ActorType::Player {
         return;
@@ -352,11 +349,10 @@ pub(super) fn panel_trail(b: &mut Battle, r: ObjectRef, from: PanelPos) {
                 panic!("panel-trail kind {kind:#x} is past the panel types (sub_8013CC4)");
             };
             b.set_panel_type(from.x, from.y, t);
-            if t != old {
-                let sound = TRAIL_SOUNDS[kind as usize];
-                if sound != 0 {
-                    b.play_sound(crate::sound::SoundId(sound));
-                }
+            if t != old
+                && let Some(sound) = b.content.rules.panels.types[t as usize].trail_sound
+            {
+                b.play_sound(sound);
             }
         }
     }

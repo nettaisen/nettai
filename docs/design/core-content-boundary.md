@@ -86,8 +86,8 @@ bn6-frontend, bn6-audio and m4a (presentation), bn6-netplay (rollback).
   and the Beast claw for the rush's lock-on mode, DustCross Beast's scatter, ChargeCross's tackle), the kinds
   it spawns (the absorbed obstacle, the falling rock, the supports' controller, AntiRecv's counterattack), the
   chips it names (what a zeroed chip field reads, the custom screen's Beast Out chip, the supports' telops),
-  the statuses, lock-on modes, effects, sparks, regions and collision types it uses itself, and two hooks (the
-  FirstBarrier, an encased obstacle). A role content hasn't filled is an error where the ruleset needs it.
+  the statuses, lock-on modes, effects, sparks, regions, collision types, sounds, music, banners and sprites
+  it uses itself, and two hooks (the FirstBarrier, an encased obstacle). A role content hasn't filled is an error where the ruleset needs it.
 - **By trait.** What the ruleset asks of every chip, weapon or action beyond its record is a named property of
   the definition: a chip's `traits` (`no_chain`, `aura_bonus`, `heals`, `navi_slot`, ...) and `trap`, a
   weapon's `sticky`, `held`, `plain`, `charged_chip`, an identity's class. The ruleset never tests a key.
@@ -281,11 +281,10 @@ again; the frontend plays a cue once it is confirmed or first predicted and canc
 - **Navis and forms by number.** The ruleset still tests navi and form numbers where it applies a rule to one
   (a form's chip-use rules, a link navi's Cross fallback, Beast Over's berserk), and finds a navi or a form by
   the number in its definition's `legacy` marker. The body overlays are a table by number for the same reason.
-- **Sounds by number.** The ruleset's own cues (a hit, a crack, a counter) are song-table numbers in Rust, and
-  the API still takes a sound by number as well as by asset.
 - **AI-index hooks.** The per-AI-index post-init, flinch and drag hooks are Rust matches on the index.
 - **The engine's kinds' spawn parameters.** The engine's own object kinds (the effect, the spark, the hitbox,
   the afterimage, the eruption) still read the four parameter bytes they are spawned with; content kinds have
   none.
-- **Two unfilled roles**: the objects battle mode 9 spawns for AI index 10 (`kinds.mode9_attack`,
-  `kinds.mode9_actor`); no content defines them.
+- **Three unfilled roles**: the action the volley request starts (`actions.volley`; no routine raises the
+  request), and the objects battle mode 9 spawns for AI index 10 (`kinds.mode9_attack`, `kinds.mode9_actor`); no
+  content defines them, and starting one is an error naming the role.

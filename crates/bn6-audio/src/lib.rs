@@ -29,6 +29,10 @@ use std::sync::Arc;
 
 pub use bn6_battle::cues::CueAction;
 pub use bn6_battle::sound::{SoundCue, SoundId};
+
+/// The game's "no music" song: `PlayMusic` of it stops the music (its
+/// battle settings name it for a battle without music).
+pub const NO_MUSIC: SoundId = SoundId(0x63);
 pub use m4a;
 
 #[cfg(feature = "playback")]
@@ -118,7 +122,7 @@ impl SoundCalls {
                 }
                 self.previous_music = self.music;
                 self.music = id.0 as u8;
-                out.push(if id == SoundId::NO_MUSIC { Request::StopAll } else { Request::Start(SongId(id.0)) });
+                out.push(if id == NO_MUSIC { Request::StopAll } else { Request::Start(SongId(id.0)) });
             }
             // musicGameState_8000784.
             SoundCue::StopMusic => {
@@ -164,7 +168,7 @@ impl SoundCalls {
         self.previous_music = music;
         out.push(match self.music {
             NO_INDICATOR => Request::StopAll,
-            m if m as u16 == SoundId::NO_MUSIC.0 => Request::StopAll,
+            m if m as u16 == NO_MUSIC.0 => Request::StopAll,
             m => Request::Start(SongId(m as u16)),
         });
     }

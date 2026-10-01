@@ -7,20 +7,16 @@
 //! original's effect #0x2C, `sub_80E3728`) takes the amount from the healer.
 
 use crate::battle::Battle;
-use crate::content::EffectRole;
+use crate::content::{EffectRole, SoundRole};
 use crate::kinds::effect;
 use crate::object::{ObjectRef, Vec3};
-use crate::sound::SoundId;
 
-/// The recovery sparkle's (the role `effects.recovery`) sound.
-const HEAL_SOUND: u16 = 0x8A;
 /// AntiRecv's counterattack: the counter byte its damage carries, the
 /// "trap!" mark (the role `effects.trap_mark`) raised over the healer, and
 /// its sound.
 pub(crate) const TRAP_HIT_PARAM: u32 = 0x1E;
 /// The mark's height, 32 pixels.
 pub(crate) const TRAP_MARK_Z: i32 = 0x20_0000;
-const TRAP_SOUND: u16 = 0xA5;
 
 /// `sub_800E2FC`: heal `r` by `amount`; with `anti_recovery`, check the
 /// opponent's AntiRecv first. True when the trap sprang (the game's
@@ -36,7 +32,7 @@ pub fn heal(b: &mut Battle, r: ObjectRef, amount: u16, anti_recovery: bool) -> b
     let pos = b.objects.get(r).pos;
     let look = b.content.defs.roles.effect(EffectRole::Recovery);
     effect::spawn(b, pos, look, 0, 0, 0);
-    b.play_sound(SoundId(HEAL_SOUND));
+    b.sound(SoundRole::Recovery);
     false
 }
 
@@ -100,5 +96,5 @@ pub(crate) fn trap_mark(b: &mut Battle, r: ObjectRef) {
     let local = b.round.local_side;
     let look = b.content.defs.roles.effect(EffectRole::TrapMark);
     effect::spawn(b, Vec3 { x, y: y.wrapping_add(0x10_0000), z: TRAP_MARK_Z }, look, local, 0, 0);
-    b.play_sound(SoundId(TRAP_SOUND));
+    b.sound(SoundRole::CutIn);
 }

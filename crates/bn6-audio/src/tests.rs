@@ -1,6 +1,11 @@
 use super::*;
 use m4a::bank::*;
 
+/// Two of the game's songs, as a battle's cues name them: its netbattle
+/// music and its victory music.
+const VIRUS_BATTLE: SoundId = SoundId(0x15);
+const WINNER: SoundId = SoundId(0x1F);
+
 /// BN6's player layout with two songs: the battle music (0x15) on the
 /// music player and an effect (0x94) on player 16.
 fn bank() -> Arc<SoundBank> {
@@ -59,11 +64,11 @@ fn play_music_skips_the_music_already_playing() {
     let start = |id| vec![Request::Start(SongId(id))];
     assert_eq!(requests(&mut c, SoundCue::Music(SoundId(0x15))), start(0x15));
     assert_eq!(requests(&mut c, SoundCue::Music(SoundId(0x15))), []);
-    assert_eq!(requests(&mut c, SoundCue::Music(SoundId::WINNER)), start(0x1F));
+    assert_eq!(requests(&mut c, SoundCue::Music(WINNER)), start(0x1F));
     assert_eq!(requests(&mut c, SoundCue::StopMusic), [Request::StopAll]);
-    assert_eq!(requests(&mut c, SoundCue::Music(SoundId::WINNER)), start(0x1F), "stopping forgets the music");
-    assert_eq!(requests(&mut c, SoundCue::Music(SoundId::NO_MUSIC)), [Request::StopAll]);
-    assert_eq!(requests(&mut c, SoundCue::Music(SoundId::NO_MUSIC)), []);
+    assert_eq!(requests(&mut c, SoundCue::Music(WINNER)), start(0x1F), "stopping forgets the music");
+    assert_eq!(requests(&mut c, SoundCue::Music(NO_MUSIC)), [Request::StopAll]);
+    assert_eq!(requests(&mut c, SoundCue::Music(NO_MUSIC)), []);
     assert_eq!(requests(&mut c, SoundCue::Effect(SoundId(0x94))), start(0x94));
     assert_eq!(requests(&mut c, SoundCue::Effect(SoundId(0x94))), start(0x94), "effects always go");
 }
@@ -94,9 +99,9 @@ fn cancelling_a_cue_takes_it_back() {
     let mut c = SoundCalls::new();
     let music = |id| SoundCue::Music(SoundId(id));
     requests(&mut c, music(0x15));
-    requests(&mut c, SoundCue::Music(SoundId::WINNER));
+    requests(&mut c, SoundCue::Music(WINNER));
     let mut out = Vec::new();
-    c.cancel(SoundCue::Music(SoundId::WINNER), &mut out);
+    c.cancel(SoundCue::Music(WINNER), &mut out);
     assert_eq!(out, [Request::Start(SongId(0x15))], "back to the battle music");
     assert_eq!(requests(&mut c, music(0x15)), [], "which is the music again");
     requests(&mut c, SoundCue::StopMusic);
@@ -134,7 +139,7 @@ fn a_cancelled_effect_stops() {
 fn a_cue_sounds_two_frames_later_as_in_the_game() {
     let mut a = BattleAudio::new(bank());
     let mut out = Vec::new();
-    a.handle(&[SoundCue::Music(SoundId::VIRUS_BATTLE)]);
+    a.handle(&[SoundCue::Music(VIRUS_BATTLE)]);
     // The frame's VBlank comes first; the queued call runs after it.
     a.tick(&mut out);
     assert_eq!(a.driver().player(MUSIC_PLAYER).unwrap().song(), Some(SongId(0x15)));
@@ -149,7 +154,7 @@ fn a_cue_sounds_two_frames_later_as_in_the_game() {
 fn effects_play_over_the_music() {
     let mut a = BattleAudio::new(bank());
     let mut out = Vec::new();
-    a.handle(&[SoundCue::Music(SoundId::VIRUS_BATTLE)]);
+    a.handle(&[SoundCue::Music(VIRUS_BATTLE)]);
     for _ in 0..3 {
         a.tick(&mut out);
     }
