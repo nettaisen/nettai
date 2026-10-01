@@ -540,8 +540,7 @@ mod tests {
     use crate::content::testing;
     use crate::scenario;
 
-    /// The navi chip controller, and the test navi chip's navi, by kind
-    /// (the scene has kinds content defines, which have no slot number).
+    /// The navi chip controller, and the test navi chip's navi.
     const CONTROLLER: &str = "engine/navi-chip";
     const HEAT_NAVI: &str = "heat-man";
 
@@ -563,15 +562,15 @@ mod tests {
         for t in &tape {
             b.tick(&t.input, t.events.clone());
             let seen: Vec<_> = b.objects.in_order().map(|r| (b.kind_key(r).to_string(), b.objects.get(r).alliance)).collect();
-            for (kind, alliance) in seen {
-                if kind == CONTROLLER && user.is_none() {
+            for (key, alliance) in seen {
+                if key == CONTROLLER && user.is_none() {
                     user = Some(alliance);
                     arm(&mut b, alliance ^ 1);
                     if bounce {
                         arm(&mut b, alliance);
                     }
                 }
-                if kind == HEAT_NAVI && !came_for.contains(&alliance) {
+                if key == HEAT_NAVI && !came_for.contains(&alliance) {
                     came_for.push(alliance);
                 }
             }
