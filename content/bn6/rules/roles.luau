@@ -116,9 +116,9 @@ return define.roles {
         -- undershirt's credits'; a navi appearing mid-battle.
         recovery = effects.heal,
         -- The flash where a side cut in.
-        cut_in_flash = effects.bat_impact,
+        cut_in_flash = effects.cut_in_flash,
         -- The mark over a navi whose trap sprang (AntiNavi, AntiRecv).
-        trap_mark = effects.copy_mark_7,
+        trap_mark = effects.trap_mark,
         -- What an obstacle encased in ice or a bubble flickers with.
         encased = effects.explosion,
         -- A Cross or Beast Out put on.
@@ -128,20 +128,20 @@ return define.roles {
         beast_over_gregar = effects.beast_over_gregar,
         beast_over_falzar = effects.beast_over_falzar,
         beast_over_blast = effects.beast_over_blast,
-        beast_over_burst = effects.beast_over_burst_45,
+        beast_over_burst = effects.beast_over_burst,
     },
     sparks = {
         -- What a new collision registration's hits show until its owner
         -- names another.
         plain = sparks.plain,
         -- A blocked hit's.
-        guard = sparks.hit,
+        guard = sparks.guard,
         -- An eruption's hits' (a volcano panel's).
         eruption = sparks.fire,
         -- A thrown obstacle's landing's.
         thrown_obstacle = sparks.charged,
         -- A navi's programs uninstalled.
-        uninstall = sparks.spark_0e,
+        uninstall = sparks.uninstall,
     },
     regions = {
         -- A registration's own panel, which every setup gives it.
@@ -167,15 +167,15 @@ return define.roles {
         -- damage) and as the other does (and an object hurt without
         -- flinching); an object taking damage; a blocked hit; a counter
         -- hit; a navi deleted.
-        own_hit = asset.sound("hit-6b"),
-        hit = asset.sound("hit-6d"),
+        own_hit = asset.sound("own-hit"),
+        hit = asset.sound("hit"),
         damage = asset.sound("damage"),
-        guard = asset.sound("hit-6e"),
-        counter_hit = asset.sound("select-86"),
+        guard = asset.sound("guard-hit"),
+        counter_hit = asset.sound("counter-hit"),
         deleted = asset.sound("deleted"),
         -- HP recovered; a chip's damage bonus as it is used.
         recovery = asset.sound("heal"),
-        damage_bonus = asset.sound("hit-87"),
+        damage_bonus = asset.sound("damage-bonus"),
         -- The battle pauses and resumes; the custom gauge fills; the
         -- low-HP alarm.
         pause = asset.sound("pause"),
@@ -198,7 +198,7 @@ return define.roles {
         invisible = asset.sound("invisible"),
         appear = asset.sound("appear"),
         arrive = asset.sound("point-appear"),
-        fade = asset.sound("fade-8e"),
+        fade = asset.sound("fade"),
         -- A thrown obstacle lifted, and flying.
         obstacle_lift = asset.sound("point-rise"),
         obstacle_throw = asset.sound("etomahwk"),
@@ -208,7 +208,7 @@ return define.roles {
         cross_merge = asset.sound("cross-merge"),
         form_change = asset.sound("form-change"),
         cross_change = asset.sound("cross-change"),
-        cross_change_chime = asset.sound("log-in-77"),
+        cross_change_chime = asset.sound("log-in"),
         beast_out = asset.sound("beast-out"),
         gregar_roar = asset.sound("gregar-roar"),
         falzar_roar = asset.sound("falzar-roar"),
@@ -238,12 +238,12 @@ return define.roles {
         -- bubble around a bubbled one.
         confusion = asset.sprite("confusion"),
         blindness = asset.sprite("blindness"),
-        immobilized = asset.sprite("immobilized"),
+        immobilized = asset.sprite("rock-cubes"),
         ice = asset.sprite("ice-block"),
         bubble = asset.sprite("bubble"),
         -- The mark over a navi a hit told something about ("!!", the HP
         -- bug's).
-        hit_marker = asset.sprite("bat-impact"),
+        hit_marker = asset.sprite("hit-marker"),
         -- A volcano panel's eruption; the Beast forms' lock-on marker.
         eruption = asset.sprite("eruption"),
         lockon_marker = asset.sprite("lockon-marker"),
@@ -255,7 +255,7 @@ return define.roles {
         final_turn = asset.banner("final-turn"),
         -- A draw; the damage judge's.
         draw = asset.banner("draw"),
-        judge = asset.banner("held-28"),
+        judge = asset.banner("hit-damage-judge"),
         -- A telop on the local player's side, and on the other's.
         telop = asset.banner("telop"),
         telop_remote = asset.banner("telop-remote"),

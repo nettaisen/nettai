@@ -810,7 +810,7 @@ GroundCross use), the falling meteor with its panel marker chips/meteors/falling
 (`meteors/falling-meteor`, `meteors/marker`; the instant chips' meteor shower, lib/instant/meteor_shower, uses
 them), the thunder column chips/dolthdr/column (`dolthdr/thunder-column`, which EraseCross's ray lays), and the
 rock with its debris chips/rockcube/rock and debris (`rockcube/rock`, `rockcube/debris`, its variants
-`rockcube/brittle` to `rockcube/ice`; the stages place it, the encasing makes ice blocks of it, and the boulder
+`rockcube/rock/brittle` to `rockcube/rock/ice`; the stages place it, the encasing makes ice blocks of it, and the boulder
 breaks into its debris). What stays in `objects/` is what no one chip owns: absorbed-obstacle, attachment,
 boulder, bullet, element-pillar, encased-bubble, falling-rock (with its chips), flying-shot, follow-effect, gust,
 panel-bursts, panel-changer, panel-strike, projectile and rising-bubble.
@@ -1707,7 +1707,7 @@ What it settled:
   its rows by number privately and exports the chips' by name (`puck.variants.airhocky`,
   `wave.variants.pwrwave`, `shield.looks.rflectr2`), and an action's form no chip has is a definition with
   its own compat key (`tornado/back-spread`, `recov/none`).
-- **Asset names**: the sprites `yoyo-arm`, `burner`, `burner-2`, `drill-arm`, `hand-fan` and `shock-wave`
+- **Asset names**: the sprites `yoyo-arm`, `burner`, `heatcross-burner`, `drill-arm`, `hand-fan` and `shock-wave`
   (compat/assets.toml and curation.toml).
 - **What stays numeric**: statuses and bug codes, elements (the attack's element byte), Beast forms by number
   (the Reflector's head animation), and in the shims the subtype or parameter that picks a record's action.
@@ -1794,7 +1794,7 @@ need.
 | weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
 | kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rockcube/rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
-| records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rockcube/cube" = 1`); NaviCust buster shots when their producers are known |
+| records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rockcube/rock/cube" = 1`); NaviCust buster shots when their producers are known |
 | rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`); and for the roles that name an effect, a spark, a region or a collision type (rules/roles.luau), the number the original's routines name each by, by role: `[effects] deletion = 0x03`, `[sparks] guard = 0x08`, `[regions] anchor = 0x01`, `[collision] navi = 0x01`; and likewise for the roles that name assets, `[sounds] hit = 0x06D`, `[music] link_battle = 0x015`, `[sprites] eruption = "10-24"`, `[banners] draw = 0x1C` |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
 | text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |

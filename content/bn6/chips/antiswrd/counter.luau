@@ -22,7 +22,7 @@ local STATE = { timer = "u16", swings = "u16" }
 local SWINGS = 3
 local SWING_TICKS, WAVE_AT = 0x15, 0xC
 local SWING_ANIM = 5
-local SOUND_START = asset.sound("log-in-77")
+local SOUND_START = asset.sound("log-in")
 local SOUND_SWING = parts.sounds.swing
 -- The booms by the swings left (`dword_80EEB14`, their hit modifiers).
 local BOOMS: { [number]: SonicBoom } = {

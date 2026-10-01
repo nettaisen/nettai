@@ -309,7 +309,7 @@ export type FlashBombVariant = {
 -- debris it breaks into, the sound it breaks with, and its identity (what
 -- it is taken for: a rock, an ice block).
 export type RockVariant = {
-    -- Its key (`rockcube/cube`): stages name their rocks' variants.
+    -- Its key (`rockcube/rock/cube`): stages name their rocks' variants.
     id: string?,
     anim: number,
     hp: number,
