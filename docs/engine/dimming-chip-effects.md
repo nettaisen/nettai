@@ -105,10 +105,11 @@ halfword's low byte, class 1)` (one a side: a second fan replaces the first, who
 
 **Lab**: 19 Wind and 10 Fan scenarios. `adjacent` (the opponent in front) and `obstacle` (a RockCube in front)
 place no fan; the others place one and blow Wind's rows 2, 1, 3 from the enemy's front column and Fan's from
-the far column. Only `chips/0x081-wind/counter` breaks a fan (the broken branch). **Unverified**: no gust
-(an obstacle on the target panel, `sub_80CD160`'s wait), the lifetime running out, removal, blink-out,
-absorption, a second fan replacing the first (the replaced fan's HP 0 and the wind registry's destroy),
-pushes (action 5), a flipped fan.
+the far column. `chips/0x081-wind/counter` and `chips/0x082-fan/broken` break a fan (the broken branch);
+`chips/0x081-wind/then-fan` and `both-sides` have a second fan (the replaced fan's HP 0 and the wind registry's
+destroy) and `chips/0x081-wind/lifetime` runs the 1440 ticks out: all **verified**. **Unverified**: no gust
+(an obstacle on the target panel, `sub_80CD160`'s wait), removal, blink-out, absorption, pushes (action 5:
+`chips/0x082-fan/pushed`'s AirShot breaks the fan instead), a flipped fan.
 
 ## 2. Subtype 23: BurnSqr1–3 (T4#0x59, T1#0x13)
 
@@ -169,8 +170,9 @@ each.
   controller goes on).
 
 **Lab**: 28 scenarios (BurnSqr1 20, BurnSqr2 and 3 4 each). Every one fires at the 300-tick
-timeout (no scenario presses A) on four solid panels. **Unverified**: A to fire, a non-solid panel under the
-square, a non-player user (`sub_800F26C`), the blind viewer, the failed spawn.
+timeout on four solid panels. A to fire (`chips/0x06e-burnsqr1/a-fires`) and a non-solid panel under the square
+(`a-fires-holes`) are **verified**. **Unverified**: a non-player user (`sub_800F26C`), the blind viewer, the
+failed spawn.
 
 ## 3. Subtype 15: GrabBnsh and GrabRvng (T4#0x22, T3#0x46)
 
@@ -216,8 +218,8 @@ round's first hand makes sounds.
   destroy (byte store): freed at its next update.
 
 **Lab**: 22 scenarios (GrabBnsh 19, GrabRvng 3). In the 21 that reach the effect no panel is stolen: each
-ends the effect on its first tick. **Unverified**: the panel return, the strikes and the hand (a scenario after
-AreaGrab or PanelGrab would reach them).
+ends the effect on its first tick. The panel return, the strikes and the hand are **verified** by
+`chips/0x0a4-grabbnsh/after-areagrab`, `after-panelgrabs` and `chips/0x0a5-grabrvng/after-areagrab`.
 
 ## 4. Subtype 2: no chip (T4#0x23)
 
@@ -304,9 +306,10 @@ bonus 0), Params = the statue's. Standard phases; its effect (`sub_80E6850`): fi
 Param3 = 1; Timer = 0x3C; ends when Timer −= 1 reaches 0 (60 ticks).
 
 **Lab**: 20 scenarios; `adjacent` and `obstacle` place no statue, the other 18 place one on a free panel
-(Param1 0) that stands through the scenario. **Unverified**: the stage statue (Param1 1), its lifetime
-running out, breaking it (the crumble and the strike back, the strike's dimming and hit), removal,
-blink-out, absorption, pushes.
+(Param1 0) that stands through the scenario. Breaking it (the crumble and the strike back, the strike's dimming
+and hit) is **verified** from both sides (`chips/0x097-guardian/punish`, `own-hit`), with AirShot at it
+(`pushed`) and a second statue (`replaced`). **Unverified**: the stage statue (Param1 1), its lifetime
+running out, removal, blink-out, absorption.
 
 ## 6. Subtype 16: Meteors (T4#0x34, T3#0x56, T4#0x35)
 
@@ -373,8 +376,9 @@ params r4, the spawner's alliance.
   45 ticks.
 
 **Lab**: 20 scenarios, all 30 meteors on the enemy's three columns; only `stage-holes` has a meteor land on a
-non-solid, empty panel (no hit). **Unverified**: an empty list (the enemy owning no panel), the lists after
-area changes, a marker off the field or at battle end, rows other than Param1 1.
+non-solid, empty panel (no hit). The lists after area changes (`chips/0x08b-meteors/after-areagrab`, `grabbed`)
+and the battle's end (`ko`) are **verified**. **Unverified**: an empty list (the enemy owning no panel), a marker
+off the field, rows other than Param1 1.
 
 ## 7. Subtype 17: Anubis and PoisPhar (T4#0x33, T3#0x55)
 
@@ -432,8 +436,9 @@ player is flipped in PvP scenarios).
 
 **Lab**: 19 Anubis scenarios and PoisPhar's recipe (`pa/0x156-poisphar/recipe1`). In `adjacent` and
 `obstacle` the statue lands on an occupied panel and breaks (sound 0x70, effect 0); in the others (and the
-recipe) it poisons, with bubbles, through the scenario. **Unverified**: a non-solid landing panel, the
-lifetime running out, time up, breaking by damage, removal, blink-out, absorption, the flipped user, an
+recipe) it poisons, with bubbles, through the scenario. Breaking by damage (`chips/0x098-anubis/broken`), the
+lifetime running out (`lifetime`), AirShot at it (`pushed`) and a second statue (`replaced`) are **verified**.
+**Unverified**: a non-solid landing panel, time up, removal, blink-out, absorption, the flipped user, an
 enemy with no panel for a bubble.
 
 ## 8. Subtype 19: CircGun (T4#0x5E, T3#0x89, T3#0x8A)
@@ -495,9 +500,10 @@ alliance byte (no flip), RelatedObject1 = r7 and `*r7 = 1`, flags |= 0x10.
   argument 0x32); resolving while dimmed; T4#0 effect 0x21 at (X, Y, Z); sound 0xB9. Then (solid or not)
   `*RelatedObject1 = 0`, state destroy (word).
 
-**Lab**: 20 scenarios, all firing at the 360-tick timeout (no scenario presses A), every shot on a solid
-panel. **Unverified**: A to fire, a start column without enemy panels, a column of the user's own panels
-(the third turn), shots on non-solid panels, Param3 1 (no chip), a non-player first actor.
+**Lab**: 20 scenarios, all firing at the 360-tick timeout, every shot on a solid panel. A to fire
+(`chips/0x08e-circgun/a-fires`, `a-fires-late`), the cursor after an AreaGrab (`after-areagrab`) and shots on
+non-solid panels (`holes`) are **verified**. **Unverified**: a start column without enemy panels, Param3 1 (no
+chip), a non-player first actor.
 
 ## 9. Subtype 18: Otenko (T4#0x5F, T3#0xAD)
 
@@ -544,9 +550,10 @@ sprite twice a tick).
   off, state destroy (word).
 
 **Lab**: 19 scenarios; `adjacent` and `obstacle` place no statue; in the other 17 it stands and blesses, but
-the next chip is never a damaging one. **Unverified**: the bonus itself, the 50 cap, a new hand entry,
-the non-player user, the body check at appearing, the slide, breaking, removal, blink-out, absorption,
-eviction by a third field object, the lifetime.
+the next chip is never a damaging one. `chips/0x099-otenko/bonus` (a Cannon next, 700 ticks on: the blessing up to
+its cap), `broken` (M-Cannons break it) and `pushed` (AirShot at it) match every frame. **Unverified**: a new hand
+entry, the non-player user, the body check at appearing, removal by a chip, blink-out, absorption, eviction by a
+third field object, the lifetime.
 
 ## 10. Subtype 21: BlzrdBal (T4#0x58, T1#4, T3#0xB2, T3#0xB7)
 
@@ -619,8 +626,9 @@ bytes, flags |= 0x10.
   destroy (word).
 
 **Lab**: 20 scenarios; the ball always rolls from a solid panel. `obstacle` swallows the RockCube (the
-removal, the growth, anim 1). **Unverified**: a non-solid thrower panel (no throw), a third swallow (Param1
-3: no animation change), the excluded NameIDs, the roller's battle-over end, more than 4 hit objects.
+removal, the growth, anim 1). A non-solid thrower panel (`chips/0x0c7-blzrdbal/no-footing`), the roller's
+battle-over end (`ko`) and RockCubes down its row (`three-rocks`) are **verified**. **Unverified**: the excluded
+NameIDs, more than 4 hit objects.
 
 ## 11. Subtype 24: Magnum (T4#0x5B, T1#0x14)
 
@@ -664,9 +672,9 @@ viewer), then by CurPhase. PhaseInitialized is the cursor's mode (0 a column, 4 
 - 0xC (`sub_80BB46A`): Timer −= 1 (u16); negative (61 ticks) → the navi parts off, VISIBLE off, state destroy
   (word), the user back (`sub_80E13DC`), `*ExtraVars+0 = 0`.
 
-**Lab**: 20 scenarios, all firing at the 300-tick timeout in column mode. **Unverified**: A to fire, the
-row-mode shot (region 0x1D), a non-player user, panels off the field (the hit regions and breaks go through
-the field's own bounds checks).
+**Lab**: 20 scenarios, all firing at the 300-tick timeout in column mode. A to fire
+(`chips/0x08d-magnum/a-fires`) and the row-mode shot (region 0x1D: `a-fires-late`) are **verified**. **Unverified**: a non-player user,
+panels off the field (the hit regions and breaks go through the field's own bounds checks).
 
 ## 12. Subtype 3: Geddon and the capsules (T4#0x1D, T4#0x1E)
 
@@ -707,7 +715,9 @@ dropped, the effect ends.
 
 **Lab**: 19 Geddon scenarios (Param1 1): the break on free panels and the crack under navis and the reserved
 user; `counter-cut-in` and `stage-holes` skip non-solid panels. **Unverified**: Param1 0 (crack) and 2
-(poison), no chip using them in the lab; an empty list; a panel that changed between the list and its turn.
+(poison): the capsules' records have no codes, and the hand builder turns such a chip into chip 0x185 whatever
+the folder holds (`chips/0x17f-prpcapsl/hit`, verified), so no netbattle reaches them; an empty list; a panel
+that changed between the list and its turn.
 
 **Ported** (content model v2): chips/geddon (`geddon/controller`, `geddon/quake`), with the hook's argument
 the row's panel routine ("break" for Geddon and PnkCapsl, "crack" for PrpCapsl, HealBall, MagPanl and the two
@@ -780,8 +790,8 @@ counter).
   (a snake with no target always does).
 
 **Lab**: 20 scenarios; only `stage-holes` has a hole on the user's side: one snake, aimed at the one
-candidate, striking it. **Unverified**: several holes (the 8/24-tick spacing), the tie-breaks, no target (a
-snake leaving the field), side 1's scan, a flipped user.
+candidate, striking it. Several holes (`chips/0x086-snake/after-geddon`, `after-geddon-miss`: Geddon first) and
+side 1's scan (`side1`) are **verified**. **Unverified**: no target (a snake leaving the field), a flipped user.
 
 **Ported**: chips/snake (`snake/controller`, `snake/nest`, `snake/snake`). Two details the lab showed or the
 code says beyond the above: the nest's Z is what its spawner leaves in r3, the controller's bonus as a raw 16.16
