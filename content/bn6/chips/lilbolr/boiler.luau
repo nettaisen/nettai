@@ -11,6 +11,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local layer = require("./layer")
@@ -59,7 +60,8 @@ local ERUPT_TICKS, HIT_TICK, STEAM_TICK = 0x20, 8, 0x14
 local AQUA, ERUPTION_HIT_MOD = 2, 3
 local ERUPTION = define.effect { sprite = SPRITE, anim = 10, palette = 0 }
 -- Its kind among absorbed obstacles.
-local ABSORBED_KIND = 0xA
+-- How it looks absorbed (the original's obstacle kind's sprite: its own).
+local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 -- Its damage word's flags: doubled (0x8000), and the bits kept (0x7000).
 local DOUBLED, FLAGS, AMOUNT = 0x8000, 0x7000, 0xFFF
 
@@ -127,7 +129,7 @@ local function destroyed(me: Object)
     local how = obstacle.removal(me)
     if how ~= "broken" then
         if how == "absorbed" then
-            obstacle.fly_to_absorber(me, ABSORBED_KIND)
+            obstacle.fly_to_absorber(me, ABSORBED)
         else
             local blink = obstacle.blink_out(me)
             if blink == "blinking" then

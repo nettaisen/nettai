@@ -29,7 +29,7 @@ local wind = define.chip {
         wait = 1,
         hp = 40,
         name = 0xD6,
-        absorbed_kind = 0,
+        absorbed = fan.absorbed,
     }),
 }
 
@@ -55,7 +55,7 @@ local fan_chip = define.chip {
         wait = 1,
         hp = 40,
         name = 0xD7,
-        absorbed_kind = 0,
+        absorbed = fan.absorbed,
     }),
 }
 
