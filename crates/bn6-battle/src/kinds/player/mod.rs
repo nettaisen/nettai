@@ -624,7 +624,14 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // sub_801DB84, sub_8018856, sub_801DC06, sub_801DC36: the HP number
     // HUD table.
     enable_turning(b, r);
-    crate::kinds::charge_glow::spawn(b, r);
+    if stats(b, r).first_barrier != 0 {
+        // sub_8013892's `pop {r4}` left the barrier type in r4, so the glow's
+        // link slot (r4 + 0x58) is a BIOS address (docs/engine/dimming-
+        // chips.md §3.4).
+        crate::kinds::charge_glow::spawn_unlinked(b, r);
+    } else {
+        crate::kinds::charge_glow::spawn(b, r);
+    }
     post_init_hook(b, r);
     if form_of(b, r) == Form::NONE {
         let name_id = b.objects.get(r).name_id;
@@ -729,9 +736,14 @@ fn init_navicust(b: &mut Battle, r: ObjectRef) {
         stats_mut(b, r).mood = 0x80;
     }
     if stats(b, r).first_barrier != 0 {
-        // Also clobbers the AIData pointer the charge-glow spawn uses
-        // (objects-and-player.md §15 item 5).
-        panic!("FirstBarrier (sub_801A7CC) is not implemented yet");
+        // sub_801A7CC(stat 6) and the barrier's visual (sub_80E0D98): the
+        // content's FirstBarrier (the role hooks.first_barrier). The game's
+        // FirstBarrier program sets the stat to 1, the Barrier chip's
+        // barrier; the role raises that one. (The `pop {r4}` after it
+        // clobbers the AIData pointer the charge glow's spawn uses: `init`
+        // spawns the glow unlinked.)
+        let hook = crate::content::Roles::hook(b.content.defs.roles.hooks.first_barrier, "first_barrier");
+        crate::behavior::call_hook(b, hook, bn6_content_api::HookCall::RoleNavi { navi: r });
     }
     if stats(b, r).beast_out_counter == 0 {
         ai_mut(b, r).beast_out_spent = true;

@@ -268,6 +268,11 @@ declare class Collision
     -- The secondary elements (sword 0x80, cursor 0x40, wind 0x20, break
     -- 0x10) of what hit it this window (read-only).
     damage_elements: number
+    -- Its barrier (read-only): none, up, or popped (blown away by wind);
+    -- the barrier's HP byte; the hit modifier that popped it.
+    barrier: BarrierState
+    barrier_hp: number
+    barrier_pop_hit_mod: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
@@ -401,6 +406,9 @@ declare class Object
     mode9_a_routine: number
     -- Writable: the Beast Out counter is spent (AIData+0x32).
     beast_out_spent: boolean
+    -- Writable: the barrier's visual (AIData+0x60), which hides and shows
+    -- with the navi (its state's `shown`).
+    barrier_visual: Object?
 
     -- Spawn parameter n (1 to 4: the game's Param1..Param4).
     function param(self, n: number): number
@@ -497,6 +505,8 @@ declare class Object
     -- (not in mode 1), a white flash while hit, with a sound in modes 0
     -- and 2. -1 when its HP ran out, 1 when hit in another mode, else 0.
     function take_damage(self, mode: number): number
+    -- `sub_801A7CC`: raise a barrier (its collision data).
+    function raise_barrier(self, spec: BarrierSpec): ()
 
     -- Navis only.
     function attack_param(self, n: number): number
@@ -698,6 +708,23 @@ export type FormOverlaySpec = {
     anim_offset: number?,
     nudged: boolean?,
     owner_palette: boolean?,
+}
+
+-- A navi's barrier (Collision.barrier).
+export type BarrierState = "none" | "up" | "popped"
+-- How a barrier behaves once raised (`sub_801A802`): worn down and timed
+-- out; back with 1 HP 240 ticks after it is worn down, and broken by elec
+-- (BblWrap's bubble); or regenerating up to 200 HP.
+export type BarrierBehavior = "plain" | "bubble" | "regenerating"
+-- `sub_801A7CC`'s row (`me:raise_barrier`): its HP, the damage a hit must
+-- reach to wear it, its timer (0xFFFF: none) and the element that breaks
+-- it (an element byte; 0: none).
+export type BarrierSpec = {
+    behavior: BarrierBehavior,
+    hp: number,
+    threshold: number,
+    timer: number,
+    weak_element: number,
 }
 
 -- What a dimming chip's controller is spawned with: the user's attack.
@@ -1455,6 +1482,11 @@ export type RolesSpec = {
         anti_damage_counter: Action?,
         anti_sword_counter: Action?,
         body_guard_counter: Action?,
+    }?,
+    hooks: {
+        -- The NaviCust FirstBarrier: raise its barrier and the barrier's
+        -- visual on the navi as it enters (`sub_8013892`).
+        first_barrier: ((navi: Object) -> ())?,
     }?,
 }
 

@@ -1108,6 +1108,7 @@ impl CoreApi for Battle {
             ActorField::AltAChargeRoutine => i(self.api_weapon(a.alt_a_charge)),
             ActorField::Mode9ARoutine => i(self.api_weapon(a.mode9_a)),
             ActorField::BeastOutSpent => Value::Bool(a.beast_out_spent),
+            ActorField::BarrierVisual => a.barrier_visual.into(),
         })
     }
 
@@ -1150,6 +1151,7 @@ impl CoreApi for Battle {
             (ActorField::BusterRoutine, FieldValue::U8(_)) => a.buster = weapon,
             (ActorField::ChargeShotRoutine, FieldValue::U8(_)) => a.charge_shot = weapon,
             (ActorField::BeastOutSpent, FieldValue::Bool(x)) => a.beast_out_spent = x,
+            (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1464,6 +1466,14 @@ impl CoreApi for Battle {
             CollisionField::Direction => c.direction as i64,
             CollisionField::GuardDirs => c.guard_dirs as i64,
             CollisionField::DamageElements => c.acc.damage_elements as i64,
+            // BARRIER_STATES
+            CollisionField::Barrier => match c.barrier {
+                0 => 0,
+                0x10 => 2,
+                _ => 1,
+            },
+            CollisionField::BarrierHp => c.barrier_hp as i64,
+            CollisionField::BarrierPopHitMod => c.barrier_saved_hmf as i64,
         }))
     }
 
@@ -1493,10 +1503,31 @@ impl CoreApi for Battle {
             CollisionField::FinalDamage
             | CollisionField::GuardDirs
             | CollisionField::DamageElements
-            | CollisionField::Direction => {
+            | CollisionField::Direction
+            | CollisionField::Barrier
+            | CollisionField::BarrierHp
+            | CollisionField::BarrierPopHitMod => {
                 unreachable!("read-only")
             }
         }
+        Ok(())
+    }
+
+    fn raise_barrier(&mut self, o: ObjectRef, spec: bn6_content_api::api::BarrierSpec) -> ApiResult<()> {
+        let c = self.collision_of_mut(o)?;
+        // The barrier byte the ruleset's barrier code (`sub_801A802`) tells
+        // the behaviors apart by: a plain barrier as the game's type 1
+        // (types 1..7, 9 and 0xB..0xF behave alike), a bubble as type 8, a
+        // regenerating one as type 0xA.
+        c.barrier = match spec.behavior {
+            0 => 1,
+            1 => 8,
+            _ => 0xA,
+        };
+        c.barrier_weak = spec.weak_element;
+        c.barrier_hp = spec.hp;
+        c.barrier_threshold = spec.threshold;
+        c.barrier_timer = spec.timer;
         Ok(())
     }
 

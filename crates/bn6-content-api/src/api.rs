@@ -106,6 +106,29 @@ pub const PANEL_TYPES: [&str; 13] = [
 
 /// Actor types by name (an actor record's type).
 pub const ACTOR_TYPES: [&str; 3] = ["virus", "navi", "player"];
+/// A navi's barrier as content sees it (CollisionData+0x06): none, up (any
+/// kind, its HP whatever it is), or popped (0x10: blown away by wind).
+pub const BARRIER_STATES: [&str; 3] = ["none", "up", "popped"];
+
+/// How a barrier behaves once raised (`sub_801A802` by the barrier byte):
+/// worn down and timed out (`plain`: Barrier, Barr100, Barr200, LifeAur,
+/// the auras), back with 1 HP 240 ticks after it is worn down and broken
+/// by elec (`bubble`: BblWrap), or regenerating up to 200 HP (`regenerating`).
+pub const BARRIER_BEHAVIORS: [&str; 3] = ["plain", "bubble", "regenerating"];
+
+/// `sub_801A7CC`'s row: what a barrier sets in the collision data.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct BarrierSpec {
+    /// Index into [`BARRIER_BEHAVIORS`].
+    pub behavior: u8,
+    /// Its HP (+0x16), the damage a hit must reach to wear it (+0x17), its
+    /// timer (+0x1A; 0xFFFF: none), and the element that breaks it (+0x14;
+    /// 0: none).
+    pub hp: u8,
+    pub threshold: u8,
+    pub timer: u16,
+    pub weak_element: u8,
+}
 
 /// A navi's drag reaction steps by name (BattleObject+0x0D: the game's 0,
 /// 4, 8).
@@ -278,6 +301,8 @@ named_fields! {
         /// AIData+0x32: the Beast Out counter is spent (BugFix sets it by
         /// the navi's counter, `sub_8014446` / `sub_801443C`).
         BeastOutSpent = "beast_out_spent", Bool, rw;
+        /// AIData+0x60: the barrier's visual (effect #7).
+        BarrierVisual = "barrier_visual", Object, rw;
     }
 }
 
@@ -343,6 +368,11 @@ named_fields! {
         /// The secondary elements (sword 0x80, cursor 0x40, wind 0x20,
         /// break 0x10) of what hit it this window.
         DamageElements = "damage_elements", U8, ro;
+        /// Its barrier ([`BARRIER_STATES`]), the barrier's HP byte, and the
+        /// hit modifier that popped it (+0x15).
+        Barrier = "barrier", enum_type(&BARRIER_STATES), ro;
+        BarrierHp = "barrier_hp", U8, ro;
+        BarrierPopHitMod = "barrier_pop_hit_mod", U8, ro;
     }
 }
 
@@ -1341,6 +1371,8 @@ pub trait CoreApi {
     /// modes 0 and 2. -1 when its HP ran out, 1 when hit in another mode,
     /// else 0.
     fn take_damage(&mut self, o: ObjectRef, mode: u8) -> i32;
+    /// `sub_801A7CC`: raise a barrier on `o` (its collision data).
+    fn raise_barrier(&mut self, o: ObjectRef, spec: BarrierSpec) -> ApiResult<()>;
 
     // ---- Services ------------------------------------------------------------
 

@@ -495,6 +495,25 @@ impl UserData for Object {
             let mode = u8_arg(mode, "damage mode")?;
             with(|api, _| Ok(api.take_damage(this.0, mode)))
         });
+        methods.add_method("raise_barrier", |_, this, t: mlua::Table| {
+            let behavior: mlua::LuaString = t.raw_get("behavior")?;
+            let behavior = named(&behavior, "barrier behavior", |s| {
+                bn6_content_api::api::BARRIER_BEHAVIORS.iter().position(|n| *n == s)
+            })? as u8;
+            let byte = |k: &str| -> mlua::Result<u8> {
+                u8::try_from(table_int(&t, k)?).map_err(|_| mlua::Error::runtime(format!("barrier `{k}` is not a byte")))
+            };
+            let timer = u16::try_from(table_int(&t, "timer")?)
+                .map_err(|_| mlua::Error::runtime("barrier `timer` is not a halfword"))?;
+            let spec = bn6_content_api::api::BarrierSpec {
+                behavior,
+                hp: byte("hp")?,
+                threshold: byte("threshold")?,
+                timer,
+                weak_element: byte("weak_element")?,
+            };
+            with(|api, _| api.raise_barrier(this.0, spec).map_err(api_error))
+        });
 
         // Navis: the attack, requests, state, buttons.
         methods.add_method("attack_param", |_, this, n: LuaValue| {
@@ -1631,6 +1650,7 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
             t.raw_set("variant", spec.variant)?;
             vec![LuaValue::Table(t)]
         }
+        HookCall::RoleNavi { navi } => vec![obj(navi)?],
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1647,6 +1667,6 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::ActorListEntry { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
-        HookCall::InstantChip { .. } => Ok(Value::Nil),
+        HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } => Ok(Value::Nil),
     }
 }
