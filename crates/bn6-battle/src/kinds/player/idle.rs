@@ -291,10 +291,8 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
     // `nullsub_44`): started as a weapon, the game starts whatever action
     // the register it called through holds. (Forms name them only as
     // A-charges, which `chip_use` handles before calling here.)
-    if w.charged_chip.is_some() {
-        panic!("weapon {:?} is no routine (nullsub_44, off_80117D4): the game starts an action from a stale register", w.key)
-    }
-    panic!("weapon {:?} has no setup: nothing implements it yet", w.key)
+    assert!(w.charged_chip.is_some(), "a weapon has a setup or is its chip");
+    panic!("weapon {:?} is no routine (nullsub_44, off_80117D4): the game starts an action from a stale register", w.key)
 }
 
 /// `sub_801265A`: buster damage, attack + 1 (+1 in some forms), at most

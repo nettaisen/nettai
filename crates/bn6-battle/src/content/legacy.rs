@@ -1,14 +1,12 @@
-//! The tables the ruleset and v1 modules still read by number, built from
-//! what the content defines (docs/design/content-model-v2.md §12, step 5):
-//! the pack's navis and forms by number,
-//! the rule sections, collision types, statuses and lock-on modes, and the numbered tables (effects,
-//! sparks, regions, the object kinds' rows).
+//! The typed tables the ruleset reads, built from what the content defines
+//! (docs/design/content-model-v2.md §12, step 5): the rule sections, and
+//! what it still reads by number: the navis and forms, and the body
+//! overlays' rows.
 //!
-//! Where a definition still carries what only registration by number reads
-//! (a navi's number and NameID; a weapon's routine numbers; a table's
-//! original numbering), it sits in a `legacy { ... }`
-//! marker, which goes when its family converts (§12, phase B) or the
-//! ruleset stops asking numbers (phase C).
+//! Where a definition carries a number the ruleset still asks for (a
+//! navi's or a form's number, a table's original numbering), it sits in a
+//! `legacy { ... }` marker, which goes when the ruleset stops asking
+//! numbers (§12, step 13).
 //!
 //! Content without these definitions (the engine's test content, whose
 //! tables are Rust) keeps its tables: each part is built only when the
@@ -24,7 +22,7 @@ use serde_json::{Map, Value as Json};
 use super::*;
 use crate::field::PanelType;
 
-/// What registration by number reads of the navis and forms the content
+/// What the ruleset reads by number of the navis and forms the content
 /// defines, by their definitions' keys. (A chip is its definition: nothing
 /// reads one by number.)
 #[derive(Clone, Debug, Default)]
@@ -470,8 +468,8 @@ fn form(d: &Definition, r: &Resolver) -> Result<(FormData, Option<u8>), ContentE
     Ok((serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))?, palette))
 }
 
-/// Everything registration by number reads of what the content defines:
-/// the tables into `content`, the per-definition records returned.
+/// The typed tables of what the content defines: the tables into
+/// `content`, the navis' and forms' records returned.
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<Legacy, ContentError> {
     let assets = content.assets.clone();
     let r = Resolver::new(&assets, definitions);

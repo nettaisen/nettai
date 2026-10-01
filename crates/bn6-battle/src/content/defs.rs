@@ -71,9 +71,9 @@ pub struct ActionDef {
 pub struct WeaponDef {
     pub key: String,
     pub name: String,
-    /// `setup(navi) -> action` (`off_80117D4`'s routine); none for a weapon
-    /// nothing can start: an A-charge that is its chip (`charged_chip`), or
-    /// one nothing implements yet.
+    /// `setup(navi) -> action` (`off_80117D4`'s routine); none for an
+    /// A-charge that is its chip (`charged_chip`), which nothing starts as
+    /// a weapon.
     pub setup: Option<FnId>,
     /// Ticks to a full charge by Charge stat (past the original's five,
     /// what the game reads on into).
@@ -850,6 +850,9 @@ impl Defs {
             };
             if charged_chip.is_some() && setup.is_some() {
                 return Err(what("a weapon with a `setup` is its own attack: it has no `charged_chip`".into()));
+            }
+            if charged_chip.is_none() && setup.is_none() {
+                return Err(what("a weapon needs a `setup` (or, an A-charge that is its chip, `charged_chip`): nothing could start it".into()));
             }
             weapons.push(WeaponDef {
                 key: d.key.clone(),
