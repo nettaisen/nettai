@@ -9,6 +9,8 @@
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
 
 ["assets.toml"]
+"sounds.drumroll" = "0x114: chips/crcusman/navi.luau"
+"sounds.circus-catch" = "0x1AA: chips/crcusman/navi.luau"
 "sprites.judgeman" = "08-0f: JudgeMan, chips/judgeman"
 "sounds.tidal-wave" = "0x0A7: chips/diveman/wave.luau"
 "sprites.ground-drill" = "10-4f: chips/grndman/drill.luau"
