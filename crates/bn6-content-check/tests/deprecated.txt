@@ -45,8 +45,11 @@ chips/199-dustbrk/dust_break.luau 2
 chips/airraid/plane.luau 2
 chips/anubis/statue.luau 2
 chips/blkbomb/bomb.luau 2
+chips/cornfsta/farmer.luau 2
 chips/crosswrd/chip.luau 1
+chips/dblbeast/beast.luau 1
 chips/dbldream/chip.luau 1
+chips/dblhero/heroes.luau 3
 chips/ftrsword/chip.luau 1
 chips/guardian/statue.luau 2
 chips/lilbolr/boiler.luau 2
