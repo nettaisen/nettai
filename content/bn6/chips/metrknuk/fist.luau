@@ -24,9 +24,9 @@ local SOUND = asset.sound("justice-one")
 local BEHIND, DOWN = 0x86_0000, 0x10_0000
 -- By Param2 (0, 4): the fall's first speed, the speed forward and the
 -- gravity (`byte_80DBD8C`, `byte_80DBD98`, `byte_80DBE44`).
-local FALL = { slow = 0x6_0000, fast = 0xE_0000 }
-local FORWARD = { slow = 0xA_0000, fast = 0x11_8000 }
-local GRAVITY = { slow = 0x7800, fast = 0xD200 }
+local FALL: { slow: number, fast: number } = { slow = 0x6_0000, fast = 0xE_0000 }
+local FORWARD: { slow: number, fast: number } = { slow = 0xA_0000, fast = 0x11_8000 }
+local GRAVITY: { slow: number, fast: number } = { slow = 0x7800, fast = 0xD200 }
 -- Its hit (`sub_80DBEBA`, 0x15050001): a breaking thrown attack hitting
 -- navis on its panel, with the null spark and hit modifier 3.
 local HIT_MOD = 3

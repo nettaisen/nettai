@@ -65,7 +65,7 @@ local HITS = {
     [2] = { region = regions.line, effect = define.effect { sprite = SLASH_SPRITE, anim = 3, palette = 4 } },
 }
 -- The fourth slash's boom: it staggers and goes through.
-local BOOM = { hit_mod = 3, pierces = true }
+local BOOM: SonicBoom = { hit_mod = 3, pierces = true }
 
 -- `sub_8012956`: once done, false; past its twelve ticks, done; else the
 -- pressed keys into the next of three slots, true (and done) when the

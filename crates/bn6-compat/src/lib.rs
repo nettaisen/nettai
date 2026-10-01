@@ -146,8 +146,11 @@ pub struct Text {
 }
 
 /// content/bn6/compat: the original's numbers by content key. Every map
-/// is key to numbers; many-to-one maps are allowed (weapon aliases, the
-/// chips of one action handler).
+/// is key to numbers. One key may have several numbers (a weapon's alias
+/// routines, a stage's settings records), and several actions may share a
+/// number (the chips of one action handler); otherwise a number belongs to
+/// one key: two definitions with one number is an error when the tables
+/// are read.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Compat {
     pub chips: BTreeMap<String, ChipEntry>,
@@ -239,7 +242,53 @@ impl Compat {
                 return Err(format!("kinds.toml: {k} and {other} both fill {} #{:#04X}", e.pool, e.index));
             }
         }
+        c.check_unique()?;
         Ok(c)
+    }
+
+    /// No number belongs to two keys (but the actions', which share
+    /// theirs, and the kinds', checked by slot above).
+    fn check_unique(&self) -> Result<(), String> {
+        fn unique<'a, V: Ord + std::fmt::Debug>(
+            what: &str,
+            entries: impl Iterator<Item = (&'a String, V)>,
+        ) -> Result<(), String> {
+            let mut seen: BTreeMap<V, &String> = BTreeMap::new();
+            for (key, v) in entries {
+                if let Some(other) = seen.get(&v) {
+                    return Err(format!("{what}: {other} and {key} are both {v:#X?}"));
+                }
+                seen.insert(v, key);
+            }
+            Ok(())
+        }
+        unique("chips.toml", self.chips.iter().map(|(k, c)| (k, c.id)))?;
+        unique("navis.toml", self.navis.iter().map(|(k, n)| (k, n.navi)))?;
+        unique("navis.toml: NameIDs", self.navis.iter().map(|(k, n)| (k, n.name_id)))?;
+        unique("forms.toml", self.forms.iter().map(|(k, f)| (k, f.form)))?;
+        unique("forms.toml: NameIDs", self.forms.iter().filter_map(|(k, f)| Some((k, f.name_id?))))?;
+        unique("weapons.toml: routines", self.weapons.iter().flat_map(|(k, routines)| routines.iter().map(move |&n| (k, n))))?;
+        unique("stages.toml: settings records", self.stages.iter().flat_map(|(k, st)| st.settings.iter().map(move |&n| (k, n))))?;
+        unique("records.toml: sp_slots", self.records.sp_slots.iter().map(|(k, &n)| (k, n)))?;
+        unique("records.toml: rock_variants", self.records.rock_variants.iter().map(|(k, &n)| (k, n)))?;
+        unique("records.toml: projectile_variants", self.records.projectile_variants.iter().map(|(k, &n)| (k, n)))?;
+        unique("rules.toml: lockon", self.rules.lockon.iter().map(|(k, &n)| (k, n)))?;
+        unique("rules.toml: statuses", self.rules.statuses.iter().map(|(k, &n)| (k, n)))?;
+        unique("assets.toml: sprites", self.assets.sprites.iter().map(|(k, n)| (k, n.clone())))?;
+        unique("assets.toml: sounds", self.assets.sounds.iter().map(|(k, &n)| (k, n)))?;
+        unique("assets.toml: backgrounds", self.assets.backgrounds.iter().map(|(k, &n)| (k, n)))?;
+        unique("assets.toml: banners", self.assets.banners.iter().map(|(k, &n)| (k, n)))?;
+        unique("assets.toml: mugshots", self.assets.mugshots.iter().map(|(k, &n)| (k, n)))?;
+        Ok(())
+    }
+
+    /// BN6's compat with `file` replaced by `text`, as it reads (for the
+    /// tests of what reading rejects).
+    #[doc(hidden)]
+    pub fn bn6_with(file: &str, text: &str) -> Result<Compat, String> {
+        Compat::parse(|f| {
+            Ok(if f == file { text.to_string() } else { BN6.iter().find(|(name, _)| *name == f).map(|(_, t)| t.to_string()).unwrap_or_default() })
+        })
     }
 
     /// The kind that fills an object slot, and its entry.

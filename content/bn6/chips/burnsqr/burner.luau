@@ -42,7 +42,7 @@ local ACROSS, DOWN = 0x28_0000, 0x18_0000
 -- Its flames (`sub_80C8DE0`): fire, HeatMan's (acting while dimmed), 30
 -- ticks.
 local FIRE = 1
-local FLAME = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
+local FLAME: HeatFlame = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
 local SOLID = 0x10
 
 -- `sub_80BB23E`: the square's four corners at its panels' centers.
