@@ -47,6 +47,15 @@ regions.ring = define.region {
     panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { -1, -1 } },
 }
 
+-- The anchor and its four neighbours (region 0x09: H-Burst's even bursts).
+regions.plus = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
+
+-- The anchor and the panel above it (region 0x18: a big rolling log).
+regions.tall = define.region { panels = { { 0, 0 }, { 0, -1 } } }
+
+-- The anchor and the column ahead of it (region 0x15: ElcPuls's pulse).
+regions.fan = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 }, { 1, 0 } } }
+
 -- A side's area: side 0's (region 0x81, the panels without flag 0x20) and
 -- side 1's (0x82, with it).
 regions.area = {
@@ -122,8 +131,6 @@ regions.region_05 = define.region { panels = { { 0, -1 }, { 0, 1 } } }
 regions.region_07 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 } } }
 -- Region 0x08.
 regions.region_08 = define.region { panels = { { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 4, 0 }, { 5, 0 } } }
--- Region 0x09.
-regions.region_09 = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
 -- Region 0x0A.
 regions.region_0a = define.region { panels = { { 0, -1 }, { 0, 1 }, { 1, 0 }, { -1, 0 } } }
 -- Region 0x0C.
@@ -132,14 +139,10 @@ regions.region_0c = define.region { panels = { { 1, -1 }, { -1, 1 }, { 1, 1 }, {
 regions.region_0e = define.region { panels = { { 1, -1 }, { 1, 1 } } }
 -- Region 0x14.
 regions.region_14 = define.region { panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } } }
--- Region 0x15.
-regions.region_15 = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 }, { 1, 0 } } }
 -- Region 0x16.
 regions.region_16 = define.region { panels = { { 0, 0 }, { 1, -1 } } }
 -- Region 0x17.
 regions.region_17 = define.region { panels = { { 0, 0 }, { 1, 1 } } }
--- Region 0x18.
-regions.region_18 = define.region { panels = { { 0, 0 }, { 0, -1 } } }
 -- Region 0x19.
 regions.region_19 = define.region { panels = { { 0, 0 }, { 0, 1 } } }
 -- Region 0x1A.

@@ -64,7 +64,7 @@ local function fall(me: Object)
         region = regions.single,
         hit_effect = sparks.of_element(0),
         target = collision.hits_navis,
-        self_type = collision.thrown_breaking,
+        self_type = collision.thrown_break,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = HIT_MOD,
