@@ -3,11 +3,11 @@
 -- the original's weapon routine 0x1B (`sub_8011DBC`) and action 0x4E
 -- (`sub_80EF1EC`). The navi winds up;
 -- when the wind-up animation ends it swings, and two tomahawks
--- (objects/boomerang, its tomahawk variant) fly from its side's back
+-- (Boomer's boomerang, chips/boomer/boomerang, its tomahawk variant) fly from its side's back
 -- column, one along row 1 and 10 ticks later one along row 3; 96 ticks
 -- after the swing began it idles.
 
-local boomerang = require("../../../../objects/boomerang/boomerang")
+local boomerang = require("../../../../chips/boomer/boomerang")
 
 export type State = {
     -- Ticks left in the swing (AIAttackVars+0x10).
