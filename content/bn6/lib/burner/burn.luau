@@ -15,15 +15,14 @@ local burn = {}
 export type State = {
     -- Ticks of the pose so far, then the recovery's (AIAttackVars+0x10).
     timer: number,
-    -- The burner's roar, every 16 ticks (AIAttackVars+0x12). The game
-    -- doesn't set it first: it continues from what the last burn left
-    -- there, so the first roar's tick depends on that burn.
-    roar: number,
 }
 
--- One state for every burn: a burn continues the last one's roar, as the
--- original's one action does.
-burn.STATE = { timer = "u16", roar = "u16" }
+-- (The burner roars every 16 ticks of the navi's `attack_count`, which
+-- the burn counts on from whatever the last action left there: the first
+-- roar's tick depends on it.)
+
+-- One state for every burn.
+burn.STATE = { timer = "u16" }
 
 -- The burners (the original's attachment rows 0x16 and 0x1E): FireBrn's
 -- and WideBrn's, and HeatCross's, in their animation 1.
@@ -57,8 +56,8 @@ function burn.action(spec: BurnSpec): Action
             s.timer = 0
             me.step_init = 4
         end
-        local roar = bit32.band(s.roar + 1, 0xF)
-        s.roar = roar
+        local roar = bit32.band(me.attack_count + 1, 0xF)
+        me.attack_count = roar
         if roar == 1 then
             battle.play_sound(SOUND_ROAR)
         end

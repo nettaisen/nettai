@@ -39,7 +39,7 @@ type Charged = { charged: ChargedSlash, step: boolean }
 local function action(id: string, boom: SonicBoom, charged: Charged?): Action
     -- `sub_80EF990`: one slash (the shots word, AIAttackVars+0x12).
     local function count(me: Object)
-        me.recovery = SLASHES
+        me.attack_count = SLASHES
         me.step, me.step_init = SLASH, 0
     end
 
@@ -64,8 +64,8 @@ local function action(id: string, boom: SonicBoom, charged: Charged?): Action
         if t >= 0 then
             return
         end
-        local left = me.recovery - 1
-        me.recovery = left
+        local left = me.attack_count - 1
+        me.attack_count = left
         if left > 0 then
             parts.drop(me)
             me.step_init = 0

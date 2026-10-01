@@ -149,8 +149,6 @@ export type ProjectileShot = {
 
 -- The state of VarSwrd's and NeoVari's actions (lib/swords/vari.luau).
 export type VariSwordState = {
-    -- Ticks left to enter a sequence (AIAttackVars+0x12).
-    countdown: number,
     -- The sequences as the navi faces: its direction flip.
     flip: number,
     -- How far into each sequence the navi is, in bytes (two per step).

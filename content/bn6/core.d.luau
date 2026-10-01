@@ -384,10 +384,13 @@ declare class Object
     -- DustCross's throws keep it): its look and animation.
     thrown_look: AbsorbedLook?
     thrown_anim: number
-    -- The recovery a shot waits after firing: a word of the attack that
-    -- outlives the action, so an action that waits it without writing it
-    -- (a thrown obstacle) waits the last shot's.
-    recovery: number
+    -- The attack's count (AIAttackVars+0x12): what an action counts (its
+    -- shots, swings, slashes, a hold's ticks, the recovery after a shot).
+    -- Every action shares the word and none clears it, so an action that
+    -- reads it before writing it reads what an earlier one left (a thrown
+    -- obstacle waits the last shot's recovery). An action keeps its count
+    -- here, not in its state, as the original's do.
+    attack_count: number
     -- The actor data (read-only unless noted).
     actor_type: ActorType
     ai_index: number
