@@ -276,7 +276,7 @@
 "sprites.sprite-0c-0d" = "unnamed; used by body overlay 0x0E"
 "sprites.sprite-0c-10" = "unnamed; used by attachment 0x2F"
 "sprites.sprite-0c-11" = "unnamed; used by body overlay 0x12"
-"sprites.fan" = "0c-16: attachments 0x21 and 0x22, Tornado's and Static's fan (chips/tornado/chips.luau)"
+"sprites.hand-fan" = "0c-16: attachments 0x21 and 0x22, Tornado's and Static's fan (chips/tornado/chips.luau)"
 "sprites.sprite-0c-18" = "unnamed; used by attachment 0x13"
 "sprites.sprite-0c-19" = "unnamed; used by attachment 0x15"
 "sprites.sprite-0c-1d" = "unnamed; used by attachment 0x0D"
