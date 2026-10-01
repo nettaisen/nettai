@@ -225,9 +225,9 @@ sounds are left out.
 - The two golden traces, over every frame of every round: 89 calls over
   2405 frames and 1360 calls over 57,331 frames, call for call.
 - Every chip-lab scenario, each recorded with the sound calls the
-  original queued: 5153 scenarios (every chip, Program Advance, form,
+  original queued: 5163 scenarios (every chip, Program Advance, form,
   link navi, NaviCust program, stage and ruleset scenario the lab has),
-  96,111 calls over 4,153,402 frames, every one call for call (Beast Over's
+  96,393 calls over 4,169,142 frames, every one call for call (Beast Over's
   rumble and the burners' roar included, with the attack's count above).
   This comparison is a standing gate of the chip lab: a new recording
   carries its calls, and a sound that differs fails it.
