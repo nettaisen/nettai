@@ -8,21 +8,6 @@
 -- (lib/slot.luau).
 export type Slot = "overlay" | "related" | "held" | "held2"
 
--- What the link navis' chips (action 0x0A, chips/190-heatpres) keep in the
--- attack's variables: one schema for the ten navis' routines.
-export type LinkChipState = {
-    -- The phase timer (AIAttackVars+0x10).
-    timer: number,
-    -- A destination panel (AIAttackVars+0x16/0x17).
-    target_x: number,
-    target_y: number,
-    -- The object the routine keeps (AIAttackVars+0x30).
-    held: Object?,
-    -- A speed, 16.16 (AIAttackVars+0x34), or a second object there.
-    speed: number,
-    held2: Object?,
-}
-
 -- A projectile's variant (objects/projectile, the original's `off_80C4C78`
 -- rows): what it is and hits, its hit modifier, its element and secondary
 -- elements, its hit spark (nil: none), its look (none: not drawn), the
@@ -82,7 +67,10 @@ export type FlyingShot = {
     falls: boolean?,
     palette: number?,
     damage: number,
-    obstacle: number?,
+    -- A thrown obstacle: its look and animation (the original's ExtraVars
+    -- word, kind | animation << 4).
+    obstacle: AbsorbedLook?,
+    obstacle_anim: number?,
 }
 
 -- A bullet's variant (objects/bullet, the original's `byte_80C68D4` rows):
@@ -287,20 +275,50 @@ export type FlashBombVariant = {
     own_side: boolean?,
 }
 
+-- ---- The field objects (objects/rock, objects/boulder) ---------------------
+
+-- A rock's variant (objects/rock, a row of the original's `byte_80CF934`):
+-- its standing animation, HP, element, the palette of the debris it breaks
+-- into, the sound it breaks with, and its NameID (the field objects' look,
+-- a number until identities come).
+export type RockVariant = {
+    anim: number,
+    hp: number,
+    element: string,
+    debris_palette: number,
+    break_sound: Sound,
+    name: number,
+}
+
+-- How a rock comes onto the field (objects/rock, the original's third
+-- parameter): rising out of its panel (its sprite's first animation), there
+-- at once, falling from above, or placed when the round starts (standing
+-- from the start, and running while the battle is paused until it stands).
+export type RockEntrance = "rise" | "instant" | "fall" | "placed"
+
+-- What a rock is spawned with (objects/rock): its variant, the class of
+-- field-object slot it takes (0, the default: one of its side's two; 1: its
+-- side's one), and its entrance ("rise" by default).
+export type RockSpec = {
+    variant: RockVariant,
+    class: number?,
+    entrance: RockEntrance?,
+}
+
 -- ---- The dimming chips (chips/wind, chips/guardian, ...) -------------------
 
 -- A Wind's or Fan's fan (chips/wind/fan): its palette; `pulls`: it blows
 -- Fan's pulling gust from the far column rather than Wind's pushing one
 -- from the enemy's front column; ticks from becoming its side's wind to
--- the first gust; HP; its NameID (the field objects' look) and its kind
--- among absorbed obstacles.
+-- the first gust; HP; its NameID (the field objects' look) and how it
+-- looks absorbed (objects/absorbed-obstacle's `look`).
 export type FanVariant = {
     palette: number,
     pulls: boolean,
     wait: number,
     hp: number,
     name: number,
-    absorbed_kind: number,
+    absorbed: AbsorbedLook,
 }
 
 -- CircGun's gun (chips/circgun/gun; the original's chip parameters): the
