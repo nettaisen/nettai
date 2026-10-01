@@ -9,7 +9,7 @@
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local rock = require("../rock/rock")
-local rock_debris = require("../rock-debris/rock_debris")
+local rock_debris = require("../rock/debris")
 local sparks = require("../../lib/sparks")
 
 local bubble = {}
@@ -169,7 +169,7 @@ function bubble.spawn(obstacle: Object): Object?
 end
 
 -- The role `hooks.encased` (`sub_801813A`'s end): an obstacle encased in
--- ice becomes an ice block (the rock's variant 3, in the same registry
+-- ice becomes an ice block (the rock's ice variant, in the same registry
 -- class, there at once), one in a bubble the bubble; at its panel, with its
 -- side and damage word. An unregistered obstacle's ice block would take
 -- class 0xFF, which `setFieldBattleObject_800F614` turns into a write past
@@ -180,7 +180,8 @@ function bubble.replace(obstacle: Object, ice: boolean, class: number?)
             error("an unregistered obstacle's ice block registers in class 0xFF, past the field-object registry")
         end
         local damage = bit32.bor(obstacle.damage, bit32.lshift(obstacle.stamina, 16))
-        rock.spawn(obstacle.panel_x, obstacle.panel_y, obstacle.alliance, { 3, class, 1, 0 }, damage)
+        local block: RockSpec = { variant = rock.variants.ice, class = class, entrance = "instant" }
+        rock.spawn(obstacle.panel_x, obstacle.panel_y, obstacle.alliance, block, damage)
     else
         bubble.spawn(obstacle)
     end

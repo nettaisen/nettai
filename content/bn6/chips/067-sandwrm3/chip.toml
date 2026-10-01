@@ -1,4 +1,0 @@
-# SandWrm3, an instant chip (action 0x1C, subtype 12): its effect sends worms
-# (`sub_80DEDE0`).
-
-script = "../../objects/sand-worm/sand_worm.luau"

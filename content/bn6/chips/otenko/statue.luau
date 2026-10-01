@@ -9,6 +9,7 @@
 -- `obstacle` service) around its own actions. Bodies don't break it, and
 -- nothing pushes it.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("../../lib/regions")
@@ -38,8 +39,9 @@ local SOUND_APPEAR = asset.sound("appear")
 local SOUND_BREAK = asset.sound("panel-poison")
 -- What it is and reaches: another body of its side, hit modifier 3.
 local IS, HITS, HIT_MOD = collision.own_body, collision.hit_by_other_side, 3
--- Its kind among absorbed obstacles.
-local ABSORBED_KIND = 0xE
+-- How it looks absorbed (the original's obstacle kind 0xE, a row of
+-- `byte_80E98C0`: the AirSpin top's sprite, not its own).
+local ABSORBED = absorbed_obstacle.look { sprite = asset.sprite("air-spin") }
 
 -- `sub_80DB198`: if its panel is solid without a body, it takes it after 5
 -- ticks; else it breaks.
@@ -106,7 +108,7 @@ local function destroyed(me: Object)
     obstacle.release_tracking(me)
     obstacle.unregister(me)
     if obstacle.removal(me) == "absorbed" then
-        obstacle.fly_to_absorber(me, ABSORBED_KIND)
+        obstacle.fly_to_absorber(me, ABSORBED)
     else
         local blink = obstacle.blink_out(me)
         if blink == "blinking" then
