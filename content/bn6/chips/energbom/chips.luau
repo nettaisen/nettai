@@ -5,6 +5,7 @@
 local bomb = require("../../lib/bombs/bomb")
 local burst = require("./burst")
 local collision = require("../../rules/collision")
+local lockon = require("../../rules/lockon")
 local throw = require("../../lib/bombs/throw")
 
 -- The two chips' throw: the same bomb, held in its second animation.
@@ -33,8 +34,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 60, index = 60, sort = 149 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 5 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.yoyo },
         action = energy_throw(),
     },
     define.chip {
@@ -47,8 +48,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 61, index = 61, sort = 313 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 5 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.yoyo },
         action = energy_throw(),
     },
 }
