@@ -1240,8 +1240,8 @@ export type WeaponSpec = {
     charge_ticks: { number },
     -- `off_80117D4[n]`: prepare the attack, name its action (an `Action`).
     -- A weapon with an `instant` effect names none: the instant chips'
-    -- action runs it. None for a weapon nothing can start: an A-charge
-    -- that is its chip (`charged_chip`), or one nothing implements yet.
+    -- action runs it. None only for an A-charge that is its chip
+    -- (`charged_chip`), which nothing starts as a weapon.
     -- (Typed loosely: Luau's checker doesn't check a function against an
     -- optional function type.)
     setup: ((navi: Object) -> any)?,

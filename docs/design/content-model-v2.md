@@ -9,10 +9,11 @@ The user's direction (2026-09-30):
 
 This document is the design for that change: what the content pack becomes, how content names and composes
 content, where the original's numbers go, what changes in the engine and its tools, and the migration that gets
-there without losing a frame of the golden traces. It supersedes the parts of
-[content-pack.md](content-pack.md), [scripting.md](scripting.md) and [content-migration.md](content-migration.md)
-that say game data is extracted from the ROM, that registration is by original number, and that folders carry
-index prefixes; those documents are rewritten in the last step of the migration (§12, step 13).
+there without losing a frame of the golden traces. It is the design record: its sections say what was designed
+and, in their "As built" notes, what was built. [content-pack.md](content-pack.md),
+[scripting.md](scripting.md), [core-content-boundary.md](core-content-boundary.md) and
+[content-migration.md](content-migration.md) (how to write content) describe what exists; they were rewritten in
+the last step of the migration (§12, step 13).
 
 Words: a *definition* is a record made by one of the definers (`define.chip { ... }`); a *key* is a definition's
 name (`"minibomb"`); a *handle* is the dense number a key interns to when content loads; *compat* is the table of
@@ -2700,6 +2701,29 @@ disturbed. Each deletes registration by number's use for its category.
 13. **Remove the old**: the numeric API, `legacy { }`, v1 registration (and with it `KindDef::slot`,
     `ActionDef::number`, `CONTENT_ACTION`'s byte), the `data` global, the ratchet's allowlist. Rewrite content-pack.md, scripting.md,
     content-migration.md and the engine docs' references to the pack's files; memory and brief updates. **M.**
+
+    *As built (part 1).* Gone, each with no user left: v1 registration (`object.toml`, module exports, a
+    module's `state` as a schema, `KindDef::slot`, spawns by pool and index or by name, the object's spawn
+    parameters for content kinds, `me.index`); actions by number (`ActionDef::number`,
+    `NaviAction::Unported`/`numbered`/`number`, `CONTENT_ACTION`, `set_attack(number)`, a weapon's setup
+    returning a number; a navi's action byte is an error, `navi_action()` and `set_attack` are how a navi's
+    action is read and started); the attack's variant and parameter bytes and the hook specs' `params` (the
+    trap counters' variant, which both of their starters leave 0, is the counter's builder argument); chips
+    as opaque numbers (`me.chip`, `hand_chip`, the dimming spec's, the linked record's and the dimming
+    service's chips are chip definitions); sprites by `"CC-II"` string; the roles' legacy forms (the turn, the
+    original's action 0x3B, is ported as `megaman/turn`; the volley is WideSht's action; the two objects battle
+    mode 9 spawns by number are kind roles nothing fills); the `data` global, with step 12's tables its last
+    readers (the buster's recovery and the sine table are read from their rule modules); the object data
+    tables and rule sections nothing defined or read; `tools/content-dump`. A weapon without a `setup` or a
+    `charged_chip` is a content error at load, not a panic when it is used.
+    New checks: `bn6-content-check` requires a type on a module-level table constant passed to a function (an
+    unsealed literal passes for any record, and a required module is `any`: the 64 it flagged are annotated,
+    with eight spec types moved to types.d.luau); `bn6-content check` refuses two collision types on one row
+    of the original's table (four rows were defined twice); reading compat refuses two keys with one number
+    (actions may share one). Guards (`bn6-content-check`'s `guards` test): no folder named with an original
+    number; no `legacy` marker outside the listed modules. What is left for the second part: the navis' and
+    forms' numbers and the body overlays' numbering (38 markers, all the ratchet counts), sounds by number,
+    and with them `legacy`, the ratchet's allowlist and the guards' exceptions.
 
 ### Size
 
