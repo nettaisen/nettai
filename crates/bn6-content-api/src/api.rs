@@ -1007,6 +1007,11 @@ pub trait CoreApi {
     fn emotion(&self, side: u8) -> Emotion;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
     fn set_mood(&mut self, side: u8, mood: u8);
+    /// A side's bug frags in the battle (`sub_800F4A8`).
+    fn bug_frags(&self, side: u8) -> u32;
+    /// `sub_800F4B2`: a side spends `n` bug frags (the count wraps below
+    /// 0, as the original's does: its callers check first).
+    fn spend_bug_frags(&mut self, side: u8, n: u32);
     /// `sub_802E4B8`: the side's SELECT or Cross special in progress.
     fn side_special(&self, side: u8) -> SideSpecial;
     /// A side's player navi.

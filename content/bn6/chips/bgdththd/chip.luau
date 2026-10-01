@@ -17,5 +17,5 @@ return define.chip {
     flags = { "dimming", "library" },
     library = { number = 310, index = 5, sort = 36 },
     slot_in_limit = 1,
-    dimming = navi_boost.bug(charge),
+    dimming = navi_boost.bug(charge.weapon),
 }

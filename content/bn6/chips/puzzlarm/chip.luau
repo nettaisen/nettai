@@ -22,5 +22,5 @@ return define.chip {
     rarity = 4, mb = 40, damage = 0, hit_param = 30, lockout = 20,
     library = { number = 0, index = 63, sort = 0 },
     slot_in_limit = 1,
-    dimming = navi_boost.arm(charge, PALETTE),
+    dimming = navi_boost.arm(charge.weapon, PALETTE),
 }

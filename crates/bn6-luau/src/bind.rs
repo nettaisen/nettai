@@ -1075,6 +1075,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.emotion(side).name()))
     });
+    lib_fn!(lua, t, "bug_frags", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.bug_frags(side)))
+    });
+    lib_fn!(lua, t, "spend_bug_frags", |_, (side, n): (LuaValue, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, int(&n, "count")? as u32);
+        with(|api, _| Ok(api.spend_bug_frags(side, n)))
+    });
     lib_fn!(lua, t, "set_mood", |_, (side, mood): (LuaValue, LuaValue)| {
         let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
         with(|api, _| Ok(api.set_mood(side, mood)))
