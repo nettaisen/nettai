@@ -1091,7 +1091,7 @@ ahead (distance 0: no region). (Six and seven panels can't be: the walk starts i
 **Ported**: chips/dblhero (`dblhero/controller`, `dblhero/heroes`); the record stays (a Program
 Advance) and chips/158-dblhero registers its hook by number. `sub_80EB572`'s second argument (1) is the
 attachment's third byte, animating while dimmed, not its animation: the arm's animation is the side's form, as
-the buster's (lib/buster `attach_arm`, by the user's actor data, which MegaMan's copy shares; a player's second
+the buster's (lib/buster `raise_arm_for`, by the user's actor data, which MegaMan's copy shares; a player's second
 actor would clear the user's overlay slot). A field with no panel of the other side's makes the flash divide by
 zero: an error. Lab: 6/6.
 
