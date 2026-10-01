@@ -45,9 +45,11 @@ templates in which the other side acts (`counter`, `guard`, `barrier`, `invisibl
 The lab's driver now waits out a cut-in, and the 670 are recorded to their ends. The engine matches every one on
 every frame, so the tables below stand and the templates now cover what their names say. Two things remain true
 of any recording and are worth checking before leaning on one: its last frame (a recording proves nothing past
-it), and its status in the lab's index. 380 recordings are `unmet`: they ran to their end without doing what
-their description says, usually because the chip can't reach the opponent from where the template stands
-(ElecMan's and TomahawkMan's `hit`, a sword's `hit` from three columns away).
+it), and its status in the lab's index. 380 recordings were `unmet` until completeness.md §11's work: they ran to
+their end without doing what their description said, usually because the chip can't reach the opponent from
+where the template stood (ElecMan's and TomahawkMan's `hit`, a sword's `hit` from three columns away). The
+templates now stand the navis where the chip lands, or say in their description and expectations what they show
+(no damage out of reach; the use alone, with the scenario that records the hit), and none is `unmet`.
 
 ## Templates over every action handler family
 
@@ -85,7 +87,7 @@ standard chip action…), whichever section below the family belongs to:
 | Panel chips | a holy panel cracked from under its user in the same dimming | no cut-in on a panel chip | yes | chips/0x0a8-holypanl/cut-in-geddon: verified |
 | BugFix (subtype 26) | a navi with parts | every lab user is MegaMan | yes (a link navi) | chips/0x0b0-bugfix/link-navi: verified |
 | BugFix | a non-player navi's sprite, stat 0x21 = 0, variants 1 and 2 | no such user; no caller | unreachable | |
-| Instruments (subtype 9) | the destroyed action (broken, and pushed) | no instrument broken or removed | yes | chips/0x092-fanfare/broken, pushed; chips/0x093-discord/broken, chips/0x094-timpani/broken, chips/0x095-silence/broken: verified |
+| Instruments (subtype 9) | the destroyed action (broken, and pushed) | no instrument broken or removed | yes | chips/0x092-fanfare/broken, pushed-by-enemy (side 1's AirShot knocks it back; side 0's own `pushed` moves none of its side's objects); chips/0x093-discord/broken, chips/0x094-timpani/broken, chips/0x095-silence/broken: verified |
 | Instruments | the tune played to its end | scenarios end first | yes | chips/0x092-fanfare/lifetime: verified |
 | Instruments | Fanfare's Beast Over test (both versions' Beast Over), and Beast Out for contrast | no Beast Over | yes | chips/0x092-fanfare/beast-over, beast-over-gregar, beast-shot-at: verified |
 | Instruments | the battle-over branches (playing, resting) | no KO with an instrument out | yes | chips/0x092-fanfare/round-end, chips/0x095-silence/round-end-rest: verified |
@@ -94,7 +96,7 @@ standard chip action…), whichever section below the family belongs to:
 | AirRaid (subtype 13) | the plane shot down, the battle-over branch, the bombs against a barrier or no body | the plane is never hit | yes | chips/0x068-airraid1/broken, ko, barrier, invisible: verified |
 | AirRaid | the plane removed, absorbed, blinking out | no remover | yes | chips/0x068-airraid1/dustman, colarmy, absorbed: verified |
 | AirRaid | the plane's lifetime, AirRaid3's plane shot down, the bombs' panel list as the opponent walks | | yes | chips/0x068-airraid1/lifetime, moving-target, chips/0x06a-airraid3/broken: verified |
-| Sensor (subtype 28) | the pushed turret, the broken turret | the turret is never hit or pushed | yes | chips/0x071-sensor1/broken, pushed: verified |
+| Sensor (subtype 28) | the pushed turret, the broken turret | the turret is never hit or pushed | yes | chips/0x071-sensor1/broken, chips/0x073-sensor3/pushed (side 1's AirShot on Sensor3's 40-HP turret, `sub_80DA37A`; Sensor1's 20-HP turret breaks to it, and side 0's own shot in `sensor1/pushed` doesn't move it): verified |
 | Sensor | the laser's re-arming | one firing per scenario | yes | chips/0x071-sensor1/twice: verified |
 | Sensor | the battle-over branches | no KO | yes | chips/0x071-sensor1/ko: verified (the comparison now keeps a spark's garbage Z fraction after its laser is freed) |
 | Sensor | the scanner blocked by an object, where it starts and on its step; the scanner off the top and bottom rows and the far column | the opponent always stands in its line | yes | chips/0x071-sensor1/blocked-rock, blocked-rock-far, row1, row3, long-miss: verified |
@@ -111,7 +113,7 @@ standard chip action…), whichever section below the family belongs to:
 |---|---|---|---|---|
 | Wind, Fan (subtype 8) | a second fan replacing the first | one fan per scenario | yes | chips/0x081-wind/twice: verified (the second, from another row, evicts the first through the field-object registry, class 1, before it becomes its side's wind, so the wind registry's own replacement never runs: completeness.md §6.2). `then-fan` places no Fan: the panel in front is the Wind's; `both-sides` is one fan a side |
 | Wind, Fan | the lifetime running out (1440 ticks) | scenarios end first | yes | chips/0x081-wind/lifetime: verified |
-| Wind, Fan | Fan's fan broken; AirShot at it | only Wind's `counter` breaks one | yes | chips/0x082-fan/broken, pushed: verified (the shot breaks it: no push branch) |
+| Wind, Fan | Fan's fan broken; AirShot at it | only Wind's `counter` breaks one | yes | chips/0x082-fan/broken, pushed-by-enemy (side 1's AirShot knocks the 40-HP fan back; side 0's own `pushed` doesn't move it): verified |
 | Wind, Fan | no gust (an obstacle on the row's first enemy panel; Fan's start a panel nearer) | no obstacle there | yes | chips/0x081-wind/no-gust, chips/0x082-fan/gust-past-bomb: verified |
 | Wind, Fan | removal, blink-out, absorption | no remover | yes | chips/0x081-wind, chips/0x082-fan/{dustman, colarmy, absorbed}: verified |
 | Wind, Fan | pushes (action 5), a flipped fan | AirShot breaks the fan; no player is flipped | hard / unreachable | open |
@@ -128,7 +130,7 @@ standard chip action…), whichever section below the family belongs to:
 | Guardian | the lifetime (6000 ticks), removal, blink-out, absorption | too long; no remover | yes | chips/0x097-guardian/lifetime, dustman, colarmy, absorbed: verified |
 | Meteors (subtype 16) | the lists after area changes, a marker at battle end | no AreaGrab first, no KO | yes | chips/0x08b-meteors/after-areagrab, grabbed, ko: verified |
 | Meteors | an empty list, a marker off the field, rows other than Param1 1 | the enemy always owns panels; no chip | unreachable | |
-| Anubis, PoisPhar (subtype 17) | breaking by damage, AirShot at it, the lifetime, a second statue | the statue is never hit; scenarios end first | yes | chips/0x098-anubis/broken, pushed, lifetime, replaced: verified |
+| Anubis, PoisPhar (subtype 17) | breaking by damage, AirShot at it, the lifetime, a second statue | the statue is never hit; scenarios end first | yes | chips/0x098-anubis/broken, pushed-by-enemy (side 1's AirShot knocks it back), lifetime, replaced: verified |
 | Anubis | a non-solid landing panel, removal, blink-out, absorption | | yes | chips/0x098-anubis/hole-ahead, dustman, colarmy, absorbed: verified |
 | Anubis | time up, an enemy with no panel for a bubble | needs the judge with a statue out; the enemy always owns panels | hard / unreachable | open |
 | Anubis | the flipped user's registry store | no player is flipped | unreachable | |
@@ -136,7 +138,7 @@ standard chip action…), whichever section below the family belongs to:
 | CircGun | a start column of the user's own panels, shots on non-solid panels | the timeout's place | yes | chips/0x08e-circgun/after-areagrab, holes: verified |
 | CircGun | a start column holding none of the enemy's home panels (the opponent's two AreaGrabs) | | yes | chips/0x08e-circgun/grabbed: verified |
 | CircGun | Param3 1, a non-player first actor | no chip | unreachable | |
-| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: verified |
+| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken: verified. No push: the statue takes hits and is never pushed (`sub_801AD6A`); `chips/0x099-otenko/pushed` is side 0's own shot, which doesn't move it, and side 1's AirShot hits it (100 HP to 80) without a move |
 | Otenko | the statue removed, absorbed, blinking out | no remover | yes | chips/0x099-otenko/dustman, colarmy, absorbed: verified |
 | Otenko | the lifetime (1800 ticks), a second statue, the blessing on two chips in turn | | yes | chips/0x099-otenko/lifetime, replaced, bonus-two-chips: verified |
 | BlzrdBal (subtype 21) | a non-solid thrower panel, the roller's battle-over end, three swallows | | yes | chips/0x0c7-blzrdbal/no-footing, ko, three-rocks: verified |
@@ -194,7 +196,7 @@ standard chip action…), whichever section below the family belongs to:
 | FlashBomb | landed, broken before the flash | | yes | chips/0x039-flshbom1/landed, shot: verified |
 | Bombs | bomb kind 1, seed kind 3, FlashBomb levels 3 to 8 | no chip | unreachable | |
 | Navi chips (§3.6.7-§3.6.36) | no footing for the navi (action 0 to its leave) | the user always stands on solid ground | yes (AirShoes over a hole) | chips/…/no-footing for Roll, ProtoMan, HeatMan, ElecMan, SlashMan, EraseMan, ChrgeMan, SpoutMan, TmhkMan, TenguMan, GrndMan, DustMan, BlastMan, DiveMan, CrcusMan, JudgeMan, ElmntMan, Colonel, HackJack, Bass, BigHook, DeltaRay, BassAnly, CrossDiv: verified |
-| Navi chips | the battle ending mid-attack | no KO inside a navi chip | yes | chips/…/ko for the same navis (but ElecMan, TmhkMan and HackJack, which don't reach a standing opponent), pa/0x15c-twinldrs/ko, pa/0x15d-crosover/ko, pa/0x15a-mstrcros/ko: verified |
+| Navi chips | the battle ending mid-attack | no KO inside a navi chip | yes | chips/…/ko for the same navis (ElecMan's and TmhkMan's from the adjacent column, the only one their strikes reach; none for HackJack, whose original stops), pa/0x15c-twinldrs/ko, pa/0x15d-crosover/ko, pa/0x15a-mstrcros/ko: verified |
 | Navi chips | an opponent the navi can't find or reach, and one behind a barrier | the opponent always stands in the open | yes | chips/…/invisible, rock-front and barrier for each of the nineteen navi chips: verified |
 | Navi chips | a pool with no free slot, a missing collision slot | pool full | unreachable | |
 | Navi chips | the navi AI's variants (Param1 0 and the like): SpoutMan's, BlastMan's, ElecMan's, ChargeMan's, SlashMan's, DiveMan's, JudgeMan's whip | only the bosses' AI spawns them | unreachable | |
@@ -249,7 +251,7 @@ The first batch of the survey's scenarios covered the rows below; the rest of th
 | VarSwrd, NeoVari | the random pick; the charged sword (0x41) | Beast Over; SlashCross and the Beast's charge | yes | chips/0x052-varswrd/beast-over, chips/0x053-neovari/beast-over, beast-charged: verified |
 | MoonBld | the repeat swings | no trigger found in a netbattle | check | open |
 | CopyDmg | the time-up path; an obstacle as the target (NameIDs 0xCD..0xFF) | | yes | chips/0x0be-copydmg/time-up, on-rock, rock-hit: verified |
-| RlngLog | the log's stop and break; no ground under it | no shot meets a log | yes | chips/0x028-rlnglog1/shot, holes: verified |
+| RlngLog | the log's stop and break; no ground under it | no shot meets a log | yes | chips/0x028-rlnglog1/shot (the Vulcan breaks a log), buster-stops (a buster hit stops a landed log for 60 ticks, `sub_80D141A`), holes: verified |
 | RlngLog | the drop-in path | | check | open |
 | Static | the larger spreads (the user's NaviCust bug kinds) | no bugged user | yes | chips/0x035-static/bugs-1, bugs-2, bugs-3: verified |
 | Tornado | subtype 3 | no chip record gives it (the chips are subtypes 1 and 2) | unreachable | |
@@ -268,7 +270,7 @@ The first batch of the survey's scenarios covered the rows below; the rest of th
 
 | family | branch | why it was unreached | reachable | scenario and status |
 |---|---|---|---|---|
-| Obstacles | pushes (`sub_8017CC0`, `sub_800F598`, `sub_8017CE0`, `sub_8017D64`, `sub_8017E0A`) | nothing is pushed | yes | chips/0x090-timebom1/pushed, chips/0x03c-blkbomb/pushed, chips/0x062-lilbolr1/pushed, chips/0x08f-rockcube/pushed-by-enemy, chips/0x097-guardian/pushed, chips/0x071-sensor1/pushed, chips/0x17c-icecube/pushed: verified |
+| Obstacles | pushes (`sub_8017CC0`, `sub_800F598`, `sub_8017CE0`, `sub_8017D64`, `sub_8017E0A`) | nothing is pushed | yes | chips/0x090-timebom1/pushed, chips/0x03c-blkbomb/pushed, chips/0x062-lilbolr1/pushed, chips/0x08f-rockcube/pushed-by-enemy, chips/0x073-sensor3/pushed, chips/0x092-fanfare/pushed-by-enemy, chips/0x098-anubis/pushed-by-enemy, chips/0x082-fan/pushed-by-enemy, chips/0x17c-icecube/pushed: verified (a side's own AirShot doesn't move the objects it sets on its own panels, so Guardian's, Sensor1's, Fanfare's, Anubis's, Fan's and Otenko's `pushed` show no push) |
 | Obstacles | the pushes' ice and bounds branches | | yes | stages/ice-50-rockcube-airshot, iceblocks-2c-airshot, ice-52-icecube, fan-airshot-ice (over ice), chips/0x077-lance/stage-ice (a pull stops at the edge of the puller's area), chips/0x023-elcpuls2/obstacle: verified |
 | Obstacles | the field-object slots: a third class-0 object, a second class-1 one | | yes | chips/0x08f-rockcube/replaced, chips/0x098-anubis/replaced, chips/0x062-lilbolr1/replaced: verified |
 | Obstacles | thrown and encased (`sub_8018002`, `sub_801813A`) | nothing in the game starts them | unreachable | |
@@ -393,6 +395,18 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 | FlotShoe on every stage (grass, ice, poison, volcano, holy, cracked, holes, roads) and AirShoes over holes, cracked, ice and poison panels | `navicust/flotshoe-stage-*`, `airshoes-stage-*` | match |
 | The four bugs a BugBomb gives (bug codes 0x18, 0x19, 0xF5 and stat 0x14), one after another on one navi, and the navi living with them (blank shots, the HP drain, the panel trail, the custom screen's drain) | `chips/0x043-bugbomb/four` | matches |
 | An uninstall (bug code 0xF8) landing on BodyPack's programs (UnderShirt stays), on a navi in Beast Out (the form's shoes come back), on a link navi (it keeps what it has), and on UnderShirt at 30 HP | `chips/0x0b9-uninstll/folded`, `folded-beast`, `folded-navi`, `folded-undershirt` | match |
+| An uninstall on a navi in each Cross and Cross Beast of both versions and in Gregar Beast Out: each form's NaviCust refresh (`sub_801469C`'s table: its `navicust_refresh`) gives its flags back | `chips/0x0b9-uninstll/folded-cross-{spout,tomahawk,tengu,ground,dust,heat,elec,slash,erase,charge}` and each `-beast`, `folded-beast-gregar` | match |
+| An Uninstll'd Cannon at a navi in Beast Over: nothing lands (Falzar Beast Over untouchable, Gregar's invulnerable), so nothing is uninstalled; the Falzar navi has no shoes of its own, and the form gives it AirShoe and FloatShoe | `chips/0x0b9-uninstll/folded-beast-over`, `folded-beast-over-gregar` | match, since the fix below |
+| A Cross chosen on a later screen while in Beast Out (the Beast's Cross: `sub_80153EC`, `sub_801544C`) | `forms/falzar/beast-then-cross` | matches |
+| The Beast rush chaining the next chip on an A press (it runs inside the rush), and not chaining a variable sword, a dimming chip or an empty hand (`sub_800FC30`) | `forms/falzar/beast-rush-chain`, `-sword`, `-varswrd`, `-dimming` | match |
+| The dark chips with no BugFrags: each is its substitute (DrkSword's Sword, DarkThnd's Thunder, DrkRecov's Recov10, DarkInvs's Invisibl, DarkPlus's Atk+10: `sub_8010D58`, `sub_800EF02`); two DrkSwords with one frag | `chips/0x11e-drksword/no-frags`, `last-frag`, `chips/0x11f-darkthnd/no-frags`, `0x120-drkrecov/no-frags`, `0x121-darkinvs/no-frags`, `0x122-darkplus/no-frags` | match |
+| Full Synchro's aura hidden while its navi is away for BugFix's glow, and shown again; BugFix does no damage, so the synchro stays for the next chip (`sub_80C4C46`, `sub_80C4C4C`) | `flow/synchro-bugfix` | matches |
+| The AntiDmg program's B+Back stance catching a Cannon, and a Sword (AntiDmg's counter either way: `sub_80105F2`; the shuriken at a random enemy, `sub_8016004`) | `navicust/antidmg-caught`, `antidmg-caught-sword` | match |
+
+Fixed from these: Falzar Beast Over's form flags (`sub_8014674`) are one literal, 0x08000030 (the disassembly
+renders it as a pointer): AirShoe and FloatShoe with the untouchable flag. The port had the untouchable flag
+alone, which no recording showed, since every earlier Falzar Beast Over navi had its own AirShoes and FlotShoe.
+
 | START pause (battle-flow.md §3.5): only the pausing player resumes; both on one tick (side 0 pauses); during a dimming and once the battle is over (nothing) | `flow/pause`, `pause-both`, `pause-dimmed`, `pause-over` | match |
 | A screen confirmed with nothing picked keeps the hand's chips; only Beast Out picked empties it | `flow/keep-hand` | matches |
 | The custom screen opened while an attack is under way (a Vulcan mid-burst), and by both players on the tick the gauge fills (L and R) | `flow/custom-open-busy`, `custom-open-both` | match |
@@ -440,6 +454,8 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 | A step starting in its Land phase (0x10) | Nothing starts a step there. |
 | Result codes 4 (escape), 5 (communication error), 9 and 0xA (terminate) | No running in a netbattle (L gives the message); the others are the link's, which the lab's emulated cable never trips. |
 | Rush with chip 0x17E (the hand left alone) | Chip 0x17E, the other WhiCapsl, comes in no code: it can't be in a folder. |
+| A form's NaviCust refresh in Beast Over (`sub_801479C`, `sub_80147B2`) | The refresh follows a bug code a hit brings, and no hit lands on Beast Over: Falzar's form flags make the navi untouchable (ObjectFlags1 0x08000000, which the collision kernel drops every pair on), Gregar's invulnerable for 0xFFFF ticks (`chips/0x0b9-uninstll/folded-beast-over` and `-gregar` show it). |
+| AntiDmg's counter aimed at the nearest enemy ahead (`sub_8016218`, the counter's variant 1) | The variant is the counter's caller's: every trap's (`sub_801056A`, six callers) passes 0, and the AntiDmg program's stance passes its own, which its weapon routine (0x3D, `sub_80121BC`) sets to 0. |
 | A navi appearing mid-battle (`sub_80164A0`) | Only for actors whose AIData+2 is set, which a netbattle's players' isn't. |
 | The Beast Out lock-on's tie-break between several targets | Its candidates are a side's alive-actor slots, and a netbattle fills one a side. |
 | Bug code 0xFB (the body programs go, UnderShirt too), and the charged shot's and the buster's other projectile kinds | Only projectile kind 0x1A carries the code, and a player's shots take their kind from NaviStats+0x4F (the charged shot) and +0x4D (the buster), which nothing writes: not the stats' init (`initNaviStats_WithDefaultStatsMaybe_8013438`, `init_8013B64`), not a NaviCust program's or bug's routine, and no attack a netbattle has carries bug code 0x4D or 0x4F (a code below 0x64 stores to the stat of that number). Both are 0 in all 8,798 navi stat blocks of the lab's 4,399 setups (every program, bug, navi and form). |
