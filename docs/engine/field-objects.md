@@ -209,9 +209,11 @@ effect 1 at Z + 16 px, without a sound. Then region 0 and state word = 8
 
 Verified against the lab's stage scenarios (stages/boulder*): standing
 through the round's start, the buster's and M-Cannon's hits, a breaking
-hit, AirShot's push into the other boulder, RockCube on its panel,
-DustCross's absorption and throw. Unverified: its blink-out, the status
-actions, and the flags on columns other than 2 and 5.
+hit, AirShot's push into the other boulder (from either side), RockCube on
+its panel, DustCross's absorption and throw, its blink-out (ColArmy) and
+its removal (BlzrdBal's ball), on every battle settings record that places
+boulders. Not reachable in a netbattle: the status actions, and the flags
+on columns other than 2 and 5 (unverified.md).
 
 ## 4. Shared obstacle routines
 
