@@ -14,19 +14,23 @@ fn the_content_pack_type_checks_against_the_core_api() {
     assert!(problems.is_empty(), "type errors:\n{}", problems.join("\n"));
 }
 
-/// The engine's test pack (crates/bn6-battle/testdata/pack) uses the v2
-/// API throughout: it type-checks against the same definitions.
+/// The engine's test pack and test content (crates/bn6-battle/testdata)
+/// type-check against the same definitions, and pass the lints.
 #[test]
-fn the_v2_test_pack_type_checks() {
+fn the_test_pack_and_test_content_type_check() {
     let mut checker = bn6_content_check::PackChecker::new(&bn6_content_check::definitions(&pack()).unwrap()).unwrap();
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../bn6-battle/testdata/pack");
-    let modules = bn6_content_check::modules(&dir).unwrap();
-    assert!(modules.len() >= 5, "{} modules", modules.len());
     let mut problems = Vec::new();
-    for (path, source) in &modules {
-        problems.extend(checker.check(path, source).unwrap());
+    for (name, at_least) in [("pack", 5), ("content", 5)] {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../bn6-battle/testdata").join(name);
+        let modules = bn6_content_check::modules(&dir).unwrap();
+        assert!(modules.len() >= at_least, "testdata/{name}: {} modules", modules.len());
+        for (path, source) in &modules {
+            let path = format!("testdata/{name}/{path}");
+            problems.extend(checker.check(&path, source).unwrap());
+            problems.extend(bn6_content_check::lints::lints(&path, source));
+        }
     }
-    assert!(problems.is_empty(), "type errors:\n{}", problems.join("\n"));
+    assert!(problems.is_empty(), "problems:\n{}", problems.join("\n"));
 }
 
 #[test]
