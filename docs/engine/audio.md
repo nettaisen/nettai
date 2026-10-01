@@ -226,12 +226,16 @@ sounds are left out.
 
 - The two golden traces, over every frame of every round: 89 calls over
   2405 frames and 1360 calls over 57,331 frames, call for call.
-- Chip-lab scenarios recorded with their sound calls: the 132 scenarios of
-  the frame comparison (3185 calls over 145,465 frames) and 775 more, a
-  scenario or two of every chip, Program Advance, form, link navi and
-  stage (14,094 calls over 656,209 frames). All match call for call but
-  the two differences above, in five scenarios (Beast Over's rumble in two,
-  HeatCross's charged flames in three).
+- Every chip-lab scenario, each recorded with the sound calls the
+  original queued: 5151 scenarios (every chip, Program Advance, form,
+  link navi, NaviCust program, stage and ruleset scenario the lab has),
+  96,073 calls over 4,151,620 frames. All match call for call but the two
+  differences above, in nine scenarios: Beast Over's rumble in five (the
+  beast-over scenarios of VarSwrd, NeoVari and both beasts, and Falzar's
+  drained one), the burner's roar in four (HeatCross's charged
+  shot in three, and DarkInvs's beast scenario). This comparison is a standing
+  gate of the chip lab: a new recording carries its calls, and a sound
+  that differs otherwise fails it.
 - Every sound the content names (148 names) is in the pack's index,
   has a song, starts on the driver and makes sound; so does every number
   the engine's own routines play.
