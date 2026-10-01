@@ -30,6 +30,7 @@ attachment = { pool = "actor", index = 0x05 }
 "dblbeast/falzar" = { pool = "actor", index = 0x34 }
 "protoman/navi" = { pool = "actor", index = 0x3C }
 "deltaray/ray" = { pool = "actor", index = 0x3D }
+"numbrbl/numberman" = { pool = "actor", index = 0x45 }
 rush = { pool = "actor", index = 0x4B }
 beat = { pool = "actor", index = 0x4C }
 tango = { pool = "actor", index = 0x4D }
@@ -106,6 +107,7 @@ thunder-column = { pool = "attack", index = 0x8B }
 "elcpuls/pulse" = { pool = "attack", index = 0x8C }
 "elmntman/meteor" = { pool = "attack", index = 0x8D }
 "elmntman/ice" = { pool = "attack", index = 0x8E }
+"numbrbl/ball" = { pool = "attack", index = 0x91 }
 "aurahed/head" = { pool = "attack", index = 0x92 }
 "magcoil/magnet" = { pool = "attack", index = 0x95 }
 "slashcross/sword-wave" = { pool = "attack", index = 0x96 }
@@ -197,6 +199,7 @@ invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "lifesync/marker" = { pool = "effect", index = 0x60 }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "sensor/controller" = { pool = "effect", index = 0x65, scratch_position = true }
+"numbrbl/controller" = { pool = "effect", index = 0x69, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
