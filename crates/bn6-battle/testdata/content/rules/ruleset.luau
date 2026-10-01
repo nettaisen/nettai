@@ -82,7 +82,7 @@ return {
         thrown_obstacle = collision("thrown-obstacle", 0x06, attack),
         thrown_obstacle_target = collision("thrown-obstacle-target", 0x05, others),
     },
-    -- Made-up sounds, music and banners, one for each role (named
+    -- Made-up sounds, music, sprites and banners, one for each role (named
     -- `test-<kind>-<role>`; the test content gives each the id the tests
     -- look for).
     sounds = {
@@ -130,6 +130,21 @@ return {
         winner_special = asset.sound("test-music-winner-special"),
         winner = asset.sound("test-music-winner"),
         loser = asset.sound("test-music-loser"),
+    },
+    sprites = {
+        charge_glow = asset.sprite("test-sprite-charge-glow"),
+        charge_glow_a = asset.sprite("test-sprite-charge-glow-a"),
+        full_synchro_aura = asset.sprite("test-sprite-full-synchro-aura"),
+        confusion = asset.sprite("test-sprite-confusion"),
+        blindness = asset.sprite("test-sprite-blindness"),
+        immobilized = asset.sprite("test-sprite-immobilized"),
+        ice = asset.sprite("test-sprite-ice"),
+        bubble = asset.sprite("test-sprite-bubble"),
+        hit_marker = asset.sprite("test-sprite-hit-marker"),
+        eruption = asset.sprite("test-sprite-eruption"),
+        lockon_marker = asset.sprite("test-sprite-lockon-marker"),
+        idle_overlay = asset.sprite("test-sprite-idle-overlay"),
+        beast_head = asset.sprite("test-sprite-beast-head"),
     },
     banners = {
         round_start = asset.banner("test-banner-round-start"),

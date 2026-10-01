@@ -5,11 +5,9 @@
 //! routine (`status.rs`, `sub_80E8124`).
 
 use crate::battle::Battle;
-use crate::content::SpriteId;
 use crate::object::{ObjectRef, Vec3, flags, state};
 use crate::object::sprite::FRAME_LAST;
 
-const SPRITE: SpriteId = SpriteId { category: 0x14, index: 0x07 };
 
 /// Its animation (Param1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,8 +37,9 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// is kept as the offset from the owner (in the velocity).
 fn init(b: &mut Battle, r: ObjectRef) {
     let anim = b.objects.get(r).params[0];
+    let sprite = b.content.defs.roles.sprite(crate::content::SpriteRole::HitMarker);
     let s = b.objects.sprite_mut(r);
-    s.load(SPRITE);
+    s.load(sprite);
     s.set_animation(0, &b.content);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
