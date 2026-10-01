@@ -417,3 +417,11 @@ programs, which set the two bits anyway. The remaining bit is the collision kern
 (`sub_3007218` drops every pair in which either side has it, and poison panels skip it), the form effect
 `untouchable` since: nothing can hit a navi in Falzar Beast Over.
 
+The lab's custom-screen check had a blind spot of the same kind. Every Beast Over recording counted one of its
+screens as differing (9 of 10, 11 of 12): the engine's screen sent Beast Out where the original's sent Beast
+Over. The engine was right, as the frames show (in the lab's full replay the engine's own screens run, with the
+battle's emotions); the check runs each screen alone and read the navi's emotion from its mood only, so it never
+saw a tired navi, for which the Beast Out button means Beast Over. It now takes tired (the Beast Out turns spent
+and out of the Beast) and worn out (past a Beast Over) from the trace's stats too, and all 11,666 of the lab's
+screens and the golden traces' 40 match. A check that always reports one mismatch hides the next one.
+
