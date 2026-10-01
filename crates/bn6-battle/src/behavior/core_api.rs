@@ -1485,6 +1485,12 @@ impl CoreApi for Battle {
             .ok_or_else(|| ApiError::Other(format!("element {element} has no damage slot (0 to 5)")))
     }
 
+    fn collision_hit_by(&self, o: ObjectRef) -> ApiResult<Vec<ObjectRef>> {
+        let mask = self.collision_of(o)?.acc.hit_by;
+        let hitters = (0..32u8).filter(|&k| mask & (0x8000_0000 >> k) != 0);
+        Ok(hitters.filter_map(|k| self.collision.get(crate::collision::CollisionId(k)).parent).collect())
+    }
+
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()> {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
         let c = self.collision_of_mut(o)?;
@@ -1698,6 +1704,15 @@ impl CoreApi for Battle {
 
     fn obstacle_absorb_all(&mut self, absorber: ObjectRef) {
         kinds::obstacle::absorb_all(self, absorber);
+    }
+
+    fn obstacle_swallowable(&self, o: ObjectRef) -> bool {
+        let ob = self.objects.get(o);
+        // The NameID word's high half: an actor's next chip (0xFFFF for
+        // none), nothing else's (0).
+        let high = if ob.actor.is_some() { self.chip_number(ob.chip).map_or(0xFFFF, u32::from) } else { 0 };
+        let word = ob.name_id as u32 | high << 16;
+        (0xCD..=0xFF).contains(&word) && !matches!(word, 0xD3 | 0xDA | 0xE9 | 0xEA)
     }
 
     fn obstacle_present(&self, o: ObjectRef) -> bool {

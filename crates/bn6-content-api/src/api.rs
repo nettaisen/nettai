@@ -1318,6 +1318,9 @@ pub trait CoreApi {
     /// The damage taken this window in element `element` (0 null, 1 fire,
     /// 2 aqua, 3 elec, 4 wood, 5 the sixth slot), as totaled.
     fn collision_element_damage(&self, o: ObjectRef, element: u8) -> ApiResult<u16>;
+    /// `sub_801A4DC`: the objects whose collisions hit `o`'s this window
+    /// (the registrations' parents), in slot order.
+    fn collision_hit_by(&self, o: ObjectRef) -> ApiResult<Vec<ObjectRef>>;
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()>;
     /// Register on the region's panels (clearing the last results).
     fn present_collision(&mut self, o: ObjectRef);
@@ -1399,6 +1402,10 @@ pub trait CoreApi {
     /// (removed by a chip, blinking out or absorbed): the test `sub_80C9EE6`
     /// and `sub_80EFD8C` make before taking an obstacle.
     fn obstacle_present(&self, o: ObjectRef) -> bool;
+    /// `sub_80DC3B2`'s test: a field object by its NameID word (0xCD to
+    /// 0xFF, the +0x2A half 0) but those `sub_800F486` excludes (0xD3,
+    /// 0xDA, 0xE9, 0xEA), which BlzrdBal's ball swallows.
+    fn obstacle_swallowable(&self, o: ObjectRef) -> bool;
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.

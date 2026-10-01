@@ -727,6 +727,10 @@ impl UserData for Collision {
             let element = u8_arg(element, "element")?;
             with(|api, _| api.collision_element_damage(this.0, element).map_err(api_error))
         });
+        methods.add_method("hit_by", |lua, this, ()| {
+            let hitters = with(|api, _| api.collision_hit_by(this.0).map_err(api_error))?;
+            lua.create_sequence_from(hitters.into_iter().map(Object))
+        });
     }
 }
 
@@ -1513,6 +1517,7 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "release_tracking", |_, me: Me| with(|api, _| Ok(api.obstacle_release_tracking(me.0))));
     lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
     lib_fn!(lua, t, "present", |_, o: Me| with(|api, _| Ok(api.obstacle_present(o.0))));
+    lib_fn!(lua, t, "swallowable", |_, o: Me| with(|api, _| Ok(api.obstacle_swallowable(o.0))));
     for &r in ObstacleRequest::ALL {
         t.set(
             r.name(),

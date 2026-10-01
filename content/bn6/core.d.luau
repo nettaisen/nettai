@@ -276,6 +276,9 @@ declare class Collision
     -- The damage taken this window in an element (0 null, 1 fire, 2 aqua,
     -- 3 elec, 4 wood; 5 the sixth slot).
     function element_damage(self, element: number): number
+    -- `sub_801A4DC`: the objects whose collisions hit it this window, in
+    -- slot order.
+    function hit_by(self): { Object }
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -1030,6 +1033,10 @@ declare obstacle: {
     -- (removed, blinking out or absorbed): the test `sub_80C9EE6` and
     -- `sub_80EFD8C` make before taking an obstacle.
     present: (o: Object) -> boolean,
+    -- `sub_80DC3B2`'s test: a field object by its NameID (0xCD to 0xFF)
+    -- but those `sub_800F486` excludes (0xD3, 0xDA, 0xE9, 0xEA): what
+    -- BlzrdBal's ball swallows.
+    swallowable: (o: Object) -> boolean,
 }
 
 -- Exact integer helpers.

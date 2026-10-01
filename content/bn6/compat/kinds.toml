@@ -7,6 +7,7 @@
 
 "engine/player" = { pool = "actor", index = 0x00 }
 "colonel/navi" = { pool = "actor", index = 0x01 }
+"blzrdbal/thrower" = { pool = "actor", index = 0x04 }
 attachment = { pool = "actor", index = 0x05 }
 "blastman/navi" = { pool = "actor", index = 0x06 }
 "heatman/navi" = { pool = "actor", index = 0x07 }
@@ -112,8 +113,10 @@ thunder-column = { pool = "attack", index = 0x8B }
 "megaman/dash-hit" = { pool = "attack", index = 0xAF }
 "dustcross/junk-ball" = { pool = "attack", index = 0xB0, scratch_z_fraction = true }
 "slashcross-beast/lunge-slash" = { pool = "attack", index = 0xB1 }
+"blzrdbal/ball" = { pool = "attack", index = 0xB2 }
 "sunmoon/meteor" = { pool = "attack", index = 0xB5 }
 "sunmoon/moon-beam" = { pool = "attack", index = 0xB6 }
+"blzrdbal/roller" = { pool = "attack", index = 0xB7, scratch_z_fraction = true }
 "elmntman/bolt" = { pool = "attack", index = 0xB8, scratch_z_fraction = true }
 "elmntman/vine" = { pool = "attack", index = 0xB9 }
 "bassanly/shot" = { pool = "attack", index = 0xC1 }
@@ -166,6 +169,7 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
 "guardian/controller" = { pool = "effect", index = 0x52, scratch_position = true }
 "guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
+"blzrdbal/controller" = { pool = "effect", index = 0x58, scratch_position = true }
 "burnsqr/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
