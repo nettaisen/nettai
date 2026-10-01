@@ -32,7 +32,7 @@ export type State = {
 
 -- The cubes' sheet (animation 0 a cube rising; the rows' are the cubes
 -- standing).
-local SPRITE = asset.sprite("immobilized")
+local SPRITE = asset.sprite("rock-cubes")
 -- How a rock looks absorbed (the original's obstacle kind 4: its own
 -- sprite, in the animation it stood in).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
@@ -70,14 +70,14 @@ local ROCK = define.identity {
     class = "field_object",
     version = 3,
     ai_index = 1,
-    look = { sprite = asset.sprite("immobilized"), anim = 1, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("rock-cubes"), anim = 1, palette = 0, shadow = true },
 }
 local ICE = define.identity {
     id = "ice-block",
     class = "field_object",
     version = 4,
     ai_index = 1,
-    look = { sprite = asset.sprite("immobilized"), anim = 2, palette = 0, shadow = true },
+    look = { sprite = asset.sprite("rock-cubes"), anim = 2, palette = 0, shadow = true },
 }
 
 -- The rows of `byte_80CF934` (animation, HP in twos, debris palette, break
@@ -86,7 +86,7 @@ local ICE = define.identity {
 local ROWS: { [number]: RockVariant } = {
     -- A rock cube anything breaks (no chip or stage places it).
     [0] = variant {
-        id = "rockcube/brittle",
+        id = "rockcube/rock/brittle",
         anim = 1,
         hp = 1,
         element = "null",
@@ -96,7 +96,7 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- RockCube's, and the stages'.
     [1] = variant {
-        id = "rockcube/cube",
+        id = "rockcube/rock/cube",
         anim = 1,
         hp = 200,
         element = "null",
@@ -106,7 +106,7 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- A hard one (no chip or stage places it).
     [2] = variant {
-        id = "rockcube/hard",
+        id = "rockcube/rock/hard",
         anim = 1,
         hp = 500,
         element = "null",
@@ -117,7 +117,7 @@ local ROWS: { [number]: RockVariant } = {
     -- The ice block: IceCube's, the stages', and what an obstacle encased
     -- in ice becomes.
     [3] = variant {
-        id = "rockcube/ice",
+        id = "rockcube/rock/ice",
         anim = 2,
         hp = 200,
         element = "aqua",

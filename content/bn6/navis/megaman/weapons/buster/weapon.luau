@@ -43,7 +43,7 @@ local buster = {}
 local SHOOT, RECOVER = 0x0, 0x4
 
 -- The sounds: the shot, and a throw's besides (the junk shot's).
-local SHOT_SOUND, THROW_SOUND = asset.sound("buster-6a"), asset.sound("junk-shot")
+local SHOT_SOUND, THROW_SOUND = asset.sound("buster-shot"), asset.sound("junk-shot")
 -- The heights the shot and a thrown obstacle fly at, 16.16.
 local SHOT_Z, THROW_Z = 0x18_0000, 0x0C_0000
 

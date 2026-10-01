@@ -29,7 +29,7 @@ export type State = {
 
 -- Sounds: a flash, the log in, going under.
 local FLASH_SOUND = asset.sound("bugfix-flash")
-local LOG_IN_SOUND = asset.sound("log-in-77")
+local LOG_IN_SOUND = asset.sound("log-in")
 local SUBMERGE_SOUND = asset.sound("invisible")
 -- Variant bug_fix: the flashes' ticks, then the wait.
 local FLASH_TICKS, FIRST_FLASH, WAIT = 0x78, 2, 0x1E
