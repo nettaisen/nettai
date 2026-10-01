@@ -1761,8 +1761,8 @@ arriving as it reaches that column. A hit on an enemy's body (`byte_80D08C4`) or
 store). All match, the steering too (a scratch scenario holding B); unverified: Param1 0 (the navi AI's).
 #### 3.6.25 GroundMan (navi chip subtype 10, T1 0x17)
 
-Chips 0x0FB GrndMan, 0x0FC EX, 0x0FD SP (params 0x20010800, …03, …04: nothing he runs reads them). Not yet
-content: the unmerged work in progress is on branch `worktree-agent-a4a2385d487c33845` (checked against this).
+Chips 0x0FB GrndMan, 0x0FC EX, 0x0FD SP (params 0x20010800, …03, …04: nothing he runs reads them). Content:
+chips/grndman (navi, drill, rock), through chips/0fb-grndman.
 
 **GroundMan, T1 0x17 (`sub_80BBB98`)**, spawned by `sub_80BBDE8` (`off_802CD5C[10]`) like ElmntMan: PanelX/Y,
 element, the user in RelatedObject1Ptr, the user's side and flip, the damage word, the controller's flag pointer in
@@ -1839,8 +1839,8 @@ Param3 0, Param4 set; the drill's battle-over path and its Param1-0 leave.
 
 #### 3.6.26 DustMan (navi chip subtype 11, T1 0x18)
 
-Chips 0x0FE DustMan, 0x0FF EX, 0x100 SP (Param1 0, 0, 4: overwritten). The WIP branch's scripts: objects/dust-man,
-dust-junk.
+Chips 0x0FE DustMan, 0x0FF EX, 0x100 SP (Param1 0, 0, 4: overwritten). Content: chips/dustman (navi, junk),
+through chips/0fe-dustman; the junk ball is objects/dust-ball.
 
 **DustMan, T1 0x18 (`sub_80BBF0C`)**, spawned by `sub_80BC0DA` (`off_802CD5C[11]`) like GroundMan. Init
 (`sub_80BBF30`): on his panel with Z's whole part 0 (a halfword store; the fraction is the spawner's r3, its
@@ -1896,7 +1896,7 @@ action 0 → 0x10; the excluded NameIDs; the junk's none look, a look without a 
 
 #### 3.6.27 DiveMan (navi chip subtype 13, T1 0xB)
 
-Chips 0x104 DiveMan, 0x105 EX, 0x106 SP (Aqua). The WIP branch's scripts: objects/dive-man, dive-wave.
+Chips 0x104 DiveMan, 0x105 EX, 0x106 SP (Aqua). Content: chips/diveman (navi, wave), through chips/104-diveman.
 
 **DiveMan, T1 0xB (`sub_80B99C0`)**, spawned by `sub_80B9B6E` (`off_802CD5C[13]`) like GroundMan; Z's whole part 0
 (the fraction 0x9B6F, from the spawner's address 0x080B9B6F). Init (`sub_80B99E4`): `sprite_decompress(8, 0xD)`
@@ -1940,7 +1940,7 @@ waits a dimming out, sprite paused), the battle's end, invalid panels ahead, a f
 
 #### 3.6.28 CircusMan (navi chip subtype 14, T1 0xE)
 
-Chips 0x107 CrcusMan, 0x108 EX, 0x109 SP. The WIP branch's script: objects/circus-man.
+Chips 0x107 CrcusMan, 0x108 EX, 0x109 SP. Content: chips/crcusman/navi, through chips/107-crcusman.
 
 **CircusMan, T1 0xE (`sub_80BA364`)**, spawned by `sub_80BA660` (`off_802CD5C[14]`); Z's whole part 0 (the fraction
 0xA661). Init (`sub_80BA388`): `sprite_decompress(8, 0xE)`, sprite (8, 0xE), no shadow, animation 0, palette 0,
@@ -1974,8 +1974,8 @@ and a drop off the field.
 
 #### 3.6.29 JudgeMan (navi chip subtype 15, T1 0xF)
 
-Chips 0x10A JudgeMan, 0x10B EX, 0x10C SP (Elec; Param1 20, 30, 40: his books' damage). The WIP branch's scripts:
-objects/judge-man, judge-whip, judge-book.
+Chips 0x10A JudgeMan, 0x10B EX, 0x10C SP (Elec; Param1 20, 30, 40: his books' damage). Content: chips/judgeman
+(navi, whip, book), through chips/10a-judgeman (`judgeman.summon { book_damage }`).
 
 **JudgeMan, T1 0xF (`sub_80BA708`)**, spawned by `sub_80BA920` (`off_802CD5C[15]`); Z's whole part 0 (the fraction
 0xA921). Init (`sub_80BA72C`): `sprite_decompress(8, 0xF)`, sprite (8, 0xF) with a ground shadow, animation 0,
@@ -2047,9 +2047,8 @@ navi at all).
 
 #### 3.6.30 TwinLdrs (navi chip subtype 20, PA chip 0x15C, T1 0x20)
 
-ProtoMn[SP] B + AntiNavi * + Colonel *. Not yet content (the WIP branch `worktree-agent-a8ec4fbd3af457f98` has the
-NameIDs' actor records as `registries/names.toml` and no script). ProtoMan leads and brings Colonel; both are T1
-0x20, told apart by Param1.
+ProtoMn[SP] B + AntiNavi * + Colonel *. Content: chips/twinldrs/navi, through chips/15c-twinldrs. ProtoMan leads
+and brings Colonel; both are T1 0x20, told apart by Param1.
 
 **The spawner, `sub_80BD9A2`** (`off_802CD5C[20]`): `object_spawnType1(0x20)` with the caller's r1..r3 as its
 position and r4 as its Params (the chip's: Param1 0); PanelX/Y, element, the damage word (r6), RelatedObject1 = r5
@@ -2132,7 +2131,7 @@ field; a failed Colonel spawn.
 #### 3.6.31 CrosOver (navi chip subtype 21, PA chip 0x15D, T1 0x21)
 
 Django D + Django2 D + Django3 D: MegaMan (Param1 0) with his buster and sword, and Django (Param1 1) with his Gun
-del Sol. Not yet content.
+del Sol. Content: chips/crosover/navi, through chips/15d-crosover.
 
 **The spawner, `sub_80BE3E8`** (`off_802CD5C[21]`), as TwinLdrs's (T1 0x21; ExtraVars[0] the flag pointer, set to
 1). **The object, `sub_80BDBA4`**, its sprite as `object_updateSprite`. Init (`sub_80BDBC8`):
@@ -2265,7 +2264,8 @@ Param1/Param3/no-flag-0x10 branches (MachGun's), Bass leaving off the field.
 #### 3.6.34 MstrCros (navi chip subtype 22, PA chip 0x15A, T1 0x23)
 
 FireHit3 A + AquaNdl3 A + ElcPuls3 A + RskyHny3 A: MegaMan's five Crosses of the user's game, each
-appearing by an enemy and using his Cross's move, then three of them together. Not yet content.
+appearing by an enemy and using his Cross's move, then three of them together. Content: chips/mstrcros/navi,
+through chips/15a-mstrcros.
 
 **The spawner, `sub_80BF160`** (`off_802CD5C[22]`): T1 0x23 (`object_spawnType1`, the caller's r1..r3 its position
 and r4 its Params), PanelX/Y, element, the damage word, RelatedObject1 = r5, ExtraVars[0] = r7 (a flag byte, set to
@@ -2353,24 +2353,24 @@ phase 4.
 #### 3.6.35 BigHook (navi chip subtype 23, Giga chip 0x12E, effect T4 0x8C)
 
 BigHook's navi spawner, `off_802CD5C[23]` = `sub_80EA11C`, is instant chip effect 14 (FlmHook's, `off_80EC3F0[14]`)
-too: it spawns the hook, effect #0x8C (`sub_80EA010`, objects/flame-hook, content since group E), with the chip's
+too: it spawns the hook, effect #0x8C (`sub_80EA010`, chips/flmhook/hook), with the chip's
 params as its Params (BigHook's 0x00000A01: Param1 1, Param2 0xA), on the user's panel (also kept in bytes +0x0C and
 +0x0D), with its element, side and flip, damage word and RelatedObject1. With Param1 set it keeps r7 in
 ExtraVars[1] and stores 1 there: from the navi chip controller that is its flag; from action 0x1C r7 is a ROM
 pointer and the write does nothing. Its destroy (`sub_80EA10A`) stores 0 through ExtraVars[1] unconditionally
 (clearing the controller's flag; 0 or ROM otherwise). The controller neither warps the user out nor back in for
-navi 0x17 (§3.6.7). With Param1 1 the hook's flames (attack #0xCA, objects/flame-hook-fire) swing from columns 4
+navi 0x17 (§3.6.7). With Param1 1 the hook's flames (attack #0xCA, chips/flmhook/fire) swing from columns 4
 then 5 (side 1: 3 then 2), their kind (Param2) 1 (faster, the other palette and shader, running while dimmed) and
 hit spark (Param3) 0xA.
 
-Lab: the official chips/0x12e-bighook/beast-charged and counter-cut-in (where the port stops: no script registers
-subtype 23), the scratch navis/0x12e-bighook/long, long-miss, long-adjacent, and FlmHook's pa/0x146..0x148 reach
-the hook. **Unverified**: a failed spawn.
+Lab: the official chips/0x12e-bighook scenarios (beast-charged and counter-cut-in among them), the scratch
+navis/0x12e-bighook/long, long-miss, long-adjacent, and FlmHook's pa/0x146..0x148 reach the hook; every one matches.
+**Unverified**: a failed spawn.
 
 #### 3.6.36 Darkness (navi chip subtype 24, PA chip 0x159, T1 0x25)
 
 VDoll F + VDoll F + Bass F (or BassAnly F). Dark MegaMan (Param1 0) raises
-a dark flame, then Bass (Param1 1) swoops in and slashes. Not yet content.
+a dark flame, then Bass (Param1 1) swoops in and slashes. Content: chips/darkness/navi, through chips/159-darkness.
 
 **The spawner, `sub_80BFCD0`** (`off_802CD5C[24]`): T1 0x25, as MstrCros's but the flag pointer in ExtraVars[1].
 **The object, `sub_80BF6EC`**, sprite as `object_updateSprite`. Init (`sub_80BF710`), by `byte_80BF7A8[Param1]` (8
