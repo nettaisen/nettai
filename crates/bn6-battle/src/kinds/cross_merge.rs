@@ -181,7 +181,8 @@ fn burst(b: &mut Battle, r: ObjectRef) {
     crate::kinds::player::form::navi_death_hook(b, r, name_id);
     let o = b.objects.get(r);
     let (x, y) = crate::kinds::player::panel_coordinates(o.panel.x, o.panel.y);
-    if let Some(e) = effect::spawn(b, Vec3 { x, y, z: 0x10_0000 }, 3, 0, 0, 0) {
+    let look = b.content.defs.roles.effect(crate::content::EffectRole::Deletion);
+    if let Some(e) = effect::spawn(b, Vec3 { x, y, z: 0x10_0000 }, look, 0, 0, 0) {
         b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
     }
     b.objects.free(r);

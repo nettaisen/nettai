@@ -209,7 +209,7 @@ local function tick(me: Object)
         s.regrow = REGROW
     end
     local a = me.action
-    if a ~= SWOOP and a ~= BLOW_AWAY and c.region == 0 then
+    if a ~= SWOOP and a ~= BLOW_AWAY and c.region == nil then
         local left = s.regrow - 1
         s.regrow = left
         if left <= 0 then

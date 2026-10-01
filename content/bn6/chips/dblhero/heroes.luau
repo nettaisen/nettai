@@ -62,7 +62,7 @@ local PROTOMAN_LEAVES = 4
 -- over the rest of the row from the enemy's first panel
 -- (`byte_80BD2CC`, by the panels to the far edge: one to six; none for
 -- none or seven).
-local NO_SPARK = 0xFF
+local NO_SPARK: Spark? = nil
 local SHOT_HIT_MOD = 3
 local SHOT_REGIONS: { [number]: Region? } = {
     [1] = regions.single,

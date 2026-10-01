@@ -101,7 +101,7 @@ local function tick(me: Object)
         error(string.format("aura head action %#x reads past its table", a))
     end
     local highlight = true
-    if c.region == 0 and me.action ~= 4 and me.lifecycle ~= "destroy" then
+    if c.region == nil and me.action ~= 4 and me.lifecycle ~= "destroy" then
         if me.panel_x + me.panel_y * 0x100 == s.hit_panel then
             highlight = false
         else
