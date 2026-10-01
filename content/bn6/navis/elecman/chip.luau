@@ -6,10 +6,6 @@
 -- an enemy navi in reach of a wide slash. There he slashes the panel ahead
 -- (top to bottom) and comes back to his panel. See
 -- docs/engine/standard-chips.md, "Action 0x0A".
---
--- Its record stays the pack's (its damage grows with his level, which
--- chip definitions take with step 10's damage formulas) and names this
--- module, whose `action` it runs (docs/design/content-model-v2.md §12).
 
 local collision = require("../../rules/collision")
 local follow_effect = require("../../objects/follow-effect/follow_effect")
@@ -173,7 +169,22 @@ end
 
 local PHASES = { [SLIDE] = slide, [SLASH] = slash, [RETURN] = return_home, [RECOVER] = recover }
 
-return {
+return define.chip {
+    id = "delecswd",
+    name = "DElecSwd",
+    description = "Dash fwd\nand slash\nw/ElecSwd",
+    codes = { "E" },
+    element = "elec",
+    family = "elec",
+    class = "special",
+    rarity = 1,
+    mb = 99,
+    damage = { formula = "navi_level", base = 40, per_level = 20 },
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "library", "variable_damage" },
+    library = { number = 49, index = 0, sort = 275 },
+    slot_in_limit = 3,
     -- `sub_80F09B8` (`off_80F09CC`).
     action = define.action {
         id = "delecswd/action",

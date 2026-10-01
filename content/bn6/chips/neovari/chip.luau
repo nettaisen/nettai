@@ -3,19 +3,30 @@
 -- (lib/swords/vari) with three sequences: down, forward, up gives CrosSwrd;
 -- back, forward, back, A+B SprSonic; up, A+B, down, A+B, up, A+B DblDream.
 -- Letting go of A, or 48 ticks, gives a Sword.
---
--- Its record stays the pack's for now (SlashCross's A-charge, weapon 0x11,
--- asks for its action by number, and the Beast rush's chain leaves the
--- variable swords out by theirs): this is its action, which registration
--- by number runs (chips/053-neovari; docs/design/content-model-v2.md §12).
 
 local crosswrd = require("../crosswrd/chip")
 local dbldream = require("../dbldream/chip")
-local sonicbom = require("../sonicbom/chips")
+local sprsonic = require("../sprsonic/chip")
 local sword = require("../sword/chip")
 local vari = require("../../lib/swords/vari")
 
-return {
+return define.chip {
+    id = "neovari",
+    name = "NeoVari",
+    description = "A magical\nshifting\nsword.",
+    codes = { "N" },
+    element = "null",
+    family = "sword",
+    class = "standard",
+    rarity = 3,
+    mb = 52,
+    damage = 220,
+    hit_param = 30,
+    lockout = 0,
+    flags = { "has_damage", "standard_library", "library" },
+    library = { number = 82, index = 82, sort = 322 },
+    slot_in_limit = 1,
+    traits = { "no_chain" },
     action = vari.action {
         id = "neovari/action",
         -- The sequences (`off_80EF824`), facing right (flip 0) and mirrored
@@ -34,14 +45,12 @@ return {
             },
         },
         -- CrosSwrd, SprSonic, DblDream (`byte_80EF958`).
-        picks = { crosswrd.action, sonicbom.actions.sprsonic, dbldream.action },
-        sword = sword.action,
+        picks = { crosswrd, sprsonic, dbldream },
+        sword = sword,
         -- SlashCross's A-charge runs it charged: its pick is what becomes
         -- the charged slash.
         charged = "own",
         random = 4,
-        no_charged = sonicbom.actions.sprsonic,
-        -- The picks' chips, by number until they are definitions (§12).
-        legacy = { chips = { 0x176, 0x177, 0x178 }, sword = 0x47 },
+        no_charged = sprsonic,
     },
 }

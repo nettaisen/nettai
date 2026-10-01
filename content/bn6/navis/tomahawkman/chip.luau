@@ -6,10 +6,6 @@
 -- row, to the field's edge and six at most, 5 ticks apart, each breaking
 -- its panel. 30 ticks later the axe goes, and he recovers for 30. See
 -- docs/engine/standard-chips.md, "Action 0x0A".
---
--- Its record stays the pack's (its damage grows with his level, which
--- chip definitions take with step 10's damage formulas) and names this
--- module, whose `action` it runs (docs/design/content-model-v2.md §12).
 
 local axe = require("./axe")
 local collision = require("../../rules/collision")
@@ -103,7 +99,22 @@ end
 
 local PHASES = { [RAISE] = raise, [SWING] = swing, [RECOVER] = recover }
 
-return {
+return define.chip {
+    id = "etomahwk",
+    name = "ETomahwk",
+    description = "Unleash\na giant\naxe attck",
+    codes = { "T" },
+    element = "null",
+    family = "null",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = { formula = "navi_level", base = 100, per_level = 30 },
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "library", "variable_damage" },
+    library = { number = 406, index = 0, sort = 7 },
+    slot_in_limit = 1,
     -- `sub_80F18AC` (`off_80F18C0`).
     action = define.action {
         id = "etomahwk/action",

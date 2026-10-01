@@ -1,16 +1,29 @@
 --!strict
 -- WideSwrd: a slash on the column ahead.
---
--- Its record stays the pack's for now (LifeSrd's Program Advance recipes name it by number): this
--- is its action, which registration by number runs (docs/design/content-model-v2.md §5.1, "As
--- built").
 
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
 local slashes = require("../../navis/00-megaman/forms/slashcross/slashes")
+local lockon = require("../../rules/lockon")
 
-return {
+return define.chip {
+    id = "wideswrd",
+    name = "WideSwrd",
+    description = "Cuts enmy\nin front!\nRange: 3",
+    codes = { "H", "L", "S", "*" },
+    element = "null",
+    family = "sword",
+    class = "standard",
+    rarity = 1,
+    mb = 12,
+    damage = 80,
+    hit_param = 30,
+    lockout = 0,
+    flags = { "has_damage", "standard_library", "library" },
+    beast = { lockon = lockon.widesht },
+    library = { number = 71, index = 71, sort = 509 },
+    slot_in_limit = 3,
     action = slash.action {
         id = "wideswrd/action",
         blade = parts.blades.sword,

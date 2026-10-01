@@ -10,15 +10,22 @@ local anti_recovery = require("../chips/antirecv/controller")
 local antidmg_counter = require("../chips/antidmg/counter")
 local antiswrd_counter = require("../chips/antiswrd/counter")
 local barriers = require("../lib/barriers/barriers")
+local beast_out = require("../chips/beastout/chip")
+local beat = require("../chips/beat/chip")
 local beast_claw = require("../navis/00-megaman/weapons/beast-claw/weapon")
 local bodygrd_counter = require("../chips/bodygrd/counter")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
 local dust_beast_scatter = require("../navis/00-megaman/forms/dustcross-beast/scatter")
 local encased_bubble = require("../objects/encased-bubble/bubble")
+local invalid = require("../chips/invalid/chip")
+local megabstr = require("../chips/megabstr/chip")
+local rush = require("../chips/rush/chip")
+local tango = require("../chips/tango/chip")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/00-megaman/forms/groundcross/drill")
 local slash_beast_lunge = require("../navis/00-megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/00-megaman/forms/slashcross/charge")
+local stun_strike = require("../lib/swords/stun_strike")
 local supports = require("../lib/supports/controller")
 
 return define.roles {
@@ -33,7 +40,7 @@ return define.roles {
         body_guard_counter = bodygrd_counter.action,
         -- The strike the navi's request 0x80000 starts from idle (the
         -- machine swords' strike by the attack's variant).
-        stun_strike = { legacy = { action = 0x49 } },
+        stun_strike = stun_strike.action,
         -- What a Cross navi protected at the battle's end runs
         -- (GroundCross's drill).
         cross_protect = ground_drill.action,
@@ -60,6 +67,19 @@ return define.roles {
         -- AntiRecv's counterattack, which a heal meets when the other side
         -- has AntiRecv armed.
         anti_recovery = anti_recovery.kind,
+    },
+    chips = {
+        -- What a zeroed chip field reads (the original's chip 0): an empty
+        -- hand's chip, and a chip use with none.
+        zeroed = megabstr,
+        -- The custom screen's Beast Out button, as a chip in the hand.
+        beast_out = beast_out,
+        -- What a selection the custom screen can't allow becomes.
+        invalid = invalid,
+        -- The chips the supports' telops name.
+        rush = rush,
+        beat = beat,
+        tango = tango,
     },
     hooks = {
         -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with

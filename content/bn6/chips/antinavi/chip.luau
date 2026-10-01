@@ -3,11 +3,25 @@
 -- around, so its navi comes for this side instead (the dimming service's
 -- `sub_800BDB2`). Its controller is the trap chips' (lib/traps/controller);
 -- it sets no object of its own.
---
--- Its record stays the pack's for now (the dimming service names it by
--- number, and BodyGrd's recipe names it): this is its `dimming` hook, which
--- registration by number runs (chips/0ba-antinavi).
 
 local traps = require("../../lib/traps/controller")
 
-return { dimming = traps.hook() }
+return define.chip {
+    id = "antinavi",
+    name = "AntiNavi",
+    description = "Takes the\nenemy's\nNavi away",
+    codes = { "F", "L", "T", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 3,
+    mb = 50,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    library = { number = 188, index = 188, sort = 10 },
+    slot_in_limit = 1,
+    trap = "anti_navi",
+    dimming = traps.hook(),
+}

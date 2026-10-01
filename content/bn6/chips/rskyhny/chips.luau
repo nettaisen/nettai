@@ -2,13 +2,9 @@
 -- RskyHny1-3: a hive that sends a bee ahead, and another for each hit the
 -- navi takes in the next three windows (./action, ./bee); each level's
 -- bees fly faster.
---
--- RskyHny3's record stays the pack's for now (MstrCros's Program Advance
--- recipe names it by number): this module gives its action, which
--- registration by number runs (chips/027-rskyhny3; docs/design/
--- content-model-v2.md §12).
 
 local action = require("./action")
+local lockon = require("../../rules/lockon")
 
 -- The bees by level (the chips' first parameter, `byte_80D3164`): the
 -- palette, and the speeds across and along the field.
@@ -47,6 +43,23 @@ return {
         beast = { lockon = 1 },
         action = action.action { bee = BEES[2] },
     },
-    -- RskyHny3's record's action.
-    { action = action.action { id = "rskyhny3/action", bee = BEES[3] } },
+    define.chip {
+        id = "rskyhny3",
+        name = "RskyHny3",
+        description = "Bees attk\nwhle hive\ndefending",
+        codes = { "A", "D", "M" },
+        element = "wood",
+        family = "wood",
+        class = "standard",
+        rarity = 2,
+        mb = 35,
+        damage = 20,
+        hit_param = 30,
+        lockout = 0,
+        flags = { "has_damage", "standard_library", "library" },
+        beast = { lockon = lockon.cannon },
+        library = { number = 41, index = 41, sort = 400 },
+        slot_in_limit = 3,
+        action = action.action { id = "rskyhny3/action", bee = BEES[3] },
+    },
 }
