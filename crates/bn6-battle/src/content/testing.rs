@@ -63,10 +63,6 @@ pub const BOMB: ChipId = 0x103;
 pub const SEED: ChipId = 0x104;
 pub const FLASH: ChipId = 0x105;
 pub const BUG: ChipId = 0x106;
-/// A chip that sends bees (action 0x39, RskyHny's).
-pub const BEES: ChipId = 0x107;
-/// A chip that sends an elec dragon (action 0x51, subtype 1).
-pub const DRAGON: ChipId = 0x108;
 /// A sword (action 0x13, subtype 1: a column of three panels ahead).
 pub const BLADE: ChipId = 0x109;
 /// A step sword (the same, with its first parameter set: it steps two
@@ -244,6 +240,10 @@ pub const BUSTER_UP: &str = "busterup";
 pub const ATTACK_10: &str = "atk-10";
 pub const NAVI_20: &str = "navi-20";
 pub const TICK_SHOT: &str = "test/tick-shot";
+/// BN6's RskyHny2 and ElecDrgn (chips/rskyhny, chips/elecdrgn): chips
+/// content defines, which send bees and an elec dragon.
+pub const BEES: &str = "rskyhny2";
+pub const DRAGON: &str = "elecdrgn";
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
 /// definitions the engine's tests run.
@@ -469,7 +469,35 @@ fn assets() -> bn6_content_api::AssetNames {
     ] {
         a.sounds.insert(name.into(), id);
     }
+    standard_chip_assets(&mut a);
     a
+}
+
+/// The asset names the standard chip actions' modules use (content model
+/// v2, step 8g), with BN6's numbers.
+fn standard_chip_assets(a: &mut bn6_content_api::AssetNames) {
+    let sprite = |c, i| SpriteId { category: c, index: i };
+    for (name, id) in [
+        ("gust", sprite(0x0C, 0x2E)),
+        ("wind-rack", sprite(0x0C, 0x27)),
+        ("tengu-fan", sprite(0x0C, 0x5C)),
+        ("swirl", sprite(0x0C, 0x28)),
+        ("thunder-doll", sprite(0x10, 0x12)),
+        ("thunder-doll-hand", sprite(0x0C, 0x60)),
+        ("gun-del-sol", sprite(0x0C, 0x3B)),
+        ("sun-beam", sprite(0x0C, 0x3C)),
+        ("sun-beam-ex", sprite(0x0C, 0x47)),
+        ("hive", sprite(0x0C, 0x5E)),
+        ("honey-bee", sprite(0x10, 0x31)),
+        ("dragon", sprite(0x04, 0x10)),
+    ] {
+        a.sprites.insert(name.into(), id);
+    }
+    for (name, id) in
+        [("windrack", 0x11F), ("beast-over", 0x19A), ("sun-beam", 0xF9), ("buzz", 0x1A8), ("form-change", 0xF7)]
+    {
+        a.sounds.insert(name.into(), id);
+    }
 }
 
 /// Where the BN6 scripts are (the source overlay in this repository).
@@ -489,8 +517,13 @@ pub fn scripts() -> Scripts {
             let modules = [
                 ("lib/slot", "lib/slot"),
                 ("objects/attachment/attachment", "objects/attachment/attachment"),
-                ("objects/sun-beam/sun_beam", "objects/sun-beam/sun_beam"),
-                ("chips/001-sungun1/chip", "chips/00f-gundels1/chip"),
+                // GunDelSol (content model v2): the chips' own actions, which
+                // the numbered SunGuns reach through the numbered
+                // registration's module.
+                ("chips/gundels/beam", "chips/gundels/beam"),
+                ("chips/gundels/action", "chips/gundels/action"),
+                ("chips/gundels/chips", "chips/gundels/chips"),
+                ("chips/001-sungun1/chip", "chips/010-gundels2/chip"),
                 ("chips/eraseman/mark", "chips/eraseman/mark"),
                 ("chips/eraseman/beam", "chips/eraseman/beam"),
                 ("chips/eraseman/navi", "chips/eraseman/navi"),
@@ -548,6 +581,13 @@ pub fn scripts() -> Scripts {
                 ("lib/projectile", "lib/projectile"),
                 ("lib/sword", "lib/sword"),
                 ("objects/gust/gust", "objects/gust/gust"),
+                // WindRack's action, which TenguCross's charged shot swings
+                // with its fan, and DolThdr's, which ElecCross's strikes
+                // with (content model v2).
+                ("lib/arm", "lib/arm"),
+                ("chips/windrack/action", "chips/windrack/action"),
+                ("chips/dolthdr/action", "chips/dolthdr/action"),
+                ("chips/dolthdr/doll", "chips/dolthdr/doll"),
                 ("objects/sword-wave/sword_wave", "objects/sword-wave/sword_wave"),
                 ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
                 ("objects/reflector-shield/reflector_shield", "objects/reflector-shield/reflector_shield"),
@@ -588,12 +628,15 @@ pub fn scripts() -> Scripts {
                 ("chips/vdoll/curse", "chips/vdoll/curse"),
                 ("chips/vdoll/sparkles", "chips/vdoll/sparkles"),
                 ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
-                ("chips/00e-bees/chip", "chips/025-rskyhny1/chip"),
-                ("objects/honey-bee/honey_bee", "objects/honey-bee/honey_bee"),
-                ("chips/00f-dragon/chip", "chips/02e-heatdrgn/chip"),
-                ("lib/dragon", "lib/dragon"),
-                ("objects/dragon-head/dragon_head", "objects/dragon-head/dragon_head"),
-                ("objects/dragon-body/dragon_body", "objects/dragon-body/dragon_body"),
+                // RskyHny and the dragons (content model v2): definitions.
+                ("chips/rskyhny/bee", "chips/rskyhny/bee"),
+                ("chips/rskyhny/action", "chips/rskyhny/action"),
+                ("chips/rskyhny/chips", "chips/rskyhny/chips"),
+                ("lib/dragons/dragon", "lib/dragons/dragon"),
+                ("lib/dragons/body", "lib/dragons/body"),
+                ("lib/dragons/head", "lib/dragons/head"),
+                ("lib/dragons/action", "lib/dragons/action"),
+                ("chips/elecdrgn/chip", "chips/elecdrgn/chip"),
                 // The swords (content model v2): the chips' own slashes and
                 // strikes, which the test chips reach through the numbered
                 // registrations' modules.
@@ -782,7 +825,6 @@ fn kinds() -> Vec<ObjectKind> {
         actor_list_entry: None,
     };
     let mut kinds = vec![
-        kind("sun-beam", Pool::Effect, 0x48, "objects/sun-beam/sun_beam"),
         kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball"),
         kind("element-pillar", Pool::Attack, 0x61, "objects/element-pillar/element_pillar"),
         kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
@@ -803,14 +845,10 @@ fn kinds() -> Vec<ObjectKind> {
         kind("justice-one", Pool::Attack, 0xAE, "objects/justice-one/justice_one"),
         kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
-        kind("gust", Pool::Attack, 0x49, "objects/gust/gust"),
         kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
         kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
         kind("reflected-shot", Pool::Attack, 0x2F, "objects/reflected-shot/reflected_shot"),
-        kind("honey-bee", Pool::Attack, 0x74, "objects/honey-bee/honey_bee"),
-        kind("dragon-head", Pool::Attack, 0xC9, "objects/dragon-head/dragon_head"),
-        kind("dragon-body", Pool::Attack, 0xC8, "objects/dragon-body/dragon_body"),
         kind("invisible", Pool::Effect, 0x5D, "objects/invisible/invisible"),
         ObjectKind { actor_list_entry: Some(8), ..kind("rock", Pool::Attack, 0x59, "objects/rock/rock") },
         kind("rock-cube", Pool::Effect, 0x37, "objects/rock-cube/rock_cube"),
@@ -858,7 +896,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("sun-meteor", Pool::Attack, 0xB5, "objects/sun-meteor/sun_meteor"),
         kind("moon-beam", Pool::Attack, 0xB6, "objects/moon-beam/moon_beam"),
         kind("drill", Pool::Attack, 0x71, "objects/drill/drill"),
-        kind("thunder-column", Pool::Attack, 0x8B, "objects/thunder-column/thunder_column"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -901,6 +938,10 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
     }
 }
 
+/// A SunGun: a record that names GunDelSol's action (0x37) with its level
+/// as the subtype, which the numbered registration runs as BN6's GunDelSol
+/// of that level (chips/gundels). (Its `gun_del_sol` is the pack's v1 chip
+/// data, which no script reads any more.)
 fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
     let beam_look = if level < 3 { 0 } else { 1 };
     ChipData {
@@ -1000,23 +1041,6 @@ fn named_chips() -> Vec<ChipData> {
         thrown(SEED, "Seed", 12, [0, 0, 0, 0], 10),
         thrown(FLASH, "Flash", 14, [1, 0, 0, 0], 40),
         thrown(BUG, "Bug", 7, [0, 0, 0, 0], 0),
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            element: Element::Wood,
-            hit_param: 30,
-            params: [1, 0, 0, 0],
-            damage: 20,
-            script: Some("chips/00e-bees/chip".into()),
-            ..chip(BEES, "Bees", 0x39, 0)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            element: Element::Elec,
-            hit_param: 30,
-            damage: 100,
-            script: Some("chips/00f-dragon/chip".into()),
-            ..chip(DRAGON, "Dragon", 0x51, 1)
-        },
         blade(BLADE, "Blade", 0x13, 1, false),
         blade(STEP_BLADE, "StepBld", 0x13, 1, true),
         blade(STUN_BLADE, "StunBld", 0x49, 2, false),
@@ -1228,7 +1252,9 @@ fn thrown(id: ChipId, name: &str, subtype: u8, params: [u8; 4], damage: u16) -> 
 
 fn navi() -> NaviData {
     let mut attach_points = vec![AttachPoint { x: 4, y: 24 }; 34];
+    // The blade's point, and the gun's (BN6's gun sits at point 0x0D).
     attach_points[3] = GUN_POINT;
+    attach_points[0x0D] = GUN_POINT;
     NaviData {
         id: 0,
         name: "MegaMan".into(),
@@ -1681,11 +1707,13 @@ fn animations() -> Animations {
     navi[0x0A] = vec![f(6, 0), f(30, LAST | LOOP)];
     let mut sprites = std::collections::BTreeMap::new();
     sprites.insert(NAVI_SPRITE, navi);
-    // The gun: out, firing, away.
-    sprites.insert(SpriteId { category: 0x0C, index: 0x01 }, vec![vec![f(3, 0), f(3, LAST)], vec![f(2, 0), f(2, LAST | LOOP)], once(4)]);
-    for index in [0x10, 0x11] {
+    // The gun: out, firing, away; the sun beams.
+    sprites.insert(SpriteId { category: 0x0C, index: 0x3B }, vec![vec![f(3, 0), f(3, LAST)], vec![f(2, 0), f(2, LAST | LOOP)], once(4)]);
+    for index in [0x3C, 0x47] {
         sprites.insert(SpriteId { category: 0x0C, index }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     }
+    // The first attachment rows' sprite (fillers).
+    sprites.insert(SpriteId { category: 0x0C, index: 0x01 }, vec![once(4)]);
     // Rocks: rising, then standing.
     sprites.insert(
         SpriteId { category: 0x10, index: 0 },
