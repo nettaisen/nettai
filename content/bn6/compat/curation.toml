@@ -7,6 +7,7 @@
 
 ["actions.toml"]
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
+"tornado/back-spread" = "0x2F: action 0x2F's subtype 3, which no chip has (chips/tornado/chips.luau)"
 
 ["assets.toml"]
 "sounds.big-sword-swing" = "0x0CE: LifeSrd's, DrkSword's and DblDream's swing (the swords exemplar)"
@@ -278,7 +279,7 @@
 "sprites.sprite-0c-1d" = "unnamed; used by attachment 0x0D"
 "sprites.sprite-0c-1e" = "unnamed; used by body overlay 0x05"
 "sprites.burner-2" = "0c-1f: attachment 0x1E, the burner HeatCross holds (lib/burner/burn.luau)"
-"sprites.sprite-0c-21" = "unnamed; used by flying shot 0x03, flying shot 0x04, flying shot 0x05, flying shot 0x06"
+"sprites.beast-shot" = "0c-21: flying shots 0x03 to 0x06, the Falzar Beast buster's shots (objects/flying-shot/flying_shot.luau)"
 "sprites.sprite-0c-27" = "unnamed; used by attachment 0x2A"
 "sprites.burner" = "0c-29: attachment 0x16, FireBrn's burner (lib/burner/burn.luau)"
 "sprites.bow" = "0c-2a: attachment 0x17 and flying shot 0x02, TrnArrw's bow and arrow (chips/trnarrw/chips.luau)"
@@ -306,7 +307,7 @@
 "sprites.sprite-0c-60" = "unnamed; used by attachment 0x29"
 "sprites.sprite-0c-61" = "unnamed; used by attachment 0x2C"
 "sprites.sprite-0c-63" = "unnamed; used by body overlay 0x0D"
-"sprites.sprite-10-03" = "unnamed; used by shock wave 0x00, shock wave 0x01, shock wave 0x02, shock wave 0x03, shock wave 0x04, shock wave 0x05, shock wave 0x06, shock wave 0x07, shock wave 0x08, shock wave 0x09, shock wave 0x0A, shock wave 0x0B, shock wave 0x0C, shock wave 0x0D, shock wave 0x0E, shock wave 0x0F"
+"sprites.shock-wave" = "10-03: the shock wave, attack object 0x16 (chips/wavearm/wave.luau)"
 "sprites.sprite-10-08" = "unnamed; used by absorbed obstacle 0x05, NameID 0x0CE's look"
 "sprites.sprite-10-0a" = "unnamed; used by effect 0x60"
 "sprites.sprite-10-0b" = "unnamed; used by effect 0x61"

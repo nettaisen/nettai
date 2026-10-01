@@ -105,6 +105,15 @@ collision.second_drill = define.collision {
     row_offset = 0x250,
 }
 
+-- A thrown attack that pierces invisibility and flashing and breaks guards
+-- and ice (row 0x17: the flying shot's first kind).
+collision.piercing_break_thrown = define.collision {
+    id = "piercing-break-thrown",
+    side0 = 0x8000008E,
+    side1 = 0x4000008E,
+    row_offset = 0xB8,
+}
+
 -- An attack with the flag 0x800, whose test no routine was found for (row
 -- 0x12: a tornado).
 collision.tornado = define.collision { id = "tornado", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }

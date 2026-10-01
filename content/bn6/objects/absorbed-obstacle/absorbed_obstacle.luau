@@ -51,14 +51,21 @@ function absorbed_obstacle.spawn(obstacle: Object, kind: number, side: number): 
     return o
 end
 
--- `sub_80E9810`: the obstacle's look, and the flight toward its side's navi.
-local function init(me: Object)
-    me:set_panel_from_coordinates()
-    local kind = me:param(1)
+-- The sprite of an absorbed obstacle of kind `kind` (`sub_80E9810`'s
+-- table; a thrown obstacle, objects/flying-shot, takes it too).
+function absorbed_obstacle.sprite(kind: number): SpriteId
     local sprite_id: SpriteId? = data.objects.absorbed_sprites[kind]
     if sprite_id == nil then
         error(string.format("absorbed obstacle kind %d reads past sub_80E9810's sprite table", kind))
     end
+    return sprite_id
+end
+
+-- `sub_80E9810`: the obstacle's look, and the flight toward its side's navi.
+local function init(me: Object)
+    me:set_panel_from_coordinates()
+    local kind = me:param(1)
+    local sprite_id = absorbed_obstacle.sprite(kind)
     local sprite = me.sprite
     sprite:load(sprite_id)
     sprite.shadow = "hidden"

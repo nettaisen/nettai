@@ -13,10 +13,8 @@ local sparks = require("../../lib/sparks")
 
 local tornado = {}
 
--- A tornado's look and rhythm (a row of `byte_80CA064`, by the original's
--- first parameter): its palette, the ticks between hits, and the bug its
--- hits carry (nil: none). A plain one takes its panel's variant.
-export type Variant = { palette: number, rearm: number, bug: number?, plain: boolean? }
+-- A tornado's look and rhythm (`TornadoVariant`, types.d.luau).
+export type Variant = TornadoVariant
 
 export type State = {
     variant: Variant,
@@ -28,10 +26,10 @@ export type State = {
     rearm_ticks: number,
 }
 
--- What a tornado is spawned with: its variant, the status its hits
--- inflict (0: none; the original's second parameter) and its ticks (the
--- third and fourth).
-export type Spec = { variant: Variant, status: number, ticks: number }
+-- What a tornado is spawned with (`TornadoSpec`, types.d.luau): its
+-- variant, the status its hits inflict (0: none; the original's second
+-- parameter) and its ticks (the third and fourth).
+export type Spec = TornadoSpec
 
 local function variant(v: Variant): Variant
     return define.record("tornado-variant", v)
