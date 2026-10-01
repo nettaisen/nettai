@@ -84,6 +84,7 @@ rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 drill = { pool = "attack", index = 0x71 }
 "rskyhny/bee" = { pool = "attack", index = 0x74 }
 "spoutcross-beast/surge" = { pool = "attack", index = 0x76 }
+instrument = { pool = "attack", index = 0x78 }
 "tengucross-beast/whirlwind" = { pool = "attack", index = 0x81 }
 "dolthdr/doll" = { pool = "attack", index = 0x82 }
 "moonbld/blade" = { pool = "attack", index = 0x85, scratch_position = true }
@@ -156,6 +157,7 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 "aquandl/volley" = { pool = "effect", index = 0x40, scratch_position = true }
 meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
+"instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
