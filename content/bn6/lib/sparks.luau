@@ -14,9 +14,9 @@ local BY_ELEMENT: { [number]: Spark } = {
     [5] = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 },
 }
 
--- The element sparks by name (hit effects 1 to 3), for hits that name
+-- The element sparks by name (hit effects 1 to 4), for hits that name
 -- theirs rather than take their element's.
-sparks.fire, sparks.aqua, sparks.elec = BY_ELEMENT[1], BY_ELEMENT[2], BY_ELEMENT[3]
+sparks.fire, sparks.aqua, sparks.elec, sparks.wood = BY_ELEMENT[1], BY_ELEMENT[2], BY_ELEMENT[3], BY_ELEMENT[4]
 
 -- The plain hit (spark 0) and the charged shot's (5), as named sparks.
 sparks.plain = BY_ELEMENT[0]

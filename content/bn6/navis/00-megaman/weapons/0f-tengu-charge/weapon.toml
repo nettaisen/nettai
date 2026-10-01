@@ -1,5 +1,6 @@
 # MegaMan's weapon routine 0x0F, TenguCross's charged shot (`sub_8011C88`), is a
-# script. The action it names, 0x3F (WindRack's), is a standard chip's.
+# script. The action it starts is WindRack's (0x3F, chips/windrack), with
+# TenguCross's fan: `tengucross/charge/gust`.
 
 id = 0x0F
 name = "Tengu charge"
