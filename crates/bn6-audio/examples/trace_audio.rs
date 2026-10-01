@@ -10,8 +10,9 @@
 //! where the engine leaves the recording (or, with `--keep-going`, where it
 //! panics on something it doesn't implement yet).
 //!
-//! The content pack (the battle data the engine runs on, and the sound)
-//! comes from `bn6-extract content <rom> <pack>`.
+//! The content pack (the assets, among them the sound) comes from
+//! `bn6-extract content <rom> <pack>`; the battle content the engine runs
+//! on is this repository's content/bn6 (or `$BN6_CONTENT`).
 
 use bn6_audio::{AudioOut, BattleAudio, FPS, SAMPLE_RATE, SoundCue, wav};
 use bn6_compat::trace;
@@ -125,7 +126,7 @@ fn main() {
     };
     let (bank, _) = bn6_content::pack::load_sound(Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
     let bank = Arc::new(bank);
-    let (content, _) = bn6_content::pack::load_battle(Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
+    let (content, _) = bn6_content::pack::load_battle(&bn6_content::root::bn6(), Path::new(&o.pack)).unwrap_or_else(|r| fail(r));
     let content = Arc::new(content);
     let rounds = trace::rounds(&o.trace).unwrap_or_else(|e| {
         eprintln!("{}: {e}", o.trace);

@@ -3,23 +3,32 @@
 -- §7.4). A role whose target is still a v1 registration names it through
 -- the transitional `legacy` marker (an action by its number, a kind by its
 -- key), counted by the ratchet; a family that converts the target names its
--- definition here instead. The trap chips' counters (AntiDmg's, AntiSwrd's,
--- BodyGrd's) join when those chips convert; until then their roles are
--- unfilled.
+-- definition here instead.
 
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
+local anti_recovery = require("../chips/antirecv/controller")
+local antidmg_counter = require("../chips/antidmg/counter")
+local antiswrd_counter = require("../chips/antiswrd/counter")
 local barriers = require("../lib/barriers/barriers")
+local bodygrd_counter = require("../chips/bodygrd/counter")
 local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
+local encased_bubble = require("../objects/encased-bubble/bubble")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local guardian_statue = require("../chips/guardian/statue")
 local rock = require("../objects/rock/rock")
+local supports = require("../lib/supports/controller")
 
 return define.roles {
     actions = {
         -- The charged shot a navi's request starts from idle without its
         -- weapon's setup (the original's action 0x16).
         forced_charged_shot = charged_shot.action,
+        -- The trap chips' counters, which a trap that caught a hit starts
+        -- (the original's actions 0x47, 0x48 and 0x4B; reactive.rs).
+        anti_damage_counter = antidmg_counter.action,
+        anti_sword_counter = antiswrd_counter.action,
+        body_guard_counter = bodygrd_counter.action,
         -- The strike the navi's request 0x80000 starts from idle (the
         -- machine swords' strike by the attack's variant).
         stun_strike = { legacy = { action = 0x49 } },
@@ -48,8 +57,11 @@ return define.roles {
         absorbed_obstacle = absorbed_obstacle.kind,
         -- GroundCross's charged chips' falling rocks.
         falling_rock = falling_rock.kind,
-        -- The NaviCust supports' controller (effect object #0x79).
-        support = { legacy = { kind = "support" } },
+        -- The NaviCust supports' controller (Rush's, Beat's and Tango's).
+        support = supports.kind,
+        -- AntiRecv's counterattack, which a heal meets when the other side
+        -- has AntiRecv armed.
+        anti_recovery = anti_recovery.kind,
     },
     hooks = {
         -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with
@@ -58,5 +70,8 @@ return define.roles {
         first_barrier = function(navi: Object)
             barriers.raise(navi, barriers.barrier_10, true)
         end,
+        -- What an obstacle encased in ice or a bubble becomes
+        -- (`sub_801813A`'s end).
+        encased = encased_bubble.replace,
     },
 }

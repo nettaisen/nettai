@@ -19,6 +19,7 @@ end
 return define.chip {
     id = "synctrgr",
     name = "SyncTrgr",
+    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "mega",
     rarity = 4, mb = 80, damage = 0, hit_param = 10, lockout = 20,

@@ -19,7 +19,11 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | The link navis' own chips | A record that runs the action its module exports (`{ action = define.action { ... } }`), for an action number registration can't claim; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds), chips/190-heatpres ... chips/199-dustbrk |
 | MegaMan's buster, charged shot and blank shot; HeatCross's charged shot | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a role the ruleset starts (`forced_charged_shot`, rules/roles.luau) | navis/00-megaman/weapons/{buster,charged-shot,blank-shot}, navis/00-megaman/forms/heatcross/charge.luau, lib/buster.luau |
 
-The other weapon routines (navis/00-megaman/weapons/NN-name) are still v1, registered by number.
+The other weapon routines (navis/00-megaman/weapons/NN-name) are still v1 modules: each has its weapon definition
+since step 5 (navis/00-megaman/weapons/NAME/weapon.luau, a form's or navi's own beside its `form.luau` or
+`navi.luau`), whose legacy marker names the routines and the module. The navis, MegaMan's forms, the stages
+(stages/) and the rule sections (rules/) are definitions too, generated from the ROM once and checked against it
+(`gen-content check`, in the verification workspace).
 
 ## 1. What moves and what stays
 
@@ -80,18 +84,27 @@ the migration ends, registration by number (§3.2) resolves the pack's records i
    `scratch_position` for a position the spawner's registers leave), an action's (actions.toml: a chip's action
    is `<chip>/action`, which is the key it gets by default; give `id` when no chip holds it). compat/ is
    gen-content's; a key or name you add goes into compat/curation.toml too, for review.
-5. **What stays numbered for now** (content-model-v2.md §12, "Transitional"). A chip the ruleset or another record
-   names by number keeps the pack's record (a Program Advance's ingredient, a dark chip, a navi chip AntiNavi
-   checks, a chip with a damage formula): its module returns its action with the compat key as `id`, and a
-   registration-by-number shim runs it (chips/036-minibomb, chips/047-sword, chips/056-mchnswrd, chips/0ec-eraseman,
-   chips/0c0-atk-10). A definition whose subtype or parameters a v1 module still reads carries
-   `legacy = { subtype, params }` (the swords SlashCross charges). Both are counted and go with the numbers.
+5. **What stays numbered for now** (content-model-v2.md §12, "Transitional"). Every chip is a definition (step
+   5): one nobody converted yet is the generated `define.chip` (chips/KEY/chip.luau, a series' chips.luau, or
+   `record.luau` beside a module that was there first), whose `legacy = legacy { number, action, subtype, params,
+   script, ... }` marker gives its number and the v1 module that runs it. Converting a chip edits that
+   definition: it gets its use (`action`, `dimming`, `navi` or `instant`) and loses `script`. It keeps `number`
+   in the marker (with a damage formula's `damage = 1000 + n` and table, `dark_substitute`, and the subtype and
+   parameters if a v1 module still reads them, as the swords SlashCross charges), because the ruleset and other
+   records still name chips by number (a Program Advance's ingredient, a dark chip, a navi chip AntiNavi checks,
+   the Cross special's picks, a navi's own chip) and `gen-content check` finds the chip by it. The chips
+   converted before step 5 were defined without a number: their numbered records are chips/v1.luau's
+   (`v1/KEY`), and those whose numbers something names kept a record run through a registration-by-number shim
+   (their module returns the action with the compat key as `id`: chips/036-minibomb, chips/047-sword,
+   chips/056-mchnswrd, chips/0ec-eraseman, chips/0c0-atk-10); folding such an action into its numbered
+   definition retires its row of the shim. The markers are counted and go with the numbers.
 6. **API.** When a script needs something the API lacks, add it: a `CoreApi` method (crates/bn6-content-api/src/
    api.rs, documented with the routine it is), its implementation (crates/bn6-battle/src/behavior/core_api.rs),
    its binding (crates/bn6-luau/src/bind.rs), and its declaration with a comment in content/bn6/core.d.luau
    (types.d.luau for the families' types). Names, not numbers: a new set of flags or states is an enum with names
    in the API and a string-literal type in core.d.luau, and gets a misuse case in bn6-content-check's test.
-7. **Delete the old.** The v1 module and its registration (`object.toml`, a `chip.toml`'s `script`), the Rust
+7. **Delete the old.** The v1 module and its registration (`object.toml`, the `script` of a chip's or weapon's
+   legacy marker), the Rust
    kind's module, its `kinds::Vars` variant, its arms in `kinds::update` and `actions::dispatch`, its
    `ActionVars` variant. Nothing exists twice. Lower the ratchet (`BN6_RATCHET_LOWER=1 cargo test -p
    bn6-content-check --test ratchet`); it may only shrink, except for a counted transitional use the design names.
@@ -118,18 +131,18 @@ A definition's key is its `id` (or the key it derives: `minibomb/action`); two o
 
 ### 3.2 Registration by number (transitional)
 
-What the pack's records and the ruleset still name by number reaches v1 modules through registration files, until
-step 13 removes them:
+What the definitions' legacy markers and the ruleset still name by number reaches v1 modules through
+registration, until step 13 removes it (`script` is a module's path from the content root, without `.luau`):
 
 | To implement | Write | The module exports |
 |---|---|---|
 | An object kind | `objects/NAME/object.toml`: `[kind] pool, index, script` | `state` (optional), `update(me)` |
-| A chip's action | `script = "..."` in `chips/NNN-name/chip.toml` | `state`, `update(me, s)` |
-| A dimming chip (action 0x15) | `script` in each chip of the subtype | `dimming_chip(user, spec)` |
-| A navi chip (action 0x1B) | `script` in each chip of the subtype | `navi_chip(user, controller, spec)` |
-| An instant chip (action 0x1C) | `script` in each chip of the subtype, or `instant_chip = N` in a weapon.toml | `instant_chip(user, spec)` |
-| A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
-| A record's own action (a link navi's chip, action 0x0A) | `script` in the chip | `action`, an action definition (`define.action { id = "<chip>/action", ... }`); no `update` |
+| A chip's action | `script` in the chip definition's marker, `legacy { number, action, subtype, params, script }` | `state`, `update(me, s)` |
+| A dimming chip (action 0x15) | `script` in the marker of each chip of the subtype | `dimming_chip(user, spec)` |
+| A navi chip (action 0x1B) | `script` in the marker of each chip of the subtype | `navi_chip(user, controller, spec)` |
+| An instant chip (action 0x1C) | `script` in the marker of each chip of the subtype, or `instant_chip = N` in a weapon's marker | `instant_chip(user, spec)` |
+| A weapon routine | the weapon definition's marker, `legacy { routines, script }` and optionally `action` (and no `setup`) | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
+| A record's own action (a link navi's chip, action 0x0A) | `script` in the chip definition's marker | `action`, an action definition (`define.action { id = "<chip>/action", ... }`); no `update` |
 
 A shim is such a module that runs the definitions' own code for the records (chips/036-minibomb runs each bomb
 chip's action by subtype). Scripts are paths relative to the registering file; a slot, action or hook claimed twice
@@ -218,27 +231,35 @@ Left:
 
 Done: the dimming chips have no Rust fallback (kinds/player/actions/dimming_chip.rs calls the chip's controller
 only), and the controllers declare `scratch_position` (trace.rs keeps only the navi chip controller). Scripts:
-subtypes 1 (objects/invisible), 6 (chips/rockcube), 20 (objects/trap-chip, with ElemTrap's trap
-objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts), 10 (objects/time-bom,
-objects/countdown-bomb), 11 (objects/mine, objects/land-mine), 25 (objects/gauge-speed), 38 (objects/navi-boost).
+subtypes 1 (objects/invisible), 6 (chips/rockcube), 20 (lib/traps/controller, with ElemTrap's trap
+chips/elemtrap/trap, its strike chips/elemtrap/strike and objects/panel-bursts), 10 (chips/timebom: controller,
+countdown), 11 (chips/mine: controller, land_mine), 25 (lib/gauge-speed/controller), 38
+(lib/navi-boost/controller).
 Shared: lib/panels (the game's panel lists and shuffle), objects/rising-bubble (effect #0x14).
 
-Left (each a controller and its objects, every branch; docs/engine/chips.md §3.6.10 has what is known):
+Ported in content model v2 (group B2a; docs/engine/dimming-chips.md, branch by branch, with where each lives):
+4 the barriers (lib/barriers, chips/barrier, chips/bblwrap, chips/lifeaur; FirstBarrier through rules/roles), 5
+the panel chips (lib/panel-chips, objects/panel-changer, chips/pnlretrn and kin), 9 the instruments
+(lib/instruments, chips/fanfare and kin), 13 AirRaid (chips/airraid), 26 BugFix (chips/bugfix), 27 ColorPt and
+DblPoint (chips/colorpt), 28 Sensor (chips/sensor), 36 SumnBlk (chips/sumnblk).
 
-- 14 Guardian: objects/guardian, guardian-statue and guardian-strike are written but no chip names them yet and
-  they are unverified; register chip 0x097 and check them against the lab.
-- 4 Barrier (with the FirstBarrier framework `sub_801A7CC` and the barrier visual, effect #7), 5 PanlRetrn and the
-  road/holy chips (its 19-row table is pack data to extract), 9 Fanfare and kin, 13 AirRaid, 26 BugFix, 27
-  ColorPt/DblPoint, 28 Sensor, 36 SumnBlk (group B2a): specified branch by branch in docs/engine/dimming-chips.md,
-  waiting for content model v2.
-- 2 (no chip), 3 Geddon and the capsules, 7 LifeSync, 8 Wind/Fan, 12 Snake, 15
-  GrabBnsh/GrabRvng, 16 Meteors, 17 Anubis/PoisPhar, 18 Otenko, 19 CircGun, 21 BlzrdBal, 22 NumbrBl, 23 BurnSqr,
-  24 Magnum, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 37 DblBeast (group B2b): specified branch by branch in
-  docs/engine/dimming-chip-effects.md (14 Guardian's scripts exist, unregistered), waiting for content model v2;
-  31, 33 and 41 (no chip; their actors are navi chips' navis).
+Ported in content model v2 (groups B2b and B2c; docs/engine/dimming-chip-effects.md, branch by branch): 2, which
+no chip has (lib/dimming/blinding_flash), 8 Wind and Fan (chips/wind), 14 Guardian (chips/guardian), 15 GrabBnsh
+and GrabRvng (chips/grabbnsh), 16 Meteors (chips/meteors, objects/falling-meteor), 17 Anubis and PoisPhar
+(chips/anubis, chips/poisphar), 18 Otenko (chips/otenko), 19 CircGun (chips/circgun), 21 BlzrdBal
+(chips/blzrdbal), 23 BurnSqr (chips/burnsqr), 24 Magnum (chips/magnum); and B2c's 3 Geddon and the capsules
+(chips/geddon and the capsules' folders), 7 LifeSync (chips/lifesync), 12 Snake (chips/snake), 22 NumbrBl
+(chips/numbrbl), 29 CornFsta (chips/cornfsta), 30 DblHero (chips/dblhero), 32 MetrKnuk (chips/metrknuk), 37
+DblBeast (chips/dblbeast). The trap chips' counters are content too, started by role (rules/roles.luau):
+AntiDmg's, AntiSwrd's and BodyGrd's (chips/antidmg, chips/antiswrd, chips/bodygrd).
+
+Left:
+
+- 31, 33 and 41 (no chip; their actors are navi chips' navis).
 - Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
-  notes), encased obstacles (`sub_801813A`; thrown ones, `sub_8018002`, are ported). AntiNavi in the dimming
-  service is done (dimming.rs; dimming-chips.md §2).
+  notes). Encased obstacles (`sub_801813A`, with the role `hooks.encased` and objects/encased-bubble) and thrown
+  ones (`sub_8018002`) are ported, unverified (nothing in the game starts them). AntiNavi in the dimming service
+  is done (dimming.rs; dimming-chips.md §2).
 
 ### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 
@@ -323,8 +344,7 @@ split the list):
 
 ### Framework gaps (Rust, not content)
 
-These are the ruleset's, and are fixed in Rust by whoever needs them: the barrier routine and visual
-(dimming-chips.md §3), the Full
+These are the ruleset's, and are fixed in Rust by whoever needs them: the Full
 Synchro aura, Cross changes and Cross Beast, Beast Over, the NaviCust hooks (style, emotion timer, low HP, chip
 interception, the panel trail and auto-step bugs), dark chips, the SELECT/Cross specials, the status visuals (ice,
 bubble, confusion, blindness), reactive defensive chips (`sub_801056A`), mid-battle appearance, link navis' actions.

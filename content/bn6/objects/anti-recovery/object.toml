@@ -1,9 +1,0 @@
-# AntiRecv's counterattack (effect object #0x2C, `sub_80E3728`) is a script.
-# The ruleset spawns it (`sub_80E37D2`) when a heal or Roll's navi chip meets
-# the other side's AntiRecv. Its position is its spawner's registers, which
-# nothing reads.
-
-[kind]
-pool = "effect"
-index = 0x2C
-script = "anti_recovery.luau"

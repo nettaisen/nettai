@@ -1,7 +1,0 @@
-# Invisibl and WhiCapsl's dimming controller (effect object #0x5D, `sub_80E74D4`)
-# is a script. Its position is its spawner's registers, which nothing reads.
-
-[kind]
-pool = "effect"
-index = 0x5D
-script = "invisible.luau"

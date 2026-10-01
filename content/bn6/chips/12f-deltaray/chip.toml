@@ -1,3 +1,0 @@
-# A navi chip (subtype 28): its navi is DeltaRay.
-
-script = "../../objects/delta-ray/delta_ray.luau"

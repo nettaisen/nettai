@@ -517,7 +517,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | elec-man, elec-thunder | ElecMan series | chips/elecman/ |
 | elec-pulse | ElcPuls1-3, DestPuls | chips/elcpuls/ |
 | elem-trap, elem-trap-strike | ElemTrap | chips/elemtrap/ |
-| element-pillar | HeatCross Beast's and ElecCross Beast's charged shots | navis/megaman/ |
+| element-pillar | HeatCross Beast's and ElecCross Beast's charged shots; Darkness's dark flames | objects/element-pillar |
 | elmnt-man, elmnt-bolt, elmnt-ice, elmnt-vine, meteor | ElmntMan series | chips/elmntman/ |
 | energy-burst | EnergBom, MegEnBom (through bomb) | chips/energbom/ |
 | erase-man, erase-mark | EraseMan series | chips/eraseman/ |
@@ -557,7 +557,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | navi-effect | a second port of follow-effect (effect #0x31), deleted | objects/follow-effect |
 | needle-volley | AquaNdl1-3 | chips/aquandl/ |
 | panel-bursts | black-bomb, countdown-bomb, elem-trap-strike | objects/panel-bursts |
-| panel-strike | bass | chips/bass/ |
+| panel-strike | Bass, MachGun1-3 | objects/panel-strike (rule 5) |
 | projectile | the buster, the cannons, AirShot and many more (lib/projectile) | objects/projectile (with lib/projectile.luau's helpers) |
 | proto-man | ProtoMan series | chips/protoman/ |
 | reflected-shot, reflector-shield | Rflectr1-3 | chips/rflectr/ |
@@ -590,7 +590,8 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 What stays in `objects/`: absorbed-obstacle, attachment, boomerang, drill, falling-rock (with rock-chip),
 flying-shot, gust, invisible, panel-bursts, projectile, rising-bubble, rock (with rock-debris), thunder-column.
 Thirteen folders from 139. (Step 8f adds objects/boulder, the boulder the stages place: a role's kind, newly
-ported.)
+ported. Darkness, ported after this table, shares the element pillar with MegaMan's Beast forms, so it stays in
+objects/ too.)
 
 The rest of v1's layout moves as follows: `lib/sword.luau` and `lib/vari_sword.luau` into `lib/swords/`,
 `lib/dragon.luau` into `lib/dragons/`, `lib/instant-chips/` into `lib/instant/`, `lib/buster.luau` into
@@ -1009,6 +1010,40 @@ chips/numbrbl, chips/cornfsta and chips/dblhero. What it settled:
   attachments sit at their sprites' attach points; the shots' `hit_effect = 0xFF`. LifeSync's immune virus is
   told by its actor data (AI 13). `battle.boss_rank` (battle effect 1) joins `battle.link` for LifeSync.
 
+**As built** (phase B, group C5: dimming subtypes 1, 10, 11, 20, 25 and 38, converted from their v1 modules;
+docs/engine/chips.md §3.6.9 and §3.6.10): lib/traps/controller (the trap chips'), chips/elemtrap (its trap and
+strike), chips/timebom (controller, countdown), chips/mine (controller, land_mine), lib/gauge-speed/controller,
+objects/invisible, lib/navi-boost/controller, and objects/panel-bursts. What it settled:
+
+- **The parameter that picked a table row is the hook's argument**: a trap chip's trap object (`traps.hook(trap?)`,
+  a `trap` record whose `set` spawns it: ElemTrap's; the others pass none), a TimeBom's bomb
+  (`controller.hook(variant)`, a `CountdownVariant` record: the two rows the chips set; the table's other six,
+  which no chip sets, are its optional fields), the gauge's speed (`gauge_speed.slow`, `.fast`), the
+  invisibility's time (`invisible.hook(ticks)`), and what a navi-changing chip changes (`navi_boost.hub`,
+  `bug(routine)`, `arm(routine, palette)`, `dark`).
+- **`dimming_chips.phases { hidden = true }`** shows a hidden chip's telop (`sub_800BBA8`, the trap chips').
+- **A parameter the ruleset poked became a question the object asks**: `sub_802CEA6` tells a cleared record's
+  object to end through its second parameter; ElemTrap's trap ends when its side's record no longer names it
+  (`battle.linked(side).object ~= me`), and `Battle::clear_linked` only clears.
+- **AntiRecv's counterattack is a role's kind** (chips/antirecv/controller, `kinds.anti_recovery`): the ruleset's
+  heal and Roll's navi chip spawned it by its object slot; they spawn the role's kind.
+- **A panel burst's look is its spawner's**: `panel_bursts.spawn(spawner, region, interval, z, effect, sound?)`
+  takes the effect its table row named (and the row's sound, which no row has).
+- **Which chips are definitions.** ElemTrap, Mine, SloGauge, FstGauge, HubBatc, BugRSwrd, BgDthThd and the four
+  arm chips (PunchArm, NeedlArm, PuzzlArm, BoomrArm; their records' unnamed extra flags 0x04 to 0x20 have no
+  battle reader and are left out). The others keep the pack's records and give their hooks from
+  chips/<key>/chip.luau: AntiNavi, AntiDmg, AntiSwrd, AntiRecv and BodyGrd (the ruleset names them by number;
+  BodyGrd is a Program Advance of three of them), TimeBom1-3 and TimeBom+ (a Program Advance and its
+  ingredients), Invisibl (a dark chip's substitute), the second WhiCapsl (chip 0x17E: the dimming service finds
+  the chips no one can cut in on by number) and DarkInvs (a dark chip with a substitute).
+- **The shims** (registration by number, §12): chips/0ba-antinavi (subtype 20, by the trap's row),
+  090-timebom1 (10, by the bomb's row), 0b1-invisibl (1, by the time) and 121-darkinvs (38: DarkInvs's hook;
+  the other rows, whose chips are definitions, from their parameter bytes for the test content's records).
+- **Still numbers**: the mine's and the bombs' NameIDs (`me.name_id`, counted), the statuses the strike's hits
+  carry, `hit_effect = 0xFF`, the linked record's chip (`LinkedChip.chip`, the numeric API's), and the weapon
+  routines the navi-changing chips install (0x21 to 0x26, the B+Back shield 0x3B, the busters `sub_80E97BE`
+  replaces): the navi's weapon slots take numbers until the weapons are definitions (family 8e).
+
 ### 5.5 Navi chips: a navi kind, per-chip parameters
 
 v1: action 0x1B registers `Hook::NaviChip(subtype)`; EraseMan reads `me:param(1)` (the aim's switching time)
@@ -1081,6 +1116,24 @@ navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-b
   159-darkness and 12e-bighook likewise; 146-flmhook1 by instant chip effect 14): the navi chips for AntiNavi and
   the SP formulas, the PAs because the Program Advance table names its results by number. They go with
   EraseMan's (step 10). No `legacy` marker among them.
+- **The earlier navi chips converted the same way** (group C4; they were v1 modules under objects/):
+  chips/heatman (`navi`, and `flame`, which HeatMan's link chip shares, rule 4), elecman (`navi`, `thunder`),
+  slashman (`navi`, `wave` with its two looks as records), chrgeman (`navi`, `car`), spoutman (`navi`, `ball`,
+  `splash`, `pillar`, `geyser`, `mark`), tmhkman, tenguman, elmntman (`navi`, `meteor`, `ice`, `bolt`, `vine`),
+  blastman (`navi`, `fire`), roll (`navi`, `heart`), protoman, colonel (the series and CrossDiv), bass,
+  bassanly (`navi`, `shot`), deltaray and sunmoon (`sun`, `meteor`, `moon_beam`). What a chip's parameters picked
+  is the hook's argument where the series differ by it: `slashman.summon { wave_damage }`,
+  `elmntman.summon { cycle_ticks }`, `roll.summon { rounds, palette }`, `colonel.summon { palette, cross }`,
+  `deltaray.summon { palette }`; the others' `summon` is the hook itself. What their kinds were spawned with by
+  parameter is state set through typed specs (types.d.luau: `Thunderbolt`, `SlashWave`, `ChargeCar`,
+  `WaterBall`, `Geyser`, `GeyserMark`, `FireBlast`, `PanelStrike`, `DarkBall`, `SunMeteor`). The panel strike
+  (Bass's and MachGun's) is objects/panel-strike and the follow effect (DeltaRay's bursts, DElecSwd's glow)
+  objects/follow-effect, both definitions (rule 5). The chips stay records behind one module a series
+  (chips/0dd-roll, 0e0-protoman, 0e3-heatman, 0e6-elecman, 0e9-slashman, 0ef-chrgeman, 0f2-spoutman,
+  0f5-tmhkman, 0f8-tenguman, 101-blastman, 10d-elmntman, 110-colonel by navi chip subtype, CrossDiv's record
+  among Colonel's; 12d-bass, 12f-deltaray, 132-bassanly and 15b-sunmoon likewise: Giga chips and a Program
+  Advance's result). The palette tables the records' first parameter indexed (Roll's, Colonel's, DeltaRay's) are
+  in those modules, not the navis'. No `legacy` marker among them.
 
 **The link navis' own chips** (phase B, A3): each navi's folder has its chip's action and the kinds only it spawns
 (navis/heatman ... navis/dustman: `chip.luau`, and `riding_hit`, `volcano_rock`, `drip_shower`, `axe`, `strike`,
@@ -1410,6 +1463,31 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   rollback; DustCross's absorption and throws; the boulders' placement, flags and breaking), the type check,
   the traces (the soundmod stage's ice blocks and their absorption), and the chip lab on a real pack, with
   sixteen new stage scenarios for the boulders and the stages' statues.
+
+### 5.10 The supports, the shared waves and pillars
+
+**As built** (phase B, group C5: converted from their v1 modules):
+
+- **The supports** (lib/supports: `controller`, `rush`, `beat`, `tango`, `heal`). The controller is the role
+  `kinds.support`'s definition. The ruleset told it which support comes and the chip Rush eats through its
+  spawn parameters; it sets the controller's state instead (`support`, an enum it sets by name:
+  `set_state_variant`; `eaten`; `telop_chip`), and the support's out flag (the original's second parameter,
+  which the support sets and clears) is the controller's `out`. Rush leaves the second WhiCapsl in the hand by
+  its chip number still (that chip is a record, §5.4): the one chip number left in these modules.
+- **SlashCross's sword wave** (navis/00-megaman/forms/slashcross/sword_wave): its rows (`byte_80D7F4C`) are
+  `SwordWaveVariant` records, `sword_wave.spawn(owner, variant, x, y, element, damage, hidden?)`. The charged
+  slash (weapons 0x11 and 0x12, a v1 module) still names a wave by the number of the sword it charges, so the
+  rows are kept by that number (`sword_wave.by_slash`) until the charge asks the chip for its slash (family
+  8e). The pack's `sword_waves` data is read by no script any more.
+- **The element pillar** stays in objects/ (HeatCross Beast's and ElecCross Beast's charged chips and
+  Darkness's dark flames share it), keyed `element-pillar`. What its kind number picked is the spawner's
+  `ElementPillar`: lightning or flames, its times, how far back it stands, and the owner's action it lasts
+  through: the navi action its owner runs as it sends it (`owner:navi_action()`, kept in an `action` state
+  field), or, for an owner that is no navi, that owner's own action (Darkness's).
+- **SlashMan's sword wave and SunMoon** are the navi chips' group's (C4, §5.5): chips/slashman/wave and
+  chips/sunmoon.
+- **A kind's key in a form's folder**: the checker takes `navis/<navi>/forms/<form>/` as the form's folder (a
+  kind there is `<form>/...`), and leaves a navi folder's index prefix out of its owner's name.
 
 ## 6. Compat: the original's numbers
 
@@ -2092,7 +2170,7 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
 - **The roles' legacy markers.** rules/roles.luau names the v1 actions and kinds the ruleset needs by their
   numbers and keys until their families convert them, and then names the definitions (§7.4). The field
   objects' kinds (the rock, the boulder, the Guardian statue, the absorbed obstacle, the falling rock) are
-  definitions since step 8f; the supports' controller is the one kind still named by key.
+  definitions since step 8f, and the supports' controller since group C5: no kind is named by key any more.
 - **The kinds an actor list places, by role** (step 8f): `kinds.rock`, `kinds.boulder` and `kinds.statue`
   stand for the stages' own entries, and the rock's `place` maps the entry's row number to its variant
   (`rock.by_number`). They go when stages are definitions whose entries name the kind and its variant (§3.7,
@@ -2131,6 +2209,11 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   link navi has which chip is the navi record's `own_chip`, not the original's table by AI index: any navi that
   holds the chip runs its action. It goes when chip definitions take damage formulas (step 10): each chip
   becomes a `define.chip` beside its action and its navi's definition names it as `own_chip` (step 5's navis).
+  *Since step 5* each is a definition already (navis/<navi>/record.luau, which the navi's `own_chip` names),
+  numbered by its legacy marker, whose `script` names the action's module and whose `damage` and `navi_damage`
+  give the formula; the same resolution applies to it (a numbered definition without a use of its own runs the
+  action its marker's module exports). Folding the action into the definition (`action = ...`, no `script`)
+  retires the mechanism for that chip.
 - **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
   above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd, GreatYo, PitHocky,
   WideBrn, ParaShl, PwrWave), `dark_substitute` (DrkSword, DarkThnd, DrkRecov) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
@@ -2147,12 +2230,38 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   on records (Program Advances and their ingredients, MoonBld and the variable swords) and for the Cross
   special's chips. They go as the 0x12 and 0x13 shims do (step 5 for the recipes, step 10 for the Cross
   special's list, the aura chips and the Beast rush's chain; SlashCross's A-charge with family 8e).
+- **The navi chips' shims** (§5.5): one module a series runs the records' navi chip subtype and gives the
+  navi's `summon` the record's parameters: chips/0ec-eraseman, 0fb-grndman, 0fe-dustman, 104-diveman,
+  107-crcusman, 10a-judgeman, 12e-bighook, 159-darkness, 15a-mstrcros, 15c-twinldrs, 15d-crosover (A2) and
+  chips/0dd-roll, 0e0-protoman, 0e3-heatman, 0e6-elecman, 0e9-slashman, 0ef-chrgeman, 0f2-spoutman, 0f5-tmhkman,
+  0f8-tenguman, 101-blastman, 10d-elmntman, 110-colonel, 12d-bass, 12f-deltaray, 132-bassanly, 15b-sunmoon
+  (C4). They go when AntiNavi's test is a trait, the SP damage formulas are in definitions and the Program
+  Advance table names its results by handle (step 10).
+- **The dimming chips' record shims** (group C5, §5.4): chips/0ba-antinavi (subtype 20: the trap chips the
+  ruleset names by number, and BodyGrd), 090-timebom1 (10: TimeBom+'s recipes and their ingredients),
+  0b1-invisibl (1: Invisibl, a dark chip's substitute; the second WhiCapsl, past 0x170) and 121-darkinvs (38:
+  DarkInvs, a dark chip). They go when the ruleset names those chips by trait and the recipes by handle (phase
+  C, step 10). Rush's spared chip (lib/supports/rush: the second WhiCapsl's number) goes with them.
+- **The sword waves by number.** `sword_wave.by_slash` (navis/00-megaman/forms/slashcross/sword_wave) keeps
+  the waves by the charged slash's variant, the sword chip's subtype, for the v1 weapon module that names them
+  so (weapons 0x11 and 0x12). It goes when the charged slash asks the chip for its slash (family 8e).
 - **The variable swords' picks by number.** `VariSwordSpec.legacy = { chips, sword }` (chips/varswrd,
   chips/neovari; counted by the ratchet): the chip numbers of the picks, in the picks' order, and Sword's. A
   pick starts its action by definition, but the attack's chip, subtype and parameters are still the pick's
   record's (lib/swords/vari reads it from `data.chips`): the Beast rush reads the attack's chip for its lock-on
   mode, and SlashCross's charged sword (v1, action 0x41) the subtype and first parameter. It goes when the
   attack's chip is set by definition (step 10) and the charged sword asks the chip for its slash (family 8e).
+
+  *Since step 5* they are definitions under their compat keys (the generated `record.luau` beside the
+  action's module), numbered by their legacy marker: `program_advances` names its ingredients by value, and
+  the marker carries the number with what the ruleset still reads by it (a damage formula as `damage = 1000 +
+  n` with its `sp_damage` or `navi_damage` table, `dark_substitute`, the subtype and parameters). Such a
+  definition's behaviour is the v1 module its marker names (`script`: the shim, which runs the chip's action
+  by subtype) or, once its module is folded into it, its own: a numbered definition may carry its own
+  `action`, `dimming`, `navi` or `instant` (then without `script`), and what names the chip by number
+  (recipes, the Cross special, a navi's own chip) reaches that definition. So a record chip converts by moving
+  its action into the generated definition and dropping `script`; the number stays in the marker until phase
+  C's step 10.
 
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 
@@ -2186,6 +2295,52 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    `bn6_content::battle` goes; the loader takes the content and assets roots. Needs step 3b. Gate: the `Content`
    the definitions build equals the one v1 extracted (a one-off field-by-field check, as in the v1 move), `gen-content check`
    passes, the traces hold. Mostly generated. **L.**
+
+   *As built.* `gen-content luau <rom> <content>` writes into the content root, leaving what people defined
+   alone (a chip whose `define.chip` has no legacy marker keeps its module; its numbered record goes to
+   chips/v1.luau as `v1/<key>`, which numbers reach) and extending the shared modules by what they lack
+   (rules/collision.luau by `row_offset`, lib/effects, lib/sparks and lib/regions by look and shape); a module
+   people wrote at a generated path (the sword family's action modules) gets its definitions in a
+   `record.luau`/`records.luau` beside it. It deletes the 253 `chip.toml` and 46 `weapon.toml`, whose content
+   is in the markers, and lists its made-up names in compat/curation.toml by module. The markers are one
+   field, `legacy` (step 7's, which gives a converted chip its subtype and parameter bytes and a converted
+   weapon its routine numbers): a chip still a v1 module has no `action` and its marker gives `number, action,
+   subtype, params, script` (with what the ruleset and v1 modules read of it by number: a damage formula,
+   `sp_damage`, `navi_damage`, `dark_substitute`, `recovery`, `sword`); a weapon still a v1
+   module has no `setup` and its marker gives `routines, script, action, instant_chip`; a navi's and a form's
+   give `number, name_id`, a stage's `number, layout, actor_list`, a status's and a lock-on mode's `id`. The
+   generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
+   definitions from people's. The tables v1 modules read by number are legacy rule
+   sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and
+   the charge times of the routines no weapon names), rules/identities.luau, rules/body-overlays.luau and a
+   kind's objects/KIND/rows.luau while something still reads its table by number (`data.objects.<table>` in a
+   module, or the engine: the attachments' is the last; the rocks', the absorbed obstacles', the sun beam's,
+   the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with their
+   readers, and GunDelSol's data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
+   are a routine's numbers with the same address *and* charge times (alias routines whose rows differ are
+   weapons of their own: `megaman/buster` is routine 0 alone, and `megaman/buster-2e` and five more take its
+   `setup` with their own charge times), and every routine has its charge times (the TOML's
+   rules/weapons.toml had 50 of the 148; a routine a navi's or form's stats name and nothing implements, like
+   ProtoMan's 0x32, now charges as the game does). Content may not use a placeholder asset
+   name, so compat names what the tables use for its first user (`effect-0e`, `held-28`), for curation; a
+   NameID look past the table's real ones names a sprite with no animation data as `"cc-ii"`. The loader is
+   `bn6_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
+   check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
+   A chip's `description` (what R shows on the custom screen: the battle reads its line count) and a navi's
+   `run_message` (the no-running message's lines) are the definitions' alone since the extractor's battle data
+   went: the generator writes them, and gave the chips people had defined without a description theirs
+   (`gen-content describe`, once).
+   The engine's byte for an effect, spark, region or collision type content defines (`Defs::number`) is the
+   numbered table's entry that is the same thing (the same look, shape, condition, or the row a collision
+   type's `row_offset` names with its flags), and only another gets a number after the table's: the tables
+   are the definitions' own now, lib/effects.luau defines every look rules/numbers.luau numbers, and the two
+   together would not fit a byte twice (108 effects in the table, 152 defined).
+   Registration by number resolves a numbered definition's use as step 9 does a record's (its action's
+   registration, or its subtype's `dimming_chip`, `navi_chip` or `instant_chip`; `Unported` for what nothing
+   implements), unless the definition has its own. While step 5 was a branch, its content was made again on
+   each main it merged (the verification workspace's `tools/regen-step5.sh`: main's content with its v1
+   files, the branch's edits of people's files, then the generator), so chips, kinds and shared entries main
+   had gained by hand were skipped; on main the generated modules are people's and nothing regenerates them.
 6. **Assets by name and the codemod.** The extractor names assets from compat and writes the asset index, which
    the loader fills `Content::assets` from (done first, so real packs resolve `asset.*`); sprites and sounds become asset
    handles in the engine; the codemod of §11 runs over every module (asset strings and numbers to names,

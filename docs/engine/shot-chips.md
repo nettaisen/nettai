@@ -433,7 +433,8 @@ its hit modifier; with Param2 set it goes through what it hits (palette 0xB), el
 - It never calls a sprite-stepping routine after the init: the sprite stays on its first frame.
 - Destroy state: `object_genericDestroy`.
 
-Action 0x48 (`sub_80EEA3C`) also spawns it; nothing starts that action in this game.
+Action 0x48 (`sub_80EEA3C`), AntiSwrd's counter (chips/antiswrd/counter, which the ruleset starts by the role
+`actions.anti_sword_counter`), also throws it: three booms, hit modifier 1, 1 and 3.
 
 ## 13. Action 0x5B: Z Saver (`sub_80EFEE0`)
 
@@ -692,7 +693,8 @@ lifetime, a push and its own side's hit (`chips/0x096-vdoll/lifetime`, `pushed`,
 
 **[unverified]** (no scenario reaches them): action 0x14 variant 3; action 0x5D (weapon 0x39: no navi or form of
 a netbattle has it); the spawners' "pool full" paths; the objects' "no collision slot" paths; the wave's dead
-kinds; LilBoiler's removal, absorption and blink-out; the doll's absorption and blink-out.
+kinds. (LilBoiler's and the doll's removal, absorption and blink-out are verified by their `dustman`, `absorbed`
+and `colarmy` scenarios.)
 
 ## 17. Corrections to other documents
 

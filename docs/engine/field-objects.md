@@ -209,9 +209,11 @@ effect 1 at Z + 16 px, without a sound. Then region 0 and state word = 8
 
 Verified against the lab's stage scenarios (stages/boulder*): standing
 through the round's start, the buster's and M-Cannon's hits, a breaking
-hit, AirShot's push into the other boulder, RockCube on its panel,
-DustCross's absorption and throw. Unverified: its blink-out, the status
-actions, and the flags on columns other than 2 and 5.
+hit, AirShot's push into the other boulder (from either side), RockCube on
+its panel, DustCross's absorption and throw, its blink-out (ColArmy) and
+its removal (BlzrdBal's ball), on every battle settings record that places
+boulders. Not reachable in a netbattle: the status actions, and the flags
+on columns other than 2 and 5 (unverified.md).
 
 ## 4. Shared obstacle routines
 
@@ -369,12 +371,31 @@ and damage word; f2 |= 0x1000 (ice) or 0x2000 (bubble).
   r4 += 3: a rock (`sub_80CFBC4`, variant 3 the ice block, the same class,
   entrance 1 (instant)), bubble → r4 = 1: attack object #0xA3
   (`sub_80D99EC`: PanelX/Y, element 2 (aqua), the damage word, the
-  alliance byte, flags |= 0x10; its behavior `sub_80D984C`, which only
-  this reaches, isn't described); either at its panel with its alliance
-  and damage word. Then state destroy (word).
-- Engine: still a panic (`obstacle::encased`): the replacement spawns
-  content kinds (the rock's spawner is the pack's `objects/rock`; #0xA3
-  isn't ported).
+  alliance byte, flags |= 0x10; spawned at (PanelY, alliance, r3), r3
+  what `sub_80E544C` last read: side 1's wind object, 0 when none);
+  either at its panel with its alliance and damage word. Then state
+  destroy (word). Class 0xFF reaches `setFieldBattleObject_800F614` as a
+  slot index: a write past the registry (BattleState+0x898 + 12 × side).
+- The bubble, `sub_80D984C` (states init / update / destroy): init
+  (`sub_80D9870`): sprite 0x80/0x10/0 (10-00), no shadow, VISIBLE, anim
+  Param1 × 2, flip, XVelocity = enemy direction × 0xA0000, coordinates
+  from its panel, collision self 0x0E / target 0x0F, hit modifier 3, hit
+  effect 2; state update, an update tick, then sound 0x112. Update
+  (`sub_80D98E8`): collision removed, the hit spark; the hit flags &
+  0x0C800000 (a body's or neutral object's touch) → region 0 and burst;
+  else the action (`off_80D9924`), then off the field → region 0 and
+  burst, else the collision presented. Action 0 (`sub_80D9930`): Param1
+  0 waits for frame flag 0x80, then anim and Param1 2; HitModifierFinal &
+  0x3C → action 4. Action 4 (`sub_80D995C`): X += XVelocity; the panel
+  under (X, Y) (`sub_800E258`) solid (0x10) → panels from coordinates and
+  the collision's panels; else region 0, effect 0x14 at Z + 12 px,
+  VISIBLE off, state destroy. Action 8 / burst (`sub_80D99A4`): two rock
+  debris (`sub_80E47A4`, palette 1) at (X, Y) each jittered by mask 0xF,
+  effect 2 at Z + 16 px, sound 0xD9, VISIBLE off, state destroy.
+- Engine: `obstacle::encased`; the replacement is content's role
+  `hooks.encased` (objects/encased-bubble: the rock's ice block, or the
+  bubble, kind `encased-bubble`). Class 0xFF is a content error there; the
+  bubble's Z with side 1's wind set (an address) is 0.
 
 ### 4.6 Requests from chips
 
@@ -440,23 +461,26 @@ pushes, blink-out, falling/rising entrances, dimming shaking, eviction.
 
 ## 7. Not implemented, unreachable, unverified
 
-- Not implemented (panic): `sub_801813A` (encased), which nothing in the
-  game starts (§4.5); ported, unverified: `sub_8018002` (thrown), likewise.
-  (The ice block an encased obstacle becomes is `rock.spawn(x, y, side, {
-  variant = rock.variants.ice, class = its class, entrance = "instant" },
-  damage)`.)
+- Ported, unverified: `sub_801813A` (encased) and its bubble
+  (`sub_80D984C`), and `sub_8018002` (thrown), which nothing in the game
+  starts (§4.5); an error: an unregistered obstacle encased in ice (class
+  0xFF, a write past the registry).
 - An error: actions 3/4/6/7 on obstacles (AIData lookups through a null
   pointer; nothing sets them on an obstacle); a push without direction bits
   (`sub_800F598` reads the BIOS).
 - Ported, unverified by any trace: `sub_802EF74` (battle flag 0x40 target
   tracking, never in netbattles; the side's tracked target is
-  `SideState::tracked`), the pushes' ice and bounds branches, the
-  take-hits and dispatcher variants but the default ones.
+  `SideState::tracked`), the take-hits and dispatcher variants but the
+  default ones, the six-panel pull and the knock-back's vectors other than
+  AirShot's (unverified.md says why no netbattle reaches them).
 - Verified by the coverage scenarios (docs/engine/unverified.md): the pushes
   (`sub_8017CC0`, `sub_800F598` and the slide: AirShot at a TimeBom, a
   BlkBomb, a LilBoiler, a Guardian, a Sensor, an IceCube, and a RockCube
   pushed back by the other side), obstacles broken by damage, and the
   registry's evictions (a third RockCube, a second Anubis, a RockCube after
-  a LilBoiler).
+  a LilBoiler); the pushes over ice and their bounds (a pull stops at the
+  edge of the puller's area), a hit from both sides at once (no push), a
+  full absorbed list (the ninth obstacle flies on), and the panels acting
+  on a navi without shoes on every stage (`stages/panels-*`).
 - Actor-list types other than 0, 3, 8 and 9 (§1): no netbattle stage's
   list has them.

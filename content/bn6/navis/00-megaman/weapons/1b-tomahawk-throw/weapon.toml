@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x1B, TomahawkCross Beast's charged Null chip
-# (`sub_8011DBC`), and its action 0x4E (`sub_80EF1EC`), are a script.
-
-id = 0x1B
-name = "Tomahawk throw"
-action = 0x4E
-script = "tomahawk_throw.luau"

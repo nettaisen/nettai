@@ -32,9 +32,9 @@ local FIRST, STRIKE, COUNTDOWN = 0, 2, 1
 local ANIM_HOLD, ANIM_FIRE = 0xA, 0xD
 -- Strikes, the ticks between them (less one), and the row it starts on.
 local STRIKES, INTERVAL, START_ROW = 9, 8, 3
--- The panel strike's parameters: no crack, after 6 ticks, hit modifier 1
--- (the chips' parameters, the third forced to 1).
-local STRIKE_PARAMS = { 0, 6, 1, 0 }
+-- The panel strike: no crack, after 6 ticks, hit modifier 1 (the chips'
+-- parameters, the third forced to 1).
+local PANEL_STRIKE: PanelStrike = { warning = 6, hit_mod = 1 }
 -- The reticle (effect 0x2F) over the target, for 6 ticks (the chips'
 -- second parameter).
 local RETICLE = define.effect { sprite = asset.sprite("reticle"), anim = 0, palette = 0 }
@@ -85,7 +85,7 @@ local function fire(me: Object, s: State)
         me.step_init = COUNTDOWN
         s.timer = INTERVAL
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000)
-        panel_strike.spawn(me, s.column, s.row, me.attack_element, STRIKE_PARAMS, damage, 0, false)
+        panel_strike.spawn(me, s.column, s.row, me.attack_element, PANEL_STRIKE, damage, 0, false)
         local cx, cy = field.center(s.column, s.row)
         local reticle = battle.effect(Vec3.new(cx, cy, 0), RETICLE)
         if reticle then
@@ -144,6 +144,7 @@ return {
     define.chip {
         id = "machgun1",
         name = "MachGun1",
+        description = "Fire 9sts\nat row w/\nclst enmy",
         codes = { "A", "R", "T", "*" },
         element = "null", family = "cursor", class = "standard",
         rarity = 0, mb = 12, damage = 30, hit_param = 30, lockout = 0,
@@ -155,6 +156,7 @@ return {
     define.chip {
         id = "machgun2",
         name = "MachGun2",
+        description = "Fire 9sts\nat row w/\nclst enmy",
         codes = { "E", "G", "S" },
         element = "null", family = "cursor", class = "standard",
         rarity = 1, mb = 24, damage = 50, hit_param = 30, lockout = 0,
@@ -166,6 +168,7 @@ return {
     define.chip {
         id = "machgun3",
         name = "MachGun3",
+        description = "Fire 9sts\nat row w/\nclst enmy",
         codes = { "B", "F", "M" },
         element = "null", family = "cursor", class = "standard",
         rarity = 2, mb = 36, damage = 70, hit_param = 30, lockout = 0,

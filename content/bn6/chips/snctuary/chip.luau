@@ -8,6 +8,7 @@ local panel_chips = require("../../lib/panel-chips/controller")
 return define.chip {
     id = "snctuary",
     name = "Snctuary",
+    description = "Chng all\nown panel\nto holy",
     codes = { "Z" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 62, damage = 0, hit_param = 0, lockout = 0,

@@ -7,6 +7,7 @@ local army = require("./army")
 return define.chip {
     id = "colarmy",
     name = "ColArmy",
+    description = "Launch an\nattk with\nCol. army",
     codes = { "B", "G", "R", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 2, mb = 25, damage = 40, hit_param = 30, lockout = 0,

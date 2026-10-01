@@ -8,6 +8,7 @@ local slash = require("../../lib/swords/slash")
 return define.chip {
     id = "crosswrd",
     name = "CrosSwrd",
+    description = "ミテイ",
     codes = { "E", "L", "S", "*" },
     element = "null", family = "sword", class = "special",
     rarity = 0, mb = 8, damage = 80, hit_param = 30, lockout = 0,

@@ -7,6 +7,7 @@ local strike = require("../../lib/swords/strike")
 return define.chip {
     id = "elemswrd",
     name = "ElemSwrd",
+    description = "Cut enmy\non grass,\nice, fire",
     codes = { "J", "M", "U" },
     element = "null", family = "null", class = "standard",
     rarity = 1, mb = 43, damage = 220, hit_param = 30, lockout = 0,
