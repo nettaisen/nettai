@@ -30,7 +30,7 @@ impl Rom {
 }
 
 /// The game's text encoding for bytes 0x00-0xDF (from the disassembly's charmap).
-const CHARSET: [&str; 0xE0] = [
+pub(crate) const CHARSET: [&str; 0xE0] = [
     "", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E",
     "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U",
     "V", "W", "X", "Y", "Z", "*", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",

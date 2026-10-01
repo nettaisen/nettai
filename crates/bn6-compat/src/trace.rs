@@ -56,6 +56,11 @@ pub struct Setup {
     /// without them read as 0.
     #[serde(default)]
     pub navi_levels: Option<[u8; 2]>,
+    /// Both consoles' save event flag 0x1720 (the NaviCust ran a bug's
+    /// routine at load: MegaMan's emotion window flickers, bugs in his
+    /// stats or not). Traces recorded without it read as clear.
+    #[serde(default)]
+    pub emotion_window_glitches: Option<[bool; 2]>,
 }
 
 /// The bug frags a trace without them reads as: the recording tool's
@@ -299,14 +304,16 @@ impl Round {
     /// (BattleState+0x44/+0x45) as the setup has them. The other console's
     /// aren't recorded: its RNG1 reads as 0 and it has no tag pair, which
     /// only a re-deal on that player's screen would read. The save's
-    /// emotion window glitch (event flag 0x1720) isn't recorded either and
-    /// reads as clear.
+    /// emotion window glitch (event flag 0x1720) is in the setups of
+    /// traces recorded with it, for both consoles; without it, it reads as
+    /// clear.
     fn console_setup(&self, side: u8) -> ConsoleSetup {
         let bs = unhex(&self.setup.battle_state);
+        let emotion_window_glitch = self.setup.emotion_window_glitches.is_some_and(|g| g[side as usize & 1]);
         if bs[0x0D] != side {
-            return ConsoleSetup::default();
+            return ConsoleSetup { emotion_window_glitch, ..ConsoleSetup::default() };
         }
-        ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), emotion_window_glitch: false }
+        ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), emotion_window_glitch }
     }
 
     /// A player's game, going by the transformations they send: Gregar's
@@ -456,17 +463,19 @@ struct Unknown {
 /// A hit spark (effect object #4) starts at its hitter's position moved by
 /// whole pixels (`object_spawnCollisionEffect`), so it keeps its hitter's
 /// Z fraction, which is garbage when the hitter's kind keeps a spawner's
-/// register there (`scratch_z_fraction`: Sensor's laser).
+/// register there (`scratch_z_fraction`: Sensor's laser). The spark
+/// outlives a hitter that ends with the battle (the lab's
+/// chips/0x071-sensor1/ko): a freed slot keeps its object's kind until it
+/// is used again, as in the game, and that kind is asked.
 fn spark_z_fraction_unknown(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef) -> bool {
     use bn6_battle::object::Pool;
     if compat.object_slot(b, r) != Ok((Pool::Effect, 4)) {
         return false;
     }
     let Some(hitter) = b.objects.get(r).related[0] else { return false };
-    b.objects.is_allocated(hitter)
-        && compat
-            .object_slot(b, hitter)
-            .is_ok_and(|(pool, index)| compat.kind_at(pool, index).is_some_and(|(_, k)| k.scratch_z_fraction))
+    compat
+        .object_slot(b, hitter)
+        .is_ok_and(|(pool, index)| compat.kind_at(pool, index).is_some_and(|(_, k)| k.scratch_z_fraction))
 }
 
 /// One object's observable state as the comparison sees it.
