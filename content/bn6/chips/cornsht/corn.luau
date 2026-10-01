@@ -67,7 +67,8 @@ local function taken(x: number, y: number): boolean
     if x == 0 then
         return true
     end
-    for _, o in battle.objects_of(corn.kind) do
+    local list: { Object } = battle.objects_of(corn.kind :: Kind)
+    for _, o in list do
         if o.panel_x == x and o.panel_y == y then
             return true
         end

@@ -83,16 +83,18 @@ function cannon.action(spec: CannonSpec): Action
     local function afterimages(me: Object)
         local x, z = me:attach_point(CANNON_POINT)
         local p = me.pos
+        -- `object_getFlip`: the side's facing and the object's flip.
+        local flip = bit32.bxor(me.alliance, me.flip)
         battle.afterimage(me, Vec3.new(p.x + x * 0x10000, p.y, p.z + z * 0x10000), {
             sprite = spec.arm.sprite,
             anim = 0,
-            flip = me.flip,
+            flip = flip,
             lifetime = AFTERIMAGE_TICKS,
             color_shader = AFTERIMAGE_SHADER,
         })
         battle.afterimage(me, me.pos, {
             anim = NAVI_ANIM,
-            flip = me.flip,
+            flip = flip,
             lifetime = AFTERIMAGE_TICKS,
             color_shader = AFTERIMAGE_SHADER,
             shadow = "ground",

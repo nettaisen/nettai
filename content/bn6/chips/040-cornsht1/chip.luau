@@ -8,12 +8,12 @@
 
 local cornsht = require("../cornsht/chips")
 
-local legacy = {
+local by_number = {
     state = cornsht.STATE,
 }
 
-function legacy.update(me: Object, s: any)
+function by_number.update(me: Object, s: any)
     cornsht.actions.cornsht1.update(me, s)
 end
 
-return legacy
+return by_number

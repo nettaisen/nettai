@@ -35,6 +35,7 @@ tango = { pool = "actor", index = 0x4D }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
 "engine/full-synchro-aura" = { pool = "actor", index = 0x5E }
 projectile = { pool = "attack", index = 0x00 }
+"batcan/shot" = { pool = "attack", index = 0x01 }
 "engine/hitbox" = { pool = "attack", index = 0x03 }
 flame = { pool = "attack", index = 0x04 }
 "engine/eruption" = { pool = "attack", index = 0x07 }
@@ -44,7 +45,9 @@ bomb-slash = { pool = "attack", index = 0x0A }
 flying-shot = { pool = "attack", index = 0x0B }
 dust-storm = { pool = "attack", index = 0x0E }
 "grab/shot" = { pool = "attack", index = 0x0F }
+"cornsht/corn" = { pool = "attack", index = 0x10 }
 "energbom/burst" = { pool = "attack", index = 0x11 }
+bullet = { pool = "attack", index = 0x12 }
 "wavearm/wave" = { pool = "attack", index = 0x16 }
 "spoutman/geyser" = { pool = "attack", index = 0x17 }
 falling-rock = { pool = "attack", index = 0x1D }
@@ -62,6 +65,8 @@ falling-rock = { pool = "attack", index = 0x1D }
 boomerang = { pool = "attack", index = 0x32 }
 "crakshot/shot" = { pool = "attack", index = 0x33 }
 "ironshl/shell" = { pool = "attack", index = 0x34 }
+"widesht/wave" = { pool = "attack", index = 0x3B }
+"tankcan/shell" = { pool = "attack", index = 0x3C }
 immobilizer = { pool = "attack", index = 0x3F }
 "bblstar/star" = { pool = "attack", index = 0x42 }
 gust = { pool = "attack", index = 0x49 }
@@ -73,6 +78,7 @@ gust = { pool = "attack", index = 0x49 }
 seed = { pool = "attack", index = 0x4F }
 "aquandl/needle" = { pool = "attack", index = 0x50 }
 "yoyo/yoyo" = { pool = "attack", index = 0x52 }
+sonic-boom = { pool = "attack", index = 0x58 }
 rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 "firehit/fist" = { pool = "attack", index = 0x5B }
 "megaman/element-pillar" = { pool = "attack", index = 0x61 }

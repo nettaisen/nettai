@@ -55,7 +55,8 @@ local function action(id: string): Action
             return
         end
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000)
-        corn.spawn(me, me.panel_x, me.panel_y, 0, me.attack_element, damage, me:attack_param(1))
+        -- Its generation is the chips' first parameter, 0: the probe.
+        corn.spawn(me, me.panel_x, me.panel_y, 0, me.attack_element, damage, 0)
         local gun = me.overlay
         if gun then
             gun.anim += 1
