@@ -1,11 +1,14 @@
 --!strict
--- The Beast forms' claw: weapon routine 0x1E (`sub_8011E1C`), what a
--- charged Null-family chip becomes in a Beast form (the alternative
--- A-charge), and its action 0x52 (`sub_80EF534`). The chip-use framework
--- runs it inside the Beast Out rush, so it strikes from the panel in front
--- of its target: two slashes a panel ahead, each a one-tick hit. See
--- docs/engine/chips.md §4.6.
+-- The Beast forms' claw (`megaman/beast-claw`): the original's weapon
+-- routine 0x1E (`sub_8011E1C`), what a charged Null-family chip becomes in
+-- a Beast form (the alternative A-charge), and its action 0x52
+-- (`sub_80EF534`). The chip-use framework runs it inside the Beast Out
+-- rush (which recognizes it by the role `beast_claw`), so it strikes from
+-- the panel in front of its target: two slashes a panel ahead, each a
+-- one-tick hit. See docs/engine/chips.md §4.6.
 
+local collision = require("../../../../rules/collision")
+local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -16,11 +19,7 @@ export type State = {
     slashes: number,
 }
 
-local beast_claw = {
-    state = { timer = "u16", slashes = "u16" },
-}
-
-local ACTION = 0x52
+local beast_claw = {}
 
 -- The phases, on the attack's step.
 local SLASH, RECOVER = 0x0, 0x4
@@ -32,28 +31,33 @@ local CLAW_ANIM = 0x0C
 local HIT_PARAM = 0x9E
 
 -- Per slash, first and second (by 2 - slashes): the slash effect
--- (`byte_80EF606`), the hit's region shape (`byte_80EF5FC`'s records) and
--- hit modifier (`byte_80EF604`), and the sound.
-local LOOKS = { [0] = 0x3A, [1] = 0x39 }
-local REGIONS = { [0] = 0x02, [1] = 0x04 }
+-- (`byte_80EF606`), the hit's region (`byte_80EF5FC`'s records: the panel
+-- and the one ahead, then the column) and hit modifier (`byte_80EF604`),
+-- and the sound.
+local CLAWS = asset.sprite("slash-man-effect")
+local LOOKS = {
+    [0] = define.effect { sprite = CLAWS, anim = 1, palette = 0 },
+    [1] = define.effect { sprite = CLAWS, anim = 0, palette = 0 },
+}
+local REGIONS = { [0] = regions.long, [1] = regions.wide }
 local HIT_MODS = { [0] = 1, [1] = 3 }
-local FIRST_SOUND, SECOND_SOUND = 0x1C5, 0x1C6
+local FIRST_SOUND, SECOND_SOUND = asset.sound("beast-claw"), asset.sound("beast-claw-2")
 
--- The hit: no spark, against bodies (5), as an attack (4).
-local HIT_EFFECT, TARGET, SELF_TYPE = 0xFF, 0x05, 0x04
+-- The hit: no spark, an attack at navis.
+local HIT_EFFECT = 0xFF
 
 -- `sub_8011E1C`: 50 damage and 10 more per point of buster damage (up to
 -- 5), counter byte 0x9E, two slashes.
-function beast_claw.setup(navi: Object): number
+local function setup(navi: Object): Action
     navi.charged = 0
     navi.attack_lockout = 0
     navi.extra = 0
     navi.hit_param = HIT_PARAM
     navi.attack_damage = weapon.charge_damage(navi, 0x32, 0xA)
     navi.attack_element = 0
-    local s = navi:action_state(ACTION) :: State
+    local s = navi:action_state(beast_claw.action) :: State
     s.slashes = 2
-    return ACTION
+    return beast_claw.action
 end
 
 -- `sub_80EF550`: the claw raised (the Beast head's too) for 3 ticks, then
@@ -99,8 +103,8 @@ local function slash(me: Object, s: State)
         z = 0,
         region = region,
         hit_effect = HIT_EFFECT,
-        target = TARGET,
-        self_type = SELF_TYPE,
+        target = collision.hits_navis,
+        self_type = collision.attack,
         damage = me.attack_damage,
         stamina = me.hit_param,
         hit_mod = hit_mod,
@@ -125,16 +129,31 @@ local function recover(me: Object, s: State)
     me:exit_attack()
 end
 
--- `sub_80EF534`.
-function beast_claw.update(me: Object, s: State)
-    local step = me.step
-    if step == SLASH then
-        slash(me, s)
-    elseif step == RECOVER then
-        recover(me, s)
-    else
-        error(string.format("beast claw phase %#x reads past sub_80EF534's phase table", step))
-    end
-end
+beast_claw.action = define.action {
+    id = "megaman/beast-claw/action",
+    state = { timer = "u16", slashes = "u16" },
+    -- `sub_80EF534`.
+    update = function(me: Object, s: State)
+        local step = me.step
+        if step == SLASH then
+            slash(me, s)
+        elseif step == RECOVER then
+            recover(me, s)
+        else
+            error(string.format("beast claw phase %#x reads past sub_80EF534's phase table", step))
+        end
+    end,
+}
+
+beast_claw.weapon = define.weapon {
+    id = "megaman/beast-claw",
+    name = "Beast claw",
+    -- The charge table's row 0x1E; Charge 5 reads on into row 0x1F's first
+    -- entry, as the original's table does.
+    charge_ticks = { 20, 20, 20, 20, 20, 40 },
+    setup = setup,
+    -- (Transitional: the routine number the pack's forms name it by.)
+    legacy = { routines = { 0x1E } },
+}
 
 return beast_claw
