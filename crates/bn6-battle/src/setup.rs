@@ -307,6 +307,8 @@ impl NaviStats {
             0x42 => low(&mut self.max_hp),
             0x43 => high(&mut self.max_hp),
             0x44 => w.mode9_a = weapon(value),
+            0x48 => low(&mut w.back_special_damage),
+            0x49 => high(&mut w.back_special_damage),
             0x4D => w.buster_shot = value,
             0x4F => w.charge_shot_kind = value,
             0x50 => low(&mut self.chip_recovery),
