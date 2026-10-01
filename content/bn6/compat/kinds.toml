@@ -33,6 +33,7 @@ tango = { pool = "actor", index = 0x4D }
 "engine/idle-overlay" = { pool = "actor", index = 0x55 }
 "engine/body-overlay" = { pool = "actor", index = 0x56 }
 "engine/form-overlay" = { pool = "actor", index = 0x57 }
+"bugfix/glow" = { pool = "actor", index = 0x5D }
 "engine/full-synchro-aura" = { pool = "actor", index = 0x5E }
 projectile = { pool = "attack", index = 0x00 }
 "engine/hitbox" = { pool = "attack", index = 0x03 }
@@ -134,6 +135,7 @@ rising-bubble = { pool = "effect", index = 0x14 }
 dust-storm-mote = { pool = "effect", index = 0x19 }
 gauge-speed = { pool = "effect", index = 0x1C, scratch_position = true }
 panel-changer = { pool = "effect", index = 0x1F, scratch_position = true }
+"panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
 panel-bursts = { pool = "effect", index = 0x24, scratch_position = true }
 "timebom/bomb" = { pool = "effect", index = 0x27, scratch_position = true }
 "engine/afterimage" = { pool = "effect", index = 0x28 }
@@ -146,6 +148,7 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 "deltaray/follow-effect" = { pool = "effect", index = 0x31 }
 "rockcube/cube" = { pool = "effect", index = 0x37, scratch_position = true }
 "rock/debris" = { pool = "effect", index = 0x38 }
+"bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
 "engine/bubble-visual" = { pool = "effect", index = 0x3C }
 "golmhit/golem" = { pool = "effect", index = 0x3F }
 "aquandl/volley" = { pool = "effect", index = 0x40, scratch_position = true }

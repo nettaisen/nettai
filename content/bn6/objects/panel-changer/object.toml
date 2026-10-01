@@ -1,7 +1,0 @@
-# The panel changer (effect object #0x1F, `sub_80E28A8`) is a script. Its
-# position is its spawner's registers, which nothing reads.
-
-[kind]
-pool = "effect"
-index = 0x1F
-script = "panel_changer.luau"
