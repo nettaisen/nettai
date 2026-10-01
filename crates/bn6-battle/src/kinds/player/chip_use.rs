@@ -245,24 +245,19 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
 /// for its kind of use (which calls its hook); an instant chip's effect
 /// goes into the attack.
 pub(super) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> super::NaviAction {
-    use crate::content::{ChipUsage, Unported};
+    use crate::content::ChipUsage;
     use super::actions::instant::Effect;
     use super::{EngineAction as E, NaviAction as A};
     let content = b.content.clone();
     let chip = content.chip_or_zeroed(chip);
     match content.defs.chip(chip).usage {
         ChipUsage::Action(h) => A::Content(h),
-        ChipUsage::Dimming(_) | ChipUsage::Unported(Unported::Dimming(_)) => A::Engine(E::DimmingChip),
-        ChipUsage::Navi(_) | ChipUsage::Unported(Unported::Navi(_)) => A::Engine(E::NaviChip),
+        ChipUsage::Dimming(_) => A::Engine(E::DimmingChip),
+        ChipUsage::Navi(_) => A::Engine(E::NaviChip),
         ChipUsage::Instant(f) => {
             ai_mut(b, r).attack.instant = Some(Effect::Runs(f));
             A::Engine(E::InstantChip)
         }
-        ChipUsage::Unported(Unported::Instant(subtype)) => {
-            ai_mut(b, r).attack.instant = Some(Effect::Unported(subtype));
-            A::Engine(E::InstantChip)
-        }
-        ChipUsage::Unported(Unported::Action(n)) => A::numbered(&content.defs, n),
     }
 }
 
@@ -367,12 +362,14 @@ fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let damage = crate::hand::chip_damage(b, chip, side);
     let a = &mut ai_mut(b, r).attack;
     a.chip = chip;
-    a.params = cd.params;
+    // (The original copies the record's subtype and parameter bytes: a
+    // chip has neither here; what its action needs is its definition's.)
+    a.params = [0; 4];
     a.damage = damage;
     a.hit_param = cd.hit_param as u16;
     a.lockout = cd.lockout;
     a.extra = 0;
-    a.variant = cd.subtype;
+    a.variant = 0;
     a.element = cd.element as u8 | content.rules.family_elements(cd.family).0;
     a.charged = 0;
 }

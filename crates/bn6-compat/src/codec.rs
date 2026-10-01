@@ -8,7 +8,7 @@
 //! settings indices). [`Ids`] maps one to the other through compat's keys.
 
 use crate::Compat;
-use bn6_battle::content::{ChipCode, ChipId, Content};
+use bn6_battle::content::{ChipCode, Content};
 use bn6_battle::custom::folder::FOLDER_SIZE;
 use bn6_battle::custom::{BattleFolder, FolderChip};
 use bn6_battle::hand::ChipHand;
@@ -20,11 +20,16 @@ use bn6_content_api::{ChipHandle, FormHandle, NaviHandle, StageHandle, WeaponHan
 
 // ---- Numbers and handles ----------------------------------------------------------
 
+/// A chip id (0..=0x19A in BN6): its place in the original's chip table,
+/// which folders, hands, saves and link data carry.
+pub type ChipId = u16;
+
 /// The original's numbers for a content's identities, and back. A number
 /// names compat's key, and a definition of that key is the thing (a chip
-/// content defines, reached from a recorded folder); else the pack's
-/// record with that number (its transitional key, `v1/chip-036`). Back, a
-/// pack record gives its own number and a definition compat's for its key.
+/// content defines, reached from a recorded folder); for a navi, a form or
+/// a weapon, else the pack's record with that number. Back, a definition
+/// gives compat's number for its key. A chip is always a definition: the
+/// engine has no number for one.
 ///
 /// Numbers a setup can't hold panic: the records are the original's, and
 /// the content is BN6's.
@@ -41,21 +46,12 @@ impl<'a> Ids<'a> {
 
     /// The chip with this id.
     pub fn chip(&self, id: ChipId) -> ChipHandle {
-        let defs = &self.content.defs;
-        self.compat
-            .chip_key(id)
-            .and_then(|k| defs.chip_by_key(k))
-            .or_else(|| defs.chip_numbered(id))
-            .unwrap_or_else(|| panic!("chip {id:#x} is neither defined nor in the pack"))
+        let key = self.compat.chip_key(id).unwrap_or_else(|| panic!("chips.toml has no chip {id:#x}"));
+        self.content.defs.chip_by_key(key).unwrap_or_else(|| panic!("the content defines no chip {key:?} (chip {id:#x})"))
     }
 
     /// A chip's id.
     pub fn chip_id(&self, h: ChipHandle) -> ChipId {
-        // (A numbered record, which only the engine's test content has, is
-        // its own number.)
-        if let Some(id) = self.content.defs.chip(h).record.id {
-            return id;
-        }
         let key = &self.content.defs.chip(h).key;
         self.compat.chips.get(key).map(|c| c.id).unwrap_or_else(|| panic!("chips.toml has no {key:?}"))
     }
@@ -452,8 +448,25 @@ mod tests {
         })
     }
 
+    /// BN6's compat, with the test content's chips under the numbers
+    /// these tests' records use.
     fn ids() -> Ids<'static> {
-        Ids::new(content(), Compat::bn6())
+        static COMPAT: std::sync::OnceLock<Compat> = std::sync::OnceLock::new();
+        let compat = COMPAT.get_or_init(|| {
+            let mut compat = Compat::bn6().clone();
+            compat.chips = [
+                (0x00, "test/blank"),
+                (0x03, testing::SUN_GUN_3),
+                (0x05, testing::VEIL),
+                (0x41, testing::PLUS),
+                (0x100, testing::BOMB),
+            ]
+            .into_iter()
+            .map(|(id, key)| (key.to_string(), crate::ChipEntry { id, ..Default::default() }))
+            .collect();
+            compat
+        });
+        Ids::new(content(), compat)
     }
 
     #[test]
@@ -535,8 +548,8 @@ mod tests {
         assert_eq!(chip_hand_bytes(&hand, &ids), b);
     }
 
-    /// A number compat names a definition for reaches the definition; the
-    /// pack's record otherwise, and back.
+    /// A number compat names a definition for reaches the definition, and
+    /// back.
     #[test]
     fn numbers_reach_definitions_by_key() {
         let c = testing::with_test_pack();
@@ -547,8 +560,6 @@ mod tests {
         let ticker = c.defs.chip_by_key("test/ticker1").unwrap();
         assert_eq!(ids.chip(0x36), ticker);
         assert_eq!(ids.chip_id(ticker), 0x36);
-        assert_eq!(ids.chip(0x37), c.defs.chip_numbered(0x37).unwrap());
-        assert_eq!(ids.chip_id(ids.chip(0x37)), 0x37);
         let shot = c.defs.weapon_by_key("test/tick-shot").unwrap();
         assert_eq!((ids.weapon(0x2E), ids.weapon(0x2F)), (Some(shot), Some(shot)));
         assert_eq!(ids.weapon_number(Some(shot)), 0x2E);

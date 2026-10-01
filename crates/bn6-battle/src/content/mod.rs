@@ -146,10 +146,6 @@ impl std::fmt::Display for ContentHash {
 /// the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Content {
-    /// The chips the pack numbers, by chip id (`ChipData::id`; ids no
-    /// content names are left out). Content defining the pack's chips
-    /// (`legacy { number }`) fills it (`Content::define`).
-    pub chips: Vec<ChipData>,
     /// Navis by [`Navi`](crate::setup::Navi) number (MegaMan is 0).
     pub navis: Vec<NaviData>,
     /// MegaMan's forms by [`Form`](crate::setup::Form) number (0 is the

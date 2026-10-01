@@ -514,5 +514,5 @@ fn banner_parts<'a>(b: &Battle, hud: &'a Hud, id: u8, out: &mut Vec<SpritePart<'
 fn next_chip_number(b: &Battle, hand: &bn6_battle::hand::ChipHand) -> Option<u16> {
     let h = hand.ids.get(hand.cursor as usize).copied().flatten()?;
     let def = b.content.defs.chip(h);
-    def.record.id.or_else(|| bn6_compat::Compat::bn6().chips.get(&def.key).map(|c| c.id))
+    bn6_compat::Compat::bn6().chips.get(&def.key).map(|c| c.id)
 }

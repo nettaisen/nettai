@@ -130,7 +130,9 @@ pub struct AttackVars {
     pub step_init: u8,
     /// Attack element byte (primary | secondary bits).
     pub element: u8,
-    /// Variant (chip subtype, buster variant).
+    /// Variant (AIAttackVars+0x0B: in the original the chip record's
+    /// subtype, or a buster's variant; here what an action or the ruleset
+    /// sets for itself, a chip's use being its definition's).
     pub variant: u8,
     pub charged: u8,
     /// Input lockout to apply when the attack ends.
@@ -139,10 +141,12 @@ pub struct AttackVars {
     pub damage: u16,
     /// Counter/stagger strength for the attack's hitbox.
     pub hit_param: u16,
-    /// Action parameters (a chip's `params`).
+    /// Action parameters (AIAttackVars+0x0C: in the original, the chip
+    /// record's four parameter bytes; here whatever an action sets for
+    /// itself: a chip's use takes its own from its definition).
     pub params: [u8; 4],
     /// The attack's chip; none for no chip (the game's 0, whose record
-    /// reads as the pack's chip 0: see [`crate::content::Content::chip_field`]).
+    /// reads as the zeroed chip: see [`crate::content::Content::chip_field`]).
     pub chip: Option<ChipHandle>,
     pub special_source: u8,
     /// Which `set_attack` slot started the action.

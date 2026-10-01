@@ -14,30 +14,15 @@ local slashes = require("../../forms/slashcross/slashes")
 
 local slash_a_charge = {}
 
--- Transitional: a charged chip that is still a pack record has no
--- definition to ask, and its action is a registration by number. The
--- original's own tests then: the variable swords' actions, MoonBld's (the
--- ring: row 0x11), and for any other the slash by the chip's subtype, with
--- a dash if its first parameter is set (StepSwrd's).
-local VAR_SWORD, NEO_VARIABLE, MOON_BLADE = 0x53, 0x54, 0x40
-local MOON_ROW = 0x11
-
-local function by_number(navi: Object, action: number): Action | number
-    if action == VAR_SWORD or action == NEO_VARIABLE then
-        navi.charged = 1
-        return action
-    end
-    local row = if action == MOON_BLADE then MOON_ROW else navi.variant
-    return slash_charge.begin(navi, slashes.by_row(row), navi:attack_param(1) ~= 0)
-end
-
 -- `sub_8011CB4`.
-local function setup(navi: Object): Action | number
-    local number = navi:prepare_chip()
+local function setup(navi: Object): Action
+    navi:prepare_chip()
     local chip = navi.attack_chip
     local action = chip and chip.action
     if action == nil then
-        return by_number(navi, number)
+        -- (A chip with no action of its own: the plain slash where the
+        -- navi stands, what the original's row 0 gives.)
+        return slash_charge.begin(navi, slashes.sword, false)
     end
     local spec = action.args :: { charged: (ChargedSlash | "own")? }?
     if spec and spec.charged == "own" then
