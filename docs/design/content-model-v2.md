@@ -504,7 +504,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | countdown-bomb | time-bom | chips/timebom/ |
 | crack-shot | CrakShot, DublShot, TrplShot | chips/crakshot/ |
 | dash-hit | GroundCross Beast's dash, ChargeCross's tackle | navis/megaman/ |
-| delta-ray, follow-effect | DeltaRay | chips/deltaray/ |
+| delta-ray | DeltaRay | chips/deltaray/ |
 | dragon-head, dragon-body | HeatDrgn, ElecDrgn, AquaDrgn, WoodDrgn | lib/dragons/ |
 | drill | DrilArm; GroundCross's drill | objects/drill |
 | drip-shower | DripShwr (SpoutMan's link chip) | navis/spoutman/ |
@@ -528,13 +528,15 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | flame-hook, flame-hook-fire | FlmHook1-3 | chips/flmhook/ |
 | flash-bomb | FlshBom1-3 | chips/flshbom/ |
 | flying-shot | TrnArrw, the buster's throw, the Falzar beast's buster | objects/flying-shot |
+| follow-effect | DeltaRay's bursts, DElecSwd's glow (ElecMan's link chip) | objects/follow-effect |
 | gauge-speed | SloGauge, FstGauge | lib/gauge-speed/ |
 | golem | GolmHit1-3 | chips/golmhit/ |
 | grab-shot | area-grab | lib/grab/ |
 | great-yoyo, yoyo | YoYo, GreatYo | chips/yoyo/ |
 | guardian, guardian-statue, guardian-strike | Guardian (written, unregistered) | chips/guardian/ |
 | gust | WindRack; TenguCross's wind | objects/gust |
-| heat-man, heat-flame | HeatMan series | chips/heatman/ |
+| heat-man | HeatMan series | chips/heatman/ |
+| heat-flame | HeatMan's navi; HeatPres | chips/heatman/ (rule 4) |
 | hit-flash, lunge-slash | SlashCross Beast's lunge | navis/megaman/forms/slashcross-beast/ |
 | hockey-puck | AirHocky, PitHocky | chips/airhocky/ |
 | honey-bee | RskyHny1-3 | chips/rskyhny/ |
@@ -550,7 +552,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | meteor-shower | instant effect 16 (no chip yet) | lib/instant/ |
 | moon-blade | MoonBld | chips/moonbld/ |
 | navi-boost | PunchArm, NeedlArm, PuzzlArm, BoomrArmSyncTrgr, DarkInvs, BugRSwrd, HubBatc, BgDthThd | lib/navi-boost/ |
-| navi-effect | DElecSwd (ElecMan's link chip) | navis/elecman/ |
+| navi-effect | a second port of follow-effect (effect #0x31), deleted | objects/follow-effect |
 | needle-volley | AquaNdl1-3 | chips/aquandl/ |
 | panel-bursts | black-bomb, countdown-bomb, elem-trap-strike | objects/panel-bursts |
 | panel-strike | bass | chips/bass/ |
@@ -1033,7 +1035,7 @@ the navis share (appearing, leaving, the SP deletion-time damage).
 **As built** (step 7): chips/eraseman/navi.luau (the `eraseman/navi` kind, state `{ cycle, aim, controller,
 aim_ticks }`, and `eraseman.summon { aim_ticks }`, the `navi` hook), chips/eraseman/mark.luau (`eraseman/mark`)
 and chips/eraseman/beam.luau (`eraseman/beam`, spawned with `{ aim, ticks, navis }`; EraseMan's own EDeletBm,
-chips/193-edeletbm, spawns it too). The beam's collision type (`piercing-break`, row 0x16) and spark
+navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-break`, row 0x16) and spark
 (`sparks.erase`, hit effect 0x0C) are definitions. What it settled:
 
 - **The chips stay records.** The ruleset turns navi chips back by number (AntiNavi, `is_navi_chip`: 0xDD to
@@ -1871,6 +1873,17 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   content's numbered chips. The 0x12 and 0x13 shims go when the Cross special's list and the recipes go by
   handle (phase C, step 10); the 0x49 one when the stun strike (idle.rs `set_attack(0x49)`) is
   `roles.actions.stun_strike`.
+- **A record's action by its module.** A chip record whose `script` names a module that exports `action` (an
+  action definition) runs that action as its use, as a chip definition's `action` does, whatever its action
+  number names (`record_action` in content/defs.rs; such a module can't also export `update`). The link navis'
+  own chips, 0x190 HeatPres to 0x199 DustBrk, need it: their action number 0x0A is below 0x10, an entry of the
+  user's own action table (`off_80EA4C8[AIIndex][0xA]`) that registration by number can't claim, and all ten
+  share subtype 3, so no shim could pick by subtype; and they stay records for their damage by the navi's
+  level (formulas 24 to 44). Each record (chips/19N-<chip>/chip.toml) names its navi's module
+  (navis/<navi>/chip.luau), which returns `{ action = define.action { id = "<chip>/action", ... } }`. Which
+  link navi has which chip is the navi record's `own_chip`, not the original's table by AI index: any navi that
+  holds the chip runs its action. It goes when chip definitions take damage formulas (step 10): each chip
+  becomes a `define.chip` beside its action and its navi's definition names it as `own_chip` (step 5's navis).
 - **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
   above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
   (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
