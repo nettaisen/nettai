@@ -39,18 +39,18 @@ framework's gap are listed with it. Branches no scenario reaches are marked **[u
 | 0x2E | `sub_80ED374` | 0x33 DrilArm | attack #0x71 drill | chips/drilarm, objects/drill |
 | 0x2F | `sub_80ED454` | 0x34 Tornado, 0x35 Static | attack #0x31 tornado | chips/tornado (chips, tornado); shim chips/034-tornado |
 | 0x31 | `sub_80ED64C` | 0x5C..0x5E WaveArm, 0x149..0x14B PwrWave | attack #0x16 shock wave | chips/wavearm (wave, strike), chips/pwrwave; shim chips/05c-wavearm1 |
-| 0x32 | `sub_80ED6E6` | 0x3D..0x3F AquaNdl | effect #0x40 needle volley, attack #0x50 aqua needle | chips/03d-aquandl1, objects/needle-volley, objects/aqua-needle |
-| 0x34 | `sub_80ED810` | 0x152 H-Burst | attack #0x9E hyper burst | chips/152-h-burst, objects/hyper-burst |
-| 0x36 | `sub_80ED9AE` | 0x28..0x2A RlngLog | attack #0x66 rolling log | chips/028-rlnglog1, objects/rolling-log |
-| 0x38 | `sub_80EDCC0` | 0x7E..0x80 AirSpin | attack #0x9B whirlwind, attack #0xD4 seeking whirlwind | chips/07e-airspin1, objects/air-spin, objects/seeking-whirl |
-| 0x3E | `sub_80EE0BC` | 0x1F..0x21 DolThdr | attack #0x82 thunder doll, attack #0x8B thunder column | chips/01f-dolthdr1, objects/thunder-doll, objects/thunder-column |
-| 0x3F | `sub_80EE192` | 0x50 WindRack | attack #0x49 gust | chips/050-windrack, objects/gust |
-| 0x40 | `sub_80EE2A0` | 0x54 MoonBld | attack #0x85 moon blade | chips/054-moonbld, objects/moon-blade |
-| 0x42 | `sub_80EE55E` | 0x22..0x24 ElcPuls, 0x14E DestPuls | attack #0x8C electric pulse | chips/022-elcpuls1, objects/elec-pulse |
-| 0x43 | `sub_80EE634` | 0x5F..0x61 AuraHed, 0x150 StreamHd | attack #0x92 aura head | chips/05f-aurahed1, objects/aura-head |
-| 0x44 | `sub_80EE6FC` | 0xB7 MagCoil | attack #0x95 magnet | chips/0b7-magcoil, objects/magnet |
-| 0x53 | `sub_80EF62E` | 0x52 VarSwrd | (hands off to the chosen sword) | chips/052-varswrd, lib/vari_sword |
-| 0x54 | `sub_80EF7E2` | 0x53 NeoVari | (hands off to the chosen sword) | chips/053-neovari, lib/vari_sword |
+| 0x32 | `sub_80ED6E6` | 0x3D..0x3F AquaNdl | effect #0x40 needle volley, attack #0x50 aqua needle | chips/aquandl (action, volley, needle) |
+| 0x34 | `sub_80ED810` | 0x152 H-Burst | attack #0x9E hyper burst | chips/h-burst (action, burst) |
+| 0x36 | `sub_80ED9AE` | 0x28..0x2A RlngLog | attack #0x66 rolling log | chips/rlnglog (action, log) |
+| 0x38 | `sub_80EDCC0` | 0x7E..0x80 AirSpin | attack #0x9B whirlwind, attack #0xD4 seeking whirlwind | chips/airspin (action, top, whirl) |
+| 0x3E | `sub_80EE0BC` | 0x1F..0x21 DolThdr | attack #0x82 thunder doll, attack #0x8B thunder column | chips/dolthdr (action, doll), objects/thunder-column |
+| 0x3F | `sub_80EE192` | 0x50 WindRack | attack #0x49 gust | chips/windrack (action), objects/gust |
+| 0x40 | `sub_80EE2A0` | 0x54 MoonBld | attack #0x85 moon blade | chips/moonbld (action, blade) |
+| 0x42 | `sub_80EE55E` | 0x22..0x24 ElcPuls, 0x14E DestPuls | attack #0x8C electric pulse | chips/elcpuls (action, pulse) |
+| 0x43 | `sub_80EE634` | 0x5F..0x61 AuraHed, 0x150 StreamHd | attack #0x92 aura head | chips/aurahed (action, head) |
+| 0x44 | `sub_80EE6FC` | 0xB7 MagCoil | attack #0x95 magnet | chips/magcoil (chip, magnet) |
+| 0x53 | `sub_80EF62E` | 0x52 VarSwrd | (hands off to the chosen sword) | chips/varswrd, lib/swords/vari |
+| 0x54 | `sub_80EF7E2` | 0x53 NeoVari | (hands off to the chosen sword) | chips/neovari, lib/swords/vari |
 
 Not yet content: 0x55 (SonicBom, Curse, Punisher, SprSonic, `sub_80EF970`) and 0x5B (Z Saver, `sub_80EFEE0`), which
 share the sonic boom (attack #0x58, `sub_80CF7F0`), specified in shot-chips.md with the actions that fire a shot;
@@ -58,7 +58,7 @@ and 0x0A, the link navis' chips (below).
 
 Shared helpers: lib/panels.luau (`GetRandomRelativePanelFiltered`, `sub_8109708`), lib/object_setup.luau
 (`sub_8011504`, the collision-panel highlight, the dust puff), lib/arm.luau (`sub_80EBAE8`, the arm a chip
-attachment shows), lib/vari_sword.luau, and group G1's lib/region.luau and lib/trajectory.luau.
+attachment shows), lib/swords/vari.luau, and group G1's lib/region.luau and lib/trajectory.luau.
 
 ## The other actions, in brief
 

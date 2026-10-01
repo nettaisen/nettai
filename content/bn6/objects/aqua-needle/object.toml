@@ -1,6 +1,0 @@
-# The aqua needle (attack object #0x50, `sub_80CE530`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x50
-script = "aqua_needle.luau"
