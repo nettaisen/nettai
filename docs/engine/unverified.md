@@ -111,7 +111,7 @@ standard chip action…), whichever section below the family belongs to:
 
 | family | branch | why it was unreached | reachable | scenario and status |
 |---|---|---|---|---|
-| Wind, Fan (subtype 8) | a second fan replacing the first (the wind registry's destroy) | one fan per scenario | yes | chips/0x081-wind/then-fan, both-sides: verified |
+| Wind, Fan (subtype 8) | a second fan replacing the first | one fan per scenario | yes | chips/0x081-wind/twice: verified (the second, from another row, evicts the first through the field-object registry, class 1, before it becomes its side's wind, so the wind registry's own replacement never runs: completeness.md §6.2). `then-fan` places no Fan: the panel in front is the Wind's; `both-sides` is one fan a side |
 | Wind, Fan | the lifetime running out (1440 ticks) | scenarios end first | yes | chips/0x081-wind/lifetime: verified |
 | Wind, Fan | Fan's fan broken; AirShot at it | only Wind's `counter` breaks one | yes | chips/0x082-fan/broken, pushed: verified (the shot breaks it: no push branch) |
 | Wind, Fan | no gust (an obstacle on the row's first enemy panel; Fan's start a panel nearer) | no obstacle there | yes | chips/0x081-wind/no-gust, chips/0x082-fan/gust-past-bomb: verified |
