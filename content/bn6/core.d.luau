@@ -105,6 +105,8 @@ export type StatusFlag =
     | "bubbled"
     -- Hit even while the battle is dimmed (ElemTrap's trap).
     | "hit_while_dimmed"
+    -- A field object being carried to be thrown.
+    | "carried"
 -- Status timers of an object with collision data.
 export type StatusTimer =
     "paralyze" | "confuse" | "blind" | "immobilize" | "flash" | "submerged" | "invulnerable" | "freeze" | "bubble"
@@ -218,6 +220,10 @@ declare class Sprite
     -- let it animate (the object's `no_sprite_update` off). Deprecated: a
     -- sprite by number ("CC-II"); use an asset (asset.sprite).
     function load(self, sprite: SpriteAsset | SpriteId): ()
+    -- `sub_800F29C` with `sub_800FC9E` or `sub_800F26C`, then `load`: the
+    -- sprite `like` is drawn with (a player navi's by its side's navi and
+    -- form; a field object's by its look): a stand-in for a chip's user.
+    function load_like(self, like: Object): ()
     -- The sprite `owner`'s NameID record gives it: a player's own by its
     -- navi stats (`sub_800FC9E`), another object's its NameID look
     -- (`sub_800F26C`); loaded as `load` does.
@@ -246,6 +252,11 @@ declare class Collision
     -- Hit spark (0xFF = none), as the engine's byte (`set_hit_effect` takes
     -- a definition). Deprecated: setting it to a number.
     hit_effect: number
+    -- The primary element its hits carry and the secondary elements (sword
+    -- 0x80, cursor 0x40, wind 0x20, break 0x10): setup takes them from the
+    -- object's element byte; `sub_8019F8C` sets them again.
+    element: number
+    secondary_element: number
     status_base: number
     -- Bug code (low byte) and argument (high byte).
     bugs: number
@@ -281,6 +292,9 @@ declare class Collision
     -- The damage taken this window in an element (0 null, 1 fire, 2 aqua,
     -- 3 elec, 4 wood; 5 the sixth slot).
     function element_damage(self, element: number): number
+    -- `sub_801A4DC`: the objects whose collisions hit it this window, in
+    -- slot order.
+    function hit_by(self): { Object }
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -436,7 +450,10 @@ declare class Object
     -- `sub_8010DF6` with `owner`'s NameID record: put on the parts that
     -- record adds (a navi's body overlay), kept in related2; with
     -- `keep_stepping`, a part that came steps even while paused and dimmed.
-    function add_parts_of(self, owner: Object, keep_stepping: boolean?): ()
+    -- With `paused_stepping`, `sub_8010DF6`'s r2 is 1 rather than the
+    -- record's first byte (the dimming chips' stand-ins): the parts step
+    -- even while paused.
+    function add_parts_of(self, owner: Object, keep_stepping: boolean?, paused_stepping: boolean?): ()
     -- `sub_8011044` with `owner`'s NameID record: take them off.
     function remove_parts_of(self, owner: Object): ()
 
@@ -456,6 +473,9 @@ declare class Object
     -- `object_updateSpritePaused`: the same, paused or not, but not while
     -- dimmed (and whatever `no_sprite_update` says).
     function update_sprite_while_paused(self): ()
+    -- `sub_801BC24`: load a requested animation (without stepping it), else
+    -- step the sprite; `update_sprite`'s gating but for holds.
+    function load_or_step_sprite(self): ()
     -- The sprite's attach point n, in pixels facing the object's way.
     function attach_point(self, n: number): (number, number)
 
@@ -484,6 +504,8 @@ declare class Object
 
     function status(self, flag: StatusFlag): boolean
     function set_status(self, flag: StatusFlag, on: boolean): ()
+    -- Every status flag off (the collision's whole status word cleared).
+    function clear_statuses(self): ()
     function status_timer(self, timer: StatusTimer): number
     function set_status_timer(self, timer: StatusTimer, ticks: number): ()
 
@@ -790,6 +812,10 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
+    -- `sub_800EB6C`: the local player sees `side`'s objects (unless they
+    -- are the other side's and the local navi is blind). Presentation, as
+    -- the original keeps it in the objects' visibility.
+    viewer_sees: (side: number) -> boolean,
     link: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
@@ -820,6 +846,9 @@ declare battle: {
     player: (side: number) -> Object?,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
+    -- The objects of a kind in the update list, in update order, whatever
+    -- their lifecycle state (the game's walks of the list).
+    objects_of: (kind: Kind) -> { Object },
     -- `GetRNG2` (one draw), `GetPositiveSignedRNG2` (bit 31 cleared).
     rng: () -> number,
     rng_positive: () -> number,
@@ -1013,7 +1042,7 @@ export type ActorListEntrySpec = {
     variant: number,
 }
 
-export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies"
+export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies" | "ignores"
 -- Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
 export type ObstacleHold = "after_appearing" | "always"
 export type ObstaclePush = "forgets_damage" | "keeps_damage" | "any_hit" | "ignored"
@@ -1048,7 +1077,9 @@ declare obstacle: {
     -- `sub_801B394` ("breaks", the default: a body's, another obstacle's
     -- or a breaking hit's touch drops the HP to 0), `sub_801B4D4`
     -- ("destroys": destroyed, the HP as it is) or `sub_801B610`
-    -- ("spares_bodies": bodies don't break it): damage, removal and status;
+    -- ("spares_bodies": bodies don't break it) or ("ignores": `sub_801B878`
+    -- while LilBoiler erupts, such a touch is as any hit): damage, removal
+    -- and status;
     -- the action the kind's table runs now, nil when a status routine ran.
     -- While dimmed it holds the obstacle still once it has appeared
     -- ("after_appearing", the default) or always ("always", `sub_801B750`).
@@ -1093,6 +1124,10 @@ declare obstacle: {
     -- field (`me:wear_junk_look`); nil for the objects DustMan leaves
     -- (`sub_800F486`).
     junk_look: (o: Object) -> number?,
+    -- `sub_80DC3B2`'s test: a field object by its NameID (0xCD to 0xFF)
+    -- but those `sub_800F486` excludes (0xD3, 0xDA, 0xE9, 0xEA): what
+    -- BlzrdBal's ball swallows.
+    swallowable: (o: Object) -> boolean,
 }
 
 -- Exact integer helpers.

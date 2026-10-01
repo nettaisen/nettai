@@ -60,6 +60,7 @@ fn status_bit(flag: StatusFlag) -> u32 {
         StatusFlag::AffectedByIce => f1::AFFECTED_BY_ICE,
         StatusFlag::Bubbled => f1::BUBBLED,
         StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
+        StatusFlag::Carried => kinds::obstacle::obstacle_f1::CARRIED,
     }
 }
 
@@ -278,6 +279,10 @@ impl CoreApi for Battle {
         self.is_battle_over_flag_quirk()
     }
 
+    fn viewer_sees(&self, side: u8) -> bool {
+        kinds::charge_glow::viewer_sees(self, side & 1)
+    }
+
     fn battle_info(&self, f: BattleInfo) -> Value {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
@@ -412,6 +417,10 @@ impl CoreApi for Battle {
 
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef> {
         self.round.alive_actors[side as usize & 1].iter().flatten().copied().collect()
+    }
+
+    fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef> {
+        self.objects.in_order().filter(|&r| self.objects.get(r).kind.0 == kind).collect()
     }
 
     fn rng(&mut self) -> u32 {
@@ -919,6 +928,10 @@ impl CoreApi for Battle {
         common::update_sprite_while_paused(self, o);
     }
 
+    fn load_or_step_sprite(&mut self, o: ObjectRef) {
+        common::load_or_step_sprite(self, o);
+    }
+
     fn attach_point(&self, o: ObjectRef, n: u8) -> (i32, i32) {
         kinds::player::attach_point(self, o, n as usize)
     }
@@ -1029,9 +1042,10 @@ impl CoreApi for Battle {
         kinds::player::form::record_death_hook(self, o, actor_type_of(actor_type), ai_index);
     }
 
-    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool) {
+    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool, paused_stepping: bool) {
         let rec = self.content.navi_record(self.objects.get(owner).name_id);
-        kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, rec.version);
+        let r2 = if paused_stepping { 1 } else { rec.version };
+        kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, r2);
         if keep_stepping && let Some(part) = self.objects.get(o).related[1] {
             kinds::player::form::keep_overlay_stepping(self, part);
         }
@@ -1255,6 +1269,11 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn clear_statuses(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of_mut(o)?.f1 = 0;
+        Ok(())
+    }
+
     fn status_timer(&self, o: ObjectRef, t: StatusTimer) -> ApiResult<u16> {
         Ok(self.collision_of(o)?.status_timers[timer_index(t)])
     }
@@ -1378,6 +1397,33 @@ impl CoreApi for Battle {
         self.sprite_load(o, id);
     }
 
+    fn sprite_load_like(&mut self, o: ObjectRef, like: ObjectRef) -> ApiResult<()> {
+        let name_id = self.objects.get(like).name_id;
+        let id = if self.content.navi_record(name_id).actor_type == crate::actor::ActorType::Player {
+            // sub_800FC9E(navi stat 0x29, form stat 0x2C): MegaMan's form's
+            // sprite, or the link navi's.
+            let side = self.objects.get(like).alliance as usize & 1;
+            let s = &self.stats[side];
+            if self.navi(side) == crate::setup::Navi::MEGAMAN {
+                self.content.form(s.form).sprite
+            } else {
+                self.content.navi(s.navi).sprite
+            }
+        } else {
+            // sub_800F26C: a field object's look by its NameID (0xCD and
+            // up); other NameIDs' sprites (viruses, bosses) aren't in the
+            // pack: no netbattle object stands in for one.
+            let look = self.content.objects.name_looks.iter().find(|l| l.name_id == name_id);
+            look.and_then(|l| l.sprite).ok_or_else(|| {
+                ApiError::Other(format!(
+                    "sub_800F26C: NameID {name_id:#x} has no sprite in the pack (a netbattle's stand-in copies a player)"
+                ))
+            })?
+        };
+        self.sprite_load(o, id);
+        Ok(())
+    }
+
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8) {
         self.objects.sprite_mut(o).set_animation(anim, &self.content);
     }
@@ -1456,6 +1502,8 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x as i64,
             CollisionField::PanelY => c.panel.y as i64,
             CollisionField::HitEffect => c.hit_effect as i64,
+            CollisionField::Element => c.element as i64,
+            CollisionField::SecondaryElement => c.secondary_element as i64,
             CollisionField::StatusBase => c.status_base as i64,
             CollisionField::Bugs => c.bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
@@ -1485,6 +1533,12 @@ impl CoreApi for Battle {
             .ok_or_else(|| ApiError::Other(format!("element {element} has no damage slot (0 to 5)")))
     }
 
+    fn collision_hit_by(&self, o: ObjectRef) -> ApiResult<Vec<ObjectRef>> {
+        let mask = self.collision_of(o)?.acc.hit_by;
+        let hitters = (0..32u8).filter(|&k| mask & (0x8000_0000 >> k) != 0);
+        Ok(hitters.filter_map(|k| self.collision.get(crate::collision::CollisionId(k)).parent).collect())
+    }
+
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()> {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
         let c = self.collision_of_mut(o)?;
@@ -1494,6 +1548,8 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::HitEffect => c.hit_effect = x as u8,
+            CollisionField::Element => c.element = x as u8,
+            CollisionField::SecondaryElement => c.secondary_element = x as u8,
             CollisionField::StatusBase => c.status_base = x as u8,
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
@@ -1669,6 +1725,7 @@ impl CoreApi for Battle {
             ObstacleCrush::Breaks => Crush::Breaks,
             ObstacleCrush::Destroys => Crush::Destroys,
             ObstacleCrush::SparesBodies => Crush::SparesBodies,
+            ObstacleCrush::Ignores => Crush::Ignores,
         };
         let hold = match hold {
             ObstacleHold::AfterAppearing => Hold::AfterAppearing,
@@ -1733,6 +1790,15 @@ impl CoreApi for Battle {
 
     fn obstacle_absorb_all(&mut self, absorber: ObjectRef) {
         kinds::obstacle::absorb_all(self, absorber);
+    }
+
+    fn obstacle_swallowable(&self, o: ObjectRef) -> bool {
+        let ob = self.objects.get(o);
+        // The NameID word's high half: an actor's next chip (0xFFFF for
+        // none), nothing else's (0).
+        let high = if ob.actor.is_some() { self.chip_number(ob.chip).map_or(0xFFFF, u32::from) } else { 0 };
+        let word = ob.name_id as u32 | high << 16;
+        (0xCD..=0xFF).contains(&word) && !matches!(word, 0xD3 | 0xDA | 0xE9 | 0xEA)
     }
 
     fn obstacle_present(&self, o: ObjectRef) -> bool {

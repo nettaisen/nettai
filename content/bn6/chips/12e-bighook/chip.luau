@@ -5,7 +5,7 @@
 -- chip subtype 23, which runs this module's `navi_chip`: FlmHook's hook
 -- (chips/flmhook/hook.luau) with big flames, their hit spark the heavy
 -- impact (the record's parameters 1 and 0xA). When the chip is a definition
--- it is `navi = hook.summon { big = true, spark = sparks.impact }` and this
+-- it is `navi = hook.summon { big = true, spark = sparks.breaking }` and this
 -- goes.
 
 local hook = require("../flmhook/hook")
@@ -14,6 +14,6 @@ local sparks = require("../../lib/sparks")
 local by_number = {}
 
 -- `off_802CD5C[23]`.
-by_number.navi_chip = hook.summon { big = true, spark = sparks.impact }
+by_number.navi_chip = hook.summon { big = true, spark = sparks.breaking }
 
 return by_number

@@ -28,6 +28,10 @@ regions.x = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 }, { 1, 1 },
 regions.rising = define.region { panels = { { 0, 0 }, { 1, -1 }, { -1, 1 } } }
 regions.falling = define.region { panels = { { 0, 0 }, { -1, -1 }, { 1, 1 } } }
 
+-- The anchor and the two panels diagonally ahead (region 0x0D: a bullet's
+-- burst).
+regions.fork = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 } } }
+
 -- The anchor's column and the one ahead (region 0x11: LifeSrd).
 regions.wide_long = define.region {
     panels = { { 0, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 }, { 1, -1 }, { 1, 1 } },
