@@ -287,7 +287,7 @@ ported. Left: the Full Synchro aura after SyncTrgr (framework).
 
 ### Group F: rocks and the field objects
 
-Done, in content model v2 (content-model-v2.md §5.8, "As built", step 8f): the rock with its variants and
+Done, in content model v2 (content-model-v2.md §5.9, "As built", step 8f): the rock with its variants and
 debris (objects/rock), RockCube and IceCube (chips/rockcube), the absorbed obstacle and its looks
 (objects/absorbed-obstacle; a look is each obstacle's own record), the falling rock and its chips
 (objects/falling-rock), and what the stages' actor lists place through their kinds' `place`: the rock (the role
@@ -312,6 +312,9 @@ split the list):
   ElcPuls 0x42, AuraHed 0x43, MagCoil 0x44, the sword family 0x49, the dragons 0x51, VarSwrd 0x53, NeoVari 0x54,
   SonicBom 0x55, ZSaver 0x5B, and the Cross and Beast chips' actions (0x0A).
 - Many fire the projectile of group D; start with the ones that don't, or after it.
+- In content model v2 (step 8g; content-model-v2.md §5.8): AquaNdl, H-Burst, RlngLog, AirSpin, DolThdr, WindRack,
+  MoonBld, ElcPuls, AuraHed, MagCoil, the dragons (lib/dragons), VarSwrd and NeoVari (lib/swords/vari), RskyHny and
+  GunDelSol, each a builder in its chip's folder with its kinds beside it.
 
 ### Framework gaps (Rust, not content)
 
