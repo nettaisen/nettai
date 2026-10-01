@@ -26,8 +26,8 @@ pub struct Definition {
 
 /// What a module returns that registration by module still uses (the v1
 /// registration of content-pack.md §1.3, until the migration ends): the
-/// names of the functions its table exports, and its `state` table's
-/// schema.
+/// names of the functions its table exports, its `state` table's schema,
+/// and the action definition it exports as `action`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ModuleExports {
     pub path: String,
@@ -35,6 +35,10 @@ pub struct ModuleExports {
     pub functions: Vec<String>,
     /// The key of the schema its `state` field declares.
     pub state: Option<String>,
+    /// The key of the action definition its `action` field holds: a chip
+    /// record that names the module runs it (docs/design/content-model-v2.md
+    /// §12, "A record's action by its module").
+    pub action: Option<String>,
 }
 
 /// Everything the define phase read, in a canonical order: definitions by

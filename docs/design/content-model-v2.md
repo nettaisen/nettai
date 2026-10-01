@@ -552,7 +552,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | meteor-shower | instant effect 16 (no chip yet) | lib/instant/ |
 | moon-blade | MoonBld | chips/moonbld/ |
 | navi-boost | PunchArm, NeedlArm, PuzzlArm, BoomrArmSyncTrgr, DarkInvs, BugRSwrd, HubBatc, BgDthThd | lib/navi-boost/ |
-| navi-effect | DElecSwd (ElecMan's link chip) | navis/elecman/ |
+| navi-effect | a second port of follow-effect (effect #0x31), deleted | objects/follow-effect |
 | needle-volley | AquaNdl1-3 | chips/aquandl/ |
 | panel-bursts | black-bomb, countdown-bomb, elem-trap-strike | objects/panel-bursts |
 | panel-strike | Bass, MachGun1-3 | objects/panel-strike (rule 5) |
@@ -1058,7 +1058,7 @@ the navis share (appearing, leaving, the SP deletion-time damage).
 **As built** (step 7): chips/eraseman/navi.luau (the `eraseman/navi` kind, state `{ cycle, aim, controller,
 aim_ticks }`, and `eraseman.summon { aim_ticks }`, the `navi` hook), chips/eraseman/mark.luau (`eraseman/mark`)
 and chips/eraseman/beam.luau (`eraseman/beam`, spawned with `{ aim, ticks, navis }`; EraseMan's own EDeletBm,
-chips/193-edeletbm, spawns it too). The beam's collision type (`piercing-break`, row 0x16) and spark
+navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-break`, row 0x16) and spark
 (`sparks.erase`, hit effect 0x0C) are definitions. What it settled:
 
 - **The chips stay records.** The ruleset turns navi chips back by number (AntiNavi, `is_navi_chip`: 0xDD to
@@ -1097,6 +1097,16 @@ chips/193-edeletbm, spawns it too). The beam's collision type (`piercing-break`,
   among Colonel's; 12d-bass, 12f-deltaray, 132-bassanly and 15b-sunmoon likewise: Giga chips and a Program
   Advance's result). The palette tables the records' first parameter indexed (Roll's, Colonel's, DeltaRay's) are
   in those modules, not the navis'. No `legacy` marker among them.
+
+**The link navis' own chips** (phase B, A3): each navi's folder has its chip's action and the kinds only it spawns
+(navis/heatman ... navis/dustman: `chip.luau`, and `riding_hit`, `volcano_rock`, `drip_shower`, `axe`, `strike`,
+`tornado`, `clouds`); a kind the navi chip series has too stays with the series (`heatman/flame`,
+`eraseman/beam`, `grndman/drill`, `grndman/rock`, rule 4), and the follow effect, which DeltaRay's bursts and
+DElecSwd's glow share, is objects/follow-effect with its looks as records. lib/link_chips.luau is what the ten
+routines share. Their records stay the pack's and run the action their module exports (§12, "A record's action by
+its module"). The kinds that lasted while their owner's action number was 0x0A keep his running action in an
+`"action"` state field and compare definitions (§7.6). Verified against the chip lab (docs/engine/
+standard-chips.md, "Action 0x0A").
 
 ### 5.6 Instant chips: a hook per chip
 
@@ -2066,6 +2076,17 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   are the chips), the test content's numbered chips. The 0x12 and 0x13 shims go when the Cross special's list and the recipes go by
   handle (phase C, step 10); the 0x49 one when the stun strike (idle.rs `set_attack(0x49)`) is
   `roles.actions.stun_strike`.
+- **A record's action by its module.** A chip record whose `script` names a module that exports `action` (an
+  action definition) runs that action as its use, as a chip definition's `action` does, whatever its action
+  number names (`record_action` in content/defs.rs; such a module can't also export `update`). The link navis'
+  own chips, 0x190 HeatPres to 0x199 DustBrk, need it: their action number 0x0A is below 0x10, an entry of the
+  user's own action table (`off_80EA4C8[AIIndex][0xA]`) that registration by number can't claim, and all ten
+  share subtype 3, so no shim could pick by subtype; and they stay records for their damage by the navi's
+  level (formulas 24 to 44). Each record (chips/19N-<chip>/chip.toml) names its navi's module
+  (navis/<navi>/chip.luau), which returns `{ action = define.action { id = "<chip>/action", ... } }`. Which
+  link navi has which chip is the navi record's `own_chip`, not the original's table by AI index: any navi that
+  holds the chip runs its action. It goes when chip definitions take damage formulas (step 10): each chip
+  becomes a `define.chip` beside its action and its navi's definition names it as `own_chip` (step 5's navis).
 - **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
   above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
   (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
