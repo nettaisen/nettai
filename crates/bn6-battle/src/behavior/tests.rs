@@ -438,9 +438,10 @@ fn the_scripted_swords_play_and_roll_back() {
         }
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
-            let o = b.objects.get(r);
             let key = match b.kind_key(r) {
-                "engine/player" => format!("engine/player in action {:#04x}", o.action),
+                "engine/player" => {
+                    format!("engine/player in action {:#04x}", crate::kinds::player::navi_action(&b, r).number(&b.content.defs))
+                }
                 k => k.to_string(),
             };
             *seen.entry(key).or_insert(0) += 1;
@@ -960,7 +961,7 @@ fn a_panic_inside_content_leaves_the_vm_sound() {
         // A Rust panic inside a Luau call: the reactive abort GunDelSol
         // calls isn't ported and panics when a defense triggered.
         if let Some(p) = c.player(0)
-            && c.objects.get(p).action == 0x37
+            && crate::kinds::player::navi_action(&c, p).number(&c.content.defs) == 0x37
         {
             let actor = c.objects.get(p).actor.unwrap();
             c.actors.get_mut(actor).requests |= crate::actor::request::ANTI_SWORD_TRIGGERED;

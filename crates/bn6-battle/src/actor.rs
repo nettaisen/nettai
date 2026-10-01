@@ -160,11 +160,6 @@ pub struct AttackVars {
     /// (action 0x11's variant 2) fires without writing it and waits
     /// whatever the last shot left, whatever ran in between.
     pub recovery: u16,
-    /// The content action the attack runs, when it isn't reached by the
-    /// navi's action number (the chips of one family each compose their
-    /// own action, so a number names several: docs/design/content-model-v2.md
-    /// §3.5). The number stays the navi's CurAction.
-    pub content_action: Option<bn6_content_api::ActionHandle>,
     /// The running action's own state (timers, destinations).
     pub action: crate::kinds::player::actions::ActionVars,
     /// The effect the instant chips' action runs (`off_80EC3F0[subtype]`):
@@ -310,6 +305,11 @@ pub struct ActorData {
     /// A sprite overlay attached for the current chip.
     pub overlay: Option<ObjectRef>,
     pub attack: AttackVars,
+    /// What it runs (its CurAction).
+    pub navi_action: crate::kinds::player::NaviAction,
+    /// Its saved lifecycle position (`obj+0x5C`), which a status action
+    /// and a form change return to.
+    pub saved_word: Option<crate::kinds::player::NaviWord>,
     /// AIData+0xF0: the Beast Over berserk controller's state
     /// (`sub_802D322`), in the 0x10 bytes allocation leaves alone.
     pub berserk: crate::kinds::player::berserk::State,

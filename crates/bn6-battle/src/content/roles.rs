@@ -45,10 +45,13 @@ pub enum ActionRole {
     /// The Beast forms' charged claw (0x52), which the Beast rush and chip
     /// use recognize.
     BeastClaw,
+    /// DustCross Beast's scatter (0x50), during which the ruleset doesn't
+    /// ground a MegaMan navi.
+    DustBeastScatter,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 11] = [
+    pub const ALL: [ActionRole; 12] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -60,6 +63,7 @@ impl ActionRole {
         ActionRole::Volley,
         ActionRole::ChargedSword,
         ActionRole::BeastClaw,
+        ActionRole::DustBeastScatter,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -76,6 +80,7 @@ impl ActionRole {
             ActionRole::Volley => "volley",
             ActionRole::ChargedSword => "charged_sword",
             ActionRole::BeastClaw => "beast_claw",
+            ActionRole::DustBeastScatter => "dust_beast_scatter",
         }
     }
 
