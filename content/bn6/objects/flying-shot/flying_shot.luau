@@ -109,7 +109,7 @@ local ROWS: { [number]: FlyingShotVariant } = {
         sprite = SHOT_SPRITE,
         speed = 0xC_0000,
         range = 2,
-        end_effect = define.effect { sprite = asset.sprite("copy-mark"), anim = 0, palette = 0 },
+        end_effect = define.effect { sprite = asset.sprite("hit-sparks"), anim = 0, palette = 0 },
     },
     -- A thrown obstacle.
     [6] = flying_shot.variant {

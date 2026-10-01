@@ -38,7 +38,7 @@ return define.navi {
         -- What he wears over his body; a flinch restarts it too.
         parts = {
             body = {
-                sprite = asset.sprite("body-overlay-02"),
+                sprite = asset.sprite("heatman-overlay"),
                 anims = 160,
                 behind = { { 0x15, 0x17 }, { 0x22, 0x23 }, { 0x3B, 0x4F }, { 0x64, 0x8B }, { 0x9F, 0x9F } },
             },
