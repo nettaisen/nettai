@@ -136,6 +136,10 @@ pub struct RuleNumbers {
     pub music: BTreeMap<String, u16>,
     #[serde(default)]
     pub banners: BTreeMap<String, u8>,
+    /// And the sprite each role of `sprites` names, as "cc-ii" (the
+    /// category's byte offset and the index, as assets.toml writes one).
+    #[serde(default)]
+    pub sprites: BTreeMap<String, String>,
 }
 
 /// Asset names and the ROM's numbers.

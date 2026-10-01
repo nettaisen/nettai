@@ -1750,6 +1750,25 @@ export type RolesSpec = {
         winner: Sound?,
         loser: Sound?,
     }?,
+    -- The sprites of the engine's own kinds: the charge glows, the Full
+    -- Synchro aura, the status visuals, the ice block and the bubble, the
+    -- hit marker, the eruption, the lock-on marker, the Beast head, the
+    -- idle overlay.
+    sprites: {
+        charge_glow: SpriteAsset?,
+        charge_glow_a: SpriteAsset?,
+        full_synchro_aura: SpriteAsset?,
+        confusion: SpriteAsset?,
+        blindness: SpriteAsset?,
+        immobilized: SpriteAsset?,
+        ice: SpriteAsset?,
+        bubble: SpriteAsset?,
+        hit_marker: SpriteAsset?,
+        eruption: SpriteAsset?,
+        lockon_marker: SpriteAsset?,
+        idle_overlay: SpriteAsset?,
+        beast_head: SpriteAsset?,
+    }?,
     -- The banners the ruleset shows itself: a round's start, a turn's, the
     -- final turns', a draw, the damage judge's, a telop's on either side,
     -- a Program Advance's and an empty selection's. The win and lose

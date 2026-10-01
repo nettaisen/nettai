@@ -18,7 +18,7 @@ use bn6_content_api::{
     StatusHandle,
 };
 
-use super::BannerId;
+use super::{BannerId, SpriteId};
 use crate::sound::SoundId;
 
 /// The actions the ruleset starts or recognizes by role.
@@ -398,6 +398,39 @@ definition_roles! {
 }
 
 definition_roles! {
+    /// The sprites of the engine's own kinds, by role (`sprites`): assets
+    /// (`asset.sprite`).
+    SpriteRole {
+        /// The charge glow of a B charge, and of an A charge
+        /// (`sub_80E0F2E`).
+        ChargeGlow = "charge_glow",
+        ChargeGlowA = "charge_glow_a",
+        /// The Full Synchro aura.
+        FullSynchroAura = "full_synchro_aura",
+        /// The status visuals over a navi: confusion's stars, blindness,
+        /// and the immobilized one (a row the status routine never spawns).
+        Confusion = "confusion",
+        Blindness = "blindness",
+        Immobilized = "immobilized",
+        /// The ice block around a frozen navi, and the bubble around a
+        /// bubbled one.
+        Ice = "ice",
+        Bubble = "bubble",
+        /// The mark over a navi a hit told something about ("!!", the HP
+        /// bug's).
+        HitMarker = "hit_marker",
+        /// A volcano panel's eruption.
+        Eruption = "eruption",
+        /// The Beast forms' lock-on marker.
+        LockonMarker = "lockon_marker",
+        /// The overlay a navi wears while idle (`dword_80C40D4`'s one).
+        IdleOverlay = "idle_overlay",
+        /// The Beast forms' head.
+        BeastHead = "beast_head",
+    }
+}
+
+definition_roles! {
     /// The banners the ruleset shows itself, by role (`banners`): assets
     /// (`asset.banner`). (The win and lose banners are the navi's.)
     BannerRole {
@@ -522,6 +555,7 @@ pub struct Roles {
     pub sounds: BTreeMap<SoundRole, SoundId>,
     pub music: BTreeMap<MusicRole, SoundId>,
     pub banners: BTreeMap<BannerRole, BannerId>,
+    pub sprites: BTreeMap<SpriteRole, SpriteId>,
 }
 
 impl Roles {
@@ -615,7 +649,8 @@ impl Roles {
             .unwrap_or_else(|| panic!("the role collision.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 
-    /// The sound, the music and the banner of `role` (likewise).
+    /// The sound, the music, the sprite and the banner of `role`
+    /// (likewise).
     pub fn sound(&self, role: SoundRole) -> SoundId {
         *self
             .sounds
@@ -628,6 +663,13 @@ impl Roles {
             .music
             .get(&role)
             .unwrap_or_else(|| panic!("the role music.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    pub fn sprite(&self, role: SpriteRole) -> SpriteId {
+        *self
+            .sprites
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role sprites.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 
     pub fn banner(&self, role: BannerRole) -> BannerId {

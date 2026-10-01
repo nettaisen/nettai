@@ -374,7 +374,7 @@ fn assets() -> bn6_content_api::AssetNames {
     a
 }
 
-/// The ids of the test content's sounds, music and banners for the
+/// The ids of the test content's sounds, music, sprites and banners for the
 /// ruleset's roles (testdata/content/rules/ruleset.luau's assets, by role
 /// name): what the tests look for in the cues and the HUD.
 const ROLE_SOUNDS: &[(&str, u16)] = &[
@@ -423,6 +423,21 @@ const ROLE_MUSIC: &[(&str, u16)] = &[
     ("winner", 0x1f),
     ("loser", 0x1a),
 ];
+const ROLE_SPRITES: &[(&str, (u8, u8))] = &[
+    ("charge-glow", (0x14, 0x08)),
+    ("charge-glow-a", (0x14, 0x15)),
+    ("full-synchro-aura", (0x14, 0x16)),
+    ("confusion", (0x14, 0x0b)),
+    ("blindness", (0x14, 0x09)),
+    ("immobilized", (0x10, 0x00)),
+    ("ice", (0x14, 0x1c)),
+    ("bubble", (0x0c, 0x20)),
+    ("hit-marker", (0x14, 0x07)),
+    ("eruption", (0x10, 0x24)),
+    ("lockon-marker", (0x0c, 0x09)),
+    ("idle-overlay", (0x10, 0x21)),
+    ("beast-head", (0x0c, 0x0a)),
+];
 const ROLE_BANNERS: &[(&str, u8)] = &[
     ("round-start", 0x30),
     ("turn-start", 0xc),
@@ -443,6 +458,9 @@ fn numbered_assets() -> bn6_content_api::AssetNames {
     }
     for (role, id) in ROLE_MUSIC {
         a.sounds.insert(format!("test-music-{role}"), *id);
+    }
+    for (role, (category, index)) in ROLE_SPRITES {
+        a.sprites.insert(format!("test-sprite-{role}"), SpriteId { category: *category, index: *index });
     }
     for (role, id) in ROLE_BANNERS {
         a.banners.insert(format!("test-banner-{role}"), *id);

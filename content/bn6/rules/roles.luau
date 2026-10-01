@@ -223,6 +223,30 @@ return define.roles {
         winner = asset.sound("winner-1"),
         loser = asset.sound("loser"),
     },
+    sprites = {
+        -- The charge glow of a B charge and of an A charge; the Full
+        -- Synchro aura.
+        charge_glow = asset.sprite("charge-glow"),
+        charge_glow_a = asset.sprite("charge-glow-a"),
+        full_synchro_aura = asset.sprite("full-synchro-aura"),
+        -- The status visuals over a navi (confusion's stars, blindness, the
+        -- immobilized one), the ice block around a frozen navi and the
+        -- bubble around a bubbled one.
+        confusion = asset.sprite("confusion"),
+        blindness = asset.sprite("blindness"),
+        immobilized = asset.sprite("immobilized"),
+        ice = asset.sprite("ice-block"),
+        bubble = asset.sprite("bubble"),
+        -- The mark over a navi a hit told something about ("!!", the HP
+        -- bug's).
+        hit_marker = asset.sprite("bat-impact"),
+        -- A volcano panel's eruption; the Beast forms' lock-on marker and
+        -- head; the overlay a navi wears while idle.
+        eruption = asset.sprite("eruption"),
+        lockon_marker = asset.sprite("lockon-marker"),
+        beast_head = asset.sprite("beast-head"),
+        idle_overlay = asset.sprite("idle-overlay"),
+    },
     banners = {
         -- A round's start (the battle's number), a turn's, the final turns'.
         round_start = asset.banner("battle-number-start"),
