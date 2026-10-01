@@ -1,3 +1,3 @@
-# A navi chip (subtype 5): its navi is EraseMan.
+# A navi chip (subtype 5): EraseMan, as chips/0ec-eraseman summons him.
 
-script = "../../objects/erase-man/erase_man.luau"
+script = "../0ec-eraseman/chip.luau"

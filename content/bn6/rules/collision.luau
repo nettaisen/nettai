@@ -50,6 +50,15 @@ collision.hit_by_other_side_or_blockers = define.collision {
     row_offset = 0x68,
 }
 
+-- An attack that pierces invisibility and flashing and breaks guards and
+-- ice (row 0x16: the erase beams).
+collision.piercing_break = define.collision {
+    id = "piercing-break",
+    side0 = 0x80000086,
+    side1 = 0x40000086,
+    row_offset = 0xB0,
+}
+
 -- An object of its side, while dimmed too (row 0x0C: a FlashBomb set
 -- down).
 collision.own_object = define.collision { id = "own-object", side0 = 0x20010080, side1 = 0x10010080, row_offset = 0x60 }
