@@ -306,6 +306,9 @@ split the list):
   SonicBom 0x55, ZSaver 0x5B. The link navis' chips (action 0x0A) are done: navis/<navi>/chip.luau, on
   lib/link_chips.luau (docs/engine/standard-chips.md, "Action 0x0A").
 - Many fire the projectile of group D; start with the ones that don't, or after it.
+- In content model v2 (step 8g; content-model-v2.md §5.8): AquaNdl, H-Burst, RlngLog, AirSpin, DolThdr, WindRack,
+  MoonBld, ElcPuls, AuraHed, MagCoil, the dragons (lib/dragons), VarSwrd and NeoVari (lib/swords/vari), RskyHny and
+  GunDelSol, each a builder in its chip's folder with its kinds beside it.
 
 ### Framework gaps (Rust, not content)
 

@@ -840,7 +840,7 @@ The v1 per-chip `[sword]` data (blade row 3 for both, the slash's regions 1 and 
 modifier 3, effects 24 and 22) becomes these arguments, and `lib/swords/` names the blades, effects and sounds
 the family shares. MchnSwrd/ElemSwrd/AssnSwrd (action 0x49) and VarSwrd/NeoVari compose
 `lib/swords/` builders the same way; `VariSwordSpec.choices`, today a list of chip numbers, becomes a list of
-chips.
+chips (as built, §5.8: the picks' actions, with the chips' numbers in a transitional marker).
 
 **As built** (step 7, the swords exemplar): content/bn6/lib/swords/ (`parts`: the blades, slashes and sounds
 the family shares, and the blade's animation and palette by the navi's arm; `slash`: action 0x13's builder;
@@ -1212,6 +1212,81 @@ buster alias folders) went. What it settled:
   wave's variants as records (it spawns the wave with the chip's subtype as its first parameter).
 - **Verified** on the test content (the shots' timelines, the throw, the aliases, the role, the definitions'
   routines and charge times), the type check, and the traces and the chip lab on a real pack.
+
+### 5.8 Standard chip actions: a builder per action, the chips' parameters its arguments
+
+v1: a standard chip's action is one module per action number (`chips/NNN-name/chip.luau`) that reads the chip's
+subtype (`me.variant`) and parameter bytes (`me:attack_param`), and its objects are `objects/<kind>` modules that
+switch on spawn parameters (`me:param`).
+
+```luau
+-- chips/gundels/chips.luau: a series; what the subtype and the pack's `[gun_del_sol]` data gave is each chip's.
+define.chip { id = "gundels3", name = "GunDelS3", -- ... the record ...
+    action = action.action { gun = action.gun(6), firing_ticks = 120, beam = BEAM, beam_in_sun = BEAM_IN_SUN } }
+
+-- chips/heatdrgn/chip.luau: a family's builder (lib/dragons) and its variant record.
+define.chip { id = "heatdrgn", name = "HeatDrgn", -- ...
+    action = action.action { dragon = dragon.variant { speed = 0x4_0000, palette = 0, hit_mod = 3,
+        spark = sparks.fire, panel = false, delays = { 3, 6, 9, 12 } } } }
+```
+
+**As built** (step 8g, the second half: AquaNdl, H-Burst, RlngLog, AirSpin, DolThdr, WindRack, MoonBld, ElcPuls
+and DestPuls, AuraHed and StreamHd, MagCoil, the dragons, VarSwrd and NeoVari, RskyHny, GunDelSol). Each family is
+a folder: `action.luau` (the builder, `action.action { ... }`, with one state table for the family, `action.STATE`),
+its kinds beside it (`chips/aquandl/{volley, needle}`, `chips/h-burst/burst`, `chips/rlnglog/log`,
+`chips/airspin/{top, whirl}`, `chips/dolthdr/doll`, `chips/moonbld/blade`, `chips/elcpuls/pulse`,
+`chips/aurahed/head`, `chips/magcoil/magnet`, `chips/rskyhny/bee`, `chips/gundels/beam`), and `chips.luau` (a
+series) or `chip.luau`. The dragons' builder and kinds are a family library, `lib/dragons/` (`action`, `head`,
+`body`, `dragon`), with a folder per chip; the gust and the thunder column stay in `objects/` (WindRack's and
+TenguCross's; DolThdr's and EraseCross's) as definitions. The builders' specs are in types.d.luau
+(`AquaNeedleSpec`, `HyperBurstSpec`, `RollingLogSpec`, `AirSpinSpec`, `DollThunderSpec`, `WindRackSpec`,
+`ElecPulseSpec`, `AuraHeadSpec`, `MagCoilSpec`, `DragonSpec`, `HoneySpec`, `GunDelSolSpec`, `VariSwordSpec`).
+What it settled:
+
+- **A parameter byte is a named argument**, written in the chip: AquaNdl's needle palette, H-Burst's ten
+  bursts, a rolling log (`{ big, stop_ticks, hp, thrown }`), AirSpin's top (its palette and spins), DolThdr's
+  thunder ticks, an electric pulse (`{ hit_mod, status, ticks, palette, bug }`: v1's rows by look), an aura head
+  (`{ palette, speed, strong, far }`), MagCoil's ticks, a dragon (`DragonVariant`: the four tables by subtype,
+  a record the head and its body segments hold), a bee (`{ palette, speed, turn_speed }`: the table by level),
+  GunDelSol's gun, firing time and beams (v1's `data.chips[id].gun_del_sol` and `data.objects.sun_beam_looks`).
+  Branches no chip takes stay arguments (`HoneySpec.drags`, `DollThunderSpec.holds_arm`, AirSpin's seeking
+  whirlwind as a sender).
+- **A weapon composes a chip family's action**: ElecCross's charged shot is `dolthdr.action { id =
+  "eleccross/charge/thunder", ticks = 15, holds_arm = true }`, TenguCross's `windrack.action { id =
+  "tengucross/charge/gust", rack = windrack.racks.tengu_fan }` (both v1 weapon modules still, returning the
+  definitions; their keys are in compat actions.toml), where v1 named the action's number and set the attack's
+  variant and parameters for it.
+- **The target column is a helper**: `panels.enemy_column(me)` (lib/panels, `sub_80ED040`), MachGun's and the
+  dragons' (which fall back to the column right ahead when no enemy is found).
+- **A kind another series borrows stays with its series** (§4.1, rule 3): GunDelSol's beam (`gundels/beam`,
+  spawned with its look, a `SunBeam`, and whether it shows while dimmed) is chips/gundels', and CrosOver's
+  Django (chips/crosover) requires it.
+- **Which chips are definitions.** AquaNdl1-2, RlngLog1-3, AirSpin1-3, DolThdr1-3, WindRack, MagCoil, the four
+  dragons, RskyHny1-2, GunDelS1-3 and GunDelEX. The others keep the pack's records, their modules giving the
+  action with its compat key as `id`: AquaNdl3 and RskyHny3 (MstrCros's recipe names them by number), H-Burst,
+  DestPuls and StreamHd (Program Advances) with ElcPuls1-3 and AuraHed1-3 (their recipes' ingredients; the
+  ruleset also knows the aura chips by number), MoonBld, VarSwrd and NeoVari (SlashCross's A-charge, weapon 0x11,
+  asks a chip for its action's number, and the Beast rush's chain leaves the variable swords out by their
+  chip numbers).
+- **The shims** (registration by number, §12): chips/03f-aquandl3 (action 0x32, by the needles' palette),
+  152-h-burst (0x34), 029-rlnglog2 (0x36), 010-gundels2 (0x37, by subtype), 027-rskyhny3 (0x39, by level),
+  021-dolthdr3 (0x3E), 054-moonbld (0x40), 022-elcpuls1 (0x42, by look), 05f-aurahed1 (0x43, by subtype and
+  palette), 052-varswrd (0x53) and 053-neovari (0x54). Each runs the chip's own action for a record: the chips
+  kept on records above, and the Cross special's chips (GunDelS2, RlngLog2 and 3, DolThdr2 and 3, MoonBld), which
+  the ruleset's table picks by number. The dragons, AirSpin, WindRack and MagCoil have none: nothing names them
+  by number.
+- **The variable swords' picks are actions.** `vari.action { sequences, picks, sword, random, no_charged }`:
+  the picks are the swords' own action definitions (LongSwrd's, FtrSword's, ..., SonicBom's and SprSonic's from
+  chips/sonicbom), started with `me:set_attack(action, 0)`. The attack still takes the pick's chip number, with
+  its record's subtype and parameters (`legacy = { chips, sword }`, §12): the Beast rush reads the chip's
+  lock-on mode, and SlashCross's charged sword (action 0x41, v1) the subtype and first parameter.
+- **What stays numeric**, having no v2 form yet: NameIDs (the volley's and the top's target tests), the
+  absorbed-obstacle kind a top flies off as, statuses and bug codes, forms and navis by number in the variable
+  swords, the charged sword's action (0x41, a v1 weapon action) a charged pick becomes.
+- **The test content** runs BN6's GunDelSol through its numbered SunGuns (chips/010-gundels2's registration),
+  and takes RskyHny2 and ElecDrgn as the definitions they are (`testing::BEES`, `testing::DRAGON`). The pack's
+  `gun_del_sol` chip data and `sun_beam_looks` are read by no script any more; they go with the pack's battle
+  data (step 5).
 
 ## 6. Compat: the original's numbers
 
@@ -1929,6 +2004,18 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
   (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
   anyway), and those chips become definitions.
+- **The standard chips' shims** (step 8g, §5.8): chips/03f-aquandl3 (0x32), 152-h-burst (0x34), 029-rlnglog2
+  (0x36), 010-gundels2 (0x37), 027-rskyhny3 (0x39), 021-dolthdr3 (0x3E), 054-moonbld (0x40), 022-elcpuls1
+  (0x42), 05f-aurahed1 (0x43), 052-varswrd (0x53) and 053-neovari (0x54) run a record's action for the chips kept
+  on records (Program Advances and their ingredients, MoonBld and the variable swords) and for the Cross
+  special's chips. They go as the 0x12 and 0x13 shims do (step 5 for the recipes, step 10 for the Cross
+  special's list, the aura chips and the Beast rush's chain; SlashCross's A-charge with family 8e).
+- **The variable swords' picks by number.** `VariSwordSpec.legacy = { chips, sword }` (chips/varswrd,
+  chips/neovari; counted by the ratchet): the chip numbers of the picks, in the picks' order, and Sword's. A
+  pick starts its action by definition, but the attack's chip, subtype and parameters are still the pick's
+  record's (lib/swords/vari reads it from `data.chips`): the Beast rush reads the attack's chip for its lock-on
+  mode, and SlashCross's charged sword (v1, action 0x41) the subtype and first parameter. It goes when the
+  attack's chip is set by definition (step 10) and the charged sword asks the chip for its slash (family 8e).
 
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 
