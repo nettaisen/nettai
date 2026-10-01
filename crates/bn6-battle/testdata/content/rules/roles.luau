@@ -4,7 +4,12 @@
 -- test content registers, the v1 ones through their legacy markers. (The
 -- test pack, crates/bn6-battle/testdata/pack, brings its own.)
 
+local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
+local barriers = require("../lib/barriers/barriers")
+local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
+local falling_rock = require("../objects/falling-rock/falling_rock")
+local rock = require("../objects/rock/rock")
 
 return define.roles {
     actions = {
@@ -27,9 +32,19 @@ return define.roles {
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = { legacy = { action = 0x50 } },
     },
+    -- (The statue an actor list places, BN6's Guardian's, isn't in the
+    -- test content: its role stays unfilled.)
     kinds = {
-        rock = { legacy = { kind = "rock" } },
-        absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
-        falling_rock = { legacy = { kind = "falling-rock" } },
+        rock = rock.kind,
+        boulder = boulder.kind,
+        absorbed_obstacle = absorbed_obstacle.kind,
+        falling_rock = falling_rock.kind,
+    },
+    hooks = {
+        -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier
+        -- chip's barrier and its visual.
+        first_barrier = function(navi: Object)
+            barriers.raise(navi, barriers.barrier_10, true)
+        end,
     },
 }
