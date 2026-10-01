@@ -18,6 +18,8 @@ struct Args {
     scale: usize,
     paused: bool,
     headless: Option<String>,
+    audit: bool,
+    objects: bool,
     out: PathBuf,
     png_scale: usize,
     quit_after: Option<u64>,
@@ -30,6 +32,7 @@ const USAGE: &str = "\
 usage: bn6-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        bn6-frontend [OPTIONS] --play          play live (you are the left navi)
        bn6-frontend [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
+       bn6-frontend [OPTIONS] TRACE.jsonl --audit
 
   --pack DIR       the content pack to play (graphics and sound), from
                    `bn6-extract content <rom> <dir>` (default: $BN6_PACK, else
@@ -45,6 +48,12 @@ usage: bn6-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
   --headless F     render frames F (e.g. 150,300,600 or 100-120; trace frame
                    numbers, or ticks in live play) to frame_NNNNN.png files
                    in --out (default .), no window
+  --objects        with --headless: list every rendered frame's objects (kind,
+                   place, sprite, animation, look)
+  --audit          draw every frame and play every sound cue into nothing, no
+                   window, and list what they named that the pack doesn't
+                   have (a sprite, an animation, a palette, a chip's icon or
+                   name glyph, a banner, a song); exits 1 if there was any
   --quit-after N   close the window after N ticks";
 
 fn parse() -> Result<Args, String> {
@@ -59,6 +68,8 @@ fn parse() -> Result<Args, String> {
         scale: 4,
         paused: false,
         headless: None,
+        audit: false,
+        objects: false,
         out: PathBuf::from("."),
         png_scale: 1,
         quit_after: None,
@@ -77,6 +88,8 @@ fn parse() -> Result<Args, String> {
             "--scale" => a.scale = number(value("--scale")?, "--scale")? as usize,
             "--paused" => a.paused = true,
             "--headless" => a.headless = Some(value("--headless")?),
+            "--audit" => a.audit = true,
+            "--objects" => a.objects = true,
             "--out" => a.out = value("--out")?.into(),
             "--png-scale" => a.png_scale = number(value("--png-scale")?, "--png-scale")? as usize,
             "--quit-after" => a.quit_after = Some(number(value("--quit-after")?, "--quit-after")?),
@@ -176,10 +189,27 @@ fn main() {
         fail("nothing to play");
     }
 
+    if args.audit {
+        let sound = (!args.mute).then(|| Arc::new(load(&pack, "sound", bn6_content::pack::load_sound)));
+        let found = headless::audit(&mut renderer, sessions, sound);
+        for s in &found.stopped {
+            eprintln!("{s}");
+        }
+        for line in found.problems.lines() {
+            println!("{line}");
+        }
+        eprintln!("audit: {} frames, {} sound cues, {} problems", found.frames, found.cues, found.problems.len());
+        if !found.problems.is_empty() {
+            std::process::exit(1);
+        }
+        return;
+    }
     if let Some(list) = &args.headless {
         let wanted = headless::parse_frames(list).unwrap_or_else(|e| fail(e));
         let mut log = |s: &str| eprintln!("{s}");
-        match headless::render_frames(&mut renderer, sessions, &wanted, &args.out, args.png_scale, &mut log) {
+        let rendered =
+            headless::render_frames_with(&mut renderer, sessions, &wanted, &args.out, args.png_scale, args.objects, &mut log);
+        match rendered {
             Ok(written) => {
                 eprintln!("wrote {} frames to {}", written.len(), args.out.display());
                 if written.len() < wanted.len() {

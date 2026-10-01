@@ -390,7 +390,9 @@ fn source(p: &bn6_assets::SpritePart, u: u32, v: u32) -> (usize, usize) {
 pub fn export(s: &SpriteSheet) -> Vec<u8> {
     let (ax, ay, width, height) = canvas(s);
     let layers = s.part_lists.iter().map(Vec::len).max().unwrap_or(0).max(1);
-    let set0: Vec<Palette> = s.palette_sets.first().cloned().unwrap_or_default();
+    // (An indexed image's palette holds set 0's first 16 rows.)
+    let mut set0: Vec<Palette> = s.palette_sets.first().cloned().unwrap_or_default();
+    set0.truncate(crate::sprite::ATLAS_PALETTE_ROWS);
     let palette = crate::image::palette_rgb(&set0)
         .into_iter()
         .enumerate()
@@ -497,8 +499,8 @@ pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report)
     // Palette set 0 from the sprite's palette.
     let mut out = base.clone();
     let rgb: Vec<[u8; 3]> = ase.palette.iter().map(|c| [c[0], c[1], c[2]]).collect();
-    let rows = out.palette_sets.first().map_or(0, Vec::len);
-    let base_rgb = crate::image::palette_rgb(&out.palette_sets.first().cloned().unwrap_or_default());
+    let rows = out.palette_sets.first().map_or(0, Vec::len).min(crate::sprite::ATLAS_PALETTE_ROWS);
+    let base_rgb = crate::image::palette_rgb(out.palette_sets.first().map_or(&[][..], |set| &set[..rows]));
     if let Some(why) = crate::image::palette_change(&crate::image::palette_fingerprint(&base_rgb), &rgb, rows * 16) {
         report.error(file, why);
         return None;
@@ -508,7 +510,7 @@ pub fn import(bytes: &[u8], base: &SpriteSheet, file: &str, report: &mut Report)
         report.warn(file, format!("{} palette colours aren't GBA colours and were rounded", off_grid.len()));
     }
     if let Some(set) = out.palette_sets.first_mut() {
-        for (r, row) in set.iter_mut().enumerate() {
+        for (r, row) in set.iter_mut().enumerate().take(rows) {
             for (i, c) in row.iter_mut().enumerate() {
                 *c = (*c & 0x8000) | new_rows[r][i];
             }

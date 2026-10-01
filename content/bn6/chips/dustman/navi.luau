@@ -15,7 +15,7 @@ local dustman = {}
 export type State = {
     -- What he took: their junk looks (his ExtraVars), how many (Param1)
     -- and how many he has thrown back (Param2).
-    taken: { number },
+    taken: { Identity? },
     count: number,
     thrown: number,
     -- The controller waiting for him.
@@ -138,7 +138,11 @@ local function throw(me: Object)
     end
     -- sub_80BC160: the next piece (its look the next one he took), its Z
     -- the r3 the object loop left him.
-    junk.throw(me, me.panel_x, me.panel_y, me.element, damage, s.taken[s.thrown + 1] or 0, battle.loop_register())
+    local look = s.taken[s.thrown + 1]
+    if not look then
+        error("DustMan throws a piece he never took (sub_80BC160 reads a look of 0, a virus's)")
+    end
+    junk.throw(me, me.panel_x, me.panel_y, me.element, damage, look, battle.loop_register())
     battle.play_sound(SOUND_THROW)
     s.thrown += 1
     me.timer2 = THROW_TICKS
@@ -161,7 +165,7 @@ local ACTIONS = { [APPEAR] = appear, [TAKE] = suck, [WIND_UP] = wind_up, [THROW]
 dustman.kind = define.kind {
     id = "dustman/navi",
     pool = "actor",
-    state = { taken = "u16[8]", count = "u8", thrown = "u8", controller = "object" },
+    state = { taken = "identity[8]", count = "u8", thrown = "u8", controller = "object" },
     -- `sub_80BBF0C`.
     update = function(me: Object)
         local l = me.lifecycle

@@ -46,9 +46,8 @@ pub struct Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    /// The numbers of the chips, navis, forms, collision types, statuses
-    /// and lock-on modes the definitions give (their `legacy` markers, a
-    /// collision type's row).
+    /// The numbers of the navis, forms and lock-on modes the definitions
+    /// give (their `legacy` markers).
     pub fn new(assets: &'a AssetNames, definitions: &Definitions) -> Resolver<'a> {
         let mut numbers = HashMap::new();
         let mut put = |d: &Definition, n: Option<i64>| {
@@ -63,9 +62,6 @@ impl<'a> Resolver<'a> {
         // definitions, which are in key order).
         for (i, d) in definitions.of(Registry::Lockon).iter().enumerate() {
             put(d, Some(i as i64));
-        }
-        for d in definitions.of(Registry::Collision) {
-            put(d, d.spec.field("row_offset").int().map(|o| o / 8));
         }
         Resolver { assets, numbers }
     }
@@ -258,41 +254,6 @@ struct CrossSpecialSection {
     rows: Vec<Vec<SpecialChipEntry>>,
 }
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct ActorRecordRow {
-    version: u8,
-    actor_type: crate::actor::ActorType,
-    ai_index: u8,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct NameLookRow {
-    #[serde(default)]
-    sprite: Option<SpriteId>,
-    anim: u8,
-    palette: u8,
-    shadow: bool,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct EffectRow {
-    sprite: SpriteId,
-    #[serde(default)]
-    anim: u8,
-    #[serde(default)]
-    palette: u8,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct FieldRegionRow {
-    require: u32,
-    forbid: u32,
-}
-
 /// The names the elements section uses for the weakness table's rows.
 const ELEMENT_NAMES: [&str; 6] = ["null", "fire", "aqua", "elec", "wood", "drain"];
 
@@ -307,11 +268,6 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
 /// A table by number (`[0x05] = { ... }`) as rows from 0; a gap is an
 /// error. `id`: the record's own field for its number.
 fn numbered<T: DeserializeOwned>(r: &Resolver, d: &Data, at: &str, id: Option<&str>) -> Result<Vec<T>, String> {
-    numbered_from(r, d, at, id, 0)
-}
-
-/// `numbered`, the rows from `from`.
-fn numbered_from<T: DeserializeOwned>(r: &Resolver, d: &Data, at: &str, id: Option<&str>, from: i64) -> Result<Vec<T>, String> {
     let entries: Vec<(i64, &Data)> = match d {
         Data::Map(entries) => entries
             .iter()
@@ -326,7 +282,7 @@ fn numbered_from<T: DeserializeOwned>(r: &Resolver, d: &Data, at: &str, id: Opti
     };
     let mut out = Vec::with_capacity(entries.len());
     for (i, (n, v)) in entries.into_iter().enumerate() {
-        let expect = i as i64 + from;
+        let expect = i as i64;
         if n != expect {
             return Err(format!("{at}: row {n:#x} leaves a gap (row {expect:#x} is missing)"));
         }
@@ -445,42 +401,9 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
                     })
                     .collect();
             }
-            "identities" => {
-                let records: Vec<ActorRecordRow> = numbered(r, spec.field("actor_records"), &format!("{at}.actor_records"), None).map_err(e)?;
-                rules.actor_records = records
-                    .into_iter()
-                    .map(|x| NaviRecord { version: x.version, actor_type: x.actor_type, ai_index: x.ai_index })
-                    .collect();
-                let Data::Map(looks) = spec.field("name_looks") else {
-                    return Err(e(format!("{at}: name_looks is a table by NameID")));
-                };
-                let mut out = Vec::new();
-                for (k, v) in looks {
-                    let DataKey::Int(name_id) = k else { return Err(e(format!("{at}: name_looks is by NameID"))) };
-                    let row: NameLookRow = r.read(v, &format!("{at}.name_looks[{name_id:#x}]")).map_err(e)?;
-                    out.push(NameLook { name_id: *name_id as u16, sprite: row.sprite, anim: row.anim, palette: row.palette, shadow: row.shadow });
-                }
-                content.objects.name_looks = out;
-            }
-            "effects" => {
-                let rows: Vec<EffectRow> = numbered(r, spec, &at, None).map_err(e)?;
-                content.effects = rows.into_iter().map(|x| EffectSprite { sprite: x.sprite, anim: x.anim, palette: x.palette }).collect();
-            }
-            "sparks" => {
-                let rows: Vec<EffectRow> = numbered(r, spec, &at, None).map_err(e)?;
-                content.sparks = rows.into_iter().map(|x| EffectSprite { sprite: x.sprite, anim: x.anim, palette: x.palette }).collect();
-            }
-            "regions" => {
-                // Region 0 is none (an empty list).
-                let shapes: Vec<Vec<PanelOffset>> = numbered_from(r, spec.field("panels"), &format!("{at}.panels"), None, 1).map_err(e)?;
-                content.regions = std::iter::once(Vec::new()).chain(shapes).collect();
-                let field: Vec<FieldRegionRow> = numbered(r, spec.field("field"), &format!("{at}.field"), None).map_err(e)?;
-                rules.field_regions = field.into_iter().map(|x| PanelCondition { require: x.require, forbid: x.forbid }).collect();
-            }
             // The object kinds' tables by number, each while something
             // still reads it (the rocks', the absorbed obstacles' and the
             // sun beam's are their kinds' own definitions now).
-            "attachments" => content.objects.attachments = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "body-overlays" => content.objects.body_overlays = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "sword-waves" => content.objects.sword_waves = numbered(r, spec, &at, Some("id")).map_err(e)?,
             "boomerangs" => content.objects.boomerangs = numbered(r, spec, &at, Some("id")).map_err(e)?,
@@ -493,42 +416,6 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
     Ok(())
 }
 
-// ---- Collision types ------------------------------------------------
-
-fn registries(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
-    // Collision types by row, when the content has no table of its own.
-    let rows: Vec<&Definition> = definitions.of(Registry::Collision).iter().filter(|d| !d.spec.field("row_offset").is_nil()).collect();
-    if content.rules.collision_types.is_empty() && !rows.is_empty() {
-        let mut table: BTreeMap<i64, ([u32; 2], &Definition)> = BTreeMap::new();
-        for d in rows {
-            let word = |k: &str| d.spec.field(k).int().map(|i| i as u32).ok_or_else(|| err(d, format!("needs `{k}`")));
-            let offset = d.spec.field("row_offset").int().expect("filtered");
-            if offset % 8 != 0 {
-                return Err(err(d, format!("row_offset {offset:#x} is not a row's (a multiple of 8)")));
-            }
-            // A row several modules define (each by its own name) must be
-            // the same row.
-            let flags = [word("side0")?, word("side1")?];
-            if let Some((other, first)) = table.get(&(offset / 8))
-                && *other != flags
-            {
-                return Err(err(d, format!("row {:#x} is also collision {}'s, with other flags", offset / 8, first.key)));
-            }
-            table.entry(offset / 8).or_insert((flags, d));
-        }
-        let mut out = Vec::new();
-        for (expect, (row, (flags, d))) in table.into_iter().enumerate() {
-            if row != expect as i64 {
-                return Err(err(d, format!("row {row:#x} leaves a gap: collision types fill rows from 0 ({expect:#x} is missing)")));
-            }
-            out.push(flags);
-        }
-        content.rules.collision_types = out;
-    }
-
-    Ok(())
-}
-
 /// Remove fields from a table.
 fn strip(spec: &mut Data, fields: &[&str]) {
     if let Data::Map(entries) = spec {
@@ -537,21 +424,6 @@ fn strip(spec: &mut Data, fields: &[&str]) {
 }
 
 // ---- Chips, navis, forms ---------------------------------------------------------------
-
-/// A navi or form definition's identity (`identity`, with its NameID from
-/// the legacy marker) as a record's `name_record`.
-fn name_record(d: &Definition, r: &Resolver) -> Result<Option<Json>, ContentError> {
-    let identity = d.spec.field("identity");
-    if identity.is_nil() {
-        return Ok(None);
-    }
-    let mut j = r.json(identity, &format!("{} {}.identity", d.registry, d.key)).map_err(|m| err(d, m))?;
-    let name_id = d.spec.field("legacy").field("name_id").int().ok_or_else(|| err(d, "its identity needs a legacy `name_id`"))?;
-    if let Json::Object(o) = &mut j {
-        o.insert("id".into(), Json::from(name_id));
-    }
-    Ok(Some(j))
-}
 
 /// The fields of a spec, as the record's data: all but those named.
 fn fields(d: &Definition, r: &Resolver, skip: &[&str]) -> Result<Map<String, Json>, ContentError> {
@@ -586,9 +458,6 @@ fn navi(d: &Definition, r: &Resolver) -> Result<NaviData, ContentError> {
     if !own.is_nil() {
         o.insert("own_chip".into(), r.json(own, &format!("navi {}.own_chip", d.key)).map_err(|m| err(d, m))?);
     }
-    if let Some(n) = name_record(d, r)? {
-        o.insert("name_record".into(), n);
-    }
     serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))
 }
 
@@ -603,9 +472,6 @@ fn form(d: &Definition, r: &Resolver) -> Result<(FormData, Option<u8>), ContentE
     let number = d.spec.field("legacy").field("number").int().ok_or_else(|| err(d, "needs a legacy `number`"))?;
     o.insert("id".into(), Json::from(number));
     o.entry("weakness").or_insert(Json::Array(Vec::new()));
-    if let Some(n) = name_record(d, r)? {
-        o.insert("name_record".into(), n);
-    }
     let palette = d.spec.field("palette").int().map(|p| p as u8);
     Ok((serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))?, palette))
 }
@@ -618,8 +484,6 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<Legacy,
     let mut legacy = Legacy::default();
 
     sections(content, &r, definitions)?;
-    registries(content, definitions)?;
-
 
     // Navis and forms.
     for d in definitions.of(Registry::Navi) {

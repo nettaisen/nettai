@@ -244,19 +244,21 @@ pub struct Hud {
     /// The HP box (6x2) and the gauge frame (18x2) as first placed.
     pub hp_box: Vec<MapEntry>,
     pub gauge_frame: Vec<MapEntry>,
-    /// The 8x16 text font (the game's text codes).
+    /// The 8x16 text font, which chip names are drawn with: glyph k draws
+    /// `font_chars[k]`.
     pub font: Tiles,
-    /// Chip names in font codes, by chip id.
-    pub chip_names: Vec<Vec<u8>>,
-    /// Whether a chip's damage shows after its name, by chip id.
-    pub chip_shows_damage: Vec<bool>,
+    /// What each glyph of the font draws, as text (the game's text
+    /// encoding; a glyph with no character of its own has a bracketed name,
+    /// `[EX]`). Content's names are written in these.
+    pub font_chars: Vec<String>,
     /// The opponent's HP digits by colour (normal, dropping, rising):
     /// glyph d is digit d.
     pub enemy_digits: [Tiles; 3],
     pub enemy_palette: Palette,
-    /// Chip icons (2x2 tiles) by chip id, and the icon of an opponent's
-    /// hidden chip.
-    pub chip_icons: Vec<Tiles>,
+    /// Chip icons (2x2 tiles), each under its chip's key, in the pack's
+    /// order (a chip the pack numbers has its number's place), and the
+    /// icon of an opponent's hidden chip.
+    pub chip_icons: Vec<ChipIcon>,
     pub hidden_icon: Tiles,
     pub icon_palette: Palette,
     /// Mugshots (4x2 tiles) and their palettes by emotion.
@@ -267,6 +269,22 @@ pub struct Hud {
     pub count_box: Tiles,
     /// A transformed navi's mugshot emotion by form.
     pub form_emotions: Vec<u8>,
+    /// The link navis' mugshots, and which a navi shows: by the navi's
+    /// number less one (`byte_801CDDC`; a ROM holds its own version's
+    /// navis' faces and ProtoMan's or Colonel's, and the other version's
+    /// navis show them).
+    pub navi_mugshots: Vec<NaviMugshot>,
+    pub navi_mugshot_of: Vec<u8>,
+    /// The box beside a link navi's mugshot (2x2 tiles), where MegaMan's
+    /// count is.
+    pub navi_box: Tiles,
+    /// "PAUSE": five glyphs, drawn with the opponents' HP digits' palette.
+    pub pause: Tiles,
+    /// The HUD's text lines, each as glyphs of the font
+    /// (`TextScript86F0374`): the multiple deletions (0, 1, 19), "TIME
+    /// UP!" (3), the turn timer's seconds 1-10 (4-13), "COUNTER HIT!" (14)
+    /// and the custom screen's own.
+    pub texts: Vec<Vec<u16>>,
     /// Banners by banner id / 4.
     pub banners: Vec<BannerLayout>,
     /// The banner font's digits (glyph d is digit d; glyph 10 is blank).
@@ -278,13 +296,65 @@ pub struct Hud {
     pub waiting_palette: Palette,
 }
 
+/// A link navi's mugshot (4x2 tiles) with its palettes: normal, angry.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct NaviMugshot {
+    pub tiles: Tiles,
+    pub palettes: [Palette; 2],
+}
+
+/// A chip's icon. Empty tiles: the chip has none.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ChipIcon {
+    /// The chip's key (the icon's file name in the pack).
+    pub key: String,
+    pub tiles: Tiles,
+}
+
+impl Hud {
+    /// The icon of the chip with this key; none if the chip has no icon.
+    pub fn chip_icon(&self, key: &str) -> Option<&Tiles> {
+        let icon = self.chip_icons.iter().find(|i| i.key == key)?;
+        (!icon.tiles.is_empty()).then_some(&icon.tiles)
+    }
+
+    /// The font's glyphs for `text` (the longest glyph name that matches
+    /// at each place), and the characters it has no glyph for.
+    pub fn glyphs(&self, text: &str) -> (Vec<u16>, Vec<char>) {
+        let (mut glyphs, mut missing) = (Vec::new(), Vec::new());
+        let mut rest = text;
+        while let Some(c) = rest.chars().next() {
+            let best = self
+                .font_chars
+                .iter()
+                .enumerate()
+                .filter(|(_, g)| !g.is_empty() && rest.starts_with(g.as_str()))
+                // The first of equally long names: the encoding has two
+                // spaces.
+                .min_by_key(|(k, g)| (std::cmp::Reverse(g.len()), *k));
+            match best {
+                Some((k, g)) => {
+                    glyphs.push(k as u16);
+                    rest = &rest[g.len()..];
+                }
+                None => {
+                    missing.push(c);
+                    rest = &rest[c.len_utf8()..];
+                }
+            }
+        }
+        (glyphs, missing)
+    }
+}
+
 /// A banner's text and where it sits.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BannerLayout {
     pub x: u8,
     pub y: u8,
-    /// 0 plain, 1 with a number, 2 and 4 hold until removed, 3 and 4 are
-    /// drawn from text at run time (not extracted).
+    /// 0 plain, 1 with a number, 2 and 4 hold until removed; 3 (the
+    /// telops) has no glyphs of its own: a frontend draws the chip's name
+    /// with the font, and 4 (the judge's) adds two numbers to its glyphs.
     pub kind: u8,
     /// 20 glyphs, drawn as five 32x16 sprites.
     pub glyphs: Tiles,
@@ -295,6 +365,25 @@ pub struct BannerLayout {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn text_takes_the_longest_glyph_names() {
+        let hud = Hud {
+            font_chars: [" ", "A", "[", "[EX]", "n", " "].map(String::from).to_vec(),
+            ..Hud::default()
+        };
+        assert_eq!(hud.glyphs("An [EX]"), (vec![1, 4, 0, 3], vec![]));
+        assert_eq!(hud.glyphs("A?[E"), (vec![1, 2], vec!['?', 'E']));
+    }
+
+    #[test]
+    fn chip_icons_are_found_by_key_then_number() {
+        let icon = |key: &str, n: usize| ChipIcon { key: key.into(), tiles: Tiles { pixels: vec![1; n * Tiles::TILE] } };
+        let hud = Hud { chip_icons: vec![icon("cannon", 4), icon("no-icon", 0), icon("sword", 4)], ..Hud::default() };
+        assert_eq!(hud.chip_icon("sword"), Some(&hud.chip_icons[2].tiles));
+        assert_eq!(hud.chip_icon("no-icon"), None);
+        assert_eq!(hud.chip_icon("other"), None);
+    }
 
     #[test]
     fn map_entries_decode() {

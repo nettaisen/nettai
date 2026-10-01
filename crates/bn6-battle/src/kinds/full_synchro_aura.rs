@@ -91,8 +91,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// `sub_80C4C52`: the aura's animation by its navi's AI index: the index
 /// itself below 0x23, 0xC for the Gregar beasts, 0xD for the Falzar ones.
 fn animation(b: &Battle, r: ObjectRef) -> u8 {
-    let name_id = b.objects.get(owner(b, r)).name_id;
-    let ai = b.content.navi_record(name_id).ai_index;
+    let identity = b.objects.get(owner(b, r)).identity;
+    let ai = b.content.navi_record(identity).ai_index;
     match ai {
         0..=0x22 => ai,
         0x23 | 0x2F => 0x0C,

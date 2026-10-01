@@ -2,7 +2,7 @@
 
 use super::{BannerId, CodedChip, Element, SecondaryElements, SpriteId};
 use crate::actor::ActorType;
-use bn6_content_api::WeaponHandle;
+use bn6_content_api::{IdentityHandle, WeaponHandle};
 use serde::{Deserialize, Serialize};
 
 /// A navi (NaviStats' navi number): MegaMan (0) or a link navi.
@@ -37,9 +37,10 @@ pub struct NaviData {
     /// which set how long it prints (docs/engine/custom-screen.md §3.5).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub run_message: Vec<u8>,
-    /// The navi's NameID and what goes with it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name_record: Option<NameData>,
+    /// Its identity: what the object that is this navi is taken for. (Read
+    /// from the definition by handle, not with the rest of the record.)
+    #[serde(skip)]
+    pub identity: Option<IdentityHandle>,
     /// The weapons it comes with (`byte_80210DD`): what a Cross change
     /// gives its buttons. (Read from the definition by handle, not with
     /// the rest of the record.)
@@ -100,10 +101,9 @@ pub struct FormData {
     pub weapons: FormWeapons,
     /// Added to the buster's damage.
     pub buster_bonus: u8,
-    /// The form's NameID and what goes with it (the base form uses
-    /// MegaMan's).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name_record: Option<NameData>,
+    /// Its identity (the base form has none of its own: MegaMan's).
+    #[serde(skip)]
+    pub identity: Option<IdentityHandle>,
 }
 
 /// A form's or navi's weapons, by the button that uses each (none: the
@@ -139,30 +139,6 @@ impl FormWeapons {
             "alt_a_charge" => &mut self.alt_a_charge,
             _ => return None,
         })
-    }
-}
-
-/// What goes with a player NameID: the actor record and the sprite's
-/// attach points.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct NameData {
-    /// The NameID (0x1A0..=0x1C3 for BN6's player navis and forms).
-    pub id: u16,
-    /// The actor record (`sub_80182B4`).
-    pub version: u8,
-    pub actor_type: ActorType,
-    /// Selects per-navi hooks and tables.
-    pub ai_index: u8,
-    /// Where things attach to the sprite (`sub_8018810`), by attach
-    /// point.
-    pub attach_points: Vec<AttachPoint>,
-}
-
-impl NameData {
-    /// The actor record.
-    pub fn record(&self) -> NaviRecord {
-        NaviRecord { version: self.version, actor_type: self.actor_type, ai_index: self.ai_index }
     }
 }
 

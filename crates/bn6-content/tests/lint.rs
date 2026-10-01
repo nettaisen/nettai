@@ -17,6 +17,10 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
          return define.record('holder', { kind = held.kind })"
             .into(),
     );
+    // A role that names a definition, left out.
+    let roles = c.scripts.modules.get_mut("test/rules/roles").expect("the test pack's roles");
+    assert!(roles.contains("    sparks = ruleset.sparks,\n"));
+    *roles = roles.replace("    sparks = ruleset.sparks,\n", "    sparks = { plain = ruleset.sparks.plain },\n");
     c.define().unwrap();
     let mut r = Report::default();
     bn6_content::lint::definitions(&c, &mut r);
@@ -24,5 +28,7 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
         r.issues.iter().filter(|i| i.level == Level::Warning).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(warnings.iter().any(|w| w.contains("actions.body_guard_counter is not filled")), "{warnings:?}");
     assert!(!warnings.iter().any(|w| w.contains("anti_damage_counter")), "the test pack fills it: {warnings:?}");
+    assert!(warnings.iter().any(|w| w.contains("sparks.guard is not filled")), "{warnings:?}");
+    assert!(!warnings.iter().any(|w| w.contains("sparks.plain") || w.contains("effects.") || w.contains("collision.")), "{warnings:?}");
     assert!(warnings.iter().any(|w| w.starts_with("objects/held/held.luau: only chips/holder uses")), "{warnings:?}");
 }
