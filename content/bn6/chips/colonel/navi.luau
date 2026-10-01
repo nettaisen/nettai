@@ -1,22 +1,28 @@
 --!strict
--- Colonel, the navi of the Colonel chips and of CrossDiv (actor object
--- #0x01, `sub_80B8210`), brought by their navi chip controller. He fades
--- in on his user's panel with his cape (a form overlay of his own sprite)
--- and leaves at once if the panel isn't solid; he draws his sword (the
--- attachment 0x1F in his first related slot, which held his user) and
--- strikes: with Param3 0 (Colonel's ScreenDivide), an X of hit regions
--- (0x29) over the middle row of the first column ahead that is wholly the
--- enemy's; with Param3 set (CrossDiv), a cross (regions 0x0B and 0x01) on
--- the first panel ahead holding an enemy navi (or three columns ahead). A
--- flash, and a camera shake. Then he goes, and the controller moves on.
--- See docs/engine/chips.md §3.6.22.
---
--- The chips' script (navi chip subtype 17): `navi_chip` is his spawner,
--- `off_802CD5C[17]`.
+-- Colonel, the navi of the Colonel chips and of CrossDiv (the original's
+-- actor object #0x01, `sub_80B8210`), brought by their navi chip
+-- controller. He fades in on his user's panel with his cape (a form
+-- overlay of his own sprite) and leaves at once if the panel isn't solid;
+-- he draws his sword (in his first related slot, which held his user) and
+-- strikes: the Colonel chips' ScreenDivide, an X of hit regions over the
+-- middle row of the first column ahead that is wholly the enemy's;
+-- CrossDiv's, a cross (an X and its centre) on the first panel ahead
+-- holding an enemy navi (or three columns ahead). A flash, and a camera
+-- shake. Then he goes, and the controller moves on. See
+-- docs/engine/chips.md §3.6.22.
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../../objects/attachment/attachment")
+local collision = require("../../rules/collision")
+local regions = require("../../lib/regions")
+
+-- What a chip summons him with: his palette (the chips' first parameter
+-- picks it), and whether he strikes CrossDiv's cross (their third).
+export type Summon = { palette: number, cross: boolean? }
 
 export type State = {
+    -- His palette, and his strike (from the chip's parameters).
+    palette: number,
+    cross: boolean,
     -- The grey of his colour shader, fading in (object +0x19).
     grey: number,
     -- His cape (ExtraVars[0]).
@@ -25,23 +31,33 @@ export type State = {
     controller: Object?,
 }
 
-local colonel = {
-    state = { grey = "u8", cape = "object", controller = "object" },
-}
+local colonel = {}
 
-local SPRITE = "08-12"
-
--- His palette by Param1 (`byte_80B8294`).
-local PALETTES = { [0] = 0, 0, 0, 0, 3, 0, 0, 0 }
+local SPRITE = asset.sprite("colonel")
+local SOUND_APPEAR = asset.sound("appear")
+local SOUND_SPIN = asset.sound("spin")
 
 -- His cape (`dword_80B85C4`): his own sprite, stepping while dimmed, his
 -- animation plus 0x0D, his palette.
 local CAPE: FormOverlaySpec =
     { sprite = SPRITE, stepping = "while_dimmed", anim_offset = 0x0D, nudged = false, owner_palette = true }
 
--- His sword (`dword_80B85C8`: attachment 0x1F, animation 0x1C, animating
--- while dimmed).
-local SWORD = { 0x1F, 0x1C, 1, 0 }
+-- His sword (`dword_80B85C8`: the original's attachment 0x1F, animation
+-- 0x1C, animating while dimmed).
+local SWORD = attachment.look { sprite = asset.sprite("colonel-sword"), palette = 0 }
+local SWORD_ANIM = 0x1C
+
+-- ScreenDivide's X (region 0x29: the diagonals of a column of three
+-- panels, three columns deep), and its effect (0x38); CrossDiv's two
+-- effects (0x36, 0x37).
+local SCREEN_DIVIDE = define.region {
+    panels = { { 0, -1 }, { 1, -1 }, { 2, -1 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 2, 1 } },
+}
+local DIVIDE = define.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
+local CROSS = {
+    define.effect { sprite = asset.sprite("colonel-effect"), anim = 1, palette = 0 },
+    define.effect { sprite = asset.sprite("colonel-effect"), anim = 2, palette = 0 },
+}
 
 -- His fade-in's starting grey.
 local FADE_GREY = 0x1F
@@ -63,23 +79,6 @@ local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 -- When his strike lands (the timer before its tick's count down).
 local STRIKE_TICK = 0x20
 
--- `sub_80B84EC`: Colonel for `user`, reporting to `controller`.
-function colonel.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn_kind("colonel", Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS), spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.alliance, o.flip = user.alliance, user.flip
-    o.related1 = user
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    local s = o.state :: State
-    s.controller = controller
-    return o
-end
-
 -- `sub_80B8230`: on his user's panel, faded out (grey 0x7FFF shader),
 -- with his cape.
 local function init(me: Object)
@@ -93,11 +92,7 @@ local function init(me: Object)
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, 0)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    local palette = PALETTES[me:param(1)]
-    if palette == nil then
-        error(string.format("Colonel's palette %d reads past byte_80B8294", me:param(1)))
-    end
-    sprite.palette = palette
+    sprite.palette = (me.state :: State).palette
     sprite.color_shader = 0x7FFF;
     (me.state :: State).cape = battle.form_overlay(me, CAPE)
     me:set_lifecycle("update")
@@ -110,7 +105,7 @@ local function fade_in(me: Object)
     me.visible = true
     if me.phase_init == 0 then
         s.grey = FADE_GREY
-        battle.play_sound(0x94)
+        battle.play_sound(SOUND_APPEAR)
         me.timer = 0
         me.phase_init = 4
         return
@@ -192,7 +187,7 @@ end
 
 -- A hit region on (x, y) 16 pixels up, running while dimmed
 -- (`sub_80C53A6`): `region`, no hit spark.
-local function hit(me: Object, x: number, y: number, region: number)
+local function hit(me: Object, x: number, y: number, region: Region)
     local box = battle.hitbox(me, {
         panel_x = x,
         panel_y = y,
@@ -200,8 +195,8 @@ local function hit(me: Object, x: number, y: number, region: number)
         z = 0x10_0000,
         region = region,
         hit_effect = 0xFF,
-        target = 5,
-        self_type = 7,
+        target = collision.hits_navis,
+        self_type = collision.slash,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = 3,
@@ -217,32 +212,32 @@ local function at_back(me: Object): boolean
 end
 
 -- `sub_80B8512`: ScreenDivide: an X over the middle of the enemy's first
--- column (region 0x29), its effect (0x38) a column on, a 20-tick flash.
+-- column, its effect a column on, a 20-tick flash.
 local function screen_divide(me: Object)
     if at_back(me) then
         return
     end
     local x = enemy_column(me)
     local y = 2
-    hit(me, x, y, 0x29)
+    hit(me, x, y, SCREEN_DIVIDE)
     local cx, cy = field.center(x + me.facing, y)
-    battle.effect(Vec3.new(cx, cy, 0), 0x38, me.alliance)
+    battle.effect(Vec3.new(cx, cy, 0), DIVIDE, me.alliance)
     battle.palette_flash(0, 0x14, true, false)
 end
 
--- `sub_80B8564`: CrossDiv: a cross on the enemy's panel (regions 0x0B and
--- 0x01), its two effects (0x36, 0x37) 12 pixels up, a 40-tick flash.
+-- `sub_80B8564`: CrossDiv: a cross on the enemy's panel (an X, then its
+-- centre again), its two effects 12 pixels up, a 40-tick flash.
 local function cross_divide(me: Object)
     if at_back(me) then
         return
     end
     local x, y = enemy_panel(me), me.panel_y
-    hit(me, x, y, 0x0B)
-    hit(me, x, y, 0x01)
+    hit(me, x, y, regions.x)
+    hit(me, x, y, regions.single)
     local cx, cy = field.center(x, y)
     local pos = Vec3.new(cx, cy, 0xC_0000)
-    battle.effect(pos, 0x36, me.alliance)
-    battle.effect(pos, 0x37, me.alliance)
+    battle.effect(pos, CROSS[1], me.alliance)
+    battle.effect(pos, CROSS[2], me.alliance)
     battle.palette_flash(0, 0x28, true, false)
 end
 
@@ -262,22 +257,22 @@ local function draw(me: Object)
     end
     me.anim = 5
     me.phase, me.phase_init = 4, 0
-    attachment.spawn_with(me, SWORD, "related")
+    attachment.attach(me, SWORD, "related", { anim = SWORD_ANIM, while_dimmed = true })
 end
 
--- `sub_80B83C0`: sound 0xC7; at 32 left the strike and a camera shake
+-- `sub_80B83C0`: his swing's sound; at 32 left the strike and a camera shake
 -- (magnitude 3, 35 ticks); 40 ticks.
 local function strike(me: Object)
     if me.phase_init == 0 then
-        battle.play_sound(0xC7)
+        battle.play_sound(SOUND_SPIN)
         me.timer = 0x28
         me.phase_init = 4
     end
     if me.timer == STRIKE_TICK then
-        if me:param(3) == 0 then
-            screen_divide(me)
-        else
+        if (me.state :: State).cross then
             cross_divide(me)
+        else
+            screen_divide(me)
         end
         battle.shake_camera(3, 0x23)
     end
@@ -345,15 +340,47 @@ local function finish(me: Object)
     me:free()
 end
 
--- `sub_80B8210`.
-function colonel.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        update_state(me)
-    else
-        finish(me)
+colonel.kind = define.kind {
+    id = "colonel/navi",
+    pool = "actor",
+    state = {
+        grey = "u8",
+        cape = "object",
+        controller = "object",
+        palette = "u8",
+        cross = "bool",
+    },
+    -- `sub_80B8210`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            update_state(me)
+        else
+            finish(me)
+        end
+    end,
+}
+
+-- `sub_80B84EC`: the Colonel chips' and CrossDiv's navi hook
+-- (`off_802CD5C[17]`): Colonel for `user`, reporting to `controller`.
+function colonel.summon(args: Summon): (user: Object, controller: Object, spec: NaviChipSpec) -> Object?
+    return function(user: Object, controller: Object, spec: NaviChipSpec): Object?
+        local o = battle.spawn(colonel.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+        if not o then
+            return nil
+        end
+        o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+        o.element = spec.element
+        o.alliance, o.flip = user.alliance, user.flip
+        o.related1 = user
+        o:set_damage_word(spec.damage)
+        local s = o.state :: State
+        s.controller = controller
+        s.palette = args.palette
+        s.cross = args.cross == true
+        return o
     end
 end
 
