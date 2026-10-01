@@ -215,6 +215,10 @@ pub struct NaviWeapons {
     pub buster_shot: u8,
     /// +0x4F: the charged shot's projectile config (0 = default 6).
     pub charge_shot_kind: u8,
+    /// +0x48: the damage a B+Back special takes from the navi's stats
+    /// (ProtoMan's reflecting guard, weapon routine 0x30; from the navi's
+    /// starting row).
+    pub back_special_damage: u16,
 }
 
 /// NaviCust bugs and program side effects.

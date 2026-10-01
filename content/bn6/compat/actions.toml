@@ -5,6 +5,16 @@
 # traces compare). The chips' actions are `<chip>/action`; the engine's own are
 # `engine/...`. Several actions may share a number (every chip of one action handler).
 
+"chargeman/charge/action" = 0x09
+"dustman/charge/action" = 0x09
+"elecman/charge/action" = 0x09
+"eraseman/charge/action" = 0x09
+"groundman/charge/action" = 0x09
+"heatman/charge/action" = 0x09
+"slashman/charge/action" = 0x09
+"spoutman/charge/action" = 0x09
+"tenguman/charge/action" = 0x09
+"tomahawkman/charge/action" = 0x09
 "delecswd/action" = 0x0A
 "dripshwr/action" = 0x0A
 "dustbrk/action" = 0x0A
@@ -121,6 +131,7 @@
 "cornsht2/action" = 0x2A
 "cornsht3/action" = 0x2A
 "megaman/reflect/action" = 0x2B
+"protoman/back-special/action" = 0x2B
 "megaman/shield/action" = 0x2B
 "rflectr1/action" = 0x2B
 "rflectr2/action" = 0x2B
