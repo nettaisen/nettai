@@ -1,6 +1,0 @@
-# The crack shot (attack object #0x33, `sub_80CA544`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x33
-script = "crack_shot.luau"

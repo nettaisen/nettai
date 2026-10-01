@@ -39,13 +39,6 @@ pub const ERASER: ChipId = 0x06;
 pub const PLUS: ChipId = 0x41;
 pub const FIST: ChipId = 0x46;
 pub const FLAME_HOOK: ChipId = 0x48;
-/// Standard chip actions (ids 0x100 and up): a CrakShot (action 0x22,
-/// subtype 0: the panel ahead).
-pub const CRACK: ChipId = 0x100;
-/// A Reflector (action 0x2B, subtype 0): guards for 30 ticks.
-pub const MIRROR: ChipId = 0x101;
-/// A recovery chip (action 0x20): heals 40 HP.
-pub const MEND: ChipId = 0x102;
 /// The thrown chips (action 0x12): a bomb (subtype 0), a seed that
 /// poisons panels (subtype 12), a flash bomb (subtype 14) and a bug bomb
 /// (subtype 7).
@@ -96,6 +89,26 @@ pub const BLAST: ChipId = 0x118;
 pub const BASS: ChipId = 0x119;
 /// A navi chip (action 0x1B, subtype 25: the sun-and-moon navi).
 pub const SUN_MOON: ChipId = 0x11a;
+/// The link navis' own chips (action 0x0A), each running the action its
+/// module exports: BN6's HeatPres, DElecSwd, RSlash, EDeletBm, VolcChrg,
+/// DripShwr, ETomahwk, FTornado, RC Brakr and DustBrk
+/// (navis/<navi>/chip.luau), as records of made-up damage. Any navi can use
+/// them here.
+pub const LINK_CHIPS: [(ChipId, &str, &str); 10] = [
+    (0x50, "HeatPres", "navis/heatman/chip"),
+    (0x51, "DElecSwd", "navis/elecman/chip"),
+    (0x52, "RSlash", "navis/slashman/chip"),
+    (0x53, "EDeletBm", "navis/eraseman/chip"),
+    (0x54, "VolcChrg", "navis/chargeman/chip"),
+    (0x55, "DripShwr", "navis/spoutman/chip"),
+    (0x56, "ETomahwk", "navis/tomahawkman/chip"),
+    (0x57, "FTornado", "navis/tenguman/chip"),
+    (0x58, "RCBrakr", "navis/groundman/chip"),
+    (0x59, "DustBrk", "navis/dustman/chip"),
+];
+/// A link navi (the content's navi 1; AI index 4, whose actor record has
+/// no hooks).
+pub const LINK_NAVI: crate::setup::Navi = crate::setup::Navi(1);
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -175,6 +188,11 @@ pub fn stats(hp: u16) -> crate::setup::NaviStats {
     crate::setup::NaviStats { hp, max_hp: hp, max_base_hp: hp, ..megaman_on(&content()) }
 }
 
+/// The link navi's stats (`LINK_NAVI`), by `content`'s handles.
+pub fn link_navi_on(content: &Content) -> crate::setup::NaviStats {
+    crate::setup::NaviStats { navi: content.navi_numbered(LINK_NAVI), ..megaman_on(content) }
+}
+
 /// Stats with nothing of note but MegaMan in his base form, by `content`'s
 /// handles.
 pub fn megaman_on(content: &Content) -> crate::setup::NaviStats {
@@ -240,6 +258,12 @@ pub const GOLEM_HIT: &str = "golmhit1";
 /// places a rock in front of its user.
 pub const ROCK_CUBE: &str = "rockcube";
 pub const TICK_SHOT: &str = "test/tick-shot";
+/// BN6's CrakShot, Rflectr1 and Recov50 (chips/crakshot, chips/rflectr,
+/// chips/recov): standard chips content defines, which dig up the panel
+/// ahead, guard and reflect, and heal.
+pub const CRAK_SHOT: &str = "crakshot";
+pub const REFLECTOR_1: &str = "rflectr1";
+pub const RECOV_50: &str = "recov50";
 /// BN6's SloGauge and Mine (chips/slogauge, chips/mine): dimming chips
 /// content defines, which slow the custom gauge and lay a mine.
 pub const SLOW_GAUGE: &str = "slogauge";
@@ -310,7 +334,7 @@ pub fn build() -> Content {
 fn make() -> Content {
     Content {
         chips: chips(),
-        navis: vec![navi()],
+        navis: vec![navi(), link_navi()],
         forms: vec![base_form()],
         rules: rules(),
         objects: objects(),
@@ -408,6 +432,15 @@ fn assets() -> bn6_content_api::AssetNames {
         ("bow", sprite(0x0C, 0x2A)),
         ("lil-boiler", sprite(0x04, 0x0D)),
         ("voodoo-doll", sprite(0x0C, 0x34)),
+        ("crack-shot", sprite(0x0C, 0x33)),
+        ("dust", sprite(0x14, 0x0E)),
+        ("reflector-shield", sprite(0x0C, 0x1B)),
+        ("reflector-shield-2", sprite(0x04, 0x00)),
+        ("megaman-navi", sprite(0x08, 0x00)),
+        ("drill-arm", sprite(0x0C, 0x58)),
+        ("burner", sprite(0x0C, 0x29)),
+        ("burner-2", sprite(0x0C, 0x1F)),
+        ("flame", sprite(0x0C, 0x0E)),
         ("boomerang", sprite(0x10, 0x07)),
         ("boomerang-tomahawk", sprite(0x10, 0x57)),
         ("lance", sprite(0x0C, 0x44)),
@@ -422,6 +455,16 @@ fn assets() -> bn6_content_api::AssetNames {
         ("boulder", sprite(0x10, 0x08)),
         ("falling-rock", sprite(0x10, 0x05)),
         ("countdown-bomb", sprite(0x0C, 0x23)),
+        ("heat-flame", sprite(0x10, 0x02)),
+        ("follow-effect", sprite(0x10, 0x0E)),
+        ("drip-shower", sprite(0x10, 0x22)),
+        ("eagle-tomahawk", sprite(0x10, 0x2A)),
+        ("tengu-tornado", sprite(0x10, 0x42)),
+        ("volcano-rock", sprite(0x10, 0x55)),
+        ("ground-drill", sprite(0x10, 0x4F)),
+        ("dust-cloud", sprite(0x10, 0x59)),
+        ("dustman", sprite(0x08, 0x0A)),
+        ("swirl", sprite(0x0C, 0x28)),
         // The traps, mines, time bombs and navi-changing chips.
         ("spout-splash", sprite(0x0C, 0x1A)),
         ("beast-over-burst", sprite(0x14, 0x14)),
@@ -481,6 +524,11 @@ fn assets() -> bn6_content_api::AssetNames {
         ("boiler-steam", 0x185),
         ("err-select-91", 0x91),
         ("hit-bomb-0", 0x6F),
+        ("crack-shot", 0xDA),
+        ("bblstar1", 0xD8),
+        ("follow-effect", 0xA0),
+        ("wave", 0xC5),
+        ("roar", 0x12B),
         ("cross-change", 0x8D),
         ("boomerang", 0xB7),
         ("fire-hit", 0xED),
@@ -492,6 +540,17 @@ fn assets() -> bn6_content_api::AssetNames {
         ("place", 0x112),
         ("panel-crack", 0x97),
         ("falling-rock", 0xD9),
+        ("form-change", 0xF7),
+        ("follow-effect", 0xA0),
+        ("drip-shower", 0x128),
+        ("etomahwk", 0x10C),
+        ("aqua-surge", 0xB8),
+        ("volcano", 0x146),
+        ("rslash", 0x164),
+        ("dustbrk", 0xAD),
+        ("dustbrk-2", 0x17B),
+        ("rockfall", 0xE5),
+        ("drill-spin", 0x1C0),
         // The traps, mines, time bombs, gauge and navi-changing chips.
         ("dimming-sparkle", 0xA5),
         ("target-move", 0x10F),
@@ -657,10 +716,16 @@ pub fn scripts() -> Scripts {
                     "navis/00-megaman/forms/slashcross/sword_wave",
                 ),
                 ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
-                ("objects/reflector-shield/reflector_shield", "objects/reflector-shield/reflector_shield"),
-                ("objects/reflected-shot/reflected_shot", "objects/reflected-shot/reflected_shot"),
-                ("chips/008-mirror/chip", "chips/083-rflectr1/chip"),
-                ("chips/009-mend/chip", "chips/09a-recov10/chip"),
+                // The Reflectors, the recovery chips and HeatCross's charged
+                // shot's burner (content model v2).
+                ("chips/rflectr/shield", "chips/rflectr/shield"),
+                ("chips/rflectr/shot", "chips/rflectr/shot"),
+                ("chips/rflectr/guard", "chips/rflectr/guard"),
+                ("chips/rflectr/chips", "chips/rflectr/chips"),
+                ("chips/recov/heal", "chips/recov/heal"),
+                ("chips/recov/chips", "chips/recov/chips"),
+                ("lib/burner/burn", "lib/burner/burn"),
+                ("lib/burner/flame", "lib/burner/flame"),
                 ("lib/regions", "lib/regions"),
                 ("lib/effects", "lib/effects"),
                 ("lib/sparks", "lib/sparks"),
@@ -790,8 +855,8 @@ pub fn scripts() -> Scripts {
                 ("chips/mine/controller", "chips/mine/controller"),
                 ("chips/mine/land_mine", "chips/mine/land_mine"),
                 ("chips/mine/chip", "chips/mine/chip"),
-                ("chips/059-crakshot/chip", "chips/059-crakshot/chip"),
-                ("objects/crack-shot/crack_shot", "objects/crack-shot/crack_shot"),
+                ("chips/crakshot/shot", "chips/crakshot/shot"),
+                ("chips/crakshot/chips", "chips/crakshot/chips"),
                 ("objects/elmnt-man/elmnt_man", "objects/elmnt-man/elmnt_man"),
                 ("objects/meteor/meteor", "objects/meteor/meteor"),
                 ("objects/elmnt-ice/elmnt_ice", "objects/elmnt-ice/elmnt_ice"),
@@ -804,7 +869,30 @@ pub fn scripts() -> Scripts {
                 ("objects/spout-geyser/spout_geyser", "objects/spout-geyser/spout_geyser"),
                 ("objects/spout-mark/spout_mark", "objects/spout-mark/spout_mark"),
                 ("objects/heat-man/heat_man", "objects/heat-man/heat_man"),
-                ("objects/heat-flame/heat_flame", "objects/heat-flame/heat_flame"),
+                ("chips/heatman/flame", "chips/heatman/flame"),
+                // The link navis' own chips (content model v2: their
+                // records run the actions these export) and their kinds.
+                ("lib/link_chips", "lib/link_chips"),
+                ("objects/follow-effect/follow_effect", "objects/follow-effect/follow_effect"),
+                ("navis/heatman/chip", "navis/heatman/chip"),
+                ("navis/elecman/chip", "navis/elecman/chip"),
+                ("navis/slashman/chip", "navis/slashman/chip"),
+                ("navis/slashman/riding_hit", "navis/slashman/riding_hit"),
+                ("navis/eraseman/chip", "navis/eraseman/chip"),
+                ("navis/chargeman/chip", "navis/chargeman/chip"),
+                ("navis/chargeman/volcano_rock", "navis/chargeman/volcano_rock"),
+                ("navis/spoutman/chip", "navis/spoutman/chip"),
+                ("navis/spoutman/drip_shower", "navis/spoutman/drip_shower"),
+                ("navis/tomahawkman/chip", "navis/tomahawkman/chip"),
+                ("navis/tomahawkman/axe", "navis/tomahawkman/axe"),
+                ("navis/tomahawkman/strike", "navis/tomahawkman/strike"),
+                ("navis/tenguman/chip", "navis/tenguman/chip"),
+                ("navis/tenguman/tornado", "navis/tenguman/tornado"),
+                ("navis/dustman/chip", "navis/dustman/chip"),
+                ("navis/dustman/clouds", "navis/dustman/clouds"),
+                ("navis/groundman/chip", "navis/groundman/chip"),
+                ("chips/grndman/drill", "chips/grndman/drill"),
+                ("chips/grndman/rock", "chips/grndman/rock"),
                 ("objects/elec-man/elec_man", "objects/elec-man/elec_man"),
                 ("objects/elec-thunder/elec_thunder", "objects/elec-thunder/elec_thunder"),
                 ("objects/slash-man/slash_man", "objects/slash-man/slash_man"),
@@ -904,9 +992,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
         kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
-        kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
-        kind("reflected-shot", Pool::Attack, 0x2F, "objects/reflected-shot/reflected_shot"),
-        kind("crack-shot", Pool::Attack, 0x33, "objects/crack-shot/crack_shot"),
         kind("elmnt-man", Pool::Actor, 0x10, "objects/elmnt-man/elmnt_man"),
         kind("meteor", Pool::Attack, 0x8D, "objects/meteor/meteor"),
         kind("elmnt-ice", Pool::Attack, 0x8E, "objects/elmnt-ice/elmnt_ice"),
@@ -919,7 +1004,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("spout-geyser", Pool::Attack, 0x17, "objects/spout-geyser/spout_geyser"),
         kind("spout-mark", Pool::Effect, 0x2E, "objects/spout-mark/spout_mark"),
         kind("heat-man", Pool::Actor, 0x07, "objects/heat-man/heat_man"),
-        kind("heat-flame", Pool::Attack, 0x26, "objects/heat-flame/heat_flame"),
         kind("elec-man", Pool::Actor, 0x08, "objects/elec-man/elec_man"),
         kind("elec-thunder", Pool::Attack, 0x64, "objects/elec-thunder/elec_thunder"),
         kind("slash-man", Pool::Actor, 0x0D, "objects/slash-man/slash_man"),
@@ -931,7 +1015,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("blast-fire", Pool::Attack, 0x21, "objects/blast-fire/blast_fire"),
         kind("bass", Pool::Actor, 0x4F, "objects/bass/bass"),
         kind("panel-strike", Pool::Attack, 0x09, "objects/panel-strike/panel_strike"),
-        kind("drill", Pool::Attack, 0x71, "objects/drill/drill"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -1067,15 +1150,6 @@ fn named_chips() -> Vec<ChipData> {
             script: Some("chips/0ec-eraseman/chip".into()),
             ..chip(ERASER, "Eraser", 0x1B, 5)
         },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 20,
-            params: [30, 0, 0, 0],
-            damage: 50,
-            script: Some("chips/008-mirror/chip".into()),
-            ..chip(MIRROR, "Mirror", 0x2B, 0)
-        },
-        ChipData { recovery: Some(40), script: Some("chips/009-mend/chip".into()), ..chip(MEND, "Mend", 0x20, 1) },
         thrown(BOMB, "Bomb", 0, [0, 0, 0, 0], 50),
         thrown(SEED, "Seed", 12, [0, 0, 0, 0], 10),
         thrown(FLASH, "Flash", 14, [1, 0, 0, 0], 40),
@@ -1121,13 +1195,6 @@ fn named_chips() -> Vec<ChipData> {
             damage: 70,
             script: Some("chips/090-timebom1/chip".into()),
             ..chip(TIME_BOMB_PLUS, "TimeBomb+", 0x15, 10)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 30,
-            damage: 40,
-            script: Some("chips/059-crakshot/chip".into()),
-            ..chip(CRACK, "Crack", 0x22, 0)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
@@ -1226,6 +1293,22 @@ fn named_chips() -> Vec<ChipData> {
         spawning(FIST, "Fist", 8, [0, 3, 0, 0], "chips/06b-firehit1/chip"),
         spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "chips/146-flmhook1/chip"),
     ]
+    .into_iter()
+    .chain(LINK_CHIPS.iter().map(|&(id, name, module)| link_chip(id, name, module)))
+    .collect()
+}
+
+/// A link navi's own chip (action 0x0A, subtype 3) whose module exports
+/// its action: made-up damage.
+fn link_chip(id: ChipId, name: &str, module: &str) -> ChipData {
+    ChipData {
+        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::LIBRARY),
+        class: ChipClass::Special,
+        hit_param: 0x30,
+        damage: 60,
+        script: Some(module.into()),
+        ..chip(id, name, 0x0A, 3)
+    }
 }
 
 /// An instant chip whose effect spawns an object: made-up damage.
@@ -1272,6 +1355,19 @@ fn navi() -> NaviData {
         own_chip: None,
         chip_bonus: None,
         name_record: Some(NameData { id: 0x1A0, version: 0, actor_type: ActorType::Player, ai_index: 0, attach_points }),
+    }
+}
+
+/// A link navi: its own actor record (AI index 4) and MegaMan's look.
+fn link_navi() -> NaviData {
+    let megaman = navi();
+    let record = megaman.name_record.clone().expect("MegaMan's NameID");
+    NaviData {
+        id: LINK_NAVI.0,
+        name: "LinkNavi".into(),
+        sprite: NAVI_SPRITE,
+        name_record: Some(NameData { id: 0x1A0 + LINK_NAVI.0 as u16, ai_index: 4, ..record }),
+        ..megaman
     }
 }
 
