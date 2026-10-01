@@ -685,10 +685,16 @@ fn post_init_hook(b: &mut Battle, r: ObjectRef) {
     }
 }
 
+/// `sub_800FC9E`: a side's navi's battle sprite by its stats (MegaMan's by
+/// his form, another navi's his own).
+pub(crate) fn stats_sprite(b: &Battle, side: u8) -> crate::content::SpriteId {
+    let s = &b.stats[side as usize & 1];
+    if b.content.navi_number(s.navi) == Navi::MEGAMAN { b.content.form(s.form).sprite } else { b.content.navi(s.navi).sprite }
+}
+
 /// `sub_800FC9E` + `sprite_load`: load the navi's battle sprite.
 fn load_sprite(b: &mut Battle, r: ObjectRef) {
-    let s = stats(b, r);
-    let id = if navi_of(b, r) == Navi::MEGAMAN { b.content.form(s.form).sprite } else { b.content.navi(s.navi).sprite };
+    let id = stats_sprite(b, b.objects.get(r).alliance);
     let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);

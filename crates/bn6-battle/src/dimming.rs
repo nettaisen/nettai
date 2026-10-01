@@ -413,6 +413,17 @@ pub fn hide_user(b: &mut Battle, user: ObjectRef) {
     }
 }
 
+/// `sub_80E1352(user, 0xF)`: the user vanishes, but its barrier visual,
+/// its confusion and blindness visuals and the HUD stay (BugFix's glow).
+pub fn hide_user_sparing(b: &mut Battle, user: ObjectRef) {
+    b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
+    set_vanished(b, user, true);
+    set_charge_glow(b, user, false);
+    if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
+        crate::kinds::full_synchro_aura::hide(b, aura);
+    }
+}
+
 /// `sub_80E13DC`: the user is back: visible unless submerged or
 /// hidden by the viewer's blindness.
 pub fn show_user(b: &mut Battle, user: ObjectRef) {
