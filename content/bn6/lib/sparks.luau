@@ -14,6 +14,16 @@ local BY_ELEMENT: { [number]: Spark } = {
     [5] = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 },
 }
 
+-- The element sparks by name (hit effects 1 to 3), for hits that name
+-- theirs rather than take their element's.
+sparks.fire, sparks.aqua, sparks.elec = BY_ELEMENT[1], BY_ELEMENT[2], BY_ELEMENT[3]
+
+-- A heavy impact (hit effect 0x0A): a drill, a falling rock, junk.
+sparks.impact = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
+
+-- A small burst (hit effect 0x06): a book, a gale.
+sparks.burst = define.spark { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
+
 -- `sub_801A146`: the spark of an attack of `element` (its primary
 -- element, the low nibble).
 function sparks.of_element(element: number): Spark

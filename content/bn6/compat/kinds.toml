@@ -18,6 +18,7 @@ attachment = { pool = "actor", index = 0x05 }
 "elmntman/navi" = { pool = "actor", index = 0x10 }
 "eraseman/navi" = { pool = "actor", index = 0x15 }
 "chrgeman/navi" = { pool = "actor", index = 0x16 }
+"grndman/navi" = { pool = "actor", index = 0x17 }
 "engine/cross-merge" = { pool = "actor", index = 0x1B }
 "sandwrm/hole" = { pool = "actor", index = 0x1C }
 "sunmoon/sun" = { pool = "actor", index = 0x24 }
@@ -83,6 +84,7 @@ rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 drill = { pool = "attack", index = 0x71 }
 "rskyhny/bee" = { pool = "attack", index = 0x74 }
 "spoutcross-beast/surge" = { pool = "attack", index = 0x76 }
+"grndman/rock" = { pool = "attack", index = 0x80 }
 "tengucross-beast/whirlwind" = { pool = "attack", index = 0x81 }
 "dolthdr/doll" = { pool = "attack", index = 0x82 }
 "moonbld/blade" = { pool = "attack", index = 0x85, scratch_position = true }
@@ -152,6 +154,7 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
+"grndman/drill" = { pool = "effect", index = 0x61 }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
