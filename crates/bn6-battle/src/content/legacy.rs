@@ -1,14 +1,7 @@
-//! The tables the ruleset and v1 modules still read by number, built from
-//! what the content defines (docs/design/content-model-v2.md §12, step 5):
-//! the pack's navis and forms by number,
-//! the rule sections, collision types, statuses and lock-on modes, and the numbered tables (effects,
-//! sparks, regions, the object kinds' rows).
-//!
-//! Where a definition still carries what only registration by number reads
-//! (a navi's number and NameID; a weapon's routine numbers; a table's
-//! original numbering), it sits in a `legacy { ... }`
-//! marker, which goes when its family converts (§12, phase B) or the
-//! ruleset stops asking numbers (phase C).
+//! The typed tables the ruleset reads, built from what the content defines
+//! (docs/design/content-model-v2.md §12, step 5): the rule sections. (The
+//! navis and forms are definitions the registries read by handle, and the
+//! body overlays the identities' parts: nothing is read by number.)
 //!
 //! Content without these definitions (the engine's test content, whose
 //! tables are Rust) keeps its tables: each part is built only when the
@@ -24,16 +17,7 @@ use serde_json::{Map, Value as Json};
 use super::*;
 use crate::field::PanelType;
 
-/// What registration by number reads of the navis and forms the content
-/// defines, by their definitions' keys. (A chip is its definition: nothing
-/// reads one by number.)
-#[derive(Clone, Debug, Default)]
-pub struct Legacy {
-    pub navis: BTreeMap<String, NaviData>,
-    pub forms: BTreeMap<String, FormData>,
-}
-
-fn err(d: &Definition, e: impl std::fmt::Display) -> ContentError {
+pub(crate) fn err(d: &Definition, e: impl std::fmt::Display) -> ContentError {
     ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key))
 }
 
@@ -46,8 +30,8 @@ pub struct Resolver<'a> {
 }
 
 impl<'a> Resolver<'a> {
-    /// The numbers of the navis, forms and lock-on modes the definitions
-    /// give (their `legacy` markers).
+    /// The numbers the tables hold of what the definitions name: the
+    /// lock-on modes' handles.
     pub fn new(assets: &'a AssetNames, definitions: &Definitions) -> Resolver<'a> {
         let mut numbers = HashMap::new();
         let mut put = |d: &Definition, n: Option<i64>| {
@@ -55,9 +39,6 @@ impl<'a> Resolver<'a> {
                 numbers.insert((d.registry, d.key.clone()), n);
             }
         };
-        for d in definitions.of(Registry::Navi).iter().chain(definitions.of(Registry::Form)) {
-            put(d, d.spec.field("legacy").field("number").int());
-        }
         // A lock-on mode reads as its handle (its place among the
         // definitions, which are in key order).
         for (i, d) in definitions.of(Registry::Lockon).iter().enumerate() {
@@ -268,38 +249,8 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
     }
 }
 
-/// A table by number (`[0x05] = { ... }`) as rows from 0; a gap is an
-/// error. `id`: the record's own field for its number.
-fn numbered<T: DeserializeOwned>(r: &Resolver, d: &Data, at: &str, id: Option<&str>) -> Result<Vec<T>, String> {
-    let entries: Vec<(i64, &Data)> = match d {
-        Data::Map(entries) => entries
-            .iter()
-            .map(|(k, v)| match k {
-                DataKey::Int(i) => Ok((*i, v)),
-                DataKey::Str(s) => Err(format!("{at}: `{s}` is not a number")),
-            })
-            .collect::<Result<_, _>>()?,
-        // A table from 1 with no gaps reads as a list: its numbers from 1.
-        Data::List(items) => items.iter().enumerate().map(|(i, v)| (i as i64 + 1, v)).collect(),
-        _ => return Err(format!("{at}: a table by number")),
-    };
-    let mut out = Vec::with_capacity(entries.len());
-    for (i, (n, v)) in entries.into_iter().enumerate() {
-        let expect = i as i64;
-        if n != expect {
-            return Err(format!("{at}: row {n:#x} leaves a gap (row {expect:#x} is missing)"));
-        }
-        let mut j = r.json(v, &format!("{at}[{n:#x}]"))?;
-        if let (Some(field), Json::Object(o)) = (id, &mut j) {
-            o.insert(field.to_string(), Json::from(n));
-        }
-        out.push(serde_json::from_value(j).map_err(|e| format!("{at}[{n:#x}]: {e}"))?);
-    }
-    Ok(out)
-}
-
-/// The rule sections into `rules` and the numbered tables into `content`:
-/// each only if the content defines it.
+/// The rule sections into `content.rules`: each only if the content
+/// defines it.
 fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> Result<(), ContentError> {
     for d in definitions.of(Registry::Rules) {
         let at = format!("{}.luau: rules {}", d.module, d.key);
@@ -408,15 +359,6 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
                     })
                     .collect();
             }
-            // The object kinds' tables by number, each while something
-            // still reads it (the rocks', the absorbed obstacles' and the
-            // sun beam's are their kinds' own definitions now).
-            "body-overlays" => content.objects.body_overlays = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "sword-waves" => content.objects.sword_waves = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "boomerangs" => content.objects.boomerangs = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "shock-waves" => content.objects.shock_waves = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "projectiles" => content.objects.projectiles = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "flying-shots" => content.objects.flying_shots = numbered(r, spec, &at, Some("id")).map_err(e)?,
             other => return Err(e(format!("{at}: the engine has no rule section `{other}`"))),
         }
     }
@@ -430,10 +372,8 @@ fn strip(spec: &mut Data, fields: &[&str]) {
     }
 }
 
-// ---- Chips, navis, forms ---------------------------------------------------------------
-
-/// The fields of a spec, as the record's data: all but those named.
-fn fields(d: &Definition, r: &Resolver, skip: &[&str]) -> Result<Map<String, Json>, ContentError> {
+/// The fields of a spec, as a record's data: all but those named.
+pub(crate) fn fields(d: &Definition, r: &Resolver, skip: &[&str]) -> Result<Map<String, Json>, ContentError> {
     let mut spec = d.spec.clone();
     strip(&mut spec, skip);
     match r.json(&spec, &format!("{} {}", d.registry, d.key)).map_err(|m| err(d, m))? {
@@ -443,92 +383,10 @@ fn fields(d: &Definition, r: &Resolver, skip: &[&str]) -> Result<Map<String, Jso
     }
 }
 
-fn navi(d: &Definition, r: &Resolver) -> Result<NaviData, ContentError> {
-    // The design's fields the engine doesn't read yet (phase C).
-    // (Its weapons, fresh stats and HP after a Cross change are read by
-    // handle, with the registries: `Defs::build`.)
-    let mut o = fields(
-        d,
-        r,
-        &["id", "legacy", "identity", "banners", "own_chip", "actions", "traits", "mugshots", "weapons", "fresh", "cross_hp"],
-    )?;
-    let number = d.spec.field("legacy").field("number").int().ok_or_else(|| err(d, "needs a legacy `number`"))?;
-    o.insert("id".into(), Json::from(number));
-    let banners = d.spec.field("banners");
-    for (field, which) in [("win_banner", "win"), ("lose_banner", "lose")] {
-        let b = r.json(banners.field(which), &format!("navi {}.banners.{which}", d.key)).map_err(|m| err(d, m))?;
-        o.insert(field.into(), b);
-    }
-    o.entry("weakness").or_insert(Json::Array(Vec::new()));
-    o.entry("merge_height").or_insert(Json::from(0));
-    let own = d.spec.field("own_chip");
-    if !own.is_nil() {
-        o.insert("own_chip".into(), r.json(own, &format!("navi {}.own_chip", d.key)).map_err(|m| err(d, m))?);
-    }
-    serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))
-}
-
-/// A form's record (its weapons are read by handle, with the registries:
-/// `Defs::build`), and its palette in a Cross (none: 0).
-fn form(d: &Definition, r: &Resolver) -> Result<(FormData, Option<u8>), ContentError> {
-    let mut o = fields(
-        d,
-        r,
-        &["id", "legacy", "identity", "kind", "game", "cross_of", "beast", "palette", "mugshot", "overlay", "chip_bonus", "charged_chips", "status_reset", "traits", "weapons"],
-    )?;
-    let number = d.spec.field("legacy").field("number").int().ok_or_else(|| err(d, "needs a legacy `number`"))?;
-    o.insert("id".into(), Json::from(number));
-    o.entry("weakness").or_insert(Json::Array(Vec::new()));
-    let palette = d.spec.field("palette").int().map(|p| p as u8);
-    Ok((serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))?, palette))
-}
-
-/// Everything registration by number reads of what the content defines:
-/// the tables into `content`, the per-definition records returned.
-pub fn build(content: &mut Content, definitions: &Definitions) -> Result<Legacy, ContentError> {
+/// The typed tables of what the content defines: its rule sections into
+/// `content`.
+pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     let assets = content.assets.clone();
     let r = Resolver::new(&assets, definitions);
-    let mut legacy = Legacy::default();
-
-    sections(content, &r, definitions)?;
-
-    // Navis and forms.
-    for d in definitions.of(Registry::Navi) {
-        legacy.navis.insert(d.key.clone(), navi(d, &r)?);
-    }
-    let mut palettes = BTreeMap::new();
-    for d in definitions.of(Registry::Form) {
-        let (f, palette) = form(d, &r)?;
-        palettes.insert(f.id, palette.unwrap_or(0));
-        legacy.forms.insert(d.key.clone(), f);
-    }
-    if !legacy.navis.is_empty() {
-        content.navis = dense_by_number(legacy.navis.values().cloned().map(|n| (n.id, n)), "navi")?;
-    }
-    if !legacy.forms.is_empty() {
-        content.forms = dense_by_number(legacy.forms.values().cloned().map(|f| (f.id, f)), "form")?;
-        // The Cross palettes, by form up to the last form with one.
-        let last = palettes.iter().filter(|(_, p)| **p != 0).map(|(f, _)| *f).max().unwrap_or(0);
-        content.rules.cross_palettes = (0..=last).map(|f| palettes.get(&f).copied().unwrap_or(0)).collect();
-    }
-
-    Ok(legacy)
-}
-
-/// Records by number, dense from 0.
-fn dense_by_number<T>(items: impl Iterator<Item = (u8, T)>, what: &str) -> Result<Vec<T>, ContentError> {
-    let mut by: BTreeMap<u8, T> = BTreeMap::new();
-    for (n, x) in items {
-        if by.insert(n, x).is_some() {
-            return Err(ContentError::new(format!("two {what}s are {what} {n:#x}")));
-        }
-    }
-    let mut out = Vec::new();
-    for (expect, (n, x)) in by.into_iter().enumerate() {
-        if n as usize != expect {
-            return Err(ContentError::new(format!("{what} {n:#x} leaves a gap ({what} {expect:#x} is missing)")));
-        }
-        out.push(x);
-    }
-    Ok(out)
+    sections(content, &r, definitions)
 }

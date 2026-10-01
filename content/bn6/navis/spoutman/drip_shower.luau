@@ -16,7 +16,7 @@ local drip_shower = {}
 -- What it is spawned with: its turns (Param2) and the ticks a quarter
 -- lasts (Param3); and whether it lasts only while its owner stays in his
 -- action (Param1 other than DripShwr's 4).
-export type Spec = { turns: number, quarter_ticks: number, follows_action: boolean }
+type Spec = DripShower
 
 export type State = {
     turns: number,

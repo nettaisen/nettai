@@ -10,14 +10,15 @@ use super::builder::{ClassCounts, FormedAdvance};
 use super::chatbox::{Chatbox, Script};
 use super::library::Library;
 use super::look::ScreenLook;
-use super::{GameVersion, Unlocks};
+use super::Unlocks;
 use crate::console::Console;
 use crate::battle::FadeMode;
 use crate::content::{ChipClass, ChipCode, CustomScreenLayout, TemplateSlot};
 use crate::hud::{Banner, BannerStatus};
 use crate::input::{Joypad, keys};
 use crate::kinds::player::Emotion;
-use crate::setup::{Form, NaviStats};
+use crate::content::FormTraits;
+use crate::setup::NaviStats;
 
 /// Slots: 0-4 the top row, 5-9 the bottom row, then these two.
 pub const SLOTS: usize = 12;
@@ -304,8 +305,9 @@ pub struct RoundMemory {
     /// Consecutive screens opened in ChargeCross (or its Beast form),
     /// up to 3: each deals one more chip.
     pub charge_cross_screens: u8,
-    /// Navi chips (ids 0x190 and up) put in a hand this round, by id.
-    pub navi_chips_used: u16,
+    /// The link navis whose own chips were put in a hand this round (a bit
+    /// each: the original's by the chip's place among them).
+    pub navi_chips_used: u32,
 }
 
 impl Screen {
@@ -313,11 +315,11 @@ impl Screen {
     /// compact the folder, deal, and lay out the slots. `turn`: the
     /// screen's number in the round (1 = first).
     pub fn open(folder: &mut BattleFolder, view: &PlayerView, turn: u8, round: &mut RoundMemory) -> Screen {
-        let megaman = view.navi() == crate::setup::Navi::MEGAMAN;
-        // sub_802A49C: ChargeCross deals one more chip per screen spent in
-        // it, up to three.
-        let form = view.form();
-        round.charge_cross_screens = if megaman && (form == Form::CHARGE_CROSS || form == Form::CHARGE_CROSS.with_beast()) {
+        let megaman = view.megaman();
+        // sub_802A49C: ChargeCross (a form with `extra_chips`) deals one
+        // more chip per screen spent in it, up to three.
+        let traits = view.form_traits();
+        round.charge_cross_screens = if megaman && traits.has(FormTraits::EXTRA_CHIPS) {
             (round.charge_cross_screens + 1).min(3)
         } else {
             0
@@ -380,8 +382,7 @@ impl Screen {
         for i in 0..dealt {
             self.slots[i as usize].kind = SlotKind::Chip { index: i, regular: i == 0 && view.regular_pending };
         }
-        let form = view.form();
-        if self.megaman && (form == Form::DUST_CROSS || form == Form::DUST_CROSS.with_beast()) {
+        if self.megaman && view.form_traits().has(FormTraits::SCRAP_BUTTON) {
             // DustCross (sub_8027F10): the scrap button, usable once.
             self.slots[8] = Slot { kind: SlotKind::Scrap { right_half: false }, right: Some(11), state: SlotState::Unavailable, uses_left: 1, ..self.slots[8] };
             self.slots[9] = Slot { kind: SlotKind::Scrap { right_half: true }, left: Some(7), ..self.slots[9] };
@@ -1196,7 +1197,7 @@ pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
 /// `sub_80280A2`: a link navi's own chip (`word_802A828`), unless it was
 /// used this round.
 fn navi_chip(view: &PlayerView) -> Option<FolderChip> {
-    if view.round.navi_chips_used & (1 << view.navi().0) != 0 {
+    if view.round.navi_chips_used & (1 << view.stats.navi.0) != 0 {
         return None;
     }
     view.library.navi_chip(view.stats.navi)
@@ -1211,8 +1212,7 @@ fn hand_size(view: &PlayerView, turn: u8, charge_cross_screens: u8, scrap_button
         extra = n - 8;
         n = 8;
     }
-    let form = view.form();
-    if form != Form::DUST_CROSS && form != Form::DUST_CROSS.with_beast() && !scrap_button && s.number_open {
+    if !view.form_traits().has(FormTraits::SCRAP_BUTTON) && !scrap_button && s.number_open {
         n = 10;
         extra = charge_cross_screens as i16;
     }
@@ -1227,22 +1227,22 @@ fn hand_size(view: &PlayerView, turn: u8, charge_cross_screens: u8, scrap_button
 }
 
 impl PlayerView<'_> {
-    /// The navi, by number (the screen's numeric logic asks it until phase
-    /// C).
-    pub fn navi(&self) -> crate::setup::Navi {
-        self.library.navi_number(self.stats.navi)
+    /// The navi changes form: where the original asks whether it is
+    /// MegaMan.
+    pub fn megaman(&self) -> bool {
+        self.library.changes_form(self.stats.navi)
     }
 
-    /// The form, by number.
-    pub fn form(&self) -> Form {
-        self.library.form_number(self.stats.form)
+    /// What the screen asks of the navi's form.
+    pub fn form_traits(&self) -> FormTraits {
+        self.library.form_traits(self.stats.form)
     }
 
     /// `sub_8029F70` (battle modes 0, 0xA and 0xB).
     fn crosses_allowed(&self) -> bool {
         !self.random_battle
             && if self.unlocks.beast_out_sealed {
-                self.navi() == crate::setup::Navi::MEGAMAN
+                self.megaman()
             } else {
                 !self.per_player_gauges
             }
@@ -1253,8 +1253,9 @@ impl PlayerView<'_> {
     fn offered_crosses(&self) -> CrossWindow {
         let mut w = CrossWindow::default();
         for i in 0..CROSSES as u8 {
-            let form = self.unlocks.version.cross_form(i);
-            let starting = self.library.form_number(self.stats.starting_form);
+            // (A Cross the content doesn't have isn't offered.)
+            let Some(form) = self.library.cross_form(self.stats.navi, self.unlocks.version, i) else { continue };
+            let starting = self.stats.starting_form;
             if self.unlocks.crosses[i as usize] && !self.round.crosses_used[i as usize] && starting != form {
                 w.offered[w.count as usize] = i;
                 w.count += 1;
@@ -1266,7 +1267,7 @@ impl PlayerView<'_> {
     /// `sub_8029FB4` (battle mode 0): the Beast Out button is on the
     /// screen.
     fn beast_out_button(&self) -> bool {
-        self.navi() == crate::setup::Navi::MEGAMAN
+        self.megaman()
             && !self.unlocks.beast_out_sealed
             && !self.per_player_gauges
             && !self.random_battle
@@ -1279,37 +1280,6 @@ impl PlayerView<'_> {
     fn beast_out_available(&self) -> bool {
         self.emotion != Emotion::WornOut
             && (self.emotion != Emotion::Tired || self.round.beast_out_used)
-            && !self.form().is_beast()
-    }
-}
-
-impl GameVersion {
-    /// The form of Cross number `i` (0-4).
-    pub fn cross_form(self, i: u8) -> Form {
-        match self {
-            GameVersion::Gregar => Form(1 + i),
-            GameVersion::Falzar => Form(6 + i),
-        }
-    }
-
-    pub fn beast_out(self) -> Form {
-        match self {
-            GameVersion::Gregar => Form::GREGAR_BEAST,
-            GameVersion::Falzar => Form::FALZAR_BEAST,
-        }
-    }
-
-    pub fn beast_over(self) -> Form {
-        match self {
-            GameVersion::Gregar => Form::GREGAR_BEAST_OVER,
-            GameVersion::Falzar => Form::FALZAR_BEAST_OVER,
-        }
-    }
-}
-
-impl Form {
-    /// A Cross's Beast form (Cross + Beast Out).
-    pub fn with_beast(self) -> Form {
-        Form(self.0 + 0x0C)
+            && !self.library.form_kind(self.stats.form).is_beast()
     }
 }

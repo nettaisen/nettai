@@ -210,7 +210,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-local PHASES = { [CHARGE] = run, [STOP] = stop, [BACK] = back, [RECOVER] = recover }
+local PHASES: { [number]: (me: Object, s: State) -> () } = { [CHARGE] = run, [STOP] = stop, [BACK] = back, [RECOVER] = recover }
 
 charge.action = define.action {
     id = "chargeman/charge/action",

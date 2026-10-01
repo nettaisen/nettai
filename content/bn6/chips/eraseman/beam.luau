@@ -14,14 +14,8 @@ local statuses = require("../../rules/status")
 local beam = {}
 
 -- What a segment is spawned with (the original's three parameters).
-export type Spec = {
-    -- The slash's aim: 0 up-forward, 1 forward, 2 down-forward.
-    aim: number,
-    -- How long it stands.
-    ticks: number,
-    -- A navi's own segment (EDeletBm's).
-    navis: boolean,
-}
+type Spec = EraseBeam
+
 export type State = {
     aim: number,
     ticks: number,

@@ -28,13 +28,15 @@ use bn6_content_api::ChipHandle;
 use crate::hand::ChipHand;
 use crate::input::Joypad;
 use crate::kinds::player::Emotion;
-use crate::setup::{Form, NaviStats, effects};
+use crate::content::FormKind;
+use crate::setup::{NaviStats, effects};
 use crate::transform::TransformRequest;
 use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
 use screen::SPECIAL_SLOT;
 
 /// Which game a player plays: it decides their Crosses and Beast form.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum GameVersion {
     Gregar,
     #[default]
@@ -305,26 +307,29 @@ impl Side {
             // A link navi's own chip is spent for the round (the bit of
             // its navi).
             if let Some(navi) = ctx.library.own_chip_of(p.chip.id) {
-                self.round.navi_chips_used |= 1 << ctx.library.navi_number(navi).0;
+                self.round.navi_chips_used |= 1 << navi.0;
             }
         }
-        let form = ctx.library.form_number(ctx.stats.form);
+        // (The original's forms by number: the game's Beast Over, Beast
+        // Out, or the Cross's form 0xC past it; a Cross by its number, in
+        // Beast Out its form 0xC past it.)
+        let (navi, form) = (ctx.stats.navi, ctx.stats.form);
+        let kind = ctx.library.form_kind(form);
         let version = self.unlocks.version;
         let mut transform = TransformRequest::NONE;
         if screen.selection().contains(&SPECIAL_SLOT) {
-            let to = if ctx.emotion == Emotion::Tired {
-                version.beast_over()
-            } else if form == Form::NONE {
-                version.beast_out()
+            transform.form = if ctx.emotion == Emotion::Tired {
+                ctx.library.beast_over_form(navi, version)
+            } else if kind == FormKind::Base {
+                ctx.library.beast_out_form(navi, version)
             } else {
-                form.with_beast()
+                ctx.library.form_in_beast_out(form)
             };
-            transform.form = Some(ctx.library.form_numbered(to));
             self.round.beast_out_used = true;
         }
         if let Some(cross) = screen.crosses.chosen {
-            let f = version.cross_form(cross);
-            transform.form = Some(ctx.library.form_numbered(if form.is_beast() { f.with_beast() } else { f }));
+            let f = ctx.library.cross_form(navi, version, cross);
+            transform.form = if kind.is_beast() { f.and_then(|f| ctx.library.form_in_beast_out(f)) } else { f };
             self.round.crosses_used[cross as usize] = true;
         }
         for &slot in screen.selection() {

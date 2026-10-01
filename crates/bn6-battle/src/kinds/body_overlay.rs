@@ -7,7 +7,7 @@
 //! See docs/engine/objects-and-player.md §12.10.
 
 use crate::battle::Battle;
-use crate::content::BodyOverlay;
+use crate::content::{BodyPart, Parts};
 use crate::kinds::common;
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Vec3, flags, state};
@@ -15,8 +15,10 @@ use crate::object::{ObjectRef, Vec3, flags, state};
 /// Overlay-private state (the spawn parameters, and ExtraVars[0]).
 #[derive(Clone, Copy, Debug, Default, Hash)]
 pub struct Vars {
-    /// Param1: which overlay (`ObjectData::body_overlays`).
-    pub variant: u8,
+    /// Param1: which overlay, as the body part of the identity that wears
+    /// it (of two, the second).
+    pub identity: Option<bn6_content_api::IdentityHandle>,
+    pub second: bool,
     /// Param2: the overlay keeps its own palette rather than its owner's
     /// (presentation only).
     pub own_palette: bool,
@@ -45,17 +47,14 @@ fn vars_mut(b: &mut Battle, r: ObjectRef) -> &mut Vars {
     }
 }
 
-/// `sub_80C44A8`: layer overlay `variant` on `owner`. It runs its first
-/// update right after the owner's, and keeps running while paused.
-pub fn spawn(b: &mut Battle, owner: ObjectRef, variant: u8, own_palette: bool) -> Option<ObjectRef> {
-    spawn_with(b, owner, Vars { variant, own_palette, ..Vars::default() })
-}
-
-/// `sub_80C44A8` with all its parameters (`forced_front` is ignored: it
-/// is set later, by `sub_80C4526`).
+/// `sub_80C44A8`: layer the body overlay `spec` names on `owner`
+/// (`forced_front` is ignored: it is set later, by `sub_80C4526`). It runs
+/// its first update right after the owner's, and keeps running while
+/// paused.
 pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<ObjectRef> {
-    let Vars { variant, own_palette, always_step, anim_offset, .. } = spec;
-    let params = [variant, own_palette as u8, always_step as u8, anim_offset];
+    let Vars { own_palette, always_step, anim_offset, .. } = spec;
+    // (Param1, the overlay's number, is the identity's part here.)
+    let params = [0, own_palette as u8, always_step as u8, anim_offset];
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::BodyOverlay, Vec3::default(), params)?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
@@ -89,8 +88,12 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-fn overlay(b: &Battle, r: ObjectRef) -> &BodyOverlay {
-    b.content.objects.body_overlay(vars(b, r).variant)
+fn overlay(b: &Battle, r: ObjectRef) -> &BodyPart {
+    let v = vars(b, r);
+    match (&b.content.identity(v.identity).parts, v.second) {
+        (Some(Parts::Body(part)), false) | (Some(Parts::Bodies(part, _)), false) | (Some(Parts::Bodies(_, part)), true) => part,
+        _ => panic!("body overlay without the identity's part it is"),
+    }
 }
 
 fn owner(b: &Battle, r: ObjectRef) -> ObjectRef {
