@@ -624,7 +624,7 @@ declare class Object
     -- The attack state as content action `action`'s (zeroed unless that
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
-    function action_state(self, action: number): any
+    function action_state(self, action: Action | number): any
     -- The obstacles it absorbed, oldest first: their looks and
     -- animations.
     function absorbed(self): { { look: AbsorbedLook, anim: number } }
@@ -1509,8 +1509,12 @@ export type WeaponSpec = {
     id: string,
     name: string,
     charge_ticks: { number },
-    -- `off_80117D4[n]`: prepare the attack, name its action.
-    setup: (navi: Object) -> Action | number,
+    -- `off_80117D4[n]`: prepare the attack, name its action. A weapon with
+    -- an `instant` effect names none: the instant chips' action runs it.
+    setup: (navi: Object) -> (Action | number)?,
+    -- Its own instant effect (one no chip has: TenguCross's wind), which
+    -- the instant chips' action runs once.
+    instant: ((user: Object, spec: InstantChipSpec) -> ())?,
     -- Transitional (counted by the ratchet): the routine numbers the pack's
     -- forms and the ruleset still name it by (`weapon_numbered`).
     legacy: { routines: { number } }?,

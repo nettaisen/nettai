@@ -516,7 +516,20 @@ fn assets() -> bn6_content_api::AssetNames {
         a.sounds.insert(name.into(), id);
     }
     standard_chip_assets(&mut a);
+    form_weapon_assets(&mut a);
     a
+}
+
+/// The asset names MegaMan's weapon definitions and the forms' kinds use
+/// (content model v2, step 8e), with BN6's numbers.
+fn form_weapon_assets(a: &mut bn6_content_api::AssetNames) {
+    let sprite = |c, i| SpriteId { category: c, index: i };
+    for (name, id) in [("aqua-surge", sprite(0x10, 0x2E)), ("whirlwind", sprite(0x10, 0x44))] {
+        a.sprites.insert(name.into(), id);
+    }
+    for (name, id) in [("aqua-needle-2", 0xB3), ("col-army-2", 0xB9), ("spout-beast-charge", 0xF4)] {
+        a.sounds.insert(name.into(), id);
+    }
 }
 
 /// The asset names the standard chip actions' modules use (content model
@@ -596,8 +609,28 @@ pub fn scripts() -> Scripts {
                 ("navis/00-megaman/forms/heatcross/charge", "navis/00-megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
-                ("objects/aqua-surge/aqua_surge", "objects/aqua-surge/aqua_surge"),
-                ("objects/whirlwind/whirlwind", "objects/whirlwind/whirlwind"),
+                // The form weapons content defines (their routine numbers
+                // their `legacy` markers), with the kinds only they spawn.
+                (
+                    "navis/00-megaman/weapons/falzar-beast-buster/weapon",
+                    "navis/00-megaman/weapons/falzar-beast-buster/weapon",
+                ),
+                (
+                    "navis/00-megaman/weapons/gregar-beast-buster/weapon",
+                    "navis/00-megaman/weapons/gregar-beast-buster/weapon",
+                ),
+                ("navis/00-megaman/weapons/tengu-wind/weapon", "navis/00-megaman/weapons/tengu-wind/weapon"),
+                ("navis/00-megaman/forms/spoutcross-beast/surge", "navis/00-megaman/forms/spoutcross-beast/surge"),
+                ("navis/00-megaman/forms/spoutcross-beast/charge", "navis/00-megaman/forms/spoutcross-beast/charge"),
+                ("navis/00-megaman/forms/tengucross-beast/whirlwind", "navis/00-megaman/forms/tengucross-beast/whirlwind"),
+                ("navis/00-megaman/forms/tengucross-beast/charge", "navis/00-megaman/forms/tengucross-beast/charge"),
+                ("navis/00-megaman/forms/eleccross/charge", "navis/00-megaman/forms/eleccross/charge"),
+                ("navis/00-megaman/forms/tengucross/charge", "navis/00-megaman/forms/tengucross/charge"),
+                ("navis/00-megaman/forms/dustcross/throw_absorbed", "navis/00-megaman/forms/dustcross/throw_absorbed"),
+                (
+                    "navis/00-megaman/forms/dustcross-beast/throw_absorbed",
+                    "navis/00-megaman/forms/dustcross-beast/throw_absorbed",
+                ),
                 ("objects/dash-hit/dash_hit", "objects/dash-hit/dash_hit"),
                 ("objects/erase-drop/erase_drop", "objects/erase-drop/erase_drop"),
                 ("objects/lunge-slash/lunge_slash", "objects/lunge-slash/lunge_slash"),
@@ -827,24 +860,14 @@ fn weapons() -> Vec<WeaponData> {
         weapon(0x1E, "Beast claw", Some(0x52), "1e-beast-claw/beast_claw"),
         weapon(0x28, "Dust charge", Some(0x57), "28-dust-charge/dust_charge"),
         weapon(0x2A, "Absorb", Some(0x58), "2a-absorb/absorb"),
-        weapon(0x2B, "Throw absorbed", None, "2b-throw-absorbed/throw_absorbed"),
         weapon(0x15, "EraseCross Beast drop", Some(0x46), "15-erase-beast-drop/erase_beast_drop"),
         weapon(0x17, "GroundCross Beast dash", Some(0x1A), "17-ground-beast-dash/ground_beast_dash"),
         weapon(0x1A, "SlashCross Beast lunge", Some(0x4C), "1a-slash-beast-lunge/slash_beast_lunge"),
         weapon(0x1C, "ChargeCross Beast wave", Some(0x4F), "1c-charge-beast-wave/charge_beast_wave"),
         weapon(0x1D, "DustCross Beast scatter", Some(0x50), "1d-dust-beast-scatter/dust_beast_scatter"),
         weapon(0x27, "ChargeCross tackle", Some(0x56), "27-charge-cross-tackle/charge_cross_tackle"),
-        weapon(0x03, "Falzar Beast buster", Some(0x1E), "03-falzar-beast-buster/falzar_beast_buster"),
-        weapon(0x04, "Gregar Beast buster", Some(0x1D), "04-gregar-beast-buster/gregar_beast_buster"),
-        weapon(0x2C, "Beast throw absorbed", None, "2c-beast-throw-absorbed/beast_throw_absorbed"),
         weapon(0x07, "HeatCross Beast charge", Some(0x35), "07-heat-beast-charge/heat_beast_charge"),
-        weapon(0x08, "SpoutCross Beast charge", Some(0x3A), "08-spout-beast-charge/spout_beast_charge"),
         weapon(0x09, "ElecCross Beast charge", Some(0x3C), "09-elec-beast-charge/elec_beast_charge"),
-        weapon(0x0A, "TenguCross Beast charge", Some(0x3D), "0a-tengu-beast-charge/tengu_beast_charge"),
-        weapon(0x0B, "Elec charge", None, "0b-elec-charge/elec_charge"),
-        weapon(0x0C, "Spout charge", None, "0c-spout-charge/spout_charge"),
-        weapon(0x0F, "Tengu charge", None, "0f-tengu-charge/tengu_charge"),
-        WeaponData { instant_chip: Some(0x14), ..weapon(0x10, "Tengu wind", None, "10-tengu-wind/tengu_wind") },
         weapon(0x11, "Slash A-charge", None, "11-slash-a-charge/slash_a_charge"),
         weapon(0x12, "Slash charge", Some(0x41), "12-slash-charge/slash_charge"),
         weapon(0x14, "Erase charge", Some(0x45), "14-erase-charge/erase_charge"),
@@ -869,8 +892,6 @@ fn kinds() -> Vec<ObjectKind> {
     let mut kinds = vec![
         kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball"),
         kind("element-pillar", Pool::Attack, 0x61, "objects/element-pillar/element_pillar"),
-        kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
-        kind("whirlwind", Pool::Attack, 0x81, "objects/whirlwind/whirlwind"),
         kind("dash-hit", Pool::Attack, 0xAF, "objects/dash-hit/dash_hit"),
         kind("erase-drop", Pool::Attack, 0xA1, "objects/erase-drop/erase_drop"),
         kind("lunge-slash", Pool::Attack, 0xB1, "objects/lunge-slash/lunge_slash"),
