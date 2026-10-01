@@ -21,9 +21,10 @@ local sun_beam = {
     state = { slot = slot.TYPE, offset = "vec3", ticks = "u16" },
 }
 
--- `sub_80E5D12`: a beam at `offset` from `owner`, stored in `which`.
-function sun_beam.spawn(owner: Object, look: SunBeamLook, offset: Vec3, which: Slot): Object?
-    local o = battle.spawn_kind("sun-beam", offset, { look.look, look.palette, 0, 0 })
+-- `sub_80E5D12`: a beam at `offset` from `owner`, stored in `which`; shown
+-- while dimmed too when `while_dimmed` (Param3 1: CrosOver's).
+function sun_beam.spawn(owner: Object, look: SunBeamLook, offset: Vec3, which: Slot, while_dimmed: boolean?): Object?
+    local o = battle.spawn_kind("sun-beam", offset, { look.look, look.palette, if while_dimmed then 1 else 0, 0 })
     if not o then
         return nil
     end

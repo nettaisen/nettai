@@ -26,9 +26,10 @@ local SELF_TYPE, TARGET_TYPE = 4, 5
 local PARALYZE = 0x12
 
 -- `sub_80D07A0`: a pillar from `owner` on (x, y). Its position is the
--- registers (y, the element, 0) until its init places it.
-function element_pillar.spawn(owner: Object, x: number, y: number, element: number, params: { number }, damage: number): Object?
-    local o = battle.spawn_kind("element-pillar", Vec3.new(y, element, 0), params)
+-- registers (y, the element, `z`: 0 unless given, Darkness's 6 pixels)
+-- until its init places it, keeping Z.
+function element_pillar.spawn(owner: Object, x: number, y: number, element: number, params: { number }, damage: number, z: number?): Object?
+    local o = battle.spawn_kind("element-pillar", Vec3.new(y, element, z or 0), params)
     if o then
         o.panel_x, o.panel_y = x, y
         o.element = element
