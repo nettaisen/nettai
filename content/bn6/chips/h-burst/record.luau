@@ -8,6 +8,7 @@ local spreadr_records = require("../spreadr/records")
 return define.chip {
     id = "h-burst",
     name = "H-Burst",
+    description = "Secondary\nexplosion\nafter hit",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

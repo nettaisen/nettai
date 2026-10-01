@@ -14,6 +14,7 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("dustman-win"), lose = asset.banner("dustman-deleted") },
     merge_height = 0,
+    run_message = { 18, 16, 9 },
     own_chip = { chip = dustman, code = "D" },
     chip_bonus = {
         family = "break",

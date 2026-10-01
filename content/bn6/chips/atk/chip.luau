@@ -5,6 +5,7 @@
 return define.chip {
     id = "atk-30",
     name = "Atk+30",
+    description = "+30 for\nselected\natk chip",
     codes = { "*" },
     element = "null",
     family = "plus",

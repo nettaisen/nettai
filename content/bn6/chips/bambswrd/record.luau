@@ -7,6 +7,7 @@ local lockon = require("../../rules/lockon")
 return define.chip {
     id = "bambswrd",
     name = "BambSwrd",
+    description = "Cut enmy\n3sq fwrd\nw/wood!",
     codes = { "H", "S", "W" },
     element = "wood",
     family = "wood",

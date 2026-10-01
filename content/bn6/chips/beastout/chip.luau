@@ -5,6 +5,7 @@
 return define.chip {
     id = "beastout",
     name = "BeastOut",
+    description = "If Beast\nChip hits\nDstb atk!",
     codes = { "*" },
     element = "null",
     family = "null",

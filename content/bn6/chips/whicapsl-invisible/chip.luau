@@ -5,6 +5,7 @@
 return define.chip {
     id = "whicapsl-invisible",
     name = "WhiCapsl",
+    description = "Add an\neffect:\nParalyze",
     codes = {},
     element = "null",
     family = "null",

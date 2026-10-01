@@ -5,6 +5,7 @@
 return define.chip {
     id = "uninstll",
     name = "Uninstll",
+    description = "Attach to\nNoDim Chp\nNavCusOff",
     codes = { "G", "L", "R" },
     element = "null",
     family = "null",

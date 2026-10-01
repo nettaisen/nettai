@@ -5,6 +5,7 @@
 return define.chip {
     id = "bighook",
     name = "BigHook",
+    description = "Hook\natk 2 sq\nwide",
     codes = { "H" },
     element = "null",
     family = "break",

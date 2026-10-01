@@ -12,6 +12,7 @@ return {
     define.chip {
         id = "dolthdr1",
         name = "DolThdr1",
+        description = "A piercng\nthunder\nattack!",
         codes = { "A", "E", "Q" },
         element = "elec", family = "elec", class = "standard",
         rarity = 0, mb = 24, damage = 120, hit_param = 30, lockout = 0,
@@ -25,6 +26,7 @@ return {
     define.chip {
         id = "dolthdr2",
         name = "DolThdr2",
+        description = "A piercng\nthunder\nattack!",
         codes = { "C", "L", "P" },
         element = "elec", family = "elec", class = "standard",
         rarity = 1, mb = 31, damage = 150, hit_param = 30, lockout = 0,
@@ -38,6 +40,7 @@ return {
     define.chip {
         id = "dolthdr3",
         name = "DolThdr3",
+        description = "A piercng\nthunder\nattack!",
         codes = { "B", "R", "V" },
         element = "elec", family = "elec", class = "standard",
         rarity = 2, mb = 38, damage = 180, hit_param = 30, lockout = 0,

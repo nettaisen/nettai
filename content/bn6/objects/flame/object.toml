@@ -1,6 +1,0 @@
-# The flame (attack object #0x04, `sub_80C53C0`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x04
-script = "flame.luau"

@@ -5,6 +5,7 @@
 return define.chip {
     id = "colorpt",
     name = "ColorPt",
+    description = "+10 for\nnext chip\nattack",
     codes = { "*" },
     element = "null",
     family = "plus",

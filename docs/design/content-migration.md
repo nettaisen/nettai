@@ -283,8 +283,8 @@ kind). Left:
 - Owns: new objects/ and weapons/ folders, the extractor and pack IO for the projectile table.
 - Done: `objects/projectile` (kinds in its `object.toml`, `data.objects.projectiles`), fired with
   `lib/projectile.luau` (`projectile.fire(navi, shot)`, `projectile.spawn(owner, x, y, shot)`, the shot typed as
-  `ProjectileShot` in types.d.luau); `objects/flying-shot` (attack #0xB, `sub_80C6248`'s object, with its kinds,
-  `data.objects.flying_shots`), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16, now the
+  `ProjectileShot` in types.d.luau); `objects/flying-shot` (attack #0xB, `sub_80C6248`'s object; a definition,
+  its rows variant records), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16, now the
   definitions in `weapons/buster` and `weapons/charged-shot` (step 7).
 
 ### Group E: instant chips (ported; what is left)
@@ -328,9 +328,11 @@ split the list):
   SonicBom 0x55, ZSaver 0x5B. The link navis' chips (action 0x0A) are done: navis/<navi>/chip.luau, on
   lib/link_chips.luau (docs/engine/standard-chips.md, "Action 0x0A").
 - Many fire the projectile of group D; start with the ones that don't, or after it.
-- In content model v2 (step 8g; content-model-v2.md §5.8): AquaNdl, H-Burst, RlngLog, AirSpin, DolThdr, WindRack,
-  MoonBld, ElcPuls, AuraHed, MagCoil, the dragons (lib/dragons), VarSwrd and NeoVari (lib/swords/vari), RskyHny and
-  GunDelSol, each a builder in its chip's folder with its kinds beside it.
+- In content model v2 (step 8g; content-model-v2.md §5.8): YoYo, Thunder, recovery, CrakShot, CopyDmg,
+  AirHocky, FireBrn, TrnArrw, Reflectr, IronShl, BblStar, DrilArm, Tornado and WaveArm, with their objects;
+  AquaNdl, H-Burst, RlngLog, AirSpin, DolThdr, WindRack, MoonBld, ElcPuls, AuraHed, MagCoil, the dragons
+  (lib/dragons), VarSwrd and NeoVari (lib/swords/vari), RskyHny and GunDelSol, each a builder in its chip's
+  folder with its kinds beside it.
 
 ### Framework gaps (Rust, not content)
 

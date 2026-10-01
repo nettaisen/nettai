@@ -8,6 +8,7 @@ local plus = require("../../lib/instant/plus")
 return define.chip {
     id = "navi-20",
     name = "Navi+20",
+    description = "+20 for\nselected\nNavi chip",
     codes = { "*" },
     element = "null", family = "plus", class = "standard",
     rarity = 2, mb = 36, damage = 20, hit_param = 0, lockout = 20,

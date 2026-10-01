@@ -67,6 +67,11 @@ core.d.luau, types.d.luau                 the API's definitions (for editors and
 compat/*.toml                             the original's numbers by key: tools' data, never the engine's
 ```
 
+A chip's definition holds its `description` (what R shows on the custom
+screen: the battle reads its line count, and none given counts as three)
+and a navi's its `run_message` (the no-running message's lines, in
+characters); the definitions are their only source.
+
 `bn6_content::root::read(dir)` reads one: every module (by path without
 `.luau`) and the object kinds' `object.toml`. `bn6_content::root::bn6()`
 is BN6's: `$BN6_CONTENT`, else this repository's content/bn6.

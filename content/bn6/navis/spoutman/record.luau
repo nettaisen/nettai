@@ -5,6 +5,7 @@
 return define.chip {
     id = "dripshwr",
     name = "DripShwr",
+    description = "Send rvlv\nshwr 3fwd\nhit 8pnls",
     codes = { "A" },
     element = "aqua",
     family = "aqua",

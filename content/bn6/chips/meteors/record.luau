@@ -5,6 +5,7 @@
 return define.chip {
     id = "meteors",
     name = "Meteors",
+    description = "Drop many\nmeteor on\nenmy area",
     codes = { "R" },
     element = "fire",
     family = "fire",

@@ -14,6 +14,7 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("tenguman-win"), lose = asset.banner("tenguman-deleted") },
     merge_height = -8,
+    run_message = { 15, 7 },
     own_chip = { chip = tenguman, code = "T" },
     chip_bonus = {
         family = "wind",

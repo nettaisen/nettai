@@ -11,6 +11,7 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("megaman-win"), lose = asset.banner("megaman-deleted") },
     merge_height = 0,
+    run_message = { 19, 12 },
     identity = {
         version = 0,
         actor_type = "player",

@@ -5,6 +5,7 @@
 return define.chip {
     id = "rc-brakr",
     name = "RC Brakr",
+    description = "DrillAtk.\nGo fwd &\nshwr rock",
     codes = { "G" },
     element = "null",
     family = "break",
