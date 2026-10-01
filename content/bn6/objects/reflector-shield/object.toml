@@ -1,6 +1,0 @@
-# A Reflector's shield (attack object #0x2B, `sub_80C96A0`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x2B
-script = "reflector_shield.luau"
