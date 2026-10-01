@@ -185,6 +185,14 @@ impl ChipTraits {
     /// Its navi heals: the other side's armed AntiRecv springs instead of
     /// it coming (`sub_80E192C`: Roll's chips).
     pub const HEALS: u8 = 0x20;
+    /// Its user stays on the field while its navi acts: the navi chip's
+    /// controller warps it neither out nor back in (`sub_80E1830`: BigHook,
+    /// the original's navi 0x17).
+    pub const USER_STAYS: u8 = 0x40;
+    /// Its navi brings the user back itself: the controller warps the
+    /// user out and not back in (`sub_80E18F8`: Roll's chips, the
+    /// original's navi 0).
+    pub const NAVI_RETURNS_USER: u8 = 0x80;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "no_chain"),
         (0x02, "aura_bonus"),
@@ -192,6 +200,8 @@ impl ChipTraits {
         (0x08, "element_sword"),
         (0x10, "navi_slot"),
         (0x20, "heals"),
+        (0x40, "user_stays"),
+        (0x80, "navi_returns_user"),
     ];
 
     pub fn has(self, bit: u8) -> bool {
