@@ -255,31 +255,16 @@ pub struct BerserkRules {
 }
 
 /// The Beast Out lock-on: where the Beast rush attacks from (`ho_8026554`,
-/// by the chip's lock-on mode through `jt_8026584`).
+/// by the chip's lock-on mode, a definition: `Content::lockon`). What the
+/// modes share.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Lockon {
-    /// The lock-on modes, by number (`jt_8026584`). A mode past the list
-    /// runs off the jump table.
-    pub modes: Vec<LockonMode>,
     /// Column shifts toward the user tried, in order, when no panel next
     /// to the target fits (`byte_8026735`).
     pub column_shifts: Vec<i8>,
     /// What every panel between the chosen one and the target must be for
     /// the modes that need a clear path, by alliance (`byte_8026544`).
     pub clear_path: [PanelCondition; 2],
-    /// The charged sword's (action 0x41) lock-on mode by its variant
-    /// (`byte_80EB028`, read by `sub_80EAF26`). The ruleset no longer
-    /// reads it: the charged sword's setup gives the mode with the slash
-    /// it starts (`AttackVars::rush_lockon`; BN6's slashes name this
-    /// table's values). It goes with the pack's rules.
-    pub charged_sword_modes: Vec<u8>,
-}
-
-impl Lockon {
-    /// What lock-on `mode` does; None past the jump table.
-    pub fn mode(&self, mode: u8) -> Option<&LockonMode> {
-        self.modes.get(mode as usize)
-    }
 }
 
 /// How a lock-on mode picks the panel to attack from.
@@ -301,14 +286,12 @@ pub enum LockonRule {
     Near,
 }
 
-/// A lock-on mode (`jt_8026584[mode]`). Offsets are relative to where the
-/// rule counts from, dx toward the user's front; a panel past the
-/// target's column never fits.
+/// A lock-on mode (`define.lockon`; an entry of the original's
+/// `jt_8026584`). Offsets are relative to where the rule counts from, dx
+/// toward the user's front; a panel past the target's column never fits.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LockonMode {
-    /// The chips' lock-on mode (`ChipData::lockon_mode`).
-    pub mode: u8,
     pub rule: LockonRule,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub offsets: Vec<PanelOffset>,

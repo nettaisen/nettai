@@ -101,6 +101,16 @@ pub struct Records {
     pub rock_variants: BTreeMap<String, u8>,
 }
 
+/// The original's numbers of rule definitions (rules.toml): only
+/// `gen-content check` reads them.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RuleNumbers {
+    /// Beast Out lock-on modes (`jt_8026584`), by key.
+    #[serde(default)]
+    pub lockon: BTreeMap<String, u8>,
+}
+
 /// Asset names and the ROM's numbers.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -141,6 +151,7 @@ pub struct Compat {
     pub kinds: BTreeMap<String, KindEntry>,
     pub stages: BTreeMap<String, StageEntry>,
     pub records: Records,
+    pub rules: RuleNumbers,
     pub assets: Assets,
     pub text: Text,
     /// The kinds by the slot they fill.
@@ -148,7 +159,7 @@ pub struct Compat {
 }
 
 /// The files, in the order they are read.
-pub const FILES: [&str; 10] = [
+pub const FILES: [&str; 11] = [
     "chips.toml",
     "actions.toml",
     "navis.toml",
@@ -157,12 +168,13 @@ pub const FILES: [&str; 10] = [
     "kinds.toml",
     "stages.toml",
     "records.toml",
+    "rules.toml",
     "assets.toml",
     "text.toml",
 ];
 
 /// This repository's compat (content/bn6/compat), built in.
-const BN6: [(&str, &str); 10] = [
+const BN6: [(&str, &str); 11] = [
     ("chips.toml", include_str!("../../../content/bn6/compat/chips.toml")),
     ("actions.toml", include_str!("../../../content/bn6/compat/actions.toml")),
     ("navis.toml", include_str!("../../../content/bn6/compat/navis.toml")),
@@ -171,6 +183,7 @@ const BN6: [(&str, &str); 10] = [
     ("kinds.toml", include_str!("../../../content/bn6/compat/kinds.toml")),
     ("stages.toml", include_str!("../../../content/bn6/compat/stages.toml")),
     ("records.toml", include_str!("../../../content/bn6/compat/records.toml")),
+    ("rules.toml", include_str!("../../../content/bn6/compat/rules.toml")),
     ("assets.toml", include_str!("../../../content/bn6/compat/assets.toml")),
     ("text.toml", include_str!("../../../content/bn6/compat/text.toml")),
 ];
@@ -207,6 +220,7 @@ impl Compat {
             kinds: get(&text, "kinds.toml")?,
             stages: get(&text, "stages.toml")?,
             records: get(&text, "records.toml")?,
+            rules: get(&text, "rules.toml")?,
             assets: get(&text, "assets.toml")?,
             text: get(&text, "text.toml")?,
             slots: BTreeMap::new(),

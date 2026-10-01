@@ -23,6 +23,7 @@ local rush = require("../chips/rush/chip")
 local tango = require("../chips/tango/chip")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
+local lockon = require("./lockon")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local stun_strike = require("../lib/swords/stun_strike")
@@ -80,6 +81,11 @@ return define.roles {
         rush = rush,
         beat = beat,
         tango = tango,
+    },
+    lockon = {
+        -- The Beast forms' charged claw's lock-on mode, whatever chip its
+        -- attack carries.
+        beast_claw = lockon.beast_claw,
     },
     hooks = {
         -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with

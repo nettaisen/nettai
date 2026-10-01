@@ -11,6 +11,7 @@ local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
 local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatter")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
+local lockon = require("./lockon")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local supports = require("../lib/supports/controller")
@@ -48,6 +49,9 @@ return define.roles {
         -- What a zeroed chip field reads: the test content's chip 0 (a
         -- Rust-built record, which no module holds: by its key).
         zeroed = { legacy = { chip = "v1/chip-000" } },
+    },
+    lockon = {
+        beast_claw = lockon.beast_claw,
     },
     hooks = {
         -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier

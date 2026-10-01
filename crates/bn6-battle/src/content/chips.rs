@@ -297,8 +297,10 @@ pub struct ChipData {
     pub lockout: u8,
     #[serde(default)]
     pub extra_flags: ExtraChipFlags,
-    /// Beast Out lock-on panel search (`Rules::lockon`).
-    pub lockon_mode: u8,
+    /// The Beast Out rush's lock-on mode for it (`Content::lockon`); none:
+    /// the navi stays where it is.
+    #[serde(default, with = "lockon_handle", skip_serializing_if = "Option::is_none")]
+    pub lockon_mode: Option<bn6_content_api::LockonHandle>,
     /// Base damage (0 for a chip whose damage is a `formula`).
     pub damage: u16,
     /// How the damage is worked out, for a chip whose damage isn't fixed.
@@ -428,4 +430,18 @@ pub struct GunDelSol {
     pub beam_in_sun: SunBeamLook,
     /// The gun, attached to the user.
     pub gun: AttachmentKind,
+}
+
+/// A lock-on mode's handle in a record's data form: its index, or nothing.
+mod lockon_handle {
+    use bn6_content_api::LockonHandle;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S: Serializer>(h: &Option<LockonHandle>, s: S) -> Result<S::Ok, S::Error> {
+        h.map(|h| h.0).serialize(s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Option<LockonHandle>, D::Error> {
+        Ok(Option::<u16>::deserialize(d)?.map(LockonHandle))
+    }
 }

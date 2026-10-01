@@ -62,14 +62,14 @@ navis/megaman/forms/gregar-beast-over/form.luau 1
 navis/megaman/forms/gregar-beast/form.luau 1
 navis/megaman/forms/groundcross-beast/dash.luau 1
 navis/megaman/forms/groundcross-beast/form.luau 1
-navis/megaman/forms/groundcross/drill.luau 2
+navis/megaman/forms/groundcross/drill.luau 1
 navis/megaman/forms/groundcross/form.luau 1
 navis/megaman/forms/heatcross-beast/charge.luau 1
 navis/megaman/forms/heatcross-beast/form.luau 1
 navis/megaman/forms/heatcross/charge.luau 1
 navis/megaman/forms/heatcross/form.luau 1
 navis/megaman/forms/slashcross-beast/form.luau 1
-navis/megaman/forms/slashcross-beast/lunge.luau 3
+navis/megaman/forms/slashcross-beast/lunge.luau 1
 navis/megaman/forms/slashcross/charge.luau 1
 navis/megaman/forms/slashcross/form.luau 1
 navis/megaman/forms/spoutcross-beast/charge.luau 1
@@ -132,7 +132,6 @@ objects/boulder/boulder.luau 1
 objects/rock/rock.luau 1
 rules/body-overlays.luau 1
 rules/identities.luau 1
-rules/lockon.luau 19
 rules/numbers.luau 4
 rules/roles.luau 2
 rules/status.luau 96
