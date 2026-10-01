@@ -92,7 +92,7 @@ local function init(me: Object)
     local c = me.collision
     c:set_region(regions.fan)
     c:set_hit_effect(nil)
-    if c.status_base == 0 then
+    if c.status_base == nil then
         c.status_base = v.status
     end
     local bug = v.bug

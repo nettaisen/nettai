@@ -78,9 +78,6 @@ impl<'a> Resolver<'a> {
         for d in definitions.of(Registry::Weapon) {
             put(d, d.spec.field("legacy").field("routines").item(1).int());
         }
-        for d in definitions.of(Registry::Status) {
-            put(d, d.spec.field("legacy").field("id").int());
-        }
         // A lock-on mode reads as its handle (its place among the
         // definitions, which are in key order).
         for (i, d) in definitions.of(Registry::Lockon).iter().enumerate() {
@@ -478,7 +475,7 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
     Ok(())
 }
 
-// ---- Collision types, statuses ------------------------------------------------
+// ---- Collision types ------------------------------------------------
 
 fn registries(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     // Collision types by row, when the content has no table of its own.
@@ -511,36 +508,6 @@ fn registries(content: &mut Content, definitions: &Definitions) -> Result<(), Co
         content.rules.collision_types = out;
     }
 
-    // Statuses by status byte, in whole groups of 16 from 0x10.
-    let statuses: Vec<&Definition> = definitions.of(Registry::Status).iter().filter(|d| !d.spec.field("legacy").is_nil()).collect();
-    if !statuses.is_empty() {
-        let mut groups: BTreeMap<i64, [Option<StatusEffect>; 16]> = BTreeMap::new();
-        for d in statuses {
-            let byte = d.spec.field("legacy").field("id").int().ok_or_else(|| err(d, "its legacy marker needs `id`"))?;
-            let mut spec = d.spec.clone();
-            strip(&mut spec, &["id", "legacy"]);
-            let e: StatusEffect = Resolver::plain().read(&spec, &d.key).map_err(|m| err(d, m))?;
-            let group = (byte >> 4) - 1;
-            if group < 0 {
-                return Err(err(d, format!("status {byte:#04x}: statuses start at 0x10")));
-            }
-            if groups.entry(group).or_default()[(byte & 0xF) as usize].replace(e).is_some() {
-                return Err(err(d, format!("status {byte:#04x} is defined twice")));
-            }
-        }
-        let mut out = Vec::new();
-        for (expect, (g, row)) in groups.into_iter().enumerate() {
-            if g != expect as i64 || row.iter().any(Option::is_none) {
-                return Err(ContentError::new(format!(
-                    "rules/status: status group {:#04x} is incomplete: statuses fill whole groups of 16 from 0x10",
-                    (g + 1) << 4
-                )));
-            }
-            out.push(row.map(|e| e.expect("checked")));
-        }
-        content.rules.status_effects = out;
-    }
-
     Ok(())
 }
 
@@ -548,14 +515,6 @@ fn registries(content: &mut Content, definitions: &Definitions) -> Result<(), Co
 fn strip(spec: &mut Data, fields: &[&str]) {
     if let Data::Map(entries) = spec {
         entries.retain(|(k, _)| !matches!(k, DataKey::Str(s) if fields.contains(&s.as_str())));
-    }
-}
-
-impl Resolver<'static> {
-    /// A resolver for data without assets or references.
-    fn plain() -> Resolver<'static> {
-        static EMPTY: std::sync::OnceLock<AssetNames> = std::sync::OnceLock::new();
-        Resolver { assets: EMPTY.get_or_init(AssetNames::default), numbers: HashMap::new() }
     }
 }
 
