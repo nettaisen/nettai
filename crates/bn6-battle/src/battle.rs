@@ -14,10 +14,10 @@ use crate::link::{Link, Packet};
 use crate::object::{ObjectRef, Objects};
 use crate::console::Console;
 use crate::rng::Rng;
-use crate::content::{BannerId, Content};
+use crate::content::{BannerId, BannerRole, Content, MusicRole, SoundRole};
 use crate::setup::{BattleSettings, Form, Navi, NaviStats, RoundSetup, SetScore, effects};
 use crate::transform::{TransformRequest, TransformSequencer};
-use crate::sound::{SoundCue, SoundId};
+use crate::sound::SoundCue;
 use bn6_content_api::ChipHandle;
 use std::sync::Arc;
 
@@ -741,6 +741,18 @@ impl Battle {
         self.sound[side as usize].push(cue.into());
     }
 
+    /// Play the sound content gives `role`, heard on both sides; and to
+    /// `side`'s player only.
+    pub fn sound(&mut self, role: SoundRole) {
+        let id = self.content.defs.roles.sound(role);
+        self.play_sound(id);
+    }
+
+    pub fn sound_for(&mut self, side: u8, role: SoundRole) {
+        let id = self.content.defs.roles.sound(role);
+        self.play_sound_for(side, id);
+    }
+
     /// The sound calls of the last tick, in the order the game makes them,
     /// as the local side hears them.
     pub fn sound_cues(&self) -> &[SoundCue] {
@@ -995,7 +1007,11 @@ impl Battle {
             self.paused = true;
             self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
             let link = self.setup.settings.effects & effects::LINK != 0;
-            let music = if link { Some(SoundId::VIRUS_BATTLE) } else { self.content.stage(self.setup.settings.stage).music };
+            let music = if link {
+                Some(self.content.defs.roles.music(MusicRole::LinkBattle))
+            } else {
+                self.content.stage(self.setup.settings.stage).music
+            };
             if let Some(music) = music {
                 self.play_sound(SoundCue::Music(music));
             }
@@ -1077,7 +1093,7 @@ impl Battle {
             }
             4 => {
                 if self.round.init == 0 {
-                    self.start_banner(BannerId(0x30));
+                    self.start_banner(self.content.defs.roles.banner(BannerRole::RoundStart));
                     self.round.init = 4;
                 } else if self.banner.status() == BannerStatus::Done {
                     self.round.sub = 8;
@@ -1148,7 +1164,7 @@ impl Battle {
             let hp = self.objects.get(r).hp;
             let d = v.min(hp.saturating_sub(1));
             crate::kinds::subtract_hp(self, r, d);
-            self.play_sound(SoundId(0x6B));
+            self.sound(SoundRole::OwnHit);
         }
     }
 
@@ -1212,7 +1228,7 @@ impl Battle {
             self.stop_emotion_windows();
             self.fight.timer = 0x66;
             self.fight.init = 4;
-            self.start_banner(BannerId(0x1C));
+            self.start_banner(self.content.defs.roles.banner(BannerRole::Draw));
         }
         self.fight.timer = self.fight.timer.wrapping_sub(1);
         if self.banner.status() != BannerStatus::Done {
@@ -1311,7 +1327,7 @@ impl Battle {
                     j.step = 4;
                     j.sub = 0;
                     j.sub_init = false;
-                    self.start_banner(BannerId(0x28));
+                    self.start_banner(self.content.defs.roles.banner(BannerRole::Judge));
                 }
                 // sub_802CBF2
                 4 => match j.sub {
@@ -1375,7 +1391,7 @@ impl Battle {
     fn fight_pause(&mut self) {
         let p = self.fight.pausing_player as usize & 1;
         if self.inputs[p].pressed & keys::START != 0 {
-            self.play_sound(SoundId(0x9F));
+            self.sound(SoundRole::Pause);
             self.set_fight_state(fight::FIGHTING);
             // (The HUD's pause display hides.)
         }
@@ -1450,9 +1466,9 @@ impl Battle {
             self.fight.init = 4;
             if self.late_turns() {
                 self.fight.turn_timer = 0xA5 * 4 - 1;
-                self.start_banner(BannerId(0x10));
+                self.start_banner(self.content.defs.roles.banner(BannerRole::FinalTurn));
             } else if self.setup.settings.effects & effects::LINK != 0 {
-                self.start_banner(BannerId(0x0C));
+                self.start_banner(self.content.defs.roles.banner(BannerRole::TurnStart));
             }
         }
         if self.banner.status() == BannerStatus::Done {
@@ -1509,7 +1525,7 @@ impl Battle {
             // The HUD's pause display (`sub_801E15C`): "PAUSE" shows, with
             // its sound, and the opponent's used chip name goes.
             self.used_chips = [None; 2];
-            self.play_sound(SoundId(0x9F));
+            self.sound(SoundRole::Pause);
             return;
         }
         let open = if self.round.flags & battle_flags::PER_PLAYER_GAUGES != 0 {
@@ -1688,11 +1704,14 @@ impl Battle {
             // battles the other one plays the defeat music.
             let special = self.setup.settings.effects & 2 != 0;
             let link = self.setup.settings.effects & effects::LINK != 0;
+            let roles = &self.content.defs.roles;
+            let winner = roles.music(if special { MusicRole::WinnerSpecial } else { MusicRole::Winner });
+            let loser = roles.music(MusicRole::Loser);
             for side in 0..2 {
                 if side == self.round.winner {
-                    self.play_sound_for(side, SoundCue::Music(if special { SoundId::WINNER_SPECIAL } else { SoundId::WINNER }));
+                    self.play_sound_for(side, SoundCue::Music(winner));
                 } else if link {
-                    self.play_sound_for(side, SoundCue::Music(SoundId::LOSER));
+                    self.play_sound_for(side, SoundCue::Music(loser));
                 }
             }
             self.fight.init = 4;
@@ -1848,7 +1867,7 @@ impl Battle {
             self.gauge.value = CustomGauge::FULL;
             if !self.late_turns() {
                 self.set_flags(battle_flags::GAUGE_FULL);
-                self.play_sound(SoundId(0x8F));
+                self.sound(SoundRole::GaugeFull);
             }
         }
     }
@@ -1910,7 +1929,7 @@ impl Battle {
             *ticks += 1;
             if *ticks >= LOW_HP_SOUND_TICKS {
                 *ticks = 0;
-                self.play_sound_for(side, SoundId(0x84));
+                self.sound_for(side, SoundRole::LowHp);
             }
         }
     }
@@ -2059,7 +2078,7 @@ mod tests {
         setup.low_hp_music_latched = true;
         let mut b = Battle::new(setup, testing::content());
         tick(&mut b);
-        assert_eq!(b.sound_cues(), [SoundCue::Music(SoundId::VIRUS_BATTLE)]);
+        assert_eq!(b.sound_cues(), [SoundCue::Music(b.content.defs.roles.music(MusicRole::LinkBattle))]);
         tick(&mut b);
         assert_eq!(b.sound_cues(), [SoundCue::Pinch(false)]);
     }
@@ -2070,16 +2089,18 @@ mod tests {
         (b.consoles[0].frames, b.consoles[1].frames) = (15, 3);
         tick(&mut b);
         assert_eq!((b.consoles[0].frames, b.consoles[1].frames), (16, 4));
-        let sound = SoundCue::from(SoundId(0x91));
+        // (Any sound: content names the marker's own.)
+        let id = b.content.defs.roles.sound(SoundRole::Pause);
+        let sound = SoundCue::from(id);
         let heard = |b: &Battle, side: u8| b.sound_cues_for(side).iter().filter(|&&c| c == sound).count();
         // Over the gauge, on both consoles: only the one on a 16th frame
         // sounds it.
-        b.warn(SoundId(0x91), None, None);
+        b.warn(id, None, None);
         assert_eq!((b.warnings[0].len(), b.warnings[1].len()), (1, 1));
         assert_eq!((heard(&b, 0), heard(&b, 1)), (1, 0));
         // Over a place, on one console: every call sounds on such a frame.
         let at = crate::object::Vec3 { x: 20 << 16, y: 12 << 16, z: 0 };
-        b.warn(SoundId(0x91), Some(at), Some(0));
+        b.warn(id, Some(at), Some(0));
         assert_eq!(b.warnings[0][1].at, Some(at));
         assert_eq!((b.warnings[0].len(), b.warnings[1].len(), heard(&b, 0)), (2, 1, 2));
         // The markers last the tick.
@@ -2095,7 +2116,7 @@ mod tests {
         let navi = b.player(0).expect("side 0's navi");
         b.objects.get_mut(navi).hp = 125;
         b.paused = false;
-        let alarm = SoundCue::from(SoundId(0x84));
+        let alarm = SoundCue::from(b.content.defs.roles.sound(SoundRole::LowHp));
         let heard = |b: &Battle, side: u8| b.sound_cues_for(side).iter().filter(|&&c| c == alarm).count();
         for _ in 0..44 {
             b.low_hp_sound();

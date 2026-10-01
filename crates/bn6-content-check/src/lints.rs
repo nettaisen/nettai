@@ -185,8 +185,6 @@ const ALWAYS: &[(&str, &str, &str)] = &[
 /// Calls deprecated when an argument is a number: pattern, the arguments
 /// (0-based) that take a definition, what, instead.
 const BY_ARGUMENT: &[(&str, &[usize], &str, &str)] = &[
-    ("battle.play_sound(", &[0], "battle.play_sound(number)", "asset.sound"),
-    ("battle.play_sound_for(", &[1], "battle.play_sound_for(side, number)", "asset.sound"),
     (":set_attack(", &[0], "me:set_attack(number)", "an action definition"),
 ];
 
@@ -306,11 +304,9 @@ mod tests {
 
     #[test]
     fn numeric_uses_count_and_definitions_do_not() {
-        let src = "local SOUND, ANIM = 0x1A6, 6\n\
+        let src = "local ACTION, ANIM = 0x12, 6\n\
                    local THROW = asset.sound('throw')\n\
-                   battle.play_sound(SOUND)\n\
                    battle.play_sound(THROW)\n\
-                   battle.play_sound(0x10)\n\
                    local o = battle.spawn('attack', 8, me.pos)\n\
                    local k = battle.spawn(bomb.kind, me.pos)\n\
                    me:set_attack(ACTION, 0)\n\
@@ -319,7 +315,7 @@ mod tests {
         let d: Vec<&str> = deprecated(src).iter().map(|d| d.what).collect();
         assert_eq!(
             d,
-            ["battle.play_sound(number)", "battle.play_sound(number)", "battle.spawn(pool, index)", "me:set_attack(number)", "the data global"]
+            ["battle.spawn(pool, index)", "me:set_attack(number)", "me:set_attack(number)", "the data global"]
         );
     }
 

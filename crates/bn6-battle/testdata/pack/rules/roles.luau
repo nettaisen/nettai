@@ -60,6 +60,10 @@ return define.roles {
     sparks = ruleset.sparks,
     regions = ruleset.regions,
     collision = ruleset.collision,
+    sounds = ruleset.sounds,
+    music = ruleset.music,
+    sprites = ruleset.sprites,
+    banners = ruleset.banners,
     hooks = {
         encased = encased_bubble.replace,
     },

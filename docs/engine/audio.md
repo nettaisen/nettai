@@ -21,7 +21,8 @@ the start of every tick).
 | `RestoreVolume` | `sub_802A3CC`: volume control 0x100 on players 31 and 22 | custom screen closes (`sub_8026A6C`) |
 
 Ids are song-table indices (`SoundId`): music is 0x00..=0x25, effects
-0x64 and up; a few have names (`SoundId::VIRUS_BATTLE`, `WINNER`, ...).
+0x64 and up. The engine names none: the ruleset plays what content's roles
+name (`sounds` and `music` in rules/roles.luau).
 Content names its sounds: `asset.sound("cannon")` is the song the
 pack's asset index (`assets.toml`) lists under that name, resolved when the
 content loads (a name the pack doesn't list is a load error), so a content
