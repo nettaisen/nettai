@@ -56,8 +56,9 @@ end
 -- `user`, on the user's panel and side, with the chip's element and damage
 -- word. (Its position is the spawner's registers, which nothing reads; the
 -- telop draws the chip the dimming registered, so the controller keeps no
--- chip of its own.)
-function dimming_chips.spawn(kind: Kind, user: Object, spec: DimmingChipSpec): Object?
+-- chip of its own.) The user's facing too, unless `side_only` (the
+-- spawners that copy only the alliance byte: BurnSqr's, Magnum's, ...).
+function dimming_chips.spawn(kind: Kind, user: Object, spec: DimmingChipSpec, side_only: boolean?): Object?
     local o = battle.spawn(kind, Vec3.zero)
     if not o then
         return nil
@@ -65,9 +66,18 @@ function dimming_chips.spawn(kind: Kind, user: Object, spec: DimmingChipSpec): O
     o.panel_x, o.panel_y = user.panel_x, user.panel_y
     o.element = spec.element
     o.related1 = user
-    o.alliance, o.flip = user.alliance, user.flip
+    o.alliance = user.alliance
+    if not side_only then
+        o.flip = user.flip
+    end
     o:set_damage_word(spec.damage)
     return o
+end
+
+-- The controller's damage word (damage | counter byte << 16) plus `n`,
+-- added to the whole word, as the effects' spawns add the bonus.
+function dimming_chips.damage_plus(me: Object, n: number): number
+    return int.u32(bit32.bor(me.damage, bit32.lshift(me.stamina, 16)) + n)
 end
 
 return dimming_chips
