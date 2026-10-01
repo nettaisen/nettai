@@ -583,6 +583,25 @@ declare class Object
     function lockon_panel(self, x: number, y: number, mode: number): (number, number)
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
+    -- `sub_80DBB64`: put a junk look (`obstacle.junk_look`) on the sprite:
+    -- the sprite, a shadow if the look has one, its animation and palette,
+    -- flipped by the object's side unless the look keeps its own; false
+    -- when the look is the table's none.
+    function wear_junk_look(self, look: number): boolean
+    -- CrosOver's MegaMan (`sub_80BDBC8`): take the user's identity when the
+    -- user is MegaMan or one of his forms (true), else MegaMan's own: its
+    -- sprite (a ground shadow, animation 0 loaded by the next sprite
+    -- update) and the side's form's palette.
+    function wear_navi_image(self, user: Object): boolean
+    -- MstrCros's Crosses (`sub_80BE7BC`), Darkness's Dark MegaMan
+    -- (`sub_80BF710`): take the identity of MegaMan in form `form` (by
+    -- number, as the navi stats give it; 0 his base form): its sprite (a
+    -- ground shadow, animation 0 loaded by the next sprite update) and
+    -- palette.
+    function wear_megaman_image(self, form: number): ()
+    -- The parts of that identity (`sub_8010DF6` with r2 1, or
+    -- `sub_8011044`).
+    function navi_image_parts(self, on: boolean): ()
     -- `sub_800E2FC`: heal up to the maximum HP, with the recovery sparkle
     -- and sound; with `anti_recovery`, the opponent's armed AntiRecv turns
     -- it into damage instead (true when it did).
@@ -659,8 +678,8 @@ export type HitboxSpec = {
     panel_y: number,
     element: number,
     z: number?,
-    -- Region shape (a definition; deprecated: a number).
-    region: Region | number,
+    -- Region shape (a definition; nil, none; deprecated: a number).
+    region: (Region | number)?,
     hit_effect: Spark | number,
     -- Collision types (definitions; deprecated: indices).
     target: CollisionType | number,
@@ -798,6 +817,8 @@ declare battle: {
     -- the original keeps it in the objects' visibility.
     viewer_sees: (side: number) -> boolean,
     link: () -> boolean,
+    -- A battle against a ranked boss (battle effect 1).
+    boss_rank: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
     -- Every navi is in (the intro's bit 2).
@@ -866,6 +887,11 @@ declare battle: {
     -- (`dword_203CFB0`; CopyDmg's).
     damage_carry: (side: number) -> DamageCarry,
     set_damage_carry: (side: number, record: DamageCarry) -> (),
+    -- The r3 the object update loop (`object_800372A`) leaves for the
+    -- object updating now: 4 × how many objects of the previous object's
+    -- pool it passed before that one this tick. Routines that never set r3
+    -- spawn with it as a position (register garbage that is knowable).
+    loop_register: () -> number,
     -- Spawn an object of a kind into its pool's lowest free slot, its
     -- state zeroed; it runs later this tick, right after the spawner. nil
     -- if the pool is full. Deprecated: by pool and index.
@@ -1095,6 +1121,11 @@ declare obstacle: {
     -- (removed, blinking out or absorbed): the test `sub_80C9EE6` and
     -- `sub_80EFD8C` make before taking an obstacle.
     present: (o: Object) -> boolean,
+    -- DustMan's take (`sub_80BC100`): what field object `o` would look like
+    -- thrown back as junk, an opaque look its taker keeps in a "u16" state
+    -- field (`me:wear_junk_look`); nil for the objects DustMan leaves
+    -- (`sub_800F486`).
+    junk_look: (o: Object) -> number?,
     -- `sub_80DC3B2`'s test: a field object by its NameID (0xCD to 0xFF)
     -- but those `sub_800F486` excludes (0xD3, 0xDA, 0xE9, 0xEA): what
     -- BlzrdBal's ball swallows.
