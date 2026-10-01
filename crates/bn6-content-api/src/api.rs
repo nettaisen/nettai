@@ -106,6 +106,29 @@ pub const PANEL_TYPES: [&str; 13] = [
 
 /// Actor types by name (an actor record's type).
 pub const ACTOR_TYPES: [&str; 3] = ["virus", "navi", "player"];
+/// A navi's barrier as content sees it (CollisionData+0x06): none, up (any
+/// kind, its HP whatever it is), or popped (0x10: blown away by wind).
+pub const BARRIER_STATES: [&str; 3] = ["none", "up", "popped"];
+
+/// How a barrier behaves once raised (`sub_801A802` by the barrier byte):
+/// worn down and timed out (`plain`: Barrier, Barr100, Barr200, LifeAur,
+/// the auras), back with 1 HP 240 ticks after it is worn down and broken
+/// by elec (`bubble`: BblWrap), or regenerating up to 200 HP (`regenerating`).
+pub const BARRIER_BEHAVIORS: [&str; 3] = ["plain", "bubble", "regenerating"];
+
+/// `sub_801A7CC`'s row: what a barrier sets in the collision data.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct BarrierSpec {
+    /// Index into [`BARRIER_BEHAVIORS`].
+    pub behavior: u8,
+    /// Its HP (+0x16), the damage a hit must reach to wear it (+0x17), its
+    /// timer (+0x1A; 0xFFFF: none), and the element that breaks it (+0x14;
+    /// 0: none).
+    pub hp: u8,
+    pub threshold: u8,
+    pub timer: u16,
+    pub weak_element: u8,
+}
 
 /// A navi's drag reaction steps by name (BattleObject+0x0D: the game's 0,
 /// 4, 8).
@@ -275,6 +298,11 @@ named_fields! {
         AChargeRoutine = "a_charge_routine", U8, ro;
         AltAChargeRoutine = "alt_a_charge_routine", U8, ro;
         Mode9ARoutine = "mode9_a_routine", U8, ro;
+        /// AIData+0x32: the Beast Out counter is spent (BugFix sets it by
+        /// the navi's counter, `sub_8014446` / `sub_801443C`).
+        BeastOutSpent = "beast_out_spent", Bool, rw;
+        /// AIData+0x60: the barrier's visual (effect #7).
+        BarrierVisual = "barrier_visual", Object, rw;
     }
 }
 
@@ -340,6 +368,11 @@ named_fields! {
         /// The secondary elements (sword 0x80, cursor 0x40, wind 0x20,
         /// break 0x10) of what hit it this window.
         DamageElements = "damage_elements", U8, ro;
+        /// Its barrier ([`BARRIER_STATES`]), the barrier's HP byte, and the
+        /// hit modifier that popped it (+0x15).
+        Barrier = "barrier", enum_type(&BARRIER_STATES), ro;
+        BarrierHp = "barrier_hp", U8, ro;
+        BarrierPopHitMod = "barrier_pop_hit_mod", U8, ro;
     }
 }
 
@@ -1196,10 +1229,16 @@ pub trait CoreApi {
     fn add_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, arg: u8);
     /// `sub_8011044`: take them off (at their next update).
     fn remove_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8);
-    /// The same with the actor record of `of`'s NameID (`sub_800F29C`): a
-    /// stand-in wearing its user's parts.
-    fn add_navi_parts_of(&mut self, o: ObjectRef, of: ObjectRef, arg: u8);
-    fn remove_navi_parts_of(&mut self, o: ObjectRef, of: ObjectRef);
+    /// `sub_8010DF6` with `owner`'s NameID record (`sub_800F29C`: its
+    /// actor type, AI index and first byte): put on the parts that record
+    /// adds, kept in `o`'s related2; with `keep_stepping`, a part that came
+    /// steps even while paused and dimmed (its Param3 1, flags 0x14); with
+    /// `paused_stepping`, `sub_8010DF6`'s r2 is 1 rather than the record's
+    /// first byte (the dimming chips' stand-ins): the parts step even while
+    /// paused.
+    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool, paused_stepping: bool);
+    /// `sub_8011044` with `owner`'s NameID record: take them off.
+    fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef);
 
     // ---- Navis and the attack in progress -------------------------------------
 
@@ -1298,6 +1337,10 @@ pub trait CoreApi {
     /// by its side's navi and form, a field object's by its NameID's
     /// look): a stand-in for its user.
     fn sprite_load_like(&mut self, o: ObjectRef, like: ObjectRef) -> ApiResult<()>;
+    /// Load the sprite `owner`'s NameID record gives it: a player's own by
+    /// its navi stats (`sub_800FC9E`), another object's its NameID look
+    /// (`sub_800F26C`).
+    fn sprite_load_look_of(&mut self, o: ObjectRef, owner: ObjectRef);
     /// Start animation `anim` from its first frame.
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8);
     /// Advance the animation one tick (no gating).
@@ -1342,6 +1385,8 @@ pub trait CoreApi {
     /// modes 0 and 2. -1 when its HP ran out, 1 when hit in another mode,
     /// else 0.
     fn take_damage(&mut self, o: ObjectRef, mode: u8) -> i32;
+    /// `sub_801A7CC`: raise a barrier on `o` (its collision data).
+    fn raise_barrier(&mut self, o: ObjectRef, spec: BarrierSpec) -> ApiResult<()>;
 
     // ---- Services ------------------------------------------------------------
 
@@ -1352,11 +1397,19 @@ pub trait CoreApi {
     /// spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     /// in on it. For controllers that aren't a chip's (a trap springing).
     fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef);
-    /// `sub_80E1352`: a navi chip's user vanishes while its navi acts;
-    /// `keep_visuals` (the mask 0xF): its status visuals and the HUD stay.
-    fn hide_user(&mut self, user: ObjectRef, keep_visuals: bool);
+    /// `sub_80E1352`: a navi chip's user vanishes while its navi acts.
+    fn hide_user(&mut self, user: ObjectRef);
     /// `sub_80E13DC`: and comes back.
     fn show_user(&mut self, user: ObjectRef);
+    /// `sub_80E1352(user, 0xF)`: `user` vanishes as with `hide_user`, but
+    /// its barrier visual, its confusion and blindness visuals and the HUD
+    /// stay (BugFix's glow).
+    fn hide_user_sparing(&mut self, user: ObjectRef);
+    /// `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed: the stats
+    /// processing, the panel trail's level, the buster's blanks, the
+    /// on-hit status, the custom damage, the emotion, the custom and HP
+    /// drains, the battle-start bug and the hand-shrink turn are zeroed.
+    fn clear_navicust_bugs(&mut self, side: u8);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the

@@ -60,8 +60,8 @@ function stand_in.init(me: Object): Object
     -- sub_801002C: the user's navi palette.
     sprite.palette = user.sprite.palette
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
-    me:add_parts_of(user, true)
-    dimming.hide_user(user, true)
+    me:add_parts_of(user, false, true)
+    dimming.hide_user_sparing(user)
     return user
 end
 

@@ -52,9 +52,10 @@ fn begin_deletion(b: &mut Battle, r: ObjectRef) {
     o.chip = None;
     let fp = o.future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
-    // sub_801A7F4: the barrier goes (and the game forgets its visual,
-    // AIData+0x60).
+    // sub_801A7F4: the barrier goes, and the navi forgets its visual
+    // (AIData+0x60).
     coll_mut(b, r).barrier = 0;
+    ai_mut(b, r).barrier_visual = None;
     // The charge glow sees its slot cleared and ends itself.
     ai_mut(b, r).charge_glow = None;
     if b.objects.get(r).params[1] < 1 {

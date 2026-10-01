@@ -31,7 +31,7 @@ local SOUND_BREAK = asset.sound("hit-bomb-1")
 -- Where it can stand: a solid panel with nothing on it.
 local SOLID, OCCUPIED = 0x10, 0x0F88_0080
 -- What it is and reaches: a field obstacle of its side, hit modifier 3.
-local IS, HITS, HIT_MOD = collision.field_object, collision.hit_by_other_side, 3
+local IS, HITS, HIT_MOD = collision.own_body, collision.hit_by_other_side, 3
 -- Its kind among absorbed obstacles.
 local ABSORBED_KIND = 3
 -- A bubble every 16 ticks, on one of the other side's panels but its own
@@ -130,7 +130,7 @@ local function poison(me: Object)
         z = me.pos.z,
         region = regions.area[1 - me.alliance],
         hit_effect = 0xFF,
-        target = collision.none,
+        target = collision.nothing,
         self_type = DRAIN_IS,
         damage = DRAIN_DAMAGE,
         stamina = DRAIN_COUNTER,

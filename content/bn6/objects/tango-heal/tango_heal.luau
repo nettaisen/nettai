@@ -2,9 +2,11 @@
 -- Tango's heal (attack object #0xC7, `sub_80DE000`): thrown by Tango
 -- (objects/tango), it arcs onto her navi's panel in 20 ticks; landed, it
 -- tells her (her `healing` flag), leaves a sparkle, heals her navi 300 HP
--- and gives it barrier 5 with the barrier's visual. See
+-- and gives it barrier 5 (Barr100's, lib/barriers) with the barrier's
+-- visual. See
 -- docs/engine/chips.md §2.10.
 
+local barriers = require("../../lib/barriers/barriers")
 local trajectory = require("../../lib/trajectory")
 
 local tango_heal = {}
@@ -17,8 +19,6 @@ local HEAL = 300
 local HEAL_SOUND = 0x8A
 -- Effect #0's look as it lands.
 local SPARKLE = 6
--- The barrier it gives (`sub_801A7CC`'s argument).
-local BARRIER = 5
 
 -- `sub_80DE112`: the heal from `tango` at `pos`, for her navi's panel
 -- (x, y) (its third and fourth parameters).
@@ -79,8 +79,8 @@ local function tick(me: Object)
     battle.play_sound(HEAL_SOUND)
     -- sub_801A7CC(5), then the barrier's visual: the navi's old one (its
     -- AIData+0x60) goes (sub_80E0DC0) and a new one comes (effect object
-    -- #7, sub_80E0D98). FirstBarrier's port (group B2a) owns both.
-    error(string.format("Tango's heal gives barrier %d (sub_801A7CC) and its visual (effect #7): not ported yet (FirstBarrier, B2a)", BARRIER))
+    -- #7, sub_80E0D98).
+    barriers.raise(navi, barriers.barrier_100)
 end
 
 -- `sub_80DE000`: by state, then its sprite.
