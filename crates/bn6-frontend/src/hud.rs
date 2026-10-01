@@ -240,7 +240,11 @@ fn waiting_ticks(b: &Battle) -> Option<u32> {
 
 /// Whether the custom gauge is drawn.
 fn gauge_shown(b: &Battle, state: &HudState) -> bool {
-    (b.gauge.enabled || state.gauge_was_on) && !state.was_over && !custom_open(b) && !transform_hides(b).1
+    (b.gauge.enabled || state.gauge_was_on)
+        && !state.was_over
+        && !custom_open(b)
+        && !crate::custom::gauge_held(b)
+        && !transform_hides(b).1
 }
 
 /// Whether the round has been decided (the HUD thins out).
@@ -287,18 +291,18 @@ pub fn draw<'a>(
     let colour = state.hp.map(|h| h.colour).unwrap_or(0) as usize;
 
     let (hide_mugshot, hide_boxes) = transform_hides(b);
-    // HP box, top left (x 120 while the custom screen is open).
+    // HP box, top left (moved right with the custom screen's window).
+    let shift = crate::custom::hud_shift(b);
     if let Some(r) = player.filter(|_| !hide_boxes) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
-        let x0 = if open { 15 } else { 0 };
         let pal = &hud.hp_palettes[colour.min(2)];
         for (i, &e) in hud.hp_box.iter().enumerate() {
-            put(layer, hud, pal, e, x0 + (i as i32 % 6), i as i32 / 6);
+            put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
         }
         for (k, d) in digits4(shown).into_iter().enumerate() {
             let top = MapEntry { tile: 0x1A0 + 2 * d as u16, hflip: false, vflip: false, palette: 13 };
-            put(layer, hud, pal, top, x0 + 1 + k as i32, 0);
-            put(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, x0 + 1 + k as i32, 1);
+            put_px(layer, hud, pal, top, shift + 8 + 8 * k as i32, 0);
+            put_px(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, shift + 8 + 8 * k as i32, 8);
         }
     }
 
@@ -485,7 +489,7 @@ pub fn draw<'a>(
     let over = state.was_over && !window.running;
     if let Some(r) = player.filter(|_| !over && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         let mut group = Vec::new();
-        mugshot_parts(b, hud, state, r, if open { 120 } else { 0 }, &mut group, problems);
+        mugshot_parts(b, hud, state, r, shift, &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {
             for part in &mut group {
                 part.palette = [0; 16];
@@ -569,13 +573,18 @@ const HP_BUCKET: usize = 0xDF;
 const ICON_BUCKET: usize = 0xD0;
 
 fn put(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, tx: i32, ty: i32) {
+    put_px(layer, hud, pal, e, tx * 8, ty * 8);
+}
+
+/// `put` at a pixel position.
+fn put_px(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, x: i32, y: i32) {
     let tile = if e.tile >= hud.gauge_first_tile {
         hud.gauge_tiles.get((e.tile - hud.gauge_first_tile) as usize)
     } else {
         e.tile.checked_sub(hud.first_tile).and_then(|i| hud.tiles.get(i as usize))
     };
     if let Some(t) = tile {
-        layer.draw_tile(t, pal, tx * 8, ty * 8, e.hflip, e.vflip);
+        layer.draw_tile(t, pal, x, y, e.hflip, e.vflip);
     }
 }
 
@@ -700,6 +709,7 @@ fn glyph(tiles: &Tiles, k: usize, palette: Palette, x: i32, y: i32, priority: u8
         alpha: None,
         mosaic: None,
         vscale,
+        affine: None,
     }
 }
 
@@ -738,8 +748,7 @@ fn mugshot_parts<'a>(
     let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
     // A form chosen on the custom screen shows in the window until the
     // screens close (`sub_802A040`, `sub_802A088`).
-    let chosen = (b.round.mode == mode::CUSTOM).then(|| b.custom.sides[side].sent.as_ref()).flatten();
-    if let Some(form) = chosen.and_then(|sent| sent.result.transform.form) {
+    if let Some(form) = crate::custom::face(b, side) {
         face = Face::in_form(b, r, form);
     }
     let Some((gfx, palettes)) = face.picture.and_then(|n| hud.mugshot(n)) else {
