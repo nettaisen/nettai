@@ -56,7 +56,8 @@ pub struct Spec {
 /// trap instead: the controller is AntiRecv's counterattack.
 pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
     let side = b.objects.get(user).alliance;
-    if s.navi == ROLL && b.chip_number(b.linked[(side ^ 1) as usize].chip) == Some(heal::ANTI_RECOVERY) {
+    let heals = s.chip.chip.is_some_and(|h| b.content.chip(h).traits.has(crate::content::ChipTraits::HEALS));
+    if heals && b.linked_trap(side ^ 1) == Some(crate::content::Trap::AntiRecovery) {
         return spring_anti_recovery(b, user, s);
     }
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::NaviChip, Vec3::default(), s.params)?;
@@ -79,9 +80,6 @@ pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
     });
     Some(r)
 }
-
-/// Roll's navi (`off_802CD5C[0]`), whose chips heal.
-const ROLL: u8 = 0;
 
 /// `loc_80E1968`: Roll against AntiRecv. The trap's mark over the user
 /// (`sub_800ABC6`), the other side's record is spent (`sub_802CEA6`), and
@@ -222,8 +220,7 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let (panel, element) = (o.panel, o.element);
     let user = user(b, r);
     use crate::content::{ChipUsage, Unported};
-    let chip =
-        v.chip.chip.or_else(|| b.content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
+    let chip = b.content.chip_or_zeroed(v.chip.chip);
     let navi = match b.content.defs.chip(chip).usage {
         ChipUsage::Navi(hook) => {
             let spec = NaviChipSpec { panel, element, params: v.params, damage };

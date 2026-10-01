@@ -59,7 +59,8 @@ impl Game for StandInBattle {
 pub fn folder(content: &Content, chips: &[(ChipId, u8)]) -> BattleFolder {
     let mut f = BattleFolder::empty();
     for (slot, &(id, code)) in f.chips.iter_mut().zip(chips.iter().cycle()) {
-        let chip = content.chip_numbered(id).unwrap_or_else(|| panic!("chip {id:#x} is not in the content"));
+        // (The stand-in runs on content whose records are numbered: the engine's test content.)
+        let chip = content.defs.chip_numbered(id).unwrap_or_else(|| panic!("chip {id:#x} is not in the content"));
         *slot = Some(FolderChip::new(chip, ChipCode(code)));
     }
     f

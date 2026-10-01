@@ -209,11 +209,12 @@ impl Battle {
         Ok(self.collision.get_mut(c))
     }
 
-    /// A chip as the numeric API gives it: the pack's number, or for a chip
+    /// A chip as the numeric API gives it: a pack record's number
+    /// (registration by number: the engine's test content), or for a chip
     /// content defines (which has none) [`DEFINED_CHIPS`] plus its handle,
     /// so a script can hand it back.
     pub(crate) fn api_chip(&self, h: ChipHandle) -> u16 {
-        self.content.chip_number(h).unwrap_or(DEFINED_CHIPS + h.0)
+        self.content.defs.chip(h).record.id.unwrap_or(DEFINED_CHIPS + h.0)
     }
 
     /// A chip field as the numeric API gives it; `none` for no chip (the
@@ -234,7 +235,7 @@ impl Battle {
                 .then_some(Some(h))
                 .ok_or_else(|| ApiError::Other(format!("chip {n:#x} is not in the content")));
         }
-        self.content.chip_numbered(n).map(Some).ok_or_else(|| ApiError::Other(format!("chip {n:#x} is not in the content")))
+        self.content.defs.chip_numbered(n).map(Some).ok_or_else(|| ApiError::Other(format!("chip {n:#x} is not in the content")))
     }
 
     /// A weapon as the numeric API gives it: its routine number (0xFF for
@@ -308,8 +309,8 @@ impl CoreApi for Battle {
                 None => self.content.rules.empty_hand.flags,
             }
         } else {
-            // Another object's chip word: zeroed, the pack's chip 0.
-            match o.chip.or_else(|| self.content.chip_numbered(0)) {
+            // Another object's chip word: zeroed, the zeroed chip.
+            match o.chip.or_else(|| self.content.zeroed_chip()) {
                 Some(h) => self.content.chip(h).flags,
                 None => ChipFlags(0),
             }
@@ -1903,8 +1904,10 @@ impl CoreApi for Battle {
     fn obstacle_swallowable(&self, o: ObjectRef) -> bool {
         let ob = self.objects.get(o);
         // The NameID word's high half: an actor's next chip (0xFFFF for
-        // none), nothing else's (0).
-        let high = if ob.actor.is_some() { self.chip_number(ob.chip).map_or(0xFFFF, u32::from) } else { 0 };
+        // none), nothing else's (0). Only whether it is zero matters: the
+        // chip the original's chip 0 is (the zeroed chip) or no actor.
+        let zero = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.content.zeroed_chip());
+        let high: u32 = if zero { 0 } else { 0xFFFF };
         let word = ob.name_id as u32 | high << 16;
         (0xCD..=0xFF).contains(&word) && !matches!(word, 0xD3 | 0xDA | 0xE9 | 0xEA)
     }

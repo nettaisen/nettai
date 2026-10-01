@@ -10,7 +10,8 @@ use super::actions::movement::{self, MoveKind};
 use crate::actor::request;
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::content::{ChipId, PanelCondition};
+use crate::content::PanelCondition;
+use bn6_content_api::ChipHandle;
 use crate::object::{ObjectRef, PanelPos};
 
 /// Where the controller is (+0, read as a jump-table offset).
@@ -139,22 +140,6 @@ fn step_toward_opponent(b: &mut Battle, r: ObjectRef) -> Outcome {
 /// `byte_802D5E4`: the chips the Cross special uses, three by its navi's
 /// base max HP in hundreds (1..=9 and up), and six for 1000 and up.
 ///
-/// Game data held in the engine for now: it belongs with the Cross
-/// special in the content (to move there with the content model's next
-/// version).
-const CROSS_SPECIAL_CHIPS: [[ChipId; 3]; 9] = [
-    [0x001, 0x036, 0x048],
-    [0x001, 0x037, 0x048],
-    [0x002, 0x038, 0x049],
-    [0x00C, 0x015, 0x04C],
-    [0x003, 0x019, 0x04D],
-    [0x00D, 0x020, 0x04E],
-    [0x010, 0x029, 0x04F],
-    [0x00E, 0x034, 0x054],
-    [0x00E, 0x032, 0x153],
-];
-const CROSS_SPECIAL_TOP_CHIPS: [ChipId; 6] = [0x016, 0x01A, 0x021, 0x02A, 0x008, 0x153];
-
 /// `sub_802D4C6`: one tick of the Cross special's controller (the dark
 /// chips' auto-battle, while the side's Cross special runs): like Beast
 /// Over's, it moves next to an opponent and attacks, but with chips of its
@@ -195,10 +180,8 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
         }
     }
     ai_mut(b, r).berserk.moves = 0;
-    let number = pick_special_chip(b, r);
+    let (chip, damage_of) = pick_special_chip(b, r);
     let content = b.content.clone();
-    let numbered = |id: ChipId| content.chip_numbered(id).unwrap_or_else(|| panic!("the Cross special's chip {id:#x}"));
-    let chip = numbered(number);
     let cd = content.chip(chip);
     let a = &mut ai_mut(b, r).attack;
     a.chip = Some(chip);
@@ -206,8 +189,9 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
     a.params = cd.params;
     a.damage = cd.damage;
     a.hit_param = (cd.hit_param | 0x80) as u16;
-    if number == 0x153 {
-        a.damage = content.chip(numbered(0x52)).damage;
+    // (The last rows' LifeSrd strikes with VarSwrd's damage.)
+    if let Some(other) = damage_of {
+        a.damage = content.chip(other).damage;
     }
     let action = super::chip_use::chip_action(b, r, Some(chip));
     super::set_attack(b, r, action, 5);
@@ -217,11 +201,19 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
 }
 
 /// `sub_802D5A8`: a chip for the Cross special, at random from its navi's
-/// row of `CROSS_SPECIAL_CHIPS` (by the base max HP, NaviStats+0x3E).
-fn pick_special_chip(b: &mut Battle, r: ObjectRef) -> ChipId {
+/// row of the rules' Cross special chips (by the hundreds of the base max
+/// HP, NaviStats+0x3E: the first row up to 199, the tenth from 1000), with
+/// the chip whose damage it strikes with, if another's.
+fn pick_special_chip(b: &mut Battle, r: ObjectRef) -> (ChipHandle, Option<ChipHandle>) {
     let hundreds = super::stats(b, r).max_base_hp / 100;
     let row = if hundreds <= 1 { 0 } else { (hundreds - 1).min(9) as usize };
-    let chips: &[ChipId] = if row == 9 { &CROSS_SPECIAL_TOP_CHIPS } else { &CROSS_SPECIAL_CHIPS[row] };
+    let content = b.content.clone();
+    let chips = content
+        .defs
+        .cross_special
+        .get(row)
+        .filter(|chips| !chips.is_empty())
+        .unwrap_or_else(|| panic!("content error: the Cross special has no chips for row {row} (rules cross-special)"));
     let i = b.rng.next_positive() % chips.len() as u32;
     chips[i as usize]
 }

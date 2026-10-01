@@ -54,6 +54,9 @@ pub const STEP_BLADE: ChipId = 0x10a;
 /// A strike at stunned or grounded opponents (action 0x49, subtype 2).
 pub const STUN_BLADE: ChipId = 0x10b;
 /// A trap chip (action 0x15, subtype 20, Param1 3: no object).
+/// A blank chip that is the AntiNavi trap when a side's defensive-chip
+/// record holds it.
+pub const ANTI_NAVI: ChipId = 0xBA;
 pub const TRAP: ChipId = 0x09;
 /// Navi-changing dimming chips (action 0x15, subtype 38): the buster and
 /// shoes boost (Param1 0), and a new charged shot (Param1 2: weapon
@@ -207,7 +210,7 @@ pub fn megaman_on(content: &Content) -> crate::setup::NaviStats {
 
 /// The chip with number `id` in the content (its handle there).
 pub fn chip_in(content: &Content, id: ChipId) -> bn6_content_api::ChipHandle {
-    content.chip_numbered(id).unwrap_or_else(|| panic!("chip {id:#x} is not in the test content"))
+    content.defs.chip_numbered(id).unwrap_or_else(|| panic!("chip {id:#x} is not in the test content"))
 }
 
 /// The chip with number `id` in the shared test content.
@@ -1174,9 +1177,11 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         library_index: id as u8,
         sort_key: id,
         slot_in_limit: 3,
+        formula: None,
+        traits: Default::default(),
+        trap: None,
+        hp_bug: 0,
         dark_substitute: None,
-        sp_damage: None,
-        navi_damage: None,
         modifier: None,
         program_advances: Vec::new(),
         gun_del_sol: None,
@@ -1419,6 +1424,12 @@ fn named_chips() -> Vec<ChipData> {
             script: Some("chips/0c0-atk-10/chip".into()),
             ..chip(PLUS, "Plus", 0x1C, 3)
         },
+        ChipData {
+            class: ChipClass::Special,
+            codes: vec![],
+            trap: Some(crate::content::Trap::AntiNavi),
+            ..chip(ANTI_NAVI, "AntiNavi", 0, 0)
+        },
         spawning(FIST, "Fist", 8, [0, 3, 0, 0], "chips/06b-firehit1/chip"),
         spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "chips/146-flmhook1/chip"),
     ]
@@ -1631,6 +1642,8 @@ fn rules() -> Rules {
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
+        sp_slots: Vec::new(),
+        cross_special: Vec::new(),
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
             SlideVector { dx: -1, dy: 0, tiles: 6 },

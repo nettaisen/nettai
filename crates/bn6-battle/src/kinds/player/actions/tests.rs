@@ -1948,8 +1948,8 @@ fn a_numbered_definition_runs_its_own_action() {
     let (mut b, p0, p1) = fight_on_test_pack();
     let defs = &b.content.defs;
     let [ticker1, ticker4] = [testing::TICKER_1, testing::TICKER_4].map(|key| defs.chip_by_key(key).unwrap());
-    assert_eq!(b.content.chip_numbered(0x1F0), Some(ticker4));
-    assert_eq!(b.content.chip_number(ticker4), Some(0x1F0));
+    assert_eq!(b.content.defs.chip_numbered(0x1F0), Some(ticker4));
+    assert_eq!(b.content.chip(ticker4).id, Some(0x1F0));
     let record = b.content.chip(ticker4);
     assert_eq!((record.action, record.subtype), (0x70, 3));
     let [one, four] = [ticker1, ticker4].map(|h| match defs.chip(h).usage {

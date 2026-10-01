@@ -229,7 +229,7 @@ fn mega_chips_past_the_limit_turn_invalid() {
     p.press(keys::A);
     p.wait(20);
     let hand = p.side.sent.as_ref().unwrap().result.hand.clone().unwrap();
-    let (invalid, code) = screen::INVALID_CHIP;
+    let (invalid, code) = (library::testing::INVALID, screen::INVALID_CODE);
     assert_eq!(hand.ids[0], Some(ChipHandle(invalid)));
     assert_eq!(hand.selection[0], Some(FolderChip::new(ChipHandle(invalid), code)));
 }
