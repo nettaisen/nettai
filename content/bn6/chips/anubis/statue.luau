@@ -10,6 +10,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("../../lib/regions")
@@ -33,7 +34,8 @@ local SOLID, OCCUPIED = 0x10, 0x0F88_0080
 -- What it is and reaches: a field obstacle of its side, hit modifier 3.
 local IS, HITS, HIT_MOD = collision.own_body, collision.hit_by_other_side, 3
 -- Its kind among absorbed obstacles.
-local ABSORBED_KIND = 3
+-- How it looks absorbed (the original's obstacle kind's sprite: its own).
+local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 -- A bubble every 16 ticks, on one of the other side's panels but its own
 -- (`byte_80CF364`, by side), in palette 1.
 local BUBBLE_EVERY = 0x10
@@ -145,7 +147,7 @@ local function destroyed(me: Object)
     me:unreserve_panel(me.future_panel_x, me.future_panel_y)
     local how = obstacle.removal(me)
     if how == "absorbed" then
-        obstacle.fly_to_absorber(me, ABSORBED_KIND)
+        obstacle.fly_to_absorber(me, ABSORBED)
     elseif how ~= "broken" then
         local blink = obstacle.blink_out(me)
         if blink == "blinking" then

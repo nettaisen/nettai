@@ -1786,8 +1786,8 @@ animation (5..7); highlight (8); range (9); shadow (0xA); status byte (0xB); spe
 adds by kind: 6 is a thrown obstacle, 2 sparks over its panel and sounds as it sets off, 5 leaves an effect.
 
 **Init** (`sub_80C60CC`): cfg into RelatedObject1Ptr (the owner forgotten); load the sprite (kind 6: category and
-index from the ExtraVars word's bytes 2 and 3; the port uses the obstacle's, `data.objects.absorbed_sprites` by the
-word's low nibble), shadow by cfg[0xA]; CurAnim = cfg[7] (kind 6: bits 4..7 of the word), CurAnimCopy = 0xFF,
+index from the ExtraVars word's bytes 2 and 3; the port takes the obstacle's absorbed look, a record with its sprite,
+which the throw carries from the navi's absorbed list), shadow by cfg[0xA]; CurAnim = cfg[7] (kind 6: bits 4..7 of the word), CurAnimCopy = 0xFF,
 visible; flip from the object, except kind 6 with sprite index 0x23 (`sub_8002EAC` marks its parts to keep their
 own facing; it is drawn unflipped); palette = Param4; Element = cfg[3]; Param4 = cfg[9] (the range); panel from
 the coordinates; X velocity = front · speed; collision set up from cfg[0..2], hit effect cfg[4], status base cfg[0xB]

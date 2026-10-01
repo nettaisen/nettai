@@ -9,6 +9,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local curse = require("./curse")
 local effects = require("../../lib/effects")
@@ -42,7 +43,8 @@ local CURSE_HIT_PARAM = 0xB2_0000
 -- A puff 16 pixels up; the curse's own puff 12 up.
 local PUFF_UP, CURSE_PUFF_UP = 0x10_0000, 0xC_0000
 -- Its kind among absorbed obstacles.
-local ABSORBED_KIND = 8
+-- How it looks absorbed (the original's obstacle kind's sprite: its own).
+local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 
 -- The actions (the object's action byte), and the destroyed action's
 -- phases.
@@ -138,7 +140,7 @@ local function leave(me: Object)
     local how = obstacle.removal(me)
     if how ~= "broken" then
         if how == "absorbed" then
-            obstacle.fly_to_absorber(me, ABSORBED_KIND)
+            obstacle.fly_to_absorber(me, ABSORBED)
             go(me)
         else
             puff(me)
