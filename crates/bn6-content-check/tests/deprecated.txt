@@ -21,10 +21,14 @@ chips/05f-aurahed1/chip.luau 2
 chips/07b-ironshl1/chip.luau 2
 chips/09a-recov10/chip.luau 1
 chips/173-sonicbom/chip.luau 1
+chips/airraid/plane.luau 1
 chips/airspin/top.luau 1
+chips/antidmg/counter.luau 1
+chips/antiswrd/counter.luau 1
 chips/anubis/statue.luau 1
 chips/aquandl/volley.luau 1
 chips/blkbomb/bomb.luau 1
+chips/bodygrd/striker.luau 1
 chips/colarmy/army.luau 1
 chips/cornfsta/farmer.luau 2
 chips/crosswrd/chip.luau 1
@@ -35,6 +39,7 @@ chips/ftrsword/chip.luau 1
 chips/guardian/statue.luau 1
 chips/lilbolr/boiler.luau 1
 chips/neovari/chip.luau 1
+chips/otenko/statue.luau 1
 chips/sensor/turret.luau 1
 chips/stepswrd/chip.luau 1
 chips/varswrd/chip.luau 1

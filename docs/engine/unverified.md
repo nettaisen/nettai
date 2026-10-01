@@ -27,9 +27,9 @@ standard chip action…), whichever section below the family belongs to:
 
 | template | what it reaches | status |
 |---|---|---|
-| `ko` (an opponent of 10 HP deleted by the first hit) | the objects' "the battle over" ends, the chip's later hits and spawns with the round decided | verified, 68 scenarios (43 families, 20 navi chips, the PAs' navis, SonicBom, Z Saver); AirRaid1's differs (below) |
-| `barrier` (the opponent behind Barr100) | the hits a barrier takes, the wind chips blowing it away (AirShot, WindRack, AirSpin) | verified, 39 scenarios; AirRaid1's differs |
-| `invisible` (the opponent under Invisibl) | no body to hit: the homing and searching chips' no-target paths (RskyHny's bee, MachGun's and the dragons' column search, ElcPuls) | verified, 39 scenarios; AirRaid1's differs |
+| `ko` (an opponent of 10 HP deleted by the first hit) | the objects' "the battle over" ends, the chip's later hits and spawns with the round decided | verified, 68 scenarios (43 families, 20 navi chips, the PAs' navis, SonicBom, Z Saver), and AirRaid1's (below) |
+| `barrier` (the opponent behind Barr100) | the hits a barrier takes, the wind chips blowing it away (AirShot, WindRack, AirSpin) | verified, 39 scenarios, and AirRaid1's |
+| `invisible` (the opponent under Invisibl) | no body to hit: the homing and searching chips' no-target paths (RskyHny's bee, MachGun's and the dragons' column search, ElcPuls) | verified, 39 scenarios, and AirRaid1's |
 | `dimmed` (the opponent's AreaGrab cuts in a few ticks after the use) | the objects' waits while dimmed, the user's action held through a dimming, the press during a dimming that is no cut-in (`sub_8017AB4`'s clear) | verified, 34 scenarios |
 
 ## Dimming chips, shot chips and navi chips
@@ -55,13 +55,13 @@ standard chip action…), whichever section below the family belongs to:
 | Instruments | the tune played to its end | scenarios end first | yes | chips/0x092-fanfare/lifetime: verified |
 | Instruments | Fanfare's Beast Over test, the battle-over branches | no Beast Over, no KO with an instrument out | yes | open |
 | Instruments | a failed collision | pool full | unreachable | |
-| AirRaid (subtype 13) | the plane shot down, the battle-over branch, the bombs against a barrier or no body | the plane is never hit | yes | chips/0x068-airraid1/broken, ko, barrier, invisible: **differs** (subtype 13 isn't implemented: being ported) |
+| AirRaid (subtype 13) | the plane shot down, the battle-over branch, the bombs against a barrier or no body | the plane is never hit | yes | chips/0x068-airraid1/broken, ko, barrier, invisible: verified |
 | Sensor (subtype 28) | the pushed turret, the broken turret | the turret is never hit or pushed | yes | chips/0x071-sensor1/broken, pushed: verified |
 | Sensor | the laser's re-arming | one firing per scenario | yes | chips/0x071-sensor1/twice: verified |
 | Sensor | the battle-over branches | no KO | yes | chips/0x071-sensor1/ko: verified (the comparison now keeps a spark's garbage Z fraction after its laser is freed) |
 | Sensor | the scanner's blocked-by-object and edge branches, removal and absorption, failed collisions | | partly | open |
-| SumnBlk (subtype 36) | the whole navi (§9.2, §9.3) | no hole in front of the user | yes | chips/0x087-sumnblk1/hole-ahead, after-geddon, chips/0x089-sumnblk3/hole-ahead: **differs** (subtype 36 isn't implemented: being ported) |
-| ColorPt, DblPoint (subtype 27) | the bonus itself (080E66E0, 080E66EC, 080E66F6) | the next chip is none or has no damage | yes | chips/0x0c2-colorpt/bonus, chips/0x0c4-dblpoint/bonus, chips/0x062-lilbolr1/colorpt: **differs** (subtype 27 isn't implemented: being ported) |
+| SumnBlk (subtype 36) | the whole navi (§9.2, §9.3) | no hole in front of the user | yes | chips/0x087-sumnblk1/hole-ahead, after-geddon, chips/0x089-sumnblk3/hole-ahead: verified |
+| ColorPt, DblPoint (subtype 27) | the bonus itself (080E66E0, 080E66EC, 080E66F6) | the next chip is none or has no damage | yes | chips/0x0c2-colorpt/bonus, chips/0x0c4-dblpoint/bonus: verified; chips/0x062-lilbolr1/colorpt: to rerun (it stopped in LilBoiler's registration before that was changed) |
 | ColorPt | the special-source branch, a missing navi, `sub_800D53C` running off the field | no such user | unreachable | |
 
 ### Dimming chip effects (dimming-chip-effects.md)
@@ -90,7 +90,7 @@ standard chip action…), whichever section below the family belongs to:
 | CircGun (subtype 19) | A to fire | no scenario presses A | yes | chips/0x08e-circgun/a-fires, a-fires-late: verified |
 | CircGun | a start column of the user's own panels, shots on non-solid panels | the timeout's place | yes | chips/0x08e-circgun/after-areagrab, holes: verified |
 | CircGun | Param3 1, a non-player first actor | no chip | unreachable | |
-| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: **differs** (subtype 18 isn't implemented: being ported) |
+| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: verified |
 | BlzrdBal (subtype 21) | a non-solid thrower panel, the roller's battle-over end, three swallows | | yes | chips/0x0c7-blzrdbal/no-footing, ko, three-rocks: verified |
 | BlzrdBal | the excluded NameIDs, more than 4 hit objects | | hard | open |
 | Magnum (subtype 24) | A to fire, the cursor's later rows | no scenario presses A | yes | chips/0x08d-magnum/a-fires, a-fires-late: verified |
@@ -119,10 +119,10 @@ standard chip action…), whichever section below the family belongs to:
 | Counter cut-ins | a failed controller spawn | pool full | unreachable | |
 | AntiRecv | the heal turned to damage, Roll's dimming taken over | scratch recordings were lost | yes | chips/0x0bd-antirecv/recov10, roll: verified |
 | AntiRecv | Roll's damage with the double-damage flag, a full effect pool | | hard / unreachable | open |
-| AntiDmg | the trap sprung: the stars thrown back | the lab never hits a trap's user | yes | chips/0x0bb-antidmg/sprung, sprung-side0, small-hit, turn-end: **differs** (the role `actions.anti_damage_counter` isn't filled: being ported); replaced: verified |
-| AntiSwrd | the trap sprung by a sword | | yes | chips/0x0bc-antiswrd/sprung: **differs** (`actions.anti_sword_counter`: being ported); not-a-sword: verified |
+| AntiDmg | the trap sprung: the stars thrown back | the lab never hits a trap's user | yes | chips/0x0bb-antidmg/sprung, sprung-side0, small-hit, turn-end, replaced: verified (the counter is chips/antidmg/counter) |
+| AntiSwrd | the trap sprung by a sword | | yes | chips/0x0bc-antiswrd/sprung, not-a-sword: verified (the counter is chips/antiswrd/counter) |
 | ElemTrap (§3.6.10) | the spring, the sparkles, the counterattack, the panel bursts | the lab never hits the trap with an element | yes | chips/0x0c5-elemtrap/sprung-fire, sprung-elec, null-hit: verified |
-| BodyGrd (PA 0x157) | the trap itself | recorded only as its recipe | yes | pa/0x157-bodygrd/sprung: **differs** (`actions.body_guard_counter`: being ported) |
+| BodyGrd (PA 0x157) | the trap itself | recorded only as its recipe | yes | pa/0x157-bodygrd/sprung: verified (the counter is chips/bodygrd/counter) |
 | IceCube (0x17C) | its record | no folder holds it | yes (save edit) | chips/0x17c-icecube/hit, pushed, broken, melted: verified |
 | WhiCapsl (0x17E) | its dimming record | no folder can hold it (no codes: chip 0x185 instead) | unreachable | chips/0x17e-whicapsl/hit shows the 0x185: verified |
 | Invisibl | shots and swords through an invisible navi | | yes | chips/0x0b1-invisibl/shot-at, the `invisible` template: verified |
