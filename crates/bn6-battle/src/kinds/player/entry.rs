@@ -1,7 +1,7 @@
 //! Actions 0 (battle entry: appear / fade in) and 1 (hand over to the
 //! idle controller). See objects-and-player.md §M4.
 
-use super::{ai, clear_invulnerable, coll_mut, navi_record, per_player_gauges, set_invulnerable};
+use super::{NaviAction, ai, clear_invulnerable, coll_mut, navi_record, per_player_gauges, set_action, set_invulnerable};
 use crate::actor::ActorType;
 use crate::battle::Battle;
 use crate::object::{ObjectRef, flags};
@@ -70,10 +70,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             let fp = b.objects.get(r).future_panel;
             b.unreserve_panel(r, fp.x, fp.y);
             coll_mut(b, r).region = 1;
-            let o = b.objects.get_mut(r);
-            o.action = 1;
-            o.phase = 0;
-            o.phase_init = 0;
+            set_action(b, r, NaviAction::TakeControl);
         }
         p => panic!("mid-battle appearance phase {p:#x} reads past its table (off_80164B4)"),
     }
@@ -156,10 +153,7 @@ fn wait_for_intro(b: &mut Battle, r: ObjectRef) {
         return;
     }
     // Battle mode 6 or the remote navi: the HP HUD (sub_801DC7C).
-    let o = b.objects.get_mut(r);
-    o.action = 1;
-    o.phase = 0;
-    o.phase_init = 0;
+    set_action(b, r, NaviAction::TakeControl);
 }
 
 /// Action 1, `sub_8017888`: hand over to the idle controller (spawning
@@ -168,8 +162,5 @@ pub(super) fn take_control(b: &mut Battle, r: ObjectRef) {
     if per_player_gauges(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).lockon_marker.is_none() {
         crate::kinds::lockon_marker::spawn(b, r);
     }
-    let o = b.objects.get_mut(r);
-    o.action = 8;
-    o.phase = 0;
-    o.phase_init = 0;
+    set_action(b, r, NaviAction::Idle);
 }
