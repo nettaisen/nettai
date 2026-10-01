@@ -278,6 +278,10 @@ impl CoreApi for Battle {
         self.is_battle_over_flag_quirk()
     }
 
+    fn viewer_sees(&self, side: u8) -> bool {
+        kinds::charge_glow::viewer_sees(self, side & 1)
+    }
+
     fn battle_info(&self, f: BattleInfo) -> Value {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
@@ -1029,9 +1033,10 @@ impl CoreApi for Battle {
         kinds::player::form::record_death_hook(self, o, actor_type_of(actor_type), ai_index);
     }
 
-    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool) {
+    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool, paused_stepping: bool) {
         let rec = self.content.navi_record(self.objects.get(owner).name_id);
-        kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, rec.version);
+        let r2 = if paused_stepping { 1 } else { rec.version };
+        kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, r2);
         if keep_stepping && let Some(part) = self.objects.get(o).related[1] {
             kinds::player::form::keep_overlay_stepping(self, part);
         }
@@ -1378,6 +1383,33 @@ impl CoreApi for Battle {
         self.sprite_load(o, id);
     }
 
+    fn sprite_load_like(&mut self, o: ObjectRef, like: ObjectRef) -> ApiResult<()> {
+        let name_id = self.objects.get(like).name_id;
+        let id = if self.content.navi_record(name_id).actor_type == crate::actor::ActorType::Player {
+            // sub_800FC9E(navi stat 0x29, form stat 0x2C): MegaMan's form's
+            // sprite, or the link navi's.
+            let side = self.objects.get(like).alliance as usize & 1;
+            let s = &self.stats[side];
+            if self.navi(side) == crate::setup::Navi::MEGAMAN {
+                self.content.form(s.form).sprite
+            } else {
+                self.content.navi(s.navi).sprite
+            }
+        } else {
+            // sub_800F26C: a field object's look by its NameID (0xCD and
+            // up); other NameIDs' sprites (viruses, bosses) aren't in the
+            // pack: no netbattle object stands in for one.
+            let look = self.content.objects.name_looks.iter().find(|l| l.name_id == name_id);
+            look.and_then(|l| l.sprite).ok_or_else(|| {
+                ApiError::Other(format!(
+                    "sub_800F26C: NameID {name_id:#x} has no sprite in the pack (a netbattle's stand-in copies a player)"
+                ))
+            })?
+        };
+        self.sprite_load(o, id);
+        Ok(())
+    }
+
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8) {
         self.objects.sprite_mut(o).set_animation(anim, &self.content);
     }
@@ -1483,6 +1515,12 @@ impl CoreApi for Battle {
             .get(element as usize)
             .copied()
             .ok_or_else(|| ApiError::Other(format!("element {element} has no damage slot (0 to 5)")))
+    }
+
+    fn collision_hit_by(&self, o: ObjectRef) -> ApiResult<Vec<ObjectRef>> {
+        let mask = self.collision_of(o)?.acc.hit_by;
+        let hitters = (0..32u8).filter(|&k| mask & (0x8000_0000 >> k) != 0);
+        Ok(hitters.filter_map(|k| self.collision.get(crate::collision::CollisionId(k)).parent).collect())
     }
 
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()> {
@@ -1733,6 +1771,15 @@ impl CoreApi for Battle {
 
     fn obstacle_absorb_all(&mut self, absorber: ObjectRef) {
         kinds::obstacle::absorb_all(self, absorber);
+    }
+
+    fn obstacle_swallowable(&self, o: ObjectRef) -> bool {
+        let ob = self.objects.get(o);
+        // The NameID word's high half: an actor's next chip (0xFFFF for
+        // none), nothing else's (0).
+        let high = if ob.actor.is_some() { self.chip_number(ob.chip).map_or(0xFFFF, u32::from) } else { 0 };
+        let word = ob.name_id as u32 | high << 16;
+        (0xCD..=0xFF).contains(&word) && !matches!(word, 0xD3 | 0xDA | 0xE9 | 0xEA)
     }
 
     fn obstacle_present(&self, o: ObjectRef) -> bool {

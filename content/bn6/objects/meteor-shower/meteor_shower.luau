@@ -1,11 +1,13 @@
 --!strict
 -- A shower of Fire meteors (effect object #0x46, `sub_80E59E8`) and
 -- instant chip effect 16 (`sub_80E5A64`): every 20 ticks, Param2 times, a
--- meteor (attack object #0x56, another group's kind: spawned by number)
+-- meteor (objects/falling-meteor)
 -- falls on one of the other side's navis still standing, picked at random,
 -- or on a panel next to it (6 draws in 16). Param2 3 drops the meteor of
 -- kind 2. No chip or weapon of MegaMan's names effect 16; link navis'
 -- actions spawn the shower themselves.
+
+local falling_meteor = require("../falling-meteor/falling_meteor")
 
 local meteor_shower = {}
 
@@ -16,8 +18,6 @@ export type State = {
 
 meteor_shower.state = { target = "object" }
 
--- The meteor: attack object #0x56 (`sub_80CF594`).
-local METEOR_POOL, METEOR_INDEX = "attack", 0x56
 local FIRE = 1
 local DROP_TICKS = 0x14
 -- Whether to pick a panel next to the target, by a draw's low four bits
@@ -79,18 +79,12 @@ local function aim(target: Object?): (number, number)
     return bit32.band(b, 7), bit32.rshift(b, 4)
 end
 
--- `sub_80CF594`: a meteor on (x, y). (Its X and Y are the registers'
--- values, which its init replaces.)
+-- `sub_80CF594`: a meteor on (x, y) (objects/falling-meteor; Param2 3
+-- names its look 2, the others 0: the rows are the same). (Its X and Y are
+-- the registers' values, which its init replaces.)
 local function meteor(me: Object, x: number, y: number)
-    local kind = if me:param(2) == 3 then 2 else 0
-    local o = battle.spawn(METEOR_POOL, METEOR_INDEX, Vec3.new(y, me.element, 0), { kind, 0, 0, 0 })
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = me.element
-        o.damage = me.damage
-        o.stamina = me.stamina
-        o.alliance, o.flip = me.alliance, me.flip
-    end
+    local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
+    falling_meteor.spawn(me, x, y, me.element, damage, false, Vec3.new(y, me.element, 0))
 end
 
 -- `sub_80E5A22`.
