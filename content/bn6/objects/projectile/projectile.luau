@@ -174,8 +174,8 @@ local function init(me: Object)
     me:setup_collision(v.collision.is, v.collision.hits, v.hit_mod)
     local c = me.collision
     c:set_hit_effect(v.spark)
-    local status, bug = v.status or 0, v.bug or 0
-    if status ~= 0 then
+    local status, bug = v.status, v.bug or 0
+    if status then
         c.status_base = status
     end
     if bug ~= 0 then

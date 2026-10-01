@@ -25,9 +25,6 @@ pub struct Rules {
     pub panels: PanelRules,
     /// Banners that stay up until removed.
     pub holding_banners: Vec<BannerId>,
-    /// Status effects by status byte: group `(status >> 4) - 1`, entry
-    /// `status & 0xF`.
-    pub status_effects: Vec<[StatusEffect; 16]>,
     /// The HP bug's drain period by bug level.
     pub hp_bug_periods: [u8; 8],
     /// Weapon routines by number (`off_80117D4`): their charge times.
@@ -71,12 +68,6 @@ impl Rules {
     /// The secondary elements a chip family adds.
     pub fn family_elements(&self, family: ChipFamily) -> SecondaryElements {
         self.family_elements[family as usize]
-    }
-
-    /// The status effect of a status byte; None outside the table.
-    pub fn status_effect(&self, status: u8) -> Option<StatusEffect> {
-        let group = (status >> 4).checked_sub(1)?;
-        self.status_effects.get(group as usize).map(|g| g[(status & 0xF) as usize])
     }
 
     /// Ticks to a full charge for a charge routine at a Charge stat. A
@@ -168,7 +159,8 @@ pub enum StatusTimer {
     Other(u8),
 }
 
-/// A status effect: the requests it raises, its duration and its timer.
+/// A status effect (`define.status`): the requests it raises, its duration
+/// and its timer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StatusEffect {
@@ -176,6 +168,16 @@ pub struct StatusEffect {
     pub requests: u32,
     pub duration: u16,
     pub timer: StatusTimer,
+    /// The hit that lands it doesn't flinch or flash its target: applying
+    /// it drops those requests (`sub_801A554`: the freezing statuses,
+    /// the original's bytes 0x50 to 0x55).
+    #[serde(default)]
+    pub cancels_flinch: bool,
+    /// A counter hit that lands it keeps it rather than paralyzing
+    /// (`sub_800EB26`: the bubbling statuses, the original's bytes 0x60 to
+    /// 0x65).
+    #[serde(default)]
+    pub survives_counter: bool,
 }
 
 /// A weapon routine's data.
