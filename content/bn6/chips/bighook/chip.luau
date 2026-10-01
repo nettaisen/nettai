@@ -22,5 +22,7 @@ return define.chip {
     extra_flags = { 8, 16 },
     library = { number = 302, index = 2, sort = 38 },
     slot_in_limit = 1,
+    -- (Its user stays on the field while the hook strikes.)
+    traits = { "user_stays" },
     navi = hook.summon { big = true, spark = sparks.breaking },
 }

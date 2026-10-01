@@ -20,7 +20,8 @@ local roll = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 221, index = 1, sort = 348 },
     slot_in_limit = 1,
-    traits = { "heals" },
+    -- (AntiRecv springs on her heal; she brings her user back herself.)
+    traits = { "heals", "navi_returns_user" },
     navi = navi.summon { rounds = 1, palette = 0 },
 }
 
@@ -40,7 +41,8 @@ local roll2 = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 222, index = 2, sort = 349 },
     slot_in_limit = 1,
-    traits = { "heals" },
+    -- (AntiRecv springs on her heal; she brings her user back herself.)
+    traits = { "heals", "navi_returns_user" },
     navi = navi.summon { rounds = 1, palette = 0 },
 }
 
@@ -60,7 +62,8 @@ local roll3 = define.chip {
     flags = { "dimming", "has_damage", "navi", "library" },
     library = { number = 223, index = 3, sort = 350 },
     slot_in_limit = 1,
-    traits = { "heals" },
+    -- (AntiRecv springs on her heal; she brings her user back herself.)
+    traits = { "heals", "navi_returns_user" },
     navi = navi.summon { rounds = 1, palette = 1 },
 }
 

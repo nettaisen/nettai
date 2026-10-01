@@ -1580,7 +1580,9 @@ export type ChipSpec = {
     -- barrier holds), "no_cut_in" (the other side can't cut in on its
     -- dimming), "element_sword" (a link navi's own chip's family bonus
     -- counts it), "navi_slot" (AntiNavi turns it back though it lacks the
-    -- `navi` flag), "heals" (AntiRecv springs on it).
+    -- `navi` flag), "heals" (AntiRecv springs on it), "user_stays" (a navi
+    -- chip whose user isn't warped off the field), "navi_returns_user" (a
+    -- navi chip whose navi brings the user back itself).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
