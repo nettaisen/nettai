@@ -8,7 +8,8 @@
 -- during a strike, he goes on to the next corner of the delta (up to three
 -- strikes), as long as the panel is free; then he returns home, flashes
 -- the screen with a burst, and leaves. Without an enemy navi ahead, he
--- only marks the air. See docs/engine/chips.md §3.6.36.
+-- only marks the air. See docs/engine/chip-table.md (navi chip
+-- subtype 28).
 
 local attachment = require("../../objects/attachment/attachment")
 local follow_effect = require("../../objects/follow-effect/follow_effect")
@@ -480,18 +481,18 @@ deltaray.kind = define.kind {
     id = "deltaray/navi",
     pool = "actor",
     state = {
-            controller = "object",
-            facing = "u8",
-            home = "u16",
-            target_x = "u8",
-            target_y = "u8",
-            first_x = "u8",
-            first_y = "u8",
-            first_found = "u8",
-            again = "u8",
-            glow = "u8",
-            palette = "u8",
-        },
+        controller = "object",
+        facing = "u8",
+        home = "u16",
+        target_x = "u8",
+        target_y = "u8",
+        first_x = "u8",
+        first_y = "u8",
+        first_found = "u8",
+        again = "u8",
+        glow = "u8",
+        palette = "u8",
+    },
     -- `sub_80C2A78`.
     update = function(me: Object)
         local l = me.lifecycle
