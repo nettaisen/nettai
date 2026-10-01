@@ -3,8 +3,8 @@
 -- sprite drawn with its owner, a pixel in front of it (or behind), that
 -- follows it every tick: its position (and a Z offset), its visibility,
 -- palette, colour shader, flip and blending. The erupting LilBoiler shows
--- its steam with one; the viruses use it too. See
--- docs/engine/shot-chips.md §14.1.
+-- its steam with one, AirRaid's plane its jet flame (chips/airraid); the
+-- viruses use it too. See docs/engine/shot-chips.md §14.1.
 
 local layer = {}
 
@@ -84,9 +84,10 @@ local function tick(me: Object)
     if not s.own_look then
         sprite.color_shader = look.color_shader
     end
-    -- (The owner's final palette and draw priority follow too:
-    -- `sprite_setFinalPalette`, `sub_8002F3E`.)
-    sprite.priority = look.priority
+    -- The owner's final palette (`sprite_setFinalPalette`: its white
+    -- flash) and mosaic (`sub_8002F3E`, `sprite_setMosaicSize`).
+    sprite.white = look.white
+    sprite.mosaic = look.mosaic
     if not s.own_flip then
         me.flip = owner.flip
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))

@@ -143,15 +143,21 @@ pub enum HookRole {
     /// (`sub_8013892`: `sub_801A7CC` with the navi stat, which the game's
     /// program sets to 1, and `sub_80E0D98`).
     FirstBarrier,
+    /// `(obstacle, ice, class)`: what an obstacle encased in ice or a
+    /// bubble becomes (`sub_801813A`'s end: an ice block, `sub_80CFBC4`
+    /// variant 3 in its registry class; or the bubble, attack #0xA3
+    /// `sub_80D99EC`).
+    Encased,
 }
 
 impl HookRole {
-    pub const ALL: [HookRole; 1] = [HookRole::FirstBarrier];
+    pub const ALL: [HookRole; 2] = [HookRole::FirstBarrier, HookRole::Encased];
 
     /// Its name in `rules/roles.luau`'s `hooks`.
     pub fn name(self) -> &'static str {
         match self {
             HookRole::FirstBarrier => "first_barrier",
+            HookRole::Encased => "encased",
         }
     }
 
