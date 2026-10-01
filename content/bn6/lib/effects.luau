@@ -29,4 +29,8 @@ effects.burst = define.effect { sprite = asset.sprite("burst"), anim = 0, palett
 -- burst (objects/bullet's rows 0 to 3) (effect 0x21).
 effects.flash = define.effect { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 }
 
+-- A small splash: something diving into or out of the field (effect 0x02:
+-- the dragons).
+effects.ripple = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
 return effects
