@@ -5,15 +5,17 @@
 -- (the original's first parameter, a row of `byte_80CF934`: the rock cubes
 -- and the ice block), the class of field-object slot it takes (the second:
 -- 0, two a side; 1, one) and how it comes onto the field (the third, its
--- entrance). RockCube and IceCube place one (chips/rockcube); an obstacle
--- encased in ice becomes an ice block; some stages place them when the
--- round starts (the actor lists' entry type 8: the kind's `place`, with
--- the variant the stage names). See docs/engine/field-objects.md.
+-- entrance). RockCube and IceCube place one (./cube), and others use it
+-- too: an obstacle encased in ice becomes an ice block (the encasing's
+-- replacement, objects/encased-bubble), and some stages place them when
+-- the round starts (stages/netbattle: the actor lists' entry type 8, the
+-- kind's `place`, with the variant the stage names). See
+-- docs/engine/field-objects.md.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
-local absorbed_obstacle = require("../absorbed-obstacle/absorbed_obstacle")
+local absorbed_obstacle = require("../../objects/absorbed-obstacle/absorbed_obstacle")
 local collision = require("../../rules/collision")
 local debris = require("./debris")
 local effects = require("../../lib/effects")
@@ -84,7 +86,7 @@ local ICE = define.identity {
 local ROWS: { [number]: RockVariant } = {
     -- A rock cube anything breaks (no chip or stage places it).
     [0] = variant {
-        id = "rock/brittle",
+        id = "rockcube/brittle",
         anim = 1,
         hp = 1,
         element = "null",
@@ -94,7 +96,7 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- RockCube's, and the stages'.
     [1] = variant {
-        id = "rock/cube",
+        id = "rockcube/cube",
         anim = 1,
         hp = 200,
         element = "null",
@@ -104,7 +106,7 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- A hard one (no chip or stage places it).
     [2] = variant {
-        id = "rock/hard",
+        id = "rockcube/hard",
         anim = 1,
         hp = 500,
         element = "null",
@@ -115,7 +117,7 @@ local ROWS: { [number]: RockVariant } = {
     -- The ice block: IceCube's, the stages', and what an obstacle encased
     -- in ice becomes.
     [3] = variant {
-        id = "rock/ice",
+        id = "rockcube/ice",
         anim = 2,
         hp = 200,
         element = "aqua",
@@ -308,7 +310,7 @@ function rock.spawn(x: number, y: number, side: number, spec: RockSpec, damage: 
 end
 
 KIND = define.kind {
-    id = "rock",
+    id = "rockcube/rock",
     pool = "attack",
     state = { variant = "record:rock-variant", entrance = { "rise", "instant", "fall", "placed" } },
     -- `sub_80CF954`.
