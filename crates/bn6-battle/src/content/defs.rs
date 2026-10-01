@@ -34,7 +34,7 @@ use super::{
     ChipData, ChipId, Content, DIMMING_CHIP_ACTION,
     FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
 };
-use super::roles::{ActionRole, HookRole, KindRole, LockonRole, RoleAction, RoleKind, Roles};
+use super::roles::{ActionRole, HookRole, KindRole, LockonRole, RoleAction, RoleKind, Roles, StatusRole};
 use crate::setup::{Form, Navi};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
@@ -183,6 +183,13 @@ pub struct StageDef {
     pub record: super::StageData,
 }
 
+/// A status effect (`define.status`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct StatusDef {
+    pub key: String,
+    pub effect: super::StatusEffect,
+}
+
 /// A Beast Out lock-on mode (`define.lockon`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct LockonDef {
@@ -238,6 +245,8 @@ pub struct Defs {
     pub stages: Vec<StageDef>,
     /// The Beast Out lock-on modes, by handle.
     pub lockons: Vec<LockonDef>,
+    /// The status effects, by handle.
+    pub statuses: Vec<StatusDef>,
     pub records: Vec<RecordDef>,
     /// One-shot effects' and hit sparks' looks content defines, by handle.
     /// Each has the engine's number (`Content::effect`, `Content::spark`):
@@ -386,6 +395,11 @@ impl Defs {
     /// The stage with this key.
     pub fn stage_by_key(&self, key: &str) -> Option<StageHandle> {
         self.stages.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| StageHandle(i as u16))
+    }
+
+    /// The status effect with this key.
+    pub fn status_by_key(&self, key: &str) -> Option<bn6_content_api::StatusHandle> {
+        self.statuses.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| bn6_content_api::StatusHandle(i as u16))
     }
 
     /// The lock-on mode with this key.
@@ -637,6 +651,7 @@ fn read_roles(
     actions: &[ActionDef],
     kinds: &[KindDef],
     lockons: &[LockonDef],
+    statuses: &[StatusDef],
     functions: &mut Functions,
 ) -> Result<Roles, ContentError> {
     let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
@@ -733,7 +748,22 @@ fn read_roles(
                     let h = lockons.iter().position(|l| &l.key == key).expect("a defined lock-on mode");
                     roles.lockons.insert(role, bn6_content_api::LockonHandle(h as u16));
                 }
-                _ => return Err(what(format!("the ruleset has no role group `{group}` (it has actions, kinds, hooks, lockon)"))),
+                "statuses" => {
+                    let names: Vec<&str> = StatusRole::ALL.iter().map(|r| r.name()).collect();
+                    let role = StatusRole::named(&name).ok_or_else(|| {
+                        what(format!("the ruleset has no role statuses.{name} (it has {})", names.join(", ")))
+                    })?;
+                    let Data::Ref(Registry::Status, key) = v else {
+                        return Err(what(format!("statuses.{name} is not a status")));
+                    };
+                    let h = statuses.iter().position(|s| &s.key == key).expect("a defined status");
+                    roles.statuses.insert(role, bn6_content_api::StatusHandle(h as u16));
+                }
+                _ => {
+                    return Err(what(format!(
+                        "the ruleset has no role group `{group}` (it has actions, kinds, hooks, lockon, statuses)"
+                    )));
+                }
             }
         }
     }
@@ -1182,6 +1212,21 @@ impl Defs {
             return Err(ContentError::new("the lock-on modes are not in key order (the define phase sorts each registry)"));
         }
 
+        // The status effects, by key (the definitions' order).
+        let mut statuses = Vec::new();
+        for d in definitions.of(Registry::Status) {
+            let what = |e: String| ContentError::new(format!("{}.luau: status {}: {e}", d.module, d.key));
+            let mut spec = d.spec.clone();
+            if let Data::Map(entries) = &mut spec {
+                entries.retain(|(k, _)| !matches!(k, bn6_content_api::DataKey::Str(s) if s == "id"));
+            }
+            let effect: super::StatusEffect = resolver.read(&spec, &d.key).map_err(what)?;
+            statuses.push(StatusDef { key: d.key.clone(), effect });
+        }
+        if statuses.windows(2).any(|w| w[0].key >= w[1].key) {
+            return Err(ContentError::new("the statuses are not in key order (the define phase sorts each registry)"));
+        }
+
         // Effects, sparks, regions and collision types: each gets the
         // engine's number after the pack data's.
         let look = |d: &Definition| -> Result<super::EffectSprite, ContentError> {
@@ -1308,7 +1353,7 @@ impl Defs {
         // The roles.
         let mut roles = Roles::default();
         if let [d] = definitions.of(Registry::Roles) {
-            roles = read_roles(d, &actions, &kinds, &lockons, &mut functions)?;
+            roles = read_roles(d, &actions, &kinds, &lockons, &statuses, &mut functions)?;
         }
 
         let records: Vec<RecordDef> = definitions
@@ -1364,6 +1409,7 @@ impl Defs {
             forms,
             stages,
             lockons,
+            statuses,
             records,
             effects,
             sparks,

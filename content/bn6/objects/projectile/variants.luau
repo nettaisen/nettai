@@ -1,8 +1,7 @@
 --!strict
 -- The projectile's variants (objects/projectile, the original's
 -- `off_80C4C78` rows), written out; a chip's own variant lives with the
--- chip. The statuses and bug codes stay the game's numbers until statuses
--- are definitions.
+-- chip. The bug codes stay the game's numbers.
 --
 -- Several families fire the first of them. The rest only a navi's stats
 -- name: the buster shot's and the charged shot's programs (NaviStats+0x4D
@@ -13,6 +12,7 @@
 local projectile = require("./projectile")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 local variants = {}
 
@@ -75,19 +75,19 @@ variants.attack_90 = v {
     spark = sparks.shot,
 }
 -- Shots with a status: confusion, blindness, paralysis.
-variants.confusing = v { id = "shot/confusing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x20 }
-variants.blinding = v { id = "shot/blinding", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x30 }
-variants.paralyzing = v { id = "shot/paralyzing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x10 }
+variants.confusing = v { id = "shot/confusing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.confuse_480 }
+variants.blinding = v { id = "shot/blinding", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.blind_480 }
+variants.paralyzing = v { id = "shot/paralyzing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.paralyze_90 }
 -- A shot that flinches, and one with the erasing spark.
 variants.flinching = v { id = "shot/flinching", collision = SHOT, hit_mod = 1, element = "null", spark = sparks.plain }
 variants.erasing = v { id = "shot/erasing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.erase }
 -- Charged shots with a status: confusion, paralysis, blindness, a bubble,
 -- ice.
-variants.charged_confusing = v { id = "shot/charged-confusing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x20 }
-variants.charged_paralyzing = v { id = "shot/charged-paralyzing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x10 }
-variants.charged_blinding = v { id = "shot/charged-blinding", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x30 }
-variants.charged_bubbling = v { id = "shot/charged-bubbling", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x60 }
-variants.charged_freezing = v { id = "shot/charged-freezing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x50 }
+variants.charged_confusing = v { id = "shot/charged-confusing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.confuse_480 }
+variants.charged_paralyzing = v { id = "shot/charged-paralyzing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.paralyze_90 }
+variants.charged_blinding = v { id = "shot/charged-blinding", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.blind_480 }
+variants.charged_bubbling = v { id = "shot/charged-bubbling", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.bubble_150 }
+variants.charged_freezing = v { id = "shot/charged-freezing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.freeze_150 }
 -- Charged shots that change the panel they hit on: cracked, broken,
 -- volcano, poison, grass, ice.
 variants.charged_cracking = v { id = "shot/charged-cracking", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = { effect = "crack" } }

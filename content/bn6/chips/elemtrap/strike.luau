@@ -13,6 +13,7 @@ local effects = require("../../lib/effects")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 export type State = {
     -- The Atk+ / cross bonus (object +0x32), which adds to the damage.
@@ -39,25 +40,25 @@ local LEAVES = define.effect { sprite = asset.sprite("copy-mark"), anim = 5, pal
 -- (`byte_80E3714`; none for the null element), its hit (`byte_80E36EC`:
 -- the hit spark, hit modifier and status; every one a single panel's, an
 -- attack that reaches navis) and the bursts' look (`byte_80E371E`).
-type Strike = { sound: Sound?, spark: Spark, hit_mod: number, status: number, burst: Effect }
+type Strike = { sound: Sound?, spark: Spark, hit_mod: number, status: Status?, burst: Effect }
 local STRIKES: { [number]: Strike } = {
-    [0] = { sound = nil, spark = sparks.breaking, hit_mod = 3, status = 0, burst = effects.shell_burst },
+    [0] = { sound = nil, spark = sparks.breaking, hit_mod = 3, status = nil, burst = effects.shell_burst },
     [1] = {
         sound = asset.sound("target-move"),
         spark = sparks.fire,
         hit_mod = 3,
-        status = 0,
+        status = nil,
         burst = effects.shell_burst,
     },
-    [2] = { sound = asset.sound("spout-ball"), spark = sparks.aqua, hit_mod = 3, status = 0, burst = SPLASH },
+    [2] = { sound = asset.sound("spout-ball"), spark = sparks.aqua, hit_mod = 3, status = nil, burst = SPLASH },
     [3] = {
         sound = asset.sound("beast-over-burst"),
         spark = sparks.elec,
         hit_mod = 1,
-        status = 0x10,
+        status = statuses.paralyze_90,
         burst = LIGHTNING,
     },
-    [4] = { sound = asset.sound("junk-shot"), spark = sparks.wood, hit_mod = 1, status = 0x20, burst = LEAVES },
+    [4] = { sound = asset.sound("junk-shot"), spark = sparks.wood, hit_mod = 1, status = statuses.confuse_480, burst = LEAVES },
 }
 -- The bursts go over the whole field, one every 2 ticks.
 local BURST_INTERVAL = 2
