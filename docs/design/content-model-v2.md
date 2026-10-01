@@ -13,7 +13,8 @@ there without losing a frame of the golden traces. It is the design record: its 
 and, in their "As built" notes, what was built. [content-pack.md](content-pack.md),
 [scripting.md](scripting.md), [core-content-boundary.md](core-content-boundary.md) and
 [content-migration.md](content-migration.md) (how to write content) describe what exists; they were rewritten in
-the last step of the migration (§12, step 13).
+the last step of the migration (§12, step 13). The migration is complete: §14 says where it ended and what stays
+numbered on purpose.
 
 Words: a *definition* is a record made by one of the definers (`define.chip { ... }`); a *key* is a definition's
 name (`"minibomb"`); a *handle* is the dense number a key interns to when content loads; *compat* is the table of
@@ -751,7 +752,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | honey-bee | RskyHny1-3 | chips/rskyhny/ |
 | hyper-burst | H-Burst | chips/h-burst/ |
 | immobilizer | instant effect 9 (no chip yet) | lib/instant/ |
-| invisible | Invisibl, WhiCapsl, instant effect 2, seeking-whirl | objects/invisible |
+| invisible | Invisibl, WhiCapsl, instant effect 2, seeking-whirl | chips/invisibl/controller (as built; the second WhiCapsl requires it) |
 | iron-shell | IronShl1-3, ParaShl | chips/ironshl/ |
 | junk-shot | DustCross Beast's scatter | navis/megaman/forms/dustcross-beast/ |
 | justice-one | JustcOne | chips/justcone/ |
@@ -1222,7 +1223,8 @@ chips/numbrbl, chips/cornfsta and chips/dblhero. What it settled:
 **As built** (phase B, group C5: dimming subtypes 1, 10, 11, 20, 25 and 38, converted from their v1 modules;
 docs/engine/chips.md §3.6.9 and §3.6.10): lib/traps/controller (the trap chips'), chips/elemtrap (its trap and
 strike), chips/timebom (controller, countdown), chips/mine (controller, land_mine), lib/gauge-speed/controller,
-objects/invisible, lib/navi-boost/controller, and objects/panel-bursts. What it settled:
+objects/invisible (since moved to chips/invisibl/controller, which the second WhiCapsl requires),
+lib/navi-boost/controller, and objects/panel-bursts. What it settled:
 
 - **The parameter that picked a table row is the hook's argument**: a trap chip's trap object (`traps.hook(trap?)`,
   a `trap` record whose `set` spawns it: ElemTrap's; the others pass none), a TimeBom's bomb
@@ -1854,6 +1856,10 @@ name is a load error naming the module. The resolved value is a handle into the 
   outside comments in the engine and the crates it runs content through.
 - **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no placeholder
   asset names, once the ratchet reaches zero.
+
+  *As built.* The numeric API was removed rather than counted down; the ratchet reached zero and went (§12,
+  step 13). The checker lints placeholder asset names, and the guards refuse numbered folders and `legacy`
+  markers outright.
 
 ## 7. The Rust side
 
@@ -2827,6 +2833,19 @@ disturbed. Each deletes registration by number's use for its category.
     ratchet and the guards' list; what is left for the second part is `legacy` itself, the ratchet's allowlist
     and the guards' exceptions.
 
+    *As built (part 2).* `legacy` is gone: the global, its declaration in core.d.luau, and the chip definition's
+    own refusal, replaced by the define phase refusing a `legacy` field on any definition. legacy.rs, whose
+    last contents were the rule sections and the reader that turns a definition's values into typed data,
+    became content/sections.rs and content/reader.rs (`SpecReader`: assets as the engine identifies them, a
+    lock-on mode as its handle, a chip as its key; nothing reads as an original number). The ratchet is gone
+    with its count at zero: `tests/ratchet.rs`, `tests/deprecated.txt`, the deprecated-use scanner and
+    `bn6-content-check --deprecated`. The guards have no exception lists: no folder under the content roots
+    named with an original number, no `legacy` marker or field in any module (the `.d.luau` files included);
+    the `no_compat` source guard needed none. Two last original numbers left the engine for the tools:
+    `Pool::type_number` (the `T1`/`T3`/`T4` the traces print) is bn6-compat's `pool_type`, and
+    `ChipFamily::from_number` (a ROM record's family byte) the ROM decoder's in gen-content. Measured after the
+    step, as §8 asks: see §14.
+
 ### Size
 
 | Phase | Steps | Agent-days | Parallelism |
@@ -2861,3 +2880,52 @@ to 12 (by category). **Not mechanical**: steps 3, 4 and 7, and each family's dec
 4. **Animation numbers.** They stay numbers, as indices into their sprite (§6.3). Naming animations would need a
    per-sprite naming table on top of the sprite names, for about 3,000 animations. Recommended: keep numbers with
    named constants in the modules.
+
+## 14. Status
+
+**The migration is complete** (step 13, 2026-10-01). Game data is committed Luau in content/bn6; content names
+content by its definitions and assets by name; the extractor yields only assets. The engine runs on handles: it
+has no chip, kind, action, weapon, navi, form, stage, identity, effect, spark, region, collision type, status or
+lock-on mode by one of the original's numbers, and nothing carries those numbers into it. The guards keep it
+so, with no exceptions: bn6-content-check's `guards` (no folder named with an original number, no `legacy`
+marker or field) and bn6-battle's `no_compat` (compat appears in the engine's code only in comments). The
+golden traces, their sound calls and every recorded chip-lab scenario match every frame, as before the
+migration began.
+
+The open questions (§13) went as recommended: two roots; the repository's tests run BN6's own modules on
+made-up assets (content-migration.md §5.1); the generated names were accepted and are curated as people get to
+them (compat/curation.toml is the review list); animation numbers stay numbers.
+
+**What stays numbered, on purpose:**
+
+- **Animation numbers within a sprite** (§13, question 4): an animation is an index into its sprite, a named
+  constant in the module that plays it.
+- **Compat** (content/bn6/compat, §6): the original's numbers by key, read only by the tools outside the engine:
+  bn6-compat's trace harness and setup codecs (save, folder and link-data import), the extractor's asset names
+  and the verification workspace's `gen-content check`, which keeps every number in it the ROM's. It is edited
+  by hand (§9.3).
+- **The trace harness** (bn6-compat's `trace`, §10): it compares the engine with the original frame by frame,
+  so it maps the engine's identities to the original's numbers (a kind to its object slot, a navi's action to
+  its action number, a pool to its type).
+
+Numbers that remain for other reasons, and are not names of content:
+
+- **The assets' own identities.** The pack identifies a sprite by its category and index and a sound by its
+  song-table entry, as the extractor wrote them; content and the ruleset name assets by name or by role, and
+  the pack's asset index (assets.toml) maps the names.
+- **The game's values**: tick counts, damage, a flags word compared whole, a chip's library number, a stage's
+  battle number; a hit's bug code, which names a NaviStats byte by its offset as the game's does (bug codes have
+  no definition); and the engine's own progress numbers (an object's state, action and phase, the navi
+  framework's states), which the traces compare as the original numbers them.
+
+**Left to others:**
+
+- The frontend's emotion window finds a face in hud.json by compat's form and navi numbers
+  (crates/bn6-frontend/src/hud.rs). Reading the definitions' `mugshot` instead is the presentation work's.
+- Roles nothing fills: `actions.volley`, `kinds.mode9_attack` and `kinds.mode9_actor` (content-migration.md
+  §6). No netbattle reaches them.
+
+**Cost after the step** (§8): `rollback_cost` on soundmod round 1 (frames 10164 to 12164, up to 27 objects), the
+worst case of a 10-frame rollback every rendered frame: a restore 4.4 µs, an advance 5.6 µs, a save 2.6 µs, the
+digest 27.0 µs, 124 µs per rendered frame (0.7% of a 16,667 µs frame), against the 135 µs scripting.md §6.2
+records. No regression; the machine was under heavy load, which only the tail (99th percentile 0.9 ms) shows.

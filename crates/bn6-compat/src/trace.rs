@@ -562,12 +562,12 @@ fn describe(b: &Battle, compat: &Compat, r: bn6_battle::object::ObjectRef, unkno
         (Ok((_, index)), Ok(action)) => (index, action),
         (Err(e), _) | (_, Err(e)) => {
             let kind = &b.content.defs.kind(o.kind).key;
-            return format!("T{} {kind}: {e}", r.pool.type_number());
+            return format!("T{} {kind}: {e}", crate::pool_type(r.pool));
         }
     };
     describe_fields(
         compat,
-        r.pool.type_number(),
+        crate::pool_type(r.pool),
         index,
         o.flags,
         [o.state, action, o.phase, o.phase_init],

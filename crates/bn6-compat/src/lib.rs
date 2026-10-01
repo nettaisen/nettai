@@ -27,6 +27,16 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
 
+/// The original's object type number of a pool (1, 3, 4: the `T1`, `T3`,
+/// `T4` the traces print).
+pub fn pool_type(pool: Pool) -> u8 {
+    match pool {
+        Pool::Actor => 1,
+        Pool::Attack => 3,
+        Pool::Effect => 4,
+    }
+}
+
 /// A chip: its id, and the action and subtype its record names (the
 /// latter two documentation).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]

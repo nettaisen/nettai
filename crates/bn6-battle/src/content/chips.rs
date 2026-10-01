@@ -91,11 +91,6 @@ impl ChipFamily {
         ChipFamily::ProgramAdvance,
         ChipFamily::Special,
     ];
-
-    /// The family with the original's number.
-    pub fn from_number(n: u8) -> Option<ChipFamily> {
-        ChipFamily::ALL.get(n as usize).copied()
-    }
 }
 
 /// The chip record's flags. In a content file, a list of names.

@@ -15,15 +15,6 @@ pub enum Pool {
 impl Pool {
     pub const ALL: [Pool; 3] = [Pool::Actor, Pool::Attack, Pool::Effect];
 
-    /// The game's type number (1, 3, 4).
-    pub fn type_number(self) -> u8 {
-        match self {
-            Pool::Actor => 1,
-            Pool::Attack => 3,
-            Pool::Effect => 4,
-        }
-    }
-
     /// The pool's name in content ("actor", "attack", "effect").
     pub fn name(self) -> &'static str {
         match self {
