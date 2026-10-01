@@ -495,6 +495,10 @@ impl UserData for Object {
             let mode = u8_arg(mode, "damage mode")?;
             with(|api, _| Ok(api.take_damage(this.0, mode)))
         });
+        methods.add_method("name_look_is", |_, this, sprite: LuaValue| {
+            let sprite = sprite_id(sprite, None)?;
+            with(|api, _| api.name_look_is(this.0, sprite).map_err(api_error))
+        });
         methods.add_method("raise_barrier", |_, this, t: mlua::Table| {
             let behavior: mlua::LuaString = t.raw_get("behavior")?;
             let behavior = named(&behavior, "barrier behavior", |s| {
