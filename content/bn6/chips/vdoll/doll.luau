@@ -176,7 +176,7 @@ local function leave(me: Object)
     local p = me.pos
     battle.effect(Vec3.new(p.x, p.y, int.i32(p.z + CURSE_PUFF_UP)), effects.puff)
     local controller = curse.spawn(me, int.u32(CURSE_HIT_PARAM + s.damage_taken))
-    dimming.start(me.alliance, true, controller, me)
+    dimming.start(me.alliance, true, controller, me, curse.telop)
     obstacle.release_tracking(me)
 end
 

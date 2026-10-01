@@ -11,7 +11,7 @@
 
 use std::fmt;
 
-use crate::registry::Registry;
+use crate::registry::{ChipHandle, Registry};
 use crate::state::{ContentState, FieldType, StateId, TypeError, Value};
 use crate::types::{ObjectRef, PanelPos, Pool, SpriteId, Vec3};
 
@@ -1449,7 +1449,17 @@ pub trait CoreApi {
     /// `sub_800BF16`: `side` starts a dimming with `controller` (None: its
     /// spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     /// in on it. For controllers that aren't a chip's (a trap springing).
-    fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef);
+    /// `telop`: the chip its telop names and the bonus shown with it (what
+    /// the controller's spawn stored at its +0x30 and +0x32; presentation
+    /// only).
+    fn start_dimming(
+        &mut self,
+        side: u8,
+        no_cut_in: bool,
+        controller: Option<ObjectRef>,
+        user: ObjectRef,
+        telop: Option<(ChipHandle, u16)>,
+    );
     /// `sub_80E1352`: a navi chip's user vanishes while its navi acts.
     fn hide_user(&mut self, user: ObjectRef);
     /// `sub_80E13DC`: and comes back.

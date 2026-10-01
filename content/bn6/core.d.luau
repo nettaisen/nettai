@@ -1025,6 +1025,10 @@ declare field: {
     blink: (x: number, y: number, kind: PanelType, side: number) -> (),
 }
 
+-- What the telop of a dimming content starts itself names (`dimming.start`):
+-- a chip, and the Atk+ / cross bonus shown after its damage (0 if nil).
+export type DimmingTelop = { chip: Chip, bonus: number? }
+
 -- The dimming service: the steps of a dimming chip's controller, which its
 -- update calls in its routine's order.
 declare dimming: {
@@ -1045,7 +1049,9 @@ declare dimming: {
     -- `sub_800BF16`: `side` starts a dimming with `controller` (nil if its
     -- spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     -- in. For controllers no chip action registers (a trap springing).
-    start: (side: number, no_cut_in: boolean, controller: Object?, user: Object) -> (),
+    -- `telop`: what the controller's telop names (the chip and bonus its
+    -- spawn stores); without one the telop names no chip.
+    start: (side: number, no_cut_in: boolean, controller: Object?, user: Object, telop: DimmingTelop?) -> (),
     -- `object_timefreezeEnd` (the controller's destroy state).
     finish: (controller: Object) -> (),
     -- `sub_80E1352` / `sub_80E13DC`: a navi chip's user vanishes and comes

@@ -29,7 +29,7 @@ use bn6_content_api::{
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use bn6_content_api::ObjectRef;
-use bn6_content_api::{CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
+use bn6_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
 use crate::Bound;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
@@ -1556,10 +1556,23 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         lua,
         t,
         "start",
-        |_, (side, no_cut_in, controller, user): (LuaValue, bool, LuaValue, mlua::UserDataRef<Object>)| {
+        |_, (side, no_cut_in, controller, user, telop): (LuaValue, bool, LuaValue, mlua::UserDataRef<Object>, Option<mlua::Table>)| {
             let side = u8_arg(side, "side")? & 1;
             let controller = object_arg(&controller, "controller")?;
-            with(|api, _| Ok(api.start_dimming(side, no_cut_in, controller, user.0)))
+            // What the telop names: `{ chip = <chip>, bonus = n? }`.
+            let telop = match telop {
+                None => None,
+                Some(t) => {
+                    let chip: LuaValue = t.get("chip")?;
+                    let chip = ChipHandle(bound(|b| def_arg(b, &chip, Registry::Chip, "dimming.start's telop chip"))?);
+                    let bonus = match t.get::<LuaValue>("bonus")? {
+                        LuaValue::Nil => 0,
+                        v => u16_arg(v, "dimming.start's telop bonus")?,
+                    };
+                    Some((chip, bonus))
+                }
+            };
+            with(|api, _| Ok(api.start_dimming(side, no_cut_in, controller, user.0, telop)))
         }
     );
     lib_fn!(lua, t, "hide_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_user(user.0))));

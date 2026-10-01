@@ -1786,7 +1786,19 @@ impl CoreApi for Battle {
         }
     }
 
-    fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef) {
+    fn start_dimming(
+        &mut self,
+        side: u8,
+        no_cut_in: bool,
+        controller: Option<ObjectRef>,
+        user: ObjectRef,
+        telop: Option<(ChipHandle, u16)>,
+    ) {
+        // What its telop shows (the controller's +0x30 and +0x32, which the
+        // controller's own spawn stored).
+        if let (Some(c), Some((chip, bonus))) = (controller, telop) {
+            self.objects.get_mut(c).telop_chip = Some(crate::hud::TelopChip { chip: Some(chip), bonus, damage: None });
+        }
         Battle::start_dimming(self, side & 1, no_cut_in, controller, user);
     }
 
