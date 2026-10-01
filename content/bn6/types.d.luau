@@ -265,14 +265,14 @@ export type SlashSpec = {
 -- and a second one unseen under it (CrosSwrd's); the blade the navi
 -- raises (none: it swings its arm alone, without one); the swing's sound;
 -- the slash that follows it (DblDream's second); and the lock-on mode the
--- Beast Out rush takes for it (a number until rules/lockon.luau).
+-- Beast Out rush takes for it (rules/lockon).
 export type ChargedSlash = {
     wave: SwordWaveVariant,
     hidden_wave: SwordWaveVariant?,
     blade: AttachmentLook?,
     sound: Sound,
     again: ChargedSlash?,
-    lockon: number,
+    lockon: Lockon,
 }
 
 -- A machine sword's strike (lib/swords/strike, the original's action 0x49):

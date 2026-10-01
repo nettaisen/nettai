@@ -4,6 +4,7 @@
 -- battle it only dims (docs/engine/dimming-chip-effects.md §14).
 
 local controller = require("./controller")
+local lockon = require("../../rules/lockon")
 
 return define.chip {
     id = "lifesync",
@@ -14,7 +15,7 @@ return define.chip {
     rarity = 1, mb = 12, damage = 0, hit_param = 0, lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     extra_flags = { "free_slot_in" },
-    beast = { lockon = 4 },
+    beast = { lockon = lockon.firebrn1 },
     library = { number = 195, index = 195, sort = 254 },
     slot_in_limit = 3,
     dimming = controller.hook,
