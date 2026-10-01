@@ -247,9 +247,10 @@ three and five of the re-dealt chips: the second and third re-deals only match w
 `navicust/chpshufl-redeal-tags-dealt` (the pair in the first hand is taken apart; a chip picked before the re-deal
 stays) and `navicust/chpshufl-redeal-shaken` (the second screen, after the other side's Beast Out shook both cameras
 for 60 ticks). The console's modeled RNG1 keeps step with the recordings' throughout (it leaves them for a frame at a
-time where the original draws after the trace's sample: the emotion window's flicker, the re-deal's shows). The
-custom screens' check on their own (§7) doesn't model the draws outside the screens, so it can't match a re-deal's
-hand on a navi whose emotion window flickers; the whole battle's replay does. Unit tests: custom/tests.rs.
+time, or for as long as a camera shake lasts, where the trace's sample already has the next frame's draws: the
+emotion window's flicker, the re-deal's shows, the shake). The custom screens' check on their own (§7) doesn't
+simulate the draws outside the screens; it takes the recording console's RNG1 from the trace on every frame, so
+all twelve player-screens of the three scenarios match there too. Unit tests: custom/tests.rs.
 
 ## 4. Beast Out and Crosses
 
@@ -382,7 +383,8 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
   (the fight isn't simulated; each screen reads its navi's stats from the trace). With both consoles' folders all
   40 player-screens match: the OK tick, the hand as installed, the transformation, the status bit's clearing, and
   the tick the fight resumes. The check reads emotions from the mood only, so a tired navi isn't seen, and
-  doesn't check damage from formulas.
+  doesn't check damage from formulas. The recording console's RNG1 (a re-deal's) is the trace's, frame by frame;
+  the other console's only has the draws the screens and the main loop make.
 - The recorded traces carry only the recording console's folder. `folders`, `joypad_phases` and `game_versions`
   in setup lines come from recording both consoles.
 
