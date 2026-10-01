@@ -49,13 +49,6 @@ pub const WORM: ChipId = 0x47;
 pub const FLAME_HOOK: ChipId = 0x48;
 pub const JUSTICE: ChipId = 0x49;
 pub const GOLEM: ChipId = 0x4A;
-/// Standard chip actions (ids 0x100 and up): a CrakShot (action 0x22,
-/// subtype 0: the panel ahead).
-pub const CRACK: ChipId = 0x100;
-/// A Reflector (action 0x2B, subtype 0): guards for 30 ticks.
-pub const MIRROR: ChipId = 0x101;
-/// A recovery chip (action 0x20): heals 40 HP.
-pub const MEND: ChipId = 0x102;
 /// The thrown chips (action 0x12): a bomb (subtype 0), a seed that
 /// poisons panels (subtype 12), a flash bomb (subtype 14) and a bug bomb
 /// (subtype 7).
@@ -244,6 +237,12 @@ pub const BUSTER_UP: &str = "busterup";
 pub const ATTACK_10: &str = "atk-10";
 pub const NAVI_20: &str = "navi-20";
 pub const TICK_SHOT: &str = "test/tick-shot";
+/// BN6's CrakShot, Rflectr1 and Recov50 (chips/crakshot, chips/rflectr,
+/// chips/recov): standard chips content defines, which dig up the panel
+/// ahead, guard and reflect, and heal.
+pub const CRAK_SHOT: &str = "crakshot";
+pub const REFLECTOR_1: &str = "rflectr1";
+pub const RECOV_50: &str = "recov50";
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
 /// definitions the engine's tests run.
@@ -390,6 +389,17 @@ fn assets() -> bn6_content_api::AssetNames {
         ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
         ("erase-beam", sprite(0x10, 0x51)),
+        ("crack-shot", sprite(0x0C, 0x33)),
+        ("dust", sprite(0x14, 0x0E)),
+        ("reflector-shield", sprite(0x0C, 0x1B)),
+        ("reflector-shield-2", sprite(0x04, 0x00)),
+        ("megaman-navi", sprite(0x08, 0x00)),
+        ("drill-arm", sprite(0x0C, 0x58)),
+        ("bow", sprite(0x0C, 0x2A)),
+        ("beast-shot", sprite(0x0C, 0x21)),
+        ("burner", sprite(0x0C, 0x29)),
+        ("burner-2", sprite(0x0C, 0x1F)),
+        ("flame", sprite(0x0C, 0x0E)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -417,6 +427,12 @@ fn assets() -> bn6_content_api::AssetNames {
         ("junk-shot", 0xFF),
         ("gundels1", 0xF8),
         ("bonus", 0x157),
+        ("crack-shot", 0xDA),
+        ("bblstar1", 0xD8),
+        ("follow-effect", 0xA0),
+        ("wave", 0xC5),
+        ("twang", 0x18A),
+        ("roar", 0x12B),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -499,10 +515,16 @@ pub fn scripts() -> Scripts {
                 ("objects/gust/gust", "objects/gust/gust"),
                 ("objects/sword-wave/sword_wave", "objects/sword-wave/sword_wave"),
                 ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
-                ("objects/reflector-shield/reflector_shield", "objects/reflector-shield/reflector_shield"),
-                ("objects/reflected-shot/reflected_shot", "objects/reflected-shot/reflected_shot"),
-                ("chips/008-mirror/chip", "chips/083-rflectr1/chip"),
-                ("chips/009-mend/chip", "chips/09a-recov10/chip"),
+                // The Reflectors, the recovery chips and HeatCross's charged
+                // shot's burner (content model v2).
+                ("chips/rflectr/shield", "chips/rflectr/shield"),
+                ("chips/rflectr/shot", "chips/rflectr/shot"),
+                ("chips/rflectr/guard", "chips/rflectr/guard"),
+                ("chips/rflectr/chips", "chips/rflectr/chips"),
+                ("chips/recov/heal", "chips/recov/heal"),
+                ("chips/recov/chips", "chips/recov/chips"),
+                ("lib/burner/burn", "lib/burner/burn"),
+                ("lib/burner/flame", "lib/burner/flame"),
                 ("lib/regions", "lib/regions"),
                 ("lib/effects", "lib/effects"),
                 ("lib/sparks", "lib/sparks"),
@@ -582,8 +604,8 @@ pub fn scripts() -> Scripts {
                 ("objects/countdown-bomb/countdown_bomb", "objects/countdown-bomb/countdown_bomb"),
                 ("objects/mine/mine", "objects/mine/mine"),
                 ("objects/land-mine/land_mine", "objects/land-mine/land_mine"),
-                ("chips/059-crakshot/chip", "chips/059-crakshot/chip"),
-                ("objects/crack-shot/crack_shot", "objects/crack-shot/crack_shot"),
+                ("chips/crakshot/shot", "chips/crakshot/shot"),
+                ("chips/crakshot/chips", "chips/crakshot/chips"),
                 ("objects/elmnt-man/elmnt_man", "objects/elmnt-man/elmnt_man"),
                 ("objects/meteor/meteor", "objects/meteor/meteor"),
                 ("objects/elmnt-ice/elmnt_ice", "objects/elmnt-ice/elmnt_ice"),
@@ -706,12 +728,9 @@ fn kinds() -> Vec<ObjectKind> {
         kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
-        kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
         kind("gust", Pool::Attack, 0x49, "objects/gust/gust"),
         kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
-        kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
-        kind("reflected-shot", Pool::Attack, 0x2F, "objects/reflected-shot/reflected_shot"),
         kind("honey-bee", Pool::Attack, 0x74, "objects/honey-bee/honey_bee"),
         kind("dragon-head", Pool::Attack, 0xC9, "objects/dragon-head/dragon_head"),
         kind("dragon-body", Pool::Attack, 0xC8, "objects/dragon-body/dragon_body"),
@@ -732,7 +751,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("countdown-bomb", Pool::Attack, 0x4B, "objects/countdown-bomb/countdown_bomb"),
         kind("mine", Pool::Effect, 0x29, "objects/mine/mine"),
         kind("land-mine", Pool::Attack, 0x4C, "objects/land-mine/land_mine"),
-        kind("crack-shot", Pool::Attack, 0x33, "objects/crack-shot/crack_shot"),
         kind("elmnt-man", Pool::Actor, 0x10, "objects/elmnt-man/elmnt_man"),
         kind("meteor", Pool::Attack, 0x8D, "objects/meteor/meteor"),
         kind("elmnt-ice", Pool::Attack, 0x8E, "objects/elmnt-ice/elmnt_ice"),
@@ -761,7 +779,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("sun-moon", Pool::Actor, 0x24, "objects/sun-moon/sun_moon"),
         kind("sun-meteor", Pool::Attack, 0xB5, "objects/sun-meteor/sun_meteor"),
         kind("moon-beam", Pool::Attack, 0xB6, "objects/moon-beam/moon_beam"),
-        kind("drill", Pool::Attack, 0x71, "objects/drill/drill"),
         kind("thunder-column", Pool::Attack, 0x8B, "objects/thunder-column/thunder_column"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
@@ -891,15 +908,6 @@ fn named_chips() -> Vec<ChipData> {
             script: Some("chips/0ec-eraseman/chip".into()),
             ..chip(ERASER, "Eraser", 0x1B, 5)
         },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 20,
-            params: [30, 0, 0, 0],
-            damage: 50,
-            script: Some("chips/008-mirror/chip".into()),
-            ..chip(MIRROR, "Mirror", 0x2B, 0)
-        },
-        ChipData { recovery: Some(40), script: Some("chips/009-mend/chip".into()), ..chip(MEND, "Mend", 0x20, 1) },
         thrown(BOMB, "Bomb", 0, [0, 0, 0, 0], 50),
         thrown(SEED, "Seed", 12, [0, 0, 0, 0], 10),
         thrown(FLASH, "Flash", 14, [1, 0, 0, 0], 40),
@@ -982,13 +990,6 @@ fn named_chips() -> Vec<ChipData> {
             damage: 60,
             script: Some("objects/mine/mine".into()),
             ..chip(MINE, "Mine", 0x15, 11)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 30,
-            damage: 40,
-            script: Some("chips/059-crakshot/chip".into()),
-            ..chip(CRACK, "Crack", 0x22, 0)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),

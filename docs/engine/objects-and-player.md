@@ -1777,17 +1777,19 @@ accumulating, so the shot rises a pixel per panel. **Unverified**.
 
 #### B8a. Flying shot: T3 index 0xB, `sub_80C60A8`
 
-The pack's `objects/flying-shot` (`flying_shot.luau`, spawned with `flying_shot.spawn`, `sub_80C6248`: r1..r3 the
-position, r4 the parameters, r6 the damage word, r7 its ExtraVars word). Used by the buster's throw (§B6, kind 6),
+The pack's `objects/flying-shot` (`flying_shot.luau`, the `flying-shot` kind, spawned with `flying_shot.spawn`,
+`sub_80C6248`: r1..r3 the position, r4 the parameters, r6 the damage word, r7 its ExtraVars word). Used by the buster's throw (§B6, kind 6),
 the Beast forms' buster (`sub_80EC710`), TrnArrw (`sub_80ECF00`) and navi AI (`sub_8108EE6`). Its kinds are
-`byte_80C6038`'s 16-byte records (7, up to the code; `objects/flying-shot/object.toml`, `data.objects.flying_shots`):
+`byte_80C6038`'s 16-byte records (7, up to the code; the variant records `flying_shot.variants`, the
+port's names for kinds 0 to 6: `wave`, `heavy_wave`, `arrow`, `beast_shot`, `slow_beast_shot`, `volley_shot`,
+`thrown`; the parameters are the spawn's options, `wait`, `falls` and `palette`):
 collision self type, target type, hit modifier (0..2); element byte (3); hit effect (4); sprite category, index,
 animation (5..7); highlight (8); range (9); shadow (0xA); status byte (0xB); speed (0xC, u32 16.16). The routine
 adds by kind: 6 is a thrown obstacle, 2 sparks over its panel and sounds as it sets off, 5 leaves an effect.
 
 **Init** (`sub_80C60CC`): cfg into RelatedObject1Ptr (the owner forgotten); load the sprite (kind 6: category and
-index from the ExtraVars word's bytes 2 and 3; the port uses the obstacle's, `data.objects.absorbed_sprites` by the
-word's low nibble), shadow by cfg[0xA]; CurAnim = cfg[7] (kind 6: bits 4..7 of the word), CurAnimCopy = 0xFF,
+index from the ExtraVars word's bytes 2 and 3; the port uses the obstacle's, objects/absorbed-obstacle's
+`sprite` by the word's low nibble), shadow by cfg[0xA]; CurAnim = cfg[7] (kind 6: bits 4..7 of the word), CurAnimCopy = 0xFF,
 visible; flip from the object, except kind 6 with sprite index 0x23 (`sub_8002EAC` marks its parts to keep their
 own facing; it is drawn unflipped); palette = Param4; Element = cfg[3]; Param4 = cfg[9] (the range); panel from
 the coordinates; X velocity = front · speed; collision set up from cfg[0..2], hit effect cfg[4], status base cfg[0xB]

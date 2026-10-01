@@ -1,35 +1,22 @@
 --!strict
--- A Reflector's counterattack (attack object #0x2F, `sub_80C9BC4`): a
--- wave that hits one panel at a time. Each segment stands on its panel
--- with its collision on, and after 2 ticks starts the next segment one
--- panel ahead, until one lands off the field; it stops hitting once it
--- hits something, and goes when its animation ends. See chips.md §3.3.
+-- A Reflector's counterattack (the original's attack object #0x2F,
+-- `sub_80C9BC4`): a wave that hits one panel at a time. Each segment stands
+-- on its panel with its collision on, and after 2 ticks starts the next
+-- segment one panel ahead, until one lands off the field; it stops
+-- hitting once it hits something, and goes when its animation ends. See
+-- chips.md §3.3.
 
-local reflected_shot = {}
+local collision = require("../../rules/collision")
+local regions = require("../../lib/regions")
 
-local SPRITE = "14-04"
+local shot = {}
+
+local SPRITE = asset.sprite("reflected-shot")
 -- Ticks before the next segment starts.
 local SPREAD_TICKS = 2
 
 -- The actions: waiting to spread, then playing out.
 local SPREADING, FADING = 0, 4
-
--- `sub_80C9CDA`: a segment on (x, y) at height `z` for `spawner`'s side,
--- dealing the damage word `damage`. Its spawn position is the spawner's
--- registers (panel y, garbage, z) and its parameters theirs too; its init
--- places it on its panel and reads neither.
-function reflected_shot.spawn(spawner: Object, x: number, y: number, z: number, damage: number): Object?
-    local o = battle.spawn_kind("reflected-shot", Vec3.new(y, 0, z))
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = 0
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = spawner.alliance, spawner.flip
-        o.related1 = spawner
-    end
-    return o
-end
 
 -- `sub_80C9CA2`: after its wait, start the next segment ahead.
 local function spread(me: Object)
@@ -39,14 +26,14 @@ local function spread(me: Object)
         return
     end
     local damage = int.u32(me.damage + me.stamina * 0x10000)
-    reflected_shot.spawn(me, me.panel_x + me.facing, me.panel_y, me.pos.z, damage)
+    shot.spawn(me, me.panel_x + me.facing, me.panel_y, me.pos.z, damage)
     me.action = FADING
 end
 
 -- `sub_80C9CC4`: gone once its animation ends.
 local function fade(me: Object)
     if bit32.btest(me.sprite.frame_flags, 0x80) then
-        me.collision.region = 0
+        me.collision:set_region(nil)
         me:set_lifecycle("destroy")
     end
 end
@@ -56,12 +43,12 @@ local function tick(me: Object)
     me.collision:remove()
     me:hit_spark()
     if battle.over() then
-        me.collision.region = 0
+        me.collision:set_region(nil)
         me:set_lifecycle("destroy")
         return
     end
     if me.collision.hit_flags ~= 0 then
-        me.collision.region = 0
+        me.collision:set_region(nil)
     end
     local a = me.action
     if a == SPREADING then
@@ -97,28 +84,47 @@ local function init(me: Object): boolean
         me:free()
         return false
     end
-    me:setup_collision(4, 5, 0)
-    me.collision.region = 1
-    me.collision.hit_effect = 0xFF
+    me:setup_collision(collision.attack, collision.hits_navis, 0)
+    me.collision:set_region(regions.single)
+    me.collision:set_hit_effect(nil)
     me.collision:present()
     me:set_lifecycle("update")
     return true
 end
 
--- `sub_80C9BC4`: the state, then the sprite.
-function reflected_shot.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        if not init(me) then
+shot.kind = define.kind {
+    id = "rflectr/shot",
+    pool = "attack",
+    -- `sub_80C9BC4`: the state, then the sprite.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            if not init(me) then
+                return
+            end
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
             return
         end
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
-        return
+        me:update_sprite()
+    end,
+}
+
+-- `sub_80C9CDA`: a segment on (x, y) at height `z` for `spawner`'s side,
+-- dealing the damage word `damage`. Its spawn position is the spawner's
+-- registers (panel y, garbage, z); its init places it on its panel.
+function shot.spawn(spawner: Object, x: number, y: number, z: number, damage: number): Object?
+    local o = battle.spawn(shot.kind, Vec3.new(y, 0, z))
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = 0
+        o:set_damage_word(damage)
+        o.alliance, o.flip = spawner.alliance, spawner.flip
+        o.related1 = spawner
     end
-    me:update_sprite()
+    return o
 end
 
-return reflected_shot
+return shot
