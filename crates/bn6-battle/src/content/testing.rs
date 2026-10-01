@@ -842,9 +842,8 @@ pub fn scripts() -> Scripts {
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
                 // MegaMan's buster, charged and blank shots and HeatCross's
-                // charged shot are weapon definitions (their routine numbers
-                // their `legacy` markers). (BN6's rules/roles isn't here: the
-                // test pack fills the roles.)
+                // charged shot are weapon definitions. (BN6's rules/roles
+                // isn't here: the test pack fills the roles.)
                 ("navis/megaman/weapons/blank-shot/weapon", "navis/megaman/weapons/blank-shot/weapon"),
                 ("navis/megaman/weapons/charged-shot/weapon", "navis/megaman/weapons/charged-shot/weapon"),
                 ("navis/megaman/weapons/buster/weapon", "navis/megaman/weapons/buster/weapon"),
@@ -855,8 +854,8 @@ pub fn scripts() -> Scripts {
                 ("navis/megaman/forms/heatcross/charge", "navis/megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
-                // The form weapons content defines (their routine numbers
-                // their `legacy` markers), with the kinds only they spawn.
+                // The form weapons content defines, with the kinds only they
+                // spawn.
                 (
                     "navis/megaman/weapons/falzar-beast-buster/weapon",
                     "navis/megaman/weapons/falzar-beast-buster/weapon",
@@ -1043,7 +1042,7 @@ pub fn scripts() -> Scripts {
                 ("chips/elemswrd/chip", "chips/elemswrd/chip"),
                 ("chips/assnswrd/chip", "chips/assnswrd/chip"),
                 // Invisibl's hook, which the veil composes.
-                ("objects/invisible/invisible", "objects/invisible/invisible"),
+                ("chips/invisibl/controller", "chips/invisibl/controller"),
                 ("chips/invisibl/chip", "chips/invisibl/chip"),
                 ("chips/whicapsl-invisible/chip", "chips/whicapsl-invisible/chip"),
                 // The field objects (content model v2): the rock with its
