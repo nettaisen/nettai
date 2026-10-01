@@ -22,6 +22,7 @@ end
 return define.chip {
     id = "fanfare",
     name = "Fanfare",
+    description = "Take no\ndmage for\na while",
     codes = { "P", "S", "Z", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,

@@ -31,9 +31,9 @@ end
 charge.weapon = define.weapon {
     id = "eleccross/charge",
     name = "Elec charge",
-    -- The charge table's row 0xB; Charge 5 reads on into row 0xC's first
-    -- entry, as the original's table does.
-    charge_ticks = { 90, 80, 70, 65, 60, 60 },
+    -- The charge table's row 0xB, by Charge 0 to 7: past 4 it reads on
+    -- into the next routine's row, as the original's table does.
+    charge_ticks = { 90, 80, 70, 65, 60, 60, 50, 40 },
     setup = setup,
     -- (Transitional: the routine number the pack's forms name it by.)
     legacy = { routines = { 0x0B } },

@@ -207,4 +207,102 @@ collision.breaking_drain = define.collision {
     row_offset = 0x180,
 }
 
+-- The rest of the original's rows (gen-content).
+-- Row 0x03.
+collision.collision_03 = define.collision { id = "collision-03", side0 = 0x51800100, side1 = 0xA2800100, row_offset = 0x18 }
+-- Row 0x09.
+collision.collision_09 = define.collision { id = "collision-09", side0 = 0x80000180, side1 = 0x40000180, row_offset = 0x48 }
+-- Row 0x11.
+collision.collision_11 = define.collision { id = "collision-11", side0 = 0x80002480, side1 = 0x40002480, row_offset = 0x88 }
+-- Row 0x1A.
+collision.collision_1a = define.collision { id = "collision-1a", side0 = 0x8000009E, side1 = 0x4000009E, row_offset = 0xD0 }
+-- Row 0x1B.
+collision.collision_1b = define.collision { id = "collision-1b", side0 = 0x800040A0, side1 = 0x400040A0, row_offset = 0xD8 }
+-- Row 0x1D.
+collision.collision_1d = define.collision { id = "collision-1d", side0 = 0x8000009C, side1 = 0x4000009C, row_offset = 0xE8 }
+-- Row 0x1F.
+collision.collision_1f = define.collision { id = "collision-1f", side0 = 0x80040082, side1 = 0x40040082, row_offset = 0xF8 }
+-- Row 0x20.
+collision.collision_20 = define.collision { id = "collision-20", side0 = 0x80000888, side1 = 0x40000888, row_offset = 0x100 }
+-- Row 0x21.
+collision.collision_21 = define.collision { id = "collision-21", side0 = 0x8004008A, side1 = 0x4004008A, row_offset = 0x108 }
+-- Row 0x22.
+collision.collision_22 = define.collision { id = "collision-22", side0 = 0xC004808E, side1 = 0xC004808E, row_offset = 0x110 }
+-- Row 0x23.
+collision.collision_23 = define.collision { id = "collision-23", side0 = 0x00080000, side1 = 0x00080000, row_offset = 0x118 }
+-- Row 0x24.
+collision.collision_24 = define.collision { id = "collision-24", side0 = 0x80000C88, side1 = 0x40000C88, row_offset = 0x120 }
+-- Row 0x26.
+collision.collision_26 = define.collision { id = "collision-26", side0 = 0xC0040088, side1 = 0xC0040088, row_offset = 0x130 }
+-- Row 0x27.
+collision.collision_27 = define.collision { id = "collision-27", side0 = 0xC0048082, side1 = 0xC0048082, row_offset = 0x138 }
+-- Row 0x28.
+collision.collision_28 = define.collision { id = "collision-28", side0 = 0x80002086, side1 = 0x40002086, row_offset = 0x140 }
+-- Row 0x29.
+collision.collision_29 = define.collision { id = "collision-29", side0 = 0x02010082, side1 = 0x01010082, row_offset = 0x148 }
+-- Row 0x2D.
+collision.collision_2d = define.collision { id = "collision-2d", side0 = 0x8000408A, side1 = 0x4000408A, row_offset = 0x168 }
+-- Row 0x2E.
+collision.collision_2e = define.collision { id = "collision-2e", side0 = 0x80004086, side1 = 0x40004086, row_offset = 0x170 }
+-- Row 0x2F.
+collision.collision_2f = define.collision { id = "collision-2f", side0 = 0x80004088, side1 = 0x40004088, row_offset = 0x178 }
+-- Row 0x31.
+collision.collision_31 = define.collision { id = "collision-31", side0 = 0x80005084, side1 = 0x40005084, row_offset = 0x188 }
+-- Row 0x35.
+collision.collision_35 = define.collision { id = "collision-35", side0 = 0x08410082, side1 = 0x04210082, row_offset = 0x1A8 }
+-- Row 0x36.
+collision.collision_36 = define.collision { id = "collision-36", side0 = 0x80004082, side1 = 0x40004082, row_offset = 0x1B0 }
+-- Row 0x37.
+collision.collision_37 = define.collision { id = "collision-37", side0 = 0x0201008A, side1 = 0x0101008A, row_offset = 0x1B8 }
+-- Row 0x38.
+collision.collision_38 = define.collision { id = "collision-38", side0 = 0x0F800000, side1 = 0x0F800000, row_offset = 0x1C0 }
+-- Row 0x39.
+collision.collision_39 = define.collision { id = "collision-39", side0 = 0x08510082, side1 = 0x04310082, row_offset = 0x1C8 }
+-- Row 0x3A.
+collision.collision_3a = define.collision { id = "collision-3a", side0 = 0x0841008A, side1 = 0x0421008A, row_offset = 0x1D0 }
+-- Row 0x3B.
+collision.collision_3b = define.collision { id = "collision-3b", side0 = 0x20010082, side1 = 0x10010082, row_offset = 0x1D8 }
+-- Row 0x3C.
+collision.collision_3c = define.collision { id = "collision-3c", side0 = 0x8000408A, side1 = 0x4000408A, row_offset = 0x1E0 }
+-- Row 0x3E.
+collision.collision_3e = define.collision { id = "collision-3e", side0 = 0x02110080, side1 = 0x01110080, row_offset = 0x1F0 }
+-- Row 0x3F.
+collision.collision_3f = define.collision { id = "collision-3f", side0 = 0x0851008A, side1 = 0x0431008A, row_offset = 0x1F8 }
+-- Row 0x40.
+collision.collision_40 = define.collision { id = "collision-40", side0 = 0x20012080, side1 = 0x10012080, row_offset = 0x200 }
+-- Row 0x41.
+collision.collision_41 = define.collision { id = "collision-41", side0 = 0x04000000, side1 = 0x08000000, row_offset = 0x208 }
+-- Row 0x42.
+collision.collision_42 = define.collision { id = "collision-42", side0 = 0x80002090, side1 = 0x40002090, row_offset = 0x210 }
+-- Row 0x43.
+collision.collision_43 = define.collision { id = "collision-43", side0 = 0x00040080, side1 = 0x00040080, row_offset = 0x218 }
+-- Row 0x44.
+collision.collision_44 = define.collision { id = "collision-44", side0 = 0x20050080, side1 = 0x10050080, row_offset = 0x220 }
+-- Row 0x45.
+collision.collision_45 = define.collision { id = "collision-45", side0 = 0x8000208A, side1 = 0x4000208A, row_offset = 0x228 }
+-- Row 0x46.
+collision.collision_46 = define.collision { id = "collision-46", side0 = 0x800140A0, side1 = 0x400140A0, row_offset = 0x230 }
+-- Row 0x48.
+collision.hitbox = define.collision { id = "hitbox", side0 = 0xC0040080, side1 = 0xC0040080, row_offset = 0x240 }
+-- Row 0x4B.
+collision.collision_4b = define.collision { id = "collision-4b", side0 = 0x80000C88, side1 = 0x40000C88, row_offset = 0x258 }
+-- Row 0x4C.
+collision.collision_4c = define.collision { id = "collision-4c", side0 = 0x02014082, side1 = 0x01014082, row_offset = 0x260 }
+-- Row 0x4D.
+collision.collision_4d = define.collision { id = "collision-4d", side0 = 0x55000200, side1 = 0xAA000200, row_offset = 0x268 }
+-- Row 0x50.
+collision.collision_50 = define.collision { id = "collision-50", side0 = 0x08412080, side1 = 0x04212080, row_offset = 0x280 }
+-- Row 0x51.
+collision.collision_51 = define.collision { id = "collision-51", side0 = 0x08410092, side1 = 0x04210092, row_offset = 0x288 }
+-- Row 0x53.
+collision.collision_53 = define.collision { id = "collision-53", side0 = 0x08412082, side1 = 0x04212082, row_offset = 0x298 }
+-- Row 0x54.
+collision.collision_54 = define.collision { id = "collision-54", side0 = 0x80002092, side1 = 0x40002092, row_offset = 0x2A0 }
+-- Row 0x55.
+collision.collision_55 = define.collision { id = "collision-55", side0 = 0x0841009A, side1 = 0x0421009A, row_offset = 0x2A8 }
+-- Row 0x56.
+collision.collision_56 = define.collision { id = "collision-56", side0 = 0x80000884, side1 = 0x40000884, row_offset = 0x2B0 }
+-- Row 0x57.
+collision.collision_57 = define.collision { id = "collision-57", side0 = 0x800000B2, side1 = 0x400000B2, row_offset = 0x2B8 }
+
 return collision

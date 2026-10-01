@@ -9,6 +9,7 @@ return {
     define.chip {
         id = "vulcan1",
         name = "Vulcan1",
+        description = "3-shot to\npierce 1\npanel!",
         codes = { "B", "D", "S", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 5, damage = 10, hit_param = 10, lockout = 0,
@@ -22,6 +23,7 @@ return {
     define.chip {
         id = "vulcan2",
         name = "Vulcan2",
+        description = "4-shot to\npierce 1\npanel!",
         codes = { "D", "F", "L" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 18, damage = 15, hit_param = 10, lockout = 0,
@@ -35,6 +37,7 @@ return {
     define.chip {
         id = "vulcan3",
         name = "Vulcan3",
+        description = "5-shot to\npierce 1\npanel!",
         codes = { "A", "G", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 30, damage = 20, hit_param = 10, lockout = 0,
@@ -48,6 +51,7 @@ return {
     define.chip {
         id = "suprvulc",
         name = "SuprVulc",
+        description = "10-shot\nvulcan\ncannon!",
         codes = { "V" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 75, damage = 20, hit_param = 4, lockout = 0,

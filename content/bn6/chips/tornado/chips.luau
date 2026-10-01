@@ -152,6 +152,7 @@ local chips = {
     define.chip {
         id = "tornado",
         name = "Tornado",
+        description = "8hit strm\n2 squares\nahead",
         codes = { "L", "R", "T" },
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 16, damage = 20, hit_param = 4, lockout = 0,
@@ -168,6 +169,7 @@ local chips = {
     define.chip {
         id = "static",
         name = "Static",
+        description = "A static\nblast 2sq\nahead",
         codes = { "G", "S", "V" },
         element = "null", family = "wind", class = "standard",
         rarity = 2, mb = 30, damage = 20, hit_param = 4, lockout = 0,

@@ -10,6 +10,7 @@ return {
     define.chip {
         id = "sumnblk1",
         name = "SumnBlk1",
+        description = "Summon a\nNghtmare\nattack!",
         codes = { "E", "I", "P" },
         element = "null", family = "null", class = "standard",
         rarity = 0, mb = 30, damage = 160, hit_param = 158, lockout = 0,
@@ -22,6 +23,7 @@ return {
     define.chip {
         id = "sumnblk2",
         name = "SumnBlk2",
+        description = "Summon a\nNghtmare\nattack!",
         codes = { "H", "O", "V" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 40, damage = 200, hit_param = 158, lockout = 0,
@@ -34,6 +36,7 @@ return {
     define.chip {
         id = "sumnblk3",
         name = "SumnBlk3",
+        description = "Summon a\nNghtmare\nattack!",
         codes = { "W", "Y", "Z" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 46, damage = 260, hit_param = 158, lockout = 0,

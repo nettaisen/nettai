@@ -122,9 +122,9 @@ wave.action = define.action {
 wave.weapon = define.weapon {
     id = "chargecross-beast/wave",
     name = "ChargeCross Beast wave",
-    -- The charge table's row 0x1C; Charge 5 reads on into row 0x1D's first
-    -- entry, as the original's table does.
-    charge_ticks = { 20, 20, 20, 20, 20, 40 },
+    -- The charge table's row 0x1C, by Charge 0 to 7: past 4 it reads on
+    -- into the next routine's row, as the original's table does.
+    charge_ticks = { 20, 20, 20, 20, 20, 40, 40, 40 },
     setup = setup,
     -- (Transitional: the routine number the pack's forms name it by.)
     legacy = { routines = { 0x1C } },

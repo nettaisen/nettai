@@ -109,6 +109,7 @@ end
 return define.chip {
     id = "magcoil",
     name = "MagCoil",
+    description = "Draw in\nenmy with\nmag force",
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 0, mb = 14, damage = 0, hit_param = 30, lockout = 0,

@@ -9,6 +9,7 @@ local force = require("./force")
 return define.chip {
     id = "colforce",
     name = "ColForce",
+    description = "Smmn Col.\narmy in\nopen pnls",
     codes = { "Q" },
     element = "null", family = "null", class = "giga",
     rarity = 4, mb = 90, damage = 30, hit_param = 138, lockout = 0,

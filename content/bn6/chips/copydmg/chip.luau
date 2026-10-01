@@ -72,6 +72,7 @@ end
 return define.chip {
     id = "copydmg",
     name = "CopyDmg",
+    description = "Duplicate\ndamage to\n2nd enemy",
     codes = { "*" },
     element = "null", family = "cursor", class = "standard",
     rarity = 1, mb = 12, damage = 0, hit_param = 0, lockout = 0,

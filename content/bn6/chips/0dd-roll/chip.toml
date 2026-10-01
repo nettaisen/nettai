@@ -1,4 +1,0 @@
-# Roll, Roll2 and Roll3 (navi chip subtype 0) summon Roll
-# (chips/roll/navi.luau), through chip.luau.
-
-script = "chip.luau"

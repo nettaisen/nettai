@@ -192,9 +192,9 @@ lunge.action = define.action {
 lunge.weapon = define.weapon {
     id = "slashcross-beast/lunge",
     name = "SlashCross Beast lunge",
-    -- The charge table's row 0x1A; Charge 5 reads on into row 0x1B's first
-    -- entry, as the original's table does.
-    charge_ticks = { 50, 50, 50, 50, 50, 40 },
+    -- The charge table's row 0x1A, by Charge 0 to 7: past 4 it reads on
+    -- into the next routine's row, as the original's table does.
+    charge_ticks = { 50, 50, 50, 50, 50, 40, 40, 40 },
     setup = setup,
     -- (Transitional: the routine number the pack's forms name it by.)
     legacy = { routines = { 0x1A } },

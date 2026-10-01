@@ -145,9 +145,9 @@ gregar_beast_buster.action = define.action {
 gregar_beast_buster.weapon = define.weapon {
     id = "megaman/gregar-beast-buster",
     name = "Gregar Beast buster",
-    -- The charge table's row 4; Charge 5 reads on into row 5's first
-    -- entry, as the original's table does.
-    charge_ticks = { 80, 75, 70, 65, 60, 20 },
+    -- The charge table's row 4, by Charge 0 to 7: past 4 it reads on
+    -- into the next routine's row, as the original's table does.
+    charge_ticks = { 80, 75, 70, 65, 60, 20, 20, 20 },
     setup = gregar_beast_buster.setup,
     -- (Transitional: the routine number the pack's forms name it by.)
     legacy = { routines = { 0x04 } },

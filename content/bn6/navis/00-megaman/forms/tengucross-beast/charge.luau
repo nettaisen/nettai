@@ -88,9 +88,9 @@ charge.action = define.action {
 charge.weapon = define.weapon {
     id = "tengucross-beast/charge",
     name = "TenguCross Beast charge",
-    -- The charge table's row 0xA; Charge 5 reads on into row 0xB's first
-    -- entry, as the original's table does.
-    charge_ticks = { 60, 60, 60, 60, 60, 90 },
+    -- The charge table's row 0xA, by Charge 0 to 7: past 4 it reads on
+    -- into the next routine's row, as the original's table does.
+    charge_ticks = { 60, 60, 60, 60, 60, 90, 80, 70 },
     setup = setup,
     -- (Transitional: the routine number the pack's forms name it by.)
     legacy = { routines = { 0x0A } },
