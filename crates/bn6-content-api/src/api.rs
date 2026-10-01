@@ -317,6 +317,12 @@ named_fields! {
         PanelY = "panel_y", U8, rw;
         /// Hit spark effect (0xFF = none).
         HitEffect = "hit_effect", U8, rw;
+        /// The primary element its hits carry (CollisionData+0x02; setup
+        /// takes the object's element's low nibble), and the secondary
+        /// elements (+0x19: its high nibble), which `sub_8019F8C` sets
+        /// again from an element byte.
+        Element = "element", U8, rw;
+        SecondaryElement = "secondary_element", U8, rw;
         StatusBase = "status_base", U8, rw;
         /// Bug code (low byte) and argument (high byte).
         Bugs = "bugs", U16, rw;
@@ -941,6 +947,10 @@ pub trait CoreApi {
     fn player(&self, side: u8) -> Option<ObjectRef>;
     /// A side's combatants still in, in slot order.
     fn alive_actors(&self, side: u8) -> Vec<ObjectRef>;
+    /// The objects of content kind `kind` (a kind handle) in the update
+    /// list, in update order, whatever their lifecycle state (the game's
+    /// walks of the list, such as `sub_80C67A4`).
+    fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef>;
     /// `GetRNG2`: one draw of the simulation's RNG.
     fn rng(&mut self) -> u32;
     /// `GetPositiveSignedRNG2`: one draw, bit 31 cleared.

@@ -242,6 +242,11 @@ declare class Collision
     -- Hit spark (0xFF = none), as the engine's byte (`set_hit_effect` takes
     -- a definition). Deprecated: setting it to a number.
     hit_effect: number
+    -- The primary element its hits carry and the secondary elements (sword
+    -- 0x80, cursor 0x40, wind 0x20, break 0x10): setup takes them from the
+    -- object's element byte; `sub_8019F8C` sets them again.
+    element: number
+    secondary_element: number
     status_base: number
     -- Bug code (low byte) and argument (high byte).
     bugs: number
@@ -762,6 +767,9 @@ declare battle: {
     player: (side: number) -> Object?,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
+    -- The objects of a kind in the update list, in update order, whatever
+    -- their lifecycle state (the game's walks of the list).
+    objects_of: (kind: Kind) -> { Object },
     -- `GetRNG2` (one draw), `GetPositiveSignedRNG2` (bit 31 cleared).
     rng: () -> number,
     rng_positive: () -> number,

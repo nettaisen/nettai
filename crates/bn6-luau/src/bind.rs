@@ -1001,6 +1001,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let list = with(|api, _| Ok(api.alive_actors(side)))?;
         lua.create_sequence_from(list.into_iter().map(Object))
     });
+    lib_fn!(lua, t, "objects_of", |lua, kind: LuaValue| {
+        let list = with(|api, b| match b.def(&kind) {
+            Some((Registry::Kind, h)) => Ok(api.objects_of_kind(h)),
+            Some((r, _)) => Err(mlua::Error::runtime(format!("battle.objects_of: a {r} is not a kind"))),
+            None => Err(mlua::Error::runtime("battle.objects_of: expected a kind definition")),
+        })?;
+        lua.create_sequence_from(list.into_iter().map(Object))
+    });
     lib_fn!(lua, t, "rng", |_, ()| with(|api, _| Ok(api.rng())));
     lib_fn!(lua, t, "rng_positive", |_, ()| with(|api, _| Ok(api.rng_positive())));
     lib_fn!(lua, t, "jitter", |_, (mask, pos): (LuaValue, mlua::UserDataRef<LVec3>)| {

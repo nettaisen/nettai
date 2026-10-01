@@ -414,6 +414,10 @@ impl CoreApi for Battle {
         self.round.alive_actors[side as usize & 1].iter().flatten().copied().collect()
     }
 
+    fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef> {
+        self.objects.in_order().filter(|&r| self.objects.get(r).kind.0 == kind).collect()
+    }
+
     fn rng(&mut self) -> u32 {
         self.rng.next()
     }
@@ -1423,6 +1427,8 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x as i64,
             CollisionField::PanelY => c.panel.y as i64,
             CollisionField::HitEffect => c.hit_effect as i64,
+            CollisionField::Element => c.element as i64,
+            CollisionField::SecondaryElement => c.secondary_element as i64,
             CollisionField::StatusBase => c.status_base as i64,
             CollisionField::Bugs => c.bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
@@ -1453,6 +1459,8 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::HitEffect => c.hit_effect = x as u8,
+            CollisionField::Element => c.element = x as u8,
+            CollisionField::SecondaryElement => c.secondary_element = x as u8,
             CollisionField::StatusBase => c.status_base = x as u8,
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
