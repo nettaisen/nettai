@@ -90,6 +90,10 @@ local function sine(i: number): number
     return v
 end
 
+-- `math_sinTable[i]` (signed, 1.0 = 0x100; `math_cosTable[i]` is entry
+-- i + 64).
+trajectory.sine = sine
+
 -- `calcAngle_800117C`: the angle toward (dx, dy), 256 steps a turn.
 function trajectory.angle(dx: number, dy: number): number
     return bit32.rshift(trajectory.arctan2(int.asr(dx, 16), int.asr(dy, 16)), 8)

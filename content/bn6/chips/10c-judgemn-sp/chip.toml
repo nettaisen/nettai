@@ -1,0 +1,3 @@
+# A navi chip (subtype 15): JudgeMan, as chips/10a-judgeman summons him.
+
+script = "../10a-judgeman/chip.luau"
