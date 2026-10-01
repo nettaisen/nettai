@@ -170,7 +170,8 @@ core.d.luau; `bn6-content-check` type-checks it (§7.7). Specs below show the fi
 export type ChipSpec = {
     id: string,
     name: string,              -- what the telop and the HUD show (UTF-8; the font's charmap draws it)
-    description: string?,      -- the library text
+    description: string?,      -- the library text, its lines apart by "\n" (the custom screen's
+                               -- description box takes keys a tick later for each line; none counts as three)
     codes: { string },         -- "A".."Z", "*"
     element: Element,          -- "null" | "fire" | "aqua" | "elec" | "wood"
     family: ChipFamily,        -- the icon family: secondary elements, form bonuses, charged chips
@@ -217,6 +218,7 @@ export type NaviSpec = {
     banners: { win: Banner, lose: Banner },
     mugshots: { [Emotion]: Mugshot }?,
     merge_height: number?,                        -- in a Cross
+    run_message: { number }?,                     -- the no-running message's lines (characters in each)
     own_chip: { chip: Chip, code: string }?,      -- a link navi's chip, once a round
     chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
     identity: Identity,                           -- the NameID record: attach points, actor type, parts
