@@ -779,11 +779,15 @@ already set up (Beat first); Tango every idle frame before any request:
   20 ticks (`sub_8001330`, gravity 0xFFFF7778), animation 1 once animation 0 ends. Landed, it clears Tango's
   flag, destroys itself, leaves effect #0 look 6, heals her navi 300 (`object_addHP`), sound 0x8A, and gives it
   barrier 5 (`sub_801A7CC`) with a new barrier visual (effect #7 `sub_80E0D98`, the old one in AIData+0x60 told
-  to go with `sub_80E0DC0`). **The barrier part isn't ported (FirstBarrier's port, group B2a): the heal errors
-  there.**
-- The supports, their controller and Tango's heal are **[unverified]**: the lab's `navicust/rush`, `beat` and
-  `tango` scenarios never trigger them. A scratch run that forces each (bits and HP set mid-battle) plays them
-  to the end (Tango to her heal's barrier).
+  to go with `sub_80E0DC0`).
+- All three test `ns[0xD] != 0xFF` first: 0xFF is the NaviCust's support bug (bug 8, `sub_813CDF4`, what a bugged
+  Rush, Beat or Tango part sets), with which no support comes.
+- **Verified** in the lab, every frame of each: `navicust/rush` and `rush-side1` (the other side's Invisibl
+  bitten, its second Invisibl going through), `navicust/beat` and `beat-side1` (a Mega chip, Roll, taken; the
+  second Roll comes), `navicust/tango` and `tango-side1` (her heal at a quarter of the HP and its barrier, which
+  the next Cannons wear), and `navicust/bug-support` (a bugged Rush never comes). Each support is hosted once by
+  either side. Not reached: a Giga chip for Beat, WhiCapsl for Rush (its hand left alone), Rush with the victim's
+  navi gone, a failed spawn.
 
 ### 2.11 Cross / Beast Out differences (reachable in PvP; trace battle 2)
 
