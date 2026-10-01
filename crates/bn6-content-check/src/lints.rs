@@ -1,14 +1,11 @@
 //! Static checks the type checker can't make (docs/design/content-model-v2.md
-//! §7.7): uses of the numeric API that the v2 API replaces, counted per
-//! module against an allowance that only shrinks (the ratchet, §12), and
-//! lints (placeholder asset names, modules under `compat/`, kind keys not
-//! qualified by their owner's folder).
+//! §7.7): lints for placeholder asset names, modules under `compat/`, kind
+//! keys not qualified by their owner's folder, and table constants passed on
+//! without a type.
 //!
 //! The checks read the source through a small scanner: comments are
 //! dropped and string contents masked, so a pattern never matches inside
 //! either, and positions are kept.
-
-use std::collections::BTreeSet;
 
 use crate::Problem;
 
@@ -100,131 +97,6 @@ impl Scanned<'_> {
         let rest = &self.source[at + 1..];
         rest.find(q).map(|end| &rest[..end])
     }
-
-    /// The arguments of the call whose `(` is at byte `open`: each
-    /// argument's code, trimmed.
-    pub fn args(&self, open: usize) -> Vec<&str> {
-        let code = &self.code[open + 1..];
-        let (mut depth, mut start, mut out) = (0i32, 0, Vec::new());
-        for (i, c) in code.char_indices() {
-            match c {
-                '(' | '{' | '[' => depth += 1,
-                ')' | '}' | ']' if depth == 0 => {
-                    out.push(code[start..i].trim());
-                    break;
-                }
-                ')' | '}' | ']' => depth -= 1,
-                ',' if depth == 0 => {
-                    out.push(code[start..i].trim());
-                    start = i + 1;
-                }
-                _ => {}
-            }
-        }
-        out.retain(|a| !a.is_empty());
-        out
-    }
-
-    /// Module-level numeric constants (`local ANIM_THROW, TICKS = 6, 0x15`).
-    pub fn numeric_constants(&self) -> BTreeSet<String> {
-        let mut out = BTreeSet::new();
-        for line in self.code.lines() {
-            let Some(rest) = line.strip_prefix("local ") else { continue };
-            let Some((names, values)) = rest.split_once('=') else { continue };
-            let names: Vec<&str> = names.split(',').map(|n| n.split(':').next().unwrap_or("").trim()).collect();
-            let values: Vec<&str> = values.split(',').map(str::trim).collect();
-            for (n, v) in names.iter().zip(&values) {
-                if is_number(v) {
-                    out.insert(n.to_string());
-                }
-            }
-        }
-        out
-    }
-}
-
-/// Whether `s` is a numeric literal (decimal or hex, maybe negative).
-fn is_number(s: &str) -> bool {
-    let s = s.strip_prefix('-').unwrap_or(s).trim();
-    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
-        return !hex.is_empty() && hex.bytes().all(|c| c.is_ascii_hexdigit() || c == b'_');
-    }
-    !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit() || c == b'_')
-}
-
-/// A use of the numeric API that the v2 API replaces.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Deprecated {
-    pub line: usize,
-    pub what: &'static str,
-    pub instead: &'static str,
-}
-
-/// Calls deprecated whatever their arguments: pattern, what, instead.
-const ALWAYS: &[(&str, &str, &str)] = &[
-    ("battle.spawn_kind(", "battle.spawn_kind", "battle.spawn(kind, pos)"),
-    ("battle.spawn_kind_first(", "battle.spawn_kind_first", "battle.spawn_first(kind, pos)"),
-    ("battle.spawn_kind_at_end(", "battle.spawn_kind_at_end", "battle.spawn_at_end(kind, pos)"),
-    (":param(", "me:param", "the kind's state"),
-    (":set_param(", "me:set_param", "the kind's state"),
-    (":attack_param(", "me:attack_param", "the builder's arguments"),
-    (":set_attack_param(", "me:set_attack_param", "the builder's arguments"),
-    ("me.index", "me.index", "me.kind"),
-    ("me.variant", "me.variant", "the builder's arguments"),
-    (".name_id", "name_id", "the identity (step 11)"),
-    ("battle.navi_record(", "battle.navi_record", "the identity (step 11)"),
-    (":death_hook(", "me:death_hook", "the identity (step 11)"),
-    ("battle.attach_point(", "battle.attach_point", "me:attach_point_pos"),
-    ("battle.hand_chip(", "battle.hand_chip", "chips by handle (step 3b)"),
-    ("data.", "the data global", "definitions"),
-    (":load(\"", "sprite:load(id)", "asset.sprite"),
-    ("legacy {", "a legacy marker", "the v2 form it stands for"),
-    ("legacy = {", "a legacy marker", "the v2 form it stands for"),
-];
-
-/// Calls deprecated when an argument is a number: pattern, the arguments
-/// (0-based) that take a definition, what, instead.
-const BY_ARGUMENT: &[(&str, &[usize], &str, &str)] = &[
-    (":set_attack(", &[0], "me:set_attack(number)", "an action definition"),
-];
-
-/// Every deprecated use in a module.
-pub fn deprecated(source: &str) -> Vec<Deprecated> {
-    let s = Scanned::new(source);
-    let constants = s.numeric_constants();
-    let numeric = |a: &str| is_number(a) || constants.contains(a);
-    let mut out = Vec::new();
-    for &(pattern, what, instead) in ALWAYS {
-        for at in s.find(pattern) {
-            out.push(Deprecated { line: s.line(at), what, instead });
-        }
-    }
-    for at in s.find("battle.spawn(") {
-        if s.args(at + "battle.spawn".len()).first().is_some_and(|a| a.starts_with('"') || a.starts_with('\'')) {
-            out.push(Deprecated { line: s.line(at), what: "battle.spawn(pool, index)", instead: "battle.spawn(kind, pos)" });
-        }
-    }
-    // A weapon definition's setup that names its action by number (the
-    // v1 modules' `return ACTION`): a numeric constant whose name says it
-    // is an action.
-    if s.find("define.weapon").next().is_some() {
-        for at in s.find("return ") {
-            let name = s.code[at + "return ".len()..].split(|c: char| !(c.is_alphanumeric() || c == '_')).next().unwrap_or("");
-            if name.contains("ACTION") && constants.contains(name) {
-                out.push(Deprecated { line: s.line(at), what: "an action by number", instead: "an action definition" });
-            }
-        }
-    }
-    for &(pattern, positions, what, instead) in BY_ARGUMENT {
-        for at in s.find(pattern) {
-            let args = s.args(at + pattern.len() - 1);
-            if positions.iter().any(|&p| args.get(p).is_some_and(|a| numeric(a))) {
-                out.push(Deprecated { line: s.line(at), what, instead });
-            }
-        }
-    }
-    out.sort_by_key(|d| d.line);
-    out
 }
 
 /// The owner whose folder module `path` is in, if it is in one: a chip's
@@ -245,6 +117,73 @@ fn owner(path: &str) -> Option<&str> {
         return Some(form);
     }
     Some(first)
+}
+
+/// Module-level table constants (`local SPEC = { ... }`) that are passed to
+/// a function without a type annotation: (the constant's line, its name,
+/// the line it is passed on).
+///
+/// The checker can't check such a table's shape. A table literal bound
+/// without an annotation is unsealed, so it passes for any table type whose
+/// required fields it has: a misspelled optional field isn't an error. And
+/// a function of another module is `any` to the checker (it checks each
+/// module on its own), so nothing at all is checked there. With the
+/// annotation (`local SPEC: HeatFlame = { ... }`, the type one of the
+/// pack's shared types in `types.d.luau`), the literal is checked where it
+/// is written.
+pub fn untyped_constants(s: &Scanned) -> Vec<(usize, String, usize)> {
+    let ident = |c: char| c.is_alphanumeric() || c == '_';
+    let code = s.code.as_str();
+    let mut out = Vec::new();
+    let mut at = 0;
+    for line in code.split_inclusive('\n') {
+        let start = at;
+        at += line.len();
+        let Some(rest) = line.strip_prefix("local ") else { continue };
+        let name: &str = &rest[..rest.find(|c: char| !ident(c)).unwrap_or(rest.len())];
+        // `local NAME = {`: one name, no annotation, a table literal.
+        let after = rest[name.len()..].trim_start();
+        if name.is_empty() || !after.strip_prefix('=').is_some_and(|v| v.trim_start().starts_with('{')) {
+            continue;
+        }
+        let declared = start + "local ".len();
+        let passed = s.find(name).find(|&u| {
+            let (before, following) = (code[..u].trim_end(), code[u + name.len()..].trim_start());
+            if u == declared || code[u + name.len()..].starts_with(ident) {
+                return false;
+            }
+            // An argument by itself: between `(` or `,` and `,` or `)`.
+            if !before.ends_with(['(', ',']) || !following.starts_with([')', ',']) {
+                return false;
+            }
+            // Of a call: the innermost bracket open here is a `(` after a
+            // name or a closing bracket, and not a function definition's.
+            let mut depth = 0;
+            let open = code[..u].char_indices().rev().find(|&(_, c)| match c {
+                ')' | '}' | ']' => {
+                    depth += 1;
+                    false
+                }
+                '(' | '{' | '[' if depth > 0 => {
+                    depth -= 1;
+                    false
+                }
+                '(' | '{' | '[' => true,
+                _ => false,
+            });
+            let Some((open, '(')) = open else { return false };
+            let callee = code[..open].trim_end();
+            if !callee.ends_with(|c: char| ident(c) || c == ')' || c == ']') {
+                return false;
+            }
+            let head = &code[code[..open].rfind('\n').map_or(0, |n| n + 1)..open];
+            !head.rfind("function").is_some_and(|f| !head[f..].contains('('))
+        });
+        if let Some(u) = passed {
+            out.push((s.line(declared), name.to_string(), s.line(u)));
+        }
+    }
+    out
 }
 
 /// The lints for module `path` (relative to the pack root, with `.luau`).
@@ -273,6 +212,12 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
             }
         }
     }
+    for (line, name, passed) in untyped_constants(&s) {
+        out.push(format!(
+            "{path}:{line}: the table constant `{name}` is passed on (line {passed}) without a type: \
+             annotate it (`local {name}: <its type> = {{ ... }}`) so the checker checks its shape"
+        ));
+    }
     // A kind in an owner's folder is keyed under its owner.
     if let Some(owner) = owner(path) {
         for at in s.find("define.kind") {
@@ -297,39 +242,37 @@ mod tests {
 
     #[test]
     fn comments_and_strings_are_not_code() {
-        let s = Scanned::new("local x = 'me:param(1)' -- me:param(2)\n--[[ me:param(3) ]] local y = me:param(4)\n");
-        assert_eq!(s.find(":param(").count(), 1);
+        let s = Scanned::new("local x = 'me:set_action(1)' -- me:set_action(2)\n--[[ me:set_action(3) ]] me:set_action(4)\n");
+        assert_eq!(s.find(":set_action(").count(), 1);
         assert_eq!(s.code.len(), s.source.len());
     }
 
     #[test]
-    fn numeric_uses_count_and_definitions_do_not() {
-        let src = "local ACTION, ANIM = 0x12, 6\n\
-                   local THROW = asset.sound('throw')\n\
-                   battle.play_sound(THROW)\n\
-                   local o = battle.spawn('attack', 8, me.pos)\n\
-                   local k = battle.spawn(bomb.kind, me.pos)\n\
-                   me:set_attack(ACTION, 0)\n\
-                   me:set_attack(0x12, 0)\n\
-                   local _ = data.chips[1]\n";
-        let d: Vec<&str> = deprecated(src).iter().map(|d| d.what).collect();
-        assert_eq!(
-            d,
-            ["battle.spawn(pool, index)", "me:set_attack(number)", "me:set_attack(number)", "the data global"]
-        );
-    }
-
-    #[test]
-    fn a_weapon_definition_naming_its_action_by_number_counts() {
-        let setup = "local ACTION, DAMAGE = 0x27, 30\n\
-                     local function setup(navi: Object): number\n    return ACTION\nend\n";
-        let weapon = format!("{setup}local W = define.weapon {{ id = 'w', name = 'W', charge_ticks = {{}}, setup = setup }}\n");
-        let d: Vec<&str> = deprecated(&weapon).iter().map(|d| d.what).collect();
-        assert_eq!(d, ["an action by number"]);
-        // (A v1 weapon module's whole registration is the transitional part.)
-        assert!(deprecated(setup).is_empty());
-        let named = weapon.replace("return ACTION", "return SHOT");
-        assert!(deprecated(&named).is_empty());
+    fn a_table_constant_passed_on_needs_its_type() {
+        let flagged = |src: &str| -> Vec<String> { untyped_constants(&Scanned::new(src)).into_iter().map(|(_, n, _)| n).collect() };
+        // Passed to a function (another module's is `any` to the checker; a
+        // typed one of this module takes an unsealed table as it comes).
+        assert_eq!(flagged("local FLAME = { ticks = 30 }\nflame.spawn(me, x, y, FLAME, damage)\n"), ["FLAME"]);
+        assert_eq!(flagged("local PHASES = { [0] = a, [4] = b }\nlocal function f(me)\n    run(me, PHASES)\nend\n"), ["PHASES"]);
+        assert_eq!(flagged("local A = {\n    1,\n    2,\n}\npick(A)\n"), ["A"]);
+        // Annotated, it is checked where it is written.
+        assert!(flagged("local FLAME: HeatFlame = { ticks = 30 }\nflame.spawn(me, x, y, FLAME, damage)\n").is_empty());
+        // Not passed on: indexed, iterated, a field of another table, a
+        // definition's argument inline, a parameter of the same name.
+        for src in [
+            "local T = { 1, 2 }\nlocal x = T[1]\n",
+            "local T = { 1, 2 }\nfor _, v in T do print(v) end\n",
+            "local T = { 1, 2 }\nlocal U = { T, 3 }\n",
+            "local T = { 1, 2 }\nlocal x = f(T[1], T.n)\n",
+            "local K = define.kind { id = 'k' }\nbattle.spawn(K, pos)\n",
+            "local T = { 1 }\nlocal function f(a, T)\nend\n",
+            "local t = 3\nf(t)\n",
+            "    local T = { 1 }\n    f(T)\n",
+        ] {
+            assert!(flagged(src).is_empty(), "{src}");
+        }
+        let l = lints("lib/x.luau", "local FLAME = { ticks = 30 }\nflame.spawn(FLAME)\n");
+        assert!(l.len() == 1 && l[0].starts_with("lib/x.luau:1: the table constant `FLAME`"), "{l:?}");
     }
 
     #[test]

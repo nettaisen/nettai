@@ -36,52 +36,6 @@ pub mod effects {
     pub const RANDOM: u32 = 0x20_0000;
 }
 
-/// A navi (NaviStats+0x29): MegaMan, or one of the link navis.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Navi(pub u8);
-
-impl Navi {
-    pub const MEGAMAN: Navi = Navi(0);
-
-    /// Index into per-navi tables.
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
-}
-
-/// MegaMan's Cross / Beast form (NaviStats+0x2C, "Transformation").
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Form(pub u8);
-
-impl Form {
-    pub const NONE: Form = Form(0);
-    /// Crosses are 1..=10: Gregar's HeatCross, ElecCross, SlashCross,
-    /// EraseCross and ChargeCross, then Falzar's SpoutCross, TomahawkCross,
-    /// TenguCross, GroundCross and DustCross.
-    pub const CHARGE_CROSS: Form = Form(5);
-    pub const DUST_CROSS: Form = Form(0x0A);
-    pub const GREGAR_BEAST: Form = Form(0x0B);
-    pub const FALZAR_BEAST: Form = Form(0x0C);
-    /// Cross + Beast forms are 0x0D..=0x16.
-    pub const GREGAR_BEAST_OVER: Form = Form(0x17);
-    pub const FALZAR_BEAST_OVER: Form = Form(0x18);
-
-    /// Index into per-form tables.
-    pub fn index(self) -> usize {
-        self.0 as usize
-    }
-
-    /// Beast Out, with or without a cross, or Beast Over.
-    pub fn is_beast(self) -> bool {
-        (0x0B..=0x18).contains(&self.0)
-    }
-
-    /// Beast Over (the navi acts on its own).
-    pub fn is_beast_over(self) -> bool {
-        self.0 >= 0x17
-    }
-}
-
 /// Custom gauge speed (NaviStats+0x08).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum GaugeSpeed {
@@ -238,11 +192,12 @@ impl NaviStats {
     /// A hit's bug code can name any stat byte below 0x64 by its offset
     /// and set it (`sub_80139F6`): the field at that offset takes the
     /// byte (a halfword's low or high byte; a flag is set by any nonzero
-    /// byte; a navi or form byte names the pack's by number). A weapon
-    /// byte or a shot program's can only be cleared this way (0xFF, 0):
-    /// the engine has no numbers for weapons or projectile variants, and
-    /// no hit of the game's carries such a code. Offsets the engine
-    /// doesn't model are not supported.
+    /// byte). A weapon byte or a shot program's can only be cleared this
+    /// way (0xFF, 0), a form byte can only name the base form (0), and a
+    /// navi byte can't be written: the engine has no numbers for weapons,
+    /// projectile variants, forms or navis, and no hit of the game's
+    /// carries such a code. Offsets the engine doesn't model are not
+    /// supported.
     pub fn set_byte_by_bug_code(&mut self, offset: u8, value: u8, content: &Content) {
         let weapon = |v: u8| -> Option<WeaponHandle> {
             if v != 0xFF {
@@ -255,6 +210,13 @@ impl NaviStats {
                 panic!("bug code writes shot program {v:#x} to NaviStats+{offset:#x}: a projectile variant by number is not supported");
             }
             None
+        };
+        // (A form byte can only name the base form, 0; a navi byte no navi.)
+        let form = |v: u8| -> FormHandle {
+            if v != 0 {
+                panic!("bug code writes form {v:#x} to NaviStats+{offset:#x}: a form by number is not supported");
+            }
+            content.base_form()
         };
         let flag = value != 0;
         let low = |w: &mut u16| *w = (*w & 0xFF00) | value as u16;
@@ -296,7 +258,7 @@ impl NaviStats {
             0x14 => g.buster_blanks = value,
             0x15 => g.buster_charged = value,
             0x16 => g.hit_status = value,
-            0x17 => self.starting_form = content.form_numbered(Form(value)),
+            0x17 => self.starting_form = form(value),
             0x18 => g.hp_drain = value,
             0x19 => g.custom_drain = value,
             0x1A => g.battle_start = value,
@@ -308,9 +270,9 @@ impl NaviStats {
             0x22 => self.sun = flag,
             0x23 => self.super_armor = flag,
             0x24 => g.emotion = value,
-            0x29 => self.navi = content.navi_numbered(Navi(value)),
+            0x29 => panic!("bug code writes navi {value:#x} to NaviStats+0x29: a navi by number is not supported"),
             0x2B => self.navi_variant = value,
-            0x2C => self.form = content.form_numbered(Form(value)),
+            0x2C => self.form = form(value),
             0x2D => self.folder = value,
             0x2E => self.folder_reg[0] = value,
             0x2F => self.folder_reg[1] = value,

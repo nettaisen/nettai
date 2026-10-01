@@ -32,7 +32,7 @@ local SOLID = 0x10
 -- turned to his side), and theirs: they wait a dimming out and burn for 60
 -- ticks, as attacks.
 local BESIDE = { { -1, 0 }, { 1, 0 }, { 0, -1 }, { 0, 1 } }
-local FLAME = { while_dimmed = false, ticks = 0x3C, is = collision.attack }
+local FLAME: HeatFlame = { while_dimmed = false, ticks = 0x3C, is = collision.attack }
 
 -- The press's hit on his panel, for 60 ticks.
 local PRESS_TICKS = 0x3C
@@ -121,7 +121,7 @@ local function back(me: Object, _s: State)
     me:exit_attack()
 end
 
-local PHASES = { [JUMP] = jump, [PRESS] = press, [BACK] = back }
+local PHASES: { [number]: (me: Object, s: State) -> () } = { [JUMP] = jump, [PRESS] = press, [BACK] = back }
 
 return define.chip {
     id = "heatpres",

@@ -22,7 +22,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::c_void;
 use std::rc::Rc;
 
-use bn6_content_api::{AssetKind, AssetNames, Data, DataKey, Definition, Definitions, ModuleExports, Registry, valid_key};
+use bn6_content_api::{AssetKind, AssetNames, Data, DataKey, Definition, Definitions, Registry, valid_key};
 use mlua::{Lua, Table, Value as LuaValue};
 
 /// A definition as a definer recorded it.
@@ -173,6 +173,14 @@ pub(crate) fn install(
                     "{at}: {what}'s spec already has a metatable (is it defined twice?)"
                 )));
             }
+            // (The migration's `legacy` markers carried the original's
+            // numbers. A definition says what it is by name; the numbers
+            // are the validator's, outside the engine.)
+            if !table.raw_get::<LuaValue>("legacy")?.is_nil() {
+                return Err(mlua::Error::runtime(format!(
+                    "{at}: {what} takes no `legacy` field: a definition is named by its key, not by the original's numbers"
+                )));
+            }
             table.set_metatable(Some(meta.clone()))?;
             let mut c = collector.borrow_mut();
             let n = c.ordinals.entry(at.clone()).or_default();
@@ -200,15 +208,6 @@ pub(crate) fn install(
     }
     define.set_readonly(true);
     lua.globals().set("define", define)?;
-    // `legacy { ... }`: data only registration by number reads (a navi's
-    // or a form's number, the original's numbering of a table),
-    // marked for the ratchet and step 13 (docs/design/content-model-v2.md
-    // §12); as data it is the table itself.
-    let legacy = lua.create_function(|_, t: LuaValue| match t {
-        LuaValue::Table(_) => Ok(t),
-        v => Err(mlua::Error::runtime(format!("legacy takes a table, not {}", v.type_name()))),
-    })?;
-    lua.globals().set("legacy", legacy)?;
     Ok(())
 }
 
@@ -232,12 +231,11 @@ fn fields(t: &Table, at: &str) -> Result<Vec<(DataKey, LuaValue)>, String> {
     Ok(out)
 }
 
-/// Finish the define phase: keys, schemas, the canonical tree, module
-/// exports; every definition frozen.
+/// Finish the define phase: keys, schemas, the canonical tree; every
+/// definition frozen.
 pub(crate) fn finish(
     lua: &Lua,
     collector: &RefCell<Collector>,
-    modules: &BTreeMap<String, LuaValue>,
     assets: &AssetTables,
 ) -> Result<Defined, String> {
     let mut c = collector.borrow_mut();
@@ -334,7 +332,7 @@ pub(crate) fn finish(
         by_key.insert((m.registry, keys[i].as_str()), i);
     }
 
-    // Schemas: the `state` tables of modules, then of kinds and actions.
+    // Schemas: the `state` tables of kinds and actions.
     let mut schema_of: HashMap<Ptr, usize> = HashMap::new();
     let mut schemas: Vec<(String, String, Table)> = Vec::new();
     let mut claim = |t: Table, key: String, module: &str, schemas: &mut Vec<(String, String, Table)>| {
@@ -346,13 +344,6 @@ pub(crate) fn finish(
             schemas.len() - 1
         });
     };
-    for (path, v) in modules {
-        if let LuaValue::Table(t) = v
-            && let Ok(LuaValue::Table(state)) = t.raw_get::<LuaValue>("state")
-        {
-            claim(state, format!("{path}#state"), path, &mut schemas);
-        }
-    }
     for (&(registry, key), &i) in &by_key {
         if !matches!(registry, Registry::Kind | Registry::Action) {
             continue;
@@ -395,37 +386,10 @@ pub(crate) fn finish(
     // Registries sort in declaration order, Schema last: already in order.
     debug_assert!(defs.windows(2).all(|w| (w[0].registry, &w[0].key) < (w[1].registry, &w[1].key)));
 
-    // What modules export.
-    let mut exports = Vec::new();
-    for (path, v) in modules {
-        let LuaValue::Table(t) = v else { continue };
-        let mut functions = Vec::new();
-        let mut state = None;
-        let mut action = None;
-        for (k, v) in fields(t, path)? {
-            match (k, v) {
-                (DataKey::Str(name), LuaValue::Function(_)) => functions.push(name),
-                (DataKey::Str(name), LuaValue::Table(s)) if name == "state" => {
-                    state = schema_keys.get(&s.to_pointer()).cloned();
-                }
-                // An action definition the module exports (a chip record
-                // that names the module runs it).
-                (DataKey::Str(name), LuaValue::Table(a)) if name == "action" => {
-                    action = match def_keys.get(&a.to_pointer()) {
-                        Some((Registry::Action, key)) => Some(key.clone()),
-                        _ => None,
-                    };
-                }
-                _ => {}
-            }
-        }
-        exports.push(ModuleExports { path: path.clone(), functions, state, action });
-    }
-
     for t in &tables {
         crate::sandbox::deep_freeze(lua, &LuaValue::Table(t.clone())).map_err(|e| e.to_string())?;
     }
-    Ok(Defined { definitions: Definitions { defs, modules: exports }, tables })
+    Ok(Defined { definitions: Definitions { defs }, tables })
 }
 
 /// How definitions and schemas appear inside other definitions.

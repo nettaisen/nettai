@@ -34,10 +34,13 @@ local WAVE_SOUND = asset.sound("wave")
 -- test loaded as the shot's element, which the shot's init replaces.)
 local SHOT_Z = 0x14_0000
 
--- The Beast forms whose head overlay mirrors the navi's animation (by
--- form number, until forms are definitions).
-local function beast_head_follows(form: number): boolean
-    return form == 0xC or (form >= 0x12 and form <= 0x16) or form == 0x18
+-- The Beast forms whose head overlay mirrors the navi's animation: those
+-- that wear a beast's head (the Falzar beast's, its Crosses' and Beast
+-- Over's).
+local function beast_head_follows(form: FormDef): boolean
+    local identity = form.identity
+    local parts = identity and identity.parts
+    return parts ~= nil and parts.beast_head ~= nil
 end
 
 -- `sub_80101D4`: the Beast head (the navi's second related object) takes
