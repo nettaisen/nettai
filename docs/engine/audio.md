@@ -14,7 +14,7 @@ the start of every tick).
 
 | Cue | The game's call | Where |
 |---|---|---|
-| `Effect(id)` | `PlaySoundEffect(id)` = `m4aSongNumStart(id)` | the object and HUD routines below |
+| `Effect(id)` | `PlaySoundEffect(id)` = `m4aSongNumStart(id)` | the engine's routines below, and the content's (`play_sound`) |
 | `Music(id)` | `PlayMusic(id)`: nothing if `id` is GameState's current-music byte; else sets it, and `m4aMPlayAllStop` for 0x63, `m4aSongNumStart(id)` otherwise | intro init `sub_80091F0` (0x15 in link battles, else the settings' music unless 0x63); win `sub_80081A4` (0x1F, or 0x19 with effects bit 1); loss `sub_800825A` (0x1A, link only) |
 | `StopMusic` | `musicGameState_8000784`: `m4aMPlayAllStop`, current music = 0xFF | fade-out done `sub_80094DA` |
 | `Pinch(true/false)` | `sub_8009158`: pitch control (all tracks, +0x100 or 0) and tempo control (0x11A or 0x100) on music player 31 | after the mode handler, link battles, when the local navi's HP crosses MaxHP/4 |
@@ -22,6 +22,10 @@ the start of every tick).
 
 Ids are song-table indices (`SoundId`): music is 0x00..=0x25, effects
 0x64 and up; a few have names (`SoundId::VIRUS_BATTLE`, `WINNER`, ...).
+Content names its sounds: `asset.sound("cannon-shot")` is the song the
+pack's asset index (`assets.toml`) lists under that name, resolved when the
+content loads (a name the pack doesn't list is a load error), so a content
+sound is a song of whatever pack is loaded.
 
 Effects the engine emits, by routine: navi fade-in 0x94 (`sub_80163B4`);
 hit 0x6B on the local player's navi, else 0x6D (`applyDamageToPlayer_801ba12`);
@@ -34,12 +38,22 @@ bubble pop 0x124 (`sub_8017688`, `sub_8017768`); cursor trap 0x8E
 0x69 (`sub_8012FC8`); buster charge 0x71/0x72 (`sub_80E0F5E`); custom gauge
 full 0x8F (`sub_801C470`); panel crack/break 0x97 (`object_crackPanel`,
 `sub_800C380`); obstacle hit 0x85 (`sub_801B394`); rock landing 0xC0
-(`sub_80CFAC0`); rock break, the kind's sound (`sub_80CFB2C`).
+(`sub_80CFAC0`); rock break, the kind's sound (`sub_80CFB2C`); pause and
+resume 0x9F (`sub_801E15C`, `sub_80083E4`); the HP box's alarm 0x84, every
+45 ticks a console's own navi is at a quarter of its HP or less
+(`sub_801C840`, heard on that console only).
 
 Not emitted: the custom screen's own UI sounds (cursor 0x7F, select
-0x81/0x82, open 0x79, ...), since the engine takes the screen's results as
-input and doesn't run its UI; and calls in routines the engine doesn't
-implement yet (chip use, Cross lanes, the pause screen, ...).
+0x81/0x82, open 0x79, a Cross chosen 0x92, Beast Out, ...). The engine runs
+the screen (docs/engine/custom-screen.md), but its sounds belong to the
+console showing it, and nothing draws the screen yet either.
+
+Known difference: Beast Over's rumble (0x19A) sounds once in the original
+where the engine also makes it on the two later ticks of the vanish
+(`sub_80151D4`). The game compares the timer there as a 32-bit word, whose
+upper half is a variable an earlier action left (a buster shot leaves 2),
+and nothing clears the attack variables between actions; the engine's form
+change keeps only the timer, so its comparison passes.
 
 The low-HP latch (BattleState+0x20) isn't reset between rounds in the
 game: rounds after the first start with it set, so they emit only
@@ -129,16 +143,34 @@ WAV). A round stops where the engine leaves the recording (with
 
 ## 6. Verified
 
-The cue ids and frames are checked against the original: the verification
-suite outside this repo replays the golden traces, turns each tick's cues
-into driver calls with `SoundCalls`, and compares them with the calls the
-original queued on the same frames, recorded from the original under
-emulation (the queue at 0x0200A490: count, then 16-byte entries r0, r1, r2, function).
-Over every frame the engine reproduces (both traces, five rounds, 9445
-frames) the calls match exactly: battle music, the pinch switch on and off,
-the navi fade-in sound, the custom screen's volume restore. The other
-effects sit past where the engine currently stops; they are wired from the
-disassembly and will be checked as the matched range grows. In this repo,
-tests cover the cue plumbing on a battle built in code, the driver on
-synthesized songs (priorities, channel stealing, controls, the sequencer)
-and the ROM reader on a synthesized ROM image.
+The cue ids and frames are checked against the original by the
+verification suite outside this repo. It replays a trace, turns each tick's
+cues into driver calls with `SoundCalls`, and compares them with the calls
+the original queued on the same frames, recorded from the original under
+emulation (the queue at 0x0200A490: count, then 16-byte entries r0, r1, r2,
+function), over every frame the engine reproduces. The custom screen's own
+sounds are left out.
+
+- The two golden traces, over every frame of every round: 89 calls over
+  2405 frames and 1360 calls over 57,331 frames, call for call but for two
+  sounds of the content's own. AntiDmg's trap vanishes with 0x108 where the
+  game plays 0x107 (six times), and the gauge chips' warning 0x91 sounds a
+  few frames off: the game sounds it by its frame counter, the content by
+  its controller's ticks.
+- Chip-lab scenarios recorded with their sound calls: 110 scenarios, 2571
+  calls over 102,395 frames; 104 match call for call. The others: the two
+  above, CircGun's cursor step (0x10F for the game's 0x10E), HeatCross's
+  charged flames (0x12B on other ticks) and Beast Over's rumble (above).
+- Every sound the content names (148 names) is in the pack's index,
+  has a song, starts on the driver and makes sound; so does every number
+  the engine's own routines play.
+- Under rollback (the golden traces replayed through rollback peers at
+  several latencies): the cues of a peer's confirmed frames are the plain
+  replay's, frame for frame, and what it played and didn't take back is the
+  same cues (`cues::CueTracker`, docs/design/rollback.md).
+
+In this repo, tests cover the cue plumbing on a battle built in code, the
+driver on synthesized songs (priorities, channel stealing, controls, the
+sequencer) and the ROM reader on a synthesized ROM image. The frontend's
+`--audit` plays a trace's every cue into nothing and reports a cue whose
+song the pack doesn't have.

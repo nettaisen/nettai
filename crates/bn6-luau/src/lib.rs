@@ -39,8 +39,8 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use bn6_content_api::{
-    AssetKind, AssetNames, BindPlan, ContentError, ContentHost, CoreApi, Data, DataKey, Definitions, FnId, FnSource,
-    HookCall, Manifest, ObjectRef, Registry, StateId, Value,
+    AssetKind, AssetNames, BindPlan, ContentError, ContentHost, CoreApi, Definitions, FnId, FnSource, HookCall, Manifest,
+    ObjectRef, Registry, StateId, Value,
 };
 use mlua::chunk::ChunkMode;
 use mlua::{Function, Lua, Table, Value as LuaValue, VmState};
@@ -222,10 +222,9 @@ pub struct LuauContent {
 
 impl LuauContent {
     /// Load a pack's modules (the define phase), check they define what
-    /// `plan` was made from, and bind the functions `plan` names, with the
-    /// pack's data as the global `data`.
-    pub fn load(pack: &Pack, plan: &BindPlan, data: &Data, options: Options) -> Result<LuauContent, ContentError> {
-        let (lua, defined, _, _, assets) = open(pack, data, &plan.assets, options)?;
+    /// `plan` was made from, and bind the functions `plan` names.
+    pub fn load(pack: &Pack, plan: &BindPlan, options: Options) -> Result<LuauContent, ContentError> {
+        let (lua, defined, _, _, assets) = open(pack, &plan.assets, options)?;
         if defined.definitions != plan.definitions {
             return Err(ContentError::new(format!(
                 "loading Luau content: the scripts define something other than what the content was made from ({})",
@@ -341,13 +340,8 @@ impl LuauContent {
 /// Read a pack's definitions: the define phase, in a VM of its own (which
 /// is dropped). The engine makes its content from what this returns, and
 /// keeps the modules' bytecode for its runtimes (`Pack::with_compiled`).
-pub fn define(
-    pack: &Pack,
-    data: &Data,
-    assets: &AssetNames,
-    options: Options,
-) -> Result<(Definitions, Compiled), ContentError> {
-    open(pack, data, assets, options).map(|(_, defined, _, compiled, _)| (defined.definitions, compiled))
+pub fn define(pack: &Pack, assets: &AssetNames, options: Options) -> Result<(Definitions, Compiled), ContentError> {
+    open(pack, assets, options).map(|(_, defined, _, compiled, _)| (defined.definitions, compiled))
 }
 
 /// The first place two readings of the definitions differ, for messages.
@@ -430,41 +424,11 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
     Ok(value)
 }
 
-/// The pack's data as Luau values.
-fn data_value(lua: &Lua, d: &Data) -> mlua::Result<LuaValue> {
-    Ok(match d {
-        Data::Nil | Data::Function => LuaValue::Nil,
-        Data::Bool(b) => LuaValue::Boolean(*b),
-        Data::Int(i) => LuaValue::Number(*i as f64),
-        Data::Str(s) => LuaValue::String(lua.create_string(s)?),
-        Data::Ref(r, k) => LuaValue::String(lua.create_string(format!("{r}:{k}"))?),
-        Data::Asset(kind, name) => LuaValue::String(lua.create_string(format!("{kind}:{name}"))?),
-        Data::List(items) => {
-            let t = lua.create_table_with_capacity(items.len(), 0)?;
-            for (i, v) in items.iter().enumerate() {
-                t.raw_set(i + 1, data_value(lua, v)?)?;
-            }
-            LuaValue::Table(t)
-        }
-        Data::Map(entries) => {
-            let t = lua.create_table_with_capacity(0, entries.len())?;
-            for (k, v) in entries {
-                let v = data_value(lua, v)?;
-                match k {
-                    DataKey::Int(i) => t.raw_set(*i as f64, v)?,
-                    DataKey::Str(s) => t.raw_set(s.as_str(), v)?,
-                }
-            }
-            LuaValue::Table(t)
-        }
-    })
-}
-
-/// A VM with the content API, `data`, `define` and `require`, every module
-/// of the pack loaded, and the define phase finished.
+/// A VM with the content API, `define` and `require`, every module of the
+/// pack loaded, and the define phase finished.
 type Opened = (Lua, define::Defined, BTreeMap<String, LuaValue>, Compiled, define::AssetTables);
 
-fn open(pack: &Pack, data: &Data, assets: &AssetNames, options: Options) -> Result<Opened, ContentError> {
+fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, ContentError> {
     let err = |e: mlua::Error| ContentError::new(format!("loading Luau content: {e}"));
     let lua = sandbox::new_vm(options.debug_print).map_err(err)?;
     #[cfg(feature = "jit")]
@@ -474,9 +438,6 @@ fn open(pack: &Pack, data: &Data, assets: &AssetNames, options: Options) -> Resu
         return Err(ContentError::new("native code needs bn6-luau's `jit` feature"));
     }
     bind::install(&lua).map_err(err)?;
-    let data = data_value(&lua, data).map_err(err)?;
-    sandbox::deep_freeze(&lua, &data).map_err(err)?;
-    lua.globals().set("data", data).map_err(err)?;
     let loader = Rc::new(RefCell::new(Loader {
         pack: pack.clone(),
         loaded: BTreeMap::new(),

@@ -48,7 +48,10 @@ tengu_wind.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 60, 60, 60 },
     setup = setup,
+    -- (The original's instant effect 0x14, which no chip has: the navi
+    -- waits 8 ticks after it.)
     instant = blow,
+    instant_waits = true,
 }
 
 return tengu_wind

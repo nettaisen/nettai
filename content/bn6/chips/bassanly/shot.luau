@@ -307,7 +307,7 @@ local function tick(me: Object)
         error(string.format("BassAnly's shot action %#x reads past its table (off_80DD4A0)", me.action))
     end
     action(me)
-    if me.lifecycle ~= "destroy" and c.region == 0 and bit32.bor(me.panel_x, bit32.lshift(me.panel_y, 8)) ~= s.hit_panel then
+    if me.lifecycle ~= "destroy" and c.region == nil and bit32.bor(me.panel_x, bit32.lshift(me.panel_y, 8)) ~= s.hit_panel then
         c:set_region(regions.single)
     end
     if field.valid(me.panel_x, me.panel_y) then

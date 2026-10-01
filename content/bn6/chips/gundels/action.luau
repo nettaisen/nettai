@@ -105,7 +105,7 @@ function action.action(spec: GunDelSolSpec): Action
             element = ELEMENT,
             region = region,
             -- None.
-            hit_effect = 0xFF,
+            hit_effect = nil,
             target = HIT.hits,
             self_type = HIT.is,
             damage = if battle.navi(me.alliance).sun then SUN_DAMAGE else DAMAGE,

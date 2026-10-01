@@ -19,7 +19,6 @@ chips/timebom/countdown.luau 1
 chips/vdoll/doll.luau 1
 chips/wind/fan.luau 1
 lib/instruments/instrument.luau 1
-lib/panels.luau 2
 navis/chargeman/navi.luau 1
 navis/dustman/navi.luau 1
 navis/elecman/navi.luau 1
@@ -62,4 +61,3 @@ objects/boulder/boulder.luau 1
 objects/rock/rock.luau 1
 rules/body-overlays.luau 1
 rules/identities.luau 1
-rules/numbers.luau 3

@@ -34,5 +34,14 @@ pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) 
         damage: a.damage as u32 | (a.hit_param as u32) << 16,
         chip: DimmingChip { chip: a.chip, bonus: a.extra },
     };
-    navi_chip::spawn(b, user, spec)
+    let controller = navi_chip::spawn(b, user, spec);
+    // What its telop shows.
+    if let Some(c) = controller
+        && b.objects.get(c).telop_chip.is_none()
+    {
+        // (The controller's damage is its damage word's low half.)
+        let telop = crate::hud::TelopChip { chip: a.chip, bonus: a.extra, damage: Some(a.damage) };
+        b.objects.get_mut(c).telop_chip = Some(telop);
+    }
+    controller
 }

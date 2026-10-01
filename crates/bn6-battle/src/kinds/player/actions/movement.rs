@@ -410,7 +410,7 @@ fn land(b: &mut Battle, r: ObjectRef) {
     if t > 0 {
         return;
     }
-    super::super::coll_mut(b, r).region = 1;
+    super::super::coll_mut(b, r).region = b.anchor_region();
     let o = b.objects.get_mut(r);
     o.panel = o.future_panel;
     let p = o.panel;

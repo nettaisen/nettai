@@ -108,10 +108,10 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
 /// `loc_801B142`: visibility, then the action (or the pause / dimming
 /// handler).
 fn tail(b: &mut Battle, r: ObjectRef) {
-    // sprite_zeroColorShader and the colour-shader helpers are
-    // presentation.
     clear_flag2(b, r, 0x4000);
+    status_shader(b, r);
     update_visibility(b, r);
+    counter_shader(b, r);
     if flag1(b, r) & f1::DEAD != 0 {
         return dispatch(b, r);
     }
@@ -188,8 +188,9 @@ fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
     }
     b.bump_side_stat(opp, 8, 1);
     coll_mut(b, r).counter_timer = 0;
-    // Unless the battle is over: the "COUNTER" HUD text and a sound.
+    // Unless the battle is over: the HUD's "COUNTER HIT!" and a sound.
     if !b.is_battle_over() {
+        b.show_message(crate::hud::Message::CounterHit);
         b.play_sound(crate::sound::SoundId(0x86));
     }
 }
@@ -768,6 +769,73 @@ fn drain_hp(b: &mut Battle, r: ObjectRef) {
 }
 
 // ---- Tail ---------------------------------------------------------------------------
+
+/// The glow of an invulnerable navi and of a SELECT special (`byte_80168A8`,
+/// `byte_80172C8`): up and down over 32 ticks of the battle time.
+const GLOW: [u16; 32] = [
+    0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0,
+];
+
+/// The navi's colour shader for its statuses (presentation only;
+/// `loc_801B142`: `sprite_zeroColorShader`, then `sub_80143E4`,
+/// `sub_801690A`, `sub_8016860`, `sub_80168C8`, `sub_80168F0`, the later
+/// ones over the earlier): red while angry, a black blink while
+/// immobilized, a green glow while invulnerable (red in battle mode 1), a
+/// yellow blink while paralyzed, pale blue while frozen. The blinks are two
+/// ticks of the battle time on and two off.
+fn status_shader(b: &mut Battle, r: ObjectRef) {
+    let t = b.round.battle_time;
+    let blink = |shader: u16| if t & 2 != 0 { shader } else { 0 };
+    let f = flag1(b, r);
+    let mut shader = 0;
+    if ai(b, r).anger != 0 {
+        shader = 0x000F;
+    }
+    if f & f1::IMMOBILIZED != 0 {
+        shader = blink(0xFFFF);
+    }
+    let action = navi_action(b, r);
+    if f & f1::INVULNERABLE != 0
+        && !super::form_of(b, r).is_beast_over()
+        && action != NaviAction::Entry
+        // (`sub_8016860` reads CurAction: not during ChargeCross's tackle.)
+        && !super::runs_role(b, r, crate::content::ActionRole::ChargeTackle)
+    {
+        let glow = GLOW[(t & 0x1F) as usize];
+        shader = if super::battle_mode(b) == 1 { glow } else { glow << 5 };
+    }
+    if f & f1::PARALYZED != 0 {
+        shader = blink(0x03FF);
+    }
+    if f & f1::FROZEN != 0 {
+        shader = 0x7E94;
+    }
+    b.objects.sprite_mut(r).look.color_shader = shader;
+}
+
+/// The shaders after the visibility (presentation only; `sub_8016CA4`,
+/// `sub_801728E`): the other player's navi blinks blue while it can be
+/// countered, to a local player in Full Synchro; in the per-player gauges'
+/// mode a navi glows yellow while its SELECT special runs.
+fn counter_shader(b: &mut Battle, r: ObjectRef) {
+    let t = b.round.battle_time;
+    let alliance = b.objects.get(r).alliance;
+    if !b.is_battle_over()
+        && b.is_remote(alliance)
+        && b.player(alliance ^ 1).is_some()
+        && emotion(b, alliance ^ 1) == Emotion::FullSynchro
+        && coll(b, r).counter_timer != 0
+    {
+        b.objects.sprite_mut(r).look.color_shader = if t & 2 != 0 { 0x7C00 } else { 0 };
+    }
+    if per_player_gauges(b)
+        && navi_action(b, r) != NaviAction::Entry
+        && b.sides[alliance as usize & 1].select_special != 0
+    {
+        let glow = GLOW[(t & 0x1F) as usize];
+        b.objects.sprite_mut(r).look.color_shader = glow | glow << 5;
+    }
+}
 
 /// `sub_8016934`: visible unless flashing (2 ticks off, 2 on) or the
 /// local navi is blind and this is the other side's.

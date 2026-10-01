@@ -29,6 +29,32 @@ pub fn definitions(c: &Content, r: &mut Report) {
                 r.warn("rules/roles.luau", format!("the role kinds.{} is not filled", role.name()));
             }
         }
+        // The roles that name a definition of their registry.
+        use bn6_battle::content::{CollisionRole, EffectRole, LockonRole, RegionRole, SparkRole, StatusRole};
+        let roles = &defs.roles;
+        let mut unfilled = |group: &str, name: &str, filled: bool| {
+            if !filled {
+                r.warn("rules/roles.luau", format!("the role {group}.{name} is not filled"));
+            }
+        };
+        for role in LockonRole::ALL {
+            unfilled("lockon", role.name(), roles.lockons.contains_key(&role));
+        }
+        for role in StatusRole::ALL {
+            unfilled("statuses", role.name(), roles.statuses.contains_key(&role));
+        }
+        for &role in EffectRole::ALL {
+            unfilled("effects", role.name(), roles.effects.contains_key(&role));
+        }
+        for &role in SparkRole::ALL {
+            unfilled("sparks", role.name(), roles.sparks.contains_key(&role));
+        }
+        for &role in RegionRole::ALL {
+            unfilled("regions", role.name(), roles.regions.contains_key(&role));
+        }
+        for &role in CollisionRole::ALL {
+            unfilled("collision", role.name(), roles.collisions.contains_key(&role));
+        }
     }
     for (row, twins) in duplicate_collision_types(c) {
         let (first, rest) = twins.split_first().expect("two or more");

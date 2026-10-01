@@ -1,9 +1,10 @@
 //! The HUD's graphics: one indexed PNG per tile block, laid out as the
 //! game draws it (8x16 glyphs, 2x2 icons, 4x2 mugshots), and `hud.json`
-//! (map entries, chip names in the game's text codes, banner layouts).
-//! Mugshots, banners and chip icons are a file each, under their names
-//! (`mugshots/<name>.png`, `banners/<name>.png`, `chip-icons/<chip>.png`);
-//! `hud.json` lists them in the game's order.
+//! (map entries, what the font's glyphs draw, banner layouts). Mugshots,
+//! banners and chip icons are a file each, under their names
+//! (`mugshots/<name>.png`, `banners/<name>.png`, `chip-icons/<chip>.png`,
+//! a chip's key); `hud.json` lists them in the game's order. A chip's name
+//! and whether its damage shows are the content's (its chip definition).
 //!
 //! Each palette belongs to one image, as rows of that image's palette
 //! (`palettes` in its entry). Images drawn with another image's palette
@@ -13,12 +14,12 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use bn6_assets::{BannerLayout, Hud, MapEntry, Palette, Tiles};
+use bn6_assets::{BannerLayout, ChipIcon, Hud, MapEntry, NaviMugshot, Palette, Tiles};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub const FORMAT: &str = "bn6-content/hud";
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 5;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 
@@ -37,16 +38,15 @@ pub struct HudDoc {
     pub hp_box: Vec<String>,
     pub gauge_frame: Vec<String>,
     pub font: TileImage,
-    /// Chip names in the game's text codes, by chip id.
-    pub chip_names: Vec<Vec<u8>>,
-    /// Chips whose damage shows after the name.
-    pub chip_shows_damage: Vec<u16>,
+    /// What each glyph of the font draws, as text (`[EX]` for a glyph
+    /// with no character of its own).
+    pub font_chars: Vec<String>,
     /// The opponent's HP digits: normal, dropping, rising (a row each),
     /// with their palette.
     pub enemy_digits: TileImage,
-    /// Chip icons by chip id (none for a chip without one), each with the
-    /// icon palette.
-    pub chip_icons: Vec<Option<TileImage>>,
+    /// Chip icons by chip key, in the game's order, each with the icon
+    /// palette.
+    pub chip_icons: Vec<ChipIconDoc>,
     /// The icon a hidden chip shows.
     pub hidden_icon: TileImage,
     /// Mugshots in the mugshot table's order, each with its palette.
@@ -54,6 +54,16 @@ pub struct HudDoc {
     /// The count box showing 0..=10, then without a number.
     pub counts: TileImage,
     pub form_emotions: Vec<u8>,
+    /// The link navis' mugshots, each with its two palettes (normal, Full
+    /// Synchro); which a navi shows, by the navi's number less one; and the
+    /// box beside them.
+    pub navi_mugshots: Vec<TileImage>,
+    pub navi_mugshot_of: Vec<u8>,
+    pub navi_box: TileImage,
+    /// "PAUSE": five glyphs (shown with the opponents' HP digits' palette).
+    pub pause: TileImage,
+    /// The HUD's text lines, each as the font's glyph numbers.
+    pub texts: Vec<Vec<u16>>,
     /// Banners by banner id / 4.
     pub banners: Vec<BannerDoc>,
     pub banner_digits: TileImage,
@@ -62,15 +72,23 @@ pub struct HudDoc {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ChipIconDoc {
+    /// The chip's key.
+    pub chip: String,
+    /// None for a chip without an icon.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<TileImage>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct BannerDoc {
     pub at: [u8; 2],
     pub kind: u8,
-    /// Glyphs it has (20, or 0 for banners drawn from text at run time).
+    /// Glyphs it has (20, or 0 for the telops, drawn from the chip's name).
     pub glyphs: usize,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub number_at: Option<[u8; 2]>,
-    /// Its glyphs, with the banner palette (none for banners drawn from
-    /// text at run time).
+    /// Its glyphs, with the banner palette (none for the telops).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<TileImage>,
 }
@@ -97,9 +115,10 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
     let chip_icons = h
         .chip_icons
         .iter()
-        .enumerate()
-        .map(|(id, t)| {
-            (!t.is_empty()).then(|| image(&format!("chip-icons/{}.png", names.chip_icon(id as u16)), t, icon, &[h.icon_palette], 1))
+        .map(|i| ChipIconDoc {
+            chip: i.key.clone(),
+            image: (!i.tiles.is_empty())
+                .then(|| image(&format!("chip-icons/{}.png", i.key), &i.tiles, icon, &[h.icon_palette], 1)),
         })
         .collect();
     // Not in chip-icons/, where a chip may be named anything.
@@ -113,6 +132,16 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             image(&file, t, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[*p], 1)
         })
         .collect();
+    let face = Layout::Blocks { width: 4, height: 2, columns: 1 };
+    let navi_mugshots = h
+        .navi_mugshots
+        .iter()
+        .enumerate()
+        .map(|(i, m)| image(&format!("mugshots/link-navi-{i}.png"), &m.tiles, face, &m.palettes, 2))
+        .collect();
+    let navi0 = h.navi_mugshots.first().map(|m| m.palettes[0]).unwrap_or([0; 16]);
+    let navi_box = image("navi-box.png", &h.navi_box, icon, &[navi0], 0);
+    let pause = image("pause.png", &h.pause, GLYPHS(5), &[h.enemy_palette], 0);
     let mut counts: Vec<&Tiles> = h.counts.iter().collect();
     counts.push(&h.count_box);
     let mug0 = h.mugshots.first().map(|m| m.1).unwrap_or([0; 16]);
@@ -148,14 +177,18 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         hp_box: texts(&h.hp_box),
         gauge_frame: texts(&h.gauge_frame),
         font,
-        chip_names: h.chip_names.clone(),
-        chip_shows_damage: h.chip_shows_damage.iter().enumerate().filter(|(_, s)| **s).map(|(i, _)| i as u16).collect(),
+        font_chars: h.font_chars.clone(),
         enemy_digits,
         chip_icons,
         hidden_icon,
         mugshots,
         counts,
         form_emotions: h.form_emotions.clone(),
+        navi_mugshots,
+        navi_mugshot_of: h.navi_mugshot_of.clone(),
+        navi_box,
+        pause,
+        texts: h.texts.clone(),
         banners,
         banner_digits,
         waiting,
@@ -179,10 +212,11 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
     let (hidden_icon, icon_pal) = img(&doc.hidden_icon, report)?;
     let mut chip_icons = Vec::new();
     for icon in &doc.chip_icons {
-        chip_icons.push(match icon {
+        let tiles = match &icon.image {
             Some(i) => img(i, report)?.0,
             None => Tiles::default(),
-        });
+        };
+        chip_icons.push(ChipIcon { key: icon.chip.clone(), tiles });
     }
     let (counts, _) = img(&doc.counts, report)?;
     let mut banner_pal = vec![Palette::default()];
@@ -204,6 +238,17 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         let (t, p) = img(m, report)?;
         mugshots.push((t, p[0]));
     }
+    let mut navi_mugshots = Vec::new();
+    for m in &doc.navi_mugshots {
+        let (tiles, p) = img(m, report)?;
+        let (Some(&normal), Some(&angry)) = (p.first(), p.get(1)) else {
+            report.error(&name, format!("{} needs two palettes (normal, angry)", m.file));
+            return None;
+        };
+        navi_mugshots.push(NaviMugshot { tiles, palettes: [normal, angry] });
+    }
+    let (navi_box, _) = img(&doc.navi_box, report)?;
+    let (pause, _) = img(&doc.pause, report)?;
     let slice = |t: &Tiles, from: usize, n: usize| Tiles { pixels: t.pixels[from * Tiles::TILE..(from + n) * Tiles::TILE].to_vec() };
     let map = |v: &[String], report: &mut Report| -> Vec<MapEntry> {
         v.iter()
@@ -215,15 +260,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
             })
             .collect()
     };
-    let chips = doc.chip_names.len();
     let per_digit_set = digits.len() / 3;
-    let mut shows = vec![false; chips];
-    for &c in &doc.chip_shows_damage {
-        match shows.get_mut(c as usize) {
-            Some(s) => *s = true,
-            None => report.error(&name, format!("chip_shows_damage names chip {c}, past the {chips} chips")),
-        }
-    }
     let banners = doc
         .banners
         .iter()
@@ -246,8 +283,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         hp_box: map(&doc.hp_box, report),
         gauge_frame: map(&doc.gauge_frame, report),
         font,
-        chip_names: doc.chip_names.clone(),
-        chip_shows_damage: shows,
+        font_chars: doc.font_chars.clone(),
         enemy_digits: [0, 1, 2].map(|k| slice(&digits, k * per_digit_set, per_digit_set)),
         enemy_palette: enemy_pal[0],
         chip_icons,
@@ -257,6 +293,11 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         counts: (0..counts.len() / 4 - 1).map(|i| slice(&counts, 4 * i, 4)).collect(),
         count_box: slice(&counts, counts.len() - 4, 4),
         form_emotions: doc.form_emotions.clone(),
+        navi_mugshots,
+        navi_mugshot_of: doc.navi_mugshot_of.clone(),
+        navi_box,
+        pause,
+        texts: doc.texts.clone(),
         banners,
         banner_digits,
         banner_palette: banner_pal[0],

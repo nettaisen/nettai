@@ -7,6 +7,7 @@
 # and here; remove the entry once the name is settled.
 
 ["actions.toml"]
+"bgdththd/charge/action" = "0x1F: Thunder's action with a fast ball of 12 panels, which BgDthThd's charged shot (weapon 0x22) starts with a bug frag"
 "eleccross/charge/thunder" = "0x3E: DolThdr's action with the buster arm held up, which ElecCross's charged shot (weapon 0x0B) starts"
 "engine/cross-special" = "0x59: the Cross special's controller (the ruleset's cross_special)"
 "heatcross/charge/action" = "0x27: HeatCross's charged shot, FireBrn's burn (navis/megaman/forms/heatcross/charge.luau)"
@@ -14,6 +15,7 @@
 "megaman/shield/action" = "0x2B: the NaviCust Shield's guard, weapons 0x3B and 0x8C (navis/megaman/weapons/shield)"
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
 "protoman/back-special/action" = "0x2B: the guard ProtoMan's B+Back raises, weapon 0x34 (navis/protoman/back_special.luau)"
+"puzzlarm/charge/action" = "0x42: ElcPuls's action with the pulse of PuzzlArm's charged shot (weapon 0x25)"
 "recov/none" = "0x20: action 0x20's subtype 9, the heal table's last row, which no chip has (chips/recov/chips.luau)"
 "spoutcross/charge/action" = "0x25: Spreader's action with the water cannon and SpoutCross's bullet, which its charged shot (weapon 0x0C) starts"
 "tengucross/charge/gust" = "0x3F: WindRack's action with TenguCross's fan, which its charged shot (weapon 0x0F) starts"

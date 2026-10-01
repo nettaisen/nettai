@@ -143,6 +143,13 @@ fn hand_entry(b: &Battle, r: ObjectRef) -> HandEntry {
     HandEntry { chip, damage: hand.damage[i], extra, modifiers: hand.modifiers[i] }
 }
 
+/// What the chip window shows after the next chip's damage (the bonus
+/// `sub_800ED90` returns): the hand's bonuses on it and the navi's own for
+/// it (presentation).
+pub fn next_chip_bonus(b: &Battle, r: ObjectRef) -> u16 {
+    hand_entry(b, r).extra
+}
+
 /// The chip an object other than a player carries: its zeroed chip field,
 /// the zeroed chip (nothing else sets it).
 fn carried_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
@@ -524,7 +531,8 @@ fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     }
     super::intake::add_hp(b, r, total);
     let pos = b.objects.get(r).pos;
-    crate::kinds::effect::spawn(b, pos, 6, 0, 0, 0);
+    let look = b.content.defs.roles.effect(crate::content::EffectRole::Recovery);
+    crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     b.play_sound(crate::sound::SoundId(0x8A));
 }
 
