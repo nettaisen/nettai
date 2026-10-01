@@ -510,7 +510,8 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         if let Some(o) = b.objects.get(r).related[1] {
             b.objects.get_mut(o).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
         }
-        let resumes = b.objects.get(r).saved_state.is_some_and(|s| matches!(s.action, 4 | 6 | 7));
+        use crate::kinds::player::NaviAction as A;
+        let resumes = ai(b, r).saved_word.is_some_and(|s| matches!(s.action, A::Paralysis | A::Freeze | A::Bubble));
         ai_mut(b, r).attack.step_init = if resumes { 2 } else { 1 };
         b.play_sound(crate::sound::SoundId(0x8E));
         land(b, r);
@@ -564,10 +565,10 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         return exit_attack_state(b, r);
     }
     // Back to the saved status action.
+    let s = ai_mut(b, r).saved_word.take().unwrap_or_default();
+    crate::kinds::player::set_navi_action(b, r, s.action);
     let o = b.objects.get_mut(r);
-    let s = o.saved_state.take().unwrap_or_default();
     o.state = s.state;
-    o.action = s.action;
     o.phase = s.phase;
     o.phase_init = s.phase_init;
 }

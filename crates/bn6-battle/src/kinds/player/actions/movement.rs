@@ -97,7 +97,7 @@ pub(in crate::kinds::player) fn start(b: &mut Battle, r: ObjectRef, dir: u8, end
     };
     ai_mut(b, r).attack.action = ActionVars::Move(Vars { dir, kind, end_lag, target, ..Vars::default() });
     ai_mut(b, r).attack.face_target = None;
-    set_attack(b, r, ACTION, 4);
+    set_attack(b, r, crate::kinds::player::EngineAction::Move, 4);
     update(b, r);
 }
 

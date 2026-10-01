@@ -18,8 +18,6 @@ use crate::kinds::player::form;
 use crate::object::{ObjectRef, Vec3, flags, state};
 use crate::setup::Form;
 
-pub const INDEX: u8 = 0x28;
-
 /// The colour shader `sub_80EAFC2` gives its afterimages.
 const COLOR_SHADER: u16 = 0x83E0;
 
@@ -261,7 +259,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let alliance = b.objects.get(r).alliance;
     let cut = match tether {
         Tether::BeastForm => !b.form(alliance as usize).is_beast(),
-        Tether::Attack => b.objects.get(owner).action < 0x10,
+        Tether::Attack => !crate::kinds::player::navi_action(b, owner).is_attack(&b.content.defs),
         Tether::None => false,
     };
     if cut {
