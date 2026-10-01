@@ -84,6 +84,27 @@ collision.neutral_object = define.collision {
 -- neutral objects (row 0x0F: what a BlkBomb reacts to).
 collision.everything = define.collision { id = "everything", side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
 
+-- What reaches the other side's attacks and objects (row 0x18: ElemTrap's
+-- trap, which feels the other side's hits wherever they land).
+collision.hit_by_other_attacks = define.collision {
+    id = "hit-by-other-attacks",
+    side0 = 0x50000000,
+    side1 = 0xa0000000,
+    row_offset = 0xC0,
+}
+
+-- A mine: an attack of both sides that pierces invisibility and flashing
+-- and breaks guards (row 0x33: an armed land mine); and what it reaches,
+-- objects and bodies of both sides, the other side's other bodies and
+-- neutral objects (row 0x2A).
+collision.mine = define.collision { id = "mine", side0 = 0xc004000e, side1 = 0xc004000e, row_offset = 0x198 }
+collision.hits_both_sides = define.collision {
+    id = "hits-both-sides",
+    side0 = 0x3d800000,
+    side1 = 0x3e800000,
+    row_offset = 0x150,
+}
+
 -- The navi chips' and link navis' types (named by what their flags add
 -- to an attack's: 0x02 breaks guards and ice; 0x04 pierces invisibility
 -- and flashing; 0x08 as a thrown attack's).
@@ -91,6 +112,15 @@ collision.everything = define.collision { id = "everything", side0 = 0xff800002,
 -- A navi's body (row 0x01), and what a navi hits (row 0x02).
 collision.navi = define.collision { id = "navi", side0 = 0x08410080, side1 = 0x04210080, row_offset = 0x08 }
 collision.navi_target = define.collision { id = "navi-target", side0 = 0x55800200, side1 = 0xaa800200, row_offset = 0x10 }
+
+-- A navi's body with FloatShoes (row 0x10: a navi's body that floats; what
+-- HubBatc leaves its navi).
+collision.floating_navi = define.collision {
+    id = "floating-navi",
+    side0 = 0x08510080,
+    side1 = 0x04310080,
+    row_offset = 0x80,
+}
 
 -- A thrown attack that breaks (row 0x15: GroundMan's drill and rocks, MetrKnuk's fists).
 collision.thrown_break = define.collision { id = "thrown-break", side0 = 0x8000008a, side1 = 0x4000008a, row_offset = 0xA8 }

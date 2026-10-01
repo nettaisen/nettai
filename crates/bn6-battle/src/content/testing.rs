@@ -80,16 +80,12 @@ pub const TRAP: ChipId = 0x09;
 /// routine 1).
 pub const BOOST: ChipId = 0x0A;
 pub const ARM: ChipId = 0x0B;
-/// A dimming chip (action 0x15, subtype 25) that slows the custom gauge.
-pub const SLOW_GAUGE: ChipId = 0x0C;
-// Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+// Dimming chip subtypes 10 and ElemTrap's (20).
 /// An element trap (action 0x15, subtype 20, Param1 0: the trap object).
 pub const ELEM_TRAP: ChipId = 0x30;
 /// Time bombs (action 0x15, subtype 10): variant 0 and 1.
 pub const TIME_BOMB: ChipId = 0x31;
 pub const TIME_BOMB_PLUS: ChipId = 0x32;
-/// A mine (action 0x15, subtype 11).
-pub const MINE: ChipId = 0x33;
 // Navi chips.
 /// A navi chip (action 0x1B, subtype 16: the elements navi).
 pub const ELEMENTS: ChipId = 0x110;
@@ -240,6 +236,10 @@ pub const BUSTER_UP: &str = "busterup";
 pub const ATTACK_10: &str = "atk-10";
 pub const NAVI_20: &str = "navi-20";
 pub const TICK_SHOT: &str = "test/tick-shot";
+/// BN6's SloGauge and Mine (chips/slogauge, chips/mine): dimming chips
+/// content defines, which slow the custom gauge and lay a mine.
+pub const SLOW_GAUGE: &str = "slogauge";
+pub const MINE: &str = "mine";
 /// BN6's RskyHny2 and ElecDrgn (chips/rskyhny, chips/elecdrgn): chips
 /// content defines, which send bees and an elec dragon.
 pub const BEES: &str = "rskyhny2";
@@ -404,6 +404,15 @@ fn assets() -> bn6_content_api::AssetNames {
         ("bow", sprite(0x0C, 0x2A)),
         ("lil-boiler", sprite(0x04, 0x0D)),
         ("voodoo-doll", sprite(0x0C, 0x34)),
+        // The traps, mines, time bombs and navi-changing chips.
+        ("spout-splash", sprite(0x0C, 0x1A)),
+        ("beast-over-burst", sprite(0x14, 0x14)),
+        ("land-mine", sprite(0x0C, 0x22)),
+        ("blast", sprite(0x14, 0x13)),
+        ("countdown-bomb", sprite(0x0C, 0x23)),
+        ("hub", sprite(0x14, 0x1E)),
+        ("bug", sprite(0x14, 0x1F)),
+        ("charge-glow-a", sprite(0x14, 0x15)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -437,6 +446,17 @@ fn assets() -> bn6_content_api::AssetNames {
         ("boiler-steam", 0x185),
         ("err-select-91", 0x91),
         ("hit-bomb-0", 0x6F),
+        // The traps, mines, time bombs, gauge and navi-changing chips.
+        ("dimming-sparkle", 0xA5),
+        ("target-move", 0x10F),
+        ("spout-ball", 0x11D),
+        ("beast-over-burst", 0x12E),
+        ("hop", 0x113),
+        ("tick", 0xC1),
+        ("last", 0xC2),
+        ("invisible", 0x93),
+        ("bug", 0x143),
+        ("log-in-77", 0x77),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -636,24 +656,49 @@ pub fn scripts() -> Scripts {
                 ("chips/assnswrd/chip", "chips/assnswrd/chip"),
                 ("chips/010-blade/chip", "chips/047-sword/chip"),
                 ("chips/012-stunblade/chip", "chips/056-mchnswrd/chip"),
+                // Invisibl (content model v2): its hook, which the numbered
+                // veil reaches through the numbered registration's module.
                 ("objects/invisible/invisible", "objects/invisible/invisible"),
+                ("chips/invisibl/chip", "chips/invisibl/chip"),
+                ("chips/whicapsl-invisible/chip", "chips/whicapsl-invisible/chip"),
+                ("chips/0b1-invisibl/chip", "chips/0b1-invisibl/chip"),
                 ("objects/rock/rock", "objects/rock/rock"),
                 ("objects/rock-cube/rock_cube", "objects/rock-cube/rock_cube"),
                 ("objects/rock-debris/rock_debris", "objects/rock-debris/rock_debris"),
-                ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
-                ("objects/navi-boost/navi_boost", "objects/navi-boost/navi_boost"),
-                ("objects/gauge-speed/gauge_speed", "objects/gauge-speed/gauge_speed"),
+                // The trap chips, the navi-changing chips and the gauge chips
+                // (content model v2): the numbered trap and boosts reach
+                // theirs through the numbered registrations' modules;
+                // SloGauge is a definition.
+                ("lib/traps/controller", "lib/traps/controller"),
+                ("chips/antinavi/chip", "chips/antinavi/chip"),
+                ("chips/antidmg/chip", "chips/antidmg/chip"),
+                ("chips/antiswrd/chip", "chips/antiswrd/chip"),
+                ("chips/antirecv/chip", "chips/antirecv/chip"),
+                ("chips/bodygrd/chip", "chips/bodygrd/chip"),
+                ("chips/0ba-antinavi/chip", "chips/0ba-antinavi/chip"),
+                ("lib/navi-boost/controller", "lib/navi-boost/controller"),
+                ("chips/darkinvs/chip", "chips/darkinvs/chip"),
+                ("chips/121-darkinvs/chip", "chips/121-darkinvs/chip"),
+                ("lib/gauge-speed/controller", "lib/gauge-speed/controller"),
+                ("chips/slogauge/chip", "chips/slogauge/chip"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
                 ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
-                // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+                // Dimming chip subtypes 10, 11 and ElemTrap's (20), in content
+                // model v2: ElemTrap and Mine are definitions; the numbered
+                // traps and time bombs reach theirs through the numbered
+                // registrations' modules.
                 ("lib/panels", "lib/panels"),
-                ("objects/elem-trap/elem_trap", "objects/elem-trap/elem_trap"),
-                ("objects/elem-trap-strike/elem_trap_strike", "objects/elem-trap-strike/elem_trap_strike"),
+                ("chips/elemtrap/trap", "chips/elemtrap/trap"),
+                ("chips/elemtrap/strike", "chips/elemtrap/strike"),
+                ("chips/elemtrap/chip", "chips/elemtrap/chip"),
                 ("objects/panel-bursts/panel_bursts", "objects/panel-bursts/panel_bursts"),
-                ("objects/time-bom/time_bom", "objects/time-bom/time_bom"),
-                ("objects/countdown-bomb/countdown_bomb", "objects/countdown-bomb/countdown_bomb"),
-                ("objects/mine/mine", "objects/mine/mine"),
-                ("objects/land-mine/land_mine", "objects/land-mine/land_mine"),
+                ("chips/timebom/controller", "chips/timebom/controller"),
+                ("chips/timebom/countdown", "chips/timebom/countdown"),
+                ("chips/timebom/chips", "chips/timebom/chips"),
+                ("chips/090-timebom1/chip", "chips/090-timebom1/chip"),
+                ("chips/mine/controller", "chips/mine/controller"),
+                ("chips/mine/land_mine", "chips/mine/land_mine"),
+                ("chips/mine/chip", "chips/mine/chip"),
                 ("chips/059-crakshot/chip", "chips/059-crakshot/chip"),
                 ("objects/crack-shot/crack_shot", "objects/crack-shot/crack_shot"),
                 ("objects/elmnt-man/elmnt_man", "objects/elmnt-man/elmnt_man"),
@@ -779,23 +824,11 @@ fn kinds() -> Vec<ObjectKind> {
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
         kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
         kind("reflected-shot", Pool::Attack, 0x2F, "objects/reflected-shot/reflected_shot"),
-        kind("invisible", Pool::Effect, 0x5D, "objects/invisible/invisible"),
         ObjectKind { actor_list_entry: Some(8), ..kind("rock", Pool::Attack, 0x59, "objects/rock/rock") },
         kind("rock-cube", Pool::Effect, 0x37, "objects/rock-cube/rock_cube"),
         kind("rock-debris", Pool::Effect, 0x38, "objects/rock-debris/rock_debris"),
-        kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip"),
         kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
-        kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost"),
-        kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed"),
         kind("rising-bubble", Pool::Effect, 0x14, "objects/rising-bubble/rising_bubble"),
-        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
-        kind("elem-trap", Pool::Attack, 0x4D, "objects/elem-trap/elem_trap"),
-        kind("elem-trap-strike", Pool::Effect, 0x2B, "objects/elem-trap-strike/elem_trap_strike"),
-        kind("panel-bursts", Pool::Effect, 0x24, "objects/panel-bursts/panel_bursts"),
-        kind("time-bom", Pool::Effect, 0x27, "objects/time-bom/time_bom"),
-        kind("countdown-bomb", Pool::Attack, 0x4B, "objects/countdown-bomb/countdown_bomb"),
-        kind("mine", Pool::Effect, 0x29, "objects/mine/mine"),
-        kind("land-mine", Pool::Attack, 0x4C, "objects/land-mine/land_mine"),
         kind("crack-shot", Pool::Attack, 0x33, "objects/crack-shot/crack_shot"),
         kind("elmnt-man", Pool::Actor, 0x10, "objects/elmnt-man/elmnt_man"),
         kind("meteor", Pool::Attack, 0x8D, "objects/meteor/meteor"),
@@ -945,7 +978,10 @@ fn named_chips() -> Vec<ChipData> {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             extra_flags: ExtraChipFlags(ExtraChipFlags::RUSH_CANCELS),
             family: ChipFamily::Plus,
-            script: Some("objects/invisible/invisible".into()),
+            // Invisibl's time (360 ticks), which the numbered registration
+            // finds its hook by.
+            params: [104, 1, 0, 0],
+            script: Some("chips/0b1-invisibl/chip".into()),
             ..chip(VEIL, "Veil", 0x15, 1)
         },
         ChipData {
@@ -985,37 +1021,32 @@ fn named_chips() -> Vec<ChipData> {
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             params: [3, 0, 0, 0],
-            script: Some("objects/trap-chip/trap_chip".into()),
+            script: Some("chips/0ba-antinavi/chip".into()),
             ..chip(TRAP, "Trap", 0x15, 20)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            script: Some("objects/navi-boost/navi_boost".into()),
+            script: Some("chips/121-darkinvs/chip".into()),
             ..chip(BOOST, "Boost", 0x15, 38)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             params: [2, 1, 0, 0],
-            script: Some("objects/navi-boost/navi_boost".into()),
+            script: Some("chips/121-darkinvs/chip".into()),
             ..chip(ARM, "Arm", 0x15, 38)
         },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            script: Some("objects/gauge-speed/gauge_speed".into()),
-            ..chip(SLOW_GAUGE, "SlowGauge", 0x15, 25)
-        },
-        // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
+        // Dimming chip subtype 10 and ElemTrap's (20).
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
             damage: 40,
-            script: Some("objects/trap-chip/trap_chip".into()),
+            script: Some("chips/0ba-antinavi/chip".into()),
             ..chip(ELEM_TRAP, "ElemTrap", 0x15, 20)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
             hit_param: 100,
             damage: 50,
-            script: Some("objects/time-bom/time_bom".into()),
+            script: Some("chips/090-timebom1/chip".into()),
             ..chip(TIME_BOMB, "TimeBomb", 0x15, 10)
         },
         ChipData {
@@ -1023,15 +1054,8 @@ fn named_chips() -> Vec<ChipData> {
             hit_param: 100,
             params: [1, 0, 0, 0],
             damage: 70,
-            script: Some("objects/time-bom/time_bom".into()),
+            script: Some("chips/090-timebom1/chip".into()),
             ..chip(TIME_BOMB_PLUS, "TimeBomb+", 0x15, 10)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 100,
-            damage: 60,
-            script: Some("objects/mine/mine".into()),
-            ..chip(MINE, "Mine", 0x15, 11)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),

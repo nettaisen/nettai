@@ -1,60 +1,45 @@
 --!strict
--- Panel bursts (effect object #0x24, `sub_80E2F56`): one-shot effects
--- (effect #0) going off one panel at a time, every `interval` ticks, over a
--- set of panels in a random order: the blasts a time bomb's explosion
--- (objects/countdown-bomb) and an ElemTrap's counterattack
--- (objects/elem-trap-strike) scatter over the field. Only drawn, but its
+-- Panel bursts (the original's effect object #0x24, `sub_80E2F56`):
+-- one-shot effects going off one panel at a time, every `interval` ticks,
+-- over a set of panels in a random order: the blasts a time bomb's
+-- explosion (chips/timebom/countdown), a BlkBomb's (chips/blkbomb/bomb),
+-- an ElemTrap's counterattack (chips/elemtrap/strike) and MstrCros's
+-- finale (chips/mstrcros/navi) scatter over the field. Only drawn, but its
 -- shuffle draws the simulation RNG.
 --
 -- Its spawner (`sub_80E2FE8`, which seven routines call) is exported:
--- `panel_bursts.spawn(spawner, region, interval, z, params)`.
+-- `panel_bursts.spawn(spawner, region, interval, z, effect)`. What goes
+-- off was a row of the original's `byte_80E2F48` by the first parameter
+-- (an effect and a sound, which no row has); it is the spawner's argument
+-- now.
 
 local panels = require("../../lib/panels")
 
 export type State = {
-    -- The panels still to burst, packed x | y << 4 (the object's +0x60;
-    -- Param2 counts them).
+    -- The panels still to burst, packed x | y << 4 (the object's +0x60),
+    -- and how many (the original's second parameter).
     targets: { number },
+    count: number,
+    -- What goes off on each, and its sound (none: silent).
+    effect: Effect,
+    sound: Sound?,
 }
 
-local panel_bursts = {
-    state = { targets = "u8[28]" },
-}
+local panel_bursts = {}
 
 -- The object's list holds 28 panels (its extra bytes); more would run
 -- into its sprite.
 local CAPACITY = 28
 
--- Region numbers from 0x80 cover the panels meeting a whole-field
--- condition (`data.rules.field_regions`); below, a hit region's offsets
--- (`data.regions`) from the anchor panel.
-local WHOLE_FIELD = 0x80
 -- A hit region's panels count when they are on the field
 -- (`object_checkPanelParameters` with bit 0x10000, set on every refreshed
 -- panel).
 local ON_FIELD = 0x10000
 
--- `byte_80E2F48`: what goes off, by Param1: the effect's look and a sound
--- (0 = none).
-local LOOKS: { [number]: { effect: number, sound: number } } = {
-    [0] = { effect = 0x1F, sound = 0 },
-    [1] = { effect = 0x00, sound = 0 },
-    [2] = { effect = 0x45, sound = 0 },
-    [3] = { effect = 0x22, sound = 0 },
-    [4] = { effect = 0x0B, sound = 0 },
-    [5] = { effect = 0x6B, sound = 0 },
-    [6] = { effect = 0x24, sound = 0 },
-}
-
--- `sub_80E3038`: the panels of hit region `region` around (x, y), the
--- offsets' x toward `side`'s front, that are on the field.
-local function region_panels(region: number | Region, x: number, y: number, side: number): { number }
-    local offsets = if type(region) == "number" then data.regions[region] else region.panels
-    if not offsets then
-        error(string.format("sub_80E3038: hit region %s reads past PanelOffsetListsPointerTable", tostring(region)))
-    end
-    -- `object_getAllianceDirection`.
-    local dir = 1 - 2 * side
+-- `sub_80E3038`: the panels of a hit region around (x, y), the offsets' x
+-- toward `side`'s front, that are on the field.
+local function region_panels(offsets: { { number } }, x: number, y: number, side: number): { number }
+    local dir = panels.side_direction(side)
     local list: { number } = {}
     for _, d in offsets do
         local px: number, py: number = d[1] * dir + x, d[2] + y
@@ -63,47 +48,6 @@ local function region_panels(region: number | Region, x: number, y: number, side
         end
     end
     return list
-end
-
--- `sub_80E2FE8`: bursts over the panels of `region` (a region definition:
--- a whole-field one's panels, else its panels around the panel (Param3,
--- Param4) of `params`, facing `spawner`'s side's way), one every
--- `interval` ticks at height `z`, with the look `params[1]` (`LOOKS`). (Its
--- X is `interval` and its Y the spawner's registers, which nothing reads.)
--- Deprecated: a region by number (from 0x80, the whole field's panels
--- meeting condition `region - 0x80`).
-function panel_bursts.spawn(spawner: Object, region: number | Region, interval: number, z: number, params: { number }): Object?
-    local o = battle.spawn_kind("panel-bursts", Vec3.new(interval, 0, z), params)
-    if not o then
-        return nil
-    end
-    o.timer2 = interval
-    local list
-    local cond: PanelCondition? = nil
-    if type(region) ~= "number" then
-        cond = region.field
-    elseif bit32.btest(region, WHOLE_FIELD) then
-        local i = bit32.band(region, 0x7F)
-        cond = data.rules.field_regions[i]
-        if not cond then
-            error(string.format("sub_80E2FE8: whole-field region %#x reads past byte_8019C34", 0x80 + i))
-        end
-    end
-    if cond then
-        o.panel_x, o.panel_y = 0, 0
-        list = panels.filtered_except(o, cond.require, cond.forbid)
-    else
-        list = region_panels(region, o:param(3), o:param(4), spawner.alliance)
-    end
-    if #list > CAPACITY then
-        error(string.format("sub_80E2FE8: %d panels overrun the burst object's list", #list))
-    end
-    local s = o.state :: State
-    for i, p in list do
-        s.targets[i] = p
-    end
-    o:set_param(2, #list)
-    return o
 end
 
 -- `sub_80E2F8C`: when the timer runs out, the next panel (last to first)
@@ -115,29 +59,26 @@ local function tick(me: Object)
         return
     end
     me.timer = me.timer2
-    local n = me:param(2) - 1
-    me:set_param(2, int.u8(n))
+    local s = me.state :: State
+    local n = s.count - 1
+    s.count = int.u8(n)
     if n < 0 then
         me:set_lifecycle("destroy")
         return
     end
-    local look = LOOKS[me:param(1)]
-    if not look then
-        error(string.format("panel bursts look %d reads past byte_80E2F48", me:param(1)))
-    end
-    local s = me.state :: State
     local p = s.targets[n + 1]
     local x, y = field.center(panels.x(p), panels.y(p))
-    battle.effect(Vec3.new(x, y, me.pos.z), look.effect)
-    if look.sound ~= 0 then
-        battle.play_sound(look.sound)
+    battle.effect(Vec3.new(x, y, me.pos.z), s.effect)
+    local sound = s.sound
+    if sound then
+        battle.play_sound(sound)
     end
 end
 
 -- `sub_80E2F74`: shuffle the panels (as many swaps as panels), then burst.
 local function init(me: Object)
     local s = me.state :: State
-    local n = me:param(2)
+    local n = s.count
     local list = {}
     for i = 1, n do
         list[i] = s.targets[i]
@@ -151,7 +92,7 @@ local function init(me: Object)
 end
 
 -- `sub_80E2F56`.
-function panel_bursts.update(me: Object)
+local function update(me: Object)
     local l = me.lifecycle
     if l == "init" then
         init(me)
@@ -160,6 +101,53 @@ function panel_bursts.update(me: Object)
     else
         me:free()
     end
+end
+
+panel_bursts.kind = define.kind {
+    id = "panel-bursts",
+    pool = "effect",
+    state = { targets = "u8[28]", count = "u8", effect = "effect", sound = "sound" },
+    update = update,
+}
+
+-- `sub_80E2FE8`: bursts of `effect` (with `sound`, if any) over the panels
+-- of `region` (a whole-field region's panels; else its panels around the
+-- panel (`x`, `y`), facing `spawner`'s side's way), one every `interval`
+-- ticks at height `z`. (Its X is `interval` and its Y the spawner's
+-- registers, which nothing reads.)
+function panel_bursts.spawn(
+    spawner: Object,
+    region: Region,
+    interval: number,
+    z: number,
+    effect: Effect,
+    sound: Sound?,
+    x: number?,
+    y: number?
+): Object?
+    local o = battle.spawn(panel_bursts.kind, Vec3.new(interval, 0, z))
+    if not o then
+        return nil
+    end
+    o.timer2 = interval
+    local list
+    local cond = region.field
+    if cond then
+        o.panel_x, o.panel_y = 0, 0
+        list = panels.filtered_except(o, cond.require, cond.forbid)
+    else
+        list = region_panels(region.panels or {}, x or 0, y or 0, spawner.alliance)
+    end
+    if #list > CAPACITY then
+        error(string.format("sub_80E2FE8: %d panels overrun the burst object's list", #list))
+    end
+    local s = o.state :: State
+    for i, p in list do
+        s.targets[i] = p
+    end
+    s.count = #list
+    s.effect, s.sound = effect, sound
+    return o
 end
 
 return panel_bursts

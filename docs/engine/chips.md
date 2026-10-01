@@ -1385,8 +1385,9 @@ survival alone decides the effect). Its effect (`sub_80E3504`): `sub_802CEA6` cl
 (its object gets Param2 = 1), `sub_80E3560` spawns the trap's object for Param1 0 only (AntiDmg's params are 3: none),
 and `sub_802CE8A` records {chip, bonus, damage word, user, object} (0x10 bytes per side at 0x02036720). Then 61 ticks.
 `sub_802CEC8` clears a record every tick once its user's HP is 0. The trap springs in the damage intake
-(`sub_802CEF4`). Note `sub_802CEA6` clears only the low half of the record's damage word. The pack's script:
-objects/trap-chip.
+(`sub_802CEF4`). Note `sub_802CEA6` clears only the low half of the record's damage word. The pack's module:
+lib/traps/controller (a chip's `dimming` hook is `traps.hook(trap?)`; the port's trap object sees that its side's
+record no longer names it, where the original tells it through Param2).
 
 #### 3.6.10 The other dimming chips' controllers (`off_802CCB4`)
 
@@ -1397,7 +1398,7 @@ alliance (and, for most, flip), damage word, and chip and bonus at +0x30/+0x32. 
 subtype:
 
 - 1 (Invisibl, WhiCapsl; T4 0x5D): the user flashes invisible for Param1-2 ticks (`sub_8010474`), 31 ticks.
-  objects/invisible.
+  objects/invisible (`invisible.hook(ticks)`).
 - 6 (RockCube, IceCube; T4 0x37): a rock of variant Param1 (1 a rock cube, 3 an ice block) on the panel in front
   (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. objects/rock-cube; the rock is objects/rock
   (field-objects.md).
@@ -1406,13 +1407,15 @@ subtype:
   (+0x3C) or fast (+0x3A) gauge timer in `sub_802E070` gets 480 ticks, and, with per-player gauges (battle flag
   0x40) outside a link battle, the other side's 1080 (`sub_80107D4` counts them down; nothing else PvP reaches
   reads them); a warning blinks over the gauge (`sub_800AE90`, with sound 0x91 every 16 frames of the game's frame
-  counter, which the port approximates with the effect's own ticks), 70 ticks. objects/gauge-speed.
+  counter, which the port approximates with the effect's own ticks), 70 ticks. lib/gauge-speed/controller
+  (`gauge_speed.slow`, `gauge_speed.fast`).
 - 38 (HubBatc, the arm chips, BugRSwrd, BgDthThd, DarkInvs; T4 0x84, `sub_80E95B4` by Param1): 0 raises the buster
   to attack 5 at least, rapid and charge 4, the custom level 8, defers the hand-shrink bug a turn, gives a B+Back
   special (0x3B) if there was none, and the shoes and undershirt (flags 0x40030 and the stats), resetting the
   body's collision types; 1 and 2 make weapon routine Param2 the charged shot in the stats and the navi
   (`sub_80E97BE`: a buster of 3 or 4 goes, 0x2C becomes 0x2B); 3 sets the navi's request 0x20000000. The arm
-  effect's height offset is lost to a shift of the wrong register. objects/navi-boost.
+  effect's height offset is lost to a shift of the wrong register. lib/navi-boost/controller (`navi_boost.hub`,
+  `bug(routine)`, `arm(routine, palette)`, `dark`).
 
 Not ported yet, with what is known:
 
@@ -1428,12 +1431,12 @@ Not ported yet, with what is known:
 Unverified branches: IceCube and WhiCapsl (not folder chips: no lab scenario uses chips 0x17C and 0x17E), BodyGrd
 (program advance 0x157: only as its recipe), per-player gauges (not in netbattles).
 
-**ElemTrap's trap** (T3 0x4D, `sub_80CDF84`; the pack's `objects/elem-trap`) is a collision over whole-field region
+**ElemTrap's trap** (T3 0x4D, `sub_80CDF84`; the pack's `chips/elemtrap/trap`) is a collision over whole-field region
 0x80 with ObjectFlags1 0x01000000 (hit even while dimmed), self type 0, target 0x18. Each tick it resolves its hits
 and reads the per-element damage (CollisionData+0x84, fire to wood); the first element with damage springs it (its
 first update runs unarmed: a hit then just clears the record). Sprung, it waits until the battle isn't dimmed, puts
 sparkles (T4#0 look 0x46, SE 0xA5) on the enemy navi's panels, spawns the counterattack T4 0x2B (`sub_80E35A4`,
-`objects/elem-trap-strike`) at the **head** of the update list (`sub_80033E4`) and registers it with `sub_800BF16`
+`chips/elemtrap/strike`) at the **head** of the update list (`sub_80033E4`) and registers it with `sub_800BF16`
 (the other side can't cut in), clears its side's record and ends. The counterattack's effect (`sub_80E362C`) hits
 every panel with any of `byte_80E36E4[side]` (the enemy's bodies) in that element (`byte_80E36EC`, damage plus bonus,
 `sub_80C53A6`) and spawns the panel bursts T4 0x24 (`sub_80E2F56`, `objects/panel-bursts`: shared by seven callers,
@@ -1442,14 +1445,17 @@ sparkles, the counterattack and the bursts are **unverified**.
 
 #### 3.6.10 TimeBom, Mine, Guardian (subtypes 10, 11, 14)
 
-- **TimeBom** (T4 0x27 `sub_80E31D8`, `objects/time-bom`; 31 ticks) sets the countdown bomb T3 0x4B (`sub_80CD8EC`,
-  `objects/countdown-bomb`) on the first panel ahead meeting `off_80E3280[side]` (a free enemy panel). The bomb
+- **TimeBom** (T4 0x27 `sub_80E31D8`, `chips/timebom/controller`; 31 ticks) sets the countdown bomb T3 0x4B
+  (`sub_80CD8EC`, `chips/timebom/countdown`) on the first panel ahead meeting `off_80E3280[side]` (a free enemy panel). The bomb
   (variants `byte_80CD8AC`: 0 TimeBom1-3, HP 50; 1 TimeBom+, HP 200) rises, counts 3, 2, 1 (60, 60, 60, 30 ticks,
   shown by hiding sprite parts), then hits whole-field region 0x82/0x81 (the enemy area of the side opposite its
   panel's) and sets off bursts; broken first, it only puffs. Variants 2 to 7 (HP 3 to 10; `bursts_when_broken`,
-  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them. The lab's
+  `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them (a variant
+  is a `CountdownVariant` record its chip passes; no chip passes those rows, whose branches are the record's
+  `allows_bodies`, `bursts_when_broken` and `linked`). The lab's
   scenarios end during the countdown: the blast, breaking, removal and absorption are **unverified**.
-- **Mine** (T4 0x29 `sub_80E342C`, `objects/mine`; 121 ticks) lays T3 0x4C (`sub_80CDD44`, `objects/land-mine`),
+- **Mine** (T4 0x29 `sub_80E342C`, `chips/mine/controller`; 121 ticks) lays T3 0x4C (`sub_80CDD44`,
+  `chips/mine/land_mine`),
   which shuffles the enemy's free panels (`byte_80CDF50`, 20 swaps), hops through them every 2 ticks (59 hops, SE
   0x113), then hides armed (region 1, types 0x33/0x2A) until something touches it, its HP runs out, its panel stops
   being solid or the battle ends; it blows up (T4#0 look 0x47, SE 0x70) the tick after. It has its own action table
