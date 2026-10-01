@@ -167,7 +167,7 @@ No reactive-defense check (`sub_801056A`) runs. 22 ticks from the action's first
 Matched: every scenario of the three chips except those stopped elsewhere (`counter` by action 0x12, `guard` by
 action 0x2B, `obstacle` by dimming subtype 6, `beast` and `beast-charged` by the empty hand's charge threshold).
 
-## Action 0x0A: the link navis' chips (not yet content)
+## Action 0x0A: the link navis' chips
 
 Chips 0x190 HeatPres to 0x199 DustBrk have action 0x0A, below 0x10, so they run through the user's own action table
 (`off_80EA4C8[AIIndex]`, chips.md §1.6), not `JumpTable80EAC60`. `off_80EA4C8` has 25 tables by AI index: 0 and
@@ -177,8 +177,13 @@ port should refuse it); the link navis' tables have eleven, and DustMan's thirte
 `sub_80F2274`, his other moves; entry 9 of each link navi's table is another move of his, not a chip). Entry 0xA: 1 HeatMan `sub_80F0778`, 2 ElecMan
 `sub_80F09B8`, 3 SlashMan `sub_80F0CB0`, 4 EraseMan `sub_80F1056`, 5 ChargeMan `sub_80F1334`, 6 SpoutMan
 `sub_80F15CE`, 7 TomahawkMan `sub_80F18AC`, 8 TenguMan `sub_80F1A46`, 9 GroundMan `sub_80F1C1C`, 10 DustMan
-`sub_80F1FA0`. The dispatcher content needs is that table's entry 0xA by the user's AI index (one module
-registered for action 0x0A that dispatches on `ai_index`, erroring for an AI index without one).
+`sub_80F1FA0`.
+
+The port doesn't dispatch on the AI index: each chip's record runs its own action, the one the module it names
+exports (navis/<navi>/chip.luau; docs/design/content-model-v2.md §12, "A record's action by its module"), and which
+navi has which chip is the navi's `own_chip`. A navi the original gives no entry 0xA (MegaMan, navi 0xB) never
+holds one of these chips, so the read past its table has no counterpart. What the routines share (the phases on the
+attack's step, the timer, the Atk+ bonus, the damage word, `sub_800E258`, `sub_800E708`) is lib/link_chips.luau.
 
 Each routine runs its phases by `av[0]` (entry on `av[1]` 0, set to 4), keeps its timer in `av.u16[0x10]`
 ("n ticks": after the entry tick until the timer reaches 0, `bgt`), and in its first attacking phase adds the Atk+
@@ -279,14 +284,14 @@ subtype 3 and params 0.
   0x11; 12 ticks → 4. 4 (`sub_80F1C78`), the dig: anim 0x12; FuturePanel his, reserved; flags 0x40 and 0x400000;
   invulnerable (`object_setInvulnerableTime(0xFFFF)`: flag 8); `sub_80F1E50(0x40000)`: X velocity front · 0x40000,
   Timer = |c − x| · 0x280000 / 0x40000 (c 6; side 1: 1); sound 0x1C0; the drill (`sub_80E7896`, r4 0xA00: T4 0x61,
-  Param1 0, Param2 0xA: it goes once he leaves action 0xA; chips.md §3.6.25) in `av+0x30`. Each later tick: X +=
-  velocity; the panel under him (`sub_800E258`); a new column → a hit there (`sub_80F1E7E`: region 1, hit effect
+  chips/grndman/drill, Param1 0, Param2 0xA: it goes once he leaves action 0xA; chips.md §3.6.25) in `av+0x30`.
+  Each later tick: X += velocity; the panel under him (`sub_800E258`); a new column → a hit there (`sub_80F1E7E`: region 1, hit effect
   0xA, target 5, self 6, r7 0x63: modifier 0x63; Z 0); that panel against `byte_80F1D20[side]` (require 0x10, forbid
   0x07800000; side 1 0x0B800000): refused → 0xC; else his panel and collision panels follow, the timer counts, and
   at 0 sound 0xE5 → 8. 8 (`sub_80F1D30`), the rockfall: a rock (`sub_80F1E98`: of the panels meeting
   `off_80F1EF0[side]` (GroundMan's: side 0 require 0x04000020, side 1 require 0x08000000 forbid 0x20) but his own
   (`object_getPanelsExceptCurrentFiltered`), one at random (**one draw**, `GetPositiveSignedRNG2()` mod n; none: no
-  rock), attack #0x80 (chips.md §3.6.25) with Param1 10, Param2 0 (it waits a dimming out), Param3 0 (no crack),
+  rock), attack #0x80 (chips/grndman/rock, chips.md §3.6.25) with Param1 10, Param2 0 (it waits a dimming out), Param3 0 (no crack),
   Param4 0), a camera shake (1, 20), Timer 20; 20 ticks: `av[0xC]` − 1, above 0 the entry again, else → 0xC. Nine
   rocks, 20 ticks apart. 0xC (`sub_80F1D6C`): anim 4, Timer 4, the drill's state word = 8 (`sub_80E78AE`); 4 ticks →
   0x10. 0x10 (`sub_80F1D9A`): back onto FuturePanel (unreserved), coordinates, collision panels; flags 0x40 and
@@ -301,29 +306,53 @@ subtype 3 and params 0.
   hit effect 0xA, target 5, self 6, modifier 3, the element and damage word) and sound 0x17B; 40 ticks → 8. 8
   (`sub_80F204E`): 30 ticks → anim 0, exit, and only then the second cloud's state word = 8 (`sub_80E8788`).
 
-Ported but not registered, from group G2 (chips/19x folders, their shared state in chips/190-heatpres/state.luau and
-`LinkChipState` in types.d.luau, **[unverified]**, agreeing with the reading above where checked): EraseMan's,
-SpoutMan's, ElecMan's, SlashMan's, TomahawkMan's, TenguMan's and DustMan's, with their objects (chips/eraseman/beam,
-drip-shower, navi-effect, riding-hit, eagle-tomahawk, tomahawk-strike, tengu-tornado, dust-cloud). Not written:
-HeatPres (lib/trajectory for the arc, objects/heat-flame for the flames), VolcChrg (the volcano rock, attack #0x86)
-and RC Brakr (objects/ground-drill and the rock of chips.md §3.6.25, effect #9 = objects/rock-chip), and the action
-0x0A dispatcher and registrations.
 
-What the port has for them so far: their damage, damage formulas 24 to 44 (`sub_8010C50`): the chip's row of
-`byte_80212D4` (its `navi_damage`: a base and a step), plus the step for each level of the user's buster attack
-(`sub_801265A`) up to 5, and 0 without a player navi on the side.
+As ported (content model v2; every routine branch by branch, each chip's record naming its navi's module):
 
-Lab (the original's coverage): each routine is reached by one scenario, navis/navi-01-heatpres to navi-10-dustbrk.
-**Unverified** (no scenario reaches them): HeatPres landing off solid ground; DElecSwd's first two stop reasons (a
-blocker, the field's edge) and a stop on its entry tick; RSlash starting on row 3, the turns at a target column and
-at row 1's end being his start row, the roll's floor check ending it; EDeletBm's five-beam cap; VolcChrg with no
-empty enemy panels or fewer than five in all; DripShwr's jump and spray (every scenario's panel three ahead was
-taken); ETomahwk's six-strike cap; RC Brakr's rockfall (the dig always met the opponent) and the drill's absence;
-every "no object" path (a failed spawn). What stops the port first, in these scenarios, before the chip runs:
+| Chip | Action | Module | Kinds it spawns |
+|---|---|---|---|
+| HeatPres | `heatpres/action` | navis/heatman/chip.luau | chips/heatman/flame (`heatman/flame`, HeatMan's own) |
+| DElecSwd | `delecswd/action` | navis/elecman/chip.luau | objects/follow-effect (`follow-effect`: the glow, with DeltaRay's bursts) |
+| RSlash | `rslash/action` | navis/slashman/chip.luau | navis/slashman/riding_hit.luau (`slashman/riding-hit`) |
+| EDeletBm | `edeletbm/action` | navis/eraseman/chip.luau | chips/eraseman/beam (`eraseman/beam`, EraseMan's own) |
+| VolcChrg | `volcchrg/action` | navis/chargeman/chip.luau | navis/chargeman/volcano_rock.luau (`chargeman/volcano-rock`) |
+| DripShwr | `dripshwr/action` | navis/spoutman/chip.luau | navis/spoutman/drip_shower.luau (`spoutman/drip-shower`) |
+| ETomahwk | `etomahwk/action` | navis/tomahawkman/chip.luau | navis/tomahawkman/axe.luau (`tomahawkman/axe`), strike.luau (`tomahawkman/strike`) |
+| FTornado | `ftornado/action` | navis/tenguman/chip.luau | navis/tenguman/tornado.luau (`tenguman/tornado`) |
+| RC Brakr | `rc-brakr/action` | navis/groundman/chip.luau | chips/grndman/drill (`grndman/drill`) and rock (`grndman/rock`), GroundMan's own |
+| DustBrk | `dustbrk/action` | navis/dustman/chip.luau | navis/dustman/clouds.luau (`dustman/cloud`, `dustman/overlay`) |
 
-- the init hooks of AI indices 1, 6 and 9 (`off_8010E0C`) and DustMan's post-init hook `sub_80F22F8`;
-- the link navis' chip bonus `sub_800F09E`, at chip use: by AI index, a damaging chip of the navi's family gets a
-  bonus from `byte_8021300`, indexed by a per-side value (`dword_203CFA0`, copied from the battle's link data at the
-  round's start) that the traces don't record; ChargeMan's charge limit (`sub_800F49E`) reads the same value;
-- today the lab's first difference is "form action 10 is not implemented yet" (nothing registered for action 0x0A)
-  for navi-01..04 and 06..09, ChargeMan's charge limit for navi-05, and the post-init hook for navi-10.
+The kinds that last "while he is in action 0xA" (the glow, the riding hit, the axe, the drill, the erase beams) keep
+the action their owner was running when they came and compare it with his running action, instead of the number.
+The link navi's chip bonus (`sub_800F09E`) and ChargeMan's charge limit read the side's link navi level
+(`dword_203CFA0`, from each console's init block: 0xFF without one), which the recorder writes into a trace's setup
+as `navi_levels`; the chip lab's link navis are at level 14.
+
+Lab: the ten generated scenarios, navis/navi-01-heatpres to navi-10-dustbrk, match through the chip and the buster
+shots after it, and stop where the navi first charges (the charge times of the link navis' weapon routines, past
+the pack's fifty rows: not this action's). 105 hand-written scenarios under navis/navi-NN-chip/ match on every
+frame, and between them run every branch of the ten routines but those below: used by side 1, with the opponent
+off his row, a row down or in the far column (`miss`, `far`, `edge`), from other columns and rows (`back`,
+`forward`, `row1`, `row3`), over the holes stage's holes (`holes`), against a RockCube of his own or the
+opponent's (`rock`), with both stepping forward first (`adjacent`), hit or paralyzed out of the action (`hit`,
+`shocked`), with the field dimmed while it runs (`dimmed`, `dimmed-early`), and with the opponent deleted by it
+(`delete`). Among them: HeatPres landing on a hole; DElecSwd's three stop reasons, on its entry tick too; RSlash
+from each row, stopped by a hole and by a rock, and turning at the far column once the enemy has left it;
+EDeletBm's five beams; a volcano rock on a hole; DripShwr's jump and spray; RC Brakr's dig to the far column and
+its nine rocks, the dig stopped by a rock and by a hole, and the rockfall with no enemy left to aim at.
+
+**Unverified** (no scenario reaches them; ported from the disassembly):
+
+- every failed spawn (no free object or collision slot): HeatPres's hit and its sound, DElecSwd without its glow,
+  RSlash without its riding hit, ETomahwk without its axe, RC Brakr without its drill, DustBrk without its clouds;
+- DElecSwd's panel center equal to its velocity (no panel's is); RSlash's route past its last leg (the table has
+  none);
+- VolcChrg with no empty panel on the other side, or fewer than five targets in all (the other side's area is
+  never that small without stolen columns);
+- DripShwr when he can't move (immobilized as the wind-up ends); ETomahwk's six-strike cap (he would stand off the
+  field);
+- of the kinds: the riding hit when its owner leaves the action otherwise than by landing (he can't be hit while
+  he rolls), its variant that ends on a hit, and its running off the field; the axe when its owner leaves the
+  action (TomahawkMan is neither flinched nor paralyzed out of it) and its holder's word being null; the drill
+  and DustBrk's clouds once their owner has left the action while the battle goes on are reached only through the
+  paralysis scenarios (DustMan and GroundMan before the dig), not through a flinch.

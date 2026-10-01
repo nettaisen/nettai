@@ -303,7 +303,8 @@ split the list):
   MachGun 0x29, CornSht 0x2A, Reflectr 0x2B, IronShl 0x2C, BblStar 0x2D, DrilArm 0x2E, Tornado 0x2F, WideSht 0x30,
   WaveArm 0x31, AquaNdl 0x32, H-Burst 0x34, RlngLog 0x36, AirSpin 0x38, DolThdr 0x3E, WindRack 0x3F, MoonBld 0x40,
   ElcPuls 0x42, AuraHed 0x43, MagCoil 0x44, the sword family 0x49, the dragons 0x51, VarSwrd 0x53, NeoVari 0x54,
-  SonicBom 0x55, ZSaver 0x5B, and the Cross and Beast chips' actions (0x0A).
+  SonicBom 0x55, ZSaver 0x5B. The link navis' chips (action 0x0A) are done: navis/<navi>/chip.luau, on
+  lib/link_chips.luau (docs/engine/standard-chips.md, "Action 0x0A").
 - Many fire the projectile of group D; start with the ones that don't, or after it.
 
 ### Framework gaps (Rust, not content)
