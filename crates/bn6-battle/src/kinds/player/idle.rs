@@ -7,7 +7,7 @@
 
 use super::actions::movement::{self, MoveKind};
 use super::{
-    Emotion, ai, ai_mut, cross_protected, emotion, exit_attack_state, flag1, form_of, navi_of,
+    Emotion, ai, ai_mut, cross_protected, emotion, exit_attack_state, flag1, form_of,
     is_link, reset_charge, set_attack, stats, stats_mut,
 };
 use crate::actor::{request, status};
@@ -15,7 +15,6 @@ use crate::battle::Battle;
 use crate::collision::f1;
 use crate::input::keys;
 use crate::object::ObjectRef;
-use crate::setup::Navi;
 use bn6_content_api::{ChipHandle, WeaponHandle};
 
 /// Action 8, `sub_80EA734`.
@@ -63,8 +62,8 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     b.chip_hud[side].window = super::input::chips_enabled(b, r);
     phase_timer(b, r);
-    // Beast Over (and any form past it): the berserk controller decides.
-    if form_of(b, r).0 >= 0x17 {
+    // Beast Over: the berserk controller decides.
+    if form_of(b, r).kind.is_beast_over() {
         use super::berserk::Outcome;
         match super::berserk::control(b, r) {
             Outcome::Nothing | Outcome::Moved => {}
@@ -481,7 +480,7 @@ fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
         return 1;
     }
     let s = stats(b, r);
-    if navi_of(b, r) == Navi::MEGAMAN {
+    if super::is_megaman(b, r) {
         return 4;
     }
     b.content.navi(s.navi).move_lag[s.navi_variant as usize] as u16

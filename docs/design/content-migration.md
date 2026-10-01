@@ -105,8 +105,8 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
    names, not numbers: a new set of flags or states is an enum with names in the API and a string-literal type
    in core.d.luau, and gets a misuse case in bn6-content-check's type tests.
 7. **Test in the repository** (§5.1) and **against the traces and the chip lab** (§5.2).
-8. **Docs.** docs/engine describes the game; point its mentions of content at the module. A family's design
-   notes go in content-model-v2.md's as-built sections.
+8. **Docs.** docs/engine describes the game; point its mentions of content at the module. How a family is
+   composed goes in its module headers (`lib/<family>/`), and a pattern worth copying in §1's table.
 
 ## 4. Conventions
 
@@ -214,9 +214,10 @@ BN6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release
 BN6_PACK=<pack> <verification>/tools/traces-against.sh <checkout> --release --test lab -- --ignored
 ```
 
-`gen-content check` compares what the definitions build with the ROM. The traces match every frame (machgun
-1074 and 1331 frames, soundmod 21962, 14933 and 20436), also through rollback at latencies 0+0 to 10+3, and
-every recorded scenario of the chip lab matches every frame: any difference is a regression. A scenario for
+`gen-content check` compares compat's numbers and what the definitions build with the ROM. The traces match
+every frame (machgun 1074 and 1331 frames, soundmod 21962, 14933 and 20436), also through rollback at latencies
+0+0 to 10+3, and their sound calls match the original's (the workspace's sound-tests, which traces-against.sh
+runs too); every recorded scenario of the chip lab matches every frame: any difference is a regression. A scenario for
 new content is recorded with the workspace's chiplab (tools/chiplab/README.md there).
 
 ## 6. What isn't there
@@ -226,8 +227,9 @@ new content is recorded with the workspace's chiplab (tools/chiplab/README.md th
   `kinds.mode9_actor`, the two objects a player whose AI index is 10 spawns in battle mode 9 (the original's
   attack object #0xD2 and actor object #0x28). No netbattle reaches them; starting one is an error naming the
   role.
-- **Numbers still in definitions**: a navi's and a form's number sit in their `legacy` markers, and the body
-  overlays are numbered as the original numbers them (rules/body-overlays.luau), because the ruleset still
-  finds them by number. `bn6-content-check`'s ratchet counts the markers and its guard lists the modules that
-  may hold one. Nothing else in the API or the content is by number.
+- **Numbers that name content**: none. Navis and forms are definitions by handle (the ruleset asks their fields
+  and traits), the body overlays are the identities' `parts`, and nothing in the API or the content is reached by
+  one of the original's numbers. The define phase refuses a `legacy` field, and the guards refuse a numbered
+  folder or a `legacy` marker anywhere (§5.1). The original's numbers are compat's, for the tools outside the
+  engine.
 - **Bug codes** (a hitbox's `bug`, a projectile variant's) are numbers: they have no definition yet.

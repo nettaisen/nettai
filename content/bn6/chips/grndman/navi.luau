@@ -7,6 +7,7 @@
 -- 25 at random; blocked on the way (no floor, or the other side's body or an
 -- object), he leaves at once. See docs/engine/chips.md §3.6.25.
 
+local groundman_navi = require("../../navis/groundman/navi")
 local navi_chips = require("../../lib/navi-chips/navi")
 local collision = require("../../rules/collision")
 local drill = require("./drill")
@@ -34,9 +35,8 @@ local SOUND_DRILL_OUT = asset.sound("drill-out")
 local SOUND_DRILL = asset.sound("drill-spin")
 local SOUND_ROCKFALL = asset.sound("rockfall")
 
--- His actor record (the parts it adds: his overlay, `sub_8010F86`).
-local ACTOR_TYPE: ActorType = "player"
-local AI_INDEX = 9
+-- What he wears (his overlay, `sub_8010F86`): the link navi's own parts.
+local IDENTITY = groundman_navi.identity
 
 -- How fast he backs off and drills (16.16).
 local BACK_SPEED, DRILL_SPEED = 0x8000, 0x8_0000
@@ -61,7 +61,7 @@ local APPEAR, BACK_OFF, DIG, ROCKFALL, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10
 -- spawner's register is kept), with his parts.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
-    me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
+    me:add_parts(IDENTITY, 1)
     me:set_lifecycle("update")
 end
 
@@ -237,7 +237,7 @@ local function leave(me: Object)
     if left >= 0 then
         return
     end
-    me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
+    me:remove_parts(IDENTITY)
     navi_chips.leave(me, (me.state :: State).controller)
 end
 

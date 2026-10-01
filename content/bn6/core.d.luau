@@ -12,10 +12,10 @@
 -- (`battle.spawn(bomb.kind, pos)`, `me:set_attack(action, 2)`). The
 -- definitions and their types are at the end of this file.
 --
--- What is left of the numeric API is the `legacy` markers of the navis,
--- the forms and the body overlays (marked "Deprecated" below), which
--- bn6-content-check's ratchet counts per module (tests/deprecated.txt) and
--- only lets shrink.
+-- Nothing is named by one of the original's numbers: content names
+-- content by its definitions and assets by name. The original's numbers
+-- are compat's (content/bn6/compat), which only the tools outside the
+-- engine read (the trace harness, save import).
 --
 -- Functions keep nothing between calls: what an object or action keeps
 -- lives in its declared `state` (typed fields the engine stores and
@@ -433,21 +433,21 @@ declare class Object
     -- `object_genericDestroy`: release panel reservations and collision,
     -- then free.
     function destroy(self): ()
-    -- `sub_8010DF6`: put on the overlays an actor record adds (a body
+    -- `sub_8010DF6`: put on what an identity wears (its `parts`: a body
     -- overlay, SpoutMan's idle overlay, a beast head), kept in related2
     -- (CircusMan's second one kept by the engine); `arg` 1: their sprites
     -- step even while paused.
-    function add_navi_parts(self, actor_type: ActorType, ai_index: number, arg: number): ()
+    function add_parts(self, identity: Identity, arg: number): ()
     -- `sub_8011044`: take them off (at their next update).
-    function remove_navi_parts(self, actor_type: ActorType, ai_index: number): ()
-    -- `sub_8010DF6` with `owner`'s NameID record: put on the parts that
-    -- record adds (a navi's body overlay), kept in related2; with
+    function remove_parts(self, identity: Identity): ()
+    -- `sub_8010DF6` with `owner`'s identity: put on the parts it wears (a
+    -- navi's body overlay), kept in related2; with
     -- `keep_stepping`, a part that came steps even while paused and dimmed.
     -- With `paused_stepping`, `sub_8010DF6`'s r2 is 1 rather than the
     -- record's first byte (the dimming chips' stand-ins): the parts step
     -- even while paused.
     function add_parts_of(self, owner: Object, keep_stepping: boolean?, paused_stepping: boolean?): ()
-    -- `sub_8011044` with `owner`'s NameID record: take them off.
+    -- `sub_8011044` with `owner`'s identity: take them off.
     function remove_parts_of(self, owner: Object): ()
 
     -- `object_setAnimation`: request an animation, restarting it even if
@@ -585,16 +585,15 @@ declare class Object
     -- when the look is the table's none.
     function wear_junk_look(self, look: Identity): boolean
     -- CrosOver's MegaMan (`sub_80BDBC8`): take the user's identity when the
-    -- user is MegaMan or one of his forms (true), else MegaMan's own: its
-    -- sprite (a ground shadow, animation 0 loaded by the next sprite
-    -- update) and the side's form's palette.
-    function wear_navi_image(self, user: Object): boolean
+    -- user is MegaMan (`megaman`) or one of his forms (true), else
+    -- MegaMan's own: its sprite (a ground shadow, animation 0 loaded by the
+    -- next sprite update) and the side's form's palette.
+    function wear_navi_image(self, user: Object, megaman: NaviDef): boolean
     -- MstrCros's Crosses (`sub_80BE7BC`), Darkness's Dark MegaMan
-    -- (`sub_80BF710`): take the identity of MegaMan in form `form` (by
-    -- number, as the navi stats give it; 0 his base form): its sprite (a
-    -- ground shadow, animation 0 loaded by the next sprite update) and
-    -- palette.
-    function wear_megaman_image(self, form: number): ()
+    -- (`sub_80BF710`): take the identity of `navi` (MegaMan) in `form` (the
+    -- form's; in his base form his own): its sprite (a ground shadow,
+    -- animation 0 loaded by the next sprite update) and palette.
+    function wear_form_image(self, navi: NaviDef, form: FormDef): ()
     -- The parts of that identity (`sub_8010DF6` with r2 1, or
     -- `sub_8011044`).
     function navi_image_parts(self, on: boolean): ()
@@ -627,8 +626,9 @@ end
 declare class Navi
     -- Fighting in the sun.
     sun: boolean
-    form: number
-    navi: number
+    -- The form and the navi, as their definitions.
+    form: FormDef
+    navi: NaviDef
     navi_variant: number
     -- The base form's element.
     element: number
@@ -1339,11 +1339,173 @@ export type ChipSpec = {
 }
 export type Chip = ChipSpec
 
--- Navis, forms, stages, statuses and lock-on modes: their specs are the
--- generator's (§3.2, §3.7), typed field by field when the engine reads
--- them (steps 5 and 10 to 12). (`NaviDef`, since `Navi` is a side's stats.)
-export type NaviDef = { id: string, [string]: any }
-export type FormDef = { id: string, [string]: any }
+-- A chip family and an element, by name.
+export type ChipFamily =
+    "fire"
+    | "aqua"
+    | "elec"
+    | "wood"
+    | "plus"
+    | "sword"
+    | "cursor"
+    | "summon"
+    | "wind"
+    | "break"
+    | "null"
+    | "program_advance"
+    | "special"
+export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
+-- The chips a navi's or a form's rule is about: an element's, or a
+-- family's.
+export type ChipMatch = { element: ElementName?, family: ChipFamily? }
+
+-- A navi (§3.2): MegaMan or a link navi. (`NaviDef`, since `Navi` is a
+-- side's stats.)
+export type NaviDef = {
+    id: string,
+    name: string,
+    -- The battle sprite (a navi that changes form draws its form's).
+    sprite: SpriteAsset,
+    element: ElementName,
+    weakness: { string }?,
+    buster_bonus: number,
+    -- Ticks of lag after a move, by navi variant.
+    move_lag: { number },
+    banners: { win: Banner, lose: Banner },
+    mugshots: { [string]: Mugshot }?,
+    -- Extra height of its image as it merges with MegaMan in a Cross.
+    merge_height: number?,
+    -- The no-running message's lines (the characters in each).
+    run_message: { number }?,
+    -- A link navi's own chip, offered once a round.
+    own_chip: { chip: Chip, code: string }?,
+    -- Its damage bonus on its family's damaging chips, by its level.
+    chip_bonus: { family: ChipFamily, dimming_chips: boolean?, by_level: { number } }?,
+    -- The chips it charges with A: its family's damaging chips, from a
+    -- navi level on (`byte_8021369`).
+    charged_chips: { family: ChipFamily, from_level: number }?,
+    -- The chips a charge doubles (`sub_8012AFA`).
+    charge_doubles: ChipMatch?,
+    -- Its A charge builds up the next Fire chip's damage, up to a limit by
+    -- its level (`byte_802136D`).
+    fire_charge: { number }?,
+    -- "status_immune": a hit's status doesn't take.
+    traits: { "status_immune" }?,
+    -- The forms it changes into (MegaMan's), by game: the Crosses by their
+    -- number on the custom screen, Beast Out and Beast Over. Where the
+    -- original asks whether a navi is MegaMan, the ruleset asks whether it
+    -- has forms.
+    forms: { gregar: FormSet, falzar: FormSet }?,
+    identity: Identity,
+    -- What a Cross change brings it with: its weapons, the rest of its
+    -- fresh stats, and its HP after the change, by side.
+    weapons: FormWeapons?,
+    fresh: {
+        hp: number,
+        super_armor: boolean?,
+        float_shoes: boolean?,
+        air_shoes: boolean?,
+        undershirt: boolean?,
+        first_barrier: number,
+        mega_level: number,
+        giga_level: number,
+        back_special_damage: number?,
+    }?,
+    cross_hp: { number }?,
+}
+export type FormSet = { crosses: { FormDef }, beast_out: FormDef?, beast_over: FormDef? }
+export type FormWeapons = {
+    buster: Weapon?,
+    charge_shot: Weapon?,
+    back_special: Weapon?,
+    a_charge: Weapon?,
+    alt_a_charge: Weapon?,
+    mode9_a: Weapon?,
+}
+-- What a form's status reset gives the navi (`sub_8014536`).
+export type FormEffect =
+    "clear_statuses"
+    | "super_armor"
+    | "air_shoes"
+    | "float_shoes"
+    | "floating_body"
+    | "untouchable"
+    | "lockon_marker"
+    | "invulnerable"
+    | "berserk"
+-- What the ruleset asks of particular forms:
+--   status_immune: a hit's status doesn't take (TomahawkCross);
+--   erases: its damaging Null chips delete what has a 4 in its HP
+--     (EraseCross);
+--   charged_sword_rush: its charged sword runs inside the Beast Out rush
+--     (SlashCross in Beast Out);
+--   extra_chips: the custom screen deals one more chip for each screen
+--     spent in it, up to three (ChargeCross);
+--   scrap_button: the custom screen has the scrap button (DustCross);
+--   special_holds_buster: its held buster doesn't fire while its B+Back
+--     special is asked for (TenguCross and DustCross in Beast Out).
+export type FormTrait =
+    "status_immune"
+    | "erases"
+    | "charged_sword_rush"
+    | "extra_chips"
+    | "scrap_button"
+    | "special_holds_buster"
+-- One of MegaMan's forms (§3.2).
+export type FormDef = {
+    id: string,
+    name: string,
+    sprite: SpriteAsset,
+    element: ElementName,
+    weakness: { string }?,
+    buster_bonus: number,
+    kind: "base" | "cross" | "beast" | "cross_beast" | "beast_over",
+    -- Whose game's form it is (the Beast's roar, Beast Over's glow).
+    game: ("gregar" | "falzar")?,
+    -- The navi a Cross (and one in Beast Out) is made with.
+    cross_of: NaviDef?,
+    -- A Cross's form in Beast Out.
+    beast: FormDef?,
+    -- What a weakness hit drops it to (none: it stays).
+    breaks_to: FormDef?,
+    -- MegaMan's palette in a Cross.
+    palette: number?,
+    mugshot: Mugshot?,
+    weapons: FormWeapons?,
+    identity: Identity?,
+    -- The damage it adds to a family's damaging chips, and to damaging
+    -- Null chips when that doesn't apply (Beast Out's, outside battle
+    -- mode 1).
+    chip_bonus: { family: ChipFamily, damage: number, dimming_chips: boolean? }?,
+    null_bonus: number?,
+    -- The chips it charges with A: a family's damaging chips that aren't
+    -- dimming chips (`damaging = false`: any of the family), and with
+    -- `element_swords` the chips with the `element_sword` trait.
+    charged_chips: { { family: ChipFamily, damaging: boolean?, element_swords: boolean? } }?,
+    -- What a charged chip gains in it.
+    charged_bonus: { damage: number?, paralyzes: boolean? }?,
+    -- The chips a charge doubles, and those whose use heals a twentieth of
+    -- the base HP.
+    charge_doubles: ChipMatch?,
+    chip_heals: ChipMatch?,
+    -- Its A charge builds up the next Fire chip's damage, up to this much.
+    fire_charge: number?,
+    -- What its status reset gives the navi, and what a NaviCust change
+    -- gives back (none: the reset's, without the lock-on marker).
+    status_reset: { FormEffect }?,
+    navicust_refresh: { FormEffect }?,
+    -- The height it floats at, in pixels.
+    hover: number?,
+    -- The shots of the buster volley the Cross special's controller fires
+    -- in it (the original stores the form's number where it meant 6).
+    special_volley: number?,
+    -- A Cross change that finds the navi in this animation lets go of it.
+    cross_release_anim: number?,
+    traits: { FormTrait }?,
+    -- The buster arm the navi raises in it (lib/buster): its animation,
+    -- and what it adds to the arm's palette.
+    buster_arm: { anim: number, palette_add: number? }?,
+}
 -- Something a stage places when the round starts: a navi of `side`, or a
 -- field object by its kind (which needs a `place`), with one of the kind's
 -- variants or a raw argument where the kind takes one.
@@ -1447,6 +1609,38 @@ export type IdentitySpec = {
     -- (`scrap = false`).
     absorbable: boolean?,
     scrap: boolean?,
+    -- What its object wears (its actor record's init hook, `off_8010E0C`):
+    -- a body overlay (and a second), an overlay worn only while standing,
+    -- or a beast's head (its palette; none: it follows the side's mood).
+    parts: Parts?,
+    -- Which of its object's hooks touch what the object wears: its death
+    -- takes it off, an animation change, a flinch or a drag restarts it.
+    -- By default the death hook takes its own parts off and an animation
+    -- change restarts them (not an overlay worn only while standing).
+    overlay_hooks: { "death" | "refresh" | "flinch" | "drag" }?,
+    -- The Full Synchro aura's animation around it (a player's has one).
+    aura_anim: number?,
+    -- The ice block that fits it (none: small).
+    ice: ("small" | "medium" | "large")?,
+}
+-- A body overlay (actor object #0x56): a second sprite over a navi's body,
+-- drawn in front of it but in the animations of `behind` (ranges `{ first,
+-- last }` of the wearer's animations; `anims`: how many the original's
+-- table covers), where it sits one pixel further back. `own_palette`: it
+-- keeps its palette 0 rather than its wearer's. `anim_offset`: added to
+-- the wearer's animation.
+export type BodyPart = {
+    sprite: SpriteAsset,
+    anims: number,
+    behind: { { number } }?,
+    own_palette: boolean?,
+    anim_offset: number?,
+}
+export type Parts = {
+    body: BodyPart?,
+    second: BodyPart?,
+    idle: { sprite: SpriteAsset }?,
+    beast_head: { sprite: SpriteAsset, palette: number? }?,
 }
 export type Identity = IdentitySpec
 
@@ -1618,8 +1812,8 @@ export type RolesSpec = {
     }?,
     -- The sprites of the engine's own kinds: the charge glows, the Full
     -- Synchro aura, the status visuals, the ice block and the bubble, the
-    -- hit marker, the eruption, the lock-on marker, the Beast head, the
-    -- idle overlay.
+    -- hit marker, the eruption, the lock-on marker. (The Beast head and the
+    -- idle overlay are the parts of the identities that wear them.)
     sprites: {
         charge_glow: SpriteAsset?,
         charge_glow_a: SpriteAsset?,
@@ -1632,8 +1826,6 @@ export type RolesSpec = {
         hit_marker: SpriteAsset?,
         eruption: SpriteAsset?,
         lockon_marker: SpriteAsset?,
-        idle_overlay: SpriteAsset?,
-        beast_head: SpriteAsset?,
     }?,
     -- The banners the ruleset shows itself: a round's start, a turn's, the
     -- final turns', a draw, the damage judge's, a telop's on either side,
@@ -1687,8 +1879,3 @@ declare define: {
     record: <T>(record_type: string, spec: T) -> T,
 }
 
--- Deprecated. `legacy { ... }`: data the ruleset still reads by number (a
--- navi's or a form's number and NameID; the original's numbering of a
--- table), until its last users convert (docs/design/content-model-v2.md
--- §12). As data it is the table itself; the checker counts each use.
-declare function legacy(t: any): any

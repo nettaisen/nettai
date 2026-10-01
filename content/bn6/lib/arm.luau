@@ -17,15 +17,13 @@ function arm.anim(navi: Object): number
         if ai ~= 0 then
             return if ai == 0x13 then 0x0E else ai
         end
-        local form = battle.navi(navi.alliance).form
-        if form < 0x0B then
+        -- MegaMan's, by his form: 0, or a Beast form's (0xC for Gregar's,
+        -- 0xD for Falzar's).
+        local stats = battle.navi(navi.alliance)
+        if not stats.beast then
             return 0
-        elseif form == 0x0C then
-            return 0x0D
-        elseif form == 0x17 or form <= 0x11 then
-            return 0x0C
         end
-        return 0x0D
+        return if stats.form.game == "gregar" then 0x0C else 0x0D
     end
     return 0
 end

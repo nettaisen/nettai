@@ -114,7 +114,7 @@ fn battles_run_the_content_scripts() {
             "heatman/navi",
             "instrument",
             "instruments/controller",
-            "invisible",
+            "invisibl/controller",
             "justcone/strike",
             "lance/lance",
             "lilbolr/boiler",
@@ -535,7 +535,7 @@ fn the_scripted_swords_play_and_roll_back() {
 fn link_chip_setup(chips: &[usize]) -> crate::setup::RoundSetup {
     let chips: Vec<_> = chips.iter().map(|&i| testing::chip_handle(testing::LINK_CHIPS[i])).collect();
     let mut s = scenario::setup_with_handles(&chips);
-    let navi = testing::content().navi_numbered(testing::LINK_NAVI);
+    let navi = testing::content().navi_by_key(testing::LINK_NAVI);
     for stats in &mut s.navi_stats {
         stats.navi = navi;
     }
@@ -722,7 +722,7 @@ fn the_scripted_dimming_chips_and_rocks_play() {
     assert!(ticks("rockcube/cube") > 0, "the cube's controller: {seen:?}");
     assert!(ticks("rock") > 0, "rocks: {seen:?}");
     // The veil's controller makes its user invisible.
-    assert!(ticks("invisible") > 0, "the veil's controller: {seen:?}");
+    assert!(ticks("invisibl/controller") > 0, "the veil's controller: {seen:?}");
     assert!(ticks("an invisible navi") > 0, "an invisible navi: {seen:?}");
     // The trap's controller runs its hidden telop.
     assert!(ticks("trap-chip") > 0, "the trap's controller: {seen:?}");

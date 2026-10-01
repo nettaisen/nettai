@@ -1,9 +1,9 @@
 --!strict
 -- The second WhiCapsl (chip 0x17E, a special chip no folder holds): a
 -- dimming chip that turns its user invisible for two seconds
--- (objects/invisible).
+-- (Invisibl's controller, chips/invisibl/controller).
 
-local invisible = require("../../objects/invisible/invisible")
+local invisible = require("../invisibl/controller")
 
 -- 120 ticks (the record's first two parameter bytes, 120 and 0).
 return define.chip {

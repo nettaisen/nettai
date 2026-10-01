@@ -27,6 +27,16 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
 
+/// The original's object type number of a pool (1, 3, 4: the `T1`, `T3`,
+/// `T4` the traces print).
+pub fn pool_type(pool: Pool) -> u8 {
+    match pool {
+        Pool::Actor => 1,
+        Pool::Attack => 3,
+        Pool::Effect => 4,
+    }
+}
+
 /// A chip: its id, and the action and subtype its record names (the
 /// latter two documentation).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
@@ -116,8 +126,9 @@ pub struct RuleNumbers {
     /// Statuses (`off_80209EC`): a hit's status byte, by key.
     #[serde(default)]
     pub statuses: BTreeMap<String, u8>,
-    /// The field objects' identities: the NameID of each, by key (a
-    /// navi's and a form's is in navis.toml and forms.toml).
+    /// The identities with a key of their own (the field objects', and
+    /// the navi chips' navis' for what they wear): the NameID of each, by
+    /// key (a navi's and a form's is in navis.toml and forms.toml).
     #[serde(default)]
     pub identities: BTreeMap<String, u16>,
     /// The ruleset's roles (rules/roles.luau), by role name: the effect

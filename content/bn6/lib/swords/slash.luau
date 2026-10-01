@@ -76,7 +76,7 @@ function slash.action(spec: SlashSpec): Action
         if not spec.step then
             return
         end
-        if me.special_source == 0 and not parts.beast(battle.navi(me.alliance).form) then
+        if me.special_source == 0 and not battle.navi(me.alliance).beast then
             -- sub_800E5FC: not while moving or sliding.
             if me:status("moving") or me:status("sliding") then
                 return
@@ -212,7 +212,7 @@ function slash.action(spec: SlashSpec): Action
     -- `sub_80EBB98`: a step sword goes back where it stepped from once its
     -- animation ends (a Beast form stays).
     local function step_back(me: Object, s: State)
-        if not parts.beast(battle.navi(me.alliance).form) then
+        if not battle.navi(me.alliance).beast then
             if not bit32.btest(me.sprite.frame_flags, 0x80) then
                 return
             end

@@ -173,6 +173,14 @@ pub(crate) fn install(
                     "{at}: {what}'s spec already has a metatable (is it defined twice?)"
                 )));
             }
+            // (The migration's `legacy` markers carried the original's
+            // numbers. A definition says what it is by name; the numbers
+            // are the validator's, outside the engine.)
+            if !table.raw_get::<LuaValue>("legacy")?.is_nil() {
+                return Err(mlua::Error::runtime(format!(
+                    "{at}: {what} takes no `legacy` field: a definition is named by its key, not by the original's numbers"
+                )));
+            }
             table.set_metatable(Some(meta.clone()))?;
             let mut c = collector.borrow_mut();
             let n = c.ordinals.entry(at.clone()).or_default();
@@ -200,15 +208,6 @@ pub(crate) fn install(
     }
     define.set_readonly(true);
     lua.globals().set("define", define)?;
-    // `legacy { ... }`: data the ruleset still reads by number (a navi's
-    // or a form's number, the original's numbering of a table),
-    // marked for the ratchet and step 13 (docs/design/content-model-v2.md
-    // §12); as data it is the table itself.
-    let legacy = lua.create_function(|_, t: LuaValue| match t {
-        LuaValue::Table(_) => Ok(t),
-        v => Err(mlua::Error::runtime(format!("legacy takes a table, not {}", v.type_name()))),
-    })?;
-    lua.globals().set("legacy", legacy)?;
     Ok(())
 }
 
