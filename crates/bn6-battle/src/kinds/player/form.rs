@@ -274,11 +274,12 @@ pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
             super::set_invulnerable(b, r, 0xFFFF);
             super::berserk::reset(b, r);
         }
-        // sub_8014674, Falzar Beast Over: flag 0x08000000 (not the
-        // floating ones), the floating body, the lock-on marker, the
-        // berserk controller's state cleared.
+        // sub_8014674, Falzar Beast Over: flag 0x08000000 with AirShoe and
+        // FloatShoe (one literal, 0x08000030, which the listing renders as
+        // a pointer), the floating body, the lock-on marker, the berserk
+        // controller's state cleared.
         0x18 => {
-            set_flag1(b, r, f1::UNAFFECTED_BY_POISON);
+            set_flag1(b, r, f1::UNTOUCHABLE | f1::AIRSHOE | f1::FLOATSHOE);
             let hm = body_hit_modifier(b);
             super::reset_body_types(b, r, true, hm);
             spawn_lockon_marker(b, r);
@@ -331,7 +332,7 @@ pub(super) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
         // sub_80147B2, Falzar Beast Over.
         0x18 => {
             floating(b);
-            set_flag1(b, r, f1::UNAFFECTED_BY_POISON);
+            set_flag1(b, r, f1::UNTOUCHABLE);
             super::set_invulnerable(b, r, 0xFFFF);
             super::berserk::reset(b, r);
         }
