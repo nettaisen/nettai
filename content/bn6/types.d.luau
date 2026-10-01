@@ -396,6 +396,70 @@ export type Instrument = {
     effect: (me: Object) -> (),
 }
 
+-- A sword wave (navis/00-megaman/forms/slashcross/sword_wave, a row of the
+-- original's `byte_80D7F4C`): what it is and hits, its hit modifier and
+-- region, its look, the panel centers it passes before it ends and its
+-- speed (16.16 a tick, forward), the status byte and bug its hits carry
+-- (none by default). `animates`: it restarts its animation after the last
+-- frame and steps it; `highlight`: it lights the panels its region
+-- covers; `ground_shadow`: its shadow stays on the ground; `steps`: its
+-- sprite also steps after each update (the charged shot's own wave).
+export type SwordWaveVariant = {
+    collision: { is: CollisionType, hits: CollisionType },
+    hit_mod: number,
+    region: Region,
+    sprite: SpriteAsset,
+    anim: number,
+    palette: number,
+    reach: number,
+    speed: number,
+    status: number?,
+    bug: number?,
+    bug_arg: number?,
+    animates: boolean?,
+    highlight: boolean?,
+    ground_shadow: boolean?,
+    steps: boolean?,
+}
+
+-- What an element pillar is spawned with (objects/element-pillar; the
+-- original's four parameters): lightning (it paralyzes and cracks its
+-- panel) rather than flames; how long it stands; the ticks it is left once
+-- its owner's action is over; `back`: it stands 8 pixels ahead of its
+-- panel's center, less 7 for each step back; `owner_state`: its owner is no
+-- navi, and it lasts through that action of the owner's own (by default
+-- the navi action its owner runs as it sends the pillar).
+export type ElementPillar = {
+    lightning: boolean?,
+    ticks: number,
+    after: number,
+    back: number?,
+    owner_state: number?,
+}
+
+-- A countdown bomb (chips/timebom/countdown, a row of the original's
+-- `byte_80CD8AC`): the animations it rises and stands with, its HP, its
+-- NameID (the field objects' look, a number until identities come), the
+-- class of field-object slot it takes (0: one of its side's two; 1: its
+-- side's one), what it is and what it reacts to. `strong_shake`: its blast
+-- shakes the camera a second time, harder (TimeBom+). The rows no chip
+-- sets: `allows_bodies`, it may appear under a body; `bursts_when_broken`,
+-- broken it blows up, and its countdown is only the last 15 ticks, after
+-- which it blinks away; `linked`, its spawner keeps it in a slot and it
+-- reserves its panel once it stands.
+export type CountdownVariant = {
+    appear_anim: number,
+    idle_anim: number,
+    hp: number,
+    name: number,
+    class: number,
+    collision: { is: CollisionType, hits: CollisionType },
+    strong_shake: boolean?,
+    allows_bodies: boolean?,
+    bursts_when_broken: boolean?,
+    linked: boolean?,
+}
+
 -- AirRaid's plane (chips/airraid, a row of the original's `byte_80D34C0`):
 -- its lifetime in ticks, its bombs, its palette and HP.
 export type AirRaidPlane = { lifetime: number, bombs: number, palette: number, hp: number }

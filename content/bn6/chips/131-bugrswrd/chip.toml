@@ -1,3 +1,0 @@
-# A dimming chip (subtype 38): its dimming controller changes the navi.
-
-script = "../../objects/navi-boost/navi_boost.luau"
