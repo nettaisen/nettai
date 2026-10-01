@@ -285,6 +285,7 @@ export type WeaponSpec = {
     charge_ticks: { number },
     setup: ((navi: Object) -> Action)?,   -- none: nothing can start it (an A-charge that is its chip; a weapon nothing implements yet)
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
+    instant_waits: boolean?,   -- the navi waits 8 ticks after its instant effect (one no chip has)
     sticky: boolean?,          -- as a charged shot: a chip's weapon, which a form's own doesn't replace (`sub_800FFAA`); its attack runs through a dimming
     held: boolean?,            -- as a buster: fires while B is held
     plain: Weapon?,            -- as a buster: what it gives way to while the charged shot is sticky
@@ -297,8 +298,11 @@ map on each sticky weapon: six sticky weapons would repeat the same three pairs.
 original's `nullsub_44` entries, which `sub_800FB54` tells apart by number before it would call them; started as
 a weapon, one is the game's "action from a stale register" error, as before. The sticky charged shots are the
 chips' own weapons, beside the chip that gives them (`bugrswrd/charge`, `bgdththd/charge`, `puncharm/charge`,
-`needlarm/charge`, `puzzlarm/charge`, `boomrarm/charge`); nothing implements their attacks yet, so they have no
-`setup` and firing one is an error. A form's `weapons` and a navi's are handles (`FormWeapons` of
+`needlarm/charge`, `puzzlarm/charge`, `boomrarm/charge`); each setup starts a chip family's action with
+arguments of its own (a sword's slash, Thunder's shot, AquaNdl1's volley, an electric pulse no chip has) or
+names a chip's instant effect (FireHit's fists, Boomer's boomerang: `instant`, without `instant_waits`, which
+only an effect no chip has sets: TenguCross's wind), and the two bug chips' spend a bug frag
+(`battle.bug_frags(side)`, `battle.spend_bug_frags(side, n)`). A form's `weapons` and a navi's are handles (`FormWeapons` of
 `Option<WeaponHandle>`); a navi's definition also carries what a Cross change brings it with (`fresh`: HP, the
 body's programs, the first barrier, the Mega and Giga levels, the B+Back special's damage) and its HP after one
 (`cross_hp`, by side), which were tables in the engine (`byte_80210DD`, `byte_802DD88`). The content API's
