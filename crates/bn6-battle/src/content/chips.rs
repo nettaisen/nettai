@@ -145,9 +145,13 @@ pub struct ExtraChipFlags(pub u8);
 impl ExtraChipFlags {
     /// Cancelled by the opponent's Rush (a NaviCust support).
     pub const RUSH_CANCELS: u8 = 0x02;
+    /// The menus class it with the modifier chips (WhiCapsl, Uninstll and
+    /// the plus chips, which the custom screen folds into the chip before
+    /// them; the battle reads `ChipData::modifier`).
+    pub const MODIFIER: u8 = 0x40;
     /// Costs no slot-in gauge (Battle Chip Gate slot-in only).
     pub const FREE_SLOT_IN: u8 = 0x80;
-    pub(crate) const NAMES: &[(u32, &str)] = &[(0x02, "rush_cancels"), (0x80, "free_slot_in")];
+    pub(crate) const NAMES: &[(u32, &str)] = &[(0x02, "rush_cancels"), (0x40, "modifier"), (0x80, "free_slot_in")];
 
     pub fn has(self, bit: u8) -> bool {
         self.0 & bit != 0
