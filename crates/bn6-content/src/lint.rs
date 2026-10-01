@@ -1,9 +1,11 @@
 //! What `bn6-content check` reports about the definitions once the define
 //! phase has run (docs/design/content-model-v2.md §7.7): the roles content
-//! hasn't filled, and kinds under `objects/` that one owner alone uses
-//! (colocation, §4). Duplicate keys, references to the wrong registry,
-//! unknown asset names and chips without exactly one use are the define
-//! phase's own errors.
+//! hasn't filled, kinds under `objects/` that one owner alone uses
+//! (colocation, §4), and collision types defined twice (two definitions of
+//! one row of the original's table). Duplicate keys, references to the
+//! wrong registry, unknown asset names and chips without exactly one use
+//! are the define phase's own errors; two keys with one of the original's
+//! numbers is compat's (`bn6_compat::Compat` refuses to read it).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -28,12 +30,37 @@ pub fn definitions(c: &Content, r: &mut Report) {
             }
         }
     }
+    for (row, twins) in duplicate_collision_types(c) {
+        let (first, rest) = twins.split_first().expect("two or more");
+        let others: Vec<String> = rest.iter().map(|(key, module)| format!("{key} ({module}.luau)")).collect();
+        r.error(
+            format!("{}.luau", first.1),
+            format!(
+                "collision type {} is row {row:#04x} of the original's table, and so is {}: define a type once and share it",
+                first.0,
+                others.join(", ")
+            ),
+        );
+    }
     for (kind, owners) in single_owner_kinds(c) {
         r.warn(
             format!("{kind}"),
             format!("only {owners} uses this kind: move it into {owners}'s folder (docs/design/content-model-v2.md §4)"),
         );
     }
+}
+
+/// Collision types that are one row of the original's table (their
+/// `row_offset`, the row times 8): the row, and each definition's key and
+/// module, for the rows two or more define.
+pub fn duplicate_collision_types(c: &Content) -> Vec<(u8, Vec<(String, String)>)> {
+    let mut rows: BTreeMap<i64, Vec<(String, String)>> = BTreeMap::new();
+    for d in c.defs.definitions.of(Registry::Collision) {
+        if let Some(offset) = d.spec.field("row_offset").int() {
+            rows.entry(offset).or_default().push((d.key.clone(), d.module.clone()));
+        }
+    }
+    rows.into_iter().filter(|(_, twins)| twins.len() > 1).map(|(offset, twins)| ((offset / 8) as u8, twins)).collect()
 }
 
 /// Kinds defined under `objects/` whose every referring definition lives in

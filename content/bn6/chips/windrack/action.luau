@@ -46,7 +46,7 @@ local RECOVER_TICKS = 5
 -- for 10 ticks.
 local HIT_MOD, HIT_TICKS = 0x49, 0x0A
 -- The gusts: unseen, blowing anywhere (their first parameter, 0x80).
-local UNSEEN = { unseen = true }
+local UNSEEN: GustHow = { unseen = true }
 
 -- A user's WindRack: what it swings.
 function action.action(spec: WindRackSpec): Action

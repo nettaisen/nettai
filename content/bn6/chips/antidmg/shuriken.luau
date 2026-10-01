@@ -27,7 +27,7 @@ local FLIGHT = 0xF
 local LIE, BLINK = 0x1E, 0x14
 local SOUND_LAND = asset.sound("panel-crack")
 -- What it is (row 0x1C: a thrown slash) and hits.
-local IS = define.collision { id = "antidmg/shuriken", side0 = 0x80002088, side1 = 0x40002088, row_offset = 0xE0 }
+local IS = collision.thrown_slash
 local HITS = collision.hits_navis
 local LANDED_ANIM = 1
 

@@ -2,7 +2,8 @@
 //! §7.7): uses of the numeric API that the v2 API replaces, counted per
 //! module against an allowance that only shrinks (the ratchet, §12), and
 //! lints (placeholder asset names, modules under `compat/`, kind keys not
-//! qualified by their owner's folder).
+//! qualified by their owner's folder, table constants passed on without a
+//! type).
 //!
 //! The checks read the source through a small scanner: comments are
 //! dropped and string contents masked, so a pattern never matches inside
@@ -227,6 +228,73 @@ fn owner(path: &str) -> Option<&str> {
     Some(first)
 }
 
+/// Module-level table constants (`local SPEC = { ... }`) that are passed to
+/// a function without a type annotation: (the constant's line, its name,
+/// the line it is passed on).
+///
+/// The checker can't check such a table's shape. A table literal bound
+/// without an annotation is unsealed, so it passes for any table type whose
+/// required fields it has: a misspelled optional field isn't an error. And
+/// a function of another module is `any` to the checker (it checks each
+/// module on its own), so nothing at all is checked there. With the
+/// annotation (`local SPEC: HeatFlame = { ... }`, the type one of the
+/// pack's shared types in `types.d.luau`), the literal is checked where it
+/// is written.
+pub fn untyped_constants(s: &Scanned) -> Vec<(usize, String, usize)> {
+    let ident = |c: char| c.is_alphanumeric() || c == '_';
+    let code = s.code.as_str();
+    let mut out = Vec::new();
+    let mut at = 0;
+    for line in code.split_inclusive('\n') {
+        let start = at;
+        at += line.len();
+        let Some(rest) = line.strip_prefix("local ") else { continue };
+        let name: &str = &rest[..rest.find(|c: char| !ident(c)).unwrap_or(rest.len())];
+        // `local NAME = {`: one name, no annotation, a table literal.
+        let after = rest[name.len()..].trim_start();
+        if name.is_empty() || !after.strip_prefix('=').is_some_and(|v| v.trim_start().starts_with('{')) {
+            continue;
+        }
+        let declared = start + "local ".len();
+        let passed = s.find(name).find(|&u| {
+            let (before, following) = (code[..u].trim_end(), code[u + name.len()..].trim_start());
+            if u == declared || code[u + name.len()..].starts_with(ident) {
+                return false;
+            }
+            // An argument by itself: between `(` or `,` and `,` or `)`.
+            if !before.ends_with(['(', ',']) || !following.starts_with([')', ',']) {
+                return false;
+            }
+            // Of a call: the innermost bracket open here is a `(` after a
+            // name or a closing bracket, and not a function definition's.
+            let mut depth = 0;
+            let open = code[..u].char_indices().rev().find(|&(_, c)| match c {
+                ')' | '}' | ']' => {
+                    depth += 1;
+                    false
+                }
+                '(' | '{' | '[' if depth > 0 => {
+                    depth -= 1;
+                    false
+                }
+                '(' | '{' | '[' => true,
+                _ => false,
+            });
+            let Some((open, '(')) = open else { return false };
+            let callee = code[..open].trim_end();
+            if !callee.ends_with(|c: char| ident(c) || c == ')' || c == ']') {
+                return false;
+            }
+            let head = &code[code[..open].rfind('\n').map_or(0, |n| n + 1)..open];
+            !head.rfind("function").is_some_and(|f| !head[f..].contains('('))
+        });
+        if let Some(u) = passed {
+            out.push((s.line(declared), name.to_string(), s.line(u)));
+        }
+    }
+    out
+}
+
 /// The lints for module `path` (relative to the pack root, with `.luau`).
 pub fn lints(path: &str, source: &str) -> Vec<Problem> {
     let mut out = Vec::new();
@@ -252,6 +320,12 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
                 ));
             }
         }
+    }
+    for (line, name, passed) in untyped_constants(&s) {
+        out.push(format!(
+            "{path}:{line}: the table constant `{name}` is passed on (line {passed}) without a type: \
+             annotate it (`local {name}: <its type> = {{ ... }}`) so the checker checks its shape"
+        ));
     }
     // A kind in an owner's folder is keyed under its owner.
     if let Some(owner) = owner(path) {
@@ -305,6 +379,34 @@ mod tests {
                 "a legacy marker",
             ]
         );
+    }
+
+    #[test]
+    fn a_table_constant_passed_on_needs_its_type() {
+        let flagged = |src: &str| -> Vec<String> { untyped_constants(&Scanned::new(src)).into_iter().map(|(_, n, _)| n).collect() };
+        // Passed to a function (another module's is `any` to the checker; a
+        // typed one of this module takes an unsealed table as it comes).
+        assert_eq!(flagged("local FLAME = { ticks = 30 }\nflame.spawn(me, x, y, FLAME, damage)\n"), ["FLAME"]);
+        assert_eq!(flagged("local PHASES = { [0] = a, [4] = b }\nlocal function f(me)\n    run(me, PHASES)\nend\n"), ["PHASES"]);
+        assert_eq!(flagged("local A = {\n    1,\n    2,\n}\npick(A)\n"), ["A"]);
+        // Annotated, it is checked where it is written.
+        assert!(flagged("local FLAME: HeatFlame = { ticks = 30 }\nflame.spawn(me, x, y, FLAME, damage)\n").is_empty());
+        // Not passed on: indexed, iterated, a field of another table, a
+        // definition's argument inline, a parameter of the same name.
+        for src in [
+            "local T = { 1, 2 }\nlocal x = T[1]\n",
+            "local T = { 1, 2 }\nfor _, v in T do print(v) end\n",
+            "local T = { 1, 2 }\nlocal U = { T, 3 }\n",
+            "local T = { 1, 2 }\nlocal x = f(T[1], T.n)\n",
+            "local K = define.kind { id = 'k' }\nbattle.spawn(K, pos)\n",
+            "local T = { 1 }\nlocal function f(a, T)\nend\n",
+            "local t = 3\nf(t)\n",
+            "    local T = { 1 }\n    f(T)\n",
+        ] {
+            assert!(flagged(src).is_empty(), "{src}");
+        }
+        let l = lints("lib/x.luau", "local FLAME = { ticks = 30 }\nflame.spawn(FLAME)\n");
+        assert!(l.len() == 1 && l[0].starts_with("lib/x.luau:1: the table constant `FLAME`"), "{l:?}");
     }
 
     #[test]

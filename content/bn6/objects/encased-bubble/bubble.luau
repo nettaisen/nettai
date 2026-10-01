@@ -31,7 +31,7 @@ local BURSTS_ON = 0x0C80_0000
 local PUSHES = 0x3C
 -- What it is and reaches: a neutral obstacle that everything reaches,
 -- hit modifier 3, the aqua spark.
-local IS = define.collision { id = "encased-bubble", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
+local IS = collision.neutral_body
 local HITS, HIT_MOD = collision.everything, 3
 local SOLID = 0x10
 

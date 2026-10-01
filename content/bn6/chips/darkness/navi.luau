@@ -208,7 +208,7 @@ local function aura_down(me: Object)
 end
 
 -- `sub_80BF888`.
-local FLAMES_PHASES = { [0] = raise_aura, [4] = flare, [8] = aura_down }
+local FLAMES_PHASES: { [number]: (me: Object) -> () } = { [0] = raise_aura, [4] = flare, [8] = aura_down }
 
 -- `sub_80BF97C`: the aura goes; 3 ticks, then out of sight.
 local function vanish(me: Object)
@@ -251,10 +251,10 @@ local function after_bass(me: Object)
 end
 
 -- `sub_80BF9B0`.
-local BRING_PHASES = { [0] = bring_bass, [4] = after_bass }
+local BRING_PHASES: { [number]: (me: Object) -> () } = { [0] = bring_bass, [4] = after_bass }
 
 -- `sub_80BF800`.
-local APPEAR_PHASES = { [0] = fade_in, [4] = appeared }
+local APPEAR_PHASES: { [number]: (me: Object) -> () } = { [0] = fade_in, [4] = appeared }
 
 -- ---- Bass -------------------------------------------------------------------
 
@@ -315,7 +315,7 @@ local function landed(me: Object)
 end
 
 -- `sub_80BFA1C`.
-local SWOOP_PHASES = { [0] = swoop, [4] = landed }
+local SWOOP_PHASES: { [number]: (me: Object) -> () } = { [0] = swoop, [4] = landed }
 
 -- An effect at his attach point 0.
 local function at_hand(me: Object, effect: Effect): Object?
@@ -397,7 +397,7 @@ local function after_slash(me: Object)
 end
 
 -- `sub_80BFAD8`.
-local STRIKE_PHASES = { [0] = charge, [4] = slash, [8] = after_slash }
+local STRIKE_PHASES: { [number]: (me: Object) -> () } = { [0] = charge, [4] = slash, [8] = after_slash }
 
 -- `sub_80BFC44`: his sword goes; he fades out, a step every third tick.
 local function fade_out(me: Object)
@@ -432,7 +432,7 @@ local function faded(me: Object)
 end
 
 -- `sub_80BFC28`.
-local FADE_PHASES = { [0] = fade_out, [4] = faded }
+local FADE_PHASES: { [number]: (me: Object) -> () } = { [0] = fade_out, [4] = faded }
 
 -- ---- Both ---------------------------------------------------------------
 

@@ -16,7 +16,7 @@ local whirlwind = {}
 -- What a whirlwind is spawned with (the original's parameters): whether
 -- its hits come all at once (Param1), how long it stands (Param3) and its
 -- animation (Param4). (Param2 named its owner's action by number.)
-export type Spec = { at_once: boolean, ticks: number, anim: number }
+type Spec = Whirlwind
 
 export type State = {
     at_once: boolean,
