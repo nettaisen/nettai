@@ -132,7 +132,7 @@ local function init(me: Object)
     local s = me.state :: State
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.visible = true
     local anim = s.anim
     me.anim = anim

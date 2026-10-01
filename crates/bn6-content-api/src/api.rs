@@ -989,6 +989,11 @@ pub trait CoreApi {
     fn play_sound(&mut self, sound: u16);
     /// Report a sound only `side`'s player hears.
     fn play_sound_for(&mut self, side: u8, sound: u16);
+    /// `sub_800AE90`: a warning marker on the HUD this tick (output only),
+    /// over the custom gauge or over the place `at` on the field, with
+    /// `sound` on every 16th frame of a console's own frame counter; on
+    /// `side`'s console only, or on both.
+    fn warn(&mut self, sound: u16, at: Option<Vec3>, side: Option<u8>);
     /// `camera_initShakeEffect_80302a8`: both consoles' cameras shake for
     /// `ticks` ticks at `magnitude` (0-3). Each shaking tick draws from
     /// the consoles' own RNGs, which ChpShufl's re-deal reads.
