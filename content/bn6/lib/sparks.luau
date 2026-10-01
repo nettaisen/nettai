@@ -33,11 +33,11 @@ sparks.shot = define.spark { sprite = asset.sprite("shot-impact"), anim = 0, pal
 -- A blast (spark 0x0B: GigaCan's shot).
 sparks.blast = define.spark { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
 
--- A bubble's burst (spark 0x0C: a projectile variant nothing names yet).
-sparks.bubble = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
-
 -- A bat's impact (spark 0x0D: BatCan's shot).
 sparks.bat = define.spark { sprite = asset.sprite("bat-impact"), anim = 1, palette = 0 }
+
+-- The erase beams' spark (hit effect 0x0C).
+sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
 
 -- `sub_801A146`: the spark of an attack of `element` (its primary
 -- element, the low nibble).
