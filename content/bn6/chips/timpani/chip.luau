@@ -7,9 +7,10 @@ local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
+local statuses = require("../../rules/status")
 
 -- Held in place (status 0x43: 4 ticks), with the sixth element's damage 0.
-local IMMOBILIZE, ELEMENT_NONE = 0x43, 5
+local IMMOBILIZE, ELEMENT_NONE = statuses.immobilize_4, 5
 
 -- `sub_80D43C0`: a one-tick hit over the solid panels that immobilizes
 -- the other side, and a camera shake.

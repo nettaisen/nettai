@@ -470,8 +470,8 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
     scenarios had it, unintended, until their parts were moved off the grid's outer ring);
   - the other console's RNG1 (and tag pair) isn't recorded either: bn6-compat gives it 0 (and none), which only a
     re-deal on that player's screen would read;
-  - shakes of content not ported yet (most viruses', and the chips and objects still to come) are missing until
-    their content calls `battle.shake_camera` where the original calls `camera_initShakeEffect_80302a8`;
+  - shakes are the content's to start: it calls `battle.shake_camera` where the original calls
+    `camera_initShakeEffect_80302a8`. The viruses' are missing with the viruses, which aren't a netbattle's;
   - the run-away check (`sub_8026F1A`, one RNG1 draw on the answer) isn't ported: it runs only with battle effects
     0x20, which a netbattle doesn't have (L gives the run message there, §3.5; the lab's `custom/run-message*`).
 - **Chip 0x13F picked as a chip** (state 0x44, `Phase::BeastOutChipChosen`): the chip lab's BeastOut scenarios match.

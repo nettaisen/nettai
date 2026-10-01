@@ -6,13 +6,14 @@
 
 local collision = require("../../rules/collision")
 local regions = require("../regions")
+local statuses = require("../../rules/status")
 
 local immobilizer = {}
 
 -- The hit (`dword_80CC0C8`, `dword_80CC0CC`): one panel, no spark, a
 -- guard-breaking attack against navis, with status 0x42.
 local NO_SPARK = 0xFF
-local STATUS = 0x42
+local STATUS = statuses.immobilize_120
 
 local SOUND = asset.sound("immobilizer")
 

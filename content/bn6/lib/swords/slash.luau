@@ -130,7 +130,7 @@ function slash.action(spec: SlashSpec): Action
             damage = bit32.band(word, 0xFFFF),
             stamina = bit32.rshift(word, 16),
             hit_mod = h.hit_mod,
-            status = h.status or 0,
+            status = h.status,
             bug = h.bug or 0,
             bug_arg = h.bug_arg or 0,
         })
