@@ -50,6 +50,19 @@ regions.area = {
     [1] = define.region { field = { require = 0x00000020, forbid = 0x00000000 } },
 }
 
+-- Every panel (region 0x80: Silence).
+regions.field = define.region { field = { require = 0x00000000, forbid = 0x00000000 } }
+
+-- Every solid panel (region 0x83: Timpani).
+regions.solid = define.region { field = { require = 0x00000010, forbid = 0x00000000 } }
+
+-- The panels of the other side's player navi: side 0's target (region
+-- 0x85) and side 1's (0x84) (Discord).
+regions.other_navi = {
+    [0] = define.region { field = { require = 0x00200000, forbid = 0x00000000 } },
+    [1] = define.region { field = { require = 0x00400000, forbid = 0x00000000 } },
+}
+
 -- `object_isValidPanel` on whole numbers (the API's panel arguments wrap
 -- to a byte, which could bring a far-off panel back onto the field).
 local function valid(x: number, y: number): boolean

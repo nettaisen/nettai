@@ -210,9 +210,9 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
    Atk+/Navi+ left unfolded, FullCust, Boomer, Lance, FireHit, the error chip 0x185, and others. `off_80EC3F0` has 23
    entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are the content pack's scripts
    (`Hook::InstantChip`, the `instant_chip` of the module a chip of the subtype names, or a weapon's `instant_chip`):
-   0 BeastOut `sub_80104E0` and 3 the plus chips `sub_8010488` (chips/13f-beastout, chips/0c0-atk-10, with their
+   0 BeastOut `sub_80104E0` and 3 the plus chips `sub_8010488` (chips/13f-beastout, lib/instant/plus, with their
    sparkle, effect #0x14, objects/rising-bubble), 5 FullCust `sub_800AF34` (chips/0ae-fullcust), 10 BusterUp
-   `sub_8010820` (chips/0af-busterup), 13 SyncTrgr `sub_80EC44C` (chips/11d-synctrgr). Subtypes 2 (`sub_8010474`,
+   `sub_8010820` (chips/busterup), 13 SyncTrgr `sub_80EC44C` (chips/11d-synctrgr). Subtypes 2 (`sub_8010474`,
    invisibility), 6 (`sub_801050C`, repairs the side's obstacles), 9 (`sub_8015AA6`, an immobilizing hit, attack
    #0x3F, on every enemy body in the row ahead) and 11 (`sub_802E1BE`, writes side state nothing reads) are named by
    no chip: 2 and 9 by the link navis' weapon routines 0x71 and 0x83; they are in lib/instant-chips for those to

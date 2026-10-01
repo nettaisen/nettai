@@ -380,6 +380,17 @@ impl UserData for Object {
             let ai = u8_arg(ai, "AI index")?;
             with(|api, _| Ok(api.remove_navi_parts(this.0, t, ai)))
         });
+        methods.add_method(
+            "add_parts_of",
+            |_, this, (owner, keep): (mlua::UserDataRef<Object>, Option<bool>)| {
+                let owner = owner.0;
+                with(|api, _| Ok(api.add_parts_of(this.0, owner, keep.unwrap_or(false))))
+            },
+        );
+        methods.add_method("remove_parts_of", |_, this, owner: mlua::UserDataRef<Object>| {
+            let owner = owner.0;
+            with(|api, _| Ok(api.remove_parts_of(this.0, owner)))
+        });
 
         // Sprite stepping.
         methods.add_method("set_animation", |_, this, anim: LuaValue| {
@@ -483,6 +494,25 @@ impl UserData for Object {
         methods.add_method("take_damage", |_, this, mode: LuaValue| {
             let mode = u8_arg(mode, "damage mode")?;
             with(|api, _| Ok(api.take_damage(this.0, mode)))
+        });
+        methods.add_method("raise_barrier", |_, this, t: mlua::Table| {
+            let behavior: mlua::LuaString = t.raw_get("behavior")?;
+            let behavior = named(&behavior, "barrier behavior", |s| {
+                bn6_content_api::api::BARRIER_BEHAVIORS.iter().position(|n| *n == s)
+            })? as u8;
+            let byte = |k: &str| -> mlua::Result<u8> {
+                u8::try_from(table_int(&t, k)?).map_err(|_| mlua::Error::runtime(format!("barrier `{k}` is not a byte")))
+            };
+            let timer = u16::try_from(table_int(&t, "timer")?)
+                .map_err(|_| mlua::Error::runtime("barrier `timer` is not a halfword"))?;
+            let spec = bn6_content_api::api::BarrierSpec {
+                behavior,
+                hp: byte("hp")?,
+                threshold: byte("threshold")?,
+                timer,
+                weak_element: byte("weak_element")?,
+            };
+            with(|api, _| api.raise_barrier(this.0, spec).map_err(api_error))
         });
 
         // Navis: the attack, requests, state, buttons.
@@ -663,6 +693,10 @@ impl UserData for Sprite {
         methods.add_method("load", |_, this, (a, b): (LuaValue, Option<LuaValue>)| {
             let id = sprite_id(a, b)?;
             with(|api, _| Ok(api.sprite_load(this.0, id)))
+        });
+        methods.add_method("load_look_of", |_, this, owner: mlua::UserDataRef<Object>| {
+            let owner = owner.0;
+            with(|api, _| Ok(api.sprite_load_look_of(this.0, owner)))
         });
         methods.add_method("set_animation", |_, this, anim: LuaValue| {
             let anim = u8_arg(anim, "anim")?;
@@ -1056,6 +1090,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "clear_linked", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.clear_linked(side)))
+    });
+    lib_fn!(lua, t, "clear_navicust_bugs", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.clear_navicust_bugs(side)))
     });
     lib_fn!(lua, t, "fill_custom_gauge", |_, ()| with(|api, _| Ok(api.fill_custom_gauge())));
     lib_fn!(lua, t, "add_side_gauge", |_, (side, n): (LuaValue, LuaValue)| {
@@ -1457,10 +1495,11 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             with(|api, _| Ok(api.start_dimming(side, no_cut_in, controller, user.0)))
         }
     );
-    lib_fn!(lua, t, "hide_user", |_, (user, keep_visuals): (mlua::UserDataRef<Object>, Option<bool>)| {
-        with(|api, _| Ok(api.hide_user(user.0, keep_visuals.unwrap_or(false))))
-    });
+    lib_fn!(lua, t, "hide_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_user(user.0))));
     lib_fn!(lua, t, "show_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.show_user(user.0))));
+    lib_fn!(lua, t, "hide_user_sparing", |_, user: mlua::UserDataRef<Object>| {
+        with(|api, _| Ok(api.hide_user_sparing(user.0)))
+    });
     Ok(t)
 }
 
@@ -1625,6 +1664,7 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
             t.raw_set("variant", spec.variant)?;
             vec![LuaValue::Table(t)]
         }
+        HookCall::RoleNavi { navi } => vec![obj(navi)?],
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1641,6 +1681,6 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::ActorListEntry { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
-        HookCall::InstantChip { .. } => Ok(Value::Nil),
+        HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } => Ok(Value::Nil),
     }
 }

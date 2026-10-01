@@ -218,6 +218,10 @@ declare class Sprite
     -- let it animate (the object's `no_sprite_update` off). Deprecated: a
     -- sprite by number ("CC-II"); use an asset (asset.sprite).
     function load(self, sprite: SpriteAsset | SpriteId): ()
+    -- The sprite `owner`'s NameID record gives it: a player's own by its
+    -- navi stats (`sub_800FC9E`), another object's its NameID look
+    -- (`sub_800F26C`); loaded as `load` does.
+    function load_look_of(self, owner: Object): ()
     -- Start an animation from its first frame.
     function set_animation(self, anim: number): ()
     -- Advance the animation one tick (no gating).
@@ -264,6 +268,11 @@ declare class Collision
     -- The secondary elements (sword 0x80, cursor 0x40, wind 0x20, break
     -- 0x10) of what hit it this window (read-only).
     damage_elements: number
+    -- Its barrier (read-only): none, up, or popped (blown away by wind);
+    -- the barrier's HP byte; the hit modifier that popped it.
+    barrier: BarrierState
+    barrier_hp: number
+    barrier_pop_hit_mod: number
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
@@ -395,6 +404,11 @@ declare class Object
     a_charge_routine: number
     alt_a_charge_routine: number
     mode9_a_routine: number
+    -- Writable: the Beast Out counter is spent (AIData+0x32).
+    beast_out_spent: boolean
+    -- Writable: the barrier's visual (AIData+0x60), which hides and shows
+    -- with the navi (its state's `shown`).
+    barrier_visual: Object?
 
     -- Spawn parameter n (1 to 4: the game's Param1..Param4).
     function param(self, n: number): number
@@ -419,6 +433,12 @@ declare class Object
     function add_navi_parts(self, actor_type: ActorType, ai_index: number, arg: number): ()
     -- `sub_8011044`: take them off (at their next update).
     function remove_navi_parts(self, actor_type: ActorType, ai_index: number): ()
+    -- `sub_8010DF6` with `owner`'s NameID record: put on the parts that
+    -- record adds (a navi's body overlay), kept in related2; with
+    -- `keep_stepping`, a part that came steps even while paused and dimmed.
+    function add_parts_of(self, owner: Object, keep_stepping: boolean?): ()
+    -- `sub_8011044` with `owner`'s NameID record: take them off.
+    function remove_parts_of(self, owner: Object): ()
 
     -- `object_setAnimation`: request an animation, restarting it even if
     -- it is current.
@@ -485,6 +505,8 @@ declare class Object
     -- (not in mode 1), a white flash while hit, with a sound in modes 0
     -- and 2. -1 when its HP ran out, 1 when hit in another mode, else 0.
     function take_damage(self, mode: number): number
+    -- `sub_801A7CC`: raise a barrier (its collision data).
+    function raise_barrier(self, spec: BarrierSpec): ()
 
     -- Navis only.
     function attack_param(self, n: number): number
@@ -706,6 +728,23 @@ export type FormOverlaySpec = {
     owner_palette: boolean?,
 }
 
+-- A navi's barrier (Collision.barrier).
+export type BarrierState = "none" | "up" | "popped"
+-- How a barrier behaves once raised (`sub_801A802`): worn down and timed
+-- out; back with 1 HP 240 ticks after it is worn down, and broken by elec
+-- (BblWrap's bubble); or regenerating up to 200 HP.
+export type BarrierBehavior = "plain" | "bubble" | "regenerating"
+-- `sub_801A7CC`'s row (`me:raise_barrier`): its HP, the damage a hit must
+-- reach to wear it, its timer (0xFFFF: none) and the element that breaks
+-- it (an element byte; 0: none).
+export type BarrierSpec = {
+    behavior: BarrierBehavior,
+    hp: number,
+    threshold: number,
+    timer: number,
+    weak_element: number,
+}
+
 -- What a dimming chip's controller is spawned with: the user's attack.
 export type DimmingChipSpec = {
     element: number,
@@ -792,6 +831,11 @@ declare battle: {
     linked: (side: number) -> LinkedChip,
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
+    -- `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed (the stats
+    -- processing, the panel trail's level, the buster's blanks, the on-hit
+    -- status, the custom damage, the emotion, the drains, the battle-start
+    -- bug and the hand-shrink turn zeroed).
+    clear_navicust_bugs: (side: number) -> (),
     fill_custom_gauge: () -> (),
     -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
     set_gauge_rate: (rate: number) -> (),
@@ -942,10 +986,12 @@ declare dimming: {
     -- `object_timefreezeEnd` (the controller's destroy state).
     finish: (controller: Object) -> (),
     -- `sub_80E1352` / `sub_80E13DC`: a navi chip's user vanishes and comes
-    -- back. With `keep_visuals` (mask 0xF, CrosOver's), its confusion and
-    -- blindness visuals stay on.
-    hide_user: (user: Object, keep_visuals: boolean?) -> (),
+    -- back.
+    hide_user: (user: Object) -> (),
     show_user: (user: Object) -> (),
+    -- `sub_80E1352(user, 0xF)`: the user vanishes, but its barrier visual,
+    -- its confusion and blindness visuals and the HUD stay.
+    hide_user_sparing: (user: Object) -> (),
 }
 
 declare navi_chip: {
@@ -1396,6 +1442,9 @@ export type WeaponSpec = {
     charge_ticks: { number },
     -- `off_80117D4[n]`: prepare the attack, name its action.
     setup: (navi: Object) -> Action | number,
+    -- Transitional (counted by the ratchet): the routine numbers the pack's
+    -- forms and the ruleset still name it by (`weapon_numbered`).
+    legacy: { routines: { number } }?,
     sticky: boolean?,
     traits: { string }?,
 }
@@ -1469,6 +1518,12 @@ export type RolesSpec = {
         anti_damage_counter: Action?,
         anti_sword_counter: Action?,
         body_guard_counter: Action?,
+        forced_charged_shot: Action?,
+    }?,
+    hooks: {
+        -- The NaviCust FirstBarrier: raise its barrier and the barrier's
+        -- visual on the navi as it enters (`sub_8013892`).
+        first_barrier: ((navi: Object) -> ())?,
     }?,
 }
 

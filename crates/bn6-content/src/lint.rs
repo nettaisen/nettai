@@ -21,6 +21,7 @@ pub fn definitions(c: &Content, r: &mut Report) {
             ("anti_damage_counter", a.anti_damage_counter),
             ("anti_sword_counter", a.anti_sword_counter),
             ("body_guard_counter", a.body_guard_counter),
+            ("forced_charged_shot", a.forced_charged_shot),
         ] {
             if role.is_none() {
                 r.warn("rules/roles.luau", format!("the role actions.{name} is not filled"));

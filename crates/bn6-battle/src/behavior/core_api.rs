@@ -1029,6 +1029,19 @@ impl CoreApi for Battle {
         kinds::player::form::record_death_hook(self, o, actor_type_of(actor_type), ai_index);
     }
 
+    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool) {
+        let rec = self.content.navi_record(self.objects.get(owner).name_id);
+        kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, rec.version);
+        if keep_stepping && let Some(part) = self.objects.get(o).related[1] {
+            kinds::player::form::keep_overlay_stepping(self, part);
+        }
+    }
+
+    fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef) {
+        let rec = self.content.navi_record(self.objects.get(owner).name_id);
+        kinds::player::form::record_death_hook(self, o, rec.actor_type, rec.ai_index);
+    }
+
     fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &bn6_content_api::api::AfterimageSpec) -> Option<ObjectRef> {
         use kinds::afterimage::{PlainLook, PlainShadow, Tether};
         let look = PlainLook {
@@ -1094,6 +1107,8 @@ impl CoreApi for Battle {
             ActorField::AChargeRoutine => i(self.api_weapon(a.a_charge)),
             ActorField::AltAChargeRoutine => i(self.api_weapon(a.alt_a_charge)),
             ActorField::Mode9ARoutine => i(self.api_weapon(a.mode9_a)),
+            ActorField::BeastOutSpent => Value::Bool(a.beast_out_spent),
+            ActorField::BarrierVisual => a.barrier_visual.into(),
         })
     }
 
@@ -1135,6 +1150,8 @@ impl CoreApi for Battle {
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
             (ActorField::BusterRoutine, FieldValue::U8(_)) => a.buster = weapon,
             (ActorField::ChargeShotRoutine, FieldValue::U8(_)) => a.charge_shot = weapon,
+            (ActorField::BeastOutSpent, FieldValue::Bool(x)) => a.beast_out_spent = x,
+            (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1345,6 +1362,22 @@ impl CoreApi for Battle {
         self.objects.get_mut(o).flags &= !flags::NO_SPRITE_UPDATE;
     }
 
+    fn sprite_load_look_of(&mut self, o: ObjectRef, owner: ObjectRef) {
+        let name_id = self.objects.get(owner).name_id;
+        let id = if self.content.navi_record(name_id).actor_type == crate::actor::ActorType::Player {
+            kinds::player::stats_sprite(self, self.objects.get(owner).alliance)
+        } else {
+            self.content
+                .objects
+                .name_looks
+                .iter()
+                .find(|l| l.name_id == name_id)
+                .and_then(|l| l.sprite)
+                .unwrap_or_else(|| panic!("NameID {name_id:#x} has no look (sub_800F26C)"))
+        };
+        self.sprite_load(o, id);
+    }
+
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8) {
         self.objects.sprite_mut(o).set_animation(anim, &self.content);
     }
@@ -1433,6 +1466,14 @@ impl CoreApi for Battle {
             CollisionField::Direction => c.direction as i64,
             CollisionField::GuardDirs => c.guard_dirs as i64,
             CollisionField::DamageElements => c.acc.damage_elements as i64,
+            // BARRIER_STATES
+            CollisionField::Barrier => match c.barrier {
+                0 => 0,
+                0x10 => 2,
+                _ => 1,
+            },
+            CollisionField::BarrierHp => c.barrier_hp as i64,
+            CollisionField::BarrierPopHitMod => c.barrier_saved_hmf as i64,
         }))
     }
 
@@ -1462,10 +1503,31 @@ impl CoreApi for Battle {
             CollisionField::FinalDamage
             | CollisionField::GuardDirs
             | CollisionField::DamageElements
-            | CollisionField::Direction => {
+            | CollisionField::Direction
+            | CollisionField::Barrier
+            | CollisionField::BarrierHp
+            | CollisionField::BarrierPopHitMod => {
                 unreachable!("read-only")
             }
         }
+        Ok(())
+    }
+
+    fn raise_barrier(&mut self, o: ObjectRef, spec: bn6_content_api::api::BarrierSpec) -> ApiResult<()> {
+        let c = self.collision_of_mut(o)?;
+        // The barrier byte the ruleset's barrier code (`sub_801A802`) tells
+        // the behaviors apart by: a plain barrier as the game's type 1
+        // (types 1..7, 9 and 0xB..0xF behave alike), a bubble as type 8, a
+        // regenerating one as type 0xA.
+        c.barrier = match spec.behavior {
+            0 => 1,
+            1 => 8,
+            _ => 0xA,
+        };
+        c.barrier_weak = spec.weak_element;
+        c.barrier_hp = spec.hp;
+        c.barrier_threshold = spec.threshold;
+        c.barrier_timer = spec.timer;
         Ok(())
     }
 
@@ -1536,12 +1598,30 @@ impl CoreApi for Battle {
         Battle::start_dimming(self, side & 1, no_cut_in, controller, user);
     }
 
-    fn hide_user(&mut self, user: ObjectRef, keep_visuals: bool) {
-        crate::dimming::hide_user_with(self, user, keep_visuals);
+    fn hide_user(&mut self, user: ObjectRef) {
+        crate::dimming::hide_user(self, user);
     }
 
     fn show_user(&mut self, user: ObjectRef) {
         crate::dimming::show_user(self, user);
+    }
+
+    fn hide_user_sparing(&mut self, user: ObjectRef) {
+        crate::dimming::hide_user_sparing(self, user);
+    }
+
+    fn clear_navicust_bugs(&mut self, side: u8) {
+        let b = &mut self.stats[side as usize & 1].bugs;
+        b.processing = 0;
+        b.panel_trail_level = 0;
+        b.buster_blanks = 0;
+        b.hit_status = 0;
+        b.custom_damage = 0;
+        b.emotion = 0;
+        b.custom_drain = 0;
+        b.hp_drain = 0;
+        b.battle_start = 0;
+        b.hand_shrink_turn = 0;
     }
 
     fn navi_chip_left(&mut self, controller: ObjectRef) {
@@ -1675,7 +1755,7 @@ impl CoreApi for Battle {
         let sprite = if !own {
             self.content.form_data(crate::setup::Form::NONE).sprite
         } else if self.content.navi_record(name).actor_type == crate::actor::ActorType::Player {
-            kinds::player::battle_sprite(self, self.objects.get(user).alliance)
+            kinds::player::stats_sprite(self, self.objects.get(user).alliance)
         } else {
             return Err(ApiError::Other(format!(
                 "NameID {name:#x} is no player's: its sprite would be sub_800F26C's (enemy_getStruct1)"
