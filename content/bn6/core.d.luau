@@ -19,11 +19,6 @@
 --
 --   objects/NAME/object.toml  [kind] pool, index, script   an object kind:
 --       the module exports `state` and `update(me)`
---   chips/NNN-name/chip.toml  script = "chip.luau"          the chip's action:
---       `state` and `update(me, s)`; for a dimming chip (action 0x15)
---       `dimming_chip(user, spec)`, for a navi chip (0x1B) `navi_chip(user,
---       controller, spec)`, for an instant chip (0x1C) `instant_chip(user,
---       spec)`
 --   navis/megaman/weapons/NN-name/weapon.toml            a weapon routine:
 --       `setup(navi) -> action`, and `state`/`update` for its `action`,
 --       `instant_chip(user, spec)` for its `instant_chip`
@@ -369,16 +364,16 @@ declare class Object
     attack_state: any
 
     -- Navis (actors) only. The attack in progress: its phase and whether
-    -- the phase's entry ran; its variant (a chip's subtype) and chip (its
-    -- number, 0 for none; a chip content defines is 0x200 + its handle,
-    -- which reads back as that chip).
+    -- the phase's entry ran; its variant (what an action or the ruleset
+    -- sets for itself: a chip's use sets none) and chip (an opaque number
+    -- the engine gives a chip, 0 for none, which reads back as that chip;
+    -- `attack_chip` is the chip itself).
     step: number
     step_init: number
     variant: number
     chip: number
-    -- The attack's chip as its definition (nil when the attack has none;
-    -- a chip that is still a pack record reads as a stand-in with only its
-    -- `id`): what a weapon that uses the chip asks for the chip's own
+    -- The attack's chip as its definition (nil when the attack has
+    -- none): what a weapon that uses the chip asks for the chip's own
     -- parts (`navi.attack_chip.action`), and what an action that becomes
     -- another chip's sets.
     attack_chip: Chip?
@@ -1753,10 +1748,10 @@ declare define: {
     record: <T>(record_type: string, spec: T) -> T,
 }
 
--- `legacy { ... }`: data only registration by number reads (a chip's action
--- number, subtype and parameters, its v1 module; the original's numbering
--- of a table), until its family converts (docs/design/content-model-v2.md
--- §12). As data it is the table itself; the checker counts each use. It
--- is typed `any` so a marker can stand where the converted field will be (a
--- chip's `action`, a weapon's `setup`).
+-- `legacy { ... }`: data only registration by number reads (a navi's or a
+-- form's number, a weapon's routine numbers and v1 module; the original's
+-- numbering of a table), until its family converts
+-- (docs/design/content-model-v2.md §12). As data it is the table itself;
+-- the checker counts each use. It is typed `any` so a marker can stand
+-- where the converted field will be (a weapon's `setup`).
 declare function legacy(t: any): any
