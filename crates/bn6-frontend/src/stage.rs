@@ -134,8 +134,10 @@ impl<'a> Stage<'a> {
 
     /// The field layer, as `sub_800C5E0` draws it every frame: each
     /// panel's 5x3 tile block by its displayed type and owner (from the
-    /// viewer's side), highlights, missing panels, and front edges.
-    pub fn draw_field(&self, b: &Battle, layer: &mut Layer, local_side: u8) {
+    /// viewer's side), highlights, missing panels, and front edges. The
+    /// layer scrolls with the camera (a shake moves it by whole pixels).
+    pub fn draw_field(&self, b: &Battle, layer: &mut Layer, local_side: u8, view: &crate::objects::View) {
+        let (cx, cy) = (view.camera.0 >> 16, view.camera.1 >> 16);
         let f = &self.assets.field;
         if f.panels.is_empty() {
             return;
@@ -144,12 +146,12 @@ impl<'a> Stage<'a> {
         let block = |layer: &mut Layer, entries: &[MapEntry], col: i32, row: i32, w: i32| {
             for (i, &e) in entries.iter().enumerate() {
                 let (dx, dy) = (i as i32 % w, i as i32 / w);
-                self.put(layer, e, (col + dx) * 8, (row + dy) * 8);
+                self.put(layer, e, (col + dx) * 8 - cx, (row + dy) * 8 - cy);
             }
         };
         let blank = |layer: &mut Layer, col: i32, row: i32, w: i32, h: i32| {
-            for y in row * 8..(row + h) * 8 {
-                for x in col * 8..(col + w) * 8 {
+            for y in row * 8 - cy..(row + h) * 8 - cy {
+                for x in col * 8 - cx..(col + w) * 8 - cx {
                     if (0..WIDTH as i32).contains(&x) && (0..HEIGHT as i32).contains(&y) {
                         layer.pixels[y as usize * WIDTH + x as usize] = crate::compose::CLEAR;
                     }
