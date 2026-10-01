@@ -390,6 +390,7 @@ fn numbered_assets() -> bn6_content_api::AssetNames {
         ("explosion", sprite(0x14, 0x00)),
         ("rising-bubble", sprite(0x14, 0x02)),
         ("puff", sprite(0x14, 0x0D)),
+        ("burst", sprite(0x14, 0x0A)),
         ("grab-shot", sprite(0x0C, 0x13)),
         ("copy-mark", sprite(0x14, 0x05)),
         ("fire-sword", sprite(0x0C, 0x36)),

@@ -15,6 +15,13 @@ effects.splash = define.effect { sprite = asset.sprite("rising-bubble"), anim = 
 -- object a chip removes (effect 0x14).
 effects.puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 
+-- A burst: a meteor or a fist landing, a snake striking (effect 0x05).
+effects.burst = define.effect { sprite = asset.sprite("burst"), anim = 0, palette = 0 }
+
+-- A flash: a gun's shot landing, MegaMan's volley in DblHero (effect
+-- 0x21).
+effects.flash = define.effect { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 }
+
 -- The rest of the original's effects (gen-content).
 -- Effect 0x02.
 effects.rising_bubble_1 = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
@@ -22,8 +29,6 @@ effects.rising_bubble_1 = define.effect { sprite = asset.sprite("rising-bubble")
 effects.deletion = define.effect { sprite = asset.sprite("deletion"), anim = 0, palette = 0 }
 -- Effect 0x04.
 effects.ground_drill_effect = define.effect { sprite = asset.sprite("ground-drill-effect"), anim = 0, palette = 0 }
--- Effect 0x05.
-effects.burst = define.effect { sprite = asset.sprite("burst"), anim = 0, palette = 0 }
 -- Effect 0x06.
 effects.heal = define.effect { sprite = asset.sprite("heal"), anim = 0, palette = 0 }
 -- Effect 0x07.
@@ -72,8 +77,6 @@ effects.effect_1e = define.effect { sprite = asset.sprite("effect-1e"), anim = 0
 effects.spout_splash = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
 -- Effect 0x20.
 effects.effect_20 = define.effect { sprite = asset.sprite("effect-20"), anim = 0, palette = 0 }
--- Effect 0x21.
-effects.reflected_shot = define.effect { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 }
 -- Effect 0x22.
 effects.effect_22 = define.effect { sprite = asset.sprite("effect-22"), anim = 0, palette = 0 }
 -- Effect 0x23.
@@ -149,7 +152,7 @@ effects.blast = define.effect { sprite = asset.sprite("blast"), anim = 0, palett
 -- Effect 0x48.
 effects.copy_mark_12 = define.effect { sprite = asset.sprite("copy-mark"), anim = 12, palette = 0 }
 -- Effect 0x49.
-effects.effect_49 = define.effect { sprite = asset.sprite("effect-49"), anim = 0, palette = 0 }
+effects.sight = define.effect { sprite = asset.sprite("sight"), anim = 0, palette = 0 }
 -- Effect 0x4A.
 effects.explosion_4a = define.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
 -- Effect 0x4B.
@@ -175,7 +178,7 @@ effects.panel_strike = define.effect { sprite = asset.sprite("panel-strike"), an
 -- Effect 0x55.
 effects.effect_55_12 = define.effect { sprite = asset.sprite("effect-55"), anim = 12, palette = 0 }
 -- Effect 0x56.
-effects.effect_49_4 = define.effect { sprite = asset.sprite("effect-49"), anim = 4, palette = 0 }
+effects.sight_4 = define.effect { sprite = asset.sprite("sight"), anim = 4, palette = 0 }
 -- Effect 0x57.
 effects.copy_mark_8 = define.effect { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
 -- Effect 0x58.
