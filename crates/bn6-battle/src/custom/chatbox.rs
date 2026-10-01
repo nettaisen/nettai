@@ -1,0 +1,490 @@
+//! The chatbox, as far as the custom screen waits on it: a chip's or a
+//! Cross's description (R) and the no-running message (L).
+//!
+//! The original runs a text script through its chatbox (`chatbox_onUpdate`,
+//! once a frame after the battle's update) and the screen waits for the
+//! chatbox to close. What the scripts say is presentation; when the box
+//! closes isn't, because the screen reads no keys until then. This is the
+//! interpreter's timing for the commands those scripts use:
+//!
+//! - the box: open at once (`E8 06`, the descriptions') or in three steps
+//!   (`E8 00`), then closing in three;
+//! - the operator's portrait (`F5`): the box's opening waits for its
+//!   fade-in (seven ticks once the box is open), the close for its
+//!   fade-out (three);
+//! - text: at print speed 0 a whole line a tick; otherwise a character
+//!   every `speed + 1` ticks, and at once from the tick B is held or A is
+//!   pressed (`chatbox_8040154`), which the box only looks for once it has
+//!   run four ticks without waiting on a command;
+//! - a line break (`E9`), which ends the tick's printing;
+//! - the wait for a key (`E7`): six ticks before it takes one, then A or B
+//!   (or any key) pressed, or B held for eleven ticks;
+//! - the end (`E6`), which closes the box.
+//!
+//! Verified against chip-lab recordings (docs/engine/custom-screen.md
+//! §3.5): the tick a description takes keys from by its line breaks, a
+//! held B, and the no-running message with A pressed on every other frame.
+
+use crate::input::keys;
+
+/// What a script does that takes time.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Script {
+    /// A chip's or a Cross's description: the box at once, the text at
+    /// print speed 0 with `breaks` line breaks, then any key.
+    Description { breaks: u8 },
+    /// The no-running message: the operator's portrait, the box opening,
+    /// text at the default speed in lines of this many characters (a line
+    /// after the first with none isn't there), then A or B.
+    RunMessage { lines: [u8; 3] },
+}
+
+/// One command of a script, as the timing sees it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Op {
+    /// `F5`: the portrait, fading in.
+    Portrait,
+    /// `E8 00`: the box opens.
+    Open,
+    /// `E8 06`: the box is open.
+    OpenAtOnce,
+    /// `F1`: the print speed.
+    Speed(u8),
+    /// Characters to print.
+    Text(u8),
+    /// `E9`.
+    Break,
+    /// `E7`: wait for a key (`any`: any key, else A or B).
+    Halt { any: bool },
+    /// `E6`.
+    End,
+}
+
+impl Script {
+    /// The script's `i`th command.
+    fn op(self, i: u8) -> Op {
+        match self {
+            Script::Description { breaks } => match i {
+                0 => Op::OpenAtOnce,
+                1 => Op::Speed(0),
+                // A line, then a break and a line for each break.
+                i if i <= 2 + 2 * breaks => {
+                    if i % 2 == 0 {
+                        Op::Text(1)
+                    } else {
+                        Op::Break
+                    }
+                }
+                i if i == 3 + 2 * breaks => Op::Halt { any: true },
+                _ => Op::End,
+            },
+            Script::RunMessage { lines } => {
+                let count = 1 + lines[1..].iter().take_while(|&&n| n != 0).count() as u8;
+                match i {
+                    0 => Op::Portrait,
+                    1 => Op::Open,
+                    i if i < 2 + 2 * count - 1 => {
+                        if i % 2 == 0 {
+                            Op::Text(lines[(i as usize - 2) / 2])
+                        } else {
+                            Op::Break
+                        }
+                    }
+                    i if i == 2 + 2 * count - 1 => Op::Halt { any: false },
+                    _ => Op::End,
+                }
+            }
+        }
+    }
+}
+
+/// The portrait's tint as it fades in (`0x18C6`, one 0x421 a tick) and
+/// out (0x842 a tick until a channel reaches 6).
+const TINT: u16 = 0x18C6;
+const FADE_IN: u16 = 0x421;
+const FADE_OUT: u16 = 0x842;
+/// The print speed a script starts with: a character every third tick.
+const SPEED: u8 = 2;
+/// Ticks the box runs before it looks for the keys that rush the text
+/// (ticks spent waiting on a command don't count).
+const RUSH_DELAY: u8 = 4;
+/// The wait for a key: ticks before it takes one, and the ticks of B held
+/// that answer it.
+const HALT_DELAY: u16 = 5;
+const HELD_TICKS: u16 = 10;
+/// The box's opening steps.
+const OPEN: u8 = 3;
+/// Every button.
+const ANY_KEY: u16 = 0x3FF;
+
+/// A running chatbox.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Chatbox {
+    script: Script,
+    /// The command the script is at, and the characters of it already
+    /// printed (a text command).
+    at: u8,
+    printed: u8,
+    /// The box is up (the screen waits while it is).
+    open: bool,
+    /// A command holds the script (the box's flag 1).
+    waiting: bool,
+    /// The box isn't drawn yet, or no longer (flag 0x100).
+    hidden: bool,
+    /// The portrait: shown (flag 2), fading in (4), fading out (8), and
+    /// its tint.
+    portrait: bool,
+    fading_in: bool,
+    fading_out: bool,
+    tint: u16,
+    /// The print speed and the ticks until the next character.
+    speed: u8,
+    char_wait: u8,
+    /// Ticks left before the rush keys are looked for.
+    rush_delay: u8,
+    /// The box's opening step (0 closed .. 3 open).
+    steps: u8,
+    /// A countdown the box's opening, its closing and the wait for a key
+    /// share (the game's BoxY, with the halfword around it).
+    count: u16,
+    /// The wait for a key: 0 not begun, 1 its delay, 2 taking keys.
+    halt: u8,
+}
+
+impl Chatbox {
+    /// `chatbox_runScript`.
+    pub fn new(script: Script) -> Chatbox {
+        Chatbox {
+            script,
+            at: 0,
+            printed: 0,
+            open: true,
+            waiting: false,
+            hidden: true,
+            portrait: false,
+            fading_in: false,
+            fading_out: false,
+            tint: 0,
+            speed: SPEED,
+            char_wait: 0,
+            rush_delay: RUSH_DELAY,
+            steps: 0,
+            count: 1,
+            halt: 0,
+        }
+    }
+
+    /// Whether the box is still up.
+    pub fn is_open(&self) -> bool {
+        self.open
+    }
+
+    /// `chatbox_onUpdate`: one tick on the console's joypad.
+    pub fn update(&mut self, held: u16, pressed: u16) {
+        if !self.open {
+            return;
+        }
+        let mut rush = false;
+        if !self.waiting {
+            if self.rush_delay != 0 {
+                self.rush_delay -= 1;
+            } else {
+                // chatbox_8040154
+                rush = held & keys::B != 0 || pressed & keys::A != 0 || self.speed == 0;
+            }
+        }
+        if rush {
+            self.print_all(held, pressed);
+        } else {
+            self.print(held, pressed);
+        }
+        if self.open {
+            self.fade_portrait();
+        }
+    }
+
+    /// `chatbox_interpreteAndDrawDialogChar`: commands and characters until
+    /// one takes the rest of the tick.
+    fn print(&mut self, held: u16, pressed: u16) {
+        loop {
+            let goes_on = match self.script.op(self.at) {
+                Op::Text(n) => {
+                    self.waiting = false;
+                    if self.char_wait == 0 {
+                        self.char_wait = self.speed;
+                        self.printed += 1;
+                        if self.printed >= n {
+                            self.next();
+                        }
+                        true
+                    } else {
+                        self.char_wait -= 1;
+                        false
+                    }
+                }
+                // A command waits out the last character too.
+                _ if self.char_wait != 0 => {
+                    self.char_wait -= 1;
+                    false
+                }
+                _ => self.command(held, pressed),
+            };
+            if !goes_on || !self.open {
+                break;
+            }
+        }
+    }
+
+    /// `chatbox_interpreteAndDrawDialogChar_1`: everything at once, up to
+    /// a command that holds the script.
+    fn print_all(&mut self, held: u16, pressed: u16) {
+        loop {
+            match self.script.op(self.at) {
+                Op::Text(_) => self.next(),
+                _ => {
+                    self.command(held, pressed);
+                }
+            }
+            if !self.open || self.waiting {
+                break;
+            }
+        }
+    }
+
+    fn next(&mut self) {
+        self.at += 1;
+        self.printed = 0;
+    }
+
+    /// One command; whether the script goes on this tick.
+    fn command(&mut self, held: u16, pressed: u16) -> bool {
+        match self.script.op(self.at) {
+            Op::Text(_) => unreachable!("text is printed, not run"),
+            // chatbox_F5_mugshot
+            Op::Portrait => {
+                if !self.portrait {
+                    self.portrait = true;
+                    self.fading_in = true;
+                    self.tint = TINT;
+                }
+                self.next();
+                true
+            }
+            // chatbox_804103E
+            Op::Open => {
+                self.waiting = true;
+                if self.steps != OPEN {
+                    self.hidden = false;
+                    if self.count & 0xFF != 0 {
+                        self.count -= 1;
+                        return false;
+                    }
+                    self.steps += 1;
+                    if self.steps != OPEN {
+                        self.count &= 0xFF00;
+                        return false;
+                    }
+                }
+                if self.fading_in {
+                    return false;
+                }
+                self.waiting = false;
+                self.next();
+                true
+            }
+            // chatbox_80410F8
+            Op::OpenAtOnce => {
+                self.hidden = false;
+                self.waiting = false;
+                self.steps = OPEN;
+                self.next();
+                true
+            }
+            // chatbox_F1_textspeed
+            Op::Speed(speed) => {
+                self.speed = speed;
+                self.next();
+                true
+            }
+            // chatbox_E9_newline
+            Op::Break => {
+                self.next();
+                false
+            }
+            // chatbox_E7_buttonhalt
+            Op::Halt { any } => {
+                self.waiting = true;
+                match self.halt {
+                    0 => {
+                        self.count = HALT_DELAY;
+                        self.halt = 1;
+                        return false;
+                    }
+                    1 if self.count != 0 => {
+                        self.count -= 1;
+                        return false;
+                    }
+                    _ => self.halt = 2,
+                }
+                let mask = if any { ANY_KEY } else { keys::A | keys::B };
+                let answered = if pressed & mask != 0 {
+                    true
+                } else if held & keys::B != 0 {
+                    if self.count >= HELD_TICKS {
+                        true
+                    } else {
+                        self.count += 1;
+                        false
+                    }
+                } else {
+                    false
+                };
+                if answered {
+                    self.waiting = false;
+                    self.halt = 0;
+                    self.count = 0;
+                    self.next();
+                }
+                false
+            }
+            // chatbox_E6_end
+            Op::End => {
+                self.waiting = true;
+                if !self.hidden {
+                    // chatbox_8041090: the portrait fades out, then the
+                    // box closes step by step.
+                    self.fading_out = true;
+                    if self.portrait {
+                        return false;
+                    }
+                    if self.count & 0xFF != 0 {
+                        self.count -= 1;
+                        return false;
+                    }
+                    if self.steps != 0 {
+                        self.steps -= 1;
+                        self.count &= 0xFF00;
+                        return false;
+                    }
+                    self.count &= 0xFF00;
+                    self.fading_out = false;
+                    self.waiting = false;
+                    self.hidden = true;
+                } else if self.portrait {
+                    self.fading_out = true;
+                    return false;
+                }
+                self.open = false;
+                self.halt = 0;
+                false
+            }
+        }
+    }
+
+    /// `chatbox_8040B8C`: the portrait's fade, a step a tick while the box
+    /// is fully open (or not drawn).
+    fn fade_portrait(&mut self) {
+        if !self.portrait || (!self.hidden && self.steps != OPEN) {
+            return;
+        }
+        if self.fading_in {
+            match self.tint.checked_sub(FADE_IN) {
+                Some(t) => self.tint = t,
+                None => {
+                    self.tint = 0;
+                    self.fading_in = false;
+                }
+            }
+        } else if self.fading_out {
+            self.tint = self.tint.wrapping_add(FADE_OUT);
+            if self.tint & 0x1F >= 6 {
+                self.fading_out = false;
+                self.portrait = false;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The tick (0 = the script's first) the box closes on, with the keys
+    /// `keys(tick)` gives as (held, pressed).
+    fn closes(script: Script, keys: impl Fn(u32) -> (u16, u16)) -> Option<u32> {
+        let mut c = Chatbox::new(script);
+        (0..600).find(|&t| {
+            let (held, pressed) = keys(t);
+            c.update(held, pressed);
+            !c.is_open()
+        })
+    }
+
+    fn press(key: u16, at: u32) -> impl Fn(u32) -> (u16, u16) {
+        move |t| if t == at { (key, key) } else { (0, 0) }
+    }
+
+    #[test]
+    fn a_description_takes_keys_six_ticks_in_and_one_more_a_line_break() {
+        for breaks in 0..3u8 {
+            let first = 6 + breaks as u32;
+            let script = Script::Description { breaks };
+            // A key before that is lost; the first one taken closes the
+            // box four ticks later.
+            assert_eq!(closes(script, press(keys::A, first - 1)), None, "{breaks} breaks");
+            assert_eq!(closes(script, press(keys::A, first)), Some(first + 4), "{breaks} breaks");
+            assert_eq!(closes(script, press(keys::SELECT, first + 9)), Some(first + 13));
+        }
+    }
+
+    #[test]
+    fn b_held_closes_a_description_on_its_eleventh_tick() {
+        let script = Script::Description { breaks: 2 };
+        // Held from before the box takes keys (its press isn't seen): the
+        // hold is counted from tick 8, and answers on its 11th tick.
+        let held = |until: u32| move |t: u32| if (1..until).contains(&t) { (keys::B, if t == 1 { keys::B } else { 0 }) } else { (0, 0) };
+        assert_eq!(closes(script, held(18)), None);
+        assert_eq!(closes(script, held(19)), Some(22));
+        // Held ticks count whether or not they are in a row.
+        let twice = |t: u32| if (1..14).contains(&t) || (20..25).contains(&t) { (keys::B, if t == 1 || t == 20 { keys::B } else { 0 }) } else { (0, 0) };
+        // (The second press is itself a key: it answers at once.)
+        assert_eq!(closes(script, twice), Some(20 + 4));
+    }
+
+    #[test]
+    fn the_no_running_message_prints_a_character_every_other_tick() {
+        let megaman = Script::RunMessage { lines: [19, 12, 0] };
+        // The box opens over ticks 0-3, the portrait fades in over 3-9,
+        // the text starts on tick 10: 31 characters two ticks apart and a
+        // line break, then the wait for A or B, which takes a key from
+        // tick 79. The portrait fades out and the box closes in 7 ticks.
+        assert_eq!(closes(megaman, press(keys::A, 78)), None);
+        assert_eq!(closes(megaman, press(keys::A, 79)), Some(86));
+        assert_eq!(closes(megaman, press(keys::B, 150)), Some(157));
+        // Any other key doesn't answer it.
+        assert_eq!(closes(megaman, press(keys::START, 150)), None);
+        // One line of 20 characters.
+        let one = Script::RunMessage { lines: [20, 0, 0] };
+        assert_eq!(closes(one, press(keys::A, 55)), None);
+        assert_eq!(closes(one, press(keys::A, 56)), Some(63));
+    }
+
+    #[test]
+    fn a_or_held_b_rushes_the_message() {
+        let megaman = Script::RunMessage { lines: [19, 12, 0] };
+        // A on every even tick: the box first looks for it on tick 14 and
+        // the text is all there at once; the wait takes the press on tick
+        // 20, and the box closes on tick 27.
+        let even = |t: u32| if t % 2 == 0 { (keys::A, keys::A) } else { (0, 0) };
+        assert_eq!(closes(megaman, even), Some(27));
+        // On every odd tick: tick 15 rushes it, a tick after a character
+        // was printed, whose wait holds the key wait up one tick; it takes
+        // keys from tick 22, the press on 23 answers it, closed on 30.
+        let odd = |t: u32| if t % 2 == 1 { (keys::A, keys::A) } else { (0, 0) };
+        assert_eq!(closes(megaman, odd), Some(30));
+        // B held from the start rushes the text on tick 14 and answers the
+        // wait on its eleventh tick of taking keys.
+        let b = |t: u32| (keys::B, if t == 0 { keys::B } else { 0 });
+        assert_eq!(closes(megaman, b), Some(37));
+    }
+}
