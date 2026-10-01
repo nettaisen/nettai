@@ -11,9 +11,11 @@
 //! stepping, the chips below, custom screens, rocks and the round's flow.
 //!
 //! Its scripts are this repository's BN6 scripts (content/bn6, the source
-//! overlay: this project's own code, not game data), read from the
-//! repository and registered under this content's names, so the tests run
-//! the real scripts on made-up data.
+//! overlay), read from the repository, and its own modules
+//! (testdata/content): the test chips are definitions there, made-up
+//! records whose uses are BN6's builders and actions, so the tests run the
+//! real scripts on data they can reason about. (The BN6 modules it loads
+//! bring their own chip definitions too; tests name either by key.)
 
 use super::*;
 use bn6_content_api::Pool;
@@ -21,84 +23,73 @@ use crate::field::{PanelType, pflags};
 
 use std::sync::Arc;
 
-/// Chips: three GunDelSol levels (action 0x37 with subtypes 0..=2) and
-/// an EX (subtype 3, two columns).
-pub const SUN_GUN_1: ChipId = 0x01;
-pub const SUN_GUN_2: ChipId = 0x02;
-pub const SUN_GUN_3: ChipId = 0x03;
-pub const SUN_GUN_EX: ChipId = 0x04;
-/// A dimming (action 0x15, subtype 1: the invisibility freeze).
-pub const VEIL: ChipId = 0x05;
-/// A navi chip (action 0x1B, subtype 5: the eraser navi).
-pub const ERASER: ChipId = 0x06;
-/// Instant chips (action 0x1C, ids 0x40 and up) by number, which reach
-/// the registration shims of BN6's records: a plus chip used on its own
-/// (subtype 3, the plus chips' effect by number) and fists (8, FireHit's);
-/// and flame hooks (14, FlmHook's).
-pub const PLUS: ChipId = 0x41;
-pub const FIST: ChipId = 0x46;
-pub const FLAME_HOOK: ChipId = 0x48;
-/// The thrown chips (action 0x12): a bomb (subtype 0), a seed that
-/// poisons panels (subtype 12), a flash bomb (subtype 14) and a bug bomb
-/// (subtype 7).
-pub const BOMB: ChipId = 0x103;
-pub const SEED: ChipId = 0x104;
-pub const FLASH: ChipId = 0x105;
-pub const BUG: ChipId = 0x106;
-/// A sword (action 0x13, subtype 1: a column of three panels ahead).
-pub const BLADE: ChipId = 0x109;
-/// A step sword (the same, with its first parameter set: it steps two
-/// panels ahead first).
-pub const STEP_BLADE: ChipId = 0x10a;
-/// A strike at stunned or grounded opponents (action 0x49, subtype 2).
-pub const STUN_BLADE: ChipId = 0x10b;
-/// A trap chip (action 0x15, subtype 20, Param1 3: no object).
-pub const TRAP: ChipId = 0x09;
-// Dimming chip subtypes 10 and ElemTrap's (20).
-/// An element trap (action 0x15, subtype 20, Param1 0: the trap object).
-pub const ELEM_TRAP: ChipId = 0x30;
-/// Time bombs (action 0x15, subtype 10): variant 0 and 1.
-pub const TIME_BOMB: ChipId = 0x31;
-pub const TIME_BOMB_PLUS: ChipId = 0x32;
-// Navi chips.
-/// A navi chip (action 0x1B, subtype 16: the elements navi).
-pub const ELEMENTS: ChipId = 0x110;
-/// A navi chip (action 0x1B, subtype 7: the water navi).
-pub const SPOUT: ChipId = 0x111;
-/// A navi chip (action 0x1B, subtype 2: the heat navi).
-pub const HEAT: ChipId = 0x112;
-/// A navi chip (action 0x1B, subtype 3: the elec navi).
-pub const ELEC: ChipId = 0x113;
-/// A navi chip (action 0x1B, subtype 4: the slash navi).
-pub const SLASH: ChipId = 0x114;
-/// A navi chip (action 0x1B, subtype 6: the charge navi).
-pub const CHARGE: ChipId = 0x115;
-/// A navi chip (action 0x1B, subtype 8: the tomahawk navi).
-pub const TOMAHAWK: ChipId = 0x116;
-/// A navi chip (action 0x1B, subtype 9: the tengu navi).
-pub const TENGU: ChipId = 0x117;
-/// A navi chip (action 0x1B, subtype 12: the blast navi).
-pub const BLAST: ChipId = 0x118;
-/// A navi chip (action 0x1B, subtype 26: the shooting navi, Bass's).
-pub const BASS: ChipId = 0x119;
-/// A navi chip (action 0x1B, subtype 25: the sun-and-moon navi).
-pub const SUN_MOON: ChipId = 0x11a;
-/// The link navis' own chips (action 0x0A), each running the action its
-/// module exports: BN6's HeatPres, DElecSwd, RSlash, EDeletBm, VolcChrg,
-/// DripShwr, ETomahwk, FTornado, RC Brakr and DustBrk
-/// (navis/<navi>/chip.luau), as records of made-up damage. Any navi can use
+// The test chips (testdata/content/chips/test/chips.luau), by key: made-up
+// records whose uses are BN6's builders and actions.
+/// Three GunDelSol levels and an EX (two columns).
+pub const SUN_GUN_1: &str = "test/sun-gun-1";
+pub const SUN_GUN_2: &str = "test/sun-gun-2";
+pub const SUN_GUN_3: &str = "test/sun-gun-3";
+pub const SUN_GUN_EX: &str = "test/sun-gun-ex";
+/// A dimming chip (the invisibility freeze).
+pub const VEIL: &str = "test/veil";
+/// A navi chip (the eraser navi).
+pub const ERASER: &str = "test/eraser";
+/// Instant chips: a plus chip used on its own, fists (FireHit's) and flame
+/// hooks (FlmHook's).
+pub const PLUS: &str = "test/plus";
+pub const FIST: &str = "test/fist";
+pub const FLAME_HOOK: &str = "test/flame-hook";
+/// The thrown chips: a bomb, a seed that poisons panels, a flash bomb and
+/// a bug bomb.
+pub const BOMB: &str = "test/bomb";
+pub const SEED: &str = "test/seed";
+pub const FLASH: &str = "test/flash";
+pub const BUG: &str = "test/bug";
+/// A sword (a column of three panels ahead).
+pub const BLADE: &str = "test/blade";
+/// A step sword (the same, after a step two panels ahead).
+pub const STEP_BLADE: &str = "test/step-blade";
+/// A strike at stunned or grounded opponents.
+pub const STUN_BLADE: &str = "test/stun-blade";
+/// A blank chip that is the AntiNavi trap when a side's defensive-chip
+/// record holds it.
+pub const ANTI_NAVI: &str = "test/anti-navi";
+/// A trap chip that sets no object.
+pub const TRAP: &str = "test/trap";
+/// An element trap (the trap object).
+pub const ELEM_TRAP: &str = "test/elem-trap";
+/// Time bombs: the plain one and the big one.
+pub const TIME_BOMB: &str = "test/time-bomb";
+pub const TIME_BOMB_PLUS: &str = "test/time-bomb-plus";
+// Navi chips: the elements navi, the water navi, the heat, elec, slash,
+// charge, tomahawk, tengu and blast navis, the shooting navi (Bass's) and
+// the sun-and-moon navi.
+pub const ELEMENTS: &str = "test/elements";
+pub const SPOUT: &str = "test/spout";
+pub const HEAT: &str = "test/heat";
+pub const ELEC: &str = "test/elec";
+pub const SLASH: &str = "test/slash";
+pub const CHARGE: &str = "test/charge";
+pub const TOMAHAWK: &str = "test/tomahawk";
+pub const TENGU: &str = "test/tengu";
+pub const BLAST: &str = "test/blast";
+pub const BASS: &str = "test/shooter";
+pub const SUN_MOON: &str = "test/sun-moon";
+/// The link navis' own chips: BN6's HeatPres, DElecSwd, RSlash, EDeletBm,
+/// VolcChrg, DripShwr, ETomahwk, FTornado, RC Brakr and DustBrk's actions
+/// (navis/<navi>/chip.luau), as chips of made-up damage. Any navi can use
 /// them here.
-pub const LINK_CHIPS: [(ChipId, &str, &str); 10] = [
-    (0x50, "HeatPres", "navis/heatman/chip"),
-    (0x51, "DElecSwd", "navis/elecman/chip"),
-    (0x52, "RSlash", "navis/slashman/chip"),
-    (0x53, "EDeletBm", "navis/eraseman/chip"),
-    (0x54, "VolcChrg", "navis/chargeman/chip"),
-    (0x55, "DripShwr", "navis/spoutman/chip"),
-    (0x56, "ETomahwk", "navis/tomahawkman/chip"),
-    (0x57, "FTornado", "navis/tenguman/chip"),
-    (0x58, "RCBrakr", "navis/groundman/chip"),
-    (0x59, "DustBrk", "navis/dustman/chip"),
+pub const LINK_CHIPS: [&str; 10] = [
+    "test/heatpres",
+    "test/delecswd",
+    "test/rslash",
+    "test/edeletbm",
+    "test/volcchrg",
+    "test/dripshwr",
+    "test/etomahwk",
+    "test/ftornado",
+    "test/rc-brakr",
+    "test/dustbrk",
 ];
 /// A link navi (the content's navi 1; AI index 4, whose actor record has
 /// no hooks).
@@ -193,19 +184,14 @@ pub fn megaman_on(content: &Content) -> crate::setup::NaviStats {
     }
 }
 
-/// The chip with number `id` in the content (its handle there).
-pub fn chip_in(content: &Content, id: ChipId) -> bn6_content_api::ChipHandle {
-    content.chip_numbered(id).unwrap_or_else(|| panic!("chip {id:#x} is not in the test content"))
+/// The chip `key` in the content (its handle there).
+pub fn chip_in(content: &Content, key: &str) -> bn6_content_api::ChipHandle {
+    content.defs.chip_by_key(key).unwrap_or_else(|| panic!("the test content defines no chip {key:?}"))
 }
 
-/// The chip with number `id` in the shared test content.
-pub fn chip_handle(id: ChipId) -> bn6_content_api::ChipHandle {
-    chip_in(&content(), id)
-}
-
-/// The chip the shared test content defines as `key`.
-pub fn defined_chip(key: &str) -> bn6_content_api::ChipHandle {
-    content().defs.chip_by_key(key).unwrap_or_else(|| panic!("the test content defines no chip {key:?}"))
+/// The chip `key` in the shared test content.
+pub fn chip_handle(key: &str) -> bn6_content_api::ChipHandle {
+    chip_in(&content(), key)
 }
 
 /// The weapon `content` defines as `key`, as a weapon slot holds it.
@@ -224,8 +210,6 @@ pub fn weapon(key: &str) -> Option<bn6_content_api::WeaponHandle> {
 pub const TICKER_1: &str = "test/ticker1";
 pub const TICKER_2: &str = "test/ticker2";
 pub const TICKER_3: &str = "test/ticker3";
-/// A chip the test pack defines with a number (0x1F0) and its own action.
-pub const TICKER_4: &str = "test/ticker4";
 /// BN6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
 /// chips content defines, which grab a column and a panel.
 pub const AREA_GRAB: &str = "areagrab";
@@ -323,7 +307,6 @@ pub fn build() -> Content {
 /// The content set, not yet defined.
 fn make() -> Content {
     Content {
-        chips: chips(),
         // (The navis and the base form are definitions:
         // testdata/content/navis/test.luau.)
         navis: Vec::new(),
@@ -747,9 +730,8 @@ fn navi_chip_assets(a: &mut bn6_content_api::AssetNames) {
 /// Where the BN6 scripts are (the source overlay in this repository).
 const OVERLAY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/bn6");
 
-/// The test content's scripts: modules of the BN6 overlay, by the paths
-/// this content registers them under (the ones the overlay's modules
-/// `require` stay where they are).
+/// The test content's scripts: its own modules (testdata/content), these
+/// modules of the BN6 overlay, and whatever they `require` of it.
 pub fn scripts() -> Scripts {
     static SCRIPTS: std::sync::OnceLock<Scripts> = std::sync::OnceLock::new();
     SCRIPTS
@@ -761,17 +743,13 @@ pub fn scripts() -> Scripts {
             let modules = [
                 ("lib/slot", "lib/slot"),
                 ("objects/attachment/attachment", "objects/attachment/attachment"),
-                // GunDelSol (content model v2): the chips' own actions, which
-                // the numbered SunGuns reach through the numbered
-                // registration's module.
+                // GunDelSol: the chips, whose actions the SunGuns run.
                 ("chips/gundels/beam", "chips/gundels/beam"),
                 ("chips/gundels/action", "chips/gundels/action"),
                 ("chips/gundels/chips", "chips/gundels/chips"),
-                ("chips/001-sungun1/chip", "chips/010-gundels2/chip"),
                 ("chips/eraseman/mark", "chips/eraseman/mark"),
                 ("chips/eraseman/beam", "chips/eraseman/beam"),
                 ("chips/eraseman/navi", "chips/eraseman/navi"),
-                ("chips/0ec-eraseman/chip", "chips/0ec-eraseman/chip"),
                 ("lib/dimming", "lib/dimming"),
                 ("lib/grab/shot", "lib/grab/shot"),
                 ("lib/grab/controller", "lib/grab/controller"),
@@ -860,12 +838,10 @@ pub fn scripts() -> Scripts {
                     "navis/megaman/forms/slashcross-beast/hit_flash",
                 ),
                 ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
-                // The instant chips (content model v2): BN6's definitions,
-                // and the numbered test chips that reach the shims of the
-                // records kept for Program Advances (FireHit) and the plus
-                // chips' records (FlmHook's records' shim too).
+                // The instant chips: BN6's definitions, and the effects
+                // the test chips compose (the plus chips', FireHit's fist,
+                // FlmHook's hook).
                 ("lib/instant/plus", "lib/instant/plus"),
-                ("chips/0c0-atk-10/chip", "chips/0c0-atk-10/chip"),
                 ("chips/atk-10/chip", "chips/atk-10/chip"),
                 ("chips/navi-20/chip", "chips/navi-20/chip"),
                 ("chips/busterup/chip", "chips/busterup/chip"),
@@ -876,14 +852,12 @@ pub fn scripts() -> Scripts {
                 ("chips/lance/lance", "chips/lance/lance"),
                 ("chips/lance/chip", "chips/lance/chip"),
                 ("chips/firehit/fist", "chips/firehit/fist"),
-                ("chips/06b-firehit1/chip", "chips/06b-firehit1/chip"),
                 ("chips/sandwrm/worm", "chips/sandwrm/worm"),
                 ("chips/sandwrm/hole", "chips/sandwrm/hole"),
                 ("chips/sandwrm/spray", "chips/sandwrm/spray"),
                 ("chips/sandwrm/chips", "chips/sandwrm/chips"),
                 ("chips/flmhook/fire", "chips/flmhook/fire"),
                 ("chips/flmhook/hook", "chips/flmhook/hook"),
-                ("chips/146-flmhook1/chip", "chips/146-flmhook1/chip"),
                 ("chips/justcone/strike", "chips/justcone/strike"),
                 ("chips/justcone/chip", "chips/justcone/chip"),
                 ("chips/golmhit/golem", "chips/golmhit/golem"),
@@ -929,9 +903,8 @@ pub fn scripts() -> Scripts {
                 ("rules/collision", "rules/collision"),
                 ("lib/trajectory", "lib/trajectory"),
                 ("lib/hp", "lib/hp"),
-                // The bombs and seeds (content model v2): the chips' own
-                // actions, which the test chips reach through the numbered
-                // registration's module.
+                // The bombs and seeds: the chips, whose actions the test
+                // chips run.
                 ("lib/bombs/throw", "lib/bombs/throw"),
                 ("lib/bombs/bomb", "lib/bombs/bomb"),
                 ("lib/bombs/slash", "lib/bombs/slash"),
@@ -956,7 +929,6 @@ pub fn scripts() -> Scripts {
                 ("chips/vdoll/doll", "chips/vdoll/doll"),
                 ("chips/vdoll/curse", "chips/vdoll/curse"),
                 ("chips/vdoll/sparkles", "chips/vdoll/sparkles"),
-                ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
                 // RskyHny and the dragons (content model v2): definitions.
                 ("chips/rskyhny/bee", "chips/rskyhny/bee"),
                 ("chips/rskyhny/action", "chips/rskyhny/action"),
@@ -966,9 +938,8 @@ pub fn scripts() -> Scripts {
                 ("lib/dragons/head", "lib/dragons/head"),
                 ("lib/dragons/action", "lib/dragons/action"),
                 ("chips/elecdrgn/chip", "chips/elecdrgn/chip"),
-                // The swords (content model v2): the chips' own slashes and
-                // strikes, which the test chips reach through the numbered
-                // registrations' modules.
+                // The swords: the chips, whose slashes and strikes the
+                // test chips run.
                 ("lib/swords/parts", "lib/swords/parts"),
                 ("lib/swords/slash", "lib/swords/slash"),
                 ("lib/swords/strike", "lib/swords/strike"),
@@ -988,18 +959,13 @@ pub fn scripts() -> Scripts {
                 ("chips/elecswrd/chip", "chips/elecswrd/chip"),
                 ("chips/bambswrd/chip", "chips/bambswrd/chip"),
                 ("chips/stepswrd/chip", "chips/stepswrd/chip"),
-                ("chips/stepswrd/protoman", "chips/stepswrd/protoman"),
                 ("chips/mchnswrd/chip", "chips/mchnswrd/chip"),
                 ("chips/elemswrd/chip", "chips/elemswrd/chip"),
                 ("chips/assnswrd/chip", "chips/assnswrd/chip"),
-                ("chips/010-blade/chip", "chips/047-sword/chip"),
-                ("chips/012-stunblade/chip", "chips/056-mchnswrd/chip"),
-                // Invisibl (content model v2): its hook, which the numbered
-                // veil reaches through the numbered registration's module.
+                // Invisibl's hook, which the veil composes.
                 ("objects/invisible/invisible", "objects/invisible/invisible"),
                 ("chips/invisibl/chip", "chips/invisibl/chip"),
                 ("chips/whicapsl-invisible/chip", "chips/whicapsl-invisible/chip"),
-                ("chips/0b1-invisibl/chip", "chips/0b1-invisibl/chip"),
                 // The field objects (content model v2): the rock with its
                 // debris, RockCube and IceCube, and the stages' boulder.
                 ("objects/rock/rock", "objects/rock/rock"),
@@ -1019,17 +985,15 @@ pub fn scripts() -> Scripts {
                 ("lib/supports/beat", "lib/supports/beat"),
                 ("lib/supports/rush", "lib/supports/rush"),
                 ("lib/supports/controller", "lib/supports/controller"),
-                // The trap chips, the navi-changing chips and the gauge chips
-                // (content model v2): the numbered trap and boosts reach
-                // theirs through the numbered registrations' modules;
-                // SloGauge is a definition.
+                // The trap chips, the navi-changing chips and the gauge
+                // chips: the test trap and boosts compose their hooks;
+                // SloGauge is BN6's.
                 ("lib/traps/controller", "lib/traps/controller"),
                 ("chips/antinavi/chip", "chips/antinavi/chip"),
                 ("chips/antidmg/chip", "chips/antidmg/chip"),
                 ("chips/antiswrd/chip", "chips/antiswrd/chip"),
                 ("chips/antirecv/chip", "chips/antirecv/chip"),
                 ("chips/bodygrd/chip", "chips/bodygrd/chip"),
-                ("chips/0ba-antinavi/chip", "chips/0ba-antinavi/chip"),
                 // (HubBatc gives the NaviCust Shield as a B+Back special.)
                 ("navis/megaman/weapons/shield/weapon", "navis/megaman/weapons/shield/weapon"),
                 ("lib/navi-boost/controller", "lib/navi-boost/controller"),
@@ -1043,10 +1007,8 @@ pub fn scripts() -> Scripts {
                 ("chips/slogauge/chip", "chips/slogauge/chip"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
                 ("objects/rising-bubble/rising_bubble", "objects/rising-bubble/rising_bubble"),
-                // Dimming chip subtypes 10, 11 and ElemTrap's (20), in content
-                // model v2: ElemTrap and Mine are definitions; the numbered
-                // traps and time bombs reach theirs through the numbered
-                // registrations' modules.
+                // ElemTrap, the time bombs and Mine: BN6's definitions,
+                // whose hooks the test traps and time bombs run.
                 ("lib/panels", "lib/panels"),
                 ("chips/elemtrap/trap", "chips/elemtrap/trap"),
                 ("chips/elemtrap/strike", "chips/elemtrap/strike"),
@@ -1055,56 +1017,43 @@ pub fn scripts() -> Scripts {
                 ("chips/timebom/controller", "chips/timebom/controller"),
                 ("chips/timebom/countdown", "chips/timebom/countdown"),
                 ("chips/timebom/chips", "chips/timebom/chips"),
-                ("chips/090-timebom1/chip", "chips/090-timebom1/chip"),
                 ("chips/mine/controller", "chips/mine/controller"),
                 ("chips/mine/land_mine", "chips/mine/land_mine"),
                 ("chips/mine/chip", "chips/mine/chip"),
                 ("chips/crakshot/shot", "chips/crakshot/shot"),
                 ("chips/crakshot/chips", "chips/crakshot/chips"),
-                // The navi chips' navis (content model v2): each navi and his
-                // kinds as definitions, behind the numbered registrations'
-                // modules.
+                // The navi chips' navis: each navi and his kinds, which
+                // the test navi chips summon.
                 ("lib/navi-chips/navi", "lib/navi-chips/navi"),
                 ("chips/elmntman/navi", "chips/elmntman/navi"),
                 ("chips/elmntman/meteor", "chips/elmntman/meteor"),
                 ("chips/elmntman/ice", "chips/elmntman/ice"),
                 ("chips/elmntman/bolt", "chips/elmntman/bolt"),
                 ("chips/elmntman/vine", "chips/elmntman/vine"),
-                ("chips/10d-elmntman/chip", "chips/10d-elmntman/chip"),
                 ("chips/spoutman/navi", "chips/spoutman/navi"),
                 ("chips/spoutman/ball", "chips/spoutman/ball"),
                 ("chips/spoutman/splash", "chips/spoutman/splash"),
                 ("chips/spoutman/pillar", "chips/spoutman/pillar"),
                 ("chips/spoutman/geyser", "chips/spoutman/geyser"),
                 ("chips/spoutman/mark", "chips/spoutman/mark"),
-                ("chips/0f2-spoutman/chip", "chips/0f2-spoutman/chip"),
                 ("chips/heatman/navi", "chips/heatman/navi"),
                 ("chips/heatman/flame", "chips/heatman/flame"),
-                ("chips/0e3-heatman/chip", "chips/0e3-heatman/chip"),
                 ("chips/elecman/navi", "chips/elecman/navi"),
                 ("chips/elecman/thunder", "chips/elecman/thunder"),
-                ("chips/0e6-elecman/chip", "chips/0e6-elecman/chip"),
                 ("chips/slashman/navi", "chips/slashman/navi"),
                 ("chips/slashman/wave", "chips/slashman/wave"),
-                ("chips/0e9-slashman/chip", "chips/0e9-slashman/chip"),
                 ("chips/chrgeman/navi", "chips/chrgeman/navi"),
                 ("chips/chrgeman/car", "chips/chrgeman/car"),
-                ("chips/0ef-chrgeman/chip", "chips/0ef-chrgeman/chip"),
                 ("chips/tmhkman/navi", "chips/tmhkman/navi"),
-                ("chips/0f5-tmhkman/chip", "chips/0f5-tmhkman/chip"),
                 ("chips/tenguman/navi", "chips/tenguman/navi"),
-                ("chips/0f8-tenguman/chip", "chips/0f8-tenguman/chip"),
                 ("chips/blastman/navi", "chips/blastman/navi"),
                 ("chips/blastman/fire", "chips/blastman/fire"),
-                ("chips/101-blastman/chip", "chips/101-blastman/chip"),
                 ("chips/bass/navi", "chips/bass/navi"),
-                ("chips/12d-bass/chip", "chips/12d-bass/chip"),
                 ("chips/sunmoon/sun", "chips/sunmoon/sun"),
                 ("chips/sunmoon/meteor", "chips/sunmoon/meteor"),
                 ("chips/sunmoon/moon_beam", "chips/sunmoon/moon_beam"),
-                ("chips/15b-sunmoon/chip", "chips/15b-sunmoon/chip"),
-                // The link navis' own chips (content model v2: their
-                // records run the actions these export) and their kinds.
+                // The link navis' own chips (whose actions the test link
+                // chips run) and their kinds.
                 ("lib/link_chips", "lib/link_chips"),
                 ("objects/follow-effect/follow_effect", "objects/follow-effect/follow_effect"),
                 ("navis/heatman/chip", "navis/heatman/chip"),
@@ -1183,9 +1132,46 @@ pub fn scripts() -> Scripts {
             ];
             let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string()));
             let own = modules_under(TEST_CONTENT);
-            Scripts::new(modules.map(|(to, from)| (to, read(&from))).chain(own).collect())
+            let mut all: std::collections::BTreeMap<String, String> =
+                modules.map(|(to, from)| (to, read(&from))).chain(own).collect();
+            // What they require of the overlay comes with them.
+            let mut pending: Vec<String> = all.keys().cloned().collect();
+            while let Some(module) = pending.pop() {
+                for required in requires(&module, &all[&module]) {
+                    if !all.contains_key(&required) {
+                        all.insert(required.clone(), read(&required));
+                        pending.push(required);
+                    }
+                }
+            }
+            Scripts::new(all)
         })
         .clone()
+}
+
+/// The modules `source` (the module `module`) requires: each
+/// `require("<relative path>")`, as a module path.
+fn requires(module: &str, source: &str) -> Vec<String> {
+    let dir: Vec<&str> = module.split('/').collect();
+    let dir = &dir[..dir.len() - 1];
+    source
+        .split("require(\"")
+        .skip(1)
+        .filter_map(|rest| rest.split_once("\")").map(|(path, _)| path))
+        .map(|path| {
+            let mut parts: Vec<&str> = dir.to_vec();
+            for part in path.split('/') {
+                match part {
+                    "." => {}
+                    ".." => {
+                        parts.pop();
+                    }
+                    name => parts.push(name),
+                }
+            }
+            parts.join("/")
+        })
+        .collect()
 }
 
 /// The object kinds registered by number (the v1 form: a module that
@@ -1200,344 +1186,6 @@ fn kinds() -> Vec<ObjectKind> {
         script: "objects/numbered/numbered".into(),
     };
     vec![kind("numbered", 0xF0), kind("numbered-2", 0xF1)]
-}
-
-/// The test lock-on modes' keys (testdata/content/rules/lockon.luau), in
-/// key order: a mode's handle is its place.
-const LOCKON_KEYS: [&str; 19] = [
-    "beast-claw",
-    "beast-lunge",
-    "bigbomb",
-    "cannon",
-    "crakshot",
-    "crosswrd",
-    "drksword",
-    "dublshot",
-    "elcpuls1",
-    "firebrn1",
-    "gundelex",
-    "gundels1",
-    "moonbld",
-    "sprsonic",
-    "stay",
-    "thunder",
-    "trnarrw1",
-    "widesht",
-    "yoyo",
-];
-
-/// The test lock-on mode `key`, for the chip records made before the
-/// content is defined (`the_test_lockon_keys_are_the_definitions` checks
-/// the list).
-pub fn lockon(key: &str) -> Option<bn6_content_api::LockonHandle> {
-    let i = LOCKON_KEYS.iter().position(|k| *k == key).unwrap_or_else(|| panic!("no test lock-on mode {key:?}"));
-    Some(bn6_content_api::LockonHandle(i as u16))
-}
-
-/// A chip record with the fields tests don't care about filled in.
-fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
-    ChipData {
-        id: Some(id),
-        name: name.into(),
-        description: None,
-        codes: vec![ChipCode(0), ChipCode::ASTERISK],
-        element: Element::Null,
-        rarity: 0,
-        family: ChipFamily::Null,
-        class: ChipClass::Standard,
-        mb: 10,
-        flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
-        hit_param: 0,
-        action,
-        subtype,
-        beast_lockon: false,
-        params: [0; 4],
-        lockout: 0,
-        extra_flags: ExtraChipFlags::default(),
-        lockon_mode: None,
-        damage: 0,
-        library_number: id,
-        library_index: id as u8,
-        sort_key: id,
-        slot_in_limit: 3,
-        dark_substitute: None,
-        sp_damage: None,
-        navi_damage: None,
-        modifier: None,
-        program_advances: Vec::new(),
-        gun_del_sol: None,
-        recovery: None,
-        sword: None,
-        script: None,
-    }
-}
-
-/// A SunGun: a record that names GunDelSol's action (0x37) with its level
-/// as the subtype, which the numbered registration runs as BN6's GunDelSol
-/// of that level (chips/gundels). (Its `gun_del_sol` is the pack's v1 chip
-/// data, which no script reads any more.)
-fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
-    let beam_look = if level < 3 { 0 } else { 1 };
-    ChipData {
-        beast_lockon: true,
-        lockon_mode: lockon("cannon"),
-        gun_del_sol: Some(GunDelSol {
-            firing_ticks,
-            beam: SunBeamLook { look: beam_look, palette: 0 },
-            beam_in_sun: SunBeamLook { look: beam_look, palette: 1 },
-            gun: AttachmentKind {
-                id: 1 + level,
-                sprite: SpriteId { category: 0x0C, index: 0x01 },
-                palette: level,
-                lift: 0,
-                attach_point: Some(3),
-            },
-        }),
-        script: Some("chips/001-sungun1/chip".into()),
-        ..chip(id, name, 0x37, level)
-    }
-}
-
-/// A sword chip of `action` holding blade 7; action 0x13's slash hits a
-/// column of three panels.
-fn blade(id: ChipId, name: &str, action: u8, subtype: u8, step: bool) -> ChipData {
-    let slash = SwordSlash {
-        region: 4,
-        hit_effect: 0xFF,
-        target: 5,
-        self_type: 7,
-        hit_mod: 3,
-        status: 0,
-        bug: 0,
-        bug_arg: 0,
-        effect: 0x16,
-    };
-    ChipData {
-        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-        family: ChipFamily::Sword,
-        hit_param: 30,
-        params: [step as u8, 0, 0, 0],
-        damage: 80,
-        sword: Some(Sword { blade: 7, slash: (action == 0x13).then_some(slash) }),
-        script: Some(if action == 0x13 { "chips/010-blade/chip" } else { "chips/012-stunblade/chip" }.into()),
-        ..chip(id, name, action, subtype)
-    }
-}
-
-/// Chip ids up to here exist (the ids no test uses are blanks).
-const CHIP_IDS: ChipId = 0x120;
-
-/// The chips, by id (the content looks chips up by index). Dimming chips
-/// of the subtypes other scripts implement take ids 0x10 and up.
-fn chips() -> Vec<ChipData> {
-    let blank = |id| ChipData { class: ChipClass::Special, codes: vec![], ..chip(id, "Blank", 0, 0) };
-    let mut all: Vec<ChipData> = (0..CHIP_IDS).map(blank).collect();
-    for c in named_chips() {
-        let id = c.id.expect("a numbered chip") as usize;
-        all[id] = c;
-    }
-    all
-}
-
-fn named_chips() -> Vec<ChipData> {
-    vec![
-        sun_gun(SUN_GUN_1, "SunGun1", 0, 48),
-        sun_gun(SUN_GUN_2, "SunGun2", 1, 72),
-        sun_gun(SUN_GUN_3, "SunGun3", 2, 96),
-        sun_gun(SUN_GUN_EX, "SunGunX", 3, 96),
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            extra_flags: ExtraChipFlags(ExtraChipFlags::RUSH_CANCELS),
-            family: ChipFamily::Plus,
-            // Invisibl's time (360 ticks), which the numbered registration
-            // finds its hook by.
-            params: [104, 1, 0, 0],
-            script: Some("chips/0b1-invisibl/chip".into()),
-            ..chip(VEIL, "Veil", 0x15, 1)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            family: ChipFamily::Cursor,
-            class: ChipClass::Mega,
-            hit_param: 100,
-            params: [16, 0, 0, 0],
-            damage: 60,
-            script: Some("chips/0ec-eraseman/chip".into()),
-            ..chip(ERASER, "Eraser", 0x1B, 5)
-        },
-        thrown(BOMB, "Bomb", 0, [0, 0, 0, 0], 50),
-        thrown(SEED, "Seed", 12, [0, 0, 0, 0], 10),
-        thrown(FLASH, "Flash", 14, [1, 0, 0, 0], 40),
-        thrown(BUG, "Bug", 7, [0, 0, 0, 0], 0),
-        blade(BLADE, "Blade", 0x13, 1, false),
-        blade(STEP_BLADE, "StepBld", 0x13, 1, true),
-        blade(STUN_BLADE, "StunBld", 0x49, 2, false),
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            params: [3, 0, 0, 0],
-            script: Some("chips/0ba-antinavi/chip".into()),
-            ..chip(TRAP, "Trap", 0x15, 20)
-        },
-        // Dimming chip subtype 10 and ElemTrap's (20).
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            damage: 40,
-            script: Some("chips/0ba-antinavi/chip".into()),
-            ..chip(ELEM_TRAP, "ElemTrap", 0x15, 20)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 100,
-            damage: 50,
-            script: Some("chips/090-timebom1/chip".into()),
-            ..chip(TIME_BOMB, "TimeBomb", 0x15, 10)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 100,
-            params: [1, 0, 0, 0],
-            damage: 70,
-            script: Some("chips/090-timebom1/chip".into()),
-            ..chip(TIME_BOMB_PLUS, "TimeBomb+", 0x15, 10)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Mega,
-            hit_param: 100,
-            params: [4, 0, 0, 0],
-            damage: 50,
-            script: Some("chips/10d-elmntman/chip".into()),
-            ..chip(ELEMENTS, "Elements", 0x1B, 16)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            element: Element::Aqua,
-            class: ChipClass::Mega,
-            damage: 40,
-            script: Some("chips/0f2-spoutman/chip".into()),
-            ..chip(SPOUT, "Spout", 0x1B, 7)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Mega,
-            params: [10, 0, 0, 0],
-            damage: 40,
-            script: Some("chips/0e3-heatman/chip".into()),
-            ..chip(HEAT, "Heat", 0x1B, 2)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Mega,
-            params: [10, 0, 0, 0],
-            damage: 40,
-            script: Some("chips/0e6-elecman/chip".into()),
-            ..chip(ELEC, "Elec", 0x1B, 3)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Mega,
-            params: [10, 0, 0, 0],
-            damage: 40,
-            script: Some("chips/0e9-slashman/chip".into()),
-            ..chip(SLASH, "Slash", 0x1B, 4)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Mega,
-            params: [10, 0, 0, 0],
-            damage: 40,
-            script: Some("chips/0ef-chrgeman/chip".into()),
-            ..chip(CHARGE, "Charge", 0x1B, 6)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Mega,
-            params: [10, 0, 0, 0],
-            damage: 40,
-            script: Some("chips/0f5-tmhkman/chip".into()),
-            ..chip(TOMAHAWK, "Tomahawk", 0x1B, 8)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Mega,
-            params: [10, 0, 0, 0],
-            damage: 40,
-            script: Some("chips/0f8-tenguman/chip".into()),
-            ..chip(TENGU, "Tengu", 0x1B, 9)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Mega,
-            params: [10, 0, 0, 0],
-            damage: 40,
-            script: Some("chips/101-blastman/chip".into()),
-            ..chip(BLAST, "Blast", 0x1B, 12)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Giga,
-            damage: 30,
-            script: Some("chips/12d-bass/chip".into()),
-            ..chip(BASS, "Shooter", 0x1B, 26)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
-            class: ChipClass::Giga,
-            damage: 90,
-            script: Some("chips/15b-sunmoon/chip".into()),
-            ..chip(SUN_MOON, "SunMoon", 0x1B, 25)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::STANDARD_LIBRARY),
-            family: ChipFamily::Plus,
-            damage: 10,
-            script: Some("chips/0c0-atk-10/chip".into()),
-            ..chip(PLUS, "Plus", 0x1C, 3)
-        },
-        spawning(FIST, "Fist", 8, [0, 3, 0, 0], "chips/06b-firehit1/chip"),
-        spawning(FLAME_HOOK, "FlmHook", 14, [0, 1, 0, 0], "chips/146-flmhook1/chip"),
-    ]
-    .into_iter()
-    .chain(LINK_CHIPS.iter().map(|&(id, name, module)| link_chip(id, name, module)))
-    .collect()
-}
-
-/// A link navi's own chip (action 0x0A, subtype 3) whose module exports
-/// its action: made-up damage.
-fn link_chip(id: ChipId, name: &str, module: &str) -> ChipData {
-    ChipData {
-        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::LIBRARY),
-        class: ChipClass::Special,
-        hit_param: 0x30,
-        damage: 60,
-        script: Some(module.into()),
-        ..chip(id, name, 0x0A, 3)
-    }
-}
-
-/// An instant chip whose effect spawns an object: made-up damage.
-fn spawning(id: ChipId, name: &str, subtype: u8, params: [u8; 4], script: &str) -> ChipData {
-    ChipData {
-        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-        hit_param: 0x30,
-        params,
-        damage: 40,
-        lockout: 20,
-        script: Some(script.into()),
-        ..chip(id, name, 0x1C, subtype)
-    }
-}
-
-/// A thrown chip (action 0x12) of `subtype`.
-fn thrown(id: ChipId, name: &str, subtype: u8, params: [u8; 4], damage: u16) -> ChipData {
-    ChipData {
-        flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
-        hit_param: 30,
-        params,
-        damage,
-        script: Some("chips/00a-bomb/chip".into()),
-        ..chip(id, name, 0x12, subtype)
-    }
 }
 
 fn rules() -> Rules {
@@ -1648,6 +1296,8 @@ fn rules() -> Rules {
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
+        sp_slots: Vec::new(),
+        cross_special: Vec::new(),
         push_vectors: [
             SlideVector { dx: 1, dy: 0, tiles: 6 },
             SlideVector { dx: -1, dy: 0, tiles: 6 },

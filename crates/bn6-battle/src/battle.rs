@@ -481,7 +481,8 @@ pub struct SideState {
     /// an obstacle leaving hands on (`sub_802EF74`).
     pub tracked: Option<ObjectRef>,
     /// +0x34: the special chip the side's SELECT uses (`sub_800EE26`); none
-    /// for the zeroed field, which reads as the pack's chip 0.
+    /// for the zeroed field, which reads as the zeroed chip
+    /// (`roles.chips.zeroed`).
     pub special_chip: Option<ChipHandle>,
     /// +0x36 / +0x38: bonuses stored for the special chip, spent with it
     /// (on a damaging chip, on a navi chip).
@@ -524,12 +525,6 @@ impl Battle {
     /// side).
     pub fn panel_pattern(&self) -> u8 {
         self.content.stage(self.setup.settings.stage).panel_pattern
-    }
-
-    /// A chip field's number in the pack's table (the ruleset asks chips by
-    /// number until phase C); none for no chip or a chip content defines.
-    pub fn chip_number(&self, chip: Option<ChipHandle>) -> Option<crate::content::ChipId> {
-        chip.and_then(|h| self.content.chip_number(h))
     }
 
     /// A side's form, by number (the ruleset asks forms by number until

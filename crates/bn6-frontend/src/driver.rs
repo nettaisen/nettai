@@ -3,7 +3,7 @@
 
 use bn6_battle::battle::{mode, top};
 use bn6_battle::console::ConsoleSetup;
-use bn6_battle::content::{ChipCode, ChipId, Content};
+use bn6_battle::content::{ChipCode, Content};
 use bn6_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
 use bn6_battle::input::keys;
 use bn6_battle::link::Link;
@@ -153,17 +153,17 @@ pub fn bn6_live_setup(content: &Content, seed: u32) -> RoundSetup {
 }
 
 /// A round to play live on `content` with these battle settings: two
-/// MegaMen with 1000 HP who both bring `folder` (chip ids with codes,
-/// repeated to 30 chips; BN6's numbers, which a chip content defines under
-/// compat's key takes), each shuffled from the seed.
-pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(ChipId, u8)], seed: u32) -> RoundSetup {
+/// MegaMen with 1000 HP who both bring `folder` (the content's chips by
+/// key, with codes, repeated to 30 chips), each shuffled from the seed.
+pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(&str, u8)], seed: u32) -> RoundSetup {
     let ids = codec::Ids::new(content, Compat::bn6());
+    let chip = |key: &str| content.defs.chip_by_key(key).unwrap_or_else(|| panic!("the content defines no chip {key:?}"));
     let stats = codec::navi_stats(&unhex(LIVE_NAVI).try_into().unwrap(), &ids);
     let player = |side: u32| {
         let saved = SavedFolder {
             chips: std::array::from_fn(|i| {
-                let (id, code) = folder[i % folder.len()];
-                FolderChip::new(ids.chip(id), ChipCode(code))
+                let (key, code) = folder[i % folder.len()];
+                FolderChip::new(chip(key), ChipCode(code))
             }),
             regular: None,
             tags: None,
@@ -197,9 +197,10 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(ChipId
     }
 }
 
-/// The live folder on BN6's content (chip ids with their codes), repeated
-/// to 30: GunDelSols, Geddon, Invisibl and EraseMan.
-const LIVE_FOLDER: [(u16, u8); 6] = [(0x11, 13), (0x0F, 2), (0xA7, 26), (0x11, 16), (0xB1, 26), (0xEC, 10)];
+/// The live folder on BN6's content (chips with their codes), repeated to
+/// 30: GunDelSols, Geddon, Invisibl and EraseMan.
+const LIVE_FOLDER: [(&str, u8); 6] =
+    [("gundels3", 13), ("gundels1", 2), ("geddon", 26), ("gundels3", 16), ("invisibl", 26), ("eraseman", 10)];
 
 /// Plays a round from the keyboard: the local player is the left navi,
 /// with their own custom screen; the right navi stands still, and its
@@ -350,7 +351,8 @@ mod tests {
         let content = bn6_battle::content::testing::content();
         let stage = content.stage_by_key(bn6_battle::content::testing::LINK_BATTLE);
         let settings = BattleSettings::on(&content, stage);
-        let folder = [(bn6_battle::content::testing::SUN_GUN_3, 0)];
+        // GunDelS3 N, which the test content has.
+        let folder = [("gundels3", 13)];
         let mut live = LivePlayer::new(live_setup(&content, settings, &folder, 7), content.clone());
         let mut b = live.start();
         let mut shown = false;

@@ -1,16 +1,30 @@
 --!strict
 -- FireSwrd: a fire slash on the column ahead.
---
--- Its record stays the pack's for now (SlashCross charges chips 0x4C to 0x4F by number (phase C
--- gives them a trait)): this is its action, which registration by number runs
--- (docs/design/content-model-v2.md §5.1, "As built").
 
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
 local slashes = require("../../navis/megaman/forms/slashcross/slashes")
+local lockon = require("../../rules/lockon")
 
-return {
+return define.chip {
+    id = "fireswrd",
+    name = "FireSwrd",
+    description = "Cut enmy\n3sq fwrd\nw/fire!",
+    codes = { "F", "O", "Z" },
+    element = "fire",
+    family = "fire",
+    class = "standard",
+    rarity = 1,
+    mb = 30,
+    damage = 140,
+    hit_param = 30,
+    lockout = 0,
+    flags = { "has_damage", "standard_library", "library" },
+    beast = { lockon = lockon.widesht },
+    library = { number = 75, index = 75, sort = 209 },
+    slot_in_limit = 3,
+    traits = { "element_sword" },
     action = slash.action {
         id = "fireswrd/action",
         blade = parts.blades.fire,

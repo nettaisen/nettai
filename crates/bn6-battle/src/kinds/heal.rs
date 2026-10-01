@@ -7,13 +7,10 @@
 //! original's effect #0x2C, `sub_80E3728`) takes the amount from the healer.
 
 use crate::battle::Battle;
-use crate::content::ChipId;
 use crate::kinds::effect;
 use crate::object::{ObjectRef, Vec3};
 use crate::sound::SoundId;
 
-/// AntiRecv, the trap chip that turns a heal into damage.
-pub const ANTI_RECOVERY: ChipId = 0xBD;
 /// The recovery sparkle (effect #0's look), and its sound.
 const SPARKLE: u8 = 6;
 const HEAL_SOUND: u16 = 0x8A;
@@ -31,7 +28,7 @@ const TRAP_SOUND: u16 = 0xA5;
 pub fn heal(b: &mut Battle, r: ObjectRef, amount: u16, anti_recovery: bool) -> bool {
     let alliance = b.objects.get(r).alliance;
     // sub_802CE78: the opponent's defensive-chip record.
-    if anti_recovery && b.chip_number(b.linked[(alliance ^ 1) as usize].chip) == Some(ANTI_RECOVERY) {
+    if anti_recovery && b.linked_trap(alliance ^ 1) == Some(crate::content::Trap::AntiRecovery) {
         spring_anti_recovery(b, r, amount);
         return true;
     }
@@ -87,8 +84,9 @@ pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32
     o.alliance = alliance;
     o.damage = damage as u16;
     o.stamina = (damage >> 16) as u16;
-    // +0x30 also gets the trap's chip id, for the telop only.
-    let named = b.content.chip_numbered(ANTI_RECOVERY);
+    // +0x30 also gets the trap's chip id, for the telop only: the chip the
+    // other side's record holds, which sprang.
+    let named = b.linked[(alliance ^ 1) as usize & 1].chip;
     b.objects.get_mut(c).telop_chip = named.map(|chip| crate::hud::TelopChip { chip: Some(chip), ..Default::default() });
     Some(c)
 }

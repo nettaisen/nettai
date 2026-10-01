@@ -76,7 +76,8 @@ fn renders_a_live_battle_to_png() {
     // A live battle on the engine's hand-authored test content.
     let content = testing::content();
     let settings = bn6_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
-    let setup = live_setup(&content, settings, &[(testing::SUN_GUN_3, 0)], 1);
+    // (Folders of GunDelS3 N: the test content has it.)
+    let setup = live_setup(&content, settings, &[("gundels3", 13)], 1);
     let session = Session::new(Box::new(LivePlayer::new(setup, content.clone())));
     let out = std::env::temp_dir().join(format!("bn6-frontend-test-{}", std::process::id()));
     let wanted: BTreeSet<u32> = [1, 100].into_iter().collect();

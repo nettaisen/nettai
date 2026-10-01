@@ -297,8 +297,10 @@ impl Side {
         let built = builder::build(&picks, ctx.turn, &mut pa_used, ctx.library, damage);
         self.program_advances = pa_used;
         for p in &picks {
-            if let Some(id) = ctx.library.chip_number(p.chip.id).filter(|&id| id >= 0x190) {
-                self.round.navi_chips_used |= 1 << (id - 0x18F);
+            // A link navi's own chip is spent for the round (the bit of
+            // its navi).
+            if let Some(navi) = ctx.library.own_chip_of(p.chip.id) {
+                self.round.navi_chips_used |= 1 << ctx.library.navi_number(navi).0;
             }
         }
         let form = ctx.library.form_number(ctx.stats.form);

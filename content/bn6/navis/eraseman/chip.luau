@@ -5,10 +5,6 @@
 -- field's edge and five at most, which stand while he stays in the action
 -- (60 ticks), then recovers for 30. See docs/engine/standard-chips.md,
 -- "Action 0x0A".
---
--- Its record stays the pack's (its damage grows with his level, which
--- chip definitions take with step 10's damage formulas) and names this
--- module, whose `action` it runs (docs/design/content-model-v2.md §12).
 
 local beam = require("../../chips/eraseman/beam")
 local link = require("../../lib/link_chips")
@@ -78,7 +74,22 @@ end
 
 local PHASES = { [RAISE] = raise, [SLASH] = slash, [RECOVER] = recover }
 
-return {
+return define.chip {
+    id = "edeletbm",
+    name = "EDeletBm",
+    description = "Pierce\nfwd and\nfire beam",
+    codes = { "K" },
+    element = "null",
+    family = "cursor",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = { formula = "navi_level", base = 30, per_level = 20 },
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "library", "variable_damage" },
+    library = { number = 403, index = 0, sort = 7 },
+    slot_in_limit = 1,
     -- `sub_80F1056` (`off_80F1068`).
     action = define.action {
         id = "edeletbm/action",
