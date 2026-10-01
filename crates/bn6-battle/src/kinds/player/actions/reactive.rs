@@ -62,7 +62,6 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     a.chip = rec.chip;
     a.element = 0;
     a.lockout = 0;
-    a.variant = 0;
     let action = counter_action(b, requests, true);
     set_attack(b, r, action, 0);
     super::dispatch(b, r, action);
@@ -70,13 +69,15 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80105F2(requests, lockout, variant, damage)`: the AntiDmg
 /// program's stance (action 0x5A) caught a hit: the counter keeps the
-/// stance's damage word, lockout and variant (no chip), and its action
-/// starts at the next tick: AntiDmg's, or AntiSwrd's for a sword hit.
+/// stance's damage word and lockout (no chip), and its action starts at
+/// the next tick: AntiDmg's, or AntiSwrd's for a sword hit. (The variant
+/// the original passes on is the stance's, which its weapon zeroes, as a
+/// trap chip's catch does: the counters are their variant 0's.)
 pub(crate) fn stance_counter(b: &mut Battle, r: ObjectRef) {
     let requests = ai(b, r).requests;
-    let (lockout, variant, damage) = {
+    let (lockout, damage) = {
         let a = &ai(b, r).attack;
-        (a.lockout, a.variant, a.damage as u32 | (a.hit_param as u32) << 16)
+        (a.lockout, a.damage as u32 | (a.hit_param as u32) << 16)
     };
     drop_everything(b, r);
     let a = &mut ai_mut(b, r).attack;
@@ -86,7 +87,6 @@ pub(crate) fn stance_counter(b: &mut Battle, r: ObjectRef) {
     a.chip = None;
     a.element = 0;
     a.lockout = lockout;
-    a.variant = variant;
     let action = counter_action(b, requests, false);
     set_attack(b, r, action, 0);
 }

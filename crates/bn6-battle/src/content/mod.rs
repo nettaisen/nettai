@@ -193,12 +193,11 @@ impl Content {
             let (definitions, compiled) =
                 bn6_luau::define(&self.scripts.pack(), &data, &self.assets, bn6_luau::Options::default())?;
             self.scripts.compiled = CompiledModules(compiled);
-            // What registration by number reads of the definitions: the
-            // tables by number, and the pack's chips, navis, forms, weapons
-            // and stages.
+            // What the ruleset still reads by number of the definitions:
+            // the tables by number, and the navis and forms.
             let legacy = legacy::build(self, &definitions)?;
-            // v1 modules see those tables as the `data` global, some while
-            // they load: when the definitions made them, the modules run
+            // Modules see the regions by number as the `data` global, some
+            // while they load: when the definitions made them, the modules run
             // again on what they will see at run time (once: the tables
             // come from the definitions alone, so they come out the same).
             let built = crate::behavior::script_data(self);
@@ -421,10 +420,5 @@ impl Content {
     /// A link navi's own chip (none for MegaMan).
     pub fn navi_chip(&self, navi: NaviHandle) -> Option<(ChipHandle, ChipCode)> {
         self.defs.navi(navi).own_chip
-    }
-
-    /// An attachment kind (the attachment object's first parameter).
-    pub fn attachment(&self, kind: u8) -> &AttachmentKind {
-        self.objects.attachment(kind)
     }
 }

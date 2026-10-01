@@ -27,7 +27,7 @@ fn compat_numbers_what_the_engine_runs_by_handle() {
     let mut b = bn6_battle::Battle::new(setup, content);
     b.spawn_actors();
     let player = b.player(0).unwrap();
-    let ticker = bn6_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default(), [0; 4]).unwrap();
+    let ticker = bn6_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default()).unwrap();
     let shot = b.content.defs.actions.iter().position(|a| a.key == "test/tick-shot/shot").unwrap() as u16;
     b.set_content_attack(player, shot, 1).unwrap();
     assert_eq!(navi_action(&b, player), NaviAction::Content(bn6_content_api::ActionHandle(shot)));

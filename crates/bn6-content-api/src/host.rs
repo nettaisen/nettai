@@ -1,7 +1,6 @@
 //! [`ContentHost`]: a runtime holding content (Luau). The engine plans what
 //! the runtime binds from its content ([`BindPlan`]: the functions it will
-//! call, found by module export or by definition slot, and the state
-//! layouts); the runtime loads the pack's modules, checks it reads the same
+//! call, each a function slot of a definition, and the state layouts); the runtime loads the pack's modules, checks it reads the same
 //! definitions the content was made from, and the engine calls the
 //! functions by [`FnId`].
 
@@ -14,36 +13,27 @@ use crate::assets::AssetNames;
 use crate::state::{Schema, StateId, Value};
 use crate::types::{ObjectRef, PanelPos};
 
-/// Where a function content implements is.
+/// Where a function content implements is: a function slot of a
+/// definition (`update` of kind `bomb`, `dimming` of chip `areagrab`;
+/// docs/design/content-model-v2.md §3.10). `path` is the field's place in
+/// the spec, dot-separated.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum FnSource {
-    /// A function a module's table exports: registration by module
-    /// (content-pack.md §1.3), until the content model v2 migration ends.
-    Export { module: String, name: String },
-    /// A function slot of a definition: `update` of kind `bomb`, `dimming`
-    /// of chip `areagrab` (docs/design/content-model-v2.md §3.10). `path`
-    /// is the field's place in the spec, dot-separated.
-    Slot { registry: Registry, key: String, path: String },
+pub struct FnSource {
+    pub registry: Registry,
+    pub key: String,
+    pub path: String,
 }
 
 impl FnSource {
     /// A definition's slot.
     pub fn slot(registry: Registry, key: &str, path: &str) -> FnSource {
-        FnSource::Slot { registry, key: key.to_string(), path: path.to_string() }
-    }
-
-    /// A module's export.
-    pub fn export(module: &str, name: &str) -> FnSource {
-        FnSource::Export { module: module.to_string(), name: name.to_string() }
+        FnSource { registry, key: key.to_string(), path: path.to_string() }
     }
 }
 
 impl fmt::Display for FnSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            FnSource::Export { module, name } => write!(f, "{module}.luau's {name}"),
-            FnSource::Slot { registry, key, path } => write!(f, "{registry} {key}'s {path}"),
-        }
+        write!(f, "{} {}'s {}", self.registry, self.key, self.path)
     }
 }
 
@@ -68,9 +58,9 @@ pub struct BindPlan {
     /// registry's handles also number the engine's own entries, so they are
     /// not the definitions' positions).
     pub handles: Vec<u16>,
-    /// The registries' entries that are no definition (the engine's own,
-    /// and what registration by number makes), by registry, handle and key:
-    /// a script reaches them as stand-in values (`me.kind` of a v1 object).
+    /// The registries' entries that are no definition (the engine's own),
+    /// by registry, handle and key: a script reaches them as stand-in
+    /// values (`me.kind` of one of the engine's objects).
     pub entries: Vec<(Registry, u16, String)>,
     /// The assets content can name (`asset.sprite("bomb")`).
     pub assets: AssetNames,
@@ -94,12 +84,11 @@ impl Manifest {
 pub struct DimmingChipSpec {
     /// The attack's element byte (primary | secondary bits).
     pub element: u8,
-    /// The chip's parameters.
-    pub params: [u8; 4],
     /// The damage word: damage | hit parameter << 16.
     pub damage: u32,
-    /// The chip, and the Atk+ / cross bonus the telop shows with it.
-    pub chip: u16,
+    /// The chip (none: an attack without one), and the Atk+ / cross bonus
+    /// the telop shows with it.
+    pub chip: Option<crate::ChipHandle>,
     pub bonus: u16,
 }
 
@@ -110,7 +99,6 @@ pub struct NaviChipSpec {
     /// Where the navi appears (the user's panel when the chip was used).
     pub panel: PanelPos,
     pub element: u8,
-    pub params: [u8; 4],
     /// The damage word with the bonus added.
     pub damage: u32,
 }
@@ -126,8 +114,6 @@ pub struct InstantChipSpec {
     pub element: u8,
     /// The user's Z, 16.16.
     pub z: i32,
-    /// The chip's parameters.
-    pub params: [u8; 4],
     /// The damage word (damage | hit parameter << 16) plus the Atk+ /
     /// cross bonus's low byte.
     pub damage: u32,
@@ -152,8 +138,7 @@ pub struct PlaceSpec {
 /// A call of a hook, with its arguments.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HookCall {
-    /// `setup(navi)`: returns the action, a number (registration by number)
-    /// or an action definition.
+    /// `setup(navi)`: returns the action it starts (an action definition).
     Weapon { navi: ObjectRef },
     /// `dimming_chip(user, spec)`: returns the controller, or nil.
     DimmingChip { user: ObjectRef, spec: DimmingChipSpec },

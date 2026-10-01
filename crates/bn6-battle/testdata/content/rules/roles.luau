@@ -1,8 +1,8 @@
 --!strict
 -- What the ruleset needs from the engine's test content by role
 -- (docs/design/content-model-v2.md §7.4): the BN6 overlay's modules the
--- test content registers, the v1 ones through their legacy markers. (The
--- test pack, crates/bn6-battle/testdata/pack, brings its own.)
+-- test content has. (The test pack, crates/bn6-battle/testdata/pack,
+-- brings its own.)
 
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
 local barriers = require("../lib/barriers/barriers")
@@ -18,6 +18,7 @@ local stun_strike = require("../lib/swords/stun_strike")
 local statuses = require("./status")
 local supports = require("../lib/supports/controller")
 local test_chips = require("../chips/test/chips")
+local turn = require("../navis/megaman/turn")
 
 return define.roles {
     actions = {
@@ -29,11 +30,11 @@ return define.roles {
         -- (GroundCross's drill).
         cross_protect = ground_drill.action,
         -- The turn L or R starts where turning is enabled.
-        turn = { legacy = { action = 0x3B } },
+        turn = turn.action,
         -- A Cross navi's knock-out (SlashCross Beast's lunge).
         cross_death = slash_beast_lunge.action,
-        -- A Cross navi's volley.
-        volley = { legacy = { action = 0x30 } },
+        -- (The volley, WideSht's action in BN6, isn't in the test content:
+        -- its role stays unfilled.)
         -- SlashCross's charged slash, which the Beast rush recognizes.
         charged_sword = slash_charge.action,
         -- The Beast forms' charged claw.

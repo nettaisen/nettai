@@ -160,24 +160,14 @@ pub struct Deprecated {
     pub instead: &'static str,
 }
 
-/// Calls deprecated whatever their arguments: pattern, what, instead.
+/// Uses deprecated whatever their arguments: pattern, what, instead. (What
+/// the API no longer has isn't here: a use of it is a type error.)
 const ALWAYS: &[(&str, &str, &str)] = &[
-    ("battle.spawn_kind(", "battle.spawn_kind", "battle.spawn(kind, pos)"),
-    ("battle.spawn_kind_first(", "battle.spawn_kind_first", "battle.spawn_first(kind, pos)"),
-    ("battle.spawn_kind_at_end(", "battle.spawn_kind_at_end", "battle.spawn_at_end(kind, pos)"),
-    (":param(", "me:param", "the kind's state"),
-    (":set_param(", "me:set_param", "the kind's state"),
-    (":attack_param(", "me:attack_param", "the builder's arguments"),
-    (":set_attack_param(", "me:set_attack_param", "the builder's arguments"),
-    ("me.index", "me.index", "me.kind"),
-    ("me.variant", "me.variant", "the builder's arguments"),
     (".name_id", "name_id", "the identity (step 11)"),
     ("battle.navi_record(", "battle.navi_record", "the identity (step 11)"),
     (":death_hook(", "me:death_hook", "the identity (step 11)"),
     ("battle.attach_point(", "battle.attach_point", "me:attach_point_pos"),
-    ("battle.hand_chip(", "battle.hand_chip", "chips by handle (step 3b)"),
     ("data.", "the data global", "definitions"),
-    (":load(\"", "sprite:load(id)", "asset.sprite"),
     ("legacy {", "a legacy marker", "the v2 form it stands for"),
     ("legacy = {", "a legacy marker", "the v2 form it stands for"),
 ];
@@ -192,7 +182,6 @@ const BY_ARGUMENT: &[(&str, &[usize], &str, &str)] = &[
     ("battle.region_effects(", &[2, 4], "battle.region_effects(number)", "define.region, define.effect"),
     (":setup_collision(", &[0, 1], "me:setup_collision(number)", "define.collision"),
     (":reset_collision_types(", &[0, 1], "me:reset_collision_types(number)", "define.collision"),
-    (":set_attack(", &[0], "me:set_attack(number)", "an action definition"),
 ];
 
 /// Every deprecated use in a module.
@@ -204,22 +193,6 @@ pub fn deprecated(source: &str) -> Vec<Deprecated> {
     for &(pattern, what, instead) in ALWAYS {
         for at in s.find(pattern) {
             out.push(Deprecated { line: s.line(at), what, instead });
-        }
-    }
-    for at in s.find("battle.spawn(") {
-        if s.args(at + "battle.spawn".len()).first().is_some_and(|a| a.starts_with('"') || a.starts_with('\'')) {
-            out.push(Deprecated { line: s.line(at), what: "battle.spawn(pool, index)", instead: "battle.spawn(kind, pos)" });
-        }
-    }
-    // A weapon definition's setup that names its action by number (the
-    // v1 modules' `return ACTION`): a numeric constant whose name says it
-    // is an action.
-    if s.find("define.weapon").next().is_some() {
-        for at in s.find("return ") {
-            let name = s.code[at + "return ".len()..].split(|c: char| !(c.is_alphanumeric() || c == '_')).next().unwrap_or("");
-            if name.contains("ACTION") && constants.contains(name) {
-                out.push(Deprecated { line: s.line(at), what: "an action by number", instead: "an action definition" });
-            }
         }
     }
     for &(pattern, positions, what, instead) in BY_ARGUMENT {
@@ -304,8 +277,8 @@ mod tests {
 
     #[test]
     fn comments_and_strings_are_not_code() {
-        let s = Scanned::new("local x = 'me:param(1)' -- me:param(2)\n--[[ me:param(3) ]] local y = me:param(4)\n");
-        assert_eq!(s.find(":param(").count(), 1);
+        let s = Scanned::new("local x = 'me:death_hook(1)' -- me:death_hook(2)\n--[[ me:death_hook(3) ]] me:death_hook(4)\n");
+        assert_eq!(s.find(":death_hook(").count(), 1);
         assert_eq!(s.code.len(), s.source.len());
     }
 
@@ -316,29 +289,22 @@ mod tests {
                    battle.play_sound(SOUND)\n\
                    battle.play_sound(THROW)\n\
                    battle.play_sound(0x10)\n\
-                   local o = battle.spawn('attack', 8, me.pos)\n\
                    local k = battle.spawn(bomb.kind, me.pos)\n\
-                   me:set_attack(ACTION, 0)\n\
-                   me:set_attack(0x12, 0)\n\
-                   local _ = data.chips[1]\n";
+                   local _ = battle.effect(me.pos, 3)\n\
+                   local _ = battle.effect(me.pos, BURST)\n\
+                   local _ = data.regions[1]\n\
+                   local N = define.navi { id = 'n', legacy = legacy { number = 1 } }\n";
         let d: Vec<&str> = deprecated(src).iter().map(|d| d.what).collect();
         assert_eq!(
             d,
-            ["battle.play_sound(number)", "battle.play_sound(number)", "battle.spawn(pool, index)", "me:set_attack(number)", "the data global"]
+            [
+                "battle.play_sound(number)",
+                "battle.play_sound(number)",
+                "battle.effect(pos, number)",
+                "the data global",
+                "a legacy marker",
+            ]
         );
-    }
-
-    #[test]
-    fn a_weapon_definition_naming_its_action_by_number_counts() {
-        let setup = "local ACTION, DAMAGE = 0x27, 30\n\
-                     local function setup(navi: Object): number\n    return ACTION\nend\n";
-        let weapon = format!("{setup}local W = define.weapon {{ id = 'w', name = 'W', charge_ticks = {{}}, setup = setup }}\n");
-        let d: Vec<&str> = deprecated(&weapon).iter().map(|d| d.what).collect();
-        assert_eq!(d, ["an action by number"]);
-        // (A v1 weapon module's whole registration is the transitional part.)
-        assert!(deprecated(setup).is_empty());
-        let named = weapon.replace("return ACTION", "return SHOT");
-        assert!(deprecated(&named).is_empty());
     }
 
     #[test]

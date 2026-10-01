@@ -625,7 +625,7 @@ local function init(me: Object)
     me:add_navi_parts("navi", look.ai_index, 1)
     if not s.colonel then
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-        local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = me.element, params = { 1, 0, 0, 0 }, damage = damage }
+        local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = me.element, damage = damage }
         local colonel = spawn(me.related1 :: Object, spec, nil, true, nil)
         if colonel then
             (colonel.state :: State).partner = me

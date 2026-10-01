@@ -31,7 +31,7 @@ use bn6_content_api::{ChipHandle, WeaponHandle};
 use crate::content::Content;
 
 pub use navi_action::{EngineAction, NaviAction, NaviWord};
-use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
+use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::content::ActorEntry;
 use crate::setup::{Form, Navi, NaviStats, effects};
 
@@ -316,14 +316,10 @@ pub fn set_navi_action(b: &mut Battle, r: ObjectRef, action: NaviAction) {
     ai_mut(b, r).navi_action = action;
 }
 
-/// The action of `role`: the role's content action, or the number it names
-/// that nothing implements yet (running it is "not implemented yet").
+/// The action of `role` (a role content hasn't filled is a panic naming
+/// it).
 pub(crate) fn role_action(b: &Battle, role: crate::content::ActionRole) -> NaviAction {
-    match b.content.defs.roles.actions.get(&role) {
-        Some(crate::content::RoleAction::Action(h)) => NaviAction::Content(*h),
-        Some(crate::content::RoleAction::Unported(n)) => NaviAction::Unported(*n),
-        None => panic!("the role actions.{} is not filled (define.roles in rules/roles.luau)", role.name()),
-    }
+    NaviAction::Content(b.content.defs.roles.action(role))
 }
 
 /// Whether navi `r` runs the action of `role`.
@@ -356,10 +352,6 @@ pub(crate) fn set_attack(b: &mut Battle, r: ObjectRef, action: impl Into<NaviAct
     reset_attack_links(b, r);
 }
 
-/// The numeric API's number for a content action content defines, which
-/// has none (transitional: content model v2 step 13 removes it with the
-/// numeric API). Above every action number the original has.
-pub const CONTENT_ACTION: u8 = 0xFF;
 
 /// The content action the navi `r` is running. None for an object that
 /// isn't an actor.
@@ -544,11 +536,11 @@ pub(crate) fn refresh_form_overlay(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_80127C0(0)`: fill the attack variables for the next chip and name
-/// its action (for weapon routines that use the chip, such as SlashCross's
-/// A-charge), by number for the numeric API.
-pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) -> u8 {
-    chip_use::prepare(b, r, 0).number(&b.content.defs)
+/// `sub_80127C0(0)`: fill the attack variables for the next chip (for
+/// weapon routines that use the chip, such as SlashCross's A-charge, which
+/// take its action from `attack_chip`).
+pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) {
+    chip_use::prepare(b, r, 0);
 }
 
 // ---- The transformation sequencer's checks -------------------------------------
@@ -676,7 +668,8 @@ fn post_init_hook(b: &mut Battle, r: ObjectRef) {
                 let o = b.objects.get(r);
                 (o.alliance, o.flip)
             };
-            let junk = crate::behavior::spawn_object(b, Pool::Attack, 0xD2, Vec3::default(), [0; 4]);
+            let kind = b.content.defs.roles.kind(crate::content::KindRole::Mode9Attack);
+            let junk = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
             if let Some(j) = junk {
                 let o = b.objects.get_mut(j);
                 o.related[0] = Some(r);
@@ -685,7 +678,8 @@ fn post_init_hook(b: &mut Battle, r: ObjectRef) {
                 o.element = 0;
                 o.flags |= flags::RUN_WHILE_DIMMED;
             }
-            let second = crate::behavior::spawn_object(b, Pool::Actor, 0x28, Vec3::default(), [0; 4]);
+            let kind = b.content.defs.roles.kind(crate::content::KindRole::Mode9Actor);
+            let second = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
             if let Some(s) = second {
                 let o = b.objects.get_mut(s);
                 o.related[0] = Some(r);

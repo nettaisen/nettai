@@ -16,9 +16,6 @@ use crate::collision::f1;
 use crate::field::PanelType;
 use crate::object::{ObjectRef, PanelPos};
 
-/// The action number.
-pub const ACTION: u8 = 0x10;
-
 /// How a step picks its destination (the game's move type byte).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum MoveKind {
@@ -141,12 +138,13 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_80F02A2`: whether the step sets the navi's animations. A state
-/// bit (0x8000) together with the attack parameter byte 1 left by the last
-/// chip turns them off.
-pub(super) fn animates(b: &Battle, r: ObjectRef) -> bool {
-    let a = ai(b, r);
-    !(a.attack.params[1] != 0 && a.status & 0x8000 != 0)
+/// `sub_80F02A2`: whether the step sets the navi's animations. The
+/// original turns them off while a state bit (0x8000) is on and the last
+/// chip's record left a second parameter byte in the attack: nothing sets
+/// that bit, and a chip leaves no parameter bytes here, so a step always
+/// animates.
+pub(super) fn animates(_b: &Battle, _r: ObjectRef) -> bool {
+    true
 }
 
 /// Leave for idle (keeping pending requests and the charge).

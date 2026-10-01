@@ -116,19 +116,6 @@ pub fn spawn_engine(b: &mut Battle, kind: EngineKind, pos: Vec3, params: [u8; 4]
     spawn(b, h, SpawnAt::AfterCurrent, pos, params)
 }
 
-/// Spawn the kind registration by number puts in object slot `index` of
-/// `pool` (the numeric spawns of the pack's scripts). A slot nothing fills
-/// is a kind not ported yet.
-pub fn spawn_numbered(b: &mut Battle, pool: Pool, index: u8, at: SpawnAt, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-    let Some(kind) = b.content.defs.kind_at(pool, index) else {
-        if !b.objects.has_room(pool) {
-            return None;
-        }
-        panic!("object kind {pool:?} {index:#x} is not implemented yet")
-    };
-    spawn(b, kind, at, pos, params)
-}
-
 /// The object kinds the engine implements itself (the rest are content's:
 /// `content::defs`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
