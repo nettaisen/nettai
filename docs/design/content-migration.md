@@ -227,18 +227,23 @@ the panel chips (lib/panel-chips, objects/panel-changer, chips/pnlretrn and kin)
 (lib/instruments, chips/fanfare and kin), 13 AirRaid (chips/airraid), 26 BugFix (chips/bugfix), 27 ColorPt and
 DblPoint (chips/colorpt), 28 Sensor (chips/sensor), 36 SumnBlk (chips/sumnblk).
 
-Left (each a controller and its objects, every branch; docs/engine/chips.md §3.6.10 has what is known):
+Ported in content model v2 (groups B2b and B2c; docs/engine/dimming-chip-effects.md, branch by branch): 2, which
+no chip has (lib/dimming/blinding_flash), 8 Wind and Fan (chips/wind), 14 Guardian (chips/guardian), 15 GrabBnsh
+and GrabRvng (chips/grabbnsh), 16 Meteors (chips/meteors, objects/falling-meteor), 17 Anubis and PoisPhar
+(chips/anubis, chips/poisphar), 18 Otenko (chips/otenko), 19 CircGun (chips/circgun), 21 BlzrdBal
+(chips/blzrdbal), 23 BurnSqr (chips/burnsqr), 24 Magnum (chips/magnum); and B2c's 3 Geddon and the capsules
+(chips/geddon and the capsules' folders), 7 LifeSync (chips/lifesync), 12 Snake (chips/snake), 22 NumbrBl
+(chips/numbrbl), 29 CornFsta (chips/cornfsta), 30 DblHero (chips/dblhero), 32 MetrKnuk (chips/metrknuk), 37
+DblBeast (chips/dblbeast). The trap chips' counters are content too, started by role (rules/roles.luau):
+AntiDmg's, AntiSwrd's and BodyGrd's (chips/antidmg, chips/antiswrd, chips/bodygrd).
 
-- 14 Guardian: objects/guardian, guardian-statue and guardian-strike are written but no chip names them yet and
-  they are unverified; register chip 0x097 and check them against the lab.
-- 2 (no chip), 3 Geddon and the capsules, 7 LifeSync, 8 Wind/Fan, 12 Snake, 15
-  GrabBnsh/GrabRvng, 16 Meteors, 17 Anubis/PoisPhar, 18 Otenko, 19 CircGun, 21 BlzrdBal, 22 NumbrBl, 23 BurnSqr,
-  24 Magnum, 29 CornFsta, 30 DblHero, 32 MetrKnuk, 37 DblBeast (group B2b): specified branch by branch in
-  docs/engine/dimming-chip-effects.md (14 Guardian's scripts exist, unregistered), waiting for content model v2;
-  31, 33 and 41 (no chip; their actors are navi chips' navis).
+Left:
+
+- 31, 33 and 41 (no chip; their actors are navi chips' navis).
 - Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
-  notes), encased obstacles (`sub_801813A`; thrown ones, `sub_8018002`, are ported). AntiNavi in the dimming
-  service is done (dimming.rs; dimming-chips.md §2).
+  notes). Encased obstacles (`sub_801813A`, with the role `hooks.encased` and objects/encased-bubble) and thrown
+  ones (`sub_8018002`) are ported, unverified (nothing in the game starts them). AntiNavi in the dimming service
+  is done (dimming.rs; dimming-chips.md §2).
 
 ### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 
