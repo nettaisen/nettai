@@ -29,7 +29,9 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 pub const FORMAT: &str = "bn6-content/sound";
-pub const VERSION: u32 = 1;
+/// Version 2 adds the PSG voices' sweep, fixed frequency and length, the
+/// byte after a sample's data and the DAC's resolution.
+pub const VERSION: u32 = 2;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SoundDoc {
@@ -50,6 +52,10 @@ pub struct MixerDoc {
     pub master_volume: u8,
     /// Reverb before a song sets one (0 = off).
     pub reverb: u8,
+    /// The DAC's resolution: 0 is 9 bits at 32768 Hz, 1 is 8 bits at 65536 Hz,
+    /// 2 and 3 are 7 and 6 bits at twice and four times that.
+    #[serde(default)]
+    pub dac_resolution: u8,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -66,6 +72,10 @@ pub struct SampleDoc {
     pub rate_hz: f64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub loop_start: Option<u32>,
+    /// The byte after the data, which the mixer reads to interpolate the
+    /// last sample, if it isn't the usual one (the loop start's sample, or 0).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tail: Option<i8>,
     /// FNV-1a of the WAV as exported.
     pub stamp: String,
 }
@@ -82,6 +92,15 @@ pub struct VoiceDoc {
     pub wave: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub narrow: Option<bool>,
+    /// Square 1's sweep (NR10; absent: none).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sweep: Option<u8>,
+    /// A PSG voice's frequency rounds to what the DAC plays exactly.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fixed: Option<bool>,
+    /// A PSG voice's sound length (NRx1; absent: until it stops).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub length: Option<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kit: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -135,6 +154,7 @@ pub fn export(bank: &SoundBank, names: &crate::names::AssetNames) -> (crate::pac
             channels: bank.mixer.ds_channels,
             master_volume: bank.mixer.master_volume,
             reverb: bank.mixer.reverb,
+            dac_resolution: bank.mixer.dac_resolution,
         },
         players: bank
             .players
@@ -151,7 +171,13 @@ pub fn export(bank: &SoundBank, names: &crate::names::AssetNames) -> (crate::pac
         let wav = Wav::from_pcm8(&s.data, ((s.rate as f64) / 1024.0).round() as u32, s.loop_start).to_bytes();
         samples.insert(
             n,
-            SampleDoc { file: file.clone(), rate_hz: s.rate as f64 / 1024.0, loop_start: s.loop_start, stamp: stamp(&wav) },
+            SampleDoc {
+                file: file.clone(),
+                rate_hz: s.rate as f64 / 1024.0,
+                loop_start: s.loop_start,
+                tail: (s.tail != Sample::usual_tail(&s.data, s.loop_start)).then_some(s.tail),
+                stamp: stamp(&wav),
+            },
         );
         files.push((file, wav));
     }
@@ -211,6 +237,7 @@ fn voice_doc(v: &Voice) -> VoiceDoc {
     let mut d = VoiceDoc {
         key: v.key,
         pan: v.pan,
+        length: (v.length != 0).then_some(v.length),
         attack: e.attack,
         decay: e.decay,
         sustain: e.sustain,
@@ -222,16 +249,20 @@ fn voice_doc(v: &Voice) -> VoiceDoc {
             d.sample = Some(name("smp", sample.0 as usize));
             if fixed { "direct_sound_fixed" } else { "direct_sound" }
         }
-        VoiceKind::Square1 { duty } => {
+        VoiceKind::Square1 { duty, sweep, fixed } => {
             d.duty = Some(duty);
+            d.sweep = (sweep != NO_SWEEP).then_some(sweep);
+            d.fixed = fixed.then_some(true);
             "square1"
         }
-        VoiceKind::Square2 { duty } => {
+        VoiceKind::Square2 { duty, fixed } => {
             d.duty = Some(duty);
+            d.fixed = fixed.then_some(true);
             "square2"
         }
-        VoiceKind::Wave { wave } => {
+        VoiceKind::Wave { wave, fixed } => {
             d.wave = Some(name("wave", wave.0 as usize));
+            d.fixed = fixed.then_some(true);
             "wave"
         }
         VoiceKind::Noise { narrow } => {
@@ -258,8 +289,8 @@ fn inline(d: &VoiceDoc) -> String {
     let v = toml::Value::try_from(d).unwrap();
     let t = v.as_table().unwrap();
     let order = [
-        "type", "sample", "duty", "wave", "narrow", "kit", "group", "keymap", "key", "pan", "attack", "decay", "sustain",
-        "release",
+        "type", "sample", "duty", "wave", "narrow", "sweep", "fixed", "length", "kit", "group", "keymap", "key", "pan",
+        "attack", "decay", "sustain", "release",
     ];
     let parts: Vec<String> = order.iter().filter_map(|k| t.get(*k).map(|x| format!("{k} = {x}"))).collect();
     format!("{{ {} }}", parts.join(", "))
@@ -310,7 +341,14 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<SoundBank
         ds_channels: doc.mixer.channels,
         master_volume: doc.mixer.master_volume,
         reverb: doc.mixer.reverb,
+        dac_resolution: doc.mixer.dac_resolution & 3,
     };
+    if doc.version < VERSION {
+        report.warn(
+            f("sound.toml"),
+            "a version 1 pack lacks the PSG sweeps, fixed frequencies and the DAC rate; extract it again for the game's sound",
+        );
+    }
     let players = doc
         .players
         .iter()
@@ -379,9 +417,16 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<SoundBank
                     sample: SampleId(find(&sample_id, "sample", &v.sample, report)),
                     fixed: v.kind == "direct_sound_fixed",
                 },
-                "square1" => VoiceKind::Square1 { duty: v.duty.unwrap_or(2) & 3 },
-                "square2" => VoiceKind::Square2 { duty: v.duty.unwrap_or(2) & 3 },
-                "wave" => VoiceKind::Wave { wave: WaveId(find(&wave_id, "wave", &v.wave, report)) },
+                "square1" => VoiceKind::Square1 {
+                    duty: v.duty.unwrap_or(2) & 3,
+                    sweep: v.sweep.unwrap_or(NO_SWEEP),
+                    fixed: v.fixed.unwrap_or(false),
+                },
+                "square2" => VoiceKind::Square2 { duty: v.duty.unwrap_or(2) & 3, fixed: v.fixed.unwrap_or(false) },
+                "wave" => VoiceKind::Wave {
+                    wave: WaveId(find(&wave_id, "wave", &v.wave, report)),
+                    fixed: v.fixed.unwrap_or(false),
+                },
                 "noise" => VoiceKind::Noise { narrow: v.narrow.unwrap_or(false) },
                 "drums" => VoiceKind::Drums { kit: VoicegroupId(find(&vg_id, "voicegroup", &v.kit, report)) },
                 "split" => VoiceKind::Split {
@@ -395,7 +440,8 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<SoundBank
                 }
             };
             let envelope = Envelope { attack: v.attack, decay: v.decay, sustain: v.sustain, release: v.release };
-            voices.push(Voice { kind, key: v.key, pan: v.pan, envelope });
+            let length = v.length.unwrap_or(0);
+            voices.push(Voice { kind, key: v.key, pan: v.pan, length, envelope });
         }
         voicegroups.push(Voicegroup { voices });
     }
@@ -507,5 +553,9 @@ fn import_sample(dir: &Path, prefix: &str, n: &str, d: &SampleDoc, report: &mut 
         report.error(&file, format!("the loop starts at {l}, past the {} samples", data.len()));
         return None;
     }
-    Some(Sample { rate, loop_start, data })
+    let tail = match d.tail {
+        Some(t) if untouched => t,
+        _ => Sample::usual_tail(&data, loop_start),
+    };
+    Some(Sample { rate, loop_start, data, tail })
 }

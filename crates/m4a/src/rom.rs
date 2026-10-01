@@ -3,17 +3,12 @@
 //! and voicegroups. The one place that knows the ROM layout.
 
 use crate::bank::*;
+pub use crate::tables::CLOCK;
 use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::fmt;
 
 const ROM_BASE: u32 = 0x0800_0000;
-const MIX_RATES: [u32; 13] = [0, 5734, 7884, 10512, 13379, 15768, 18157, 21024, 26758, 31536, 36314, 40137, 42048];
 const MAX_SONGS: usize = 1024;
-/// Wait lengths of W00..W96 (and note lengths of N01..N96).
-pub const CLOCK: [u8; 49] = [
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 28, 30, 32, 36, 40, 42,
-    44, 48, 52, 54, 56, 60, 64, 66, 68, 72, 76, 78, 80, 84, 88, 90, 92, 96,
-];
 
 /// Reading a ROM's sound data.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,10 +117,11 @@ pub fn extract(data: &[u8]) -> Result<(SoundBank, Vec<(SongId, RomError)>)> {
         .find(|&w| is_sound_mode(w))
         .ok_or(RomError::NoSoundMode)?;
     let mixer = MixerConfig {
-        mix_rate: MIX_RATES[((mode >> 16) & 15) as usize],
+        mix_rate: MIX_RATES[((mode >> 16) & 15) as usize - 1],
         ds_channels: ((mode >> 8) & 15) as u8,
         master_volume: ((mode >> 12) & 15) as u8,
         reverb: if mode & 0x80 != 0 { (mode & 0x7F) as u8 } else { 0 },
+        dac_resolution: ((mode >> 20) & 15) as u8 - 8,
     };
 
     let mut x = Extractor {
@@ -248,7 +244,7 @@ impl Extractor<'_> {
     /// One 12-byte ToneData: type, key, length, pan/sweep, a pointer or
     /// PSG setting, attack, decay, sustain, release.
     fn voice(&mut self, at: u32, depth: u8) -> Voice {
-        let silent = Voice { kind: VoiceKind::Silent, key: 60, pan: None, envelope: Envelope::default() };
+        let silent = Voice { kind: VoiceKind::Silent, key: 60, pan: None, length: 0, envelope: Envelope::default() };
         let Ok(b) = self.rom.bytes(at, 12) else { return silent };
         let b: [u8; 12] = b.try_into().unwrap();
         let t = b[0];
@@ -277,22 +273,30 @@ impl Extractor<'_> {
                 VoiceKind::Silent
             }
         } else {
+            let fixed = t & 8 != 0;
             match t & 7 {
-                1 => VoiceKind::Square1 { duty: (param & 3) as u8 },
-                2 => VoiceKind::Square2 { duty: (param & 3) as u8 },
+                // ply_note: the PSG's sweep is the voice's pan/sweep byte
+                // unless that is a pan or has no sweep time.
+                1 => VoiceKind::Square1 {
+                    duty: (param & 3) as u8,
+                    sweep: if b[3] & 0x80 == 0 && b[3] & 0x70 != 0 { b[3] } else { NO_SWEEP },
+                    fixed,
+                },
+                2 => VoiceKind::Square2 { duty: (param & 3) as u8, fixed },
                 3 => match self.wave(param) {
-                    Some(wave) => VoiceKind::Wave { wave },
+                    Some(wave) => VoiceKind::Wave { wave, fixed },
                     None => VoiceKind::Silent,
                 },
                 4 => VoiceKind::Noise { narrow: param != 0 },
                 _ => match self.sample(param) {
-                    Some(sample) => VoiceKind::DirectSound { sample, fixed: t & 8 != 0 },
+                    Some(sample) => VoiceKind::DirectSound { sample, fixed },
                     None => VoiceKind::Silent,
                 },
             }
         };
         let envelope = if matches!(kind, VoiceKind::Split { .. }) { Envelope::default() } else { envelope };
-        Voice { kind, key: b[1], pan, envelope }
+        let length = if kind.psg_channel().is_some() { b[2] } else { 0 };
+        Voice { kind, key: b[1], pan, length, envelope }
     }
 
     fn key_map(&mut self, addr: u32) -> Option<(KeyMapId, usize)> {
@@ -320,8 +324,11 @@ impl Extractor<'_> {
             if len == 0 || len > 0x40_0000 || (flags & 0x4000 != 0 && loop_start as usize >= len) {
                 return Err(RomError::OutOfRange(addr));
             }
-            let data = self.rom.bytes(addr + 16, len)?.iter().map(|&x| x as i8).collect();
-            Ok(Sample { rate, loop_start: (flags & 0x4000 != 0).then_some(loop_start), data })
+            let data: Vec<i8> = self.rom.bytes(addr + 16, len)?.iter().map(|&x| x as i8).collect();
+            let loop_start = (flags & 0x4000 != 0).then_some(loop_start);
+            // The byte after the data, which the mixer reads.
+            let tail = self.rom.u8(addr + 16 + len as u32).map_or_else(|_| Sample::usual_tail(&data, loop_start), |b| b as i8);
+            Ok(Sample { rate, loop_start, data, tail })
         };
         let id = read().ok().map(|s| {
             self.sample_list.push(s);
@@ -412,6 +419,39 @@ fn decode_track(rom: &Rom, start: u32) -> Result<Track> {
                     if c == 0xB2 { Command::Goto(0) } else { Command::Call(0) }
                 }
                 0xB4 => Command::Return,
+                // Unused command bytes: the driver's table sends them to
+                // ply_fine.
+                0xB6..=0xB8 | 0xC6 | 0xC7 | 0xC9..=0xCB => Command::Fine,
+                0xB9 => {
+                    let (kind, address, operand) = (arg(&mut at)?, arg(&mut at)?, arg(&mut at)?);
+                    let op = match kind {
+                        0 => MemOp::Set,
+                        1 => MemOp::Add,
+                        2 => MemOp::Sub,
+                        3 => MemOp::SetFromMemory,
+                        4 => MemOp::AddFromMemory,
+                        5 => MemOp::SubFromMemory,
+                        6..=17 => {
+                            let test = [
+                                MemTest::Equal,
+                                MemTest::NotEqual,
+                                MemTest::Greater,
+                                MemTest::GreaterOrEqual,
+                                MemTest::LessOrEqual,
+                                MemTest::Less,
+                            ][(kind as usize - 6) % 6];
+                            let target = rom.ptr(at)?;
+                            at += 4;
+                            jumps.push((commands.len(), target));
+                            segments.push_back(target);
+                            merges.push(target);
+                            MemOp::JumpIf { test, with_memory: kind >= 12, target: 0 }
+                        }
+                        // Past the driver's 18 operations it does nothing.
+                        _ => continue,
+                    };
+                    Command::MemAcc { op, address, operand }
+                }
                 0xB5 => {
                     let count = arg(&mut at)?;
                     let target = rom.ptr(at)?;
@@ -435,6 +475,8 @@ fn decode_track(rom: &Rom, start: u32) -> Result<Track> {
                 0xC5 => Command::ModulationType(arg(&mut at)?),
                 0xC8 => Command::Tune(arg(&mut at)?),
                 0xCD => match arg(&mut at)? {
+                    // xxx: the driver's table sends these to ply_fine.
+                    0x00 | 0x03 => Command::Fine,
                     0x08 => Command::EchoVolume(arg(&mut at)?),
                     0x09 => Command::EchoLength(arg(&mut at)?),
                     _ => return Err(RomError::Command { at: here, byte: c }),
@@ -471,7 +513,10 @@ fn decode_track(rom: &Rom, start: u32) -> Result<Track> {
     for (i, target) in jumps {
         let t = index[&target];
         match &mut commands[i] {
-            Command::Goto(x) | Command::Call(x) | Command::Repeat { target: x, .. } => *x = t,
+            Command::Goto(x)
+            | Command::Call(x)
+            | Command::Repeat { target: x, .. }
+            | Command::MemAcc { op: MemOp::JumpIf { target: x, .. }, .. } => *x = t,
             _ => unreachable!(),
         }
     }

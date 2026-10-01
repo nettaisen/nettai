@@ -17,6 +17,7 @@
 //! | BENDR, LFOS, MODT, TUNE, LFODL | CC 20, 21, 22, 24, 26 (mid2agb) |
 //! | PRIO | CC 33 (mid2agb) |
 //! | XCMD echo volume / length | CC 30 = 8 or 9, then CC 29 = value (mid2agb) |
+//! | MEMACC (set, add, sub; from memory) | CC 13 = operation 0..=5, CC 14 = address, then CC 12 = operand (mid2agb) |
 //! | TEMPO (BPM / 2) | tempo meta event (in the conductor when it opens its tick on track 0) |
 //! | KEYSH | CC 102 = shift + 64 (extension) |
 //! | a tie of 96 ticks or less, a gated note over 96 | CC 103 = 1 or 2 just before the note (extension) |
@@ -33,7 +34,7 @@
 use crate::midi::{Event as MidiEvent, Message, MidiTrack, Smf};
 use crate::report::Report;
 use crate::timeline::{self, Ending, Event, Timeline};
-use m4a::bank::{Command, PlayerId, Song, Track, VoicegroupId};
+use m4a::bank::{Command, MemOp, PlayerId, Song, Track, VoicegroupId};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
@@ -43,6 +44,10 @@ pub const TICKS_PER_BEAT: u16 = 24;
 const LONGEST_GATED: u32 = 96;
 
 const CC_MOD: u8 = 1;
+const CC_MEMACC: u8 = 12;
+const CC_MEMACC_OP: u8 = 13;
+const CC_MEMACC_ADDRESS: u8 = 14;
+const CC_MEMACC_ALT: u8 = 16;
 const CC_VOLUME: u8 = 7;
 const CC_PAN: u8 = 10;
 const CC_BEND_RANGE: u8 = 20;
@@ -117,6 +122,7 @@ fn kind(c: &Command) -> &'static str {
         Command::Tempo(_) => "tempo",
         Command::EchoVolume(_) => "echo_volume",
         Command::EchoLength(_) => "echo_length",
+        Command::MemAcc { .. } => "memacc",
         _ => "other",
     }
 }
@@ -331,6 +337,22 @@ fn to_smf(tls: &[Timeline], song_loop: Option<(u32, u32)>, title: &str) -> Resul
                     let which = if matches!(e.command, Command::EchoVolume(_)) { XCMD_ECHO_VOLUME } else { XCMD_ECHO_LENGTH };
                     push(tick, 1, 2 * i, cc(CC_XCMD, which));
                     push(tick, 1, 2 * i + 1, cc(CC_XCMD_VALUE, small("echo", v)?));
+                }
+                Command::MemAcc { op, address, operand } => {
+                    let code = match op {
+                        MemOp::Set => 0,
+                        MemOp::Add => 1,
+                        MemOp::Sub => 2,
+                        MemOp::SetFromMemory => 3,
+                        MemOp::AddFromMemory => 4,
+                        MemOp::SubFromMemory => 5,
+                        MemOp::JumpIf { .. } => {
+                            return Err(format!("track {n}: a conditional MEMACC at tick {tick} can't be a MIDI event"));
+                        }
+                    };
+                    push(tick, 1, 2 * i, cc(CC_MEMACC_OP, code));
+                    push(tick, 1, 2 * i, cc(CC_MEMACC_ADDRESS, small("memory address", address)?));
+                    push(tick, 1, 2 * i + 1, cc(CC_MEMACC, small("memory operand", operand)?));
                 }
                 c => return Err(format!("track {n}: unexpected command {c:?} in a timeline")),
             }
@@ -552,6 +574,8 @@ fn track_timeline(
     let mut open: HashMap<u8, VecDeque<(usize, u32, Option<u8>)>> = HashMap::new();
     let mut form: Option<u8> = None;
     let mut xcmd: Option<u8> = None;
+    // MEMACC's operation and address, until the controller that runs it.
+    let (mut memacc_op, mut memacc_address) = (0u8, 0u8);
     let wrap = span.map(|s| s.1);
     let mut bend_rounded = 0;
     for (tick, m) in events {
@@ -610,6 +634,32 @@ fn track_timeline(
                     CC_NOTE_FORM => {
                         form = Some(value);
                         continue;
+                    }
+                    CC_MEMACC_OP => {
+                        memacc_op = value;
+                        continue;
+                    }
+                    CC_MEMACC_ADDRESS => {
+                        memacc_address = value;
+                        continue;
+                    }
+                    CC_MEMACC | CC_MEMACC_ALT => {
+                        let op = match memacc_op {
+                            0 => MemOp::Set,
+                            1 => MemOp::Add,
+                            2 => MemOp::Sub,
+                            3 => MemOp::SetFromMemory,
+                            4 => MemOp::AddFromMemory,
+                            5 => MemOp::SubFromMemory,
+                            other => {
+                                report.warn(
+                                    f,
+                                    format!("track {c}: MEMACC operation {other} at {} isn't one MIDI can say (0..=5); skipped", at(tick)),
+                                );
+                                continue;
+                            }
+                        };
+                        Command::MemAcc { op, address: memacc_address, operand: value }
                     }
                     CC_XCMD => {
                         xcmd = Some(value);
