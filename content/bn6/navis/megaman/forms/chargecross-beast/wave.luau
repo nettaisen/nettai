@@ -8,6 +8,7 @@
 local charge_wave = require("./charge_wave")
 local collision = require("../../../../rules/collision")
 local regions = require("../../../../lib/regions")
+local statuses = require("../../../../rules/status")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -30,7 +31,7 @@ local WAVE_Z = 0x18_0000
 
 -- The wind-up's hit over the field: no damage, element 5, a guard-breaking
 -- attack at navis with status 0x46, no spark.
-local FIELD_ELEMENT, FIELD_STATUS = 5, 0x46
+local FIELD_ELEMENT, FIELD_STATUS = 5, statuses.immobilize_30
 
 -- `sub_8011DDC`: 70 damage and 30 more per point of buster Attack (up to
 -- 5), Fire.
