@@ -1821,6 +1821,109 @@ impl CoreApi for Battle {
             .is_some_and(|c| self.collision.get(c).f2 & (f2::ABSORBED | f2::VANISH | f2::REMOVED) == 0)
     }
 
+    fn loop_register(&self) -> u32 {
+        self.objects.loop_register()
+    }
+
+    fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef) -> ApiResult<bool> {
+        const MEGAMAN: u16 = 0x1A0;
+        let user_name = self.objects.get(user).name_id;
+        let own = user_name == MEGAMAN || user_name > 0x1AB;
+        let name = if own { user_name } else { MEGAMAN };
+        let sprite = if !own {
+            self.content.form_data(crate::setup::Form::NONE).sprite
+        } else if self.content.navi_record(name).actor_type == crate::actor::ActorType::Player {
+            kinds::player::stats_sprite(self, self.objects.get(user).alliance)
+        } else {
+            return Err(ApiError::Other(format!(
+                "NameID {name:#x} is no player's: its sprite would be sub_800F26C's (enemy_getStruct1)"
+            )));
+        };
+        let side = self.objects.get(o).alliance;
+        let form = self.content.form_number(self.stats[side as usize].form);
+        // byte_80203EA covers the base form and the Crosses; the bytes
+        // after it (the Beast forms') are 0.
+        let palette = self.content.rules.cross_palettes.get(form.0 as usize).copied().unwrap_or(0);
+        self.sprite_load(o, sprite);
+        let obj = self.objects.get_mut(o);
+        obj.name_id = name;
+        obj.anim = 0;
+        obj.anim_loaded = 0xFF;
+        let look = &mut self.objects.sprite_mut(o).look;
+        look.shadow = sprite::Shadow::Ground;
+        look.palette = palette;
+        Ok(own)
+    }
+
+    fn wear_megaman_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()> {
+        let Some(h) = self.content.defs.form_numbered(crate::setup::Form(form)) else {
+            return Err(ApiError::Other(format!("form {form:#x} is not in the content")));
+        };
+        let data = self.content.form(h);
+        // The base form has no NameID of its own: it is MegaMan's.
+        let own = data.name_record.as_ref().map(|n| n.id);
+        let megaman = || self.content.navi_data(crate::setup::Navi::MEGAMAN).name_record.as_ref().map(|n| n.id);
+        let Some(name) = own.or_else(megaman) else {
+            return Err(ApiError::Other(format!("form {form:#x} has no NameID (nor has MegaMan)")));
+        };
+        let sprite = data.sprite;
+        let palette = self.content.rules.cross_palettes.get(form as usize).copied().unwrap_or(0);
+        self.sprite_load(o, sprite);
+        let obj = self.objects.get_mut(o);
+        obj.name_id = name;
+        obj.anim = 0;
+        obj.anim_loaded = 0xFF;
+        let look = &mut self.objects.sprite_mut(o).look;
+        look.shadow = sprite::Shadow::Ground;
+        look.palette = palette;
+        Ok(())
+    }
+
+    fn navi_image_parts(&mut self, o: ObjectRef, on: bool) {
+        let rec = self.content.navi_record(self.objects.get(o).name_id);
+        if on {
+            kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, 1);
+        } else {
+            kinds::player::form::record_death_hook(self, o, rec.actor_type, rec.ai_index);
+        }
+    }
+
+    fn junk_look(&self, o: ObjectRef) -> Option<u16> {
+        // sub_800F486: the NameIDs DustMan leaves.
+        let name = self.objects.get(o).name_id;
+        (!matches!(name, 0xD3 | 0xDA | 0xE9 | 0xEA)).then_some(name)
+    }
+
+    fn wear_junk_look(&mut self, o: ObjectRef, look: u16) -> ApiResult<bool> {
+        // sub_800F26C: NameIDs 0xCD..=0xFF by byte_8021220; any other is an
+        // actor's (enemy_getStruct1), which no field object is.
+        if !(0xCD..=0xFF).contains(&look) {
+            return Err(ApiError::Other(format!("NameID {look:#x} has no junk look (enemy_getStruct1's sprite)")));
+        }
+        let Some(l) = self.content.objects.name_looks.iter().find(|l| l.name_id == look).copied() else {
+            return Err(ApiError::Other(format!("NameID {look:#x}'s look (byte_8021220) is not in the content")));
+        };
+        let Some(id) = l.sprite else { return Ok(false) };
+        self.sprite_load(o, id);
+        let alliance = {
+            let obj = self.objects.get_mut(o);
+            obj.flags |= flags::VISIBLE;
+            obj.anim = l.anim;
+            obj.anim_loaded = l.anim;
+            obj.alliance
+        };
+        let s = self.objects.sprite_mut(o);
+        s.look.shadow = if l.shadow { sprite::Shadow::Ground } else { sprite::Shadow::WithSprite };
+        s.set_animation(l.anim, &self.content);
+        s.look.palette = l.palette;
+        // NameIDs 0xD8 and 0xD9 keep their own flip and set a drawing bit
+        // instead (sub_8002EAC: presentation).
+        if !matches!(look, 0xD8 | 0xD9) {
+            s.look.set_flip(alliance);
+        }
+        Ok(true)
+    }
+
     // ---- Field objects (obstacles) -------------------------------------------
 
     fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool> {

@@ -1476,6 +1476,38 @@ pub trait CoreApi {
     /// (removed by a chip, blinking out or absorbed): the test `sub_80C9EE6`
     /// and `sub_80EFD8C` make before taking an obstacle.
     fn obstacle_present(&self, o: ObjectRef) -> bool;
+    /// DustMan's take (`sub_80BC100`): the look the field object `o` would
+    /// have thrown back as junk, an opaque value its taker keeps (the
+    /// object's NameID, `sub_800F26C`'s argument, until identities); None
+    /// for the objects DustMan leaves (`sub_800F486`).
+    fn junk_look(&self, o: ObjectRef) -> Option<u16>;
+    /// The r3 the object update loop (`object_800372A`) leaves for the
+    /// object updating now: 4 × how many objects of the previous object's
+    /// pool it passed before that one this tick. Routines that never set
+    /// r3 spawn with it as a position (DustMan's junk).
+    fn loop_register(&self) -> u32;
+    /// CrosOver's MegaMan (`sub_80BDBC8`): `o` takes its user's identity
+    /// (NameID) when the user is MegaMan or one of his forms, else MegaMan's
+    /// own; that identity's sprite (a player's by its side's navi and form,
+    /// `sub_800FC9E`; MegaMan's base sprite for another user's), with a
+    /// ground shadow at animation 0 (loaded by the next sprite update); and
+    /// its side's form's palette (`byte_80203EA`). True when it took the
+    /// user's.
+    fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef) -> ApiResult<bool>;
+    /// MstrCros's Crosses (`sub_80BE7BC`) and Darkness's Dark MegaMan
+    /// (`sub_80BF710`): `o` takes the identity of MegaMan in form `form` (the
+    /// form's NameID; MegaMan's for his base form 0), the form's sprite
+    /// (`sub_800FC9E(0, form)`) with a ground shadow at animation 0 (loaded
+    /// by the next sprite update), and the form's palette (`byte_80203EA`).
+    fn wear_megaman_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()>;
+    /// `sub_8010DF6` (`on`, its r2 1) or `sub_8011044` by the actor record
+    /// of `o`'s identity: the parts the navi image wears.
+    fn navi_image_parts(&mut self, o: ObjectRef, on: bool);
+    /// `sub_80DBB64`: put the junk look `look` on `o`'s sprite (`sub_800F26C`:
+    /// the sprite, a shadow if the look has one, its animation and
+    /// palette; flipped by `o`'s side unless the look keeps its own);
+    /// false when the look is the table's none (category 0xFF).
+    fn wear_junk_look(&mut self, o: ObjectRef, look: u16) -> ApiResult<bool>;
     /// `sub_80DC3B2`'s test: a field object by its NameID word (0xCD to
     /// 0xFF, the +0x2A half 0) but those `sub_800F486` excludes (0xD3,
     /// 0xDA, 0xE9, 0xEA), which BlzrdBal's ball swallows.

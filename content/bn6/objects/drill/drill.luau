@@ -176,10 +176,18 @@ drill.kind = define.kind {
     end,
 }
 
--- `sub_80D2B8E` from an attack: the first drill for `owner`, held in its
--- first related object.
-function drill.spawn(owner: Object, element: number, z: number, damage: number, spec: Spec): Object?
-    return spawn(owner, element, z, damage, spec, false, "related")
+-- `sub_80D2B8E` from its user: the first drill for `owner`, held in its
+-- first related object (a navi's attack), or in its state's `child` (a
+-- navi chip's navi, whose kind has that field).
+function drill.spawn(
+    owner: Object,
+    element: number,
+    z: number,
+    damage: number,
+    spec: Spec,
+    slot: ("related" | "child")?
+): Object?
+    return spawn(owner, element, z, damage, spec, false, slot or "related")
 end
 
 return drill
