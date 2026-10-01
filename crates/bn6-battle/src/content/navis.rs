@@ -350,8 +350,9 @@ impl FormEffects {
     pub const FLOAT_SHOES: u16 = 0x008;
     /// The body floats (its collision type).
     pub const FLOATING_BODY: u16 = 0x010;
-    /// Poison panels don't hurt it.
-    pub const POISON_PROOF: u16 = 0x020;
+    /// Untouchable (ObjectFlags1 0x08000000): no hit reaches it, and poison
+    /// panels don't hurt it.
+    pub const UNTOUCHABLE: u16 = 0x020;
     /// The Beast's lock-on marker.
     pub const LOCKON_MARKER: u16 = 0x040;
     /// Invulnerable for good.
@@ -364,7 +365,7 @@ impl FormEffects {
         (0x004, "air_shoes"),
         (0x008, "float_shoes"),
         (0x010, "floating_body"),
-        (0x020, "poison_proof"),
+        (0x020, "untouchable"),
         (0x040, "lockon_marker"),
         (0x080, "invulnerable"),
         (0x100, "berserk"),
