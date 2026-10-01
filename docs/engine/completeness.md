@@ -241,24 +241,110 @@ on two of the delta's corners).
 
 ### 6.2 Branches that ran one way only
 
-Of the ported routines' 7,546 branches that ran, 2,171 (in 1,257 routines) ran one way only (`onesided.tsv`, with
-the instructions before each). A sample of them against the port:
+A branch every recording takes the same way has had only that side compared with the original. The audit
+lists them (`onesided.tsv`, with the instructions before each). At engine main 5fd4bba6 with the lab's 5,036
+matching recordings, 7,546 of the ported routines' branches ran and **2,192 (in 1,269 routines) ran one way
+only**. After the work below, at main 51eeb22f with 5,151 matching recordings, 7,591 ran and **2,123 (in 1,255
+routines)** did; 80 of the 2,192 are taken the other way by this section's 63 new recordings (the rest of the
+drop is other scenarios added since, and branches that first ran now count in the total).
+
+**How they are read.** The verification workspace has three tools for this, beside the audit:
+`tools/audit/onesided_rank.py` files each branch under the engine area that cites its routine (collision and
+damage, statuses and hit reactions, the custom screen and hand, movement, chip use and dimming, forms and flow,
+the chip families), tags the guards whose other side is an error path (a spawn or collision slot that never
+fails, a panel pointer off the field, the battle mode), and joins the verdicts read by hand;
+`tools/audit/onesided_notes.py` holds those verdicts, one per branch address (a scenario that takes the other
+side, unreachable with the reason, or reachable but not yet recorded); `tools/audit/annot.py` prints a routine
+with the lab's merged block and branch counts, and says which one-sided branches a directory of new
+recordings takes the other way. The scenarios are in the chip lab library's `coverage_scenarios/l_onesided.py`,
+each naming the branch it takes in its description.
+
+**What has been read**, in the order above: 243 branches, all of the collision and damage area and of the
+statuses and hit reactions, and the first of the custom screen, movement and chip use. 71 are taken by a new
+recording, 135 can't be taken in a netbattle (the table below), 37 can but have no scenario yet (the list after
+it). The forms and flow (447) and the chip families (1,072) are still to be read.
+
+**No difference was found.** Every one of the 63 new recordings matches the engine on every frame (66,460
+frames) and in its sound calls (but Beast Over's rumble, a known difference). Nothing in the engine changed.
+
+| Scenarios | What they take the other way |
+|---|---|
+| `chips/0x0b5-bblwrap/blown-away`, `regrow-dimmed`, `regrow-bubbled`, `regrow-frozen`; `chips/0x0b3-barr100/holy` (`sub_801A802`) | BblWrap's bubble popped by AirShot's wind; its regrowth held by a dimming, a bubble and a freeze; a barrier on a holy panel taking half |
+| `chips/0x025-rskyhny1/fire-hit`, `navicust/antidmg-barrier`, `chips/0x0bc-antiswrd/guarded`, `chips/0x0bb-antidmg/cursor-hit` (`sub_802CEF4`, `sub_802CFF8`) | fire passing RskyHny's hive; the AntiDmg program's stance taking a hit a barrier emptied; a guarded slash not springing AntiSwrd; a cursor hit (MachGun) dropping AntiDmg |
+| `pa/0x14e-destpuls/hit`, `pa/0x14e-destpuls/drain` (`sub_801A720`, `sub_80102AC`) | DestPuls's bug code 0xF6; the custom-screen HP drain stopping at 1 HP |
+| `forms/falzar/cross-tomahawk-grass-low-hp` (`sub_801A186`) | a Wood body on grass at 9 HP or less healing every 180 ticks |
+| `navis/navi-07-etomahwk/after-geddon` (`object_breakPanel_dup3`) | ETomahwk's strikes over holes |
+| `forms/falzar/cross-spout-hold-switch`, `navicust/shield-b-then-back` (`sub_8012FC8`) | A held then B pressed, B held then A pressed (the charge moves); Back pressed in the B+Back window with B released |
+| `navis/navi-01-heatpres/custom-open`, `weakness-hit` (`sub_8015A16`, `sub_801AF44`) | a link navi's custom request; a weakness hit on a navi outside the Cross forms |
+| `flow/counter-in-gregar-beast`, `forms/falzar/beast-out-spent-countered` (`sub_801A200`) | a counter landed in Gregar's Beast; a counter on a tired navi giving no Full Synchro |
+| `forms/falzar/beast-over-drained`, `navicust/bug-emotion-tired` (`sub_8014498`, `sub_8013DA0`) | the exhausted navi's drain stopping at 1 HP; the emotion-swing bug resting once the Beast Out counter is spent |
+| `forms/gregar/cross-heat-beast-weakness` (`sub_8015766`) | a Gregar Cross Beast broken by its weakness |
+| `chips/0x01b-bblstar1/then-cannon`, `chips/0x17c-icecube/cut-in-refused` (`sub_801BADE`, `sub_800BEDA`) | a bubbled navi taking damage; no counter cut-in on IceCube |
+| `chips/0x004-airshot/superarmor`, `forms/falzar/cross-spout-ice-airshot`, `cross-spout-ice-wind`, `stages/shoes-roads-wind` (`sub_80178D4`, `sub_8017992`, `sub_8016730`) | a drag on a SuperArmor navi; an Aqua body dragged and pushed onto ice; shoes stopping a push on a road |
+| `stages/ice-slide-cannon`, `-thunder`, `-widesht`, `-bblstar`; `flow/mash-paralysis`, `-freeze`, `-bubble` (actions 3, 4, 6, 7) | a flinch, paralysis, freeze and bubble entered mid-slide (the hits timed into a 4-tick slide); mashing out of them |
+| `custom/refusals`, `sixth-pick`, `redeal-right-half`, `scrap-right-half` (`sub_8028B74`, `sub_8028CCC`, `sub_8029032`, `sub_8028DD6`, `sub_8028E04`) | A on a greyed chip; B with nothing to take back; R and UP on OK; DOWN with no slot below; UP from the bottom row; the re-deal and scrap buttons' right halves, pressed again once used or with nothing picked |
+| `forms/gregar/cross-elec-001-charged`, `cross-slash-04c-charged`, `cross-charge-014-charged`, `cross-charge-beast-014-charged`, `forms/falzar/cross-tomahawk-001-charged`, `cross-ground-001-charged` (`sub_8013236`) | ElecCross charging a Null chip, SlashCross an element sword, ChargeCross and its Beast a Fire chip; TomahawkCross and GroundCross with chips that don't charge |
+| `navis/navi-05-volcchrg/charge-family-chip`, `navi-06-dripshwr/…`, `navi-07-etomahwk/…` (`sub_8013236`) | ChargeMan, SpoutMan and TomahawkMan charging their family's chips (`byte_8021369`) |
+| `navis/*/chip-001`, `chip-06e`, `chip-071`, `chip-0bc`, `chip-08d`, `chip-09a` (`sub_800F09E`) | the link navis with a chip outside their family, a dimming chip of it, and a chip without damage (their chip bonus) |
+
+Two more scenarios record a side the branch list can't credit: `chips/0x081-wind/twice` (a second fan evicting
+the first through the field-object registry; the earlier `then-fan` never placed its Fan, the panel being taken)
+and `flow/counter-ko` (a counter that deletes: it is booked before the deletion ends the battle).
+
+**Not reachable in a netbattle** (135 branches; `onesided_notes.py` has every address):
+
+| Routines | Branches | Why |
+|---|---|---|
+| `sub_8012FC8`, `sub_80158CC`, `sub_80159C6`, `sub_8016860`, `sub_80F22F8`, `sub_80142DC`, `sub_8028B74` | 10 | battle mode 1 or 9; a netbattle is mode 0 |
+| `sub_80107D4`, `sub_8012FC8`, `sub_801728E`, `sub_801A45C`, `sub_802EF5C` | 5 | battle flag 0x40 (per-player gauges): only `sub_802E112` sets it |
+| `applyDamageToPlayer_801ba12`, `sub_80139C4`, `sub_8014326`, `sub_8016934`, `sub_8017AB4` | 5 | the actor type is 2 for both navis |
+| `sub_8009338`, `sub_80102AC`, `sub_8015994`, `sub_80159C6`, `sub_8015A16`, `sub_8015BEC`, `sub_8016934` | 8 | a null player object: both navis exist all battle |
+| object spawns, `object_createCollisionData` and the collision region | 9 | the pools never fill |
+| the panel break, crack and reservation routines, `sub_801A36A` | 5 | a panel pointer off the field: every caller passes a panel on it |
+| `object_breakPanel` | 3 | its callers test the panel first (CrakShot breaks only a solid, empty panel in front of a navi on the field) |
+| `sub_801A802` | 5 | barrier type 0xA and the weak elements of types 0xB-0xE: only a navi AI raises them |
+| `sub_80139F6`, `sub_801A4A6`, `sub_801A6B4`, `sub_8019F44` | 12 | bug codes 0x54, 0xF4, 0xF7, 0xF9-0xFF: no hit a netbattle has carries them (the codes from 0x64 up that do, 0xF6 and 0xF8, are cleared or handled first); the damage word's bit 0x1000 is set by no modifier |
+| `sub_801A2CC`, `sub_801A324`, `sub_80C532E` | 3 | collision rows 3, 8 and 9 (a chip-erasing hit, drain hits) are used by no attack; the region's report pointer is zeroed at its spawn and set by no caller |
+| `sub_8010162`, `sub_8010198` | 3 | the timed submerged state: its one starter, actor #0x5D variant 1, is never spawned |
+| `sub_801AC6C` | 2 | a dead navi while the battle isn't over (one navi a side); NaviStats+0x52 has no writer and is 0 in all 10,072 lab stat blocks |
+| `sub_8017BC0`, `sub_802DD2A`, `applyDamageToPlayer_801ba12`, `sub_801AF44` | 11 | the Cross change, Cross death, volley and UNINTERRUPTIBLE: nothing in a netbattle raises them |
+| `sub_801AF44` | 1 | a weakness hit past NameID 0x1C1: only the Beast Over forms are there, Null with no weakness |
+| `sub_80143CE`, `sub_8015BEC`, `sub_801A200` | 4 | Beast Over's exhaustion without the spent Beast Out counter: only the emotion-swing bug clears the counter's flag (+0x32), it rests while the counter is 0, and it clears the flag just before it rolls anger |
+| `sub_8015C12` | 1 | mood 0: its one writer, at Beast Over's end, is blocked by the spent counter |
+| `sub_80E541A` | 1 | the wind registry's replacement: a second fan evicts the first through the field-object registry before it registers as the wind; the other wind object is T4 0x41, an actor-list type no link stage has |
+| `sub_8028B74`, `sub_8028CCC`, `sub_8028D6C` | 5 | the tutorials' checks (index 0xFF in a netbattle); the pick count test, which five picks make dead (they grey every slot, so the state test refuses first) |
+| `sub_800F09E`, `sub_8013236` | 5 | no Wind- or Break-family chip both damages and dims, and none lacks damage; a link navi's level is never 0xFF |
+| `sub_8012FC8` | 4 | turning (every stage has the standard column pattern); a flipped navi; a navi without a buster or a charged shot |
+| `sub_800E994`, `sub_8016852`, `sub_800E548`, `sub_8017BC0`, `sub_80178D4`, `sub_80159C6` | 7 | dead code: tests whose register the code before fixes (dx = 0; a slide that moves; a direction passed; a word just zeroed; a panel test repeated on the same tick; a stat byte just tested) |
+| the rest, one to five each | 26 | panel types past 0x0C and forms past 0x18; the field's init; the actor list's two boulder slots; statuses past 0x65; AFFECTED_BY_ICE set with the NaviCust flags; the hand cursor's slot after a chip is used; the Beast Out check's delay (1 or 2 at a request); anger with its timer at 0; a link battle's effects; a cut-in chip's action (0x15 or 0x1B) and a cut-in with no chip; the navi number; the players' spawn parameter; the charge glow, which lives all battle; the escape |
+
+**Reachable, no scenario yet** (37): a status entered while another's saved state or stale visual remains
+(`sub_800E730`, 7); the dimming's overlay hiding with flag bits 2 and 3 and the aura link (`sub_80E1352`,
+`sub_80E13DC`, 5); the status visual over a hidden or off-field navi (`sub_80E0954`, 3); a weakness hit with
+no damage (`sub_801A42E`, `sub_801A506`); R on slot kinds 6 and 7 (a link navi's own chip turned out to be kind
+0); UP with no Cross offered; a counter booked on a double KO; a bug level past 7 (four BugBomb hits of one
+kind); a navi without shoes over a hole (a TenguCross knocked out there); two reservations of one panel; a side's
+dimming registered by a statue or trap while the other's telop shows; a second cut-in press with a request
+pending; the alternative A-charge's request at the charge tests; a save without Beast Out; a push onto a road
+whose next panel is blocked; a counter-paralysis request on a paralyzed navi; the charge cut short mid-hold
+(the decode doesn't run while a flinch holds the navi); and six more single branches, listed in the notes.
+
+The first sample, of 10 routines read before this list was worked through, as it stands now:
 
 | Routine | The side never taken | The port |
 |---|---|---|
-| `sub_801A200` (Full Synchro from a counter) | the attacker in a Cross; the victim tired after Beast Out (AIData+0x32, +0x36) | has both (`counter_and_mood`, `set_mood`). New recordings take the Cross side and the Beast side: `flow/counter-in-cross` (the banner and the paralysis, no Full Synchro), `flow/counter-in-beast` (Full Synchro); the transformation 0x0B compare (Gregar Beast) and the tired victim are still untaken |
-| `sub_8029224` (modifiers) | Uninstll after a damaging chip that dims | has it. New recording `custom/modifier-uninstll-dimming`: Roll then Uninstll stay two chips |
+| `sub_801A200` (Full Synchro from a counter) | the attacker in a Cross or a Beast; the victim tired after Beast Out (AIData+0x32, +0x36) | has both (`counter_and_mood`, `set_mood`). Recorded: `flow/counter-in-cross`, `flow/counter-in-beast`, `flow/counter-in-gregar-beast` (the 0x0B compare), `forms/falzar/beast-out-spent-countered` (the tired victim). The exhausted victim (+0x36) can't be reached (the table above) |
+| `sub_8029224` (modifiers) | Uninstll after a damaging chip that dims | has it. Recorded: `custom/modifier-uninstll-dimming` (Roll then Uninstll stay two chips) |
 | `sub_8013E58` (the status bug) | six of its eight outcomes (one RNG draw a recording) | has all eight |
-| `sub_801A45C` (counter bookkeeping) | the gauge bonus under battle flag 0x40; the battle over | has both; the first is not a netbattle's |
+| `sub_801A45C` (counter bookkeeping) | the gauge bonus under battle flag 0x40; the battle over | has both; the first is not a netbattle's, the second needs a double KO on the counter's tick |
 | `sub_8013FD0` (HP lost at the custom screen's opening) | NaviStats+0x54 nonzero, in 1,292 openings | has it (`custom_hp_bug`, and bug code 0x54 that raises the stat); a netbattle can't make it nonzero (§5) |
-| `sub_8015C12` (mood wear) | a mood of 0, in 4.2 million calls | has the test |
+| `sub_8015C12` (mood wear) | a mood of 0, in 4.2 million calls | has the test; mood 0 can't be reached (the table above) |
 | `sub_8029520` (Program Advances) | the veto (+0x1C nonzero) | documented as unable to fire |
 | `sub_8009338` (the custom screen's mode state) | the UI's result 2, the escape | not ported; a netbattle has no running |
 | `sub_801002C` | NaviStats+0x10 nonzero | a palette index: presentation |
 | `sub_80D6BD4` (ElmntMan's meteor) | its third state, a plain destroy (the lab never runs the meteor; the soundmod trace does) | the definition's destroy lifecycle |
 
-No sampled branch that a netbattle can take is missing from the port. The sample is small (10 of 1,257
-routines); the one-sided list is the place to look for the next coverage scenarios.
+None of the one-sided branches read, in the sample or since, is missing from the port.
 
 ### 6.3 Custom screen keys
 

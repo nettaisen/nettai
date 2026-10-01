@@ -8,7 +8,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
-local drill = require("../../objects/drill/drill")
+local drill = require("../drilarm/drill")
 local effects = require("../../lib/effects")
 local erase_ray = require("../../navis/megaman/forms/erasecross/ray")
 local navi_chips = require("../../lib/navi-chips/navi")
