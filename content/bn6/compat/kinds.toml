@@ -65,6 +65,7 @@ boomerang = { pool = "attack", index = 0x32 }
 "ironshl/shell" = { pool = "attack", index = 0x34 }
 immobilizer = { pool = "attack", index = 0x3F }
 "bblstar/star" = { pool = "attack", index = 0x42 }
+"grabbnsh/hand" = { pool = "attack", index = 0x46 }
 "wind/fan" = { pool = "attack", index = 0x48 }
 gust = { pool = "attack", index = 0x49 }
 "blkbomb/bomb" = { pool = "attack", index = 0x4A }
@@ -137,6 +138,7 @@ rising-bubble = { pool = "effect", index = 0x14 }
 dust-storm-mote = { pool = "effect", index = 0x19 }
 gauge-speed = { pool = "effect", index = 0x1C, scratch_position = true }
 panel-changer = { pool = "effect", index = 0x1F, scratch_position = true }
+"grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
 panel-bursts = { pool = "effect", index = 0x24, scratch_position = true }
 "wind/controller" = { pool = "effect", index = 0x25, scratch_position = true }
 "timebom/bomb" = { pool = "effect", index = 0x27, scratch_position = true }
