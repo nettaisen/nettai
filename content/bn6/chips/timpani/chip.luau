@@ -4,11 +4,10 @@
 -- and the screen shakes (lib/instruments).
 
 local collision = require("../../rules/collision")
+local regions = require("../../lib/regions")
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
 
--- Every solid panel (whole-field region 0x83).
-local SOLID_PANELS = define.region { field = { require = 0x10, forbid = 0 } }
 -- Held in place (status 0x43: 4 ticks), with the sixth element's damage 0.
 local IMMOBILIZE, ELEMENT_NONE = 0x43, 5
 
@@ -20,7 +19,7 @@ local function drum(me: Object)
         panel_y = me.panel_y,
         element = ELEMENT_NONE,
         z = 0,
-        region = SOLID_PANELS,
+        region = regions.solid,
         -- None.
         hit_effect = 0xFF,
         target = collision.hits_navis,

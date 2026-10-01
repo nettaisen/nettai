@@ -41,6 +41,7 @@ chips/blkbomb/bomb.luau 2
 chips/crosswrd/chip.luau 1
 chips/dbldream/chip.luau 1
 chips/ftrsword/chip.luau 1
+chips/sensor/turret.luau 2
 chips/stepswrd/chip.luau 1
 lib/buster.luau 1
 lib/dragon.luau 4
