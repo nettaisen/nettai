@@ -181,10 +181,14 @@ pub(crate) fn install(
             c.made.push(Made { registry, module: at, ordinal, record_type, table: table.clone() });
             Ok(table)
         };
-        let f = if registry == Registry::Record {
-            lua.create_function(move |_, (record_type, spec): (LuaValue, LuaValue)| {
-                let LuaValue::String(t) = record_type else {
-                    return Err(mlua::Error::runtime("define.record(type, spec): the type is a string"));
+        let f = if matches!(registry, Registry::Record | Registry::Rules) {
+            // `define.record(type, spec)`, `define.rules(section, spec)`:
+            // the string is the record's type, or the section's name (its
+            // key).
+            let what = if registry == Registry::Record { "define.record(type, spec): the type" } else { "define.rules(section, spec): the section" };
+            lua.create_function(move |_, (name, spec): (LuaValue, LuaValue)| {
+                let LuaValue::String(t) = name else {
+                    return Err(mlua::Error::runtime(format!("{what} is a string")));
                 };
                 let t = t.to_str()?.to_string();
                 record(Some(t), spec)
@@ -196,6 +200,15 @@ pub(crate) fn install(
     }
     define.set_readonly(true);
     lua.globals().set("define", define)?;
+    // `legacy { ... }`: data only registration by number reads (a chip's
+    // action number and subtype, the original's numbering of a table),
+    // marked for the ratchet and step 13 (docs/design/content-model-v2.md
+    // §12); as data it is the table itself.
+    let legacy = lua.create_function(|_, t: LuaValue| match t {
+        LuaValue::Table(_) => Ok(t),
+        v => Err(mlua::Error::runtime(format!("legacy takes a table, not {}", v.type_name()))),
+    })?;
+    lua.globals().set("legacy", legacy)?;
     Ok(())
 }
 
@@ -240,6 +253,14 @@ pub(crate) fn finish(
         let what = format!("{}: define.{}", m.module, m.registry.name());
         if m.registry == Registry::Roles {
             keys[i] = Some("roles".to_string());
+            continue;
+        }
+        if m.registry == Registry::Rules {
+            let name = m.record_type.clone().unwrap_or_default();
+            if !valid_key(&name) {
+                return Err(format!("{what}: {name:?} is not a valid section name (lowercase words in -)"));
+            }
+            keys[i] = Some(name);
             continue;
         }
         match m.table.raw_get::<LuaValue>("id").map_err(|e| format!("{what}: {e}"))? {
@@ -357,7 +378,7 @@ pub(crate) fn finish(
             registry,
             key: key.to_string(),
             module: m.module.clone(),
-            record_type: m.record_type.clone(),
+            record_type: m.record_type.clone().filter(|_| registry == Registry::Record),
             spec,
         });
         tables.push(m.table.clone());

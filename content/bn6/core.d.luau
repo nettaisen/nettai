@@ -1527,11 +1527,17 @@ export type WeaponSpec = {
     id: string,
     name: string,
     charge_ticks: { number },
-    -- `off_80117D4[n]`: prepare the attack, name its action.
-    setup: (navi: Object) -> Action | number,
+    -- `off_80117D4[n]`: prepare the attack, name its action (an `Action`
+    -- or an action number). None while the weapon is still a v1 module,
+    -- which its legacy marker names. (Typed loosely until the markers go:
+    -- Luau's checker doesn't check a function against an optional
+    -- function type.)
+    setup: ((navi: Object) -> any)?,
     -- Transitional (counted by the ratchet): the routine numbers the pack's
-    -- forms and the ruleset still name it by (`weapon_numbered`).
-    legacy: { routines: { number } }?,
+    -- forms and the ruleset still name it by (`weapon_numbered`); for a
+    -- weapon still a v1 module, the module (`script`), the action it brings
+    -- and the instant chip effect it names (§12, step 5).
+    legacy: { routines: { number }, script: string?, action: number?, instant_chip: number? }?,
     sticky: boolean?,
     traits: { string }?,
 }
@@ -1554,7 +1560,8 @@ export type ChipSpec = {
     hit_param: number?,
     lockout: number?,
     flags: { string }?,
-    extra_flags: { string }?,
+    -- Named bits, and the value of a bit the engine doesn't name yet.
+    extra_flags: { string | number }?,
     -- Its lock-on mode, and whether it goes through the Beast rush (`rush
     -- = false`: a mode without the rush, as some records have).
     beast: { lockon: any, rush: boolean? }?,
@@ -1566,9 +1573,26 @@ export type ChipSpec = {
     program_advances: { any }?,
     -- Transitional (counted by the ratchet): the original's subtype and
     -- parameter bytes, for what reads them of the chip besides its own use
-    -- (SlashCross's charged slash reads a sword's). `action` and `script`
-    -- (a behaviour still a v1 module) come with step 5.
-    legacy: { subtype: number?, params: { number }? }?,
+    -- (SlashCross's charged slash reads a sword's); its `number`, for a
+    -- chip something still names by number (a recipe, the Cross special, a
+    -- navi's own chip), with what the ruleset reads of it by number (the
+    -- action number, a damage formula as `damage = 1000 + n` and its
+    -- table, a dark chip's substitute, the per-family data v1 modules
+    -- read); and for a chip still a v1 module (with no use of its own
+    -- here), that module (`script`). docs/design/content-model-v2.md §12.
+    legacy: {
+        subtype: number?,
+        params: { number }?,
+        number: number?,
+        action: number?,
+        script: string?,
+        damage: number?,
+        sp_damage: { number }?,
+        navi_damage: { base: number, per_level: number }?,
+        dark_substitute: number?,
+        recovery: number?,
+        sword: any?,
+    }?,
     action: Action?,
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
@@ -1659,8 +1683,19 @@ declare define: {
     collision: (spec: CollisionTypeSpec) -> CollisionType,
     status: (spec: StatusDef) -> StatusDef,
     lockon: (spec: LockonDef) -> LockonDef,
+    -- A rule section (§3.8): one table of rules no entity owns, by its
+    -- section name (`define.rules("elements", { ... })`).
+    rules: <T>(section: string, spec: T) -> T,
     roles: (spec: RolesSpec) -> RolesSpec,
     -- Luau-only data with a handle and a type name, which a reference field
     -- ("record:<type>") can hold.
     record: <T>(record_type: string, spec: T) -> T,
 }
+
+-- `legacy { ... }`: data only registration by number reads (a chip's action
+-- number, subtype and parameters, its v1 module; the original's numbering
+-- of a table), until its family converts (docs/design/content-model-v2.md
+-- §12). As data it is the table itself; the checker counts each use. It
+-- is typed `any` so a marker can stand where the converted field will be (a
+-- chip's `action`, a weapon's `setup`).
+declare function legacy(t: any): any

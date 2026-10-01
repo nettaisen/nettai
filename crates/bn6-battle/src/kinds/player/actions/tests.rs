@@ -1940,6 +1940,31 @@ fn a_legacy_marker_gives_a_definitions_record_its_bytes() {
     assert_eq!((a.variant, a.params), (7, [1, 2, 0, 0]));
 }
 
+#[test]
+fn a_numbered_definition_runs_its_own_action() {
+    // A definition whose legacy marker gives its number is the chip that
+    // number names (recipes, the ruleset's tables), with the marker's
+    // bytes in its record; its use is still its own action.
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let defs = &b.content.defs;
+    let [ticker1, ticker4] = [testing::TICKER_1, testing::TICKER_4].map(|key| defs.chip_by_key(key).unwrap());
+    assert_eq!(b.content.chip_numbered(0x1F0), Some(ticker4));
+    assert_eq!(b.content.chip_number(ticker4), Some(0x1F0));
+    let record = b.content.chip(ticker4);
+    assert_eq!((record.action, record.subtype), (0x70, 3));
+    let [one, four] = [ticker1, ticker4].map(|h| match defs.chip(h).usage {
+        crate::content::ChipUsage::Action(h) => h,
+        u => panic!("{u:?}"),
+    });
+    assert_eq!((defs.action(four).key.as_str(), defs.action(four).number), ("test/ticker4/action", None));
+    use_chip_handle(&mut b, p0, p1, ticker1);
+    let first = ticks_in(&mut b, p0, p1, one);
+    let (mut b, p0, p1) = fight_on_test_pack();
+    use_chip_handle(&mut b, p0, p1, ticker4);
+    assert_eq!(act(&b, p0), super::super::CONTENT_ACTION);
+    assert_eq!(first - ticks_in(&mut b, p0, p1, four), 2, "Ticker4 stands 4 ticks to Ticker1's 6");
+}
+
 // ---- Content model v2: the v2 API (step 4) ---------------------------------------------------
 
 /// The objects of the kind content defines as `key`.
@@ -2041,16 +2066,23 @@ fn a_forced_charged_shot_starts_its_role() {
 
 #[test]
 fn a_weapon_definition_takes_its_legacy_routines() {
-    // The buster's definition is what every routine number aliasing it
-    // names (the pack's forms name weapons by number), and the ruleset's
-    // numeric logic reads its first; the charged shot's charge times are
-    // its own, with Charge 5 read on into the next row.
+    // A weapon definition is what the routine numbers of its legacy marker
+    // name (the pack's forms name weapons by number), and the ruleset's
+    // numeric logic reads its first. The buster's alias routines read
+    // other charge rows, so they are weapons of their own with its setup
+    // (routines 0x2E, 0x2F... one, 0x82 another); the charged shot's
+    // charge times are its own, with Charge 5 read on into the next row.
     let c = testing::content();
     let buster = c.defs.weapon_by_key("megaman/buster").expect("the buster's definition");
-    for n in [0x00, 0x2E, 0x82] {
-        assert_eq!(c.weapon_numbered(n), buster, "routine {n:#x}");
-    }
+    assert_eq!(c.weapon_numbered(0x00), buster);
     assert_eq!(c.weapon_number(buster), Some(0));
+    for (key, routines) in [("megaman/buster-2e", &[0x2E, 0x2F, 0x51][..]), ("megaman/buster-82", &[0x82][..])] {
+        let alias = c.defs.weapon_by_key(key).expect("an alias of the buster");
+        for &n in routines {
+            assert_eq!(c.weapon_numbered(n), alias, "routine {n:#x}");
+        }
+        assert!(c.defs.weapon(alias).setup.is_some(), "{key} runs the buster's setup");
+    }
     let charged = c.defs.weapon(c.weapon_numbered(1));
     assert_eq!((charged.key.as_str(), &charged.charge_ticks[..]), ("megaman/charged-shot", &[100, 90, 80, 70, 60, 180][..]));
     // A routine nobody implements is still a placeholder of its own.

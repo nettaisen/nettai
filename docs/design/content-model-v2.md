@@ -2209,6 +2209,11 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   link navi has which chip is the navi record's `own_chip`, not the original's table by AI index: any navi that
   holds the chip runs its action. It goes when chip definitions take damage formulas (step 10): each chip
   becomes a `define.chip` beside its action and its navi's definition names it as `own_chip` (step 5's navis).
+  *Since step 5* each is a definition already (navis/<navi>/record.luau, which the navi's `own_chip` names),
+  numbered by its legacy marker, whose `script` names the action's module and whose `damage` and `navi_damage`
+  give the formula; the same resolution applies to it (a numbered definition without a use of its own runs the
+  action its marker's module exports). Folding the action into the definition (`action = ...`, no `script`)
+  retires the mechanism for that chip.
 - **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
   above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd, GreatYo, PitHocky,
   WideBrn, ParaShl, PwrWave), `dark_substitute` (DrkSword, DarkThnd, DrkRecov) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
@@ -2247,6 +2252,17 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   mode, and SlashCross's charged sword (v1, action 0x41) the subtype and first parameter. It goes when the
   attack's chip is set by definition (step 10) and the charged sword asks the chip for its slash (family 8e).
 
+  *Since step 5* they are definitions under their compat keys (the generated `record.luau` beside the
+  action's module), numbered by their legacy marker: `program_advances` names its ingredients by value, and
+  the marker carries the number with what the ruleset still reads by it (a damage formula as `damage = 1000 +
+  n` with its `sp_damage` or `navi_damage` table, `dark_substitute`, the subtype and parameters). Such a
+  definition's behaviour is the v1 module its marker names (`script`: the shim, which runs the chip's action
+  by subtype) or, once its module is folded into it, its own: a numbered definition may carry its own
+  `action`, `dimming`, `navi` or `instant` (then without `script`), and what names the chip by number
+  (recipes, the Cross special, a navi's own chip) reaches that definition. So a record chip converts by moving
+  its action into the generated definition and dropping `script`; the number stays in the marker until phase
+  C's step 10.
+
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 
 1. **Compat and the generator** (verification workspace, then this repository). gen-content with the ROM
@@ -2279,6 +2295,52 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    `bn6_content::battle` goes; the loader takes the content and assets roots. Needs step 3b. Gate: the `Content`
    the definitions build equals the one v1 extracted (a one-off field-by-field check, as in the v1 move), `gen-content check`
    passes, the traces hold. Mostly generated. **L.**
+
+   *As built.* `gen-content luau <rom> <content>` writes into the content root, leaving what people defined
+   alone (a chip whose `define.chip` has no legacy marker keeps its module; its numbered record goes to
+   chips/v1.luau as `v1/<key>`, which numbers reach) and extending the shared modules by what they lack
+   (rules/collision.luau by `row_offset`, lib/effects, lib/sparks and lib/regions by look and shape); a module
+   people wrote at a generated path (the sword family's action modules) gets its definitions in a
+   `record.luau`/`records.luau` beside it. It deletes the 253 `chip.toml` and 46 `weapon.toml`, whose content
+   is in the markers, and lists its made-up names in compat/curation.toml by module. The markers are one
+   field, `legacy` (step 7's, which gives a converted chip its subtype and parameter bytes and a converted
+   weapon its routine numbers): a chip still a v1 module has no `action` and its marker gives `number, action,
+   subtype, params, script` (with what the ruleset and v1 modules read of it by number: a damage formula,
+   `sp_damage`, `navi_damage`, `dark_substitute`, `recovery`, `sword`); a weapon still a v1
+   module has no `setup` and its marker gives `routines, script, action, instant_chip`; a navi's and a form's
+   give `number, name_id`, a stage's `number, layout, actor_list`, a status's and a lock-on mode's `id`. The
+   generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
+   definitions from people's. The tables v1 modules read by number are legacy rule
+   sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and
+   the charge times of the routines no weapon names), rules/identities.luau, rules/body-overlays.luau and a
+   kind's objects/KIND/rows.luau while something still reads its table by number (`data.objects.<table>` in a
+   module, or the engine: the attachments' is the last; the rocks', the absorbed obstacles', the sun beam's,
+   the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with their
+   readers, and GunDelSol's data is its chips' own). bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons
+   are a routine's numbers with the same address *and* charge times (alias routines whose rows differ are
+   weapons of their own: `megaman/buster` is routine 0 alone, and `megaman/buster-2e` and five more take its
+   `setup` with their own charge times), and every routine has its charge times (the TOML's
+   rules/weapons.toml had 50 of the 148; a routine a navi's or form's stats name and nothing implements, like
+   ProtoMan's 0x32, now charges as the game does). Content may not use a placeholder asset
+   name, so compat names what the tables use for its first user (`effect-0e`, `held-28`), for curation; a
+   NameID look past the table's real ones names a sprite with no animation data as `"cc-ii"`. The loader is
+   `bn6_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
+   check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
+   A chip's `description` (what R shows on the custom screen: the battle reads its line count) and a navi's
+   `run_message` (the no-running message's lines) are the definitions' alone since the extractor's battle data
+   went: the generator writes them, and gave the chips people had defined without a description theirs
+   (`gen-content describe`, once).
+   The engine's byte for an effect, spark, region or collision type content defines (`Defs::number`) is the
+   numbered table's entry that is the same thing (the same look, shape, condition, or the row a collision
+   type's `row_offset` names with its flags), and only another gets a number after the table's: the tables
+   are the definitions' own now, lib/effects.luau defines every look rules/numbers.luau numbers, and the two
+   together would not fit a byte twice (108 effects in the table, 152 defined).
+   Registration by number resolves a numbered definition's use as step 9 does a record's (its action's
+   registration, or its subtype's `dimming_chip`, `navi_chip` or `instant_chip`; `Unported` for what nothing
+   implements), unless the definition has its own. While step 5 was a branch, its content was made again on
+   each main it merged (the verification workspace's `tools/regen-step5.sh`: main's content with its v1
+   files, the branch's edits of people's files, then the generator), so chips, kinds and shared entries main
+   had gained by hand were skipped; on main the generated modules are people's and nothing regenerates them.
 6. **Assets by name and the codemod.** The extractor names assets from compat and writes the asset index, which
    the loader fills `Content::assets` from (done first, so real packs resolve `asset.*`); sprites and sounds become asset
    handles in the engine; the codemod of §11 runs over every module (asset strings and numbers to names,

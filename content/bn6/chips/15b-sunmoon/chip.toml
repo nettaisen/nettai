@@ -1,4 +1,0 @@
-# SunMoon (navi chip subtype 25) summon SunMoon (chips/sunmoon/sun.luau),
-# through chip.luau.
-
-script = "chip.luau"

@@ -235,6 +235,8 @@ pub fn weapon(n: u8) -> Option<bn6_content_api::WeaponHandle> {
 pub const TICKER_1: &str = "test/ticker1";
 pub const TICKER_2: &str = "test/ticker2";
 pub const TICKER_3: &str = "test/ticker3";
+/// A chip the test pack defines with a number (0x1F0) and its own action.
+pub const TICKER_4: &str = "test/ticker4";
 /// BN6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
 /// chips content defines, which grab a column and a panel.
 pub const AREA_GRAB: &str = "areagrab";
@@ -390,9 +392,25 @@ pub fn asset_names_used(modules: &std::collections::BTreeMap<String, String>) ->
 }
 
 /// The asset names the test content has: the BN6 names its modules use
-/// (with BN6's numbers), a few made-up ones for the test pack, and a
-/// placeholder.
+/// (with BN6's numbers where its tests look at them, made-up assets for
+/// the rest), a few made-up ones for the test pack, and a placeholder.
 fn assets() -> bn6_content_api::AssetNames {
+    let mut a = numbered_assets();
+    let used = asset_names_used(&scripts().modules);
+    for (name, id) in used.sprites {
+        a.sprites.entry(name).or_insert(id);
+    }
+    for (name, id) in used.sounds {
+        a.sounds.entry(name).or_insert(id);
+    }
+    a.banners.extend(used.banners);
+    a.backgrounds.extend(used.backgrounds);
+    a.mugshots.extend(used.mugshots);
+    a
+}
+
+/// The test content's assets with BN6's numbers.
+fn numbered_assets() -> bn6_content_api::AssetNames {
     let mut a = bn6_content_api::AssetNames::default();
     let sprite = |c, i| SpriteId { category: c, index: i };
     for (name, id) in [
@@ -738,6 +756,10 @@ pub fn scripts() -> Scripts {
                 ("navis/00-megaman/weapons/blank-shot/weapon", "navis/00-megaman/weapons/blank-shot/weapon"),
                 ("navis/00-megaman/weapons/charged-shot/weapon", "navis/00-megaman/weapons/charged-shot/weapon"),
                 ("navis/00-megaman/weapons/buster/weapon", "navis/00-megaman/weapons/buster/weapon"),
+                // Two of the buster's alias routines (its setup, their own
+                // charge rows).
+                ("navis/00-megaman/weapons/buster-2e/weapon", "navis/00-megaman/weapons/buster-2e/weapon"),
+                ("navis/00-megaman/weapons/buster-82/weapon", "navis/00-megaman/weapons/buster-82/weapon"),
                 ("navis/00-megaman/forms/heatcross/charge", "navis/00-megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),

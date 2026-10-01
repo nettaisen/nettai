@@ -1,4 +1,0 @@
-# BassAnly (navi chip subtype 27) summon BassAnly
-# (chips/bassanly/navi.luau), through chip.luau.
-
-script = "chip.luau"

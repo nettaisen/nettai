@@ -1,3 +1,0 @@
-# A navi chip (subtype 11): DustMan, as chips/0fe-dustman summons him.
-
-script = "../0fe-dustman/chip.luau"

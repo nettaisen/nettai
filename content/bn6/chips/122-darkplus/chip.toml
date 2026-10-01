@@ -1,4 +1,0 @@
-# DarkPlus, a dark chip (the ruleset's 0x11E..0x122) with a substitute: the plus
-# chips' effect by number.
-
-script = "../0c0-atk-10/chip.luau"

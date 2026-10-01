@@ -1,3 +1,0 @@
-# SonicBom runs the sonic booms (action 0x55, `sub_80EF970`), in chip.luau.
-
-script = "chip.luau"

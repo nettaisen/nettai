@@ -1,3 +1,0 @@
-# A navi chip (subtype 12): BlastMan, as chips/101-blastman summons him.
-
-script = "../101-blastman/chip.luau"

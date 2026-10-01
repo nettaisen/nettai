@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x27, ChargeCross's charged shot (`sub_8011F44`), and
-# its action 0x56 (`sub_80EFA56`) are a script.
-
-id = 0x27
-name = "ChargeCross tackle"
-action = 0x56
-script = "charge_cross_tackle.luau"

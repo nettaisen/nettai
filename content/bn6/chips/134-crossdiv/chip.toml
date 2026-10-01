@@ -1,4 +1,0 @@
-# A navi chip (subtype 17, its third parameter 1: his CrossDiv): Colonel, as
-# chips/110-colonel summons him.
-
-script = "../110-colonel/chip.luau"
