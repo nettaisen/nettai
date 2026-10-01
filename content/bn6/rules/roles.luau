@@ -1,9 +1,6 @@
 --!strict
 -- What the ruleset starts and spawns by role (docs/design/content-model-v2.md
--- §7.4). A role whose target is still a v1 registration names it through
--- the transitional `legacy` marker (an action by its number, a kind by its
--- key), counted by the ratchet; a family that converts the target names its
--- definition here instead.
+-- §7.4): each role names the definition that fills it.
 
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
 local anti_recovery = require("../chips/antirecv/controller")
@@ -14,6 +11,7 @@ local beast_out = require("../chips/beastout/chip")
 local beat = require("../chips/beat/chip")
 local beast_claw = require("../navis/megaman/weapons/beast-claw/weapon")
 local bodygrd_counter = require("../chips/bodygrd/counter")
+local charge_tackle = require("../navis/megaman/forms/chargecross/tackle")
 local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
 local collision = require("./collision")
 local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatter")
@@ -23,6 +21,7 @@ local invalid = require("../chips/invalid/chip")
 local megabstr = require("../chips/megabstr/chip")
 local rush = require("../chips/rush/chip")
 local tango = require("../chips/tango/chip")
+local turn = require("../navis/megaman/turn")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local lockon = require("./lockon")
@@ -44,24 +43,29 @@ return define.roles {
         anti_damage_counter = antidmg_counter.action,
         anti_sword_counter = antiswrd_counter.action,
         body_guard_counter = bodygrd_counter.action,
-        -- The strike the navi's request 0x80000 starts from idle (the
-        -- machine swords' strike by the attack's variant).
+        -- The strike the navi's request 0x80000 starts from idle (a
+        -- machine sword's, by the attack's chip).
         stun_strike = stun_strike.action,
         -- What a Cross navi protected at the battle's end runs
         -- (GroundCross's drill).
         cross_protect = ground_drill.action,
         -- The turn L or R starts where turning is enabled.
-        turn = { legacy = { action = 0x3B } },
+        turn = turn.action,
         -- A Cross navi's knock-out (SlashCross Beast's lunge).
         cross_death = slash_beast_lunge.action,
-        -- A Cross navi's volley.
-        volley = { legacy = { action = 0x30 } },
+        -- (`volley`, what the navi's volley request starts, isn't filled.
+        -- The original starts its action 0x30, WideSht's and SuprSpr's
+        -- routine, on whatever the attack's parameter bytes hold; no
+        -- routine raises the request, and the port raises it nowhere.)
         -- SlashCross's charged slash, which the Beast rush recognizes.
         charged_sword = slash_charge.action,
         -- The Beast forms' charged claw.
         beast_claw = beast_claw.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = dust_beast_scatter.action,
+        -- ChargeCross's tackle, during which an invulnerable navi doesn't
+        -- glow.
+        charge_tackle = charge_tackle.action,
     },
     kinds = {
         -- What an obstacle absorbed flies off as.

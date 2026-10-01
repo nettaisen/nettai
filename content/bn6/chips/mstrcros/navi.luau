@@ -233,7 +233,7 @@ end
 local function bring(me: Object, entry: Entry, i: number): Object?
     local s = me.state :: State
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = entry.element, params = { 0, 0, 0, 0 }, damage = damage }
+    local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = entry.element, damage = damage }
     local o = navi_chips.spawn(mstrcros.kind, me, spec, 0)
     if not o then
         return nil
@@ -410,7 +410,7 @@ local function wait_turn(me: Object)
 end
 
 -- `sub_80BEA50`: the first wave's entry.
-local FIRST_PHASES = { [0] = fade_in, [4] = circle_out, [8] = hover, [0xC] = blink_out, [0x10] = wait_turn }
+local FIRST_PHASES: { [number]: (me: Object) -> () } = { [0] = fade_in, [4] = circle_out, [8] = hover, [0xC] = blink_out, [0x10] = wait_turn }
 
 -- `sub_80BEC84`: beside his target, turned to face it when he stands
 -- behind it; 3 ticks.
@@ -448,7 +448,7 @@ local function ready(me: Object)
 end
 
 -- `sub_80BEC68`.
-local ARRIVE_PHASES = { [0] = arrive, [4] = ready }
+local ARRIVE_PHASES: { [number]: (me: Object) -> () } = { [0] = arrive, [4] = ready }
 
 -- `sub_80BEBD8`: the finale's Crosses appear at the end of the first
 -- wave's circle (places 0 to 2 seen); 3 ticks.
@@ -481,7 +481,7 @@ local function finale_ready(me: Object)
 end
 
 -- `sub_80BEBBC`.
-local FINALE_PHASES = { [0] = finale_appear, [4] = finale_ready }
+local FINALE_PHASES: { [number]: (me: Object) -> () } = { [0] = finale_appear, [4] = finale_ready }
 
 -- `sub_80BED0C`: the sword (his look's blade); at 9 the hit on the panel
 -- ahead, the slash 16 pixels up, a flash; past 21, he leaves. (The
@@ -588,7 +588,7 @@ local function drill_back(me: Object)
 end
 
 -- `sub_80BEE62`.
-local DRILL_PHASES = { [0] = drill_ready, [4] = drill_out, [8] = drill_back }
+local DRILL_PHASES: { [number]: (me: Object) -> () } = { [0] = drill_ready, [4] = drill_out, [8] = drill_back }
 
 -- `sub_80BEF48`: TenguCross's fan and its gust; at 12 left the hit on the
 -- panel ahead and a flash; to -1.
@@ -619,7 +619,7 @@ local function fan_after(me: Object)
 end
 
 -- `sub_80BEF2C`.
-local FAN_PHASES = { [0] = fan, [4] = fan_after }
+local FAN_PHASES: { [number]: (me: Object) -> () } = { [0] = fan, [4] = fan_after }
 
 -- An effect at his attach point 0 (`sub_8018810` by his identity).
 local function at_hand(me: Object, effect: Effect): Object?
@@ -690,7 +690,7 @@ local function settle(me: Object)
 end
 
 -- `sub_80BEFE2`.
-local CHARGE_PHASES = { [0] = charge, [4] = strike, [8] = settle }
+local CHARGE_PHASES: { [number]: (me: Object) -> () } = { [0] = charge, [4] = strike, [8] = settle }
 
 -- `sub_80BF11A`: what he holds goes; 3 ticks: out of sight, done, his
 -- parts off, gone.

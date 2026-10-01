@@ -5,7 +5,6 @@
 //! ```text
 //! **/*.luau                       the modules: what they define (chips, navis, forms, weapons,
 //!                                 stages, rules...) and the code that runs it
-//! objects/NAME/object.toml        `[kind]`: the object kind a v1 module implements
 //! *.d.luau                        the API's definitions, for editors and the checker
 //! compat/                         the original's numbers by key: tools' data, not content
 //! ```
@@ -16,9 +15,6 @@
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-
-use bn6_battle::content::ObjectKind;
-use serde::Deserialize;
 
 use crate::report::Report;
 
@@ -36,14 +32,6 @@ pub fn bn6() -> PathBuf {
 pub struct Root {
     /// Modules by path without `.luau` (not the `.d.luau` definitions).
     pub modules: BTreeMap<String, String>,
-    /// The object kinds v1 modules implement, by name.
-    pub kinds: Vec<ObjectKind>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct KindFile {
-    kind: ObjectKind,
 }
 
 /// Read the content root in `dir`.
@@ -60,43 +48,18 @@ pub fn read(dir: &Path, report: &mut Report) -> Option<Root> {
             continue;
         }
         let full = dir.join(&rel);
-        let folder = rel.rsplit_once('/').map_or("", |(f, _)| f).to_string();
-        let text = || std::fs::read_to_string(&full).map_err(|e| format!("can't read: {e}"));
-        let result: Result<(), String> = (|| {
-            if let Some(module) = rel.strip_suffix(".luau") {
-                root.modules.insert(module.to_string(), text()?);
-            } else if rel.starts_with("objects/") && rel.ends_with("/object.toml") {
-                let k: KindFile = toml::from_str(&text()?).map_err(|e| format!("invalid: {e}"))?;
-                let name = folder.trim_start_matches("objects/").to_string();
-                let script = script_module(&folder, &k.kind.script)?;
-                root.kinds.push(ObjectKind { name, script, ..k.kind });
-            } else {
-                return Err("a content root holds modules, object kinds' object.toml and the API's definitions".into());
+        let Some(module) = rel.strip_suffix(".luau") else {
+            report.error(&rel, "a content root holds modules and the API's definitions");
+            continue;
+        };
+        match std::fs::read_to_string(&full) {
+            Ok(text) => {
+                root.modules.insert(module.to_string(), text);
             }
-            Ok(())
-        })();
-        if let Err(e) = result {
-            report.error(&rel, e);
+            Err(e) => report.error(&rel, format!("can't read: {e}")),
         }
     }
-    root.kinds.sort_by(|a, b| a.name.cmp(&b.name));
     (!report.has_errors()).then_some(root)
-}
-
-/// The module a file's `script` names (a path relative to `folder`).
-fn script_module(folder: &str, file: &str) -> Result<String, String> {
-    let rel = file.strip_suffix(".luau").ok_or_else(|| format!("script {file:?} is not a .luau file"))?;
-    let mut parts: Vec<&str> = folder.split('/').collect();
-    for seg in rel.split('/') {
-        match seg {
-            "." | "" => {}
-            ".." => {
-                parts.pop().ok_or_else(|| format!("script {file:?} leaves the content root"))?;
-            }
-            s => parts.push(s),
-        }
-    }
-    Ok(parts.join("/"))
 }
 
 /// Every file under `dir`, as paths relative to `root` with `/`, sorted

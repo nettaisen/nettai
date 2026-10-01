@@ -127,7 +127,7 @@ fn tail(b: &mut Battle, r: ObjectRef) {
 /// `sub_801B9E6`: run the current action (§12.0 action table).
 pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     let action = navi_action(b, r);
-    if action.is_attack(&b.content.defs) {
+    if action.is_attack() {
         if ai(b, r).attack.beast_lockon == 1 {
             return actions::beast_rush::update(b, r);
         }
@@ -143,12 +143,9 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
         NaviAction::Freeze => reactions::freeze(b, r),
         NaviAction::Bubble => reactions::bubble(b, r),
         NaviAction::Idle => idle::control(b, r),
-        // The link navis' own actions (`off_80EA4C8[AIIndex]` past idle):
-        // content's.
-        NaviAction::Content(h) => crate::behavior::run_action(b, h, r),
-        NaviAction::Unported(n) if ai(b, r).ai_index != 0 => panic!("form action {n} is not implemented yet"),
-        NaviAction::Unported(n) => panic!("player action {n} is past MegaMan's action table"),
-        NaviAction::Engine(_) => unreachable!("the ruleset's actions are attacks"),
+        // (The original's table goes on past idle with the link navis'
+        // own actions, `off_80EA4C8[AIIndex]`; none has one.)
+        NaviAction::Content(_) | NaviAction::Engine(_) => unreachable!("an attack"),
     }
 }
 
@@ -781,11 +778,6 @@ const GLOW: [u16; 32] = [
     0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 30, 28, 26, 24, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0,
 ];
 
-/// The ChargeCross tackle's action number, during which an invulnerable
-/// navi doesn't glow (`sub_8016860` reads CurAction; an action content
-/// defines without a number isn't recognized).
-const TACKLE_ACTION: u8 = 0x56;
-
 /// The navi's colour shader for its statuses (presentation only;
 /// `loc_801B142`: `sprite_zeroColorShader`, then `sub_80143E4`,
 /// `sub_801690A`, `sub_8016860`, `sub_80168C8`, `sub_80168F0`, the later
@@ -808,7 +800,8 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     if f & f1::INVULNERABLE != 0
         && !super::form_of(b, r).kind.is_beast_over()
         && action != NaviAction::Entry
-        && action.number(&b.content.defs) != TACKLE_ACTION
+        // (`sub_8016860` reads CurAction: not during ChargeCross's tackle.)
+        && !super::runs_role(b, r, crate::content::ActionRole::ChargeTackle)
     {
         let glow = GLOW[(t & 0x1F) as usize];
         shader = if super::battle_mode(b) == 1 { glow } else { glow << 5 };
@@ -885,7 +878,6 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return actions::cross_change::change(b, r);
     }
     if st & ai_status::CROSS_KNOCKOUT != 0 {
-        ai_mut(b, r).attack.variant = 0;
         return actions::cross_change::knock_out(b, r);
     }
     let f = ai(b, r).requests;

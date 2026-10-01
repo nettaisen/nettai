@@ -2,9 +2,9 @@
 //!
 //! [`Content`] holds everything the simulation reads that isn't rules
 //! code: chips, navis and forms, stages, the ruleset's tables (collision
-//! types, panel rules, status effects...), object data (rocks,
-//! attachments, overlays), the effect and region registries, and every
-//! sprite's animation timing. It never changes during a battle and is
+//! types, panel rules, status effects...), the identities (what an object
+//! is taken for and wears), the registries of what the content defines,
+//! and every sprite's animation timing. It never changes during a battle and is
 //! shared between battles and their snapshots through an `Arc`:
 //!
 //! ```ignore
@@ -12,24 +12,25 @@
 //! let content = Arc::new(content);
 //! let setup = RoundSetup { content: content.hash(), ..setup };
 //! let battle = Battle::new(setup, content.clone());
-//! let chip = battle.content.chip(0x11);
+//! let chip = battle.content.chip(hand[0]);
 //! ```
 //!
 //! See docs/design/content-pack.md for the pack's files and this API.
 //!
 //! The engine does no file IO: a loader outside it (bn6-content) reads a
-//! content pack into this model, and tests build small content sets in
-//! code. BN6's content comes only from a pack extracted from the user's
-//! ROM (`bn6-extract content`).
+//! content root (BN6's is the committed content/bn6) and an asset root
+//! (extracted from the user's ROM by `bn6-extract content`) into this
+//! model, and tests build small content sets in code.
 //!
 //! Content has an identity, [`Content::hash`], which a round's setup
 //! carries (`RoundSetup::content`) so that netplay peers can check they
 //! run the same content. The content itself is not part of a snapshot or
 //! of the state digest.
 //!
-//! Ids are the original's numbers (chip ids, NameIDs, row numbers the
-//! state and traces observe); the tables here are dense and indexed by
-//! them.
+//! What the content defines is by handle: each key interns to a dense
+//! handle at load ([`Defs`]). The engine has no navi, form or other
+//! content by the original's numbers (docs/design/content-model-v2.md
+//! §3.2, §12): compat's numbers are bn6-compat's.
 
 mod chips;
 mod custom;
@@ -38,7 +39,6 @@ mod flags;
 mod identity;
 pub mod legacy;
 mod navis;
-mod objects;
 mod roles;
 mod rules;
 mod scripts;
@@ -52,7 +52,6 @@ pub use custom::*;
 pub use defs::*;
 pub use identity::{BodyPart, FieldLook, IceSize, Identity, IdentityClass, IdentityOwner, OverlayHooks, Parts};
 pub use navis::*;
-pub use objects::*;
 pub use roles::*;
 pub use rules::*;
 pub use scripts::*;
@@ -153,8 +152,6 @@ impl std::fmt::Display for ContentHash {
 pub struct Content {
     /// The ruleset's tables.
     pub rules: Rules,
-    /// Object kinds' data.
-    pub objects: ObjectData,
     /// Every sprite's animation timing.
     pub animations: Animations,
     /// The assets content can name (`asset.sprite("bomb")`): the loader
@@ -180,28 +177,13 @@ impl Content {
             self.defs = Defs::build(self, definitions)?;
             return Ok(());
         }
-        let mut data = crate::behavior::script_data(self);
-        for _ in 0..3 {
-            let (definitions, compiled) =
-                bn6_luau::define(&self.scripts.pack(), &data, &self.assets, bn6_luau::Options::default())?;
-            self.scripts.compiled = CompiledModules(compiled);
-            // What registration by number reads of the definitions: the
-            // tables by number.
-            legacy::build(self, &definitions)?;
-            // v1 modules see those tables as the `data` global, some while
-            // they load: when the definitions made them, the modules run
-            // again on what they will see at run time (once: the tables
-            // come from the definitions alone, so they come out the same).
-            let built = crate::behavior::script_data(self);
-            if built == data {
-                self.defs = Defs::build(self, definitions)?;
-                return Ok(());
-            }
-            data = built;
-        }
-        Err(bn6_content_api::ContentError::new(
-            "the tables the definitions build keep changing what the modules define (a module defines by `data` what the tables come from)",
-        ))
+        let (definitions, compiled) = bn6_luau::define(&self.scripts.pack(), &self.assets, bn6_luau::Options::default())?;
+        self.scripts.compiled = CompiledModules(compiled);
+        // What the ruleset still reads by number of the definitions: the
+        // tables by number.
+        legacy::build(self, &definitions)?;
+        self.defs = Defs::build(self, definitions)?;
+        Ok(())
     }
 
     /// The content, defined (see [`Content::define`]); panics on a content

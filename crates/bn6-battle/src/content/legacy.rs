@@ -1,12 +1,7 @@
-//! The tables the ruleset and v1 modules still read by number, built from
-//! what the content defines (docs/design/content-model-v2.md §12, step 5):
-//! the rule sections, collision types, statuses and lock-on modes, and the numbered tables (effects,
-//! sparks, regions, the object kinds' rows).
-//!
-//! Where a definition still carries what only registration by number reads
-//! (a table's original numbering), it sits in a `legacy { ... }` marker,
-//! which goes when its family converts (§12, phase B) or the ruleset stops
-//! asking numbers (phase C).
+//! The typed tables the ruleset reads, built from what the content defines
+//! (docs/design/content-model-v2.md §12, step 5): the rule sections. (The
+//! navis and forms are definitions the registries read by handle, and the
+//! body overlays the identities' parts: nothing is read by number.)
 //!
 //! Content without these definitions (the engine's test content, whose
 //! tables are Rust) keeps its tables: each part is built only when the
@@ -254,38 +249,8 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
     }
 }
 
-/// A table by number (`[0x05] = { ... }`) as rows from 0; a gap is an
-/// error. `id`: the record's own field for its number.
-fn numbered<T: DeserializeOwned>(r: &Resolver, d: &Data, at: &str, id: Option<&str>) -> Result<Vec<T>, String> {
-    let entries: Vec<(i64, &Data)> = match d {
-        Data::Map(entries) => entries
-            .iter()
-            .map(|(k, v)| match k {
-                DataKey::Int(i) => Ok((*i, v)),
-                DataKey::Str(s) => Err(format!("{at}: `{s}` is not a number")),
-            })
-            .collect::<Result<_, _>>()?,
-        // A table from 1 with no gaps reads as a list: its numbers from 1.
-        Data::List(items) => items.iter().enumerate().map(|(i, v)| (i as i64 + 1, v)).collect(),
-        _ => return Err(format!("{at}: a table by number")),
-    };
-    let mut out = Vec::with_capacity(entries.len());
-    for (i, (n, v)) in entries.into_iter().enumerate() {
-        let expect = i as i64;
-        if n != expect {
-            return Err(format!("{at}: row {n:#x} leaves a gap (row {expect:#x} is missing)"));
-        }
-        let mut j = r.json(v, &format!("{at}[{n:#x}]"))?;
-        if let (Some(field), Json::Object(o)) = (id, &mut j) {
-            o.insert(field.to_string(), Json::from(n));
-        }
-        out.push(serde_json::from_value(j).map_err(|e| format!("{at}[{n:#x}]: {e}"))?);
-    }
-    Ok(out)
-}
-
-/// The rule sections into `rules` and the numbered tables into `content`:
-/// each only if the content defines it.
+/// The rule sections into `content.rules`: each only if the content
+/// defines it.
 fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> Result<(), ContentError> {
     for d in definitions.of(Registry::Rules) {
         let at = format!("{}.luau: rules {}", d.module, d.key);
@@ -394,14 +359,6 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
                     })
                     .collect();
             }
-            // The object kinds' tables by number, each while something
-            // still reads it (the rocks', the absorbed obstacles' and the
-            // sun beam's are their kinds' own definitions now).
-            "sword-waves" => content.objects.sword_waves = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "boomerangs" => content.objects.boomerangs = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "shock-waves" => content.objects.shock_waves = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "projectiles" => content.objects.projectiles = numbered(r, spec, &at, Some("id")).map_err(e)?,
-            "flying-shots" => content.objects.flying_shots = numbered(r, spec, &at, Some("id")).map_err(e)?,
             other => return Err(e(format!("{at}: the engine has no rule section `{other}`"))),
         }
     }
@@ -426,8 +383,8 @@ pub(crate) fn fields(d: &Definition, r: &Resolver, skip: &[&str]) -> Result<Map<
     }
 }
 
-/// Everything registration by number reads of what the content defines:
-/// the tables into `content`.
+/// The typed tables of what the content defines: its rule sections into
+/// `content`.
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     let assets = content.assets.clone();
     let r = Resolver::new(&assets, definitions);

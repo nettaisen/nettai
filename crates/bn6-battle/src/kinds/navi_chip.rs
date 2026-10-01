@@ -20,8 +20,6 @@ pub struct Vars {
     pub chip: DimmingChip,
     /// The damage word (object +0x2C).
     pub damage: u32,
-    /// The chip's parameters (object +4).
-    pub params: [u8; 4],
     /// Object +0x18: set while the navi acts; the navi clears it when it
     /// leaves.
     pub navi_acting: bool,
@@ -45,7 +43,6 @@ fn vars_mut(b: &mut Battle, r: ObjectRef) -> &mut Vars {
 #[derive(Clone, Copy, Debug)]
 pub struct Spec {
     pub element: u8,
-    pub params: [u8; 4],
     pub damage: u32,
     pub chip: DimmingChip,
 }
@@ -60,7 +57,7 @@ pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
     if heals && b.linked_trap(side ^ 1) == Some(crate::content::Trap::AntiRecovery) {
         return spring_anti_recovery(b, user, s);
     }
-    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::NaviChip, Vec3::default(), s.params)?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::NaviChip, Vec3::default(), [0; 4])?;
     let (panel, alliance, flip) = {
         let o = b.objects.get(user);
         (o.panel, o.alliance, o.flip)
@@ -74,7 +71,6 @@ pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
     o.vars = crate::kinds::Vars::NaviChip(Vars {
         chip: s.chip,
         damage: s.damage,
-        params: s.params,
         navi_acting: false,
     });
     Some(r)
@@ -83,8 +79,7 @@ pub fn spawn(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
 /// `loc_80E1968`: Roll against AntiRecv. The trap's mark over the user
 /// (`sub_800ABC6`), the other side's record is spent (`sub_802CEA6`), and
 /// AntiRecv's counterattack (`sub_80E37D2`) comes for the user with three
-/// times Roll's damage (`sub_80E199A`) and hit parameter 0x1E, in the
-/// chip's parameters. Action 0x1B registers it as the side's dimming, as it
+/// times Roll's damage (`sub_80E199A`) and hit parameter 0x1E. Action 0x1B registers it as the side's dimming, as it
 /// would the navi chip's controller; unlike a recovery chip's heal
 /// (`kinds::heal`), nothing starts one here.
 fn spring_anti_recovery(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<ObjectRef> {
@@ -93,7 +88,7 @@ fn spring_anti_recovery(b: &mut Battle, user: ObjectRef, s: Spec) -> Option<Obje
     b.clear_linked(side ^ 1);
     let damage = counterattack_damage(s.damage) + (heal::TRAP_HIT_PARAM << 16);
     // Its Z is the mark's, which `sub_800ABC6` left in r3.
-    heal::spawn_counterattack(b, user, damage, s.params, heal::TRAP_MARK_Z)
+    heal::spawn_counterattack(b, user, damage, heal::TRAP_MARK_Z)
 }
 
 /// `sub_80E199A`: three times the damage word's damage (its low 11 bits),
@@ -225,7 +220,7 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let chip = b.content.chip_or_zeroed(v.chip.chip);
     let navi = match b.content.defs.chip(chip).usage {
         ChipUsage::Navi(hook) => {
-            let spec = NaviChipSpec { panel, element, params: v.params, damage };
+            let spec = NaviChipSpec { panel, element, damage };
             crate::behavior::call_hook(b, hook, HookCall::NaviChip { user, controller: r, spec }).object()
         }
         u => panic!("chip {:?} is a navi chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),

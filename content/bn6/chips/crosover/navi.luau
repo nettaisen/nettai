@@ -301,7 +301,7 @@ local function lower(me: Object)
 end
 
 -- `sub_80BDD88`.
-local SHOOT_PHASES = { [0] = ready, [4] = shoot, [8] = lower }
+local SHOOT_PHASES: { [number]: (me: Object) -> () } = { [0] = ready, [4] = shoot, [8] = lower }
 
 -- `sub_80BDEF0`: 30 ticks.
 local function pause(me: Object)
@@ -469,7 +469,7 @@ local function drain(me: Object)
 end
 
 -- `sub_80BE174`.
-local GUN_PHASES = { [0] = draw_gun, [4] = drain }
+local GUN_PHASES: { [number]: (me: Object) -> () } = { [0] = draw_gun, [4] = drain }
 
 -- `sub_80BE254`: all let go; 30 ticks.
 local function holster(me: Object)
@@ -623,7 +623,7 @@ local function init_megaman(me: Object)
         return
     end
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local spec = { panel_x = dx, panel_y = dy, element = me.element, params = { 1, 0, 0, 0 }, damage = damage }
+    local spec = { panel_x = dx, panel_y = dy, element = me.element, damage = damage }
     local django = spawn(user, spec, ty, true, nil)
     if django then
         (django.state :: State).partner = me

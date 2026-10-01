@@ -111,6 +111,8 @@ local function init(me: Object)
     local s = me.state :: State
     local sprite = me.sprite
     sprite:load(SPRITE)
+    -- sprite_noShadow: the first part is drawn with the sprite.
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = ANIM, 0xFF
     me.visible = true
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
