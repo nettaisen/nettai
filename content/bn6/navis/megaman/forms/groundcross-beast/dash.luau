@@ -170,8 +170,6 @@ dash_weapon.weapon = define.weapon {
     -- entry, as the original's table does.
     charge_ticks = { 50, 50, 50, 50, 50, 60 },
     setup = setup,
-    -- (Transitional: the routine number the pack's forms name it by.)
-    legacy = { routines = { 0x17 } },
 }
 
 return dash_weapon

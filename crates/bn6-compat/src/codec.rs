@@ -16,7 +16,7 @@ use bn6_battle::setup::{
     BattleSettings, Form, GaugeSpeed, Navi, NaviCustBugs, NaviStats, NaviWeapons, SpTimes, Stage, Supports,
 };
 use bn6_battle::transform::TransformRequest;
-use bn6_content_api::{ChipHandle, FormHandle, NaviHandle, StageHandle, WeaponHandle};
+use bn6_content_api::{ChipHandle, FormHandle, NaviHandle, RecordHandle, StageHandle, WeaponHandle};
 
 // ---- Numbers and handles ----------------------------------------------------------
 
@@ -116,26 +116,59 @@ impl<'a> Ids<'a> {
         if routine == 0xFF {
             return None;
         }
-        let defs = &self.content.defs;
-        let h = self
+        let key = self
             .compat
             .weapon_key(routine)
-            .and_then(|k| defs.weapon_by_key(k))
-            .or_else(|| defs.weapon_numbered(routine))
-            .unwrap_or_else(|| panic!("weapon routine {routine:#x} is neither defined nor in the pack"));
+            .unwrap_or_else(|| panic!("weapons.toml has no weapon routine {routine:#x}"));
+        let h = self
+            .content
+            .defs
+            .weapon_by_key(key)
+            .unwrap_or_else(|| panic!("the content has no weapon {key:?} (weapon routine {routine:#x})"));
         Some(h)
     }
 
-    /// A weapon's routine number (the first compat gives a weapon content
-    /// defines); 0xFF for none.
+    /// A weapon's routine number (the first compat gives it); 0xFF for
+    /// none.
     pub fn weapon_number(&self, w: Option<WeaponHandle>) -> u8 {
         let Some(w) = w else { return 0xFF };
-        if let Some(n) = self.content.weapon_number(w) {
-            return n;
-        }
         let key = &self.content.defs.weapon(w).key;
         let numbers = self.compat.weapons.get(key).unwrap_or_else(|| panic!("weapons.toml has no {key:?}"));
         *numbers.first().unwrap_or_else(|| panic!("weapons.toml gives {key:?} no number"))
+    }
+
+    /// The projectile variant a shot program's byte names (a row of
+    /// `off_80C4C78`); none for 0, no program.
+    pub fn shot_program(&self, row: u8) -> Option<RecordHandle> {
+        if row == 0 {
+            return None;
+        }
+        let key = self
+            .compat
+            .records
+            .projectile_variants
+            .iter()
+            .find(|(_, n)| **n == row)
+            .map(|(k, _)| k.as_str())
+            .unwrap_or_else(|| panic!("records.toml has no projectile variant {row:#x}"));
+        let h = self
+            .content
+            .defs
+            .record(key)
+            .unwrap_or_else(|| panic!("the content has no projectile variant {key:?} (row {row:#x})"));
+        Some(h)
+    }
+
+    /// A shot program's byte; 0 for none.
+    pub fn shot_program_number(&self, r: Option<RecordHandle>) -> u8 {
+        let Some(r) = r else { return 0 };
+        let key = &self.content.defs.records[r.index()].key;
+        *self
+            .compat
+            .records
+            .projectile_variants
+            .get(key)
+            .unwrap_or_else(|| panic!("records.toml has no projectile variant {key:?}"))
     }
 
     /// The stage a battle settings index names.
@@ -209,8 +242,8 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
             back_special: ids.weapon(b[0x07]),
             a_charge: ids.weapon(b[0x39]),
             mode9_a: ids.weapon(b[0x44]),
-            buster_shot: b[0x4D],
-            charge_shot_kind: b[0x4F],
+            buster_shot: ids.shot_program(b[0x4D]),
+            charge_shot_kind: ids.shot_program(b[0x4F]),
             back_special_damage: u16at(0x48),
         },
         bugs: NaviCustBugs {
@@ -283,8 +316,8 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     b[0x07] = ids.weapon_number(w.back_special);
     b[0x39] = ids.weapon_number(w.a_charge);
     b[0x44] = ids.weapon_number(w.mode9_a);
-    b[0x4D] = w.buster_shot;
-    b[0x4F] = w.charge_shot_kind;
+    b[0x4D] = ids.shot_program_number(w.buster_shot);
+    b[0x4F] = ids.shot_program_number(w.charge_shot_kind);
     put16(&mut b, 0x48, w.back_special_damage);
     let g = &s.bugs;
     b[0x11] = g.auto_step;
@@ -436,18 +469,10 @@ mod tests {
         v.try_into().unwrap()
     }
 
-    /// The test content with a navi and a form for every number (a stat
-    /// byte can name any), defined.
+    /// The test content.
     fn content() -> &'static Content {
         static CONTENT: std::sync::OnceLock<Content> = std::sync::OnceLock::new();
-        CONTENT.get_or_init(|| {
-            let mut c = testing::build();
-            let (navi, form) = (c.navis[0].clone(), c.forms[0].clone());
-            c.navis = (0..=0xFF).map(|id| bn6_battle::content::NaviData { id, ..navi.clone() }).collect();
-            c.forms = (0..=0xFF).map(|id| bn6_battle::content::FormData { id, ..form.clone() }).collect();
-            c.define().unwrap_or_else(|e| panic!("content error: {e}"));
-            c
-        })
+        CONTENT.get_or_init(testing::build)
     }
 
     fn ids() -> Ids<'static> {
@@ -486,22 +511,40 @@ mod tests {
         std::panic::set_hook(Box::new(|_| {}));
         for offset in 1..0x64u8 {
             let values: &[u8] = if offset == 0x08 { &[0, 1, 2] } else { &[0, 1, 2, 0x7F, 0xFF] };
+            // A byte that names content by the original's number (a navi,
+            // a form, a weapon, a shot program) decodes only where the
+            // content has it.
             let decoded = |v: u8| {
-                let mut raw = bytes(MACHGUN_P0);
-                raw[offset as usize] = v;
-                navi_stats(&raw, &ids)
+                std::panic::catch_unwind(|| {
+                    let mut raw = bytes(MACHGUN_P0);
+                    raw[offset as usize] = v;
+                    navi_stats(&raw, &Ids::new(content(), Compat::bn6()))
+                })
+                .ok()
             };
-            let modeled = values.iter().any(|&v| decoded(v) != base);
+            // (A value that doesn't decode is read as naming content: the
+            // byte is modeled.)
+            let modeled = values.iter().any(|&v| decoded(v).is_none_or(|d| d != base));
+            // The engine has no numbers for weapons or shot programs: a
+            // bug code can only clear those bytes.
+            let by_handle = |v: u8| match offset {
+                0x04 | 0x05 | 0x07 | 0x39 | 0x44 => v != 0xFF,
+                0x4D | 0x4F => v != 0,
+                _ => false,
+            };
             for &value in values {
                 let result = std::panic::catch_unwind(move || {
                     let mut s = base;
                     s.set_byte_by_bug_code(offset, value, content());
                     s
                 });
-                match result {
-                    Ok(s) if modeled && s != decoded(value) => problems.push(format!("{offset:#x} = {value:#x}: {s:?}")),
-                    Ok(_) if !modeled => problems.push(format!("{offset:#x} isn't modeled but is accepted")),
-                    Err(_) if modeled => problems.push(format!("{offset:#x} = {value:#x} is modeled but refused")),
+                match (result, decoded(value)) {
+                    (Ok(s), Some(d)) if modeled && s != d => problems.push(format!("{offset:#x} = {value:#x}: {s:?}")),
+                    (Ok(_), _) if !modeled => problems.push(format!("{offset:#x} isn't modeled but is accepted")),
+                    (Ok(_), _) if by_handle(value) => problems.push(format!("{offset:#x} = {value:#x} names content by number but is accepted")),
+                    (Err(_), Some(_)) if modeled && !by_handle(value) => {
+                        problems.push(format!("{offset:#x} = {value:#x} is modeled but refused"))
+                    }
                     _ => {}
                 }
             }
@@ -550,7 +593,6 @@ mod tests {
         let shot = c.defs.weapon_by_key("test/tick-shot").unwrap();
         assert_eq!((ids.weapon(0x2E), ids.weapon(0x2F)), (Some(shot), Some(shot)));
         assert_eq!(ids.weapon_number(Some(shot)), 0x2E);
-        assert_eq!(ids.weapon(0x01), c.defs.weapon_numbered(0x01));
         let mut raw = [0xFF; 2 * FOLDER_SIZE];
         raw[..2].copy_from_slice(&[0x36, 0x06]);
         let folder = battle_folder(&raw, false, &ids);

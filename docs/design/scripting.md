@@ -23,7 +23,7 @@ several runs.
   state. There is no build feature for it and no Rust version of anything a script implements.
 - **Scripts live in the pack** beside their data (`objects/sun-beam/sun_beam.luau`, `chips/00f-gundels1/
   chip.luau`, `navis/megaman/weapons/absorb/weapon.luau`, `lib/buster.luau`). The data registers
-  them: an object folder's `[kind]`, a chip's `script`, a weapon's `weapon.toml`. The engine loads them from the
+  them: an object folder's `[kind]`, a chip's `script` (a weapon is a definition, `define.weapon`). The engine loads them from the
   `Content` it runs on (`Content::scripts`); nothing is compiled in and nothing in the engine names a script. The
   content hash covers them. BN6's scripts are this repository's source overlay (content/bn6), which `bn6-extract
   content` merges into the pack.
@@ -44,7 +44,7 @@ several runs.
 |---|---|
 | crates/bn6-content-api | The contract. `CoreApi`: what content can see and do. `ContentHost`: what a runtime provides (a manifest; update functions for kinds and actions; hook calls). `Registrations` (what a pack registers) and `Manifest` (what loaded). Typed content state: `Schema`, `ContentState`, `FieldType`. `Data` (the pack's data as the scripts see it). The shared value types (`ObjectRef`, `Vec3`, `PanelPos`, `Pool`, `SpriteId`), which the engine re-exports. |
 | crates/bn6-battle/src/behavior | The engine side: `impl CoreApi for Battle` (`core_api`), dispatch of object kinds, actions and hooks to the runtime (`Behaviors`), and the scripts' `data` built from the battle's `Content` (`data`). |
-| crates/bn6-battle/src/content/scripts.rs | `Scripts` (the pack's modules), `ObjectKind`, `WeaponData`, and `Content::registrations`: what the data registers. |
+| crates/bn6-battle/src/content/scripts.rs | `Scripts` (the pack's modules), `ObjectKind`, and `Content::registrations`: what the data registers. |
 | crates/bn6-luau | The runtime: the VM and freezing (`sandbox`), the bytecode check (`verify`), the API binding (`bind`), module loading. |
 | crates/bn6-content | Reads and writes packs, scripts included; `overlay` reads a source overlay and merges it into extracted content. |
 | crates/bn6-content-check | Type-checks a pack's (or overlay's) Luau against its definitions with Luau's analysis, in process. |
@@ -136,8 +136,7 @@ by number, and hooks. A module exports what its registration needs:
 | a chip's `script`, action other than 0x15, 0x1B and 0x1C | the chip's action | `state`, `update(me, s)` |
 | a chip's `script`, action 0x15 | the dimming controller of the chips of its subtype (`off_802CCB4[subtype]`) | `dimming_chip(user, spec) -> Object?` |
 | a chip's `script`, action 0x1B | the navi of the chips of its subtype (`off_802CD5C[subtype]`) | `navi_chip(user, controller, spec) -> Object?` |
-| a chip's `script`, action 0x1C; a weapon's `instant_chip` | the instant effect of the chips of its subtype (`off_80EC3F0[subtype]`), or the weapon's | `instant_chip(user, spec)` |
-| a weapon's `weapon.toml` | the routine (`off_80117D4[id]`), and its `action` if any | `setup(navi) -> action`, and `state`/`update` for the action |
+| a chip's `script`, action 0x1C | the instant effect of the chips of its subtype (`off_80EC3F0[subtype]`) | `instant_chip(user, spec)` |
 
 `Content::registrations` builds the table from the data; `Registrations::validate` refuses a slot, action or hook
 claimed by two modules (chips sharing an action or a subtype must name the same module); loading refuses a module
