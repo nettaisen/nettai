@@ -10,6 +10,7 @@
 //! recent part first (`copyTo_iObjectAttr3001D70_3006814`): a part drawn
 //! later, or lower on the field, ends up in front.
 
+use crate::audit::Problems;
 use crate::compose::SpritePart;
 use bn6_assets::{Bundle, Palette};
 use bn6_battle::Battle;
@@ -62,14 +63,16 @@ impl<'a> SpriteList<'a> {
         }
     }
 
-    /// Queue parts in front of everything queued so far, in order (the
-    /// first part frontmost), as the HUD's direct inserts do.
-    pub fn insert_front(&mut self, group: Vec<SpritePart<'a>>) {
+    /// Queue parts at a layer and depth bucket as the HUD's direct
+    /// inserts do (`sub_30068E8`), in front of what the bucket holds; the
+    /// first part ends up frontmost.
+    pub fn insert_at(&mut self, layer: usize, bucket: usize, group: Vec<SpritePart<'a>>) {
         for part in group.into_iter().rev() {
             if self.count >= MAX_PARTS {
                 return;
             }
-            self.layers[0][0].push(part);
+            let Some(b) = self.layers[layer].get_mut(bucket) else { return };
+            b.push(part);
             self.count += 1;
         }
     }
@@ -103,14 +106,23 @@ pub struct Projected {
 pub fn project(pos: (i32, i32, i32), view: &View) -> Projected {
     let int = |v: i32| (v >> 16) as i16 as i32;
     let (cx, cy, cz) = (view.camera.0 >> 16, view.camera.1 >> 16, view.camera.2 >> 16);
-    let mut x = int(pos.0) - cx;
-    if view.mirror {
-        x = -x;
-    }
-    let x = (x + 0x78) as i16 as i32;
+    // (The right-hand player's console mirrors the field, not its camera:
+    // a shake moves the sprites the way it moves the field layer.)
+    let x = if view.mirror { -int(pos.0) } else { int(pos.0) };
+    let x = (x - cx + 0x78) as i16 as i32;
     let ground = (int(pos.1) - cy + 0x50) as i16 as i32;
     let y = ground - (int(pos.2) - cz);
     Projected { x, ground, y }
+}
+
+/// The HUD's projection of a position (`sub_800362C`, for the opponents' HP
+/// numbers and the chip icons): the battle projection, except that the
+/// right-hand player's console mirrors after the camera, so a shake moves
+/// these the other way there.
+pub fn project_hud(pos: (i32, i32, i32), view: &View) -> Projected {
+    let p = project(pos, view);
+    let cx = view.camera.0 >> 16;
+    Projected { x: if view.mirror { p.x + 2 * cx } else { p.x }, ..p }
 }
 
 /// A colour shader (`sprite_setColorShader`, applied by `sub_3005EF0`):
@@ -147,8 +159,79 @@ fn is(b: &Battle, o: &Object, kind: EngineKind) -> bool {
     b.content.defs.engine_kind(o.kind) == Some(kind)
 }
 
-/// Queue every visible object's sprite.
-pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut SpriteList<'a>) {
+/// A sprite as content names it (the pack's asset index), for a problem's
+/// text.
+pub fn sprite_name(b: &Battle, id: bn6_battle::content::SpriteId) -> String {
+    match b.content.assets.sprites.iter().find(|(_, s)| **s == id) {
+        Some((name, _)) => format!("sprite {name:?}"),
+        None => format!("sprite {:02x}-{:02x}", id.category, id.index),
+    }
+}
+
+/// Every object as the renderer sees it, a line each: its kind, where it
+/// is, its sprite with the animation and frame, and its look (what
+/// `--objects` prints: the first thing to read when something isn't drawn
+/// or is drawn wrong).
+pub fn describe(b: &Battle, view: &View) -> Vec<String> {
+    let mut lines = Vec::new();
+    for pool in Pool::ALL {
+        for r in b.objects.in_order().filter(|r| r.pool == pool) {
+            let o = b.objects.get(r);
+            let s = b.objects.sprite(r);
+            let p = project((o.pos.x, o.pos.y, o.pos.z), view);
+            let sprite = match s.id {
+                Some(id) => format!("{} anim {} frame {}", sprite_name(b, id), s.anim, s.frame),
+                None => "no sprite".to_string(),
+            };
+            let mut notes = Vec::new();
+            if o.flags & flags::VISIBLE == 0 {
+                notes.push("not visible".to_string());
+            }
+            if o.flags & flags::NO_SPRITE_UPDATE != 0 {
+                notes.push("sprite held (not drawn)".to_string());
+            }
+            let l = s.look;
+            notes.push(format!("palette {} shadow {:?} priority {}", l.palette, l.shadow, l.priority));
+            for (on, what) in [(l.hflip, "hflip"), (l.vflip, "vflip"), (l.white, "white")] {
+                if on {
+                    notes.push(what.to_string());
+                }
+            }
+            if l.color_shader != 0 {
+                notes.push(format!("shader {:#06x}", l.color_shader));
+            }
+            if let Some(a) = l.alpha {
+                notes.push(format!("alpha {a}"));
+            }
+            if let Some(m) = l.mosaic {
+                notes.push(format!("mosaic {m}"));
+            }
+            if l.hidden_parts != 0 {
+                notes.push(format!("hidden parts {:#010x}", l.hidden_parts));
+            }
+            if o.chips_held != 0 {
+                let hud = b.chip_hud_for(o.alliance);
+                notes.push(format!("{} chips (icons {}, window {})", o.chips_held, hud.icons, hud.window));
+            }
+            lines.push(format!(
+                "{:?} {:2} {} side {} at ({}, {}) ground {}: {sprite}; {}",
+                r.pool,
+                r.slot,
+                b.content.defs.kind(o.kind).key,
+                o.alliance,
+                p.x,
+                p.y,
+                p.ground,
+                notes.join(", ")
+            ));
+        }
+    }
+    lines
+}
+
+/// Queue every visible object's sprite. What an object names that the
+/// pack's graphics don't have goes to `problems`.
+pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut SpriteList<'a>, problems: &mut Problems) {
     for pool in Pool::ALL {
         for r in b.objects.in_order().filter(|r| r.pool == pool) {
             let o = b.objects.get(r);
@@ -157,11 +240,33 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
             if o.flags & flags::VISIBLE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
                 continue;
             }
+            // An effect the game spawns without a position (the second
+            // explosion of a deletion) has memory addresses for X and Y:
+            // far off the screen.
+            if bn6_battle::kinds::effect::xy_unknown(b, r) {
+                continue;
+            }
             let s = b.objects.sprite(r);
             let Some(id) = s.id else { continue };
-            let Some(sheet) = assets.sprite(id.category, id.index) else { continue };
-            let Some(frames) = sheet.animations.get(s.anim as usize) else { continue };
-            let Some(frame) = frames.get(s.frame as usize).or(frames.last()) else { continue };
+            let kind = || &b.content.defs.kind(o.kind).key;
+            let Some(sheet) = assets.sprite(id.category, id.index) else {
+                problems.note(format!("{} of kind {:?} is not in the pack's graphics", sprite_name(b, id), kind()));
+                continue;
+            };
+            let Some(frames) = sheet.animations.get(s.anim as usize) else {
+                problems.note(format!(
+                    "{} has no animation {} (kind {:?}; it has {})",
+                    sprite_name(b, id),
+                    s.anim,
+                    kind(),
+                    sheet.animations.len()
+                ));
+                continue;
+            };
+            let Some(frame) = frames.get(s.frame as usize).or(frames.last()) else {
+                problems.note(format!("{} animation {} has no frames (kind {:?})", sprite_name(b, id), s.anim, kind()));
+                continue;
+            };
             let parts = &sheet.part_lists[frame.parts as usize];
             let tiles = &sheet.tilesets[frame.tileset as usize];
             let look = s.look;
@@ -189,17 +294,22 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
             mask &= !look.hidden_parts;
 
             let first_palette = parts.first().map(|p| p.palette).unwrap_or(0);
-            // A form overlay shows white with its owner (measured; the
-            // overlay itself doesn't run while the battle is paused).
-            let form_overlay = is(b, o, EngineKind::FormOverlay);
-            let owner_white = || form_overlay && o.related[0].is_some_and(|w| b.objects.sprite(w).look.white);
-            let palette = if look.white && !form_overlay || owner_white() {
+            let palette = if look.white {
                 WHITE
             } else {
-                let p = sheet.palette_sets[frame.palette_set as usize]
-                    .get(look.palette.wrapping_add(first_palette) as usize)
-                    .copied()
-                    .unwrap_or([0; 16]);
+                let set = &sheet.palette_sets[frame.palette_set as usize];
+                let index = look.palette.wrapping_add(first_palette) as usize;
+                let p = set.get(index).copied().unwrap_or_else(|| {
+                    problems.note(format!(
+                        "{} has no palette {index} (kind {:?} asks for {} on animation {}; the set has {})",
+                        sprite_name(b, id),
+                        kind(),
+                        look.palette,
+                        s.anim,
+                        set.len()
+                    ));
+                    [0; 16]
+                });
                 shade(p, look.color_shader)
             };
 
@@ -260,6 +370,19 @@ mod tests {
     }
 
     #[test]
+    fn a_shake_moves_the_mirrored_view_the_same_way() {
+        // The camera 3 pixels right and 2 down: everything moves left and up
+        // on both consoles; the HUD's pieces move right on the mirrored one.
+        let pos = ((-60) << 16, 28 << 16, 0);
+        let shaken = View { camera: (3 << 16, 2 << 16, 0), mirror: false };
+        assert_eq!(project(pos, &shaken), Projected { x: 57, ground: 106, y: 106 });
+        assert_eq!(project_hud(pos, &shaken).x, 57);
+        let mirrored = View { mirror: true, ..shaken };
+        assert_eq!(project(pos, &mirrored), Projected { x: 177, ground: 106, y: 106 });
+        assert_eq!(project_hud(pos, &mirrored), Projected { x: 183, ground: 106, y: 106 });
+    }
+
+    #[test]
     fn deeper_and_later_parts_come_first() {
         let tiles = bn6_assets::Tiles::default();
         let part = |x: u16| SpritePart {
@@ -281,7 +404,11 @@ mod tests {
         list.insert_group(vec![(2, 100, part(1)), (2, 100, part(2))]);
         list.insert_group(vec![(2, 150, part(3)), (3, 0, part(4))]);
         list.insert_group(vec![(2, 100, part(5)), (2, 999, part(6)), (2, 100, part(7))]);
+        // The HUD's own: a banner in the front layer, an icon among the
+        // field's sprites by its bucket.
+        list.insert_at(0, 0, vec![part(8), part(9)]);
+        list.insert_at(2, 120, vec![part(10)]);
         let order: Vec<u16> = list.into_parts().iter().map(|p| p.x).collect();
-        assert_eq!(order, vec![3, 5, 2, 1, 4]);
+        assert_eq!(order, vec![8, 9, 3, 10, 5, 2, 1, 4]);
     }
 }
