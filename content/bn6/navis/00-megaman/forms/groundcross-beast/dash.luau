@@ -30,7 +30,7 @@ local ACCELERATION = 0x1_0000
 -- Where the navi waits while off the field, 16.16.
 local OFF_FIELD_X = 0xDC_0000
 
--- How high the dash's hits ride, 16.16.
+-- How high the dash's first hit rides, 16.16.
 local HIT_Z = 0x18_0000
 
 local SOUND_DASH, SOUND_RUMBLE = asset.sound("ground-beast-dash"), asset.sound("ground-beast-dash-2")
@@ -84,7 +84,9 @@ local function wind_up(me: Object, s: State)
     me:reserve_panel(me.panel_x, me.panel_y)
     local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
     dash_hit.spawn(me, me.attack_element, damage, 0, false, HIT_Z)
-    dash_hit.spawn(me, me.attack_element, damage, 1, false, HIT_Z)
+    -- (The second's height is what the first spawn left in its register:
+    -- the attack's element byte, a fraction of a pixel.)
+    dash_hit.spawn(me, me.attack_element, damage, 1, false, me.attack_element)
     me.step = DASH
     me.step_init = 0
 end
