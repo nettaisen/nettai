@@ -390,6 +390,14 @@ fn assets() -> bn6_content_api::AssetNames {
         ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
         ("erase-beam", sprite(0x10, 0x51)),
+        ("impact", sprite(0x14, 0x01)),
+        ("bat-impact", sprite(0x14, 0x07)),
+        ("shot-impact", sprite(0x14, 0x0C)),
+        ("shell-burst", sprite(0x14, 0x11)),
+        ("beast-shot", sprite(0x0C, 0x21)),
+        ("bow", sprite(0x0C, 0x2A)),
+        ("lil-boiler", sprite(0x04, 0x0D)),
+        ("voodoo-doll", sprite(0x0C, 0x34)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -417,6 +425,11 @@ fn assets() -> bn6_content_api::AssetNames {
         ("junk-shot", 0xFF),
         ("gundels1", 0xF8),
         ("bonus", 0x157),
+        ("twang", 0x18A),
+        ("boiler-erupt", 0x184),
+        ("boiler-steam", 0x185),
+        ("err-select-91", 0x91),
+        ("hit-bomb-0", 0x6F),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -475,6 +488,7 @@ pub fn scripts() -> Scripts {
                 ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
                 ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
                 ("objects/projectile/projectile", "objects/projectile/projectile"),
+                ("objects/projectile/variants", "objects/projectile/variants"),
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
                 // MegaMan's buster, charged and blank shots and HeatCross's
@@ -556,6 +570,13 @@ pub fn scripts() -> Scripts {
                 ("chips/grasseed/chip", "chips/grasseed/chip"),
                 ("chips/iceseed/chip", "chips/iceseed/chip"),
                 ("chips/poisseed/chip", "chips/poisseed/chip"),
+                ("chips/lilbolr/chips", "chips/lilbolr/chips"),
+                ("chips/lilbolr/boiler", "chips/lilbolr/boiler"),
+                ("chips/lilbolr/layer", "chips/lilbolr/layer"),
+                ("chips/vdoll/chip", "chips/vdoll/chip"),
+                ("chips/vdoll/doll", "chips/vdoll/doll"),
+                ("chips/vdoll/curse", "chips/vdoll/curse"),
+                ("chips/vdoll/sparkles", "chips/vdoll/sparkles"),
                 ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
                 ("chips/00e-bees/chip", "chips/025-rskyhny1/chip"),
                 ("objects/honey-bee/honey_bee", "objects/honey-bee/honey_bee"),
@@ -732,8 +753,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("justice-one", Pool::Attack, 0xAE, "objects/justice-one/justice_one"),
         kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
-        kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
-        kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
         kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
         kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
