@@ -2,7 +2,7 @@
 //! the ROM; the HUD tasks (`sub_801BF64`) copy it to VRAM as needed.
 
 use crate::{Rom, u32at};
-use bn6_assets::{BannerLayout, ChipIcon, Hud, MapEntry, Palette, Tiles, palettes_from_bytes};
+use bn6_assets::{BannerLayout, ChipIcon, Hud, MapEntry, NaviMugshot, Palette, Tiles, palettes_from_bytes};
 use bn6_content::names::AssetNames;
 
 /// HUD layer tiles 0x1A0..=0x1D1: HP digits and blank, the box border,
@@ -36,6 +36,18 @@ const MUGSHOT_PALETTES: u32 = 0x0872_F114;
 /// Count box with n = 10 - i at + 0x80 * i, and the plain box.
 const COUNTS: u32 = 0x0872_E994;
 const COUNT_BOX: u32 = 0x0872_D914;
+/// The link navis' mugshots (`sub_801CC34`): six faces of 0x100 bytes,
+/// the box beside them, two palettes a face (normal, angry), and the face
+/// of each navi from navi 1 on (`byte_801CDDC`).
+const NAVI_MUGSHOTS: u32 = 0x0872_D094;
+const NAVI_MUGSHOT_COUNT: u32 = 6;
+const NAVI_BOX: u32 = 0x0872_D014;
+const NAVI_MUGSHOT_PALETTES: u32 = 0x0872_D694;
+const NAVI_MUGSHOT_OF: u32 = 0x0801_CDDC;
+const LINK_NAVIS: usize = 11;
+/// "PAUSE" (`off_801E188`): a 32x16 sprite's eight tiles and an 8x16
+/// one's two.
+const PAUSE: u32 = 0x086E_611C;
 /// Mugshot emotion by transformation (`byte_801E700`).
 const FORM_EMOTIONS: u32 = 0x0801_E700;
 /// Banner descriptors (`pt_801EF84`: every banner up to the navis' win
@@ -67,7 +79,9 @@ fn banner(rom: &Rom, id: u32) -> BannerLayout {
     let (x, y, kind) = (head as u8, (head >> 8) as u8, (head >> 16) as u8);
     let mut glyphs = Tiles::default();
     let mut number_at = None;
-    if kind <= 2 {
+    // Kind 3 (the telops) has no glyphs; kind 4 (the judge's) has them
+    // like the plain ones.
+    if kind <= 2 || kind == 4 {
         // 20 glyph pointers; once the filler shows up it repeats.
         let mut q = p + 4;
         for _ in 0..20 {
@@ -104,6 +118,14 @@ pub fn hud(rom: &Rom, names: &AssetNames) -> Hud {
     let blank = tiles(rom, BANNER_FILLER, 0x40);
     banner_digits.push(blank.get(0).unwrap());
     banner_digits.push(blank.get(1).unwrap());
+    // "PAUSE" as five glyphs: the first four are the 32x16 sprite's
+    // columns (its tiles go row by row), the fifth the 8x16 sprite.
+    let pause_tiles = tiles(rom, PAUSE, 0x140);
+    let mut pause = Tiles::default();
+    for (top, bottom) in [(0, 4), (1, 5), (2, 6), (3, 7), (8, 9)] {
+        pause.push(pause_tiles.get(top).unwrap());
+        pause.push(pause_tiles.get(bottom).unwrap());
+    }
     Hud {
         tiles: hud_tiles,
         first_tile: 0x1A0,
@@ -132,6 +154,15 @@ pub fn hud(rom: &Rom, names: &AssetNames) -> Hud {
         counts: (0..=10u32).map(|n| tiles(rom, COUNTS + 0x80 * (10 - n), 0x80)).collect(),
         count_box: tiles(rom, COUNT_BOX, 0x80),
         form_emotions: rom.bytes(FORM_EMOTIONS, 25).to_vec(),
+        navi_mugshots: (0..NAVI_MUGSHOT_COUNT)
+            .map(|n| NaviMugshot {
+                tiles: tiles(rom, NAVI_MUGSHOTS + 0x100 * n, 0x100),
+                palettes: std::array::from_fn(|k| palette(rom, NAVI_MUGSHOT_PALETTES + 0x40 * n + 0x20 * k as u32)),
+            })
+            .collect(),
+        navi_mugshot_of: rom.bytes(NAVI_MUGSHOT_OF, LINK_NAVIS).to_vec(),
+        navi_box: tiles(rom, NAVI_BOX, 0x80),
+        pause,
         banners: (0..BANNER_COUNT).map(|id| banner(rom, id)).collect(),
         banner_digits,
         banner_palette: palette(rom, BANNER_PALETTE),

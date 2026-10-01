@@ -14,12 +14,12 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use bn6_assets::{BannerLayout, ChipIcon, Hud, MapEntry, Palette, Tiles};
+use bn6_assets::{BannerLayout, ChipIcon, Hud, MapEntry, NaviMugshot, Palette, Tiles};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub const FORMAT: &str = "bn6-content/hud";
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 
@@ -54,6 +54,14 @@ pub struct HudDoc {
     /// The count box showing 0..=10, then without a number.
     pub counts: TileImage,
     pub form_emotions: Vec<u8>,
+    /// The link navis' mugshots, each with its two palettes (normal,
+    /// angry); which a navi shows, by the navi's number less one; and the
+    /// box beside them.
+    pub navi_mugshots: Vec<TileImage>,
+    pub navi_mugshot_of: Vec<u8>,
+    pub navi_box: TileImage,
+    /// "PAUSE": five glyphs (shown with the opponents' HP digits' palette).
+    pub pause: TileImage,
     /// Banners by banner id / 4.
     pub banners: Vec<BannerDoc>,
     pub banner_digits: TileImage,
@@ -122,6 +130,16 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
             image(&file, t, Layout::Blocks { width: 4, height: 2, columns: 1 }, &[*p], 1)
         })
         .collect();
+    let face = Layout::Blocks { width: 4, height: 2, columns: 1 };
+    let navi_mugshots = h
+        .navi_mugshots
+        .iter()
+        .enumerate()
+        .map(|(i, m)| image(&format!("mugshots/link-navi-{i}.png"), &m.tiles, face, &m.palettes, 2))
+        .collect();
+    let navi0 = h.navi_mugshots.first().map(|m| m.palettes[0]).unwrap_or([0; 16]);
+    let navi_box = image("navi-box.png", &h.navi_box, icon, &[navi0], 0);
+    let pause = image("pause.png", &h.pause, GLYPHS(5), &[h.enemy_palette], 0);
     let mut counts: Vec<&Tiles> = h.counts.iter().collect();
     counts.push(&h.count_box);
     let mug0 = h.mugshots.first().map(|m| m.1).unwrap_or([0; 16]);
@@ -164,6 +182,10 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         mugshots,
         counts,
         form_emotions: h.form_emotions.clone(),
+        navi_mugshots,
+        navi_mugshot_of: h.navi_mugshot_of.clone(),
+        navi_box,
+        pause,
         banners,
         banner_digits,
         waiting,
@@ -213,6 +235,17 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         let (t, p) = img(m, report)?;
         mugshots.push((t, p[0]));
     }
+    let mut navi_mugshots = Vec::new();
+    for m in &doc.navi_mugshots {
+        let (tiles, p) = img(m, report)?;
+        let (Some(&normal), Some(&angry)) = (p.first(), p.get(1)) else {
+            report.error(&name, format!("{} needs two palettes (normal, angry)", m.file));
+            return None;
+        };
+        navi_mugshots.push(NaviMugshot { tiles, palettes: [normal, angry] });
+    }
+    let (navi_box, _) = img(&doc.navi_box, report)?;
+    let (pause, _) = img(&doc.pause, report)?;
     let slice = |t: &Tiles, from: usize, n: usize| Tiles { pixels: t.pixels[from * Tiles::TILE..(from + n) * Tiles::TILE].to_vec() };
     let map = |v: &[String], report: &mut Report| -> Vec<MapEntry> {
         v.iter()
@@ -257,6 +290,10 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         counts: (0..counts.len() / 4 - 1).map(|i| slice(&counts, 4 * i, 4)).collect(),
         count_box: slice(&counts, counts.len() - 4, 4),
         form_emotions: doc.form_emotions.clone(),
+        navi_mugshots,
+        navi_mugshot_of: doc.navi_mugshot_of.clone(),
+        navi_box,
+        pause,
         banners,
         banner_digits,
         banner_palette: banner_pal[0],

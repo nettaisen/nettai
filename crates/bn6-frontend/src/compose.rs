@@ -20,12 +20,14 @@ pub struct Layer {
     pub priority: u8,
     /// Breaks ties between layers of equal priority (lower is in front).
     pub order: u8,
+    /// The palettes it draws with (which fades reach it).
+    pub palettes: Palettes,
     pub pixels: Vec<u16>,
 }
 
 impl Layer {
     pub fn new(priority: u8, order: u8) -> Layer {
-        Layer { priority, order, pixels: vec![CLEAR; PIXELS] }
+        Layer { priority, order, palettes: Palettes::Stage, pixels: vec![CLEAR; PIXELS] }
     }
 
     pub fn clear(&mut self) {
@@ -91,19 +93,30 @@ pub enum Fade {
     White(u8),
 }
 
-/// Screen-wide fades: `layers` fades the tile layers and the backdrop only
-/// (a background palette fade; sprites keep their colours), `screen`
-/// everything.
+/// Screen-wide fades. The original fades palettes: `stage` is a fade of the
+/// background palettes the stage draws with (the background, the field and
+/// the backdrop), `hud` one of the HUD layer's, `screen` one of every
+/// palette, the sprites' too. Sprites keep their colours through the first
+/// two.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Fades {
-    pub layers: Fade,
+    pub stage: Fade,
+    pub hud: Fade,
     pub screen: Fade,
+}
+
+/// Which palettes a layer draws with, for [`Fades`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Palettes {
+    #[default]
+    Stage,
+    Hud,
 }
 
 /// Combine layers and sprite parts (in hardware order: earlier parts are
 /// in front) into a BGR555 frame.
 pub fn compose(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fades) -> Vec<u16> {
-    let backdrop = apply_fade(backdrop, fades.layers);
+    let backdrop = apply_fade(backdrop, fades.stage);
     // The sprite layer: per pixel the frontmost sprite's colour.
     let mut obj = vec![CLEAR; PIXELS];
     let mut obj_prio = vec![4u8; PIXELS];
@@ -130,7 +143,11 @@ pub fn compose(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fa
         for l in layers {
             let c = l.pixels[i];
             if c != CLEAR {
-                consider((l.priority, 1 + l.order), apply_fade(c, fades.layers));
+                let fade = match l.palettes {
+                    Palettes::Stage => fades.stage,
+                    Palettes::Hud => fades.hud,
+                };
+                consider((l.priority, 1 + l.order), apply_fade(c, fade));
             }
         }
         let mut c = first.2;
@@ -310,6 +327,26 @@ mod tests {
         let out = compose(0, &[], &[p], Fades::default());
         assert_eq!(out[0], 15);
         assert_eq!(blend(0x7FFF, 0, 16), 0x7FFF);
+    }
+
+    #[test]
+    fn a_stage_fade_leaves_the_hud_layer_and_the_sprites() {
+        let t = solid_tiles(1, 1);
+        let mut stage = Layer::new(2, 2);
+        stage.pixels[0] = 0x7FFF;
+        stage.pixels[1] = 0x7FFF;
+        let mut hud = Layer::new(1, 3);
+        hud.palettes = Palettes::Hud;
+        hud.pixels[1] = 0x7FFF;
+        let parts = [part(&t, 2, 0, 2, 0x7FFF)];
+        let fades = Fades { stage: Fade::Black(4), ..Fades::default() };
+        let out = compose(0x7FFF, &[&hud, &stage], &parts, fades);
+        // 31 - (31 * 4 >> 4) = 24 a channel.
+        let dimmed = 24 | 24 << 5 | 24 << 10;
+        assert_eq!(out[0], dimmed);
+        assert_eq!(out[1], 0x7FFF);
+        assert_eq!(out[2], 0x7FFF);
+        assert_eq!(out[20], dimmed, "the backdrop is the stage's");
         assert_eq!(apply_fade(0x7FFF, Fade::Black(16)), 0);
         assert_eq!(to_rgb(0x7FFF), 0xFFFFFF);
     }

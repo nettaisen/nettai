@@ -26,11 +26,12 @@ const FULL: u16 = bn6_battle::hud::CustomGauge::FULL;
 pub struct HudState {
     hp: Option<RollingHp>,
     enemies: Vec<EnemyHp>,
-    /// Counts draws (drives the full gauge's animation; wraps at 0x70).
+    /// The HUD's animation counter (`eStruct2035280` +0): "Cstmzing..."
+    /// counts it from 0 around 0x40 while it waits, and every draw of the
+    /// full gauge counts it on, around 0x70 (`sub_801CA28`, `sub_801C4E4`).
+    /// The full gauge's stripes and its "L or R" go by it, from wherever
+    /// the last wait left it.
     frame: u8,
-    /// The chip name window is on: the idle controller's entry shows it
-    /// (`sub_801DA48`), using a chip hides it.
-    chip_name: bool,
     /// The mugshot's mood and its change blink.
     mood: Option<Mood>,
     /// As of the previous tick: whether the round was decided (the HUD
@@ -106,8 +107,12 @@ fn roll(shown: u16, target: u16, extra: u16) -> u16 {
 impl HudState {
     /// Follow one tick of the battle.
     pub fn tick(&mut self, b: &Battle) {
-        self.frame = (self.frame + 1) % 0x70;
         (self.was_over, self.gauge_was_on) = (self.is_over, self.gauge_is_on);
+        if let Some(n) = waiting_ticks(b) {
+            self.frame = (n & 0x3F) as u8;
+        } else if gauge_shown(b, self) && b.gauge.value >= FULL && !b.late_turns() {
+            self.frame = if self.frame + 1 >= 0x70 { 0 } else { self.frame + 1 };
+        }
         if let Some(r) = b.player(b.setup.local_side) {
             let now = mood_index(b, r);
             let m = self.mood.get_or_insert(Mood { now, before: now, blink: 0, flash: false });
@@ -121,18 +126,6 @@ impl HudState {
             }
         }
         (self.is_over, self.gauge_is_on) = (decided(b), b.gauge.enabled);
-        if let Some(r) = b.player(b.setup.local_side) {
-            let o = b.objects.get(r);
-            if bn6_battle::kinds::player::navi_action(b, r) == bn6_battle::kinds::player::NaviAction::Idle
-                && (o.phase != 0 || o.phase_init != 0)
-            {
-                self.chip_name = true;
-            }
-            let using_chip = o.actor.is_some_and(|a| b.actors.get(a).status & status::CHIP_IN_PROGRESS != 0);
-            if using_chip || b.round.mode != mode::FIGHTING || decided(b) {
-                self.chip_name = false;
-            }
-        }
         let local = b.setup.local_side;
         // The local navi's HP box.
         if let Some(r) = b.player(local) {
@@ -213,6 +206,18 @@ fn custom_open(b: &Battle) -> bool {
     b.round.mode == mode::CUSTOM && b.custom.sides[b.setup.local_side as usize].in_custom
 }
 
+/// While the local player's result is sent and the opponent's isn't in:
+/// the ticks "Cstmzing..." has been up (`sub_801E474` starts it).
+fn waiting_ticks(b: &Battle) -> Option<u32> {
+    let sent = b.custom.sides[b.setup.local_side as usize].sent.as_ref()?;
+    (b.round.mode == mode::CUSTOM && !b.custom.committed).then(|| b.round.ticks.saturating_sub(sent.sent_at + 1))
+}
+
+/// Whether the custom gauge is drawn.
+fn gauge_shown(b: &Battle, state: &HudState) -> bool {
+    (b.gauge.enabled || state.gauge_was_on) && !state.was_over && !custom_open(b) && !transform_hides(b).1
+}
+
 /// Whether the round has been decided (the HUD thins out).
 fn decided(b: &Battle) -> bool {
     b.round.top == top::END
@@ -269,7 +274,7 @@ pub fn draw<'a>(
     }
 
     // Custom gauge, top centre.
-    if (b.gauge.enabled || state.gauge_was_on) && !state.was_over && !open && !hide_boxes {
+    if gauge_shown(b, state) {
         let pal = &hud.gauge_palette;
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
             put(layer, hud, pal, e, 6 + (i as i32 % 18), i as i32 / 18);
@@ -298,14 +303,64 @@ pub fn draw<'a>(
 
     // "Cstmzing...": once the local player's result is sent, while waiting
     // for the opponent's; it blinks every 32 frames.
-    let sent = b.custom.sides[local as usize].sent.as_ref().filter(|_| b.round.mode == mode::CUSTOM);
-    if let Some(n) = sent.map(|s| b.round.ticks.saturating_sub(s.sent_at + 1)) {
-        if !b.custom.committed && (n / 32) % 2 == 0 {
-            for i in 0..16usize {
-                if let Some(t) = hud.waiting.get(i) {
-                    layer.draw_tile(t, &hud.waiting_palette, (22 + (i % 8) as i32) * 8, (4 + (i / 8) as i32) * 8, false, false);
+    if waiting_ticks(b).is_some_and(|n| (n / 32) % 2 == 0) {
+        for i in 0..16usize {
+            if let Some(t) = hud.waiting.get(i) {
+                layer.draw_tile(t, &hud.waiting_palette, (22 + (i % 8) as i32) * 8, (4 + (i / 8) as i32) * 8, false, false);
+            }
+        }
+    }
+
+    // "????" beside the mugshot while the local side has a defensive chip
+    // set (a trap, a barrier chip's record), and at the right edge while
+    // the other side has (`sub_801C984`, `sub_801C9A4`: four '?' of the
+    // HUD layer's tiles).
+    if !open && !hide_boxes {
+        let pal = &hud.hp_palettes[colour.min(2)];
+        for (side, column) in [(local, 6), (local ^ 1, 26)] {
+            if b.linked[side as usize & 1].chip.is_none() {
+                continue;
+            }
+            for i in 0..8i32 {
+                let e = MapEntry { tile: 0x1CC + (i / 4) as u16, hflip: false, vflip: false, palette: 13 };
+                put(layer, hud, pal, e, column + i % 4, 2 + i / 4);
+            }
+        }
+    }
+
+    // The judge's numbers under its banner: the damage each side dealt,
+    // the local side's on the left, around "VS" (`sub_801D048`: the HUD
+    // layer's damage digits, the left number ending at column 13, the
+    // right one starting at column 17), until the banner slides out.
+    if b.banner_for(local).is_some_and(|id| hud.banners.get(id.0 as usize / 4).is_some_and(|l| l.kind == 4))
+        && b.banner.step < 8
+    {
+        let pal = &hud.hp_palettes[0];
+        let j = &b.fight.judge;
+        // While the digits roll the numbers are random; then the damage
+        // the other side took and the local side took.
+        let rolling = j.step == 4 && j.sub == 4;
+        let taken = |side: u8| j.damage[1 - (side as usize & 1)];
+        let (left, right) = if rolling { (j.rolled[0], j.rolled[1]) } else { (taken(local ^ 1), taken(local)) };
+        let digit = |layer: &mut Layer, d: u8, col: i32| {
+            for half in 0..2u16 {
+                let e = MapEntry { tile: 0x1B8 + 2 * (d - b'0') as u16 + half, hflip: false, vflip: false, palette: 13 };
+                put(layer, hud, pal, e, col, 5 + half as i32);
+            }
+        };
+        let left = left.min(9999).to_string();
+        for (i, d) in left.bytes().enumerate() {
+            digit(layer, d, 13 - left.len() as i32 + i as i32);
+        }
+        for (i, c) in hud.glyphs("VS").0.into_iter().enumerate() {
+            for half in 0..2 {
+                if let Some(t) = hud.font.get(2 * c as usize + half) {
+                    layer.draw_tile(t, pal, (14 + i as i32) * 8, (5 + half as i32) * 8, false, false);
                 }
             }
+        }
+        for (i, d) in right.min(9999).to_string().bytes().enumerate() {
+            digit(layer, d, 17 + i as i32);
         }
     }
 
@@ -314,7 +369,7 @@ pub fn draw<'a>(
     if let Some(r) = player {
         let o = b.objects.get(r);
         let hand = &b.hands[local as usize];
-        if state.chip_name
+        if b.chip_hud_for(local).window
             && o.chips_held != 0
             && let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten()
         {
@@ -322,24 +377,32 @@ pub fn draw<'a>(
         }
     }
 
-    // Sprites: the banner in front, then the mugshot, the opponents' HP
-    // and the chip icons (all in front of the field's sprites).
-    let mut group = Vec::new();
-    if let Some(id) = b.banner_for(local) {
-        match b.telop_for(local) {
-            Some(telop) => telop_parts(b, hud, id.0, telop, &mut group, problems),
-            None => banner_parts(b, hud, id.0, &mut group, problems),
+    // Sprites, in the HUD tasks' order (`sub_801BF64`), each where its task
+    // puts it among the sprite layers: the chip icons and the opponents' HP
+    // among the field's sprites, by depth bucket (an object low on the
+    // screen covers them); the mugshot, the banner and the other player's
+    // chip name in the front layer.
+    if !state.was_over {
+        // In a netbattle the other player's navi has no icons: its entry is
+        // taken out as it is set up (`sub_80172F0`), and again whenever the
+        // local navi's status is reset (`sub_80144C0`).
+        let link = b.setup.settings.effects & bn6_battle::setup::effects::LINK != 0;
+        for side in 0..2u8 {
+            if let Some(r) = b.player(side).filter(|_| side == local || !link) {
+                icon_parts(b, hud, r, &view, list, problems);
+            }
         }
     }
-    if let Some(r) = player.filter(|_| !state.was_over && !hide_mugshot) {
-        mugshot_parts(b, hud, state, r, if open { 120 } else { 0 }, &mut group);
-    }
+    let mut group = Vec::new();
     for e in &state.enemies {
+        // Under the navi wherever its position is on the screen, seen or
+        // not (`sub_801C202` asks `sub_800362C`): a navi that blinks after
+        // a hit or is invisible keeps its number.
         let o = b.objects.get(e.object);
-        if o.flags & flags::VISIBLE == 0 {
+        let p = project((o.pos.x, o.pos.y, o.pos.z), &view);
+        if !on_screen(p) {
             continue;
         }
-        let p = project((o.pos.x, o.pos.y, o.pos.z), &view);
         let n = e.shown.to_string().len() as i32;
         let digits = &hud.enemy_digits[e.colour.min(2) as usize];
         for (k, d) in digits4(e.shown).into_iter().enumerate() {
@@ -349,15 +412,53 @@ pub fn draw<'a>(
             group.push(glyph(digits, d, hud.enemy_palette, p.x + 4 * n - 32 + 8 * k as i32, p.y, 2, None));
         }
     }
-    if !state.was_over {
-        for side in 0..2u8 {
-            if let Some(r) = b.player(side) {
-                icon_parts(b, hud, r, side == local, &view, &mut group, problems);
-            }
-        }
+    list.insert_at(FIELD_LAYER, HP_BUCKET, group);
+    // The emotion window flickers out on two ticks of every flicker
+    // (`sub_801CDEC`).
+    let flicker = b.consoles[local as usize & 1].emotion_window.flicker_ticks;
+    if let Some(r) = player.filter(|_| !state.was_over && !hide_mugshot && !matches!(flicker, 5 | 6)) {
+        let mut group = Vec::new();
+        mugshot_parts(b, hud, state, r, if open { 120 } else { 0 }, &mut group, problems);
+        list.insert_at(FRONT_LAYER, 0, group);
     }
-    list.insert_front(group);
+    if let Some(id) = b.banner_for(local) {
+        let mut group = Vec::new();
+        let bucket = match b.telop_for(local) {
+            Some(telop) => {
+                telop_parts(b, hud, id.0, telop, &mut group, problems);
+                NAME_BUCKET
+            }
+            None => {
+                banner_parts(b, hud, id.0, &mut group, problems);
+                0
+            }
+        };
+        list.insert_at(FRONT_LAYER, bucket, group);
+    }
+    if let Some(used) = b.used_chip_for(local) {
+        let mut group = Vec::new();
+        used_chip_parts(b, hud, used, &mut group, problems);
+        list.insert_at(FRONT_LAYER, NAME_BUCKET, group);
+    }
+    // "PAUSE" in the middle while a player holds the battle (`sub_801C9E4`:
+    // a 32x16 and an 8x16 sprite at (100, 63), in the opponents' HP
+    // digits' palette).
+    if b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE {
+        let group = (0..5).map(|k| glyph(&hud.pause, k, hud.enemy_palette, 100 + 8 * k as i32, 63, 0, None)).collect();
+        list.insert_at(FRONT_LAYER, NAME_BUCKET, group);
+    }
 }
+
+/// The sprite layers the HUD's tasks insert into (`sub_802FE28`'s r2), and
+/// their depth buckets (r3): the front layer's first bucket for the mugshot
+/// and the banners, its bucket 6 for a telop and the other player's chip
+/// name; among the field's sprites, bucket 0xDF for the opponents' HP and
+/// 0xD0 plus the chips left for each chip icon.
+const FRONT_LAYER: usize = 0;
+const FIELD_LAYER: usize = 2;
+const NAME_BUCKET: usize = 6;
+const HP_BUCKET: usize = 0xDF;
+const ICON_BUCKET: usize = 0xD0;
 
 fn put(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, tx: i32, ty: i32) {
     let tile = if e.tile >= hud.gauge_first_tile {
@@ -457,10 +558,33 @@ fn block(tiles: &Tiles, w: u8, h: u8, palette: Palette, x: i32, y: i32) -> Sprit
     SpritePart { width: w, height: h, first_tile: 0, ..glyph(tiles, 0, palette, x, y, 2, None) }
 }
 
-/// The mugshot (by the navi's mood and form) and the count box beside it.
-fn mugshot_parts<'a>(b: &Battle, hud: &'a Hud, state: &HudState, r: ObjectRef, x: i32, out: &mut Vec<SpritePart<'a>>) {
+/// The mugshot (by the navi's mood and form) and the count box beside it;
+/// a link navi's own face (plain, or angry) and the box beside it
+/// (`sub_801CC34`).
+fn mugshot_parts<'a>(
+    b: &Battle,
+    hud: &'a Hud,
+    state: &HudState,
+    r: ObjectRef,
+    x: i32,
+    out: &mut Vec<SpritePart<'a>>,
+    problems: &mut Problems,
+) {
     let side = b.objects.get(r).alliance as usize;
     let stats = &b.stats[side];
+    let navi = b.content.navi_number(stats.navi).0;
+    if navi != 0 {
+        let face = hud.navi_mugshot_of.get(navi as usize - 1).and_then(|&i| hud.navi_mugshots.get(i as usize));
+        let Some(face) = face else {
+            problems.note(format!("navi {navi} has no mugshot in the pack"));
+            return;
+        };
+        let angry = state.mood.map(|m| m.now).unwrap_or_else(|| mood_index(b, r)) == 3;
+        let pal = face.palettes[angry as usize];
+        out.push(block(&face.tiles, 32, 16, pal, x, 18));
+        out.push(block(&hud.navi_box, 16, 16, pal, x + 32, 18));
+        return;
+    }
     let m = state.mood.map(|m| m.shown()).unwrap_or_else(|| mood_index(b, r));
     let mut e = [0u8, 2, 3, 1, 5, 4][m as usize];
     // A Beast Out chosen on the custom screen shows before it happens.
@@ -480,38 +604,42 @@ fn mugshot_parts<'a>(b: &Battle, hud: &'a Hud, state: &HudState, r: ObjectRef, x
     out.push(block(tiles, 16, 16, *pal, x + 32, 18));
 }
 
-/// The chip icons stacked over a navi: the local player sees its next
-/// chip; the opponent's show as hidden.
+/// Whether an object's HUD pieces show (`sub_800362C`): its position
+/// projects onto the screen or its margin.
+fn on_screen(p: crate::objects::Projected) -> bool {
+    (-0x20..0x110).contains(&p.x) && (-0x20..0xE0).contains(&p.y)
+}
+
+/// The chip icons stacked over a navi (`sub_801C082`): its next chip's
+/// icon, once for every chip it holds, wherever the navi's position is on
+/// the screen (seen or not), but not while its navi chip's navi stands in
+/// for it.
 fn icon_parts<'a>(
     b: &Battle,
     hud: &'a Hud,
     r: ObjectRef,
-    local: bool,
     view: &View,
-    out: &mut Vec<SpritePart<'a>>,
+    list: &mut SpriteList<'a>,
     problems: &mut Problems,
 ) {
     let o = b.objects.get(r);
-    if o.flags & flags::VISIBLE == 0 || o.chips_held == 0 {
+    let vanished = o.actor.is_some_and(|a| b.actors.get(a).status & status::VANISHED != 0);
+    if o.chips_held == 0 || vanished || !b.chip_hud_for(o.alliance).icons {
         return;
     }
-    let tiles = if local {
-        let hand = &b.hands[o.alliance as usize];
-        let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten() else { return };
-        // A chip's icon is the pack's image under the chip's key (a record
-        // the pack numbers is found by its number).
-        let def = b.content.defs.chip(chip);
-        match hud.chip_icon(&def.key, def.record.id) {
-            Some(t) => t,
-            None => {
-                problems.note(format!("chip {:?} ({}) has no icon in the pack", def.key, def.record.name));
-                return;
-            }
-        }
-    } else {
-        &hud.hidden_icon
+    let hand = &b.hands[o.alliance as usize];
+    let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten() else { return };
+    // A chip's icon is the pack's image under the chip's key (a record the
+    // pack numbers is found by its number).
+    let def = b.content.defs.chip(chip);
+    let Some(tiles) = hud.chip_icon(&def.key, def.record.id) else {
+        problems.note(format!("chip {:?} ({}) has no icon in the pack", def.key, def.record.name));
+        return;
     };
     let p = project((o.pos.x, o.pos.y, o.pos.z), view);
+    if !on_screen(p) {
+        return;
+    }
     let a = if o.alliance == b.setup.local_side { 1 } else { -1 };
     let f = bn6_battle::kinds::common::facing(o.alliance, o.flip);
     // Attach point 3 of the navi's sprite (player NameIDs 0x1A0..=0x1C3).
@@ -521,13 +649,12 @@ fn icon_parts<'a>(
     } else {
         (8, 48)
     };
-    let (x0, y0) = (p.x + a * (ax * f - 1) - 8, p.ground - ay - 8);
-    // A navi off the field (Beast Out moves it far below) shows none.
-    if !(-16..160).contains(&y0) || !(-16..240).contains(&x0) {
-        return;
-    }
-    for k in 0..o.chips_held.min(6) as i32 {
-        out.push(block(tiles, 16, 16, hud.icon_palette, x0 - 2 * k * a * f, y0 - 2 * k));
+    let (x0, y0) = (p.x + a * (ax * f - 1) - 8, p.y - ay - 8);
+    // The first icon is the front one; each next is a bucket back.
+    let count = o.chips_held.min(6) as i32;
+    for k in 0..count {
+        let icon = block(tiles, 16, 16, hud.icon_palette, x0 - 2 * k * a * f, y0 - 2 * k);
+        list.insert_at(FIELD_LAYER, ICON_BUCKET + (count - k) as usize, vec![icon]);
     }
 }
 
@@ -593,25 +720,55 @@ fn telop_parts<'a>(
             Vec::new()
         }
     };
-    // Digits right to left, as the game's BCD: glyph d of the HUD layer's
-    // damage digits, '+' before a bonus.
-    let digits = |v: u16| -> Vec<usize> { v.to_string().bytes().map(|c| DAMAGE_DIGIT + (c - b'0') as usize).collect() };
-    let damage = if telop.damage != 0 { digits(telop.damage) } else { Vec::new() };
-    let bonus = if telop.damage != 0 && telop.bonus != 0 {
-        std::iter::once(PLUS_GLYPH).chain(digits(telop.bonus)).collect()
-    } else {
-        Vec::new()
+    let numbers = (telop.damage, telop.bonus, telop.doubled);
+    name_parts(hud, layout, name, numbers, telop.remote, Some(banner_scale(b)), out);
+}
+
+/// The chip the other player just used (`sub_801EB18` lays it out as a
+/// telop on the right, `sub_801D1F6` draws it): its name and numbers,
+/// without the banners' squash.
+fn used_chip_parts<'a>(
+    b: &Battle,
+    hud: &'a Hud,
+    used: bn6_battle::hud::UsedChip,
+    out: &mut Vec<SpritePart<'a>>,
+    problems: &mut Problems,
+) {
+    let Some(layout) = hud.banners.get(REMOTE_TELOP / 4) else {
+        problems.note(format!("the telop's banner {REMOTE_TELOP:#04x} is not in the pack"));
+        return;
     };
-    let doubled = telop.doubled && telop.damage != 0;
-    // The name's place: centred as fifteen glyphs are; the other player's
-    // moves over for the "x2".
+    let name = name_glyphs(b, hud, used.chip, problems);
+    name_parts(hud, layout, name, (used.damage, used.bonus, used.doubled), true, None, out);
+}
+
+/// The banner whose place the other player's telop and used chip take.
+const REMOTE_TELOP: usize = 0x50;
+
+/// A chip's name with its numbers (damage, bonus, doubled) as `sub_801E95C`
+/// lays them out from a telop banner's place: centred as fifteen glyphs
+/// are; the other player's (`remote`) moves over for the "x2".
+fn name_parts<'a>(
+    hud: &'a Hud,
+    layout: &bn6_assets::BannerLayout,
+    name: Vec<u16>,
+    (damage, bonus, doubled): (u16, u16, bool),
+    remote: bool,
+    vscale: Option<i32>,
+    out: &mut Vec<SpritePart<'a>>,
+) {
+    // Glyph d of the HUD layer's damage digits, '+' before a bonus.
+    let digits = |v: u16| -> Vec<usize> { v.to_string().bytes().map(|c| DAMAGE_DIGIT + (c - b'0') as usize).collect() };
+    let (damage, bonus, doubled) = match damage {
+        0 => (Vec::new(), Vec::new(), false),
+        d => (digits(d), if bonus != 0 { std::iter::once(PLUS_GLYPH).chain(digits(bonus)).collect() } else { Vec::new() }, doubled),
+    };
     let width = (name.len() + damage.len() + bonus.len()) as i32;
     let mut x = (layout.x as i32 + (15 - width) * 4) & 0xFF;
-    if telop.remote && doubled {
+    if remote && doubled {
         x = (x - 16) & 0xFF;
     }
     let y = layout.y as i32;
-    let vscale = Some(banner_scale(b));
     let pal = hud.hp_palettes[0];
     for c in name {
         out.push(glyph(&hud.font, c as usize, pal, x, y, 0, vscale));
@@ -633,3 +790,98 @@ fn telop_parts<'a>(
 const DAMAGE_DIGIT: usize = (0x1B8 - 0x1A0) / 2;
 const PLUS_GLYPH: usize = (0x1CE - 0x1A0) / 2;
 const TIMES_GLYPH: usize = (0x1D2 - 0x1A0) / 2;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bn6_assets::BannerLayout;
+    use bn6_battle::content::{BannerId, testing};
+    use bn6_battle::hud::{Telop, TelopHidden};
+
+    const CHARS: &str = " 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz?";
+
+    /// A HUD whose font draws `CHARS` (glyph k its kth character) and
+    /// whose telops sit where BN6's do.
+    fn hud() -> Hud {
+        let mut banners = vec![BannerLayout::default(); 21];
+        banners[0x4C / 4] = BannerLayout { x: 0, y: 32, kind: 3, ..BannerLayout::default() };
+        banners[0x50 / 4] = BannerLayout { x: 120, y: 32, kind: 3, ..BannerLayout::default() };
+        Hud {
+            tiles: Tiles { pixels: vec![1; 0x36 * Tiles::TILE] },
+            first_tile: 0x1A0,
+            font: Tiles { pixels: vec![1; 2 * CHARS.len() * Tiles::TILE] },
+            font_chars: CHARS.chars().map(String::from).collect(),
+            banners,
+            ..Hud::default()
+        }
+    }
+
+    fn battle() -> Battle {
+        Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::stats(100)), testing::content())
+    }
+
+    fn glyph_of(c: char) -> usize {
+        2 * CHARS.find(c).unwrap()
+    }
+
+    #[test]
+    fn a_telop_names_the_chip_with_its_damage_and_bonus() {
+        let mut b = battle();
+        let chip = testing::chip_in(&b.content, testing::SUN_GUN_3);
+        assert!(b.start_banner(BannerId(0x4C)));
+        b.banner.telop =
+            Some(Telop { side: 0, chip: Some(chip), damage: 120, doubled: true, bonus: 10, hidden: TelopHidden::No });
+        let hud = hud();
+        let mut problems = Problems::default();
+        // Its user's console: "SunGun3" "120" "+10" is 13 glyphs, centred as
+        // 15 are, then "x2".
+        let mut parts = Vec::new();
+        telop_parts(&b, &hud, 0x4C, b.telop_for(0).unwrap(), &mut parts, &mut problems);
+        let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
+        assert_eq!(xs, (0..15).map(|i| 8 + 8 * i).collect::<Vec<u16>>());
+        assert!(parts.iter().all(|p| p.y == 32 && p.priority == 0 && p.vscale.is_some()));
+        let name: Vec<usize> = parts[..7].iter().map(|p| p.first_tile).collect();
+        assert_eq!(name, "SunGun3".chars().map(glyph_of).collect::<Vec<_>>());
+        // The digits and the signs are the HUD layer's tiles.
+        let after: Vec<usize> = parts[7..].iter().map(|p| p.first_tile).collect();
+        let digit = |d: usize| 2 * (DAMAGE_DIGIT + d);
+        let signs = [2 * PLUS_GLYPH, 2 * TIMES_GLYPH, 2 * TIMES_GLYPH + 2];
+        assert_eq!(after, [digit(1), digit(2), digit(0), signs[0], digit(1), digit(0), signs[1], signs[2]]);
+        // The other player's console: on the right, moved over for the "x2".
+        let mut parts = Vec::new();
+        telop_parts(&b, &hud, 0x50, b.telop_for(1).unwrap(), &mut parts, &mut problems);
+        assert_eq!(parts[0].x, 120 + 8 - 16);
+        assert!(problems.is_empty(), "{:?}", problems.lines());
+    }
+
+    #[test]
+    fn a_hidden_telop_shows_question_marks_to_the_other_player() {
+        let mut b = battle();
+        let chip = testing::chip_in(&b.content, testing::SUN_GUN_3);
+        assert!(b.start_banner(BannerId(0x4C)));
+        let hidden = TelopHidden::FromOpponent;
+        b.banner.telop = Some(Telop { side: 0, chip: Some(chip), damage: 0, doubled: false, bonus: 0, hidden });
+        let hud = hud();
+        let mut problems = Problems::default();
+        let mut parts = Vec::new();
+        telop_parts(&b, &hud, 0x50, b.telop_for(1).unwrap(), &mut parts, &mut problems);
+        assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), [glyph_of('?'); 4]);
+        // Four glyphs centred as fifteen are, from the right banner's place.
+        assert_eq!(parts[0].x, 120 + 44);
+        let mut parts = Vec::new();
+        telop_parts(&b, &hud, 0x4C, b.telop_for(0).unwrap(), &mut parts, &mut problems);
+        assert_eq!(parts.len(), 7, "its user sees the name");
+    }
+
+    #[test]
+    fn a_chip_name_the_font_cannot_write_is_a_problem() {
+        let b = battle();
+        let chip = testing::chip_in(&b.content, testing::SUN_GUN_3);
+        let mut hud = hud();
+        hud.font_chars.retain(|c| c != "G");
+        let mut problems = Problems::default();
+        assert_eq!(name_glyphs(&b, &hud, chip, &mut problems).len(), 6);
+        assert_eq!(problems.len(), 1);
+        assert!(problems.lines()[0].contains("no glyph for ['G']"), "{:?}", problems.lines());
+    }
+}
