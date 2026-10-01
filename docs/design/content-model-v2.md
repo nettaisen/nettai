@@ -429,6 +429,15 @@ A slot is found by the definition's handle, so the ruleset's dispatch is an arra
 were. The specs (`DimmingChipSpec`, `NaviChipSpec`, `InstantChipSpec`) lose `params`, and carry the chip as a
 chip where they carried its id.
 
+**As built** (step 9): the `Hook` table and `Defs::hook` are gone. Registration by number resolves at load into
+the definitions' slots: every chip has its `ChipUsage` (a pack record's from its action, or from its subtype's
+`dimming_chip`, `navi_chip` or `instant_chip` registration; `Unported` for what nothing implements, which fails
+where the original runs it, with the subtype in the error); a weapon that names an instant effect no chip has
+gets it as `WeaponDef::instant`; a v1 kind's `actor_list_entry` is its `place` (`KindDef::place`, which
+`define.kind` also takes). The instant chips' action runs the attack's `instant` effect, which chip use and such
+a weapon set; the dimming and navi chip actions read the chip's usage. Content's function roles
+(`hooks.first_barrier`) are in §7.4.
+
 ## 4. Folder layout
 
 ### 4.1 The rules
@@ -760,10 +769,11 @@ lib/sparks.luau, lib/regions.luau). What it settled:
   the ruleset still name by number keeps the pack's record, and its module gives only the action, with its
   compat key as `id` (`throw.action { id = "poisseed/action", ... }`): PoisSeed, whose number PoisPhar's recipe
   names. Registration by number reaches such records through a shim, chips/036-minibomb/chip.luau, which runs
-  the chip's own action by subtype (and FlshBom's level). Records still reach it: PoisSeed; LilBoiler and
-  VDoll (not ported: they wind up and fail where they throw, as before); the Cross special's MiniBomb, EnergBom
-  and MegEnBom, which the ruleset's table picks by number and so gets the pack's records; and the test
-  content's numbered bombs. The shim goes when those are definitions or roles (step 5, phase C).
+  the chip's own action by subtype (and FlshBom's and LilBoiler's level). Records still reach it: PoisSeed;
+  VDoll (Darkness's recipes name it: as a definition the recipes, which resolve 0x96 to the record, never
+  match a hand's VDoll, and Darkness doesn't form); LilBolr1-3's records; the Cross special's MiniBomb,
+  EnergBom and MegEnBom, which the ruleset's table picks by number and so gets the pack's records; and the
+  test content's numbered bombs. The shim goes when those are definitions or roles (step 5, phase C).
 - **What stays numeric**, having no v2 form yet: statuses (the flash's blinding, the bug bomb's 0x20), bug codes,
   NameIDs (the BlkBomb's 0xD5, the attachment's Cross check) and the absorbed-obstacle kind; the hitbox's
   `hit_effect = 0xFF` ("none"). The ratchet counts what it can see of them.
@@ -774,8 +784,9 @@ lib/sparks.luau, lib/regions.luau). What it settled:
 EnergBom and MegEnBom (a series, one folder) pass `after = energy_burst.leave` from their own
 `chips/energbom/burst.luau`; the bomb kind no longer requires the energy burst. FlshBom1-3 pass their own
 `held_palette` (0, 3, 6: the original's level times three, materialized) and `flash_bomb.thrower` from
-`chips/flshbom/`; the seeds pass `seed.thrower(...)` from `lib/bombs/seed.luau`. LilBoiler and VDoll, `wip()`
-stubs today, become chips whose throwers are written when they are ported; no table has an empty row for them.
+`chips/flshbom/`; the seeds pass `seed.thrower(...)` from `lib/bombs/seed.luau`. LilBolr1-3 (chips/lilbolr,
+definitions) pass `boiler.thrower(level)`; VDoll (chips/vdoll, kept on its record) gives its action,
+`throw.action { id = "vdoll/action", ... }` with `doll.thrower()`.
 
 ### 5.2 Swords: one slash action, per-chip blades and hits
 
@@ -1388,9 +1399,11 @@ defines needs a handle there instead, which is §7.2's table brought forward:
   keeps its slot in its definition (`KindDef::slot`), which the numeric spawns and the validator use; a defined
   kind has none and spawns by handle. `Compat::object_slot` gives the comparison an object's pool and index: the
   definition's slot, else compat's by key.
-- **The navi's action** (step 3, done): a defined action runs by handle (the attack's `content_action`) with the
-  navi's CurAction at `CONTENT_ACTION` (0xFF, above every number the original has), until `NaviAction` replaces
-  the byte (step 9). `Compat::navi_action` gives the comparison the original's number by the action's key.
+- **The navi's action** (step 3; step 9, done): the navi runs a `NaviAction` (its actor data's `navi_action`,
+  not the object's action byte): the framework's states, the ruleset's `EngineAction`s, a content action by
+  handle, or `Unported(n)`. `Compat::navi_action` gives the comparison the original's number: a state as itself,
+  an engine action by its key (`engine/move`...), a content action by its v1 registration's number or its key.
+  `CONTENT_ACTION` (0xFF) is left only as the numeric API's number for an action content defines.
 - **Chips, navis, forms, weapons and stages** (step 3b, done): hands (`ChipHand.ids`, the selection's
   `FolderChip`s), folders, the linked chips, the attack's chip, dimming controllers' chips, `NaviStats` (navi,
   form, starting form, weapons), the actor's weapon slots, transformation requests and battle settings hold
@@ -1456,6 +1469,17 @@ return define.roles {
 `Roles` holds handles; the ruleset reads `b.content.roles.sounds.hit`. Roles are for "the ruleset needs *the*
 X". Where the ruleset asked "is this chip (or form, navi, weapon, action) one of these numbers", the answer is a
 trait on the definition instead (§7.5).
+
+**As built** (steps 4 and 9): content::roles has typed roles, `ActionRole` (the trap counters, the forced charged
+shot, the stun strike, the Cross protect, the turn, the Cross death, the volley, the charged sword, the beast
+claw, DustCross Beast's scatter), `KindRole` (the rock an actor list places, the absorbed obstacle, the falling
+rock, the supports' controller) and `HookRole` (the FirstBarrier). A role names a definition, or, while its
+target is still a v1 registration, that registration through the transitional legacy marker (`{ legacy = {
+action = 0x49 } }`, `{ legacy = { kind = "rock" } }`; counted by the ratchet); a legacy action number nothing
+implements leaves the role `Unported`, and starting it fails as the number did. The charged sword, the beast claw
+and the scatter are roles rather than §7.5's traits: the ruleset recognizes exactly one action each, and a v1
+registration can't carry traits. The engine's test content has its own roles (testdata/content), which the test
+pack replaces.
 
 ### 7.5 The ruleset's numeric call sites and their replacements
 
@@ -1825,7 +1849,9 @@ their uses per module against an allowlist in `bn6-content-check`'s tests that m
 the allowlist with the last use. The engine never reads compat, at any step (§7.3): what content defines
 reaches the traces and the game's setups through `bn6-compat`, which maps the engine's handles.
 
-**Transitional, and when it goes** (from the exemplars, step 7):
+**Transitional, and when it goes** (from the exemplars, step 7, and step 9):
+- **The roles' legacy markers.** rules/roles.luau names the v1 actions and kinds the ruleset needs by their
+  numbers and keys until their families convert them, and then names the definitions (§7.4).
 - **The legacy marker in a v2 definition.** A chip definition may carry `legacy = { subtype, params }`: the
   original's subtype and parameter bytes in its record, for what reads them of a chip besides its own use.
   Counted by the ratchet (the lint matches `legacy = {` and `legacy {`). StepSwrd, FtrSword, CrosSwrd and
@@ -1843,8 +1869,8 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
 - **Registration-by-number shims.** chips/036-minibomb (action 0x12), chips/047-sword (0x13) and
   chips/056-mchnswrd (0x49) run a record's action by its subtype for records something still names by number:
   the Cross special's chips (berserk.rs `CROSS_SPECIAL_CHIPS`: MiniBomb, EnergBom, MegEnBom and swords), the
-  Program Advance recipes' ingredients (PoisSeed, the swords), records not ported (LilBoiler, VDoll), the test
-  content's numbered chips. The 0x12 and 0x13 shims go when the Cross special's list and the recipes go by
+  Program Advance recipes' ingredients (PoisSeed, VDoll, the swords), LilBolr1-3's records (their definitions
+  are the chips), the test content's numbered chips. The 0x12 and 0x13 shims go when the Cross special's list and the recipes go by
   handle (phase C, step 10); the 0x49 one when the stun strike (idle.rs `set_attack(0x49)`) is
   `roles.actions.stun_strike`.
 - **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
@@ -1920,7 +1946,11 @@ family's packet, in gen-content, and checked by `gen-content check`.
 ### Phase C: the ruleset without numbers (parallel with phase B; Rust files only)
 
 9. **Kinds and actions**: `Object.kind`, `EngineKind`, `NaviAction`, the roles of §7.5's first two groups, the
-   `INDEX` constants and `Hook` go. **M.**
+   `INDEX` constants and `Hook` go. **M.** Done: the engine's kinds have no object slot (the validator has them
+   by key) and the INDEX constants went; the ruleset spawns content kinds by `KindRole` and starts or recognizes
+   content actions by `ActionRole` (§7.4); `NaviAction` replaces the navi's action byte (§7.3); the hook table
+   became the definitions' slots (§3.10). The numeric API keeps its numbers (`NaviAction::numbered`, `number`)
+   until step 13.
 10. **Chips**: the hand, folders, the custom screen, chip use, dimming, intake and damage formulas on handles
     and traits. **M.**
 11. **Navis, forms, identities and weapons**: `NaviStats` on handles, the form and navi traits, identities for

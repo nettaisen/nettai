@@ -4,14 +4,15 @@
 -- module, which runs the chip's own action (chips/minibomb,
 -- chips/energbom, ...) picked by the subtype (and FlshBom's level, its
 -- first attack parameter) as the original's `off_80EB6F8` picks the
--- thrower. A chip content defines runs its action without it; records
--- still reach it where something names a chip by number: the pack's
--- PoisSeed (PoisPhar's recipe names it), LilBoiler and VDoll (not ported),
--- MiniBomb, EnergBom and MegEnBom when the Cross special picks them (the
--- ruleset's table of numbers), and the test content's numbered bombs. It
--- goes when those are definitions or roles (step 5, phase C).
+-- thrower (and LilBoiler's level, also its first parameter). A chip
+-- content defines runs its action without it; records still reach it
+-- where something names a chip by number: the pack's PoisSeed (PoisPhar's
+-- recipe names it) and VDoll (Darkness's recipes name it), MiniBomb,
+-- EnergBom and MegEnBom when the Cross special picks them (the ruleset's
+-- table of numbers), LilBolr1-3's records (which nothing names), and the
+-- test content's numbered bombs. It goes when those are definitions or
+-- roles (step 5, phase C).
 
-local bomb = require("../../lib/bombs/bomb")
 local throw = require("../../lib/bombs/throw")
 local minibomb = require("../minibomb/chip")
 local bigbomb = require("../bigbomb/chip")
@@ -22,47 +23,43 @@ local bugbomb = require("../bugbomb/chip")
 local grasseed = require("../grasseed/chip")
 local iceseed = require("../iceseed/chip")
 local poisseed = require("../poisseed/chip")
+local lilbolr = require("../lilbolr/chips")
+local vdoll = require("../vdoll/chip")
 
 local by_number = {
     state = throw.STATE,
 }
 
--- LilBoiler's and VDoll's throws, not ported: they wind up as the original
--- does, and fail when they would throw.
-local function not_ported(name: string): Action
-    return throw.action {
-        held = bomb.held,
-        thrower = {
-            throw = function(_: Object, _: Vec3, _: number): Object?
-                error(name .. " is not ported yet")
-            end,
-        },
-    }
-end
-
 -- The chips' actions by subtype (EnergBom's and MegEnBom's are the same).
 local BY_SUBTYPE: { [number]: Action } = {
     [0x0] = minibomb.action,
     [0x1] = energbom[1].action,
-    [0x3] = not_ported("LilBoiler"),
     [0x6] = blkbomb.action,
     [0x7] = bugbomb.action,
-    [0x8] = not_ported("VDoll"),
+    [0x8] = vdoll.action,
     [0x9] = iceseed.action,
     [0xC] = poisseed.action,
     [0xD] = grasseed.action,
     [0xF] = bigbomb.action,
 }
-local FLASH_BOMB = 0xE
+local LIL_BOILER, FLASH_BOMB = 0x3, 0xE
+-- LilBoiler's chips by level (0, 2, 3).
+local LIL_BOILERS: { [number]: Action } = { [0] = lilbolr[1].action, [2] = lilbolr[2].action, [3] = lilbolr[3].action }
 
 local function action_of(me: Object): Action
-    local v = me.variant
+    local v, level = me.variant, me:attack_param(1)
     if v == FLASH_BOMB then
-        local chip = flshbom[me:attack_param(1) + 1]
+        local chip = flshbom[level + 1]
         if not chip then
-            error(string.format("FlashBomb level %d has no chip", me:attack_param(1)))
+            error(string.format("FlashBomb level %d has no chip", level))
         end
         return chip.action
+    elseif v == LIL_BOILER then
+        local a = LIL_BOILERS[level]
+        if not a then
+            error(string.format("LilBoiler level %d has no chip", level))
+        end
+        return a
     end
     local a = BY_SUBTYPE[v]
     if not a then

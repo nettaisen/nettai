@@ -8,8 +8,6 @@
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Vec3, flags, state};
 
-pub const INDEX: u8 = 0x0A;
-
 /// Flash-private state (the spawn parameters).
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
