@@ -1,15 +1,16 @@
 --!strict
 -- EraseCross's charged beam (the original's attack object #0x9D,
 -- `sub_80D8E10`): it appears ahead of the navi, and when its opening
--- animation ends lays a hit column (objects/thunder-column, the pulling
--- one) on each panel from its own forward, up to five. Once it shuts, the
--- columns end two ticks later and the beam five. What shuts it is its
+-- animation ends lays a hit column (DolThdr's thunder column,
+-- chips/dolthdr/column, the pulling one) on each panel from its own
+-- forward, up to five. Once it shuts, the columns end two ticks later and
+-- the beam five. What shuts it is its
 -- ray (the original's first parameter): EraseCross's lasts 70 ticks or
 -- until its navi leaves the action that fired it; its Beast form's only
 -- the latter; MstrCros's EraseCross's until its navi shuts it
 -- (`erase_ray.shut`).
 
-local thunder_column = require("../../../../objects/thunder-column/thunder_column")
+local thunder_column = require("../../../../chips/dolthdr/column")
 
 local erase_ray = {}
 

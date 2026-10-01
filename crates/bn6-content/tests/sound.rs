@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 use Command::{Call, EchoLength, EchoVolume, EndTie, Fine, Goto, KeyShift, Note, Pan, Priority, Repeat, Return, Tempo, Wait};
 use Command::{BendRange, LfoDelay, LfoSpeed, Modulation, ModulationType, Tune, Volume};
-use Command::{Bend, Voice as SetVoice};
+use Command::{Bend, MemAcc, Voice as SetVoice};
 
 fn note(gate: u8, key: Option<u8>, velocity: Option<u8>) -> Command {
     Note { gate, key, velocity }
@@ -25,12 +25,12 @@ fn env(attack: u8, decay: u8, sustain: u8, release: u8) -> Envelope {
 }
 
 fn bank() -> SoundBank {
-    let voice = |kind, key, pan, e| Voice { kind, key, pan, envelope: e };
+    let voice = |kind, key, pan, e| Voice { kind, key, pan, length: 0, envelope: e };
     let main = Voicegroup {
         voices: vec![
             voice(VoiceKind::DirectSound { sample: SampleId(0), fixed: false }, 60, None, env(255, 250, 200, 180)),
-            voice(VoiceKind::Square1 { duty: 2 }, 60, None, env(0, 2, 10, 3)),
-            voice(VoiceKind::Wave { wave: WaveId(0) }, 60, None, env(1, 1, 8, 2)),
+            voice(VoiceKind::Square1 { duty: 2, sweep: 0x17, fixed: true }, 60, None, env(0, 2, 10, 3)),
+            voice(VoiceKind::Wave { wave: WaveId(0), fixed: true }, 60, None, env(1, 1, 8, 2)),
             voice(VoiceKind::Noise { narrow: true }, 60, None, env(0, 1, 0, 0)),
             voice(VoiceKind::Drums { kit: VoicegroupId(1) }, 60, None, env(0, 0, 0, 0)),
             voice(VoiceKind::Split { group: VoicegroupId(2), map: KeyMapId(0) }, 60, None, env(0, 0, 0, 0)),
@@ -43,13 +43,13 @@ fn bank() -> SoundBank {
             .map(|k| match k % 3 {
                 0 => voice(VoiceKind::DirectSound { sample: SampleId(1), fixed: false }, 36 + k as u8 % 24, Some(k as i8 - 64), env(255, 200, 0, 100)),
                 1 => voice(VoiceKind::Noise { narrow: false }, 60, Some(10), env(0, 1, 0, 0)),
-                _ => voice(VoiceKind::Square2 { duty: (k % 4) as u8 }, 60, None, env(0, 0, 15, 1)),
+                _ => voice(VoiceKind::Square2 { duty: (k % 4) as u8, fixed: false }, 60, None, env(0, 0, 15, 1)),
             })
             .collect(),
     };
     let split = Voicegroup {
         voices: vec![
-            voice(VoiceKind::Square2 { duty: 1 }, 60, None, env(0, 0, 15, 0)),
+            Voice { length: 5, ..voice(VoiceKind::Square2 { duty: 1, fixed: false }, 60, None, env(0, 0, 15, 0)) },
             voice(VoiceKind::DirectSound { sample: SampleId(0), fixed: false }, 60, None, env(200, 240, 128, 200)),
         ],
     };
@@ -79,17 +79,19 @@ fn bank() -> SoundBank {
         KeyShift(0),
         SetVoice(1),
         Volume(90),
+        MemAcc { op: MemOp::Set, address: 0, operand: 3 },
+        MemAcc { op: MemOp::AddFromMemory, address: 2, operand: 0 },
         EchoVolume(20),
         EchoLength(4),
         note(0, Some(50), Some(100)), // a tie that the loop's first end-tie releases
         Wait(12),
-        EndTie { key: Some(50) }, // 7: loop
+        EndTie { key: Some(50) }, // 9: loop
         Wait(36),
         note(24, Some(55), Some(80)),
         Wait(12),
         note(0, Some(50), Some(100)), // crosses the loop's end
         Wait(36),
-        Goto(7),
+        Goto(9),
     ];
     let track2 = vec![
         KeyShift(-3),
@@ -142,7 +144,7 @@ fn bank() -> SoundBank {
         })
     };
     let bank = SoundBank {
-        mixer: MixerConfig { mix_rate: 13379, ds_channels: 4, master_volume: 15, reverb: 0 },
+        mixer: MixerConfig { mix_rate: 13379, ds_channels: 4, master_volume: 15, reverb: 0, dac_resolution: 1 },
         players: vec![
             PlayerConfig { max_tracks: 4, uses_priority: false, track_order: 1 },
             PlayerConfig { max_tracks: 2, uses_priority: true, track_order: 0 },
@@ -151,8 +153,14 @@ fn bank() -> SoundBank {
         voicegroups: vec![main, kit, split],
         key_maps: vec![KeyMap(map)],
         samples: vec![
-            Sample { rate: 13379 * 1024 + 512, loop_start: Some(16), data: (0..64).map(|i| (((i * 37) % 200) - 100) as i8).collect() },
-            Sample { rate: 8000 * 1024, loop_start: None, data: (0..48).map(|i| if i % 6 < 3 { 90 } else { -90 }).collect() },
+            Sample {
+                rate: 13379 * 1024 + 512,
+                loop_start: Some(16),
+                data: (0..64).map(|i| (((i * 37) % 200) - 100) as i8).collect(),
+                tail: (((16 * 37) % 200) - 100) as i8,
+            },
+            // (A tail that isn't the usual 0.)
+            Sample { rate: 8000 * 1024, loop_start: None, data: (0..48).map(|i| if i % 6 < 3 { 90 } else { -90 }).collect(), tail: 33 },
         ],
         waves: vec![Wave(std::array::from_fn(|i| (i % 16) as u8))],
     };
@@ -220,6 +228,17 @@ fn a_bank_plays_the_same_after_the_round_trip() {
     assert!(music.tracks[0].events.iter().any(|e| e.message == Message::Marker("[".into())));
     assert!(music.tracks[0].events.iter().any(|e| matches!(e.message, Message::Tempo(400_000))), "track 0's tempo in the conductor");
     assert!(music.tracks[3].events.iter().any(|e| matches!(e.message, Message::Tempo(_))), "track 2's tempo stays on its track");
+    // MEMACC as mid2agb's controllers: the operation, the address, then the
+    // operand that runs it.
+    let track1: Vec<(u8, u8)> = music.tracks[2]
+        .events
+        .iter()
+        .filter_map(|e| match e.message {
+            Message::Control { controller, value, .. } if (12..=14).contains(&controller) => Some((controller, value)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(track1, [(13, 0), (14, 0), (12, 3), (13, 4), (14, 2), (12, 0)]);
 }
 
 fn edit_midi(path: &Path, f: impl FnOnce(&mut Smf)) {

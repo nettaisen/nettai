@@ -1,13 +1,13 @@
 --!strict
 -- RockCube's and IceCube's dimming controller (the original's effect
 -- object #0x37, `sub_80E4634`): the usual dimming phases, with an effect
--- that places a rock (objects/rock) on the panel in front of the user and
+-- that places a rock (./rock) on the panel in front of the user and
 -- waits 60 ticks. What differs between the chips is the rock (the
 -- original's chip parameters: its variant, its field-object class and its
 -- entrance).
 
 local dimming_chips = require("../../lib/dimming")
-local rock = require("../../objects/rock/rock")
+local rock = require("./rock")
 
 local cube = {}
 
