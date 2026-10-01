@@ -151,6 +151,7 @@ fn battles_run_the_content_scripts() {
             "slashman/navi",
             "slashman/riding-hit",
             "slashman/wave",
+            "sonic-boom",
             "spoutcross-beast/surge",
             "spoutman/ball",
             "spoutman/drip-shower",
