@@ -11,6 +11,7 @@
 //! docs/engine/custom-screen.md.
 
 pub mod builder;
+pub mod chatbox;
 pub mod folder;
 pub mod library;
 pub mod screen;

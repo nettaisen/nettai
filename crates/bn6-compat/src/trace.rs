@@ -56,6 +56,11 @@ pub struct Setup {
     /// without them read as 0.
     #[serde(default)]
     pub navi_levels: Option<[u8; 2]>,
+    /// Both consoles' save event flag 0x1720 (the NaviCust ran a bug's
+    /// routine at load: MegaMan's emotion window flickers, bugs in his
+    /// stats or not). Traces recorded without it read as clear.
+    #[serde(default)]
+    pub emotion_window_glitches: Option<[bool; 2]>,
 }
 
 /// The bug frags a trace without them reads as: the recording tool's
@@ -299,14 +304,16 @@ impl Round {
     /// (BattleState+0x44/+0x45) as the setup has them. The other console's
     /// aren't recorded: its RNG1 reads as 0 and it has no tag pair, which
     /// only a re-deal on that player's screen would read. The save's
-    /// emotion window glitch (event flag 0x1720) isn't recorded either and
-    /// reads as clear.
+    /// emotion window glitch (event flag 0x1720) is in the setups of
+    /// traces recorded with it, for both consoles; without it, it reads as
+    /// clear.
     fn console_setup(&self, side: u8) -> ConsoleSetup {
         let bs = unhex(&self.setup.battle_state);
+        let emotion_window_glitch = self.setup.emotion_window_glitches.is_some_and(|g| g[side as usize & 1]);
         if bs[0x0D] != side {
-            return ConsoleSetup::default();
+            return ConsoleSetup { emotion_window_glitch, ..ConsoleSetup::default() };
         }
-        ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), emotion_window_glitch: false }
+        ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), emotion_window_glitch }
     }
 
     /// A player's game, going by the transformations they send: Gregar's
