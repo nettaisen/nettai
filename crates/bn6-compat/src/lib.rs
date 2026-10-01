@@ -128,6 +128,14 @@ pub struct RuleNumbers {
     pub regions: BTreeMap<String, u8>,
     #[serde(default)]
     pub collision: BTreeMap<String, u8>,
+    /// Likewise the sound and music (the song table's entries) and the
+    /// banner (`pt_801EF84`) each role of those groups names.
+    #[serde(default)]
+    pub sounds: BTreeMap<String, u16>,
+    #[serde(default)]
+    pub music: BTreeMap<String, u16>,
+    #[serde(default)]
+    pub banners: BTreeMap<String, u8>,
 }
 
 /// Asset names and the ROM's numbers.

@@ -24,7 +24,7 @@
 use crate::battle::{Battle, BattleResult, RoundEnd, fight};
 use crate::content::BannerId;
 use crate::setup::SetScore;
-use crate::dimming::{LOCAL_TELOP, REMOTE_TELOP};
+use crate::dimming::telop_banner;
 use crate::hud::TelopHidden;
 use bn6_content_api::ChipHandle;
 
@@ -79,11 +79,12 @@ impl Battle {
         if viewer == local {
             return Some(id);
         }
-        if id == LOCAL_TELOP {
-            return Some(REMOTE_TELOP);
+        let (telop, remote_telop) = (telop_banner(self, false), telop_banner(self, true));
+        if id == telop {
+            return Some(remote_telop);
         }
-        if id == REMOTE_TELOP {
-            return Some(LOCAL_TELOP);
+        if id == remote_telop {
+            return Some(telop);
         }
         let navi = |side: u8| self.content.navi(self.stats[side as usize].navi);
         let result_banner = navi(local).win_banner == id || navi(local).lose_banner == id;
@@ -147,8 +148,9 @@ mod tests {
     #[test]
     fn each_viewer_sees_its_own_name_and_result_banners() {
         let mut b = battle();
-        b.start_banner(LOCAL_TELOP);
-        assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(LOCAL_TELOP), Some(REMOTE_TELOP)));
+        let (telop, remote_telop) = (telop_banner(&b, false), telop_banner(&b, true));
+        b.start_banner(telop);
+        assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(telop), Some(remote_telop)));
         b.banner = Default::default();
         b.fight.state = fight::WIN;
         b.round.winner = 0;
