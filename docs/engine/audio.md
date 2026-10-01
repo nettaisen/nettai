@@ -170,8 +170,8 @@ sounds are left out.
 
 - The two golden traces, over every frame of every round: 89 calls over
   2405 frames and 1360 calls over 57,331 frames, call for call.
-- Chip-lab scenarios recorded with their sound calls: 4553 of the lab's
-  scenarios (84,832 calls over 3,667,325 frames), every one call for
+- Chip-lab scenarios recorded with their sound calls: 5153 of the lab's
+  scenarios (96,111 calls over 4,153,402 frames), every one call for
   call.
 - Every sound the content names (148 names) is in the pack's index,
   has a song, starts on the driver and makes sound; so does every number
