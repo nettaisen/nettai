@@ -1156,7 +1156,7 @@ impl CoreApi for Battle {
             ActorField::SpecialSource => i(at.special_source as i64),
             ActorField::AttackKind => i(at.kind as i64),
             ActorField::BeastLockon => i(at.beast_lockon as i64),
-            ActorField::RushLockon => i(at.rush_lockon as i64),
+            ActorField::RushLockon => at.rush_lockon.map_or(Value::Nil, |h| Value::Def(Registry::Lockon, h.0)),
             ActorField::AttackChip => at.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::Marker => i(at.marker as i64),
             ActorField::ThrownLook => at.thrown_look.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0)),
@@ -1205,6 +1205,19 @@ impl CoreApi for Battle {
             }
             _ => None,
         };
+        // The Beast rush's lock-on mode by definition, or none.
+        let rush_lockon = match (f, v) {
+            (ActorField::RushLockon, FieldValue::Ref(Some((Registry::Lockon, h)))) => {
+                if h as usize >= self.content.defs.lockons.len() {
+                    return Err(ApiError::Other(format!("rush_lockon: no lock-on mode has handle {h}")));
+                }
+                Some(bn6_content_api::LockonHandle(h))
+            }
+            (ActorField::RushLockon, FieldValue::Ref(Some((other, _)))) => {
+                return Err(ApiError::Other(format!("rush_lockon: a {other} is not a lock-on mode")));
+            }
+            _ => None,
+        };
         // A thrown obstacle's look: an absorbed-look record, or none.
         let thrown_look = match (f, v) {
             (ActorField::ThrownLook, FieldValue::Ref(Some((Registry::Record, h)))) => Some(self.absorbed_look(h)?),
@@ -1229,7 +1242,7 @@ impl CoreApi for Battle {
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
             (ActorField::BeastLockon, FieldValue::U8(x)) => at.beast_lockon = x,
-            (ActorField::RushLockon, FieldValue::U8(x)) => at.rush_lockon = x,
+            (ActorField::RushLockon, FieldValue::Ref(_)) => at.rush_lockon = rush_lockon,
             (ActorField::AttackChip, FieldValue::Ref(_)) => at.chip = attack_chip,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
             (ActorField::ThrownLook, FieldValue::Ref(_)) => at.thrown_look = thrown_look,
@@ -1416,7 +1429,7 @@ impl CoreApi for Battle {
         kinds::player::idle::start_move(self, o, dir);
     }
 
-    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: u8) -> PanelPos {
+    fn lockon_panel(&self, o: ObjectRef, target: PanelPos, mode: Option<bn6_content_api::LockonHandle>) -> PanelPos {
         kinds::player::actions::beast_rush::lockon_panel(self, o, target, mode)
     }
 

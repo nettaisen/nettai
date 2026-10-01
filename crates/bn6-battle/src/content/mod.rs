@@ -309,6 +309,11 @@ impl Content {
         self.defs.weapon_by_key(key).unwrap_or_else(|| panic!("weapon {key:?} is not in the content"))
     }
 
+    /// A Beast Out lock-on mode.
+    pub fn lockon(&self, h: bn6_content_api::LockonHandle) -> &LockonMode {
+        &self.defs.lockons[h.index()].mode
+    }
+
     /// A stage.
     pub fn stage(&self, h: StageHandle) -> &StageData {
         &self.defs.stage(h).record

@@ -6,6 +6,7 @@
 -- of recovery.
 
 local buster = require("../../lib/buster")
+local lockon = require("../../rules/lockon")
 local mark = require("./mark")
 
 export type State = {
@@ -80,7 +81,7 @@ return define.chip {
     extra_flags = { "free_slot_in" },
     library = { number = 194, index = 194, sort = 110 },
     slot_in_limit = 3,
-    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-    beast = { lockon = 1 },
+    -- The Beast rush, and its lock-on mode (rules/lockon).
+    beast = { lockon = lockon.cannon },
     action = define.action { state = { timer = "u16" }, update = update },
 }

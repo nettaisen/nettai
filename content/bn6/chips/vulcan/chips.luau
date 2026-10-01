@@ -3,6 +3,7 @@
 -- (action.luau). They differ in the number of bullets (3, 4, 5, 10) and
 -- SuprVulc's bullet's look.
 
+local lockon = require("../../rules/lockon")
 local vulcan = require("./action")
 
 return {
@@ -16,8 +17,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 5, index = 5, sort = 500 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = vulcan.action { shots = 3, bullet = vulcan.bullets.plain },
     },
     define.chip {
@@ -30,8 +31,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 6, index = 6, sort = 501 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = vulcan.action { shots = 4, bullet = vulcan.bullets.plain },
     },
     define.chip {
@@ -44,8 +45,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 7, index = 7, sort = 502 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = vulcan.action { shots = 5, bullet = vulcan.bullets.plain },
     },
     define.chip {
@@ -58,8 +59,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 8, index = 8, sort = 425 },
         slot_in_limit = 1,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = vulcan.action { shots = 10, bullet = vulcan.bullets.super },
     },
 }
