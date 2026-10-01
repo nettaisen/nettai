@@ -14,39 +14,33 @@ local bullet = require("../../objects/bullet/bullet")
 local spreader = require("../spreadr/action")
 local spreaders = require("../spreadr/chips")
 
-local legacy = {
+local by_number = {
     state = spreader.STATE,
 }
 
--- The gun and height by subtype.
-local GUNS: { [number]: { gun: AttachmentLook, z: number } } = {
-    [0] = { gun = spreader.guns.spreader, z = 0x10_0000 },
-    [1] = { gun = spreader.guns.spreader, z = 0x10_0000 },
-    [2] = { gun = spreader.guns.water_cannon, z = 0 },
-    [3] = { gun = spreader.guns.spreader, z = 0x10_0000 },
-}
-
--- The actions the numbered users mean, by subtype and bullet row: the
--- Spreaders' and SpoutCross's are the chips'; the link navis' weapons'
--- are made here until those weapons are definitions.
-local function link(subtype: number, row: number): Action
-    local g = GUNS[subtype]
-    return spreader.action { gun = g.gun, z = g.z, bullet = bullet.by_number(row) }
+-- The actions the numbered users mean, by the bullet's row (each row has
+-- one subtype: its gun and the bullet's height, `dword_80ECC54`,
+-- `dword_80ECC5C`): the Spreaders' (subtype 0) and SpoutCross's (2) are
+-- the chips'; the link navis' weapons' (0x5F: subtype 2, row 7; 0x74: 1,
+-- 8; 0x80: 2, 4) are made here until those weapons are definitions.
+local function link(gun: AttachmentLook, z: number, row: number): Action
+    return spreader.action { gun = gun, z = z, bullet = bullet.by_number(row) }
 end
-local BY_USE: { [number]: { [number]: Action } } = {
-    [0] = { [3] = spreaders.spreadr1 },
-    [1] = { [8] = link(1, 8) },
-    [2] = { [0xD] = spreaders.spout_charge, [7] = link(2, 7), [4] = link(2, 4) },
+local BY_ROW: { [number]: Action } = {
+    [3] = spreaders.spreadr1,
+    [0xD] = spreaders.spout_charge,
+    [7] = link(spreader.guns.water_cannon, 0, 7),
+    [8] = link(spreader.guns.spreader, 0x10_0000, 8),
+    [4] = link(spreader.guns.water_cannon, 0, 4),
 }
 
-function legacy.update(me: Object, s: any)
-    local v, row = me.variant, me:attack_param(1)
-    local uses = BY_USE[v]
-    local a = if uses then uses[row] else nil
+function by_number.update(me: Object, s: any)
+    local row = me:attack_param(1)
+    local a = BY_ROW[row]
     if not a then
-        error(string.format("spreader subtype %#x with bullet row %#x: nothing sets it up", v, row))
+        error(string.format("spreader with bullet row %#x: nothing sets it up", row))
     end
     a.update(me, s)
 end
 
-return legacy
+return by_number
