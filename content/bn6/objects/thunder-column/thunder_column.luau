@@ -1,58 +1,67 @@
 --!strict
 -- A thunder column (attack object #0x8B, `sub_80D6924`): an unseen hit on
 -- one panel, 16 pixels up, for the ticks its spawner gives it (its timer),
--- or until it has hit something. DolThdr's doll strikes a row of them.
--- Its first parameter picks its collision (`byte_80D6914`): 0 is a plain
--- hit, 1 a pull (collision type 0xB). It registers in its spawner's
--- `columns` list (the game's slot pointer in its first related object)
--- and leaves it when it goes.
+-- or until it has hit something. DolThdr's doll strikes a row of them, and
+-- EraseCross's ray lays them. What it hits with is its variant (a row of
+-- the original's `byte_80D6914`, its first parameter): `plain` or `pull`.
+-- It registers in its spawner's `columns` list (the game's slot pointer
+-- in its first related object) and leaves it when it goes.
+
+local collision = require("../../rules/collision")
+local regions = require("../../lib/regions")
+local sparks = require("../../lib/sparks")
 
 local thunder_column = {}
+
+-- What a column hits with: what it is and hits, its spark, region, hit
+-- modifier, status, bug and the bug's argument (none: 0).
+export type Variant = {
+    collision: { is: CollisionType, hits: CollisionType },
+    spark: Spark,
+    region: Region,
+    hit_mod: number,
+    status: number,
+    bug: number,
+    bug_arg: number,
+}
 
 export type State = {
     -- Its spawner, and its place in the spawner's `columns` list.
     owner: Object?,
     link: number,
+    variant: Variant,
 }
-
-thunder_column.state = { owner = "object", link = "u8" }
 
 -- What a spawner that registers columns keeps.
 export type Owner = { columns: { Object? } }
 
--- By its first parameter (`byte_80D6914`): self and target collision
--- types, hit effect, region, hit modifier, status, bug and its argument.
-local KINDS = {
-    [0] = { self_type = 4, target = 5, hit_effect = 3, region = 1, hit_mod = 3, status = 0, bug = 0, bug_arg = 0 },
-    [1] = { self_type = 0x0B, target = 5, hit_effect = 0, region = 1, hit_mod = 3, status = 0, bug = 0, bug_arg = 0 },
-}
+-- The height it stands at (its spawner's Z register).
+local HEIGHT = 0x10_0000
 
--- `sub_80D69E2`: a column on (x, y) for `from`'s side with the damage word
--- `damage` and parameters `params`, registered as `owner`'s columns[link].
--- It stands 16 pixels up (its spawner's Z register).
-function thunder_column.spawn(
-    from: Object,
-    x: number,
-    y: number,
-    element: number,
-    params: { number },
-    damage: number,
-    owner: Object,
-    link: number
-): Object?
-    local o = battle.spawn_kind("thunder-column", Vec3.new(y, element, 0x10_0000), params)
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = from.alliance, from.flip
-        local s = o.state :: State
-        s.owner = owner
-        s.link = link
-    end
-    return o
+function thunder_column.variant(v: Variant): Variant
+    return define.record("thunder-column", v)
 end
+
+-- `byte_80D6914`'s rows: a plain hit (0, DolThdr's) and a pull (1,
+-- EraseCross's).
+thunder_column.plain = thunder_column.variant {
+    collision = { is = collision.attack, hits = collision.hits_navis },
+    spark = sparks.elec,
+    region = regions.single,
+    hit_mod = 3,
+    status = 0,
+    bug = 0,
+    bug_arg = 0,
+}
+thunder_column.pull = thunder_column.variant {
+    collision = { is = collision.piercing, hits = collision.hits_navis },
+    spark = sparks.plain,
+    region = regions.single,
+    hit_mod = 3,
+    status = 0,
+    bug = 0,
+    bug_arg = 0,
+}
 
 -- Its place in its owner's list: `me` there, or empty.
 local function register(me: Object, o: Object?)
@@ -76,16 +85,13 @@ local function tick(me: Object)
             return
         end
     end
-    c.region = 0
+    c:set_region(nil)
     me:set_lifecycle("destroy")
 end
 
 -- `sub_80D6952`.
 local function init(me: Object)
-    local kind = KINDS[me:param(1)]
-    if kind == nil then
-        error(string.format("thunder column kind %d reads past byte_80D6914", me:param(1)))
-    end
+    local v = (me.state :: State).variant
     if not field.valid(me.panel_x, me.panel_y) then
         me:free()
         return
@@ -95,15 +101,15 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(kind.self_type, kind.target, kind.hit_mod)
+    me:setup_collision(v.collision.is, v.collision.hits, v.hit_mod)
     local c = me.collision
-    c.region = kind.region
-    c.hit_effect = kind.hit_effect
-    if kind.status ~= 0 then
-        c.status_base = kind.status
+    c:set_region(v.region)
+    c:set_hit_effect(v.spark)
+    if v.status ~= 0 then
+        c.status_base = v.status
     end
-    if kind.bug ~= 0 then
-        c.bugs = kind.bug + kind.bug_arg * 0x100
+    if v.bug ~= 0 then
+        c.bugs = v.bug + v.bug_arg * 0x100
     end
     register(me, me)
     c:present()
@@ -111,18 +117,50 @@ local function init(me: Object)
     tick(me)
 end
 
--- `sub_80D6924`.
-function thunder_column.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        -- `sub_80D6944`.
-        register(me, nil)
-        me:destroy()
+thunder_column.kind = define.kind {
+    id = "thunder-column",
+    pool = "attack",
+    state = { owner = "object", link = "u8", variant = "record:thunder-column" },
+    -- `sub_80D6924`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            -- `sub_80D6944`.
+            register(me, nil)
+            me:destroy()
+        end
+    end,
+}
+
+-- `sub_80D69E2`: a column of `variant` on (x, y) for `from`'s side with
+-- the damage word `damage`, registered as `owner`'s columns[link]. It
+-- stands 16 pixels up (its spawner's Z register).
+function thunder_column.spawn(
+    from: Object,
+    x: number,
+    y: number,
+    element: number,
+    variant: Variant,
+    damage: number,
+    owner: Object,
+    link: number
+): Object?
+    local o = battle.spawn(thunder_column.kind, Vec3.new(y, element, HEIGHT))
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o:set_damage_word(damage)
+        o.alliance, o.flip = from.alliance, from.flip
+        local s = o.state :: State
+        s.owner = owner
+        s.link = link
+        s.variant = variant
     end
+    return o
 end
 
 return thunder_column
