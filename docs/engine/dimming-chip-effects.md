@@ -1160,7 +1160,7 @@ the spawner; then flags |= 0x10 and Param2 = 4 (another caller, without them, ge
 
 **Ported**: chips/metrknuk (`metrknuk/controller`, `metrknuk/fist`). Corrections to the above: the
 fist's hit word 0x15050001 is region 1, hit effect **0** (the null element's spark), target 5, self 0x15 (collision
-`thrown-breaking`); and `sub_80DBE82` has no caller but `sub_80DBEA2`, so Param2 0 (the slow fall, the even-draw
+`thrown-break`); and `sub_80DBE82` has no caller but `sub_80DBEA2`, so Param2 0 (the slow fall, the even-draw
 crack) is ported but unreachable. With no enemy panel at all the first target keeps a stray register as its row;
 the port keeps none. Lab: 16/16.
 
