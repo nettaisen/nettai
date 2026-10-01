@@ -91,8 +91,6 @@ blank_shot.weapon = define.weapon {
     -- entry, as the original's table does.
     charge_ticks = { 180, 180, 180, 180, 180, 40 },
     setup = blank_shot.setup,
-    -- (Transitional: the routine number the pack's data names it by.)
-    legacy = { routines = { 0x02 } },
 }
 
 return blank_shot

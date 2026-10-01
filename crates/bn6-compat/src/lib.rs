@@ -99,6 +99,10 @@ pub struct Records {
     /// entry (`byte_80CF934`'s row).
     #[serde(default)]
     pub rock_variants: BTreeMap<String, u8>,
+    /// The projectile's variants a navi's stats name as a shot program
+    /// (NaviStats+0x4D, +0x4F), by the row of `off_80C4C78`.
+    #[serde(default)]
+    pub projectile_variants: BTreeMap<String, u8>,
 }
 
 /// The original's numbers of rule definitions (rules.toml): only
@@ -109,6 +113,9 @@ pub struct RuleNumbers {
     /// Beast Out lock-on modes (`jt_8026584`), by key.
     #[serde(default)]
     pub lockon: BTreeMap<String, u8>,
+    /// Statuses (`off_80209EC`): a hit's status byte, by key.
+    #[serde(default)]
+    pub statuses: BTreeMap<String, u8>,
 }
 
 /// Asset names and the ROM's numbers.

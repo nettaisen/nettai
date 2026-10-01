@@ -651,15 +651,15 @@ The effect (`sub_80E60CC`), by phase:
 
 ## 16. Verification
 
-The chip lab records these in the original; the port's scenarios stopped at each action's "not implemented" panic
-(summary.md): 0x14 49 scenarios (Cannon, HiCannon, M-Cannon, GigaCan1-3's recipes, forms/*/ko and eight NaviCust
+The chip lab records these in the original and the port reproduces every one (when this was written its replays
+stopped at each action's "not implemented" panic; the counts are from then): 0x14 49 scenarios (Cannon, HiCannon, M-Cannon, GigaCan1-3's recipes, forms/*/ko and eight NaviCust
 scenarios that fire a Cannon), 0x17 45, 0x19 45, 0x21 19, 0x24 24, 0x25 25 (with forms/falzar/cross-spout, the
 SpoutCross charged shot), 0x29 25, 0x2A 27, 0x30 20 (with SuprSpr's recipe), LilBoiler 30, VDoll 10. The traces
 confirm the timings above (the actions' lengths and their spawn ticks: Cannon 34, AirShot 22, Vulcan1 36, SuprVulc
 113, BatCan1 38, BatCan4 70, TankCan1 39, Spreadr1 23, MachGun1 82, CornSht1 35, WideSht 27, SuprSpr 55, GigaCan1 34
 with its afterimages on tick 10).
 
-What the lab's scenarios reach (coverage.md), and so what they will verify once ported:
+What the lab's first scenarios reached (coverage.md), and so what they verify:
 
 - 0x14: every branch but a holder that isn't a player (`sub_80EBD68`'s 0) and a full attack pool; GigaCan's
   afterimages and burst by pa/0x140..0x142.
@@ -712,8 +712,8 @@ and `colarmy` scenarios.)
 Content model v2 (docs/design/content-model-v2.md): each action is a builder its chips compose, each object a kind
 definition, each table row a variant record written out in Luau.
 
-- **Where.** The projectile and its variants: objects/projectile (`variants.by_number` for the NaviCust's numbered
-  shots), lib/projectile; the flying shot: objects/flying-shot; the bullet: objects/bullet (its rows, and the
+- **Where.** The projectile and its variants: objects/projectile (the shot programs a navi's stats name are the
+  named records `shot/...`), lib/projectile; the flying shot: objects/flying-shot; the bullet: objects/bullet (its rows, and the
   variants the Vulcans, the Spreaders, SpoutCross's charged shot, ColArmy and ColForce fire). The cannons:
   lib/cannon with chips/cannon and chips/gigacan; AirShot, BatCan, MachGun: chips/airshot, chips/batcan (with its
   shot), chips/machgun; the Vulcans, the Spreaders, the TankCans, CornSht, WideSht and SuprSpr: chips/vulcan,

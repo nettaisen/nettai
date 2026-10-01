@@ -226,7 +226,9 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
     if a.buster.is_none() || f0 & (request::BUSTER | request::CHARGED_SHOT) != 0 {
         return;
     }
-    let edge = if matches!(b.weapon_number(a.buster), Some(3 | 4 | 0x2C)) {
+    // A buster that fires while B is held (the Beast busters, the Beast
+    // form's throw).
+    let edge = if a.buster.is_some_and(|w| b.content.weapon(w).held) {
         if matches!(form.0, 0x14 | 0x16) && a.requests & request::BACK_SPECIAL != 0 {
             return;
         }
@@ -311,16 +313,12 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
         a.a_charge
     };
     let Some(routine) = routine else { return 0xFF };
-    // A weapon's own charge times (by Charge stat, those past its row the
-    // next routine's, as the game reads them); the test content's table by
-    // routine number.
-    let w = b.content.defs.weapon(routine);
-    if let Some(&ticks) = w.charge_ticks.get(s.charge as usize) {
-        return ticks;
-    }
-    match b.content.weapon_number(routine) {
-        Some(number) if !b.content.rules.weapons.is_empty() => b.content.rules.charge_threshold(number, s.charge),
-        _ => panic!("content error: weapon {:?} has no charge time at Charge {}", w.key, s.charge),
+    // The weapon's own charge times, by Charge stat (those past its row
+    // the next routine's, as the game reads them).
+    let w = b.content.weapon(routine);
+    match w.charge_ticks.get(s.charge as usize) {
+        Some(&ticks) => ticks,
+        None => panic!("content error: weapon {:?} has no charge time at Charge {}", w.key, s.charge),
     }
 }
 

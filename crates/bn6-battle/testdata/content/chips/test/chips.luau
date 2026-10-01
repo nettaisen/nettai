@@ -22,7 +22,6 @@ local hook = require("../flmhook/hook")
 local invisible = require("../../objects/invisible/invisible")
 local lockon = require("../../rules/lockon")
 local minibomb = require("../minibomb/chip")
-local navi_boost = require("../../lib/navi-boost/controller")
 local plus = require("../../lib/instant/plus")
 local poisseed = require("../poisseed/chip")
 local slashman = require("../slashman/navi")
@@ -161,10 +160,6 @@ return {
     eraser = navi_chip("eraser", "Eraser", 0x06, 60, eraseman.summon { aim_ticks = 16 }, { family = "cursor", hit_param = 100 }),
     -- A trap chip that sets no object.
     trap = chip("trap", "Trap", 0x09, { flags = { "dimming", "standard_library" }, dimming = traps.hook() }),
-    -- The navi-changing chips: the buster and shoes boost, and a new
-    -- charged shot (weapon routine 1).
-    boost = chip("boost", "Boost", 0x0A, { flags = { "dimming", "standard_library" }, dimming = navi_boost.hub }),
-    arm = chip("arm", "Arm", 0x0B, { flags = { "dimming", "standard_library" }, dimming = navi_boost.arm(1, 0) }),
     elem_trap = chip("elem-trap", "ElemTrap", 0x30, {
         flags = { "dimming", "has_damage", "standard_library" },
         damage = 40,

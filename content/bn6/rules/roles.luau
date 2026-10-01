@@ -27,6 +27,7 @@ local lockon = require("./lockon")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local stun_strike = require("../lib/swords/stun_strike")
+local statuses = require("./status")
 local supports = require("../lib/supports/controller")
 
 return define.roles {
@@ -81,6 +82,17 @@ return define.roles {
         rush = rush,
         beat = beat,
         tango = tango,
+    },
+    statuses = {
+        -- What a damage word's paralysis bit (0x4000) makes its hits carry.
+        damage_word_paralysis = statuses.paralyze_90,
+        -- What a counter hit lands instead of a flinch.
+        counter_paralysis = statuses.paralyze_150,
+        -- What an aqua hit gives a body standing on ice.
+        ice_freeze = statuses.freeze_150,
+        -- The NaviCust on-hit bug's, by its level.
+        hit_bug_blind = statuses.blind_1200,
+        hit_bug_confuse = statuses.confuse_960,
     },
     lockon = {
         -- The Beast forms' charged claw's lock-on mode, whatever chip its

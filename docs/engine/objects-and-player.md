@@ -2126,7 +2126,7 @@ Damage is still applied while dimmed (step 5 runs before step 10). Status timers
 #### H5. Status effects
 
 **Applying a status** (`sub_801A554`). Let `s = StatusEffectFinal` (+0x11, set by the collision engine from the attacker's +0x10, or by the counter to 0x12). If `s != 0`:
-- Look up `e = off_80209EC[(s>>4)-1][s & 0xF]` (`Rules::status_effects`). Each entry is 8 bytes: `u32 f2bits, u16 duration, u8 collOffset`.
+- Look up `e = off_80209EC[(s>>4)-1][s & 0xF]`. Each entry is 8 bytes: `u32 f2bits, u16 duration, u8 collOffset`. (Engine: each entry is a status definition, rules/status.luau, which a hit carries by handle; the range tests on `s` below and in the counter are the definition's `cancels_flinch` and `survives_counter`.)
 - Write the duration to `coll+collOffset` and set `f2 |= f2bits`.
 - If `s` ∈ [0x50, 0x55], also set `f2 &= ~6` (freeze cancels flinch and mercy).
 

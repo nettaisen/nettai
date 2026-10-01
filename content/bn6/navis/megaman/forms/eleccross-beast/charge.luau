@@ -104,8 +104,6 @@ elec_beast_charge.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 110, 110, 110, 110, 110, 60, 60, 60 },
     setup = setup,
-    -- (Transitional: the routine number the pack's forms name it by.)
-    legacy = { routines = { 0x09 } },
 }
 
 return elec_beast_charge

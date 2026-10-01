@@ -5,6 +5,7 @@
 local action = require("./action")
 local pulse = require("./pulse")
 local lockon = require("../../rules/lockon")
+local statuses = require("../../rules/status")
 
 -- Every pulse lasts 60 ticks; the navi holds it out 5 less, or 5 for the
 -- original's second look (ElcPuls2's).
@@ -30,7 +31,7 @@ local elcpuls1 = define.chip {
     slot_in_limit = 3,
     action = action.action {
         id = "elcpuls1/action",
-        pulse = pulse.variant { hit_mod = 1, status = 0x10, ticks = TICKS, palette = 1 },
+        pulse = pulse.variant { hit_mod = 1, status = statuses.paralyze_90, ticks = TICKS, palette = 1 },
         hold = HOLD,
     },
 }
@@ -54,7 +55,7 @@ local elcpuls2 = define.chip {
     slot_in_limit = 3,
     action = action.action {
         id = "elcpuls2/action",
-        pulse = pulse.variant { hit_mod = 0x51, status = 0, ticks = TICKS, palette = 2 },
+        pulse = pulse.variant { hit_mod = 0x51, status = nil, ticks = TICKS, palette = 2 },
         hold = SHORT_HOLD,
     },
 }
@@ -79,7 +80,7 @@ local elcpuls3 = define.chip {
     action = action.action {
         id = "elcpuls3/action",
         -- Its hits carry bug 0x18 with argument 1.
-        pulse = pulse.variant { hit_mod = 3, status = 0, ticks = TICKS, palette = 0, bug = 0x18, bug_arg = 1 },
+        pulse = pulse.variant { hit_mod = 3, status = nil, ticks = TICKS, palette = 0, bug = 0x18, bug_arg = 1 },
         hold = HOLD,
     },
 }
@@ -110,7 +111,7 @@ local destpuls = define.chip {
     action = action.action {
         id = "destpuls/action",
         -- Its hits carry the HP bug 0xF6.
-        pulse = pulse.variant { hit_mod = 0, status = 0x12, ticks = TICKS, palette = 3, bug = 0xF6 },
+        pulse = pulse.variant { hit_mod = 0, status = statuses.paralyze_150, ticks = TICKS, palette = 3, bug = 0xF6 },
         hold = HOLD,
     },
 }

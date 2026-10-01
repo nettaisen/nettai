@@ -245,9 +245,9 @@ No chip has subtype 2; nothing reaches it (**unverified**, and unreachable in th
 
 ## 5. Subtype 14: Guardian (T4#0x52, T3#0x7D, T4#0x53)
 
-Chip 0x97 Guardian (null, damage 200, hit param 158, params 0). The pack has scripts for all three kinds
-(`objects/guardian`, `guardian-statue`, `guardian-strike`), checked against this section, but no chip or
-`object.toml` registers them yet (so the lab stops at "subtype 14 not implemented").
+Chip 0x97 Guardian (null, damage 200, hit param 158, params 0). The content has all three kinds
+(chips/guardian: `controller`, `statue`, `strike`), checked against this section; the lab's Guardian scenarios
+match.
 
 **Spawner `sub_80E67E6`**: T4#0x52; the common fields (alliance and flip).
 

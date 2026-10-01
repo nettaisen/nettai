@@ -47,9 +47,20 @@ local SHOT_SOUND, THROW_SOUND = asset.sound("buster-6a"), asset.sound("junk-shot
 -- The heights the shot and a thrown obstacle fly at, 16.16.
 local SHOT_Z, THROW_Z = 0x18_0000, 0x0C_0000
 
--- The buster-shot programs from this one on spread on 1 draw in 8, the
--- others on 1 in 2.
-local RARE_SPREAD = 0x1E
+-- The buster-shot programs that come on 1 draw in 8 (the others on 1 in
+-- 2): the original's rows from 0x1E on.
+local RARE: { [ProjectileVariant]: boolean } = {
+    [variants.pushing] = true,
+    [variants.shoving] = true,
+    [variants.charged_pulling] = true,
+    [variants.charged_bubbling] = true,
+    [variants.charged_road] = true,
+    [variants.charged_hp_bug_marked] = true,
+    [variants.charged_road_back] = true,
+    [variants.charged_grass] = true,
+    [variants.charged_freezing] = true,
+    [variants.charged_ice] = true,
+}
 
 -- `sub_8013D5E`: what this shot is. Of 16 slots, the first `buster_blanks`
 -- are blanks and the next `buster_charged` charged shots; one draw picks a
@@ -89,18 +100,18 @@ function buster.setup(navi: Object): Action
     navi.extra = 0
     navi.hit_param = 0
     navi.attack_lockout = 0
-    -- The buster-shot program (the projectile's row, the navi stats'
-    -- NaviCust byte), on a lucky draw.
+    -- The buster-shot program (a projectile variant the navi's stats
+    -- name), on a lucky draw.
     local program = battle.navi(navi.alliance).buster_shot
-    if program ~= 0 then
-        local mask = if program >= RARE_SPREAD then 7 else 1
+    if program then
+        local mask = if RARE[program] then 7 else 1
         if bit32.band(battle.rng_positive(), mask) ~= 0 then
-            program = 0
+            program = nil
         end
     end
     local s = navi:action_state(buster.shot) :: State
     s.mode = "shot"
-    s.projectile = if program == 0 then variants.plain else variants.by_number(program)
+    s.projectile = program or variants.plain
     return buster.shot
 end
 
@@ -213,12 +224,9 @@ buster.weapon = define.weapon {
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = buster.setup,
-    -- (Transitional: the routine number the pack's forms, the navis' rows
-    -- and the ruleset name it by. `off_80117D4`'s other entries that are
-    -- `sub_8011A26` read other rows of the charge table, so they are
-    -- weapons of their own with this setup: navis/megaman/weapons/
-    -- buster-2e and the rest.)
-    legacy = { routines = { 0x00 } },
+    -- (`off_80117D4`'s other entries that are `sub_8011A26` read other
+    -- rows of the charge table, so they are weapons of their own with this
+    -- setup: navis/megaman/weapons/buster-2e and the rest.)
 }
 
 return buster
