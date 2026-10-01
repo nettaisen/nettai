@@ -75,6 +75,8 @@ fn chip_description(rom: &Rom, id: u32) -> Option<String> {
     loop {
         match rom.u8(a) {
             0xE9 => text.push('\n'),
+            // The space (the table has none for byte 0: names don't draw it).
+            0x00 => text.push(' '),
             // A glyph of the second page.
             0xE4 => {
                 text.push('?');

@@ -8,6 +8,7 @@ local panel_chips = require("../../lib/panel-chips/controller")
 return define.chip {
     id = "pnlretrn",
     name = "PnlRetrn",
+    description = "Fix your\narea's\npanels",
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 1, mb = 14, damage = 0, hit_param = 0, lockout = 0,

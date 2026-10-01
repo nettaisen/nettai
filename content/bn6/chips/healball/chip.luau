@@ -8,6 +8,7 @@ local controller = require("../geddon/controller")
 return define.chip {
     id = "healball",
     name = "HealBall",
+    description = "ミテイ",
     element = "null", family = "special", class = "special",
     rarity = 0, mb = 99, damage = 0, hit_param = 0, lockout = 0,
     flags = { "dimming" },

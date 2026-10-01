@@ -8,6 +8,7 @@ local controller = require("./controller")
 return define.chip {
     id = "blzrdbal",
     name = "BlzrdBal",
+    description = "Launch a\ngiant \nsnowball",
     codes = { "H", "N", "T" },
     element = "aqua",
     family = "aqua",
