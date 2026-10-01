@@ -1412,13 +1412,16 @@ export type WeaponSpec = {
     id: string,
     name: string,
     charge_ticks: { number },
-    -- `off_80117D4[n]`: prepare the attack, name its action. None while the
-    -- weapon is still a v1 module, which its legacy marker names.
-    setup: ((navi: Object) -> Action | number)?,
+    -- `off_80117D4[n]`: prepare the attack, name its action (an `Action`
+    -- or an action number). None while the weapon is still a v1 module,
+    -- which its legacy marker names. (Typed loosely until the markers go:
+    -- Luau's checker doesn't check a function against an optional
+    -- function type.)
+    setup: ((navi: Object) -> any)?,
     -- Transitional (counted by the ratchet): the routine numbers the pack's
     -- forms and the ruleset still name it by (`weapon_numbered`); for a
     -- weapon still a v1 module, the module (`script`), the action it brings
-    -- and the instant chip effect it names.
+    -- and the instant chip effect it names (§12, step 5).
     legacy: { routines: { number }, script: string?, action: number?, instant_chip: number? }?,
     sticky: boolean?,
     traits: { string }?,

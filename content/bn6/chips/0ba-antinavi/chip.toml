@@ -1,3 +1,0 @@
-# A trap chip (dimming chip subtype 20): its dimming controller sets the trap.
-
-script = "../../objects/trap-chip/trap_chip.luau"

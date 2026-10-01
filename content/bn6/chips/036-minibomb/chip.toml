@@ -1,3 +1,0 @@
-# MiniBomb runs the bombs and seeds (action 0x12, `sub_80EB628`), in chip.luau.
-
-script = "chip.luau"

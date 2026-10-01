@@ -479,6 +479,10 @@ pub fn scripts() -> Scripts {
                 ("navis/00-megaman/weapons/blank-shot/weapon", "navis/00-megaman/weapons/blank-shot/weapon"),
                 ("navis/00-megaman/weapons/charged-shot/weapon", "navis/00-megaman/weapons/charged-shot/weapon"),
                 ("navis/00-megaman/weapons/buster/weapon", "navis/00-megaman/weapons/buster/weapon"),
+                // Two of the buster's alias routines (its setup, their own
+                // charge rows).
+                ("navis/00-megaman/weapons/buster-2e/weapon", "navis/00-megaman/weapons/buster-2e/weapon"),
+                ("navis/00-megaman/weapons/buster-82/weapon", "navis/00-megaman/weapons/buster-82/weapon"),
                 ("navis/00-megaman/forms/heatcross/charge", "navis/00-megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
