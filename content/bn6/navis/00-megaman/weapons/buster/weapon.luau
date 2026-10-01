@@ -106,12 +106,17 @@ local function damage_word(me: Object): number
     return bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
 end
 
--- `sub_80EB450`'s throw: the last obstacle absorbed (the attack's marker)
--- flies from the panel in front (`sub_80C6248`).
+-- `sub_80EB450`'s throw: the last obstacle absorbed (what the throw's
+-- setup took from the absorbed list into the attack: the original's marker
+-- word) flies from the panel in front (`sub_80C6248`).
 local function throw(me: Object)
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
-    local obstacle = bit32.band(me.marker, 0xFF)
-    flying_shot.spawn(me, Vec3.new(x, y, THROW_Z), { THROWN, 0, 0, 0 }, damage_word(me), obstacle)
+    flying_shot.launch(me, Vec3.new(x, y, THROW_Z), {
+        variant = flying_shot.variants.thrown,
+        damage = damage_word(me),
+        obstacle = me.thrown_look,
+        obstacle_anim = me.thrown_anim,
+    })
 end
 
 -- `sub_80EB450`: raise the buster; on the second tick the shot (its kind
