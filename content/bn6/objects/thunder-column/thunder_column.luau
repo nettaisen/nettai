@@ -20,7 +20,7 @@ export type Variant = {
     spark: Spark,
     region: Region,
     hit_mod: number,
-    status: number,
+    status: Status?,
     bug: number,
     bug_arg: number,
 }
@@ -49,7 +49,7 @@ thunder_column.plain = thunder_column.variant {
     spark = sparks.elec,
     region = regions.single,
     hit_mod = 3,
-    status = 0,
+    status = nil,
     bug = 0,
     bug_arg = 0,
 }
@@ -58,7 +58,7 @@ thunder_column.pull = thunder_column.variant {
     spark = sparks.plain,
     region = regions.single,
     hit_mod = 3,
-    status = 0,
+    status = nil,
     bug = 0,
     bug_arg = 0,
 }
@@ -105,7 +105,7 @@ local function init(me: Object)
     local c = me.collision
     c:set_region(v.region)
     c:set_hit_effect(v.spark)
-    if v.status ~= 0 then
+    if v.status then
         c.status_base = v.status
     end
     if v.bug ~= 0 then

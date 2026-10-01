@@ -282,8 +282,8 @@ local function init(me: Object)
     me:setup_collision(v.collision.is, v.collision.hits, v.hit_mod)
     local c = me.collision
     c:set_hit_effect(v.spark)
-    local status = v.status or 0
-    if status ~= 0 then
+    local status = v.status
+    if status then
         c.status_base = status
     end
     c:present()

@@ -13,6 +13,7 @@
 local projectile = require("./projectile")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 local variants = {}
 
@@ -70,17 +71,17 @@ local ROWS: { [number]: ProjectileVariant } = {
         element = "null",
         spark = sparks.shot,
     },
-    [0x0A] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x20 },
-    [0x0B] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x30 },
+    [0x0A] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.confuse_480 },
+    [0x0B] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.blind_480 },
     [0x0C] = variants.gigacan,
     [0x0D] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("grass") },
     [0x0E] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("ice") },
     [0x0F] = v { collision = SHOT, hit_mod = 1, element = "null", spark = sparks.plain },
     [0x10] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.erase },
-    [0x11] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x10 },
-    [0x12] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x20 },
-    [0x13] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x10 },
-    [0x14] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x30 },
+    [0x11] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.paralyze_90 },
+    [0x12] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.confuse_480 },
+    [0x13] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.paralyze_90 },
+    [0x14] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.blind_480 },
     [0x15] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = { effect = "crack" } },
     [0x16] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = { effect = "break" } },
     [0x17] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("volcano") },
@@ -98,7 +99,7 @@ local ROWS: { [number]: ProjectileVariant } = {
     [0x1E] = v { collision = SHOT, hit_mod = 0x61, element = "null", spark = sparks.plain },
     [0x1F] = v { collision = SHOT, hit_mod = 0x49, element = "null", spark = sparks.plain },
     [0x20] = v { collision = SHOT, hit_mod = 0x45, element = "null", spark = sparks.charged },
-    [0x21] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x60 },
+    [0x21] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.bubble_150 },
     -- A road the way the shot flies for the left side's shots, and the
     -- other way for the right side's (the routine's own values, 0xC and
     -- 0xB, for side 1).
@@ -118,7 +119,7 @@ local ROWS: { [number]: ProjectileVariant } = {
         hit_panel = { effect = "set_type", left_side = "road_right", right_side = "road_left" },
     },
     [0x25] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("grass") },
-    [0x26] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x50 },
+    [0x26] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.freeze_150 },
     [0x27] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("ice") },
 }
 

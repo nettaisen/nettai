@@ -7,9 +7,10 @@
 -- (chips/01e-thunder, docs/design/content-model-v2.md §12).
 
 local shoot = require("../thunder/shoot")
+local statuses = require("../../rules/status")
 
 -- Its hits' status: paralysis.
-local PARALYZE = 0x10
+local PARALYZE = statuses.paralyze_90
 
 return {
     action = shoot.action { id = "darkthnd/action", ball = { panels = 0x0C, status = PARALYZE } },

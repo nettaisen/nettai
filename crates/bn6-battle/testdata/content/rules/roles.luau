@@ -14,6 +14,7 @@ local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local lockon = require("./lockon")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
+local statuses = require("./status")
 local supports = require("../lib/supports/controller")
 
 return define.roles {
@@ -44,6 +45,13 @@ return define.roles {
         absorbed_obstacle = absorbed_obstacle.kind,
         falling_rock = falling_rock.kind,
         support = supports.kind,
+    },
+    statuses = {
+        damage_word_paralysis = statuses.paralyze_90,
+        counter_paralysis = statuses.paralyze_150,
+        ice_freeze = statuses.freeze_150,
+        hit_bug_blind = statuses.blind_1200,
+        hit_bug_confuse = statuses.confuse_960,
     },
     lockon = {
         beast_claw = lockon.beast_claw,
