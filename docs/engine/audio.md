@@ -92,18 +92,22 @@ current-music byte `PlayMusic` checks. `BattleAudio` runs them:
 The game queues sound calls and runs them at the start of the next
 frame's main loop, after that frame's VBlank; the driver plays a new song's
 first tick on the VBlank after. `tick` keeps that order, so a cue sounds
-two frames after its tick, as in the game. Output is 32768 Hz stereo
-(`SAMPLE_RATE`), about 549 samples a frame. `AudioOut` (feature `playback`,
+two frames after its tick, as in the game (the Direct Sound part a frame
+later still: the FIFOs play each frame's mix during the next). Output is
+32768 Hz stereo (`SAMPLE_RATE`), about 549 samples a frame: the DAC's
+65536 Hz averaged down, through a 20 Hz high-pass (the GBA's output
+capacitor, which takes out the PSG's offset). `AudioOut` (feature `playback`,
 on by default) does the same on the default output device through cpal,
 buffering a few frames and resampling to the device rate; the frontend
 calls `tick` at the game's 59.73 Hz. `wav::write` saves rendered audio.
 
 ## 3. The driver: `m4a`
 
-A port of the arranger's m4a crates (bnmusic, MIT). The mixer (Direct
-Sound envelopes and resampling into the 8-bit mix buffer with its reverb,
-PSG envelopes and synthesis, output levels) is theirs. The sequencer is
-rewritten after the GBA driver so that many songs play at once:
+A port of BN6's M4A library (the "Sappy" driver, `MKS4AGB`, dated April
+2006 in the ROM), routine by routine and in its integer arithmetic, so that
+its state and output are the game's (§6). It began as a port of the
+arranger's m4a crates (bnmusic, MIT); the sequencer and mixer are now the
+game's code.
 
 - **Players.** BN6 has 32 music players (`bank.players`, the driver's
   player table). Player 31 plays music (8 tracks) and takes any song;
@@ -111,23 +115,66 @@ rewritten after the GBA driver so that many songs play at once:
   player refuses a song of lower priority than its own (`MPlayStart`). Each
   song names its player in the song table (0x6C deletion: player 16,
   priority 255; 0x97 panel crack: player 15, priority 64; the battle music
-  0x15: player 31, priority 20).
-- **Channels.** All players share 4 Direct Sound and 4 PSG channels. A note
-  gets a channel as `ply_note` decides, with priority = song priority +
-  track priority: a PSG note needs its channel free, released, or held by
-  a lower note (equal: by a later track); a Direct Sound note takes a free
+  0x15: player 31, priority 20). Every frame (`SoundMain`, from the VBlank
+  interrupt) the players run in order, 0 first (`MPlayMain` chains them).
+- **Sequencer** (`MPlayMain`): the tempo counter (150 a tick), per track
+  the gates of its notes, its commands, the LFO; a command that changes a
+  track's volume or pitch marks it, and after the ticks `TrkVolPitSet`
+  works out the marked tracks' volumes and pitch and passes them to the
+  notes they still own (`ChnVolSetAsm`, `MidiKeyToFreq`,
+  `MidiKeyToCgbFreq`). A note started on a tick takes its track's values
+  and clears the marks, so the track's older notes miss a change made on
+  that tick (as in the game). The LFO's falling half takes its phase
+  before it wraps, as the game does. Player controls: tempo, pitch and
+  volume control, fades (with the game's fade-in and keep-the-tracks
+  bits), stop.
+- **Channels** (`ply_note`). All players share 4 Direct Sound and 4 PSG
+  channels. A note gets a channel with priority = song priority + track
+  priority: a PSG note needs its channel free, released, or held by a
+  lower note (equal: by a later track); a Direct Sound note takes a free
   channel, else the weakest released one, else the weakest one that
   yields. So effects cut the music's notes; the music gets the channel
   back with its next note.
-- **Sequencer.** `MPlayMain` per player per frame: the tempo counter,
-  per-track gate countdown, commands, LFO, then volume and pitch
-  (`TrkVolPitSet`) for the notes each track still owns. Player controls:
-  tempo, pitch and volume control, fade out, stop.
+- **PSG** (`CgbSound`): each PSG channel's envelope counts frames
+  (attack, decay, sustain, release, pseudo-echo; every fifteenth frame,
+  SoundInfo's c15, it counts twice), and the driver writes the PSG's
+  registers: the note's restart with the duty, sweep and length, the
+  frequency (rounded for the DAC's resolution for the voices whose type
+  has the 0x08 bit), NRx2 with the level and the hardware envelope's
+  direction and period, NR51's pan bits, the wave channel's wave RAM and
+  level. A channel the hardware has stopped (NR52) ends.
+- **Direct Sound** (`SoundMainRAM`): each channel's envelope (0..=255 a
+  frame, with the master volume), then its mix into the PCM ring buffer,
+  8 bits a sample with wrapping adds, 176 samples a frame at 10512 Hz;
+  samples step by `divFreq` times the note's frequency in 23-bit fixed
+  point with linear interpolation (reading the byte after the data at the
+  end; the "fixed" voices play a sample a sample), loop or end. The ring
+  holds nine frames; with reverb, each frame's slot starts as the sum of
+  itself and the next slot (nine and eight frames ago) times the level.
+- **The hardware** (`m4a::apu`): the PSG as the GB APU of the GBA (duty
+  steps, the 512 Hz sequencer's lengths, sweep and envelope steps, the
+  noise LFSR, the wave channel's banks), driven by the registers the
+  driver writes, applied where its frame starts; the FIFOs play each
+  frame's slot during the next frame; the DAC adds them as the GBA does
+  (SOUNDCNT_H: PSG at 100%, FIFO A right and B left at full volume; the
+  bias clamps to 10 bits). `Driver::take_dac_output` gives the DAC's
+  samples at its rate (65536 Hz for BN6's 8-bit setting), in mGBA's scale;
+  `take_output` averages them to 32768 Hz through the output capacitor (a
+  20 Hz high-pass that takes out the PSG's offset).
+- **MEMACC** (0xB9): all 18 operations on the driver's memory area
+  (`Driver::memory`, `set_memory`): set, add, subtract (by a value or by
+  another byte of the area) and jump if equal, not equal, greater, at
+  least, at most, less (than a value or a byte). BN6's game area is the
+  16 bytes at 0x02010B90; two map songs (0x11, 0x23) mark their phrases
+  in byte 0 so that the game's `sub_8000822` switches music on a phrase
+  boundary. The battle uses neither.
 
-Checked against the arranger's offline renderer on the battle music
-(0x15): the renders agree closely, and the differences found come from
-that renderer applying control changes (pan, bend, ...) one tick early,
-where the GBA driver applies them on their tick.
+What the port doesn't play, none of which any BN6 song uses (the
+extractor reads all 399 songs): the commands PORT (0xCC, a write to a
+sound register) and XCMD's tone changes (0x01 wave, 0x02 type, 0x04-0x07
+the envelope, 0x0A length, 0x0B sweep); XCMD 0x0C and up jump into data in
+BN6's driver. A ROM with one of them has the song left out at extraction,
+with the command named.
 
 ## 4. Sound data
 
@@ -144,8 +191,15 @@ and every song renders the same samples from them as from the ROM.
 trusts it. The pack holds the game's recordings, so it is never committed
 (`data/content/` is gitignored), and nothing reads the ROM at run time.
 
-Every BN6 song reads (397) except two map songs that use MEMACC (0x11,
-0x23), which the port doesn't play. A track whose running status would depend on
+Every BN6 song reads (399). The sound files' version 2 carries what the
+exact driver needs beyond version 1: a PSG voice's sweep, its fixed
+frequency bit and length, the byte after a sample's data (one BN6 sample
+has another than the usual), and the DAC's resolution; a version 1 pack
+loads with a warning and plays without them. MEMACC's set, add and
+subtract are mid2agb's controllers (CC 13 the operation, CC 14 the
+address, CC 12 the operand, which runs it); a conditional MEMACC jumps on
+what the game wrote, so a song with one can't be a timeline and is left
+out of a pack (BN6 has none). A track whose running status would depend on
 the path into a jump target is refused at extraction (none in BN6).
 
 ## 5. Hearing it
@@ -189,6 +243,46 @@ sounds are left out.
   several latencies): the cues of a peer's confirmed frames are the plain
   replay's, frame for frame, and what it played and didn't take back is the
   same cues (`cues::CueTracker`, docs/design/rollback.md).
+- The sound itself, against recordings of the original under emulation
+  (each song started on its own on a freshly booted game; the driver's
+  state after every SoundMain and mGBA's audio output): the battle music
+  0x15, the winner's 0x1F and loser's 0x1A music, the MEMACC map song
+  0x11, and ten effects that between them play every voice type (Direct
+  Sound 0x6B, 0x71, 0x8F; square 1 with a sweep 0x6C, without 0x84, 0x86,
+  0x9F; square 2 0x6C, 0x9D; wave 0x9D, 0xDB; noise 0x97; the effects'
+  PSG voices all with the fixed-frequency bit). 15,070 frames, with 21,831
+  channel-frames of Direct Sound and 37,821 of PSG sounding.
+  - The driver's state matches on every frame: each Direct Sound
+    channel's status, keys, volumes, envelope, frequency and place in its
+    sample; the 176 bytes a side it mixed into the PCM buffer; each PSG
+    channel's status, envelope level, goal and counter, frequency, pan and
+    NRx4; and the PSG registers the driver wrote.
+  - The output: the Direct Sound effects come out of the DAC sample for
+    sample to 99.8% (once lined up: the FIFOs' latency and the timer's
+    phase are the game's); what differs is the emulator's timer events
+    landing a sample either side of the DAC's grid now and then. The PSG
+    can't match sample for sample: where a square is in its duty cycle goes
+    back to the game's boot, and the driver's register writes fall where
+    the game's CPU gets to them in VBlank. Compared as loudness a frame at a
+    time, the PSG effects agree to 17-34 dB and the music to 16-25 dB
+    (the Direct Sound effects to 49-56 dB).
+- What a frontend plays (the golden traces' rounds through `SoundCalls` and
+  the driver, as `BattleAudio` does): the round's battle music (the link
+  battle's `music.link_battle`) starts with the intro, sounds and plays on
+  to the result, then the winner's or the loser's music
+  (`music.winner`, `music.loser`) takes over; the low-HP alarm (92 times
+  over soundmod's rounds) and the pause sound (the traces never pause: the
+  test pauses and resumes every 25 seconds) start every time and the music
+  goes on under them, never restarted.
+- Under rollback, the sound a peer's player hears: each peer's cue
+  actions, played on the frame it decided them, through `SoundCalls` and
+  the driver: the same music changes as the plain replay, each at most
+  the latency later, and every song the replay starts started once within
+  that (the rest predictions stopped again). On the golden traces at
+  latencies of 2, 5 and 10 frames (with 1-3 of jitter): every round's
+  three music changes in step, effects at most 7 frames late at 10 frames'
+  latency, and up to 17 effects in a round started on a prediction and
+  stopped again.
 
 In this repo, tests cover the cue plumbing on a battle built in code, the
 driver on synthesized songs (priorities, channel stealing, controls, the
