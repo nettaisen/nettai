@@ -1,24 +1,22 @@
 --!strict
--- CopyDmg: action 0x23 (`sub_80ECA34`). The navi raises its buster and, on
--- the next tick, fires CopyDmg's mark (attack object #0x28,
--- objects/copy-mark) along its row from the panel ahead: the first navi it
--- hits takes, for 180 ticks, the damage its side took the tick before on
--- top of its own. 5 ticks, then 11 of recovery.
+-- CopyDmg (the original's action 0x23, `sub_80ECA34`): the navi raises its
+-- buster and, on the next tick, fires its mark (mark.luau) along its row
+-- from the panel ahead: the first navi it hits takes, for 180 ticks, the
+-- damage its side took the tick before on top of its own. 5 ticks, then 11
+-- of recovery.
 
 local buster = require("../../lib/buster")
-local copy_mark = require("../../objects/copy-mark/copy_mark")
+local mark = require("./mark")
 
 export type State = {
     -- Ticks into the shot, then ticks left (AIAttackVars+0x10).
     timer: number,
 }
 
-local copy_dmg = {
-    state = { timer = "u16" },
-}
-
 -- The phases, on the attack's step.
 local SHOOT, RECOVER = 0x0, 0x4
+
+local SOUND = asset.sound("buster-6a")
 
 -- `sub_80ECA50`: the buster up; the mark flies on the second tick.
 local function shoot(me: Object, s: State)
@@ -30,12 +28,11 @@ local function shoot(me: Object, s: State)
         s.timer = 0
     end
     if s.timer == 1 then
-        battle.play_sound(0x6A)
+        battle.play_sound(SOUND)
         -- The damage word (the hit parameter in its high half), plus the
         -- Atk+ bonus.
         local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
-        local params = { me:attack_param(1), me:attack_param(2), me:attack_param(3), me:attack_param(4) }
-        copy_mark.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, params, damage)
+        mark.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage)
     end
     local t = s.timer + 1
     s.timer = t
@@ -61,7 +58,7 @@ local function recover(me: Object, s: State)
 end
 
 -- `sub_80ECA34`.
-function copy_dmg.update(me: Object, s: State)
+local function update(me: Object, s: State)
     local step = me.step
     if step == SHOOT then
         shoot(me, s)
@@ -72,4 +69,17 @@ function copy_dmg.update(me: Object, s: State)
     end
 end
 
-return copy_dmg
+return define.chip {
+    id = "copydmg",
+    name = "CopyDmg",
+    codes = { "*" },
+    element = "null", family = "cursor", class = "standard",
+    rarity = 1, mb = 12, damage = 0, hit_param = 0, lockout = 0,
+    flags = { "standard_library", "library" },
+    extra_flags = { "free_slot_in" },
+    library = { number = 194, index = 194, sort = 110 },
+    slot_in_limit = 3,
+    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
+    beast = { lockon = 1 },
+    action = define.action { state = { timer = "u16" }, update = update },
+}

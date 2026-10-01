@@ -92,6 +92,22 @@ collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1
 -- chip sets down: the instruments, AirRaid's plane, Sensor's turret).
 collision.own_body = define.collision { id = "own-body", side0 = 0x02010080, side1 = 0x01010080, row_offset = 0x98 }
 
+-- An attack that breaks guards and ice (row 0x06: a drill).
+collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
+
+-- The same with the flag 0x400, whose test no routine was found for (row
+-- 0x4A: a drill's second).
+collision.second_drill = define.collision {
+    id = "second-drill",
+    side0 = 0x80000482,
+    side1 = 0x40000482,
+    row_offset = 0x250,
+}
+
+-- An attack with the flag 0x800, whose test no routine was found for (row
+-- 0x12: a tornado).
+collision.tornado = define.collision { id = "tornado", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
+
 -- An attack that breaks guards (row 0x32: the instruments' notes).
 collision.guard_breaking = define.collision {
     id = "guard-breaking",

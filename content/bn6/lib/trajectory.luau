@@ -82,13 +82,17 @@ end
 
 -- ---- The game's helpers ---------------------------------------------------------
 
-local function sine(i: number): number
+-- `math_sinTable`: the sine of step `i` (256 steps a turn, 1.0 = 0x100;
+-- the table runs over a turn and a half, so the cosine of step a is entry
+-- a + 64).
+function trajectory.sine(i: number): number
     local v = data.rules.sine[i]
     if v == nil then
         error(string.format("sine table entry %d is not in the content", i))
     end
     return v
 end
+local sine = trajectory.sine
 
 -- `calcAngle_800117C`: the angle toward (dx, dy), 256 steps a turn.
 function trajectory.angle(dx: number, dy: number): number

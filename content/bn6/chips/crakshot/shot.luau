@@ -1,38 +1,31 @@
 --!strict
--- A crack shot (attack object #0x33, `sub_80CA544`): CrakShot's dug-up
--- panel. On its panel it breaks the panel and flies off it: up 20 pixels,
--- then forward at 8 pixels a tick, hitting whatever it meets, until it has
--- hit something, crossed its Param1 panel centers or left the field. A
+-- A crack shot (the original's attack object #0x33, `sub_80CA544`):
+-- CrakShot's, DublShot's and TrplShot's dug-up panel. On its panel it
+-- breaks the panel and flies off it: up 20 pixels, then forward at 8
+-- pixels a tick, hitting whatever it meets, until it has hit something,
+-- crossed its panel centers (its spawner's budget) or left the field. A
 -- panel it can't dig (not solid, or with something on it) only cracks, and
--- the shot never appears. Either way it raises dust (effect 0x30).
+-- the shot never appears. Either way it raises dust.
 
-local crack_shot = {}
+local collision = require("../../rules/collision")
+local sparks = require("../../lib/sparks")
 
-local SPRITE = "0c-33"
+local shot = {}
+
+export type State = {
+    -- Panel centers it may still cross (Param1).
+    centers: number,
+}
+
+local SPRITE = asset.sprite("crack-shot")
+local SOUND = asset.sound("crack-shot")
+-- The dust it raises on its panel (the original's effect 0x30).
+local DUST = define.effect { sprite = asset.sprite("dust"), anim = 0, palette = 0 }
 -- Up, then forward, 16.16 per tick; how high it flies (whole pixels).
 local RISE, SPEED, HEIGHT = 0x8_0000, 0x8_0000, 0x14
--- The dust it raises on its panel.
-local DUST = 0x30
 -- A panel it can dig: solid (0x10) with nothing on it (bodies, neutral
 -- objects, blockers, reservations).
 local SOLID, CRACKED, OCCUPIED = 0x10, 0x40, 0x0F880080
-
--- `sub_80CA686`: a shot for `owner` on (x, y), with the damage word
--- `damage`, flying across at most `centers` panel centers. Its position
--- is the spawner's registers (the panel Y, the element and 0) until its
--- init places it.
-function crack_shot.spawn(owner: Object, x: number, y: number, element: number, damage: number, centers: number): Object?
-    local o = battle.spawn_kind("crack-shot", Vec3.new(y, element, 0), { centers })
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = owner.alliance, owner.flip
-        o.related1 = owner
-    end
-    return o
-end
 
 -- `sub_8109794`: crack (x, y) unless it is already cracked.
 local function crack(x: number, y: number)
@@ -52,7 +45,7 @@ end
 -- Out of the fight: hidden, its region cleared, then gone.
 local function finish(me: Object)
     me.visible = false
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me:set_lifecycle("destroy")
 end
 
@@ -73,8 +66,9 @@ local function tick(me: Object)
             me.pos = Vec3.new(x, p.y, p.z)
             local out = false
             if crossed(x, p.x, cx) then
-                local left = me:param(1) - 1
-                me:set_param(1, left)
+                local s = me.state :: State
+                local left = s.centers - 1
+                s.centers = left
                 out = left <= 0
             end
             if out then
@@ -102,7 +96,7 @@ local function init(me: Object)
         return
     end
     field.break_empty(x, y)
-    battle.play_sound(0xDA)
+    battle.play_sound(SOUND)
     local sprite = me.sprite
     sprite:load(SPRITE)
     sprite:set_animation(0)
@@ -118,28 +112,50 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(4, 5, 1)
-    me.collision.hit_effect = 5
+    me:setup_collision(collision.attack, collision.hits_navis, 1)
+    me.collision:set_hit_effect(sparks.impact)
     me.collision:present()
     me:set_lifecycle("update")
     tick(me)
 end
 
--- `sub_80CA544`.
-function crack_shot.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-        if not me.active then
+shot.kind = define.kind {
+    id = "crakshot/shot",
+    pool = "attack",
+    state = { centers = "u8" },
+    -- `sub_80CA544`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+            if not me.active then
+                return
+            end
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
             return
         end
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
-        return
+        me:update_sprite()
+    end,
+}
+
+-- `sub_80CA686`: a shot for `owner` on (x, y), with the damage word
+-- `damage`, flying across at most `centers` panel centers. Its position
+-- is the spawner's registers (the panel Y, the element and 0) until its
+-- init places it.
+function shot.spawn(owner: Object, x: number, y: number, element: number, damage: number, centers: number): Object?
+    local o = battle.spawn(shot.kind, Vec3.new(y, element, 0))
+    if o then
+        (o.state :: State).centers = centers
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o:set_damage_word(damage)
+        o.alliance, o.flip = owner.alliance, owner.flip
+        o.related1 = owner
     end
-    me:update_sprite()
+    return o
 end
 
-return crack_shot
+return shot
