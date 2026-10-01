@@ -158,6 +158,7 @@ gauge-speed = { pool = "effect", index = 0x1C, scratch_position = true }
 panel-changer = { pool = "effect", index = 0x1F, scratch_position = true }
 "panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
 "grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
+"dimming/blinding-flash" = { pool = "effect", index = 0x23, scratch_position = true }
 panel-bursts = { pool = "effect", index = 0x24, scratch_position = true }
 "wind/controller" = { pool = "effect", index = 0x25, scratch_position = true }
 "timebom/bomb" = { pool = "effect", index = 0x27, scratch_position = true }
