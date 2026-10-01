@@ -7,7 +7,7 @@
 
 use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
-use crate::objects::{SpriteList, View, project};
+use crate::objects::{SpriteList, View, project_hud};
 use bn6_assets::{Bundle, Hud, MapEntry, Palette, Tiles};
 use bn6_battle::Battle;
 use bn6_battle::actor::status;
@@ -64,8 +64,8 @@ impl Face {
         }
     }
 
-    /// The pack's picture: the emotion's, or the form's (a Beast's has an
-    /// angry one, a Cross's a spent one).
+    /// The pack's picture: the emotion's, or the form's (a Beast's has a
+    /// Full Synchro one, a Cross's a spent one).
     fn picture(self, hud: &Hud) -> u8 {
         if self.form == 0 {
             return self.emotion;
@@ -492,7 +492,7 @@ pub fn draw<'a>(
         // not (`sub_801C202` asks `sub_800362C`): a navi that blinks after
         // a hit or is invisible keeps its number.
         let o = b.objects.get(e.object);
-        let p = project((o.pos.x, o.pos.y, o.pos.z), &view);
+        let p = project_hud((o.pos.x, o.pos.y, o.pos.z), &view);
         if !on_screen(p) {
             continue;
         }
@@ -767,7 +767,7 @@ fn icon_parts<'a>(
         problems.note(format!("chip {:?} ({}) has no icon in the pack", def.key, def.record.name));
         return;
     };
-    let p = project((o.pos.x, o.pos.y, o.pos.z), view);
+    let p = project_hud((o.pos.x, o.pos.y, o.pos.z), view);
     if !on_screen(p) {
         return;
     }
@@ -926,6 +926,22 @@ const TIMES_GLYPH: usize = (0x1D2 - 0x1A0) / 2;
 mod tests {
     use super::*;
     use bn6_assets::BannerLayout;
+
+    #[test]
+    fn a_face_is_its_emotions_picture_or_its_forms() {
+        let hud = Hud { form_emotions: vec![0, 5, 6, 7, 8, 9, 5, 6, 7, 8, 9, 0x14, 0x14], ..Hud::default() };
+        let face = |emotion, form| Face { emotion, form, count: 3 };
+        // MegaMan's own emotions are pictures 0-4, and blink when they change.
+        assert_eq!(face(1, 0).picture(&hud), 1);
+        assert!(face(1, 0).plain());
+        // A Cross has its face and a spent one; a Beast its face and a Full Synchro one.
+        assert_eq!((face(0, 3).picture(&hud), face(2, 3).picture(&hud)), (7, 12));
+        assert_eq!((face(0, 11).picture(&hud), face(3, 11).picture(&hud)), (0x14, 0x15));
+        assert!(!face(0, 3).plain());
+        // Emotions a form has no picture for don't change its face.
+        assert_eq!(face(0, 3).key(), face(1, 3).key());
+        assert_ne!(face(0, 3).key(), face(2, 3).key());
+    }
     use bn6_battle::content::{BannerId, testing};
     use bn6_battle::hud::{Telop, TelopHidden};
 
