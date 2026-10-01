@@ -14,20 +14,34 @@ attachment = { pool = "actor", index = 0x05 }
 "elecman/navi" = { pool = "actor", index = 0x08 }
 "spoutman/navi" = { pool = "actor", index = 0x09 }
 "tmhkman/navi" = { pool = "actor", index = 0x0A }
+"diveman/navi" = { pool = "actor", index = 0x0B }
 "tenguman/navi" = { pool = "actor", index = 0x0C }
 "slashman/navi" = { pool = "actor", index = 0x0D }
+"crcusman/navi" = { pool = "actor", index = 0x0E }
+"judgeman/navi" = { pool = "actor", index = 0x0F }
 "elmntman/navi" = { pool = "actor", index = 0x10 }
 "burnsqr/burner" = { pool = "actor", index = 0x13 }
 "magnum/gunner" = { pool = "actor", index = 0x14 }
 "eraseman/navi" = { pool = "actor", index = 0x15 }
 "chrgeman/navi" = { pool = "actor", index = 0x16 }
+"grndman/navi" = { pool = "actor", index = 0x17 }
+"dustman/navi" = { pool = "actor", index = 0x18 }
 "engine/cross-merge" = { pool = "actor", index = 0x1B }
 "sandwrm/hole" = { pool = "actor", index = 0x1C }
+"cornfsta/farmer" = { pool = "actor", index = 0x1E }
+"dblhero/heroes" = { pool = "actor", index = 0x1F }
+"twinldrs/navi" = { pool = "actor", index = 0x20 }
+"crosover/navi" = { pool = "actor", index = 0x21 }
+"mstrcros/navi" = { pool = "actor", index = 0x23 }
 "sunmoon/sun" = { pool = "actor", index = 0x24 }
+"darkness/navi" = { pool = "actor", index = 0x25 }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
+"dblbeast/gregar" = { pool = "actor", index = 0x33 }
+"dblbeast/falzar" = { pool = "actor", index = 0x34 }
 "protoman/navi" = { pool = "actor", index = 0x3C }
 "deltaray/ray" = { pool = "actor", index = 0x3D }
+"numbrbl/numberman" = { pool = "actor", index = 0x45 }
 rush = { pool = "actor", index = 0x4B }
 beat = { pool = "actor", index = 0x4C }
 tango = { pool = "actor", index = 0x4D }
@@ -70,6 +84,7 @@ falling-rock = { pool = "attack", index = 0x1D }
 boomerang = { pool = "attack", index = 0x32 }
 "crakshot/shot" = { pool = "attack", index = 0x33 }
 "ironshl/shell" = { pool = "attack", index = 0x34 }
+"diveman/wave" = { pool = "attack", index = 0x39 }
 "widesht/wave" = { pool = "attack", index = 0x3B }
 "tankcan/shell" = { pool = "attack", index = 0x3C }
 immobilizer = { pool = "attack", index = 0x3F }
@@ -96,11 +111,14 @@ rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 "rlnglog/log" = { pool = "attack", index = 0x66 }
 "lance/lance" = { pool = "attack", index = 0x6F }
 drill = { pool = "attack", index = 0x71 }
+"snake/nest" = { pool = "attack", index = 0x72 }
+"snake/snake" = { pool = "attack", index = 0x73 }
 "rskyhny/bee" = { pool = "attack", index = 0x74 }
 "spoutcross-beast/surge" = { pool = "attack", index = 0x76 }
 instrument = { pool = "attack", index = 0x78 }
 "vdoll/doll" = { pool = "attack", index = 0x7A }
 "guardian/statue" = { pool = "attack", index = 0x7D }
+"grndman/rock" = { pool = "attack", index = 0x80 }
 "tengucross-beast/whirlwind" = { pool = "attack", index = 0x81 }
 "dolthdr/doll" = { pool = "attack", index = 0x82 }
 "moonbld/blade" = { pool = "attack", index = 0x85, scratch_position = true }
@@ -110,8 +128,10 @@ thunder-column = { pool = "attack", index = 0x8B }
 "elcpuls/pulse" = { pool = "attack", index = 0x8C }
 "elmntman/meteor" = { pool = "attack", index = 0x8D }
 "elmntman/ice" = { pool = "attack", index = 0x8E }
+"numbrbl/ball" = { pool = "attack", index = 0x91 }
 "aurahed/head" = { pool = "attack", index = 0x92 }
 "lilbolr/boiler" = { pool = "attack", index = 0x93 }
+"judgeman/book" = { pool = "attack", index = 0x94 }
 "magcoil/magnet" = { pool = "attack", index = 0x95 }
 "slashcross/sword-wave" = { pool = "attack", index = 0x96 }
 "airspin/top" = { pool = "attack", index = 0x9B }
@@ -123,12 +143,15 @@ thunder-column = { pool = "attack", index = 0x8B }
 "flshbom/bomb" = { pool = "attack", index = 0xA4 }
 "bugbomb/bomb" = { pool = "attack", index = 0xA5 }
 "sensor/turret" = { pool = "attack", index = 0xA6 }
+"cornfsta/sower" = { pool = "attack", index = 0xAA }
 "chrgeman/car" = { pool = "attack", index = 0xAC }
 "justcone/strike" = { pool = "attack", index = 0xAE }
 "megaman/dash-hit" = { pool = "attack", index = 0xAF }
 "dustcross/junk-ball" = { pool = "attack", index = 0xB0, scratch_z_fraction = true }
 "slashcross-beast/lunge-slash" = { pool = "attack", index = 0xB1 }
 "blzrdbal/ball" = { pool = "attack", index = 0xB2 }
+"dustman/junk" = { pool = "attack", index = 0xB3 }
+"metrknuk/fist" = { pool = "attack", index = 0xB4 }
 "sunmoon/meteor" = { pool = "attack", index = 0xB5 }
 "sunmoon/moon-beam" = { pool = "attack", index = 0xB6 }
 "blzrdbal/roller" = { pool = "attack", index = 0xB7, scratch_z_fraction = true }
@@ -161,6 +184,8 @@ barrier-visual = { pool = "effect", index = 0x07 }
 rising-bubble = { pool = "effect", index = 0x14 }
 dust-storm-mote = { pool = "effect", index = 0x19 }
 gauge-speed = { pool = "effect", index = 0x1C, scratch_position = true }
+"geddon/controller" = { pool = "effect", index = 0x1D, scratch_position = true }
+"geddon/quake" = { pool = "effect", index = 0x1E, scratch_position = true }
 panel-changer = { pool = "effect", index = 0x1F, scratch_position = true }
 "panel-chips/controller" = { pool = "effect", index = 0x20, scratch_position = true }
 "grabbnsh/controller" = { pool = "effect", index = 0x22, scratch_position = true }
@@ -185,6 +210,7 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 "engine/bubble-visual" = { pool = "effect", index = 0x3C }
 "golmhit/golem" = { pool = "effect", index = 0x3F }
 "aquandl/volley" = { pool = "effect", index = 0x40, scratch_position = true }
+"snake/controller" = { pool = "effect", index = 0x45, scratch_position = true }
 meteor-shower = { pool = "effect", index = 0x46 }
 "gundels/beam" = { pool = "effect", index = 0x48 }
 "instruments/controller" = { pool = "effect", index = 0x4A, scratch_position = true }
@@ -193,15 +219,24 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
 "blzrdbal/controller" = { pool = "effect", index = 0x58, scratch_position = true }
 "burnsqr/controller" = { pool = "effect", index = 0x59, scratch_position = true }
+"judgeman/whip" = { pool = "effect", index = 0x5A }
 "magnum/controller" = { pool = "effect", index = 0x5B, scratch_position = true }
+"lifesync/controller" = { pool = "effect", index = 0x5C, scratch_position = true }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
+"lifesync/marker" = { pool = "effect", index = 0x60 }
+"grndman/drill" = { pool = "effect", index = 0x61 }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "sensor/controller" = { pool = "effect", index = 0x65, scratch_position = true }
+"cornfsta/controller" = { pool = "effect", index = 0x68, scratch_position = true }
+"numbrbl/controller" = { pool = "effect", index = 0x69, scratch_position = true }
+"dblhero/controller" = { pool = "effect", index = 0x6A, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
+"metrknuk/controller" = { pool = "effect", index = 0x76, scratch_position = true }
 "support/controller" = { pool = "effect", index = 0x79 }
+"dblbeast/controller" = { pool = "effect", index = 0x7F, scratch_position = true }
 "colforce/force" = { pool = "effect", index = 0x80 }
 navi-boost = { pool = "effect", index = 0x84, scratch_position = true }
 absorbed-obstacle = { pool = "effect", index = 0x87 }

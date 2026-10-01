@@ -1,0 +1,4 @@
+# TwinLdrs (navi chip subtype 20) brings ProtoMan, who brings Colonel (chips/twinldrs/navi.luau), through
+# chip.luau.
+
+script = "chip.luau"
