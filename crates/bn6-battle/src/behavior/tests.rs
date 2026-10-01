@@ -603,7 +603,7 @@ fn registrations_follow_the_content_data() {
     // chip has (TenguCross's wind) has its own.
     let plus = d.chip(c.chip_numbered(testing::PLUS).unwrap());
     assert!(matches!(plus.usage, crate::content::ChipUsage::Instant(_)), "{:?}", plus.usage);
-    assert!(d.weapon(c.weapon_numbered(0x10)).instant.is_some());
+    assert!(d.weapon(c.weapon_by_key("megaman/tengu-wind")).instant.is_some());
     // A record whose module exports an action runs it, whatever its
     // action number names (the link navis' chips: action 0x0A).
     for (id, _, module) in testing::LINK_CHIPS {
@@ -1036,8 +1036,17 @@ fn an_obstacle_encased_in_a_bubble_becomes_the_bubble() {
 fn the_navi_changing_chips_change_the_navi() {
     
     let setup = || {
-        let mut s = scenario::setup_with(&[testing::BOOST, testing::ARM]);
-        s.players[1] = scenario::setup().players[1];
+        // HubBatc (code J), then PunchArm in `*`, so both can be picked.
+        use crate::content::ChipCode;
+        use crate::custom::{BattleFolder, FolderChip};
+        let mut s = scenario::setup();
+        let chips = [(testing::defined_chip("hubbatc"), ChipCode(9)), (testing::defined_chip("puncharm"), ChipCode::ASTERISK)];
+        let mut folder = BattleFolder::empty();
+        for (slot, &(chip, code)) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
+            assert!(testing::content().chip(chip).codes.contains(&code));
+            *slot = Some(FolderChip::new(chip, code));
+        }
+        s.players[0].folder = Some(folder);
         s
     };
     let tape = scenario::record_on(setup(), 2400, 5);
@@ -1052,7 +1061,7 @@ fn the_navi_changing_chips_change_the_navi() {
     let after = &b.stats[0];
     assert_eq!((after.rapid, after.charge, after.custom_level), (4, 4, 8), "{before:?}");
     assert!(after.float_shoes && after.air_shoes && after.undershirt);
-    assert_eq!(after.weapons.charge_shot, testing::weapon(1), "the arm's charged shot");
+    assert_eq!(after.weapons.charge_shot, testing::weapon("puncharm/charge"), "the arm's charged shot");
     let copy = digests(&tape, Battle::new(setup(), scenario::content()));
     let mut b = Battle::new(setup(), scenario::content());
     for (i, t) in tape.iter().enumerate() {

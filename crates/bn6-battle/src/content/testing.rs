@@ -16,7 +16,6 @@
 //! the real scripts on made-up data.
 
 use super::*;
-use crate::actor::ActorType;
 use bn6_content_api::Pool;
 use crate::field::{PanelType, pflags};
 
@@ -55,11 +54,6 @@ pub const STEP_BLADE: ChipId = 0x10a;
 pub const STUN_BLADE: ChipId = 0x10b;
 /// A trap chip (action 0x15, subtype 20, Param1 3: no object).
 pub const TRAP: ChipId = 0x09;
-/// Navi-changing dimming chips (action 0x15, subtype 38): the buster and
-/// shoes boost (Param1 0), and a new charged shot (Param1 2: weapon
-/// routine 1).
-pub const BOOST: ChipId = 0x0A;
-pub const ARM: ChipId = 0x0B;
 // Dimming chip subtypes 10 and ElemTrap's (20).
 /// An element trap (action 0x15, subtype 20, Param1 0: the trap object).
 pub const ELEM_TRAP: ChipId = 0x30;
@@ -214,14 +208,15 @@ pub fn defined_chip(key: &str) -> bn6_content_api::ChipHandle {
     content().defs.chip_by_key(key).unwrap_or_else(|| panic!("the test content defines no chip {key:?}"))
 }
 
-/// Weapon routine `n` in the content (none for 0xFF).
-pub fn weapon_in(content: &Content, n: u8) -> Option<bn6_content_api::WeaponHandle> {
-    (n != 0xFF).then(|| content.weapon_numbered(n))
+/// The weapon `content` defines as `key`, as a weapon slot holds it.
+pub fn weapon_in(content: &Content, key: &str) -> Option<bn6_content_api::WeaponHandle> {
+    Some(content.weapon_by_key(key))
 }
 
-/// Weapon routine `n` in the shared test content (none for 0xFF).
-pub fn weapon(n: u8) -> Option<bn6_content_api::WeaponHandle> {
-    weapon_in(&content(), n)
+/// The weapon the shared test content defines as `key`, as a weapon slot
+/// holds it.
+pub fn weapon(key: &str) -> Option<bn6_content_api::WeaponHandle> {
+    weapon_in(&content(), key)
 }
 
 /// The test pack's ticker chips and tick shot weapon (`with_test_pack`),
@@ -329,16 +324,16 @@ pub fn build() -> Content {
 fn make() -> Content {
     Content {
         chips: chips(),
-        navis: vec![navi(), link_navi()],
-        forms: vec![base_form()],
+        // (The navis and the base form are definitions:
+        // testdata/content/navis/test.luau.)
+        navis: Vec::new(),
+        forms: Vec::new(),
         rules: rules(),
         objects: objects(),
         effects: vec![EffectSprite { sprite: SpriteId { category: 0x14, index: 0 }, anim: 0, palette: 0 }; 0x70],
         sparks: vec![EffectSprite { sprite: SpriteId { category: 0x14, index: 1 }, anim: 0, palette: 0 }; 16],
         regions: regions(),
         animations: animations(),
-        // (Every weapon the test content has is a definition.)
-        weapons: Vec::new(),
         scripts: scripts(),
         assets: assets(),
         defs: Default::default(),
@@ -408,6 +403,11 @@ fn numbered_assets() -> bn6_content_api::AssetNames {
     // The test stages' (testdata/content/stages/test.luau).
     a.sounds.insert("test-stage-music".into(), STAGE_MUSIC.0);
     a.backgrounds.insert("test-background".into(), 0);
+    // The test navis' (testdata/content/navis/test.luau).
+    a.sprites.insert("test-megaman".into(), SpriteId { category: 8, index: 0 });
+    a.sprites.insert("test-navi".into(), NAVI_SPRITE);
+    a.banners.insert("test-win".into(), 0x40);
+    a.banners.insert("test-deleted".into(), 0x44);
     let sprite = |c, i| SpriteId { category: c, index: i };
     for (name, id) in [
         ("test-burst", sprite(0x14, 0)),
@@ -813,6 +813,7 @@ pub fn scripts() -> Scripts {
                 ("navis/megaman/forms/tengucross-beast/whirlwind", "navis/megaman/forms/tengucross-beast/whirlwind"),
                 ("navis/megaman/forms/tengucross-beast/charge", "navis/megaman/forms/tengucross-beast/charge"),
                 ("navis/megaman/forms/eleccross/charge", "navis/megaman/forms/eleccross/charge"),
+                ("navis/megaman/forms/eleccross/a-charge", "navis/megaman/forms/eleccross/a-charge"),
                 ("navis/megaman/forms/tengucross/charge", "navis/megaman/forms/tengucross/charge"),
                 ("navis/megaman/forms/dustcross/throw_absorbed", "navis/megaman/forms/dustcross/throw_absorbed"),
                 (
@@ -1029,9 +1030,15 @@ pub fn scripts() -> Scripts {
                 ("chips/antirecv/chip", "chips/antirecv/chip"),
                 ("chips/bodygrd/chip", "chips/bodygrd/chip"),
                 ("chips/0ba-antinavi/chip", "chips/0ba-antinavi/chip"),
+                // (HubBatc gives the NaviCust Shield as a B+Back special.)
+                ("navis/megaman/weapons/shield/weapon", "navis/megaman/weapons/shield/weapon"),
                 ("lib/navi-boost/controller", "lib/navi-boost/controller"),
                 ("chips/darkinvs/chip", "chips/darkinvs/chip"),
-                ("chips/121-darkinvs/chip", "chips/121-darkinvs/chip"),
+                // HubBatc, and an arm chip with the weapon it makes the
+                // charged shot.
+                ("chips/hubbatc/chip", "chips/hubbatc/chip"),
+                ("chips/puncharm/charge", "chips/puncharm/charge"),
+                ("chips/puncharm/chip", "chips/puncharm/chip"),
                 ("lib/gauge-speed/controller", "lib/gauge-speed/controller"),
                 ("chips/slogauge/chip", "chips/slogauge/chip"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
@@ -1371,17 +1378,6 @@ fn named_chips() -> Vec<ChipData> {
             script: Some("chips/0ba-antinavi/chip".into()),
             ..chip(TRAP, "Trap", 0x15, 20)
         },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            script: Some("chips/121-darkinvs/chip".into()),
-            ..chip(BOOST, "Boost", 0x15, 38)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            params: [2, 1, 0, 0],
-            script: Some("chips/121-darkinvs/chip".into()),
-            ..chip(ARM, "Arm", 0x15, 38)
-        },
         // Dimming chip subtype 10 and ElemTrap's (20).
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),
@@ -1544,62 +1540,6 @@ fn thrown(id: ChipId, name: &str, subtype: u8, params: [u8; 4], damage: u16) -> 
     }
 }
 
-fn navi() -> NaviData {
-    let mut attach_points = vec![AttachPoint { x: 4, y: 24 }; 34];
-    // The blade's point, and the gun's (BN6's gun sits at point 0x0D).
-    attach_points[3] = GUN_POINT;
-    attach_points[0x0D] = GUN_POINT;
-    NaviData {
-        id: 0,
-        name: "MegaMan".into(),
-        sprite: SpriteId { category: 8, index: 0 },
-        element: Element::Null,
-        weakness: SecondaryElements::default(),
-        buster_bonus: 1,
-        move_lag: vec![4; 11],
-        win_banner: BannerId(0x40),
-        lose_banner: BannerId(0x44),
-        merge_height: 0,
-        own_chip: None,
-        chip_bonus: None,
-        run_message: vec![19, 12],
-        name_record: Some(NameData { id: 0x1A0, version: 0, actor_type: ActorType::Player, ai_index: 0, attach_points }),
-    }
-}
-
-/// A link navi: its own actor record (AI index 4) and MegaMan's look.
-fn link_navi() -> NaviData {
-    let megaman = navi();
-    let record = megaman.name_record.clone().expect("MegaMan's NameID");
-    NaviData {
-        id: LINK_NAVI.0,
-        name: "LinkNavi".into(),
-        sprite: NAVI_SPRITE,
-        name_record: Some(NameData { id: 0x1A0 + LINK_NAVI.0 as u16, ai_index: 4, ..record }),
-        ..megaman
-    }
-}
-
-fn base_form() -> FormData {
-    FormData {
-        id: 0,
-        name: "Base".into(),
-        sprite: NAVI_SPRITE,
-        element: Element::Null,
-        weakness: SecondaryElements::default(),
-        weapons: FormWeapons {
-            mode9_a: 0xFF,
-            a_charge: 0xFF,
-            buster: 0,
-            charge_shot: 1,
-            back_special: 0xFF,
-            alt_a_charge: 0xFF,
-        },
-        buster_bonus: 0,
-        name_record: None,
-    }
-}
-
 fn rules() -> Rules {
     // Collision types by what they are.
     let both = |f: &dyn Fn(usize) -> u32| [f(0), f(1)];
@@ -1705,7 +1645,6 @@ fn rules() -> Rules {
         holding_banners: vec![BannerId(0x24)],
         status_effects: vec![[StatusEffect { requests: 0, duration: 60, timer: StatusTimer::Paralyze }; 16]; 6],
         hp_bug_periods: [0, 60, 50, 40, 30, 20, 10, 5],
-        weapons: vec![WeaponRoutine { charge_ticks: [120, 100, 80, 60, 50] }; 0x30],
         empty_hand: EmptyHandChip { null_family: false, fire: false, flags: ChipFlags(0x10) },
         buster_recovery: vec![[5, 10, 15, 20, 25, 30], [4, 8, 12, 16, 20, 24], [3, 6, 9, 12, 15, 18], [2, 4, 6, 8, 10, 12], [1, 2, 3, 4, 5, 6]],
         sp_deletion_times: vec![0x2000, 0x4000],
