@@ -42,11 +42,9 @@ local SOUND_APPEAR = asset.sound("appear")
 local SOUND_SHOT = asset.sound("buster-6a")
 local SOUND_GUN = asset.sound("gundels1")
 
--- MegaMan's arm for a user who isn't MegaMan (attachment 6) and his muzzle
--- flash (attachment 5); Django's gun is on the blades' sheet (attachment
--- 0xB, as the sword's).
-local ARM = attachment.look { sprite = asset.sprite("buster-arm"), palette = 0 }
-local MUZZLE_FLASH = attachment.look { sprite = asset.sprite("muzzle-flash"), palette = 0, attach_point = 16 }
+-- (MegaMan's arm for a user who isn't MegaMan and his muzzle flash are
+-- lib/buster's, attachments 6 and 5; Django's gun is on the blades' sheet,
+-- attachment 0xB, as the sword's.)
 
 -- MegaMan's shots: projectile kind 0x1D (the projectile's data, by
 -- number until the projectiles convert), 30 damage with hit parameter
@@ -250,12 +248,12 @@ local function shoot(me: Object)
         battle.play_sound(SOUND_SHOT)
         let_go(s.held)
         if s.user_image then
-            buster.arm(me.related1 :: Object, me, "held", true)
+            buster.raise_arm_for(me.related1 :: Object, me, "held", true)
         else
-            attachment.attach(me, ARM, "held", { anim = 0, while_dimmed = true })
+            attachment.attach(me, buster.arm, "held", { anim = 0, while_dimmed = true })
         end
         let_go(s.held2)
-        attachment.attach(me, MUZZLE_FLASH, "held2", { anim = 0, while_dimmed = true })
+        attachment.attach(me, buster.flash, "held2", { anim = 0, while_dimmed = true })
         -- sub_80C44D2: the parts' animation from its start.
         local worn = me.related2
         if worn then

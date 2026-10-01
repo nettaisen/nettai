@@ -40,14 +40,14 @@ end
 -- animation shows the form; its palette the element, the charge disabled,
 -- Full Synchro or the Beast form. A player's second actor gets none.
 function buster.raise_arm(navi: Object)
-    buster.arm(navi, navi, "overlay", false)
+    buster.raise_arm_for(navi, navi, "overlay", false)
 end
 
 -- `sub_80EB572`: the buster arm `navi`'s actor and side call for, held by
 -- `holder` in its slot `which`, animating while dimmed too when
 -- `while_dimmed`. A player's second actor gets none, and its overlay slot
 -- is cleared. (CrosOver's MegaMan raises his user's arm this way.)
-function buster.arm(navi: Object, holder: Object, which: Slot, while_dimmed: boolean)
+function buster.raise_arm_for(navi: Object, holder: Object, which: Slot, while_dimmed: boolean)
     local param3 = if while_dimmed then 1 else 0
     local function attach(kind: number, anim: number, palette_add: number)
         attachment.spawn_with(holder, arm_params(kind, anim, palette_add, param3), which)
