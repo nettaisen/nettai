@@ -1,3 +1,3 @@
-# A trap chip (dimming chip subtype 20): its dimming controller sets the trap.
+# AntiRecv (dimming chip subtype 20) is a record: AntiNavi's shim gives registration by number its hook.
 
-script = "../../objects/trap-chip/trap_chip.luau"
+script = "../0ba-antinavi/chip.luau"

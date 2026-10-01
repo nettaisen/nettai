@@ -1,3 +1,0 @@
-# A dimming chip (subtype 11): its dimming controller lays a mine.
-
-script = "../../objects/mine/mine.luau"
