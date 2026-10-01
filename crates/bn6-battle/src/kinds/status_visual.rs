@@ -8,9 +8,8 @@
 
 use crate::battle::Battle;
 use crate::collision::{f1, link};
-use crate::content::SpriteId;
+use crate::content::{SoundRole, SpriteRole};
 use crate::object::{ObjectRef, flags, state};
-use crate::sound::SoundId;
 
 /// Which status it shows (Param1, a row of `byte_80E08E4`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -23,12 +22,12 @@ pub enum Status {
 }
 
 impl Status {
-    /// Its sprite and the navi's status flag it lasts while.
-    fn row(self) -> (SpriteId, u32) {
+    /// Its sprite (by role) and the navi's status flag it lasts while.
+    fn row(self) -> (SpriteRole, u32) {
         match self {
-            Status::Confusion => (SpriteId { category: 0x14, index: 0x0B }, f1::CONFUSED),
-            Status::Blindness => (SpriteId { category: 0x14, index: 0x09 }, f1::BLIND),
-            Status::Immobilized => (SpriteId { category: 0x10, index: 0x00 }, f1::IMMOBILIZED),
+            Status::Confusion => (SpriteRole::Confusion, f1::CONFUSED),
+            Status::Blindness => (SpriteRole::Blindness, f1::BLIND),
+            Status::Immobilized => (SpriteRole::Immobilized, f1::IMMOBILIZED),
         }
     }
 
@@ -57,7 +56,7 @@ fn vars(b: &Battle, r: ObjectRef) -> Status {
 
 /// Ticks between the confusion's sounds.
 const CONFUSION_SOUND_TICKS: u16 = 0x3C;
-const SOUND_CONFUSION: SoundId = SoundId(0x88);
+const SOUND_CONFUSION: SoundRole = SoundRole::Confusion;
 /// The navi's attach point it sits at.
 const ATTACH_POINT: usize = 5;
 
@@ -92,6 +91,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// `sub_80E091C`.
 fn init(b: &mut Battle, r: ObjectRef) {
     let (sprite, _) = vars(b, r).row();
+    let sprite = b.content.defs.roles.sprite(sprite);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
@@ -127,7 +127,7 @@ fn follow(b: &mut Battle, r: ObjectRef) {
         o.timer = t as u16;
         if t <= 0 {
             o.timer = CONFUSION_SOUND_TICKS;
-            b.play_sound(SOUND_CONFUSION);
+            b.sound(SOUND_CONFUSION);
         }
     }
     let owner = b.objects.get(r).related[0].expect("a status visual without its owner");

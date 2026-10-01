@@ -122,6 +122,9 @@ pub struct PanelTypeRule {
     pub flags: u32,
     /// For roads: where they carry a navi.
     pub road_slide: Option<SlideVector>,
+    /// The sound a NaviCust panel trail makes turning a panel into the
+    /// type (`byte_8013D44`; none: silent).
+    pub trail_sound: Option<crate::sound::SoundId>,
 }
 
 /// Step rules by whether the object is floor-free (AirShoes, or standing

@@ -6,13 +6,13 @@
 //! holds an actor slot and a place in the update order.
 
 use crate::battle::Battle;
-use crate::content::SpriteId;
+use crate::content::SpriteRole;
 use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, flags, state};
 
 /// Its sprites by Param1 (`dword_80C40D4`: one entry).
-const SPRITES: [SpriteId; 1] = [SpriteId { category: 0x10, index: 0x21 }];
+const SPRITES: [SpriteRole; 1] = [SpriteRole::IdleOverlay];
 
 /// Overlay-private state.
 #[derive(Clone, Copy, Debug, Default, Hash)]
@@ -72,6 +72,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let sprite = *SPRITES
         .get(variant as usize)
         .unwrap_or_else(|| panic!("idle overlay variant {variant} reads past its sprite table (sub_80C40F8)"));
+    let sprite = b.content.defs.roles.sprite(sprite);
     let owner_palette = b.objects.sprite(owner(b, r)).look.palette;
     let flip = {
         let o = b.objects.get(r);

@@ -4,12 +4,10 @@
 //! navi's own side. See docs/engine/objects-and-player.md §A.7.
 
 use crate::battle::Battle;
-use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress, set_progress};
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
 use crate::setup::Navi;
 
-const SPRITE: SpriteId = SpriteId { category: 0x0C, index: 0x09 };
 
 /// Its attach point on the target.
 const TARGET_ATTACH_POINT: usize = 0x11;
@@ -81,7 +79,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             // sub_80E1540
             // sprite_load and sprite_loadAnimationData: its animation 0
             // from the first frame's time.
-            b.objects.sprite_mut(r).load(SPRITE);
+            let sprite = b.content.defs.roles.sprite(crate::content::SpriteRole::LockonMarker);
+            b.objects.sprite_mut(r).load(sprite);
             b.objects.sprite_mut(r).set_animation(0, &b.content);
             b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
             let o = b.objects.get_mut(r);
