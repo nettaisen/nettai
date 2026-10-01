@@ -22,9 +22,9 @@ end
 beast_throw_absorbed.weapon = define.weapon {
     id = "dustcross-beast/throw-absorbed",
     name = "Beast throw absorbed",
-    -- The charge table's row 0x2C; Charge 5 reads on into row 0x2D's first
-    -- entry, as the original's table does.
-    charge_ticks = { 0, 0, 0, 0, 0, 60 },
+    -- The charge table's row 0x2C, by Charge 0 to 7: past 4 it reads on
+    -- into the next routine's row, as the original's table does.
+    charge_ticks = { 0, 0, 0, 0, 0, 60, 60, 60 },
     setup = setup,
     -- (Transitional: the routine number the pack's forms name it by.)
     legacy = { routines = { 0x2C } },

@@ -1,7 +1,7 @@
 //! `bn6-content`: check a content pack, compare it with another, and edit
 //! its sprites in Aseprite.
 //!
-//!     bn6-content check <pack>
+//!     bn6-content check <pack> [--content DIR]
 //!     bn6-content verify <pack> <reference-pack> [--seconds N]
 //!     bn6-content aseprite-export <pack> [NAME ...]
 //!     bn6-content aseprite-import <pack> [NAME ...]
@@ -10,7 +10,7 @@
 //! data: keep it out of version control (data/ is ignored).
 
 use bn6_content::report::{Level, Report};
-use bn6_content::{battle, pack, timing, verify};
+use bn6_content::{pack, root, timing, verify};
 use m4a::SongId;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -20,17 +20,22 @@ struct Args {
     command: String,
     pack: PathBuf,
     reference: Option<PathBuf>,
+    /// The content root whose definitions `check` loads with the pack.
+    content: PathBuf,
     seconds: f64,
     /// Sprite folders to work on (aseprite commands; none: all).
     only: Vec<String>,
 }
 
 const USAGE: &str = "usage:
-  bn6-content check <pack>                         read every file and report what it finds
+  bn6-content check <pack> [--content DIR]         read every file and report what it finds, and
+                                                   define the content root's definitions with the
+                                                   pack's assets (default: $BN6_CONTENT, else this
+                                                   repository's content/bn6)
   bn6-content verify <pack> <reference-pack> [--seconds N]
                                                    check that two packs load as the same content
-                                                   (battle data, graphics, sprite timing, sound as
-                                                   timelines and as N seconds of PCM per song)
+                                                   (graphics, sprite timing, sound as timelines and
+                                                   as N seconds of PCM per song)
   bn6-content aseprite-export <pack> [NAME ...]   write sprites' Aseprite views
   bn6-content aseprite-import <pack> [NAME ...]   read the views back into the sprites' files";
 
@@ -38,9 +43,10 @@ fn parse() -> Result<Args, String> {
     let mut it = std::env::args().skip(1);
     let command = it.next().ok_or(USAGE)?;
     let pack = PathBuf::from(it.next().ok_or(USAGE)?);
-    let mut a = Args { command, pack, reference: None, seconds: 60.0, only: Vec::new() };
+    let mut a = Args { command, pack, reference: None, content: root::bn6(), seconds: 60.0, only: Vec::new() };
     while let Some(flag) = it.next() {
         match flag.as_str() {
+            "--content" => a.content = it.next().ok_or("--content needs a directory")?.into(),
             "--seconds" => {
                 let v = it.next().ok_or("--seconds needs a value")?;
                 a.seconds = v.parse().map_err(|_| "--seconds takes a number")?;
@@ -74,27 +80,24 @@ fn main() {
         "check" => {
             let mut r = Report::default();
             let m = pack::read_manifest(&a.pack, &mut r).unwrap_or_else(|| fail(&r));
-            if m.battle.is_some()
-                && let Some(mut c) = battle::load(&a.pack, &mut r)
-            {
-                // The define phase: every module loads, and what the
-                // scripts define and the data registers fits together.
-                let t = std::time::Instant::now();
-                match c.define() {
-                    Ok(()) => {
-                        r.note(
-                            "scripts",
-                            format!(
-                                "{} modules define {} definitions ({:.1?})",
-                                c.scripts.modules.len(),
-                                c.defs.definitions.defs.len(),
-                                t.elapsed()
-                            ),
-                        );
-                        bn6_content::lint::definitions(&c, &mut r);
-                    }
-                    Err(e) => r.error("scripts", e.message),
+            // The define phase: every module loads, and what the modules
+            // define fits together, with the pack's assets.
+            let t = std::time::Instant::now();
+            match pack::load_battle(&a.content, &a.pack) {
+                Ok((c, loaded)) => {
+                    r.issues.extend(loaded.issues);
+                    r.note(
+                        a.content.display().to_string(),
+                        format!(
+                            "{} modules define {} definitions ({:.1?})",
+                            c.scripts.modules.len(),
+                            c.defs.definitions.defs.len(),
+                            t.elapsed()
+                        ),
+                    );
+                    bn6_content::lint::definitions(&c, &mut r);
                 }
+                Err(failed) => r.issues.extend(failed.issues),
             }
             if m.graphics.is_some() {
                 pack::import_graphics(&a.pack, &mut r);
@@ -182,11 +185,6 @@ fn verify_packs(a: &Args) {
             eprintln!("{what}: {} differences", diffs.len());
         }
     };
-    let t = Instant::now();
-    if let Some((x, y)) = both("battle data", pack::load_battle, a) {
-        let same = format!("{} chips, content {}, in {:.1?}", x.chips.len(), x.hash(), t.elapsed());
-        report("battle data", verify::compare_battle(&y, &x), same);
-    }
     let t = Instant::now();
     if let Some((x, y)) = both("graphics", pack::load_graphics, a) {
         let same = format!("{} sprites, {} backgrounds, field, HUD, in {:.1?}", x.sprites.len(), x.backgrounds.iter().flatten().count(), t.elapsed());

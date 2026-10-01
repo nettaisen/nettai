@@ -1,3 +1,0 @@
-# A navi chip (subtype 16): ElmntMan, as chips/10d-elmntman summons him.
-
-script = "../10d-elmntman/chip.luau"

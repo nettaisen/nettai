@@ -1,3 +1,0 @@
-# Cannon runs the cannons (action 0x14, `sub_80EBC0E`), in chip.luau.
-
-script = "chip.luau"

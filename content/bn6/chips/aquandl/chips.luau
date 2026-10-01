@@ -13,6 +13,7 @@ return {
     define.chip {
         id = "aquandl1",
         name = "AquaNdl1",
+        description = "Target 3\nneedles\nat enemy!",
         codes = { "C", "J", "P" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 0, mb = 31, damage = 40, hit_param = 30, lockout = 0,
@@ -24,6 +25,7 @@ return {
     define.chip {
         id = "aquandl2",
         name = "AquaNdl2",
+        description = "Target 3\nneedles\nat enemy!",
         codes = { "F", "K", "T" },
         element = "aqua", family = "aqua", class = "standard",
         rarity = 1, mb = 35, damage = 60, hit_param = 30, lockout = 0,

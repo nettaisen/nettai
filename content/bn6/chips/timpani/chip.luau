@@ -35,6 +35,7 @@ end
 return define.chip {
     id = "timpani",
     name = "Timpani",
+    description = "Stop enmy\nfeet with\nmusic",
     codes = { "I", "O", "T", "*" },
     element = "null", family = "summon", class = "standard",
     rarity = 1, mb = 20, damage = 0, hit_param = 0, lockout = 0,

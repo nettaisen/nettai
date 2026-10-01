@@ -76,7 +76,6 @@
 "engine/navi-chip" = 0x1B
 "engine/form-change" = 0x1C
 "engine/instant-chip" = 0x1C
-"engine/cross-special" = 0x59
 "megaman/gregar-beast-buster/action" = 0x1D
 "megaman/falzar-beast-buster/action" = 0x1E
 "darkthnd/action" = 0x1F
@@ -121,11 +120,11 @@
 "cornsht1/action" = 0x2A
 "cornsht2/action" = 0x2A
 "cornsht3/action" = 0x2A
+"megaman/reflect/action" = 0x2B
+"megaman/shield/action" = 0x2B
 "rflectr1/action" = 0x2B
 "rflectr2/action" = 0x2B
 "rflectr3/action" = 0x2B
-"megaman/shield/action" = 0x2B
-"megaman/reflect/action" = 0x2B
 "ironshl1/action" = 0x2C
 "ironshl2/action" = 0x2C
 "ironshl3/action" = 0x2C
@@ -172,8 +171,8 @@
 "dolthdr2/action" = 0x3E
 "dolthdr3/action" = 0x3E
 "eleccross/charge/thunder" = 0x3E
-"windrack/action" = 0x3F
 "tengucross/charge/gust" = 0x3F
+"windrack/action" = 0x3F
 "moonbld/action" = 0x40
 "slashcross/charge/action" = 0x41
 "destpuls/action" = 0x42
@@ -213,5 +212,6 @@
 "chargecross/tackle/action" = 0x56
 "dustcross/charge/action" = 0x57
 "megaman/absorb/action" = 0x58
+"engine/cross-special" = 0x59
 "megaman/anti-damage/action" = 0x5A
 "z-saver/action" = 0x5B

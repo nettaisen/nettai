@@ -180,7 +180,7 @@ impl Stages {
 }
 
 /// A panel layout: panel types `[y - 1][x - 1]` over the playable 6x3.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PanelLayout {
     pub rows: [[PanelType; 6]; 3],
 }

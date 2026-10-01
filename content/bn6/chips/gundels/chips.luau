@@ -18,6 +18,7 @@ return {
     define.chip {
         id = "gundels1",
         name = "GunDelS1",
+        description = "Hits row\n2pnl ahd\nw/sunshne",
         codes = { "C", "M", "T", "*" },
         element = "null", family = "null", class = "standard",
         rarity = 1, mb = 15, damage = 0, hit_param = 0, lockout = 0,
@@ -36,6 +37,7 @@ return {
     define.chip {
         id = "gundels2",
         name = "GunDelS2",
+        description = "Hits row\n2pnl ahd\nw/sunshne",
         codes = { "B", "E", "R" },
         element = "null", family = "null", class = "standard",
         rarity = 2, mb = 30, damage = 0, hit_param = 0, lockout = 0,
@@ -54,6 +56,7 @@ return {
     define.chip {
         id = "gundels3",
         name = "GunDelS3",
+        description = "Hits row\n2pnl ahd\nw/sunshne",
         codes = { "N", "Q", "W" },
         element = "null", family = "null", class = "standard",
         rarity = 3, mb = 38, damage = 0, hit_param = 0, lockout = 0,
@@ -73,6 +76,7 @@ return {
     define.chip {
         id = "gundelex",
         name = "GunDelEX",
+        description = "Fires a\nspread\nsunbeam",
         codes = { "G" },
         element = "null", family = "null", class = "special",
         rarity = 4, mb = 80, damage = 0, hit_param = 0, lockout = 0,

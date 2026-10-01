@@ -235,9 +235,9 @@ slash_charge.action = define.action {
 slash_charge.weapon = define.weapon {
     id = "slashcross/charge",
     name = "Slash charge",
-    -- The charge table's row 0x12; Charge 5 reads on into row 0x13's first
-    -- entry, as the original's table does.
-    charge_ticks = { 80, 70, 60, 55, 50, 60 },
+    -- The charge table's row 0x12, by Charge 0 to 7: past 4 it reads on
+    -- into the next routine's row, as the original's table does.
+    charge_ticks = { 80, 70, 60, 55, 50, 60, 60, 60 },
     setup = setup,
     -- (Transitional: the routine number the pack's forms name it by.)
     legacy = { routines = { 0x12 } },

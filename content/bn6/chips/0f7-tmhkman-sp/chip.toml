@@ -1,3 +1,0 @@
-# A navi chip (subtype 8): TomahawkMan, as chips/0f5-tmhkman summons him.
-
-script = "../0f5-tmhkman/chip.luau"

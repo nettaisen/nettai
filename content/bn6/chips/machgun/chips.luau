@@ -144,6 +144,7 @@ return {
     define.chip {
         id = "machgun1",
         name = "MachGun1",
+        description = "Fire 9sts\nat row w/\nclst enmy",
         codes = { "A", "R", "T", "*" },
         element = "null", family = "cursor", class = "standard",
         rarity = 0, mb = 12, damage = 30, hit_param = 30, lockout = 0,
@@ -155,6 +156,7 @@ return {
     define.chip {
         id = "machgun2",
         name = "MachGun2",
+        description = "Fire 9sts\nat row w/\nclst enmy",
         codes = { "E", "G", "S" },
         element = "null", family = "cursor", class = "standard",
         rarity = 1, mb = 24, damage = 50, hit_param = 30, lockout = 0,
@@ -166,6 +168,7 @@ return {
     define.chip {
         id = "machgun3",
         name = "MachGun3",
+        description = "Fire 9sts\nat row w/\nclst enmy",
         codes = { "B", "F", "M" },
         element = "null", family = "cursor", class = "standard",
         rarity = 2, mb = 36, damage = 70, hit_param = 30, lockout = 0,

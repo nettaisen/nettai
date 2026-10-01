@@ -264,9 +264,9 @@ ground_drill.action = define.action {
 ground_drill.weapon = define.weapon {
     id = "groundcross/drill",
     name = "Ground drill",
-    -- The charge table's row 0x19; Charge 5 reads on into row 0x1A's first
-    -- entry, as the original's table does.
-    charge_ticks = { 100, 90, 80, 75, 70, 50 },
+    -- The charge table's row 0x19, by Charge 0 to 7: past 4 it reads on
+    -- into the next routine's row, as the original's table does.
+    charge_ticks = { 100, 90, 80, 75, 70, 50, 50, 50 },
     setup = setup,
     -- (Transitional: the routine number the pack's forms name it by.)
     legacy = { routines = { 0x19 } },
