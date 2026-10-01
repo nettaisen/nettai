@@ -216,7 +216,7 @@ buster.weapon = define.weapon {
     -- (Transitional: the routine number the pack's forms, the navis' rows
     -- and the ruleset name it by. `off_80117D4`'s other entries that are
     -- `sub_8011A26` read other rows of the charge table, so they are
-    -- weapons of their own with this setup: navis/00-megaman/weapons/
+    -- weapons of their own with this setup: navis/megaman/weapons/
     -- buster-2e and the rest.)
     legacy = { routines = { 0x00 } },
 }

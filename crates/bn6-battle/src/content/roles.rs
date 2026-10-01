@@ -13,7 +13,7 @@
 
 use std::collections::BTreeMap;
 
-use bn6_content_api::{ActionHandle, FnId, KindHandle};
+use bn6_content_api::{ActionHandle, FnId, KindHandle, LockonHandle};
 
 /// The actions the ruleset starts or recognizes by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -128,6 +128,29 @@ impl KindRole {
     }
 }
 
+/// The Beast Out lock-on modes the ruleset names by role.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum LockonRole {
+    /// The Beast forms' charged claw's (`sub_80EAF1A`), whatever chip the
+    /// attack carries.
+    BeastClaw,
+}
+
+impl LockonRole {
+    pub const ALL: [LockonRole; 1] = [LockonRole::BeastClaw];
+
+    /// Its name in `rules/roles.luau`'s `lockon`.
+    pub fn name(self) -> &'static str {
+        match self {
+            LockonRole::BeastClaw => "beast_claw",
+        }
+    }
+
+    pub fn named(name: &str) -> Option<LockonRole> {
+        LockonRole::ALL.into_iter().find(|r| r.name() == name)
+    }
+}
+
 /// The functions the ruleset calls by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HookRole {
@@ -182,6 +205,7 @@ pub struct Roles {
     pub actions: BTreeMap<ActionRole, RoleAction>,
     pub kinds: BTreeMap<KindRole, RoleKind>,
     pub hooks: BTreeMap<HookRole, FnId>,
+    pub lockons: BTreeMap<LockonRole, LockonHandle>,
 }
 
 impl Roles {
@@ -217,6 +241,15 @@ impl Roles {
             .hooks
             .get(&role)
             .unwrap_or_else(|| panic!("the role hooks.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    /// The lock-on mode of `role`; a role content hasn't filled is a panic
+    /// naming it.
+    pub fn lockon(&self, role: LockonRole) -> LockonHandle {
+        *self
+            .lockons
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role lockon.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 
     /// The kind of `role`; a role content hasn't filled is a panic naming

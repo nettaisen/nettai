@@ -22,7 +22,7 @@ several runs.
 - **Luau is the only runtime**, through a narrow typed API (`CoreApi`), with stateless scripts over engine-owned
   state. There is no build feature for it and no Rust version of anything a script implements.
 - **Scripts live in the pack** beside their data (`objects/sun-beam/sun_beam.luau`, `chips/00f-gundels1/
-  chip.luau`, `navis/00-megaman/weapons/absorb/weapon.luau`, `lib/buster.luau`). The data registers
+  chip.luau`, `navis/megaman/weapons/absorb/weapon.luau`, `lib/buster.luau`). The data registers
   them: an object folder's `[kind]`, a chip's `script`, a weapon's `weapon.toml`. The engine loads them from the
   `Content` it runs on (`Content::scripts`); nothing is compiled in and nothing in the engine names a script. The
   content hash covers them. BN6's scripts are this repository's source overlay (content/bn6), which `bn6-extract
@@ -48,7 +48,7 @@ several runs.
 | crates/bn6-luau | The runtime: the VM and freezing (`sandbox`), the bytecode check (`verify`), the API binding (`bind`), module loading. |
 | crates/bn6-content | Reads and writes packs, scripts included; `overlay` reads a source overlay and merges it into extracted content. |
 | crates/bn6-content-check | Type-checks a pack's (or overlay's) Luau against its definitions with Luau's analysis, in process. |
-| content/bn6 | BN6's scripts: the source overlay, laid out like a pack (`chips/`, `objects/`, `navis/00-megaman/weapons/`, `lib/`), with `core.d.luau` (the API) and `types.d.luau` (types the modules share). |
+| content/bn6 | BN6's scripts: the source overlay, laid out like a pack (`chips/`, `objects/`, `navis/megaman/weapons/`, `lib/`), with `core.d.luau` (the API) and `types.d.luau` (types the modules share). |
 | crates/bn6-battle/src/content/testing.rs | The hand-written test content; its scripts are content/bn6's, read from the repository (§5.4). |
 | crates/bn6-netplay | Rollback tests on the test content; `examples/rollback_cost` measures a golden-trace round. |
 | crates/bn6-battle/examples | `content_bench` (duel and snapshot costs), `luau_ops` (cost per API operation). |

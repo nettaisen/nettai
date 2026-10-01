@@ -2,7 +2,7 @@
 //!
 //! A pack's Luau modules live next to the data they implement
 //! (`objects/sun-beam/sun_beam.luau`, `chips/00f-gundels1/chip.luau`,
-//! `navis/00-megaman/weapons/absorb/weapon.luau`, `lib/...`).
+//! `navis/megaman/weapons/absorb/weapon.luau`, `lib/...`).
 //! Entities name their script in their data:
 //!
 //! - an object kind's `[kind]` table (`objects/<name>/object.toml`) gives
@@ -13,7 +13,7 @@
 //!   (dimming chips) its dimming controller, action 0x1B (navi chips) its
 //!   navi, action 0x1C (instant chips) its effect
 //!   ([`ChipData::script`](super::ChipData::script));
-//! - a weapon routine of MegaMan's (`navis/00-megaman/weapons/NN-name/
+//! - a weapon routine of MegaMan's (`navis/megaman/weapons/NN-name/
 //!   weapon.toml`) implements the routine, the action it names and the
 //!   instant chip effect it names ([`WeaponData`]).
 //!

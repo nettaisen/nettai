@@ -9,7 +9,7 @@
 -- ticks, and his chips wait 40 ticks after it.
 
 local guard = require("../../chips/rflectr/guard")
-local navicust = require("../00-megaman/weapons/shield/weapon")
+local navicust = require("../megaman/weapons/shield/weapon")
 local reflector_shield = require("../../chips/rflectr/shield")
 
 local back_special = {}

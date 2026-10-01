@@ -5,6 +5,7 @@
 -- the level's colours (its palette plus three a level).
 
 local flash_bomb = require("./bomb")
+local lockon = require("../../rules/lockon")
 local throw = require("../../lib/bombs/throw")
 
 -- A level's throw (`byte_80D9A20`'s row).
@@ -28,8 +29,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 62, index = 62, sort = 210 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 0 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.stay },
         action = level(0, { ticks = 0x3C, hp = 0x0A, status = 0x10, final_status = 0x00, palette = 0x0 }),
     },
     define.chip {
@@ -42,8 +43,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 63, index = 63, sort = 211 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 0 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.stay },
         action = level(3, { ticks = 0x3C, hp = 0x0F, status = 0x12, final_status = 0x00, palette = 0x3 }),
     },
     define.chip {
@@ -56,8 +57,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 64, index = 64, sort = 212 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 0 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.stay },
         action = level(6, { ticks = 0x3C, hp = 0x14, status = 0x12, final_status = 0x30, palette = 0x6 }),
     },
 }

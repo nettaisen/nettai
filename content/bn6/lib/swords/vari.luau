@@ -7,7 +7,7 @@
 -- attack's special source), the sword is random. The chosen chip's action
 -- starts in place (`object_setAttack0`) as that chip's, with the original
 -- damage; charged (SlashCross's A-charge), it starts as the charged slash
--- of the pick instead (navis/00-megaman/forms/slashcross/charge). Each
+-- of the pick instead (navis/megaman/forms/slashcross/charge). Each
 -- chip composes its own (`vari.action { ... }`, a `VariSwordSpec`): its
 -- sequences, and the actions they give.
 
@@ -19,7 +19,7 @@
 type State = VariSwordState
 type Spec = VariSwordSpec
 
-local slash_charge = require("../../navis/00-megaman/forms/slashcross/charge")
+local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
 
 local vari = {}
 
