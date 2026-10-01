@@ -46,7 +46,7 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x74 | 0x080d30d0 | 350 (RskyHny's bee: the pack's `chips/rskyhny/bee`, chips.md §3.7) |
 | T3 0x7d | 0x080d4c84 | lab only (the Guardian statue, a stage's too: the content's `chips/guardian/statue`, dimming-chip-effects.md §5) |
 | T3 0x82 | 0x080d5740 | 48 (DolThdr's doll: the pack's `chips/dolthdr/doll`, standard-chips.md) |
-| T3 0x8b | 0x080d6924 | 225 (DolThdr's thunder column: the pack's `objects/thunder-column`, standard-chips.md) |
+| T3 0x8b | 0x080d6924 | 225 (DolThdr's thunder column: the pack's `chips/dolthdr/column`, kind `dolthdr/thunder-column`, standard-chips.md) |
 | T3 0x8d | 0x080d6bd4 | 38 (meteor: the pack's `chips/elmntman/meteor`, chips.md §3.6.7) |
 | T3 0x8e | 0x080d6d80 | 96 (ElmntMan's ice: the pack's `chips/elmntman/ice`, chips.md §3.6.7) |
 | T3 0x94 | 0x080d7acc | 217 |
