@@ -1,0 +1,3 @@
+# WideSht runs the wide shooters (action 0x30, `sub_80ED55C`), in chip.luau.
+
+script = "chip.luau"
