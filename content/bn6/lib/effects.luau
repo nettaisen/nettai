@@ -15,4 +15,8 @@ effects.splash = define.effect { sprite = asset.sprite("rising-bubble"), anim = 
 -- object a chip removes (effect 0x14).
 effects.puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 
+-- A fiery burst: a bullet's (objects/bullet) and TankCan's shell's hit
+-- (effect 0x22).
+effects.shell_burst = define.effect { sprite = asset.sprite("shell-burst"), anim = 0, palette = 0 }
+
 return effects
