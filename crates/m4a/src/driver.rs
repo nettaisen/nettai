@@ -13,11 +13,10 @@
 //! `m4aMPlay*` calls. [`crate::apu`] then plays the PSG registers and the
 //! PCM buffer as the GBA's sound hardware does.
 
-use crate::apu::{Apu, FRAME_CYCLES, Reg};
+use crate::apu::{Apu, DirectSound, FRAME_CYCLES, Reg};
 use crate::bank::*;
 use crate::mixer::{self, CgbChannel, DsChannel, Note, PcmRing, Phase, Status, TrackOrder, TrackRef};
 use crate::tables;
-use std::collections::VecDeque;
 use std::sync::Arc;
 
 /// Tempo counter steps per tick (the driver plays a tick each time the
@@ -391,9 +390,6 @@ fn note_state(status: Status, n: &Note) -> NoteState {
     }
 }
 
-/// Samples of FIFO latency between the driver's PCM buffer and the DAC.
-const FIFO_DELAY: usize = 0;
-
 /// The sound driver: every music player and the hardware they share.
 pub struct Driver {
     bank: Arc<SoundBank>,
@@ -417,8 +413,9 @@ pub struct Driver {
     /// what lies past it).
     memory: [u8; MEMORY_SIZE],
     apu: Apu,
-    /// Direct Sound bytes on their way to the DAC: (right, left).
-    fifo: VecDeque<(i8, i8)>,
+    /// The FIFOs and their DMAs, primed before the first frame.
+    fifo: DirectSound,
+    primed: bool,
     /// CPU cycles into the current Direct Sound sample, and into the
     /// current DAC sample.
     ds_phase: u32,
@@ -466,7 +463,8 @@ impl Driver {
             last_slot: None,
             memory: [0; MEMORY_SIZE],
             apu,
-            fifo: std::iter::repeat_n((0, 0), FIFO_DELAY).collect(),
+            fifo: DirectSound::default(),
+            primed: false,
             ds_phase: 0,
             dac_phase: 0,
             pending: Vec::new(),
@@ -531,6 +529,15 @@ impl Driver {
     /// Set that counter, to line the driver up with a recording.
     pub fn set_dma_counter(&mut self, counter: u8) {
         self.dma_counter = counter.clamp(1, self.ring.frames as u8);
+    }
+
+    /// Where the Direct Sound timer is in its period (CPU cycles) where the
+    /// next frame starts: on the GBA the timer runs on its own, so this
+    /// only places the FIFOs' samples on the DAC's grid, to line the
+    /// output up with a recording.
+    pub fn set_fifo_phase(&mut self, cycles: u32) {
+        let period = FRAME_CYCLES / self.ring.samples_per_frame as u32;
+        self.ds_phase = cycles % period;
     }
 
     /// The Direct Sound bytes the last frame mixed: (right, left), the
@@ -731,10 +738,15 @@ impl Driver {
     /// player's sequencer, `CgbSound`, the Direct Sound mix), then the
     /// hardware plays the frame.
     pub fn step_frame(&mut self) {
-        // m4aSoundVSync: the DMA moves to the next frame of the ring.
+        if !self.primed {
+            self.prime_fifos();
+        }
+        // m4aSoundVSync: the DMA moves to the next frame of the ring; at
+        // its end the DMAs are re-armed at its start.
         self.dma_counter = self.dma_counter.wrapping_sub(1);
         if (self.dma_counter as i8) <= 0 {
             self.dma_counter = self.ring.frames as u8;
+            self.fifo.rearm();
         }
         for p in 0..self.players.len() {
             self.play_frame(p);
@@ -752,20 +764,15 @@ impl Driver {
         self.last_slot = Some(slot);
     }
 
-    /// The hardware's frame: the FIFOs play the slot mixed last frame while
-    /// the PSG plays; samples at the DAC's rate.
+    /// The hardware's frame: the FIFOs play what the DMAs bring them from
+    /// the PCM buffer (a frame behind the mix) while the PSG plays;
+    /// samples at the DAC's rate.
     fn play_hardware(&mut self) {
-        if let Some(slot) = self.last_slot {
-            let n = self.ring.samples_per_frame;
-            for k in slot * n..(slot + 1) * n {
-                self.fifo.push_back((self.ring.right[k], self.ring.left[k]));
-            }
-        }
         let ds_period = FRAME_CYCLES / self.ring.samples_per_frame as u32;
         let dac_period = 512 >> (self.bank.mixer.dac_resolution & 3);
         let mut t = 0;
         while t < FRAME_CYCLES {
-            // To the next DAC sample.
+            // To the next DAC sample or timer overflow.
             let to_sample = dac_period - self.dac_phase;
             let to_ds = ds_period - self.ds_phase;
             let step = to_sample.min(to_ds).min(FRAME_CYCLES - t);
@@ -773,16 +780,13 @@ impl Driver {
             t += step;
             self.dac_phase += step;
             self.ds_phase += step;
-            if self.ds_phase == ds_period {
-                self.ds_phase = 0;
-                if self.fifo.len() > 1 {
-                    self.fifo.pop_front();
-                }
-            }
+            // (A DAC sample due as the timer overflows still takes the
+            // byte before.)
+            let overflow = self.ds_phase == ds_period;
             if self.dac_phase == dac_period {
                 self.dac_phase = 0;
                 let (pl, pr) = self.apu.sample();
-                let (dr, dl) = self.fifo.front().copied().unwrap_or((0, 0));
+                let (dr, dl) = self.fifo.output();
                 // FIFO A (right) and B (left) at full volume, four DAC
                 // steps a level; the bias clamps to the 10-bit DAC.
                 let side = |psg: i32, ds: i8| -> i16 {
@@ -791,9 +795,32 @@ impl Driver {
                 };
                 self.pending.push([side(pl, dl), side(pr, dr)]);
             }
+            if overflow {
+                self.ds_phase = 0;
+                self.fifo.tick(&self.ring.right, &self.ring.left);
+            }
         }
     }
 
+    /// The FIFOs' steady state before the first frame: two laps of the
+    /// ring of silence, ending at the DMA counter the driver starts from.
+    fn prime_fifos(&mut self) {
+        self.primed = true;
+        let frames = self.ring.frames;
+        let laps = 2 * frames;
+        let mut c = (self.dma_counter as usize - 1 + laps) % frames + 1;
+        for _ in 0..laps {
+            c -= 1;
+            if c == 0 {
+                c = frames;
+                self.fifo.rearm();
+            }
+            for _ in 0..self.ring.samples_per_frame {
+                self.fifo.tick(&self.ring.right, &self.ring.left);
+            }
+        }
+        debug_assert_eq!(c, self.dma_counter as usize);
+    }
     /// Output at the DAC's rate (mGBA's scale: the 10-bit DAC times 48),
     /// (left, right), finished so far, appended to `out`.
     pub fn take_dac_output(&mut self, out: &mut Vec<[i16; 2]>) {
