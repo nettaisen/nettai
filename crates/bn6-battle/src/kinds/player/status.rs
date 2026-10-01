@@ -6,7 +6,8 @@
 use super::{
     actions, ai, ai_mut, attach_point, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_paralysis, coll,
     Emotion, coll_mut, cross_protected, emotion, entry, exit_attack_state, flag1, flag2, idle, is_link, per_player_gauges, navi_record,
-    coordinates_to_panel, panel_kind, reactions, reset_attack_links, save_state_word, set_attack,
+    coordinates_to_panel, panel_kind, reactions, reset_attack_links, save_state_word, set_attack, navi_action,
+    set_navi_action, NaviAction,
     set_coordinates_from_panel, set_flag1, set_flag2, set_mood,
 };
 use crate::actor::{ActorType, request, status as ai_status};
@@ -18,7 +19,7 @@ use crate::setup::Form;
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`).
 pub(super) fn update(b: &mut Battle, r: ObjectRef) {
-    if !b.paused || b.objects.get(r).action == 0 {
+    if !b.paused || navi_action(b, r) == NaviAction::Entry {
         match apply(b, r) {
             Flow::Tail => {}
             Flow::Dispatch => return dispatch(b, r),
@@ -47,7 +48,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     weakness_request(b, r);
     apply_damage(b, r);
     // sub_801BADE: a damaging hit pops the bubble.
-    if b.objects.get(r).action == 7 && coll(b, r).acc.final_damage != 0 {
+    if navi_action(b, r) == NaviAction::Bubble && coll(b, r).acc.final_damage != 0 {
         clear_bubble(b, r);
     }
     if flag1(b, r) & f1::DEAD != 0 {
@@ -56,7 +57,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if flag2(b, r) & 1 != 0 {
         clear_flag2(b, r, 1);
         set_flag1(b, r, f1::DEAD);
-        set_attack(b, r, 2, 0);
+        set_attack(b, r, NaviAction::Deletion, 0);
         return Flow::Tail;
     }
     let st = ai(b, r).status;
@@ -78,7 +79,7 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
         return Flow::Tail;
     }
     if flag1(b, r) & f1::DRAG != 0 {
-        b.objects.get_mut(r).action = 5;
+        set_navi_action(b, r, NaviAction::Drag);
         return Flow::Tail;
     }
     b.objects.get_mut(r).drag_step = DragStep::Start;
@@ -114,7 +115,7 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     if flag1(b, r) & f1::DEAD != 0 {
         return dispatch(b, r);
     }
-    if b.paused && b.objects.get(r).action != 0 {
+    if b.paused && navi_action(b, r) != NaviAction::Entry {
         return pause_requests(b, r);
     }
     if b.is_dimmed() {
@@ -125,32 +126,29 @@ fn tail(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801B9E6`: run the current action (§12.0 action table).
 pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
-    let action = b.objects.get(r).action;
-    if action >= 0x10 {
+    let action = navi_action(b, r);
+    if action.is_attack(&b.content.defs) {
         if ai(b, r).attack.beast_lockon == 1 {
             return actions::beast_rush::update(b, r);
         }
         return actions::dispatch(b, r, action);
     }
-    if ai(b, r).ai_index != 0 && action > 8 {
-        // The link navis' own actions (`off_80EA4C8[AIIndex]` past idle):
-        // their chip (0x0A) is content.
-        if let Some(h) = b.content.defs.action_numbered(action) {
-            return crate::behavior::run_action(b, h, r);
-        }
-        panic!("form action {action} is not implemented yet");
-    }
     match action {
-        0 => entry::entry(b, r),
-        1 => entry::take_control(b, r),
-        2 => reactions::deletion(b, r),
-        3 => reactions::flinch(b, r),
-        4 => reactions::paralysis(b, r),
-        5 => reactions::drag(b, r),
-        6 => reactions::freeze(b, r),
-        7 => reactions::bubble(b, r),
-        8 => idle::control(b, r),
-        _ => panic!("player action {action} is past MegaMan's action table"),
+        NaviAction::Entry => entry::entry(b, r),
+        NaviAction::TakeControl => entry::take_control(b, r),
+        NaviAction::Deletion => reactions::deletion(b, r),
+        NaviAction::Flinch => reactions::flinch(b, r),
+        NaviAction::Paralysis => reactions::paralysis(b, r),
+        NaviAction::Drag => reactions::drag(b, r),
+        NaviAction::Freeze => reactions::freeze(b, r),
+        NaviAction::Bubble => reactions::bubble(b, r),
+        NaviAction::Idle => idle::control(b, r),
+        // The link navis' own actions (`off_80EA4C8[AIIndex]` past idle):
+        // content's.
+        NaviAction::Content(h) => crate::behavior::run_action(b, h, r),
+        NaviAction::Unported(n) if ai(b, r).ai_index != 0 => panic!("form action {n} is not implemented yet"),
+        NaviAction::Unported(n) => panic!("player action {n} is past MegaMan's action table"),
+        NaviAction::Engine(_) => unreachable!("the ruleset's actions are attacks"),
     }
 }
 
@@ -285,13 +283,15 @@ fn cross_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     if f & request::CROSS_DEATH != 0 {
         ai_mut(b, r).requests &= !request::CROSS_DEATH;
         ai_mut(b, r).status |= ai_status::CROSS_KNOCKOUT;
-        set_attack(b, r, 0x4C, 0);
+        let death = super::role_action(b, crate::content::ActionRole::CrossDeath);
+        set_attack(b, r, death, 0);
         return Some(Flow::Dispatch);
     }
     if f & request::VOLLEY != 0 {
         ai_mut(b, r).requests &= !request::VOLLEY;
         ai_mut(b, r).status |= ai_status::VOLLEY;
-        set_attack(b, r, 0x30, 0);
+        let volley = super::role_action(b, crate::content::ActionRole::Volley);
+        set_attack(b, r, volley, 0);
         return Some(Flow::Dispatch);
     }
     if f & request::WEAKNESS_HIT != 0 {
@@ -315,15 +315,15 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
     clear_freeze(b, r);
     clear_bubble(b, r);
     let f = flag2(b, r);
-    let keep_paralysis = f & 0x4000 != 0 || (f & 2 == 0 && b.objects.get(r).action == 4);
+    let keep_paralysis = f & 0x4000 != 0 || (f & 2 == 0 && navi_action(b, r) == NaviAction::Paralysis);
     if !keep_paralysis {
         clear_paralysis(b, r);
     }
     clear_flag2(b, r, 0x4000);
     let o = b.objects.get_mut(r);
-    o.action = 5;
     o.phase = 0;
     o.drag_step = DragStep::Start;
+    set_navi_action(b, r, NaviAction::Drag);
 }
 
 /// `slide_state` values: where the slide machine is.
@@ -476,10 +476,10 @@ fn slide_direction(dx: i8, dy: i8, alliance: u8) -> u8 {
 fn flinch_request(b: &mut Battle, r: ObjectRef) {
     clear_flag2(b, r, 4);
     reset_attack_links(b, r);
-    let action = b.objects.get(r).action;
+    let action = navi_action(b, r);
     // sub_801BA92
     let mut a = 0;
-    if action == 4 {
+    if action == NaviAction::Paralysis {
         a = 1;
         let f = flag2(b, r);
         if f & 0x4000 == 0 && f & 2 != 0 {
@@ -489,7 +489,7 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
     }
     // sub_801BABE
     let mut c = 0;
-    if action == 6 {
+    if action == NaviAction::Freeze {
         c = 1;
         if flag2(b, r) & 2 != 0 {
             clear_freeze(b, r);
@@ -498,7 +498,7 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
     }
     let both = a | c;
     if both == 0 || both & 2 != 0 {
-        set_attack(b, r, 3, 0);
+        set_attack(b, r, NaviAction::Flinch, 0);
     }
     clear_flag2(b, r, 0x4000);
 }
@@ -538,12 +538,9 @@ fn count_down(b: &mut Battle, r: ObjectRef, i: usize) -> bool {
 }
 
 /// Enter a status action at phase 0, saving the state word first.
-fn enter_status_action(b: &mut Battle, r: ObjectRef, action: u8) {
+fn enter_status_action(b: &mut Battle, r: ObjectRef, action: NaviAction) {
     save_state_word(b, r);
-    let o = b.objects.get_mut(r);
-    o.action = action;
-    o.phase = 0;
-    o.phase_init = 0;
+    super::set_action(b, r, action);
 }
 
 /// `sub_800E730`: the status timers and their requests (§H5). `F2` is
@@ -589,7 +586,7 @@ fn tick_paralysis(b: &mut Battle, r: ObjectRef, f2: u32) {
     }
     if f2 & 0x8 != 0 {
         clear_flag2(b, r, 0x88);
-        enter_status_action(b, r, 4);
+        enter_status_action(b, r, NaviAction::Paralysis);
         let c = coll_mut(b, r);
         c.status_timers[timer::CONFUSE] = 0;
         c.status_timers[timer::FREEZE] = 0;
@@ -598,7 +595,7 @@ fn tick_paralysis(b: &mut Battle, r: ObjectRef, f2: u32) {
     clear_flag1(b, r, f1::BUBBLED | f1::FROZEN | f1::CONFUSED);
     if flag1(b, r) & f1::PARALYZED == 0 {
         set_flag1(b, r, f1::PARALYZED);
-        enter_status_action(b, r, 4);
+        enter_status_action(b, r, NaviAction::Paralysis);
     }
 }
 
@@ -612,7 +609,7 @@ fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
     }
     if f2 & 0x1_0000 != 0 {
         clear_flag2(b, r, 0x3_0080);
-        enter_status_action(b, r, 6);
+        enter_status_action(b, r, NaviAction::Freeze);
         let c = coll_mut(b, r);
         c.status_timers[timer::CONFUSE] = 0;
         c.status_timers[timer::PARALYZE] = 0;
@@ -623,7 +620,7 @@ fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
         return false;
     }
     set_flag1(b, r, f1::FROZEN);
-    enter_status_action(b, r, 6);
+    enter_status_action(b, r, NaviAction::Freeze);
     if coll(b, r).links[link::FREEZE].is_some() {
         return true;
     }
@@ -636,7 +633,7 @@ fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
 fn bubble_active(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
     if f2 & 0x2_0000 != 0 {
         clear_flag2(b, r, 0x2_0080);
-        enter_status_action(b, r, 7);
+        enter_status_action(b, r, NaviAction::Bubble);
         let c = coll_mut(b, r);
         c.status_timers[timer::CONFUSE] = 0;
         c.status_timers[timer::PARALYZE] = 0;
@@ -647,7 +644,7 @@ fn bubble_active(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
         return true;
     }
     set_flag1(b, r, f1::BUBBLED);
-    enter_status_action(b, r, 7);
+    enter_status_action(b, r, NaviAction::Bubble);
     if coll(b, r).links[link::BUBBLE].is_some() {
         return false;
     }
@@ -822,7 +819,7 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         (request::FORM_CHANGE, ai_status::FORM_CHANGE)
     } else if f & request::REVERT_FORM != 0 {
         // Saves the state word after zeroing it.
-        b.objects.get_mut(r).saved_state = None;
+        ai_mut(b, r).saved_word = None;
         save_state_word(b, r);
         (request::REVERT_FORM, ai_status::REVERTING_FORM)
     } else if f & request::CROSS_CHANGE != 0 {
@@ -835,7 +832,7 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.requests &= !bit;
     a.status |= state;
-    set_attack(b, r, 0x1C, 0);
+    set_attack(b, r, super::EngineAction::FormChange, 0);
 }
 
 /// `sub_800BEDA`: the navi may cut in on the other side's dimming: its own
@@ -860,9 +857,9 @@ fn can_cut_in(b: &Battle, r: ObjectRef) -> bool {
 /// in the hand. See docs/engine/chips.md §3.6.5.
 fn cut_in(b: &mut Battle, r: ObjectRef) {
     let (action, a) = super::chip_use::prepare_detached(b, r);
-    let controller = match action.number {
-        actions::dimming_chip::ACTION => actions::dimming_chip::spawn_controller(b, r, &a),
-        actions::navi_chip::ACTION => actions::navi_chip::spawn_controller(b, r, &a),
+    let controller = match action {
+        NaviAction::Engine(super::EngineAction::DimmingChip) => actions::dimming_chip::spawn_controller(b, r, &a),
+        NaviAction::Engine(super::EngineAction::NaviChip) => actions::navi_chip::spawn_controller(b, r, &a),
         _ => return,
     };
     let side = b.objects.get(r).alliance;

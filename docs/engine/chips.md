@@ -209,7 +209,7 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
    (subtype 0x14, TenguCross's B+Back, waits 8 more ticks). It is used by 54 chips: the MegaBuster pseudo-chip 0,
    Atk+/Navi+ left unfolded, FullCust, Boomer, Lance, FireHit, the error chip 0x185, and others. `off_80EC3F0` has 23
    entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are the content pack's scripts
-   (`Hook::InstantChip`, the `instant_chip` of the module a chip of the subtype names, or a weapon's `instant_chip`):
+   (the chip's `instant` hook, the `instant_chip` of the module a chip record of the subtype names, or a weapon's `instant_chip`):
    0 BeastOut `sub_80104E0` and 3 the plus chips `sub_8010488` (chips/13f-beastout, lib/instant/plus, with their
    sparkle, effect #0x14, objects/rising-bubble), 5 FullCust `sub_800AF34` (chips/0ae-fullcust), 10 BusterUp
    `sub_8010820` (chips/busterup), 13 SyncTrgr `sub_80EC44C` (chips/11d-synctrgr). Subtypes 2 (`sub_8010474`,
@@ -1207,7 +1207,7 @@ registers none. `sub_800B8EE(side)`: effect #0 look 0x1E at panel ((side^1)*3+2,
 
 **The port** (kinds/player/status.rs `cut_in`): `chip_use::prepare_detached` runs `sub_80127C0(0)` on a copy of
 the attack variables and restores the navi's own; the controller comes from the same spawners as actions 0x15
-(`dimming_chip::spawn_controller`, the pack's `Hook::DimmingChip`) and 0x1B (`navi_chip::spawn_controller`);
+(`dimming_chip::spawn_controller`, the chip's dimming controller) and 0x1B (`navi_chip::spawn_controller`);
 `Battle::cut_in_dimming` is `loc_800BF30`, `dimming::cut_in_flash` `sub_800B8EE`. The chip lab's 26 counter cut-in
 scenarios (the other side's copy of the chip, answered during the telop) match every frame, and show the order:
 

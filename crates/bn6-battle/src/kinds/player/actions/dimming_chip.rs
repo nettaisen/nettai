@@ -2,10 +2,10 @@
 //! chip's dimming controller and registers it for its side, then waits in
 //! this action (gated by the dimming) until the dimming is over. The
 //! controller does the rest (`dimming`). The controllers are the chips'
-//! own, by chip subtype (`off_802CCB4`): the content pack's scripts
-//! (`Hook::DimmingChip`). See docs/engine/chips.md §3.6.
+//! own (`off_802CCB4`, by chip subtype): the chip's `dimming` hook, or a
+//! pack record's subtype's registration. See docs/engine/chips.md §3.6.
 
-use bn6_content_api::{DimmingChipSpec, Hook, HookCall};
+use bn6_content_api::{DimmingChipSpec, HookCall};
 
 use crate::actor::AttackVars;
 use crate::battle::Battle;
@@ -37,18 +37,15 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// 0x15 and the counter cut-in (`sub_8017AB4`) both call it.
 pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) -> Option<ObjectRef> {
     let damage = a.damage as u32 | (a.hit_param as u32) << 16;
-    // The chip's own controller, if content defines the chip; else
-    // off_802CCB4, by the chip's subtype. (Its subtypes 34, 35, 39 and 40
+    // The chip's controller. (off_802CCB4's subtypes 34, 35, 39 and 40
     // are null: the game jumps to address 0.)
-    let hook = match a.chip.and_then(|c| b.content.defs.chip(c).usage) {
-        Some(ChipUsage::Dimming(f)) => f,
-        Some(u) => panic!(
-            "chip {:?} is a dimming chip, but its definition uses it as {u:?}",
-            b.content.defs.chip(a.chip.expect("a defined chip")).key
-        ),
-        None => b.content.defs.hook(Hook::DimmingChip(a.variant)).unwrap_or_else(|| {
-            panic!("dimming chip subtype {} (off_802CCB4) is not implemented yet", a.variant)
-        }),
+    let chip = a.chip.or_else(|| b.content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
+    let hook = match b.content.defs.chip(chip).usage {
+        ChipUsage::Dimming(f) => f,
+        ChipUsage::Unported(crate::content::Unported::Dimming(subtype)) => {
+            panic!("dimming chip subtype {subtype} (off_802CCB4) is not implemented yet")
+        }
+        u => panic!("chip {:?} is a dimming chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),
     };
     // (The numeric API's chip: 0 for none.)
     let chip = b.api_chip_field(a.chip, 0);

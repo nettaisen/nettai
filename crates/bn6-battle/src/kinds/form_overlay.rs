@@ -9,8 +9,6 @@ use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress, set_progress};
 use crate::object::{ObjectRef, Vec3, flags, state};
 
-pub const INDEX: u8 = 0x57;
-
 /// The Falzar beast head (sprite 0x0C/0x0A).
 pub const BEAST_HEAD: SpriteId = SpriteId { category: 0x0C, index: 0x0A };
 

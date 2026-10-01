@@ -21,7 +21,7 @@ pub mod codec;
 pub mod trace;
 
 use bn6_battle::Battle;
-use bn6_battle::kinds::player::{CONTENT_ACTION, running_content_action};
+use bn6_battle::kinds::player::{NaviAction, navi_action};
 use bn6_battle::object::{ObjectRef, Pool};
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -265,16 +265,30 @@ impl Compat {
         }
     }
 
-    /// The original's action number for navi `r`'s CurAction. The engine
-    /// runs an action content defines under [`CONTENT_ACTION`], by handle;
-    /// compat has its number by key. Any other CurAction is the original's.
+    /// The original's action number for object `r`'s CurAction: a navi's
+    /// NaviAction (the framework's states as themselves, the ruleset's
+    /// actions and content's by key; a v1 registration by its number), any
+    /// other object's its own byte.
     pub fn navi_action(&self, b: &Battle, r: ObjectRef) -> Result<u8, String> {
-        let action = b.objects.get(r).action;
-        if action != CONTENT_ACTION {
-            return Ok(action);
+        if b.objects.get(r).actor.is_none() {
+            return Ok(b.objects.get(r).action);
         }
-        let Some(h) = running_content_action(b, r) else { return Ok(action) };
-        let key = &b.content.defs.action(h).key;
+        let action = navi_action(b, r);
+        if let Some(n) = action.state_number() {
+            return Ok(n);
+        }
+        let key = match action {
+            NaviAction::Engine(e) => e.key(),
+            NaviAction::Content(h) => {
+                let d = b.content.defs.action(h);
+                if let Some(n) = d.number {
+                    return Ok(n);
+                }
+                &d.key
+            }
+            NaviAction::Unported(n) => return Ok(n),
+            state => unreachable!("{state:?} is a state"),
+        };
         self.actions.get(key).copied().ok_or_else(|| format!("actions.toml has no {key:?}"))
     }
 }
