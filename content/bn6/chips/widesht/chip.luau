@@ -20,5 +20,11 @@ return define.chip {
     beast = { lockon = lockon.widesht },
     library = { number = 22, index = 22, sort = 508 },
     slot_in_limit = 3,
-    legacy = legacy { number = 0x017, action = 0x30, subtype = 0, params = { 3, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x017,
+        action = 0x30,
+        subtype = 0,
+        params = { 3, 0, 0, 0 },
+        script = "chips/017-widesht/chip",
+    },
 }

@@ -9,7 +9,9 @@
 -- chips are subtypes 0 to 2; subtype 3 only guards, 4 fires the buster's
 -- projectile back instead, and the others reflect nothing.
 
+local projectile = require("../../lib/projectile")
 local reflected_shot = require("../../objects/reflected-shot/reflected_shot")
+local variants = require("../../objects/projectile/variants")
 local reflector_shield = require("../../objects/reflector-shield/reflector_shield")
 
 export type State = {
@@ -28,13 +30,10 @@ local BREAKS_GUARD = 0x2
 -- The wave's height, and its sound.
 local WAVE_Z = 0x10_0000
 local WAVE_SOUND = 0xC5
--- Subtype 4's shot: the buster's projectile (attack object #0,
--- `sub_80C4FFE`) at this height, of this kind (its first parameter).
+-- Subtype 4's shot: the charged shot's projectile (objects/projectile,
+-- `sub_80C4FFE`) at this height. (The game passes the literal 2 its flag
+-- test loaded as the shot's element, which the shot's init replaces.)
 local SHOT_Z = 0x14_0000
-local SHOT_KIND = 6
--- (The register garbage the spawners get as the element: the literal 2
--- the flag test loaded.)
-local LEFTOVER_ELEMENT = 2
 
 -- The Beast forms whose head overlay mirrors the navi's animation.
 local function beast_head_follows(form: number): boolean
@@ -70,16 +69,7 @@ local function reflect(me: Object)
         reflected_shot.spawn(me, x, y, WAVE_Z, damage)
         battle.play_sound(WAVE_SOUND)
     elseif variant == 4 then
-        -- sub_80C4FFE: attack object #0 (the buster's projectile) on (x, y).
-        local o = battle.spawn("attack", 0, Vec3.new(y, LEFTOVER_ELEMENT, SHOT_Z), { SHOT_KIND, 0, 0, 0 })
-        if o then
-            o.panel_x, o.panel_y = x, y
-            o.element = LEFTOVER_ELEMENT
-            o.damage = damage
-            o.stamina = bit32.rshift(damage, 16)
-            o.alliance, o.flip = me.alliance, me.flip
-            o.related1 = me
-        end
+        projectile.spawn(me, x, y, { variant = variants.charged, damage = damage, z = SHOT_Z })
     end
 end
 
