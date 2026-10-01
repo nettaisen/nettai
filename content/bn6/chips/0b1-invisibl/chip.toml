@@ -1,3 +1,3 @@
-# A dimming chip (subtype 1): its dimming controller turns the user invisible.
+# Invisibl (dimming chip subtype 1) is a record: chip.luau gives registration by number its hook.
 
-script = "../../objects/invisible/invisible.luau"
+script = "chip.luau"

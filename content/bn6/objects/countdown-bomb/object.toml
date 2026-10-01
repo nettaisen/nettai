@@ -1,7 +1,0 @@
-# The TimeBom chips' countdown bomb (attack object #0x4B, `sub_80CD8EC`) is a
-# script on the obstacle framework.
-
-[kind]
-pool = "attack"
-index = 0x4B
-script = "countdown_bomb.luau"

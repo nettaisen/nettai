@@ -52,7 +52,6 @@ fn battles_run_the_content_scripts() {
             "charge-car",
             "charge-man",
             "charge-wave",
-            "countdown-bomb",
             "crack-shot",
             "dash-hit",
             "dolthdr/doll",
@@ -62,9 +61,9 @@ fn battles_run_the_content_scripts() {
             "dust-ball",
             "elec-man",
             "elec-thunder",
-            "elem-trap",
-            "elem-trap-strike",
             "element-pillar",
+            "elemtrap/strike",
+            "elemtrap/trap",
             "elmnt-bolt",
             "elmnt-ice",
             "elmnt-man",
@@ -94,12 +93,12 @@ fn battles_run_the_content_scripts() {
             "junk-shot",
             "justice-one",
             "lance",
-            "land-mine",
             "lilbolr/boiler",
             "lilbolr/layer",
             "lunge-slash",
             "meteor",
-            "mine",
+            "mine/controller",
+            "mine/land-mine",
             "moon-beam",
             "navi-boost",
             "panel-bursts",
@@ -130,7 +129,8 @@ fn battles_run_the_content_scripts() {
             "sword-wave",
             "tengu-man",
             "thunder-column",
-            "time-bom",
+            "timebom/controller",
+            "timebom/countdown",
             "tomahawk-man",
             "trap-chip",
             "vdoll/curse",
@@ -822,7 +822,7 @@ fn the_navi_changing_chips_change_the_navi() {
 #[test]
 fn the_slow_gauge_chip_slows_the_gauge() {
     let setup = || {
-        let mut s = scenario::setup_with(&[testing::SLOW_GAUGE]);
+        let mut s = scenario::setup_with_handles(&[testing::defined_chip(testing::SLOW_GAUGE)]);
         s.players[1] = scenario::setup().players[1];
         s
     };
@@ -1065,7 +1065,12 @@ fn native_code_plays_the_duel_like_the_interpreter() {
 // ---- ElemTrap (dimming chip subtype 20), TimeBom (10), Mine (11) ------------------------
 
 fn trap_bomb_mine_setup() -> crate::setup::RoundSetup {
-    let mut s = scenario::setup_with(&[testing::ELEM_TRAP, testing::TIME_BOMB, testing::TIME_BOMB_PLUS, testing::MINE]);
+    let mut s = scenario::setup_with_handles(&[
+        testing::chip_handle(testing::ELEM_TRAP),
+        testing::chip_handle(testing::TIME_BOMB),
+        testing::chip_handle(testing::TIME_BOMB_PLUS),
+        testing::defined_chip(testing::MINE),
+    ]);
     s.players[1] = scenario::setup().players[1];
     s
 }
@@ -1098,10 +1103,10 @@ fn the_trap_bomb_and_mine_chips_play() {
     let seen = trap_bomb_mine_duel(2400, |_| {});
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The element trap waits on the field.
-    assert!(ticks("trap-chip") > 0 && ticks("elem-trap") > 0, "the element trap: {seen:?}");
+    assert!(ticks("trap-chip") > 0 && ticks("elemtrap/trap") > 0, "the element trap: {seen:?}");
     // The time bombs' controller sets bombs; the mine's lays mines.
-    assert!(ticks("time-bom") > 0 && ticks("countdown-bomb") > 0, "the time bombs: {seen:?}");
-    assert!(ticks("mine") > 0 && ticks("land-mine") > 0, "the mine: {seen:?}");
+    assert!(ticks("timebom/controller") > 0 && ticks("timebom/countdown") > 0, "the time bombs: {seen:?}");
+    assert!(ticks("mine/controller") > 0 && ticks("mine/land-mine") > 0, "the mine: {seen:?}");
 }
 
 #[test]
@@ -1115,7 +1120,7 @@ fn a_sprung_element_trap_strikes_back() {
         if sprung || b.is_dimmed() {
             return;
         }
-        let trap = b.objects.in_order().find(|&r| b.kind_key(r) == "elem-trap");
+        let trap = b.objects.in_order().find(|&r| b.kind_key(r) == "elemtrap/trap");
         let Some(trap) = trap.filter(|&r| b.objects.get(r).state == state::UPDATE) else { return };
         let c = b.objects.get(trap).collision.unwrap();
         b.collision.get_mut(c).acc.element_damage[2] = 10;
@@ -1123,7 +1128,7 @@ fn a_sprung_element_trap_strikes_back() {
     });
     assert!(sprung, "no element trap stood: {seen:?}");
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
-    assert!(ticks("elem-trap-strike") > 0, "the counterattack's controller: {seen:?}");
+    assert!(ticks("elemtrap/strike") > 0, "the counterattack's controller: {seen:?}");
     assert!(ticks("panel-bursts") > 0, "the bursts: {seen:?}");
 }
 

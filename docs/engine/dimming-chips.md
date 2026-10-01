@@ -45,7 +45,7 @@ they spawn with X = the panel Y, Y = the element, Z = the caller's r3 (register 
 
 ## 2. AntiNavi in the dimming service (`sub_800BDB2`, `sub_800BA8A`)
 
-AntiNavi (chip 0xBA, subtype 20: objects/trap-chip) records itself as its side's defensive chip
+AntiNavi (chip 0xBA, subtype 20: lib/traps/controller) records itself as its side's defensive chip
 (`byte_2036720`-style record at 0x02036720 + 0x10·side: chip, bonus, damage word, owner, object;
 `sub_802CE78` reads it, `sub_802CEA6` clears it). A navi chip's controller (T4#0x10, chips.md §3.6.7) checks it
 twice. "A navi chip" is chip − 0xDD ≤ 0x3B (0xDD..0x118, `sub 0xDD; cmp 0x3B; bhi`).

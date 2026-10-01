@@ -48,9 +48,9 @@ local ABSORBED_KIND = 1
 local SOUND_LAND, SOUND_HIT_BOMB, SOUND_BURST = asset.sound("land"), asset.sound("hit-bomb-1"), asset.sound("burst")
 -- The burst (`byte_80CD828`): over the whole area of the side it hits, no
 -- hit spark, hit modifier 3, fire; then explosions there every 3 ticks
--- (panel bursts, look 1).
+-- (panel bursts).
 local BURST_HIT_MOD, FIRE = 3, 1
-local BURST_INTERVAL, BURST_LOOK = 2, 1
+local BURST_INTERVAL = 2
 
 -- What the navi holds while throwing one: the bomb's sprite, palette 4
 -- (the original's attachment row 0x2D).
@@ -237,7 +237,7 @@ local function burst(me: Object)
         stamina = me.stamina,
         hit_mod = BURST_HIT_MOD,
     })
-    panel_bursts.spawn(me, area, BURST_INTERVAL, 0, { BURST_LOOK, 0, 0, 0 })
+    panel_bursts.spawn(me, area, BURST_INTERVAL, 0, effects.explosion)
     battle.shake_camera(1, 0x3C)
     battle.play_sound(SOUND_BURST)
 end
