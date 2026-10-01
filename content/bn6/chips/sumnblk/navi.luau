@@ -155,7 +155,7 @@ local function claw(me: Object)
         z = 0,
         region = regions.wide,
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.slash,
         damage = me.damage,

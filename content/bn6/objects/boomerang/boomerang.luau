@@ -206,7 +206,7 @@ local function tick(me: Object, s: State)
         error(string.format("boomerang action %#x reads past its table", a))
     end
     fly(me, s)
-    if c.region == 0 and panel_word(me) ~= s.hit_panel then
+    if c.region == nil and panel_word(me) ~= s.hit_panel then
         c:set_region(regions.single)
     end
     if field.valid(me.panel_x, me.panel_y) then

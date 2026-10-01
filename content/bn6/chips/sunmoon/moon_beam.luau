@@ -35,7 +35,7 @@ local function hit(me: Object, self_type: CollisionType, damage: number, hit_mod
         element = 0,
         z = 0,
         region = regions.single,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = self_type,
         damage = bit32.band(damage, 0xFFFF),
