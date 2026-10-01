@@ -27,7 +27,7 @@ mod damage_flags {
 /// The Beast forms' claw, the action weapon routine 0x1E names.
 
 /// The chip-use sound of a damage bonus (`SOUND_HIT_87`).
-const BONUS_SOUND: crate::sound::SoundId = crate::sound::SoundId(0x87);
+const BONUS_SOUND: crate::content::SoundRole = crate::content::SoundRole::DamageBonus;
 
 /// `sub_800FB54`: when a chip request is up (and not sliding), take the
 /// next chip and start its action. Returns the attack's chip (the game
@@ -210,7 +210,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         let a = &mut ai_mut(b, r).attack;
         let add = if bonus == 0xFF { a.damage } else { bonus };
         a.damage = a.damage.wrapping_add(add);
-        b.play_sound(BONUS_SOUND);
+        b.sound(BONUS_SOUND);
     }
     ai_mut(b, r).attack.extra = e.extra;
     let (damage, boost) = double_damage(b, r, e.chip, ai(b, r).attack.damage, charge);
@@ -219,11 +219,11 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     match boost {
         Some(Boost::FullSynchro) => {
             set_mood(b, side, 0x80);
-            b.play_sound(BONUS_SOUND);
+            b.sound(BONUS_SOUND);
         }
         Some(Boost::Anger) => {
             super::status::end_anger(b, r);
-            b.play_sound(BONUS_SOUND);
+            b.sound(BONUS_SOUND);
         }
         Some(Boost::Cross | Boost::BeastOver) | None => {}
     }
@@ -535,7 +535,7 @@ fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let pos = b.objects.get(r).pos;
     let look = b.content.defs.roles.effect(crate::content::EffectRole::Recovery);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
-    b.play_sound(crate::sound::SoundId(0x8A));
+    b.sound(crate::content::SoundRole::Recovery);
 }
 
 // ---- GroundCross's charged chip ----------------------------------------------

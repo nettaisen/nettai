@@ -4,13 +4,12 @@
 //! once it has hit something. See docs/engine/field-collision-damage.md.
 
 use crate::battle::Battle;
-use crate::content::{CollisionRole, SparkRole, SpriteId};
+use crate::content::{CollisionRole, SparkRole};
 use crate::field;
 use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, flags, state};
 
-const SPRITE: SpriteId = SpriteId { category: 0x10, index: 0x24 };
 
 /// Added to Param1 for its lifetime.
 const LIFETIME: u8 = 0x28;
@@ -31,8 +30,9 @@ fn init(b: &mut Battle, r: ObjectRef) {
     if !field::is_valid(p.x, p.y) {
         return b.objects.free(r);
     }
+    let sprite = b.content.defs.roles.sprite(crate::content::SpriteRole::Eruption);
     let s = b.objects.sprite_mut(r);
-    s.load(SPRITE);
+    s.load(sprite);
     s.look.shadow = Shadow::WithSprite;
     s.look.palette = 0;
     s.set_animation(0, &b.content);
