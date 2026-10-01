@@ -1408,10 +1408,12 @@ The counters are content:
   object #0x6E, `sub_80E8268`; chips/bodygrd/striker), a field object that drops ten shurikens (attack object
   #0x5C, `sub_80CFEC4`; chips/bodygrd/shuriken) on the enemy navi.
 
-**Lab**: `chips/0x0bb-antidmg/counter` springs AntiDmg's trap: its counter and shuriken match (variant 0; all but
-two blocks of the throw, `sub_80EE996`). **Unverified**: AntiDmg's variant 1, AntiSwrd's counter and BodyGrd's
-counter with its striker and shuriken (no scenario springs those traps: 0 blocks of `sub_80EEA3C` and
-`sub_80EED56`).
+**Lab**: the scenarios that spring a trap match every frame: `chips/0x0bb-antidmg/counter`, `sprung` and
+`sprung-side0` (AntiDmg's counter and its shuriken, variant 0), `chips/0x0bc-antiswrd/sprung` (the three swings and
+their sonic booms: every block of `sub_80EEA78`) and `pa/0x157-bodygrd/sprung` (the counter, the striker and its
+shurikens). **Unverified**: AntiDmg's variant 1 (two blocks of the throw, `sub_80EE996`), the striker's offline
+target (`sub_80E8326`'s other branches: a netbattle takes the player navi) and three branch sides of its tick
+(`sub_80E82D4`).
 
 #### 3.6.10 The other dimming chips' controllers (`off_802CCB4`)
 
