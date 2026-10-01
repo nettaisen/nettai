@@ -58,7 +58,7 @@ navis/00-megaman/forms/KEY/form.luau      MegaMan's forms, with their weapons ne
 navis/00-megaman/weapons/KEY/weapon.luau  MegaMan's weapons (`define.weapon`)
 navis/00-megaman/weapons/NN-name/*.luau   v1 modules a weapon's legacy marker names (until step 6)
 objects/KIND/object.toml, *.luau          `[kind]`: the object kind a v1 module implements; its module
-objects/KIND/rows.luau                    a kind's table of variants by number (a legacy rule section)
+objects/attachment/rows.luau              the attachments by number (a legacy rule section: the last kind table something reads)
 stages/netbattle.luau                     the stages (`define.stage`), with their layouts and actors
 rules/*.luau                              rule sections (`define.rules`), collision types, statuses,
                                           lock-on modes, the original's numbering of tables (numbers.luau)
