@@ -70,8 +70,6 @@ anti_damage.weapon = define.weapon {
     -- 0x3D by Charge 0 to 7, reading on into the next routine's row.)
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup,
-    -- (Transitional: the number the NaviCust's program names it by.)
-    legacy = { routines = { 0x3D } },
 }
 
 return anti_damage

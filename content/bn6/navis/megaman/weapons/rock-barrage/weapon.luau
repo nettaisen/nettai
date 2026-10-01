@@ -6,5 +6,7 @@ return define.weapon {
     id = "megaman/rock-barrage",
     name = "Rock barrage",
     charge_ticks = { 60, 60, 60, 60, 60, 100, 90, 80 }, -- by Charge 0..7; past 4, the next routine's row
-    legacy = legacy { routines = { 0x18 } },
+    -- As an A-charge: GroundCross's rocks fall, then the charged chip is the
+    -- chip itself. (The original's routine is empty; nothing starts it.)
+    charged_chip = "rock_barrage",
 }
