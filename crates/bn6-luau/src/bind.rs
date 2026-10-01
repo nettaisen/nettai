@@ -408,6 +408,7 @@ impl UserData for Object {
         methods.add_method("update_sprite_while_paused", |_, this, ()| {
             with(|api, _| Ok(api.update_sprite_while_paused(this.0)))
         });
+        methods.add_method("load_or_step_sprite", |_, this, ()| with(|api, _| Ok(api.load_or_step_sprite(this.0))));
         methods.add_method("attach_point", |_, this, n: LuaValue| {
             let n = u8_arg(n, "attach point")?;
             with(|api, _| Ok(api.attach_point(this.0, n)))
@@ -456,6 +457,7 @@ impl UserData for Object {
             let flag = named(&name, "status flag", StatusFlag::from_name)?;
             with(|api, _| api.set_status(this.0, flag, on).map_err(api_error))
         });
+        methods.add_method("clear_statuses", |_, this, ()| with(|api, _| api.clear_statuses(this.0).map_err(api_error)));
         methods.add_method("status_timer", |_, this, name: mlua::LuaString| {
             let t = named(&name, "status timer", StatusTimer::from_name)?;
             with(|api, _| api.status_timer(this.0, t).map_err(api_error))
@@ -1047,6 +1049,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "alive_actors", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         let list = with(|api, _| Ok(api.alive_actors(side)))?;
+        lua.create_sequence_from(list.into_iter().map(Object))
+    });
+    lib_fn!(lua, t, "objects_of", |lua, kind: LuaValue| {
+        let list = with(|api, b| match b.def(&kind) {
+            Some((Registry::Kind, h)) => Ok(api.objects_of_kind(h)),
+            Some((r, _)) => Err(mlua::Error::runtime(format!("battle.objects_of: a {r} is not a kind"))),
+            None => Err(mlua::Error::runtime("battle.objects_of: expected a kind definition")),
+        })?;
         lua.create_sequence_from(list.into_iter().map(Object))
     });
     lib_fn!(lua, t, "rng", |_, ()| with(|api, _| Ok(api.rng())));

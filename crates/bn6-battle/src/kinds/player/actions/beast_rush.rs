@@ -163,30 +163,23 @@ fn lockon_mode(b: &Battle, r: ObjectRef) -> u8 {
     if !beast_over && flag1(b, r) & (f1::BLIND | f1::CONFUSED) != 0 {
         return 0;
     }
-    let action = b.objects.get(r).action;
+    use crate::content::ActionRole;
     let attack = &ai(b, r).attack;
-    let special = match action {
-        BEAST_CLAW => 0x0C,
-        CHARGED_SWORD => {
-            let modes = &b.content.rules.lockon.charged_sword_modes;
-            *modes.get(attack.variant as usize).unwrap_or_else(|| {
-                panic!("the charged sword's lock-on for variant {:#x} reads past its table (sub_80EAF26)", attack.variant)
-            })
-        }
-        _ => 0,
+    let special = if crate::kinds::player::runs_role(b, r, ActionRole::BeastClaw) {
+        0x0C
+    } else if crate::kinds::player::runs_role(b, r, ActionRole::ChargedSword) {
+        let modes = &b.content.rules.lockon.charged_sword_modes;
+        *modes.get(attack.variant as usize).unwrap_or_else(|| {
+            panic!("the charged sword's lock-on for variant {:#x} reads past its table (sub_80EAF26)", attack.variant)
+        })
+    } else {
+        0
     };
     if special != 0 {
         return special;
     }
     b.content.chip_field(attack.chip).lockon_mode
 }
-
-/// The charged sword's action (a sword chip charged in SlashCross's
-/// forms).
-const CHARGED_SWORD: u8 = 0x41;
-
-/// The Beast forms' charged claw (weapon routine 0x1E's action, content).
-const BEAST_CLAW: u8 = 0x52;
 
 /// `ho_8026554` as its callers outside the rush see it (the claw's and
 /// the Beast lunge's setups): the panel, or (0, 0x7F) when no panel fits
@@ -309,10 +302,10 @@ fn can_stand(b: &Battle, r: ObjectRef, x: u8, y: u8) -> bool {
 /// `sub_80EAF36`: run the chip's action; when it is back to idle, chain
 /// the queued chip or warp home.
 fn attack(b: &mut Battle, r: ObjectRef) {
-    let action = b.objects.get(r).action;
-    if action >= 0x10 {
+    let action = crate::kinds::player::navi_action(b, r);
+    if action.is_attack(&b.content.defs) {
         super::dispatch(b, r, action);
-        if b.objects.get(r).action != 8 {
+        if crate::kinds::player::navi_action(b, r) != crate::kinds::player::NaviAction::Idle {
             return;
         }
         if ai(b, r).attack.rush.chain && chip_use::chain_next_chip(b, r) {

@@ -2,13 +2,13 @@
 -- AntiSwrd's counter (the original's navi action 0x48, `sub_80EEA3C`): when
 -- an AntiSwrd trap (or the AntiDmg program's stance, struck by a sword)
 -- catches a hit, the navi, invulnerable, swings a blade three times, each
--- swing sending a sword wave (./wave) along its row; the last one's hit
--- knocks back. The ruleset starts it by role (`actions.anti_sword_counter`,
+-- swing sending a sonic boom (lib/swords/sonic_boom) along its row; the last
+-- one's hit knocks back. The ruleset starts it by role (`actions.anti_sword_counter`,
 -- rules/roles.luau).
 
 local attachment = require("../../objects/attachment/attachment")
 local parts = require("../../lib/swords/parts")
-local wave = require("./wave")
+local sonic_boom = require("../../lib/swords/sonic_boom")
 
 local counter = {}
 
@@ -25,14 +25,17 @@ local SWING_TICKS, WAVE_AT = 0x15, 0xC
 local SWING_ANIM = 5
 local SOUND_START = asset.sound("log-in-77")
 local SOUND_SWING = parts.sounds.swing
--- The waves' speed, and their hit modifier by the swings left
--- (`dword_80EEB14`).
-local WAVE_SPEED = 0x8_0000
-local WAVE_HIT_MOD: { [number]: number } = { [0] = 1, 3, 1, 1 }
+-- The booms by the swings left (`dword_80EEB14`, their hit modifiers).
+local BOOMS: { [number]: SonicBoom } = {
+    [0] = { hit_mod = 1, pierces = false },
+    { hit_mod = 3, pierces = false },
+    { hit_mod = 1, pierces = false },
+    { hit_mod = 1, pierces = false },
+}
 -- The blade by the attack's variant (`byte_80EBB64`): a sword, the
 -- elemental swords' for variants 0xC to 0xF, the cannon arm (attachment
 -- row 0) for 0x10 and 0x13.
-local CANNON_ARM = attachment.look { sprite = asset.sprite("cannon-arm"), palette = 0, attach_point = 7 }
+local CANNON_ARM = attachment.look { sprite = asset.sprite("cannon"), palette = 0, attach_point = 7 }
 local BLADES: { [number]: AttachmentLook } = {
     [0xC] = parts.blades.fire,
     [0xD] = parts.blades.aqua,
@@ -57,7 +60,7 @@ local function start(me: Object, s: State)
 end
 
 -- `sub_80EEA78`: a swing: the blade out, the side's trap record gone; on
--- its 10th tick a wave from the panel ahead; after 22 ticks the next
+-- its 10th tick a sonic boom from the panel ahead; after 22 ticks the next
 -- swing, or the end.
 local function swing(me: Object, s: State)
     if me.step_init == 0 then
@@ -76,11 +79,11 @@ local function swing(me: Object, s: State)
     end
     if s.timer == WAVE_AT then
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
-        local hit_mod = WAVE_HIT_MOD[s.swings]
-        if hit_mod == nil then
+        local boom = BOOMS[s.swings]
+        if boom == nil then
             error(string.format("AntiSwrd's counter: swing %d reads past dword_80EEB14", s.swings))
         end
-        wave.spawn(me, me.panel_x + me.facing, me.panel_y, me.attack_element, hit_mod, damage, WAVE_SPEED)
+        sonic_boom.throw(me, me.panel_x + me.facing, me.panel_y, me.attack_element, damage, boom)
     end
     local t = s.timer - 1
     s.timer = int.u16(t)
