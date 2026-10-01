@@ -692,7 +692,8 @@ lifetime, a push and its own side's hit (`chips/0x096-vdoll/lifetime`, `pushed`,
 
 **[unverified]** (no scenario reaches them): action 0x14 variant 3; action 0x5D (weapon 0x39: no navi or form of
 a netbattle has it); the spawners' "pool full" paths; the objects' "no collision slot" paths; the wave's dead
-kinds; LilBoiler's removal, absorption and blink-out; the doll's absorption and blink-out.
+kinds. (LilBoiler's and the doll's removal, absorption and blink-out are verified by their `dustman`, `absorbed`
+and `colarmy` scenarios.)
 
 ## 17. Corrections to other documents
 
