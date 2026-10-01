@@ -470,13 +470,17 @@ pushes, blink-out, falling/rising entrances, dimming shaking, eviction.
   (`sub_800F598` reads the BIOS).
 - Ported, unverified by any trace: `sub_802EF74` (battle flag 0x40 target
   tracking, never in netbattles; the side's tracked target is
-  `SideState::tracked`), the pushes' ice and bounds branches, the
-  take-hits and dispatcher variants but the default ones.
+  `SideState::tracked`), the take-hits and dispatcher variants but the
+  default ones, the six-panel pull and the knock-back's vectors other than
+  AirShot's (unverified.md says why no netbattle reaches them).
 - Verified by the coverage scenarios (docs/engine/unverified.md): the pushes
   (`sub_8017CC0`, `sub_800F598` and the slide: AirShot at a TimeBom, a
   BlkBomb, a LilBoiler, a Guardian, a Sensor, an IceCube, and a RockCube
   pushed back by the other side), obstacles broken by damage, and the
   registry's evictions (a third RockCube, a second Anubis, a RockCube after
-  a LilBoiler).
+  a LilBoiler); the pushes over ice and their bounds (a pull stops at the
+  edge of the puller's area), a hit from both sides at once (no push), a
+  full absorbed list (the ninth obstacle flies on), and the panels acting
+  on a navi without shoes on every stage (`stages/panels-*`).
 - Actor-list types other than 0, 3, 8 and 9 (§1): no netbattle stage's
   list has them.
