@@ -676,10 +676,10 @@ Param1 · 4; coordinates from the panel; sound 0x129; state 4 and the update run
 
 Parameters: ColorPt [0, 0x0A] (+10), DblPoint [1, 0x14] (+20).
 
-**Lab**: the points, the steal and the flight are reached, and the bonus itself by `chips/0x0c2-colorpt/bonus`,
-`chips/0x0c4-dblpoint/bonus` and `chips/0x062-lilbolr1/colorpt` (a Cannon or a LilBoiler next), which the port
-doesn't replay yet. **Unverified**: the bonus, the special-source branch, a missing navi, `sub_800D53C` running
-off the field.
+**Lab**: the points, the steal and the flight are reached, and the bonus itself by `chips/0x0c2-colorpt/bonus` and
+`chips/0x0c4-dblpoint/bonus` (a Cannon next), which match every frame; `chips/0x062-lilbolr1/colorpt` (a LilBoiler
+next) is to rerun since LilBoiler's registration changed. **Unverified**: the special-source branch, a missing
+navi, `sub_800D53C` running off the field.
 
 ## 11. The port (data and framework)
 

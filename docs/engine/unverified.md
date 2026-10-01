@@ -61,7 +61,7 @@ standard chip action…), whichever section below the family belongs to:
 | Sensor | the battle-over branches | no KO | yes | chips/0x071-sensor1/ko: verified (the comparison now keeps a spark's garbage Z fraction after its laser is freed) |
 | Sensor | the scanner's blocked-by-object and edge branches, removal and absorption, failed collisions | | partly | open |
 | SumnBlk (subtype 36) | the whole navi (§9.2, §9.3) | no hole in front of the user | yes | chips/0x087-sumnblk1/hole-ahead, after-geddon, chips/0x089-sumnblk3/hole-ahead: verified |
-| ColorPt, DblPoint (subtype 27) | the bonus itself (080E66E0, 080E66EC, 080E66F6) | the next chip is none or has no damage | yes | chips/0x0c2-colorpt/bonus, chips/0x0c4-dblpoint/bonus, chips/0x062-lilbolr1/colorpt: **differs** (subtype 27 isn't implemented: being ported) |
+| ColorPt, DblPoint (subtype 27) | the bonus itself (080E66E0, 080E66EC, 080E66F6) | the next chip is none or has no damage | yes | chips/0x0c2-colorpt/bonus, chips/0x0c4-dblpoint/bonus: verified; chips/0x062-lilbolr1/colorpt: to rerun (it stopped in LilBoiler's registration before that was changed) |
 | ColorPt | the special-source branch, a missing navi, `sub_800D53C` running off the field | no such user | unreachable | |
 
 ### Dimming chip effects (dimming-chip-effects.md)
