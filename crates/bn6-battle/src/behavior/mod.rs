@@ -16,7 +16,6 @@
 //! loaded with particular options, a fresh one).
 
 mod core_api;
-mod data;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -32,7 +31,6 @@ use crate::kinds::{self, Vars};
 use crate::object::{ObjectRef, Vec3};
 
 pub use bn6_luau::Options;
-pub use data::script_data;
 
 /// A loaded content runtime: shared, immutable code (cloning shares it).
 #[derive(Clone, Default)]
@@ -141,7 +139,7 @@ impl Behaviors {
         if content.defs.functions.is_empty() && content.defs.definitions.is_empty() {
             return Ok(Behaviors::none());
         }
-        let host = bn6_luau::LuauContent::load(&content.scripts.pack(), &plan(content), &script_data(content), options)?;
+        let host = bn6_luau::LuauContent::load(&content.scripts.pack(), &plan(content), options)?;
         Ok(Behaviors { loaded: Some(Rc::new(Loaded { host: Box::new(host) })) })
     }
 

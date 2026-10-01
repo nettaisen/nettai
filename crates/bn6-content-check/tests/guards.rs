@@ -23,14 +23,13 @@ const NUMBERED_FOLDERS: &[&str] = &[];
 
 /// The modules that still hold `legacy` markers, by path (`*`: any one
 /// folder): the navis' and forms' numbers and NameIDs, and the original's
-/// numbering of the tables the ruleset still reads by number. Step 13's
-/// second part converts them and empties this list.
+/// numbering of the two tables the ruleset still reads by number. Step
+/// 13's second part converts them and empties this list.
 const LEGACY_MARKERS: &[&str] = &[
     "content/bn6/navis/*/navi.luau",
     "content/bn6/navis/megaman/forms/*/form.luau",
     "content/bn6/rules/body-overlays.luau",
     "content/bn6/rules/identities.luau",
-    "content/bn6/rules/numbers.luau",
     "crates/bn6-battle/testdata/content/navis/test.luau",
 ];
 

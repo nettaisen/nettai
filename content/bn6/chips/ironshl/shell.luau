@@ -155,7 +155,7 @@ local function tick(me: Object)
         return
     end
     local highlight = true
-    if c.region == 0 then
+    if c.region == nil then
         if panel_word(me) == s.hit_panel then
             highlight = false
         else

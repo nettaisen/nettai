@@ -18,6 +18,10 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
          return define.record('holder', { kind = held.kind })"
             .into(),
     );
+    // A role that names a definition, left out.
+    let roles = c.scripts.modules.get_mut("test/rules/roles").expect("the test pack's roles");
+    assert!(roles.contains("    sparks = ruleset.sparks,\n"));
+    *roles = roles.replace("    sparks = ruleset.sparks,\n", "    sparks = { plain = ruleset.sparks.plain },\n");
     c.define().unwrap();
     let mut r = Report::default();
     bn6_content::lint::definitions(&c, &mut r);
@@ -25,6 +29,8 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
         r.issues.iter().filter(|i| i.level == Level::Warning).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(warnings.iter().any(|w| w.contains("actions.body_guard_counter is not filled")), "{warnings:?}");
     assert!(!warnings.iter().any(|w| w.contains("anti_damage_counter")), "the test pack fills it: {warnings:?}");
+    assert!(warnings.iter().any(|w| w.contains("sparks.guard is not filled")), "{warnings:?}");
+    assert!(!warnings.iter().any(|w| w.contains("sparks.plain") || w.contains("effects.") || w.contains("collision.")), "{warnings:?}");
     assert!(warnings.iter().any(|w| w.starts_with("objects/held/held.luau: only chips/holder uses")), "{warnings:?}");
 }
 
@@ -40,14 +46,14 @@ fn a_collision_type_defined_twice_is_an_error() {
         );
     }
     c.define().unwrap();
-    assert_eq!(
-        bn6_content::lint::duplicate_collision_types(&c),
-        [(0xFE, vec![("one".to_string(), "lib/one".to_string()), ("two".to_string(), "lib/two".to_string())])]
-    );
+    // (The test content's own types share rows with BN6's, whose module
+    // it has too: only these are looked at.)
+    let twins: Vec<_> = bn6_content::lint::duplicate_collision_types(&c).into_iter().filter(|(row, _)| *row >= 0xFE).collect();
+    assert_eq!(twins, [(0xFE, vec![("one".to_string(), "lib/one".to_string()), ("two".to_string(), "lib/two".to_string())])]);
     let mut r = Report::default();
     bn6_content::lint::definitions(&c, &mut r);
     let errors: Vec<&str> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| i.message.as_str()).collect();
-    assert!(matches!(errors[..], [e] if e.contains("collision type one is row 0xfe") && e.contains("two (lib/two.luau)")), "{errors:?}");
+    assert!(errors.iter().any(|e| e.contains("collision type one is row 0xfe") && e.contains("two (lib/two.luau)")), "{errors:?}");
 }
 
 /// BN6's content defines without an error in its definitions (each

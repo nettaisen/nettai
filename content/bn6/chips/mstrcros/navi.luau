@@ -166,7 +166,7 @@ local function hit(me: Object, x: number, y: number, z: number, region: Region)
         element = me.element,
         z = z,
         region = region,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.attack,
         damage = me.damage,

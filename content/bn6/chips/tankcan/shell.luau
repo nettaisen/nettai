@@ -56,7 +56,7 @@ local function blast(me: Object, s: State, x: number, y: number)
         panel_y = y,
         element = 0,
         region = regions.wide,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.thrown,
         damage = bit32.band(word, 0xFFFF),
@@ -135,7 +135,7 @@ local function tick(me: Object)
     local c = me.collision
     c:remove()
     me:hit_spark()
-    if c.region ~= 0 then
+    if c.region ~= nil then
         if c.hit_flags ~= 0 then
             battle.play_sound(HIT_SOUND)
             battle.effect(me.pos, effects.shell_burst)

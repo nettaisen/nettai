@@ -86,7 +86,7 @@ local function tick(me: Object)
         s.trail = TRAIL_EVERY
         afterimage(me)
     end
-    if c.region == 0 and panel_word(me) ~= s.hit_panel then
+    if c.region == nil and panel_word(me) ~= s.hit_panel then
         c:set_region(regions.single)
     end
     if field.valid(me.panel_x, me.panel_y) then

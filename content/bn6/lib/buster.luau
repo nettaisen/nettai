@@ -14,8 +14,9 @@ local buster = {}
 -- instead.
 buster.flash = attachment.look { sprite = asset.sprite("muzzle-flash"), palette = 0, attach_point = 0x10 }
 buster.arm = attachment.look { sprite = asset.sprite("buster-arm"), palette = 0 }
--- What an enemy navi raises (row 0x2B).
-local NAVI_ARM = attachment.look { sprite = asset.sprite("elec-coil"), palette = 0, attach_point = 14 }
+-- An enemy navi's arm (the original's attachment row 0x2B, at attach point
+-- 0x0E).
+local NAVI_ARM = attachment.look { sprite = asset.sprite("elec-coil"), palette = 0, attach_point = 0x0E }
 
 -- The buster's recovery in ticks (`byte_80209CC`), by Rapid, then the open
 -- panels ahead.
@@ -25,11 +26,16 @@ local RECOVERY: { { number } } = require("../rules/buster").recovery
 -- Beast form.
 local NO_CHARGE_PALETTE = 0xE
 
--- How the arm animates. `sub_80EB572` adds its four spawn parameters into
--- one word: the look's row, the animation shifted by 8, its r1 (Param3:
--- the arm animates while dimmed too) by 16 and the palette addition by 24,
--- so a negative animation borrows from the bytes above it.
-local function arm_options(anim: number, palette_add: number, param3: number): { anim: number, while_dimmed: boolean, palette_add: number }
+-- How the arm animates, from the spawn parameters `sub_80EB572` adds into
+-- one word: the attachment's row (the low byte, which nothing above it
+-- changes), the animation shifted by 8, its r1 (Param3: the arm animates
+-- while dimmed too) by 16 and the palette addition by 24 (so a negative
+-- animation borrows from the bytes above it).
+local function arm_options(
+    anim: number,
+    palette_add: number,
+    param3: number
+): { anim: number?, while_dimmed: boolean?, palette_add: number? }
     local word = int.u32(int.shl(anim, 8) + int.shl(param3, 16) + int.shl(palette_add, 24))
     return {
         anim = bit32.band(bit32.rshift(word, 8), 0xFF),

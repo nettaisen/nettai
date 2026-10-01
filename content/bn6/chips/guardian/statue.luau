@@ -205,7 +205,7 @@ local function hit(me: Object)
         element = me.element,
         z = 0,
         region = region,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = STRIKE_HITS,
         self_type = STRIKE_IS,
         damage = me.damage,

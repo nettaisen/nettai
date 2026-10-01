@@ -7,10 +7,10 @@
 //! read on their next update. See docs/engine/field-collision-damage.md §3.
 
 use crate::battle::Battle;
-use crate::content::{Content, StatusRole};
+use crate::content::{Content, Region, RegionRole, SparkRole, StatusRole};
 use crate::field::{self, PanelType};
 use crate::object::{ObjectRef, PanelPos};
-use bn6_content_api::StatusHandle;
+use bn6_content_api::{CollisionHandle, RegionHandle, SparkHandle, StatusHandle};
 
 pub const SLOTS: usize = 32;
 
@@ -87,9 +87,9 @@ pub struct Accumulators {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct CollisionData {
     pub enabled: u8,
-    /// Region shape (`Content::region`; 0x80.. = filtered whole field,
-    /// `Rules::field_regions`).
-    pub region: u8,
+    /// The region it covers around its panel (or the whole field's panels
+    /// that meet a condition), or none.
+    pub region: Option<RegionHandle>,
     pub element: u8,
     /// Directions a guard blocked from.
     pub guard_dirs: u8,
@@ -99,8 +99,8 @@ pub struct CollisionData {
     /// Counter strength (bits 0-6); bit 7 = can't counter.
     pub counter_byte: u8,
     pub poison_timer: u8,
-    /// Hit spark effect (0xFF = none).
-    pub hit_effect: u8,
+    /// The spark its hits show, or none.
+    pub hit_effect: Option<SparkHandle>,
     /// Region anchor.
     pub panel: PanelPos,
     /// Last move direction: 0 none, 1 up, 2 down, 3 back, 4 forward, 5 other.
@@ -229,26 +229,33 @@ impl Collision {
     /// The panels a registration covers, in processing order.
     fn region_panels(&self, content: &Content, field: &field::Field, id: CollisionId) -> Vec<(u8, u8)> {
         let s = &self.slots[id.0 as usize];
-        if s.region & 0x80 == 0 {
-            let dir: i8 = if s.alliance ^ s.flip == 0 { 1 } else { -1 };
-            content
-                .region(s.region)
-                .iter()
-                .map(|o| ((s.panel.x as i8 + o.dx * dir) as u8, (s.panel.y as i8 + o.dy) as u8))
-                .filter(|&(x, y)| field::is_valid(x, y))
-                .collect()
-        } else {
-            let cond = content.field_region(s.region);
-            let mut v = Vec::new();
-            for y in 1..=3 {
-                for x in 1..=6 {
-                    if field.check(x, y, cond.require, cond.forbid) {
-                        v.push((x, y));
+        match s.region.map(|h| content.region(h)) {
+            None => Vec::new(),
+            Some(Region::Panels(offsets)) => {
+                let dir: i8 = if s.alliance ^ s.flip == 0 { 1 } else { -1 };
+                offsets
+                    .iter()
+                    .map(|o| ((s.panel.x as i8 + o.dx * dir) as u8, (s.panel.y as i8 + o.dy) as u8))
+                    .filter(|&(x, y)| field::is_valid(x, y))
+                    .collect()
+            }
+            Some(Region::Field(cond)) => {
+                let mut v = Vec::new();
+                for y in 1..=3 {
+                    for x in 1..=6 {
+                        if field.check(x, y, cond.require, cond.forbid) {
+                            v.push((x, y));
+                        }
                     }
                 }
+                v
             }
-            v
         }
+    }
+
+    /// Whether a registration's region is a whole-field one.
+    fn covers_whole_field(&self, content: &Content, id: CollisionId) -> bool {
+        matches!(self.slots[id.0 as usize].region.map(|h| content.region(h)), Some(Region::Field(_)))
     }
 }
 
@@ -259,15 +266,26 @@ impl Default for Collision {
 }
 
 impl Battle {
-    /// `object_createCollisionData`: give `obj` a collision slot.
+    /// `object_createCollisionData`: give `obj` a collision slot. A new
+    /// slot is zeroed: no region, and the plain hit spark (the original's
+    /// hit effect 0).
     pub fn create_collision(&mut self, obj: ObjectRef) -> Option<CollisionId> {
         let id = self.collision.allocate();
+        if let Some(id) = id {
+            self.collision.get_mut(id).hit_effect = Some(self.content.defs.roles.spark(SparkRole::Plain));
+        }
         self.objects.get_mut(obj).collision = id;
         id
     }
 
+    /// The registration's own panel as a region (`object_setCollisionRegion`
+    /// with 1, what a setup gives every registration).
+    pub fn anchor_region(&self) -> Option<RegionHandle> {
+        Some(self.content.defs.roles.region(RegionRole::Anchor))
+    }
+
     /// `object_setupCollisionData`.
-    pub fn setup_collision(&mut self, obj: ObjectRef, self_idx: u8, target_idx: u8, hit_mod: u8) {
+    pub fn setup_collision(&mut self, obj: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: u8) {
         let o = self.objects.get(obj).clone();
         let Some(id) = o.collision else { return };
         let dimmed = self.is_dimmed();
@@ -279,11 +297,11 @@ impl Battle {
         s.alliance = o.alliance;
         s.flip = o.flip;
         s.panel = o.panel;
-        s.region = 1;
+        s.region = Some(self.content.defs.roles.region(RegionRole::Anchor));
         s.counter_byte = o.stamina as u8;
         s.self_damage = o.damage;
-        s.self_flags = self.content.collision_type(self_idx, o.alliance).0 | if dimmed { 0x1_0000 } else { 0 };
-        let (target_flags, row_offset) = self.content.collision_type(target_idx, o.alliance);
+        s.self_flags = self.content.collision_type(self_type, o.alliance).0 | if dimmed { 0x1_0000 } else { 0 };
+        let (target_flags, row_offset) = self.content.collision_type(target_type, o.alliance);
         s.target_flags = target_flags;
         // The garbage high byte of any bug code: the table offset the
         // target lookup left in r1.
@@ -293,7 +311,7 @@ impl Battle {
 
     /// `sub_801A082`: redo the damage and collision-type part of the setup
     /// (after a change of damage or of what the object is).
-    pub fn reset_collision_types(&mut self, obj: ObjectRef, self_idx: u8, target_idx: u8, hit_mod: u8) {
+    pub fn reset_collision_types(&mut self, obj: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: u8) {
         let o = self.objects.get(obj);
         let Some(id) = o.collision else { return };
         let (alliance, damage) = (o.alliance, o.damage);
@@ -301,8 +319,8 @@ impl Battle {
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
         s.self_damage = damage;
-        s.self_flags = self.content.collision_type(self_idx, alliance).0 | if dimmed { 0x1_0000 } else { 0 };
-        s.target_flags = self.content.collision_type(target_idx, alliance).0;
+        s.self_flags = self.content.collision_type(self_type, alliance).0 | if dimmed { 0x1_0000 } else { 0 };
+        s.target_flags = self.content.collision_type(target_type, alliance).0;
         // A bug code's garbage high byte is what `battle_isTimeStop` left in
         // r1 (4, or 0x10000 while dimmed).
         let r1 = if dimmed { 0 } else { 4 };
@@ -320,7 +338,7 @@ impl Battle {
         s.status_final = None;
         s.acc = Accumulators::default();
         let bit = s.bit;
-        let whole_field = s.region & 0x80 != 0;
+        let whole_field = self.collision.covers_whole_field(&self.content, id);
         for (x, y) in self.collision.region_panels(&self.content, &self.field, id) {
             self.collision.masks[(y * 8 + x) as usize] |= bit;
             // Whole-field registrations refresh the wrong panel (a no-op).
@@ -333,7 +351,7 @@ impl Battle {
     /// `object_removeCollisionData`: unregister and resolve hits.
     pub fn remove_collision(&mut self, id: CollisionId) {
         let bit = self.collision.get(id).bit;
-        let whole_field = self.collision.get(id).region & 0x80 != 0;
+        let whole_field = self.collision.covers_whole_field(&self.content, id);
         let panels: Vec<(u8, u8)> = if whole_field {
             let mut v = Vec::new();
             for y in 1..=3u8 {

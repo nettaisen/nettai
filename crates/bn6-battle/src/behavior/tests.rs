@@ -42,6 +42,8 @@ fn battles_run_the_content_scripts() {
             "airraid/controller",
             "airraid/plane",
             "airraid/propeller",
+            "aquandl/needle",
+            "aquandl/volley",
             "attachment",
             "barrier-visual",
             "barriers/controller",
@@ -72,6 +74,7 @@ fn battles_run_the_content_scripts() {
             "dustcross/junk-ball",
             "dustman/cloud",
             "dustman/overlay",
+            "elcpuls/pulse",
             "elecman/navi",
             "elecman/thunder",
             "element-pillar",
@@ -167,6 +170,7 @@ fn battles_run_the_content_scripts() {
             "tenguman/navi",
             "tenguman/tornado",
             "thunder-column",
+            "thunder/ball",
             "timebom/controller",
             "timebom/countdown",
             "tmhkman/navi",
@@ -932,7 +936,19 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
     assert_eq!((o.panel, o.hp, o.action), (PanelPos { x: 5, y: 2 }, 0, 2), "landed and breaking");
     let hit = b.objects.in_order().find(|&h| b.kind_key(h) == "engine/hitbox").unwrap();
     let h = b.objects.get(hit);
-    assert_eq!((h.panel, h.params, h.damage), (PanelPos { x: 5, y: 2 }, [1, 5, 5, 6], 60));
+    assert_eq!((h.panel, h.damage), (PanelPos { x: 5, y: 2 }, 60));
+    // Its own panel, with the thrown obstacle's spark and collision types.
+    let roles = &b.content.defs.roles;
+    let crate::kinds::Vars::Hitbox(v) = &h.vars else { panic!("a hitbox's state") };
+    assert_eq!(
+        (v.region, v.hit_effect, v.target, v.self_type),
+        (
+            b.anchor_region(),
+            Some(roles.spark(crate::content::SparkRole::ThrownObstacle)),
+            roles.collision(crate::content::CollisionRole::ThrownObstacleTarget),
+            roles.collision(crate::content::CollisionRole::ThrownObstacle),
+        )
+    );
 }
 
 /// Encase the stage's rock (ice or a bubble, as the unlabeled request at
@@ -1179,8 +1195,8 @@ fn global_writes_are_rejected_at_load() {
 }
 
 #[test]
-fn module_tables_and_data_are_frozen() {
-    for line in ["action.uses = me.step", "data.regions[1] = {}", "math.floor = math.ceil"] {
+fn module_tables_and_libraries_are_frozen() {
+    for line in ["action.uses = me.step", "math.floor = math.ceil"] {
         let e = play_error(load(&in_update(line)).unwrap()).expect("the write fails");
         assert!(e.contains("readonly"), "{line}: {e}");
     }
