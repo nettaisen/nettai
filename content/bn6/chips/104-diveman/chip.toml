@@ -1,4 +1,0 @@
-# DiveMan, DiveMan[EX] and DiveMan[SP] (navi chip subtype 13) summon DiveMan
-# (chips/diveman/navi.luau), through chip.luau.
-
-script = "chip.luau"

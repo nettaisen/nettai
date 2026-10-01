@@ -1,3 +1,0 @@
-# CornSht1 runs the corn shooters (action 0x2A, `sub_80ED090`), in chip.luau.
-
-script = "chip.luau"

@@ -1,4 +1,0 @@
-# Colonel, Colonel[EX], Colonel[SP] and CrossDiv (navi chip subtype 17)
-# summon Colonel (chips/colonel/navi.luau), through chip.luau.
-
-script = "chip.luau"

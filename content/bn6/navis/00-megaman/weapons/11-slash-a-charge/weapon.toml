@@ -1,6 +1,0 @@
-# MegaMan's weapon routine 0x11, SlashCross's A-charge (`sub_8011CB4`), is a
-# script. The charged slash it names (action 0x41) is weapon 0x12's.
-
-id = 0x11
-name = "Slash A-charge"
-script = "slash_a_charge.luau"

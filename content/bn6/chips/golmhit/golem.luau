@@ -1,10 +1,10 @@
 --!strict
 -- GolmHit's golem fist (the original's effect object #0x3F, `sub_80E4DB0`)
 -- and the chips' effect (instant chip effect 21, `sub_80E4FCA`). The fist
--- leaps from the user's panel to the column of the nearest of the other
--- side's navis on the user's row (or, if there is none, the panel ahead of
--- the user): a long hop from 95 pixels short and 40 up, then a short one
--- from 10 short and 30 up, leaving dust afterimages; it highlights its
+-- leaps from the user's panel to the nearest of the other side's panels on
+-- the user's row, whoever stands where (or, if the row has none, the panel
+-- ahead of the user): a long hop from 95 pixels short and 40 up, then a
+-- short one from 10 short and 30 up, leaving dust afterimages; it highlights its
 -- column as it goes. On a panel that can take it, it lands on its column:
 -- hits on the three panels, with dust, and cracks; elsewhere it hits its
 -- panel alone and is gone.
@@ -35,7 +35,7 @@ local SPRITE = asset.sprite("golem")
 local LEAP_SOUND, LAND_SOUND, HIT_SOUND = asset.sound("golem-2"), asset.sound("land"), asset.sound("golem")
 
 -- The nearest target's column (`byte_80E4E74`, by side: required and
--- forbidden panel flags): the other side's navi's panel.
+-- forbidden panel flags): a panel of the other side's area.
 local TARGET_REQUIRE = { [0] = 0x10020, [1] = 0x10000 }
 local TARGET_FORBID = { [0] = 0, [1] = 0x20 }
 -- Where a panel can take the landing.

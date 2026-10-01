@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x08, SpoutCross Beast's charged chip (`sub_8011BE8`),
-# and its action 0x3A (`sub_80EDE7E`) are a script.
-
-id = 0x08
-name = "SpoutCross Beast charge"
-action = 0x3A
-script = "spout_beast_charge.luau"

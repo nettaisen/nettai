@@ -1,3 +1,0 @@
-# A navi chip (subtype 2): HeatMan, as chips/0e3-heatman summons him.
-
-script = "../0e3-heatman/chip.luau"

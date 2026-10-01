@@ -1,4 +1,0 @@
-# Bass (navi chip subtype 26) summon Bass (chips/bass/navi.luau), through
-# chip.luau.
-
-script = "chip.luau"

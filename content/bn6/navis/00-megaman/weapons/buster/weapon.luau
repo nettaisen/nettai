@@ -197,10 +197,12 @@ buster.weapon = define.weapon {
     -- The buster isn't charged (the charge table's row 0).
     charge_ticks = { 0, 0, 0, 0, 0 },
     setup = buster.setup,
-    -- (Transitional: the routine numbers the pack's forms, the navis'
-    -- rows and the ruleset name it by, `off_80117D4`'s entries that are
-    -- `sub_8011A26`.)
-    legacy = { routines = { 0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x6F, 0x70, 0x77, 0x79, 0x7B, 0x7E, 0x82 } },
+    -- (Transitional: the routine number the pack's forms, the navis' rows
+    -- and the ruleset name it by. `off_80117D4`'s other entries that are
+    -- `sub_8011A26` read other rows of the charge table, so they are
+    -- weapons of their own with this setup: navis/00-megaman/weapons/
+    -- buster-2e and the rest.)
+    legacy = { routines = { 0x00 } },
 }
 
 return buster
