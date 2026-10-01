@@ -1,11 +1,13 @@
 --!strict
 -- A thunder column (attack object #0x8B, `sub_80D6924`): an unseen hit on
 -- one panel, 16 pixels up, for the ticks its spawner gives it (its timer),
--- or until it has hit something. DolThdr's doll strikes a row of them, and
--- EraseCross's ray lays them. What it hits with is its variant (a row of
--- the original's `byte_80D6914`, its first parameter): `plain` or `pull`.
--- It registers in its spawner's `columns` list (the game's slot pointer
--- in its first related object) and leaves it when it goes.
+-- or until it has hit something. DolThdr's doll (./doll) strikes a row of
+-- them; EraseCross's ray (navis/megaman/forms/erasecross/ray, which
+-- MstrCros's EraseCross fires too) uses them as well, laying the pulling
+-- ones. What it hits with is its variant (a row of the original's
+-- `byte_80D6914`, its first parameter): `plain` or `pull`. It registers
+-- in its spawner's `columns` list (the game's slot pointer in its first
+-- related object) and leaves it when it goes.
 
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
@@ -39,7 +41,7 @@ export type Owner = { columns: { Object? } }
 local HEIGHT = 0x10_0000
 
 function thunder_column.variant(v: Variant): Variant
-    return define.record("thunder-column", v)
+    return define.record("thunder-column-variant", v)
 end
 
 -- `byte_80D6914`'s rows: a plain hit (0, DolThdr's) and a pull (1,
@@ -118,9 +120,9 @@ local function init(me: Object)
 end
 
 thunder_column.kind = define.kind {
-    id = "thunder-column",
+    id = "dolthdr/thunder-column",
     pool = "attack",
-    state = { owner = "object", link = "u8", variant = "record:thunder-column" },
+    state = { owner = "object", link = "u8", variant = "record:thunder-column-variant" },
     -- `sub_80D6924`.
     update = function(me: Object)
         local l = me.lifecycle
