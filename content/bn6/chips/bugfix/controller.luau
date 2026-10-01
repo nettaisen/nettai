@@ -5,7 +5,7 @@
 -- over the user's side's navi (glow.luau), fixes the user's side's
 -- NaviCust bugs, and waits for the glow.
 
-local controller = require("../../lib/dimming/controller")
+local dimming_chips = require("../../lib/dimming")
 local glow = require("./glow")
 
 local bugfix = {}
@@ -24,7 +24,10 @@ local function effect(me: Object)
         -- sub_80C4AEC
         glow.spawn(me, glow.BUG_FIX, me)
         -- sub_80E49C4
-        local user = controller.user(me, "sub_80E49C4")
+        local user = me.related1
+        if not user then
+            error("BugFix's controller has no user (sub_80E49C4 reads through a null pointer)")
+        end
         battle.clear_navicust_bugs(user.alliance)
         -- sub_801E658: the emotion portrait's bug face goes (the HUD,
         -- which the engine doesn't draw).
@@ -35,7 +38,7 @@ local function effect(me: Object)
         me.phase_init = 4
     end
     if not (me.state :: State).busy then
-        controller.undim(me)
+        dimming_chips.done(me)
     end
 end
 
@@ -43,12 +46,12 @@ bugfix.kind = define.kind {
     id = "bugfix/controller",
     pool = "effect",
     state = { busy = "bool" },
-    update = controller.update("BugFix's controller", effect),
+    update = dimming_chips.phases { name = "BugFix", effect = effect },
 }
 
 -- `sub_80E49A2`: the chip's `dimming` hook.
 function bugfix.spawn(user: Object, spec: DimmingChipSpec): Object?
-    return controller.spawn(bugfix.kind, user, spec)
+    return dimming_chips.spawn(bugfix.kind, user, spec)
 end
 
 return bugfix
