@@ -1434,7 +1434,7 @@ export type FormEffect =
     | "air_shoes"
     | "float_shoes"
     | "floating_body"
-    | "poison_proof"
+    | "untouchable"
     | "lockon_marker"
     | "invulnerable"
     | "berserk"

@@ -192,8 +192,8 @@ pub(super) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
 /// What a form's routine of `sub_8014536` or `sub_801469C` does, in the
 /// order the original's routines do it: the statuses end
 /// (`sub_80145C2`); the flags (`SetObjectAirshoeFlag`,
-/// `SetObjectSuperArmorFlag`, AirShoe and FloatShoe of `sub_8014606`, flag
-/// 0x08000000 of `sub_8014674`); the floating body; the lock-on marker;
+/// `SetObjectSuperArmorFlag`, AirShoe and FloatShoe of `sub_8014606`, the
+/// untouchable flag 0x08000000 with the shoes of `sub_8014674`); the floating body; the lock-on marker;
 /// invulnerable for good and the berserk controller's state cleared
 /// (`sub_8014650`).
 fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
@@ -205,7 +205,7 @@ fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
         (FormEffects::SUPER_ARMOR, f1::SUPERARMOR),
         (FormEffects::AIR_SHOES, f1::AIRSHOE),
         (FormEffects::FLOAT_SHOES, f1::FLOATSHOE),
-        (FormEffects::POISON_PROOF, f1::UNAFFECTED_BY_POISON),
+        (FormEffects::UNTOUCHABLE, f1::UNTOUCHABLE),
     ] {
         if effects.has(effect) {
             flags1 |= flag;
