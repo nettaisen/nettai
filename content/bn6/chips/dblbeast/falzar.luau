@@ -32,9 +32,9 @@ local HITS: { [string]: DblBeastHit } = {
     strike = { ahead = 1, region = regions.wide, spark = sparks.heavy, is = collision.attack, damage = 50 },
 }
 
--- The breath's maw (attachment row 0x21) and its gust two panels ahead
--- (effect 0x59, 30 ticks).
-local MAW = attachment.look { sprite = asset.sprite("falzar-breath"), palette = 0, attach_point = 9 }
+-- The breath's maw (attachment row 0x21, the fan Tornado holds) and its
+-- gust two panels ahead (effect 0x59, 30 ticks).
+local MAW = attachment.look { sprite = asset.sprite("hand-fan"), palette = 0, attach_point = 9 }
 local GUST = define.effect { sprite = asset.sprite("tornado"), anim = 0, palette = 0 }
 local GUST_TICKS = 0x1E
 

@@ -71,6 +71,9 @@ local STEPS = { [0] = { -1, -1 }, { 2, 1 }, { -2, 1 }, { 0, 0 } }
 -- while dimmed).
 local SWORD = { 3, 0x0B, 1, 0 }
 
+-- His bursts' look (the follow effect's look 4).
+local BURST = follow_effect.look { sprite = asset.sprite("follow-effect"), anim = 0, palette = 0, behavior = "flash" }
+
 -- `sub_80C2F96`: DeltaRay for `user`, reporting to `controller`. (His
 -- position is the spawner's registers, all of which his init
 -- overwrites.)
@@ -375,11 +378,11 @@ local function home(me: Object)
     end
 end
 
--- `sub_80C2FBC`: a burst (follow effect 4, 60 ticks, sound 0x92) on (x,
--- y), and a white flash of 20 ticks.
+-- `sub_80C2FBC`: a burst (a follow effect's look 4, 60 ticks, sound 0x92)
+-- on (x, y), and a white flash of 20 ticks.
 local function burst(me: Object, x: number, y: number)
     local cx, cy = field.center(x, y)
-    local fx = follow_effect.spawn(me, Vec3.new(cx, cy, 0), { 4, bit32.bxor(me.alliance, me.flip) })
+    local fx = follow_effect.spawn(me, Vec3.new(cx, cy, 0), BURST, bit32.bxor(me.alliance, me.flip))
     if fx then
         fx.timer = 0x3C
     end

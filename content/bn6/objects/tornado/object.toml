@@ -1,6 +1,0 @@
-# The tornado (attack object #0x31, `sub_80C9F78`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x31
-script = "tornado.luau"

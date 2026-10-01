@@ -22,6 +22,12 @@ sparks.fire, sparks.aqua, sparks.elec, sparks.wood = BY_ELEMENT[1], BY_ELEMENT[2
 sparks.plain = BY_ELEMENT[0]
 sparks.charged = BY_ELEMENT[5]
 
+-- The element sparks by name (hit effects 1 to 3: a flame's, a bubble
+-- star's, a thunder ball's).
+sparks.fire = BY_ELEMENT[1]
+sparks.aqua = BY_ELEMENT[2]
+sparks.elec = BY_ELEMENT[3]
+
 -- A cannon's impact (spark 7: the cannons, AirShot).
 sparks.impact = define.spark { sprite = asset.sprite("impact"), anim = 0, palette = 0 }
 
