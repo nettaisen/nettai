@@ -1,3 +1,4 @@
-# A navi chip (subtype 6): its navi is ChargeMan.
+# ChrgeMan, ChrgeMn[EX] and ChrgeMn[SP] (navi chip subtype 6) summon
+# ChargeMan (chips/chrgeman/navi.luau), through chip.luau.
 
-script = "../../objects/charge-man/charge_man.luau"
+script = "chip.luau"

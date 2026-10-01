@@ -1,3 +1,4 @@
-# A navi chip (subtype 16): its navi is ElmntMan.
+# ElmntMan, ElmntMn[EX] and ElmntMn[SP] (navi chip subtype 16) summon
+# ElmntMan (chips/elmntman/navi.luau), through chip.luau.
 
-script = "../../objects/elmnt-man/elmnt_man.luau"
+script = "chip.luau"

@@ -180,8 +180,16 @@ function panels.enemy_column(me: Object): (number, boolean)
     return if dir > 0 then 6 else 1, false
 end
 
--- A hit region's offsets ({dx, dy} each, dx toward the facing side).
-local function region_shape(n: number): { { number } }
+-- A hit region's offsets ({dx, dy} each, dx toward the facing side): a
+-- region definition's, or (deprecated) a region number's.
+local function region_shape(n: number | Region): { { number } }
+    if type(n) == "table" then
+        local shape = n.panels
+        if not shape then
+            error("a whole-field region has no panel offsets")
+        end
+        return shape
+    end
     local r = data.regions[n]
     if not r then
         error(string.format("panel region %#x reads past PanelOffsetListsPointerTable", n))
@@ -191,7 +199,7 @@ end
 
 -- `object_highlightPanelRegion`: highlight region `n`'s panels around (x,
 -- y), dx along `facing` (+1 right, -1 left).
-function panels.highlight_region(x: number, y: number, n: number, facing: number)
+function panels.highlight_region(x: number, y: number, n: number | Region, facing: number)
     for _, o in region_shape(n) do
         field.highlight(x + o[1] * facing, y + o[2])
     end
@@ -199,7 +207,14 @@ end
 
 -- `object_getPanelRegion`: region `n`'s panels around (x, y), dx along
 -- `direction`, that pass `field.check`.
-function panels.region(x: number, y: number, n: number, direction: number, require: number, forbid: number): { number }
+function panels.region(
+    x: number,
+    y: number,
+    n: number | Region,
+    direction: number,
+    require: number,
+    forbid: number
+): { number }
     local list = {}
     for _, o in region_shape(n) do
         local px, py = x + o[1] * direction, y + o[2]
@@ -212,7 +227,7 @@ end
 
 -- `sub_80DB48A`: crack (`object_crackPanel`) each panel of region `n`
 -- around (x, y), its offsets as they are (not turned to a side).
-function panels.crack_region(x: number, y: number, n: number)
+function panels.crack_region(x: number, y: number, n: number | Region)
     for _, o in region_shape(n) do
         field.crack(x + o[1], y + o[2])
     end

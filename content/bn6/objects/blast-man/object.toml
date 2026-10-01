@@ -1,6 +1,0 @@
-# BlastMan, the BlastMan chips' navi (actor object #0x06, `sub_80B8EA0`), is a script.
-
-[kind]
-pool = "actor"
-index = 0x06
-script = "blast_man.luau"

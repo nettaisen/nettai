@@ -41,19 +41,19 @@ fn battles_run_the_content_scripts() {
             "absorbed-obstacle",
             "aqua-surge",
             "attachment",
-            "bass",
-            "blast-fire",
-            "blast-man",
+            "bass/navi",
+            "blastman/fire",
+            "blastman/navi",
             "blkbomb/bomb",
             "bomb",
             "bomb-slash",
             "boomerang",
             "boulder",
             "bugbomb/bomb",
-            "charge-car",
-            "charge-man",
             "charge-wave",
             "chargeman/volcano-rock",
+            "chrgeman/car",
+            "chrgeman/navi",
             "countdown-bomb",
             "crakshot/shot",
             "dash-hit",
@@ -64,15 +64,16 @@ fn battles_run_the_content_scripts() {
             "dust-ball",
             "dustman/cloud",
             "dustman/overlay",
-            "elec-man",
-            "elec-thunder",
+            "elecman/navi",
+            "elecman/thunder",
             "elem-trap",
             "elem-trap-strike",
             "element-pillar",
-            "elmnt-bolt",
-            "elmnt-ice",
-            "elmnt-man",
-            "elmnt-vine",
+            "elmntman/bolt",
+            "elmntman/ice",
+            "elmntman/meteor",
+            "elmntman/navi",
+            "elmntman/vine",
             "energbom/burst",
             "erase-drop",
             "erase-ray",
@@ -96,8 +97,8 @@ fn battles_run_the_content_scripts() {
             "grndman/rock",
             "gundels/beam",
             "gust",
-            "heat-man",
             "heatman/flame",
+            "heatman/navi",
             "hit-flash",
             "invisible",
             "junk-shot",
@@ -107,9 +108,7 @@ fn battles_run_the_content_scripts() {
             "lilbolr/boiler",
             "lilbolr/layer",
             "lunge-slash",
-            "meteor",
             "mine",
-            "moon-beam",
             "navi-boost",
             "panel-bursts",
             "panel-strike",
@@ -125,24 +124,25 @@ fn battles_run_the_content_scripts() {
             "sandwrm/spray",
             "sandwrm/worm",
             "seed",
-            "slash-man",
-            "slash-wave",
+            "slashman/navi",
             "slashman/riding-hit",
-            "spout-ball",
-            "spout-geyser",
-            "spout-man",
-            "spout-mark",
-            "spout-pillar",
-            "spout-splash",
+            "slashman/wave",
+            "spoutman/ball",
             "spoutman/drip-shower",
-            "sun-meteor",
-            "sun-moon",
+            "spoutman/geyser",
+            "spoutman/mark",
+            "spoutman/navi",
+            "spoutman/pillar",
+            "spoutman/splash",
+            "sunmoon/meteor",
+            "sunmoon/moon-beam",
+            "sunmoon/sun",
             "sword-wave",
-            "tengu-man",
+            "tenguman/navi",
             "tenguman/tornado",
             "thunder-column",
             "time-bom",
-            "tomahawk-man",
+            "tmhkman/navi",
             "tomahawkman/axe",
             "tomahawkman/strike",
             "trap-chip",
@@ -327,9 +327,9 @@ fn the_elements_navi_attacks() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The elements navi comes with his overlay and attacks with an
     // element: meteors, ice, bolts or vines.
-    assert!(ticks("elmnt-man") > 0, "ElmntMan: {seen:?}");
+    assert!(ticks("elmntman/navi") > 0, "ElmntMan: {seen:?}");
     assert!(ticks("engine/body-overlay") > 0, "ElmntMan's overlay: {seen:?}");
-    let attacks = ["meteor", "elmnt-ice", "elmnt-bolt", "elmnt-vine"].map(ticks);
+    let attacks = ["elmntman/meteor", "elmntman/ice", "elmntman/bolt", "elmntman/vine"].map(ticks);
     assert!(attacks.iter().any(|&t| t > 0), "ElmntMan's attacks: {seen:?}");
 }
 
@@ -340,10 +340,10 @@ fn the_water_navi_attacks() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The water navi comes in his water (his layer) and throws his ball
     // or raises his geyser, which marks its column.
-    assert!(ticks("spout-man") > 0, "SpoutMan: {seen:?}");
+    assert!(ticks("spoutman/navi") > 0, "SpoutMan: {seen:?}");
     assert!(ticks("engine/idle-overlay") > 0, "SpoutMan's layer: {seen:?}");
-    let ball = ticks("spout-ball") > 0 && ticks("spout-splash") > 0;
-    let geyser = ticks("spout-pillar") > 0 && ticks("spout-geyser") > 0 && ticks("spout-mark") > 0;
+    let ball = ticks("spoutman/ball") > 0 && ticks("spoutman/splash") > 0;
+    let geyser = ticks("spoutman/pillar") > 0 && ticks("spoutman/geyser") > 0 && ticks("spoutman/mark") > 0;
     assert!(ball || geyser, "SpoutMan's attacks: {seen:?}");
 }
 
@@ -353,13 +353,13 @@ fn the_navi_chip_navis_come_and_go() {
     // Each navi chip's navi comes (and the duel goes on without a content
     // error); its attacks depend on where the players stand.
     for (chip, navi) in [
-        (testing::HEAT, "heat-man"),
-        (testing::ELEC, "elec-man"),
-        (testing::SLASH, "slash-man"),
-        (testing::CHARGE, "charge-man"),
-        (testing::TOMAHAWK, "tomahawk-man"),
-        (testing::TENGU, "tengu-man"),
-        (testing::BLAST, "blast-man"),
+        (testing::HEAT, "heatman/navi"),
+        (testing::ELEC, "elecman/navi"),
+        (testing::SLASH, "slashman/navi"),
+        (testing::CHARGE, "chrgeman/navi"),
+        (testing::TOMAHAWK, "tmhkman/navi"),
+        (testing::TENGU, "tenguman/navi"),
+        (testing::BLAST, "blastman/navi"),
     ] {
         let seen = duel_with(&[testing::chip_handle(chip)], 1500, 11);
         assert!(seen.get(navi).copied().unwrap_or(0) > 0, "navi {navi} of chip {chip:#x}: {seen:?}");
@@ -373,15 +373,15 @@ fn the_shooting_and_sun_moon_navis_attack() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The shooting navi comes with his cape (a form overlay) and fires
     // panel strikes.
-    assert!(ticks("bass") > 0, "Bass: {seen:?}");
+    assert!(ticks("bass/navi") > 0, "Bass: {seen:?}");
     assert!(ticks("engine/form-overlay") > 0, "Bass's cape: {seen:?}");
     assert!(ticks("panel-strike") > 0, "Bass's shots: {seen:?}");
     // The sun-and-moon navi throws meteors, shines and dives.
     let seen = duel_with(&[testing::chip_handle(testing::SUN_MOON)], 2400, 11);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
-    assert!(ticks("sun-moon") > 0, "SunMoon: {seen:?}");
-    assert!(ticks("sun-meteor") > 0, "SunMoon's meteors: {seen:?}");
-    assert!(ticks("moon-beam") > 0, "SunMoon's moonlight: {seen:?}");
+    assert!(ticks("sunmoon/sun") > 0, "SunMoon: {seen:?}");
+    assert!(ticks("sunmoon/meteor") > 0, "SunMoon's meteors: {seen:?}");
+    assert!(ticks("sunmoon/moon-beam") > 0, "SunMoon's moonlight: {seen:?}");
 }
 
 #[test]
