@@ -17,11 +17,11 @@ use bn6_content_api::{AssetKind, Value};
 
 const N: u32 = 200_000;
 
-const OPS: [(&str, &str); 16] = [
+const OPS: [(&str, &str); 15] = [
     ("loop overhead", "local _ = i"),
     ("field read `me.anim`", "local _ = me.anim"),
     ("field write `me.anim = 3`", "me.anim = 3"),
-    ("method `me:param(1)`", "local _ = me:param(1)"),
+    ("method `me:set_animation(0)`", "me:set_animation(0)"),
     ("state read `s.ticks`", "local _ = s.ticks"),
     ("state write `s.ticks = 5`", "s.ticks = 5"),
     ("enum state read `s.slot`", "local _ = s.slot"),
@@ -31,7 +31,6 @@ const OPS: [(&str, &str); 16] = [
     ("Vec3 field `me.pos`", "local _ = me.pos"),
     ("handle field `me.related1`", "local _ = me.related1"),
     ("handle field `me.sprite`", "local _ = me.sprite"),
-    ("data read `data.objects.sun_beam_looks[0]`", "local _ = data.objects.sun_beam_looks[0]"),
     ("`Vec3.new(1, 2, 3)`", "local _ = Vec3.new(1, 2, 3)"),
     ("9-field table literal", "local _ = { a = 1, b = 2, c = 3, d = 4, e = 5, f = 6, g = 7, h = 8, i = 9 }"),
 ];
@@ -59,7 +58,7 @@ fn main() {
                 }
                 // A sun beam on player 0 that runs `op` N times when its timer2 is 7.
                 let owner = b.player(0).unwrap();
-                let r = behavior::spawn_kind(&mut b, "gundels/beam", Vec3::default(), [0; 4]).unwrap();
+                let r = behavior::spawn_kind(&mut b, "gundels/beam", Vec3::default()).unwrap();
                 b.objects.get_mut(r).related[0] = Some(owner);
                 let look = b.content.assets.handle(AssetKind::Sprite, "sun-beam").expect("the sun beam's sprite");
                 behavior::set_state_field(&mut b, r, "sprite", Value::Asset(AssetKind::Sprite, look));

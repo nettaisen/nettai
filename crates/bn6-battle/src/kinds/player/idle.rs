@@ -43,7 +43,8 @@ fn battle_over(b: &mut Battle, r: ObjectRef) {
     // navi this is.
     b.chip_hud = Default::default();
     if cross_protected(b, r) {
-        ai_mut(b, r).attack.variant = 1;
+        // (The original stores 1 in the attack's variant byte first; the
+        // action it starts doesn't use it.)
         let protect = super::role_action(b, crate::content::ActionRole::CrossProtect);
         return set_attack(b, r, protect, 0);
     }
@@ -268,7 +269,6 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
     if let Some(setup) = b.content.defs.weapon(weapon).setup {
         let instant = b.content.defs.weapon(weapon).instant;
         let action = match crate::behavior::call_hook(b, setup, HookCall::Weapon { navi: r }) {
-            Value::Int(n) => super::NaviAction::numbered(&b.content.defs, n as u8),
             Value::Def(Registry::Action, h) => super::NaviAction::Content(ActionHandle(h)),
             // A weapon with an instant effect of its own names no action:
             // the instant chips' action runs it.
@@ -290,10 +290,8 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
     // `nullsub_44`): started as a weapon, the game starts whatever action
     // the register it called through holds. (Forms name them only as
     // A-charges, which `chip_use` handles before calling here.)
-    if w.charged_chip.is_some() {
-        panic!("weapon {:?} is no routine (nullsub_44, off_80117D4): the game starts an action from a stale register", w.key)
-    }
-    panic!("weapon {:?} has no setup: nothing implements it yet", w.key)
+    assert!(w.charged_chip.is_some(), "a weapon has a setup or is its chip");
+    panic!("weapon {:?} is no routine (nullsub_44, off_80117D4): the game starts an action from a stale register", w.key)
 }
 
 /// `sub_801265A`: buster damage, attack + 1 (+1 in some forms), at most

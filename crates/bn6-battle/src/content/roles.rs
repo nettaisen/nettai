@@ -3,13 +3,8 @@
 //! once. The ruleset starts and recognizes the actions and kinds it needs
 //! through these, never by the original's numbers or by content's keys.
 //!
-//! A role names a definition, or, while what it needs is still a v1
-//! registration, that registration through the transitional `legacy`
-//! marker (`{ legacy = { action = 0x49 } }`, `{ legacy = { kind = "a-v1-kind" } }`;
-//! counted by the ratchet). A legacy action number nothing implements yet
-//! leaves the role unported: starting it is "not implemented yet", as the
-//! number was. A role content hasn't filled is an error where the ruleset
-//! needs it.
+//! A role names a definition. A role content hasn't filled is an error
+//! where the ruleset needs it.
 
 use std::collections::BTreeMap;
 
@@ -35,7 +30,7 @@ pub enum ActionRole {
     /// charged shot).
     ForcedChargedShot,
     /// The strike the navi's request 0x80000 starts from idle (0x49, the
-    /// machine swords' strike by the attack's variant).
+    /// machine swords' strike).
     StunStrike,
     /// What a Cross navi protected at the battle's end runs (0x4D).
     CrossProtect,
@@ -43,7 +38,9 @@ pub enum ActionRole {
     Turn,
     /// A Cross navi's knock-out (0x4C).
     CrossDeath,
-    /// A Cross navi's volley (0x30).
+    /// What the navi's volley request starts (the original's action 0x30,
+    /// on whatever the attack's parameter bytes hold). No routine raises
+    /// the request, and BN6's content leaves the role unfilled.
     Volley,
     /// The charged sword (SlashCross's charged slash, 0x41), which the
     /// Beast rush recognizes for its lock-on mode.
@@ -54,10 +51,13 @@ pub enum ActionRole {
     /// DustCross Beast's scatter (0x50), during which the ruleset doesn't
     /// ground a MegaMan navi.
     DustBeastScatter,
+    /// ChargeCross's tackle (0x56), during which an invulnerable navi
+    /// doesn't glow (`sub_8016860`).
+    ChargeTackle,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 12] = [
+    pub const ALL: [ActionRole; 13] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -70,6 +70,7 @@ impl ActionRole {
         ActionRole::ChargedSword,
         ActionRole::BeastClaw,
         ActionRole::DustBeastScatter,
+        ActionRole::ChargeTackle,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -87,6 +88,7 @@ impl ActionRole {
             ActionRole::ChargedSword => "charged_sword",
             ActionRole::BeastClaw => "beast_claw",
             ActionRole::DustBeastScatter => "dust_beast_scatter",
+            ActionRole::ChargeTackle => "charge_tackle",
         }
     }
 
@@ -109,14 +111,21 @@ pub enum KindRole {
     /// the other side has AntiRecv armed (the original's effect object
     /// #0x2C, `sub_80E3728`).
     AntiRecovery,
+    /// What the player whose AI index is 10 spawns after its init in battle
+    /// mode 9 (`off_80EAA04`'s entry): an attack object (the original's
+    /// #0xD2, `sub_80DFD74`) and an actor object (#0x28, `sub_80C02A6`).
+    Mode9Attack,
+    Mode9Actor,
 }
 
 impl KindRole {
-    pub const ALL: [KindRole; 4] = [
+    pub const ALL: [KindRole; 6] = [
         KindRole::AbsorbedObstacle,
         KindRole::FallingRock,
         KindRole::Support,
         KindRole::AntiRecovery,
+        KindRole::Mode9Attack,
+        KindRole::Mode9Actor,
     ];
 
     /// Its name in `rules/roles.luau`'s `kinds`.
@@ -124,6 +133,8 @@ impl KindRole {
         match self {
             KindRole::AbsorbedObstacle => "absorbed_obstacle",
             KindRole::FallingRock => "falling_rock",
+            KindRole::Mode9Attack => "mode9_attack",
+            KindRole::Mode9Actor => "mode9_actor",
             KindRole::Support => "support",
             KindRole::AntiRecovery => "anti_recovery",
         }
@@ -517,29 +528,11 @@ impl ChipRole {
     }
 }
 
-/// What an action role names.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum RoleAction {
-    /// A content action (a definition, or a v1 registration by number).
-    Action(ActionHandle),
-    /// A legacy action number nothing implements yet.
-    Unported(u8),
-}
-
-/// What a kind role names.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum RoleKind {
-    Kind(KindHandle),
-    /// A legacy kind key the content doesn't have (a content set without
-    /// that v1 kind; the lint reports it).
-    Missing(String),
-}
-
 /// The roles content filled.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Roles {
-    pub actions: BTreeMap<ActionRole, RoleAction>,
-    pub kinds: BTreeMap<KindRole, RoleKind>,
+    pub actions: BTreeMap<ActionRole, ActionHandle>,
+    pub kinds: BTreeMap<KindRole, KindHandle>,
     pub hooks: BTreeMap<HookRole, FnId>,
     pub chips: BTreeMap<ChipRole, ChipHandle>,
     pub lockons: BTreeMap<LockonRole, LockonHandle>,
@@ -557,22 +550,14 @@ pub struct Roles {
 impl Roles {
     /// The action of `role`, if content filled it with one.
     pub fn try_action(&self, role: ActionRole) -> Option<ActionHandle> {
-        match self.actions.get(&role)? {
-            RoleAction::Action(h) => Some(*h),
-            RoleAction::Unported(_) => None,
-        }
+        self.actions.get(&role).copied()
     }
 
-    /// The action of `role`; a role content hasn't filled, or whose action
-    /// isn't implemented yet, is a panic naming it.
+    /// The action of `role`; a role content hasn't filled is a panic
+    /// naming it.
     pub fn action(&self, role: ActionRole) -> ActionHandle {
-        match self.actions.get(&role) {
-            Some(RoleAction::Action(h)) => *h,
-            Some(RoleAction::Unported(n)) => {
-                panic!("player action {n:#x} (the role actions.{}) is not implemented yet", role.name())
-            }
-            None => panic!("the role actions.{} is not filled (define.roles in rules/roles.luau)", role.name()),
-        }
+        self.try_action(role)
+            .unwrap_or_else(|| panic!("the role actions.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 
     /// The chip of `role`, if content filled it.
@@ -687,12 +672,9 @@ impl Roles {
     /// The kind of `role`; a role content hasn't filled is a panic naming
     /// it.
     pub fn kind(&self, role: KindRole) -> KindHandle {
-        match self.kinds.get(&role) {
-            Some(RoleKind::Kind(h)) => *h,
-            Some(RoleKind::Missing(key)) => {
-                panic!("the role kinds.{} names the kind {key:?}, which the content doesn't have", role.name())
-            }
-            None => panic!("the role kinds.{} is not filled (define.roles in rules/roles.luau)", role.name()),
-        }
+        *self
+            .kinds
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role kinds.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 }

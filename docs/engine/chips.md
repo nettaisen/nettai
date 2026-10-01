@@ -1491,7 +1491,8 @@ Ported too, and specified elsewhere (the chip lab's scenarios for all of them ma
   FirstBarrier: specified in docs/engine/dimming-chips.md.
 - 7 (LifeSync; T4 0x5C; chips/lifesync): in a link battle `sub_80E72C8` branches into another routine's body
   (`loc_80E73C4`), harmlessly: LifeSync does nothing in PvP (dimming-chip-effects.md §14).
-- The others (and the ElemTrap object, chips/elemtrap): see docs/design/content-migration.md §5.
+- The others are in their chips' folders and lib/ (the trap chips' controller is lib/traps/controller; ElemTrap's
+  trap and strike are chips/elemtrap).
 - Subtypes 2, 3, 7, 8, 12, 14–19, 21–24, 29, 30, 32 and 37, every object they spawn, branch by branch with
   their lab coverage: docs/engine/dimming-chip-effects.md.
 

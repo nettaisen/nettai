@@ -150,6 +150,14 @@ pub fn next_chip_bonus(b: &Battle, r: ObjectRef) -> u16 {
     hand_entry(b, r).extra
 }
 
+/// Whether the chip window marks the next chip "x2" (`sub_8012A38` as the
+/// window asks it, with no charge: Full Synchro, anger, Beast Over's Null
+/// chips; presentation).
+pub fn next_chip_doubles(b: &Battle, r: ObjectRef) -> bool {
+    let e = hand_entry(b, r);
+    double_damage(b, r, e.chip, e.damage, 0).1.is_some()
+}
+
 /// The chip an object other than a player carries: its zeroed chip field,
 /// the zeroed chip (nothing else sets it).
 fn carried_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
@@ -370,14 +378,12 @@ fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let damage = crate::hand::chip_damage(b, chip, side);
     let a = &mut ai_mut(b, r).attack;
     a.chip = chip;
-    // (The original copies the record's subtype and parameter bytes: a
-    // chip has neither here; what its action needs is its definition's.)
-    a.params = [0; 4];
+    // (The original copies the record's subtype and parameter bytes too:
+    // a chip has neither here; what its action needs is its definition's.)
     a.damage = damage;
     a.hit_param = cd.hit_param as u16;
     a.lockout = cd.lockout;
     a.extra = 0;
-    a.variant = 0;
     a.element = cd.element as u8 | content.rules.family_elements(cd.family).0;
     a.charged = 0;
 }

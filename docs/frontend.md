@@ -245,32 +245,30 @@ What differs:
 **A second match**, three rounds traced on the right-hand player's console
 (so the field is drawn mirrored), with Crosses, rock cubes, ice and grass
 panels, traps and Invisibl: of the 6397 frames outside the
-custom screen that have screenshots, **6377 are pixel-exact**.
-What differs: a rock cube DustCross absorbs lacks its first sprite part
-(frames 3757-3766: the content's absorbed obstacle hides it); ChargeCross's
-tackle glows green in the engine (39878-39895: the original's invulnerable
-glow leaves that one action out, which the engine knew by its number and
-the content's action has none); and on two frames (7498, 25885) the whole
-background is the next frame's (the console's scroll timing, below).
+custom screen that have screenshots, **6387 are pixel-exact**.
+What differs: ChargeCross's tackle glows green in the engine (39878-39895:
+the original's invulnerable glow leaves that one action out, which the
+engine knew by its number and the content's action has none); and on two
+frames (7498, 25885) the whole background is the next frame's (the
+console's scroll timing, below).
 
-**Chip-lab scenarios**: 110 scenarios, a few of every family
+**Chip-lab scenarios**: 132 scenarios, a few of every family
 (shot, sword, thrown, placed and dimming chips, navi chips, the link
 navis, traps, supports, stages with their objects, forms, Beast Over, the
-flow: knockouts, the damage judge, pause), each recorded with a screenshot
-per battle frame. Of 86,179 frames outside the custom screen,
-**83,369 are pixel-exact**, and 92 scenarios are exact on
-every frame. No frame panics, and the audit names nothing missing but the
-telops of dimmings content starts itself.
+flow: knockouts, the damage judge, pause, a counter hit, a lost Full
+Synchro), each recorded with a screenshot per battle frame. Of 123,433
+frames outside the custom screen, **122,957 are pixel-exact**, and 125
+scenarios are exact on every frame. No frame panics, and the audit names
+nothing missing but the telops of dimmings content starts itself.
 
-What still differs there, all of it in what the content defines (the
-scenario and frames show each):
+What still differs there, each of it something content has no way to ask
+for yet (section 5):
 
 | Scenario (frames) | What |
 |---|---|
-| `numbrbl/hit` 464-532, `meteors/hit` 484-778, `wind/hit` and `fan/hit` 441-1022, `circgun/hit` 441-843, `antidmg/sprung` 654-710, `metrknuk/hit` 1861-1994, `dblbeast/hit` 473-728, `anubis/hit` 579-659, `atkplus10/hit` 363-378, `stages/statue-guardian` 441-456, `forms/gregar/cross-heat-beast-charged` 1579-1668, `cross-elec-beast-charged` 1582-1671 | a kind that leaves its sprite's first part hidden where the original draws it with the sprite (`sprite_noShadow`): NumbrBl's ball, the meteors, the fan, CircGun's gun, AntiDmg's shuriken, MetrKnuk's fists, DblBeast's beasts, the rising puff, the element pillars |
-| `guardian/punish` 658-715, `elemtrap/sprung-fire` 642-699, `stages/statue-enemy-strike` 420-477 | the telop of a dimming content starts itself names no chip |
+| `guardian/punish` 658-715, `elemtrap/sprung-fire` 642-699, `stages/statue-enemy-strike` 420-477, `vdoll/curse` 502-559 | the telop of a dimming content starts itself names no chip |
 | `lilbolr1/hit` 372-413 | LilBoiler's HP number |
-| `slogauge/hit` 441-511 | the warning arrow over the gauge (`sub_800AE90`) |
+| `slogauge/hit` and `fstgauge/hit` 441-511, `vdoll/curse` 563-622 | the warning arrow (`sub_800AE90`): the engine reports the marker (`Battle::warnings`) and sounds it, the frontend has no tiles for it |
 
 The comparison needs the ROM, so it lives outside this repository, with the
 list of scenarios. The frontend's own tests (`cargo test -p bn6-frontend`)
