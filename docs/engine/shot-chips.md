@@ -487,7 +487,7 @@ lifetime is about to run out, it erupts: 32 ticks later an aqua hit over the eig
   object whichever side threw it (evicting side 0's current one: HP 0); 1 would be side 1's; in general it writes
   BattleState+0xA8 + 12·bonus, so Atk+10 writes BattleState+0x120 (past the registry, 0xA0..0xBF, and BattleState
   itself, 0xF0 bytes) and zeroes the HP of whatever a nonzero word there points at. The port must decide what to do
-  for a bonus above 1 (**[unverified]**: no lab scenario gives LilBoiler a bonus).
+  for a bonus above 1 (a bonus of 10 is ported and verified, §18; the others stop with an error).
 - **Init** (`sub_80D761C`): VISIBLE; sprite 0x04/0x0D ("04-0D"), animation 0, a ground shadow, flipped as it is,
   palette 3 · Param1; NameID 0xEB; FuturePanel = the target. The flight (lib/trajectory.luau): the angle to the
   target's center (`calcAngle_800117C`, kept in its +0x0C byte), X and Y velocities at 0x2C000 along it
@@ -680,10 +680,19 @@ What the lab's scenarios reach (coverage.md), and so what they will verify once 
   collides with the enemy in its last five ticks, takes the navi's body damage, and goes quietly); **not** the curse
   (effects #0x4E and #0x11: no scenario hits a landed doll), the puff, absorption, blinking out, the lifetime's end.
 
-**[unverified]** (no scenario reaches them): action 0x14 variant 3; action 0x5D (weapon 0x39); actions 0x55 and 0x5B
-and the sonic boom; the spawners' "pool full" paths; the objects' "no collision slot" paths; the wave's dead kinds;
-the LilBoiler's eruption, layer, registry side for a nonzero bonus, and its destruction paths other than the crush;
-the curse controller and the sparkles; everything listed as "not" above.
+The coverage scenarios (docs/engine/unverified.md) verified since: the battle-over ends of the bullet, the bat
+shot, the shell, the corn, the wave and the Spreader's burst (each chip's `ko`); MachGun's target column moving
+and its no-body fallback (`chips/0x02b-machgun1/moving-target`, `ko`, `invisible`); actions 0x55 and 0x5B and the
+sonic boom, from their own records put in a folder (`chips/0x173-sonicbom`, `0x177-sprsonic`, `0x174-curse`,
+`0x175-punisher`, `0x17d-zsaver`, the last with the fourth slash's command inside, split over and after its
+window) and from the variable swords' commands (standard-chips.md); LilBoiler with a bonus of 10, pushed, thrown
+at a hole and followed by a RockCube (`chips/0x062-lilbolr1/atk10…`, `pushed`, `holes`, `replaced`); the doll's
+lifetime, a push and its own side's hit (`chips/0x096-vdoll/lifetime`, `pushed`, `own-hit`).
+
+**[unverified]** (no scenario reaches them): action 0x14 variant 3; action 0x5D (weapon 0x39: no navi or form of
+a netbattle has it); the spawners' "pool full" paths; the objects' "no collision slot" paths; the wave's dead
+kinds; LilBoiler's registry side for a bonus other than 0, 1 and 10, its removal, absorption and blink-out; the
+doll's absorption and blink-out.
 
 ## 17. Corrections to other documents
 
@@ -718,12 +727,19 @@ definition, each table row a variant record written out in Luau.
   the record's parameters. AirShot, the BatCans, the TankCans, MachGun and LilBoiler are definitions.
 - **LilBoiler's registry side** (§14.1). The bonus picks the field-object slot `setFieldBattleObject_800F614`
   writes, BattleState+0xA8 + 12 · bonus: 0 is side 0's class-1 slot whoever threw it, 1 side 1's. Atk+10's lands
-  on BattleState+0x120, the word right after BattleState (`dword_20349A0`): the battle's used-crosses mask, a bit
-  per Cross the cross window greys out, zeroed when a battle starts. The boiler's address overwrites it (and the
-  halfword at the old mask's value + the HP offset is zeroed, an unmapped address for any mask a battle builds),
-  so the crosses still selectable afterwards depend on where the boiler's slot lies in memory. Larger bonuses
-  write further on. The port registers bonuses 0 and 1 as the original does and stops with an error naming the
-  routine for any larger one **[unverified]**: no lab scenario gives LilBoiler a bonus.
+  on BattleState+0x120, the word right after BattleState (`dword_20349A0`): the round's Crosses-used mask, a bit
+  per Cross (its form number less one) that the Cross window refuses, zeroed on the round's first custom screen.
+  The boiler's address overwrites it on both consoles, since both simulate the boiler (and the halfword at the
+  old word's value + the HP offset is zeroed: an address in the BIOS for any mask a battle builds, the slot of
+  the earlier boiler when there was one), so the Crosses still to be had afterwards depend on the boiler's slot
+  in the attack pool: its first slot, 0x0203CFE0, has bits 5 to 9 set and bits 0 to 4 clear, which uses up all
+  five of a Falzar console's Crosses and none of a Gregar console's. `sub_800F656` scans the registry's six
+  slots only, so the mask keeps the address when the boiler goes. The port does the same for a bonus of 10
+  (`kinds::obstacle::register` with a side past the registry, `FieldObjects::stored_in_crosses_used`):
+  **verified** by `chips/0x062-lilbolr1/atk10`, `atk10-twice`, and `atk10-cross`, `atk10-cross-gregar` and
+  `then-cross`, where both sides go for the Cross window on the next screen. Other bonuses write elsewhere (20:
+  the fourth and fifth chips of side 1's hand; 30 and 40: the Cross change's kept stats; Otenko's 1 to 50
+  anywhere in between), and the port stops with an error naming the store **[unverified]**.
 - **The obstacle service** gained the crush `"ignores"` (`sub_801B878` while erupting) and the status flag
   `"carried"` (0x04000000, which the doll tests); objects gained `clear_statuses` (the eruption's status word
   cleared) and `load_or_step_sprite` (`sub_801BC24`, the doll's sprite); `battle.objects_of(kind)` walks the
