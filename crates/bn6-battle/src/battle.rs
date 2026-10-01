@@ -358,6 +358,9 @@ pub struct Battle {
     /// What each side's console shows of its own navi's chips
     /// (presentation only; left out of the digest).
     pub chip_hud: [crate::hud::ChipHud; 2],
+    /// The message the HUD shows (presentation only; left out of the
+    /// digest).
+    pub message: Option<crate::hud::MessageLine>,
     pub paused: bool,
     pub inputs: [InputRecord; 2],
     pub hands: [ChipHand; 2],
@@ -637,6 +640,7 @@ impl Battle {
             banner: Banner::default(),
             used_chips: [None; 2],
             chip_hud: Default::default(),
+            message: None,
             paused: false,
             inputs: [InputRecord::default(); 2],
             hands,
@@ -1769,6 +1773,11 @@ impl Battle {
         }
     }
 
+    /// `sub_801E270`: the HUD says `message` for a second.
+    pub(crate) fn show_message(&mut self, message: crate::hud::Message) {
+        self.message = Some(crate::hud::MessageLine { message, ticks: crate::hud::MessageLine::SHOWN_TICKS });
+    }
+
     /// `sub_801EB18(chip, damage, bonus)` on the other player's console:
     /// `side` used `chip`, whose name (with the attack's damage word and
     /// bonus, for a chip whose damage shows) that console shows for a
@@ -1796,6 +1805,13 @@ impl Battle {
                 if u.ticks == 0 {
                     *used = None;
                 }
+            }
+        }
+        // sub_801CA0C: so does the message.
+        if let Some(m) = &mut self.message {
+            m.ticks -= 1;
+            if m.ticks == 0 {
+                self.message = None;
             }
         }
         // While the custom screen is up the banner is the local player's

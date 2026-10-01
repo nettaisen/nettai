@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 pub const FORMAT: &str = "bn6-content/hud";
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 
@@ -54,14 +54,16 @@ pub struct HudDoc {
     /// The count box showing 0..=10, then without a number.
     pub counts: TileImage,
     pub form_emotions: Vec<u8>,
-    /// The link navis' mugshots, each with its two palettes (normal,
-    /// angry); which a navi shows, by the navi's number less one; and the
+    /// The link navis' mugshots, each with its two palettes (normal, Full
+    /// Synchro); which a navi shows, by the navi's number less one; and the
     /// box beside them.
     pub navi_mugshots: Vec<TileImage>,
     pub navi_mugshot_of: Vec<u8>,
     pub navi_box: TileImage,
     /// "PAUSE": five glyphs (shown with the opponents' HP digits' palette).
     pub pause: TileImage,
+    /// The HUD's text lines, each as the font's glyph numbers.
+    pub texts: Vec<Vec<u16>>,
     /// Banners by banner id / 4.
     pub banners: Vec<BannerDoc>,
     pub banner_digits: TileImage,
@@ -186,6 +188,7 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         navi_mugshot_of: h.navi_mugshot_of.clone(),
         navi_box,
         pause,
+        texts: h.texts.clone(),
         banners,
         banner_digits,
         waiting,
@@ -294,6 +297,7 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
         navi_mugshot_of: doc.navi_mugshot_of.clone(),
         navi_box,
         pause,
+        texts: doc.texts.clone(),
         banners,
         banner_digits,
         banner_palette: banner_pal[0],

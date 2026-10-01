@@ -114,6 +114,7 @@ fn bundle() -> Bundle {
         navi_mugshot_of: vec![0, 0],
         navi_box: tiles(4, 31),
         pause: tiles(10, 32),
+        texts: vec![vec![1, 2, 3], vec![]],
         banners: vec![
             BannerLayout { x: 52, y: 64, kind: 1, glyphs: tiles(40, 30), number_at: Some((104, 64)) },
             BannerLayout { x: 0, y: 32, kind: 3, glyphs: Tiles::default(), number_at: None },

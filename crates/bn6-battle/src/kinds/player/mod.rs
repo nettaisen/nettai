@@ -12,6 +12,7 @@ pub mod actions;
 pub(crate) mod berserk;
 mod navi_action;
 mod chip_use;
+pub use chip_use::next_chip_bonus;
 mod entry;
 pub(crate) mod form;
 pub(crate) mod idle;

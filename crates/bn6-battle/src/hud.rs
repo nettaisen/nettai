@@ -91,6 +91,28 @@ pub struct ChipHud {
     pub window: bool,
 }
 
+/// What the HUD's message line says (the game's text script for it has
+/// more: the multiple deletions of virus battles).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Message {
+    /// "COUNTER HIT!" (`sub_801E270`).
+    CounterHit,
+}
+
+/// A message every console shows for a second (HUD task bit 8).
+/// Presentation only.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MessageLine {
+    pub message: Message,
+    /// HUD ticks left of its `SHOWN_TICKS`.
+    pub ticks: u8,
+}
+
+impl MessageLine {
+    /// How long a message shows.
+    pub const SHOWN_TICKS: u8 = 0x3C;
+}
+
 /// A chip a player just used, as the other player's console names it for
 /// a second (`sub_801EB18`; HUD task bit 16): any chip but a cut-in chip,
 /// whose telop both see. Presentation only; what a player is shown is
