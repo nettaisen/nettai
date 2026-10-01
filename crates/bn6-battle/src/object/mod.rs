@@ -228,6 +228,11 @@ pub struct Objects {
     links: [Links; NODES],
     /// The object whose update is running, if any.
     current: Option<Node>,
+    /// The update loop's bookkeeping (`object_800372A`): per pool, the
+    /// objects it passed this tick, and the r3 it leaves for the next
+    /// object's update (see `loop_register`).
+    loop_passed: [u8; 3],
+    loop_register: u32,
 }
 
 impl Default for Objects {
@@ -244,6 +249,8 @@ impl Objects {
             in_use: [0; 3],
             links: [Links::default(); NODES],
             current: None,
+            loop_passed: [0; 3],
+            loop_register: 0,
         };
         o.reset_list();
         o
@@ -397,6 +404,8 @@ impl Objects {
 
     /// Start the update loop: returns the first object to run.
     pub fn loop_first(&mut self) -> Option<ObjectRef> {
+        self.loop_passed = [0; 3];
+        self.loop_register = 0;
         let first = self.links[HEAD.0 as usize].next?;
         self.enter(first)
     }
@@ -405,8 +414,24 @@ impl Objects {
     /// read now, after the object's update ran.
     pub fn loop_next(&mut self) -> Option<ObjectRef> {
         let cur = self.current?;
+        // object_800372A: the object joins its pool's list for the tick,
+        // leaving r3 at its place in it, times 4.
+        if let Some(r) = Self::node_ref(cur) {
+            let passed = &mut self.loop_passed[r.pool as usize];
+            self.loop_register = 4 * *passed as u32;
+            *passed = passed.wrapping_add(1);
+        }
         let next = self.links[cur.0 as usize].next?;
         self.enter(next)
+    }
+
+    /// The r3 the update loop leaves for the object updating now
+    /// (`object_800372A`, after the object before it): 4 × how many objects
+    /// of that previous object's pool the loop passed before it this tick
+    /// (0 for the first object: the loop's caller's r3, which no spawn
+    /// reads). Code that never sets r3 spawns with it as a position.
+    pub fn loop_register(&self) -> u32 {
+        self.loop_register
     }
 
     fn enter(&mut self, n: Node) -> Option<ObjectRef> {
