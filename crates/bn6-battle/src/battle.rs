@@ -75,7 +75,6 @@ pub struct RoundState {
     pub init: u8,
     /// Actors counted per side (drops when an actor is removed).
     pub actor_count: [u8; 2],
-    pub layout: u8,
     /// Custom screens opened so far (the turn number).
     pub turn: u8,
     pub name_counts: [u8; 2],
@@ -597,8 +596,8 @@ impl Battle {
         assert!(content.defs.defined, "a battle runs on defined content (Content::define)");
         Behaviors::for_content(&content).unwrap_or_else(|e| panic!("{e}"));
         let score = setup.score;
-        let stage = *content.stage(setup.settings.stage);
-        let field = Field::new(&content, stage.layout, stage.panel_pattern, stage.mode);
+        let stage = content.stage(setup.settings.stage);
+        let (field, mode) = (Field::new(&content, &stage.layout, stage.panel_pattern, stage.mode), stage.mode);
         let hands = [ChipHand::empty(&content), ChipHand::empty(&content)];
         let mut b = Battle {
             content,
@@ -612,8 +611,7 @@ impl Battle {
                 wins: score.wins,
                 losses: score.losses,
                 round: score.round,
-                layout: stage.layout,
-                mode_copy: stage.mode,
+                mode_copy: mode,
                 local_side: setup.local_side,
                 intro_bits: 0x0C,
                 low_hp_music: std::array::from_fn(|side| side == setup.local_side as usize && setup.low_hp_music_latched),
@@ -979,8 +977,8 @@ impl Battle {
             self.paused = true;
             self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
             let link = self.setup.settings.effects & effects::LINK != 0;
-            let music = if link { SoundId::VIRUS_BATTLE } else { SoundId(self.content.stage(self.setup.settings.stage).music as u16) };
-            if music != SoundId::NO_MUSIC {
+            let music = if link { Some(SoundId::VIRUS_BATTLE) } else { self.content.stage(self.setup.settings.stage).music };
+            if let Some(music) = music {
                 self.play_sound(SoundCue::Music(music));
             }
             self.round.init = 4;
@@ -1002,36 +1000,26 @@ impl Battle {
         self.round.init = 0;
     }
 
-    /// `sub_8007368`: spawn the settings' actor list. Only navis join the
-    /// alive/actor bookkeeping; rocks and other field objects don't. The
-    /// field objects are content's, by the entry's type in `off_80073A0`:
-    /// the rock (type 8, `sub_80074FA`) is the role `kinds.rock`, the
-    /// boulder (3, `sub_8007450`) `kinds.boulder` and the Guardian statue
-    /// (9, `sub_800751C`) `kinds.statue`, each placed by its kind's `place`.
+    /// `sub_8007368`: place what the stage names, in its order. Only navis
+    /// join the alive/actor bookkeeping; rocks and other field objects
+    /// don't. The field objects are content's: each is placed by its
+    /// kind's `place` (the original's spawner for its entry type in
+    /// `off_80073A0`: the rock's `sub_80074FA`, the boulder's
+    /// `sub_8007450`, the Guardian statue's `sub_800751C`).
     pub fn spawn_actors(&mut self) {
-        use crate::content::KindRole;
-        use crate::setup::ActorKind;
-        use bn6_content_api::{ActorListEntrySpec, HookCall, PanelPos};
+        use crate::content::Place;
+        use bn6_content_api::{HookCall, PanelPos, PlaceSpec};
         let content = self.content.clone();
-        for entry in content.rules.stages.actor_list(content.stage(self.setup.settings.stage).actors) {
-            let role = match entry.kind {
-                ActorKind::Navi => None,
-                ActorKind::Rock { .. } => Some(KindRole::Rock),
-                ActorKind::Object6E => Some(KindRole::Boulder),
-                ActorKind::Object7D { .. } => Some(KindRole::Statue),
-            };
-            if let Some(role) = role {
-                let kind = content.defs.roles.kind(role);
-                let Some(hook) = content.defs.kind(kind).place else {
-                    panic!("kind {:?} (the role kinds.{}) has no `place`", content.defs.kind(kind).key, role.name());
-                };
+        for entry in &content.stage(self.setup.settings.stage).actors {
+            if let Place::Kind(kind) = entry.place {
+                let hook = content.defs.kind(kind).place.expect("a stage places kinds with a `place` (checked at load)");
                 let panel = PanelPos { x: entry.x, y: entry.y };
-                let spec = ActorListEntrySpec { panel, side: entry.alliance, variant: entry.kind.variant() };
-                crate::behavior::call_hook(self, hook, HookCall::ActorListEntry { spec });
+                let spec = PlaceSpec { panel, side: entry.side, variant: entry.variant, argument: entry.argument };
+                crate::behavior::call_hook(self, hook, HookCall::Place { spec });
                 continue;
             }
             let r = crate::kinds::player::spawn(self, entry);
-            let side = entry.alliance as usize;
+            let side = entry.side as usize;
             if let Some(r) = r {
                 let counted = self.objects.get(r).actor.map(|a| self.actors.get(a).not_counted != 1).unwrap_or(true);
                 if let Some(slot) = self.round.alive_actors[side].iter_mut().find(|s| s.is_none()) {
@@ -1910,8 +1898,8 @@ mod tests {
         setup.settings.effects = 0xE8C;
         let content = testing::content();
         setup.later_stages = [
-            Stage { stage: content.stage_numbered(testing::ROCK_BATTLE), background: 3 },
-            Stage { stage: content.stage_numbered(1), background: 0x13 },
+            Stage { stage: content.stage_by_key(testing::ROCK_BATTLE), background: 3 },
+            Stage { stage: content.stage_by_key(testing::LINK_BATTLE_SIDE0_FIRST), background: 0x13 },
         ];
         let mut b = Battle::new(setup, testing::content());
         let r = &mut b.round;
@@ -1933,7 +1921,7 @@ mod tests {
         let Some(RoundEnd::NextRound { settings, score }) = b.round_end() else { panic!("{:?}", b.round_end()) };
         // The drawn table entry, with this round's effects and the drawn
         // background.
-        let drawn = testing::content().stage_numbered(testing::ROCK_BATTLE);
+        let drawn = testing::content().stage_by_key(testing::ROCK_BATTLE);
         assert_eq!(*settings, BattleSettings { stage: drawn, effects: 0xE8C, background: 3 });
         assert_eq!(*score, SetScore { wins: 1, losses: 0, round: 1, max_combo: 1 });
         assert_eq!(b.round.top, top::INIT);

@@ -2,11 +2,10 @@
 
 use super::{BannerId, ChipFamily, CustomScreenLayout, PanelCondition, PanelOffset, SecondaryElements};
 use crate::field::PanelType;
-use crate::setup::{ActorList, StageSettings};
 use serde::{Deserialize, Serialize};
 
-/// Global rules: element weakness, collision types, panels, stages,
-/// banners, statuses, weapons and the Beast Out lock-on.
+/// Global rules: element weakness, collision types, panels, banners,
+/// statuses, weapons and the Beast Out lock-on.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Rules {
     /// Extra damage multiplier by the receiver's element, then the
@@ -24,7 +23,6 @@ pub struct Rules {
     /// meets condition `i`.
     pub field_regions: Vec<PanelCondition>,
     pub panels: PanelRules,
-    pub stages: Stages,
     /// Banners that stay up until removed.
     pub holding_banners: Vec<BannerId>,
     /// Status effects by status byte: group `(status >> 4) - 1`, entry
@@ -167,41 +165,6 @@ impl StepRuleSet {
         let rules = if floor_free { &self.floor_free } else { &self.grounded };
         rules[alliance as usize & 1]
     }
-}
-
-/// Battle settings and the actor lists they spawn.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Stages {
-    /// `BattleSettingsList1`, by index (a set's later rounds are drawn from
-    /// it).
-    pub settings: Vec<StageSettings>,
-    /// Actor lists by [`ActorListId`](crate::setup::ActorListId).
-    pub actor_lists: Vec<ActorList>,
-}
-
-impl Stages {
-    /// Battle settings entry `index`.
-    pub fn settings(&self, index: u8) -> StageSettings {
-        *self.settings.get(index as usize).unwrap_or_else(|| panic!("battle settings {index:#x} are not in the content"))
-    }
-
-    /// An actor list.
-    pub fn actor_list(&self, id: crate::setup::ActorListId) -> &ActorList {
-        self.actor_lists.get(id.0 as usize).unwrap_or_else(|| panic!("actor list {} is not in the content", id.0))
-    }
-
-    /// The actor list the original's battle settings name by `address`
-    /// (what link data and traces carry).
-    pub fn actor_list_at(&self, address: u32) -> Option<crate::setup::ActorListId> {
-        let i = self.actor_lists.iter().position(|l| l.original_address == address)?;
-        Some(crate::setup::ActorListId(i as u8))
-    }
-}
-
-/// A panel layout: panel types `[y - 1][x - 1]` over the playable 6x3.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct PanelLayout {
-    pub rows: [[PanelType; 6]; 3],
 }
 
 /// The status timer a status effect sets (a collision field).

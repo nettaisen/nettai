@@ -1,7 +1,7 @@
 --!strict
 -- A boulder (the original's attack object #0x6E, `sub_80D2290`): the field
 -- obstacle some stages start with (the actor lists' entry type 3,
--- `sub_8007450`: the kind's `place`, the role `kinds.boulder`), 500 HP, on
+-- `sub_8007450`: the kind's `place`), 500 HP, on
 -- its panel's side. It stands through the round's start and takes its
 -- place once the fight is on; it has no lifetime. Broken, it leaves two
 -- chunks of rock debris and a splash of dust; a chip can remove or absorb
@@ -172,7 +172,7 @@ KIND = define.kind {
     -- running while the battle is paused or dimmed, with the flags its
     -- spawner's bug leaves. (`sub_80D2430`; until its init places it, its
     -- position is the spawner's registers: Y and what nothing reads.)
-    place = function(spec: ActorListEntrySpec): Object?
+    place = function(spec: PlaceSpec): Object?
         if not obstacle.stage_slot_free() then
             return nil
         end

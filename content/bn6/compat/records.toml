@@ -24,3 +24,11 @@
 "sp/elmntman" = 15
 "sp/hackjack" = 16
 "sp/colonel" = 17
+
+# The rocks a stage places, by the argument of the actor list's entry (the row of
+# `byte_80CF934`).
+[rock_variants]
+"rock/brittle" = 0
+"rock/cube" = 1
+"rock/hard" = 2
+"rock/ice" = 3
