@@ -10,8 +10,6 @@ use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, flags, state};
 
-pub const INDEX: u8 = 7;
-
 const SPRITE: SpriteId = SpriteId { category: 0x10, index: 0x24 };
 
 /// Added to Param1 for its lifetime.
