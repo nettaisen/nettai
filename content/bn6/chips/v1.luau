@@ -2070,6 +2070,25 @@ local rockcube = define.chip {
     legacy = legacy { number = 0x08F, action = 0x15, subtype = 6, params = { 1, 0, 0, 0 } },
 }
 
+local mine = define.chip {
+    id = "v1/mine",
+    name = "Mine",
+    description = "Place a\nmine in\nenmy area",
+    codes = { "A", "S", "T" },
+    element = "null",
+    family = "summon",
+    class = "standard",
+    rarity = 2,
+    mb = 28,
+    damage = 200,
+    hit_param = 178,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 148, index = 148, sort = 316 },
+    slot_in_limit = 3,
+    legacy = legacy { number = 0x091, action = 0x15, subtype = 11, params = { 0, 0, 0, 0 } },
+}
+
 local fanfare = define.chip {
     id = "v1/fanfare",
     name = "Fanfare",
@@ -2515,6 +2534,44 @@ local goingrd = define.chip {
     legacy = legacy { number = 0x0AB, action = 0x15, subtype = 5, params = { 18, 0, 0, 0 } },
 }
 
+local slogauge = define.chip {
+    id = "v1/slogauge",
+    name = "SloGauge",
+    description = "CustGauge\nslow-down",
+    codes = { "A", "B", "G", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 2,
+    mb = 42,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    library = { number = 174, index = 174, sort = 411 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x0AC, action = 0x15, subtype = 25, params = { 0, 0, 0, 0 } },
+}
+
+local fstgauge = define.chip {
+    id = "v1/fstgauge",
+    name = "FstGauge",
+    description = "CustGauge\nspeed-up",
+    codes = { "E", "M", "R", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 2,
+    mb = 48,
+    damage = 0,
+    hit_param = 0,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    library = { number = 175, index = 175, sort = 213 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x0AD, action = 0x15, subtype = 25, params = { 1, 0, 0, 0 } },
+}
+
 local fullcust = define.chip {
     id = "v1/fullcust",
     name = "FullCust",
@@ -2838,6 +2895,25 @@ local dblpoint = define.chip {
     legacy = legacy { number = 0x0C4, action = 0x15, subtype = 27, params = { 1, 20, 0, 0 } },
 }
 
+local elemtrap = define.chip {
+    id = "v1/elemtrap",
+    name = "ElemTrap",
+    description = "Trap enmy\nand attk\nwith elem",
+    codes = { "G", "S", "U", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 2,
+    mb = 42,
+    damage = 240,
+    hit_param = 158,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 187, index = 187, sort = 145 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x0C5, action = 0x15, subtype = 20, params = { 0, 0, 0, 0 } },
+}
+
 local colarmy = define.chip {
     id = "v1/colarmy",
     name = "ColArmy",
@@ -2902,6 +2978,82 @@ local bigbomb = define.chip {
     },
 }
 
+local puncharm = define.chip {
+    id = "v1/puncharm",
+    name = "PunchArm",
+    description = "\n\n",
+    codes = { "A", "B", "C", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 4,
+    mb = 10,
+    damage = 0,
+    hit_param = 20,
+    lockout = 20,
+    extra_flags = { 16, 32 },
+    library = { number = 0, index = 61, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x119, action = 0x15, subtype = 38, params = { 2, 35, 0, 0 } },
+}
+
+local needlarm = define.chip {
+    id = "v1/needlarm",
+    name = "NeedlArm",
+    description = "\n\n",
+    codes = { "A", "B", "C", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 4,
+    mb = 30,
+    damage = 0,
+    hit_param = 30,
+    lockout = 20,
+    extra_flags = { 16, 32 },
+    library = { number = 0, index = 62, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x11A, action = 0x15, subtype = 38, params = { 2, 36, 1, 0 } },
+}
+
+local puzzlarm = define.chip {
+    id = "v1/puzzlarm",
+    name = "PuzzlArm",
+    description = "\n\n",
+    codes = { "A", "B", "C", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 4,
+    mb = 40,
+    damage = 0,
+    hit_param = 30,
+    lockout = 20,
+    extra_flags = { 16, 32 },
+    library = { number = 0, index = 63, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x11B, action = 0x15, subtype = 38, params = { 2, 37, 2, 0 } },
+}
+
+local boomrarm = define.chip {
+    id = "v1/boomrarm",
+    name = "BoomrArm",
+    description = "\n\n",
+    codes = { "A", "B", "C", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 4,
+    mb = 50,
+    damage = 0,
+    hit_param = 10,
+    lockout = 20,
+    extra_flags = { 16, 32 },
+    library = { number = 0, index = 64, sort = 0 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x11C, action = 0x15, subtype = 38, params = { 2, 38, 3, 0 } },
+}
+
 local synctrgr = define.chip {
     id = "v1/synctrgr",
     name = "SyncTrgr",
@@ -2941,6 +3093,26 @@ local colforce = define.chip {
     legacy = legacy { number = 0x130, action = 0x1C, subtype = 15, params = { 0, 0, 0, 0 } },
 }
 
+local bugrswrd = define.chip {
+    id = "v1/bugrswrd",
+    name = "BugRSwrd",
+    description = "Use Bug\nFrag with\nDrkSword!",
+    codes = { "V" },
+    element = "null",
+    family = "sword",
+    class = "giga",
+    rarity = 4,
+    mb = 80,
+    damage = 0,
+    hit_param = 168,
+    lockout = 0,
+    flags = { "dimming" },
+    extra_flags = { 4, 16 },
+    library = { number = 305, index = 5, sort = 47 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x131, action = 0x15, subtype = 38, params = { 1, 33, 0, 0 } },
+}
+
 local metrknuk = define.chip {
     id = "v1/metrknuk",
     name = "MetrKnuk",
@@ -2959,6 +3131,46 @@ local metrknuk = define.chip {
     library = { number = 307, index = 2, sort = 315 },
     slot_in_limit = 1,
     legacy = legacy { number = 0x133, action = 0x15, subtype = 32, params = { 0, 0, 0, 0 } },
+}
+
+local hubbatc = define.chip {
+    id = "v1/hubbatc",
+    name = "HubBatc",
+    description = "Blend Hub\nDNA Data\nw/MegaMan",
+    codes = { "J" },
+    element = "null",
+    family = "null",
+    class = "giga",
+    rarity = 4,
+    mb = 99,
+    damage = 0,
+    hit_param = 148,
+    lockout = 0,
+    flags = { "dimming", "library" },
+    extra_flags = { 8, 16 },
+    library = { number = 309, index = 4, sort = 242 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x135, action = 0x15, subtype = 38, params = { 0, 0, 0, 0 } },
+}
+
+local bgdththd = define.chip {
+    id = "v1/bgdththd",
+    name = "BgDthThd",
+    description = "Use Bug\nFrag with\nDarkThnd!",
+    codes = { "V" },
+    element = "elec",
+    family = "elec",
+    class = "giga",
+    rarity = 4,
+    mb = 80,
+    damage = 0,
+    hit_param = 138,
+    lockout = 0,
+    flags = { "dimming", "library" },
+    extra_flags = { 8, 16 },
+    library = { number = 310, index = 5, sort = 36 },
+    slot_in_limit = 1,
+    legacy = legacy { number = 0x136, action = 0x15, subtype = 38, params = { 1, 34, 0, 0 } },
 }
 
 local dblbeast = define.chip {
@@ -3442,6 +3654,7 @@ return {
     magnum = magnum,
     circgun = circgun,
     rockcube = rockcube,
+    mine = mine,
     fanfare = fanfare,
     discord = discord,
     timpani = timpani,
@@ -3465,6 +3678,8 @@ return {
     snctuary = snctuary,
     comingrd = comingrd,
     goingrd = goingrd,
+    slogauge = slogauge,
+    fstgauge = fstgauge,
     fullcust = fullcust,
     busterup = busterup,
     bugfix = bugfix,
@@ -3481,12 +3696,20 @@ return {
     navi_20 = navi_20,
     colorpt = colorpt,
     dblpoint = dblpoint,
+    elemtrap = elemtrap,
     colarmy = colarmy,
     blzrdbal = blzrdbal,
     bigbomb = bigbomb,
+    puncharm = puncharm,
+    needlarm = needlarm,
+    puzzlarm = puzzlarm,
+    boomrarm = boomrarm,
     synctrgr = synctrgr,
     colforce = colforce,
+    bugrswrd = bugrswrd,
     metrknuk = metrknuk,
+    hubbatc = hubbatc,
+    bgdththd = bgdththd,
     dblbeast = dblbeast,
     batcan1 = batcan1,
     batcan2 = batcan2,

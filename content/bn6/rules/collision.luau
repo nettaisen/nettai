@@ -84,6 +84,27 @@ collision.neutral_object = define.collision {
 -- neutral objects (row 0x0F: what a BlkBomb reacts to).
 collision.everything = define.collision { id = "everything", side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
 
+-- What reaches the other side's attacks and objects (row 0x18: ElemTrap's
+-- trap, which feels the other side's hits wherever they land).
+collision.hit_by_other_attacks = define.collision {
+    id = "hit-by-other-attacks",
+    side0 = 0x50000000,
+    side1 = 0xa0000000,
+    row_offset = 0xC0,
+}
+
+-- A mine: an attack of both sides that pierces invisibility and flashing
+-- and breaks guards (row 0x33: an armed land mine); and what it reaches,
+-- objects and bodies of both sides, the other side's other bodies and
+-- neutral objects (row 0x2A).
+collision.mine = define.collision { id = "mine", side0 = 0xc004000e, side1 = 0xc004000e, row_offset = 0x198 }
+collision.hits_both_sides = define.collision {
+    id = "hits-both-sides",
+    side0 = 0x3d800000,
+    side1 = 0x3e800000,
+    row_offset = 0x150,
+}
+
 -- The navi chips' and link navis' types (named by what their flags add
 -- to an attack's: 0x02 breaks guards and ice; 0x04 pierces invisibility
 -- and flashing; 0x08 as a thrown attack's).
@@ -91,6 +112,15 @@ collision.everything = define.collision { id = "everything", side0 = 0xff800002,
 -- A navi's body (row 0x01), and what a navi hits (row 0x02).
 collision.navi = define.collision { id = "navi", side0 = 0x08410080, side1 = 0x04210080, row_offset = 0x08 }
 collision.navi_target = define.collision { id = "navi-target", side0 = 0x55800200, side1 = 0xaa800200, row_offset = 0x10 }
+
+-- A navi's body with FloatShoes (row 0x10: a navi's body that floats; what
+-- HubBatc leaves its navi).
+collision.floating_navi = define.collision {
+    id = "floating-navi",
+    side0 = 0x08510080,
+    side1 = 0x04310080,
+    row_offset = 0x80,
+}
 
 -- A thrown attack that breaks (row 0x15: GroundMan's drill and rocks,
 -- MetrKnuk's fists, GolmHit's golem landing, JustcOne's fist, a falling
@@ -182,12 +212,8 @@ collision.breaking_drain = define.collision {
 collision.collision_03 = define.collision { id = "collision-03", side0 = 0x51800100, side1 = 0xA2800100, row_offset = 0x18 }
 -- Row 0x09.
 collision.collision_09 = define.collision { id = "collision-09", side0 = 0x80000180, side1 = 0x40000180, row_offset = 0x48 }
--- Row 0x10.
-collision.collision_10 = define.collision { id = "collision-10", side0 = 0x08510080, side1 = 0x04310080, row_offset = 0x80 }
 -- Row 0x11.
 collision.collision_11 = define.collision { id = "collision-11", side0 = 0x80002480, side1 = 0x40002480, row_offset = 0x88 }
--- Row 0x18.
-collision.collision_18 = define.collision { id = "collision-18", side0 = 0x50000000, side1 = 0xA0000000, row_offset = 0xC0 }
 -- Row 0x1A.
 collision.collision_1a = define.collision { id = "collision-1a", side0 = 0x8000009E, side1 = 0x4000009E, row_offset = 0xD0 }
 -- Row 0x1B.
@@ -214,8 +240,6 @@ collision.collision_27 = define.collision { id = "collision-27", side0 = 0xC0048
 collision.collision_28 = define.collision { id = "collision-28", side0 = 0x80002086, side1 = 0x40002086, row_offset = 0x140 }
 -- Row 0x29.
 collision.collision_29 = define.collision { id = "collision-29", side0 = 0x02010082, side1 = 0x01010082, row_offset = 0x148 }
--- Row 0x2A.
-collision.eruption = define.collision { id = "eruption", side0 = 0x3D800000, side1 = 0x3E800000, row_offset = 0x150 }
 -- Row 0x2D.
 collision.collision_2d = define.collision { id = "collision-2d", side0 = 0x8000408A, side1 = 0x4000408A, row_offset = 0x168 }
 -- Row 0x2E.
@@ -224,8 +248,6 @@ collision.collision_2e = define.collision { id = "collision-2e", side0 = 0x80004
 collision.collision_2f = define.collision { id = "collision-2f", side0 = 0x80004088, side1 = 0x40004088, row_offset = 0x178 }
 -- Row 0x31.
 collision.collision_31 = define.collision { id = "collision-31", side0 = 0x80005084, side1 = 0x40005084, row_offset = 0x188 }
--- Row 0x33.
-collision.collision_33 = define.collision { id = "collision-33", side0 = 0xC004000E, side1 = 0xC004000E, row_offset = 0x198 }
 -- Row 0x35.
 collision.collision_35 = define.collision { id = "collision-35", side0 = 0x08410082, side1 = 0x04210082, row_offset = 0x1A8 }
 -- Row 0x36.

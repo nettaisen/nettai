@@ -10,6 +10,7 @@ local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local rock = require("../objects/rock/rock")
+local supports = require("../lib/supports/controller")
 
 return define.roles {
     actions = {
@@ -32,13 +33,14 @@ return define.roles {
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = { legacy = { action = 0x50 } },
     },
-    -- (The statue an actor list places, BN6's Guardian's, isn't in the
-    -- test content: its role stays unfilled.)
+    -- (The statue an actor list places, BN6's Guardian's, and AntiRecv's
+    -- counterattack aren't in the test content: their roles stay unfilled.)
     kinds = {
         rock = rock.kind,
         boulder = boulder.kind,
         absorbed_obstacle = absorbed_obstacle.kind,
         falling_rock = falling_rock.kind,
+        support = supports.kind,
     },
     hooks = {
         -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier
