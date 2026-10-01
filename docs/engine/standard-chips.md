@@ -134,10 +134,20 @@ looks 2 and 3; the aura head's speed tables past 1; the thunder doll's Param1 �
 kind 1; ParaShl, GreatYo's controller and PitHocky (Program Advances, stopped at the banner); Tornado subtype 3 and
 Static's larger spreads; the drill without a slot; AirSpin variant 1 and the whirlwind's removed, absorbed and
 blink-out paths; WideBrn's spread and flame looks 1 and 2; RlngLog's drop-in path and the log's stop and break;
-DarkThnd and the thunder ball's bug; every VarSwrd/NeoVari sequence, random pick and the charged sword (0x41);
-MoonBld's repeat swings; CopyDmg's time-up path and NameIDs 0xCD..0xFF; WindRack variant ≠ 0 and the gust's other
-spawners; H-Burst's fight-over and whole-field branches; every "pool full" path. Off-table parameters are explicit
-errors naming the routine.
+DarkThnd and the thunder ball's bug; MoonBld's repeat swings; WindRack variant ≠ 0 and the gust's other
+spawners; H-Burst's whole-field branch; every "pool full" path. Off-table parameters are explicit errors naming
+the routine.
+
+The coverage scenarios (docs/engine/unverified.md) verified since: every VarSwrd and NeoVari sequence, entered
+with A held (`chips/0x052-varswrd/cmd-longswrd`, `cmd-ftrsword`, `cmd-wideswrd`, `cmd-lifesrd`, `cmd-sonicbom`;
+`chips/0x053-neovari/cmd-crosswrd`, `cmd-sprsonic`, `cmd-dbldream`), by side 1 (the mirrored sequences), in
+Beast Out, slowly, too slowly, wrong, broken off, and not at all (the 48-tick timeout); Static's spread with one,
+two and three NaviCust bug kinds (`chips/0x035-static/bugs-1` to `bugs-3`); CopyDmg's time-up path and an
+obstacle as its target (`chips/0x0be-copydmg/time-up`, `on-rock`, `rock-hit`); a log shot at and a log over a
+hole (`chips/0x028-rlnglog1/shot`, `holes`); the whirlwind shot down and pushed (`chips/0x07e-airspin1/shot`,
+`pushed`); H-Burst's fight-over branch (`pa/0x152-h-burst/ko`); and, for the first chip of each of these actions,
+the battle's end under it, a barrier, an invisible opponent and a dimming cutting in (`ko`, `barrier`,
+`invisible`, `dimmed`).
 
 ## Action 0x22: CrakShot, DublShot, TrplShot (`sub_80EC960`)
 
