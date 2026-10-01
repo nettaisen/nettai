@@ -14,7 +14,7 @@ local regions = require("../../lib/regions")
 local rock = require("./rock")
 local sparks = require("../../lib/sparks")
 
-local navi = {}
+local grndman = {}
 
 export type State = {
     -- His drill (ExtraVars[0]).
@@ -141,7 +141,7 @@ local function hit(me: Object)
         region = regions.single,
         hit_effect = sparks.impact,
         target = collision.hits_navis,
-        self_type = collision.breaking_thrown,
+        self_type = collision.thrown_break,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = 3,
@@ -260,7 +260,7 @@ end
 
 local ACTIONS = { [APPEAR] = appear, [BACK_OFF] = back_off, [DIG] = dig, [ROCKFALL] = rockfall, [LEAVE] = leave }
 
-navi.kind = define.kind {
+grndman.kind = define.kind {
     id = "grndman/navi",
     pool = "actor",
     state = { drill = "object", rock_x = "u32", rock_y = "u32", controller = "object" },
@@ -285,8 +285,8 @@ navi.kind = define.kind {
 -- `sub_80BBDE8`: GroundMan for `user`, reporting to `controller` (the
 -- GrndMan chips' navi hook, `off_802CD5C[10]`). His position is the
 -- spawner's registers until his init places him.
-function navi.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(navi.kind, Vec3.new(spec.panel_y, spec.element, 0))
+function grndman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
+    local o = battle.spawn(grndman.kind, Vec3.new(spec.panel_y, spec.element, 0))
     if not o then
         return nil
     end
@@ -300,4 +300,4 @@ function navi.summon(user: Object, controller: Object, spec: NaviChipSpec): Obje
     return o
 end
 
-return navi
+return grndman

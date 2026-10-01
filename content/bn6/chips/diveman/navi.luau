@@ -7,7 +7,7 @@
 
 local wave = require("./wave")
 
-local navi = {}
+local diveman = {}
 
 export type State = {
     -- The controller waiting for him.
@@ -161,7 +161,7 @@ end
 
 local ACTIONS = { [SURFACE] = surface, [WAIT] = wait, [DIVE] = dive, [WAVES] = waves, [RISE] = rise, [LEAVE] = leave }
 
-navi.kind = define.kind {
+diveman.kind = define.kind {
     id = "diveman/navi",
     pool = "actor",
     state = { controller = "object" },
@@ -185,8 +185,8 @@ navi.kind = define.kind {
 
 -- `sub_80B9B6E`: DiveMan for `user`, reporting to `controller` (the
 -- DiveMan chips' navi hook, `off_802CD5C[13]`).
-function navi.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(navi.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+function diveman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
+    local o = battle.spawn(diveman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
     if not o then
         return nil
     end
@@ -200,4 +200,4 @@ function navi.summon(user: Object, controller: Object, spec: NaviChipSpec): Obje
     return o
 end
 
-return navi
+return diveman
