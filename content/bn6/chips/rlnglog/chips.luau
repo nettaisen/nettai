@@ -3,6 +3,7 @@
 -- rows (./action, ./log). The levels differ only in damage.
 
 local action = require("./action")
+local lockon = require("../../rules/lockon")
 
 -- Every level's log: big, stopped 60 ticks by a hit, 20 HP, thrown (the
 -- original's parameters 1, 60, 20, 1).
@@ -19,8 +20,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 42, index = 42, sort = 344 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 9 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.gundels1 },
         action = action.action { log = LOG },
     },
     define.chip {
@@ -33,8 +34,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 43, index = 43, sort = 345 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 9 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.gundels1 },
         action = action.action { log = LOG },
     },
     define.chip {
@@ -47,8 +48,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 44, index = 44, sort = 346 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 9 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.gundels1 },
         action = action.action { log = LOG },
     },
 }

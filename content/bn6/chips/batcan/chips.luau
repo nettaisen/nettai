@@ -5,6 +5,7 @@
 -- `sub_80EC0E6`; docs/engine/shot-chips.md §6).
 
 local attachment = require("../../objects/attachment/attachment")
+local lockon = require("../../rules/lockon")
 local shot = require("./shot")
 
 export type State = {
@@ -128,8 +129,8 @@ return {
         flags = { "has_damage" },
         library = { number = 315, index = 1, sort = 0 },
         slot_in_limit = 1,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = batcan { shots = { 3 } },
     },
     define.chip {
@@ -142,8 +143,8 @@ return {
         flags = { "has_damage" },
         library = { number = 316, index = 1, sort = 0 },
         slot_in_limit = 1,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = batcan { shots = { 3 } },
     },
     define.chip {
@@ -156,8 +157,8 @@ return {
         flags = { "has_damage" },
         library = { number = 317, index = 1, sort = 0 },
         slot_in_limit = 1,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = batcan { shots = { 3 } },
     },
     define.chip {
@@ -170,8 +171,8 @@ return {
         flags = { "has_damage" },
         library = { number = 318, index = 1, sort = 0 },
         slot_in_limit = 1,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = batcan { shots = { 1, 1, 3 } },
     },
 }

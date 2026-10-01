@@ -3,6 +3,7 @@
 -- (./action, ./doll). The levels differ only in damage.
 
 local action = require("./action")
+local lockon = require("../../rules/lockon")
 
 -- Every level's thunder lasts 15 ticks (the original's second
 -- parameter).
@@ -19,8 +20,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 30, index = 30, sort = 128 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = action.action { ticks = TICKS },
     },
     define.chip {
@@ -33,8 +34,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 31, index = 31, sort = 129 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = action.action { ticks = TICKS },
     },
     define.chip {
@@ -47,8 +48,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 32, index = 32, sort = 130 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = action.action { ticks = TICKS },
     },
 }

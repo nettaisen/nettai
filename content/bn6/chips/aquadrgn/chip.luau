@@ -4,6 +4,7 @@
 
 local action = require("../../lib/dragons/action")
 local dragon = require("../../lib/dragons/dragon")
+local lockon = require("../../rules/lockon")
 local sparks = require("../../lib/sparks")
 
 return define.chip {
@@ -16,8 +17,8 @@ return define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 125, index = 125, sort = 14 },
     slot_in_limit = 3,
-    -- No Beast rush; its lock-on mode (a number until rules/lockon.luau).
-    beast = { rush = false, lockon = 1 },
+    -- No Beast rush; its lock-on mode (rules/lockon).
+    beast = { rush = false, lockon = lockon.cannon },
     action = action.action {
         dragon = dragon.variant {
             speed = 0x4_0000,
