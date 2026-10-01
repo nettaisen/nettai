@@ -246,6 +246,10 @@ named_fields! {
         Variant = "variant", U8, rw;
         /// The chip being used (0 for weapons).
         Chip = "chip", U16, rw;
+        /// The chip being used, as its definition (none for weapons): what
+        /// a weapon that uses the chip asks for the chip's own parts, and
+        /// what an action that becomes another chip's sets.
+        AttackChip = "attack_chip", Ref(Registry::Chip, None), rw;
         /// The attack's element byte (primary | secondary bits).
         AttackElement = "attack_element", U8, rw;
         /// The attack's damage (with its flag bits).
@@ -263,6 +267,9 @@ named_fields! {
         AttackKind = "attack_kind", U8, ro;
         /// 1 while the action runs inside a form's action wrapper.
         BeastLockon = "beast_lockon", U8, rw;
+        /// The lock-on mode the attack's own action asks the Beast Out rush
+        /// for (the charged sword's, by its slash); 0: the chip's.
+        RushLockon = "rush_lockon", U8, rw;
         /// A per-action word some actions keep (a move's direction change,
         /// a thrown obstacle).
         Marker = "marker", U32, rw;

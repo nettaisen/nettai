@@ -378,6 +378,12 @@ declare class Object
     step_init: number
     variant: number
     chip: number
+    -- The attack's chip as its definition (nil when the attack has none;
+    -- a chip that is still a pack record reads as a stand-in with only its
+    -- `id`): what a weapon that uses the chip asks for the chip's own
+    -- parts (`navi.attack_chip.action`), and what an action that becomes
+    -- another chip's sets.
+    attack_chip: Chip?
     attack_element: number
     attack_damage: number
     -- The attack's hitboxes' counter byte.
@@ -392,6 +398,10 @@ declare class Object
     attack_kind: number
     -- 1 while the action runs inside a form's action wrapper.
     beast_lockon: number
+    -- The lock-on mode the attack's own action asks the Beast Out rush for
+    -- (the charged sword's, by its slash); 0: the chip's. (A number until
+    -- lock-on modes are definitions.)
+    rush_lockon: number
     -- A per-action word some actions keep.
     marker: number
     -- The absorbed obstacle a throw carries (the marker word, as
