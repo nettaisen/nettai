@@ -122,7 +122,9 @@ collision.floating_navi = define.collision {
     row_offset = 0x80,
 }
 
--- A thrown attack that breaks (row 0x15: GroundMan's drill and rocks, MetrKnuk's fists).
+-- A thrown attack that breaks (row 0x15: GroundMan's drill and rocks,
+-- MetrKnuk's fists, GolmHit's golem landing, JustcOne's fist, a falling
+-- rock).
 collision.thrown_break = define.collision { id = "thrown-break", side0 = 0x8000008a, side1 = 0x4000008a, row_offset = 0xA8 }
 
 -- A thrown attack that pierces and breaks (row 0x17: Django's Gun del
@@ -159,7 +161,8 @@ collision.attack_480 = define.collision { id = "attack-480", side0 = 0x80000480,
 -- An attack of row 0x47 (a projectile variant nothing names yet).
 collision.attack_a0 = define.collision { id = "attack-a0", side0 = 0x800000a0, side1 = 0x400000a0, row_offset = 0x238 }
 
--- A neutral body, while dimmed too (row 0x0E: a VDoll that landed, AirSpin's top).
+-- A neutral body, while dimmed too (row 0x0E: a VDoll that landed, AirSpin's
+-- top, a rock, a boulder).
 collision.neutral_body = define.collision { id = "neutral-body", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
 
 -- A probe (row 0x3D): what finds the first thing its target type reaches

@@ -1,6 +1,0 @@
-# A lance (attack object #0x6F, `sub_80D2460`), Lance's, is a script.
-
-[kind]
-pool = "attack"
-index = 0x6F
-script = "lance.luau"

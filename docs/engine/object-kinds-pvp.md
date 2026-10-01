@@ -38,11 +38,13 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T3 0x23 | 0x080c86d8 | lab only (its splash: the pack's `objects/spout-splash`, chips.md §3.6.11) |
 | T3 0x26 | 0x080c8c74 | lab only (HeatMan's flame: the pack's `objects/heat-flame`, chips.md §3.6.15) |
 | T3 0x49 | 0x080cd2ec | 87 (WindRack's gust: the pack's `objects/gust`, standard-chips.md) |
-| T3 0x59 | 0x080cf954 | 7372 (rock: the pack's `objects/rock`, field-objects.md) |
+| T3 0x59 | 0x080cf954 | 7372 (rock: the content's `objects/rock`, a definition with its variants and debris, field-objects.md §3) |
 | T3 0x5b | 0x080cfcf8 | 96 |
 | T3 0x62 | 0x080d07cc | lab only (SlashMan's sword wave: the pack's `chips/slashman/wave`, chips.md §3.6.18) |
 | T3 0x64 | 0x080d0d7c | lab only (ElecMan's thunderbolt: the pack's `objects/elec-thunder`, chips.md §3.6.16) |
+| T3 0x6e | 0x080d2290 | lab only (a stage's boulder: the content's `objects/boulder`, field-objects.md §3.1) |
 | T3 0x74 | 0x080d30d0 | 350 (RskyHny's bee: the pack's `chips/rskyhny/bee`, chips.md §3.7) |
+| T3 0x7d | 0x080d4c84 | lab only (the Guardian statue, a stage's too: the content's `chips/guardian/statue`, dimming-chip-effects.md §5) |
 | T3 0x82 | 0x080d5740 | 48 (DolThdr's doll: the pack's `chips/dolthdr/doll`, standard-chips.md) |
 | T3 0x8b | 0x080d6924 | 225 (DolThdr's thunder column: the pack's `objects/thunder-column`, standard-chips.md) |
 | T3 0x8d | 0x080d6bd4 | 38 (meteor: the pack's `objects/meteor`, chips.md §3.6.7) |
@@ -86,5 +88,5 @@ Handler = jumptable entry (T1 0x08003C9C, T3 0x08003EC4, T4 0x080042C8).
 | T4 0x76 | 0x080e8b00 | 595 (MetrKnuk's dimming controller: the pack's `chips/metrknuk/controller`, dimming-chip-effects.md §18) |
 | T4 0x80 | 0x080e9460 | 1192 |
 | T4 0x84 | 0x080e9570 | 761 (the navi-changing chips' dimming controller: the pack's `lib/navi-boost/controller`, chips.md §3.6.10) |
-| T4 0x87 | 0x080e97f0 | 20 (absorbed obstacle: the pack's `objects/absorbed-obstacle`, field-objects.md) |
+| T4 0x87 | 0x080e97f0 | 20 (absorbed obstacle: the content's `objects/absorbed-obstacle`, a definition whose looks are its obstacles' records, field-objects.md §5) |
 | T4 0x89 | 0x080e9af0 | 118 |
