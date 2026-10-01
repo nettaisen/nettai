@@ -126,7 +126,7 @@ local function hit(me: Object)
         element = me.element,
         z = 0,
         region = regions.single,
-        hit_effect = sparks.impact,
+        hit_effect = sparks.breaking,
         target = collision.hits_navis,
         self_type = collision.thrown_break,
         damage = me.damage,
