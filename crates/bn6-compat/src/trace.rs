@@ -178,6 +178,7 @@ use bn6_battle::console::{Console, ConsoleSetup};
 use bn6_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, Side, Unlocks};
 use bn6_battle::hand::ChipHand;
 use bn6_battle::input::PlayerTick;
+use bn6_battle::kinds::player::Emotion;
 use bn6_battle::link::Link;
 use bn6_battle::rng::Rng;
 use bn6_battle::setup::{NaviStats, RoundSetup, SetScore};
@@ -610,6 +611,25 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
 
 // ---- The custom screens alone ----------------------------------------------
 
+/// The emotion a custom screen sees (`sub_8015B64`), as far as the trace's
+/// stats tell it; the screen asks only whether the navi is worn out (no
+/// Cross, no Beast Out) or tired (Beast Out becomes Beast Over). Worn out:
+/// mood 0, or past a Beast Over this round (AIData+0x36, which also keeps
+/// the mood from dropping to 0). Tired: its Beast Out turns are spent
+/// (NaviStats+0x21 is 0) and it is out of the Beast (the turn's check that
+/// raises AIData+0x32 has run: `check_beast_out_end`). Not seen: anger, and
+/// the NaviCust emotion bug's swings to tired, which need the fight.
+fn screen_emotion(stats: &NaviStats, content: &Content, beast_over_before: bool) -> Emotion {
+    let kind = content.form(stats.form).kind;
+    if stats.mood == 0 || (beast_over_before && !kind.is_beast_over()) {
+        Emotion::WornOut
+    } else if stats.beast_out_counter == 0 && !kind.is_beast() {
+        Emotion::Tired
+    } else {
+        Emotion::Normal
+    }
+}
+
 /// One player's custom screen checked against a trace.
 #[derive(Clone, Debug)]
 pub struct ScreenCheck {
@@ -626,9 +646,9 @@ pub struct ScreenCheck {
 /// recorded buttons, and compare what each player sends with the trace:
 /// the hand (as installed), the transformation, when their status bit
 /// arrives cleared, and when the fight resumes. The fight is not
-/// simulated: each screen reads its navi's stats from the trace, and
-/// emotions from the mood alone (a tired navi is not seen). Damage from a
-/// formula is not checked (it needs the battle).
+/// simulated: each screen reads its navi's stats from the trace, and the
+/// emotions the screen asks about from them (`screen_emotion`). Damage
+/// from a formula is not checked (it needs the battle).
 pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -> Vec<ScreenCheck> {
     let ids = Ids::new(content, compat);
     let frames: Vec<&Frame> = round.battle_frames().collect();
@@ -658,11 +678,12 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
         }
         let context = |p: usize| {
             let stats = stats_at(f.frame, p);
-            let emotion = if stats.mood == 0 {
-                bn6_battle::kinds::player::Emotion::WornOut
-            } else {
-                bn6_battle::kinds::player::Emotion::Normal
-            };
+            let beast_over_before = round
+                .exchanges
+                .iter()
+                .take_while(|e| e.frame <= f.frame)
+                .any(|e| content.form(navi_stats(&e.navi_stats[p], &ids).form).kind.is_beast_over());
+            let emotion = screen_emotion(&stats, content, beast_over_before);
             Context {
                 library: content,
                 stats,
@@ -670,6 +691,7 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
                 turn: unhex(&f.bs)[7],
                 per_player_gauges: false,
                 random_battle: false,
+                late_turns: false,
                 now: f.frame,
                 link_delay: Link::RECORDED_DELAY,
             }
