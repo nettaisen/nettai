@@ -1,4 +1,0 @@
-# DustMan, DustMan[EX] and DustMan[SP] (navi chip subtype 11) summon DustMan
-# (chips/dustman/navi.luau), through chip.luau.
-
-script = "chip.luau"

@@ -310,14 +310,16 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
         a.a_charge
     };
     let Some(routine) = routine else { return 0xFF };
-    // A weapon content defines gives its own charge times; the pack's
-    // routines' are the charge table's, by number.
+    // A weapon's own charge times (by Charge stat, those past its row the
+    // next routine's, as the game reads them); the test content's table by
+    // routine number.
     let w = b.content.defs.weapon(routine);
+    if let Some(&ticks) = w.charge_ticks.get(s.charge as usize) {
+        return ticks;
+    }
     match b.content.weapon_number(routine) {
-        Some(number) if w.charge_ticks.is_empty() => b.content.rules.charge_threshold(number, s.charge),
-        _ => *w.charge_ticks.get(s.charge as usize).unwrap_or_else(|| {
-            panic!("content error: weapon {:?} has no charge time at Charge {}", w.key, s.charge)
-        }),
+        Some(number) if !b.content.rules.weapons.is_empty() => b.content.rules.charge_threshold(number, s.charge),
+        _ => panic!("content error: weapon {:?} has no charge time at Charge {}", w.key, s.charge),
     }
 }
 

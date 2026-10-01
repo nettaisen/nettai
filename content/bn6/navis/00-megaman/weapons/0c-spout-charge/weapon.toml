@@ -1,6 +1,0 @@
-# MegaMan's weapon routine 0x0C, SpoutCross's charged shot (`sub_8011C5E`), is a
-# script. The action it names, 0x25 (Spreader's), is a standard chip's.
-
-id = 0x0C
-name = "Spout charge"
-script = "spout_charge.luau"

@@ -1,3 +1,0 @@
-# A navi chip (subtype 4): SlashMan, as chips/0e9-slashman summons him.
-
-script = "../0e9-slashman/chip.luau"

@@ -1,4 +1,0 @@
-# ElecMan, ElecMan[EX] and ElecMan[SP] (navi chip subtype 3) summon ElecMan
-# (chips/elecman/navi.luau), through chip.luau.
-
-script = "chip.luau"

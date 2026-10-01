@@ -1,10 +1,12 @@
-//! Content packs: a battle's data, graphics and sound in open formats that
-//! ordinary tools edit, loaded exactly into the data the engine, the
-//! frontend and the audio use.
+//! Content packs: a game's graphics and sound in open formats that ordinary
+//! tools edit, loaded exactly into the data the engine, the frontend and the
+//! audio use; and the battle content, a content root's definitions
+//! ([`root`]: content/bn6), which name the pack's assets.
 //!
-//! - Battle data: chips, navis and forms, object kinds' data, the ruleset's
-//!   tables and registries, as TOML files laid out by owner ([`battle`]),
-//!   loaded into the engine's `bn6_battle::Content`.
+//! - Battle content: the Luau modules that define the chips, navis, forms,
+//!   weapons, stages and rules, and the code that runs them ([`root`]),
+//!   loaded with a pack's asset index into the engine's
+//!   `bn6_battle::Content` ([`pack::load_battle`]).
 //! - Sprites: an indexed-PNG part atlas, part layouts (`sprite.json`) and
 //!   animation timing (`animations.json`) per sprite ([`sprite`]).
 //! - Field, backgrounds (Tiled maps), HUD: indexed PNGs and JSON ([`stage`],
@@ -19,19 +21,17 @@
 //!
 //! The graphics and sound modules know GBA-style data (4bpp tiles,
 //! 16-colour palettes, OAM parts, M4A songs) but no BN6 rule; only [`hud`]
-//! and the field's panel tables are BN6-shaped. [`battle`] is the engine's
-//! BN6 data model as files.
+//! and the field's panel tables are BN6-shaped.
 
 pub mod aseprite;
-pub mod battle;
 pub mod hud;
 pub mod image;
 pub mod lint;
 pub mod midi;
 pub mod names;
-pub mod overlay;
 pub mod pack;
 pub mod report;
+pub mod root;
 pub mod song;
 pub mod sound;
 pub mod sprite;

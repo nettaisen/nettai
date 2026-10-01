@@ -1,3 +1,0 @@
-# A navi chip (subtype 1): ProtoMan, as chips/0e0-protoman summons him.
-
-script = "../0e0-protoman/chip.luau"
