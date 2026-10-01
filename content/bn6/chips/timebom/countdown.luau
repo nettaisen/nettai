@@ -288,7 +288,7 @@ local function init(me: Object)
     me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
     battle.play_sound(PLACE_SOUND)
-    me.name_id = v.name
+    me.identity = v.identity
     me.hp, me.max_hp = v.hp, v.hp
     if not me:create_collision() then
         me:free()

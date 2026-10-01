@@ -50,7 +50,7 @@ pub mod testing;
 pub use chips::*;
 pub use custom::*;
 pub use defs::*;
-pub use identity::*;
+pub use identity::{FieldLook, Identity, IdentityClass, IdentityOwner};
 pub use navis::*;
 pub use objects::*;
 pub use roles::*;

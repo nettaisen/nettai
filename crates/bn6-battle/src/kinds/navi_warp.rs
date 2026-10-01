@@ -135,8 +135,8 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     if left <= 0 {
         o.flags &= !flags::VISIBLE;
         let navi = owner(b, r);
-        let name_id = b.objects.get(navi).identity;
-        form::navi_death_hook(b, r, name_id);
+        let identity = b.objects.get(navi).identity;
+        form::navi_death_hook(b, r, identity);
         if warp == Warp::In {
             show_user(b, navi);
         }

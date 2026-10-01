@@ -195,11 +195,11 @@ fn init(b: &mut Battle, r: ObjectRef) {
     }
     b.objects.get_mut(r).flags |= flags::VISIBLE;
     let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
-    let name_id = b.objects.get(owner).identity;
-    b.objects.get_mut(r).identity = name_id;
-    b.objects.sprite_mut(r).load(player_sprite(&b.content, name_id));
+    let identity = b.objects.get(owner).identity;
+    b.objects.get_mut(r).identity = identity;
+    b.objects.sprite_mut(r).load(player_sprite(&b.content, identity));
     b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
-    put_on_layer(b, r, name_id);
+    put_on_layer(b, r, identity);
     let anim = vars(b, r).anim;
     let lifetime = vars(b, r).lifetime;
     let flip = b.objects.get(r).params[3];
@@ -248,8 +248,8 @@ fn init_plain(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8010DF6(record, 0)` then `sub_80C4526(layer, 1)`: the overlay the
 /// NameID's init hook puts on, on the afterimage, pinned in front.
-fn put_on_layer(b: &mut Battle, r: ObjectRef, name_id: Option<IdentityHandle>) {
-    form::navi_init_hook(b, r, name_id);
+fn put_on_layer(b: &mut Battle, r: ObjectRef, identity: Option<IdentityHandle>) {
+    form::navi_init_hook(b, r, identity);
     // (With no overlay the game's store lands in BIOS memory.)
     if let Some(layer) = b.objects.get(r).related[1] {
         form::pin_overlay(b, layer);
@@ -302,7 +302,7 @@ fn destroy(b: &mut Battle, r: ObjectRef) {
     }
     // sub_8011044(record, 1): the NameID's death hook takes the overlay
     // off.
-    let name_id = b.objects.get(r).identity;
-    form::navi_death_hook(b, r, name_id);
+    let identity = b.objects.get(r).identity;
+    form::navi_death_hook(b, r, identity);
     b.objects.free(r);
 }

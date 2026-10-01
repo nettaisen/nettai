@@ -173,8 +173,8 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
     let old_form = form_of(b, r);
     form::take_off_overlay(b, r, old_form);
-    let name_id = b.objects.get(r).identity;
-    form::navi_death_hook(b, r, name_id);
+    let identity = b.objects.get(r).identity;
+    form::navi_death_hook(b, r, identity);
     navi_status::end_anger(b, r);
     // The navi it leaves is kept when it is the kept one (with its HP).
     if b.cross_stats[side].navi == b.stats[side].navi {
@@ -210,8 +210,8 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
 /// `sub_802D9B0`: the knockout's change back to the kept navi (one tick).
 fn take_back(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
-    let name_id = b.objects.get(r).identity;
-    form::navi_death_hook(b, r, name_id);
+    let identity = b.objects.get(r).identity;
+    form::navi_death_hook(b, r, identity);
     b.stats[side] = b.cross_stats[side];
     take_identity(b, r);
     form::navi_init_hook(b, r, b.objects.get(r).identity);

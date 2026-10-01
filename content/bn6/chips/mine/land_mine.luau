@@ -26,8 +26,17 @@ export type State = {
 local land_mine = {}
 
 local SPRITE = asset.sprite("land-mine")
--- Its NameID (the field objects' look; a number until identities come).
-local NAME = 0xDA
+-- Its identity: a field object nothing absorbs, swallows or leaves as
+-- junk, with no look.
+local IDENTITY = define.identity {
+    id = "mine",
+    class = "field_object",
+    version = 1,
+    ai_index = 1,
+    absorbable = false,
+    scrap = false,
+    look = { anim = 0, palette = 0, shadow = false },
+}
 -- It stays this long (`Timer`, which nothing counts down).
 local LIFETIME = 0x1770
 -- Hops: one every 2 ticks, 59 of them before it arms (`Timer2`).
@@ -181,7 +190,7 @@ local function init(me: Object)
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)
     -- (sub_8002EAC sets a drawing flag of the sprite's.)
-    me.name_id = NAME
+    me.identity = IDENTITY
     me.timer = LIFETIME
     me.timer2 = HOPS
     local s = me.state :: State
