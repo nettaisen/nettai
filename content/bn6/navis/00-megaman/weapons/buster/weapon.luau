@@ -42,8 +42,6 @@ local SPREAD, THROW = 1, 2
 local SHOT_SOUND, THROW_SOUND = asset.sound("buster-6a"), asset.sound("junk-shot")
 -- The heights the shot and a thrown obstacle fly at, 16.16.
 local SHOT_Z, THROW_Z = 0x18_0000, 0x0C_0000
--- The flying shot's kind a thrown obstacle is.
-local THROWN = 6
 
 -- The buster-shot programs from this one on spread on 1 draw in 8, the
 -- others on 1 in 2.
@@ -111,7 +109,7 @@ end
 local function throw(me: Object)
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
     local obstacle = bit32.band(me.marker, 0xFF)
-    flying_shot.spawn(me, Vec3.new(x, y, THROW_Z), { THROWN, 0, 0, 0 }, damage_word(me), obstacle)
+    flying_shot.spawn(me, Vec3.new(x, y, THROW_Z), flying_shot.variants.thrown, damage_word(me), { obstacle = obstacle })
 end
 
 -- `sub_80EB450`: raise the buster; on the second tick the shot (its kind

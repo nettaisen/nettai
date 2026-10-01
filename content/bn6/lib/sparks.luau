@@ -17,13 +17,17 @@ local BY_ELEMENT: { [number]: Spark } = {
 -- The erase beams' spark (hit effect 0x0C).
 sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
 
--- The element sparks by name (hit effects 1 to 3: a flame's, a bubble
--- star's, a thunder ball's), and the white burst of hit effect 5 (a crack
--- shot's).
+-- The element sparks by name (hit effects 0 to 3: a sword wave's, a
+-- flame's, a bubble star's, a thunder ball's), and the white burst of hit
+-- effect 5 (a crack shot's, the Falzar Beast buster's).
+sparks.null = BY_ELEMENT[0]
 sparks.fire = BY_ELEMENT[1]
 sparks.aqua = BY_ELEMENT[2]
 sparks.elec = BY_ELEMENT[3]
 sparks.impact = BY_ELEMENT[5]
+
+-- A breaking hit's (hit effect 0x0A): a drill's, a thrown obstacle's.
+sparks.breaking = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
 
 -- A heavy hit's (hit effect 6): Magnum's shot, the beasts' claws and bites.
 sparks.heavy = define.spark { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }

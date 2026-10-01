@@ -73,18 +73,24 @@ end
 -- `GetRandomRelativePanelFiltered`: of region `region`'s panels around
 -- (x, y), dx toward `dir`, one with every `require` bit and no `forbid`
 -- bit, at random (one draw of the RNG, only when there is one); nil if
--- none.
+-- none. (Deprecated: a region by number.)
 function panels.random_in_region(
     x: number,
     y: number,
     require: number,
     forbid: number,
-    region: number,
+    region: Region | number,
     dir: number
 ): (number?, number?)
-    local shape = data.regions[region]
-    if shape == nil then
-        error(string.format("GetRandomRelativePanelFiltered: region %d is not in the content", region))
+    local shape: { { number } }
+    if type(region) == "number" then
+        local numbered = data.regions[region]
+        if numbered == nil then
+            error(string.format("GetRandomRelativePanelFiltered: region %d is not in the content", region))
+        end
+        shape = numbered
+    else
+        shape = region.panels or {}
     end
     local found: { number } = {}
     for _, p in shape do
@@ -107,7 +113,7 @@ local ENEMY_BODY = { [0] = 0x0400_0000, 0x0800_0000 }
 
 -- `sub_8109708`: a random panel of region `region` around (x, y), forward
 -- for `me`'s side, that an enemy of `me` stands on; nil if none.
-function panels.random_enemy_panel(me: Object, x: number, y: number, region: number): (number?, number?)
+function panels.random_enemy_panel(me: Object, x: number, y: number, region: Region | number): (number?, number?)
     return panels.random_in_region(x, y, ENEMY_BODY[me.alliance], 0, region, panels.side_direction(me.alliance))
 end
 
