@@ -39,21 +39,19 @@ pub enum ActionVars {
     Content(bn6_content_api::ContentState),
 }
 
-/// Run action `action` (>= 0x10) for the player `r` this tick.
-pub fn dispatch(b: &mut Battle, r: ObjectRef, action: u8) {
-    if let Some(h) = super::running_content_action(b, r) {
-        return crate::behavior::run_action(b, h, r);
-    }
-    if let Some(h) = b.content.defs.action_numbered(action) {
-        return crate::behavior::run_action(b, h, r);
-    }
+/// Run attack `action` for the player `r` this tick.
+pub fn dispatch(b: &mut Battle, r: ObjectRef, action: super::NaviAction) {
+    use super::{EngineAction as E, NaviAction as A};
     match action {
-        movement::ACTION => movement::update(b, r),
-        dimming_chip::ACTION => dimming_chip::update(b, r),
-        navi_chip::ACTION => navi_chip::update(b, r),
-        instant::ACTION => instant::update(b, r),
-        cross_special::ACTION => cross_special::update(b, r),
-        _ => panic!("player action {action:#x} is not implemented yet"),
+        A::Content(h) => crate::behavior::run_action(b, h, r),
+        A::Engine(E::Move) => movement::update(b, r),
+        A::Engine(E::DimmingChip) => dimming_chip::update(b, r),
+        A::Engine(E::NaviChip) => navi_chip::update(b, r),
+        // (Unpaused, the form change's CurAction is the instant chips'.)
+        A::Engine(E::InstantChip | E::FormChange) => instant::update(b, r),
+        A::Engine(E::CrossSpecial) => cross_special::update(b, r),
+        A::Unported(n) => panic!("player action {n:#x} is not implemented yet"),
+        state => unreachable!("{state:?} is not an attack"),
     }
 }
 

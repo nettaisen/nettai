@@ -11,8 +11,6 @@ use crate::collision::{f1, link};
 use crate::content::SpriteId;
 use crate::object::{ObjectRef, flags, state};
 
-pub const INDEX: u8 = 0x89;
-
 const SPRITE: SpriteId = SpriteId { category: 0x14, index: 0x1C };
 /// The navi's attach point it sits at, and how far it sits behind and
 /// above it (16.16).

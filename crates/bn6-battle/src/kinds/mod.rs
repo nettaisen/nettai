@@ -157,32 +157,32 @@ pub enum EngineKind {
     StatusVisual,
 }
 
-/// The engine's kinds: their keys (`engine/...`), pools, and the object
-/// slots they fill (the original's pool and index, which the traces
-/// compare).
-pub const ENGINE_KINDS: [(EngineKind, &str, Pool, u8); 22] = [
-    (EngineKind::Player, "engine/player", Pool::Actor, 0),
-    (EngineKind::Intro, "engine/intro", Pool::Effect, 2),
-    (EngineKind::ChargeGlow, "engine/charge-glow", Pool::Effect, 8),
-    (EngineKind::Effect, "engine/effect", Pool::Effect, 0),
-    (EngineKind::Hitbox, "engine/hitbox", Pool::Attack, 3),
-    (EngineKind::Spark, "engine/spark", Pool::Effect, 4),
-    (EngineKind::BubbleVisual, "engine/bubble-visual", Pool::Effect, bubble_visual::INDEX),
-    (EngineKind::IceVisual, "engine/ice-visual", Pool::Effect, ice_visual::INDEX),
-    (EngineKind::HitMarker, "engine/hit-marker", Pool::Effect, hit_marker::INDEX),
-    (EngineKind::FormOverlay, "engine/form-overlay", Pool::Actor, form_overlay::INDEX),
-    (EngineKind::Afterimage, "engine/afterimage", Pool::Effect, afterimage::INDEX),
-    (EngineKind::LockonMarker, "engine/lockon-marker", Pool::Effect, lockon_marker::INDEX),
-    (EngineKind::PaletteFlash, "engine/palette-flash", Pool::Effect, palette_flash::INDEX),
-    (EngineKind::CrossMerge, "engine/cross-merge", Pool::Actor, cross_merge::INDEX),
-    (EngineKind::BodyOverlay, "engine/body-overlay", Pool::Actor, body_overlay::INDEX),
-    (EngineKind::IdleOverlay, "engine/idle-overlay", Pool::Actor, idle_overlay::INDEX),
-    (EngineKind::FullSynchroAura, "engine/full-synchro-aura", Pool::Actor, full_synchro_aura::INDEX),
-    (EngineKind::BeastOverBurst, "engine/beast-over-burst", Pool::Effect, beast_over_burst::INDEX),
-    (EngineKind::NaviChip, "engine/navi-chip", Pool::Effect, navi_chip::INDEX),
-    (EngineKind::NaviWarp, "engine/navi-warp", Pool::Actor, navi_warp::INDEX),
-    (EngineKind::Eruption, "engine/eruption", Pool::Attack, eruption::INDEX),
-    (EngineKind::StatusVisual, "engine/status-visual", Pool::Effect, status_visual::INDEX),
+/// The engine's kinds: their keys (`engine/...`) and pools. (The object
+/// slots they fill in the original, which the traces compare, are the
+/// validator's, by key.)
+pub const ENGINE_KINDS: [(EngineKind, &str, Pool); 22] = [
+    (EngineKind::Player, "engine/player", Pool::Actor),
+    (EngineKind::Intro, "engine/intro", Pool::Effect),
+    (EngineKind::ChargeGlow, "engine/charge-glow", Pool::Effect),
+    (EngineKind::Effect, "engine/effect", Pool::Effect),
+    (EngineKind::Hitbox, "engine/hitbox", Pool::Attack),
+    (EngineKind::Spark, "engine/spark", Pool::Effect),
+    (EngineKind::BubbleVisual, "engine/bubble-visual", Pool::Effect),
+    (EngineKind::IceVisual, "engine/ice-visual", Pool::Effect),
+    (EngineKind::HitMarker, "engine/hit-marker", Pool::Effect),
+    (EngineKind::FormOverlay, "engine/form-overlay", Pool::Actor),
+    (EngineKind::Afterimage, "engine/afterimage", Pool::Effect),
+    (EngineKind::LockonMarker, "engine/lockon-marker", Pool::Effect),
+    (EngineKind::PaletteFlash, "engine/palette-flash", Pool::Effect),
+    (EngineKind::CrossMerge, "engine/cross-merge", Pool::Actor),
+    (EngineKind::BodyOverlay, "engine/body-overlay", Pool::Actor),
+    (EngineKind::IdleOverlay, "engine/idle-overlay", Pool::Actor),
+    (EngineKind::FullSynchroAura, "engine/full-synchro-aura", Pool::Actor),
+    (EngineKind::BeastOverBurst, "engine/beast-over-burst", Pool::Effect),
+    (EngineKind::NaviChip, "engine/navi-chip", Pool::Effect),
+    (EngineKind::NaviWarp, "engine/navi-warp", Pool::Actor),
+    (EngineKind::Eruption, "engine/eruption", Pool::Attack),
+    (EngineKind::StatusVisual, "engine/status-visual", Pool::Effect),
 ];
 
 /// Run one object's update: its kind's.
