@@ -52,7 +52,7 @@ local ROCK_TARGETS = { [0] = { 0x0400_0020, 0 }, [1] = { 0x0800_0000, 0x20 } }
 local ROCK_FALLBACK = { [0] = { 0x20, 0 }, [1] = { 0, 0x20 } }
 
 -- His rocks: 10 ticks' warning, falling while dimmed, cracking the panel.
-local ROCK = { warning = 0x0A, while_dimmed = true, cracks = true, silent = false }
+local ROCK: GroundRockDrop = { warning = 0x0A, while_dimmed = true, cracks = true, silent = false }
 
 -- His actions.
 local APPEAR, BACK_OFF, DIG, ROCKFALL, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10

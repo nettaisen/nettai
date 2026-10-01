@@ -50,7 +50,6 @@ pub fn dispatch(b: &mut Battle, r: ObjectRef, action: super::NaviAction) {
         // (Unpaused, the form change's CurAction is the instant chips'.)
         A::Engine(E::InstantChip | E::FormChange) => instant::update(b, r),
         A::Engine(E::CrossSpecial) => cross_special::update(b, r),
-        A::Unported(n) => panic!("player action {n:#x} is not implemented yet"),
         state => unreachable!("{state:?} is not an attack"),
     }
 }

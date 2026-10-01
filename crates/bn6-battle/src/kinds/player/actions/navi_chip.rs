@@ -10,8 +10,6 @@ use crate::kinds::player::{ai, exit_attack_state};
 use crate::object::ObjectRef;
 use crate::dimming::DimmingChip;
 
-pub const ACTION: u8 = 0x1B;
-
 /// `sub_80EC350`.
 pub fn update(b: &mut Battle, r: ObjectRef) {
     let a = ai(b, r).attack.clone();
@@ -25,14 +23,14 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     exit_attack_state(b, r);
 }
 
-/// `sub_80E192C` with the attack variables `a` (r2 the element, r3 the
-/// subtype, r4 the params, r6 the damage word, r7 the chip and its bonus):
+/// `sub_80E192C` with the attack variables `a` (r2 the element, r6 the
+/// damage word, r7 the chip and its bonus; the original's r3 and r4, the
+/// chip record's subtype and parameters, are the chip's definition here):
 /// the navi chip's controller for `user`. Action 0x1B and the counter
 /// cut-in (`sub_8017AB4`) both call it.
 pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) -> Option<ObjectRef> {
     let spec = Spec {
         element: a.element,
-        params: a.params,
         damage: a.damage as u32 | (a.hit_param as u32) << 16,
         chip: DimmingChip { chip: a.chip, bonus: a.extra },
     };

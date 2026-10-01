@@ -15,9 +15,6 @@ local collision = require("../../rules/collision")
 
 local gust = {}
 
--- How a gust blows.
-export type GustHow = { pulls: boolean?, unseen: boolean? }
-
 export type State = {
     -- ExtraVars+0: it ends at its first hit (spawners set it).
     stop_on_hit: boolean,

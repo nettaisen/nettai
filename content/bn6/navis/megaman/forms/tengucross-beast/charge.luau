@@ -26,7 +26,7 @@ local SOUND = asset.sound("aqua-surge")
 
 -- The whirlwind (the attack's parameters, `dword_8011C34`): its waves in
 -- turn, 45 ticks, while the navi stays in this action.
-local WHIRLWIND = { at_once = false, ticks = 0x2D, anim = 0 }
+local WHIRLWIND: Whirlwind = { at_once = false, ticks = 0x2D, anim = 0 }
 
 -- `sub_8011C18`: 30 damage and 20 more per point of buster Attack (up to
 -- 5), Wind.
