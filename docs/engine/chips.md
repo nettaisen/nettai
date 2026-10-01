@@ -1270,9 +1270,8 @@ the healer's alliance; its position the spawner's registers). A dimming controll
 the healer by the damage (down to 0), two rising bubbles (T4 0x14, palette 1) 16 px right then left of the panel's
 center at Z 0, the panel changer (T4 0x1F, kind 6: the own panel turns to poison; dimming-chips.md §4.2) handed
 Param2's address, Param2 = 1. Every tick: once Param2 is 0 (the changer cleared the four parameters), action 0xC.
-**Lab (scratch recordings)**: AntiRecv set by side 0, then side 1's Roll (this branch) or Recov10 (the heal's)
-springs it; both match every frame (1051), with the positions of T4 0x2C and 0x1F skipped (compat has no entries
-for them yet). Unverified: Roll's damage with the double-damage flag, a full effect pool.
+**Lab** (`chips/0x0bd-antirecv/roll` and `chips/0x0bd-antirecv/recov10`): AntiRecv set by side 0, then side 1's
+Roll (this branch) or Recov10 (the heal's) springs it; both match every frame (1170). Unverified: Roll's damage with the double-damage flag, a full effect pool.
 
 **The controller, T4 0x10 (`sub_80E17E8`).** Spawned with r1..r3 = panel Y, element, subtype as its position (so
 Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is
