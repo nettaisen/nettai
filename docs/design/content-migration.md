@@ -216,7 +216,7 @@ Left:
 
 Done: the dimming chips have no Rust fallback (kinds/player/actions/dimming_chip.rs calls the chip's controller
 only), and the controllers declare `scratch_position` (trace.rs keeps only the navi chip controller). Scripts:
-subtypes 1 (objects/invisible), 6 (objects/rock-cube), 20 (objects/trap-chip, with ElemTrap's trap
+subtypes 1 (objects/invisible), 6 (chips/rockcube), 20 (objects/trap-chip, with ElemTrap's trap
 objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts), 10 (objects/time-bom,
 objects/countdown-bomb), 11 (objects/mine, objects/land-mine), 25 (objects/gauge-speed), 38 (objects/navi-boost).
 Shared: lib/panels (the game's panel lists and shuffle), objects/rising-bubble (effect #0x14).
@@ -285,11 +285,19 @@ chips'; the records' shim chips/146-flmhook1), 15 (chips/colforce), 19 (chips/ju
 MegaMan weapon: they are builders in lib/instant, which the link navis' weapons (0x71, 0x83) and actions call when
 ported. Left: the Full Synchro aura after SyncTrgr (framework).
 
-### Group F: rocks
+### Group F: rocks and the field objects
 
-Done: the rock (objects/rock) and its debris (objects/rock-debris) are kinds on the obstacle framework (the
-`obstacle` service); the actor lists' rocks go through the rock's `actor_list_entry` (its `place`; the role `kinds.rock`).
-The verification workspace's rock_trace and bn6_data tests need the updated copies (they named `kinds::rock`).
+Done, in content model v2 (content-model-v2.md §5.8, "As built", step 8f): the rock with its variants and
+debris (objects/rock), RockCube and IceCube (chips/rockcube), the absorbed obstacle and its looks
+(objects/absorbed-obstacle; a look is each obstacle's own record), the falling rock and its chips
+(objects/falling-rock), and what the stages' actor lists place through their kinds' `place`: the rock (the role
+`kinds.rock`), the boulder (`kinds.boulder`, objects/boulder, newly ported) and the Guardian statue
+(`kinds.statue`, chips/guardian). The obstacle framework stays Rust (the `obstacle` service). The verification
+workspace's rock_trace and bn6_data tests read the kinds through compat.
+
+Left: the encased obstacles' ice block reaches the rock through `rock.spawn(..., { variant =
+rock.variants.ice, class, entrance = "instant" }, damage)`; the actor lists' entry types no netbattle stage
+uses (1, 2, 6, 7, 0xA: docs/engine/field-objects.md §1).
 
 ### Group G: standard chip actions
 

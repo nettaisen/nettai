@@ -36,6 +36,17 @@ local IS, HITS, HIT_MOD = collision.neutral_body, collision.everything, 3
 local DEBRIS_PALETTE = 0
 -- A panel of side 1's.
 local SIDE_1 = 0x20
+-- The header flags `sub_80D2430` leaves. It means to add the pause and
+-- dimming bits (0x14) to the new object's flags, but reads the flags
+-- through the panel's column instead of the object: an address in the
+-- console's BIOS, which game code can't read. What comes back is a byte of
+-- the instruction word the BIOS last fetched (after a software interrupt,
+-- which the game's divisions are, 0xE3A02004), by the address's low two
+-- bits; the object's own flags (in use, sprite not animating) are lost. On
+-- columns 2 and 5, where the stages' boulders are, that leaves it "not in
+-- use" (its sprite never steps) with stray bits (holds a reservation; on
+-- column 2 also 0x80, which nothing reads).
+local BIOS_WORD, RUNS_PAUSED_AND_DIMMED = 0xE3A02004, 0x14
 
 -- Its actions (`jt_80D2348`).
 local WAIT, DESTROYED, STANDING = 0, 2, 8
@@ -158,9 +169,9 @@ KIND = define.kind {
     end,
     -- `sub_8007450`: a stage's boulder (an actor list's entry type 3), on
     -- its panel's side, if one of the field's two stage slots is free;
-    -- running while the battle is paused or dimmed. (`sub_80D2430`; until
-    -- its init places it, its position is the spawner's registers: Y and
-    -- what nothing reads.)
+    -- running while the battle is paused or dimmed, with the flags its
+    -- spawner's bug leaves. (`sub_80D2430`; until its init places it, its
+    -- position is the spawner's registers: Y and what nothing reads.)
     place = function(spec: ActorListEntrySpec): Object?
         if not obstacle.stage_slot_free() then
             return nil
@@ -174,8 +185,8 @@ KIND = define.kind {
         o:set_damage_word(DAMAGE)
         o.element = 0
         o.alliance = if bit32.btest(field.flags(x, y), SIDE_1) then 1 else 0
-        o.run_while_paused = true
-        o.run_while_dimmed = true
+        local read = bit32.band(bit32.rshift(BIOS_WORD, 8 * (x % 4)), 0xFF)
+        o:set_header_flags(bit32.bor(read, RUNS_PAUSED_AND_DIMMED))
         obstacle.enter_stage(o)
         return o
     end,
