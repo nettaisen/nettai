@@ -19,40 +19,24 @@
 --
 -- A shot appears on its panel and hits it on the tick it is fired (it
 -- runs right after its spawner), then steps a panel every two ticks.
---
--- (`kind`, a row number instead of a variant, is for the weapons that
--- still pass the navi stats' NaviCust bytes: objects/projectile/variants
--- `by_number`.)
 
 local buster = require("./buster")
 local shot = require("../objects/projectile/projectile")
-local variants = require("../objects/projectile/variants")
 
 local projectile = {}
 
--- What the callers that still name a row by number pass.
-export type NumberedShot = { kind: number, damage: number, z: number, row: number? }
-
-local function resolve(s: ProjectileShot | NumberedShot): ProjectileShot
-    local numbered = s :: NumberedShot
-    if numbered.kind ~= nil then
-        return { variant = variants.by_number(numbered.kind), damage = numbered.damage, z = numbered.z, row = numbered.row }
-    end
-    return s :: ProjectileShot
-end
-
 -- `sub_80C4FFE`: a projectile from `owner` on panel (x, y), with the
 -- owner's side and flip; nil if the attack pool is full.
-function projectile.spawn(owner: Object, x: number, y: number, s: ProjectileShot | NumberedShot): Object?
-    return shot.spawn(owner, x, y, resolve(s))
+function projectile.spawn(owner: Object, x: number, y: number, s: ProjectileShot): Object?
+    return shot.spawn(owner, x, y, s)
 end
 
 -- `sub_800FAAC`: a projectile from the panel in front of `navi`; returns
 -- the buster's recovery counted from that panel (`sub_800FAF6`: ticks by
 -- the navi's Rapid and the open panels ahead, lib/buster.luau).
-function projectile.fire(navi: Object, s: ProjectileShot | NumberedShot): number
+function projectile.fire(navi: Object, s: ProjectileShot): number
     local x, y = navi.panel_x + navi.facing, navi.panel_y
-    shot.spawn(navi, x, y, resolve(s))
+    shot.spawn(navi, x, y, s)
     return buster.recovery(navi, x, y)
 end
 

@@ -4,7 +4,7 @@
 
 local dustman = require("../../../dustman/navi")
 local dustcross_beast = require("../dustcross-beast/form")
-local throw_absorbed = require("./throw-absorbed")
+local throw_absorbed = require("./throw_absorbed")
 local charge = require("./charge")
 local absorb = require("../../weapons/absorb/weapon")
 
@@ -19,7 +19,7 @@ return define.form {
     element = "null",
     weakness = { "cursor" },
     buster_bonus = 0,
-    weapons = { buster = throw_absorbed, charge_shot = charge, back_special = absorb },
+    weapons = { buster = throw_absorbed.weapon, charge_shot = charge.weapon, back_special = absorb.weapon },
     palette = 21,
     mugshot = asset.mugshot("dustcross"),
     identity = {
