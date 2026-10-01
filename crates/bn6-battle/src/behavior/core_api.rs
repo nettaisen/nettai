@@ -1029,6 +1029,19 @@ impl CoreApi for Battle {
         kinds::player::form::record_death_hook(self, o, actor_type_of(actor_type), ai_index);
     }
 
+    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool) {
+        let rec = self.content.navi_record(self.objects.get(owner).name_id);
+        kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, rec.version);
+        if keep_stepping && let Some(part) = self.objects.get(o).related[1] {
+            kinds::player::form::keep_overlay_stepping(self, part);
+        }
+    }
+
+    fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef) {
+        let rec = self.content.navi_record(self.objects.get(owner).name_id);
+        kinds::player::form::record_death_hook(self, o, rec.actor_type, rec.ai_index);
+    }
+
     fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &bn6_content_api::api::AfterimageSpec) -> Option<ObjectRef> {
         use kinds::afterimage::{PlainLook, PlainShadow, Tether};
         let look = PlainLook {
@@ -1094,6 +1107,7 @@ impl CoreApi for Battle {
             ActorField::AChargeRoutine => i(self.api_weapon(a.a_charge)),
             ActorField::AltAChargeRoutine => i(self.api_weapon(a.alt_a_charge)),
             ActorField::Mode9ARoutine => i(self.api_weapon(a.mode9_a)),
+            ActorField::BeastOutSpent => Value::Bool(a.beast_out_spent),
         })
     }
 
@@ -1135,6 +1149,7 @@ impl CoreApi for Battle {
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
             (ActorField::BusterRoutine, FieldValue::U8(_)) => a.buster = weapon,
             (ActorField::ChargeShotRoutine, FieldValue::U8(_)) => a.charge_shot = weapon,
+            (ActorField::BeastOutSpent, FieldValue::Bool(x)) => a.beast_out_spent = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -1345,6 +1360,22 @@ impl CoreApi for Battle {
         self.objects.get_mut(o).flags &= !flags::NO_SPRITE_UPDATE;
     }
 
+    fn sprite_load_look_of(&mut self, o: ObjectRef, owner: ObjectRef) {
+        let name_id = self.objects.get(owner).name_id;
+        let id = if self.content.navi_record(name_id).actor_type == crate::actor::ActorType::Player {
+            kinds::player::stats_sprite(self, self.objects.get(owner).alliance)
+        } else {
+            self.content
+                .objects
+                .name_looks
+                .iter()
+                .find(|l| l.name_id == name_id)
+                .and_then(|l| l.sprite)
+                .unwrap_or_else(|| panic!("NameID {name_id:#x} has no look (sub_800F26C)"))
+        };
+        self.sprite_load(o, id);
+    }
+
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8) {
         self.objects.sprite_mut(o).set_animation(anim, &self.content);
     }
@@ -1542,6 +1573,24 @@ impl CoreApi for Battle {
 
     fn show_user(&mut self, user: ObjectRef) {
         crate::dimming::show_user(self, user);
+    }
+
+    fn hide_user_sparing(&mut self, user: ObjectRef) {
+        crate::dimming::hide_user_sparing(self, user);
+    }
+
+    fn clear_navicust_bugs(&mut self, side: u8) {
+        let b = &mut self.stats[side as usize & 1].bugs;
+        b.processing = 0;
+        b.panel_trail_level = 0;
+        b.buster_blanks = 0;
+        b.hit_status = 0;
+        b.custom_damage = 0;
+        b.emotion = 0;
+        b.custom_drain = 0;
+        b.hp_drain = 0;
+        b.battle_start = 0;
+        b.hand_shrink_turn = 0;
     }
 
     fn navi_chip_left(&mut self, controller: ObjectRef) {

@@ -275,6 +275,9 @@ named_fields! {
         AChargeRoutine = "a_charge_routine", U8, ro;
         AltAChargeRoutine = "alt_a_charge_routine", U8, ro;
         Mode9ARoutine = "mode9_a_routine", U8, ro;
+        /// AIData+0x32: the Beast Out counter is spent (BugFix sets it by
+        /// the navi's counter, `sub_8014446` / `sub_801443C`).
+        BeastOutSpent = "beast_out_spent", Bool, rw;
     }
 }
 
@@ -1193,6 +1196,13 @@ pub trait CoreApi {
     fn add_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8, arg: u8);
     /// `sub_8011044`: take them off (at their next update).
     fn remove_navi_parts(&mut self, o: ObjectRef, actor_type: u8, ai_index: u8);
+    /// `sub_8010DF6` with `owner`'s NameID record (`sub_800F29C`: its
+    /// actor type, AI index and first byte): put on the parts that record
+    /// adds, kept in `o`'s related2; with `keep_stepping`, a part that came
+    /// steps even while paused and dimmed (its Param3 1, flags 0x14).
+    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool);
+    /// `sub_8011044` with `owner`'s NameID record: take them off.
+    fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef);
 
     // ---- Navis and the attack in progress -------------------------------------
 
@@ -1286,6 +1296,10 @@ pub trait CoreApi {
     /// `sprite_load`: load a sprite (its animation and look reset) and let
     /// it animate (`no_sprite_update` off).
     fn sprite_load(&mut self, o: ObjectRef, id: SpriteId);
+    /// Load the sprite `owner`'s NameID record gives it: a player's own by
+    /// its navi stats (`sub_800FC9E`), another object's its NameID look
+    /// (`sub_800F26C`).
+    fn sprite_load_look_of(&mut self, o: ObjectRef, owner: ObjectRef);
     /// Start animation `anim` from its first frame.
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8);
     /// Advance the animation one tick (no gating).
@@ -1341,6 +1355,15 @@ pub trait CoreApi {
     fn hide_user(&mut self, user: ObjectRef);
     /// `sub_80E13DC`: and comes back.
     fn show_user(&mut self, user: ObjectRef);
+    /// `sub_80E1352(user, 0xF)`: `user` vanishes as with `hide_user`, but
+    /// its barrier visual, its confusion and blindness visuals and the HUD
+    /// stay (BugFix's glow).
+    fn hide_user_sparing(&mut self, user: ObjectRef);
+    /// `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed: the stats
+    /// processing, the panel trail's level, the buster's blanks, the
+    /// on-hit status, the custom damage, the emotion, the custom and HP
+    /// drains, the battle-start bug and the hand-shrink turn are zeroed.
+    fn clear_navicust_bugs(&mut self, side: u8);
     /// A navi chip's navi is done: its controller moves on.
     fn navi_chip_left(&mut self, controller: ObjectRef);
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the

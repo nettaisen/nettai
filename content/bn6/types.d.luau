@@ -167,3 +167,21 @@ export type FlashBombVariant = {
     strong: boolean?,
     own_side: boolean?,
 }
+
+-- A panel change (objects/panel-changer, a row of the original's
+-- `byte_80E272C`): which panels (all, the changer's row, the panel in
+-- front of it, its own) meeting its side's condition become `panel` (on
+-- side 1 `side1_panel` if set: the roads point the other way) after
+-- `ticks`, showing as it meanwhile (every tick, or with `flicker` every
+-- other four), with a tick sound every fourth tick and a sound as they
+-- change (nil: none).
+export type PanelChange = {
+    panel: PanelType,
+    side1_panel: PanelType?,
+    panels: "all" | "row" | "front" | "own",
+    flicker: boolean,
+    ticks: number,
+    sides: { [number]: PanelCondition },
+    tick_sound: Sound?,
+    change_sound: Sound?,
+}

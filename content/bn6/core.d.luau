@@ -218,6 +218,10 @@ declare class Sprite
     -- let it animate (the object's `no_sprite_update` off). Deprecated: a
     -- sprite by number ("CC-II"); use an asset (asset.sprite).
     function load(self, sprite: SpriteAsset | SpriteId): ()
+    -- The sprite `owner`'s NameID record gives it: a player's own by its
+    -- navi stats (`sub_800FC9E`), another object's its NameID look
+    -- (`sub_800F26C`); loaded as `load` does.
+    function load_look_of(self, owner: Object): ()
     -- Start an animation from its first frame.
     function set_animation(self, anim: number): ()
     -- Advance the animation one tick (no gating).
@@ -395,6 +399,8 @@ declare class Object
     a_charge_routine: number
     alt_a_charge_routine: number
     mode9_a_routine: number
+    -- Writable: the Beast Out counter is spent (AIData+0x32).
+    beast_out_spent: boolean
 
     -- Spawn parameter n (1 to 4: the game's Param1..Param4).
     function param(self, n: number): number
@@ -419,6 +425,12 @@ declare class Object
     function add_navi_parts(self, actor_type: ActorType, ai_index: number, arg: number): ()
     -- `sub_8011044`: take them off (at their next update).
     function remove_navi_parts(self, actor_type: ActorType, ai_index: number): ()
+    -- `sub_8010DF6` with `owner`'s NameID record: put on the parts that
+    -- record adds (a navi's body overlay), kept in related2; with
+    -- `keep_stepping`, a part that came steps even while paused and dimmed.
+    function add_parts_of(self, owner: Object, keep_stepping: boolean?): ()
+    -- `sub_8011044` with `owner`'s NameID record: take them off.
+    function remove_parts_of(self, owner: Object): ()
 
     -- `object_setAnimation`: request an animation, restarting it even if
     -- it is current.
@@ -774,6 +786,11 @@ declare battle: {
     linked: (side: number) -> LinkedChip,
     set_linked: (side: number, record: LinkedChip) -> (),
     clear_linked: (side: number) -> (),
+    -- `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed (the stats
+    -- processing, the panel trail's level, the buster's blanks, the on-hit
+    -- status, the custom damage, the emotion, the drains, the battle-start
+    -- bug and the hand-shrink turn zeroed).
+    clear_navicust_bugs: (side: number) -> (),
     fill_custom_gauge: () -> (),
     -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
     set_gauge_rate: (rate: number) -> (),
@@ -922,6 +939,9 @@ declare dimming: {
     -- back.
     hide_user: (user: Object) -> (),
     show_user: (user: Object) -> (),
+    -- `sub_80E1352(user, 0xF)`: the user vanishes, but its barrier visual,
+    -- its confusion and blindness visuals and the HUD stay.
+    hide_user_sparing: (user: Object) -> (),
 }
 
 declare navi_chip: {
