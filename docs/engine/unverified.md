@@ -31,6 +31,7 @@ standard chip action…), whichever section below the family belongs to:
 | `barrier` (the opponent behind Barr100) | the hits a barrier takes, the wind chips blowing it away (AirShot, WindRack, AirSpin) | verified, 39 scenarios; AirRaid1's differs |
 | `invisible` (the opponent under Invisibl) | no body to hit: the homing and searching chips' no-target paths (RskyHny's bee, MachGun's and the dragons' column search, ElcPuls) | verified, 39 scenarios; AirRaid1's differs |
 | `dimmed` (the opponent's AreaGrab cuts in a few ticks after the use) | the objects' waits while dimmed, the user's action held through a dimming, the press during a dimming that is no cut-in (`sub_8017AB4`'s clear) | verified, 34 scenarios |
+| `paused` (the opponent presses START a few ticks after the use, and again) | the chip's action and objects held through a pause (only objects that run while paused take new branches: Sensor's laser) | verified, 35 scenarios |
 
 ## Dimming chips, shot chips and navi chips
 
@@ -40,12 +41,15 @@ standard chip action…), whichever section below the family belongs to:
 |---|---|---|---|---|
 | AntiNavi (the dimming service) | the turn, the bounce between two traps | scratch recordings were lost | yes | chips/0x0ba-antinavi/heatman, bounce: verified |
 | AntiNavi | a chip that isn't a navi chip leaves the trap | no scenario | yes | chips/0x0ba-antinavi/not-a-navi: verified |
-| AntiNavi | the target has its own controller registered; AntiNavi's user deleted or without HP before the turn | needs a second dimming in the same turn, or a deletion inside one | hard | open |
+| AntiNavi | the target has its own controller registered (its AreaGrab, cut in on by the navi chip) | needs the navi chip as a cut-in | yes | chips/0x0ba-antinavi/own-controller: verified |
+| AntiNavi | AntiNavi's user deleted (owner null) | the round is over by then | unreachable | |
+| Navi chips' telop | the user without HP before its telop ends (deleted by the other side's cut-in) | | yes | chips/0x0e3-heatman/user-deleted: verified |
 | Barriers (subtype 4) | ending an old visual (`sub_80E0DC0`) | no barrier raised over another | yes | chips/0x0b3-barr100/over-barrier: verified |
 | Barriers | the visual's regrowth (action 4 back to 0) | BblWrap's bubble never popped | yes | chips/0x0b5-bblwrap/popped: verified |
 | Barriers | action 8, a popped barrier blown away | no wind meets a barrier | yes | chips/0x0b3-barr100/blown-away, chips/0x0b6-lifeaur/weak-and-strong, the `barrier` template's wind chips: verified |
 | Barriers | a barrier broken with damage to spare | no scenario | yes | chips/0x0b3-barr100/broken: verified |
-| Barriers | the hidden-parts rule for type 9 on the remote side, the blind viewer, the off-field owner | the viewer's side; no blinded viewer | partly (a blinded viewer) | open |
+| Barriers | the blind viewer; the visual hidden and shown with a user who vanishes for a chip | no blinded viewer; no chip behind a barrier | yes | chips/0x0b2-barrier/blind-viewer, chips/0x0e3-heatman/user-barrier, chips/0x08d-magnum/user-barrier, chips/0x06e-burnsqr1/user-barrier: verified |
+| Barriers | the hidden-parts rule for type 9 on the remote side, the off-field owner | | hard | open |
 | Panel chips (subtype 5) | kinds 1-3, 7-16, kind 9; a changer with no flag pointer | no chip, no caller | unreachable | |
 | Panel chips | side 1's road swap | ComingRd and GoingRd only used by side 0 | yes | chips/0x0aa-comingrd/side1, chips/0x0ab-goingrd/side1: verified |
 | Panel chips | a holy panel cracked from under its user in the same dimming | no cut-in on a panel chip | yes | chips/0x0a8-holypanl/cut-in-geddon: verified |
@@ -53,13 +57,17 @@ standard chip action…), whichever section below the family belongs to:
 | BugFix | a non-player navi's sprite, stat 0x21 = 0, variants 1 and 2 | no such user; no caller | unreachable | |
 | Instruments (subtype 9) | the destroyed action (broken, and pushed) | no instrument broken or removed | yes | chips/0x092-fanfare/broken, pushed; chips/0x093-discord/broken, chips/0x094-timpani/broken, chips/0x095-silence/broken: verified |
 | Instruments | the tune played to its end | scenarios end first | yes | chips/0x092-fanfare/lifetime: verified |
-| Instruments | Fanfare's Beast Over test, the battle-over branches | no Beast Over, no KO with an instrument out | yes | open |
+| Instruments | Fanfare's Beast Over test (both versions' Beast Over), and Beast Out for contrast | no Beast Over | yes | chips/0x092-fanfare/beast-over, beast-over-gregar, beast-shot-at: verified |
+| Instruments | the battle-over branches (playing, resting) | no KO with an instrument out | yes | chips/0x092-fanfare/round-end, chips/0x095-silence/round-end-rest: verified |
+| Instruments | removed (DustMan), blinking out (ColArmy), absorbed (DustCross) | no remover | yes | chips/0x092-fanfare, 0x093-discord, 0x094-timpani, 0x095-silence/{dustman, colarmy, absorbed}, chips/0x092-fanfare/absorbed-by-enemy, colarmy-by-enemy: verified |
 | Instruments | a failed collision | pool full | unreachable | |
-| AirRaid (subtype 13) | the plane shot down, the battle-over branch, the bombs against a barrier or no body | the plane is never hit | yes | chips/0x068-airraid1/broken, ko, barrier, invisible: **differs** (subtype 13 isn't implemented: being ported) |
+| AirRaid (subtype 13) | the plane shot down, removed, absorbed, blinking out, the battle-over branch, the bombs against a barrier or no body | the plane is never hit | yes | chips/0x068-airraid1/broken, ko, barrier, invisible, dustman, colarmy, absorbed: **differs** (subtype 13 isn't implemented: being ported) |
 | Sensor (subtype 28) | the pushed turret, the broken turret | the turret is never hit or pushed | yes | chips/0x071-sensor1/broken, pushed: verified |
 | Sensor | the laser's re-arming | one firing per scenario | yes | chips/0x071-sensor1/twice: verified |
 | Sensor | the battle-over branches | no KO | yes | chips/0x071-sensor1/ko: verified (the comparison now keeps a spark's garbage Z fraction after its laser is freed) |
-| Sensor | the scanner's blocked-by-object and edge branches, removal and absorption, failed collisions | | partly | open |
+| Sensor | the scanner blocked by an object, where it starts and on its step; the scanner off the top and bottom rows and the far column | the opponent always stands in its line | yes | chips/0x071-sensor1/blocked-rock, blocked-rock-far, row1, row3, long-miss: verified |
+| Sensor | the turret removed, blinking out, absorbed; the scanner and the laser through a pause | | yes | chips/0x071-sensor1/dustman, colarmy, absorbed, paused: verified |
+| Sensor | the scanner's Param2 0, failed collisions | no spawner; pool full | unreachable | |
 | SumnBlk (subtype 36) | the whole navi (§9.2, §9.3) | no hole in front of the user | yes | chips/0x087-sumnblk1/hole-ahead, after-geddon, chips/0x089-sumnblk3/hole-ahead: **differs** (subtype 36 isn't implemented: being ported) |
 | ColorPt, DblPoint (subtype 27) | the bonus itself (080E66E0, 080E66EC, 080E66F6) | the next chip is none or has no damage | yes | chips/0x0c2-colorpt/bonus, chips/0x0c4-dblpoint/bonus, chips/0x062-lilbolr1/colorpt: **differs** (subtype 27 isn't implemented: being ported) |
 | ColorPt | the special-source branch, a missing navi, `sub_800D53C` running off the field | no such user | unreachable | |
@@ -71,26 +79,31 @@ standard chip action…), whichever section below the family belongs to:
 | Wind, Fan (subtype 8) | a second fan replacing the first (the wind registry's destroy) | one fan per scenario | yes | chips/0x081-wind/then-fan, both-sides: verified |
 | Wind, Fan | the lifetime running out (1440 ticks) | scenarios end first | yes | chips/0x081-wind/lifetime: verified |
 | Wind, Fan | Fan's fan broken; AirShot at it | only Wind's `counter` breaks one | yes | chips/0x082-fan/broken, pushed: verified (the shot breaks it: no push branch) |
-| Wind, Fan | no gust (an obstacle on the target panel), removal, blink-out, absorption, pushes (action 5), a flipped fan | no obstacle there; no remover | partly | open |
+| Wind, Fan | no gust (an obstacle on the row's first enemy panel; Fan's start a panel nearer) | no obstacle there | yes | chips/0x081-wind/no-gust, chips/0x082-fan/gust-past-bomb: verified |
+| Wind, Fan | removal, blink-out, absorption | no remover | yes | chips/0x081-wind, chips/0x082-fan/{dustman, colarmy, absorbed}: verified |
+| Wind, Fan | pushes (action 5), a flipped fan | AirShot breaks the fan; no player is flipped | hard / unreachable | open |
 | BurnSqr (subtype 23) | A to fire | no scenario presses A | yes | chips/0x06e-burnsqr1/a-fires: verified |
 | BurnSqr | a non-solid panel under the square | the timeout always falls on solid panels | yes | chips/0x06e-burnsqr1/a-fires-holes: verified |
-| BurnSqr | a non-player user, the blind viewer, the failed spawn | | unreachable (the blind viewer: open) | |
+| BurnSqr | the blind viewer; the user's barrier, confusion and blindness visuals, charge glow and aura while it is away | | yes | chips/0x06e-burnsqr1/blind-viewer, user-barrier, user-confused, user-blind, user-charging, user-full-synchro (and Magnum's and HeatMan's): verified |
+| BurnSqr | a non-player user, the failed spawn | | unreachable | |
 | GrabBnsh, GrabRvng (subtype 15) | the panel return, the strikes, the hand | nothing is stolen first | yes | chips/0x0a4-grabbnsh/after-areagrab, after-panelgrabs, chips/0x0a5-grabrvng/after-areagrab: verified |
 | AreaGrab (subtype 0) | the stolen column going back under its thief; both sides stealing in one dimming | | yes | chips/0x0a3-areagrab/returns, both: verified |
 | Subtype 2 | everything | no chip | unreachable | |
 | Guardian (subtype 14) | breaking it: the crumble, the strike back, the strike's dimming and hit | the statue is never hit | yes | chips/0x097-guardian/punish, own-hit: verified |
 | Guardian | AirShot at it, a second statue | | yes | chips/0x097-guardian/pushed, replaced: verified |
 | Guardian | the stage statue (Param1 1), its strikes, absorption | | yes | the stage scenarios (stages/statue-…, stages/statues-stand): see field-objects.md |
-| Guardian | the lifetime (6000 ticks), removal, blink-out | too long; no remover | partly | open |
+| Guardian | the lifetime (6000 ticks), removal, blink-out, absorption | too long; no remover | yes | chips/0x097-guardian/lifetime, dustman, colarmy, absorbed: verified |
 | Meteors (subtype 16) | the lists after area changes, a marker at battle end | no AreaGrab first, no KO | yes | chips/0x08b-meteors/after-areagrab, grabbed, ko: verified |
 | Meteors | an empty list, a marker off the field, rows other than Param1 1 | the enemy always owns panels; no chip | unreachable | |
 | Anubis, PoisPhar (subtype 17) | breaking by damage, AirShot at it, the lifetime, a second statue | the statue is never hit; scenarios end first | yes | chips/0x098-anubis/broken, pushed, lifetime, replaced: verified |
-| Anubis | a non-solid landing panel, time up, removal, blink-out, absorption, an enemy with no panel for a bubble | | partly | open |
+| Anubis | a non-solid landing panel, removal, blink-out, absorption | | yes | chips/0x098-anubis/hole-ahead, dustman, colarmy, absorbed: verified |
+| Anubis | time up, an enemy with no panel for a bubble | needs the judge with a statue out; the enemy always owns panels | hard / unreachable | open |
 | Anubis | the flipped user's registry store | no player is flipped | unreachable | |
 | CircGun (subtype 19) | A to fire | no scenario presses A | yes | chips/0x08e-circgun/a-fires, a-fires-late: verified |
 | CircGun | a start column of the user's own panels, shots on non-solid panels | the timeout's place | yes | chips/0x08e-circgun/after-areagrab, holes: verified |
+| CircGun | a start column holding none of the enemy's home panels (the opponent's two AreaGrabs) | | yes | chips/0x08e-circgun/grabbed: verified |
 | CircGun | Param3 1, a non-player first actor | no chip | unreachable | |
-| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: **differs** (subtype 18 isn't implemented: being ported) |
+| Otenko (subtype 18) | the bonus, breaking, pushes, removal, absorption, blink-out | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed, dustman, colarmy, absorbed: **differs** (subtype 18 isn't implemented: being ported) |
 | BlzrdBal (subtype 21) | a non-solid thrower panel, the roller's battle-over end, three swallows | | yes | chips/0x0c7-blzrdbal/no-footing, ko, three-rocks: verified |
 | BlzrdBal | the excluded NameIDs, more than 4 hit objects | | hard | open |
 | Magnum (subtype 24) | A to fire, the cursor's later rows | no scenario presses A | yes | chips/0x08d-magnum/a-fires, a-fires-late: verified |
@@ -107,7 +120,8 @@ standard chip action…), whichever section below the family belongs to:
 | DblHero | the failed spawns, no enemy panel, no panel of another side ahead | | unreachable | |
 | MetrKnuk (subtype 32) | the fists with the battle over | no KO | yes | chips/0x133-metrknuk/ko: verified |
 | MetrKnuk | no enemy body (the fallback lists), no candidate, Param2 0 | the enemy always stands; no caller | unreachable | |
-| DblBeast (subtype 37) | the user's-panel fallback, no target at all, a failed spawn | a free panel always turns up | hard | open |
+| DblBeast (subtype 37) | the user's-panel fallback; the patterns' first panels taken | a free panel always turns up | yes | chips/0x137-dblbeast/user-panel, rock-front: verified |
+| DblBeast | no target at all, a failed spawn | an invisible navi still has its body on its panel (chips/0x137-dblbeast/invisible: verified, the usual attacks) | unreachable | |
 
 ### Traps, bombs and navi chips (chips.md §3.6-§3.9)
 
@@ -115,10 +129,11 @@ standard chip action…), whichever section below the family belongs to:
 |---|---|---|---|---|
 | Counter cut-ins (§3.6.5) | a cut-in by a chip of another subtype or action; a chain of four | the lab's counter cut-ins answer with the same chip | yes | chips/0x0a3-areagrab/cut-in-invisibl, cut-in-chain, chips/0x0dd-roll/cut-in-heatman, chips/0x0e3-heatman/cut-in-barrier: verified |
 | Counter cut-ins | A during a dimming with a chip that doesn't dim next | | yes | chips/0x0b1-invisibl/cut-in-not-dimming, the `dimmed` template: verified |
-| Counter cut-ins | cut-ins with Full Synchro, anger or a dark chip | | yes | open |
+| Counter cut-ins | cut-ins with Full Synchro, anger or a dark chip (the doubled damage, the substitute) | | yes | chips/0x0e3-heatman/cut-in-full-synchro, cut-in-anger, chips/0x08b-meteors/cut-in-full-synchro, chips/0x121-darkinvs/cut-in; chips/0x0e3-heatman/full-synchro, anger (no cut-in): verified |
 | Counter cut-ins | a failed controller spawn | pool full | unreachable | |
 | AntiRecv | the heal turned to damage, Roll's dimming taken over | scratch recordings were lost | yes | chips/0x0bd-antirecv/recov10, roll: verified |
-| AntiRecv | Roll's damage with the double-damage flag, a full effect pool | | hard / unreachable | open |
+| AntiRecv | Roll's damage with the double-damage flag; the trap taking over a cut-in | | yes | chips/0x0bd-antirecv/roll-full-synchro, roll-cut-in: verified |
+| AntiRecv | a full effect pool | | unreachable | |
 | AntiDmg | the trap sprung: the stars thrown back | the lab never hits a trap's user | yes | chips/0x0bb-antidmg/sprung, sprung-side0, small-hit, turn-end: **differs** (the role `actions.anti_damage_counter` isn't filled: being ported); replaced: verified |
 | AntiSwrd | the trap sprung by a sword | | yes | chips/0x0bc-antiswrd/sprung: **differs** (`actions.anti_sword_counter`: being ported); not-a-sword: verified |
 | ElemTrap (§3.6.10) | the spring, the sparkles, the counterattack, the panel bursts | the lab never hits the trap with an element | yes | chips/0x0c5-elemtrap/sprung-fire, sprung-elec, null-hit: verified |
@@ -128,6 +143,7 @@ standard chip action…), whichever section below the family belongs to:
 | Invisibl | shots and swords through an invisible navi | | yes | chips/0x0b1-invisibl/shot-at, the `invisible` template: verified |
 | TimeBom (subtype 10) | the blast and its bursts | scenarios end during the countdown | yes | chips/0x090-timebom1/blast: verified |
 | TimeBom | the bomb broken first (the puff), pushed, the battle's end | | yes | chips/0x090-timebom1/broken, pushed, round-end: verified |
+| TimeBom, Mine, BlkBomb | removed, absorbed, blinking out | no remover | yes | chips/0x090-timebom1, chips/0x091-mine, chips/0x03c-blkbomb/{dustman, colarmy, absorbed}: verified |
 | TimeBom | variants 2 to 7 | no slot pointer from the controller | unreachable | |
 | Mine (subtype 11) | arming, blowing up when touched | scenarios end during the hops | yes | chips/0x091-mine/stepped-on: verified |
 | Mine | its panel no longer solid, the battle's end | | yes | chips/0x091-mine/panel-broken, round-end: verified |
@@ -142,14 +158,20 @@ standard chip action…), whichever section below the family belongs to:
 | Bombs | bomb kind 1, seed kind 3, FlashBomb levels 3 to 8 | no chip | unreachable | |
 | Navi chips (§3.6.7-§3.6.36) | no footing for the navi (action 0 to its leave) | the user always stands on solid ground | yes (AirShoes over a hole) | chips/…/no-footing for Roll, ProtoMan, HeatMan, ElecMan, SlashMan, EraseMan, ChrgeMan, SpoutMan, TmhkMan, TenguMan, GrndMan, DustMan, BlastMan, DiveMan, CrcusMan, JudgeMan, ElmntMan, Colonel, HackJack, Bass, BigHook, DeltaRay, BassAnly, CrossDiv: verified |
 | Navi chips | the battle ending mid-attack | no KO inside a navi chip | yes | chips/…/ko for the same navis (but ElecMan, TmhkMan and HackJack, which don't reach a standing opponent), pa/0x15c-twinldrs/ko, pa/0x15d-crosover/ko, pa/0x15a-mstrcros/ko: verified |
+| Navi chips | an opponent the navi can't find or reach, and one behind a barrier | the opponent always stands in the open | yes | chips/…/invisible, rock-front and barrier for each of the nineteen navi chips: verified |
 | Navi chips | a pool with no free slot, a missing collision slot | pool full | unreachable | |
 | Navi chips | the navi AI's variants (Param1 0 and the like): SpoutMan's, BlastMan's, ElecMan's, ChargeMan's, SlashMan's, DiveMan's, JudgeMan's whip | only the bosses' AI spawns them | unreachable | |
-| GroundMan | no rock candidate, the rock's non-solid landing | | partly | open |
-| DustMan | the junk's looks and NameIDs, the flag check after moving | | partly | open |
-| JudgeMan | a book arriving, leaving solid ground, the heading's reversal, no enemy navi | | partly | open |
+| GroundMan | the rock's non-solid landing, the rocks and the drill at the battle's end | | yes | chips/0x0fb-grndman/rockfall-holes, rockfall-after-geddon, rockfall-ko: verified |
+| GroundMan | no rock candidate | the enemy's area always has a panel | unreachable | |
+| DustMan | the junk's looks by NameID (the instruments, the turret, the fans, the statues, the bombs, the boiler, the doll: a look without a shadow, the none look), the excluded NameIDs (the mine) | he only ever took RockCubes | yes | chips/…/dustman for Fanfare, Discord, Timpani, Silence, Sensor1, Wind, Fan, Anubis, Guardian, TimeBom1, Mine, BlkBomb, LilBolr1, VDoll: verified (AirRaid1's and Otenko's: differs, their subtypes being ported) |
+| DustMan | NameIDs outside 0xCD..0xFF, the flag check after moving | no such object | unreachable | |
+| JudgeMan | a book arriving at its target, leaving solid ground, ending with the battle | the books always hit | yes | chips/0x10a-judgeman/books-invisible, books-holes, books-ko: verified |
+| JudgeMan | the heading's reversal, the target past the far edge (no enemy navi at all) | an invisible navi still has its body on its panel | unreachable | |
 | TwinLdrs, CrosOver, MstrCros | no footing for their navis | | yes | pa/0x15c-twinldrs/no-footing, pa/0x15d-crosover/no-footing, pa/0x15a-mstrcros/no-footing: verified |
-| TwinLdrs | ProtoMan leaving without a slash or with more than one target; Colonel's target off the field | | partly | open |
-| CrosOver | a link navi user, no target, no Django, a refused front panel, the far-column fallback | | partly (a link navi can't hold the PA) | open |
+| TwinLdrs | ProtoMan leaving without a slash (the target's front panel taken) | | yes | pa/0x15c-twinldrs/rock-front, invisible: verified |
+| TwinLdrs | more than one target; Colonel's target off the field | one enemy navi | unreachable | |
+| CrosOver, MstrCros | a refused front panel, an opponent they can't see | | yes | pa/0x15d-crosover/rock-front, invisible, pa/0x15a-mstrcros/rock-front, invisible: verified |
+| CrosOver | a link navi user, no Django | a link navi can't hold the PA | unreachable | |
 | MstrCros | the Gregar tables (the beam, move 1) | the Falzar side always uses it | yes (the gregar base) | pa/0x15a-mstrcros/gregar: verified |
 | Bass, BigHook, Darkness | failed spawns, a missing flag pointer, the strike's MachGun branches | | unreachable | |
 
@@ -169,10 +191,10 @@ standard chip action…), whichever section below the family belongs to:
 | LilBoiler | a bonus (the port took the registry's side from it and stopped with an error for Atk+10) | no scenario gives it Atk+ | yes | chips/0x062-lilbolr1/atk10, atk10-twice, atk10-cross, atk10-cross-gregar, then-cross: verified (the boiler registers by its user's side whatever the bonus: shot-chips.md §18) |
 | LilBoiler | the registry side of a boiler thrown by side 1 | side 0 always throws it | yes | chips/0x062-lilbolr1/side1-then-fan, side1-own-fan: verified |
 | LilBoiler | the hole, AirShot at it, a RockCube after it | | yes | chips/0x062-lilbolr1/holes, pushed, replaced: verified |
-| LilBoiler | a removal request, absorption, blinking out | | partly | open |
+| LilBoiler | removed, absorbed, blinking out | | yes | chips/0x062-lilbolr1/dustman, absorbed, colarmy: verified |
 | VDoll | the curse | | yes | chips/0x096-vdoll/curse: verified |
 | VDoll | the lifetime's end, AirShot at it, its own side's hit | | yes | chips/0x096-vdoll/lifetime, pushed, own-hit: verified |
-| VDoll | absorption, blinking out | | partly | open |
+| VDoll | removed, absorbed, blinking out | | yes | chips/0x096-vdoll/dustman, absorbed, colarmy: verified |
 | The variable swords' picks (action 0x13 variants 9-11) | FtrSword, CrosSwrd, DblDream | reached at random only | yes (save edit, and the commands) | chips/0x172-ftrsword, chips/0x176-crosswrd, chips/0x178-dbldream/{hit, adjacent, miss}: verified |
 | GunDelEX (0x012) | the fourth GunDelSol | class Spec | yes (save edit) | chips/0x012-gundelex/{hit, adjacent, miss}: verified |
 
