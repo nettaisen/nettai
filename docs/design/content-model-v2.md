@@ -1060,6 +1060,22 @@ Atk+10, `plus.navi(20)` for Navi+20; their custom-screen behaviour is the chip's
 that names an instant effect no chip has (TenguCross's wind, subtype 0x14) calls the effect from its `setup`
 like any other function; there is no instant-effect table any more.
 
+**As built** (step 7): chips/busterup (BusterUp's effect is the chip's own: `raise(1)`, the buster's level by
+one; its sparkle a `define.effect` on the newly named `buster-up` sprite), lib/instant/plus.luau
+(`plus.attack`, `plus.navi`, `plus.sparkle`, and `plus.by_record`), chips/atk-10 and chips/navi-20. What it
+settled:
+
+- **The parameter that told the plus chips apart is the hook**: the records' first parameter (0 the side's
+  attack bonus, 1 its navi bonus) is `plus.attack` or `plus.navi`; the extra in the third and fourth (the
+  special chips') is 0 for both.
+- **Atk+30 stays a record** (SunMoon's recipe names it by number), as do MegaBstr (the pack's chip 0, which a
+  zeroed chip field reads), WhiCapsl, Uninstll, DarkPlus and the special chips of the effect: their records'
+  subtype 3 runs chips/0c0-atk-10/chip.luau, which calls `plus.by_record` with the record's parameters.
+- **A menu flag got its name**: extra flag 0x40, set on exactly the five modifier chips, is
+  `ExtraChipFlags::MODIFIER` (`"modifier"`), so a definition can give it; the battle reads `modifier`.
+- **Verified** on the test content (the instant chips' duel and its rollback, the plus chips' bonuses from a
+  special source, BusterUp's cap), the type check, and the traces and the chip lab on a real pack.
+
 ### 5.7 Weapons and forms
 
 ```luau

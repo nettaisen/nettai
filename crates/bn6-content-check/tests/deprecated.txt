@@ -27,10 +27,8 @@ chips/07b-ironshl1/chip.luau 4
 chips/07e-airspin1/chip.luau 6
 chips/083-rflectr1/chip.luau 9
 chips/09a-recov10/chip.luau 1
-chips/0af-busterup/chip.luau 2
 chips/0b7-magcoil/chip.luau 5
 chips/0be-copydmg/chip.luau 5
-chips/0c0-atk-10/chip.luau 5
 chips/11d-synctrgr/chip.luau 1
 chips/152-h-burst/chip.luau 5
 chips/191-delecswd/elec_sword.luau 2
