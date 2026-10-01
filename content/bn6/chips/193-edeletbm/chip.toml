@@ -1,0 +1,3 @@
+# EraseMan's own chip runs the action navis/eraseman/chip.luau exports.
+
+script = "../../navis/eraseman/chip.luau"

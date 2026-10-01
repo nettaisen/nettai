@@ -16,6 +16,7 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | AreaGrab and PanelGrab | A dimming chip: the `dimming` hook spawning a controller kind whose update is `dimming_chips.phases { effect }`; a chip parameter that becomes the hook | lib/dimming.luau, lib/grab/, chips/areagrab, chips/panlgrab |
 | EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; chips kept on records behind a registration shim | chips/eraseman/, chips/0ec-eraseman |
 | BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library with the records' path beside it | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau, chips/0c0-atk-10 |
+| The link navis' own chips | A record that runs the action its module exports (`{ action = define.action { ... } }`), for an action number registration can't claim; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds), chips/190-heatpres ... chips/199-dustbrk |
 | MegaMan's buster, charged shot and blank shot; HeatCross's charged shot | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a role the ruleset starts (`forced_charged_shot`, rules/roles.luau) | navis/00-megaman/weapons/{buster,charged-shot,blank-shot}, navis/00-megaman/forms/heatcross/charge.luau, lib/buster.luau |
 
 The other weapon routines (navis/00-megaman/weapons/NN-name) are still v1, registered by number.
@@ -128,6 +129,7 @@ step 13 removes them:
 | A navi chip (action 0x1B) | `script` in each chip of the subtype | `navi_chip(user, controller, spec)` |
 | An instant chip (action 0x1C) | `script` in each chip of the subtype, or `instant_chip = N` in a weapon.toml | `instant_chip(user, spec)` |
 | A weapon routine | `navis/00-megaman/weapons/NN-name/weapon.toml`: `id, name, script` and optionally `action` | `setup(navi) -> action`; with `action`, also `state` and `update(me, s)` |
+| A record's own action (a link navi's chip, action 0x0A) | `script` in the chip | `action`, an action definition (`define.action { id = "<chip>/action", ... }`); no `update` |
 
 A shim is such a module that runs the definitions' own code for the records (chips/036-minibomb runs each bomb
 chip's action by subtype). Scripts are paths relative to the registering file; a slot, action or hook claimed twice
@@ -216,7 +218,7 @@ Left:
 
 Done: the dimming chips have no Rust fallback (kinds/player/actions/dimming_chip.rs calls the chip's controller
 only), and the controllers declare `scratch_position` (trace.rs keeps only the navi chip controller). Scripts:
-subtypes 1 (objects/invisible), 6 (objects/rock-cube), 20 (objects/trap-chip, with ElemTrap's trap
+subtypes 1 (objects/invisible), 6 (chips/rockcube), 20 (objects/trap-chip, with ElemTrap's trap
 objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts), 10 (objects/time-bom,
 objects/countdown-bomb), 11 (objects/mine, objects/land-mine), 25 (objects/gauge-speed), 38 (objects/navi-boost).
 Shared: lib/panels (the game's panel lists and shuffle), objects/rising-bubble (effect #0x14).
@@ -274,21 +276,30 @@ kind). Left:
 
 ### Group E: instant chips (ported; what is left)
 
-Action 0x1C runs the attack's instant effect (the chip's, or a weapon's; §3). Every entry of `off_80EC3F0` is ported: 0, 3 (chips/13f-beastout,
-lib/instant/plus with chips/atk-10, chips/navi-20 and chips/0c0-atk-10, objects/rising-bubble), 1 (objects/boomerang), 4 (objects/lance), 5 (chips/0ae-fullcust), 8
-(objects/fire-hit), 10 (chips/busterup, a definition), 12 (objects/sand-worm, sand-spray, sand-hole), 13 (chips/11d-synctrgr),
-14 (objects/flame-hook, flame-hook-fire), 15 (objects/col-force, col-force-soldier), 19 (objects/justice-one), 20
-(weapons/10-tengu-wind, objects/gust), 21 (objects/golem), 22 (objects/col-army); 7 and 0x12 are NULL (an explicit
-panic). 2, 6, 9, 11 (lib/instant-chips) and 16, 17 (objects/meteor-shower, dust-storm) have no chip or MegaMan weapon:
-the link navis' weapons (0x71, 0x83) and actions that use them register or require them when ported. Left: the Full
-Synchro aura after SyncTrgr (framework), attack #0x12 (the soldiers' vulcan hit) and #0x56 (the meteor), which these
-spawn by number.
+Action 0x1C runs the attack's instant effect (a chip definition's `instant` hook, a record's subtype's registration,
+or a weapon's; §3). Every entry of `off_80EC3F0` is ported, in content model v2 (content-model-v2.md §5.6, "As
+built", step 8d): 0, 3 (lib/instant/plus with chips/atk-10, chips/navi-20, chips/whicapsl, chips/finalgun,
+chips/numtrap; the records' shims chips/13f-beastout and chips/0c0-atk-10; objects/rising-bubble), 1
+(objects/boomerang, chips/boomer), 4 (chips/lance), 5 (chips/fullcust), 8 (chips/firehit; the records' shim
+chips/06b-firehit1), 10 (chips/busterup), 12 (chips/sandwrm), 13 (chips/synctrgr), 14 (chips/flmhook, the navi
+chips'; the records' shim chips/146-flmhook1), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/10-tengu-wind, objects/gust), 21
+(chips/golmhit), 22 (chips/colarmy); 7 and 0x12 are NULL (an explicit panic). 2, 6, 9, 11, 16 and 17 have no chip or
+MegaMan weapon: they are builders in lib/instant, which the link navis' weapons (0x71, 0x83) and actions call when
+ported. Left: the Full Synchro aura after SyncTrgr (framework).
 
-### Group F: rocks
+### Group F: rocks and the field objects
 
-Done: the rock (objects/rock) and its debris (objects/rock-debris) are kinds on the obstacle framework (the
-`obstacle` service); the actor lists' rocks go through the rock's `actor_list_entry` (its `place`; the role `kinds.rock`).
-The verification workspace's rock_trace and bn6_data tests need the updated copies (they named `kinds::rock`).
+Done, in content model v2 (content-model-v2.md §5.9, "As built", step 8f): the rock with its variants and
+debris (objects/rock), RockCube and IceCube (chips/rockcube), the absorbed obstacle and its looks
+(objects/absorbed-obstacle; a look is each obstacle's own record), the falling rock and its chips
+(objects/falling-rock), and what the stages' actor lists place through their kinds' `place`: the rock (the role
+`kinds.rock`), the boulder (`kinds.boulder`, objects/boulder, newly ported) and the Guardian statue
+(`kinds.statue`, chips/guardian). The obstacle framework stays Rust (the `obstacle` service). The verification
+workspace's rock_trace and bn6_data tests read the kinds through compat.
+
+Left: the encased obstacles' ice block reaches the rock through `rock.spawn(..., { variant =
+rock.variants.ice, class, entrance = "instant" }, damage)`; the actor lists' entry types no netbattle stage
+uses (1, 2, 6, 7, 0xA: docs/engine/field-objects.md §1).
 
 ### Group G: standard chip actions
 
@@ -301,7 +312,8 @@ split the list):
   MachGun 0x29, CornSht 0x2A, Reflectr 0x2B, IronShl 0x2C, BblStar 0x2D, DrilArm 0x2E, Tornado 0x2F, WideSht 0x30,
   WaveArm 0x31, AquaNdl 0x32, H-Burst 0x34, RlngLog 0x36, AirSpin 0x38, DolThdr 0x3E, WindRack 0x3F, MoonBld 0x40,
   ElcPuls 0x42, AuraHed 0x43, MagCoil 0x44, the sword family 0x49, the dragons 0x51, VarSwrd 0x53, NeoVari 0x54,
-  SonicBom 0x55, ZSaver 0x5B, and the Cross and Beast chips' actions (0x0A).
+  SonicBom 0x55, ZSaver 0x5B. The link navis' chips (action 0x0A) are done: navis/<navi>/chip.luau, on
+  lib/link_chips.luau (docs/engine/standard-chips.md, "Action 0x0A").
 - Many fire the projectile of group D; start with the ones that don't, or after it.
 - In content model v2 (step 8g; content-model-v2.md §5.8): AquaNdl, H-Burst, RlngLog, AirSpin, DolThdr, WindRack,
   MoonBld, ElcPuls, AuraHed, MagCoil, the dragons (lib/dragons), VarSwrd and NeoVari (lib/swords/vari), RskyHny and

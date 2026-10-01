@@ -160,7 +160,7 @@ each.
   negative → `sub_80BB1FE`, Timer = 60, phase 0xC.
 - `sub_80BB1FE`: on (column, row), (column + d, row), (column + d, row + 1), (column, row + 1), each whose
   flags have 0x10 (solid): `sub_80C8DE0(x, y, element 1, r4 = 0x1E04, r6 = the damage word)`, a flame
-  (T3#0x26, `objects/heat-flame`: Param1 4, so it acts and animates while dimmed; Param2 30; fire; the
+  (T3#0x26, `chips/heatman/flame`: Param1 4, so it acts and animates while dimmed; Param2 30; fire; the
   burner's alliance and flip).
 - Phase 0xC (`sub_80BB10C`): Timer −= 1 (u16); negative (61 ticks) → `sub_8011044(the user's actor record,
   1)` (its navi parts off), VISIBLE off, state destroy (word), `sub_80E13DC(user)` (the user back: VISIBLE
@@ -334,7 +334,7 @@ Chip 0x8B Meteors (fire, damage 40, hit param 138, params 0).
 
 **The meteor's spawner `sub_80CF5B2`** → `sub_80CF594`: T3#0x56 (position = registers), PanelX/Y, Element,
 damage word, the spawner's alliance/flip halfword; then flags |= 0x10 (acts while dimmed). (The instant
-chips' meteor shower, `objects/meteor-shower`, spawns the same kind through `sub_80CF594` without the flag.)
+chips' meteor shower, `lib/instant/meteor_shower`, spawns the same kind through `sub_80CF594` without the flag.)
 
 **The meteor, T3#0x56 (`sub_80CF3BE`)**: states init `sub_80CF3DC`, update `sub_80CF488`,
 `object_genericDestroy`.

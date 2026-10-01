@@ -1,6 +1,0 @@
-# A follow effect (effect object #0x31, `sub_80E3D68`) is a script.
-
-[kind]
-pool = "effect"
-index = 0x31
-script = "follow_effect.luau"
