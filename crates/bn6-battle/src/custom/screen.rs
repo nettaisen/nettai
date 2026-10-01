@@ -11,7 +11,7 @@ use super::chatbox::{Chatbox, Script};
 use super::library::Library;
 use super::Unlocks;
 use crate::console::Console;
-use crate::content::{BannerId, ChipClass, ChipCode, CustomScreenLayout, TemplateSlot};
+use crate::content::{ChipClass, ChipCode, CustomScreenLayout, TemplateSlot};
 use crate::hud::{Banner, BannerStatus};
 use crate::input::{Joypad, keys};
 use crate::kinds::player::Emotion;
@@ -217,8 +217,6 @@ pub enum ProgramAdvanceStep {
 
 /// The Program Advance banner (`sub_802B7A0`): 0x24, or 0x34 for a recipe
 /// of no chips.
-const PROGRAM_ADVANCE_BANNER: BannerId = BannerId(0x24);
-const EMPTY_RECIPE_BANNER: BannerId = BannerId(0x34);
 
 /// Frames the animation's screen fades take (`SetScreenFade(0x14, 8)` out
 /// to level 0x40, `SetScreenFade(0x10, 8)` back in to 0; the level starts
@@ -627,7 +625,7 @@ impl Screen {
                 if anim.fade != 0 {
                     return;
                 }
-                let id = if pa.len != 0 { PROGRAM_ADVANCE_BANNER } else { EMPTY_RECIPE_BANNER };
+                let id = view.library.program_advance_banner(pa.len != 0);
                 self.hud.start(id, view.library.banner_holds(id));
                 next(anim, S::BannerIn);
             }

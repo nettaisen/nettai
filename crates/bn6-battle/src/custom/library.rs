@@ -46,6 +46,9 @@ pub trait Library {
     fn layout(&self) -> &CustomScreenLayout;
     /// Whether a banner stays up until let go (the Program Advance's).
     fn banner_holds(&self, id: BannerId) -> bool;
+    /// The banner of a Program Advance (`made`), or of a selection that
+    /// makes none.
+    fn program_advance_banner(&self, made: bool) -> BannerId;
 }
 
 impl Library for Content {
@@ -117,6 +120,11 @@ impl Library for Content {
 
     fn banner_holds(&self, id: BannerId) -> bool {
         self.rules.banner_holds(id)
+    }
+
+    fn program_advance_banner(&self, made: bool) -> BannerId {
+        use crate::content::BannerRole;
+        self.defs.roles.banner(if made { BannerRole::ProgramAdvance } else { BannerRole::ProgramAdvanceEmpty })
     }
 }
 
@@ -268,6 +276,9 @@ pub(crate) mod testing {
         }
         fn banner_holds(&self, id: BannerId) -> bool {
             matches!(id.0, 0x24 | 0x34)
+        }
+        fn program_advance_banner(&self, made: bool) -> BannerId {
+            BannerId(if made { 0x24 } else { 0x34 })
         }
     }
 }

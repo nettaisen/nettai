@@ -111,7 +111,7 @@ fn decode(b: &mut Battle, r: ObjectRef) {
             return;
         }
         // Otherwise its player hears that it can't.
-        b.play_sound_for(b.objects.get(r).alliance, crate::sound::SoundId::CANT_JACK_IN);
+        b.sound_for(b.objects.get(r).alliance, crate::content::SoundRole::Refused);
     }
     if battle_mode(b) != 1 && decode_turn(b, r) {
         return;

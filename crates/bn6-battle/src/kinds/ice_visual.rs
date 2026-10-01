@@ -7,10 +7,8 @@
 
 use crate::battle::Battle;
 use crate::collision::{f1, link};
-use crate::content::SpriteId;
 use crate::object::{ObjectRef, flags, state};
 
-const SPRITE: SpriteId = SpriteId { category: 0x14, index: 0x1C };
 /// The navi's attach point it sits at, and how far it sits behind and
 /// above it (16.16).
 const ATTACH_POINT: usize = 0x21;
@@ -58,8 +56,9 @@ fn size(b: &Battle, owner: ObjectRef) -> u8 {
 fn init(b: &mut Battle, r: ObjectRef) {
     let owner = b.objects.get(r).related[0].expect("an ice block without its owner");
     let anim = size(b, owner);
+    let sprite = b.content.defs.roles.sprite(crate::content::SpriteRole::Ice);
     let s = b.objects.sprite_mut(r);
-    s.load(SPRITE);
+    s.load(sprite);
     s.set_animation(0, &b.content);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);

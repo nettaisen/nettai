@@ -198,3 +198,81 @@ thrown_obstacle = 0x06
 floating_navi = 0x10
 eruption_target = 0x2A
 eruption = 0x48
+
+# The roles `sounds` of rules/roles.luau: the sound (the song table's entry) the original's routines
+# name each by.
+[sounds]
+refused = 0x069
+own_hit = 0x06B
+deleted = 0x06C
+hit = 0x06D
+guard = 0x06E
+buster_charge = 0x071
+buster_charged = 0x072
+cross_change_chime = 0x077
+low_hp = 0x084
+damage = 0x085
+counter_hit = 0x086
+damage_bonus = 0x087
+confusion = 0x088
+recovery = 0x08A
+cross_merge = 0x08C
+cross_change = 0x08D
+fade = 0x08E
+gauge_full = 0x08F
+panel_poison = 0x090
+invisible = 0x093
+appear = 0x094
+panel_crack = 0x097
+pause = 0x09F
+cut_in = 0x0A5
+form_change = 0x0F7
+beast_out = 0x100
+obstacle_throw = 0x10C
+freeze = 0x118
+bubble_pop = 0x124
+arrive = 0x129
+obstacle_lift = 0x12A
+bubble = 0x12D
+beast_over_burst = 0x12E
+telop = 0x173
+cross_special = 0x182
+beast_over_rumble = 0x19A
+gregar_roar = 0x1CC
+falzar_roar = 0x1CD
+
+# The roles `music` of rules/roles.luau: the music (the song table's entry) the original's routines
+# name each by.
+[music]
+link_battle = 0x015
+winner_special = 0x019
+loser = 0x01A
+winner = 0x01F
+
+# The roles `sprites` of rules/roles.luau: the sprite ("cc-ii") the original's routines
+# load for each.
+[sprites]
+lockon_marker = "0c-09"
+bubble = "0c-20"
+immobilized = "10-00"
+eruption = "10-24"
+hit_marker = "14-07"
+charge_glow = "14-08"
+blindness = "14-09"
+confusion = "14-0b"
+charge_glow_a = "14-15"
+full_synchro_aura = "14-16"
+ice = "14-1c"
+
+# The roles `banners` of rules/roles.luau: the banner (`pt_801EF84`) the original's
+# routines name each by.
+[banners]
+turn_start = 0x0C
+final_turn = 0x10
+draw = 0x1C
+program_advance = 0x24
+judge = 0x28
+round_start = 0x30
+program_advance_empty = 0x34
+telop = 0x4C
+telop_remote = 0x50

@@ -17,7 +17,7 @@
 use crate::actor::{request, status};
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{f1, link, timer};
-use crate::content::{EffectRole, FormKind};
+use crate::content::{EffectRole, FormKind, SoundRole};
 use crate::custom::GameVersion;
 use bn6_content_api::FormHandle;
 use super::ActionVars;
@@ -263,7 +263,7 @@ fn vanish(b: &mut Battle, r: ObjectRef, seq: Sequence, target: FormHandle) {
         let spawned = if seq == Sequence::BeastOver {
             beast_over_effects(b, r, pos, alliance, target)
         } else {
-            b.play_sound(crate::sound::SoundId(0xF7));
+            b.sound(SoundRole::FormChange);
             let look = b.content.defs.roles.effect(EffectRole::FormChange);
             effect::spawn(b, pos, look, alliance, 0, 0).inspect(|&e| {
                 let o = b.objects.get_mut(e);
@@ -280,7 +280,7 @@ fn vanish(b: &mut Battle, r: ObjectRef, seq: Sequence, target: FormHandle) {
             // otherwise; the cameras shake at magnitude 2 (`sub_80302B6`),
             // 60 ticks (75 for Beast Over).
             let gregar = b.content.form(target).game == Some(GameVersion::Gregar);
-            b.play_sound(crate::sound::SoundId(if gregar { 0x1CC } else { 0x1CD }));
+            b.sound(if gregar { SoundRole::GregarRoar } else { SoundRole::FalzarRoar });
             b.shake_camera_secondary(2, if seq == Sequence::BeastOver { 0x4B } else { 0x3C });
         }
         set_timer(b, r, 0x36);
@@ -292,7 +292,7 @@ fn vanish(b: &mut Battle, r: ObjectRef, seq: Sequence, target: FormHandle) {
     // Beast Over's rumbles. (The game compares the timer as a word with
     // the halfword after it, which its steps leave at 0.)
     if seq == Sequence::BeastOver && matches!(vars(b, r).timer, 0x35 | 0x25) {
-        b.play_sound(crate::sound::SoundId(0x19A));
+        b.sound(SoundRole::BeastOverRumble);
     }
     if !timer_ran_out(b, r) {
         return;
@@ -319,7 +319,7 @@ fn beast_over_effects(b: &mut Battle, _r: ObjectRef, pos: Vec3, alliance: u8, ta
     let o = b.objects.get_mut(first);
     o.timer = 0x36;
     o.flags |= flags::RUN_WHILE_PAUSED;
-    b.play_sound(crate::sound::SoundId(0x19A));
+    b.sound(SoundRole::BeastOverRumble);
     let second = effect::spawn(b, pos, blast, alliance, 2 * which, 0)?;
     let o = b.objects.get_mut(second);
     o.timer = 0x45;
@@ -421,7 +421,7 @@ fn emerge(b: &mut Battle, r: ObjectRef, seq: Sequence, target: FormHandle) {
         stats_mut(b, r).form = target;
         if matches!(seq, Sequence::BeastOut | Sequence::CrossBeast | Sequence::BeastOver) {
             palette_flash::spawn(b, 14, true, true);
-            b.play_sound(crate::sound::SoundId(0x100));
+            b.sound(SoundRole::BeastOut);
         }
         // sub_8015B22: the form's NameID.
         b.objects.get_mut(r).identity = b.content.form_identity(navi, target);
@@ -443,8 +443,8 @@ fn emerge(b: &mut Battle, r: ObjectRef, seq: Sequence, target: FormHandle) {
             }
         }
         if matches!(seq, Sequence::Cross | Sequence::BeastCross) {
-            b.play_sound(crate::sound::SoundId(0x8D));
-            b.play_sound(crate::sound::SoundId(0x77));
+            b.sound(SoundRole::CrossChange);
+            b.sound(SoundRole::CrossChangeChime);
         }
         ai_mut(b, r).attack.step_init = 4;
     }
@@ -524,7 +524,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         use crate::kinds::player::NaviAction as A;
         let resumes = ai(b, r).saved_word.is_some_and(|s| matches!(s.action, A::Paralysis | A::Freeze | A::Bubble));
         ai_mut(b, r).attack.step_init = if resumes { 2 } else { 1 };
-        b.play_sound(crate::sound::SoundId(0x8E));
+        b.sound(SoundRole::Fade);
         land(b, r);
         face_default(b, r);
         let pos = b.objects.get(r).pos;
@@ -631,7 +631,7 @@ pub(in crate::kinds::player) fn break_cross(b: &mut Battle, r: ObjectRef) -> boo
     b.objects.sprite_mut(r).look.white = true;
     if ai(b, r).attack.step_init == 0 {
         b.set_flags(battle_flags::DIMMED);
-        b.play_sound(crate::sound::SoundId(0x8E));
+        b.sound(SoundRole::Fade);
         land(b, r);
         let o = b.objects.get_mut(r);
         o.anim = 2;
