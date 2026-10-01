@@ -5,9 +5,6 @@
 //!
 //! ```text
 //! data.chips[id]            a chip's record and its own data (gun_del_sol, ...)
-//! data.navis[id]            a navi
-//! data.forms[id]            one of MegaMan's forms
-//! data.weapons[id]          a weapon routine a script implements
 //! data.objects.attachments[id], .rocks[id], .absorbed_sprites[kind],
 //!             .body_overlays[id], .sun_beam_looks[look], .projectiles[kind],
 //!             .flying_shots[kind], .shock_waves[variant], .name_looks[name_id],
@@ -90,9 +87,6 @@ pub fn script_data(c: &Content) -> Data {
     ]);
     Data::map([
         ("chips", by_id(c.chips.iter().filter_map(|x| Some((x.id? as i64, x))), |x| value(*x))),
-        ("navis", by_id(c.navis.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
-        ("forms", by_id(c.forms.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
-        ("weapons", by_id(c.weapons.iter().map(|x| (x.id as i64, x)), |x| value(*x))),
         ("regions", by_id(c.regions.iter().enumerate().map(|(i, r)| (i as i64, r)), |r| value(*r))),
         ("objects", objects),
         ("rules", rules),

@@ -268,8 +268,6 @@ ground_drill.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 100, 90, 80, 75, 70, 50, 50, 50 },
     setup = setup,
-    -- (Transitional: the routine number the pack's forms name it by.)
-    legacy = { routines = { 0x19 } },
 }
 
 return ground_drill

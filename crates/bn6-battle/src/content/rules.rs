@@ -5,7 +5,7 @@ use crate::field::PanelType;
 use serde::{Deserialize, Serialize};
 
 /// Global rules: element weakness, collision types, panels, banners,
-/// statuses, weapons and the Beast Out lock-on.
+/// statuses and the Beast Out lock-on.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Rules {
     /// Extra damage multiplier by the receiver's element, then the
@@ -30,8 +30,6 @@ pub struct Rules {
     pub status_effects: Vec<[StatusEffect; 16]>,
     /// The HP bug's drain period by bug level.
     pub hp_bug_periods: [u8; 8],
-    /// Weapon routines by number (`off_80117D4`): their charge times.
-    pub weapons: Vec<WeaponRoutine>,
     /// What the charge rules read for an empty hand's chip.
     pub empty_hand: EmptyHandChip,
     /// Ticks of recovery after a buster shot, by Rapid stat, then by open
@@ -77,13 +75,6 @@ impl Rules {
     pub fn status_effect(&self, status: u8) -> Option<StatusEffect> {
         let group = (status >> 4).checked_sub(1)?;
         self.status_effects.get(group as usize).map(|g| g[(status & 0xF) as usize])
-    }
-
-    /// Ticks to a full charge for a charge routine at a Charge stat. A
-    /// Charge past 4 reads the next routine's times, as in the game.
-    pub fn charge_threshold(&self, routine: u8, charge: u8) -> u16 {
-        let i = routine as usize * 5 + charge as usize;
-        self.weapons[i / 5].charge_ticks[i % 5]
     }
 
     /// Ticks of recovery after a buster shot at a Rapid stat with `open`
@@ -176,13 +167,6 @@ pub struct StatusEffect {
     pub requests: u32,
     pub duration: u16,
     pub timer: StatusTimer,
-}
-
-/// A weapon routine's data.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct WeaponRoutine {
-    /// Ticks to a full charge, by Charge stat (0..=4).
-    pub charge_ticks: [u16; 5],
 }
 
 /// The chip record an empty hand reads. A hand with no chip left holds

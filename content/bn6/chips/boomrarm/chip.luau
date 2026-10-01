@@ -3,11 +3,9 @@
 -- shot becomes the arm's weapon, with a glow at its arm
 -- (lib/navi-boost/controller).
 
+local charge = require("./charge")
 local navi_boost = require("../../lib/navi-boost/controller")
 
--- The arm's charged shot: weapon routine 0x26 (compat's
--- megaman/sticky-charge-26), a number until the weapons are definitions.
-local ROUTINE = 0x26
 -- The glow's palette.
 local PALETTE = 3
 
@@ -24,5 +22,5 @@ return define.chip {
     rarity = 4, mb = 50, damage = 0, hit_param = 10, lockout = 20,
     library = { number = 0, index = 64, sort = 0 },
     slot_in_limit = 1,
-    dimming = navi_boost.arm(ROUTINE, PALETTE),
+    dimming = navi_boost.arm(charge, PALETTE),
 }
