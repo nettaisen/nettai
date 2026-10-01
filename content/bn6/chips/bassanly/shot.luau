@@ -47,8 +47,8 @@ local SLANT = 0xC000
 
 -- By level, its speed up or down the slant and forward once turned
 -- (`byte_80DD6A8`, `byte_80DD6D0`).
-local TURN_Y = { [0] = 0x2_6666, 0x2_B333, 0x3_0000, 0x7_8000 }
-local TURN_X = { [0] = 0x3_8000, 0x4_8000, 0x5_0000, 0xC_8000 }
+local TURN_Y: { [number]: number } = { [0] = 0x2_6666, 0x2_B333, 0x3_0000, 0x7_8000 }
+local TURN_X: { [number]: number } = { [0] = 0x3_8000, 0x4_8000, 0x5_0000, 0xC_8000 }
 
 -- What homing 2 looks for, by side (`off_80DD6BC`): an enemy navi's body;
 -- and where, along the slant (`byte_80DD6E8` going down, `byte_80DD6ED`

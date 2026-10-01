@@ -9,11 +9,6 @@ use crate::custom::library::testing::ChipId;
 use crate::input::keys;
 use bn6_content_api::{ChipHandle, FormHandle};
 
-/// The test library's handles are the numbers.
-fn form(f: Form) -> FormHandle {
-    FormHandle(f.0 as u16)
-}
-
 const STAR: u8 = 26;
 /// Made-up chips: a damaging chip in codes A-C and *, a second one in A, B
 /// and *, a Mega chip in every code.
@@ -237,7 +232,7 @@ fn mega_chips_past_the_limit_turn_invalid() {
 
 #[test]
 fn beast_out() {
-    for (version, beast) in [(GameVersion::Falzar, Form::FALZAR_BEAST), (GameVersion::Gregar, Form::GREGAR_BEAST)] {
+    for (version, beast) in [(GameVersion::Falzar, library::testing::FALZAR_BEAST), (GameVersion::Gregar, library::testing::GREGAR_BEAST)] {
         let mut p = Player::new(&[], version);
         p.open();
         p.wait(10);
@@ -258,7 +253,7 @@ fn beast_out() {
         p.press(keys::A);
         p.wait(20);
         let sent = p.side.sent.as_ref().unwrap();
-        assert_eq!(sent.result.transform.form, Some(form(beast)));
+        assert_eq!(sent.result.transform.form, Some(beast));
         // Only Beast Out was picked: an empty hand goes out (and replaces
         // what the navi still held).
         assert_eq!(sent.result.hand.as_ref().unwrap().ids[0], None);
@@ -297,14 +292,14 @@ fn a_cross_from_the_window() {
     p.press(keys::A);
     p.wait(20);
     // Falzar's second Cross is form 7.
-    assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(form(Form(7))));
+    assert_eq!(p.side.sent.as_ref().unwrap().result.transform.form, Some(FormHandle(7)));
     assert!(p.side.round.crosses_used[1]);
 }
 
 #[test]
 fn dust_cross_scraps_the_picks() {
     let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (WAVE, 0), (WAVE, 1), (SHOT, 2), (MEGA, 5), (MEGA, 6)], GameVersion::Falzar);
-    p.stats.form = form(Form::DUST_CROSS);
+    p.stats.form = library::testing::DUST_CROSS;
     p.open();
     assert!(matches!(p.screen().slots[8].kind, SlotKind::Scrap { right_half: false }));
     p.wait(10);

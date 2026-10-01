@@ -10,7 +10,6 @@ use crate::kinds::common::{self, Progress};
 use crate::kinds::player::form;
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Vec3, flags, state};
-use crate::setup::Navi;
 use crate::dimming::{hide_user, show_user};
 
 /// Which way the navi warps (Param4).
@@ -80,9 +79,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
         return tick(b, r);
     }
     let side = b.objects.get(navi).alliance as usize;
-    let (navi_id, form) = (b.navi(side), b.form(side));
-    let s = &b.stats[side];
-    let sprite = if navi_id == Navi::MEGAMAN { b.content.form(s.form).sprite } else { b.content.navi(s.navi).sprite };
+    let (navi_id, form) = (b.stats[side].navi, b.stats[side].form);
+    let sprite = b.content.navi_sprite(navi_id, form);
     let (pos, palette) = (b.objects.get(navi).pos, b.objects.sprite(navi).look.palette);
     let flip = {
         let o = b.objects.get(r);
@@ -103,7 +101,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // lost on the way), or a link navi's own; then, in a form, the
     // overlay's Param3 = 1 and flags 0x14.
     form::put_on_navi_overlay(b, r, navi_id, form, 1);
-    if form != crate::setup::Form::NONE
+    if b.content.form(form).kind != crate::content::FormKind::Base
         && let Some(overlay) = b.objects.get(r).related[1]
     {
         form::keep_overlay_stepping(b, overlay);

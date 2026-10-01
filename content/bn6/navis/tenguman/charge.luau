@@ -84,7 +84,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-local PHASES = { [THRUST] = thrust, [RECOVER] = recover }
+local PHASES: { [number]: (me: Object, s: State) -> () } = { [THRUST] = thrust, [RECOVER] = recover }
 
 charge.action = define.action {
     id = "tenguman/charge/action",

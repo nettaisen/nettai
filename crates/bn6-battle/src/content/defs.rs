@@ -2,20 +2,15 @@
 //! registries the engine reads, with their handles, and the functions the
 //! runtime binds.
 //!
-//! A registry holds three sorts of entries while the migration runs:
+//! A registry holds two sorts of entries:
 //!
 //! - the engine's own (its object kinds, keyed `engine/...`);
-//! - content registered by number from the pack's data (an object folder's
-//!   `[kind]`), keyed from that data (the kind's folder name); and the
-//!   pack's records content doesn't define yet: its navis and forms
-//!   (`v1/navi-01`, `v1/form-0c`);
 //! - content's definitions (`define.kind { ... }`), keyed by their keys.
-//!   Chips and weapons are only these: nothing names one by number.
 //!
 //! Each registry's keys are sorted byte-wise; an entry's handle is its
-//! place. Registration by number still reaches its entries by the numbers
-//! its own data gives (an object slot), until the migration's last step
-//! deletes it.
+//! place. (Navis and forms still carry the original's numbers in their
+//! `legacy` markers, by which the ruleset finds them, until the
+//! migration's last step.)
 //!
 //! The engine never learns the original's numbers for what content
 //! defines: an object records its kind's handle, a navi its content
@@ -35,9 +30,8 @@ use super::{
 };
 use super::roles::{
     ActionRole, BannerRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, LockonRole, MusicRole, RegionRole,
-    RoleAction, RoleKind, Roles, SoundRole, SparkRole, SpriteRole, StatusRole,
+    Roles, SoundRole, SparkRole, SpriteRole, StatusRole,
 };
-use crate::setup::{Form, Navi};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
 /// Who implements an object kind.
@@ -58,10 +52,6 @@ pub struct KindDef {
     pub implementation: KindImpl,
     /// A content kind's state layout.
     pub schema: StateId,
-    /// The object slot (pool and index) registration by number reaches it
-    /// by: the pack's `object.toml`s'. The engine's kinds and the kinds
-    /// content defines have none (the validator has their slots by key).
-    pub slot: Option<(Pool, u8)>,
     /// What places it when a stage names it (`kind.place`).
     pub place: Option<FnId>,
 }
@@ -74,11 +64,6 @@ pub struct ActionDef {
     /// Its state layout. Actions of one layout continue each other's
     /// attack state, as the original's actions share theirs.
     pub schema: StateId,
-    /// The action number registration by number gives it (a
-    /// `weapon.toml`'s): the navi's CurAction while it runs. An action
-    /// content defines has none; the navi's CurAction is then
-    /// [`crate::kinds::player::CONTENT_ACTION`].
-    pub number: Option<u8>,
 }
 
 /// A weapon: what a button's weapon does.
@@ -86,9 +71,9 @@ pub struct ActionDef {
 pub struct WeaponDef {
     pub key: String,
     pub name: String,
-    /// `setup(navi) -> action` (`off_80117D4`'s routine); none for a weapon
-    /// nothing can start: an A-charge that is its chip (`charged_chip`), or
-    /// one nothing implements yet.
+    /// `setup(navi) -> action` (`off_80117D4`'s routine); none for an
+    /// A-charge that is its chip (`charged_chip`), which nothing starts as
+    /// a weapon.
     pub setup: Option<FnId>,
     /// Ticks to a full charge by Charge stat (past the original's five,
     /// what the game reads on into).
@@ -170,7 +155,7 @@ pub struct ChipLinks {
     pub advance: Option<u8>,
 }
 
-/// A navi: the pack's record (keyed `v1/navi-01`).
+/// A navi (`define.navi`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NaviDef {
     pub key: String,
@@ -179,7 +164,7 @@ pub struct NaviDef {
     pub own_chip: Option<(ChipHandle, super::ChipCode)>,
 }
 
-/// One of MegaMan's forms: the pack's record (keyed `v1/form-0c`).
+/// One of MegaMan's forms (`define.form`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FormDef {
     pub key: String,
@@ -285,21 +270,11 @@ pub struct Defs {
     kind_keys: BTreeMap<String, KindHandle>,
     /// The engine's kinds, in [`ENGINE_KINDS`]' order.
     engine: Vec<KindHandle>,
-    /// Kinds by object slot: `pool * 256 + index` (registration by number).
-    kind_slots: Vec<Option<KindHandle>>,
-    /// Actions by number (registration by number).
-    action_numbers: Vec<Option<ActionHandle>>,
-    /// The pack's navis and forms by their numbers (registration by
-    /// number).
-    navi_numbers: Vec<Option<NaviHandle>>,
-    form_numbers: Vec<Option<FormHandle>>,
+    /// The base form: what a navi that has not changed form is in.
+    pub base_form: Option<FormHandle>,
     /// Keys by registry, for the codecs.
     chip_keys: BTreeMap<String, ChipHandle>,
     weapon_keys: BTreeMap<String, WeaponHandle>,
-}
-
-fn pool_index(pool: Pool) -> usize {
-    Pool::ALL.iter().position(|&p| p == pool).expect("a pool")
 }
 
 impl Defs {
@@ -310,11 +285,6 @@ impl Defs {
 
     pub fn kind(&self, h: KindHandle) -> &KindDef {
         &self.kinds[h.index()]
-    }
-
-    /// The kind registration by number puts in an object slot.
-    pub fn kind_at(&self, pool: Pool, index: u8) -> Option<KindHandle> {
-        self.kind_slots.get(pool_index(pool) * 256 + index as usize).copied().flatten()
     }
 
     /// The engine's kind `kind`.
@@ -335,11 +305,6 @@ impl Defs {
         &self.actions[h.index()]
     }
 
-    /// The action registered by number.
-    pub fn action_numbered(&self, number: u8) -> Option<ActionHandle> {
-        self.action_numbers.get(number as usize).copied().flatten()
-    }
-
     /// The action with this key.
     pub fn action_by_key(&self, key: &str) -> Option<ActionHandle> {
         self.actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
@@ -354,11 +319,6 @@ impl Defs {
         &self.chips[h.index()]
     }
 
-    /// The pack's navi with this number.
-    pub fn navi_numbered(&self, navi: Navi) -> Option<NaviHandle> {
-        self.navi_numbers.get(navi.index()).copied().flatten()
-    }
-
     pub fn navi(&self, h: NaviHandle) -> &NaviDef {
         &self.navis[h.index()]
     }
@@ -366,11 +326,6 @@ impl Defs {
     /// The navi with this key.
     pub fn navi_by_key(&self, key: &str) -> Option<NaviHandle> {
         self.navis.binary_search_by(|n| n.key.as_str().cmp(key)).ok().map(|i| NaviHandle(i as u16))
-    }
-
-    /// The pack's form with this number.
-    pub fn form_numbered(&self, form: Form) -> Option<FormHandle> {
-        self.form_numbers.get(form.index()).copied().flatten()
     }
 
     pub fn form(&self, h: FormHandle) -> &FormDef {
@@ -523,17 +478,6 @@ fn slot(d: &Definition, path: &str) -> Result<FnSource, ContentError> {
     }
 }
 
-/// A module's exported function (registration by module).
-fn export(definitions: &Definitions, module: &str, name: &str, whose: &str) -> Result<FnSource, ContentError> {
-    let m = definitions
-        .module(module)
-        .ok_or_else(|| ContentError::new(format!("{whose} names the script {module}.luau, which isn't in the pack")))?;
-    if !m.functions.iter().any(|f| f == name) {
-        return Err(ContentError::new(format!("{whose}: {module}.luau doesn't export the function `{name}`")));
-    }
-    Ok(FnSource::export(module, name))
-}
-
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
 /// fields the engine reads, with the lock-on mode by the handle `r` gives
 /// it, and the chips it names (its Program Advance recipes' ingredients, a
@@ -618,8 +562,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
 }
 
 /// `define.roles { actions = { ... }, kinds = { ... } }` (content::roles):
-/// each role a definition, or a v1 registration through its `legacy`
-/// marker (an action by number, a kind by key).
+/// each role a definition.
 fn read_roles(
     d: &Definition,
     definitions: &Definitions,
@@ -633,13 +576,6 @@ fn read_roles(
 ) -> Result<Roles, ContentError> {
     let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
     let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
-    let legacy = |name: &str, v: &Data, field: &str| -> Result<Option<Data>, ContentError> {
-        let Data::Map(_) = v else { return Ok(None) };
-        match v.field("legacy").field(field) {
-            Data::Nil => Err(what(format!("{name} is a table, but not a legacy marker `{{ legacy = {{ {field} = ... }} }}`"))),
-            x => Ok(Some(x.clone())),
-        }
-    };
     let mut roles = Roles::default();
     for (group, entries) in groups {
         let group = group.to_string();
@@ -653,33 +589,10 @@ fn read_roles(
                         what(format!("the ruleset has no role actions.{name} (it has {})", names.join(", ")))
                     })?;
                     let full = format!("actions.{name}");
-                    let target = if let Data::Ref(Registry::Action, key) = v {
-                        RoleAction::Action(ActionHandle(
-                            actions.iter().position(|a| &a.key == key).expect("a defined action") as u16,
-                        ))
-                    } else if let Some(n) = legacy(&full, v, "action")? {
-                        match n {
-                            // A v1 registration's action, by its number.
-                            Data::Int(n @ 0..=0xFF) => match actions.iter().position(|a| a.number == Some(n as u8)) {
-                                Some(i) => RoleAction::Action(ActionHandle(i as u16)),
-                                None => RoleAction::Unported(n as u8),
-                            },
-                            // A definition by its key, for a pack whose
-                            // modules can't require the one that defines it
-                            // (the engine's test pack).
-                            Data::Str(key) => match actions.iter().position(|a| a.key == key) {
-                                Some(i) => RoleAction::Action(ActionHandle(i as u16)),
-                                None => return Err(what(format!("{full}'s legacy action {key:?} is no action's key"))),
-                            },
-                            n => {
-                                return Err(what(format!(
-                                    "{full}'s legacy action is {n:?}, not an action number or an action's key"
-                                )));
-                            }
-                        }
-                    } else {
+                    let Data::Ref(Registry::Action, key) = v else {
                         return Err(what(format!("{full} is not an action")));
                     };
+                    let target = ActionHandle(actions.iter().position(|a| &a.key == key).expect("a defined action") as u16);
                     roles.actions.insert(role, target);
                 }
                 "kinds" => {
@@ -688,20 +601,10 @@ fn read_roles(
                         what(format!("the ruleset has no role kinds.{name} (it has {})", names.join(", ")))
                     })?;
                     let full = format!("kinds.{name}");
-                    let key = if let Data::Ref(Registry::Kind, key) = v {
-                        key.clone()
-                    } else if let Some(k) = legacy(&full, v, "kind")? {
-                        let Data::Str(k) = k else {
-                            return Err(what(format!("{full}'s legacy kind is {k:?}, not a kind's key")));
-                        };
-                        k
-                    } else {
+                    let Data::Ref(Registry::Kind, key) = v else {
                         return Err(what(format!("{full} is not a kind")));
                     };
-                    let target = match kinds.iter().position(|k| k.key == key) {
-                        Some(i) => RoleKind::Kind(KindHandle(i as u16)),
-                        None => RoleKind::Missing(key),
-                    };
+                    let target = KindHandle(kinds.iter().position(|k| &k.key == key).expect("a defined kind") as u16);
                     roles.kinds.insert(role, target);
                 }
                 "hooks" => {
@@ -853,7 +756,7 @@ fn definition_handle(definitions: &Definitions, registry: Registry, group: &str,
 impl Defs {
     /// What `content` (its data's registrations and the engine's own) and
     /// `definitions` (what its modules define) make.
-    pub fn build(content: &Content, definitions: Definitions, legacy: &super::legacy::Legacy) -> Result<Defs, ContentError> {
+    pub fn build(content: &Content, definitions: Definitions) -> Result<Defs, ContentError> {
         let resolver = super::legacy::Resolver::new(&content.assets, &definitions);
         let mut functions = Functions::default();
 
@@ -876,9 +779,6 @@ impl Defs {
                 _ => Err(ContentError::new(format!("{}.luau: {} {}'s `state` is not a table", d.module, d.registry, d.key))),
             }
         };
-        let module_state = |module: &str| -> StateId {
-            definitions.module(module).and_then(|m| m.state.as_deref()).map_or(schema_id(NO_STATE), &schema_id)
-        };
 
         // Object kinds.
         let mut kinds = Entries::new(Registry::Kind);
@@ -888,23 +788,9 @@ impl Defs {
                 pool,
                 implementation: KindImpl::Engine(kind),
                 schema: schema_id(NO_STATE),
-                slot: None,
                 place: None,
             };
             kinds.add(key.to_string(), def, "the engine's".into());
-        }
-        for k in &content.objects.kinds {
-            let whose = format!("objects/{} (object.toml)", k.name);
-            let update = export(&definitions, &k.script, "update", &whose)?;
-            let def = KindDef {
-                key: k.name.clone(),
-                pool: k.pool,
-                implementation: KindImpl::Script { update: functions.id(update) },
-                schema: module_state(&k.script),
-                slot: Some((k.pool, k.index)),
-                place: None,
-            };
-            kinds.add(k.name.clone(), def, whose.clone());
         }
         for d in definitions.of(Registry::Kind) {
             let pool = d
@@ -922,19 +808,17 @@ impl Defs {
                 pool,
                 implementation: KindImpl::Script { update: functions.id(slot(d, "update")?) },
                 schema: state_of(d)?,
-                slot: None,
                 place,
             };
             kinds.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let kinds: Vec<KindDef> = kinds.sorted()?.into_iter().map(|(_, k)| k).collect();
 
-        // The actions content defines. (No action is registered by number:
-        // every chip's and weapon's is a definition.)
+        // The actions content defines.
         let mut actions = Entries::new(Registry::Action);
         for d in definitions.of(Registry::Action) {
             let def =
-                ActionDef { key: d.key.clone(), update: functions.id(slot(d, "update")?), schema: state_of(d)?, number: None };
+                ActionDef { key: d.key.clone(), update: functions.id(slot(d, "update")?), schema: state_of(d)? };
             actions.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let actions: Vec<ActionDef> = actions.sorted()?.into_iter().map(|(_, a)| a).collect();
@@ -1000,6 +884,9 @@ impl Defs {
             };
             if charged_chip.is_some() && setup.is_some() {
                 return Err(what("a weapon with a `setup` is its own attack: it has no `charged_chip`".into()));
+            }
+            if charged_chip.is_none() && setup.is_none() {
+                return Err(what("a weapon needs a `setup` (or, an A-charge that is its chip, `charged_chip`): nothing could start it".into()));
             }
             weapons.push(WeaponDef {
                 key: d.key.clone(),
@@ -1145,10 +1032,8 @@ impl Defs {
             cross_special.push(out);
         }
 
-        // The pack's navis, forms and stages.
-        let key_of = |defined: &BTreeMap<String, u8>, n: u8, v1: String| -> String {
-            defined.iter().find(|(_, m)| **m == n).map_or(v1, |(k, _)| k.clone())
-        };
+        // Navis, forms and identities: the definitions, in key order (a
+        // definition's handle is its place among its registry's).
         // The identities, by key (the definitions' order). A navi's and a
         // form's name theirs: each knows whose it is.
         let mut identities = Vec::new();
@@ -1171,26 +1056,66 @@ impl Defs {
                 ))),
             }
         };
-        let navi_keys: BTreeMap<String, u8> = legacy.navis.iter().map(|(k, n)| (k.clone(), n.id)).collect();
-        let form_keys: BTreeMap<String, u8> = legacy.forms.iter().map(|(k, f)| (k.clone(), f.id)).collect();
-        let mut navis = Entries::new(Registry::Navi);
-        for n in &content.navis {
-            let key = key_of(&navi_keys, n.id, format!("v1/navi-{:02x}", n.id));
-            let mut record = n.clone();
-            // What its definition names by handle, and its fresh stats.
-            if let Some(d) = definitions.get(Registry::Navi, &key) {
-                record.weapons = read_weapons(d)?;
-                record.fresh = super::navis::read_fresh(d)?;
-                record.cross_hp = super::navis::read_cross_hp(d)?;
-                record.identity = identity_of(d, &identities)?;
+        let in_order = |registry: Registry| -> Result<(), ContentError> {
+            if definitions.of(registry).windows(2).any(|w| w[0].key >= w[1].key) {
+                return Err(ContentError::new(format!("the {registry}s are not in key order (the define phase sorts each registry)")));
             }
-            let own_chip = match &n.own_chip {
-                Some(c) => Some((chip_handle(&c.chip, &format!("navi {key}'s own chip"))?, c.code)),
+            Ok(())
+        };
+        in_order(Registry::Navi)?;
+        in_order(Registry::Form)?;
+        let handle_of = |registry: Registry, key: &str| -> u16 {
+            definitions.of(registry).binary_search_by(|d| d.key.as_str().cmp(key)).expect("a defined entry") as u16
+        };
+        let what = |d: &Definition, e: String| ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key));
+        let form_ref = |d: &Definition, v: &Data, field: &str| -> Result<Option<FormHandle>, ContentError> {
+            match v {
+                Data::Nil => Ok(None),
+                Data::Ref(Registry::Form, key) => Ok(Some(FormHandle(handle_of(Registry::Form, key)))),
+                other => Err(what(d, format!("`{field}` is {other:?}, not a form"))),
+            }
+        };
+        let mut navis = Vec::new();
+        for d in definitions.of(Registry::Navi) {
+            let mut record = super::navis::read_navi(d, &resolver)?;
+            record.weapons = read_weapons(d)?;
+            record.fresh = super::navis::read_fresh(d)?;
+            record.cross_hp = super::navis::read_cross_hp(d)?;
+            record.identity = identity_of(d, &identities)?;
+            record.forms = match d.spec.field("forms") {
+                Data::Nil => None,
+                forms @ Data::Map(_) => {
+                    let set = |game: &str| -> Result<super::FormSet, ContentError> {
+                        let g = forms.field(game);
+                        let crosses = match g.field("crosses") {
+                            Data::Nil => Vec::new(),
+                            Data::List(items) => items
+                                .iter()
+                                .map(|v| form_ref(d, v, &format!("forms.{game}.crosses")).map(|f| f.expect("a form")))
+                                .collect::<Result<_, _>>()?,
+                            Data::Map(m) if m.is_empty() => Vec::new(),
+                            other => return Err(what(d, format!("forms.{game}.crosses is {other:?}, not a list of forms"))),
+                        };
+                        Ok(super::FormSet {
+                            crosses,
+                            beast_out: form_ref(d, g.field("beast_out"), &format!("forms.{game}.beast_out"))?,
+                            beast_over: form_ref(d, g.field("beast_over"), &format!("forms.{game}.beast_over"))?,
+                        })
+                    };
+                    Some(super::NaviForms { gregar: set("gregar")?, falzar: set("falzar")? })
+                }
+                other => return Err(what(d, format!("`forms` is {other:?}, not the forms by game"))),
+            };
+            let own_chip = match &record.own_chip {
+                Some(c) => Some((chip_handle(&c.chip, &format!("navi {}'s own chip", d.key))?, c.code)),
                 None => None,
             };
-            navis.add(key.clone(), NaviDef { key, record, own_chip }, "the pack's navi".into());
+            navis.push(NaviDef { key: d.key.clone(), record, own_chip });
         }
-        let navis: Vec<NaviDef> = navis.sorted()?.into_iter().map(|(_, n)| n).collect();
+        // (A round's record of the link navis' chips used is 32 bits.)
+        if navis.len() > 32 {
+            return Err(ContentError::new("more than 32 navis"));
+        }
         // (Each navi's own chip knows its navi, and its identity whose it
         // is.)
         for (i, n) in navis.iter().enumerate() {
@@ -1201,20 +1126,60 @@ impl Defs {
                 claim_identity(&mut identities, h, super::IdentityOwner::Navi(NaviHandle(i as u16)), &n.key)?;
             }
         }
-        let mut forms = Entries::new(Registry::Form);
-        for f in &content.forms {
-            let key = key_of(&form_keys, f.id, format!("v1/form-{:02x}", f.id));
-            let mut record = f.clone();
-            if let Some(d) = definitions.get(Registry::Form, &key) {
-                record.weapons = read_weapons(d)?;
-                record.identity = identity_of(d, &identities)?;
+        let mut forms = Vec::new();
+        for d in definitions.of(Registry::Form) {
+            let mut record = super::navis::read_form(d, &resolver)?;
+            record.weapons = read_weapons(d)?;
+            record.identity = identity_of(d, &identities)?;
+            record.cross_of = match d.spec.field("cross_of") {
+                Data::Nil => None,
+                Data::Ref(Registry::Navi, key) => Some(NaviHandle(handle_of(Registry::Navi, key))),
+                other => return Err(what(d, format!("`cross_of` is {other:?}, not a navi"))),
+            };
+            record.beast = form_ref(d, d.spec.field("beast"), "beast")?;
+            record.breaks_to = form_ref(d, d.spec.field("breaks_to"), "breaks_to")?;
+            if record.kind.has_cross() != record.cross_of.is_some() {
+                return Err(what(d, "a Cross (and one in Beast Out) names the navi it is made with (`cross_of`), and no other form does".into()));
             }
-            forms.add(key.clone(), FormDef { key, record }, "the pack's form".into());
+            if (record.kind == super::FormKind::Cross) != record.beast.is_some() {
+                return Err(what(d, "a Cross names its form in Beast Out (`beast`), and no other form does".into()));
+            }
+            forms.push(FormDef { key: d.key.clone(), record });
         }
-        let forms: Vec<FormDef> = forms.sorted()?.into_iter().map(|(_, f)| f).collect();
         for (i, f) in forms.iter().enumerate() {
             if let Some(h) = f.record.identity {
                 claim_identity(&mut identities, h, super::IdentityOwner::Form(FormHandle(i as u16)), &f.key)?;
+            }
+        }
+        // The base form: what a navi that has not changed form is in.
+        let mut bases = forms.iter().enumerate().filter(|(_, f)| f.record.kind == super::FormKind::Base);
+        let base_form = bases.next().map(|(i, _)| FormHandle(i as u16));
+        if let Some((_, other)) = bases.next() {
+            return Err(ContentError::new(format!("two forms are base forms ({} is another)", other.key)));
+        }
+        // What the forms and the navis' sets name is the kind of form they
+        // say.
+        let kind_of = |h: FormHandle| forms[h.index()].record.kind;
+        for f in &forms {
+            if f.record.beast.is_some_and(|b| kind_of(b) != super::FormKind::CrossBeast) {
+                return Err(ContentError::new(format!("form {}'s `beast` is not a Cross in Beast Out", f.key)));
+            }
+        }
+        for n in &navis {
+            let Some(sets) = &n.record.forms else { continue };
+            for set in [&sets.gregar, &sets.falzar] {
+                let ok = set.crosses.iter().all(|&c| kind_of(c) == super::FormKind::Cross)
+                    && set.beast_out.is_none_or(|f| kind_of(f) == super::FormKind::Beast)
+                    && set.beast_over.is_none_or(|f| kind_of(f) == super::FormKind::BeastOver);
+                if !ok {
+                    return Err(ContentError::new(format!(
+                        "navi {}'s forms: `crosses` are Crosses, `beast_out` a Beast and `beast_over` a Beast Over",
+                        n.key
+                    )));
+                }
+            }
+            if base_form.is_none() {
+                return Err(ContentError::new(format!("navi {} changes form, and no form is the base form", n.key)));
             }
         }
         // Stages: what they place names kinds and their variant records.
@@ -1349,7 +1314,7 @@ impl Defs {
             in_registry += 1;
         }
 
-        // Registration by number's lookups.
+        // Lookups by key.
         let kind_keys: BTreeMap<String, KindHandle> =
             kinds.iter().enumerate().map(|(i, k)| (k.key.clone(), KindHandle(i as u16))).collect();
         let engine = ENGINE_KINDS.iter().map(|e| kind_keys[e.1]).collect();
@@ -1359,10 +1324,7 @@ impl Defs {
             handles,
             kind_keys,
             engine,
-            kind_slots: vec![None; 3 * 256],
-            action_numbers: vec![None; 256],
-            navi_numbers: Vec::new(),
-            form_numbers: Vec::new(),
+            base_form,
             chip_keys: BTreeMap::new(),
             weapon_keys: BTreeMap::new(),
             kinds: Vec::new(),
@@ -1386,39 +1348,12 @@ impl Defs {
             schemas,
             functions: Vec::new(),
         };
-        for (i, k) in kinds.iter().enumerate() {
-            if let Some((pool, index)) = k.slot {
-                let at = pool_index(pool) * 256 + index as usize;
-                if let Some(other) = defs.kind_slots[at] {
-                    return Err(ContentError::new(format!(
-                        "kinds {} and {} both fill {} object {index:#x}",
-                        kinds[other.index()].key,
-                        k.key,
-                        pool.name()
-                    )));
-                }
-                defs.kind_slots[at] = Some(KindHandle(i as u16));
-            }
-        }
         defs.kinds = kinds;
-        for (i, a) in defs.actions.iter().enumerate() {
-            if let Some(n) = a.number {
-                defs.action_numbers[n as usize].get_or_insert(ActionHandle(i as u16));
-            }
-        }
         for (i, w) in defs.weapons.iter().enumerate() {
             defs.weapon_keys.insert(w.key.clone(), WeaponHandle(i as u16));
         }
         for (i, c) in defs.chips.iter().enumerate() {
             defs.chip_keys.insert(c.key.clone(), ChipHandle(i as u16));
-        }
-        defs.navi_numbers = vec![None; 256];
-        for (i, n) in defs.navis.iter().enumerate() {
-            defs.navi_numbers[n.record.id as usize] = Some(NaviHandle(i as u16));
-        }
-        defs.form_numbers = vec![None; 256];
-        for (i, f) in defs.forms.iter().enumerate() {
-            defs.form_numbers[f.record.id as usize] = Some(FormHandle(i as u16));
         }
         defs.functions = functions.list;
         Ok(defs)
@@ -1440,8 +1375,7 @@ mod tests {
         c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        // Every chip is a definition with its own use: none is a record
-        // registration by number runs.
+        // Every chip is a definition with its own use.
         assert!(c.defs.chips.len() > 300, "{} chips", c.defs.chips.len());
         // Effects, sparks, regions and collision types are definitions
         // the engine holds by handle.
