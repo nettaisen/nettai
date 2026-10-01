@@ -648,3 +648,22 @@ export type FireBlast = {
     direction: FireBlastDirection,
     while_dimmed: boolean?,
 }
+
+-- A panel strike (objects/panel-strike): whether its burst cracks an
+-- uncracked panel, the ticks its panel blinks first, its hit modifier, and
+-- whether it bursts only on a solid panel.
+export type PanelStrike = {
+    cracks: boolean?,
+    warning: number,
+    hit_mod: number,
+    solid_only: boolean?,
+}
+
+-- BassAnly's dark ball (chips/bassanly/shot): its level (0 to 3: its
+-- speeds), its slant (-1 up, 1 down), and how it homes.
+export type DarkBallHoming = "none" | "diagonal" | "seeking"
+export type DarkBall = {
+    level: number,
+    slant: number,
+    homing: DarkBallHoming,
+}

@@ -1,18 +1,17 @@
 --!strict
--- Bass, the navi of the Bass chip (actor object #0x4F, `sub_80C3970`),
--- brought by its navi chip controller. He appears on his user's panel with
--- his cape (a form overlay), rises for 100 ticks, then fires 24 volleys of
--- two shots (objects/panel-strike), 8 ticks apart, at the columns ahead
+-- Bass, the navi of the Bass chip (the original's actor object #0x4F,
+-- `sub_80C3970`), brought by its navi chip controller. He appears on his
+-- user's panel with his cape (a form overlay), rises for 100 ticks, then
+-- fires 24 volleys of two shots (objects/panel-strike), 8 ticks apart, at
+-- the columns ahead
 -- holding the other side's panels: each shot at a panel with an enemy navi
 -- five times in eight (else, or if there is none, any panel of those
 -- columns), none at a panel shot in the last 22 ticks. Then he leaves, and
 -- the controller moves on. See docs/engine/chips.md §3.6.33.
---
--- The chip's script (navi chip subtype 26): `navi_chip` is his spawner,
--- `off_802CD5C[26]`.
 
 local panels = require("../../lib/panels")
-local panel_strike = require("../panel-strike/panel_strike")
+local panel_strike = require("../../objects/panel-strike/panel_strike")
+local effects = require("../../lib/effects")
 
 export type State = {
     -- The controller waiting for him (the game keeps its pointer in his X
@@ -25,11 +24,10 @@ export type State = {
     columns: { number },
 }
 
-local bass = {
-    state = { controller = "object", cooldowns = "u8[18]", columns = "u8[7]" },
-}
+local bass = {}
 
-local SPRITE = "08-13"
+local SPRITE = asset.sprite("bass-anly")
+local SOUND_APPEAR = asset.sound("appear")
 
 -- His cape: a form overlay on his animation + 0x14, stepping while
 -- dimmed.
@@ -42,26 +40,11 @@ local COLUMN_FILTER = { [0] = { 0x20, 0 }, { 0, 0x20 } }
 local ENEMY_NAVI = { [0] = { 0x0400_0000, 0 }, { 0x0800_0000, 0 } }
 local ANY_PANEL = 0x1_0000
 
--- His shots: Param2 20 ticks of warning, Param4 on solid panels only.
-local SHOT_PARAMS = { 0, 0x14, 0, 1 }
+-- His shots: 20 ticks of warning, hit modifier 3, on solid panels only.
+local SHOT: PanelStrike = { warning = 0x14, hit_mod = 3, solid_only = true }
 local SHOT_COOLDOWN = 0x16
-
--- `sub_80C3B30`: Bass for `user`, reporting to `controller`. (His
--- position is the spawner's registers, which his init overwrites.)
-function bass.navi_chip(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn_kind("bass", Vec3.zero, spec.params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.alliance, o.flip = user.alliance, user.flip
-    o.damage = spec.damage
-    o.stamina = bit32.rshift(spec.damage, 16)
-    local s = o.state :: State
-    s.controller = controller
-    return o
-end
+-- A shot's flash at his hand (effect 0x57).
+local FLASH = define.effect { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
 
 local function damage_word(me: Object): number
     return bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
@@ -137,11 +120,11 @@ local function shoot(me: Object)
     local x, y = px :: number, py :: number
     local s = me.state :: State
     s.cooldowns[(y - 1) * 6 + x] = SHOT_COOLDOWN
-    panel_strike.spawn(me, x, y, 0, SHOT_PARAMS, damage_word(me), 0, true)
-    -- sub_80C3CA0: effect 0x57 20 pixels ahead of him and 34 up, jittered.
+    panel_strike.spawn(me, x, y, 0, SHOT, damage_word(me), 0, true)
+    -- sub_80C3CA0: the flash 20 pixels ahead of him and 34 up, jittered.
     local p = me.pos
     local pos = battle.jitter(0xF, Vec3.new(p.x + me.facing * 0x14_0000, p.y, p.z + 0x22_0000))
-    battle.effect(pos, 0x57, bit32.bxor(me.alliance, me.flip))
+    battle.effect(pos, FLASH, bit32.bxor(me.alliance, me.flip))
 end
 
 -- `sub_80C3CD0`: every panel's cooldown counts down.
@@ -271,7 +254,7 @@ local function init(me: Object)
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, 0)
     me.related1 = battle.form_overlay(me, { sprite = SPRITE, stepping = "while_dimmed", anim_offset = CAPE_ANIM_OFFSET })
-    battle.play_sound(0x94)
+    battle.play_sound(SOUND_APPEAR)
     me.timer = 0x64
     me:set_lifecycle("update")
     tick(me)
@@ -281,7 +264,7 @@ end
 -- moves on.
 local function leave(me: Object)
     local p = me.pos
-    battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), 0x12)
+    battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), effects.smoke)
     local cape = me.related1
     if cape then
         cape:set_lifecycle("destroy")
@@ -293,17 +276,39 @@ local function leave(me: Object)
     me:free()
 end
 
--- `sub_80C3970`.
-function bass.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        leave(me)
+bass.kind = define.kind {
+    id = "bass/navi",
+    pool = "actor",
+    state = { controller = "object", cooldowns = "u8[18]", columns = "u8[7]" },
+    -- `sub_80C3970`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            leave(me)
+        end
+        me:update_sprite_while_dimmed()
+    end,
+}
+
+-- `sub_80C3B30`: Bass for `user`, reporting to `controller` (the Bass
+-- chip's navi hook, `off_802CD5C[26]`). (His position is the spawner's
+-- registers, which his init overwrites.)
+function bass.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
+    local o = battle.spawn(bass.kind, Vec3.zero)
+    if not o then
+        return nil
     end
-    me:update_sprite_while_dimmed()
+    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
+    o.element = spec.element
+    o.alliance, o.flip = user.alliance, user.flip
+    o:set_damage_word(spec.damage)
+    local s = o.state :: State
+    s.controller = controller
+    return o
 end
 
 return bass

@@ -59,7 +59,7 @@ projectile = { pool = "attack", index = 0x00 }
 flame = { pool = "attack", index = 0x04 }
 "engine/eruption" = { pool = "attack", index = 0x07 }
 bomb = { pool = "attack", index = 0x08 }
-"bass/panel-strike" = { pool = "attack", index = 0x09 }
+panel-strike = { pool = "attack", index = 0x09 }
 bomb-slash = { pool = "attack", index = 0x0A }
 flying-shot = { pool = "attack", index = 0x0B }
 dust-storm = { pool = "attack", index = 0x0E }
