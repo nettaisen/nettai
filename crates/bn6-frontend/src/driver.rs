@@ -178,7 +178,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folder: &[(&str, 
             joypad_phase: 0,
             bug_frags: 0,
             navi_level: 0,
-            console: ConsoleSetup { rng: rng.state, tag_pair, emotion_window_glitch: false },
+            console: ConsoleSetup { rng: rng.state, tag_pair, ..ConsoleSetup::default() },
         }
     };
     RoundSetup {

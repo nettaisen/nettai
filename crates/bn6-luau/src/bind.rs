@@ -1067,6 +1067,11 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, id) = (u8_arg(side, "side")? & 1, sound_arg(id)?);
         with(|api, _| Ok(api.play_sound_for(side, id)))
     });
+    lib_fn!(lua, t, "warn", |_, (id, at, side): (LuaValue, Option<mlua::UserDataRef<LVec3>>, Option<LuaValue>)| {
+        let id = sound_arg(id)?;
+        let side = side.map(|s| u8_arg(s, "side")).transpose()?.map(|s| s & 1);
+        with(|api, _| Ok(api.warn(id, at.map(|p| p.0), side)))
+    });
     lib_fn!(lua, t, "shake_camera", |_, (magnitude, ticks): (LuaValue, LuaValue)| {
         let (magnitude, ticks) = (u16_arg(magnitude, "magnitude")?, u16_arg(ticks, "ticks")?);
         if magnitude > 3 {

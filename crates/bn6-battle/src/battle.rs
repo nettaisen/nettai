@@ -363,6 +363,9 @@ pub struct Battle {
     /// The message the HUD shows (presentation only; left out of the
     /// digest).
     pub message: Option<crate::hud::MessageLine>,
+    /// The warning markers each console's HUD shows this tick
+    /// (presentation only; left out of the digest).
+    pub warnings: [Vec<crate::hud::Warning>; 2],
     pub paused: bool,
     pub inputs: [InputRecord; 2],
     pub hands: [ChipHand; 2],
@@ -630,6 +633,7 @@ impl Battle {
             used_chips: [None; 2],
             chip_hud: Default::default(),
             message: None,
+            warnings: Default::default(),
             paused: false,
             inputs: [InputRecord::default(); 2],
             hands,
@@ -751,6 +755,10 @@ impl Battle {
     pub fn tick(&mut self, input: &[PlayerTick; 2], events: TickEvents) {
         for heard in &mut self.sound {
             heard.clear();
+        }
+        for (shown, console) in self.warnings.iter_mut().zip(&mut self.consoles) {
+            shown.clear();
+            console.frames = console.frames.wrapping_add(1);
         }
         // Panel highlights and blinks last one frame: the game's field
         // renderer clears them after drawing.
@@ -1752,6 +1760,23 @@ impl Battle {
         }
     }
 
+    /// `sub_800AE90`: a warning marker on the HUD this tick, over the
+    /// custom gauge or over the place `at` on the field, with `sound` on
+    /// every 16th frame of the console's frame counter; on `console`'s HUD
+    /// only, or on both.
+    pub fn warn(&mut self, sound: impl Into<SoundCue>, at: Option<crate::object::Vec3>, console: Option<u8>) {
+        let sound = sound.into();
+        for side in 0..2u8 {
+            if console.is_some_and(|c| c & 1 != side) {
+                continue;
+            }
+            self.warnings[side as usize].push(crate::hud::Warning { at });
+            if self.consoles[side as usize].frames & 0xF == 0 {
+                self.play_sound_for(side, sound);
+            }
+        }
+    }
+
     /// `sub_801E270`: the HUD says `message` for a second.
     pub(crate) fn show_message(&mut self, message: crate::hud::Message) {
         self.message = Some(crate::hud::MessageLine { message, ticks: crate::hud::MessageLine::SHOWN_TICKS });
@@ -2031,6 +2056,29 @@ mod tests {
         assert_eq!(b.sound_cues(), [SoundCue::Music(SoundId::VIRUS_BATTLE)]);
         tick(&mut b);
         assert_eq!(b.sound_cues(), [SoundCue::Pinch(false)]);
+    }
+
+    #[test]
+    fn a_warning_sounds_on_a_consoles_sixteenth_frames() {
+        let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::stats(500)), testing::content());
+        (b.consoles[0].frames, b.consoles[1].frames) = (15, 3);
+        tick(&mut b);
+        assert_eq!((b.consoles[0].frames, b.consoles[1].frames), (16, 4));
+        let sound = SoundCue::from(SoundId(0x91));
+        let heard = |b: &Battle, side: u8| b.sound_cues_for(side).iter().filter(|&&c| c == sound).count();
+        // Over the gauge, on both consoles: only the one on a 16th frame
+        // sounds it.
+        b.warn(SoundId(0x91), None, None);
+        assert_eq!((b.warnings[0].len(), b.warnings[1].len()), (1, 1));
+        assert_eq!((heard(&b, 0), heard(&b, 1)), (1, 0));
+        // Over a place, on one console: every call sounds on such a frame.
+        let at = crate::object::Vec3 { x: 20 << 16, y: 12 << 16, z: 0 };
+        b.warn(SoundId(0x91), Some(at), Some(0));
+        assert_eq!(b.warnings[0][1].at, Some(at));
+        assert_eq!((b.warnings[0].len(), b.warnings[1].len(), heard(&b, 0)), (2, 1, 2));
+        // The markers last the tick.
+        tick(&mut b);
+        assert!(b.warnings.iter().all(Vec::is_empty));
     }
 
     #[test]

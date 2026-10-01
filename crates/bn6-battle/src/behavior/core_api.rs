@@ -338,6 +338,10 @@ impl CoreApi for Battle {
         Battle::play_sound_for(self, side & 1, SoundId(sound));
     }
 
+    fn warn(&mut self, sound: u16, at: Option<Vec3>, side: Option<u8>) {
+        Battle::warn(self, SoundId(sound), at, side);
+    }
+
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value {
         let s = &self.stats[side as usize & 1];
         let i = |v: i64| Value::Int(v);

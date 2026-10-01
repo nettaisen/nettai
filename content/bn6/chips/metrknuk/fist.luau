@@ -112,7 +112,7 @@ local function init(me: Object)
     me.vel = Vec3.new(me.facing * row(me, FORWARD), me.vel.y, row(me, FALL))
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.visible = true
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)
