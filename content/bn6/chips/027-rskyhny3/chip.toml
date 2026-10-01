@@ -1,3 +1,3 @@
-# RskyHny (action 0x39), in RskyHny1's folder.
+# RskyHny's action (0x39) for the records that name it, in chip.luau.
 
-script = "../025-rskyhny1/chip.luau"
+script = "chip.luau"
