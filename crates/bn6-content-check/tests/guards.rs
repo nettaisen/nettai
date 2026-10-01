@@ -22,15 +22,9 @@ const ROOTS: [&str; 3] = ["content/bn6", "crates/bn6-battle/testdata/content", "
 const NUMBERED_FOLDERS: &[&str] = &[];
 
 /// The modules that still hold `legacy` markers, by path (`*`: any one
-/// folder): the navis' and forms' numbers, and the original's numbering of
-/// the body overlays, which the ruleset still reads by number. Step 13's
-/// second part converts them and empties this list.
-const LEGACY_MARKERS: &[&str] = &[
-    "content/bn6/navis/*/navi.luau",
-    "content/bn6/navis/megaman/forms/*/form.luau",
-    "content/bn6/rules/body-overlays.luau",
-    "crates/bn6-battle/testdata/content/navis/test.luau",
-];
+/// folder): none, since step 11 made the navis and forms definitions by
+/// handle and the body overlays the identities' parts.
+const LEGACY_MARKERS: &[&str] = &[];
 
 /// Every folder and every `.luau` module under `dir`, as paths from the
 /// repository's root with `/`.

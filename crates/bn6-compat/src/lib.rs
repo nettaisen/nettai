@@ -116,8 +116,9 @@ pub struct RuleNumbers {
     /// Statuses (`off_80209EC`): a hit's status byte, by key.
     #[serde(default)]
     pub statuses: BTreeMap<String, u8>,
-    /// The field objects' identities: the NameID of each, by key (a
-    /// navi's and a form's is in navis.toml and forms.toml).
+    /// The identities with a key of their own (the field objects', and
+    /// the navi chips' navis' for what they wear): the NameID of each, by
+    /// key (a navi's and a form's is in navis.toml and forms.toml).
     #[serde(default)]
     pub identities: BTreeMap<String, u16>,
     /// The ruleset's roles (rules/roles.luau), by role name: the effect

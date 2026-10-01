@@ -18,9 +18,11 @@ local function attach_points(): { { number } }
     return points
 end
 
-local WEAPONS = { buster = buster.weapon, charge_shot = charged_shot.weapon }
+local WEAPONS: FormWeapons = { buster = buster.weapon, charge_shot = charged_shot.weapon }
 
-local function navi(id: string, name: string, sprite: string, class: IdentityClass, ai_index: number, number: number): NaviDef
+-- `megaman`: the navi that changes form (it has forms, though this content
+-- defines none but the base form).
+local function navi(id: string, name: string, sprite: string, class: IdentityClass, ai_index: number, megaman: boolean): NaviDef
     return define.navi {
         id = id,
         name = name,
@@ -35,20 +37,23 @@ local function navi(id: string, name: string, sprite: string, class: IdentityCla
         -- What a Cross change brings it with.
         fresh = { hp = 100, first_barrier = 0, mega_level = 5, giga_level = 1 },
         cross_hp = { 100, 150 },
+        forms = if megaman then { gregar = { crosses = {} }, falzar = { crosses = {} } } else nil,
         identity = define.identity {
             class = class,
             version = 0,
             actor_type = "player",
             ai_index = ai_index,
+            aura_anim = ai_index,
+            ice = "medium",
+            overlay_hooks = if megaman then { "death", "refresh", "flinch", "drag" } else nil,
             attach_points = attach_points(),
         },
-        legacy = legacy { number = number, name_id = 0x1A0 + number },
     }
 end
 
 return {
-    megaman = navi("megaman", "MegaMan", "test-megaman", "megaman", 0, 0),
-    link_navi = navi("test/link-navi", "LinkNavi", "test-navi", "link_navi", 4, 1),
+    megaman = navi("megaman", "MegaMan", "test-megaman", "megaman", 0, true),
+    link_navi = navi("test/link-navi", "LinkNavi", "test-navi", "link_navi", 4, false),
     base = define.form {
         id = "base",
         name = "Base",
@@ -57,6 +62,6 @@ return {
         element = "null",
         buster_bonus = 0,
         weapons = WEAPONS,
-        legacy = legacy { number = 0 },
+        buster_arm = { anim = 0 },
     },
 }
