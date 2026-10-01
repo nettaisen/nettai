@@ -15,7 +15,7 @@ use bn6_battle::content::testing;
 use bn6_battle::input::PlayerTick;
 use bn6_battle::object::{Vec3, flags};
 use bn6_battle::scenario::{self, Tick};
-use bn6_content_api::{AssetKind, Value};
+use bn6_content_api::{AssetKind, Registry, Value};
 
 fn runtimes() -> Vec<(&'static str, Options)> {
     let mut v = vec![("luau", Options::default())];
@@ -63,7 +63,7 @@ fn attach(b: &mut Battle, n: usize) {
         let r = if beam {
             behavior::spawn_kind(b, "gundels/beam", offset, [0; 4]).unwrap()
         } else {
-            behavior::spawn_kind(b, "attachment", Vec3::default(), [2, 0, 0, 0]).unwrap()
+            behavior::spawn_kind(b, "attachment", Vec3::default(), [0; 4]).unwrap()
         };
         let o = b.objects.get_mut(r);
         o.related[0] = Some(owner);
@@ -78,6 +78,13 @@ fn attach(b: &mut Battle, n: usize) {
         } else {
             o.panel = panel;
             o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+            // The gun a level-3 GunDelSol holds.
+            let records = &b.content.defs.records;
+            let look = records
+                .iter()
+                .position(|d| d.record_type == "attachment-look" && d.key.starts_with("gundels3/"))
+                .expect("GunDelS3's gun");
+            behavior::set_state_field(b, r, "look", Value::Def(Registry::Record, look as u16));
             behavior::set_state_variant(b, r, "slot", "overlay");
             b.actors.get_mut(actor).overlay = Some(r);
         }
