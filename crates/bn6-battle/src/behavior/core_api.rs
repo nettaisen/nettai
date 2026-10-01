@@ -433,6 +433,16 @@ impl CoreApi for Battle {
         kinds::player::set_mood(self, side & 1, mood);
     }
 
+    fn bug_frags(&self, side: u8) -> u32 {
+        self.bug_frags[side as usize & 1]
+    }
+
+    fn spend_bug_frags(&mut self, side: u8, n: u32) {
+        // (The local player's save loses them too, which no battle reads.)
+        let frags = &mut self.bug_frags[side as usize & 1];
+        *frags = frags.wrapping_sub(n);
+    }
+
     fn side_special(&self, side: u8) -> SideSpecial {
         let s = &self.sides[side as usize & 1];
         if s.select_special != 0 {
