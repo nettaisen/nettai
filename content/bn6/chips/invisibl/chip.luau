@@ -5,6 +5,7 @@
 return define.chip {
     id = "invisibl",
     name = "Invisibl",
+    description = "Invisible\nfor a\nwhile",
     codes = { "*" },
     element = "null",
     family = "null",

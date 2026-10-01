@@ -559,6 +559,14 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
     let json = |field: &str| -> Result<Json, ContentError> { r.json(spec.field(field), &format!("chip {}.{field}", d.key)).map_err(what) };
     let mut o = Map::new();
     o.insert("name".into(), Json::String(spec.field("name").str().unwrap_or(&d.key).to_string()));
+    // (The custom screen reads its lines: none given counts as three.)
+    match json("description")? {
+        Json::Null => {}
+        text @ Json::String(_) => {
+            o.insert("description".into(), text);
+        }
+        other => return Err(what(format!("`description` is {other}, not text"))),
+    }
     let defaults: [(&str, Json); 13] = [
         ("codes", Json::Array(Vec::new())),
         ("element", "null".into()),
@@ -1403,9 +1411,10 @@ mod tests {
         c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        // The modules that return a table with a `state` give its layout.
+        // The modules that return a table with a `state` give its layout
+        // (v1 modules: fewer as families become definitions).
         let states = c.defs.definitions.modules.iter().filter(|m| m.state.is_some()).count();
-        assert!(states > 100, "{states} module states");
+        assert!(states > 50, "{states} module states");
         // The numbered tables are the definitions' (step 5): what the
         // modules define of them shares their entries, so the engine's
         // byte holds them all.

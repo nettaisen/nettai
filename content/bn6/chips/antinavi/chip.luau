@@ -5,6 +5,7 @@
 return define.chip {
     id = "antinavi",
     name = "AntiNavi",
+    description = "Takes the\nenemy's\nNavi away",
     codes = { "F", "L", "T", "*" },
     element = "null",
     family = "null",

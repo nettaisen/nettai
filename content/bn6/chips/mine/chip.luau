@@ -5,6 +5,7 @@
 return define.chip {
     id = "mine",
     name = "Mine",
+    description = "Place a\nmine in\nenmy area",
     codes = { "A", "S", "T" },
     element = "null",
     family = "summon",

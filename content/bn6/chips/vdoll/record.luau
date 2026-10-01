@@ -5,6 +5,7 @@
 return define.chip {
     id = "vdoll",
     name = "VDoll",
+    description = "Throws\nVDoll\n3sq ahead",
     codes = { "F", "N", "S", "*" },
     element = "null",
     family = "summon",

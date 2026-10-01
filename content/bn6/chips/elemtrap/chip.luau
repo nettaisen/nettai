@@ -5,6 +5,7 @@
 return define.chip {
     id = "elemtrap",
     name = "ElemTrap",
+    description = "Trap enmy\nand attk\nwith elem",
     codes = { "G", "S", "U", "*" },
     element = "null",
     family = "null",

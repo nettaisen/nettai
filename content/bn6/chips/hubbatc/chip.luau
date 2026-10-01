@@ -5,6 +5,7 @@
 return define.chip {
     id = "hubbatc",
     name = "HubBatc",
+    description = "Blend Hub\nDNA Data\nw/MegaMan",
     codes = { "J" },
     element = "null",
     family = "null",

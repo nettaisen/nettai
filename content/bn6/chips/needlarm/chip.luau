@@ -5,6 +5,7 @@
 return define.chip {
     id = "needlarm",
     name = "NeedlArm",
+    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",

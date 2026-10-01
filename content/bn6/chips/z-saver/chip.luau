@@ -5,6 +5,7 @@
 return define.chip {
     id = "z-saver",
     name = "Z Saver",
+    description = "Add an\neffect:\nBlind",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "sword",

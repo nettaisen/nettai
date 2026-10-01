@@ -5,6 +5,7 @@
 return define.chip {
     id = "bugrswrd",
     name = "BugRSwrd",
+    description = "Use Bug\nFrag with\nDrkSword!",
     codes = { "V" },
     element = "null",
     family = "sword",

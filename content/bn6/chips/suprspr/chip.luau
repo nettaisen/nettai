@@ -7,6 +7,7 @@ local widesht = require("../widesht/chip")
 return define.chip {
     id = "suprspr",
     name = "SuprSpr",
+    description = "Fire 3\nconsec.\nWideShts",
     codes = { "A", "B", "C", "*" },
     element = "aqua",
     family = "program_advance",

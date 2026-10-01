@@ -5,6 +5,7 @@
 return define.chip {
     id = "delecswd",
     name = "DElecSwd",
+    description = "Dash fwd\nand slash\nw/ElecSwd",
     codes = { "E" },
     element = "elec",
     family = "elec",

@@ -14,6 +14,7 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("eraseman-win"), lose = asset.banner("eraseman-deleted") },
     merge_height = 0,
+    run_message = { 19, 15, 19 },
     own_chip = { chip = eraseman, code = "K" },
     chip_bonus = {
         family = "cursor",

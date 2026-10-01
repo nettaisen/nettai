@@ -5,6 +5,7 @@
 return define.chip {
     id = "volcchrg",
     name = "VolcChrg",
+    description = "Snd coal\nup chimny\n& hit emy",
     codes = { "C" },
     element = "fire",
     family = "fire",

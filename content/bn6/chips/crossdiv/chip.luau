@@ -5,6 +5,7 @@
 return define.chip {
     id = "crossdiv",
     name = "CrossDiv",
+    description = "Cross-\nslice!",
     codes = { "D" },
     element = "null",
     family = "sword",

@@ -5,6 +5,7 @@
 return define.chip {
     id = "varswrd",
     name = "VarSwrd",
+    description = "A magical\nshifting\nsword.",
     codes = { "K", "V", "W" },
     element = "null",
     family = "sword",

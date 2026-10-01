@@ -8,6 +8,7 @@ local plus = require("../../lib/instant/plus")
 return define.chip {
     id = "whicapsl",
     name = "WhiCapsl",
+    description = "Add an\neffect:\nParalyze",
     codes = { "*" },
     element = "null", family = "null", class = "standard",
     rarity = 1, mb = 30, damage = 0, hit_param = 50, lockout = 20,

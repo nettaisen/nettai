@@ -5,6 +5,7 @@
 return define.chip {
     id = "bassanly",
     name = "BassAnly",
+    description = "A ring\nthat hits\n4 times",
     codes = { "F" },
     element = "null",
     family = "null",

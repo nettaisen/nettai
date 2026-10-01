@@ -8,6 +8,7 @@ local aurahed_records = require("../aurahed/records")
 return define.chip {
     id = "streamhd",
     name = "StreamHd",
+    description = "Fire a\nstrm of 5\nAuraHeds",
     codes = {},
     element = "null",
     family = "program_advance",

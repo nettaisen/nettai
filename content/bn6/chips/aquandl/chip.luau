@@ -5,6 +5,7 @@
 return define.chip {
     id = "aquandl3",
     name = "AquaNdl3",
+    description = "Target 3\nneedles\nat enemy!",
     codes = { "A", "L", "U" },
     element = "aqua",
     family = "aqua",

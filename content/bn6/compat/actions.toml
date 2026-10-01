@@ -81,6 +81,7 @@
 "darkthnd/action" = 0x1F
 "thunder/action" = 0x1F
 "drkrecov/action" = 0x20
+"recov/none" = 0x20
 "recov10/action" = 0x20
 "recov120/action" = 0x20
 "recov150/action" = 0x20
@@ -105,6 +106,7 @@
 "firebrn1/action" = 0x27
 "firebrn2/action" = 0x27
 "firebrn3/action" = 0x27
+"heatcross/charge/action" = 0x27
 "widebrn1/action" = 0x27
 "widebrn2/action" = 0x27
 "widebrn3/action" = 0x27
@@ -117,6 +119,8 @@
 "cornsht1/action" = 0x2A
 "cornsht2/action" = 0x2A
 "cornsht3/action" = 0x2A
+"megaman/reflect/action" = 0x2B
+"megaman/shield/action" = 0x2B
 "rflectr1/action" = 0x2B
 "rflectr2/action" = 0x2B
 "rflectr3/action" = 0x2B
@@ -130,6 +134,7 @@
 "drilarm/action" = 0x2E
 "static/action" = 0x2F
 "tornado/action" = 0x2F
+"tornado/back-spread" = 0x2F
 "suprspr/action" = 0x30
 "widesht/action" = 0x30
 "pwrwave1/action" = 0x31
