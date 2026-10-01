@@ -25,7 +25,7 @@ These show the patterns end to end, and are the models to copy:
 | MegaMan's weapons | `define.weapon` with its action a definition, charge times of its own, the traits the ruleset asks (`held`, `plain`, `sticky`, `charged_chip`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); a weapon that asks the attack's chip for its part (`navi.attack_chip`: SlashCross's charged slash) | navis/megaman/weapons/NAME/weapon.luau, navis/megaman/forms/FORM/, lib/buster.luau, lib/weapon.luau |
 | The link navis' charged attacks | A weapon whose action is the navi's own; a kind that lasts while its owner's action does (`owner:navi_action() ~= s.action`); a weapon that runs a chip's action with the chip as the attack's (ProtoMan's WideSwrd) | navis/heatman/charge.luau ... navis/dustman/charge.luau, navis/groundman/drill.luau, navis/protoman/charge.luau, back_special.luau |
 | The rock, the cubes and the statue | Field obstacles on the `obstacle` service; variants as records; a kind a stage places (`place`) | objects/rock, chips/rockcube, chips/guardian, stages/netbattle.luau |
-| The roles | What the ruleset starts, spawns and shows itself, by role: actions, kinds, chips, statuses, effects, sparks, regions, collision types, hooks | rules/roles.luau |
+| The roles | What the ruleset starts, spawns, shows and plays itself, by role: actions, kinds, chips, statuses, lock-on modes, effects, sparks, regions, collision types, sounds, music, banners, sprites, hooks | rules/roles.luau |
 
 ## 2. What is content and what is the engine's
 
@@ -219,11 +219,13 @@ new content is recorded with the workspace's chiplab (tools/chiplab/README.md th
 
 ## 6. What isn't there
 
-- **Roles nothing fills**: `kinds.mode9_attack` and `kinds.mode9_actor`, the two objects a player whose AI
-  index is 10 spawns in battle mode 9 (the original's attack object #0xD2 and actor object #0x28). No netbattle
-  reaches them.
+- **Roles nothing fills**: `actions.volley`, what the navi's volley request starts (the original's action 0x30
+  on whatever the attack's parameter bytes hold; no routine raises the request); and `kinds.mode9_attack` and
+  `kinds.mode9_actor`, the two objects a player whose AI index is 10 spawns in battle mode 9 (the original's
+  attack object #0xD2 and actor object #0x28). No netbattle reaches them; starting one is an error naming the
+  role.
 - **Numbers still in definitions**: a navi's and a form's number sit in their `legacy` markers, and the body
   overlays are numbered as the original numbers them (rules/body-overlays.luau), because the ruleset still
   finds them by number. `bn6-content-check`'s ratchet counts the markers and its guard lists the modules that
-  may hold one.
+  may hold one. Nothing else in the API or the content is by number.
 - **Bug codes** (a hitbox's `bug`, a projectile variant's) are numbers: they have no definition yet.

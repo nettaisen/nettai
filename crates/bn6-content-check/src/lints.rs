@@ -9,8 +9,6 @@
 //! dropped and string contents masked, so a pattern never matches inside
 //! either, and positions are kept.
 
-use std::collections::BTreeSet;
-
 use crate::Problem;
 
 /// A module's source with comments blanked and string contents masked
@@ -101,56 +99,6 @@ impl Scanned<'_> {
         let rest = &self.source[at + 1..];
         rest.find(q).map(|end| &rest[..end])
     }
-
-    /// The arguments of the call whose `(` is at byte `open`: each
-    /// argument's code, trimmed.
-    pub fn args(&self, open: usize) -> Vec<&str> {
-        let code = &self.code[open + 1..];
-        let (mut depth, mut start, mut out) = (0i32, 0, Vec::new());
-        for (i, c) in code.char_indices() {
-            match c {
-                '(' | '{' | '[' => depth += 1,
-                ')' | '}' | ']' if depth == 0 => {
-                    out.push(code[start..i].trim());
-                    break;
-                }
-                ')' | '}' | ']' => depth -= 1,
-                ',' if depth == 0 => {
-                    out.push(code[start..i].trim());
-                    start = i + 1;
-                }
-                _ => {}
-            }
-        }
-        out.retain(|a| !a.is_empty());
-        out
-    }
-
-    /// Module-level numeric constants (`local ANIM_THROW, TICKS = 6, 0x15`).
-    pub fn numeric_constants(&self) -> BTreeSet<String> {
-        let mut out = BTreeSet::new();
-        for line in self.code.lines() {
-            let Some(rest) = line.strip_prefix("local ") else { continue };
-            let Some((names, values)) = rest.split_once('=') else { continue };
-            let names: Vec<&str> = names.split(',').map(|n| n.split(':').next().unwrap_or("").trim()).collect();
-            let values: Vec<&str> = values.split(',').map(str::trim).collect();
-            for (n, v) in names.iter().zip(&values) {
-                if is_number(v) {
-                    out.insert(n.to_string());
-                }
-            }
-        }
-        out
-    }
-}
-
-/// Whether `s` is a numeric literal (decimal or hex, maybe negative).
-fn is_number(s: &str) -> bool {
-    let s = s.strip_prefix('-').unwrap_or(s).trim();
-    if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
-        return !hex.is_empty() && hex.bytes().all(|c| c.is_ascii_hexdigit() || c == b'_');
-    }
-    !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit() || c == b'_')
 }
 
 /// A use of the numeric API that the v2 API replaces.
@@ -161,37 +109,20 @@ pub struct Deprecated {
     pub instead: &'static str,
 }
 
-/// Uses deprecated whatever their arguments: pattern, what, instead. (What
-/// the API no longer has isn't here: a use of it is a type error.)
-const ALWAYS: &[(&str, &str, &str)] = &[
+/// What is still deprecated: pattern, what, instead. (What the API no
+/// longer has isn't here: a use of it is a type error.)
+const DEPRECATED: &[(&str, &str, &str)] = &[
     ("legacy {", "a legacy marker", "the v2 form it stands for"),
     ("legacy = {", "a legacy marker", "the v2 form it stands for"),
-];
-
-/// Calls deprecated when an argument is a number: pattern, the arguments
-/// (0-based) that take a definition, what, instead.
-const BY_ARGUMENT: &[(&str, &[usize], &str, &str)] = &[
-    ("battle.play_sound(", &[0], "battle.play_sound(number)", "asset.sound"),
-    ("battle.play_sound_for(", &[1], "battle.play_sound_for(side, number)", "asset.sound"),
 ];
 
 /// Every deprecated use in a module.
 pub fn deprecated(source: &str) -> Vec<Deprecated> {
     let s = Scanned::new(source);
-    let constants = s.numeric_constants();
-    let numeric = |a: &str| is_number(a) || constants.contains(a);
     let mut out = Vec::new();
-    for &(pattern, what, instead) in ALWAYS {
+    for &(pattern, what, instead) in DEPRECATED {
         for at in s.find(pattern) {
             out.push(Deprecated { line: s.line(at), what, instead });
-        }
-    }
-    for &(pattern, positions, what, instead) in BY_ARGUMENT {
-        for at in s.find(pattern) {
-            let args = s.args(at + pattern.len() - 1);
-            if positions.iter().any(|&p| args.get(p).is_some_and(|a| numeric(a))) {
-                out.push(Deprecated { line: s.line(at), what, instead });
-            }
         }
     }
     out.sort_by_key(|d| d.line);
@@ -347,20 +278,14 @@ mod tests {
     }
 
     #[test]
-    fn numeric_uses_count_and_definitions_do_not() {
-        let src = "local SOUND, ANIM = 0x1A6, 6\n\
-                   local THROW = asset.sound('throw')\n\
-                   battle.play_sound(SOUND)\n\
+    fn legacy_markers_count_and_definitions_do_not() {
+        let src = "local THROW = asset.sound('throw')\n\
                    battle.play_sound(THROW)\n\
-                   battle.play_sound(0x10)\n\
                    local k = battle.spawn(bomb.kind, me.pos)\n\
-                   local _ = battle.effect(me.pos, BURST)\n\
-                   local N = define.navi { id = 'n', legacy = legacy { number = 1 } }\n";
-        let d: Vec<&str> = deprecated(src).iter().map(|d| d.what).collect();
-        assert_eq!(
-            d,
-            ["battle.play_sound(number)", "battle.play_sound(number)", "a legacy marker"]
-        );
+                   local N = define.navi { id = 'n', legacy = legacy { number = 1 } }\n\
+                   local legacy_name = 'legacy { }' -- legacy { }\n";
+        let d: Vec<(usize, &str)> = deprecated(src).iter().map(|d| (d.line, d.what)).collect();
+        assert_eq!(d, [(4, "a legacy marker")]);
     }
 
     #[test]

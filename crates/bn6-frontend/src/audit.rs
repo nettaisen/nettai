@@ -9,14 +9,14 @@
 //! named, not that they look or sound like the original (the frame
 //! comparison outside this repository checks that).
 
-use bn6_battle::{Battle, SoundCue, SoundId};
+use bn6_battle::{Battle, SoundCue};
 use std::collections::BTreeMap;
 
 /// Check that the pack's sound has the song a cue starts.
 pub fn check_cue(b: &Battle, bank: &m4a::SoundBank, cue: SoundCue, problems: &mut Problems) {
     let id = match cue {
         SoundCue::Effect(id) => id,
-        SoundCue::Music(id) if id != SoundId::NO_MUSIC => id,
+        SoundCue::Music(id) if id != bn6_audio::NO_MUSIC => id,
         _ => return,
     };
     if bank.song(m4a::SongId(id.0)).is_some_and(|s| !s.tracks.is_empty()) {

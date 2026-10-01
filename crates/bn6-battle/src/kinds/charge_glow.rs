@@ -3,16 +3,15 @@
 //! lifetime follows the player's. See docs/engine/objects-and-player.md §A.5.
 
 use crate::battle::Battle;
-use crate::content::SpriteId;
+use crate::content::{SoundRole, SpriteRole};
 use crate::object::{ObjectRef, Vec3, flags, state};
-use crate::sound::SoundId;
 
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     /// Other effects can hide the glow.
     pub enabled: bool,
-    /// The glow sprite loaded (index in category 0x14; 0 = none yet).
-    pub sprite: u8,
+    /// The glow sprite loaded (none yet at first).
+    pub sprite: Option<SpriteRole>,
     /// The owner's charge level this tick and last tick.
     pub level: u8,
     pub previous_level: u8,
@@ -125,14 +124,14 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 fn charge_sound(b: &mut Battle, r: ObjectRef, alliance: u8, source: u8) {
     let v = vars(b, r);
     let id = match (v.level, v.previous_level) {
-        (1, 0) => SoundId::BUSTER_CHARGE,
-        (2, 1) => SoundId::BUSTER_CHARGED,
+        (1, 0) => SoundRole::BusterCharge,
+        (2, 1) => SoundRole::BusterCharged,
         _ => return,
     };
     if source == 2 {
-        b.play_sound(id);
+        b.sound(id);
     } else {
-        b.play_sound_for(alliance, id);
+        b.sound_for(alliance, id);
     }
 }
 
@@ -158,12 +157,13 @@ pub(crate) fn viewer_sees(b: &Battle, alliance: u8) -> bool {
 
 /// `sub_80E0F2E`: the A charge glows differently from the B charge.
 fn select_sprite(b: &mut Battle, r: ObjectRef, source: u8) {
-    let wanted = if source == 1 { 0x15 } else { 8 };
-    if vars(b, r).sprite == wanted {
+    let wanted = if source == 1 { SpriteRole::ChargeGlowA } else { SpriteRole::ChargeGlow };
+    if vars(b, r).sprite == Some(wanted) {
         return;
     }
-    vars(b, r).sprite = wanted;
-    b.objects.sprite_mut(r).load(SpriteId { category: 0x14, index: wanted });
+    vars(b, r).sprite = Some(wanted);
+    let sprite = b.content.defs.roles.sprite(wanted);
+    b.objects.sprite_mut(r).load(sprite);
     b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
     o.anim_loaded = 0xFF;

@@ -20,7 +20,7 @@ pub struct Vars {
     pub timer: u16,
 }
 
-const SOUND: crate::sound::SoundId = crate::sound::SoundId(0x8E);
+const SOUND: crate::content::SoundRole = crate::content::SoundRole::Fade;
 /// The effect over the navi (the role `effects.deletion`) is 20 pixels up.
 const LOOK_Z: i32 = 0x14 << 16;
 const TICKS: u16 = 0x1E;
@@ -30,7 +30,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     // sprite_forceWhitePalette (every tick).
     b.objects.sprite_mut(r).look.white = true;
     if ai(b, r).attack.step_init == 0 {
-        b.play_sound(SOUND);
+        b.sound(SOUND);
         coll_mut(b, r).region = None;
         let o = b.objects.get_mut(r);
         o.panel = o.future_panel;

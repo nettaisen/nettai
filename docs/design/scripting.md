@@ -306,7 +306,7 @@ alone uses, a collision type defined twice. Reading compat refuses two keys with
 Two tests guard the end state (`bn6-content-check`'s `guards`): no folder is named with a number of the
 original's, and no definition carries a `legacy` marker outside the listed modules. The markers left are the
 navis' and forms' numbers and the body overlays' numbering, which the ruleset still reads by number; the
-ratchet (`tests/deprecated.txt`) counts them and sounds named by number, per module, and only shrinks.
+ratchet (`tests/deprecated.txt`) counts them per module, and only shrinks.
 
 The checker bundles its own Luau, whose C++ symbols collide with mlua's, so it lives in its own crate and must
 never share a binary with bn6-luau.

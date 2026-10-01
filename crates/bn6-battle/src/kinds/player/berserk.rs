@@ -160,7 +160,7 @@ pub(super) fn cross_special(b: &mut Battle, r: ObjectRef) -> Outcome {
 fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
     if !ai(b, r).berserk.started {
         ai_mut(b, r).berserk.started = true;
-        b.play_sound(crate::sound::SoundId(0x182));
+        b.sound(crate::content::SoundRole::CrossSpecial);
     }
     if ai(b, r).berserk.moves <= 3 {
         // sub_80E164A (outside Beast Out there is no marker: nobody).

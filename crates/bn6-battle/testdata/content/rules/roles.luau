@@ -34,8 +34,7 @@ return define.roles {
         turn = turn.action,
         -- A Cross navi's knock-out (SlashCross Beast's lunge).
         cross_death = slash_beast_lunge.action,
-        -- (The volley, WideSht's action in BN6, isn't in the test content:
-        -- its role stays unfilled.)
+        -- (The volley's role isn't filled, as in BN6.)
         -- SlashCross's charged slash, which the Beast rush recognizes.
         charged_sword = slash_charge.action,
         -- The Beast forms' charged claw.
@@ -68,6 +67,10 @@ return define.roles {
     sparks = ruleset.sparks,
     regions = ruleset.regions,
     collision = ruleset.collision,
+    sounds = ruleset.sounds,
+    music = ruleset.music,
+    sprites = ruleset.sprites,
+    banners = ruleset.banners,
     hooks = {
         -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier
         -- chip's barrier and its visual.

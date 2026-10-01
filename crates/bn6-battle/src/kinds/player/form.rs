@@ -85,7 +85,7 @@ fn init_routine(b: &mut Battle, r: ObjectRef, row: u8, param3: u8) {
         24 | 36 | 42..=46 | 48 => {
             let palette = if matches!(row, 42..=46) { form_overlay::Palette::Own } else { form_overlay::Palette::Mood };
             let spec = form_overlay::Vars {
-                sprite: Some(form_overlay::BEAST_HEAD),
+                sprite: Some(b.content.defs.roles.sprite(form_overlay::BEAST_HEAD)),
                 nudged: true,
                 stepping: form_overlay::Stepping::from_param(param3),
                 palette,
