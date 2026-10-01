@@ -343,7 +343,8 @@ fn make() -> Content {
         regions: regions(),
         panel_layouts: vec![PanelLayout { rows: [[PanelType::Normal; 6]; 3] }],
         animations: animations(),
-        weapons: weapons(),
+        // (Every weapon the test content has is a definition.)
+        weapons: Vec::new(),
         scripts: scripts(),
         assets: assets(),
         defs: Default::default(),
@@ -830,7 +831,10 @@ pub fn scripts() -> Scripts {
                 ("navis/00-megaman/forms/dustcross/charge", "navis/00-megaman/forms/dustcross/charge"),
                 ("navis/00-megaman/weapons/beast-claw/weapon", "navis/00-megaman/weapons/beast-claw/weapon"),
                 ("navis/00-megaman/weapons/absorb/weapon", "navis/00-megaman/weapons/absorb/weapon"),
-                ("objects/hit-flash/hit_flash", "objects/hit-flash/hit_flash"),
+                (
+                    "navis/00-megaman/forms/slashcross-beast/hit_flash",
+                    "navis/00-megaman/forms/slashcross-beast/hit_flash",
+                ),
                 ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
                 // The instant chips (content model v2): BN6's definitions,
                 // and the numbered test chips that reach the shims of the
@@ -862,7 +866,6 @@ pub fn scripts() -> Scripts {
                 ("chips/golmhit/chips", "chips/golmhit/chips"),
                 ("lib/element", "lib/element"),
                 ("lib/projectile", "lib/projectile"),
-                ("lib/sword", "lib/sword"),
                 ("objects/gust/gust", "objects/gust/gust"),
                 // WindRack's action, which TenguCross's charged shot swings
                 // with its fan, and DolThdr's, which ElecCross's strikes
@@ -871,10 +874,21 @@ pub fn scripts() -> Scripts {
                 ("chips/windrack/action", "chips/windrack/action"),
                 ("chips/dolthdr/action", "chips/dolthdr/action"),
                 ("chips/dolthdr/doll", "chips/dolthdr/doll"),
+                // SlashCross's charged slash: its waves, the slashes the
+                // swords name, its charged shot and A-charge; and the
+                // Beast charged chips' pillars' weapons.
                 (
                     "navis/00-megaman/forms/slashcross/sword_wave",
                     "navis/00-megaman/forms/slashcross/sword_wave",
                 ),
+                ("navis/00-megaman/forms/slashcross/slashes", "navis/00-megaman/forms/slashcross/slashes"),
+                ("navis/00-megaman/forms/slashcross/charge", "navis/00-megaman/forms/slashcross/charge"),
+                (
+                    "navis/00-megaman/weapons/slash-a-charge/weapon",
+                    "navis/00-megaman/weapons/slash-a-charge/weapon",
+                ),
+                ("navis/00-megaman/forms/heatcross-beast/charge", "navis/00-megaman/forms/heatcross-beast/charge"),
+                ("navis/00-megaman/forms/eleccross-beast/charge", "navis/00-megaman/forms/eleccross-beast/charge"),
                 // The Reflectors, the recovery chips and HeatCross's charged
                 // shot's burner (content model v2).
                 ("chips/rflectr/shield", "chips/rflectr/shield"),
@@ -1124,54 +1138,26 @@ pub fn scripts() -> Scripts {
                 ("chips/colorpt/controller", "chips/colorpt/controller"),
                 ("chips/colorpt/point", "chips/colorpt/point"),
             ];
-            let weapons = weapons().into_iter().map(|w| {
-                let module = w.script;
-                (module.clone(), module)
-            });
-            let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string())).chain(weapons);
+            let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string()));
             let own = modules_under(TEST_CONTENT);
             Scripts::new(modules.map(|(to, from)| (to, read(&from))).chain(own).collect())
         })
         .clone()
 }
 
-/// MegaMan's weapon routines v1 modules still implement, registered by
-/// number: HeatCross Beast's and ElecCross Beast's charges and SlashCross's
-/// slashes. (The rest are definitions.)
-fn weapons() -> Vec<WeaponData> {
-    let weapon = |id: u8, name: &str, action: Option<u8>, script: &str| WeaponData {
-        id,
-        name: name.into(),
-        action,
-        instant_chip: None,
-        script: format!("navis/00-megaman/weapons/{script}"),
-    };
-    let mut weapons = vec![
-        weapon(0x07, "HeatCross Beast charge", Some(0x35), "07-heat-beast-charge/heat_beast_charge"),
-        weapon(0x09, "ElecCross Beast charge", Some(0x3C), "09-elec-beast-charge/elec_beast_charge"),
-        weapon(0x11, "Slash A-charge", None, "11-slash-a-charge/slash_a_charge"),
-        weapon(0x12, "Slash charge", Some(0x41), "12-slash-charge/slash_charge"),
-    ];
-    // In id order, as a pack lists them.
-    weapons.sort_by_key(|w| w.id);
-    weapons
-}
-
-/// The object kinds scripts implement, by name (in name order, as a pack
-/// lists them).
+/// The object kinds registered by number (the v1 form: a module that
+/// returns its `update`). None of BN6's is one any more; these two are the
+/// test content's own (testdata/content/objects/numbered), for the tests of
+/// registration by number.
 fn kinds() -> Vec<ObjectKind> {
-    let kind = |name: &str, pool, index, script: &str| ObjectKind {
+    let kind = |name: &str, index| ObjectKind {
         name: name.into(),
-        pool,
+        pool: Pool::Effect,
         index,
-        script: script.into(),
+        script: "objects/numbered/numbered".into(),
         actor_list_entry: None,
     };
-    let mut kinds = vec![
-        kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash"),
-    ];
-    kinds.sort_by(|a, b| a.name.cmp(&b.name));
-    kinds
+    vec![kind("numbered", 0xF0), kind("numbered-2", 0xF1)]
 }
 
 /// A chip record with the fields tests don't care about filled in.

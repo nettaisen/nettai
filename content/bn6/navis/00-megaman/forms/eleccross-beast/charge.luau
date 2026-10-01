@@ -1,10 +1,12 @@
 --!strict
--- ElecCross Beast's charged chip: weapon routine 9 (`sub_8011C00`) and
--- action 0x3C (`sub_80EDF5C`). A charged Null-family chip becomes a field
--- of lightning: when the navi's wind-up animation ends, lightning pillars
--- (objects/element-pillar: they paralyze and crack their panels)
--- strike region 0x1A's panels ahead; the navi holds for 90 ticks, crackling
--- every 17 from the second, and the lightning dies down once it stops.
+-- ElecCross Beast's charged chip (`eleccross-beast/charge`): the original's
+-- weapon routine 9 (`sub_8011C00`) and action 0x3C (`sub_80EDF5C`). A
+-- charged Null-family chip becomes a field of lightning: when the navi's
+-- wind-up animation ends, lightning pillars (objects/element-pillar: they
+-- paralyze and crack their panels) strike the panels ahead (the panel in
+-- front and the two columns past it); the navi holds for 90 ticks,
+-- crackling every 17 from the second, and the lightning dies down once it
+-- stops.
 
 local element_pillar = require("../../../../objects/element-pillar/element_pillar")
 local regions = require("../../../../lib/regions")
@@ -17,11 +19,7 @@ export type State = {
     hum: number,
 }
 
-local elec_beast_charge = {
-    state = { timer = "u16", hum = "u16" },
-}
-
-local ACTION = 0x3C
+local elec_beast_charge = {}
 
 -- The phases, on the attack's step.
 local WIND_UP, STRIKE = 0x0, 0x4
@@ -35,13 +33,15 @@ local PILLARS: ElementPillar = { lightning = true, ticks = 0x5A, after = 9 }
 local REGION = regions.deep_fan
 local TICKS = 0x5A
 
+local CRACKLE = asset.sound("beast-over")
+
 -- `sub_8011C00`: 40 damage and 30 more per point of buster Attack (up to
 -- 5), Elec.
-function elec_beast_charge.setup(navi: Object): number
+local function setup(navi: Object): Action
     navi.attack_damage = weapon.charge_damage(navi, 0x28, 0x1E)
     navi.hit_param = HIT_PARAM
     navi.attack_element = ELEC
-    return ACTION
+    return elec_beast_charge.action
 end
 
 -- `sub_80EDF78`: the wind-up; when its animation ends, the lightning.
@@ -71,7 +71,7 @@ local function strike(me: Object, s: State)
     s.hum = h
     if h < 0 then
         s.hum = 0x10
-        battle.play_sound(0x19A)
+        battle.play_sound(CRACKLE)
     end
     local t = s.timer - 1
     s.timer = t
@@ -81,16 +81,31 @@ local function strike(me: Object, s: State)
     end
 end
 
--- `sub_80EDF5C`.
-function elec_beast_charge.update(me: Object, s: State)
-    local step = me.step
-    if step == WIND_UP then
-        wind_up(me, s)
-    elseif step == STRIKE then
-        strike(me, s)
-    else
-        error(string.format("ElecCross Beast charge phase %#x reads past its phase table", step))
-    end
-end
+elec_beast_charge.action = define.action {
+    id = "eleccross-beast/charge/action",
+    state = { timer = "u16", hum = "u16" },
+    -- `sub_80EDF5C`.
+    update = function(me: Object, s: State)
+        local step = me.step
+        if step == WIND_UP then
+            wind_up(me, s)
+        elseif step == STRIKE then
+            strike(me, s)
+        else
+            error(string.format("ElecCross Beast charge phase %#x reads past its phase table", step))
+        end
+    end,
+}
+
+elec_beast_charge.weapon = define.weapon {
+    id = "eleccross-beast/charge",
+    name = "ElecCross Beast charge",
+    -- The charge table's row 9; Charge 5 reads on into row 0xA's first
+    -- entry, as the original's table does.
+    charge_ticks = { 110, 110, 110, 110, 110, 60 },
+    setup = setup,
+    -- (Transitional: the routine number the pack's forms name it by.)
+    legacy = { routines = { 0x09 } },
+}
 
 return elec_beast_charge

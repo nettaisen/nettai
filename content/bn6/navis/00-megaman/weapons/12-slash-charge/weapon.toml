@@ -1,8 +1,0 @@
-# MegaMan's weapon routine 0x12, SlashCross's charged shot (`sub_8011CD6`), and
-# the charged slash it names (action 0x41, `sub_80EE34A`, which weapon 0x11 also
-# names) are a script.
-
-id = 0x12
-name = "Slash charge"
-action = 0x41
-script = "slash_charge.luau"

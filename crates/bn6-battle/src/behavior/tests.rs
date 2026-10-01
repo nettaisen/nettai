@@ -108,7 +108,6 @@ fn battles_run_the_content_scripts() {
             "gust",
             "heatman/flame",
             "heatman/navi",
-            "hit-flash",
             "instrument",
             "instruments/controller",
             "invisible",
@@ -120,6 +119,8 @@ fn battles_run_the_content_scripts() {
             "mine/controller",
             "mine/land-mine",
             "navi-boost",
+            "numbered",
+            "numbered-2",
             "panel-bursts",
             "panel-changer",
             "panel-chips/controller",
@@ -141,6 +142,7 @@ fn battles_run_the_content_scripts() {
             "sensor/laser",
             "sensor/scanner",
             "sensor/turret",
+            "slashcross-beast/hit-flash",
             "slashcross-beast/lunge-slash",
             "slashcross/sword-wave",
             "slashman/navi",
@@ -589,13 +591,11 @@ fn registrations_follow_the_content_data() {
     let c = testing::build();
     let d = &c.defs;
     // The four SunGun chips share one action, as the thrown chips and the
-    // three swords share theirs; the v1 weapons have theirs (HeatCross
-    // Beast's and ElecCross Beast's charges and SlashCross's slash: the
-    // other weapons' are definitions). (The mend,
-    // mirror, bee and dragon chips are definitions.)
+    // three swords share theirs (the weapons' actions are definitions, as
+    // are the mend, mirror, bee and dragon chips).
     let mut actions: Vec<u8> = d.actions.iter().filter_map(|a| a.number).collect();
     actions.sort();
-    let expected = [0x12, 0x13, 0x35, 0x37, 0x3C, 0x41, 0x49];
+    let expected = [0x12, 0x13, 0x37, 0x49];
     assert_eq!(actions, expected, "{:?}", d.actions);
     // An instant chip's record resolves its subtype's effect (the plus
     // chips' records, the shim's), and a weapon that names an effect no

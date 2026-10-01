@@ -994,7 +994,7 @@ fn slashcross_beast_lunge_strikes_from_beside_its_target() {
     // each; the struck body flashes.
     run_to(&mut b, p, &mut t, 16, 0);
     assert_eq!(b.objects.get(p1).hp, 1000 - 2 * 80);
-    assert_eq!(of_kind(&b, "hit-flash").len(), 1);
+    assert_eq!(of_kind(&b, "slashcross-beast/hit-flash").len(), 1);
     run_to(&mut b, p, &mut t, 37, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 2 });
     run_to(&mut b, p, &mut t, 40, 0);
@@ -1093,7 +1093,7 @@ fn slash_cross_charged_shot_sends_a_sword_wave() {
     // The charged shot's own wave reaches one panel past the one it starts
     // on: two columns from the navi.
     stand_at(&mut b, p0, 3);
-    assert_eq!(start_weapon_as(&mut b, p0, 0x12, 2), "v1/action-41");
+    assert_eq!(start_weapon_as(&mut b, p0, 0x12, 2), "slashcross/charge/action");
     // 60 damage and 20 per buster damage point (1).
     assert_eq!(ai_mut(&mut b, p0).attack.damage, 80);
     let mut t = 0;
@@ -1107,9 +1107,78 @@ fn slash_cross_charged_shot_sends_a_sword_wave() {
     assert_eq!(b.objects.get(waves[0]).panel, PanelPos { x: 4, y: 2 });
     run_to(&mut b, p, &mut t, 29, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
-    assert_eq!(act(&b, p0), 0x41);
+    assert_eq!(runs(&b, p0), "slashcross/charge/action");
     run_to(&mut b, p, &mut t, 30, 0);
     assert_eq!(act(&b, p0), 8);
+}
+
+/// The charged slash the navi's action keeps: its record, and whether it
+/// dashes in first.
+fn charged_slash(b: &Battle, r: ObjectRef) -> (bn6_content_api::RecordHandle, bool) {
+    let (registry, h) = attack_state_def(b, r, "slash").expect("a slash");
+    assert_eq!(registry, bn6_content_api::Registry::Record);
+    assert_eq!(b.content.defs.records[h as usize].record_type, "charged-slash");
+    let actor = b.objects.get(r).actor.expect("a navi");
+    let super::ActionVars::Content(s) = &b.actors.get(actor).attack.action else { panic!("{r:?} runs no content action") };
+    let schema = b.content.defs.schema(s.id());
+    let dash = s.get(schema, schema.index_of("dash").expect("the field")).load() == bn6_content_api::Value::Bool(true);
+    (bn6_content_api::RecordHandle(h), dash)
+}
+
+#[test]
+fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
+    // The charged shot's own slash: no dash, and the Beast rush would lock
+    // on in its mode (3).
+    let (mut b, p0, _) = fight();
+    start_weapon_as(&mut b, p0, 0x12, 2);
+    let (own, dash) = charged_slash(&b, p0);
+    assert!(!dash);
+    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, 3);
+
+    // A chip content defines: StepSwrd's slash names its charged slash (the
+    // wide sword's) and steps, so the charge dashes two panels in first.
+    let (mut b, p0, p1) = fight();
+    let p = [p0, p1];
+    let stepswrd = testing::defined_chip("stepswrd");
+    use_charged_chip(&mut b, p0, 0x11, stepswrd);
+    assert_eq!(runs(&b, p0), "slashcross/charge/action");
+    assert_eq!(ai_mut(&mut b, p0).attack.chip, Some(stepswrd));
+    let (wide, dash) = charged_slash(&b, p0);
+    assert!(dash && wide != own);
+    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, 3);
+    // The chip's damage (160), not the charged shot's.
+    assert_eq!(ai_mut(&mut b, p0).attack.damage, 160);
+    let mut t = 0;
+    run_to(&mut b, p, &mut t, 1, 0);
+    let o = b.objects.get(p0);
+    assert_eq!((o.panel, o.future_panel), (PanelPos { x: 4, y: 2 }, PanelPos { x: 2, y: 2 }));
+    // The sword's blade is up for the slash; its wave goes out from the
+    // panel in front on the count's 12th tick and hits the column there.
+    run_to(&mut b, p, &mut t, 3, 0);
+    let blade = b.objects.get(p0).related[0].expect("the blade");
+    assert_eq!(b.objects.sprite(blade).id, Some(b.content.assets.sprites["sword"]));
+    while kind_objects(&b, "slashcross/sword-wave").is_empty() {
+        let next = t + 1;
+        run_to(&mut b, p, &mut t, next, 0);
+        assert!(t < 20, "no wave");
+    }
+    let waves = kind_objects(&b, "slashcross/sword-wave");
+    assert_eq!(b.objects.get(waves[0]).panel, PanelPos { x: 5, y: 2 });
+    run_to(&mut b, p, &mut t, 40, 0);
+    assert_eq!(b.objects.get(p1).hp, 1000 - 160);
+    // Back on the panel the dash started from, and idle.
+    let o = b.objects.get(p0);
+    assert_eq!((act(&b, p0), o.panel), (8, PanelPos { x: 2, y: 2 }));
+
+    // A chip that is still a record has no definition to ask: its subtype
+    // (1, the wide sword's row) and first parameter (the step) say.
+    let (mut b, p0, _) = fight();
+    use_charged_chip(&mut b, p0, 0x11, testing::chip_handle(testing::STEP_BLADE));
+    assert_eq!(runs(&b, p0), "slashcross/charge/action");
+    assert_eq!(charged_slash(&b, p0), (wide, true));
+    let (mut b, p0, _) = fight();
+    use_charged_chip(&mut b, p0, 0x11, testing::chip_handle(testing::BLADE));
+    assert_eq!(charged_slash(&b, p0), (wide, false));
 }
 
 #[test]
@@ -1246,7 +1315,7 @@ fn plays_on_the_same(b: &mut Battle, p: [ObjectRef; 2], n: u32) {
 fn heat_beast_charge_raises_fire_pillars_on_its_region() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    assert_eq!(start_weapon(&mut b, p0, 0x07), "v1/action-35");
+    assert_eq!(start_weapon(&mut b, p0, 0x07), "heatcross-beast/charge/action");
     // 50 damage and 30 per buster Attack point (1 here), Fire.
     let a = &ai_mut(&mut b, p0).attack;
     assert_eq!((a.damage, a.hit_param, a.element), (80, 0x8A, 1));
@@ -1287,7 +1356,7 @@ fn heat_beast_charge_raises_fire_pillars_on_its_region() {
 fn elec_beast_charge_strikes_lightning_that_cracks_panels() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    assert_eq!(start_weapon(&mut b, p0, 0x09), "v1/action-3c");
+    assert_eq!(start_weapon(&mut b, p0, 0x09), "eleccross-beast/charge/action");
     let mut t = 0;
     while of_kind(&b, "element-pillar").is_empty() {
         let next = t + 1;
@@ -1772,6 +1841,7 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
 fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: u8, chip: bn6_content_api::ChipHandle) {
     let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(chip);
+    hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;
     let routine = testing::weapon_in(&b.content, routine);
     let a = ai_mut(b, p0);

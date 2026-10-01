@@ -21,6 +21,7 @@ local ground_drill = require("../navis/00-megaman/forms/groundcross/drill")
 local guardian_statue = require("../chips/guardian/statue")
 local rock = require("../objects/rock/rock")
 local slash_beast_lunge = require("../navis/00-megaman/forms/slashcross-beast/lunge")
+local slash_charge = require("../navis/00-megaman/forms/slashcross/charge")
 local supports = require("../lib/supports/controller")
 
 return define.roles {
@@ -46,7 +47,7 @@ return define.roles {
         -- A Cross navi's volley.
         volley = { legacy = { action = 0x30 } },
         -- SlashCross's charged slash, which the Beast rush recognizes.
-        charged_sword = { legacy = { action = 0x41 } },
+        charged_sword = slash_charge.action,
         -- The Beast forms' charged claw.
         beast_claw = beast_claw.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.

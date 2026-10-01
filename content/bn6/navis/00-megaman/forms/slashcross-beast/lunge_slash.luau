@@ -2,11 +2,11 @@
 -- SlashCross Beast's lunge's slash (the original's attack object #0xB1,
 -- `sub_80DB8CC`): a hit on its panel and the four diagonal to it that
 -- resolves as soon as it is placed. A body it strikes gets the hit's
--- flashes (objects/hit-flash). It keeps going while its timer lasts, which
+-- flashes (./hit_flash). It keeps going while its timer lasts, which
 -- nothing sets, so it ends at once.
 
 local collision = require("../../../../rules/collision")
-local hit_flash = require("../../../../objects/hit-flash/hit_flash")
+local hit_flash = require("./hit_flash")
 local regions = require("../../../../lib/regions")
 
 local lunge_slash = {}

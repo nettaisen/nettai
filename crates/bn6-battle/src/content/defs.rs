@@ -531,9 +531,9 @@ fn record_action<'d>(definitions: &'d Definitions, module: &str, whose: &str) ->
 ///
 /// The transitional `legacy = { subtype, params }` marker gives the record
 /// the original's subtype and parameter bytes, for what still reads them
-/// of a chip besides its own action (SlashCross's charged slash reads a
-/// sword's); its `action` and `script` (a behaviour still a v1 module)
-/// come with step 5.
+/// of a chip besides its own action (no BN6 chip needs it since
+/// SlashCross's charged slash asks a sword's slash for its own); its
+/// `action` and `script` (a behaviour still a v1 module) come with step 5.
 fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
     let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
     let spec = &d.spec;
