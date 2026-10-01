@@ -208,15 +208,22 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
 4. Action **0x1C** `sub_80EC39C` (0x080EC39C) is the "instant" handler. It calls `off_80EC3F0[av[3]]` once and exits
    (subtype 0x14, TenguCross's B+Back, waits 8 more ticks). It is used by 54 chips: the MegaBuster pseudo-chip 0,
    Atk+/Navi+ left unfolded, FullCust, Boomer, Lance, FireHit, the error chip 0x185, and others. `off_80EC3F0` has 23
-   entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are the content pack's scripts
-   (the chip's `instant` hook, the `instant_chip` of the module a chip record of the subtype names, or a weapon's `instant_chip`):
-   0 BeastOut `sub_80104E0` and 3 the plus chips `sub_8010488` (chips/13f-beastout, lib/instant/plus, with their
-   sparkle, effect #0x14, objects/rising-bubble), 5 FullCust `sub_800AF34` (chips/0ae-fullcust), 10 BusterUp
-   `sub_8010820` (chips/busterup), 13 SyncTrgr `sub_80EC44C` (chips/11d-synctrgr). Subtypes 2 (`sub_8010474`,
-   invisibility), 6 (`sub_801050C`, repairs the side's obstacles), 9 (`sub_8015AA6`, an immobilizing hit, attack
-   #0x3F, on every enemy body in the row ahead) and 11 (`sub_802E1BE`, writes side state nothing reads) are named by
-   no chip: 2 and 9 by the link navis' weapon routines 0x71 and 0x83; they are in lib/instant-chips for those to
-   register.
+   entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are content's: a chip definition's
+   `instant` hook, or for a record the chips still keep (§12 of content-model-v2.md) the `instant_chip` its
+   subtype's shim module gives, or a weapon's `instant_chip`. 0 BeastOut `sub_80104E0` and 3 the plus chips
+   `sub_8010488` (lib/instant/plus, with their sparkle, effect #0x14, objects/rising-bubble; the records' shims
+   chips/13f-beastout and chips/0c0-atk-10), 1 the boomerang (objects/boomerang, chips/boomer), 4 Lance
+   (chips/lance), 5 FullCust `sub_800AF34` (chips/fullcust), 8 FireHit (chips/firehit, the records' shim
+   chips/06b-firehit1), 10 BusterUp `sub_8010820` (chips/busterup), 12 SandWrm (chips/sandwrm), 13 SyncTrgr
+   `sub_80EC44C` (chips/synctrgr), 15 ColForce (chips/colforce), 19 JustcOne (chips/justcone), 21 GolmHit
+   (chips/golmhit), 22 ColArmy (chips/colarmy). Subtypes 2
+   (`sub_8010474`, invisibility), 6 (`sub_801050C`, repairs the side's obstacles), 9 (`sub_8015AA6`, an
+   immobilizing hit, attack #0x3F, on every enemy body in the row ahead), 11 (`sub_802E1BE`, writes side state
+   nothing reads), 16 (`sub_80E5A64`, a meteor shower) and 17 (`sub_80C6330`, a dust storm) are named by no chip
+   (2 and 9 by the link navis' weapon routines 0x71 and 0x83): they are builders in lib/instant (`invisible`,
+   `repair`, `immobilize`, `side_special`, `meteor_shower`, `dust_storm`), which take what the game reads from
+   the attack's parameters as arguments (the ticks, the drops, the storm's tie to its user's action), for those
+   to call. Unverified: no scenario reaches them.
 
 `chip-table.md` lists the handler of every chip and, per action, the handler address and the chips that use it.
 It also lists the spawner tables `off_802CCB4` and `off_802CD5C` and the formula table `off_80109DC`.
@@ -1417,7 +1424,7 @@ subtype:
 - 1 (Invisibl, WhiCapsl; T4 0x5D): the user flashes invisible for Param1-2 ticks (`sub_8010474`), 31 ticks.
   objects/invisible.
 - 6 (RockCube, IceCube; T4 0x37): a rock of variant Param1 (1 a rock cube, 3 an ice block) on the panel in front
-  (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. objects/rock-cube; the rock is objects/rock
+  (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. chips/rockcube; the rock is objects/rock
   (field-objects.md).
 - 25 (SloGauge, FstGauge; T4 0x1C, `sub_80E23E8`): the shared custom gauge's rate becomes 0x10 or 0x40 for the rest
   of the round (`sub_801DF8C`; the round start sets it from the navi stats, `sub_8014178`); the user's side's slow
@@ -1845,7 +1852,7 @@ dimmed, its action (`off_80D543C`); presented again.
   (`object_crackPanel`); sound 0xD9 unless Param4; region 0, state 8.
 
 Rubble (`sub_80D5516`): one draw, k = `GetPositiveSignedRNG2() & 3`; two pieces n = 0, 1 (`sub_80E1084`: effect #9,
-objects/rock-chip) at (X, Y, 0), priority 2 (object +0x0C), Param1 n, velocity (vx, 0, vz) =
+objects/falling-rock/chip) at (X, Y, 0), priority 2 (object +0x0C), Param1 n, velocity (vx, 0, vz) =
 `byte_80D5550[(k + n) & 3]`: (0x8000, 0x28000), (−0x8000, 0x30000), (0x10000, 0x28000), (−0x8000, 0x18000). The rock's
 other spawners: effect #0x8A (`sub_80E9D2A`), RC Brakr (`sub_80F1E98`) and the navi AI (`sub_80FAC8A`).
 

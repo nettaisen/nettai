@@ -110,6 +110,7 @@ rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 "slashman/wave" = { pool = "attack", index = 0x62 }
 "elecman/thunder" = { pool = "attack", index = 0x64 }
 "rlnglog/log" = { pool = "attack", index = 0x66 }
+boulder = { pool = "attack", index = 0x6E, actor_list_entry = 3 }
 "lance/lance" = { pool = "attack", index = 0x6F }
 drill = { pool = "attack", index = 0x71 }
 "snake/nest" = { pool = "attack", index = 0x72 }
@@ -118,7 +119,7 @@ drill = { pool = "attack", index = 0x71 }
 "spoutcross-beast/surge" = { pool = "attack", index = 0x76 }
 instrument = { pool = "attack", index = 0x78 }
 "vdoll/doll" = { pool = "attack", index = 0x7A }
-"guardian/statue" = { pool = "attack", index = 0x7D }
+"guardian/statue" = { pool = "attack", index = 0x7D, actor_list_entry = 9 }
 "grndman/rock" = { pool = "attack", index = 0x80 }
 "tengucross-beast/whirlwind" = { pool = "attack", index = 0x81 }
 "dolthdr/doll" = { pool = "attack", index = 0x82 }
