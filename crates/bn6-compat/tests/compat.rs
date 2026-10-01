@@ -60,6 +60,9 @@ fn bn6_compat_reads() {
     assert_eq!(built_in.chip_key(0x36), Some("minibomb"));
     assert_eq!(built_in.kind_at(Pool::Attack, 0x08).map(|(k, _)| k), Some("bomb"));
     assert!(built_in.kind_at(Pool::Effect, 0x0A).is_some_and(|(_, e)| e.scratch_position));
-    assert_eq!(built_in.weapon_key(0x2E), Some("megaman/buster"));
+    // The buster's alias routines with charge times of their own are
+    // weapons of their own.
+    assert_eq!(built_in.weapon_key(0x00), Some("megaman/buster"));
+    assert_eq!(built_in.weapon_key(0x2F), Some("megaman/buster-2e"));
     assert_eq!(built_in.actions["engine/move"], 0x10);
 }

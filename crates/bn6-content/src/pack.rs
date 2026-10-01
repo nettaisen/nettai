@@ -1,17 +1,20 @@
-//! A content pack: a folder of open-format files that loads into the data
-//! the engine, the frontend and the audio use.
+//! A content pack: a folder of open-format files holding a game's assets,
+//! which loads into the data the engine, the frontend and the audio use.
 //!
 //! ```text
 //! content.toml           the manifest
 //! assets.toml            the asset index: every asset by name (crate::names)
-//! chips/ navis/ objects/ rules/ registries/   the battle data (see crate::battle)
-//! graphics/              sprites, field, backgrounds, HUD
+//! graphics/              sprites (with their animation timing), field, backgrounds, HUD
 //! sound/                 songs, instruments, samples (see crate::sound)
 //! ```
 //!
 //! Sprites, backgrounds, songs and the HUD's mugshots, banners and chip
 //! icons are written under their names ([`crate::names`]); each file holds
 //! its number, which the importers read.
+//!
+//! The battle content is not in a pack: it is a content root's definitions
+//! (crate::root, content/bn6 in this repository), which name the pack's
+//! assets. [`load_battle`] puts the two together.
 //!
 //! Everything loads straight from these files ([`load_battle`],
 //! [`import_graphics`], [`import_sound`]); there is no derived binary.
@@ -37,8 +40,6 @@ pub struct Manifest {
     pub graphics: Option<GraphicsManifest>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sound: Option<SoundManifest>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub battle: Option<BattleManifest>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -51,10 +52,6 @@ pub struct GraphicsManifest {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SoundManifest {}
-
-/// The pack has battle data (chips, navis, rules... see crate::battle).
-#[derive(Serialize, Deserialize, Debug)]
-pub struct BattleManifest {}
 
 /// Files as (path in the pack, contents).
 pub type Files = Vec<(String, Vec<u8>)>;
@@ -70,17 +67,16 @@ pub fn write_files(root: &Path, files: &Files) -> std::io::Result<()> {
     Ok(())
 }
 
-pub fn manifest(name: &str, graphics: Option<&Bundle>, sound: bool, battle: bool) -> (String, Vec<u8>) {
+pub fn manifest(name: &str, graphics: Option<&Bundle>, sound: bool) -> (String, Vec<u8>) {
     let m = Manifest {
         format: FORMAT.into(),
         version: VERSION,
         name: name.into(),
         graphics: graphics.map(|b| GraphicsManifest { background_slots: b.backgrounds.len() }),
         sound: sound.then_some(SoundManifest {}),
-        battle: battle.then_some(BattleManifest {}),
     };
     let text = format!(
-        "# A content pack: a battle's data, graphics and sound in open formats.\n{}",
+        "# A content pack: a game's graphics and sound in open formats, by name.\n{}",
         toml::to_string_pretty(&m).unwrap()
     );
     (MANIFEST.into(), text.into_bytes())
@@ -208,24 +204,47 @@ pub fn import_sound(root: &Path, report: &mut Report) -> Option<SoundBank> {
 
 // ---- Loading -------------------------------------------------------------------
 
-/// A pack's battle data, for the engine: loaded, with the asset names its
-/// index gives (`Content::assets`), and defined (`Content::define`).
-pub fn load_battle(root: &Path) -> Result<(bn6_battle::Content, Report), Report> {
-    let mut report = Report::default();
-    let m = read_manifest(root, &mut report).ok_or_else(|| report.clone())?;
-    if m.battle.is_none() {
-        report.error(MANIFEST, "the pack has no battle data");
-        return Err(report);
-    }
-    let Some(mut c) = crate::battle::load(root, &mut report) else { return Err(report) };
-    let Some(assets) = crate::names::read_index(root, &mut report) else { return Err(report) };
-    c.assets = assets;
-    // The define phase: what the scripts define, and the registries.
+/// The battle content, for the engine: the definitions and modules of the
+/// content root `content` (`crate::root::bn6()` for BN6's), with the assets
+/// of the pack `assets` (its asset index, `Content::assets`, and its
+/// sprites' animation timing), defined (`Content::define`).
+pub fn load_battle(content: &Path, assets: &Path) -> Result<(bn6_battle::Content, Report), Report> {
+    let (mut c, mut report) = battle_content(content, assets)?;
+    // The define phase: what the modules define, the tables registration
+    // by number reads, and the registries.
     if let Err(e) = c.define() {
-        report.error("scripts", e.message);
+        report.error(content.display().to_string(), e.message);
         return Err(report);
     }
     Ok((c, report))
+}
+
+/// [`load_battle`]'s content before the define phase: the modules, the
+/// object kinds, the asset index and the sprite timing.
+pub fn battle_content(content: &Path, assets: &Path) -> Result<(bn6_battle::Content, Report), Report> {
+    let mut report = Report::default();
+    read_manifest(assets, &mut report).ok_or_else(|| report.clone())?;
+    let Some(root) = crate::root::read(content, &mut report) else { return Err(report) };
+    let Some(index) = crate::names::read_index(assets, &mut report) else { return Err(report) };
+    let Some(animations) = load_animations(assets, &mut report) else { return Err(report) };
+    let mut c = bn6_battle::Content { assets: index, animations, scripts: bn6_battle::content::Scripts::new(root.modules), ..Default::default() };
+    c.objects.kinds = root.kinds;
+    Ok((c, report))
+}
+
+/// Every sprite's animation timing, from the pack's `animations.json`s.
+fn load_animations(root: &Path, report: &mut Report) -> Option<bn6_battle::content::Animations> {
+    use bn6_battle::content::{AnimFrame, SpriteId};
+    let t = crate::timing::load(root, report)?;
+    let sprites = t
+        .sprites
+        .into_iter()
+        .map(|((category, index), anims)| {
+            let anims = anims.into_iter().map(|a| a.into_iter().map(|f| AnimFrame { duration: f.ticks, flags: f.flags }).collect()).collect();
+            (SpriteId { category, index }, anims)
+        })
+        .collect();
+    Some(bn6_battle::content::Animations { sprites })
 }
 
 /// A pack's graphics, for a frontend.

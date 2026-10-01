@@ -1387,7 +1387,8 @@ export type ChipSpec = {
     hit_param: number?,
     lockout: number?,
     flags: { string }?,
-    extra_flags: { string }?,
+    -- Named bits, and the value of a bit the engine doesn't name yet.
+    extra_flags: { string | number }?,
     beast: { lockon: any }?,
     library: { number: number, index: number, sort: number }?,
     slot_in_limit: number?,

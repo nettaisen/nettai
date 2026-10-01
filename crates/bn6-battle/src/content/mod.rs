@@ -186,20 +186,35 @@ impl Content {
     /// (docs/design/content-model-v2.md §7.3). A battle needs defined
     /// content; loaders call this once the data and scripts are in.
     pub fn define(&mut self) -> Result<(), bn6_content_api::ContentError> {
-        let definitions = if self.scripts.modules.is_empty() {
-            Default::default()
-        } else {
-            let data = crate::behavior::script_data(self);
+        if self.scripts.modules.is_empty() {
+            let definitions = Default::default();
+            let legacy = legacy::build(self, &definitions)?;
+            self.defs = Defs::build(self, definitions, &legacy)?;
+            return Ok(());
+        }
+        let mut data = crate::behavior::script_data(self);
+        for _ in 0..3 {
             let (definitions, compiled) =
                 bn6_luau::define(&self.scripts.pack(), &data, &self.assets, bn6_luau::Options::default())?;
             self.scripts.compiled = CompiledModules(compiled);
-            definitions
-        };
-        // What registration by number reads of the definitions: the tables
-        // by number, and the pack's chips, navis, forms, weapons and stages.
-        let legacy = legacy::build(self, &definitions)?;
-        self.defs = Defs::build(self, definitions, &legacy)?;
-        Ok(())
+            // What registration by number reads of the definitions: the
+            // tables by number, and the pack's chips, navis, forms, weapons
+            // and stages.
+            let legacy = legacy::build(self, &definitions)?;
+            // v1 modules see those tables as the `data` global, some while
+            // they load: when the definitions made them, the modules run
+            // again on what they will see at run time (once: the tables
+            // come from the definitions alone, so they come out the same).
+            let built = crate::behavior::script_data(self);
+            if built == data {
+                self.defs = Defs::build(self, definitions, &legacy)?;
+                return Ok(());
+            }
+            data = built;
+        }
+        Err(bn6_content_api::ContentError::new(
+            "the tables the definitions build keep changing what the modules define (a module defines by `data` what the tables come from)",
+        ))
     }
 
     /// The content, defined (see [`Content::define`]); panics on a content
