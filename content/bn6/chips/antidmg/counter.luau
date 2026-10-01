@@ -2,8 +2,10 @@
 -- AntiDmg's counter (the original's navi action 0x47, `sub_80EE90C`): when
 -- an AntiDmg trap (or the AntiDmg program's stance) catches a hit, the
 -- navi vanishes in a puff and throws a shuriken (./shuriken) at an enemy:
--- a random one (the attack's variant 0, AntiDmg's) or the nearest ahead,
--- its own row first (variant 1). The ruleset starts it by role
+-- a random one, or the nearest ahead, its own row first. (The original
+-- picks by the attack's variant, 0 or 1, and throws nothing for any other;
+-- both of the counter's starters, a trap chip's catch and the stance,
+-- leave it 0: a random enemy.) The ruleset starts it by role
 -- (`actions.anti_damage_counter`, rules/roles.luau).
 
 local regions = require("../../lib/regions")
@@ -100,16 +102,18 @@ local function vanish(me: Object, s: State)
     set_step(me, 4)
 end
 
+-- Whom the shuriken is thrown at.
+export type Target = "random" | "nearest"
+
 -- `sub_80EE996`: hidden, throw the shuriken at the target (none: no
 -- throw), then 31 ticks.
-local function throw(me: Object, s: State)
+local function throw(me: Object, s: State, target: Target)
     me.visible = false
     if me.step_init == 0 then
-        local variant = me.variant
         local x, y
-        if variant == 0 then
+        if target == "random" then
             x, y = random_enemy(me)
-        elseif variant == 1 then
+        else
             x, y = nearest_enemy(me)
         end
         if x and y then
@@ -145,22 +149,31 @@ local function back(me: Object, s: State)
     end
 end
 
-counter.action = define.action {
-    id = "antidmg/counter",
-    state = STATE,
-    -- `sub_80EE90C`, by phase.
-    update = function(me: Object, s: State)
-        local step = me.step
-        if step == 0 then
-            vanish(me, s)
-        elseif step == 4 then
-            throw(me, s)
-        elseif step == 8 then
-            back(me, s)
-        else
-            error(string.format("AntiDmg's counter: phase %#x reads past off_80EE920", step))
-        end
-    end,
-}
+-- The counter, throwing at `target`.
+function counter.action_at(id: string, target: Target): Action
+    return define.action {
+        id = id,
+        state = STATE,
+        -- `sub_80EE90C`, by phase.
+        update = function(me: Object, s: State)
+            local step = me.step
+            if step == 0 then
+                vanish(me, s)
+            elseif step == 4 then
+                throw(me, s, target)
+            elseif step == 8 then
+                back(me, s)
+            else
+                error(string.format("AntiDmg's counter: phase %#x reads past off_80EE920", step))
+            end
+        end,
+    }
+end
+
+-- What the ruleset starts: both of the counter's starters, a trap chip's
+-- catch (`sub_801056A`) and the AntiDmg program's stance (`sub_80105F2`,
+-- with the variant its weapon zeroes), leave the attack's variant 0: a
+-- random enemy.
+counter.action = counter.action_at("antidmg/counter", "random")
 
 return counter

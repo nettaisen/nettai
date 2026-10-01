@@ -91,6 +91,14 @@ pub struct ChipHud {
     pub window: bool,
 }
 
+/// A warning marker on a console's HUD for one tick (`sub_800AE90`: a
+/// blinking arrow): over the custom gauge (`at` none), or over a place on
+/// the field, which the console projects. Presentation only.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Warning {
+    pub at: Option<crate::object::Vec3>,
+}
+
 /// What the HUD's message line says (the game's text script for it has
 /// more: the multiple deletions of virus battles).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

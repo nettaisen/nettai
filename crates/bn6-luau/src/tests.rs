@@ -1,10 +1,11 @@
 //! The define phase and loading, on small packs written here.
 
 use super::*;
+use bn6_content_api::Data;
 
 #[test]
 fn relative_paths_resolve_within_the_pack() {
-    assert_eq!(resolve("chips/00f-gundels1/chip", "../../objects/sun-beam/sun_beam").unwrap(), "objects/sun-beam/sun_beam");
+    assert_eq!(resolve("chips/gundels/chips", "../../objects/sun-beam/sun_beam").unwrap(), "objects/sun-beam/sun_beam");
     assert_eq!(resolve("(pack)", "./lib/slot").unwrap(), "lib/slot");
     assert!(resolve("lib/slot", "../../x").is_err());
     assert!(resolve("lib/slot", "objects/x").is_err());
@@ -15,7 +16,7 @@ fn pack(modules: &[(&str, &str)]) -> Pack {
 }
 
 fn define_pack(modules: &[(&str, &str)]) -> Result<Definitions, String> {
-    define(&pack(modules), &Data::Nil, &AssetNames::default(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
+    define(&pack(modules), &AssetNames::default(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
 }
 
 /// A family library, a kind, and chips composing them: MiniBomb's pattern
@@ -144,7 +145,7 @@ fn names() -> AssetNames {
 }
 
 fn define_named(modules: &[(&str, &str)]) -> Result<Definitions, String> {
-    define(&pack(modules), &Data::Nil, &names(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
+    define(&pack(modules), &names(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
 }
 
 #[test]
@@ -186,7 +187,7 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
         "m",
         "local d = define.record('r', { n = 1 })\nreturn { d = d, late = function() return define.record('r', {}) end }",
     )]);
-    let (lua, defined, modules, _, _) = open(&p, &Data::Nil, &AssetNames::default(), Options::default()).unwrap();
+    let (lua, defined, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
     assert!(defined.tables.iter().all(|t| t.is_readonly()));
     let LuaValue::Table(m) = &modules["m"] else { panic!("a table") };
     let late: Function = m.get("late").unwrap();
@@ -197,11 +198,10 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
 }
 
 #[test]
-fn a_plan_binds_definition_slots_and_module_exports() {
-    let mut modules = BOMBS.to_vec();
-    modules.push(("objects/old/old", "return { state = { t = 'u8' }, update = function(me) end }"));
+fn a_plan_binds_definition_slots() {
+    let modules = BOMBS.to_vec();
     let p = pack(&modules);
-    let (definitions, compiled) = define(&p, &Data::Nil, &AssetNames::default(), Options::default()).unwrap();
+    let (definitions, compiled) = define(&p, &AssetNames::default(), Options::default()).unwrap();
     assert_eq!(compiled.len(), modules.len(), "every module compiled");
     let p = p.with_compiled(compiled);
     let handles = (0..definitions.defs.len() as u16).collect();
@@ -209,7 +209,6 @@ fn a_plan_binds_definition_slots_and_module_exports() {
         functions: vec![
             FnSource::slot(Registry::Kind, "bomb", "update"),
             FnSource::slot(Registry::Action, "minibomb/action", "update"),
-            FnSource::export("objects/old/old", "update"),
         ],
         schemas: Vec::new(),
         definitions,
@@ -217,16 +216,16 @@ fn a_plan_binds_definition_slots_and_module_exports() {
         entries: Vec::new(),
         assets: AssetNames::default(),
     };
-    assert!(LuauContent::load(&p, &plan, &Data::Nil, Options::default()).is_ok());
+    assert!(LuauContent::load(&p, &plan, Options::default()).is_ok());
     // A plan made from other definitions is refused.
     let mut stale = plan.clone();
     stale.definitions.defs.pop();
     stale.handles.pop();
-    let e = LuauContent::load(&p, &stale, &Data::Nil, Options::default()).err().expect("refused").message;
+    let e = LuauContent::load(&p, &stale, Options::default()).err().expect("refused").message;
     assert!(e.contains("define something other"), "{e}");
     // A slot that isn't a function is refused.
     let mut wrong = plan.clone();
     wrong.functions.push(FnSource::slot(Registry::Chip, "minibomb", "name"));
-    let e = LuauContent::load(&p, &wrong, &Data::Nil, Options::default()).err().expect("refused").message;
+    let e = LuauContent::load(&p, &wrong, Options::default()).err().expect("refused").message;
     assert!(e.contains("chip minibomb: `name` is string, not a function"), "{e}");
 }
