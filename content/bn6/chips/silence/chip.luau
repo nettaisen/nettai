@@ -6,9 +6,10 @@ local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
+local statuses = require("../../rules/status")
 
 -- Blinded (status 0x33: 4 ticks), with the sixth element's damage 0.
-local BLIND, ELEMENT_NONE = 0x33, 5
+local BLIND, ELEMENT_NONE = statuses.blind_4, 5
 
 -- `sub_80D43E8`: a one-tick hit over the whole field that blinds the
 -- other side.

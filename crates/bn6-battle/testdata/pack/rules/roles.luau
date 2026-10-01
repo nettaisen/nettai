@@ -5,6 +5,8 @@
 -- becomes (the BN6 content's).
 
 local encased_bubble = require("../../objects/encased-bubble/bubble")
+local lockon = require("../../rules/lockon")
+local statuses = require("../../rules/status")
 local ticker = require("../lib/ticker")
 
 return define.roles {
@@ -35,6 +37,18 @@ return define.roles {
     kinds = {
         absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
         falling_rock = { legacy = { kind = "falling-rock" } },
+    },
+    -- The engine's test content's statuses and lock-on modes, which this
+    -- pack's content comes with.
+    statuses = {
+        damage_word_paralysis = statuses.paralyze_90,
+        counter_paralysis = statuses.paralyze_150,
+        ice_freeze = statuses.freeze_150,
+        hit_bug_blind = statuses.blind_1200,
+        hit_bug_confuse = statuses.confuse_960,
+    },
+    lockon = {
+        beast_claw = lockon.beast_claw,
     },
     hooks = {
         encased = encased_bubble.replace,

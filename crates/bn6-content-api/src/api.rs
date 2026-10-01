@@ -363,7 +363,8 @@ named_fields! {
         /// again from an element byte.
         Element = "element", U8, rw;
         SecondaryElement = "secondary_element", U8, rw;
-        StatusBase = "status_base", U8, rw;
+        /// The status its hits carry (a status definition), or none.
+        StatusBase = "status_base", Ref(Registry::Status, None), rw;
         /// Bug code (low byte) and argument (high byte).
         Bugs = "bugs", U16, rw;
         HitModBase = "hit_mod_base", U8, rw;
@@ -849,7 +850,7 @@ pub struct HitboxSpec {
     pub damage: u16,
     pub stamina: u16,
     pub hit_mod: u8,
-    pub status: u8,
+    pub status: Option<crate::StatusHandle>,
     pub bug: u8,
     pub bug_arg: u8,
 }

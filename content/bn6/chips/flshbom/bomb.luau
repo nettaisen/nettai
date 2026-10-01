@@ -65,10 +65,10 @@ local function leave(me: Object)
 end
 
 -- `sub_80D9CE4`: the flash's hit, with status `status` and the damage
--- word `damage` (a stun status 0x10..0x15 comes without the hit
--- modifier).
-local function flash(me: Object, v: FlashBombVariant, status: number, damage: number)
-    local hit_mod = if status >= 0x10 and status <= 0x15 then 0 else 1
+-- word `damage` (a paralyzing status, the original's 0x10..0x15, comes
+-- without the hit modifier).
+local function flash(me: Object, v: FlashBombVariant, status: Status, damage: number)
+    local hit_mod = if status.timer == "paralyze" then 0 else 1
     if v.strong then
         damage = STRONG_DAMAGE
     end
@@ -87,7 +87,7 @@ local function flash(me: Object, v: FlashBombVariant, status: number, damage: nu
         damage = bit32.band(damage, 0xFFFF),
         stamina = bit32.rshift(damage, 16),
         hit_mod = hit_mod,
-        status = bit32.band(status, 0xFF),
+        status = status,
     })
 end
 
@@ -155,8 +155,9 @@ local function count_down(me: Object, v: FlashBombVariant)
     if t > 0 then
         return
     end
-    if v.final_status ~= 0 then
-        flash(me, v, v.final_status, 0)
+    local final = v.final_status
+    if final then
+        flash(me, v, final, 0)
     end
     leave(me)
 end

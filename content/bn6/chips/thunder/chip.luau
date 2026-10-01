@@ -4,9 +4,10 @@
 
 local lockon = require("../../rules/lockon")
 local shoot = require("./shoot")
+local statuses = require("../../rules/status")
 
 -- Its hits' status: paralysis.
-local PARALYZE = 0x10
+local PARALYZE = statuses.paralyze_90
 
 return define.chip {
     id = "thunder",

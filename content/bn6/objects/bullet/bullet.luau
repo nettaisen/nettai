@@ -11,6 +11,7 @@
 local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("../../lib/regions")
+local statuses = require("../../rules/status")
 
 local bullet = {}
 
@@ -47,8 +48,8 @@ local function burst(me: Object, v: BulletVariant)
     me:reset_collision_types(collision.attack, collision.hits_navis, v.hit_mod)
     me.collision.element = bit32.band(me.element, 0xF)
     me.collision.secondary_element = bit32.band(me.element, 0xF0)
-    local status = v.status or 0
-    if status ~= 0 then
+    local status = v.status
+    if status then
         me.collision.status_base = status
     end
     local c = me.collision
@@ -149,8 +150,8 @@ local SPLASHING = asset.sound("spout-ball")
 -- (The fire rows' sound is the one the target squares make as they move.)
 local FIRE = asset.sound("target-move")
 
-local function v(region: Region, hit_mod: number, effect: Effect, sound: Sound?, more: { single: boolean?, status: number? }?): BulletVariant
-    local m: { single: boolean?, status: number? } = more or {}
+local function v(region: Region, hit_mod: number, effect: Effect, sound: Sound?, more: { single: boolean?, status: Status? }?): BulletVariant
+    local m: { single: boolean?, status: Status? } = more or {}
     return bullet.variant { region = region, hit_mod = hit_mod, effect = effect, sound = sound, single = m.single, status = m.status }
 end
 local FORK = regions.fork
@@ -172,8 +173,8 @@ local ROWS: { [number]: BulletVariant } = {
     [0x0E] = v(regions.long, 1, GLINT, nil, { single = true }),
     [0x0F] = v(regions.square, 1, SPARKLE, SPREAD),
     [0x10] = v(regions.long, 1, HIT_BRIGHT, nil, { single = true }),
-    [0x11] = v(regions.long, 1, HIT, nil, { single = true, status = 0x12 }),
-    [0x12] = v(regions.long, 1, HIT, nil, { single = true, status = 0x10 }),
+    [0x11] = v(regions.long, 1, HIT, nil, { single = true, status = statuses.paralyze_150 }),
+    [0x12] = v(regions.long, 1, HIT, nil, { single = true, status = statuses.paralyze_90 }),
 }
 bullet.variants = {
     -- The Vulcans' (row 0xC) and SuprVulc's (0x10): the panel found and

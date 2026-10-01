@@ -164,7 +164,7 @@ local chips = {
         beast = { lockon = lockon.firebrn1 },
         action = blow {
             fan = FAN,
-            single = { variant = tornado.variants.plain, status = 0, ticks = 0x20 },
+            single = { variant = tornado.variants.plain, status = nil, ticks = 0x20 },
         },
     },
     define.chip {
@@ -184,7 +184,7 @@ local chips = {
             spread = {
                 by = "bug_kinds",
                 panels = STATIC_SPREAD,
-                tornado = { variant = tornado.variants.static, status = 0, ticks = 0x20 },
+                tornado = { variant = tornado.variants.static, status = nil, ticks = 0x20 },
             },
         },
     },
@@ -199,7 +199,7 @@ chips.back_spread = blow {
     spread = {
         by = "side_stat",
         panels = BACK_SPREAD,
-        tornado = { variant = tornado.variants.hp_bug, status = 0, ticks = 0x20 },
+        tornado = { variant = tornado.variants.hp_bug, status = nil, ticks = 0x20 },
     },
 }
 
