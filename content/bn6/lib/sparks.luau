@@ -14,6 +14,14 @@ local BY_ELEMENT: { [number]: Spark } = {
     [5] = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 },
 }
 
+-- The fire and wood sparks (hit effects 1 and 4) by name: FireHit's fist
+-- and FlmHook's flames; the boomerang and the lances.
+sparks.fire = BY_ELEMENT[1]
+sparks.wood = BY_ELEMENT[4]
+
+-- A breaking hit (spark 0x0A: JustcOne's fist, a rock).
+sparks.breaking = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
+
 -- The erase beams' spark (hit effect 0x0C).
 sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
 
