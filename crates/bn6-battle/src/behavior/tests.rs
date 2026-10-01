@@ -500,7 +500,13 @@ fn scripted_instant_chips_play_and_roll_back() {
     // Folders of instant chips (the gauge filler, a plus chip, BusterUp)
     // with GunDelSols: the plus chip's sparkle shows, and a copy of the
     // battle taken at any tick plays on as the battle does.
-    let setup = || scenario::setup_with(&[testing::FULL_GAUGE, testing::PLUS, testing::BUSTER_UP, testing::SUN_GUN_3]);
+    let chips = [
+        testing::chip_handle(testing::FULL_GAUGE),
+        testing::chip_handle(testing::PLUS),
+        testing::defined_chip(testing::BUSTER_UP),
+        testing::chip_handle(testing::SUN_GUN_3),
+    ];
+    let setup = || scenario::setup_with_handles(&chips);
     let tape = scenario::record_on(setup(), 2400, 13);
     let mut b = Battle::new(setup(), scenario::content());
     let whole = digests(&tape, Battle::new(setup(), scenario::content()));
