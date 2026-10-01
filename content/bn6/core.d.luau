@@ -523,6 +523,12 @@ declare class Object
     -- the low half, the counter byte above (the object's damage and
     -- stamina).
     function set_damage_word(self, word: number): ()
+    -- Replace the whole header flag byte (the flags above are its bits: in
+    -- use 0x01, `visible` 0x02, `run_while_paused` 0x04, `no_sprite_update`
+    -- 0x08, `run_while_dimmed` 0x10, `holds_reservation` 0x20; 0x40 and
+    -- 0x80 nothing reads): what a spawner's bug leaves (the boulder's reads
+    -- the byte from the wrong address). Everything else sets flags by name.
+    function set_header_flags(self, flags: number): ()
     -- `object_spawnCollisionEffect`: the hit spark after a hit (one RNG
     -- draw when it shows).
     function hit_spark(self): ()

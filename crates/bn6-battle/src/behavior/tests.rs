@@ -725,6 +725,64 @@ fn breaking_a_scripted_rock_throws_debris() {
     assert!(!b.objects.is_allocated(r));
 }
 
+/// A stage's boulders (the actor lists' entry type 3) take the field's two
+/// stage slots, on their panels' sides, with the header flags their
+/// spawner's bug leaves; they stand once the fight is on, and break into
+/// two debris chunks and dust, leaving their slot.
+#[test]
+fn actor_lists_place_boulders_in_the_stage_slots() {
+    use crate::object::{PanelPos, Pool, flags, state};
+    use crate::setup::NaviStats;
+    const BOULDER_KINDS: [&str; 3] = ["boulder", "rock/debris", "engine/effect"];
+    let stats = NaviStats { support: Some(Default::default()), ..Default::default() };
+    let mut setup = testing::round_setup(testing::BOULDER_BATTLE, stats);
+    setup.settings.effects = 0;
+    let mut b = Battle::new(setup, testing::content());
+    b.spawn_actors();
+    assert_eq!(b.round.alive, [1, 1]);
+    let boulders: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
+    assert_eq!(boulders.len(), 2, "the field has two stage slots: the list's third boulder isn't placed");
+    assert!(boulders.iter().all(|&r| b.kind_key(r) == "boulder"));
+    let panels: Vec<_> = boulders.iter().map(|&r| b.objects.get(r).panel).collect();
+    assert_eq!(panels, [PanelPos { x: 2, y: 2 }, PanelPos { x: 5, y: 2 }]);
+    // Their panels' sides, and the registry's stage slots (not the sides').
+    assert_eq!(boulders.iter().map(|&r| b.objects.get(r).alliance).collect::<Vec<_>>(), [0, 1]);
+    assert_eq!(b.field.objects.slots, [None, None, None, None, None, None, Some(boulders[0]), Some(boulders[1])]);
+    // The spawner reads the flags through the column (open bus): pause and
+    // dimming bits over garbage, and "not in use".
+    assert_eq!(boulders.iter().map(|&r| b.objects.get(r).flags).collect::<Vec<_>>(), [0xB4, 0x34]);
+    // Before the fight they wait, a pixel back and a pixel down, 500 HP.
+    b.paused = true;
+    run_only(&mut b, &BOULDER_KINDS);
+    run_only(&mut b, &BOULDER_KINDS);
+    let o = b.objects.get(boulders[0]);
+    assert_eq!((o.hp, o.action, o.pos.z, o.flags), (500, 0, -0x1_0000, 0xB4 | flags::VISIBLE));
+    let (_, y) = crate::kinds::player::panel_coordinates(2, 2);
+    assert_eq!(o.pos.y, y - 0x1_0000);
+    // The fight is on: they stand, and stop running while paused.
+    b.paused = false;
+    b.round.flags |= crate::battle::battle_flags::FIGHTING;
+    run_only(&mut b, &BOULDER_KINDS);
+    let o = b.objects.get(boulders[0]);
+    assert_eq!((o.action, o.flags), (8, 0xB0 | flags::VISIBLE));
+    // Broken: two chunks (a jitter draw each, two draws in each one's
+    // init) and dust; it leaves its slot.
+    let before = b.rng.state;
+    b.objects.get_mut(boulders[0]).hp = 0;
+    run_only(&mut b, &BOULDER_KINDS);
+    let mut rng = crate::rng::Rng::new(before);
+    for _ in 0..6 {
+        rng.next();
+    }
+    assert_eq!(b.rng.state, rng.state);
+    let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
+    assert_eq!(&order[..4], ["boulder", "engine/effect", "rock/debris", "rock/debris"]);
+    assert_eq!(b.objects.get(boulders[0]).state, state::DESTROY);
+    assert_eq!(b.field.objects.slots[6..], [None, Some(boulders[1])]);
+    run_only(&mut b, &BOULDER_KINDS);
+    assert!(!b.objects.is_allocated(boulders[0]));
+}
+
 /// A rock picked up and thrown (`sub_8018002`, the request `sub_800F6AC`
 /// makes) rises for 32 ticks, shakes for its ticks (a jitter draw each),
 /// flies to its target panel (10 ticks from (3,3) to (5,2)) and breaks

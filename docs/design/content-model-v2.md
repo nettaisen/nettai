@@ -585,7 +585,8 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 
 What stays in `objects/`: absorbed-obstacle, attachment, boomerang, drill, falling-rock (with rock-chip),
 flying-shot, gust, invisible, panel-bursts, projectile, rising-bubble, rock (with rock-debris), thunder-column.
-Thirteen folders from 139.
+Thirteen folders from 139. (Step 8f adds objects/boulder, the boulder the stages place: a role's kind, newly
+ported.)
 
 The rest of v1's layout moves as follows: `lib/sword.luau` and `lib/vari_sword.luau` into `lib/swords/`,
 `lib/dragon.luau` into `lib/dragons/`, `lib/instant-chips/` into `lib/instant/`, `lib/buster.luau` into
@@ -1207,6 +1208,42 @@ buster alias folders) went. What it settled:
 - **Verified** on the test content (the shots' timelines, the throw, the aliases, the role, the definitions'
   routines and charge times), the type check, and the traces and the chip lab on a real pack.
 
+### 5.8 Field objects: obstacles, their variants and their looks
+
+v1: the rock reads its row of the pack's `rocks` table by its first parameter and its entrance by its third; an
+obstacle a navi absorbs passes its "obstacle kind", an index into the pack's `absorbed_sprites`; an actor list's
+entry reaches the rock's `actor_list_entry` by its type number, and the other types panic.
+
+**As built** (step 8f, the field objects):
+
+- **The rock** (objects/rock) is a definition. Its rows are `rock-variant` records (`rock.variants.cube`,
+  `ice`, ...: animation, HP, element, debris palette, break sound, NameID), its entrance a state enum
+  (`"rise" | "instant" | "fall" | "placed"`), and `rock.spawn(x, y, side, { variant, class, entrance },
+  damage)` takes them; its debris is `rock/debris` beside it. An actor list still gives a row number, which
+  the kind's `place` turns into the record (`rock.by_number`, until stages name their rocks, step 12).
+- **RockCube and IceCube** (chips/rockcube) are definitions whose `dimming` hook is `cube.places { variant =
+  rock.variants.cube }`: the chip's parameters (the rock's row, class and entrance) are the builder's argument.
+  No Program Advance, dark chip or recipe names either, so neither keeps a record.
+- **An absorbed obstacle's look is its obstacle's own record** (`absorbed_obstacle.look { sprite, keeps_parts?,
+  own_facing? }`, an `absorbed-look`): the original's kind numbers and their sprite table are gone, and so are
+  the two tests the original made of the kind (kind 2 keeps the hidden sprite parts; sprite 0x23 keeps its own
+  facing when thrown), which are the look's flags. `obstacle.fly_to_absorber(me, look)`, the navi's absorbed
+  list (`absorbed`, `push_absorbed`, `pop_absorbed`), the throw's attack (`thrown_look`, `thrown_anim`, which
+  replace the packed marker word) and the flying shot's state carry the record; the engine stores its handle
+  and checks its type. The absorbed obstacle itself (objects/absorbed-obstacle) and the falling rock with its
+  chips (objects/falling-rock) are definitions, which their roles name.
+- **What a stage places** is a kind with a `place`, named by role: the rock (entry type 8), the boulder
+  (type 3, objects/boulder: newly ported, one of the field's two stage objects, `obstacle.stage_slot_free`,
+  `enter_stage`, `leave_stage`) and the Guardian statue (type 9, chips/guardian/statue's `place`). The roles
+  are a stopgap for the stages' own entries (`{ place = boulder.kind, x, y }`, §3.7).
+- **A spawner's bug is content's**: the boulder's spawner replaces the new object's header flags with a byte
+  it reads through the wrong register (the console's open bus). The module says what is read and stores it
+  (`me:set_header_flags`), the one place content writes the flag byte whole.
+- **Verified** on the test content (the rocks' placement, breaking and throw; the cube chip's duel and its
+  rollback; DustCross's absorption and throws; the boulders' placement, flags and breaking), the type check,
+  the traces (the soundmod stage's ice blocks and their absorption), and the chip lab on a real pack, with
+  sixteen new stage scenarios for the boulders and the stages' statues.
+
 ## 6. Compat: the original's numbers
 
 ### 6.1 What it holds
@@ -1221,7 +1258,7 @@ need.
 | actions.toml | action key to navi action number: `"minibomb/action" = 0x12` (every chip whose use is an action has `<chip>/action`), `"megaman/buster/shot" = 0x11`, a weapon's `"<weapon>/action"`, `"engine/move" = 0x10`, `"engine/form-change" = 0x1C`. A role action whose number a chip's or weapon's action has is that action (the volley is WideSht's 0x30); only the turn (0x3B) has its own, `"megaman/turn"` |
 | navis.toml, forms.toml | `eraseman = { navi = 0x04, name_id = 0x1A4 }`, `heatcross = { form = 0x01, name_id = 0x1AC }`; the base form has no `name_id` (it is MegaMan's) |
 | weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
-| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (8 for `rock`); the engine's kinds as `"engine/..."` |
+| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], actor_list = 0x080B1989 }`: the settings indices that are the stage, and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
 | records.toml | the few records a setup names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); NaviCust buster shots when their producers are known |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
@@ -1507,8 +1544,8 @@ trait on the definition instead (§7.5).
 
 **As built** (steps 4 and 9): content::roles has typed roles, `ActionRole` (the trap counters, the forced charged
 shot, the stun strike, the Cross protect, the turn, the Cross death, the volley, the charged sword, the beast
-claw, DustCross Beast's scatter), `KindRole` (the rock an actor list places, the absorbed obstacle, the falling
-rock, the supports' controller) and `HookRole` (the FirstBarrier). A role names a definition, or, while its
+claw, DustCross Beast's scatter), `KindRole` (what an actor list places: the rock, the boulder and the Guardian
+statue; the absorbed obstacle, the falling rock, the supports' controller) and `HookRole` (the FirstBarrier). A role names a definition, or, while its
 target is still a v1 registration, that registration through the transitional legacy marker (`{ legacy = {
 action = 0x49 } }`, `{ legacy = { kind = "rock" } }`; counted by the ratchet); a legacy action number nothing
 implements leaves the role `Unported`, and starting it fails as the number did. The charged sword, the beast claw
@@ -1886,7 +1923,13 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
 
 **Transitional, and when it goes** (from the exemplars, step 7, and step 9):
 - **The roles' legacy markers.** rules/roles.luau names the v1 actions and kinds the ruleset needs by their
-  numbers and keys until their families convert them, and then names the definitions (§7.4).
+  numbers and keys until their families convert them, and then names the definitions (§7.4). The field
+  objects' kinds (the rock, the boulder, the Guardian statue, the absorbed obstacle, the falling rock) are
+  definitions since step 8f; the supports' controller is the one kind still named by key.
+- **The kinds an actor list places, by role** (step 8f): `kinds.rock`, `kinds.boulder` and `kinds.statue`
+  stand for the stages' own entries, and the rock's `place` maps the entry's row number to its variant
+  (`rock.by_number`). They go when stages are definitions whose entries name the kind and its variant (§3.7,
+  step 12).
 - **The legacy marker in a v2 definition.** A chip definition may carry `legacy = { subtype, params }`: the
   original's subtype and parameter bytes in its record, for what reads them of a chip besides its own use.
   Counted by the ratchet (the lint matches `legacy = {` and `legacy {`). StepSwrd, FtrSword, CrosSwrd and
