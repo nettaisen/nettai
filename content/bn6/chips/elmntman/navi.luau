@@ -51,9 +51,23 @@ local SOUND_ELMNT_MAN_2 = asset.sound("elmnt-man-2")
 local SOUND_ELMNT_MAN_3 = asset.sound("elmnt-man-3")
 local SOUND_ELMNT_MAN_4 = asset.sound("elmnt-man-4")
 
--- His actor record (the parts it adds: his overlay, `sub_8011004`).
-local ACTOR_TYPE: ActorType = "player"
-local AI_INDEX = 0x10
+-- What he is taken for: his actor record, and what he wears (his overlay, `sub_8011004`).
+local IDENTITY = define.identity {
+    id = "elementman",
+    class = "navi",
+    version = 0,
+    ai_index = 0x10,
+    ice = "large",
+    parts = {
+        body = {
+            sprite = asset.sprite("elmnt-man"),
+            anims = 32,
+            behind = { { 0x00, 0x0B }, { 0x1F, 0x1F } },
+            own_palette = true,
+            anim_offset = 0x09,
+        },
+    },
+}
 
 -- The elements' palettes, in the order he cycles through them
 -- (`dword_80BAC4C`).
@@ -69,7 +83,7 @@ local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 -- `sub_80BAAB0`: on his panel, on the ground, with his parts.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground", true)
-    me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
+    me:add_parts(IDENTITY, 1)
     me:set_lifecycle("update")
 end
 
@@ -363,7 +377,7 @@ local function leave(me: Object)
     if not countdown(me, 2) then
         return
     end
-    me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
+    me:remove_parts(IDENTITY)
     navi_chips.leave(me, (me.state :: State).controller)
 end
 
