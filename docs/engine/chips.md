@@ -1906,7 +1906,7 @@ leave.
 #### 3.6.26 DustMan (navi chip subtype 11, T1 0x18)
 
 Chips 0x0FE DustMan, 0x0FF EX, 0x100 SP (Param1 0, 0, 4: overwritten). Content: chips/dustman (navi, junk),
-through chips/0fe-dustman; the junk ball is objects/dust-ball.
+through chips/0fe-dustman; the junk ball is DustCross's (navis/00-megaman/forms/dustcross/junk_ball).
 
 **DustMan, T1 0x18 (`sub_80BBF0C`)**, spawned by `sub_80BC0DA` (`off_802CD5C[11]`) like GroundMan. Init
 (`sub_80BBF30`): on his panel with Z's whole part 0 (a halfword store; the fraction is the spawner's r3, its
@@ -1919,7 +1919,7 @@ while dimmed. Actions (`off_80BBF80`):
   passes `sub_800F486` (not 0xD3, 0xDA, 0xE9 or 0xEA): its NameID into his ExtraVars[n] (n from 0), and
   `sub_800F884` on it (the chip's removal: ObjectFlags2 0x8000 when it has collision data; counted either way).
 - 8 (`sub_80BC024`): anim 0xF, Timer:Timer2 = 34; the tick it reaches 9, anim 0x11; 34 ticks → 0xC.
-- 0xC (`sub_80BC058`). Entry: `sub_80BC13E`: the ball of junk (`sub_80DB800`: T3 0xB0, objects/dust-ball; his panel,
+- 0xC (`sub_80BC058`). Entry: `sub_80BC13E`: the ball of junk (`sub_80DB800`: T3 0xB0, DustCross's junk ball; his panel,
   element and damage word, r4 = 1: Param1 1, which runs on while dimmed; the routine then loads r4 = flip << 8 |
   0x51 and r1..r3 = his X, Y, Z for an effect it never spawns); sound 0xFF; Param2 = 0; Timer = (Param1 + 1) · 20;
   Timer2 = 20. Each later tick: Timer − 1, at 0 → 0x10; else Timer2 − 1, at 0: a junk (`sub_80BC160`: `sub_80DBC90`
@@ -2398,7 +2398,7 @@ A Cross (Param4 = its place in its wave):
   modifier 3; his element and damage word; Z 0), T4#0 effect `byte_80BEDC0[look]` (0x18, then 0x16) at its centre
   16 pixels up (his flip; looks 2 and up add look − 1 to its palette), a 10-tick palette flash. Timer + 1, past 21 →
   0x20. (Its table's phase 4, `sub_80BEDCC`, is never entered.)
-- 0x10 (`sub_80BEE04`), EraseCross's beam (move 1): anim 0xF; `sub_80D8F98` (attack #0x9D, objects/erase-ray) on
+- 0x10 (`sub_80BEE04`), EraseCross's beam (move 1): anim 0xF; `sub_80D8F98` (attack #0x9D, navis/00-megaman/forms/erasecross/ray) on
   the panel ahead, r4 = 2 (it shuts when its Param2 is set), flags |= 0x10, in ExtraVars[2]; sound 0xBA; Timer 70; a
   10-tick flash; at Timer 40 `sub_80D8FB8` (its Param2 = 1 if its Param1 is 2); 70 ticks → 0x20.
 - 0x14 (`sub_80BEE62`), GroundCross's drill (move 2): phase 0: 10 ticks, then phase 4 at once. Phase 4
@@ -2684,8 +2684,9 @@ In battle 2, `ns[0x2C] = 0x0C` (Falzar Beast Out), and the player object's NameI
 - **4, `sub_80EF608`**: count the timer down; when it was ≤ 1, `av.u16[0x12] -= 1`: nonzero → `av[0..1] = 0` (the
   next slash), zero → clear 0x400000 and `object_exitAttackState`.
 
-Both are the content pack's script `navis/00-megaman/weapons/1e-beast-claw` (the setup writes the slash count into
-the action's state before the action starts, `navi:action_state(0x52)`); a phase past the table's two is an error.
+Both are the content's weapon definition `megaman/beast-claw` (navis/00-megaman/weapons/beast-claw: the setup writes
+the slash count into its action's state before the action starts, `navi:action_state(beast_claw.action)`); a phase
+past the table's two is an error.
 
 ### 4.7 What is generic vs GunDelSol-specific
 

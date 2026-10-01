@@ -267,15 +267,19 @@ fn weapon_slot_routine(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle
 pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle) -> super::NaviAction {
     use bn6_content_api::{ActionHandle, HookCall, Registry, Value};
     if let Some(setup) = b.content.defs.weapon(weapon).setup {
+        let instant = b.content.defs.weapon(weapon).instant;
         let action = match crate::behavior::call_hook(b, setup, HookCall::Weapon { navi: r }) {
             Value::Int(n) => super::NaviAction::numbered(&b.content.defs, n as u8),
             Value::Def(Registry::Action, h) => super::NaviAction::Content(ActionHandle(h)),
+            // A weapon with an instant effect of its own names no action:
+            // the instant chips' action runs it.
+            Value::Nil if instant.is_some() => super::EngineAction::InstantChip.into(),
             v => panic!("weapon {:?} names {v:?}, not an action", b.content.defs.weapon(weapon).key),
         };
         // A weapon that names an instant effect no chip has (TenguCross's
-        // wind) runs its own.
-        if let Some(f) = b.content.defs.weapon(weapon).instant {
-            ai_mut(b, r).attack.instant = Some(super::actions::instant::Effect::Runs(f));
+        // wind) runs its own, and waits after it.
+        if let Some(f) = instant {
+            ai_mut(b, r).attack.instant = Some(super::actions::instant::Effect::RunsThenWaits(f));
         }
         return action;
     }

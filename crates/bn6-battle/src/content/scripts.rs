@@ -2,7 +2,7 @@
 //!
 //! A pack's Luau modules live next to the data they implement
 //! (`objects/sun-beam/sun_beam.luau`, `chips/00f-gundels1/chip.luau`,
-//! `navis/00-megaman/weapons/2a-absorb/absorb.luau`, `lib/...`).
+//! `navis/00-megaman/weapons/absorb/weapon.luau`, `lib/...`).
 //! Entities name their script in their data:
 //!
 //! - an object kind's `[kind]` table (`objects/<name>/object.toml`) gives
@@ -13,9 +13,6 @@
 //!   (dimming chips) its dimming controller, action 0x1B (navi chips) its
 //!   navi, action 0x1C (instant chips) its effect
 //!   ([`ChipData::script`](super::ChipData::script));
-//! - an object kind's `actor_list_entry` implements the actor lists'
-//!   entries of that type (the field objects a stage places when a round
-//!   starts: rocks);
 //! - a weapon routine of MegaMan's (`navis/00-megaman/weapons/NN-name/
 //!   weapon.toml`) implements the routine, the action it names and the
 //!   instant chip effect it names ([`WeaponData`]).
@@ -103,10 +100,6 @@ pub struct ObjectKind {
     /// The module (see [`Scripts::modules`]); in the file, a path relative
     /// to the folder.
     pub script: String,
-    /// The actor lists' entry type it places when a round starts
-    /// (`off_80073A0`: 8, a rock), through its `actor_list_entry`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub actor_list_entry: Option<u8>,
 }
 
 /// A weapon routine of MegaMan's that a script implements

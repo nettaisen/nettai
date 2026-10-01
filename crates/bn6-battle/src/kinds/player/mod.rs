@@ -33,7 +33,8 @@ use crate::content::Content;
 
 pub use navi_action::{EngineAction, NaviAction, NaviWord};
 use crate::object::{ObjectRef, PanelPos, Pool, Vec3, flags, state};
-use crate::setup::{ActorEntry, Form, Navi, NaviStats, effects};
+use crate::content::ActorEntry;
+use crate::setup::{Form, Navi, NaviStats, effects};
 
 /// Panel center coordinates (`object_getCoordinatesForPanels`, which
 /// takes the panel numbers as signed bytes).
@@ -47,13 +48,13 @@ pub fn coordinates_to_panel(x: i32, y: i32) -> PanelPos {
     PanelPos { x: (((x >> 16) + 0xA0) / 0x28) as u8, y: (((y >> 16) + 0x20) / 0x18) as u8 }
 }
 
-/// Spawn a player navi from an actor-list entry (`sub_800753C`).
+/// Spawn a player navi where its stage places it (`sub_800753C`).
 pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Player, Vec3::default(), [0; 4])?;
     let (x, y) = panel_coordinates(entry.x, entry.y);
     {
         let o = b.objects.get_mut(r);
-        o.alliance = entry.alliance;
+        o.alliance = entry.side;
         o.panel = PanelPos { x: entry.x, y: entry.y };
         o.future_panel = o.panel;
         o.pos = Vec3 { x, y, z: 0 };
@@ -65,7 +66,7 @@ pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
     };
     b.objects.get_mut(r).actor = Some(a);
     b.actors.get_mut(a).actor_type = ActorType::Player;
-    let navi = b.navi(entry.alliance as usize);
+    let navi = b.navi(entry.side as usize);
     let name_id = 0x1A0 + navi.0 as u16;
     b.objects.get_mut(r).name_id = name_id;
     // The actor record (`sub_80182B4`); MegaMan's is {0, Player, 0}.

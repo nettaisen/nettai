@@ -15,6 +15,7 @@
 local attachment = require("../../../../objects/attachment/attachment")
 local lib = require("../../../../lib/buster")
 local projectile = require("../../../../lib/projectile")
+local variants = require("../../../../objects/projectile/variants")
 
 -- (The recovery after the shot is the navi's `recovery`, AIAttackVars+0x12,
 -- which a thrown obstacle waits again.)
@@ -22,6 +23,9 @@ export type State = {
     -- Ticks left of the wait, ticks into the shot, then ticks of recovery
     -- left (AIAttackVars+0x10).
     timer: number,
+    -- The projectile (the original's first attack parameter, a row of the
+    -- projectile's table).
+    projectile: ProjectileVariant?,
 }
 
 local charged_shot = {}
@@ -34,7 +38,8 @@ local WAIT_TICKS = 5
 -- The shot's sound and height (16.16).
 local SHOT_SOUND, SHOT_Z = asset.sound("buster-6a"), 0x18_0000
 
--- The plain charged shot's kind.
+-- The plain charged shot's row of the projectile's table, as the navi
+-- stats' NaviCust byte names it.
 local PLAIN = 6
 
 -- `sub_8011A7E`.
@@ -46,22 +51,20 @@ function charged_shot.setup(navi: Object): Action
         base = 1
     end
     navi.attack_damage = base * 10
-    -- The kind: the program's on 1 draw in 8 (kinds 9 and 0x23) or 1 in 2.
-    local kind = stats.charge_shot_kind
-    if kind == 0 then
-        kind = PLAIN
-    elseif kind ~= PLAIN then
-        local mask = if kind == 9 or kind == 0x23 then 7 else 1
-        if bit32.band(battle.rng_positive(), mask) ~= 0 then
-            kind = PLAIN
+    -- The projectile: the charged-shot program's (the projectile's row, the
+    -- navi stats' NaviCust byte) on 1 draw in 8 (rows 9 and 0x23) or 1 in
+    -- 2, else the plain charged shot.
+    local program = stats.charge_shot_kind
+    local shot = variants.charged
+    if program ~= 0 and program ~= PLAIN then
+        local mask = if program == 9 or program == 0x23 then 7 else 1
+        if bit32.band(battle.rng_positive(), mask) == 0 then
+            shot = variants.by_number(program)
         end
     end
-    navi:set_attack_param(1, kind)
-    for i = 2, 4 do
-        navi:set_attack_param(i, 0)
-    end
+    local s = navi:action_state(charged_shot.action) :: State
+    s.projectile = shot
     navi.attack_element = 0
-    navi.variant = 0
     navi.charged = 0
     navi.extra = 0
     navi.hit_param = 0
@@ -69,9 +72,11 @@ function charged_shot.setup(navi: Object): Action
     return charged_shot.action
 end
 
--- `sub_80EBE54`: raise the buster; on the second tick the shot (its kind
--- the attack's first parameter, its damage without the hit parameter) and
--- the flash; after five ticks, the recovery.
+-- `sub_80EBE54`: raise the buster; on the second tick the shot (its
+-- damage without the hit parameter) and the flash; after five ticks, the
+-- recovery. (Started without its setup, by the role `forced_charged_shot`,
+-- it fires what the attack's first parameter last held: here the last
+-- charged shot's projectile, or the table's first row.)
 local function shoot(me: Object, s: State)
     if me.step_init == 0 then
         me:set_animation(0x0E)
@@ -82,7 +87,8 @@ local function shoot(me: Object, s: State)
     end
     if s.timer == 1 then
         battle.play_sound(SHOT_SOUND)
-        me.recovery = projectile.fire(me, { kind = me:attack_param(1), damage = me.attack_damage, z = SHOT_Z })
+        local variant = s.projectile or variants.plain
+        me.recovery = projectile.fire(me, { variant = variant, damage = me.attack_damage, z = SHOT_Z })
         attachment.attach(me, lib.flash, "related")
     end
     s.timer += 1
@@ -139,7 +145,11 @@ local function update(me: Object, s: State)
     end
 end
 
-charged_shot.action = define.action { id = "megaman/charged-shot/action", state = { timer = "u16" }, update = update }
+charged_shot.action = define.action {
+    id = "megaman/charged-shot/action",
+    state = { timer = "u16", projectile = "record:projectile-variant" },
+    update = update,
+}
 
 charged_shot.weapon = define.weapon {
     id = "megaman/charged-shot",

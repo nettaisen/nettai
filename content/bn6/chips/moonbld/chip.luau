@@ -8,7 +8,9 @@
 -- docs/design/content-model-v2.md §12).
 
 local action = require("./action")
+local slashes = require("../../navis/00-megaman/forms/slashcross/slashes")
 
 return {
-    action = action.action { id = "moonbld/action" },
+    -- (SlashCross's A-charge sends its ring as a sword wave.)
+    action = action.action { id = "moonbld/action", charged = slashes.moon },
 }

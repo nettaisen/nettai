@@ -167,7 +167,8 @@ pub(crate) struct Bound {
     /// (definitions are frozen and live as long as the VM).
     defs: HashMap<usize, (Registry, u16)>,
     /// Each definition's table by registry and handle; for an entry that is
-    /// no definition (an engine kind, a v1 kind), a stand-in `{ id = key }`.
+    /// no definition (an engine kind, a v1 kind, a pack's chip record), a
+    /// stand-in `{ id = key }`.
     tables: HashMap<(Registry, u16), Table>,
     /// Records' types, by handle.
     record_types: HashMap<u16, String>,
@@ -325,7 +326,7 @@ impl ContentHost for LuauContent {
     }
 
     fn call_hook(&self, api: &mut dyn CoreApi, f: FnId, call: HookCall) -> Result<Value, ContentError> {
-        let args = bind::hook_args(&self.lua, call).map_err(|e| ContentError::new(e.to_string()))?;
+        let args = bind::hook_args(&self.lua, call, &self.bound).map_err(|e| ContentError::new(e.to_string()))?;
         let v: LuaValue = self.call(f, api, args)?;
         bind::hook_result(v, call, &self.bound).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))))
     }
