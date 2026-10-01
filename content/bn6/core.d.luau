@@ -397,9 +397,8 @@ declare class Object
     -- 1 while the action runs inside a form's action wrapper.
     beast_lockon: number
     -- The lock-on mode the attack's own action asks the Beast Out rush for
-    -- (the charged sword's, by its slash); 0: the chip's. (A number until
-    -- lock-on modes are definitions.)
-    rush_lockon: number
+    -- (the charged sword's, by its slash); nil: the chip's.
+    rush_lockon: Lockon?
     -- A per-action word some actions keep.
     marker: number
     -- The absorbed obstacle a throw carries (the marker word, as
@@ -608,9 +607,9 @@ declare class Object
     -- `sub_80116AE`: start a step toward dir.
     function start_move(self, dir: number): ()
     -- `ho_8026554`: the panel the navi would attack (x, y) from in Beast
-    -- Out lock-on mode `mode` (its own for mode 0 or a target off the
-    -- field; (0, 0x7F) when no panel fits).
-    function lockon_panel(self, x: number, y: number, mode: number): (number, number)
+    -- Out lock-on mode `mode` (rules/lockon; its own for no mode or a
+    -- target off the field; (0, 0x7F) when no panel fits).
+    function lockon_panel(self, x: number, y: number, mode: Lockon?): (number, number)
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
     -- `sub_80DBB64`: put a junk look (`obstacle.junk_look`) on the sprite:
@@ -1279,7 +1278,6 @@ export type ChipData = {
     beast_lockon: boolean,
     params: { number },
     lockout: number,
-    lockon_mode: number,
     damage: number,
     gun_del_sol: GunDelSol?,
     -- The HP a recovery chip restores (action 0x20).
@@ -1580,7 +1578,7 @@ export type ChipSpec = {
     extra_flags: { string | number }?,
     -- Its lock-on mode, and whether it goes through the Beast rush (`rush
     -- = false`: a mode without the rush, as some records have).
-    beast: { lockon: any, rush: boolean? }?,
+    beast: { lockon: Lockon?, rush: boolean? }?,
     library: { number: number, index: number, sort: number }?,
     slot_in_limit: number?,
     traits: { string }?,
@@ -1648,7 +1646,27 @@ export type StageDef = {
     actors: { StageActor },
 }
 export type StatusDef = { id: string, [string]: any }
-export type LockonDef = { id: string, [string]: any }
+-- A Beast Out lock-on mode (rules/lockon): how the rush picks the panel to
+-- attack a target from. `stay`: the navi's own panel. `row`: along the
+-- target's row counting from the navi's own column (`same_row_offsets`
+-- when they share a row), then the rows `row_shifts` away. `near`: the
+-- first of `offsets` (dx toward the user's front) next to the target the
+-- navi can stand on (`far_column_offsets` for a target in the column
+-- farthest ahead), then with the rules' column shifts, with a clear path
+-- to the target if asked; afterwards the middle row of that column, if
+-- preferred and free.
+export type LockonDef = {
+    id: string,
+    rule: "stay" | "row" | "near",
+    offsets: { { number } }?,
+    same_row_offsets: { { number } }?,
+    row_shifts: { number }?,
+    far_column_offsets: { { number } }?,
+    column_shifts: boolean?,
+    clear_path: boolean?,
+    prefers_middle_row: boolean?,
+}
+export type Lockon = LockonDef
 
 -- A one-shot effect's or hit spark's look.
 export type EffectSpec = { sprite: SpriteAsset, anim: number?, palette: number? }
@@ -1689,13 +1707,15 @@ export type RolesSpec = {
         beast_claw: (Action | LegacyAction)?,
     }?,
     kinds: {
-        rock: (Kind | LegacyKind)?,
-        boulder: (Kind | LegacyKind)?,
-        statue: (Kind | LegacyKind)?,
         absorbed_obstacle: (Kind | LegacyKind)?,
         falling_rock: (Kind | LegacyKind)?,
         support: (Kind | LegacyKind)?,
         anti_recovery: (Kind | LegacyKind)?,
+    }?,
+    -- The Beast Out lock-on modes the ruleset names itself: the Beast
+    -- forms' charged claw's.
+    lockon: {
+        beast_claw: Lockon?,
     }?,
     hooks: {
         -- The NaviCust FirstBarrier: raise its barrier and the barrier's

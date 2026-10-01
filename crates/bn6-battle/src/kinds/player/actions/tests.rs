@@ -1128,12 +1128,12 @@ fn charged_slash(b: &Battle, r: ObjectRef) -> (bn6_content_api::RecordHandle, bo
 #[test]
 fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
     // The charged shot's own slash: no dash, and the Beast rush would lock
-    // on in its mode (3).
+    // on in its mode (the wide sword's).
     let (mut b, p0, _) = fight();
     start_weapon_as(&mut b, p0, 0x12, 2);
     let (own, dash) = charged_slash(&b, p0);
     assert!(!dash);
-    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, 3);
+    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, testing::lockon("widesht"));
 
     // A chip content defines: StepSwrd's slash names its charged slash (the
     // wide sword's) and steps, so the charge dashes two panels in first.
@@ -1145,7 +1145,7 @@ fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
     assert_eq!(ai_mut(&mut b, p0).attack.chip, Some(stepswrd));
     let (wide, dash) = charged_slash(&b, p0);
     assert!(dash && wide != own);
-    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, 3);
+    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, testing::lockon("widesht"));
     // The chip's damage (160), not the charged shot's.
     assert_eq!(ai_mut(&mut b, p0).attack.damage, 160);
     let mut t = 0;

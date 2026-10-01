@@ -2,6 +2,7 @@
 -- Thunder: a thunder ball (ball.luau) that homes in on the enemy for 5
 -- panels and paralyzes what it hits (shoot.luau).
 
+local lockon = require("../../rules/lockon")
 local shoot = require("./shoot")
 
 -- Its hits' status: paralysis.
@@ -17,7 +18,7 @@ return define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 29, index = 29, sort = 433 },
     slot_in_limit = 3,
-    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-    beast = { lockon = 2 },
+    -- The Beast rush, and its lock-on mode (rules/lockon).
+    beast = { lockon = lockon.thunder },
     action = shoot.action { ball = { panels = 5, status = PARALYZE } },
 }
