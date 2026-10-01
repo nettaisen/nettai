@@ -95,7 +95,7 @@ local function init(me: Object)
     local lightning = s.lightning
     local sprite = me.sprite
     sprite:load(if lightning then LIGHTNING else FLAMES)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.visible = true
     me.anim = 0
     me.anim_loaded = 0

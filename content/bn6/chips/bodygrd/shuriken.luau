@@ -114,6 +114,8 @@ local function init(me: Object)
     end
     local sprite = me.sprite
     sprite:load(SPRITE)
+    -- sprite_noShadow: the first part is drawn with the sprite.
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     local x, y = field.center(me.panel_x, me.panel_y)
     me.pos = Vec3.new(int.i32(x - START * me.facing), y, START)

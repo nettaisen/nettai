@@ -24,8 +24,7 @@ export type State = {
 -- The effect's phases.
 local MARK, WAIT, HIT = 0x0, 0x4, 0x8
 local MARK_TICKS, WAIT_TICKS, HIT_TICKS = 0x3C, 0xA, 0x1E
--- The marks' sound (`sub_800AE90`), every 16 frames of the game's frame
--- counter, which the port doesn't keep: every 16 ticks of the marking.
+-- The marks' sound (`sub_800AE90`).
 local MARK_SOUND = asset.sound("err-select-91")
 -- The hit on each panel (`sub_80E621C`: region 1, spark 6, a curse that
 -- hits navis, hit modifier 3, null).
@@ -88,7 +87,7 @@ local function effect(me: Object)
     local phase = me.phase
     if phase == MARK then
         -- `sub_80E60EC`: the other side's combatants; none, straight to
-        -- the undim. Their panels marked (drawn only) for 60 ticks.
+        -- the undim. Their panels marked for 60 ticks.
         if me.phase_init == 0 then
             local n = 0
             for _, o in battle.alive_actors(bit32.bxor(me.alliance, 1)) do
@@ -104,10 +103,10 @@ local function effect(me: Object)
             me.phase_init = 4
             return
         end
-        if me.timer % 16 == 0 then
-            for _ = 1, s.count do
-                battle.play_sound(MARK_SOUND)
-            end
+        for i = 1, s.count do
+            local at = s.targets[i]
+            local x, y = field.center(bit32.band(at, 7), bit32.rshift(at, 4))
+            battle.warn(MARK_SOUND, Vec3.new(x, y, 0))
         end
         local t = me.timer - 1
         me.timer = bit32.band(t, 0xFFFF)

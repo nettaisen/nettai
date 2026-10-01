@@ -31,7 +31,7 @@ local SPRITE = asset.sprite("sight")
 local ANIM = 1
 local AIMING = 0xFF
 local TIMEOUT, AFTER = 0x168, 0x1E
-local SOUND_STEP = asset.sound("target-move")
+local SOUND_STEP = asset.sound("erase-man")
 -- The panels whose column it won't step into when wholly theirs
 -- (`byte_80D676C`, by side): the user's side's.
 local OWN_PANELS: { [number]: { number } } = { [0] = { 0, 0x20 }, [1] = { 0x20, 0 } }
@@ -209,6 +209,8 @@ local function init(me: Object)
     local s = me.state :: State
     local sprite = me.sprite
     sprite:load(SPRITE)
+    -- sprite_noShadow: the first part is drawn with the sprite.
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = ANIM, 0xFF
     sprite:set_animation(0xFF)
     sprite:step()
