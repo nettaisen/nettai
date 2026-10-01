@@ -1,8 +1,9 @@
 --!strict
 -- Rock debris (the original's effect object #0x38, `sub_80E46D8`): a chunk
--- thrown up when a rock (rock.luau) breaks, which flies off with a random
--- speed and puffs into dust where it lands. Only drawn, but it draws the
--- simulation RNG twice.
+-- thrown up when a rock (./rock) breaks, which flies off with a random
+-- speed and puffs into dust where it lands; the stages' boulder
+-- (objects/boulder) and the encased bubble (objects/encased-bubble) throw
+-- it up too. Only drawn, but it draws the simulation RNG twice.
 
 local effects = require("../../lib/effects")
 
@@ -57,7 +58,7 @@ local function init(me: Object)
 end
 
 debris.kind = define.kind {
-    id = "rock/debris",
+    id = "rockcube/debris",
     pool = "effect",
     state = { palette = "u8" },
     -- `sub_80E46D8`.
