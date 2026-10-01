@@ -52,14 +52,27 @@ struct Face {
     count: u8,
 }
 
+/// The pack's faces are in the original's order of forms and navis
+/// (hud.json), until the window reads a form's and a navi's mugshot from
+/// its definition: compat has the numbers of the content's keys. (A form
+/// compat doesn't know shows as the base form.)
+fn form_number(b: &Battle, form: bn6_content_api::FormHandle) -> u8 {
+    let key = &b.content.defs.form(form).key;
+    bn6_compat::Compat::bn6().forms.get(key).map_or(0, |f| f.form)
+}
+
+/// A link navi's number among the pack's faces (see [`form_number`]).
+fn navi_number(b: &Battle, navi: bn6_content_api::NaviHandle) -> Option<u8> {
+    let key = &b.content.defs.navi(navi).key;
+    bn6_compat::Compat::bn6().navis.get(key).map(|n| n.navi)
+}
+
 impl Face {
     fn of(b: &Battle, r: ObjectRef) -> Face {
         let stats = &b.stats[b.objects.get(r).alliance as usize];
         Face {
             emotion: [0u8, 2, 3, 1, 5, 4][mood_index(b, r) as usize],
-            // The pack's faces are by the form's number (the record's,
-            // until forms name their own).
-            form: b.content.form_number(stats.form).0,
+            form: form_number(b, stats.form),
             count: stats.beast_out_counter,
         }
     }
@@ -717,11 +730,14 @@ fn mugshot_parts<'a>(
 ) {
     let side = b.objects.get(r).alliance as usize;
     let stats = &b.stats[side];
-    let navi = b.content.navi_number(stats.navi).0;
-    if navi != 0 {
-        let face = hud.navi_mugshot_of.get(navi as usize - 1).and_then(|&i| hud.navi_mugshots.get(i as usize));
+    // A link navi's own face (MegaMan's, the navi that changes form, is
+    // his emotion's or his form's).
+    if !b.content.navi(stats.navi).changes_form() {
+        let face = navi_number(b, stats.navi)
+            .and_then(|navi| hud.navi_mugshot_of.get((navi as usize).checked_sub(1)?))
+            .and_then(|&i| hud.navi_mugshots.get(i as usize));
         let Some(face) = face else {
-            problems.note(format!("navi {navi} has no mugshot in the pack"));
+            problems.note(format!("navi {:?} has no mugshot in the pack", b.content.defs.navi(stats.navi).key));
             return;
         };
         let full_synchro = Face::of(b, r).emotion == 3;
@@ -735,7 +751,7 @@ fn mugshot_parts<'a>(
     // screens close (`sub_802A040`, `sub_802A088`).
     let chosen = (b.round.mode == mode::CUSTOM).then(|| b.custom.sides[side].sent.as_ref()).flatten();
     if let Some(form) = chosen.and_then(|sent| sent.result.transform.form) {
-        face = Face { form: b.content.form_number(form).0, ..Face::of(b, r) };
+        face = Face { form: form_number(b, form), ..Face::of(b, r) };
     }
     let Some((gfx, pal)) = hud.mugshots.get(face.picture(hud) as usize) else { return };
     // (The white of a change to Full Synchro: `byte_801CD80`.)

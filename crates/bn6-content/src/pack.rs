@@ -222,15 +222,14 @@ pub fn load_battle(content: &Path, assets: &Path) -> Result<(bn6_battle::Content
 }
 
 /// [`load_battle`]'s content before the define phase: the modules, the
-/// object kinds, the asset index and the sprite timing.
+/// asset index and the sprite timing.
 pub fn battle_content(content: &Path, assets: &Path) -> Result<(bn6_battle::Content, Report), Report> {
     let mut report = Report::default();
     read_manifest(assets, &mut report).ok_or_else(|| report.clone())?;
     let Some(root) = crate::root::read(content, &mut report) else { return Err(report) };
     let Some(index) = crate::names::read_index(assets, &mut report) else { return Err(report) };
     let Some(animations) = load_animations(assets, &mut report) else { return Err(report) };
-    let mut c = bn6_battle::Content { assets: index, animations, scripts: bn6_battle::content::Scripts::new(root.modules), ..Default::default() };
-    c.objects.kinds = root.kinds;
+    let c = bn6_battle::Content { assets: index, animations, scripts: bn6_battle::content::Scripts::new(root.modules), ..Default::default() };
     Ok((c, report))
 }
 

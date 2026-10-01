@@ -1,12 +1,21 @@
 -- Types shared across the bn6 pack's modules. A definitions file like
 -- core.d.luau (luau-lsp: `--definitions=content/bn6/types.d.luau`): types
 -- a module and the modules that require it both name, declared once for
--- the pack. (The engine's API and data types are in core.d.luau.)
+-- the pack. (The engine's API is in core.d.luau.)
 
 -- Where an owner keeps an attached object: its actor overlay slot, its
 -- first related object, or its content state's `held` or `held2` field
 -- (lib/slot.luau).
 export type Slot = "overlay" | "related" | "held" | "held2"
+
+-- What a projectile's hit does to the panel it hits: crack it
+-- (`object_crackPanel`), break it (`object_breakPanel_dup2`), or make a
+-- solid one a panel of a type (by the shot's side).
+export type PanelHit = {
+    effect: "crack" | "break" | "set_type",
+    left_side: PanelType?,
+    right_side: PanelType?,
+}
 
 -- A projectile's variant (objects/projectile, the original's `off_80C4C78`
 -- rows): what it is and hits, its hit modifier, its element and secondary
@@ -169,13 +178,12 @@ export type VariSwordSpec = {
     charged: "own",
 }
 
--- An attachment's look (objects/attachment): its sprite (a sprite asset,
--- or a "CC-II" string from the pack data's rows until their users
--- convert), its palette, the pixels it sits raised, the owner's attach
--- point it sits at (none: on the owner's position); `by_owner`: at a fixed
--- offset by the owner's NameID instead (row 0xF).
+-- An attachment's look (objects/attachment): its sprite, its palette, the
+-- pixels it sits raised, the owner's attach point it sits at (none: on the
+-- owner's position); `by_owner`: at a fixed offset by the owner's NameID
+-- instead (the original's row 0xF).
 export type AttachmentLook = {
-    sprite: SpriteAsset | string,
+    sprite: SpriteAsset,
     palette: number,
     lift: number?,
     attach_point: number?,
@@ -846,3 +854,61 @@ export type SunMeteor = {
     shake: boolean,
     panel: "none" | "crack" | "break",
 }
+
+-- What a heat flame is spawned with (chips/heatman/flame): HeatMan's
+-- flames and BurnSqr's.
+export type HeatFlame = {
+    -- It acts and steps its sprite while dimmed (Param1 4: the navi
+    -- chip's).
+    while_dimmed: boolean,
+    -- How long it lasts (Param2).
+    ticks: number,
+    -- What it is: an attack, or (Param3 set) a thrown attack.
+    is: CollisionType,
+}
+
+-- How a gust blows (objects/gust, the original's first parameter):
+-- `pulls` turns it back toward its side, a weaker push; `unseen` hides it
+-- and lets it blow through any panel.
+export type GustHow = { pulls: boolean?, unseen: boolean? }
+
+-- What a riding hit is spawned with (navis/slashman/riding_hit): its
+-- collision types, hit modifier and spark, and whether it goes on after
+-- hitting a body.
+export type RidingHit = {
+    is: CollisionType,
+    hits: CollisionType,
+    hit_mod: number,
+    spark: Spark?,
+    keeps_going: boolean,
+}
+
+-- What EraseMan's beam is spawned with (chips/eraseman/beam).
+export type EraseBeam = {
+    -- The slash's aim: 0 up-forward, 1 forward, 2 down-forward.
+    aim: number,
+    -- How long it stands.
+    ticks: number,
+    -- A navi's own segment (EDeletBm's).
+    navis: boolean,
+}
+
+-- What a whirlwind is spawned with (TenguCross Beast's, its form's
+-- whirlwind module): whether its hits come all at once, how long it stands
+-- and its animation.
+export type Whirlwind = { at_once: boolean, ticks: number, anim: number }
+
+-- What a surge of water is spawned with (SpoutCross Beast's, its form's
+-- surge module): how long it lasts and how often its region comes back, in
+-- ticks.
+export type AquaSurge = { ticks: number, beat: number }
+
+-- What a drip shower is spawned with (navis/spoutman/drip_shower): its
+-- turns and the ticks a quarter lasts; and whether it lasts only while its
+-- owner stays in his action.
+export type DripShower = { turns: number, quarter_ticks: number, follows_action: boolean }
+
+-- How GroundMan's rocks drop (chips/grndman/rock): the ticks its panel
+-- blinks first, whether it acts while dimmed, whether it cracks the panel
+-- it lands on, and silently.
+export type GroundRockDrop = { warning: number, while_dimmed: boolean, cracks: boolean, silent: boolean }

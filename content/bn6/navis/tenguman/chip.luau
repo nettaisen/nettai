@@ -93,7 +93,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-local PHASES = { [BLOW] = blow, [RECOVER] = recover }
+local PHASES: { [number]: (me: Object, s: State) -> () } = { [BLOW] = blow, [RECOVER] = recover }
 
 return define.chip {
     id = "ftornado",

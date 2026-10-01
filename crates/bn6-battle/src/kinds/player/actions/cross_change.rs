@@ -19,13 +19,13 @@ use crate::collision::f1;
 use crate::kinds::common;
 use crate::kinds::player::{
     ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, clear_statuses, coll_mut, exit_attack_state, form,
-    form_of, load_sprite, navi_of, post_init_hook, reset_status, reset_status_tail, set_coordinates_from_panel, stats, status as navi_status,
+    is_megaman, load_sprite, post_init_hook, reset_status, reset_status_tail, set_coordinates_from_panel, stats, status as navi_status,
     update_element,
 };
 use crate::object::ObjectRef;
 use crate::content::Content;
 use bn6_content_api::NaviHandle;
-use crate::setup::{Form, Navi, NaviStats, NaviWeapons};
+use crate::setup::{NaviStats, NaviWeapons};
 
 /// The action's own state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -103,9 +103,9 @@ pub(in crate::kinds::player) fn knock_out(b: &mut Battle, r: ObjectRef) {
         }
         s => panic!("Cross knockout step {s:#x} reads past its table (off_802D944)"),
     }
-    if ai(b, r).attack.variant == 0 {
-        common::step_sprite(b, r);
-    }
+    // (The original steps the sprite when the attack's variant byte is 0,
+    // which its only caller, the pause handler, stores first.)
+    common::step_sprite(b, r);
 }
 
 /// `sub_802D738` / `sub_802D950`: onto the destination panel on the
@@ -161,9 +161,15 @@ fn settle(b: &mut Battle, r: ObjectRef) -> bool {
 /// The navi `r` becomes the one its stats name: its actor record, sprite
 /// (animation 3) and overlays; the statuses and anger end.
 fn take_identity(b: &mut Battle, r: ObjectRef) {
-    let navi = navi_of(b, r);
-    ai_mut(b, r).ai_index = navi.0;
-    b.objects.get_mut(r).identity = b.content.navi_data(navi).identity;
+    // (The original stores the navi's number as the AI index, and
+    // 0x1A0 plus it as the NameID: the navi's identity and its record's
+    // index.)
+    let identity = b.content.navi(stats(b, r).navi).identity;
+    let ai_index = b.content.navi_record(identity).ai_index;
+    let a = ai_mut(b, r);
+    a.ai_index = ai_index;
+    a.identity = identity;
+    b.objects.get_mut(r).identity = identity;
     load_sprite(b, r);
     common::set_animation(b, r, 3);
 }
@@ -171,7 +177,7 @@ fn take_identity(b: &mut Battle, r: ObjectRef) {
 /// `sub_802D7A0`: the change itself (one tick).
 fn become_other_navi(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize & 1;
-    let old_form = form_of(b, r);
+    let old_form = stats(b, r).form;
     form::take_off_overlay(b, r, old_form);
     let identity = b.objects.get(r).identity;
     form::navi_death_hook(b, r, identity);
@@ -190,16 +196,16 @@ fn become_other_navi(b: &mut Battle, r: ObjectRef) {
     super::super::refresh_navicust_state(b, r);
     take_identity(b, r);
     let s = *stats(b, r);
-    let navi = navi_of(b, r);
-    if navi == Navi::MEGAMAN {
-        form::put_on_overlay(b, r, form_of(b, r));
+    let megaman = is_megaman(b, r);
+    if megaman {
+        form::put_on_overlay(b, r, s.form);
     } else {
         form::navi_init_hook(b, r, b.objects.get(r).identity);
     }
     post_init_hook(b, r);
     clear_statuses(b, r);
     navi_status::end_anger(b, r);
-    let (hp, max_hp) = if navi == Navi::MEGAMAN { (s.hp, s.max_hp) } else { changed_hp(b, s.navi, side as u8) };
+    let (hp, max_hp) = if megaman { (s.hp, s.max_hp) } else { changed_hp(b, s.navi, side as u8) };
     let o = b.objects.get_mut(r);
     o.hp = hp;
     o.max_hp = max_hp;
@@ -216,7 +222,7 @@ fn take_back(b: &mut Battle, r: ObjectRef) {
     take_identity(b, r);
     form::navi_init_hook(b, r, b.objects.get(r).identity);
     let s = *stats(b, r);
-    form::put_on_overlay(b, r, form_of(b, r));
+    form::put_on_overlay(b, r, s.form);
     clear_statuses(b, r);
     reset_status(b, r);
     // sub_80143B4
@@ -250,10 +256,10 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).status &= !0x20;
     let side = b.objects.get(r).alliance as usize & 1;
     b.hands[side].charge_bonus = [0; 6];
-    match navi_of(b, r).0 {
-        0 => reset_status_tail(b, r, false),
-        1..=11 => {}
-        n => panic!("the Cross change hook for navi {n:#x} reads past its table (off_801426C)"),
+    // `off_801426C`, by the navi: MegaMan's (the navi that changes form)
+    // is his status reset; the link navis' are nothing.
+    if is_megaman(b, r) {
+        reset_status_tail(b, r, false);
     }
     clear_invulnerable(b, r);
 }
@@ -267,7 +273,7 @@ fn fresh_stats(navi: NaviHandle, content: &Content) -> NaviStats {
         panic!("navi {:?}'s fresh stats read past their table (init_8013B64)", content.defs.navi(navi).key);
     };
     let defaults = NaviStats::default();
-    let base = content.form_numbered(Form::NONE);
+    let base = content.base_form();
     NaviStats {
         version: 1,
         reg_up: 4,

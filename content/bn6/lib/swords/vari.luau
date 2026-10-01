@@ -20,6 +20,9 @@ type State = VariSwordState
 type Spec = VariSwordSpec
 
 local slash_charge = require("../../navis/megaman/forms/slashcross/charge")
+local slashcross = require("../../navis/megaman/forms/slashcross/form")
+local slashcross_beast = require("../../navis/megaman/forms/slashcross-beast/form")
+local protoman = require("../../navis/protoman/navi")
 
 local vari = {}
 
@@ -32,14 +35,13 @@ local COUNTDOWN = 0x30
 -- The phases, on the attack's step.
 local START, PICK = 0, 4
 local SOUND = asset.sound("ok-8b")
--- Forms: SlashCross and its Beast (wait while A is up), the Beast Overs
--- (random), and the Beast forms (0xB to 0x18: the pick's Beast lock-on).
-local SLASH_CROSS, SLASH_CROSS_BEAST = 0x03, 0x0F
-local GREGAR_BEAST_OVER, FALZAR_BEAST_OVER = 0x17, 0x18
-local FIRST_BEAST, LAST_BEAST = 0x0B, 0x18
--- The navi (NaviStats+0x29) that waits while A is up and never gets the
--- charged sword or the lock-on.
-local WAITING_NAVI = 0x0B
+-- The forms that wait while A is up: SlashCross and its Beast (the Beast
+-- Overs pick at random, and the Beast forms give the pick's Beast
+-- lock-on).
+local WAITING_FORMS: { FormDef } = { slashcross, slashcross_beast }
+-- The navi that waits while A is up and never gets the charged sword or
+-- the lock-on.
+local WAITING_NAVI: NaviDef = protoman
 -- The joypad bits, as the game's JoypadHeld word has them.
 local KEYS: { { key: Key, bit: number } } = {
     { key = "a", bit = 0x001 },
@@ -115,7 +117,7 @@ local function become(me: Object, spec: Spec, i: number)
     if chip ~= spec.no_charged and me.charged ~= 0 then
         me:set_attack(slash_charge.of_action(me, action), 0)
     end
-    if stats.form >= FIRST_BEAST and stats.form <= LAST_BEAST then
+    if stats.beast then
         me.beast_lockon = lockon
     end
 end
@@ -123,8 +125,7 @@ end
 -- `sub_80EF6FC` / `sub_80EF87C`: a tick of waiting for the pick.
 local function pick(me: Object, s: State, spec: Spec)
     local stats = battle.navi(me.alliance)
-    local form = stats.form
-    if form == GREGAR_BEAST_OVER or form == FALZAR_BEAST_OVER or me.special_source ~= 0 then
+    if stats.beast_over or me.special_source ~= 0 then
         local r = battle.rng_positive() % spec.random
         -- (Past the picks, the random draw is a Sword.)
         return become(me, spec, if spec.picks[r + 1] then r + 1 else 0)
@@ -136,7 +137,7 @@ local function pick(me: Object, s: State, spec: Spec)
     end
     local held = held_word(me)
     if not bit32.btest(held, 0x001) then
-        if stats.navi == WAITING_NAVI or form == SLASH_CROSS or form == SLASH_CROSS_BEAST then
+        if stats.navi == WAITING_NAVI or table.find(WAITING_FORMS, stats.form) then
             return
         end
         return become(me, spec, 0)
