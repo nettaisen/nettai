@@ -1492,11 +1492,27 @@ export type ChipSpec = {
     program_advances: { any }?,
     -- Transitional (counted by the ratchet): the original's subtype and
     -- parameter bytes, for what reads them of the chip besides its own use
-    -- (SlashCross's charged slash reads a sword's); for a chip still a v1
-    -- module (with no use of its own here), its number, action and module
-    -- and what the ruleset reads of it by number (docs/design/
-    -- content-model-v2.md §12, step 5).
-    legacy: { subtype: number?, params: { number }?, number: number?, action: number?, script: string? }?,
+    -- (SlashCross's charged slash reads a sword's); its `number`, for a
+    -- chip something still names by number (a recipe, the Cross special, a
+    -- navi's own chip), with what the ruleset reads of it by number (the
+    -- action number, a damage formula as `damage = 1000 + n` and its
+    -- table, a dark chip's substitute, the per-family data v1 modules
+    -- read); and for a chip still a v1 module (with no use of its own
+    -- here), that module (`script`). docs/design/content-model-v2.md §12.
+    legacy: {
+        subtype: number?,
+        params: { number }?,
+        number: number?,
+        action: number?,
+        script: string?,
+        damage: number?,
+        sp_damage: { number }?,
+        navi_damage: { base: number, per_level: number }?,
+        dark_substitute: number?,
+        gun_del_sol: any?,
+        recovery: number?,
+        sword: any?,
+    }?,
     action: Action?,
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
