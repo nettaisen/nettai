@@ -61,7 +61,8 @@ objects/KIND/object.toml, *.luau          `[kind]`: the object kind a v1 module 
 objects/attachment/rows.luau              the attachments by number (a legacy rule section: the last kind table something reads)
 stages/netbattle.luau                     the stages (`define.stage`), with their layouts and actors
 rules/*.luau                              rule sections (`define.rules`), collision types, statuses,
-                                          lock-on modes, the original's numbering of tables (numbers.luau)
+                                          lock-on modes, the roles (roles.luau), the charge times of the
+                                          weapon routines no weapon names (numbers.luau)
 lib/*.luau                                helpers, and the shared effects, sparks and regions
 core.d.luau, types.d.luau                 the API's definitions (for editors and the checker)
 compat/*.toml                             the original's numbers by key: tools' data, never the engine's
