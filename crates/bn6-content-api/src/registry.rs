@@ -26,6 +26,10 @@ pub enum Registry {
     Collision,
     Status,
     Lockon,
+    /// A rule section (docs/design/content-model-v2.md §3.8): one table of
+    /// rules no entity owns, `define.rules("elements", { ... })`, keyed by
+    /// its section name.
+    Rules,
     /// What the ruleset needs from content by role (docs/design/
     /// content-model-v2.md §7.4): one definition, `define.roles { ... }`,
     /// keyed `roles`.
@@ -38,7 +42,7 @@ pub enum Registry {
 }
 
 impl Registry {
-    pub const ALL: [Registry; 16] = [
+    pub const ALL: [Registry; 17] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -52,6 +56,7 @@ impl Registry {
         Registry::Collision,
         Registry::Status,
         Registry::Lockon,
+        Registry::Rules,
         Registry::Roles,
         Registry::Record,
         Registry::Schema,
@@ -59,7 +64,7 @@ impl Registry {
 
     /// The registries content defines with `define.<name>` (schemas come
     /// from the `state` tables of kinds, actions and modules).
-    pub const DEFINED: [Registry; 15] = [
+    pub const DEFINED: [Registry; 16] = [
         Registry::Chip,
         Registry::Navi,
         Registry::Form,
@@ -73,6 +78,7 @@ impl Registry {
         Registry::Collision,
         Registry::Status,
         Registry::Lockon,
+        Registry::Rules,
         Registry::Roles,
         Registry::Record,
     ];
@@ -94,6 +100,7 @@ impl Registry {
             Registry::Collision => "collision",
             Registry::Status => "status",
             Registry::Lockon => "lockon",
+            Registry::Rules => "rules",
             Registry::Roles => "roles",
             Registry::Record => "record",
             Registry::Schema => "schema",
