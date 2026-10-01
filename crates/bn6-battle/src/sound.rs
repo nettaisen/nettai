@@ -9,30 +9,13 @@
 //! a tick can run more than once: `cues` plays each cue once.
 //! See docs/engine/audio.md and docs/design/rollback.md.
 
-/// An entry of the game's song table. Music (0x00..=0x25) and sound
-/// effects (0x64 and up) share the one table.
+/// A sound asset as the pack identifies it (for BN6's pack, an entry of
+/// the game's song table, which music and sound effects share). The engine
+/// names none itself: content does (`asset.sound`), and what the ruleset
+/// plays it gets by role (`Roles::sound`, `Roles::music`) or from a
+/// definition (a stage's music, a panel type's trail sound).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct SoundId(pub u16);
-
-impl SoundId {
-    /// Netbattle music (`SONG_VIRUS_BATTLE`).
-    pub const VIRUS_BATTLE: SoundId = SoundId(0x15);
-    /// Victory music in special battles (`SONG_WINNER_0`).
-    pub const WINNER_SPECIAL: SoundId = SoundId(0x19);
-    /// Defeat music (`SONG_LOSER`).
-    pub const LOSER: SoundId = SoundId(0x1A);
-    /// Victory music (`SONG_WINNER_1`).
-    pub const WINNER: SoundId = SoundId(0x1F);
-    /// `PlayMusic` of this stops the music; battle settings use it for
-    /// "no music".
-    pub const NO_MUSIC: SoundId = SoundId(0x63);
-    /// `SOUND_CANT_JACK_IN`.
-    pub const CANT_JACK_IN: SoundId = SoundId(0x69);
-    /// `SOUND_BUSTER_CHARGE`: the buster charge starts.
-    pub const BUSTER_CHARGE: SoundId = SoundId(0x71);
-    /// The buster is fully charged.
-    pub const BUSTER_CHARGED: SoundId = SoundId(0x72);
-}
 
 /// A sound call of the original, as the engine reports it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -41,7 +24,7 @@ pub enum SoundCue {
     /// (in practice, sound effects).
     Effect(SoundId),
     /// `PlayMusic(id)`: switch the background music, unless it already is
-    /// `id`; [`SoundId::NO_MUSIC`] stops the music instead.
+    /// `id`.
     Music(SoundId),
     /// `musicGameState_8000784`: stop all sound.
     StopMusic,
@@ -89,9 +72,10 @@ mod tests {
         let mut b = battle(Some(SoundId(0x16)), true);
         // The navi has no HP until its own init runs, later in the tick:
         // the low-HP switch fires for one tick, as in the game.
-        assert_eq!(tick(&mut b), [SoundCue::Music(SoundId::VIRUS_BATTLE), SoundCue::Pinch(true)]);
+        let link_battle = b.content.defs.roles.music(crate::content::MusicRole::LinkBattle);
+        assert_eq!(tick(&mut b), [SoundCue::Music(link_battle), SoundCue::Pinch(true)]);
         // The other side's player hears the same: its navi's latch too.
-        assert_eq!(b.sound_cues_for(1), [SoundCue::Music(SoundId::VIRUS_BATTLE), SoundCue::Pinch(true)]);
+        assert_eq!(b.sound_cues_for(1), [SoundCue::Music(link_battle), SoundCue::Pinch(true)]);
         assert_eq!(tick(&mut b), [SoundCue::Pinch(false)]);
         assert_eq!(tick(&mut b), [], "cues last one tick");
     }

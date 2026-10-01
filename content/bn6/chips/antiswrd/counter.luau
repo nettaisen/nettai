@@ -31,12 +31,6 @@ local BOOMS: { [number]: SonicBoom } = {
     { hit_mod = 1, pierces = false },
     { hit_mod = 1, pierces = false },
 }
--- The blade: a sword. (The original takes it from `byte_80EBB64` by the
--- attack's variant, the swords' table: the elemental swords' blades for
--- 0xC to 0xF, the cannon arm for 0x10 and 0x13, a sword for the rest.
--- Both of the counter's starters, a trap chip's catch and the stance,
--- leave the variant 0.)
-local BLADE = parts.blades.sword
 
 local function set_step(me: Object, step: number)
     me.step, me.step_init = step, 0
@@ -55,13 +49,13 @@ end
 -- `sub_80EEA78`: a swing: the blade out, the side's trap record gone; on
 -- its 10th tick a sonic boom from the panel ahead; after 22 ticks the next
 -- swing, or the end.
-local function swing(me: Object, s: State)
+local function swing(me: Object, s: State, blade: AttachmentLook)
     if me.step_init == 0 then
         me:set_animation(SWING_ANIM)
         me:refresh_form_overlay()
         battle.clear_linked(me.alliance)
         battle.play_sound(SOUND_SWING)
-        parts.hold(me, BLADE, 0)
+        parts.hold(me, blade, 0)
         me:set_status("using_action", true)
         s.timer = SWING_TICKS
         me.step_init = 4
@@ -108,22 +102,34 @@ local function finish(me: Object, s: State)
     end
 end
 
-counter.action = define.action {
-    id = "antiswrd/counter",
-    state = STATE,
-    -- `sub_80EEA3C`, by phase.
-    update = function(me: Object, s: State)
-        local step = me.step
-        if step == 0 then
-            start(me, s)
-        elseif step == 4 then
-            swing(me, s)
-        elseif step == 8 then
-            finish(me, s)
-        else
-            error(string.format("AntiSwrd's counter: phase %#x reads past off_80EEA50", step))
-        end
-    end,
-}
+-- The counter, swinging `blade`. (The original takes the blade from the
+-- swords' table, `byte_80EBB64`, by the attack's variant: the elemental
+-- swords' blades for 0xC to 0xF, the cannon arm for 0x10 and 0x13, a sword
+-- for the rest.)
+function counter.action_with(id: string, blade: AttachmentLook): Action
+    return define.action {
+        id = id,
+        state = STATE,
+        -- `sub_80EEA3C`, by phase.
+        update = function(me: Object, s: State)
+            local step = me.step
+            if step == 0 then
+                start(me, s)
+            elseif step == 4 then
+                swing(me, s, blade)
+            elseif step == 8 then
+                finish(me, s)
+            else
+                error(string.format("AntiSwrd's counter: phase %#x reads past off_80EEA50", step))
+            end
+        end,
+    }
+end
+
+-- What the ruleset starts: both of the counter's starters, a trap chip's
+-- catch (`sub_801056A`) and the AntiDmg program's stance (`sub_80105F2`,
+-- with the variant its weapon zeroes), leave the attack's variant 0: a
+-- sword.
+counter.action = counter.action_with("antiswrd/counter", parts.blades.sword)
 
 return counter

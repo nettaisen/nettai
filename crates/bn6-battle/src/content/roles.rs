@@ -13,6 +13,9 @@ use bn6_content_api::{
     StatusHandle,
 };
 
+use super::{BannerId, SpriteId};
+use crate::sound::SoundId;
+
 /// The actions the ruleset starts or recognizes by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ActionRole {
@@ -35,7 +38,9 @@ pub enum ActionRole {
     Turn,
     /// A Cross navi's knock-out (0x4C).
     CrossDeath,
-    /// What the navi's volley request starts (0x30).
+    /// What the navi's volley request starts (the original's action 0x30,
+    /// on whatever the attack's parameter bytes hold). No routine raises
+    /// the request, and BN6's content leaves the role unfilled.
     Volley,
     /// The charged sword (SlashCross's charged slash, 0x41), which the
     /// Beast rush recognizes for its lock-on mode.
@@ -205,8 +210,8 @@ impl StatusRole {
     }
 }
 
-/// A group of roles that name definitions of one registry: the roles, each
-/// with its name in `rules/roles.luau`'s group.
+/// A group of roles that name definitions of one registry, or assets of
+/// one kind: the roles, each with its name in `rules/roles.luau`'s group.
 macro_rules! definition_roles {
     ($(#[$doc:meta])* $name:ident { $($(#[$vdoc:meta])* $variant:ident = $key:literal,)* }) => {
         $(#[$doc])*
@@ -308,6 +313,156 @@ definition_roles! {
     }
 }
 
+definition_roles! {
+    /// The sounds the ruleset plays itself, by role (`sounds`): assets
+    /// (`asset.sound`).
+    SoundRole {
+        /// A panel cracks or breaks.
+        PanelCrack = "panel_crack",
+        /// A panel turns to poison (`sub_800C9CE`).
+        PanelPoison = "panel_poison",
+        /// A player's own navi is hit (what its player hears), and the
+        /// custom-HP bug's damage (`sub_8013FD0`).
+        OwnHit = "own_hit",
+        /// A navi is hit (what the other player hears), and an object
+        /// hurt without flinching (`sub_801A29A` mode 2).
+        Hit = "hit",
+        /// An object takes damage (`sub_801A29A` mode 0), an obstacle hit.
+        Damage = "damage",
+        /// A blocked hit (`object_spawnHiteffect`), a trap catching one.
+        Guard = "guard",
+        /// A counter hit ("COUNTER HIT!").
+        CounterHit = "counter_hit",
+        /// A navi deleted (`sub_8010820`).
+        Deleted = "deleted",
+        /// HP recovered (`sub_800E2FC`).
+        Recovery = "recovery",
+        /// A chip's damage bonus as it is used (a charged chip's, Full
+        /// Synchro's, anger's).
+        DamageBonus = "damage_bonus",
+        /// The battle pauses and resumes.
+        Pause = "pause",
+        /// The custom gauge fills.
+        GaugeFull = "gauge_full",
+        /// The low-HP alarm, every 45 ticks to the navi's player.
+        LowHp = "low_hp",
+        /// A side cuts in; a trap springs (`sub_800ABC6`).
+        CutIn = "cut_in",
+        /// A telop (the chip's name) shows.
+        Telop = "telop",
+        /// The buster starts charging, and is fully charged.
+        BusterCharge = "buster_charge",
+        BusterCharged = "buster_charged",
+        /// A navi frozen, bubbled, and its bubble popped.
+        Freeze = "freeze",
+        Bubble = "bubble",
+        BubblePop = "bubble_pop",
+        /// The confusion's stars, every 60 ticks.
+        Confusion = "confusion",
+        /// A navi turns invisible (`sub_8010474`).
+        Invisible = "invisible",
+        /// A navi shows again: invisibility or a dive ended, a navi
+        /// entering.
+        Appear = "appear",
+        /// A navi arrives mid-battle.
+        Arrive = "arrive",
+        /// Something goes: a defensive chip a cursor hit cancels, a navi's
+        /// programs uninstalled, a Cross navi's special, a form taken off.
+        Fade = "fade",
+        /// A thrown obstacle is lifted, and flies.
+        ObstacleLift = "obstacle_lift",
+        ObstacleThrow = "obstacle_throw",
+        /// A cross merges into MegaMan.
+        CrossMerge = "cross_merge",
+        /// A form change starts.
+        FormChange = "form_change",
+        /// A Cross is put on (two sounds at once).
+        CrossChange = "cross_change",
+        CrossChangeChime = "cross_change_chime",
+        /// A Beast Out is put on.
+        BeastOut = "beast_out",
+        /// The beast's roar as a Beast form starts: Gregar's and Falzar's.
+        GregarRoar = "gregar_roar",
+        FalzarRoar = "falzar_roar",
+        /// Beast Over's rumbles, and each of its bursts.
+        BeastOverRumble = "beast_over_rumble",
+        BeastOverBurst = "beast_over_burst",
+        /// A Cross navi starts its special's chip.
+        CrossSpecial = "cross_special",
+        /// SELECT pressed with too little gauge: its player hears that it
+        /// can't.
+        Refused = "refused",
+    }
+}
+
+definition_roles! {
+    /// The music the ruleset starts itself, by role (`music`): sound
+    /// assets. (A stage's music is its own.)
+    MusicRole {
+        /// A link battle's, whatever its stage's.
+        LinkBattle = "link_battle",
+        /// The winner's, in special battles and otherwise; the loser's.
+        WinnerSpecial = "winner_special",
+        Winner = "winner",
+        Loser = "loser",
+    }
+}
+
+definition_roles! {
+    /// The sprites of the engine's own kinds, by role (`sprites`): assets
+    /// (`asset.sprite`).
+    SpriteRole {
+        /// The charge glow of a B charge, and of an A charge
+        /// (`sub_80E0F2E`).
+        ChargeGlow = "charge_glow",
+        ChargeGlowA = "charge_glow_a",
+        /// The Full Synchro aura.
+        FullSynchroAura = "full_synchro_aura",
+        /// The status visuals over a navi: confusion's stars, blindness,
+        /// and the immobilized one (a row the status routine never spawns).
+        Confusion = "confusion",
+        Blindness = "blindness",
+        Immobilized = "immobilized",
+        /// The ice block around a frozen navi, and the bubble around a
+        /// bubbled one.
+        Ice = "ice",
+        Bubble = "bubble",
+        /// The mark over a navi a hit told something about ("!!", the HP
+        /// bug's).
+        HitMarker = "hit_marker",
+        /// A volcano panel's eruption.
+        Eruption = "eruption",
+        /// The Beast forms' lock-on marker.
+        LockonMarker = "lockon_marker",
+        /// The overlay a navi wears while idle (`dword_80C40D4`'s one).
+        IdleOverlay = "idle_overlay",
+        /// The Beast forms' head.
+        BeastHead = "beast_head",
+    }
+}
+
+definition_roles! {
+    /// The banners the ruleset shows itself, by role (`banners`): assets
+    /// (`asset.banner`). (The win and lose banners are the navi's.)
+    BannerRole {
+        /// A round's start (the battle's number).
+        RoundStart = "round_start",
+        /// A turn's start, and the final turns'.
+        TurnStart = "turn_start",
+        FinalTurn = "final_turn",
+        /// A draw.
+        Draw = "draw",
+        /// The damage judge's.
+        Judge = "judge",
+        /// A telop on the local player's side, and on the other's.
+        Telop = "telop",
+        TelopRemote = "telop_remote",
+        /// A Program Advance, and a selection that makes none.
+        ProgramAdvance = "program_advance",
+        ProgramAdvanceEmpty = "program_advance_empty",
+    }
+}
+
 /// The functions the ruleset calls by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HookRole {
@@ -390,6 +545,10 @@ pub struct Roles {
     pub sparks: BTreeMap<SparkRole, SparkHandle>,
     pub regions: BTreeMap<RegionRole, RegionHandle>,
     pub collisions: BTreeMap<CollisionRole, CollisionHandle>,
+    pub sounds: BTreeMap<SoundRole, SoundId>,
+    pub music: BTreeMap<MusicRole, SoundId>,
+    pub banners: BTreeMap<BannerRole, BannerId>,
+    pub sprites: BTreeMap<SpriteRole, SpriteId>,
 }
 
 impl Roles {
@@ -473,6 +632,36 @@ impl Roles {
             .collisions
             .get(&role)
             .unwrap_or_else(|| panic!("the role collision.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    /// The sound, the music, the sprite and the banner of `role`
+    /// (likewise).
+    pub fn sound(&self, role: SoundRole) -> SoundId {
+        *self
+            .sounds
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role sounds.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    pub fn music(&self, role: MusicRole) -> SoundId {
+        *self
+            .music
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role music.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    pub fn sprite(&self, role: SpriteRole) -> SpriteId {
+        *self
+            .sprites
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role sprites.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    pub fn banner(&self, role: BannerRole) -> BannerId {
+        *self
+            .banners
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role banners.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 
     /// The lock-on mode of `role`; a role content hasn't filled is a panic

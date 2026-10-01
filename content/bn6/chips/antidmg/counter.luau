@@ -170,6 +170,10 @@ function counter.action_at(id: string, target: Target): Action
     }
 end
 
+-- What the ruleset starts: both of the counter's starters, a trap chip's
+-- catch (`sub_801056A`) and the AntiDmg program's stance (`sub_80105F2`,
+-- with the variant its weapon zeroes), leave the attack's variant 0: a
+-- random enemy.
 counter.action = counter.action_at("antidmg/counter", "random")
 
 return counter
