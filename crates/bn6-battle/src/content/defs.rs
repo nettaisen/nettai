@@ -94,8 +94,12 @@ pub struct WeaponDef {
     /// what the game reads on into).
     pub charge_ticks: Vec<u16>,
     /// The instant effect its action (the instant chips' action) runs: a
-    /// weapon that names one no chip has (TenguCross's wind).
+    /// chip's (the arm chips' weapons'), or one no chip has (TenguCross's
+    /// wind).
     pub instant: Option<FnId>,
+    /// The navi waits 8 ticks after the instant effect (the original's
+    /// effect 0x14, which no chip has: TenguCross's wind).
+    pub instant_waits: bool,
     /// As a charged shot: it stays when the form's own would replace it
     /// (`sub_800FFAA`: a chip's weapon), and its attack is of the kind
     /// that runs through a dimming.
@@ -928,6 +932,7 @@ impl Defs {
                 setup,
                 charge_ticks,
                 instant,
+                instant_waits: flag("instant_waits")?,
                 sticky: flag("sticky")?,
                 held: flag("held")?,
                 plain,
