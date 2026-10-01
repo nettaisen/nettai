@@ -35,7 +35,15 @@ export type State = {
 }
 
 local SPRITE = asset.sprite("black-bomb")
-local NAME_ID = 0xD5
+-- Its identity: a field object, with the look something that takes its
+-- place shows (DustMan's junk).
+local IDENTITY = define.identity {
+    id = "blkbomb",
+    class = "field_object",
+    version = 2,
+    ai_index = 1,
+    look = { sprite = asset.sprite("black-bomb"), anim = 0, palette = 0, shadow = true },
+}
 local HP = 0x64
 local LIFETIME = 0x1770
 -- Thrown at 0x2C000 a tick along the ground, falling 0x2800 a tick.
@@ -231,7 +239,7 @@ local function burst(me: Object)
         z = me.pos.z,
         region = area,
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.attack,
         damage = me.damage,
@@ -251,7 +259,7 @@ local function init(me: Object, s: State)
     me.anim, me.anim_loaded = 0, 0
     sprite:set_animation(0)
     sprite.shadow = "ground"
-    me.name_id = NAME_ID
+    me.identity = IDENTITY
     if not s.placed then
         local x, y = s.target_x, s.target_y
         me.future_panel_x, me.future_panel_y = x, y

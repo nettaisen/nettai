@@ -1,15 +1,12 @@
 //! Object kinds' data.
 
-use super::{AttachmentKind, Element, SecondaryElements, SpriteId};
+use super::{Element, SecondaryElements, SpriteId};
 use crate::field::PanelType;
 use serde::{Deserialize, Serialize};
 
 /// Data of the object kinds that have their own.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ObjectData {
-    /// Attachment kinds by number (attachment object #5's first
-    /// parameter): those the chips declare, and the rest.
-    pub attachments: Vec<AttachmentKind>,
     /// Rocks by variant (the rock's first parameter).
     pub rocks: Vec<RockKind>,
     /// The sprite an absorbed obstacle flies with, by obstacle kind.
@@ -26,9 +23,6 @@ pub struct ObjectData {
     pub flying_shots: Vec<FlyingShotKind>,
     /// Sword waves (attack object #0x96) by kind, its first parameter.
     pub sword_waves: Vec<SwordWave>,
-    /// How a field object looks by its NameID (`byte_8021220`, NameIDs
-    /// 0xCD..=0xFF), as `sub_800F26C` gives it: what DustMan throws.
-    pub name_looks: Vec<NameLook>,
     /// The object kinds scripts implement, by name (see `content::scripts`).
     pub kinds: Vec<super::ObjectKind>,
     /// Shock waves (attack object #0x16) by variant, its first parameter.
@@ -36,11 +30,6 @@ pub struct ObjectData {
 }
 
 impl ObjectData {
-    /// Attachment kind `kind`.
-    pub fn attachment(&self, kind: u8) -> &AttachmentKind {
-        self.attachments.get(kind as usize).unwrap_or_else(|| panic!("attachment kind {kind:#x} is not in the content"))
-    }
-
     /// Rock variant `variant`.
     pub fn rock(&self, variant: u8) -> &RockKind {
         self.rocks.get(variant as usize).unwrap_or_else(|| panic!("rock variant {variant} is not in the content"))
@@ -128,7 +117,7 @@ fn no_secondary(v: &SecondaryElements) -> bool {
 pub struct ProjectileKind {
     /// The kind number.
     pub id: u8,
-    /// Its collision types (`Rules::collision_types`): what it is, what
+    /// Its collision types (the original's rows by number): what it is, what
     /// it hits; and its hit modifier.
     pub self_type: u8,
     pub target_type: u8,
@@ -192,7 +181,7 @@ pub enum PanelHit {
 pub struct FlyingShotKind {
     /// The kind number.
     pub id: u8,
-    /// Its collision types (`Rules::collision_types`): what it is, what
+    /// Its collision types (the original's rows by number): what it is, what
     /// it hits; and its hit modifier.
     pub self_type: u8,
     pub target_type: u8,
@@ -264,22 +253,6 @@ pub struct SwordWave {
     pub status: u8,
     /// Pixels (16.16) it moves forward per tick.
     pub speed: i32,
-}
-
-/// How a field object looks, by NameID (`byte_8021220`, 5 bytes a NameID
-/// from 0xCD: sprite category and index, animation, palette, shadow).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct NameLook {
-    pub name_id: u16,
-    /// None where the table's category byte is 0xFF (`sub_800F26C`'s "no
-    /// look").
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sprite: Option<SpriteId>,
-    pub anim: u8,
-    pub palette: u8,
-    /// Drawn with a shadow (the fifth byte nonzero).
-    pub shadow: bool,
 }
 
 /// A body overlay (actor object #0x56): a second sprite layered on a
