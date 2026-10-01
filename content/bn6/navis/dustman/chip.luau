@@ -42,7 +42,7 @@ local OTHER_SIDE = { [0] = { 0x20, 0 }, { 0, 0x20 } }
 -- The pull: no damage, no spark, of no side, hit modifier 0x10.
 local PULL_HIT_MOD = 0x10
 
--- The crush: a breaking hit on the panel ahead, a heavy impact.
+-- The crush: a breaking hit on the panel ahead, with its spark.
 local CRUSH_HIT_MOD = 3
 
 -- `sub_80F20A0`: the pull on each of the other side's panels in his row.
@@ -91,7 +91,7 @@ local function crush_hit(me: Object)
         element = me.attack_element,
         z = 0,
         region = regions.single,
-        hit_effect = sparks.impact,
+        hit_effect = sparks.breaking,
         target = collision.hits_navis,
         self_type = collision.breaking,
         damage = link.damage(me),
