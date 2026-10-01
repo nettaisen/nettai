@@ -8,6 +8,7 @@
 ["actions.toml"]
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
 "tengucross/charge/gust" = "0x3F: WindRack's action with TenguCross's fan, which its charged shot (weapon 0x0F) starts"
+"eleccross/charge/thunder" = "0x3E: DolThdr's action with the buster arm held up, which ElecCross's charged shot (weapon 0x0B) starts"
 
 ["assets.toml"]
 "sounds.big-sword-swing" = "0x0CE: LifeSrd's, DrkSword's and DblDream's swing (the swords exemplar)"
