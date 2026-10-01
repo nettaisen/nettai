@@ -1,8 +1,8 @@
 --!strict
--- Invisibl: its user turns invisible for six seconds
--- (objects/invisible).
+-- Invisibl: its user turns invisible for six seconds (its controller,
+-- ./controller).
 
-local invisible = require("../../objects/invisible/invisible")
+local invisible = require("./controller")
 
 -- 360 ticks (the record's first two parameter bytes, 104 and 1).
 return define.chip {

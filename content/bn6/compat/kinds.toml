@@ -241,7 +241,7 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "judgeman/whip" = { pool = "effect", index = 0x5A }
 "magnum/controller" = { pool = "effect", index = 0x5B, scratch_position = true }
 "lifesync/controller" = { pool = "effect", index = 0x5C, scratch_position = true }
-invisible = { pool = "effect", index = 0x5D, scratch_position = true }
+"invisibl/controller" = { pool = "effect", index = 0x5D, scratch_position = true }
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "otenko/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
 "lifesync/marker" = { pool = "effect", index = 0x60 }
