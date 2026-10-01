@@ -125,6 +125,8 @@ local function init(me: Object)
     end
     local sprite = me.sprite
     sprite:load(SPRITE)
+    -- sprite_noShadow: the first part is drawn with the sprite.
+    sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     local s = me.state :: State
     local thrower = me.related1 :: Object

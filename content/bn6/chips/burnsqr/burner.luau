@@ -33,7 +33,9 @@ local TIMEOUT, STEP = 300, 6
 -- Firing: the throw's animation 4 ticks before the flames; then the user
 -- comes back 61 ticks later.
 local FIRE_TICKS, FIRE_ANIM, FIRE_ANIM_AT, AFTER = 0x10, 0xC, 4, 0x3C
-local SOUND_STEP = asset.sound("target-move")
+-- (The cursor steps with the sound EraseMan's mark has, the original's
+-- 0x10E.)
+local SOUND_STEP = asset.sound("erase-man")
 local SOUND_FIRE = asset.sound("copy-mark")
 -- The square's corners (effect 0x48), each 6 ticks: 40 pixels apart
 -- across, 24 down.

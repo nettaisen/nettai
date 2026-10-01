@@ -150,6 +150,14 @@ pub fn next_chip_bonus(b: &Battle, r: ObjectRef) -> u16 {
     hand_entry(b, r).extra
 }
 
+/// Whether the chip window marks the next chip "x2" (`sub_8012A38` as the
+/// window asks it, with no charge: Full Synchro, anger, Beast Over's Null
+/// chips; presentation).
+pub fn next_chip_doubles(b: &Battle, r: ObjectRef) -> bool {
+    let e = hand_entry(b, r);
+    double_damage(b, r, e.chip, e.damage, 0).1.is_some()
+}
+
 /// The chip an object other than a player carries: its zeroed chip field,
 /// the zeroed chip (nothing else sets it).
 fn carried_chip(b: &Battle, r: ObjectRef) -> Option<ChipHandle> {
