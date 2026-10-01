@@ -194,7 +194,7 @@ fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
     // Unless the battle is over: the HUD's "COUNTER HIT!" and a sound.
     if !b.is_battle_over() {
         b.show_message(crate::hud::Message::CounterHit);
-        b.play_sound(crate::sound::SoundId(0x86));
+        b.sound(crate::content::SoundRole::CounterHit);
     }
 }
 
@@ -226,7 +226,7 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
         let alliance = b.objects.get(r).alliance;
         for side in 0..2 {
             let own = player && side == alliance;
-            b.play_sound_for(side, crate::sound::SoundId(if own { 0x6B } else { 0x6D }));
+            b.sound_for(side, if own { crate::content::SoundRole::OwnHit } else { crate::content::SoundRole::Hit });
         }
         b.objects.sprite_mut(r).look.white = true;
         dead = b.objects.get(r).hp == 0;
@@ -527,7 +527,7 @@ fn tick_flash(b: &mut Battle, r: ObjectRef) {
             return;
         }
         if flag1(b, r) & f1::INVISIBLE != 0 {
-            b.play_sound(crate::sound::SoundId(0x94));
+            b.sound(crate::content::SoundRole::Appear);
         }
     }
     clear_flag1(b, r, f1::FLASHING | f1::INVISIBLE);
@@ -708,7 +708,7 @@ fn tick_submerged(b: &mut Battle, r: ObjectRef) {
         }
         coll_mut(b, r).status_timers[timer::SUBMERGED] = t as u16;
         if t == 0 {
-            b.play_sound(crate::sound::SoundId(0x94));
+            b.sound(crate::content::SoundRole::Appear);
         }
     }
     if flag1(b, r) & f1::USING_ACTION != 0 {

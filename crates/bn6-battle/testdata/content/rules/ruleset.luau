@@ -1,8 +1,9 @@
 --!strict
--- The engine's test content's own effects, hit sparks, region and collision
--- types for the ruleset's roles (rules/roles.luau): made-up looks (one
--- sprite for every effect, one for every spark), and collision types by
--- what they are.
+-- The engine's test content's own effects, hit sparks, region, collision
+-- types, sounds, music and banners for the ruleset's roles
+-- (rules/roles.luau): made-up looks (one sprite for every effect, one for
+-- every spark), collision types by what they are, and a made-up asset for
+-- every sound, music and banner.
 
 local function effect(): Effect
     return define.effect { sprite = asset.sprite("test-burst"), anim = 0, palette = 0 }
@@ -80,5 +81,78 @@ return {
         eruption_target = collision("eruption-target", 0x2A, others),
         thrown_obstacle = collision("thrown-obstacle", 0x06, attack),
         thrown_obstacle_target = collision("thrown-obstacle-target", 0x05, others),
+    },
+    -- Made-up sounds, music, sprites and banners, one for each role (named
+    -- `test-<kind>-<role>`; the test content gives each the id the tests
+    -- look for).
+    sounds = {
+        panel_crack = asset.sound("test-sound-panel-crack"),
+        panel_poison = asset.sound("test-sound-panel-poison"),
+        own_hit = asset.sound("test-sound-own-hit"),
+        hit = asset.sound("test-sound-hit"),
+        damage = asset.sound("test-sound-damage"),
+        guard = asset.sound("test-sound-guard"),
+        counter_hit = asset.sound("test-sound-counter-hit"),
+        deleted = asset.sound("test-sound-deleted"),
+        recovery = asset.sound("test-sound-recovery"),
+        damage_bonus = asset.sound("test-sound-damage-bonus"),
+        pause = asset.sound("test-sound-pause"),
+        gauge_full = asset.sound("test-sound-gauge-full"),
+        low_hp = asset.sound("test-sound-low-hp"),
+        cut_in = asset.sound("test-sound-cut-in"),
+        telop = asset.sound("test-sound-telop"),
+        buster_charge = asset.sound("test-sound-buster-charge"),
+        buster_charged = asset.sound("test-sound-buster-charged"),
+        freeze = asset.sound("test-sound-freeze"),
+        bubble = asset.sound("test-sound-bubble"),
+        bubble_pop = asset.sound("test-sound-bubble-pop"),
+        confusion = asset.sound("test-sound-confusion"),
+        invisible = asset.sound("test-sound-invisible"),
+        appear = asset.sound("test-sound-appear"),
+        arrive = asset.sound("test-sound-arrive"),
+        fade = asset.sound("test-sound-fade"),
+        obstacle_lift = asset.sound("test-sound-obstacle-lift"),
+        obstacle_throw = asset.sound("test-sound-obstacle-throw"),
+        cross_merge = asset.sound("test-sound-cross-merge"),
+        form_change = asset.sound("test-sound-form-change"),
+        cross_change = asset.sound("test-sound-cross-change"),
+        cross_change_chime = asset.sound("test-sound-cross-change-chime"),
+        beast_out = asset.sound("test-sound-beast-out"),
+        gregar_roar = asset.sound("test-sound-gregar-roar"),
+        falzar_roar = asset.sound("test-sound-falzar-roar"),
+        beast_over_rumble = asset.sound("test-sound-beast-over-rumble"),
+        beast_over_burst = asset.sound("test-sound-beast-over-burst"),
+        cross_special = asset.sound("test-sound-cross-special"),
+        refused = asset.sound("test-sound-refused"),
+    },
+    music = {
+        link_battle = asset.sound("test-music-link-battle"),
+        winner_special = asset.sound("test-music-winner-special"),
+        winner = asset.sound("test-music-winner"),
+        loser = asset.sound("test-music-loser"),
+    },
+    sprites = {
+        charge_glow = asset.sprite("test-sprite-charge-glow"),
+        charge_glow_a = asset.sprite("test-sprite-charge-glow-a"),
+        full_synchro_aura = asset.sprite("test-sprite-full-synchro-aura"),
+        confusion = asset.sprite("test-sprite-confusion"),
+        blindness = asset.sprite("test-sprite-blindness"),
+        immobilized = asset.sprite("test-sprite-immobilized"),
+        ice = asset.sprite("test-sprite-ice"),
+        bubble = asset.sprite("test-sprite-bubble"),
+        hit_marker = asset.sprite("test-sprite-hit-marker"),
+        eruption = asset.sprite("test-sprite-eruption"),
+        lockon_marker = asset.sprite("test-sprite-lockon-marker"),
+    },
+    banners = {
+        round_start = asset.banner("test-banner-round-start"),
+        turn_start = asset.banner("test-banner-turn-start"),
+        final_turn = asset.banner("test-banner-final-turn"),
+        draw = asset.banner("test-banner-draw"),
+        judge = asset.banner("test-banner-judge"),
+        telop = asset.banner("test-banner-telop"),
+        telop_remote = asset.banner("test-banner-telop-remote"),
+        program_advance = asset.banner("test-banner-program-advance"),
+        program_advance_empty = asset.banner("test-banner-program-advance-empty"),
     },
 }

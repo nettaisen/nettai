@@ -6,13 +6,11 @@
 
 use crate::battle::Battle;
 use crate::collision::f1;
-use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::player::{Emotion, emotion};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Vec3, flags, state};
 
-const SPRITE: SpriteId = SpriteId { category: 0x14, index: 0x16 };
 
 /// Aura-private state.
 #[derive(Clone, Copy, Debug, Default, Hash)]
@@ -101,8 +99,9 @@ fn animation(b: &Battle, r: ObjectRef) -> u8 {
 /// `sub_80C4B48`: the sprite, visible, on its animation.
 fn init(b: &mut Battle, r: ObjectRef) {
     let anim = animation(b, r);
+    let sprite = b.content.defs.roles.sprite(crate::content::SpriteRole::FullSynchroAura);
     let s = b.objects.sprite_mut(r);
-    s.load(SPRITE);
+    s.load(sprite);
     s.look.shadow = Shadow::WithSprite;
     s.set_animation(anim, &b.content);
     s.update(&b.content);

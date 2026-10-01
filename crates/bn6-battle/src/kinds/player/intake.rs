@@ -305,7 +305,7 @@ fn drop_cursor_trap(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
     if coll(b, r).acc.damage_elements & 0x40 != 0 && b.linked[side as usize].chip.is_some() {
         b.clear_linked(side);
-        b.play_sound(crate::sound::SoundId(0x8E));
+        b.sound(crate::content::SoundRole::Fade);
     }
 }
 
@@ -317,7 +317,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         let d = &coll(b, r).acc.element_damage;
         if d[0] | d[2] | d[3] | d[4] != 0 {
             ai_mut(b, r).attack.marker = 1;
-            b.play_sound(crate::sound::SoundId(0x6E));
+            b.sound(crate::content::SoundRole::Guard);
         }
         zero_trapped_hit(b, r);
         return;
@@ -493,7 +493,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
             let at = crate::object::Vec3 { z: pos.z.wrapping_add(0x10_0000), ..pos };
             let spark = b.content.defs.roles.spark(SparkRole::Uninstall);
             crate::kinds::spark::spawn(b, r, at, spark);
-            b.play_sound(crate::sound::SoundId(0x8E));
+            b.sound(crate::content::SoundRole::Fade);
         }
         0x64.. => {}
         _ => {
@@ -656,7 +656,7 @@ fn drain_heal(b: &mut Battle, r: ObjectRef) {
     let pos = b.objects.get(r).pos;
     let look = b.content.defs.roles.effect(EffectRole::Recovery);
     crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
-    b.play_sound(crate::sound::SoundId(0x8A));
+    b.sound(crate::content::SoundRole::Recovery);
 }
 
 /// `object_calculateFinalDamage1`: sum the element damage (halved,
@@ -743,7 +743,7 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
     if b.paused || coll(b, r).acc.hit_flags & 0x2_0000 == 0 {
         return;
     }
-    b.play_sound(crate::sound::SoundId(0x6E));
+    b.sound(crate::content::SoundRole::Guard);
     let p = b.objects.get(r).pos;
     let pos = crate::kinds::spark::jitter(b, 0xF, Vec3 { z: p.z.wrapping_add(0x10_0000), ..p });
     let spark = b.content.defs.roles.spark(SparkRole::Guard);
