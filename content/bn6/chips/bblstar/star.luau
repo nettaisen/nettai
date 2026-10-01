@@ -12,6 +12,7 @@ local collision = require("../../rules/collision")
 local effects = require("../../lib/effects")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")
 
 local star = {}
@@ -36,7 +37,7 @@ local SWAY_LENGTH = 0x50_0000
 -- The sway's height: 24 pixels at the sine's peak (256).
 local SWAY = 0x18
 -- What it does to what it hits: a bubble.
-local STATUS = 0x60
+local STATUS = statuses.bubble_150
 -- A hit on this bursts it.
 local BURSTS = 0x80_0000
 

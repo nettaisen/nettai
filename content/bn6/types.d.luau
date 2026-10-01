@@ -11,7 +11,7 @@ export type Slot = "overlay" | "related" | "held" | "held2"
 -- A projectile's variant (objects/projectile, the original's `off_80C4C78`
 -- rows): what it is and hits, its hit modifier, its element and secondary
 -- elements, its hit spark (nil: none), its look (none: not drawn), the
--- status byte and bug its hits carry (nil or 0: none), what its hit does
+-- status and bug its hits carry (nil or 0: none), what its hit does
 -- to the panel, whether it bursts (around what it hits, and over the last
 -- two columns when it leaves the field), whether it climbs (a pixel lower
 -- down the field and higher on each panel).
@@ -23,7 +23,7 @@ export type ProjectileVariant = {
     spark: Spark?,
     sprite: SpriteAsset?,
     anim: number?,
-    status: number?,
+    status: Status?,
     bug: number?,
     bug_arg: number?,
     hit_panel: PanelHit?,
@@ -35,7 +35,7 @@ export type ProjectileVariant = {
 -- `byte_80C6038` rows): what it is and hits, its hit modifier, element and
 -- secondary elements, hit spark (nil: none), look and shadow, speed (16.16
 -- a tick, forward), range (panel centers it passes before it ends), the
--- status byte its hits carry; it lights its panel (`highlight`), is a
+-- status its hits carry; it lights its panel (`highlight`), is a
 -- thrown obstacle (its look is the obstacle's), sparks over its panel's
 -- center (`panel_spark`), sounds as it sets off after a wait, leaves an
 -- effect when its range runs out.
@@ -50,7 +50,7 @@ export type FlyingShotVariant = {
     shadow: boolean?,
     speed: number,
     range: number,
-    status: number?,
+    status: Status?,
     highlight: boolean?,
     obstacle: boolean?,
     panel_spark: boolean?,
@@ -75,14 +75,14 @@ export type FlyingShot = {
 
 -- A bullet's variant (objects/bullet, the original's `byte_80C68D4` rows):
 -- the region its burst hits on the panel it found, the burst's hit
--- modifier and status byte (nil or 0: none), the effect it shows (over
+-- modifier and status (nil: none), the effect it shows (over
 -- the region, or once at the bullet when `single`), and its sound.
 export type BulletVariant = {
     region: Region,
     hit_mod: number,
     effect: Effect,
     single: boolean?,
-    status: number?,
+    status: Status?,
     sound: Sound?,
 }
 
@@ -233,7 +233,7 @@ export type SwordHit = {
     region: Region,
     collision: { is: CollisionType, hits: CollisionType },
     hit_mod: number,
-    status: number?,
+    status: Status?,
     bug: number?,
     bug_arg: number?,
 }
@@ -289,8 +289,8 @@ export type StrikeSpec = {
 export type FlashBombVariant = {
     ticks: number,
     hp: number,
-    status: number,
-    final_status: number,
+    status: Status,
+    final_status: Status?,
     palette: number,
     strong: boolean?,
     own_side: boolean?,
@@ -422,7 +422,7 @@ export type Instrument = {
 -- A sword wave (navis/megaman/forms/slashcross/sword_wave, a row of the
 -- original's `byte_80D7F4C`): what it is and hits, its hit modifier and
 -- region, its look, the panel centers it passes before it ends and its
--- speed (16.16 a tick, forward), the status byte and bug its hits carry
+-- speed (16.16 a tick, forward), the status and bug its hits carry
 -- (none by default). `animates`: it restarts its animation after the last
 -- frame and steps it; `highlight`: it lights the panels its region
 -- covers; `ground_shadow`: its shadow stays on the ground; `steps`: its
@@ -436,7 +436,7 @@ export type SwordWaveVariant = {
     palette: number,
     reach: number,
     speed: number,
-    status: number?,
+    status: Status?,
     bug: number?,
     bug_arg: number?,
     animates: boolean?,
@@ -505,12 +505,12 @@ export type TornadoVariant = { palette: number, rearm: number, bug: number?, pla
 
 -- What a tornado is spawned with: its variant, the status its hits
 -- inflict (0: none) and its ticks.
-export type TornadoSpec = { variant: TornadoVariant, status: number, ticks: number }
+export type TornadoSpec = { variant: TornadoVariant, status: Status?, ticks: number }
 
 -- A thunder ball (chips/thunder/ball): fast or not, the panels it drifts
 -- (12 makes DarkThnd's look and sound), the status its hits inflict and
 -- their bug (none by default).
-export type ThunderBall = { fast: boolean?, panels: number, status: number?, bug: number? }
+export type ThunderBall = { fast: boolean?, panels: number, status: Status?, bug: number? }
 
 -- How a yoyo flies (chips/yoyo/yoyo): GreatYo's (three that move
 -- together), the panels it rolls out and its spinning rounds.
@@ -625,7 +625,7 @@ export type WindRackSpec = {
 -- its ticks, its palette and the bug its hits carry (none by default).
 export type ElecPulse = {
     hit_mod: number,
-    status: number,
+    status: Status?,
     ticks: number,
     palette: number,
     bug: number?,
