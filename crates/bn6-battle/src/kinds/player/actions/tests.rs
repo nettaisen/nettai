@@ -63,7 +63,8 @@ fn fight_with(stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
     let players = [b.player(0).unwrap(), b.player(1).unwrap()];
     for p in players {
         let o = b.objects.get_mut(p);
-        (o.action, o.phase, o.phase_init) = (8, 0, 0);
+        (o.phase, o.phase_init) = (0, 0);
+        super::super::set_navi_action(&mut b, p, super::super::NaviAction::Idle);
     }
     (b, players[0], players[1])
 }
@@ -98,7 +99,7 @@ fn a_step_commits_on_the_third_tick_and_ends_on_the_twelfth() {
     let (p, mut t) = ([p0, p1], 0);
     tick(&mut b, p0, p1, keys::RIGHT);
     let o = b.objects.get(p0);
-    assert_eq!((o.action, o.anim, o.panel, o.future_panel), (0x10, 4, PanelPos { x: 2, y: 2 }, PanelPos { x: 3, y: 2 }));
+    assert_eq!((act(&b, p0), o.anim, o.panel, o.future_panel), (0x10, 4, PanelPos { x: 2, y: 2 }, PanelPos { x: 3, y: 2 }));
     assert_eq!(b.field.panel(3, 2).unwrap().reserver, Some(p0));
     assert_ne!(f1_of(&b, p0) & f1::MOVING, 0);
     run_to(&mut b, p, &mut t, 2, keys::RIGHT);
@@ -111,9 +112,9 @@ fn a_step_commits_on_the_third_tick_and_ends_on_the_twelfth() {
     assert_eq!(b.objects.get(p0).anim, 0);
     assert_eq!(f1_of(&b, p0) & (f1::MOVING | f1::MOVE_COMPLETE), f1::MOVE_COMPLETE);
     run_to(&mut b, p, &mut t, 11, 0);
-    assert_eq!(b.objects.get(p0).action, 0x10);
+    assert_eq!(act(&b, p0), 0x10);
     run_to(&mut b, p, &mut t, 12, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 #[test]
@@ -124,7 +125,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     let mut t = 0;
     tick(&mut b, p0, p1, keys::RIGHT);
     run_to(&mut b, p, &mut t, 12, 0);
-    assert_eq!((b.objects.get(p0).action, b.objects.get(p0).panel), (8, PanelPos { x: 3, y: 2 }));
+    assert_eq!((act(&b, p0), b.objects.get(p0).panel), (8, PanelPos { x: 3, y: 2 }));
 
     let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, testing::SUN_GUN_3));
@@ -132,7 +133,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     b.hands[0] = hand;
     let mut t = 0;
     tick(&mut b, p0, p1, keys::A);
-    assert_eq!(b.objects.get(p0).action, 0x37);
+    assert_eq!(act(&b, p0), 0x37);
     assert_eq!(b.hands[0].cursor, 1);
     assert_eq!(ai_mut(&mut b, p0).requests & request::CHIP, 0);
 
@@ -158,7 +159,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     assert_eq!(b.objects.get(p1).hp, 1000);
     run_to(&mut b, p, &mut t, 9, 0);
     assert_eq!(b.objects.get(p1).hp, 996);
-    assert_eq!(b.objects.get(p1).action, 8);
+    assert_eq!(act(&b, p1), 8);
     assert_eq!(f1_of(&b, p1) & (f1::FLINCHING | f1::FLASHING), 0);
     // One hit a tick for the chip's firing time.
     let drained = 1000 - 4 * firing as u16;
@@ -171,9 +172,9 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     // 11 ticks later: back to idle; the gun ends itself and is gone a
     // tick later.
     run_to(&mut b, p, &mut t, 18 + firing, 0);
-    assert_eq!(b.objects.get(p0).action, 0x37);
+    assert_eq!(act(&b, p0), 0x37);
     run_to(&mut b, p, &mut t, 19 + firing, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert_eq!(b.objects.get(gun).state, state::DESTROY);
     run_to(&mut b, p, &mut t, 20 + firing, 0);
     assert!(!b.objects.is_allocated(gun));
@@ -208,7 +209,7 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/blank-shot/action");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert_eq!(ai_mut(&mut b, p0).overlay, None);
     // Nothing was fired.
     assert_eq!(b.objects.get(p1).hp, 1000);
@@ -225,7 +226,7 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     }
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 0x57);
+    assert_eq!(act(&b, p0), 0x57);
 
     // Tick 2: the ball, in front of the navi.
     run_to(&mut b, p, &mut t, 2, 0);
@@ -241,7 +242,7 @@ fn dustcross_charged_shot_rolls_junk_into_the_enemy() {
     assert_eq!(b.field.panel(5, 2).unwrap().kind, crate::field::PanelType::Cracked);
     // The navi idles 35 ticks after the shot.
     run_to(&mut b, p, &mut t, 70, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 /// The kind named `name` somewhere on the field.
@@ -269,7 +270,7 @@ fn a_recovery_chip_heals_its_hp_in_one_tick() {
     // counted, and back to idle.
     tick(&mut b, p0, p1, 0);
     let o = b.objects.get(p0);
-    assert_eq!((o.hp, o.action), (550, 8));
+    assert_eq!((o.hp, act(&b, p0)), (550, 8));
     assert_eq!(following(&b, p0)[0], "engine/effect");
     assert_eq!(b.side_stats[0][5], 1);
     // Never past the maximum (once the chip's lockout, 30 ticks, is over).
@@ -302,7 +303,7 @@ fn a_reflector_guards_for_its_ticks_then_its_shield_fades() {
     run_to(&mut b, p, &mut t, 61, 0);
     assert_eq!(runs(&b, p0), "rflectr1/action");
     run_to(&mut b, p, &mut t, 62, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert_eq!(f1_of(&b, p0) & f1::GUARD, 0);
     // The shield fades for 14 ticks and goes.
     run_to(&mut b, p, &mut t, 77, 0);
@@ -333,7 +334,7 @@ fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
         b.run_objects();
     };
     both(&mut b, [keys::A, keys::A]);
-    assert_eq!((runs(&b, p0).as_str(), b.objects.get(p1).action), ("rflectr1/action", 0x37));
+    assert_eq!((runs(&b, p0).as_str(), act(&b, p1)), ("rflectr1/action", 0x37));
     // The guard blocks the beam's hits (no drain), and the first one sends
     // a wave back that runs along the row into side 1: 60 damage, once.
     let mut waves = 0;
@@ -379,7 +380,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     let p = [p0, p1];
     let mut t = 0;
     use_chip(&mut b, p0, p1, testing::STEP_BLADE);
-    assert_eq!(b.objects.get(p0).action, 0x13);
+    assert_eq!(act(&b, p0), 0x13);
 
     // Tick 1: an afterimage where it stood, and it is two panels ahead,
     // its own panel held for the way back.
@@ -422,9 +423,9 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     assert_eq!(b.field.panel(2, 2).unwrap().reserver, None);
     // Tick 31: idle.
     run_to(&mut b, p, &mut t, 30, 0);
-    assert_eq!(b.objects.get(p0).action, 0x13);
+    assert_eq!(act(&b, p0), 0x13);
     run_to(&mut b, p, &mut t, 31, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert_eq!(b.objects.get(p0).related[0], None);
     assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
 }
@@ -445,9 +446,9 @@ fn a_sword_without_a_target_ahead_swings_at_nothing() {
     assert_eq!(b.objects.get(p1).hp, 1000);
     // No way back to walk: idle on tick 30.
     run_to(&mut b, p, &mut t, 29, 0);
-    assert_eq!(b.objects.get(p0).action, 0x13);
+    assert_eq!(act(&b, p0), 0x13);
     run_to(&mut b, p, &mut t, 30, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 /// The objects of content kind `name` on the field, in update order.
@@ -499,7 +500,7 @@ fn a_buster_shot_flies_a_panel_every_two_ticks_and_hits() {
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert_eq!((ai_mut(&mut b, p0).overlay, b.objects.get(p0).related[0]), (None, None));
 }
 
@@ -515,7 +516,7 @@ fn a_move_cuts_the_buster_recovery_short() {
     run_to(&mut b, p, &mut t, 5, 0);
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
     run_to(&mut b, p, &mut t, 6, keys::UP);
-    assert_eq!(b.objects.get(p0).action, 0x10);
+    assert_eq!(act(&b, p0), 0x10);
     assert_eq!(b.objects.get(p0).future_panel, PanelPos { x: 2, y: 1 });
 }
 
@@ -573,7 +574,7 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     run_to(&mut b, p, &mut t, 9 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/charged-shot/action");
     run_to(&mut b, p, &mut t, 10 + recovery, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 #[test]
@@ -584,7 +585,7 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     b.collision.get_mut(c).status_timers[crate::collision::timer::PARALYZE] = 100;
     let mut t = 0;
     use_chip(&mut b, p0, p1, testing::STUN_BLADE);
-    assert_eq!(b.objects.get(p0).action, 0x49);
+    assert_eq!(act(&b, p0), 0x49);
     // The slashes land on tick 10, on the target's own column.
     run_to(&mut b, p, &mut t, 10, 0);
     // The slash (the swords' wide slash, in AssnSwrd's colours: palette
@@ -599,9 +600,9 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     assert_eq!(b.objects.get(p1).hp, 920);
     // Idle on tick 28.
     run_to(&mut b, p, &mut t, 27, 0);
-    assert_eq!(b.objects.get(p0).action, 0x49);
+    assert_eq!(act(&b, p0), 0x49);
     run_to(&mut b, p, &mut t, 28, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 #[test]
@@ -637,7 +638,7 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     assert!(shows_row(&b, arm, 6), "the arm");
     // No shot before: no recovery; the navi idles once the arm is down.
     run_to(&mut b, p, &mut t, 6, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 
     // 10 pixels a tick from x -20: over the enemy's panel at tick 7, and
     // the hit (200 damage) lands on the next.
@@ -659,13 +660,13 @@ fn a_throw_waits_the_last_shots_recovery() {
     tick(&mut b, p0, p1, 0);
     let recovery = b.content.rules.buster_recovery(0, 2) as u32;
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     // Something else runs (a step), then the throw: it doesn't write the
     // recovery, and waits the shot's.
     tick(&mut b, p0, p1, keys::UP);
     let mut t = 0;
     run_to(&mut b, p, &mut t, 12, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     ai_mut(&mut b, p0).absorbed.push(crate::actor::AbsorbedObstacle { kind: 0, anim: 0 });
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
@@ -674,7 +675,7 @@ fn a_throw_waits_the_last_shots_recovery() {
     run_to(&mut b, p, &mut t, 5 + recovery, 0);
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
     run_to(&mut b, p, &mut t, 6 + recovery, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 /// Put side 0's navi on (x, y).
@@ -786,7 +787,7 @@ fn run_weapon(b: &mut Battle, p: [ObjectRef; 2], routine: u8, ticks: u32) -> u32
         }
         tick(b, p[0], p[1], 0);
         digests.push(b.digest());
-        if b.objects.get(p[0]).action == 8 {
+        if act(b, p[0]) == 8 {
             break;
         }
     }
@@ -821,7 +822,7 @@ fn groundcross_beast_dash_runs_the_enemy_over_and_lands_back() {
     assert_eq!(b.objects.get(p0).pos.x, 0xDC << 16);
     run_to(&mut b, p, &mut t, 37, 0);
     let o = b.objects.get(p0);
-    assert_eq!((o.action, o.panel, o.pos.z), (8, PanelPos { x: 2, y: 2 }, 0));
+    assert_eq!((act(&b, p0), o.panel, o.pos.z), (8, PanelPos { x: 2, y: 2 }, 0));
     assert_eq!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
     assert_eq!(b.field.panel(2, 2).unwrap().reserver, None);
 }
@@ -841,7 +842,7 @@ fn erasecross_beast_drop_falls_on_the_enemy() {
     run_to(&mut b, p, &mut t, 13, 0);
     assert_eq!(b.objects.get(p1).hp, 900);
     run_to(&mut b, p, &mut t, 30, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert!(of_kind(&b, "erase-drop").is_empty());
 }
 
@@ -861,7 +862,7 @@ fn chargecross_beast_wave_rolls_through_the_enemy() {
     let afterimages = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/afterimage").count();
     assert_eq!(afterimages, 2);
     run_to(&mut b, p, &mut t, 82, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 #[test]
@@ -889,7 +890,7 @@ fn dustcross_beast_scatter_throws_at_six_panels_the_enemy_first() {
     assert_eq!(b.objects.get(p1).hp, 900);
     run_to(&mut b, p, &mut t, 108, 0);
     let o = b.objects.get(p0);
-    assert_eq!((o.action, o.pos.z), (8, 0));
+    assert_eq!((act(&b, p0), o.pos.z), (8, 0));
 }
 
 #[test]
@@ -913,7 +914,7 @@ fn slashcross_beast_lunge_strikes_from_beside_its_target() {
     run_to(&mut b, p, &mut t, 37, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 2 });
     run_to(&mut b, p, &mut t, 40, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 #[test]
@@ -925,7 +926,7 @@ fn chargecross_charged_shot_tackles_the_enemy() {
     }
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 0x56);
+    assert_eq!(act(&b, p0), 0x56);
     // Nine ticks of wind-up, then the charge with its hit.
     run_to(&mut b, p, &mut t, 10, 0);
     assert_eq!(of_kind(&b, "dash-hit").len(), 1);
@@ -937,7 +938,7 @@ fn chargecross_charged_shot_tackles_the_enemy() {
     assert!(of_kind(&b, "dash-hit").is_empty());
     run_to(&mut b, p, &mut t, 60, 0);
     let o = b.objects.get(p0);
-    assert_eq!((o.action, o.panel), (8, PanelPos { x: 2, y: 2 }));
+    assert_eq!((act(&b, p0), o.panel), (8, PanelPos { x: 2, y: 2 }));
     assert_eq!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
 }
 
@@ -955,7 +956,7 @@ fn form_weapons_roll_back() {
 fn start_weapon_as(b: &mut Battle, p0: ObjectRef, routine: u8, kind: u8) -> u8 {
     let action = super::super::idle::weapon_routine(b, p0, b.content.weapon_numbered(routine));
     super::super::set_attack(b, p0, action, kind);
-    action.number
+    action.number(&b.content.defs)
 }
 
 /// The objects of content kind `name`, in update order.
@@ -989,9 +990,9 @@ fn tengu_cross_back_special_blows_a_gust_down_each_row() {
     assert_eq!(b.objects.get(gusts[0]).vel.x, -(10 << 16));
     // The navi waits 8 ticks, then idles with the B+Back cooldown.
     run_to(&mut b, p, &mut t, 8, 0);
-    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(act(&b, p0), 0x1C);
     run_to(&mut b, p, &mut t, 9, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert_eq!(ai_mut(&mut b, p0).back_special_cooldown, 0x27);
     // The gusts end at the field's edge at the latest.
     run_to(&mut b, p, &mut t, 30, 0);
@@ -1016,9 +1017,9 @@ fn slash_cross_charged_shot_sends_a_sword_wave() {
     assert_eq!(b.objects.get(waves[0]).panel, PanelPos { x: 3, y: 2 });
     run_to(&mut b, p, &mut t, 29, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
-    assert_eq!(b.objects.get(p0).action, 0x41);
+    assert_eq!(act(&b, p0), 0x41);
     run_to(&mut b, p, &mut t, 30, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 #[test]
@@ -1042,9 +1043,9 @@ fn erase_cross_charged_shot_beams_the_row_while_the_navi_holds() {
     assert_eq!(b.objects.get(p1).hp, 940);
     // The navi holds for 71 ticks; then the beam shuts.
     run_to(&mut b, p, &mut t, 71, 0);
-    assert_eq!(b.objects.get(p0).action, 0x45);
+    assert_eq!(act(&b, p0), 0x45);
     run_to(&mut b, p, &mut t, 72, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     run_to(&mut b, p, &mut t, 80, 0);
     assert!(kind_objects(&b, "thunder-column").is_empty());
     assert!(kind_objects(&b, "erase-ray").is_empty());
@@ -1068,9 +1069,9 @@ fn tomahawk_cross_charged_shot_swings_ahead() {
     run_to(&mut b, p, &mut t, 28, 0);
     assert_eq!(b.objects.get(p1).hp, 940);
     run_to(&mut b, p, &mut t, 43, 0);
-    assert_eq!(b.objects.get(p0).action, 0x4A);
+    assert_eq!(act(&b, p0), 0x4A);
     run_to(&mut b, p, &mut t, 44, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 #[test]
@@ -1094,10 +1095,10 @@ fn ground_cross_charged_shot_burrows_to_the_enemy_and_drills() {
     assert!(b.objects.get(p1).hp < 1000);
     // Then it sinks, and is back on its own panel on tick 86.
     run_to(&mut b, p, &mut t, 85, 0);
-    assert_eq!(b.objects.get(p0).action, 0x4D);
+    assert_eq!(act(&b, p0), 0x4D);
     run_to(&mut b, p, &mut t, 86, 0);
     let o = b.objects.get(p0);
-    assert_eq!((o.action, o.panel), (8, PanelPos { x: 2, y: 2 }));
+    assert_eq!((act(&b, p0), o.panel), (8, PanelPos { x: 2, y: 2 }));
     assert!(kind_objects(&b, "drill").is_empty());
 }
 
@@ -1123,7 +1124,13 @@ fn start_weapon(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
     ai_mut(b, r).attack.charged = 0;
     let action = crate::kinds::player::idle::weapon_routine(b, r, b.content.weapon_numbered(routine));
     crate::kinds::player::set_attack(b, r, action, 2);
-    action.number
+    action.number(&b.content.defs)
+}
+
+/// Navi `r`'s action, by the original's number (the numeric API's mapping;
+/// a content action content defines reads as `CONTENT_ACTION`).
+fn act(b: &Battle, r: ObjectRef) -> u8 {
+    super::super::navi_action(b, r).number(&b.content.defs)
 }
 
 /// What navi `r` runs, as the traces name it: a content action's key, else
@@ -1131,7 +1138,7 @@ fn start_weapon(b: &mut Battle, r: ObjectRef, routine: u8) -> u8 {
 fn runs(b: &Battle, r: ObjectRef) -> String {
     match super::super::running_content_action(b, r) {
         Some(h) => b.content.defs.action(h).key.clone(),
-        None => format!("{:#04x}", b.objects.get(r).action),
+        None => format!("{:#04x}", act(b, r)),
     }
 }
 
@@ -1180,7 +1187,7 @@ fn heat_beast_charge_raises_fire_pillars_on_its_region() {
     // The navi idles 91 ticks after the pillars; they are gone by then.
     let end = t + 75;
     run_to(&mut b, p, &mut t, end, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
     assert!(of_kind(&b, "element-pillar").is_empty());
     assert_eq!(b.objects.get(p1).hp, 920);
@@ -1208,7 +1215,7 @@ fn elec_beast_charge_strikes_lightning_that_cracks_panels() {
     // most.
     let end = t + 100;
     run_to(&mut b, p, &mut t, end, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert!(of_kind(&b, "element-pillar").is_empty());
 }
 
@@ -1238,9 +1245,9 @@ fn spout_beast_charge_surges_from_the_panel_in_front() {
     assert_eq!(b.objects.get(p1).hp, 980);
     // The navi idles 61 ticks after the surge; the surge lasts 60.
     run_to(&mut b, p, &mut t, 9 + 60, 0);
-    assert_eq!(b.objects.get(p0).action, 0x3A);
+    assert_eq!(act(&b, p0), 0x3A);
     run_to(&mut b, p, &mut t, 9 + 62, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert!(of_kind(&b, "aqua-surge").is_empty());
 }
 
@@ -1268,7 +1275,7 @@ fn tengu_beast_charge_sends_a_whirlwind_that_leaves_hits() {
     assert_eq!(b.objects.get(p1).hp, 950);
     let end = t + 60;
     run_to(&mut b, p, &mut t, end, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert!(of_kind(&b, "whirlwind").is_empty());
 }
 
@@ -1315,7 +1322,8 @@ fn fight_on(settings: u8, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
     let players = [b.player(0).unwrap(), b.player(1).unwrap()];
     for p in players {
         let o = b.objects.get_mut(p);
-        (o.action, o.phase, o.phase_init) = (8, 0, 0);
+        (o.phase, o.phase_init) = (0, 0);
+        super::super::set_navi_action(&mut b, p, super::super::NaviAction::Idle);
     }
     (b, players[0], players[1])
 }
@@ -1328,13 +1336,13 @@ fn an_instant_chip_runs_its_effect_once_and_idles() {
     b.hands[0] = hand;
     b.gauge.value = 0;
     tick(&mut b, p0, p1, keys::A);
-    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(act(&b, p0), 0x1C);
     assert_eq!(b.gauge.value, 0);
     // Its first tick: the effect (the gauge fills) and back to idle, with
     // the chip's lockout.
     tick(&mut b, p0, p1, 0);
     assert_eq!(b.gauge.value, crate::hud::CustomGauge::FULL);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     // (Applied, and counted down once already.)
     assert_eq!(ai_mut(&mut b, p0).lockout, 19);
 }
@@ -1355,7 +1363,7 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, keys::B | keys::LEFT);
-    assert_eq!(b.objects.get(p0).action, 0x58);
+    assert_eq!(act(&b, p0), 0x58);
 
     // Tick 1: the pose and the vortex (effect 0x63), kept alive.
     run_to(&mut b, p, &mut t, 1, keys::B);
@@ -1374,9 +1382,9 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     // They arrive 9 ticks later, while the navi still absorbs, and join
     // its list; the navi idles 11 ticks after the pull.
     run_to(&mut b, p, &mut t, 20, 0);
-    assert_eq!(b.objects.get(p0).action, 0x58);
+    assert_eq!(act(&b, p0), 0x58);
     run_to(&mut b, p, &mut t, 21, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     let actor = b.objects.get(p0).actor.unwrap();
     assert_eq!(b.actors.get(actor).absorbed.len(), 2);
     // The B+Back cooldown (40 ticks, counted down once already).
@@ -1393,7 +1401,7 @@ fn the_beast_claw_slashes_the_panel_ahead_twice() {
     (o.panel, o.future_panel) = (PanelPos { x: 4, y: 2 }, PanelPos { x: 4, y: 2 });
     (o.pos.x, o.pos.y) = (x, y);
     let action = super::super::idle::weapon_routine(&mut b, p0, testing::weapon(0x1E).unwrap());
-    assert_eq!(action.number, 0x52);
+    assert_eq!(action.number(&b.content.defs), 0x52);
     super::super::set_attack(&mut b, p0, action, 2);
     let mut t = 0;
     // The claw is up for 3 ticks; the first slash on the third: its effect
@@ -1413,11 +1421,11 @@ fn the_beast_claw_slashes_the_panel_ahead_twice() {
     assert_eq!(b.objects.get(p1).hp, 940);
     // 12 ticks later the second slash, and 12 after it, idle.
     run_to(&mut b, p, &mut t, 18, 0);
-    assert_eq!(b.objects.get(p0).action, 0x52);
+    assert_eq!(act(&b, p0), 0x52);
     run_to(&mut b, p, &mut t, 29, 0);
-    assert_eq!(b.objects.get(p0).action, 0x52);
+    assert_eq!(act(&b, p0), 0x52);
     run_to(&mut b, p, &mut t, 30, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     assert_eq!(f1_of(&b, p0) & f1::USING_ACTION, 0);
 }
 
@@ -1468,9 +1476,9 @@ fn use_instant_chip_handle(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: b
     hand.ids[0] = Some(chip);
     b.hands[0] = hand;
     tick(b, p0, p1, keys::A);
-    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(act(&b, p0), 0x1C);
     tick(b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 #[test]
@@ -1540,7 +1548,8 @@ fn buster_up_and_sync_trigger_change_the_navi() {
     assert_eq!(b.stats[0].attack, 9);
     // SyncTrgr's effect alone (the Full Synchro aura that follows is the
     // framework's, not ported yet): the mood goes to the top.
-    let hook = b.content.defs.hook(bn6_content_api::Hook::InstantChip(13)).expect("SyncTrgr's effect");
+    let sync = b.content.defs.chip(testing::chip_in(&b.content, testing::SYNC));
+    let crate::content::ChipUsage::Instant(hook) = sync.usage else { panic!("SyncTrgr's effect: {:?}", sync.usage) };
     let spec = bn6_content_api::InstantChipSpec::default();
     crate::behavior::call_hook(&mut b, hook, bn6_content_api::HookCall::InstantChip { user: p0, spec });
     assert_eq!(b.stats[0].mood, 0xFF);
@@ -1623,7 +1632,7 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
     let start = || {
         let (mut b, p0, p1) = fight();
         let action = super::super::idle::weapon_routine(&mut b, p0, testing::weapon(0x1B).unwrap());
-        assert_eq!(action.number, 0x4E);
+        assert_eq!(action.number(&b.content.defs), 0x4E);
         super::super::set_attack(&mut b, p0, action, 2);
         (b, p0, p1)
     };
@@ -1653,7 +1662,7 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
     assert_rolls_back(&mut b, [p0, p1], 20, 0);
     // 96 ticks into the swing, idle.
     run_to(&mut b, [p0, p1], &mut t, first + 120, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
 }
 
 /// Use `chip` from side 0's hand as a charged chip (the request a full A
@@ -1676,7 +1685,7 @@ fn a_charged_chip_with_a_bonus_routine_is_used_charged() {
     let (mut b, p0, _) = fight();
     let buster_up = testing::defined_chip(testing::BUSTER_UP);
     use_charged_chip(&mut b, p0, 0x0D, buster_up);
-    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(act(&b, p0), 0x1C);
     assert_eq!(ai_mut(&mut b, p0).attack.charged, 1);
     // Without a routine: the chip family's register (Plus, 4).
     let (mut b, p0, _) = fight();
@@ -1697,7 +1706,7 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     // The request starts the pause action, then 4 ticks landing, the
     // change, 21 ticks settling.
     tick(&mut b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(act(&b, p0), 0x1C);
     assert_ne!(ai_mut(&mut b, p0).status & status::CHANGING_CROSS, 0);
     for _ in 0..4 {
         tick(&mut b, p0, p1, 0);
@@ -1710,9 +1719,9 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     for _ in 0..20 {
         tick(&mut b, p0, p1, 0);
     }
-    assert_eq!(b.objects.get(p0).action, 0x1C);
+    assert_eq!(act(&b, p0), 0x1C);
     tick(&mut b, p0, p1, 0);
-    assert_eq!(b.objects.get(p0).action, 8);
+    assert_eq!(act(&b, p0), 8);
     let st = ai_mut(&mut b, p0).status;
     assert_eq!((st & status::CROSSED != 0, st & status::CHANGING_CROSS), (true, 0));
 }
@@ -1743,7 +1752,8 @@ fn fight_on_test_pack() -> (Battle, ObjectRef, ObjectRef) {
     let players = [b.player(0).unwrap(), b.player(1).unwrap()];
     for p in players {
         let o = b.objects.get_mut(p);
-        (o.action, o.phase, o.phase_init) = (8, 0, 0);
+        (o.phase, o.phase_init) = (0, 0);
+        super::super::set_navi_action(&mut b, p, super::super::NaviAction::Idle);
     }
     (b, players[0], players[1])
 }
@@ -1790,13 +1800,13 @@ fn a_weapon_names_a_defined_action_which_runs_by_handle() {
     let (mut b, p0, p1) = fight_on_test_pack();
     let shot = b.content.defs.weapon_by_key(testing::TICK_SHOT).unwrap();
     let action = super::super::idle::weapon_routine(&mut b, p0, shot);
-    assert_eq!(action.number, super::super::CONTENT_ACTION);
-    let h = action.content.expect("a defined action");
+    let super::super::NaviAction::Content(h) = action else { panic!("a defined action: {action:?}") };
     assert_eq!(b.content.defs.action(h).key, "test/tick-shot/shot");
     super::super::set_attack(&mut b, p0, action, 1);
-    // The navi runs it by handle, under no number of its own; its update
-    // runs: it stands for 12 ticks.
-    assert_eq!(b.objects.get(p0).action, super::super::CONTENT_ACTION);
+    // The navi runs it by handle (its number in the numeric API is none of
+    // the original's); its update runs: it stands for 12 ticks.
+    assert_eq!(super::super::navi_action(&b, p0), action);
+    assert_eq!(act(&b, p0), super::super::CONTENT_ACTION);
     assert_eq!(ticks_in(&mut b, p0, p1, h), 12);
 }
 
@@ -1807,14 +1817,14 @@ fn chips_of_a_series_run_their_own_actions() {
     let (mut b, p0, p1) = fight_on_test_pack();
     let defs = &b.content.defs;
     let [ticker1, ticker2] = [testing::TICKER_1, testing::TICKER_2].map(|key| defs.chip_by_key(key).unwrap());
-    let [one, two] = [ticker1, ticker2].map(|h| match defs.chip(h).usage.unwrap() {
+    let [one, two] = [ticker1, ticker2].map(|h| match defs.chip(h).usage {
         crate::content::ChipUsage::Action(h) => h,
         u => panic!("{u:?}"),
     });
     assert_ne!(one, two);
     assert_eq!(defs.action(one).schema, defs.action(two).schema, "one builder, one state layout");
     use_chip_handle(&mut b, p0, p1, ticker1);
-    assert_eq!(b.objects.get(p0).action, super::super::CONTENT_ACTION);
+    assert_eq!(act(&b, p0), super::super::CONTENT_ACTION);
     let first = ticks_in(&mut b, p0, p1, one);
     let (mut b, p0, p1) = fight_on_test_pack();
     use_chip_handle(&mut b, p0, p1, ticker2);
@@ -1903,7 +1913,7 @@ fn an_action_starts_the_next_by_definition() {
     let (mut b, p0, p1) = fight_on_test_pack();
     let defs = &b.content.defs;
     let ticker3 = defs.chip_by_key(testing::TICKER_3).unwrap();
-    let Some(crate::content::ChipUsage::Action(first)) = defs.chip(ticker3).usage else { panic!("an action") };
+    let crate::content::ChipUsage::Action(first) = defs.chip(ticker3).usage else { panic!("an action") };
     let next = bn6_content_api::ActionHandle(
         defs.actions.iter().position(|a| a.key == "test/ticker3/action/args/next").expect("a derived key") as u16,
     );
@@ -1917,12 +1927,12 @@ fn an_action_starts_the_next_by_definition() {
 fn the_ruleset_starts_a_role_action() {
     // A caught hit starts AntiDmg's counter: the role content fills.
     let (mut b, p0, p1) = fight_on_test_pack();
-    let role = b.content.defs.roles.actions.anti_damage_counter.expect("the test pack fills it");
+    let role = b.content.defs.roles.try_action(crate::content::ActionRole::AntiDamageCounter).expect("the test pack fills it");
     assert_eq!(b.content.defs.action(role).key, "test/anti-damage-counter");
     ai_mut(&mut b, p0).requests |= request::ANTI_DAMAGE_TRIGGERED;
     super::reactive::counter(&mut b, p0);
     assert_eq!(super::super::running_content_action(&b, p0), Some(role));
-    assert_eq!(b.objects.get(p0).action, super::super::CONTENT_ACTION);
+    assert_eq!(act(&b, p0), super::super::CONTENT_ACTION);
     use bn6_content_api::CoreApi;
     assert_eq!(b.navi_action(p0).unwrap(), bn6_content_api::NaviAction::Content(role.0));
     // It ran its first tick with the counter's set-up; three more.
@@ -1934,7 +1944,7 @@ fn a_forced_charged_shot_starts_its_role() {
     // The request that starts the charged shot from idle without its
     // weapon's setup starts the role's action.
     let (mut b, p0, p1) = fight_on_test_pack();
-    let role = b.content.defs.roles.actions.forced_charged_shot.expect("the test pack fills it");
+    let role = b.content.defs.roles.try_action(crate::content::ActionRole::ForcedChargedShot).expect("the test pack fills it");
     ai_mut(&mut b, p0).requests |= request::FORCED_CHARGED_SHOT;
     tick(&mut b, p0, p1, 0);
     assert_eq!(super::super::running_content_action(&b, p0), Some(role));

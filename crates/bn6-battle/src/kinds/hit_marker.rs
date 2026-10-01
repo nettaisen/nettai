@@ -9,8 +9,6 @@ use crate::content::SpriteId;
 use crate::object::{ObjectRef, Vec3, flags, state};
 use crate::object::sprite::FRAME_LAST;
 
-pub const INDEX: u8 = 0x6B;
-
 const SPRITE: SpriteId = SpriteId { category: 0x14, index: 0x07 };
 
 /// Its animation (Param1).
