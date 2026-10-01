@@ -125,7 +125,9 @@ local ROWS: { [number]: FlyingShotVariant } = {
         obstacle = true,
     },
 }
-flying_shot.variants = { arrow = ROWS[2], thrown = ROWS[6] }
+-- (The Falzar Beast forms' buster fires rows 3 and 5: the shot ahead, and
+-- the volley's other two, which fly two panels and burst.)
+flying_shot.variants = { arrow = ROWS[2], thrown = ROWS[6], beast_shot = ROWS[3], beast_volley_shot = ROWS[5] }
 
 -- The variant of row `n` (past the table the game reads on into the
 -- routine's code: an error).

@@ -690,12 +690,24 @@ fn read_roles(d: &Definition, actions: &[ActionDef], kinds: &[KindDef], function
                             actions.iter().position(|a| &a.key == key).expect("a defined action") as u16,
                         ))
                     } else if let Some(n) = legacy(&full, v, "action")? {
-                        let Data::Int(n @ 0..=0xFF) = n else {
-                            return Err(what(format!("{full}'s legacy action is {n:?}, not an action number")));
-                        };
-                        match actions.iter().position(|a| a.number == Some(n as u8)) {
-                            Some(i) => RoleAction::Action(ActionHandle(i as u16)),
-                            None => RoleAction::Unported(n as u8),
+                        match n {
+                            // A v1 registration's action, by its number.
+                            Data::Int(n @ 0..=0xFF) => match actions.iter().position(|a| a.number == Some(n as u8)) {
+                                Some(i) => RoleAction::Action(ActionHandle(i as u16)),
+                                None => RoleAction::Unported(n as u8),
+                            },
+                            // A definition by its key, for a pack whose
+                            // modules can't require the one that defines it
+                            // (the engine's test pack).
+                            Data::Str(key) => match actions.iter().position(|a| a.key == key) {
+                                Some(i) => RoleAction::Action(ActionHandle(i as u16)),
+                                None => return Err(what(format!("{full}'s legacy action {key:?} is no action's key"))),
+                            },
+                            n => {
+                                return Err(what(format!(
+                                    "{full}'s legacy action is {n:?}, not an action number or an action's key"
+                                )));
+                            }
                         }
                     } else {
                         return Err(what(format!("{full} is not an action")));
@@ -1032,7 +1044,13 @@ impl Defs {
             let setup = Some(functions.id(slot(d, "setup")?));
             let routines = weapon_routines(d)?;
             let number = routines.first().copied();
-            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks, instant: None };
+            // Its own instant effect (`instant = function(user, spec)`),
+            // which the instant chips' action runs.
+            let instant = match d.spec.field("instant") {
+                Data::Nil => None,
+                _ => Some(functions.id(slot(d, "instant")?)),
+            };
+            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks, instant };
             weapons.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let weapons: Vec<WeaponDef> = weapons.sorted()?.into_iter().map(|(_, w)| w).collect();
@@ -1317,8 +1335,9 @@ mod tests {
         c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        // The modules that return a table with a `state` give its layout.
-        let states = c.defs.definitions.modules.iter().filter(|m| m.state.is_some()).count();
-        assert!(states > 100, "{states} module states");
+        // What they define fills the registries (the v1 modules' `state`
+        // tables dwindle as they convert, so they aren't counted).
+        let (kinds, actions, weapons) = (c.defs.kinds.len(), c.defs.actions.len(), c.defs.weapons.len());
+        assert!(kinds > 150 && actions > 100 && weapons > 10, "{kinds} kinds, {actions} actions, {weapons} weapons");
     }
 }

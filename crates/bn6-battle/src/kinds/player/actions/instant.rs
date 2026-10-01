@@ -1,11 +1,12 @@
 //! Action 0x1C outside a pause, chips with an immediate effect
 //! (`sub_80EC39C`): the effect (`off_80EC3F0`, by the attack's subtype)
-//! runs once and the navi goes back to idle, or, for subtype 0x14, 8 ticks
-//! later. The effects are content's: the attack's `instant`, which chip use
-//! sets from the chip (its `instant` hook, or a pack record's subtype's
-//! registration) and a weapon that names an effect no chip has (TenguCross's
-//! wind) from its own. (Paused, action 0x1C is the form change:
-//! `transform`.) See docs/engine/chips.md §1.6.
+//! runs once and the navi goes back to idle, or, for a weapon's own effect
+//! (the original's subtype 0x14, which no chip has), 8 ticks later. The
+//! effects are content's: the attack's `instant`, which chip use sets from
+//! the chip (its `instant` hook, or a pack record's subtype's registration)
+//! and a weapon with an effect of its own (TenguCross's wind) from its
+//! definition. (Paused, action 0x1C is the form change: `transform`.) See
+//! docs/engine/chips.md §1.6.
 
 use bn6_content_api::{FnId, HookCall, InstantChipSpec};
 
@@ -19,15 +20,16 @@ pub const ACTION: u8 = 0x1C;
 /// What the instant chips' action runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Effect {
+    /// A chip's effect: it runs, and the navi idles.
     Runs(FnId),
+    /// A weapon's own effect (the original's subtype 0x14, TenguCross's
+    /// wind): it runs, and the navi waits 8 ticks.
+    RunsThenWaits(FnId),
     /// A pack record's subtype nothing implements yet.
     Unported(u8),
 }
 
-/// The subtype whose effect the navi waits out.
-const WAITS: u8 = 0x14;
-
-/// The wait after subtype 0x14.
+/// The wait after a weapon's effect.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {
     /// AIAttackVars+0x10.
@@ -39,8 +41,9 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).attack.step == 0 {
         ai_mut(b, r).attack.step = 1;
         run_effect(b, r);
-        // The game reads the subtype again after the effect.
-        if ai(b, r).attack.variant != WAITS {
+        // (The game reads the subtype again after the effect: only the
+        // weapon's, 0x14, waits.)
+        if !matches!(ai(b, r).attack.instant, Some(Effect::RunsThenWaits(_))) {
             return exit_attack_state(b, r);
         }
         ai_mut(b, r).attack.action = ActionVars::Instant(Vars { timer: 8 });
@@ -69,7 +72,7 @@ fn run_effect(b: &mut Battle, r: ObjectRef) {
         damage: (a.damage as u32 | (a.hit_param as u32) << 16).wrapping_add(a.extra as u32 & 0xFF),
     };
     match a.instant {
-        Some(Effect::Runs(hook)) => {
+        Some(Effect::Runs(hook) | Effect::RunsThenWaits(hook)) => {
             crate::behavior::call_hook(b, hook, HookCall::InstantChip { user: r, spec });
         }
         // Null entries: the game jumps to address 0.

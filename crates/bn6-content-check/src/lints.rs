@@ -261,11 +261,25 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
             }
         }
     }
-    // A kind in an owner's folder is keyed under its owner.
+    // A kind in an owner's folder is keyed under its owner. A form's
+    // folder under its navi (navis/<navi>/forms/<form>/) owns its own; a
+    // navi's folder still named with its number (navis/00-megaman, until
+    // the folders are renamed) owns its kinds by its name.
     let owner = ["chips/", "navis/", "forms/", "weapons/", "stages/"]
         .iter()
-        .find_map(|top| path.strip_prefix(top))
-        .and_then(|rest| rest.split('/').next().filter(|_| rest.contains('/')));
+        .find_map(|top| path.strip_prefix(top).map(|rest| (*top, rest)))
+        .and_then(|(top, rest)| {
+            let parts: Vec<&str> = rest.split('/').collect();
+            if parts.len() < 2 {
+                return None;
+            }
+            if top == "navis/" && parts.len() > 3 && parts[1] == "forms" {
+                return Some(parts[2]);
+            }
+            let name = parts[0];
+            let numbered = name.split_once('-').filter(|(n, _)| !n.is_empty() && n.bytes().all(|c| c.is_ascii_hexdigit()));
+            Some(if top == "navis/" { numbered.map_or(name, |(_, rest)| rest) } else { name })
+        });
     if let Some(owner) = owner {
         for at in s.find("define.kind") {
             let rest = &s.code[at..];
@@ -334,5 +348,14 @@ mod tests {
         assert!(lints("chips/minibomb/chip.luau", "local K = define.kind { id = 'minibomb/held', pool = 'effect' }").is_empty());
         assert!(lints("lib/bombs/bomb.luau", "local K = define.kind { id = 'bomb', pool = 'attack' }").is_empty());
         assert_eq!(lints("compat/x.luau", "").len(), 1);
+        // A form's kinds are keyed under the form, and a navi's under its
+        // name, whatever number its folder still carries.
+        let surge = "local K = define.kind { id = 'spoutcross-beast/surge', pool = 'attack' }";
+        assert!(lints("navis/00-megaman/forms/spoutcross-beast/surge.luau", surge).is_empty());
+        assert_eq!(lints("navis/00-megaman/forms/tengucross-beast/surge.luau", surge).len(), 1);
+        let shared = "local K = define.kind { id = 'megaman/dash-hit', pool = 'attack' }";
+        assert!(lints("navis/00-megaman/dash_hit.luau", shared).is_empty());
+        assert!(lints("navis/megaman/dash_hit.luau", shared).is_empty());
+        assert_eq!(lints("navis/heatman/dash_hit.luau", shared).len(), 1);
     }
 }

@@ -1,8 +1,0 @@
-# MegaMan's weapon routine 0x03, the Falzar Beast forms' buster (`sub_8011AF2`),
-# and its action 0x1E (`sub_80EC5BC`) are a script. Its shots are the buster's
-# projectile (attack object #0xB).
-
-id = 0x03
-name = "Falzar Beast buster"
-action = 0x1E
-script = "falzar_beast_buster.luau"
