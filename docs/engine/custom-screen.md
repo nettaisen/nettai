@@ -261,10 +261,13 @@ entries as the screen had chips beyond the hand size (+5 − +6), skipping the t
 draws each) for n chips (the table that would shuffle the dealt part apart, `byte_80298C8`, is all zeros).
 
 A quirk comes with the walk: with NumbrOpn's ten chips the button covers slots 8 and 9, so the walk counts eight
-dealt entries and leaves the folder's last two out **[unverified]**. The pair's index is kept up as OK takes chips
+dealt entries and leaves the folder's last two out. The pair's index is kept up as OK takes chips
 out (§1), so the walk skips the pair on later screens too; a pair in the hand is dealt again like any chips (+0x44 is
 clear by then). Where the tag pair straddles the walk's end the original runs on past the folder (a buffer overrun);
-the port stops at the folder's end **[unverified]**.
+the port stops at the folder's end. A netbattle can't get there: the chips left less the pair's index never change
+from what the shuffle made them (OK takes one off both for every chip, the scrap changes neither), at least 10. With
+NumbrOpn the walk would count eight dealt entries, but NumbrOpn and ChpShufl can't both be installed (docs/engine/
+unverified.md).
 
 Port: `Phase::Redealing`, `Screen::redeal` (custom/screen.rs); the index's upkeep is in `Side::confirm`
 (custom/mod.rs). **Verified** on three chip-lab scenarios, every frame of each: `navicust/chpshufl-redeal` (side 0
