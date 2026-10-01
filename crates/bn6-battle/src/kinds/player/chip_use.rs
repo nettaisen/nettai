@@ -562,7 +562,8 @@ fn rock_barrage(b: &mut Battle, r: ObjectRef) -> u8 {
     for (n, p) in panels.iter().enumerate() {
         // sub_80C7F20: Param1 counts down 3, 2, 1.
         let params = [3 - n as u8, 0, 0, 0];
-        if let Some(rock) = crate::behavior::spawn_kind(b, "falling-rock", Vec3::default(), params) {
+        let kind = b.content.defs.roles.kind(crate::content::KindRole::FallingRock);
+        if let Some(rock) = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, Vec3::default(), params) {
             let o = b.objects.get_mut(rock);
             o.panel = *p;
             o.element = 0x10;

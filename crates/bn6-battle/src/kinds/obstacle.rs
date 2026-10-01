@@ -1058,7 +1058,8 @@ pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, kind: u8) {
     let (pos, anim, alliance, flip) = (o.pos, o.anim, o.alliance, o.flip);
     let look = b.objects.sprite(r).look;
     let params = [kind, side, anim, look.palette];
-    let Some(e) = crate::behavior::spawn_kind(b, "absorbed-obstacle", pos, params) else { return };
+    let kind = b.content.defs.roles.kind(crate::content::KindRole::AbsorbedObstacle);
+    let Some(e) = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, params) else { return };
     crate::behavior::set_state_field(b, e, "hidden_parts", bn6_content_api::Value::Int(look.hidden_parts as i64));
     let o = b.objects.get_mut(e);
     o.alliance = alliance;

@@ -13,8 +13,8 @@ fn the_engine_does_not_depend_on_compat() {
 
 /// What content defines has no number in the engine: an object records its
 /// kind's handle and a navi its content action's. Compat gives them the
-/// original's numbers (docs/design/content-model-v2.md §7.3); the engine's
-/// own kinds and actions keep theirs.
+/// original's numbers (docs/design/content-model-v2.md §7.3), and the
+/// engine's own kinds' too (their keys are `engine/...`).
 #[test]
 fn compat_numbers_what_the_engine_runs_by_handle() {
     use bn6_battle::content::testing;
@@ -43,8 +43,9 @@ fn compat_numbers_what_the_engine_runs_by_handle() {
     compat.actions.insert("test/tick-shot/shot".into(), 0x11);
     assert_eq!(compat.object_slot(&b, ticker), Ok((Pool::Effect, 0xF0)));
     assert_eq!(compat.navi_action(&b, player), Ok(0x11));
-    // The engine's own kind has its slot in its definition.
-    assert_eq!(compat.object_slot(&b, player), Ok((Pool::Actor, 0)));
+    // The engine's own kinds have their slots in compat too.
+    assert_eq!(compat.object_slot(&b, player), Err("kinds.toml has no \"engine/player\"".into()));
+    assert_eq!(Compat::bn6().object_slot(&b, player), Ok((Pool::Actor, 0)));
     // A kind in the wrong pool is compat's mistake.
     compat.kinds.get_mut("test/ticker").unwrap().pool = "attack".into();
     assert!(compat.object_slot(&b, ticker).is_err());

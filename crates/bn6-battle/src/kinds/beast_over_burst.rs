@@ -8,8 +8,6 @@ use crate::kinds::common::{self, Progress};
 use crate::kinds::effect;
 use crate::object::{ObjectRef, Vec3, flags, state};
 
-pub const INDEX: u8 = 0x90;
-
 /// The panels it bursts on, from the last to the first (`byte_80EA418`:
 /// dx toward the navi's front, dy).
 const DIAGONALS: [(i32, i32); 4] = [(-1, -1), (1, 1), (-1, 1), (1, -1)];

@@ -108,7 +108,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let f = ai(b, r).requests;
     if f & request::FORCED_CHARGED_SHOT != 0 {
         leave_idle(b, r);
-        let role = crate::content::Roles::action(b.content.defs.roles.actions.forced_charged_shot, "forced_charged_shot");
+        let role = b.content.defs.roles.action(crate::content::ActionRole::ForcedChargedShot);
         let shot = super::NaviAttack::content(&b.content.defs, role);
         return set_attack(b, r, shot, 1);
     }
@@ -359,9 +359,6 @@ impl Support {
     }
 }
 
-/// The supports' dimming controller (effect object #0x79, `sub_80E8FE0`),
-/// a content kind.
-const SUPPORT_CONTROLLER: &str = "support";
 
 /// `sub_80E90FE`, then `sub_800BF16(side, 1, controller)`: `support`'s
 /// controller on `host`'s panel, its side's, and a dimming its side starts
@@ -376,7 +373,8 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
     // The spawn's position is the caller's r1..r3: the host's panel row
     // and two zeros.
     let pos = crate::object::Vec3 { x: panel.y as i32, y: 0, z: 0 };
-    let controller = crate::behavior::spawn_kind(b, SUPPORT_CONTROLLER, pos, params);
+    let kind = b.content.defs.roles.kind(crate::content::KindRole::Support);
+    let controller = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, params);
     if let Some(c) = controller {
         let o = b.objects.get_mut(c);
         o.panel = panel;
