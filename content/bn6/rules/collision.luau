@@ -92,7 +92,7 @@ collision.everything = define.collision { id = "everything", side0 = 0xff800002,
 collision.navi = define.collision { id = "navi", side0 = 0x08410080, side1 = 0x04210080, row_offset = 0x08 }
 collision.navi_target = define.collision { id = "navi-target", side0 = 0x55800200, side1 = 0xaa800200, row_offset = 0x10 }
 
--- A thrown attack that breaks (row 0x15: GroundMan's drill and rocks).
+-- A thrown attack that breaks (row 0x15: GroundMan's drill and rocks, MetrKnuk's fists).
 collision.thrown_break = define.collision { id = "thrown-break", side0 = 0x8000008a, side1 = 0x4000008a, row_offset = 0xA8 }
 
 -- A thrown attack that pierces and breaks (row 0x17: Django's Gun del
@@ -156,13 +156,5 @@ collision.guard_breaking = define.collision {
 -- A drain: an attack of its side that pierces invisibility and flashing
 -- (row 0x2C: GunDelSol's hits under the sun beam).
 collision.drain = define.collision { id = "drain", side0 = 0x8000408c, side1 = 0x4000408c, row_offset = 0x160 }
-
--- A thrown attack that also breaks (row 0x15: MetrKnuk's fists).
-collision.thrown_breaking = define.collision {
-    id = "thrown-breaking",
-    side0 = 0x8000008a,
-    side1 = 0x4000008a,
-    row_offset = 0xA8,
-}
 
 return collision
