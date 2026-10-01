@@ -13,8 +13,8 @@ variants (`byte_80CF934`'s rows, records) and its debris (T4#0x38) in
 absorbed obstacle (T4#0x87) in `objects/absorbed-obstacle`, whose looks
 (the original's obstacle kinds, `byte_80E98C0`) are records each obstacle
 defines for itself (`absorbed_obstacle.look { sprite, ... }`). What a
-stage's actor list places goes through its kind's `place` (the roles
-`kinds.rock`, `kinds.boulder`, `kinds.statue` in rules/roles.luau); the
+stage places goes through its kind's `place`: the stage's `actors` name
+the kind and, for a rock, its variant (stages/netbattle.luau); the
 absorbed obstacle is the role `kinds.absorbed_obstacle`.
 
 Routine names are the original's. "f1"/"f2" are the
@@ -87,8 +87,8 @@ holds the variant record and the entrance, "rise", "instant", "fall" or
 debris palette, break sound (u16), NameID (u16). Init makes HP/2 = 0 into
 1 HP and variant >= 3 aqua. In content they are `rock.variants` (brittle,
 cube, hard, ice; records with `anim`, `hp`, `element`, `debris_palette`,
-`break_sound`, `name`), which an actor list's entry reaches by its row
-(`rock.by_number`):
+`break_sound`, `name`); a stage names the one its rocks are (the actor
+list's entry gives the row, which compat's records.toml keeps):
 
 | variant | anim | HP | element | debris palette | sound | NameID |
 |---|---|---|---|---|---|---|

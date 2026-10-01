@@ -8,8 +8,8 @@
 //! - content registered by number from the pack's data (an object folder's
 //!   `[kind]`, a chip's `script`, a `weapon.toml`), keyed from that data
 //!   (the kind's folder name; `v1/action-12`, `v1/weapon-02`); and the
-//!   pack's records content doesn't define yet: its chips, navis, forms
-//!   and stages (`v1/chip-036`, `v1/navi-01`, `v1/form-0c`, `v1/stage-11`)
+//!   pack's records content doesn't define yet: its chips, navis and forms
+//!   (`v1/chip-036`, `v1/navi-01`, `v1/form-0c`)
 //!   and every weapon routine number (`v1/weapon-29`);
 //! - content's definitions (`define.kind { ... }`), keyed by their keys.
 //!
@@ -35,7 +35,7 @@ use super::{
     FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
 };
 use super::roles::{ActionRole, HookRole, KindRole, RoleAction, RoleKind, Roles};
-use crate::setup::{Form, Navi, StageSettings};
+use crate::setup::{Form, Navi};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
 /// Who implements an object kind.
@@ -60,8 +60,7 @@ pub struct KindDef {
     /// by: the pack's `object.toml`s'. The engine's kinds and the kinds
     /// content defines have none (the validator has their slots by key).
     pub slot: Option<(Pool, u8)>,
-    /// What places it when a stage's actor list names it (`kind.place`, or
-    /// a v1 module's `actor_list_entry`).
+    /// What places it when a stage names it (`kind.place`).
     pub place: Option<FnId>,
 }
 
@@ -163,15 +162,11 @@ pub struct FormDef {
     pub record: FormData,
 }
 
-/// A stage: the pack's battle settings record (keyed `v1/stage-11` by its
-/// place in the settings table).
+/// A stage (`define.stage`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct StageDef {
     pub key: String,
-    pub record: StageSettings,
-    /// Its place in the pack's settings table (the test content's); none
-    /// for a stage content defines.
-    pub number: Option<u8>,
+    pub record: super::StageData,
 }
 
 /// A collision type content defines (`define.collision`): what an object is
@@ -269,7 +264,6 @@ pub struct Defs {
     chip_numbers: BTreeMap<ChipId, ChipHandle>,
     navi_numbers: Vec<Option<NaviHandle>>,
     form_numbers: Vec<Option<FormHandle>>,
-    stage_numbers: Vec<Option<StageHandle>>,
     /// Keys by registry, for the codecs.
     chip_keys: BTreeMap<String, ChipHandle>,
     weapon_keys: BTreeMap<String, WeaponHandle>,
@@ -362,11 +356,6 @@ impl Defs {
     /// The form with this key.
     pub fn form_by_key(&self, key: &str) -> Option<FormHandle> {
         self.forms.binary_search_by(|f| f.key.as_str().cmp(key)).ok().map(|i| FormHandle(i as u16))
-    }
-
-    /// The pack's stage at this place in the settings table.
-    pub fn stage_numbered(&self, index: u8) -> Option<StageHandle> {
-        self.stage_numbers.get(index as usize).copied().flatten()
     }
 
     pub fn stage(&self, h: StageHandle) -> &StageDef {
@@ -807,19 +796,13 @@ impl Defs {
         for k in &content.objects.kinds {
             let whose = format!("objects/{} (object.toml)", k.name);
             let update = export(&definitions, &k.script, "update", &whose)?;
-            // (The entry type `actor_list_entry` names is the stage data's;
-            // the ruleset reaches the kind by its role.)
-            let place = match k.actor_list_entry {
-                Some(_) => Some(functions.id(export(&definitions, &k.script, "actor_list_entry", &whose)?)),
-                None => None,
-            };
             let def = KindDef {
                 key: k.name.clone(),
                 pool: k.pool,
                 implementation: KindImpl::Script { update: functions.id(update) },
                 schema: module_state(&k.script),
                 slot: Some((k.pool, k.index)),
-                place,
+                place: None,
             };
             kinds.add(k.name.clone(), def, whose.clone());
         }
@@ -1127,13 +1110,28 @@ impl Defs {
             forms.add(key.clone(), FormDef { key, record: f.clone() }, "the pack's form".into());
         }
         let forms: Vec<FormDef> = forms.sorted()?.into_iter().map(|(_, f)| f).collect();
+        // Stages: what they place names kinds and their variant records.
         let mut stages = Entries::new(Registry::Stage);
-        for (i, st) in content.rules.stages.settings.iter().enumerate() {
-            let key = format!("v1/stage-{i:02x}");
-            stages.add(key.clone(), StageDef { key, record: *st, number: Some(i as u8) }, "the pack's battle settings".into());
-        }
-        for (key, (st, number)) in &legacy.stages {
-            stages.add(key.clone(), StageDef { key: key.clone(), record: *st, number: *number }, "a stage".into());
+        for d in definitions.of(Registry::Stage) {
+            let record = super::stages::read(
+                d,
+                &content.assets,
+                |key| kinds.iter().position(|k| k.key == key).map(|i| KindHandle(i as u16)),
+                |key| definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16)),
+            )?;
+            for e in &record.actors {
+                if let super::Place::Kind(k) = e.place
+                    && kinds[k.index()].place.is_none()
+                {
+                    return Err(ContentError::new(format!(
+                        "{}.luau: stage {} places the kind {}, which has no `place`",
+                        d.module,
+                        d.key,
+                        kinds[k.index()].key
+                    )));
+                }
+            }
+            stages.add(d.key.clone(), StageDef { key: d.key.clone(), record }, format!("defined in {}.luau", d.module));
         }
         let stages: Vec<StageDef> = stages.sorted()?.into_iter().map(|(_, s)| s).collect();
 
@@ -1310,7 +1308,6 @@ impl Defs {
             chip_numbers: BTreeMap::new(),
             navi_numbers: Vec::new(),
             form_numbers: Vec::new(),
-            stage_numbers: Vec::new(),
             chip_keys: BTreeMap::new(),
             weapon_keys: BTreeMap::new(),
             kinds: Vec::new(),
@@ -1384,12 +1381,6 @@ impl Defs {
         defs.form_numbers = vec![None; 256];
         for (i, f) in defs.forms.iter().enumerate() {
             defs.form_numbers[f.record.id as usize] = Some(FormHandle(i as u16));
-        }
-        defs.stage_numbers = vec![None; 256];
-        for (i, st) in defs.stages.iter().enumerate() {
-            if let Some(n) = st.number {
-                defs.stage_numbers[n as usize] = Some(StageHandle(i as u16));
-            }
         }
         defs.functions = functions.list;
         Ok(defs)
