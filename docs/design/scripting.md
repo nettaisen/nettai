@@ -21,9 +21,10 @@ several runs.
 
 - **Luau is the only runtime**, through a narrow typed API (`CoreApi`), with stateless scripts over engine-owned
   state. There is no build feature for it and no Rust version of anything a script implements.
-- **Scripts live in the pack** beside their data (`objects/sun-beam/sun_beam.luau`, `chips/00f-gundels1/
-  chip.luau`, `navis/megaman/weapons/absorb/weapon.luau`, `lib/buster.luau`). The data registers
-  them: an object folder's `[kind]`, a chip's `script` (a weapon is a definition, `define.weapon`). The engine loads them from the
+- **Scripts live in the pack** beside their data (`chips/gundels/beam.luau`, `chips/gundels/chips.luau`,
+  `navis/megaman/weapons/absorb/weapon.luau`, `lib/buster.luau`). A definition names its functions (a chip's
+  `action`, a kind's `update`, a weapon's `setup`); what is still registered by number is named by its data:
+  an object folder's `[kind]`. The engine loads them from the
   `Content` it runs on (`Content::scripts`); nothing is compiled in and nothing in the engine names a script. The
   content hash covers them. BN6's scripts are this repository's source overlay (content/bn6), which `bn6-extract
   content` merges into the pack.

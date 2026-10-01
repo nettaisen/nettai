@@ -1,16 +1,28 @@
 --!strict
 -- MoonBld: a spin with a blade that sweeps the eight panels around the
 -- navi (./action, ./blade).
---
--- Its record stays the pack's for now (SlashCross's A-charge, weapon 0x11,
--- asks for its action by number, and the Cross special picks it): this is
--- its action, which registration by number runs (chips/054-moonbld;
--- docs/design/content-model-v2.md §12).
 
 local action = require("./action")
 local slashes = require("../../navis/megaman/forms/slashcross/slashes")
+local lockon = require("../../rules/lockon")
 
-return {
+return define.chip {
+    id = "moonbld",
+    name = "MoonBld",
+    description = "Slices\nenemies\naround",
+    codes = { "A", "M", "T" },
+    element = "null",
+    family = "sword",
+    class = "standard",
+    rarity = 2,
+    mb = 35,
+    damage = 130,
+    hit_param = 30,
+    lockout = 0,
+    flags = { "has_damage", "standard_library", "library" },
+    beast = { lockon = lockon.moonbld },
+    library = { number = 83, index = 83, sort = 318 },
+    slot_in_limit = 3,
     -- (SlashCross's A-charge sends its ring as a sword wave.)
     action = action.action { id = "moonbld/action", charged = slashes.moon },
 }

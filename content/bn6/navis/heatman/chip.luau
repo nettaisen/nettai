@@ -5,10 +5,6 @@
 -- flame) on each solid panel beside him (left, right, above, below) and a
 -- hit on his own panel for 60 ticks. Then he is back on his panel. See
 -- docs/engine/standard-chips.md, "Action 0x0A".
---
--- Its record stays the pack's (its damage grows with his level, which
--- chip definitions take with step 10's damage formulas) and names this
--- module, whose `action` it runs (docs/design/content-model-v2.md §12).
 
 local collision = require("../../rules/collision")
 local flame = require("../../chips/heatman/flame")
@@ -127,7 +123,22 @@ end
 
 local PHASES = { [JUMP] = jump, [PRESS] = press, [BACK] = back }
 
-return {
+return define.chip {
+    id = "heatpres",
+    name = "HeatPres",
+    description = "Sprd fire\nattk with\nDpad.3pnl",
+    codes = { "H" },
+    element = "fire",
+    family = "fire",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = { formula = "navi_level", base = 50, per_level = 20 },
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "library", "variable_damage" },
+    library = { number = 370, index = 0, sort = 0 },
+    slot_in_limit = 1,
     -- `sub_80F0778` (`off_80F078C`).
     action = define.action {
         id = "heatpres/action",

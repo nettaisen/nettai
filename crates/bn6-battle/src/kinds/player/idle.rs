@@ -266,10 +266,13 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
             Value::Nil if instant.is_some() => super::EngineAction::InstantChip.into(),
             v => panic!("weapon {:?} names {v:?}, not an action", b.content.defs.weapon(weapon).key),
         };
-        // A weapon that names an instant effect no chip has (TenguCross's
-        // wind) runs its own, and waits after it.
+        // A weapon's instant effect: a chip's (it runs, and the navi
+        // idles), or one no chip has (TenguCross's wind), after which the
+        // navi waits.
         if let Some(f) = instant {
-            ai_mut(b, r).attack.instant = Some(super::actions::instant::Effect::RunsThenWaits(f));
+            use super::actions::instant::Effect;
+            let waits = b.content.defs.weapon(weapon).instant_waits;
+            ai_mut(b, r).attack.instant = Some(if waits { Effect::RunsThenWaits(f) } else { Effect::Runs(f) });
         }
         return action;
     }
@@ -370,12 +373,12 @@ impl Support {
         }
     }
 
-    /// The chip record the controller's telop names (its +0x30).
-    fn telop_chip(self) -> u16 {
+    /// The role of the chip the controller's telop names (its +0x30).
+    fn telop_chip(self) -> crate::content::ChipRole {
         match self {
-            Support::Rush => 0x179,
-            Support::Beat => 0x17A,
-            Support::Tango => 0x17B,
+            Support::Rush => crate::content::ChipRole::Rush,
+            Support::Beat => crate::content::ChipRole::Beat,
+            Support::Tango => crate::content::ChipRole::Tango,
         }
     }
 }
@@ -390,8 +393,12 @@ impl Support {
 fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Option<ChipHandle>) {
     let h = b.objects.get(host);
     let (panel, side) = (h.panel, h.alliance);
-    // (The numeric API's chip, as the controller's state carries it.)
-    let chip = if support == Support::Rush { b.api_chip_field(chip, 0) } else { 0 };
+    // (The chip Rush eats, which the controller's state carries.)
+    let chip_value = |h: Option<ChipHandle>| {
+        h.map_or(bn6_content_api::Value::Nil, |h| bn6_content_api::Value::Def(bn6_content_api::Registry::Chip, h.0))
+    };
+    let eaten = chip_value(chip.filter(|_| support == Support::Rush));
+    let telop = chip_value(b.content.defs.roles.try_chip(support.telop_chip()));
     // The spawn's position is the caller's r1..r3: the host's panel row
     // and two zeros.
     let pos = crate::object::Vec3 { x: panel.y as i32, y: 0, z: 0 };
@@ -405,10 +412,9 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
         o.alliance = side;
         o.damage = 0;
         o.stamina = 0;
-        let telop = bn6_content_api::Value::Int(support.telop_chip() as i64);
         crate::behavior::set_state_field(b, c, "telop_chip", telop);
         crate::behavior::set_state_variant(b, c, "support", support.name());
-        crate::behavior::set_state_field(b, c, "eaten", bn6_content_api::Value::Int(chip as i64));
+        crate::behavior::set_state_field(b, c, "eaten", eaten);
     }
     b.start_dimming(side, true, controller, host);
 }

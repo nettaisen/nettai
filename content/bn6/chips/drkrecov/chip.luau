@@ -1,12 +1,26 @@
 --!strict
 -- DrkRecov: the recovery chips' heal (chips/recov/heal.luau) of 1000 HP.
---
--- Its record stays the pack's for now (a dark chip, with Recov10 as its
--- substitute): this is its action, which registration by number runs
--- (chips/09a-recov10, docs/design/content-model-v2.md §12).
 
 local heal = require("../recov/heal")
+local recov = require("../recov/chips")
 
-return {
+return define.chip {
+    id = "drkrecov",
+    name = "DrkRecov",
+    description = "\n\n",
+    codes = { "A", "B", "C", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 4,
+    mb = 80,
+    damage = 0,
+    hit_param = 49,
+    lockout = 0,
+    extra_flags = { 16, 32 },
+    library = { number = 0, index = 68, sort = 0 },
+    slot_in_limit = 1,
+    dark_substitute = recov[1],
+    hp_bug = 7,
     action = heal.action { id = "drkrecov/action", hp = 1000 },
 }

@@ -88,6 +88,7 @@
 "engine/instant-chip" = 0x1C
 "megaman/gregar-beast-buster/action" = 0x1D
 "megaman/falzar-beast-buster/action" = 0x1E
+"bgdththd/charge/action" = 0x1F
 "darkthnd/action" = 0x1F
 "thunder/action" = 0x1F
 "drkrecov/action" = 0x20
@@ -190,6 +191,7 @@
 "elcpuls1/action" = 0x42
 "elcpuls2/action" = 0x42
 "elcpuls3/action" = 0x42
+"puzzlarm/charge/action" = 0x42
 "aurahed1/action" = 0x43
 "aurahed2/action" = 0x43
 "aurahed3/action" = 0x43
@@ -202,6 +204,7 @@
 "assnswrd/action" = 0x49
 "elemswrd/action" = 0x49
 "mchnswrd/action" = 0x49
+"stun-strike/action" = 0x49
 "tomahawkcross/charge/action" = 0x4A
 "bodygrd/counter" = 0x4B
 "slashcross-beast/lunge/action" = 0x4C
