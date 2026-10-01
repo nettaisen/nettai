@@ -478,6 +478,9 @@ named_flags! {
         // Dimming chip subtype 20 (ElemTrap's trap).
         /// Hit even while the battle is dimmed.
         HitWhileDimmed = "hit_while_dimmed",
+        // VDoll's doll.
+        /// A field object being carried to be thrown (0x04000000).
+        Carried = "carried",
     }
 }
 
@@ -671,6 +674,9 @@ named_flags! {
         /// `sub_801B610`: bodies don't break it; obstacles and breaking
         /// hits drop the HP to 0.
         SparesBodies = "spares_bodies",
+        /// `sub_801B878` while its object's ExtraVars+4 is set (LilBoiler
+        /// erupting): such a touch is as any hit.
+        Ignores = "ignores",
     }
 }
 
@@ -1141,6 +1147,9 @@ pub trait CoreApi {
     /// step the sprite, paused or not, but not while dimmed (and whatever
     /// `no_sprite_update` says).
     fn update_sprite_while_paused(&mut self, o: ObjectRef);
+    /// `sub_801BC24`: load a newly requested animation (without stepping
+    /// it), else step the sprite; `update_sprite`'s gating but for holds.
+    fn load_or_step_sprite(&mut self, o: ObjectRef);
     /// The object's sprite attach point `n`, in pixels, facing its way.
     fn attach_point(&self, o: ObjectRef, n: u8) -> (i32, i32);
     /// `object_setCoordinatesFromPanels`: x and y from the panel.
@@ -1230,6 +1239,8 @@ pub trait CoreApi {
     fn action_schema(&self, action: Value) -> ApiResult<StateId>;
     fn status(&self, o: ObjectRef, flag: StatusFlag) -> ApiResult<bool>;
     fn set_status(&mut self, o: ObjectRef, flag: StatusFlag, on: bool) -> ApiResult<()>;
+    /// Clear the whole status word (CollisionData ObjectFlags1 = 0).
+    fn clear_statuses(&mut self, o: ObjectRef) -> ApiResult<()>;
     fn status_timer(&self, o: ObjectRef, t: StatusTimer) -> ApiResult<u16>;
     fn set_status_timer(&mut self, o: ObjectRef, t: StatusTimer, v: u16) -> ApiResult<()>;
     /// `object_setDefaultCounterTime`: open the attack's counter window.

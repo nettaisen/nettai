@@ -105,6 +105,8 @@ export type StatusFlag =
     | "bubbled"
     -- Hit even while the battle is dimmed (ElemTrap's trap).
     | "hit_while_dimmed"
+    -- A field object being carried to be thrown.
+    | "carried"
 -- Status timers of an object with collision data.
 export type StatusTimer =
     "paralyze" | "confuse" | "blind" | "immobilize" | "flash" | "submerged" | "invulnerable" | "freeze" | "bubble"
@@ -441,6 +443,9 @@ declare class Object
     -- `object_updateSpritePaused`: the same, paused or not, but not while
     -- dimmed (and whatever `no_sprite_update` says).
     function update_sprite_while_paused(self): ()
+    -- `sub_801BC24`: load a requested animation (without stepping it), else
+    -- step the sprite; `update_sprite`'s gating but for holds.
+    function load_or_step_sprite(self): ()
     -- The sprite's attach point n, in pixels facing the object's way.
     function attach_point(self, n: number): (number, number)
 
@@ -469,6 +474,8 @@ declare class Object
 
     function status(self, flag: StatusFlag): boolean
     function set_status(self, flag: StatusFlag, on: boolean): ()
+    -- Every status flag off (the collision's whole status word cleared).
+    function clear_statuses(self): ()
     function status_timer(self, timer: StatusTimer): number
     function set_status_timer(self, timer: StatusTimer, ticks: number): ()
 
@@ -950,7 +957,7 @@ export type ActorListEntrySpec = {
     variant: number,
 }
 
-export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies"
+export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies" | "ignores"
 -- Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
 export type ObstacleHold = "after_appearing" | "always"
 export type ObstaclePush = "forgets_damage" | "keeps_damage" | "any_hit" | "ignored"
@@ -985,7 +992,9 @@ declare obstacle: {
     -- `sub_801B394` ("breaks", the default: a body's, another obstacle's
     -- or a breaking hit's touch drops the HP to 0), `sub_801B4D4`
     -- ("destroys": destroyed, the HP as it is) or `sub_801B610`
-    -- ("spares_bodies": bodies don't break it): damage, removal and status;
+    -- ("spares_bodies": bodies don't break it) or ("ignores": `sub_801B878`
+    -- while LilBoiler erupts, such a touch is as any hit): damage, removal
+    -- and status;
     -- the action the kind's table runs now, nil when a status routine ran.
     -- While dimmed it holds the obstacle still once it has appeared
     -- ("after_appearing", the default) or always ("always", `sub_801B750`).

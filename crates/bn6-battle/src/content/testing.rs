@@ -393,6 +393,8 @@ fn assets() -> bn6_content_api::AssetNames {
         ("shell-burst", sprite(0x14, 0x11)),
         ("beast-shot", sprite(0x0C, 0x21)),
         ("bow", sprite(0x0C, 0x2A)),
+        ("lil-boiler", sprite(0x04, 0x0D)),
+        ("voodoo-doll", sprite(0x0C, 0x34)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -418,6 +420,10 @@ fn assets() -> bn6_content_api::AssetNames {
         ("hub", 0x119),
         ("bonus", 0x157),
         ("twang", 0x18A),
+        ("boiler-erupt", 0x184),
+        ("boiler-steam", 0x185),
+        ("err-select-91", 0x91),
+        ("hit-bomb-0", 0x6F),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -523,6 +529,13 @@ pub fn scripts() -> Scripts {
                 ("chips/grasseed/chip", "chips/grasseed/chip"),
                 ("chips/iceseed/chip", "chips/iceseed/chip"),
                 ("chips/poisseed/chip", "chips/poisseed/chip"),
+                ("chips/lilbolr/chips", "chips/lilbolr/chips"),
+                ("chips/lilbolr/boiler", "chips/lilbolr/boiler"),
+                ("chips/lilbolr/layer", "chips/lilbolr/layer"),
+                ("chips/vdoll/chip", "chips/vdoll/chip"),
+                ("chips/vdoll/doll", "chips/vdoll/doll"),
+                ("chips/vdoll/curse", "chips/vdoll/curse"),
+                ("chips/vdoll/sparkles", "chips/vdoll/sparkles"),
                 ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
                 ("chips/00e-bees/chip", "chips/025-rskyhny1/chip"),
                 ("objects/honey-bee/honey_bee", "objects/honey-bee/honey_bee"),
