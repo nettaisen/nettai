@@ -1013,13 +1013,14 @@ declare navi_chip: {
 }
 
 -- What an actor list's entry is placed with (`off_80073A0[type]`): an
--- object kind's `actor_list_entry(spec)`.
+-- object kind's `place(spec)`.
 export type ActorListEntrySpec = {
     panel_x: number,
     panel_y: number,
     -- The entry's side (field objects take their panel's instead).
     side: number,
-    -- The entry's argument (a rock's variant).
+    -- The entry's argument (a rock's variant: objects/rock's
+    -- `by_number`).
     variant: number,
 }
 
@@ -1096,6 +1097,13 @@ declare obstacle: {
     fly_to_absorber: (me: Object, look: AbsorbedLook) -> (),
     -- `sub_802EF5C`: the per-side target tracking some chips keep.
     release_tracking: (me: Object) -> (),
+    -- The field's two stage objects (the registry's stage slots, which the
+    -- actor lists' entry types 3 and 0xA fill; `sub_8007450`): whether one
+    -- is free; `me` takes the first free one; `me` leaves the one it holds
+    -- (the original clears the slot the object remembers).
+    stage_slot_free: () -> boolean,
+    enter_stage: (me: Object) -> (),
+    leave_stage: (me: Object) -> (),
     -- A chip's requests: `sub_800F884` removes it, `sub_800F898` makes it
     -- blink out, `sub_800F8B0` has the absorber's side's navi absorb it.
     remove: (obj: Object) -> (),
@@ -1443,8 +1451,8 @@ export type KindSpec = {
     state: StateSchema?,
     update: (me: Object) -> (),
     -- What places it when a stage's actor list names it (the role
-    -- `kinds.rock`, say).
-    place: ((spec: ActorListEntrySpec) -> ())?,
+    -- `kinds.rock`, say): it returns what it placed, if anything.
+    place: ((spec: ActorListEntrySpec) -> Object?)?,
 }
 export type Kind = KindSpec
 
@@ -1560,6 +1568,8 @@ export type RolesSpec = {
     }?,
     kinds: {
         rock: (Kind | LegacyKind)?,
+        boulder: (Kind | LegacyKind)?,
+        statue: (Kind | LegacyKind)?,
         absorbed_obstacle: (Kind | LegacyKind)?,
         falling_rock: (Kind | LegacyKind)?,
         support: (Kind | LegacyKind)?,

@@ -1,100 +1,135 @@
 --!strict
--- Rocks (attack object #0x59, `sub_80CF954`): field obstacles with HP that
--- block their panel, break into debris when destroyed, and leave after
--- 6000 ticks. Param1 is the variant (`data.objects.rocks`: 0 to 2 rocks, 3
--- the aqua ice block an obstacle encased in ice becomes), Param2 the class
--- of field-object slot it takes (0: two a side, 1: one), Param3 how it
--- comes onto the field (`ENTRANCES`). RockCube and IceCube place one
--- (objects/rock-cube); some stages place them when the round starts (the
--- actor lists' entry type 8). See docs/engine/field-objects.md.
+-- Rocks (the original's attack object #0x59, `sub_80CF954`): field
+-- obstacles with HP that block their panel, break into debris when
+-- destroyed, and leave after 6000 ticks. A rock is spawned with its variant
+-- (the original's first parameter, a row of `byte_80CF934`: the rock cubes
+-- and the ice block), the class of field-object slot it takes (the second:
+-- 0, two a side; 1, one) and how it comes onto the field (the third, its
+-- entrance). RockCube and IceCube place one (chips/rockcube); an obstacle
+-- encased in ice becomes an ice block; some stages place them when the
+-- round starts (the actor lists' entry type 8: the kind's `place`, the role
+-- `kinds.rock`). See docs/engine/field-objects.md.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
+local absorbed_obstacle = require("../absorbed-obstacle/absorbed_obstacle")
+local collision = require("../../rules/collision")
 local debris = require("./debris")
+local effects = require("../../lib/effects")
+local element = require("../../lib/element")
+local regions = require("../../lib/regions")
+local sparks = require("../../lib/sparks")
 
 local rock = {}
 
-local SPRITE = "10-00"
+export type State = {
+    variant: RockVariant,
+    entrance: RockEntrance,
+}
 
--- How it comes onto the field (Param3).
-local RISE, INSTANT, FALL, PLACED = 0, 1, 2, 3
+-- The cubes' sheet (animation 0 a cube rising; the rows' are the cubes
+-- standing).
+local SPRITE = asset.sprite("immobilized")
+-- How a rock looks absorbed (the original's obstacle kind 4: its own
+-- sprite, in the animation it stood in).
+local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
 
 -- Rocks live this many ticks.
 local LIFETIME = 6000
 -- The damage a stage's rocks do when thrown.
 local STAGE_ROCK_DAMAGE = 200
--- Its kind among absorbed obstacles (`data.objects.absorbed_sprites`).
-local ABSORBED_KIND = 4
 -- Where it can stand (`object_checkPanelParameters`): a solid panel with
 -- nothing on it (bodies, neutral objects, blockers, reservations).
 local SOLID, OCCUPIED = 0x10, 0x0F880080
--- Its collision: an obstacle (types 0xE and 0xF, hit modifier 3), hit
--- spark 0xA.
-local SELF_TYPE, TARGET_TYPE, HIT_MOD, HIT_SPARK = 0xE, 0xF, 3, 0xA
+-- What it is and reaches: a neutral body that everything reaches, while
+-- dimmed too (rows 0x0E and 0x0F); hit modifier 3; the breaking spark.
+local IS, HITS, HIT_MOD = collision.neutral_body, collision.everything, 3
 -- Falling from 160 pixels up, 0.25 pixels a tick faster each tick.
 local FALL_HEIGHT, GRAVITY = 0xA0_0000, 0x4000
-local LAND_SOUND = 0xC0
--- What's left when a chip removes it without blinking (effect #0 look
--- 0x14, 12 pixels up), and the dust when it breaks (look 2, 16 up).
-local REMOVED_EFFECT, BREAK_EFFECT = 0x14, 2
+local LAND_SOUND = asset.sound("land")
+-- The animation it rises in.
+local RISING = 0
+-- A frame's flag: its animation's last.
+local LAST_FRAME = 0x80
 
-local ELEMENTS: { [string]: number } = { null = 0, fire = 1, aqua = 2, elec = 3, wood = 4 }
+-- Its actions (`off_80CFA48`).
+local APPEAR, DESTROYED, STANDING = 0, 2, 8
 
-local function kind(me: Object): RockKind
-    local k = data.objects.rocks[me:param(1)]
-    if not k then
-        error(string.format("rock variant %d is not in the pack", me:param(1)))
-    end
-    return k
+-- A rock's variant.
+local function variant(v: RockVariant): RockVariant
+    return define.record("rock-variant", v)
 end
 
--- `sub_80CFBC4`: a rock for `side` on (x, y) with the spawn parameters
--- `params` (variant, class, entrance) and the damage word it hits with
--- when thrown, registered in the side's field-object slots (evicting the
--- oldest if they are full). Placed at the start, it also runs while the
--- battle is paused. (Until its init places it, its position is the
--- spawner's registers: Y, the side, and what nothing reads.)
-function rock.spawn(x: number, y: number, side: number, params: { number }, damage: number): Object?
-    local o = battle.spawn_kind("rock", Vec3.new(y, side, 0), params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = x, y
-    o.alliance = side
-    o.damage = damage
-    o.stamina = bit32.rshift(damage, 16)
-    o.run_while_dimmed = true
-    if o:param(3) == PLACED then
-        o.run_while_paused = true
-    end
-    obstacle.register(o, side, o:param(2))
-    return o
-end
+-- The rows of `byte_80CF934` (animation, HP in twos, debris palette, break
+-- sound, NameID; a row past the second is aqua, and a row without HP has
+-- 1): their NameIDs are the field objects' looks, numbers until identities
+-- come.
+local ROWS: { [number]: RockVariant } = {
+    -- A rock cube anything breaks (no chip or stage places it).
+    [0] = variant {
+        anim = 1,
+        hp = 1,
+        element = "null",
+        debris_palette = 0,
+        break_sound = asset.sound("panel-crack"),
+        name = 0xD0,
+    },
+    -- RockCube's, and the stages'.
+    [1] = variant {
+        anim = 1,
+        hp = 200,
+        element = "null",
+        debris_palette = 0,
+        break_sound = asset.sound("panel-crack"),
+        name = 0xD0,
+    },
+    -- A hard one (no chip or stage places it).
+    [2] = variant {
+        anim = 1,
+        hp = 500,
+        element = "null",
+        debris_palette = 0,
+        break_sound = asset.sound("panel-crack"),
+        name = 0xD0,
+    },
+    -- The ice block: IceCube's, the stages', and what an obstacle encased
+    -- in ice becomes.
+    [3] = variant {
+        anim = 2,
+        hp = 200,
+        element = "aqua",
+        debris_palette = 1,
+        break_sound = asset.sound("falling-rock"),
+        name = 0xD1,
+    },
+}
+rock.variants = { brittle = ROWS[0], cube = ROWS[1], hard = ROWS[2], ice = ROWS[3] }
 
--- `sub_80074FA`: an actor list's rock, on its panel's side.
-function rock.actor_list_entry(spec: ActorListEntrySpec): Object?
-    local x, y = spec.panel_x, spec.panel_y
-    local panel = field.panel(x, y)
-    if not panel then
-        error(string.format("an actor list places a rock off the field at (%d, %d)", x, y))
+-- The variant of row `n`, for what still names it so (an actor list's
+-- entry, until stages name their rocks). Past the table the game reads on
+-- into the routine after it: an error.
+function rock.by_number(n: number): RockVariant
+    local r = ROWS[n]
+    if not r then
+        error(string.format("rock variant %d reads past byte_80CF934", n))
     end
-    return rock.spawn(x, y, panel.alliance, { spec.variant, 0, PLACED, 0 }, STAGE_ROCK_DAMAGE)
+    return r
 end
 
 -- Stand on the panel: the standing animation, collision on the panel, and
 -- the normal pause behavior.
 local function stand(me: Object)
-    me.anim = kind(me).anim
-    me.collision.region = 1
+    me.anim = (me.state :: State).variant.anim
+    me.collision:set_region(regions.single)
     me.run_while_paused = false
-    me:set_action(8)
+    me:set_action(STANDING)
 end
 
 -- `sub_80CFAC0`: fall from 160 pixels up; break if the panel below is gone.
 local function fall(me: Object)
     if me.phase_init == 0 then
-        me.anim = kind(me).anim
+        me.anim = (me.state :: State).variant.anim
         me.vel = Vec3.new(me.vel.x, me.vel.y, 0)
         me.pos = Vec3.new(me.pos.x, me.pos.y, FALL_HEIGHT)
         me.phase_init = 4
@@ -105,13 +140,13 @@ local function fall(me: Object)
     me.pos = Vec3.new(me.pos.x, me.pos.y, z)
     if z <= 0 then
         if not field.solid(me.panel_x, me.panel_y) then
-            me:set_action(2)
+            me:set_action(DESTROYED)
         else
             battle.shake_camera(1, 0x14)
             me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
-            me.collision.region = 1
+            me.collision:set_region(regions.single)
             battle.play_sound(LAND_SOUND)
-            me:set_action(8)
+            me:set_action(STANDING)
         end
     end
     field.highlight(me.panel_x, me.panel_y)
@@ -120,16 +155,16 @@ end
 -- `sub_80CFA6C`: take the panel once the entrance is over; if it isn't
 -- free solid ground, break at once.
 local function appear(me: Object)
-    local entrance = me:param(3)
-    if entrance == FALL then
+    local entrance = (me.state :: State).entrance
+    if entrance == "fall" then
         fall(me)
         return
     end
-    if entrance == RISE and not bit32.btest(me.sprite.frame_flags, 0x80) then
+    if entrance == "rise" and not bit32.btest(me.sprite.frame_flags, LAST_FRAME) then
         return
     end
     if not field.check(me.panel_x, me.panel_y, SOLID, OCCUPIED) then
-        me:set_action(2)
+        me:set_action(DESTROYED)
         return
     end
     stand(me)
@@ -138,49 +173,49 @@ end
 -- `sub_80CFB2C`: leave the field, breaking into debris unless a chip
 -- removed it.
 local function destroyed(me: Object)
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me:unreserve_panel(me.future_panel_x, me.future_panel_y)
     obstacle.release_tracking(me)
     obstacle.unregister(me)
     local how = obstacle.removal(me)
     if how == "absorbed" then
-        obstacle.fly_to_absorber(me, ABSORBED_KIND)
+        obstacle.fly_to_absorber(me, ABSORBED)
     elseif how ~= "broken" then
         local blink = obstacle.blink_out(me)
         if blink == "blinking" then
             return
         elseif blink == "no" then
             local p = me.pos
-            battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), REMOVED_EFFECT)
+            battle.effect(Vec3.new(p.x, p.y, p.z + 0xC_0000), effects.puff)
         end
     else
-        local k = kind(me)
+        local v = (me.state :: State).variant
         local p = me.pos
         for _ = 1, 2 do
-            debris.spawn(battle.jitter(0xF, p), k.debris_palette)
+            debris.spawn(battle.jitter(0xF, p), v.debris_palette)
         end
-        battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), BREAK_EFFECT)
-        battle.play_sound(k.break_sound)
+        battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), effects.dust)
+        battle.play_sound(v.break_sound)
     end
     me.visible = false
     me:set_lifecycle("destroy")
 end
 
 -- `sub_80CFB28`.
-local function idle(_me: Object) end
+local function standing(_me: Object) end
 
 -- The rock's action table (`off_80CFA48`): its own actions and the
 -- framework's shared ones.
 local ACTIONS: { [number]: (Object) -> () } = {
-    [0] = appear,
+    [APPEAR] = appear,
     [1] = obstacle.return_to_idle,
-    [2] = destroyed,
+    [DESTROYED] = destroyed,
     [3] = obstacle.flinch,
     [4] = obstacle.paralyzed,
     [5] = obstacle.slide,
     [6] = obstacle.frozen,
     [7] = obstacle.bubbled,
-    [8] = idle,
+    [STANDING] = standing,
 }
 
 -- `sub_80CFA18`.
@@ -204,12 +239,13 @@ end
 -- `sub_80CF974`: on its panel with the variant's HP, element and name,
 -- rising (or standing at once when placed at the start).
 local function init(me: Object)
-    local k = kind(me)
+    local s = me.state :: State
+    local v = s.variant
     me.visible = true
     local sprite = me.sprite
     sprite:load(SPRITE)
     me.anim_loaded = 0xFF
-    local anim = if me:param(3) == PLACED then k.anim else 0
+    local anim = if s.entrance == "placed" then v.anim else RISING
     me.anim = anim
     sprite:set_animation(anim)
     sprite:step()
@@ -217,32 +253,78 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
-    me.element = ELEMENTS[k.element]
-    me.hp, me.max_hp = k.hp, k.hp
-    me.name_id = k.name_id
+    me.element = element.byte(v.element)
+    me.hp, me.max_hp = v.hp, v.hp
+    me.name_id = v.name
     me.timer = LIFETIME
     if not me:create_collision() then
         me:free()
         return
     end
-    me:setup_collision(SELF_TYPE, TARGET_TYPE, HIT_MOD)
-    me.collision.hit_effect = HIT_SPARK
-    me.collision.region = 0
+    me:setup_collision(IS, HITS, HIT_MOD)
+    me.collision:set_hit_effect(sparks.breaking)
+    me.collision:set_region(nil)
     me.collision:present()
     me.lifecycle = "update"
     tick(me)
 end
 
--- `sub_80CF954`.
-function rock.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
+-- The kind (below; its `place` spawns one).
+local KIND: Kind
+
+-- `sub_80CFBC4`: a rock for `side` on (x, y): of `spec.variant`, in
+-- field-object class `spec.class` of the side's slots (0 by default;
+-- evicting the oldest if they are full), coming as `spec.entrance` ("rise"
+-- by default), with the damage word it hits with when thrown. Placed at the
+-- start, it also runs while the battle is paused. (Until its init places
+-- it, its position is the spawner's registers: Y, the side, and what
+-- nothing reads.)
+function rock.spawn(x: number, y: number, side: number, spec: RockSpec, damage: number): Object?
+    local o = battle.spawn(KIND, Vec3.new(y, side, 0))
+    if not o then
+        return nil
     end
+    local entrance: RockEntrance = spec.entrance or "rise"
+    local s = o.state :: State
+    s.variant, s.entrance = spec.variant, entrance
+    o.panel_x, o.panel_y = x, y
+    o.alliance = side
+    o:set_damage_word(damage)
+    o.run_while_dimmed = true
+    if entrance == "placed" then
+        o.run_while_paused = true
+    end
+    obstacle.register(o, side, spec.class or 0)
+    return o
 end
+
+KIND = define.kind {
+    id = "rock",
+    pool = "attack",
+    state = { variant = "record:rock-variant", entrance = { "rise", "instant", "fall", "placed" } },
+    -- `sub_80CF954`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+    end,
+    -- `sub_80074FA`: an actor list's rock (entry type 8), of the entry's
+    -- variant, on its panel's side, standing from the start.
+    place = function(spec: ActorListEntrySpec): Object?
+        local x, y = spec.panel_x, spec.panel_y
+        local panel = field.panel(x, y)
+        if not panel then
+            error(string.format("an actor list places a rock off the field at (%d, %d)", x, y))
+        end
+        local placed: RockSpec = { variant = rock.by_number(spec.variant), entrance = "placed" }
+        return rock.spawn(x, y, panel.alliance, placed, STAGE_ROCK_DAMAGE)
+    end,
+}
+rock.kind = KIND
 
 return rock

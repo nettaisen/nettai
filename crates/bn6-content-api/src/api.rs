@@ -1473,6 +1473,14 @@ pub trait CoreApi {
     fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, look: u16) -> ApiResult<()>;
     /// `sub_802EF5C`: the per-side target tracking some chips keep.
     fn obstacle_release_tracking(&mut self, o: ObjectRef);
+    /// Whether one of the field's two stage-object slots is free
+    /// (`sub_8007450`'s test).
+    fn obstacle_stage_slot_free(&self) -> bool;
+    /// `o` takes the first free stage-object slot (`sub_8007450`'s store);
+    /// an error if both are taken.
+    fn obstacle_enter_stage(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `o` leaves the stage-object slot it holds.
+    fn obstacle_leave_stage(&mut self, o: ObjectRef);
     /// A chip's request of the obstacle `o` (`by`: the requester, whose
     /// side absorbs).
     fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef);

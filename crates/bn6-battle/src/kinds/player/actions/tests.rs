@@ -608,12 +608,21 @@ fn a_buster_alias_fires_the_buster() {
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
 }
 
+/// An absorbed obstacle's look the test content has (a record of
+/// objects/absorbed-obstacle's `look`: the rock's is the first).
+fn absorbed_look(b: &Battle) -> bn6_content_api::RecordHandle {
+    let records = &b.content.defs.records;
+    let i = records.iter().position(|r| r.record_type == "absorbed-look").expect("an absorbed look");
+    bn6_content_api::RecordHandle(i as u16)
+}
+
 #[test]
 fn the_absorbed_obstacle_flies_at_the_enemy() {
     // Weapon routine 0x2B throws the last obstacle absorbed.
     let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = testing::weapon(0x2B)));
     let p = [p0, p1];
-    ai_mut(&mut b, p0).absorbed.push(crate::actor::AbsorbedObstacle { kind: 1, anim: 2 });
+    let look = absorbed_look(&b);
+    ai_mut(&mut b, p0).absorbed.push(crate::actor::AbsorbedObstacle { look, anim: 2 });
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
@@ -661,7 +670,8 @@ fn a_throw_waits_the_last_shots_recovery() {
     let mut t = 0;
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!(act(&b, p0), 8);
-    ai_mut(&mut b, p0).absorbed.push(crate::actor::AbsorbedObstacle { kind: 0, anim: 0 });
+    let look = absorbed_look(&b);
+    ai_mut(&mut b, p0).absorbed.push(crate::actor::AbsorbedObstacle { look, anim: 0 });
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
@@ -1296,11 +1306,12 @@ fn dustcross_beast_throws_its_newest_obstacle_or_fires_the_beast_buster() {
     let (mut b, p0, _) = fight();
     assert_eq!(start_weapon(&mut b, p0, 0x2C), 0x1E);
     let actor = b.objects.get(p0).actor.unwrap();
-    b.actors.get_mut(actor).absorbed.push(crate::actor::AbsorbedObstacle { kind: 2, anim: 1 });
+    let look = absorbed_look(&b);
+    b.actors.get_mut(actor).absorbed.push(crate::actor::AbsorbedObstacle { look, anim: 1 });
     start_weapon(&mut b, p0, 0x2C);
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
     let a = &ai_mut(&mut b, p0).attack;
-    assert_eq!((a.damage, a.variant, a.marker), (200, 2, 0x12));
+    assert_eq!((a.damage, a.variant, a.thrown_look, a.thrown_anim), (200, 2, Some(look), 1));
     assert!(b.actors.get(actor).absorbed.is_empty());
 }
 

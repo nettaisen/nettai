@@ -48,6 +48,7 @@ fn battles_run_the_content_scripts() {
             "bomb",
             "bomb-slash",
             "boomerang",
+            "boulder",
             "bugbomb/bomb",
             "charge-car",
             "charge-man",
@@ -75,6 +76,7 @@ fn battles_run_the_content_scripts() {
             "eraseman/mark",
             "eraseman/navi",
             "falling-rock",
+            "falling-rock/chip",
             "firehit/fist",
             "flame-hook",
             "flame-hook-fire",
@@ -108,9 +110,8 @@ fn battles_run_the_content_scripts() {
             "reflector-shield",
             "rising-bubble",
             "rock",
-            "rock-chip",
-            "rock-cube",
-            "rock-debris",
+            "rock/debris",
+            "rockcube/cube",
             "sandwrm/hole",
             "sandwrm/spray",
             "sandwrm/worm",
@@ -572,7 +573,12 @@ fn spawning_instant_chips_play_in_a_duel_and_roll_back() {
 /// (and GunDelSols in side 1's: two sides with dimming chips would cut in
 /// on each other).
 fn dimming_setup() -> crate::setup::RoundSetup {
-    let mut s = scenario::setup_with(&[testing::CUBE, testing::VEIL, testing::TRAP]);
+    let chips = [
+        testing::defined_chip(testing::ROCK_CUBE),
+        testing::chip_handle(testing::VEIL),
+        testing::chip_handle(testing::TRAP),
+    ];
+    let mut s = scenario::setup_with_handles(&chips);
     s.players[1] = scenario::setup().players[1];
     s
 }
@@ -609,7 +615,7 @@ fn the_scripted_dimming_chips_and_rocks_play() {
     let (seen, _) = dimming_duel(2400);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The cube's controller places rocks, which break into debris.
-    assert!(ticks("rock-cube") > 0, "the cube's controller: {seen:?}");
+    assert!(ticks("rockcube/cube") > 0, "the cube's controller: {seen:?}");
     assert!(ticks("rock") > 0, "rocks: {seen:?}");
     // The veil's controller makes its user invisible.
     assert!(ticks("invisible") > 0, "the veil's controller: {seen:?}");
@@ -677,7 +683,7 @@ fn actor_lists_place_scripted_rocks_outside_the_navi_bookkeeping() {
     let rocks: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
     assert_eq!(rocks.len(), 2);
     let o = b.objects.get(rocks[0]);
-    assert_eq!((b.slot_index(rocks[0]), o.params), (0x59, [1, 0, 3, 0]));
+    assert_eq!(b.kind_key(rocks[0]), "rock");
     assert_eq!((o.damage, o.stamina), (200, 0), "the stage's rocks hit with 200 when thrown");
     // Registered on their panels' sides: (3,3) is side 0's, (4,1) side 1's.
     assert_eq!(b.field.objects.slots[0], Some(rocks[0]));
@@ -689,7 +695,7 @@ fn actor_lists_place_scripted_rocks_outside_the_navi_bookkeeping() {
 #[test]
 fn breaking_a_scripted_rock_throws_debris() {
     use crate::object::{Pool, state};
-    const ROCK_KINDS: [&str; 3] = ["rock", "rock-debris", "engine/effect"];
+    const ROCK_KINDS: [&str; 3] = ["rock", "rock/debris", "engine/effect"];
     let mut b = rock_battle();
     b.spawn_actors();
     let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
@@ -698,7 +704,7 @@ fn breaking_a_scripted_rock_throws_debris() {
     b.round.flags |= crate::battle::battle_flags::FIGHTING;
     run_only(&mut b, &ROCK_KINDS);
     assert_eq!(b.objects.get(r).action, 8, "placed rocks stand at once");
-    assert_eq!(b.objects.get(r).hp, b.content.objects.rock(1).hp);
+    assert_eq!(b.objects.get(r).hp, 200, "the stages' rock cubes have RockCube's HP");
     let before = b.rng.state;
     b.objects.get_mut(r).hp = 0;
     run_only(&mut b, &ROCK_KINDS);
@@ -710,7 +716,7 @@ fn breaking_a_scripted_rock_throws_debris() {
     let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.kind_key(o)).collect();
     assert_eq!(
         &order[..4],
-        ["rock", "engine/effect", "rock-debris", "rock-debris"],
+        ["rock", "engine/effect", "rock/debris", "rock/debris"],
         "the rock, then what it spawned in reverse order"
     );
     assert_eq!(b.objects.get(r).state, state::DESTROY);

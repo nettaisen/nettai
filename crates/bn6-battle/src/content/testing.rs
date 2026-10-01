@@ -64,9 +64,6 @@ pub const BLADE: ChipId = 0x109;
 pub const STEP_BLADE: ChipId = 0x10a;
 /// A strike at stunned or grounded opponents (action 0x49, subtype 2).
 pub const STUN_BLADE: ChipId = 0x10b;
-/// A dimming chip (action 0x15, subtype 6) that places a rock (variant 1)
-/// in front of its user.
-pub const CUBE: ChipId = 0x08;
 /// A trap chip (action 0x15, subtype 20, Param1 3: no object).
 pub const TRAP: ChipId = 0x09;
 /// Navi-changing dimming chips (action 0x15, subtype 38): the buster and
@@ -112,14 +109,18 @@ pub const SUN_MOON: ChipId = 0x11a;
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
 /// ...side 0's first...
 pub const TWO_NAVIS_SIDE0_FIRST: ActorListId = ActorListId(1);
-/// ...and two navis with two rocks, one on each side.
+/// ...two navis with two rocks, one on each side...
 pub const NAVIS_AND_ROCKS: ActorListId = ActorListId(2);
+/// ...and two navis with three boulders (the field has two stage slots).
+pub const NAVIS_AND_BOULDERS: ActorListId = ActorListId(3);
 
 /// Battle settings: a link battle on the plain field with `TWO_NAVIS`,
-/// the same with `TWO_NAVIS_SIDE0_FIRST`, and with `NAVIS_AND_ROCKS`.
+/// the same with `TWO_NAVIS_SIDE0_FIRST`, with `NAVIS_AND_ROCKS` and with
+/// `NAVIS_AND_BOULDERS`.
 pub const LINK_BATTLE: u8 = 0;
 pub const LINK_BATTLE_SIDE0_FIRST: u8 = 1;
 pub const ROCK_BATTLE: u8 = 2;
+pub const BOULDER_BATTLE: u8 = 3;
 
 /// The navi's sprite (base form).
 pub const NAVI_SPRITE: SpriteId = SpriteId { category: 0, index: 0 };
@@ -243,6 +244,9 @@ pub const LANCE: &str = "lance";
 pub const SAND_WORM: &str = "sandwrm1";
 pub const JUSTICE_ONE: &str = "justcone";
 pub const GOLEM_HIT: &str = "golmhit1";
+/// BN6's RockCube (chips/rockcube): a dimming chip content defines, which
+/// places a rock in front of its user.
+pub const ROCK_CUBE: &str = "rockcube";
 pub const TICK_SHOT: &str = "test/tick-shot";
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
@@ -412,6 +416,11 @@ fn assets() -> bn6_content_api::AssetNames {
         ("justice-one", sprite(0x0C, 0x62)),
         ("golem", sprite(0x10, 0x30)),
         ("dust-2", sprite(0x10, 0x2C)),
+        ("immobilized", sprite(0x10, 0x00)),
+        ("rock-debris", sprite(0x10, 0x01)),
+        ("boulder", sprite(0x10, 0x08)),
+        ("falling-rock", sprite(0x10, 0x05)),
+        ("countdown-bomb", sprite(0x0C, 0x23)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -452,6 +461,9 @@ fn assets() -> bn6_content_api::AssetNames {
         ("justice-one", 0xC4),
         ("golem", 0x10D),
         ("golem-2", 0x188),
+        ("place", 0x112),
+        ("panel-crack", 0x97),
+        ("falling-rock", 0xD9),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -488,7 +500,7 @@ pub fn scripts() -> Scripts {
                 ("chips/panlgrab/chip", "chips/panlgrab/chip"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
-                ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
+                ("objects/falling-rock/chip", "objects/falling-rock/chip"),
                 ("objects/projectile/projectile", "objects/projectile/projectile"),
                 ("objects/projectile/variants", "objects/projectile/variants"),
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
@@ -618,9 +630,13 @@ pub fn scripts() -> Scripts {
                 ("chips/010-blade/chip", "chips/047-sword/chip"),
                 ("chips/012-stunblade/chip", "chips/056-mchnswrd/chip"),
                 ("objects/invisible/invisible", "objects/invisible/invisible"),
+                // The field objects (content model v2): the rock with its
+                // debris, RockCube and IceCube, and the stages' boulder.
                 ("objects/rock/rock", "objects/rock/rock"),
-                ("objects/rock-cube/rock_cube", "objects/rock-cube/rock_cube"),
-                ("objects/rock-debris/rock_debris", "objects/rock-debris/rock_debris"),
+                ("objects/rock/debris", "objects/rock/debris"),
+                ("chips/rockcube/cube", "chips/rockcube/cube"),
+                ("chips/rockcube/chips", "chips/rockcube/chips"),
+                ("objects/boulder/boulder", "objects/boulder/boulder"),
                 ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
                 ("objects/navi-boost/navi_boost", "objects/navi-boost/navi_boost"),
                 ("objects/gauge-speed/gauge_speed", "objects/gauge-speed/gauge_speed"),
@@ -747,10 +763,8 @@ fn kinds() -> Vec<ObjectKind> {
         kind("hit-flash", Pool::Effect, 0x73, "objects/hit-flash/hit_flash"),
         kind("charge-wave", Pool::Attack, 0xC4, "objects/charge-wave/charge_wave"),
         kind("junk-shot", Pool::Attack, 0xC5, "objects/junk-shot/junk_shot"),
-        kind("absorbed-obstacle", Pool::Effect, 0x87, "objects/absorbed-obstacle/absorbed_obstacle"),
         kind("flame-hook", Pool::Effect, 0x8C, "objects/flame-hook/flame_hook"),
         kind("flame-hook-fire", Pool::Attack, 0xCA, "objects/flame-hook-fire/flame_hook_fire"),
-        kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
         kind("gust", Pool::Attack, 0x49, "objects/gust/gust"),
         kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
@@ -760,11 +774,7 @@ fn kinds() -> Vec<ObjectKind> {
         kind("dragon-head", Pool::Attack, 0xC9, "objects/dragon-head/dragon_head"),
         kind("dragon-body", Pool::Attack, 0xC8, "objects/dragon-body/dragon_body"),
         kind("invisible", Pool::Effect, 0x5D, "objects/invisible/invisible"),
-        ObjectKind { actor_list_entry: Some(8), ..kind("rock", Pool::Attack, 0x59, "objects/rock/rock") },
-        kind("rock-cube", Pool::Effect, 0x37, "objects/rock-cube/rock_cube"),
-        kind("rock-debris", Pool::Effect, 0x38, "objects/rock-debris/rock_debris"),
         kind("trap-chip", Pool::Effect, 0x2A, "objects/trap-chip/trap_chip"),
-        kind("rock-chip", Pool::Effect, 0x09, "objects/rock-chip/rock_chip"),
         kind("navi-boost", Pool::Effect, 0x84, "objects/navi-boost/navi_boost"),
         kind("gauge-speed", Pool::Effect, 0x1C, "objects/gauge-speed/gauge_speed"),
         // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20).
@@ -967,14 +977,6 @@ fn named_chips() -> Vec<ChipData> {
         blade(BLADE, "Blade", 0x13, 1, false),
         blade(STEP_BLADE, "StepBld", 0x13, 1, true),
         blade(STUN_BLADE, "StunBld", 0x49, 2, false),
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 100,
-            params: [1, 0, 0, 0],
-            damage: 200,
-            script: Some("objects/rock-cube/rock_cube".into()),
-            ..chip(CUBE, "Cube", 0x15, 6)
-        },
         ChipData {
             flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
             params: [3, 0, 0, 0],
@@ -1409,6 +1411,7 @@ pub fn custom_screen_layout() -> CustomScreenLayout {
 fn stages() -> Stages {
     let navi = |alliance, x| ActorEntry { kind: ActorKind::Navi, alliance, x, y: 2 };
     let rock = |x, y| ActorEntry { kind: ActorKind::Rock { variant: 1 }, alliance: 0, x, y };
+    let boulder = |x, y| ActorEntry { kind: ActorKind::Object6E, alliance: 0, x, y };
     let settings = |actors| StageSettings {
         layout: 0,
         music: 0x16,
@@ -1420,11 +1423,20 @@ fn stages() -> Stages {
         actors,
     };
     Stages {
-        settings: vec![settings(TWO_NAVIS), settings(TWO_NAVIS_SIDE0_FIRST), settings(NAVIS_AND_ROCKS)],
+        settings: vec![
+            settings(TWO_NAVIS),
+            settings(TWO_NAVIS_SIDE0_FIRST),
+            settings(NAVIS_AND_ROCKS),
+            settings(NAVIS_AND_BOULDERS),
+        ],
         actor_lists: vec![
             ActorList { original_address: 1, entries: vec![navi(1, 5), navi(0, 2)] },
             ActorList { original_address: 2, entries: vec![navi(0, 2), navi(1, 5)] },
             ActorList { original_address: 3, entries: vec![navi(0, 1), navi(1, 6), rock(3, 3), rock(4, 1)] },
+            ActorList {
+                original_address: 4,
+                entries: vec![navi(0, 1), navi(1, 6), boulder(2, 2), boulder(5, 2), boulder(3, 1)],
+            },
         ],
     }
 }
@@ -1623,6 +1635,8 @@ fn animations() -> Animations {
         vec![vec![f(3, 0), f(3, 0), f(3, LAST)], vec![f(30, LAST | LOOP)], vec![f(30, LAST | LOOP)]],
     );
     sprites.insert(SpriteId { category: 0x10, index: 1 }, vec![once(6), once(6), once(6), once(6)]);
+    // The stages' boulder.
+    sprites.insert(SpriteId { category: 0x10, index: 8 }, vec![vec![f(30, LAST | LOOP)]]);
     // The eraser navi (standing, appearing, leaving, raising, slashing), its
     // marks and its slash.
     let mut eraser = vec![once(4); 0x13];

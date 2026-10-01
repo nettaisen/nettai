@@ -1576,6 +1576,9 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         })
     });
     lib_fn!(lua, t, "release_tracking", |_, me: Me| with(|api, _| Ok(api.obstacle_release_tracking(me.0))));
+    lib_fn!(lua, t, "stage_slot_free", |_, ()| with(|api, _| Ok(api.obstacle_stage_slot_free())));
+    lib_fn!(lua, t, "enter_stage", |_, me: Me| with(|api, _| api.obstacle_enter_stage(me.0).map_err(api_error)));
+    lib_fn!(lua, t, "leave_stage", |_, me: Me| with(|api, _| Ok(api.obstacle_leave_stage(me.0))));
     lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
     lib_fn!(lua, t, "present", |_, o: Me| with(|api, _| Ok(api.obstacle_present(o.0))));
     lib_fn!(lua, t, "swallowable", |_, o: Me| with(|api, _| Ok(api.obstacle_swallowable(o.0))));

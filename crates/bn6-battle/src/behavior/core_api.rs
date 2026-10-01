@@ -1821,6 +1821,22 @@ impl CoreApi for Battle {
         kinds::obstacle::release_tracking(self, o);
     }
 
+    fn obstacle_stage_slot_free(&self) -> bool {
+        self.field.objects.stage_slot_free()
+    }
+
+    fn obstacle_enter_stage(&mut self, o: ObjectRef) -> ApiResult<()> {
+        if self.field.objects.enter_stage(o) {
+            Ok(())
+        } else {
+            Err(ApiError::Other("both stage-object slots are taken".into()))
+        }
+    }
+
+    fn obstacle_leave_stage(&mut self, o: ObjectRef) {
+        self.field.objects.leave_stage(o);
+    }
+
     fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef) {
         match request {
             ObstacleRequest::Remove => kinds::obstacle::remove(self, o),
