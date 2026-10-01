@@ -70,7 +70,7 @@ mod tests {
 
     /// A battle between two navis with 500 HP on the test content, a link
     /// battle or not, with this music.
-    fn battle(music: u8, link: bool) -> Battle {
+    fn battle(music: Option<SoundId>, link: bool) -> Battle {
         let content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |s| s.music = music);
         let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
         setup.content = content.hash();
@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn a_link_battle_starts_its_music_and_the_pinch_latch_settles() {
-        let mut b = battle(0x16, true);
+        let mut b = battle(Some(SoundId(0x16)), true);
         // The navi has no HP until its own init runs, later in the tick:
         // the low-HP switch fires for one tick, as in the game.
         assert_eq!(tick(&mut b), [SoundCue::Music(SoundId::VIRUS_BATTLE), SoundCue::Pinch(true)]);
@@ -98,15 +98,15 @@ mod tests {
 
     #[test]
     fn other_battles_play_their_settings_music_unless_none() {
-        let mut b = battle(0x16, false);
+        let mut b = battle(Some(SoundId(0x16)), false);
         assert_eq!(tick(&mut b), [SoundCue::Music(SoundId(0x16))]);
-        let mut b = battle(SoundId::NO_MUSIC.0 as u8, false);
+        let mut b = battle(None, false);
         assert_eq!(tick(&mut b), []);
     }
 
     #[test]
     fn cues_do_not_change_the_simulation() {
-        let (mut a, mut b) = (battle(0x15, true), battle(0x15, true));
+        let (mut a, mut b) = (battle(Some(SoundId(0x15)), true), battle(Some(SoundId(0x15)), true));
         for _ in 0..40 {
             tick(&mut a);
             b.play_sound(SoundId(0x94));

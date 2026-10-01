@@ -7,8 +7,8 @@
 -- 0, two a side; 1, one) and how it comes onto the field (the third, its
 -- entrance). RockCube and IceCube place one (chips/rockcube); an obstacle
 -- encased in ice becomes an ice block; some stages place them when the
--- round starts (the actor lists' entry type 8: the kind's `place`, the role
--- `kinds.rock`). See docs/engine/field-objects.md.
+-- round starts (the actor lists' entry type 8: the kind's `place`, with
+-- the variant the stage names). See docs/engine/field-objects.md.
 --
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
@@ -68,6 +68,7 @@ end
 local ROWS: { [number]: RockVariant } = {
     -- A rock cube anything breaks (no chip or stage places it).
     [0] = variant {
+        id = "rock/brittle",
         anim = 1,
         hp = 1,
         element = "null",
@@ -77,6 +78,7 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- RockCube's, and the stages'.
     [1] = variant {
+        id = "rock/cube",
         anim = 1,
         hp = 200,
         element = "null",
@@ -86,6 +88,7 @@ local ROWS: { [number]: RockVariant } = {
     },
     -- A hard one (no chip or stage places it).
     [2] = variant {
+        id = "rock/hard",
         anim = 1,
         hp = 500,
         element = "null",
@@ -96,6 +99,7 @@ local ROWS: { [number]: RockVariant } = {
     -- The ice block: IceCube's, the stages', and what an obstacle encased
     -- in ice becomes.
     [3] = variant {
+        id = "rock/ice",
         anim = 2,
         hp = 200,
         element = "aqua",
@@ -105,17 +109,6 @@ local ROWS: { [number]: RockVariant } = {
     },
 }
 rock.variants = { brittle = ROWS[0], cube = ROWS[1], hard = ROWS[2], ice = ROWS[3] }
-
--- The variant of row `n`, for what still names it so (an actor list's
--- entry, until stages name their rocks). Past the table the game reads on
--- into the routine after it: an error.
-function rock.by_number(n: number): RockVariant
-    local r = ROWS[n]
-    if not r then
-        error(string.format("rock variant %d reads past byte_80CF934", n))
-    end
-    return r
-end
 
 -- Stand on the panel: the standing animation, collision on the panel, and
 -- the normal pause behavior.
@@ -313,15 +306,19 @@ KIND = define.kind {
             me:destroy()
         end
     end,
-    -- `sub_80074FA`: an actor list's rock (entry type 8), of the entry's
-    -- variant, on its panel's side, standing from the start.
-    place = function(spec: ActorListEntrySpec): Object?
+    -- `sub_80074FA`: a stage's rock (an actor list's entry type 8), of the
+    -- variant the stage names, on its panel's side, standing from the start.
+    place = function(spec: PlaceSpec): Object?
         local x, y = spec.panel_x, spec.panel_y
         local panel = field.panel(x, y)
         if not panel then
-            error(string.format("an actor list places a rock off the field at (%d, %d)", x, y))
+            error(string.format("a stage places a rock off the field at (%d, %d)", x, y))
         end
-        local placed: RockSpec = { variant = rock.by_number(spec.variant), entrance = "placed" }
+        local v = spec.variant :: RockVariant?
+        if not v then
+            error("a stage's rock needs its `variant` (one of rock.variants)")
+        end
+        local placed: RockSpec = { variant = v, entrance = "placed" }
         return rock.spawn(x, y, panel.alliance, placed, STAGE_ROCK_DAMAGE)
     end,
 }

@@ -248,9 +248,9 @@ pub fn is_valid(x: u8, y: u8) -> bool {
 
 impl Field {
     /// The field at the start of a round (`sub_800C4BC`).
-    pub fn new(content: &Content, layout: u8, pattern: u8, battle_mode: u8) -> Field {
+    pub fn new(content: &Content, layout: &crate::content::PanelLayout, pattern: u8, battle_mode: u8) -> Field {
         let hole_ticks = if battle_mode == 1 { 0x1E0 } else { 0x258 };
-        let rows = content.panel_layout(layout).rows;
+        let rows = layout.rows;
         let rules = &content.rules.panels;
         let mut columns = [Column::default(); 8];
         for (x, c) in columns.iter_mut().enumerate() {
