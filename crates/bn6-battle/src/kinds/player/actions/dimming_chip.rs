@@ -42,8 +42,11 @@ pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) 
     let chip = a.chip.or_else(|| b.content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
     let hook = match b.content.defs.chip(chip).usage {
         ChipUsage::Dimming(f) => f,
+        ChipUsage::Unported(crate::content::Unported::Dimming(subtype @ (34 | 35 | 39 | 40))) => {
+            panic!("dimming chip subtype {subtype} is NULL in off_802CCB4 (the game jumps to address 0)")
+        }
         ChipUsage::Unported(crate::content::Unported::Dimming(subtype)) => {
-            panic!("dimming chip subtype {subtype} (off_802CCB4) is not implemented yet")
+            panic!("content error: no script implements dimming chip subtype {subtype} (off_802CCB4)")
         }
         u => panic!("chip {:?} is a dimming chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),
     };
