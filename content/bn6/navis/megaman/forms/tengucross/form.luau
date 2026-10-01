@@ -22,7 +22,8 @@ return define.form {
     weapons = { buster = buster.weapon, charge_shot = charge.weapon, back_special = tengu_wind.weapon },
     palette = 11,
     mugshot = asset.mugshot("tengucross"),
-    identity = {
+    identity = define.identity {
+        class = "cross",
         version = 0,
         actor_type = "player",
         ai_index = 32,

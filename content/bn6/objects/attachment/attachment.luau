@@ -79,9 +79,9 @@ local function init(me: Object)
     sprite.shadow = "with_sprite"
     sprite.palette = k.palette + s.palette_add
     me.no_sprite_update = false
-    -- The Cross forms' NameIDs raise it by 8 pixels.
-    local name = owner.name_id
-    local cross = name >= 0x1AC and name <= 0x1B5 and battle.navi(me.alliance).form ~= 0
+    -- A Cross's identity raises it by 8 pixels.
+    local identity = owner.identity
+    local cross = identity ~= nil and identity.class == "cross" and battle.navi(me.alliance).form ~= 0
     s.lift = if cross then -8 else k.lift or 0
     local anim = s.anim
     me.anim = anim
@@ -90,13 +90,14 @@ local function init(me: Object)
     sprite:set_animation(anim)
     local x, z = 0, 0
     if k.by_owner then
-        -- It sits at a fixed offset by its owner's NameID, not at an attach
-        -- point, and not mirrored: none on base MegaMan, (11, -7) on NameID
-        -- 0x1B6, (0, 13) on anyone else.
-        local name = owner.name_id
-        if name == 0x1B6 then
-            x, z = 0xB, -7
-        elseif name ~= 0x1A0 then
+        -- It sits at a fixed offset by its owner's identity, not at an
+        -- attach point, and not mirrored: where the identity says a held
+        -- thing sits (none on base MegaMan, (11, -7) on Gregar Beast Out),
+        -- else (0, 13).
+        local held = identity and identity.held_offset
+        if held then
+            x, z = held[1], held[2]
+        else
             x, z = 0, 0xD
         end
     elseif k.attach_point then

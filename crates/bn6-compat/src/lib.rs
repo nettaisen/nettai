@@ -116,6 +116,10 @@ pub struct RuleNumbers {
     /// Statuses (`off_80209EC`): a hit's status byte, by key.
     #[serde(default)]
     pub statuses: BTreeMap<String, u8>,
+    /// The field objects' identities: the NameID of each, by key (a
+    /// navi's and a form's is in navis.toml and forms.toml).
+    #[serde(default)]
+    pub identities: BTreeMap<String, u16>,
 }
 
 /// Asset names and the ROM's numbers.

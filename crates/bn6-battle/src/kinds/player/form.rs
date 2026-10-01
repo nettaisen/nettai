@@ -100,11 +100,11 @@ fn init_routine(b: &mut Battle, r: ObjectRef, row: u8, param3: u8) {
     b.objects.get_mut(r).related[1] = overlay;
 }
 
-/// `sub_8010DD0` / `sub_8010DDA`: the init hook of NameID `name_id`'s
+/// `sub_8010DD0` / `sub_8010DDA`: the init hook of NameID `identity`'s
 /// actor record, run on the object `r` (the navi, or an image of it):
 /// most navis' is nothing; a few wear overlays.
-pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, name_id: Option<IdentityHandle>) {
-    let rec = b.content.navi_record(name_id);
+pub(crate) fn navi_init_hook(b: &mut Battle, r: ObjectRef, identity: Option<IdentityHandle>) {
+    let rec = b.content.navi_record(identity);
     record_init_hook(b, r, rec.actor_type, rec.ai_index, 0);
 }
 
@@ -197,8 +197,8 @@ fn has_death_routine(row: u8) -> bool {
 /// `sub_8011020` / `sub_8011044`: what an object with a navi's NameID
 /// takes down when it goes (`off_801105C`, by actor type and AI index):
 /// the overlay in its `related[1]` (and row 14's second one).
-pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, name_id: Option<IdentityHandle>) {
-    let rec = b.content.navi_record(name_id);
+pub(crate) fn navi_death_hook(b: &mut Battle, r: ObjectRef, identity: Option<IdentityHandle>) {
+    let rec = b.content.navi_record(identity);
     record_death_hook(b, r, rec.actor_type, rec.ai_index);
 }
 
