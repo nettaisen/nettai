@@ -1530,7 +1530,7 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
         (testing::LANCE, "lance"),
         (testing::FIST, "fire-hit"),
         (testing::WORM, "sand-worm"),
-        (testing::FLAME_HOOK, "flame-hook"),
+        (testing::FLAME_HOOK, "flmhook/hook"),
         (testing::JUSTICE, "justice-one"),
         (testing::GOLEM, "golem"),
     ];
