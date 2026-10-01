@@ -25,6 +25,9 @@ sparks.breaking = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, p
 -- The erase beams' spark (hit effect 0x0C).
 sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
 
+-- A heavy hit's (hit effect 6): Magnum's shot, the beasts' claws and bites.
+sparks.heavy = define.spark { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
+
 -- `sub_801A146`: the spark of an attack of `element` (its primary
 -- element, the low nibble).
 function sparks.of_element(element: number): Spark
