@@ -104,6 +104,7 @@ fn battles_run_the_content_scripts() {
             "grab/shot",
             "grndman/drill",
             "grndman/rock",
+            "groundman/drill",
             "gundels/beam",
             "gust",
             "heatman/flame",
