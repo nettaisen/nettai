@@ -5,6 +5,7 @@
 -- test pack, crates/bn6-battle/testdata/pack, brings its own.)
 
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
+local barriers = require("../lib/barriers/barriers")
 local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
 local falling_rock = require("../objects/falling-rock/falling_rock")
@@ -40,5 +41,12 @@ return define.roles {
         absorbed_obstacle = absorbed_obstacle.kind,
         falling_rock = falling_rock.kind,
         support = supports.kind,
+    },
+    hooks = {
+        -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier
+        -- chip's barrier and its visual.
+        first_barrier = function(navi: Object)
+            barriers.raise(navi, barriers.barrier_10, true)
+        end,
     },
 }

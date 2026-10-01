@@ -2,7 +2,7 @@
 -- A flame (the original's attack object #0x26, `sub_80C8C74`): it flares up
 -- on its panel (5 ticks), burns hitting it (its time less those 5, its
 -- region gone once it has hit something), and dies down (2 ticks).
--- HeatMan's (the HeatMan chips' navi, objects/heat-man) acts and steps its
+-- HeatMan's (the HeatMan chips' navi, ./navi) acts and steps its
 -- sprite while dimmed; his link navi's HeatPres flames (navis/heatman)
 -- wait a dimming out, collision on. See docs/engine/chips.md §3.6.15.
 

@@ -1,48 +1,54 @@
 --!strict
--- SlashMan's sword wave (the original's attack object #0x62,
--- `sub_80D07CC`): 20 pixels up over its panel it winds up, then swings
--- (its region on) and flies ahead, gone off the field or once it hits an
--- enemy's body. See docs/engine/chips.md §3.6.18.
---
--- What it does comes with its variant (a "slash-wave" record; the
--- original's tables by its first parameter). The navi chip's
--- (`slash_wave.chip`, the original's 1) winds up longer, acts and steps
--- its sprite while the battle is dimmed, and if the user holds B while it
--- swings it steers toward the nearest row with an enemy navi. His navi
--- AI's (`slash_wave.plain`, 0; no chip sends it) hits its panel as it
--- winds up, at once and 10 ticks later, and waits a dimming out.
+-- A sword wave (the original's attack object #0x62, `sub_80D07CC`): 20
+-- pixels up over its panel it winds up, then swings (its region on) and
+-- flies ahead, gone off the field or once it hits an enemy's body. What it
+-- is is its variant (a `SlashWave`, types.d.luau; the original's Param1):
+-- the navi chip's (1) winds up longer, acts and steps its sprite while
+-- dimmed, and if the user holds B while it swings it steers toward the
+-- nearest row with an enemy navi; SlashMan's own AI's (0) hits its panel
+-- as it starts to wind up and 10 ticks later, and waits a dimming out. See
+-- docs/engine/chips.md §3.6.18.
 
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
-
--- A wave: its wind-up (`byte_80D0914`) and swing (`byte_80D0950`) in
--- ticks, its speed (`byte_80D0A54`, 16.16 a tick); whether it hits its
--- panel while it winds up, whether its user's B steers it, and whether it
--- acts while the battle is dimmed.
-export type Wave = {
-    wind_up: number,
-    swing: number,
-    speed: number,
-    panel_hits: boolean,
-    steerable: boolean,
-    while_dimmed: boolean,
-}
+local wave = {}
 
 export type State = {
-    wave: Wave,
-    -- Its user steered it (the original's second parameter).
+    -- What it is.
+    variant: SlashWave,
+    -- The user steered it (Param2).
     steered: boolean,
 }
 
-local slash_wave = {}
-
 local SPRITE = asset.sprite("slash-wave")
-local WIND_UP_SOUND = asset.sound("boomerang")
-local STEER_SOUND = asset.sound("ok-8b")
-local FLY_SOUND = asset.sound("aqua-needle-2")
+local SOUND_AQUA_NEEDLE_2 = asset.sound("aqua-needle-2")
+local SOUND_BOOMERANG = asset.sound("boomerang")
+local SOUND_OK_8B = asset.sound("ok-8b")
 
 -- Its height (a halfword store over Z's whole part).
 local HEIGHT = 0x14
+-- Its own hit's modifier, and its wind-up hits'.
+local HIT_MOD, EARLY_HIT_MOD = 3, 1
+
+-- The variants (the original's rows of `byte_80D0914`, the wind-up,
+-- `byte_80D0950`, the swing, and `byte_80D0A54`, the speed, 16.16):
+-- SlashMan's own AI's, and the navi chip's.
+wave.plain = define.record("slashman-wave", {
+    wind_up = 0x14,
+    swing = 0xA,
+    speed = 0x6_0000,
+    hits_early = true,
+} :: SlashWave)
+wave.chip = define.record("slashman-wave", {
+    wind_up = 0x28,
+    swing = 0xF,
+    speed = 0xC_0000,
+    steers = true,
+    while_dimmed = true,
+} :: SlashWave)
+
+-- Its actions.
+local WIND_UP, SWING, FLY = 0, 4, 8
 
 -- What ends it when hit (`byte_80D08C4`), by side: any bit of the word.
 local ENDS = { [0] = 0x0580_0000, 0x0A80_0000 }
@@ -51,10 +57,6 @@ local ENDS = { [0] = 0x0580_0000, 0x0A80_0000 }
 -- the rows it tries, nearest first (`byte_80D0A48`).
 local ENEMY_NAVI = { [0] = 0x0400_0000, 0x0800_0000 }
 local ROWS = { 0, -1, 1, -2, 2 }
-
-local function wave_of(me: Object): Wave
-    return (me.state :: State).wave
-end
 
 -- `sub_80D07FC`: over its panel; collision on, region off.
 local function init(me: Object)
@@ -74,7 +76,7 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(collision.attack, collision.hits_navis, 3)
+    me:setup_collision(collision.attack, collision.hits_navis, HIT_MOD)
     local c = me.collision
     c:set_hit_effect(nil)
     c:set_region(nil)
@@ -84,9 +86,10 @@ local function init(me: Object)
     me:set_lifecycle("update")
 end
 
--- `sub_80D0A5C`: the plain wave's hit on its panel.
+-- `sub_80D0A5C`: the hit on its panel as it winds up (not the navi
+-- chip's).
 local function hit(me: Object)
-    if not wave_of(me).panel_hits then
+    if not (me.state :: State).variant.hits_early then
         return
     end
     battle.hitbox(me, {
@@ -95,24 +98,22 @@ local function hit(me: Object)
         element = me.element,
         z = 0,
         region = regions.single,
-        -- None.
         hit_effect = 0xFF,
         target = collision.hits_navis,
         self_type = collision.attack,
         damage = me.damage,
         stamina = me.stamina,
-        hit_mod = 1,
+        hit_mod = EARLY_HIT_MOD,
     })
 end
 
--- `sub_80D08CC`: the wind-up, hitting at its start and 10 ticks in (the
--- plain wave).
+-- `sub_80D08CC`: the wind-up, hitting at its start and 10 ticks in.
 local function wind_up(me: Object)
     if me.phase == 0 then
         me.phase = 4
         hit(me)
-        battle.play_sound(WIND_UP_SOUND)
-        local ticks = wave_of(me).wind_up
+        battle.play_sound(SOUND_BOOMERANG)
+        local ticks = (me.state :: State).variant.wind_up
         me.timer, me.timer2 = ticks, ticks
         return
     end
@@ -123,19 +124,19 @@ local function wind_up(me: Object)
         return
     end
     if left <= 0 then
-        me:set_action(4)
+        me:set_action(SWING)
     end
 end
 
--- `sub_80D0A80`: the chip's: the user holding B steers it (once).
+-- `sub_80D0A80`: the navi chip's: the user holding B steers it (once).
 local function steer(me: Object)
     local s = me.state :: State
-    if not s.wave.steerable or s.steered then
+    if not s.variant.steers or s.steered then
         return
     end
     if (me.related1 :: Object):held("b") then
         s.steered = true
-        battle.play_sound(STEER_SOUND)
+        battle.play_sound(SOUND_OK_8B)
     end
 end
 
@@ -146,13 +147,13 @@ local function swing(me: Object)
         me.phase = 4
         me.anim = 1
         me.collision:set_region(regions.single)
-        me.timer = wave_of(me).swing
+        me.timer = (me.state :: State).variant.swing
         return
     end
     local left = me.timer - 1
     me.timer = left
     if left < 0 then
-        me:set_action(8)
+        me:set_action(FLY)
     end
 end
 
@@ -176,7 +177,7 @@ end
 -- BIOS divisions).
 local function aim(me: Object)
     local s = me.state :: State
-    local speed = s.wave.speed
+    local speed = s.variant.speed
     local vy = 0
     if s.steered then
         local front = me.facing
@@ -196,7 +197,7 @@ end
 local function fly(me: Object)
     if me.phase == 0 then
         me.phase = 4
-        battle.play_sound(FLY_SOUND)
+        battle.play_sound(SOUND_AQUA_NEEDLE_2)
         aim(me)
         return
     end
@@ -210,8 +211,10 @@ local function fly(me: Object)
     end
 end
 
+local ACTIONS = { [WIND_UP] = wind_up, [SWING] = swing, [FLY] = fly }
+
 -- `sub_80D0868`: resolve the hits; gone once the battle is over or it hit
--- an enemy's body; act (outside a dimming unless it acts while dimmed)
+-- an enemy's body; act (outside a dimming unless it is the navi chip's)
 -- and register again.
 local function tick(me: Object)
     local c = me.collision
@@ -222,82 +225,55 @@ local function tick(me: Object)
         me.lifecycle = "destroy"
         return
     end
-    if not wave_of(me).while_dimmed and battle.dimmed() then
+    if not (me.state :: State).variant.while_dimmed and battle.dimmed() then
         return
     end
-    local a = me.action
-    if a == 0 then
-        wind_up(me)
-    elseif a == 4 then
-        swing(me)
-    elseif a == 8 then
-        fly(me)
-    else
-        error(string.format("sword wave action %#x reads past its table (off_80D08B4)", a))
+    local action = ACTIONS[me.action]
+    if not action then
+        error(string.format("sword wave action %#x reads past its table (off_80D08B4)", me.action))
     end
+    action(me)
     c:present()
 end
 
--- `sub_80D07CC`: by state, then its sprite (a freed slot's too, which does
--- nothing).
-local function update(me: Object)
-    local while_dimmed = wave_of(me).while_dimmed
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
-    end
-    if while_dimmed then
-        me:update_sprite_while_dimmed()
-    else
-        me:update_sprite_while_paused()
-    end
-end
-
-slash_wave.kind = define.kind {
+wave.kind = define.kind {
     id = "slashman/wave",
     pool = "attack",
-    state = { wave = "record:slash-wave", steered = "bool" },
-    update = update,
+    state = { variant = "record:slashman-wave", steered = "bool" },
+    -- `sub_80D07CC`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+        if (me.state :: State).variant.while_dimmed then
+            me:update_sprite_while_dimmed()
+        else
+            me:update_sprite_while_paused()
+        end
+    end,
 }
 
--- The navi chip's wave, and his navi AI's.
-slash_wave.chip = define.record("slash-wave", {
-    wind_up = 0x28,
-    swing = 0xF,
-    speed = 0xC_0000,
-    panel_hits = false,
-    steerable = true,
-    while_dimmed = true,
-} :: Wave)
-slash_wave.plain = define.record("slash-wave", {
-    wind_up = 0x14,
-    swing = 0xA,
-    speed = 0x6_0000,
-    panel_hits = true,
-    steerable = false,
-    while_dimmed = false,
-} :: Wave)
-
--- `sub_80D0996`: a wave `wave` on (x, y) for `owner` (the navi chip's
--- user) with `element` and the damage word. `z` is the spawner's register
--- that becomes its Z, whose fraction it keeps.
-function slash_wave.spawn(owner: Object, x: number, y: number, element: number, wave: Wave, damage: number, z: number): Object?
-    local o = battle.spawn(slash_wave.kind, Vec3.new(y, element, z))
+-- `sub_80D0996`: a wave on (x, y) for `owner` (the navi chip's user) with
+-- `element`, the damage word and its variant. `z` is the spawner's
+-- register that becomes its Z, whose fraction it keeps.
+function wave.spawn(owner: Object, x: number, y: number, element: number, variant: SlashWave, damage: number, z: number): Object?
+    local o = battle.spawn(wave.kind, Vec3.new(y, element, z))
     if o then
-        local s = o.state :: State
-        s.wave = wave
         o.panel_x, o.panel_y = x, y
         o.element = element
         o.related1 = owner
         o:set_damage_word(damage)
         o.alliance, o.flip = owner.alliance, owner.flip
         o.run_while_dimmed = true
+        local s = o.state :: State
+        s.variant = variant
     end
     return o
 end
 
-return slash_wave
+return wave
