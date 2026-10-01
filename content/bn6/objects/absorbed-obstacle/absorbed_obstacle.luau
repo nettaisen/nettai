@@ -1,7 +1,7 @@
 --!strict
 -- An absorbed obstacle (the original's effect object #0x87, `sub_80E97F0`):
 -- what an obstacle the absorbing special pulled in (DustCross's B+Back,
--- action 0x58) leaves behind. It flies in 9 ticks to a point 20 pixels in
+-- navis/00-megaman/weapons/absorb) leaves behind. It flies in 9 ticks to a point 20 pixels in
 -- front of the absorbing side's navi and, if that navi is still absorbing,
 -- joins its absorbed list (up to 8). It puffs away if the battle ends or
 -- it leaves the field. The obstacle framework spawns it (`sub_800F90E`,
@@ -9,6 +9,8 @@
 -- .look { ... }`, each obstacle's own: the original's obstacle kinds), the
 -- side that absorbs it, and the obstacle's animation, palette and hidden
 -- sprite parts. See docs/engine/field-objects.md §4.4.
+
+local absorb = require("../../navis/00-megaman/weapons/absorb/weapon")
 
 local absorbed_obstacle = {}
 
@@ -22,11 +24,6 @@ export type State = {
     palette: number,
     hidden_parts: number,
 }
-
--- The absorbing special's action: while the navi is in it, the obstacle
--- can join it. (Its number, until MegaMan's weapons are definitions: the
--- absorbing special is weapon routine 0x2A's v1 module.)
-local ABSORBING = 0x58
 
 -- Ticks to reach the navi, and how far in front of it, in pixels.
 local FLIGHT, AHEAD = 9, 20
@@ -90,7 +87,9 @@ local function fly(me: Object)
     me.pos = me.pos + me.vel
     me:set_panel_from_coordinates()
     local navi = me.related1 :: Object
-    if navi.action == ABSORBING then
+    -- While the navi is in the absorbing special's action, the obstacle
+    -- can join it.
+    if navi:navi_action() == absorb.action then
         local left = me.timer - 1
         me.timer = left
         if left <= 0 and #navi:absorbed() < MAX_ABSORBED then

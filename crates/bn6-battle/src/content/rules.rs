@@ -249,7 +249,10 @@ pub struct Lockon {
     /// the modes that need a clear path, by alliance (`byte_8026544`).
     pub clear_path: [PanelCondition; 2],
     /// The charged sword's (action 0x41) lock-on mode by its variant
-    /// (`byte_80EB028`, read by `sub_80EAF26`).
+    /// (`byte_80EB028`, read by `sub_80EAF26`). The ruleset no longer
+    /// reads it: the charged sword's setup gives the mode with the slash
+    /// it starts (`AttackVars::rush_lockon`; BN6's slashes name this
+    /// table's values). It goes with the pack's rules.
     pub charged_sword_modes: Vec<u8>,
 }
 
