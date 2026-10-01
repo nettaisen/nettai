@@ -1334,6 +1334,10 @@ pub trait CoreApi {
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8);
     /// Advance the animation one tick (no gating).
     fn sprite_step(&mut self, o: ObjectRef);
+    /// `sub_800F26C`: whether the look `o`'s NameID gives is `sprite` (an
+    /// object's NameID look; a navi's or form's NameID gives its sprite).
+    /// An error for a NameID the content has no look for.
+    fn name_look_is(&self, o: ObjectRef, sprite: SpriteId) -> ApiResult<bool>;
     /// `sub_80030BA`: where part `n` of the current frame sits, in pixels
     /// from the object, unflipped; (0, 0) when the frame has fewer parts.
     fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32);

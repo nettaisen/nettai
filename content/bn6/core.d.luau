@@ -414,6 +414,11 @@ declare class Object
     -- with the navi (its state's `shown`).
     barrier_visual: Object?
 
+    -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
+    -- NameID look; a navi's or form's NameID gives its sprite). An error
+    -- for a NameID the content has no look for.
+    function name_look_is(self, sprite: SpriteAsset): boolean
+
     -- Spawn parameter n (1 to 4: the game's Param1..Param4).
     function param(self, n: number): number
     function set_param(self, n: number, value: number): ()

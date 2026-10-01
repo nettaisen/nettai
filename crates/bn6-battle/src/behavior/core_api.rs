@@ -1386,6 +1386,19 @@ impl CoreApi for Battle {
         self.objects.sprite_mut(o).update(&self.content);
     }
 
+    fn name_look_is(&self, o: ObjectRef, sprite: SpriteId) -> ApiResult<bool> {
+        let name_id = self.objects.get(o).name_id;
+        let look = if (0xCD..=0xFF).contains(&name_id) {
+            self.content.objects.name_looks.iter().find(|l| l.name_id == name_id).map(|l| l.sprite)
+        } else {
+            let navis = self.content.navis.iter().filter_map(|n| n.name_record.as_ref().map(|r| (r.id, n.sprite)));
+            let forms = self.content.forms.iter().filter_map(|f| f.name_record.as_ref().map(|r| (r.id, f.sprite)));
+            navis.chain(forms).find(|&(id, _)| id == name_id).map(|(_, s)| Some(s))
+        };
+        look.map(|l| l == Some(sprite))
+            .ok_or_else(|| ApiError::Other(format!("NameID {name_id:#x} has no look in the content (sub_800F26C)")))
+    }
+
     fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32) {
         let s = self.objects.sprite(o);
         s.id
