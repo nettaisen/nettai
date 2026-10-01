@@ -23,10 +23,11 @@ buster.arm = attachment.look { sprite = asset.sprite("buster-arm"), palette = 0 
 local NO_CHARGE_PALETTE = 0xE
 
 -- The four spawn parameters `sub_80EB572` adds into one word: the kind,
--- the animation shifted by 8 and the palette addition by 24 (so a
--- negative animation borrows from the bytes above it).
-local function arm_params(kind: number, anim: number, palette_add: number): { number }
-    local word = int.u32(kind + int.shl(anim, 8) + int.shl(palette_add, 24))
+-- the animation shifted by 8, the caller's argument (animating while
+-- dimmed) by 16 and the palette addition by 24 (so a negative animation
+-- borrows from the bytes above it).
+local function arm_params(kind: number, anim: number, palette_add: number, dimmed: number): { number }
+    local word = int.u32(kind + int.shl(anim, 8) + int.shl(dimmed, 16) + int.shl(palette_add, 24))
     return {
         bit32.band(word, 0xFF),
         bit32.band(bit32.rshift(word, 8), 0xFF),
@@ -39,12 +40,21 @@ end
 -- animation shows the form; its palette the element, the charge disabled,
 -- Full Synchro or the Beast form. A player's second actor gets none.
 function buster.raise_arm(navi: Object)
+    buster.attach_arm(navi, navi, "overlay", false)
+end
+
+-- `sub_80EB572`: the buster arm by `navi`'s actor data on `owner` (the navi
+-- itself, or what shares its actor data: DblHero's MegaMan), kept in
+-- `which`; with `while_dimmed`, it animates while dimmed too. A player's
+-- second actor gets none, and the navi's overlay slot is cleared instead.
+function buster.attach_arm(navi: Object, owner: Object, which: Slot, while_dimmed: boolean)
+    local dimmed = if while_dimmed then 1 else 0
     local kind = navi.actor_type
     if kind == "virus" then
-        attachment.spawn_with(navi, arm_params(ARM, 0, 0), "overlay")
+        attachment.spawn_with(owner, arm_params(ARM, 0, 0, dimmed), which)
         return
     elseif kind == "navi" then
-        attachment.spawn_with(navi, arm_params(NAVI_ARM, navi.ai_index - 1, 0xD), "overlay")
+        attachment.spawn_with(owner, arm_params(NAVI_ARM, navi.ai_index - 1, 0xD, dimmed), which)
         return
     elseif navi.ai_index ~= 0 then
         navi.overlay = nil
@@ -69,7 +79,7 @@ function buster.raise_arm(navi: Object)
         -- The first five Beast Crosses: palettes 5 to 9.
         palette_add = 5 + form - 0xD
     end
-    attachment.spawn_with(navi, arm_params(ARM, form, palette_add), "overlay")
+    attachment.spawn_with(owner, arm_params(ARM, form, palette_add, dimmed), which)
 end
 
 -- What stops a shot's panel count (`byte_800FB4C`, by side): bodies,

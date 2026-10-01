@@ -23,6 +23,8 @@ attachment = { pool = "actor", index = 0x05 }
 "chrgeman/navi" = { pool = "actor", index = 0x16 }
 "engine/cross-merge" = { pool = "actor", index = 0x1B }
 "sandwrm/hole" = { pool = "actor", index = 0x1C }
+"cornfsta/farmer" = { pool = "actor", index = 0x1E }
+"dblhero/heroes" = { pool = "actor", index = 0x1F }
 "sunmoon/sun" = { pool = "actor", index = 0x24 }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
@@ -129,6 +131,7 @@ thunder-column = { pool = "attack", index = 0x8B }
 "flshbom/bomb" = { pool = "attack", index = 0xA4 }
 "bugbomb/bomb" = { pool = "attack", index = 0xA5 }
 "sensor/turret" = { pool = "attack", index = 0xA6 }
+"cornfsta/sower" = { pool = "attack", index = 0xAA }
 "chrgeman/car" = { pool = "attack", index = 0xAC }
 "justcone/strike" = { pool = "attack", index = 0xAE }
 "megaman/dash-hit" = { pool = "attack", index = 0xAF }
@@ -210,7 +213,9 @@ invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "lifesync/marker" = { pool = "effect", index = 0x60 }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "sensor/controller" = { pool = "effect", index = 0x65, scratch_position = true }
+"cornfsta/controller" = { pool = "effect", index = 0x68, scratch_position = true }
 "numbrbl/controller" = { pool = "effect", index = 0x69, scratch_position = true }
+"dblhero/controller" = { pool = "effect", index = 0x6A, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
