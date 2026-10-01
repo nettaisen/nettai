@@ -9,7 +9,6 @@ local controller = require("../geddon/controller")
 return define.chip {
     id = "beastout-dimming-1",
     name = "BeastOut",
-    codes = {},
     element = "null", family = "special", class = "special",
     rarity = 0, mb = 99, damage = 0, hit_param = 0, lockout = 0,
     flags = { "dimming" },
