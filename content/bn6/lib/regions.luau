@@ -61,6 +61,12 @@ regions.tall = define.region { panels = { { 0, 0 }, { 0, -1 } } }
 -- The anchor and the column ahead of it (region 0x15: ElcPuls's pulse).
 regions.fan = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 1 }, { 1, 0 } } }
 
+-- The anchor and the two columns ahead of it (region 0x1A: the Beast
+-- charged chips' pillars).
+regions.deep_fan = define.region {
+    panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 } },
+}
+
 -- The 5x5 around the anchor, row by row from the far back corner (region
 -- 0x26: ElecMan's reach).
 regions.big_square = define.region {
@@ -181,8 +187,6 @@ regions.region_16 = define.region { panels = { { 0, 0 }, { 1, -1 } } }
 regions.region_17 = define.region { panels = { { 0, 0 }, { 1, 1 } } }
 -- Region 0x19.
 regions.region_19 = define.region { panels = { { 0, 0 }, { 0, 1 } } }
--- Region 0x1A.
-regions.region_1a = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 } } }
 -- Region 0x1B.
 regions.region_1b = define.region { panels = { { 0, 0 }, { 1, -1 }, { 1, 0 }, { 1, 1 }, { 2, -1 }, { 2, 0 }, { 2, 1 }, { 3, -1 }, { 3, 0 }, { 3, 1 } } }
 -- Region 0x1C.
