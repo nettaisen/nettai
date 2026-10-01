@@ -226,8 +226,8 @@ new content is recorded with the workspace's chiplab (tools/chiplab/README.md th
   `kinds.mode9_actor`, the two objects a player whose AI index is 10 spawns in battle mode 9 (the original's
   attack object #0xD2 and actor object #0x28). No netbattle reaches them; starting one is an error naming the
   role.
-- **Numbers still in definitions**: a navi's and a form's number sit in their `legacy` markers, and the body
-  overlays are numbered as the original numbers them (rules/body-overlays.luau), because the ruleset still
-  finds them by number. `bn6-content-check`'s ratchet counts the markers and its guard lists the modules that
-  may hold one. Nothing else in the API or the content is by number.
+- **No numbers in definitions**: since step 11's last batch the navis and forms are definitions by handle (the
+  ruleset asks their fields and traits) and the body overlays are the identities' `parts`, so no definition
+  carries a `legacy` marker: the ratchet's count is 0 and the guard lists no module that may hold one. Nothing
+  in the API or the content is by number.
 - **Bug codes** (a hitbox's `bug`, a projectile variant's) are numbers: they have no definition yet.

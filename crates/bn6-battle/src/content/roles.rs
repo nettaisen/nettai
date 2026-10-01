@@ -434,10 +434,6 @@ definition_roles! {
         Eruption = "eruption",
         /// The Beast forms' lock-on marker.
         LockonMarker = "lockon_marker",
-        /// The overlay a navi wears while idle (`dword_80C40D4`'s one).
-        IdleOverlay = "idle_overlay",
-        /// The Beast forms' head.
-        BeastHead = "beast_head",
     }
 }
 

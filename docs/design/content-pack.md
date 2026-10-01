@@ -25,8 +25,7 @@ record, with the reasons and the as-built notes, in [content-model-v2.md](conten
   the content root with a pack.
 - **Content is definitions.** Everything in the content root is a `define.*` call in a module, keyed by name.
   The engine has no chip, weapon, kind, action, effect, spark, region, collision type, status, lock-on mode or
-  identity by number: it holds handles, and content passes definitions. (Still by number until the model's
-  last step: a navi's and a form's number, in their definitions' `legacy` markers, and the body overlays.)
+  identity by number, and no navi or form: it holds handles, and content passes definitions.
 - **The original's numbers are compat's.** content/bn6/compat maps keys to the original's numbers for the tools
   that need them (the trace harness, save and link-data codecs, the extractor's asset names, `gen-content
   check`). The engine never reads it (a test guards the dependency), and content can't load it.
