@@ -45,6 +45,8 @@ pub struct StageSettings {
 
 /// Battle effects bits.
 pub mod effects {
+    /// A ranked boss (`BATTLE_EFFECT_BOSS_RANK`).
+    pub const BOSS_RANK: u32 = 0x1;
     /// Link battle between two players.
     pub const LINK: u32 = 0x8;
     /// Multi-round set.
