@@ -33,7 +33,10 @@ use super::{
     ChipData, Content,
     FormData, NaviData,
 };
-use super::roles::{ActionRole, ChipRole, HookRole, KindRole, LockonRole, RoleAction, RoleKind, Roles, StatusRole};
+use super::roles::{
+    ActionRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, LockonRole, RegionRole, RoleAction, RoleKind, Roles,
+    SparkRole, StatusRole,
+};
 use crate::setup::{Form, Navi};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
@@ -205,7 +208,9 @@ pub struct LockonDef {
 }
 
 /// A collision type content defines (`define.collision`): what an object is
-/// or what it hits, as the flag words for each side.
+/// or what it hits, as the flag words for side 0 and side 1
+/// (`sub_801A0BA`). A reacts to B when A's target flags meet B's self
+/// flags.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CollisionTypeDef {
     pub flags: [u32; 2],
@@ -257,21 +262,13 @@ pub struct Defs {
     /// The status effects, by handle.
     pub statuses: Vec<StatusDef>,
     pub records: Vec<RecordDef>,
-    /// One-shot effects' and hit sparks' looks content defines, by handle.
-    /// Each has the engine's number (`Content::effect`, `Content::spark`):
-    /// the numbered table's row with the same look, else one after the
-    /// table's. See [`Defs::number`].
+    /// One-shot effects' and hit sparks' looks (`define.effect`,
+    /// `define.spark`), by handle.
     pub effects: Vec<super::EffectSprite>,
     pub sparks: Vec<super::EffectSprite>,
-    /// Hit regions content defines, by handle, with the engine's number for
-    /// each: the numbered table's region of the same shape or condition,
-    /// else one after the table's (a shape's after its shapes, a
-    /// whole-field region's after its field regions, from 0x80).
-    pub regions: Vec<(super::Region, u8)>,
-    /// Collision types content defines, by handle. The engine's number for
-    /// each (`Content::collision_type`) is its row in the numbered table
-    /// (the row its `row_offset` names, with the same flags), else one
-    /// after the table's.
+    /// Hit regions (`define.region`), by handle.
+    pub regions: Vec<super::Region>,
+    /// Collision types (`define.collision`), by handle.
     pub collisions: Vec<CollisionTypeDef>,
     /// What the ruleset needs from content by role (`define.roles`).
     pub roles: Roles,
@@ -281,19 +278,6 @@ pub struct Defs {
     /// The Cross special's chips by row (`Rules::cross_special`), each with
     /// the chip whose damage it strikes with, if another's.
     pub cross_special: Vec<Vec<(ChipHandle, Option<ChipHandle>)>>,
-    /// The engine's number for each effect, spark and collision type
-    /// content defines, by handle; and those past the numbered tables, by
-    /// number from the table's length (the same look or type defined twice
-    /// is one number).
-    effect_numbers: Vec<u8>,
-    spark_numbers: Vec<u8>,
-    collision_numbers: Vec<u8>,
-    effect_extra: Vec<super::EffectSprite>,
-    spark_extra: Vec<super::EffectSprite>,
-    collision_extra: Vec<CollisionTypeDef>,
-    effect_base: u8,
-    spark_base: u8,
-    collision_base: u8,
     /// State layouts by [`StateId`].
     pub schemas: Vec<SchemaDef>,
     /// The functions the runtime binds, by [`FnId`].
@@ -435,42 +419,6 @@ impl Defs {
     /// A record's handle by key.
     pub fn record(&self, key: &str) -> Option<RecordHandle> {
         self.records.binary_search_by(|r| r.key.as_str().cmp(key)).ok().map(|i| RecordHandle(i as u16))
-    }
-
-    /// The engine's number for a definition the ruleset still stores as a
-    /// byte (an effect, a spark, a region, a collision type): the numbered
-    /// table's entry that is the same thing (the content's own table by
-    /// number, which v1 modules and the ruleset still read), else its own
-    /// after the table's. The engine learns no number from it: the table is
-    /// content's, and a definition only shares its entry.
-    pub fn number(&self, registry: Registry, h: u16) -> Option<u8> {
-        let i = h as usize;
-        match registry {
-            Registry::Effect => self.effect_numbers.get(i).copied(),
-            Registry::Spark => self.spark_numbers.get(i).copied(),
-            Registry::Region => self.regions.get(i).map(|&(_, n)| n),
-            Registry::Collision => self.collision_numbers.get(i).copied(),
-            _ => None,
-        }
-    }
-
-    /// A defined effect, spark or collision type past the numbered table,
-    /// by the engine's number.
-    pub(crate) fn effect_numbered(&self, n: u8) -> Option<super::EffectSprite> {
-        n.checked_sub(self.effect_base).and_then(|i| self.effect_extra.get(i as usize)).copied()
-    }
-
-    pub(crate) fn spark_numbered(&self, n: u8) -> Option<super::EffectSprite> {
-        n.checked_sub(self.spark_base).and_then(|i| self.spark_extra.get(i as usize)).copied()
-    }
-
-    pub(crate) fn collision_numbered(&self, n: u8) -> Option<CollisionTypeDef> {
-        n.checked_sub(self.collision_base).and_then(|i| self.collision_extra.get(i as usize)).copied()
-    }
-
-    /// A defined region by the engine's number.
-    pub(crate) fn region_numbered(&self, n: u8) -> Option<&super::Region> {
-        self.regions.iter().find(|(_, m)| *m == n).map(|(r, _)| r)
     }
 
     /// The layout with this key.
@@ -674,6 +622,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
 /// marker (an action by number, a kind by key).
 fn read_roles(
     d: &Definition,
+    definitions: &Definitions,
     actions: &[ActionDef],
     kinds: &[KindDef],
     chips: &[ChipDef],
@@ -800,15 +749,59 @@ fn read_roles(
                     let h = statuses.iter().position(|s| &s.key == key).expect("a defined status");
                     roles.statuses.insert(role, bn6_content_api::StatusHandle(h as u16));
                 }
+                "effects" => {
+                    let role = definition_role(&group, &name, EffectRole::named, EffectRole::ALL.iter().map(|r| r.name())).map_err(&what)?;
+                    let h = definition_handle(definitions, Registry::Effect, &group, &name, v).map_err(&what)?;
+                    roles.effects.insert(role, bn6_content_api::EffectHandle(h));
+                }
+                "sparks" => {
+                    let role = definition_role(&group, &name, SparkRole::named, SparkRole::ALL.iter().map(|r| r.name())).map_err(&what)?;
+                    let h = definition_handle(definitions, Registry::Spark, &group, &name, v).map_err(&what)?;
+                    roles.sparks.insert(role, bn6_content_api::SparkHandle(h));
+                }
+                "regions" => {
+                    let role = definition_role(&group, &name, RegionRole::named, RegionRole::ALL.iter().map(|r| r.name())).map_err(&what)?;
+                    let h = definition_handle(definitions, Registry::Region, &group, &name, v).map_err(&what)?;
+                    roles.regions.insert(role, bn6_content_api::RegionHandle(h));
+                }
+                "collision" => {
+                    let role =
+                        definition_role(&group, &name, CollisionRole::named, CollisionRole::ALL.iter().map(|r| r.name())).map_err(&what)?;
+                    let h = definition_handle(definitions, Registry::Collision, &group, &name, v).map_err(&what)?;
+                    roles.collisions.insert(role, bn6_content_api::CollisionHandle(h));
+                }
                 _ => {
                     return Err(what(format!(
-                        "the ruleset has no role group `{group}` (it has actions, kinds, hooks, chips, lockon, statuses)"
+                        "the ruleset has no role group `{group}` (it has actions, kinds, hooks, chips, lockon, statuses, effects, sparks, regions, collision)"
                     )));
                 }
             }
         }
     }
     Ok(roles)
+}
+
+/// The role `group.name`, of a group whose roles name definitions.
+fn definition_role<R>(
+    group: &str,
+    name: &str,
+    named: impl Fn(&str) -> Option<R>,
+    names: impl Iterator<Item = &'static str>,
+) -> Result<R, String> {
+    named(name).ok_or_else(|| {
+        format!("the ruleset has no role {group}.{name} (it has {})", names.collect::<Vec<_>>().join(", "))
+    })
+}
+
+/// The handle of the `registry` definition the role `group.name` names: its
+/// place in the registry's key order.
+fn definition_handle(definitions: &Definitions, registry: Registry, group: &str, name: &str, v: &Data) -> Result<u16, String> {
+    match v {
+        Data::Ref(r, key) if *r == registry => {
+            Ok(definitions.of(registry).iter().position(|d| &d.key == key).expect("a defined entry") as u16)
+        }
+        _ => Err(format!("{group}.{name} is not a {registry} definition")),
+    }
 }
 
 impl Defs {
@@ -1233,8 +1226,7 @@ impl Defs {
             return Err(ContentError::new("the statuses are not in key order (the define phase sorts each registry)"));
         }
 
-        // Effects, sparks, regions and collision types: each gets the
-        // engine's number after the pack data's.
+        // Effects, sparks, regions and collision types, by handle.
         let look = |d: &Definition| -> Result<super::EffectSprite, ContentError> {
             let what = |e: String| ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key));
             let sprite = match d.spec.field("sprite") {
@@ -1245,46 +1237,10 @@ impl Defs {
         };
         let effects = definitions.of(Registry::Effect).iter().map(look).collect::<Result<Vec<_>, _>>()?;
         let sparks = definitions.of(Registry::Spark).iter().map(look).collect::<Result<Vec<_>, _>>()?;
-        // The engine's numbers for what content defines: the numbered
-        // table's entry that is the same thing, else a number after the
-        // table's (one per distinct thing).
-        fn numbers<T: PartialEq + Copy>(
-            table_len: usize,
-            defined: &[T],
-            in_table: impl Fn(&T) -> Option<usize>,
-            what: &str,
-        ) -> Result<(u8, Vec<u8>, Vec<T>), ContentError> {
-            let mut extra: Vec<T> = Vec::new();
-            let mut out = Vec::with_capacity(defined.len());
-            for x in defined {
-                let n = match in_table(x) {
-                    Some(i) => i,
-                    None => match extra.iter().position(|e| e == x) {
-                        Some(i) => table_len + i,
-                        None => {
-                            extra.push(*x);
-                            table_len + extra.len() - 1
-                        }
-                    },
-                };
-                out.push(u8::try_from(n).map_err(|_| {
-                    ContentError::new(format!(
-                        "too many {what}: {table_len} in the numbered table and more than {} others defined",
-                        0x100usize.saturating_sub(table_len)
-                    ))
-                })?);
-            }
-            Ok((table_len.min(0xFF) as u8, out, extra))
-        }
-        let (effect_base, effect_numbers, effect_extra) =
-            numbers(content.effects.len(), &effects, |e| content.effects.iter().position(|t| t == e), "effects")?;
-        let (spark_base, spark_numbers, spark_extra) =
-            numbers(content.sparks.len(), &sparks, |e| content.sparks.iter().position(|t| t == e), "hit sparks")?;
-        let (mut shapes, mut fields) = (content.regions.len(), content.rules.field_regions.len());
-        let mut regions: Vec<(super::Region, u8)> = Vec::new();
+        let mut regions: Vec<super::Region> = Vec::new();
         for d in definitions.of(Registry::Region) {
             let what = |e: &str| ContentError::new(format!("{}.luau: region {}: {e}", d.module, d.key));
-            let (region, number) = match (d.spec.field("panels"), d.spec.field("field")) {
+            regions.push(match (d.spec.field("panels"), d.spec.field("field")) {
                 (Data::List(items), Data::Nil) => {
                     let mut panels = Vec::new();
                     for p in items {
@@ -1293,45 +1249,14 @@ impl Defs {
                         };
                         panels.push(super::PanelOffset { dx: dx as i8, dy: dy as i8 });
                     }
-                    // The numbered table's region of this shape (region
-                    // 0 is none), else one a definition before it made,
-                    // else a new one.
-                    let region = super::Region::Panels(panels);
-                    let super::Region::Panels(panels) = &region else { unreachable!() };
-                    let number = match content.regions.iter().skip(1).position(|r| r == panels) {
-                        Some(i) => i + 1,
-                        None => match regions.iter().find(|(r, _)| *r == region) {
-                            Some(&(_, n)) => n as usize,
-                            None => {
-                                shapes += 1;
-                                shapes - 1
-                            }
-                        },
-                    };
-                    (region, number)
+                    super::Region::Panels(panels)
                 }
                 (Data::Nil, Data::Map(_)) => {
                     let word = |k: &str| d.spec.field("field").field(k).int().unwrap_or(0) as u32;
-                    let condition = super::PanelCondition { require: word("require"), forbid: word("forbid") };
-                    let region = super::Region::Field(condition);
-                    let number = match content.rules.field_regions.iter().position(|c| *c == condition) {
-                        Some(i) => 0x80 + i,
-                        None => match regions.iter().find(|(r, _)| *r == region) {
-                            Some(&(_, n)) => n as usize,
-                            None => {
-                                fields += 1;
-                                0x80 + fields - 1
-                            }
-                        },
-                    };
-                    (region, number)
+                    super::Region::Field(super::PanelCondition { require: word("require"), forbid: word("forbid") })
                 }
                 _ => return Err(what("needs exactly one of `panels` and `field`")),
-            };
-            if shapes > 0x80 || fields > 0x80 {
-                return Err(what("too many regions for the engine's region byte"));
-            }
-            regions.push((region, number as u8));
+            });
         }
         let mut collisions = Vec::new();
         for d in definitions.of(Registry::Collision) {
@@ -1343,23 +1268,11 @@ impl Defs {
             let row_offset = d.spec.field("row_offset").int().unwrap_or(0) as u16;
             collisions.push(CollisionTypeDef { flags: [word("side0")?, word("side1")?], row_offset });
         }
-        // A collision type is its row of the numbered table when its
-        // `row_offset` names one with its flags.
-        let rows = &content.rules.collision_types;
-        let (collision_base, collision_numbers, collision_extra) = numbers(
-            rows.len(),
-            &collisions,
-            |c| {
-                let row = (c.row_offset / 8) as usize;
-                (c.row_offset % 8 == 0 && rows.get(row) == Some(&c.flags)).then_some(row)
-            },
-            "collision types",
-        )?;
 
         // The roles.
         let mut roles = Roles::default();
         if let [d] = definitions.of(Registry::Roles) {
-            roles = read_roles(d, &actions, &kinds, &chips, &lockons, &statuses, &mut functions)?;
+            roles = read_roles(d, &definitions, &actions, &kinds, &chips, &lockons, &statuses, &mut functions)?;
         }
 
         let records: Vec<RecordDef> = definitions
@@ -1424,15 +1337,6 @@ impl Defs {
             roles,
             program_advances,
             cross_special,
-            effect_numbers,
-            spark_numbers,
-            collision_numbers,
-            effect_extra,
-            spark_extra,
-            collision_extra,
-            effect_base,
-            spark_base,
-            collision_base,
             schemas,
             functions: Vec::new(),
         };
@@ -1493,57 +1397,9 @@ mod tests {
         // Every chip is a definition with its own use: none is a record
         // registration by number runs.
         assert!(c.defs.chips.len() > 300, "{} chips", c.defs.chips.len());
-        // The numbered tables are the definitions' (step 5): what the
-        // modules define of them shares their entries, so the engine's
-        // byte holds them all.
-        assert!(c.effects.len() > 100 && c.defs.effects.len() > c.effects.len(), "{} effects defined", c.defs.effects.len());
-        numbers_give_the_definitions_back(&c);
-    }
-
-    /// The engine's number for each effect, spark, region and collision
-    /// type content defines reads back as what was defined; one the
-    /// numbered table holds is that entry, another comes after the table.
-    fn numbers_give_the_definitions_back(c: &Content) {
-        let d = &c.defs;
-        for (h, look) in d.effects.iter().enumerate() {
-            let n = d.number(Registry::Effect, h as u16).expect("an effect's number");
-            assert_eq!(c.effect(n), *look, "effect {h}");
-            assert_eq!(c.effects.iter().position(|e| e == look).unwrap_or(n as usize), n as usize, "effect {h}");
-        }
-        for (h, look) in d.sparks.iter().enumerate() {
-            let n = d.number(Registry::Spark, h as u16).expect("a spark's number");
-            assert_eq!(c.spark(n), *look, "spark {h}");
-            assert_eq!(c.sparks.iter().position(|e| e == look).unwrap_or(n as usize), n as usize, "spark {h}");
-        }
-        for (h, t) in d.collisions.iter().enumerate() {
-            let n = d.number(Registry::Collision, h as u16).expect("a collision type's number");
-            for side in 0..2 {
-                assert_eq!(c.collision_type(n, side), (t.flags[side as usize], t.row_offset), "collision type {h}");
-            }
-        }
-        for (h, (region, n)) in d.regions.iter().enumerate() {
-            assert_eq!(d.number(Registry::Region, h as u16), Some(*n));
-            match region {
-                crate::content::Region::Panels(p) => assert_eq!(c.region(*n), &p[..], "region {h}"),
-                crate::content::Region::Field(f) => assert_eq!(c.field_region(*n), *f, "region {h}"),
-            }
-        }
-    }
-
-    #[test]
-    fn a_definition_shares_the_numbered_tables_entry_it_is() {
-        // The test content's tables are its own; the modules it loads
-        // define some of the same looks, regions and collision types.
-        let c = crate::content::testing::with_test_pack();
-        assert!(!c.defs.effects.is_empty() && !c.defs.collisions.is_empty() && !c.defs.regions.is_empty());
-        numbers_give_the_definitions_back(&c);
-        // The same look defined twice is one number.
-        for (i, a) in c.defs.effects.iter().enumerate() {
-            for (j, b) in c.defs.effects.iter().enumerate() {
-                if a == b {
-                    assert_eq!(c.defs.number(Registry::Effect, i as u16), c.defs.number(Registry::Effect, j as u16));
-                }
-            }
-        }
+        // Effects, sparks, regions and collision types are definitions
+        // the engine holds by handle.
+        assert!(c.defs.effects.len() > 100, "{} effects defined", c.defs.effects.len());
+        assert!(!c.defs.sparks.is_empty() && !c.defs.regions.is_empty() && c.defs.collisions.len() >= 89);
     }
 }

@@ -62,7 +62,7 @@ end
 -- `sub_80D146A`: there is ground under it: a solid panel under it (or,
 -- for a big one, under it or above it). Always, while it has no region.
 local function grounded(me: Object, s: State): boolean
-    if me.collision.region == 0 then
+    if me.collision.region == nil then
         return true
     end
     local x, y = me.panel_x, me.panel_y

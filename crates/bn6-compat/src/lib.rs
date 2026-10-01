@@ -120,6 +120,18 @@ pub struct RuleNumbers {
     /// navi's and a form's is in navis.toml and forms.toml).
     #[serde(default)]
     pub identities: BTreeMap<String, u16>,
+    /// The ruleset's roles (rules/roles.luau), by role name: the effect
+    /// (`byte_80E0398`), hit spark (`byte_80E0804`), hit region
+    /// (`PanelOffsetListsPointerTable`) and collision type
+    /// (`byte_8019C7C`) number the original's routines name each by.
+    #[serde(default)]
+    pub effects: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub sparks: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub regions: BTreeMap<String, u8>,
+    #[serde(default)]
+    pub collision: BTreeMap<String, u8>,
 }
 
 /// Asset names and the ROM's numbers.

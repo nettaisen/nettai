@@ -24,6 +24,7 @@ use bn6_content_api::RecordHandle;
 
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionId, f1};
+use crate::content::{CollisionRole, EffectRole, SparkRole};
 use crate::field::{self, PanelType, pflags};
 use crate::kinds::common::{self, Progress};
 use crate::object::{DragStep, ObjectRef, PanelPos, SlideBounds, StateWord, Vec3, flags};
@@ -235,10 +236,10 @@ fn clear_f2(b: &mut Battle, r: ObjectRef, bits: u32) {
     b.collision.get_mut(c).f2 &= !bits;
 }
 
-/// `object_setCollisionRegion` / `object_clearCollisionRegion` (0).
-pub fn set_region(b: &mut Battle, r: ObjectRef, region: u8) {
+/// `object_clearCollisionRegion`: it covers no panel.
+pub fn clear_region(b: &mut Battle, r: ObjectRef) {
     let c = collision(b, r);
-    b.collision.get_mut(c).region = region;
+    b.collision.get_mut(c).region = None;
 }
 
 // ---- The field-object registry ------------------------------------------
@@ -361,7 +362,7 @@ fn push_on_any_hit(b: &mut Battle, c: CollisionId) {
 /// over or its timer runs out, and blinks for its last three seconds.
 pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
     if b.is_battle_over() {
-        set_region(b, r, 0);
+        clear_region(b, r);
         b.objects.get_mut(r).hp = 0;
         return;
     }
@@ -372,7 +373,7 @@ pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
     let t = (o.timer as u32).wrapping_sub(1);
     o.timer = t as u16;
     if t == 0 {
-        set_region(b, r, 0);
+        clear_region(b, r);
         b.objects.get_mut(r).hp = 0;
         return;
     }
@@ -537,12 +538,10 @@ const THROW_RISE_TICKS: u8 = 0x20;
 const THROW_SPEED: i32 = 0x8_0000;
 const THROW_LIFT_SOUND: u16 = 0x12A;
 const THROW_FLIGHT_SOUND: u16 = 0x10C;
-/// The landing's hit (`sub_80C53A6`'s r4 = 0x06050001, r7 = 3): region 1,
-/// hit spark 5, target type 5, self type 6, hit modifier 3.
-const THROW_HIT_REGION: u8 = 1;
-const THROW_HIT_EFFECT: u8 = 5;
-const THROW_HIT_TARGET: u8 = 5;
-const THROW_HIT_SELF: u8 = 6;
+/// The landing's hit (`sub_80C53A6`'s r4 = 0x06050001, r7 = 3): its own
+/// panel, the thrown obstacle's spark and collision types (the roles
+/// `sparks.thrown_obstacle`, `collision.thrown_obstacle` and
+/// `collision.thrown_obstacle_target`), hit modifier 3.
 const THROW_HIT_MOD: u8 = 3;
 
 /// `sub_8018002`: picked up and thrown, the request `sub_800F6AC` makes
@@ -567,7 +566,7 @@ fn thrown(b: &mut Battle, r: ObjectRef) {
             b.unreserve_panel(r, fp.x, fp.y);
             b.objects.get_mut(r).shake_timer = THROW_RISE_TICKS;
             b.play_sound(crate::sound::SoundId(THROW_LIFT_SOUND));
-            set_region(b, r, 0);
+            clear_region(b, r);
             b.objects.get_mut(r).prevent_anim = 4;
         }
         // sub_8018076: up.
@@ -622,14 +621,15 @@ fn thrown(b: &mut Battle, r: ObjectRef) {
             o.panel = o.future_panel;
             common::set_coordinates_from_panels(b, r);
             let o = b.objects.get(r);
+            let roles = &b.content.defs.roles;
             let spec = crate::kinds::hitbox::HitboxSpec {
                 panel: o.panel,
                 element: o.element,
                 z: 0,
-                region: THROW_HIT_REGION,
-                hit_effect: THROW_HIT_EFFECT,
-                target: THROW_HIT_TARGET,
-                self_type: THROW_HIT_SELF,
+                region: b.anchor_region(),
+                hit_effect: Some(roles.spark(SparkRole::ThrownObstacle)),
+                target: roles.collision(CollisionRole::ThrownObstacleTarget),
+                self_type: roles.collision(CollisionRole::ThrownObstacle),
                 damage: o.damage,
                 stamina: o.stamina,
                 hit_mod: THROW_HIT_MOD,
@@ -724,8 +724,7 @@ fn bios_arctan2(x: i32, y: i32) -> u32 {
 
 /// How long an encased obstacle shows before it is replaced.
 const ENCASE_TICKS: u8 = 0x3C;
-/// The effect it flickers with (effect #0 look 0x42).
-const ENCASE_EFFECT: u8 = 0x42;
+/// (The effect it flickers with is the role `effects.encased`.)
 
 /// `sub_801813A`, by PreventAnim (`off_801814C`): encased in ice or a
 /// bubble, it flickers for 60 ticks, then leaves the registry (and its
@@ -741,7 +740,7 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             b.objects.get_mut(r).shake_timer = ENCASE_TICKS;
             let fp = b.objects.get(r).future_panel;
             b.unreserve_panel(r, fp.x, fp.y);
-            set_region(b, r, 0);
+            clear_region(b, r);
             b.objects.get_mut(r).prevent_anim = 4;
         }
         // sub_8018186: flicker (hidden, with a new effect, two ticks of
@@ -751,7 +750,8 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             if b.objects.get(r).shake_timer & 2 == 0 {
                 b.objects.get_mut(r).flags &= !flags::VISIBLE;
                 let pos = b.objects.get(r).pos;
-                crate::kinds::effect::spawn(b, pos, ENCASE_EFFECT, 0, 0, 0);
+                let look = b.content.defs.roles.effect(EffectRole::Encased);
+                crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
             }
             let o = b.objects.get_mut(r);
             o.shake_timer = o.shake_timer.wrapping_sub(1);

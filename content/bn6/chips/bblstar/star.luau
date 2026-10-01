@@ -96,7 +96,7 @@ local function tick(me: Object)
     end
     drift(me)
     local highlight = true
-    if c.region == 0 then
+    if c.region == nil then
         if panel_word(me) == s.hit_panel then
             highlight = false
         else
