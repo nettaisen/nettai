@@ -100,4 +100,24 @@ collision.guard_breaking = define.collision {
     row_offset = 0x190,
 }
 
+-- A breaking attack (row 0x06: a shot that breaks guards; AuraHed's head).
+collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
+
+-- A neutral body, while dimmed too (row 0x0E: AirSpin's whirlwind top).
+collision.neutral_body = define.collision { id = "neutral-body", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
+
+-- A pushing attack (row 0x12: WindRack's swing, AirSpin's spin).
+collision.pushing = define.collision { id = "pushing", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
+
+-- A pull of no side (row 0x1E: what a gust is).
+collision.pull = define.collision { id = "pull", side0 = 0x00004280, side1 = 0x00004280, row_offset = 0xF0 }
+
+-- A drain: an attack of its side that pierces invisibility and flashing
+-- (row 0x2C: GunDelSol's hits under the sun beam).
+collision.drain = define.collision { id = "drain", side0 = 0x8000408c, side1 = 0x4000408c, row_offset = 0x160 }
+
+-- A probe (row 0x3D): what finds the first thing its target type reaches
+-- without hurting it (H-Burst's shot).
+collision.probe = define.collision { id = "probe", side0 = 0x00000080, side1 = 0x00000080, row_offset = 0x1E8 }
+
 return collision

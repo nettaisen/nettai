@@ -17,6 +17,17 @@ local BY_ELEMENT: { [number]: Spark } = {
 -- The erase beams' spark (hit effect 0x0C).
 sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
 
+-- The plain hit (spark 0) and the elements' (1 to 4), as named sparks:
+-- what an attack that always shows one element's spark sets.
+sparks.plain = BY_ELEMENT[0]
+sparks.fire = BY_ELEMENT[1]
+sparks.aqua = BY_ELEMENT[2]
+sparks.elec = BY_ELEMENT[3]
+sparks.wood = BY_ELEMENT[4]
+
+-- A breaking hit (spark 0x0A: AuraHed's head).
+sparks.breaking = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
+
 -- `sub_801A146`: the spark of an attack of `element` (its primary
 -- element, the low nibble).
 function sparks.of_element(element: number): Spark

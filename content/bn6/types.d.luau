@@ -222,3 +222,163 @@ export type Instrument = {
     tune: Sound,
     effect: (me: Object) -> (),
 }
+
+-- ---- The standard chip actions (content model v2, step 8g) --------------
+-- Each family's builder spec: what differs between its chips, the
+-- original's parameter bytes by name. `id`: the action's key when no chip
+-- definition holds it (its compat key).
+
+-- AquaNdl (chips/aquandl, the original's action 0x32): the needles'
+-- palette.
+export type AquaNeedleSpec = {
+    id: string?,
+    palette: number,
+}
+
+-- H-Burst (chips/h-burst, action 0x34): the bursts its shot makes where
+-- it hits.
+export type HyperBurstSpec = {
+    id: string?,
+    bursts: number,
+}
+
+-- A rolling log (chips/rlnglog/log): a big one also covers the panel
+-- above it; the ticks a hit that takes HP stops it; its HP; thrown in an
+-- arc onto the panel ahead (else it drops in from above).
+export type RollingLog = {
+    big: boolean,
+    stop_ticks: number,
+    hp: number,
+    thrown: boolean,
+}
+
+-- RlngLog (chips/rlnglog, action 0x36): the logs it throws.
+export type RollingLogSpec = {
+    id: string?,
+    log: RollingLog,
+}
+
+-- What AirSpin sends from the panel ahead (chips/airspin): the whirlwind
+-- top that rolls and spins there (its palette, its spins), or the seeking
+-- whirlwind no chip sends.
+export type AirSpinSender = {
+    send: (user: Object, x: number, y: number, element: number, damage: number) -> Object?,
+    palette: number?,
+    spins: number?,
+}
+
+-- AirSpin (chips/airspin, action 0x38).
+export type AirSpinSpec = {
+    id: string?,
+    whirlwind: AirSpinSender,
+}
+
+-- DolThdr (chips/dolthdr, action 0x3E): the thunder's ticks, and whether
+-- the navi holds the buster arm rather than the doll (no chip does).
+export type DollThunderSpec = {
+    id: string?,
+    ticks: number,
+    holds_arm: boolean?,
+}
+
+-- WindRack (chips/windrack, action 0x3F): the rack the navi swings.
+export type WindRackSpec = {
+    id: string?,
+    rack: AttachmentLook,
+}
+
+-- An electric pulse (chips/elcpuls/pulse): its hit modifier and status,
+-- its ticks, its palette and the bug its hits carry (none by default).
+export type ElecPulse = {
+    hit_mod: number,
+    status: number,
+    ticks: number,
+    palette: number,
+    bug: number?,
+    bug_arg: number?,
+}
+
+-- ElcPuls (chips/elcpuls, action 0x42): the pulse, and the ticks the navi
+-- holds it out.
+export type ElecPulseSpec = {
+    id: string?,
+    pulse: ElecPulse,
+    hold: number,
+}
+
+-- An aura head (chips/aurahed/head): its palette and speed (16.16 a
+-- tick), its stronger hit (hit modifier 3, else 1), and whether it runs to
+-- the field's far edge (else 3 panels).
+export type AuraHead = {
+    palette: number,
+    speed: number,
+    strong: boolean,
+    far: boolean,
+}
+
+-- AuraHed (chips/aurahed, action 0x43): the head it fires; StreamHd's
+-- `stream` fires five, counting their palettes up, the last strong.
+export type AuraHeadSpec = {
+    id: string?,
+    head: AuraHead,
+    stream: boolean?,
+}
+
+-- MagCoil (chips/magcoil, action 0x44): the magnet's ticks.
+export type MagCoilSpec = {
+    id: string?,
+    ticks: number,
+}
+
+-- A dragon (lib/dragons, a row of the original's tables by the chip's
+-- subtype): its speed (16.16 a tick), palette, hit modifier and spark,
+-- the panel it leaves behind (none: false), and its body segments'
+-- delays.
+export type DragonVariant = {
+    speed: number,
+    palette: number,
+    hit_mod: number,
+    spark: Spark,
+    panel: PanelType | false,
+    delays: { number },
+}
+
+-- A dragon chip (lib/dragons, action 0x51).
+export type DragonSpec = {
+    id: string?,
+    dragon: DragonVariant,
+}
+
+-- A honey bee (chips/rskyhny/bee): its palette and its speeds across and
+-- along the field (16.16 a tick).
+export type HoneyBee = {
+    palette: number,
+    speed: number,
+    turn_speed: number,
+}
+
+-- RskyHny (chips/rskyhny, action 0x39): the bees; `drags` (no chip) the
+-- first release clears the navi's drag step instead of sending a bee.
+export type HoneySpec = {
+    id: string?,
+    bee: HoneyBee,
+    drags: boolean?,
+}
+
+-- The sun beam's look (chips/gundels/beam): its sprite and palette.
+export type SunBeam = {
+    sprite: SpriteAsset,
+    palette: number,
+}
+
+-- GunDelSol (chips/gundels, action 0x37): the gun the navi holds, how
+-- long it fires, the beam in the shade and in the sun, and whether its
+-- hits cover two columns (GunDelEX).
+export type GunDelSolSpec = {
+    id: string?,
+    gun: AttachmentLook,
+    firing_ticks: number,
+    beam: SunBeam,
+    beam_in_sun: SunBeam,
+    wide: boolean?,
+}

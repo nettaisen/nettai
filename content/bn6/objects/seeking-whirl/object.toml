@@ -1,6 +1,0 @@
-# The seeking whirlwind (attack object #0xD4, `sub_80DFFB8`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xD4
-script = "seeking_whirl.luau"

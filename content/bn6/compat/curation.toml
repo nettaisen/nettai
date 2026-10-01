@@ -7,6 +7,7 @@
 
 ["actions.toml"]
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
+"tengucross/charge/gust" = "0x3F: WindRack's action with TenguCross's fan, which its charged shot (weapon 0x0F) starts"
 
 ["assets.toml"]
 "sounds.big-sword-swing" = "0x0CE: LifeSrd's, DrkSword's and DblDream's swing (the swords exemplar)"
@@ -327,6 +328,17 @@
 "sprites.tornado" = "0c-17: objects/tornado/tornado.luau"
 "sprites.whirlwind" = "10-44: objects/whirlwind/whirlwind.luau"
 "sprites.yoyo" = "0c-0b: objects/yoyo/yoyo.luau"
+"sprites.spreader" = "0c-19: H-Burst's spreader, attachment row 0x15 (G3 names it for the spreaders)"
+"sprites.wind-rack" = "0c-27: WindRack's rack, attachment row 0x2A"
+"sprites.gun-del-sol" = "0c-3b: GunDelSol's gun, attachment rows 7 to 0xA"
+"sprites.sun-beam" = "0c-3c: GunDelSol's sun beam, look 0"
+"sprites.sun-beam-ex" = "0c-47: GunDelEX's sun beam, look 1"
+"sprites.tengu-fan" = "0c-5c: TenguCross's fan for its charged shot (WindRack's action), attachment row 0x33"
+"sprites.log-thrower" = "0c-5d: RlngLog's log thrower, attachment row 0x27"
+"sprites.hive" = "0c-5e: RskyHny's hive, attachment row 0x28"
+"sprites.elec-coil" = "0c-5f: ElcPuls's coil, attachment row 0x2B"
+"sprites.thunder-doll-hand" = "0c-60: DolThdr's doll in hand, attachment row 0x29"
+"sprites.magnet-coil" = "0c-61: MagCoil's coil, attachment row 0x2C"
 
 ["chips.toml"]
 beastout-dimming-1 = "0x186: the second BeastOut: a dimming chip (off_802CCB4[3])"
