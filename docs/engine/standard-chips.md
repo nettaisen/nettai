@@ -308,7 +308,7 @@ Ported but not registered, from group G2 (chips/19x folders, their shared state 
 SpoutMan's, ElecMan's, SlashMan's, TomahawkMan's, TenguMan's and DustMan's, with their objects (chips/eraseman/beam,
 drip-shower, navi-effect, riding-hit, eagle-tomahawk, tomahawk-strike, tengu-tornado, dust-cloud). Not written:
 HeatPres (lib/trajectory for the arc, objects/heat-flame for the flames), VolcChrg (the volcano rock, attack #0x86)
-and RC Brakr (objects/ground-drill and the rock of chips.md §3.6.25, effect #9 = objects/rock-chip), and the action
+and RC Brakr (objects/ground-drill and the rock of chips.md §3.6.25, effect #9 = objects/falling-rock/chip), and the action
 0x0A dispatcher and registrations.
 
 What the port has for them so far: their damage, damage formulas 24 to 44 (`sub_8010C50`): the chip's row of

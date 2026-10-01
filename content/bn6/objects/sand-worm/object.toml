@@ -1,6 +1,0 @@
-# SandWrm's worm (attack object #0xCB, `sub_80DEA7C`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xCB
-script = "sand_worm.luau"

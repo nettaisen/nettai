@@ -1,6 +1,0 @@
-# JustcOne's fist (attack object #0xAE, `sub_80DB304`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xAE
-script = "justice_one.luau"
