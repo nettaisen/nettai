@@ -46,6 +46,7 @@ pub fn main(args: &[String]) {
     let bundle = crate::graphics::bundle(&rom_bytes);
     let mut battle = crate::battle::content(&rom_bytes);
     check_timing(&battle, &bundle);
+    battle.animations.parts = sprite_parts(&bundle);
     let mut report = Report::default();
     let overlay = bn6_content::overlay::read(Path::new(&overlay_dir), &mut report);
     let overlay = overlay.unwrap_or_else(|| panic!("the overlay {overlay_dir} doesn't read:\n{report}"));
@@ -140,6 +141,25 @@ fn asset_names(compat: &Path) -> bn6_content::names::AssetNames {
     names.banners = c.assets.banners.iter().map(|(k, &v)| (v, k.clone())).collect();
     names.chips = c.chips.iter().map(|(k, e)| (e.id, k.clone())).collect();
     names
+}
+
+/// Each sprite's frames' layouts and the layouts' part offsets, from the
+/// graphics: what the pack's `sprite.json` files carry and the loader reads
+/// back into the sprite timing.
+fn sprite_parts(
+    bundle: &bn6_assets::Bundle,
+) -> std::collections::BTreeMap<bn6_battle::content::SpriteId, bn6_battle::content::SpriteParts> {
+    bundle
+        .sprites
+        .iter()
+        .map(|s| {
+            let parts = bn6_battle::content::SpriteParts {
+                frame_layouts: s.animations.iter().map(|a| a.iter().map(|f| f.parts).collect()).collect(),
+                layouts: s.part_lists.iter().map(|l| l.iter().map(|p| (p.x, p.y)).collect()).collect(),
+            };
+            (bn6_battle::content::SpriteId { category: s.category, index: s.index }, parts)
+        })
+        .collect()
 }
 
 /// The engine's sprite timing and the graphics' animations are the same

@@ -1,6 +1,0 @@
-# SpoutMan's water ball (attack object #0x22, `sub_80C853C`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x22
-script = "spout_ball.luau"
