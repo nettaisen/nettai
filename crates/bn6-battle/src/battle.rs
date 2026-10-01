@@ -1012,16 +1012,21 @@ impl Battle {
 
     /// `sub_8007368`: spawn the settings' actor list. Only navis join the
     /// alive/actor bookkeeping; rocks and other field objects don't. The
-    /// field objects are content's (`Hook::ActorListEntry`, by the entry's
-    /// type in `off_80073A0`).
+    /// field objects are content's (by the entry's type in `off_80073A0`:
+    /// the rock is the role `kinds.rock`, placed by its kind's `place`).
     pub fn spawn_actors(&mut self) {
+        use crate::content::KindRole;
         use crate::setup::ActorKind;
-        use bn6_content_api::{ActorListEntrySpec, Hook, HookCall, PanelPos};
+        use bn6_content_api::{ActorListEntrySpec, HookCall, PanelPos};
         let content = self.content.clone();
         for entry in content.rules.stages.actor_list(content.stage(self.setup.settings.stage).actors) {
             if entry.kind != ActorKind::Navi {
-                let Some(hook) = content.defs.hook(Hook::ActorListEntry(entry.kind.entry_type())) else {
+                let ActorKind::Rock { .. } = entry.kind else {
                     panic!("actor list entries of kind {:?} are not implemented yet", entry.kind);
+                };
+                let kind = content.defs.roles.kind(KindRole::Rock);
+                let Some(hook) = content.defs.kind(kind).place else {
+                    panic!("kind {:?} (the role kinds.rock) has no `place`", content.defs.kind(kind).key);
                 };
                 let panel = PanelPos { x: entry.x, y: entry.y };
                 let spec = ActorListEntrySpec { panel, side: entry.alliance, variant: entry.kind.variant() };
