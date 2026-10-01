@@ -1,6 +1,7 @@
 --!strict
 -- Falzar Beast: one of MegaMan's forms.
 
+local gregar_beast = require("../gregar-beast/form")
 local falzar_beast_buster = require("../../weapons/falzar-beast-buster/weapon")
 local charged_chip_bonus = require("../../weapons/charged-chip-bonus/weapon")
 local beast_claw = require("../../weapons/beast-claw/weapon")
@@ -10,6 +11,9 @@ return define.form {
     name = "Falzar Beast",
     kind = "beast",
     game = "falzar",
+    -- (A weakness hit breaks a Beast as a Cross: the original's routine, by the form's
+    -- number, drops this one to the Gregar beast.)
+    breaks_to = gregar_beast,
     sprite = asset.sprite("falzar-beast"),
     element = "null",
     buster_bonus = 0,
