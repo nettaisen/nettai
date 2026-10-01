@@ -1064,7 +1064,8 @@ pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, look: RecordHandle) {
     let o = b.objects.get(r);
     let (pos, anim, alliance, flip) = (o.pos, o.anim, o.alliance, o.flip);
     let sprite = b.objects.sprite(r).look;
-    let Some(e) = crate::behavior::spawn_kind(b, "absorbed-obstacle", pos, [0; 4]) else { return };
+    let kind = b.content.defs.roles.kind(crate::content::KindRole::AbsorbedObstacle);
+    let Some(e) = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, [0; 4]) else { return };
     for (field, v) in [
         ("look", Value::Def(Registry::Record, look.0)),
         ("side", Value::Int(side as i64)),

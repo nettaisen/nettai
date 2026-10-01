@@ -200,3 +200,4 @@ objects/tornado/tornado.luau 9
 objects/trap-chip/trap_chip.luau 2
 objects/whirlwind/whirlwind.luau 7
 objects/yoyo/yoyo.luau 10
+rules/roles.luau 12
