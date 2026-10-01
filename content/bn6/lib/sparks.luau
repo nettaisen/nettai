@@ -14,6 +14,13 @@ local BY_ELEMENT: { [number]: Spark } = {
     [5] = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 },
 }
 
+-- The element sparks by name (hit effects 1 to 3), for hits that name
+-- theirs rather than take their element's.
+sparks.fire, sparks.aqua, sparks.elec = BY_ELEMENT[1], BY_ELEMENT[2], BY_ELEMENT[3]
+
+-- A heavy impact (hit effect 0x0A): a drill, a falling rock, junk.
+sparks.impact = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
+
 -- The erase beams' spark (hit effect 0x0C).
 sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
 

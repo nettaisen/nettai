@@ -52,6 +52,7 @@ fn battles_run_the_content_scripts() {
             "charge-car",
             "charge-man",
             "charge-wave",
+            "chargeman/volcano-rock",
             "countdown-bomb",
             "crack-shot",
             "dash-hit",
@@ -59,6 +60,8 @@ fn battles_run_the_content_scripts() {
             "dragon-head",
             "drill",
             "dust-ball",
+            "dustman/cloud",
+            "dustman/overlay",
             "elec-man",
             "elec-thunder",
             "elem-trap",
@@ -80,13 +83,14 @@ fn battles_run_the_content_scripts() {
             "flame-hook-fire",
             "flshbom/bomb",
             "flying-shot",
+            "follow-effect",
             "gauge-speed",
             "golem",
             "grab/controller",
             "grab/shot",
             "gust",
-            "heat-flame",
             "heat-man",
+            "heatman/flame",
             "hit-flash",
             "honey-bee",
             "invisible",
@@ -115,20 +119,25 @@ fn battles_run_the_content_scripts() {
             "seed",
             "slash-man",
             "slash-wave",
+            "slashman/riding-hit",
             "spout-ball",
             "spout-geyser",
             "spout-man",
             "spout-mark",
             "spout-pillar",
             "spout-splash",
+            "spoutman/drip-shower",
             "sun-beam",
             "sun-meteor",
             "sun-moon",
             "sword-wave",
             "tengu-man",
+            "tenguman/tornado",
             "thunder-column",
             "time-bom",
             "tomahawk-man",
+            "tomahawkman/axe",
+            "tomahawkman/strike",
             "trap-chip",
             "whirlwind",
         ]
@@ -452,6 +461,63 @@ fn the_scripted_swords_play_and_roll_back() {
     assert!(ticks("attachment") > 0, "a blade: {seen:?}");
     assert!(ticks("engine/effect") > 0, "a slash: {seen:?}");
     assert!(ticks("engine/afterimage") > 0, "a step sword's afterimages: {seen:?}");
+}
+
+/// Two link navis with some of the link navis' own chips (`LINK_CHIPS`'
+/// entries `chips`) in their folders.
+fn link_chip_setup(chips: &[usize]) -> crate::setup::RoundSetup {
+    let chips: Vec<_> = chips.iter().map(|&i| testing::chip_handle(testing::LINK_CHIPS[i].0)).collect();
+    let mut s = scenario::setup_with_handles(&chips);
+    let navi = testing::content().navi_numbered(testing::LINK_NAVI);
+    for stats in &mut s.navi_stats {
+        stats.navi = navi;
+    }
+    s
+}
+
+#[test]
+fn the_link_navis_chips_play_and_roll_back() {
+    // Each link navi chip's record runs the action its module exports (its
+    // CurAction the content action's): every one runs, with what it
+    // spawns, and a copy taken at any tick plays on as the battle does.
+    let mut seen = std::collections::BTreeMap::new();
+    for chips in [[0, 1, 2], [3, 4, 5], [6, 7, 8]] {
+        let setup = || link_chip_setup(&chips);
+        let tape = scenario::record_on(setup(), 2000, 11);
+        let whole = digests(&tape, Battle::new(setup(), scenario::content()));
+        let mut b = Battle::new(setup(), scenario::content());
+        for (i, t) in tape.iter().enumerate() {
+            if i % 211 == 0 {
+                let copy = digests(&tape[i..], b.clone());
+                assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way ({chips:?})");
+            }
+            b.tick(&t.input, t.events.clone());
+            for r in b.objects.in_order() {
+                let key = match crate::kinds::player::running_content_action(&b, r) {
+                    Some(h) => format!("action {}", b.content.defs.action(h).key),
+                    None => b.kind_key(r).to_string(),
+                };
+                *seen.entry(key).or_insert(0) += 1;
+            }
+        }
+    }
+    let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
+    for chip in ["heatpres", "delecswd", "rslash", "edeletbm", "volcchrg", "dripshwr", "etomahwk", "ftornado", "dustbrk"] {
+        assert!(ticks(&format!("action {chip}/action")) > 0, "{chip} ran: {seen:?}");
+    }
+    for kind in [
+        "heatman/flame",
+        "follow-effect",
+        "slashman/riding-hit",
+        "eraseman/beam",
+        "chargeman/volcano-rock",
+        "tomahawkman/axe",
+        "tomahawkman/strike",
+        "dustman/cloud",
+        "dustman/overlay",
+    ] {
+        assert!(ticks(kind) > 0, "{kind}: {seen:?}");
+    }
 }
 
 #[test]
