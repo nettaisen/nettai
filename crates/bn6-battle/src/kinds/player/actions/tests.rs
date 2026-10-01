@@ -1257,7 +1257,7 @@ fn erase_cross_charged_shot_beams_the_row_while_the_navi_holds() {
     // After its opening animation, a hit zone on each panel from its own
     // to the field's edge; the one on the enemy hits once and ends.
     run_to(&mut b, p, &mut t, 10, 0);
-    let mut zones: Vec<_> = kind_objects(&b, "thunder-column").iter().map(|&z| b.objects.get(z).panel.x).collect();
+    let mut zones: Vec<_> = kind_objects(&b, "dolthdr/thunder-column").iter().map(|&z| b.objects.get(z).panel.x).collect();
     zones.sort();
     assert_eq!(zones, [3, 4, 6]);
     assert_eq!(b.objects.get(p1).hp, 940);
@@ -1267,7 +1267,7 @@ fn erase_cross_charged_shot_beams_the_row_while_the_navi_holds() {
     run_to(&mut b, p, &mut t, 72, 0);
     assert_eq!(act(&b, p0), IDLE);
     run_to(&mut b, p, &mut t, 80, 0);
-    assert!(kind_objects(&b, "thunder-column").is_empty());
+    assert!(kind_objects(&b, "dolthdr/thunder-column").is_empty());
     assert!(kind_objects(&b, "erasecross/ray").is_empty());
 }
 
@@ -1308,7 +1308,7 @@ fn ground_cross_charged_shot_burrows_to_the_enemy_and_drills() {
     run_to(&mut b, p, &mut t, 30, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 4, y: 2 });
     run_to(&mut b, p, &mut t, 41, 0);
-    let mut drills: Vec<_> = kind_objects(&b, "drill").iter().map(|&d| b.objects.get(d).panel.x).collect();
+    let mut drills: Vec<_> = kind_objects(&b, "drilarm/drill").iter().map(|&d| b.objects.get(d).panel.x).collect();
     drills.sort();
     assert_eq!(drills, [5, 6]);
     run_to(&mut b, p, &mut t, 73, 0);
@@ -1319,7 +1319,7 @@ fn ground_cross_charged_shot_burrows_to_the_enemy_and_drills() {
     run_to(&mut b, p, &mut t, 86, 0);
     let o = b.objects.get(p0);
     assert_eq!((act(&b, p0), o.panel), (IDLE, PanelPos { x: 2, y: 2 }));
-    assert!(kind_objects(&b, "drill").is_empty());
+    assert!(kind_objects(&b, "drilarm/drill").is_empty());
 }
 
 #[test]
@@ -1811,7 +1811,7 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
     // BN6's definitions, and the test chips that compose FireHit's and
     // FlmHook's effects.
     let chips = [
-        (testing::chip_handle(testing::BOOMER), "boomerang"),
+        (testing::chip_handle(testing::BOOMER), "boomer/boomerang"),
         (testing::chip_handle(testing::LANCE), "lance/lance"),
         (testing::chip_handle(testing::FIST), "firehit/fist"),
         (testing::chip_handle(testing::SAND_WORM), "sandwrm/worm"),
@@ -1873,7 +1873,7 @@ fn lances_thrust_from_the_far_column() {
 fn the_tomahawk_throw_sends_two_tomahawks() {
     // The boomerangs out, by their sprites and rows.
     let tomahawks = |b: &Battle| {
-        let t = b.objects.in_order().filter(|&o| b.kind_key(o) == "boomerang");
+        let t = b.objects.in_order().filter(|&o| b.kind_key(o) == "boomer/boomerang");
         t.map(|o| (b.objects.sprite(o).id, b.objects.get(o).panel.y)).collect::<Vec<_>>()
     };
     let start = || {
@@ -2298,7 +2298,7 @@ fn the_chips_charged_shots_fire_and_roll_back() {
     let (mut b, p0, p1) = fight();
     let t = run_weapon(&mut b, [p0, p1], "boomrarm/charge", 400);
     assert_eq!(t, 1);
-    assert_eq!(of_kind(&b, "boomerang").len(), 1);
+    assert_eq!(of_kind(&b, "boomer/boomerang").len(), 1);
     let (mut b, p0, p1) = fight();
     assert!(run_weapon(&mut b, [p0, p1], "megaman/tengu-wind", 400) > 8);
     // BugRSwrd's slash with a bug frag covers the two columns ahead:
