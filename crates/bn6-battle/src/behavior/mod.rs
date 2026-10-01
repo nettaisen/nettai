@@ -264,6 +264,15 @@ pub fn set_state_variant(b: &mut Battle, r: ObjectRef, name: &str, variant: &str
 
 /// Set a state field of a content object by name: how engine code that
 /// spawns a content kind passes it arguments.
+/// Whether `r` is an active content object whose state has a field `name`.
+pub fn has_state_field(b: &Battle, r: ObjectRef, name: &str) -> bool {
+    if b.objects.get(r).flags & crate::object::flags::ACTIVE == 0 {
+        return false;
+    }
+    let Vars::Content(state) = &b.objects.get(r).vars else { return false };
+    b.content.defs.schema(state.id()).index_of(name).is_some()
+}
+
 pub fn set_state_field(b: &mut Battle, r: ObjectRef, name: &str, v: Value) {
     let content = b.content.clone();
     let Vars::Content(state) = &mut b.objects.get_mut(r).vars else {

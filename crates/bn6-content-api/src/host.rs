@@ -210,6 +210,9 @@ pub enum HookCall {
     InstantChip { user: ObjectRef, spec: InstantChipSpec },
     /// `actor_list_entry(spec)`: returns what it placed, or nil.
     ActorListEntry { spec: ActorListEntrySpec },
+    /// A role hook the ruleset calls with a navi (`define.roles`'
+    /// `hooks`): its result is unused.
+    RoleNavi { navi: ObjectRef },
 }
 
 /// A content error: a bug in the content, or a script breaking the
