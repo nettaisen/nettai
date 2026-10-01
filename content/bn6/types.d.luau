@@ -854,3 +854,61 @@ export type SunMeteor = {
     shake: boolean,
     panel: "none" | "crack" | "break",
 }
+
+-- What a heat flame is spawned with (chips/heatman/flame): HeatMan's
+-- flames and BurnSqr's.
+export type HeatFlame = {
+    -- It acts and steps its sprite while dimmed (Param1 4: the navi
+    -- chip's).
+    while_dimmed: boolean,
+    -- How long it lasts (Param2).
+    ticks: number,
+    -- What it is: an attack, or (Param3 set) a thrown attack.
+    is: CollisionType,
+}
+
+-- How a gust blows (objects/gust, the original's first parameter):
+-- `pulls` turns it back toward its side, a weaker push; `unseen` hides it
+-- and lets it blow through any panel.
+export type GustHow = { pulls: boolean?, unseen: boolean? }
+
+-- What a riding hit is spawned with (navis/slashman/riding_hit): its
+-- collision types, hit modifier and spark, and whether it goes on after
+-- hitting a body.
+export type RidingHit = {
+    is: CollisionType,
+    hits: CollisionType,
+    hit_mod: number,
+    spark: Spark?,
+    keeps_going: boolean,
+}
+
+-- What EraseMan's beam is spawned with (chips/eraseman/beam).
+export type EraseBeam = {
+    -- The slash's aim: 0 up-forward, 1 forward, 2 down-forward.
+    aim: number,
+    -- How long it stands.
+    ticks: number,
+    -- A navi's own segment (EDeletBm's).
+    navis: boolean,
+}
+
+-- What a whirlwind is spawned with (TenguCross Beast's, its form's
+-- whirlwind module): whether its hits come all at once, how long it stands
+-- and its animation.
+export type Whirlwind = { at_once: boolean, ticks: number, anim: number }
+
+-- What a surge of water is spawned with (SpoutCross Beast's, its form's
+-- surge module): how long it lasts and how often its region comes back, in
+-- ticks.
+export type AquaSurge = { ticks: number, beat: number }
+
+-- What a drip shower is spawned with (navis/spoutman/drip_shower): its
+-- turns and the ticks a quarter lasts; and whether it lasts only while its
+-- owner stays in his action.
+export type DripShower = { turns: number, quarter_ticks: number, follows_action: boolean }
+
+-- How GroundMan's rocks drop (chips/grndman/rock): the ticks its panel
+-- blinks first, whether it acts while dimmed, whether it cracks the panel
+-- it lands on, and silently.
+export type GroundRockDrop = { warning: number, while_dimmed: boolean, cracks: boolean, silent: boolean }

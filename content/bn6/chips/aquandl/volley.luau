@@ -30,8 +30,8 @@ export type State = {
 -- Needles to drop, and the ticks between them.
 local NEEDLES, INTERVAL = 3, 8
 -- The enemies it aims at, by NameID: viruses, then navis.
-local VIRUSES = { 0, 0xAE }
-local NAVIS = { 0x100, 0x1C3 }
+local VIRUSES: { number } = { 0, 0xAE }
+local NAVIS: { number } = { 0x100, 0x1C3 }
 
 -- `object_getEnemyByNameRange`: `side`'s combatants whose NameID is in
 -- `range`, added to `into` in slot order.
