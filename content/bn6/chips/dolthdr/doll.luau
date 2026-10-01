@@ -1,7 +1,7 @@
 --!strict
 -- DolThdr's doll (attack object #0x82, `sub_80D5740`): it appears at its
 -- user's hand, and on its first tick strikes thunder columns (attack
--- object #0x8B, objects/thunder-column) on every panel of its row from its
+-- object #0x8B, ./column) on every panel of its row from its
 -- own to the field's edge, each lasting the thunder's ticks, as the doll
 -- does. When it registers (a spawner that passes a slot, the original's
 -- first parameter: no chip's) it keeps itself in its user's slot, stands
@@ -9,7 +9,7 @@
 -- (their timers to 1) once its user clears that slot.
 
 local slot = require("../../lib/slot")
-local thunder_column = require("../../objects/thunder-column/thunder_column")
+local thunder_column = require("./column")
 
 local doll = {}
 
