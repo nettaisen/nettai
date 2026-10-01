@@ -1,7 +1,0 @@
-# A dash's hit (attack object #0xAF, `sub_80DB570`), GroundCross Beast's dash's and
-# ChargeCross's charged tackle's, is a script.
-
-[kind]
-pool = "attack"
-index = 0xAF
-script = "dash_hit.luau"

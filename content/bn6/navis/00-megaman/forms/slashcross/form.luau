@@ -19,7 +19,7 @@ return define.form {
     element = "null",
     weakness = { "break" },
     buster_bonus = 0,
-    weapons = { buster = buster.weapon, charge_shot = charge, a_charge = slash_a_charge },
+    weapons = { buster = buster.weapon, charge_shot = charge.weapon, a_charge = slash_a_charge.weapon },
     palette = 9,
     mugshot = asset.mugshot("tengucross"),
     identity = {

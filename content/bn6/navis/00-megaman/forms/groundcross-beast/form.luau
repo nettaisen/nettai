@@ -17,7 +17,7 @@ return define.form {
     element = "null",
     weakness = { "cursor" },
     buster_bonus = 0,
-    weapons = { buster = falzar_beast_buster, a_charge = rock_barrage, alt_a_charge = dash },
+    weapons = { buster = falzar_beast_buster.weapon, a_charge = rock_barrage, alt_a_charge = dash.weapon },
     mugshot = asset.mugshot("groundcross-beast"),
     identity = {
         version = 0,

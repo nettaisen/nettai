@@ -10,13 +10,18 @@ local anti_recovery = require("../chips/antirecv/controller")
 local antidmg_counter = require("../chips/antidmg/counter")
 local antiswrd_counter = require("../chips/antiswrd/counter")
 local barriers = require("../lib/barriers/barriers")
+local beast_claw = require("../navis/00-megaman/weapons/beast-claw/weapon")
 local bodygrd_counter = require("../chips/bodygrd/counter")
 local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
+local dust_beast_scatter = require("../navis/00-megaman/forms/dustcross-beast/scatter")
 local encased_bubble = require("../objects/encased-bubble/bubble")
 local falling_rock = require("../objects/falling-rock/falling_rock")
+local ground_drill = require("../navis/00-megaman/forms/groundcross/drill")
 local guardian_statue = require("../chips/guardian/statue")
 local rock = require("../objects/rock/rock")
+local slash_beast_lunge = require("../navis/00-megaman/forms/slashcross-beast/lunge")
+local slash_charge = require("../navis/00-megaman/forms/slashcross/charge")
 local supports = require("../lib/supports/controller")
 
 return define.roles {
@@ -32,20 +37,21 @@ return define.roles {
         -- The strike the navi's request 0x80000 starts from idle (the
         -- machine swords' strike by the attack's variant).
         stun_strike = { legacy = { action = 0x49 } },
-        -- What a Cross navi protected at the battle's end runs.
-        cross_protect = { legacy = { action = 0x4D } },
+        -- What a Cross navi protected at the battle's end runs
+        -- (GroundCross's drill).
+        cross_protect = ground_drill.action,
         -- The turn L or R starts where turning is enabled.
         turn = { legacy = { action = 0x3B } },
-        -- A Cross navi's knock-out.
-        cross_death = { legacy = { action = 0x4C } },
+        -- A Cross navi's knock-out (SlashCross Beast's lunge).
+        cross_death = slash_beast_lunge.action,
         -- A Cross navi's volley.
         volley = { legacy = { action = 0x30 } },
         -- SlashCross's charged slash, which the Beast rush recognizes.
-        charged_sword = { legacy = { action = 0x41 } },
+        charged_sword = slash_charge.action,
         -- The Beast forms' charged claw.
-        beast_claw = { legacy = { action = 0x52 } },
+        beast_claw = beast_claw.action,
         -- DustCross Beast's scatter, during which the navi isn't grounded.
-        dust_beast_scatter = { legacy = { action = 0x50 } },
+        dust_beast_scatter = dust_beast_scatter.action,
     },
     kinds = {
         -- What a stage's actor list places, by its `place`: the rock (entry
