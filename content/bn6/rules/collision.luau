@@ -84,6 +84,24 @@ collision.neutral_object = define.collision {
 -- neutral objects (row 0x0F: what a BlkBomb reacts to).
 collision.everything = define.collision { id = "everything", side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
 
+-- The navi chips' and link navis' types (named by what their flags add
+-- to an attack's: 0x02 breaks guards and ice; 0x04 pierces invisibility
+-- and flashing; 0x08 as a thrown attack's).
+
+-- A navi's body (row 0x01), and what a navi hits (row 0x02).
+collision.navi = define.collision { id = "navi", side0 = 0x08410080, side1 = 0x04210080, row_offset = 0x08 }
+collision.navi_target = define.collision { id = "navi-target", side0 = 0x55800200, side1 = 0xaa800200, row_offset = 0x10 }
+
+-- An attack that breaks (row 0x06: DustMan's junk, the link navis'
+-- strikes).
+collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
+
+-- A pull of no side (row 0x1E: DustMan's DustBrk drawing things in).
+collision.pull = define.collision { id = "pull", side0 = 0x00004280, side1 = 0x00004280, row_offset = 0xF0 }
+
+-- An attack with flag 0x800 (row 0x12: TenguMan's FTornado tornadoes).
+collision.tornado = define.collision { id = "tornado", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
+
 -- Nothing (row 0x00: a target that reaches nothing; Discord's notes, which
 -- confuse without learning they hit).
 collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1 = 0x00000000, row_offset = 0x00 }

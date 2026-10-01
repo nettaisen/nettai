@@ -559,6 +559,23 @@ fn export(definitions: &Definitions, module: &str, name: &str, whose: &str) -> R
     Ok(FnSource::export(module, name))
 }
 
+/// The action a chip record's module exports as `action`, which the record
+/// runs as its own (a chip definition's `action`), whatever its action
+/// number names: the link navis' chips, whose number (0x0A) is the user's
+/// own action table's (docs/design/content-model-v2.md §12, "A record's
+/// action by its module"). None for a module registered by number (its
+/// `update` and `state`); a module can't be both.
+fn record_action<'d>(definitions: &'d Definitions, module: &str, whose: &str) -> Result<Option<&'d str>, ContentError> {
+    let Some(m) = definitions.module(module) else { return Ok(None) };
+    let Some(action) = &m.action else { return Ok(None) };
+    if m.functions.iter().any(|f| f == "update") {
+        return Err(ContentError::new(format!(
+            "{whose}: {module}.luau exports both an action ({action}) and `update`: a chip runs one"
+        )));
+    }
+    Ok(Some(action))
+}
+
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
 /// fields the engine reads. Damage formulas, Program Advance recipes, dark
 /// chips' substitutes and lock-on modes by definition come with the v2 API
@@ -864,6 +881,10 @@ impl Defs {
         for c in &content.chips {
             let Some(module) = &c.script else { continue };
             let whose = format!("chip {:#05x} ({})", c.id.unwrap_or_default(), c.name);
+            if record_action(&definitions, module, &whose)?.is_some() {
+                // The chip runs the action its module exports, below.
+                continue;
+            }
             match c.action {
                 DIMMING_CHIP_ACTION => {
                     let f = export(&definitions, module, "dimming_chip", &whose)?;
@@ -979,7 +1000,15 @@ impl Defs {
         let mut chips = Entries::new(Registry::Chip);
         for c in &content.chips {
             let key = format!("v1/chip-{:03x}", c.id.unwrap_or_default());
-            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage: None }, "the pack's chip record".into());
+            // A record whose module exports an action runs it, as a chip
+            // definition's `action` does; the rest are used by their action
+            // number and subtype.
+            let usage = match &c.script {
+                Some(module) => record_action(&definitions, module, &key)?
+                    .map(|a| ChipUsage::Action(action_handle(a).expect("a defined action"))),
+                None => None,
+            };
+            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage }, "the pack's chip record".into());
         }
         for d in definitions.of(Registry::Chip) {
             let mut usages = Vec::new();
@@ -1229,9 +1258,9 @@ impl Defs {
         }
         for (i, c) in defs.chips.iter().enumerate() {
             defs.chip_keys.insert(c.key.clone(), ChipHandle(i as u16));
-            if c.usage.is_none()
-                && let Some(id) = c.record.id
-            {
+            // The pack's records (a definition has no number), including
+            // those that run an action their module exports.
+            if let Some(id) = c.record.id {
                 defs.chip_numbers.insert(id, ChipHandle(i as u16));
             }
         }
