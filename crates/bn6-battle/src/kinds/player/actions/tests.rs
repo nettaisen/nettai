@@ -1417,8 +1417,14 @@ fn absorbing_and_the_claw_roll_back() {
 /// Use the instant chip `chip` from side 0's hand; returns once its
 /// effect ran (the tick after the chip starts).
 fn use_instant_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: u16) {
+    let chip = testing::chip_in(&b.content, chip);
+    use_instant_chip_handle(b, p0, p1, chip);
+}
+
+/// The same with the chip by handle (one content defines).
+fn use_instant_chip_handle(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: bn6_content_api::ChipHandle) {
     let mut hand = ChipHand::empty(&b.content);
-    hand.ids[0] = Some(testing::chip_in(&b.content, chip));
+    hand.ids[0] = Some(chip);
     b.hands[0] = hand;
     tick(b, p0, p1, keys::A);
     assert_eq!(b.objects.get(p0).action, 0x1C);
@@ -1455,15 +1461,41 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
 }
 
 #[test]
+fn the_plus_chips_content_defines_raise_their_bonus() {
+    // Atk+10 and Navi+20 are definitions whose hooks name their bonus (the
+    // records' first parameter): alone, the sparkle; from a special source,
+    // their damage into the side's attack or navi bonus.
+    let (mut b, p0, p1) = fight();
+    let atk = b.content.defs.chip_by_key(testing::ATTACK_10).unwrap();
+    use_instant_chip_handle(&mut b, p0, p1, atk);
+    assert!(b.objects.in_order().any(|o| b.kind_key(o) == "rising-bubble"), "the sparkle");
+    for (key, bonus) in [(testing::ATTACK_10, (10, 0)), (testing::NAVI_20, (0, 20))] {
+        let (mut b, p0, p1) = fight();
+        let chip = b.content.defs.chip_by_key(key).unwrap();
+        let mut hand = ChipHand::empty(&b.content);
+        (hand.ids[0], hand.damage[0]) = (Some(chip), b.content.chip(chip).damage);
+        b.hands[0] = hand;
+        tick(&mut b, p0, p1, keys::A);
+        ai_mut(&mut b, p0).attack.special_source = 1;
+        tick(&mut b, p0, p1, 0);
+        assert_eq!((b.sides[0].special_attack_bonus, b.sides[0].special_navi_bonus), bonus, "{key}");
+    }
+}
+
+#[test]
 fn buster_up_and_sync_trigger_change_the_navi() {
     // (A navi whose Beast Out is spent keeps its mood.)
     let (mut b, p0, p1) = fight_with(megaman_with(|s| s.beast_out_counter = 3));
     let attack = b.stats[0].attack;
-    use_instant_chip(&mut b, p0, p1, testing::BUSTER_UP);
+    let buster_up = b.content.defs.chip_by_key(testing::BUSTER_UP).unwrap();
+    use_instant_chip_handle(&mut b, p0, p1, buster_up);
     assert_eq!(b.stats[0].attack, attack + 1);
-    // At 9 or more it stays at 9.
+    // At 9 or more it stays at 9 (once its 20-tick lockout is over).
+    for _ in 0..20 {
+        tick(&mut b, p0, p1, 0);
+    }
     b.stats[0].attack = 9;
-    use_instant_chip(&mut b, p0, p1, testing::BUSTER_UP);
+    use_instant_chip_handle(&mut b, p0, p1, buster_up);
     assert_eq!(b.stats[0].attack, 9);
     // SyncTrgr's effect alone (the Full Synchro aura that follows is the
     // framework's, not ported yet): the mood goes to the top.
@@ -1586,9 +1618,9 @@ fn the_tomahawk_throw_sends_two_tomahawks() {
 /// Use `chip` from side 0's hand as a charged chip (the request a full A
 /// charge raises), with the A-charge routine `routine`; the test content's
 /// base form charges no chip, so the charge itself is skipped.
-fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: u8, chip: u16) {
+fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: u8, chip: bn6_content_api::ChipHandle) {
     let mut hand = ChipHand::empty(&b.content);
-    hand.ids[0] = Some(testing::chip_in(&b.content, chip));
+    hand.ids[0] = Some(chip);
     b.hands[0] = hand;
     let routine = testing::weapon_in(&b.content, routine);
     let a = ai_mut(b, p0);
@@ -1601,12 +1633,13 @@ fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: u8, chip: u16) {
 fn a_charged_chip_with_a_bonus_routine_is_used_charged() {
     // An A-charge routine that is the chip's charged use (ElecCross's).
     let (mut b, p0, _) = fight();
-    use_charged_chip(&mut b, p0, 0x0D, testing::BUSTER_UP);
+    let buster_up = testing::defined_chip(testing::BUSTER_UP);
+    use_charged_chip(&mut b, p0, 0x0D, buster_up);
     assert_eq!(b.objects.get(p0).action, 0x1C);
     assert_eq!(ai_mut(&mut b, p0).attack.charged, 1);
     // Without a routine: the chip family's register (Plus, 4).
     let (mut b, p0, _) = fight();
-    use_charged_chip(&mut b, p0, 0xFF, testing::BUSTER_UP);
+    use_charged_chip(&mut b, p0, 0xFF, buster_up);
     assert_eq!(ai_mut(&mut b, p0).attack.charged, 4);
 }
 
@@ -1747,6 +1780,25 @@ fn chips_of_a_series_run_their_own_actions() {
     assert_rolls_back(&mut b, [p0, p1], 3, 0);
     let second = ticks_in(&mut b, p0, p1, two) + 3;
     assert_eq!(second - first, 3, "Ticker2 stands 9 ticks to Ticker1's 6");
+}
+
+#[test]
+fn a_legacy_marker_gives_a_definitions_record_its_bytes() {
+    // The transitional marker: what reads a chip's subtype and parameters
+    // besides its own action (SlashCross's charged slash reads a sword's)
+    // finds them in the attack, from the record.
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let defs = &b.content.defs;
+    let [ticker1, ticker2] = [testing::TICKER_1, testing::TICKER_2].map(|key| defs.chip_by_key(key).unwrap());
+    let bytes = |b: &Battle, h| {
+        let c = b.content.chip(h);
+        (c.subtype, c.params)
+    };
+    assert_eq!(bytes(&b, ticker1), (0, [0; 4]));
+    assert_eq!(bytes(&b, ticker2), (7, [1, 2, 0, 0]));
+    use_chip_handle(&mut b, p0, p1, ticker2);
+    let a = &ai_mut(&mut b, p0).attack;
+    assert_eq!((a.variant, a.params), (7, [1, 2, 0, 0]));
 }
 
 // ---- Content model v2: the v2 API (step 4) ---------------------------------------------------
