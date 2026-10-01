@@ -1129,10 +1129,6 @@ impl Battle {
                 }
             }
             self.custom.committed = false;
-            // loc_8026E14: the consoles' chip icons are back (sub_801DA48(2)).
-            for hud in &mut self.chip_hud {
-                hud.icons = true;
-            }
             self.enter_mode(mode::FIGHTING);
             return;
         }
@@ -1520,6 +1516,10 @@ impl Battle {
             self.fight.pausing_player = p;
             self.paused = true;
             self.set_fight_state(fight::PAUSE);
+            // The HUD's pause display (`sub_801E15C`): "PAUSE" shows, with
+            // its sound, and the opponent's used chip name goes.
+            self.used_chips = [None; 2];
+            self.play_sound(SoundId(0x9F));
             return;
         }
         let open = if self.round.flags & battle_flags::PER_PLAYER_GAUGES != 0 {

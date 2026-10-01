@@ -79,7 +79,10 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).state {
         state::INIT => {
             // sub_80E1540
+            // sprite_load and sprite_loadAnimationData: its animation 0
+            // from the first frame's time.
             b.objects.sprite_mut(r).load(SPRITE);
+            b.objects.sprite_mut(r).set_animation(0, &b.content);
             b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
             let o = b.objects.get_mut(r);
             o.flags &= !flags::NO_SPRITE_UPDATE;

@@ -411,6 +411,10 @@ impl Battle {
             let results = self.custom.sides.each_ref().map(|s| s.sent.as_ref().expect("sent").result.clone());
             self.install_exchange(results);
             self.custom.committed = true;
+            // loc_8026E14: the consoles' chip icons are back (sub_801DA48(2)).
+            for hud in &mut self.chip_hud {
+                hud.icons = true;
+            }
         }
     }
 
