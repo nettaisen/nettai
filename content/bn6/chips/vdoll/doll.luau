@@ -31,7 +31,15 @@ export type State = {
 }
 
 local SPRITE = asset.sprite("voodoo-doll")
-local NAME_ID = 0xE2
+-- Its identity: a field object, with the look something that takes its
+-- place shows (DustMan's junk).
+local IDENTITY = define.identity {
+    id = "vdoll",
+    class = "field_object",
+    version = 3,
+    ai_index = 1,
+    look = { sprite = asset.sprite("voodoo-doll"), anim = 1, palette = 0, shadow = true },
+}
 local HP, LIFETIME = 0x32, 0x1E0
 -- Its arc: 60 ticks to the target's center, falling 0x2000 a tick; it can
 -- hit in its last five.
@@ -252,7 +260,7 @@ local function init(me: Object)
     sprite:step()
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me:set_panel_from_coordinates()
-    me.name_id = NAME_ID
+    me.identity = IDENTITY
     me.hp, me.max_hp = HP, HP
     me.element = 0
     me.timer = LIFETIME

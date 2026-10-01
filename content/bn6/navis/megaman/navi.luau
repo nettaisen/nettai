@@ -21,7 +21,10 @@ return define.navi {
     weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
     fresh = { hp = 100, first_barrier = 0, mega_level = 5, giga_level = 1 },
     cross_hp = { 999, 999 },
-    identity = {
+    identity = define.identity {
+        class = "megaman",
+        -- Where a held thing with no attach point sits (BatCan's cannon).
+        held_offset = { 0, 0 },
         version = 0,
         actor_type = "player",
         ai_index = 0,

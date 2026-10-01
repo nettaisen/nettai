@@ -67,10 +67,10 @@ pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
     b.objects.get_mut(r).actor = Some(a);
     b.actors.get_mut(a).actor_type = ActorType::Player;
     let navi = b.navi(entry.side as usize);
-    let name_id = b.content.navi_data(navi).identity;
-    b.objects.get_mut(r).identity = name_id;
+    let identity = b.content.navi_data(navi).identity;
+    b.objects.get_mut(r).identity = identity;
     // The actor record (`sub_80182B4`); MegaMan's is {0, Player, 0}.
-    let rec = b.content.navi_record(name_id);
+    let rec = b.content.navi_record(identity);
     let ad = b.actors.get_mut(a);
     ad.actor_type = rec.actor_type;
     ad.ai_index = rec.ai_index;
@@ -230,11 +230,11 @@ pub(crate) fn form_identity(content: &crate::content::Content, form: Form) -> Op
 /// `sub_8018810` as the game calls it: an identity's attach point
 /// `index`, in pixels, facing the way `alliance` and `flip` say. Every
 /// point of a field object is (0, 7).
-pub(crate) fn name_attach_point(b: &Battle, name_id: Option<IdentityHandle>, index: usize, alliance: u8, flip: u8) -> (i32, i32) {
-    if b.content.identity(name_id).class == crate::content::IdentityClass::FieldObject {
+pub(crate) fn name_attach_point(b: &Battle, identity: Option<IdentityHandle>, index: usize, alliance: u8, flip: u8) -> (i32, i32) {
+    if b.content.identity(identity).class == crate::content::IdentityClass::FieldObject {
         return (0, 7);
     }
-    let p = b.content.attach_point(name_id, index);
+    let p = b.content.attach_point(identity, index);
     (p.x as i32 * flip_direction(alliance, flip), p.y as i32)
 }
 
@@ -652,8 +652,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
     }
     post_init_hook(b, r);
     if form_of(b, r) == Form::NONE {
-        let name_id = b.objects.get(r).identity;
-        form::navi_init_hook(b, r, name_id);
+        let identity = b.objects.get(r).identity;
+        form::navi_init_hook(b, r, identity);
     }
     reset_side_state(b, r);
     apply_starting_hp_bug(b, r);

@@ -35,6 +35,15 @@ export type State = {
 }
 
 local SPRITE = asset.sprite("sensor")
+-- Its identity: a field object, with the look something that takes its
+-- place shows (DustMan's junk).
+local IDENTITY = define.identity {
+    id = "sensor",
+    class = "field_object",
+    version = 5,
+    ai_index = 1,
+    look = { sprite = asset.sprite("sensor"), anim = 0, palette = 0, shadow = true },
+}
 local LIFETIME = 0x2D0
 -- Its collision: another body of its side, reached by the other side.
 local HIT_MOD = 3
@@ -294,7 +303,7 @@ local function init(me: Object)
     me:set_coordinates_from_panel()
     me.pos = Vec3.new(me.pos.x, me.pos.y, 0)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
-    me.name_id = 0xE4
+    me.identity = IDENTITY
     me.hp, me.max_hp = s.hp, s.hp
     me.timer = LIFETIME
     sprite.palette = s.palette

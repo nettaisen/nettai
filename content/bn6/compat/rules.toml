@@ -124,3 +124,31 @@ timer-01-65535 = 0x6C
 timer-00-200 = 0x6D
 timer-ff-100 = 0x6E
 timer-01-65535-2 = 0x6F
+
+# The field objects' identities (what an object is taken for): the original's NameID,
+# which picks the object's actor record (`byte_80182C4`) and its look (`byte_8021220`). A
+# navi's and a form's identity has its NameID in navis.toml and forms.toml.
+[identities]
+boulder = 0xCE
+otenko = 0xCF
+rock = 0xD0
+ice-block = 0xD1
+bodygrd-striker = 0xD3
+blkbomb = 0xD5
+wind = 0xD6
+fan = 0xD7
+timebomb = 0xD8
+timebomb-big = 0xD9
+mine = 0xDA
+anubis = 0xDB
+poisphar = 0xDC
+fanfare = 0xDD
+discord = 0xDE
+timpani = 0xDF
+silence = 0xE0
+vdoll = 0xE2
+guardian = 0xE3
+sensor = 0xE4
+airspin-top = 0xE5
+airraid-plane = 0xE7
+lilbolr = 0xEB

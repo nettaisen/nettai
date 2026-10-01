@@ -22,7 +22,8 @@ return define.form {
     weapons = { buster = throw_absorbed.weapon, charge_shot = charge.weapon, back_special = absorb.weapon },
     palette = 21,
     mugshot = asset.mugshot("dustcross"),
-    identity = {
+    identity = define.identity {
+        class = "cross",
         version = 0,
         actor_type = "player",
         ai_index = 34,
