@@ -178,12 +178,12 @@ car.kind = define.kind {
     id = "chrgeman/car",
     pool = "attack",
     state = {
-            speed = "u32",
-            while_dimmed = "bool",
-            place = "u8",
-            wait = "u8",
-            owner_action = "u8",
-        },
+        speed = "u32",
+        while_dimmed = "bool",
+        place = "u8",
+        wait = "u8",
+        owner_action = "u8",
+    },
     -- `sub_80DAE94`.
     update = function(me: Object)
         local l = me.lifecycle
