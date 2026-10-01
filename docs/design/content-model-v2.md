@@ -2233,6 +2233,10 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    NameID look past the table's real ones names a sprite with no animation data as `"cc-ii"`. The loader is
    `bn6_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
    check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
+   A chip's `description` (what R shows on the custom screen: the battle reads its line count) and a navi's
+   `run_message` (the no-running message's lines) are the definitions' alone since the extractor's battle data
+   went: the generator writes them, and gave the chips people had defined without a description theirs
+   (`gen-content describe`, once).
    The engine's byte for an effect, spark, region or collision type content defines (`Defs::number`) is the
    numbered table's entry that is the same thing (the same look, shape, condition, or the row a collision
    type's `row_offset` names with its flags), and only another gets a number after the table's: the tables
