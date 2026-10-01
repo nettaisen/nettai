@@ -420,7 +420,25 @@ fn assets() -> bn6_content_api::AssetNames {
     ] {
         a.sounds.insert(name.into(), id);
     }
+    standard_chip_assets(&mut a);
     a
+}
+
+/// The asset names the standard chip actions' modules use (content model
+/// v2, step 8g), with BN6's numbers.
+fn standard_chip_assets(a: &mut bn6_content_api::AssetNames) {
+    let sprite = |c, i| SpriteId { category: c, index: i };
+    for (name, id) in [
+        ("gust", sprite(0x0C, 0x2E)),
+        ("wind-rack", sprite(0x0C, 0x27)),
+        ("tengu-fan", sprite(0x0C, 0x5C)),
+        ("swirl", sprite(0x0C, 0x28)),
+    ] {
+        a.sprites.insert(name.into(), id);
+    }
+    for (name, id) in [("windrack", 0x11F)] {
+        a.sounds.insert(name.into(), id);
+    }
 }
 
 /// Where the BN6 scripts are (the source overlay in this repository).
@@ -497,6 +515,10 @@ pub fn scripts() -> Scripts {
                 ("lib/projectile", "lib/projectile"),
                 ("lib/sword", "lib/sword"),
                 ("objects/gust/gust", "objects/gust/gust"),
+                // WindRack's action, which TenguCross's charged shot swings
+                // with its fan (content model v2).
+                ("lib/arm", "lib/arm"),
+                ("chips/windrack/action", "chips/windrack/action"),
                 ("objects/sword-wave/sword_wave", "objects/sword-wave/sword_wave"),
                 ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
                 ("objects/reflector-shield/reflector_shield", "objects/reflector-shield/reflector_shield"),
@@ -707,7 +729,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
         kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
         kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
-        kind("gust", Pool::Attack, 0x49, "objects/gust/gust"),
         kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
         kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
@@ -762,7 +783,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("sun-meteor", Pool::Attack, 0xB5, "objects/sun-meteor/sun_meteor"),
         kind("moon-beam", Pool::Attack, 0xB6, "objects/moon-beam/moon_beam"),
         kind("drill", Pool::Attack, 0x71, "objects/drill/drill"),
-        kind("thunder-column", Pool::Attack, 0x8B, "objects/thunder-column/thunder_column"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
