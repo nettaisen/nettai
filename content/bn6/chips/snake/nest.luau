@@ -95,13 +95,14 @@ local function next_hole(me: Object): (number?, number, number, number)
     local s = me.state :: State
     local cond = HOLE[me.alliance]
     local step = -me.facing
-    local hx, hy
+    local found = false
+    local hx, hy = 0, 0
     while true do
-        if hx then
+        if found then
             break
         end
         if field.check(s.scan_x, s.scan_y, cond.require, cond.forbid) then
-            hx, hy = s.scan_x, s.scan_y
+            found, hx, hy = true, s.scan_x, s.scan_y
         end
         s.scan_y += 1
         if s.scan_y > 3 then
@@ -113,7 +114,7 @@ local function next_hole(me: Object): (number?, number, number, number)
             end
         end
     end
-    if not hx then
+    if not found then
         return nil, 0, 0, 0
     end
     local tx, ty = target(me, hx, hy)
@@ -191,9 +192,10 @@ nest.kind = define.kind {
 -- `sub_80D2E94`: a nest on (`x`, `y`) of `controller`'s side and facing,
 -- with the damage word `damage`, running while dimmed; `holder` (an
 -- object with a boolean `busy`) goes on once it is done. (Spawned at the
--- spawner's registers; its init places it.)
-function nest.spawn(controller: Object, x: number, y: number, damage: number, holder: Object): Object?
-    local o = battle.spawn(nest.kind, Vec3.zero)
+-- spawner's registers: its init places its X and Y, and its Z stays `z`,
+-- what Snake's controller leaves there: its bonus, as a raw 16.16 value.)
+function nest.spawn(controller: Object, x: number, y: number, z: number, damage: number, holder: Object): Object?
+    local o = battle.spawn(nest.kind, Vec3.new(0, 0, z))
     if o then
         o.panel_x, o.panel_y = x, y
         o:set_damage_word(damage)

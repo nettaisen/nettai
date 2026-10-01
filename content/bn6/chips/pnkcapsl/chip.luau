@@ -8,7 +8,6 @@ local controller = require("../geddon/controller")
 return define.chip {
     id = "pnkcapsl",
     name = "PnkCapsl",
-    codes = {},
     element = "null", family = "summon", class = "special",
     rarity = 0, mb = 6, damage = 0, hit_param = 0, lockout = 0,
     library = { number = 384, index = 0, sort = 0 },

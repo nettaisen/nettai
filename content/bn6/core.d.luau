@@ -786,6 +786,8 @@ declare battle: {
     -- the original keeps it in the objects' visibility.
     viewer_sees: (side: number) -> boolean,
     link: () -> boolean,
+    -- A battle against a ranked boss (battle effect 1).
+    boss_rank: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
     -- Every navi is in (the intro's bit 2).

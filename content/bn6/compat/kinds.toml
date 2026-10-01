@@ -122,6 +122,7 @@ thunder-column = { pool = "attack", index = 0x8B }
 "dustcross/junk-ball" = { pool = "attack", index = 0xB0, scratch_z_fraction = true }
 "slashcross-beast/lunge-slash" = { pool = "attack", index = 0xB1 }
 "blzrdbal/ball" = { pool = "attack", index = 0xB2 }
+"metrknuk/fist" = { pool = "attack", index = 0xB4 }
 "sunmoon/meteor" = { pool = "attack", index = 0xB5 }
 "sunmoon/moon-beam" = { pool = "attack", index = 0xB6 }
 "blzrdbal/roller" = { pool = "attack", index = 0xB7, scratch_z_fraction = true }
@@ -188,13 +189,16 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "blzrdbal/controller" = { pool = "effect", index = 0x58, scratch_position = true }
 "burnsqr/controller" = { pool = "effect", index = 0x59, scratch_position = true }
 "magnum/controller" = { pool = "effect", index = 0x5B, scratch_position = true }
+"lifesync/controller" = { pool = "effect", index = 0x5C, scratch_position = true }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
+"lifesync/marker" = { pool = "effect", index = 0x60 }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "sensor/controller" = { pool = "effect", index = 0x65, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }
 "yoyo/great-yoyo" = { pool = "effect", index = 0x70 }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
+"metrknuk/controller" = { pool = "effect", index = 0x76, scratch_position = true }
 "support/controller" = { pool = "effect", index = 0x79 }
 "colforce/force" = { pool = "effect", index = 0x80 }
 navi-boost = { pool = "effect", index = 0x84, scratch_position = true }
