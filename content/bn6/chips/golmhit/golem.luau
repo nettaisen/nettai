@@ -118,7 +118,7 @@ local function hit(me: Object, x: number, y: number)
         region = regions.single,
         hit_effect = NO_SPARK,
         target = collision.hits_navis,
-        self_type = collision.thrown_breaking,
+        self_type = collision.thrown_break,
         damage = me.damage,
         stamina = me.stamina,
         hit_mod = HIT_MOD,

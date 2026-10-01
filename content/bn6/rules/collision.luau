@@ -101,17 +101,9 @@ collision.guard_breaking = define.collision {
     row_offset = 0x190,
 }
 
--- A breaking attack (row 0x06: FlmHook's flames).
-collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
-
--- A thrown breaking attack (row 0x15: GolmHit's golem landing, JustcOne's
--- fist).
-collision.thrown_breaking = define.collision {
-    id = "thrown-breaking",
-    side0 = 0x8000008a,
-    side1 = 0x4000008a,
-    row_offset = 0xA8,
-}
+-- A thrown attack that breaks (row 0x15: GolmHit's golem landing,
+-- JustcOne's fist).
+collision.thrown_break = define.collision { id = "thrown-break", side0 = 0x8000008a, side1 = 0x4000008a, row_offset = 0xA8 }
 
 -- A neutral body, while dimmed too (row 0x0E: a rock).
 collision.neutral_body = define.collision { id = "neutral-body", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }

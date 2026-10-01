@@ -1529,13 +1529,13 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
     // Each effect's object appears the tick the chip's effect runs, plays
     // out, rolls back at any point, and is gone within 200 ticks.
     // BN6's definitions, and the numbered chips that reach the records'
-    // shims (FireHit's, FlmHook's).
+    // shim (FireHit's) or a v1 module (FlmHook's).
     let chips = [
         (testing::defined_chip(testing::BOOMER), "boomerang"),
         (testing::defined_chip(testing::LANCE), "lance/lance"),
         (testing::chip_handle(testing::FIST), "firehit/fist"),
         (testing::defined_chip(testing::SAND_WORM), "sandwrm/worm"),
-        (testing::chip_handle(testing::FLAME_HOOK), "flmhook/hook"),
+        (testing::chip_handle(testing::FLAME_HOOK), "flame-hook"),
         (testing::defined_chip(testing::JUSTICE_ONE), "justcone/strike"),
         (testing::defined_chip(testing::GOLEM_HIT), "golmhit/golem"),
     ];
