@@ -6,9 +6,10 @@ use crate::{Rom, lz77, u32at};
 use bn6_assets::*;
 use std::collections::HashMap;
 
-/// The battle graphics of a ROM.
-pub fn bundle(rom: &Rom) -> Bundle {
-    Bundle { sprites: sprites(rom), field: field(rom), backgrounds: backgrounds(rom), hud: crate::hud::hud(rom) }
+/// The battle graphics of a ROM; `names` gives the chip icons their keys
+/// and the font its characters.
+pub fn bundle(rom: &Rom, names: &bn6_content::names::AssetNames) -> Bundle {
+    Bundle { sprites: sprites(rom), field: field(rom), backgrounds: backgrounds(rom), hud: crate::hud::hud(rom, names) }
 }
 
 /// Bytes starting at a ROM address.
@@ -67,6 +68,9 @@ fn part_size(shape: u8, size: u8) -> (u8, u8) {
     SIZES[(shape as usize).min(2)][size as usize & 3]
 }
 
+/// The most palettes kept of a sprite's palette block.
+const MAX_PALETTES: usize = 64;
+
 /// Decode a battle sprite archive (the layout `sprite_loadAnimationData`
 /// reads for sprites loaded with flag 0x80). After a 4-byte header, offsets
 /// are relative to `base`: a table of animation offsets; each animation is
@@ -80,6 +84,20 @@ fn sprite_sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
         return None;
     }
     let mut sheet = SpriteSheet { category, index, ..Default::default() };
+    // Where the archive's blocks start (the animations' frames and the
+    // blocks they name): a palette block runs up to the next one.
+    let mut blocks: Vec<usize> = Vec::new();
+    for a in 0..count {
+        let mut f = BASE + rd32(BASE + 4 * a)?;
+        blocks.push(f);
+        for _ in 0..=512 {
+            blocks.extend([rd32(f)?, rd32(f + 4)?, rd32(f + 8)?, rd32(f + 12)?].map(|o| BASE + o));
+            if *data.get(f + 0x12)? & 0x80 != 0 {
+                break;
+            }
+            f += 0x14;
+        }
+    }
     let mut tilesets: HashMap<usize, u16> = HashMap::new();
     let mut palsets: HashMap<usize, u16> = HashMap::new();
     let mut parts: HashMap<usize, u16> = HashMap::new();
@@ -104,11 +122,15 @@ fn sprite_sheet(data: &[u8], category: u8, index: u8) -> Option<SpriteSheet> {
                 Some(&i) => i,
                 None => {
                     // The palette index is the object's choice plus the
-                    // frame's offset, and the game reads whatever follows,
-                    // so keep up to 16 palettes.
+                    // frame's offset: keep every palette up to the
+                    // archive's next block (a navi's has its other forms'
+                    // after its own), and at least 16 where the data goes
+                    // on (the game reads whatever follows).
                     let start = BASE + p + 4;
                     let avail = data.len().saturating_sub(start) / 32;
-                    let pals = palettes_from_bytes(&data[start..start + 32 * avail.min(16)]);
+                    let end = blocks.iter().copied().filter(|&b| b > BASE + p).min();
+                    let count = end.map_or(16, |end| ((end - start) / 32).clamp(16, MAX_PALETTES));
+                    let pals = palettes_from_bytes(&data[start..start + 32 * avail.min(count)]);
                     sheet.palette_sets.push(pals);
                     let i = (sheet.palette_sets.len() - 1) as u16;
                     palsets.insert(p, i);

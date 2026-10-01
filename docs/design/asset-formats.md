@@ -83,7 +83,7 @@ graphics/
     tiles.png  map.tmj  background.json  anim-K.png
   hud/
     hud.json  layer.png  gauge.png  font.png  enemy-digits.png  counts.png
-    banner-digits.png  waiting.png
+    banner-digits.png  waiting.png  pause.png  navi-box.png
     hidden-icon.png  chip-icons/CHIP.png  mugshots/NAME.png  banners/NAME.png
 sound/
   sound.toml                         mixer, music players, song table size
@@ -173,6 +173,11 @@ set starts a new row of the atlas, so a row reads as one pose's pieces.
   `h`, `v` or `hv`; `palette` is the part's palette offset (omitted when 0).
 - `palette_fingerprint`: hashes of the atlas palette as exported, in order and
   sorted, to tell a re-sorted or truncated palette from an edited one.
+- `palette_rows` counts the rows the atlas palette holds: an indexed image
+  has 256 colours, 16 rows. A palette set with more (MegaMan's has 43: the
+  palettes his Crosses use come after his own) lists the rest in
+  `more_palette_rows`, each row 16 BGR555 colours in hex. An object picks a
+  row by number (`palette`), so the order is the data.
 - `palette_high_bits`: palette entries whose BGR555 value has bit 15 set.
   The hardware ignores that bit and a PNG can't hold it. BN6 has 16,020 such
   entries, all in palette-set rows past the real palettes (the extractor keeps
@@ -295,8 +300,12 @@ it: 8x16 glyphs for the fonts and digits, 2x2 chip icons, 4x2 mugshots, banner
 glyph rows. Each palette belongs to one image (the HP box palettes to
 `layer.png`, each mugshot's to its own file, and so on); images drawn with
 another's palette show it for viewing, and colour edits there are ignored with
-a note. `hud.json` holds the map entries, chip names in the game's text codes,
-which chips show damage, banner layouts and the form emotions.
+a note. `hud.json` holds the map entries, what each glyph of the font draws
+(`font_chars`: the frontend spells a chip's name, which its definition
+gives, with them), each chip icon's chip (its key in the content), the link
+navis' mugshots and which one a navi shows, the HUD's text lines as glyph
+numbers ("TIME UP!", the turn timer's seconds, "COUNTER HIT!"), banner
+layouts and the form emotions.
 
 Tiled was considered for the field's panel blocks too, but a panel tile is
 drawn in different palettes for each side, which a Tiled tileset can't show
