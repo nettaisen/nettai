@@ -11,6 +11,7 @@
 //! spawns copies with a look of its own (`spawn_copy`), such as the step
 //! sword's afterimages of its user.
 
+use bn6_content_api::IdentityHandle;
 use crate::battle::Battle;
 use crate::content::{Content, SpriteId};
 use crate::kinds::common::{Progress, set_progress};
@@ -171,15 +172,18 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// A player navi's battle sprite by NameID (`sub_800F26C`, which reads the
-/// same sprites the form and navi tables give).
-fn player_sprite(content: &Content, name_id: u16) -> SpriteId {
-    match name_id {
-        0x1A0 => content.form_data(Form::NONE).sprite,
-        0x1A1..=0x1AB => content.navi_data(crate::setup::Navi((name_id - 0x1A0) as u8)).sprite,
-        0x1AC..=0x1C3 => content.form_data(Form((name_id - 0x1AB) as u8)).sprite,
+/// A player navi's battle sprite by its identity (`sub_800F26C`, which
+/// reads the same sprites the form and navi tables give): MegaMan's base
+/// form's, a link navi's, a form's.
+fn player_sprite(content: &Content, identity: Option<IdentityHandle>) -> SpriteId {
+    use crate::content::{IdentityClass, IdentityOwner};
+    let id = content.identity(identity);
+    match (id.class, id.owner) {
+        (IdentityClass::MegaMan, _) => content.form_data(Form::NONE).sprite,
+        (IdentityClass::LinkNavi, Some(IdentityOwner::Navi(n))) => content.navi(n).sprite,
+        (_, Some(IdentityOwner::Form(f))) => content.form(f).sprite,
         // Only players' Beast Out rush leaves afterimages.
-        _ => unreachable!("an afterimage of NameID {name_id:#x}, which is not a player's"),
+        _ => unreachable!("an afterimage of identity {:?}, which is not a player's", id.key),
     }
 }
 
@@ -191,11 +195,11 @@ fn init(b: &mut Battle, r: ObjectRef) {
     }
     b.objects.get_mut(r).flags |= flags::VISIBLE;
     let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
-    let name_id = b.objects.get(owner).name_id;
-    b.objects.get_mut(r).name_id = name_id;
-    b.objects.sprite_mut(r).load(player_sprite(&b.content, name_id));
+    let identity = b.objects.get(owner).identity;
+    b.objects.get_mut(r).identity = identity;
+    b.objects.sprite_mut(r).load(player_sprite(&b.content, identity));
     b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
-    put_on_layer(b, r, name_id);
+    put_on_layer(b, r, identity);
     let anim = vars(b, r).anim;
     let lifetime = vars(b, r).lifetime;
     let flip = b.objects.get(r).params[3];
@@ -244,8 +248,8 @@ fn init_plain(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_8010DF6(record, 0)` then `sub_80C4526(layer, 1)`: the overlay the
 /// NameID's init hook puts on, on the afterimage, pinned in front.
-fn put_on_layer(b: &mut Battle, r: ObjectRef, name_id: u16) {
-    form::navi_init_hook(b, r, name_id);
+fn put_on_layer(b: &mut Battle, r: ObjectRef, identity: Option<IdentityHandle>) {
+    form::navi_init_hook(b, r, identity);
     // (With no overlay the game's store lands in BIOS memory.)
     if let Some(layer) = b.objects.get(r).related[1] {
         form::pin_overlay(b, layer);
@@ -298,7 +302,7 @@ fn destroy(b: &mut Battle, r: ObjectRef) {
     }
     // sub_8011044(record, 1): the NameID's death hook takes the overlay
     // off.
-    let name_id = b.objects.get(r).name_id;
-    form::navi_death_hook(b, r, name_id);
+    let identity = b.objects.get(r).identity;
+    form::navi_death_hook(b, r, identity);
     b.objects.free(r);
 }

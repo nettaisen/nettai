@@ -18,8 +18,6 @@ local army = {}
 
 local SPRITE = asset.sprite("col-army")
 local APPEAR_SOUND, SHOT_SOUND = asset.sound("col-army"), asset.sound("col-army-2")
--- The obstacle NameID it leaves (a number until identities come).
-local SPARED = 0xDA
 -- Its collision: an object of its side that the other side's attacks,
 -- objects and bodies (and blockers) reach; hit modifier 3; the plain
 -- spark.
@@ -232,7 +230,9 @@ end
 -- (`sub_80C9EE6`).
 function army.instant(user: Object, spec: InstantChipSpec)
     for _, o in field.all_objects() do
-        if o.name_id ~= SPARED and obstacle.present(o) then
+        -- (Not what nothing absorbs: a mine.)
+        local identity = o.identity
+        if not (identity and identity.absorbable == false) and obstacle.present(o) then
             obstacle.vanish(o)
             spawn(user, o.panel_x, o.panel_y, spec.element, spec.damage)
         end

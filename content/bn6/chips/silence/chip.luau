@@ -21,7 +21,7 @@ local function hush(me: Object)
         z = 0,
         region = regions.field,
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.guard_breaking,
         damage = 0,
@@ -43,7 +43,13 @@ return define.chip {
     slot_in_limit = 3,
     -- `byte_80D4078` row 3.
     dimming = instruments.hook(instrument.instrument {
-        identity = 0xE0,
+        identity = define.identity {
+            id = "silence",
+            class = "field_object",
+            version = 1,
+            ai_index = 1,
+            look = { sprite = asset.sprite("instrument"), anim = 0, palette = 6, shadow = true },
+        },
         palette = 6,
         play_ticks = 0x78 * 2,
         pause_ticks = 0x1E,

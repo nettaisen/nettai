@@ -11,13 +11,15 @@ local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
+local gregar_beast = require("../../navis/megaman/forms/gregar-beast/form")
 local parts = require("../../lib/swords/parts")
 
 local gregar = {}
 
 local SPRITE = asset.sprite("gregar-beast")
--- Its identity's NameID (the attach points its attachments take).
-local NAME = 0x1B6
+-- Its identity: Gregar Beast Out's (the attach points its attachments
+-- take).
+local IDENTITY = gregar_beast.identity
 
 -- The attacks' patterns (`byte_80C1F94`, `byte_80C1FA8`, `byte_80C1FB8`,
 -- `byte_80C1FD8`): {flip, dx, dy} around the target. (The gun's has ten
@@ -336,7 +338,7 @@ gregar.kind = define.kind {
         if l == "init" then
             -- sub_80C1A34: at rest in front of the user; its update first
             -- runs next tick.
-            beast.init(me, SPRITE, true, NAME)
+            beast.init(me, SPRITE, true, IDENTITY)
             me:set_lifecycle("update")
         elseif l == "update" then
             tick(me)

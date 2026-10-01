@@ -22,8 +22,15 @@ local boulder = {}
 local SPRITE = asset.sprite("boulder")
 -- How it looks absorbed (the original's obstacle kind 5: its own sprite).
 local ABSORBED = absorbed_obstacle.look { sprite = SPRITE }
--- Its NameID (the field objects' look, a number until identities come).
-local NAME = 0xCE
+-- Its identity: a field object, with the look something that takes its
+-- place shows (DustMan's junk).
+local IDENTITY = define.identity {
+    id = "boulder",
+    class = "field_object",
+    version = 1,
+    ai_index = 1,
+    look = { sprite = asset.sprite("boulder"), anim = 0, palette = 0, shadow = false },
+}
 local HP = 500
 -- What its timer starts at (nothing counts it down).
 local TIMER = 0x1770
@@ -139,7 +146,7 @@ local function init(me: Object)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y - 0x1_0000, -0x1_0000)
-    me.name_id = NAME
+    me.identity = IDENTITY
     me.hp, me.max_hp = HP, HP
     me.timer = TIMER
     if not me:create_collision() then

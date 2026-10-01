@@ -29,16 +29,36 @@ export type State = {
 
 -- Needles to drop, and the ticks between them.
 local NEEDLES, INTERVAL = 3, 8
--- The enemies it aims at, by NameID: viruses, then navis.
-local VIRUSES = { 0, 0xAE }
-local NAVIS = { 0x100, 0x1C3 }
+-- The enemies it aims at, by what they are taken for: viruses (the
+-- original's NameIDs up to 0xAE, short of the last virus, 0xBA: an object
+-- with no identity is its NameID 0), then navis (0x100 to 0x1C3).
+local NAVIS: { [string]: boolean } = {
+    navi = true,
+    gregar = true,
+    falzar = true,
+    megaman = true,
+    link_navi = true,
+    cross = true,
+    beast = true,
+    cross_beast = true,
+    beast_over = true,
+}
 
--- `object_getEnemyByNameRange`: `side`'s combatants whose NameID is in
--- `range`, added to `into` in slot order.
-local function enemies_named(side: number, range: { number }, into: { Object })
+local function is_virus(o: Object): boolean
+    local identity = o.identity
+    return identity == nil or identity.class == "virus"
+end
+
+local function is_navi(o: Object): boolean
+    local identity = o.identity
+    return identity ~= nil and NAVIS[identity.class] == true
+end
+
+-- `object_getEnemyByNameRange`: `side`'s combatants that `wanted` takes,
+-- added to `into` in slot order.
+local function enemies_named(side: number, wanted: (o: Object) -> boolean, into: { Object })
     for _, o in battle.alive_actors(side) do
-        local name = o.name_id
-        if name >= range[1] and name <= range[2] then
+        if wanted(o) then
             table.insert(into, o)
         end
     end
@@ -71,8 +91,8 @@ end
 local function aim(me: Object, s: State)
     local side = bit32.bxor(me.alliance, 1)
     local found: { Object } = {}
-    enemies_named(side, VIRUSES, found)
-    enemies_named(side, NAVIS, found)
+    enemies_named(side, is_virus, found)
+    enemies_named(side, is_navi, found)
     local picks: { Object }
     if #found == 0 then
         error("AquaNdl's volley (sub_80E5174) found no enemy and reads its stack")

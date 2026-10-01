@@ -81,7 +81,7 @@ local function flash(me: Object, v: FlashBombVariant, status: Status, damage: nu
         z = 0,
         region = regions.area[bit32.bxor(side, 1)],
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.piercing,
         damage = bit32.band(damage, 0xFFFF),

@@ -21,7 +21,7 @@ local function confuse(me: Object)
         z = 0,
         region = regions.other_navi[me.alliance],
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.nothing,
         self_type = collision.guard_breaking,
         damage = 0,
@@ -43,7 +43,13 @@ return define.chip {
     slot_in_limit = 3,
     -- `byte_80D4078` row 1.
     dimming = instruments.hook(instrument.instrument {
-        identity = 0xDE,
+        identity = define.identity {
+            id = "discord",
+            class = "field_object",
+            version = 5,
+            ai_index = 1,
+            look = { sprite = asset.sprite("instrument"), anim = 0, palette = 2, shadow = true },
+        },
         palette = 2,
         play_ticks = 0x37 * 2,
         pause_ticks = 0x3C,

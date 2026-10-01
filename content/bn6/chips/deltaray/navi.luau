@@ -322,7 +322,7 @@ local function strike(me: Object)
             element = 0,
             z = 0x10_0000,
             region = regions.wide,
-            hit_effect = 0xFF,
+            hit_effect = nil,
             target = collision.hits_navis,
             self_type = collision.slash,
             damage = me.damage,

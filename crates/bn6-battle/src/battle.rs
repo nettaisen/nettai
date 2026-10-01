@@ -112,8 +112,9 @@ pub struct RoundState {
     pub battle_time: u32,
     pub has_tags: u8,
     pub tag_index: u8,
-    /// Navi name ids per side (four each).
-    pub name_ids: [[u16; 4]; 2],
+    /// What each side's navis are taken for (their identities; four
+    /// each).
+    pub identities: [[Option<bn6_content_api::IdentityHandle>; 4]; 2],
     /// Intro progress bits (0x10 fade started, 0x01 fade done, 0x02 all
     /// navis in); 0x04/0x08 chips enabled per side.
     pub intro_bits: u8,
@@ -139,6 +140,9 @@ pub struct FightMachine {
     /// The damage judge after a time-up (`dword_203EAD0`).
     pub judge: Judge,
 }
+
+/// The ticks between a console's low-HP sounds.
+const LOW_HP_SOUND_TICKS: u8 = 0x2D;
 
 /// What opening the custom screen costs a side in the battle flag 0x40
 /// mode (`sub_800A29A`).
@@ -351,6 +355,15 @@ pub struct Battle {
     pub fight: FightMachine,
     pub gauge: CustomGauge,
     pub banner: Banner,
+    /// The chip each side last used, while the other player's console
+    /// names it (presentation only; left out of the digest).
+    pub used_chips: [Option<crate::hud::UsedChip>; 2],
+    /// What each side's console shows of its own navi's chips
+    /// (presentation only; left out of the digest).
+    pub chip_hud: [crate::hud::ChipHud; 2],
+    /// The message the HUD shows (presentation only; left out of the
+    /// digest).
+    pub message: Option<crate::hud::MessageLine>,
     pub paused: bool,
     pub inputs: [InputRecord; 2],
     pub hands: [ChipHand; 2],
@@ -615,6 +628,9 @@ impl Battle {
             fight: FightMachine::default(),
             gauge: CustomGauge::new(),
             banner: Banner::default(),
+            used_chips: [None; 2],
+            chip_hud: Default::default(),
+            message: None,
             paused: false,
             inputs: [InputRecord::default(); 2],
             hands,
@@ -1024,7 +1040,7 @@ impl Battle {
                 }
                 let n = self.round.name_counts[side] as usize;
                 if n < 4 {
-                    self.round.name_ids[side][n] = self.objects.get(r).name_id;
+                    self.round.identities[side][n] = self.objects.get(r).identity;
                 }
                 self.round.name_counts[side] += 1;
             }
@@ -1482,6 +1498,10 @@ impl Battle {
             self.fight.pausing_player = p;
             self.paused = true;
             self.set_fight_state(fight::PAUSE);
+            // The HUD's pause display (`sub_801E15C`): "PAUSE" shows, with
+            // its sound, and the opponent's used chip name goes.
+            self.used_chips = [None; 2];
+            self.play_sound(SoundId(0x9F));
             return;
         }
         let open = if self.round.flags & battle_flags::PER_PLAYER_GAUGES != 0 {
@@ -1649,7 +1669,9 @@ impl Battle {
     fn fight_result(&mut self) {
         if self.fight.init == 0 {
             // The HUD's tasks stop (`sub_801BED6(0xE4C53)`): the gauge's and
-            // the emotion windows'.
+            // the emotion windows'; the chips' icons and window go
+            // (`sub_801DACC`).
+            self.chip_hud = Default::default();
             self.gauge.enabled = false;
             self.stop_emotion_windows();
             let win = self.fight.state == fight::WIN;
@@ -1687,13 +1709,13 @@ impl Battle {
     fn mode_fade_out(&mut self) {
         if self.round.init == 0 {
             // sub_80094DA: to white when the battle was won against one of
-            // the navis 0x173..=0x17E (`sub_800A7A6` over side 1's actors,
+            // the Cybeasts (NameIDs 0x173..=0x17E; `sub_800A7A6` over side 1's actors,
             // `sub_800A832`'s result code 1), otherwise to black; either
             // takes 16 ticks.
             let bosses = self.round.alive_actors[1]
                 .iter()
                 .flatten()
-                .filter(|&&r| (0x173..=0x17E).contains(&self.objects.get(r).name_id))
+                .filter(|&&r| self.content.identity(self.objects.get(r).identity).class.is_cybeast())
                 .count();
             let white = bosses != 0 && self.round.result & 0xF == 1;
             self.fade.start(if white { FadeMode::EndToWhite } else { FadeMode::EndToBlack }, 0x10);
@@ -1731,9 +1753,47 @@ impl Battle {
         }
     }
 
+    /// `sub_801E270`: the HUD says `message` for a second.
+    pub(crate) fn show_message(&mut self, message: crate::hud::Message) {
+        self.message = Some(crate::hud::MessageLine { message, ticks: crate::hud::MessageLine::SHOWN_TICKS });
+    }
+
+    /// `sub_801EB18(chip, damage, bonus)` on the other player's console:
+    /// `side` used `chip`, whose name (with the attack's damage word and
+    /// bonus, for a chip whose damage shows) that console shows for a
+    /// second.
+    pub(crate) fn show_used_chip(&mut self, side: u8, chip: ChipHandle, damage: u16, bonus: u16) {
+        let shows_damage = self.content.chip(chip).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0;
+        let (damage, bonus) = if shows_damage { (damage, bonus) } else { (0, 0) };
+        self.used_chips[side as usize & 1] = Some(crate::hud::UsedChip {
+            chip,
+            damage: damage & 0x7FF,
+            doubled: damage & 0x8000 != 0,
+            bonus: bonus & !0x7800,
+            ticks: crate::hud::UsedChip::SHOWN_TICKS,
+        });
+    }
+
     fn run_hud_tasks(&mut self) {
         if self.gauge.enabled {
             self.fill_gauge();
+        }
+        self.low_hp_sound();
+        // sub_801D1D8: the used chips' names run out.
+        for used in &mut self.used_chips {
+            if let Some(u) = used {
+                u.ticks -= 1;
+                if u.ticks == 0 {
+                    *used = None;
+                }
+            }
+        }
+        // sub_801CA0C: so does the message.
+        if let Some(m) = &mut self.message {
+            m.ticks -= 1;
+            if m.ticks == 0 {
+                self.message = None;
+            }
         }
         // While the custom screen is up the banner is the local player's
         // screen's (its Program Advance's), already stepped with it.
@@ -1799,6 +1859,29 @@ impl Battle {
         if ad.drain_counter >= period {
             ad.drain_counter = 0;
             crate::kinds::subtract_hp(self, r, 1);
+        }
+    }
+
+    /// The HP box's alarm (`sub_801C840`, the HUD's task bit 7; sound
+    /// only): every 45 ticks a console's own navi is at a quarter of its HP
+    /// or less, while the battle is neither over nor paused, that console
+    /// sounds 0x84. The count stops where the HP recovers.
+    fn low_hp_sound(&mut self) {
+        if self.is_battle_over() || self.paused {
+            return;
+        }
+        for side in 0..2u8 {
+            let Some(r) = self.player(side) else { continue };
+            let o = self.objects.get(r);
+            if o.hp > o.max_hp >> 2 {
+                continue;
+            }
+            let ticks = &mut self.consoles[side as usize].low_hp_ticks;
+            *ticks += 1;
+            if *ticks >= LOW_HP_SOUND_TICKS {
+                *ticks = 0;
+                self.play_sound_for(side, SoundId(0x84));
+            }
         }
     }
 
@@ -1949,5 +2032,34 @@ mod tests {
         assert_eq!(b.sound_cues(), [SoundCue::Music(SoundId::VIRUS_BATTLE)]);
         tick(&mut b);
         assert_eq!(b.sound_cues(), [SoundCue::Pinch(false)]);
+    }
+
+    #[test]
+    fn a_console_sounds_every_45_ticks_its_navi_is_low() {
+        let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::stats(500)), testing::content());
+        tick(&mut b);
+        tick(&mut b);
+        let navi = b.player(0).expect("side 0's navi");
+        b.objects.get_mut(navi).hp = 125;
+        b.paused = false;
+        let alarm = SoundCue::from(SoundId(0x84));
+        let heard = |b: &Battle, side: u8| b.sound_cues_for(side).iter().filter(|&&c| c == alarm).count();
+        for _ in 0..44 {
+            b.low_hp_sound();
+        }
+        assert_eq!(heard(&b, 0), 0);
+        // Not while paused; then on the 45th tick, on its own console only.
+        b.paused = true;
+        b.low_hp_sound();
+        assert_eq!(heard(&b, 0), 0);
+        b.paused = false;
+        b.low_hp_sound();
+        assert_eq!((heard(&b, 0), heard(&b, 1)), (1, 0));
+        // Above a quarter the count waits.
+        b.objects.get_mut(navi).hp = 126;
+        for _ in 0..90 {
+            b.low_hp_sound();
+        }
+        assert_eq!(heard(&b, 0), 1);
     }
 }

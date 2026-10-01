@@ -36,6 +36,9 @@ pub struct AssetNames {
     pub banners: BTreeMap<u8, String>,
     /// Chip icons, by chip id: the chip's key.
     pub chips: BTreeMap<u16, String>,
+    /// What each glyph of the game's text font draws (the game's text
+    /// encoding), for the HUD's font.
+    pub glyphs: Vec<String>,
 }
 
 impl AssetNames {

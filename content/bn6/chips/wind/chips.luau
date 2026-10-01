@@ -29,7 +29,13 @@ local wind = define.chip {
         pulls = false,
         wait = 1,
         hp = 40,
-        name = 0xD6,
+        identity = define.identity {
+            id = "wind",
+            class = "field_object",
+            version = 3,
+            ai_index = 1,
+            look = { sprite = asset.sprite("fan"), anim = 0, palette = 0, shadow = false },
+        },
         absorbed = fan.absorbed,
     }),
 }
@@ -56,7 +62,13 @@ local fan_chip = define.chip {
         pulls = true,
         wait = 1,
         hp = 40,
-        name = 0xD7,
+        identity = define.identity {
+            id = "fan",
+            class = "field_object",
+            version = 4,
+            ai_index = 1,
+            look = { sprite = asset.sprite("fan"), anim = 0, palette = 1, shadow = false },
+        },
         absorbed = fan.absorbed,
     }),
 }

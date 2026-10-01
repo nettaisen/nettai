@@ -199,9 +199,8 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     assert_eq!(b.objects.get(p0).anim, 0x0E);
     assert_ne!(f1_of(&b, p0) & f1::USING_ACTION, 0);
     let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
-    // The arm is the pack data's attachment row 6.
-    assert_eq!(b.kind_key(arm), "attachment");
-    assert_eq!(b.objects.sprite(arm).id, Some(b.content.attachment(6).sprite));
+    // The arm is an attachment with the buster arm's look.
+    assert!(shows(&b, arm, "buster-arm"), "the arm");
 
     // Five ticks up, then the recovery by the open panels from its own
     // (its body is off the field while it updates) to the enemy's:
@@ -400,10 +399,14 @@ fn use_chip_handle(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: bn6_conte
     tick(b, p0, p1, keys::A);
 }
 
-/// Whether `r` is an attachment showing the pack data's attachment row
-/// `row` (its sprite).
-fn shows_row(b: &Battle, r: ObjectRef, row: u8) -> bool {
-    b.kind_key(r) == "attachment" && b.objects.sprite(r).id == Some(b.content.attachment(row).sprite)
+/// Whether `r` is an attachment showing the sprite named `sprite`.
+fn shows(b: &Battle, r: ObjectRef, sprite: &str) -> bool {
+    b.kind_key(r) == "attachment" && b.objects.sprite(r).id == Some(b.content.assets.sprites[sprite])
+}
+
+/// What the one-shot effect `o` shows.
+fn effect_look(b: &Battle, o: ObjectRef) -> crate::content::EffectSprite {
+    b.content.effect(crate::kinds::effect::look(b, o).expect("an effect with its look"))
 }
 
 /// The effect objects (effect #0) and afterimages (effect #0x28) there are.
@@ -446,7 +449,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     assert!(effects(&b, "engine/effect").is_empty());
     run_to(&mut b, p, &mut t, 12, 0);
     // The swords' wide slash (the sword-slash sprite's first animation).
-    let look = b.content.effect(b.objects.get(effects(&b, "engine/effect")[0]).params[0]);
+    let look = effect_look(&b, effects(&b, "engine/effect")[0]);
     assert_eq!((look.sprite, look.anim), (bn6_content_api::SpriteId { category: 0x0C, index: 0x14 }, 0));
     run_to(&mut b, p, &mut t, 13, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
@@ -546,7 +549,7 @@ fn a_buster_shot_flies_a_panel_every_two_ticks_and_hits() {
     let o = b.objects.get(shot);
     assert_eq!((o.panel, o.pos.z, o.params[0]), (PanelPos { x: 3, y: 2 }, 0x18 << 16, 0));
     let flash = b.objects.get(p0).related[0].expect("the muzzle flash");
-    assert!(shows_row(&b, flash, 5), "the muzzle flash");
+    assert!(shows(&b, flash, "muzzle-flash"), "the muzzle flash");
 
     // A panel every two ticks, from the tick after it appears.
     run_to(&mut b, p, &mut t, 3, 0);
@@ -634,7 +637,7 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     assert_eq!(variant.0, bn6_content_api::Registry::Record);
     assert_eq!(b.content.defs.records[variant.1 as usize].record_type, "projectile-variant");
     let flash = b.objects.get(p0).related[0].expect("the muzzle flash");
-    assert!(shows_row(&b, flash, 5), "the muzzle flash");
+    assert!(shows(&b, flash, "muzzle-flash"), "the muzzle flash");
     // (Attack + 1) * 10 damage, four ticks later.
     run_to(&mut b, p, &mut t, 10, 0);
     assert_eq!(b.objects.get(p1).hp, 990);
@@ -662,7 +665,7 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     let (x, y) = crate::kinds::player::panel_coordinates(5, 2);
     let o = b.objects.get(slash);
     assert_eq!((&o.params[1..], o.pos.x, o.pos.y), (&[0, 2 + 7, 0][..], x, y));
-    let wide = b.content.effect(o.params[0]);
+    let wide = effect_look(&b, slash);
     assert_eq!((wide.sprite, wide.anim, wide.palette), (bn6_content_api::SpriteId { category: 0x0C, index: 0x14 }, 0, 0));
     run_to(&mut b, p, &mut t, 11, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
@@ -712,7 +715,7 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     let o = b.objects.get(thrown);
     assert_eq!((o.anim, o.pos.z, o.pos.y), (2, 0xC << 16, 28 << 16));
     let arm = b.objects.get(p0).related[0].expect("the second arm");
-    assert!(shows_row(&b, arm, 6), "the arm");
+    assert!(shows(&b, arm, "buster-arm"), "the arm");
     // No shot before: no recovery; the navi idles once the arm is down.
     run_to(&mut b, p, &mut t, 6, 0);
     assert_eq!(act(&b, p0), 8);
@@ -1519,7 +1522,7 @@ fn the_beast_busters_raise_the_arm_for_their_projectile() {
         run_to(&mut b, p, &mut t, 1, 0);
         assert_eq!(b.objects.get(p0).anim, 0x0E);
         let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
-        assert!(shows_row(&b, arm, 6), "the arm");
+        assert!(shows(&b, arm, "buster-arm"), "the arm");
         // (The shot is the buster's projectile, which isn't content yet.)
     }
 }
@@ -1600,7 +1603,7 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     assert_eq!(b.objects.get(p0).anim, 0x17);
     assert_ne!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), 0);
     let cloud = b.content.assets.sprites["dust-cloud"];
-    let vortex = effects(&b, "engine/effect").into_iter().find(|&o| b.content.effect(b.objects.get(o).params[0]).sprite == cloud);
+    let vortex = effects(&b, "engine/effect").into_iter().find(|&o| effect_look(&b, o).sprite == cloud);
     let vortex = vortex.expect("the vortex");
     assert_eq!(b.objects.get(vortex).timer, 2);
 
@@ -1640,7 +1643,7 @@ fn the_beast_claw_slashes_the_panel_ahead_twice() {
     // first slash's is 1, the second's 0.)
     let slashes = |b: &Battle| {
         let claws = b.content.assets.sprites["slash-man-effect"];
-        let looks = effects(b, "engine/effect").into_iter().map(|o| b.content.effect(b.objects.get(o).params[0]));
+        let looks = effects(b, "engine/effect").into_iter().map(|o| effect_look(b, o));
         looks.filter(|l| l.sprite == claws).map(|l| l.anim).collect::<Vec<_>>()
     };
     run_to(&mut b, p, &mut t, 2, 0);
@@ -2136,7 +2139,7 @@ fn a_kind_spawns_by_definition_and_its_state_holds_definitions() {
     let c = b.collision.get(b.objects.get(launcher).collision.expect("a collision"));
     assert_eq!(c.self_flags & 0xFFFE_FFFF, 0x80000088);
     assert_eq!(c.target_flags, 0x15800000);
-    let wide: Vec<(i8, i8)> = b.content.region(c.region).iter().map(|p| (p.dx, p.dy)).collect();
+    let wide: Vec<(i8, i8)> = b.content.region_offsets(c.region).iter().map(|p| (p.dx, p.dy)).collect();
     assert_eq!(wide, [(1, -1), (1, 0), (1, 1)]);
     // The variant's lifetime (5) ends it.
     for _ in 0..4 {

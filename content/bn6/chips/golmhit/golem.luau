@@ -47,7 +47,7 @@ local HOP_TICKS = 2
 -- The landing's hits (`dword_80E50BC`): one panel, no spark, a thrown
 -- breaking attack that hits navis, hit modifier 3.
 local HIT_MOD = 3
-local NO_SPARK = 0xFF
+local NO_SPARK: Spark? = nil
 -- Effects: the dust where it lands (effect 0x34), and where it can't (0x15).
 local DUST = define.effect { sprite = asset.sprite("dust-2"), anim = 0, palette = 0 }
 local GONE = define.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0 }
