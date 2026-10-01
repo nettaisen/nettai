@@ -1349,7 +1349,7 @@ while dimmed (region 1, target 5, self 0xA; the bolt hit effect 3, modifier 3, t
 the bolt breaks its panel (`object_breakPanel_dup2`: cracks it if something occupies it), sound 0x12E, and shows 16
 ticks; the vine (ElmntMan's sprite, animation 0x12), sound 0x181, 30 ticks.
 
-All of these are the pack's scripts (objects/elmnt-man, meteor, elmnt-ice, elmnt-bolt, elmnt-vine). The navi AI's
+All of these are the pack's scripts (chips/elmntman: navi, meteor, ice, bolt, vine). The navi AI's
 meteors and ice (Param1/Param3 0) are ported but no trace reaches them (unverified).
 
 **Cut-ins.** `sub_8017AB4` also needs the next chip to have the dimming flag; soundmod 25828 (side 1 presses A
@@ -1614,8 +1614,8 @@ and T4#0x11); their throws raise a content error. shot-chips.md §14 specifies b
 #### 3.6.11 SpoutMan (navi chip subtype 7, T1 0x09)
 
 Trace: soundmod rounds 1 and 2 (side 0's SpoutMan); the scratch lab's navis/0x0f2-spoutman/long{,-miss,-adjacent,
--holes} and the EX and SP `long`s match every frame. The pack's scripts: objects/spout-man, spout-ball,
-spout-splash, spout-pillar, spout-geyser, spout-mark.
+-holes} and the EX and SP `long`s match every frame. The pack's scripts: chips/spoutman (navi, ball, splash,
+pillar, geyser, mark).
 
 **SpoutMan, T1 0x09 (`sub_80B94BC`)**, spawned by `sub_80B9750` like ElmntMan (the controller's flag pointer in his
 CollisionDataPtr slot). His position is the spawner's registers: X, Y = panel Y and element (overwritten), Z = r3 =
@@ -2230,7 +2230,7 @@ either one's front panel refused, the far-column fallback, a missing beam.
 
 #### 3.6.32 SunMoon (navi chip subtype 25, PA chip 0x15B, T1 0x24)
 
-The pack's objects/sun-moon, sun-meteor and moon-beam. **SunMoon, T1 0x24 (`sub_80BF260`)**, spawned by `sub_80BF6AE`
+The pack's chips/sunmoon (sun, meteor, moon_beam). **SunMoon, T1 0x24 (`sub_80BF260`)**, spawned by `sub_80BF6AE`
 on the user's panel (related1 the user, the controller's flag pointer in ExtraVars[0], flags \|= 0x10), its sprite
 (0x0C, 0x64) 64 pixels up; its sprite steps as `object_updateSprite` (not while dimmed). Its handlers set their
 timer on entry and count it the same tick. Actions:
@@ -2265,7 +2265,7 @@ an uninstall.
 
 #### 3.6.33 Bass (navi chip subtype 26, Giga chip 0x12D, T1 0x4F)
 
-The pack's objects/bass and panel-strike. **Bass, T1 0x4F (`sub_80C3970`)**, spawned by `sub_80C3B30` on the user's
+The pack's chips/bass/navi and objects/panel-strike. **Bass, T1 0x4F (`sub_80C3970`)**, spawned by `sub_80C3B30` on the user's
 panel (no related1: the controller's flag pointer is kept in his X velocity). Init: sprite (8, 0x13), a ground
 shadow, his cape (`sub_80C468C`: form overlay T1 0x57 of the same sprite, animation + 0x14, stepping while dimmed;
 related1), sound 0x94, 100 ticks, and his first tick at once; he goes when his panel is off the field.
