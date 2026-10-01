@@ -18,6 +18,7 @@ local PALETTE = 1
 return define.chip {
     id = "needlarm",
     name = "NeedlArm",
+    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 30, damage = 0, hit_param = 30, lockout = 20,
