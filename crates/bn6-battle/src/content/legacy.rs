@@ -493,9 +493,15 @@ fn registries(content: &mut Content, definitions: &Definitions) -> Result<(), Co
             if offset % 8 != 0 {
                 return Err(err(d, format!("row_offset {offset:#x} is not a row's (a multiple of 8)")));
             }
-            if let Some((_, first)) = table.insert(offset / 8, ([word("side0")?, word("side1")?], d)) {
-                return Err(err(d, format!("row {:#x} is also collision {}'s", offset / 8, first.key)));
+            // A row several modules define (each by its own name) must be
+            // the same row.
+            let flags = [word("side0")?, word("side1")?];
+            if let Some((other, first)) = table.get(&(offset / 8))
+                && *other != flags
+            {
+                return Err(err(d, format!("row {:#x} is also collision {}'s, with other flags", offset / 8, first.key)));
             }
+            table.entry(offset / 8).or_insert((flags, d));
         }
         let mut out = Vec::new();
         for (expect, (row, (flags, d))) in table.into_iter().enumerate() {

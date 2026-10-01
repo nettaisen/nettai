@@ -45,7 +45,8 @@ chips/antidmg/chip.luau 1
 chips/antinavi/chip.luau 1
 chips/antirecv/chip.luau 1
 chips/antiswrd/chip.luau 1
-chips/anubis/chip.luau 1
+chips/anubis/record.luau 1
+chips/anubis/statue.luau 2
 chips/aquadrgn/chip.luau 1
 chips/aquandl/chips.luau 3
 chips/aquaswrd/record.luau 1
@@ -64,15 +65,12 @@ chips/bgdththd/chip.luau 1
 chips/bighook/chip.luau 1
 chips/blastman/chips.luau 3
 chips/blkbomb/bomb.luau 2
-chips/blzrdbal/chip.luau 1
 chips/bodygrd/chip.luau 1
 chips/boomer/chips.luau 3
 chips/boomrarm/chip.luau 1
 chips/bugrswrd/chip.luau 1
-chips/burnsqr/chips.luau 3
 chips/cannon/chips.luau 3
 chips/chrgeman/chips.luau 3
-chips/circgun/chip.luau 1
 chips/colarmy/chip.luau 1
 chips/colforce/chip.luau 1
 chips/colonel/chips.luau 3
@@ -111,7 +109,6 @@ chips/elemtrap/chip.luau 1
 chips/elmntman/chips.luau 3
 chips/eraseman/chips.luau 3
 chips/falzar/chip.luau 1
-chips/fan/chip.luau 1
 chips/finalgun/chip.luau 1
 chips/firebrn/chips.luau 3
 chips/firehit/chips.luau 3
@@ -123,12 +120,10 @@ chips/fullcust/chip.luau 1
 chips/geddon/chip.luau 1
 chips/gigacan/chips.luau 3
 chips/golmhit/chips.luau 3
-chips/grabbnsh/chip.luau 1
-chips/grabrvng/chip.luau 1
 chips/greatyo/chip.luau 1
 chips/gregar/chip.luau 1
 chips/grndman/chips.luau 3
-chips/guardian/chip.luau 1
+chips/guardian/statue.luau 2
 chips/gundelex/chip.luau 1
 chips/gundels/chips.luau 3
 chips/h-burst/chip.luau 1
@@ -151,10 +146,9 @@ chips/longblde/record.luau 1
 chips/longswrd/record.luau 1
 chips/machgun/chips.luau 3
 chips/magcoil/chip.luau 1
-chips/magnum/chip.luau 1
 chips/magpanl/chip.luau 1
 chips/megabstr/chip.luau 1
-chips/meteors/chip.luau 1
+chips/meteors/record.luau 1
 chips/metrknuk/chip.luau 1
 chips/mine/chip.luau 1
 chips/moonbld/chip.luau 1
@@ -168,7 +162,7 @@ chips/otenko/chip.luau 1
 chips/parashl/chip.luau 1
 chips/pithocky/chip.luau 1
 chips/pnkcapsl/chip.luau 1
-chips/poisphar/chip.luau 1
+chips/poisphar/record.luau 1
 chips/poisseed/record.luau 1
 chips/protoman/chips.luau 3
 chips/prpcapsl/chip.luau 1
@@ -211,7 +205,7 @@ chips/tornado/chip.luau 1
 chips/trnarrw/chips.luau 3
 chips/twinldrs/chip.luau 1
 chips/uninstll/chip.luau 1
-chips/v1.luau 41
+chips/v1.luau 52
 chips/varswrd/chip.luau 1
 chips/vdoll/chip.luau 1
 chips/vulcan/chips.luau 3
@@ -222,7 +216,7 @@ chips/wideblde/record.luau 1
 chips/widebrn/chips.luau 3
 chips/widesht/chip.luau 1
 chips/wideswrd/record.luau 1
-chips/wind/chip.luau 1
+chips/wind/fan.luau 2
 chips/windrack/chip.luau 1
 chips/wooddrgn/chip.luau 1
 chips/yoyo/chip.luau 1
@@ -438,9 +432,6 @@ objects/follow-effect/follow_effect.luau 10
 objects/gauge-speed/gauge_speed.luau 4
 objects/golem/golem.luau 11
 objects/great-yoyo/great_yoyo.luau 5
-objects/guardian-statue/guardian_statue.luau 19
-objects/guardian-strike/guardian_strike.luau 6
-objects/guardian/guardian.luau 5
 objects/gust/gust.luau 4
 objects/heat-flame/heat_flame.luau 7
 objects/heat-man/heat_man.luau 2
@@ -457,7 +448,7 @@ objects/lance/lance.luau 3
 objects/land-mine/land_mine.luau 10
 objects/lunge-slash/lunge_slash.luau 2
 objects/magnet/magnet.luau 2
-objects/meteor-shower/meteor_shower.luau 3
+objects/meteor-shower/meteor_shower.luau 2
 objects/meteor/meteor.luau 6
 objects/mine/mine.luau 1
 objects/moon-beam/moon_beam.luau 2
