@@ -2227,6 +2227,55 @@ fn weapon_definitions_carry_their_charge_times_and_traits() {
 }
 
 #[test]
+fn the_chips_charged_shots_fire_and_roll_back() {
+    // The weapons BugRSwrd, BgDthThd and the arm chips make the charged
+    // shot: each starts its attack, runs to idle, and a copy of the battle
+    // taken along the way plays on as it does.
+    let weapons = [
+        // (weapon, the bug frags the side has, the action, its damage, its element byte)
+        ("bugrswrd/charge", 1, "drksword/action", 200, 0x80),
+        ("bugrswrd/charge", 0, "sword/action", 80, 0x80),
+        ("bgdththd/charge", 1, "bgdththd/charge/action", 200, 3),
+        ("bgdththd/charge", 0, "thunder/action", 40, 3),
+        ("puncharm/charge", 0, "0x1c", 100, 1),
+        ("needlarm/charge", 0, "aquandl1/action", 40, 2),
+        ("puzzlarm/charge", 0, "puzzlarm/charge/action", 100, 3),
+        ("boomrarm/charge", 0, "0x1c", 100, 4),
+    ];
+    for (weapon, frags, action, damage, element) in weapons {
+        let (mut b, p0, _) = fight();
+        b.bug_frags[0] = frags;
+        assert_eq!(start_weapon(&mut b, p0, weapon), action, "{weapon}");
+        let a = &ai_mut(&mut b, p0).attack;
+        // Every one: the counter byte 0x14 and a chip lockout of 20 ticks.
+        assert_eq!((a.damage, a.element, a.hit_param, a.lockout, a.charged, a.extra), (damage, element, 0x14, 0x14, 0, 0), "{weapon}");
+        // A bug frag is spent where there was one.
+        assert_eq!(b.bug_frags[0], 0, "{weapon}");
+        let (mut b, p0, p1) = fight();
+        b.bug_frags[0] = frags;
+        let t = run_weapon(&mut b, [p0, p1], weapon, 400);
+        assert!(t < 400, "{weapon} never ended");
+    }
+    // The arms' instant effects are chips': the navi idles the tick after
+    // (TenguCross's wind, an effect no chip has, waits 8 ticks).
+    let (mut b, p0, p1) = fight();
+    let t = run_weapon(&mut b, [p0, p1], "boomrarm/charge", 400);
+    assert_eq!(t, 1);
+    assert_eq!(of_kind(&b, "boomerang").len(), 1);
+    let (mut b, p0, p1) = fight();
+    assert!(run_weapon(&mut b, [p0, p1], "megaman/tengu-wind", 400) > 8);
+    // BugRSwrd's slash with a bug frag covers the two columns ahead:
+    // the opponent, two panels away, takes 200.
+    let (mut b, p0, p1) = fight();
+    b.bug_frags[0] = 1;
+    stand_on(&mut b, p0, 3, 2);
+    stand_on(&mut b, p1, 5, 2);
+    let hp = b.objects.get(p1).hp;
+    run_weapon(&mut b, [p0, p1], "bugrswrd/charge", 400);
+    assert_eq!(b.objects.get(p1).hp, hp - 200);
+}
+
+#[test]
 fn a_sticky_charged_shot_stays_and_demotes_a_beast_buster() {
     // `sub_800FFAA`: with an arm chip's charged shot, a form's own charged
     // shot doesn't replace it, and a Beast buster gives way to the plain
