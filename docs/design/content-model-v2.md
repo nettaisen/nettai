@@ -1521,10 +1521,10 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   replace the packed marker word) and the flying shot's state carry the record; the engine stores its handle
   and checks its type. The absorbed obstacle itself (objects/absorbed-obstacle) and the falling rock with its
   chips (objects/falling-rock) are definitions, which their roles name.
-- **What a stage places** is a kind with a `place`, named by role: the rock (entry type 8), the boulder
-  (type 3, objects/boulder: newly ported, one of the field's two stage objects, `obstacle.stage_slot_free`,
-  `enter_stage`, `leave_stage`) and the Guardian statue (type 9, chips/guardian/statue's `place`). The roles
-  are a stopgap for the stages' own entries (`{ place = boulder.kind, x, y }`, §3.7).
+- **What a stage places** is a kind with a `place`: the rock (entry type 8), the boulder (type 3,
+  objects/boulder: newly ported, one of the field's two stage objects, `obstacle.stage_slot_free`,
+  `enter_stage`, `leave_stage`) and the Guardian statue (type 9, chips/guardian/statue's `place`). The stages'
+  own entries name them (`{ place = boulder.kind, x, y }`, §3.7; until step 12 roles stood in for them).
 - **A spawner's bug is content's**: the boulder's spawner replaces the new object's header flags with a byte
   it reads through the wrong register (the console's open bus). The module says what is read and stores it
   (`me:set_header_flags`), the one place content writes the flag byte whole.
