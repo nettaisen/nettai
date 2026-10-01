@@ -1,8 +1,10 @@
 --!strict
 -- The boomerang (the original's attack object #0x32, `sub_80CA2A8`):
--- Boomer, HiBoomer and M-Boomer's (chips/boomer, instant chip effect 1,
--- `sub_80CA4F6`) and TomahawkCross Beast's tomahawks (action 0x4E,
--- forms/tomahawkcross-beast/throw). It starts on the edge of a row and flies
+-- Boomer, HiBoomer and M-Boomer's (./chips, instant chip effect 1,
+-- `sub_80CA4F6`), which TomahawkCross Beast's tomahawks (action 0x4E,
+-- navis/megaman/forms/tomahawkcross-beast/throw) use too, as does
+-- BoomrArm's charged shot (chips/boomrarm/charge, through Boomer's
+-- effect). It starts on the edge of a row and flies
 -- along it at its variant's speed; past the column it turns at it flies
 -- along that column to the other edge row, and back along that row until
 -- it leaves the field. It hits what it passes, once per panel, and the
@@ -219,7 +221,7 @@ local function tick(me: Object, s: State)
 end
 
 boomerang.kind = define.kind {
-    id = "boomerang",
+    id = "boomer/boomerang",
     pool = "attack",
     state = {
         variant = "record:boomerang-variant",
