@@ -12,8 +12,6 @@ use crate::kinds::player::{Emotion, emotion};
 use crate::object::sprite::Shadow;
 use crate::object::{ObjectRef, Vec3, flags, state};
 
-pub const INDEX: u8 = 0x5E;
-
 const SPRITE: SpriteId = SpriteId { category: 0x14, index: 0x16 };
 
 /// Aura-private state.
