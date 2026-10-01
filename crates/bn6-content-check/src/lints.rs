@@ -175,7 +175,6 @@ const ALWAYS: &[(&str, &str, &str)] = &[
     ("battle.navi_record(", "battle.navi_record", "the identity (step 11)"),
     (":death_hook(", "me:death_hook", "the identity (step 11)"),
     ("battle.attach_point(", "battle.attach_point", "me:attach_point_pos"),
-    (":lockon_panel(", "me:lockon_panel", "a lock-on mode definition"),
     ("battle.hand_chip(", "battle.hand_chip", "chips by handle (step 3b)"),
     ("data.", "the data global", "definitions"),
     (":load(\"", "sprite:load(id)", "asset.sprite"),

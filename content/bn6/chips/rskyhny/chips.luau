@@ -9,6 +9,7 @@
 -- content-model-v2.md §12).
 
 local action = require("./action")
+local lockon = require("../../rules/lockon")
 
 -- The bees by level (the chips' first parameter, `byte_80D3164`): the
 -- palette, and the speeds across and along the field.
@@ -29,8 +30,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 39, index = 39, sort = 351 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = action.action { bee = BEES[1] },
     },
     define.chip {
@@ -43,8 +44,8 @@ return {
         flags = { "has_damage", "standard_library", "library" },
         library = { number = 40, index = 40, sort = 399 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 1 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.cannon },
         action = action.action { bee = BEES[2] },
     },
     -- RskyHny3's record's action.

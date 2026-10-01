@@ -34,7 +34,7 @@ use super::{
     ChipData, ChipId, Content, DIMMING_CHIP_ACTION,
     FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
 };
-use super::roles::{ActionRole, HookRole, KindRole, RoleAction, RoleKind, Roles};
+use super::roles::{ActionRole, HookRole, KindRole, LockonRole, RoleAction, RoleKind, Roles};
 use crate::setup::{Form, Navi};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
@@ -183,6 +183,13 @@ pub struct StageDef {
     pub record: super::StageData,
 }
 
+/// A Beast Out lock-on mode (`define.lockon`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct LockonDef {
+    pub key: String,
+    pub mode: super::LockonMode,
+}
+
 /// A collision type content defines (`define.collision`): what an object is
 /// or what it hits, as the flag words for each side.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -229,6 +236,8 @@ pub struct Defs {
     pub navis: Vec<NaviDef>,
     pub forms: Vec<FormDef>,
     pub stages: Vec<StageDef>,
+    /// The Beast Out lock-on modes, by handle.
+    pub lockons: Vec<LockonDef>,
     pub records: Vec<RecordDef>,
     /// One-shot effects' and hit sparks' looks content defines, by handle.
     /// Each has the engine's number (`Content::effect`, `Content::spark`):
@@ -377,6 +386,11 @@ impl Defs {
     /// The stage with this key.
     pub fn stage_by_key(&self, key: &str) -> Option<StageHandle> {
         self.stages.binary_search_by(|s| s.key.as_str().cmp(key)).ok().map(|i| StageHandle(i as u16))
+    }
+
+    /// The lock-on mode with this key.
+    pub fn lockon_by_key(&self, key: &str) -> Option<bn6_content_api::LockonHandle> {
+        self.lockons.binary_search_by(|l| l.key.as_str().cmp(key)).ok().map(|i| bn6_content_api::LockonHandle(i as u16))
     }
 
     pub fn weapon(&self, h: WeaponHandle) -> &WeaponDef {
@@ -597,11 +611,13 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
     }
     let beast = spec.field("beast");
     o.insert("beast_lockon".into(), Json::Bool(!beast.is_nil() && !matches!(beast.field("rush"), Data::Bool(false))));
+    // (A lock-on mode's number is its handle: `Resolver::new`.)
     let mode = match beast.field("lockon") {
-        Data::Nil => 0,
-        v => r.json(v, &format!("chip {}.beast.lockon", d.key)).map_err(what)?.as_i64().unwrap_or(0),
+        Data::Nil => Json::Null,
+        v @ Data::Ref(Registry::Lockon, _) => r.json(v, &format!("chip {}.beast.lockon", d.key)).map_err(what)?,
+        _ => return Err(what("`beast.lockon` is a lock-on mode (rules/lockon)".into())),
     };
-    o.insert("lockon_mode".into(), mode.into());
+    o.insert("lockon_mode".into(), mode);
     o.insert("program_advance".into(), json("program_advances")?);
     if o["program_advance"].is_null() {
         o.insert("program_advance".into(), Json::Array(Vec::new()));
@@ -616,7 +632,13 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
 /// `define.roles { actions = { ... }, kinds = { ... } }` (content::roles):
 /// each role a definition, or a v1 registration through its `legacy`
 /// marker (an action by number, a kind by key).
-fn read_roles(d: &Definition, actions: &[ActionDef], kinds: &[KindDef], functions: &mut Functions) -> Result<Roles, ContentError> {
+fn read_roles(
+    d: &Definition,
+    actions: &[ActionDef],
+    kinds: &[KindDef],
+    lockons: &[LockonDef],
+    functions: &mut Functions,
+) -> Result<Roles, ContentError> {
     let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
     let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
     let legacy = |name: &str, v: &Data, field: &str| -> Result<Option<Data>, ContentError> {
@@ -700,7 +722,18 @@ fn read_roles(d: &Definition, actions: &[ActionDef], kinds: &[KindDef], function
                     }
                     roles.hooks.insert(role, functions.id(FnSource::slot(Registry::Roles, &d.key, &format!("hooks.{name}"))));
                 }
-                _ => return Err(what(format!("the ruleset has no role group `{group}` (it has actions, kinds, hooks)"))),
+                "lockon" => {
+                    let names: Vec<&str> = LockonRole::ALL.iter().map(|r| r.name()).collect();
+                    let role = LockonRole::named(&name).ok_or_else(|| {
+                        what(format!("the ruleset has no role lockon.{name} (it has {})", names.join(", ")))
+                    })?;
+                    let Data::Ref(Registry::Lockon, key) = v else {
+                        return Err(what(format!("lockon.{name} is not a lock-on mode")));
+                    };
+                    let h = lockons.iter().position(|l| &l.key == key).expect("a defined lock-on mode");
+                    roles.lockons.insert(role, bn6_content_api::LockonHandle(h as u16));
+                }
+                _ => return Err(what(format!("the ruleset has no role group `{group}` (it has actions, kinds, hooks, lockon)"))),
             }
         }
     }
@@ -1134,6 +1167,21 @@ impl Defs {
         }
         let stages: Vec<StageDef> = stages.sorted()?.into_iter().map(|(_, s)| s).collect();
 
+        // The lock-on modes, by key (the definitions' order).
+        let mut lockons = Vec::new();
+        for d in definitions.of(Registry::Lockon) {
+            let what = |e: String| ContentError::new(format!("{}.luau: lockon {}: {e}", d.module, d.key));
+            let mut spec = d.spec.clone();
+            if let Data::Map(entries) = &mut spec {
+                entries.retain(|(k, _)| !matches!(k, bn6_content_api::DataKey::Str(s) if s == "id"));
+            }
+            let mode: super::LockonMode = resolver.read(&spec, &d.key).map_err(what)?;
+            lockons.push(LockonDef { key: d.key.clone(), mode });
+        }
+        if lockons.windows(2).any(|w| w[0].key >= w[1].key) {
+            return Err(ContentError::new("the lock-on modes are not in key order (the define phase sorts each registry)"));
+        }
+
         // Effects, sparks, regions and collision types: each gets the
         // engine's number after the pack data's.
         let look = |d: &Definition| -> Result<super::EffectSprite, ContentError> {
@@ -1260,7 +1308,7 @@ impl Defs {
         // The roles.
         let mut roles = Roles::default();
         if let [d] = definitions.of(Registry::Roles) {
-            roles = read_roles(d, &actions, &kinds, &mut functions)?;
+            roles = read_roles(d, &actions, &kinds, &lockons, &mut functions)?;
         }
 
         let records: Vec<RecordDef> = definitions
@@ -1315,6 +1363,7 @@ impl Defs {
             navis,
             forms,
             stages,
+            lockons,
             records,
             effects,
             sparks,
@@ -1429,6 +1478,17 @@ mod tests {
                 crate::content::Region::Panels(p) => assert_eq!(c.region(*n), &p[..], "region {h}"),
                 crate::content::Region::Field(f) => assert_eq!(c.field_region(*n), *f, "region {h}"),
             }
+        }
+    }
+
+    /// The test content's chip records name their lock-on modes before the
+    /// content is defined, by the modes' place in key order.
+    #[test]
+    fn the_test_lockon_keys_are_the_definitions() {
+        let c = crate::content::testing::content();
+        assert_eq!(c.defs.lockons.len(), 19);
+        for l in &c.defs.lockons {
+            assert_eq!(crate::content::testing::lockon(&l.key), c.defs.lockon_by_key(&l.key), "{}", l.key);
         }
     }
 
