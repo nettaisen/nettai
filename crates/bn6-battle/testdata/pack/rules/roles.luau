@@ -38,6 +38,11 @@ return define.roles {
         absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
         falling_rock = { legacy = { kind = "falling-rock" } },
     },
+    chips = {
+        -- What a zeroed chip field reads: the test content's chip 0 (a
+        -- Rust-built record, which no module holds: by its key).
+        zeroed = { legacy = { chip = "v1/chip-000" } },
+    },
     hooks = {
         encased = encased_bubble.replace,
     },

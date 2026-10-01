@@ -602,13 +602,13 @@ fn registrations_follow_the_content_data() {
     // An instant chip's record resolves its subtype's effect (the plus
     // chips' records, the shim's), and a weapon that names an effect no
     // chip has (TenguCross's wind) has its own.
-    let plus = d.chip(c.chip_numbered(testing::PLUS).unwrap());
+    let plus = d.chip(testing::chip_in(&c, testing::PLUS));
     assert!(matches!(plus.usage, crate::content::ChipUsage::Instant(_)), "{:?}", plus.usage);
     assert!(d.weapon(c.weapon_numbered(0x10)).instant.is_some());
     // A record whose module exports an action runs it, whatever its
     // action number names (the link navis' chips: action 0x0A).
     for (id, _, module) in testing::LINK_CHIPS {
-        let chip = d.chip(c.chip_numbered(id).unwrap());
+        let chip = d.chip(testing::chip_in(&c, id));
         assert_eq!(chip.record.action, 0x0A);
         match chip.usage {
             crate::content::ChipUsage::Action(h) => assert!(d.action(h).number.is_none(), "{module}: {:?}", d.action(h)),

@@ -13,7 +13,7 @@
 
 use std::collections::BTreeMap;
 
-use bn6_content_api::{ActionHandle, FnId, KindHandle};
+use bn6_content_api::{ActionHandle, ChipHandle, FnId, KindHandle};
 
 /// The actions the ruleset starts or recognizes by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -172,6 +172,37 @@ impl HookRole {
     }
 }
 
+/// The chips the ruleset names by role.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ChipRole {
+    /// What a zeroed chip field reads: the chip the original's chip 0 is
+    /// (a hand's empty selection, the attack's cleared chip, a
+    /// non-player's carried chip, a side's special chip never set).
+    Zeroed,
+    /// The Beast Out chip the custom screen offers and recognizes
+    /// (`sub_802A00C`).
+    BeastOut,
+    /// What an illegal pick counts as in a selection (`getChipID_802A54E`).
+    Invalid,
+}
+
+impl ChipRole {
+    pub const ALL: [ChipRole; 3] = [ChipRole::Zeroed, ChipRole::BeastOut, ChipRole::Invalid];
+
+    /// Its name in `rules/roles.luau`'s `chips`.
+    pub fn name(self) -> &'static str {
+        match self {
+            ChipRole::Zeroed => "zeroed",
+            ChipRole::BeastOut => "beast_out",
+            ChipRole::Invalid => "invalid",
+        }
+    }
+
+    pub fn named(name: &str) -> Option<ChipRole> {
+        ChipRole::ALL.into_iter().find(|r| r.name() == name)
+    }
+}
+
 /// What an action role names.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum RoleAction {
@@ -196,6 +227,7 @@ pub struct Roles {
     pub actions: BTreeMap<ActionRole, RoleAction>,
     pub kinds: BTreeMap<KindRole, RoleKind>,
     pub hooks: BTreeMap<HookRole, FnId>,
+    pub chips: BTreeMap<ChipRole, ChipHandle>,
 }
 
 impl Roles {
@@ -217,6 +249,23 @@ impl Roles {
             }
             None => panic!("the role actions.{} is not filled (define.roles in rules/roles.luau)", role.name()),
         }
+    }
+
+    /// The chip of `role`, if content filled it.
+    pub fn try_chip(&self, role: ChipRole) -> Option<ChipHandle> {
+        self.chips.get(&role).copied()
+    }
+
+    /// The chip of `role`; a role content hasn't filled is a panic naming
+    /// it.
+    pub fn chip(&self, role: ChipRole) -> ChipHandle {
+        self.try_chip(role)
+            .unwrap_or_else(|| panic!("the role chips.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    /// Whether `h` is the chip of `role`.
+    pub fn is_chip(&self, role: ChipRole, h: ChipHandle) -> bool {
+        self.try_chip(role) == Some(h)
     }
 
     /// Whether `h` is the action of `role`.

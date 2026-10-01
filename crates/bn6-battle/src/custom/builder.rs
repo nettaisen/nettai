@@ -4,7 +4,7 @@
 
 use super::folder::FolderChip;
 use super::library::Library;
-use crate::content::{ChipClass, ChipCode, ChipFlags, ChipId, ChipModifier, Recipe};
+use crate::content::{ChipClass, ChipCode, ChipFlags, ChipModifier, Recipe};
 use crate::hand::ChipHand;
 use bn6_content_api::ChipHandle;
 
@@ -19,16 +19,15 @@ pub mod modifier_bits {
 }
 
 /// Program Advances a player has formed this round (once each), by the
-/// result's number `- 0x140`.
+/// result's place among them (`Library::advance_index`; the original's bit
+/// is the result's place in its chip table past the last Giga chip).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ProgramAdvancesUsed(pub u32);
 
 impl ProgramAdvancesUsed {
-    const FIRST: ChipId = 0x140;
-
     /// `sub_8029652`: spend a Program Advance; false if it was spent.
-    fn spend(&mut self, result: ChipId) -> bool {
-        let bit = 1 << (result - Self::FIRST);
+    fn spend(&mut self, index: u8) -> bool {
+        let bit = 1 << index;
         let fresh = self.0 & bit == 0;
         self.0 |= bit;
         fresh
@@ -139,10 +138,7 @@ fn find_program_advance(
             if rest.len() < len || !recipe_matches(&pa.recipe, &rest[..len]) {
                 continue;
             }
-            // The pack's Program Advances all have numbers (a chip content
-            // defines has no recipes yet).
-            let number = library.chip_number(pa.result).expect("a Program Advance the pack numbers");
-            if used.spend(number) {
+            if used.spend(library.advance_index(pa.result)) {
                 return Some((pa.result, start, len));
             }
         }
@@ -256,6 +252,7 @@ pub fn count_classes(hand: &ChipHand, uses: &mut ClassCounts, library: &dyn Libr
 
 #[cfg(test)]
 mod tests {
+    use crate::content::ChipId;
     use super::*;
     use crate::custom::library::testing::{EVERY_CODE, TestLibrary, chip};
     use crate::content::{ChipData, ProgramAdvance};
