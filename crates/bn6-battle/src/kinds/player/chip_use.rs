@@ -190,7 +190,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     }
     let content = b.content.clone();
     let cd = entry_record(&content, e.chip);
-    let action = load_attack(b, r, e.chip);
+    load_attack(b, r, e.chip);
     let a = &mut ai_mut(b, r).attack;
     a.charged = charge;
     // The hand's damage replaces the chip data's.
@@ -236,15 +236,31 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         b.bump_side_stat(side, 6, 1);
     }
     dark_chip_side_effect(b, r, e.chip);
-    // A chip content defines runs its own action, or the engine's action
-    // for its kind of use (which calls its hook).
-    use crate::content::{ChipUsage, DIMMING_CHIP_ACTION, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION};
-    match e.chip.and_then(|c| content.defs.chip(c).usage) {
-        Some(ChipUsage::Action(h)) => super::NaviAttack::content(&content.defs, h),
-        Some(ChipUsage::Dimming(_)) => DIMMING_CHIP_ACTION.into(),
-        Some(ChipUsage::Navi(_)) => NAVI_CHIP_ACTION.into(),
-        Some(ChipUsage::Instant(_)) => INSTANT_CHIP_ACTION.into(),
-        None => action.into(),
+    chip_action(b, r, e.chip)
+}
+
+/// The action chip `chip` starts by its usage (none: the pack's chip 0,
+/// which a zeroed chip field reads): its own action, or the engine's action
+/// for its kind of use (which calls its hook); an instant chip's effect
+/// goes into the attack.
+pub(super) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> super::NaviAttack {
+    use crate::content::{ChipUsage, DIMMING_CHIP_ACTION, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, Unported};
+    use super::actions::instant::Effect;
+    let content = b.content.clone();
+    let chip = chip.or_else(|| content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
+    match content.defs.chip(chip).usage {
+        ChipUsage::Action(h) => super::NaviAttack::content(&content.defs, h),
+        ChipUsage::Dimming(_) | ChipUsage::Unported(Unported::Dimming(_)) => DIMMING_CHIP_ACTION.into(),
+        ChipUsage::Navi(_) | ChipUsage::Unported(Unported::Navi(_)) => NAVI_CHIP_ACTION.into(),
+        ChipUsage::Instant(f) => {
+            ai_mut(b, r).attack.instant = Some(Effect::Runs(f));
+            INSTANT_CHIP_ACTION.into()
+        }
+        ChipUsage::Unported(Unported::Instant(subtype)) => {
+            ai_mut(b, r).attack.instant = Some(Effect::Unported(subtype));
+            INSTANT_CHIP_ACTION.into()
+        }
+        ChipUsage::Unported(Unported::Action(n)) => n.into(),
     }
 }
 
@@ -342,10 +358,10 @@ fn pay_for_special_chip(b: &mut Battle, side: usize, chip: Option<ChipHandle>) {
     s.gauge = s.gauge.saturating_sub(cost);
 }
 
-/// `sub_80126E4`: the attack variables from the chip data; returns the
-/// chip's action. (The game also counts the use per side, for a report
-/// only the battle-flag 0x40 mode reads.)
-fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u8 {
+/// `sub_80126E4`: the attack variables from the chip data (its action is
+/// [`chip_action`]'s). (The game also counts the use per side, for a
+/// report only the battle-flag 0x40 mode reads.)
+fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let content = b.content.clone();
     let cd = entry_record(&content, chip);
     let side = b.objects.get(r).alliance;
@@ -360,7 +376,6 @@ fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u8 {
     a.variant = cd.subtype;
     a.element = cd.element as u8 | content.rules.family_elements(cd.family).0;
     a.charged = 0;
-    cd.action
 }
 
 /// `sub_800EF34`: the damage bonus MegaMan's form gives a chip (a link

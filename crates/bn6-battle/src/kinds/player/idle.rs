@@ -255,11 +255,17 @@ fn weapon_slot_routine(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle
 pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle) -> super::NaviAttack {
     use bn6_content_api::{ActionHandle, HookCall, Registry, Value};
     if let Some(setup) = b.content.defs.weapon(weapon).setup {
-        return match crate::behavior::call_hook(b, setup, HookCall::Weapon { navi: r }) {
+        let action = match crate::behavior::call_hook(b, setup, HookCall::Weapon { navi: r }) {
             Value::Int(n) => super::NaviAttack::from(n as u8),
             Value::Def(Registry::Action, h) => super::NaviAttack::content(&b.content.defs, ActionHandle(h)),
             v => panic!("weapon {:?} names {v:?}, not an action", b.content.defs.weapon(weapon).key),
         };
+        // A weapon that names an instant effect no chip has (TenguCross's
+        // wind) runs its own.
+        if let Some(f) = b.content.defs.weapon(weapon).instant {
+            ai_mut(b, r).attack.instant = Some(super::actions::instant::Effect::Runs(f));
+        }
+        return action;
     }
     let Some(routine) = b.content.weapon_number(weapon) else {
         panic!("content error: weapon {:?} has no setup", b.content.defs.weapon(weapon).key)
