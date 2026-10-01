@@ -11,9 +11,11 @@
 //! stepping, the chips below, custom screens, rocks and the round's flow.
 //!
 //! Its scripts are this repository's BN6 scripts (content/bn6, the source
-//! overlay: this project's own code, not game data), read from the
-//! repository and registered under this content's names, so the tests run
-//! the real scripts on made-up data.
+//! overlay), read from the repository, and its own modules
+//! (testdata/content): the test chips are definitions there, made-up
+//! records whose uses are BN6's builders and actions, so the tests run the
+//! real scripts on data they can reason about. (The BN6 modules it loads
+//! bring their own chip definitions too; tests name either by key.)
 
 use super::*;
 use crate::actor::ActorType;

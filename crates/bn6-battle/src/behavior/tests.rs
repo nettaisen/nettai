@@ -543,7 +543,7 @@ fn link_chip_setup(chips: &[usize]) -> crate::setup::RoundSetup {
 
 #[test]
 fn the_link_navis_chips_play_and_roll_back() {
-    // Each link navi chip's record runs the action its module exports (its
+    // Each test link chip runs the action of BN6's link navi's chip (its
     // CurAction the content action's): every one runs, with what it
     // spawns, and a copy taken at any tick plays on as the battle does.
     let mut seen = std::collections::BTreeMap::new();
