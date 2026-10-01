@@ -174,6 +174,7 @@ use bn6_battle::custom::{Context, GameVersion, PlayerSetup, Recorded, Request, S
 use bn6_battle::hand::ChipHand;
 use bn6_battle::input::PlayerTick;
 use bn6_battle::link::Link;
+use bn6_battle::rng::Rng;
 use bn6_battle::setup::{NaviStats, RoundSetup, SetScore};
 
 /// A custom-screen exchange record from a trace.
@@ -621,8 +622,12 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
     let mut sides: [Option<Side>; 2] =
         std::array::from_fn(|p| round.folder_known(p as u8).then(|| Side::new(&setup.players[p])));
     // Each console's RNG as far as the screens alone go: its draws outside
-    // them (camera shakes, the emotion window) aren't simulated here.
+    // them (camera shakes, the emotion window) aren't simulated here. The
+    // recording console's are in the trace instead, which samples its RNG
+    // on every frame after the battle's update, before the main loop's
+    // draw: each frame starts from the frame before's sample.
     let mut consoles = setup.players.each_ref().map(|p| Console::new(&p.console));
+    let recording = unhex(&round.setup.battle_state)[0x0D] as usize;
     let mut checks = Vec::new();
     let mut open: Option<(u32, [Option<u32>; 2], [Option<u32>; 2])> = None;
     let stats_at = |frame: u32, p: usize| -> NaviStats {
@@ -631,6 +636,7 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
     };
     for (i, f) in frames.iter().enumerate() {
         if i > 0 {
+            consoles[recording].rng = Rng::new(frames[i - 1].rng1);
             // The previous frame's main-loop draw.
             for c in &mut consoles {
                 c.rng.next();
