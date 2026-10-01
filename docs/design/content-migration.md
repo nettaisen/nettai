@@ -17,11 +17,12 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | EraseMan | A navi chip: a navi kind and a `navi` hook builder (`eraseman.summon { aim_ticks }`); kinds spawned with state instead of parameters; chips kept on records behind a registration shim | chips/eraseman/, chips/0ec-eraseman |
 | BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library with the records' path beside it | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau, chips/0c0-atk-10 |
 | The link navis' own chips | A record that runs the action its module exports (`{ action = define.action { ... } }`), for an action number registration can't claim; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds), chips/190-heatpres ... chips/199-dustbrk |
-| MegaMan's buster, charged shot and blank shot; HeatCross's charged shot | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a role the ruleset starts (`forced_charged_shot`, rules/roles.luau) | navis/00-megaman/weapons/{buster,charged-shot,blank-shot}, navis/00-megaman/forms/heatcross/charge.luau, lib/buster.luau |
+| MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it; a weapon that asks the attack's chip for its part (`navi.attack_chip`: SlashCross's charged slash, a record a sword's slash names) | navis/00-megaman/weapons/`<name>`/weapon.luau, navis/00-megaman/forms/`<form>`/, navis/00-megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
 
-The other weapon routines (navis/00-megaman/weapons/NN-name) are still v1 modules: each has its weapon definition
-since step 5 (navis/00-megaman/weapons/NAME/weapon.luau, a form's or navi's own beside its `form.luau` or
-`navi.luau`), whose legacy marker names the routines and the module. The navis, MegaMan's forms, the stages
+Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e); the ones nothing
+implements yet (the link navis' charges, the sticky charges, the charged-chip bonuses) are the generated stubs of
+step 5 (navis/00-megaman/weapons/NAME/weapon.luau, a form's or navi's own beside its `form.luau` or
+`navi.luau`), whose legacy marker names the routines. The navis, MegaMan's forms, the stages
 (stages/) and the rule sections (rules/) are definitions too, generated from the ROM once and checked against it
 (`gen-content check`, in the verification workspace).
 
@@ -84,20 +85,12 @@ the migration ends, registration by number (§3.2) resolves the pack's records i
    `scratch_position` for a position the spawner's registers leave), an action's (actions.toml: a chip's action
    is `<chip>/action`, which is the key it gets by default; give `id` when no chip holds it). compat/ is
    gen-content's; a key or name you add goes into compat/curation.toml too, for review.
-5. **What stays numbered for now** (content-model-v2.md §12, "Transitional"). Every chip is a definition (step
-   5): one nobody converted yet is the generated `define.chip` (chips/KEY/chip.luau, a series' chips.luau, or
-   `record.luau` beside a module that was there first), whose `legacy = legacy { number, action, subtype, params,
-   script, ... }` marker gives its number and the v1 module that runs it. Converting a chip edits that
-   definition: it gets its use (`action`, `dimming`, `navi` or `instant`) and loses `script`. It keeps `number`
-   in the marker (with a damage formula's `damage = 1000 + n` and table, `dark_substitute`, and the subtype and
-   parameters if a v1 module still reads them, as the swords SlashCross charges), because the ruleset and other
-   records still name chips by number (a Program Advance's ingredient, a dark chip, a navi chip AntiNavi checks,
-   the Cross special's picks, a navi's own chip) and `gen-content check` finds the chip by it. The chips
-   converted before step 5 were defined without a number: their numbered records are chips/v1.luau's
-   (`v1/KEY`), and those whose numbers something names kept a record run through a registration-by-number shim
-   (their module returns the action with the compat key as `id`: chips/036-minibomb, chips/047-sword,
-   chips/056-mchnswrd, chips/0ec-eraseman, chips/0c0-atk-10); folding such an action into its numbered
-   definition retires its row of the shim. The markers are counted and go with the numbers.
+Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e); the ones nothing
+implements yet (the link navis' charges, the sticky charges, the charged-chip bonuses) are the generated stubs of
+step 5 (navis/00-megaman/weapons/NAME/weapon.luau, a form's or navi's own beside its `form.luau` or
+`navi.luau`), whose legacy marker names the routines. The navis, MegaMan's forms, the stages
+(stages/) and the rule sections (rules/) are definitions too, generated from the ROM once and checked against it
+(`gen-content check`, in the verification workspace).
 6. **API.** When a script needs something the API lacks, add it: a `CoreApi` method (crates/bn6-content-api/src/
    api.rs, documented with the routine it is), its implementation (crates/bn6-battle/src/behavior/core_api.rs),
    its binding (crates/bn6-luau/src/bind.rs), and its declaration with a comment in content/bn6/core.d.luau
@@ -263,13 +256,13 @@ Left:
 
 ### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 
-Ported (navis/00-megaman/weapons/, objects/): every form weapon routine of `off_80117D4` the forms name (0x03,
+Ported (navis/00-megaman/weapons/ and forms/): every form weapon routine of `off_80117D4` the forms name (0x03,
 0x04, 0x06, 0x07..0x0C, 0x0F..0x12, 0x14..0x17, 0x19..0x1E, 0x27, 0x2A, 0x2C; 0x06, 0x0B, 0x0C and 0x0F are setups
 whose actions are standard chips'), their actions (0x1A, 0x1D, 0x1E, 0x35, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x4A,
 0x4C..0x50, 0x52, 0x56, 0x58) and kinds, and the absorbed obstacle. The chip-use framework's charged paths
 (`sub_80127C0(charged)`, `sub_8012C7C`, the cross doubles of `sub_8012A38`, GroundCross's A-charge 0x18
 `sub_8012CB2`) are group H's `chip_use.rs`, with the A-charge 0xFF path's argument (the chip's family byte) from
-this group; GroundCross's drill uses objects/drill and EraseCross's beam objects/thunder-column (one script per
+this group; GroundCross's drill uses objects/drill and EraseCross's beam objects/thunder-column (one module per
 kind). Left:
 
 - Blocked by the framework: a charged use of the empty hand in a form without an A-charge routine (it needs the
@@ -303,7 +296,7 @@ built", step 8d): 0, 3 (lib/instant/plus with chips/atk-10, chips/navi-20, chips
 chips/numtrap; the records' shims chips/13f-beastout and chips/0c0-atk-10; objects/rising-bubble), 1
 (objects/boomerang, chips/boomer), 4 (chips/lance), 5 (chips/fullcust), 8 (chips/firehit; the records' shim
 chips/06b-firehit1), 10 (chips/busterup), 12 (chips/sandwrm), 13 (chips/synctrgr), 14 (chips/flmhook, the navi
-chips'; the records' shim chips/146-flmhook1), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/10-tengu-wind, objects/gust), 21
+chips'; the records' shim chips/146-flmhook1), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/tengu-wind, objects/gust), 21
 (chips/golmhit), 22 (chips/colarmy); 7 and 0x12 are NULL (an explicit panic). 2, 6, 9, 11, 16 and 17 have no chip or
 MegaMan weapon: they are builders in lib/instant, which the link navis' weapons (0x71, 0x83) and actions call when
 ported. Left: the Full Synchro aura after SyncTrgr (framework).

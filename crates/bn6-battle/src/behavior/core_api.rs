@@ -1157,6 +1157,8 @@ impl CoreApi for Battle {
             ActorField::SpecialSource => i(at.special_source as i64),
             ActorField::AttackKind => i(at.kind as i64),
             ActorField::BeastLockon => i(at.beast_lockon as i64),
+            ActorField::RushLockon => i(at.rush_lockon as i64),
+            ActorField::AttackChip => at.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::Marker => i(at.marker as i64),
             ActorField::ThrownLook => at.thrown_look.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0)),
             ActorField::ThrownAnim => i(at.thrown_anim as i64),
@@ -1195,6 +1197,20 @@ impl CoreApi for Battle {
             }
             _ => None,
         };
+        // The attack's chip by definition: a chip, or none.
+        let attack_chip = match (f, v) {
+            (ActorField::AttackChip, FieldValue::Ref(Some((Registry::Chip, h)))) => {
+                let h = ChipHandle(h);
+                if h.index() >= self.content.defs.chips.len() {
+                    return Err(ApiError::Other(format!("attack_chip: no chip has handle {}", h.0)));
+                }
+                Some(h)
+            }
+            (ActorField::AttackChip, FieldValue::Ref(Some((other, _)))) => {
+                return Err(ApiError::Other(format!("attack_chip: a {other} is not a chip")));
+            }
+            _ => None,
+        };
         // A thrown obstacle's look: an absorbed-look record, or none.
         let thrown_look = match (f, v) {
             (ActorField::ThrownLook, FieldValue::Ref(Some((Registry::Record, h)))) => Some(self.absorbed_look(h)?),
@@ -1219,6 +1235,8 @@ impl CoreApi for Battle {
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
             (ActorField::BeastLockon, FieldValue::U8(x)) => at.beast_lockon = x,
+            (ActorField::RushLockon, FieldValue::U8(x)) => at.rush_lockon = x,
+            (ActorField::AttackChip, FieldValue::Ref(_)) => at.chip = attack_chip,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
             (ActorField::ThrownLook, FieldValue::Ref(_)) => at.thrown_look = thrown_look,
             (ActorField::ThrownAnim, FieldValue::U8(x)) => at.thrown_anim = x,

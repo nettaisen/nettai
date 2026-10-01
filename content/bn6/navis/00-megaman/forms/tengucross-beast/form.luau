@@ -19,10 +19,10 @@ return define.form {
     weakness = { "sword" },
     buster_bonus = 0,
     weapons = {
-        buster = falzar_beast_buster,
-        back_special = tengu_wind,
+        buster = falzar_beast_buster.weapon,
+        back_special = tengu_wind.weapon,
         a_charge = charged_chip_bonus,
-        alt_a_charge = charge,
+        alt_a_charge = charge.weapon,
     },
     mugshot = asset.mugshot("tengucross-beast"),
     identity = {

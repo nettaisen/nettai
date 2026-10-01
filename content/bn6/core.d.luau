@@ -378,6 +378,12 @@ declare class Object
     step_init: number
     variant: number
     chip: number
+    -- The attack's chip as its definition (nil when the attack has none;
+    -- a chip that is still a pack record reads as a stand-in with only its
+    -- `id`): what a weapon that uses the chip asks for the chip's own
+    -- parts (`navi.attack_chip.action`), and what an action that becomes
+    -- another chip's sets.
+    attack_chip: Chip?
     attack_element: number
     attack_damage: number
     -- The attack's hitboxes' counter byte.
@@ -392,6 +398,10 @@ declare class Object
     attack_kind: number
     -- 1 while the action runs inside a form's action wrapper.
     beast_lockon: number
+    -- The lock-on mode the attack's own action asks the Beast Out rush for
+    -- (the charged sword's, by its slash); 0: the chip's. (A number until
+    -- lock-on modes are definitions.)
+    rush_lockon: number
     -- A per-action word some actions keep.
     marker: number
     -- The absorbed obstacle a throw carries (the marker word, as
@@ -636,7 +646,7 @@ declare class Object
     -- The attack state as content action `action`'s (zeroed unless that
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
-    function action_state(self, action: number): any
+    function action_state(self, action: Action | number): any
     -- The obstacles it absorbed, oldest first: their looks and
     -- animations.
     function absorbed(self): { { look: AbsorbedLook, anim: number } }
@@ -1528,11 +1538,15 @@ export type WeaponSpec = {
     name: string,
     charge_ticks: { number },
     -- `off_80117D4[n]`: prepare the attack, name its action (an `Action`
-    -- or an action number). None while the weapon is still a v1 module,
-    -- which its legacy marker names. (Typed loosely until the markers go:
-    -- Luau's checker doesn't check a function against an optional
-    -- function type.)
+    -- or an action number). A weapon with an `instant` effect names none:
+    -- the instant chips' action runs it. None while the weapon is still a
+    -- v1 module, which its legacy marker names. (Typed loosely until the
+    -- markers go: Luau's checker doesn't check a function against an
+    -- optional function type.)
     setup: ((navi: Object) -> any)?,
+    -- Its own instant effect (one no chip has: TenguCross's wind), which
+    -- the instant chips' action runs once.
+    instant: ((user: Object, spec: InstantChipSpec) -> ())?,
     -- Transitional (counted by the ratchet): the routine numbers the pack's
     -- forms and the ruleset still name it by (`weapon_numbered`); for a
     -- weapon still a v1 module, the module (`script`), the action it brings
@@ -1573,7 +1587,8 @@ export type ChipSpec = {
     program_advances: { any }?,
     -- Transitional (counted by the ratchet): the original's subtype and
     -- parameter bytes, for what reads them of the chip besides its own use
-    -- (SlashCross's charged slash reads a sword's); its `number`, for a
+    -- (a chip still on the by-number shims; SlashCross's A-charge for a
+    -- sword whose slash doesn't name its charged slash); its `number`, for a
     -- chip something still names by number (a recipe, the Cross special, a
     -- navi's own chip), with what the ruleset reads of it by number (the
     -- action number, a damage formula as `damage = 1000 + n` and its
