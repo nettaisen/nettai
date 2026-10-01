@@ -3,8 +3,9 @@
 -- `sub_80DD940`): it stands on its panel with its collision on (status
 -- 0x10) for its time, or until it has hit something. EraseMan's (the
 -- EraseMan chips') run while dimmed; a navi's own (EraseMan's EDeletBm)
--- stand still while dimmed, and go once their owner is out of its action
--- 0xA. See docs/engine/chips.md §3.6.10.
+-- stand still while dimmed, and go once their owner is out of the action
+-- that slashed them (his chip's, the original's action 0xA). See
+-- docs/engine/chips.md §3.6.10.
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
@@ -20,7 +21,13 @@ export type Spec = {
     -- A navi's own segment (EDeletBm's).
     navis: boolean,
 }
-export type State = Spec
+export type State = {
+    aim: number,
+    ticks: number,
+    navis: boolean,
+    -- A navi's own segment's: the action its owner slashed it in.
+    action: Action?,
+}
 
 local SPRITE = asset.sprite("erase-beam")
 
@@ -85,7 +92,7 @@ local function tick(me: Object)
     if c.hit_flags ~= 0 then
         c:set_region(nil)
     end
-    if s.navis and (me.related1 :: Object).action ~= 0xA then
+    if s.navis and (me.related1 :: Object):navi_action() ~= s.action then
         return finish(me)
     end
     if s.navis and battle.dimmed() then
@@ -103,7 +110,7 @@ end
 beam.kind = define.kind {
     id = "eraseman/beam",
     pool = "attack",
-    state = { aim = "u8", ticks = "u8", navis = "bool" },
+    state = { aim = "u8", ticks = "u8", navis = "bool", action = "action" },
     -- `sub_80DD940`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -136,6 +143,9 @@ function beam.spawn(owner: Object, x: number, y: number, element: number, spec: 
         o.run_while_dimmed = true
         local s = o.state :: State
         s.aim, s.ticks, s.navis = spec.aim, spec.ticks, spec.navis
+        if spec.navis then
+            s.action = owner:navi_action() :: Action
+        end
     end
     return o
 end
