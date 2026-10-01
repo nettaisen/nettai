@@ -268,8 +268,8 @@ kind). Left:
 - Owns: new objects/ and weapons/ folders, the extractor and pack IO for the projectile table.
 - Done: `objects/projectile` (kinds in its `object.toml`, `data.objects.projectiles`), fired with
   `lib/projectile.luau` (`projectile.fire(navi, shot)`, `projectile.spawn(owner, x, y, shot)`, the shot typed as
-  `ProjectileShot` in types.d.luau); `objects/flying-shot` (attack #0xB, `sub_80C6248`'s object; a definition
-  since step 8g, its kinds variant records), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16, now the
+  `ProjectileShot` in types.d.luau); `objects/flying-shot` (attack #0xB, `sub_80C6248`'s object; a definition,
+  its rows variant records), which the Beast buster and TrnArrw fire too; actions 0x11 and 0x16, now the
   definitions in `weapons/buster` and `weapons/charged-shot` (step 7).
 
 ### Group E: instant chips (ported; what is left)
