@@ -1,11 +1,11 @@
 --!strict
 -- DrilArm (the original's action 0x2E, `sub_80ED374`): ten ticks in, the
 -- navi's arm becomes a drill (an attachment) and two drills
--- (objects/drill) grind the two panels ahead for 24 ticks plus 10; the
+-- (./drill) grind the two panels ahead for 24 ticks plus 10; the
 -- navi then draws the drill back over 10 ticks, which ends them.
 
 local attachment = require("../../objects/attachment/attachment")
-local drill = require("../../objects/drill/drill")
+local drill = require("./drill")
 local lockon = require("../../rules/lockon")
 
 export type State = {
