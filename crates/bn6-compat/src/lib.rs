@@ -109,6 +109,9 @@ pub struct RuleNumbers {
     /// Beast Out lock-on modes (`jt_8026584`), by key.
     #[serde(default)]
     pub lockon: BTreeMap<String, u8>,
+    /// Statuses (`off_80209EC`): a hit's status byte, by key.
+    #[serde(default)]
+    pub statuses: BTreeMap<String, u8>,
 }
 
 /// Asset names and the ROM's numbers.

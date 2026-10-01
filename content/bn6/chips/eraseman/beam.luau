@@ -9,6 +9,7 @@
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 local beam = {}
 
@@ -40,7 +41,7 @@ local ANIMS = { [0] = 1, 0, 2, 0 }
 local BACK = 0x8_0000
 
 -- The status its hits carry (paralysis).
-local STATUS = 0x10
+local STATUS = statuses.paralyze_90
 
 -- `sub_80DD970`: on its panel at its aim's height, and collision on.
 local function init(me: Object)

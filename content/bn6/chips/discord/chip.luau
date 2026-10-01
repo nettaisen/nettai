@@ -6,9 +6,10 @@ local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local instrument = require("../../lib/instruments/instrument")
 local instruments = require("../../lib/instruments/controller")
+local statuses = require("../../rules/status")
 
 -- Confusion (status 0x23: 4 ticks), with the sixth element's damage 0.
-local CONFUSE, ELEMENT_NONE = 0x23, 5
+local CONFUSE, ELEMENT_NONE = statuses.confuse_4, 5
 
 -- `sub_80D4392`: a one-tick hit on the other navi's panel that confuses
 -- it, and learns nothing.
