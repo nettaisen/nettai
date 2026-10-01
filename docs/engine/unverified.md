@@ -19,10 +19,11 @@ this survey are written by the library's `gen_coverage.py` from its tables (`cov
 didn't have, it still checks data the others don't (another table row, another side, another timing), and the
 table says so.
 
-## Chips
+## Templates over every action handler family
 
-Four templates run over the first damaging chip of each action handler family (44 families that the lab's `hit` or `adjacent` scenario lands: the cannons,
-Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, each navi chip…):
+Four templates run over the first damaging chip of each action handler family that the lab's `hit` or `adjacent`
+scenario lands (the cannons, Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, each
+standard chip action…), whichever section below the family belongs to:
 
 | template | what it reaches | status |
 |---|---|---|
@@ -30,6 +31,8 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | `barrier` (the opponent behind Barr100) | the hits a barrier takes, the wind chips blowing it away (AirShot, WindRack, AirSpin) | verified, 39 scenarios; AirRaid1's differs |
 | `invisible` (the opponent under Invisibl) | no body to hit: the homing and searching chips' no-target paths (RskyHny's bee, MachGun's and the dragons' column search, ElcPuls) | verified, 39 scenarios; AirRaid1's differs |
 | `dimmed` (the opponent's AreaGrab cuts in a few ticks after the use) | the objects' waits while dimmed, the user's action held through a dimming, the press during a dimming that is no cut-in (`sub_8017AB4`'s clear) | verified, 34 scenarios |
+
+## Dimming chips, shot chips and navi chips
 
 ### Dimming chips (dimming-chips.md)
 
@@ -106,7 +109,7 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | MetrKnuk | no enemy body (the fallback lists), no candidate, Param2 0 | the enemy always stands; no caller | unreachable | |
 | DblBeast (subtype 37) | the user's-panel fallback, no target at all, a failed spawn | a free panel always turns up | hard | open |
 
-### Traps, bombs, field objects, navi chips (chips.md §3.6-§3.9)
+### Traps, bombs and navi chips (chips.md §3.6-§3.9)
 
 | family | branch | why it was unreached | reachable | scenario and status |
 |---|---|---|---|---|
@@ -172,6 +175,11 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | VDoll | absorption, blinking out | | partly | open |
 | The variable swords' picks (action 0x13 variants 9-11) | FtrSword, CrosSwrd, DblDream | reached at random only | yes (save edit, and the commands) | chips/0x172-ftrsword, chips/0x176-crosswrd, chips/0x178-dbldream/{hit, adjacent, miss}: verified |
 | GunDelEX (0x012) | the fourth GunDelSol | class Spec | yes (save edit) | chips/0x012-gundelex/{hit, adjacent, miss}: verified |
+
+## Standard chips, instant chips, field objects and stages
+
+The first batch of the survey's scenarios covered the rows below; the rest of these documents' unverified lists
+(standard-chips.md, field-objects.md, the instant chips, the stages) is still to be surveyed here.
 
 ### Standard chips (standard-chips.md)
 
