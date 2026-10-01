@@ -751,7 +751,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | honey-bee | RskyHny1-3 | chips/rskyhny/ |
 | hyper-burst | H-Burst | chips/h-burst/ |
 | immobilizer | instant effect 9 (no chip yet) | lib/instant/ |
-| invisible | Invisibl, WhiCapsl, instant effect 2, seeking-whirl | objects/invisible |
+| invisible | Invisibl, WhiCapsl, instant effect 2, seeking-whirl | chips/invisibl/controller (as built; the second WhiCapsl requires it) |
 | iron-shell | IronShl1-3, ParaShl | chips/ironshl/ |
 | junk-shot | DustCross Beast's scatter | navis/megaman/forms/dustcross-beast/ |
 | justice-one | JustcOne | chips/justcone/ |
@@ -1222,7 +1222,8 @@ chips/numbrbl, chips/cornfsta and chips/dblhero. What it settled:
 **As built** (phase B, group C5: dimming subtypes 1, 10, 11, 20, 25 and 38, converted from their v1 modules;
 docs/engine/chips.md §3.6.9 and §3.6.10): lib/traps/controller (the trap chips'), chips/elemtrap (its trap and
 strike), chips/timebom (controller, countdown), chips/mine (controller, land_mine), lib/gauge-speed/controller,
-objects/invisible, lib/navi-boost/controller, and objects/panel-bursts. What it settled:
+objects/invisible (since moved to chips/invisibl/controller, which the second WhiCapsl requires),
+lib/navi-boost/controller, and objects/panel-bursts. What it settled:
 
 - **The parameter that picked a table row is the hook's argument**: a trap chip's trap object (`traps.hook(trap?)`,
   a `trap` record whose `set` spawns it: ElemTrap's; the others pass none), a TimeBom's bomb
