@@ -7,6 +7,7 @@
 -- it run while dimmed. See docs/engine/chips.md §3.6.8.
 
 local collision = require("../../rules/collision")
+local panels = require("../panels")
 local regions = require("../regions")
 
 local shot = {}
@@ -27,45 +28,6 @@ local TAKES = {
     [0] = { require = ALLIANCE_1, forbid = OCCUPIED },
     [1] = { require = 0, forbid = bit32.bor(OCCUPIED, ALLIANCE_1) },
 }
-
--- `sub_800D618`: (x, y) is `victim`'s home but someone else holds it.
-local function taken_from(x: number, y: number, victim: number): boolean
-    local p = field.panel(x, y)
-    return p ~= nil and p.home ~= p.alliance and p.home == victim
-end
-
--- `sub_800D6CC`: column x is `victim`'s home, and all its.
-local function full_home_column(x: number, victim: number): boolean
-    if field.column(x).home ~= victim then
-        return false
-    end
-    for y = 1, 3 do
-        local p = field.panel(x, y)
-        if not p or p.alliance ~= victim then
-            return false
-        end
-    end
-    return true
-end
-
--- `sub_800D668`: `victim` may lose (x, y): its column isn't `victim`'s
--- home, or `victim` keeps another full home column on either side before
--- a panel it already lost.
-local function can_take(x: number, y: number, victim: number): boolean
-    if field.column(x).home ~= victim then
-        return true
-    end
-    for _, dir in { 1, -1 } do
-        local c = x + dir
-        while field.valid(c, y) and not taken_from(c, y, victim) do
-            if full_home_column(c, victim) then
-                return true
-            end
-            c += dir
-        end
-    end
-    return false
-end
 
 -- `sub_80C64A0`: fall; on landing, hit the panel and take it.
 local function fall(me: Object)
@@ -94,7 +56,7 @@ local function fall(me: Object)
         hit.run_while_dimmed = true
     end
     local takes = TAKES[me.alliance]
-    if field.check(x, y, takes.require, takes.forbid) and can_take(x, y, bit32.bxor(me.alliance, 1)) then
+    if field.check(x, y, takes.require, takes.forbid) and panels.can_take(x, y, bit32.bxor(me.alliance, 1)) then
         -- (The original takes the side from its first parameter, which its
         -- spawn sets to its side.)
         field.set_alliance(x, y, me.alliance)
