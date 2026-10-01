@@ -244,12 +244,9 @@ return define.roles {
         -- The mark over a navi a hit told something about ("!!", the HP
         -- bug's).
         hit_marker = asset.sprite("bat-impact"),
-        -- A volcano panel's eruption; the Beast forms' lock-on marker and
-        -- head; the overlay a navi wears while idle.
+        -- A volcano panel's eruption; the Beast forms' lock-on marker.
         eruption = asset.sprite("eruption"),
         lockon_marker = asset.sprite("lockon-marker"),
-        beast_head = asset.sprite("beast-head"),
-        idle_overlay = asset.sprite("idle-overlay"),
     },
     banners = {
         -- A round's start (the battle's number), a turn's, the final turns'.

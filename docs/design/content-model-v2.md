@@ -13,7 +13,8 @@ there without losing a frame of the golden traces. It is the design record: its 
 and, in their "As built" notes, what was built. [content-pack.md](content-pack.md),
 [scripting.md](scripting.md), [core-content-boundary.md](core-content-boundary.md) and
 [content-migration.md](content-migration.md) (how to write content) describe what exists; they were rewritten in
-the last step of the migration (§12, step 13).
+the last step of the migration (§12, step 13). The migration is complete: §14 says where it ended and what stays
+numbered on purpose.
 
 Words: a *definition* is a record made by one of the definers (`define.chip { ... }`); a *key* is a definition's
 name (`"minibomb"`); a *handle* is the dense number a key interns to when content loads; *compat* is the table of
@@ -298,16 +299,69 @@ export type IdentitySpec = {
 - **Gone**: `me.name_id`, `battle.navi_record`, `me:death_hook(name_id)`, `battle.attach_point(name_id, ...)`,
   rules/identities.luau (the actor records and looks by NameID), `Rules::actor_records`,
   `ObjectData::name_looks`, `NameData`.
-- **Compat** has the NameIDs: a navi's and a form's in navis.toml and forms.toml, a field object's in rules.toml
-  (`[identities]`). No trace compares an object's NameID, so they serve `gen-content check` alone, which
-  compares each identity's actor record, attach points, look and traits with the ROM's.
+- **Compat** has the NameIDs: a navi's and a form's in navis.toml and forms.toml, a field object's (and, since
+  step 11's last batch, a navi chip's navi's) in rules.toml (`[identities]`). No trace compares an object's
+  NameID, so they serve `gen-content check` alone, which compares each identity's actor record, attach points,
+  look and traits with the ROM's.
 - **One class for what no netbattle has**: the original tests viruses by more than one upper bound (the
   volleys' targets, the rock barrage's, the lock-on marker's), and every object of the content with a NameID in
   those ranges has none at all; `virus` is the one class for them, and `navi`, `gregar` and `falzar` exist so a
   pack with such objects can say so. The afterimage with its own sprite and the junk DustMan throws before it
   wears a look keep no identity, as the original's keep NameID 0.
-- **Not yet**: the hooks an actor record's AI index picks (`parts`, `death`, `flinch`, `drag`: §7.5) are still by
-  `ai_index`, a field of the identity.
+- *Since step 11's last batch* the hooks an actor record's AI index picked are the identity's too (below).
+
+**As built** (step 11, forms and navis). Navis and forms are definitions by handle (`NaviHandle`, `FormHandle`):
+the engine has no `Navi` or `Form` number, and their definitions carry no `legacy` marker. What the ruleset asked
+of them by number, they say:
+
+- **A form's kind and game.** `kind` (`base`, `cross`, `beast`, `cross_beast`, `beast_over`) and `game` (every
+  form but the base form names one) are the original's form-number ranges: `is_beast`, `is_beast_over`, the
+  Gregar and Falzar ranges (the Beast's roar, Beast Over's glow and its effect, the arm's and the blade's
+  animation). The base form is the form whose kind is `base` (`Content::base_form`): a link navi is always in
+  it, and in it a navi's identity is its own (`Content::form_identity`).
+- **What a form names.** `cross_of` (the navi a Cross is made with, whose image merges with MegaMan: the
+  original's form number, less 0xC in Beast Out), `beast` (a Cross's form in Beast Out, `with_beast()`'s plus
+  0xC) and `breaks_to` (what a weakness hit drops it to, `sub_8015766`: by the original's numbers the base form
+  from a Cross, the Gregar beast up to the Gregar Crosses in Beast Out, else the Falzar beast; none: it stays).
+- **What a form gives.** `palette` (`byte_80203EA`: `Rules::cross_palettes` went), `chip_bonus` and
+  `null_bonus` (`sub_800EF34`: a family's damaging chips, EraseCross's dimming chips too; Beast Out's Null
+  chips), `charged_chips` (`sub_8013236`), `charged_bonus` (`sub_8012C7C`), `charge_doubles`
+  (`sub_8012AFA`), `chip_heals` (SpoutCross's Aqua chips heal), `fire_charge` (ChargeCross's, `sub_80F0608`),
+  `status_reset` and `navicust_refresh` (`sub_8014536`, `sub_801469C`: named effects, applied in the
+  routines' order; the refresh defaults to the reset without the lock-on marker), `hover` (Falzar Beast
+  Over's), `special_volley` (the Cross special's volley, `sub_802D4F0`: the form's number, which the original
+  stores where it meant 6), `cross_release_anim` (`sub_8014B18`: GroundCross's rising drill), and `traits`:
+  `status_immune`, `erases`, `charged_sword_rush`, `extra_chips`, `scrap_button`, `special_holds_buster`.
+  `buster_arm` (the arm lib/buster raises: its animation and what the Gregar Crosses in Beast Out add to its
+  palette) is the content's own.
+- **A navi.** `forms` (the forms it changes into, by game: the Crosses in their order on the custom screen,
+  Beast Out, Beast Over) is what the ruleset asks where the original asks "is this MegaMan"
+  (`NaviData::changes_form`); `charged_chips` (`sub_800F49E`, `byte_8021369`), `charge_doubles`,
+  `fire_charge` (ChargeMan's limits by his level, `byte_802136D`) and `traits` (`status_immune`). (A round's
+  record of the link navis' own chips used is a bit a navi: at most 32 navis.)
+- **The tables by AI index are the identity's.** `parts`, what the actor record's init hook puts on
+  (`sub_8010DF6`): a `body` overlay (its sprite; how many of the wearer's animations its depth table covers,
+  `anims`, and those it is drawn `behind` in; `own_palette`; `anim_offset`), a `second` one, an `idle`
+  overlay (worn while standing) or a `beast_head` (its palette, or none: the mood's). `overlay_hooks`: which of
+  the death hook, an animation change, a flinch and a drag touch what the object wears (by default its death
+  takes a body or head off and an animation change restarts it). `aura_anim`: the Full Synchro aura's
+  animation (`sub_80C4C52`; a player's identity has one). `ice`: the ice block that fits (`byte_80E9C30`,
+  `byte_80E9C4E`). The actor keeps its navi's identity through his forms (`ActorData::identity`), as the
+  original's actor record does: what an animation change, a flinch or a drag does is that identity's; the
+  aura's animation and the parts a form puts on are the object's identity's.
+- **Gone**: rules/body-overlays.luau, `ObjectData::body_overlays`, `Rules::cross_palettes`, the sprite roles
+  `beast_head` and `idle_overlay` (the parts name those sprites), `me:add_navi_parts(actor_type, ai_index, arg)`
+  and `remove_navi_parts` (now `me:add_parts(identity, arg)`, `me:remove_parts(identity)`: the navi chips' navis
+  define identities for their parts, which compat's `[identities]` numbers), and the generator's body-overlay
+  rows. Content reads a side's navi and form as definitions (`battle.navi(side).form.kind`, `.navi.forms`,
+  `.beast`, `.beast_over`).
+- **Compat** keeps navis.toml and forms.toml: the trace harness and the save codecs map numbers to handles
+  through their keys (`bn6_compat::codec::Ids`; a bug code may write the base form, 0, to a form byte and
+  nothing to the navi byte), and the frontend's emotion window draws the pack's faces by the original's form
+  and navi numbers until a form's `mugshot` names its own. `gen-content check` compares each navi and form
+  definition with the ROM's of its compat number field by field (the tables, and what the original's routines
+  give by number), the navi and forms each names, the arm a form raises, and each identity's parts, hooks, ice
+  block and aura with what its actor record picks.
 
 ### 3.3 Weapons
 
@@ -698,7 +752,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | honey-bee | RskyHny1-3 | chips/rskyhny/ |
 | hyper-burst | H-Burst | chips/h-burst/ |
 | immobilizer | instant effect 9 (no chip yet) | lib/instant/ |
-| invisible | Invisibl, WhiCapsl, instant effect 2, seeking-whirl | objects/invisible |
+| invisible | Invisibl, WhiCapsl, instant effect 2, seeking-whirl | chips/invisibl/controller (as built; the second WhiCapsl requires it) |
 | iron-shell | IronShl1-3, ParaShl | chips/ironshl/ |
 | junk-shot | DustCross Beast's scatter | navis/megaman/forms/dustcross-beast/ |
 | justice-one | JustcOne | chips/justcone/ |
@@ -1169,7 +1223,8 @@ chips/numbrbl, chips/cornfsta and chips/dblhero. What it settled:
 **As built** (phase B, group C5: dimming subtypes 1, 10, 11, 20, 25 and 38, converted from their v1 modules;
 docs/engine/chips.md §3.6.9 and §3.6.10): lib/traps/controller (the trap chips'), chips/elemtrap (its trap and
 strike), chips/timebom (controller, countdown), chips/mine (controller, land_mine), lib/gauge-speed/controller,
-objects/invisible, lib/navi-boost/controller, and objects/panel-bursts. What it settled:
+objects/invisible (since moved to chips/invisibl/controller, which the second WhiCapsl requires),
+lib/navi-boost/controller, and objects/panel-bursts. What it settled:
 
 - **The parameter that picked a table row is the hook's argument**: a trap chip's trap object (`traps.hook(trap?)`,
   a `trap` record whose `set` spawns it: ElemTrap's; the others pass none), a TimeBom's bomb
@@ -1720,7 +1775,7 @@ need.
 |---|---|
 | chips.toml | `minibomb = { id = 0x036, action = 0x12, subtype = 0 }` for every chip; action and subtype are documentation (the traces never compare them) |
 | actions.toml | action key to navi action number: `"minibomb/action" = 0x12` (every chip whose use is an action has `<chip>/action`), `"megaman/buster/shot" = 0x11`, a weapon's `"<weapon>/action"`, `"engine/move" = 0x10`, `"engine/form-change" = 0x1C`. A role action whose number a chip's or weapon's action has is that action (the volley is WideSht's 0x30); only the turn (0x3B) has its own, `"megaman/turn"` |
-| navis.toml, forms.toml | `eraseman = { navi = 0x04, name_id = 0x1A4 }`, `heatcross = { form = 0x01, name_id = 0x1AC }`; the base form has no `name_id` (it is MegaMan's) |
+| navis.toml, forms.toml | `eraseman = { navi = 0x04, name_id = 0x1A4 }`, `heatcross = { form = 0x01, name_id = 0x1AC }`; the base form has no `name_id` (it is MegaMan's). The trace harness and the save codecs read them (the engine has no navi or form number), and `gen-content check` compares each definition with the ROM's navi or form of its number |
 | weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
 | kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
@@ -1801,6 +1856,10 @@ name is a load error naming the module. The resolved value is a handle into the 
   outside comments in the engine and the crates it runs content through.
 - **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no placeholder
   asset names, once the ratchet reaches zero.
+
+  *As built.* The numeric API was removed rather than counted down; the ratchet reached zero and went (§12,
+  step 13). The checker lints placeholder asset names, and the guards refuse numbered folders and `legacy`
+  markers outright.
 
 ## 7. The Rust side
 
@@ -2139,6 +2198,16 @@ original's routines.
 - AI-index tables (reactions.rs death/flinch/drag rows, player/mod.rs overlay refresh, form.rs init and death
   hooks by row, `ai_index > 0xB`). → identity fields: `parts` (what `sub_8010DF6` puts on), `death`, `flinch`,
   `drag`, `overlay_refresh` (enums naming the routine each row calls).
+
+**As built** (step 11, §3.2): the ruleset has no navi or form by number. The form constants and ranges are the
+form's `kind` and `game`, `with_beast()` its `beast`, the per-form tables and routines its fields and traits
+(`palette`, `chip_bonus`, `null_bonus`, `charged_chips`, `charged_bonus`, `charge_doubles`, `chip_heals`,
+`fire_charge`, `status_reset`, `navicust_refresh`, `hover`, `special_volley`, `cross_release_anim`; `status_immune`,
+`erases`, `charged_sword_rush`, `extra_chips`, `scrap_button`, `special_holds_buster`), and the Cross navi and the
+form a weakness hit leaves are `cross_of` and `breaks_to`. `Navi::MEGAMAN` is `NaviData::changes_form` (the navi's
+`forms`), the link navis' numbers their `charged_chips`, `charge_doubles`, `fire_charge` and `status_immune`. The
+AI-index tables are the identity's `parts`, `overlay_hooks` (one list for the death, refresh, flinch and drag
+rows), `aura_anim` and `ice`; the actor keeps its navi's identity through the forms.
 
 **Weapons by number.**
 - `idle::weapon_routine` (`Hook::Weapon(n)` and the `nullsub_44` list), `set_charge_shot_routine` (0x21..=0x26
@@ -2636,12 +2705,12 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    subtype, params, script` (with what the ruleset and v1 modules read of it by number: a damage formula,
    `sp_damage`, `navi_damage`, `dark_substitute`, `recovery`, `sword`); a weapon still a v1
    module has no `setup` and its marker gives `routines, script, action, instant_chip`; a navi's and a form's
-   give `number, name_id`, a stage's `number, layout, actor_list` (until step 12: compat has them), (until step 12) a status's and a lock-on mode's `id`. The
+   give `number, name_id` (until step 11), a stage's `number, layout, actor_list` (until step 12: compat has them), (until step 12) a status's and a lock-on mode's `id`. The
    generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
    definitions from people's. The tables v1 modules read by number are legacy rule
    sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (until steps 11 and 12: the effects, sparks and regions by number, and
    the charge times of the routines no weapon names), rules/identities.luau (until step 11: identities are
-   definitions, §3.2), rules/body-overlays.luau and a
+   definitions, §3.2), rules/body-overlays.luau (until step 11: the identities' `parts`) and a
    kind's objects/KIND/rows.luau while something still reads its table by number (`data.objects.<table>` in a
    module, or the engine: the body overlays' is the last; the attachments', the rocks', the absorbed obstacles',
    the sun beam's, the projectiles', the flying shots', the boomerangs' and the sword and shock waves' went with
@@ -2713,9 +2782,10 @@ family's packet, in gen-content, and checked by `gen-content check`.
     shim folders, chips/v1.luau, `record.luau`/`records.luau` and the chips' legacy markers are gone, and the
     engine has no chip by number.
 11. **Navis, forms, identities and weapons**: `NaviStats` on handles, the form and navi traits, identities for
-    NameIDs, weapon traits. **L.** Done but the form and navi traits: weapons by handle (§3.3, "As built"),
-    identities (§3.2, "As built"); navis and forms still have their numbers in the engine (`Form`, `Navi`) and
-    their `legacy { number, name_id }` markers.
+    NameIDs, weapon traits. **L.** Done: weapons by handle (§3.3, "As built"), identities (§3.2, "As built"),
+    and navis and forms by handle with their traits (§3.2, "As built (step 11, forms and navis)"): the engine
+    has no `Form` or `Navi` number, the 37 navi and form `legacy { number, name_id }` markers and
+    rules/body-overlays.luau are gone, and the tables by AI index are the identities'.
 12. **Assets and stages**: sounds, music, banners, effects, sparks, collision types and regions through roles;
     stages on handles. **M.**
 
@@ -2723,8 +2793,9 @@ family's packet, in gen-content, and checked by `gen-content check`.
     effects, sparks, regions and collision types are handles (§3.6); what the ruleset names of them, and the
     sounds, music, banners and sprites it plays and shows, are roles (§7.4, §7.5). The engine's kinds' sprites
     went with the rest of the assets. Compat's rules.toml holds the original's number for each numbered
-    definition and each role, for `gen-content check` alone (§6.1, §9.3). Left for step 11: the body overlays'
-    rows (rules/body-overlays.luau), which the ruleset names per form and per navi.
+    definition and each role, for `gen-content check` alone (§6.1, §9.3). The body overlays' rows
+    (rules/body-overlays.luau), which the ruleset named per form and per navi, went with step 11: they are the
+    identities' `parts`, which name their sprites (so the sprite roles `beast_head` and `idle_overlay` went too).
 
 Phase C packets touch the ruleset and `core_api.rs`; the content API they expose is step 4's, so phase B isn't
 disturbed. Each deletes registration by number's use for its category.
@@ -2757,9 +2828,23 @@ disturbed. Each deletes registration by number's use for its category.
     with eight spec types moved to types.d.luau); `bn6-content check` refuses two collision types on one row
     of the original's table (four rows were defined twice); reading compat refuses two keys with one number
     (actions may share one). Guards (`bn6-content-check`'s `guards` test): no folder named with an original
-    number; no `legacy` marker outside the listed modules. What is left for the second part: the navis' and
-    forms' numbers and the body overlays' numbering (38 markers, all the ratchet counts), and with them
-    `legacy`, the ratchet's allowlist and the guards' exceptions.
+    number; no `legacy` marker outside the listed modules. The navis' and forms' numbers and the body
+    overlays' numbering (38 markers, all the ratchet counted) went with step 11's last batch, which emptied the
+    ratchet and the guards' list; what is left for the second part is `legacy` itself, the ratchet's allowlist
+    and the guards' exceptions.
+
+    *As built (part 2).* `legacy` is gone: the global, its declaration in core.d.luau, and the chip definition's
+    own refusal, replaced by the define phase refusing a `legacy` field on any definition. legacy.rs, whose
+    last contents were the rule sections and the reader that turns a definition's values into typed data,
+    became content/sections.rs and content/reader.rs (`SpecReader`: assets as the engine identifies them, a
+    lock-on mode as its handle, a chip as its key; nothing reads as an original number). The ratchet is gone
+    with its count at zero: `tests/ratchet.rs`, `tests/deprecated.txt`, the deprecated-use scanner and
+    `bn6-content-check --deprecated`. The guards have no exception lists: no folder under the content roots
+    named with an original number, no `legacy` marker or field in any module (the `.d.luau` files included);
+    the `no_compat` source guard needed none. Two last original numbers left the engine for the tools:
+    `Pool::type_number` (the `T1`/`T3`/`T4` the traces print) is bn6-compat's `pool_type`, and
+    `ChipFamily::from_number` (a ROM record's family byte) the ROM decoder's in gen-content. Measured after the
+    step, as §8 asks: see §14.
 
 ### Size
 
@@ -2795,3 +2880,52 @@ to 12 (by category). **Not mechanical**: steps 3, 4 and 7, and each family's dec
 4. **Animation numbers.** They stay numbers, as indices into their sprite (§6.3). Naming animations would need a
    per-sprite naming table on top of the sprite names, for about 3,000 animations. Recommended: keep numbers with
    named constants in the modules.
+
+## 14. Status
+
+**The migration is complete** (step 13, 2026-10-01). Game data is committed Luau in content/bn6; content names
+content by its definitions and assets by name; the extractor yields only assets. The engine runs on handles: it
+has no chip, kind, action, weapon, navi, form, stage, identity, effect, spark, region, collision type, status or
+lock-on mode by one of the original's numbers, and nothing carries those numbers into it. The guards keep it
+so, with no exceptions: bn6-content-check's `guards` (no folder named with an original number, no `legacy`
+marker or field) and bn6-battle's `no_compat` (compat appears in the engine's code only in comments). The
+golden traces, their sound calls and every recorded chip-lab scenario match every frame, as before the
+migration began.
+
+The open questions (§13) went as recommended: two roots; the repository's tests run BN6's own modules on
+made-up assets (content-migration.md §5.1); the generated names were accepted and are curated as people get to
+them (compat/curation.toml is the review list); animation numbers stay numbers.
+
+**What stays numbered, on purpose:**
+
+- **Animation numbers within a sprite** (§13, question 4): an animation is an index into its sprite, a named
+  constant in the module that plays it.
+- **Compat** (content/bn6/compat, §6): the original's numbers by key, read only by the tools outside the engine:
+  bn6-compat's trace harness and setup codecs (save, folder and link-data import), the extractor's asset names
+  and the verification workspace's `gen-content check`, which keeps every number in it the ROM's. It is edited
+  by hand (§9.3).
+- **The trace harness** (bn6-compat's `trace`, §10): it compares the engine with the original frame by frame,
+  so it maps the engine's identities to the original's numbers (a kind to its object slot, a navi's action to
+  its action number, a pool to its type).
+
+Numbers that remain for other reasons, and are not names of content:
+
+- **The assets' own identities.** The pack identifies a sprite by its category and index and a sound by its
+  song-table entry, as the extractor wrote them; content and the ruleset name assets by name or by role, and
+  the pack's asset index (assets.toml) maps the names.
+- **The game's values**: tick counts, damage, a flags word compared whole, a chip's library number, a stage's
+  battle number; a hit's bug code, which names a NaviStats byte by its offset as the game's does (bug codes have
+  no definition); and the engine's own progress numbers (an object's state, action and phase, the navi
+  framework's states), which the traces compare as the original numbers them.
+
+**Left to others:**
+
+- The frontend's emotion window finds a face in hud.json by compat's form and navi numbers
+  (crates/bn6-frontend/src/hud.rs). Reading the definitions' `mugshot` instead is the presentation work's.
+- Roles nothing fills: `actions.volley`, `kinds.mode9_attack` and `kinds.mode9_actor` (content-migration.md
+  §6). No netbattle reaches them.
+
+**Cost after the step** (§8): `rollback_cost` on soundmod round 1 (frames 10164 to 12164, up to 27 objects), the
+worst case of a 10-frame rollback every rendered frame: a restore 4.4 µs, an advance 5.6 µs, a save 2.6 µs, the
+digest 27.0 µs, 124 µs per rendered frame (0.7% of a 16,667 µs frame), against the 135 µs scripting.md §6.2
+records. No regression; the machine was under heavy load, which only the tail (99th percentile 0.9 ms) shows.
