@@ -18,7 +18,6 @@
 //! bring their own chip definitions too; tests name either by key.)
 
 use super::*;
-use bn6_content_api::Pool;
 use crate::field::{PanelType, pflags};
 
 use std::sync::Arc;
@@ -1174,20 +1173,6 @@ fn requires(module: &str, source: &str) -> Vec<String> {
         .collect()
 }
 
-/// The object kinds registered by number (the v1 form: a module that
-/// returns its `update`). None of BN6's is one any more; these two are the
-/// test content's own (testdata/content/objects/numbered), for the tests of
-/// registration by number.
-fn kinds() -> Vec<ObjectKind> {
-    let kind = |name: &str, index| ObjectKind {
-        name: name.into(),
-        pool: Pool::Effect,
-        index,
-        script: "objects/numbered/numbered".into(),
-    };
-    vec![kind("numbered", 0xF0), kind("numbered-2", 0xF1)]
-}
-
 fn rules() -> Rules {
     // Collision types by what they are.
     let both = |f: &dyn Fn(usize) -> u32| [f(0), f(1)];
@@ -1381,38 +1366,11 @@ pub fn custom_screen_layout() -> CustomScreenLayout {
 }
 
 fn objects() -> ObjectData {
-    let gun = |id: u8| AttachmentKind {
-        id,
-        sprite: SpriteId { category: 0x0C, index: 0x01 },
-        palette: id.saturating_sub(1),
-        lift: 0,
-        attach_point: (id != 0).then_some(3),
-    };
-    let rock = |id, anim, element| RockKind { id, anim, hp: 100, element, debris_palette: id, break_sound: 0x118, name_id: 0x100 };
-    // The buster's muzzle flash and arm.
-    let plain = |id, index| AttachmentKind { id, sprite: SpriteId { category: 0x0C, index }, palette: 0, lift: 0, attach_point: None };
     ObjectData {
-        // Attachments are numbered without gaps: the swords' blade (7),
-        // fillers up to the bee chip's hive (0x28), then what the thrown
-        // chips hold (a seed at 0x24, the flash bomb at 0x2E).
-        attachments: (0..5)
-            .map(gun)
-            .chain([plain(5, 0x06), plain(6, 0x03), blade_kind()])
-            .chain((8..0x28).map(|id| if id == 0x24 { plain(id, 0x02) } else { plain(id, 0x06) }))
-            .chain([plain(0x28, 0x5E)])
-            .chain((0x29..0x2F).map(|id| plain(id, 0x02)))
-            .collect(),
-        rocks: vec![rock(0, 1, Element::Null), rock(1, 1, Element::Null), rock(2, 2, Element::Null), rock(3, 2, Element::Aqua)],
-        absorbed_sprites: vec![SpriteId { category: 0x10, index: 0 }; 6],
         // The elements navi's overlay (variant 0x0F).
         body_overlays: (0..0x10)
             .map(|id| BodyOverlay { id, sprite: SpriteId { category: 8, index: 0x11 }, in_front: vec![true; 0x20] })
             .collect(),
-        sun_beam_looks: vec![SpriteId { category: 0x0C, index: 0x10 }, SpriteId { category: 0x0C, index: 0x11 }],
-        boomerangs: (0..5).map(|id| BoomerangKind { id, speed: 0x8_0000, turn_speed: 0x6_0000, grass: id < 3 }).collect(),
-        projectiles: projectiles(),
-        flying_shots: flying_shots(),
-        sword_waves: (0..0x13).map(sword_wave).collect(),
         // Made-up looks for NameIDs 0xCD..=0xFF (0xCF has none).
         name_looks: (0xCD..=0xFF)
             .map(|name_id| NameLook {
@@ -1423,114 +1381,6 @@ fn objects() -> ObjectData {
                 shadow: true,
             })
             .collect(),
-        kinds: kinds(),
-        shock_waves: (0..16).map(|id| ShockWave { id, sprite: SpriteId { category: 0x10, index: 3 }, anim: 1, ticks: 6, panel: None }).collect(),
-    }
-}
-
-/// The swords' blade (attachment 7), held at the gun's point.
-fn blade_kind() -> AttachmentKind {
-    AttachmentKind { id: 7, sprite: SpriteId { category: 0x0C, index: 0x08 }, palette: 0, lift: 0, attach_point: Some(3) }
-}
-
-/// The projectile's kinds: a plain shot (0), one that cracks the panel it
-/// hits (1), one that breaks it (2), one that turns it to grass (3), one
-/// that lays a road away from its side (4), one that bursts (5), a charged
-/// shot with a spark (6) and a drawn one that climbs (7).
-fn projectiles() -> Vec<ProjectileKind> {
-    let shot = |id| ProjectileKind {
-        id,
-        self_type: 0x04,
-        target_type: 0x05,
-        hit_mod: 0,
-        element: Element::Null,
-        secondary: SecondaryElements::default(),
-        hit_effect: 0,
-        sprite: None,
-        anim: 0,
-        status: 0,
-        bug: 0,
-        bug_arg: 0,
-        hit_panel: None,
-        bursts: false,
-        climbs: false,
-    };
-    vec![
-        shot(0),
-        ProjectileKind { hit_panel: Some(PanelHit::Crack), ..shot(1) },
-        ProjectileKind { hit_panel: Some(PanelHit::Break), ..shot(2) },
-        ProjectileKind {
-            hit_panel: Some(PanelHit::SetType { left_side: PanelType::Grass, right_side: PanelType::Grass }),
-            ..shot(3)
-        },
-        ProjectileKind {
-            hit_panel: Some(PanelHit::SetType { left_side: PanelType::RoadRight, right_side: PanelType::RoadLeft }),
-            ..shot(4)
-        },
-        ProjectileKind { bursts: true, hit_mod: 3, ..shot(5) },
-        ProjectileKind { hit_effect: 5, ..shot(6) },
-        ProjectileKind { sprite: Some(SpriteId { category: 0x0C, index: 0x21 }), anim: 0, climbs: true, ..shot(7) },
-    ]
-}
-
-/// The flying shot's kinds: arrows (0 to 5; 2 waits with a sound and
-/// sparks over its panel, 5 leaves an effect) and the thrown obstacle (6).
-fn flying_shots() -> Vec<FlyingShotKind> {
-    let arrow = |id| FlyingShotKind {
-        id,
-        self_type: 0x04,
-        target_type: 0x05,
-        hit_mod: 0,
-        element: Element::Null,
-        secondary: SecondaryElements::default(),
-        hit_effect: 5,
-        sprite: SpriteId { category: 0x0C, index: 0x21 },
-        anim: 0,
-        shadow: false,
-        speed: 8 << 16,
-        range: 8,
-        status: 0,
-        highlight: false,
-        obstacle: false,
-        panel_spark: false,
-        launch_sound: None,
-        end_effect: None,
-    };
-    vec![
-        arrow(0),
-        arrow(1),
-        FlyingShotKind { panel_spark: true, launch_sound: Some(0x18A), element: Element::Aqua, ..arrow(2) },
-        arrow(3),
-        arrow(4),
-        FlyingShotKind { range: 2, end_effect: Some(7), ..arrow(5) },
-        FlyingShotKind {
-            obstacle: true,
-            highlight: true,
-            speed: 10 << 16,
-            hit_mod: 3,
-            secondary: SecondaryElements(SecondaryElements::BREAK),
-            ..arrow(6)
-        },
-    ]
-}
-
-/// A made-up sword wave: one panel of region, three panels of reach.
-fn sword_wave(id: u8) -> SwordWave {
-    SwordWave {
-        id,
-        self_type: 4,
-        target_type: 5,
-        hit_mod: 3,
-        region: 1,
-        sprite: SpriteId { category: 0x0C, index: 0x14 },
-        anim: 0,
-        animates: id % 2 == 0,
-        highlight: id == 1,
-        reach: 3,
-        ground_shadow: false,
-        palette: 0,
-        status: 0,
-        speed: 0x8_0000,
     }
 }
 
@@ -1626,7 +1476,7 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x1B }, vec![vec![f(8, LAST | LOOP)], vec![f(7, 0), f(7, LAST)]]);
     sprites.insert(SpriteId { category: 0x14, index: 0x04 }, vec![vec![f(2, 0), f(3, LAST)]]);
     // The swords' blade, swinging.
-    sprites.insert(blade_kind().sprite, vec![vec![f(3, 0), f(3, 0), f(8, LAST)]]);
+    sprites.insert(SpriteId { category: 0x0C, index: 0x08 }, vec![vec![f(3, 0), f(3, 0), f(8, LAST)]]);
     // The arrow.
     sprites.insert(SpriteId { category: 0x0C, index: 0x21 }, vec![vec![f(2, 0), f(2, LAST | LOOP)]]);
     // The grab shot: falling, landing.

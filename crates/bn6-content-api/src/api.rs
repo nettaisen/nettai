@@ -13,7 +13,7 @@ use std::fmt;
 
 use crate::registry::Registry;
 use crate::state::{ContentState, FieldType, StateId, TypeError, Value};
-use crate::types::{ObjectRef, PanelPos, Pool, SpriteId, Vec3};
+use crate::types::{ObjectRef, PanelPos, SpriteId, Vec3};
 
 /// What a navi runs (`CoreApi::navi_action`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -23,10 +23,8 @@ pub enum NaviAction {
     /// One of the ruleset's own states or actions: `"entry"`,
     /// `"take_control"`, `"deletion"`, `"flinch"`, `"paralysis"`, `"drag"`,
     /// `"freeze"`, `"bubble"`, `"idle"`, `"move"`, `"dimming_chip"`,
-    /// `"navi_chip"`, `"instant_chip"`, `"cross_special"`.
+    /// `"navi_chip"`, `"instant_chip"`, `"form_change"`, `"cross_special"`.
     Engine(&'static str),
-    /// A number the ruleset doesn't name (a link navi's own action).
-    Number(u8),
 }
 
 /// Where a spawned object goes in the update list.
@@ -181,8 +179,6 @@ macro_rules! named_fields {
 named_fields! {
     /// The fields every object has.
     pub enum ObjectField {
-        /// Which behavior within the pool.
-        Index = "index", U8, ro;
         /// The current action and phase; their meaning is the kind's.
         Action = "action", U8, rw;
         Phase = "phase", U8, rw;
@@ -242,10 +238,6 @@ named_fields! {
         /// ran.
         Step = "step", U8, rw;
         StepInit = "step_init", U8, rw;
-        /// The attack's variant (a chip's subtype, a weapon's variant).
-        Variant = "variant", U8, rw;
-        /// The chip being used (0 for weapons).
-        Chip = "chip", U16, rw;
         /// The chip being used, as its definition (none for weapons): what
         /// a weapon that uses the chip asks for the chip's own parts, and
         /// what an action that becomes another chip's sets.
@@ -896,7 +888,8 @@ pub struct ColumnInfo {
 /// A side's defensive-chip record (the linked registry).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct LinkedChip {
-    pub chip: u16,
+    /// The chip (a handle of the chip registry); none: no record.
+    pub chip: Option<crate::ChipHandle>,
     pub bonus: u16,
     /// The damage word.
     pub damage: u32,
@@ -941,8 +934,6 @@ pub enum ApiError {
     NoCollision(ObjectRef),
     /// The object has no content state (its kind isn't content).
     NoState(ObjectRef),
-    /// No object kind has this name.
-    UnknownKind(String),
     /// Anything else, described.
     Other(String),
 }
@@ -955,7 +946,6 @@ impl fmt::Display for ApiError {
             ApiError::NoActor(o) => write!(f, "{o:?} has no actor data"),
             ApiError::NoCollision(o) => write!(f, "{o:?} has no collision data"),
             ApiError::NoState(o) => write!(f, "{o:?} has no content state"),
-            ApiError::UnknownKind(name) => write!(f, "no object kind is named {name:?}"),
             ApiError::Other(s) => f.write_str(s),
         }
     }
@@ -1024,8 +1014,7 @@ pub trait CoreApi {
     /// `AddRandomVarianceToTwoCoords`: jitter x and z by up to mask/2
     /// pixels (one draw).
     fn jitter(&mut self, mask: u32, pos: Vec3) -> Vec3;
-    /// A side's hand: the chip at `i` (0xFFFF = none), and the cursor.
-    fn hand_chip(&self, side: u8, i: u8) -> u16;
+    /// A side's hand: its cursor.
     fn hand_cursor(&self, side: u8) -> u8;
     /// `sub_800FC7C`: the cursor moves to the next chip.
     fn advance_hand(&mut self, side: u8);
@@ -1147,21 +1136,11 @@ pub trait CoreApi {
 
     // ---- Objects -----------------------------------------------------------
 
-    /// Spawn an object: it takes the pool's lowest free slot and runs later
-    /// this tick, right after the object that spawned it. None if the
-    /// pool is full. A content kind starts with its zeroed state.
-    fn spawn(&mut self, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef>;
-    /// Spawn the content object kind named `name` (its folder in the pack).
-    fn spawn_kind(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
-    /// `sub_80033E4`: the same at the head of the update list (it first
-    /// runs next tick, before everything else).
-    fn spawn_kind_first(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
-    /// `sub_8003374` (attacks) / `sub_800333C` (actors): the same, at the
-    /// end of the update list rather than right after the spawner.
-    fn spawn_kind_at_end(&mut self, name: &str, pos: Vec3, params: [u8; 4]) -> ApiResult<Option<ObjectRef>>;
-    /// Spawn an object of kind `kind` (a handle of the kind registry) where
-    /// `at` says; its content state starts zeroed. None if the pool is
-    /// full.
+    /// Spawn an object of kind `kind` (a handle of the kind registry): it
+    /// takes its pool's lowest free slot and goes into the update list
+    /// where `at` says (right after the object that spawned it, it runs
+    /// later this tick). Its content state starts zeroed. None if the pool
+    /// is full.
     fn spawn_def(&mut self, kind: u16, pos: Vec3, at: SpawnAt) -> ApiResult<Option<ObjectRef>>;
     /// The object's kind (a handle of the kind registry).
     fn object_kind(&self, o: ObjectRef) -> Option<u16>;
@@ -1172,9 +1151,8 @@ pub trait CoreApi {
     /// (docs/design/content-model-v2.md §12, step 4). Only the binding
     /// reads it; content never sees it.
     fn def_number(&self, registry: Registry, h: u16) -> ApiResult<u8>;
-    /// What navi `o` runs: a content action (by handle), one of the
-    /// ruleset's own states and actions (by name), or a number neither
-    /// names (a link navi's own action).
+    /// What navi `o` runs: a content action (by handle), or one of the
+    /// ruleset's own states and actions (by name).
     fn navi_action(&self, o: ObjectRef) -> ApiResult<NaviAction>;
     /// Free the slot now (the object stops running).
     fn free(&mut self, o: ObjectRef);
@@ -1188,12 +1166,10 @@ pub trait CoreApi {
     /// Change only the lifecycle state, keeping the action and phase (the
     /// game's byte store).
     fn set_lifecycle_only(&mut self, o: ObjectRef, l: Lifecycle);
-    /// Switch to `action` from its first phase.
-    fn set_action(&mut self, o: ObjectRef, action: u8);
-    /// Spawn parameter `n` (0..4).
-    fn param(&self, o: ObjectRef, n: usize) -> u8;
-    fn set_param(&mut self, o: ObjectRef, n: usize, v: u8);
-    fn get(&self, o: ObjectRef, f: ObjectField) -> Value;
+    /// Switch to `action` from its first phase (the object's own action
+    /// byte; a navi's action is a definition: `set_content_attack`).
+    fn set_action(&mut self, o: ObjectRef, action: u8) -> ApiResult<()>;
+    fn get(&self, o: ObjectRef, f: ObjectField) -> ApiResult<Value>;
     fn set(&mut self, o: ObjectRef, f: ObjectField, v: Value) -> ApiResult<()>;
     /// +1 facing right, -1 facing left.
     fn facing(&self, o: ObjectRef) -> i32;
@@ -1296,9 +1272,6 @@ pub trait CoreApi {
 
     fn actor_get(&self, o: ObjectRef, f: ActorField) -> ApiResult<Value>;
     fn actor_set(&mut self, o: ObjectRef, f: ActorField, v: Value) -> ApiResult<()>;
-    /// The attack's parameter `n` (0..4: the chip's params).
-    fn attack_param(&self, o: ObjectRef, n: usize) -> ApiResult<u8>;
-    fn set_attack_param(&mut self, o: ObjectRef, n: usize, v: u8) -> ApiResult<()>;
     fn request(&self, o: ObjectRef, f: RequestFlag) -> ApiResult<bool>;
     fn set_request(&mut self, o: ObjectRef, f: RequestFlag, on: bool) -> ApiResult<()>;
     fn navi_state(&self, o: ObjectRef, f: NaviState) -> ApiResult<bool>;
@@ -1313,9 +1286,9 @@ pub trait CoreApi {
     /// and how a weapon routine sets up the action it names before the
     /// action starts.
     fn attack_state_for(&mut self, o: ObjectRef, state: StateId) -> ApiResult<&mut ContentState>;
-    /// The state layout of a content action: by number (`Value::Int`,
-    /// registration by number) or by definition (`Value::Def`).
-    fn action_schema(&self, action: Value) -> ApiResult<StateId>;
+    /// The state layout of a content action (a handle of the action
+    /// registry).
+    fn action_schema(&self, action: u16) -> ApiResult<StateId>;
     fn status(&self, o: ObjectRef, flag: StatusFlag) -> ApiResult<bool>;
     fn set_status(&mut self, o: ObjectRef, flag: StatusFlag, on: bool) -> ApiResult<()>;
     /// Clear the whole status word (CollisionData ObjectFlags1 = 0).
@@ -1339,13 +1312,9 @@ pub trait CoreApi {
     fn exit_attack(&mut self, o: ObjectRef);
     /// `sub_801171C`: back to the idle action (the animation untouched).
     fn end_attack(&mut self, o: ObjectRef);
-    /// `object_setAttack0..5`: start `action`; `kind` records which
-    /// (1 buster, 2 chip or charged shot, 3 special, 4 move...).
-    fn set_attack(&mut self, o: ObjectRef, action: u8, kind: u8);
-    /// The same for a content action (a handle of the action registry): the
-    /// action runs by its handle (the navi's action byte is the number
-    /// registration by number gave it, else the engine's content-action
-    /// byte).
+    /// `object_setAttack0..5`: start the content action `action` (a handle
+    /// of the action registry); `kind` records which helper (1 buster, 2
+    /// chip or charged shot, 3 special, 4 move...).
     fn set_content_attack(&mut self, o: ObjectRef, action: u16, kind: u8) -> ApiResult<()>;
     /// `sub_801011A`: clear the attack's link bytes and unfreeze the
     /// lock-on marker.
@@ -1371,9 +1340,8 @@ pub trait CoreApi {
     /// navi's and form's bonus, at most 10; 1 when worn out).
     fn buster_damage(&self, o: ObjectRef) -> u16;
     /// `sub_80127C0(0)`: fill the attack variables from the chip at the
-    /// hand's cursor (its damage, bonuses and modifiers) and name the
-    /// chip's action.
-    fn prepare_chip(&mut self, o: ObjectRef) -> u8;
+    /// hand's cursor (its damage, bonuses and modifiers).
+    fn prepare_chip(&mut self, o: ObjectRef);
     /// Obstacles the navi absorbed, oldest first: (look, animation), the
     /// look an absorbed-look record's handle.
     fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u16, u8)>>;
@@ -1453,8 +1421,9 @@ pub trait CoreApi {
     // ---- Services ------------------------------------------------------------
 
     /// Run a step of the dimming service for the controller `o`; `chip`
-    /// is the chip the controller shows (AntiNavi's steps read it).
-    fn dimming(&mut self, o: ObjectRef, step: DimmingStep, chip: u16);
+    /// is the chip the controller shows (AntiNavi's steps read it; none:
+    /// the zeroed chip field's).
+    fn dimming(&mut self, o: ObjectRef, step: DimmingStep, chip: Option<crate::ChipHandle>);
     /// `sub_800BF16`: `side` starts a dimming with `controller` (None: its
     /// spawn failed), used by `user`; `no_cut_in`: the other side can't cut
     /// in on it. For controllers that aren't a chip's (a trap springing).

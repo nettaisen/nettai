@@ -16,25 +16,15 @@ use crate::report::Report;
 pub fn definitions(c: &Content, r: &mut Report) {
     let defs = &c.defs;
     if !defs.definitions.is_empty() {
-        use bn6_battle::content::{ActionRole, KindRole, RoleAction, RoleKind};
+        use bn6_battle::content::{ActionRole, KindRole};
         for role in ActionRole::ALL {
-            match defs.roles.actions.get(&role) {
-                None => r.warn("rules/roles.luau", format!("the role actions.{} is not filled", role.name())),
-                Some(RoleAction::Unported(n)) => r.warn(
-                    "rules/roles.luau",
-                    format!("the role actions.{} names action {n:#x}, which nothing implements yet", role.name()),
-                ),
-                Some(RoleAction::Action(_)) => {}
+            if !defs.roles.actions.contains_key(&role) {
+                r.warn("rules/roles.luau", format!("the role actions.{} is not filled", role.name()));
             }
         }
         for role in KindRole::ALL {
-            match defs.roles.kinds.get(&role) {
-                None => r.warn("rules/roles.luau", format!("the role kinds.{} is not filled", role.name())),
-                Some(RoleKind::Missing(key)) => r.warn(
-                    "rules/roles.luau",
-                    format!("the role kinds.{} names the kind {key:?}, which the content doesn't have", role.name()),
-                ),
-                Some(RoleKind::Kind(_)) => {}
+            if !defs.roles.kinds.contains_key(&role) {
+                r.warn("rules/roles.luau", format!("the role kinds.{} is not filled", role.name()));
             }
         }
     }

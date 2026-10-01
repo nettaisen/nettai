@@ -55,7 +55,7 @@ fn spring_anti_recovery(b: &mut Battle, r: ObjectRef, amount: u16) {
     // (panel Y, element 0, the defensive record's owner word) and
     // parameters (whatever the heal's caller left in r4); a dimming
     // controller's init never reads either.
-    let controller = spawn_counterattack(b, r, amount as u32 + (TRAP_HIT_PARAM << 16), [0; 4], 0);
+    let controller = spawn_counterattack(b, r, amount as u32 + (TRAP_HIT_PARAM << 16), 0);
     // sub_800BF16, no cut-in allowed, with the spawn's result (none when
     // the effect pool is full: the game registers a null controller).
     b.start_dimming(alliance, true, controller, r);
@@ -69,14 +69,14 @@ fn spring_anti_recovery(b: &mut Battle, r: ObjectRef, amount: u16) {
 /// (damage | hit parameter << 16). Its telop is AntiRecv's (object +0x30).
 /// None when the effect pool is full. Its position is the spawner's
 /// registers: the panel's Y, the element (0) and `z`, which nothing reads.
-pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32, params: [u8; 4], z: i32) -> Option<ObjectRef> {
+pub(crate) fn spawn_counterattack(b: &mut Battle, healer: ObjectRef, damage: u32, z: i32) -> Option<ObjectRef> {
     let (panel, alliance) = {
         let o = b.objects.get(healer);
         (o.panel, o.alliance)
     };
     let pos = Vec3 { x: panel.y as i32, y: 0, z };
     let kind = b.content.defs.roles.kind(crate::content::KindRole::AntiRecovery);
-    let c = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, params)?;
+    let c = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, [0; 4])?;
     let o = b.objects.get_mut(c);
     o.panel = panel;
     o.element = 0;

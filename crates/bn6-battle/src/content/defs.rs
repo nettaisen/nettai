@@ -2,20 +2,15 @@
 //! registries the engine reads, with their handles, and the functions the
 //! runtime binds.
 //!
-//! A registry holds three sorts of entries while the migration runs:
+//! A registry holds two sorts of entries:
 //!
 //! - the engine's own (its object kinds, keyed `engine/...`);
-//! - content registered by number from the pack's data (an object folder's
-//!   `[kind]`), keyed from that data (the kind's folder name); and the
-//!   pack's records content doesn't define yet: its navis and forms
-//!   (`v1/navi-01`, `v1/form-0c`);
 //! - content's definitions (`define.kind { ... }`), keyed by their keys.
-//!   Chips and weapons are only these: nothing names one by number.
 //!
 //! Each registry's keys are sorted byte-wise; an entry's handle is its
-//! place. Registration by number still reaches its entries by the numbers
-//! its own data gives (an object slot), until the migration's last step
-//! deletes it.
+//! place. (Navis and forms still carry the original's numbers in their
+//! `legacy` markers, by which the ruleset finds them, until the
+//! migration's last step.)
 //!
 //! The engine never learns the original's numbers for what content
 //! defines: an object records its kind's handle, a navi its content
@@ -33,7 +28,7 @@ use super::{
     ChipData, Content,
     FormData, NaviData,
 };
-use super::roles::{ActionRole, ChipRole, HookRole, KindRole, LockonRole, RoleAction, RoleKind, Roles, StatusRole};
+use super::roles::{ActionRole, ChipRole, HookRole, KindRole, LockonRole, Roles, StatusRole};
 use crate::setup::{Form, Navi};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
@@ -55,10 +50,6 @@ pub struct KindDef {
     pub implementation: KindImpl,
     /// A content kind's state layout.
     pub schema: StateId,
-    /// The object slot (pool and index) registration by number reaches it
-    /// by: the pack's `object.toml`s'. The engine's kinds and the kinds
-    /// content defines have none (the validator has their slots by key).
-    pub slot: Option<(Pool, u8)>,
     /// What places it when a stage names it (`kind.place`).
     pub place: Option<FnId>,
 }
@@ -71,11 +62,6 @@ pub struct ActionDef {
     /// Its state layout. Actions of one layout continue each other's
     /// attack state, as the original's actions share theirs.
     pub schema: StateId,
-    /// The action number registration by number gives it (a
-    /// `weapon.toml`'s): the navi's CurAction while it runs. An action
-    /// content defines has none; the navi's CurAction is then
-    /// [`crate::kinds::player::CONTENT_ACTION`].
-    pub number: Option<u8>,
 }
 
 /// A weapon: what a button's weapon does.
@@ -295,10 +281,6 @@ pub struct Defs {
     kind_keys: BTreeMap<String, KindHandle>,
     /// The engine's kinds, in [`ENGINE_KINDS`]' order.
     engine: Vec<KindHandle>,
-    /// Kinds by object slot: `pool * 256 + index` (registration by number).
-    kind_slots: Vec<Option<KindHandle>>,
-    /// Actions by number (registration by number).
-    action_numbers: Vec<Option<ActionHandle>>,
     /// The pack's navis and forms by their numbers (registration by
     /// number).
     navi_numbers: Vec<Option<NaviHandle>>,
@@ -306,10 +288,6 @@ pub struct Defs {
     /// Keys by registry, for the codecs.
     chip_keys: BTreeMap<String, ChipHandle>,
     weapon_keys: BTreeMap<String, WeaponHandle>,
-}
-
-fn pool_index(pool: Pool) -> usize {
-    Pool::ALL.iter().position(|&p| p == pool).expect("a pool")
 }
 
 impl Defs {
@@ -320,11 +298,6 @@ impl Defs {
 
     pub fn kind(&self, h: KindHandle) -> &KindDef {
         &self.kinds[h.index()]
-    }
-
-    /// The kind registration by number puts in an object slot.
-    pub fn kind_at(&self, pool: Pool, index: u8) -> Option<KindHandle> {
-        self.kind_slots.get(pool_index(pool) * 256 + index as usize).copied().flatten()
     }
 
     /// The engine's kind `kind`.
@@ -343,11 +316,6 @@ impl Defs {
 
     pub fn action(&self, h: ActionHandle) -> &ActionDef {
         &self.actions[h.index()]
-    }
-
-    /// The action registered by number.
-    pub fn action_numbered(&self, number: u8) -> Option<ActionHandle> {
-        self.action_numbers.get(number as usize).copied().flatten()
     }
 
     /// The action with this key.
@@ -542,17 +510,6 @@ fn slot(d: &Definition, path: &str) -> Result<FnSource, ContentError> {
     }
 }
 
-/// A module's exported function (registration by module).
-fn export(definitions: &Definitions, module: &str, name: &str, whose: &str) -> Result<FnSource, ContentError> {
-    let m = definitions
-        .module(module)
-        .ok_or_else(|| ContentError::new(format!("{whose} names the script {module}.luau, which isn't in the pack")))?;
-    if !m.functions.iter().any(|f| f == name) {
-        return Err(ContentError::new(format!("{whose}: {module}.luau doesn't export the function `{name}`")));
-    }
-    Ok(FnSource::export(module, name))
-}
-
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
 /// fields the engine reads, with the lock-on mode by the handle `r` gives
 /// it, and the chips it names (its Program Advance recipes' ingredients, a
@@ -637,8 +594,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
 }
 
 /// `define.roles { actions = { ... }, kinds = { ... } }` (content::roles):
-/// each role a definition, or a v1 registration through its `legacy`
-/// marker (an action by number, a kind by key).
+/// each role a definition.
 fn read_roles(
     d: &Definition,
     actions: &[ActionDef],
@@ -650,13 +606,6 @@ fn read_roles(
 ) -> Result<Roles, ContentError> {
     let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
     let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
-    let legacy = |name: &str, v: &Data, field: &str| -> Result<Option<Data>, ContentError> {
-        let Data::Map(_) = v else { return Ok(None) };
-        match v.field("legacy").field(field) {
-            Data::Nil => Err(what(format!("{name} is a table, but not a legacy marker `{{ legacy = {{ {field} = ... }} }}`"))),
-            x => Ok(Some(x.clone())),
-        }
-    };
     let mut roles = Roles::default();
     for (group, entries) in groups {
         let group = group.to_string();
@@ -670,33 +619,10 @@ fn read_roles(
                         what(format!("the ruleset has no role actions.{name} (it has {})", names.join(", ")))
                     })?;
                     let full = format!("actions.{name}");
-                    let target = if let Data::Ref(Registry::Action, key) = v {
-                        RoleAction::Action(ActionHandle(
-                            actions.iter().position(|a| &a.key == key).expect("a defined action") as u16,
-                        ))
-                    } else if let Some(n) = legacy(&full, v, "action")? {
-                        match n {
-                            // A v1 registration's action, by its number.
-                            Data::Int(n @ 0..=0xFF) => match actions.iter().position(|a| a.number == Some(n as u8)) {
-                                Some(i) => RoleAction::Action(ActionHandle(i as u16)),
-                                None => RoleAction::Unported(n as u8),
-                            },
-                            // A definition by its key, for a pack whose
-                            // modules can't require the one that defines it
-                            // (the engine's test pack).
-                            Data::Str(key) => match actions.iter().position(|a| a.key == key) {
-                                Some(i) => RoleAction::Action(ActionHandle(i as u16)),
-                                None => return Err(what(format!("{full}'s legacy action {key:?} is no action's key"))),
-                            },
-                            n => {
-                                return Err(what(format!(
-                                    "{full}'s legacy action is {n:?}, not an action number or an action's key"
-                                )));
-                            }
-                        }
-                    } else {
+                    let Data::Ref(Registry::Action, key) = v else {
                         return Err(what(format!("{full} is not an action")));
                     };
+                    let target = ActionHandle(actions.iter().position(|a| &a.key == key).expect("a defined action") as u16);
                     roles.actions.insert(role, target);
                 }
                 "kinds" => {
@@ -705,20 +631,10 @@ fn read_roles(
                         what(format!("the ruleset has no role kinds.{name} (it has {})", names.join(", ")))
                     })?;
                     let full = format!("kinds.{name}");
-                    let key = if let Data::Ref(Registry::Kind, key) = v {
-                        key.clone()
-                    } else if let Some(k) = legacy(&full, v, "kind")? {
-                        let Data::Str(k) = k else {
-                            return Err(what(format!("{full}'s legacy kind is {k:?}, not a kind's key")));
-                        };
-                        k
-                    } else {
+                    let Data::Ref(Registry::Kind, key) = v else {
                         return Err(what(format!("{full} is not a kind")));
                     };
-                    let target = match kinds.iter().position(|k| k.key == key) {
-                        Some(i) => RoleKind::Kind(KindHandle(i as u16)),
-                        None => RoleKind::Missing(key),
-                    };
+                    let target = KindHandle(kinds.iter().position(|k| &k.key == key).expect("a defined kind") as u16);
                     roles.kinds.insert(role, target);
                 }
                 "hooks" => {
@@ -804,9 +720,6 @@ impl Defs {
                 _ => Err(ContentError::new(format!("{}.luau: {} {}'s `state` is not a table", d.module, d.registry, d.key))),
             }
         };
-        let module_state = |module: &str| -> StateId {
-            definitions.module(module).and_then(|m| m.state.as_deref()).map_or(schema_id(NO_STATE), &schema_id)
-        };
 
         // Object kinds.
         let mut kinds = Entries::new(Registry::Kind);
@@ -816,23 +729,9 @@ impl Defs {
                 pool,
                 implementation: KindImpl::Engine(kind),
                 schema: schema_id(NO_STATE),
-                slot: None,
                 place: None,
             };
             kinds.add(key.to_string(), def, "the engine's".into());
-        }
-        for k in &content.objects.kinds {
-            let whose = format!("objects/{} (object.toml)", k.name);
-            let update = export(&definitions, &k.script, "update", &whose)?;
-            let def = KindDef {
-                key: k.name.clone(),
-                pool: k.pool,
-                implementation: KindImpl::Script { update: functions.id(update) },
-                schema: module_state(&k.script),
-                slot: Some((k.pool, k.index)),
-                place: None,
-            };
-            kinds.add(k.name.clone(), def, whose.clone());
         }
         for d in definitions.of(Registry::Kind) {
             let pool = d
@@ -850,19 +749,17 @@ impl Defs {
                 pool,
                 implementation: KindImpl::Script { update: functions.id(slot(d, "update")?) },
                 schema: state_of(d)?,
-                slot: None,
                 place,
             };
             kinds.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let kinds: Vec<KindDef> = kinds.sorted()?.into_iter().map(|(_, k)| k).collect();
 
-        // The actions content defines. (No action is registered by number:
-        // every chip's and weapon's is a definition.)
+        // The actions content defines.
         let mut actions = Entries::new(Registry::Action);
         for d in definitions.of(Registry::Action) {
             let def =
-                ActionDef { key: d.key.clone(), update: functions.id(slot(d, "update")?), schema: state_of(d)?, number: None };
+                ActionDef { key: d.key.clone(), update: functions.id(slot(d, "update")?), schema: state_of(d)? };
             actions.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let actions: Vec<ActionDef> = actions.sorted()?.into_iter().map(|(_, a)| a).collect();
@@ -1323,7 +1220,7 @@ impl Defs {
             in_registry += 1;
         }
 
-        // Registration by number's lookups.
+        // Lookups by key.
         let kind_keys: BTreeMap<String, KindHandle> =
             kinds.iter().enumerate().map(|(i, k)| (k.key.clone(), KindHandle(i as u16))).collect();
         let engine = ENGINE_KINDS.iter().map(|e| kind_keys[e.1]).collect();
@@ -1333,8 +1230,6 @@ impl Defs {
             handles,
             kind_keys,
             engine,
-            kind_slots: vec![None; 3 * 256],
-            action_numbers: vec![None; 256],
             navi_numbers: Vec::new(),
             form_numbers: Vec::new(),
             chip_keys: BTreeMap::new(),
@@ -1368,26 +1263,7 @@ impl Defs {
             schemas,
             functions: Vec::new(),
         };
-        for (i, k) in kinds.iter().enumerate() {
-            if let Some((pool, index)) = k.slot {
-                let at = pool_index(pool) * 256 + index as usize;
-                if let Some(other) = defs.kind_slots[at] {
-                    return Err(ContentError::new(format!(
-                        "kinds {} and {} both fill {} object {index:#x}",
-                        kinds[other.index()].key,
-                        k.key,
-                        pool.name()
-                    )));
-                }
-                defs.kind_slots[at] = Some(KindHandle(i as u16));
-            }
-        }
         defs.kinds = kinds;
-        for (i, a) in defs.actions.iter().enumerate() {
-            if let Some(n) = a.number {
-                defs.action_numbers[n as usize].get_or_insert(ActionHandle(i as u16));
-            }
-        }
         for (i, w) in defs.weapons.iter().enumerate() {
             defs.weapon_keys.insert(w.key.clone(), WeaponHandle(i as u16));
         }
@@ -1422,8 +1298,7 @@ mod tests {
         c.assets = crate::content::testing::asset_names_used(&c.scripts.modules);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/bn6: {e}"));
-        // Every chip is a definition with its own use: none is a record
-        // registration by number runs.
+        // Every chip is a definition with its own use.
         assert!(c.defs.chips.len() > 300, "{} chips", c.defs.chips.len());
         // The numbered tables are the definitions' (step 5): what the
         // modules define of them shares their entries, so the engine's

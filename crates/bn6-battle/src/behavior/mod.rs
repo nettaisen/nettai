@@ -29,7 +29,7 @@ use bn6_content_api::{
 use crate::battle::Battle;
 use crate::content::{Content, ContentHash};
 use crate::kinds::{self, Vars};
-use crate::object::{ObjectRef, Pool, Vec3};
+use crate::object::{ObjectRef, Vec3};
 
 pub use bn6_luau::Options;
 pub use data::script_data;
@@ -222,29 +222,12 @@ pub(crate) fn call_hook(b: &mut Battle, f: FnId, call: HookCall) -> Value {
     }
 }
 
-/// Spawn the kind in object slot `index` of `pool` (registration by
-/// number); a content kind starts with its zeroed state.
-pub fn spawn_object(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-    kinds::spawn_numbered(b, pool, index, SpawnAt::AfterCurrent, pos, params)
-}
-
-/// The same at the head of the update list (`sub_80033E4`).
-pub fn spawn_object_first(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-    kinds::spawn_numbered(b, pool, index, SpawnAt::First, pos, params)
-}
-
-/// `sub_8003374` (attacks) and `sub_800333C` (actors): the same at the end
-/// of the update list rather than right after its spawner.
-pub fn spawn_object_at_end(b: &mut Battle, pool: Pool, index: u8, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
-    kinds::spawn_numbered(b, pool, index, SpawnAt::End, pos, params)
-}
-
-/// Spawn the content object kind `key`: how engine code spawns a kind a
-/// script implements. None if the pool is full; panics if no kind has the
-/// key.
-pub fn spawn_kind(b: &mut Battle, key: &str, pos: Vec3, params: [u8; 4]) -> Option<ObjectRef> {
+/// Spawn the content object kind `key`, its state zeroed: how tests and
+/// tools spawn a kind content defines. None if the pool is full; panics if
+/// no kind has the key.
+pub fn spawn_kind(b: &mut Battle, key: &str, pos: Vec3) -> Option<ObjectRef> {
     let kind = b.content.defs.kind_by_key(key).unwrap_or_else(|| panic!("no object kind is named {key:?}"));
-    kinds::spawn(b, kind, SpawnAt::AfterCurrent, pos, params)
+    kinds::spawn(b, kind, SpawnAt::AfterCurrent, pos, [0; 4])
 }
 
 /// Set an enum state field of a content object by variant name.

@@ -227,7 +227,7 @@ end
 local function bring_bass(me: Object)
     if me.phase_init == 0 then
         local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-        local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = 0, params = { 1, 0, 0, 0 }, damage = damage }
+        local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = 0, damage = damage }
         local bass = navi_chips.spawn(darkness.kind, me.related1 :: Object, spec, 0)
         if bass then
             bass.run_while_dimmed = true

@@ -8,31 +8,33 @@ local attachment = require("../objects/attachment/attachment")
 
 local buster = {}
 
--- The buster arm (data.objects.attachments), and an enemy navi's.
-local ARM, NAVI_ARM = 6, 0x2B
-
 -- The muzzle flash a shot leaves in the navi's first related slot (the
--- original's attachment row 5, at attach point 0x10), and the buster arm a
--- thrown obstacle leaves there instead (row 6, the arm `raise_arm`
--- raises).
+-- original's attachment row 5, at attach point 0x10), and the buster arm
+-- (row 6), which `raise_arm` raises and a thrown obstacle leaves there
+-- instead.
 buster.flash = attachment.look { sprite = asset.sprite("muzzle-flash"), palette = 0, attach_point = 0x10 }
 buster.arm = attachment.look { sprite = asset.sprite("buster-arm"), palette = 0 }
+-- What an enemy navi raises (row 0x2B).
+local NAVI_ARM = attachment.look { sprite = asset.sprite("elec-coil"), palette = 0, attach_point = 14 }
+
+-- The buster's recovery in ticks (`byte_80209CC`), by Rapid, then the open
+-- panels ahead.
+local RECOVERY: { { number } } = require("../rules/buster").recovery
 
 -- The arm's palette additions: the charge disabled, and a Full Synchro
 -- Beast form.
 local NO_CHARGE_PALETTE = 0xE
 
--- The four spawn parameters `sub_80EB572` adds into one word: the kind,
--- the animation shifted by 8, its r1 (Param3: the arm animates while
--- dimmed too) by 16 and the palette addition by 24 (so a negative
--- animation borrows from the bytes above it).
-local function arm_params(kind: number, anim: number, palette_add: number, param3: number): { number }
-    local word = int.u32(kind + int.shl(anim, 8) + int.shl(param3, 16) + int.shl(palette_add, 24))
+-- How the arm animates. `sub_80EB572` adds its four spawn parameters into
+-- one word: the look's row, the animation shifted by 8, its r1 (Param3:
+-- the arm animates while dimmed too) by 16 and the palette addition by 24,
+-- so a negative animation borrows from the bytes above it.
+local function arm_options(anim: number, palette_add: number, param3: number): { anim: number, while_dimmed: boolean, palette_add: number }
+    local word = int.u32(int.shl(anim, 8) + int.shl(param3, 16) + int.shl(palette_add, 24))
     return {
-        bit32.band(word, 0xFF),
-        bit32.band(bit32.rshift(word, 8), 0xFF),
-        bit32.band(bit32.rshift(word, 16), 0xFF),
-        bit32.rshift(word, 24),
+        anim = bit32.band(bit32.rshift(word, 8), 0xFF),
+        while_dimmed = bit32.band(bit32.rshift(word, 16), 0xFF) ~= 0,
+        palette_add = bit32.rshift(word, 24),
     }
 end
 
@@ -49,12 +51,12 @@ end
 -- is cleared. (CrosOver's MegaMan raises his user's arm this way.)
 function buster.raise_arm_for(navi: Object, holder: Object, which: Slot, while_dimmed: boolean)
     local param3 = if while_dimmed then 1 else 0
-    local function attach(kind: number, anim: number, palette_add: number)
-        attachment.spawn_with(holder, arm_params(kind, anim, palette_add, param3), which)
+    local function attach(look: AttachmentLook, anim: number, palette_add: number)
+        attachment.attach(holder, look, which, arm_options(anim, palette_add, param3))
     end
     local kind = navi.actor_type
     if kind == "virus" then
-        attach(ARM, 0, 0)
+        attach(buster.arm, 0, 0)
         return
     elseif kind == "navi" then
         attach(NAVI_ARM, navi.ai_index - 1, 0xD)
@@ -82,7 +84,7 @@ function buster.raise_arm_for(navi: Object, holder: Object, which: Slot, while_d
         -- The first five Beast Crosses: palettes 5 to 9.
         palette_add = 5 + form - 0xD
     end
-    attach(ARM, form, palette_add)
+    attach(buster.arm, form, palette_add)
 end
 
 -- What stops a shot's panel count (`byte_800FB4C`, by side): bodies,
@@ -92,7 +94,8 @@ local CLOSED = { [0] = 0x0D880080, [1] = 0x0E880080 }
 
 -- `sub_800FAF6`: the ticks of recovery after a shot, by the Rapid stat and
 -- the open panels from (x, y) forward, counting (x, y) itself, at most 5
--- (`data.rules.buster_recovery`).
+-- (a Rapid past the table is an error: the original reads on into what
+-- follows it).
 function buster.recovery(navi: Object, x: number, y: number): number
     local closed = CLOSED[navi.alliance]
     local open = 0
@@ -105,11 +108,11 @@ function buster.recovery(navi: Object, x: number, y: number): number
         x += navi.facing
     end
     local rapid = battle.navi(navi.alliance).rapid
-    local ticks = data.rules.buster_recovery[rapid * 6 + math.min(open, 5)]
-    if ticks == nil then
+    local row = RECOVERY[rapid + 1]
+    if row == nil then
         error(string.format("Rapid %d reads past the buster's recovery table", rapid))
     end
-    return ticks
+    return row[math.min(open, 5) + 1]
 end
 
 -- The move that cuts a shot's recovery short: `object_canMove`, a held

@@ -275,15 +275,10 @@ impl Compat {
     }
 
     /// The original's object slot for object `r`'s kind. The engine never
-    /// learns it for a kind content defines: the object records the kind's
-    /// handle, and compat has the slot by key. The engine's own kinds and
-    /// the kinds the pack registers by number (keyed by their folders)
-    /// carry the slot their registration gives.
+    /// learns it: the object records the kind's handle, and compat has the
+    /// slot by the kind's key.
     pub fn object_slot(&self, b: &Battle, r: ObjectRef) -> Result<(Pool, u8), String> {
         let kind = b.content.defs.kind(b.objects.get(r).kind);
-        if let Some(slot) = kind.slot {
-            return Ok(slot);
-        }
         let e = self.kinds.get(&kind.key).ok_or_else(|| format!("kinds.toml has no {:?}", kind.key))?;
         match Pool::from_name(&e.pool) {
             Some(pool) if pool == kind.pool => Ok((pool, e.index)),
@@ -293,8 +288,7 @@ impl Compat {
 
     /// The original's action number for object `r`'s CurAction: a navi's
     /// NaviAction (the framework's states as themselves, the ruleset's
-    /// actions and content's by key; a v1 registration by its number), any
-    /// other object's its own byte.
+    /// actions and content's by key), any other object's its own byte.
     pub fn navi_action(&self, b: &Battle, r: ObjectRef) -> Result<u8, String> {
         if b.objects.get(r).actor.is_none() {
             return Ok(b.objects.get(r).action);
@@ -305,14 +299,7 @@ impl Compat {
         }
         let key = match action {
             NaviAction::Engine(e) => e.key(),
-            NaviAction::Content(h) => {
-                let d = b.content.defs.action(h);
-                if let Some(n) = d.number {
-                    return Ok(n);
-                }
-                &d.key
-            }
-            NaviAction::Unported(n) => return Ok(n),
+            NaviAction::Content(h) => &b.content.defs.action(h).key,
             state => unreachable!("{state:?} is a state"),
         };
         self.actions.get(key).copied().ok_or_else(|| format!("actions.toml has no {key:?}"))

@@ -622,7 +622,7 @@ local function init_megaman(me: Object)
         return
     end
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local spec = { panel_x = dx, panel_y = dy, element = me.element, params = { 1, 0, 0, 0 }, damage = damage }
+    local spec = { panel_x = dx, panel_y = dy, element = me.element, damage = damage }
     local django = spawn(user, spec, ty, true, nil)
     if django then
         (django.state :: State).partner = me

@@ -13,8 +13,6 @@ use crate::content::ChipUsage;
 use crate::kinds::player::{ai, ai_mut, exit_attack_state};
 use crate::object::ObjectRef;
 
-pub const ACTION: u8 = 0x15;
-
 /// `sub_80EBD9C`.
 pub fn update(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).attack.step_init != 0 {
@@ -33,7 +31,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 /// `off_802CCB4[subtype]`: spawn the dimming controller of the chip the
 /// attack variables `a` hold, for `user` (r0/r1 its panel, r2 the element,
-/// r4 the params, r6 the damage word, r7 the chip and its bonus). Action
+/// r6 the damage word, r7 the chip and its bonus; the original's r4, the
+/// chip record's parameters, is the chip's definition here). Action
 /// 0x15 and the counter cut-in (`sub_8017AB4`) both call it.
 pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) -> Option<ObjectRef> {
     let damage = a.damage as u32 | (a.hit_param as u32) << 16;
@@ -45,8 +44,6 @@ pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) 
         ChipUsage::Dimming(f) => f,
         u => panic!("chip {:?} is a dimming chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),
     };
-    // (The numeric API's chip: 0 for none.)
-    let chip = b.api_chip_field(a.chip, 0);
-    let spec = DimmingChipSpec { element: a.element, params: a.params, damage, chip, bonus: a.extra };
+    let spec = DimmingChipSpec { element: a.element, damage, chip: a.chip, bonus: a.extra };
     crate::behavior::call_hook(b, hook, HookCall::DimmingChip { user, spec }).object()
 }

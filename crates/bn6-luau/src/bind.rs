@@ -25,7 +25,7 @@ use bn6_content_api::{
     ACTOR_TYPES, ActorField, ApiError, BattleInfo, CollisionField, ContentState, CoreApi, DimmingStep, FieldType,
     HitboxSpec, HookCall, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
     AssetKind, SpawnAt,
-    ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Pool, Registry, RequestFlag, SpriteField, SpriteId,
+    ObstacleCrush, ObstacleRequest, PANEL_TYPES, Pad, PanelPos, Registry, RequestFlag, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use bn6_content_api::ObjectRef;
@@ -249,37 +249,29 @@ fn object_arg(v: &LuaValue, what: &str) -> mlua::Result<Option<ObjectRef>> {
     }
 }
 
-/// Up to four spawn parameters from a table (missing ones are 0).
-fn params(t: Option<mlua::Table>, what: &str) -> mlua::Result<[u8; 4]> {
-    let mut p = [0u8; 4];
-    if let Some(t) = t {
-        for (i, slot) in p.iter_mut().enumerate() {
-            let v = t.raw_get::<LuaValue>(i + 1)?;
-            if !v.is_nil() {
-                *slot = u8_arg(v, what)?;
-            }
-        }
-    }
-    Ok(p)
+/// A sprite: an asset (`asset.sprite("bomb")`).
+fn sprite_id(a: LuaValue) -> mlua::Result<SpriteId> {
+    bound(|bd| match bd.asset(&a) {
+        Some((AssetKind::Sprite, h)) => bd.with_names(|n| n.sprite(h)).ok_or_else(|| mlua::Error::runtime("no such sprite")),
+        _ => Err(mlua::Error::runtime(format!("expected a sprite (asset.sprite), got {}", a.type_name()))),
+    })
 }
 
-fn params_table(lua: &Lua, p: [u8; 4]) -> mlua::Result<mlua::Table> {
-    lua.create_sequence_from(p.iter().map(|&b| b as f64))
+/// A chip definition, or nil: none.
+fn chip_arg(b: &Bound, v: &LuaValue, what: &str) -> mlua::Result<Option<bn6_content_api::ChipHandle>> {
+    match (v, b.def(v)) {
+        (LuaValue::Nil, _) => Ok(None),
+        (_, Some((Registry::Chip, h))) => Ok(Some(bn6_content_api::ChipHandle(h))),
+        (_, Some((r, _))) => Err(mlua::Error::runtime(format!("{what}: a {r} is not a chip"))),
+        _ => Err(mlua::Error::runtime(format!("{what}: expected a chip definition or nil, got {}", v.type_name()))),
+    }
 }
 
-/// A sprite: an asset (`asset.sprite("bomb")`), or (deprecated) `"CC-II"`
-/// in hex or its category and index as numbers.
-fn sprite_id(a: LuaValue, b: Option<LuaValue>) -> mlua::Result<SpriteId> {
-    if let LuaValue::Table(_) = a {
-        return bound(|bd| match bd.asset(&a) {
-            Some((AssetKind::Sprite, h)) => bd.with_names(|n| n.sprite(h)).ok_or_else(|| mlua::Error::runtime("no such sprite")),
-            _ => Err(mlua::Error::runtime("expected a sprite (asset.sprite)")),
-        });
-    }
-    match (a, b) {
-        (LuaValue::String(s), None) => s.to_str()?.parse().map_err(mlua::Error::runtime),
-        (c, Some(i)) => Ok(SpriteId { category: u8_arg(c, "sprite category")?, index: u8_arg(i, "sprite index")? }),
-        (v, None) => Err(mlua::Error::runtime(format!("a sprite is \"CC-II\" or two numbers, got {}", v.type_name()))),
+/// A chip as a script value: its definition, or nil for none.
+fn chip_value(b: &Bound, chip: Option<bn6_content_api::ChipHandle>) -> mlua::Result<LuaValue> {
+    match chip {
+        Some(h) => Ok(LuaValue::Table(b.def_value(Registry::Chip, h.0)?)),
+        None => Ok(LuaValue::Nil),
     }
 }
 
@@ -301,7 +293,7 @@ impl UserData for Object {
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         for &f in ObjectField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
-                let v = with(|api, _| Ok(api.get(this.0, f)))?;
+                let v = with(|api, _| api.get(this.0, f).map_err(api_error))?;
                 from_api(lua, v, &f.ty())
             });
             if f.writable() {
@@ -353,22 +345,14 @@ impl UserData for Object {
             Ok(format!("Object({} {})", this.0.pool.name(), this.0.slot))
         });
 
-        // Lifecycle and parameters.
-        methods.add_method("param", |_, this, n: LuaValue| {
-            let n = param_index(n)?;
-            with(|api, _| Ok(api.param(this.0, n)))
-        });
-        methods.add_method("set_param", |_, this, (n, v): (LuaValue, LuaValue)| {
-            let (n, v) = (param_index(n)?, u8_arg(v, "param")?);
-            with(|api, _| Ok(api.set_param(this.0, n, v)))
-        });
+        // Lifecycle.
         methods.add_method("set_lifecycle", |_, this, name: mlua::LuaString| {
             let l = named(&name, "lifecycle state", Lifecycle::from_name)?;
             with(|api, _| Ok(api.set_lifecycle(this.0, l)))
         });
         methods.add_method("set_action", |_, this, a: LuaValue| {
             let a = u8_arg(a, "action")?;
-            with(|api, _| Ok(api.set_action(this.0, a)))
+            with(|api, _| api.set_action(this.0, a).map_err(api_error))
         });
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free(this.0))));
         methods.add_method("destroy", |_, this, ()| with(|api, _| Ok(api.destroy(this.0))));
@@ -511,7 +495,7 @@ impl UserData for Object {
             with(|api, _| Ok(api.take_damage(this.0, mode)))
         });
         methods.add_method("name_look_is", |_, this, sprite: LuaValue| {
-            let sprite = sprite_id(sprite, None)?;
+            let sprite = sprite_id(sprite)?;
             with(|api, _| api.name_look_is(this.0, sprite).map_err(api_error))
         });
         methods.add_method("raise_barrier", |_, this, t: mlua::Table| {
@@ -535,14 +519,6 @@ impl UserData for Object {
         });
 
         // Navis: the attack, requests, state, buttons.
-        methods.add_method("attack_param", |_, this, n: LuaValue| {
-            let n = param_index(n)?;
-            with(|api, _| api.attack_param(this.0, n).map_err(api_error))
-        });
-        methods.add_method("set_attack_param", |_, this, (n, v): (LuaValue, LuaValue)| {
-            let (n, v) = (param_index(n)?, u8_arg(v, "attack param")?);
-            with(|api, _| api.set_attack_param(this.0, n, v).map_err(api_error))
-        });
         methods.add_method("request", |_, this, name: mlua::LuaString| {
             let f = named(&name, "request", RequestFlag::from_name)?;
             with(|api, _| api.request(this.0, f).map_err(api_error))
@@ -576,7 +552,10 @@ impl UserData for Object {
             with(|api, b| match b.def(&action) {
                 Some((Registry::Action, h)) => api.set_content_attack(this.0, h, kind).map_err(api_error),
                 Some((r, _)) => Err(mlua::Error::runtime(format!("set_attack: a {r} is not an action"))),
-                None => Ok(api.set_attack(this.0, u8_arg(action, "action")?, kind)),
+                None => Err(mlua::Error::runtime(format!(
+                    "set_attack: expected an action definition, got {}",
+                    action.type_name()
+                ))),
             })
         });
         methods.add_method("navi_action", |lua, this, ()| {
@@ -586,7 +565,6 @@ impl UserData for Object {
                     from_api(lua, Value::Def(Registry::Action, h), &FieldType::Ref(Registry::Action, None))
                 }
                 bn6_content_api::NaviAction::Engine(name) => Ok(LuaValue::String(lua.create_string(name)?)),
-                bn6_content_api::NaviAction::Number(n) => Ok(LuaValue::Number(n as f64)),
             }
         });
         methods.add_method("set_damage_word", |_, this, word: LuaValue| {
@@ -660,9 +638,14 @@ impl UserData for Object {
         methods.add_method("action_state", |_, this, action: LuaValue| {
             let id = with(|api, bound| {
                 let action = match bound.def(&action) {
-                    Some((Registry::Action, h)) => Value::Def(Registry::Action, h),
+                    Some((Registry::Action, h)) => h,
                     Some((r, _)) => return Err(mlua::Error::runtime(format!("action_state: a {r} is not an action"))),
-                    None => Value::Int(u8_arg(action, "action")? as i64),
+                    None => {
+                        return Err(mlua::Error::runtime(format!(
+                            "action_state: expected an action definition, got {}",
+                            action.type_name()
+                        )));
+                    }
                 };
                 api.action_schema(action).map_err(api_error)
             })?;
@@ -682,15 +665,6 @@ impl UserData for Object {
             with(|api, _| api.obstacle_flag(this.0, f).map_err(api_error))
         });
     }
-}
-
-/// A parameter number 1..=4, as the game's Param1..Param4.
-fn param_index(n: LuaValue) -> mlua::Result<usize> {
-    let n = int(&n, "param")?;
-    if !(1..=4).contains(&n) {
-        return Err(mlua::Error::runtime(format!("param {n}: there are params 1 to 4")));
-    }
-    Ok(n as usize - 1)
 }
 
 // ---- Sprite, collision, state, navi --------------------------------------------------------
@@ -722,8 +696,8 @@ impl UserData for Sprite {
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-        methods.add_method("load", |_, this, (a, b): (LuaValue, Option<LuaValue>)| {
-            let id = sprite_id(a, b)?;
+        methods.add_method("load", |_, this, sprite: LuaValue| {
+            let id = sprite_id(sprite)?;
             with(|api, _| Ok(api.sprite_load(this.0, id)))
         });
         methods.add_method("load_like", |_, this, like: mlua::UserDataRef<Object>| {
@@ -970,16 +944,7 @@ fn vec3_arg(v: Option<mlua::UserDataRef<LVec3>>) -> Vec3 {
     v.map_or(Vec3::default(), |p| p.0)
 }
 
-/// An optional `Vec3` argument from a loose value.
-fn vec3_value(v: Option<LuaValue>) -> mlua::Result<Vec3> {
-    match v {
-        None | Some(LuaValue::Nil) => Ok(Vec3::default()),
-        Some(LuaValue::UserData(ud)) => ud.borrow::<LVec3>().map(|p| p.0).map_err(|_| mlua::Error::runtime("expected a Vec3")),
-        Some(v) => Err(mlua::Error::runtime(format!("expected a Vec3, got {}", v.type_name()))),
-    }
-}
-
-/// Spawn a kind content defines (or an engine or v1 kind's stand-in).
+/// Spawn a kind (a definition, or the stand-in of one of the engine's).
 fn spawn_kind_def(lua: &Lua, kind: LuaValue, pos: Vec3, at: SpawnAt) -> mlua::Result<LuaValue> {
     let o = with(|api, b| match b.def(&kind) {
         Some((Registry::Kind, h)) => api.spawn_def(h, pos, at).map_err(api_error),
@@ -1111,10 +1076,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let mask = int(&mask, "mask")? as u32;
         with(|api, _| Ok(LVec3(api.jitter(mask, pos.0))))
     });
-    lib_fn!(lua, t, "hand_chip", |_, (side, i): (LuaValue, LuaValue)| {
-        let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
-        with(|api, _| Ok(api.hand_chip(side, i)))
-    });
     lib_fn!(lua, t, "hand_cursor", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.hand_cursor(side)))
@@ -1127,7 +1088,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         let r = with(|api, _| Ok(api.linked(side)))?;
         let t = lua.create_table()?;
-        t.raw_set("chip", r.chip)?;
+        t.raw_set("chip", bound(|b| chip_value(b, r.chip))?)?;
         t.raw_set("bonus", r.bonus)?;
         t.raw_set("damage", r.damage)?;
         t.raw_set("owner", object_value(lua, r.owner)?)?;
@@ -1137,7 +1098,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "set_linked", |_, (side, r): (LuaValue, mlua::Table)| {
         let side = u8_arg(side, "side")? & 1;
         let rec = LinkedChip {
-            chip: table_int(&r, "chip")? as u16,
+            chip: bound(|b| chip_arg(b, &r.raw_get("chip")?, "a linked record's chip"))?,
             bonus: table_int(&r, "bonus")? as u16,
             damage: table_int(&r, "damage")? as u32,
             owner: object_arg(&r.raw_get("owner")?, "owner")?,
@@ -1207,71 +1168,15 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t.raw_set("ai_index", r.ai_index)?;
         Ok(LuaValue::Table(t))
     });
-    lib_fn!(
-        lua,
-        t,
-        "spawn",
-        |lua, args: mlua::MultiValue| {
-            let mut args = args.into_iter();
-            let first = args.next().unwrap_or(LuaValue::Nil);
-            // `battle.spawn(kind, pos)`, or (deprecated) by pool and index.
-            if let LuaValue::Table(_) = first {
-                let pos = vec3_value(args.next())?;
-                return spawn_kind_def(lua, first, pos, SpawnAt::AfterCurrent);
-            }
-            let LuaValue::String(pool) = first else {
-                return Err(mlua::Error::runtime("battle.spawn: expected a kind"));
-            };
-            let pool = named(&pool, "pool", Pool::from_name)?;
-            let index = u8_arg(args.next().unwrap_or(LuaValue::Nil), "kind index")?;
-            let pos = vec3_value(args.next())?;
-            let p = match args.next() {
-                Some(LuaValue::Table(t)) => params(Some(t), "spawn param")?,
-                _ => [0; 4],
-            };
-            let o = with(|api, _| Ok(api.spawn(pool, index, pos, p)))?;
-            object_value(lua, o)
-        }
-    );
+    lib_fn!(lua, t, "spawn", |lua, (kind, pos): (LuaValue, Option<mlua::UserDataRef<LVec3>>)| {
+        spawn_kind_def(lua, kind, vec3_arg(pos), SpawnAt::AfterCurrent)
+    });
     lib_fn!(lua, t, "spawn_first", |lua, (kind, pos): (LuaValue, Option<mlua::UserDataRef<LVec3>>)| {
         spawn_kind_def(lua, kind, vec3_arg(pos), SpawnAt::First)
     });
     lib_fn!(lua, t, "spawn_at_end", |lua, (kind, pos): (LuaValue, Option<mlua::UserDataRef<LVec3>>)| {
         spawn_kind_def(lua, kind, vec3_arg(pos), SpawnAt::End)
     });
-    lib_fn!(
-        lua,
-        t,
-        "spawn_kind",
-        |lua, (name, pos, p): (mlua::LuaString, Option<mlua::UserDataRef<LVec3>>, Option<mlua::Table>)| {
-            let name = name.to_str()?.to_string();
-            let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
-            let o = with(|api, _| api.spawn_kind(&name, pos, p).map_err(api_error))?;
-            object_value(lua, o)
-        }
-    );
-    lib_fn!(
-        lua,
-        t,
-        "spawn_kind_first",
-        |lua, (name, pos, p): (mlua::LuaString, Option<mlua::UserDataRef<LVec3>>, Option<mlua::Table>)| {
-            let name = name.to_str()?.to_string();
-            let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
-            let o = with(|api, _| api.spawn_kind_first(&name, pos, p).map_err(api_error))?;
-            object_value(lua, o)
-        }
-    );
-    lib_fn!(
-        lua,
-        t,
-        "spawn_kind_at_end",
-        |lua, (name, pos, p): (mlua::LuaString, Option<mlua::UserDataRef<LVec3>>, Option<mlua::Table>)| {
-            let name = name.to_str()?.to_string();
-            let (pos, p) = (vec3_arg(pos), params(p, "spawn param")?);
-            let o = with(|api, _| api.spawn_kind_at_end(&name, pos, p).map_err(api_error))?;
-            object_value(lua, o)
-        }
-    );
     lib_fn!(
         lua,
         t,
@@ -1364,7 +1269,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         object_value(lua, o)
     });
     lib_fn!(lua, t, "form_overlay", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
-        let sprite = sprite_id(spec.raw_get("sprite")?, None)?;
+        let sprite = sprite_id(spec.raw_get("sprite")?)?;
         let stepping = match spec.raw_get::<Option<mlua::LuaString>>("stepping")? {
             Some(s) => named(&s, "overlay stepping", |n| OVERLAY_STEPPINGS.iter().position(|x| *x == n))? as u8,
             None => 0,
@@ -1420,7 +1325,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
                 None => 0,
             };
             let s = bn6_content_api::api::AfterimageSpec {
-                sprite: if sprite.is_nil() { None } else { Some(sprite_id(sprite, None)?) },
+                sprite: if sprite.is_nil() { None } else { Some(sprite_id(sprite)?) },
                 anim: table_int(&spec, "anim")? as u8,
                 flip: table_int(&spec, "flip")? as u8,
                 lifetime: table_int(&spec, "lifetime")? as u16,
@@ -1543,13 +1448,15 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let needs_chip = matches!(step, DimmingStep::CheckAntiNavi | DimmingStep::ShowNaviTelop);
         t.set(
             step.name(),
-            lua.create_function(move |_, (me, chip): (mlua::UserDataRef<Object>, Option<LuaValue>)| {
-                let chip = match chip {
-                    Some(c) => u16_arg(c, "chip")?,
+            lua.create_function(move |_, (me, chip): (mlua::UserDataRef<Object>, mlua::Variadic<LuaValue>)| {
+                // The chip the controller shows (nil: the zeroed chip
+                // field's), for the steps that read it.
+                let chip = match chip.first() {
+                    Some(c) => bound(|b| chip_arg(b, c, "the dimming's chip"))?,
                     None if needs_chip => {
                         return Err(mlua::Error::runtime(format!("dimming.{} needs the chip", step.name())));
                     }
-                    None => 0,
+                    None => None,
                 };
                 with(|api, _| Ok(api.dimming(me.0, step, chip)))
             })?,
@@ -1707,9 +1614,8 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         HookCall::DimmingChip { user, spec } => {
             let t = lua.create_table()?;
             t.raw_set("element", spec.element)?;
-            t.raw_set("params", params_table(lua, spec.params)?)?;
             t.raw_set("damage", spec.damage)?;
-            t.raw_set("chip", spec.chip)?;
+            t.raw_set("chip", chip_value(bound, spec.chip)?)?;
             t.raw_set("bonus", spec.bonus)?;
             vec![obj(user)?, LuaValue::Table(t)]
         }
@@ -1718,7 +1624,6 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             t.raw_set("panel_x", spec.panel.x)?;
             t.raw_set("panel_y", spec.panel.y)?;
             t.raw_set("element", spec.element)?;
-            t.raw_set("params", params_table(lua, spec.params)?)?;
             t.raw_set("damage", spec.damage)?;
             vec![obj(user)?, obj(controller)?, LuaValue::Table(t)]
         }
@@ -1728,7 +1633,6 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             t.raw_set("panel_y", spec.panel.y)?;
             t.raw_set("element", spec.element)?;
             t.raw_set("z", spec.z)?;
-            t.raw_set("params", params_table(lua, spec.params)?)?;
             t.raw_set("damage", spec.damage)?;
             vec![obj(user)?, LuaValue::Table(t)]
         }
@@ -1755,13 +1659,16 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
 /// A hook's result as the engine takes it.
 pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<Value> {
     match call {
-        // An action: its number (registration by number) or its definition;
-        // nothing for a weapon whose own instant effect the engine runs.
+        // An action definition; nothing for a weapon whose own instant
+        // effect the engine runs.
         HookCall::Weapon { .. } if v.is_nil() => Ok(Value::Nil),
         HookCall::Weapon { .. } => match bound.def(&v) {
             Some((Registry::Action, h)) => Ok(Value::Def(Registry::Action, h)),
             Some((r, _)) => Err(mlua::Error::runtime(format!("a weapon routine returns an action, not a {r}"))),
-            None => Ok(Value::Int(int(&v, "the action a weapon routine returns")? as u8 as i64)),
+            None => Err(mlua::Error::runtime(format!(
+                "a weapon routine returns an action definition, not a {}",
+                v.type_name()
+            ))),
         },
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::Place { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))

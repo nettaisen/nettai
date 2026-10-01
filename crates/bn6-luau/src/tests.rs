@@ -197,9 +197,8 @@ fn definitions_are_frozen_and_definers_close_after_loading() {
 }
 
 #[test]
-fn a_plan_binds_definition_slots_and_module_exports() {
-    let mut modules = BOMBS.to_vec();
-    modules.push(("objects/old/old", "return { state = { t = 'u8' }, update = function(me) end }"));
+fn a_plan_binds_definition_slots() {
+    let modules = BOMBS.to_vec();
     let p = pack(&modules);
     let (definitions, compiled) = define(&p, &Data::Nil, &AssetNames::default(), Options::default()).unwrap();
     assert_eq!(compiled.len(), modules.len(), "every module compiled");
@@ -209,7 +208,6 @@ fn a_plan_binds_definition_slots_and_module_exports() {
         functions: vec![
             FnSource::slot(Registry::Kind, "bomb", "update"),
             FnSource::slot(Registry::Action, "minibomb/action", "update"),
-            FnSource::export("objects/old/old", "update"),
         ],
         schemas: Vec::new(),
         definitions,

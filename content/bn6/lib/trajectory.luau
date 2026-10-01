@@ -1,12 +1,16 @@
 --!strict
 -- Aiming thrown things: the game's trajectory helpers and the GBA BIOS
 -- routines they call (division, square root, arctangent), as the BIOS
--- computes them, over the pack's sine table (data.rules.sine).
+-- computes them, over the rules' sine table (rules/math).
 --
 -- All values are 32-bit integers as the game keeps them: positions and
 -- velocities 16.16, angles 256 steps a turn.
 
 local trajectory = {}
+
+-- `math_sinTable`, which `math_cosTable` continues: 256 steps a turn, 1.0 =
+-- 0x100, over a turn and a half.
+local SINE: { number } = require("../rules/math").sine
 
 -- ---- The BIOS ----------------------------------------------------------------
 
@@ -86,7 +90,7 @@ end
 -- the table runs over a turn and a half, so the cosine of step a is entry
 -- a + 64).
 function trajectory.sine(i: number): number
-    local v = data.rules.sine[i]
+    local v = SINE[i + 1]
     if v == nil then
         error(string.format("sine table entry %d is not in the content", i))
     end

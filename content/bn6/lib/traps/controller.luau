@@ -26,7 +26,7 @@ export type Trap = {
 export type State = {
     -- The chip and the Atk+ / cross bonus the telop shows (object +0x30,
     -- +0x32), which the side's record keeps for the trap's spring.
-    chip: number,
+    chip: Chip?,
     bonus: number,
     -- The chip's trap object, if it has one.
     trap: Trap?,
@@ -67,7 +67,7 @@ end
 traps.kind = define.kind {
     id = "trap-chip",
     pool = "effect",
-    state = { chip = "u16", bonus = "u16", trap = "record:trap" },
+    state = { chip = "chip", bonus = "u16", trap = "record:trap" },
     -- `sub_80E34C0`.
     update = dimming_chips.phases { name = "a trap chip", effect = effect, hidden = true },
 }

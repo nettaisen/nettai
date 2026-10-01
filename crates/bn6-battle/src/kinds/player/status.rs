@@ -127,7 +127,7 @@ fn tail(b: &mut Battle, r: ObjectRef) {
 /// `sub_801B9E6`: run the current action (§12.0 action table).
 pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
     let action = navi_action(b, r);
-    if action.is_attack(&b.content.defs) {
+    if action.is_attack() {
         if ai(b, r).attack.beast_lockon == 1 {
             return actions::beast_rush::update(b, r);
         }
@@ -143,12 +143,9 @@ pub(super) fn dispatch(b: &mut Battle, r: ObjectRef) {
         NaviAction::Freeze => reactions::freeze(b, r),
         NaviAction::Bubble => reactions::bubble(b, r),
         NaviAction::Idle => idle::control(b, r),
-        // The link navis' own actions (`off_80EA4C8[AIIndex]` past idle):
-        // content's.
-        NaviAction::Content(h) => crate::behavior::run_action(b, h, r),
-        NaviAction::Unported(n) if ai(b, r).ai_index != 0 => panic!("form action {n} is not implemented yet"),
-        NaviAction::Unported(n) => panic!("player action {n} is past MegaMan's action table"),
-        NaviAction::Engine(_) => unreachable!("the ruleset's actions are attacks"),
+        // (The original's table goes on past idle with the link navis'
+        // own actions, `off_80EA4C8[AIIndex]`; none has one.)
+        NaviAction::Content(_) | NaviAction::Engine(_) => unreachable!("an attack"),
     }
 }
 
@@ -811,7 +808,6 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
         return actions::cross_change::change(b, r);
     }
     if st & ai_status::CROSS_KNOCKOUT != 0 {
-        ai_mut(b, r).attack.variant = 0;
         return actions::cross_change::knock_out(b, r);
     }
     let f = ai(b, r).requests;

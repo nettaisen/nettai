@@ -12,13 +12,11 @@
 -- (`battle.spawn(bomb.kind, pos)`, `me:set_attack(action, 2)`). The
 -- definitions and their types are at the end of this file.
 --
--- Until the migration ends, the pack's data also registers modules by
--- number (docs/design/content-pack.md), and the numeric API those modules
--- use stays, marked "Deprecated" below and counted per module by
--- bn6-content-check's ratchet (tests/deprecated.txt), which only shrinks:
---
---   objects/NAME/object.toml  [kind] pool, index, script   an object kind:
---       the module exports `state` and `update(me)`
+-- What is left of the numeric API (an object's NameID, effects, sparks,
+-- regions, collision types and sounds by number, the `data` global and
+-- the `legacy` markers) is marked "Deprecated" below and counted per
+-- module by bn6-content-check's ratchet (tests/deprecated.txt), which only
+-- shrinks.
 --
 -- Functions keep nothing between calls: what an object or action keeps
 -- lives in its declared `state` (typed fields the engine stores and
@@ -162,9 +160,6 @@ export type ObstacleFlag =
     | "absorbed_by_0"
     | "absorbed_by_1"
 
--- A sprite: "CC-II" in hex, its folder in the pack's graphics/sprites.
-export type SpriteId = string
-
 -- A 16.16 fixed-point vector (x right, y down the field, z up). Immutable.
 declare class Vec3
     x: number
@@ -207,9 +202,8 @@ declare class Sprite
     -- The animation has played to its end (read-only).
     finished: boolean
     -- `sprite_load`: load a sprite (resets the animation and the look) and
-    -- let it animate (the object's `no_sprite_update` off). Deprecated: a
-    -- sprite by number ("CC-II"); use an asset (asset.sprite).
-    function load(self, sprite: SpriteAsset | SpriteId): ()
+    -- let it animate (the object's `no_sprite_update` off).
+    function load(self, sprite: SpriteAsset): ()
     -- `sub_800F29C` with `sub_800FC9E` or `sub_800F26C`, then `load`: the
     -- sprite `like` is drawn with (a player navi's by its side's navi and
     -- form; a field object's by its look): a stand-in for a chip's user.
@@ -302,12 +296,11 @@ declare class Object
     -- Its kind (read-only): compare with a kind definition
     -- (`me.kind == bomb.kind`).
     kind: Kind
-    -- Deprecated: which behavior within the pool (read-only); use `kind`.
-    index: number
     -- Setting it changes only the lifecycle state (the game's byte store);
     -- `set_lifecycle` also starts from the first action and phase.
     lifecycle: Lifecycle
-    -- The object's action and phase; their meaning is the kind's.
+    -- The object's action and phase; their meaning is the kind's. (A navi
+    -- has no action byte: `navi_action`, `set_attack`.)
     action: number
     phase: number
     phase_init: number
@@ -362,15 +355,10 @@ declare class Object
     attack_state: any
 
     -- Navis (actors) only. The attack in progress: its phase and whether
-    -- the phase's entry ran; its variant (what an action or the ruleset
-    -- sets for itself: a chip's use sets none) and chip (an opaque number
-    -- the engine gives a chip, 0 for none, which reads back as that chip;
-    -- `attack_chip` is the chip itself).
+    -- the phase's entry ran.
     step: number
     step_init: number
-    variant: number
-    chip: number
-    -- The attack's chip as its definition (nil when the attack has
+    -- The attack's chip, its definition (nil when the attack has
     -- none): what a weapon that uses the chip asks for the chip's own
     -- parts (`navi.attack_chip.action`), and what an action that becomes
     -- another chip's sets.
@@ -437,13 +425,10 @@ declare class Object
     -- for a NameID the content has no look for.
     function name_look_is(self, sprite: SpriteAsset): boolean
 
-    -- Spawn parameter n (1 to 4: the game's Param1..Param4).
-    function param(self, n: number): number
-    function set_param(self, n: number, value: number): ()
     -- Enter a lifecycle state from its first action and phase (the game's
     -- word store).
     function set_lifecycle(self, state: Lifecycle): ()
-    -- Switch to an action from its first phase.
+    -- Switch to an action from its first phase (not a navi's).
     function set_action(self, action: number): ()
     -- Free the slot now.
     function free(self): ()
@@ -550,8 +535,6 @@ declare class Object
     function raise_barrier(self, spec: BarrierSpec): ()
 
     -- Navis only.
-    function attack_param(self, n: number): number
-    function set_attack_param(self, n: number, value: number): ()
     function request(self, flag: Request): boolean
     function set_request(self, flag: Request, on: boolean): ()
     function navi_state(self, flag: NaviStateFlag): boolean
@@ -568,8 +551,9 @@ declare class Object
     -- `sub_801056A`, after each phase of an attack.
     function check_reactive_abort(self): ()
     -- `sub_80105F2`: the stance's own trap (the AntiDmg program's) caught a
-    -- hit: its counter (action 0x47, or 0x48 for a sword hit) starts at the
-    -- next tick with this attack's damage word, lockout and variant.
+    -- hit: its counter (the roles' `anti_damage_counter`, or
+    -- `anti_sword_counter` for a sword hit) starts at the next tick with
+    -- this attack's damage word and lockout.
     function start_stance_counter(self): ()
     -- `sub_8011450`: restart the form overlay with the navi after an
     -- animation change.
@@ -579,15 +563,13 @@ declare class Object
     -- `sub_801171C`: back to idle, the animation as it is.
     function end_attack(self): ()
     -- `object_setAttack0..5`: start an action (a definition); kind 1
-    -- buster, 2 chip or charged shot, 3 special, 4 move. Deprecated: an
-    -- action by number.
-    function set_attack(self, action: Action | number, kind: number): ()
-    -- What the navi runs: an action definition, one of the ruleset's own
+    -- buster, 2 chip or charged shot, 3 special, 4 move.
+    function set_attack(self, action: Action, kind: number): ()
+    -- What the navi runs: an action definition, or one of the ruleset's own
     -- ("entry", "take_control", "deletion", "flinch", "paralysis", "drag",
     -- "freeze", "bubble", "idle", "move", "dimming_chip", "navi_chip",
-    -- "instant_chip", "form_change", "cross_special"), or a number the
-    -- ruleset doesn't name (a link navi's own action).
-    function navi_action(self): Action | string | number
+    -- "instant_chip", "form_change", "cross_special").
+    function navi_action(self): Action | string
     function reset_attack_links(self): ()
     -- `sub_800FA54`: the held direction (1 up, 2 down, 3 back, 4 forward;
     -- 0 none).
@@ -628,12 +610,12 @@ declare class Object
     -- `sub_801265A`: the buster's damage.
     function buster_damage(self): number
     -- `sub_80127C0(0)`: fill the attack from the chip at the hand's cursor
-    -- (its damage, bonuses and modifiers); returns the chip's action.
-    function prepare_chip(self): number
+    -- (its damage, bonuses and modifiers; `attack_chip` is then the chip).
+    function prepare_chip(self): ()
     -- The attack state as content action `action`'s (zeroed unless that
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
-    function action_state(self, action: Action | number): any
+    function action_state(self, action: Action): any
     -- The obstacles it absorbed, oldest first: their looks and
     -- animations.
     function absorbed(self): { { look: AbsorbedLook, anim: number } }
@@ -722,9 +704,9 @@ export type HitboxSpec = {
 -- by the game's flip value, for `lifetime` ticks, blinking unless
 -- `steady`; its shadow at its height unless said otherwise. It ends early
 -- with its `tether`: when its side leaves the Beast forms, or when its
--- owner's action drops below 0x10.
+-- owner stops attacking.
 export type AfterimageSpec = {
-    sprite: (SpriteAsset | SpriteId)?,
+    sprite: SpriteAsset?,
     anim: number?,
     flip: number?,
     lifetime: number,
@@ -735,10 +717,9 @@ export type AfterimageSpec = {
     tether: ("beast_form" | "attack")?,
 }
 
--- A side's defensive-chip record (the chip by number, 0 for none; a chip
--- content defines is 0x200 + its handle).
+-- A side's defensive-chip record (the chip; nil: no record).
 export type LinkedChip = {
-    chip: number,
+    chip: Chip?,
     bonus: number,
     -- The damage word.
     damage: number,
@@ -767,7 +748,7 @@ export type FormOverlayStepping = "normal" | "while_dimmed" | "always"
 -- (Param4); a pixel nearer than its owner when `nudged` (ExtraVars[0]);
 -- wearing the owner's palette when `owner_palette` (ExtraVars[1] 0xFF).
 export type FormOverlaySpec = {
-    sprite: SpriteAsset | SpriteId,
+    sprite: SpriteAsset,
     -- "normal" by default.
     stepping: FormOverlayStepping?,
     anim_offset: number?,
@@ -795,11 +776,11 @@ export type BarrierSpec = {
 -- What a dimming chip's controller is spawned with: the user's attack.
 export type DimmingChipSpec = {
     element: number,
-    params: { number },
     -- The damage word (damage | hit parameter << 16).
     damage: number,
-    -- The chip, and the bonus the telop shows with it.
-    chip: number,
+    -- The chip (nil: an attack without one), and the bonus the telop shows
+    -- with it.
+    chip: Chip?,
     bonus: number,
 }
 
@@ -808,7 +789,6 @@ export type NaviChipSpec = {
     panel_x: number,
     panel_y: number,
     element: number,
-    params: { number },
     -- The damage word, bonus included.
     damage: number,
 }
@@ -820,7 +800,6 @@ export type InstantChipSpec = {
     panel_y: number,
     z: number,
     element: number,
-    params: { number },
     -- The damage word (damage | hit parameter << 16) plus the bonus's low
     -- byte.
     damage: number,
@@ -883,8 +862,7 @@ declare battle: {
     rng_positive: () -> number,
     -- `AddRandomVarianceToTwoCoords`: x and z by up to mask/2 pixels.
     jitter: (mask: number, pos: Vec3) -> Vec3,
-    -- A side's hand: the chip at i (0xFFFF = none), and the cursor.
-    hand_chip: (side: number, i: number) -> number,
+    -- A side's hand: its cursor.
     hand_cursor: (side: number) -> number,
     advance_hand: (side: number) -> (),
     linked: (side: number) -> LinkedChip,
@@ -921,22 +899,14 @@ declare battle: {
     loop_register: () -> number,
     -- Spawn an object of a kind into its pool's lowest free slot, its
     -- state zeroed; it runs later this tick, right after the spawner. nil
-    -- if the pool is full. Deprecated: by pool and index.
-    -- (Typed loosely past the kind: the deprecated form is `(pool, index,
-    -- pos?, params?)`.)
-    spawn: (kind: Kind | Pool, ...any) -> Object?,
+    -- if the pool is full.
+    spawn: (kind: Kind, pos: Vec3?) -> Object?,
     -- `sub_80033E4`: the same at the head of the update list (it first
     -- runs next tick, before everything else).
     spawn_first: (kind: Kind, pos: Vec3?) -> Object?,
     -- `sub_8003374` / `sub_800333C`: the same, at the end of the update
     -- list (it runs after everything else this tick).
     spawn_at_end: (kind: Kind, pos: Vec3?) -> Object?,
-    -- Deprecated: a content kind by name (its folder under objects/); use
-    -- `spawn(kind, pos)`.
-    spawn_kind: (name: string, pos: Vec3?, params: { number }?) -> Object?,
-    -- Deprecated: use `spawn_first(kind, pos)`, `spawn_at_end(kind, pos)`.
-    spawn_kind_first: (name: string, pos: Vec3?, params: { number }?) -> Object?,
-    spawn_kind_at_end: (name: string, pos: Vec3?, params: { number }?) -> Object?,
     -- The generic one-shot effect (effect object #0) an effect definition
     -- describes. Deprecated: an effect by number.
     effect: (pos: Vec3, effect: Effect | number, flip: number?, palette_add: number?, priority: number?) -> Object?,
@@ -1036,9 +1006,11 @@ declare dimming: {
     show_telop: (controller: Object) -> (),
     -- `sub_800BBA8`: a hidden chip's telop.
     show_hidden_telop: (controller: Object) -> (),
-    -- A navi chip's: `sub_800BDB2` (AntiNavi) and `sub_800BA8A` (its telop).
-    check_anti_navi: (controller: Object, chip: number) -> (),
-    show_navi_telop: (controller: Object, chip: number) -> (),
+    -- A navi chip's: `sub_800BDB2` (AntiNavi) and `sub_800BA8A` (its
+    -- telop), for the chip the controller shows (nil: a zeroed chip
+    -- field's, the roles' `zeroed` chip).
+    check_anti_navi: (controller: Object, chip: Chip?) -> (),
+    show_navi_telop: (controller: Object, chip: Chip?) -> (),
     -- `object_undimScreen`.
     undim_screen: (controller: Object) -> (),
     -- `sub_800BF16`: `side` starts a dimming with `controller` (nil if its
@@ -1203,181 +1175,15 @@ declare int: {
     mul32: (a: number, b: number) -> number,
 }
 
--- ---- The pack's data -----------------------------------------------------
+-- ---- The content's data by number ------------------------------------------
 --
--- `data` is the content pack's data, frozen, as the pack's files write it
--- (docs/design/content-pack.md): field names as in the files, enums as
--- names, sprites as "CC-II", keyed by the entities' ids. Only the fields
--- scripts read are typed here; the rest are there too.
-
--- What an attachment looks like and where it sits on its owner.
-export type AttachmentKind = {
-    -- The attachment's number (its first spawn parameter).
-    id: number,
-    sprite: SpriteId,
-    palette: number,
-    -- Pixels raised by (subtracted from y and z).
-    lift: number,
-    -- The owner's sprite attach point it follows (nil: its origin).
-    attach_point: number?,
-}
-
-export type RockKind = {
-    id: number,
-    anim: number,
-    hp: number,
-    element: string,
-    debris_palette: number,
-    break_sound: number,
-    name_id: number,
-}
-
-export type BodyOverlay = { id: number, sprite: SpriteId, in_front: { boolean } }
-
--- A kind of sword wave (attack object #0x96), by its first parameter.
-export type SwordWave = {
-    id: number,
-    -- Collision types (what it is, what it hits) and hit modifier.
-    self_type: number,
-    target_type: number,
-    hit_mod: number,
-    region: number,
-    sprite: SpriteId,
-    anim: number,
-    -- It animates, restarting its animation after the last frame.
-    animates: boolean,
-    -- It highlights the panels its region covers.
-    highlight: boolean,
-    -- Panel centers it passes before it ends.
-    reach: number,
-    ground_shadow: boolean,
-    palette: number,
-    status: number,
-    -- 16.16 per tick, forward.
-    speed: number,
-}
-
--- A kind of boomerang (objects/boomerang): 16.16 pixels a tick along a row
--- and along the column, and whether it turns panels it crosses to grass.
-export type BoomerangKind = { id: number, speed: number, turn_speed: number, grass: boolean }
--- What a projectile's hit does to the panel it hits: crack it
--- (`object_crackPanel`), break it (`object_breakPanel_dup2`), or make a
--- solid one a panel of a type (by the shot's side).
-export type PanelHit = {
-    effect: "crack" | "break" | "set_type",
-    left_side: PanelType?,
-    right_side: PanelType?,
-}
-
--- A kind of projectile (attack object #0, objects/projectile), by its
--- first parameter: fire one with lib/projectile.luau.
-export type ProjectileKind = {
-    id: number,
-    -- Collision types (what it is, what it hits) and hit modifier.
-    self_type: number,
-    target_type: number,
-    hit_mod: number,
-    -- Its element and secondary elements (lib/element.luau).
-    element: string,
-    secondary: { string }?,
-    -- The hit spark (0xFF: none).
-    hit_effect: number,
-    -- Drawn with this sprite and animation (0 if nil), if any.
-    sprite: SpriteId?,
-    anim: number?,
-    -- The status byte and bug its hits carry (nil or 0: none).
-    status: number?,
-    bug: number?,
-    bug_arg: number?,
-    hit_panel: PanelHit?,
-    -- It bursts around what it hits, and over the last two columns when
-    -- it leaves the field.
-    bursts: boolean?,
-    -- It sits a pixel lower down the field and higher on each panel.
-    climbs: boolean?,
-}
-
--- A kind of flying shot (attack object #0xB, objects/flying-shot), by its
--- first parameter.
-export type FlyingShotKind = {
-    id: number,
-    self_type: number,
-    target_type: number,
-    hit_mod: number,
-    element: string,
-    secondary: { string }?,
-    hit_effect: number,
-    -- Its sprite and animation (0 if nil).
-    sprite: SpriteId,
-    anim: number?,
-    shadow: boolean?,
-    -- Pixels a tick forward, 16.16.
-    speed: number,
-    -- Panel centers it passes before it ends.
-    range: number,
-    -- The status byte its hits carry (nil or 0: none).
-    status: number?,
-    highlight: boolean?,
-    -- A thrown obstacle: its look is its spawner's.
-    obstacle: boolean?,
-    -- Its spark shows over its panel's center.
-    panel_spark: boolean?,
-    -- The sound when it sets off after its wait.
-    launch_sound: number?,
-    -- The effect it leaves when its range runs out.
-    end_effect: number?,
-}
--- How a field object looks by its NameID (`byte_8021220`, NameIDs
--- 0xCD..=0xFF, as `sub_800F26C` gives it); no sprite is the table's none.
-export type NameLook = { name_id: number, sprite: SpriteId?, anim: number, palette: number, shadow: boolean }
-
--- A shock wave's look and timing (attack object #0x16, by its first
--- parameter): ticks on a panel before the next rolls on, and the panel
--- type it leaves ("cracked" cracks the panel, "broken" breaks it).
-export type ShockWave = { id: number, sprite: SpriteId, anim: number, ticks: number, panel: PanelType? }
--- An object kind a script implements.
-export type ObjectKindData = { pool: Pool, index: number, script: string }
-
+-- Deprecated: `data` is what is left of the content's tables by number,
+-- frozen: the hit regions, which region definitions replace.
 export type PackData = {
-    -- Hit-region shapes by region number: the panels' offsets `{ dx, dy }`
-    -- from the anchor (dx facing right).
-    regions: { [number]: { { number } } },
-    -- Region shapes by region number (`PanelOffsetListsPointerTable`): the
-    -- panels as {dx, dy}, dx toward the facing side, in the order hits and
-    -- panel searches (`object_getPanelRegion`) take them.
-    regions: { [number]: { { number } } },
-    objects: {
-        attachments: { [number]: AttachmentKind },
-        rocks: { [number]: RockKind },
-        absorbed_sprites: { [number]: SpriteId },
-        body_overlays: { [number]: BodyOverlay },
-        sun_beam_looks: { [number]: SpriteId },
-        boomerangs: { [number]: BoomerangKind },
-        projectiles: { [number]: ProjectileKind },
-        flying_shots: { [number]: FlyingShotKind },
-        sword_waves: { [number]: SwordWave },
-        name_looks: { [number]: NameLook },
-        kinds: { [string]: ObjectKindData },
-        shock_waves: { [number]: ShockWave },
-    },
-    rules: {
-        -- The buster's recovery in ticks (`byte_80209CC`), at
-        -- rapid * 6 + min(open panels ahead, 5).
-        buster_recovery: { [number]: number },
-        -- The sine table (`math_sinTable`, which `math_cosTable` continues):
-        -- 256 steps a turn, 1.0 = 0x100, over a turn and a half, so the
-        -- cosine of step a is entry a + 64.
-        sine: { [number]: number },
-        -- Whole-field hit regions (`byte_8019C34`): region 0x80 + i covers
-        -- every panel whose flags word has all of `require` and none of
-        -- `forbid`.
-        field_regions: { [number]: PanelCondition },
-        -- MegaMan's palette in each Cross, by form (`byte_80203EA`).
-        cross_palettes: { [number]: number },
-    },
     -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
     -- panels a region covers, { dx, dy } from its panel with dx toward the
-    -- facing side, in the game's order.
+    -- facing side, in the game's order (the order hits and panel searches,
+    -- `object_getPanelRegion`, take them).
     regions: { [number]: { { number } } },
 }
 
@@ -1628,31 +1434,32 @@ export type Region = RegionSpec
 export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_offset: number? }
 export type CollisionType = CollisionTypeSpec
 
--- What the ruleset needs from content by role (rules/roles.luau, once).
--- A role a v1 registration fills, until its family converts it
--- (transitional, counted by the ratchet): an action by its number, a kind
--- by its key.
-export type LegacyAction = { legacy: { action: number } }
-export type LegacyKind = { legacy: { kind: string } }
+-- What the ruleset needs from content by role (rules/roles.luau, once):
+-- each role names the definition that fills it.
 export type RolesSpec = {
     actions: {
-        anti_damage_counter: (Action | LegacyAction)?,
-        anti_sword_counter: (Action | LegacyAction)?,
-        body_guard_counter: (Action | LegacyAction)?,
-        forced_charged_shot: (Action | LegacyAction)?,
-        stun_strike: (Action | LegacyAction)?,
-        cross_protect: (Action | LegacyAction)?,
-        turn: (Action | LegacyAction)?,
-        cross_death: (Action | LegacyAction)?,
-        volley: (Action | LegacyAction)?,
-        charged_sword: (Action | LegacyAction)?,
-        beast_claw: (Action | LegacyAction)?,
+        anti_damage_counter: Action?,
+        anti_sword_counter: Action?,
+        body_guard_counter: Action?,
+        forced_charged_shot: Action?,
+        stun_strike: Action?,
+        cross_protect: Action?,
+        turn: Action?,
+        cross_death: Action?,
+        volley: Action?,
+        charged_sword: Action?,
+        beast_claw: Action?,
+        dust_beast_scatter: Action?,
     }?,
     kinds: {
-        absorbed_obstacle: (Kind | LegacyKind)?,
-        falling_rock: (Kind | LegacyKind)?,
-        support: (Kind | LegacyKind)?,
-        anti_recovery: (Kind | LegacyKind)?,
+        absorbed_obstacle: Kind?,
+        falling_rock: Kind?,
+        support: Kind?,
+        anti_recovery: Kind?,
+        -- What the player whose AI index is 10 spawns in battle mode 9
+        -- (the original's attack object #0xD2 and actor object #0x28).
+        mode9_attack: Kind?,
+        mode9_actor: Kind?,
     }?,
     -- The chips the ruleset names: what a zeroed chip field reads, the
     -- custom screen's Beast Out chip and its invalid selection's, and the
@@ -1716,10 +1523,8 @@ declare define: {
     record: <T>(record_type: string, spec: T) -> T,
 }
 
--- `legacy { ... }`: data only registration by number reads (a navi's or a
--- form's number, a weapon's routine numbers and v1 module; the original's
--- numbering of a table), until its family converts
--- (docs/design/content-model-v2.md §12). As data it is the table itself;
--- the checker counts each use. It is typed `any` so a marker can stand
--- where the converted field will be (a weapon's `setup`).
+-- Deprecated. `legacy { ... }`: data the ruleset still reads by number (a
+-- navi's or a form's number and NameID; the original's numbering of a
+-- table), until its last users convert (docs/design/content-model-v2.md
+-- §12). As data it is the table itself; the checker counts each use.
 declare function legacy(t: any): any

@@ -363,14 +363,12 @@ fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let damage = crate::hand::chip_damage(b, chip, side);
     let a = &mut ai_mut(b, r).attack;
     a.chip = chip;
-    // (The original copies the record's subtype and parameter bytes: a
-    // chip has neither here; what its action needs is its definition's.)
-    a.params = [0; 4];
+    // (The original copies the record's subtype and parameter bytes too:
+    // a chip has neither here; what its action needs is its definition's.)
     a.damage = damage;
     a.hit_param = cd.hit_param as u16;
     a.lockout = cd.lockout;
     a.extra = 0;
-    a.variant = 0;
     a.element = cd.element as u8 | content.rules.family_elements(cd.family).0;
     a.charged = 0;
 }
