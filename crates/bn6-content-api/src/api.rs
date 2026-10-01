@@ -963,6 +963,9 @@ pub trait CoreApi {
     /// `battle_isBattleOver` as the routines that read its Z flag see it:
     /// over only once time is up (a KO reads as not over).
     fn is_time_up(&self) -> bool;
+    /// `sub_800EB6C`: the local player sees `side`'s objects (unless they
+    /// are the other side's and the local navi is blind).
+    fn viewer_sees(&self, side: u8) -> bool;
     fn battle_info(&self, f: BattleInfo) -> Value;
     /// Report a sound effect both players hear (output only; nothing in
     /// the simulation reads it).
@@ -1248,8 +1251,11 @@ pub trait CoreApi {
     /// `sub_8010DF6` with `owner`'s NameID record (`sub_800F29C`: its
     /// actor type, AI index and first byte): put on the parts that record
     /// adds, kept in `o`'s related2; with `keep_stepping`, a part that came
-    /// steps even while paused and dimmed (its Param3 1, flags 0x14).
-    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool);
+    /// steps even while paused and dimmed (its Param3 1, flags 0x14); with
+    /// `paused_stepping`, `sub_8010DF6`'s r2 is 1 rather than the record's
+    /// first byte (the dimming chips' stand-ins): the parts step even while
+    /// paused.
+    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool, paused_stepping: bool);
     /// `sub_8011044` with `owner`'s NameID record: take them off.
     fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef);
 
@@ -1347,6 +1353,11 @@ pub trait CoreApi {
     /// `sprite_load`: load a sprite (its animation and look reset) and let
     /// it animate (`no_sprite_update` off).
     fn sprite_load(&mut self, o: ObjectRef, id: SpriteId);
+    /// `sub_800F29C`, then `sub_800FC9E` or `sub_800F26C`, and
+    /// `sprite_load`: load the sprite `like` is drawn with (a player navi's
+    /// by its side's navi and form, a field object's by its NameID's
+    /// look): a stand-in for its user.
+    fn sprite_load_like(&mut self, o: ObjectRef, like: ObjectRef) -> ApiResult<()>;
     /// Load the sprite `owner`'s NameID record gives it: a player's own by
     /// its navi stats (`sub_800FC9E`), another object's its NameID look
     /// (`sub_800F26C`).
@@ -1371,6 +1382,9 @@ pub trait CoreApi {
     /// The damage taken this window in element `element` (0 null, 1 fire,
     /// 2 aqua, 3 elec, 4 wood, 5 the sixth slot), as totaled.
     fn collision_element_damage(&self, o: ObjectRef, element: u8) -> ApiResult<u16>;
+    /// `sub_801A4DC`: the objects whose collisions hit `o`'s this window
+    /// (the registrations' parents), in slot order.
+    fn collision_hit_by(&self, o: ObjectRef) -> ApiResult<Vec<ObjectRef>>;
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()>;
     /// Register on the region's panels (clearing the last results).
     fn present_collision(&mut self, o: ObjectRef);
@@ -1462,6 +1476,10 @@ pub trait CoreApi {
     /// (removed by a chip, blinking out or absorbed): the test `sub_80C9EE6`
     /// and `sub_80EFD8C` make before taking an obstacle.
     fn obstacle_present(&self, o: ObjectRef) -> bool;
+    /// `sub_80DC3B2`'s test: a field object by its NameID word (0xCD to
+    /// 0xFF, the +0x2A half 0) but those `sub_800F486` excludes (0xD3,
+    /// 0xDA, 0xE9, 0xEA), which BlzrdBal's ball swallows.
+    fn obstacle_swallowable(&self, o: ObjectRef) -> bool;
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.

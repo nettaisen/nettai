@@ -220,6 +220,10 @@ declare class Sprite
     -- let it animate (the object's `no_sprite_update` off). Deprecated: a
     -- sprite by number ("CC-II"); use an asset (asset.sprite).
     function load(self, sprite: SpriteAsset | SpriteId): ()
+    -- `sub_800F29C` with `sub_800FC9E` or `sub_800F26C`, then `load`: the
+    -- sprite `like` is drawn with (a player navi's by its side's navi and
+    -- form; a field object's by its look): a stand-in for a chip's user.
+    function load_like(self, like: Object): ()
     -- The sprite `owner`'s NameID record gives it: a player's own by its
     -- navi stats (`sub_800FC9E`), another object's its NameID look
     -- (`sub_800F26C`); loaded as `load` does.
@@ -288,6 +292,9 @@ declare class Collision
     -- The damage taken this window in an element (0 null, 1 fire, 2 aqua,
     -- 3 elec, 4 wood; 5 the sixth slot).
     function element_damage(self, element: number): number
+    -- `sub_801A4DC`: the objects whose collisions hit it this window, in
+    -- slot order.
+    function hit_by(self): { Object }
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -443,7 +450,10 @@ declare class Object
     -- `sub_8010DF6` with `owner`'s NameID record: put on the parts that
     -- record adds (a navi's body overlay), kept in related2; with
     -- `keep_stepping`, a part that came steps even while paused and dimmed.
-    function add_parts_of(self, owner: Object, keep_stepping: boolean?): ()
+    -- With `paused_stepping`, `sub_8010DF6`'s r2 is 1 rather than the
+    -- record's first byte (the dimming chips' stand-ins): the parts step
+    -- even while paused.
+    function add_parts_of(self, owner: Object, keep_stepping: boolean?, paused_stepping: boolean?): ()
     -- `sub_8011044` with `owner`'s NameID record: take them off.
     function remove_parts_of(self, owner: Object): ()
 
@@ -783,6 +793,10 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
+    -- `sub_800EB6C`: the local player sees `side`'s objects (unless they
+    -- are the other side's and the local navi is blind). Presentation, as
+    -- the original keeps it in the objects' visibility.
+    viewer_sees: (side: number) -> boolean,
     link: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
@@ -1081,6 +1095,10 @@ declare obstacle: {
     -- (removed, blinking out or absorbed): the test `sub_80C9EE6` and
     -- `sub_80EFD8C` make before taking an obstacle.
     present: (o: Object) -> boolean,
+    -- `sub_80DC3B2`'s test: a field object by its NameID (0xCD to 0xFF)
+    -- but those `sub_800F486` excludes (0xD3, 0xDA, 0xE9, 0xEA): what
+    -- BlzrdBal's ball swallows.
+    swallowable: (o: Object) -> boolean,
 }
 
 -- Exact integer helpers.

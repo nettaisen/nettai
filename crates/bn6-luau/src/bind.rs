@@ -382,9 +382,9 @@ impl UserData for Object {
         });
         methods.add_method(
             "add_parts_of",
-            |_, this, (owner, keep): (mlua::UserDataRef<Object>, Option<bool>)| {
+            |_, this, (owner, keep, stepping): (mlua::UserDataRef<Object>, Option<bool>, Option<bool>)| {
                 let owner = owner.0;
-                with(|api, _| Ok(api.add_parts_of(this.0, owner, keep.unwrap_or(false))))
+                with(|api, _| Ok(api.add_parts_of(this.0, owner, keep.unwrap_or(false), stepping.unwrap_or(false))))
             },
         );
         methods.add_method("remove_parts_of", |_, this, owner: mlua::UserDataRef<Object>| {
@@ -684,6 +684,9 @@ impl UserData for Sprite {
             let id = sprite_id(a, b)?;
             with(|api, _| Ok(api.sprite_load(this.0, id)))
         });
+        methods.add_method("load_like", |_, this, like: mlua::UserDataRef<Object>| {
+            with(|api, _| api.sprite_load_like(this.0, like.0).map_err(api_error))
+        });
         methods.add_method("load_look_of", |_, this, owner: mlua::UserDataRef<Object>| {
             let owner = owner.0;
             with(|api, _| Ok(api.sprite_load_look_of(this.0, owner)))
@@ -753,6 +756,10 @@ impl UserData for Collision {
         methods.add_method("element_damage", |_, this, element: LuaValue| {
             let element = u8_arg(element, "element")?;
             with(|api, _| api.collision_element_damage(this.0, element).map_err(api_error))
+        });
+        methods.add_method("hit_by", |lua, this, ()| {
+            let hitters = with(|api, _| api.collision_hit_by(this.0).map_err(api_error))?;
+            lua.create_sequence_from(hitters.into_iter().map(Object))
         });
     }
 }
@@ -990,6 +997,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
+    lib_fn!(lua, t, "viewer_sees", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| Ok(api.viewer_sees(side)))
+    });
     for &f in BattleInfo::ALL {
         t.set(
             f.name(),
@@ -1549,6 +1560,7 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "release_tracking", |_, me: Me| with(|api, _| Ok(api.obstacle_release_tracking(me.0))));
     lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
     lib_fn!(lua, t, "present", |_, o: Me| with(|api, _| Ok(api.obstacle_present(o.0))));
+    lib_fn!(lua, t, "swallowable", |_, o: Me| with(|api, _| Ok(api.obstacle_swallowable(o.0))));
     for &r in ObstacleRequest::ALL {
         t.set(
             r.name(),

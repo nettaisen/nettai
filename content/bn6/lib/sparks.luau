@@ -24,9 +24,6 @@ sparks.impact = define.spark { sprite = asset.sprite("impact"), anim = 0, palett
 -- A breaking hit (spark 0x0A: the break family's shots, a thrown obstacle).
 sparks.breaking = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
 
--- A piercing hit (spark 6: a flying shot, the VDoll's curse).
-sparks.pierce = define.spark { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
-
 -- A shot's impact (spark 9: a projectile variant nothing names yet).
 sparks.shot = define.spark { sprite = asset.sprite("shot-impact"), anim = 0, palette = 0 }
 
@@ -38,6 +35,10 @@ sparks.bat = define.spark { sprite = asset.sprite("bat-impact"), anim = 1, palet
 
 -- The erase beams' spark (hit effect 0x0C).
 sparks.erase = define.spark { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
+
+-- A heavy hit's (hit effect 6): Magnum's shot, the beasts' claws and bites,
+-- the flying shot's arrows, VDoll's curse.
+sparks.heavy = define.spark { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
 
 -- `sub_801A146`: the spark of an attack of `element` (its primary
 -- element, the low nibble).

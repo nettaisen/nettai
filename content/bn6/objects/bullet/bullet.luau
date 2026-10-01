@@ -142,12 +142,12 @@ end
 local SPLASH = define.effect { sprite = asset.sprite("spout-splash"), anim = 0, palette = 0 }
 local HIT = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 0 }
 local HIT_BRIGHT = define.effect { sprite = asset.sprite("vulcan-hit"), anim = 0, palette = 1 }
-local SHOCK = define.effect { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 }
 local GLINT = define.effect { sprite = asset.sprite("form-change"), anim = 1, palette = 0 }
 local SPARKLE = define.effect { sprite = asset.sprite("colonel-effect"), anim = 3, palette = 0 }
 local SPREAD = asset.sound("h-burst")
 local SPLASHING = asset.sound("spout-ball")
-local FIRE = asset.sound("fire-spread")
+-- (The fire rows' sound is the one the target squares make as they move.)
+local FIRE = asset.sound("target-move")
 
 local function v(region: Region, hit_mod: number, effect: Effect, sound: Sound?, more: { single: boolean?, status: number? }?): BulletVariant
     local m: { single: boolean?, status: number? } = more or {}
@@ -155,10 +155,10 @@ local function v(region: Region, hit_mod: number, effect: Effect, sound: Sound?,
 end
 local FORK = regions.fork
 local ROWS: { [number]: BulletVariant } = {
-    [0x00] = v(regions.long, 0, SHOCK, SPREAD),
-    [0x01] = v(FORK, 0, SHOCK, SPREAD),
-    [0x02] = v(regions.wide, 0, SHOCK, SPREAD),
-    [0x03] = v(regions.square, 0, SHOCK, SPREAD),
+    [0x00] = v(regions.long, 0, effects.flash, SPREAD),
+    [0x01] = v(FORK, 0, effects.flash, SPREAD),
+    [0x02] = v(regions.wide, 0, effects.flash, SPREAD),
+    [0x03] = v(regions.square, 0, effects.flash, SPREAD),
     [0x04] = v(regions.long, 0, SPLASH, SPLASHING),
     [0x05] = v(FORK, 0, SPLASH, SPLASHING),
     [0x06] = v(regions.wide, 0, SPLASH, SPLASHING),
