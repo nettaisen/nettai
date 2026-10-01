@@ -7,7 +7,8 @@
 -- ticks, gives a Sword.
 --
 -- Its record stays the pack's for now (SlashCross's A-charge, weapon 0x11,
--- asks for its action by number): this is its action, which registration
+-- asks for its action by number, and the Beast rush's chain leaves the
+-- variable swords out by theirs): this is its action, which registration
 -- by number runs (chips/052-varswrd; docs/design/content-model-v2.md §12).
 
 local ftrsword = require("../ftrsword/chip")
@@ -52,6 +53,7 @@ return {
         sword = sword.action,
         random = 6,
         no_charged = sonicbom.actions.sonicbom,
+        -- The picks' chips, by number until they are definitions (§12).
         legacy = { chips = { 0x49, 0x172, 0x48, 0x153, 0x173 }, sword = 0x47 },
     },
 }

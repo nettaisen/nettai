@@ -16,9 +16,10 @@ local by_number = {
 }
 
 function by_number.update(me: Object, s: any)
-    local chip = gundels[me.variant + 1]
+    local subtype = me.variant
+    local chip = gundels[subtype + 1]
     if not chip then
-        error(string.format("GunDelSol subtype %d has no chip", me.variant))
+        error(string.format("GunDelSol subtype %d has no chip", subtype))
     end
     chip.action.update(me, s)
 end
