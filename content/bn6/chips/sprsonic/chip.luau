@@ -20,5 +20,11 @@ return define.chip {
     beast = { rush = false, lockon = lockon.sprsonic },
     library = { number = 375, index = 0, sort = 0 },
     slot_in_limit = 1,
-    legacy = legacy { number = 0x177, action = 0x55, subtype = 1, params = { 1, 1, 0, 0 } },
+    legacy = legacy {
+        number = 0x177,
+        action = 0x55,
+        subtype = 1,
+        params = { 1, 1, 0, 0 },
+        script = "chips/173-sonicbom/chip",
+    },
 }

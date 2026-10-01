@@ -556,8 +556,8 @@ fn a_charged_shot_waits_then_fires_the_charged_kind() {
     assert_eq!(b.objects.get(p0).anim, 0x0E);
     assert!(of_kind(&b, "projectile").is_empty());
     run_to(&mut b, p, &mut t, 6, 0);
-    let shot = of_kind(&b, "projectile")[0];
-    assert_eq!(b.objects.get(shot).params[0], 6);
+    assert_eq!(of_kind(&b, "projectile").len(), 1);
+    assert_eq!(ai_mut(&mut b, p0).attack.params[0], 6, "the plain charged shot's row");
     let flash = b.objects.get(p0).related[0].expect("the muzzle flash");
     assert!(shows_row(&b, flash, 5), "the muzzle flash");
     // (Attack + 1) * 10 damage, four ticks later.
@@ -626,7 +626,7 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     assert_eq!(thrown.len(), 1);
     let thrown = thrown[0];
     let o = b.objects.get(thrown);
-    assert_eq!((o.params[0], o.anim, o.pos.z, o.pos.y), (6, 2, 0xC << 16, 28 << 16));
+    assert_eq!((o.anim, o.pos.z, o.pos.y), (2, 0xC << 16, 28 << 16));
     let arm = b.objects.get(p0).related[0].expect("the second arm");
     assert!(shows_row(&b, arm, 6), "the arm");
     // No shot before: no recovery; the navi idles once the arm is down.
@@ -671,55 +671,81 @@ fn a_throw_waits_the_last_shots_recovery() {
     assert_eq!(b.objects.get(p0).action, 8);
 }
 
-/// A projectile of kind `kind` from side 0's navi, on (x, y).
-fn projectile(b: &mut Battle, owner: ObjectRef, kind: u8, x: u8, y: u8) -> ObjectRef {
-    let r = crate::behavior::spawn_kind(b, "projectile", crate::object::Vec3 { x: 0, y: 0, z: 0x18 << 16 }, [kind, 0, 0, 0])
-        .expect("a free attack slot");
-    let o = b.objects.get_mut(r);
-    (o.panel, o.damage, o.alliance, o.flip) = (PanelPos { x, y }, 10, 0, 0);
-    o.related[0] = Some(owner);
-    r
+/// Put side 0's navi on (x, y).
+fn stand_on(b: &mut Battle, p0: ObjectRef, x: u8, y: u8) {
+    let (px, py) = crate::kinds::player::panel_coordinates(x, y);
+    let o = b.objects.get_mut(p0);
+    (o.panel, o.future_panel) = (PanelPos { x, y }, PanelPos { x, y });
+    (o.pos.x, o.pos.y) = (px, py);
+}
+
+/// Side 0's navi, on (x, y), fires a charged shot of projectile row `row`
+/// (the row a NaviCust program names); the shot, on the tick it appears on
+/// the panel ahead.
+fn charged_projectile(b: &mut Battle, p: [ObjectRef; 2], row: u8, x: u8, y: u8) -> ObjectRef {
+    stand_on(b, p[0], x, y);
+    start_weapon(b, p[0], 0x01);
+    ai_mut(b, p[0]).attack.params[0] = row;
+    for _ in 0..10 {
+        tick(b, p[0], p[1], 0);
+        if let Some(&shot) = of_kind(b, "projectile").first() {
+            assert_eq!(b.objects.get(shot).panel, PanelPos { x: x + 1, y });
+            return shot;
+        }
+    }
+    panic!("no shot");
+}
+
+/// Ticks until `shot` has ended (at most 20).
+fn until_gone(b: &mut Battle, p: [ObjectRef; 2], shot: ObjectRef) {
+    for _ in 0..20 {
+        if !b.objects.is_allocated(shot) || b.objects.get(shot).state == state::DESTROY {
+            return;
+        }
+        tick(b, p[0], p[1], 0);
+    }
+    panic!("the shot flies on");
 }
 
 #[test]
 fn projectile_kinds_change_the_panel_they_hit() {
     use crate::field::PanelType;
-    // By kind (the test content's): 1 cracks, 2 breaks (cracks, with the
-    // enemy on it), 3 lays grass, 4 a road away from the shooter's side.
-    for (kind, panel) in [(1, PanelType::Cracked), (2, PanelType::Cracked), (3, PanelType::Grass), (4, PanelType::RoadRight)] {
+    // By row: 0x15 cracks, 0x16 breaks (cracks, with the enemy on it),
+    // 0x25 lays grass, 0x24 a road away from the shooter's side.
+    for (row, panel) in [(0x15, PanelType::Cracked), (0x16, PanelType::Cracked), (0x25, PanelType::Grass), (0x24, PanelType::RoadRight)] {
         let (mut b, p0, p1) = fight();
         let p = [p0, p1];
-        let shot = projectile(&mut b, p0, kind, 4, 2);
-        let mut t = 0;
-        run_to(&mut b, p, &mut t, 4, 0);
-        assert_eq!(b.objects.get(p1).hp, 990, "kind {kind}");
-        assert_eq!(b.field.panel(5, 2).unwrap().kind, panel, "kind {kind}");
-        assert!(!b.objects.is_allocated(shot) || b.objects.get(shot).state == state::DESTROY);
+        let shot = charged_projectile(&mut b, p, row, 3, 2);
+        until_gone(&mut b, p, shot);
+        tick(&mut b, p0, p1, 0);
+        assert_eq!(b.objects.get(p1).hp, 990, "row {row:#x}");
+        assert_eq!(b.field.panel(5, 2).unwrap().kind, panel, "row {row:#x}");
     }
 }
 
 #[test]
 fn a_bursting_projectile_bursts_on_the_enemy_and_a_missed_one_off_the_field() {
-    // Kind 5 bursts: effects and a second hit around what it hit.
+    // Row 0xC (GigaCan's) bursts: effects and a second hit around what it
+    // hit.
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    projectile(&mut b, p0, 5, 4, 2);
-    let mut t = 0;
-    run_to(&mut b, p, &mut t, 4, 0);
+    let shot = charged_projectile(&mut b, p, 0x0C, 3, 2);
+    until_gone(&mut b, p, shot);
+    tick(&mut b, p0, p1, 0);
     assert!(b.objects.get(p1).hp < 1000);
     let effects = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/effect").count();
     assert!(effects > 0, "the burst's effects");
-    // Missing (a row away), it bursts over the last two columns.
+    // Missing (a row away), it bursts over the last two columns: effects
+    // on the valid panels of the burst's region from (5,1).
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    let shot = projectile(&mut b, p0, 5, 4, 1);
-    let mut t = 0;
-    // Off the field (7,1) on tick 6: effects on the valid panels of the
-    // burst's region from (5,1).
-    run_to(&mut b, p, &mut t, 5, 0);
+    let shot = charged_projectile(&mut b, p, 0x0C, 3, 1);
+    while b.objects.get(shot).panel.x < 6 {
+        tick(&mut b, p0, p1, 0);
+    }
     assert_eq!(b.objects.get(shot).panel, PanelPos { x: 6, y: 1 });
-    run_to(&mut b, p, &mut t, 6, 0);
-    assert_eq!(b.objects.get(shot).state, state::DESTROY);
+    until_gone(&mut b, p, shot);
+    assert_eq!(b.objects.get(p1).hp, 1000);
     let effects = b.objects.in_order().filter(|&o| b.kind_key(o) == "engine/effect").count();
     assert_eq!(effects, 4, "the burst off the field");
 }
@@ -728,13 +754,12 @@ fn a_bursting_projectile_bursts_on_the_enemy_and_a_missed_one_off_the_field() {
 fn a_climbing_projectile_rises_a_pixel_a_panel() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    // Kind 7 is drawn and climbs; row 1 misses the enemy.
-    let shot = projectile(&mut b, p0, 7, 2, 1);
-    let mut t = 0;
-    run_to(&mut b, p, &mut t, 1, 0);
-    let o = b.objects.get(shot);
-    assert_eq!((o.pos.z, o.flags & crate::object::flags::VISIBLE != 0), ((0x18 + 1) << 16, true));
-    run_to(&mut b, p, &mut t, 2, 0);
+    // Row 0x1D climbs; row 1 misses the enemy.
+    let shot = charged_projectile(&mut b, p, 0x1D, 1, 1);
+    assert_eq!(b.objects.get(shot).pos.z, (0x18 + 1) << 16);
+    while b.objects.get(shot).panel.x < 3 {
+        tick(&mut b, p0, p1, 0);
+    }
     assert_eq!(b.objects.get(shot).pos.z, (0x18 + 2) << 16);
 }
 

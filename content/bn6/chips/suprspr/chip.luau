@@ -20,5 +20,11 @@ return define.chip {
     library = { number = 337, index = 18, sort = 0 },
     slot_in_limit = 1,
     program_advances = { { order = 16, code_run = { chip = widesht, count = 3 } } },
-    legacy = legacy { number = 0x151, action = 0x30, subtype = 1, params = { 6, 0, 0, 0 } },
+    legacy = legacy {
+        number = 0x151,
+        action = 0x30,
+        subtype = 1,
+        params = { 6, 0, 0, 0 },
+        script = "chips/017-widesht/chip",
+    },
 }
