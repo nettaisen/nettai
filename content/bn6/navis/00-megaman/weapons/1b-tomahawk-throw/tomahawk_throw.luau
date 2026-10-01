@@ -2,9 +2,9 @@
 -- TomahawkCross Beast's charged Null chip: weapon routine 0x1B
 -- (`sub_8011DBC`) and action 0x4E (`sub_80EF1EC`). The navi winds up;
 -- when the wind-up animation ends it swings, and two tomahawks
--- (objects/boomerang, kind 4) fly from its side's back column, one along
--- row 1 and 10 ticks later one along row 3; 96 ticks after the swing began
--- it idles.
+-- (objects/boomerang, its tomahawk variant) fly from its side's back
+-- column, one along row 1 and 10 ticks later one along row 3; 96 ticks
+-- after the swing began it idles.
 
 local boomerang = require("../../../../objects/boomerang/boomerang")
 
@@ -22,9 +22,8 @@ local ACTION = 0x4E
 -- The phases, on the attack's step.
 local WIND_UP, SWING = 0x0, 0x4
 
--- Wood, the hit's counter byte, and the boomerang kind thrown.
+-- Wood, and the hit's counter byte.
 local WOOD, HIT_PARAM = 4, 0x9E
-local TOMAHAWK = 4
 
 -- The swing's length, and when the tomahawks fly (on row 1, then row 3).
 local SWING_TICKS = 0x5F
@@ -69,7 +68,7 @@ local function swing(me: Object, s: State)
     if row then
         local damage = bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16))
         local x = me.alliance * 5 + 1
-        boomerang.spawn(me, x, row, me.attack_element, 0x10_0000, { TOMAHAWK, 0, 0, 0 }, damage)
+        boomerang.spawn(me, x, row, me.attack_element, 0x10_0000, { variant = boomerang.tomahawk }, damage)
     end
     local left = s.timer - 1
     s.timer = left
