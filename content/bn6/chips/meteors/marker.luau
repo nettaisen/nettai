@@ -1,9 +1,9 @@
 --!strict
 -- A falling meteor's panel marker (the original's effect object #0x35,
--- `sub_80E4344`; docs/engine/dimming-chip-effects.md §6): it highlights a
--- region around its panel in blinks that come faster (by its look's
--- shrink), for its look's lifetime, or until the battle is over. Drawn
--- only.
+-- `sub_80E4344`; docs/engine/dimming-chip-effects.md §6), which the meteor
+-- (./falling_meteor) spawns, whoever drops it: it highlights a region
+-- around its panel in blinks that come faster (by its look's shrink), for
+-- its look's lifetime, or until the battle is over. Drawn only.
 
 local marker = {}
 
@@ -87,7 +87,7 @@ local function init(me: Object)
 end
 
 marker.kind = define.kind {
-    id = "falling-meteor/marker",
+    id = "meteors/marker",
     pool = "effect",
     state = {
         look = "record:marker-look",
