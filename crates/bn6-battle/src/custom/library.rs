@@ -110,7 +110,7 @@ pub(crate) mod testing {
             params: [0; 4],
             lockout: 0,
             extra_flags: ExtraChipFlags::default(),
-            lockon_mode: 0,
+            lockon_mode: None,
             damage,
             library_number: 0,
             library_index: 0,

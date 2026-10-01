@@ -6,6 +6,7 @@
 
 local action = require("./action")
 local beam = require("./beam")
+local lockon = require("../../rules/lockon")
 
 -- The beams (the original's looks and palettes): in the shade, and in the
 -- sun.
@@ -25,8 +26,8 @@ return {
         flags = { "standard_library", "library" },
         library = { number = 15, index = 15, sort = 227 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 9 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.gundels1 },
         action = action.action {
             gun = action.gun(0),
             firing_ticks = 60,
@@ -44,8 +45,8 @@ return {
         flags = { "standard_library", "library" },
         library = { number = 16, index = 16, sort = 228 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 9 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.gundels1 },
         action = action.action {
             gun = action.gun(3),
             firing_ticks = 90,
@@ -63,8 +64,8 @@ return {
         flags = { "standard_library", "library" },
         library = { number = 17, index = 17, sort = 229 },
         slot_in_limit = 3,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 9 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.gundels1 },
         action = action.action {
             gun = action.gun(6),
             firing_ticks = 120,
@@ -82,8 +83,8 @@ return {
         rarity = 4, mb = 80, damage = 0, hit_param = 0, lockout = 0,
         library = { number = 201, index = 1, sort = 230 },
         slot_in_limit = 1,
-        -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-        beast = { lockon = 16 },
+        -- The Beast rush, and its lock-on mode (rules/lockon).
+        beast = { lockon = lockon.gundelex },
         action = action.action {
             gun = action.gun(9),
             firing_ticks = 120,

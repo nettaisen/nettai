@@ -17,6 +17,7 @@ local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatt
 local encased_bubble = require("../objects/encased-bubble/bubble")
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
+local lockon = require("./lockon")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local supports = require("../lib/supports/controller")
@@ -60,6 +61,11 @@ return define.roles {
         -- AntiRecv's counterattack, which a heal meets when the other side
         -- has AntiRecv armed.
         anti_recovery = anti_recovery.kind,
+    },
+    lockon = {
+        -- The Beast forms' charged claw's lock-on mode, whatever chip its
+        -- attack carries.
+        beast_claw = lockon.beast_claw,
     },
     hooks = {
         -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with
