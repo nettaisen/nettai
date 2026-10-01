@@ -26,6 +26,8 @@ attachment = { pool = "actor", index = 0x05 }
 "sunmoon/sun" = { pool = "actor", index = 0x24 }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
+"dblbeast/gregar" = { pool = "actor", index = 0x33 }
+"dblbeast/falzar" = { pool = "actor", index = 0x34 }
 "protoman/navi" = { pool = "actor", index = 0x3C }
 "deltaray/ray" = { pool = "actor", index = 0x3D }
 rush = { pool = "actor", index = 0x4B }
@@ -200,6 +202,7 @@ invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "slashcross-beast/hit-flash" = { pool = "effect", index = 0x73, scratch_position = true }
 "metrknuk/controller" = { pool = "effect", index = 0x76, scratch_position = true }
 "support/controller" = { pool = "effect", index = 0x79 }
+"dblbeast/controller" = { pool = "effect", index = 0x7F, scratch_position = true }
 "colforce/force" = { pool = "effect", index = 0x80 }
 navi-boost = { pool = "effect", index = 0x84, scratch_position = true }
 absorbed-obstacle = { pool = "effect", index = 0x87 }
