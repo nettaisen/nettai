@@ -18,7 +18,7 @@ chips/02e-heatdrgn/chip.luau 1
 chips/032-airhocky/chip.luau 4
 chips/033-drilarm/chip.luau 6
 chips/034-tornado/chip.luau 6
-chips/036-minibomb/chip.luau 3
+chips/036-minibomb/chip.luau 2
 chips/03d-aquandl1/chip.luau 4
 chips/047-sword/chip.luau 3
 chips/050-windrack/chip.luau 3
@@ -46,7 +46,9 @@ chips/blkbomb/bomb.luau 2
 chips/crosswrd/chip.luau 1
 chips/dbldream/chip.luau 1
 chips/ftrsword/chip.luau 1
+chips/lilbolr/boiler.luau 2
 chips/stepswrd/chip.luau 1
+chips/vdoll/doll.luau 2
 lib/buster.luau 1
 lib/dragon.luau 4
 lib/hp.luau 2
