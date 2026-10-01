@@ -84,6 +84,10 @@ collision.neutral_object = define.collision {
 -- neutral objects (row 0x0F: what a BlkBomb reacts to).
 collision.everything = define.collision { id = "everything", side0 = 0xff800002, side1 = 0xff800002, row_offset = 0x78 }
 
+-- A breaking attack (row 0x06: a shot that breaks guards; the break
+-- family's shots, a thrown obstacle).
+collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
+
 -- Nothing (row 0x00: a target that reaches nothing; Discord's notes, which
 -- confuse without learning they hit).
 collision.nothing = define.collision { id = "nothing", side0 = 0x00000000, side1 = 0x00000000, row_offset = 0x00 }
