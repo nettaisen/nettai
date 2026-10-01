@@ -1,9 +1,10 @@
 --!strict
 -- A shower of Fire meteors (the original's effect object #0x46,
 -- `sub_80E59E8`) and instant chip effect 16 (`sub_80E5A64`): every 20
--- ticks, a number of times (the game's Param2), a meteor
--- (objects/falling-meteor) falls on one of the other side's navis still
--- standing, picked at random, or on a panel next to it (6 draws in 16).
+-- ticks, a number of times (the game's Param2), a meteor (Meteors'
+-- falling meteor, chips/meteors/falling_meteor) falls on one of the other
+-- side's navis still standing, picked at random, or on a panel next to it
+-- (6 draws in 16).
 -- (The game drops the meteor's look 2 for three drops, else 0: the rows
 -- are the same.)
 --
@@ -11,7 +12,7 @@
 -- spawn the shower themselves, with `meteor_shower.instant(drops)` when
 -- they are ported (unverified: no scenario reaches it).
 
-local falling_meteor = require("../../objects/falling-meteor/falling_meteor")
+local falling_meteor = require("../../chips/meteors/falling_meteor")
 
 local meteor_shower = {}
 
