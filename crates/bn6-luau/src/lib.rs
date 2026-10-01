@@ -167,8 +167,7 @@ pub(crate) struct Bound {
     /// (definitions are frozen and live as long as the VM).
     defs: HashMap<usize, (Registry, u16)>,
     /// Each definition's table by registry and handle; for an entry that is
-    /// no definition (an engine kind, a v1 kind, a pack's chip record), a
-    /// stand-in `{ id = key }`.
+    /// no definition (an engine kind), a stand-in `{ id = key }`.
     tables: HashMap<(Registry, u16), Table>,
     /// Records' types, by handle.
     record_types: HashMap<u16, String>,
@@ -226,7 +225,7 @@ impl LuauContent {
     /// `plan` was made from, and bind the functions `plan` names, with the
     /// pack's data as the global `data`.
     pub fn load(pack: &Pack, plan: &BindPlan, data: &Data, options: Options) -> Result<LuauContent, ContentError> {
-        let (lua, defined, modules, _, assets) = open(pack, data, &plan.assets, options)?;
+        let (lua, defined, _, _, assets) = open(pack, data, &plan.assets, options)?;
         if defined.definitions != plan.definitions {
             return Err(ContentError::new(format!(
                 "loading Luau content: the scripts define something other than what the content was made from ({})",
@@ -262,7 +261,7 @@ impl LuauContent {
         let mut functions = Vec::with_capacity(plan.functions.len());
         for source in &plan.functions {
             functions.push(
-                resolve_function(source, &defined, &modules)
+                resolve_function(source, &defined)
                     .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?,
             );
         }
@@ -364,7 +363,7 @@ fn first_difference(a: &Definitions, b: &Definitions) -> String {
     if a.defs.len() != b.defs.len() {
         return format!("{} definitions against {}", a.defs.len(), b.defs.len());
     }
-    "the modules' exports differ".to_string()
+    "nothing".to_string()
 }
 
 /// Module loading state (only while loading).
@@ -530,7 +529,7 @@ fn open(pack: &Pack, data: &Data, assets: &AssetNames, options: Options) -> Resu
     let compiled = std::mem::take(&mut loader.borrow_mut().compiled);
     drop(loader);
     let assets = Rc::try_unwrap(assets).ok().expect("the resolvers hold the asset tables weakly").into_inner();
-    let defined = define::finish(&lua, &collector, &modules, &assets)
+    let defined = define::finish(&lua, &collector, &assets)
         .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?;
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);
@@ -541,27 +540,15 @@ fn open(pack: &Pack, data: &Data, assets: &AssetNames, options: Options) -> Resu
 fn resolve_function(
     source: &FnSource,
     defined: &define::Defined,
-    modules: &BTreeMap<String, LuaValue>,
 ) -> Result<Function, String> {
-    let (table, what, path): (Table, String, &str) = match source {
-        FnSource::Export { module, name } => {
-            let t = match modules.get(module) {
-                Some(LuaValue::Table(t)) => t.clone(),
-                Some(v) => return Err(format!("{module}.luau returned {}, not a table", v.type_name())),
-                None => return Err(format!("no module {module}.luau in the pack")),
-            };
-            (t, format!("{module}.luau"), name)
-        }
-        FnSource::Slot { registry, key, path } => {
-            let defs = &defined.definitions.defs;
-            let i = defs
-                .iter()
-                .position(|d| d.registry == *registry && d.key == *key)
-                .ok_or_else(|| format!("no {registry} is defined as {key:?}"))?;
-            (defined.tables[i].clone(), format!("{registry} {key}"), path)
-        }
-    };
-    let mut at = LuaValue::Table(table);
+    let FnSource { registry, key, path } = source;
+    let defs = &defined.definitions.defs;
+    let i = defs
+        .iter()
+        .position(|d| d.registry == *registry && d.key == *key)
+        .ok_or_else(|| format!("no {registry} is defined as {key:?}"))?;
+    let what = format!("{registry} {key}");
+    let mut at = LuaValue::Table(defined.tables[i].clone());
     for segment in path.split('.') {
         let LuaValue::Table(t) = &at else {
             return Err(format!("{what}: `{path}` is not a function slot"));

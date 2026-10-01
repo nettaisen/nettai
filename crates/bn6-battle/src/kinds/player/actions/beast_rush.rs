@@ -301,7 +301,7 @@ fn can_stand(b: &Battle, r: ObjectRef, x: u8, y: u8) -> bool {
 /// the queued chip or warp home.
 fn attack(b: &mut Battle, r: ObjectRef) {
     let action = crate::kinds::player::navi_action(b, r);
-    if action.is_attack(&b.content.defs) {
+    if action.is_attack() {
         super::dispatch(b, r, action);
         if crate::kinds::player::navi_action(b, r) != crate::kinds::player::NaviAction::Idle {
             return;

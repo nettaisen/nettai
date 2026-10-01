@@ -48,6 +48,31 @@ fn misuse_of_the_v2_api_is_a_type_error() {
 }
 
 #[test]
+fn the_numeric_api_that_is_gone_is_a_type_error() {
+    let mut checker = bn6_content_check::PackChecker::new(&bn6_content_check::definitions(&pack()).unwrap()).unwrap();
+    for (bad, why) in [
+        ("local _ = battle.spawn(\"attack\", 8)", "a spawn by pool and index"),
+        ("local _ = battle.spawn_kind(\"rock\")", "a spawn by name"),
+        ("local function f(me: Object) local _ = me:param(1) end", "a spawn parameter"),
+        ("local function f(me: Object) local _ = me:attack_param(1) end", "an attack parameter"),
+        ("local function f(me: Object) local _ = me.index end", "a kind by index"),
+        ("local function f(me: Object) local _ = me.variant end", "the attack's variant"),
+        ("local function f(me: Object) local _: number = me.chip end", "the attack's chip by number"),
+        ("local function f(me: Object) me:set_attack(0x12, 2) end", "an action by number"),
+        ("local function f(me: Object) me.sprite:load(\"0c-01\") end", "a sprite by number"),
+        ("local _ = battle.hand_chip(0, 0)", "a hand's chip by number"),
+        ("local function f(me: Object) dimming.show_navi_telop(me, 0x123) end", "a telop's chip by number"),
+        ("battle.set_linked(0, { chip = 0x123, bonus = 0, damage = 0 })", "a linked record's chip by number"),
+        ("local _ = define.roles { actions = { turn = { legacy = { action = 0x3B } } } }", "a role by action number"),
+        ("local _ = define.roles { kinds = { support = { legacy = { kind = \"support\" } } } }", "a role by kind key"),
+        ("local _ = data.rules.sine[1]", "a rule table by number"),
+    ] {
+        let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
+        assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
+    }
+}
+
+#[test]
 fn misuse_of_the_core_api_is_a_type_error() {
     let mut checker = bn6_content_check::PackChecker::new(&bn6_content_check::definitions(&pack()).unwrap()).unwrap();
     for (bad, why) in [
@@ -60,7 +85,7 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local function f(me: Object) local _ = me:held(\"x\") end", "not a button"),
         ("field.set_type(1, 1, \"lava\")", "not a panel type"),
         ("local function f(me: Object) me:set_status_timer(\"stun\", 3) end", "not a status timer"),
-        ("local _ = data.chips[1].gun_del_sol.firing_tick", "not a data field"),
+        ("local _ = data.chips[1]", "not a data field"),
         ("local function f(me: Object) me.drag_step = \"sliding\" end", "not a drag step"),
         (
             "local function f(me: Object) battle.afterimage(me, me.pos, { anim = 0, flip = 0, color_shader = 0, lifetime = 1, shadow = \"soft\" }) end",
@@ -68,11 +93,10 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ),
         ("local function f(me: Object) local _ = obstacle.react(me, \"shatters\") end", "not an obstacle crush"),
         ("local function f(me: Object) local _: \"gone\" = obstacle.removal(me) end", "not an obstacle removal"),
-        ("local _ = data.objects.projectiles[0].hit_efect", "not a projectile field"),
         ("local _: ProjectileShot = { kind = 0, damage = 1 }", "a shot without its height"),
         ("local function f(): SideSpecial return \"beast\" end", "not a side special"),
         (
-            "local function f(me: Object) battle.form_overlay(me, { sprite = \"08-12\", stepping = \"dimmed\" }) end",
+            "local function f(me: Object) battle.form_overlay(me, { sprite = asset.sprite(\"x\"), stepping = \"dimmed\" }) end",
             "not a form overlay stepping",
         ),
         // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.

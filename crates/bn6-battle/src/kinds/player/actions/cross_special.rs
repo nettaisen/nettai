@@ -13,8 +13,6 @@ use crate::kinds::player::{
 };
 use crate::object::{ObjectRef, Vec3, flags};
 
-pub const ACTION: u8 = 0x59;
-
 /// The action's own state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Vars {

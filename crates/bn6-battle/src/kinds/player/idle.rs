@@ -42,7 +42,8 @@ fn battle_over(b: &mut Battle, r: ObjectRef) {
     super::clear_statuses(b, r);
     // sub_801DACC(0x42): HUD.
     if cross_protected(b, r) {
-        ai_mut(b, r).attack.variant = 1;
+        // (The original stores 1 in the attack's variant byte first; the
+        // action it starts doesn't use it.)
         let protect = super::role_action(b, crate::content::ActionRole::CrossProtect);
         return set_attack(b, r, protect, 0);
     }
@@ -259,7 +260,6 @@ pub(super) fn weapon_routine(b: &mut Battle, r: ObjectRef, weapon: WeaponHandle)
     if let Some(setup) = b.content.defs.weapon(weapon).setup {
         let instant = b.content.defs.weapon(weapon).instant;
         let action = match crate::behavior::call_hook(b, setup, HookCall::Weapon { navi: r }) {
-            Value::Int(n) => super::NaviAction::numbered(&b.content.defs, n as u8),
             Value::Def(Registry::Action, h) => super::NaviAction::Content(ActionHandle(h)),
             // A weapon with an instant effect of its own names no action:
             // the instant chips' action runs it.

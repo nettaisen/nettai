@@ -225,7 +225,7 @@ end
 local function bring(me: Object, entry: Entry, i: number): Object?
     local s = me.state :: State
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = entry.element, params = { 0, 0, 0, 0 }, damage = damage }
+    local spec = { panel_x = me.panel_x, panel_y = me.panel_y, element = entry.element, damage = damage }
     local o = navi_chips.spawn(mstrcros.kind, me, spec, 0)
     if not o then
         return nil

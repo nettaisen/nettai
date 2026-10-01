@@ -59,7 +59,7 @@ fn main() {
                 }
                 // A sun beam on player 0 that runs `op` N times when its timer2 is 7.
                 let owner = b.player(0).unwrap();
-                let r = behavior::spawn_kind(&mut b, "gundels/beam", Vec3::default(), [0; 4]).unwrap();
+                let r = behavior::spawn_kind(&mut b, "gundels/beam", Vec3::default()).unwrap();
                 b.objects.get_mut(r).related[0] = Some(owner);
                 let look = b.content.assets.handle(AssetKind::Sprite, "sun-beam").expect("the sun beam's sprite");
                 behavior::set_state_field(&mut b, r, "sprite", Value::Asset(AssetKind::Sprite, look));
