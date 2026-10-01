@@ -115,6 +115,16 @@ pub fn project(pos: (i32, i32, i32), view: &View) -> Projected {
     Projected { x, ground, y }
 }
 
+/// The HUD's projection of a position (`sub_800362C`, for the opponents' HP
+/// numbers and the chip icons): the battle projection, except that the
+/// right-hand player's console mirrors after the camera, so a shake moves
+/// these the other way there.
+pub fn project_hud(pos: (i32, i32, i32), view: &View) -> Projected {
+    let p = project(pos, view);
+    let cx = view.camera.0 >> 16;
+    Projected { x: if view.mirror { p.x + 2 * cx } else { p.x }, ..p }
+}
+
 /// A colour shader (`sprite_setColorShader`, applied by `sub_3005EF0`):
 /// bit 15 clear adds the colour to every palette entry, set subtracts it,
 /// per channel and saturating.
@@ -228,6 +238,12 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
             // Objects whose sprite doesn't animate are culled to nothing
             // (`sub_30061E8` gives them a one-point mask).
             if o.flags & flags::VISIBLE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
+                continue;
+            }
+            // An effect the game spawns without a position (the second
+            // explosion of a deletion) has memory addresses for X and Y:
+            // far off the screen.
+            if bn6_battle::kinds::effect::xy_unknown(b, r) {
                 continue;
             }
             let s = b.objects.sprite(r);
@@ -351,6 +367,19 @@ mod tests {
         // Mirrored for the right-hand player.
         let p = project(((-60) << 16, 28 << 16, 0), &View { mirror: true, ..v });
         assert_eq!(p.x, 180);
+    }
+
+    #[test]
+    fn a_shake_moves_the_mirrored_view_the_same_way() {
+        // The camera 3 pixels right and 2 down: everything moves left and up
+        // on both consoles; the HUD's pieces move right on the mirrored one.
+        let pos = ((-60) << 16, 28 << 16, 0);
+        let shaken = View { camera: (3 << 16, 2 << 16, 0), mirror: false };
+        assert_eq!(project(pos, &shaken), Projected { x: 57, ground: 106, y: 106 });
+        assert_eq!(project_hud(pos, &shaken).x, 57);
+        let mirrored = View { mirror: true, ..shaken };
+        assert_eq!(project(pos, &mirrored), Projected { x: 177, ground: 106, y: 106 });
+        assert_eq!(project_hud(pos, &mirrored), Projected { x: 183, ground: 106, y: 106 });
     }
 
     #[test]
