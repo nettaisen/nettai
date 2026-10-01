@@ -98,7 +98,8 @@ pub enum KindRole {
     AbsorbedObstacle,
     /// GroundCross's charged chips' falling rocks (`sub_8012CB2`).
     FallingRock,
-    /// A NaviCust support's controller (Rush, Beat, Tango).
+    /// The NaviCust supports' dimming controller (Rush, Beat, Tango: the
+    /// original's effect object #0x79, `sub_80E8FE0`).
     Support,
 }
 
