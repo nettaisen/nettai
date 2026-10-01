@@ -1365,8 +1365,14 @@ export type WeaponSpec = {
     id: string,
     name: string,
     charge_ticks: { number },
-    -- `off_80117D4[n]`: prepare the attack, name its action.
-    setup: (navi: Object) -> Action | number,
+    -- `off_80117D4[n]`: prepare the attack, name its action. None while the
+    -- weapon is still a v1 module, which its legacy marker names.
+    setup: ((navi: Object) -> Action | number)?,
+    -- Transitional (counted by the ratchet): the routine numbers the pack's
+    -- forms and the ruleset still name it by (`weapon_numbered`); for a
+    -- weapon still a v1 module, the module (`script`), the action it brings
+    -- and the instant chip effect it names.
+    legacy: { routines: { number }, script: string?, action: number?, instant_chip: number? }?,
     sticky: boolean?,
     traits: { string }?,
 }
@@ -1396,6 +1402,13 @@ export type ChipSpec = {
     dark_substitute: any?,
     modifier: any?,
     program_advances: { any }?,
+    -- Transitional (counted by the ratchet): the original's subtype and
+    -- parameter bytes, for what reads them of the chip besides its own use
+    -- (SlashCross's charged slash reads a sword's); for a chip still a v1
+    -- module (with no use of its own here), its number, action and module
+    -- and what the ruleset reads of it by number (docs/design/
+    -- content-model-v2.md §12, step 5).
+    legacy: { subtype: number?, params: { number }?, number: number?, action: number?, script: string? }?,
     action: Action?,
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
@@ -1436,6 +1449,7 @@ export type RolesSpec = {
         anti_damage_counter: Action?,
         anti_sword_counter: Action?,
         body_guard_counter: Action?,
+        forced_charged_shot: Action?,
     }?,
 }
 

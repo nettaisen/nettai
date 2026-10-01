@@ -1,8 +1,0 @@
-# MegaMan's weapon routine 0x00, the buster (`sub_8011A26`), and the action it
-# names, the shot (0x11, `sub_80EB436`), are a script. The weapon ids that alias
-# the routine (0x2E, 0x2F, 0x3E, ...) name the same script.
-
-id = 0x00
-name = "Buster"
-action = 0x11
-script = "buster.luau"
