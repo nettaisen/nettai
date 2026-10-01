@@ -216,9 +216,10 @@ Left:
 
 Done: the dimming chips have no Rust fallback (kinds/player/actions/dimming_chip.rs calls the chip's controller
 only), and the controllers declare `scratch_position` (trace.rs keeps only the navi chip controller). Scripts:
-subtypes 1 (objects/invisible), 6 (objects/rock-cube), 20 (objects/trap-chip, with ElemTrap's trap
-objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts), 10 (objects/time-bom,
-objects/countdown-bomb), 11 (objects/mine, objects/land-mine), 25 (objects/gauge-speed), 38 (objects/navi-boost).
+subtypes 1 (objects/invisible), 6 (objects/rock-cube), 20 (lib/traps/controller, with ElemTrap's trap
+chips/elemtrap/trap, its strike chips/elemtrap/strike and objects/panel-bursts), 10 (chips/timebom: controller,
+countdown), 11 (chips/mine: controller, land_mine), 25 (lib/gauge-speed/controller), 38
+(lib/navi-boost/controller).
 Shared: lib/panels (the game's panel lists and shuffle), objects/rising-bubble (effect #0x14).
 
 Left (each a controller and its objects, every branch; docs/engine/chips.md §3.6.10 has what is known):

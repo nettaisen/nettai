@@ -378,6 +378,29 @@ export type Instrument = {
     effect: (me: Object) -> (),
 }
 
+-- A countdown bomb (chips/timebom/countdown, a row of the original's
+-- `byte_80CD8AC`): the animations it rises and stands with, its HP, its
+-- NameID (the field objects' look, a number until identities come), the
+-- class of field-object slot it takes (0: one of its side's two; 1: its
+-- side's one), what it is and what it reacts to. `strong_shake`: its blast
+-- shakes the camera a second time, harder (TimeBom+). The rows no chip
+-- sets: `allows_bodies`, it may appear under a body; `bursts_when_broken`,
+-- broken it blows up, and its countdown is only the last 15 ticks, after
+-- which it blinks away; `linked`, its spawner keeps it in a slot and it
+-- reserves its panel once it stands.
+export type CountdownVariant = {
+    appear_anim: number,
+    idle_anim: number,
+    hp: number,
+    name: number,
+    class: number,
+    collision: { is: CollisionType, hits: CollisionType },
+    strong_shake: boolean?,
+    allows_bodies: boolean?,
+    bursts_when_broken: boolean?,
+    linked: boolean?,
+}
+
 -- ---- The standard chip actions (content model v2, step 8g) --------------
 -- Each family's builder spec: what differs between its chips, the
 -- original's parameter bytes by name. `id`: the action's key when no chip

@@ -9,6 +9,7 @@
 local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local drill = require("../../objects/drill/drill")
+local effects = require("../../lib/effects")
 local erase_ray = require("../../objects/erase-ray/erase_ray")
 local navi_chips = require("../../lib/navi-chips/navi")
 local panel_bursts = require("../../objects/panel-bursts/panel_bursts")
@@ -661,7 +662,7 @@ local function strike(me: Object)
         -- (The game then sets flag 0x10 through what `sub_80E2FE8` returns,
         -- which is the bursts' panel count, not the object: a store into
         -- the BIOS. The bursts wait out the dimming.)
-        panel_bursts.spawn(me, area, 2, 0, { 1, 0, 0, 0 })
+        panel_bursts.spawn(me, area, 2, 0, effects.explosion)
         battle.shake_camera(3, 0x1E)
         battle.palette_flash(0, 0x23, true, false)
         battle.play_sound(SOUND_FINALE)
