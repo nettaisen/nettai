@@ -38,8 +38,11 @@ chips/152-h-burst/chip.luau 5
 chips/173-sonicbom/chip.luau 1
 chips/anubis/statue.luau 2
 chips/blkbomb/bomb.luau 2
+chips/cornfsta/farmer.luau 2
 chips/crosswrd/chip.luau 1
+chips/dblbeast/beast.luau 1
 chips/dbldream/chip.luau 1
+chips/dblhero/heroes.luau 3
 chips/ftrsword/chip.luau 1
 chips/guardian/statue.luau 2
 chips/lilbolr/boiler.luau 2
