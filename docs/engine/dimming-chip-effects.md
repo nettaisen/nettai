@@ -709,6 +709,11 @@ dropped, the effect ends.
 user; `counter-cut-in` and `stage-holes` skip non-solid panels. **Unverified**: Param1 0 (crack) and 2
 (poison), no chip using them in the lab; an empty list; a panel that changed between the list and its turn.
 
+**Ported** (content model v2): chips/geddon (`geddon/controller`, `geddon/quake`), with the hook's argument
+the row's panel routine ("break" for Geddon and PnkCapsl, "crack" for PrpCapsl, HealBall, MagPanl and the two
+dimming BeastOut records, each a definition in its own folder; "poison" is ported with no chip using it). A quake
+that fails to spawn leaves the dimming waiting for good, as in the original. Lab: 19/19.
+
 ## 13. Subtype 12: Snake (T4#0x45, T3#0x72, T3#0x73)
 
 Chip 0x86 Snake (null, damage 30, hit param 133, params 0). Snakes leap from the holes on the user's side
@@ -778,6 +783,11 @@ counter).
 candidate, striking it. **Unverified**: several holes (the 8/24-tick spacing), the tie-breaks, no target (a
 snake leaving the field), side 1's scan, a flipped user.
 
+**Ported**: chips/snake (`snake/controller`, `snake/nest`, `snake/snake`). Two details the lab showed or the
+code says beyond the above: the nest's Z is what its spawner leaves in r3, the controller's bonus as a raw 16.16
+value (Atk+10 leaves 10; `atk10` checks it); and side 1's scan covers columns 1 to 6 only (after column 6, 7 + 1
+passes 7). Lab: 20/20.
+
 ## 14. Subtype 7: LifeSync (T4#0x5C, T4#0x60)
 
 Chip 0xBF LifeSync (null, damage 0, params 0). (T1 and T4 objects spawn with header flag 0x10, so they run
@@ -822,6 +832,12 @@ Timer + 1 ticks, then 31.
 
 **Lab**: 19 scenarios, all the link-battle path (the effect ends 49 ticks after the telop from a clear
 screen). **Unverified**: the offline path.
+
+**Ported**: chips/lifesync (`lifesync/controller`, `lifesync/marker`). Bit 0 of the battle effects is
+`BATTLE_EFFECT_BOSS_RANK` (`battle.boss_rank`), so LifeSync also does nothing against a ranked boss. NameIDs
+0x49..0x4E are every version of the virus with AI 13, which the port tests by the actor data. The offline path's
+warning sound, on game frames that are multiples of 16, follows the controller's timer instead (the port keeps no
+game frame counter), and its HP sync skips a listed actor whose slot was freed. Lab: 19/19.
 
 ## 15. Subtype 22: NumbrBl (T4#0x69, T1#0x45, T3#0x91) and damage formula 21
 
@@ -882,10 +898,16 @@ user, the user's alliance/flip halfword, the damage word, ExtraVars+0 = r7 and `
 - 8 (`sub_80D73AC`): X += Xvel; panels and collision panels from the coordinates; X's pixels + 150 past 300
   (unsigned) → region 0, state destroy (word).
 
-**Lab**: 20 scenarios. The balls hit in 18; `miss`'s roll off. Beast
+**Lab**: 22 scenarios. The balls hit in 20; `miss`'s roll off. Beast
 and Cross scenarios use the index − 0x18 attachment. `counter-cut-in` reaches the navi telop's cut-in branch.
-**Unverified**: a non-player user, a record index 1..0x18, the user deleted before the effect, no player
-for formula 21.
+`link-navi` (HeatMan uses it) reaches a record index 1..0x18: no arm, and nothing to restart with each ball.
+`hp-digits` (a base HP of 137) is the one whose formula gives more than 0: 37 a ball. **Unverified**: a
+non-player user, the user deleted before the effect, no player for formula 21.
+
+**Ported**: chips/numbrbl (`numbrbl/controller` with the navi chip phases, `numbrbl/numberman` on
+lib/dimming/stand_in, `numbrbl/ball`); the record stays (formula 21) and chips/08a-numbrbl registers its hook by
+number. The arm's record index comes from the user's NameID: MegaMan's (0x1A0) is 0 and his forms' (0x1AB + form)
+0x18 + form, so the arm's animation is the form; other navis' (1 to 11) get none. Lab: 22/22.
 
 ## 16. Subtype 29: CornFsta (T4#0x68, T1#0x1E, T3#0xAA, T3#0x10)
 
@@ -971,10 +993,19 @@ damage word, the spawner's alliance/flip halfword, RelatedObject1 = the spawner)
   walks the whole object list) gets a burst with Params Param1 + 1 (so a CornFsta burst's 0xFF would give
   0x100: Param1 0, Param2 1).
 
-**Lab**: the three CornFsta recipes: the corn steps once and bursts, then fifteen bursts by both panel
-choices, grass on each solid panel. CornFsta's bursts (Param1 0xFF) make no spread list. **Unverified**: the
-corn touching a body, the corn leaving the field, the battle ending, no panel for a burst, the ring's
-effect, a non-solid burst panel, the moving burst and the spread (Param1 0 or 1..0xFE), a failed spawn.
+**Lab**: 8 scenarios. The three recipes: the corn steps once and bursts, then fifteen bursts by both panel
+choices (the ring keeping panels out of the second), grass on each solid panel. CornFsta's bursts (Param1
+0xFF) make no spread list. `adjacent`: the corn touches the body in front and bursts there without a step.
+`off-field`: from column 5, after two AreaGrabs, it steps off the field and nothing bursts. `far`: no body
+is near, so the first choice finds none and every burst is a free panel's. `deleted`: the first burst deletes
+an opponent of 40 HP, and the corn and its bursts end with the battle. `stage-holes`: bursts on missing
+panels leave them. **Unverified**: no panel for a burst, the free panels all in the ring, a failed spawn.
+(The moving burst and the spread, Param1 0 or 1..0xFE, are CornSht's: shot-chips.md §9.1.)
+
+**Ported**: chips/cornfsta (`cornfsta/controller`, `cornfsta/farmer` on lib/dimming/stand_in with the
+user's NameID, `cornfsta/sower` for T3#0xAA); the bursts are CornSht's corns (chips/cornsht/corn, generation
+0xFF) and the farmer holds CornSht's gun. The record stays (a Program Advance) and chips/14c-cornfsta registers its
+hook by number. Lab: 8/8.
 
 ## 17. Subtype 30: DblHero (T4#0x6A, T1#0x1F)
 
@@ -1049,8 +1080,20 @@ ProtoMan (Param1 1):
 - 0xC (`sub_80BD1DA`): first tick CurAnim 4, the attachment ends, Timer 4; negative (5 ticks) → VISIBLE off,
   state destroy (word). (Its navi parts, added for NameID 0x1AB's record, aren't taken off.)
 
-**Lab**: `pa/0x158-dblhero/recipe1` reaches all of the above but the failed spawns, ProtoMan on a non-solid
-panel (action 0xC first, MegaMan's early end) and a field with no enemy panel. **Unverified**: those.
+**Lab**: 6 scenarios. `pa/0x158-dblhero/recipe1` reaches all of the above but the failed spawns, ProtoMan on
+a non-solid panel and a field with no enemy panel; its shots start three panels from the far edge (region
+6). `on-hole` (AirShoes, over a missing panel): ProtoMan leaves at once (action 0xC first) and MegaMan ends
+without a volley. `own-grab-twice`, `own-grab`, `grabbed` and `grabbed-twice` (AreaGrabs by the user or
+the opponent first) start the shots one, two, four and five panels from the far edge (regions 1, 2, 7 and
+0x20). **Unverified**: the failed spawns, a field with no enemy panel, a row with no panel of another side
+ahead (distance 0: no region). (Six and seven panels can't be: the walk starts in front of the user.)
+
+**Ported**: chips/dblhero (`dblhero/controller`, `dblhero/heroes`); the record stays (a Program
+Advance) and chips/158-dblhero registers its hook by number. `sub_80EB572`'s second argument (1) is the
+attachment's third byte, animating while dimmed, not its animation: the arm's animation is the side's form, as
+the buster's (lib/buster `raise_arm_for`, by the user's actor data, which MegaMan's copy shares; a player's second
+actor would clear the user's overlay slot). A field with no panel of the other side's makes the flash divide by
+zero: an error. Lab: 6/6.
 
 ## 18. Subtype 32: MetrKnuk (T4#0x76, T3#0xB4)
 
@@ -1104,6 +1147,12 @@ the spawner; then flags |= 0x10 and Param2 = 4 (another caller, without them, ge
 
 **Lab**: 16 scenarios: sixteen punches at bodies (the first list) and around them (the grid), cracking.
 **Unverified**: no enemy body (the fallback lists), no candidate at all, Param2 0 (the other caller).
+
+**Ported**: chips/metrknuk (`metrknuk/controller`, `metrknuk/fist`). Corrections to the above: the
+fist's hit word 0x15050001 is region 1, hit effect **0** (the null element's spark), target 5, self 0x15 (collision
+`thrown-breaking`); and `sub_80DBE82` has no caller but `sub_80DBEA2`, so Param2 0 (the slow fall, the even-draw
+crack) is ported but unreachable. With no enemy panel at all the first target keeps a stray register as its row;
+the port keeps none. Lab: 16/16.
 
 ## 19. Subtype 37: DblBeast (T4#0x7F, T1#0x33, T1#0x34)
 
@@ -1206,3 +1255,8 @@ Actions (`off_80C21C0`):
 `adjacent` and the Cross scenarios meet the user's panel among the candidates, but a free panel always
 turns up. **Unverified**: the user's-panel fallback, no target at all (straight to the end), a failed
 spawn, the unused pattern entries.
+
+**Ported**: chips/dblbeast (`dblbeast/controller`, `dblbeast/gregar`, `dblbeast/falzar`, sharing
+chips/dblbeast/beast). Of the attacks that find no panel, only the first of each beast (Gregar's claw, Falzar's
+breath) stays where it is; the later ones go back to rest. Falzar's head is its identity's parts (NameID 0x1B7's
+record, player 0x24). Lab: 19/19.

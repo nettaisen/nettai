@@ -246,7 +246,7 @@ impl Side {
         let (Some(mut screen), Some(mut folder)) = (self.screen, self.folder) else { return None };
         let request = screen.tick(&self.joypad, &self.view(ctx, folder.regular_pending), &mut folder, console);
         match request {
-            Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, damage),
+            Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, console, damage),
             Some(Request::Send) => {
                 // sub_8026DC4's first tick: sub_802A4FC counts the classes,
                 // sub_800B3A2 sends the hand, the navi's stats as they are
@@ -270,9 +270,18 @@ impl Side {
     }
 
     /// OK (`sub_8028D3A`): build the hand (`sub_8029110`), take the picked
-    /// chips out of the folder (`sub_80293F8`), and turn Beast Out or the
-    /// Cross into a transformation (`sub_8029344`, `sub_802937A`).
-    fn confirm(&mut self, ctx: &Context, screen: &mut Screen, folder: &mut BattleFolder, damage: impl Fn(ChipHandle) -> u16) {
+    /// chips out of the folder (`sub_80293F8`: each one also moves the
+    /// console's tag pair index down by one, while it has one), and turn
+    /// Beast Out or the Cross into a transformation (`sub_8029344`,
+    /// `sub_802937A`).
+    fn confirm(
+        &mut self,
+        ctx: &Context,
+        screen: &mut Screen,
+        folder: &mut BattleFolder,
+        console: &mut Console,
+        damage: impl Fn(ChipHandle) -> u16,
+    ) {
         let view = self.view(ctx, folder.regular_pending);
         let picks: Vec<Pick> = screen
             .selection()
@@ -315,6 +324,12 @@ impl Side {
                 folder.take(index as usize);
                 if regular {
                     folder.regular_pending = false;
+                }
+                // The folder closes up by one at the next opening: the
+                // pair's index follows (a byte; a pair at the hand's end
+                // can reach 0, which reads as no pair).
+                if let Some(t) = &mut console.tag_pair {
+                    *t = t.wrapping_sub(1);
                 }
             }
         }

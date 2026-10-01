@@ -34,8 +34,8 @@ pub struct ConsoleSetup {
     pub rng: u32,
     /// Where the shuffle put the folder's tag pair (BattleState+0x45, while
     /// +0x44 says the pair is there): ChpShufl's re-deal leaves the pair
-    /// alone. The index is the shuffle's; nothing updates it as the folder
-    /// closes up.
+    /// alone. Each chip OK takes out of the folder moves the index down by
+    /// one, so it follows the pair as the folder closes up.
     pub tag_pair: Option<u8>,
     /// The save's event flag 0x1720: MegaMan's emotion window flickers as
     /// a bugged navi's does, bugs or not.
@@ -92,7 +92,8 @@ pub struct Console {
     pub rng: Rng,
     pub camera: CameraShake,
     pub emotion_window: EmotionWindow,
-    /// Where the folder's tag pair was shuffled to (`ConsoleSetup`).
+    /// Where the folder's tag pair is (`ConsoleSetup`; OK moves it with
+    /// the chips it takes out, an opening that could deal it drops it).
     pub tag_pair: Option<u8>,
     /// The save's glitch, for the emotion window's start.
     pub emotion_window_glitch: bool,

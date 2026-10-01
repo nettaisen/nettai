@@ -445,3 +445,45 @@ fn chip_shuffle_leaves_the_regular_chip_and_the_tag_pair() {
     assert_eq!(after.chips[12..14], before.chips[12..14]);
     assert_ne!(after.chips, before.chips);
 }
+
+#[test]
+fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
+    let chips: Vec<(ChipId, u8)> = (0..30).map(|i| ([SHOT, WAVE][i % 2], (i / 2) as u8 % 3)).collect();
+    let mut p = Player::new(&chips, GameVersion::Falzar);
+    p.stats.chip_shuffle = true;
+    p.console = Console::new(&ConsoleSetup { rng: 0x0BAD_F00D, tag_pair: Some(12), ..ConsoleSetup::default() });
+    p.open();
+    p.wait(10);
+    p.step(0);
+    let pair = p.side.folder.unwrap().chips[12..14].to_vec();
+    // Two picks (the same chip in two codes), then OK: each chip taken out
+    // moves the pair's index down with the pair.
+    p.press(keys::A);
+    p.press(keys::RIGHT);
+    p.press(keys::RIGHT);
+    p.press(keys::A);
+    assert_eq!(p.screen().selection(), [0, 2]);
+    p.press(keys::START);
+    assert_eq!(p.step(keys::A), Some(Request::Confirm));
+    assert_eq!(p.console.tag_pair, Some(10));
+    p.wait(20);
+    // The next screen closes the folder up, and its re-deal leaves the
+    // pair where it now is.
+    p.open();
+    p.wait(10);
+    p.step(0);
+    let before = p.side.folder.unwrap();
+    assert_eq!(before.chips[10..12], pair[..]);
+    p.press(keys::RIGHT);
+    p.press(keys::RIGHT);
+    p.press(keys::RIGHT);
+    p.press(keys::DOWN);
+    assert_eq!(p.screen().cursor, 8);
+    p.step(keys::A);
+    while p.phase() != Phase::Choosing && p.tick < 1000 {
+        p.step(0);
+    }
+    let after = p.side.folder.unwrap();
+    assert_eq!(after.chips[10..12], pair[..]);
+    assert_ne!(after.chips, before.chips);
+}
