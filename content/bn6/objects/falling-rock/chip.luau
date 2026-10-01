@@ -1,33 +1,20 @@
 --!strict
--- A chip of broken rock (effect object #9, `sub_80E0FA0`): spawned with a
--- sideways and an upward speed (`sub_80E1084`), it flies and falls; below
--- the ground it blinks for 10 ticks and is gone.
+-- A chip of broken rock (the original's effect object #9, `sub_80E0FA0`):
+-- spawned with a sideways and an upward speed (`sub_80E1084`), it flies and
+-- falls; below the ground it blinks for 10 ticks and is gone. A falling
+-- rock (falling_rock.luau) breaks into two.
+
+local chip = {}
 
 export type State = {
     -- ObjectData+0x0C: the sprite's priority.
     priority: number,
 }
 
-local rock_chip = {
-    state = { priority = "u8" },
-}
-
-local SPRITE = "10-05"
+local SPRITE = asset.sprite("falling-rock")
 
 -- The fall's acceleration (16.16, down).
 local GRAVITY = 0x3000
-
--- `sub_80E1084`: a chip at `pos` with speeds `vx` and `vz` (16.16), drawn
--- at priority `priority`, with Param1 `n`.
-function rock_chip.spawn(pos: Vec3, vx: number, vz: number, priority: number, n: number): Object?
-    local o = battle.spawn_kind("rock-chip", pos, { n, 0, 0, 0 })
-    if o then
-        local s = o.state :: State
-        s.priority = priority
-        o.vel = Vec3.new(vx, 0, vz)
-    end
-    return o
-end
 
 -- `sub_80E0FC0`: visible, its sprite in animation 1, 10 ticks to blink.
 local function init(me: Object, s: State)
@@ -85,16 +72,33 @@ local function tick(me: Object)
     me:update_sprite()
 end
 
-function rock_chip.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me, me.state :: State)
-        tick(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:free()
+chip.kind = define.kind {
+    id = "falling-rock/chip",
+    pool = "effect",
+    state = { priority = "u8" },
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me, me.state :: State)
+            tick(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:free()
+        end
+    end,
+}
+
+-- `sub_80E1084`: a chip at `pos` with speeds `vx` and `vz` (16.16), drawn
+-- at priority `priority`. (The game also gives it a Param1, which it
+-- never reads.)
+function chip.spawn(pos: Vec3, vx: number, vz: number, priority: number): Object?
+    local o = battle.spawn(chip.kind, pos)
+    if o then
+        (o.state :: State).priority = priority
+        o.vel = Vec3.new(vx, 0, vz)
     end
+    return o
 end
 
-return rock_chip
+return chip
