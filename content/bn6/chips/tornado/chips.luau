@@ -40,8 +40,8 @@ local BLOW, PUT_AWAY = 0x0, 0x4
 local RISE_AT = 0x20
 
 -- The fan (the original's attachment rows 0x21 and 0x22).
-local FAN = attachment.look { sprite = asset.sprite("fan"), palette = 0, attach_point = 9 }
-local CHARGED_FAN = attachment.look { sprite = asset.sprite("fan"), palette = 1, attach_point = 9 }
+local FAN = attachment.look { sprite = asset.sprite("hand-fan"), palette = 0, attach_point = 9 }
+local CHARGED_FAN = attachment.look { sprite = asset.sprite("hand-fan"), palette = 1, attach_point = 9 }
 
 -- The panels each spread covers, by level (capped at 3): Static's
 -- (`off_80CA160`) and the action's third form's (`off_80CA1F8`), { dx, dy }
