@@ -702,7 +702,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | blast-man, blast-fire | BlastMan series | chips/blastman/ |
 | bomb | MiniBomb, EnergBom, MegEnBom, BigBomb | lib/bombs/ |
 | bomb-slash | bomb's after-blast no BN6 chip uses | lib/bombs/ |
-| boomerang | Boomer, HiBoomer, M-Boomer; TomahawkCross's throw | objects/boomerang |
+| boomerang | Boomer, HiBoomer, M-Boomer; TomahawkCross's throw | chips/boomer/boomerang (as built; TomahawkCross Beast's throw requires it) |
 | bubble-star | BblStar1-3 | chips/bblstar/ |
 | bug-bomb | BugBomb | chips/bugbomb/ |
 | charge-man, charge-car | ChrgeMan series | chips/chrgeman/ |
@@ -716,7 +716,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | dash-hit | GroundCross Beast's dash, ChargeCross's tackle | navis/megaman/ |
 | delta-ray | DeltaRay | chips/deltaray/ |
 | dragon-head, dragon-body | HeatDrgn, ElecDrgn, AquaDrgn, WoodDrgn | lib/dragons/ |
-| drill | DrilArm; GroundCross's drill | objects/drill |
+| drill | DrilArm; GroundCross's drill | chips/drilarm/drill (as built; GroundCross's drill and MstrCros require it) |
 | drip-shower | DripShwr (SpoutMan's link chip) | navis/spoutman/ |
 | dust-ball | DustCross's charged shot | navis/megaman/forms/dustcross/ |
 | dust-cloud | DustBrk (DustMan's link chip) | navis/dustman/ |
@@ -771,7 +771,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | reflected-shot, reflector-shield | Rflectr1-3 | chips/rflectr/ |
 | riding-hit | RSlash (SlashMan's link chip) | navis/slashman/ |
 | rising-bubble | the plus chips' instant effect, black-bomb, bug-bomb, guardian-statue | objects/rising-bubble |
-| rock, rock-debris | stages (actor lists), rock-cube | objects/rock/ (debris colocated) |
+| rock, rock-debris | stages (actor lists), rock-cube | chips/rockcube/rock and debris (as built; the stages, the encased bubble and the boulder require them) |
 | rock-cube | RockCube, IceCube | chips/rockcube/ |
 | roll, roll-heart | Roll series | chips/roll/ |
 | rolling-log | RlngLog1-3 | chips/rlnglog/ |
@@ -787,7 +787,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | tengu-man | TenguMan series | chips/tenguman/ |
 | tengu-tornado | FTornado (TenguMan's link chip) | navis/tenguman/ |
 | thunder-ball | Thunder, DarkThnd | chips/thunder/ (DarkThnd's folder requires it) |
-| thunder-column | EraseCross's ray, DolThdr's doll | objects/thunder-column |
+| thunder-column | EraseCross's ray, DolThdr's doll | chips/dolthdr/column (as built; EraseCross's ray requires it) |
 | thunder-doll | DolThdr1-3 | chips/dolthdr/ |
 | time-bom | TimeBom1-3, TimeBom+ | chips/timebom/ |
 | tomahawk-man | TmhkMan series | chips/tmhkman/ |
@@ -800,6 +800,20 @@ flying-shot, gust, invisible, panel-bursts, projectile, rising-bubble, rock (wit
 Thirteen folders from 139. (Step 8f adds objects/boulder, the boulder the stages place: a role's kind, newly
 ported. Darkness, ported after this table, shares the element pillar with MegaMan's Beast forms, so it stays in
 objects/ too.)
+
+**As built** (after step 13, at the user's request): a kind whose natural owner is one chip lives in that chip's
+folder, keyed under it, even when other chips or forms use it too; they `require` it from there. So Invisibl's
+controller is chips/invisibl/controller (`invisibl/controller`, which the second WhiCapsl requires), the
+boomerang chips/boomer/boomerang (`boomer/boomerang`, which TomahawkCross Beast's throw and BoomrArm's charged
+shot use), the drill chips/drilarm/drill (`drilarm/drill`, which GroundCross's charged shot and MstrCros's
+GroundCross use), the falling meteor with its panel marker chips/meteors/falling_meteor and marker
+(`meteors/falling-meteor`, `meteors/marker`; the instant chips' meteor shower, lib/instant/meteor_shower, uses
+them), the thunder column chips/dolthdr/column (`dolthdr/thunder-column`, which EraseCross's ray lays), and the
+rock with its debris chips/rockcube/rock and debris (`rockcube/rock`, `rockcube/debris`, its variants
+`rockcube/brittle` to `rockcube/ice`; the stages place it, the encasing makes ice blocks of it, and the boulder
+breaks into its debris). What stays in `objects/` is what no one chip owns: absorbed-obstacle, attachment,
+boulder, bullet, element-pillar, encased-bubble, falling-rock (with its chips), flying-shot, follow-effect, gust,
+panel-bursts, panel-changer, panel-strike, projectile and rising-bubble.
 
 The rest of v1's layout moves as follows: `lib/sword.luau` and `lib/vari_sword.luau` into `lib/swords/`,
 `lib/dragon.luau` into `lib/dragons/`, `lib/instant-chips/` into `lib/instant/`, `lib/buster.luau` into
@@ -1410,7 +1424,7 @@ settled:
 
 **As built** (step 8d, the instant chips): every chip of action 0x1C is a definition with an `instant` hook
 where nothing names it by number: Boomer, HiBoomer and M-Boomer (chips/boomer, `boomerang.instant(variant)`,
-the boomerang's speeds a `boomerang-variant` record; objects/boomerang also holds `boomerang.tomahawk`, which
+the boomerang's speeds a `boomerang-variant` record; chips/boomer/boomerang also holds `boomerang.tomahawk`, which
 TomahawkCross Beast's throw names), Lance (chips/lance), SandWrm1-3 (chips/sandwrm, `worm.instant(level)`, with
 the hole and the sand), GolmHit1-3 (chips/golmhit, `golem.instant { palette }`), JustcOne (chips/justcone),
 FullCust, SyncTrgr, WhiCapsl (`plus.attack_with(plus.PARALYZE)`), FinalGun and NumTrap. What settled:
@@ -1665,7 +1679,7 @@ its typed state or a variant record:
 | Reflectr | chips/rflectr/guard (`{ ticks, look, counter?, heedless? }`) | `rflectr/shield` (`reflector-shield-look`: `byte_80C9664`'s rows, the chips' and the programs' by name), `rflectr/shot` | Rflectr1-3: definitions; the NaviCust Shield and Reflect (weapons 0x3B, 0x3C, 0x8B, 0x8C) return their own guards, `megaman/shield/action` and `megaman/reflect/action` |
 | IronShl | chips/ironshl/throw (`{ shell = { palette, speed, bumps, para? } }`) | `ironshl/shell` | IronShl1-3, ParaShl: records |
 | BblStar | chips/bblstar/chips' `blow { speed, palette }` | `bblstar/star` | BblStar1-3: definitions |
-| DrilArm | | `drill` (objects/drill, with the drill arm look; GroundCross's charged shot and MstrCros's GroundCross spawn it too, `drill.spawn(owner, element, z, damage, { ticks, light? }, slot?)`) | a definition |
+| DrilArm | | `drill` (chips/drilarm/drill, kind `drilarm/drill`, with the drill arm look; GroundCross's charged shot and MstrCros's GroundCross spawn it too, `drill.spawn(owner, element, z, damage, { ticks, light? }, slot?)`) | a definition |
 | Tornado | chips/tornado/chips' `blow { fan, single? / spread? }` | `tornado/tornado` (`tornado-variant`: `byte_80CA064`'s rows) | Tornado, Static: definitions; the action's subtype 3 (no chip) is `tornado/back-spread` |
 | WaveArm | chips/wavearm/strike (`{ wave, three_rows? }`) | `wavearm/wave` (`shock-wave-variant`: `byte_80C6B00`'s rows, the chips' by name; the viruses' too) | WaveArm1-3, PwrWave1-3: records |
 
@@ -1711,11 +1725,12 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
 
 **As built** (step 8f, the field objects):
 
-- **The rock** (objects/rock) is a definition. Its rows are `rock-variant` records (`rock.variants.cube`,
-  `ice`, ...: animation, HP, element, debris palette, break sound, NameID), its entrance a state enum
-  (`"rise" | "instant" | "fall" | "placed"`), and `rock.spawn(x, y, side, { variant, class, entrance },
-  damage)` takes them; its debris is `rock/debris` beside it. A stage names the variant its rocks are (step
-  12), and the kind's `place` gets it as `spec.variant`.
+- **The rock** (objects/rock; since moved to chips/rockcube/rock, kind `rockcube/rock`) is a definition. Its rows
+  are `rock-variant` records (`rock.variants.cube`, `ice`, ...: animation, HP, element, debris palette, break
+  sound, NameID), its entrance a state enum (`"rise" | "instant" | "fall" | "placed"`), and `rock.spawn(x, y,
+  side, { variant, class, entrance }, damage)` takes them; its debris is `rock/debris` beside it (since
+  `rockcube/debris`, chips/rockcube/debris). A stage names the variant its rocks are (step 12), and the kind's
+  `place` gets it as `spec.variant`.
 - **RockCube and IceCube** (chips/rockcube) are definitions whose `dimming` hook is `cube.places { variant =
   rock.variants.cube }`: the chip's parameters (the rock's row, class and entrance) are the builder's argument.
   No Program Advance, dark chip or recipe names either, so neither keeps a record.
@@ -1777,9 +1792,9 @@ need.
 | actions.toml | action key to navi action number: `"minibomb/action" = 0x12` (every chip whose use is an action has `<chip>/action`), `"megaman/buster/shot" = 0x11`, a weapon's `"<weapon>/action"`, `"engine/move" = 0x10`, `"engine/form-change" = 0x1C`. A role action whose number a chip's or weapon's action has is that action (the volley is WideSht's 0x30); only the turn (0x3B) has its own, `"megaman/turn"` |
 | navis.toml, forms.toml | `eraseman = { navi = 0x04, name_id = 0x1A4 }`, `heatcross = { form = 0x01, name_id = 0x1AC }`; the base form has no `name_id` (it is MegaMan's). The trace harness and the save codecs read them (the engine has no navi or form number), and `gen-content check` compares each definition with the ROM's navi or form of its number |
 | weapons.toml | `"megaman/buster" = [0x00, 0x2E, 0x2F, 0x3E, 0x3F, 0x4D, ...]`, one line per weapon: the numbers whose `off_80117D4` entries are one routine. `nullsub_44`'s numbers are split by what the ruleset does with them (`megaman/rock-barrage`, `megaman/charged-chip-bonus`, `megaman/stale-register`). Every number a form's row (`byte_8020354`), a navi's (`byte_80210DD`) or a known NaviStats (NaviCust programs) names |
-| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
+| kinds.toml | `bomb = { pool = "attack", index = 0x08 }`, keyed by the v2 keys (§4.2); `scratch_position`, `scratch_z_fraction`, `scratch_position_without_sprite` (the charge glow's condition) and `actor_list_entry` (the actor lists' entry type that places the kind: 8 for `rockcube/rock`, 3 for `boulder`, 9 for `guardian/statue`); the engine's kinds as `"engine/..."` |
 | stages.toml | `"netbattle-1" = { settings = [0x00], layout = 0x00, actor_list = 0x080B1989 }`: the settings indices that are the stage, its panel layout's number and the address its actor list goes by. No two of the 192 records are identical (96 layout and actor-list pairs, each with two effect words), so there are 192 stages |
-| records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rock/cube" = 1`); NaviCust buster shots when their producers are known |
+| records.toml | the few records a setup or an actor list names by byte, key to byte: the save's SP deletion-time slots (`[sp_slots] "sp/eraseman" = 3`); the rocks a stage places by the entry's argument (`[rock_variants] "rockcube/cube" = 1`); NaviCust buster shots when their producers are known |
 | rules.toml | the original's numbers of rule definitions, which nothing the traces compare reads and only `gen-content check` uses to rebuild the ROM's tables: `[lockon] cannon = 0x01` (the lock-on modes, `jt_8026584`), `[statuses] paralyze-90 = 0x10` (a hit's status byte, `off_80209EC`); and for the roles that name an effect, a spark, a region or a collision type (rules/roles.luau), the number the original's routines name each by, by role: `[effects] deletion = 0x03`, `[sparks] guard = 0x08`, `[regions] anchor = 0x01`, `[collision] navi = 0x01`; and likewise for the roles that name assets, `[sounds] hit = 0x06D`, `[music] link_battle = 0x015`, `[sprites] eruption = "10-24"`, `[banners] draw = 0x1C` |
 | assets.toml | asset names to ROM numbers: `[sprites] bomb = "0c-02"`, `[sounds] throw = 0x1A6`, `[backgrounds]`, `[banners]`, `[mugshots]`; every asset the ROM has, the unnamed under placeholders (§6.3); chip icons follow chips.toml |
 | text.toml | the text encoding the generator and the extractor share: `glyphs`, what each byte below `first_control` (0xE0) draws, as UTF-8 (the EX and SP glyphs as `[EX]`, `[SP]`) |
