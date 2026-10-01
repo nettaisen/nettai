@@ -234,6 +234,8 @@ pub fn weapon(n: u8) -> Option<bn6_content_api::WeaponHandle> {
 pub const TICKER_1: &str = "test/ticker1";
 pub const TICKER_2: &str = "test/ticker2";
 pub const TICKER_3: &str = "test/ticker3";
+/// A chip the test pack defines with a number (0x1F0) and its own action.
+pub const TICKER_4: &str = "test/ticker4";
 /// BN6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
 /// chips content defines, which grab a column and a panel.
 pub const AREA_GRAB: &str = "areagrab";

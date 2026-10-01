@@ -982,37 +982,9 @@ impl Defs {
             actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
         };
         let mut chips = Entries::new(Registry::Chip);
-        // The pack's chips: those a definition gives by number (its legacy
-        // action marker) under its key, the others' records (the test
-        // content's) under a transitional key.
-        let chip_keys: BTreeMap<ChipId, &str> =
-            legacy.chips.iter().filter_map(|(k, c)| Some((c.id?, k.as_str()))).collect();
-        for c in &content.chips {
-            let n = c.id.unwrap_or_default();
-            let (key, whose) = match chip_keys.get(&n) {
-                Some(k) => (k.to_string(), "the pack's chip, defined by number".to_string()),
-                None => (format!("v1/chip-{n:03x}"), "the pack's chip record".to_string()),
-            };
-            // Registration by number: the record's action, or for the
-            // ruleset's generic chip actions its subtype's registration.
-            let by_subtype = |table: &BTreeMap<u8, FnId>, f: fn(FnId) -> ChipUsage, unported: fn(u8) -> Unported| {
-                table.get(&c.subtype).map_or(ChipUsage::Unported(unported(c.subtype)), |&h| f(h))
-            };
-            let usage = match c.action {
-                DIMMING_CHIP_ACTION => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
-                NAVI_CHIP_ACTION => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
-                INSTANT_CHIP_ACTION => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
-                n => match actions.iter().position(|a| a.number == Some(n)) {
-                    Some(i) => ChipUsage::Action(ActionHandle(i as u16)),
-                    None => ChipUsage::Unported(Unported::Action(n)),
-                },
-            };
-            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage }, whose);
-        }
-        for d in definitions.of(Registry::Chip) {
-            if legacy.chips.contains_key(&d.key) {
-                continue;
-            }
+        // A chip definition's own use: exactly one of its `action`,
+        // `dimming`, `navi` and `instant` (none: `Ok(None)`).
+        let own_usage = |d: &Definition, functions: &mut Functions| -> Result<Option<ChipUsage>, ContentError> {
             let mut usages = Vec::new();
             match d.spec.field("action") {
                 Data::Nil => {}
@@ -1028,9 +1000,55 @@ impl Defs {
                     usages.push(usage(functions.id(slot(d, field)?)));
                 }
             }
-            let [usage] = usages[..] else {
-                return Err(ContentError::new(format!(
+            match usages[..] {
+                [] => Ok(None),
+                [usage] => Ok(Some(usage)),
+                _ => Err(ContentError::new(format!(
                     "{}.luau: chip {} needs exactly one of `action`, `dimming`, `navi` and `instant`",
+                    d.module, d.key
+                ))),
+            }
+        };
+        // The pack's chips: those a definition gives by number (its legacy
+        // marker) under its key, the others' records (the test content's)
+        // under a transitional key. A numbered definition's use is its own
+        // where it has one, else what registration by number resolves from
+        // the record's action and subtype (a behaviour still a v1 module).
+        let chip_keys: BTreeMap<ChipId, &str> =
+            legacy.chips.iter().filter_map(|(k, c)| Some((c.id?, k.as_str()))).collect();
+        for c in &content.chips {
+            let n = c.id.unwrap_or_default();
+            let (key, whose, own) = match chip_keys.get(&n) {
+                Some(k) => {
+                    let d = definitions.get(Registry::Chip, k).expect("a numbered chip's definition");
+                    (k.to_string(), format!("defined in {}.luau", d.module), own_usage(d, &mut functions)?)
+                }
+                None => (format!("v1/chip-{n:03x}"), "the pack's chip record".to_string(), None),
+            };
+            // Registration by number: the record's action, or for the
+            // ruleset's generic chip actions its subtype's registration.
+            let by_subtype = |table: &BTreeMap<u8, FnId>, f: fn(FnId) -> ChipUsage, unported: fn(u8) -> Unported| {
+                table.get(&c.subtype).map_or(ChipUsage::Unported(unported(c.subtype)), |&h| f(h))
+            };
+            let usage = match (own, c.action) {
+                (Some(usage), _) => usage,
+                (None, DIMMING_CHIP_ACTION) => by_subtype(&dimming_hooks, ChipUsage::Dimming, Unported::Dimming),
+                (None, NAVI_CHIP_ACTION) => by_subtype(&navi_hooks, ChipUsage::Navi, Unported::Navi),
+                (None, INSTANT_CHIP_ACTION) => by_subtype(&instant_hooks, ChipUsage::Instant, Unported::Instant),
+                (None, n) => match actions.iter().position(|a| a.number == Some(n)) {
+                    Some(i) => ChipUsage::Action(ActionHandle(i as u16)),
+                    None => ChipUsage::Unported(Unported::Action(n)),
+                },
+            };
+            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage }, whose);
+        }
+        for d in definitions.of(Registry::Chip) {
+            if legacy.chips.contains_key(&d.key) {
+                continue;
+            }
+            let Some(usage) = own_usage(d, &mut functions)? else {
+                return Err(ContentError::new(format!(
+                    "{}.luau: chip {} needs exactly one of `action`, `dimming`, `navi` and `instant` (or, for a behaviour still a v1 module, a legacy marker with its `number`)",
                     d.module, d.key
                 )));
             };
