@@ -31,9 +31,10 @@ local BY_SUBTYPE: { [number]: Action } = {
 }
 
 function by_number.update(me: Object, s: any)
-    local a = BY_SUBTYPE[me.variant]
+    local subtype = me.variant
+    local a = BY_SUBTYPE[subtype]
     if not a then
-        error(string.format("recovery subtype %#x reads past byte_80EC870 (sub_80EC844)", me.variant))
+        error(string.format("recovery subtype %#x reads past byte_80EC870 (sub_80EC844)", subtype))
     end
     a.update(me, s)
 end

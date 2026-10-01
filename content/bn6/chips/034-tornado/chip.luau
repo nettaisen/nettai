@@ -21,9 +21,10 @@ local BY_SUBTYPE: { [number]: Action } = {
 }
 
 function by_number.update(me: Object, s: any)
-    local a = BY_SUBTYPE[me.variant]
+    local subtype = me.variant
+    local a = BY_SUBTYPE[subtype]
     if not a then
-        error(string.format("Tornado subtype %#x has no blow (sub_80ED454)", me.variant))
+        error(string.format("Tornado subtype %#x has no blow (sub_80ED454)", subtype))
     end
     a.update(me, s)
 end
