@@ -222,21 +222,33 @@ pub struct Defs {
     pub stages: Vec<StageDef>,
     pub records: Vec<RecordDef>,
     /// One-shot effects' and hit sparks' looks content defines, by handle.
-    /// Each has the engine's number after the pack data's
-    /// (`Content::effect`, `Content::spark`): see [`Defs::number`].
+    /// Each has the engine's number (`Content::effect`, `Content::spark`):
+    /// the numbered table's row with the same look, else one after the
+    /// table's. See [`Defs::number`].
     pub effects: Vec<super::EffectSprite>,
     pub sparks: Vec<super::EffectSprite>,
     /// Hit regions content defines, by handle, with the engine's number for
-    /// each (a shape's after the pack data's shapes, a whole-field region's
-    /// after its field regions, from 0x80).
+    /// each: the numbered table's region of the same shape or condition,
+    /// else one after the table's (a shape's after its shapes, a
+    /// whole-field region's after its field regions, from 0x80).
     pub regions: Vec<(super::Region, u8)>,
-    /// Collision types content defines, by handle: the engine's number for
-    /// each comes after the pack data's (`Content::collision_type`).
+    /// Collision types content defines, by handle. The engine's number for
+    /// each (`Content::collision_type`) is its row in the numbered table
+    /// (the row its `row_offset` names, with the same flags), else one
+    /// after the table's.
     pub collisions: Vec<CollisionTypeDef>,
     /// What the ruleset needs from content by role (`define.roles`).
     pub roles: Roles,
-    /// The engine's numbers for the first effect, spark and collision type
-    /// content defines.
+    /// The engine's number for each effect, spark and collision type
+    /// content defines, by handle; and those past the numbered tables, by
+    /// number from the table's length (the same look or type defined twice
+    /// is one number).
+    effect_numbers: Vec<u8>,
+    spark_numbers: Vec<u8>,
+    collision_numbers: Vec<u8>,
+    effect_extra: Vec<super::EffectSprite>,
+    spark_extra: Vec<super::EffectSprite>,
+    collision_extra: Vec<CollisionTypeDef>,
     effect_base: u8,
     spark_base: u8,
     collision_base: u8,
@@ -382,30 +394,34 @@ impl Defs {
     }
 
     /// The engine's number for a definition the ruleset still stores as a
-    /// byte (an effect, a spark, a region, a collision type): its own,
-    /// after the pack data's, never an original number.
+    /// byte (an effect, a spark, a region, a collision type): the numbered
+    /// table's entry that is the same thing (the content's own table by
+    /// number, which v1 modules and the ruleset still read), else its own
+    /// after the table's. The engine learns no number from it: the table is
+    /// content's, and a definition only shares its entry.
     pub fn number(&self, registry: Registry, h: u16) -> Option<u8> {
         let i = h as usize;
         match registry {
-            Registry::Effect => (i < self.effects.len()).then(|| self.effect_base + h as u8),
-            Registry::Spark => (i < self.sparks.len()).then(|| self.spark_base + h as u8),
+            Registry::Effect => self.effect_numbers.get(i).copied(),
+            Registry::Spark => self.spark_numbers.get(i).copied(),
             Registry::Region => self.regions.get(i).map(|&(_, n)| n),
-            Registry::Collision => (i < self.collisions.len()).then(|| self.collision_base + h as u8),
+            Registry::Collision => self.collision_numbers.get(i).copied(),
             _ => None,
         }
     }
 
-    /// A defined effect, spark or collision type by the engine's number.
+    /// A defined effect, spark or collision type past the numbered table,
+    /// by the engine's number.
     pub(crate) fn effect_numbered(&self, n: u8) -> Option<super::EffectSprite> {
-        n.checked_sub(self.effect_base).and_then(|i| self.effects.get(i as usize)).copied()
+        n.checked_sub(self.effect_base).and_then(|i| self.effect_extra.get(i as usize)).copied()
     }
 
     pub(crate) fn spark_numbered(&self, n: u8) -> Option<super::EffectSprite> {
-        n.checked_sub(self.spark_base).and_then(|i| self.sparks.get(i as usize)).copied()
+        n.checked_sub(self.spark_base).and_then(|i| self.spark_extra.get(i as usize)).copied()
     }
 
     pub(crate) fn collision_numbered(&self, n: u8) -> Option<CollisionTypeDef> {
-        n.checked_sub(self.collision_base).and_then(|i| self.collisions.get(i as usize)).copied()
+        n.checked_sub(self.collision_base).and_then(|i| self.collision_extra.get(i as usize)).copied()
     }
 
     /// A defined region by the engine's number.
@@ -1097,16 +1113,43 @@ impl Defs {
         };
         let effects = definitions.of(Registry::Effect).iter().map(look).collect::<Result<Vec<_>, _>>()?;
         let sparks = definitions.of(Registry::Spark).iter().map(look).collect::<Result<Vec<_>, _>>()?;
-        let base = |len: usize, n: usize, what: &str| -> Result<u8, ContentError> {
-            u8::try_from(len)
-                .ok()
-                .filter(|&b| b as usize + n <= 0x100)
-                .ok_or_else(|| ContentError::new(format!("too many {what}: {len} in the pack's data and {n} defined")))
-        };
-        let effect_base = base(content.effects.len(), effects.len(), "effects")?;
-        let spark_base = base(content.sparks.len(), sparks.len(), "hit sparks")?;
+        // The engine's numbers for what content defines: the numbered
+        // table's entry that is the same thing, else a number after the
+        // table's (one per distinct thing).
+        fn numbers<T: PartialEq + Copy>(
+            table_len: usize,
+            defined: &[T],
+            in_table: impl Fn(&T) -> Option<usize>,
+            what: &str,
+        ) -> Result<(u8, Vec<u8>, Vec<T>), ContentError> {
+            let mut extra: Vec<T> = Vec::new();
+            let mut out = Vec::with_capacity(defined.len());
+            for x in defined {
+                let n = match in_table(x) {
+                    Some(i) => i,
+                    None => match extra.iter().position(|e| e == x) {
+                        Some(i) => table_len + i,
+                        None => {
+                            extra.push(*x);
+                            table_len + extra.len() - 1
+                        }
+                    },
+                };
+                out.push(u8::try_from(n).map_err(|_| {
+                    ContentError::new(format!(
+                        "too many {what}: {table_len} in the numbered table and more than {} others defined",
+                        0x100usize.saturating_sub(table_len)
+                    ))
+                })?);
+            }
+            Ok((table_len.min(0xFF) as u8, out, extra))
+        }
+        let (effect_base, effect_numbers, effect_extra) =
+            numbers(content.effects.len(), &effects, |e| content.effects.iter().position(|t| t == e), "effects")?;
+        let (spark_base, spark_numbers, spark_extra) =
+            numbers(content.sparks.len(), &sparks, |e| content.sparks.iter().position(|t| t == e), "hit sparks")?;
         let (mut shapes, mut fields) = (content.regions.len(), content.rules.field_regions.len());
-        let mut regions = Vec::new();
+        let mut regions: Vec<(super::Region, u8)> = Vec::new();
         for d in definitions.of(Registry::Region) {
             let what = |e: &str| ContentError::new(format!("{}.luau: region {}: {e}", d.module, d.key));
             let (region, number) = match (d.spec.field("panels"), d.spec.field("field")) {
@@ -1118,13 +1161,38 @@ impl Defs {
                         };
                         panels.push(super::PanelOffset { dx: dx as i8, dy: dy as i8 });
                     }
-                    shapes += 1;
-                    (super::Region::Panels(panels), shapes - 1)
+                    // The numbered table's region of this shape (region
+                    // 0 is none), else one a definition before it made,
+                    // else a new one.
+                    let region = super::Region::Panels(panels);
+                    let super::Region::Panels(panels) = &region else { unreachable!() };
+                    let number = match content.regions.iter().skip(1).position(|r| r == panels) {
+                        Some(i) => i + 1,
+                        None => match regions.iter().find(|(r, _)| *r == region) {
+                            Some(&(_, n)) => n as usize,
+                            None => {
+                                shapes += 1;
+                                shapes - 1
+                            }
+                        },
+                    };
+                    (region, number)
                 }
                 (Data::Nil, Data::Map(_)) => {
                     let word = |k: &str| d.spec.field("field").field(k).int().unwrap_or(0) as u32;
-                    fields += 1;
-                    (super::Region::Field(super::PanelCondition { require: word("require"), forbid: word("forbid") }), 0x80 + fields - 1)
+                    let condition = super::PanelCondition { require: word("require"), forbid: word("forbid") };
+                    let region = super::Region::Field(condition);
+                    let number = match content.rules.field_regions.iter().position(|c| *c == condition) {
+                        Some(i) => 0x80 + i,
+                        None => match regions.iter().find(|(r, _)| *r == region) {
+                            Some(&(_, n)) => n as usize,
+                            None => {
+                                fields += 1;
+                                0x80 + fields - 1
+                            }
+                        },
+                    };
+                    (region, number)
                 }
                 _ => return Err(what("needs exactly one of `panels` and `field`")),
             };
@@ -1143,7 +1211,18 @@ impl Defs {
             let row_offset = d.spec.field("row_offset").int().unwrap_or(0) as u16;
             collisions.push(CollisionTypeDef { flags: [word("side0")?, word("side1")?], row_offset });
         }
-        let collision_base = base(content.rules.collision_types.len(), collisions.len(), "collision types")?;
+        // A collision type is its row of the numbered table when its
+        // `row_offset` names one with its flags.
+        let rows = &content.rules.collision_types;
+        let (collision_base, collision_numbers, collision_extra) = numbers(
+            rows.len(),
+            &collisions,
+            |c| {
+                let row = (c.row_offset / 8) as usize;
+                (c.row_offset % 8 == 0 && rows.get(row) == Some(&c.flags)).then_some(row)
+            },
+            "collision types",
+        )?;
 
         // The roles.
         let mut roles = Roles::default();
@@ -1211,6 +1290,12 @@ impl Defs {
             regions,
             collisions,
             roles,
+            effect_numbers,
+            spark_numbers,
+            collision_numbers,
+            effect_extra,
+            spark_extra,
+            collision_extra,
             effect_base,
             spark_base,
             collision_base,
@@ -1293,5 +1378,57 @@ mod tests {
         // The modules that return a table with a `state` give its layout.
         let states = c.defs.definitions.modules.iter().filter(|m| m.state.is_some()).count();
         assert!(states > 100, "{states} module states");
+        // The numbered tables are the definitions' (step 5): what the
+        // modules define of them shares their entries, so the engine's
+        // byte holds them all.
+        assert!(c.effects.len() > 100 && c.defs.effects.len() > c.effects.len(), "{} effects defined", c.defs.effects.len());
+        numbers_give_the_definitions_back(&c);
+    }
+
+    /// The engine's number for each effect, spark, region and collision
+    /// type content defines reads back as what was defined; one the
+    /// numbered table holds is that entry, another comes after the table.
+    fn numbers_give_the_definitions_back(c: &Content) {
+        let d = &c.defs;
+        for (h, look) in d.effects.iter().enumerate() {
+            let n = d.number(Registry::Effect, h as u16).expect("an effect's number");
+            assert_eq!(c.effect(n), *look, "effect {h}");
+            assert_eq!(c.effects.iter().position(|e| e == look).unwrap_or(n as usize), n as usize, "effect {h}");
+        }
+        for (h, look) in d.sparks.iter().enumerate() {
+            let n = d.number(Registry::Spark, h as u16).expect("a spark's number");
+            assert_eq!(c.spark(n), *look, "spark {h}");
+            assert_eq!(c.sparks.iter().position(|e| e == look).unwrap_or(n as usize), n as usize, "spark {h}");
+        }
+        for (h, t) in d.collisions.iter().enumerate() {
+            let n = d.number(Registry::Collision, h as u16).expect("a collision type's number");
+            for side in 0..2 {
+                assert_eq!(c.collision_type(n, side), (t.flags[side as usize], t.row_offset), "collision type {h}");
+            }
+        }
+        for (h, (region, n)) in d.regions.iter().enumerate() {
+            assert_eq!(d.number(Registry::Region, h as u16), Some(*n));
+            match region {
+                crate::content::Region::Panels(p) => assert_eq!(c.region(*n), &p[..], "region {h}"),
+                crate::content::Region::Field(f) => assert_eq!(c.field_region(*n), *f, "region {h}"),
+            }
+        }
+    }
+
+    #[test]
+    fn a_definition_shares_the_numbered_tables_entry_it_is() {
+        // The test content's tables are its own; the modules it loads
+        // define some of the same looks, regions and collision types.
+        let c = crate::content::testing::with_test_pack();
+        assert!(!c.defs.effects.is_empty() && !c.defs.collisions.is_empty() && !c.defs.regions.is_empty());
+        numbers_give_the_definitions_back(&c);
+        // The same look defined twice is one number.
+        for (i, a) in c.defs.effects.iter().enumerate() {
+            for (j, b) in c.defs.effects.iter().enumerate() {
+                if a == b {
+                    assert_eq!(c.defs.number(Registry::Effect, i as u16), c.defs.number(Registry::Effect, j as u16));
+                }
+            }
+        }
     }
 }
