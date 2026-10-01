@@ -17,10 +17,10 @@ local dimming_chips = require("../dimming")
 local traps = {}
 
 -- A trap with an object of its own (a "trap" record): `set` spawns it for
--- the controller and its user (`sub_80E3560`'s table entry), with the
--- bonus the controller keeps.
+-- the controller and its user (`sub_80E3560`'s table entry), with the chip
+-- and bonus the controller keeps.
 export type Trap = {
-    set: (controller: Object, user: Object, bonus: number) -> Object?,
+    set: (controller: Object, user: Object, chip: Chip?, bonus: number) -> Object?,
 }
 
 export type State = {
@@ -47,7 +47,7 @@ local function effect(me: Object)
         end
         local s = me.state :: State
         local trap = s.trap
-        local object = if trap then trap.set(me, user, s.bonus) else nil
+        local object = if trap then trap.set(me, user, s.chip, s.bonus) else nil
         battle.set_linked(user.alliance, {
             chip = s.chip,
             bonus = s.bonus,
