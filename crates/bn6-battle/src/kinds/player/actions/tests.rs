@@ -1475,10 +1475,10 @@ fn dustcross_beast_throws_its_newest_obstacle_or_fires_the_beast_buster() {
     assert!(b.actors.get(actor).absorbed.is_empty());
 }
 
-/// Two navis idle and fighting on the test content's battle settings
-/// `settings`, with both navis' stats `stats`.
-fn fight_on(settings: u8, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
-    let mut setup = testing::round_setup(settings, stats);
+/// Two navis idle and fighting on the test content's stage `stage`, with
+/// both navis' stats `stats`.
+fn fight_on(stage: &str, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
+    let mut setup = testing::round_setup(stage, stats);
     setup.settings.effects = 0xE8C;
     let mut b = Battle::new(setup, testing::content());
     b.spawn_actors();
@@ -1914,7 +1914,7 @@ fn fight_on_test_pack() -> (Battle, ObjectRef, ObjectRef) {
     };
     let mut setup = testing::round_setup(testing::LINK_BATTLE, stats);
     setup.content = content.hash();
-    setup.settings.stage = content.stage_numbered(testing::LINK_BATTLE);
+    setup.settings.stage = content.stage_by_key(testing::LINK_BATTLE);
     setup.settings.effects = 0xE8C;
     let mut b = Battle::new(setup, content);
     b.spawn_actors();
