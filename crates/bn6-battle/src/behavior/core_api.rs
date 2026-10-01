@@ -60,6 +60,7 @@ fn status_bit(flag: StatusFlag) -> u32 {
         StatusFlag::AffectedByIce => f1::AFFECTED_BY_ICE,
         StatusFlag::Bubbled => f1::BUBBLED,
         StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
+        StatusFlag::Carried => kinds::obstacle::obstacle_f1::CARRIED,
     }
 }
 
@@ -418,6 +419,10 @@ impl CoreApi for Battle {
         self.round.alive_actors[side as usize & 1].iter().flatten().copied().collect()
     }
 
+    fn objects_of_kind(&self, kind: u16) -> Vec<ObjectRef> {
+        self.objects.in_order().filter(|&r| self.objects.get(r).kind.0 == kind).collect()
+    }
+
     fn rng(&mut self) -> u32 {
         self.rng.next()
     }
@@ -718,36 +723,25 @@ impl CoreApi for Battle {
     }
 
     fn navi_action(&self, o: ObjectRef) -> ApiResult<NaviAction> {
-        let a = self.actor_of(o)?;
-        if let Some(h) = kinds::player::running_content_action(self, o) {
-            return Ok(NaviAction::Content(h.0));
-        }
-        let action = self.objects.get(o).action;
-        if action >= 0x10 {
-            if let Some(h) = self.content.defs.action_numbered(action) {
-                return Ok(NaviAction::Content(h.0));
-            }
-            return Ok(match action {
-                kinds::player::actions::movement::ACTION => NaviAction::Engine("move"),
-                kinds::player::actions::dimming_chip::ACTION => NaviAction::Engine("dimming_chip"),
-                kinds::player::actions::navi_chip::ACTION => NaviAction::Engine("navi_chip"),
-                kinds::player::actions::instant::ACTION if matches!(a.attack.action, ActionVars::FormChange(_)) => {
-                    NaviAction::Engine("form_change")
-                }
-                kinds::player::actions::instant::ACTION => NaviAction::Engine("instant_chip"),
-                kinds::player::actions::cross_special::ACTION => NaviAction::Engine("cross_special"),
-                n => NaviAction::Number(n),
-            });
-        }
-        // The framework's states; a link navi's actions past idle are its own.
-        const STATES: [&str; 9] =
-            ["entry", "take_control", "deletion", "flinch", "paralysis", "drag", "freeze", "bubble", "idle"];
-        Ok(match STATES.get(action as usize) {
-            Some(name) if a.ai_index == 0 || action <= 8 => NaviAction::Engine(name),
-            _ => match self.content.defs.action_numbered(action) {
-                Some(h) => NaviAction::Content(h.0),
-                None => NaviAction::Number(action),
-            },
+        use kinds::player::{EngineAction as E, NaviAction as A};
+        Ok(match self.actor_of(o)?.navi_action {
+            A::Entry => NaviAction::Engine("entry"),
+            A::TakeControl => NaviAction::Engine("take_control"),
+            A::Deletion => NaviAction::Engine("deletion"),
+            A::Flinch => NaviAction::Engine("flinch"),
+            A::Paralysis => NaviAction::Engine("paralysis"),
+            A::Drag => NaviAction::Engine("drag"),
+            A::Freeze => NaviAction::Engine("freeze"),
+            A::Bubble => NaviAction::Engine("bubble"),
+            A::Idle => NaviAction::Engine("idle"),
+            A::Engine(E::Move) => NaviAction::Engine("move"),
+            A::Engine(E::DimmingChip) => NaviAction::Engine("dimming_chip"),
+            A::Engine(E::NaviChip) => NaviAction::Engine("navi_chip"),
+            A::Engine(E::InstantChip) => NaviAction::Engine("instant_chip"),
+            A::Engine(E::FormChange) => NaviAction::Engine("form_change"),
+            A::Engine(E::CrossSpecial) => NaviAction::Engine("cross_special"),
+            A::Content(h) => NaviAction::Content(h.0),
+            A::Unported(n) => NaviAction::Number(n),
         })
     }
 
@@ -776,6 +770,11 @@ impl CoreApi for Battle {
             Lifecycle::Finish => Progress { state: state::FINISH, action: 0, phase: 0, phase_init: 0 },
         };
         common::set_progress(self, o, p);
+        // A navi's action is its NaviAction.
+        if self.objects.get(o).actor.is_some() {
+            let action = kinds::player::NaviAction::numbered(&self.content.defs, p.action);
+            kinds::player::set_navi_action(self, o, action);
+        }
     }
 
     fn set_lifecycle_only(&mut self, o: ObjectRef, l: Lifecycle) {
@@ -788,6 +787,11 @@ impl CoreApi for Battle {
     }
 
     fn set_action(&mut self, o: ObjectRef, action: u8) {
+        if self.objects.get(o).actor.is_some() {
+            // A navi's (by number in the numeric API).
+            let action = kinds::player::NaviAction::numbered(&self.content.defs, action);
+            return kinds::player::set_action(self, o, action);
+        }
         common::set_action(self, o, action);
     }
 
@@ -812,6 +816,10 @@ impl CoreApi for Battle {
                 Some((_, index)) => i(index as i64),
                 None => Value::Nil,
             },
+            // A navi's is its NaviAction, by number for the numeric API.
+            ObjectField::Action if ob.actor.is_some() => {
+                i(kinds::player::navi_action(self, o).number(&self.content.defs) as i64)
+            }
             ObjectField::Action => i(ob.action as i64),
             ObjectField::Phase => i(ob.phase as i64),
             ObjectField::PhaseInit => i(ob.phase_init as i64),
@@ -854,6 +862,14 @@ impl CoreApi for Battle {
 
     fn set(&mut self, o: ObjectRef, f: ObjectField, v: Value) -> ApiResult<()> {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
+        // A navi's action is its NaviAction (by number in the numeric API).
+        if let (ObjectField::Action, FieldValue::U8(x)) = (f, &v)
+            && self.objects.get(o).actor.is_some()
+        {
+            let action = kinds::player::NaviAction::numbered(&self.content.defs, *x);
+            kinds::player::set_navi_action(self, o, action);
+            return Ok(());
+        }
         let ob = self.objects.get_mut(o);
         if let Some(bit) = flag_bit(f) {
             let FieldValue::Bool(on) = v else { unreachable!() };
@@ -921,6 +937,10 @@ impl CoreApi for Battle {
 
     fn update_sprite_while_paused(&mut self, o: ObjectRef) {
         common::update_sprite_while_paused(self, o);
+    }
+
+    fn load_or_step_sprite(&mut self, o: ObjectRef) {
+        common::load_or_step_sprite(self, o);
     }
 
     fn attach_point(&self, o: ObjectRef, n: u8) -> (i32, i32) {
@@ -1210,10 +1230,9 @@ impl CoreApi for Battle {
         // The running action: the content action the attack started, else
         // the one registered by the navi's action number.
         self.actor_of(o)?;
-        let running = kinds::player::running_content_action(self, o);
-        let action = match running {
-            Some(h) => Value::Def(Registry::Action, h.0),
-            None => Value::Int(self.objects.get(o).action as i64),
+        let action = match kinds::player::navi_action(self, o) {
+            kinds::player::NaviAction::Content(h) => Value::Def(Registry::Action, h.0),
+            other => Value::Int(other.number(&self.content.defs) as i64),
         };
         let id = self.action_schema(action).map_err(|_| ApiError::NoState(o))?;
         self.attack_state_for(o, id)
@@ -1260,6 +1279,11 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn clear_statuses(&mut self, o: ObjectRef) -> ApiResult<()> {
+        self.collision_of_mut(o)?.f1 = 0;
+        Ok(())
+    }
+
     fn status_timer(&self, o: ObjectRef, t: StatusTimer) -> ApiResult<u16> {
         Ok(self.collision_of(o)?.status_timers[timer_index(t)])
     }
@@ -1294,6 +1318,9 @@ impl CoreApi for Battle {
     }
 
     fn set_attack(&mut self, o: ObjectRef, action: u8, kind: u8) {
+        // (The numeric API names actions by number: content model v2 step
+        // 13 removes it.)
+        let action = kinds::player::NaviAction::numbered(&self.content.defs, action);
         kinds::player::set_attack(self, o, action, kind);
     }
 
@@ -1301,8 +1328,7 @@ impl CoreApi for Battle {
         if action as usize >= self.content.defs.actions.len() {
             return Err(ApiError::Other(format!("no action has handle {action}")));
         }
-        let attack = kinds::player::NaviAttack::content(&self.content.defs, ActionHandle(action));
-        kinds::player::set_attack(self, o, attack, kind);
+        kinds::player::set_attack(self, o, kinds::player::NaviAction::Content(ActionHandle(action)), kind);
         Ok(())
     }
 
@@ -1488,6 +1514,8 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x as i64,
             CollisionField::PanelY => c.panel.y as i64,
             CollisionField::HitEffect => c.hit_effect as i64,
+            CollisionField::Element => c.element as i64,
+            CollisionField::SecondaryElement => c.secondary_element as i64,
             CollisionField::StatusBase => c.status_base as i64,
             CollisionField::Bugs => c.bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
@@ -1532,6 +1560,8 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::HitEffect => c.hit_effect = x as u8,
+            CollisionField::Element => c.element = x as u8,
+            CollisionField::SecondaryElement => c.secondary_element = x as u8,
             CollisionField::StatusBase => c.status_base = x as u8,
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
@@ -1707,6 +1737,7 @@ impl CoreApi for Battle {
             ObstacleCrush::Breaks => Crush::Breaks,
             ObstacleCrush::Destroys => Crush::Destroys,
             ObstacleCrush::SparesBodies => Crush::SparesBodies,
+            ObstacleCrush::Ignores => Crush::Ignores,
         };
         let hold = match hold {
             ObstacleHold::AfterAppearing => Hold::AfterAppearing,

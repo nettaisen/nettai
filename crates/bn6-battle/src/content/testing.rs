@@ -119,9 +119,10 @@ pub const BASS: ChipId = 0x119;
 pub const SUN_MOON: ChipId = 0x11a;
 /// The link navis' own chips (action 0x0A), each running the action its
 /// module exports: BN6's HeatPres, DElecSwd, RSlash, EDeletBm, VolcChrg,
-/// DripShwr, ETomahwk, FTornado and DustBrk (navis/<navi>/chip.luau), as
-/// records of made-up damage. Any navi can use them here.
-pub const LINK_CHIPS: [(ChipId, &str, &str); 9] = [
+/// DripShwr, ETomahwk, FTornado, RC Brakr and DustBrk
+/// (navis/<navi>/chip.luau), as records of made-up damage. Any navi can use
+/// them here.
+pub const LINK_CHIPS: [(ChipId, &str, &str); 10] = [
     (0x50, "HeatPres", "navis/heatman/chip"),
     (0x51, "DElecSwd", "navis/elecman/chip"),
     (0x52, "RSlash", "navis/slashman/chip"),
@@ -130,10 +131,12 @@ pub const LINK_CHIPS: [(ChipId, &str, &str); 9] = [
     (0x55, "DripShwr", "navis/spoutman/chip"),
     (0x56, "ETomahwk", "navis/tomahawkman/chip"),
     (0x57, "FTornado", "navis/tenguman/chip"),
+    (0x58, "RCBrakr", "navis/groundman/chip"),
     (0x59, "DustBrk", "navis/dustman/chip"),
 ];
-/// A link navi (navi 4; AI index 4, whose actor record has no hooks).
-pub const LINK_NAVI: crate::setup::Navi = crate::setup::Navi(4);
+/// A link navi (the content's navi 1; AI index 4, whose actor record has
+/// no hooks).
+pub const LINK_NAVI: crate::setup::Navi = crate::setup::Navi(1);
 
 /// Actor lists: two navis, side 1's first (the usual netbattle order)...
 pub const TWO_NAVIS: ActorListId = ActorListId(0);
@@ -271,6 +274,9 @@ pub const TICK_SHOT: &str = "test/tick-shot";
 /// definitions the engine's tests run.
 const TEST_PACK: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/pack");
 
+/// The test content's own modules (its roles).
+const TEST_CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/testdata/content");
+
 /// Every `.luau` module under `dir`, by path without `.luau`.
 pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
     fn walk(root: &std::path::Path, dir: &std::path::Path, out: &mut std::collections::BTreeMap<String, String>) {
@@ -297,6 +303,8 @@ pub fn modules_under(dir: &str) -> std::collections::BTreeMap<String, String> {
 /// hands and navi stats hold them (`TICKER_1`, `TICKER_2`, `TICK_SHOT`).
 pub fn with_test_pack() -> Content {
     let mut c = make();
+    // The test pack brings its own roles.
+    c.scripts.modules.remove("rules/roles");
     for (path, source) in modules_under(TEST_PACK) {
         c.scripts.modules.insert(format!("test/{path}"), source);
     }
@@ -412,6 +420,14 @@ fn assets() -> bn6_content_api::AssetNames {
         ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
         ("erase-beam", sprite(0x10, 0x51)),
+        ("impact", sprite(0x14, 0x01)),
+        ("bat-impact", sprite(0x14, 0x07)),
+        ("shot-impact", sprite(0x14, 0x0C)),
+        ("shell-burst", sprite(0x14, 0x11)),
+        ("beast-shot", sprite(0x0C, 0x21)),
+        ("bow", sprite(0x0C, 0x2A)),
+        ("lil-boiler", sprite(0x04, 0x0D)),
+        ("voodoo-doll", sprite(0x0C, 0x34)),
         ("heat-flame", sprite(0x10, 0x02)),
         ("follow-effect", sprite(0x10, 0x0E)),
         ("drip-shower", sprite(0x10, 0x22)),
@@ -419,6 +435,8 @@ fn assets() -> bn6_content_api::AssetNames {
         ("dust-2", sprite(0x10, 0x2C)),
         ("tengu-tornado", sprite(0x10, 0x42)),
         ("volcano-rock", sprite(0x10, 0x55)),
+        ("falling-rock", sprite(0x10, 0x05)),
+        ("ground-drill", sprite(0x10, 0x4F)),
         ("dust-cloud", sprite(0x10, 0x59)),
         ("dustman", sprite(0x08, 0x0A)),
         ("swirl", sprite(0x0C, 0x28)),
@@ -449,6 +467,11 @@ fn assets() -> bn6_content_api::AssetNames {
         ("junk-shot", 0xFF),
         ("gundels1", 0xF8),
         ("bonus", 0x157),
+        ("twang", 0x18A),
+        ("boiler-erupt", 0x184),
+        ("boiler-steam", 0x185),
+        ("err-select-91", 0x91),
+        ("hit-bomb-0", 0x6F),
         ("form-change", 0xF7),
         ("follow-effect", 0xA0),
         ("drip-shower", 0x128),
@@ -458,6 +481,9 @@ fn assets() -> bn6_content_api::AssetNames {
         ("rslash", 0x164),
         ("dustbrk", 0xAD),
         ("dustbrk-2", 0x17B),
+        ("falling-rock", 0xD9),
+        ("rockfall", 0xE5),
+        ("drill-spin", 0x1C0),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -496,6 +522,7 @@ pub fn scripts() -> Scripts {
                 ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
                 ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
                 ("objects/projectile/projectile", "objects/projectile/projectile"),
+                ("objects/projectile/variants", "objects/projectile/variants"),
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
                 // MegaMan's buster, charged and blank shots and HeatCross's
@@ -570,6 +597,13 @@ pub fn scripts() -> Scripts {
                 ("chips/grasseed/chip", "chips/grasseed/chip"),
                 ("chips/iceseed/chip", "chips/iceseed/chip"),
                 ("chips/poisseed/chip", "chips/poisseed/chip"),
+                ("chips/lilbolr/chips", "chips/lilbolr/chips"),
+                ("chips/lilbolr/boiler", "chips/lilbolr/boiler"),
+                ("chips/lilbolr/layer", "chips/lilbolr/layer"),
+                ("chips/vdoll/chip", "chips/vdoll/chip"),
+                ("chips/vdoll/doll", "chips/vdoll/doll"),
+                ("chips/vdoll/curse", "chips/vdoll/curse"),
+                ("chips/vdoll/sparkles", "chips/vdoll/sparkles"),
                 ("chips/00a-bomb/chip", "chips/036-minibomb/chip"),
                 ("chips/00e-bees/chip", "chips/025-rskyhny1/chip"),
                 ("objects/honey-bee/honey_bee", "objects/honey-bee/honey_bee"),
@@ -658,6 +692,9 @@ pub fn scripts() -> Scripts {
                 ("navis/tenguman/tornado", "navis/tenguman/tornado"),
                 ("navis/dustman/chip", "navis/dustman/chip"),
                 ("navis/dustman/clouds", "navis/dustman/clouds"),
+                ("navis/groundman/chip", "navis/groundman/chip"),
+                ("chips/grndman/drill", "chips/grndman/drill"),
+                ("chips/grndman/rock", "chips/grndman/rock"),
                 ("objects/elec-man/elec_man", "objects/elec-man/elec_man"),
                 ("objects/elec-thunder/elec_thunder", "objects/elec-thunder/elec_thunder"),
                 ("objects/slash-man/slash_man", "objects/slash-man/slash_man"),
@@ -681,7 +718,8 @@ pub fn scripts() -> Scripts {
                 (module.clone(), module)
             });
             let modules = modules.iter().map(|&(to, from)| (to.to_string(), from.to_string())).chain(weapons);
-            Scripts::new(modules.map(|(to, from)| (to, read(&from))).collect())
+            let own = modules_under(TEST_CONTENT);
+            Scripts::new(modules.map(|(to, from)| (to, read(&from))).chain(own).collect())
         })
         .clone()
 }
@@ -766,8 +804,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("justice-one", Pool::Attack, 0xAE, "objects/justice-one/justice_one"),
         kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
-        kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
-        kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
         kind("gust", Pool::Attack, 0x49, "objects/gust/gust"),
         kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),

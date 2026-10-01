@@ -4,7 +4,7 @@
 use super::{
     ai, ai_mut, cancel_submerged, clear_bubble, clear_flag1, clear_flag2, clear_freeze, clear_invulnerable,
     clear_paralysis, coll, coll_mut, coordinates_to_panel, flag1, panel_coordinates, panel_kind, refresh_form_overlay,
-    reset_charge, set_flag1, snap_to_future_panel,
+    reset_charge, set_flag1, snap_to_future_panel, NaviAction, set_action,
 };
 use crate::actor::{request, status as ai_status};
 use crate::battle::Battle;
@@ -130,9 +130,7 @@ fn fade_out(b: &mut Battle, r: ObjectRef) {
     death_hook(b, r);
     let o = b.objects.get_mut(r);
     o.state = state::DESTROY;
-    o.action = 0;
-    o.phase = 0;
-    o.phase_init = 0;
+    set_action(b, r, NaviAction::Entry);
 }
 
 /// `sub_8011020`: the navi's death hook (its overlays come down).
@@ -177,9 +175,7 @@ fn end_reaction(b: &mut Battle, r: ObjectRef) {
     clear_flag1(b, r, f1::USING_ACTION);
     let o = b.objects.get_mut(r);
     o.anim = 0;
-    o.action = 8;
-    o.phase = 0;
-    o.phase_init = 0;
+    set_action(b, r, NaviAction::Idle);
 }
 
 /// `sub_80F06CE`: MegaMan's flinch and drag hook restarts the form
@@ -269,9 +265,7 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).requests &= !(request::ATTACKS | request::ANTI_SWORD_TRIGGERED | request::MODE9_A);
     let o = b.objects.get_mut(r);
     o.anim = 0;
-    o.action = 8;
-    o.phase = 0;
-    o.phase_init = 0;
+    set_action(b, r, NaviAction::Idle);
 }
 
 // ---- Paralysis, freeze, bubble (actions 4, 6, 7) ------------------------------------
@@ -465,10 +459,7 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
     }
     if flag1(b, r) & f1::PARALYZED != 0 {
         clear_flag1(b, r, f1::DRAG);
-        let o = b.objects.get_mut(r);
-        o.action = 4;
-        o.phase = 0;
-        o.phase_init = 0;
+        set_action(b, r, NaviAction::Paralysis);
         return;
     }
     clear_flag1(b, r, f1::USING_ACTION | f1::DRAG | f1::SLIDING | f1::PARALYZED);
@@ -481,10 +472,7 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
     o.anim = 0;
     o.anim_loaded = 0xFF;
     refresh_form_overlay(b, r);
-    let o = b.objects.get_mut(r);
-    o.action = 8;
-    o.phase = 0;
-    o.phase_init = 0;
+    set_action(b, r, NaviAction::Idle);
 }
 
 /// `sub_800E468`: the slide vector for the slide type, none when the

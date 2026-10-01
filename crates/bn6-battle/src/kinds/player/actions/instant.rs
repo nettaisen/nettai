@@ -1,12 +1,13 @@
 //! Action 0x1C outside a pause, chips with an immediate effect
-//! (`sub_80EC39C`): the chip's effect (`off_80EC3F0`, by the attack's
-//! subtype) runs once and the navi goes back to idle, or, for subtype
-//! 0x14, 8 ticks later. The effects are the content pack's
-//! (`Hook::InstantChip`: the scripts of the chips with this action, and of
-//! weapons that name a subtype no chip has). (Paused, action 0x1C is the
-//! form change: `transform`.) See docs/engine/chips.md §1.6.
+//! (`sub_80EC39C`): the effect (`off_80EC3F0`, by the attack's subtype)
+//! runs once and the navi goes back to idle, or, for subtype 0x14, 8 ticks
+//! later. The effects are content's: the attack's `instant`, which chip use
+//! sets from the chip (its `instant` hook, or a pack record's subtype's
+//! registration) and a weapon that names an effect no chip has (TenguCross's
+//! wind) from its own. (Paused, action 0x1C is the form change:
+//! `transform`.) See docs/engine/chips.md §1.6.
 
-use bn6_content_api::{Hook, HookCall, InstantChipSpec};
+use bn6_content_api::{FnId, HookCall, InstantChipSpec};
 
 use super::ActionVars;
 use crate::battle::Battle;
@@ -14,6 +15,14 @@ use crate::kinds::player::{ai, ai_mut, exit_attack_state};
 use crate::object::ObjectRef;
 
 pub const ACTION: u8 = 0x1C;
+
+/// What the instant chips' action runs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Effect {
+    Runs(FnId),
+    /// A pack record's subtype nothing implements yet.
+    Unported(u8),
+}
 
 /// The subtype whose effect the navi waits out.
 const WAITS: u8 = 0x14;
@@ -59,25 +68,17 @@ fn run_effect(b: &mut Battle, r: ObjectRef) {
         params: a.params,
         damage: (a.damage as u32 | (a.hit_param as u32) << 16).wrapping_add(a.extra as u32 & 0xFF),
     };
-    let subtype = a.variant;
-    // The chip's own effect, if content defines the chip; else
-    // off_80EC3F0, by the subtype.
-    let defined = match a.chip.and_then(|c| b.content.defs.chip(c).usage) {
-        Some(crate::content::ChipUsage::Instant(f)) => Some(f),
-        Some(u) => panic!(
-            "chip {:?} is an instant chip, but its definition uses it as {u:?}",
-            b.content.defs.chip(a.chip.expect("a defined chip")).key
-        ),
-        None => None,
-    };
-    match defined.or_else(|| b.content.defs.hook(Hook::InstantChip(subtype))) {
-        Some(hook) => {
+    match a.instant {
+        Some(Effect::Runs(hook)) => {
             crate::behavior::call_hook(b, hook, HookCall::InstantChip { user: r, spec });
         }
         // Null entries: the game jumps to address 0.
-        None if matches!(subtype, 7 | 0x12) => {
+        Some(Effect::Unported(subtype)) if matches!(subtype, 7 | 0x12) => {
             panic!("instant chip subtype {subtype:#x} has no routine in off_80EC3F0 (the game jumps to address 0)")
         }
-        None => panic!("instant chip subtype {subtype:#x} (off_80EC3F0) has no script in the content pack"),
+        Some(Effect::Unported(subtype)) => {
+            panic!("instant chip subtype {subtype:#x} (off_80EC3F0) has no script in the content pack")
+        }
+        None => panic!("the instant chips' action without an effect (neither a chip's nor a weapon's)"),
     }
 }

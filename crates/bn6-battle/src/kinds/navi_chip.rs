@@ -4,14 +4,12 @@
 //! out, the chip's navi comes and acts, and the user warps back in. See
 //! docs/engine/chips.md §3.6.7.
 
-use bn6_content_api::{Hook, HookCall, NaviChipSpec};
+use bn6_content_api::{HookCall, NaviChipSpec};
 
 use crate::battle::Battle;
 use crate::kinds::{common, heal, navi_warp};
 use crate::object::{ObjectRef, PanelPos, Vec3, state};
 use crate::dimming::{self, DimmingChip};
-
-pub const INDEX: u8 = 0x10;
 
 /// What the controller needs to bring its navi.
 #[derive(Clone, Debug, Default, Hash)]
@@ -213,7 +211,8 @@ fn effect(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `off_802CD5C[navi]`: bring the chip's navi, with the damage and the
-/// bonus: the content pack's script for the navi (`Hook::NaviChip`). (The
+/// bonus: the chip's `navi` hook, or a pack record's subtype's
+/// registration. (The
 /// game also records the last navi chip used, `byte_203C960`, which
 /// nothing in a battle reads.)
 fn bring_navi(b: &mut Battle, r: ObjectRef) {
@@ -222,27 +221,23 @@ fn bring_navi(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
     let (panel, element) = (o.panel, o.element);
     let user = user(b, r);
-    // The chip's own navi, if content defines the chip; else
-    // off_802CD5C, by the subtype.
-    let defined = match v.chip.chip.and_then(|c| b.content.defs.chip(c).usage) {
-        Some(crate::content::ChipUsage::Navi(f)) => Some(f),
-        Some(u) => panic!(
-            "chip {:?} is a navi chip, but its definition uses it as {u:?}",
-            b.content.defs.chip(v.chip.chip.expect("a defined chip")).key
-        ),
-        None => None,
-    };
-    let navi = match defined.or_else(|| b.content.defs.hook(Hook::NaviChip(v.navi))) {
-        Some(hook) => {
+    use crate::content::{ChipUsage, Unported};
+    let chip =
+        v.chip.chip.or_else(|| b.content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
+    let navi = match b.content.defs.chip(chip).usage {
+        ChipUsage::Navi(hook) => {
             let spec = NaviChipSpec { panel, element, params: v.params, damage };
             crate::behavior::call_hook(b, hook, HookCall::NaviChip { user, controller: r, spec }).object()
         }
         // HackJack's and Django's entries are NULL: the game jumps to
         // address 0.
-        None if matches!(v.navi, 0x12 | 0x13) => {
-            panic!("navi chip navi {:#x} is NULL in off_802CD5C (the game jumps to address 0)", v.navi)
+        ChipUsage::Unported(Unported::Navi(navi @ (0x12 | 0x13))) => {
+            panic!("navi chip navi {navi:#x} is NULL in off_802CD5C (the game jumps to address 0)")
         }
-        None => panic!("content error: no script implements navi chip subtype {} (off_802CD5C)", v.navi),
+        ChipUsage::Unported(Unported::Navi(navi)) => {
+            panic!("content error: no script implements navi chip subtype {navi} (off_802CD5C)")
+        }
+        u => panic!("chip {:?} is a navi chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),
     };
     // The spawner sets the flag, through the pointer it hands the navi.
     vars_mut(b, r).navi_acting = navi.is_some();
