@@ -50,8 +50,11 @@ pub mod f1 {
     pub const ANGER: u32 = 0x20_0000;
     pub const USING_ACTION: u32 = 0x40_0000;
     pub const AFFECTED_BY_ICE: u32 = 0x200_0000;
-    /// Poison panels don't hurt (Falzar Beast Over, `sub_8014674`).
-    pub const UNAFFECTED_BY_POISON: u32 = 0x800_0000;
+    /// Untouchable: `sub_3007218` drops every pair in which either side
+    /// has it, so no hit reaches it and it hits nothing; poison panels
+    /// don't hurt it either (`sub_801A186`). Falzar Beast Over's form flags
+    /// set it (`sub_8014674`), which is why nothing can hit that form.
+    pub const UNTOUCHABLE: u32 = 0x800_0000;
     pub const BUBBLED: u32 = 0x8000_0000;
     /// Hits still reach it while the battle is dimmed (`sub_3007218`; else
     /// only hitters set up while dimmed do): ElemTrap's trap sets it.
@@ -431,7 +434,7 @@ impl Battle {
         if (f & 0x202 != 0 && rs & 0x4 == 0)
             || (f & 0x4 != 0 && rs & 0x1008 == 0)
             || (f & 0x0080_0000 != 0 && rs & 0x0C00_3000 == 0)
-            || f & 0x0800_0000 != 0
+            || f & f1::UNTOUCHABLE != 0
             || (f & 0x20 != 0 && rs & 0x80 == 0)
         {
             return;
@@ -442,7 +445,7 @@ impl Battle {
         if (f & 0x202 != 0 && hs & 0x4 == 0)
             || (f & 0x4 != 0 && hs & 0x1008 == 0)
             || (f & 0x0080_0000 != 0 && hs & 0x3000 == 0)
-            || f & 0x0800_0000 != 0
+            || f & f1::UNTOUCHABLE != 0
             || (f & 0x20 != 0 && hs & 0x80 == 0)
         {
             return;

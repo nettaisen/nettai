@@ -35,7 +35,7 @@ export type Volleys = { repeats: number, cycle: number }
 local SHOOT, RECOVER = 0x0, 0x4
 
 -- Falzar Beast Over.
-local BEAST_OVER = 0x18
+local BEAST_OVER = "falzar-beast-over"
 
 local SOUND = asset.sound("aqua-needle-2")
 
@@ -46,10 +46,23 @@ local HEIGHT = 0x16
 -- 12 lower.
 local VOLLEY_BACK, VOLLEY_SIDE, VOLLEY_DROP = 0x1E_0000, 0x18_0000, 0xC_0000
 
--- The shots' palette by Beast form (`byte_80EC784`, forms 0xB..0x18).
-local PALETTES = {
-    [0xB] = 0, [0xC] = 0, [0xD] = 0, [0xE] = 0, [0xF] = 0, [0x10] = 0, [0x11] = 0,
-    [0x12] = 1, [0x13] = 2, [0x14] = 3, [0x15] = 4, [0x16] = 5, [0x17] = 0, [0x18] = 0,
+-- The shots' palette by Beast form (`byte_80EC784`): the Falzar Crosses'
+-- own in Beast Out, else 0.
+local PALETTES: { [string]: number } = {
+    ["gregar-beast"] = 0,
+    ["falzar-beast"] = 0,
+    ["heatcross-beast"] = 0,
+    ["eleccross-beast"] = 0,
+    ["slashcross-beast"] = 0,
+    ["erasecross-beast"] = 0,
+    ["chargecross-beast"] = 0,
+    ["spoutcross-beast"] = 1,
+    ["tomahawkcross-beast"] = 2,
+    ["tengucross-beast"] = 3,
+    ["groundcross-beast"] = 4,
+    ["dustcross-beast"] = 5,
+    ["gregar-beast-over"] = 0,
+    ["falzar-beast-over"] = 0,
 }
 
 -- The repeats a Beast Over's buster (or a Cross special's) fires.
@@ -60,7 +73,7 @@ local REPEATS = 8
 -- the state of the action about to start. (The game also puts the
 -- NaviCust's buster-shot program in the attack's first parameter, which
 -- neither Beast buster reads.)
-function falzar_beast_buster.beast_setup(navi: Object, over: number, volleys: Volleys)
+function falzar_beast_buster.beast_setup(navi: Object, over: string, volleys: Volleys)
     navi.attack_damage = math.min(navi:buster_damage(), 5)
     navi.hit_param = 0
     navi.attack_element = 0
@@ -69,7 +82,7 @@ function falzar_beast_buster.beast_setup(navi: Object, over: number, volleys: Vo
     navi.attack_lockout = 0
     navi.marker = 0
     local cross_special = battle.per_player_gauges() and battle.side_special(navi.alliance) == "cross"
-    if cross_special or battle.navi(navi.alliance).form == over then
+    if cross_special or battle.navi(navi.alliance).form.id == over then
         volleys.cycle = 1
         volleys.repeats = REPEATS
     else
@@ -90,10 +103,10 @@ end
 -- cycle on, the two behind it. (`sub_80C6248`: its spawner's word is the
 -- shot's height here, which only a thrown obstacle reads.)
 local function shoot_volley(me: Object, s: State, falls: boolean, z: number, damage: number)
-    local form = battle.navi(me.alliance).form
+    local form = battle.navi(me.alliance).form.id
     local palette = PALETTES[form]
     if palette == nil then
-        error(string.format("form %#x reads outside sub_80EC710's palette table", form))
+        error(string.format("form %s reads outside sub_80EC710's palette table", form))
     end
     local x, y = field.center(me.panel_x + me.facing, me.panel_y)
     local variants = flying_shot.variants
@@ -184,7 +197,7 @@ local function recover(me: Object, s: State)
             return
         end
     end
-    if battle.navi(me.alliance).form == BEAST_OVER or me:request("alt_chip") or me.actor_type ~= "player" then
+    if battle.navi(me.alliance).form.id == BEAST_OVER or me:request("alt_chip") or me.actor_type ~= "player" then
         return finish(me)
     end
     if not me:held("b") then

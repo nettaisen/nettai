@@ -2,9 +2,9 @@
 //!
 //! [`Content`] holds everything the simulation reads that isn't rules
 //! code: chips, navis and forms, stages, the ruleset's tables (collision
-//! types, panel rules, status effects...), object data (rocks,
-//! attachments, overlays), the effect and region registries, and every
-//! sprite's animation timing. It never changes during a battle and is
+//! types, panel rules, status effects...), the identities (what an object
+//! is taken for and wears), the registries of what the content defines,
+//! and every sprite's animation timing. It never changes during a battle and is
 //! shared between battles and their snapshots through an `Arc`:
 //!
 //! ```ignore
@@ -12,36 +12,37 @@
 //! let content = Arc::new(content);
 //! let setup = RoundSetup { content: content.hash(), ..setup };
 //! let battle = Battle::new(setup, content.clone());
-//! let chip = battle.content.chip(0x11);
+//! let chip = battle.content.chip(hand[0]);
 //! ```
 //!
 //! See docs/design/content-pack.md for the pack's files and this API.
 //!
 //! The engine does no file IO: a loader outside it (bn6-content) reads a
-//! content pack into this model, and tests build small content sets in
-//! code. BN6's content comes only from a pack extracted from the user's
-//! ROM (`bn6-extract content`).
+//! content root (BN6's is the committed content/bn6) and an asset root
+//! (extracted from the user's ROM by `bn6-extract content`) into this
+//! model, and tests build small content sets in code.
 //!
 //! Content has an identity, [`Content::hash`], which a round's setup
 //! carries (`RoundSetup::content`) so that netplay peers can check they
 //! run the same content. The content itself is not part of a snapshot or
 //! of the state digest.
 //!
-//! Ids are the original's numbers (chip ids, NameIDs, row numbers the
-//! state and traces observe); the tables here are dense and indexed by
-//! them.
+//! What the content defines is by handle: each key interns to a dense
+//! handle at load ([`Defs`]). The engine has no navi, form or other
+//! content by the original's numbers (docs/design/content-model-v2.md
+//! §3.2, §12): compat's numbers are bn6-compat's.
 
 mod chips;
 mod custom;
 mod defs;
 mod flags;
 mod identity;
-pub mod legacy;
 mod navis;
-mod objects;
+mod reader;
 mod roles;
 mod rules;
 mod scripts;
+mod sections;
 mod sprites;
 mod stages;
 #[cfg(any(test, feature = "test-content"))]
@@ -50,9 +51,8 @@ pub mod testing;
 pub use chips::*;
 pub use custom::*;
 pub use defs::*;
-pub use identity::{FieldLook, Identity, IdentityClass, IdentityOwner};
+pub use identity::{BodyPart, FieldLook, IceSize, Identity, IdentityClass, IdentityOwner, OverlayHooks, Parts};
 pub use navis::*;
-pub use objects::*;
 pub use roles::*;
 pub use rules::*;
 pub use scripts::*;
@@ -151,15 +151,8 @@ impl std::fmt::Display for ContentHash {
 /// the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Content {
-    /// Navis by [`Navi`](crate::setup::Navi) number (MegaMan is 0).
-    pub navis: Vec<NaviData>,
-    /// MegaMan's forms by [`Form`](crate::setup::Form) number (0 is the
-    /// base form).
-    pub forms: Vec<FormData>,
     /// The ruleset's tables.
     pub rules: Rules,
-    /// Object kinds' data.
-    pub objects: ObjectData,
     /// Every sprite's animation timing.
     pub animations: Animations,
     /// The assets content can name (`asset.sprite("bomb")`): the loader
@@ -181,33 +174,16 @@ impl Content {
     pub fn define(&mut self) -> Result<(), bn6_content_api::ContentError> {
         if self.scripts.modules.is_empty() {
             let definitions = Default::default();
-            let legacy = legacy::build(self, &definitions)?;
-            self.defs = Defs::build(self, definitions, &legacy)?;
+            sections::build(self, &definitions)?;
+            self.defs = Defs::build(self, definitions)?;
             return Ok(());
         }
-        let mut data = crate::behavior::script_data(self);
-        for _ in 0..3 {
-            let (definitions, compiled) =
-                bn6_luau::define(&self.scripts.pack(), &data, &self.assets, bn6_luau::Options::default())?;
-            self.scripts.compiled = CompiledModules(compiled);
-            // What registration by number reads of the definitions: the
-            // tables by number, and the pack's chips, navis, forms, weapons
-            // and stages.
-            let legacy = legacy::build(self, &definitions)?;
-            // v1 modules see those tables as the `data` global, some while
-            // they load: when the definitions made them, the modules run
-            // again on what they will see at run time (once: the tables
-            // come from the definitions alone, so they come out the same).
-            let built = crate::behavior::script_data(self);
-            if built == data {
-                self.defs = Defs::build(self, definitions, &legacy)?;
-                return Ok(());
-            }
-            data = built;
-        }
-        Err(bn6_content_api::ContentError::new(
-            "the tables the definitions build keep changing what the modules define (a module defines by `data` what the tables come from)",
-        ))
+        let (definitions, compiled) = bn6_luau::define(&self.scripts.pack(), &self.assets, bn6_luau::Options::default())?;
+        self.scripts.compiled = CompiledModules(compiled);
+        // The rule sections into the ruleset's typed tables.
+        sections::build(self, &definitions)?;
+        self.defs = Defs::build(self, definitions)?;
+        Ok(())
     }
 
     /// The content, defined (see [`Content::define`]); panics on a content
@@ -255,14 +231,15 @@ impl Content {
         &self.defs.navi(h).record
     }
 
-    /// A navi's number (the ruleset's numeric logic asks it until phase C).
-    pub fn navi_number(&self, h: NaviHandle) -> crate::setup::Navi {
-        crate::setup::Navi(self.navi(h).id)
+    /// The first navi that changes form (MegaMan), if the content has one
+    /// (stand-in setups).
+    pub fn form_changing_navi(&self) -> Option<NaviHandle> {
+        self.defs.navis.iter().position(|n| n.record.changes_form()).map(|i| NaviHandle(i as u16))
     }
 
-    /// The pack's navi with this number.
-    pub fn navi_numbered(&self, navi: crate::setup::Navi) -> NaviHandle {
-        self.defs.navi_numbered(navi).unwrap_or_else(|| panic!("navi {} is not in the content", navi.0))
+    /// The navi with this key (setups by name, tools and tests).
+    pub fn navi_by_key(&self, key: &str) -> NaviHandle {
+        self.defs.navi_by_key(key).unwrap_or_else(|| panic!("navi {key:?} is not in the content"))
     }
 
     /// One of MegaMan's forms.
@@ -270,24 +247,28 @@ impl Content {
         &self.defs.form(h).record
     }
 
-    /// A form's number (the ruleset's numeric logic asks it until phase C).
-    pub fn form_number(&self, h: FormHandle) -> crate::setup::Form {
-        crate::setup::Form(self.form(h).id)
+    /// The form with this key (setups by name, tools and tests).
+    pub fn form_by_key(&self, key: &str) -> FormHandle {
+        self.defs.form_by_key(key).unwrap_or_else(|| panic!("form {key:?} is not in the content"))
     }
 
-    /// The pack's form with this number's data.
-    pub fn form_data(&self, form: crate::setup::Form) -> &FormData {
-        self.form(self.form_numbered(form))
+    /// The base form: what a navi that has not changed form is in (a link
+    /// navi always).
+    pub fn base_form(&self) -> FormHandle {
+        self.defs.base_form.unwrap_or_else(|| panic!("the content has no base form"))
     }
 
-    /// The pack's navi with this number's data.
-    pub fn navi_data(&self, navi: crate::setup::Navi) -> &NaviData {
-        self.navi(self.navi_numbered(navi))
+    /// The identity of a navi in a form: the form's, or in the base form
+    /// (which has none of its own) the navi's.
+    pub fn form_identity(&self, navi: NaviHandle, form: FormHandle) -> Option<bn6_content_api::IdentityHandle> {
+        self.form(form).identity.or(self.navi(navi).identity)
     }
 
-    /// The pack's form with this number.
-    pub fn form_numbered(&self, form: crate::setup::Form) -> FormHandle {
-        self.defs.form_numbered(form).unwrap_or_else(|| panic!("form {:#x} is not in the content", form.0))
+    /// The battle sprite of a navi in a form (`sub_800FC9E`): its form's
+    /// if it changes form, else its own.
+    pub fn navi_sprite(&self, navi: NaviHandle, form: FormHandle) -> SpriteId {
+        let n = self.navi(navi);
+        if n.changes_form() { self.form(form).sprite } else { n.sprite }
     }
 
     /// A weapon.

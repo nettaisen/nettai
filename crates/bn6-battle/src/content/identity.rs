@@ -94,6 +94,61 @@ pub struct FieldLook {
     pub keeps_flip: bool,
 }
 
+/// A body overlay (`byte_80C4320`, `off_80C42D4`): a second sprite over a
+/// navi's body, drawn in front of it in some of its animations and one
+/// pixel further back in the others.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct BodyPart {
+    pub sprite: SpriteId,
+    /// By the wearer's animation: drawn in front of it. (Past the list,
+    /// the original reads on into the tables' pointers.)
+    pub in_front: Vec<bool>,
+    /// It keeps its own palette (0) rather than its wearer's.
+    pub own_palette: bool,
+    /// Added to the wearer's animation.
+    pub anim_offset: u8,
+}
+
+/// What an identity's object wears: what its actor record's init hook
+/// puts on (`off_8010E0C`), and its death hook takes off (`off_801105C`).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Parts {
+    /// A body overlay (`sub_80C44A8`), in the object's second related slot.
+    Body(BodyPart),
+    /// Two of them (`sub_8010FD8`): the second in the object's second
+    /// overlay slot.
+    Bodies(BodyPart, BodyPart),
+    /// An overlay worn only while standing (`sub_80C41D8`).
+    Idle { sprite: SpriteId },
+    /// A beast's head (`sub_8011366`, `sub_8011352`): its palette, or
+    /// none for the one that follows the side's mood.
+    BeastHead { sprite: SpriteId, palette: Option<u8> },
+}
+
+/// Which of its object's hooks touch what the object wears (the overlay
+/// in its second related slot), by the actor record.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct OverlayHooks {
+    /// The death hook takes it off (`off_801105C`; a form's, `sub_8011384`).
+    pub death: bool,
+    /// An animation change restarts it (`off_8011470`).
+    pub refresh: bool,
+    /// A flinch restarts it (`off_80EAB94`).
+    pub flinch: bool,
+    /// A drag restarts it (`off_80EABF8`).
+    pub drag: bool,
+}
+
+/// The size of the ice block that fits an identity's object
+/// (`byte_80E9C30`, `byte_80E9C4E`: the block's animation).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum IceSize {
+    #[default]
+    Small = 0,
+    Medium = 1,
+    Large = 2,
+}
+
 /// The navi or form an identity is nested in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum IdentityOwner {
@@ -119,6 +174,15 @@ pub struct Identity {
     /// It can be swallowed or left as junk (`sub_800F486`: not a mine, not
     /// BodyGrd's striker).
     pub scrap: bool,
+    /// What its object wears.
+    pub parts: Option<Parts>,
+    /// Which hooks touch what its object wears.
+    pub overlay_hooks: OverlayHooks,
+    /// The Full Synchro aura's animation around it (`sub_80C4C52`); none:
+    /// it gets no aura (`sub_80139C4`).
+    pub aura_anim: Option<u8>,
+    /// The ice block that fits it.
+    pub ice: IceSize,
     /// Whose it is, for a navi's or a form's.
     pub owner: Option<IdentityOwner>,
 }
@@ -136,6 +200,10 @@ impl Identity {
             look: None,
             absorbable: true,
             scrap: true,
+            parts: None,
+            overlay_hooks: OverlayHooks::default(),
+            aura_anim: None,
+            ice: IceSize::Small,
             owner: None,
         })
     }
@@ -221,6 +289,103 @@ pub(crate) fn read(
     if look.is_some() && class != IdentityClass::FieldObject {
         return Err(what("only a field object has a `look`".into()));
     }
+    let sprite = |v: &Data, field: &str| -> Result<SpriteId, ContentError> {
+        match v {
+            Data::Asset(AssetKind::Sprite, name) => {
+                assets.sprites.get(name).copied().ok_or_else(|| what(format!("{field}: the pack has no sprite {name:?}")))
+            }
+            other => Err(what(format!("{field} is {other:?}, not a sprite"))),
+        }
+    };
+    let body = |v: &Data, field: &str| -> Result<BodyPart, ContentError> {
+        let anims = match v.field("anims") {
+            Data::Int(n) if (0..=256).contains(n) => *n as usize,
+            other => return Err(what(format!("{field}.anims is {other:?}, not a count of animations"))),
+        };
+        let mut in_front = vec![true; anims];
+        let ranges = match v.field("behind") {
+            Data::Nil => &[][..],
+            Data::List(ranges) => ranges.as_slice(),
+            other => return Err(what(format!("{field}.behind is {other:?}, not a list of `{{ first, last }}`"))),
+        };
+        for r in ranges {
+            let (first, last) = match r {
+                Data::List(r) => match r.as_slice() {
+                    [Data::Int(a), Data::Int(b)] if 0 <= *a && a <= b && (*b as usize) < anims => (*a as usize, *b as usize),
+                    _ => return Err(what(format!("{field}.behind has a range that is not `{{ first, last }}` within the {anims} animations"))),
+                },
+                _ => return Err(what(format!("{field}.behind is a list of `{{ first, last }}`"))),
+            };
+            in_front[first..=last].fill(false);
+        }
+        Ok(BodyPart {
+            sprite: sprite(v.field("sprite"), &format!("{field}.sprite"))?,
+            in_front,
+            own_palette: flag(v.field("own_palette"), &format!("{field}.own_palette"), false)?,
+            anim_offset: byte(v.field("anim_offset"), &format!("{field}.anim_offset"))?,
+        })
+    };
+    let parts = match spec.field("parts") {
+        Data::Nil => None,
+        p @ Data::Map(_) => {
+            let (b, second, idle, head) = (p.field("body"), p.field("second"), p.field("idle"), p.field("beast_head"));
+            Some(match (b.is_nil(), second.is_nil(), idle.is_nil(), head.is_nil()) {
+                (false, true, true, true) => Parts::Body(body(b, "parts.body")?),
+                (false, false, true, true) => Parts::Bodies(body(b, "parts.body")?, body(second, "parts.second")?),
+                (true, true, false, true) => Parts::Idle { sprite: sprite(idle.field("sprite"), "parts.idle.sprite")? },
+                (true, true, true, false) => Parts::BeastHead {
+                    sprite: sprite(head.field("sprite"), "parts.beast_head.sprite")?,
+                    palette: match head.field("palette") {
+                        Data::Nil => None,
+                        v => Some(byte(v, "parts.beast_head.palette")?),
+                    },
+                },
+                _ => return Err(what("`parts` is one of `body` (with a `second`), `idle` and `beast_head`".into())),
+            })
+        }
+        other => return Err(what(format!("`parts` is {other:?}, not a table"))),
+    };
+    // The hooks that touch what it wears: by default its death takes its
+    // parts off, and an animation change restarts them (not an overlay
+    // worn only while standing).
+    let overlay_hooks = match spec.field("overlay_hooks") {
+        Data::Nil => OverlayHooks {
+            death: parts.is_some(),
+            refresh: matches!(parts, Some(Parts::Body(_) | Parts::Bodies(..) | Parts::BeastHead { .. })),
+            flinch: false,
+            drag: false,
+        },
+        Data::List(names) => {
+            let mut h = OverlayHooks::default();
+            for n in names {
+                match n {
+                    Data::Str(s) if s == "death" => h.death = true,
+                    Data::Str(s) if s == "refresh" => h.refresh = true,
+                    Data::Str(s) if s == "flinch" => h.flinch = true,
+                    Data::Str(s) if s == "drag" => h.drag = true,
+                    other => return Err(what(format!("`overlay_hooks` has {other:?}, not death, refresh, flinch or drag"))),
+                }
+            }
+            h
+        }
+        // (An empty table reads as a map.)
+        Data::Map(m) if m.is_empty() => OverlayHooks::default(),
+        other => return Err(what(format!("`overlay_hooks` is {other:?}, not a list of names"))),
+    };
+    let aura_anim = match spec.field("aura_anim") {
+        Data::Nil => None,
+        v => Some(byte(v, "aura_anim")?),
+    };
+    if class.is_player() && aura_anim.is_none() {
+        return Err(what("a player's identity says its Full Synchro aura's animation (`aura_anim`)".into()));
+    }
+    let ice = match spec.field("ice") {
+        Data::Nil => IceSize::Small,
+        Data::Str(s) if s == "small" => IceSize::Small,
+        Data::Str(s) if s == "medium" => IceSize::Medium,
+        Data::Str(s) if s == "large" => IceSize::Large,
+        other => return Err(what(format!("`ice` is {other:?}, not small, medium or large"))),
+    };
     Ok(Identity {
         key: d.key.clone(),
         class,
@@ -233,6 +398,10 @@ pub(crate) fn read(
         look,
         absorbable: flag(spec.field("absorbable"), "absorbable", true)?,
         scrap: flag(spec.field("scrap"), "scrap", true)?,
+        parts,
+        overlay_hooks,
+        aura_anim,
+        ice,
         owner: None,
     })
 }

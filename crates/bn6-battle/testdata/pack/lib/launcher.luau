@@ -9,7 +9,7 @@ local ticker = require("./ticker")
 local SHORT = ticker.variant { lifetime = 5 }
 local BURST = define.effect { sprite = asset.sprite("test-burst"), anim = 2 }
 local WIDE = define.region { panels = { { 1, -1 }, { 1, 0 }, { 1, 1 } } }
-local THROWN = define.collision { id = "test/thrown", side0 = 0x80000088, side1 = 0x40000088, row_offset = 0x50 }
+local THROWN = define.collision { id = "test/thrown", side0 = 0x80000088, side1 = 0x40000088 }
 local HITS = define.collision { id = "test/hits-navis", side0 = 0x15800000, side1 = 0x2a800000 }
 local TICK = asset.sound("test-tick")
 

@@ -12,7 +12,7 @@ local surge = {}
 
 -- What a surge is spawned with: how long it lasts (the original's first
 -- parameter) and how often its region comes back (its second), in ticks.
-export type Spec = { ticks: number, beat: number }
+type Spec = AquaSurge
 
 export type State = { ticks: number, beat: number }
 
@@ -86,7 +86,7 @@ local function init(me: Object)
     me.visible = true
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.anim = 0
     me.anim_loaded = 0
     sprite:set_animation(0)

@@ -24,7 +24,7 @@ export type State = {
     silent: boolean,
 }
 
-export type Drop = { warning: number, while_dimmed: boolean, cracks: boolean, silent: boolean }
+type Drop = GroundRockDrop
 
 local SPRITE = asset.sprite("falling-rock")
 local SOUND_BREAK = asset.sound("falling-rock")
