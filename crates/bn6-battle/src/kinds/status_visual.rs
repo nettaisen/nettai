@@ -12,8 +12,6 @@ use crate::content::SpriteId;
 use crate::object::{ObjectRef, flags, state};
 use crate::sound::SoundId;
 
-pub const INDEX: u8 = 0x06;
-
 /// Which status it shows (Param1, a row of `byte_80E08E4`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Status {

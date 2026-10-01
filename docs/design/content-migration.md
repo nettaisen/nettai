@@ -39,7 +39,8 @@ A gap in any of these ("not implemented yet" in the framework) is fixed in Rust,
 
 **Moves**: every chip action, every dimming chip's controller and navi chip's navi, every weapon routine, and the
 object kinds they spawn. The ruleset reaches content through definitions (a chip's use, a kind, an action, a
-weapon, a role) and, until the migration ends, through registration by number (§3.2).
+weapon) and roles (rules/roles.luau: the kinds and actions it spawns and starts itself), never by number; until
+the migration ends, registration by number (§3.2) resolves the pack's records into the same slots at load.
 
 ## 2. The pattern
 
@@ -130,7 +131,11 @@ step 13 removes them:
 
 A shim is such a module that runs the definitions' own code for the records (chips/036-minibomb runs each bomb
 chip's action by subtype). Scripts are paths relative to the registering file; a slot, action or hook claimed twice
-is an error.
+is an error. At load each record gets its usage from these (its action's module, or its subtype's
+`dimming_chip`, `navi_chip` or `instant_chip`), a weapon its `instant_chip`, a kind its `actor_list_entry` as
+its `place`: the ruleset reads only the definitions' slots. When the ruleset needs a kind or an action itself
+(the actor lists' rock, the stun strike), rules/roles.luau names it, a v1 one through a legacy marker
+(`{ legacy = { action = 0x49 } }`); a family that converts it names its definition there instead.
 
 ## 4. Testing
 
@@ -209,7 +214,7 @@ Left:
 
 ### Group B: dimming chips
 
-Done: the dimming chips have no Rust fallback (kinds/player/actions/dimming_chip.rs calls `Hook::DimmingChip`
+Done: the dimming chips have no Rust fallback (kinds/player/actions/dimming_chip.rs calls the chip's controller
 only), and the controllers declare `scratch_position` (trace.rs keeps only the navi chip controller). Scripts:
 subtypes 1 (objects/invisible), 6 (objects/rock-cube), 20 (objects/trap-chip, with ElemTrap's trap
 objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts), 10 (objects/time-bom,
@@ -271,7 +276,7 @@ kind). Left:
 
 ### Group E: instant chips (ported; what is left)
 
-Action 0x1C calls `Hook::InstantChip(subtype)` (§3). Every entry of `off_80EC3F0` is ported: 0, 3 (chips/13f-beastout,
+Action 0x1C runs the attack's instant effect (the chip's, or a weapon's; §3). Every entry of `off_80EC3F0` is ported: 0, 3 (chips/13f-beastout,
 lib/instant/plus with chips/atk-10, chips/navi-20 and chips/0c0-atk-10, objects/rising-bubble), 1 (objects/boomerang), 4 (objects/lance), 5 (chips/0ae-fullcust), 8
 (objects/fire-hit), 10 (chips/busterup, a definition), 12 (objects/sand-worm, sand-spray, sand-hole), 13 (chips/11d-synctrgr),
 14 (objects/flame-hook, flame-hook-fire), 15 (objects/col-force, col-force-soldier), 19 (objects/justice-one), 20
@@ -284,7 +289,7 @@ spawn by number.
 ### Group F: rocks
 
 Done: the rock (objects/rock) and its debris (objects/rock-debris) are kinds on the obstacle framework (the
-`obstacle` service); the actor lists' rocks go through the rock's `actor_list_entry` (`Hook::ActorListEntry`).
+`obstacle` service); the actor lists' rocks go through the rock's `actor_list_entry` (its `place`; the role `kinds.rock`).
 The verification workspace's rock_trace and bn6_data tests need the updated copies (they named `kinds::rock`).
 
 ### Group G: standard chip actions
