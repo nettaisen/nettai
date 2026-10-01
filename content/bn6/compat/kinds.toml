@@ -76,6 +76,7 @@ gust = { pool = "attack", index = 0x49 }
 seed = { pool = "attack", index = 0x4F }
 "aquandl/needle" = { pool = "attack", index = 0x50 }
 "yoyo/yoyo" = { pool = "attack", index = 0x52 }
+"anubis/statue" = { pool = "attack", index = 0x55 }
 falling-meteor = { pool = "attack", index = 0x56 }
 rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 "firehit/fist" = { pool = "attack", index = 0x5B }
@@ -151,6 +152,7 @@ trap-chip = { pool = "effect", index = 0x2A, scratch_position = true }
 "spoutman/pillar" = { pool = "effect", index = 0x2D, scratch_z_fraction = true }
 "spoutman/mark" = { pool = "effect", index = 0x2E }
 "deltaray/follow-effect" = { pool = "effect", index = 0x31 }
+"anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
 "meteors/controller" = { pool = "effect", index = 0x34, scratch_position = true }
 "falling-meteor/marker" = { pool = "effect", index = 0x35, scratch_position = true }
 "rockcube/cube" = { pool = "effect", index = 0x37, scratch_position = true }
