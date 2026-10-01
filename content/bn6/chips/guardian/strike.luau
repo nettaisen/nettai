@@ -2,13 +2,16 @@
 -- A Guardian statue's strike-back dimming (the original's effect object
 -- #0x53, `sub_80E680C`; docs/engine/dimming-chip-effects.md §5): the
 -- controller the statue (./statue) starts when an attack breaks it. The
--- usual dimming phases (its telop names chip 0x175, which the frontend
--- draws), with an effect that tells the statue to strike and waits 60
--- ticks.
+-- usual dimming phases (its telop names Punisher), with an effect that
+-- tells the statue to strike and waits 60 ticks.
 
 local dimming_chips = require("../../lib/dimming")
+local punisher = require("../punisher/chip")
 
 local strike = {}
+
+-- What its telop names (`sub_80D4DF0` spawns it with Punisher, bonus 0).
+strike.telop = { chip = punisher } :: DimmingTelop
 
 -- What it tells the statue (the statue's state).
 type StatueState = { strike: boolean }
