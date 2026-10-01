@@ -1,3 +1,4 @@
-# A navi chip (subtype 12): its navi is BlastMan.
+# BlastMan, BlastMn[EX] and BlastMn[SP] (navi chip subtype 12) summon
+# BlastMan (chips/blastman/navi.luau), through chip.luau.
 
-script = "../../objects/blast-man/blast_man.luau"
+script = "chip.luau"

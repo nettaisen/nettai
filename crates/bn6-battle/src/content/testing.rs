@@ -408,6 +408,7 @@ fn assets() -> bn6_content_api::AssetNames {
         ("rising-bubble", sprite(0x14, 0x02)),
         ("puff", sprite(0x14, 0x0D)),
         ("burst", sprite(0x14, 0x0A)),
+        ("immobilized", sprite(0x10, 0x00)),
         ("grab-shot", sprite(0x0C, 0x13)),
         ("copy-mark", sprite(0x14, 0x05)),
         ("fire-sword", sprite(0x0C, 0x36)),
@@ -423,6 +424,16 @@ fn assets() -> bn6_content_api::AssetNames {
         ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
         ("erase-beam", sprite(0x10, 0x51)),
+        ("air-raid-plane", sprite(0x04, 0x18)),
+        ("aura", sprite(0x0C, 0x07)),
+        ("barrier", sprite(0x0C, 0x3D)),
+        ("bubble", sprite(0x0C, 0x20)),
+        ("instrument", sprite(0x04, 0x0A)),
+        ("jet-flame", sprite(0x10, 0x28)),
+        ("propeller", sprite(0x10, 0x3D)),
+        ("sensor", sprite(0x04, 0x05)),
+        ("small-ring", sprite(0x08, 0x14)),
+        ("summon-black", sprite(0x04, 0x1D)),
         ("flame-hook-fire", sprite(0x0C, 0x45)),
         ("impact", sprite(0x14, 0x01)),
         ("bat-impact", sprite(0x14, 0x07)),
@@ -485,6 +496,8 @@ fn assets() -> bn6_content_api::AssetNames {
         ("grab-shot", 0xA2),
         ("grab-shot-2", 0xA1),
         ("appear", 0x94),
+        ("place", 0x112),
+        ("falling-rock", 0xD9),
         ("erase-man", 0x10E),
         ("erase-man-2", 0xBA),
         ("hub", 0x119),
@@ -492,6 +505,25 @@ fn assets() -> bn6_content_api::AssetNames {
         ("junk-shot", 0xFF),
         ("gundels1", 0xF8),
         ("bonus", 0x157),
+        ("barrier", 0x89),
+        ("beast-over", 0x19A),
+        ("bubble", 0x12D),
+        ("bubble-pop", 0x124),
+        ("bug", 0x143),
+        ("bugfix-flash", 0xD1),
+        ("cross-merge", 0x8C),
+        ("discord", 0xA9),
+        ("fanfare", 0xA8),
+        ("invisible", 0x93),
+        ("log-in-77", 0x77),
+        ("panel-change", 0xA4),
+        ("panel-change-tick", 0xA3),
+        ("point-appear", 0x129),
+        ("point-rise", 0x12A),
+        ("silence", 0xAB),
+        ("take-off", 0x1A9),
+        ("timpani", 0xAA),
+        ("tomahawk-man", 0x10A),
         ("flame-hook-fire", 0x158),
         ("twang", 0x18A),
         ("boiler-erupt", 0x184),
@@ -552,9 +584,64 @@ fn standard_chip_assets(a: &mut bn6_content_api::AssetNames) {
     ] {
         a.sprites.insert(name.into(), id);
     }
+    navi_chip_assets(a);
     for (name, id) in
         [("windrack", 0x11F), ("beast-over", 0x19A), ("sun-beam", 0xF9), ("buzz", 0x1A8), ("form-change", 0xF7)]
     {
+        a.sounds.insert(name.into(), id);
+    }
+}
+
+/// The asset names the navi chips' modules use (content model v2), with
+/// BN6's numbers.
+fn navi_chip_assets(a: &mut bn6_content_api::AssetNames) {
+    let sprite = |c, i| SpriteId { category: c, index: i };
+    for (name, id) in [
+        ("bass-anly", sprite(0x08, 0x13)),
+        ("beast-over-burst", sprite(0x14, 0x14)),
+        ("blast-fire", sprite(0x08, 0x0C)),
+        ("charge-car", sprite(0x10, 0x54)),
+        ("chargeman", sprite(0x08, 0x05)),
+        ("elecman", sprite(0x08, 0x02)),
+        ("elmnt-ice", sprite(0x10, 0x0F)),
+        ("elmnt-man", sprite(0x08, 0x10)),
+        ("heatman", sprite(0x08, 0x01)),
+        ("meteor", sprite(0x0C, 0x31)),
+        ("moon-beam", sprite(0x0C, 0x64)),
+        ("panel-strike", sprite(0x10, 0x26)),
+        ("slash-man-effect", sprite(0x10, 0x38)),
+        ("slash-wave", sprite(0x10, 0x39)),
+        ("slashman", sprite(0x08, 0x03)),
+        ("spout-geyser", sprite(0x10, 0x20)),
+        ("spout-man-effect", sprite(0x10, 0x23)),
+        ("spout-pillar", sprite(0x10, 0x1F)),
+        ("spout-splash", sprite(0x0C, 0x1A)),
+        ("spoutman", sprite(0x08, 0x06)),
+        ("tenguman", sprite(0x08, 0x08)),
+        ("tomahawkman", sprite(0x08, 0x07)),
+    ] {
+        a.sprites.insert(name.into(), id);
+    }
+    for (name, id) in [
+        ("aqua-needle-2", 0xB3),
+        ("beast-over-burst", 0x12E),
+        ("blast-man", 0x17F),
+        ("bubble", 0x12D),
+        ("charge-man", 0xE3),
+        ("col-army-2", 0xB9),
+        ("elec-man", 0xC6),
+        ("elmnt-man", 0x134),
+        ("elmnt-man-2", 0x182),
+        ("elmnt-man-4", 0x99),
+        ("elmnt-vine", 0x181),
+        ("moon-beam", 0x111),
+        ("ok-8b", 0x8B),
+        ("spout-ball", 0x11D),
+        ("spout-man", 0x189),
+        ("sun-moon", 0x110),
+        ("tengu-man", 0x13C),
+        ("tomahawk-man", 0x10A),
+    ] {
         a.sounds.insert(name.into(), id);
     }
 }
@@ -748,6 +835,7 @@ pub fn scripts() -> Scripts {
                 ("chips/rockcube/cube", "chips/rockcube/cube"),
                 ("chips/rockcube/chips", "chips/rockcube/chips"),
                 ("objects/boulder/boulder", "objects/boulder/boulder"),
+                ("objects/encased-bubble/bubble", "objects/encased-bubble/bubble"),
                 ("objects/trap-chip/trap_chip", "objects/trap-chip/trap_chip"),
                 ("objects/navi-boost/navi_boost", "objects/navi-boost/navi_boost"),
                 ("objects/gauge-speed/gauge_speed", "objects/gauge-speed/gauge_speed"),
@@ -764,19 +852,48 @@ pub fn scripts() -> Scripts {
                 ("objects/land-mine/land_mine", "objects/land-mine/land_mine"),
                 ("chips/crakshot/shot", "chips/crakshot/shot"),
                 ("chips/crakshot/chips", "chips/crakshot/chips"),
-                ("objects/elmnt-man/elmnt_man", "objects/elmnt-man/elmnt_man"),
-                ("objects/meteor/meteor", "objects/meteor/meteor"),
-                ("objects/elmnt-ice/elmnt_ice", "objects/elmnt-ice/elmnt_ice"),
-                ("objects/elmnt-bolt/elmnt_bolt", "objects/elmnt-bolt/elmnt_bolt"),
-                ("objects/elmnt-vine/elmnt_vine", "objects/elmnt-vine/elmnt_vine"),
-                ("objects/spout-man/spout_man", "objects/spout-man/spout_man"),
-                ("objects/spout-ball/spout_ball", "objects/spout-ball/spout_ball"),
-                ("objects/spout-splash/spout_splash", "objects/spout-splash/spout_splash"),
-                ("objects/spout-pillar/spout_pillar", "objects/spout-pillar/spout_pillar"),
-                ("objects/spout-geyser/spout_geyser", "objects/spout-geyser/spout_geyser"),
-                ("objects/spout-mark/spout_mark", "objects/spout-mark/spout_mark"),
-                ("objects/heat-man/heat_man", "objects/heat-man/heat_man"),
+                // The navi chips' navis (content model v2): each navi and his
+                // kinds as definitions, behind the numbered registrations'
+                // modules.
+                ("lib/navi-chips/navi", "lib/navi-chips/navi"),
+                ("chips/elmntman/navi", "chips/elmntman/navi"),
+                ("chips/elmntman/meteor", "chips/elmntman/meteor"),
+                ("chips/elmntman/ice", "chips/elmntman/ice"),
+                ("chips/elmntman/bolt", "chips/elmntman/bolt"),
+                ("chips/elmntman/vine", "chips/elmntman/vine"),
+                ("chips/10d-elmntman/chip", "chips/10d-elmntman/chip"),
+                ("chips/spoutman/navi", "chips/spoutman/navi"),
+                ("chips/spoutman/ball", "chips/spoutman/ball"),
+                ("chips/spoutman/splash", "chips/spoutman/splash"),
+                ("chips/spoutman/pillar", "chips/spoutman/pillar"),
+                ("chips/spoutman/geyser", "chips/spoutman/geyser"),
+                ("chips/spoutman/mark", "chips/spoutman/mark"),
+                ("chips/0f2-spoutman/chip", "chips/0f2-spoutman/chip"),
+                ("chips/heatman/navi", "chips/heatman/navi"),
                 ("chips/heatman/flame", "chips/heatman/flame"),
+                ("chips/0e3-heatman/chip", "chips/0e3-heatman/chip"),
+                ("chips/elecman/navi", "chips/elecman/navi"),
+                ("chips/elecman/thunder", "chips/elecman/thunder"),
+                ("chips/0e6-elecman/chip", "chips/0e6-elecman/chip"),
+                ("chips/slashman/navi", "chips/slashman/navi"),
+                ("chips/slashman/wave", "chips/slashman/wave"),
+                ("chips/0e9-slashman/chip", "chips/0e9-slashman/chip"),
+                ("chips/chrgeman/navi", "chips/chrgeman/navi"),
+                ("chips/chrgeman/car", "chips/chrgeman/car"),
+                ("chips/0ef-chrgeman/chip", "chips/0ef-chrgeman/chip"),
+                ("chips/tmhkman/navi", "chips/tmhkman/navi"),
+                ("chips/0f5-tmhkman/chip", "chips/0f5-tmhkman/chip"),
+                ("chips/tenguman/navi", "chips/tenguman/navi"),
+                ("chips/0f8-tenguman/chip", "chips/0f8-tenguman/chip"),
+                ("chips/blastman/navi", "chips/blastman/navi"),
+                ("chips/blastman/fire", "chips/blastman/fire"),
+                ("chips/101-blastman/chip", "chips/101-blastman/chip"),
+                ("chips/bass/navi", "chips/bass/navi"),
+                ("chips/12d-bass/chip", "chips/12d-bass/chip"),
+                ("chips/sunmoon/sun", "chips/sunmoon/sun"),
+                ("chips/sunmoon/meteor", "chips/sunmoon/meteor"),
+                ("chips/sunmoon/moon_beam", "chips/sunmoon/moon_beam"),
+                ("chips/15b-sunmoon/chip", "chips/15b-sunmoon/chip"),
                 // The link navis' own chips (content model v2: their
                 // records run the actions these export) and their kinds.
                 ("lib/link_chips", "lib/link_chips"),
@@ -800,23 +917,50 @@ pub fn scripts() -> Scripts {
                 ("navis/groundman/chip", "navis/groundman/chip"),
                 ("chips/grndman/drill", "chips/grndman/drill"),
                 ("chips/grndman/rock", "chips/grndman/rock"),
-                ("objects/elec-man/elec_man", "objects/elec-man/elec_man"),
-                ("objects/elec-thunder/elec_thunder", "objects/elec-thunder/elec_thunder"),
-                ("objects/slash-man/slash_man", "objects/slash-man/slash_man"),
-                ("objects/slash-wave/slash_wave", "objects/slash-wave/slash_wave"),
-                ("objects/charge-man/charge_man", "objects/charge-man/charge_man"),
-                ("objects/charge-car/charge_car", "objects/charge-car/charge_car"),
-                ("objects/tomahawk-man/tomahawk_man", "objects/tomahawk-man/tomahawk_man"),
-                ("objects/tengu-man/tengu_man", "objects/tengu-man/tengu_man"),
-                ("objects/blast-man/blast_man", "objects/blast-man/blast_man"),
-                ("objects/blast-fire/blast_fire", "objects/blast-fire/blast_fire"),
-                ("objects/bass/bass", "objects/bass/bass"),
                 ("objects/panel-strike/panel_strike", "objects/panel-strike/panel_strike"),
-                ("objects/sun-moon/sun_moon", "objects/sun-moon/sun_moon"),
-                ("objects/sun-meteor/sun_meteor", "objects/sun-meteor/sun_meteor"),
-                ("objects/moon-beam/moon_beam", "objects/moon-beam/moon_beam"),
                 ("objects/drill/drill", "objects/drill/drill"),
                 ("objects/thunder-column/thunder_column", "objects/thunder-column/thunder_column"),
+                // The dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36
+                // (content model v2): the barriers, the panel chips, the
+                // instruments, AirRaid, BugFix, ColorPt, Sensor and SumnBlk.
+                ("lib/viewer", "lib/viewer"),
+                ("lib/barriers/visual", "lib/barriers/visual"),
+                ("lib/barriers/barriers", "lib/barriers/barriers"),
+                ("lib/barriers/controller", "lib/barriers/controller"),
+                ("chips/barrier/chips", "chips/barrier/chips"),
+                ("chips/bblwrap/chip", "chips/bblwrap/chip"),
+                ("chips/lifeaur/chip", "chips/lifeaur/chip"),
+                ("chips/bugfix/chip", "chips/bugfix/chip"),
+                ("chips/bugfix/controller", "chips/bugfix/controller"),
+                ("chips/bugfix/glow", "chips/bugfix/glow"),
+                ("objects/panel-changer/panel_changer", "objects/panel-changer/panel_changer"),
+                ("lib/panel-chips/controller", "lib/panel-chips/controller"),
+                ("chips/pnlretrn/chip", "chips/pnlretrn/chip"),
+                ("chips/holypanl/chip", "chips/holypanl/chip"),
+                ("chips/snctuary/chip", "chips/snctuary/chip"),
+                ("chips/comingrd/chip", "chips/comingrd/chip"),
+                ("chips/goingrd/chip", "chips/goingrd/chip"),
+                ("lib/instruments/instrument", "lib/instruments/instrument"),
+                ("lib/instruments/controller", "lib/instruments/controller"),
+                ("chips/fanfare/chip", "chips/fanfare/chip"),
+                ("chips/discord/chip", "chips/discord/chip"),
+                ("chips/timpani/chip", "chips/timpani/chip"),
+                ("chips/silence/chip", "chips/silence/chip"),
+                ("chips/sensor/chips", "chips/sensor/chips"),
+                ("chips/sensor/controller", "chips/sensor/controller"),
+                ("chips/sensor/turret", "chips/sensor/turret"),
+                ("chips/sensor/scanner", "chips/sensor/scanner"),
+                ("chips/sensor/laser", "chips/sensor/laser"),
+                ("chips/airraid/chips", "chips/airraid/chips"),
+                ("chips/airraid/controller", "chips/airraid/controller"),
+                ("chips/airraid/plane", "chips/airraid/plane"),
+                ("chips/airraid/propeller", "chips/airraid/propeller"),
+                ("chips/sumnblk/chips", "chips/sumnblk/chips"),
+                ("chips/sumnblk/controller", "chips/sumnblk/controller"),
+                ("chips/sumnblk/navi", "chips/sumnblk/navi"),
+                ("chips/colorpt/chips", "chips/colorpt/chips"),
+                ("chips/colorpt/controller", "chips/colorpt/controller"),
+                ("chips/colorpt/point", "chips/colorpt/point"),
             ];
             let weapons = weapons().into_iter().map(|w| {
                 let module = w.script;
@@ -910,33 +1054,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("countdown-bomb", Pool::Attack, 0x4B, "objects/countdown-bomb/countdown_bomb"),
         kind("mine", Pool::Effect, 0x29, "objects/mine/mine"),
         kind("land-mine", Pool::Attack, 0x4C, "objects/land-mine/land_mine"),
-        kind("elmnt-man", Pool::Actor, 0x10, "objects/elmnt-man/elmnt_man"),
-        kind("meteor", Pool::Attack, 0x8D, "objects/meteor/meteor"),
-        kind("elmnt-ice", Pool::Attack, 0x8E, "objects/elmnt-ice/elmnt_ice"),
-        kind("elmnt-bolt", Pool::Attack, 0xB8, "objects/elmnt-bolt/elmnt_bolt"),
-        kind("elmnt-vine", Pool::Attack, 0xB9, "objects/elmnt-vine/elmnt_vine"),
-        kind("spout-man", Pool::Actor, 0x09, "objects/spout-man/spout_man"),
-        kind("spout-ball", Pool::Attack, 0x22, "objects/spout-ball/spout_ball"),
-        kind("spout-splash", Pool::Attack, 0x23, "objects/spout-splash/spout_splash"),
-        kind("spout-pillar", Pool::Effect, 0x2D, "objects/spout-pillar/spout_pillar"),
-        kind("spout-geyser", Pool::Attack, 0x17, "objects/spout-geyser/spout_geyser"),
-        kind("spout-mark", Pool::Effect, 0x2E, "objects/spout-mark/spout_mark"),
-        kind("heat-man", Pool::Actor, 0x07, "objects/heat-man/heat_man"),
-        kind("elec-man", Pool::Actor, 0x08, "objects/elec-man/elec_man"),
-        kind("elec-thunder", Pool::Attack, 0x64, "objects/elec-thunder/elec_thunder"),
-        kind("slash-man", Pool::Actor, 0x0D, "objects/slash-man/slash_man"),
-        kind("slash-wave", Pool::Attack, 0x62, "objects/slash-wave/slash_wave"),
-        kind("charge-man", Pool::Actor, 0x16, "objects/charge-man/charge_man"),
-        kind("charge-car", Pool::Attack, 0xAC, "objects/charge-car/charge_car"),
-        kind("tomahawk-man", Pool::Actor, 0x0A, "objects/tomahawk-man/tomahawk_man"),
-        kind("tengu-man", Pool::Actor, 0x0C, "objects/tengu-man/tengu_man"),
-        kind("blast-man", Pool::Actor, 0x06, "objects/blast-man/blast_man"),
-        kind("blast-fire", Pool::Attack, 0x21, "objects/blast-fire/blast_fire"),
-        kind("bass", Pool::Actor, 0x4F, "objects/bass/bass"),
-        kind("panel-strike", Pool::Attack, 0x09, "objects/panel-strike/panel_strike"),
-        kind("sun-moon", Pool::Actor, 0x24, "objects/sun-moon/sun_moon"),
-        kind("sun-meteor", Pool::Attack, 0xB5, "objects/sun-meteor/sun_meteor"),
-        kind("moon-beam", Pool::Attack, 0xB6, "objects/moon-beam/moon_beam"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
     kinds
@@ -1134,7 +1251,7 @@ fn named_chips() -> Vec<ChipData> {
             hit_param: 100,
             params: [4, 0, 0, 0],
             damage: 50,
-            script: Some("objects/elmnt-man/elmnt_man".into()),
+            script: Some("chips/10d-elmntman/chip".into()),
             ..chip(ELEMENTS, "Elements", 0x1B, 16)
         },
         ChipData {
@@ -1142,7 +1259,7 @@ fn named_chips() -> Vec<ChipData> {
             element: Element::Aqua,
             class: ChipClass::Mega,
             damage: 40,
-            script: Some("objects/spout-man/spout_man".into()),
+            script: Some("chips/0f2-spoutman/chip".into()),
             ..chip(SPOUT, "Spout", 0x1B, 7)
         },
         ChipData {
@@ -1150,7 +1267,7 @@ fn named_chips() -> Vec<ChipData> {
             class: ChipClass::Mega,
             params: [10, 0, 0, 0],
             damage: 40,
-            script: Some("objects/heat-man/heat_man".into()),
+            script: Some("chips/0e3-heatman/chip".into()),
             ..chip(HEAT, "Heat", 0x1B, 2)
         },
         ChipData {
@@ -1158,7 +1275,7 @@ fn named_chips() -> Vec<ChipData> {
             class: ChipClass::Mega,
             params: [10, 0, 0, 0],
             damage: 40,
-            script: Some("objects/elec-man/elec_man".into()),
+            script: Some("chips/0e6-elecman/chip".into()),
             ..chip(ELEC, "Elec", 0x1B, 3)
         },
         ChipData {
@@ -1166,7 +1283,7 @@ fn named_chips() -> Vec<ChipData> {
             class: ChipClass::Mega,
             params: [10, 0, 0, 0],
             damage: 40,
-            script: Some("objects/slash-man/slash_man".into()),
+            script: Some("chips/0e9-slashman/chip".into()),
             ..chip(SLASH, "Slash", 0x1B, 4)
         },
         ChipData {
@@ -1174,7 +1291,7 @@ fn named_chips() -> Vec<ChipData> {
             class: ChipClass::Mega,
             params: [10, 0, 0, 0],
             damage: 40,
-            script: Some("objects/charge-man/charge_man".into()),
+            script: Some("chips/0ef-chrgeman/chip".into()),
             ..chip(CHARGE, "Charge", 0x1B, 6)
         },
         ChipData {
@@ -1182,7 +1299,7 @@ fn named_chips() -> Vec<ChipData> {
             class: ChipClass::Mega,
             params: [10, 0, 0, 0],
             damage: 40,
-            script: Some("objects/tomahawk-man/tomahawk_man".into()),
+            script: Some("chips/0f5-tmhkman/chip".into()),
             ..chip(TOMAHAWK, "Tomahawk", 0x1B, 8)
         },
         ChipData {
@@ -1190,7 +1307,7 @@ fn named_chips() -> Vec<ChipData> {
             class: ChipClass::Mega,
             params: [10, 0, 0, 0],
             damage: 40,
-            script: Some("objects/tengu-man/tengu_man".into()),
+            script: Some("chips/0f8-tenguman/chip".into()),
             ..chip(TENGU, "Tengu", 0x1B, 9)
         },
         ChipData {
@@ -1198,21 +1315,21 @@ fn named_chips() -> Vec<ChipData> {
             class: ChipClass::Mega,
             params: [10, 0, 0, 0],
             damage: 40,
-            script: Some("objects/blast-man/blast_man".into()),
+            script: Some("chips/101-blastman/chip".into()),
             ..chip(BLAST, "Blast", 0x1B, 12)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
             class: ChipClass::Giga,
             damage: 30,
-            script: Some("objects/bass/bass".into()),
+            script: Some("chips/12d-bass/chip".into()),
             ..chip(BASS, "Shooter", 0x1B, 26)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
             class: ChipClass::Giga,
             damage: 90,
-            script: Some("objects/sun-moon/sun_moon".into()),
+            script: Some("chips/15b-sunmoon/chip".into()),
             ..chip(SUN_MOON, "SunMoon", 0x1B, 25)
         },
         ChipData {
@@ -1851,5 +1968,5 @@ fn animations() -> Animations {
     sprites.insert(SpriteId { category: 0x0C, index: 0x23 }, [rise_and_stand.clone(), rise_and_stand].concat());
     sprites.insert(SpriteId { category: 0x0C, index: 0x22 }, vec![vec![f(4, 0), f(4, LAST | LOOP)]]);
     sprites.insert(SpriteId { category: 0x0C, index: 0x35 }, vec![vec![f(20, LAST | LOOP)], vec![f(4, 0), f(8, LAST)]]);
-    Animations { sprites }
+    Animations { sprites, ..Default::default() }
 }

@@ -6,17 +6,21 @@ object they spawn, and AntiNavi in the dimming service. It is written from the d
 coverage report and traces (in the verification workspace) say which branches a scenario reaches, and those are
 marked **verified** or **unverified** in each section.
 
-| subtype | chips | controller | objects | section |
-|---|---|---|---|---|
-| (service) | AntiNavi 0xBA against navi chips 0xDD..0x118 | the navi chip controller T4#0x10 | effect #0 | §2 (ported: dimming.rs) |
-| 4 | 0xB2 Barrier, 0xB3 Barr100, 0xB4 Barr200, 0xB5 BblWrap, 0xB6 LifeAur | T4#0x2F | the barrier visual T4#7 | §3 |
-| 5 | 0xA6 PnlRetrn, 0xA8 HolyPanl, 0xA9 Snctuary, 0xAA ComingRd, 0xAB GoingRd | T4#0x20 | the panel changer T4#0x1F | §4 |
-| 26 | 0xB0 BugFix | T4#0x3B | the glow T1#0x5D | §5 |
-| 9 | 0x92 Fanfare, 0x93 Discord, 0x94 Timpani, 0x95 Silence | T4#0x4A | the instrument T3#0x78 | §6 |
-| 13 | 0x68..0x6A AirRaid1-3 | T4#0x4B | the plane T3#0x75, its propeller T1#3, its overlay T1#0x54, bombs (panel strikes T3#9) | §7 |
-| 28 | 0x71..0x73 Sensor1-3 | T4#0x65 | the turret T3#0xA6, its scanner T3#0x9F, its laser T3#0xA0 | §8 |
-| 36 | 0x87..0x89 SumnBlk1-3 | T4#0x7C | the hole's navi T1#0x32 | §9 |
-| 27 | 0xC2 ColorPt, 0xC4 DblPoint | T4#0x50 | the points T4#0x51 | §10 |
+| subtype | chips | controller | objects | section | port (content/bn6) |
+|---|---|---|---|---|---|
+| (service) | AntiNavi 0xBA against navi chips 0xDD..0x118 | the navi chip controller T4#0x10 | effect #0 | §2 | crates/bn6-battle/src/dimming.rs |
+| 4 | 0xB2 Barrier, 0xB3 Barr100, 0xB4 Barr200, 0xB5 BblWrap, 0xB6 LifeAur | T4#0x2F | the barrier visual T4#7 | §3 | lib/barriers, chips/barrier, chips/bblwrap, chips/lifeaur; FirstBarrier: rules/roles |
+| 5 | 0xA6 PnlRetrn, 0xA8 HolyPanl, 0xA9 Snctuary, 0xAA ComingRd, 0xAB GoingRd | T4#0x20 | the panel changer T4#0x1F | §4 | lib/panel-chips, objects/panel-changer, chips/{pnlretrn,holypanl,snctuary,comingrd,goingrd} |
+| 26 | 0xB0 BugFix | T4#0x3B | the glow T1#0x5D | §5 | chips/bugfix |
+| 9 | 0x92 Fanfare, 0x93 Discord, 0x94 Timpani, 0x95 Silence | T4#0x4A | the instrument T3#0x78 | §6 | lib/instruments, chips/{fanfare,discord,timpani,silence} |
+| 13 | 0x68..0x6A AirRaid1-3 | T4#0x4B | the plane T3#0x75, its propeller T1#3, its overlay T1#0x54, bombs (panel strikes T3#9) | §7 | chips/airraid (the overlay: chips/lilbolr/layer) |
+| 28 | 0x71..0x73 Sensor1-3 | T4#0x65 | the turret T3#0xA6, its scanner T3#0x9F, its laser T3#0xA0 | §8 | chips/sensor |
+| 36 | 0x87..0x89 SumnBlk1-3 | T4#0x7C | the hole's navi T1#0x32 | §9 | chips/sumnblk |
+| 27 | 0xC2 ColorPt, 0xC4 DblPoint | T4#0x50 | the points T4#0x51 | §10 | chips/colorpt |
+
+Every controller is built on lib/dimming (`dimming_chips.phases`, `done`, `spawn`); a chip's `dimming` hook spawns
+it with the chip's own data (a barrier, a panel change, an instrument, a plane, a turret's look and HP, a variant,
+a point's look and bonus) as content records, not the original's parameter bytes.
 
 Conventions: T1/T3/T4 are the actor, attack and effect pools (`object_spawnType1/3/4`); "Param1..4" the spawn
 parameters (object +4..+7), "EV+n" the object's ExtraVars (+0x60 + n). A spawn zero-fills the object (flags 0x19:
@@ -205,9 +209,9 @@ AIData pointer for its later `sub_80E0F02` (the charge glow, effect #8): r7 = ty
 - the glow's EV+0 = type + 0x58, and its update's link test (`ldr r0, [EV]; ldr r0, [r0]`, `sub_80E0E20`) reads
   the BIOS open bus (never 0): it never ends itself, and stays for the round.
 
-Port: kinds/player/mod.rs
-`init_navicust` (the panic) and kinds/charge_glow.rs (a glow whose link check always passes). Lab: the
-`navicust/firstbarrier` scenario stops there (the panic).
+Port: kinds/player/mod.rs `init_navicust` calls the role hook `hooks.first_barrier` (content/bn6/rules/roles.luau
+raises the Barrier chip's barrier, lib/barriers), and `init` spawns the glow unlinked (kinds/charge_glow.rs: a
+glow whose link check always passes).
 
 ### 3.5 Lab coverage
 
@@ -232,9 +236,10 @@ action 0xC. Chips' Param1: PnlRetrn 0, HolyPanl 4, Snctuary 5, ComingRd 0x11, Go
 
 ### 4.2 The panel changer (T4#0x1F, `sub_80E28A8`)
 
-Port: the pack's objects/panel-changer (every kind), spawned by `panel_changer.spawn` (`sub_80E2ACA`: X = the panel's
-Y, Y and Z register garbage). AntiRecv's counterattack uses kind 6 (chips.md §3.6.7); the subtype-5 controller (T4#0x20)
-is not ported yet.
+Port: objects/panel-changer (kind `panel-changer`, every change a `panel_changer.change` record), spawned by
+`panel_changer.spawn` (`sub_80E2ACA`: X = the panel's Y, Y and Z register garbage), which clears its holder's
+`busy` (the controller's Param2) when it ends. AntiRecv's counterattack uses change 6 (chips.md §3.6.7); the
+subtype-5 controller is lib/panel-chips.
 
 **Init `sub_80E28C8`**: on side 1, kind 0x11 ↔ 0x12 (the roads point the other way). EV+0 = &`byte_80E272C[kind
 * 20]` (a row, below). The row's collector (byte 1, a byte offset into `off_80E291C`) lists the panels meeting the
@@ -505,10 +510,10 @@ unless dimmed, paused or the owner's f1 has 0x80110C00, and unless EV+0x14 with 
 takes off 519..548, bombs from 550 (overlay) with the first strike at 551, then every 10 ticks.
 
 **Lab**: the plane, its propeller and overlay, the bombs with and without the neighbour pick are reached.
-**Unverified**: the destroyed action's removal paths (absorb, blink), the battle-over branch, the no-target
-branch (step 2), a failed collision, the overlay's EV+0x10/0x14/0x18 and Param3-0 branches (LilBoiler's). The lab
-has recordings for the plane shot down, the battle's end and the bombs against a barrier and an invisible navi
-(`chips/0x068-airraid1/broken`, `ko`, `barrier`, `invisible`), which the port doesn't replay yet.
+The plane shot down, the battle's end and the bombs against a barrier and an invisible navi
+(`chips/0x068-airraid1/broken`, `ko`, `barrier`, `invisible`) match every frame. **Unverified**: the destroyed
+action's removal paths (absorb, blink), the no-target branch (step 2), a failed collision, the overlay's
+EV+0x10/0x14/0x18 and Param3-0 branches (LilBoiler's).
 
 ## 8. Subtype 28: Sensor1-3
 
@@ -642,8 +647,8 @@ controller, damage word, +0x64 = Param1, EV+0 = the flag pointer, `*flag = 1` (w
 5. The result: the panel in front of the chosen one (as in step 2).
 
 **Lab**: `chips/0x087-sumnblk1/hole-ahead`, `after-geddon` and `chips/0x089-sumnblk3/hole-ahead` have a hole in
-front of the user and reach the whole navi (§9.2, §9.3: 127 blocks and branch sides the lab didn't have); the port
-doesn't replay them yet, so the navi stays **unverified**.
+front of the user and reach the whole navi (§9.2, §9.3: 127 blocks and branch sides the lab didn't have); they
+match every frame.
 
 ## 10. Subtype 27: ColorPt, DblPoint
 
@@ -682,19 +687,32 @@ Param1 · 4; coordinates from the panel; sound 0x129; state 4 and the update run
 
 Parameters: ColorPt [0, 0x0A] (+10), DblPoint [1, 0x14] (+20).
 
-**Lab**: the points, the steal and the flight are reached, and the bonus itself by `chips/0x0c2-colorpt/bonus`,
-`chips/0x0c4-dblpoint/bonus` and `chips/0x062-lilbolr1/colorpt` (a Cannon or a LilBoiler next), which the port
-doesn't replay yet. **Unverified**: the bonus, the special-source branch, a missing navi, `sub_800D53C` running
-off the field.
+**Lab**: the points, the steal and the flight are reached, and the bonus itself by `chips/0x0c2-colorpt/bonus` and
+`chips/0x0c4-dblpoint/bonus` (a Cannon next), which match every frame; `chips/0x062-lilbolr1/colorpt` (a LilBoiler
+next) is to rerun since LilBoiler's registration changed. **Unverified**: the special-source branch, a missing
+navi, `sub_800D53C` running off the field.
 
-## 11. What the port needs (data and framework)
+## 11. The port (data and framework)
 
-Pack data (content v2): the barrier table (§3.2, 16 rows) and the visual's looks (§3.3), `byte_80E272C` (§4.2, 19
-rows), `byte_80D4078` and the instrument constants (§6.2), `byte_80D34C0` (§7.2), and the small per-aim tables
-of §8. Framework (Rust): `sub_801A7CC` and the barrier visual are the ruleset's (FirstBarrier and attack #0xC7 use
-them), with the charge glow's clobbered link (§3.4); `dimming::hide_user`/`show_user` must reach the barrier
-visual (its shown byte) and the charge glow (its EV+4) as `sub_80E1352`/`sub_80E13DC` do; the glow and the
-controllers use `sub_80E1352` with a mask (BugFix: 0xF). AntiNavi is done (§2).
+Content (model v2): the tables are the chips' records: the barriers (§3.2) are `barriers.barrier_10` and the
+rest (lib/barriers/barriers.luau), the panel changes (§4.2) `panel_changer.change` records, `byte_80D4078`'s rows
+(§6.2) `instrument.instrument` records with each chip's effect, `byte_80D34C0`'s rows (§7.2) `plane.plane`
+records, the turrets' look and HP (§8.1) and SumnBlk's and the points' parameters the hooks' arguments; the
+small per-aim tables of §8 and §7 are the kinds' constants. Collision types: rules/collision.luau (`nothing`
+0x00, `own-body` 0x13, `guard-breaking` 0x32 join); regions: lib/regions.luau (the whole-field regions 0x80,
+0x83, 0x84/0x85, the four neighbours 0x0A and `GetRandomRelativePanelFiltered`); the area-steal rule
+(`sub_800D668`) and the front of an area (`sub_800D4D0`): lib/panels.luau.
+
+Framework (Rust): `sub_801A7CC` is `Object:raise_barrier` (the barrier byte by behavior: plain 1, bubble 8,
+regenerating 0xA), with the charge glow's clobbered link (§3.4); `dimming.hide_user_sparing` (`sub_80E1352` with
+mask 0xF); `battle.clear_navicust_bugs` (§5.1); `Sprite:load_look_of`, `Object:add_parts_of`/`remove_parts_of`
+(BugFix's glow); `Object:name_look_is` (`sub_800F26C`, §9.3); `battle.hand_chip_damages` (§10.2); and
+`Sprite:part_offset` (`sub_80030BA`: where a part of the current frame sits, which the pack's sprite layouts
+give; the propeller, §7.3). AntiNavi is done (§2).
+
+The trace comparison (bn6-compat) skips the register garbage the original leaves: the controllers' positions
+(`scratch_position`), the Sensor scanner's, laser's and the points' Z fractions (`scratch_z_fraction`), and the
+Z fraction of a hit spark whose hitter's is garbage (Sensor's laser's sparks).
 
 ## 12. Scenarios recorded for this document
 

@@ -18,6 +18,9 @@ effects.dust = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1,
 -- object a chip removes (effect 0x14).
 effects.puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 
+-- Bubbles: Otenko's statue breaking (effect 0x02).
+effects.bubbles = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
 -- A fiery burst: a bullet's (objects/bullet) and TankCan's shell's hit
 -- (effect 0x22).
 effects.shell_burst = define.effect { sprite = asset.sprite("shell-burst"), anim = 0, palette = 0 }
@@ -32,5 +35,9 @@ effects.flash = define.effect { sprite = asset.sprite("reflected-shot"), anim = 
 -- A small splash: something diving into or out of the field (effect 0x02:
 -- the dragons).
 effects.ripple = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
+-- A burst of smoke: a train car blowing up, a navi coming or going in a
+-- puff (effect 0x12).
+effects.smoke = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
 
 return effects
