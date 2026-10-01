@@ -8,6 +8,7 @@
 -- unfilled.
 
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
+local anti_recovery = require("../chips/antirecv/controller")
 local barriers = require("../lib/barriers/barriers")
 local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
@@ -51,6 +52,9 @@ return define.roles {
         falling_rock = falling_rock.kind,
         -- The NaviCust supports' controller (Rush's, Beat's and Tango's).
         support = supports.kind,
+        -- AntiRecv's counterattack, which a heal meets when the other side
+        -- has AntiRecv armed.
+        anti_recovery = anti_recovery.kind,
     },
     hooks = {
         -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with
