@@ -229,7 +229,7 @@ Left:
 
 Done: the dimming chips have no Rust fallback (kinds/player/actions/dimming_chip.rs calls the chip's controller
 only), and the controllers declare `scratch_position` (trace.rs keeps only the navi chip controller). Scripts:
-subtypes 1 (objects/invisible), 6 (objects/rock-cube), 20 (objects/trap-chip, with ElemTrap's trap
+subtypes 1 (objects/invisible), 6 (chips/rockcube), 20 (objects/trap-chip, with ElemTrap's trap
 objects/elem-trap, its strike objects/elem-trap-strike and objects/panel-bursts), 10 (objects/time-bom,
 objects/countdown-bomb), 11 (objects/mine, objects/land-mine), 25 (objects/gauge-speed), 38 (objects/navi-boost).
 Shared: lib/panels (the game's panel lists and shuffle), objects/rising-bubble (effect #0x14).
@@ -287,21 +287,30 @@ kind). Left:
 
 ### Group E: instant chips (ported; what is left)
 
-Action 0x1C runs the attack's instant effect (the chip's, or a weapon's; §3). Every entry of `off_80EC3F0` is ported: 0, 3 (chips/13f-beastout,
-lib/instant/plus with chips/atk-10, chips/navi-20 and chips/0c0-atk-10, objects/rising-bubble), 1 (objects/boomerang), 4 (objects/lance), 5 (chips/0ae-fullcust), 8
-(objects/fire-hit), 10 (chips/busterup, a definition), 12 (objects/sand-worm, sand-spray, sand-hole), 13 (chips/11d-synctrgr),
-14 (objects/flame-hook, flame-hook-fire), 15 (objects/col-force, col-force-soldier), 19 (objects/justice-one), 20
-(weapons/10-tengu-wind, objects/gust), 21 (objects/golem), 22 (objects/col-army); 7 and 0x12 are NULL (an explicit
-panic). 2, 6, 9, 11 (lib/instant-chips) and 16, 17 (objects/meteor-shower, dust-storm) have no chip or MegaMan weapon:
-the link navis' weapons (0x71, 0x83) and actions that use them register or require them when ported. Left: the Full
-Synchro aura after SyncTrgr (framework), attack #0x12 (the soldiers' vulcan hit) and #0x56 (the meteor), which these
-spawn by number.
+Action 0x1C runs the attack's instant effect (a chip definition's `instant` hook, a record's subtype's registration,
+or a weapon's; §3). Every entry of `off_80EC3F0` is ported, in content model v2 (content-model-v2.md §5.6, "As
+built", step 8d): 0, 3 (lib/instant/plus with chips/atk-10, chips/navi-20, chips/whicapsl, chips/finalgun,
+chips/numtrap; the records' shims chips/13f-beastout and chips/0c0-atk-10; objects/rising-bubble), 1
+(objects/boomerang, chips/boomer), 4 (chips/lance), 5 (chips/fullcust), 8 (chips/firehit; the records' shim
+chips/06b-firehit1), 10 (chips/busterup), 12 (chips/sandwrm), 13 (chips/synctrgr), 14 (chips/flmhook, the navi
+chips'; the records' shim chips/146-flmhook1), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/10-tengu-wind, objects/gust), 21
+(chips/golmhit), 22 (chips/colarmy); 7 and 0x12 are NULL (an explicit panic). 2, 6, 9, 11, 16 and 17 have no chip or
+MegaMan weapon: they are builders in lib/instant, which the link navis' weapons (0x71, 0x83) and actions call when
+ported. Left: the Full Synchro aura after SyncTrgr (framework).
 
-### Group F: rocks
+### Group F: rocks and the field objects
 
-Done: the rock (objects/rock) and its debris (objects/rock-debris) are kinds on the obstacle framework (the
-`obstacle` service); the actor lists' rocks go through the rock's `actor_list_entry` (its `place`; the role `kinds.rock`).
-The verification workspace's rock_trace and bn6_data tests need the updated copies (they named `kinds::rock`).
+Done, in content model v2 (content-model-v2.md §5.9, "As built", step 8f): the rock with its variants and
+debris (objects/rock), RockCube and IceCube (chips/rockcube), the absorbed obstacle and its looks
+(objects/absorbed-obstacle; a look is each obstacle's own record), the falling rock and its chips
+(objects/falling-rock), and what the stages' actor lists place through their kinds' `place`: the rock (the role
+`kinds.rock`), the boulder (`kinds.boulder`, objects/boulder, newly ported) and the Guardian statue
+(`kinds.statue`, chips/guardian). The obstacle framework stays Rust (the `obstacle` service). The verification
+workspace's rock_trace and bn6_data tests read the kinds through compat.
+
+Left: the encased obstacles' ice block reaches the rock through `rock.spawn(..., { variant =
+rock.variants.ice, class, entrance = "instant" }, damage)`; the actor lists' entry types no netbattle stage
+uses (1, 2, 6, 7, 0xA: docs/engine/field-objects.md §1).
 
 ### Group G: standard chip actions
 
