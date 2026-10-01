@@ -1,6 +1,0 @@
-# FlmHook's flame (attack object #0xCA, `sub_80DE7F4`) is a script.
-
-[kind]
-pool = "attack"
-index = 0xCA
-script = "flame_hook_fire.luau"
