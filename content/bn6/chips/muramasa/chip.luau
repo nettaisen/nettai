@@ -1,16 +1,29 @@
 --!strict
 -- Muramasa: a slash on the two panels ahead, as strong as the HP its user lost.
---
--- Its record stays the pack's for now (its damage is a formula, which definitions take in step
--- 10): this is its action, which registration by number runs (docs/design/content-model-v2.md
--- §5.1, "As built").
 
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
 local slashes = require("../../navis/megaman/forms/slashcross/slashes")
+local lockon = require("../../rules/lockon")
 
-return {
+return define.chip {
+    id = "muramasa",
+    name = "Muramasa",
+    description = "Atk power\nequal amt\nof lostHP",
+    codes = { "M" },
+    element = "null",
+    family = "sword",
+    class = "standard",
+    rarity = 3,
+    mb = 77,
+    damage = { formula = "hp_lost" },
+    hit_param = 50,
+    lockout = 0,
+    flags = { "has_damage", "standard_library", "damage_shown_variable", "library", "variable_damage" },
+    beast = { lockon = lockon.firebrn1 },
+    library = { number = 84, index = 84, sort = 320 },
+    slot_in_limit = 1,
     action = slash.action {
         id = "muramasa/action",
         blade = parts.blades.sword,

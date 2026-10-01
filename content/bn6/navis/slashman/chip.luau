@@ -8,10 +8,6 @@
 -- and down to his panel. A panel that isn't solid ground, or holds a
 -- neutral object, stops the roll. Then he lands back on his panel. See
 -- docs/engine/standard-chips.md, "Action 0x0A".
---
--- Its record stays the pack's (its damage grows with his level, which
--- chip definitions take with step 10's damage formulas) and names this
--- module, whose `action` it runs (docs/design/content-model-v2.md §12).
 
 local collision = require("../../rules/collision")
 local link = require("../../lib/link_chips")
@@ -218,7 +214,22 @@ end
 
 local PHASES = { [CURL] = curl, [LAUNCH] = launch, [ROLL] = roll, [LAND] = land }
 
-return {
+return define.chip {
+    id = "rslash",
+    name = "RSlash",
+    description = "Slash an\nenmy whl\nrevolving",
+    codes = { "S" },
+    element = "null",
+    family = "sword",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = { formula = "navi_level", base = 80, per_level = 20 },
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "library", "variable_damage" },
+    library = { number = 402, index = 0, sort = 7 },
+    slot_in_limit = 1,
     -- `sub_80F0CB0` (`off_80F0CC4`).
     action = define.action {
         id = "rslash/action",

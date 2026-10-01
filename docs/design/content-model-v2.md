@@ -197,13 +197,19 @@ export type ChipSpec = {
 }
 ```
 
-- `damage` is a number, or a formula the ruleset evaluates: `formula.sp_navi { slot = sp.heatman, by_time =
-  {...} }` (the SP chips' damage by the user's deletion time of that navi; `sp.heatman` is a record for the
-  save's deletion-time slot, in `lib/navi-chips/sp.luau`), `formula.hp_lost { cap = 500 }` (Muramasa),
-  `formula.navi_level { base = 60, per_level = 10 }` (the link navis' chips). The original's "1000 + n selects
-  formula n" encoding is gone; the hand holds the evaluated damage, as it does today.
-- `program_advances` refers to its ingredients by value: `{ order = 12, recipe = pa.code_run(cannon, 3) }`,
-  `pa.sequence { hicannon, cannon, m_cannon }`.
+- `damage` is a number, or a formula the ruleset evaluates: `{ formula = "sp_navi", slot = "sp/heatman",
+  by_time = {...} }` (the SP chips' damage by the user's deletion time of that navi; the slot is one of
+  rules/sp-chips.luau's `slots`, the save's deletion times in the setup's order), `{ formula = "hp_lost" }`
+  (Muramasa), `{ formula = "hp_last_digits" }` (NumbrBl), `{ formula = "navi_level", base = 60, per_level =
+  10 }` (the link navis' chips), and the ones no BN6 chip uses (`opponent_hp`, `gauge`,
+  `half_opponent_max_hp`). The original's "1000 + n selects formula n" encoding is gone; the hand holds the
+  evaluated damage, as it does today.
+- `program_advances` refers to its ingredients by value: `{ order = 13, code_run = { chip = cannon, count = 3
+  } }`, `{ order = 0, sequence = { sword, wideswrd, longswrd } }` (`order`: where the recipe is tried among
+  all of them).
+- `traits` are names: `no_chain`, `aura_bonus`, `no_cut_in`, `element_sword`, `navi_slot`, `heals`,
+  `user_stays`, `navi_returns_user` (§7.5). A trap chip says which trap it is (`trap = "anti_damage"`), a dark
+  chip its substitute and what its use adds to the HP bug (`dark_substitute = sword, hp_bug = 2`).
 - The chip record's bytes no battle routine reads stay out, as in v1.
 - A chip's action number, subtype and parameters are gone. The parameters became arguments of the builder the
   chip composes (§5); the numbers are compat.
@@ -285,6 +291,7 @@ export type WeaponSpec = {
     charge_ticks: { number },
     setup: ((navi: Object) -> Action)?,   -- none: nothing can start it (an A-charge that is its chip; a weapon nothing implements yet)
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
+    instant_waits: boolean?,   -- the navi waits 8 ticks after its instant effect (one no chip has)
     sticky: boolean?,          -- as a charged shot: a chip's weapon, which a form's own doesn't replace (`sub_800FFAA`); its attack runs through a dimming
     held: boolean?,            -- as a buster: fires while B is held
     plain: Weapon?,            -- as a buster: what it gives way to while the charged shot is sticky
@@ -297,8 +304,11 @@ map on each sticky weapon: six sticky weapons would repeat the same three pairs.
 original's `nullsub_44` entries, which `sub_800FB54` tells apart by number before it would call them; started as
 a weapon, one is the game's "action from a stale register" error, as before. The sticky charged shots are the
 chips' own weapons, beside the chip that gives them (`bugrswrd/charge`, `bgdththd/charge`, `puncharm/charge`,
-`needlarm/charge`, `puzzlarm/charge`, `boomrarm/charge`); nothing implements their attacks yet, so they have no
-`setup` and firing one is an error. A form's `weapons` and a navi's are handles (`FormWeapons` of
+`needlarm/charge`, `puzzlarm/charge`, `boomrarm/charge`); each setup starts a chip family's action with
+arguments of its own (a sword's slash, Thunder's shot, AquaNdl1's volley, an electric pulse no chip has) or
+names a chip's instant effect (FireHit's fists, Boomer's boomerang: `instant`, without `instant_waits`, which
+only an effect no chip has sets: TenguCross's wind), and the two bug chips' spend a bug frag
+(`battle.bug_frags(side)`, `battle.spend_bug_frags(side, n)`). A form's `weapons` and a navi's are handles (`FormWeapons` of
 `Option<WeaponHandle>`); a navi's definition also carries what a Cross change brings it with (`fresh`: HP, the
 body's programs, the first barrier, the Mega and Giga levels, the B+Back special's damage) and its HP after one
 (`cross_hp`, by side), which were tables in the engine (`byte_80210DD`, `byte_802DD88`). The content API's
@@ -920,7 +930,7 @@ The v1 per-chip `[sword]` data (blade row 3 for both, the slash's regions 1 and 
 modifier 3, effects 24 and 22) becomes these arguments, and `lib/swords/` names the blades, effects and sounds
 the family shares. MchnSwrd/ElemSwrd/AssnSwrd (action 0x49) and VarSwrd/NeoVari compose
 `lib/swords/` builders the same way; `VariSwordSpec.choices`, today a list of chip numbers, becomes a list of
-chips (as built, §5.8: the picks' actions, with the chips' numbers in a transitional marker).
+chips (as built since step 10: `picks` and `sword` are the chips, and the attack's chip becomes the pick).
 
 **As built** (step 7, the swords exemplar): content/bn6/lib/swords/ (`parts`: the blades, slashes and sounds
 the family shares, and the blade's animation and palette by the navi's arm; `slash`: action 0x13's builder;
@@ -1216,8 +1226,8 @@ navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-b
 `tornado`, `clouds`); a kind the navi chip series has too stays with the series (`heatman/flame`,
 `eraseman/beam`, `grndman/drill`, `grndman/rock`, rule 4), and the follow effect, which DeltaRay's bursts and
 DElecSwd's glow share, is objects/follow-effect with its looks as records. lib/link_chips.luau is what the ten
-routines share. Their records stay the pack's and run the action their module exports (§12, "A record's action by
-its module"). The kinds that lasted while their owner's action number was 0x0A keep his running action in an
+routines share. Each chip is a definition in its navi's folder (navis/<navi>/chip.luau: the record, its damage
+by the navi's level, and the action), which the navi's `own_chip` names. The kinds that lasted while their owner's action number was 0x0A keep his running action in an
 `"action"` state field and compare definitions (§7.6). Verified against the chip lab (docs/engine/
 standard-chips.md, "Action 0x0A").
 
@@ -1989,6 +1999,45 @@ Counted in `crates/bn6-battle/src` without tests; file names are the modules tha
   chips are the navis' `own_chip`s.
 - `chip_damage_formula` by formula number (1..=18 SP, 20 HP lost, 24..=44 navi level). → `ChipDamage`.
 
+**As built** (step 10). The ruleset has no chip by number, and neither has the engine: a chip is its
+definition (`ChipDef`: the record `ChipData`, its use, and `ChipLinks`, what the record names resolved to
+handles when the content loads). `ChipData` lost its number, action, subtype, parameter bytes and v1 module;
+`Content::chips`, registration by number for chips, `ChipUsage::Unported` and the chip `legacy` marker are
+gone. What replaced each number:
+- *Traits* (`ChipTraits`, a definition's `traits`): `no_chain` (the Beast rush's chain: the variable swords),
+  `aura_bonus` (the AuraHeds and StreamHd), `no_cut_in` (the dimming chips past the Program Advances),
+  `element_sword` (SlashCross's charge), `navi_slot` (AntiNavi turns back the chips with the `navi` flag and
+  these: Django's, which lack it), `heals` (AntiRecv springs on Roll's chips), and for the navi chip's
+  controller, which asked the navi's number, `user_stays` (BigHook: no warp) and `navi_returns_user` (Roll:
+  no warp back in).
+- *`trap`* (`Trap`): which trap a chip is while a side's defensive-chip record holds it (AntiDmg, AntiSwrd,
+  BodyGrd, AntiNavi, AntiRecv); `Battle::linked_trap` asks it.
+- *Dark chips*: `dark_substitute` is the substitute chip itself and `hp_bug` what the use adds to the user's HP
+  bug.
+- *`formula`* (`DamageFormula`): the damage formulas by name, an SP navi chip's with its slot (`Rules::sp_slots`,
+  rules/sp-chips.luau) and its damage by deletion-time step.
+- *Roles* (`ChipRole`, rules/roles.luau's `chips`): `zeroed` (what a zeroed chip field reads: the original's
+  chip 0), `beast_out` and `invalid` (the custom screen's), `rush`, `beat` and `tango` (the chips the supports'
+  telops name).
+- *Rules*: the Cross special's chips (rules/cross-special.luau: a row by the hundreds of the navi's base max
+  HP, a chip of it at random, LifeSrd striking with VarSwrd's damage) and the Program Advances
+  (`Defs::program_advances`: every chip's recipes in their order, their ingredients by handle; a chip made by
+  one has an index among them, `ChipLinks::advance`, for the round's record of the ones formed).
+- *A navi's own chip* is its definition's `own_chip`; the chip knows its navi (`ChipLinks::own_chip_of`), which
+  is what the hand, the custom screen and the charge rules asked of chips 0x190 and up.
+- *A chip's use* sets no subtype or parameters in the attack: an action takes what it needs from its builder's
+  arguments, a hook from its closure. Two things read a chip's bytes besides its own use and now ask the
+  definition: SlashCross's charged slash (the action's `charged` and `step`, which SonicBom and SprSonic give
+  as their records' bytes read), and the stun strike (a role's action, lib/swords/stun_strike, which strikes
+  as the machine sword the attack's chip is).
+- The numeric API's chip (a dimming spec's, a defensive-chip record's) is an opaque number, `DEFINED_CHIPS`
+  plus the handle; the supports' controller holds its chips as references.
+The engine's test chips are definitions too (crates/bn6-battle/testdata/content/chips/test: made-up records
+composing BN6's builders), and tests name chips by key. compat's chips.toml has the original's numbers by key,
+for the trace harness and save import (`bn6_compat::codec::Ids`); `gen-content check` compares each definition
+with the ROM's chip of its number, including the traits, traps and HP bug its number gives it in the
+original's routines.
+
 **Forms, navis and identities by number.**
 - `Form` constants and `form.0` tests in battle.rs, player/mod.rs, form.rs, chip_use.rs, input.rs, intake.rs,
   idle.rs, status.rs, transform.rs (actions), beast_rush.rs, afterimage.rs, lockon_marker.rs, custom/mod.rs,
@@ -2419,6 +2468,14 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   its action into the generated definition and dropping `script`; the number stays in the marker until phase
   C's step 10.
 
+*Gone with step 10*, of the above: the chip legacy marker (a chip takes none), every registration-by-number
+shim of chips (the 0x12, 0x13 and 0x49 ones, the standard chips', the navi chips', the dimming and instant
+chips' record shims), "a record's action by its module" (`record_action`), the chips kept on records and
+their numbered definitions (each is a definition with its own use; a `record.luau` beside people's module
+was merged into it), chips/v1.luau, the charged slashes by row and the A-charge's by-number path, and the
+variable swords' picks by number (`VariSwordSpec.picks` are chips; `become` sets `me.attack_chip`). The stun
+strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the definition.
+
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 
 1. **Compat and the generator** (verification workspace, then this repository). gen-content with the ROM
@@ -2539,7 +2596,9 @@ family's packet, in gen-content, and checked by `gen-content check`.
    became the definitions' slots (§3.10). The numeric API keeps its numbers (`NaviAction::numbered`, `number`)
    until step 13.
 10. **Chips**: the hand, folders, the custom screen, chip use, dimming, intake and damage formulas on handles
-    and traits. **M.**
+    and traits. **M.** Done (§7.5, "As built"): every chip is a definition with its own use, the 72 numbered
+    shim folders, chips/v1.luau, `record.luau`/`records.luau` and the chips' legacy markers are gone, and the
+    engine has no chip by number.
 11. **Navis, forms, identities and weapons**: `NaviStats` on handles, the form and navi traits, identities for
     NameIDs, weapon traits. **L.**
 12. **Assets and stages**: sounds, music, banners, effects, sparks, collision types and regions through roles;

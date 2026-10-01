@@ -5,10 +5,6 @@
 -- on each of the other side's panels in his row, every tick); then a
 -- second look on him while he crushes the panel ahead (10 ticks in), and
 -- 30 ticks of recovery. See docs/engine/standard-chips.md, "Action 0x0A".
---
--- Its record stays the pack's (its damage grows with his level, which
--- chip definitions take with step 10's damage formulas) and names this
--- module, whose `action` it runs (docs/design/content-model-v2.md §12).
 
 local clouds = require("./clouds")
 local collision = require("../../rules/collision")
@@ -143,7 +139,22 @@ end
 
 local PHASES = { [PULL] = draw_in, [CRUSH] = crush, [RECOVER] = recover }
 
-return {
+return define.chip {
+    id = "dustbrk",
+    name = "DustBrk",
+    description = "Draw enmy\nin, then\ncrsh attk",
+    codes = { "D" },
+    element = "null",
+    family = "break",
+    class = "special",
+    rarity = 0,
+    mb = 99,
+    damage = { formula = "navi_level", base = 80, per_level = 30 },
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "library", "variable_damage" },
+    library = { number = 409, index = 0, sort = 7 },
+    slot_in_limit = 1,
     -- `sub_80F1FA0` (`off_80F1FB4`).
     action = define.action {
         id = "dustbrk/action",
