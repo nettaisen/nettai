@@ -15,7 +15,8 @@ use bn6_battle::transform::{SequencerState, TransformPhase};
 use bn6_battle::battle::{fight, mode, top};
 use bn6_battle::content::ChipFlags;
 use bn6_content_api::ChipHandle;
-use bn6_battle::object::{ObjectRef, flags};
+use bn6_battle::hud::HpNumber;
+use bn6_battle::object::ObjectRef;
 use bn6_battle::perspective::{ShownTelop, TelopName};
 
 /// The player navi's action while it stands waiting for input.
@@ -25,7 +26,8 @@ const FULL: u16 = bn6_battle::hud::CustomGauge::FULL;
 #[derive(Clone, Debug, Default)]
 pub struct HudState {
     hp: Option<RollingHp>,
-    enemies: Vec<EnemyHp>,
+    /// The local console's HP numbers under objects, by place.
+    hp_numbers: [Option<HpNumberShown>; HpNumber::PLACES],
     /// The HUD's animation counter (`eStruct2035280` +0): "Cstmzing..."
     /// counts it from 0 around 0x40 while it waits, and every draw of the
     /// full gauge counts it on, around 0x70 (`sub_801CA28`, `sub_801C4E4`).
@@ -142,9 +144,11 @@ struct RollingHp {
     hold: u8,
 }
 
+/// An HP number as it rolls (`sub_801C168`, an entry of `byte_203EB50`).
 #[derive(Clone, Copy, Debug)]
-struct EnemyHp {
-    object: ObjectRef,
+struct HpNumberShown {
+    /// What its place numbers (a new one starts over).
+    number: HpNumber,
     shown: u16,
     /// 0 normal, 1 dropping, 2 rising.
     colour: u8,
@@ -213,25 +217,18 @@ impl HudState {
                 }
             }
         }
-        // Opponents' HP: shown once their entry is over, until deleted.
-        for side in 0..2u8 {
-            if side == local {
+        // The HP numbers under objects (the opponent's navi, LilBoiler):
+        // from the HP when asked for, rolling to it.
+        for (place, shown) in b.hp_numbers[local as usize & 1].iter().zip(&mut self.hp_numbers) {
+            let Some(number) = *place else {
+                *shown = None;
                 continue;
-            }
-            let Some(r) = b.player(side) else { continue };
-            let o = b.objects.get(r);
-            if bn6_battle::kinds::player::navi_action(b, r) != bn6_battle::kinds::player::NaviAction::Entry
-                && o.hp > 0
-                && !self.enemies.iter().any(|e| e.object == r)
-            {
-                self.enemies.push(EnemyHp { object: r, shown: o.hp, colour: 0, timer: 0 });
-            }
-        }
-        self.enemies.retain_mut(|e| {
-            let o = b.objects.get(e.object);
-            if o.flags & flags::ACTIVE == 0 || o.hp == 0 {
-                return false;
-            }
+            };
+            let e = match shown {
+                Some(e) if e.number == number => e,
+                _ => shown.insert(HpNumberShown { number, shown: number.hp, colour: 0, timer: 0 }),
+            };
+            let o = b.objects.get(number.object);
             let poisoned = o.collision.is_some_and(|c| b.collision.get(c).poison_timer != 0);
             if e.shown < o.hp {
                 e.colour = 2;
@@ -250,8 +247,7 @@ impl HudState {
                     e.colour = 0;
                 }
             }
-            true
-        });
+        }
     }
 }
 
@@ -487,26 +483,33 @@ pub fn draw<'a>(
             }
         }
     }
-    let mut group = Vec::new();
-    for e in &state.enemies {
-        // Under the navi wherever its position is on the screen, seen or
-        // not (`sub_801C202` asks `sub_800362C`): a navi that blinks after
-        // a hit or is invisible keeps its number.
-        let o = b.objects.get(e.object);
+    // The HP numbers, each place in turn (`sub_801C202`).
+    for e in state.hp_numbers.iter().flatten() {
+        // Under the object wherever its position is on the screen, seen or
+        // not (`sub_800362C`): a navi that blinks after a hit or is
+        // invisible keeps its number.
+        let number = e.number;
+        let o = b.objects.get(number.object);
         let p = project_hud((o.pos.x, o.pos.y, o.pos.z), &view);
         if !on_screen(p) {
             continue;
         }
-        let n = e.shown.to_string().len() as i32;
+        // The damage taken instead (`sub_801C296`'s flag 0x10), from the
+        // place without centring (flag 8).
+        let value = if number.damage { o.max_hp.wrapping_sub(e.shown) } else { e.shown };
+        let n = value.min(9999).to_string().len() as i32;
+        let x = p.x + number.dx as i32 + if number.damage { 0 } else { 4 * n - 32 };
+        let y = p.y + number.dy as i32;
         let digits = &hud.enemy_digits[e.colour.min(2) as usize];
-        for (k, d) in digits4(e.shown).into_iter().enumerate() {
+        let mut group = Vec::new();
+        for (k, d) in digits4(value).into_iter().enumerate() {
             if d == 10 {
                 continue;
             }
-            group.push(glyph(digits, d, hud.enemy_palette, p.x + 4 * n - 32 + 8 * k as i32, p.y, 2, None));
+            group.push(glyph(digits, d, hud.enemy_palette, x + 8 * k as i32, y, 2, None));
         }
+        list.insert_at(FIELD_LAYER, HP_BUCKET, group);
     }
-    list.insert_at(FIELD_LAYER, HP_BUCKET, group);
     // A flickering emotion window is black two ticks of every four
     // (`sub_801CC94`: its palette blanks), and isn't drawn on the middle
     // two of the flicker's twelve (`sub_801CDEC`).
