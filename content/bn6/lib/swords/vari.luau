@@ -1,32 +1,36 @@
 --!strict
--- What VarSwrd (action 0x53, `sub_80EF6FC`) and NeoVari (0x54,
--- `sub_80EF87C`) share: the navi stands holding A and the chip becomes
--- another sword by the direction sequence entered (with A held, each step
--- the whole joypad word); letting go of A or 48 ticks without a sequence
--- gives a plain Sword. In a Beast Over form, or as a special (the attack's
--- special source), the sword is random. The chosen chip's action starts
--- in place (`object_setAttack0`) with its subtype and parameters but the
--- original damage.
+-- What VarSwrd (the original's action 0x53, `sub_80EF6FC`) and NeoVari
+-- (0x54, `sub_80EF87C`) share: the navi stands holding A and the chip
+-- becomes another sword by the direction sequence entered (with A held,
+-- each step the whole joypad word); letting go of A or 48 ticks without a
+-- sequence gives a plain Sword. In a Beast Over form, or as a special (the
+-- attack's special source), the sword is random. The chosen chip's action
+-- starts in place (`object_setAttack0`) with its subtype and parameters
+-- but the original damage. Each chip composes its own (`vari.action {
+-- ... }`, a `VariSwordSpec`): its sequences, and the actions they give.
 
 -- The state (`VariSwordState`, types.d.luau): the ticks left to enter a
 -- sequence (AIAttackVars+0x12), the navi's direction flip (which set of
 -- sequences: AIAttackVars+0x28), and how far into each sequence the navi
 -- is, in bytes (AIAttackVars+0x30 up; the game keeps the first four in the
 -- attack's marker word, which every later reader sets before reading).
--- What differs between the two actions is a `VariSwordSpec`.
 type State = VariSwordState
 type Spec = VariSwordSpec
 
--- The state schema both actions declare.
-local STATE = { countdown = "u16", flip = "u8", progress = "u8[5]" }
+local vari = {}
 
-local vari_sword = { STATE = STATE }
+-- One state for both actions (the original's two handlers share the
+-- attack variables' layout).
+vari.STATE = { countdown = "u16", flip = "u8", progress = "u8[5]" }
 
-local SWORD = 0x47
 -- Ticks to enter a sequence.
 local COUNTDOWN = 0x30
--- The charged sword a charged pick turns into (unless it is the no-charge
--- chip).
+-- The phases, on the attack's step.
+local START, PICK = 0, 4
+local SOUND = asset.sound("ok-8b")
+-- What a charged pick turns into (unless it is the no-charge pick):
+-- SlashCross's charged sword (the original's action 0x41, a v1 weapon
+-- action, by number until SlashCross's weapons convert).
 local CHARGED_SWORD = 0x41
 -- Forms: SlashCross and its Beast (wait while A is up), the Beast Overs
 -- (random), and the Beast forms (0xB to 0x18: the pick's Beast lock-on).
@@ -83,18 +87,24 @@ local function advance(s: State, sequences: { { number } }, held: number): numbe
     return nil
 end
 
--- `loc_80EF788`: the attack becomes `chip`.
-local function become(me: Object, chip: number, spec: Spec)
-    me.chip = chip
-    local c = data.chips[chip]
+-- `loc_80EF788`: the attack becomes pick `i` (0: Sword). Its action is the
+-- chip's; the attack's chip, subtype and parameters are its record's
+-- (transitional: the Beast rush reads the chip's lock-on mode, and
+-- SlashCross's charged sword its subtype and first parameter, until the
+-- chips are definitions and those readers ask them).
+local function become(me: Object, spec: Spec, i: number)
+    local action = if i == 0 then spec.sword else spec.picks[i]
+    local number = if i == 0 then spec.legacy.sword else spec.legacy.chips[i]
+    me.chip = number
+    local c = data.chips[number]
     if c == nil then
-        error(string.format("the variable sword's chip %#x is not in the content", chip))
+        error(string.format("the variable sword's chip %#x is not in the content", number))
     end
     me.variant = c.subtype
     for n = 1, 4 do
         me:set_attack_param(n, c.params[n])
     end
-    me:set_attack(c.action, 0)
+    me:set_attack(action, 0)
     local lockon = if c.beast_lockon then 1 else 0
     if me.special_source ~= 0 then
         me.beast_lockon = lockon
@@ -104,7 +114,7 @@ local function become(me: Object, chip: number, spec: Spec)
     if stats.navi == WAITING_NAVI then
         return
     end
-    if chip ~= spec.no_charged and me.charged ~= 0 then
+    if action ~= spec.no_charged and me.charged ~= 0 then
         me.action = CHARGED_SWORD
     end
     if stats.form >= FIRST_BEAST and stats.form <= LAST_BEAST then
@@ -112,9 +122,38 @@ local function become(me: Object, chip: number, spec: Spec)
     end
 end
 
+-- `sub_80EF6FC` / `sub_80EF87C`: a tick of waiting for the pick.
+local function pick(me: Object, s: State, spec: Spec)
+    local stats = battle.navi(me.alliance)
+    local form = stats.form
+    if form == GREGAR_BEAST_OVER or form == FALZAR_BEAST_OVER or me.special_source ~= 0 then
+        local r = battle.rng_positive() % spec.random
+        -- (Past the picks, the random draw is a Sword.)
+        return become(me, spec, if spec.picks[r + 1] then r + 1 else 0)
+    end
+    local left = s.countdown - 1
+    s.countdown = left
+    if left == 0 then
+        return become(me, spec, 0)
+    end
+    local held = held_word(me)
+    if not bit32.btest(held, 0x001) then
+        if stats.navi == WAITING_NAVI or form == SLASH_CROSS or form == SLASH_CROSS_BEAST then
+            return
+        end
+        return become(me, spec, 0)
+    end
+    local i = advance(s, spec.sequences[s.flip], held)
+    if i == nil then
+        return
+    end
+    battle.play_sound(SOUND)
+    become(me, spec, i)
+end
+
 -- `sub_80EF648` / `sub_80EF7FC`: 48 ticks, the sequences for the navi's
 -- facing, none begun; then the first pick.
-function vari_sword.start(me: Object, s: State, spec: Spec)
+local function start(me: Object, s: State, spec: Spec)
     s.countdown = COUNTDOWN
     local flip = me.flip
     if spec.sequences[flip] == nil then
@@ -125,37 +164,26 @@ function vari_sword.start(me: Object, s: State, spec: Spec)
         s.progress[i] = 0
     end
     me.marker = 0
-    me.step = 4
+    me.step = PICK
     me.step_init = 0
-    vari_sword.pick(me, s, spec)
+    pick(me, s, spec)
 end
 
--- `sub_80EF6FC` / `sub_80EF87C`: a tick of waiting for the pick.
-function vari_sword.pick(me: Object, s: State, spec: Spec)
-    local stats = battle.navi(me.alliance)
-    local form = stats.form
-    if form == GREGAR_BEAST_OVER or form == FALZAR_BEAST_OVER or me.special_source ~= 0 then
-        local r = battle.rng_positive() % spec.random
-        return become(me, spec.choices[r + 1] or SWORD, spec)
-    end
-    local left = s.countdown - 1
-    s.countdown = left
-    if left == 0 then
-        return become(me, SWORD, spec)
-    end
-    local held = held_word(me)
-    if not bit32.btest(held, 0x001) then
-        if stats.navi == WAITING_NAVI or form == SLASH_CROSS or form == SLASH_CROSS_BEAST then
-            return
+-- A variable sword: its sequences and what they give.
+function vari.action(spec: Spec): Action
+    -- `sub_80EF62E` / `sub_80EF7E2`: set up, then wait for the pick.
+    local function update(me: Object, s: State)
+        local step = me.step
+        if step == START then
+            start(me, s, spec)
+        elseif step == PICK then
+            pick(me, s, spec)
+        else
+            error(string.format("variable sword phase %#x reads past its phase table", step))
         end
-        return become(me, SWORD, spec)
     end
-    local i = advance(s, spec.sequences[s.flip], held)
-    if i == nil then
-        return
-    end
-    battle.play_sound(0x8B)
-    become(me, spec.choices[i], spec)
+
+    return define.action { id = spec.id, state = vari.STATE, args = spec, update = update }
 end
 
-return vari_sword
+return vari

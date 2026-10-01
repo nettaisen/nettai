@@ -15,7 +15,7 @@ use bn6_battle::content::testing;
 use bn6_battle::input::PlayerTick;
 use bn6_battle::object::{Vec3, flags};
 use bn6_battle::scenario::{self, Tick};
-use bn6_content_api::Value;
+use bn6_content_api::{AssetKind, Registry, Value};
 
 fn runtimes() -> Vec<(&'static str, Options)> {
     let mut v = vec![("luau", Options::default())];
@@ -61,20 +61,30 @@ fn attach(b: &mut Battle, n: usize) {
             (o.panel, o.alliance, o.flip)
         };
         let r = if beam {
-            behavior::spawn_kind(b, "sun-beam", offset, [0, 1, 0, 0]).unwrap()
+            behavior::spawn_kind(b, "gundels/beam", offset, [0; 4]).unwrap()
         } else {
-            behavior::spawn_kind(b, "attachment", Vec3::default(), [2, 0, 0, 0]).unwrap()
+            behavior::spawn_kind(b, "attachment", Vec3::default(), [0; 4]).unwrap()
         };
         let o = b.objects.get_mut(r);
         o.related[0] = Some(owner);
         (o.alliance, o.flip) = (alliance, flip);
         if beam {
+            let look = b.content.assets.handle(AssetKind::Sprite, "sun-beam").expect("the sun beam's sprite");
+            behavior::set_state_field(b, r, "sprite", Value::Asset(AssetKind::Sprite, look));
+            behavior::set_state_field(b, r, "palette", Value::Int(1));
             behavior::set_state_variant(b, r, "slot", "related");
             behavior::set_state_field(b, r, "offset", Value::Vec3(offset));
             b.objects.get_mut(owner).related[0] = Some(r);
         } else {
             o.panel = panel;
             o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+            // The gun a level-3 GunDelSol holds.
+            let records = &b.content.defs.records;
+            let look = records
+                .iter()
+                .position(|d| d.record_type == "attachment-look" && d.key.starts_with("gundels3/"))
+                .expect("GunDelS3's gun");
+            behavior::set_state_field(b, r, "look", Value::Def(Registry::Record, look as u16));
             behavior::set_state_variant(b, r, "slot", "overlay");
             b.actors.get_mut(actor).overlay = Some(r);
         }

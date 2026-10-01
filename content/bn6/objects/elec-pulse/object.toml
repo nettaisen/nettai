@@ -1,6 +1,0 @@
-# The electric pulse (attack object #0x8C, `sub_80D6A20`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x8C
-script = "elec_pulse.luau"
