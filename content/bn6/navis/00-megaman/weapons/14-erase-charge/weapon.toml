@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x14, EraseCross's charged shot (`sub_8011CF8`), and
-# its action (0x45, `sub_80EE7D0`) are a script.
-
-id = 0x14
-name = "Erase charge"
-action = 0x45
-script = "erase_charge.luau"

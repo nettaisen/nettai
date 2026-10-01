@@ -1,4 +1,0 @@
-# Instant chip effect 3 (`sub_8010488`), the plus chips' use alone, for the records
-# that run it by number: in chip.luau. (Atk+10 is a definition, chips/atk-10.)
-
-script = "chip.luau"

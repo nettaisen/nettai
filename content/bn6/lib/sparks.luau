@@ -28,4 +28,22 @@ function sparks.of_element(element: number): Spark
     return s
 end
 
+-- The rest of the original's sparks (gen-content).
+-- Spark 0x06.
+sparks.copy_mark_8 = define.spark { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
+-- Spark 0x07.
+sparks.effect_0e = define.spark { sprite = asset.sprite("effect-0e"), anim = 0, palette = 0 }
+-- Spark 0x08.
+sparks.hit = define.spark { sprite = asset.sprite("hit"), anim = 0, palette = 0 }
+-- Spark 0x09.
+sparks.spark_09 = define.spark { sprite = asset.sprite("spark-09"), anim = 0, palette = 0 }
+-- Spark 0x0A.
+sparks.copy_mark_1 = define.spark { sprite = asset.sprite("copy-mark"), anim = 1, palette = 0 }
+-- Spark 0x0B.
+sparks.explosion = define.spark { sprite = asset.sprite("explosion"), anim = 0, palette = 0 }
+-- Spark 0x0D.
+sparks.effect_1e_1 = define.spark { sprite = asset.sprite("effect-1e"), anim = 1, palette = 0 }
+-- Spark 0x0E.
+sparks.spark_0e = define.spark { sprite = asset.sprite("spark-0e"), anim = 0, palette = 0 }
+
 return sparks

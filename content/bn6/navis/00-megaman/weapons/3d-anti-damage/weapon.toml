@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x3D, the AntiDmg program's B+Back special (`sub_80121BC`),
-# and its stance (action 0x5A, `sub_80EFE7C`) are a script.
-
-id = 0x3D
-name = "AntiDmg"
-action = 0x5A
-script = "anti_damage.luau"

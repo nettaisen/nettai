@@ -33,8 +33,9 @@ in [asset-formats.md](asset-formats.md); the definitions and their API in
   rule sections, collision types, statuses, lock-on modes, effects, sparks
   and regions are `define.*` calls in the content root's modules. What
   only registration by number still reads (a chip's number, action and v1
-  module; the original's numbering of a table) sits in a `legacy { }`
-  marker, which goes when its family converts (content-model-v2.md §12).
+  module; the original's numbering of a table) sits in a definition's
+  `legacy` marker, which goes when its family converts
+  (content-model-v2.md §12).
 - **Exact.** The tables the definitions build equal the ROM's, field by
   field (`gen-content check`, §3), and every golden trace, the sound calls
   and the chip lab hold.
@@ -48,11 +49,13 @@ in [asset-formats.md](asset-formats.md); the definitions and their API in
 
 ```text
 chips/KEY/chip.luau, chips.luau           a chip or a series (`define.chip`), with its use
+chips/KEY/record.luau, records.luau       a chip's definition beside the action module people wrote there
 chips/v1.luau                             the numbered records of the chips content defines (`v1/<key>`)
 chips/NNN-name/*.luau                     v1 modules a chip's legacy marker names (until step 6's moves)
 navis/KEY/navi.luau, chip.luau, *.luau    a navi, its own chip, its weapons
-navis/megaman/forms/KEY/form.luau         MegaMan's forms, with their weapons next to them
-navis/megaman/weapons/KEY/weapon.luau     MegaMan's weapons (`define.weapon`)
+navis/00-megaman/navi.luau                MegaMan (step 6 moves navis/00-megaman to navis/megaman)
+navis/00-megaman/forms/KEY/form.luau      MegaMan's forms, with their weapons next to them
+navis/00-megaman/weapons/KEY/weapon.luau  MegaMan's weapons (`define.weapon`)
 navis/00-megaman/weapons/NN-name/*.luau   v1 modules a weapon's legacy marker names (until step 6)
 objects/KIND/object.toml, *.luau          `[kind]`: the object kind a v1 module implements; its module
 objects/KIND/rows.luau                    a kind's table of variants by number (a legacy rule section)
