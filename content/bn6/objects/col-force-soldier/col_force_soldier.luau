@@ -5,15 +5,16 @@
 -- hit, at a random height) at the panel in front of it, 10 ticks apart;
 -- then it salutes and leaves. It stands still while dimmed.
 
+local bullet = require("../bullet/bullet")
+
 local col_force_soldier = {}
 
 local SPRITE = "10-1d"
 -- Where it drops from, 16.16.
 local DROP_Z = 0xFF_0000
--- The shots: attack object #0x12 (another group's kind: spawned by number)
--- with Param1 0x12, three of them 10 ticks apart, at one of four heights
--- (`dword_80DF484`, in pixels).
-local SHOT_POOL, SHOT_INDEX, SHOT_KIND = "attack", 0x12, 0x12
+-- The shots: bullets (objects/bullet, row 0x12), three of them 10 ticks
+-- apart, at one of four heights (`dword_80DF484`, in pixels).
+local SHOT = bullet.variants.col_force
 local SHOTS, SHOT_TICKS = 3, 0xA
 local HEIGHTS = { [0] = 0x08, 0x10, 0x18, 0x20 }
 
@@ -40,15 +41,7 @@ end
 -- Y are the registers' values, which its init replaces.)
 local function shot(me: Object, x: number, y: number, z: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local o = battle.spawn(SHOT_POOL, SHOT_INDEX, Vec3.new(y, me.element, z), { SHOT_KIND, 0, 0, 0 })
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = me.element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = me.alliance, me.flip
-        o.related1 = me
-    end
+    bullet.fire(me, x, y, z, SHOT, me.element, damage)
 end
 
 -- Count the timer down; true when it runs out.
