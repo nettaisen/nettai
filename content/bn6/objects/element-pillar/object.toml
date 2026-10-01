@@ -1,7 +1,0 @@
-# A pillar of fire or lightning (attack object #0x61, `sub_80D0610`), the
-# HeatCross and ElecCross Beast charged chips' (and some viruses'), is a script.
-
-[kind]
-pool = "attack"
-index = 0x61
-script = "element_pillar.luau"

@@ -1,4 +1,3 @@
-# A program advance (TimeBom+), dimming chip subtype 10: its dimming
-# controller sets a countdown bomb (variant 1).
+# TimeBom+ (a Program Advance, dimming chip subtype 10) is a record: TimeBom1's shim gives registration by number its hook.
 
-script = "../../objects/time-bom/time_bom.luau"
+script = "../090-timebom1/chip.luau"

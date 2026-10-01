@@ -1,7 +1,0 @@
-# Panel bursts (effect object #0x24, `sub_80E2F56`) are a script. Its X
-# and Y are its spawner's registers, which nothing reads.
-
-[kind]
-pool = "effect"
-index = 0x24
-script = "panel_bursts.luau"
