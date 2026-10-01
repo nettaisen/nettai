@@ -101,7 +101,7 @@ return {
         [90] = { sprite = asset.sprite("hub"), anim = 0, palette = 0 },
         [91] = { sprite = asset.sprite("bug"), anim = 0, palette = 0 },
         [92] = { sprite = asset.sprite("charge-glow-a"), anim = 3, palette = 1 },
-        [93] = { sprite = asset.sprite("effect-5d"), anim = 0, palette = 0 },
+        [93] = { sprite = asset.sprite("sun-beam"), anim = 0, palette = 0 },
         [94] = { sprite = asset.sprite("dustman"), anim = 30, palette = 0 },
         [95] = { sprite = asset.sprite("cross-slash"), anim = 0, palette = 0 },
         [96] = { sprite = asset.sprite("tank-blast"), anim = 0, palette = 0 },

@@ -1,6 +1,0 @@
-# The rolling log (attack object #0x66, `sub_80D1218`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x66
-script = "rolling_log.luau"
