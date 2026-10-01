@@ -433,10 +433,12 @@ fn standard_chip_assets(a: &mut bn6_content_api::AssetNames) {
         ("wind-rack", sprite(0x0C, 0x27)),
         ("tengu-fan", sprite(0x0C, 0x5C)),
         ("swirl", sprite(0x0C, 0x28)),
+        ("thunder-doll", sprite(0x10, 0x12)),
+        ("thunder-doll-hand", sprite(0x0C, 0x60)),
     ] {
         a.sprites.insert(name.into(), id);
     }
-    for (name, id) in [("windrack", 0x11F)] {
+    for (name, id) in [("windrack", 0x11F), ("beast-over", 0x19A)] {
         a.sounds.insert(name.into(), id);
     }
 }
@@ -516,9 +518,12 @@ pub fn scripts() -> Scripts {
                 ("lib/sword", "lib/sword"),
                 ("objects/gust/gust", "objects/gust/gust"),
                 // WindRack's action, which TenguCross's charged shot swings
-                // with its fan (content model v2).
+                // with its fan, and DolThdr's, which ElecCross's strikes
+                // with (content model v2).
                 ("lib/arm", "lib/arm"),
                 ("chips/windrack/action", "chips/windrack/action"),
+                ("chips/dolthdr/action", "chips/dolthdr/action"),
+                ("chips/dolthdr/doll", "chips/dolthdr/doll"),
                 ("objects/sword-wave/sword_wave", "objects/sword-wave/sword_wave"),
                 ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
                 ("objects/reflector-shield/reflector_shield", "objects/reflector-shield/reflector_shield"),
