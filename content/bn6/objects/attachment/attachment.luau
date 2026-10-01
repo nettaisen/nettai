@@ -8,9 +8,7 @@
 --
 -- What it shows is a look (`attachment.look { ... }`), a record its user
 -- defines; how it animates is the user's too (`attachment.attach(owner,
--- look, slot, { anim = ... })`). The numeric API (`attachment.spawn`,
--- `spawn_with`, by the pack data's attachment rows) stays until its users
--- convert.
+-- look, slot, { anim = ... })`).
 
 local slot = require("../../lib/slot")
 
@@ -79,9 +77,9 @@ local function init(me: Object)
     sprite.shadow = "with_sprite"
     sprite.palette = k.palette + s.palette_add
     me.no_sprite_update = false
-    -- The Cross forms' NameIDs raise it by 8 pixels.
-    local name = owner.name_id
-    local cross = name >= 0x1AC and name <= 0x1B5 and battle.navi(me.alliance).form ~= 0
+    -- A Cross's identity raises it by 8 pixels.
+    local identity = owner.identity
+    local cross = identity ~= nil and identity.class == "cross" and battle.navi(me.alliance).form ~= 0
     s.lift = if cross then -8 else k.lift or 0
     local anim = s.anim
     me.anim = anim
@@ -90,13 +88,14 @@ local function init(me: Object)
     sprite:set_animation(anim)
     local x, z = 0, 0
     if k.by_owner then
-        -- It sits at a fixed offset by its owner's NameID, not at an attach
-        -- point, and not mirrored: none on base MegaMan, (11, -7) on NameID
-        -- 0x1B6, (0, 13) on anyone else.
-        local name = owner.name_id
-        if name == 0x1B6 then
-            x, z = 0xB, -7
-        elseif name ~= 0x1A0 then
+        -- It sits at a fixed offset by its owner's identity, not at an
+        -- attach point, and not mirrored: where the identity says a held
+        -- thing sits (none on base MegaMan, (11, -7) on Gregar Beast Out),
+        -- else (0, 13).
+        local held = identity and identity.held_offset
+        if held then
+            x, z = held[1], held[2]
+        else
             x, z = 0, 0xD
         end
     elseif k.attach_point then
@@ -154,58 +153,6 @@ function attachment.attach(owner: Object, look: AttachmentLook, which: Slot, opt
     end
     slot.fill(owner, which, o)
     return o
-end
-
--- The numeric API, until its users convert: the pack data's attachment
--- rows (data.objects.attachments) as looks, by row (row 0xF sits by its
--- owner's NameID).
-local ROWS: { [number]: AttachmentLook } = {}
-do
-    local ids: { number } = {}
-    for id in data.objects.attachments do
-        table.insert(ids, id)
-    end
-    table.sort(ids)
-    for _, id in ids do
-        local a = data.objects.attachments[id]
-        ROWS[id] = attachment.look {
-            sprite = a.sprite,
-            palette = a.palette,
-            lift = a.lift,
-            attach_point = a.attach_point,
-            by_owner = id == 0xF,
-        }
-    end
-end
-
--- What an attachment is spawned with by row (its four parameters).
-export type Params = {
-    -- Param1: which row (data.objects.attachments).
-    kind: number,
-    -- Param2: its animation.
-    anim: number?,
-    -- Param3: it animates while dimmed too.
-    while_dimmed: boolean?,
-    -- Param4: added to its palette (drawn only).
-    palette_add: number?,
-}
-
--- Deprecated: an attachment by row; use `attach` with a look.
-function attachment.spawn(owner: Object, p: Params, which: Slot): Object?
-    local look = ROWS[p.kind]
-    if not look then
-        error(string.format("attachment kind %#x is not in the content", p.kind))
-    end
-    return attachment.attach(owner, look, which, { anim = p.anim, while_dimmed = p.while_dimmed, palette_add = p.palette_add })
-end
-
--- Deprecated: the same with the four parameters as bytes.
-function attachment.spawn_with(owner: Object, params: { number }, which: Slot): Object?
-    return attachment.spawn(
-        owner,
-        { kind = params[1], anim = params[2], while_dimmed = params[3] ~= 0, palette_add = params[4] },
-        which
-    )
 end
 
 return attachment

@@ -17,7 +17,8 @@ return define.form {
     buster_bonus = 0,
     weapons = { buster = falzar_beast_buster.weapon, alt_a_charge = beast_claw.weapon },
     mugshot = asset.mugshot("falzar-beast-over"),
-    identity = {
+    identity = define.identity {
+        class = "beast_over",
         version = 0,
         actor_type = "player",
         ai_index = 48,

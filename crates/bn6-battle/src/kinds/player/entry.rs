@@ -4,6 +4,7 @@
 use super::{NaviAction, ai, clear_invulnerable, coll_mut, navi_record, per_player_gauges, set_action, set_invulnerable};
 use crate::actor::ActorType;
 use crate::battle::Battle;
+use crate::content::EffectRole;
 use crate::object::{ObjectRef, flags};
 
 /// Action 0, `sub_8016380`.
@@ -31,7 +32,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             o.future_panel = o.panel;
             let p = o.panel;
             b.reserve_panel(r, p.x, p.y);
-            coll_mut(b, r).region = 0;
+            coll_mut(b, r).region = None;
             b.objects.get_mut(r).phase_init = 4;
             b.play_sound(crate::sound::SoundId(0x94));
             let o = b.objects.get_mut(r);
@@ -69,19 +70,20 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             clear_invulnerable(b, r);
             let fp = b.objects.get(r).future_panel;
             b.unreserve_panel(r, fp.x, fp.y);
-            coll_mut(b, r).region = 1;
+            coll_mut(b, r).region = b.anchor_region();
             set_action(b, r, NaviAction::TakeControl);
         }
         p => panic!("mid-battle appearance phase {p:#x} reads past its table (off_80164B4)"),
     }
 }
 
-/// The effect #0 looks of a mid-battle appearance.
-const APPEAR_LOOK: u8 = 6;
-const ARRIVE_LOOK: u8 = 3;
+/// The effects of a mid-battle appearance.
+const APPEAR_LOOK: EffectRole = EffectRole::Recovery;
+const ARRIVE_LOOK: EffectRole = EffectRole::Deletion;
 
-/// An effect #0 that runs while paused.
-fn flash(b: &mut Battle, pos: crate::object::Vec3, look: u8) {
+/// An effect that runs while paused.
+fn flash(b: &mut Battle, pos: crate::object::Vec3, look: EffectRole) {
+    let look = b.content.defs.roles.effect(look);
     if let Some(e) = crate::kinds::effect::spawn(b, pos, look, 0, 0, 0) {
         b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
     }

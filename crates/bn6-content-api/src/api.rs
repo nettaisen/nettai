@@ -208,7 +208,8 @@ named_fields! {
         Damage = "damage", U16, rw;
         /// The damage word's high half (the counter byte in its low byte).
         Stamina = "stamina", U16, rw;
-        NameId = "name_id", U16, rw;
+        /// What it is taken for (none: a virus).
+        Identity = "identity", Ref(Registry::Identity, None), rw;
         /// Holds an object's sprite (and more, by kind: `PreventAnim`).
         PreventAnim = "prevent_anim", U8, rw;
         Pos = "pos", Vec3, rw;
@@ -346,14 +347,14 @@ named_fields! {
 named_fields! {
     /// An object's collision registration.
     pub enum CollisionField {
-        /// Region shape.
-        Region = "region", U8, rw;
+        /// The region its hits cover (a region definition), or none.
+        Region = "region", Ref(Registry::Region, None), rw;
         /// The panel the region is anchored on (the game's CollisionData
         /// PanelX/PanelY; `update_collision_panels` copies the object's).
         PanelX = "panel_x", U8, rw;
         PanelY = "panel_y", U8, rw;
-        /// Hit spark effect (0xFF = none).
-        HitEffect = "hit_effect", U8, rw;
+        /// The spark its hits show (a spark definition), or none.
+        HitEffect = "hit_effect", Ref(Registry::Spark, None), rw;
         /// The primary element its hits carry (CollisionData+0x02; setup
         /// takes the object's element's low nibble), and the secondary
         /// elements (+0x19: its high nibble), which `sub_8019F8C` sets
@@ -838,12 +839,12 @@ pub struct HitboxSpec {
     pub panel: PanelPos,
     pub element: u8,
     pub z: i32,
-    /// Region shape.
-    pub region: u8,
-    pub hit_effect: u8,
-    /// Collision type indices.
-    pub target: u8,
-    pub self_type: u8,
+    /// The region it covers and the spark its hits show, or none.
+    pub region: Option<crate::RegionHandle>,
+    pub hit_effect: Option<crate::SparkHandle>,
+    /// Its collision types: what it reaches, what it is.
+    pub target: crate::CollisionHandle,
+    pub self_type: crate::CollisionHandle,
     /// The damage word (damage | flag bits) and the counter byte.
     pub damage: u16,
     pub stamina: u16,
@@ -916,14 +917,6 @@ pub struct DamageCarryInfo {
     /// tick's damage on top of its own.
     pub source: Option<ObjectRef>,
     pub target: Option<ObjectRef>,
-}
-
-/// A NameID's actor record.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct NaviRecordInfo {
-    /// Index into [`ACTOR_TYPES`].
-    pub actor_type: u8,
-    pub ai_index: u8,
 }
 
 /// Why an API call failed. Content errors are bugs in the content: the
@@ -1073,8 +1066,6 @@ pub trait CoreApi {
     fn bump_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// `sub_800AB3A`: a side's statistics counter.
     fn side_stat(&self, side: u8, index: u8) -> u8;
-    /// A player NameID's actor record, if it is one.
-    fn navi_record(&self, name_id: u16) -> Option<NaviRecordInfo>;
     // Subtype 8 (Wind and Fan):
     /// `sub_80E543C`: a side's wind (BattleState+0xC0) and who placed it.
     fn wind(&self, side: u8) -> (Option<ObjectRef>, WindSource);
@@ -1175,13 +1166,6 @@ pub trait CoreApi {
     fn spawn_def(&mut self, kind: u16, pos: Vec3, at: SpawnAt) -> ApiResult<Option<ObjectRef>>;
     /// The object's kind (a handle of the kind registry).
     fn object_kind(&self, o: ObjectRef) -> Option<u16>;
-    /// The byte the ruleset still stores for a region, collision type,
-    /// one-shot effect or hit spark content defines (a hitbox's region, a
-    /// collision's types, an effect object's look): the engine's own
-    /// number for it, which it gives each after the pack data's
-    /// (docs/design/content-model-v2.md §12, step 4). Only the binding
-    /// reads it; content never sees it.
-    fn def_number(&self, registry: Registry, h: u16) -> ApiResult<u8>;
     /// What navi `o` runs: a content action (by handle), one of the
     /// ruleset's own states and actions (by name), or a number neither
     /// names (a link navi's own action).
@@ -1248,18 +1232,18 @@ pub trait CoreApi {
     /// The object's content state (None for kinds the engine implements).
     fn state(&self, o: ObjectRef) -> Option<&ContentState>;
     fn state_mut(&mut self, o: ObjectRef) -> Option<&mut ContentState>;
-    /// `SpawnT4BattleObjectWithId0`: the one-shot effect `id`.
-    fn spawn_effect(&mut self, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
-    /// `sub_801BD3C`: the one-shot effect `id` on each field panel of hit
-    /// region `region` around (x, y), turned the way side `side` faces,
-    /// at height `z`; a whole-field region's (0x80 and up) from the
-    /// bottom right, on the ground.
-    fn spawn_region_effects(&mut self, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32);
+    /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`.
+    fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
+    /// `sub_801BD3C`: the one-shot effect `look` on each field panel of
+    /// hit region `region` around (x, y), turned the way side `side`
+    /// faces, at height `z`; a whole-field region's from the bottom right,
+    /// on the ground.
+    fn spawn_region_effects(&mut self, x: i32, y: i32, region: crate::RegionHandle, side: u8, look: crate::EffectHandle, z: i32);
     /// `object_spawnCollisionRegion`: a one-tick hit region spawned by
     /// `owner`.
     fn spawn_hitbox(&mut self, owner: ObjectRef, spec: &HitboxSpec) -> Option<ObjectRef>;
-    /// `sub_80E08C4`: hit spark `id` at `pos`.
-    fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef>;
+    /// `sub_80E08C4`: hit spark `look` at `pos`.
+    fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, look: crate::SparkHandle) -> Option<ObjectRef>;
     /// `sub_80C468C`: a form overlay (actor 0x57) on `owner`: `sprite`,
     /// following the owner's animation plus `anim_offset`; `stepping` 0
     /// normal, 1 while dimmed, 2 always (Param3); a pixel nearer when
@@ -1277,9 +1261,6 @@ pub trait CoreApi {
     /// `variant` (0 white or red, 1 white over two layers) for `ticks`,
     /// optionally going on while dimmed or paused.
     fn spawn_palette_flash(&mut self, variant: u8, ticks: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef>;
-    /// `sub_8011044`: what an object with a navi's NameID takes down when
-    /// it goes (for most, the overlay in its second related slot).
-    fn death_hook(&mut self, o: ObjectRef, name_id: u16);
     /// `sub_80E33FA`: an afterimage of `owner`'s side at `pos` (a sprite of
     /// its own, or a copy of the owner's).
     fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &AfterimageSpec) -> Option<ObjectRef>;
@@ -1425,10 +1406,10 @@ pub trait CoreApi {
     /// Give the object a collision slot; false if none is free.
     fn create_collision(&mut self, o: ObjectRef) -> bool;
     /// Set up the registration from the object: its side, panel, element
-    /// and damage, and what it is and reacts to (collision type indices).
-    fn setup_collision(&mut self, o: ObjectRef, self_type: u8, target_type: u8, hit_mod: u8);
+    /// and damage, and what it is and reacts to (collision types).
+    fn setup_collision(&mut self, o: ObjectRef, self_type: crate::CollisionHandle, target_type: crate::CollisionHandle, hit_mod: u8);
     /// `sub_801A082`: redo the types (and damage) of a registration.
-    fn reset_collision_types(&mut self, o: ObjectRef, self_type: u8, target_type: u8, hit_mod: u8);
+    fn reset_collision_types(&mut self, o: ObjectRef, self_type: crate::CollisionHandle, target_type: crate::CollisionHandle, hit_mod: u8);
     fn collision_get(&self, o: ObjectRef, f: CollisionField) -> ApiResult<Value>;
     /// The damage taken this window in element `element` (0 null, 1 fire,
     /// 2 aqua, 3 elec, 4 wood, 5 the sixth slot), as totaled.
@@ -1537,17 +1518,17 @@ pub trait CoreApi {
     /// and `sub_80EFD8C` make before taking an obstacle.
     fn obstacle_present(&self, o: ObjectRef) -> bool;
     /// DustMan's take (`sub_80BC100`): the look the field object `o` would
-    /// have thrown back as junk, an opaque value its taker keeps (the
-    /// object's NameID, `sub_800F26C`'s argument, until identities); None
-    /// for the objects DustMan leaves (`sub_800F486`).
-    fn junk_look(&self, o: ObjectRef) -> Option<u16>;
+    /// have thrown back as junk, which its taker keeps: the object's
+    /// identity (`sub_800F26C`'s argument); None for the objects DustMan
+    /// leaves (`sub_800F486`) and for one with no identity.
+    fn junk_look(&self, o: ObjectRef) -> Option<crate::IdentityHandle>;
     /// The r3 the object update loop (`object_800372A`) leaves for the
     /// object updating now: 4 × how many objects of the previous object's
     /// pool it passed before that one this tick. Routines that never set
     /// r3 spawn with it as a position (DustMan's junk).
     fn loop_register(&self) -> u32;
     /// CrosOver's MegaMan (`sub_80BDBC8`): `o` takes its user's identity
-    /// (NameID) when the user is MegaMan or one of his forms, else MegaMan's
+    /// when the user is MegaMan or one of his forms, else MegaMan's
     /// own; that identity's sprite (a player's by its side's navi and form,
     /// `sub_800FC9E`; MegaMan's base sprite for another user's), with a
     /// ground shadow at animation 0 (loaded by the next sprite update); and
@@ -1556,27 +1537,25 @@ pub trait CoreApi {
     fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef) -> ApiResult<bool>;
     /// MstrCros's Crosses (`sub_80BE7BC`) and Darkness's Dark MegaMan
     /// (`sub_80BF710`): `o` takes the identity of MegaMan in form `form` (the
-    /// form's NameID; MegaMan's for his base form 0), the form's sprite
+    /// form's; MegaMan's for his base form 0), the form's sprite
     /// (`sub_800FC9E(0, form)`) with a ground shadow at animation 0 (loaded
     /// by the next sprite update), and the form's palette (`byte_80203EA`).
     fn wear_megaman_image(&mut self, o: ObjectRef, form: u8) -> ApiResult<()>;
     /// `sub_8010DF6` (`on`, its r2 1) or `sub_8011044` by the actor record
     /// of `o`'s identity: the parts the navi image wears.
     fn navi_image_parts(&mut self, o: ObjectRef, on: bool);
-    /// `sub_80DBB64`: put the junk look `look` on `o`'s sprite (`sub_800F26C`:
-    /// the sprite, a shadow if the look has one, its animation and
-    /// palette; flipped by `o`'s side unless the look keeps its own);
-    /// false when the look is the table's none (category 0xFF).
-    fn wear_junk_look(&mut self, o: ObjectRef, look: u16) -> ApiResult<bool>;
-    /// `sub_80DC3B2`'s test: a field object by its NameID word (0xCD to
-    /// 0xFF, the +0x2A half 0) but those `sub_800F486` excludes (0xD3,
-    /// 0xDA, 0xE9, 0xEA), which BlzrdBal's ball swallows.
+    /// `sub_80DBB64`: put the junk look `look` (a field object's identity)
+    /// on `o`'s sprite (`sub_800F26C`: the sprite, a shadow if the look has
+    /// one, its animation and palette; flipped by `o`'s side unless the
+    /// look keeps its own); false when the look shows nothing (the table's
+    /// category 0xFF).
+    fn wear_junk_look(&mut self, o: ObjectRef, look: crate::IdentityHandle) -> ApiResult<bool>;
+    /// `sub_80DC3B2`'s test: a field object by its identity (the
+    /// original's NameID word 0xCD to 0xFF, its +0x2A half 0) but those
+    /// `sub_800F486` excludes, which BlzrdBal's ball swallows.
     fn obstacle_swallowable(&self, o: ObjectRef) -> bool;
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.
     fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool>;
-    /// `sub_8018810`: NameID `name_id`'s sprite attach point `point`, in
-    /// pixels, facing the way `alliance` and `flip` say.
-    fn name_attach_point(&self, name_id: u16, point: u8, alliance: u8, flip: u8) -> (i32, i32);
 }

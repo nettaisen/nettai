@@ -29,6 +29,7 @@ use bn6_content_api::{
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use bn6_content_api::ObjectRef;
+use bn6_content_api::{CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
 use crate::Bound;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
@@ -87,17 +88,13 @@ fn bound<R>(f: impl FnOnce(&Bound) -> mlua::Result<R>) -> mlua::Result<R> {
     f(unsafe { &*bound.as_ptr() })
 }
 
-/// A definition of `registry` the ruleset still stores as a byte (a region,
-/// a collision type, an effect, a spark), or a number (the deprecated
-/// numeric API): the engine's byte for it.
-fn def_or_number(api: &dyn CoreApi, b: &Bound, v: LuaValue, registry: Registry, what: &str) -> mlua::Result<u8> {
-    match b.def(&v) {
-        Some((r, h)) if r == registry => api.def_number(r, h).map_err(api_error),
+/// A definition of `registry` (a region, a collision type, an effect, a
+/// spark): its handle.
+fn def_arg(b: &Bound, v: &LuaValue, registry: Registry, what: &str) -> mlua::Result<u16> {
+    match b.def(v) {
+        Some((r, h)) if r == registry => Ok(h),
         Some((r, _)) => Err(mlua::Error::runtime(format!("{what}: a {r} is not a {registry}"))),
-        None if matches!(v, LuaValue::Table(_)) => {
-            Err(mlua::Error::runtime(format!("{what}: expected a {registry} definition, got a table")))
-        }
-        None => u8_arg(v, what),
+        None => Err(mlua::Error::runtime(format!("{what}: expected a {registry} definition, got {}", v.type_name()))),
     }
 }
 
@@ -372,10 +369,6 @@ impl UserData for Object {
         });
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free(this.0))));
         methods.add_method("destroy", |_, this, ()| with(|api, _| Ok(api.destroy(this.0))));
-        methods.add_method("death_hook", |_, this, name_id: LuaValue| {
-            let name_id = u16_arg(name_id, "NameID")?;
-            with(|api, _| Ok(api.death_hook(this.0, name_id)))
-        });
         methods.add_method(
             "add_navi_parts",
             |_, this, (actor_type, ai, arg): (mlua::LuaString, LuaValue, LuaValue)| {
@@ -488,8 +481,8 @@ impl UserData for Object {
             |_, this, (self_type, target_type, hit_mod): (LuaValue, LuaValue, LuaValue)| {
                 let h = u8_arg(hit_mod, "hit mod")?;
                 with(|api, b| {
-                    let s = def_or_number(api, b, self_type, Registry::Collision, "setup_collision")?;
-                    let t = def_or_number(api, b, target_type, Registry::Collision, "setup_collision")?;
+                    let s = CollisionHandle(def_arg(b, &self_type, Registry::Collision, "setup_collision")?);
+                    let t = CollisionHandle(def_arg(b, &target_type, Registry::Collision, "setup_collision")?);
                     Ok(api.setup_collision(this.0, s, t, h))
                 })
             },
@@ -499,8 +492,8 @@ impl UserData for Object {
             |_, this, (self_type, target_type, hit_mod): (LuaValue, LuaValue, LuaValue)| {
                 let h = u8_arg(hit_mod, "hit mod")?;
                 with(|api, b| {
-                    let s = def_or_number(api, b, self_type, Registry::Collision, "reset_collision_types")?;
-                    let t = def_or_number(api, b, target_type, Registry::Collision, "reset_collision_types")?;
+                    let s = CollisionHandle(def_arg(b, &self_type, Registry::Collision, "reset_collision_types")?);
+                    let t = CollisionHandle(def_arg(b, &target_type, Registry::Collision, "reset_collision_types")?);
                     Ok(api.reset_collision_types(this.0, s, t, h))
                 })
             },
@@ -630,7 +623,11 @@ impl UserData for Object {
         });
         methods.add_method("navi_image_parts", |_, this, on: bool| with(|api, _| Ok(api.navi_image_parts(this.0, on))));
         methods.add_method("wear_junk_look", |_, this, look: LuaValue| {
-            let look = u16_arg(look, "junk look")?;
+            let look = bound(|b| match b.def(&look) {
+                Some((Registry::Identity, h)) => Ok(bn6_content_api::IdentityHandle(h)),
+                Some((r, _)) => Err(mlua::Error::runtime(format!("wear_junk_look: a {r} is not an identity"))),
+                None => Err(mlua::Error::runtime(format!("wear_junk_look: expected an identity, got {}", look.type_name()))),
+            })?;
             with(|api, _| api.wear_junk_look(this.0, look).map_err(api_error))
         });
         methods.add_method("heal", |_, this, (amount, anti_recovery): (LuaValue, bool)| {
@@ -780,20 +777,19 @@ impl UserData for Collision {
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_method("present", |_, this, ()| with(|api, _| Ok(api.present_collision(this.0))));
-        // A region or a hit spark content defines; nil is none (region 0,
-        // hit spark 0xFF).
-        for (name, field, registry, none) in [
-            ("set_region", CollisionField::Region, Registry::Region, 0),
-            ("set_hit_effect", CollisionField::HitEffect, Registry::Spark, 0xFF),
+        // A region or a hit spark content defines; nil is none (the same
+        // as assigning the `region` and `hit_effect` fields).
+        for (name, field, registry) in [
+            ("set_region", CollisionField::Region, Registry::Region),
+            ("set_hit_effect", CollisionField::HitEffect, Registry::Spark),
         ] {
             methods.add_method(name, move |_, this, v: LuaValue| {
                 with(|api, b| {
-                    let n = match v {
-                        LuaValue::Nil => none,
-                        LuaValue::Table(_) => def_or_number(api, b, v, registry, name)?,
-                        _ => return Err(mlua::Error::runtime(format!("collision:{name}: expected a {registry} definition or nil"))),
+                    let v = match v {
+                        LuaValue::Nil => Value::Nil,
+                        v => Value::Def(registry, def_arg(b, &v, registry, name)?),
                     };
-                    api.collision_set(this.0, field, Value::Int(n as i64)).map_err(api_error)
+                    api.collision_set(this.0, field, v).map_err(api_error)
                 })
             });
         }
@@ -1212,14 +1208,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.set_damage_carry(side, rec)))
     });
     lib_fn!(lua, t, "loop_register", |_, ()| with(|api, _| Ok(api.loop_register())));
-    lib_fn!(lua, t, "navi_record", |lua, name_id: LuaValue| {
-        let name_id = u16_arg(name_id, "NameID")?;
-        let Some(r) = with(|api, _| Ok(api.navi_record(name_id)))? else { return Ok(LuaValue::Nil) };
-        let t = lua.create_table()?;
-        t.raw_set("actor_type", ACTOR_TYPES[r.actor_type as usize])?;
-        t.raw_set("ai_index", r.ai_index)?;
-        Ok(LuaValue::Table(t))
-    });
     lib_fn!(
         lua,
         t,
@@ -1299,8 +1287,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let opt = |v: Option<LuaValue>, what| v.map_or(Ok(0), |v| u8_arg(v, what));
             let (flip, add, prio) = (opt(flip, "flip")?, opt(palette_add, "palette")?, opt(priority, "priority")?);
             let o = with(|api, b| {
-                let id = def_or_number(api, b, id, Registry::Effect, "battle.effect")?;
-                Ok(api.spawn_effect(pos.0, id, flip, add, prio))
+                let look = EffectHandle(def_arg(b, &id, Registry::Effect, "battle.effect")?);
+                Ok(api.spawn_effect(pos.0, look, flip, add, prio))
             })?;
             object_value(lua, o)
         }
@@ -1328,29 +1316,33 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
                 None => 0,
             };
             with(|api, b| {
-                let region = def_or_number(api, b, region, Registry::Region, "battle.region_effects")?;
-                let id = def_or_number(api, b, id, Registry::Effect, "battle.region_effects")?;
-                Ok(api.spawn_region_effects(x, y, region, side, id, z))
+                let region = RegionHandle(def_arg(b, &region, Registry::Region, "battle.region_effects")?);
+                let look = EffectHandle(def_arg(b, &id, Registry::Effect, "battle.region_effects")?);
+                Ok(api.spawn_region_effects(x, y, region, side, look, z))
             })
         }
     );
     lib_fn!(lua, t, "hitbox", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
-        // A definition or (deprecated) a number; absent is 0.
-        let byte = |key: &str, registry: Registry| -> mlua::Result<u8> {
+        // A definition; a region or a hit spark may be absent (none).
+        let def = |key: &str, registry: Registry| -> mlua::Result<Option<u16>> {
             let v: LuaValue = spec.raw_get(key)?;
             if v.is_nil() {
-                return Ok(0);
+                return Ok(None);
             }
-            with(|api, b| def_or_number(api, b, v, registry, key))
+            bound(|b| def_arg(b, &v, registry, key)).map(Some)
+        };
+        let collision = |key: &str| -> mlua::Result<CollisionHandle> {
+            let h = def(key, Registry::Collision)?;
+            h.map(CollisionHandle).ok_or_else(|| mlua::Error::runtime(format!("battle.hitbox: `{key}` is a collision type (define.collision)")))
         };
         let s = HitboxSpec {
             panel: PanelPos { x: table_int(&spec, "panel_x")? as u8, y: table_int(&spec, "panel_y")? as u8 },
             element: table_int(&spec, "element")? as u8,
             z: table_int(&spec, "z")? as i32,
-            region: byte("region", Registry::Region)?,
-            hit_effect: byte("hit_effect", Registry::Spark)?,
-            target: byte("target", Registry::Collision)?,
-            self_type: byte("self_type", Registry::Collision)?,
+            region: def("region", Registry::Region)?.map(RegionHandle),
+            hit_effect: def("hit_effect", Registry::Spark)?.map(SparkHandle),
+            target: collision("target")?,
+            self_type: collision("self_type")?,
             damage: table_int(&spec, "damage")? as u16,
             stamina: table_int(&spec, "stamina")? as u16,
             hit_mod: table_int(&spec, "hit_mod")? as u8,
@@ -1371,8 +1363,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "spark", |lua, (owner, pos, id): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, LuaValue)| {
         let o = with(|api, b| {
-            let id = def_or_number(api, b, id, Registry::Spark, "battle.spark")?;
-            Ok(api.spawn_spark(owner.0, pos.0, id))
+            let look = SparkHandle(def_arg(b, &id, Registry::Spark, "battle.spark")?);
+            Ok(api.spawn_spark(owner.0, pos.0, look))
         })?;
         object_value(lua, o)
     });
@@ -1447,11 +1439,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             object_value(lua, o)
         }
     );
-    lib_fn!(lua, t, "attach_point", |_, (name_id, point, alliance, flip): (LuaValue, LuaValue, LuaValue, LuaValue)| {
-        let (name_id, point) = (u16_arg(name_id, "NameID")?, u8_arg(point, "attach point")?);
-        let (alliance, flip) = (u8_arg(alliance, "side")?, u8_arg(flip, "flip")?);
-        with(|api, _| Ok(api.name_attach_point(name_id, point, alliance, flip)))
-    });
     Ok(t)
 }
 
@@ -1640,7 +1627,12 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "leave_stage", |_, me: Me| with(|api, _| Ok(api.obstacle_leave_stage(me.0))));
     lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
     lib_fn!(lua, t, "present", |_, o: Me| with(|api, _| Ok(api.obstacle_present(o.0))));
-    lib_fn!(lua, t, "junk_look", |_, o: Me| with(|api, _| Ok(api.junk_look(o.0))));
+    lib_fn!(lua, t, "junk_look", |_, o: Me| {
+        match with(|api, _| Ok(api.junk_look(o.0)))? {
+            Some(h) => Ok(LuaValue::Table(bound(|b| b.def_value(Registry::Identity, h.0))?)),
+            None => Ok(LuaValue::Nil),
+        }
+    });
     lib_fn!(lua, t, "swallowable", |_, o: Me| with(|api, _| Ok(api.obstacle_swallowable(o.0))));
     for &r in ObstacleRequest::ALL {
         t.set(

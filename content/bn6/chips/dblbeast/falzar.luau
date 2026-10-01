@@ -11,14 +11,15 @@ local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
+local falzar_beast = require("../../navis/megaman/forms/falzar-beast/form")
 local parts = require("../../lib/swords/parts")
 
 local falzar = {}
 
 local SPRITE = asset.sprite("falzar-beast")
--- Its identity's NameID (its parts and the attach points its attachments
--- take).
-local NAME = 0x1B7
+-- Its identity: Falzar Beast Out's (its parts and the attach points its
+-- attachments take).
+local IDENTITY = falzar_beast.identity
 
 -- The attacks' patterns (`byte_80C25B8`, `byte_80C25C0`, `byte_80C25D0`).
 local BREATH: DblBeastPattern = { { 0, -2, 0 }, { 1, 2, 0 } }
@@ -224,7 +225,7 @@ falzar.kind = define.kind {
             -- sub_80C215C: at rest behind the user, its head on (its
             -- identity's parts, stepping even while paused); its update
             -- first runs next tick.
-            beast.init(me, SPRITE, false, NAME)
+            beast.init(me, SPRITE, false, IDENTITY)
             me:add_parts_of(me, false, true)
             me:set_lifecycle("update")
         elseif l == "update" then

@@ -31,7 +31,13 @@ return define.chip {
     slot_in_limit = 3,
     -- `byte_80D4078` row 0.
     dimming = instruments.hook(instrument.instrument {
-        identity = 0xDD,
+        identity = define.identity {
+            id = "fanfare",
+            class = "field_object",
+            version = 4,
+            ai_index = 1,
+            look = { sprite = asset.sprite("instrument"), anim = 0, palette = 0, shadow = true },
+        },
         palette = 0,
         play_ticks = 0x55 * 2,
         pause_ticks = 0xAA,

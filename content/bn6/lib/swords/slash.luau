@@ -124,7 +124,7 @@ function slash.action(spec: SlashSpec): Action
             element = me.attack_element,
             region = h.region,
             -- None.
-            hit_effect = 0xFF,
+            hit_effect = nil,
             target = h.collision.hits,
             self_type = h.collision.is,
             damage = bit32.band(word, 0xFFFF),

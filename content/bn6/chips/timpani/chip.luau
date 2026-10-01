@@ -22,7 +22,7 @@ local function drum(me: Object)
         z = 0,
         region = regions.solid,
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.guard_breaking,
         damage = 0,
@@ -45,7 +45,13 @@ return define.chip {
     slot_in_limit = 3,
     -- `byte_80D4078` row 2.
     dimming = instruments.hook(instrument.instrument {
-        identity = 0xDF,
+        identity = define.identity {
+            id = "timpani",
+            class = "field_object",
+            version = 0,
+            ai_index = 1,
+            look = { sprite = asset.sprite("instrument"), anim = 0, palette = 4, shadow = true },
+        },
         palette = 4,
         play_ticks = 0x3C * 2,
         pause_ticks = 0xAA,

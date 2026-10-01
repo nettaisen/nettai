@@ -61,10 +61,26 @@ local function variant(v: RockVariant): RockVariant
     return define.record("rock-variant", v)
 end
 
+-- What a rock is taken for: a rock cube, an ice block (field objects, with
+-- the looks something that takes their place shows).
+local ROCK = define.identity {
+    id = "rock",
+    class = "field_object",
+    version = 3,
+    ai_index = 1,
+    look = { sprite = asset.sprite("immobilized"), anim = 1, palette = 0, shadow = true },
+}
+local ICE = define.identity {
+    id = "ice-block",
+    class = "field_object",
+    version = 4,
+    ai_index = 1,
+    look = { sprite = asset.sprite("immobilized"), anim = 2, palette = 0, shadow = true },
+}
+
 -- The rows of `byte_80CF934` (animation, HP in twos, debris palette, break
--- sound, NameID; a row past the second is aqua, and a row without HP has
--- 1): their NameIDs are the field objects' looks, numbers until identities
--- come.
+-- sound, identity; a row past the second is aqua, and a row without HP has
+-- 1).
 local ROWS: { [number]: RockVariant } = {
     -- A rock cube anything breaks (no chip or stage places it).
     [0] = variant {
@@ -74,7 +90,7 @@ local ROWS: { [number]: RockVariant } = {
         element = "null",
         debris_palette = 0,
         break_sound = asset.sound("panel-crack"),
-        name = 0xD0,
+        identity = ROCK,
     },
     -- RockCube's, and the stages'.
     [1] = variant {
@@ -84,7 +100,7 @@ local ROWS: { [number]: RockVariant } = {
         element = "null",
         debris_palette = 0,
         break_sound = asset.sound("panel-crack"),
-        name = 0xD0,
+        identity = ROCK,
     },
     -- A hard one (no chip or stage places it).
     [2] = variant {
@@ -94,7 +110,7 @@ local ROWS: { [number]: RockVariant } = {
         element = "null",
         debris_palette = 0,
         break_sound = asset.sound("panel-crack"),
-        name = 0xD0,
+        identity = ROCK,
     },
     -- The ice block: IceCube's, the stages', and what an obstacle encased
     -- in ice becomes.
@@ -105,7 +121,7 @@ local ROWS: { [number]: RockVariant } = {
         element = "aqua",
         debris_palette = 1,
         break_sound = asset.sound("falling-rock"),
-        name = 0xD1,
+        identity = ICE,
     },
 }
 rock.variants = { brittle = ROWS[0], cube = ROWS[1], hard = ROWS[2], ice = ROWS[3] }
@@ -248,7 +264,7 @@ local function init(me: Object)
     me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
     me.element = element.byte(v.element)
     me.hp, me.max_hp = v.hp, v.hp
-    me.name_id = v.name
+    me.identity = v.identity
     me.timer = LIFETIME
     if not me:create_collision() then
         me:free()

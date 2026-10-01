@@ -9,7 +9,7 @@ use super::{
 };
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, f1, timer};
-use crate::content::{StatusRole, StatusTimer};
+use crate::content::{EffectRole, SparkRole, StatusRole, StatusTimer};
 use crate::field::PanelType;
 use crate::object::{ObjectRef, Vec3};
 use crate::setup::{Form, Navi};
@@ -203,7 +203,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
 /// `sub_801A186`: poison panels hurt 1 HP every 7 ticks (through
 /// element 5); wood navis on grass heal.
 fn standing_effects(b: &mut Battle, r: ObjectRef) {
-    if b.is_dimmed() || b.paused || coll(b, r).region == 0 {
+    if b.is_dimmed() || b.paused || coll(b, r).region.is_none() {
         return;
     }
     let p = coll(b, r).panel;
@@ -409,15 +409,13 @@ fn bug_paralyze_blind(b: &mut Battle, r: ObjectRef) {
     // sub_801A77A
     set_flag2(b, r, 0x8);
     coll_mut(b, r).status_timers[timer::PARALYZE] = 150;
-    if !(0x173..=0x17E).contains(&b.objects.get(r).name_id) {
+    // (Not the Cybeasts.)
+    if !b.content.identity(b.objects.get(r).identity).class.is_cybeast() {
         set_flag2(b, r, 0x20);
         coll_mut(b, r).status_timers[timer::BLIND] = 1200;
     }
     coll_mut(b, r).acc.inflicted_bugs &= 0xFF00;
 }
-
-/// The spark an uninstall shows.
-const UNINSTALL_SPARK: u8 = 0xE;
 
 /// `sub_8014080` (bug code 0xFB) and `sub_80140EE` (an uninstall, without
 /// `undershirt`): MegaMan's body programs go: SuperArmor, FloatShoe (the
@@ -431,7 +429,7 @@ fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
     stats_mut(b, r).super_armor = false;
     super::clear_flag1(b, r, f1::FLOATSHOE);
     let hm = super::body_hit_modifier(b);
-    b.reset_collision_types(r, 1, 2, hm);
+    super::reset_body_types(b, r, false, hm);
     stats_mut(b, r).float_shoes = false;
     if undershirt {
         super::clear_flag1(b, r, f1::UNDERSHIRT);
@@ -490,7 +488,8 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
             }
             let pos = b.objects.get(r).pos;
             let at = crate::object::Vec3 { z: pos.z.wrapping_add(0x10_0000), ..pos };
-            crate::kinds::spark::spawn(b, r, at, UNINSTALL_SPARK);
+            let spark = b.content.defs.roles.spark(SparkRole::Uninstall);
+            crate::kinds::spark::spawn(b, r, at, spark);
             b.play_sound(crate::sound::SoundId(0x8E));
         }
         0x64.. => {}
@@ -652,7 +651,8 @@ fn drain_heal(b: &mut Battle, r: ObjectRef) {
     }
     add_hp(b, r, heal);
     let pos = b.objects.get(r).pos;
-    crate::kinds::effect::spawn(b, pos, 6, 0, 0, 0);
+    let look = b.content.defs.roles.effect(EffectRole::Recovery);
+    crate::kinds::effect::spawn(b, pos, look, 0, 0, 0);
     b.play_sound(crate::sound::SoundId(0x8A));
 }
 
@@ -743,5 +743,6 @@ fn guard_spark(b: &mut Battle, r: ObjectRef) {
     b.play_sound(crate::sound::SoundId(0x6E));
     let p = b.objects.get(r).pos;
     let pos = crate::kinds::spark::jitter(b, 0xF, Vec3 { z: p.z.wrapping_add(0x10_0000), ..p });
-    crate::kinds::spark::spawn(b, r, pos, 8);
+    let spark = b.content.defs.roles.spark(SparkRole::Guard);
+    crate::kinds::spark::spawn(b, r, pos, spark);
 }

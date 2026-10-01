@@ -1,7 +1,7 @@
 //! Chips: the chip record.
 
 use super::flags::serde_flags;
-use super::{ChipModifier, Element, ProgramAdvanceRecipe, SpriteId};
+use super::{ChipModifier, Element, ProgramAdvanceRecipe};
 use serde::{Deserialize, Serialize};
 
 /// A chip code: A-Z are 0-25, `*` is 26. In a content file, the letter.
@@ -332,24 +332,6 @@ impl ChipData {
     pub fn description_lines(&self) -> u8 {
         self.description.as_ref().map_or(3, |d| d.split('\n').count().clamp(1, 3) as u8)
     }
-}
-
-/// What an attachment (attachment object #5) looks like and where it sits
-/// on its owner.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct AttachmentKind {
-    /// The attachment's number: its first spawn parameter, which the
-    /// object state keeps.
-    pub id: u8,
-    pub sprite: SpriteId,
-    pub palette: u8,
-    /// Pixels the attachment is raised by (subtracted from its y and z).
-    pub lift: i8,
-    /// The owner's sprite attach point it follows (none: the owner's
-    /// origin).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub attach_point: Option<u8>,
 }
 
 /// A lock-on mode's handle in a record's data form: its index, or nothing.

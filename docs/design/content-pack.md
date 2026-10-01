@@ -57,10 +57,9 @@ navis/megaman/forms/KEY/form.luau         MegaMan's forms, with their weapons ne
 navis/megaman/weapons/KEY/weapon.luau     MegaMan's weapons (`define.weapon`)
 navis/megaman/weapons/NN-name/*.luau      v1 modules a weapon's legacy marker names (until step 6)
 objects/KIND/object.toml, *.luau          `[kind]`: the object kind a v1 module implements; its module
-objects/attachment/rows.luau              the attachments by number (a legacy rule section: the last kind table something reads)
 stages/netbattle.luau                     the stages (`define.stage`), with their layouts and actors
 rules/*.luau                              rule sections (`define.rules`), collision types, statuses,
-                                          lock-on modes, the original's numbering of tables (numbers.luau)
+                                          lock-on modes, the roles (roles.luau)
 lib/*.luau                                helpers, and the shared effects, sparks and regions
 core.d.luau, types.d.luau                 the API's definitions (for editors and the checker)
 compat/*.toml                             the original's numbers by key: tools' data, never the engine's
@@ -167,9 +166,8 @@ let pas = b.content.program_advances();          // in the order they are tried
 - The scripts run from the content: `Battle::new` loads them with
   `Behaviors::for_content(&content)` (once per thread and content hash;
   the VM is a cache, not battle state), and they read the content as a
-  frozen `data` global built from it (`data.chips[id]`, `data.weapons`,
-  `data.objects.attachments`, `data.rules.buster_recovery`...), field
-  names as in the files.
+  frozen `data` global built from it (`data.rules.buster_recovery`,
+  `data.rules.sine`...), field names as in the files.
 
 ## 5. Identity, snapshots and netplay
 
