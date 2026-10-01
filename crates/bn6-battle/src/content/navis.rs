@@ -31,6 +31,11 @@ pub struct NaviData {
     /// A link navi's damage bonus on its family's chips.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub chip_bonus: Option<NaviChipBonus>,
+    /// The no-running message the custom screen shows for the navi (L in
+    /// a netbattle): the characters in each of its lines (up to three),
+    /// which set how long it prints (docs/engine/custom-screen.md §3.5).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub run_message: Vec<u8>,
     /// The navi's NameID and what goes with it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name_record: Option<NameData>,

@@ -26,6 +26,9 @@ pub trait Library {
     fn program_advances(&self) -> Vec<ProgramAdvance>;
     /// A link navi's own chip, offered once a round (none for MegaMan).
     fn navi_chip(&self, navi: NaviHandle) -> Option<FolderChip>;
+    /// The navi's no-running message: the characters in each of its lines
+    /// (a line after the first with none isn't there).
+    fn run_message(&self, navi: NaviHandle) -> [u8; 3];
     /// The screen's slot grid and neighbour scans.
     fn layout(&self) -> &CustomScreenLayout;
     /// Whether a banner stays up until let go (the Program Advance's).
@@ -67,6 +70,11 @@ impl Library for Content {
         Some(FolderChip { id, code: c.code })
     }
 
+    fn run_message(&self, navi: NaviHandle) -> [u8; 3] {
+        let lines = &self.navi(navi).run_message;
+        std::array::from_fn(|i| lines.get(i).copied().unwrap_or(0))
+    }
+
     fn layout(&self) -> &CustomScreenLayout {
         &self.rules.custom_screen
     }
@@ -92,6 +100,7 @@ pub(crate) mod testing {
             rarity: 0,
             family: ChipFamily::Fire,
             class,
+            description: None,
             mb: 0,
             flags: ChipFlags(flags),
             hit_param: 0,
@@ -172,6 +181,9 @@ pub(crate) mod testing {
         }
         fn navi_chip(&self, _navi: NaviHandle) -> Option<FolderChip> {
             None
+        }
+        fn run_message(&self, _navi: NaviHandle) -> [u8; 3] {
+            [19, 12, 0]
         }
         fn layout(&self) -> &CustomScreenLayout {
             &self.layout
