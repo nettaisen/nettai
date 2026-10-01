@@ -44,7 +44,7 @@ local HIT_MODS = { [0] = 1, [1] = 3 }
 local FIRST_SOUND, SECOND_SOUND = asset.sound("beast-claw"), asset.sound("beast-claw-2")
 
 -- The hit: no spark, an attack at navis.
-local HIT_EFFECT = 0xFF
+local HIT_EFFECT: Spark? = nil
 
 -- `sub_8011E1C`: 50 damage and 10 more per point of buster damage (up to
 -- 5), counter byte 0x9E, two slashes.

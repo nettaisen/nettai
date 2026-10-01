@@ -406,6 +406,11 @@ fn shows_row(b: &Battle, r: ObjectRef, row: u8) -> bool {
     b.kind_key(r) == "attachment" && b.objects.sprite(r).id == Some(b.content.attachment(row).sprite)
 }
 
+/// What the one-shot effect `o` shows.
+fn effect_look(b: &Battle, o: ObjectRef) -> crate::content::EffectSprite {
+    b.content.effect(crate::kinds::effect::look(b, o).expect("an effect with its look"))
+}
+
 /// The effect objects (effect #0) and afterimages (effect #0x28) there are.
 fn effects(b: &Battle, key: &str) -> Vec<ObjectRef> {
     b.objects.in_order().filter(|&o| b.kind_key(o) == key).collect()
@@ -446,7 +451,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     assert!(effects(&b, "engine/effect").is_empty());
     run_to(&mut b, p, &mut t, 12, 0);
     // The swords' wide slash (the sword-slash sprite's first animation).
-    let look = b.content.effect(b.objects.get(effects(&b, "engine/effect")[0]).params[0]);
+    let look = effect_look(&b, effects(&b, "engine/effect")[0]);
     assert_eq!((look.sprite, look.anim), (bn6_content_api::SpriteId { category: 0x0C, index: 0x14 }, 0));
     run_to(&mut b, p, &mut t, 13, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
@@ -662,7 +667,7 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     let (x, y) = crate::kinds::player::panel_coordinates(5, 2);
     let o = b.objects.get(slash);
     assert_eq!((&o.params[1..], o.pos.x, o.pos.y), (&[0, 2 + 7, 0][..], x, y));
-    let wide = b.content.effect(o.params[0]);
+    let wide = effect_look(&b, slash);
     assert_eq!((wide.sprite, wide.anim, wide.palette), (bn6_content_api::SpriteId { category: 0x0C, index: 0x14 }, 0, 0));
     run_to(&mut b, p, &mut t, 11, 0);
     assert_eq!(b.objects.get(p1).hp, 920);
@@ -1585,7 +1590,7 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     assert_eq!(b.objects.get(p0).anim, 0x17);
     assert_ne!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), 0);
     let cloud = b.content.assets.sprites["dust-cloud"];
-    let vortex = effects(&b, "engine/effect").into_iter().find(|&o| b.content.effect(b.objects.get(o).params[0]).sprite == cloud);
+    let vortex = effects(&b, "engine/effect").into_iter().find(|&o| effect_look(&b, o).sprite == cloud);
     let vortex = vortex.expect("the vortex");
     assert_eq!(b.objects.get(vortex).timer, 2);
 
@@ -1625,7 +1630,7 @@ fn the_beast_claw_slashes_the_panel_ahead_twice() {
     // first slash's is 1, the second's 0.)
     let slashes = |b: &Battle| {
         let claws = b.content.assets.sprites["slash-man-effect"];
-        let looks = effects(b, "engine/effect").into_iter().map(|o| b.content.effect(b.objects.get(o).params[0]));
+        let looks = effects(b, "engine/effect").into_iter().map(|o| effect_look(b, o));
         looks.filter(|l| l.sprite == claws).map(|l| l.anim).collect::<Vec<_>>()
     };
     run_to(&mut b, p, &mut t, 2, 0);
@@ -2164,7 +2169,7 @@ fn a_kind_spawns_by_definition_and_its_state_holds_definitions() {
     let c = b.collision.get(b.objects.get(launcher).collision.expect("a collision"));
     assert_eq!(c.self_flags & 0xFFFE_FFFF, 0x80000088);
     assert_eq!(c.target_flags, 0x15800000);
-    let wide: Vec<(i8, i8)> = b.content.region(c.region).iter().map(|p| (p.dx, p.dy)).collect();
+    let wide: Vec<(i8, i8)> = b.content.region_offsets(c.region).iter().map(|p| (p.dx, p.dy)).collect();
     assert_eq!(wide, [(1, -1), (1, 0), (1, 1)]);
     // The variant's lifetime (5) ends it.
     for _ in 0..4 {

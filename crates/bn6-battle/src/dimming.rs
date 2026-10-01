@@ -128,9 +128,8 @@ impl Battle {
     }
 }
 
-/// The cut-in flash: effect #0 look 0x1E, 120 pixels up, below the middle
-/// of the other side's area.
-const CUT_IN_FLASH: u8 = 0x1E;
+/// The cut-in flash (the role `effects.cut_in_flash`): 120 pixels up, below
+/// the middle of the other side's area.
 const CUT_IN_FLASH_Z: i32 = 0x78 << 16;
 const CUT_IN_SOUND: crate::sound::SoundId = crate::sound::SoundId(0xA5);
 
@@ -138,7 +137,8 @@ const CUT_IN_SOUND: crate::sound::SoundId = crate::sound::SoundId(0xA5);
 /// side, 4) and its sound.
 pub(crate) fn cut_in_flash(b: &mut Battle, side: u8) {
     let (x, y) = crate::kinds::player::panel_coordinates((side ^ 1) * 3 + 2, 4);
-    crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y, z: CUT_IN_FLASH_Z }, CUT_IN_FLASH, 0, 0, 0);
+    let look = b.content.defs.roles.effect(crate::content::EffectRole::CutInFlash);
+    crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y, z: CUT_IN_FLASH_Z }, look, 0, 0, 0);
     b.play_sound(CUT_IN_SOUND);
 }
 
@@ -247,9 +247,8 @@ fn anti_navi_waits(b: &Battle, side: u8) -> bool {
 /// How long the sparkle shows before AntiNavi's telop, in ticks after the
 /// first.
 const ANTI_NAVI_WAIT: u16 = 0x1E;
-/// `sub_800ABC6`'s sparkle: effect #0 look 0x46, 16 pixels down the field
-/// and 32 up from the panel's center, with its sound.
-const SPARKLE: u8 = 0x46;
+/// `sub_800ABC6`'s sparkle (the role `effects.trap_mark`): 16 pixels down
+/// the field and 32 up from the panel's center, with its sound.
 const SPARKLE_DY: i32 = 0x10_0000;
 const SPARKLE_Z: i32 = 0x20_0000;
 const SPARKLE_SOUND: crate::sound::SoundId = crate::sound::SoundId(0xA5);
@@ -290,7 +289,8 @@ fn anti_navi_check(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     // sub_800ABC6: facing the local side's way (presentation).
     let (x, y) = crate::kinds::player::panel_coordinates(p.x, p.y);
     let local = b.round.local_side;
-    crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y: y + SPARKLE_DY, z: SPARKLE_Z }, SPARKLE, local, 0, 0);
+    let look = b.content.defs.roles.effect(crate::content::EffectRole::TrapMark);
+    crate::kinds::effect::spawn(b, crate::object::Vec3 { x, y: y + SPARKLE_DY, z: SPARKLE_Z }, look, local, 0, 0);
     b.play_sound(SPARKLE_SOUND);
     set_phase(b, r, 4);
 }

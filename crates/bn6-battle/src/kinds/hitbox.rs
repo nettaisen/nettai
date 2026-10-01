@@ -6,9 +6,17 @@
 use crate::battle::Battle;
 use crate::kinds::player::panel_coordinates;
 use crate::object::{ObjectRef, PanelPos, Vec3, state};
+use bn6_content_api::{CollisionHandle, RegionHandle, SparkHandle};
 
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
+    /// The region it covers, the spark its hits show, and its collision
+    /// types (what it reaches, what it is): the original's four spawn
+    /// parameters.
+    pub region: Option<RegionHandle>,
+    pub hit_effect: Option<SparkHandle>,
+    pub target: CollisionHandle,
+    pub self_type: CollisionHandle,
     pub hit_mod: u8,
     pub status: Option<bn6_content_api::StatusHandle>,
     pub bug: u8,
@@ -24,12 +32,12 @@ pub struct HitboxSpec {
     pub panel: PanelPos,
     pub element: u8,
     pub z: i32,
-    /// Region shape (`Content::region`).
-    pub region: u8,
-    pub hit_effect: u8,
-    /// Collision type indices.
-    pub target: u8,
-    pub self_type: u8,
+    /// The region it covers and the spark its hits show, or none.
+    pub region: Option<RegionHandle>,
+    pub hit_effect: Option<SparkHandle>,
+    /// Its collision types: what it reaches, what it is.
+    pub target: CollisionHandle,
+    pub self_type: CollisionHandle,
     /// The damage word (damage | flag bits) and the counter byte.
     pub damage: u16,
     pub stamina: u16,
@@ -44,8 +52,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, s: &HitboxSpec) -> Option<ObjectR
     // The spawn position is the caller's registers (panel y, element, z)
     // until init places it.
     let pos = Vec3 { x: s.panel.y as i32, y: s.element as i32, z: s.z };
-    let params = [s.region, s.hit_effect, s.target, s.self_type];
-    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Hitbox, pos, params)?;
+    let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Hitbox, pos, [0; 4])?;
     let (alliance, flip) = {
         let o = b.objects.get(owner);
         (o.alliance, o.flip)
@@ -57,8 +64,16 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, s: &HitboxSpec) -> Option<ObjectR
     o.stamina = s.stamina;
     o.alliance = alliance;
     o.flip = flip;
-    b.objects.get_mut(r).vars =
-        crate::kinds::Vars::Hitbox(Vars { hit_mod: s.hit_mod, status: s.status, bug: s.bug, bug_arg: s.bug_arg });
+    b.objects.get_mut(r).vars = crate::kinds::Vars::Hitbox(Vars {
+        region: s.region,
+        hit_effect: s.hit_effect,
+        target: s.target,
+        self_type: s.self_type,
+        hit_mod: s.hit_mod,
+        status: s.status,
+        bug: s.bug,
+        bug_arg: s.bug_arg,
+    });
     Some(r)
 }
 
@@ -95,11 +110,10 @@ fn init(b: &mut Battle, r: ObjectRef) {
         return;
     };
     let v = vars(b, r);
-    let params = b.objects.get(r).params;
-    b.setup_collision(r, params[3], params[2], v.hit_mod);
+    b.setup_collision(r, v.self_type, v.target, v.hit_mod);
     let s = b.collision.get_mut(c);
-    s.region = params[0];
-    s.hit_effect = params[1];
+    s.region = v.region;
+    s.hit_effect = v.hit_effect;
     if v.status.is_some() {
         s.status_base = v.status;
     }
@@ -129,7 +143,7 @@ fn resolve(b: &mut Battle, r: ObjectRef) {
             return;
         }
     }
-    b.collision.get_mut(c).region = 0;
+    b.collision.get_mut(c).region = None;
     b.collision.free(c);
     b.objects.free(r);
 }

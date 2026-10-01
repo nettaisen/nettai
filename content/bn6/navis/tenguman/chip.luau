@@ -59,7 +59,7 @@ local function field_hit(me: Object)
         element = 0,
         z = 0,
         region = regions.field,
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.navi_target,
         self_type = collision.navi,
         damage = 0,

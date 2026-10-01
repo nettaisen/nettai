@@ -132,7 +132,7 @@ fn land(b: &mut Battle, r: ObjectRef, knockout: bool) {
         if knockout {
             ai_mut(b, r).full_synchro_aura = None;
         } else {
-            coll_mut(b, r).region = 1;
+            coll_mut(b, r).region = b.anchor_region();
         }
         vars(b, r).timer = 4;
         ai_mut(b, r).attack.step_init = 4;
