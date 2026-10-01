@@ -1,19 +1,25 @@
 --!strict
--- One of ColForce's soldiers (attack object #0xCF, `sub_80DF328`): it drops
--- in on a panel behind one of the other side's, waits its turn (Param1
--- ticks), lands, and fires three shots (attack object #0x12, the vulcan's
--- hit, at a random height) at the panel in front of it, 10 ticks apart;
--- then it salutes and leaves. It stands still while dimmed.
+-- One of ColForce's soldiers (the original's attack object #0xCF,
+-- `sub_80DF328`): it drops in on a panel behind one of the other side's,
+-- waits its turn, lands, and fires three shots (objects/bullet, the
+-- vulcan's hit, at a random height) at the panel in front of it, 10 ticks
+-- apart; then it salutes and leaves. It stands still while dimmed.
 
-local bullet = require("../bullet/bullet")
+local bullet = require("../../objects/bullet/bullet")
 
-local col_force_soldier = {}
+local soldier = {}
 
-local SPRITE = "10-1d"
+export type State = {
+    -- Ticks it waits for its turn (its Param1).
+    delay: number,
+}
+
+local SPRITE = asset.sprite("col-army")
+local SHOT_SOUND = asset.sound("col-army-2")
 -- Where it drops from, 16.16.
 local DROP_Z = 0xFF_0000
--- The shots: bullets (objects/bullet, row 0x12), three of them 10 ticks
--- apart, at one of four heights (`dword_80DF484`, in pixels).
+-- The shots: bullets (row 0x12), three of them 10 ticks apart, at one of
+-- four heights (`dword_80DF484`, in pixels).
 local SHOT = bullet.variants.col_force
 local SHOTS, SHOT_TICKS = 3, 0xA
 local HEIGHTS = { [0] = 0x08, 0x10, 0x18, 0x20 }
@@ -21,24 +27,7 @@ local HEIGHTS = { [0] = 0x08, 0x10, 0x18, 0x20 }
 -- The actions.
 local WAIT, LAND, FIRE, AIM_DOWN, LEAVE = 0, 4, 8, 0xC, 0x10
 
--- `sub_80DF4D4`: a soldier of `owner`'s (the force) on (x, y), waiting
--- `delay` ticks; it runs while dimmed. (It spawns at the registers'
--- values, which its init replaces.)
-function col_force_soldier.spawn(owner: Object, x: number, y: number, element: number, delay: number, damage: number): Object?
-    local o = battle.spawn_kind("col-force-soldier", Vec3.new(y, element, 0), { delay, 0, 0, 0 })
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = owner.alliance, owner.flip
-        o.run_while_dimmed = true
-    end
-    return o
-end
-
--- `sub_80C6ADA` and `sub_801155A`: a shot at (x, y), `z` up. (Its X and
--- Y are the registers' values, which its init replaces.)
+-- `sub_80C6ADA` and `sub_801155A`: a shot at (x, y), `z` up.
 local function shot(me: Object, x: number, y: number, z: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
     bullet.fire(me, x, y, z, SHOT, me.element, damage)
@@ -61,7 +50,7 @@ end
 local function wait(me: Object)
     if me.phase == 0 then
         me.phase = 4
-        me.timer = me:param(1)
+        me.timer = (me.state :: State).delay
         return
     end
     if count(me) then
@@ -98,7 +87,7 @@ local function fire(me: Object)
     me.timer = SHOT_TICKS
     local z = bit32.lshift(HEIGHTS[bit32.band(battle.rng_positive(), 3)], 16)
     shot(me, me.panel_x + me.facing, me.panel_y, z)
-    battle.play_sound(0xB9)
+    battle.play_sound(SHOT_SOUND)
     local left = me.timer2 - 1
     me.timer2 = left
     if left <= 0 then
@@ -173,17 +162,38 @@ local function tick(me: Object)
     end
 end
 
--- `sub_80DF328`.
-function col_force_soldier.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
+soldier.kind = define.kind {
+    id = "colforce/soldier",
+    pool = "attack",
+    state = { delay = "u8" },
+    -- `sub_80DF328`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+        me:update_sprite_while_paused()
+    end,
+}
+
+-- `sub_80DF4D4`: a soldier of `owner`'s (the force) on (x, y), waiting
+-- `delay` ticks, with the damage word `damage`; it runs while dimmed. (It
+-- spawns at the registers' values, which its init replaces.)
+function soldier.spawn(owner: Object, x: number, y: number, element: number, delay: number, damage: number): Object?
+    local o = battle.spawn(soldier.kind, Vec3.new(y, element, 0))
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o:set_damage_word(damage)
+        o.alliance, o.flip = owner.alliance, owner.flip
+        o.run_while_dimmed = true;
+        (o.state :: State).delay = delay
     end
-    me:update_sprite_while_paused()
+    return o
 end
 
-return col_force_soldier
+return soldier
