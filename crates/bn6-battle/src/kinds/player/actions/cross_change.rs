@@ -244,7 +244,7 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     let acc = &mut coll_mut(b, r).acc;
     acc.final_damage = 0;
     acc.element_damage = [0; 6];
-    clear_flag1(b, r, f1::UNAFFECTED_BY_POISON);
+    clear_flag1(b, r, f1::UNTOUCHABLE);
     update_element(b, r);
     // sub_8014216
     ai_mut(b, r).status &= !0x20;

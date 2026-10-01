@@ -531,7 +531,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }
-        clear_flag1(b, r, f1::UNAFFECTED_BY_POISON | f1::SLIDING | f1::FLINCHING | f1::MOVING);
+        clear_flag1(b, r, f1::UNTOUCHABLE | f1::SLIDING | f1::FLINCHING | f1::MOVING);
         clear_flag2(b, r, 0x10);
         b.objects.get_mut(r).slide_state = 0;
         let current = form_of(b, r);
