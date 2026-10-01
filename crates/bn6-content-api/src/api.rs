@@ -1444,9 +1444,7 @@ pub trait CoreApi {
 
     /// `setFieldBattleObject_800F614`: register `o` as one of `side`'s
     /// field objects of `class` (0: two a side, 1: one); a third class-0
-    /// one (a second class-1) evicts the oldest, whose HP drops to 0. The
-    /// game doesn't check `side`: above 1 the store lands past the
-    /// registry (LilBoiler's thrower passes the chip's Atk+ bonus).
+    /// one (a second class-1) evicts the oldest, whose HP drops to 0.
     fn obstacle_register(&mut self, o: ObjectRef, side: u8, class: u8);
     /// `sub_800F656`: forget `o` in the field-object registry.
     fn obstacle_unregister(&mut self, o: ObjectRef);

@@ -1705,7 +1705,7 @@ impl CoreApi for Battle {
     // ---- Obstacles ----------------------------------------------------------------------
 
     fn obstacle_register(&mut self, o: ObjectRef, side: u8, class: u8) {
-        kinds::obstacle::register(self, o, side, class & 1);
+        kinds::obstacle::register(self, o, side & 1, class & 1);
     }
 
     fn obstacle_unregister(&mut self, o: ObjectRef) {

@@ -1062,8 +1062,7 @@ export type BlinkOut = "no" | "blinking" | "done"
 declare obstacle: {
     -- `setFieldBattleObject_800F614`: one of `side`'s field objects of
     -- `class` (0: two a side, 1: one); a third evicts the oldest (its HP
-    -- drops to 0). A side above 1 stores the object past the registry, as
-    -- the game does (a bonus of 10: over the round's Crosses-used mask).
+    -- drops to 0).
     register: (me: Object, side: number, class: number) -> (),
     -- `sub_800F656`: forget it in the field-object registry.
     unregister: (me: Object) -> (),
