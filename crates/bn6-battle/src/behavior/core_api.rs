@@ -1533,6 +1533,7 @@ impl CoreApi for Battle {
             CollisionField::Direction => c.direction as i64,
             CollisionField::GuardDirs => c.guard_dirs as i64,
             CollisionField::DamageElements => c.acc.damage_elements as i64,
+            CollisionField::HitModFinal => c.hit_mod_final as i64,
             // BARRIER_STATES
             CollisionField::Barrier => match c.barrier {
                 0 => 0,
@@ -1576,6 +1577,7 @@ impl CoreApi for Battle {
             CollisionField::FinalDamage
             | CollisionField::GuardDirs
             | CollisionField::DamageElements
+            | CollisionField::HitModFinal
             | CollisionField::Direction
             | CollisionField::Barrier
             | CollisionField::BarrierHp

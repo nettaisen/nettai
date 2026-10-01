@@ -113,6 +113,7 @@ thunder-column = { pool = "attack", index = 0x8B }
 "sensor/scanner" = { pool = "attack", index = 0x9F, scratch_z_fraction = true }
 "sensor/laser" = { pool = "attack", index = 0xA0, scratch_z_fraction = true }
 "erasecross-beast/drop" = { pool = "attack", index = 0xA1 }
+encased-bubble = { pool = "attack", index = 0xA3 }
 "flshbom/bomb" = { pool = "attack", index = 0xA4 }
 "bugbomb/bomb" = { pool = "attack", index = 0xA5 }
 "sensor/turret" = { pool = "attack", index = 0xA6 }

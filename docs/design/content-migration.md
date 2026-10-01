@@ -230,8 +230,9 @@ Left (each a controller and its objects, every branch; docs/engine/chips.md §3.
   docs/engine/dimming-chip-effects.md (14 Guardian's scripts exist, unregistered), waiting for content model v2;
   31, 33 and 41 (no chip; their actors are navi chips' navis).
 - Framework (Rust): the counter cut-in (`sub_8017AB4`, kinds/player/status.rs; chips.md §3.6.5 has the port's
-  notes), encased obstacles (`sub_801813A`; thrown ones, `sub_8018002`, are ported). AntiNavi in the dimming
-  service is done (dimming.rs; dimming-chips.md §2).
+  notes). Encased obstacles (`sub_801813A`, with the role `hooks.encased` and objects/encased-bubble) and thrown
+  ones (`sub_8018002`) are ported, unverified (nothing in the game starts them). AntiNavi in the dimming service
+  is done (dimming.rs; dimming-chips.md §2).
 
 ### Group C: DustCross and the Beast forms' weapons (ported; what is left)
 

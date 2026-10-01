@@ -368,6 +368,9 @@ named_fields! {
         /// The secondary elements (sword 0x80, cursor 0x40, wind 0x20,
         /// break 0x10) of what hit it this window.
         DamageElements = "damage_elements", U8, ro;
+        /// The hit modifiers of what hit it this window (+0x0E,
+        /// HitModifierFinal): 0x3C the pushes, 0x40 a pushing hit.
+        HitModFinal = "hit_mod_final", U8, ro;
         /// Its barrier ([`BARRIER_STATES`]), the barrier's HP byte, and the
         /// hit modifier that popped it (+0x15).
         Barrier = "barrier", enum_type(&BARRIER_STATES), ro;
