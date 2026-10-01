@@ -23,7 +23,7 @@ local colonel = define.chip {
         action = 0x1B,
         subtype = 17,
         params = { 0, 0, 0, 0 },
-        script = "objects/colonel/colonel",
+        script = "chips/110-colonel/chip",
     },
 }
 
@@ -48,7 +48,7 @@ local colonel_ex = define.chip {
         action = 0x1B,
         subtype = 17,
         params = { 0, 0, 0, 0 },
-        script = "objects/colonel/colonel",
+        script = "chips/110-colonel/chip",
     },
 }
 
@@ -72,7 +72,7 @@ local colonel_sp = define.chip {
         action = 0x1B,
         subtype = 17,
         params = { 4, 0, 0, 0 },
-        script = "objects/colonel/colonel",
+        script = "chips/110-colonel/chip",
         damage = 1018,
         sp_damage = { 300, 290, 280, 270, 260, 250, 240, 230, 220, 210, 200 },
     },

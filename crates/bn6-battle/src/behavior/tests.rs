@@ -39,21 +39,30 @@ fn battles_run_the_content_scripts() {
         kinds,
         [
             "absorbed-obstacle",
+            "airraid/controller",
+            "airraid/plane",
+            "airraid/propeller",
             "aqua-surge",
             "attachment",
-            "bass",
-            "blast-fire",
-            "blast-man",
+            "barrier-visual",
+            "barriers/controller",
+            "bass/navi",
+            "blastman/fire",
+            "blastman/navi",
             "blkbomb/bomb",
             "bomb",
             "bomb-slash",
             "boomerang",
             "boulder",
             "bugbomb/bomb",
-            "charge-car",
-            "charge-man",
+            "bugfix/controller",
+            "bugfix/glow",
             "charge-wave",
             "chargeman/volcano-rock",
+            "chrgeman/car",
+            "chrgeman/navi",
+            "colorpt/controller",
+            "colorpt/point",
             "countdown-bomb",
             "crakshot/shot",
             "dash-hit",
@@ -64,15 +73,17 @@ fn battles_run_the_content_scripts() {
             "dust-ball",
             "dustman/cloud",
             "dustman/overlay",
-            "elec-man",
-            "elec-thunder",
+            "elecman/navi",
+            "elecman/thunder",
             "elem-trap",
             "elem-trap-strike",
             "element-pillar",
-            "elmnt-bolt",
-            "elmnt-ice",
-            "elmnt-man",
-            "elmnt-vine",
+            "elmntman/bolt",
+            "elmntman/ice",
+            "elmntman/meteor",
+            "elmntman/navi",
+            "elmntman/vine",
+            "encased-bubble",
             "energbom/burst",
             "erase-drop",
             "erase-ray",
@@ -96,9 +107,11 @@ fn battles_run_the_content_scripts() {
             "grndman/rock",
             "gundels/beam",
             "gust",
-            "heat-man",
             "heatman/flame",
+            "heatman/navi",
             "hit-flash",
+            "instrument",
+            "instruments/controller",
             "invisible",
             "junk-shot",
             "justcone/strike",
@@ -107,11 +120,11 @@ fn battles_run_the_content_scripts() {
             "lilbolr/boiler",
             "lilbolr/layer",
             "lunge-slash",
-            "meteor",
             "mine",
-            "moon-beam",
             "navi-boost",
             "panel-bursts",
+            "panel-changer",
+            "panel-chips/controller",
             "panel-strike",
             "projectile",
             "rflectr/shield",
@@ -125,24 +138,31 @@ fn battles_run_the_content_scripts() {
             "sandwrm/spray",
             "sandwrm/worm",
             "seed",
-            "slash-man",
-            "slash-wave",
+            "sensor/controller",
+            "sensor/laser",
+            "sensor/scanner",
+            "sensor/turret",
+            "slashman/navi",
             "slashman/riding-hit",
-            "spout-ball",
-            "spout-geyser",
-            "spout-man",
-            "spout-mark",
-            "spout-pillar",
-            "spout-splash",
+            "slashman/wave",
+            "spoutman/ball",
             "spoutman/drip-shower",
-            "sun-meteor",
-            "sun-moon",
+            "spoutman/geyser",
+            "spoutman/mark",
+            "spoutman/navi",
+            "spoutman/pillar",
+            "spoutman/splash",
+            "sumnblk/controller",
+            "sumnblk/navi",
+            "sunmoon/meteor",
+            "sunmoon/moon-beam",
+            "sunmoon/sun",
             "sword-wave",
-            "tengu-man",
+            "tenguman/navi",
             "tenguman/tornado",
             "thunder-column",
             "time-bom",
-            "tomahawk-man",
+            "tmhkman/navi",
             "tomahawkman/axe",
             "tomahawkman/strike",
             "trap-chip",
@@ -327,9 +347,9 @@ fn the_elements_navi_attacks() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The elements navi comes with his overlay and attacks with an
     // element: meteors, ice, bolts or vines.
-    assert!(ticks("elmnt-man") > 0, "ElmntMan: {seen:?}");
+    assert!(ticks("elmntman/navi") > 0, "ElmntMan: {seen:?}");
     assert!(ticks("engine/body-overlay") > 0, "ElmntMan's overlay: {seen:?}");
-    let attacks = ["meteor", "elmnt-ice", "elmnt-bolt", "elmnt-vine"].map(ticks);
+    let attacks = ["elmntman/meteor", "elmntman/ice", "elmntman/bolt", "elmntman/vine"].map(ticks);
     assert!(attacks.iter().any(|&t| t > 0), "ElmntMan's attacks: {seen:?}");
 }
 
@@ -340,10 +360,10 @@ fn the_water_navi_attacks() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The water navi comes in his water (his layer) and throws his ball
     // or raises his geyser, which marks its column.
-    assert!(ticks("spout-man") > 0, "SpoutMan: {seen:?}");
+    assert!(ticks("spoutman/navi") > 0, "SpoutMan: {seen:?}");
     assert!(ticks("engine/idle-overlay") > 0, "SpoutMan's layer: {seen:?}");
-    let ball = ticks("spout-ball") > 0 && ticks("spout-splash") > 0;
-    let geyser = ticks("spout-pillar") > 0 && ticks("spout-geyser") > 0 && ticks("spout-mark") > 0;
+    let ball = ticks("spoutman/ball") > 0 && ticks("spoutman/splash") > 0;
+    let geyser = ticks("spoutman/pillar") > 0 && ticks("spoutman/geyser") > 0 && ticks("spoutman/mark") > 0;
     assert!(ball || geyser, "SpoutMan's attacks: {seen:?}");
 }
 
@@ -353,13 +373,13 @@ fn the_navi_chip_navis_come_and_go() {
     // Each navi chip's navi comes (and the duel goes on without a content
     // error); its attacks depend on where the players stand.
     for (chip, navi) in [
-        (testing::HEAT, "heat-man"),
-        (testing::ELEC, "elec-man"),
-        (testing::SLASH, "slash-man"),
-        (testing::CHARGE, "charge-man"),
-        (testing::TOMAHAWK, "tomahawk-man"),
-        (testing::TENGU, "tengu-man"),
-        (testing::BLAST, "blast-man"),
+        (testing::HEAT, "heatman/navi"),
+        (testing::ELEC, "elecman/navi"),
+        (testing::SLASH, "slashman/navi"),
+        (testing::CHARGE, "chrgeman/navi"),
+        (testing::TOMAHAWK, "tmhkman/navi"),
+        (testing::TENGU, "tenguman/navi"),
+        (testing::BLAST, "blastman/navi"),
     ] {
         let seen = duel_with(&[testing::chip_handle(chip)], 1500, 11);
         assert!(seen.get(navi).copied().unwrap_or(0) > 0, "navi {navi} of chip {chip:#x}: {seen:?}");
@@ -373,15 +393,15 @@ fn the_shooting_and_sun_moon_navis_attack() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The shooting navi comes with his cape (a form overlay) and fires
     // panel strikes.
-    assert!(ticks("bass") > 0, "Bass: {seen:?}");
+    assert!(ticks("bass/navi") > 0, "Bass: {seen:?}");
     assert!(ticks("engine/form-overlay") > 0, "Bass's cape: {seen:?}");
     assert!(ticks("panel-strike") > 0, "Bass's shots: {seen:?}");
     // The sun-and-moon navi throws meteors, shines and dives.
     let seen = duel_with(&[testing::chip_handle(testing::SUN_MOON)], 2400, 11);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
-    assert!(ticks("sun-moon") > 0, "SunMoon: {seen:?}");
-    assert!(ticks("sun-meteor") > 0, "SunMoon's meteors: {seen:?}");
-    assert!(ticks("moon-beam") > 0, "SunMoon's moonlight: {seen:?}");
+    assert!(ticks("sunmoon/sun") > 0, "SunMoon: {seen:?}");
+    assert!(ticks("sunmoon/meteor") > 0, "SunMoon's meteors: {seen:?}");
+    assert!(ticks("sunmoon/moon-beam") > 0, "SunMoon's moonlight: {seen:?}");
 }
 
 #[test]
@@ -942,6 +962,69 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
     assert_eq!((h.panel, h.params, h.damage), (PanelPos { x: 5, y: 2 }, [1, 5, 5, 6], 60));
 }
 
+/// Encase the stage's rock (ice or a bubble, as the unlabeled request at
+/// 0x0800F830 would) and run it through `sub_801813A`'s 61 ticks: the rock
+/// it was, gone from the registry and destroyed, and what replaced it.
+fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
+    use crate::kinds::obstacle::{f2, obstacle_f1};
+    use crate::object::{Pool, flags};
+    const KINDS: [&str; 2] = ["rock", "encased-bubble"];
+    // The rock stage on the test pack's content, which fills the role.
+    let stats = crate::setup::NaviStats { support: Some(Default::default()), ..Default::default() };
+    let mut setup = testing::round_setup(testing::ROCK_BATTLE, stats);
+    setup.settings.effects = 0;
+    let content = std::sync::Arc::new(testing::with_test_pack());
+    setup.content = content.hash();
+    let mut b = Battle::new(setup, content);
+    b.spawn_actors();
+    b.round.flags |= crate::battle::battle_flags::FIGHTING;
+    let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
+    run_only(&mut b, &KINDS);
+    assert_eq!(b.field.objects.class_of(r), Some(0), "a stage rock takes a class-0 slot");
+    let c = b.objects.get(r).collision.unwrap();
+    b.collision.get_mut(c).f2 |= if ice { f2::ENCASED_IN_ICE } else { 0x2000 };
+    run_only(&mut b, &KINDS);
+    assert_eq!(b.collision.get(c).f2 & f2::ENCASED, 0);
+    let held = if ice { obstacle_f1::ENCASED_ICE } else { obstacle_f1::ENCASED_BUBBLE };
+    assert_ne!(b.collision.get(c).f1 & held, 0);
+    assert_eq!((b.objects.get(r).prevent_anim, b.objects.get(r).shake_timer), (4, 0x3C));
+    let mut hidden = 0;
+    for _ in 0..0x3C {
+        run_only(&mut b, &KINDS);
+        if b.objects.get(r).flags & flags::VISIBLE == 0 {
+            hidden += 1;
+        }
+    }
+    // Hidden (with a new effect) on the ticks whose count has bit 1 clear:
+    // 60 down to 1, half of them.
+    assert_eq!(hidden, 30);
+    assert_eq!(b.field.objects.class_of(r), None, "unregistered");
+    assert_eq!(b.objects.get(r).state, crate::kinds::common::Progress::DESTROY.state);
+    (b, r)
+}
+
+#[test]
+fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
+    let (mut b, r) = encase_rock(true);
+    let panel = b.objects.get(r).panel;
+    let block = b.objects.in_order().find(|&o| o != r && b.kind_key(o) == "rock").expect("the ice block");
+    // In the class the obstacle was in; once it has run, the ice variant
+    // (its name, element and HP).
+    assert_eq!(b.field.objects.class_of(block), Some(0));
+    run_only(&mut b, &["rock", "encased-bubble"]);
+    let o = b.objects.get(block);
+    assert_eq!((o.panel, o.name_id, o.element, o.hp), (panel, 0xD1, 2, 200));
+}
+
+#[test]
+fn an_obstacle_encased_in_a_bubble_becomes_the_bubble() {
+    let (b, r) = encase_rock(false);
+    let panel = b.objects.get(r).panel;
+    let bubble = b.objects.in_order().find(|&o| b.kind_key(o) == "encased-bubble").expect("the bubble");
+    let o = b.objects.get(bubble);
+    assert_eq!((o.panel, o.element, o.alliance), (panel, 2, b.objects.get(r).alliance));
+}
+
 // ---- The navi-changing chips (subtype 38) ----------------------------------------------------
 
 #[test]
@@ -1297,5 +1380,195 @@ fn trap_bomb_and_mine_chips_roll_back() {
             assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
         }
         b.tick(&t.input, t.events.clone());
+    }
+}
+
+// ---- Dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36 ------------------------------
+
+/// The barriers (subtype 4), as content defines them.
+const BARRIER_CHIPS: &[&str] = &["barrier", "barr100", "barr200", "bblwrap", "lifeaur"];
+/// BugFix (subtype 26).
+const BUGFIX_CHIPS: &[&str] = &["bugfix"];
+/// The panel chips (subtype 5).
+const PANEL_CHIPS: &[&str] = &["pnlretrn", "holypanl", "snctuary", "comingrd", "goingrd"];
+/// The instruments (subtype 9).
+const INSTRUMENT_CHIPS: &[&str] = &["fanfare", "discord", "timpani", "silence"];
+/// AirRaid (subtype 13).
+const AIR_RAID_CHIPS: &[&str] = &["airraid1", "airraid2", "airraid3"];
+/// ColorPt and DblPoint (subtype 27).
+const POINT_CHIPS: &[&str] = &["colorpt", "dblpoint"];
+/// Sensor (subtype 28).
+const SENSOR_CHIPS: &[&str] = &["sensor1", "sensor2", "sensor3"];
+/// SumnBlk (subtype 36).
+const SUMMON_CHIPS: &[&str] = &["sumnblk1", "sumnblk2", "sumnblk3"];
+
+fn defined(keys: &[&str]) -> Vec<bn6_content_api::ChipHandle> {
+    keys.iter().map(|k| testing::defined_chip(k)).collect()
+}
+
+/// The test content with the middle column (4) missing: the panel in
+/// front of either navi, once side 0 steps up, is a hole.
+fn holed_content() -> std::sync::Arc<Content> {
+    let mut c = testing::build();
+    for row in &mut c.panel_layouts[0].rows {
+        row[3] = crate::field::PanelType::Missing;
+    }
+    std::sync::Arc::new(c)
+}
+
+/// What a duel showed: the ticks each kind was on the field, by key, and
+/// whether a panel was ever held by the side it isn't home to.
+struct Duel {
+    seen: std::collections::BTreeMap<String, usize>,
+    panel_changed_hands: bool,
+}
+
+impl Duel {
+    fn ticks(&self, key: &str) -> usize {
+        self.seen.get(key).copied().unwrap_or(0)
+    }
+}
+
+/// A duel with `chips` in the folders on `content`.
+fn duel_on(chips: &[bn6_content_api::ChipHandle], content: std::sync::Arc<Content>, ticks: usize, seed: u32) -> Duel {
+    let setup = || {
+        let mut s = scenario::setup_with_handles(chips);
+        s.content = content.hash();
+        s
+    };
+    let tape = scenario::record_on_content(setup(), content.clone(), ticks, seed);
+    let mut b = Battle::new(setup(), content.clone());
+    let mut d = Duel { seen: Default::default(), panel_changed_hands: false };
+    for t in &tape {
+        b.tick(&t.input, t.events.clone());
+        for r in b.objects.in_order() {
+            *d.seen.entry(b.kind_key(r).to_string()).or_insert(0) += 1;
+        }
+        d.panel_changed_hands |= (1..=6).any(|x| {
+            (1..=3).any(|y| b.field.panel(x, y).is_some_and(|p| p.kind != crate::field::PanelType::Missing && p.alliance != p.home))
+        });
+    }
+    d
+}
+
+fn duel(keys: &[&str]) -> Duel {
+    duel_on(&defined(keys), scenario::content(), 2400, 11)
+}
+
+#[test]
+fn the_barriers_play() {
+    let d = duel(BARRIER_CHIPS);
+    assert!(d.ticks("barriers/controller") > 0, "the barriers' controller: {:?}", d.seen);
+    assert!(d.ticks("barrier-visual") > 0, "a barrier's visual: {:?}", d.seen);
+}
+
+#[test]
+fn bugfix_plays() {
+    let d = duel(BUGFIX_CHIPS);
+    assert!(d.ticks("bugfix/controller") > 0, "BugFix's controller: {:?}", d.seen);
+    assert!(d.ticks("bugfix/glow") > 0, "BugFix's glow: {:?}", d.seen);
+}
+
+#[test]
+fn the_panel_chips_play() {
+    let d = duel(PANEL_CHIPS);
+    assert!(d.ticks("panel-chips/controller") > 0, "the panel chips' controller: {:?}", d.seen);
+    assert!(d.ticks("panel-changer") > 0, "a panel changer: {:?}", d.seen);
+}
+
+#[test]
+fn the_instruments_play() {
+    let d = duel(INSTRUMENT_CHIPS);
+    assert!(d.ticks("instruments/controller") > 0, "the instruments' controller: {:?}", d.seen);
+    assert!(d.ticks("instrument") > 0, "an instrument: {:?}", d.seen);
+}
+
+#[test]
+fn air_raid_bombs() {
+    let d = duel(AIR_RAID_CHIPS);
+    assert!(d.ticks("airraid/plane") > 0, "a plane: {:?}", d.seen);
+    assert!(d.ticks("airraid/propeller") > 0, "its propeller: {:?}", d.seen);
+    assert!(d.ticks("lilbolr/layer") > 0, "its jet flame: {:?}", d.seen);
+    assert!(d.ticks("panel-strike") > 0, "its bombs: {:?}", d.seen);
+}
+
+#[test]
+fn the_points_give_the_front_column_away() {
+    let d = duel(POINT_CHIPS);
+    assert!(d.ticks("colorpt/controller") > 0, "the points' controller: {:?}", d.seen);
+    assert!(d.ticks("colorpt/point") > 0, "a point: {:?}", d.seen);
+    assert!(d.panel_changed_hands, "a point gave its panel to the other side");
+}
+
+#[test]
+fn sensor_scans() {
+    let d = duel(SENSOR_CHIPS);
+    assert!(d.ticks("sensor/controller") > 0, "Sensor's controller: {:?}", d.seen);
+    assert!(d.ticks("sensor/turret") > 0, "a turret: {:?}", d.seen);
+    assert!(d.ticks("sensor/scanner") > 0, "its scanner: {:?}", d.seen);
+}
+
+#[test]
+fn the_summoned_navi_comes_out_of_a_hole() {
+    // Without a hole in front, SumnBlk does nothing; with the middle column
+    // missing, the navi comes out of it.
+    let plain = duel(SUMMON_CHIPS);
+    assert!(plain.ticks("sumnblk/controller") > 0, "SumnBlk was used: {:?}", plain.seen);
+    assert_eq!(plain.ticks("sumnblk/navi"), 0, "no hole, no navi: {:?}", plain.seen);
+    let holed = duel_on(&defined(SUMMON_CHIPS), holed_content(), 2400, 11);
+    assert!(holed.ticks("sumnblk/navi") > 0, "the navi: {:?}", holed.seen);
+}
+
+#[test]
+fn first_barrier_raises_a_barrier() {
+    // The NaviCust FirstBarrier (the navi stat): the role's hook, which
+    // the test content fills as BN6's roles do, raises the Barrier chip's
+    // barrier, with its visual, as the navi comes in.
+    let mut s = scenario::setup();
+    s.navi_stats[0].first_barrier = 1;
+    let mut b = Battle::new(s, scenario::content());
+    for _ in 0..300 {
+        b.tick(&Default::default(), Default::default());
+    }
+    let p = b.player(0).unwrap();
+    let c = b.collision.get(b.objects.get(p).collision.unwrap());
+    assert_eq!((c.barrier, c.barrier_hp), (1, 10), "the Barrier chip's barrier");
+    let a = b.objects.get(p).actor.unwrap();
+    assert!(b.actors.get(a).barrier_visual.is_some(), "its visual");
+    let other = b.objects.get(b.player(1).unwrap()).collision.unwrap();
+    assert_eq!(b.collision.get(other).barrier, 0, "the other side has none");
+}
+
+#[test]
+fn the_support_dimming_chips_roll_back() {
+    // A copy of the battle taken at any tick plays on exactly as the
+    // battle does.
+    let holed = holed_content();
+    for (keys, content) in [
+        (BARRIER_CHIPS, scenario::content()),
+        (BUGFIX_CHIPS, scenario::content()),
+        (PANEL_CHIPS, scenario::content()),
+        (INSTRUMENT_CHIPS, scenario::content()),
+        (AIR_RAID_CHIPS, scenario::content()),
+        (POINT_CHIPS, scenario::content()),
+        (SENSOR_CHIPS, scenario::content()),
+        (SUMMON_CHIPS, holed.clone()),
+    ] {
+        let chips = defined(keys);
+        let setup = || {
+            let mut s = scenario::setup_with_handles(&chips);
+            s.content = content.hash();
+            s
+        };
+        let tape = scenario::record_on_content(setup(), content.clone(), 2400, 11);
+        let mut b = Battle::new(setup(), content.clone());
+        let whole = digests(&tape, Battle::new(setup(), content.clone()));
+        for (i, t) in tape.iter().enumerate() {
+            if i % 197 == 0 {
+                let copy = digests(&tape[i..], b.clone());
+                assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way ({keys:?})");
+            }
+            b.tick(&t.input, t.events.clone());
+        }
     }
 }

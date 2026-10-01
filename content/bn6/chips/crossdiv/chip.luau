@@ -24,6 +24,6 @@ return define.chip {
         action = 0x1B,
         subtype = 17,
         params = { 0, 0, 1, 0 },
-        script = "objects/colonel/colonel",
+        script = "chips/110-colonel/chip",
     },
 }

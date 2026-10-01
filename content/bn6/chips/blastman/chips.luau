@@ -23,7 +23,7 @@ local blastman = define.chip {
         action = 0x1B,
         subtype = 12,
         params = { 0, 0, 0, 0 },
-        script = "objects/blast-man/blast_man",
+        script = "chips/101-blastman/chip",
     },
 }
 
@@ -48,7 +48,7 @@ local blastmn_ex = define.chip {
         action = 0x1B,
         subtype = 12,
         params = { 0, 0, 0, 0 },
-        script = "objects/blast-man/blast_man",
+        script = "chips/101-blastman/chip",
     },
 }
 
@@ -72,7 +72,7 @@ local blastmn_sp = define.chip {
         action = 0x1B,
         subtype = 12,
         params = { 0, 0, 0, 0 },
-        script = "objects/blast-man/blast_man",
+        script = "chips/101-blastman/chip",
         damage = 1012,
         sp_damage = { 250, 240, 230, 220, 210, 200, 190, 180, 170, 160, 150 },
     },
