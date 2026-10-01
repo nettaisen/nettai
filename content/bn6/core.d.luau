@@ -659,8 +659,8 @@ export type HitboxSpec = {
     panel_y: number,
     element: number,
     z: number?,
-    -- Region shape (a definition; deprecated: a number).
-    region: Region | number,
+    -- Region shape (a definition; nil, none; deprecated: a number).
+    region: (Region | number)?,
     hit_effect: Spark | number,
     -- Collision types (definitions; deprecated: indices).
     target: CollisionType | number,
