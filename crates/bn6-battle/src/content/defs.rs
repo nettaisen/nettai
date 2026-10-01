@@ -303,6 +303,11 @@ impl Defs {
         self.action_numbers.get(number as usize).copied().flatten()
     }
 
+    /// The action with this key.
+    pub fn action_by_key(&self, key: &str) -> Option<ActionHandle> {
+        self.actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
+    }
+
     /// The weapon of a weapon routine number.
     pub fn weapon_numbered(&self, id: u8) -> Option<WeaponHandle> {
         self.weapon_ids.get(id as usize).copied().flatten()
