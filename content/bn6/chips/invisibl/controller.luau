@@ -1,6 +1,7 @@
 --!strict
--- Invisibl's and WhiCapsl's dimming controller (the original's effect
--- object #0x5D, `sub_80E74D4`): the usual dimming phases (lib/dimming),
+-- Invisibl's dimming controller (the original's effect object #0x5D,
+-- `sub_80E74D4`), which the second WhiCapsl (chips/whicapsl-invisible)
+-- uses too: the usual dimming phases (lib/dimming),
 -- with an effect that turns the user invisible, flashing for the chip's
 -- time (`sub_8010474`), then waits 31 ticks. See docs/engine/chips.md
 -- §3.6.10.
@@ -43,7 +44,7 @@ local function effect(me: Object)
 end
 
 invisible.kind = define.kind {
-    id = "invisible",
+    id = "invisibl/controller",
     pool = "effect",
     state = { ticks = "u16" },
     -- `sub_80E74D4`.
