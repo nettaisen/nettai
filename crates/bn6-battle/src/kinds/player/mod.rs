@@ -26,7 +26,7 @@ use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, CollisionId, f1, timer};
 use crate::field::PanelType;
 use crate::content::NaviRecord;
-use bn6_content_api::{ChipHandle, WeaponHandle};
+use bn6_content_api::{ChipHandle, SpriteId, WeaponHandle};
 use crate::content::Content;
 use crate::object::{ObjectRef, PanelPos, Pool, StateWord, Vec3, flags, state};
 use crate::setup::{ActorEntry, Form, Navi, NaviStats, effects};
@@ -685,10 +685,16 @@ fn post_init_hook(b: &mut Battle, r: ObjectRef) {
     }
 }
 
+/// `sub_800FC9E(navi, form)` for side `side`'s navi stats: the navi's
+/// battle sprite (MegaMan's by his form).
+pub(crate) fn battle_sprite(b: &Battle, side: u8) -> SpriteId {
+    let s = &b.stats[side as usize];
+    if b.content.navi_number(s.navi) == Navi::MEGAMAN { b.content.form(s.form).sprite } else { b.content.navi(s.navi).sprite }
+}
+
 /// `sub_800FC9E` + `sprite_load`: load the navi's battle sprite.
 fn load_sprite(b: &mut Battle, r: ObjectRef) {
-    let s = stats(b, r);
-    let id = if navi_of(b, r) == Navi::MEGAMAN { b.content.form(s.form).sprite } else { b.content.navi(s.navi).sprite };
+    let id = battle_sprite(b, b.objects.get(r).alliance);
     let flip = b.objects.get(r).alliance ^ b.objects.get(r).flip;
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);

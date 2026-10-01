@@ -404,9 +404,18 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
 /// with it). (Its barrier visual too, once the port has one:
 /// docs/engine/dimming-chips.md §3.3.)
 pub fn hide_user(b: &mut Battle, user: ObjectRef) {
+    hide_user_with(b, user, false);
+}
+
+/// `sub_80E1352(user, mask)`: with `keep_visuals` (mask 0xF, CrosOver's),
+/// the confusion and blindness visuals stay on (the status visual and the
+/// HUD the mask also keeps are not modelled).
+pub fn hide_user_with(b: &mut Battle, user: ObjectRef, keep_visuals: bool) {
     b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
     set_vanished(b, user, true);
-    set_links_visible(b, user, false);
+    if !keep_visuals {
+        set_links_visible(b, user, false);
+    }
     set_charge_glow(b, user, false);
     if let Some(aura) = b.objects.get(user).actor.and_then(|a| b.actors.get(a).full_synchro_aura) {
         crate::kinds::full_synchro_aura::hide(b, aura);

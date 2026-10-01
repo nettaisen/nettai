@@ -544,6 +544,14 @@ declare class Object
     -- flipped by the object's side unless the look keeps its own; false
     -- when the look is the table's none.
     function wear_junk_look(self, look: number): boolean
+    -- CrosOver's MegaMan (`sub_80BDBC8`): take the user's identity when the
+    -- user is MegaMan or one of his forms (true), else MegaMan's own: its
+    -- sprite (a ground shadow, animation 0 loaded by the next sprite
+    -- update) and the side's form's palette.
+    function wear_navi_image(self, user: Object): boolean
+    -- The parts of that identity (`sub_8010DF6` with r2 1, or
+    -- `sub_8011044`).
+    function navi_image_parts(self, on: boolean): ()
     -- `sub_800E2FC`: heal up to the maximum HP, with the recovery sparkle
     -- and sound; with `anti_recovery`, the opponent's armed AntiRecv turns
     -- it into damage instead (true when it did).
@@ -929,8 +937,9 @@ declare dimming: {
     -- `object_timefreezeEnd` (the controller's destroy state).
     finish: (controller: Object) -> (),
     -- `sub_80E1352` / `sub_80E13DC`: a navi chip's user vanishes and comes
-    -- back.
-    hide_user: (user: Object) -> (),
+    -- back. With `keep_visuals` (mask 0xF, CrosOver's), its confusion and
+    -- blindness visuals stay on.
+    hide_user: (user: Object, keep_visuals: boolean?) -> (),
     show_user: (user: Object) -> (),
 }
 

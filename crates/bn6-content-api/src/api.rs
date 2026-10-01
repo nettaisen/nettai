@@ -1338,7 +1338,9 @@ pub trait CoreApi {
     /// in on it. For controllers that aren't a chip's (a trap springing).
     fn start_dimming(&mut self, side: u8, no_cut_in: bool, controller: Option<ObjectRef>, user: ObjectRef);
     /// `sub_80E1352`: a navi chip's user vanishes while its navi acts.
-    fn hide_user(&mut self, user: ObjectRef);
+    /// With `keep_visuals` (`sub_80E1352`'s mask 0xF, CrosOver's), its
+    /// confusion and blindness visuals stay on.
+    fn hide_user(&mut self, user: ObjectRef, keep_visuals: bool);
     /// `sub_80E13DC`: and comes back.
     fn show_user(&mut self, user: ObjectRef);
     /// A navi chip's navi is done: its controller moves on.
@@ -1396,6 +1398,17 @@ pub trait CoreApi {
     /// pool it passed before that one this tick. Routines that never set
     /// r3 spawn with it as a position (DustMan's junk).
     fn loop_register(&self) -> u32;
+    /// CrosOver's MegaMan (`sub_80BDBC8`): `o` takes its user's identity
+    /// (NameID) when the user is MegaMan or one of his forms, else MegaMan's
+    /// own; that identity's sprite (a player's by its side's navi and form,
+    /// `sub_800FC9E`; MegaMan's base sprite for another user's), with a
+    /// ground shadow at animation 0 (loaded by the next sprite update); and
+    /// its side's form's palette (`byte_80203EA`). True when it took the
+    /// user's.
+    fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef) -> ApiResult<bool>;
+    /// `sub_8010DF6` (`on`, its r2 1) or `sub_8011044` by the actor record
+    /// of `o`'s identity: the parts the navi image wears.
+    fn navi_image_parts(&mut self, o: ObjectRef, on: bool);
     /// `sub_80DBB64`: put the junk look `look` on `o`'s sprite (`sub_800F26C`:
     /// the sprite, a shadow if the look has one, its animation and
     /// palette; flipped by `o`'s side unless the look keeps its own);

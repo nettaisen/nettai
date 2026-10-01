@@ -566,6 +566,10 @@ impl UserData for Object {
             Ok((p.x, p.y))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
+        methods.add_method("wear_navi_image", |_, this, user: mlua::UserDataRef<Object>| {
+            with(|api, _| api.wear_navi_image(this.0, user.0).map_err(api_error))
+        });
+        methods.add_method("navi_image_parts", |_, this, on: bool| with(|api, _| Ok(api.navi_image_parts(this.0, on))));
         methods.add_method("wear_junk_look", |_, this, look: LuaValue| {
             let look = u16_arg(look, "junk look")?;
             with(|api, _| api.wear_junk_look(this.0, look).map_err(api_error))
@@ -1449,7 +1453,9 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             with(|api, _| Ok(api.start_dimming(side, no_cut_in, controller, user.0)))
         }
     );
-    lib_fn!(lua, t, "hide_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_user(user.0))));
+    lib_fn!(lua, t, "hide_user", |_, (user, keep_visuals): (mlua::UserDataRef<Object>, Option<bool>)| {
+        with(|api, _| Ok(api.hide_user(user.0, keep_visuals.unwrap_or(false))))
+    });
     lib_fn!(lua, t, "show_user", |_, user: mlua::UserDataRef<Object>| with(|api, _| Ok(api.show_user(user.0))));
     Ok(t)
 }

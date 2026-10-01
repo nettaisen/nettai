@@ -1536,8 +1536,8 @@ impl CoreApi for Battle {
         Battle::start_dimming(self, side & 1, no_cut_in, controller, user);
     }
 
-    fn hide_user(&mut self, user: ObjectRef) {
-        crate::dimming::hide_user(self, user);
+    fn hide_user(&mut self, user: ObjectRef, keep_visuals: bool) {
+        crate::dimming::hide_user_with(self, user, keep_visuals);
     }
 
     fn show_user(&mut self, user: ObjectRef) {
@@ -1665,6 +1665,45 @@ impl CoreApi for Battle {
 
     fn loop_register(&self) -> u32 {
         self.objects.loop_register()
+    }
+
+    fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef) -> ApiResult<bool> {
+        const MEGAMAN: u16 = 0x1A0;
+        let user_name = self.objects.get(user).name_id;
+        let own = user_name == MEGAMAN || user_name > 0x1AB;
+        let name = if own { user_name } else { MEGAMAN };
+        let sprite = if !own {
+            self.content.form_data(crate::setup::Form::NONE).sprite
+        } else if self.content.navi_record(name).actor_type == crate::actor::ActorType::Player {
+            kinds::player::battle_sprite(self, self.objects.get(user).alliance)
+        } else {
+            return Err(ApiError::Other(format!(
+                "NameID {name:#x} is no player's: its sprite would be sub_800F26C's (enemy_getStruct1)"
+            )));
+        };
+        let side = self.objects.get(o).alliance;
+        let form = self.content.form_number(self.stats[side as usize].form);
+        // byte_80203EA covers the base form and the Crosses; the bytes
+        // after it (the Beast forms') are 0.
+        let palette = self.content.rules.cross_palettes.get(form.0 as usize).copied().unwrap_or(0);
+        self.sprite_load(o, sprite);
+        let obj = self.objects.get_mut(o);
+        obj.name_id = name;
+        obj.anim = 0;
+        obj.anim_loaded = 0xFF;
+        let look = &mut self.objects.sprite_mut(o).look;
+        look.shadow = sprite::Shadow::Ground;
+        look.palette = palette;
+        Ok(own)
+    }
+
+    fn navi_image_parts(&mut self, o: ObjectRef, on: bool) {
+        let rec = self.content.navi_record(self.objects.get(o).name_id);
+        if on {
+            kinds::player::form::record_init_hook(self, o, rec.actor_type, rec.ai_index, 1);
+        } else {
+            kinds::player::form::record_death_hook(self, o, rec.actor_type, rec.ai_index);
+        }
     }
 
     fn junk_look(&self, o: ObjectRef) -> Option<u16> {
