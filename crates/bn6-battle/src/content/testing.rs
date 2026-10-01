@@ -387,6 +387,12 @@ fn assets() -> bn6_content_api::AssetNames {
         ("buster-up", sprite(0x14, 0x1B)),
         ("erase-mark", sprite(0x10, 0x50)),
         ("erase-beam", sprite(0x10, 0x51)),
+        ("impact", sprite(0x14, 0x01)),
+        ("bat-impact", sprite(0x14, 0x07)),
+        ("shot-impact", sprite(0x14, 0x0C)),
+        ("shell-burst", sprite(0x14, 0x11)),
+        ("beast-shot", sprite(0x0C, 0x21)),
+        ("bow", sprite(0x0C, 0x2A)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -411,6 +417,7 @@ fn assets() -> bn6_content_api::AssetNames {
         ("erase-man-2", 0xBA),
         ("hub", 0x119),
         ("bonus", 0x157),
+        ("twang", 0x18A),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -449,6 +456,7 @@ pub fn scripts() -> Scripts {
                 ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
                 ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
                 ("objects/projectile/projectile", "objects/projectile/projectile"),
+                ("objects/projectile/variants", "objects/projectile/variants"),
                 ("objects/flying-shot/flying_shot", "objects/flying-shot/flying_shot"),
                 ("lib/buster", "lib/buster"),
                 ("lib/weapon", "lib/weapon"),
@@ -696,8 +704,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("justice-one", Pool::Attack, 0xAE, "objects/justice-one/justice_one"),
         kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
-        kind("projectile", Pool::Attack, 0x00, "objects/projectile/projectile"),
-        kind("flying-shot", Pool::Attack, 0x0B, "objects/flying-shot/flying_shot"),
         kind("gust", Pool::Attack, 0x49, "objects/gust/gust"),
         kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),

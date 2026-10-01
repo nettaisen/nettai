@@ -9,11 +9,11 @@
 local vulcan = require("../vulcan/action")
 local vulcans = require("../vulcan/chips")
 
-local legacy = {
+local by_number = {
     state = vulcan.STATE,
 }
 
-function legacy.update(me: Object, s: any)
+function by_number.update(me: Object, s: any)
     local v = me.variant
     local chip = vulcans[v + 1]
     if not chip then
@@ -22,4 +22,4 @@ function legacy.update(me: Object, s: any)
     (chip.action :: Action).update(me, s)
 end
 
-return legacy
+return by_number

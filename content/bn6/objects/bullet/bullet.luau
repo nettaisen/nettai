@@ -54,7 +54,7 @@ local function burst(me: Object, v: BulletVariant)
     local c = me.collision
     c:set_region(v.region)
     if v.single then
-        battle.effect(me.pos, v.effect, me.flip)
+        battle.effect(me.pos, v.effect, bit32.bxor(me.alliance, me.flip))
     else
         battle.region_effects(c.panel_x, c.panel_y, v.region, me.alliance, v.effect, me.pos.z)
     end

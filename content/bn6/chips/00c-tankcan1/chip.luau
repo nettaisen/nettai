@@ -9,12 +9,12 @@
 local tankcan = require("../tankcan/action")
 local tankcans = require("../tankcan/chips")
 
-local legacy = {
+local by_number = {
     state = tankcan.STATE,
 }
 
-function legacy.update(me: Object, s: any)
+function by_number.update(me: Object, s: any)
     (tankcans[1].action :: Action).update(me, s)
 end
 
-return legacy
+return by_number

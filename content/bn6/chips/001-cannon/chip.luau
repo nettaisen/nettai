@@ -13,7 +13,7 @@ local cannon = require("../../lib/cannon")
 local cannons = require("../cannon/chips")
 local gigacans = require("../gigacan/chips")
 
-local legacy = {
+local by_number = {
     state = cannon.STATE,
 }
 
@@ -28,7 +28,7 @@ local BY_SUBTYPE: { [number]: Action } = {
     [6] = gigacans.gigacan3,
 }
 
-function legacy.update(me: Object, s: any)
+function by_number.update(me: Object, s: any)
     local v = me.variant
     local a = BY_SUBTYPE[v]
     if not a then
@@ -37,4 +37,4 @@ function legacy.update(me: Object, s: any)
     a.update(me, s)
 end
 
-return legacy
+return by_number
