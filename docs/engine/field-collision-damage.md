@@ -631,7 +631,7 @@ All of these run in the navi's stage A (§4.1) unless noted.
 | 0x7C | u32 | (acc) HitByMask | OR of hitters' CollisionIndexBit (filtered). `sub_801A4DC` lists their parents. |
 | 0x80 | u16 | (acc) FinalDamage | §4.4. |
 | 0x82..0x8C | u16×6 | (acc) ElementDamage[0..5] | +0x82 null, +0x84 heat, +0x86 aqua, +0x88 elec, +0x8A wood, +0x8C element 5 / poison. Multiplied, filtered. |
-| 0x8E | u16 | (acc) | Sum of hitters' `+0x07 & 0x7F` (mood damage, §4.9). |
+| 0x8E | u16 | (acc) | Sum of hitters' `+0x07 & 0x7F`, counter hits left out (mood damage, §4.9). |
 | 0x90 | u16 | (acc) | Counter accumulator; 0x8000 = counter hit. |
 | 0x92 | u16 | (acc) | Number of hitters with Self bit **0x100** (drain credit, §4.6). |
 | 0x94..0x9E | u16×6 | (acc) RawElementDamage[0..5] | Unmultiplied, unfiltered. Element 5 lands at +0x9E **[verified]**. |
@@ -911,7 +911,11 @@ Receiver R (r6) reacts to hitter H (r7). "Return" means H contributes nothing to
    4. **Counter.** Let `c = H+0x07`.
       - If `R.CounterTimer && (c & 0x7F) && !(c & 0x80)`: `R.FFC |= 0x40`.
       - If `!(c & 0x80) && (c & 0x7F)`: `R+0x90 = R.CounterTimer ? 0x8000 : R+0x90 + (c & 0x7F)`.
-      - Always `R+0x8E += c & 0x7F`.
+      - `R+0x8E += c & 0x7F`, **except on a counter hit** (the first branch of the line above): the routine has
+        just loaded 0x8000 into the register it masks with 0x7F here, so it adds 0. A counter hit doesn't wear the
+        mood of the navi it lands on: a navi in Full Synchro that is countered keeps it (and its aura) through
+        the paralysis, until anger takes it 120 stunned ticks in (`sub_80142DC`). **Verified** on the lab's
+        `chips/0x13e-batcan4/counter` (side 1's MiniBomb counters side 0 in Full Synchro).
    5. If `H.Self & 0x100`: `R+0x92 += 1`.
    6. `R.HitModifierFinal |= H.HitModifierBase`.
    7. If `H.Bugs & 0xFF`: `u16 R+0xA4 = H.Bugs`.
@@ -1309,7 +1313,8 @@ So a paralyzed or frozen navi is only flinched by a hit that also requests flash
 
 **`sub_801A200`** (end of HP application; skipped if the battle is over):
 - **Full Synchro:** if `u16 cd+0x90 & 0x8000`, the opponent's Transformation is in {0, 0xB, 0xC}, and on both navis `ai+0x32 == 0 && ai+0x36 == 0`: `ns[opp].Mood = 0xFF` (`sub_8015BEC`).
-- **Mood:** always `sub_8015C12(alliance, u16 cd+0x8E)`: if Mood ≠ 0, `Mood = max(Mood − cd+0x8E, 1)`.
+- **Mood:** always `sub_8015C12(alliance, u16 cd+0x8E)`: if Mood ≠ 0, `Mood = max(Mood − cd+0x8E, 1)`. A counter
+  hit adds nothing to cd+0x8E (§3.8), so it takes no mood.
 - **[verified]** At tick 2346: 0x80 → 0x62, with the hitbox's counter byte 30.
 
 A barrier (which clears FFC 0x50) or a trap ZERO (which clears 0x40) cancels a counter. Counters are code only.
