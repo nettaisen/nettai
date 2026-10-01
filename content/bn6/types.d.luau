@@ -4,9 +4,9 @@
 -- the pack. (The engine's API and data types are in core.d.luau.)
 
 -- Where an owner keeps an attached object: its actor overlay slot, its
--- first related object, or its content state's `held` field
+-- first related object, or its content state's `held` or `held2` field
 -- (lib/slot.luau).
-export type Slot = "overlay" | "related" | "held"
+export type Slot = "overlay" | "related" | "held" | "held2"
 
 -- A projectile's variant (objects/projectile, the original's `off_80C4C78`
 -- rows): what it is and hits, its hit modifier, its element and secondary
