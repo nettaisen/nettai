@@ -12,7 +12,8 @@
 //! - banners: [`Battle::banner_for`] (the telops say whose chip
 //!   it is, the result banner shows the viewer's navi winning or losing)
 //!   and [`Battle::telop_for`] (a hidden chip's telop names it only to its
-//!   user, if to anyone);
+//!   user, if to anyone) and [`Battle::used_chip_for`] (the other player's
+//!   chip, named for a second);
 //! - the result: [`Battle::round_end_for`].
 //!
 //! Still shown only as the local side sees it (docs/design/rollback.md):
@@ -107,6 +108,17 @@ impl Battle {
         }
         let name = t.chip.map_or(TelopName::Unknown, TelopName::Chip);
         Some(ShownTelop { remote, name, damage: t.damage, bonus: t.bonus, doubled: t.doubled })
+    }
+
+    /// What `viewer`'s console shows of its navi's chips.
+    pub fn chip_hud_for(&self, viewer: u8) -> crate::hud::ChipHud {
+        self.chip_hud[viewer as usize & 1]
+    }
+
+    /// The chip the other player just used, while `viewer`'s console names
+    /// it.
+    pub fn used_chip_for(&self, viewer: u8) -> Option<crate::hud::UsedChip> {
+        self.used_chips[(viewer ^ 1) as usize & 1]
     }
 
     /// How the round ended, for `viewer` (the result and the score are

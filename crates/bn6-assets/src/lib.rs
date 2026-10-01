@@ -269,6 +269,17 @@ pub struct Hud {
     pub count_box: Tiles,
     /// A transformed navi's mugshot emotion by form.
     pub form_emotions: Vec<u8>,
+    /// The link navis' mugshots, and which a navi shows: by the navi's
+    /// number less one (`byte_801CDDC`; a ROM holds its own version's
+    /// navis' faces and ProtoMan's or Colonel's, and the other version's
+    /// navis show them).
+    pub navi_mugshots: Vec<NaviMugshot>,
+    pub navi_mugshot_of: Vec<u8>,
+    /// The box beside a link navi's mugshot (2x2 tiles), where MegaMan's
+    /// count is.
+    pub navi_box: Tiles,
+    /// "PAUSE": five glyphs, drawn with the opponents' HP digits' palette.
+    pub pause: Tiles,
     /// Banners by banner id / 4.
     pub banners: Vec<BannerLayout>,
     /// The banner font's digits (glyph d is digit d; glyph 10 is blank).
@@ -278,6 +289,13 @@ pub struct Hud {
     /// custom screen, and its palette.
     pub waiting: Tiles,
     pub waiting_palette: Palette,
+}
+
+/// A link navi's mugshot (4x2 tiles) with its palettes: normal, angry.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct NaviMugshot {
+    pub tiles: Tiles,
+    pub palettes: [Palette; 2],
 }
 
 /// A chip's icon. Empty tiles: the chip has none.
@@ -334,7 +352,7 @@ pub struct BannerLayout {
     pub y: u8,
     /// 0 plain, 1 with a number, 2 and 4 hold until removed; 3 (the
     /// telops) has no glyphs of its own: a frontend draws the chip's name
-    /// with the font, and 4 adds text drawn at run time to its glyphs.
+    /// with the font, and 4 (the judge's) adds two numbers to its glyphs.
     pub kind: u8,
     /// 20 glyphs, drawn as five 32x16 sprites.
     pub glyphs: Tiles,

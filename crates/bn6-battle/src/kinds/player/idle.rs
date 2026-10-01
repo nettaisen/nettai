@@ -40,7 +40,9 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
 fn battle_over(b: &mut Battle, r: ObjectRef) {
     reset_charge(b, r);
     super::clear_statuses(b, r);
-    // sub_801DACC(0x42): HUD.
+    // sub_801DACC(0x42): the console's chip icons and window go, whichever
+    // navi this is.
+    b.chip_hud = Default::default();
     if cross_protected(b, r) {
         ai_mut(b, r).attack.variant = 1;
         let protect = super::role_action(b, crate::content::ActionRole::CrossProtect);
@@ -56,7 +58,9 @@ fn reactive_chip(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80F0354`.
 fn decide(b: &mut Battle, r: ObjectRef) {
-    // HUD (local side): the chip window follows `sub_800A772`.
+    // Its console's chip window follows `sub_800A772`.
+    let side = b.objects.get(r).alliance as usize & 1;
+    b.chip_hud[side].window = super::input::chips_enabled(b, r);
     phase_timer(b, r);
     // Beast Over (and any form past it): the berserk controller decides.
     if form_of(b, r).0 >= 0x17 {
@@ -161,7 +165,11 @@ fn phase_timer(b: &mut Battle, r: ObjectRef) {
         return;
     }
     if b.objects.get(r).phase_init == 0 {
-        // sub_801DA48(2): HUD.
+        // sub_801DA48(2): the console's chip icons show, whichever navi
+        // this is.
+        for hud in &mut b.chip_hud {
+            hud.icons = true;
+        }
         b.objects.get_mut(r).timer = 10;
         let a = ai_mut(b, r);
         a.status |= status::CONTROLLABLE;
@@ -181,6 +189,8 @@ fn phase_timer(b: &mut Battle, r: ObjectRef) {
 /// window HUD closes).
 fn leave_idle(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).status &= !status::CONTROLLABLE;
+    let side = b.objects.get(r).alliance as usize & 1;
+    b.chip_hud[side].window = false;
 }
 
 /// `sub_802E4E4`: the specials' requests start them: the SELECT special
@@ -297,6 +307,9 @@ pub(crate) fn buster_damage(b: &Battle, r: ObjectRef) -> u16 {
 /// `loc_80F057C`: after a chip starts: interception by the opponent's
 /// NaviCust, the chip-in-progress state, and the hand advances.
 fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
+    // loc_80F05F2: its console's chip window goes, intercepted or not.
+    let side = b.objects.get(r).alliance as usize & 1;
+    b.chip_hud[side].window = false;
     if intercepted(b, r, chip) {
         exit_attack_state(b, r);
         return;
@@ -304,7 +317,19 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     let a = ai_mut(b, r);
     a.status &= !status::CONTROLLABLE;
     a.status |= status::CHIP_IN_PROGRESS;
-    // The remote side shows the chip's name.
+    // The other player's console shows the chip's name (sub_801EB18),
+    // unless it is a cut-in chip (its telop does) or chip 0x185.
+    let (used, damage, bonus) = {
+        let a = &ai(b, r).attack;
+        (a.chip, a.damage, a.extra)
+    };
+    if let Some(used) = used
+        && chip.is_some_and(|c| b.content.chip(c).flags.0 & crate::content::ChipFlags::DIMMING == 0)
+        && b.chip_number(Some(used)) != Some(0x185)
+    {
+        let side = b.objects.get(r).alliance;
+        b.show_used_chip(side, used, damage, bonus);
+    }
     let a = &ai(b, r).attack;
     if a.special_source == 0 && a.kind != 5 {
         // sub_800FC7C
@@ -395,7 +420,7 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
         crate::behavior::set_state_field(b, c, "telop_chip", telop);
         // The same for the presentation.
         let named = b.content.chip_numbered(support.telop_chip());
-        b.objects.get_mut(c).telop_chip = named.map(|chip| crate::dimming::DimmingChip { chip: Some(chip), bonus: 0 });
+        b.objects.get_mut(c).telop_chip = named.map(|chip| crate::hud::TelopChip { chip: Some(chip), ..Default::default() });
     }
     b.start_dimming(side, true, controller, host);
 }

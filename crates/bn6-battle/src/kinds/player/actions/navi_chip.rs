@@ -42,7 +42,9 @@ pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) 
     if let Some(c) = controller
         && b.objects.get(c).telop_chip.is_none()
     {
-        b.objects.get_mut(c).telop_chip = Some(spec.chip);
+        // (The controller's damage is its damage word's low half.)
+        let telop = crate::hud::TelopChip { chip: a.chip, bonus: a.extra, damage: Some(a.damage) };
+        b.objects.get_mut(c).telop_chip = Some(telop);
     }
     controller
 }

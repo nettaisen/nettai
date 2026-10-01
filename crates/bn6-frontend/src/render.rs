@@ -2,14 +2,14 @@
 //! and the pack's graphics.
 
 use crate::audit::Problems;
-use crate::compose::{self, Fade, Fades, Layer};
+use crate::compose::{self, Fade, Fades, Layer, Palettes};
 use bn6_battle::transform::{SequencerState, TransformPhase};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::stage::{Stage, StageClock};
 use bn6_assets::Bundle;
 use bn6_battle::Battle;
-use bn6_battle::battle::mode;
+use bn6_battle::battle::{FadeMode, mode};
 
 /// Draws battles; keeps its layer buffers between frames.
 pub struct Renderer<'a> {
@@ -30,7 +30,7 @@ impl<'a> Renderer<'a> {
             // Background priority 3 (BG1), field 2 (BG2), HUD 1 (BG3).
             background: Layer::new(3, 1),
             field: Layer::new(2, 2),
-            hud: Layer::new(1, 3),
+            hud: Layer { palettes: Palettes::Hud, ..Layer::new(1, 3) },
             hud_state: HudState::default(),
             problems: Problems::default(),
         }
@@ -46,9 +46,12 @@ impl<'a> Renderer<'a> {
         self.hud_state = HudState::default();
     }
 
-    /// The view a battle is seen from.
+    /// The view a battle is seen from: the local player's console's, whose
+    /// camera a shake moves this tick (`camera_doShakeEffect_80301e8`).
     pub fn view(b: &Battle) -> View {
-        View { camera: (0, 0, 0), mirror: b.setup.local_side & 1 == 1 }
+        let local = b.setup.local_side;
+        let (x, y) = b.consoles[local as usize & 1].camera.jitter;
+        View { camera: (x, y, 0), mirror: local & 1 == 1 }
     }
 
     /// Draw a battle as a 240x160 BGR555 frame.
@@ -59,16 +62,31 @@ impl<'a> Renderer<'a> {
         self.background.clear();
         stage.draw_background(&mut self.background);
         self.field.clear();
-        stage.draw_field(b, &mut self.field, b.setup.local_side);
+        stage.draw_field(b, &mut self.field, b.setup.local_side, &view);
         self.hud.clear();
         let mut list = SpriteList::default();
         objects::queue_objects(b, assets, &view, &mut list, &mut self.problems);
         crate::hud::draw(b, assets, &self.hud_state, &mut self.hud, &mut list, &mut self.problems);
         let parts = list.into_parts();
         let backdrop = stage.palettes[0][0];
-        let fades = Fades { layers: layer_fade(b), screen: screen_fade(b) };
+        // The transformation's fade takes every background palette, a
+        // dimming's the stage's.
+        let transform = layer_fade(b);
+        let stage = if transform == Fade::None { dim_fade(b) } else { transform };
+        let fades = Fades { stage, hud: transform, screen: screen_fade(b) };
         compose::compose(backdrop, &[&self.hud, &self.field, &self.background], &parts, fades)
     }
+}
+
+/// A dimming (`object_dimScreen`, `object_undimScreen`: fade modes 0x3C
+/// and 0x38) darkens the first nine background palettes, the stage's, by a
+/// sixteenth for every 0x10 of the fade's level: a quarter when dimmed.
+/// The HUD's palettes and the sprites keep their colours.
+pub fn dim_fade(b: &Battle) -> Fade {
+    if !matches!(b.fade.mode, FadeMode::Dim | FadeMode::Undim) {
+        return Fade::None;
+    }
+    Fade::Black((b.fade.level >> 4).min(16) as u8)
 }
 
 /// The transformation sequencer fades the tile layers (not the sprites)
