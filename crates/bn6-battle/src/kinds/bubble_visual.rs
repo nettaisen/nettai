@@ -7,10 +7,8 @@
 
 use crate::battle::Battle;
 use crate::collision::{f1, link};
-use crate::content::SpriteId;
 use crate::object::{ObjectRef, flags, state};
 
-const SPRITE: SpriteId = SpriteId { category: 0x0C, index: 0x20 };
 /// Floating, and popping.
 const ANIM_FLOAT: u8 = 2;
 const ANIM_POP: u8 = 3;
@@ -57,8 +55,9 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80E4A6E`: the floating bubble.
 fn init(b: &mut Battle, r: ObjectRef) {
+    let sprite = b.content.defs.roles.sprite(crate::content::SpriteRole::Bubble);
     let s = b.objects.sprite_mut(r);
-    s.load(SPRITE);
+    s.load(sprite);
     s.set_animation(0, &b.content);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
