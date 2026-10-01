@@ -5,8 +5,8 @@
 //! the pack once (the *define phase*): modules make definitions with
 //! `define.<registry>(spec)` (a chip, an object kind, an action...) and
 //! return tables of their own. The engine plans what it will call from the
-//! definitions and from what the pack's data still registers by module
-//! (`bn6_content_api::BindPlan`); the runtime binds those functions:
+//! definitions (`bn6_content_api::BindPlan`); the runtime binds those
+//! functions:
 //!
 //! ```luau
 //! local bomb = define.kind {
@@ -19,7 +19,7 @@
 //!
 //! `state` declares the kind's or action's typed state, which the engine
 //! stores and snapshots; the functions run on demand and keep nothing
-//! themselves. The pack's data is the frozen global `data`.
+//! themselves. What modules share they `require`.
 //!
 //! Loading enforces that: modules are checked for writes to globals and to
 //! module-level locals (`verify`), everything a module returns or captures
