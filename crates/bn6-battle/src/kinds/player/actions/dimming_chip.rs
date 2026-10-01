@@ -45,5 +45,10 @@ pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) 
         u => panic!("chip {:?} is a dimming chip's, but it is used as {u:?}", b.content.defs.chip(chip).key),
     };
     let spec = DimmingChipSpec { element: a.element, damage, chip: a.chip, bonus: a.extra };
-    crate::behavior::call_hook(b, hook, HookCall::DimmingChip { user, spec }).object()
+    let controller = crate::behavior::call_hook(b, hook, HookCall::DimmingChip { user, spec }).object();
+    // What its telop shows (the controller's +0x30 and +0x32).
+    if let Some(c) = controller {
+        b.objects.get_mut(c).telop_chip = Some(crate::hud::TelopChip { chip: a.chip, bonus: a.extra, damage: None });
+    }
+    controller
 }

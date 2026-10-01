@@ -36,6 +36,11 @@ pub(crate) const TRIGGERS: u32 =
 /// or trap-armed (`sub_801031C(0x810)`), the hit that set the trap off
 /// dropped (`sub_800E9FA`), the chip telop the other player sees (HUD).
 fn drop_everything(b: &mut Battle, r: ObjectRef) {
+    // sub_801DACC(0x40): the console's chip window goes, whichever navi
+    // this is.
+    for hud in &mut b.chip_hud {
+        hud.window = false;
+    }
     b.objects.get_mut(r).related[0] = None;
     let a = ai_mut(b, r);
     a.overlay = None;
@@ -64,6 +69,10 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     a.lockout = 0;
     let action = counter_action(b, requests, true);
     set_attack(b, r, action, 0);
+    // The other player's console shows the trap chip's name (sub_801EB18).
+    if let Some(chip) = rec.chip {
+        b.show_used_chip(side as u8, chip, rec.damage as u16, rec.bonus);
+    }
     super::dispatch(b, r, action);
 }
 

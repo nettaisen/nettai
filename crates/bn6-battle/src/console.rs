@@ -97,6 +97,9 @@ pub struct Console {
     pub tag_pair: Option<u8>,
     /// The save's glitch, for the emotion window's start.
     pub emotion_window_glitch: bool,
+    /// The HP box's count to its next low-HP sound (`eStruct2035280`+6:
+    /// only the sound depends on it).
+    pub low_hp_ticks: u8,
 }
 
 impl Console {
@@ -107,6 +110,7 @@ impl Console {
             emotion_window: EmotionWindow::default(),
             tag_pair: setup.tag_pair,
             emotion_window_glitch: setup.emotion_window_glitch,
+            low_hp_ticks: 0,
         }
     }
 

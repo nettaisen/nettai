@@ -168,7 +168,6 @@ const ALWAYS: &[(&str, &str, &str)] = &[
     ("battle.navi_record(", "battle.navi_record", "the identity (step 11)"),
     (":death_hook(", "me:death_hook", "the identity (step 11)"),
     ("battle.attach_point(", "battle.attach_point", "me:attach_point_pos"),
-    ("data.", "the data global", "definitions"),
     ("legacy {", "a legacy marker", "the v2 form it stands for"),
     ("legacy = {", "a legacy marker", "the v2 form it stands for"),
 ];
@@ -178,11 +177,6 @@ const ALWAYS: &[(&str, &str, &str)] = &[
 const BY_ARGUMENT: &[(&str, &[usize], &str, &str)] = &[
     ("battle.play_sound(", &[0], "battle.play_sound(number)", "asset.sound"),
     ("battle.play_sound_for(", &[1], "battle.play_sound_for(side, number)", "asset.sound"),
-    ("battle.effect(", &[1], "battle.effect(pos, number)", "define.effect"),
-    ("battle.spark(", &[2], "battle.spark(owner, pos, number)", "define.spark"),
-    ("battle.region_effects(", &[2, 4], "battle.region_effects(number)", "define.region, define.effect"),
-    (":setup_collision(", &[0, 1], "me:setup_collision(number)", "define.collision"),
-    (":reset_collision_types(", &[0, 1], "me:reset_collision_types(number)", "define.collision"),
 ];
 
 /// Every deprecated use in a module.
@@ -364,20 +358,12 @@ mod tests {
                    battle.play_sound(THROW)\n\
                    battle.play_sound(0x10)\n\
                    local k = battle.spawn(bomb.kind, me.pos)\n\
-                   local _ = battle.effect(me.pos, 3)\n\
                    local _ = battle.effect(me.pos, BURST)\n\
-                   local _ = data.regions[1]\n\
                    local N = define.navi { id = 'n', legacy = legacy { number = 1 } }\n";
         let d: Vec<&str> = deprecated(src).iter().map(|d| d.what).collect();
         assert_eq!(
             d,
-            [
-                "battle.play_sound(number)",
-                "battle.play_sound(number)",
-                "battle.effect(pos, number)",
-                "the data global",
-                "a legacy marker",
-            ]
+            ["battle.play_sound(number)", "battle.play_sound(number)", "a legacy marker"]
         );
     }
 

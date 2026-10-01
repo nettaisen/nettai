@@ -45,7 +45,7 @@ local function fall(me: Object)
         element = me.element,
         region = regions.single,
         -- None.
-        hit_effect = 0xFF,
+        hit_effect = nil,
         target = collision.hits_navis,
         self_type = collision.thrown,
         damage = me.damage,

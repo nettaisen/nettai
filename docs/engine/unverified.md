@@ -335,11 +335,9 @@ first only, and the second takes what the spawner leaves in that register, the e
   per-player gauges and the special chips are not a netbattle's); ColForce from a real Gregar side 1 (the
   lab's bases have none; `chips/0x130-colforce/side1` gives a Falzar side the chip). Effects 2, 6, 9, 11, 16
   and 17 are called only by the link navis' weapons (not surveyed here).
-- The chips' charged shots are not ported: BugRSwrd, BgDthThd and the four arm chips make their own weapon the
-  navi's charged shot (`bugrswrd/charge`, `bgdththd/charge`, `puncharm/charge`, `needlarm/charge`,
-  `puzzlarm/charge`, `boomrarm/charge`: the original's weapon routines 0x21 to 0x26), and those weapons have no
-  `setup` yet, so firing the charged shot after one of these chips stops with an error. Reachable with the two
-  Giga chips (a folder can hold them); the arm chips are in no folder.
+- The chips' charged shots beyond their scenarios: the arm chips' in a Cross or Beast Out (the two bug chips' are
+  recorded there); a second navi's hit ending one mid-attack (the actions' own flinch paths are their chips');
+  the bug frags running out between two players' uses (each side has its own count).
 - The link navis' charged attacks beyond the one scenario each (standard-chips.md, "Action 9", lists them):
   HeatMan with no floor ahead, ElecMan's bolts with no enemy on a panel, ChargeMan stopped where the floor ends
   (his cars' burst), GroundMan's drills stopped by a hit, off the field or orphaned by a flinch, the higher
@@ -400,6 +398,8 @@ for the fight's states and the custom screen. "Matches" means every frame of the
 | The worse status bug (six colours) and the emotion bug in Beast Out (no swings in a form) | `navicust/bug-status-6`, `bug-emotion-beast` | match |
 | The chatbox the custom screen waits on (custom-screen.md §3.5): the tick a description takes keys from, by its text's lines (Cannon R+8, Recov10 R+7, the invalid chip R+6, a Cross R+8); B held; the L message's printing, rushed by A or held B, for MegaMan and all eleven link navis | `custom/description-arm-*`, `description-invalid-*`, `description-cross-*`, `description-b-held-12`, `-30`, `description-keys`, `run-message`, `-b`, `-wait`, `-taps-0`, `-taps-1`, `-b-held`, `run-message-navi-1` to `-11` and their `-wait` | match, since the chatbox's port (the engine took a description's key from R+6 whatever its lines, had no held B, and estimated the message at 72 ticks) |
 | The link navis' charged attacks (their action table's entry 9, weapon routines 0x40 to 0x45 and 0x47 to 0x4A; standard-chips.md, "Action 9") and ProtoMan's (0x32, WideSwrd's slash) and his B+Back Reflect (0x30): each twice, from the start panel and a row up, the opponent standing still | `navis/navi-01-heatpres` to `navi-11-stepswrd` | match |
+| BugRSwrd's and BgDthThd's charged shots (weapon routines 0x21 and 0x22, chips.md §3 subtype 38): with bug frags to spare (DrkSword's slash, the fast thunder ball: 200), with none (Sword's slash, Thunder's ball: 80, 40), with one for two shots (the frag spent, then the plain shot), hitting, out of reach, against the user's own RockCube, the turn after the chip, through a Cross change (the chip's weapon stays), and in Beast Out (the Beast buster gives way to the plain buster) | `chips/0x131-bugrswrd/charge-{hit,miss,obstacle,no-frags-hit,no-frags-miss,last-frag,next-turn,cross,beast}`, `chips/0x136-bgdththd/charge-{hit,moving,obstacle,no-frags-hit,last-frag,next-turn,beast}` | match |
+| The arm chips' charged shots (0x23 to 0x26; in no legal folder: a save edit holds them): PunchArm's fists on the opponent's column, out of reach from the back columns, twice in a turn and again the next; NeedlArm's needles on a standing and a stepping opponent; PuzzlArm's pulse in and out of reach; BoomrArm's boomerang past an opponent on its path and off it | `chips/0x119-puncharm/charge-{hit,far,twice}`, `chips/0x11a-needlarm/charge-{hit,moving}`, `chips/0x11b-puzzlarm/charge-{hit,miss}`, `chips/0x11c-boomrarm/charge-{hit,miss}` | match |
 
 ### Not reachable in a netbattle (documented, no scenario)
 

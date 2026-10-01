@@ -111,18 +111,13 @@ pub const NAVI_SPRITE: SpriteId = SpriteId { category: 0, index: 0 };
 /// Where the navi holds a gun.
 pub const GUN_POINT: AttachPoint = AttachPoint { x: 20, y: 16 };
 
-// Collision type bits by what they mean (field-collision-damage.md §3.3).
-const ATTACK: [u32; 2] = [0x8000_0000, 0x4000_0000];
-const OBJECT: [u32; 2] = [0x2000_0000, 0x1000_0000];
+// Collision type bits by what they mean (field-collision-damage.md §3.3),
+// which panels' flags carry too. (The test content's collision types are
+// testdata/content/rules/ruleset.luau's.)
 const BODY: [u32; 2] = [0x0800_0000, 0x0400_0000];
 const OTHER_BODY: [u32; 2] = [0x0200_0000, 0x0100_0000];
 const NEUTRAL: u32 = 0x0080_0000;
 const PLAYER: [u32; 2] = [0x0040_0000, 0x0020_0000];
-const FLOATING: u32 = 0x0010_0000;
-const BLOCKER: u32 = 0x0008_0000;
-const WHILE_DIMMED: u32 = 0x0001_0000;
-const REACHES_FLOATING: u32 = 0x0080;
-const BREAKS: u32 = 0x0002;
 // A panel flag every panel type has.
 const ON_FIELD: u32 = 0x0001_0000;
 
@@ -312,9 +307,6 @@ fn make() -> Content {
         forms: Vec::new(),
         rules: rules(),
         objects: objects(),
-        effects: vec![EffectSprite { sprite: SpriteId { category: 0x14, index: 0 }, anim: 0, palette: 0 }; 0x70],
-        sparks: vec![EffectSprite { sprite: SpriteId { category: 0x14, index: 1 }, anim: 0, palette: 0 }; 16],
-        regions: regions(),
         animations: animations(),
         scripts: scripts(),
         assets: assets(),
@@ -1000,8 +992,30 @@ pub fn scripts() -> Scripts {
                 // HubBatc, and an arm chip with the weapon it makes the
                 // charged shot.
                 ("chips/hubbatc/chip", "chips/hubbatc/chip"),
+                // (The chips that make their own weapon the charged shot,
+                // with the chips' parts those weapons fire.)
+                ("lib/navi-boost/charge", "lib/navi-boost/charge"),
                 ("chips/puncharm/charge", "chips/puncharm/charge"),
                 ("chips/puncharm/chip", "chips/puncharm/chip"),
+                ("chips/bugrswrd/charge", "chips/bugrswrd/charge"),
+                ("chips/bugrswrd/chip", "chips/bugrswrd/chip"),
+                ("chips/thunder/ball", "chips/thunder/ball"),
+                ("chips/thunder/shoot", "chips/thunder/shoot"),
+                ("chips/thunder/chip", "chips/thunder/chip"),
+                ("chips/bgdththd/charge", "chips/bgdththd/charge"),
+                ("chips/bgdththd/chip", "chips/bgdththd/chip"),
+                ("chips/aquandl/needle", "chips/aquandl/needle"),
+                ("chips/aquandl/volley", "chips/aquandl/volley"),
+                ("chips/aquandl/action", "chips/aquandl/action"),
+                ("chips/aquandl/chips", "chips/aquandl/chips"),
+                ("chips/needlarm/charge", "chips/needlarm/charge"),
+                ("chips/needlarm/chip", "chips/needlarm/chip"),
+                ("chips/elcpuls/pulse", "chips/elcpuls/pulse"),
+                ("chips/elcpuls/action", "chips/elcpuls/action"),
+                ("chips/puzzlarm/charge", "chips/puzzlarm/charge"),
+                ("chips/puzzlarm/chip", "chips/puzzlarm/chip"),
+                ("chips/boomrarm/charge", "chips/boomrarm/charge"),
+                ("chips/boomrarm/chip", "chips/boomrarm/chip"),
                 ("lib/gauge-speed/controller", "lib/gauge-speed/controller"),
                 ("chips/slogauge/chip", "chips/slogauge/chip"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
@@ -1174,32 +1188,6 @@ fn requires(module: &str, source: &str) -> Vec<String> {
 }
 
 fn rules() -> Rules {
-    // Collision types by what they are.
-    let both = |f: &dyn Fn(usize) -> u32| [f(0), f(1)];
-    let mut collision_types = vec![[0, 0]; 0x59];
-    let attack = both(&|s| ATTACK[s] | REACHES_FLOATING);
-    collision_types[0x01] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING);
-    collision_types[0x10] = both(&|s| BODY[s] | PLAYER[s] | WHILE_DIMMED | REACHES_FLOATING | FLOATING);
-    collision_types[0x02] = both(&|s| ATTACK[s ^ 1] | OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
-    collision_types[0x05] = both(&|s| OBJECT[s ^ 1] | BODY[s ^ 1] | OTHER_BODY[s ^ 1] | NEUTRAL);
-    for t in [0x04, 0x06, 0x07, 0x0A, 0x0B, 0x12, 0x15, 0x16, 0x2C, 0x32, 0x48] {
-        collision_types[t] = attack;
-    }
-    collision_types[0x2A] = collision_types[0x05];
-    // The Crosses' attacks (sword waves, hit zones, gusts, drills).
-    for t in [0x06, 0x07, 0x1E, 0x4A] {
-        collision_types[t] = attack;
-    }
-    collision_types[0x0E] = [NEUTRAL | BLOCKER | WHILE_DIMMED | REACHES_FLOATING | BREAKS; 2];
-    collision_types[0x0F] = [ATTACK[0] | ATTACK[1] | BODY[0] | BODY[1] | BREAKS; 2];
-    // Thrown things: a flash's hit, a set-down bomb (an object either side
-    // can hit) and what it reacts to, a bug bomb and its target.
-    collision_types[0x0B] = attack;
-    collision_types[0x0C] = both(&|s| OBJECT[s] | NEUTRAL);
-    collision_types[0x0D] = both(&|s| ATTACK[s ^ 1] | BODY[s ^ 1]);
-    collision_types[0x4E] = both(&|s| OBJECT[s] | NEUTRAL);
-    collision_types[0x14] = both(&|s| ATTACK[s ^ 1] | BODY[s ^ 1]);
-
     // Panels: what each type adds to a panel's flags word.
     let types = PanelType::ALL
         .iter()
@@ -1238,7 +1226,6 @@ fn rules() -> Rules {
     let mut front_edges = [[false; 8]; 5];
     front_edges[3][1..7].fill(true);
 
-    let sides = PanelCondition { require: 0, forbid: 0 };
     Rules {
         element_weakness: {
             // Fire is weak to aqua, aqua to elec, elec to wood, wood to
@@ -1256,17 +1243,6 @@ fn rules() -> Rules {
                 _ => 0,
             })
         }),
-        collision_types,
-        field_regions: vec![
-            sides,
-            PanelCondition { require: 0, forbid: pflags::ALLIANCE_1 },
-            PanelCondition { require: pflags::ALLIANCE_1, forbid: 0 },
-            PanelCondition { require: pflags::SOLID, forbid: 0 },
-            // Dimming chip subtypes 10, 11, 14 and ElemTrap's (20): side 0's and
-            // side 1's navi's panels (0x84, 0x85).
-            PanelCondition { require: PLAYER[0], forbid: 0 },
-            PanelCondition { require: PLAYER[1], forbid: 0 },
-        ],
         panels: PanelRules {
             types,
             start_visible,
@@ -1382,22 +1358,6 @@ fn objects() -> ObjectData {
             })
             .collect(),
     }
-}
-
-fn regions() -> Vec<Vec<PanelOffset>> {
-    let p = |dx, dy| PanelOffset { dx, dy };
-    let mut v = vec![vec![p(0, 0)]; 0x2F];
-    v[0] = Vec::new();
-    v[2] = vec![p(0, 0), p(1, 0)];
-    v[3] = vec![p(1, 0)];
-    v[4] = vec![p(0, 0), p(0, -1), p(0, 1)];
-    v[0x11] = vec![p(0, 0), p(0, -1), p(0, 1), p(1, 0), p(1, -1), p(1, 1)];
-    // The Beast charged chips' pillars: here the panel in front and two
-    // past it.
-    v[0x1A] = vec![p(0, 0), p(2, 0)];
-    // A block around the panel (the scatter's panel search).
-    v[0x0F] = vec![p(0, 0), p(1, 0), p(-1, 0), p(0, -1), p(0, 1), p(1, -1), p(1, 1), p(-1, -1), p(-1, 1)];
-    v
 }
 
 /// Animation timing for the sprites the tests' battles show.

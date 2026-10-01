@@ -216,7 +216,7 @@ local function erupt(me: Object)
                     element = AQUA,
                     z = 0,
                     region = regions.ring,
-                    hit_effect = 0xFF,
+                    hit_effect = nil,
                     target = collision.hits_navis,
                     self_type = collision.attack,
                     damage = bit32.band(word, 0xFFFF),

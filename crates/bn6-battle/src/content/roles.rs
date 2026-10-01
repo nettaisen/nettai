@@ -8,7 +8,10 @@
 
 use std::collections::BTreeMap;
 
-use bn6_content_api::{ActionHandle, ChipHandle, FnId, KindHandle, LockonHandle, StatusHandle};
+use bn6_content_api::{
+    ActionHandle, ChipHandle, CollisionHandle, EffectHandle, FnId, KindHandle, LockonHandle, RegionHandle, SparkHandle,
+    StatusHandle,
+};
 
 /// The actions the ruleset starts or recognizes by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -43,10 +46,13 @@ pub enum ActionRole {
     /// DustCross Beast's scatter (0x50), during which the ruleset doesn't
     /// ground a MegaMan navi.
     DustBeastScatter,
+    /// ChargeCross's tackle (0x56), during which an invulnerable navi
+    /// doesn't glow (`sub_8016860`).
+    ChargeTackle,
 }
 
 impl ActionRole {
-    pub const ALL: [ActionRole; 12] = [
+    pub const ALL: [ActionRole; 13] = [
         ActionRole::AntiDamageCounter,
         ActionRole::AntiSwordCounter,
         ActionRole::BodyGuardCounter,
@@ -59,6 +65,7 @@ impl ActionRole {
         ActionRole::ChargedSword,
         ActionRole::BeastClaw,
         ActionRole::DustBeastScatter,
+        ActionRole::ChargeTackle,
     ];
 
     /// Its name in `rules/roles.luau`'s `actions`.
@@ -76,6 +83,7 @@ impl ActionRole {
             ActionRole::ChargedSword => "charged_sword",
             ActionRole::BeastClaw => "beast_claw",
             ActionRole::DustBeastScatter => "dust_beast_scatter",
+            ActionRole::ChargeTackle => "charge_tackle",
         }
     }
 
@@ -197,6 +205,109 @@ impl StatusRole {
     }
 }
 
+/// A group of roles that name definitions of one registry: the roles, each
+/// with its name in `rules/roles.luau`'s group.
+macro_rules! definition_roles {
+    ($(#[$doc:meta])* $name:ident { $($(#[$vdoc:meta])* $variant:ident = $key:literal,)* }) => {
+        $(#[$doc])*
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub enum $name {
+            $($(#[$vdoc])* $variant,)*
+        }
+
+        impl $name {
+            pub const ALL: &'static [$name] = &[$($name::$variant,)*];
+
+            /// Its name in its group of `rules/roles.luau`.
+            pub fn name(self) -> &'static str {
+                match self {
+                    $($name::$variant => $key,)*
+                }
+            }
+
+            pub fn named(name: &str) -> Option<$name> {
+                $name::ALL.iter().copied().find(|r| r.name() == name)
+            }
+        }
+    };
+}
+
+definition_roles! {
+    /// The one-shot effects the ruleset shows itself, by role (`effects`).
+    EffectRole {
+        /// A navi deleted (`sub_8010820`'s two explosions), a cross merged
+        /// into MegaMan, a navi arriving mid-battle or back from a Cross
+        /// special, a form put on or taken off.
+        Deletion = "deletion",
+        /// HP recovered: a heal's sparkle (`sub_800E2FC`), a recovery
+        /// chip's, the undershirt's credits', a navi appearing mid-battle.
+        Recovery = "recovery",
+        /// The flash where a side cut in (`sub_800B8EE`).
+        CutInFlash = "cut_in_flash",
+        /// The mark over a navi whose trap sprang (`sub_800ABC6`: AntiNavi,
+        /// AntiRecv).
+        TrapMark = "trap_mark",
+        /// What an obstacle encased in ice or a bubble flickers with
+        /// (`sub_8018186`).
+        Encased = "encased",
+        /// A Cross or Beast Out put on (`sub_8015166`).
+        FormChange = "form_change",
+        /// Beast Over's beast (`sub_80151D4`), Gregar's and Falzar's.
+        BeastOverGregar = "beast_over_gregar",
+        BeastOverFalzar = "beast_over_falzar",
+        /// Beast Over's blast, after its beast.
+        BeastOverBlast = "beast_over_blast",
+        /// One of the bursts around a navi going Beast Over
+        /// (`sub_80E7D0C`).
+        BeastOverBurst = "beast_over_burst",
+    }
+}
+
+definition_roles! {
+    /// The hit sparks the ruleset shows itself, by role (`sparks`).
+    SparkRole {
+        /// What a new collision registration's hits show until its owner
+        /// says otherwise (the original's zeroed hit-effect byte).
+        Plain = "plain",
+        /// A blocked hit's (`object_spawnHiteffect`).
+        Guard = "guard",
+        /// An eruption's hits' (a volcano panel's, `sub_80E1DA0`).
+        Eruption = "eruption",
+        /// A thrown obstacle's landing's (`sub_8018002`).
+        ThrownObstacle = "thrown_obstacle",
+        /// A navi's programs uninstalled (`sub_80140EE`).
+        Uninstall = "uninstall",
+    }
+}
+
+definition_roles! {
+    /// The hit regions the ruleset registers itself, by role (`regions`).
+    RegionRole {
+        /// The registration's own panel: what `object_setupCollisionData`
+        /// gives every registration.
+        Anchor = "anchor",
+    }
+}
+
+definition_roles! {
+    /// The collision types the ruleset registers itself, by role
+    /// (`collision`).
+    CollisionRole {
+        /// A navi's body, and its body when it floats (`sub_8010BD8`:
+        /// FloatShoes, the forms that float).
+        Navi = "navi",
+        FloatingNavi = "floating_navi",
+        /// What a navi's body reacts to.
+        NaviTarget = "navi_target",
+        /// An eruption (a volcano panel's), and what it reaches.
+        Eruption = "eruption",
+        EruptionTarget = "eruption_target",
+        /// A thrown obstacle's landing, and what it reaches.
+        ThrownObstacle = "thrown_obstacle",
+        ThrownObstacleTarget = "thrown_obstacle_target",
+    }
+}
+
 /// The functions the ruleset calls by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum HookRole {
@@ -275,6 +386,10 @@ pub struct Roles {
     pub chips: BTreeMap<ChipRole, ChipHandle>,
     pub lockons: BTreeMap<LockonRole, LockonHandle>,
     pub statuses: BTreeMap<StatusRole, StatusHandle>,
+    pub effects: BTreeMap<EffectRole, EffectHandle>,
+    pub sparks: BTreeMap<SparkRole, SparkHandle>,
+    pub regions: BTreeMap<RegionRole, RegionHandle>,
+    pub collisions: BTreeMap<CollisionRole, CollisionHandle>,
 }
 
 impl Roles {
@@ -328,6 +443,36 @@ impl Roles {
             .statuses
             .get(&role)
             .unwrap_or_else(|| panic!("the role statuses.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    /// The effect of `role`; a role content hasn't filled is a panic naming
+    /// it (as for the sparks, regions and collision types below).
+    pub fn effect(&self, role: EffectRole) -> EffectHandle {
+        *self
+            .effects
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role effects.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    pub fn spark(&self, role: SparkRole) -> SparkHandle {
+        *self
+            .sparks
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role sparks.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    pub fn region(&self, role: RegionRole) -> RegionHandle {
+        *self
+            .regions
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role regions.{} is not filled (define.roles in rules/roles.luau)", role.name()))
+    }
+
+    pub fn collision(&self, role: CollisionRole) -> CollisionHandle {
+        *self
+            .collisions
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role collision.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 
     /// The lock-on mode of `role`; a role content hasn't filled is a panic

@@ -12,7 +12,8 @@ use bn6_content_api::{
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
 use bn6_content_api::{
-    ActionHandle, ChipHandle, KindHandle, NaviAction, RecordHandle, Registry, SpawnAt, StateId, WeaponHandle,
+    ActionHandle, ChipHandle, CollisionHandle, EffectHandle, KindHandle, NaviAction, RecordHandle, RegionHandle, Registry,
+    SparkHandle, SpawnAt, StateId, WeaponHandle,
 };
 
 /// The record type of an absorbed obstacle's look (objects/absorbed-obstacle).
@@ -413,6 +414,16 @@ impl CoreApi for Battle {
         kinds::player::set_mood(self, side & 1, mood);
     }
 
+    fn bug_frags(&self, side: u8) -> u32 {
+        self.bug_frags[side as usize & 1]
+    }
+
+    fn spend_bug_frags(&mut self, side: u8, n: u32) {
+        // (The local player's save loses them too, which no battle reads.)
+        let frags = &mut self.bug_frags[side as usize & 1];
+        *frags = frags.wrapping_sub(n);
+    }
+
     fn side_special(&self, side: u8) -> SideSpecial {
         let s = &self.sides[side as usize & 1];
         if s.select_special != 0 {
@@ -717,10 +728,6 @@ impl CoreApi for Battle {
         Some(self.objects.get(o).kind.0)
     }
 
-    fn def_number(&self, registry: Registry, h: u16) -> ApiResult<u8> {
-        self.content.defs.number(registry, h).ok_or_else(|| ApiError::Other(format!("no {registry} has handle {h}")))
-    }
-
     fn navi_action(&self, o: ObjectRef) -> ApiResult<NaviAction> {
         use kinds::player::{EngineAction as E, NaviAction as A};
         Ok(match self.actor_of(o)?.navi_action {
@@ -968,12 +975,12 @@ impl CoreApi for Battle {
         }
     }
 
-    fn spawn_effect(&mut self, pos: Vec3, id: u8, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
-        kinds::effect::spawn(self, pos, id, flip, palette_add, priority)
+    fn spawn_effect(&mut self, pos: Vec3, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
+        kinds::effect::spawn(self, pos, look, flip, palette_add, priority)
     }
 
-    fn spawn_region_effects(&mut self, x: i32, y: i32, region: u8, side: u8, id: u8, z: i32) {
-        kinds::effect::spawn_over_region(self, x, y, region, side, id, z);
+    fn spawn_region_effects(&mut self, x: i32, y: i32, region: RegionHandle, side: u8, look: EffectHandle, z: i32) {
+        kinds::effect::spawn_over_region(self, x, y, region, side, look, z);
     }
 
     fn spawn_hitbox(&mut self, owner: ObjectRef, s: &HitboxSpec) -> Option<ObjectRef> {
@@ -995,8 +1002,8 @@ impl CoreApi for Battle {
         kinds::hitbox::spawn(self, owner, &spec)
     }
 
-    fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, id: u8) -> Option<ObjectRef> {
-        kinds::spark::spawn(self, owner, pos, id)
+    fn spawn_spark(&mut self, owner: ObjectRef, pos: Vec3, look: SparkHandle) -> Option<ObjectRef> {
+        kinds::spark::spawn(self, owner, pos, look)
     }
 
 
@@ -1506,27 +1513,30 @@ impl CoreApi for Battle {
         Battle::create_collision(self, o).is_some()
     }
 
-    fn setup_collision(&mut self, o: ObjectRef, self_type: u8, target_type: u8, hit_mod: u8) {
+    fn setup_collision(&mut self, o: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: u8) {
         Battle::setup_collision(self, o, self_type, target_type, hit_mod);
     }
 
-    fn reset_collision_types(&mut self, o: ObjectRef, self_type: u8, target_type: u8, hit_mod: u8) {
+    fn reset_collision_types(&mut self, o: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: u8) {
         Battle::reset_collision_types(self, o, self_type, target_type, hit_mod);
     }
 
     fn collision_get(&self, o: ObjectRef, f: CollisionField) -> ApiResult<Value> {
         let c = self.collision_of(o)?;
-        if f == CollisionField::StatusBase {
-            return Ok(c.status_base.map_or(Value::Nil, |h| Value::Def(Registry::Status, h.0)));
+        // The definitions it names.
+        let def = |registry, h: Option<u16>| Ok(h.map_or(Value::Nil, |h| Value::Def(registry, h)));
+        match f {
+            CollisionField::StatusBase => return def(Registry::Status, c.status_base.map(|h| h.0)),
+            CollisionField::Region => return def(Registry::Region, c.region.map(|h| h.0)),
+            CollisionField::HitEffect => return def(Registry::Spark, c.hit_effect.map(|h| h.0)),
+            _ => {}
         }
         Ok(Value::Int(match f {
-            CollisionField::Region => c.region as i64,
+            CollisionField::Region | CollisionField::HitEffect | CollisionField::StatusBase => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x as i64,
             CollisionField::PanelY => c.panel.y as i64,
-            CollisionField::HitEffect => c.hit_effect as i64,
             CollisionField::Element => c.element as i64,
             CollisionField::SecondaryElement => c.secondary_element as i64,
-            CollisionField::StatusBase => unreachable!("handled above"),
             CollisionField::Bugs => c.bugs as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
@@ -1564,27 +1574,36 @@ impl CoreApi for Battle {
 
     fn collision_set(&mut self, o: ObjectRef, f: CollisionField, v: Value) -> ApiResult<()> {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
-        if f == CollisionField::StatusBase {
-            let status = match v {
-                FieldValue::Ref(Some((Registry::Status, h))) if (h as usize) < self.content.defs.statuses.len() => {
-                    Some(bn6_content_api::StatusHandle(h))
-                }
+        // The definitions it names: a handle of the field's registry, or
+        // none.
+        let defined = match f {
+            CollisionField::StatusBase => Some((Registry::Status, self.content.defs.statuses.len())),
+            CollisionField::Region => Some((Registry::Region, self.content.defs.regions.len())),
+            CollisionField::HitEffect => Some((Registry::Spark, self.content.defs.sparks.len())),
+            _ => None,
+        };
+        if let Some((registry, len)) = defined {
+            let h = match v {
+                FieldValue::Ref(Some((r, h))) if r == registry && (h as usize) < len => Some(h),
                 FieldValue::Ref(None) => None,
-                other => return Err(ApiError::Other(format!("status_base: {other:?} is not a status"))),
+                other => return Err(ApiError::Other(format!("{}: {other:?} is not a {registry}", f.name()))),
             };
-            self.collision_of_mut(o)?.status_base = status;
+            let c = self.collision_of_mut(o)?;
+            match f {
+                CollisionField::StatusBase => c.status_base = h.map(bn6_content_api::StatusHandle),
+                CollisionField::Region => c.region = h.map(RegionHandle),
+                _ => c.hit_effect = h.map(SparkHandle),
+            }
             return Ok(());
         }
         let c = self.collision_of_mut(o)?;
         let x = int(v);
         match f {
-            CollisionField::Region => c.region = x as u8,
+            CollisionField::Region | CollisionField::HitEffect | CollisionField::StatusBase => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
-            CollisionField::HitEffect => c.hit_effect = x as u8,
             CollisionField::Element => c.element = x as u8,
             CollisionField::SecondaryElement => c.secondary_element = x as u8,
-            CollisionField::StatusBase => unreachable!("handled above"),
             CollisionField::Bugs => c.bugs = x as u16,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
@@ -1658,7 +1677,7 @@ impl CoreApi for Battle {
         let s = self.collision.get(c);
         let (x, y) = (s.panel.x as i32, s.panel.y as i32);
         let panels: Vec<(i32, i32)> =
-            self.content.region(s.region).iter().map(|p| (x + p.dx as i32 * dir, y + p.dy as i32)).collect();
+            self.content.region_offsets(s.region).iter().map(|p| (x + p.dx as i32 * dir, y + p.dy as i32)).collect();
         // `object_highlightPanel` skips panels off the field.
         for (px, py) in panels {
             if (1..=6).contains(&px) && (1..=3).contains(&py) {

@@ -12,6 +12,7 @@ local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatt
 local falling_rock = require("../objects/falling-rock/falling_rock")
 local ground_drill = require("../navis/megaman/forms/groundcross/drill")
 local lockon = require("./lockon")
+local ruleset = require("./ruleset")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local stun_strike = require("../lib/swords/stun_strike")
@@ -63,6 +64,10 @@ return define.roles {
     lockon = {
         beast_claw = lockon.beast_claw,
     },
+    effects = ruleset.effects,
+    sparks = ruleset.sparks,
+    regions = ruleset.regions,
+    collision = ruleset.collision,
     hooks = {
         -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier
         -- chip's barrier and its visual.

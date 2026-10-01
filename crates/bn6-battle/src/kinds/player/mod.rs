@@ -12,6 +12,7 @@ pub mod actions;
 pub(crate) mod berserk;
 mod navi_action;
 mod chip_use;
+pub use chip_use::next_chip_bonus;
 mod entry;
 pub(crate) mod form;
 pub(crate) mod idle;
@@ -186,6 +187,22 @@ pub(crate) fn battle_mode(b: &Battle) -> u8 {
 /// `sub_80107C0`: the hit modifier bodies inflict (3 in link battles).
 fn body_hit_modifier(b: &Battle) -> u8 {
     if is_link(b) { 3 } else { 0 }
+}
+
+/// A navi's body's collision types: what it is (floating or not) and what
+/// it reacts to.
+fn body_types(b: &Battle, floating: bool) -> (bn6_content_api::CollisionHandle, bn6_content_api::CollisionHandle) {
+    use crate::content::CollisionRole;
+    let roles = &b.content.defs.roles;
+    let body = if floating { CollisionRole::FloatingNavi } else { CollisionRole::Navi };
+    (roles.collision(body), roles.collision(CollisionRole::NaviTarget))
+}
+
+/// `sub_801A082` for a navi's body: it becomes the floating body or the
+/// plain one again.
+fn reset_body_types(b: &mut Battle, r: ObjectRef, floating: bool, hit_mod: u8) {
+    let (body, target) = body_types(b, floating);
+    b.reset_collision_types(r, body, target, hit_mod);
 }
 
 /// `sub_800F2FC`: turn to face `target` (its panel column), unless it
@@ -609,7 +626,8 @@ fn init(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let hm = body_hit_modifier(b);
-    b.setup_collision(r, 1, 2, hm);
+    let (body, target) = body_types(b, false);
+    b.setup_collision(r, body, target, hm);
     init_hp(b, r);
     init_navicust(b, r);
     update_element(b, r);
@@ -789,10 +807,10 @@ fn apply_navicust_flags(b: &mut Battle, r: ObjectRef) {
     let hm = body_hit_modifier(b);
     if s.float_shoes {
         set_flag1(b, r, f1::FLOATSHOE);
-        b.reset_collision_types(r, 0x10, 2, hm);
+        reset_body_types(b, r, true, hm);
     } else {
         clear_flag1(b, r, f1::FLOATSHOE);
-        b.reset_collision_types(r, 1, 2, hm);
+        reset_body_types(b, r, false, hm);
     }
     let set = |b: &mut Battle, bit: u32, on: bool| {
         if on { set_flag1(b, r, bit) } else { clear_flag1(b, r, bit) }
@@ -835,9 +853,10 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     ai_mut(b, r).status &= !0x20;
     // (Netbattle, local player: removes the opponent's HUD entry.)
     let hm = body_hit_modifier(b);
+    let anchor = b.anchor_region();
     let c = coll_mut(b, r);
     c.hit_mod_base = hm;
-    c.region = 1;
+    c.region = anchor;
     reset_charge(b, r);
     if reload_weapons {
         load_weapons(b, r);
@@ -996,21 +1015,61 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// `sub_80100EC` (presentation only): MegaMan's sprite palette, 4 in Full
-/// Synchro, plus the element style's in base form. The Cross forms'
-/// palettes (`byte_80203EA`), Beast Over's and other navis' are not
-/// modelled and keep the palette they have.
+/// Beast Over's glow by the battle time, over 26 ticks (`byte_8016A68`,
+/// Gregar's; `byte_8016A9C`, Falzar's): colour shaders.
+const GREGAR_OVER_GLOW: [u16; 26] = [
+    0x0000, 0x0000, 0x0041, 0x0461, 0x0881, 0x0CC2, 0x10E2, 0x1102, 0x1543, 0x1983, 0x1DC3, 0x21E4, 0x2204, 0x2204,
+    0x21E4, 0x1DC3, 0x1983, 0x1543, 0x1102, 0x10E2, 0x0CC2, 0x0CA2, 0x0881, 0x0861, 0x0441, 0x0421,
+];
+const FALZAR_OVER_GLOW: [u16; 26] = [
+    0x0000, 0x0000, 0x0402, 0x0423, 0x0444, 0x0866, 0x0887, 0x0888, 0x0CAA, 0x0CCC, 0x0CEE, 0x110F, 0x1110, 0x1110,
+    0x110F, 0x0CEE, 0x0CCC, 0x0CAA, 0x0888, 0x0887, 0x0866, 0x0865, 0x0444, 0x0443, 0x0422, 0x0421,
+];
+
+/// `sub_80100EC` (presentation only): a Beast Over navi glows
+/// (`sub_8016A38`, a colour shader by the battle time); any other takes
+/// its sprite palette (`sub_801002C`):
+///
+/// - MegaMan while he can't charge (status 0x200): 1, plus the element
+///   style's;
+/// - MegaMan in base form or a plain Beast Out: 4 in Full Synchro, else 0,
+///   plus the element style's in base form;
+/// - MegaMan in a Cross (a Cross Beast's is 0): the Cross's
+///   (`byte_80203EA`);
+/// - a link navi (`sub_800FD0A`): 4 in Full Synchro, 1 while it can't
+///   charge, else 0 (the navi's version 0's of `byte_800FD5C`; every
+///   navi's multiplier in `byte_80212BB` is 1).
 fn navi_palette(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     let form = form_of(b, r);
-    if navi_of(b, r) != Navi::MEGAMAN || form.is_beast_over() {
+    if form.is_beast_over() {
+        let glow = if form.0 == 0x18 { &FALZAR_OVER_GLOW } else { &GREGAR_OVER_GLOW };
+        b.objects.sprite_mut(r).look.color_shader = glow[(b.round.battle_time % 26) as usize];
         return;
     }
-    let synchro = if s.mood == 0xFF { 4 } else { 0 };
-    let palette = match form.0 {
-        0 if s.element != 0 => synchro + s.element.wrapping_mul(5).wrapping_add(0x12),
-        0 | 0x0B | 0x0C => synchro,
-        _ => return,
+    let no_charge = ai(b, r).status & crate::actor::status::NO_CHARGE != 0;
+    let full_synchro = emotion(b, b.objects.get(r).alliance) == Emotion::FullSynchro;
+    let style = if s.element != 0 { s.element.wrapping_mul(5).wrapping_add(0x12) } else { 0 };
+    let palette = if navi_of(b, r) != Navi::MEGAMAN {
+        match (full_synchro, no_charge) {
+            (true, _) => 4,
+            (false, true) => 1,
+            (false, false) => 0,
+        }
+    } else if no_charge {
+        1u8.wrapping_add(style)
+    } else {
+        match form.0 {
+            0 => (if s.mood == 0xFF { 4u8 } else { 0 }).wrapping_add(style),
+            0x0B | 0x0C => {
+                if s.mood == 0xFF {
+                    4
+                } else {
+                    0
+                }
+            }
+            f => b.content.rules.cross_palettes.get(f as usize).copied().unwrap_or(0),
+        }
     };
     b.objects.sprite_mut(r).look.palette = palette;
 }

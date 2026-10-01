@@ -21,8 +21,7 @@ pub struct Vars {
 }
 
 const SOUND: crate::sound::SoundId = crate::sound::SoundId(0x8E);
-/// The effect #0 look over the navi, 20 pixels up.
-const LOOK: u8 = 3;
+/// The effect over the navi (the role `effects.deletion`) is 20 pixels up.
 const LOOK_Z: i32 = 0x14 << 16;
 const TICKS: u16 = 0x1E;
 
@@ -32,7 +31,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).look.white = true;
     if ai(b, r).attack.step_init == 0 {
         b.play_sound(SOUND);
-        coll_mut(b, r).region = 0;
+        coll_mut(b, r).region = None;
         let o = b.objects.get_mut(r);
         o.panel = o.future_panel;
         let p = o.panel;
@@ -42,7 +41,8 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         super::transform::face_default(b, r);
         let pos = b.objects.get(r).pos;
         let at = Vec3 { z: pos.z.wrapping_add(LOOK_Z), ..pos };
-        if let Some(e) = crate::kinds::effect::spawn(b, at, LOOK, 0, 0, 0) {
+        let look = b.content.defs.roles.effect(crate::content::EffectRole::Deletion);
+        if let Some(e) = crate::kinds::effect::spawn(b, at, look, 0, 0, 0) {
             b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
         }
         clear_flag1(
@@ -64,7 +64,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     if left > 0 {
         return;
     }
-    coll_mut(b, r).region = 1;
+    coll_mut(b, r).region = b.anchor_region();
     let fp = b.objects.get(r).future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
     use crate::actor::request;

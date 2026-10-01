@@ -66,6 +66,8 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local _ = define.roles { actions = { turn = { legacy = { action = 0x3B } } } }", "a role by action number"),
         ("local _ = define.roles { kinds = { support = { legacy = { kind = \"support\" } } } }", "a role by kind key"),
         ("local _ = data.rules.sine[1]", "a rule table by number"),
+        ("local function f(me: Object) local _ = battle.effect(me.pos, 3) end", "an effect by number"),
+        ("local function f(me: Object) me:setup_collision(4, 5, 0) end", "collision types by number"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

@@ -48,7 +48,7 @@ local function hits(me: Object)
             element = me.attack_element,
             z = 0,
             region = regions.single,
-            hit_effect = 0xFF,
+            hit_effect = nil,
             target = collision.nothing,
             self_type = collision.attack,
             damage = link.damage(me),

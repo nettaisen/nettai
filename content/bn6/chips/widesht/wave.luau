@@ -142,7 +142,7 @@ local function tick(me: Object)
     end
     move(me, v)
     trail(me, s)
-    if me.phase_init ~= 0 and c.region == 0 and panel_word(me) ~= s.hit_panel then
+    if me.phase_init ~= 0 and c.region == nil and panel_word(me) ~= s.hit_panel then
         c:set_region(regions.wide)
     end
     if field.valid(me.panel_x, me.panel_y) then
