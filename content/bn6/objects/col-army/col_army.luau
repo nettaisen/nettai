@@ -10,6 +10,8 @@
 -- draw) or it stands on the other side's back column. It holds its panel
 -- and stands still while dimmed.
 
+local bullet = require("../bullet/bullet")
+
 local col_army = {}
 
 local SPRITE = "10-1d"
@@ -20,10 +22,9 @@ local SELF_TYPE, TARGET_TYPE, HIT_MOD = 0xC, 0xD, 3
 -- The other side's navis (by its own side), for its facing
 -- (`off_80C9F64`, `off_8109784`).
 local NAVIS = { [0] = 0x04000000, [1] = 0x08000000 }
--- The shots: attack object #0x12 (another group's kind: spawned by
--- number) with Param1 0x11, three of them 10 ticks apart, at one of four
--- heights (`dword_80C9E84`, in pixels).
-local SHOT_POOL, SHOT_INDEX, SHOT_KIND = "attack", 0x12, 0x11
+-- The shots: bullets (objects/bullet, row 0x11), three of them 10 ticks
+-- apart, at one of four heights (`dword_80C9E84`, in pixels).
+local SHOT = bullet.variants.col_army
 local SHOTS, SHOT_TICKS = 3, 0xA
 local HEIGHTS = { [0] = 0x08, 0x10, 0x18, 0x20 }
 local WAIT_TICKS, SHOW_AT = 0x30, 0x1E
@@ -110,15 +111,7 @@ end
 -- Y are the registers' values, which its init replaces.)
 local function shot(me: Object, x: number, y: number, z: number)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
-    local o = battle.spawn(SHOT_POOL, SHOT_INDEX, Vec3.new(y, me.element, z), { SHOT_KIND, 0, 0, 0 })
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = me.element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = me.alliance, me.flip
-        o.related1 = me
-    end
+    bullet.fire(me, x, y, z, SHOT, me.element, damage)
 end
 
 -- `sub_80C9DE0`: hidden, then shown; then fire.

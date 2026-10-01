@@ -95,6 +95,8 @@ fn battles_run_the_content_scripts() {
             "justice-one",
             "lance",
             "land-mine",
+            "lilbolr/boiler",
+            "lilbolr/layer",
             "lunge-slash",
             "meteor",
             "mine",
@@ -131,6 +133,9 @@ fn battles_run_the_content_scripts() {
             "time-bom",
             "tomahawk-man",
             "trap-chip",
+            "vdoll/curse",
+            "vdoll/doll",
+            "vdoll/sparkles",
             "whirlwind",
         ]
     );
