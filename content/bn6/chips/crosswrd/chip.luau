@@ -4,6 +4,7 @@
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
+local slashes = require("../../navis/00-megaman/forms/slashcross/slashes")
 
 return define.chip {
     id = "crosswrd",
@@ -17,14 +18,12 @@ return define.chip {
     slot_in_limit = 1,
     -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
     beast = { lockon = 13 },
-    -- SlashCross's charged slash reads the chip's subtype from its record
-    -- (transitional, until the charge asks the chip for its slash).
-    legacy = { subtype = 10 },
     action = slash.action {
         blade = parts.blades.sword,
         hit = { region = regions.x, collision = parts.slashes_navis, hit_mod = 3 },
         effect = parts.effects.cross,
         sound = parts.sounds.swing,
         second_hit = slash.CROSS_HIT,
+        charged = slashes.cross,
     },
 }

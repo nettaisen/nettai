@@ -346,6 +346,11 @@ impl Defs {
         self.action_numbers.get(number as usize).copied().flatten()
     }
 
+    /// The action with this key.
+    pub fn action_by_key(&self, key: &str) -> Option<ActionHandle> {
+        self.actions.binary_search_by(|a| a.key.as_str().cmp(key)).ok().map(|i| ActionHandle(i as u16))
+    }
+
     /// The weapon of a weapon routine number.
     pub fn weapon_numbered(&self, id: u8) -> Option<WeaponHandle> {
         self.weapon_ids.get(id as usize).copied().flatten()
@@ -574,9 +579,10 @@ fn record_action<'d>(definitions: &'d Definitions, module: &str, whose: &str) ->
 ///
 /// The transitional `legacy = { subtype, params }` marker gives the record
 /// the original's subtype and parameter bytes, for what still reads them
-/// of a chip besides its own action (SlashCross's charged slash reads a
-/// sword's); a chip whose behaviour is still a v1 module gives its number,
-/// action and module there too (`content::legacy` reads those).
+/// of a chip besides its own action (the by-number shims; SlashCross's
+/// A-charge for a chip whose action names no charged slash); a chip whose
+/// behaviour is still a v1 module gives its number, action and module
+/// there too (`content::legacy` reads those).
 pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result<ChipData, ContentError> {
     use serde_json::{Map, Value as Json};
     let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
@@ -689,12 +695,24 @@ fn read_roles(
                             actions.iter().position(|a| &a.key == key).expect("a defined action") as u16,
                         ))
                     } else if let Some(n) = legacy(&full, v, "action")? {
-                        let Data::Int(n @ 0..=0xFF) = n else {
-                            return Err(what(format!("{full}'s legacy action is {n:?}, not an action number")));
-                        };
-                        match actions.iter().position(|a| a.number == Some(n as u8)) {
-                            Some(i) => RoleAction::Action(ActionHandle(i as u16)),
-                            None => RoleAction::Unported(n as u8),
+                        match n {
+                            // A v1 registration's action, by its number.
+                            Data::Int(n @ 0..=0xFF) => match actions.iter().position(|a| a.number == Some(n as u8)) {
+                                Some(i) => RoleAction::Action(ActionHandle(i as u16)),
+                                None => RoleAction::Unported(n as u8),
+                            },
+                            // A definition by its key, for a pack whose
+                            // modules can't require the one that defines it
+                            // (the engine's test pack).
+                            Data::Str(key) => match actions.iter().position(|a| a.key == key) {
+                                Some(i) => RoleAction::Action(ActionHandle(i as u16)),
+                                None => return Err(what(format!("{full}'s legacy action {key:?} is no action's key"))),
+                            },
+                            n => {
+                                return Err(what(format!(
+                                    "{full}'s legacy action is {n:?}, not an action number or an action's key"
+                                )));
+                            }
                         }
                     } else {
                         return Err(what(format!("{full} is not an action")));
@@ -1087,7 +1105,13 @@ impl Defs {
             let setup = Some(functions.id(slot(d, "setup")?));
             let routines = weapon_routines(d)?;
             let number = routines.first().copied();
-            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks, instant: None };
+            // Its own instant effect (`instant = function(user, spec)`),
+            // which the instant chips' action runs.
+            let instant = match d.spec.field("instant") {
+                Data::Nil => None,
+                _ => Some(functions.id(slot(d, "instant")?)),
+            };
+            let def = WeaponDef { key: d.key.clone(), name, setup, routines, number, charge_ticks, instant };
             weapons.add(d.key.clone(), def, format!("defined in {}.luau", d.module));
         }
         let weapons: Vec<WeaponDef> = weapons.sorted()?.into_iter().map(|(_, w)| w).collect();
