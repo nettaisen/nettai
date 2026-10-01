@@ -2,27 +2,36 @@
 -- A gust (attack object #0x49, `sub_80CD2EC`): a wind that blows along
 -- its row 10 pixels a tick, pushing what it hits, until it leaves the
 -- field, reaches a panel it can't cross, is hit by a wind stopper, or (as
--- some spawners ask) hits anything. TenguCross's B+Back blows three
--- (instant chip effect 0x14); WindRack and others blow them too.
+-- some spawners ask) hits anything. WindRack blows unseen ones down each
+-- row; Wind and Fan blow one row at a time; TenguCross's B+Back blows
+-- three (instant chip effect 0x14).
 --
--- Its first parameter: bit 0 pushes with hit modifier 4 rather than 8 (and
--- turns the sprite), bits 0..6 also turn the way it blows, bit 7 makes it
--- invisible and blow through any panel.
+-- How it blows (`GustHow`, the original's first parameter): `pulls` (bit
+-- 0) turns it back toward its side, a weaker push (hit modifier 4 rather
+-- than 8) in its other palette; `unseen` (bit 7) hides it and lets it
+-- blow through any panel.
+
+local collision = require("../../rules/collision")
+
+local gust = {}
+
+-- How a gust blows.
+export type GustHow = { pulls: boolean?, unseen: boolean? }
 
 export type State = {
     -- ExtraVars+0: it ends at its first hit (spawners set it).
     stop_on_hit: boolean,
     -- ExtraVars+4: a spawner that tracks it: the gust ends once
-    -- `holder.state.gusts[slot]` is 0, and sets it to 0 when it ends.
+    -- `holder.state.gusts[slot]` is 0, and sets it to 0 when it ends. (No
+    -- spawner in the game does.)
     holder: Object?,
     slot: number,
+    -- How it blows (the original's first parameter's bits 0 and 7).
+    pulls: boolean,
+    unseen: boolean,
 }
 
-local gust = {
-    state = { stop_on_hit = "bool", holder = "object", slot = "u8" },
-}
-
-local SPRITE = "0c-2e"
+local SPRITE = asset.sprite("gust")
 
 -- Its element byte (5: past the elements, what nothing is weak to).
 local ELEMENT = 5
@@ -30,13 +39,10 @@ local ELEMENT = 5
 -- Its speed, 16.16 per tick.
 local SPEED = 0xA_0000
 
--- What it is and what it hits (collision types), and the push its hit
--- gives by the first parameter's bit 0.
-local SELF_TYPE, TARGET_TYPE = 0x1E, 5
+-- The push its hit gives: a gust that pulls pushes weaker.
 local PUSH, WEAK_PUSH = 8, 4
-
--- Param1's bits.
-local WEAK, INVISIBLE = 0x01, 0x80
+-- The palette of a gust that pulls (its first parameter times 2).
+local PULL_PALETTE = 2
 
 -- A hit that stops it (the collision's hit flags).
 local STOPPED = 0x800000
@@ -49,38 +55,6 @@ local PANELS = {
     [1] = { 0x00, 0x20 },
     [2] = { 0xB427B500, 0xF7352049 },
 }
-
--- `sub_80CD488`: a gust on (x, y) for side `alliance` and flip `flip`
--- (the spawner's halfword), with `params` (Param1..4), the damage word
--- `damage`, and the spawner that tracks it by `holder.state.gusts[slot]`
--- (which becomes 1), if any. Its position is the spawner's registers,
--- which its init overwrites.
-function gust.spawn(
-    x: number,
-    y: number,
-    alliance: number,
-    flip: number,
-    params: { number },
-    damage: number,
-    holder: Object?,
-    slot: number
-): Object?
-    local o = battle.spawn_kind("gust", Vec3.zero, params)
-    if not o then
-        return nil
-    end
-    o.panel_x, o.panel_y = x, y
-    o.alliance, o.flip = alliance, flip
-    o.damage = bit32.band(damage, 0xFFFF)
-    o.stamina = bit32.rshift(damage, 16)
-    local s = o.state :: State
-    s.holder = holder
-    s.slot = slot
-    if holder then
-        (holder.state :: any).gusts[slot + 1] = 1
-    end
-    return o
-end
 
 -- The tracking spawner's flag, and clearing it.
 local function tracked(s: State): boolean
@@ -97,13 +71,13 @@ end
 
 -- The end: no region, hidden, destroyed next update.
 local function finish(me: Object)
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me.visible = false
     me:set_lifecycle("destroy")
 end
 
 -- `sub_80CD414`: blow on; end on a stopping hit, off the field, or (unless
--- invisible) on a panel it can't blow over.
+-- unseen) on a panel it can't blow over.
 local function blow(me: Object)
     local s = me.state :: State
     local c = me.collision
@@ -116,7 +90,7 @@ local function blow(me: Object)
         local x, y = me.panel_x, me.panel_y
         if not field.valid(x, y) then
             ends = true
-        elseif bit32.btest(me:param(1), INVISIBLE) then
+        elseif s.unseen then
             return
         else
             local rule = PANELS[me.alliance]
@@ -127,7 +101,7 @@ local function blow(me: Object)
         end
     end
     if ends then
-        c.region = 0
+        c:set_region(nil)
         untrack(s)
         me:set_lifecycle("destroy")
     end
@@ -156,11 +130,11 @@ local function tick(me: Object)
     c:present()
 end
 
--- `sub_80CD310`: its look, its speed along the row (the way the first
--- parameter turns it), its registration.
+-- `sub_80CD310`: its look, its speed along the row (the way a pull turns
+-- it), its registration.
 local function init(me: Object)
-    local kind = me:param(1)
-    if not bit32.btest(kind, INVISIBLE) then
+    local s = me.state :: State
+    if not s.unseen then
         me.visible = true
     end
     local sprite = me.sprite
@@ -170,10 +144,10 @@ local function init(me: Object)
     me.anim_loaded = 0
     sprite:set_animation(0)
     sprite:step()
-    local turn = bit32.band(kind, 0x7F)
-    sprite:set_flip(bit32.bxor(bit32.band(bit32.bxor(me.alliance, me.flip), 0x7F), kind))
+    local turn = if s.pulls then 1 else 0
+    sprite:set_flip(bit32.bxor(bit32.bxor(me.alliance, me.flip), turn))
     me.element = ELEMENT
-    sprite.palette = int.u8(kind * 2)
+    sprite.palette = if s.pulls then PULL_PALETTE else 0
     me:set_coordinates_from_panel()
     local p = me.pos
     -- object_getFlipDirection(side ^ turn, flip)
@@ -184,24 +158,62 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(SELF_TYPE, TARGET_TYPE, if bit32.btest(kind, WEAK) then WEAK_PUSH else PUSH)
+    me:setup_collision(collision.pull, collision.hits_navis, if s.pulls then WEAK_PUSH else PUSH)
     me.collision.self_damage = 0
     me.collision:present()
     me.lifecycle = "update"
     tick(me)
 end
 
--- `sub_80CD2EC`.
-function gust.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
+gust.kind = define.kind {
+    id = "gust",
+    pool = "attack",
+    state = { stop_on_hit = "bool", holder = "object", slot = "u8", pulls = "bool", unseen = "bool" },
+    -- `sub_80CD2EC`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+        me:update_sprite()
+    end,
+}
+
+-- `sub_80CD488`: a gust on (x, y) for side `alliance` and flip `flip`
+-- (the spawner's halfword), blowing as `how` says, with the damage word
+-- `damage`, and the spawner that tracks it by `holder.state.gusts[slot]`
+-- (which becomes 1), if any. Its position is the spawner's registers,
+-- which its init overwrites.
+function gust.spawn(
+    x: number,
+    y: number,
+    alliance: number,
+    flip: number,
+    how: GustHow,
+    damage: number,
+    holder: Object?,
+    slot: number
+): Object?
+    local o = battle.spawn(gust.kind, Vec3.zero)
+    if not o then
+        return nil
     end
-    me:update_sprite()
+    o.panel_x, o.panel_y = x, y
+    o.alliance, o.flip = alliance, flip
+    o:set_damage_word(damage)
+    local s = o.state :: State
+    s.holder = holder
+    s.slot = slot
+    s.pulls = how.pulls == true
+    s.unseen = how.unseen == true
+    if holder then
+        (holder.state :: any).gusts[slot + 1] = 1
+    end
+    return o
 end
 
 return gust
