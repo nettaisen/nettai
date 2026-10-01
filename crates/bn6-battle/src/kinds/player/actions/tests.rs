@@ -1035,6 +1035,56 @@ fn form_weapons_roll_back() {
     }
 }
 
+#[test]
+fn the_link_navis_charges_run_and_roll_back() {
+    // Each link navi's charged attack (weapon routines 0x40 to 0x4A) starts
+    // its own action, runs to idle, and a copy of the battle taken along
+    // the way plays on as it does.
+    let charges = [
+        (0x40, "heatman"),
+        (0x41, "spoutman"),
+        (0x42, "tenguman"),
+        (0x43, "slashman"),
+        (0x44, "elecman"),
+        (0x45, "tomahawkman"),
+        (0x47, "eraseman"),
+        (0x48, "chargeman"),
+        (0x49, "dustman"),
+        (0x4A, "groundman"),
+    ];
+    for (routine, navi) in charges {
+        let (mut b, p0, _) = fight();
+        assert_eq!(start_weapon(&mut b, p0, routine), format!("{navi}/charge/action"));
+        // (The weapon's own hits carry the counter byte 0x8A.)
+        assert_eq!(ai_mut(&mut b, p0).attack.hit_param, 0x8A, "{navi}");
+        let (mut b, p0, p1) = fight();
+        let t = run_weapon(&mut b, [p0, p1], routine, 300);
+        assert!(t < 300, "{navi}'s charge never ended");
+    }
+    // HeatMan breathes a flame on the panel ahead and on the column past
+    // it; GroundMan throws a drill from each panel of the column ahead.
+    let (mut b, p0, p1) = fight();
+    start_weapon(&mut b, p0, 0x40);
+    let mut t = 0;
+    run_to(&mut b, [p0, p1], &mut t, 9, 0);
+    let mut flames: Vec<_> = of_kind(&b, "heatman/flame").iter().map(|&f| b.objects.get(f).panel).collect();
+    flames.sort_by_key(|p| (p.x, p.y));
+    assert_eq!(
+        flames,
+        [PanelPos { x: 3, y: 2 }, PanelPos { x: 4, y: 1 }, PanelPos { x: 4, y: 2 }, PanelPos { x: 4, y: 3 }]
+    );
+    let (mut b, p0, p1) = fight();
+    start_weapon(&mut b, p0, 0x4A);
+    let mut t = 0;
+    run_to(&mut b, [p0, p1], &mut t, 1, 0);
+    let mut drills: Vec<_> = of_kind(&b, "groundman/drill").iter().map(|&d| b.objects.get(d).panel).collect();
+    drills.sort_by_key(|p| p.y);
+    assert_eq!(drills, [PanelPos { x: 3, y: 1 }, PanelPos { x: 3, y: 2 }, PanelPos { x: 3, y: 3 }]);
+    // The drills last while he holds the pose: gone when he recovers.
+    run_to(&mut b, [p0, p1], &mut t, 73, 0);
+    assert!(of_kind(&b, "groundman/drill").is_empty());
+}
+
 /// Start weapon routine `routine` for side 0 as a `set_attack` of `kind`
 /// (1 buster, 2 charged shot, 3 B+Back); returns the action it named
 /// (`runs`).

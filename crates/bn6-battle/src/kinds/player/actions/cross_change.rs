@@ -318,6 +318,7 @@ fn fresh_stats(navi: u8, content: &Content) -> NaviStats {
             charge_shot: weapon(row[9]),
             back_special: weapon(row[10]),
             a_charge: weapon(row[15]),
+            back_special_damage: row[13] as u16,
             ..defaults.weapons
         },
         bugs: crate::setup::NaviCustBugs { panel_trail_kind: 0xFF, ..defaults.bugs },
