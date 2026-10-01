@@ -92,7 +92,7 @@ collision.everything = define.collision { id = "everything", side0 = 0xff800002,
 collision.navi = define.collision { id = "navi", side0 = 0x08410080, side1 = 0x04210080, row_offset = 0x08 }
 collision.navi_target = define.collision { id = "navi-target", side0 = 0x55800200, side1 = 0xaa800200, row_offset = 0x10 }
 
--- A thrown attack that breaks (row 0x15: GroundMan's drill and rocks).
+-- A thrown attack that breaks (row 0x15: GroundMan's drill and rocks, MetrKnuk's fists).
 collision.thrown_break = define.collision { id = "thrown-break", side0 = 0x8000008a, side1 = 0x4000008a, row_offset = 0xA8 }
 
 -- A thrown attack that pierces and breaks (row 0x17: Django's Gun del
@@ -104,17 +104,19 @@ collision.thrown_piercing_break = define.collision {
     row_offset = 0xB8,
 }
 
--- A pull of no side (row 0x1E: DustMan's DustBrk drawing things in).
+-- A pull of no side (row 0x1E: a gust; DustMan's DustBrk drawing things
+-- in).
 collision.pull = define.collision { id = "pull", side0 = 0x00004280, side1 = 0x00004280, row_offset = 0xF0 }
 
 -- A breaking attack (row 0x06: a shot that breaks guards; the break
--- family's shots, a thrown obstacle; DustMan's junk, BigHook's flames).
+-- family's shots, a thrown obstacle; DustMan's junk, BigHook's flames,
+-- AuraHed's head).
 collision.breaking = define.collision { id = "breaking", side0 = 0x80000082, side1 = 0x40000082, row_offset = 0x30 }
 
 -- An attack of row 0x08 (a projectile variant nothing names yet).
 collision.attack_90 = define.collision { id = "attack-90", side0 = 0x80000090, side1 = 0x40000090, row_offset = 0x40 }
 
--- A pushing attack (row 0x12: AirShot's shot).
+-- A pushing attack (row 0x12: AirShot's shot, WindRack's swing, AirSpin's spin).
 collision.pushing = define.collision { id = "pushing", side0 = 0x80000880, side1 = 0x40000880, row_offset = 0x90 }
 
 -- The VDoll curse's hits (row 0x19: a thrown attack that pierces; JudgeMan's
@@ -127,11 +129,11 @@ collision.attack_480 = define.collision { id = "attack-480", side0 = 0x80000480,
 -- An attack of row 0x47 (a projectile variant nothing names yet).
 collision.attack_a0 = define.collision { id = "attack-a0", side0 = 0x800000a0, side1 = 0x400000a0, row_offset = 0x238 }
 
--- A neutral body, while dimmed too (row 0x0E: a VDoll that landed).
+-- A neutral body, while dimmed too (row 0x0E: a VDoll that landed, AirSpin's top).
 collision.neutral_body = define.collision { id = "neutral-body", side0 = 0x00810082, side1 = 0x00810082, row_offset = 0x70 }
 
 -- A probe (row 0x3D): what finds the first thing its target type reaches
--- without hurting it (the bullet, the corn).
+-- without hurting it (the bullet, the corn, H-Burst's shot).
 collision.probe = define.collision { id = "probe", side0 = 0x00000080, side1 = 0x00000080, row_offset = 0x1E8 }
 
 -- Nothing (row 0x00: a target that reaches nothing; Discord's notes, which
@@ -151,12 +153,8 @@ collision.guard_breaking = define.collision {
     row_offset = 0x190,
 }
 
--- A thrown attack that also breaks (row 0x15: MetrKnuk's fists).
-collision.thrown_breaking = define.collision {
-    id = "thrown-breaking",
-    side0 = 0x8000008a,
-    side1 = 0x4000008a,
-    row_offset = 0xA8,
-}
+-- A drain: an attack of its side that pierces invisibility and flashing
+-- (row 0x2C: GunDelSol's hits under the sun beam).
+collision.drain = define.collision { id = "drain", side0 = 0x8000408c, side1 = 0x4000408c, row_offset = 0x160 }
 
 return collision
