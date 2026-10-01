@@ -6,7 +6,8 @@ AirShot, the Vulcans, the Spreaders, the BatCans, the TankCans, MachGun, CornSht
 and VDoll. standard-chips.md has the actions that fire no shot; objects-and-player.md §B8 and §B8a the buster's
 projectile (attack #0) and the flying shot (attack #0xB), which several of these fire.
 
-This is the original's behaviour, branch by branch, as the port must reproduce it. None of it is content yet.
+This is the original's behaviour, branch by branch, as the port must reproduce it. §18 says where the port keeps
+it (content model v2) and where it departs.
 
 Conventions (standard-chips.md's, and):
 
@@ -692,5 +693,48 @@ the curse controller and the sparkles; everything listed as "not" above.
   (variants 4..6), and TankCan is action 0x24. Corrected there. (Its Cannon frame numbers are one lower than the
   traces show, f16 for the shot and f33 for the exit against ticks 17 and 34: the entry tick doesn't count the
   timer.)
-- kinds/obstacle.rs describes `sub_801B878` as "destroys" while erupting; see §14.1 (left for whoever ports
-  LilBoiler).
+- kinds/obstacle.rs described `sub_801B878` as "destroys" while erupting; see §14.1. It is now the obstacle
+  service's `"ignores"` crush.
+
+## 18. As ported
+
+Content model v2 (docs/design/content-model-v2.md): each action is a builder its chips compose, each object a kind
+definition, each table row a variant record written out in Luau.
+
+- **Where.** The projectile and its variants: objects/projectile (`variants.by_number` for the NaviCust's numbered
+  shots), lib/projectile; the flying shot: objects/flying-shot; the bullet: objects/bullet (its rows, and the
+  variants the Vulcans, the Spreaders, SpoutCross's charged shot, ColArmy and ColForce fire). The cannons:
+  lib/cannon with chips/cannon and chips/gigacan; AirShot, BatCan, MachGun: chips/airshot, chips/batcan (with its
+  shot), chips/machgun; the Vulcans, the Spreaders, the TankCans, CornSht, WideSht and SuprSpr: chips/vulcan,
+  chips/spreadr, chips/tankcan (with its shell), chips/cornsht (with the corn), chips/widesht (with the wave); the
+  sonic boom: lib/swords/sonic_boom with chips/sonicbom and chips/z-saver; LilBoiler: chips/lilbolr (the boiler and
+  the layer); VDoll: chips/vdoll (the doll, the curse and the sparkles); the rapid buster: lib/rapid_buster.
+- **Records.** The chips other records or the ruleset name by number keep the pack's records, and their modules
+  give the actions with their compat keys: the cannons and GigaCans, the Vulcans, the Spreaders, CornSht, WideSht
+  and SuprSpr (Program Advances), the sonic boom's four (the variable swords' picks, VDoll's telop) and Z Saver
+  (weapon 0x6E). Registration by number reaches them through one module per action (chips/001-cannon,
+  005-vulcan1, 009-spreadr1, 00c-tankcan1, 017-widesht, 040-cornsht1, 173-sonicbom, 17d-zsaver; the bombs' 036-
+  minibomb for LilBoiler and VDoll), which picks the chip's action by the subtype or the record's parameters.
+  AirShot, the BatCans, the TankCans, MachGun, LilBoiler and VDoll are definitions.
+- **LilBoiler's registry side** (§14.1). The bonus picks the field-object slot `setFieldBattleObject_800F614`
+  writes, BattleState+0xA8 + 12 · bonus: 0 is side 0's class-1 slot whoever threw it, 1 side 1's. Atk+10's lands
+  on BattleState+0x120, the word right after BattleState (`dword_20349A0`): the battle's used-crosses mask, a bit
+  per Cross the cross window greys out, zeroed when a battle starts. The boiler's address overwrites it (and the
+  halfword at the old mask's value + the HP offset is zeroed, an unmapped address for any mask a battle builds),
+  so the crosses still selectable afterwards depend on where the boiler's slot lies in memory. Larger bonuses
+  write further on. The port registers bonuses 0 and 1 as the original does and stops with an error naming the
+  routine for any larger one **[unverified]**: no lab scenario gives LilBoiler a bonus.
+- **The obstacle service** gained the crush `"ignores"` (`sub_801B878` while erupting) and the status flag
+  `"carried"` (0x04000000, which the doll tests); objects gained `clear_statuses` (the eruption's status word
+  cleared) and `load_or_step_sprite` (`sub_801BC24`, the doll's sprite); `battle.objects_of(kind)` walks the
+  update list (`sub_80C67A4`); the collision's `element` and `secondary_element` (`sub_8019F8C`) are fields.
+- **Departures.** SuprSpr keeps each wave's hit modifier in the attack's second parameter (`av[0xD]`) before the
+  wave reads it among its parameters; the port hands it to the wave. CornSht's corn takes its generation from the
+  chip's first parameter, 0 for all three, which the port writes as 0. The curse's marks sound every 16 frames of
+  the game's frame counter, which the port doesn't keep: every 16 ticks of the marking, as gauge-speed's port does.
+  The layer copies its owner's palette, colour shader, priority and blending, but the final palette and the HUD
+  calls (the HP display, the HUD element) are drawn only and not kept.
+- **Verified** on the traces (machgun at its floors; soundmod's second round now runs to its end, its first stops
+  at JudgeMan) and on the families' lab scenarios: every one matches but BatCan4's `counter`, where the original
+  keeps Full Synchro's aura through the counter's paralysis and the engine drops it at the hit (the emotion's, not
+  the chip's), and those other blockers stop (dimming subtypes 21 and 29, DiveMan).
