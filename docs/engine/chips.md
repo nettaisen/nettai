@@ -1057,10 +1057,11 @@ Per-object additions:
   With `b = attacker CD+0x07` (hit_param):
   - if target CounterTimer ≠ 0, `b & 0x7F ≠ 0` and `!(b & 0x80)`: **counter hit**, i.e. `FlagsFromCollision |= 0x40`
     and target CD+0x90 = 0x8000;
-  - otherwise CD+0x90 += `b & 0x7F`;
-  - in both cases CD+0x8E += `b & 0x7F`.
+  - otherwise, when `b & 0x7F ≠ 0` and `!(b & 0x80)`, CD+0x90 += `b & 0x7F`;
+  - CD+0x8E += `b & 0x7F`, except on a counter hit, which adds nothing (field-collision-damage.md §3.8).
 
-  The meaning of this accumulator is **[unverified]**.
+  CD+0x8E is what the hits wear off the navi's mood, and CD+0x90's 0x8000 gives the attacker Full Synchro
+  (`sub_801A200`, field-collision-damage.md §4.9).
 - The target applies HP loss in its **own next update**: `sub_801AC6C` → `object_calculateFinalDamage1` (sums
   buckets for elements 0–4) → `applyDamageToPlayer_801ba12`. For chips this gives a 1-frame latency between hit and
   HP change. Element 5 bypasses FinalDamage entirely (§4.4).
@@ -1270,9 +1271,8 @@ the healer's alliance; its position the spawner's registers). A dimming controll
 the healer by the damage (down to 0), two rising bubbles (T4 0x14, palette 1) 16 px right then left of the panel's
 center at Z 0, the panel changer (T4 0x1F, kind 6: the own panel turns to poison; dimming-chips.md §4.2) handed
 Param2's address, Param2 = 1. Every tick: once Param2 is 0 (the changer cleared the four parameters), action 0xC.
-**Lab (scratch recordings)**: AntiRecv set by side 0, then side 1's Roll (this branch) or Recov10 (the heal's)
-springs it; both match every frame (1051), with the positions of T4 0x2C and 0x1F skipped (compat has no entries
-for them yet). Unverified: Roll's damage with the double-damage flag, a full effect pool.
+**Lab** (`chips/0x0bd-antirecv/roll` and `chips/0x0bd-antirecv/recov10`): AntiRecv set by side 0, then side 1's
+Roll (this branch) or Recov10 (the heal's) springs it; both match every frame (1170). Unverified: Roll's damage with the double-damage flag, a full effect pool.
 
 **The controller, T4 0x10 (`sub_80E17E8`).** Spawned with r1..r3 = panel Y, element, subtype as its position (so
 Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is
