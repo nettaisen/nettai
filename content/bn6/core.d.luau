@@ -18,9 +18,7 @@
 -- bn6-content-check's ratchet (tests/deprecated.txt), which only shrinks:
 --
 --   objects/NAME/object.toml  [kind] pool, index, script   an object kind:
---       the module exports `state` and `update(me)`; with `actor_list_entry
---       = N`, also `actor_list_entry(spec)` for the actor lists' entries
---       of type N (the field objects a stage places)
+--       the module exports `state` and `update(me)`
 --   chips/NNN-name/chip.toml  script = "chip.luau"          the chip's action:
 --       `state` and `update(me, s)`; for a dimming chip (action 0x15)
 --       `dimming_chip(user, spec)`, for a navi chip (0x1B) `navi_chip(user,
@@ -1062,16 +1060,20 @@ declare navi_chip: {
     warp: (user: Object, out: boolean) -> (),
 }
 
--- What an actor list's entry is placed with (`off_80073A0[type]`): an
--- object kind's `place(spec)`.
-export type ActorListEntrySpec = {
+-- What a stage places a field object with (the original's spawner for
+-- the actor list's entry, `off_80073A0[type]`): an object kind's
+-- `place(spec)`.
+export type PlaceSpec = {
     panel_x: number,
     panel_y: number,
     -- The entry's side (field objects take their panel's instead).
     side: number,
-    -- The entry's argument (a rock's variant: objects/rock's
-    -- `by_number`).
-    variant: number,
+    -- Which of the kind's variants the stage names (a record of the
+    -- kind's: one of objects/rock's `variants`).
+    variant: any?,
+    -- The entry's raw argument (0 unless the stage gives one), for a
+    -- spawner that only leaves it in a register.
+    argument: number,
 }
 
 -- How an absorbed obstacle looks (objects/absorbed-obstacle's `look`, an
@@ -1505,9 +1507,9 @@ export type KindSpec = {
     pool: Pool,
     state: StateSchema?,
     update: (me: Object) -> (),
-    -- What places it when a stage's actor list names it (the role
-    -- `kinds.rock`, say): it returns what it placed, if anything.
-    place: ((spec: ActorListEntrySpec) -> Object?)?,
+    -- What places it when a stage names it among its `actors`: it returns
+    -- what it placed, if anything.
+    place: ((spec: PlaceSpec) -> Object?)?,
 }
 export type Kind = KindSpec
 
@@ -1605,7 +1607,31 @@ export type Chip = ChipSpec
 -- them (steps 5 and 10 to 12). (`NaviDef`, since `Navi` is a side's stats.)
 export type NaviDef = { id: string, [string]: any }
 export type FormDef = { id: string, [string]: any }
-export type StageDef = { id: string, [string]: any }
+-- Something a stage places when the round starts: a navi of `side`, or a
+-- field object by its kind (which needs a `place`), with one of the kind's
+-- variants or a raw argument where the kind takes one.
+export type StageActor = {
+    place: "navi" | Kind,
+    side: number?,
+    x: number,
+    y: number,
+    variant: any?,
+    argument: number?,
+}
+-- A stage (§3.7): its panels, three rows of six panel types (`"normal
+-- normal cracked ..."`), which columns are whose, its music outside link
+-- battles (none: no music starts), and what it places, in order.
+export type StageDef = {
+    id: string,
+    layout: { string },
+    panel_pattern: number,
+    music: Sound?,
+    background: Background,
+    mode: number,
+    battle_number: number,
+    effects: number?,
+    actors: { StageActor },
+}
 export type StatusDef = { id: string, [string]: any }
 export type LockonDef = { id: string, [string]: any }
 

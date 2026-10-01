@@ -370,6 +370,21 @@ are distinct: 96 pairs of layout and actor list, each with two effect words); co
 stage, and gives the address its actor list goes by. Stages are named by what they are where that is known, else
 `netbattle-N` in order of first use (§13).
 
+**As built** (step 12). A stage is `StageData` (content/stages.rs): its panel layout, pattern, music (a sound
+asset, or none), background, mode, battle number, effects and `actors`, each `{ place = "navi", side, x, y }` or
+`{ place = <kind>, x, y, variant = <a record of the kind's>, argument = n }`. The round's spawn loop
+(`Battle::spawn_actors`) places a navi itself and anything else through its kind's `place(spec: PlaceSpec)`,
+which gets the panel, the entry's side, the variant record and the raw argument (the Guardian statue's spawner
+only leaves it in a register); a stage that names a kind without a `place` is a load error. The roles
+`kinds.rock`, `kinds.boulder` and `kinds.statue`, `rock.by_number`, the numbered panel layouts and actor lists
+(`Content::panel_layouts`, `Rules::stages`), `StageSettings`, `ActorKind` and the `v1/stage-NN` records are
+gone, and the definitions carry no legacy marker. The numbers are compat's: stages.toml has each stage's
+settings indices, its layout's number and its actor list's address (the 16-byte settings codec finds the stage
+by them), kinds.toml the actor-list entry type of a kind with a `place`, and records.toml the argument each rock
+variant goes by; `gen-content check` rebuilds every actor list and layout from the definitions through them
+and compares with the ROM. The engine's test content defines its four stages in
+crates/bn6-battle/testdata/content/stages/test.luau, and tests name stages by key.
+
 ### 3.8 Rules
 
 Each rule table is a section, defined once:
@@ -435,8 +450,8 @@ chip where they carried its id.
 the definitions' slots: every chip has its `ChipUsage` (a pack record's from its action, or from its subtype's
 `dimming_chip`, `navi_chip` or `instant_chip` registration; `Unported` for what nothing implements, which fails
 where the original runs it, with the subtype in the error); a weapon that names an instant effect no chip has
-gets it as `WeaponDef::instant`; a v1 kind's `actor_list_entry` is its `place` (`KindDef::place`, which
-`define.kind` also takes). The instant chips' action runs the attack's `instant` effect, which chip use and such
+gets it as `WeaponDef::instant`; a kind's `place` is `KindDef::place` (v1's `actor_list_entry` registration
+went with the stages' definitions, step 12). The instant chips' action runs the attack's `instant` effect, which chip use and such
 a weapon set; the dimming and navi chip actions read the chip's usage. Content's function roles
 (`hooks.first_barrier`) are in §7.4.
 
@@ -1439,8 +1454,8 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
 - **The rock** (objects/rock) is a definition. Its rows are `rock-variant` records (`rock.variants.cube`,
   `ice`, ...: animation, HP, element, debris palette, break sound, NameID), its entrance a state enum
   (`"rise" | "instant" | "fall" | "placed"`), and `rock.spawn(x, y, side, { variant, class, entrance },
-  damage)` takes them; its debris is `rock/debris` beside it. An actor list still gives a row number, which
-  the kind's `place` turns into the record (`rock.by_number`, until stages name their rocks, step 12).
+  damage)` takes them; its debris is `rock/debris` beside it. A stage names the variant its rocks are (step
+  12), and the kind's `place` gets it as `spec.variant`.
 - **RockCube and IceCube** (chips/rockcube) are definitions whose `dimming` hook is `cube.places { variant =
   rock.variants.cube }`: the chip's parameters (the rock's row, class and entrance) are the builder's argument.
   No Program Advance, dark chip or recipe names either, so neither keeps a record.
@@ -1726,7 +1741,8 @@ defines needs a handle there instead, which is §7.2's table brought forward:
   form, starting form, weapons), the actor's weapon slots, transformation requests and battle settings hold
   handles. `BattleSettings` is `{ stage: StageHandle, background, effects }`, the stage's record
   (`StageSettings`, the 16-byte BattleSettingsList1 entry) read through the content; a set's later rounds name
-  their stages by handle. The pack's records are `v1/chip-036`, `v1/navi-01`, `v1/form-0c`, `v1/stage-11` and
+  their stages by handle. The pack's records are `v1/chip-036`, `v1/navi-01`, `v1/form-0c` and (until step 12,
+  when stages became definitions alone) `v1/stage-11`, and
   `v1/weapon-29` (every routine number, implemented or not). The ruleset's numeric logic is unchanged: it asks
   `Content::chip_number`, `navi_number`, `form_number`, `weapon_number` (none for what content defines, so a
   defined chip gets none of the ruleset's by-number cases until phase C gives them traits and roles). What the
@@ -1789,10 +1805,11 @@ trait on the definition instead (§7.5).
 
 **As built** (steps 4 and 9): content::roles has typed roles, `ActionRole` (the trap counters, the forced charged
 shot, the stun strike, the Cross protect, the turn, the Cross death, the volley, the charged sword, the beast
-claw, DustCross Beast's scatter), `KindRole` (what an actor list places: the rock, the boulder and the Guardian
-statue; the absorbed obstacle, the falling rock, the supports' controller) and `HookRole` (the FirstBarrier). A role names a definition, or, while its
+claw, DustCross Beast's scatter), `KindRole` (the absorbed obstacle, the falling rock, the supports' controller, AntiRecv's counterattack; until
+step 12 also what an actor list places, which stages name now) and `HookRole` (the FirstBarrier, the encased
+obstacle). A role names a definition, or, while its
 target is still a v1 registration, that registration through the transitional legacy marker (`{ legacy = {
-action = 0x49 } }`, `{ legacy = { kind = "rock" } }`; counted by the ratchet); a legacy action number nothing
+action = 0x49 } }`, `{ legacy = { kind = "a-v1-kind" } }`; counted by the ratchet); a legacy action number nothing
 implements leaves the role `Unported`, and starting it fails as the number did. The charged sword, the beast claw
 and the scatter are roles rather than §7.5's traits: the ruleset recognizes exactly one action each, and a v1
 registration can't carry traits. The engine's test content has its own roles (testdata/content), which the test
@@ -2172,9 +2189,8 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   objects' kinds (the rock, the boulder, the Guardian statue, the absorbed obstacle, the falling rock) are
   definitions since step 8f, and the supports' controller since group C5: no kind is named by key any more.
 - **The kinds an actor list places, by role** (step 8f): `kinds.rock`, `kinds.boulder` and `kinds.statue`
-  stand for the stages' own entries, and the rock's `place` maps the entry's row number to its variant
-  (`rock.by_number`). They go when stages are definitions whose entries name the kind and its variant (§3.7,
-  step 12).
+  stood for the stages' own entries, and the rock's `place` mapped the entry's row number to its variant
+  (`rock.by_number`). *Gone with step 12*: a stage's entries name the kind and its variant (§3.7).
 - **The legacy marker in a v2 definition.** A chip definition may carry `legacy = { subtype, params }`: the
   original's subtype and parameter bytes in its record, for what reads them of a chip besides its own use.
   Counted by the ratchet (the lint matches `legacy = {` and `legacy {`). StepSwrd, FtrSword, CrosSwrd and
@@ -2308,7 +2324,7 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    subtype, params, script` (with what the ruleset and v1 modules read of it by number: a damage formula,
    `sp_damage`, `navi_damage`, `dark_substitute`, `recovery`, `sword`); a weapon still a v1
    module has no `setup` and its marker gives `routines, script, action, instant_chip`; a navi's and a form's
-   give `number, name_id`, a stage's `number, layout, actor_list`, a status's and a lock-on mode's `id`. The
+   give `number, name_id`, a stage's `number, layout, actor_list` (until step 12: compat has them), a status's and a lock-on mode's `id`. The
    generator writes them with the `legacy { }` call (identity; typed `any`), which is how it tells its own
    definitions from people's. The tables v1 modules read by number are legacy rule
    sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and

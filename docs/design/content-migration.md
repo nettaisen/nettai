@@ -147,9 +147,9 @@ registration, until step 13 removes it (`script` is a module's path from the con
 A shim is such a module that runs the definitions' own code for the records (chips/036-minibomb runs each bomb
 chip's action by subtype). Scripts are paths relative to the registering file; a slot, action or hook claimed twice
 is an error. At load each record gets its usage from these (its action's module, or its subtype's
-`dimming_chip`, `navi_chip` or `instant_chip`), a weapon its `instant_chip`, a kind its `actor_list_entry` as
-its `place`: the ruleset reads only the definitions' slots. When the ruleset needs a kind or an action itself
-(the actor lists' rock, the stun strike), rules/roles.luau names it, a v1 one through a legacy marker
+`dimming_chip`, `navi_chip` or `instant_chip`), a weapon its `instant_chip`: the ruleset reads only the
+definitions' slots. When the ruleset needs a kind or an action itself
+(the absorbed obstacle, the stun strike), rules/roles.luau names it, a v1 one through a legacy marker
 (`{ legacy = { action = 0x49 } }`); a family that converts it names its definition there instead.
 
 ## 4. Testing
@@ -313,9 +313,10 @@ ported. Left: the Full Synchro aura after SyncTrgr (framework).
 Done, in content model v2 (content-model-v2.md §5.9, "As built", step 8f): the rock with its variants and
 debris (objects/rock), RockCube and IceCube (chips/rockcube), the absorbed obstacle and its looks
 (objects/absorbed-obstacle; a look is each obstacle's own record), the falling rock and its chips
-(objects/falling-rock), and what the stages' actor lists place through their kinds' `place`: the rock (the role
-`kinds.rock`), the boulder (`kinds.boulder`, objects/boulder, newly ported) and the Guardian statue
-(`kinds.statue`, chips/guardian). The obstacle framework stays Rust (the `obstacle` service). The verification
+(objects/falling-rock), and what the stages place through their kinds' `place`: the rock, the boulder
+(objects/boulder, newly ported) and the Guardian statue (chips/guardian), which a stage's `actors` name (step
+12: the roles `kinds.rock`, `kinds.boulder` and `kinds.statue` that stood for the actor lists' entry types are
+gone). The obstacle framework stays Rust (the `obstacle` service). The verification
 workspace's rock_trace and bn6_data tests read the kinds through compat.
 
 Left: the encased obstacles' ice block reaches the rock through `rock.spawn(..., { variant =

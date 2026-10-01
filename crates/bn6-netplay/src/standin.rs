@@ -116,12 +116,12 @@ pub fn megaman(content: &Content, hp: u16) -> NaviStats {
     }
 }
 
-/// A one-round netbattle between two MegaMen on `content`'s battle
-/// settings 0, simulated from side 0's perspective, with these battle
+/// A one-round netbattle between two MegaMen on `content`'s stage `stage`
+/// (its key), simulated from side 0's perspective, with these battle
 /// folders. The Crosses and Beast Out are locked; the players' buttons
 /// reach the fight at once (no link delay). Each player's console RNG is
 /// derived from the seed.
-pub fn netbattle(content: &Content, hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
+pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [BattleFolder; 2]) -> RoundSetup {
     let player = |f: BattleFolder, side: u32| PlayerSetup {
         folder: Some(f),
         unlocks: Unlocks { crosses: [false; 5], beast_out: false, ..Unlocks::everything(GameVersion::Falzar) },
@@ -133,7 +133,7 @@ pub fn netbattle(content: &Content, hp: u16, seed: u32, folders: [BattleFolder; 
     let [a, b] = folders;
     RoundSetup {
         content: content.hash(),
-        settings: BattleSettings::on(content, content.stage_numbered(0)),
+        settings: BattleSettings::on(content, content.stage_by_key(stage)),
         navi_stats: [megaman(content, hp), megaman(content, hp)],
         rng: seed,
         local_side: 0,

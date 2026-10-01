@@ -11,12 +11,9 @@ local antidmg_counter = require("../chips/antidmg/counter")
 local antiswrd_counter = require("../chips/antiswrd/counter")
 local barriers = require("../lib/barriers/barriers")
 local bodygrd_counter = require("../chips/bodygrd/counter")
-local boulder = require("../objects/boulder/boulder")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
 local encased_bubble = require("../objects/encased-bubble/bubble")
 local falling_rock = require("../objects/falling-rock/falling_rock")
-local guardian_statue = require("../chips/guardian/statue")
-local rock = require("../objects/rock/rock")
 local supports = require("../lib/supports/controller")
 
 return define.roles {
@@ -48,11 +45,6 @@ return define.roles {
         dust_beast_scatter = { legacy = { action = 0x50 } },
     },
     kinds = {
-        -- What a stage's actor list places, by its `place`: the rock (entry
-        -- type 8), the boulder (3) and the Guardian statue (9).
-        rock = rock.kind,
-        boulder = boulder.kind,
-        statue = guardian_statue.kind,
         -- What an obstacle absorbed flies off as.
         absorbed_obstacle = absorbed_obstacle.kind,
         -- GroundCross's charged chips' falling rocks.
