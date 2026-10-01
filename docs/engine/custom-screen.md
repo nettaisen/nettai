@@ -482,3 +482,47 @@ All 20 screens fit this with no exception **[dumps, both consoles]**:
 - Battle mode 1 paths, tutorials, escape, the Beast Link Gate (state 0x40).
 - NaviStats +0x0A (CustomLevel) and +0x63 change during fights in soundmod (6878, 10341, 36618, 54134); the hand
   size follows them, but the fight engine doesn't model those changes yet.
+
+## 9. Presentation: what the screen shows
+
+The simulation above is all the battle needs. What each console draws of its own screen is presentation: the
+frontend draws the local player's (bn6-frontend `custom`, docs/frontend.md §3), from the `Screen` and from
+`Screen::look` (`custom/look.rs`), the part of the original's control block at `0x020364C0` and of its VRAM that
+the screen's drawing reads. The state digest leaves `look` out, like a sprite's `Look`; nothing the simulation
+reads depends on it.
+
+- **The frame counter** (`+0x40`). While the window slides in (`sub_8026B04`) it is the window's offset, 0x78 less
+  12 a tick; sliding out (`sub_8026BF4`), 12 more a tick. While the chips are chosen (`sub_8026CCC`) it counts the
+  ticks, from 0 when the window is in, and the cursor (`sub_8028820`) shows its second frame on ticks with bit 3
+  set. Beast Out's states (`sub_802770C`, `sub_80275EC`) zero it and count their own timers with it, and choosing
+  goes on from there.
+- **The emblem's spin** (`+0xF`): a pick (`sub_8028CCC`) and Beast Out (`sub_8027738`) set it to 1; each tick that
+  draws the emblem (`sub_8029C08`) steps it, through 0x14, nudging the sprite and setting its affine matrix from
+  `byte_8029CAC` (an angle and a scale; the matrix stays as last set). The emblem isn't drawn while the window is
+  further out than 0x67.
+- **What the window's tiles hold.** The original copies tiles into VRAM when something changes and not otherwise,
+  so the look keeps what it copied: the chip window's last draw (`sub_8028476`: the slot under the cursor, the
+  picks then, and the last chip drawn, whose element's colours palette 11 keeps from screen to screen within a
+  round); the slots as last drawn (`sub_8028250`, on opening and after every pick or take-back, so the chips OK
+  takes out of the folder stay drawn while the window slides out); the picked column's icons (`sub_80281D4`: a
+  pick's chip as checked, Beast Out's the BeastOut chip's, and after a Beast Out the picks again in their new
+  order, unchecked).
+- **The Regular chip's frame** (`sub_802899C`): drawn on choosing ticks while the folder has its Regular chip, its
+  tiles changed on ticks whose counter is a multiple of 8.
+- **The last turns' block** ("FINAL TURN", `sub_8029D34`): in a netbattle's 15th turn on, off 4 frames of 32;
+  hiding or sliding out takes it off.
+- **The face** the emotion window shows: Beast Out's Beast form from Beast Out's 53rd tick (`sub_802A040`; Beast
+  Over's for a tired navi), the BeastOut chip's from its 68th; taking it back (`sub_802A0EC`) takes the face back.
+- **The screen fade** the screen runs on its console: Beast Out's modes 0x64 (half way to black, background
+  palettes 0-13 and sprite palettes 0-10) and 0x60 back, at 8 a frame. The original runs them on the console's
+  one fade record; the port keeps them per screen, apart from the battle's `Fade`.
+- **The window's map variant**: with the Cross tab while MegaMan has a Cross he owns and hasn't used this round
+  (`sub_8029EC8`, at the opening).
+
+What isn't in the look derives from the screen: the window's place (the phase's ticks), the slots' kinds and
+states, the cursor, the picks, and from the battle the camera's jitter, which in Beast Out's states, the Cross
+window's, the scrap's and the re-deal's moves the HUD layer too (`sub_80269E2`, `sub_8030158`).
+
+No chip record of the US ROM has bit 0x20 of its flags (the dark chips of the earlier games), so what the screen
+does for one is unreachable: the cursor starting on it (`sub_802806C`), its window palette, and the fade and music
+volume ramp while the cursor rests on it (`sub_802A2B0`). They are not ported.

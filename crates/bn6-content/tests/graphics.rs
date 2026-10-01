@@ -124,7 +124,56 @@ fn bundle() -> Bundle {
         waiting: tiles(16, 32),
         waiting_palette: palette(47),
     };
-    Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud }
+    Bundle { sprites: vec![sprite(0, 1), sprite(0x14, 0x3A)], field, backgrounds: vec![Some(background), None, None], hud, custom: custom() }
+}
+
+/// A custom screen's graphics: every block and table with some content.
+fn custom() -> CustomScreen {
+    let map = |seed: u16| (0..300u16).map(|i| entry((i * 3 + seed) % 0x1A0, (i % 4) as u8 + 9, i % 7 == 0, i % 11 == 0)).collect();
+    let picture = |seed: u8| Picture { tiles: tiles(42, seed), palette: palette(seed as u16) };
+    let patch = |x, y, w, h, by_column| MapPatch { x, y, width: w, height: h, palette: 9, by_column };
+    CustomScreen {
+        window_tiles: tiles(0x87, 40),
+        column_cells: tiles(4, 41),
+        turn_limit: tiles(14, 42),
+        name_bar: tiles(4, 43),
+        window_maps: vec![map(0), map(1)],
+        window_patches: PatchList { first_tile: 0x9B, patches: vec![patch(2, 1, 8, 2, true), patch(2, 3, 7, 6, false)] },
+        cross_maps: vec![map(2), map(3), map(4)],
+        cross_patches: PatchList { first_tile: 0xE1, patches: vec![patch(1, 13, 2, 2, false)] },
+        frame_palettes: (50..54).map(palette).collect(),
+        icon_palette: palette(55),
+        grey_palette: palette(56),
+        other_palette: palette(57),
+        chip_art: vec![
+            ChipArt { key: "cannon".into(), picture: picture(60) },
+            ChipArt { key: "no-picture".into(), picture: Picture::default() },
+        ],
+        pictures: SlotPictures {
+            ok: picture(61),
+            ok_picked: picture(62),
+            beast_out: picture(63),
+            beast_out_palettes: vec![palette(63), palette(64)],
+            redeal: picture(65),
+            scrap: picture(66),
+            other: picture(67),
+        },
+        codes: tiles(56, 70),
+        elements: tiles(8, 71),
+        element_colours: vec![[1, 2, 3, 4, 5, 6], [0x7FFF, 0, 0x1F, 0x3E0, 0x7C00, 0x2108]],
+        digits: tiles(22, 72),
+        slot_codes: tiles(56, 73),
+        empty_icon: tiles(4, 74),
+        beast_buttons: tiles(32, 75),
+        redeal_buttons: tiles(36, 76),
+        scrap_buttons: tiles(36, 77),
+        cursor: tiles(2, 78),
+        emblems: tiles(8, 79),
+        emblem_palettes: vec![palette(80), palette(81)],
+        emblem_of: vec![0, 1, 1],
+        emblem_palette_of: vec![1, 0, 0],
+        regular: tiles(32, 82),
+    }
 }
 
 /// A fresh directory for one test.
