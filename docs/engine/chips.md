@@ -2338,7 +2338,8 @@ A Cross (Param4 = its place in its wave):
   sound SOUND_UNK_72; past 90 → 4. Phase 4 (`sub_80BF07A`): anim 0xC, Timer 0; at Timer 4, place 0 only: a hit on
   his panel with the whole-field region of `byte_80BF0F0[side]` (0x82; side 1 0x81: the other side's area; no hit
   spark, target 5, self 4; modifier 3; his element; Z his), the panel bursts on it (`sub_80E2FE8(region, 2, 0, r4
-  = 1)`: effect #0x24, objects/panel-bursts, flags |= 0x10), a camera shake (3, 30), a palette flash of 35 ticks
+  = 1)`: effect #0x24, objects/panel-bursts; the flags |= 0x10 after it goes through the routine's return value,
+  the bursts' panel count, into the BIOS, so the bursts wait out the dimming), a camera shake (3, 30), a palette flash of 35 ticks
   (r4 0x12300), sound 0xC3; past 60 → 8. Phase 8 (`sub_80BF0F8`): 30 to −1 (31 ticks) → 0x20.
 - 0x20 (`sub_80BF11A`): anim 4, the attachment (ExtraVars[1]) off, 3 ticks: VISIBLE off, his flag cleared, his
   parts off, state 8.

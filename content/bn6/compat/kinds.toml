@@ -27,6 +27,7 @@ attachment = { pool = "actor", index = 0x05 }
 "sandwrm/hole" = { pool = "actor", index = 0x1C }
 "twinldrs/navi" = { pool = "actor", index = 0x20 }
 "crosover/navi" = { pool = "actor", index = 0x21 }
+"mstrcros/navi" = { pool = "actor", index = 0x23 }
 "sunmoon/sun" = { pool = "actor", index = 0x24 }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
