@@ -1,0 +1,4 @@
+# GrndMan, GrndMan[EX] and GrndMan[SP] (navi chip subtype 10) summon GroundMan
+# (chips/grndman/navi.luau), through chip.luau.
+
+script = "chip.luau"
