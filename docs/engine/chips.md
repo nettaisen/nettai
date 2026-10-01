@@ -1231,9 +1231,15 @@ scenarios (the other side's copy of the chip, answered during the telop) match e
   and its end waits; then the first effect runs, its undim fades the screen back, and its end (the initiator's)
   frees both.
 
-Unverified: a cut-in whose next chip is a navi chip of subtype 0 against the other side's chip 0xBD (AntiRecv's
-counterattack takes the dimming over), a failed
-controller spawn, a cut-in by a chip of another action, and cut-ins with Full Synchro, anger, or a dark chip.
+The coverage scenarios (docs/engine/unverified.md) verified the rest of the cut-ins: by a chip of another
+subtype or action, in chains of up to four (`chips/0x0a3-areagrab/cut-in-invisibl`, `cut-in-chain`,
+`chips/0x0dd-roll/cut-in-heatman`, `chips/0x0e3-heatman/cut-in-barrier`); with Full Synchro and with anger, the
+cut-in's damage doubled and the mood spent (`chips/0x0e3-heatman/cut-in-full-synchro`, `cut-in-anger`,
+`chips/0x08b-meteors/cut-in-full-synchro`); with a dark chip, which goes in as its substitute
+(`chips/0x121-darkinvs/cut-in`); Roll cut in against the other side's AntiRecv, whose counterattack takes the
+dimming over (`chips/0x0bd-antirecv/roll-cut-in`); a cut-in that deletes the first chip's user before its telop
+(`chips/0x0e3-heatman/user-deleted`); and A during a dimming with a chip that doesn't dim next
+(`chips/0x0b1-invisibl/cut-in-not-dimming`). Unverified: a failed controller spawn.
 
 When the checks fail (e.g. A pressed while the other side's screen is still dimming, soundmod 3217), `sub_8017AB4`
 just clears requests 0x80C; the navi goes on shaking as usual.
@@ -1283,7 +1289,9 @@ the healer by the damage (down to 0), two rising bubbles (T4 0x14, palette 1) 16
 center at Z 0, the panel changer (T4 0x1F, kind 6: the own panel turns to poison; dimming-chips.md §4.2) handed
 Param2's address, Param2 = 1. Every tick: once Param2 is 0 (the changer cleared the four parameters), action 0xC.
 **Lab** (`chips/0x0bd-antirecv/roll` and `chips/0x0bd-antirecv/recov10`): AntiRecv set by side 0, then side 1's
-Roll (this branch) or Recov10 (the heal's) springs it; both match every frame (1170). Unverified: Roll's damage with the double-damage flag, a full effect pool.
+Roll (this branch) or Recov10 (the heal's) springs it; both match every frame (1170). Roll's damage with the
+double-damage flag is verified too (`chips/0x0bd-antirecv/roll-full-synchro`: Roll used in Full Synchro, 120 for
+60). Unverified: a full effect pool.
 
 **The controller, T4 0x10 (`sub_80E17E8`).** Spawned with r1..r3 = panel Y, element, subtype as its position (so
 Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is
@@ -1461,7 +1469,7 @@ leaves the trap).
   panel's) and sets off bursts; broken first, it only puffs. Variants 2 to 7 (HP 3 to 10; `bursts_when_broken`,
   `allows_bodies`) need a slot pointer in r7 that TimeBom's controller doesn't pass: the port refuses them. The
   blast (`chips/0x090-timebom1/blast`), the bomb broken first (`broken`), pushed (`pushed`) and the battle's end
-  (`round-end`) are **verified**; removal and absorption are **unverified**.
+  (`round-end`) are **verified**, and removal, blink-out and absorption (`dustman`, `colarmy`, `absorbed`).
 - **Mine** (T4 0x29 `sub_80E342C`, `objects/mine`; 121 ticks) lays T3 0x4C (`sub_80CDD44`, `objects/land-mine`),
   which shuffles the enemy's free panels (`byte_80CDF50`, 20 swaps), hops through them every 2 ticks (59 hops, SE
   0x113), then hides armed (region 1, types 0x33/0x2A) until something touches it, its HP runs out, its panel stops
@@ -1679,7 +1687,8 @@ Timer and Timer2 as one word. Where the scratch lab says "all match", every scen
 (long, long-miss, long-adjacent, long-holes) matches every frame. The battle ending mid-attack (each navi chip's
 `ko`: an opponent of 10 HP deleted by the first hit) and no footing for the navi (each one's `no-footing`: the
 user, with AirShoes, over a missing panel of the holes stage, where the navi's action 0 goes straight to its
-leave) are verified for every navi chip (docs/engine/unverified.md lists them). Unverified everywhere: a pool
+leave) are verified for every navi chip (docs/engine/unverified.md lists them), and so is each one against an
+opponent it can't hit (`invisible`), behind its own RockCube (`rock-front`) and behind a barrier (`barrier`). Unverified everywhere: a pool
 with no free slot (the spawns' failure branches).
 
 #### 3.6.12 TomahawkMan (subtype 8, T1 0x0A `sub_80B97C0`)
@@ -1856,9 +1865,11 @@ cross-ground-charged}: the dig meets the opponent (8 → 0x10). The lab's long s
 until he has gone) chips/0x0fb-grndman/long, long-adjacent, long-holes, long-side1 and the EX's and SP's long do
 too; in long-rocks, long-rocks-miss and long-side1-rocks the dig meets the user's RockCube instead; long-miss and
 long-side1-miss (nothing in his row) reach the rockfall, both rock searches and a rock's hit. All match every frame.
-navi-09-rc-brakr reaches the drill's Param1 0 (its owner never leaves). **Unverified**: action 0 → 0x10 (no
-footing); no rock candidate at all; the rock's no-collision, battle-over and non-solid landing paths, Param2 0,
-Param3 0, Param4 set; the drill's battle-over path and its Param1-0 leave.
+navi-09-rc-brakr reaches the drill's Param1 0 (its owner never leaves). The coverage scenarios verified action
+0 → 0x10 (`chips/0x0fb-grndman/no-footing`), the rock's non-solid landing (`rockfall-holes`,
+`rockfall-after-geddon`) and the rocks' and the drill's battle-over paths (`rockfall-ko`, `ko`). **Unverified**:
+no rock candidate at all; the rock's no-collision path, Param2 0, Param3 0, Param4 set; the drill's Param1-0
+leave.
 
 #### 3.6.26 DustMan (navi chip subtype 11, T1 0x18)
 
@@ -1914,9 +1925,12 @@ none; 0xDB 0C 30 00 00 1; 0xDC 0C 30 01 00 1; 0xDD..0xE1 04 0A 00 with palettes 
 Lab: the official chips/0x0fe and 0x100 {counter, guard, cross-charge-charged}, and the long scenarios
 chips/0x0fe-dustman/long{,-miss,-adjacent,-holes,-rocks,-rocks-miss,-side1,-side1-miss,-side1-rocks} and the EX's
 and SP's long; junk only where there are rocks to take (long-rocks, long-rocks-miss, long-side1-rocks, and
-cross-charge-charged). All match every frame. **Unverified**:
-action 0 → 0x10; the excluded NameIDs; the junk's none look, a look without a shadow, NameIDs 0xD8/0xD9 and outside
-0xCD..0xFF, no collision, the battle's end, and the flag check after moving.
+cross-charge-charged). All match every frame. The coverage scenarios verified action 0 → 0x10
+(`chips/0x0fe-dustman/no-footing`), the battle's end (`ko`), and his junk for every field object a chip of a
+netbattle leaves (each one's `dustman`: the instruments, Sensor's turret, both fans, Anubis's and Guardian's
+statues, TimeBom, BlkBomb, LilBoiler, VDoll: looks with and without a shadow, the none look), with the excluded
+NameIDs (`chips/0x091-mine/dustman`). **Unverified**: NameIDs 0xD8/0xD9 and outside 0xCD..0xFF, no collision,
+and the flag check after moving.
 
 #### 3.6.27 DiveMan (navi chip subtype 13, T1 0xB)
 
@@ -2067,9 +2081,11 @@ books), the long scenarios chips/0x10a-judgeman/long{,-miss,-adjacent,-holes,-ro
 -side1-rocks} and the EX's and SP's long; the books in long-grabbed, long-grabbed-up, long-side1-grabbed and the
 EX's and SP's long-grabbed{,-up} (the opponent's AreaGrab took his front column first). All match every frame, and
 soundmod round 3 has both sides' JudgeMan in one dimming (a counter cut-in), the first with three books and his
-columns coming back a tick apart (field-collision-damage.md §2.6.3). **Unverified**: action 0 → 0x18;
-the whip's Param1 0 (the navi AI's) and battle-over paths; a book's failed spawn or collision, the battle's end,
-arriving at its target, leaving solid ground, the heading's reversal, and the target past the far edge (no enemy
+columns coming back a tick apart (field-collision-damage.md §2.6.3). The coverage scenarios verified action 0
+→ 0x18 (`chips/0x10a-judgeman/no-footing`), the whip's battle-over path (`ko`), and a book arriving at its target
+(`books-invisible`: an invisible navi keeps its body on its panel, so the books fly there and end), leaving solid
+ground (`books-holes`) and ending with the battle (`books-ko`). **Unverified**: the whip's Param1 0 (the navi
+AI's); a book's failed spawn or collision, the heading's reversal, and the target past the far edge (no enemy
 navi at all).
 
 #### 3.6.30 TwinLdrs (navi chip subtype 20, PA chip 0x15C, T1 0x20)
@@ -2151,9 +2167,10 @@ shadow at its height), then always his own (sprite (8, 0xB), animation n, his fl
 
 Lab: the official pa/0x15c-twinldrs recipes (which now match every frame, group H's banner and hand being ported)
 end during the controller's 30-tick warp-out, before he appears; the long scenarios pa/0x15c-twinldrs/long{,-miss,
--adjacent,-holes} reach both, with every slash landing (one target), and match every frame. **Unverified**: his footing failing (0 → 0xC) and Colonel's (the
-40-tick wait); ProtoMan leaving without a slash (anim 3) or with more than one target; Colonel's target off the
-field; a failed Colonel spawn.
+-adjacent,-holes} reach both, with every slash landing (one target), and match every frame. The coverage
+scenarios verified his footing failing and Colonel's (`pa/0x15c-twinldrs/no-footing`), ProtoMan leaving without a
+slash (`rock-front`: the opponent's RockCube on the panel in front of it) and the battle's end (`ko`).
+**Unverified**: more than one target; Colonel's target off the field; a failed Colonel spawn.
 
 #### 3.6.31 CrosOver (navi chip subtype 21, PA chip 0x15D, T1 0x21)
 
