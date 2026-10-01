@@ -25,6 +25,7 @@ tests use synthetic assets.
 | Field panels | indexed PNG + `field.json` (map entries as `tile:palette[:flip]`) | image editor, text editor | byte-exact |
 | Backgrounds | indexed PNG + Tiled map (`map.tmj`) + `background.json` (scroll, animations) | Tiled, image editor | byte-exact, also after a Tiled re-export |
 | HUD | indexed PNGs laid out as drawn (glyphs, icons, mugshots) + `hud.json` | image editor | byte-exact |
+| Custom screen | indexed PNGs laid out as drawn (the window's tiles, chip pictures, codes, icons) + `custom.json` | image editor, text editor | byte-exact |
 | Songs | Standard MIDI file in mid2agb's conventions + TOML sidecar | DAW or MIDI editor | every song plays sample for sample the same |
 | Instruments | voicegroups, key maps, PSG waves as TOML | text editor | exact |
 | Samples | 8-bit mono WAV with a `smpl` loop chunk + `samples.toml` | Audacity, sox, any audio editor | exact, also after tools drop the loop chunk |
@@ -85,6 +86,11 @@ graphics/
     hud.json  layer.png  gauge.png  font.png  enemy-digits.png  counts.png
     banner-digits.png  waiting.png  pause.png  navi-box.png
     hidden-icon.png  chip-icons/CHIP.png  mugshots/NAME.png  banners/NAME.png
+  custom/
+    custom.json  window.png  column-cells.png  turn-limit.png  name-bar.png
+    codes.png  elements.png  digits.png  slot-codes.png  empty-icon.png
+    beast-buttons.png  redeal-buttons.png  scrap-buttons.png  cursor.png
+    emblems.png  regular.png  chip-art/CHIP.png  pictures/NAME.png
 sound/
   sound.toml                         mixer, music players, song table size
   samples.toml                       per sample: file, exact rate, loop start, stamp
@@ -306,6 +312,18 @@ gives, with them), each chip icon's chip (its key in the content), the link
 navis' mugshots and which one a navi shows, the HUD's text lines as glyph
 numbers ("TIME UP!", the turn timer's seconds, "COUNTER HIT!"), banner
 layouts and the form emotions.
+
+**Custom screen** (`graphics/custom/`): the same scheme. `window.png` holds
+the window frame's tiles with the window's four palettes (by the chip under
+the cursor's class), each chip's picture (`chip-art/CHIP.png`, 7x6 tiles)
+its own palette, `elements.png` a palette row per element whose colours
+10-15 are the ones the element brings, `emblems.png` the emblems'
+palettes. `custom.json` holds the window's maps (15x20, without and with the
+Cross tab) and the Cross window's, their patch lists (a block of
+consecutive tile numbers at a cell, row or column first, in a palette), the
+three palettes no image owns as colour lists, and which emblem a navi shows.
+The frontend composes the tile numbers the maps name from these blocks, as
+the original's VRAM holds them.
 
 Tiled was considered for the field's panel blocks too, but a panel tile is
 drawn in different palettes for each side, which a Tiled tileset can't show
