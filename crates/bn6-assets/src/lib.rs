@@ -6,6 +6,9 @@
 //! Colours are the GBA's 15-bit BGR555. Tiles are 8x8 with one palette index
 //! per pixel, where index 0 is transparent.
 
+pub mod custom;
+pub use custom::{ChipArt, CustomScreen, MapPatch, PatchList, Picture, SlotPictures};
+
 /// Everything the frontend draws with.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Bundle {
@@ -15,6 +18,8 @@ pub struct Bundle {
     /// Battle backgrounds by the battle settings' background id.
     pub backgrounds: Vec<Option<Background>>,
     pub hud: Hud,
+    /// The custom screen's (empty in a pack that predates it).
+    pub custom: CustomScreen,
 }
 
 impl Bundle {
