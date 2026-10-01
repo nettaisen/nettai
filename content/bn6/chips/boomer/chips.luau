@@ -1,10 +1,10 @@
 --!strict
--- Boomer, HiBoomer, M-Boomer: a boomerang (objects/boomerang) flies from
+-- Boomer, HiBoomer, M-Boomer: a boomerang (./boomerang) flies from
 -- the user's back column along row 3, up the far column and back along
 -- row 1, turning the other side's panels it crosses to grass; faster with
 -- each (the original's rows 0 to 2 of `byte_80CA26C`).
 
-local boomerang = require("../../objects/boomerang/boomerang")
+local boomerang = require("./boomerang")
 
 return {
     define.chip {

@@ -84,7 +84,7 @@ falling-rock = { pool = "attack", index = 0x1D }
 "rflectr/shot" = { pool = "attack", index = 0x2F }
 "colarmy/army" = { pool = "attack", index = 0x30 }
 "tornado/tornado" = { pool = "attack", index = 0x31 }
-boomerang = { pool = "attack", index = 0x32 }
+"boomer/boomerang" = { pool = "attack", index = 0x32 }
 "crakshot/shot" = { pool = "attack", index = 0x33 }
 "ironshl/shell" = { pool = "attack", index = 0x34 }
 "diveman/wave" = { pool = "attack", index = 0x39 }

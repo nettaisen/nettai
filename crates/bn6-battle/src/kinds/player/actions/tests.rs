@@ -1811,7 +1811,7 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
     // BN6's definitions, and the test chips that compose FireHit's and
     // FlmHook's effects.
     let chips = [
-        (testing::chip_handle(testing::BOOMER), "boomerang"),
+        (testing::chip_handle(testing::BOOMER), "boomer/boomerang"),
         (testing::chip_handle(testing::LANCE), "lance/lance"),
         (testing::chip_handle(testing::FIST), "firehit/fist"),
         (testing::chip_handle(testing::SAND_WORM), "sandwrm/worm"),
@@ -1873,7 +1873,7 @@ fn lances_thrust_from_the_far_column() {
 fn the_tomahawk_throw_sends_two_tomahawks() {
     // The boomerangs out, by their sprites and rows.
     let tomahawks = |b: &Battle| {
-        let t = b.objects.in_order().filter(|&o| b.kind_key(o) == "boomerang");
+        let t = b.objects.in_order().filter(|&o| b.kind_key(o) == "boomer/boomerang");
         t.map(|o| (b.objects.sprite(o).id, b.objects.get(o).panel.y)).collect::<Vec<_>>()
     };
     let start = || {
@@ -2298,7 +2298,7 @@ fn the_chips_charged_shots_fire_and_roll_back() {
     let (mut b, p0, p1) = fight();
     let t = run_weapon(&mut b, [p0, p1], "boomrarm/charge", 400);
     assert_eq!(t, 1);
-    assert_eq!(of_kind(&b, "boomerang").len(), 1);
+    assert_eq!(of_kind(&b, "boomer/boomerang").len(), 1);
     let (mut b, p0, p1) = fight();
     assert!(run_weapon(&mut b, [p0, p1], "megaman/tengu-wind", 400) > 8);
     // BugRSwrd's slash with a bug frag covers the two columns ahead:
