@@ -227,9 +227,10 @@ The first batch of the survey's scenarios covered the rows below; the rest of th
 | RlngLog | the log's stop and break; no ground under it | no shot meets a log | yes | chips/0x028-rlnglog1/shot, holes: verified |
 | RlngLog | the drop-in path | | check | open |
 | Static | the larger spreads (the user's NaviCust bug kinds) | no bugged user | yes | chips/0x035-static/bugs-1, bugs-2, bugs-3: verified |
-| Tornado | subtype 3 | | check | open |
+| Tornado | subtype 3 | no chip record gives it (the chips are subtypes 1 and 2) | unreachable | |
 | AirSpin | the whirlwind shot down, AirShot at it | | yes | chips/0x07e-airspin1/shot, pushed: verified |
-| AirSpin | variant 1; the whirlwind removed, absorbed, blinking out | no chip; no remover | partly | open |
+| AirSpin | the top absorbed (and thrown), blinking out, removed | it spins for 40 ticks: the opponent has to act while it does | yes | chips/0x07e-airspin1/dust-absorb (the opponent's DustCross's B+Back), vanished (the opponent's ColArmy), swallowed (the opponent's BlzrdBal cuts in, and its ball finds the top held by the dimming): verified |
+| AirSpin | variant 1 | no chip | unreachable | |
 | H-Burst | the fight-over branch | | yes | pa/0x152-h-burst/ko: verified |
 | H-Burst | the whole-field branch | | check | open |
 | WideBrn, ParaShl, GreatYo, PitHocky | the Program Advances past the banner | stopped at the banner when written | yes | the recipes (pa/…): verified by the lab since the banner was ported |
@@ -243,7 +244,7 @@ The first batch of the survey's scenarios covered the rows below; the rest of th
 | family | branch | why it was unreached | reachable | scenario and status |
 |---|---|---|---|---|
 | Obstacles | pushes (`sub_8017CC0`, `sub_800F598`, `sub_8017CE0`, `sub_8017D64`, `sub_8017E0A`) | nothing is pushed | yes | chips/0x090-timebom1/pushed, chips/0x03c-blkbomb/pushed, chips/0x062-lilbolr1/pushed, chips/0x08f-rockcube/pushed-by-enemy, chips/0x097-guardian/pushed, chips/0x071-sensor1/pushed, chips/0x17c-icecube/pushed: verified |
-| Obstacles | the pushes' ice and bounds branches | | yes | open |
+| Obstacles | the pushes' ice and bounds branches | | yes | stages/ice-50-rockcube-airshot, iceblocks-2c-airshot, ice-52-icecube, fan-airshot-ice (over ice), chips/0x077-lance/stage-ice (a pull stops at the edge of the puller's area), chips/0x023-elcpuls2/obstacle: verified |
 | Obstacles | the field-object slots: a third class-0 object, a second class-1 one | | yes | chips/0x08f-rockcube/replaced, chips/0x098-anubis/replaced, chips/0x062-lilbolr1/replaced: verified |
 | Obstacles | thrown and encased (`sub_8018002`, `sub_801813A`) | nothing in the game starts them | unreachable | |
 | Obstacles | actions 3/4/6/7, a push without direction bits | nothing sets them | unreachable | |
@@ -279,6 +280,31 @@ Scenarios named here are in the verification workspace's chiplab library (`stage
 | Panel changes under obstacles: Geddon's cracks under boulders; a Tornado on a rock; a BigBomb's blast | `boulders-18-geddon`, `poison-5f-tornado`, `boulders-19-bigbomb` | match |
 | GroundCross's falling rocks (attack #0x1D) over the holes stage: a rock over a hole puffs, one over a panel shatters | `forms/falzar/cross-ground-charged-holes` | matches |
 
+| A navi's absorbed list full: nine obstacles over two turns; the ninth tries on its 9th and 10th tick, finds eight in the list, and flies on (its timer wrapped) until it puffs off the field once the navi's action ends | `absorbed-list-full` | matches |
+| The push from both sides at once: two AirShots landing on one RockCube on the same tick (no push), and a tick apart either way (two pushes) | `rock-airshots-both-together`, `-early`, `-late` | match |
+| The knock-back over ice panels (its ice branch) | `fan-airshot-ice` | matches |
+| A pushing hit that breaks the Fan (40 HP) before it can move it: WindRack, ElcPuls2 | `fan-windrack`, `fan-elcpuls2` | match |
+| GroundCross's falling rock on a navi (its hit branch) | `forms/falzar/cross-ground-charged-hit` | matches |
+| The panels acting on side 0 with an empty NaviCust (the falzar base's side 0 has AirShoes, FlotShoe and BugStop, so no other scenario shows them on side 0): a walk over its nine panels on each stage (sliding on ice, holes left on cracked panels and coming back, holes blocking the way, poison and lava, the roads carrying it); standing on each stage's panels hit by aqua, elec, fire and null chips (fire doubled on grass, everything halved on holy, FireBrn cracking the panels it burns and so ending the poison or the halving); pushed back by AirShots (onto lava, along a road, against a hole) | `stages/panels-{grass,ice,poison,volcano,holy,cracked,holes,roads}-walk`, `panels-{grass,ice,poison,volcano,holy,cracked}-hit`, `panels-{grass,ice,poison,volcano,holy,cracked,roads}-airshot`, `poison-5c-bare`, `ice-50-bare` | match |
+| Chips that change the panels under side 0 (empty NaviCust): the opponent's GrasSeed and a doubled FireBrn, IceSeed (sliding, WideSht), PoisSeed, Geddon (every panel but the navis' breaks, one every 8 ticks; side 0 can't step off), ComingRd and GoingRd (carried along the roads); its own Snctuary and HolyPanl (Cannons halved) | `panels-grasseed-fire`, `panels-iceseed-walk`, `panels-poisseed-stand`, `panels-geddon-walk`, `panels-comingrd-walk`, `panels-goingrd-walk`, `panels-snctuary-hit`, `panels-holypanl-hit` | match |
+
+### Instant chips, the Cross special and the Cross Beasts: covered
+
+| Branch | Scenarios | Result |
+|---|---|---|
+| The instant chips whose effects spawn objects (`off_80EC3F0`: SandWrm1, FireHit1, Boomer, Lance, GolmHit1, JustcOne, ColArmy): used by side 1 (the mirrored paths), with the opponent a row off, in its back column, and behind its own RockCube; on the holes, cracked and ice stages; deleting an opponent of 10 HP moved into the chip's reach (the objects with the battle over); against Barr100; through the opponent's AreaGrab dimming | `chips/0x065-sandwrm1/{side1, row1, row3, far, enemy-rock}`; the same and `stage-holes`, `stage-cracked`, `stage-ice`, `ko`, `barrier`, `dimmed` for `0x06b-firehit1`, `0x074-boomer`, `0x077-lance`, `0x078-golmhit1`, `0x08c-justcone`, `0x0c6-colarmy` (71 scenarios) | match |
+| The boomerang thrown by side 1 (flying left, its turns mirrored); the lance pulling an ice block along the back row to the edge of its user's area | `chips/0x074-boomer/side1`, `chips/0x077-lance/stage-ice` | match |
+| GolmHit's fist: it lands on the other side's nearest panel of the row wherever the navi stands (column 4 with the opponent in its back column); the battle over while it stands; landing on a hole (its one hit, the puff) | `chips/0x078-golmhit1/far`, `ko`, `hole` (after the user's Geddon) | match |
+| ColArmy with obstacles on the field (a RockCube of the user's first): its soldier facing the navi ahead, turning around for a navi behind it on its row (the draw), standing through a dimming, its shots deleting the opponent | `chips/0x0c6-colarmy/*` (eleven scenarios), `turns-around` | match |
+| ColForce to the force's last look (a look that finds no panel ends it), against the user's and the opponent's RockCube, with the battle over, and from side 1 (a Falzar side holding Gregar's chip: the lab's bases have no Gregar side 1) | `chips/0x130-colforce/obstacle`, `enemy-rock`, `ko`, `side1` | match |
+| The Cross special (DarkInvs's auto-battle): the chip rows for a base max HP of 100 to 900, each used through its record | `chips/0x121-darkinvs/hp-100` to `hp-900` | match |
+| GunDelEX's wide beam on an opponent a row off | `chips/0x012-gundelex/wide` | matches |
+| The Cross Beasts' charged Null chips, all ten (Heat, Elec, Slash, Erase, Charge; Spout, Tomahawk, Tengu, Ground, Dust), with the opponent on the user's row and a row off it: 307 blocks no recording had reached, among them the tomahawks (the boomerang's other variant: its sprite, its leg down a column) | `forms/gregar/cross-{heat,elec,slash,erase,charge}-beast-charged`, `forms/falzar/cross-{spout,tomahawk,tengu,ground,dust}-beast-charged`, each also `-row1` | match (Ground after the fix below) |
+| A Cross Beast charging a chip of its family | `forms/falzar/cross-{spout,tomahawk,tengu,ground,dust}-beast-family-charged` | match |
+
+Fixed from these: GroundCross Beast's dash spawns two hits; the original loads the height (24 pixels) for the
+first only, and the second takes what the spawner leaves in that register, the element (a fraction of a pixel).
+
 ### Field objects and stages: not reachable in a netbattle (documented, no scenario)
 
 | Branch | Why |
@@ -290,20 +316,28 @@ Scenarios named here are in the verification workspace's chiplab library (`stage
 | The actor lists' entry types 1, 2, 6, 7 and 0xA; battle settings records 0x60 and up | No link battle's stage has them (match type 1 draws from 0x00 to 0x5F; types 0 and 2 need another match type, and name the same lists). |
 | The rock's and the boulder's "no collision slot" paths, an absorbed obstacle with no navi to fly to | A full pool; the side's first actor is always the player's navi. |
 
+| The pull vectors on an obstacle (`byte_800F604`'s rows for hit modifiers 0x04 and 0x10 with the push bit): six panels toward the pusher | Fan's gust has hit modifier 4 without the push bit (0x40) and starts no slide (`boulders-17-fan`); the one attack with both is the numbered shot 0x20, a charged shot kind no NaviCust routine writes. (The one-panel pull is ElcPuls2's and the lance's: covered.) |
+| The knock-back's vectors other than AirShot's (the fan's and the statue's table entry reads the vector's panels) | A Fan has 40 HP and a stage statue breaks to the first hit: every pushing chip but AirShot (20) destroys it with the hit that would move it (`fan-windrack`, `fan-elcpuls2`). |
+| A falling rock's counter decrement (`sub_80C7E24`) | GroundCross's barrage passes no counter. |
+| SandWrm's hole waiting open (`sub_80BC958`), its start hole's timer running out during the arc | The worm closes each hole 20 ticks after it opens, the tick its opening animation (4 frames of 6 ticks, begun a tick late) would hand over to the wait; the arc is 16 ticks, shorter than the timer. Paused or dimmed both stand still, a held navi only slows the hole, and with the battle over both go at once. No SandWrm recording (60 of them) reaches either. |
+| GolmHit's fall-back column (no panel of the other side's on the row), its cracks (Param3, Param4), a fist on its own panel (Param2) | A side always keeps a full column (the grab shots don't take the last one); no chip record sets the parameters. |
+| The boomerang's strong hit (Param4), the lance's second palette (Param1) | No thrower and no chip record ask for them. |
+| ColArmy's soldier spawned off the field | It takes an obstacle's panel. |
+| The "no collision slot" paths of the worm, the boomerang, the soldiers and the golem's hits | A full pool. |
+| Thunder's ball with a bug (its fourth parameter) | Thunder's and DarkThnd's records give 0. |
+| The recovery chips' tenth heal row (no target) | No chip record names it. |
+
 ### Open
 
-- Field objects: a navi's absorbed list full (eight obstacles: more than a round sets up); the push's branch
-  for a hit from both sides at once, and its pull back toward the pusher's side (Fan's gusts don't move a boulder
-  off its row's far end: `boulders-17-fan`); the knock-back over ice; a falling rock breaking on what it hits
-  (`sub_80C7E24`'s hit branch: no recording takes it, though the rocks' hits land).
-- Instant chips (`off_80EC3F0`): the boomerang's turns at the field's edges and its hits on the way back, the
-  lance's panel checks, SandWrm's hole and spray against obstacles and holes, GolmHit's cracks by panel type,
-  JustcOne's landing waves, ColForce's soldiers and ColArmy's shots against obstacles, FullCust's and the plus
-  chips' special-source branches (not reachable: per-player gauges and the special chips are not a netbattle's).
-  Effects 2, 6, 9, 11, 16 and 17 wait for the link navis' weapons, their only callers.
-- Standard chips (standard-chips.md): Static's larger spreads (a bugged NaviCust), the shock wave's rows, the
-  thunder ball's bug, GunDelEX's wide beam, the recovery chips without a target, the Cross special's chips through
-  the by-number shims.
+- Field objects: a pushing hit other than AirShot's on a fan or statue that doesn't break it (none found: see
+  the table above).
+- Instant chips (`off_80EC3F0`): FullCust's and the plus chips' special-source branches (not reachable:
+  per-player gauges and the special chips are not a netbattle's); ColForce from a real Gregar side 1 (the
+  lab's bases have none; `chips/0x130-colforce/side1` gives a Falzar side the chip). Effects 2, 6, 9, 11, 16
+  and 17 are called only by the link navis' weapons (not surveyed here).
+- The gregar base's side 0 has SuprArmr, UnderSht, AttckMAX, ChargMAX and HP+1200 in its NaviCust, so Gregar's
+  Cross and Beast scenarios never show side 0 flinching: the same blind spot as the falzar base's shoes, not
+  surveyed yet.
 
 ## Ruleset
 
