@@ -232,6 +232,10 @@ declare class Sprite
     function set_animation(self, anim: number): ()
     -- Advance the animation one tick (no gating).
     function step(self): ()
+    -- `sub_80030BA`: where part n (from 0) of the current frame sits, in
+    -- pixels from the object, unflipped; (0, 0) when the frame has fewer
+    -- parts. Objects attach to them.
+    function part_offset(self, n: number): (number, number)
     -- The game's flip value: bit 0 horizontal, bit 1 vertical.
     function set_flip(self, flip: number): ()
 end
@@ -430,6 +434,11 @@ declare class Object
     -- Writable: the barrier's visual (AIData+0x60), which hides and shows
     -- with the navi (its state's `shown`).
     barrier_visual: Object?
+
+    -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
+    -- NameID look; a navi's or form's NameID gives its sprite). An error
+    -- for a NameID the content has no look for.
+    function name_look_is(self, sprite: SpriteAsset): boolean
 
     -- Spawn parameter n (1 to 4: the game's Param1..Param4).
     function param(self, n: number): number
@@ -951,6 +960,9 @@ declare battle: {
     -- in, and adding to its Atk+ bonus.
     hand_turn: (side: number, i: number) -> number,
     add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
+    -- A side's hand has a chip at i and it does damage (its record's
+    -- "has_damage" flag).
+    hand_chip_damages: (side: number, i: number) -> boolean,
     -- Subtype 8 (Wind and Fan): a side's wind (`sub_80E543C`) and who
     -- placed it; `sub_80E541A` makes `me` a side's wind (the one there
     -- before is destroyed at once); `sub_80E544C` makes it no side's.

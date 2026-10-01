@@ -1027,6 +1027,9 @@ pub trait CoreApi {
     /// Add to the Atk+ bonus of the chip at `i` of a side's hand
     /// (wrapping).
     fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
+    /// A side's hand has a chip at `i` and it does damage (its record's
+    /// flag 0x02, "has_damage").
+    fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
     /// A side's defensive-chip record.
     fn linked(&self, side: u8) -> LinkedChip;
     fn set_linked(&mut self, side: u8, rec: LinkedChip);
@@ -1388,6 +1391,13 @@ pub trait CoreApi {
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8);
     /// Advance the animation one tick (no gating).
     fn sprite_step(&mut self, o: ObjectRef);
+    /// `sub_800F26C`: whether the look `o`'s NameID gives is `sprite` (an
+    /// object's NameID look; a navi's or form's NameID gives its sprite).
+    /// An error for a NameID the content has no look for.
+    fn name_look_is(&self, o: ObjectRef, sprite: SpriteId) -> ApiResult<bool>;
+    /// `sub_80030BA`: where part `n` of the current frame sits, in pixels
+    /// from the object, unflipped; (0, 0) when the frame has fewer parts.
+    fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32);
     fn sprite_get(&self, o: ObjectRef, f: SpriteField) -> Value;
     fn sprite_set(&mut self, o: ObjectRef, f: SpriteField, v: Value) -> ApiResult<()>;
 

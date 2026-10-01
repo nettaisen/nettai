@@ -396,6 +396,14 @@ export type Instrument = {
     effect: (me: Object) -> (),
 }
 
+-- AirRaid's plane (chips/airraid, a row of the original's `byte_80D34C0`):
+-- its lifetime in ticks, its bombs, its palette and HP.
+export type AirRaidPlane = { lifetime: number, bombs: number, palette: number, hp: number }
+
+-- ColorPt's and DblPoint's points (chips/colorpt): their palette (four a
+-- step) and the Atk+ bonus each brings (the chips' parameters).
+export type ColorPoint = { palette: number, bonus: number }
+
 -- A shock wave's look and timing (chips/wavearm/wave, a row of the
 -- original's `byte_80C6B00`): its animation, ticks on a panel before the
 -- next rolls on, the panel type it leaves ("cracked" cracks the panel,

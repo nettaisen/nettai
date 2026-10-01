@@ -21,6 +21,7 @@ chips/05f-aurahed1/chip.luau 2
 chips/07b-ironshl1/chip.luau 2
 chips/09a-recov10/chip.luau 1
 chips/173-sonicbom/chip.luau 1
+chips/airraid/plane.luau 1
 chips/airspin/top.luau 1
 chips/antidmg/counter.luau 1
 chips/antiswrd/counter.luau 1
