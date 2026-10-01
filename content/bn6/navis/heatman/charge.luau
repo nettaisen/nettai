@@ -24,7 +24,7 @@ local WIND_UP_TICKS, RECOVER_TICKS = 8, 0x1E
 -- dimming out.
 local HIT_PARAM = 0x8A
 local FIRE = 1
-local FLAME = { while_dimmed = false, ticks = 0x1E, is = collision.attack }
+local FLAME: HeatFlame = { while_dimmed = false, ticks = 0x1E, is = collision.attack }
 
 -- Where a flame can burn: a panel of the field with a floor.
 local FLOOR = 0x10010
@@ -79,7 +79,7 @@ local function recover(me: Object, s: State)
     end
 end
 
-local PHASES = { [WIND_UP] = wind_up, [RECOVER] = recover }
+local PHASES: { [number]: (me: Object, s: State) -> () } = { [WIND_UP] = wind_up, [RECOVER] = recover }
 
 charge.action = define.action {
     id = "heatman/charge/action",

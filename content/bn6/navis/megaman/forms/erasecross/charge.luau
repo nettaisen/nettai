@@ -22,7 +22,7 @@ local charge = {}
 local FIRE, HOLD = 0x0, 0x4
 
 -- EraseCross's form; its hit parameter.
-local ERASE_CROSS, HIT_PARAM = 4, 0x94
+local ERASE_CROSS, HIT_PARAM = "erasecross", 0x94
 
 local SOUND = asset.sound("moon-beam")
 
@@ -36,7 +36,7 @@ local function setup(navi: Object): Action
     navi.attack_damage = weapon.charge_damage(navi, 0x28, 0x14)
     navi.hit_param = HIT_PARAM
     local s = navi:action_state(charge.action) :: State
-    s.beast = battle.navi(navi.alliance).form ~= ERASE_CROSS
+    s.beast = battle.navi(navi.alliance).form.id ~= ERASE_CROSS
     navi.attack_element = 0
     return charge.action
 end

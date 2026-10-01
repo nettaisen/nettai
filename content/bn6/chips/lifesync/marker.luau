@@ -41,7 +41,7 @@ marker.kind = define.kind {
             -- once.
             local sprite = me.sprite
             sprite:load(SPRITE)
-            sprite.shadow = "hidden"
+            sprite.shadow = "with_sprite"
             me.anim, me.anim_loaded = ANIM, ANIM
             sprite:set_animation(ANIM)
             sprite:step()

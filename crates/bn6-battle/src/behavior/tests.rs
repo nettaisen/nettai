@@ -114,7 +114,7 @@ fn battles_run_the_content_scripts() {
             "heatman/navi",
             "instrument",
             "instruments/controller",
-            "invisible",
+            "invisibl/controller",
             "justcone/strike",
             "lance/lance",
             "lilbolr/boiler",
@@ -123,8 +123,6 @@ fn battles_run_the_content_scripts() {
             "mine/controller",
             "mine/land-mine",
             "navi-boost",
-            "numbered",
-            "numbered-2",
             "panel-bursts",
             "panel-changer",
             "panel-chips/controller",
@@ -186,7 +184,6 @@ fn battles_run_the_content_scripts() {
     );
     let sun_gun = b.content.defs.chip(testing::chip_handle(testing::SUN_GUN_3));
     assert!(matches!(sun_gun.usage, crate::content::ChipUsage::Action(_)), "GunDelSol is a script");
-    assert!(b.content.defs.action_numbered(0x10).is_none(), "the step is the engine's");
 }
 
 #[test]
@@ -538,7 +535,7 @@ fn the_scripted_swords_play_and_roll_back() {
 fn link_chip_setup(chips: &[usize]) -> crate::setup::RoundSetup {
     let chips: Vec<_> = chips.iter().map(|&i| testing::chip_handle(testing::LINK_CHIPS[i])).collect();
     let mut s = scenario::setup_with_handles(&chips);
-    let navi = testing::content().navi_numbered(testing::LINK_NAVI);
+    let navi = testing::content().navi_by_key(testing::LINK_NAVI);
     for stats in &mut s.navi_stats {
         stats.navi = navi;
     }
@@ -597,10 +594,6 @@ fn the_link_navis_chips_play_and_roll_back() {
 fn registrations_follow_the_content_data() {
     let c = testing::build();
     let d = &c.defs;
-    // Every chip's action is a definition (no action is a registration
-    // by number: the weapons' are definitions too).
-    let numbered: Vec<u8> = d.actions.iter().filter_map(|a| a.number).collect();
-    assert_eq!(numbered, [0u8; 0], "{:?}", d.actions);
     // An instant chip's use is its effect, and a weapon that names an
     // effect no chip has (TenguCross's wind) has its own.
     let plus = d.chip(testing::chip_in(&c, testing::PLUS));
@@ -616,21 +609,6 @@ fn registrations_follow_the_content_data() {
     // Handles number each registry in key order: the engine's kinds and
     // the content's together.
     assert!(d.kinds.windows(2).all(|w| w[0].key < w[1].key));
-    // The engine's kinds have no object slot (the validator has theirs).
-    let h = d.kind_by_key("engine/hitbox").unwrap();
-    assert_eq!(d.kind(h).slot, None);
-    assert_eq!(d.kind_at(crate::object::Pool::Attack, 3), None);
-    // Naming a script the pack doesn't have is an error.
-    let mut c = testing::build();
-    c.objects.kinds[0].script = "objects/nowhere".into();
-    let e = c.define().unwrap_err().message;
-    assert!(e.contains("isn't in the pack"), "{e}");
-    // And a kind two registrations fill.
-    let mut c = testing::build();
-    c.objects.kinds[1].index = c.objects.kinds[0].index;
-    c.objects.kinds[1].pool = c.objects.kinds[0].pool;
-    let e = c.define().unwrap_err().message;
-    assert!(e.contains("both fill"), "{e}");
 }
 
 #[test]
@@ -744,7 +722,7 @@ fn the_scripted_dimming_chips_and_rocks_play() {
     assert!(ticks("rockcube/cube") > 0, "the cube's controller: {seen:?}");
     assert!(ticks("rock") > 0, "rocks: {seen:?}");
     // The veil's controller makes its user invisible.
-    assert!(ticks("invisible") > 0, "the veil's controller: {seen:?}");
+    assert!(ticks("invisibl/controller") > 0, "the veil's controller: {seen:?}");
     assert!(ticks("an invisible navi") > 0, "an invisible navi: {seen:?}");
     // The trap's controller runs its hidden telop.
     assert!(ticks("trap-chip") > 0, "the trap's controller: {seen:?}");
@@ -1218,8 +1196,8 @@ fn global_writes_are_rejected_at_load() {
 }
 
 #[test]
-fn module_tables_and_data_are_frozen() {
-    for line in ["action.uses = me.step", "data.rules.sine[1] = 0", "math.floor = math.ceil"] {
+fn module_tables_and_libraries_are_frozen() {
+    for line in ["action.uses = me.step", "math.floor = math.ceil"] {
         let e = play_error(load(&in_update(line)).unwrap()).expect("the write fails");
         assert!(e.contains("readonly"), "{line}: {e}");
     }

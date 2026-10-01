@@ -16,7 +16,7 @@ local COOLDOWN = 0x28
 local SOUND = asset.sound("dustbrk")
 
 -- The gusts pull: the weak push, turned toward the navi.
-local PULL = { pulls = true }
+local PULL: GustHow = { pulls = true }
 
 -- `sub_8011CA8`: the cooldown; its effect is the weapon's `instant`, which
 -- the instant chips' action runs.

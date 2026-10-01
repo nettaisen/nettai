@@ -7,6 +7,7 @@
 -- one. Then he leaves, and the controller moves on. See
 -- docs/engine/chips.md §3.6.15.
 
+local heatman_navi = require("../../navis/heatman/navi")
 local collision = require("../../rules/collision")
 local flame = require("./flame")
 local navi_chips = require("../../lib/navi-chips/navi")
@@ -22,9 +23,8 @@ export type State = {
 local SPRITE = asset.sprite("heatman")
 local SOUND_APPEAR = asset.sound("appear")
 
--- His actor record (the parts it adds: his overlay, `sub_8010F6A`).
-local ACTOR_TYPE: ActorType = "player"
-local AI_INDEX = 1
+-- What he wears (his overlay, `sub_8010F6A`): the link navi's own parts.
+local IDENTITY = heatman_navi.identity
 
 -- Panel flags a flame needs (as one word).
 local CAN_HOLD = 0x10010
@@ -34,7 +34,7 @@ local CAN_HOLD = 0x10010
 local SPAWNER_ADDRESS = 0x080B921B
 
 -- His flames act while dimmed and last 30 ticks, as attacks.
-local FLAME = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
+local FLAME: HeatFlame = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
 
 -- His actions.
 local APPEAR, STAND, INHALE, FIRE, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10
@@ -43,7 +43,7 @@ local APPEAR, STAND, INHALE, FIRE, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10
 -- with his parts.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground")
-    me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
+    me:add_parts(IDENTITY, 1)
     me:set_lifecycle("update")
 end
 
@@ -151,7 +151,7 @@ local function leave(me: Object)
     if not countdown(me, 4, true, true) then
         return
     end
-    me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
+    me:remove_parts(IDENTITY)
     navi_chips.leave(me, (me.state :: State).controller)
 end
 
