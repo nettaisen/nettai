@@ -348,7 +348,7 @@ mod tests {
     #[test]
     fn live_custom_screen() {
         let content = bn6_battle::content::testing::content();
-        let stage = content.stage_numbered(bn6_battle::content::testing::LINK_BATTLE);
+        let stage = content.stage_by_key(bn6_battle::content::testing::LINK_BATTLE);
         let settings = BattleSettings::on(&content, stage);
         let folder = [(bn6_battle::content::testing::SUN_GUN_3, 0)];
         let mut live = LivePlayer::new(live_setup(&content, settings, &folder, 7), content.clone());

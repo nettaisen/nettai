@@ -17,7 +17,7 @@ return define.form {
     element = "null",
     weakness = { "wind" },
     buster_bonus = 0,
-    weapons = { buster = gregar_beast_buster, a_charge = charged_chip_bonus, alt_a_charge = drop },
+    weapons = { buster = gregar_beast_buster.weapon, a_charge = charged_chip_bonus, alt_a_charge = drop.weapon },
     mugshot = asset.mugshot("groundcross-beast"),
     identity = {
         version = 0,

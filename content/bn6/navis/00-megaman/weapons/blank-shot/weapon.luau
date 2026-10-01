@@ -1,8 +1,8 @@
 --!strict
 -- The blank shot (`megaman/blank-shot`): the original's weapon routine 2
 -- (`sub_8011ADA`) and action 0x33 (`sub_80ED748`), what the buster fires
--- when the NaviCust's buster bug picks a blank. The navi raises the buster and it clicks, but nothing is
--- fired; then the buster's recovery, counted from the navi's own panel (a
+-- when the NaviCust's buster bug picks a blank. The navi raises the buster
+-- and it clicks, but nothing is fired; then the buster's recovery, counted from the navi's own panel (a
 -- shot's counts from the panel in front; the navi's body is off the field
 -- while it updates, so its own panel counts as open). See
 -- docs/engine/objects-and-player.md §B6.
@@ -25,15 +25,11 @@ local RAISE, RECOVER = 0x0, 0x4
 -- `sub_8011ADA`: nothing to fire.
 function blank_shot.setup(navi: Object): Action
     navi.attack_element = 0
-    navi.variant = 0
     navi.charged = 0
     navi.attack_lockout = 0
     navi.extra = 0
     navi.hit_param = 0
     navi.attack_damage = 0
-    for i = 1, 4 do
-        navi:set_attack_param(i, 0)
-    end
     return blank_shot.action
 end
 

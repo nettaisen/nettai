@@ -42,7 +42,6 @@ fn battles_run_the_content_scripts() {
             "airraid/controller",
             "airraid/plane",
             "airraid/propeller",
-            "aqua-surge",
             "attachment",
             "barrier-visual",
             "barriers/controller",
@@ -58,19 +57,19 @@ fn battles_run_the_content_scripts() {
             "bugbomb/bomb",
             "bugfix/controller",
             "bugfix/glow",
-            "charge-wave",
+            "chargecross-beast/wave",
             "chargeman/volcano-rock",
             "chrgeman/car",
             "chrgeman/navi",
             "colorpt/controller",
             "colorpt/point",
             "crakshot/shot",
-            "dash-hit",
             "dolthdr/doll",
             "dragon-body",
             "dragon-head",
             "drill",
-            "dust-ball",
+            "dustcross-beast/junk-shot",
+            "dustcross/junk-ball",
             "dustman/cloud",
             "dustman/overlay",
             "elecman/navi",
@@ -85,8 +84,8 @@ fn battles_run_the_content_scripts() {
             "elmntman/vine",
             "encased-bubble",
             "energbom/burst",
-            "erase-drop",
-            "erase-ray",
+            "erasecross-beast/drop",
+            "erasecross/ray",
             "eraseman/beam",
             "eraseman/mark",
             "eraseman/navi",
@@ -105,23 +104,24 @@ fn battles_run_the_content_scripts() {
             "grab/shot",
             "grndman/drill",
             "grndman/rock",
+            "groundman/drill",
             "gundels/beam",
             "gust",
             "heatman/flame",
             "heatman/navi",
-            "hit-flash",
             "instrument",
             "instruments/controller",
             "invisible",
-            "junk-shot",
             "justcone/strike",
             "lance/lance",
             "lilbolr/boiler",
             "lilbolr/layer",
-            "lunge-slash",
+            "megaman/dash-hit",
             "mine/controller",
             "mine/land-mine",
             "navi-boost",
+            "numbered",
+            "numbered-2",
             "panel-bursts",
             "panel-changer",
             "panel-chips/controller",
@@ -143,10 +143,13 @@ fn battles_run_the_content_scripts() {
             "sensor/laser",
             "sensor/scanner",
             "sensor/turret",
+            "slashcross-beast/hit-flash",
+            "slashcross-beast/lunge-slash",
             "slashcross/sword-wave",
             "slashman/navi",
             "slashman/riding-hit",
             "slashman/wave",
+            "spoutcross-beast/surge",
             "spoutman/ball",
             "spoutman/drip-shower",
             "spoutman/geyser",
@@ -162,6 +165,7 @@ fn battles_run_the_content_scripts() {
             "support/controller",
             "tango",
             "tango/heal",
+            "tengucross-beast/whirlwind",
             "tenguman/navi",
             "tenguman/tornado",
             "thunder-column",
@@ -174,7 +178,6 @@ fn battles_run_the_content_scripts() {
             "vdoll/curse",
             "vdoll/doll",
             "vdoll/sparkles",
-            "whirlwind",
         ]
     );
     assert!(b.content.defs.action_numbered(0x37).is_some(), "GunDelSol is a script");
@@ -589,15 +592,11 @@ fn registrations_follow_the_content_data() {
     let c = testing::build();
     let d = &c.defs;
     // The four SunGun chips share one action, as the thrown chips and the
-    // three swords share theirs; the v1 weapons have theirs (the buster's,
-    // the charged shot's and the blank shot's are definitions). (The mend,
-    // mirror, bee and dragon chips are definitions.)
+    // three swords share theirs (the weapons' actions are definitions, as
+    // are the mend, mirror, bee and dragon chips).
     let mut actions: Vec<u8> = d.actions.iter().filter_map(|a| a.number).collect();
     actions.sort();
-    let expected = [
-        0x12, 0x13, 0x1A, 0x1D, 0x1E, 0x35, 0x37, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x49, 0x4A, 0x4C, 0x4D, 0x4E, 0x4F,
-        0x50, 0x52, 0x56, 0x57, 0x58,
-    ];
+    let expected = [0x12, 0x13, 0x37, 0x49];
     assert_eq!(actions, expected, "{:?}", d.actions);
     // An instant chip's record resolves its subtype's effect (the plus
     // chips' records, the shim's), and a weapon that names an effect no
@@ -801,15 +800,16 @@ fn run_only(b: &mut Battle, kinds: &[&str]) {
 }
 
 #[test]
-fn actor_lists_place_scripted_rocks_outside_the_navi_bookkeeping() {
+fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
+    use crate::content::Place;
     use crate::object::Pool;
-    use crate::setup::ActorKind;
     let mut b = rock_battle();
-    let list = b.content.rules.stages.actor_list(testing::NAVIS_AND_ROCKS).clone();
-    assert_eq!(
-        list.entries.iter().map(|e| e.kind).collect::<Vec<_>>(),
-        [ActorKind::Navi, ActorKind::Navi, ActorKind::Rock { variant: 1 }, ActorKind::Rock { variant: 1 }]
-    );
+    let stage = b.content.stage(b.content.stage_by_key(testing::ROCK_BATTLE)).clone();
+    let rock = Place::Kind(b.content.defs.kind_by_key("rock").expect("the rock"));
+    assert_eq!(stage.actors.iter().map(|e| e.place).collect::<Vec<_>>(), [Place::Navi, Place::Navi, rock, rock]);
+    // Each rock names its variant, a record of the rock's.
+    let cube = b.content.defs.record("rock/cube");
+    assert!(cube.is_some() && stage.actors[2..].iter().all(|e| e.variant == cube));
     b.spawn_actors();
     assert_eq!(b.round.alive, [1, 1]);
     assert_eq!(b.round.name_counts, [1, 1]);
@@ -863,7 +863,7 @@ fn breaking_a_scripted_rock_throws_debris() {
 /// spawner's bug leaves; they stand once the fight is on, and break into
 /// two debris chunks and dust, leaving their slot.
 #[test]
-fn actor_lists_place_boulders_in_the_stage_slots() {
+fn a_stage_places_boulders_in_the_stage_slots() {
     use crate::object::{PanelPos, Pool, flags, state};
     use crate::setup::NaviStats;
     const BOULDER_KINDS: [&str; 3] = ["boulder", "rock/debris", "engine/effect"];
@@ -1489,8 +1489,10 @@ fn defined(keys: &[&str]) -> Vec<bn6_content_api::ChipHandle> {
 /// front of either navi, once side 0 steps up, is a hole.
 fn holed_content() -> std::sync::Arc<Content> {
     let mut c = testing::build();
-    for row in &mut c.panel_layouts[0].rows {
-        row[3] = crate::field::PanelType::Missing;
+    for stage in &mut c.defs.stages {
+        for row in &mut stage.record.layout.rows {
+            row[3] = crate::field::PanelType::Missing;
+        }
     }
     std::sync::Arc::new(c)
 }

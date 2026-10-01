@@ -148,6 +148,11 @@ pub struct AttackVars {
     /// Which `set_attack` slot started the action.
     pub kind: u8,
     pub beast_lockon: u8,
+    /// The lock-on mode the attack's own action asks the Beast Out rush
+    /// for: the charged sword's (the role `charged_sword`), which its
+    /// setup gives with the slash it starts (the original reads a table by
+    /// the attack's variant, `sub_80EAF26`). 0: the chip's.
+    pub rush_lockon: u8,
     /// +0x2C: an object a step or the Beast Out rush turns to face in the
     /// panel patterns 0x23, 0x31 and 0x33 (`sub_800F2FC`). Players' steps
     /// clear it (`sub_80116AE`); only the unused `sub_80116F6` sets one.

@@ -78,12 +78,13 @@ pub struct KindEntry {
     pub actor_list_entry: Option<u8>,
 }
 
-/// A stage: the battle settings records (`BattleSettingsList1`) it is, and
-/// the address its actor list goes by.
+/// A stage: the battle settings records (`BattleSettingsList1`) it is, its
+/// panel layout's number and the address its actor list goes by.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StageEntry {
     pub settings: Vec<u8>,
+    pub layout: u8,
     pub actor_list: u32,
 }
 
@@ -94,6 +95,10 @@ pub struct Records {
     /// The save's SP navi deletion-time slots (`byte_203EB00`), by index.
     #[serde(default)]
     pub sp_slots: BTreeMap<String, u8>,
+    /// The rocks a stage places, by the argument of the actor list's
+    /// entry (`byte_80CF934`'s row).
+    #[serde(default)]
+    pub rock_variants: BTreeMap<String, u8>,
 }
 
 /// Asset names and the ROM's numbers.
