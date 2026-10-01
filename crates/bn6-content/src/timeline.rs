@@ -126,6 +126,9 @@ pub enum TimelineError {
     ZeroLengthLoop { at: usize },
     /// It runs longer than any song reasonably does before settling.
     TooLong,
+    /// A MEMACC jumps on what the memory area holds: what the track plays
+    /// depends on the game, not on time alone.
+    Conditional { at: usize },
 }
 
 impl fmt::Display for TimelineError {
@@ -133,6 +136,9 @@ impl fmt::Display for TimelineError {
         match self {
             TimelineError::ZeroLengthLoop { at } => write!(f, "loops at command {at} without time passing"),
             TimelineError::TooLong => write!(f, "doesn't settle into a loop or end within {MAX_EVENTS} events"),
+            TimelineError::Conditional { at } => {
+                write!(f, "jumps at command {at} on the memory area (a conditional MEMACC), which a timeline can't say")
+            }
         }
     }
 }
@@ -212,6 +218,9 @@ pub fn linearize(track: &Track) -> Result<Timeline, TimelineError> {
             Command::EndTie { key } => {
                 s.key = key.unwrap_or(s.key);
                 events.push(Event { tick, command: Command::EndTie { key: Some(s.key) } });
+            }
+            Command::MemAcc { op: m4a::bank::MemOp::JumpIf { .. }, .. } => {
+                return Err(TimelineError::Conditional { at: s.pc - 1 });
             }
             command => events.push(Event { tick, command }),
         }
