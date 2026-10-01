@@ -6,6 +6,7 @@
 -- sparkle each; else he waits. Then he rises out of sight. See
 -- docs/engine/chips.md §3.6.28.
 
+local navi_chips = require("../../lib/navi-chips/navi")
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 
@@ -32,9 +33,7 @@ local AI_INDEX = 0xE
 -- its address with the Thumb bit, whose fraction his Z keeps.
 local SPAWNER_ADDRESS = 0x080BA661
 
--- Panel flags he needs to stay (as one word), and an enemy navi's body by
--- side (`off_80BA520`).
-local CAN_STAND = 0x10010
+-- An enemy navi's body by side (`off_80BA520`).
 local ENEMY_NAVI = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 
 -- His actions.
@@ -44,35 +43,9 @@ local APPEAR, STAND, CROUCH, LEAP, CATCH, SHOW, BOW, MISS, RISE, NO_FOOTING =
 -- `sub_80BA388`: on his panel, on the ground (Z's whole part cleared), no
 -- shadow, with his parts.
 local function init(me: Object)
-    me:set_coordinates_from_panel()
-    local p = me.pos
-    me.pos = Vec3.new(p.x, p.y, bit32.band(p.z, 0xFFFF))
-    local sprite = me.sprite
-    sprite:load(SPRITE)
-    sprite.shadow = "with_sprite"
-    me.anim = 0
-    me.anim_loaded = 0
-    sprite:set_animation(0)
-    sprite.palette = 0
-    sprite:set_flip(bit32.bxor(me.alliance, me.flip))
+    navi_chips.stand(me, SPRITE, "with_sprite")
     me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
     me:set_lifecycle("update")
-end
-
--- Enter the phase (phase 4; a word store of the timers when `word`), or
--- count down; true once the timer is 0 or below.
-local function countdown(me: Object, ticks: number, word: boolean): boolean
-    if me.phase == 0 then
-        me.phase = 4
-        me.timer = ticks
-        if word then
-            me.timer2 = 0
-        end
-        return false
-    end
-    local left = me.timer - 1
-    me.timer = left
-    return left <= 0
 end
 
 -- Z's whole part (the game's halfword stores).
@@ -85,11 +58,7 @@ end
 -- He goes (both overlays with him) and the controller moves on.
 local function gone(me: Object)
     me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
-    local controller = (me.state :: State).controller
-    if controller then
-        navi_chip.navi_left(controller)
-    end
-    me:set_lifecycle("destroy")
+    navi_chips.leave(me, (me.state :: State).controller)
 end
 
 -- `sub_80BA414`: he appears; 10 ticks; on, or away if his panel can't hold
@@ -100,11 +69,10 @@ local function appear(me: Object)
         battle.play_sound(SOUND_APPEAR)
         me.visible = true
     end
-    if not countdown(me, 0xA, true) then
+    if not navi_chips.wait(me, 0xA, true) then
         return
     end
-    local stands = bit32.band(field.flags(me.panel_x, me.panel_y), CAN_STAND) == CAN_STAND
-    me:set_action(if stands then STAND else NO_FOOTING)
+    me:set_action(if navi_chips.has_footing(me) then STAND else NO_FOOTING)
 end
 
 -- `sub_80BA468`: 30 ticks.
@@ -112,7 +80,7 @@ local function stand(me: Object)
     if me.phase == 0 then
         me.anim = 0
     end
-    if countdown(me, 0x1E, true) then
+    if navi_chips.wait(me, 0x1E, true) then
         me:set_action(CROUCH)
     end
 end
@@ -122,7 +90,7 @@ local function crouch(me: Object)
     if me.phase == 0 then
         me.anim = 0xD
     end
-    if countdown(me, 0x13, false) then
+    if navi_chips.wait(me, 0x13, false) then
         me:set_action(LEAP)
     end
 end
@@ -243,14 +211,14 @@ local function bow(me: Object)
     if me.phase == 0 then
         me.anim = 0x11
     end
-    if countdown(me, 7, false) then
+    if navi_chips.wait(me, 7, false) then
         me:set_action(RISE)
     end
 end
 
 -- `sub_80BA5D2`: nobody to catch; 20 ticks.
 local function miss(me: Object)
-    if countdown(me, 0x14, false) then
+    if navi_chips.wait(me, 0x14, false) then
         me:set_action(RISE)
     end
 end
@@ -276,7 +244,7 @@ local function no_footing(me: Object)
     if me.phase == 0 then
         me.anim = 0xD
     end
-    if countdown(me, 0x13, false) then
+    if navi_chips.wait(me, 0x13, false) then
         gone(me)
     end
 end
@@ -319,15 +287,10 @@ crcusman.kind = define.kind {
 -- `sub_80BA660`: CircusMan for `user`, reporting to `controller` (the
 -- CrcusMan chips' navi hook, `off_802CD5C[14]`).
 function crcusman.summon(user: Object, controller: Object, spec: NaviChipSpec): Object?
-    local o = battle.spawn(crcusman.kind, Vec3.new(spec.panel_y, spec.element, SPAWNER_ADDRESS))
+    local o = navi_chips.spawn(crcusman.kind, user, spec, SPAWNER_ADDRESS)
     if not o then
         return nil
     end
-    o.panel_x, o.panel_y = spec.panel_x, spec.panel_y
-    o.element = spec.element
-    o.related1 = user
-    o.alliance, o.flip = user.alliance, user.flip
-    o:set_damage_word(spec.damage)
     local s = o.state :: State
     s.controller = controller
     return o
