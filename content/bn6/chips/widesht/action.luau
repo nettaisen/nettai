@@ -43,7 +43,7 @@ local function action(spec: WideShotSpec): Action
         attachment.attach(me, SHOOTER, "overlay")
         me:set_status("using_action", true)
         me.step, me.step_init = FIRE, 0
-        me.recovery = spec.waves
+        me.attack_count = spec.waves
         s.timer = FIRST_TICKS
     end
 
@@ -65,11 +65,11 @@ local function action(spec: WideShotSpec): Action
         s.timer = INTERVAL
         -- (The game keeps it in the attack's second parameter, which the
         -- wave reads among its parameters.)
-        local hit_mod = HIT_MODS[me.recovery]
+        local hit_mod = HIT_MODS[me.attack_count]
         local damage = int.u32(me.attack_damage + me.hit_param * 0x10000 + me.extra)
         wave.fire(me, me.panel_x + me.facing, me.panel_y, WAVE_Z, spec.wave, me.attack_element, damage, hit_mod)
-        local left = me.recovery - 1
-        me.recovery = left
+        local left = me.attack_count - 1
+        me.attack_count = left
         if left <= 0 then
             me.step, me.step_init = RECOVER, 0
         end

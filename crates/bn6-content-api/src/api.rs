@@ -271,10 +271,12 @@ named_fields! {
         /// and animation.
         ThrownLook = "thrown_look", Ref(Registry::Record, Some("absorbed-look".into())), rw;
         ThrownAnim = "thrown_anim", U8, rw;
-        /// The recovery a shot waits after firing, a word of the attack
-        /// that outlives the action: an action that waits it without
-        /// writing it (a thrown obstacle) waits the last shot's.
-        Recovery = "recovery", U16, rw;
+        /// The attack's count (AIAttackVars+0x12): what an action counts
+        /// (its shots, swings, slashes, a hold's ticks, the recovery after
+        /// a shot), a word every action shares and none clears, so an
+        /// action that reads it before writing it reads what an earlier one
+        /// left.
+        AttackCount = "attack_count", U16, rw;
         ActorType = "actor_type", enum_type(&ACTOR_TYPES), ro;
         /// Form or AI variant.
         AiIndex = "ai_index", U8, ro;

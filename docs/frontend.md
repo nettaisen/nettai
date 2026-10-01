@@ -45,16 +45,18 @@ The graphics load into the types of the `bn6-assets` crate, decoded
 - **Backgrounds** by id (`off_8080F98`): tiles, tile map, palette, scroll
   speed (`off_8080E34`) and tile/palette animations (`off_8081220`).
 - **HUD**: the HP box and its digits, gauge tiles and frame, the 8x16 font
-  with what each glyph draws, chip icons by chip, the opponent's HP digits,
-  MegaMan's mugshots and count boxes, the link navis' mugshots, the HUD's
-  text lines, banner layouts and glyphs, "Cstmzing...", "PAUSE".
+  with what each glyph draws, chip icons by chip, the HP digits shown under
+  objects, the emotion window's faces and count boxes, the link navis'
+  faces (each mugshot under its name), the HUD's text lines, banner layouts
+  and glyphs, "Cstmzing...", "PAUSE", the warning marker's arrow.
 
 What the HUD shows of the content comes from the content: a chip's name is
 its definition's, spelled with the font's glyphs (`Hud::glyphs`); its icon
 is the pack's image under the chip's key; whether its damage shows is its
-definition's flag. A form's or a navi's face is still found by the record's
-number (`form_emotions`, `navi_mugshot_of`), until those definitions name
-their own.
+definition's flag. The emotion window shows the face the navi's form names
+for its emotion (`mugshot`, `FormData::mugshot`), or a link navi's own
+(`NaviData::mugshot`); mugshot numbers from `bn6_assets::NAVI_MUGSHOTS`
+are the link navis' faces, with their Full Synchro palettes.
 
 ## 2. Running
 
@@ -157,12 +159,13 @@ animations.
 - the HP box with its rolling number and colours, and the custom gauge
   (fill, the full gauge's animation, whose phase carries over from the
   last "Cstmzing..." wait);
-- the emotion window: MegaMan's face by emotion and form with the count
-  beside it, a link navi's own face; the 12-tick blink back to the previous
-  face when the emotion changes (white instead, on a change to Full
-  Synchro); the flicker of a bugged navi's window; the form chosen on the
-  custom screen while the screens are still open, and the window gone from
-  the tick the fight resumes until the transformation is over; shown
+- the emotion window: the face the navi's form names for its emotion,
+  with the count beside it, or a link navi's own face (in its second
+  palette in Full Synchro); the 12-tick blink back to the previous face
+  when one of the base form's faces changes (white instead, on a change to
+  Full Synchro); the flicker of a bugged navi's window; the form chosen on
+  the custom screen while the screens are still open, and the window gone
+  from the tick the fight resumes until the transformation is over; shown
   through the damage judge;
 - the next chip's name, damage and bonus (the hand's and the navi's own:
   `kinds::player::next_chip_bonus`) at the bottom left, while the navi can
@@ -170,7 +173,12 @@ animations.
 - the chip icons over the local navi (and over both in a battle that is no
   netbattle), among the field's sprites by depth; the opponent's
   defensive chip as "????";
-- the opponent's HP number under its navi (rolling, coloured);
+- the HP numbers under objects, in the console's four places
+  (`Battle::hp_numbers`): the opponent's navi's, LilBoiler's damage taken
+  (rolling, coloured);
+- the warning markers (`Battle::warnings`): the arrow over the custom
+  gauge, or over a place on the field, blinking with the console's frame
+  counter;
 - banners with their squash and stretch; a telop (the chip's name, its
   damage and bonus, "x2"; "????" for a trap's, to the opponent) on its
   user's half of the screen (`Battle::telop_for`); the chip the other
@@ -210,7 +218,11 @@ the ones the state digest leaves out).
   (`Battle::telop_for` is the viewer's side of it: a trap's name is hidden
   from the opponent).
 - `Battle::used_chips`, `Battle::chip_hud` (whether a console shows its
-  navi's icons and chip window), `Battle::message`.
+  navi's icons and chip window), `Battle::message`, `Battle::warnings`,
+  `Battle::hp_numbers` (each console's HP numbers by place: what asked for
+  one, from where, and the HP it starts rolling from).
+- `FormData::mugshot` and `NaviData::mugshot`, the faces the definitions
+  name.
 - `Console::camera.jitter`, this tick's shake, and the emotion window's
   flicker (`Console::emotion_window`).
 - `Field::clear_highlights` at the start of each tick: highlights last one
@@ -218,9 +230,10 @@ the ones the state digest leaves out).
 - The sound cues (docs/engine/audio.md).
 
 A telop names its chip from what the engine was told when the dimming
-started. A dimming that content starts itself (a trap springing, a statue
-punishing) carries its chip in the controller's own state, which the
-engine doesn't read: its telop shows no name (`--audit` lists these).
+started: a chip's use, or, for a dimming content starts itself (a trap
+springing, a statue punishing, VDoll's curse), the `telop` it passes to
+`dimming.start`. One that passes none shows no name (`--audit` lists
+it).
 
 ## 4. Verification
 
@@ -244,41 +257,35 @@ What differs:
 
 **A second match**, three rounds traced on the right-hand player's console
 (so the field is drawn mirrored), with Crosses, rock cubes, ice and grass
-panels, traps and Invisibl: of the 6397 frames outside the
-custom screen that have screenshots, **6387 are pixel-exact**.
-What differs: ChargeCross's tackle glows green in the engine (39878-39895:
-the original's invulnerable glow leaves that one action out, which the
-engine knew by its number and the content's action has none); and on two
-frames (7498, 25885) the whole background is the next frame's (the
-console's scroll timing, below).
+panels, traps and Invisibl: of the 6397 frames outside the custom screen
+that have screenshots, **@SOUNDMOD@ are pixel-exact** (rows 152-159 left
+out, below). What differs: on two frames (7498, 25885) the whole
+background is the next frame's, which is how the screenshots were taken
+(below), not the game.
 
 **Chip-lab scenarios**: 132 scenarios, a few of every family
 (shot, sword, thrown, placed and dimming chips, navi chips, the link
 navis, traps, supports, stages with their objects, forms, Beast Over, the
 flow: knockouts, the damage judge, pause, a counter hit, a lost Full
 Synchro), each recorded with a screenshot per battle frame. Of 123,433
-frames outside the custom screen, **122,957 are pixel-exact**, and 125
-scenarios are exact on every frame. No frame panics, and the audit names
-nothing missing but the telops of dimmings content starts itself.
-
-What still differs there, each of it something content has no way to ask
-for yet (section 5):
-
-| Scenario (frames) | What |
-|---|---|
-| `guardian/punish` 658-715, `elemtrap/sprung-fire` 642-699, `stages/statue-enemy-strike` 420-477, `vdoll/curse` 502-559 | the telop of a dimming content starts itself names no chip |
-| `lilbolr1/hit` 372-413 | LilBoiler's HP number |
-| `slogauge/hit` and `fstgauge/hit` 441-511, `vdoll/curse` 563-622 | the warning arrow (`sub_800AE90`): the engine reports the marker (`Battle::warnings`) and sounds it, the frontend has no tiles for it |
+frames outside the custom screen, **all 123,433 are pixel-exact**, and so
+is every scenario on every frame: the telops of dimmings content starts
+itself, LilBoiler's HP number, the warning arrows, the faces. No frame
+panics, and the audit names nothing missing.
 
 The comparison needs the ROM, so it lives outside this repository, with the
 list of scenarios. The frontend's own tests (`cargo test -p bn6-frontend`)
 use a small synthetic asset set and a live battle built in code.
 
-On the right-hand player's console the bottom rows of the screen show the
-background scrolled one frame ahead on frames where its scroll steps: the
-original's main loop writes the scroll register while the last rows are
-being drawn. The comparison leaves rows 152-159 out for traces made on that
-console.
+Screenshots of the right-hand player's console that the recorders took as
+the emulated pair's tick ended (the golden traces', and the chip lab's
+before its pictures were taken at the console's own VBlank) have the
+previous picture in their last rows: the tick ends at the first console's
+VBlank, when the second console's video is still some seven scanlines from
+the picture's end (152-159). The comparison leaves rows 152-159 out for
+those; the chip lab's pictures taken at the VBlank match on every row. The
+golden match's two whole-frame differences are most likely the same timing
+drifting by a frame (its screenshots are still taken at the tick's end).
 
 ## 5. Known gaps
 
@@ -287,16 +294,16 @@ console.
 - Affine (rotated or scaled) object sprites (`sprite_makeScalable`: no kind
   in the engine or the content uses one yet), the per-part palette override
   of `sub_3006440`, and the original's sprite block bits 0x20/0x40.
-- HP numbers under objects that aren't navis (LilBoiler, the AirSpin top:
-  `sub_801DC7C` with an offset): content has no way to ask for one.
 - The HUD's other text lines: the multiple deletions of virus battles,
-  "SHUFFLE!" and "PENALTY!!" (the custom screen's); the gauge chips' warning
-  arrow over the gauge.
-- The invulnerable glow's one exception, ChargeCross's tackle, which the
-  original knows by its action number: the content's action has none, so
-  the tackle glows (a role for it would say which action it is).
-- A telop for a dimming content starts itself names no chip: content has no
-  way to say which.
-- A form's and a link navi's face is found by the record's number.
+  "SHUFFLE!" and "PENALTY!!" (the custom screen's).
+- Not drawn, as only viruses' code or no netbattle reaches them: an HP
+  number at a fixed place (`sub_801DCFC`) or moved (`sub_801DCCC`), the
+  training viruses' (NameIDs 0x49..=0x4E: moved 32 pixels left), and a
+  warning marker within 16 pixels left of or above the screen, for which
+  the original writes a garbled sprite.
+- During the palette flash (`sub_80E10C0`) the original keeps the HUD
+  layer's colours (the HP box and the gauge), where the frontend whitens
+  every tile layer (seen in a longer recording of DeltaRay's hit, not yet
+  in the sample).
 - The background scroll starts one frame earlier in the first round of a
   set than in later ones (measured).
