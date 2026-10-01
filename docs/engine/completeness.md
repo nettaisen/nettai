@@ -329,8 +329,22 @@ pending; the alternative A-charge's request at the charge tests; a save without 
 whose next panel is blocked; a counter-paralysis request on a paralyzed navi; the charge cut short mid-hold
 (the decode doesn't run while a flinch holds the navi); and six more single branches, listed in the notes.
 
-What the first sample (10 routines) found still stands: none of the one-sided branches read is missing from
-the port.
+The first sample, of 10 routines read before this list was worked through, as it stands now:
+
+| Routine | The side never taken | The port |
+|---|---|---|
+| `sub_801A200` (Full Synchro from a counter) | the attacker in a Cross or a Beast; the victim tired after Beast Out (AIData+0x32, +0x36) | has both (`counter_and_mood`, `set_mood`). Recorded: `flow/counter-in-cross`, `flow/counter-in-beast`, `flow/counter-in-gregar-beast` (the 0x0B compare), `forms/falzar/beast-out-spent-countered` (the tired victim). The exhausted victim (+0x36) can't be reached (the table above) |
+| `sub_8029224` (modifiers) | Uninstll after a damaging chip that dims | has it. Recorded: `custom/modifier-uninstll-dimming` (Roll then Uninstll stay two chips) |
+| `sub_8013E58` (the status bug) | six of its eight outcomes (one RNG draw a recording) | has all eight |
+| `sub_801A45C` (counter bookkeeping) | the gauge bonus under battle flag 0x40; the battle over | has both; the first is not a netbattle's, the second needs a double KO on the counter's tick |
+| `sub_8013FD0` (HP lost at the custom screen's opening) | NaviStats+0x54 nonzero, in 1,292 openings | has it (`custom_hp_bug`, and bug code 0x54 that raises the stat); a netbattle can't make it nonzero (§5) |
+| `sub_8015C12` (mood wear) | a mood of 0, in 4.2 million calls | has the test; mood 0 can't be reached (the table above) |
+| `sub_8029520` (Program Advances) | the veto (+0x1C nonzero) | documented as unable to fire |
+| `sub_8009338` (the custom screen's mode state) | the UI's result 2, the escape | not ported; a netbattle has no running |
+| `sub_801002C` | NaviStats+0x10 nonzero | a palette index: presentation |
+| `sub_80D6BD4` (ElmntMan's meteor) | its third state, a plain destroy (the lab never runs the meteor; the soundmod trace does) | the definition's destroy lifecycle |
+
+None of the one-sided branches read, in the sample or since, is missing from the port.
 
 ### 6.3 Custom screen keys
 
