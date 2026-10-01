@@ -1,0 +1,3 @@
+# Spreadr1 runs the spreaders (action 0x25, `sub_80ECBB0`), in chip.luau.
+
+script = "chip.luau"
