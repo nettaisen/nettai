@@ -235,6 +235,28 @@ pub fn deprecated(source: &str) -> Vec<Deprecated> {
     out
 }
 
+/// The owner whose folder module `path` is in, if it is in one: a chip's
+/// (`chips/<chip>/`), a navi's (`navis/<navi>/`, its index prefix, if it
+/// still has one, left out: `navis/00-megaman/` is `megaman`'s), or, in a
+/// navi's folder, a form's (`navis/<navi>/forms/<form>/`).
+fn owner(path: &str) -> Option<&str> {
+    let (top, rest) =
+        ["chips/", "navis/", "forms/", "weapons/", "stages/"].iter().find_map(|top| Some((*top, path.strip_prefix(top)?)))?;
+    let mut parts = rest.split('/');
+    let first = parts.next()?;
+    let inside: Vec<&str> = parts.collect();
+    // A module right under the top folder has no owner.
+    let _file = inside.last()?;
+    if top != "navis/" {
+        return Some(first);
+    }
+    if let ["forms", form, _, ..] = inside[..] {
+        return Some(form);
+    }
+    let index = first.split_once('-').filter(|(n, _)| !n.is_empty() && n.bytes().all(|c| c.is_ascii_hexdigit()));
+    Some(index.map_or(first, |(_, name)| name))
+}
+
 /// The lints for module `path` (relative to the pack root, with `.luau`).
 pub fn lints(path: &str, source: &str) -> Vec<Problem> {
     let mut out = Vec::new();
@@ -261,26 +283,8 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
             }
         }
     }
-    // A kind in an owner's folder is keyed under its owner. A form's
-    // folder under its navi (navis/<navi>/forms/<form>/) owns its own; a
-    // navi's folder still named with its number (navis/00-megaman, until
-    // the folders are renamed) owns its kinds by its name.
-    let owner = ["chips/", "navis/", "forms/", "weapons/", "stages/"]
-        .iter()
-        .find_map(|top| path.strip_prefix(top).map(|rest| (*top, rest)))
-        .and_then(|(top, rest)| {
-            let parts: Vec<&str> = rest.split('/').collect();
-            if parts.len() < 2 {
-                return None;
-            }
-            if top == "navis/" && parts.len() > 3 && parts[1] == "forms" {
-                return Some(parts[2]);
-            }
-            let name = parts[0];
-            let numbered = name.split_once('-').filter(|(n, _)| !n.is_empty() && n.bytes().all(|c| c.is_ascii_hexdigit()));
-            Some(if top == "navis/" { numbered.map_or(name, |(_, rest)| rest) } else { name })
-        });
-    if let Some(owner) = owner {
+    // A kind in an owner's folder is keyed under its owner.
+    if let Some(owner) = owner(path) {
         for at in s.find("define.kind") {
             let rest = &s.code[at..];
             let Some(id) = rest.find("id").filter(|&i| i < rest.find('}').unwrap_or(rest.len())) else { continue };
@@ -347,6 +351,14 @@ mod tests {
         assert!(l[0].contains("placeholder") && l[1].contains("minibomb/"));
         assert!(lints("chips/minibomb/chip.luau", "local K = define.kind { id = 'minibomb/held', pool = 'effect' }").is_empty());
         assert!(lints("lib/bombs/bomb.luau", "local K = define.kind { id = 'bomb', pool = 'attack' }").is_empty());
+        // A navi's folder (without its index prefix), and a form's inside it.
+        let dash = "local K = define.kind { id = 'megaman/dash-hit', pool = 'attack' }";
+        assert!(lints("navis/00-megaman/dash_hit.luau", dash).is_empty());
+        assert!(lints("navis/megaman/dash_hit.luau", dash).is_empty());
+        let wave = "local K = define.kind { id = 'slashcross/sword-wave', pool = 'attack' }";
+        assert!(lints("navis/00-megaman/forms/slashcross/sword_wave.luau", wave).is_empty());
+        assert_eq!(lints("navis/00-megaman/forms/heatcross/sword_wave.luau", wave).len(), 1);
+        assert_eq!(lints("navis/00-megaman/sword_wave.luau", wave).len(), 1);
         assert_eq!(lints("compat/x.luau", "").len(), 1);
         // A form's kinds are keyed under the form, and a navi's under its
         // name, whatever number its folder still carries.

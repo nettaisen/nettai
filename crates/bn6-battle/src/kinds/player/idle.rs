@@ -352,15 +352,25 @@ fn intercepted(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
     true
 }
 
-/// The NaviCust supports, by the controller's first parameter.
+/// The NaviCust supports.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Support {
-    Rush = 0,
-    Beat = 1,
-    Tango = 2,
+    Rush,
+    Beat,
+    Tango,
 }
 
 impl Support {
+    /// The support's name in the controller's `support` state field (the
+    /// original's first parameter: 0, 1, 2).
+    fn name(self) -> &'static str {
+        match self {
+            Support::Rush => "rush",
+            Support::Beat => "beat",
+            Support::Tango => "tango",
+        }
+    }
+
     /// The chip record the controller's telop names (its +0x30).
     fn telop_chip(self) -> u16 {
         match self {
@@ -374,19 +384,20 @@ impl Support {
 
 /// `sub_80E90FE`, then `sub_800BF16(side, 1, controller)`: `support`'s
 /// controller on `host`'s panel, its side's, and a dimming its side starts
-/// that no one can cut in on (`host` its user). Rush's controller carries
-/// the chip he eats in its third and fourth parameters.
+/// that no one can cut in on (`host` its user). The controller's state
+/// says which support comes (its `support` field; the original's first
+/// parameter) and, for Rush, the chip he eats (`eaten`; the original's
+/// third and fourth parameters).
 fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Option<ChipHandle>) {
     let h = b.objects.get(host);
     let (panel, side) = (h.panel, h.alliance);
-    // (The numeric API's chip, as the controller's parameters carry it.)
+    // (The numeric API's chip, as the controller's state carries it.)
     let chip = if support == Support::Rush { b.api_chip_field(chip, 0) } else { 0 };
-    let params = [support as u8, 0, chip as u8, (chip >> 8) as u8];
     // The spawn's position is the caller's r1..r3: the host's panel row
     // and two zeros.
     let pos = crate::object::Vec3 { x: panel.y as i32, y: 0, z: 0 };
     let kind = b.content.defs.roles.kind(crate::content::KindRole::Support);
-    let controller = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, params);
+    let controller = crate::kinds::spawn(b, kind, bn6_content_api::SpawnAt::AfterCurrent, pos, [0; 4]);
     if let Some(c) = controller {
         let o = b.objects.get_mut(c);
         o.panel = panel;
@@ -397,6 +408,8 @@ fn summon_support(b: &mut Battle, host: ObjectRef, support: Support, chip: Optio
         o.stamina = 0;
         let telop = bn6_content_api::Value::Int(support.telop_chip() as i64);
         crate::behavior::set_state_field(b, c, "telop_chip", telop);
+        crate::behavior::set_state_variant(b, c, "support", support.name());
+        crate::behavior::set_state_field(b, c, "eaten", bn6_content_api::Value::Int(chip as i64));
     }
     b.start_dimming(side, true, controller, host);
 }

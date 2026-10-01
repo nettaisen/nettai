@@ -2,11 +2,12 @@
 -- ElecCross Beast's charged chip: weapon routine 9 (`sub_8011C00`) and
 -- action 0x3C (`sub_80EDF5C`). A charged Null-family chip becomes a field
 -- of lightning: when the navi's wind-up animation ends, lightning pillars
--- (objects/element-pillar, Param1 1: they paralyze and crack their panels)
+-- (objects/element-pillar: they paralyze and crack their panels)
 -- strike region 0x1A's panels ahead; the navi holds for 90 ticks, crackling
 -- every 17 from the second, and the lightning dies down once it stops.
 
 local element_pillar = require("../../../../objects/element-pillar/element_pillar")
+local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -28,10 +29,10 @@ local WIND_UP, STRIKE = 0x0, 0x4
 -- Elec (the attack's element) and the hits' counter byte.
 local ELEC, HIT_PARAM = 3, 0x8A
 
--- The pillars: lightning (Param1 1), 90 ticks (Param2), 9 once the navi
--- stops (Param3), on region 0x1A.
-local PILLARS = { 1, 0x5A, 9, 0 }
-local REGION = 0x1A
+-- The pillars: lightning, 90 ticks, 9 once the navi stops, on the panel in
+-- front and the two columns past it.
+local PILLARS: ElementPillar = { lightning = true, ticks = 0x5A, after = 9 }
+local REGION = regions.deep_fan
 local TICKS = 0x5A
 
 -- `sub_8011C00`: 40 damage and 30 more per point of buster Attack (up to
