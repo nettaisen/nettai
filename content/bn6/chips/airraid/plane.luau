@@ -55,7 +55,7 @@ local STRAY: { [number]: { require: number, forbid: number } } = {
 }
 -- A bomb's strike: highlighted 6 ticks, its hits unmodified, no crack,
 -- on any panel (its spawn parameters 0x20600).
-local STRIKE = { 0, 6, 2, 0 }
+local STRIKE: PanelStrike = { warning = 6, hit_mod = 0 }
 -- With no neighbour to stray to, the game strikes column 0 of a row it
 -- leaves in a register: the low byte of the panel table's address
 -- (`ePanelData`) when the last neighbour it tried is on the field.
