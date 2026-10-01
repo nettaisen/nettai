@@ -25,6 +25,9 @@ sparks.aqua = BY_ELEMENT[2]
 sparks.elec = BY_ELEMENT[3]
 sparks.impact = BY_ELEMENT[5]
 
+-- A heavy hit's (hit effect 6): Magnum's shot, the beasts' claws and bites.
+sparks.heavy = define.spark { sprite = asset.sprite("copy-mark"), anim = 8, palette = 0 }
+
 -- `sub_801A146`: the spark of an attack of `element` (its primary
 -- element, the low nibble).
 function sparks.of_element(element: number): Spark
