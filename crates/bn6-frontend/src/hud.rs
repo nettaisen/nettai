@@ -771,7 +771,9 @@ fn icon_parts<'a>(
     if !on_screen(p) {
         return;
     }
-    let a = if o.alliance == b.setup.local_side { 1 } else { -1 };
+    // (The console's own direction: `object_getAllianceDirection` of the
+    // local side, whichever navi the icons are over.)
+    let a = if b.setup.local_side & 1 == 0 { 1 } else { -1 };
     let f = bn6_battle::kinds::common::facing(o.alliance, o.flip);
     // Attach point 3 of the navi's sprite (player NameIDs 0x1A0..=0x1C3).
     let (ax, ay) = if (0x1A0..=0x1C3).contains(&o.name_id) {
