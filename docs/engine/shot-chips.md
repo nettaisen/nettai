@@ -712,21 +712,18 @@ and `colarmy` scenarios.)
 Content model v2 (docs/design/content-model-v2.md): each action is a builder its chips compose, each object a kind
 definition, each table row a variant record written out in Luau.
 
-- **Where.** The projectile and its variants: objects/projectile (`variants.by_number` for the NaviCust's numbered
-  shots), lib/projectile; the flying shot: objects/flying-shot; the bullet: objects/bullet (its rows, and the
+- **Where.** The projectile and its variants: objects/projectile (the shot programs a navi's stats name are the
+  named records `shot/...`), lib/projectile; the flying shot: objects/flying-shot; the bullet: objects/bullet (its rows, and the
   variants the Vulcans, the Spreaders, SpoutCross's charged shot, ColArmy and ColForce fire). The cannons:
   lib/cannon with chips/cannon and chips/gigacan; AirShot, BatCan, MachGun: chips/airshot, chips/batcan (with its
   shot), chips/machgun; the Vulcans, the Spreaders, the TankCans, CornSht, WideSht and SuprSpr: chips/vulcan,
   chips/spreadr, chips/tankcan (with its shell), chips/cornsht (with the corn), chips/widesht (with the wave); the
   sonic boom: lib/swords/sonic_boom with chips/sonicbom and chips/z-saver; LilBoiler: chips/lilbolr (the boiler and
   the layer); VDoll: chips/vdoll (the doll, the curse and the sparkles); the rapid buster: lib/rapid_buster.
-- **Records.** The chips other records or the ruleset name by number keep the pack's records, and their modules
-  give the actions with their compat keys: the cannons and GigaCans, the Vulcans, the Spreaders, CornSht, WideSht
-  and SuprSpr (Program Advances), VDoll (Darkness's recipes), the sonic boom's four (the variable swords' picks,
-  VDoll's telop) and Z Saver (weapon 0x6E). Registration by number reaches them through one module per action
-  (chips/001-cannon, 005-vulcan1, 009-spreadr1, 00c-tankcan1, 017-widesht, 040-cornsht1, 173-sonicbom,
-  17d-zsaver; the bombs' 036-minibomb for LilBoiler and VDoll), which picks the chip's action by the subtype or
-  the record's parameters. AirShot, the BatCans, the TankCans, MachGun and LilBoiler are definitions.
+- **Chips.** Every chip is a definition naming its own action (the cannons and GigaCans, the Vulcans, the
+  Spreaders, CornSht, WideSht and SuprSpr, VDoll, the sonic boom's four, Z Saver, AirShot, the BatCans, the
+  TankCans, MachGun, LilBoiler). What the original picks by the record's subtype or parameters is the action's
+  arguments.
 - **LilBoiler's registry side** (§14.1). The boiler registers as its user's side's class-1 field object. The
   port first took the side from the Atk+ bonus (the register `sub_80D7A78` pops it into, which the spawner
   overwrites with the user's alliance before the registration): with no bonus that made every boiler side 0's,

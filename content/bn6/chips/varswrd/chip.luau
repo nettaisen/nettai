@@ -5,21 +5,32 @@
 -- back FtrSword, up-forward-down WideSwrd, down-back-up-forward-down
 -- LifeSrd, and back, A+B, forward, A+B SonicBom. Letting go of A, or 48
 -- ticks, gives a Sword.
---
--- Its record stays the pack's for now (SlashCross's A-charge, weapon 0x11,
--- asks for its action by number, and the Beast rush's chain leaves the
--- variable swords out by theirs): this is its action, which registration
--- by number runs (chips/052-varswrd; docs/design/content-model-v2.md §12).
 
 local ftrsword = require("../ftrsword/chip")
 local lifesrd = require("../lifesrd/chip")
 local longswrd = require("../longswrd/chip")
-local sonicbom = require("../sonicbom/chips")
+local sonicbom = require("../sonicbom/chip")
 local sword = require("../sword/chip")
 local vari = require("../../lib/swords/vari")
 local wideswrd = require("../wideswrd/chip")
 
-return {
+return define.chip {
+    id = "varswrd",
+    name = "VarSwrd",
+    description = "A magical\nshifting\nsword.",
+    codes = { "K", "V", "W" },
+    element = "null",
+    family = "sword",
+    class = "standard",
+    rarity = 2,
+    mb = 28,
+    damage = 160,
+    hit_param = 30,
+    lockout = 0,
+    flags = { "has_damage", "standard_library", "library" },
+    library = { number = 81, index = 81, sort = 449 },
+    slot_in_limit = 3,
+    traits = { "no_chain" },
     action = vari.action {
         id = "varswrd/action",
         -- The sequences (`off_80EF670`), facing right (flip 0) and
@@ -43,20 +54,12 @@ return {
             },
         },
         -- LongSwrd, FtrSword, WideSwrd, LifeSrd, SonicBom (`loc_80EF7D8`).
-        picks = {
-            longswrd.action,
-            ftrsword.action,
-            wideswrd.action,
-            lifesrd.action,
-            sonicbom.actions.sonicbom,
-        },
-        sword = sword.action,
+        picks = { longswrd, ftrsword, wideswrd, lifesrd, sonicbom },
+        sword = sword,
         -- SlashCross's A-charge runs it charged: its pick is what becomes
         -- the charged slash.
         charged = "own",
         random = 6,
-        no_charged = sonicbom.actions.sonicbom,
-        -- The picks' chips, by number until they are definitions (§12).
-        legacy = { chips = { 0x49, 0x172, 0x48, 0x153, 0x173 }, sword = 0x47 },
+        no_charged = sonicbom,
     },
 }

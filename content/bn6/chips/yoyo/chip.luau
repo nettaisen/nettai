@@ -1,13 +1,26 @@
 --!strict
 -- YoYo: a yoyo thrown from the panel ahead that rolls out two panels,
 -- spins there for two rounds and rolls back (throw.luau).
---
--- Its record stays the pack's for now (GreatYo's Program Advance recipe
--- names it by number): this is its action, which registration by number
--- runs (chips/013-yoyo, docs/design/content-model-v2.md §12).
 
 local throw = require("./throw")
+local lockon = require("../../rules/lockon")
 
-return {
+return define.chip {
+    id = "yoyo",
+    name = "YoYo",
+    description = "YoYo atk\nreaches\n3sq ahead",
+    codes = { "L", "M", "N", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 2,
+    mb = 32,
+    damage = 50,
+    hit_param = 10,
+    lockout = 0,
+    flags = { "has_damage", "standard_library", "library" },
+    beast = { lockon = lockon.yoyo },
+    library = { number = 18, index = 18, sort = 513 },
+    slot_in_limit = 3,
     action = throw.action { id = "yoyo/action", yoyo = { panels = 2, rounds = 2 } },
 }

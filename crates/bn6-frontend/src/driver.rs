@@ -3,7 +3,8 @@
 
 use bn6_battle::battle::{mode, top};
 use bn6_battle::console::ConsoleSetup;
-use bn6_battle::content::{ChipCode, ChipId, Content};
+use bn6_battle::content::{ChipCode, Content};
+use bn6_compat::codec::ChipId;
 use bn6_battle::custom::{self, BattleFolder, FolderChip, GameVersion, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState, Unlocks};
 use bn6_battle::input::keys;
 use bn6_battle::link::Link;
@@ -342,7 +343,8 @@ mod tests {
         let content = bn6_battle::content::testing::content();
         let stage = content.stage_by_key(bn6_battle::content::testing::LINK_BATTLE);
         let settings = BattleSettings::on(&content, stage);
-        let folder = [(bn6_battle::content::testing::SUN_GUN_3, 0)];
+        // GunDelS3 N (BN6's number for it), which the test content has.
+        let folder = [(0x011, 13)];
         let mut live = LivePlayer::new(live_setup(&content, settings, &folder, 7), content.clone());
         let mut b = live.start();
         let mut shown = false;

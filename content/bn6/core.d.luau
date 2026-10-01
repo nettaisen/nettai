@@ -19,14 +19,6 @@
 --
 --   objects/NAME/object.toml  [kind] pool, index, script   an object kind:
 --       the module exports `state` and `update(me)`
---   chips/NNN-name/chip.toml  script = "chip.luau"          the chip's action:
---       `state` and `update(me, s)`; for a dimming chip (action 0x15)
---       `dimming_chip(user, spec)`, for a navi chip (0x1B) `navi_chip(user,
---       controller, spec)`, for an instant chip (0x1C) `instant_chip(user,
---       spec)`
---   navis/megaman/weapons/NN-name/weapon.toml            a weapon routine:
---       `setup(navi) -> action`, and `state`/`update` for its `action`,
---       `instant_chip(user, spec)` for its `instant_chip`
 --
 -- Functions keep nothing between calls: what an object or action keeps
 -- lives in its declared `state` (typed fields the engine stores and
@@ -367,16 +359,16 @@ declare class Object
     attack_state: any
 
     -- Navis (actors) only. The attack in progress: its phase and whether
-    -- the phase's entry ran; its variant (a chip's subtype) and chip (its
-    -- number, 0 for none; a chip content defines is 0x200 + its handle,
-    -- which reads back as that chip).
+    -- the phase's entry ran; its variant (what an action or the ruleset
+    -- sets for itself: a chip's use sets none) and chip (an opaque number
+    -- the engine gives a chip, 0 for none, which reads back as that chip;
+    -- `attack_chip` is the chip itself).
     step: number
     step_init: number
     variant: number
     chip: number
-    -- The attack's chip as its definition (nil when the attack has none;
-    -- a chip that is still a pack record reads as a stand-in with only its
-    -- `id`): what a weapon that uses the chip asks for the chip's own
+    -- The attack's chip as its definition (nil when the attack has
+    -- none): what a weapon that uses the chip asks for the chip's own
     -- parts (`navi.attack_chip.action`), and what an action that becomes
     -- another chip's sets.
     attack_chip: Chip?
@@ -426,14 +418,11 @@ declare class Object
     buffered_move: number
     chip_lockout: number
     back_special_cooldown: number
-    -- The weapon routines the navi's buttons run (0xFF = none; the
-    -- buster's and the charged shot's writable).
-    buster_routine: number
-    charge_shot_routine: number
-    back_special_routine: number
-    a_charge_routine: number
-    alt_a_charge_routine: number
-    mode9_a_routine: number
+    -- The weapons the navi's buttons run (nil: none; the buster's and the
+    -- charged shot's writable).
+    buster_weapon: Weapon?
+    charge_shot_weapon: Weapon?
+    back_special_weapon: Weapon?
     -- Writable: the Beast Out counter is spent (AIData+0x32).
     beast_out_spent: boolean
     -- Writable: the barrier's visual (AIData+0x60), which hides and shows
@@ -673,10 +662,11 @@ declare class Navi
     version: number
     max_base_hp: number
     chip_recovery: number
-    -- NaviCust: the buster's spread shot, the charged shot's kind, and the
+    -- NaviCust: the buster shot's and the charged shot's programs (the
+    -- projectile variant a shot is on a lucky draw; nil: none), and the
     -- buster's blank and charged slots (of 16).
-    buster_shot: number
-    charge_shot_kind: number
+    buster_shot: ProjectileVariant?
+    charge_shot_kind: ProjectileVariant?
     -- The damage a B+Back special takes from the navi's stats (ProtoMan's
     -- reflecting guard).
     back_special_damage: number
@@ -693,9 +683,9 @@ declare class Navi
     custom_level: number
     -- NaviCust bug: the hand shrinks from this turn on (0 none).
     hand_shrink_turn: number
-    -- The weapon routines rounds start with (0xFF none).
-    charge_shot_routine: number
-    back_special_routine: number
+    -- The weapons rounds start with (nil: none).
+    charge_shot_weapon: Weapon?
+    back_special_weapon: Weapon?
     float_shoes: boolean
     air_shoes: boolean
     undershirt: boolean
@@ -1229,81 +1219,6 @@ export type AttachmentKind = {
     attach_point: number?,
 }
 
--- Which sun beam look (data.objects.sun_beam_looks) and palette GunDelSol
--- shows.
-export type SunBeamLook = { look: number, palette: number }
-
--- GunDelSol's data, in its chip's folder.
-export type GunDelSol = {
-    -- Ticks of hits under the beam.
-    firing_ticks: number,
-    -- The sun beam in the shade and in the sun.
-    beam: SunBeamLook,
-    beam_in_sun: SunBeamLook,
-    -- The gun attached to the user.
-    gun: AttachmentKind,
-}
-
--- Action 0x13's slash: its hit region and the effect that draws it.
-export type SwordSlash = {
-    region: number,
-    hit_effect: number,
-    target: number,
-    self_type: number,
-    hit_mod: number,
-    status: number,
-    bug: number,
-    bug_arg: number,
-    effect: number,
-}
-
--- A sword's data (actions 0x13 and 0x49), in its chip's folder.
-export type Sword = {
-    -- The blade the user holds: an attachment kind.
-    blade: number,
-    -- Action 0x13's slash.
-    slash: SwordSlash?,
-}
-
--- A chip's record and its own data.
-export type ChipData = {
-    id: number,
-    name: string,
-    element: string,
-    family: string,
-    class: string,
-    flags: { string },
-    hit_param: number,
-    action: number,
-    subtype: number,
-    beast_lockon: boolean,
-    params: { number },
-    lockout: number,
-    damage: number,
-    gun_del_sol: GunDelSol?,
-    -- The HP a recovery chip restores (action 0x20).
-    recovery: number?,
-    sword: Sword?,
-    script: string?,
-}
-
-export type NaviData = {
-    id: number,
-    name: string,
-    sprite: SpriteId,
-    element: string,
-    buster_bonus: number,
-    merge_height: number,
-}
-
-export type FormData = {
-    id: number,
-    name: string,
-    sprite: SpriteId,
-    element: string,
-    buster_bonus: number,
-}
-
 export type RockKind = {
     id: number,
     anim: number,
@@ -1413,8 +1328,6 @@ export type FlyingShotKind = {
 -- 0xCD..=0xFF, as `sub_800F26C` gives it); no sprite is the table's none.
 export type NameLook = { name_id: number, sprite: SpriteId?, anim: number, palette: number, shadow: boolean }
 
-export type WeaponData = { id: number, name: string, action: number?, instant_chip: number?, script: string }
-
 -- A shock wave's look and timing (attack object #0x16, by its first
 -- parameter): ticks on a panel before the next rolls on, and the panel
 -- type it leaves ("cracked" cracks the panel, "broken" breaks it).
@@ -1423,10 +1336,6 @@ export type ShockWave = { id: number, sprite: SpriteId, anim: number, ticks: num
 export type ObjectKindData = { pool: Pool, index: number, script: string }
 
 export type PackData = {
-    chips: { [number]: ChipData },
-    navis: { [number]: NaviData },
-    forms: { [number]: FormData },
-    weapons: { [number]: WeaponData },
     objects: {
         attachments: { [number]: AttachmentKind },
         rocks: { [number]: RockKind },
@@ -1522,28 +1431,49 @@ export type Action = ActionSpec
 export type WeaponSpec = {
     id: string,
     name: string,
+    -- Ticks to a full charge, by Charge stat 0 to 7 (past 4, what the
+    -- original reads on into: the next routine's row).
     charge_ticks: { number },
-    -- `off_80117D4[n]`: prepare the attack, name its action (an `Action`
-    -- or an action number). A weapon with an `instant` effect names none:
-    -- the instant chips' action runs it. None while the weapon is still a
-    -- v1 module, which its legacy marker names. (Typed loosely until the
-    -- markers go: Luau's checker doesn't check a function against an
+    -- `off_80117D4[n]`: prepare the attack, name its action (an `Action`).
+    -- A weapon with an `instant` effect names none: the instant chips'
+    -- action runs it. None for a weapon nothing can start: an A-charge
+    -- that is its chip (`charged_chip`), or one nothing implements yet.
+    -- (Typed loosely: Luau's checker doesn't check a function against an
     -- optional function type.)
     setup: ((navi: Object) -> any)?,
     -- Its own instant effect (one no chip has: TenguCross's wind), which
     -- the instant chips' action runs once.
     instant: ((user: Object, spec: InstantChipSpec) -> ())?,
-    -- Transitional (counted by the ratchet): the routine numbers the pack's
-    -- forms and the ruleset still name it by (`weapon_numbered`); for a
-    -- weapon still a v1 module, the module (`script`), the action it brings
-    -- and the instant chip effect it names (§12, step 5).
-    legacy: { routines: { number }, script: string?, action: number?, instant_chip: number? }?,
+    -- As a charged shot: it stays when a form's own would replace it (a
+    -- chip's weapon, `sub_800FFAA`), and its attack runs through a dimming.
     sticky: boolean?,
-    traits: { string }?,
+    -- As a buster: it fires while B is held.
+    held: boolean?,
+    -- As a buster: the buster it gives way to while the charged shot is a
+    -- sticky one.
+    plain: Weapon?,
+    -- As an A-charge without an attack of its own: the charged chip is the
+    -- chip itself with the charge's bonus ("bonus"), or that after
+    -- GroundCross's falling rocks ("rock_barrage").
+    charged_chip: ("bonus" | "rock_barrage")?,
 }
 export type Weapon = WeaponSpec
 
 -- A chip: its record, and exactly one use.
+-- A chip's damage by formula: the opponent's HP; an SP navi chip's, by its
+-- navi's deletion time (its slot of the rules' `sp-chips`, and the damage
+-- for each of that section's time steps); the custom gauge's; the HP the
+-- user has lost; the last two digits of the user's HP; half the opponent's
+-- max HP; a link navi's own chip's, by its level.
+export type DamageFormula =
+    { formula: "opponent_hp" }
+    | { formula: "sp_navi", slot: string, by_time: { number } }
+    | { formula: "gauge" }
+    | { formula: "hp_lost" }
+    | { formula: "hp_last_digits" }
+    | { formula: "half_opponent_max_hp" }
+    | { formula: "navi_level", base: number, per_level: number }
+
 export type ChipSpec = {
     id: string,
     name: string,
@@ -1556,7 +1486,9 @@ export type ChipSpec = {
     class: string?,
     rarity: number?,
     mb: number?,
-    damage: any?,
+    -- A number below 1000, or a formula the ruleset computes when the chip
+    -- enters a hand.
+    damage: (number | DamageFormula)?,
     hit_param: number?,
     lockout: number?,
     flags: { string }?,
@@ -1567,33 +1499,26 @@ export type ChipSpec = {
     beast: { lockon: Lockon?, rush: boolean? }?,
     library: { number: number, index: number, sort: number }?,
     slot_in_limit: number?,
+    -- What the ruleset asks of the chip: "no_chain" (the Beast rush's
+    -- chain leaves it out), "aura_bonus" (it hits harder while the user's
+    -- barrier holds), "no_cut_in" (the other side can't cut in on its
+    -- dimming), "element_sword" (a link navi's own chip's family bonus
+    -- counts it), "navi_slot" (AntiNavi turns it back though it lacks the
+    -- `navi` flag), "heals" (AntiRecv springs on it), "user_stays" (a navi
+    -- chip whose user isn't warped off the field), "navi_returns_user" (a
+    -- navi chip whose navi brings the user back itself).
     traits: { string }?,
-    dark_substitute: any?,
+    -- The trap it is while a side's defensive-chip record holds it:
+    -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
+    -- "anti_recovery".
+    trap: string?,
+    -- A dark chip: the chip its user gets without bug frags, and what its
+    -- use adds to the user's HP bug.
+    dark_substitute: Chip?,
+    hp_bug: number?,
     modifier: any?,
     program_advances: { any }?,
-    -- Transitional (counted by the ratchet): the original's subtype and
-    -- parameter bytes, for what reads them of the chip besides its own use
-    -- (a chip still on the by-number shims; SlashCross's A-charge for a
-    -- sword whose slash doesn't name its charged slash); its `number`, for a
-    -- chip something still names by number (a recipe, the Cross special, a
-    -- navi's own chip), with what the ruleset reads of it by number (the
-    -- action number, a damage formula as `damage = 1000 + n` and its
-    -- table, a dark chip's substitute, the per-family data v1 modules
-    -- read); and for a chip still a v1 module (with no use of its own
-    -- here), that module (`script`). docs/design/content-model-v2.md §12.
-    legacy: {
-        subtype: number?,
-        params: { number }?,
-        number: number?,
-        action: number?,
-        script: string?,
-        damage: number?,
-        sp_damage: { number }?,
-        navi_damage: { base: number, per_level: number }?,
-        dark_substitute: number?,
-        recovery: number?,
-        sword: any?,
-    }?,
+    -- Its use: exactly one of these.
     action: Action?,
     dimming: ((user: Object, spec: DimmingChipSpec) -> Object?)?,
     navi: ((user: Object, controller: Object, spec: NaviChipSpec) -> Object?)?,
@@ -1711,6 +1636,17 @@ export type RolesSpec = {
         support: (Kind | LegacyKind)?,
         anti_recovery: (Kind | LegacyKind)?,
     }?,
+    -- The chips the ruleset names: what a zeroed chip field reads, the
+    -- custom screen's Beast Out chip and its invalid selection's, and the
+    -- chips the supports' telops name.
+    chips: {
+        zeroed: Chip?,
+        beast_out: Chip?,
+        invalid: Chip?,
+        rush: Chip?,
+        beat: Chip?,
+        tango: Chip?,
+    }?,
     -- The statuses the ruleset inflicts itself: what a damage word's
     -- paralysis bit carries, what a counter hit lands, what an aqua hit
     -- gives a body on ice, and the NaviCust on-hit bug's.
@@ -1805,10 +1741,10 @@ declare define: {
     record: <T>(record_type: string, spec: T) -> T,
 }
 
--- `legacy { ... }`: data only registration by number reads (a chip's action
--- number, subtype and parameters, its v1 module; the original's numbering
--- of a table), until its family converts (docs/design/content-model-v2.md
--- §12). As data it is the table itself; the checker counts each use. It
--- is typed `any` so a marker can stand where the converted field will be (a
--- chip's `action`, a weapon's `setup`).
+-- `legacy { ... }`: data only registration by number reads (a navi's or a
+-- form's number, a weapon's routine numbers and v1 module; the original's
+-- numbering of a table), until its family converts
+-- (docs/design/content-model-v2.md §12). As data it is the table itself;
+-- the checker counts each use. It is typed `any` so a marker can stand
+-- where the converted field will be (a weapon's `setup`).
 declare function legacy(t: any): any

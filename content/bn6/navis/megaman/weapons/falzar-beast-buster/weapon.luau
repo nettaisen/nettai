@@ -10,6 +10,7 @@
 -- docs/engine/chips.md §4.6.
 
 local buster = require("../../../../lib/buster")
+local plain_buster = require("../buster/weapon")
 local flying_shot = require("../../../../objects/flying-shot/flying_shot")
 local weapon = require("../../../../lib/weapon")
 
@@ -220,8 +221,10 @@ falzar_beast_buster.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 40, 60, 90, 120, 150, 80, 75, 70 },
     setup = falzar_beast_buster.setup,
-    -- (Transitional: the routine number the pack's forms name it by.)
-    legacy = { routines = { 0x03 } },
+    -- As a buster it fires while B is held, and gives way to the plain
+    -- buster while the charged shot is a chip's (a sticky one).
+    held = true,
+    plain = plain_buster.weapon,
 }
 
 return falzar_beast_buster

@@ -54,8 +54,6 @@ back_special.weapon = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 70, 70, 70, 70, 70, 90, 80, 70 },
     setup = setup,
-    -- (Transitional: the routine number the navi's row names it by.)
-    legacy = { routines = { 0x34 } },
 }
 
 back_special.weapon_2 = define.weapon {
@@ -65,8 +63,6 @@ back_special.weapon_2 = define.weapon {
     -- into the next routine's row, as the original's table does.
     charge_ticks = { 0, 0, 0, 0, 0, 0, 0, 0 },
     setup = setup_reflect,
-    -- (Transitional: the routine number NaviStats names it by.)
-    legacy = { routines = { 0x30 } },
 }
 
 return back_special

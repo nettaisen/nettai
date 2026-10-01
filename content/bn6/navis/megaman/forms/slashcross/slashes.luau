@@ -66,39 +66,4 @@ slashes.bamboo = slash { wave = waves.bamboo, blade = blades.bamboo, sound = sou
 slashes.charge = slash { wave = waves.charge, sound = sounds.swing, lockon = lockon.widesht }
 slashes.moon = slash { wave = waves.moon, sound = sounds.swing, lockon = lockon.moonbld }
 
--- Transitional: the slashes by the original's row, a sword chip's subtype
--- (rows 0x10 to 0x12 are the charge's own, MoonBld's and DblDream's
--- second), for a charged chip that is still a pack record with no
--- definition to ask. (Row 0x13, which the blade and lock-on tables have,
--- has no wave.)
-local ROWS: { [number]: ChargedSlash } = {
-    [0x00] = slashes.sword,
-    [0x01] = slashes.wide,
-    [0x02] = slashes.long,
-    [0x03] = slashes.wide_blade,
-    [0x04] = slashes.long_blade,
-    [0x05] = slashes.life,
-    [0x06] = slashes.dark,
-    [0x07] = slashes.unused,
-    [0x08] = slashes.muramasa,
-    [0x09] = slashes.fighter,
-    [0x0A] = slashes.cross,
-    [0x0B] = slashes.double_dream,
-    [0x0C] = slashes.fire,
-    [0x0D] = slashes.aqua,
-    [0x0E] = slashes.elec,
-    [0x0F] = slashes.bamboo,
-    [0x10] = slashes.charge,
-    [0x11] = slashes.moon,
-    [0x12] = slashes.double_dream_second,
-}
-
-function slashes.by_row(row: number): ChargedSlash
-    local s = ROWS[row]
-    if s == nil then
-        error(string.format("sword wave kind %#x reads past byte_80D7F4C (sub_80D80B4)", row))
-    end
-    return s
-end
-
 return slashes

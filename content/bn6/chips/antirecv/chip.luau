@@ -3,11 +3,25 @@
 -- damage (`sub_800E2FC` and Roll's `sub_80E192C`, with the counterattack
 -- in ./controller). The controller that sets it is the trap chips'
 -- (lib/traps/controller); it sets no object of its own.
---
--- Its record stays the pack's for now (the recoveries name it by number):
--- this is its `dimming` hook, which registration by number runs
--- (chips/0ba-antinavi).
 
 local traps = require("../../lib/traps/controller")
 
-return { dimming = traps.hook() }
+return define.chip {
+    id = "antirecv",
+    name = "AntiRecv",
+    description = "Damages\nenemy in\nrecovery",
+    codes = { "A", "F", "V", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 2,
+    mb = 37,
+    damage = 0,
+    hit_param = 158,
+    lockout = 0,
+    flags = { "dimming", "standard_library", "library" },
+    library = { number = 191, index = 191, sort = 11 },
+    slot_in_limit = 1,
+    trap = "anti_recovery",
+    dimming = traps.hook(),
+}

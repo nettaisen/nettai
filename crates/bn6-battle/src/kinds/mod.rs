@@ -271,18 +271,18 @@ pub fn shift_damage_carry(b: &mut Battle) {
     }
 }
 
-/// Damage formulas for chips whose damage is 1000 or more (`off_80109DC`).
-pub fn chip_damage_formula(b: &Battle, id: bn6_content_api::ChipHandle, side: u8, formula: u16) -> u16 {
+/// A chip's damage by its formula (`off_80109DC`, which the original
+/// indexes with the chip's damage past 999; the table ends at formula 44).
+pub fn chip_damage_formula(b: &Battle, id: bn6_content_api::ChipHandle, side: u8, formula: &crate::content::DamageFormula) -> u16 {
+    use crate::content::DamageFormula as F;
     match formula {
-        0 => opponent_hp(b, side),
-        1..=18 => sp_chip_damage(b, id, side, formula as usize - 1),
-        19 => gauge_damage(b, side),
-        20 => damage_taken(b, side),
-        21 => hp_last_digits(b, side),
-        22 => half_opponent_max_hp(b, side),
-        23..=44 => navi_chip_damage(b, id, side),
-        // The table ends at 44: the game jumps through the code after it.
-        _ => panic!("damage formula {formula} (chip {:?}) reads past its table (off_80109DC)", b.content.defs.chip(id).key),
+        F::OpponentHp => opponent_hp(b, side),
+        F::SpNavi { by_time, .. } => sp_chip_damage(b, id, side, by_time),
+        F::Gauge => gauge_damage(b, side),
+        F::HpLost => damage_taken(b, side),
+        F::HpLastDigits => hp_last_digits(b, side),
+        F::HalfOpponentMaxHp => half_opponent_max_hp(b, side),
+        F::NaviLevel { base, per_level } => navi_chip_damage(b, side, *base, *per_level),
     }
 }
 
@@ -364,27 +364,24 @@ fn damage_taken(b: &Battle, side: u8) -> u16 {
 }
 
 /// `sub_8010AE4`: an SP navi chip's damage, lower the slower its user
-/// deleted that SP navi (a step per two seconds past ten). `n` is the SP
-/// navi (the chip's damage formula - 1).
-fn sp_chip_damage(b: &Battle, id: bn6_content_api::ChipHandle, side: u8, n: usize) -> u16 {
+/// deleted that SP navi (a step per two seconds past ten): `by_time`, by
+/// the deletion-time step, of the chip's slot among the setup's SP times.
+fn sp_chip_damage(b: &Battle, id: bn6_content_api::ChipHandle, side: u8, by_time: &[u16]) -> u16 {
+    let n = b.content.chip_links(id).sp_slot.expect("an SP navi chip's slot (resolved when the content loads)") as usize;
     let time = time_bcd(b.setup.sp_times[side as usize].frames(n) as u32);
     let step = b.content.rules.sp_deletion_times.iter().take_while(|&&t| time > t).count();
-    let damage = b.content.chip(id).sp_damage.as_ref();
-    damage.unwrap_or_else(|| panic!("SP chip {:?} has no damage by deletion time", b.content.defs.chip(id).key))[step]
+    *by_time.get(step).unwrap_or_else(|| {
+        panic!("SP chip {:?} has no damage for deletion-time step {step} (sub_8010AE4)", b.content.defs.chip(id).key)
+    })
 }
 
 /// `sub_8010C50`: a link navi's chip's damage, from the side's player navi
 /// (none: 0): its base, plus its step for each level of the navi's buster
 /// attack (`sub_8012642`), up to 5.
-fn navi_chip_damage(b: &Battle, id: bn6_content_api::ChipHandle, side: u8) -> u16 {
+fn navi_chip_damage(b: &Battle, side: u8, base: u8, per_level: u8) -> u16 {
     let Some(navi) = b.player(side) else { return 0 };
-    let d = b
-        .content
-        .chip(id)
-        .navi_damage
-        .unwrap_or_else(|| panic!("link navi chip {:?} has no navi_damage", b.content.defs.chip(id).key));
     let level = player::idle::buster_damage(b, navi).min(5);
-    d.base as u16 + d.per_level as u16 * level
+    base as u16 + per_level as u16 * level
 }
 
 /// `sub_8000D84`: frames as a BCD time, hours:minutes:seconds.hundredths
@@ -417,7 +414,8 @@ mod tests {
         for (hp, want) in [(1234, 34), (100, 0), (99, 99)] {
             let p = b.player(1).unwrap();
             b.objects.get_mut(p).hp = hp;
-            assert_eq!(super::chip_damage_formula(&b, testing::chip_handle(testing::SUN_GUN_3), 1, 21), want, "HP {hp}");
+            let formula = crate::content::DamageFormula::HpLastDigits;
+            assert_eq!(super::chip_damage_formula(&b, testing::chip_handle(testing::SUN_GUN_3), 1, &formula), want, "HP {hp}");
         }
     }
 

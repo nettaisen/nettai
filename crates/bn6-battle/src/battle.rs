@@ -469,7 +469,8 @@ pub struct SideState {
     /// an obstacle leaving hands on (`sub_802EF74`).
     pub tracked: Option<ObjectRef>,
     /// +0x34: the special chip the side's SELECT uses (`sub_800EE26`); none
-    /// for the zeroed field, which reads as the pack's chip 0.
+    /// for the zeroed field, which reads as the zeroed chip
+    /// (`roles.chips.zeroed`).
     pub special_chip: Option<ChipHandle>,
     /// +0x36 / +0x38: bonuses stored for the special chip, spent with it
     /// (on a damaging chip, on a navi chip).
@@ -514,12 +515,6 @@ impl Battle {
         self.content.stage(self.setup.settings.stage).panel_pattern
     }
 
-    /// A chip field's number in the pack's table (the ruleset asks chips by
-    /// number until phase C); none for no chip or a chip content defines.
-    pub fn chip_number(&self, chip: Option<ChipHandle>) -> Option<crate::content::ChipId> {
-        chip.and_then(|h| self.content.chip_number(h))
-    }
-
     /// A side's form, by number (the ruleset asks forms by number until
     /// phase C).
     pub fn form(&self, side: usize) -> Form {
@@ -529,13 +524,6 @@ impl Battle {
     /// A side's navi, by number.
     pub fn navi(&self, side: usize) -> Navi {
         self.content.navi_number(self.stats[side].navi)
-    }
-
-    /// A side's weapon routine number for a weapon slot (the ruleset asks
-    /// them by number until phase C); none for no weapon or one content
-    /// defines.
-    pub fn weapon_number(&self, w: Option<bn6_content_api::WeaponHandle>) -> Option<u8> {
-        w.and_then(|h| self.content.weapon_number(h))
     }
 
     /// `battle_networkInvert`: whether `alliance` is not the local side.

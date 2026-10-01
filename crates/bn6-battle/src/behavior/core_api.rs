@@ -210,11 +210,11 @@ impl Battle {
         Ok(self.collision.get_mut(c))
     }
 
-    /// A chip as the numeric API gives it: the pack's number, or for a chip
-    /// content defines (which has none) [`DEFINED_CHIPS`] plus its handle,
-    /// so a script can hand it back.
+    /// A chip as the numeric API gives it: [`DEFINED_CHIPS`] plus its
+    /// handle (a number a script can hand back, and nothing else: no chip
+    /// has a number of its own).
     pub(crate) fn api_chip(&self, h: ChipHandle) -> u16 {
-        self.content.chip_number(h).unwrap_or(DEFINED_CHIPS + h.0)
+        DEFINED_CHIPS + h.0
     }
 
     /// A chip field as the numeric API gives it; `none` for no chip (the
@@ -229,36 +229,29 @@ impl Battle {
         if n == none {
             return Ok(None);
         }
-        if n >= DEFINED_CHIPS {
-            let h = ChipHandle(n - DEFINED_CHIPS);
-            return (h.index() < self.content.defs.chips.len())
-                .then_some(Some(h))
-                .ok_or_else(|| ApiError::Other(format!("chip {n:#x} is not in the content")));
-        }
-        self.content.chip_numbered(n).map(Some).ok_or_else(|| ApiError::Other(format!("chip {n:#x} is not in the content")))
+        n.checked_sub(DEFINED_CHIPS)
+            .map(ChipHandle)
+            .filter(|h| h.index() < self.content.defs.chips.len())
+            .map(Some)
+            .ok_or_else(|| ApiError::Other(format!("{n:#x} is not a chip the numeric API gave")))
     }
 
-    /// A weapon as the numeric API gives it: its routine number (0xFF for
-    /// none). A weapon content defines has no number for it to give.
-    fn api_weapon(&self, w: Option<WeaponHandle>) -> i64 {
-        let Some(w) = w else { return 0xFF };
-        match self.content.weapon_number(w) {
-            Some(n) => n as i64,
-            None => panic!(
-                "the numeric API can't name weapon {:?}, which content defines (the v2 API names it by handle)",
-                self.content.defs.weapon(w).key
-            ),
+    /// A weapon the API was given (a definition's handle), checked.
+    fn weapon_from_api(&self, what: &str, v: FieldValue) -> ApiResult<Option<WeaponHandle>> {
+        match v {
+            FieldValue::Ref(None) => Ok(None),
+            FieldValue::Ref(Some((Registry::Weapon, h))) if (h as usize) < self.content.defs.weapons.len() => {
+                Ok(Some(WeaponHandle(h)))
+            }
+            FieldValue::Ref(Some((Registry::Weapon, h))) => Err(ApiError::Other(format!("{what}: no weapon has handle {h}"))),
+            FieldValue::Ref(Some((other, _))) => Err(ApiError::Other(format!("{what}: a {other} is not a weapon"))),
+            other => unreachable!("{what} stored as {other:?}"),
         }
-    }
-
-    /// The weapon a routine number from the numeric API names (0xFF: none).
-    fn weapon_from_api(&self, n: u8) -> Option<WeaponHandle> {
-        (n != 0xFF).then(|| self.content.weapon_numbered(n))
     }
 }
 
-/// Where the numeric API's chips content defines start: past every chip id
-/// the original has (nine bits).
+/// Where the numeric API's chips start: its number for a chip is this plus
+/// the chip's handle, clear of the fields' "none"s (0 and 0xFFFF).
 pub const DEFINED_CHIPS: u16 = 0x200;
 
 /// Check a write and convert it by the field's type.
@@ -309,8 +302,8 @@ impl CoreApi for Battle {
                 None => self.content.rules.empty_hand.flags,
             }
         } else {
-            // Another object's chip word: zeroed, the pack's chip 0.
-            match o.chip.or_else(|| self.content.chip_numbered(0)) {
+            // Another object's chip word: zeroed, the zeroed chip.
+            match o.chip.or_else(|| self.content.zeroed_chip()) {
                 Some(h) => self.content.chip(h).flags,
                 None => ChipFlags(0),
             }
@@ -349,6 +342,8 @@ impl CoreApi for Battle {
     fn navi_stat(&self, side: u8, stat: NaviStat) -> Value {
         let s = &self.stats[side as usize & 1];
         let i = |v: i64| Value::Int(v);
+        let weapon = |w: Option<WeaponHandle>| w.map_or(Value::Nil, |h| Value::Def(Registry::Weapon, h.0));
+        let record = |r: Option<bn6_content_api::RecordHandle>| r.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0));
         match stat {
             NaviStat::Sun => Value::Bool(s.sun),
             NaviStat::Form => i(self.content.form_number(s.form).0 as i64),
@@ -363,8 +358,8 @@ impl CoreApi for Battle {
             NaviStat::Version => i(s.version as i64),
             NaviStat::MaxBaseHp => i(s.max_base_hp as i64),
             NaviStat::ChipRecovery => i(s.chip_recovery as i64),
-            NaviStat::BusterShot => i(s.weapons.buster_shot as i64),
-            NaviStat::ChargeShotKind => i(s.weapons.charge_shot_kind as i64),
+            NaviStat::BusterShot => record(s.weapons.buster_shot),
+            NaviStat::ChargeShotKind => record(s.weapons.charge_shot_kind),
             NaviStat::BackSpecialDamage => i(s.weapons.back_special_damage as i64),
             NaviStat::BusterBlanks => i(s.bugs.buster_blanks as i64),
             NaviStat::BusterCharged => i(s.bugs.buster_charged as i64),
@@ -375,8 +370,8 @@ impl CoreApi for Battle {
             NaviStat::BeastOver => Value::Bool(self.content.form_number(s.form).is_beast_over()),
             NaviStat::CustomLevel => i(s.custom_level as i64),
             NaviStat::HandShrinkTurn => i(s.bugs.hand_shrink_turn as i64),
-            NaviStat::ChargeShotRoutine => i(self.api_weapon(s.weapons.charge_shot)),
-            NaviStat::BackSpecialRoutine => i(self.api_weapon(s.weapons.back_special)),
+            NaviStat::ChargeShotWeapon => weapon(s.weapons.charge_shot),
+            NaviStat::BackSpecialWeapon => weapon(s.weapons.back_special),
             NaviStat::FloatShoes => Value::Bool(s.float_shoes),
             NaviStat::AirShoes => Value::Bool(s.air_shoes),
             NaviStat::Undershirt => Value::Bool(s.undershirt),
@@ -401,8 +396,8 @@ impl CoreApi for Battle {
 
     fn set_navi_stat(&mut self, side: u8, stat: NaviStat, v: Value) -> ApiResult<()> {
         let v = store(stat.name(), stat.writable(), stat.ty(), v)?;
-        let weapon = match v {
-            FieldValue::U8(x) => self.weapon_from_api(x),
+        let weapon = match stat {
+            NaviStat::ChargeShotWeapon | NaviStat::BackSpecialWeapon => self.weapon_from_api(stat.name(), v)?,
             _ => None,
         };
         let s = &mut self.stats[side as usize & 1];
@@ -412,8 +407,8 @@ impl CoreApi for Battle {
             (NaviStat::Charge, FieldValue::U8(x)) => s.charge = x,
             (NaviStat::CustomLevel, FieldValue::U8(x)) => s.custom_level = x,
             (NaviStat::HandShrinkTurn, FieldValue::U8(x)) => s.bugs.hand_shrink_turn = x,
-            (NaviStat::ChargeShotRoutine, FieldValue::U8(_)) => s.weapons.charge_shot = weapon,
-            (NaviStat::BackSpecialRoutine, FieldValue::U8(_)) => s.weapons.back_special = weapon,
+            (NaviStat::ChargeShotWeapon, FieldValue::Ref(_)) => s.weapons.charge_shot = weapon,
+            (NaviStat::BackSpecialWeapon, FieldValue::Ref(_)) => s.weapons.back_special = weapon,
             (NaviStat::FloatShoes, FieldValue::Bool(x)) => s.float_shoes = x,
             (NaviStat::AirShoes, FieldValue::Bool(x)) => s.air_shoes = x,
             (NaviStat::Undershirt, FieldValue::Bool(x)) => s.undershirt = x,
@@ -1140,6 +1135,7 @@ impl CoreApi for Battle {
         let a = self.actor_of(o)?;
         let at = &a.attack;
         let i = |v: i64| Value::Int(v);
+        let weapon = |w: Option<WeaponHandle>| w.map_or(Value::Nil, |h| Value::Def(Registry::Weapon, h.0));
         Ok(match f {
             ActorField::Overlay => a.overlay.into(),
             ActorField::Step => i(at.step as i64),
@@ -1172,12 +1168,9 @@ impl CoreApi for Battle {
             ActorField::BufferedMove => i(a.buffered_move as i64),
             ActorField::ChipLockout => i(a.lockout as i64),
             ActorField::BackSpecialCooldown => i(a.back_special_cooldown as i64),
-            ActorField::BusterRoutine => i(self.api_weapon(a.buster)),
-            ActorField::ChargeShotRoutine => i(self.api_weapon(a.charge_shot)),
-            ActorField::BackSpecialRoutine => i(self.api_weapon(a.back_special)),
-            ActorField::AChargeRoutine => i(self.api_weapon(a.a_charge)),
-            ActorField::AltAChargeRoutine => i(self.api_weapon(a.alt_a_charge)),
-            ActorField::Mode9ARoutine => i(self.api_weapon(a.mode9_a)),
+            ActorField::BusterWeapon => weapon(a.buster),
+            ActorField::ChargeShotWeapon => weapon(a.charge_shot),
+            ActorField::BackSpecialWeapon => weapon(a.back_special),
             ActorField::BeastOutSpent => Value::Bool(a.beast_out_spent),
             ActorField::BarrierVisual => a.barrier_visual.into(),
         })
@@ -1189,10 +1182,8 @@ impl CoreApi for Battle {
             (ActorField::Chip, FieldValue::U16(x)) => self.chip_from_api(x, 0)?,
             _ => None,
         };
-        let weapon = match v {
-            FieldValue::U8(x) if matches!(f, ActorField::BusterRoutine | ActorField::ChargeShotRoutine) => {
-                self.weapon_from_api(x)
-            }
+        let weapon = match f {
+            ActorField::BusterWeapon | ActorField::ChargeShotWeapon => self.weapon_from_api(f.name(), v)?,
             _ => None,
         };
         // The attack's chip by definition: a chip, or none.
@@ -1258,8 +1249,8 @@ impl CoreApi for Battle {
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
             (ActorField::ChipLockout, FieldValue::U8(x)) => a.lockout = x,
             (ActorField::BackSpecialCooldown, FieldValue::U8(x)) => a.back_special_cooldown = x,
-            (ActorField::BusterRoutine, FieldValue::U8(_)) => a.buster = weapon,
-            (ActorField::ChargeShotRoutine, FieldValue::U8(_)) => a.charge_shot = weapon,
+            (ActorField::BusterWeapon, FieldValue::Ref(_)) => a.buster = weapon,
+            (ActorField::ChargeShotWeapon, FieldValue::Ref(_)) => a.charge_shot = weapon,
             (ActorField::BeastOutSpent, FieldValue::Bool(x)) => a.beast_out_spent = x,
             (ActorField::BarrierVisual, FieldValue::Object(r)) => a.barrier_visual = r,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
@@ -1958,8 +1949,10 @@ impl CoreApi for Battle {
     fn obstacle_swallowable(&self, o: ObjectRef) -> bool {
         let ob = self.objects.get(o);
         // The NameID word's high half: an actor's next chip (0xFFFF for
-        // none), nothing else's (0).
-        let high = if ob.actor.is_some() { self.chip_number(ob.chip).map_or(0xFFFF, u32::from) } else { 0 };
+        // none), nothing else's (0). Only whether it is zero matters: the
+        // chip the original's chip 0 is (the zeroed chip) or no actor.
+        let zero = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.content.zeroed_chip());
+        let high: u32 = if zero { 0 } else { 0xFFFF };
         let word = ob.name_id as u32 | high << 16;
         (0xCD..=0xFF).contains(&word) && !matches!(word, 0xD3 | 0xDA | 0xE9 | 0xEA)
     }
