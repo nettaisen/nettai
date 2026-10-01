@@ -1,2 +1,0 @@
-# Deprecated numeric API uses allowed per module (crates/bn6-content-check/tests/ratchet.rs).
-# Only ever lowered: BN6_RATCHET_LOWER=1 cargo test -p bn6-content-check --test ratchet
