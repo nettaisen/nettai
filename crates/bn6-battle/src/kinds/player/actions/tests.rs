@@ -2053,6 +2053,37 @@ fn ticks_in(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, action: bn6_content_ap
     n
 }
 
+/// Where turning is enabled, L or R turns the navi round: the request
+/// starts the turn (the role `actions.turn`, BN6's megaman/turn), which
+/// flips the navi two ticks later and ends.
+#[test]
+fn l_or_r_turns_the_navi_round_where_turning_is_enabled() {
+    use crate::actor::status;
+    let (mut b, p0, p1) = fight();
+    ai_mut(&mut b, p0).status |= status::CAN_TURN;
+    assert_eq!(b.objects.get(p0).flip, 0);
+    // The press raises the request, and the idle navi starts the turn.
+    tick(&mut b, p0, p1, keys::R);
+    assert_ne!(ai_mut(&mut b, p0).requests & request::TURN_R, 0);
+    assert_eq!(runs(&b, p0), "megaman/turn");
+    assert_eq!(ai_mut(&mut b, p0).attack.kind, 4);
+    // One tick waiting; on the second it faces the other way, the request
+    // is spent, and it idles.
+    tick(&mut b, p0, p1, 0);
+    assert_eq!((runs(&b, p0).as_str(), b.objects.get(p0).flip), ("megaman/turn", 0));
+    tick(&mut b, p0, p1, 0);
+    assert_eq!((act(&b, p0), b.objects.get(p0).flip), (IDLE, 1));
+    assert_eq!(ai_mut(&mut b, p0).requests & (request::TURN_L | request::TURN_R), 0);
+    assert!(b.objects.sprite(p0).look.hflip, "the sprite turned with it");
+    // Turned round, a press turns it back (the request is the other one).
+    tick(&mut b, p0, p1, keys::L);
+    assert_ne!(ai_mut(&mut b, p0).requests & request::TURN_L, 0);
+    tick(&mut b, p0, p1, 0);
+    tick(&mut b, p0, p1, 0);
+    assert_eq!((act(&b, p0), b.objects.get(p0).flip), (IDLE, 0));
+    assert!(!b.objects.sprite(p0).look.hflip);
+}
+
 #[test]
 fn a_defined_kind_runs_by_its_handle_with_its_state() {
     let (mut b, p0, p1) = fight_on_test_pack();
