@@ -8,6 +8,7 @@
 -- both close in from either side and slash it, an X when both stand in
 -- place. See docs/engine/chips.md §3.6.31.
 
+local megaman = require("../../navis/megaman/navi")
 local attachment = require("../../objects/attachment/attachment")
 local buster = require("../../lib/buster")
 local collision = require("../../rules/collision")
@@ -607,7 +608,7 @@ end
 local function init_megaman(me: Object)
     local s = me.state :: State
     local user = me.related1 :: Object
-    s.user_image = me:wear_navi_image(user)
+    s.user_image = me:wear_navi_image(user, megaman)
     dimming.hide_user_sparing(user)
     me:set_coordinates_from_panel()
     me.pos = user.pos

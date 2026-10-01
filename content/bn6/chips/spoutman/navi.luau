@@ -14,6 +14,7 @@
 -- Then he leaves, and the controller moves on. See docs/engine/chips.md
 -- §3.6.11.
 
+local spoutman_navi = require("../../navis/spoutman/navi")
 local panels = require("../../lib/panels")
 local ball = require("./ball")
 local geyser = require("./geyser")
@@ -36,9 +37,8 @@ local SOUND_APPEAR = asset.sound("appear")
 local SOUND_BUBBLE = asset.sound("bubble")
 local SOUND_SPOUT_MAN = asset.sound("spout-man")
 
--- His actor record (the parts it adds: his layer, `sub_8010F7A`).
-local ACTOR_TYPE: ActorType = "player"
-local AI_INDEX = 6
+-- What he wears (his layer, `sub_8010F7A`): the link navi's own parts.
+local IDENTITY = spoutman_navi.identity
 
 -- What his geyser looks for, by side (`off_80B97B8`: an enemy navi's
 -- body).
@@ -88,7 +88,7 @@ local function appear(me: Object)
     if me.phase == 0 then
         me.anim = 3
         battle.play_sound(SOUND_APPEAR)
-        me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
+        me:add_parts(IDENTITY, 1)
         me.visible = true
     end
     if not countdown(me, 6) then
@@ -227,7 +227,7 @@ local function leave(me: Object)
     if left >= 0 then
         return
     end
-    me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
+    me:remove_parts(IDENTITY)
     navi_chips.leave(me, (me.state :: State).controller)
 end
 

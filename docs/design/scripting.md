@@ -44,7 +44,7 @@ Max in release builds, on a machine shared with other work, so single runs vary 
 | crates/bn6-battle/src/behavior | The engine side: `impl CoreApi for Battle` (`core_api`), and dispatch of object kinds, actions and hooks to the runtime (`Behaviors`). |
 | crates/bn6-battle/src/content | `Content`: the registries the definitions build (`defs`), the roles (`roles`), the typed records, and `Scripts` (the modules). |
 | crates/bn6-content | Reads a content root and a pack (`root`, `pack`), reports on definitions (`lint`), reads and writes the pack's assets. |
-| crates/bn6-content-check | Type-checks a content root's Luau against its declarations with Luau's analysis, in process; lints; the ratchet and the guards (§3.3). |
+| crates/bn6-content-check | Type-checks a content root's Luau against its declarations with Luau's analysis, in process; lints; the guards (§3.3). |
 | crates/bn6-compat | The original's numbers by key (content/bn6/compat), the setup codecs and the trace harness. The engine doesn't depend on it. |
 | content/bn6 | BN6's content, with `core.d.luau` (the API) and `types.d.luau` (types the modules share). |
 | crates/bn6-battle/src/content/testing.rs, crates/bn6-battle/testdata | The test content and the test pack (content-pack.md §6). |
@@ -303,10 +303,12 @@ The lints cover what the checker can't see (`bn6-content-check`'s `lints`):
 `bn6-content check` adds what needs the definitions: roles left unfilled, kinds under `objects/` that one owner
 alone uses, a collision type defined twice. Reading compat refuses two keys with one of the original's numbers.
 
-Two tests guard the end state (`bn6-content-check`'s `guards`): no folder is named with a number of the
-original's, and no definition carries a `legacy` marker outside the listed modules. The markers left are the
-navis' and forms' numbers and the body overlays' numbering, which the ruleset still reads by number; the
-ratchet (`tests/deprecated.txt`) counts them per module, and only shrinks.
+Two tests guard that content names nothing by the original's numbers (`bn6-content-check`'s `guards`, with
+no exceptions): no folder under the content roots is named with one (`00f-gundels1`), and no module carries a
+`legacy` marker or field, the form the migration's numbers took. The define phase refuses a `legacy` field on a
+definition too, and `legacy` is no global. A third guard, bn6-battle's `no_compat` test, keeps compat out of the
+engine and the crates it runs content through (bn6-battle, bn6-content-api, bn6-luau): the word appears in
+their code only in comments, and none of their manifests names it.
 
 The checker bundles its own Luau, whose C++ symbols collide with mlua's, so it lives in its own crate and must
 never share a binary with bn6-luau.
