@@ -1,6 +1,8 @@
 --!strict
--- A drill (the original's attack object #0x71, `sub_80D2A94`): DrilArm's,
--- and GroundCross's charged shot's. It sits on the panel ahead of its owner
+-- A drill (the original's attack object #0x71, `sub_80D2A94`): DrilArm's
+-- (./chip), which GroundCross's charged shot
+-- (navis/megaman/forms/groundcross/drill) and MstrCros's GroundCross
+-- (chips/mstrcros/navi) use too. It sits on the panel ahead of its owner
 -- (following it), invisible, hitting what stands there every 12 ticks for
 -- its time; a hit takes its region away until the next 12. The first one
 -- brings a second drill on the panel ahead of itself. Each goes as soon as
@@ -8,7 +10,7 @@
 -- or, for the second, the first drill's link, which the first clears when
 -- it goes. A hit also shakes the camera.
 
-local attachment = require("../attachment/attachment")
+local attachment = require("../../objects/attachment/attachment")
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
@@ -154,7 +156,7 @@ local function init(me: Object)
 end
 
 drill.kind = define.kind {
-    id = "drill",
+    id = "drilarm/drill",
     pool = "attack",
     state = {
         slot = { "related", "child" },

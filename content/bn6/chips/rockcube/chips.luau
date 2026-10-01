@@ -4,7 +4,7 @@
 -- an ice block (docs/engine/field-objects.md §3).
 
 local cube = require("./cube")
-local rock = require("../../objects/rock/rock")
+local rock = require("./rock")
 
 local rockcube = define.chip {
     id = "rockcube",

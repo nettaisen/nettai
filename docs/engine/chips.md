@@ -213,7 +213,7 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
    entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are content's: a chip definition's
    `instant` hook, or a weapon's `instant`. 0 BeastOut `sub_80104E0` and 3 the plus chips
    `sub_8010488` (lib/instant/plus, with their sparkle, effect #0x14, objects/rising-bubble), 1 the boomerang
-   (objects/boomerang, chips/boomer), 4 Lance
+   (chips/boomer/boomerang, kind `boomer/boomerang`), 4 Lance
    (chips/lance), 5 FullCust `sub_800AF34` (chips/fullcust), 8 FireHit (chips/firehit), 10 BusterUp `sub_8010820` (chips/busterup), 12 SandWrm (chips/sandwrm), 13 SyncTrgr
    `sub_80EC44C` (chips/synctrgr), 15 ColForce (chips/colforce), 19 JustcOne (chips/justcone), 21 GolmHit
    (chips/golmhit), 22 ColArmy (chips/colarmy). Subtypes 2
@@ -1445,8 +1445,8 @@ subtype:
 - 1 (Invisibl, WhiCapsl; T4 0x5D): the user flashes invisible for Param1-2 ticks (`sub_8010474`), 31 ticks.
   chips/invisibl/controller (`invisible.hook(ticks)`).
 - 6 (RockCube, IceCube; T4 0x37): a rock of variant Param1 (1 a rock cube, 3 an ice block) on the panel in front
-  (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. chips/rockcube; the rock is objects/rock
-  (field-objects.md).
+  (`sub_80CFBC4`, the rock's spawner), sound 0x112, 60 ticks. chips/rockcube, whose folder holds the rock
+  (chips/rockcube/rock, field-objects.md).
 - 25 (SloGauge, FstGauge; T4 0x1C, `sub_80E23E8`): the shared custom gauge's rate becomes 0x10 or 0x40 for the rest
   of the round (`sub_801DF8C`; the round start sets it from the navi stats, `sub_8014178`); the user's side's slow
   (+0x3C) or fast (+0x3A) gauge timer in `sub_802E070` gets 480 ticks, and, with per-player gauges (battle flag
@@ -2429,9 +2429,9 @@ A Cross (Param4 = its place in its wave):
   10-tick flash; at Timer 40 `sub_80D8FB8` (its Param2 = 1 if its Param1 is 2); 70 ticks → 0x20.
 - 0x14 (`sub_80BEE62`), GroundCross's drill (move 2): phase 0: 10 ticks, then phase 4 at once. Phase 4
   (`sub_80BEEA2`): anim 0xA, attachment 0x20 (r4 0x10120: animation 1) in ExtraVars[1]; `sub_80D2B8E` (attack #0x71,
-  objects/drill; his element, r4 0x11E00: Param2 0x1E, Param3 1; Z 16 pixels; his damage word; held in ExtraVars[2])
-  with flags |= 0x10; Timer 30; sound 0xF0; a 10-tick flash; Y's and Z's whole parts + 1; 30 ticks → 8. Phase 8: the
-  attachment's animation 0 (`sub_80B8E70`), 10 ticks → 0x20.
+  DrilArm's drill, chips/drilarm/drill; his element, r4 0x11E00: Param2 0x1E, Param3 1; Z 16 pixels; his damage
+  word; held in ExtraVars[2]) with flags |= 0x10; Timer 30; sound 0xF0; a 10-tick flash; Y's and Z's whole parts
+  + 1; 30 ticks → 8. Phase 8: the attachment's animation 0 (`sub_80B8E70`), 10 ticks → 0x20.
 - 0x18 (`sub_80BEF2C`), TenguCross's fan (move 3): anim 5, sound 0x11F, attachment 0x2A (r4 0x1002A) in
   ExtraVars[1], T4#0 effect 0x44 at his panel's centre 16 pixels up (his flip), Timer 21; at Timer 12 a hit on the
   panel ahead (r4 0x0405FF04: region 4; Z 16 pixels; modifier 3) and a 10-tick flash; to −1 (22 ticks) → phase 4: 5
