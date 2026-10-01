@@ -218,18 +218,7 @@ local gundels1 = define.chip {
     beast = { lockon = lockon.gundels1 },
     library = { number = 15, index = 15, sort = 227 },
     slot_in_limit = 3,
-    legacy = legacy {
-        number = 0x00F,
-        action = 0x37,
-        subtype = 0,
-        params = { 0, 0, 0, 0 },
-        gun_del_sol = {
-            beam = { look = 0, palette = 0 },
-            beam_in_sun = { look = 0, palette = 2 },
-            firing_ticks = 60,
-            gun = { attach_point = 13, id = 7, lift = 0, palette = 0, sprite = asset.sprite("gun-del-sol") },
-        },
-    },
+    legacy = legacy { number = 0x00F, action = 0x37, subtype = 0, params = { 0, 0, 0, 0 } },
 }
 
 local gundels2 = define.chip {
@@ -254,12 +243,6 @@ local gundels2 = define.chip {
         subtype = 1,
         params = { 0, 0, 0, 0 },
         script = "chips/010-gundels2/chip",
-        gun_del_sol = {
-            beam = { look = 0, palette = 0 },
-            beam_in_sun = { look = 0, palette = 2 },
-            firing_ticks = 90,
-            gun = { attach_point = 13, id = 8, lift = 0, palette = 3, sprite = asset.sprite("gun-del-sol") },
-        },
     },
 }
 
@@ -279,18 +262,7 @@ local gundels3 = define.chip {
     beast = { lockon = lockon.gundels1 },
     library = { number = 17, index = 17, sort = 229 },
     slot_in_limit = 3,
-    legacy = legacy {
-        number = 0x011,
-        action = 0x37,
-        subtype = 2,
-        params = { 0, 0, 0, 0 },
-        gun_del_sol = {
-            beam = { look = 0, palette = 0 },
-            beam_in_sun = { look = 0, palette = 2 },
-            firing_ticks = 120,
-            gun = { attach_point = 13, id = 9, lift = 0, palette = 6, sprite = asset.sprite("gun-del-sol") },
-        },
-    },
+    legacy = legacy { number = 0x011, action = 0x37, subtype = 2, params = { 0, 0, 0, 0 } },
 }
 
 local gundelex = define.chip {
@@ -309,18 +281,7 @@ local gundelex = define.chip {
     beast = { lockon = lockon.gundelex },
     library = { number = 201, index = 1, sort = 230 },
     slot_in_limit = 1,
-    legacy = legacy {
-        number = 0x012,
-        action = 0x37,
-        subtype = 3,
-        params = { 0, 0, 0, 0 },
-        gun_del_sol = {
-            beam = { look = 1, palette = 0 },
-            beam_in_sun = { look = 1, palette = 3 },
-            firing_ticks = 120,
-            gun = { attach_point = 13, id = 10, lift = 0, palette = 9, sprite = asset.sprite("gun-del-sol") },
-        },
-    },
+    legacy = legacy { number = 0x012, action = 0x37, subtype = 3, params = { 0, 0, 0, 0 } },
 }
 
 local dolthdr1 = define.chip {
