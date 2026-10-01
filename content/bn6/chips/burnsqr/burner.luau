@@ -33,7 +33,9 @@ local TIMEOUT, STEP = 300, 6
 -- Firing: the throw's animation 4 ticks before the flames; then the user
 -- comes back 61 ticks later.
 local FIRE_TICKS, FIRE_ANIM, FIRE_ANIM_AT, AFTER = 0x10, 0xC, 4, 0x3C
-local SOUND_STEP = asset.sound("target-move")
+-- (The cursor steps with the sound EraseMan's mark has, the original's
+-- 0x10E.)
+local SOUND_STEP = asset.sound("erase-man")
 local SOUND_FIRE = asset.sound("copy-mark")
 -- The square's corners (effect 0x48), each 6 ticks: 40 pixels apart
 -- across, 24 down.
@@ -42,7 +44,7 @@ local ACROSS, DOWN = 0x28_0000, 0x18_0000
 -- Its flames (`sub_80C8DE0`): fire, HeatMan's (acting while dimmed), 30
 -- ticks.
 local FIRE = 1
-local FLAME = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
+local FLAME: HeatFlame = { while_dimmed = true, ticks = 0x1E, is = collision.attack }
 local SOLID = 0x10
 
 -- `sub_80BB23E`: the square's four corners at its panels' centers.

@@ -39,6 +39,9 @@ pub struct ConsoleSetup {
     /// The save's event flag 0x1720: MegaMan's emotion window flickers as
     /// a bugged navi's does, bugs or not.
     pub emotion_window_glitch: bool,
+    /// The console's frame counter before the round's first tick
+    /// (`Console::frames`).
+    pub frames: u32,
 }
 
 /// One camera shake channel: ticks left and the magnitude (`byte_8030284`'s
@@ -99,6 +102,10 @@ pub struct Console {
     /// The HP box's count to its next low-HP sound (`eStruct2035280`+6:
     /// only the sound depends on it).
     pub low_hp_ticks: u8,
+    /// The game's frame counter on this console, which counts every frame
+    /// since the match began, whatever the battle does. Only the HUD's
+    /// periodic sounds and blinks go by it (`sub_800AE90`).
+    pub frames: u32,
 }
 
 impl Console {
@@ -110,6 +117,7 @@ impl Console {
             tag_pair: setup.tag_pair,
             emotion_window_glitch: setup.emotion_window_glitch,
             low_hp_ticks: 0,
+            frames: setup.frames,
         }
     }
 

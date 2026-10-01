@@ -61,17 +61,19 @@ local function combatant_on(x: number, y: number, side: number): Object?
 end
 
 -- `loc_80E73C4` (in `sub_80E73A2`): a warning over each synced combatant
--- (drawn only; its sound on game frames that are multiples of 16, which
--- the port doesn't count: every 16 ticks of this timer instead), and when
--- the timer runs out, the sync: each takes the target's HP. The link
+-- (over its collision's panel, at its height), and when the timer runs
+-- out, the sync: each takes the target's HP. The link
 -- battles' path and the failed aims come here with nothing to sync (the
 -- original reads the target's HP through a null pointer then, and uses it
 -- for nothing).
 local function warn_and_sync(me: Object)
     local s = me.state :: State
     for i = 1, 4 do
-        if s.synced[i] and me.timer % 16 == 0 then
-            battle.play_sound(SOUND_WARNING)
+        local o = s.synced[i]
+        if o then
+            local c = o.collision
+            local x, y = field.center(c.panel_x, c.panel_y)
+            battle.warn(SOUND_WARNING, Vec3.new(x, y, o.pos.z))
         end
     end
     local t = me.timer - 1
