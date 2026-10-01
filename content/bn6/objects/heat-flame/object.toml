@@ -1,6 +1,0 @@
-# A flame (attack object #0x26, `sub_80C8C74`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x26
-script = "heat_flame.luau"
