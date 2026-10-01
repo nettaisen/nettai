@@ -214,7 +214,7 @@ fn standing_effects(b: &mut Battle, r: ObjectRef) {
     let f = flag1(b, r);
     let on_grass;
     if t == PanelType::Poison {
-        if f & (0x0800_0000 | f1::FLOATSHOE | f1::INVULNERABLE) == 0 {
+        if f & (f1::UNTOUCHABLE | f1::FLOATSHOE | f1::INVULNERABLE) == 0 {
             let c = coll_mut(b, r);
             let v = c.poison_timer as i32 - 1;
             c.poison_timer = v as u8;
