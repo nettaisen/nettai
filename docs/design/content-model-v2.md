@@ -984,6 +984,26 @@ number). What it settled:
 - **Verified** on the test content (the dimming duel and its rollback), the type check, and the traces and the
   chip lab on a real pack: every AreaGrab and PanelGrab scenario matches, the counter cut-in's too.
 
+**As built** (phase B, group B2c: dimming subtypes 3, 7, 12, 22, 29, 30, 32, 37;
+docs/engine/dimming-chip-effects.md §12 to §19): chips/geddon (with the six special records that share its
+quake as definitions in their own folders), chips/snake, chips/lifesync, chips/metrknuk, chips/dblbeast,
+chips/numbrbl, chips/cornfsta and chips/dblhero. What it settled:
+
+- **A controller with other phases** writes its own update from the `dimming` service's steps: NumbrBl's runs a
+  navi chip's (AntiNavi, the navi telop), keeping the chip the spec gives for them.
+- **Records kept, hooks by number**: NumbrBl (damage formula 21), CornFsta and DblHero (Program Advances) give
+  their hooks from chips/<key>/chip.luau, which chips/08a-numbrbl, 14c-cornfsta and 158-dblhero register by
+  number until definitions take formulas and recipes.
+- **Stand-ins and shared actor data**: NumberMan and the farmer are lib/dimming/stand_in's; DblHero's heroes and
+  DblBeast's beasts are their own (offset spots, a full hide, their own identities). MegaMan's copy shares the
+  user's actor data, so its arm is lib/buster's `raise_arm_for(user, holder, slot, while_dimmed)` (`sub_80EB572`,
+  as CrosOver's MegaMan's). A second attachment (Gregar's, MegaMan's copy's) is in lib/slot's `held2`.
+- **A family's kind reused**: CornFsta's bursts are CornSht's corns (chips/cornsht/corn, generation 0xFF), and
+  its farmer holds CornSht's gun (`cornsht.gun`).
+- **Still numbers**: the beasts', heroes' and farmer's NameIDs (`me.name_id`, six uses the ratchet counts), whose
+  attachments sit at their sprites' attach points; the shots' `hit_effect = 0xFF`. LifeSync's immune virus is
+  told by its actor data (AI 13). `battle.boss_rank` (battle effect 1) joins `battle.link` for LifeSync.
+
 ### 5.5 Navi chips: a navi kind, per-chip parameters
 
 v1: action 0x1B registers `Hook::NaviChip(subtype)`; EraseMan reads `me:param(1)` (the aim's switching time)
