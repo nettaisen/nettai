@@ -13,7 +13,7 @@ local mchnswrd = require("../mchnswrd/chip")
 local elemswrd = require("../elemswrd/chip")
 local assnswrd = require("../assnswrd/chip")
 
-local legacy = {
+local by_number = {
     state = strike.STATE,
 }
 
@@ -23,7 +23,7 @@ local BY_SUBTYPE: { [number]: Action } = {
     [2] = assnswrd.action,
 }
 
-function legacy.update(me: Object, s: any)
+function by_number.update(me: Object, s: any)
     local a = BY_SUBTYPE[me.variant]
     if not a then
         error(string.format("machine sword subtype %#x has no chip", me.variant))
@@ -31,4 +31,4 @@ function legacy.update(me: Object, s: any)
     a.update(me, s)
 end
 
-return legacy
+return by_number

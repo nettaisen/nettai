@@ -836,19 +836,18 @@ chip. `SlashSpec` and `StrikeSpec` are in types.d.luau; DblDream's two swings, C
 StepSwrd's step and the elemental swords' colours are arguments (`swings`, `second_hit`, `step`,
 `effect_palette`), and each chip's blade is an attachment look. What it settled:
 
-- **Which chips are definitions.** MchnSwrd, ElemSwrd and AssnSwrd are definitions with their records. The
-  sword family keeps the pack's records, each module giving its chip's action with its compat key as `id`:
-  SlashCross charges every Sword-family chip (and FireSwrd to BambSwrd by number, 0x4C to 0x4F), and its
-  charged slash (weapons 0x11 and 0x12, action 0x41) reads the chip's subtype (the blade, the wave, CrosSwrd's
-  two waves, DblDream's two slashes) and first parameter (StepSwrd's dash) from the record, which a
-  definition's record doesn't have (the lab's `chips/0x051-stepswrd/cross-slash-charged` showed it). Most
-  have other reasons too: Sword, WideSwrd, LongSwrd, WideBlde, LongBlde and LifeSrd are Program Advance
-  ingredients or results; DrkSword is one of the ruleset's dark chips (0x11E to 0x122) and has a substitute
-  chip; Muramasa's damage is a formula (the damage taken), which definitions take in step 10; ProtoMan's own
-  StepSwrd (chips/stepswrd/protoman.luau) is a link navi's chip (0x190 to 0x19A) with damage by his level.
-  They become definitions when SlashCross's weapons convert (the charged slash asks the chip for its slash)
-  and what 3b's reader rejects in a definition (`program_advances`, `dark_substitute`, damage formulas) comes
-  with the v2 API.
+- **Which chips are definitions.** StepSwrd, FtrSword, CrosSwrd, DblDream, MchnSwrd, ElemSwrd and AssnSwrd.
+  SlashCross charges every Sword-family chip, and its charged slash (weapons 0x11 and 0x12, action 0x41) reads
+  the chip's subtype (the blade, the wave, CrosSwrd's two waves, DblDream's two slashes) and first parameter
+  (StepSwrd's dash) from its record: the four Sword-family definitions carry them in the transitional
+  `legacy = { subtype, params }` marker (the lab's `chips/0x051-stepswrd/cross-slash-charged` fails without
+  it). The other swords keep the pack's records, each module giving its chip's action with its compat key as
+  `id`, because the ruleset or other records name them by number: Sword, WideSwrd, LongSwrd, WideBlde,
+  LongBlde and LifeSrd are Program Advance ingredients or results; DrkSword is one of the ruleset's dark chips
+  (0x11E to 0x122) and has a substitute chip; SlashCross charges FireSwrd to BambSwrd by number (0x4C to 0x4F);
+  Muramasa's damage is a formula (the damage taken); ProtoMan's own StepSwrd (chips/stepswrd/protoman.luau) is
+  a link navi's chip (0x190 to 0x19A) with damage by his level. The list of what goes when is §12's
+  transitional list.
 - **The shims.** chips/047-sword/chip.luau (action 0x13) runs a record's slash by subtype (and StepSwrd's first
   attack parameter, ProtoMan's copy by his chip), for the records above, the Cross special's swords, the
   variable swords' picks and the test content's blades. chips/056-mchnswrd/chip.luau (action 0x49) is left
@@ -957,6 +956,23 @@ calls the dimming service's steps in the original's order (`object_timefreezeBeg
 `object_timefreezeEnd`), and `dimming.spawn_controller` does the spawn every `off_802CCB4` entry does. The
 spec's `chip` field is a chip handle now, so the telop draws the chip by name.
 
+**As built** (step 7): content/bn6/lib/dimming.luau (`dimming_chips.phases { name, effect }`,
+`dimming_chips.done(me)` when the effect is over, `dimming_chips.spawn(kind, user, spec)`; a file, named so it
+doesn't shadow the `dimming` service global), lib/grab/controller.luau (the `grab/controller` kind, state
+`{ bonus, whole_column }`, and the hooks `grab.area` and `grab.panel`), lib/grab/shot.luau (the `grab/shot`
+kind), and chips/areagrab and chips/panlgrab, which are definitions with their records (nothing names them by
+number). What it settled:
+
+- **The controller keeps no chip.** The telop draws the chip the dimming registered (`register_dimming`), so
+  the v1 state's `chip` went; `DimmingChipSpec.chip` stays a number until the hooks' specs take handles.
+- **The chip's parameter became the hook's argument**: AreaGrab's first parameter (1, a whole column) is
+  `grab.area`, PanelGrab's (0) `grab.panel`; the shot's side is its `alliance` (the original also keeps it in
+  the shot's first parameter).
+- **The test content** puts the definitions in the folders by handle (`scenario::setup_with_handles`, a chip
+  in code A, else `*`); its numbered grab chip went.
+- **Verified** on the test content (the dimming duel and its rollback), the type check, and the traces and the
+  chip lab on a real pack: every AreaGrab and PanelGrab scenario matches, the counter cut-in's too.
+
 ### 5.5 Navi chips: a navi kind, per-chip parameters
 
 v1: action 0x1B registers `Hook::NaviChip(subtype)`; EraseMan reads `me:param(1)` (the aim's switching time)
@@ -1005,6 +1021,22 @@ navi chip controller (effect #0x10, `sub_80E1880`) stays the ruleset's; it calls
 chip's `navi` hook, and the navi calls `navi_chip.navi_left(controller)` as today. `lib/navi-chips/` holds what
 the navis share (appearing, leaving, the SP deletion-time damage).
 
+**As built** (step 7): chips/eraseman/navi.luau (the `eraseman/navi` kind, state `{ cycle, aim, controller,
+aim_ticks }`, and `eraseman.summon { aim_ticks }`, the `navi` hook), chips/eraseman/mark.luau (`eraseman/mark`)
+and chips/eraseman/beam.luau (`eraseman/beam`, spawned with `{ aim, ticks, navis }`; EraseMan's own EDeletBm,
+chips/193-edeletbm, spawns it too). The beam's collision type (`piercing-break`, row 0x16) and spark
+(`sparks.erase`, hit effect 0x0C) are definitions. What it settled:
+
+- **The chips stay records.** The ruleset turns navi chips back by number (AntiNavi, `is_navi_chip`: 0xDD to
+  0x118, which isn't the `navi` flag: 0x116 to 0x118 lack it), and EraseMn[SP]'s damage is a formula. Their
+  records' navi chip subtype 5 runs chips/0ec-eraseman/chip.luau, which summons EraseMan with the record's first
+  parameter as `aim_ticks`; it goes when the chips are definitions (a navi-chip trait for AntiNavi, step 10,
+  and damage formulas in definitions) and each is `navi = eraseman.summon { aim_ticks = n }`. No
+  `lib/navi-chips` yet: EraseMan shares nothing with another navi so far (A2 starts it).
+- **Parameters became state**: the mark's time, the beam's aim, time and owner kind, EraseMan's switching time.
+- **Verified** on the test content (the navi chip duel and its rollback), the type check, and the traces and the
+  chip lab on a real pack: every EraseMan scenario matches.
+
 ### 5.6 Instant chips: a hook per chip
 
 v1: action 0x1C calls `Hook::InstantChip(subtype)`; one module serves the 30 chips of subtype 3.
@@ -1027,6 +1059,22 @@ The plus chips (subtype 3, `sub_8010488`) compose `lib/instant/plus.luau`: `inst
 Atk+10, `plus.navi(20)` for Navi+20; their custom-screen behaviour is the chip's `modifier`, as today. A weapon
 that names an instant effect no chip has (TenguCross's wind, subtype 0x14) calls the effect from its `setup`
 like any other function; there is no instant-effect table any more.
+
+**As built** (step 7): chips/busterup (BusterUp's effect is the chip's own: `raise(1)`, the buster's level by
+one; its sparkle a `define.effect` on the newly named `buster-up` sprite), lib/instant/plus.luau
+(`plus.attack`, `plus.navi`, `plus.sparkle`, and `plus.by_record`), chips/atk-10 and chips/navi-20. What it
+settled:
+
+- **The parameter that told the plus chips apart is the hook**: the records' first parameter (0 the side's
+  attack bonus, 1 its navi bonus) is `plus.attack` or `plus.navi`; the extra in the third and fourth (the
+  special chips') is 0 for both.
+- **Atk+30 stays a record** (SunMoon's recipe names it by number), as do MegaBstr (the pack's chip 0, which a
+  zeroed chip field reads), WhiCapsl, Uninstll, DarkPlus and the special chips of the effect: their records'
+  subtype 3 runs chips/0c0-atk-10/chip.luau, which calls `plus.by_record` with the record's parameters.
+- **A menu flag got its name**: extra flag 0x40, set on exactly the five modifier chips, is
+  `ExtraChipFlags::MODIFIER` (`"modifier"`), so a definition can give it; the battle reads `modifier`.
+- **Verified** on the test content (the instant chips' duel and its rollback, the plus chips' bonuses from a
+  special source, BusterUp's cap), the type check, and the traces and the chip lab on a real pack.
 
 ### 5.7 Weapons and forms
 
@@ -1079,6 +1127,39 @@ return define.form {
 ```
 
 The per-form tables the Rust ruleset holds as `match form.0` today (§7.5) become these fields.
+
+**As built** (step 7): navis/00-megaman/weapons/buster, charged-shot and blank-shot (`weapon.luau` each: the
+weapon definition `megaman/buster` with its shot `megaman/buster/shot`, `megaman/charged-shot` with
+`megaman/charged-shot/action`, `megaman/blank-shot` with `megaman/blank-shot/action`), and
+navis/00-megaman/forms/heatcross/charge.luau (`heatcross/charge`). The v1 registrations (`weapon.toml`, the 16
+buster alias folders) went. What it settled:
+
+- **A weapon definition takes routine numbers** with the transitional `legacy = { routines = { ... } }`
+  marker: the pack's forms, the navis' rows and the ruleset still name weapons by number, and
+  `weapon_numbered(n)` finds the definition by any of its routines (the buster's are the 17 numbers whose
+  `off_80117D4` entries are `sub_8011A26`); `weapon_number(h)`, which the ruleset's numeric logic asks, is the
+  first. Counted by the ratchet; it goes when the forms (step 5's form reader) and the ruleset (phase C) name
+  weapons by handle.
+- **Charge times are the definition's own**: the charge table's row, plus the next row's first entry for
+  Charge 5, which the original's table reads on into (written out and commented in each definition).
+- **A role for the forced charged shot**: idle.rs's request 0x20 starts `roles.actions.forced_charged_shot`
+  (rules/roles.luau, BN6's first roles file: the charged shot's action), not action 0x16 by number. The trap
+  counters' roles stay unfilled until those chips convert. DustCross's throws (weapons 0x2B, 0x2C) return the
+  buster's shot definition.
+- **The muzzle flash and the arm a throw leaves are looks** in lib/buster (`buster.flash`, `buster.arm`), on the
+  newly named `muzzle-flash` and `buster-arm` sprites; the shot's sounds are assets.
+- **HeatCross is partial.** Its form stays the pack's record until step 5's form reader; its charged shot is a
+  weapon definition (routine 0x06) whose setup still returns FireBrn's action by number, 0x27 (FireBrn is v1),
+  which the ratchet counts (a weapon definition's `return ACTION`) until FireBrn converts.
+- **What the attack keeps stays numeric for now**: the shot's kind in the attack's first parameter (the
+  projectile family's, §5.3), the throw as the shot's variant 2, the arm `raise_arm` raises by attachment row.
+- **SlashCross's charged slash** (weapons 0x11 and 0x12, action 0x41) is left to family 8e. It reads the
+  charged chip's subtype and first parameter (the four Sword-family definitions' `legacy` marker gives them).
+  Its proper hook needs a runtime read of the attack chip's definition (so the charge can ask the chip for its
+  slash: StepSwrd's dash, CrosSwrd's two waves, DblDream's two slashes, the blade and the sound) and the sword
+  wave's variants as records (it spawns the wave with the chip's subtype as its first parameter).
+- **Verified** on the test content (the shots' timelines, the throw, the aliases, the role, the definitions'
+  routines and charge times), the type check, and the traces and the chip lab on a real pack.
 
 ## 6. Compat: the original's numbers
 
@@ -1412,6 +1493,9 @@ Counted in `crates/bn6-battle/src` without tests; file names are the modules tha
   chip's `dark_substitute`, the SlashCross charged swords 0x4C..0x4F (in input.rs). → chip traits `no_chain`,
   `dark(DarkEffect)`, `aura`; a dark chip's `dark_substitute` names its substitute chip directly (the list goes);
   SlashCross's `charged_chips.also`.
+- `berserk.rs` `CROSS_SPECIAL_CHIPS` and `CROSS_SPECIAL_TOP_CHIPS` (the Cross special's chips by the navi's HP),
+  and the Program Advance recipes' ingredients (`PaRecipe`, resolved through `chip_numbered`). → the rules'
+  Cross special list and the recipes name chips (step 10).
 - `intake.rs`: AntiDmg 0xBB, AntiSwrd 0xBC, BodyGrd 0x157. → chip trait `trap(AntiDamage | AntiSword |
   BodyGuard)`.
 - `dimming.rs`: `FIRST_NO_CUT_IN` 0x170, the navi chip range 0xDD..=0x118, AntiNavi 0xBA; `navi_chip.rs`/`heal.rs`
@@ -1740,6 +1824,33 @@ the v1 registration files and the `data` global keep v1 modules working while fa
 their uses per module against an allowlist in `bn6-content-check`'s tests that may only shrink; step 13 deletes
 the allowlist with the last use. The engine never reads compat, at any step (§7.3): what content defines
 reaches the traces and the game's setups through `bn6-compat`, which maps the engine's handles.
+
+**Transitional, and when it goes** (from the exemplars, step 7):
+- **The legacy marker in a v2 definition.** A chip definition may carry `legacy = { subtype, params }`: the
+  original's subtype and parameter bytes in its record, for what reads them of a chip besides its own use.
+  Counted by the ratchet (the lint matches `legacy = {` and `legacy {`). StepSwrd, FtrSword, CrosSwrd and
+  DblDream carry it for SlashCross's charged slash (weapons 0x11/0x12, action 0x41), which reads a chip's
+  subtype and first parameter: exactly the coupling v2 removes. It goes when the charged slash gets a proper
+  hook, the sword chips' actions exposing what the charge needs (StepSwrd's dash, CrosSwrd's two waves,
+  DblDream's two slashes) as a trait or spec field SlashCross's weapon reads: with HeatCross's exemplar (step 7)
+  or when family 8e converts the forms. The marker's `action` and `script` (a behaviour still a v1 module) are
+  step 5's; the reader refuses them until then.
+- **The weapon legacy marker.** A weapon definition may carry `legacy = { routines = { ... } }`, the routine
+  numbers the pack's forms, the navis' rows and the ruleset name it by (MegaMan's buster, charged shot and blank
+  shot, HeatCross's charge). Counted by the ratchet; it goes when the forms are definitions (step 5's form
+  reader) and the ruleset names weapons by handle (phase C). HeatCross's charge also returns FireBrn's action by
+  number (counted) until FireBrn converts.
+- **Registration-by-number shims.** chips/036-minibomb (action 0x12), chips/047-sword (0x13) and
+  chips/056-mchnswrd (0x49) run a record's action by its subtype for records something still names by number:
+  the Cross special's chips (berserk.rs `CROSS_SPECIAL_CHIPS`: MiniBomb, EnergBom, MegEnBom and swords), the
+  Program Advance recipes' ingredients (PoisSeed, the swords), records not ported (LilBoiler, VDoll), the test
+  content's numbered chips. The 0x12 and 0x13 shims go when the Cross special's list and the recipes go by
+  handle (phase C, step 10); the 0x49 one when the stun strike (idle.rs `set_attack(0x49)`) is
+  `roles.actions.stun_strike`.
+- **Chips kept on records** (their modules give only the action, with the compat key as `id`): besides the
+  above, what 3b's `chip_record` refuses in a definition: `program_advances` (LifeSrd), `dark_substitute`
+  (DrkSword) and damage formulas (Muramasa, ProtoMan's StepSwrd). The reader learns them (step 5 needs them
+  anyway), and those chips become definitions.
 
 ### Phase A: foundations (the model-v2 agent; steps 1 and 2 can run in parallel)
 

@@ -77,14 +77,11 @@ impl<'a> Resolver<'a> {
                 numbers.insert((d.registry, d.key.clone()), n);
             }
         };
-        for d in definitions.of(Registry::Chip) {
-            put(d, d.spec.field("action").field("number").int());
-        }
-        for d in definitions.of(Registry::Navi).iter().chain(definitions.of(Registry::Form)) {
+        for d in definitions.of(Registry::Chip).iter().chain(definitions.of(Registry::Navi)).chain(definitions.of(Registry::Form)) {
             put(d, d.spec.field("legacy").field("number").int());
         }
         for d in definitions.of(Registry::Weapon) {
-            put(d, d.spec.field("setup").field("routines").item(1).int());
+            put(d, d.spec.field("legacy").field("routines").item(1).int());
         }
         for d in definitions.of(Registry::Status).iter().chain(definitions.of(Registry::Lockon)) {
             put(d, d.spec.field("legacy").field("id").int());
@@ -586,24 +583,33 @@ impl Resolver<'static> {
 
 // ---- Chips, navis, forms, weapons, stages -----------------------------------------------------
 
-/// A chip definition's record: `chip_record`'s fields, and its `action =
-/// legacy { number, action, subtype, params, script, ... }` marker's (the
-/// record's other fields, by their names).
+/// Whether a chip definition is a numbered record whose behaviour is still
+/// a v1 module: its `legacy` marker gives its `number`.
+fn numbered_chip(d: &Definition) -> bool {
+    !d.spec.field("legacy").field("number").is_nil()
+}
+
+/// A numbered chip definition's record: `chip_record`'s fields, and its
+/// `legacy = legacy { number, action, subtype, params, script, ... }`
+/// marker's (the record's other fields, by their names).
 fn chip(d: &Definition, r: &Resolver) -> Result<ChipData, ContentError> {
+    if !d.spec.field("action").is_nil() {
+        return Err(err(d, "a chip is its own `action` or a numbered record whose legacy marker names its v1 module, not both"));
+    }
     let record = super::defs::chip_record(d, r)?;
     let mut j = serde_json::to_value(&record).expect("a chip record serializes");
     let Json::Object(o) = &mut j else { unreachable!("a record is a table") };
-    let mut marker = d.spec.field("action").clone();
-    let number = marker.field("number").int().ok_or_else(|| err(d, "its legacy action marker needs the chip's `number`"))?;
+    let mut marker = d.spec.field("legacy").clone();
+    let number = marker.field("number").int().ok_or_else(|| err(d, "its legacy marker needs the chip's `number`"))?;
     strip(&mut marker, &["number"]);
-    let Json::Object(extra) = r.json(&marker, &format!("chip {}.action", d.key)).map_err(|m| err(d, m))? else {
-        return Err(err(d, "its legacy action marker is a table"));
+    let Json::Object(extra) = r.json(&marker, &format!("chip {}.legacy", d.key)).map_err(|m| err(d, m))? else {
+        return Err(err(d, "its legacy marker is a table"));
     };
     o.insert("id".into(), Json::from(number));
     for (k, v) in extra {
         o.insert(k, v);
     }
-    serde_json::from_value(j).map_err(|m| err(d, format!("its legacy action marker: {m}")))
+    serde_json::from_value(j).map_err(|m| err(d, format!("its legacy marker: {m}")))
 }
 
 /// A navi or form definition's identity (`identity`, with its NameID from
@@ -688,13 +694,20 @@ fn form(d: &Definition, r: &Resolver) -> Result<(FormData, Option<u8>), ContentE
     Ok((serde_json::from_value(Json::Object(o)).map_err(|m| err(d, m))?, palette))
 }
 
+/// Whether a weapon definition's behaviour is still a v1 module: it has no
+/// `setup` of its own, and its `legacy` marker names its routines (and the
+/// module, if any implements them).
+fn v1_weapon(d: &Definition) -> bool {
+    d.spec.field("setup").is_nil() && matches!(d.spec.field("legacy"), Data::Map(_))
+}
+
 fn weapon(d: &Definition) -> Result<LegacyWeapon, ContentError> {
-    let setup = d.spec.field("setup");
+    let setup = d.spec.field("legacy");
     let routines: Vec<u8> = match setup.field("routines") {
         Data::List(items) => items.iter().map(|i| i.int().map(|n| n as u8)).collect::<Option<_>>(),
         _ => None,
     }
-    .ok_or_else(|| err(d, "its legacy setup marker needs `routines`, the routine numbers"))?;
+    .ok_or_else(|| err(d, "its legacy marker needs `routines`, the routine numbers"))?;
     let ticks = match d.spec.field("charge_ticks") {
         Data::List(items) => items.iter().map(|t| t.int().map(|n| n as u16)).collect::<Option<Vec<_>>>(),
         Data::Nil => Some(Vec::new()),
@@ -791,9 +804,9 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<Legacy,
     sections(content, &r, definitions)?;
     registries(content, definitions)?;
 
-    // Chips with a legacy action marker: the pack's, by number.
+    // Chips with a number in their legacy marker: the pack's, by number.
     for d in definitions.of(Registry::Chip) {
-        if matches!(d.spec.field("action"), Data::Map(_)) {
+        if numbered_chip(d) {
             legacy.chips.insert(d.key.clone(), chip(d, &r)?);
         }
     }
@@ -832,9 +845,10 @@ pub fn build(content: &mut Content, definitions: &Definitions) -> Result<Legacy,
         content.rules.cross_palettes = (0..=last).map(|f| palettes.get(&f).copied().unwrap_or(0)).collect();
     }
 
-    // Weapons with a legacy setup marker, and the routines no weapon names.
+    // Weapons whose behaviour is a v1 module, and the routines no weapon
+    // names.
     for d in definitions.of(Registry::Weapon) {
-        if matches!(d.spec.field("setup"), Data::Map(_)) {
+        if v1_weapon(d) {
             legacy.weapons.insert(d.key.clone(), weapon(d)?);
         }
     }
