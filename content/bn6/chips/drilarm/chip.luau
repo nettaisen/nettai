@@ -1,9 +1,8 @@
 --!strict
--- DrilArm: action 0x2E (`sub_80ED374`). Ten ticks in, the navi's arm
--- becomes a drill (an attachment) and two drills (attack object #0x71,
--- objects/drill) grind the two panels ahead for the chip's second
--- parameter plus 10 ticks; the navi then draws the drill back over 10
--- ticks, which ends them.
+-- DrilArm (the original's action 0x2E, `sub_80ED374`): ten ticks in, the
+-- navi's arm becomes a drill (an attachment) and two drills
+-- (objects/drill) grind the two panels ahead for 24 ticks plus 10; the
+-- navi then draws the drill back over 10 ticks, which ends them.
 
 local attachment = require("../../objects/attachment/attachment")
 local drill = require("../../objects/drill/drill")
@@ -13,31 +12,27 @@ export type State = {
     timer: number,
 }
 
-local dril_arm = {
-    state = { timer = "u16" },
-}
-
 -- The phases, on the attack's step.
 local WAIT, DRILL, DRAW_BACK = 0x0, 0x4, 0x8
--- The drill arm: attachment 0x20, animation 1.
-local ARM, ARM_ANIM = 0x20, 1
 -- The drills' height.
 local HEIGHT = 0x10_0000
+-- How long the drills hit (the record's second parameter).
+local DRILL_TICKS = 0x18
+local SOUND = asset.sound("drilarm")
 
 -- `sub_80ED3B6`: the arm and the drills; draw back when the time is up.
 local function grind(me: Object, s: State)
     if me.step_init == 0 then
         me:set_status("using_action", true)
         me:set_animation(0x0A)
-        attachment.spawn(me, { kind = ARM, anim = ARM_ANIM }, "overlay")
-        local params = { me:attack_param(1), me:attack_param(2), me:attack_param(3), me:attack_param(4) }
+        attachment.attach(me, drill.arm, "overlay", { anim = drill.ARM_DRILLING })
         -- The damage word (the hit parameter in its high half), plus the
         -- Atk+ bonus.
         local damage = me.attack_damage + me.hit_param * 0x10000 + me.extra
-        drill.spawn(me, me.attack_element, HEIGHT, damage, params, "related")
+        drill.spawn(me, me.attack_element, HEIGHT, damage, { ticks = DRILL_TICKS })
         me:open_counter_window()
-        s.timer = me:attack_param(2) + 0x0A
-        battle.play_sound(0xF0)
+        s.timer = DRILL_TICKS + 0x0A
+        battle.play_sound(SOUND)
         me.step_init = 4
     end
     local t = s.timer - 1
@@ -89,7 +84,7 @@ local function draw_back(me: Object, s: State)
 end
 
 -- `sub_80ED374`.
-function dril_arm.update(me: Object, s: State)
+local function update(me: Object, s: State)
     local step = me.step
     if step == WAIT then
         wait(me, s)
@@ -102,4 +97,16 @@ function dril_arm.update(me: Object, s: State)
     end
 end
 
-return dril_arm
+return define.chip {
+    id = "drilarm",
+    name = "DrilArm",
+    codes = { "G", "M", "W" },
+    element = "null", family = "break", class = "standard",
+    rarity = 2, mb = 32, damage = 70, hit_param = 10, lockout = 0,
+    flags = { "has_damage", "library" },
+    library = { number = 52, index = 52, sort = 131 },
+    slot_in_limit = 3,
+    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
+    beast = { lockon = 2 },
+    action = define.action { state = { timer = "u16" }, update = update },
+}
