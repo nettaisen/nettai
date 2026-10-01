@@ -12,7 +12,6 @@ use crate::collision::{CollisionData, f1, timer};
 use crate::content::{EffectRole, SparkRole, StatusRole, StatusTimer};
 use crate::field::PanelType;
 use crate::object::{ObjectRef, Vec3};
-use crate::setup::{Form, Navi};
 
 /// `sub_801AC6C`.
 pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
@@ -38,7 +37,11 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     counter_paralysis(b, r);
     navicust_hit_bug(b, r);
     let s = stats(b, r);
-    if !(navi_of(b, r) == Navi(7) || matches!(form_of(b, r).0, 7 | 0x13) || s.bugs.status_immunity) {
+    // (TomahawkMan and TomahawkCross: the navi's and the form's
+    // `status_immune`.)
+    let immune = navi_of(b, r).traits.has(crate::content::NaviTraits::STATUS_IMMUNE)
+        || form_of(b, r).traits.has(crate::content::FormTraits::STATUS_IMMUNE);
+    if !(immune || s.bugs.status_immunity) {
         apply_status(b, r);
     }
     lose_chip(b, r);
@@ -422,7 +425,7 @@ fn bug_paralyze_blind(b: &mut Battle, r: ObjectRef) {
 /// body back on the ground), Undershirt, AirShoe and the B+Back special
 /// (in base form, the navi's too). Link navis keep theirs.
 fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
-    if navi_of(b, r) != crate::setup::Navi::MEGAMAN {
+    if !super::is_megaman(b, r) {
         return;
     }
     super::clear_flag1(b, r, f1::SUPERARMOR);
@@ -438,7 +441,7 @@ fn strip_programs(b: &mut Battle, r: ObjectRef, undershirt: bool) {
     super::clear_flag1(b, r, f1::AIRSHOE);
     stats_mut(b, r).air_shoes = false;
     stats_mut(b, r).weapons.back_special = None;
-    if form_of(b, r) == crate::setup::Form::NONE {
+    if super::in_base_form(b, r) {
         ai_mut(b, r).back_special = None;
     }
 }
@@ -482,7 +485,7 @@ fn bug_navicust(b: &mut Battle, r: ObjectRef) {
             // sub_80140EE: the same but Undershirt, then the form's flags
             // come back (`sub_801469C`); a spark of effect 0xE 16 pixels up
             // (sub_80E08C4) and sound 0x8E.
-            if navi_of(b, r) == crate::setup::Navi::MEGAMAN {
+            if super::is_megaman(b, r) {
                 strip_programs(b, r, false);
                 super::form::refresh_form_flags(b, r);
             }
@@ -705,7 +708,7 @@ fn count_stun_ticks(b: &mut Battle, r: ObjectRef) {
 /// `sub_80142DC`: anger after 120 stunned ticks or a 300+ damage hit
 /// (base MegaMan only).
 fn anger_trigger(b: &mut Battle, r: ObjectRef) {
-    if battle_mode(b) == 1 || navi_of(b, r) != Navi::MEGAMAN || form_of(b, r) != Form::NONE || flag1(b, r) & f1::ANGER != 0 {
+    if battle_mode(b) == 1 || !super::is_megaman(b, r) || !super::in_base_form(b, r) || flag1(b, r) & f1::ANGER != 0 {
         return;
     }
     if ai(b, r).stun_ticks as i32 >= 0x78 || coll(b, r).acc.final_damage >> 1 >= 0x96 {

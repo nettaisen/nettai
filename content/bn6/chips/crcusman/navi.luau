@@ -25,9 +25,28 @@ local SOUND_DRUMROLL = asset.sound("drumroll")
 -- A show's sparkle (effect 0x21).
 local SPARKLE = define.effect { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 0 }
 
--- His actor record (the parts it adds: his two overlays, `sub_8010FD8`).
-local ACTOR_TYPE: ActorType = "player"
-local AI_INDEX = 0xE
+-- What he is taken for: his actor record, and what he wears (his two overlays, `sub_8010FD8`).
+local IDENTITY = define.identity {
+    id = "circusman",
+    class = "navi",
+    version = 0,
+    ai_index = 0xE,
+    ice = "large",
+    parts = {
+        body = {
+            sprite = asset.sprite("circusman"),
+            anims = 100,
+            behind = { { 0x00, 0x13 }, { 0x28, 0x4F }, { 0x63, 0x63 } },
+            anim_offset = 0x14,
+        },
+        second = {
+            sprite = asset.sprite("circusman"),
+            anims = 80,
+            behind = { { 0x14, 0x3B }, { 0x4F, 0x4F } },
+            anim_offset = 0x28,
+        },
+    },
+}
 
 -- The controller calls his spawner through r3, which his position takes:
 -- its address with the Thumb bit, whose fraction his Z keeps.
@@ -44,7 +63,7 @@ local APPEAR, STAND, CROUCH, LEAP, CATCH, SHOW, BOW, MISS, RISE, NO_FOOTING =
 -- shadow, with his parts.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "with_sprite")
-    me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
+    me:add_parts(IDENTITY, 1)
     me:set_lifecycle("update")
 end
 
@@ -57,7 +76,7 @@ end
 
 -- He goes (both overlays with him) and the controller moves on.
 local function gone(me: Object)
-    me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
+    me:remove_parts(IDENTITY)
     navi_chips.leave(me, (me.state :: State).controller)
 end
 

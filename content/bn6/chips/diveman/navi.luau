@@ -18,9 +18,22 @@ export type State = {
 local SPRITE = asset.sprite("diveman")
 local SOUND_SURFACE = asset.sound("sand-worm")
 
--- His actor record (the parts it adds: his overlay, `sub_8010F96`).
-local ACTOR_TYPE: ActorType = "player"
-local AI_INDEX = 0xD
+-- What he is taken for: his actor record, and what he wears (his overlay, `sub_8010F96`).
+local IDENTITY = define.identity {
+    id = "diveman",
+    class = "navi",
+    version = 0,
+    ai_index = 0xD,
+    ice = "large",
+    parts = {
+        body = {
+            sprite = asset.sprite("diveman"),
+            anims = 136,
+            behind = { { 0x0A, 0x0B }, { 0x23, 0x37 }, { 0x4C, 0x73 }, { 0x87, 0x87 } },
+            anim_offset = 0x0A,
+        },
+    },
+}
 
 -- The controller calls his spawner through r3, which his position takes:
 -- its address with the Thumb bit, whose fraction his Z keeps.
@@ -39,7 +52,7 @@ local SURFACE, WAIT, DIVE, WAVES, RISE, LEAVE = 0x0, 0x4, 0x8, 0xC, 0x10, 0x14
 -- with his parts.
 local function init(me: Object)
     navi_chips.stand(me, SPRITE, "ground")
-    me:add_navi_parts(ACTOR_TYPE, AI_INDEX, 1)
+    me:add_parts(IDENTITY, 1)
     me:set_lifecycle("update")
 end
 
@@ -126,7 +139,7 @@ end
 -- `sub_80B9B58`: at once, he goes (his parts with him) and the controller
 -- moves on.
 local function leave(me: Object)
-    me:remove_navi_parts(ACTOR_TYPE, AI_INDEX)
+    me:remove_parts(IDENTITY)
     navi_chips.leave(me, (me.state :: State).controller)
 end
 
