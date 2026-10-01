@@ -85,7 +85,6 @@ objects/air-spin/air_spin.luau 15
 objects/anti-recovery/anti_recovery.luau 2
 objects/aqua-needle/aqua_needle.luau 7
 objects/aqua-surge/aqua_surge.luau 7
-objects/area-grab/area_grab.luau 2
 objects/attachment/attachment.luau 4
 objects/aura-head/aura_head.luau 9
 objects/bass-anly-shot/bass_anly_shot.luau 18
@@ -141,7 +140,6 @@ objects/flying-shot/flying_shot.luau 11
 objects/follow-effect/follow_effect.luau 10
 objects/gauge-speed/gauge_speed.luau 4
 objects/golem/golem.luau 11
-objects/grab-shot/grab_shot.luau 4
 objects/great-yoyo/great_yoyo.luau 5
 objects/guardian-statue/guardian_statue.luau 19
 objects/guardian-strike/guardian_strike.luau 6

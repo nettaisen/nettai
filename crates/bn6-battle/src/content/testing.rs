@@ -32,8 +32,6 @@ pub const SUN_GUN_EX: ChipId = 0x04;
 pub const VEIL: ChipId = 0x05;
 /// A navi chip (action 0x1B, subtype 5: the eraser navi).
 pub const ERASER: ChipId = 0x06;
-/// A dimming chip (action 0x15, subtype 0) that grabs a column.
-pub const GRAB: ChipId = 0x07;
 /// Instant chips (action 0x1C, ids 0x40 and up): one that fills the custom
 /// gauge (FullCust's effect).
 pub const FULL_GAUGE: ChipId = 0x40;
@@ -218,6 +216,11 @@ pub fn chip_handle(id: ChipId) -> bn6_content_api::ChipHandle {
     chip_in(&content(), id)
 }
 
+/// The chip the shared test content defines as `key`.
+pub fn defined_chip(key: &str) -> bn6_content_api::ChipHandle {
+    content().defs.chip_by_key(key).unwrap_or_else(|| panic!("the test content defines no chip {key:?}"))
+}
+
 /// Weapon routine `n` in the content (none for 0xFF).
 pub fn weapon_in(content: &Content, n: u8) -> Option<bn6_content_api::WeaponHandle> {
     (n != 0xFF).then(|| content.weapon_numbered(n))
@@ -233,6 +236,10 @@ pub fn weapon(n: u8) -> Option<bn6_content_api::WeaponHandle> {
 pub const TICKER_1: &str = "test/ticker1";
 pub const TICKER_2: &str = "test/ticker2";
 pub const TICKER_3: &str = "test/ticker3";
+/// BN6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
+/// chips content defines, which grab a column and a panel.
+pub const AREA_GRAB: &str = "areagrab";
+pub const PANEL_GRAB: &str = "panlgrab";
 pub const TICK_SHOT: &str = "test/tick-shot";
 
 /// The content model v2 test pack (crates/bn6-battle/testdata/pack):
@@ -390,6 +397,8 @@ fn assets() -> bn6_content_api::AssetNames {
         ("energy-burst", 0xBB),
         ("sword-swing", 0xB0),
         ("big-sword-swing", 0xCE),
+        ("grab-shot", 0xA2),
+        ("grab-shot-2", 0xA1),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -418,8 +427,11 @@ pub fn scripts() -> Scripts {
                 ("objects/erase-man/erase_man", "objects/erase-man/erase_man"),
                 ("objects/erase-mark/erase_mark", "objects/erase-mark/erase_mark"),
                 ("objects/erase-beam/erase_beam", "objects/erase-beam/erase_beam"),
-                ("objects/area-grab/area_grab", "objects/area-grab/area_grab"),
-                ("objects/grab-shot/grab_shot", "objects/grab-shot/grab_shot"),
+                ("lib/dimming", "lib/dimming"),
+                ("lib/grab/shot", "lib/grab/shot"),
+                ("lib/grab/controller", "lib/grab/controller"),
+                ("chips/areagrab/chip", "chips/areagrab/chip"),
+                ("chips/panlgrab/chip", "chips/panlgrab/chip"),
                 ("objects/dust-ball/dust_ball", "objects/dust-ball/dust_ball"),
                 ("objects/falling-rock/falling_rock", "objects/falling-rock/falling_rock"),
                 ("objects/rock-chip/rock_chip", "objects/rock-chip/rock_chip"),
@@ -649,8 +661,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("erase-man", Pool::Actor, 0x15, "objects/erase-man/erase_man"),
         kind("erase-mark", Pool::Effect, 0x62, "objects/erase-mark/erase_mark"),
         kind("erase-beam", Pool::Attack, 0xC3, "objects/erase-beam/erase_beam"),
-        kind("area-grab", Pool::Effect, 0x03, "objects/area-grab/area_grab"),
-        kind("grab-shot", Pool::Attack, 0x0F, "objects/grab-shot/grab_shot"),
         kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball"),
         kind("element-pillar", Pool::Attack, 0x61, "objects/element-pillar/element_pillar"),
         kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
@@ -858,14 +868,6 @@ fn named_chips() -> Vec<ChipData> {
             damage: 60,
             script: Some("objects/erase-man/erase_man".into()),
             ..chip(ERASER, "Eraser", 0x1B, 5)
-        },
-        ChipData {
-            flags: ChipFlags(ChipFlags::DIMMING | ChipFlags::STANDARD_LIBRARY),
-            hit_param: 100,
-            params: [1, 0, 0, 0],
-            damage: 10,
-            script: Some("objects/area-grab/area_grab".into()),
-            ..chip(GRAB, "Grab", 0x15, 0)
         },
         ChipData {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::STANDARD_LIBRARY),

@@ -40,7 +40,6 @@ fn battles_run_the_content_scripts() {
         [
             "absorbed-obstacle",
             "aqua-surge",
-            "area-grab",
             "attachment",
             "bass",
             "blast-fire",
@@ -83,7 +82,8 @@ fn battles_run_the_content_scripts() {
             "flying-shot",
             "gauge-speed",
             "golem",
-            "grab-shot",
+            "grab/controller",
+            "grab/shot",
             "gust",
             "heat-flame",
             "heat-man",
@@ -159,17 +159,28 @@ fn the_duel_fires_scripted_gun_del_sols() {
     assert!(hp.iter().any(|&h| h < 1000), "someone got hit: {hp:?}");
 }
 
-/// A duel with the eraser navi chip, the grab dimming chip and GunDelSols
+/// The eraser navi chip, AreaGrab and PanelGrab (dimming chips content
+/// defines) and GunDelSols, by handle.
+fn navi_and_dimming_chips() -> Vec<bn6_content_api::ChipHandle> {
+    vec![
+        testing::chip_handle(testing::ERASER),
+        testing::defined_chip(testing::AREA_GRAB),
+        testing::defined_chip(testing::PANEL_GRAB),
+        testing::chip_handle(testing::SUN_GUN_3),
+    ]
+}
+
+/// A duel with the eraser navi chip, the grab dimming chips and GunDelSols
 /// in the folders: the ticks each scripted kind was on the field, by
 /// key.
 fn chip_duel(ticks: usize) -> std::collections::BTreeMap<String, usize> {
-    duel_with(&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3], ticks, 11)
+    duel_with(&navi_and_dimming_chips(), ticks, 11)
 }
 
 /// A duel with `chips` in the folders and the players' moves from `seed`:
 /// the ticks each kind was on the field, by key.
-fn duel_with(chips: &[crate::content::ChipId], ticks: usize, seed: u32) -> std::collections::BTreeMap<String, usize> {
-    let setup = || scenario::setup_with(chips);
+fn duel_with(chips: &[bn6_content_api::ChipHandle], ticks: usize, seed: u32) -> std::collections::BTreeMap<String, usize> {
+    let setup = || scenario::setup_with_handles(chips);
     let tape = scenario::record_on(setup(), ticks, seed);
     let mut b = Battle::new(setup(), scenario::content());
     let mut seen = std::collections::BTreeMap::new();
@@ -191,9 +202,9 @@ fn the_scripted_navi_and_dimming_chips_play() {
     assert!(ticks("erase-man") > 0, "EraseMan: {seen:?}");
     assert!(ticks("erase-mark") > 0, "EraseMan's marks: {seen:?}");
     assert!(ticks("erase-beam") > 0, "EraseMan's slash: {seen:?}");
-    // The grab's controller drops grab shots.
-    assert!(ticks("area-grab") > 0, "the grab's controller: {seen:?}");
-    assert!(ticks("grab-shot") > 0, "grab shots: {seen:?}");
+    // The grabs' controller drops grab shots.
+    assert!(ticks("grab/controller") > 0, "the grabs' controller: {seen:?}");
+    assert!(ticks("grab/shot") > 0, "grab shots: {seen:?}");
 }
 
 /// A duel with the bee and dragon chips in the folders: the ticks each
@@ -272,7 +283,7 @@ fn the_thrown_chips_play_and_roll_back() {
 #[test]
 fn the_elements_navi_attacks() {
     
-    let seen = duel_with(&[testing::ELEMENTS], 2400, 11);
+    let seen = duel_with(&[testing::chip_handle(testing::ELEMENTS)], 2400, 11);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The elements navi comes with his overlay and attacks with an
     // element: meteors, ice, bolts or vines.
@@ -285,7 +296,7 @@ fn the_elements_navi_attacks() {
 #[test]
 fn the_water_navi_attacks() {
     
-    let seen = duel_with(&[testing::SPOUT], 2400, 11);
+    let seen = duel_with(&[testing::chip_handle(testing::SPOUT)], 2400, 11);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The water navi comes in his water (his layer) and throws his ball
     // or raises his geyser, which marks its column.
@@ -310,7 +321,7 @@ fn the_navi_chip_navis_come_and_go() {
         (testing::TENGU, "tengu-man"),
         (testing::BLAST, "blast-man"),
     ] {
-        let seen = duel_with(&[chip], 1500, 11);
+        let seen = duel_with(&[testing::chip_handle(chip)], 1500, 11);
         assert!(seen.get(navi).copied().unwrap_or(0) > 0, "navi {navi} of chip {chip:#x}: {seen:?}");
     }
 }
@@ -318,7 +329,7 @@ fn the_navi_chip_navis_come_and_go() {
 #[test]
 fn the_shooting_and_sun_moon_navis_attack() {
     
-    let seen = duel_with(&[testing::BASS], 2400, 11);
+    let seen = duel_with(&[testing::chip_handle(testing::BASS)], 2400, 11);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The shooting navi comes with his cape (a form overlay) and fires
     // panel strikes.
@@ -326,7 +337,7 @@ fn the_shooting_and_sun_moon_navis_attack() {
     assert!(ticks("engine/form-overlay") > 0, "Bass's cape: {seen:?}");
     assert!(ticks("panel-strike") > 0, "Bass's shots: {seen:?}");
     // The sun-and-moon navi throws meteors, shines and dives.
-    let seen = duel_with(&[testing::SUN_MOON], 2400, 11);
+    let seen = duel_with(&[testing::chip_handle(testing::SUN_MOON)], 2400, 11);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     assert!(ticks("sun-moon") > 0, "SunMoon: {seen:?}");
     assert!(ticks("sun-meteor") > 0, "SunMoon's meteors: {seen:?}");
@@ -337,8 +348,17 @@ fn the_shooting_and_sun_moon_navis_attack() {
 fn scripted_chips_roll_back() {
     // A copy of the battle taken at any tick plays on exactly as the
     // battle does: the scripts' state is all in the battle.
-    for chips in [&[testing::ERASER, testing::GRAB, testing::SUN_GUN_3][..], &[testing::ELEMENTS], &[testing::SPOUT], &[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST], &[testing::BASS], &[testing::SUN_MOON]] {
-        let setup = || scenario::setup_with(chips);
+    let numbered = |ids: &[crate::content::ChipId]| ids.iter().map(|&id| testing::chip_handle(id)).collect::<Vec<_>>();
+    for chips in [
+        navi_and_dimming_chips(),
+        numbered(&[testing::ELEMENTS]),
+        numbered(&[testing::SPOUT]),
+        numbered(&[testing::HEAT, testing::ELEC, testing::SLASH, testing::CHARGE, testing::TOMAHAWK, testing::TENGU, testing::BLAST]),
+        numbered(&[testing::BASS]),
+        numbered(&[testing::SUN_MOON]),
+    ] {
+        let chips = &chips[..];
+        let setup = || scenario::setup_with_handles(chips);
         let tape = scenario::record_on(setup(), 2400, 11);
         let mut b = Battle::new(setup(), scenario::content());
         let whole = digests(&tape, Battle::new(setup(), scenario::content()));
