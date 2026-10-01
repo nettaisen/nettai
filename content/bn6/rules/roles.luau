@@ -7,6 +7,7 @@
 -- BodyGrd's) join when those chips convert; until then their roles are
 -- unfilled.
 
+local barriers = require("../lib/barriers/barriers")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
 
 return define.roles {
@@ -24,5 +25,13 @@ return define.roles {
         falling_rock = { legacy = { kind = "falling-rock" } },
         -- The NaviCust supports' controller (effect object #0x79).
         support = { legacy = { kind = "support" } },
+    },
+    hooks = {
+        -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with
+        -- the barrier its stat names, which the game's program sets to type
+        -- 1 (the Barrier chip's), and its visual.
+        first_barrier = function(navi: Object)
+            barriers.raise(navi, barriers.barrier_10, true)
+        end,
     },
 }

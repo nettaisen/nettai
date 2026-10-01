@@ -13,7 +13,7 @@
 
 use std::collections::BTreeMap;
 
-use bn6_content_api::{ActionHandle, KindHandle};
+use bn6_content_api::{ActionHandle, FnId, KindHandle};
 
 /// The actions the ruleset starts or recognizes by role.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -115,6 +115,30 @@ impl KindRole {
     }
 }
 
+/// The functions the ruleset calls by role.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum HookRole {
+    /// `(navi)`: the NaviCust FirstBarrier's barrier and its visual
+    /// (`sub_8013892`: `sub_801A7CC` with the navi stat, which the game's
+    /// program sets to 1, and `sub_80E0D98`).
+    FirstBarrier,
+}
+
+impl HookRole {
+    pub const ALL: [HookRole; 1] = [HookRole::FirstBarrier];
+
+    /// Its name in `rules/roles.luau`'s `hooks`.
+    pub fn name(self) -> &'static str {
+        match self {
+            HookRole::FirstBarrier => "first_barrier",
+        }
+    }
+
+    pub fn named(name: &str) -> Option<HookRole> {
+        HookRole::ALL.into_iter().find(|r| r.name() == name)
+    }
+}
+
 /// What an action role names.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum RoleAction {
@@ -138,6 +162,7 @@ pub enum RoleKind {
 pub struct Roles {
     pub actions: BTreeMap<ActionRole, RoleAction>,
     pub kinds: BTreeMap<KindRole, RoleKind>,
+    pub hooks: BTreeMap<HookRole, FnId>,
 }
 
 impl Roles {
@@ -164,6 +189,15 @@ impl Roles {
     /// Whether `h` is the action of `role`.
     pub fn is_action(&self, role: ActionRole, h: ActionHandle) -> bool {
         self.try_action(role) == Some(h)
+    }
+
+    /// The function of `role`; a role content hasn't filled is a panic
+    /// naming it.
+    pub fn hook(&self, role: HookRole) -> FnId {
+        *self
+            .hooks
+            .get(&role)
+            .unwrap_or_else(|| panic!("the role hooks.{} is not filled (define.roles in rules/roles.luau)", role.name()))
     }
 
     /// The kind of `role`; a role content hasn't filled is a panic naming

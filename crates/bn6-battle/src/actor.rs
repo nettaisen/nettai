@@ -303,6 +303,10 @@ pub struct ActorData {
     /// `sub_80139C4` → `sub_80C4C12`); form changes end it, deletion
     /// forgets it (`sub_801746E`).
     pub full_synchro_aura: Option<ObjectRef>,
+    /// AIData+0x60: the barrier's visual (effect #7, content's), which
+    /// hides and shows with the navi (`sub_80E1352`, `sub_80E13DC`);
+    /// deletion forgets it (`sub_801A7F4`).
+    pub barrier_visual: Option<ObjectRef>,
     /// A sprite overlay attached for the current chip.
     pub overlay: Option<ObjectRef>,
     pub attack: AttackVars,

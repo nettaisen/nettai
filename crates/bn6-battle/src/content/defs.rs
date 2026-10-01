@@ -34,7 +34,7 @@ use super::{
     ChipClass, ChipCode, ChipData, ChipFamily, ChipFlags, ChipId, ChipModifier, Content, DIMMING_CHIP_ACTION, Element,
     ExtraChipFlags, FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
 };
-use super::roles::{ActionRole, KindRole, RoleAction, RoleKind, Roles};
+use super::roles::{ActionRole, HookRole, KindRole, RoleAction, RoleKind, Roles};
 use crate::setup::{Form, Navi, StageSettings};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
@@ -645,7 +645,7 @@ fn chip_record(d: &Definition) -> Result<ChipData, ContentError> {
 /// `define.roles { actions = { ... }, kinds = { ... } }` (content::roles):
 /// each role a definition, or a v1 registration through its `legacy`
 /// marker (an action by number, a kind by key).
-fn read_roles(d: &Definition, actions: &[ActionDef], kinds: &[KindDef]) -> Result<Roles, ContentError> {
+fn read_roles(d: &Definition, actions: &[ActionDef], kinds: &[KindDef], functions: &mut Functions) -> Result<Roles, ContentError> {
     let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
     let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
     let legacy = |name: &str, v: &Data, field: &str| -> Result<Option<Data>, ContentError> {
@@ -707,7 +707,17 @@ fn read_roles(d: &Definition, actions: &[ActionDef], kinds: &[KindDef]) -> Resul
                     };
                     roles.kinds.insert(role, target);
                 }
-                _ => return Err(what(format!("the ruleset has no role group `{group}` (it has actions, kinds)"))),
+                "hooks" => {
+                    let names: Vec<&str> = HookRole::ALL.iter().map(|r| r.name()).collect();
+                    let role = HookRole::named(&name).ok_or_else(|| {
+                        what(format!("the ruleset has no role hooks.{name} (it has {})", names.join(", ")))
+                    })?;
+                    if !matches!(v, Data::Function) {
+                        return Err(what(format!("hooks.{name} is not a function")));
+                    }
+                    roles.hooks.insert(role, functions.id(FnSource::slot(Registry::Roles, &d.key, &format!("hooks.{name}"))));
+                }
+                _ => return Err(what(format!("the ruleset has no role group `{group}` (it has actions, kinds, hooks)"))),
             }
         }
     }
@@ -1139,7 +1149,7 @@ impl Defs {
         // The roles.
         let mut roles = Roles::default();
         if let [d] = definitions.of(Registry::Roles) {
-            roles = read_roles(d, &actions, &kinds)?;
+            roles = read_roles(d, &actions, &kinds, &mut functions)?;
         }
 
         let records: Vec<RecordDef> = definitions
