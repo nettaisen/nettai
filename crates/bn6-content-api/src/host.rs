@@ -162,6 +162,11 @@ pub enum HookCall {
     /// A role hook the ruleset calls with a navi (`define.roles`'
     /// `hooks`): its result is unused.
     RoleNavi { navi: ObjectRef },
+    /// `encased(obstacle, ice, class)` (`sub_801813A`'s end): put what an
+    /// obstacle encased in ice (`ice`) or a bubble becomes on its panel; its
+    /// field-object registry class (none: it wasn't registered). Its result
+    /// is unused.
+    RoleEncased { obstacle: ObjectRef, ice: bool, class: Option<u8> },
 }
 
 /// A content error: a bug in the content, or a script breaking the

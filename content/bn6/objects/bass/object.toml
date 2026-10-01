@@ -1,6 +1,0 @@
-# Bass, the Bass chip's navi (actor object #0x4F, `sub_80C3970`), is a script.
-
-[kind]
-pool = "actor"
-index = 0x4F
-script = "bass.luau"

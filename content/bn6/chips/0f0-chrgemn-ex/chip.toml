@@ -1,3 +1,3 @@
-# A navi chip (subtype 6): its navi is ChargeMan.
+# A navi chip (subtype 6): ChargeMan, as chips/0ef-chrgeman summons him.
 
-script = "../../objects/charge-man/charge_man.luau"
+script = "../0ef-chrgeman/chip.luau"
