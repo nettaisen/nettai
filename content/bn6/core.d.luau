@@ -387,6 +387,10 @@ declare class Object
     beast_lockon: number
     -- A per-action word some actions keep.
     marker: number
+    -- The absorbed obstacle a throw carries (the marker word, as
+    -- DustCross's throws keep it): its look and animation.
+    thrown_look: AbsorbedLook?
+    thrown_anim: number
     -- The recovery a shot waits after firing: a word of the attack that
     -- outlives the action, so an action that waits it without writing it
     -- (a thrown obstacle) waits the last shot's.
@@ -596,10 +600,11 @@ declare class Object
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
     function action_state(self, action: number): any
-    -- The obstacles it absorbed, oldest first.
-    function absorbed(self): { { kind: number, anim: number } }
-    function push_absorbed(self, kind: number, anim: number): boolean
-    function pop_absorbed(self): (number?, number?)
+    -- The obstacles it absorbed, oldest first: their looks and
+    -- animations.
+    function absorbed(self): { { look: AbsorbedLook, anim: number } }
+    function push_absorbed(self, look: AbsorbedLook, anim: number): boolean
+    function pop_absorbed(self): (AbsorbedLook?, number?)
 
     -- Field objects (obstacles): whether another object asked this of it
     -- (the rest is the `obstacle` service).
@@ -1018,6 +1023,14 @@ export type ActorListEntrySpec = {
     variant: number,
 }
 
+-- How an absorbed obstacle looks (objects/absorbed-obstacle's `look`, an
+-- "absorbed-look" record; the original's obstacle kinds, `byte_80E98C0`):
+-- its sprite; `keeps_parts`, it flies with the obstacle's hidden sprite
+-- parts (the original's kind 2); `own_facing`, thrown, its sprite's parts
+-- keep their own facing and it isn't flipped (sprite 0x23 in the
+-- original's test).
+export type AbsorbedLook = { sprite: SpriteAsset, keeps_parts: boolean?, own_facing: boolean? }
+
 export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies" | "ignores"
 -- Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
 export type ObstacleHold = "after_appearing" | "always"
@@ -1077,9 +1090,10 @@ declare obstacle: {
     removal: (me: Object) -> ObstacleRemoval,
     -- `sub_800F8CE`: blink out for 20 ticks when it vanishes.
     blink_out: (me: Object) -> BlinkOut,
-    -- `sub_800F90E`: absorbed, it flies to the absorbing navi as obstacle
-    -- kind `kind` (`data.objects.absorbed_sprites`).
-    fly_to_absorber: (me: Object, kind: number) -> (),
+    -- `sub_800F90E`: absorbed, it flies to the absorbing navi as an
+    -- absorbed obstacle of look `look` (objects/absorbed-obstacle's
+    -- `look { ... }`; the original's obstacle kind).
+    fly_to_absorber: (me: Object, look: AbsorbedLook) -> (),
     -- `sub_802EF5C`: the per-side target tracking some chips keep.
     release_tracking: (me: Object) -> (),
     -- A chip's requests: `sub_800F884` removes it, `sub_800F898` makes it

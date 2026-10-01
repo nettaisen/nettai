@@ -11,7 +11,7 @@
 -- An obstacle: its update runs the obstacle framework's steps (the
 -- `obstacle` service) around its own actions.
 
-local rock_debris = require("../rock-debris/rock_debris")
+local debris = require("./debris")
 
 local rock = {}
 
@@ -157,7 +157,7 @@ local function destroyed(me: Object)
         local k = kind(me)
         local p = me.pos
         for _ = 1, 2 do
-            rock_debris.spawn(battle.jitter(0xF, p), k.debris_palette)
+            debris.spawn(battle.jitter(0xF, p), k.debris_palette)
         end
         battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), BREAK_EFFECT)
         battle.play_sound(k.break_sound)

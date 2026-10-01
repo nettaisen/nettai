@@ -266,6 +266,11 @@ named_fields! {
         /// A per-action word some actions keep (a move's direction change,
         /// a thrown obstacle).
         Marker = "marker", U32, rw;
+        /// The absorbed obstacle a throw carries (the marker word, as
+        /// DustCross's throws keep it): its look (an absorbed-look record)
+        /// and animation.
+        ThrownLook = "thrown_look", Ref(Registry::Record, Some("absorbed-look".into())), rw;
+        ThrownAnim = "thrown_anim", U8, rw;
         /// The recovery a shot waits after firing, a word of the attack
         /// that outlives the action: an action that waits it without
         /// writing it (a thrown obstacle) waits the last shot's.
@@ -1341,12 +1346,13 @@ pub trait CoreApi {
     /// hand's cursor (its damage, bonuses and modifiers) and name the
     /// chip's action.
     fn prepare_chip(&mut self, o: ObjectRef) -> u8;
-    /// Obstacles the navi absorbed, oldest first: (kind, animation).
-    fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u8, u8)>>;
+    /// Obstacles the navi absorbed, oldest first: (look, animation), the
+    /// look an absorbed-look record's handle.
+    fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u16, u8)>>;
     /// Add one (false when the navi has eight).
-    fn push_absorbed(&mut self, o: ObjectRef, kind: u8, anim: u8) -> ApiResult<bool>;
+    fn push_absorbed(&mut self, o: ObjectRef, look: u16, anim: u8) -> ApiResult<bool>;
     /// Take the newest.
-    fn pop_absorbed(&mut self, o: ObjectRef) -> ApiResult<Option<(u8, u8)>>;
+    fn pop_absorbed(&mut self, o: ObjectRef) -> ApiResult<Option<(u16, u8)>>;
 
     // ---- Sprites -------------------------------------------------------------
 
@@ -1461,9 +1467,10 @@ pub trait CoreApi {
     /// `sub_800F8CE`: blink out for 20 ticks when it vanishes.
     fn obstacle_blink_out(&mut self, o: ObjectRef) -> ApiResult<BlinkOut>;
     /// `sub_800F90E`: absorbed, it flies to the absorbing side's navi as
-    /// obstacle kind `kind` (`data.objects.absorbed_sprites`), with its
-    /// animation and palette.
-    fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, kind: u8) -> ApiResult<()>;
+    /// an absorbed obstacle of look `look` (an absorbed-look record's
+    /// handle; the original's obstacle kind), with its animation and
+    /// palette.
+    fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, look: u16) -> ApiResult<()>;
     /// `sub_802EF5C`: the per-side target tracking some chips keep.
     fn obstacle_release_tracking(&mut self, o: ObjectRef);
     /// A chip's request of the obstacle `o` (`by`: the requester, whose

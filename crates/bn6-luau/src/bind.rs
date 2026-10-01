@@ -101,6 +101,15 @@ fn def_or_number(api: &dyn CoreApi, b: &Bound, v: LuaValue, registry: Registry, 
     }
 }
 
+/// A record definition's handle (an absorbed obstacle's look, say).
+fn record_arg(b: &Bound, v: &LuaValue, what: &str) -> mlua::Result<u16> {
+    match b.def(v) {
+        Some((Registry::Record, h)) => Ok(h),
+        Some((r, _)) => Err(mlua::Error::runtime(format!("{what}: a {r} is not a record"))),
+        None => Err(mlua::Error::runtime(format!("{what}: expected a record definition, got {}", v.type_name()))),
+    }
+}
+
 /// A sound asset, or a sound number (deprecated).
 fn sound_arg(v: LuaValue) -> mlua::Result<u16> {
     if let LuaValue::Table(_) = v {
@@ -607,17 +616,20 @@ impl UserData for Object {
         methods.add_method("absorbed", |lua, this, ()| {
             let list = with(|api, _| api.absorbed(this.0).map_err(api_error))?;
             let t = lua.create_table_with_capacity(list.len(), 0)?;
-            for (i, (kind, anim)) in list.into_iter().enumerate() {
+            for (i, (look, anim)) in list.into_iter().enumerate() {
                 let e = lua.create_table()?;
-                e.raw_set("kind", kind)?;
+                e.raw_set("look", bound(|b| b.def_value(Registry::Record, look))?)?;
                 e.raw_set("anim", anim)?;
                 t.raw_set(i + 1, e)?;
             }
             Ok(t)
         });
-        methods.add_method("push_absorbed", |_, this, (kind, anim): (LuaValue, LuaValue)| {
-            let (kind, anim) = (u8_arg(kind, "obstacle kind")?, u8_arg(anim, "anim")?);
-            with(|api, _| api.push_absorbed(this.0, kind, anim).map_err(api_error))
+        methods.add_method("push_absorbed", |_, this, (look, anim): (LuaValue, LuaValue)| {
+            let anim = u8_arg(anim, "anim")?;
+            with(|api, b| {
+                let look = record_arg(b, &look, "push_absorbed")?;
+                api.push_absorbed(this.0, look, anim).map_err(api_error)
+            })
         });
         methods.add_method("action_state", |_, this, action: LuaValue| {
             let id = with(|api, bound| {
@@ -631,7 +643,11 @@ impl UserData for Object {
             Ok(State { owner: this.0, action: true, of_action: Some(id) })
         });
         methods.add_method("pop_absorbed", |_, this, ()| {
-            with(|api, _| api.pop_absorbed(this.0).map_err(api_error)).map(|v| v.map_or((None, None), |(k, a)| (Some(k), Some(a))))
+            let popped = with(|api, _| api.pop_absorbed(this.0).map_err(api_error))?;
+            match popped {
+                None => Ok((None, None)),
+                Some((look, anim)) => Ok((Some(bound(|b| b.def_value(Registry::Record, look))?), Some(anim))),
+            }
         });
 
         // Field objects (obstacles; the rest is the `obstacle` service).
@@ -1553,9 +1569,11 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "blink_out", |_, me: Me| {
         with(|api, _| api.obstacle_blink_out(me.0).map(|r| r.name()).map_err(api_error))
     });
-    lib_fn!(lua, t, "fly_to_absorber", |_, (me, kind): (Me, LuaValue)| {
-        let kind = u8_arg(kind, "obstacle kind")?;
-        with(|api, _| api.obstacle_fly_to_absorber(me.0, kind).map_err(api_error))
+    lib_fn!(lua, t, "fly_to_absorber", |_, (me, look): (Me, LuaValue)| {
+        with(|api, b| {
+            let look = record_arg(b, &look, "obstacle.fly_to_absorber")?;
+            api.obstacle_fly_to_absorber(me.0, look).map_err(api_error)
+        })
     });
     lib_fn!(lua, t, "release_tracking", |_, me: Me| with(|api, _| Ok(api.obstacle_release_tracking(me.0))));
     lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
