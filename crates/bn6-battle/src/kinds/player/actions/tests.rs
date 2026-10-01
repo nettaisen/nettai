@@ -425,6 +425,37 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
 }
 
 #[test]
+fn a_counter_hit_takes_no_mood() {
+    // A step sword's slash (hit parameter 30) on a navi in Full Synchro,
+    // outside its counter window and in it. Returns both moods after the
+    // hit: the attacker's, the target's.
+    let slash = |in_window: bool| {
+        // Navis with Beast Out turns left: a spent one can't reach Full
+        // Synchro.
+        let (mut b, p0, p1) = fight_with(megaman_with(|s| s.beast_out_counter = 3));
+        b.stats[1].mood = 0xFF;
+        use_chip(&mut b, p0, p1, testing::STEP_BLADE);
+        let c = b.objects.get(p1).collision.unwrap();
+        for _ in 0..60 {
+            if b.objects.get(p1).hp != 1000 {
+                break;
+            }
+            if in_window {
+                b.collision.get_mut(c).counter_timer = 2;
+            }
+            tick(&mut b, p0, p1, 0);
+        }
+        assert_eq!(b.objects.get(p1).hp, 920);
+        (b.stats[0].mood, b.stats[1].mood)
+    };
+    // An ordinary hit wears the target's mood by the hit parameter.
+    assert_eq!(slash(false), (0x80, 0xFF - 30));
+    // A counter hit gives the attacker Full Synchro and wears nothing: the
+    // target keeps its own through the paralysis.
+    assert_eq!(slash(true), (0xFF, 0xFF));
+}
+
+#[test]
 fn a_sword_without_a_target_ahead_swings_at_nothing() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];

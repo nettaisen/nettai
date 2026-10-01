@@ -152,4 +152,12 @@ collision.guard_breaking = define.collision {
     row_offset = 0x190,
 }
 
+-- A thrown attack that also breaks (row 0x15: MetrKnuk's fists).
+collision.thrown_breaking = define.collision {
+    id = "thrown-breaking",
+    side0 = 0x8000008a,
+    side1 = 0x4000008a,
+    row_offset = 0xA8,
+}
+
 return collision

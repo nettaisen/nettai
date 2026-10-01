@@ -401,3 +401,35 @@ export type Instrument = {
     tune: Sound,
     effect: (me: Object) -> (),
 }
+
+-- ---- DblBeast's beasts (chips/dblbeast/beast) -------------------------------
+
+-- A beast's state: the controller waiting on it, the damage word its hits
+-- add theirs to, the next target, the targets, a missed attack, the
+-- enemy's bodies' panels (packed y << 4 | x), its attachments.
+export type DblBeastState = {
+    controller: Object?,
+    base: number,
+    next: number,
+    count: number,
+    missed: boolean,
+    targets: { number },
+    held: Object?,
+    held2: Object?,
+}
+
+-- An attack's pattern: the panels to attack from around a target, as
+-- {flip, dx, dy} (dx toward the enemy).
+export type DblBeastPattern = { { number } }
+
+-- A beast's hit: on the panel `ahead` panels in front (or a given one), its
+-- region, spark, collision type and damage (added to the base word), and
+-- height.
+export type DblBeastHit = {
+    ahead: number,
+    region: Region,
+    spark: Spark,
+    is: CollisionType,
+    damage: number,
+    z: number?,
+}
