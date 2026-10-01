@@ -9,6 +9,7 @@
 "megaman/turn" = "0x3B: the turn the ruleset starts on TURN_L/TURN_R (idle.rs)"
 
 ["assets.toml"]
+"sounds.swoop" = "0x13B: Bass swooping in, chips/darkness/navi.luau"
 "sprites.django" = "0c-0f: Django, chips/crosover/navi.luau"
 "sounds.drumroll" = "0x114: chips/crcusman/navi.luau"
 "sounds.circus-catch" = "0x1AA: chips/crcusman/navi.luau"
@@ -290,7 +291,7 @@
 "sprites.sprite-0c-3b" = "unnamed; used by attachment 0x07, attachment 0x08, attachment 0x09, attachment 0x0A"
 "sprites.sprite-0c-3c" = "unnamed; used by effect 0x5D, sun beam look 0"
 "sprites.sprite-0c-40" = "unnamed; used by attachment 0x1D"
-"sprites.sprite-0c-43" = "unnamed; used by attachment 0x32"
+"sprites.dark-aura" = "0c-43: Dark MegaMan's aura (attachment 0x32), chips/darkness/navi.luau"
 "sprites.sprite-0c-47" = "unnamed; used by sun beam look 1"
 "sprites.sprite-0c-4f" = "unnamed; used by attachment 0x0F"
 "sprites.sprite-0c-51" = "unnamed; used by body overlay 0x08"
