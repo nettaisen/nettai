@@ -209,7 +209,8 @@ fn special_chip(b: &mut Battle, r: ObjectRef) -> Outcome {
     if number == 0x153 {
         a.damage = content.chip(numbered(0x52)).damage;
     }
-    super::set_attack(b, r, cd.action, 5);
+    let action = super::chip_use::chip_action(b, r, Some(chip));
+    super::set_attack(b, r, action, 5);
     ai_mut(b, r).attack.beast_lockon = cd.beast_lockon as u8;
     ai_mut(b, r).berserk.step = Step::Move;
     Outcome::Chip
