@@ -6,13 +6,14 @@
 
 local absorbed_obstacle = require("../objects/absorbed-obstacle/absorbed_obstacle")
 local barriers = require("../lib/barriers/barriers")
-local beast_claw = require("../navis/00-megaman/weapons/beast-claw/weapon")
-local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
-local dust_beast_scatter = require("../navis/00-megaman/forms/dustcross-beast/scatter")
+local beast_claw = require("../navis/megaman/weapons/beast-claw/weapon")
+local charged_shot = require("../navis/megaman/weapons/charged-shot/weapon")
+local dust_beast_scatter = require("../navis/megaman/forms/dustcross-beast/scatter")
 local falling_rock = require("../objects/falling-rock/falling_rock")
-local ground_drill = require("../navis/00-megaman/forms/groundcross/drill")
-local slash_beast_lunge = require("../navis/00-megaman/forms/slashcross-beast/lunge")
-local slash_charge = require("../navis/00-megaman/forms/slashcross/charge")
+local ground_drill = require("../navis/megaman/forms/groundcross/drill")
+local lockon = require("./lockon")
+local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
+local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local supports = require("../lib/supports/controller")
 
 return define.roles {
@@ -43,6 +44,9 @@ return define.roles {
         absorbed_obstacle = absorbed_obstacle.kind,
         falling_rock = falling_rock.kind,
         support = supports.kind,
+    },
+    lockon = {
+        beast_claw = lockon.beast_claw,
     },
     hooks = {
         -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier

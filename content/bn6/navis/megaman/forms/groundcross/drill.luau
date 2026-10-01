@@ -9,6 +9,7 @@
 
 local attachment = require("../../../../objects/attachment/attachment")
 local drill_object = require("../../../../objects/drill/drill")
+local lockon = require("../../../../rules/lockon")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -46,8 +47,8 @@ local AWAY = 0xB4_0000
 local ENEMY = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 local ENEMY_PANEL = { [0] = { 0x20, 0x00 }, [1] = { 0x00, 0x20 } }
 
--- The Beast Out lock-on mode it uses.
-local LOCKON = 0xC
+-- The Beast Out lock-on mode it uses (the Beast claw's).
+local LOCKON = lockon.beast_claw
 
 -- `sub_8011D74`: 10 damage and 10 more per point of buster Attack (up to
 -- 5), Break.

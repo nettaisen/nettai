@@ -53,10 +53,10 @@ chips/KEY/record.luau, records.luau       a chip's definition beside the action 
 chips/v1.luau                             the numbered records of the chips content defines (`v1/<key>`)
 chips/NNN-name/*.luau                     v1 modules a chip's legacy marker names (until step 6's moves)
 navis/KEY/navi.luau, chip.luau, *.luau    a navi, its own chip, its weapons
-navis/00-megaman/navi.luau                MegaMan (step 6 moves navis/00-megaman to navis/megaman)
-navis/00-megaman/forms/KEY/form.luau      MegaMan's forms, with their weapons next to them
-navis/00-megaman/weapons/KEY/weapon.luau  MegaMan's weapons (`define.weapon`)
-navis/00-megaman/weapons/NN-name/*.luau   v1 modules a weapon's legacy marker names (until step 6)
+navis/megaman/navi.luau                   MegaMan
+navis/megaman/forms/KEY/form.luau         MegaMan's forms, with their weapons next to them
+navis/megaman/weapons/KEY/weapon.luau     MegaMan's weapons (`define.weapon`)
+navis/megaman/weapons/NN-name/*.luau      v1 modules a weapon's legacy marker names (until step 6)
 objects/KIND/object.toml, *.luau          `[kind]`: the object kind a v1 module implements; its module
 objects/attachment/rows.luau              the attachments by number (a legacy rule section: the last kind table something reads)
 stages/netbattle.luau                     the stages (`define.stage`), with their layouts and actors

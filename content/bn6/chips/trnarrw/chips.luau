@@ -9,6 +9,7 @@
 
 local attachment = require("../../objects/attachment/attachment")
 local flying_shot = require("../../objects/flying-shot/flying_shot")
+local lockon = require("../../rules/lockon")
 
 export type State = {
     -- Ticks of the draw so far, then the recovery's (AIAttackVars+0x10).
@@ -140,8 +141,8 @@ chips[1] = define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 23, index = 23, sort = 444 },
     slot_in_limit = 3,
-    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-    beast = { lockon = 10 },
+    -- The Beast rush, and its lock-on mode (rules/lockon).
+    beast = { lockon = lockon.trnarrw1 },
     action = shoot(),
 }
 chips[2] = define.chip {
@@ -154,8 +155,8 @@ chips[2] = define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 24, index = 24, sort = 445 },
     slot_in_limit = 3,
-    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-    beast = { lockon = 10 },
+    -- The Beast rush, and its lock-on mode (rules/lockon).
+    beast = { lockon = lockon.trnarrw1 },
     action = shoot(),
 }
 chips[3] = define.chip {
@@ -168,8 +169,8 @@ chips[3] = define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 25, index = 25, sort = 446 },
     slot_in_limit = 3,
-    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-    beast = { lockon = 10 },
+    -- The Beast rush, and its lock-on mode (rules/lockon).
+    beast = { lockon = lockon.trnarrw1 },
     action = shoot(),
 }
 

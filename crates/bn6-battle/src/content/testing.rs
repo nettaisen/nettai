@@ -787,76 +787,76 @@ pub fn scripts() -> Scripts {
                 // charged shot are weapon definitions (their routine numbers
                 // their `legacy` markers). (BN6's rules/roles isn't here: the
                 // test pack fills the roles.)
-                ("navis/00-megaman/weapons/blank-shot/weapon", "navis/00-megaman/weapons/blank-shot/weapon"),
-                ("navis/00-megaman/weapons/charged-shot/weapon", "navis/00-megaman/weapons/charged-shot/weapon"),
-                ("navis/00-megaman/weapons/buster/weapon", "navis/00-megaman/weapons/buster/weapon"),
+                ("navis/megaman/weapons/blank-shot/weapon", "navis/megaman/weapons/blank-shot/weapon"),
+                ("navis/megaman/weapons/charged-shot/weapon", "navis/megaman/weapons/charged-shot/weapon"),
+                ("navis/megaman/weapons/buster/weapon", "navis/megaman/weapons/buster/weapon"),
                 // Two of the buster's alias routines (its setup, their own
                 // charge rows).
-                ("navis/00-megaman/weapons/buster-2e/weapon", "navis/00-megaman/weapons/buster-2e/weapon"),
-                ("navis/00-megaman/weapons/buster-82/weapon", "navis/00-megaman/weapons/buster-82/weapon"),
-                ("navis/00-megaman/forms/heatcross/charge", "navis/00-megaman/forms/heatcross/charge"),
+                ("navis/megaman/weapons/buster-2e/weapon", "navis/megaman/weapons/buster-2e/weapon"),
+                ("navis/megaman/weapons/buster-82/weapon", "navis/megaman/weapons/buster-82/weapon"),
+                ("navis/megaman/forms/heatcross/charge", "navis/megaman/forms/heatcross/charge"),
                 ("lib/weapon", "lib/weapon"),
                 ("objects/element-pillar/element_pillar", "objects/element-pillar/element_pillar"),
                 // The form weapons content defines (their routine numbers
                 // their `legacy` markers), with the kinds only they spawn.
                 (
-                    "navis/00-megaman/weapons/falzar-beast-buster/weapon",
-                    "navis/00-megaman/weapons/falzar-beast-buster/weapon",
+                    "navis/megaman/weapons/falzar-beast-buster/weapon",
+                    "navis/megaman/weapons/falzar-beast-buster/weapon",
                 ),
                 (
-                    "navis/00-megaman/weapons/gregar-beast-buster/weapon",
-                    "navis/00-megaman/weapons/gregar-beast-buster/weapon",
+                    "navis/megaman/weapons/gregar-beast-buster/weapon",
+                    "navis/megaman/weapons/gregar-beast-buster/weapon",
                 ),
-                ("navis/00-megaman/weapons/tengu-wind/weapon", "navis/00-megaman/weapons/tengu-wind/weapon"),
-                ("navis/00-megaman/forms/spoutcross-beast/surge", "navis/00-megaman/forms/spoutcross-beast/surge"),
-                ("navis/00-megaman/forms/spoutcross-beast/charge", "navis/00-megaman/forms/spoutcross-beast/charge"),
-                ("navis/00-megaman/forms/tengucross-beast/whirlwind", "navis/00-megaman/forms/tengucross-beast/whirlwind"),
-                ("navis/00-megaman/forms/tengucross-beast/charge", "navis/00-megaman/forms/tengucross-beast/charge"),
-                ("navis/00-megaman/forms/eleccross/charge", "navis/00-megaman/forms/eleccross/charge"),
-                ("navis/00-megaman/forms/tengucross/charge", "navis/00-megaman/forms/tengucross/charge"),
-                ("navis/00-megaman/forms/dustcross/throw_absorbed", "navis/00-megaman/forms/dustcross/throw_absorbed"),
+                ("navis/megaman/weapons/tengu-wind/weapon", "navis/megaman/weapons/tengu-wind/weapon"),
+                ("navis/megaman/forms/spoutcross-beast/surge", "navis/megaman/forms/spoutcross-beast/surge"),
+                ("navis/megaman/forms/spoutcross-beast/charge", "navis/megaman/forms/spoutcross-beast/charge"),
+                ("navis/megaman/forms/tengucross-beast/whirlwind", "navis/megaman/forms/tengucross-beast/whirlwind"),
+                ("navis/megaman/forms/tengucross-beast/charge", "navis/megaman/forms/tengucross-beast/charge"),
+                ("navis/megaman/forms/eleccross/charge", "navis/megaman/forms/eleccross/charge"),
+                ("navis/megaman/forms/tengucross/charge", "navis/megaman/forms/tengucross/charge"),
+                ("navis/megaman/forms/dustcross/throw_absorbed", "navis/megaman/forms/dustcross/throw_absorbed"),
                 (
-                    "navis/00-megaman/forms/dustcross-beast/throw_absorbed",
-                    "navis/00-megaman/forms/dustcross-beast/throw_absorbed",
+                    "navis/megaman/forms/dustcross-beast/throw_absorbed",
+                    "navis/megaman/forms/dustcross-beast/throw_absorbed",
                 ),
-                ("navis/00-megaman/forms/erasecross/ray", "navis/00-megaman/forms/erasecross/ray"),
-                ("navis/00-megaman/forms/erasecross/charge", "navis/00-megaman/forms/erasecross/charge"),
+                ("navis/megaman/forms/erasecross/ray", "navis/megaman/forms/erasecross/ray"),
+                ("navis/megaman/forms/erasecross/charge", "navis/megaman/forms/erasecross/charge"),
                 (
-                    "navis/00-megaman/forms/erasecross-beast/erase_drop",
-                    "navis/00-megaman/forms/erasecross-beast/erase_drop",
+                    "navis/megaman/forms/erasecross-beast/erase_drop",
+                    "navis/megaman/forms/erasecross-beast/erase_drop",
                 ),
-                ("navis/00-megaman/forms/erasecross-beast/drop", "navis/00-megaman/forms/erasecross-beast/drop"),
-                ("navis/00-megaman/forms/tomahawkcross/charge", "navis/00-megaman/forms/tomahawkcross/charge"),
+                ("navis/megaman/forms/erasecross-beast/drop", "navis/megaman/forms/erasecross-beast/drop"),
+                ("navis/megaman/forms/tomahawkcross/charge", "navis/megaman/forms/tomahawkcross/charge"),
                 (
-                    "navis/00-megaman/forms/tomahawkcross-beast/throw",
-                    "navis/00-megaman/forms/tomahawkcross-beast/throw",
+                    "navis/megaman/forms/tomahawkcross-beast/throw",
+                    "navis/megaman/forms/tomahawkcross-beast/throw",
                 ),
                 (
-                    "navis/00-megaman/forms/slashcross-beast/lunge_slash",
-                    "navis/00-megaman/forms/slashcross-beast/lunge_slash",
+                    "navis/megaman/forms/slashcross-beast/lunge_slash",
+                    "navis/megaman/forms/slashcross-beast/lunge_slash",
                 ),
-                ("navis/00-megaman/forms/slashcross-beast/lunge", "navis/00-megaman/forms/slashcross-beast/lunge"),
-                ("navis/00-megaman/dash_hit", "navis/00-megaman/dash_hit"),
-                ("navis/00-megaman/forms/groundcross-beast/dash", "navis/00-megaman/forms/groundcross-beast/dash"),
-                ("navis/00-megaman/forms/groundcross/drill", "navis/00-megaman/forms/groundcross/drill"),
-                ("navis/00-megaman/forms/chargecross/tackle", "navis/00-megaman/forms/chargecross/tackle"),
+                ("navis/megaman/forms/slashcross-beast/lunge", "navis/megaman/forms/slashcross-beast/lunge"),
+                ("navis/megaman/dash_hit", "navis/megaman/dash_hit"),
+                ("navis/megaman/forms/groundcross-beast/dash", "navis/megaman/forms/groundcross-beast/dash"),
+                ("navis/megaman/forms/groundcross/drill", "navis/megaman/forms/groundcross/drill"),
+                ("navis/megaman/forms/chargecross/tackle", "navis/megaman/forms/chargecross/tackle"),
                 (
-                    "navis/00-megaman/forms/chargecross-beast/charge_wave",
-                    "navis/00-megaman/forms/chargecross-beast/charge_wave",
+                    "navis/megaman/forms/chargecross-beast/charge_wave",
+                    "navis/megaman/forms/chargecross-beast/charge_wave",
                 ),
-                ("navis/00-megaman/forms/chargecross-beast/wave", "navis/00-megaman/forms/chargecross-beast/wave"),
+                ("navis/megaman/forms/chargecross-beast/wave", "navis/megaman/forms/chargecross-beast/wave"),
                 (
-                    "navis/00-megaman/forms/dustcross-beast/junk_shot",
-                    "navis/00-megaman/forms/dustcross-beast/junk_shot",
+                    "navis/megaman/forms/dustcross-beast/junk_shot",
+                    "navis/megaman/forms/dustcross-beast/junk_shot",
                 ),
-                ("navis/00-megaman/forms/dustcross-beast/scatter", "navis/00-megaman/forms/dustcross-beast/scatter"),
-                ("navis/00-megaman/forms/dustcross/junk_ball", "navis/00-megaman/forms/dustcross/junk_ball"),
-                ("navis/00-megaman/forms/dustcross/charge", "navis/00-megaman/forms/dustcross/charge"),
-                ("navis/00-megaman/weapons/beast-claw/weapon", "navis/00-megaman/weapons/beast-claw/weapon"),
-                ("navis/00-megaman/weapons/absorb/weapon", "navis/00-megaman/weapons/absorb/weapon"),
+                ("navis/megaman/forms/dustcross-beast/scatter", "navis/megaman/forms/dustcross-beast/scatter"),
+                ("navis/megaman/forms/dustcross/junk_ball", "navis/megaman/forms/dustcross/junk_ball"),
+                ("navis/megaman/forms/dustcross/charge", "navis/megaman/forms/dustcross/charge"),
+                ("navis/megaman/weapons/beast-claw/weapon", "navis/megaman/weapons/beast-claw/weapon"),
+                ("navis/megaman/weapons/absorb/weapon", "navis/megaman/weapons/absorb/weapon"),
                 (
-                    "navis/00-megaman/forms/slashcross-beast/hit_flash",
-                    "navis/00-megaman/forms/slashcross-beast/hit_flash",
+                    "navis/megaman/forms/slashcross-beast/hit_flash",
+                    "navis/megaman/forms/slashcross-beast/hit_flash",
                 ),
                 ("objects/absorbed-obstacle/absorbed_obstacle", "objects/absorbed-obstacle/absorbed_obstacle"),
                 // The instant chips (content model v2): BN6's definitions,
@@ -901,17 +901,17 @@ pub fn scripts() -> Scripts {
                 // swords name, its charged shot and A-charge; and the
                 // Beast charged chips' pillars' weapons.
                 (
-                    "navis/00-megaman/forms/slashcross/sword_wave",
-                    "navis/00-megaman/forms/slashcross/sword_wave",
+                    "navis/megaman/forms/slashcross/sword_wave",
+                    "navis/megaman/forms/slashcross/sword_wave",
                 ),
-                ("navis/00-megaman/forms/slashcross/slashes", "navis/00-megaman/forms/slashcross/slashes"),
-                ("navis/00-megaman/forms/slashcross/charge", "navis/00-megaman/forms/slashcross/charge"),
+                ("navis/megaman/forms/slashcross/slashes", "navis/megaman/forms/slashcross/slashes"),
+                ("navis/megaman/forms/slashcross/charge", "navis/megaman/forms/slashcross/charge"),
                 (
-                    "navis/00-megaman/weapons/slash-a-charge/weapon",
-                    "navis/00-megaman/weapons/slash-a-charge/weapon",
+                    "navis/megaman/weapons/slash-a-charge/weapon",
+                    "navis/megaman/weapons/slash-a-charge/weapon",
                 ),
-                ("navis/00-megaman/forms/heatcross-beast/charge", "navis/00-megaman/forms/heatcross-beast/charge"),
-                ("navis/00-megaman/forms/eleccross-beast/charge", "navis/00-megaman/forms/eleccross-beast/charge"),
+                ("navis/megaman/forms/heatcross-beast/charge", "navis/megaman/forms/heatcross-beast/charge"),
+                ("navis/megaman/forms/eleccross-beast/charge", "navis/megaman/forms/eleccross-beast/charge"),
                 // The Reflectors, the recovery chips and HeatCross's charged
                 // shot's burner (content model v2).
                 ("chips/rflectr/shield", "chips/rflectr/shield"),
@@ -1195,6 +1195,38 @@ fn kinds() -> Vec<ObjectKind> {
     vec![kind("numbered", 0xF0), kind("numbered-2", 0xF1)]
 }
 
+/// The test lock-on modes' keys (testdata/content/rules/lockon.luau), in
+/// key order: a mode's handle is its place.
+const LOCKON_KEYS: [&str; 19] = [
+    "beast-claw",
+    "beast-lunge",
+    "bigbomb",
+    "cannon",
+    "crakshot",
+    "crosswrd",
+    "drksword",
+    "dublshot",
+    "elcpuls1",
+    "firebrn1",
+    "gundelex",
+    "gundels1",
+    "moonbld",
+    "sprsonic",
+    "stay",
+    "thunder",
+    "trnarrw1",
+    "widesht",
+    "yoyo",
+];
+
+/// The test lock-on mode `key`, for the chip records made before the
+/// content is defined (`the_test_lockon_keys_are_the_definitions` checks
+/// the list).
+pub fn lockon(key: &str) -> Option<bn6_content_api::LockonHandle> {
+    let i = LOCKON_KEYS.iter().position(|k| *k == key).unwrap_or_else(|| panic!("no test lock-on mode {key:?}"));
+    Some(bn6_content_api::LockonHandle(i as u16))
+}
+
 /// A chip record with the fields tests don't care about filled in.
 fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
     ChipData {
@@ -1215,7 +1247,7 @@ fn chip(id: ChipId, name: &str, action: u8, subtype: u8) -> ChipData {
         params: [0; 4],
         lockout: 0,
         extra_flags: ExtraChipFlags::default(),
-        lockon_mode: 0,
+        lockon_mode: None,
         damage: 0,
         library_number: id,
         library_index: id as u8,
@@ -1241,7 +1273,7 @@ fn sun_gun(id: ChipId, name: &str, level: u8, firing_ticks: u16) -> ChipData {
     let beam_look = if level < 3 { 0 } else { 1 };
     ChipData {
         beast_lockon: true,
-        lockon_mode: 1,
+        lockon_mode: lockon("cannon"),
         gun_del_sol: Some(GunDelSol {
             firing_ticks,
             beam: SunBeamLook { look: beam_look, palette: 0 },
@@ -1706,27 +1738,10 @@ fn rules() -> Rules {
                 if t < 64 { t * 4 } else if t < 192 { 512 - t * 4 } else { t * 4 - 1024 }
             })
             .collect(),
+        // (The modes are testdata/content/rules/lockon.luau's.)
         lockon: Lockon {
-            // Mode 1 next to the target with the column shifts; made-up
-            // modes for the Crosses' tests: beside the target or diagonally
-            // behind it (2), a panel or two in front of it (0xB, only two
-            // away in the far column), and the claw's (0xC); the rest stay.
-            modes: (0..=0xC)
-                .map(|mode| {
-                    let near = |offsets: Vec<PanelOffset>| LockonMode { mode, rule: LockonRule::Near, offsets, ..Default::default() };
-                    let off = |dx, dy| PanelOffset { dx, dy };
-                    match mode {
-                        1 => LockonMode { column_shifts: true, ..near(vec![off(-1, 0)]) },
-                        2 => near(vec![off(-1, 0), off(-1, 1)]),
-                        0xB => LockonMode { far_column_offsets: Some(vec![off(-2, 0)]), ..near(vec![off(-1, 0), off(-2, 0)]) },
-                        0xC => near(vec![off(-1, 0)]),
-                        _ => LockonMode { mode, rule: LockonRule::Stay, ..Default::default() },
-                    }
-                })
-                .collect(),
             column_shifts: vec![-1, -2],
             clear_path: [PanelCondition { require: 0, forbid: pflags::OCCUPIED }; 2],
-            charged_sword_modes: vec![1; 0x13],
         },
         berserk: BerserkRules {
             step,

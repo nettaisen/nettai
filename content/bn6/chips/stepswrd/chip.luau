@@ -2,10 +2,11 @@
 -- StepSwrd: a step two panels ahead, a slash on the column ahead, and back. (ProtoMan's own copy is
 -- protoman.luau.)
 
+local lockon = require("../../rules/lockon")
 local parts = require("../../lib/swords/parts")
 local regions = require("../../lib/regions")
 local slash = require("../../lib/swords/slash")
-local slashes = require("../../navis/00-megaman/forms/slashcross/slashes")
+local slashes = require("../../navis/megaman/forms/slashcross/slashes")
 
 return define.chip {
     id = "stepswrd",
@@ -17,8 +18,8 @@ return define.chip {
     flags = { "has_damage", "standard_library", "library" },
     library = { number = 80, index = 80, sort = 421 },
     slot_in_limit = 3,
-    -- The Beast rush, and its lock-on mode (a number until rules/lockon.luau).
-    beast = { lockon = 16 },
+    -- The Beast rush, and its lock-on mode (rules/lockon).
+    beast = { lockon = lockon.gundelex },
     action = slash.action {
         blade = parts.blades.sword,
         hit = { region = regions.wide, collision = parts.slashes_navis, hit_mod = 3 },
