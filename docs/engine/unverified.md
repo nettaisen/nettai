@@ -35,7 +35,7 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 
 | family | branch | why it was unreached | reachable | scenario and status |
 |---|---|---|---|---|
-| AntiNavi (the dimming service) | the turn, the bounce between two traps | scratch recordings were lost | yes | chips/0x0ba-antinavi/heatman, bounce (the ruleset agent's): verified |
+| AntiNavi (the dimming service) | the turn, the bounce between two traps | scratch recordings were lost | yes | chips/0x0ba-antinavi/heatman, bounce: verified |
 | AntiNavi | a chip that isn't a navi chip leaves the trap | no scenario | yes | chips/0x0ba-antinavi/not-a-navi: verified |
 | AntiNavi | the target has its own controller registered; AntiNavi's user deleted or without HP before the turn | needs a second dimming in the same turn, or a deletion inside one | hard | open |
 | Barriers (subtype 4) | ending an old visual (`sub_80E0DC0`) | no barrier raised over another | yes | chips/0x0b3-barr100/over-barrier: verified |
@@ -52,13 +52,13 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | Instruments | the tune played to its end | scenarios end first | yes | chips/0x092-fanfare/lifetime: verified |
 | Instruments | Fanfare's Beast Over test, the battle-over branches | no Beast Over, no KO with an instrument out | yes | open |
 | Instruments | a failed collision | pool full | unreachable | |
-| AirRaid (subtype 13) | the plane shot down, the battle-over branch, the bombs against a barrier or no body | the plane is never hit | yes | chips/0x068-airraid1/broken, ko, barrier, invisible: **differs** (subtype 13 isn't implemented; the dimming agent's) |
+| AirRaid (subtype 13) | the plane shot down, the battle-over branch, the bombs against a barrier or no body | the plane is never hit | yes | chips/0x068-airraid1/broken, ko, barrier, invisible: **differs** (subtype 13 isn't implemented: being ported) |
 | Sensor (subtype 28) | the pushed turret, the broken turret | the turret is never hit or pushed | yes | chips/0x071-sensor1/broken, pushed: verified |
 | Sensor | the laser's re-arming | one firing per scenario | yes | chips/0x071-sensor1/twice: verified |
 | Sensor | the battle-over branches | no KO | yes | chips/0x071-sensor1/ko: verified (the comparison now keeps a spark's garbage Z fraction after its laser is freed) |
 | Sensor | the scanner's blocked-by-object and edge branches, removal and absorption, failed collisions | | partly | open |
-| SumnBlk (subtype 36) | the whole navi (§9.2, §9.3) | no hole in front of the user | yes | chips/0x087-sumnblk1/hole-ahead, after-geddon, chips/0x089-sumnblk3/hole-ahead: **differs** (subtype 36 isn't implemented; the dimming agent's) |
-| ColorPt, DblPoint (subtype 27) | the bonus itself (080E66E0, 080E66EC, 080E66F6) | the next chip is none or has no damage | yes | chips/0x0c2-colorpt/bonus, chips/0x0c4-dblpoint/bonus, chips/0x062-lilbolr1/colorpt: **differs** (subtype 27 isn't implemented; the dimming agent's) |
+| SumnBlk (subtype 36) | the whole navi (§9.2, §9.3) | no hole in front of the user | yes | chips/0x087-sumnblk1/hole-ahead, after-geddon, chips/0x089-sumnblk3/hole-ahead: **differs** (subtype 36 isn't implemented: being ported) |
+| ColorPt, DblPoint (subtype 27) | the bonus itself (080E66E0, 080E66EC, 080E66F6) | the next chip is none or has no damage | yes | chips/0x0c2-colorpt/bonus, chips/0x0c4-dblpoint/bonus, chips/0x062-lilbolr1/colorpt: **differs** (subtype 27 isn't implemented: being ported) |
 | ColorPt | the special-source branch, a missing navi, `sub_800D53C` running off the field | no such user | unreachable | |
 
 ### Dimming chip effects (dimming-chip-effects.md)
@@ -86,7 +86,7 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | CircGun (subtype 19) | A to fire | no scenario presses A | yes | chips/0x08e-circgun/a-fires, a-fires-late: verified |
 | CircGun | a start column of the user's own panels, shots on non-solid panels | the timeout's place | yes | chips/0x08e-circgun/after-areagrab, holes: verified |
 | CircGun | Param3 1, a non-player first actor | no chip | unreachable | |
-| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: **differs** (subtype 18 isn't implemented; the dimming agent's) |
+| Otenko (subtype 18) | the bonus, breaking, pushes | the next chip never does damage | yes | chips/0x099-otenko/bonus, broken, pushed: **differs** (subtype 18 isn't implemented: being ported) |
 | BlzrdBal (subtype 21) | a non-solid thrower panel, the roller's battle-over end, three swallows | | yes | chips/0x0c7-blzrdbal/no-footing, ko, three-rocks: verified |
 | BlzrdBal | the excluded NameIDs, more than 4 hit objects | | hard | open |
 | Magnum (subtype 24) | A to fire, the cursor's later rows | no scenario presses A | yes | chips/0x08d-magnum/a-fires, a-fires-late: verified |
@@ -113,12 +113,12 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | Counter cut-ins | A during a dimming with a chip that doesn't dim next | | yes | chips/0x0b1-invisibl/cut-in-not-dimming, the `dimmed` template: verified |
 | Counter cut-ins | cut-ins with Full Synchro, anger or a dark chip | | yes | open |
 | Counter cut-ins | a failed controller spawn | pool full | unreachable | |
-| AntiRecv | the heal turned to damage, Roll's dimming taken over | scratch recordings were lost | yes | chips/0x0bd-antirecv/recov10, roll (the ruleset agent's): verified |
+| AntiRecv | the heal turned to damage, Roll's dimming taken over | scratch recordings were lost | yes | chips/0x0bd-antirecv/recov10, roll: verified |
 | AntiRecv | Roll's damage with the double-damage flag, a full effect pool | | hard / unreachable | open |
-| AntiDmg | the trap sprung: the stars thrown back | the lab never hits a trap's user | yes | chips/0x0bb-antidmg/sprung, sprung-side0, small-hit, turn-end: **differs** (the role `actions.anti_damage_counter` isn't filled; the dimming agent's); replaced: verified |
-| AntiSwrd | the trap sprung by a sword | | yes | chips/0x0bc-antiswrd/sprung: **differs** (`actions.anti_sword_counter`; the dimming agent's); not-a-sword: verified |
+| AntiDmg | the trap sprung: the stars thrown back | the lab never hits a trap's user | yes | chips/0x0bb-antidmg/sprung, sprung-side0, small-hit, turn-end: **differs** (the role `actions.anti_damage_counter` isn't filled: being ported); replaced: verified |
+| AntiSwrd | the trap sprung by a sword | | yes | chips/0x0bc-antiswrd/sprung: **differs** (`actions.anti_sword_counter`: being ported); not-a-sword: verified |
 | ElemTrap (§3.6.10) | the spring, the sparkles, the counterattack, the panel bursts | the lab never hits the trap with an element | yes | chips/0x0c5-elemtrap/sprung-fire, sprung-elec, null-hit: verified |
-| BodyGrd (PA 0x157) | the trap itself | recorded only as its recipe | yes | pa/0x157-bodygrd/sprung: **differs** (`actions.body_guard_counter`; the dimming agent's) |
+| BodyGrd (PA 0x157) | the trap itself | recorded only as its recipe | yes | pa/0x157-bodygrd/sprung: **differs** (`actions.body_guard_counter`: being ported) |
 | IceCube (0x17C) | its record | no folder holds it | yes (save edit) | chips/0x17c-icecube/hit, pushed, broken, melted: verified |
 | WhiCapsl (0x17E) | its dimming record | no folder can hold it (no codes: chip 0x185 instead) | unreachable | chips/0x17e-whicapsl/hit shows the 0x185: verified |
 | Invisibl | shots and swords through an invisible navi | | yes | chips/0x0b1-invisibl/shot-at, the `invisible` template: verified |
@@ -161,12 +161,12 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | Sonic booms (0x55) | SonicBom, SprSonic, Curse, Punisher as chips; the boom ending on an obstacle, piercing one, guarded, with the battle over | the variable swords' picks, reached at random only (Beast Over); no folder holds the records | yes (save edit) | chips/0x173-sonicbom/{hit, adjacent, miss, obstacle, guard, ko}, chips/0x177-sprsonic/{hit, adjacent, miss, obstacle}, chips/0x174-curse and chips/0x175-punisher/{hit, adjacent, miss}: verified |
 | Z Saver (0x5B) | everything, with the fourth slash's command | weapon 0x6E; no folder holds the record | yes (save edit) | chips/0x17d-zsaver/{hit, adjacent, miss, fourth-slash, command-late, command-split, ko}: verified |
 | Rapid buster (0x5D) | everything | weapon 0x39: no navi or form of a netbattle has it | unreachable | |
-| LilBoiler | the eruption | | yes | chips/0x062-lilbolr1/erupt-hits, chips/0x063-lilbolr2/erupt-lifetime (the shot-chip agent's): verified |
+| LilBoiler | the eruption | | yes | chips/0x062-lilbolr1/erupt-hits, chips/0x063-lilbolr2/erupt-lifetime: verified |
 | LilBoiler | a bonus (the port took the registry's side from it and stopped with an error for Atk+10) | no scenario gives it Atk+ | yes | chips/0x062-lilbolr1/atk10, atk10-twice, atk10-cross, atk10-cross-gregar, then-cross: verified (the boiler registers by its user's side whatever the bonus: shot-chips.md §18) |
 | LilBoiler | the registry side of a boiler thrown by side 1 | side 0 always throws it | yes | chips/0x062-lilbolr1/side1-then-fan, side1-own-fan: verified |
 | LilBoiler | the hole, AirShot at it, a RockCube after it | | yes | chips/0x062-lilbolr1/holes, pushed, replaced: verified |
 | LilBoiler | a removal request, absorption, blinking out | | partly | open |
-| VDoll | the curse | | yes | chips/0x096-vdoll/curse (the shot-chip agent's): verified |
+| VDoll | the curse | | yes | chips/0x096-vdoll/curse: verified |
 | VDoll | the lifetime's end, AirShot at it, its own side's hit | | yes | chips/0x096-vdoll/lifetime, pushed, own-hit: verified |
 | VDoll | absorption, blinking out | | partly | open |
 | The variable swords' picks (action 0x13 variants 9-11) | FtrSword, CrosSwrd, DblDream | reached at random only | yes (save edit, and the commands) | chips/0x172-ftrsword, chips/0x176-crosswrd, chips/0x178-dbldream/{hit, adjacent, miss}: verified |
@@ -178,7 +178,7 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 |---|---|---|---|---|
 | VarSwrd | every command sequence (LongSwrd, FtrSword, WideSwrd, LifeSrd, SonicBom), the timeout, a command broken off, wrong, slow, too slow, by side 1 (the mirrored sequences), in Beast Out | no scenario holds A and enters a command (the driver now can: `keys`) | yes | chips/0x052-varswrd/cmd-longswrd, cmd-ftrsword, cmd-wideswrd, cmd-lifesrd, cmd-sonicbom, cmd-timeout, cmd-broken-off, cmd-wrong, cmd-slow, cmd-too-slow, cmd-longswrd-side1, cmd-longswrd-far, cmd-sonicbom-far, cmd-lifesrd-beast: verified |
 | NeoVari | every command sequence (CrosSwrd, SprSonic, DblDream), the timeout | | yes | chips/0x053-neovari/cmd-crosswrd, cmd-sprsonic, cmd-dbldream, cmd-timeout, cmd-sprsonic-far: verified |
-| VarSwrd, NeoVari | the random pick; the charged sword (0x41) | Beast Over; SlashCross and the Beast's charge | yes | chips/0x052-varswrd/beast-over, chips/0x053-neovari/beast-over, beast-charged (others'): verified |
+| VarSwrd, NeoVari | the random pick; the charged sword (0x41) | Beast Over; SlashCross and the Beast's charge | yes | chips/0x052-varswrd/beast-over, chips/0x053-neovari/beast-over, beast-charged: verified |
 | MoonBld | the repeat swings | no trigger found in a netbattle | check | open |
 | CopyDmg | the time-up path; an obstacle as the target (NameIDs 0xCD..0xFF) | | yes | chips/0x0be-copydmg/time-up, on-rock, rock-hit: verified |
 | RlngLog | the log's stop and break; no ground under it | no shot meets a log | yes | chips/0x028-rlnglog1/shot, holes: verified |
@@ -193,7 +193,7 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | WindRack | variant ≠ 0, the gust's other spawners | no chip | unreachable | |
 | Needles, pulses, aura heads, thunder dolls | three or more enemies, looks 2 and 3, speed tables past 1, Param1 ≠ 0 | the viruses' and the AI's | unreachable | |
 | Shock wave | the virus variants 0..0xB | | unreachable | |
-| Link navi chips (action 0x0A) | HeatPres off solid ground, DElecSwd's stops, RSlash's turns, EDeletBm's cap, VolcChrg's panels, DripShwr's jump, ETomahwk's cap, RC Brakr's rockfall | one scenario per navi | yes | the link navi agent's |
+| Link navi chips (action 0x0A) | HeatPres off solid ground, DElecSwd's stops, RSlash's turns, EDeletBm's cap, VolcChrg's panels, DripShwr's jump, ETomahwk's cap, RC Brakr's rockfall | one scenario per navi | yes | open (action 0x0A is being ported) |
 
 ### Field objects (field-objects.md, objects-and-player.md)
 
