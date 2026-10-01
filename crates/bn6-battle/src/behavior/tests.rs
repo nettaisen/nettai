@@ -74,6 +74,7 @@ fn battles_run_the_content_scripts() {
             "elmntman/meteor",
             "elmntman/navi",
             "elmntman/vine",
+            "encased-bubble",
             "energbom/burst",
             "erase-drop",
             "erase-ray",
@@ -940,6 +941,69 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
     let hit = b.objects.in_order().find(|&h| b.kind_key(h) == "engine/hitbox").unwrap();
     let h = b.objects.get(hit);
     assert_eq!((h.panel, h.params, h.damage), (PanelPos { x: 5, y: 2 }, [1, 5, 5, 6], 60));
+}
+
+/// Encase the stage's rock (ice or a bubble, as the unlabeled request at
+/// 0x0800F830 would) and run it through `sub_801813A`'s 61 ticks: the rock
+/// it was, gone from the registry and destroyed, and what replaced it.
+fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
+    use crate::kinds::obstacle::{f2, obstacle_f1};
+    use crate::object::{Pool, flags};
+    const KINDS: [&str; 2] = ["rock", "encased-bubble"];
+    // The rock stage on the test pack's content, which fills the role.
+    let stats = crate::setup::NaviStats { support: Some(Default::default()), ..Default::default() };
+    let mut setup = testing::round_setup(testing::ROCK_BATTLE, stats);
+    setup.settings.effects = 0;
+    let content = std::sync::Arc::new(testing::with_test_pack());
+    setup.content = content.hash();
+    let mut b = Battle::new(setup, content);
+    b.spawn_actors();
+    b.round.flags |= crate::battle::battle_flags::FIGHTING;
+    let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
+    run_only(&mut b, &KINDS);
+    assert_eq!(b.field.objects.class_of(r), Some(0), "a stage rock takes a class-0 slot");
+    let c = b.objects.get(r).collision.unwrap();
+    b.collision.get_mut(c).f2 |= if ice { f2::ENCASED_IN_ICE } else { 0x2000 };
+    run_only(&mut b, &KINDS);
+    assert_eq!(b.collision.get(c).f2 & f2::ENCASED, 0);
+    let held = if ice { obstacle_f1::ENCASED_ICE } else { obstacle_f1::ENCASED_BUBBLE };
+    assert_ne!(b.collision.get(c).f1 & held, 0);
+    assert_eq!((b.objects.get(r).prevent_anim, b.objects.get(r).shake_timer), (4, 0x3C));
+    let mut hidden = 0;
+    for _ in 0..0x3C {
+        run_only(&mut b, &KINDS);
+        if b.objects.get(r).flags & flags::VISIBLE == 0 {
+            hidden += 1;
+        }
+    }
+    // Hidden (with a new effect) on the ticks whose count has bit 1 clear:
+    // 60 down to 1, half of them.
+    assert_eq!(hidden, 30);
+    assert_eq!(b.field.objects.class_of(r), None, "unregistered");
+    assert_eq!(b.objects.get(r).state, crate::kinds::common::Progress::DESTROY.state);
+    (b, r)
+}
+
+#[test]
+fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
+    let (mut b, r) = encase_rock(true);
+    let panel = b.objects.get(r).panel;
+    let block = b.objects.in_order().find(|&o| o != r && b.kind_key(o) == "rock").expect("the ice block");
+    // In the class the obstacle was in; once it has run, the ice variant
+    // (its name, element and HP).
+    assert_eq!(b.field.objects.class_of(block), Some(0));
+    run_only(&mut b, &["rock", "encased-bubble"]);
+    let o = b.objects.get(block);
+    assert_eq!((o.panel, o.name_id, o.element, o.hp), (panel, 0xD1, 2, 200));
+}
+
+#[test]
+fn an_obstacle_encased_in_a_bubble_becomes_the_bubble() {
+    let (b, r) = encase_rock(false);
+    let panel = b.objects.get(r).panel;
+    let bubble = b.objects.in_order().find(|&o| b.kind_key(o) == "encased-bubble").expect("the bubble");
+    let o = b.objects.get(bubble);
+    assert_eq!((o.panel, o.element, o.alliance), (panel, 2, b.objects.get(r).alliance));
 }
 
 // ---- The navi-changing chips (subtype 38) ----------------------------------------------------

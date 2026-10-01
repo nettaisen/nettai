@@ -722,9 +722,54 @@ fn bios_arctan2(x: i32, y: i32) -> u32 {
     r as u32 & 0xFFFF
 }
 
-/// `sub_801813A`: encased in ice or a bubble, then replaced.
-fn encased(_b: &mut Battle, _r: ObjectRef) {
-    panic!("encased obstacles (sub_801813A) are not implemented yet");
+/// How long an encased obstacle shows before it is replaced.
+const ENCASE_TICKS: u8 = 0x3C;
+/// The effect it flickers with (effect #0 look 0x42).
+const ENCASE_EFFECT: u8 = 0x42;
+
+/// `sub_801813A`, by PreventAnim (`off_801814C`): encased in ice or a
+/// bubble, it flickers for 60 ticks, then leaves the registry (and its
+/// side's wind) for what content's role `hooks.encased` puts on its panel
+/// (an ice block of its registry class, or the bubble), and goes.
+fn encased(b: &mut Battle, r: ObjectRef) {
+    match b.objects.get(r).prevent_anim {
+        // sub_8018154: ice or a bubble, remembered in f1.
+        0 => {
+            let ice = f2_of(b, r) & f2::ENCASED_IN_ICE != 0;
+            set_f1(b, r, if ice { obstacle_f1::ENCASED_ICE } else { obstacle_f1::ENCASED_BUBBLE });
+            clear_f2(b, r, f2::ENCASED);
+            b.objects.get_mut(r).shake_timer = ENCASE_TICKS;
+            let fp = b.objects.get(r).future_panel;
+            b.unreserve_panel(r, fp.x, fp.y);
+            set_region(b, r, 0);
+            b.objects.get_mut(r).prevent_anim = 4;
+        }
+        // sub_8018186: flicker (hidden, with a new effect, two ticks of
+        // every four); at the end, replaced.
+        4 => {
+            b.objects.get_mut(r).flags |= flags::VISIBLE;
+            if b.objects.get(r).shake_timer & 2 == 0 {
+                b.objects.get_mut(r).flags &= !flags::VISIBLE;
+                let pos = b.objects.get(r).pos;
+                crate::kinds::effect::spawn(b, pos, ENCASE_EFFECT, 0, 0, 0);
+            }
+            let o = b.objects.get_mut(r);
+            o.shake_timer = o.shake_timer.wrapping_sub(1);
+            if o.shake_timer != 0 {
+                return;
+            }
+            // sub_800F806 (0xFF when not registered), sub_800F656,
+            // sub_80E544C.
+            let class = b.field.objects.class_of(r);
+            unregister(b, r);
+            clear_wind(b, r);
+            let ice = f1_of(b, r) & obstacle_f1::ENCASED_ICE != 0;
+            let hook = b.content.defs.roles.hook(crate::content::HookRole::Encased);
+            crate::behavior::call_hook(b, hook, bn6_content_api::HookCall::RoleEncased { obstacle: r, ice, class });
+            common::set_progress(b, r, Progress::DESTROY);
+        }
+        step => panic!("sub_801813A: step {step:#x} reads past off_801814C"),
+    }
 }
 
 // ---- Shared actions -------------------------------------------------------
