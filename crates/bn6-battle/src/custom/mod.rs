@@ -14,10 +14,12 @@ pub mod builder;
 pub mod chatbox;
 pub mod folder;
 pub mod library;
+pub mod look;
 pub mod screen;
 
 pub use folder::{BattleFolder, FolderChip, SavedFolder};
 pub use library::Library;
+pub use look::{Drawn, ScreenLook};
 pub use screen::{Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
 use crate::battle::{Battle, CustomResult, battle_flags};
@@ -191,6 +193,8 @@ pub struct Context<'a> {
     pub per_player_gauges: bool,
     /// Battle effects 0x200000 (random battles).
     pub random_battle: bool,
+    /// A netbattle's last turns (`sub_800A97A`; presentation).
+    pub late_turns: bool,
     /// The tick, and the link's latency: a result sent now arrives
     /// `50 + link_delay` ticks later (50 words, one a tick).
     pub now: u32,
@@ -213,6 +217,7 @@ impl Side {
             regular_pending,
             per_player_gauges: ctx.per_player_gauges,
             random_battle: ctx.random_battle,
+            late_turns: ctx.late_turns,
         }
     }
 
@@ -353,6 +358,7 @@ impl Battle {
             turn: self.round.turn,
             per_player_gauges: self.round.flags & battle_flags::PER_PLAYER_GAUGES != 0,
             random_battle: self.setup.settings.effects & effects::RANDOM != 0,
+            late_turns: self.late_turns(),
             now: self.round.ticks,
             link_delay: self.link.delay,
         }
