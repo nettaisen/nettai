@@ -602,6 +602,18 @@ impl UserData for Object {
             Ok((p.x, p.y))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
+        methods.add_method("wear_navi_image", |_, this, user: mlua::UserDataRef<Object>| {
+            with(|api, _| api.wear_navi_image(this.0, user.0).map_err(api_error))
+        });
+        methods.add_method("wear_megaman_image", |_, this, form: LuaValue| {
+            let form = u8_arg(form, "form")?;
+            with(|api, _| api.wear_megaman_image(this.0, form).map_err(api_error))
+        });
+        methods.add_method("navi_image_parts", |_, this, on: bool| with(|api, _| Ok(api.navi_image_parts(this.0, on))));
+        methods.add_method("wear_junk_look", |_, this, look: LuaValue| {
+            let look = u16_arg(look, "junk look")?;
+            with(|api, _| api.wear_junk_look(this.0, look).map_err(api_error))
+        });
         methods.add_method("heal", |_, this, (amount, anti_recovery): (LuaValue, bool)| {
             let amount = u16_arg(amount, "HP")?;
             with(|api, _| Ok(api.heal(this.0, amount, anti_recovery)))
@@ -1157,6 +1169,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         };
         with(|api, _| Ok(api.set_damage_carry(side, rec)))
     });
+    lib_fn!(lua, t, "loop_register", |_, ()| with(|api, _| Ok(api.loop_register())));
     lib_fn!(lua, t, "navi_record", |lua, name_id: LuaValue| {
         let name_id = u16_arg(name_id, "NameID")?;
         let Some(r) = with(|api, _| Ok(api.navi_record(name_id)))? else { return Ok(LuaValue::Nil) };
@@ -1572,6 +1585,7 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "release_tracking", |_, me: Me| with(|api, _| Ok(api.obstacle_release_tracking(me.0))));
     lib_fn!(lua, t, "absorb_all", |_, absorber: Me| with(|api, _| Ok(api.obstacle_absorb_all(absorber.0))));
     lib_fn!(lua, t, "present", |_, o: Me| with(|api, _| Ok(api.obstacle_present(o.0))));
+    lib_fn!(lua, t, "junk_look", |_, o: Me| with(|api, _| Ok(api.junk_look(o.0))));
     lib_fn!(lua, t, "swallowable", |_, o: Me| with(|api, _| Ok(api.obstacle_swallowable(o.0))));
     for &r in ObstacleRequest::ALL {
         t.set(

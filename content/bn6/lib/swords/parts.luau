@@ -67,17 +67,24 @@ function parts.blade_anim(me: Object): number
         if ai ~= 0 then
             return if ai == 0x13 then 0x0E else ai
         end
-        local form = battle.navi(me.alliance).form
-        if form < 0x0B then
-            return 0
-        elseif form == 0x0C then
-            return 0x0D
-        elseif form == 0x17 or form <= 0x11 then
-            return 0x0C
-        end
-        return 0x0D
+        return parts.base_blade_anim(me.alliance)
     end
     return 0
+end
+
+-- The same for MegaMan's base AI, by side `side`'s form: 0, or a Beast
+-- form's (0xC for Gregar's, 0xD for Falzar's). (CrosOver's MegaMan, whose
+-- user may be anyone, picks his blade as MegaMan's base AI.)
+function parts.base_blade_anim(side: number): number
+    local form = battle.navi(side).form
+    if form < 0x0B then
+        return 0
+    elseif form == 0x0C then
+        return 0x0D
+    elseif form == 0x17 or form <= 0x11 then
+        return 0x0C
+    end
+    return 0x0D
 end
 
 -- `sub_80EBB78`: added to the blade's palette: 0xC for navi AI 0x12's
