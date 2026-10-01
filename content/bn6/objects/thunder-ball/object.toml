@@ -1,6 +1,0 @@
-# The thunder ball (attack object #0x2A, `sub_80C93CC`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x2A
-script = "thunder_ball.luau"
