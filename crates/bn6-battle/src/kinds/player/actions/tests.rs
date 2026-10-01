@@ -134,7 +134,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     b.hands[0] = hand;
     let mut t = 0;
     tick(&mut b, p0, p1, keys::A);
-    assert_eq!(act(&b, p0), 0x37);
+    assert_eq!(runs(&b, p0), "gundels3/action");
     assert_eq!(b.hands[0].cursor, 1);
     assert_eq!(ai_mut(&mut b, p0).requests & request::CHIP, 0);
 
@@ -173,7 +173,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     // 11 ticks later: back to idle; the gun ends itself and is gone a
     // tick later.
     run_to(&mut b, p, &mut t, 18 + firing, 0);
-    assert_eq!(act(&b, p0), 0x37);
+    assert_eq!(runs(&b, p0), "gundels3/action");
     run_to(&mut b, p, &mut t, 19 + firing, 0);
     assert_eq!(act(&b, p0), 8);
     assert_eq!(b.objects.get(gun).state, state::DESTROY);
@@ -253,7 +253,7 @@ fn find_kind(b: &Battle, name: &str) -> Option<ObjectRef> {
 
 /// Give side `side` the chip `chip` as the next in its hand, with its
 /// damage.
-fn hand_with(b: &mut Battle, side: usize, chip: crate::content::ChipId) {
+fn hand_with(b: &mut Battle, side: usize, chip: &str) {
     let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(testing::chip_in(&b.content, chip));
     hand.damage[0] = b.content.chip(testing::chip_in(&b.content, chip)).damage;
@@ -263,7 +263,7 @@ fn hand_with(b: &mut Battle, side: usize, chip: crate::content::ChipId) {
 #[test]
 fn a_recovery_chip_heals_its_hp_in_one_tick() {
     let (mut b, p0, p1) = fight();
-    let recov = testing::defined_chip(testing::RECOV_50);
+    let recov = testing::chip_handle(testing::RECOV_50);
     b.objects.get_mut(p0).hp = 500;
     use_chip_handle(&mut b, p0, p1, recov);
     assert_eq!(runs(&b, p0), "recov50/action");
@@ -290,7 +290,7 @@ fn a_reflector_guards_for_its_ticks_then_its_shield_fades() {
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
     let mut t = 0;
-    use_chip_handle(&mut b, p0, p1, testing::defined_chip(testing::REFLECTOR_1));
+    use_chip_handle(&mut b, p0, p1, testing::chip_handle(testing::REFLECTOR_1));
     assert_eq!(runs(&b, p0), "rflectr1/action");
     // Tick 1: the shield, right after the navi at its attach point 6, and
     // the guard up.
@@ -322,7 +322,7 @@ fn a_reflector_sends_the_first_blocked_hit_back_along_the_row() {
     tick(&mut b, p0, p1, keys::RIGHT);
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
-    let reflector = testing::defined_chip(testing::REFLECTOR_1);
+    let reflector = testing::chip_handle(testing::REFLECTOR_1);
     let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(reflector);
     hand.damage[0] = b.content.chip(reflector).damage;
@@ -359,7 +359,7 @@ fn a_guard_blocks_gun_del_sol_without_a_wave() {
     tick(&mut b, p0, p1, keys::RIGHT);
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 3, y: 2 });
-    let reflector = testing::defined_chip(testing::REFLECTOR_1);
+    let reflector = testing::chip_handle(testing::REFLECTOR_1);
     let mut hand = ChipHand::empty(&b.content);
     hand.ids[0] = Some(reflector);
     hand.damage[0] = b.content.chip(reflector).damage;
@@ -372,7 +372,7 @@ fn a_guard_blocks_gun_del_sol_without_a_wave() {
         b.run_objects();
     };
     both(&mut b, [keys::A, keys::A]);
-    assert_eq!((runs(&b, p0).as_str(), act(&b, p1)), ("rflectr1/action", 0x37));
+    assert_eq!((runs(&b, p0).as_str(), runs(&b, p1).as_str()), ("rflectr1/action", "gundels3/action"));
     // The guard blocks the beam's hits (no drain) while it is up, but a
     // drain (collision type `drain`, the game's row 0x2C) doesn't tell the
     // guard where it came from: no wave goes back.
@@ -386,7 +386,7 @@ fn a_guard_blocks_gun_del_sol_without_a_wave() {
 
 /// Side 0 uses `chip` (the first in its hand) from idle: the tick the
 /// action starts.
-fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: crate::content::ChipId) {
+fn use_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: &str) {
     let chip = testing::chip_in(&b.content, chip);
     use_chip_handle(b, p0, p1, chip);
 }
@@ -417,7 +417,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     let p = [p0, p1];
     let mut t = 0;
     use_chip(&mut b, p0, p1, testing::STEP_BLADE);
-    assert_eq!(act(&b, p0), 0x13);
+    assert_eq!(runs(&b, p0), "stepswrd/action");
 
     // Tick 1: an afterimage where it stood, and it is two panels ahead,
     // its own panel held for the way back.
@@ -460,7 +460,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     assert_eq!(b.field.panel(2, 2).unwrap().reserver, None);
     // Tick 31: idle.
     run_to(&mut b, p, &mut t, 30, 0);
-    assert_eq!(act(&b, p0), 0x13);
+    assert_eq!(runs(&b, p0), "stepswrd/action");
     run_to(&mut b, p, &mut t, 31, 0);
     assert_eq!(act(&b, p0), 8);
     assert_eq!(b.objects.get(p0).related[0], None);
@@ -514,7 +514,7 @@ fn a_sword_without_a_target_ahead_swings_at_nothing() {
     assert_eq!(b.objects.get(p1).hp, 1000);
     // No way back to walk: idle on tick 30.
     run_to(&mut b, p, &mut t, 29, 0);
-    assert_eq!(act(&b, p0), 0x13);
+    assert_eq!(runs(&b, p0), "wideswrd/action");
     run_to(&mut b, p, &mut t, 30, 0);
     assert_eq!(act(&b, p0), 8);
 }
@@ -653,7 +653,7 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     b.collision.get_mut(c).status_timers[crate::collision::timer::PARALYZE] = 100;
     let mut t = 0;
     use_chip(&mut b, p0, p1, testing::STUN_BLADE);
-    assert_eq!(act(&b, p0), 0x49);
+    assert_eq!(runs(&b, p0), "assnswrd/action");
     // The slashes land on tick 10, on the target's own column.
     run_to(&mut b, p, &mut t, 10, 0);
     // The slash (the swords' wide slash, in AssnSwrd's colours: palette
@@ -668,7 +668,7 @@ fn a_stun_strike_slashes_a_paralyzed_navi_where_it_stands() {
     assert_eq!(b.objects.get(p1).hp, 920);
     // Idle on tick 28.
     run_to(&mut b, p, &mut t, 27, 0);
-    assert_eq!(act(&b, p0), 0x49);
+    assert_eq!(runs(&b, p0), "assnswrd/action");
     run_to(&mut b, p, &mut t, 28, 0);
     assert_eq!(act(&b, p0), 8);
 }
@@ -1189,19 +1189,21 @@ fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
     start_weapon_as(&mut b, p0, "slashcross/charge", 2);
     let (own, dash) = charged_slash(&b, p0);
     assert!(!dash);
-    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, testing::lockon("widesht"));
+    let widesht = b.content.defs.lockon_by_key("widesht");
+    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, widesht);
 
     // A chip content defines: StepSwrd's slash names its charged slash (the
     // wide sword's) and steps, so the charge dashes two panels in first.
     let (mut b, p0, p1) = fight();
     let p = [p0, p1];
-    let stepswrd = testing::defined_chip("stepswrd");
+    let stepswrd = testing::chip_handle("stepswrd");
     use_charged_chip(&mut b, p0, Some("megaman/slash-a-charge"), stepswrd);
     assert_eq!(runs(&b, p0), "slashcross/charge/action");
     assert_eq!(ai_mut(&mut b, p0).attack.chip, Some(stepswrd));
     let (wide, dash) = charged_slash(&b, p0);
     assert!(dash && wide != own);
-    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, testing::lockon("widesht"));
+    let widesht = b.content.defs.lockon_by_key("widesht");
+    assert_eq!(ai_mut(&mut b, p0).attack.rush_lockon, widesht);
     // The chip's damage (160), not the charged shot's.
     assert_eq!(ai_mut(&mut b, p0).attack.damage, 160);
     let mut t = 0;
@@ -1226,8 +1228,8 @@ fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
     let o = b.objects.get(p0);
     assert_eq!((act(&b, p0), o.panel), (8, PanelPos { x: 2, y: 2 }));
 
-    // A chip that is still a record has no definition to ask: its subtype
-    // (1, the wide sword's row) and first parameter (the step) say.
+    // The test blades run StepSwrd's and WideSwrd's actions, whose slashes
+    // say: the wide slash, after a dash for the step sword's.
     let (mut b, p0, _) = fight();
     use_charged_chip(&mut b, p0, Some("megaman/slash-a-charge"), testing::chip_handle(testing::STEP_BLADE));
     assert_eq!(runs(&b, p0), "slashcross/charge/action");
@@ -1695,7 +1697,7 @@ fn absorbing_and_the_claw_roll_back() {
 
 /// Use the instant chip `chip` from side 0's hand; returns once its
 /// effect ran (the tick after the chip starts).
-fn use_instant_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: u16) {
+fn use_instant_chip(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, chip: &str) {
     let chip = testing::chip_in(&b.content, chip);
     use_instant_chip_handle(b, p0, p1, chip);
 }
@@ -1795,16 +1797,16 @@ fn count_kind(b: &Battle, name: &str) -> usize {
 fn spawning_instant_chips_run_their_objects_and_roll_back() {
     // Each effect's object appears the tick the chip's effect runs, plays
     // out, rolls back at any point, and is gone within 200 ticks.
-    // BN6's definitions, and the numbered chips that reach the records'
-    // shim (FireHit's) or a v1 module (FlmHook's).
+    // BN6's definitions, and the test chips that compose FireHit's and
+    // FlmHook's effects.
     let chips = [
-        (testing::defined_chip(testing::BOOMER), "boomerang"),
-        (testing::defined_chip(testing::LANCE), "lance/lance"),
+        (testing::chip_handle(testing::BOOMER), "boomerang"),
+        (testing::chip_handle(testing::LANCE), "lance/lance"),
         (testing::chip_handle(testing::FIST), "firehit/fist"),
-        (testing::defined_chip(testing::SAND_WORM), "sandwrm/worm"),
+        (testing::chip_handle(testing::SAND_WORM), "sandwrm/worm"),
         (testing::chip_handle(testing::FLAME_HOOK), "flmhook/hook"),
-        (testing::defined_chip(testing::JUSTICE_ONE), "justcone/strike"),
-        (testing::defined_chip(testing::GOLEM_HIT), "golmhit/golem"),
+        (testing::chip_handle(testing::JUSTICE_ONE), "justcone/strike"),
+        (testing::chip_handle(testing::GOLEM_HIT), "golmhit/golem"),
     ];
     for (chip, name) in chips {
         let (mut b, p0, p1) = fight();
@@ -1837,7 +1839,7 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
 #[test]
 fn lances_thrust_from_the_far_column() {
     let (mut b, p0, p1) = fight();
-    let lance = testing::defined_chip(testing::LANCE);
+    let lance = testing::chip_handle(testing::LANCE);
     use_instant_chip_handle(&mut b, p0, p1, lance);
     // Three lances on column 6, one per row, 64 pixels out and one 8-pixel
     // step back already (the init runs the first tick).
@@ -1918,7 +1920,7 @@ fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: Option<&str>, chip: 
 fn a_charged_chip_with_a_bonus_routine_is_used_charged() {
     // An A-charge routine that is the chip's charged use (ElecCross's).
     let (mut b, p0, _) = fight();
-    let buster_up = testing::defined_chip(testing::BUSTER_UP);
+    let buster_up = testing::chip_handle(testing::BUSTER_UP);
     use_charged_chip(&mut b, p0, Some("eleccross/a-charge"), buster_up);
     assert_eq!(act(&b, p0), 0x1C);
     assert_eq!(ai_mut(&mut b, p0).attack.charged, 1);
@@ -2095,50 +2097,6 @@ fn chips_of_a_series_run_their_own_actions() {
     assert_rolls_back(&mut b, [p0, p1], 3, 0);
     let second = ticks_in(&mut b, p0, p1, two) + 3;
     assert_eq!(second - first, 3, "Ticker2 stands 9 ticks to Ticker1's 6");
-}
-
-#[test]
-fn a_legacy_marker_gives_a_definitions_record_its_bytes() {
-    // The transitional marker: what reads a chip's subtype and parameters
-    // besides its own action (SlashCross's charged slash reads a sword's)
-    // finds them in the attack, from the record.
-    let (mut b, p0, p1) = fight_on_test_pack();
-    let defs = &b.content.defs;
-    let [ticker1, ticker2] = [testing::TICKER_1, testing::TICKER_2].map(|key| defs.chip_by_key(key).unwrap());
-    let bytes = |b: &Battle, h| {
-        let c = b.content.chip(h);
-        (c.subtype, c.params)
-    };
-    assert_eq!(bytes(&b, ticker1), (0, [0; 4]));
-    assert_eq!(bytes(&b, ticker2), (7, [1, 2, 0, 0]));
-    use_chip_handle(&mut b, p0, p1, ticker2);
-    let a = &ai_mut(&mut b, p0).attack;
-    assert_eq!((a.variant, a.params), (7, [1, 2, 0, 0]));
-}
-
-#[test]
-fn a_numbered_definition_runs_its_own_action() {
-    // A definition whose legacy marker gives its number is the chip that
-    // number names (recipes, the ruleset's tables), with the marker's
-    // bytes in its record; its use is still its own action.
-    let (mut b, p0, p1) = fight_on_test_pack();
-    let defs = &b.content.defs;
-    let [ticker1, ticker4] = [testing::TICKER_1, testing::TICKER_4].map(|key| defs.chip_by_key(key).unwrap());
-    assert_eq!(b.content.chip_numbered(0x1F0), Some(ticker4));
-    assert_eq!(b.content.chip_number(ticker4), Some(0x1F0));
-    let record = b.content.chip(ticker4);
-    assert_eq!((record.action, record.subtype), (0x70, 3));
-    let [one, four] = [ticker1, ticker4].map(|h| match defs.chip(h).usage {
-        crate::content::ChipUsage::Action(h) => h,
-        u => panic!("{u:?}"),
-    });
-    assert_eq!((defs.action(four).key.as_str(), defs.action(four).number), ("test/ticker4/action", None));
-    use_chip_handle(&mut b, p0, p1, ticker1);
-    let first = ticks_in(&mut b, p0, p1, one);
-    let (mut b, p0, p1) = fight_on_test_pack();
-    use_chip_handle(&mut b, p0, p1, ticker4);
-    assert_eq!(act(&b, p0), super::super::CONTENT_ACTION);
-    assert_eq!(first - ticks_in(&mut b, p0, p1, four), 2, "Ticker4 stands 4 ticks to Ticker1's 6");
 }
 
 // ---- Content model v2: the v2 API (step 4) ---------------------------------------------------

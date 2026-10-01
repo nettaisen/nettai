@@ -5,7 +5,7 @@
 local buster = require("../megaman/weapons/buster/weapon")
 local tengu_wind = require("../megaman/weapons/tengu-wind/weapon")
 local charge = require("./charge")
-local tenguman = require("./record")
+local tenguman = require("./chip")
 
 return define.navi {
     id = "tenguman",

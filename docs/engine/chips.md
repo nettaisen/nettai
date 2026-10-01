@@ -201,20 +201,20 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
 3. Two actions are generic "call a spawner indexed by subtype" handlers:
    - **0x15** `sub_80EBD9C` (0x080EBD9C), dimming chips. It calls **`off_802CCB4[av[3]]`** (0x0802CCB4, 42
      entries; slots 34, 35, 39, 40 are NULL). Chips 0x138 Gregar and 0x139 Falzar point at NULL slots 34/35. In the
-     US ROM using them crashes the game, so the port can treat them as unsupported. The JP ROM would be needed to
-     define real behaviour; that is out of scope.
+     US ROM using them crashes the game, so the port can treat them as unsupported: their definitions' `dimming`
+     hooks stop the battle saying so (lib/unusable, as HackJack's and Django's `navi` hooks do for
+     `off_802CD5C`'s null entries 18 and 19). The JP ROM would be needed to define real behaviour; that is out of
+     scope.
    - **0x1B** `sub_80EC350` (0x080EC350), navi chips. It spawns T4 object 0x10 via `sub_80E192C`. That controller
      later calls **`off_802CD5C[subtype]`** (0x0802CD5C, 29 entries).
 4. Action **0x1C** `sub_80EC39C` (0x080EC39C) is the "instant" handler. It calls `off_80EC3F0[av[3]]` once and exits
    (subtype 0x14, TenguCross's B+Back, waits 8 more ticks). It is used by 54 chips: the MegaBuster pseudo-chip 0,
    Atk+/Navi+ left unfolded, FullCust, Boomer, Lance, FireHit, the error chip 0x185, and others. `off_80EC3F0` has 23
    entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are content's: a chip definition's
-   `instant` hook, or for a record the chips still keep (§12 of content-model-v2.md) the `instant_chip` its
-   subtype's shim module gives, or a weapon's `instant_chip`. 0 BeastOut `sub_80104E0` and 3 the plus chips
-   `sub_8010488` (lib/instant/plus, with their sparkle, effect #0x14, objects/rising-bubble; the records' shims
-   chips/13f-beastout and chips/0c0-atk-10), 1 the boomerang (objects/boomerang, chips/boomer), 4 Lance
-   (chips/lance), 5 FullCust `sub_800AF34` (chips/fullcust), 8 FireHit (chips/firehit, the records' shim
-   chips/06b-firehit1), 10 BusterUp `sub_8010820` (chips/busterup), 12 SandWrm (chips/sandwrm), 13 SyncTrgr
+   `instant` hook, or a weapon's `instant`. 0 BeastOut `sub_80104E0` and 3 the plus chips
+   `sub_8010488` (lib/instant/plus, with their sparkle, effect #0x14, objects/rising-bubble), 1 the boomerang
+   (objects/boomerang, chips/boomer), 4 Lance
+   (chips/lance), 5 FullCust `sub_800AF34` (chips/fullcust), 8 FireHit (chips/firehit), 10 BusterUp `sub_8010820` (chips/busterup), 12 SandWrm (chips/sandwrm), 13 SyncTrgr
    `sub_80EC44C` (chips/synctrgr), 15 ColForce (chips/colforce), 19 JustcOne (chips/justcone), 21 GolmHit
    (chips/golmhit), 22 ColArmy (chips/colarmy). Subtypes 2
    (`sub_8010474`, invisibility), 6 (`sub_801050C`, repairs the side's obstacles), 9 (`sub_8015AA6`, an
@@ -971,8 +971,8 @@ Representative handlers, all code-derived. Frame counts assume the attack is not
 |---|---|---|
 | Cannon/HiCannon/M-Cannon (0x14 → `sub_80EBC0E`) | 33 | f1: anim 8, counter time, arm (Params `sub_80EBD68()<<8 \| byte_80EBD2C[av3]`), flag. **f16** (timer 0xF): sound 0xAE, then `sub_80C4FFE(x+front, y, r2=av+6, r3=0x180000, r4=byte_80EBD34[av3], r6=av.u32[8]+av.u16[6])` → T3 type 0 shot (descriptor 1). GigaCan (variants 4..6) leaves two afterimages at timer 8. f30: release arm, anim 7, timer 3. **f33**: exit. The full spec, with ticks counted from the handler's first run: shot-chips.md §2. |
 | Vulcan1..3/SuprVulc (0x17 → `sub_80EBF10`) | 36 for Vulcan1 | f1: anim 0xA, arm Params 0xD into `ai+0x68`. f3: shots `av+0x12 = dword_80EBFEC[av3]` = {3,4,5,10}; a shot every 11 frames from f3 (Vulcan1: f3, f14, f25). **Each shot draws `GetPositiveSignedRNG2() & 3`** to pick Z from {8,0x10,0x18,0x20}<<16 (visual height only, but it advances RNG2). Each shot calls `sub_80C6ADA(x+front, y, av+2, Z, av.u32[0xC], av.u32[8]+av.u16[6])` → T3 0x12. Then a 1-frame recovery init, 10 more frames, and exit. The full spec and the bullet: shot-chips.md §4. |
-| Sword family (0x13 → `sub_80EB776`; the pack's chips/047-sword) | 30 | Phase 0 returns at once (or does a step-sword advance if `params` byte 0 ≠ 0: `sub_8015B00` wants the panel two ahead on the field (flag 0x10000) with no body; the navi leaves a T4#0x28 afterimage and moves there, holding its own panel reserved (not in a Beast form or with the special-source byte set); with no such panel, anim 4 and straight to the step back). Phase 1 sets hits = 1 (2 when `av3 == 0xB`). f3: anim 5, `sub_8011450`, sound 0xB0 (0xCE for variants 5, 6, 0xB), the blade (attachment `byte_80EBB64[av3]`, anim by form `sub_80EBAE8`), timer 0x15. A step sword leaves two more afterimages at f8 (itself, and the blade's sprite). **f12**: `object_spawnCollisionRegion(x+front, y, av+2, 0, r4=byte_80EBA18[av3], r6=av.u32[8]+av.u16[6], r7=off_80EBA00[0][av3])` (CrosSwrd, variant 0xA, adds a region-1 one on the same panel) plus the slash, T4#0 `byte_80EBAD8[av3]` at 16 px (palette variant − 0xB for 0xC..0xF). f24 ends the swing (DblDream swings again). A step sword steps back once its animation ends (`sub_80EBB98`). f25: recovery (timer 5). f30: exit. The per-variant tables are each chip's data (`sword`). **Trace-checked** (chip lab: every Sword, WideSwrd, LongSwrd, blade, elemental sword, StepSwrd and Muramasa scenario that reaches it). Unverified: DblDream's second swing, CrosSwrd's second hit, FtrSword, LifeSrd and DrkSword (their scenarios stop earlier), the step with no panel to step to, in a Beast form or with the special-source byte, and the turned-round step (AIAttackVars+0x34, which no player action sets). |
-| MchnSwrd/ElemSwrd/AssnSwrd (0x49 → `sub_80EEB4C`; the pack's chips/056-mchnswrd) | 28 | f1: counter time, anim 5, sound 0xB0, the blade, timer 0x15. **f10**: for each opposing alive actor: a region-4 hit (0x0705FF04, hit modifier 3) and T4#0 0x16 (flip = its side, palette variant + 7) on its panel if variant ≠ 1 and it is paralyzed (CollisionData+0x1C), or variant ≠ 0 and its panel has flags 0x1C00 (grass, ice, volcano). f23: recovery (timer 5). f28: exit. The hit is verified by `chips/0x056-mchnswrd/paralyzed` (a paralyzed navi) and by ElemSwrd's and AssnSwrd's `counter-hit` on a grass stage. |
+| Sword family (0x13 → `sub_80EB776`; lib/swords/slash, the sword chips) | 30 | Phase 0 returns at once (or does a step-sword advance if `params` byte 0 ≠ 0: `sub_8015B00` wants the panel two ahead on the field (flag 0x10000) with no body; the navi leaves a T4#0x28 afterimage and moves there, holding its own panel reserved (not in a Beast form or with the special-source byte set); with no such panel, anim 4 and straight to the step back). Phase 1 sets hits = 1 (2 when `av3 == 0xB`). f3: anim 5, `sub_8011450`, sound 0xB0 (0xCE for variants 5, 6, 0xB), the blade (attachment `byte_80EBB64[av3]`, anim by form `sub_80EBAE8`), timer 0x15. A step sword leaves two more afterimages at f8 (itself, and the blade's sprite). **f12**: `object_spawnCollisionRegion(x+front, y, av+2, 0, r4=byte_80EBA18[av3], r6=av.u32[8]+av.u16[6], r7=off_80EBA00[0][av3])` (CrosSwrd, variant 0xA, adds a region-1 one on the same panel) plus the slash, T4#0 `byte_80EBAD8[av3]` at 16 px (palette variant − 0xB for 0xC..0xF). f24 ends the swing (DblDream swings again). A step sword steps back once its animation ends (`sub_80EBB98`). f25: recovery (timer 5). f30: exit. The per-variant tables are each chip's data (`sword`). **Trace-checked** (chip lab: every Sword, WideSwrd, LongSwrd, blade, elemental sword, StepSwrd and Muramasa scenario that reaches it). Unverified: DblDream's second swing, CrosSwrd's second hit, FtrSword, LifeSrd and DrkSword (their scenarios stop earlier), the step with no panel to step to, in a Beast form or with the special-source byte, and the turned-round step (AIAttackVars+0x34, which no player action sets). |
+| MchnSwrd/ElemSwrd/AssnSwrd (0x49 → `sub_80EEB4C`; lib/swords/strike, chips/mchnswrd, elemswrd, assnswrd) | 28 | f1: counter time, anim 5, sound 0xB0, the blade, timer 0x15. **f10**: for each opposing alive actor: a region-4 hit (0x0705FF04, hit modifier 3) and T4#0 0x16 (flip = its side, palette variant + 7) on its panel if variant ≠ 1 and it is paralyzed (CollisionData+0x1C), or variant ≠ 0 and its panel has flags 0x1C00 (grass, ice, volcano). f23: recovery (timer 5). f28: exit. The hit is verified by `chips/0x056-mchnswrd/paralyzed` (a paralyzed navi) and by ElemSwrd's and AssnSwrd's `counter-hit` on a grass stage. |
 | Instant (0x1C → `sub_80EC39C`) | 1 | `off_80EC3F0[av3](panelX, panelY, av+2, obj.Z, av.u32[0xC], av.u32[8] + (u8)av[6])`, then exit in the same frame (`av3 == 0x14` waits 8 frames). **Only the low byte of the bonus is added.** |
 | Dimming chips (0x15 → `sub_80EBD9C`) | whole dimming | §3.6 |
 | Navi chips (0x1B → `sub_80EC350`) | 1 | `sub_80E192C(panelX, panelY, av+2, av3, av.u32[0xC], av.u32[8], chip \| av6<<16)` spawns T4 0x10 (summon controller → `off_802CD5C[subtype]`). Registers the dimming exactly as 0x15, then exits **in the same frame**. |
@@ -1625,7 +1625,7 @@ off-field and not-solid exits.
 
 ### 3.9 The bombs and seeds (action 0x12, `sub_80EB628`)
 
-Content: chips/036-minibomb/chip.luau (the action; the other chips name it), objects/bomb (T3#8), objects/bomb-slash
+Content: lib/bombs (throw, bomb, seed, slash) and the bomb chips (chips/minibomb, ...), objects/bomb (T3#8), objects/bomb-slash
 (T3#0xA), objects/energy-burst (T3#0x11), objects/seed (T3#0x4F), objects/flash-bomb (T3#0xA4), objects/bug-bomb
 (T3#0xA5), objects/black-bomb (T3#0x4A), objects/rising-bubble (T4#0x14), objects/panel-bursts (T4#0x24), lib/region.luau
 (`sub_801BD3C`, `sub_80CE468`, `sub_80CE424`), lib/trajectory.luau (`sub_8001330`, `sub_800120E`, `sub_80011A0`,
@@ -1848,7 +1848,7 @@ store). All match, the steering too (a scratch scenario holding B); unverified: 
 #### 3.6.25 GroundMan (navi chip subtype 10, T1 0x17)
 
 Chips 0x0FB GrndMan, 0x0FC EX, 0x0FD SP (params 0x20010800, …03, …04: nothing he runs reads them). Content:
-chips/grndman (navi, drill, rock), through chips/0fb-grndman.
+chips/grndman (navi, drill, rock; the chips, chips.luau).
 
 **GroundMan, T1 0x17 (`sub_80BBB98`)**, spawned by `sub_80BBDE8` (`off_802CD5C[10]`) like ElmntMan: PanelX/Y,
 element, the user in RelatedObject1Ptr, the user's side and flip, the damage word, the controller's flag pointer in
@@ -1929,7 +1929,7 @@ leave.
 #### 3.6.26 DustMan (navi chip subtype 11, T1 0x18)
 
 Chips 0x0FE DustMan, 0x0FF EX, 0x100 SP (Param1 0, 0, 4: overwritten). Content: chips/dustman (navi, junk),
-through chips/0fe-dustman; the junk ball is DustCross's (navis/megaman/forms/dustcross/junk_ball).
+with the chips (chips.luau); the junk ball is DustCross's (navis/megaman/forms/dustcross/junk_ball).
 
 **DustMan, T1 0x18 (`sub_80BBF0C`)**, spawned by `sub_80BC0DA` (`off_802CD5C[11]`) like GroundMan. Init
 (`sub_80BBF30`): on his panel with Z's whole part 0 (a halfword store; the fraction is the spawner's r3, its
@@ -1989,7 +1989,7 @@ and the flag check after moving.
 
 #### 3.6.27 DiveMan (navi chip subtype 13, T1 0xB)
 
-Chips 0x104 DiveMan, 0x105 EX, 0x106 SP (Aqua). Content: chips/diveman (navi, wave), through chips/104-diveman.
+Chips 0x104 DiveMan, 0x105 EX, 0x106 SP (Aqua). Content: chips/diveman (navi, wave; the chips, chips.luau).
 
 **DiveMan, T1 0xB (`sub_80B99C0`)**, spawned by `sub_80B9B6E` (`off_802CD5C[13]`) like GroundMan; Z's whole part 0
 (the fraction 0x9B6F, from the spawner's address 0x080B9B6F). Init (`sub_80B99E4`): `sprite_decompress(8, 0xD)`
@@ -2033,7 +2033,7 @@ waits a dimming out, sprite paused), the battle's end, invalid panels ahead, a f
 
 #### 3.6.28 CircusMan (navi chip subtype 14, T1 0xE)
 
-Chips 0x107 CrcusMan, 0x108 EX, 0x109 SP. Content: chips/crcusman/navi, through chips/107-crcusman.
+Chips 0x107 CrcusMan, 0x108 EX, 0x109 SP. Content: chips/crcusman (navi; the chips, chips.luau).
 
 **CircusMan, T1 0xE (`sub_80BA364`)**, spawned by `sub_80BA660` (`off_802CD5C[14]`); Z's whole part 0 (the fraction
 0xA661). Init (`sub_80BA388`): `sprite_decompress(8, 0xE)`, sprite (8, 0xE), no shadow, animation 0, palette 0,
@@ -2069,7 +2069,7 @@ and a drop off the field.
 #### 3.6.29 JudgeMan (navi chip subtype 15, T1 0xF)
 
 Chips 0x10A JudgeMan, 0x10B EX, 0x10C SP (Elec; Param1 20, 30, 40: his books' damage). Content: chips/judgeman
-(navi, whip, book), through chips/10a-judgeman (`judgeman.summon { book_damage }`).
+(navi, whip, book; the chips, chips.luau: `navi.summon { book_damage }`).
 
 **JudgeMan, T1 0xF (`sub_80BA708`)**, spawned by `sub_80BA920` (`off_802CD5C[15]`); Z's whole part 0 (the fraction
 0xA921). Init (`sub_80BA72C`): `sprite_decompress(8, 0xF)`, sprite (8, 0xF) with a ground shadow, animation 0,
@@ -2145,7 +2145,7 @@ navi at all).
 
 #### 3.6.30 TwinLdrs (navi chip subtype 20, PA chip 0x15C, T1 0x20)
 
-ProtoMn[SP] B + AntiNavi * + Colonel *. Content: chips/twinldrs/navi, through chips/15c-twinldrs. ProtoMan leads
+ProtoMn[SP] B + AntiNavi * + Colonel *. Content: chips/twinldrs (navi, chip). ProtoMan leads
 and brings Colonel; both are T1 0x20, told apart by Param1.
 
 **The spawner, `sub_80BD9A2`** (`off_802CD5C[20]`): `object_spawnType1(0x20)` with the caller's r1..r3 as its
@@ -2230,7 +2230,7 @@ slash (`rock-front`: the opponent's RockCube on the panel in front of it) and th
 #### 3.6.31 CrosOver (navi chip subtype 21, PA chip 0x15D, T1 0x21)
 
 Django D + Django2 D + Django3 D: MegaMan (Param1 0) with his buster and sword, and Django (Param1 1) with his Gun
-del Sol. Content: chips/crosover/navi, through chips/15d-crosover.
+del Sol. Content: chips/crosover (navi, chip).
 
 **The spawner, `sub_80BE3E8`** (`off_802CD5C[21]`), as TwinLdrs's (T1 0x21; ExtraVars[0] the flag pointer, set to
 1). **The object, `sub_80BDBA4`**, its sprite as `object_updateSprite`. Init (`sub_80BDBC8`):
@@ -2365,7 +2365,7 @@ Param1/Param3/no-flag-0x10 branches (MachGun's), Bass leaving off the field.
 
 FireHit3 A + AquaNdl3 A + ElcPuls3 A + RskyHny3 A: MegaMan's five Crosses of the user's game, each
 appearing by an enemy and using his Cross's move, then three of them together. Content: chips/mstrcros/navi,
-through chips/15a-mstrcros.
+with the chip (chips/mstrcros/chip).
 
 **The spawner, `sub_80BF160`** (`off_802CD5C[22]`): T1 0x23 (`object_spawnType1`, the caller's r1..r3 its position
 and r4 its Params), PanelX/Y, element, the damage word, RelatedObject1 = r5, ExtraVars[0] = r7 (a flag byte, set to
@@ -2470,7 +2470,7 @@ chips/0x12e-bighook/long, long-miss, long-adjacent, and FlmHook's pa/0x146..0x14
 #### 3.6.36 Darkness (navi chip subtype 24, PA chip 0x159, T1 0x25)
 
 VDoll F + VDoll F + Bass F (or BassAnly F). Dark MegaMan (Param1 0) raises
-a dark flame, then Bass (Param1 1) swoops in and slashes. Content: chips/darkness/navi, through chips/159-darkness.
+a dark flame, then Bass (Param1 1) swoops in and slashes. Content: chips/darkness (navi, chip).
 
 **The spawner, `sub_80BFCD0`** (`off_802CD5C[24]`): T1 0x25, as MstrCros's but the flag pointer in ExtraVars[1].
 **The object, `sub_80BF6EC`**, sprite as `object_updateSprite`. Init (`sub_80BF710`), by `byte_80BF7A8[Param1]` (8

@@ -34,7 +34,7 @@ impl ChipHand {
     /// The hand every battle starts with: no chips (the selection zeroed:
     /// `content`'s chip 0 in code A).
     pub fn empty(content: &crate::content::Content) -> ChipHand {
-        let zeroed = content.chip_numbered(0).map(|id| FolderChip::new(id, crate::content::ChipCode(0)));
+        let zeroed = content.zeroed_chip().map(|id| FolderChip::new(id, crate::content::ChipCode(0)));
         ChipHand {
             cursor: 0,
             ids: [None; 6],
@@ -59,15 +59,15 @@ impl ChipHand {
         }
     }
 
-    /// `sub_80108FC`: from the cursor on, the link navis' own chips
-    /// (0x190..=0x19A) leave the hand; the entries after each move up one
+    /// `sub_80108FC`: from the cursor on, the link navis' own chips (the
+    /// original's last block of chips) leave the hand; the entries after each move up one
     /// (`sub_801092C`), the last staying where it was.
     pub fn drop_link_navi_chips(&mut self, content: &crate::content::Content) {
         let mut i = self.cursor as usize;
         let mut removed = 0;
         while let Some(&id) = self.ids.get(i) {
             let Some(id) = id else { return };
-            if !content.chip_number(id).is_some_and(|n| (0x190..=0x19A).contains(&n)) {
+            if content.chip_links(id).own_chip_of.is_none() {
                 i += 1;
                 continue;
             }
@@ -94,15 +94,15 @@ impl ChipHand {
     }
 }
 
-/// `sub_80109A4`: a chip's damage, evaluating damage formulas (values of
-/// 1000 and up).
+/// `sub_80109A4`: a chip's damage, evaluating its damage formula if it
+/// has one (the original's damage values of 1000 and up).
 pub fn chip_damage(b: &Battle, id: Option<ChipHandle>, side: u8) -> u16 {
     let Some(id) = id else { return 0 };
-    let d = b.content.chip(id).damage;
-    if d < 1000 {
-        return d;
+    let c = b.content.chip(id);
+    match &c.formula {
+        None => c.damage,
+        Some(f) => crate::kinds::chip_damage_formula(b, id, side, f),
     }
-    crate::kinds::chip_damage_formula(b, id, side, d - 1000)
 }
 
 /// `chip_800AEE8`: the next chip's damage is recomputed every tick when its

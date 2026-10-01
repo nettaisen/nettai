@@ -4,7 +4,6 @@
 //! `"CC-II"`), keyed by their ids:
 //!
 //! ```text
-//! data.chips[id]            a chip's record and its own data (gun_del_sol, ...)
 //! data.objects.attachments[id], .rocks[id], .absorbed_sprites[kind],
 //!             .body_overlays[id], .sun_beam_looks[look], .projectiles[kind],
 //!             .flying_shots[kind], .shock_waves[variant], .name_looks[name_id],
@@ -86,7 +85,6 @@ pub fn script_data(c: &Content) -> Data {
         ("sine", by_id(c.rules.sine.iter().enumerate().map(|(i, &v)| (i as i64, v)), |&v| Data::Int(v as i64))),
     ]);
     Data::map([
-        ("chips", by_id(c.chips.iter().filter_map(|x| Some((x.id? as i64, x))), |x| value(*x))),
         ("regions", by_id(c.regions.iter().enumerate().map(|(i, r)| (i as i64, r)), |r| value(*r))),
         ("objects", objects),
         ("rules", rules),

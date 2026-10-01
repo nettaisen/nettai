@@ -301,8 +301,7 @@ pub fn draw<'a>(b: &Battle, assets: &'a Bundle, state: &HudState, layer: &mut La
     if let Some(r) = player {
         let o = b.objects.get(r);
         let hand = &b.hands[local as usize];
-        // The HUD's names and icons are the pack's, by chip number.
-        let chip = hand.ids.get(hand.cursor as usize).copied().flatten().and_then(|h| b.content.chip_number(h));
+        let chip = next_chip_number(b, hand);
         if state.chip_name
             && o.chips_held != 0
             && let Some(chip) = chip
@@ -449,7 +448,7 @@ fn icon_parts<'a>(b: &Battle, hud: &'a Hud, r: ObjectRef, local: bool, view: &Vi
     }
     let tiles = if local {
         let hand = &b.hands[o.alliance as usize];
-        let chip = hand.ids.get(hand.cursor as usize).copied().flatten().and_then(|h| b.content.chip_number(h));
+        let chip = next_chip_number(b, hand);
         match chip.and_then(|c| hud.chip_icons.get(c as usize)) {
             Some(t) if !t.is_empty() => t,
             _ => return,
@@ -507,4 +506,13 @@ fn banner_parts<'a>(b: &Battle, hud: &'a Hud, id: u8, out: &mut Vec<SpritePart<'
         out.insert(0, glyph(&hud.banner_digits, ones, pal, nx + 8, ny as i32, 0, vscale));
         out.insert(0, glyph(&hud.banner_digits, tens, pal, nx, ny as i32, 0, vscale));
     }
+}
+
+/// The original's number of the hand's next chip: the HUD's names and icons
+/// are the pack's, by it (compat's, by the chip's key; none for a chip the
+/// original doesn't have).
+fn next_chip_number(b: &Battle, hand: &bn6_battle::hand::ChipHand) -> Option<u16> {
+    let h = hand.ids.get(hand.cursor as usize).copied().flatten()?;
+    let def = b.content.defs.chip(h);
+    bn6_compat::Compat::bn6().chips.get(&def.key).map(|c| c.id)
 }

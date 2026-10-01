@@ -14,5 +14,7 @@ return define.chip {
     flags = { "dimming" },
     library = { number = 386, index = 0, sort = 0 },
     slot_in_limit = 1,
+    -- (The other side can't cut in on its dimming.)
+    traits = { "no_cut_in" },
     dimming = controller.hook("crack"),
 }

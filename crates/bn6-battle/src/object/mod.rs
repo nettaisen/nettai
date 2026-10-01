@@ -175,7 +175,7 @@ pub struct Object {
     pub name_id: u16,
     /// Players: the next chip in the hand (none: the game's 0xFFFF). Other
     /// objects keep the zeroed field, which the chip use reads as the
-    /// pack's chip 0.
+    /// zeroed chip (`roles.chips.zeroed`).
     pub chip: Option<ChipHandle>,
     /// Attack power plus flag bits (double, paralyze, uninstall...).
     pub damage: u16,

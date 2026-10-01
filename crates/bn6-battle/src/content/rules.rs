@@ -33,8 +33,16 @@ pub struct Rules {
     /// panels ahead (0..=5).
     pub buster_recovery: Vec<[u8; 6]>,
     /// The deletion times (BCD hours:minutes:seconds.hundredths) at which
-    /// an SP navi chip's damage steps down (`ChipData::sp_damage`).
+    /// an SP navi chip's damage steps down (`DamageFormula::SpNavi`).
     pub sp_deletion_times: Vec<u32>,
+    /// The SP navis whose deletion times a round's setup carries, in its
+    /// order (`RoundSetup::sp_times`): an SP navi chip's formula names its
+    /// slot by these names.
+    pub sp_slots: Vec<String>,
+    /// The Cross special's chips (`sub_802D5A8`): a row by the hundreds of
+    /// the navi's base max HP (the first row up to 199, the last from its
+    /// place on), each chip by key.
+    pub cross_special: Vec<Vec<SpecialChip>>,
     /// The sine table (`math_sinTable`, which `math_cosTable` continues):
     /// 256 steps a turn, 1.0 = 0x100, over a turn and a half, so that the
     /// cosine of step `a` is entry `a + 64`.
@@ -55,6 +63,17 @@ pub struct Rules {
     /// The palette MegaMan's sprite takes in each Cross, by form (0 for the
     /// base form; `byte_80203EA`).
     pub cross_palettes: Vec<u8>,
+}
+
+/// One of the Cross special's chips (`sub_802D4F0`): the chip its
+/// controller uses, by key, with another chip's damage where the original
+/// takes it from one (the last row's LifeSrd strikes with VarSwrd's).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpecialChip {
+    pub chip: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub damage_of: Option<String>,
 }
 
 impl Rules {

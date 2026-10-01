@@ -1,14 +1,25 @@
 --!strict
 -- PoisSeed: a seed that turns the panels it lands on into poison.
---
--- Its record stays the pack's for now (PoisPhar's Program Advance recipe names it by number): this
--- is its action, which registration by number runs (docs/design/content-model-v2.md §5.1, "As
--- built").
 
 local seed = require("../../lib/bombs/seed")
 local throw = require("../../lib/bombs/throw")
 
-return {
+return define.chip {
+    id = "poisseed",
+    name = "PoisSeed",
+    description = "Makes 9sq\npoisn swp\n3sq ahead",
+    codes = { "H", "N", "P", "*" },
+    element = "null",
+    family = "null",
+    class = "standard",
+    rarity = 2,
+    mb = 37,
+    damage = 10,
+    hit_param = 10,
+    lockout = 10,
+    flags = { "standard_library", "library" },
+    library = { number = 69, index = 69, sort = 328 },
+    slot_in_limit = 3,
     action = throw.action {
         id = "poisseed/action",
         held = seed.held(3),

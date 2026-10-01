@@ -3,11 +3,25 @@
 -- with its counter (the damage intake's `sub_802CEF4`; the counter is the
 -- role `actions.anti_sword_counter`). Its controller is the trap chips'
 -- (lib/traps/controller); it sets no object of its own.
---
--- Its record stays the pack's for now (the damage intake names it by
--- number, and BodyGrd's recipe names it): this is its `dimming` hook, which
--- registration by number runs (chips/0ba-antinavi).
 
 local traps = require("../../lib/traps/controller")
 
-return { dimming = traps.hook() }
+return define.chip {
+    id = "antiswrd",
+    name = "AntiSwrd",
+    description = "Retaliate\nfor sword\ndamage",
+    codes = { "A", "R", "Z", "*" },
+    element = "null",
+    family = "sword",
+    class = "standard",
+    rarity = 2,
+    mb = 33,
+    damage = 100,
+    hit_param = 138,
+    lockout = 0,
+    flags = { "dimming", "has_damage", "standard_library", "library" },
+    library = { number = 190, index = 190, sort = 12 },
+    slot_in_limit = 1,
+    trap = "anti_sword",
+    dimming = traps.hook(),
+}
