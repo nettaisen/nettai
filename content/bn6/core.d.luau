@@ -12,10 +12,10 @@
 -- (`battle.spawn(bomb.kind, pos)`, `me:set_attack(action, 2)`). The
 -- definitions and their types are at the end of this file.
 --
--- What is left of the numeric API is the `legacy` markers of the navis,
--- the forms and the body overlays (marked "Deprecated" below), which
--- bn6-content-check's ratchet counts per module (tests/deprecated.txt) and
--- only lets shrink.
+-- Nothing is named by one of the original's numbers: content names
+-- content by its definitions and assets by name. The original's numbers
+-- are compat's (content/bn6/compat), which only the tools outside the
+-- engine read (the trace harness, save import).
 --
 -- Functions keep nothing between calls: what an object or action keeps
 -- lives in its declared `state` (typed fields the engine stores and
@@ -1879,8 +1879,3 @@ declare define: {
     record: <T>(record_type: string, spec: T) -> T,
 }
 
--- Deprecated. `legacy { ... }`: data the ruleset still reads by number (a
--- navi's or a form's number and NameID; the original's numbering of a
--- table), until its last users convert (docs/design/content-model-v2.md
--- §12). As data it is the table itself; the checker counts each use.
-declare function legacy(t: any): any
