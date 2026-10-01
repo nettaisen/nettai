@@ -15,6 +15,7 @@ local lockon = require("./lockon")
 local slash_beast_lunge = require("../navis/megaman/forms/slashcross-beast/lunge")
 local slash_charge = require("../navis/megaman/forms/slashcross/charge")
 local stun_strike = require("../lib/swords/stun_strike")
+local statuses = require("./status")
 local supports = require("../lib/supports/controller")
 local test_chips = require("../chips/test/chips")
 
@@ -50,6 +51,13 @@ return define.roles {
     chips = {
         -- What a zeroed chip field reads: the blank chip.
         zeroed = test_chips.blank,
+    },
+    statuses = {
+        damage_word_paralysis = statuses.paralyze_90,
+        counter_paralysis = statuses.paralyze_150,
+        ice_freeze = statuses.freeze_150,
+        hit_bug_blind = statuses.blind_1200,
+        hit_bug_confuse = statuses.confuse_960,
     },
     lockon = {
         beast_claw = lockon.beast_claw,

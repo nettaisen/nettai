@@ -10,6 +10,7 @@
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 local ice = {}
 
@@ -25,7 +26,7 @@ local SPRITE = asset.sprite("elmnt-ice")
 -- Its height, in whole pixels (a halfword store over Z's whole part).
 local HEIGHT = 8
 -- Its hit: its modifier, and the status it gives (freezing).
-local HIT_MOD, STATUS = 3, 0x50
+local HIT_MOD, STATUS = 3, statuses.freeze_150
 
 -- `sub_80D6DB0`: on its panel at its height; collision on, its region
 -- off until it acts.

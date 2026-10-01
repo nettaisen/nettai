@@ -10,6 +10,7 @@
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
 local rising_bubble = require("../../objects/rising-bubble/rising_bubble")
+local statuses = require("../../rules/status")
 local trajectory = require("../../lib/trajectory")
 
 local bug_bomb = {}
@@ -28,7 +29,7 @@ local SPRITE, ANIM = asset.sprite("bomb"), 5
 local SPEED, LANDING_Z, GRAVITY = 0x2C000, 0x0A * 0x10000, -0x2800
 local HP = 0x28
 -- Collision while it sits; its status 0x20.
-local HIT_MOD, STATUS = 0, 0x20
+local HIT_MOD, STATUS = 0, statuses.confuse_480
 -- The burst: ticks it sits (61), over the eight around it, and an
 -- explosion (effect 0x4A) on each panel of the 3x3.
 local SIT_TICKS = 0x3C

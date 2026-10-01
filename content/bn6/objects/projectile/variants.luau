@@ -1,18 +1,18 @@
 --!strict
--- The projectile's variants several families fire (objects/projectile,
--- the original's `off_80C4C78` rows), written out; a chip's own variant
--- lives with the chip. The statuses and bug codes stay the game's numbers
--- until statuses are definitions.
+-- The projectile's variants (objects/projectile, the original's
+-- `off_80C4C78` rows), written out; a chip's own variant lives with the
+-- chip. The bug codes stay the game's numbers.
 --
--- `by_number`: the variants by the original's row number, for what still
--- names one by number: the navi stats' NaviCust shots (the buster's and
--- the charged shot's program bytes, NaviStats+0x4D and +0x4F), which the
--- weapons' setups turn into variants until the stats carry them
--- (docs/design/content-model-v2.md §5.3, §7.2).
+-- Several families fire the first of them. The rest only a navi's stats
+-- name: the buster shot's and the charged shot's programs (NaviStats+0x4D
+-- and +0x4F), each the variant a shot is on a lucky draw. Each has a key
+-- (`shot/...`), which a setup's stats name it by (compat records.toml,
+-- `projectile_variants`).
 
 local projectile = require("./projectile")
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 local variants = {}
 
@@ -23,113 +23,119 @@ local function v(spec: ProjectileVariant): ProjectileVariant
     return projectile.variant(spec)
 end
 
--- The buster's plain shot (row 0).
-variants.plain = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain }
--- The cannons' shot (row 1): it staggers (hit modifier 3).
-variants.cannon = v { collision = SHOT, hit_mod = 3, element = "null", spark = sparks.impact }
--- AirShot's shot (row 4): a wind shot that pushes.
+-- The buster's plain shot.
+variants.plain = v { id = "shot/plain", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain }
+-- The cannons' shot: it staggers (hit modifier 3).
+variants.cannon = v { id = "shot/cannon", collision = SHOT, hit_mod = 3, element = "null", spark = sparks.impact }
+-- AirShot's shot: a wind shot that pushes.
 variants.air = v {
+    id = "shot/air",
     collision = { is = collision.pushing, hits = collision.hits_navis },
     hit_mod = 0x61,
     element = "null",
     secondary = { "wind" },
     spark = sparks.impact,
 }
--- The charged shot (row 6).
-variants.charged = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged }
--- GigaCan's shot (row 0xC): it bursts around what it hits, and over the
--- last two columns when it leaves the field.
-variants.gigacan = v { collision = SHOT, hit_mod = 3, element = "null", spark = sparks.blast, bursts = true }
--- CrosOver's MegaMan's shot (row 0x1D): it staggers, and climbs a pixel a
--- panel.
-variants.climbing = v { collision = SHOT, hit_mod = 3, element = "null", spark = sparks.charged, climbs = true }
+-- The charged shot.
+variants.charged = v { id = "shot/charged", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged }
+-- GigaCan's shot: it bursts around what it hits, and over the last two
+-- columns when it leaves the field.
+variants.gigacan = v { id = "shot/gigacan", collision = SHOT, hit_mod = 3, element = "null", spark = sparks.blast, bursts = true }
+-- CrosOver's MegaMan's shot: it staggers, and climbs a pixel a panel.
+variants.climbing = v { id = "shot/climbing", collision = SHOT, hit_mod = 3, element = "null", spark = sparks.charged, climbs = true }
 
--- The rest of the rows, which only the NaviCust's programs name.
+-- The rest, which only a navi's shot programs name.
 local function panel(kind: PanelType): PanelHit
     return { effect = "set_type", left_side = kind, right_side = kind }
 end
-local ROWS: { [number]: ProjectileVariant } = {
-    [0x00] = variants.plain,
-    [0x01] = variants.cannon,
-    [0x02] = v { collision = SHOT, hit_mod = 1, element = "null", spark = sparks.plain, sprite = BLADE, anim = 1 },
-    [0x03] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged },
-    [0x04] = variants.air,
-    [0x05] = v {
-        collision = { is = collision.breaking, hits = collision.hits_navis },
-        hit_mod = 0,
-        element = "null",
-        secondary = { "break" },
-        spark = sparks.breaking,
-    },
-    [0x06] = variants.charged,
-    [0x07] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = { effect = "crack" } },
-    [0x08] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("poison") },
-    [0x09] = v {
-        collision = { is = collision.attack_90, hits = collision.hits_navis },
-        hit_mod = 0,
-        element = "null",
-        spark = sparks.shot,
-    },
-    [0x0A] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x20 },
-    [0x0B] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x30 },
-    [0x0C] = variants.gigacan,
-    [0x0D] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("grass") },
-    [0x0E] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("ice") },
-    [0x0F] = v { collision = SHOT, hit_mod = 1, element = "null", spark = sparks.plain },
-    [0x10] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.erase },
-    [0x11] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = 0x10 },
-    [0x12] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x20 },
-    [0x13] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x10 },
-    [0x14] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x30 },
-    [0x15] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = { effect = "crack" } },
-    [0x16] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = { effect = "break" } },
-    [0x17] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("volcano") },
-    [0x18] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("poison") },
-    [0x19] = v {
-        collision = { is = collision.attack_a0, hits = collision.hits_navis },
-        hit_mod = 0,
-        element = "null",
-        spark = sparks.charged,
-    },
-    [0x1A] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0xFB },
-    [0x1B] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0x18, bug_arg = 1 },
-    [0x1C] = v { collision = SHOT, hit_mod = 1, element = "null", spark = sparks.charged },
-    [0x1D] = variants.climbing,
-    [0x1E] = v { collision = SHOT, hit_mod = 0x61, element = "null", spark = sparks.plain },
-    [0x1F] = v { collision = SHOT, hit_mod = 0x49, element = "null", spark = sparks.plain },
-    [0x20] = v { collision = SHOT, hit_mod = 0x45, element = "null", spark = sparks.charged },
-    [0x21] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x60 },
-    -- A road the way the shot flies for the left side's shots, and the
-    -- other way for the right side's (the routine's own values, 0xC and
-    -- 0xB, for side 1).
-    [0x22] = v {
-        collision = SHOT,
-        hit_mod = 0,
-        element = "null",
-        spark = sparks.charged,
-        hit_panel = { effect = "set_type", left_side = "road_left", right_side = "road_right" },
-    },
-    [0x23] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0xF4 },
-    [0x24] = v {
-        collision = SHOT,
-        hit_mod = 0,
-        element = "null",
-        spark = sparks.charged,
-        hit_panel = { effect = "set_type", left_side = "road_right", right_side = "road_left" },
-    },
-    [0x25] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("grass") },
-    [0x26] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = 0x50 },
-    [0x27] = v { collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("ice") },
+-- A sword's blade for a shot; it flinches.
+variants.blade = v { id = "shot/blade", collision = SHOT, hit_mod = 1, element = "null", spark = sparks.plain, sprite = BLADE, anim = 1 }
+-- A plain shot with the charged shot's spark.
+variants.bright = v { id = "shot/bright", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged }
+-- A breaking shot.
+variants.breaking = v {
+    id = "shot/breaking",
+    collision = { is = collision.breaking, hits = collision.hits_navis },
+    hit_mod = 0,
+    element = "null",
+    secondary = { "break" },
+    spark = sparks.breaking,
 }
-
--- The variant of row `n` (a row past the table reads on into the
--- routine's code in the game: an error).
-function variants.by_number(n: number): ProjectileVariant
-    local r = ROWS[n]
-    if not r then
-        error(string.format("projectile row %#x reads past off_80C4C78", n))
-    end
-    return r
-end
+-- Shots that change the panel they hit on: cracked, poison, grass, ice.
+variants.cracking = v { id = "shot/cracking", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = { effect = "crack" } }
+variants.poisoning = v { id = "shot/poisoning", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("poison") }
+variants.grass = v { id = "shot/grass", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("grass") }
+variants.ice = v { id = "shot/ice", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, hit_panel = panel("ice") }
+-- A shot of the attack type 0x90.
+variants.attack_90 = v {
+    id = "shot/attack-90",
+    collision = { is = collision.attack_90, hits = collision.hits_navis },
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.shot,
+}
+-- Shots with a status: confusion, blindness, paralysis.
+variants.confusing = v { id = "shot/confusing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.confuse_480 }
+variants.blinding = v { id = "shot/blinding", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.blind_480 }
+variants.paralyzing = v { id = "shot/paralyzing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.plain, status = statuses.paralyze_90 }
+-- A shot that flinches, and one with the erasing spark.
+variants.flinching = v { id = "shot/flinching", collision = SHOT, hit_mod = 1, element = "null", spark = sparks.plain }
+variants.erasing = v { id = "shot/erasing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.erase }
+-- Charged shots with a status: confusion, paralysis, blindness, a bubble,
+-- ice.
+variants.charged_confusing = v { id = "shot/charged-confusing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.confuse_480 }
+variants.charged_paralyzing = v { id = "shot/charged-paralyzing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.paralyze_90 }
+variants.charged_blinding = v { id = "shot/charged-blinding", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.blind_480 }
+variants.charged_bubbling = v { id = "shot/charged-bubbling", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.bubble_150 }
+variants.charged_freezing = v { id = "shot/charged-freezing", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, status = statuses.freeze_150 }
+-- Charged shots that change the panel they hit on: cracked, broken,
+-- volcano, poison, grass, ice.
+variants.charged_cracking = v { id = "shot/charged-cracking", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = { effect = "crack" } }
+variants.charged_panel_breaking = v { id = "shot/charged-panel-breaking", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = { effect = "break" } }
+variants.charged_volcano = v { id = "shot/charged-volcano", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("volcano") }
+variants.charged_poisoning = v { id = "shot/charged-poisoning", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("poison") }
+variants.charged_grass = v { id = "shot/charged-grass", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("grass") }
+variants.charged_ice = v { id = "shot/charged-ice", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, hit_panel = panel("ice") }
+-- Charged shots that lay a road: the way the shot flies for the left
+-- side's shots and the other way for the right side's (the routine's own
+-- values, 0xC and 0xB, for side 1), and the reverse.
+variants.charged_road = v {
+    id = "shot/charged-road",
+    collision = SHOT,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+    hit_panel = { effect = "set_type", left_side = "road_left", right_side = "road_right" },
+}
+variants.charged_road_back = v {
+    id = "shot/charged-road-back",
+    collision = SHOT,
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+    hit_panel = { effect = "set_type", left_side = "road_right", right_side = "road_left" },
+}
+-- A charged shot of the attack type 0xA0.
+variants.charged_attack_a0 = v {
+    id = "shot/charged-attack-a0",
+    collision = { is = collision.attack_a0, hits = collision.hits_navis },
+    hit_mod = 0,
+    element = "null",
+    spark = sparks.charged,
+}
+-- Charged shots with a bug code: the body's programs go (0xFB), the HP
+-- bug a level up (0x18 with 1), the HP bug a level up with its mark
+-- (0xF4).
+variants.charged_uninstalling = v { id = "shot/charged-uninstalling", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0xFB }
+variants.charged_hp_bug = v { id = "shot/charged-hp-bug", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0x18, bug_arg = 1 }
+variants.charged_hp_bug_marked = v { id = "shot/charged-hp-bug-marked", collision = SHOT, hit_mod = 0, element = "null", spark = sparks.charged, bug = 0xF4 }
+-- A charged shot that flinches.
+variants.charged_flinching = v { id = "shot/charged-flinching", collision = SHOT, hit_mod = 1, element = "null", spark = sparks.charged }
+-- Shots that move what they hit: a panel away (hit modifier 0x61), six
+-- panels away (0x49), and a charged one six panels toward the shooter
+-- (0x45).
+variants.pushing = v { id = "shot/pushing", collision = SHOT, hit_mod = 0x61, element = "null", spark = sparks.plain }
+variants.shoving = v { id = "shot/shoving", collision = SHOT, hit_mod = 0x49, element = "null", spark = sparks.plain }
+variants.charged_pulling = v { id = "shot/charged-pulling", collision = SHOT, hit_mod = 0x45, element = "null", spark = sparks.charged }
 
 return variants

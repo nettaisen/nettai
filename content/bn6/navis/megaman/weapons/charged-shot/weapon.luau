@@ -38,9 +38,12 @@ local WAIT_TICKS = 5
 -- The shot's sound and height (16.16).
 local SHOT_SOUND, SHOT_Z = asset.sound("buster-6a"), 0x18_0000
 
--- The plain charged shot's row of the projectile's table, as the navi
--- stats' NaviCust byte names it.
-local PLAIN = 6
+-- The charged-shot programs that come on 1 draw in 8 (the others on 1 in
+-- 2): the original's rows 9 and 0x23.
+local RARE: { [ProjectileVariant]: boolean } = {
+    [variants.attack_90] = true,
+    [variants.charged_hp_bug_marked] = true,
+}
 
 -- `sub_8011A7E`.
 function charged_shot.setup(navi: Object): Action
@@ -51,15 +54,15 @@ function charged_shot.setup(navi: Object): Action
         base = 1
     end
     navi.attack_damage = base * 10
-    -- The projectile: the charged-shot program's (the projectile's row, the
-    -- navi stats' NaviCust byte) on 1 draw in 8 (rows 9 and 0x23) or 1 in
-    -- 2, else the plain charged shot.
+    -- The projectile: the charged-shot program's (a projectile variant the
+    -- navi's stats name) on a lucky draw, else the plain charged shot. (A
+    -- program that is the plain charged shot draws nothing.)
     local program = stats.charge_shot_kind
     local shot = variants.charged
-    if program ~= 0 and program ~= PLAIN then
-        local mask = if program == 9 or program == 0x23 then 7 else 1
+    if program and program ~= variants.charged then
+        local mask = if RARE[program] then 7 else 1
         if bit32.band(battle.rng_positive(), mask) == 0 then
-            shot = variants.by_number(program)
+            shot = program
         end
     end
     local s = navi:action_state(charged_shot.action) :: State
@@ -158,8 +161,6 @@ charged_shot.weapon = define.weapon {
     -- entry, as the original's table does.
     charge_ticks = { 100, 90, 80, 70, 60, 180 },
     setup = charged_shot.setup,
-    -- (Transitional: the routine number the pack's forms name it by.)
-    legacy = { routines = { 0x01 } },
 }
 
 return charged_shot

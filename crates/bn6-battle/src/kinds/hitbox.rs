@@ -10,7 +10,7 @@ use crate::object::{ObjectRef, PanelPos, Vec3, state};
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
     pub hit_mod: u8,
-    pub status: u8,
+    pub status: Option<bn6_content_api::StatusHandle>,
     pub bug: u8,
     pub bug_arg: u8,
     // The game also lets the spawner pass a slot that receives which bodies
@@ -34,7 +34,7 @@ pub struct HitboxSpec {
     pub damage: u16,
     pub stamina: u16,
     pub hit_mod: u8,
-    pub status: u8,
+    pub status: Option<bn6_content_api::StatusHandle>,
     pub bug: u8,
     pub bug_arg: u8,
 }
@@ -100,7 +100,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let s = b.collision.get_mut(c);
     s.region = params[0];
     s.hit_effect = params[1];
-    if v.status != 0 {
+    if v.status.is_some() {
         s.status_base = v.status;
     }
     if v.bug != 0 {

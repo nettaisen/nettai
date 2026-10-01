@@ -970,7 +970,7 @@ Representative handlers, all code-derived. Frame counts assume the attack is not
 | Cannon/HiCannon/M-Cannon (0x14 → `sub_80EBC0E`) | 33 | f1: anim 8, counter time, arm (Params `sub_80EBD68()<<8 \| byte_80EBD2C[av3]`), flag. **f16** (timer 0xF): sound 0xAE, then `sub_80C4FFE(x+front, y, r2=av+6, r3=0x180000, r4=byte_80EBD34[av3], r6=av.u32[8]+av.u16[6])` → T3 type 0 shot (descriptor 1). GigaCan (variants 4..6) leaves two afterimages at timer 8. f30: release arm, anim 7, timer 3. **f33**: exit. The full spec, with ticks counted from the handler's first run: shot-chips.md §2. |
 | Vulcan1..3/SuprVulc (0x17 → `sub_80EBF10`) | 36 for Vulcan1 | f1: anim 0xA, arm Params 0xD into `ai+0x68`. f3: shots `av+0x12 = dword_80EBFEC[av3]` = {3,4,5,10}; a shot every 11 frames from f3 (Vulcan1: f3, f14, f25). **Each shot draws `GetPositiveSignedRNG2() & 3`** to pick Z from {8,0x10,0x18,0x20}<<16 (visual height only, but it advances RNG2). Each shot calls `sub_80C6ADA(x+front, y, av+2, Z, av.u32[0xC], av.u32[8]+av.u16[6])` → T3 0x12. Then a 1-frame recovery init, 10 more frames, and exit. The full spec and the bullet: shot-chips.md §4. |
 | Sword family (0x13 → `sub_80EB776`; lib/swords/slash, the sword chips) | 30 | Phase 0 returns at once (or does a step-sword advance if `params` byte 0 ≠ 0: `sub_8015B00` wants the panel two ahead on the field (flag 0x10000) with no body; the navi leaves a T4#0x28 afterimage and moves there, holding its own panel reserved (not in a Beast form or with the special-source byte set); with no such panel, anim 4 and straight to the step back). Phase 1 sets hits = 1 (2 when `av3 == 0xB`). f3: anim 5, `sub_8011450`, sound 0xB0 (0xCE for variants 5, 6, 0xB), the blade (attachment `byte_80EBB64[av3]`, anim by form `sub_80EBAE8`), timer 0x15. A step sword leaves two more afterimages at f8 (itself, and the blade's sprite). **f12**: `object_spawnCollisionRegion(x+front, y, av+2, 0, r4=byte_80EBA18[av3], r6=av.u32[8]+av.u16[6], r7=off_80EBA00[0][av3])` (CrosSwrd, variant 0xA, adds a region-1 one on the same panel) plus the slash, T4#0 `byte_80EBAD8[av3]` at 16 px (palette variant − 0xB for 0xC..0xF). f24 ends the swing (DblDream swings again). A step sword steps back once its animation ends (`sub_80EBB98`). f25: recovery (timer 5). f30: exit. The per-variant tables are each chip's data (`sword`). **Trace-checked** (chip lab: every Sword, WideSwrd, LongSwrd, blade, elemental sword, StepSwrd and Muramasa scenario that reaches it). Unverified: DblDream's second swing, CrosSwrd's second hit, FtrSword, LifeSrd and DrkSword (their scenarios stop earlier), the step with no panel to step to, in a Beast form or with the special-source byte, and the turned-round step (AIAttackVars+0x34, which no player action sets). |
-| MchnSwrd/ElemSwrd/AssnSwrd (0x49 → `sub_80EEB4C`; lib/swords/strike, chips/mchnswrd, elemswrd, assnswrd) | 28 | f1: counter time, anim 5, sound 0xB0, the blade, timer 0x15. **f10**: for each opposing alive actor: a region-4 hit (0x0705FF04, hit modifier 3) and T4#0 0x16 (flip = its side, palette variant + 7) on its panel if variant ≠ 1 and it is paralyzed (CollisionData+0x1C), or variant ≠ 0 and its panel has flags 0x1C00 (grass, ice, volcano). f23: recovery (timer 5). f28: exit. Trace-checked up to the hit, which no lab scenario reaches (unverified). |
+| MchnSwrd/ElemSwrd/AssnSwrd (0x49 → `sub_80EEB4C`; lib/swords/strike, chips/mchnswrd, elemswrd, assnswrd) | 28 | f1: counter time, anim 5, sound 0xB0, the blade, timer 0x15. **f10**: for each opposing alive actor: a region-4 hit (0x0705FF04, hit modifier 3) and T4#0 0x16 (flip = its side, palette variant + 7) on its panel if variant ≠ 1 and it is paralyzed (CollisionData+0x1C), or variant ≠ 0 and its panel has flags 0x1C00 (grass, ice, volcano). f23: recovery (timer 5). f28: exit. The hit is verified by `chips/0x056-mchnswrd/paralyzed` (a paralyzed navi) and by ElemSwrd's and AssnSwrd's `counter-hit` on a grass stage. |
 | Instant (0x1C → `sub_80EC39C`) | 1 | `off_80EC3F0[av3](panelX, panelY, av+2, obj.Z, av.u32[0xC], av.u32[8] + (u8)av[6])`, then exit in the same frame (`av3 == 0x14` waits 8 frames). **Only the low byte of the bonus is added.** |
 | Dimming chips (0x15 → `sub_80EBD9C`) | whole dimming | §3.6 |
 | Navi chips (0x1B → `sub_80EC350`) | 1 | `sub_80E192C(panelX, panelY, av+2, av3, av.u32[0xC], av.u32[8], chip \| av6<<16)` spawns T4 0x10 (summon controller → `off_802CD5C[subtype]`). Registers the dimming exactly as 0x15, then exits **in the same frame**. |
@@ -1460,14 +1460,15 @@ subtype:
   effect's height offset is lost to a shift of the wrong register. lib/navi-boost/controller (`navi_boost.hub`,
   `bug(routine)`, `arm(routine, palette)`, `dark`).
 
-Not ported yet, with what is known:
+Ported too, and specified elsewhere (the chip lab's scenarios for all of them match):
 
-- 4 (the barriers), 5 (the panel chips), 9 (the instruments), 13 (AirRaid), 26 (BugFix), 27 (ColorPt, DblPoint),
-  28 (Sensor), 36 (SumnBlk), the barrier routine `sub_801A7CC`, the barrier visual (T4 7) and FirstBarrier:
-  specified in docs/engine/dimming-chips.md.
-- 7 (LifeSync; T4 0x5C): in a link battle `sub_80E72C8` branches into another routine's body (`loc_80E73C4`),
-  harmlessly: LifeSync does nothing in PvP (dimming-chip-effects.md §14).
-- The others (and the ElemTrap object): see docs/design/content-migration.md §5.
+- 4 (the barriers: lib/barriers), 5 (the panel chips: lib/panel-chips), 9 (the instruments: lib/instruments),
+  13 (AirRaid: chips/airraid), 26 (BugFix: chips/bugfix), 27 (ColorPt, DblPoint: chips/colorpt), 28 (Sensor:
+  chips/sensor), 36 (SumnBlk: chips/sumnblk), the barrier routine `sub_801A7CC`, the barrier visual (T4 7) and
+  FirstBarrier: specified in docs/engine/dimming-chips.md.
+- 7 (LifeSync; T4 0x5C; chips/lifesync): in a link battle `sub_80E72C8` branches into another routine's body
+  (`loc_80E73C4`), harmlessly: LifeSync does nothing in PvP (dimming-chip-effects.md §14).
+- The others (and the ElemTrap object, chips/elemtrap): see docs/design/content-migration.md §5.
 - Subtypes 2, 3, 7, 8, 12, 14–19, 21–24, 29, 30, 32 and 37, every object they spawn, branch by branch with
   their lab coverage: docs/engine/dimming-chip-effects.md.
 
@@ -1645,9 +1646,10 @@ scenarios verified: a bomb ending at the battle's end (`chips/0x036-minibomb/ko`
 either side (`chips/0x03c-blkbomb/fire`, `enemy-fire`), pushed (`pushed`: `sub_8017CC0`), broken without fire
 (`shot`), left to its lifetime (`lifetime`) and thrown at a hole (`holes`); the BugBomb's other bug choices
 (`chips/0x043-bugbomb/seed-1` to `seed-4`) and a landed one broken (`landed`); FlashBomb landed and broken before
-the flash (`chips/0x039-flshbom1/landed`, `shot`). **Not ported**:
-LilBoiler (subtype 3: T3#0x93 and what it spawns, T1#0x54) and VDoll (subtype 8: T3#0x7A, its curse controller T4#0x4E
-and T4#0x11); their throws raise a content error. shot-chips.md §14 specifies both.
+the flash (`chips/0x039-flshbom1/landed`, `shot`). The action's other two
+throws are chips of their own: LilBoiler (subtype 3: T3#0x93 and what it spawns, T1#0x54; chips/lilbolr) and VDoll
+(subtype 8: T3#0x7A, its curse controller T4#0x4E and T4#0x11; chips/vdoll and chips/curse). shot-chips.md §14
+specifies both, and their lab scenarios match.
 
 #### 3.6.11 SpoutMan (navi chip subtype 7, T1 0x09)
 
@@ -2307,8 +2309,8 @@ hit there with its damage, self type 0x30, modifier 3 (sound 0x111 every 8 ticks
 Lab (scratch, the PA chip put straight in the folder): the opponent a row up and both a column forward match every
 frame; on a hit the replay stopped at the uninstall's reaction (`sub_80140EE`, the navi framework's). That reaction
 (hit reaction 0xF8, `sub_80139F6` → `sub_80140EE`; field-collision-damage.md) is now ported (kinds/player/intake.rs
-`strip_programs` and the form's NaviCust refresh, `form::refresh_form_flags`), unverified: no lab scenario records
-an uninstall.
+`strip_programs` and the form's NaviCust refresh, `form::refresh_form_flags`) and verified by the lab's uninstall
+scenarios (`chips/0x0b9-uninstll/folded` and its variants, docs/engine/unverified.md).
 
 #### 3.6.33 Bass (navi chip subtype 26, Giga chip 0x12D, T1 0x4F)
 

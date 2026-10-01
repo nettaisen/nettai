@@ -2,7 +2,7 @@
 //! shared RNG seed, and the set score carried between rounds.
 
 use crate::content::{Content, ContentHash};
-use bn6_content_api::{FormHandle, NaviHandle, StageHandle, WeaponHandle};
+use bn6_content_api::{FormHandle, NaviHandle, RecordHandle, StageHandle, WeaponHandle};
 
 /// A round's battle settings: its stage, and what the round sets over the
 /// stage's record (the background a set's later rounds draw, the effects
@@ -103,7 +103,8 @@ pub struct Supports {
     pub tango: bool,
 }
 
-/// The navi's weapons (`off_80117D4`'s routines; the byte 0xFF is none).
+/// The navi's weapons (the original's bytes name `off_80117D4`'s routines;
+/// 0xFF is none).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviWeapons {
     /// +0x04: the B-button buster.
@@ -116,10 +117,12 @@ pub struct NaviWeapons {
     pub a_charge: Option<WeaponHandle>,
     /// +0x44: the A button in battle mode 9.
     pub mode9_a: Option<WeaponHandle>,
-    /// +0x4D: the buster shot's projectile config (applied on an RNG roll).
-    pub buster_shot: u8,
-    /// +0x4F: the charged shot's projectile config (0 = default 6).
-    pub charge_shot_kind: u8,
+    /// +0x4D: the buster shot's program: the projectile variant a shot is
+    /// on a lucky draw (none: the byte 0).
+    pub buster_shot: Option<RecordHandle>,
+    /// +0x4F: the charged shot's program, likewise (none: the byte 0, the
+    /// plain charged shot).
+    pub charge_shot_kind: Option<RecordHandle>,
     /// +0x48: the damage a B+Back special takes from the navi's stats
     /// (ProtoMan's reflecting guard, weapon routine 0x30; from the navi's
     /// starting row).
@@ -235,10 +238,24 @@ impl NaviStats {
     /// A hit's bug code can name any stat byte below 0x64 by its offset
     /// and set it (`sub_80139F6`): the field at that offset takes the
     /// byte (a halfword's low or high byte; a flag is set by any nonzero
-    /// byte; a navi, form or weapon byte names the pack's by number).
-    /// Offsets the engine doesn't model are not supported.
+    /// byte; a navi or form byte names the pack's by number). A weapon
+    /// byte or a shot program's can only be cleared this way (0xFF, 0):
+    /// the engine has no numbers for weapons or projectile variants, and
+    /// no hit of the game's carries such a code. Offsets the engine
+    /// doesn't model are not supported.
     pub fn set_byte_by_bug_code(&mut self, offset: u8, value: u8, content: &Content) {
-        let weapon = |v: u8| (v != 0xFF).then(|| content.weapon_numbered(v));
+        let weapon = |v: u8| -> Option<WeaponHandle> {
+            if v != 0xFF {
+                panic!("bug code writes weapon routine {v:#x} to NaviStats+{offset:#x}: a weapon by number is not supported");
+            }
+            None
+        };
+        let shot = |v: u8| -> Option<RecordHandle> {
+            if v != 0 {
+                panic!("bug code writes shot program {v:#x} to NaviStats+{offset:#x}: a projectile variant by number is not supported");
+            }
+            None
+        };
         let flag = value != 0;
         let low = |w: &mut u16| *w = (*w & 0xFF00) | value as u16;
         let high = |w: &mut u16| *w = (*w & 0x00FF) | (value as u16) << 8;
@@ -309,8 +326,8 @@ impl NaviStats {
             0x44 => w.mode9_a = weapon(value),
             0x48 => low(&mut w.back_special_damage),
             0x49 => high(&mut w.back_special_damage),
-            0x4D => w.buster_shot = value,
-            0x4F => w.charge_shot_kind = value,
+            0x4D => w.buster_shot = shot(value),
+            0x4F => w.charge_shot_kind = shot(value),
             0x50 => low(&mut self.chip_recovery),
             0x51 => high(&mut self.chip_recovery),
             0x52 => g.status_immunity = flag,

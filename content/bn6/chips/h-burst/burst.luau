@@ -9,6 +9,7 @@
 
 local collision = require("../../rules/collision")
 local regions = require("../../lib/regions")
+local statuses = require("../../rules/status")
 
 local burst = {}
 
@@ -26,7 +27,7 @@ local BURST, WAIT = 0, 4
 -- What it hits with: a status 0x10 hit, no spark (`dword_80D9118`,
 -- `dword_80D911C`, `dword_80D9150`), on the plus around its panel on even
 -- counts and the X on odd ones.
-local STATUS = 0x10
+local STATUS = statuses.paralyze_90
 local HIT = { is = collision.attack, hits = collision.hits_navis }
 -- The explosions (effect 0x3D), and how high.
 local EXPLOSION = define.effect { sprite = asset.sprite("reflected-shot"), anim = 0, palette = 2 }
