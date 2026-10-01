@@ -1,7 +1,8 @@
 --!strict
--- DustCross's B+Back special: weapon routine 0x2A (`sub_8011F84`) and
--- action 0x58 (`sub_80EFCB4`), pulling in the field's obstacles. A vortex
--- (effect 0x63) appears at the navi; on the 10th tick every obstacle on the
+-- DustCross's B+Back special (`megaman/absorb`): the original's weapon
+-- routine 0x2A (`sub_8011F84`) and action 0x58 (`sub_80EFCB4`), pulling in
+-- the field's obstacles. A vortex appears at the navi; on the 10th tick
+-- every obstacle on the
 -- field is pulled in (the obstacle framework's `sub_80EFD74`: each flies to
 -- the navi as an absorbed obstacle, objects/absorbed-obstacle, and joins
 -- its absorbed list while the navi is still in this action); 11 ticks
@@ -15,11 +16,7 @@ export type State = {
     vortex: Object?,
 }
 
-local absorb = {
-    state = { timer = "u16", vortex = "object" },
-}
-
-local ACTION = 0x58
+local absorb = {}
 
 -- The phases, on the attack's step.
 local PULL, RECOVER = 0x0, 0x4
@@ -28,17 +25,18 @@ local PULL, RECOVER = 0x0, 0x4
 local COOLDOWN = 0x28
 
 -- The vortex effect, and what keeps it alive each tick.
-local VORTEX, VORTEX_TICKS = 0x63, 2
+local VORTEX = define.effect { sprite = asset.sprite("dust-cloud"), anim = 0, palette = 0 }
+local VORTEX_TICKS = 2
 
 -- DustCross's Beast form (the navi stats' form).
 local DUST_BEAST = 0x16
 
-local SOUND = 0xAD
+local SOUND = asset.sound("dustbrk")
 
 -- `sub_8011F84`: only the cooldown.
-function absorb.setup(navi: Object): number
+local function setup(navi: Object): Action
     navi.attack_lockout = COOLDOWN
-    return ACTION
+    return absorb.action
 end
 
 -- `sub_80EFCD8`: the pose and the vortex, then the pull on the 10th tick.
@@ -87,20 +85,35 @@ local function recover(me: Object, s: State)
     me:exit_attack()
 end
 
--- `sub_80EFCB4`: the phase, then the vortex lives on while this runs.
-function absorb.update(me: Object, s: State)
-    local step = me.step
-    if step == PULL then
-        pull(me, s)
-    elseif step == RECOVER then
-        recover(me, s)
-    else
-        error(string.format("absorbing phase %#x reads past sub_80EFCB4's phase table", step))
-    end
-    local vortex = s.vortex
-    if vortex then
-        vortex.timer = VORTEX_TICKS
-    end
-end
+absorb.action = define.action {
+    id = "megaman/absorb/action",
+    state = { timer = "u16", vortex = "object" },
+    -- `sub_80EFCB4`: the phase, then the vortex lives on while this runs.
+    update = function(me: Object, s: State)
+        local step = me.step
+        if step == PULL then
+            pull(me, s)
+        elseif step == RECOVER then
+            recover(me, s)
+        else
+            error(string.format("absorbing phase %#x reads past sub_80EFCB4's phase table", step))
+        end
+        local vortex = s.vortex
+        if vortex then
+            vortex.timer = VORTEX_TICKS
+        end
+    end,
+}
+
+absorb.weapon = define.weapon {
+    id = "megaman/absorb",
+    name = "Absorb",
+    -- The charge table's row 0x2A; Charge 5 reads on into row 0x2B's first
+    -- entry, as the original's table does.
+    charge_ticks = { 0, 0, 0, 0, 0, 0 },
+    setup = setup,
+    -- (Transitional: the routine number the pack's forms name it by.)
+    legacy = { routines = { 0x2A } },
+}
 
 return absorb

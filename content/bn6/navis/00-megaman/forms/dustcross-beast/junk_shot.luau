@@ -1,13 +1,24 @@
 --!strict
--- DustCross Beast's junk (attack object #0xC5, `sub_80DDC10`): thrown from
--- in front of the navi, it arcs in 10 ticks onto its target panel (Param1:
--- x | y << 4), highlighting it as it goes. Where it lands on something (a
--- panel that is solid, or holds a body or object) it bursts, cracks the
--- panel and hits; then it is gone.
+-- DustCross Beast's junk (the original's attack object #0xC5,
+-- `sub_80DDC10`), its scatter's (./scatter): thrown from in front of the
+-- navi, it arcs in 10 ticks onto its target panel, highlighting it as it
+-- goes. Where it lands on something (a panel that is solid, or holds a
+-- body or object) it bursts, cracks the panel and hits; then it is gone.
+
+local collision = require("../../../../rules/collision")
+local effects = require("../../../../lib/effects")
+local regions = require("../../../../lib/regions")
+local sparks = require("../../../../lib/sparks")
 
 local junk_shot = {}
 
-local SPRITE = "10-56"
+export type State = {
+    -- Its target panel, x | y << 4 (the original's first parameter).
+    target: number,
+}
+
+local SPRITE = asset.sprite("junk-shot")
+local SOUND_THROW, SOUND_BURST = asset.sound("junk-shot"), asset.sound("hit-bomb-1")
 
 -- How far in front of and above the navi it starts, 16.16.
 local AHEAD, UP = 0x8_0000, 0x8_0000
@@ -19,31 +30,18 @@ local FLIGHT, DEPTH = 0xA, 0xD_0000
 -- blockers.
 local LANDS_ON = 0x0F80_0010
 
--- The burst (effect 5), and its sound.
-local BURST, BURST_SOUND = 5, 0x70
+-- The burst.
+local BURST = effects.burst
+
+-- Its hit: a thrown attack that breaks, at navis.
+local HIT_MOD = 3
 
 -- The actions, on its action byte.
 local FLYING, GONE = 0, 4
 
--- `sub_80DDDCC`: junk from `owner` on (x, y) with `element` and the damage
--- word `damage`, at the navi's height `z`, for the target panel `target`
--- (x | y << 4). (Its X and Y are the spawner's registers, Y and the
--- element, until its init places it.)
-function junk_shot.spawn(owner: Object, x: number, y: number, element: number, damage: number, z: number, target: number): Object?
-    local o = battle.spawn_kind("junk-shot", Vec3.new(y, element, z), { target })
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = owner.alliance, owner.flip
-    end
-    return o
-end
-
--- The target panel in Param1.
+-- Its target panel.
 local function target(me: Object): (number, number)
-    local t = me:param(1)
+    local t = (me.state :: State).target
     return bit32.band(t, 7), bit32.rshift(t, 4)
 end
 
@@ -65,10 +63,10 @@ local function fly(me: Object)
     local x, y = me.panel_x, me.panel_y
     if bit32.btest(field.flags(x, y), LANDS_ON) then
         battle.effect(me.pos, BURST)
-        battle.play_sound(BURST_SOUND)
+        battle.play_sound(SOUND_BURST)
         battle.shake_camera(1, 0xF)
         field.crack(x, y)
-        me.collision.region = 1
+        me.collision:set_region(regions.single)
     end
     me.action = GONE
     me.phase, me.phase_init = 0, 0
@@ -78,7 +76,7 @@ end
 -- `sub_80DDDB8`: gone (its hit resolves first).
 local function vanish(me: Object)
     me.visible = false
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me:set_lifecycle("destroy")
 end
 
@@ -124,25 +122,47 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(0x15, 5, 3)
+    me:setup_collision(collision.thrown_break, collision.hits_navis, HIT_MOD)
     -- sub_801A146: the hit spark of its element.
-    me.collision.hit_effect = bit32.band(me.element, 0xF)
-    me.collision.region = 0
-    me.collision:present()
-    battle.play_sound(0xFF)
+    local c = me.collision
+    c:set_hit_effect(sparks.of_element(me.element))
+    c:set_region(nil)
+    c:present()
+    battle.play_sound(SOUND_THROW)
     me.lifecycle = "update"
 end
 
--- `sub_80DDC10`.
-function junk_shot.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
+junk_shot.kind = define.kind {
+    id = "dustcross-beast/junk-shot",
+    pool = "attack",
+    state = { target = "u8" },
+    -- `sub_80DDC10`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+    end,
+}
+
+-- `sub_80DDDCC`: junk from `owner` on (x, y) with `element` and the damage
+-- word `damage`, at the navi's height `z`, for the target panel `target`
+-- (x | y << 4). (Its X and Y are the spawner's registers, Y and the
+-- element, until its init places it.)
+function junk_shot.spawn(owner: Object, x: number, y: number, element: number, damage: number, z: number, target: number): Object?
+    local o = battle.spawn(junk_shot.kind, Vec3.new(y, element, z))
+    if o then
+        (o.state :: State).target = target
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o:set_damage_word(damage)
+        o.alliance, o.flip = owner.alliance, owner.flip
     end
+    return o
 end
 
 return junk_shot
