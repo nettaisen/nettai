@@ -266,6 +266,11 @@ named_fields! {
         /// A per-action word some actions keep (a move's direction change,
         /// a thrown obstacle).
         Marker = "marker", U32, rw;
+        /// The absorbed obstacle a throw carries (the marker word, as
+        /// DustCross's throws keep it): its look (an absorbed-look record)
+        /// and animation.
+        ThrownLook = "thrown_look", Ref(Registry::Record, Some("absorbed-look".into())), rw;
+        ThrownAnim = "thrown_anim", U8, rw;
         /// The recovery a shot waits after firing, a word of the attack
         /// that outlives the action: an action that waits it without
         /// writing it (a thrown obstacle) waits the last shot's.
@@ -1097,6 +1102,12 @@ pub trait CoreApi {
     fn panel_solid(&self, p: PanelPos) -> bool;
     /// `object_highlightPanel` (drawn only).
     fn highlight_panel(&mut self, p: PanelPos);
+    /// Replace an object's whole header flag byte (in use 0x01, visible
+    /// 0x02, runs while paused 0x04, sprite not animating 0x08, runs while
+    /// dimmed 0x10, holds a reservation 0x20; 0x40 and 0x80 nothing reads):
+    /// what a spawner's bug leaves (the boulder's, `sub_80D2430`, reads the
+    /// byte from the wrong address). Everything else sets flags by name.
+    fn set_header_flags(&mut self, o: ObjectRef, flags: u8);
     /// `object_reservePanel`.
     fn reserve_panel(&mut self, o: ObjectRef, p: PanelPos) -> bool;
     /// `object_removePanelReserve`.
@@ -1347,12 +1358,13 @@ pub trait CoreApi {
     /// hand's cursor (its damage, bonuses and modifiers) and name the
     /// chip's action.
     fn prepare_chip(&mut self, o: ObjectRef) -> u8;
-    /// Obstacles the navi absorbed, oldest first: (kind, animation).
-    fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u8, u8)>>;
+    /// Obstacles the navi absorbed, oldest first: (look, animation), the
+    /// look an absorbed-look record's handle.
+    fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u16, u8)>>;
     /// Add one (false when the navi has eight).
-    fn push_absorbed(&mut self, o: ObjectRef, kind: u8, anim: u8) -> ApiResult<bool>;
+    fn push_absorbed(&mut self, o: ObjectRef, look: u16, anim: u8) -> ApiResult<bool>;
     /// Take the newest.
-    fn pop_absorbed(&mut self, o: ObjectRef) -> ApiResult<Option<(u8, u8)>>;
+    fn pop_absorbed(&mut self, o: ObjectRef) -> ApiResult<Option<(u16, u8)>>;
 
     // ---- Sprites -------------------------------------------------------------
 
@@ -1474,11 +1486,20 @@ pub trait CoreApi {
     /// `sub_800F8CE`: blink out for 20 ticks when it vanishes.
     fn obstacle_blink_out(&mut self, o: ObjectRef) -> ApiResult<BlinkOut>;
     /// `sub_800F90E`: absorbed, it flies to the absorbing side's navi as
-    /// obstacle kind `kind` (`data.objects.absorbed_sprites`), with its
-    /// animation and palette.
-    fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, kind: u8) -> ApiResult<()>;
+    /// an absorbed obstacle of look `look` (an absorbed-look record's
+    /// handle; the original's obstacle kind), with its animation and
+    /// palette.
+    fn obstacle_fly_to_absorber(&mut self, o: ObjectRef, look: u16) -> ApiResult<()>;
     /// `sub_802EF5C`: the per-side target tracking some chips keep.
     fn obstacle_release_tracking(&mut self, o: ObjectRef);
+    /// Whether one of the field's two stage-object slots is free
+    /// (`sub_8007450`'s test).
+    fn obstacle_stage_slot_free(&self) -> bool;
+    /// `o` takes the first free stage-object slot (`sub_8007450`'s store);
+    /// an error if both are taken.
+    fn obstacle_enter_stage(&mut self, o: ObjectRef) -> ApiResult<()>;
+    /// `o` leaves the stage-object slot it holds.
+    fn obstacle_leave_stage(&mut self, o: ObjectRef);
     /// A chip's request of the obstacle `o` (`by`: the requester, whose
     /// side absorbs).
     fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef);

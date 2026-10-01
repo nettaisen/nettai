@@ -80,10 +80,13 @@ pub enum ActorKind {
         /// Which rock (`ObjectData::rocks`).
         variant: u8,
     },
-    /// Attack object #0x6E, kept in the field-object registry's stage
-    /// slots (`sub_8007450`).
+    /// A boulder (attack object #0x6E, `sub_8007450`), kept in the
+    /// field-object registry's stage slots (by content: objects/boulder).
     Object6E,
-    /// Attack object #0x7D (`sub_800751C`).
+    /// A Guardian statue (attack object #0x7D, `sub_800751C`), placed at
+    /// the start (by content: chips/guardian). Its `variant` is the
+    /// entry's argument, which only reaches the position its spawner
+    /// leaves before its init.
     Object7D { variant: u8 },
 }
 
