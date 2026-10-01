@@ -23,7 +23,7 @@ local grasseed = require("../grasseed/chip")
 local iceseed = require("../iceseed/chip")
 local poisseed = require("../poisseed/chip")
 
-local legacy = {
+local by_number = {
     state = throw.STATE,
 }
 
@@ -71,8 +71,8 @@ local function action_of(me: Object): Action
     return a
 end
 
-function legacy.update(me: Object, s: any)
+function by_number.update(me: Object, s: any)
     action_of(me).update(me, s)
 end
 
-return legacy
+return by_number
