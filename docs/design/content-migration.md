@@ -279,8 +279,8 @@ or a weapon's; §3). Every entry of `off_80EC3F0` is ported, in content model v2
 built", step 8d): 0, 3 (lib/instant/plus with chips/atk-10, chips/navi-20, chips/whicapsl, chips/finalgun,
 chips/numtrap; the records' shims chips/13f-beastout and chips/0c0-atk-10; objects/rising-bubble), 1
 (objects/boomerang, chips/boomer), 4 (chips/lance), 5 (chips/fullcust), 8 (chips/firehit; the records' shim
-chips/06b-firehit1), 10 (chips/busterup), 12 (chips/sandwrm), 13 (chips/synctrgr), 14 (objects/flame-hook,
-flame-hook-fire), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/10-tengu-wind, objects/gust), 21
+chips/06b-firehit1), 10 (chips/busterup), 12 (chips/sandwrm), 13 (chips/synctrgr), 14 (chips/flmhook, the navi
+chips'; the records' shim chips/146-flmhook1), 15 (chips/colforce), 19 (chips/justcone), 20 (weapons/10-tengu-wind, objects/gust), 21
 (chips/golmhit), 22 (chips/colarmy); 7 and 0x12 are NULL (an explicit panic). 2, 6, 9, 11, 16 and 17 have no chip or
 MegaMan weapon: they are builders in lib/instant, which the link navis' weapons (0x71, 0x83) and actions call when
 ported. Left: the Full Synchro aura after SyncTrgr (framework).

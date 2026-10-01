@@ -53,7 +53,7 @@ local SHOT = { is = collision.attack, hits = collision.hits_navis }
 -- still name one by number).
 local ROWS: { [number]: FlyingShotVariant } = {
     [0] = flying_shot.variant {
-        collision = { is = collision.attack_8e, hits = collision.hits_navis },
+        collision = { is = collision.thrown_piercing_break, hits = collision.hits_navis },
         hit_mod = 3,
         element = "null",
         spark = sparks.plain,

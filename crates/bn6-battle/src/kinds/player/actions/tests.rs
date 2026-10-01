@@ -1577,7 +1577,7 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
         (testing::defined_chip(testing::LANCE), "lance/lance"),
         (testing::chip_handle(testing::FIST), "firehit/fist"),
         (testing::defined_chip(testing::SAND_WORM), "sandwrm/worm"),
-        (testing::chip_handle(testing::FLAME_HOOK), "flame-hook"),
+        (testing::chip_handle(testing::FLAME_HOOK), "flmhook/hook"),
         (testing::defined_chip(testing::JUSTICE_ONE), "justcone/strike"),
         (testing::defined_chip(testing::GOLEM_HIT), "golmhit/golem"),
     ];
