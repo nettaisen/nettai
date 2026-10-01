@@ -30,10 +30,12 @@ tools/curation/apply.py <checkout> <checkout>/docs/design/curation-proposal.tsv 
 
 For each accepted rename it changes compat (assets.toml; rules.toml's [statuses] and [lockon]; records.toml's
 [projectile_variants]), the content that names it (`asset.sprite("...")`, a lib table's field and every
-`<alias>.<field>` of a module that requires it, a definition's `id`), the test content's asset table, the docs'
-`asset.*("...")` mentions and, with `--verify`, the gen-content tests that quote a name; an accepted row, renamed
-or not, leaves curation.toml. It then lists every line that still says an old name (comments, prose) for a person
-to read. Weapons, actions, kinds, chips, chip series and stages are only settled by it, never renamed: their keys
+`<alias>.<field>` of a module that requires it, a definition's `id`), the test content's asset lists, Rust that
+names an asset (`AssetKind::Sprite, "..."`, `assets.sprites["..."]`), the docs' `asset.*("...")` mentions
+and, with `--verify`, the verification workspace's tests that name one (gen-content's, the trace tests' looks); an
+accepted row, renamed or not, leaves curation.toml. It then lists every place that still quotes an old name or
+reads an old field (comments, prose, the same word in another registry) for a person to read.
+Weapons, actions, kinds, chips, chip series and stages are only settled by it, never renamed: their keys
 name folders, Rust tests and the compat entries the traces read, and no rename is proposed for them.
 
 The gate after applying: `cargo build --workspace --all-targets`, `cargo test --workspace`, `bn6-content-check`,
