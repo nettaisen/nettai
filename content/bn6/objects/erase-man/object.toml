@@ -1,7 +1,0 @@
-# EraseMan, the EraseMan chips' navi (actor object #0x15, `sub_80BB608`), is a
-# script.
-
-[kind]
-pool = "actor"
-index = 0x15
-script = "erase_man.luau"
