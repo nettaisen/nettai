@@ -543,13 +543,6 @@ impl Battle {
         self.content.navi_number(self.stats[side].navi)
     }
 
-    /// A side's weapon routine number for a weapon slot (the ruleset asks
-    /// them by number until phase C); none for no weapon or one content
-    /// defines.
-    pub fn weapon_number(&self, w: Option<bn6_content_api::WeaponHandle>) -> Option<u8> {
-        w.and_then(|h| self.content.weapon_number(h))
-    }
-
     /// `battle_networkInvert`: whether `alliance` is not the local side.
     pub fn is_remote(&self, alliance: u8) -> bool {
         alliance ^ self.round.local_side != 0
