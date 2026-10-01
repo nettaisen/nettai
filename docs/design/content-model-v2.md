@@ -1773,6 +1773,30 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
    `bn6_content::battle` goes; the loader takes the content and assets roots. Needs step 3b. Gate: the `Content`
    the definitions build equals the one v1 extracted (a one-off field-by-field check, as in the v1 move), `gen-content check`
    passes, the traces hold. Mostly generated. **L.**
+
+   *As built.* `gen-content luau <rom> <content>` writes into the content root, leaving what people defined
+   alone (a chip whose `define.chip` has no legacy marker keeps its module; its numbered record goes to
+   chips/v1.luau as `v1/<key>`, which numbers reach) and extending the shared modules by what they lack
+   (rules/collision.luau by `row_offset`, lib/effects, lib/sparks and lib/regions by look and shape); a module
+   people wrote at a generated path (the sword family's action modules) gets its definitions in a
+   `record.luau`/`records.luau` beside it. It deletes the 253 `chip.toml` and 46 `weapon.toml`, whose content
+   is in the markers, and lists its made-up names in compat/curation.toml by module. The markers: a chip's
+   `action = legacy { number, action, subtype, params, script }` (with what the ruleset and v1 modules read of
+   it by number: a damage formula, `sp_damage`, `navi_damage`, `dark_substitute`, `gun_del_sol`, `recovery`,
+   `sword`); a navi's and a form's `legacy = legacy { number, name_id }`; a weapon's `setup = legacy {
+   routines, script, action, instant_chip }`; a stage's `legacy = legacy { number, layout, actor_list }`; a
+   status's and a lock-on mode's `legacy { id }`. The tables v1 modules read by number are legacy rule
+   sections (`define.rules(section, legacy { [n] = ... })`): rules/numbers.luau (effects, sparks, regions, and
+   the charge times of the routines no weapon names), rules/identities.luau, rules/body-overlays.luau and each
+   kind's objects/KIND/rows.luau. `legacy` is typed `any`, so a marker stands where the converted field will.
+   bn6-battle's `content::legacy` builds the v1 tables from all of it. Weapons are a routine's numbers with the
+   same address *and* charge times (alias routines whose rows differ are weapons of their own:
+   `megaman/buster` is routine 0 alone, with `megaman/buster-2e` and five more), and every routine has its
+   charge times (the TOML's rules/weapons.toml had 50 of the 148). Content may not use a placeholder asset
+   name, so compat names what the tables use for its first user (`effect-0e`, `held-28`), for curation; a
+   NameID look past the table's real ones names a sprite with no animation data as `"cc-ii"`. The loader is
+   `bn6_content::pack::load_battle(content, assets)`; bn6-extract writes assets only. The check: `gen-content
+   check` defines the content root and compares every table with the ROM's (§3 of content-pack.md).
 6. **Assets by name and the codemod.** The extractor names assets from compat and writes the asset index, which
    the loader fills `Content::assets` from (done first, so real packs resolve `asset.*`); sprites and sounds become asset
    handles in the engine; the codemod of §11 runs over every module (asset strings and numbers to names,

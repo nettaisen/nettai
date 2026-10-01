@@ -9,6 +9,7 @@ use std::time::Instant;
 
 struct Args {
     pack: Option<PathBuf>,
+    content: Option<PathBuf>,
     mute: bool,
     trace: Option<PathBuf>,
     round: usize,
@@ -30,9 +31,12 @@ usage: bn6-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
        bn6-frontend [OPTIONS] --play          play live (you are the left navi)
        bn6-frontend [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
 
-  --pack DIR       the content pack to play (battle data, graphics and sound),
-                   from `bn6-extract content <rom> <dir>` (default: $BN6_PACK,
-                   else data/content/bn6)
+  --pack DIR       the content pack to play (graphics and sound), from
+                   `bn6-extract content <rom> <dir>` (default: $BN6_PACK, else
+                   data/content/bn6)
+  --content DIR    the battle content: the definitions that name the pack's
+                   assets (default: $BN6_CONTENT, else this repository's
+                   content/bn6)
   --mute           no sound (headless rendering never plays any)
   --round N        the trace round to start with (default 1; later rounds follow)
   --seed N         the live battle's RNG seed
@@ -46,6 +50,7 @@ usage: bn6-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
 fn parse() -> Result<Args, String> {
     let mut a = Args {
         pack: None,
+        content: None,
         mute: false,
         trace: None,
         round: 1,
@@ -64,6 +69,7 @@ fn parse() -> Result<Args, String> {
         let number = |v: String, name: &str| v.parse::<u64>().map_err(|_| format!("bad {name} {v:?}"));
         match arg.as_str() {
             "--pack" => a.pack = Some(value("--pack")?.into()),
+            "--content" => a.content = Some(value("--content")?.into()),
             "--mute" => a.mute = true,
             "--round" => a.round = number(value("--round")?, "--round")? as usize,
             "--play" => a.play = true,
@@ -144,7 +150,8 @@ fn main() {
         .clone()
         .or_else(|| std::env::var_os("BN6_PACK").map(PathBuf::from))
         .unwrap_or_else(|| PathBuf::from(DEFAULT_PACK));
-    let content = Arc::new(load(&pack, "battle data", bn6_content::pack::load_battle));
+    let root = args.content.clone().unwrap_or_else(bn6_content::root::bn6);
+    let content = Arc::new(load(&pack, "battle content", |pack| bn6_content::pack::load_battle(&root, pack)));
     let assets = load(&pack, "graphics", bn6_content::pack::load_graphics);
     session::quiet_engine_panics();
     let mut renderer = Renderer::new(&assets);
