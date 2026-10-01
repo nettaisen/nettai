@@ -236,7 +236,13 @@ impl Side {
         let Some(mut folder) = self.folder else { return };
         let mut round = self.round;
         let regular = folder.regular_pending;
-        let screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, &mut round);
+        // (Palette 11 keeps the last chip window's element colours from
+        // screen to screen.)
+        let last_chip = self.screen.and_then(|s| s.look.chip_window.last_chip).filter(|_| ctx.turn != 1);
+        let mut screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, &mut round);
+        if screen.look.chip_window.last_chip.is_none() {
+            screen.look.chip_window.last_chip = last_chip;
+        }
         // sub_802A646: once the tag pair is among the chips a screen can
         // deal, a re-deal no longer keeps it apart (BattleState+0x44).
         if console.tag_pair.is_some_and(|t| t < screen.hand_size) {
