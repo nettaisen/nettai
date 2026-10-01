@@ -5,12 +5,12 @@
 -- (when the attack's first parameter asks, as StepSwrd's does), leaving an
 -- afterimage; it raises its sword (not for variants 0x10 and 0x11), and on
 -- the tick its 21-tick count reaches 12 sends a sword wave
--- (objects/sword-wave) of the variant's kind from the panel in front (two
--- for variant 0xA). Variant 0xB slashes twice, the second as 0x12. A dash
--- ends back on the panel it started from.
+-- (forms/slashcross/sword_wave) of the variant's row from the panel in
+-- front (two for variant 0xA). Variant 0xB slashes twice, the second as
+-- 0x12. A dash ends back on the panel it started from.
 
 local sword = require("../../../../lib/sword")
-local sword_wave = require("../../../../objects/sword-wave/sword_wave")
+local sword_wave = require("../../forms/slashcross/sword_wave")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -36,6 +36,8 @@ local SWORD, VARIANT, HIT_PARAM = 0x80, 0x10, 0x94
 -- Variants: the long sword without the arm, the double slash, the
 -- double wave, and what the double slash's second slash becomes.
 local NO_ARM_A, NO_ARM_B, DOUBLE_SLASH, DOUBLE_WAVE, SECOND_SLASH = 0x10, 0x11, 0x0B, 0x0A, 0x12
+-- The plain sword's (the double wave's second, hidden wave).
+local PLAIN_SLASH = 0
 
 -- The panels a dash may end on (`sub_8015B00`, two ahead): with the
 -- other side's body flag (0x10000) and none of 0xF800000.
@@ -100,6 +102,16 @@ local function dash(me: Object)
     me:update_collision_panels()
 end
 
+-- The wave of the charged slash's variant (the sword's subtype, or the
+-- charge's own rows).
+local function wave_of(v: number): SwordWaveVariant
+    local wave = sword_wave.by_slash[v]
+    if wave == nil then
+        error(string.format("sword wave kind %#x reads past byte_80D7F4C (sub_80D80B4)", v))
+    end
+    return wave
+end
+
 -- `sub_80EE3F0`: how many slashes.
 local function count(me: Object, s: State)
     s.slashes = if me.variant == DOUBLE_SLASH then 2 else 1
@@ -130,9 +142,10 @@ local function slash(me: Object, s: State)
         local v = me.variant
         local x, y = me.panel_x + me.facing, me.panel_y
         local damage = int.u32(bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16)) + me.extra)
-        sword_wave.spawn(me, x, y, me.attack_element, { v, 0, 0, 0 }, damage)
+        sword_wave.spawn(me, wave_of(v), x, y, me.attack_element, damage)
         if v == DOUBLE_WAVE then
-            sword_wave.spawn(me, x, y, me.attack_element, { 0, 1, 0, 0 }, damage)
+            -- A second, hidden wave: the plain sword's.
+            sword_wave.spawn(me, wave_of(PLAIN_SLASH), x, y, me.attack_element, damage, true)
         elseif v == DOUBLE_SLASH then
             me.variant = SECOND_SLASH
         end
