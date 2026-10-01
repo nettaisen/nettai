@@ -2,9 +2,9 @@
 //!
 //! [`Content`] holds everything the simulation reads that isn't rules
 //! code: chips, navis and forms, stages, the ruleset's tables (collision
-//! types, panel rules, status effects...), object data (rocks,
-//! attachments, overlays), the effect and region registries, and every
-//! sprite's animation timing. It never changes during a battle and is
+//! types, panel rules, status effects...), the body overlays, the
+//! registries of what the content defines, and every sprite's animation
+//! timing. It never changes during a battle and is
 //! shared between battles and their snapshots through an `Arc`:
 //!
 //! ```ignore
@@ -12,24 +12,25 @@
 //! let content = Arc::new(content);
 //! let setup = RoundSetup { content: content.hash(), ..setup };
 //! let battle = Battle::new(setup, content.clone());
-//! let chip = battle.content.chip(0x11);
+//! let chip = battle.content.chip(hand[0]);
 //! ```
 //!
 //! See docs/design/content-pack.md for the pack's files and this API.
 //!
 //! The engine does no file IO: a loader outside it (bn6-content) reads a
-//! content pack into this model, and tests build small content sets in
-//! code. BN6's content comes only from a pack extracted from the user's
-//! ROM (`bn6-extract content`).
+//! content root (BN6's is the committed content/bn6) and an asset root
+//! (extracted from the user's ROM by `bn6-extract content`) into this
+//! model, and tests build small content sets in code.
 //!
 //! Content has an identity, [`Content::hash`], which a round's setup
 //! carries (`RoundSetup::content`) so that netplay peers can check they
 //! run the same content. The content itself is not part of a snapshot or
 //! of the state digest.
 //!
-//! Ids are the original's numbers (chip ids, NameIDs, row numbers the
-//! state and traces observe); the tables here are dense and indexed by
-//! them.
+//! What the content defines is by handle: each key interns to a dense
+//! handle at load ([`Defs`]). Navis, forms and the body overlays are also
+//! still by the original's numbers, the tables here dense and indexed by
+//! them (docs/design/content-model-v2.md §12, step 13).
 
 mod chips;
 mod custom;

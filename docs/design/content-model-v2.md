@@ -2380,6 +2380,15 @@ must be defined by something; and each role of rules/roles.luau that names one m
 the number rules.toml gives the role (the numbers the ruleset's code held until step 12, which the generator
 writes from its own list).
 
+*As built (step 13).* The last writers are retired, so gen-content is the check alone: `write` (compat, from
+its own lists of the engine's kinds, actions, sounds and roles, which every new kind or role had to be added
+to), `luau` (step 5's definitions) and `describe` (the chips' descriptions) are gone, since each would rewrite
+what people now own. Compat is edited by hand like the modules, and `gen-content check <rom> <content>` is
+what keeps both honest: it reads compat as `bn6-compat` reads it (a number under two keys is refused), checks
+compat's numbers against the ROM (chips and their actions, navis, forms, weapons and their aliases, the kinds'
+slots, stages, records, assets, curation's entries naming something), and defines the content root as the
+engine does and compares every table the definitions make with the ROM's, field by field.
+
 ### 9.4 The frontend and the audio
 
 `bn6-assets` keys sprites, backgrounds, mugshots, banners and chip icons by name; `Hud::chip_names` (font codes
@@ -2739,8 +2748,10 @@ disturbed. Each deletes registration by number's use for its category.
     nothing fills, as are the two objects battle mode 9 spawns by number: starting one is an error naming the
     role); the `data` global, with step 12's tables its last
     readers (the buster's recovery and the sine table are read from their rule modules); the object data
-    tables and rule sections nothing defined or read; `tools/content-dump`. A weapon without a `setup` or a
-    `charged_chip` is a content error at load, not a panic when it is used.
+    tables and rule sections nothing defined or read; `tools/content-dump`; in the verification workspace,
+    gen-content's last writers (`write`, `luau`, `describe`), so that it is the check alone and compat is
+    edited by hand (§9.3). A weapon without a `setup` or a `charged_chip` is a content error at load, not a
+    panic when it is used.
     New checks: `bn6-content-check` requires a type on a module-level table constant passed to a function (an
     unsealed literal passes for any record, and a required module is `any`: the 64 it flagged are annotated,
     with eight spec types moved to types.d.luau); `bn6-content check` refuses two collision types on one row
