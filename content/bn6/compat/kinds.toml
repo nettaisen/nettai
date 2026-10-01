@@ -25,6 +25,7 @@ attachment = { pool = "actor", index = 0x05 }
 "dustman/navi" = { pool = "actor", index = 0x18 }
 "engine/cross-merge" = { pool = "actor", index = 0x1B }
 "sandwrm/hole" = { pool = "actor", index = 0x1C }
+"twinldrs/navi" = { pool = "actor", index = 0x20 }
 "sunmoon/sun" = { pool = "actor", index = 0x24 }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
