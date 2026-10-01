@@ -5,7 +5,7 @@
 -- panel in front of the user if it is free solid ground, and waits 31
 -- ticks.
 
-local controller = require("../../lib/dimming/controller")
+local dimming_chips = require("../../lib/dimming")
 local fan = require("./fan")
 
 export type State = { variant: FanVariant }
@@ -28,7 +28,7 @@ local function effect(me: Object)
     local t = me.timer - 1
     me.timer = t
     if t < 0 then
-        controller.end_effect(me)
+        dimming_chips.done(me)
     end
 end
 
@@ -37,14 +37,14 @@ local kind = define.kind {
     pool = "effect",
     state = { variant = "record:fan-variant" },
     -- `sub_80E309C`.
-    update = controller.phases { name = "Wind's controller", effect = effect },
+    update = dimming_chips.phases { name = "Wind's controller", effect = effect },
 }
 
 -- A chip's `dimming` hook (`sub_80E3128`): the controller placing a fan of
 -- `variant`.
 local function hook(variant: FanVariant): (user: Object, spec: DimmingChipSpec) -> Object?
     return function(user: Object, spec: DimmingChipSpec): Object?
-        local o = controller.spawn(kind, user, spec)
+        local o = dimming_chips.spawn(kind, user, spec)
         if o then
             (o.state :: State).variant = variant
         end
