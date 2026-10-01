@@ -1,3 +1,4 @@
-# A navi chip (subtype 2): its navi is HeatMan.
+# HeatMan, HeatMan[EX] and HeatMan[SP] (navi chip subtype 2) summon HeatMan
+# (chips/heatman/navi.luau), through chip.luau.
 
-script = "../../objects/heat-man/heat_man.luau"
+script = "chip.luau"

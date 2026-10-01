@@ -557,7 +557,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | navi-effect | a second port of follow-effect (effect #0x31), deleted | objects/follow-effect |
 | needle-volley | AquaNdl1-3 | chips/aquandl/ |
 | panel-bursts | black-bomb, countdown-bomb, elem-trap-strike | objects/panel-bursts |
-| panel-strike | bass | chips/bass/ |
+| panel-strike | Bass, MachGun1-3 | objects/panel-strike (rule 5) |
 | projectile | the buster, the cannons, AirShot and many more (lib/projectile) | objects/projectile (with lib/projectile.luau's helpers) |
 | proto-man | ProtoMan series | chips/protoman/ |
 | reflected-shot, reflector-shield | Rflectr1-3 | chips/rflectr/ |
@@ -1116,6 +1116,24 @@ navis/eraseman/chip.luau, spawns it too). The beam's collision type (`piercing-b
   159-darkness and 12e-bighook likewise; 146-flmhook1 by instant chip effect 14): the navi chips for AntiNavi and
   the SP formulas, the PAs because the Program Advance table names its results by number. They go with
   EraseMan's (step 10). No `legacy` marker among them.
+- **The earlier navi chips converted the same way** (group C4; they were v1 modules under objects/):
+  chips/heatman (`navi`, and `flame`, which HeatMan's link chip shares, rule 4), elecman (`navi`, `thunder`),
+  slashman (`navi`, `wave` with its two looks as records), chrgeman (`navi`, `car`), spoutman (`navi`, `ball`,
+  `splash`, `pillar`, `geyser`, `mark`), tmhkman, tenguman, elmntman (`navi`, `meteor`, `ice`, `bolt`, `vine`),
+  blastman (`navi`, `fire`), roll (`navi`, `heart`), protoman, colonel (the series and CrossDiv), bass,
+  bassanly (`navi`, `shot`), deltaray and sunmoon (`sun`, `meteor`, `moon_beam`). What a chip's parameters picked
+  is the hook's argument where the series differ by it: `slashman.summon { wave_damage }`,
+  `elmntman.summon { cycle_ticks }`, `roll.summon { rounds, palette }`, `colonel.summon { palette, cross }`,
+  `deltaray.summon { palette }`; the others' `summon` is the hook itself. What their kinds were spawned with by
+  parameter is state set through typed specs (types.d.luau: `Thunderbolt`, `SlashWave`, `ChargeCar`,
+  `WaterBall`, `Geyser`, `GeyserMark`, `FireBlast`, `PanelStrike`, `DarkBall`, `SunMeteor`). The panel strike
+  (Bass's and MachGun's) is objects/panel-strike and the follow effect (DeltaRay's bursts, DElecSwd's glow)
+  objects/follow-effect, both definitions (rule 5). The chips stay records behind one module a series
+  (chips/0dd-roll, 0e0-protoman, 0e3-heatman, 0e6-elecman, 0e9-slashman, 0ef-chrgeman, 0f2-spoutman,
+  0f5-tmhkman, 0f8-tenguman, 101-blastman, 10d-elmntman, 110-colonel by navi chip subtype, CrossDiv's record
+  among Colonel's; 12d-bass, 12f-deltaray, 132-bassanly and 15b-sunmoon likewise: Giga chips and a Program
+  Advance's result). The palette tables the records' first parameter indexed (Roll's, Colonel's, DeltaRay's) are
+  in those modules, not the navis'. No `legacy` marker among them.
 
 **The link navis' own chips** (phase B, A3): each navi's folder has its chip's action and the kinds only it spawns
 (navis/heatman ... navis/dustman: `chip.luau`, and `riding_hit`, `volcano_rock`, `drip_shower`, `axe`, `strike`,
@@ -1456,9 +1474,6 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   `set_state_variant`; `eaten`; `telop_chip`), and the support's out flag (the original's second parameter,
   which the support sets and clears) is the controller's `out`. Rush leaves the second WhiCapsl in the hand by
   its chip number still (that chip is a record, §5.4): the one chip number left in these modules.
-- **SlashMan's sword wave** (chips/slashman/wave): its two rows are `slash-wave` records (`slash_wave.chip`,
-  the navi chip's; `slash_wave.plain`, his navi AI's), which say what the original's tests of the first
-  parameter said (`panel_hits`, `steerable`, `while_dimmed`).
 - **SlashCross's sword wave** (navis/00-megaman/forms/slashcross/sword_wave): its rows (`byte_80D7F4C`) are
   `SwordWaveVariant` records, `sword_wave.spawn(owner, variant, x, y, element, damage, hidden?)`. The charged
   slash (weapons 0x11 and 0x12, a v1 module) still names a wave by the number of the sword it charges, so the
@@ -1469,8 +1484,8 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   `ElementPillar`: lightning or flames, its times, how far back it stands, and the owner's action it lasts
   through: the navi action its owner runs as it sends it (`owner:navi_action()`, kept in an `action` state
   field), or, for an owner that is no navi, that owner's own action (Darkness's).
-- **SunMoon** (chips/sunmoon: `navi`, `meteor`, `moon_beam`) keeps the pack's record (a Program Advance);
-  chips/15b-sunmoon gives registration by number its `navi` hook (`sunmoon.summon`).
+- **SlashMan's sword wave and SunMoon** are the navi chips' group's (C4, §5.5): chips/slashman/wave and
+  chips/sunmoon.
 - **A kind's key in a form's folder**: the checker takes `navis/<navi>/forms/<form>/` as the form's folder (a
   kind there is `<form>/...`), and leaves a navi folder's index prefix out of its owner's name.
 
@@ -2210,12 +2225,18 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   on records (Program Advances and their ingredients, MoonBld and the variable swords) and for the Cross
   special's chips. They go as the 0x12 and 0x13 shims do (step 5 for the recipes, step 10 for the Cross
   special's list, the aura chips and the Beast rush's chain; SlashCross's A-charge with family 8e).
+- **The navi chips' shims** (§5.5): one module a series runs the records' navi chip subtype and gives the
+  navi's `summon` the record's parameters: chips/0ec-eraseman, 0fb-grndman, 0fe-dustman, 104-diveman,
+  107-crcusman, 10a-judgeman, 12e-bighook, 159-darkness, 15a-mstrcros, 15c-twinldrs, 15d-crosover (A2) and
+  chips/0dd-roll, 0e0-protoman, 0e3-heatman, 0e6-elecman, 0e9-slashman, 0ef-chrgeman, 0f2-spoutman, 0f5-tmhkman,
+  0f8-tenguman, 101-blastman, 10d-elmntman, 110-colonel, 12d-bass, 12f-deltaray, 132-bassanly, 15b-sunmoon
+  (C4). They go when AntiNavi's test is a trait, the SP damage formulas are in definitions and the Program
+  Advance table names its results by handle (step 10).
 - **The dimming chips' record shims** (group C5, §5.4): chips/0ba-antinavi (subtype 20: the trap chips the
   ruleset names by number, and BodyGrd), 090-timebom1 (10: TimeBom+'s recipes and their ingredients),
   0b1-invisibl (1: Invisibl, a dark chip's substitute; the second WhiCapsl, past 0x170) and 121-darkinvs (38:
-  DarkInvs, a dark chip), and chips/15b-sunmoon (navi chip subtype 25: SunMoon, a Program Advance). They go
-  when the ruleset names those chips by trait and the recipes by handle (phase C, step 10). Rush's spared chip
-  (lib/supports/rush: the second WhiCapsl's number) goes with them.
+  DarkInvs, a dark chip). They go when the ruleset names those chips by trait and the recipes by handle (phase
+  C, step 10). Rush's spared chip (lib/supports/rush: the second WhiCapsl's number) goes with them.
 - **The sword waves by number.** `sword_wave.by_slash` (navis/00-megaman/forms/slashcross/sword_wave) keeps
   the waves by the charged slash's variant, the sword chip's subtype, for the v1 weapon module that names them
   so (weapons 0x11 and 0x12). It goes when the charged slash asks the chip for its slash (family 8e).
