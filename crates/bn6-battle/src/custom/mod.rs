@@ -362,6 +362,8 @@ impl Battle {
         self.gauge.value = 0;
         self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
         self.gauge.enabled = false;
+        // sub_801DACC(0x30172): the chips' icons and window go.
+        self.chip_hud = Default::default();
         self.round.turn += 1;
         self.custom.ticks = 0;
         self.custom.committed = false;

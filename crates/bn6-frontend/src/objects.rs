@@ -63,14 +63,16 @@ impl<'a> SpriteList<'a> {
         }
     }
 
-    /// Queue parts in front of everything queued so far, in order (the
-    /// first part frontmost), as the HUD's direct inserts do.
-    pub fn insert_front(&mut self, group: Vec<SpritePart<'a>>) {
+    /// Queue parts at a layer and depth bucket as the HUD's direct
+    /// inserts do (`sub_30068E8`), in front of what the bucket holds; the
+    /// first part ends up frontmost.
+    pub fn insert_at(&mut self, layer: usize, bucket: usize, group: Vec<SpritePart<'a>>) {
         for part in group.into_iter().rev() {
             if self.count >= MAX_PARTS {
                 return;
             }
-            self.layers[0][0].push(part);
+            let Some(b) = self.layers[layer].get_mut(bucket) else { return };
+            b.push(part);
             self.count += 1;
         }
     }
@@ -155,6 +157,63 @@ pub fn sprite_name(b: &Battle, id: bn6_battle::content::SpriteId) -> String {
         Some((name, _)) => format!("sprite {name:?}"),
         None => format!("sprite {:02x}-{:02x}", id.category, id.index),
     }
+}
+
+/// Every object as the renderer sees it, a line each: its kind, where it
+/// is, its sprite with the animation and frame, and its look (what
+/// `--objects` prints: the first thing to read when something isn't drawn
+/// or is drawn wrong).
+pub fn describe(b: &Battle, view: &View) -> Vec<String> {
+    let mut lines = Vec::new();
+    for pool in Pool::ALL {
+        for r in b.objects.in_order().filter(|r| r.pool == pool) {
+            let o = b.objects.get(r);
+            let s = b.objects.sprite(r);
+            let p = project((o.pos.x, o.pos.y, o.pos.z), view);
+            let sprite = match s.id {
+                Some(id) => format!("{} anim {} frame {}", sprite_name(b, id), s.anim, s.frame),
+                None => "no sprite".to_string(),
+            };
+            let mut notes = Vec::new();
+            if o.flags & flags::VISIBLE == 0 {
+                notes.push("not visible".to_string());
+            }
+            if o.flags & flags::NO_SPRITE_UPDATE != 0 {
+                notes.push("sprite held (not drawn)".to_string());
+            }
+            let l = s.look;
+            notes.push(format!("palette {} shadow {:?} priority {}", l.palette, l.shadow, l.priority));
+            for (on, what) in [(l.hflip, "hflip"), (l.vflip, "vflip"), (l.white, "white")] {
+                if on {
+                    notes.push(what.to_string());
+                }
+            }
+            if l.color_shader != 0 {
+                notes.push(format!("shader {:#06x}", l.color_shader));
+            }
+            if let Some(a) = l.alpha {
+                notes.push(format!("alpha {a}"));
+            }
+            if let Some(m) = l.mosaic {
+                notes.push(format!("mosaic {m}"));
+            }
+            if l.hidden_parts != 0 {
+                notes.push(format!("hidden parts {:#010x}", l.hidden_parts));
+            }
+            lines.push(format!(
+                "{:?} {:2} {} side {} at ({}, {}) ground {}: {sprite}; {}",
+                r.pool,
+                r.slot,
+                b.content.defs.kind(o.kind).key,
+                o.alliance,
+                p.x,
+                p.y,
+                p.ground,
+                notes.join(", ")
+            ));
+        }
+    }
+    lines
 }
 
 /// Queue every visible object's sprite. What an object names that the
@@ -317,7 +376,11 @@ mod tests {
         list.insert_group(vec![(2, 100, part(1)), (2, 100, part(2))]);
         list.insert_group(vec![(2, 150, part(3)), (3, 0, part(4))]);
         list.insert_group(vec![(2, 100, part(5)), (2, 999, part(6)), (2, 100, part(7))]);
+        // The HUD's own: a banner in the front layer, an icon among the
+        // field's sprites by its bucket.
+        list.insert_at(0, 0, vec![part(8), part(9)]);
+        list.insert_at(2, 120, vec![part(10)]);
         let order: Vec<u16> = list.into_parts().iter().map(|p| p.x).collect();
-        assert_eq!(order, vec![3, 5, 2, 1, 4]);
+        assert_eq!(order, vec![8, 9, 3, 10, 5, 2, 1, 4]);
     }
 }

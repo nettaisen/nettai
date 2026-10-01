@@ -10,7 +10,7 @@
 use crate::battle::{Battle, FadeMode, battle_flags};
 use crate::content::{BannerId, ChipId};
 use bn6_content_api::ChipHandle;
-use crate::hud::{BannerStatus, Telop, TelopHidden};
+use crate::hud::{BannerStatus, Telop, TelopChip, TelopHidden};
 use crate::kinds::common::{self, Progress};
 use crate::object::{ObjectRef, state};
 
@@ -157,7 +157,8 @@ fn out_of_the_way(state: DimmingState) -> bool {
 /// its side started it.
 pub fn begin(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
-    // (The local player's HUD hides the custom gauge.)
+    // Its side's console hides the chip window (sub_801DACC(0x40)).
+    b.chip_hud[side as usize & 1].window = false;
     if b.dimming[side as usize].initiator == side {
         b.set_flags(battle_flags::DIMMED);
     }
@@ -247,13 +248,18 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
     // A controller's zeroed chip field names the pack's chip 0.
     let chip = named.and_then(|c| c.chip.or_else(|| b.content.chip_numbered(0)));
     let shows_damage = chip.is_some_and(|c| b.content.chip(c).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0);
-    let (damage, bonus) = if shows_damage { (o.damage, named.map_or(0, |c| c.bonus)) } else { (0, 0) };
+    let (damage, bonus) = match named {
+        Some(c) if shows_damage => (c.damage.unwrap_or(o.damage), c.bonus),
+        _ => (0, 0),
+    };
     let telop =
         Telop { side, chip, damage: damage & 0x7FF, doubled: damage & 0x8000 != 0, bonus: bonus & !0x7800, hidden };
     let banner = if b.is_remote(side) { REMOTE_TELOP } else { LOCAL_TELOP };
     if b.start_banner(banner) {
         b.banner.telop = Some(telop);
     }
+    // sub_801BED6(0x10000): a used chip's name makes way.
+    b.used_chips = [None; 2];
 }
 
 /// Navi chips (0xDD..=0x118) that AntiNavi turns back.
@@ -350,6 +356,7 @@ fn anti_navi_turn(b: &mut Battle, r: ObjectRef) {
         if b.start_banner(banner) {
             b.banner.telop = Some(telop);
         }
+        b.used_chips = [None; 2];
         b.play_sound(TELOP_SOUND);
         b.objects.get_mut(r).phase_init = 4;
         return;
@@ -398,7 +405,7 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
             }
         }
         if b.objects.get(r).telop_chip.is_none() {
-            b.objects.get_mut(r).telop_chip = Some(DimmingChip { chip, bonus: 0 });
+            b.objects.get_mut(r).telop_chip = Some(TelopChip { chip, bonus: 0, damage: None });
         }
         start_telop(b, r, side, TelopHidden::No);
         b.play_sound(TELOP_SOUND);
@@ -436,6 +443,9 @@ pub fn show_navi_telop(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
 pub fn hide_user(b: &mut Battle, user: ObjectRef) {
     b.objects.get_mut(user).flags &= !crate::object::flags::VISIBLE;
     set_vanished(b, user, true);
+    // Its console's chip icons go (sub_801DACC(2)).
+    let side = b.objects.get(user).alliance as usize & 1;
+    b.chip_hud[side].icons = false;
     set_barrier_visual_shown(b, user, false);
     set_links_visible(b, user, false);
     set_charge_glow(b, user, false);
@@ -469,6 +479,9 @@ pub fn show_user(b: &mut Battle, user: ObjectRef) {
         b.objects.get_mut(user).flags |= crate::object::flags::VISIBLE;
     }
     set_vanished(b, user, false);
+    // Its console's chip icons are back (sub_801DA48(2)).
+    let side = b.objects.get(user).alliance as usize & 1;
+    b.chip_hud[side].icons = true;
     set_barrier_visual_shown(b, user, true);
     set_links_visible(b, user, true);
     set_charge_glow(b, user, true);
@@ -621,5 +634,50 @@ mod tests {
         let (user, came_for, b) = anti_navi_duel(true);
         assert_eq!(came_for.first(), Some(&user), "the navi comes for its own side after all");
         assert!(b.linked.iter().all(|l| l.chip.is_none()), "both AntiNavis are spent");
+    }
+
+    /// Every telop of a duel as the two players are shown it: the name
+    /// each sees, and whether it is the other player's chip.
+    fn telops(setup: crate::setup::RoundSetup, ticks: usize, seed: u32) -> Vec<[crate::perspective::ShownTelop; 2]> {
+        let tape = scenario::record_on(setup.clone(), ticks, seed);
+        let mut b = Battle::new(setup, scenario::content());
+        let mut seen = Vec::new();
+        for t in &tape {
+            b.tick(&t.input, t.events.clone());
+            if let (Some(a), Some(other)) = (b.telop_for(0), b.telop_for(1))
+                && !seen.contains(&[a, other])
+            {
+                seen.push([a, other]);
+            }
+        }
+        seen
+    }
+
+    #[test]
+    fn a_telop_names_its_chip_and_a_trap_only_to_its_user() {
+        use crate::perspective::TelopName;
+        // Side 0 has the veil and the trap; side 1 has no dimming chip.
+        let mut setup = scenario::setup_with(&[testing::VEIL, testing::TRAP]);
+        setup.players[1] = scenario::setup().players[1];
+        let seen = telops(setup, 2400, 5);
+        let names: Vec<_> = seen.iter().map(|[a, b]| (a.name, a.remote, b.name, b.remote)).collect();
+        let chip = |id| TelopName::Chip(testing::chip_handle(id));
+        assert!(names.contains(&(chip(testing::VEIL), false, chip(testing::VEIL), true)), "{names:?}");
+        assert!(names.contains(&(chip(testing::TRAP), false, TelopName::Hidden, true)), "{names:?}");
+    }
+
+    #[test]
+    fn a_navi_chips_telop_shows_its_damage() {
+        use crate::perspective::TelopName;
+        let seen = telops(scenario::setup_with(&[testing::HEAT]), 1500, 11);
+        let heat = testing::chip_handle(testing::HEAT);
+        let damage = scenario::content().chip(heat).damage;
+        let shown: Vec<_> = seen.iter().filter(|[a, _]| a.name == TelopName::Chip(heat)).collect();
+        assert!(!shown.is_empty(), "{seen:?}");
+        for [a, b] in shown {
+            assert_eq!((a.damage, a.bonus, a.doubled), (b.damage, b.bonus, b.doubled), "both players see the numbers");
+            assert_ne!(a.remote, b.remote);
+            assert!(a.damage >= damage && damage > 0, "{a:?}");
+        }
     }
 }

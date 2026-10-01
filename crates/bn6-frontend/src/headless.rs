@@ -53,6 +53,20 @@ pub fn render_frames(
     scale: usize,
     log: &mut dyn FnMut(&str),
 ) -> std::io::Result<Vec<u32>> {
+    render_frames_with(renderer, sessions, wanted, out, scale, false, log)
+}
+
+/// [`render_frames`], and with `objects` every written frame's objects
+/// go to the log as the renderer sees them (`objects::describe`).
+pub fn render_frames_with(
+    renderer: &mut Renderer,
+    sessions: Vec<Session>,
+    wanted: &BTreeSet<u32>,
+    out: &Path,
+    scale: usize,
+    objects: bool,
+    log: &mut dyn FnMut(&str),
+) -> std::io::Result<Vec<u32>> {
     std::fs::create_dir_all(out)?;
     let mut written = Vec::new();
     let last = wanted.iter().next_back().copied().unwrap_or(0);
@@ -66,6 +80,11 @@ pub fn render_frames(
                 let frame = renderer.render(&s.battle);
                 write_png(&out.join(format!("frame_{f:05}.png")), &frame, scale)?;
                 written.push(f);
+                if objects {
+                    for line in crate::objects::describe(&s.battle, &Renderer::view(&s.battle)) {
+                        log(&format!("frame {f}: {line}"));
+                    }
+                }
             }
             if f >= last {
                 break;

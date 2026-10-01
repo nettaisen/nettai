@@ -17,7 +17,9 @@
 //! - how sprites are drawn ([`Look`](crate::object::sprite::Look));
 //! - which banner is showing ([`Banner::id`](crate::hud::Banner::id)) and
 //!   what a telop says ([`Banner::telop`](crate::hud::Banner::telop), from
-//!   the controller's `Object::telop_chip`);
+//!   the controller's `Object::telop_chip`), and the chip a player just
+//!   used, which the other player's console names (`Battle::used_chips`);
+//! - what each console shows of its navi's chips (`Battle::chip_hud`);
 //! - the objects' `VISIBLE` header flag.
 //!
 //! Also left out: the behaviors handle (`Battle::behaviors`), which is
@@ -160,6 +162,8 @@ impl Hash for Battle {
             fight,
             gauge,
             banner,
+            used_chips: _,
+            chip_hud: _,
             paused,
             inputs,
             hands,

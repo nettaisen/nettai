@@ -204,7 +204,7 @@ pub struct Object {
     /// nothing in the simulation reads it, and it is left out of the
     /// digest. None: no one told the engine which chip the controller's
     /// telop names (a dimming content starts itself).
-    pub telop_chip: Option<crate::dimming::DimmingChip>,
+    pub telop_chip: Option<crate::hud::TelopChip>,
 }
 
 /// A position in the update list: the head, the tail sentinel, or an

@@ -18,6 +18,7 @@ struct Args {
     paused: bool,
     headless: Option<String>,
     audit: bool,
+    objects: bool,
     out: PathBuf,
     png_scale: usize,
     quit_after: Option<u64>,
@@ -43,6 +44,8 @@ usage: bn6-frontend [OPTIONS] TRACE.jsonl     watch a trace's rounds
   --headless F     render frames F (e.g. 150,300,600 or 100-120; trace frame
                    numbers, or ticks in live play) to frame_NNNNN.png files
                    in --out (default .), no window
+  --objects        with --headless: list every rendered frame's objects (kind,
+                   place, sprite, animation, look)
   --audit          draw every frame and play every sound cue into nothing, no
                    window, and list what they named that the pack doesn't
                    have (a sprite, an animation, a palette, a chip's icon or
@@ -61,6 +64,7 @@ fn parse() -> Result<Args, String> {
         paused: false,
         headless: None,
         audit: false,
+        objects: false,
         out: PathBuf::from("."),
         png_scale: 1,
         quit_after: None,
@@ -79,6 +83,7 @@ fn parse() -> Result<Args, String> {
             "--paused" => a.paused = true,
             "--headless" => a.headless = Some(value("--headless")?),
             "--audit" => a.audit = true,
+            "--objects" => a.objects = true,
             "--out" => a.out = value("--out")?.into(),
             "--png-scale" => a.png_scale = number(value("--png-scale")?, "--png-scale")? as usize,
             "--quit-after" => a.quit_after = Some(number(value("--quit-after")?, "--quit-after")?),
@@ -195,7 +200,9 @@ fn main() {
     if let Some(list) = &args.headless {
         let wanted = headless::parse_frames(list).unwrap_or_else(|e| fail(e));
         let mut log = |s: &str| eprintln!("{s}");
-        match headless::render_frames(&mut renderer, sessions, &wanted, &args.out, args.png_scale, &mut log) {
+        let rendered =
+            headless::render_frames_with(&mut renderer, sessions, &wanted, &args.out, args.png_scale, args.objects, &mut log);
+        match rendered {
             Ok(written) => {
                 eprintln!("wrote {} frames to {}", written.len(), args.out.display());
                 if written.len() < wanted.len() {

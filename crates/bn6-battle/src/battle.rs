@@ -352,6 +352,12 @@ pub struct Battle {
     pub fight: FightMachine,
     pub gauge: CustomGauge,
     pub banner: Banner,
+    /// The chip each side last used, while the other player's console
+    /// names it (presentation only; left out of the digest).
+    pub used_chips: [Option<crate::hud::UsedChip>; 2],
+    /// What each side's console shows of its own navi's chips
+    /// (presentation only; left out of the digest).
+    pub chip_hud: [crate::hud::ChipHud; 2],
     pub paused: bool,
     pub inputs: [InputRecord; 2],
     pub hands: [ChipHand; 2],
@@ -631,6 +637,8 @@ impl Battle {
             fight: FightMachine::default(),
             gauge: CustomGauge::new(),
             banner: Banner::default(),
+            used_chips: [None; 2],
+            chip_hud: Default::default(),
             paused: false,
             inputs: [InputRecord::default(); 2],
             hands,
@@ -1121,6 +1129,10 @@ impl Battle {
                 }
             }
             self.custom.committed = false;
+            // loc_8026E14: the consoles' chip icons are back (sub_801DA48(2)).
+            for hud in &mut self.chip_hud {
+                hud.icons = true;
+            }
             self.enter_mode(mode::FIGHTING);
             return;
         }
@@ -1675,7 +1687,9 @@ impl Battle {
     fn fight_result(&mut self) {
         if self.fight.init == 0 {
             // The HUD's tasks stop (`sub_801BED6(0xE4C53)`): the gauge's and
-            // the emotion windows'.
+            // the emotion windows'; the chips' icons and window go
+            // (`sub_801DACC`).
+            self.chip_hud = Default::default();
             self.gauge.enabled = false;
             self.stop_emotion_windows();
             let win = self.fight.state == fight::WIN;
@@ -1757,9 +1771,34 @@ impl Battle {
         }
     }
 
+    /// `sub_801EB18(chip, damage, bonus)` on the other player's console:
+    /// `side` used `chip`, whose name (with the attack's damage word and
+    /// bonus, for a chip whose damage shows) that console shows for a
+    /// second.
+    pub(crate) fn show_used_chip(&mut self, side: u8, chip: ChipHandle, damage: u16, bonus: u16) {
+        let shows_damage = self.content.chip(chip).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0;
+        let (damage, bonus) = if shows_damage { (damage, bonus) } else { (0, 0) };
+        self.used_chips[side as usize & 1] = Some(crate::hud::UsedChip {
+            chip,
+            damage: damage & 0x7FF,
+            doubled: damage & 0x8000 != 0,
+            bonus: bonus & !0x7800,
+            ticks: crate::hud::UsedChip::SHOWN_TICKS,
+        });
+    }
+
     fn run_hud_tasks(&mut self) {
         if self.gauge.enabled {
             self.fill_gauge();
+        }
+        // sub_801D1D8: the used chips' names run out.
+        for used in &mut self.used_chips {
+            if let Some(u) = used {
+                u.ticks -= 1;
+                if u.ticks == 0 {
+                    *used = None;
+                }
+            }
         }
         // While the custom screen is up the banner is the local player's
         // screen's (its Program Advance's), already stepped with it.

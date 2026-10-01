@@ -47,6 +47,19 @@ pub struct Banner {
     pub telop: Option<Telop>,
 }
 
+/// What a dimming controller's telop will say of its chip (the
+/// controller's +0x30 and +0x32, and its damage). Presentation only.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TelopChip {
+    /// None: the controller's chip field held none (the game's 0).
+    pub chip: Option<ChipHandle>,
+    /// The Atk+ / cross bonus.
+    pub bonus: u16,
+    /// The controller's damage, when it isn't in the object's `damage`
+    /// (the engine's navi chip controller keeps its damage word apart).
+    pub damage: Option<u16>,
+}
+
 /// What a telop says (`sub_801E792`'s arguments for banners 0x4C and
 /// 0x50): the chip's name and, for a chip whose damage shows, the damage
 /// and the bonus. Presentation only; what each player is shown is
@@ -65,6 +78,39 @@ pub struct Telop {
     /// The bonus shown as "+N" after the damage (0: none shown).
     pub bonus: u16,
     pub hidden: TelopHidden,
+}
+
+/// What a player's console shows of their own navi's chips: the icons over
+/// the navi (HUD draw task 1) and the chip name window at the bottom left
+/// (task 6), as the navis' and the flow's HUD calls turn them on and off
+/// (`sub_801DA48`, `sub_801DACC`). Presentation only: the engine keeps one
+/// for each side, since each player's console shows its own.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ChipHud {
+    pub icons: bool,
+    pub window: bool,
+}
+
+/// A chip a player just used, as the other player's console names it for
+/// a second (`sub_801EB18`; HUD task bit 16): any chip but a cut-in chip,
+/// whose telop both see. Presentation only; what a player is shown is
+/// [`Battle::used_chip_for`](crate::Battle::used_chip_for).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct UsedChip {
+    pub chip: ChipHandle,
+    /// The attack's damage, for a chip whose damage shows (0: none shown).
+    pub damage: u16,
+    /// The damage word's double flag: "x2" after the numbers.
+    pub doubled: bool,
+    /// The bonus shown as "+N" after the damage (0: none shown).
+    pub bonus: u16,
+    /// HUD ticks left of its `SHOWN_TICKS`.
+    pub ticks: u8,
+}
+
+impl UsedChip {
+    /// How long the name shows.
+    pub const SHOWN_TICKS: u8 = 0x3C;
 }
 
 /// Who sees "????" for a telop's chip (`sub_800BBA8`, the trap chips).
