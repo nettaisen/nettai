@@ -54,12 +54,9 @@ lib/object_setup.luau 2
 lib/panels.luau 2
 lib/swords/vari.luau 4
 lib/trajectory.luau 1
-navis/00-megaman/weapons/00-buster/buster.luau 8
-navis/00-megaman/weapons/01-charged-shot/charged_shot.luau 4
-navis/00-megaman/weapons/02-blank-shot/blank_shot.luau 2
+navis/00-megaman/forms/heatcross/charge.luau 3
 navis/00-megaman/weapons/03-falzar-beast-buster/falzar_beast_buster.luau 11
 navis/00-megaman/weapons/04-gregar-beast-buster/gregar_beast_buster.luau 3
-navis/00-megaman/weapons/06-heat-charge/heat_charge.luau 1
 navis/00-megaman/weapons/07-heat-beast-charge/heat_beast_charge.luau 1
 navis/00-megaman/weapons/08-spout-beast-charge/spout_beast_charge.luau 2
 navis/00-megaman/weapons/09-elec-beast-charge/elec_beast_charge.luau 1
@@ -81,6 +78,9 @@ navis/00-megaman/weapons/28-dust-charge/dust_charge.luau 1
 navis/00-megaman/weapons/2a-absorb/absorb.luau 2
 navis/00-megaman/weapons/3b-shield/shield.luau 1
 navis/00-megaman/weapons/3d-anti-damage/anti_damage.luau 1
+navis/00-megaman/weapons/blank-shot/weapon.luau 2
+navis/00-megaman/weapons/buster/weapon.luau 7
+navis/00-megaman/weapons/charged-shot/weapon.luau 4
 objects/absorbed-obstacle/absorbed_obstacle.luau 8
 objects/air-spin/air_spin.luau 15
 objects/anti-recovery/anti_recovery.luau 2

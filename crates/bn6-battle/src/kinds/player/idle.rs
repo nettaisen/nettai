@@ -108,7 +108,9 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     let f = ai(b, r).requests;
     if f & request::FORCED_CHARGED_SHOT != 0 {
         leave_idle(b, r);
-        return set_attack(b, r, 0x16, 1);
+        let role = crate::content::Roles::action(b.content.defs.roles.actions.forced_charged_shot, "forced_charged_shot");
+        let shot = super::NaviAttack::content(&b.content.defs, role);
+        return set_attack(b, r, shot, 1);
     }
     if f & request::BUSTER != 0 {
         leave_idle(b, r);
