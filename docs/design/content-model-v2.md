@@ -702,7 +702,7 @@ chips; the WIP kinds without an `object.toml` (unregistered) are included.
 | blast-man, blast-fire | BlastMan series | chips/blastman/ |
 | bomb | MiniBomb, EnergBom, MegEnBom, BigBomb | lib/bombs/ |
 | bomb-slash | bomb's after-blast no BN6 chip uses | lib/bombs/ |
-| boomerang | Boomer, HiBoomer, M-Boomer; TomahawkCross's throw | objects/boomerang |
+| boomerang | Boomer, HiBoomer, M-Boomer; TomahawkCross's throw | chips/boomer/boomerang (as built; TomahawkCross Beast's throw requires it) |
 | bubble-star | BblStar1-3 | chips/bblstar/ |
 | bug-bomb | BugBomb | chips/bugbomb/ |
 | charge-man, charge-car | ChrgeMan series | chips/chrgeman/ |
@@ -800,6 +800,12 @@ flying-shot, gust, invisible, panel-bursts, projectile, rising-bubble, rock (wit
 Thirteen folders from 139. (Step 8f adds objects/boulder, the boulder the stages place: a role's kind, newly
 ported. Darkness, ported after this table, shares the element pillar with MegaMan's Beast forms, so it stays in
 objects/ too.)
+
+**As built** (after step 13, at the user's request): a kind whose natural owner is one chip lives in that chip's
+folder, keyed under it, even when other chips or forms use it too; they `require` it from there. So Invisibl's
+controller is chips/invisibl/controller (`invisibl/controller`, which the second WhiCapsl requires), and the
+boomerang chips/boomer/boomerang (`boomer/boomerang`, which TomahawkCross Beast's throw and BoomrArm's charged
+shot use).
 
 The rest of v1's layout moves as follows: `lib/sword.luau` and `lib/vari_sword.luau` into `lib/swords/`,
 `lib/dragon.luau` into `lib/dragons/`, `lib/instant-chips/` into `lib/instant/`, `lib/buster.luau` into
@@ -1410,7 +1416,7 @@ settled:
 
 **As built** (step 8d, the instant chips): every chip of action 0x1C is a definition with an `instant` hook
 where nothing names it by number: Boomer, HiBoomer and M-Boomer (chips/boomer, `boomerang.instant(variant)`,
-the boomerang's speeds a `boomerang-variant` record; objects/boomerang also holds `boomerang.tomahawk`, which
+the boomerang's speeds a `boomerang-variant` record; chips/boomer/boomerang also holds `boomerang.tomahawk`, which
 TomahawkCross Beast's throw names), Lance (chips/lance), SandWrm1-3 (chips/sandwrm, `worm.instant(level)`, with
 the hole and the sand), GolmHit1-3 (chips/golmhit, `golem.instant { palette }`), JustcOne (chips/justcone),
 FullCust, SyncTrgr, WhiCapsl (`plus.attack_with(plus.PARALYZE)`), FinalGun and NumTrap. What settled:

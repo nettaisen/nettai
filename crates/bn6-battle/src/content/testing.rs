@@ -926,7 +926,7 @@ pub fn scripts() -> Scripts {
                 ("chips/busterup/chip", "chips/busterup/chip"),
                 ("chips/fullcust/chip", "chips/fullcust/chip"),
                 ("chips/synctrgr/chip", "chips/synctrgr/chip"),
-                ("objects/boomerang/boomerang", "objects/boomerang/boomerang"),
+                ("chips/boomer/boomerang", "chips/boomer/boomerang"),
                 ("chips/boomer/chips", "chips/boomer/chips"),
                 ("chips/lance/lance", "chips/lance/lance"),
                 ("chips/lance/chip", "chips/lance/chip"),
