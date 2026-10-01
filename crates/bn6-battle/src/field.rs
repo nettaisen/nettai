@@ -166,11 +166,6 @@ pub enum WindSource {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FieldObjects {
     pub slots: [Option<ObjectRef>; 8],
-    /// The object a registration with a side of 10 stored over the round's
-    /// Crosses-used mask (`kinds::obstacle::register`: LilBoiler thrown
-    /// with a bonus of 10), which the next such store takes for the slot's
-    /// old holder.
-    pub stored_in_crosses_used: Option<ObjectRef>,
 }
 
 impl FieldObjects {

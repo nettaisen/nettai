@@ -21,14 +21,14 @@ table says so.
 
 ## Chips
 
-Four templates run over the first damaging chip of each action handler family (44 families: the cannons,
+Four templates run over the first damaging chip of each action handler family (44 families that the lab's `hit` or `adjacent` scenario lands: the cannons,
 Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, each navi chip…):
 
 | template | what it reaches | status |
 |---|---|---|
-| `ko` (an opponent of 10 HP deleted by the first hit) | the objects' "the battle over" ends, the chip's later hits and spawns with the round decided | verified, 62 scenarios (44 families, 16 navi chips, the PAs' navis); AirRaid1's differs (below) |
-| `barrier` (the opponent behind Barr100) | the hits a barrier takes, the wind chips blowing it away (AirShot, WindRack, AirSpin) | verified, 41 scenarios; AirRaid1's differs |
-| `invisible` (the opponent under Invisibl) | no body to hit: the homing and searching chips' no-target paths (RskyHny's bee, MachGun's and the dragons' column search, ElcPuls) | verified, 41 scenarios; AirRaid1's differs |
+| `ko` (an opponent of 10 HP deleted by the first hit) | the objects' "the battle over" ends, the chip's later hits and spawns with the round decided | verified, 68 scenarios (43 families, 20 navi chips, the PAs' navis, SonicBom, Z Saver); AirRaid1's differs (below) |
+| `barrier` (the opponent behind Barr100) | the hits a barrier takes, the wind chips blowing it away (AirShot, WindRack, AirSpin) | verified, 39 scenarios; AirRaid1's differs |
+| `invisible` (the opponent under Invisibl) | no body to hit: the homing and searching chips' no-target paths (RskyHny's bee, MachGun's and the dragons' column search, ElcPuls) | verified, 39 scenarios; AirRaid1's differs |
 | `dimmed` (the opponent's AreaGrab cuts in a few ticks after the use) | the objects' waits while dimmed, the user's action held through a dimming, the press during a dimming that is no cut-in (`sub_8017AB4`'s clear) | verified, 34 scenarios |
 
 ### Dimming chips (dimming-chips.md)
@@ -143,7 +143,8 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | GroundMan | no rock candidate, the rock's non-solid landing | | partly | open |
 | DustMan | the junk's looks and NameIDs, the flag check after moving | | partly | open |
 | JudgeMan | a book arriving, leaving solid ground, the heading's reversal, no enemy navi | | partly | open |
-| TwinLdrs | ProtoMan leaving without a slash or with more than one target; Colonel's target off the field | | partly | open (pa/0x15c-twinldrs/no-footing, pa/0x15d-crosover/no-footing and pa/0x15a-mstrcros/no-footing: see the report) |
+| TwinLdrs, CrosOver, MstrCros | no footing for their navis | | yes | pa/0x15c-twinldrs/no-footing, pa/0x15d-crosover/no-footing, pa/0x15a-mstrcros/no-footing: verified |
+| TwinLdrs | ProtoMan leaving without a slash or with more than one target; Colonel's target off the field | | partly | open |
 | CrosOver | a link navi user, no target, no Django, a refused front panel, the far-column fallback | | partly (a link navi can't hold the PA) | open |
 | MstrCros | the Gregar tables (the beam, move 1) | the Falzar side always uses it | yes (the gregar base) | pa/0x15a-mstrcros/gregar: verified |
 | Bass, BigHook, Darkness | failed spawns, a missing flag pointer, the strike's MachGun branches | | unreachable | |
@@ -161,8 +162,8 @@ Vulcans, Spreaders, the swords, the bombs, each dimming subtype with damage, eac
 | Z Saver (0x5B) | everything, with the fourth slash's command | weapon 0x6E; no folder holds the record | yes (save edit) | chips/0x17d-zsaver/{hit, adjacent, miss, fourth-slash, command-late, command-split, ko}: verified |
 | Rapid buster (0x5D) | everything | weapon 0x39: no navi or form of a netbattle has it | unreachable | |
 | LilBoiler | the eruption | | yes | chips/0x062-lilbolr1/erupt-hits, chips/0x063-lilbolr2/erupt-lifetime (the shot-chip agent's): verified |
-| LilBoiler | a bonus of 10 (the registration past the registry: the Crosses-used mask) | no scenario gives it Atk+ | yes | chips/0x062-lilbolr1/atk10, atk10-twice, atk10-cross, atk10-cross-gregar, then-cross: verified (the port stopped with an error; now as the game: shot-chips.md §18) |
-| LilBoiler | other bonuses (1 to 50 from Otenko; 20, 30… from Atk+ and the points) | each lands on other memory | partly | open: the port stops with an error naming the store, but for 10 |
+| LilBoiler | a bonus (the port took the registry's side from it and stopped with an error for Atk+10) | no scenario gives it Atk+ | yes | chips/0x062-lilbolr1/atk10, atk10-twice, atk10-cross, atk10-cross-gregar, then-cross: verified (the boiler registers by its user's side whatever the bonus: shot-chips.md §18) |
+| LilBoiler | the registry side of a boiler thrown by side 1 | side 0 always throws it | yes | chips/0x062-lilbolr1/side1-then-fan, side1-own-fan: verified |
 | LilBoiler | the hole, AirShot at it, a RockCube after it | | yes | chips/0x062-lilbolr1/holes, pushed, replaced: verified |
 | LilBoiler | a removal request, absorption, blinking out | | partly | open |
 | VDoll | the curse | | yes | chips/0x096-vdoll/curse (the shot-chip agent's): verified |
