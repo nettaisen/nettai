@@ -15,6 +15,7 @@
 
 local collision = require("../../rules/collision")
 local sparks = require("../../lib/sparks")
+local statuses = require("../../rules/status")
 
 export type State = {
     -- Lightning (it paralyzes and cracks its panel), or flames.
@@ -38,7 +39,7 @@ local element_pillar = {}
 local FLAMES, LIGHTNING = asset.sprite("element-pillar-flames"), asset.sprite("element-pillar-lightning")
 
 -- Lightning's paralysis (a status byte).
-local PARALYZE = 0x12
+local PARALYZE = statuses.paralyze_150
 
 -- `sub_80D0766`: once the owner's action is over, `after` more ticks; the
 -- flames die down with that many left.

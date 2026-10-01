@@ -312,6 +312,11 @@ impl Content {
         self.defs.weapon_numbered(routine).unwrap_or_else(|| panic!("weapon routine {routine:#04x} is not in the content"))
     }
 
+    /// A status effect.
+    pub fn status(&self, h: bn6_content_api::StatusHandle) -> StatusEffect {
+        self.defs.statuses[h.index()].effect
+    }
+
     /// A Beast Out lock-on mode.
     pub fn lockon(&self, h: bn6_content_api::LockonHandle) -> &LockonMode {
         &self.defs.lockons[h.index()].mode
