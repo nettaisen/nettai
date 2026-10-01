@@ -31,6 +31,8 @@ local SPRITE = asset.sprite("sight")
 local ANIM = 1
 local AIMING = 0xFF
 local TIMEOUT, AFTER = 0x168, 0x1E
+-- (The cursor steps with the sound EraseMan's mark has, the original's
+-- 0x10E.)
 local SOUND_STEP = asset.sound("erase-man")
 -- The panels whose column it won't step into when wholly theirs
 -- (`byte_80D676C`, by side): the user's side's.
