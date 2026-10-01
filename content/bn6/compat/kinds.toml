@@ -40,7 +40,7 @@ attachment = { pool = "actor", index = 0x05 }
 "dblbeast/gregar" = { pool = "actor", index = 0x33 }
 "dblbeast/falzar" = { pool = "actor", index = 0x34 }
 "protoman/navi" = { pool = "actor", index = 0x3C }
-"deltaray/ray" = { pool = "actor", index = 0x3D }
+"deltaray/navi" = { pool = "actor", index = 0x3D }
 "numbrbl/numberman" = { pool = "actor", index = 0x45 }
 rush = { pool = "actor", index = 0x4B }
 beat = { pool = "actor", index = 0x4C }
