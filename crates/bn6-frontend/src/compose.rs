@@ -34,6 +34,27 @@ impl Layer {
         self.pixels.fill(CLEAR);
     }
 
+    /// Move everything drawn by (dx, dy), as a scroll of the layer by
+    /// (-dx, -dy) would; what moves in from past the edges is clear.
+    pub fn shift(&mut self, dx: i32, dy: i32) {
+        if (dx, dy) == (0, 0) {
+            return;
+        }
+        let old = std::mem::replace(&mut self.pixels, vec![CLEAR; PIXELS]);
+        for y in 0..HEIGHT as i32 {
+            let sy = y - dy;
+            if !(0..HEIGHT as i32).contains(&sy) {
+                continue;
+            }
+            for x in 0..WIDTH as i32 {
+                let sx = x - dx;
+                if (0..WIDTH as i32).contains(&sx) {
+                    self.pixels[y as usize * WIDTH + x as usize] = old[sy as usize * WIDTH + sx as usize];
+                }
+            }
+        }
+    }
+
     /// Draw one 8x8 tile at (x, y), clipped to the screen.
     pub fn draw_tile(&mut self, tile: &[u8], palette: &Palette, x: i32, y: i32, hflip: bool, vflip: bool) {
         for ty in 0..8 {
@@ -80,6 +101,21 @@ pub struct SpritePart<'a> {
     /// A vertical affine scale about the part's centre: texture rows
     /// step by `n / 256` per screen row (the banners' squash and stretch).
     pub vscale: Option<i32>,
+    /// A rotated or scaled sprite (`sub_802FE7A`'s matrices).
+    pub affine: Option<Affine>,
+}
+
+/// An affine sprite's matrix (8.8 fixed point) and its box: each pixel of
+/// the box reads the texture at M x (pixel - the box's centre) + the
+/// sprite's centre; a doubled box is twice the sprite's size, centred on
+/// the same point.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Affine {
+    pub pa: i32,
+    pub pb: i32,
+    pub pc: i32,
+    pub pd: i32,
+    pub double: bool,
 }
 
 /// Screen-wide effects applied after composition.
@@ -160,6 +196,10 @@ pub fn compose(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fa
 }
 
 fn draw_part(p: &SpritePart, obj: &mut [u16], obj_prio: &mut [u8], obj_alpha: &mut [u8]) {
+    if let Some(m) = p.affine {
+        draw_affine(p, m, obj, obj_prio, obj_alpha);
+        return;
+    }
     let (w, h) = (p.width as i32, p.height as i32);
     let tiles_per_row = (p.width / 8) as usize;
     let mosaic = p.mosaic.map(|m| m as i32 + 1).filter(|&n| n > 1);
@@ -209,6 +249,47 @@ fn draw_part(p: &SpritePart, obj: &mut [u16], obj_prio: &mut [u8], obj_alpha: &m
             let t = p.first_tile + (ty / 8) * tiles_per_row + tx / 8;
             let Some(tile) = p.tiles.get(t) else { continue };
             let index = tile[(ty % 8) * 8 + tx % 8];
+            if index == 0 {
+                continue;
+            }
+            obj[i] = p.palette[index as usize] & 0x7FFF;
+            obj_prio[i] = p.priority;
+            obj_alpha[i] = p.alpha.unwrap_or(0xFF);
+        }
+    }
+}
+
+/// An affine part (as mGBA draws it): the box, its pixels read through
+/// the matrix about the centres.
+fn draw_affine(p: &SpritePart, m: Affine, obj: &mut [u16], obj_prio: &mut [u8], obj_alpha: &mut [u8]) {
+    let (w, h) = (p.width as i32, p.height as i32);
+    let (bw, bh) = if m.double { (2 * w, 2 * h) } else { (w, h) };
+    let tiles_per_row = (p.width / 8) as usize;
+    let x0 = if p.x as i32 + bw > 0x200 { p.x as i32 - 0x200 } else { p.x as i32 };
+    for by in 0..bh {
+        let sy = (p.y as i32 + by) & 0xFF;
+        if sy >= HEIGHT as i32 {
+            continue;
+        }
+        let dy = by - bh / 2;
+        for bx in 0..bw {
+            let sx = x0 + bx;
+            if !(0..WIDTH as i32).contains(&sx) {
+                continue;
+            }
+            let dx = bx - bw / 2;
+            let tx = ((m.pa * dx + m.pb * dy) >> 8) + w / 2;
+            let ty = ((m.pc * dx + m.pd * dy) >> 8) + h / 2;
+            if !(0..w).contains(&tx) || !(0..h).contains(&ty) {
+                continue;
+            }
+            let i = sy as usize * WIDTH + sx as usize;
+            if obj_prio[i] <= p.priority {
+                continue;
+            }
+            let t = p.first_tile + (ty as usize / 8) * tiles_per_row + tx as usize / 8;
+            let Some(tile) = p.tiles.get(t) else { continue };
+            let index = tile[(ty as usize % 8) * 8 + tx as usize % 8];
             if index == 0 {
                 continue;
             }
@@ -281,7 +362,30 @@ mod tests {
             alpha: None,
             mosaic: None,
             vscale: None,
+            affine: None,
         }
+    }
+
+    #[test]
+    fn an_affine_part_turns_about_its_centre() {
+        // A 16x16 sprite with its top-left 8x8 quarter coloured; a half
+        // turn (pa = pd = -1) shows it at the bottom right.
+        let mut tiles = solid_tiles(4, 0);
+        tiles.pixels[..64].fill(1);
+        let mut p = part(&tiles, 0, 0, 2, 0x001F);
+        (p.width, p.height) = (16, 16);
+        p.affine = Some(Affine { pa: -0x100, pb: 0, pc: 0, pd: -0x100, double: false });
+        let out = compose(0, &[], &[p.clone()], Fades::default());
+        assert_eq!(out[0], 0);
+        assert_eq!(out[15 * WIDTH + 15], 0x001F);
+        assert_eq!(out[8 * WIDTH + 8], 0x001F);
+        assert_eq!(out[7 * WIDTH + 7], 0);
+        // A doubled box, unrotated: the sprite sits in its middle.
+        p.affine = Some(Affine { pa: 0x100, pb: 0, pc: 0, pd: 0x100, double: true });
+        let out = compose(0, &[], &[p], Fades::default());
+        assert_eq!(out[8 * WIDTH + 8], 0x001F);
+        assert_eq!(out[7 * WIDTH + 7], 0);
+        assert_eq!(out[16 * WIDTH + 16], 0);
     }
 
     #[test]

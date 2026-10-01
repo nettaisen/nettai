@@ -670,6 +670,7 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
                 turn: unhex(&f.bs)[7],
                 per_player_gauges: false,
                 random_battle: false,
+                late_turns: false,
                 now: f.frame,
                 link_delay: Link::RECORDED_DELAY,
             }
