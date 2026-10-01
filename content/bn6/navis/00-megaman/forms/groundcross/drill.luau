@@ -1,11 +1,11 @@
 --!strict
--- GroundCross's charged shot: weapon routine 0x19 (`sub_8011D74`) and
--- action 0x4D (`sub_80EEFDC`). The navi burrows (its body leaves the field
--- 3 ticks in), comes up on the panel Beast Out lock-on mode 0xC picks in
--- front of the first enemy in its row (or of the other side's front
--- column there), drills there with a drill arm (objects/drill, for as
--- long as the attack's second parameter says, plus 10 ticks), then
--- burrows back to the panel it left.
+-- GroundCross's charged shot (`groundcross/drill`): the original's weapon
+-- routine 0x19 (`sub_8011D74`) and action 0x4D (`sub_80EEFDC`). The navi
+-- burrows (its body leaves the field 3 ticks in), comes up on the panel
+-- Beast Out lock-on mode 0xC picks in front of the first enemy in its row
+-- (or of the other side's front column there), drills there with a drill
+-- arm (objects/drill) for 24 ticks and waits 10 more, then burrows back to
+-- the panel it left.
 
 local attachment = require("../../../../objects/attachment/attachment")
 local drill_object = require("../../../../objects/drill/drill")
@@ -16,19 +16,26 @@ export type State = {
     timer: number,
 }
 
-local ground_drill = {
-    state = { timer = "u16" },
-}
-
-local ACTION = 0x4D
+local ground_drill = {}
 
 -- The phases, on the attack's step.
 local BURROW, EMERGE, DRILL, SINK, RETURN = 0x0, 0x4, 0x8, 0xC, 0x10
 
--- The attack: Break (secondary element 0x10), its hit parameter, and its
--- parameters (the word 0x1800: the drill's time, 24 ticks).
+-- The attack: Break (secondary element 0x10) and its hit parameter.
 local BREAK, HIT_PARAM = 0x10, 0x94
-local PARAMS = { 0x00, 0x18, 0x00, 0x00 }
+
+-- The drill's time (the original's parameter word 0x1800), and how long
+-- the navi stands after it.
+local DRILL_TICKS, AFTER = 0x18, 0xA
+
+-- (The sound GroundCross Beast's dash also starts with.)
+local SOUND = asset.sound("ground-beast-dash")
+
+-- The dust where it burrows, and the puffs where it sinks and where it
+-- comes back up.
+local DUST = define.effect { sprite = asset.sprite("ground-drill-effect"), anim = 0, palette = 0 }
+local SINK_PUFF = define.effect { sprite = asset.sprite("puff"), anim = 0, palette = 0 }
+local RETURN_PUFF = define.effect { sprite = asset.sprite("puff"), anim = 1, palette = 0 }
 
 -- Where the navi waits off the field (X, 16.16).
 local AWAY = 0xB4_0000
@@ -44,17 +51,14 @@ local LOCKON = 0xC
 
 -- `sub_8011D74`: 10 damage and 10 more per point of buster Attack (up to
 -- 5), Break.
-function ground_drill.setup(navi: Object): number
+local function setup(navi: Object): Action
     navi.attack_damage = weapon.charge_damage(navi, 0x0A, 0x0A)
     navi.hit_param = HIT_PARAM
     navi.attack_element = BREAK
     navi.charged = 0
     navi.extra = 0
     navi.attack_lockout = 0
-    for i = 1, 4 do
-        navi:set_attack_param(i, PARAMS[i])
-    end
-    return ACTION
+    return ground_drill.action
 end
 
 -- `sub_8109746`: the first panel ahead in the navi's row with the other
@@ -111,7 +115,7 @@ local function burrow(me: Object, s: State)
         me:set_status("moving", true)
     end
     if s.timer == 0x1B then
-        local dust = battle.effect(me.pos, 4)
+        local dust = battle.effect(me.pos, DUST)
         if dust then
             dust.timer = 0x1B
             dust.pos = dust.pos - Vec3.new(0, 0x1_0000, 0x1_0000)
@@ -162,20 +166,18 @@ local function emerge(me: Object, s: State): boolean
 end
 
 -- `sub_80EF0E2`: the drill arm and the drill's hit, for the drill's time
--- and 10 ticks more.
+-- and 10 ticks more. (The parameter word's third byte, 0 here, would make
+-- the drill a light one.)
 local function drill(me: Object, s: State)
     if me.step_init == 0 then
         me:set_status("using_action", true)
         me:set_animation(0xA)
         attachment.attach(me, drill_object.arm, "overlay", { anim = drill_object.ARM_DRILLING })
         local damage = int.u32(bit32.bor(me.attack_damage, bit32.lshift(me.hit_param, 16)) + me.extra)
-        drill_object.spawn(me, me.attack_element, 0x10_0000, damage, {
-            ticks = me:attack_param(2),
-            light = me:attack_param(3) == 1,
-        })
+        drill_object.spawn(me, me.attack_element, 0x10_0000, damage, { ticks = DRILL_TICKS })
         me:open_counter_window()
-        s.timer = me:attack_param(2) + 0xA
-        battle.play_sound(0x1BF)
+        s.timer = DRILL_TICKS + AFTER
+        battle.play_sound(SOUND)
         me.step_init = 4
     end
     local t = s.timer - 1
@@ -205,9 +207,9 @@ local function sink(me: Object, s: State)
     if t > 0 then
         return
     end
-    battle.effect(me.pos + Vec3.new(0, 0, 0x10_0000), 0x12)
+    battle.effect(me.pos + Vec3.new(0, 0, 0x10_0000), SINK_PUFF)
     local fx, fy = field.center(me.future_panel_x, me.future_panel_y)
-    battle.effect(Vec3.new(fx, fy, 0x10_0000), 0x13)
+    battle.effect(Vec3.new(fx, fy, 0x10_0000), RETURN_PUFF)
     me.step = RETURN
     me.step_init = 0
     s.timer = 3
@@ -235,24 +237,39 @@ local function return_(me: Object, s: State)
     me:exit_attack()
 end
 
--- `sub_80EEFDC`.
-function ground_drill.update(me: Object, s: State)
-    local step = me.step
-    if step == BURROW then
-        burrow(me, s)
-    elseif step == EMERGE then
-        if emerge(me, s) then
+ground_drill.action = define.action {
+    id = "groundcross/drill/action",
+    state = { timer = "u16" },
+    -- `sub_80EEFDC`.
+    update = function(me: Object, s: State)
+        local step = me.step
+        if step == BURROW then
+            burrow(me, s)
+        elseif step == EMERGE then
+            if emerge(me, s) then
+                drill(me, s)
+            end
+        elseif step == DRILL then
             drill(me, s)
+        elseif step == SINK then
+            sink(me, s)
+        elseif step == RETURN then
+            return_(me, s)
+        else
+            error(string.format("GroundCross's charged shot phase %#x reads past its phase table (sub_80EEFDC)", step))
         end
-    elseif step == DRILL then
-        drill(me, s)
-    elseif step == SINK then
-        sink(me, s)
-    elseif step == RETURN then
-        return_(me, s)
-    else
-        error(string.format("GroundCross's charged shot phase %#x reads past its phase table (sub_80EEFDC)", step))
-    end
-end
+    end,
+}
+
+ground_drill.weapon = define.weapon {
+    id = "groundcross/drill",
+    name = "Ground drill",
+    -- The charge table's row 0x19; Charge 5 reads on into row 0x1A's first
+    -- entry, as the original's table does.
+    charge_ticks = { 100, 90, 80, 75, 70, 50 },
+    setup = setup,
+    -- (Transitional: the routine number the pack's forms name it by.)
+    legacy = { routines = { 0x19 } },
+}
 
 return ground_drill

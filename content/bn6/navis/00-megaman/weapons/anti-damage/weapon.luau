@@ -20,7 +20,6 @@ local DAMAGE, LOCKOUT, TICKS = 0x32, 0x46, 0x1E
 -- `sub_80121BC`.
 local function setup(navi: Object): Action
     navi.attack_element = 0
-    navi.variant = 0
     navi.charged = 0
     navi.extra = 0
     navi.hit_param = 0
@@ -69,7 +68,6 @@ anti_damage.weapon = define.weapon {
     name = "AntiDmg",
     -- (A B+Back special, never a charge routine: its row lies past the
     -- charge table's fifty.)
-    charge_ticks = {},
     setup = setup,
     -- (Transitional: the routine number the NaviCust's program names it
     -- by.)
