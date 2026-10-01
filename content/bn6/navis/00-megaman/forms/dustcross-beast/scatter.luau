@@ -1,12 +1,15 @@
 --!strict
--- DustCross Beast's charged Null chip: weapon routine 0x1D (`sub_8011DFC`)
--- and action 0x50 (`sub_80EF328`). The navi rises (its body's hit off, its
--- panel kept reserved), picks up to six panels of the 3x3 block two
--- panels ahead (the enemies' first, in random order), throws junk at them
--- (objects/junk-shot) every 11 ticks from high up, and lands.
+-- DustCross Beast's charged Null chip (`dustcross-beast/scatter`): the
+-- original's weapon routine 0x1D (`sub_8011DFC`) and action 0x50
+-- (`sub_80EF328`). The navi rises (its body's hit off, its panel kept
+-- reserved), picks up to six panels of the 3x3 block two panels ahead (the
+-- enemies' first, in random order), throws junk at them (./junk_shot)
+-- every 11 ticks from high up, and lands. While it runs the ruleset
+-- doesn't ground the navi (the role `dust_beast_scatter`).
 
+local junk_shot = require("./junk_shot")
+local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
-local junk_shot = require("../../../../objects/junk-shot/junk_shot")
 
 export type State = {
     -- AIAttackVars+0x10: ticks of the phase.
@@ -18,11 +21,7 @@ export type State = {
     targets: { number },
 }
 
-local dust_beast_scatter = {
-    state = { timer = "u16", throws = "u16", targets = "u8[6]" },
-}
-
-local ACTION = 0x50
+local scatter = {}
 
 -- The phases, on the attack's step.
 local RISE, THROW, LAND = 0x0, 0x4, 0x8
@@ -33,24 +32,25 @@ local BREAK, HIT_PARAM = 0x10, 0x9E
 -- The rise: its first speed and acceleration, 16.16.
 local RISE_SPEED, RISE_ACCELERATION = 0x6000, 0x3000
 
--- The panels it picks from: region 0xF (the 3x3 block) around the panel
--- two ahead, facing right whatever the navi's side (`sub_80EF3F4` passes
--- side 0), with this panel bit set; bodies on them come first.
-local BLOCK, PICKABLE, BODY = 0xF, 0x1_0000, 0x0C00_0000
+-- The panels it picks from: the 3x3 block around the panel two ahead,
+-- facing right whatever the navi's side (`sub_80EF3F4` passes side 0),
+-- with this panel bit set; bodies on them come first.
+local BLOCK = regions.square
+local PICKABLE, BODY = 0x1_0000, 0x0C00_0000
 
 -- Throws, and the shuffles' swaps (`sub_8000C72`).
 local THROWS, SWAPS = 6, 10
 
 -- `sub_8011DFC`: 80 damage and 20 more per point of buster Attack (up to
 -- 5), Break.
-function dust_beast_scatter.setup(navi: Object): number
+local function setup(navi: Object): Action
     navi.charged = 0
     navi.attack_lockout = 0
     navi.extra = 0
     navi.hit_param = HIT_PARAM
     navi.attack_damage = weapon.charge_damage(navi, 0x50, 0x14)
     navi.attack_element = BREAK
-    return ACTION
+    return scatter.action
 end
 
 -- `sub_8000C72`: `swaps` times, swap two of the `n` entries of `list` from
@@ -72,7 +72,7 @@ local function pick_targets(me: Object, s: State)
     -- object_getPanelRegion: the block's panels with the bit, in order.
     local found = { 0, 0, 0, 0, 0, 0, 0, 0 }
     local count = 0
-    for _, offset in data.regions[BLOCK] do
+    for _, offset in BLOCK.panels :: { { number } } do
         local x, y = cx + offset[1], cy + offset[2]
         if field.check(x, y, PICKABLE, 0) then
             count += 1
@@ -115,7 +115,7 @@ local function rise(me: Object, s: State)
         local v = me.vel
         me.vel = Vec3.new(v.x, v.y, RISE_SPEED)
         s.timer = 0x10
-        me.collision.region = 0
+        me.collision:set_region(nil)
         me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
         me:reserve_panel(me.panel_x, me.panel_y)
         me.step_init = 4
@@ -171,24 +171,39 @@ local function land(me: Object, s: State)
     end
     local p = me.pos
     me.pos = Vec3.new(p.x, p.y, 0)
-    me.collision.region = 1
+    me.collision:set_region(regions.single)
     me:unreserve_panel(me.future_panel_x, me.future_panel_y)
     me:set_status("moving", false)
     me:exit_attack()
 end
 
--- `sub_80EF328`.
-function dust_beast_scatter.update(me: Object, s: State)
-    local step = me.step
-    if step == RISE then
-        rise(me, s)
-    elseif step == THROW then
-        throw(me, s)
-    elseif step == LAND then
-        land(me, s)
-    else
-        error(string.format("DustCross Beast's scatter phase %#x reads past its phase table (sub_80EF328)", step))
-    end
-end
+scatter.action = define.action {
+    id = "dustcross-beast/scatter/action",
+    state = { timer = "u16", throws = "u16", targets = "u8[6]" },
+    -- `sub_80EF328`.
+    update = function(me: Object, s: State)
+        local step = me.step
+        if step == RISE then
+            rise(me, s)
+        elseif step == THROW then
+            throw(me, s)
+        elseif step == LAND then
+            land(me, s)
+        else
+            error(string.format("DustCross Beast's scatter phase %#x reads past its phase table (sub_80EF328)", step))
+        end
+    end,
+}
 
-return dust_beast_scatter
+scatter.weapon = define.weapon {
+    id = "dustcross-beast/scatter",
+    name = "DustCross Beast scatter",
+    -- The charge table's row 0x1D; Charge 5 reads on into row 0x1E's first
+    -- entry, as the original's table does.
+    charge_ticks = { 40, 40, 40, 40, 40, 20 },
+    setup = setup,
+    -- (Transitional: the routine number the pack's forms name it by.)
+    legacy = { routines = { 0x1D } },
+}
+
+return scatter

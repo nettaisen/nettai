@@ -1,7 +1,0 @@
-# MegaMan's weapon routine 0x1D, DustCross Beast's charged Null chip
-# (`sub_8011DFC`), and its action 0x50 (`sub_80EF328`) are a script.
-
-id = 0x1D
-name = "DustCross Beast scatter"
-action = 0x50
-script = "dust_beast_scatter.luau"

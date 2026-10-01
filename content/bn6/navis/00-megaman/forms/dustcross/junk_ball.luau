@@ -1,13 +1,24 @@
 --!strict
--- DustCross's ball of junk (attack object #0xB0, `sub_80DB6A4`): it rolls
--- forward from in front of the navi, 6 pixels a tick, to the far column;
--- where it meets the other side's body or object it stops, and 5 ticks
--- later hits its panel (cracking a solid one). With Param1 0 (the charged
--- shot's) it stands still while dimmed; with Param1 set it runs on.
+-- DustCross's ball of junk (the original's attack object #0xB0,
+-- `sub_80DB6A4`), its charged shot's (./charge) and DustMan's
+-- (chips/dustman): it rolls forward from in front of the navi, 6 pixels a
+-- tick, to the far column; where it meets the other side's body or object
+-- it stops, and 5 ticks later hits its panel (cracking a solid one). The
+-- charged shot's stands still while dimmed; DustMan's runs on.
 
-local dust_ball = {}
+local collision = require("../../../../rules/collision")
+local regions = require("../../../../lib/regions")
+local sparks = require("../../../../lib/sparks")
 
-local SPRITE = "08-0a"
+local junk_ball = {}
+
+export type State = {
+    -- It runs on while dimmed (the original's first parameter).
+    while_dimmed: boolean,
+}
+
+local SPRITE = asset.sprite("dustman")
+local SOUND_LAND = asset.sound("land")
 
 -- How far in front of its panel's center it starts, and how fast it rolls,
 -- 16.16.
@@ -20,24 +31,9 @@ local STOPS = { [0] = 0x05800000, [1] = 0x0A800000 }
 -- The phases, on its action.
 local ROLL, BURST = 0, 4
 
--- `sub_80DB800`: a ball from `owner` starting on (x, y), with the damage
--- word `damage`; DustMan's (`while_dimmed`, Param1 1) runs on while dimmed.
--- It runs while dimmed. (Its Z is the spawner's register garbage, of which
--- the init keeps the fraction.)
-function dust_ball.spawn(owner: Object, x: number, y: number, element: number, damage: number, while_dimmed: boolean?): Object?
-    -- Param1: DustMan's (1) runs on while dimmed; DustCross's (0) doesn't.
-    local o = battle.spawn_kind("dust-ball", Vec3.zero, { if while_dimmed then 1 else 0, 0, 0, 0 })
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.related1 = owner
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = owner.alliance, owner.flip
-        o.run_while_dimmed = true
-    end
-    return o
-end
+-- Its hit: a thrown attack that breaks, at navis, with the breaking
+-- spark.
+local HIT_MOD = 3
 
 -- `sub_80DB6D4`: in front of its panel, on the ground.
 local function init(me: Object)
@@ -124,15 +120,15 @@ local function hit(me: Object)
         panel_x = me.panel_x,
         panel_y = me.panel_y,
         element = me.element,
-        region = 1,
-        hit_effect = 0x0A,
-        target = 5,
-        self_type = 0x15,
+        region = regions.single,
+        hit_effect = sparks.breaking,
+        target = collision.hits_navis,
+        self_type = collision.thrown_break,
         damage = me.damage,
         stamina = me.stamina,
-        hit_mod = 3,
+        hit_mod = HIT_MOD,
     })
-    if box and me:param(1) ~= 0 then
+    if box and (me.state :: State).while_dimmed then
         box.run_while_dimmed = true
     end
 end
@@ -152,7 +148,7 @@ local function burst(me: Object)
         hit(me)
         if field.solid(me.panel_x, me.panel_y) then
             battle.shake_camera(2, 0x14)
-            battle.play_sound(0xC0)
+            battle.play_sound(SOUND_LAND)
             field.crack(me.panel_x, me.panel_y)
         end
     elseif left <= 0 then
@@ -161,13 +157,13 @@ local function burst(me: Object)
 end
 
 -- `sub_80DB726`: gone once the battle is over; still while dimmed (unless
--- Param1 is set).
+-- it runs on).
 local function tick(me: Object)
     if battle.over() then
         me.lifecycle = "destroy"
         return
     end
-    if me:param(1) == 0 and battle.dimmed() then
+    if not (me.state :: State).while_dimmed and battle.dimmed() then
         return
     end
     local a = me.action
@@ -180,21 +176,44 @@ local function tick(me: Object)
     end
 end
 
--- `sub_80DB6A4`.
-function dust_ball.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
+junk_ball.kind = define.kind {
+    id = "dustcross/junk-ball",
+    pool = "attack",
+    state = { while_dimmed = "bool" },
+    -- `sub_80DB6A4`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+        end
+        if (me.state :: State).while_dimmed then
+            me:update_sprite_while_dimmed()
+        else
+            me:update_sprite_while_paused()
+        end
+    end,
+}
+
+-- `sub_80DB800`: a ball from `owner` starting on (x, y), with the damage
+-- word `damage`; DustMan's (`while_dimmed`) runs on while dimmed. Its
+-- header runs while dimmed either way. (Its Z is the spawner's register
+-- garbage, of which the init keeps the fraction.)
+function junk_ball.spawn(owner: Object, x: number, y: number, element: number, damage: number, while_dimmed: boolean?): Object?
+    local o = battle.spawn(junk_ball.kind, Vec3.zero)
+    if o then
+        (o.state :: State).while_dimmed = while_dimmed or false
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o.related1 = owner
+        o:set_damage_word(damage)
+        o.alliance, o.flip = owner.alliance, owner.flip
+        o.run_while_dimmed = true
     end
-    if me:param(1) == 0 then
-        me:update_sprite_while_paused()
-    else
-        me:update_sprite_while_dimmed()
-    end
+    return o
 end
 
-return dust_ball
+return junk_ball

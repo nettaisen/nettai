@@ -7,7 +7,7 @@
 -- docs/engine/chips.md §3.6.26.
 
 local navi_chips = require("../../lib/navi-chips/navi")
-local dust_ball = require("../../objects/dust-ball/dust_ball")
+local junk_ball = require("../../navis/00-megaman/forms/dustcross/junk_ball")
 local junk = require("./junk")
 
 local dustman = {}
@@ -118,7 +118,7 @@ local function throw(me: Object)
     local damage = bit32.bor(me.damage, bit32.lshift(me.stamina, 16))
     if me.phase == 0 then
         me.phase = 4
-        dust_ball.spawn(me, me.panel_x, me.panel_y, me.element, damage, true)
+        junk_ball.spawn(me, me.panel_x, me.panel_y, me.element, damage, true)
         battle.play_sound(SOUND_THROW)
         s.thrown = 0
         me.timer = (s.count + 1) * THROW_TICKS
