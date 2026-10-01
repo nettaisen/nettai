@@ -1,12 +1,18 @@
 --!strict
 -- RskyHny's bee (attack object #0x74, `sub_80D30D0`). It flies panel by
--- panel toward the nearest column holding an enemy, turning at most twice
--- (its Param3 counts the turns), and hits what it flies into. On an
--- enemy's body it stays on them and stings every 5 ticks, five times in
--- all; on anything else that hits back it goes. Param1 is the chip's
--- level: its speed and palette. See docs/engine/chips.md §3.7.
+-- panel toward the nearest column holding an enemy, turning at most twice,
+-- and hits what it flies into. On an enemy's body it stays on them and
+-- stings every 5 ticks, five times in all; on anything else that hits back
+-- it goes. What it is (`HoneyBee`, types.d.luau: the chip's level, the
+-- original's first parameter, by `byte_80D3164`) is its palette and
+-- speeds. See docs/engine/chips.md §3.7.
 
-local honey_bee = {}
+local collision = require("../../rules/collision")
+local effects = require("../../lib/effects")
+local regions = require("../../lib/regions")
+local sparks = require("../../lib/sparks")
+
+local bee = {}
 
 export type State = {
     -- Its speed across and along the field (EV+0, EV+4), 16.16.
@@ -14,18 +20,16 @@ export type State = {
     turn_speed: number,
     -- The enemy it stings (EV+8).
     target: Object?,
+    -- Its palette, and the turns it has taken (the original keeps them in
+    -- its first and third parameters).
+    palette: number,
+    turns: number,
 }
 
-honey_bee.state = { speed = "i32", turn_speed = "i32", target = "object" }
-
-local SPRITE = "10-31"
--- Collision types, what it is and what it hits (`dword_80D34A8`).
-local SELF_TYPE, TARGET_TYPE, HIT_MOD = 0x04, 0x05, 0x01
-local HIT_EFFECT = 4
--- By level (Param1): its speed across and along the field
--- (`byte_80D3164`), 16.16.
-local SPEEDS = { [0] = 0x2_8000, 0x3_0000, 0x3_8000 }
-local TURN_SPEEDS = { [0] = 0x1_8000, 0x1_CCCC, 0x2_1999 }
+local SPRITE = asset.sprite("honey-bee")
+-- What it is and hits (`dword_80D34A8`).
+local HIT = { is = collision.attack, hits = collision.hits_navis }
+local HIT_MOD = 0x01
 -- A panel's width, 16.16.
 local PANEL_WIDTH = 0x28_0000
 -- It gives up turning after this many turns (`sub_80D3496`).
@@ -39,26 +43,10 @@ local ENEMY_BODY = { [0] = 0x0400_0000, 0x0800_0000 }
 local ENEMY_NAVI = { [0] = 0x0020_0000, 0x0040_0000 }
 -- Stings, and the ticks between them.
 local STINGS, STING_TICKS = 5, 5
+-- Its puff, 16 pixels up, when it can't start.
+local PUFF_Z = 0x10_0000
 -- Its actions.
 local FLY, STING, FADE = 0, 4, 8
-
--- `sub_80D32FE`: a bee on (x, y) for `owner` with the chip's `params` and
--- the damage word `damage`. It runs while dimmed (but stands still). Its
--- position is the spawner's registers (the panel's row, the element and
--- 16 pixels up) until its init places it; only the height lasts.
-function honey_bee.spawn(owner: Object, x: number, y: number, element: number, params: { number }, damage: number): Object?
-    local o = battle.spawn_kind("honey-bee", Vec3.new(y, element, 0x10_0000), params)
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance, o.flip = owner.alliance, owner.flip
-        o.related1 = owner
-        o.run_while_dimmed = true
-    end
-    return o
-end
 
 -- `sub_80E7486`: the other side's combatant whose collision is on (x,
 -- y), if the panel shows the other side's navi.
@@ -130,8 +118,9 @@ end
 
 -- `sub_80D3496`: one more turn taken; whether turns had run out.
 local function out_of_turns(me: Object): boolean
-    local turns = me:param(3)
-    me:set_param(3, turns + 1)
+    local s = me.state :: State
+    local turns = s.turns
+    s.turns = turns + 1
     return turns >= TURNS
 end
 
@@ -184,7 +173,7 @@ end
 
 -- The end: no more hits, and gone at its next update.
 local function finish(me: Object)
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me:set_lifecycle("destroy")
 end
 
@@ -232,7 +221,7 @@ local function stay(me: Object)
     local left = me.timer2 - 1
     me.timer2 = left
     if left > 0 then
-        me.collision.region = 1
+        me.collision:set_region(regions.single)
         me.phase_init = 0
     else
         finish(me)
@@ -260,7 +249,7 @@ end
 local function fade(me: Object)
     if me.phase == 0 then
         me.phase = 1
-        me.collision.region = 0
+        me.collision:set_region(nil)
         me.timer = 10
     end
     me.visible = bit32.btest(me.timer, 2)
@@ -288,7 +277,7 @@ local function tick(me: Object)
             return
         end
         if bit32.btest(hit, BODIES) then
-            c.region = 0
+            c:set_region(nil)
             if me.action ~= STING then
                 me.action = STING
                 me.phase = 0
@@ -314,6 +303,7 @@ end
 -- `sub_80D30F4`: on its panel, flying ahead; or, without a collision
 -- slot, a puff and gone (false).
 local function init(me: Object): boolean
+    local s = me.state :: State
     me:set_coordinates_from_panel()
     local sprite = me.sprite
     sprite:load(SPRITE)
@@ -321,44 +311,63 @@ local function init(me: Object): boolean
     me.anim = 0
     me.anim_loaded = 0xFF
     if not me:create_collision() then
-        battle.effect(me.pos + Vec3.new(0, 0, 0x10_0000), 0x14)
+        battle.effect(me.pos + Vec3.new(0, 0, PUFF_Z), effects.puff)
         me:free()
         return false
     end
-    me:setup_collision(SELF_TYPE, TARGET_TYPE, HIT_MOD)
+    me:setup_collision(HIT.is, HIT.hits, HIT_MOD)
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
     me.visible = true
-    me.collision.hit_effect = HIT_EFFECT
-    local level = me:param(1)
-    sprite.palette = level
-    local speed, turn_speed = SPEEDS[level], TURN_SPEEDS[level]
-    if not speed then
-        error(string.format("honey bee level %d reads past its speed table", level))
-    end
-    local s = me.state :: State
-    s.speed, s.turn_speed = speed, turn_speed
+    me.collision:set_hit_effect(sparks.wood)
+    sprite.palette = s.palette
     me.collision:present()
-    me.vel = Vec3.new(me.facing * speed, me.vel.y, me.vel.z)
+    me.vel = Vec3.new(me.facing * s.speed, me.vel.y, me.vel.z)
     -- Ticks a panel takes.
-    me.timer2 = int.tdiv(PANEL_WIDTH, speed)
+    me.timer2 = int.tdiv(PANEL_WIDTH, s.speed)
     me.lifecycle = "update"
     return true
 end
 
--- `sub_80D30D0`.
-function honey_bee.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        if not init(me) then
+bee.kind = define.kind {
+    id = "rskyhny/bee",
+    pool = "attack",
+    state = { speed = "i32", turn_speed = "i32", target = "object", palette = "u8", turns = "u8" },
+    -- `sub_80D30D0`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            if not init(me) then
+                return
+            end
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
             return
         end
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
-        return
+        me:update_sprite_while_paused()
+    end,
+}
+
+-- `sub_80D32FE`: `what` on (x, y) for `owner` with the damage word
+-- `damage`. It runs while dimmed (but stands still). Its position is the
+-- spawner's registers (the panel's row, the element and 16 pixels up)
+-- until its init places it; only the height lasts.
+function bee.spawn(owner: Object, x: number, y: number, element: number, what: HoneyBee, damage: number): Object?
+    local o = battle.spawn(bee.kind, Vec3.new(y, element, 0x10_0000))
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o:set_damage_word(damage)
+        o.alliance, o.flip = owner.alliance, owner.flip
+        o.related1 = owner
+        o.run_while_dimmed = true
+        local s = o.state :: State
+        s.palette = what.palette
+        s.speed = what.speed
+        s.turn_speed = what.turn_speed
     end
-    me:update_sprite_while_paused()
+    return o
 end
 
-return honey_bee
+return bee

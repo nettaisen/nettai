@@ -1,13 +1,12 @@
 --!strict
 -- A dragon's body segment (attack object #0xC8, `sub_80DE13C`). Its head
--- (objects/dragon-head) spawns four on its own panel; each waits its
--- delay (3, 6, 9 or 12 ticks) hidden, then follows the head's path: down
--- the column, a panel forward in a dip, and back up out of sight. It
--- doesn't hit anything. See lib/dragon.luau.
+-- (./head) spawns four on its own panel; each waits its delay hidden, then
+-- follows the head's path: down the column, a panel forward in a dip, and
+-- back up out of sight. It doesn't hit anything. See ./dragon.
 
-local dragon = require("../../lib/dragon")
+local dragon = require("./dragon")
 
-local dragon_body = {}
+local body = {}
 
 export type State = {
     -- Ticks left to wait, ticks into the swim, or left in the climb out
@@ -22,34 +21,13 @@ export type State = {
     angle: number,
     -- Its height where the dip starts (EV+8).
     base_y: number,
-}
-
-dragon_body.state = {
-    count = "u8",
-    leg = "u8",
-    ticks_per_panel = "u8",
-    angle_step = "u8",
-    angle = "u8",
-    base_y = "i32",
+    -- Its dragon (its head's).
+    variant: DragonVariant,
 }
 
 local BODY_ANIM = 7
 -- Its actions: wait, dive or climb, swim, leave.
 local WAIT, COLUMN, SWIM, LEAVE = 0x0, 0x4, 0x8, 0xC
-
--- `sub_80DE2F0`: segment `i` of `head`'s dragon, `delay` ticks behind. Its
--- position is the spawner's registers (the head's row, i and the delay)
--- until its init places it; the delay stays in Z's fraction.
-function dragon_body.spawn(head: Object, i: number, delay: number): Object?
-    local o = battle.spawn_kind("dragon-body", Vec3.new(head.panel_y, i, delay), { head:param(1) })
-    if o then
-        o.panel_x, o.panel_y = head.panel_x, head.panel_y
-        local s = o.state :: State
-        s.count = delay
-        o.alliance, o.flip = head.alliance, head.flip
-    end
-    return o
-end
 
 -- `sub_80DE1F4`: hidden until its delay is up; then it splashes in.
 local function wait(me: Object)
@@ -154,11 +132,11 @@ end
 
 -- `sub_80DE168`: hidden on the head's panel.
 local function init(me: Object)
-    dragon.place(me, BODY_ANIM)
+    local s = me.state :: State
+    dragon.place(me, s.variant, BODY_ANIM)
     me.visible = false
     -- sub_80DE30E
-    local s = me.state :: State
-    local per_panel, step = dragon.start(me)
+    local per_panel, step = dragon.start(me, s.variant)
     s.ticks_per_panel = per_panel
     if per_panel ~= 0 then
         s.angle_step = step
@@ -168,18 +146,46 @@ local function init(me: Object)
     tick(me)
 end
 
--- `sub_80DE13C`.
-function dragon_body.update(me: Object)
-    local l = me.lifecycle
-    if l == "init" then
-        init(me)
-    elseif l == "update" then
-        tick(me)
-    else
-        me:destroy()
-        return
+body.kind = define.kind {
+    id = "dragon-body",
+    pool = "attack",
+    state = {
+        count = "u8",
+        leg = "u8",
+        ticks_per_panel = "u8",
+        angle_step = "u8",
+        angle = "u8",
+        base_y = "i32",
+        variant = "record:dragon-variant",
+    },
+    -- `sub_80DE13C`.
+    update = function(me: Object)
+        local l = me.lifecycle
+        if l == "init" then
+            init(me)
+        elseif l == "update" then
+            tick(me)
+        else
+            me:destroy()
+            return
+        end
+        me:update_sprite_while_paused()
+    end,
+}
+
+-- `sub_80DE2F0`: segment `i` of `head`'s dragon `v`, `delay` ticks behind.
+-- Its position is the spawner's registers (the head's row, i and the
+-- delay) until its init places it; the delay stays in Z's fraction.
+function body.spawn(head: Object, v: DragonVariant, i: number, delay: number): Object?
+    local o = battle.spawn(body.kind, Vec3.new(head.panel_y, i, delay))
+    if o then
+        o.panel_x, o.panel_y = head.panel_x, head.panel_y
+        local s = o.state :: State
+        s.count = delay
+        s.variant = v
+        o.alliance, o.flip = head.alliance, head.flip
     end
-    me:update_sprite_while_paused()
+    return o
 end
 
-return dragon_body
+return body
