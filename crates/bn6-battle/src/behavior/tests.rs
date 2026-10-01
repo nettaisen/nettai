@@ -69,7 +69,7 @@ fn battles_run_the_content_scripts() {
             "dolthdr/doll",
             "dragon-body",
             "dragon-head",
-            "drill",
+            "drilarm/drill",
             "dustcross-beast/junk-shot",
             "dustcross/junk-ball",
             "dustman/cloud",

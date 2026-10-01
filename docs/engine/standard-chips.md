@@ -34,7 +34,7 @@ framework's gap are listed with it. Branches no scenario reaches are marked **[u
 | 0x28 | `sub_80ECDFC` | 0x18..0x1A TrnArrw | attack #0xB flying shot (kind 2) | chips/trnarrw, objects/flying-shot (its arrow variant) |
 | 0x2C | `sub_80ED25C` | 0x7B..0x7D IronShl, 0x14D ParaShl | attack #0x34 iron shell | chips/ironshl (shell, throw), chips/parashl |
 | 0x2D | `sub_80ED2F8` | 0x1B..0x1D BblStar | attack #0x42 bubble star | chips/bblstar (chips, star) |
-| 0x2E | `sub_80ED374` | 0x33 DrilArm | attack #0x71 drill | chips/drilarm, objects/drill |
+| 0x2E | `sub_80ED374` | 0x33 DrilArm | attack #0x71 drill | chips/drilarm (chip, drill) |
 | 0x2F | `sub_80ED454` | 0x34 Tornado, 0x35 Static | attack #0x31 tornado | chips/tornado (chips, tornado) |
 | 0x31 | `sub_80ED64C` | 0x5C..0x5E WaveArm, 0x149..0x14B PwrWave | attack #0x16 shock wave | chips/wavearm (wave, strike), chips/pwrwave |
 | 0x32 | `sub_80ED6E6` | 0x3D..0x3F AquaNdl | effect #0x40 needle volley, attack #0x50 aqua needle | chips/aquandl (action, volley, needle) |
