@@ -1170,6 +1170,19 @@ its module"). The kinds that lasted while their owner's action number was 0x0A k
 `"action"` state field and compare definitions (§7.6). Verified against the chip lab (docs/engine/
 standard-chips.md, "Action 0x0A").
 
+**The link navis' charged attacks** (step 8e, after step 5): each navi's weapon is `<navi>/charge` in
+navis/`<navi>`/charge.luau, a `define.weapon` whose action (`<navi>/charge/action`) is the original's entry 9 of
+his action table, written on lib/link_chips' phases like his chip. The setup gives the attack its damage
+(`weapon.charge_damage(navi, base, per_point)`), the counter byte and the element, and for TomahawkMan writes the
+action's state (the ticks he raises the axe and recovers for). What a charge spawns is the navi chip series' kind
+where it shares one (`heatman/flame`, `elecman/thunder`, `slashman/wave`, `spoutman/ball`, `chrgeman/car`),
+DustCross's junk ball for DustMan, and one kind of its own, GroundMan's flying drill (`groundman/drill`, beside
+the navi), which lasts while he runs the action he threw it in. ProtoMan's charge runs WideSwrd's action with
+the chip as the attack's (`navi.attack_chip = <the record>`); his B+Back specials are the Reflector's guard with
+the NaviCust Reflect's look and the NaviCust's Reflect itself, whose damage is a navi stat
+(`battle.navi(side).back_special_damage`). The definitions keep `legacy = { routines }` until step 11 (the navis
+don't name their weapons yet: a link navi's stats name the routine). docs/engine/standard-chips.md, "Action 9".
+
 ### 5.6 Instant chips: a hook per chip
 
 v1: action 0x1C calls `Hook::InstantChip(subtype)`; one module serves the 30 chips of subtype 3.
