@@ -70,6 +70,75 @@ function panels.side_direction(alliance: number): number
     return -(alliance * 2 - 1)
 end
 
+-- `sub_800D618`: (x, y) is `victim`'s home but someone else holds it.
+function panels.taken_from(x: number, y: number, victim: number): boolean
+    local p = field.panel(x, y)
+    return p ~= nil and p.home ~= p.alliance and p.home == victim
+end
+
+-- `sub_800D6CC`: column x is `victim`'s home, and all its.
+function panels.full_home_column(x: number, victim: number): boolean
+    if field.column(x).home ~= victim then
+        return false
+    end
+    for y = 1, 3 do
+        local p = field.panel(x, y)
+        if not p or p.alliance ~= victim then
+            return false
+        end
+    end
+    return true
+end
+
+-- `sub_800D668`: `victim` may lose (x, y): its column isn't `victim`'s
+-- home, or `victim` keeps another full home column on either side before
+-- a panel it already lost.
+function panels.can_take(x: number, y: number, victim: number): boolean
+    if field.column(x).home ~= victim then
+        return true
+    end
+    for _, dir in { 1, -1 } do
+        local c = x + dir
+        while field.valid(c, y) and not panels.taken_from(c, y, victim) do
+            if panels.full_home_column(c, victim) then
+                return true
+            end
+            c += dir
+        end
+    end
+    return false
+end
+
+-- `sub_800D4D0`: the front column of `side`'s area in row `y`, as `side`
+-- faces with `flip`: from the far side's back column (`sub_800D53C`: from
+-- column 6 or 1, toward `side`'s, past the panels `side` holds; 0 off the
+-- field), on to the first panel of `side`'s (`byte_800D52C`: the owner
+-- bit 0x20 for side 1, none for side 0), and one back. 0 for none; the
+-- column one back isn't checked to be on the field.
+function panels.area_front(side: number, flip: number, y: number): number
+    -- `object_getFlipDirection`: +1, or -1 for side ^ flip.
+    local dir = 1 - 2 * bit32.bxor(side, flip)
+    local x = 6 - 5 * bit32.bxor(side, flip)
+    while true do
+        if not field.valid(x, y) then
+            return 0
+        end
+        local p = field.panel(x, y) :: Panel
+        if p.alliance ~= side then
+            break
+        end
+        x -= dir
+    end
+    local require, forbid = if side == 1 then 0x20 else 0, if side == 1 then 0 else 0x20
+    while not field.check(x, y, require, forbid) do
+        x -= dir
+        if not field.valid(x, y) then
+            return 0
+        end
+    end
+    return x + dir
+end
+
 -- `GetRandomRelativePanelFiltered`: of region `region`'s panels around
 -- (x, y), dx toward `dir`, one with every `require` bit and no `forbid`
 -- bit, at random (one draw of the RNG, only when there is one); nil if
@@ -180,8 +249,16 @@ function panels.enemy_column(me: Object): (number, boolean)
     return if dir > 0 then 6 else 1, false
 end
 
--- A hit region's offsets ({dx, dy} each, dx toward the facing side).
-local function region_shape(n: number): { { number } }
+-- A hit region's offsets ({dx, dy} each, dx toward the facing side): a
+-- region definition's, or (deprecated) a region number's.
+local function region_shape(n: number | Region): { { number } }
+    if type(n) == "table" then
+        local shape = n.panels
+        if not shape then
+            error("a whole-field region has no panel offsets")
+        end
+        return shape
+    end
     local r = data.regions[n]
     if not r then
         error(string.format("panel region %#x reads past PanelOffsetListsPointerTable", n))
@@ -191,7 +268,7 @@ end
 
 -- `object_highlightPanelRegion`: highlight region `n`'s panels around (x,
 -- y), dx along `facing` (+1 right, -1 left).
-function panels.highlight_region(x: number, y: number, n: number, facing: number)
+function panels.highlight_region(x: number, y: number, n: number | Region, facing: number)
     for _, o in region_shape(n) do
         field.highlight(x + o[1] * facing, y + o[2])
     end
@@ -199,7 +276,14 @@ end
 
 -- `object_getPanelRegion`: region `n`'s panels around (x, y), dx along
 -- `direction`, that pass `field.check`.
-function panels.region(x: number, y: number, n: number, direction: number, require: number, forbid: number): { number }
+function panels.region(
+    x: number,
+    y: number,
+    n: number | Region,
+    direction: number,
+    require: number,
+    forbid: number
+): { number }
     local list = {}
     for _, o in region_shape(n) do
         local px, py = x + o[1] * direction, y + o[2]
@@ -212,7 +296,7 @@ end
 
 -- `sub_80DB48A`: crack (`object_crackPanel`) each panel of region `n`
 -- around (x, y), its offsets as they are (not turned to a side).
-function panels.crack_region(x: number, y: number, n: number)
+function panels.crack_region(x: number, y: number, n: number | Region)
     for _, o in region_shape(n) do
         field.crack(x + o[1], y + o[2])
     end

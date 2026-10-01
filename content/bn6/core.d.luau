@@ -232,6 +232,10 @@ declare class Sprite
     function set_animation(self, anim: number): ()
     -- Advance the animation one tick (no gating).
     function step(self): ()
+    -- `sub_80030BA`: where part n (from 0) of the current frame sits, in
+    -- pixels from the object, unflipped; (0, 0) when the frame has fewer
+    -- parts. Objects attach to them.
+    function part_offset(self, n: number): (number, number)
     -- The game's flip value: bit 0 horizontal, bit 1 vertical.
     function set_flip(self, flip: number): ()
 end
@@ -279,6 +283,9 @@ declare class Collision
     -- The secondary elements (sword 0x80, cursor 0x40, wind 0x20, break
     -- 0x10) of what hit it this window (read-only).
     damage_elements: number
+    -- The hit modifiers of what hit it this window (HitModifierFinal; 0x3C
+    -- the pushes, 0x40 a pushing hit; read-only).
+    hit_mod_final: number
     -- Its barrier (read-only): none, up, or popped (blown away by wind);
     -- the barrier's HP byte; the hit modifier that popped it.
     barrier: BarrierState
@@ -427,6 +434,11 @@ declare class Object
     -- Writable: the barrier's visual (AIData+0x60), which hides and shows
     -- with the navi (its state's `shown`).
     barrier_visual: Object?
+
+    -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
+    -- NameID look; a navi's or form's NameID gives its sprite). An error
+    -- for a NameID the content has no look for.
+    function name_look_is(self, sprite: SpriteAsset): boolean
 
     -- Spawn parameter n (1 to 4: the game's Param1..Param4).
     function param(self, n: number): number
@@ -827,6 +839,9 @@ declare battle: {
     -- are the other side's and the local navi is blind). Presentation, as
     -- the original keeps it in the objects' visibility.
     viewer_sees: (side: number) -> boolean,
+    -- `sub_800ED90` and its record's flags: the chip `user` would use next
+    -- deals damage (a player's at its hand's cursor; another object's own).
+    next_chip_damages: (user: Object) -> boolean,
     link: () -> boolean,
     -- A battle against a ranked boss (battle effect 1).
     boss_rank: () -> boolean,
@@ -945,6 +960,9 @@ declare battle: {
     -- in, and adding to its Atk+ bonus.
     hand_turn: (side: number, i: number) -> number,
     add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
+    -- A side's hand has a chip at i and it does damage (its record's
+    -- "has_damage" flag).
+    hand_chip_damages: (side: number, i: number) -> boolean,
     -- Subtype 8 (Wind and Fan): a side's wind (`sub_80E543C`) and who
     -- placed it; `sub_80E541A` makes `me` a side's wind (the one there
     -- before is destroyed at once); `sub_80E544C` makes it no side's.
@@ -1621,6 +1639,10 @@ export type RolesSpec = {
         -- The NaviCust FirstBarrier: raise its barrier and the barrier's
         -- visual on the navi as it enters (`sub_8013892`).
         first_barrier: ((navi: Object) -> ())?,
+        -- `sub_801813A`'s end: what an obstacle encased in ice (`ice`) or a
+        -- bubble becomes on its panel; its field-object registry class (nil:
+        -- it wasn't registered).
+        encased: ((obstacle: Object, ice: boolean, class: number?) -> ())?,
     }?,
 }
 

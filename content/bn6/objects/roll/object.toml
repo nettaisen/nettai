@@ -1,6 +1,0 @@
-# Roll, the Roll chips' navi (actor object #0x2C, `sub_80C07BC`), is a script.
-
-[kind]
-pool = "actor"
-index = 0x2C
-script = "roll.luau"

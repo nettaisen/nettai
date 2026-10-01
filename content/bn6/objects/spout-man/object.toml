@@ -1,6 +1,0 @@
-# SpoutMan, the SpoutMan chips' navi (actor object #0x09, `sub_80B94BC`), is a script.
-
-[kind]
-pool = "actor"
-index = 0x09
-script = "spout_man.luau"

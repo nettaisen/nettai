@@ -510,6 +510,10 @@ impl UserData for Object {
             let mode = u8_arg(mode, "damage mode")?;
             with(|api, _| Ok(api.take_damage(this.0, mode)))
         });
+        methods.add_method("name_look_is", |_, this, sprite: LuaValue| {
+            let sprite = sprite_id(sprite, None)?;
+            with(|api, _| api.name_look_is(this.0, sprite).map_err(api_error))
+        });
         methods.add_method("raise_barrier", |_, this, t: mlua::Table| {
             let behavior: mlua::LuaString = t.raw_get("behavior")?;
             let behavior = named(&behavior, "barrier behavior", |s| {
@@ -728,6 +732,10 @@ impl UserData for Sprite {
             with(|api, _| Ok(api.sprite_set_animation(this.0, anim)))
         });
         methods.add_method("step", |_, this, ()| with(|api, _| Ok(api.sprite_step(this.0))));
+        methods.add_method("part_offset", |_, this, n: LuaValue| {
+            let n = u8_arg(n, "n")?;
+            with(|api, _| Ok(api.sprite_part_offset(this.0, n)))
+        });
         methods.add_method("set_flip", |_, this, flip: LuaValue| {
             let flip = u8_arg(flip, "flip")?;
             with(|api, _| {
@@ -1029,6 +1037,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
+    lib_fn!(lua, t, "next_chip_damages", |_, user: mlua::UserDataRef<Object>| {
+        with(|api, _| Ok(api.next_chip_damages(user.0)))
+    });
     lib_fn!(lua, t, "viewer_sees", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.viewer_sees(side)))
@@ -1358,6 +1369,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "add_hand_attack_bonus", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?, u16_arg(n, "bonus")?);
         with(|api, _| Ok(api.add_hand_attack_bonus(side, i, n)))
+    });
+    lib_fn!(lua, t, "hand_chip_damages", |_, (side, i): (LuaValue, LuaValue)| {
+        let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
+        with(|api, _| Ok(api.hand_chip_damages(side, i)))
     });
     // Subtype 8 (Wind and Fan).
     lib_fn!(lua, t, "wind", |lua, side: LuaValue| {
@@ -1712,6 +1727,10 @@ pub fn hook_args(lua: &Lua, call: HookCall) -> mlua::Result<mlua::MultiValue> {
             vec![LuaValue::Table(t)]
         }
         HookCall::RoleNavi { navi } => vec![obj(navi)?],
+        HookCall::RoleEncased { obstacle, ice, class } => {
+            let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(c as i64));
+            vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
+        }
     };
     Ok(mlua::MultiValue::from_iter(values))
 }
@@ -1730,6 +1749,6 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::DimmingChip { .. } | HookCall::NaviChip { .. } | HookCall::ActorListEntry { .. } => {
             Ok(object_arg(&v, "the object a spawner returns")?.map_or(Value::Nil, Value::Object))
         }
-        HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } => Ok(Value::Nil),
+        HookCall::InstantChip { .. } | HookCall::RoleNavi { .. } | HookCall::RoleEncased { .. } => Ok(Value::Nil),
     }
 }
