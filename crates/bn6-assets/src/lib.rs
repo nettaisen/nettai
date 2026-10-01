@@ -280,6 +280,11 @@ pub struct Hud {
     pub navi_box: Tiles,
     /// "PAUSE": five glyphs, drawn with the opponents' HP digits' palette.
     pub pause: Tiles,
+    /// The HUD's text lines, each as glyphs of the font
+    /// (`TextScript86F0374`): the multiple deletions (0, 1, 19), "TIME
+    /// UP!" (3), the turn timer's seconds 1-10 (4-13), "COUNTER HIT!" (14)
+    /// and the custom screen's own.
+    pub texts: Vec<Vec<u16>>,
     /// Banners by banner id / 4.
     pub banners: Vec<BannerLayout>,
     /// The banner font's digits (glyph d is digit d; glyph 10 is blank).

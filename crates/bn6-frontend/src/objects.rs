@@ -106,11 +106,10 @@ pub struct Projected {
 pub fn project(pos: (i32, i32, i32), view: &View) -> Projected {
     let int = |v: i32| (v >> 16) as i16 as i32;
     let (cx, cy, cz) = (view.camera.0 >> 16, view.camera.1 >> 16, view.camera.2 >> 16);
-    let mut x = int(pos.0) - cx;
-    if view.mirror {
-        x = -x;
-    }
-    let x = (x + 0x78) as i16 as i32;
+    // (The right-hand player's console mirrors the field, not its camera:
+    // a shake moves the sprites the way it moves the field layer.)
+    let x = if view.mirror { -int(pos.0) } else { int(pos.0) };
+    let x = (x - cx + 0x78) as i16 as i32;
     let ground = (int(pos.1) - cy + 0x50) as i16 as i32;
     let y = ground - (int(pos.2) - cz);
     Projected { x, ground, y }
@@ -279,11 +278,7 @@ pub fn queue_objects<'a>(b: &Battle, assets: &'a Bundle, view: &View, list: &mut
             mask &= !look.hidden_parts;
 
             let first_palette = parts.first().map(|p| p.palette).unwrap_or(0);
-            // A form overlay shows white with its owner (measured; the
-            // overlay itself doesn't run while the battle is paused).
-            let form_overlay = is(b, o, EngineKind::FormOverlay);
-            let owner_white = || form_overlay && o.related[0].is_some_and(|w| b.objects.sprite(w).look.white);
-            let palette = if look.white && !form_overlay || owner_white() {
+            let palette = if look.white {
                 WHITE
             } else {
                 let set = &sheet.palette_sets[frame.palette_set as usize];

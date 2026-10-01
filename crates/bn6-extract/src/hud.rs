@@ -20,7 +20,11 @@ const HP_BOX: u32 = 0x0801_EDFC;
 const GAUGE_FRAME: u32 = 0x0801_ED6C;
 /// The 8x16 font (glyph k = 0x40 bytes).
 const FONT: u32 = 0x086B_7AE0;
-const FONT_GLYPHS: u32 = 0xA0;
+const FONT_GLYPHS: u32 = 0xE0;
+/// The HUD's text lines (`TextScript86F0374`): a table of 16-bit offsets,
+/// then each line's glyphs up to its end mark.
+const TEXTS: u32 = 0x086F_0374;
+const TEXT_END: u8 = 0xE6;
 /// ChipData: 0x2C bytes per chip; +0x20 icon pointer.
 const CHIP_DATA: u32 = 0x0802_1DA8;
 const CHIP_COUNT: u32 = 411;
@@ -63,6 +67,18 @@ const WAITING: u32 = 0x086F_2040;
 
 fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
     Tiles::from_4bpp(rom.bytes(a, len))
+}
+
+/// The HUD's text lines: a line with anything but glyphs in it (a text
+/// command) is cut there.
+fn texts(rom: &Rom) -> Vec<Vec<u16>> {
+    let offset = |i: u32| rom.u16(TEXTS + 2 * i) as u32;
+    (0..offset(0) / 2)
+        .map(|i| {
+            let line = rom.bytes(TEXTS + offset(i), 0x40);
+            line.iter().take_while(|&&c| c != TEXT_END && (c as u32) < FONT_GLYPHS).map(|&c| c as u16).collect()
+        })
+        .collect()
 }
 
 fn palette(rom: &Rom, a: u32) -> Palette {
@@ -163,6 +179,7 @@ pub fn hud(rom: &Rom, names: &AssetNames) -> Hud {
         navi_mugshot_of: rom.bytes(NAVI_MUGSHOT_OF, LINK_NAVIS).to_vec(),
         navi_box: tiles(rom, NAVI_BOX, 0x80),
         pause,
+        texts: texts(rom),
         banners: (0..BANNER_COUNT).map(|id| banner(rom, id)).collect(),
         banner_digits,
         banner_palette: palette(rom, BANNER_PALETTE),
