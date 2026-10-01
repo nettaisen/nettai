@@ -69,6 +69,7 @@ return define.roles {
     collision = ruleset.collision,
     sounds = ruleset.sounds,
     music = ruleset.music,
+    sprites = ruleset.sprites,
     banners = ruleset.banners,
     hooks = {
         -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier

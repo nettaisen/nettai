@@ -35,7 +35,7 @@ use super::{
 };
 use super::roles::{
     ActionRole, BannerRole, ChipRole, CollisionRole, EffectRole, HookRole, KindRole, LockonRole, MusicRole, RegionRole,
-    RoleAction, RoleKind, Roles, SoundRole, SparkRole, StatusRole,
+    RoleAction, RoleKind, Roles, SoundRole, SparkRole, SpriteRole, StatusRole,
 };
 use crate::setup::{Form, Navi};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
@@ -752,6 +752,18 @@ fn read_roles(
                     let id = role_asset(assets, bn6_content_api::AssetKind::Sound, &group, &name, v).map_err(&what)?;
                     roles.music.insert(role, crate::sound::SoundId(id));
                 }
+                "sprites" => {
+                    let role = definition_role(&group, &name, SpriteRole::named, SpriteRole::ALL.iter().map(|r| r.name())).map_err(&what)?;
+                    let sprite = match v {
+                        Data::Asset(bn6_content_api::AssetKind::Sprite, asset) => assets
+                            .sprites
+                            .get(asset)
+                            .copied()
+                            .ok_or_else(|| what(format!("sprites.{name}: the pack has no sprite {asset:?}")))?,
+                        _ => return Err(what(format!("sprites.{name} is not a sprite asset (asset.sprite(...))"))),
+                    };
+                    roles.sprites.insert(role, sprite);
+                }
                 "banners" => {
                     let role = definition_role(&group, &name, BannerRole::named, BannerRole::ALL.iter().map(|r| r.name())).map_err(&what)?;
                     let id = role_asset(assets, bn6_content_api::AssetKind::Banner, &group, &name, v).map_err(&what)?;
@@ -759,7 +771,7 @@ fn read_roles(
                 }
                 _ => {
                     return Err(what(format!(
-                        "the ruleset has no role group `{group}` (it has actions, kinds, hooks, chips, lockon, statuses, effects, sparks, regions, collision, sounds, music, banners)"
+                        "the ruleset has no role group `{group}` (it has actions, kinds, hooks, chips, lockon, statuses, effects, sparks, regions, collision, sounds, music, sprites, banners)"
                     )));
                 }
             }

@@ -8,7 +8,7 @@
 
 use crate::battle::Battle;
 use crate::collision::{f1, link};
-use crate::content::{SoundRole, SpriteId};
+use crate::content::{SoundRole, SpriteRole};
 use crate::object::{ObjectRef, flags, state};
 
 /// Which status it shows (Param1, a row of `byte_80E08E4`).
@@ -22,12 +22,12 @@ pub enum Status {
 }
 
 impl Status {
-    /// Its sprite and the navi's status flag it lasts while.
-    fn row(self) -> (SpriteId, u32) {
+    /// Its sprite (by role) and the navi's status flag it lasts while.
+    fn row(self) -> (SpriteRole, u32) {
         match self {
-            Status::Confusion => (SpriteId { category: 0x14, index: 0x0B }, f1::CONFUSED),
-            Status::Blindness => (SpriteId { category: 0x14, index: 0x09 }, f1::BLIND),
-            Status::Immobilized => (SpriteId { category: 0x10, index: 0x00 }, f1::IMMOBILIZED),
+            Status::Confusion => (SpriteRole::Confusion, f1::CONFUSED),
+            Status::Blindness => (SpriteRole::Blindness, f1::BLIND),
+            Status::Immobilized => (SpriteRole::Immobilized, f1::IMMOBILIZED),
         }
     }
 
@@ -91,6 +91,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 /// `sub_80E091C`.
 fn init(b: &mut Battle, r: ObjectRef) {
     let (sprite, _) = vars(b, r).row();
+    let sprite = b.content.defs.roles.sprite(sprite);
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;

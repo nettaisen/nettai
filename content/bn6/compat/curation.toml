@@ -304,6 +304,7 @@
 "sprites.hockey-puck" = "10-06: objects/hockey-puck/hockey_puck.luau"
 "sprites.honey-bee" = "10-31: objects/honey-bee/honey_bee.luau"
 "sprites.hub" = "14-1e: effect 0x5A in objects/navi-boost/navi_boost.luau"
+"sprites.ice-block" = "14-1c: the engine's"
 "sprites.idle-overlay" = "10-21: the engine's"
 "sprites.immobilized" = "10-00: the engine's"
 "sprites.impact" = "14-01: the cannons' hit spark, spark 7 (G3)"
