@@ -15,6 +15,9 @@
 
 local collision = {}
 
+-- Nothing (row 0x00): what a hit that reaches by what it is alone (the
+-- Anubis statue's drain) targets.
+collision.none = define.collision { id = "none", side0 = 0, side1 = 0, row_offset = 0 }
 -- An attack of its side that also reaches objects with status 0x20 (row
 -- 0x04: a seed, a bomb's lingering hit, the bug and black bombs' bursts).
 collision.attack = define.collision { id = "attack", side0 = 0x80000080, side1 = 0x40000080, row_offset = 0x20 }

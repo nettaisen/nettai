@@ -183,3 +183,14 @@ export type FanVariant = {
     name: number,
     absorbed_kind: number,
 }
+
+-- An Anubis statue (chips/anubis/statue, `byte_80CF0C0`): its animation,
+-- the ticks between its drains, HP, lifetime, and NameID (the field
+-- objects' look).
+export type AnubisVariant = {
+    anim: number,
+    period: number,
+    hp: number,
+    lifetime: number,
+    name: number,
+}
