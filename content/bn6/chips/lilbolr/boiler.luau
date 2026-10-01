@@ -422,7 +422,8 @@ boiler.kind = define.kind {
 -- leaves in the register its registration reads (`sub_80D7A78`), so with
 -- no bonus side 0's whichever side threw it. A bonus above 1 writes past
 -- the registry (`setFieldBattleObject_800F614` at BattleState+0xA8 + 12 x
--- the bonus; Atk+10's lands on the battle's used-crosses mask): an error.
+-- the bonus), which the registration itself carries out where the port
+-- knows what lies there: Atk+10's lands on the round's Crosses-used mask.
 function boiler.thrower(level: number): Thrower
     return {
         throw = function(user: Object, pos: Vec3, damage: number): Object?
@@ -436,9 +437,9 @@ function boiler.thrower(level: number): Thrower
                 o:set_damage_word(damage)
                 o.alliance, o.flip = user.alliance, user.flip
                 local side = user.extra
-                if side > 1 then
+                if side > 0xFF then
                     error(string.format(
-                        "LilBoiler thrown with Atk+ bonus %d: setFieldBattleObject_800F614 registers it at BattleState+%#x, past the field-object registry",
+                        "LilBoiler thrown with Atk+ bonus %d: setFieldBattleObject_800F614 registers it at BattleState+%#x, far past the field-object registry",
                         side,
                         0xA8 + 12 * side
                     ))

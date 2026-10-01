@@ -244,10 +244,83 @@ pub fn set_region(b: &mut Battle, r: ObjectRef, region: u8) {
 /// `setFieldBattleObject_800F614`: register a new obstacle for `side` in
 /// `class`. A third class-0 obstacle (or a second class-1 one) evicts the
 /// oldest, whose HP drops to 0 so it breaks at its next update.
+///
+/// The game doesn't check the side. One caller hands it a register that
+/// holds something else (LilBoiler's thrower: the chip's Atk+ bonus), and
+/// with a side above 1 the store lands past the registry:
+/// [`store_past_registry`].
 pub fn register(b: &mut Battle, r: ObjectRef, side: u8, class: u8) {
+    if side > 1 {
+        return store_past_registry(b, r, side, class);
+    }
     if let Some(evicted) = b.field.objects.register(r, side, class) {
         b.objects.get_mut(evicted).hp = 0;
     }
+}
+
+/// What lies where `setFieldBattleObject_800F614` stores a class-1 object
+/// for a "side" above 1 (twelve bytes a side from the registry's start):
+/// the destinations a netbattle can reach whose effect is known.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PastRegistry {
+    /// Side 10 (a bonus of 10: one Atk+10 or ColorPt): the first word of
+    /// the round's custom-screen memory (`dword_20349A0`), the mask of
+    /// Crosses used this round.
+    CrossesUsed,
+}
+
+fn past_registry(side: u8, class: u8) -> Option<PastRegistry> {
+    match (side, class) {
+        (10, 1) => Some(PastRegistry::CrossesUsed),
+        _ => None,
+    }
+}
+
+/// `setFieldBattleObject_800F614` for a side above 1: the object's address
+/// replaces the word 12 x side bytes past the registry's class slot, and
+/// when that word wasn't zero the game zeroes the HP of "the object" it
+/// held. `sub_800F656` scans the registry's six slots only, so the store
+/// is never undone.
+///
+/// Side 10 is the Crosses-used mask, which both consoles keep for their
+/// own player and both overwrite, since both simulate the object: each
+/// Cross is used or not by the bit of its form number (less one) in the
+/// object's address. The old word is a mask (an address in the BIOS: the
+/// HP store does nothing) unless an earlier object was stored there, whose
+/// slot then gets the HP store whatever it holds by now. (A Cross picked
+/// in between changes one console's word by a bit and so that console's
+/// store: the consoles disagree from there in the game itself, and the
+/// port keeps the first store's object.)
+fn store_past_registry(b: &mut Battle, r: ObjectRef, side: u8, class: u8) {
+    match past_registry(side, class) {
+        Some(PastRegistry::CrossesUsed) => {
+            let address = original_address(r);
+            for player in &mut b.custom.sides {
+                let version = player.unlocks.version;
+                for (i, used) in player.round.crosses_used.iter_mut().enumerate() {
+                    *used = address >> (version.cross_form(i as u8).0 - 1) & 1 != 0;
+                }
+            }
+            if let Some(old) = b.field.objects.stored_in_crosses_used.replace(r) {
+                if b.objects.is_allocated(old) {
+                    b.objects.get_mut(old).hp = 0;
+                }
+            }
+        }
+        None => panic!(
+            "setFieldBattleObject_800F614 with side {side}, class {class} stores the object at BattleState+{:#x}, past \
+             the field-object registry, over memory the port doesn't model",
+            0xA0 + 0xC * side as u32 + 8 * class as u32
+        ),
+    }
+}
+
+/// Where the game keeps an attack object: the address the stores above
+/// leave behind (the attack pool's 32 slots of 0xD8 bytes from
+/// `eT3BattleObject0`).
+fn original_address(r: ObjectRef) -> u32 {
+    assert!(r.pool == crate::object::Pool::Attack, "only attack objects are stored past the registry, not {r:?}");
+    0x0203_CFE0 + 0xD8 * r.slot as u32
 }
 
 /// `sub_800F656`: forget `r` in the registry.
@@ -1074,4 +1147,55 @@ pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, kind: u8) {
 pub fn finish(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).flags &= !flags::VISIBLE;
     common::set_progress(b, r, Progress::DESTROY);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::content::testing;
+    use crate::custom::GameVersion;
+    use crate::object::Pool;
+
+    fn battle() -> Battle {
+        let content = testing::content();
+        Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&content)), content)
+    }
+
+    /// LilBoiler thrown with Atk+10 registers with "side" 10: the store
+    /// lands on the round's Crosses-used mask instead of the registry, and
+    /// each console reads the object's address as its own Crosses' bits
+    /// (the game's second attack slot is at 0x0203D0B8: bits 3, 4, 5 and 7).
+    #[test]
+    fn a_side_of_ten_stores_the_object_over_the_crosses_used() {
+        let mut b = battle();
+        b.custom.sides[0].unlocks.version = GameVersion::Falzar;
+        b.custom.sides[1].unlocks.version = GameVersion::Gregar;
+        b.custom.sides[0].round.crosses_used = [false, true, false, false, true];
+        let boiler = ObjectRef { pool: Pool::Attack, slot: 1 };
+        register(&mut b, boiler, 10, 1);
+        assert_eq!(b.custom.sides[0].round.crosses_used, [true, false, true, false, false]);
+        assert_eq!(b.custom.sides[1].round.crosses_used, [false, false, false, true, true]);
+        assert!(b.field.objects.slots.iter().all(Option::is_none), "nothing in the registry itself");
+        // Unregistering scans the registry only: the mask keeps the address.
+        unregister(&mut b, boiler);
+        assert_eq!(b.custom.sides[0].round.crosses_used, [true, false, true, false, false]);
+    }
+
+    /// The first attack slot's address (0x0203CFE0) has bits 5 to 9 all set
+    /// and bits 0 to 4 all clear: every Falzar Cross used, no Gregar one.
+    #[test]
+    fn the_first_attack_slot_uses_up_every_falzar_cross() {
+        let mut b = battle();
+        b.custom.sides[1].unlocks.version = GameVersion::Gregar;
+        register(&mut b, ObjectRef { pool: Pool::Attack, slot: 0 }, 10, 1);
+        assert_eq!(b.custom.sides[0].round.crosses_used, [true; 5]);
+        assert_eq!(b.custom.sides[1].round.crosses_used, [false; 5]);
+    }
+
+    #[test]
+    #[should_panic(expected = "BattleState+0x198")]
+    fn other_sides_past_the_registry_are_refused() {
+        let mut b = battle();
+        register(&mut b, ObjectRef { pool: Pool::Attack, slot: 0 }, 20, 1);
+    }
 }
