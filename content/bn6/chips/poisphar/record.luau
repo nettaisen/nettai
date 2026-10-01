@@ -8,6 +8,7 @@ local anubis = require("../anubis/record")
 return define.chip {
     id = "poisphar",
     name = "PoisPhar",
+    description = "Places a\npoisoned\nPharaoh",
     codes = {},
     element = "null",
     family = "program_advance",

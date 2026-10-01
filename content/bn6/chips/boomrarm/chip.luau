@@ -5,6 +5,7 @@
 return define.chip {
     id = "boomrarm",
     name = "BoomrArm",
+    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "null",

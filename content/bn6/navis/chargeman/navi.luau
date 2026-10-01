@@ -13,6 +13,7 @@ return define.navi {
     move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
     banners = { win = asset.banner("chargeman-win"), lose = asset.banner("chargeman-deleted") },
     merge_height = 0,
+    run_message = { 15, 19, 11 },
     own_chip = { chip = chargeman, code = "C" },
     identity = {
         version = 0,

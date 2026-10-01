@@ -1,6 +1,0 @@
-# CopyDmg's mark (attack object #0x28, `sub_80C8FFC`) is a script.
-
-[kind]
-pool = "attack"
-index = 0x28
-script = "copy_mark.luau"

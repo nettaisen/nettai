@@ -5,6 +5,7 @@
 return define.chip {
     id = "dustbrk",
     name = "DustBrk",
+    description = "Draw enmy\nin, then\ncrsh attk",
     codes = { "D" },
     element = "null",
     family = "break",

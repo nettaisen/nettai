@@ -5,6 +5,7 @@
 return define.chip {
     id = "slogauge",
     name = "SloGauge",
+    description = "CustGauge\nslow-down",
     codes = { "A", "B", "G", "*" },
     element = "null",
     family = "null",

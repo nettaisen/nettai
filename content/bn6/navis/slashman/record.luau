@@ -5,6 +5,7 @@
 return define.chip {
     id = "rslash",
     name = "RSlash",
+    description = "Slash an\nenmy whl\nrevolving",
     codes = { "S" },
     element = "null",
     family = "sword",

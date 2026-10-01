@@ -5,6 +5,7 @@
 return define.chip {
     id = "fstgauge",
     name = "FstGauge",
+    description = "CustGauge\nspeed-up",
     codes = { "E", "M", "R", "*" },
     element = "null",
     family = "null",

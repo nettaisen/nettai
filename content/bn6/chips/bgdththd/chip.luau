@@ -5,6 +5,7 @@
 return define.chip {
     id = "bgdththd",
     name = "BgDthThd",
+    description = "Use Bug\nFrag with\nDarkThnd!",
     codes = { "V" },
     element = "elec",
     family = "elec",

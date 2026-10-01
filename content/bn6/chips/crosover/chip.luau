@@ -7,6 +7,7 @@ local django_chips = require("../django/chips")
 return define.chip {
     id = "crosover",
     name = "CrosOver",
+    description = "Cllbrate!\nAttk w/MM\n+ Django!",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

@@ -5,6 +5,7 @@
 return define.chip {
     id = "edeletbm",
     name = "EDeletBm",
+    description = "Pierce\nfwd and\nfire beam",
     codes = { "K" },
     element = "null",
     family = "cursor",

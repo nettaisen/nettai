@@ -419,12 +419,13 @@ boiler.kind = define.kind {
 
 -- `sub_80D7A96`: a thrower for `throw.action` that throws a LilBoiler of
 -- `level` at the panel three ahead of the user (the original keeps it as a
--- halfword from the user's panel). It registers it as one of a side's
--- field objects: the side the thrower's Atk+ bonus names, which the game
--- leaves in the register its registration reads (`sub_80D7A78`), so with
--- no bonus side 0's whichever side threw it. A bonus above 1 writes past
--- the registry (`setFieldBattleObject_800F614` at BattleState+0xA8 + 12 x
--- the bonus; Atk+10's lands on the battle's used-crosses mask): an error.
+-- halfword from the user's panel). It registers it as one of its user's
+-- side's field objects (`sub_80D7A78`: the "side" is the user's alliance
+-- and flip halfword, which the spawner has just copied to the boiler; the
+-- Atk+ bonus it popped into that register is overwritten first). A flipped
+-- user's would land far past the registry
+-- (`setFieldBattleObject_800F614` at BattleState+0xA8 + 12 x 0x100): no
+-- player is flipped, and the port refuses it.
 function boiler.thrower(level: number): Thrower
     return {
         throw = function(user: Object, pos: Vec3, damage: number): Object?
@@ -437,15 +438,10 @@ function boiler.thrower(level: number): Thrower
                 s.target_y = bit32.rshift(xy, 8)
                 o:set_damage_word(damage)
                 o.alliance, o.flip = user.alliance, user.flip
-                local side = user.extra
-                if side > 1 then
-                    error(string.format(
-                        "LilBoiler thrown with Atk+ bonus %d: setFieldBattleObject_800F614 registers it at BattleState+%#x, past the field-object registry",
-                        side,
-                        0xA8 + 12 * side
-                    ))
+                if user.flip ~= 0 then
+                    error("LilBoiler thrown by a flipped user: setFieldBattleObject_800F614 registers it far past the field-object registry")
                 end
-                obstacle.register(o, side, 1)
+                obstacle.register(o, user.alliance, 1)
             end
             return o
         end,

@@ -99,6 +99,7 @@ local action = define.action {
 return define.chip {
     id = "airshot",
     name = "AirShot",
+    description = "Knock\nenmy back\n1 square",
     codes = { "*" },
     element = "null", family = "wind", class = "standard",
     rarity = 1, mb = 4, damage = 20, hit_param = 20, lockout = 0,

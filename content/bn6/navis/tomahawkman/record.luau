@@ -5,6 +5,7 @@
 return define.chip {
     id = "etomahwk",
     name = "ETomahwk",
+    description = "Unleash\na giant\naxe attck",
     codes = { "T" },
     element = "null",
     family = "null",

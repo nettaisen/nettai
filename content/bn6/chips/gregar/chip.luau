@@ -5,6 +5,7 @@
 return define.chip {
     id = "gregar",
     name = "Gregar",
+    description = "",
     codes = { "X" },
     element = "null",
     family = "null",

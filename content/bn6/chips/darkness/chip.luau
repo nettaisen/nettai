@@ -9,6 +9,7 @@ local bassanly = require("../bassanly/chip")
 return define.chip {
     id = "darkness",
     name = "Darkness",
+    description = "BtlNwk2's\nGspelBth&\nBass Swrd",
     codes = { "A", "B", "C", "*" },
     element = "null",
     family = "program_advance",

@@ -8,6 +8,7 @@ local elcpuls_records = require("../elcpuls/records")
 return define.chip {
     id = "destpuls",
     name = "DestPuls",
+    description = "Fire puls\nthat caus\nstrg bug!",
     codes = { "A", "B", "C", "*" },
     element = "elec",
     family = "program_advance",
