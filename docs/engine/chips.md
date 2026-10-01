@@ -1460,7 +1460,28 @@ subtype:
   body's collision types; 1 and 2 make weapon routine Param2 the charged shot in the stats and the navi
   (`sub_80E97BE`: a buster of 3 or 4 goes, 0x2C becomes 0x2B); 3 sets the navi's request 0x20000000. The arm
   effect's height offset is lost to a shift of the wrong register. lib/navi-boost/controller (`navi_boost.hub`,
-  `bug(routine)`, `arm(routine, palette)`, `dark`).
+  `bug(weapon)`, `arm(weapon, palette)`, `dark`).
+
+  **The weapons those chips install** (`off_80117D4[0x21..0x26]`; each chip's own `charge.luau`, with
+  lib/navi-boost/charge for what they share). Every setup clears the charged flag and the Atk+ bonus, sets the
+  chip lockout 20 and the counter byte 0x14, then:
+
+  | Routine | Chip | Element byte | Damage | Action | Parameters |
+  |---|---|---|---|---|---|
+  | 0x21 `sub_8011E40` | BugRSwrd | 0x80 (Null, Sword) | 200 with a bug frag, else 80 | 0x13, the swords' | subtype 6 (DrkSword's slash: the two columns ahead) with a bug frag, else 0 (Sword's); params 0 |
+  | 0x22 `sub_8011E78` | BgDthThd | 3 (Elec) | 200 with a bug frag, else 40 | 0x1F, Thunder's | 2, 12, 0x10 (a fast ball of 12 panels, paralysis) with a bug frag, else 1, 5, 0x10 (Thunder's) |
+  | 0x23 `sub_8011EAC` | PunchArm | 1 (Fire) | 100 | 0x1C, instant effect 8 (FireHit's fists) | 0, 3 (the fists' hit modifier) |
+  | 0x24 `sub_8011ED0` | NeedlArm | 2 (Aqua) | 40 | 0x32, AquaNdl's | 0 (the first palette: AquaNdl1's) |
+  | 0x25 `sub_8011EF0` | PuzzlArm | 3 (Elec) | 100 | 0x42, ElcPuls's | 0, 0x10, 0x3C, 0 (no hit modifier, paralysis, 60 ticks, the first look: a pulse no chip has) |
+  | 0x26 `sub_8011F10` | BoomrArm | 4 (Wood) | 100 | 0x1C, instant effect 1 (Boomer's boomerang) | 0 (Boomer's row) |
+
+  "With a bug frag": `sub_800F4A8` reads the side's count (`dword_203F7E0`), and with one or more
+  `sub_800F4B2(1)` spends one (the local player's save loses it too). 0x24 and 0x25 leave the attack's subtype
+  byte as it was; neither action reads it. The instant effects are chips' (subtypes 8 and 1), so the navi idles
+  the tick after, unlike a weapon's own (0x14, TenguCross's wind). They are sticky charged shots (`sub_800FFAA`,
+  objects-and-player.md §12.B): a form's own doesn't replace one, the attack is of kind 2, and a Beast buster or
+  the Beast's throw gives way to its plain counterpart. Their charge times (`word_8020404`, by Charge 0 to 4):
+  120, 200, 80, 100, 120, 100, each the same at every level.
 
 Ported too, and specified elsewhere (the chip lab's scenarios for all of them match):
 
