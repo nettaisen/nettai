@@ -1,3 +1,4 @@
-# A navi chip (subtype 17): its navi is Colonel.
+# Colonel, Colonel[EX], Colonel[SP] and CrossDiv (navi chip subtype 17)
+# summon Colonel (chips/colonel/navi.luau), through chip.luau.
 
-script = "../../objects/colonel/colonel.luau"
+script = "chip.luau"

@@ -1,3 +1,4 @@
-# A navi chip (subtype 7): its navi is SpoutMan.
+# SpoutMan, SpoutMn[EX] and SpoutMn[SP] (navi chip subtype 7) summon
+# SpoutMan (chips/spoutman/navi.luau), through chip.luau.
 
-script = "../../objects/spout-man/spout_man.luau"
+script = "chip.luau"
