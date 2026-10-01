@@ -32,8 +32,8 @@ return define.roles {
         -- DustCross Beast's scatter, during which the navi isn't grounded.
         dust_beast_scatter = { legacy = { action = 0x50 } },
     },
-    -- (The statue an actor list places, BN6's Guardian's, isn't in the
-    -- test content: its role stays unfilled.)
+    -- (The statue an actor list places, BN6's Guardian's, and AntiRecv's
+    -- counterattack aren't in the test content: their roles stay unfilled.)
     kinds = {
         rock = rock.kind,
         boulder = boulder.kind,

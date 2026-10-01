@@ -1023,6 +1023,8 @@ objects/invisible, lib/navi-boost/controller, and objects/panel-bursts. What it 
 - **A parameter the ruleset poked became a question the object asks**: `sub_802CEA6` tells a cleared record's
   object to end through its second parameter; ElemTrap's trap ends when its side's record no longer names it
   (`battle.linked(side).object ~= me`), and `Battle::clear_linked` only clears.
+- **AntiRecv's counterattack is a role's kind** (chips/antirecv/controller, `kinds.anti_recovery`): the ruleset's
+  heal and Roll's navi chip spawned it by its object slot; they spawn the role's kind.
 - **A panel burst's look is its spawner's**: `panel_bursts.spawn(spawner, region, interval, z, effect, sound?)`
   takes the effect its table row named (and the row's sound, which no row has).
 - **Which chips are definitions.** ElemTrap, Mine, SloGauge, FstGauge, HubBatc, BugRSwrd, BgDthThd and the four

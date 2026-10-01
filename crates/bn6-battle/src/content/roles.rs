@@ -107,16 +107,21 @@ pub enum KindRole {
     /// The NaviCust supports' dimming controller (Rush, Beat, Tango: the
     /// original's effect object #0x79, `sub_80E8FE0`).
     Support,
+    /// AntiRecv's counterattack, the dimming controller a heal meets when
+    /// the other side has AntiRecv armed (the original's effect object
+    /// #0x2C, `sub_80E3728`).
+    AntiRecovery,
 }
 
 impl KindRole {
-    pub const ALL: [KindRole; 6] = [
+    pub const ALL: [KindRole; 7] = [
         KindRole::Rock,
         KindRole::Boulder,
         KindRole::Statue,
         KindRole::AbsorbedObstacle,
         KindRole::FallingRock,
         KindRole::Support,
+        KindRole::AntiRecovery,
     ];
 
     /// Its name in `rules/roles.luau`'s `kinds`.
@@ -128,6 +133,7 @@ impl KindRole {
             KindRole::AbsorbedObstacle => "absorbed_obstacle",
             KindRole::FallingRock => "falling_rock",
             KindRole::Support => "support",
+            KindRole::AntiRecovery => "anti_recovery",
         }
     }
 
