@@ -23,7 +23,7 @@ the start of every tick).
 Ids are song-table indices (`SoundId`): music is 0x00..=0x25, effects
 0x64 and up. The engine names none: the ruleset plays what content's roles
 name (`sounds` and `music` in rules/roles.luau).
-Content names its sounds: `asset.sound("cannon-shot")` is the song the
+Content names its sounds: `asset.sound("cannon")` is the song the
 pack's asset index (`assets.toml`) lists under that name, resolved when the
 content loads (a name the pack doesn't list is a load error), so a content
 sound is a song of whatever pack is loaded.
@@ -44,17 +44,35 @@ resume 0x9F (`sub_801E15C`, `sub_80083E4`); the HP box's alarm 0x84, every
 45 ticks a console's own navi is at a quarter of its HP or less
 (`sub_801C840`, heard on that console only).
 
+The HUD's warning marker (`sub_800AE90`: the gauge chips', VDoll's marks,
+LifeSync's) sounds on every 16th frame of the console's own frame counter,
+which counts frames since the match began whatever the battle does
+(`Console::frames`, from `ConsoleSetup::frames`): content calls
+`battle.warn(sound, at, side)` every tick the marker shows, and the engine
+makes the cue on those frames, for each console that shows it.
+
 Not emitted: the custom screen's own UI sounds (cursor 0x7F, select
 0x81/0x82, open 0x79, a Cross chosen 0x92, Beast Out, ...). The engine runs
 the screen (docs/engine/custom-screen.md), but its sounds belong to the
 console showing it, and nothing draws the screen yet either.
 
-Known difference: Beast Over's rumble (0x19A) sounds once in the original
-where the engine also makes it on the two later ticks of the vanish
-(`sub_80151D4`). The game compares the timer there as a 32-bit word, whose
-upper half is a variable an earlier action left (a buster shot leaves 2),
-and nothing clears the attack variables between actions; the engine's form
-change keeps only the timer, so its comparison passes.
+Known differences, both from one variable. The original's actions share
+their attack variables, and nothing clears them between actions, so two
+routines read what an earlier action left in one halfword of them:
+
+- Beast Over's rumble (0x19A) sounds once in the original where the engine
+  also makes it on the two later ticks of the vanish (`sub_80151D4`). The
+  game compares the timer there as a 32-bit word, whose upper half is that
+  halfword (a buster shot leaves 2); the engine's form change keeps only
+  the timer, so its comparison passes.
+- A burner's roar (0x12B: FireBrn's flames, HeatCross's charged shot)
+  sounds every 16 ticks of a count the original never starts
+  (`sub_80ECD44`): it goes on from the halfword. The engine's count starts
+  at 0, so the roars can come up to 15 ticks apart from the original's.
+
+The engine keeps each action's variables typed and its own, so neither
+read sees an earlier action's; modelling it means carrying that halfword
+from every action that writes it (44 of the ported routines do).
 
 The low-HP latch (BattleState+0x20) isn't reset between rounds in the
 game: rounds after the first start with it set, so they emit only
@@ -153,15 +171,13 @@ function), over every frame the engine reproduces. The custom screen's own
 sounds are left out.
 
 - The two golden traces, over every frame of every round: 89 calls over
-  2405 frames and 1360 calls over 57,331 frames, call for call but for two
-  sounds of the content's own. AntiDmg's trap vanishes with 0x108 where the
-  game plays 0x107 (six times), and the gauge chips' warning 0x91 sounds a
-  few frames off: the game sounds it by its frame counter, the content by
-  its controller's ticks.
-- Chip-lab scenarios recorded with their sound calls: 110 scenarios, 2571
-  calls over 102,395 frames; 104 match call for call. The others: the two
-  above, CircGun's cursor step (0x10F for the game's 0x10E), HeatCross's
-  charged flames (0x12B on other ticks) and Beast Over's rumble (above).
+  2405 frames and 1360 calls over 57,331 frames, call for call.
+- Chip-lab scenarios recorded with their sound calls: the 132 scenarios of
+  the frame comparison (3185 calls over 145,465 frames) and 775 more, a
+  scenario or two of every chip, Program Advance, form, link navi and
+  stage (14,094 calls over 656,209 frames). All match call for call but
+  the two differences above, in five scenarios (Beast Over's rumble in two,
+  HeatCross's charged flames in three).
 - Every sound the content names (148 names) is in the pack's index,
   has a song, starts on the driver and makes sound; so does every number
   the engine's own routines play.

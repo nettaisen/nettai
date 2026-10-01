@@ -89,6 +89,8 @@ end
 local function init(me: Object)
     me.visible = true
     me.sprite:load(SPRITE)
+    -- sprite_noShadow: the first part is drawn with the sprite.
+    me.sprite.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0xFF
     me.vel = Vec3.new(me.vel.x, me.vel.y, FALL_SPEED)
     local x, y = field.center(me.panel_x, me.panel_y)

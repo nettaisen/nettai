@@ -86,7 +86,7 @@ local function init(me: Object)
     me.visible = true
     local sprite = me.sprite
     sprite:load(SPRITE)
-    sprite.shadow = "hidden"
+    sprite.shadow = "with_sprite"
     me.anim = 0
     me.anim_loaded = 0
     sprite:set_animation(0)

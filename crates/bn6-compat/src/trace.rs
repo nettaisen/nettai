@@ -310,10 +310,15 @@ impl Round {
     fn console_setup(&self, side: u8) -> ConsoleSetup {
         let bs = unhex(&self.setup.battle_state);
         let emotion_window_glitch = self.setup.emotion_window_glitches.is_some_and(|g| g[side as usize & 1]);
+        // The game's frame counter on a battle frame is the trace's frame
+        // number and 2 (measured on its 16-frame sounds, in every
+        // recording); the other console's isn't recorded, and reads the
+        // same.
+        let frames = self.battle_frames().next().map_or(0, |f| f.frame + 1);
         if bs[0x0D] != side {
-            return ConsoleSetup { emotion_window_glitch, ..ConsoleSetup::default() };
+            return ConsoleSetup { emotion_window_glitch, frames, ..ConsoleSetup::default() };
         }
-        ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), emotion_window_glitch }
+        ConsoleSetup { rng: self.setup.rng1, tag_pair: (bs[0x44] != 0).then_some(bs[0x45]), emotion_window_glitch, frames }
     }
 
     /// A player's game, going by the transformations they send: Gregar's

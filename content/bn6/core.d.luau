@@ -858,6 +858,12 @@ declare battle: {
     -- sound asset (asset.sound).
     play_sound: (sound: Sound) -> (),
     play_sound_for: (side: number, sound: Sound) -> (),
+    -- `sub_800AE90`: a warning marker on the HUD this tick (a blinking
+    -- arrow, drawn only), over the custom gauge or over the place `at` on
+    -- the field, with `sound` on every 16th frame of a console's own frame
+    -- counter; on `side`'s console only, or on both. Call it every tick the
+    -- warning shows.
+    warn: (sound: Sound, at: Vec3?, side: number?) -> (),
     -- `camera_initShakeEffect_80302a8`: the camera shakes for `ticks` ticks
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
