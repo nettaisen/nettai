@@ -1855,6 +1855,10 @@ name is a load error naming the module. The resolved value is a handle into the 
 - **The checker enforces the rest** (§7.7): no deprecated numeric API use, no `legacy { }` markers, no placeholder
   asset names, once the ratchet reaches zero.
 
+  *As built.* The numeric API was removed rather than counted down; the ratchet reached zero and went (§12,
+  step 13). The checker lints placeholder asset names, and the guards refuse numbered folders and `legacy`
+  markers outright.
+
 ## 7. The Rust side
 
 ### 7.1 `Content`
@@ -2826,6 +2830,19 @@ disturbed. Each deletes registration by number's use for its category.
     overlays' numbering (38 markers, all the ratchet counted) went with step 11's last batch, which emptied the
     ratchet and the guards' list; what is left for the second part is `legacy` itself, the ratchet's allowlist
     and the guards' exceptions.
+
+    *As built (part 2).* `legacy` is gone: the global, its declaration in core.d.luau, and the chip definition's
+    own refusal, replaced by the define phase refusing a `legacy` field on any definition. legacy.rs, whose
+    last contents were the rule sections and the reader that turns a definition's values into typed data,
+    became content/sections.rs and content/reader.rs (`SpecReader`: assets as the engine identifies them, a
+    lock-on mode as its handle, a chip as its key; nothing reads as an original number). The ratchet is gone
+    with its count at zero: `tests/ratchet.rs`, `tests/deprecated.txt`, the deprecated-use scanner and
+    `bn6-content-check --deprecated`. The guards have no exception lists: no folder under the content roots
+    named with an original number, no `legacy` marker or field in any module (the `.d.luau` files included);
+    the `no_compat` source guard needed none. Two last original numbers left the engine for the tools:
+    `Pool::type_number` (the `T1`/`T3`/`T4` the traces print) is bn6-compat's `pool_type`, and
+    `ChipFamily::from_number` (a ROM record's family byte) the ROM decoder's in gen-content. Measured after the
+    step, as §8 asks: see §14.
 
 ### Size
 

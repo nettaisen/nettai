@@ -1,112 +1,17 @@
-//! The typed tables the ruleset reads, built from what the content defines
-//! (docs/design/content-model-v2.md §12, step 5): the rule sections. (The
-//! navis and forms are definitions the registries read by handle, and the
-//! body overlays the identities' parts: nothing is read by number.)
-//!
-//! Content without these definitions (the engine's test content, whose
-//! tables are Rust) keeps its tables: each part is built only when the
-//! content defines it.
+//! The rule sections (`define.rules("panels", { ... })`, rules/*.luau) as
+//! the ruleset's typed tables (`Rules`). Content without them (the
+//! engine's test content, whose tables are Rust) keeps its tables: each
+//! section is built only when the content defines it.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
-use bn6_content_api::{AssetKind, AssetNames, ContentError, Data, DataKey, Definition, Definitions, Registry};
+use bn6_content_api::{ContentError, Definitions, Registry};
 use serde::Deserialize;
-use serde::de::DeserializeOwned;
-use serde_json::{Map, Value as Json};
+use serde_json::Value as Json;
 
+use super::reader::SpecReader;
 use super::*;
 use crate::field::PanelType;
-
-pub(crate) fn err(d: &Definition, e: impl std::fmt::Display) -> ContentError {
-    ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key))
-}
-
-/// How the definitions' values read as the tables' data: assets as the
-/// engine identifies them, references as the original numbers of what they
-/// name.
-pub struct Resolver<'a> {
-    assets: &'a AssetNames,
-    numbers: HashMap<(Registry, String), i64>,
-}
-
-impl<'a> Resolver<'a> {
-    /// The numbers the tables hold of what the definitions name: the
-    /// lock-on modes' handles.
-    pub fn new(assets: &'a AssetNames, definitions: &Definitions) -> Resolver<'a> {
-        let mut numbers = HashMap::new();
-        let mut put = |d: &Definition, n: Option<i64>| {
-            if let Some(n) = n {
-                numbers.insert((d.registry, d.key.clone()), n);
-            }
-        };
-        // A lock-on mode reads as its handle (its place among the
-        // definitions, which are in key order).
-        for (i, d) in definitions.of(Registry::Lockon).iter().enumerate() {
-            put(d, Some(i as i64));
-        }
-        Resolver { assets, numbers }
-    }
-
-    /// The number of the definition `key` of `registry`.
-    pub fn number(&self, registry: Registry, key: &str) -> Option<i64> {
-        self.numbers.get(&(registry, key.to_string())).copied()
-    }
-
-    /// A sprite asset's identity.
-    pub fn sprite(&self, name: &str) -> Option<SpriteId> {
-        self.assets.sprites.get(name).copied()
-    }
-
-    /// `d` as the data a table's record reads (serde's form).
-    pub fn json(&self, d: &Data, at: &str) -> Result<Json, String> {
-        Ok(match d {
-            Data::Nil => Json::Null,
-            Data::Bool(b) => Json::Bool(*b),
-            Data::Int(i) => Json::from(*i),
-            Data::Str(s) => Json::String(s.clone()),
-            Data::List(items) => {
-                let mut out = Vec::with_capacity(items.len());
-                for (i, x) in items.iter().enumerate() {
-                    out.push(self.json(x, &format!("{at}[{}]", i + 1))?);
-                }
-                Json::Array(out)
-            }
-            // An empty table is an empty list (Luau can't tell them apart).
-            Data::Map(entries) if entries.is_empty() => Json::Array(Vec::new()),
-            Data::Map(entries) => {
-                let mut out = Map::new();
-                for (k, v) in entries {
-                    out.insert(k.to_string(), self.json(v, &format!("{at}.{k}"))?);
-                }
-                Json::Object(out)
-            }
-            // A chip by its key: the registry resolves it to a handle
-            // (no chip has a number the tables hold).
-            Data::Ref(Registry::Chip, key) => Json::String(key.clone()),
-            Data::Ref(registry, key) => match self.number(*registry, key) {
-                Some(n) => Json::from(n),
-                None => return Err(format!("{at}: {registry} {key:?} has no number the tables can hold")),
-            },
-            Data::Asset(AssetKind::Sprite, name) => match self.sprite(name) {
-                Some(s) => Json::String(s.to_string()),
-                None => return Err(format!("{at}: the pack has no sprite {name:?}")),
-            },
-            Data::Asset(kind, name) => {
-                let h = self.assets.handle(*kind, name).ok_or_else(|| format!("{at}: the pack has no {kind} {name:?}"))?;
-                Json::from(self.assets.number(*kind, h).expect("a handle's asset"))
-            }
-            Data::Function => return Err(format!("{at}: a function isn't data")),
-        })
-    }
-
-    /// `d` read as `T`.
-    pub fn read<T: DeserializeOwned>(&self, d: &Data, at: &str) -> Result<T, String> {
-        let j = self.json(d, at)?;
-        serde_json::from_value(j).map_err(|e| format!("{at}: {e}"))
-    }
-}
-
-// ---- Rule sections ------------------------------------------------------------------------
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -251,7 +156,7 @@ fn serde_name<T: serde::Serialize>(v: &T) -> String {
 
 /// The rule sections into `content.rules`: each only if the content
 /// defines it.
-fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> Result<(), ContentError> {
+fn sections(content: &mut Content, r: &SpecReader, definitions: &Definitions) -> Result<(), ContentError> {
     for d in definitions.of(Registry::Rules) {
         let at = format!("{}.luau: rules {}", d.module, d.key);
         let e = |m: String| ContentError::new(m);
@@ -365,28 +270,9 @@ fn sections(content: &mut Content, r: &Resolver, definitions: &Definitions) -> R
     Ok(())
 }
 
-/// Remove fields from a table.
-fn strip(spec: &mut Data, fields: &[&str]) {
-    if let Data::Map(entries) = spec {
-        entries.retain(|(k, _)| !matches!(k, DataKey::Str(s) if fields.contains(&s.as_str())));
-    }
-}
-
-/// The fields of a spec, as a record's data: all but those named.
-pub(crate) fn fields(d: &Definition, r: &Resolver, skip: &[&str]) -> Result<Map<String, Json>, ContentError> {
-    let mut spec = d.spec.clone();
-    strip(&mut spec, skip);
-    match r.json(&spec, &format!("{} {}", d.registry, d.key)).map_err(|m| err(d, m))? {
-        Json::Object(o) => Ok(o),
-        Json::Array(a) if a.is_empty() => Ok(Map::new()),
-        _ => Err(err(d, "is a table")),
-    }
-}
-
-/// The typed tables of what the content defines: its rule sections into
-/// `content`.
+/// The rule sections the content defines, into `content.rules`.
 pub fn build(content: &mut Content, definitions: &Definitions) -> Result<(), ContentError> {
     let assets = content.assets.clone();
-    let r = Resolver::new(&assets, definitions);
+    let r = SpecReader::new(&assets, definitions);
     sections(content, &r, definitions)
 }
