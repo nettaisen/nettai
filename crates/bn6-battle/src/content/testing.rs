@@ -413,6 +413,15 @@ fn assets() -> bn6_content_api::AssetNames {
         ("hub", sprite(0x14, 0x1E)),
         ("bug", sprite(0x14, 0x1F)),
         ("charge-glow-a", sprite(0x14, 0x15)),
+        // The waves and pillars.
+        ("slash-wave", sprite(0x10, 0x39)),
+        ("charged-slash", sprite(0x10, 0x3B)),
+        ("moon-blade", sprite(0x10, 0x3C)),
+        ("element-pillar-flames", sprite(0x0C, 0x1C)),
+        ("element-pillar-lightning", sprite(0x10, 0x32)),
+        // SunMoon and its meteors.
+        ("moon-beam", sprite(0x0C, 0x64)),
+        ("meteor", sprite(0x0C, 0x31)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -457,6 +466,15 @@ fn assets() -> bn6_content_api::AssetNames {
         ("invisible", 0x93),
         ("bug", 0x143),
         ("log-in-77", 0x77),
+        // The waves.
+        ("boomerang", 0xB7),
+        ("ok-8b", 0x8B),
+        ("aqua-needle-2", 0xB3),
+        // SunMoon.
+        ("sun-moon", 0x110),
+        ("moon-beam", 0x111),
+        ("blast-man", 0x17F),
+        ("justice-one", 0xC4),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -579,7 +597,10 @@ pub fn scripts() -> Scripts {
                 ("chips/windrack/action", "chips/windrack/action"),
                 ("chips/dolthdr/action", "chips/dolthdr/action"),
                 ("chips/dolthdr/doll", "chips/dolthdr/doll"),
-                ("objects/sword-wave/sword_wave", "objects/sword-wave/sword_wave"),
+                (
+                    "navis/00-megaman/forms/slashcross/sword_wave",
+                    "navis/00-megaman/forms/slashcross/sword_wave",
+                ),
                 ("objects/erase-ray/erase_ray", "objects/erase-ray/erase_ray"),
                 ("objects/reflector-shield/reflector_shield", "objects/reflector-shield/reflector_shield"),
                 ("objects/reflected-shot/reflected_shot", "objects/reflected-shot/reflected_shot"),
@@ -717,7 +738,7 @@ pub fn scripts() -> Scripts {
                 ("objects/elec-man/elec_man", "objects/elec-man/elec_man"),
                 ("objects/elec-thunder/elec_thunder", "objects/elec-thunder/elec_thunder"),
                 ("objects/slash-man/slash_man", "objects/slash-man/slash_man"),
-                ("objects/slash-wave/slash_wave", "objects/slash-wave/slash_wave"),
+                ("chips/slashman/wave", "chips/slashman/wave"),
                 ("objects/charge-man/charge_man", "objects/charge-man/charge_man"),
                 ("objects/charge-car/charge_car", "objects/charge-car/charge_car"),
                 ("objects/tomahawk-man/tomahawk_man", "objects/tomahawk-man/tomahawk_man"),
@@ -726,9 +747,12 @@ pub fn scripts() -> Scripts {
                 ("objects/blast-fire/blast_fire", "objects/blast-fire/blast_fire"),
                 ("objects/bass/bass", "objects/bass/bass"),
                 ("objects/panel-strike/panel_strike", "objects/panel-strike/panel_strike"),
-                ("objects/sun-moon/sun_moon", "objects/sun-moon/sun_moon"),
-                ("objects/sun-meteor/sun_meteor", "objects/sun-meteor/sun_meteor"),
-                ("objects/moon-beam/moon_beam", "objects/moon-beam/moon_beam"),
+                // SunMoon (content model v2): its navi, which the numbered
+                // navi chip reaches through the numbered registration's module.
+                ("chips/sunmoon/navi", "chips/sunmoon/navi"),
+                ("chips/sunmoon/meteor", "chips/sunmoon/meteor"),
+                ("chips/sunmoon/moon_beam", "chips/sunmoon/moon_beam"),
+                ("chips/15b-sunmoon/chip", "chips/15b-sunmoon/chip"),
                 ("objects/drill/drill", "objects/drill/drill"),
                 ("objects/thunder-column/thunder_column", "objects/thunder-column/thunder_column"),
             ];
@@ -801,7 +825,6 @@ fn kinds() -> Vec<ObjectKind> {
     };
     let mut kinds = vec![
         kind("dust-ball", Pool::Attack, 0xB0, "objects/dust-ball/dust_ball"),
-        kind("element-pillar", Pool::Attack, 0x61, "objects/element-pillar/element_pillar"),
         kind("aqua-surge", Pool::Attack, 0x76, "objects/aqua-surge/aqua_surge"),
         kind("whirlwind", Pool::Attack, 0x81, "objects/whirlwind/whirlwind"),
         kind("dash-hit", Pool::Attack, 0xAF, "objects/dash-hit/dash_hit"),
@@ -820,7 +843,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("justice-one", Pool::Attack, 0xAE, "objects/justice-one/justice_one"),
         kind("golem", Pool::Effect, 0x3F, "objects/golem/golem"),
         kind("falling-rock", Pool::Attack, 0x1D, "objects/falling-rock/falling_rock"),
-        kind("sword-wave", Pool::Attack, 0x96, "objects/sword-wave/sword_wave"),
         kind("erase-ray", Pool::Attack, 0x9D, "objects/erase-ray/erase_ray"),
         kind("reflector-shield", Pool::Attack, 0x2B, "objects/reflector-shield/reflector_shield"),
         kind("reflected-shot", Pool::Attack, 0x2F, "objects/reflected-shot/reflected_shot"),
@@ -846,7 +868,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("elec-man", Pool::Actor, 0x08, "objects/elec-man/elec_man"),
         kind("elec-thunder", Pool::Attack, 0x64, "objects/elec-thunder/elec_thunder"),
         kind("slash-man", Pool::Actor, 0x0D, "objects/slash-man/slash_man"),
-        kind("slash-wave", Pool::Attack, 0x62, "objects/slash-wave/slash_wave"),
         kind("charge-man", Pool::Actor, 0x16, "objects/charge-man/charge_man"),
         kind("charge-car", Pool::Attack, 0xAC, "objects/charge-car/charge_car"),
         kind("tomahawk-man", Pool::Actor, 0x0A, "objects/tomahawk-man/tomahawk_man"),
@@ -855,9 +876,6 @@ fn kinds() -> Vec<ObjectKind> {
         kind("blast-fire", Pool::Attack, 0x21, "objects/blast-fire/blast_fire"),
         kind("bass", Pool::Actor, 0x4F, "objects/bass/bass"),
         kind("panel-strike", Pool::Attack, 0x09, "objects/panel-strike/panel_strike"),
-        kind("sun-moon", Pool::Actor, 0x24, "objects/sun-moon/sun_moon"),
-        kind("sun-meteor", Pool::Attack, 0xB5, "objects/sun-meteor/sun_meteor"),
-        kind("moon-beam", Pool::Attack, 0xB6, "objects/moon-beam/moon_beam"),
         kind("drill", Pool::Attack, 0x71, "objects/drill/drill"),
     ];
     kinds.sort_by(|a, b| a.name.cmp(&b.name));
@@ -1148,7 +1166,7 @@ fn named_chips() -> Vec<ChipData> {
             flags: ChipFlags(ChipFlags::HAS_DAMAGE | ChipFlags::NAVI | ChipFlags::LIBRARY),
             class: ChipClass::Giga,
             damage: 90,
-            script: Some("objects/sun-moon/sun_moon".into()),
+            script: Some("chips/15b-sunmoon/chip".into()),
             ..chip(SUN_MOON, "SunMoon", 0x1B, 25)
         },
         ChipData {

@@ -1,18 +1,18 @@
 --!strict
--- Beat (actor object #0x4C, `sub_80C34E0`), the NaviCust support that
--- snatches a Mega or Giga chip: the opponent used one, the ruleset
--- turned the use back (`sub_80106C0`) and summoned him through the
--- supports' controller (objects/support). He swoops in from 240
--- pixels behind the opponent's navi and 112 above it, bounces off it,
--- takes the chip (the opponent's hand moves on) and, a little over a
--- second later, flies off. Then the controller moves on. See
--- docs/engine/chips.md §2.10.
+-- Beat (the original's actor object #0x4C, `sub_80C34E0`), the NaviCust
+-- support that snatches a Mega or Giga chip: the opponent used one, the
+-- ruleset turned the use back (`sub_80106C0`) and summoned him through
+-- the supports' controller (./controller). He swoops in from 240 pixels
+-- behind the opponent's navi and 112 above it, bounces off it, takes the
+-- chip (the opponent's hand moves on) and, a little over a second later,
+-- flies off. Then the controller moves on. See docs/engine/chips.md
+-- §2.10.
 
 local beat = {}
 
-local SPRITE = "0C-4B"
-local SWOOP_SOUND = 0x120
-local SNATCH_SOUND = 0x126
+local SPRITE = asset.sprite("beat")
+local SWOOP_SOUND = asset.sound("set-down")
+local SNATCH_SOUND = asset.sound("snatch")
 
 -- Where he starts: 240 pixels from the opponent's navi toward its own
 -- side's back and 112 above it; how fast he swoops (16.16 a tick).
@@ -22,20 +22,6 @@ local SPEED_X = 0xC_0000
 local SPEED_Z = 0x4_0000
 -- His bounce: the X velocity loses this a tick (`byte_80C3628`).
 local BOUNCE_BRAKE = 0x4_0000
-
--- `sub_80C3710`: Beat, for `controller` (whose second parameter is the
--- flag he clears when he goes), with its parameters.
-function beat.spawn(controller: Object, params: { number }): Object?
-    local o = battle.spawn_kind("beat", Vec3.zero, params)
-    if not o then
-        return nil
-    end
-    o.alliance = controller.alliance
-    o.related1 = controller
-    controller:set_param(2, 1)
-    o.run_while_dimmed = true
-    return o
-end
 
 -- `object_getAllianceDirection`: +1 for the left side, -1 for the right.
 local function direction(side: number): number
@@ -147,7 +133,7 @@ end
 
 -- `sub_80C34E0`: by state, then his sprite (a freed slot's too, which
 -- does nothing).
-function beat.update(me: Object)
+local function update(me: Object)
     local l = me.lifecycle
     if l == "init" then
         init(me)
@@ -156,10 +142,32 @@ function beat.update(me: Object)
     else
         -- sub_80C36A0: the controller's flag cleared, gone.
         local controller = me.related1 :: Object
-        controller:set_param(2, 0)
+        local c = controller.state :: { out: boolean }
+        c.out = false
         me:free()
     end
     me:update_sprite()
+end
+
+beat.kind = define.kind {
+    id = "beat",
+    pool = "actor",
+    update = update,
+}
+
+-- `sub_80C3710`: Beat, for `controller` (whose `out` flag he sets, and
+-- clears when he goes).
+function beat.spawn(controller: Object): Object?
+    local o = battle.spawn(beat.kind, Vec3.zero)
+    if not o then
+        return nil
+    end
+    o.alliance = controller.alliance
+    o.related1 = controller
+    local c = controller.state :: { out: boolean }
+    c.out = true
+    o.run_while_dimmed = true
+    return o
 end
 
 return beat

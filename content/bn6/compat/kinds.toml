@@ -33,7 +33,7 @@ attachment = { pool = "actor", index = 0x05 }
 "twinldrs/navi" = { pool = "actor", index = 0x20 }
 "crosover/navi" = { pool = "actor", index = 0x21 }
 "mstrcros/navi" = { pool = "actor", index = 0x23 }
-"sunmoon/sun" = { pool = "actor", index = 0x24 }
+"sunmoon/navi" = { pool = "actor", index = 0x24 }
 "darkness/navi" = { pool = "actor", index = 0x25 }
 "roll/navi" = { pool = "actor", index = 0x2C }
 "engine/navi-warp" = { pool = "actor", index = 0x2D }
@@ -105,7 +105,7 @@ falling-meteor = { pool = "attack", index = 0x56 }
 sonic-boom = { pool = "attack", index = 0x58 }
 rock = { pool = "attack", index = 0x59, actor_list_entry = 8 }
 "firehit/fist" = { pool = "attack", index = 0x5B }
-"megaman/element-pillar" = { pool = "attack", index = 0x61 }
+element-pillar = { pool = "attack", index = 0x61 }
 "slashman/wave" = { pool = "attack", index = 0x62 }
 "elecman/thunder" = { pool = "attack", index = 0x64 }
 "rlnglog/log" = { pool = "attack", index = 0x66 }

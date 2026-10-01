@@ -1,22 +1,28 @@
 --!strict
--- SunMoon's meteor (attack object #0xB5, `sub_80DBEE6`): it falls from
--- its spawner's height, 20 pixels ahead and 20 lower, onto the panel three
--- columns ahead in 16 ticks, its collision on its way; landing it bursts
--- (an explosion) and hits there for a tick, and breaks the panel if it
--- held nothing. Its look and collision are its record's (Param1): SunMoon
--- throws record 0's. It runs while dimmed. See docs/engine/chips.md
+-- SunMoon's meteor (the original's attack object #0xB5, `sub_80DBEE6`): it
+-- falls from its spawner's height, 20 pixels ahead and 20 lower, onto the
+-- panel three columns ahead in 16 ticks, its collision on its way; landing
+-- it bursts (an explosion) and hits there for a tick, and breaks the panel
+-- if it held nothing. It runs while dimmed. See docs/engine/chips.md
 -- §3.6.32.
 
-local sun_meteor = {}
+local collision = require("../../rules/collision")
+local effects = require("../../lib/effects")
+local regions = require("../../lib/regions")
+local sparks = require("../../lib/sparks")
 
--- Its records (`byte_80DBEE0`, six bytes by Param1): the sprite (category
--- 0x0C), the animation, the collision's self and target types, whether
--- the landing shakes the camera (drawn only), and what it does to a
--- panel holding something (0 nothing, 1 crack, else break).
-type Record = { sprite: string, anim: number, self_type: number, target: number, shake: boolean, panel: number }
-local RECORDS: { [number]: Record } = {
-    [0] = { sprite = "0C-31", anim = 0, self_type = 0x0A, target = 5, shake = true, panel = 0 },
-}
+local meteor = {}
+
+-- Its record (`byte_80DBEE0`, the table's one row): its look, what it is
+-- and hits (a thrown attack that reaches navis), whether its landing
+-- shakes the camera, and what it does to a panel holding something
+-- (nothing, crack it, or break it).
+local SPRITE, ANIM = asset.sprite("meteor"), 0
+local SHAKES = true
+local PANEL: "none" | "crack" | "break" = "none"
+
+local FALL_SOUND = asset.sound("justice-one")
+local LAND_SOUND = asset.sound("hit-bomb-1")
 
 -- How far ahead and lower it starts (16.16), and how long it falls.
 local START = 0x14_0000
@@ -26,49 +32,16 @@ local FALL_TICKS = 0x10
 -- panel: as one word).
 local HOLDS = 0x0F80_0010
 
-local function record(me: Object): Record
-    local r = RECORDS[me:param(1)]
-    if not r then
-        error(string.format("SunMoon's meteor record %d reads past byte_80DBEE0", me:param(1)))
-    end
-    return r
-end
-
--- `sub_80DC0C0`: a meteor on (x, y) with `element`, the damage word and
--- `params`, on `owner`'s side (its flip left 0). `z` is the spawner's
--- register that becomes its starting height.
-function sun_meteor.spawn(
-    owner: Object,
-    x: number,
-    y: number,
-    element: number,
-    params: { number },
-    damage: number,
-    z: number
-): Object?
-    local o = battle.spawn_kind("sun-meteor", Vec3.new(y, element, z), params)
-    if o then
-        o.panel_x, o.panel_y = x, y
-        o.element = element
-        o.damage = damage
-        o.stamina = bit32.rshift(damage, 16)
-        o.alliance = owner.alliance
-        o.run_while_dimmed = true
-    end
-    return o
-end
-
 -- `sub_80DBF04`: its look; ahead of and below where it was spawned,
 -- aimed at the panel three columns ahead; its collision on with its
 -- region off.
 local function init(me: Object)
     me.visible = true
-    local r = record(me)
     local sprite = me.sprite
-    sprite:load(r.sprite)
-    me.anim = r.anim
-    me.anim_loaded = r.anim
-    sprite:set_animation(r.anim)
+    sprite:load(SPRITE)
+    me.anim = ANIM
+    me.anim_loaded = ANIM
+    sprite:set_animation(ANIM)
     sprite:step()
     sprite.shadow = "with_sprite"
     sprite:set_flip(bit32.bxor(me.alliance, me.flip))
@@ -84,12 +57,12 @@ local function init(me: Object)
         me:free()
         return
     end
-    me:setup_collision(r.self_type, r.target, 3)
+    me:setup_collision(collision.thrown, collision.hits_navis, 3)
     local c = me.collision
-    c.hit_effect = bit32.band(me.element, 0xF)
-    c.region = 0
+    c:set_hit_effect(sparks.of_element(me.element))
+    c:set_region(nil)
     c:present()
-    battle.play_sound(0xC4)
+    battle.play_sound(FALL_SOUND)
     me.lifecycle = "update"
 end
 
@@ -123,19 +96,18 @@ local function fall(me: Object)
     if bit32.band(field.flags(x, y), HOLDS) == 0 then
         field.break_panel(x, y)
     else
-        battle.effect(me.pos, 5)
-        battle.play_sound(0x70)
-        local r = record(me)
-        if r.shake then
+        battle.effect(me.pos, effects.burst)
+        battle.play_sound(LAND_SOUND)
+        if SHAKES then
             battle.shake_camera(1, 0xF)
         end
-        if r.panel == 1 then
+        if PANEL == "crack" then
             field.crack(x, y)
-        elseif r.panel ~= 0 then
+        elseif PANEL == "break" then
             field.break_panel(x, y)
         end
     end
-    me.collision.region = 1
+    me.collision:set_region(regions.single)
     me:set_action(8)
     me.visible = false
 end
@@ -143,28 +115,31 @@ end
 -- `sub_80DC0AC`: the region off after its tick; gone.
 local function done(me: Object)
     me.visible = false
-    me.collision.region = 0
+    me.collision:set_region(nil)
     me:set_lifecycle("destroy")
 end
-
-local ACTIONS = { [0] = start, [4] = fall, [8] = done }
 
 -- `sub_80DBFC0`: resolve the hits, act, step the sprite, register again.
 local function tick(me: Object)
     local c = me.collision
     c:remove()
     me:hit_spark()
-    local action = ACTIONS[me.action]
-    if not action then
-        error(string.format("SunMoon's meteor action %#x reads past its table (off_80DBFF4)", me.action))
+    local a = me.action
+    if a == 0 then
+        start(me)
+    elseif a == 4 then
+        fall(me)
+    elseif a == 8 then
+        done(me)
+    else
+        error(string.format("SunMoon's meteor action %#x reads past its table (off_80DBFF4)", a))
     end
-    action(me)
     me:update_sprite()
     c:present()
 end
 
 -- `sub_80DBEE6`.
-function sun_meteor.update(me: Object)
+local function update(me: Object)
     local l = me.lifecycle
     if l == "init" then
         init(me)
@@ -175,4 +150,25 @@ function sun_meteor.update(me: Object)
     end
 end
 
-return sun_meteor
+meteor.kind = define.kind {
+    id = "sunmoon/meteor",
+    pool = "attack",
+    update = update,
+}
+
+-- `sub_80DC0C0`: a meteor on (x, y) with `element` and the damage word,
+-- on `owner`'s side (its flip left 0). `z` is the spawner's register that
+-- becomes its starting height.
+function meteor.spawn(owner: Object, x: number, y: number, element: number, damage: number, z: number): Object?
+    local o = battle.spawn(meteor.kind, Vec3.new(y, element, z))
+    if o then
+        o.panel_x, o.panel_y = x, y
+        o.element = element
+        o:set_damage_word(damage)
+        o.alliance = owner.alliance
+        o.run_while_dimmed = true
+    end
+    return o
+end
+
+return meteor

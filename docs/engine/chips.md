@@ -742,7 +742,8 @@ already set up (Beat first); Tango every idle frame before any request:
   `sub_80F0354` applies), and only when the support's bit is set.
 - On a Beat or Rush cancel, `object_exitAttackState` runs, so the lockout applies and requests are cleared. The
   hand index is **not** incremented here; Rush and Beat call `sub_800FC7C` on the victim later.
-- `sub_80E90FE` spawns the controller, effect object #0x79 (`sub_80E8FE0`, content kind `objects/support`), on the
+- `sub_80E90FE` spawns the controller, effect object #0x79 (`sub_80E8FE0`, content kind `support/controller`,
+  lib/supports/controller: the role `kinds.support`; the ruleset sets its `support`, `eaten` and `telop_chip`), on the
   host's panel (the support's owner: the chip user's opponent for Rush and Beat), with the host in related 1,
   its side, element 0, no damage and the telop chip at +0x30. Its X, Y and Z are the caller's r1..r3 (the host's
   panel row, 0, 0). `sub_800BF16(host side, 1, controller)` then starts a dimming the other side can't cut in
@@ -2216,7 +2217,7 @@ either one's front panel refused, the far-column fallback, a missing beam.
 
 #### 3.6.32 SunMoon (navi chip subtype 25, PA chip 0x15B, T1 0x24)
 
-The pack's objects/sun-moon, sun-meteor and moon-beam. **SunMoon, T1 0x24 (`sub_80BF260`)**, spawned by `sub_80BF6AE`
+The pack's chips/sunmoon (navi, meteor, moon_beam). **SunMoon, T1 0x24 (`sub_80BF260`)**, spawned by `sub_80BF6AE`
 on the user's panel (related1 the user, the controller's flag pointer in ExtraVars[0], flags \|= 0x10), its sprite
 (0x0C, 0x64) 64 pixels up; its sprite steps as `object_updateSprite` (not while dimmed). Its handlers set their
 timer on entry and count it the same tick. Actions:

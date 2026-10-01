@@ -99,7 +99,6 @@ fn battles_run_the_content_scripts() {
             "meteor",
             "mine/controller",
             "mine/land-mine",
-            "moon-beam",
             "navi-boost",
             "panel-bursts",
             "panel-strike",
@@ -117,16 +116,17 @@ fn battles_run_the_content_scripts() {
             "sand-worm",
             "seed",
             "slash-man",
-            "slash-wave",
+            "slashcross/sword-wave",
+            "slashman/wave",
             "spout-ball",
             "spout-geyser",
             "spout-man",
             "spout-mark",
             "spout-pillar",
             "spout-splash",
-            "sun-meteor",
-            "sun-moon",
-            "sword-wave",
+            "sunmoon/meteor",
+            "sunmoon/moon-beam",
+            "sunmoon/navi",
             "tengu-man",
             "thunder-column",
             "timebom/controller",
@@ -366,9 +366,9 @@ fn the_shooting_and_sun_moon_navis_attack() {
     // The sun-and-moon navi throws meteors, shines and dives.
     let seen = duel_with(&[testing::chip_handle(testing::SUN_MOON)], 2400, 11);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
-    assert!(ticks("sun-moon") > 0, "SunMoon: {seen:?}");
-    assert!(ticks("sun-meteor") > 0, "SunMoon's meteors: {seen:?}");
-    assert!(ticks("moon-beam") > 0, "SunMoon's moonlight: {seen:?}");
+    assert!(ticks("sunmoon/navi") > 0, "SunMoon: {seen:?}");
+    assert!(ticks("sunmoon/meteor") > 0, "SunMoon's meteors: {seen:?}");
+    assert!(ticks("sunmoon/moon-beam") > 0, "SunMoon's moonlight: {seen:?}");
 }
 
 #[test]

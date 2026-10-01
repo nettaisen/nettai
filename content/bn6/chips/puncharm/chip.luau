@@ -12,15 +12,15 @@ local ROUTINE = 0x23
 local PALETTE = 0
 
 -- (The record's extra flags 0x10 and 0x20 have no battle reader, and no
--- name. It has no `dimming` flag, though its use is a dimming: it can't
--- cut in on the other side's dimming, and the Beast rush chains it.)
+-- name. It has no flags at all, not even `dimming`, though its use is a
+-- dimming: it can't cut in on the other side's dimming, and the Beast rush
+-- chains it.)
 return define.chip {
     id = "puncharm",
     name = "PunchArm",
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 10, damage = 0, hit_param = 20, lockout = 20,
-    flags = {},
     library = { number = 0, index = 61, sort = 0 },
     slot_in_limit = 1,
     dimming = navi_boost.arm(ROUTINE, PALETTE),

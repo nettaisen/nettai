@@ -9,6 +9,7 @@
 
 local barriers = require("../lib/barriers/barriers")
 local charged_shot = require("../navis/00-megaman/weapons/charged-shot/weapon")
+local supports = require("../lib/supports/controller")
 
 return define.roles {
     actions = {
@@ -40,8 +41,8 @@ return define.roles {
         absorbed_obstacle = { legacy = { kind = "absorbed-obstacle" } },
         -- GroundCross's charged chips' falling rocks.
         falling_rock = { legacy = { kind = "falling-rock" } },
-        -- The NaviCust supports' controller (effect object #0x79).
-        support = { legacy = { kind = "support" } },
+        -- The NaviCust supports' controller (Rush's, Beat's and Tango's).
+        support = supports.kind,
     },
     hooks = {
         -- The NaviCust FirstBarrier (`sub_8013892`): the navi enters with
