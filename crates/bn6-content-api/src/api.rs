@@ -422,6 +422,9 @@ named_fields! {
         /// shot's kind.
         BusterShot = "buster_shot", U8, ro;
         ChargeShotKind = "charge_shot_kind", U8, ro;
+        /// The damage a B+Back special takes from the navi's stats
+        /// (NaviStats+0x48).
+        BackSpecialDamage = "back_special_damage", U16, ro;
         /// NaviCust bugs: buster blanks and buster charged shots (of 16).
         BusterBlanks = "buster_blanks", U8, ro;
         BusterCharged = "buster_charged", U8, ro;

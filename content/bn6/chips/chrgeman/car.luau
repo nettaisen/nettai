@@ -233,4 +233,11 @@ function car.spawn(
     return o
 end
 
+-- `sub_80DB03E`: its owner bursts it: the smoke, and it ends (a byte
+-- store: its action and phase stay).
+function car.burst(o: Object)
+    explode(o)
+    o.lifecycle = "destroy"
+end
+
 return car

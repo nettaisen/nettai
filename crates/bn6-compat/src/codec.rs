@@ -215,6 +215,7 @@ pub fn navi_stats(b: &[u8; 0x64], ids: &Ids) -> NaviStats {
             mode9_a: ids.weapon(b[0x44]),
             buster_shot: b[0x4D],
             charge_shot_kind: b[0x4F],
+            back_special_damage: u16at(0x48),
         },
         bugs: NaviCustBugs {
             auto_step: b[0x11],
@@ -288,6 +289,7 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
     b[0x44] = ids.weapon_number(w.mode9_a);
     b[0x4D] = w.buster_shot;
     b[0x4F] = w.charge_shot_kind;
+    put16(&mut b, 0x48, w.back_special_damage);
     let g = &s.bugs;
     b[0x11] = g.auto_step;
     b[0x12] = g.panel_trail_kind;

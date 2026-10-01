@@ -642,6 +642,7 @@ fn form_weapon_assets(a: &mut bn6_content_api::AssetNames) {
         ("junk-shot", sprite(0x10, 0x56)),
         ("ground-drill-effect", sprite(0x0C, 0x2D)),
         ("slash-man-effect", sprite(0x10, 0x38)),
+        ("groundman", sprite(0x08, 0x09)),
     ] {
         a.sprites.insert(name.into(), id);
     }
@@ -656,6 +657,11 @@ fn form_weapon_assets(a: &mut bn6_content_api::AssetNames) {
         ("iron-shell", 0x187),
         ("beast-claw", 0x1C5),
         ("beast-claw-2", 0x1C6),
+        ("charge-train", 0xE4),
+        ("tenguman-nose", 0xFB),
+        ("drill-launch", 0x14C),
+        ("spin", 0xC7),
+        ("drilarm", 0xF0),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -1114,6 +1120,19 @@ pub fn scripts() -> Scripts {
                 ("navis/tenguman/chip", "navis/tenguman/chip"),
                 ("navis/tenguman/tornado", "navis/tenguman/tornado"),
                 ("navis/dustman/chip", "navis/dustman/chip"),
+                // Their charged attacks (weapon definitions), and the
+                // drills GroundMan's throws.
+                ("navis/heatman/charge", "navis/heatman/charge"),
+                ("navis/elecman/charge", "navis/elecman/charge"),
+                ("navis/slashman/charge", "navis/slashman/charge"),
+                ("navis/eraseman/charge", "navis/eraseman/charge"),
+                ("navis/chargeman/charge", "navis/chargeman/charge"),
+                ("navis/spoutman/charge", "navis/spoutman/charge"),
+                ("navis/tomahawkman/charge", "navis/tomahawkman/charge"),
+                ("navis/tenguman/charge", "navis/tenguman/charge"),
+                ("navis/groundman/charge", "navis/groundman/charge"),
+                ("navis/dustman/charge", "navis/dustman/charge"),
+                ("navis/groundman/drill", "navis/groundman/drill"),
                 ("navis/dustman/clouds", "navis/dustman/clouds"),
                 ("navis/groundman/chip", "navis/groundman/chip"),
                 ("chips/grndman/drill", "chips/grndman/drill"),
