@@ -7,9 +7,9 @@ adds a few with numbers in them (`hit-6b`, `log-in-77`). This document proposes 
 evidence (where content and the engine use it, what the sprite shows, the docs, the disassembly) and a
 confidence, so the review is a matter of accepting groups. **Nothing is renamed yet.**
 
-It covers 1103 names: 213 proposed renames (34 high, 159 medium and
+It covers 1107 names: 217 proposed renames (38 high, 159 medium and
 20 low confidence), 637 names to keep as they are, and 253 numbered placeholders
-(`sprite-0c-26`, `sound-108`) to leave numbered. 25 names are flagged as wrong now: they say something
+(`sprite-0c-26`, `sound-108`) to leave numbered. 26 names are flagged as wrong now: they say something
 their asset or definition isn't.
 
 The machine-readable list is [curation-proposal.tsv](curation-proposal.tsv), one row per name: registry, current
@@ -52,7 +52,7 @@ are garbage. Their renames are worth taking even where the proposed name is only
 | sprite | `bat-impact` | `hit-marker` | medium | The role sprites.hit_marker (the "!!" over a navi), the cut-in flash (effect 0x1E) and BatCan's spark (animation 1). Shows bursts, "!!" marks and bats: BatCan is one user of three. |
 | sprite | `beast-over-burst` | `lightning` | high | Shows lightning bolts. ElecMan's thunder, ElemTrap's and ElmntMan's bolts, and Beast Over's burst (effect 0x45) use it. |
 | sprite | `copy-mark` | `hit-sparks` | high | Shows the hit sparks (plain, breaking, and one per element: sparks by element use its animations 0, 2-5) and the TRAP! mark (animation 7); 30 uses, CopyDmg's mark only one of them. |
-| sprite | `immobilized` | `rock-cubes` | medium | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (objects/rock), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
+| sprite | `immobilized` | `rock-cubes` | medium | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
 | sprite | `reflected-shot` | `pink-flash` | medium | Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it. |
 | sprite | `reflector-shield-2` | `dummy-shield` | low | The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up. |
 | sprite | `rising-bubble` | `small-puff` | medium | Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
@@ -74,6 +74,7 @@ are garbage. Their renames are worth taking even where the proposed name is only
 | status | `timer-ff-0-2` | `after-table-3-past-bubble` | medium | Status 0x68: the bubble group's entry 8 reads row 3 after the table (the same bytes as the freeze group's overflow, for the first four). |
 | status | `timer-ff-0-3` | `after-table-6-past-bubble` | medium | Status 0x6B: the bubble group's entry 11 reads row 6 after the table (the same bytes as the freeze group's overflow, for the first four). |
 | status | `timer-ff-100` | `after-table-9-past-bubble` | medium | Status 0x6E: the bubble group's entry 14 reads row 9 after the table (the same bytes as the freeze group's overflow, for the first four). |
+| rock-variant | `rockcube/cube` | `rockcube/rock/cube` | high | The rock's variant (RockCube's and the stages' cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
 
 Also found while reviewing (no rename needed):
 
@@ -82,8 +83,11 @@ Also found while reviewing (no rename needed):
   his forms', and Django is the JP version's. Their names are right for what names them.
 - `effects.small_ring_82` reads animation 82 and palette 16 of the dummy sprite: the original's effect 0x4B is a
   row nothing real uses.
+- `rockcube/cube` is two keys: the rock variant (a record, compat records.toml) and RockCube's controller (a kind).
+  The registries differ, so it loads, but a reader or a search can't tell them apart: the rock variants table below
+  proposes `rockcube/rock/cube` (and the other three variants alike).
 
-## High confidence: accept in bulk (34)
+## High confidence: accept in bulk (38)
 
 Each name follows from a single, clear use or from what the asset reads: a Cross's body overlay worn by that form alone, a banner's text, a sound's role, the disassembly's own name without its number.
 
@@ -146,6 +150,15 @@ Each name follows from a single, clear use or from what the asset reads: a Cross
 | `hit` | `guard` | Spark 0x08 is the role sparks.guard: a blocked hit. |
 | `spark_0e` | `uninstall` | Spark 0x0E is the role sparks.uninstall: a navi's programs uninstalled. |
 
+### Rock variants (chips/rockcube/rock.luau, compat/records.toml) (4)
+
+| current | proposed | evidence |
+|---|---|---|
+| `rockcube/brittle` | `rockcube/rock/brittle` | The rock's variant (a rock cube anything breaks): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
+| `rockcube/cube` | `rockcube/rock/cube` (wrong now) | The rock's variant (RockCube's and the stages' cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
+| `rockcube/hard` | `rockcube/rock/hard` | The rock's variant (a hard cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
+| `rockcube/ice` | `rockcube/rock/ice` | The rock's variant (the ice block): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
+
 ## Medium confidence (159)
 
 Named from several uses that agree, from the look (the effects named for sprite, animation and palette rather than the original's effect number), or from a definition's shape or flags (regions, collision types). Safe to accept; a better name may exist.
@@ -158,7 +171,7 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `colonel-effect` | `colonel-slashes` | Shows green and white slashes: Colonel's (chips/colonel), his screen divide among them. |
 | `elmnt-ice` | `sparkle` | Shows twinkling sparkles: Roll's heart's sparkle, ElmntMan's ice, effect 0x26. |
 | `hit` | `guard-ripple` | Shows cyan ripples. Its one spark (0x08) is the role sparks.guard, a blocked hit. |
-| `immobilized` | `rock-cubes` (wrong now) | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (objects/rock), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
+| `immobilized` | `rock-cubes` (wrong now) | Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it. |
 | `reflected-shot` | `pink-flash` (wrong now) | Shows a pink starburst. The effect `flash` (0x21), CrcusMan's sparkle, H-Burst's explosion and DblBeast's spark use it. |
 | `rising-bubble` | `small-puff` (wrong now) | Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
 | `slash-man-effect` | `claw-slash` | Shows cyan claw slashes: SlashMan's slash and DblBeast's Gregar claw and slam. |

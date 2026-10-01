@@ -37,8 +37,8 @@ sprite	body-overlay-0e	tomahawkcross-overlay	high	number	Only the tomahawkcross 
 sprite	body-overlay-11	chargecross-overlay	high	number	Only the chargecross form wears it (navis/megaman/forms/chargecross/form.luau, `parts`); named for the body overlay row it had.
 sprite	body-overlay-12	dustcross-overlay	high	number	Only the dustcross form wears it (navis/megaman/forms/dustcross/form.luau, `parts`); named for the body overlay row it had.
 sprite	bomb	bomb	high		0c-02: used by chips/blkbomb/bomb, chips/bugbomb/bomb, lib/bombs/bomb, lib/bombs/seed.
-sprite	boomerang	boomerang	high		10-07: used by objects/boomerang/boomerang.
-sprite	boomerang-tomahawk	boomerang-tomahawk	high		10-57: used by objects/boomerang/boomerang.
+sprite	boomerang	boomerang	high		10-07: used by chips/boomer/boomerang.
+sprite	boomerang-tomahawk	boomerang-tomahawk	high		10-57: used by chips/boomer/boomerang.
 sprite	boulder	boulder	high		10-08: used by objects/boulder/boulder.
 sprite	bow	bow	high		0c-2a: used by chips/trnarrw/chips, objects/flying-shot/flying_shot.
 sprite	bubble	bubble	high		0c-20: role sprites.bubble; used by lib/barriers/barriers.
@@ -71,7 +71,7 @@ sprite	deletion	deletion	high		14-03: used by chips/deltaray/navi, lib/effects.
 sprite	diveman	diveman	high		08-0d: used by chips/diveman/navi, chips/diveman/wave, lib/effects.
 sprite	django	django	high		Django (chips/crosover). The US ROM holds the dummy sprite here: Django is the JP version's.
 sprite	dragon	dragon	high		04-10: used by lib/dragons/dragon.
-sprite	drill-arm	drill-arm	high		0c-58: used by chips/dblbeast/gregar, chips/mstrcros/navi, objects/drill/drill.
+sprite	drill-arm	drill-arm	high		0c-58: used by chips/dblbeast/gregar, chips/drilarm/drill, chips/mstrcros/navi.
 sprite	drip-shower	drip-shower	high		10-22: used by navis/spoutman/drip_shower.
 sprite	dust	dust	high		14-0e: used by chips/crakshot/shot, lib/effects.
 sprite	dust-2	dust-spray	low		Shows white and blue sprays: GolmHit's golem landing and TomahawkMan's strike (effect 0x34).
@@ -123,7 +123,7 @@ sprite	honey-bee	honey-bee	high	number	10-31: used by chips/rskyhny/bee.
 sprite	hub	hub	high		14-1e: used by lib/effects, lib/navi-boost/controller.
 sprite	ice-block	ice-block	high		14-1c: role sprites.ice.
 sprite	idle-overlay	idle-overlay	high		10-21: used by navis/spoutman/navi.
-sprite	immobilized	rock-cubes	medium	wrong	Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (objects/rock), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it.
+sprite	immobilized	rock-cubes	medium	wrong	Shows the rock cube, the rock and the ice cube: the rocks' and cubes' sheet (chips/rockcube/rock.luau), the encased bubble and WideSht's trail. The immobilized status visual (a role) is one animation of it.
 sprite	impact	impact	high		14-01: used by lib/effects, lib/sparks.
 sprite	instrument	instrument	high		04-0a: used by chips/discord/chip, chips/fanfare/chip, chips/silence/chip, chips/timpani/chip and 1 more.
 sprite	iron-shell	iron-shell	high		04-1b: used by chips/ironshl/shell.
@@ -139,7 +139,7 @@ sprite	log-thrower	log-thrower	high		0c-5d: used by chips/rlnglog/action.
 sprite	machine-gun	machine-gun	high		0c-40: used by chips/machgun/chips.
 sprite	magnet	magnet	high		10-43: used by chips/magcoil/magnet.
 sprite	magnet-coil	magnet-coil	high		0c-61: used by chips/magcoil/chip.
-sprite	meteor	meteor	high		0c-31: used by chips/elmntman/meteor, chips/sunmoon/meteor, objects/falling-meteor/falling_meteor.
+sprite	meteor	meteor	high		0c-31: used by chips/elmntman/meteor, chips/meteors/falling_meteor, chips/sunmoon/meteor.
 sprite	moon-beam	moon-beam	high		0c-64: used by chips/sunmoon/moon_beam, chips/sunmoon/sun.
 sprite	moon-blade	moon-blade	high		10-3c: used by chips/airspin/top, chips/moonbld/blade, lib/effects, navis/megaman/forms/slashcross/sword_wave.
 sprite	muzzle-flash	muzzle-flash	high		0c-06: used by lib/buster.
@@ -152,7 +152,7 @@ sprite	reflector-shield	reflector-shield	high		0c-1b: used by chips/rflectr/shie
 sprite	reflector-shield-2	dummy-shield	low	wrong	The ROM's dummy sprite (a 16x16 dot). Rflectr's rows 4-6 name it, which nothing ported holds up.
 sprite	reticle	reticle	high		10-27: used by chips/machgun/chips, lib/effects.
 sprite	rising-bubble	small-puff	medium	wrong	Shows small grey puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble.
-sprite	rock-debris	rock-debris	high		10-01: used by objects/rock/debris.
+sprite	rock-debris	rock-debris	high		10-01: used by chips/rockcube/debris.
 sprite	roll-heart	roll-heart	high		0c-50: used by chips/roll/heart, chips/roll/navi.
 sprite	rolling-log	rolling-log	high		10-34: used by chips/rlnglog/log.
 sprite	rush	rush	high		0c-48: used by lib/supports/rush.
@@ -298,7 +298,7 @@ sound	blizzard-windup	blizzard-windup	high		0x132: used by chips/blzrdbal/throwe
 sound	boiler-erupt	boiler-erupt	high		0x184: used by chips/lilbolr/boiler.
 sound	boiler-steam	boiler-steam	high		0x185: used by chips/lilbolr/boiler.
 sound	bonus	bonus	high		0x157: used by lib/instant/plus.
-sound	boomerang	boomerang	high		0x0b7: used by chips/antidmg/counter, chips/bodygrd/striker, chips/slashman/wave, objects/boomerang/boomerang.
+sound	boomerang	boomerang	high		0x0b7: used by chips/antidmg/counter, chips/bodygrd/striker, chips/boomer/boomerang, chips/slashman/wave.
 sound	bounce	bounce	high		0x0b6: used by chips/airhocky/puck.
 sound	bubble	bubble	high		0x12d: role sounds.bubble; used by chips/bblstar/star, chips/spoutman/navi, lib/barriers/barriers, navis/spoutman/charge.
 sound	bubble-pop	bubble-pop	high		0x124: role sounds.bubble_pop; used by lib/barriers/barriers.
@@ -386,7 +386,7 @@ sound	log-out-76	log-out	medium	number	The disassembly's SOUND_LOG_OUT_76; the b
 sound	minibomb-throw	bomb-throw	medium		Every bomb's throw (lib/bombs/throw.luau) and Tango's.
 sound	moon-beam	moon-beam	high		0x111: used by chips/sunmoon/moon_beam, navis/megaman/forms/erasecross/charge.
 sound	ok-8b	ok	medium	number	The disassembly's SOUND_OK_8B: SlashMan's wave, Z Saver's command, VariSwrd.
-sound	panel-crack	panel-crack	high		0x097: role sounds.panel_crack; used by chips/antidmg/shuriken, chips/bodygrd/shuriken, chips/geddon/quake, objects/rock/rock.
+sound	panel-crack	panel-crack	high		0x097: role sounds.panel_crack; used by chips/antidmg/shuriken, chips/bodygrd/shuriken, chips/geddon/quake, chips/rockcube/rock.
 sound	panel-poison	panel-poison	high		0x090: role sounds.panel_poison; used by chips/geddon/quake, chips/guardian/statue, chips/otenko/statue, chips/poisseed/chip and 4 more.
 sound	panel-volcano	panel-volcano	high		0x11c: used by rules/panels.
 sound	pause	pause	high		0x09f: role sounds.pause.
@@ -968,6 +968,10 @@ projectile-variant	shot/paralyzing	shot/paralyzing	high		projectile row 0x11: st
 projectile-variant	shot/poisoning	shot/poisoning	high		projectile row 0x08: makes its panel poison: named as it is defined; see the module.
 projectile-variant	shot/pushing	shot/pushing	high		projectile row 0x1E: Shots that move what they hit: a panel away (hit modifier 0x61), six panels away (0x49), and a charged one six panels toward the shooter (0x45).
 projectile-variant	shot/shoving	shot/shoving	high		projectile row 0x1F: hit modifier 0x49: named as it is defined; see the module.
+rock-variant	rockcube/brittle	rockcube/rock/brittle	high		The rock's variant (a rock cube anything breaks): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency.
+rock-variant	rockcube/cube	rockcube/rock/cube	high	wrong	The rock's variant (RockCube's and the stages' cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency.
+rock-variant	rockcube/hard	rockcube/rock/hard	high		The rock's variant (a hard cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency.
+rock-variant	rockcube/ice	rockcube/rock/ice	high		The rock's variant (the ice block): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency.
 weapon	bgdththd/charge	bgdththd/charge	high		0x22: the weapon BgDthThd makes the charged shot (the chip's second parameter)
 weapon	boomrarm/charge	boomrarm/charge	high		0x26: the weapon BoomrArm makes the charged shot (the chip's second parameter)
 weapon	bugrswrd/charge	bugrswrd/charge	high		0x21: the weapon BugRSwrd makes the charged shot (the chip's second parameter)
