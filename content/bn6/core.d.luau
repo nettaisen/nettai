@@ -785,6 +785,9 @@ declare battle: {
     -- are the other side's and the local navi is blind). Presentation, as
     -- the original keeps it in the objects' visibility.
     viewer_sees: (side: number) -> boolean,
+    -- `sub_800ED90` and its record's flags: the chip `user` would use next
+    -- deals damage (a player's at its hand's cursor; another object's own).
+    next_chip_damages: (user: Object) -> boolean,
     link: () -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,

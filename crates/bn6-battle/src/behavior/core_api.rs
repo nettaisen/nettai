@@ -282,6 +282,25 @@ impl CoreApi for Battle {
         kinds::charge_glow::viewer_sees(self, side & 1)
     }
 
+    fn next_chip_damages(&self, user: ObjectRef) -> bool {
+        use crate::content::ChipFlags;
+        let o = self.objects.get(user);
+        let flags = if self.content.navi_record(o.name_id).actor_type == crate::actor::ActorType::Player {
+            let hand = &self.hands[o.alliance as usize & 1];
+            match hand.ids.get(hand.cursor as usize).copied().flatten() {
+                Some(h) => self.content.chip(h).flags,
+                None => self.content.rules.empty_hand.flags,
+            }
+        } else {
+            // Another object's chip word: zeroed, the pack's chip 0.
+            match o.chip.or_else(|| self.content.chip_numbered(0)) {
+                Some(h) => self.content.chip(h).flags,
+                None => ChipFlags(0),
+            }
+        };
+        flags.0 & ChipFlags::HAS_DAMAGE != 0
+    }
+
     fn battle_info(&self, f: BattleInfo) -> Value {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
