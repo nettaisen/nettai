@@ -39,6 +39,8 @@ pub const VERSION: u32 = 1;
 const ATLAS_WIDTH: u32 = 256;
 /// Space between parts in the atlas.
 const GAP: u32 = 8;
+/// The palette rows an indexed image holds (256 colours).
+pub const ATLAS_PALETTE_ROWS: usize = 16;
 
 /// The folder name of a sprite.
 pub fn folder_name(category: u8, index: u8) -> String {
@@ -54,7 +56,8 @@ pub struct SpriteDoc {
     /// SpriteId: category, index.
     pub sprite: [u8; 2],
     pub atlas: String,
-    /// Palette rows the atlas palette holds (palette set 0).
+    /// Palette rows the atlas palette holds (palette set 0's first rows:
+    /// a PNG palette holds 16).
     pub palette_rows: usize,
     /// Hashes of the atlas palette as exported (in order, sorted): tells a
     /// re-sorted or truncated palette from an edited one.
@@ -63,6 +66,10 @@ pub struct SpriteDoc {
     /// which the hardware ignores and a PNG can't hold.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub palette_high_bits: Vec<[u8; 2]>,
+    /// Palette set 0's rows after the atlas palette's, as BGR555 hex (a
+    /// navi's palettes for its other forms, say).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub more_palette_rows: Vec<Vec<String>>,
     /// Palette sets after the first, as BGR555 hex per row.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub extra_palette_sets: Vec<Vec<Vec<String>>>,
@@ -183,7 +190,9 @@ pub fn flags_byte(flags: &[FlagDoc]) -> u8 {
 /// The files of a sprite folder: name and contents.
 pub fn export(sheet: &SpriteSheet) -> Vec<(String, Vec<u8>)> {
     let set0: Vec<Palette> = sheet.palette_sets.first().cloned().unwrap_or_default();
-    let palette = image::palette_rgb(&set0);
+    // The atlas's palette holds the first rows; the rest go in the document.
+    let (set0, more) = set0.split_at(set0.len().min(ATLAS_PALETTE_ROWS));
+    let palette = image::palette_rgb(set0);
     let mut high_bits = Vec::new();
     for (r, row) in set0.iter().enumerate() {
         for (i, &c) in row.iter().enumerate() {
@@ -258,6 +267,7 @@ pub fn export(sheet: &SpriteSheet) -> Vec<(String, Vec<u8>)> {
         palette_rows: set0.len(),
         palette_fingerprint: image::palette_fingerprint(&palette),
         palette_high_bits: high_bits,
+        more_palette_rows: more.iter().map(|row| row.iter().map(|c| format!("{c:#06x}")).collect()).collect(),
         extra_palette_sets: sheet.palette_sets[1.min(sheet.palette_sets.len())..]
             .iter()
             .map(|set| set.iter().map(|row| row.iter().map(|c| format!("{c:#06x}")).collect()).collect())
@@ -341,6 +351,9 @@ fn sprite_json(d: &SpriteDoc) -> String {
     writeln!(s, "  \"palette_fingerprint\": {},", compact(&d.palette_fingerprint)).unwrap();
     if !d.palette_high_bits.is_empty() {
         writeln!(s, "  \"palette_high_bits\": {},", compact(&d.palette_high_bits)).unwrap();
+    }
+    if !d.more_palette_rows.is_empty() {
+        writeln!(s, "  \"more_palette_rows\": {},", compact(&d.more_palette_rows)).unwrap();
     }
     if !d.extra_palette_sets.is_empty() {
         writeln!(s, "  \"extra_palette_sets\": {},", compact(&d.extra_palette_sets)).unwrap();
@@ -443,20 +456,24 @@ pub fn import(dir: &Path, name: &str, report: &mut Report) -> Option<SpriteSheet
             row[i as usize & 15] |= 0x8000;
         }
     }
-    let mut palette_sets = vec![set0];
-    for (k, set) in doc.extra_palette_sets.iter().enumerate() {
+    let mut hex_rows = |set: &[Vec<String>], what: &str| -> Vec<Palette> {
         let mut rows = Vec::new();
         for row in set {
             let mut p = [0u16; 16];
             for (i, c) in row.iter().enumerate().take(16) {
                 match u16::from_str_radix(c.trim_start_matches("0x"), 16) {
                     Ok(v) => p[i] = v,
-                    Err(_) => report.error(file("sprite.json"), format!("palette set {}: {c:?} isn't a hex colour", k + 1)),
+                    Err(_) => report.error(file("sprite.json"), format!("{what}: {c:?} isn't a hex colour")),
                 }
             }
             rows.push(p);
         }
-        palette_sets.push(rows);
+        rows
+    };
+    set0.extend(hex_rows(&doc.more_palette_rows, "palette set 0's later rows"));
+    let mut palette_sets = vec![set0];
+    for (k, set) in doc.extra_palette_sets.iter().enumerate() {
+        palette_sets.push(hex_rows(set, &format!("palette set {}", k + 1)));
     }
     // Tile sets from their atlas regions.
     let mut tilesets = Vec::with_capacity(doc.tilesets.len());
