@@ -118,6 +118,9 @@ pub enum Crush {
     /// `sub_801B610`: bodies don't break it; obstacles and breaking hits
     /// drop the HP to 0.
     SparesBodies,
+    /// `sub_801B878` (LilBoiler's) while its ExtraVars+4 is set: such a
+    /// touch is as any hit (while it is clear the routine is `Breaks`).
+    Ignores,
 }
 
 /// When [`react`] holds the obstacle still while dimmed.
@@ -379,8 +382,8 @@ pub fn tick_lifetime(b: &mut Battle, r: ObjectRef) {
 /// `sub_801B394` and its variants (`crush`, `hold`): apply damage and
 /// removal requests, then either run a status routine (None) or leave the
 /// current action for the kind's action table to run (its number).
-/// (`sub_801B878`, LilBolr's, is `Crush::Destroys` or `Crush::Breaks` by
-/// the kind's own state.)
+/// (`sub_801B878`, LilBolr's, is `Crush::Breaks` or, while it erupts,
+/// `Crush::Ignores`, by the kind's own state.)
 pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u8> {
     let c = collision(b, r);
     let damage = b.collision.get(c).acc.final_damage;
@@ -393,7 +396,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
     };
     let destroy = killed || {
         let crushing = if crush == Crush::SparesBodies { CRUSHING_HITS_BUT_BODIES } else { CRUSHING_HITS };
-        if b.collision.get(c).acc.hit_flags & crushing != 0 {
+        if crush != Crush::Ignores && b.collision.get(c).acc.hit_flags & crushing != 0 {
             if crush != Crush::Destroys {
                 b.objects.get_mut(r).hp = 0;
             }
