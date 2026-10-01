@@ -15,6 +15,9 @@ effects.splash = define.effect { sprite = asset.sprite("rising-bubble"), anim = 
 -- object a chip removes (effect 0x14).
 effects.puff = define.effect { sprite = asset.sprite("puff"), anim = 2, palette = 0 }
 
+-- Bubbles: Otenko's statue breaking (effect 0x02).
+effects.bubbles = define.effect { sprite = asset.sprite("rising-bubble"), anim = 1, palette = 0 }
+
 -- A burst: a meteor or a fist landing, a snake striking (effect 0x05).
 effects.burst = define.effect { sprite = asset.sprite("burst"), anim = 0, palette = 0 }
 

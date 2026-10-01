@@ -995,6 +995,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
+    lib_fn!(lua, t, "next_chip_damages", |_, user: mlua::UserDataRef<Object>| {
+        with(|api, _| Ok(api.next_chip_damages(user.0)))
+    });
     lib_fn!(lua, t, "viewer_sees", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.viewer_sees(side)))

@@ -43,6 +43,7 @@ chips/crosswrd/chip.luau 1
 chips/dbldream/chip.luau 1
 chips/ftrsword/chip.luau 1
 chips/guardian/statue.luau 2
+chips/otenko/statue.luau 2
 chips/sensor/turret.luau 2
 chips/stepswrd/chip.luau 1
 chips/wind/fan.luau 2

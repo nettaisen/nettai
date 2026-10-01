@@ -115,6 +115,7 @@ thunder-column = { pool = "attack", index = 0x8B }
 "bugbomb/bomb" = { pool = "attack", index = 0xA5 }
 "sensor/turret" = { pool = "attack", index = 0xA6 }
 "chrgeman/car" = { pool = "attack", index = 0xAC }
+"otenko/statue" = { pool = "attack", index = 0xAD }
 "justcone/strike" = { pool = "attack", index = 0xAE }
 "megaman/dash-hit" = { pool = "attack", index = 0xAF }
 "dustcross/junk-ball" = { pool = "attack", index = 0xB0, scratch_z_fraction = true }
@@ -185,6 +186,7 @@ meteor-shower = { pool = "effect", index = 0x46 }
 "magnum/controller" = { pool = "effect", index = 0x5B, scratch_position = true }
 invisible = { pool = "effect", index = 0x5D, scratch_position = true }
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
+"otenko/controller" = { pool = "effect", index = 0x5F, scratch_position = true }
 "eraseman/mark" = { pool = "effect", index = 0x62 }
 "sensor/controller" = { pool = "effect", index = 0x65, scratch_position = true }
 "engine/hit-marker" = { pool = "effect", index = 0x6B }

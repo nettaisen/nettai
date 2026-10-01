@@ -954,6 +954,10 @@ pub trait CoreApi {
     /// `sub_800EB6C`: the local player sees `side`'s objects (unless they
     /// are the other side's and the local navi is blind).
     fn viewer_sees(&self, side: u8) -> bool;
+    /// `sub_800ED90` and the chip record's flags (bit 1): the chip `user`
+    /// would use next deals damage (a player's at its hand's cursor, whose
+    /// empty hand reads `Rules::empty_hand`; another object's own chip).
+    fn next_chip_damages(&self, user: ObjectRef) -> bool;
     fn battle_info(&self, f: BattleInfo) -> Value;
     /// Report a sound effect both players hear (output only; nothing in
     /// the simulation reads it).
