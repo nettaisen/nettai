@@ -1,20 +1,23 @@
-//! Navis and MegaMan's forms.
+//! Navis and MegaMan's forms (`define.navi`, `define.form`: docs/design/
+//! content-model-v2.md §3.2).
 
-use super::{BannerId, CodedChip, Element, SecondaryElements, SpriteId};
+use super::flags::serde_flags;
+use super::{BannerId, ChipFamily, CodedChip, Element, SecondaryElements, SpriteId};
 use crate::actor::ActorType;
-use bn6_content_api::{IdentityHandle, WeaponHandle};
+use crate::custom::GameVersion;
+use bn6_content_api::{FormHandle, IdentityHandle, NaviHandle, WeaponHandle};
 use serde::{Deserialize, Serialize};
 
-/// A navi (NaviStats' navi number): MegaMan (0) or a link navi.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// A navi: MegaMan or a link navi.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NaviData {
-    /// The navi number.
-    pub id: u8,
     pub name: String,
-    /// The battle sprite (MegaMan draws his form's instead).
+    /// The battle sprite (a navi that changes form draws its form's
+    /// instead).
     pub sprite: SpriteId,
     pub element: Element,
+    #[serde(default)]
     pub weakness: SecondaryElements,
     /// Added to the buster's damage.
     pub buster_bonus: u8,
@@ -25,25 +28,43 @@ pub struct NaviData {
     pub lose_banner: BannerId,
     /// Extra height, in whole pixels, of the navi's image as it merges
     /// with MegaMan in a Cross.
+    #[serde(default)]
     pub merge_height: i16,
     /// A link navi's own chip, offered on the custom screen once a round.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub own_chip: Option<CodedChip>,
     /// A link navi's damage bonus on its family's chips.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub chip_bonus: Option<NaviChipBonus>,
     /// The no-running message the custom screen shows for the navi (L in
     /// a netbattle): the characters in each of its lines (up to three),
     /// which set how long it prints (docs/engine/custom-screen.md §3.5).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[serde(default)]
     pub run_message: Vec<u8>,
-    /// Its identity: what the object that is this navi is taken for. (Read
-    /// from the definition by handle, not with the rest of the record.)
+    /// The chips it charges with A, from a navi level (`sub_800F49E`,
+    /// `byte_8021369`).
+    #[serde(default)]
+    pub charged_chips: Option<NaviChargedChips>,
+    /// The chips a charge doubles (`sub_8012AFA`).
+    #[serde(default)]
+    pub charge_doubles: Option<ChipMatch>,
+    /// Its A charge builds up the next Fire chip's damage, up to a limit
+    /// by its level (`sub_80F0608`, `byte_802136D`).
+    #[serde(default)]
+    pub fire_charge: Option<Vec<u8>>,
+    #[serde(default)]
+    pub traits: NaviTraits,
+    /// The forms it changes into (MegaMan's), by game. Where the original
+    /// asks whether a navi is MegaMan, the ruleset asks whether it has
+    /// forms. (This and what follows are read from the definition by
+    /// handle, not with the rest of the record.)
+    #[serde(skip)]
+    pub forms: Option<NaviForms>,
+    /// Its identity: what the object that is this navi is taken for.
     #[serde(skip)]
     pub identity: Option<IdentityHandle>,
     /// The weapons it comes with (`byte_80210DD`): what a Cross change
-    /// gives its buttons. (Read from the definition by handle, not with
-    /// the rest of the record.)
+    /// gives its buttons.
     #[serde(skip)]
     pub weapons: FormWeapons,
     /// The rest of what a Cross change brings it with, fresh; none for a
@@ -53,6 +74,56 @@ pub struct NaviData {
     /// Its HP after a Cross change, by side (`byte_802DD88`).
     #[serde(skip)]
     pub cross_hp: Option<[u16; 2]>,
+}
+
+impl NaviData {
+    /// It changes form (MegaMan): its forms decide its sprite, element,
+    /// weapons and what it wears.
+    pub fn changes_form(&self) -> bool {
+        self.forms.is_some()
+    }
+}
+
+/// What the ruleset asks of particular navis. In a content file, a list of
+/// names.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct NaviTraits(pub u8);
+
+impl NaviTraits {
+    /// A hit's status doesn't take (`sub_801A4D0`'s caller: TomahawkMan).
+    pub const STATUS_IMMUNE: u8 = 0x01;
+    pub(crate) const NAMES: &[(u32, &str)] = &[(0x01, "status_immune")];
+
+    pub fn has(self, bit: u8) -> bool {
+        self.0 & bit != 0
+    }
+}
+
+serde_flags!(NaviTraits, u8);
+
+/// The forms a navi changes into, by the player's game.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct NaviForms {
+    pub gregar: FormSet,
+    pub falzar: FormSet,
+}
+
+impl NaviForms {
+    pub fn of(&self, version: GameVersion) -> &FormSet {
+        match version {
+            GameVersion::Gregar => &self.gregar,
+            GameVersion::Falzar => &self.falzar,
+        }
+    }
+}
+
+/// A game's forms: its Crosses by their number on the custom screen (the
+/// save's unlock flags' order), Beast Out and Beast Over.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct FormSet {
+    pub crosses: Vec<FormHandle>,
+    pub beast_out: Option<FormHandle>,
+    pub beast_over: Option<FormHandle>,
 }
 
 /// A navi's stats when a Cross change brings it fresh (`byte_80210DD`,
@@ -76,35 +147,273 @@ pub struct FreshStats {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NaviChipBonus {
-    pub family: super::ChipFamily,
+    pub family: ChipFamily,
     /// Dimming chips of the family count too.
     #[serde(default)]
     pub dimming_chips: bool,
     pub by_level: Vec<u8>,
 }
 
-/// One of MegaMan's forms: his base form (0), a Cross (1..=10), Beast Out
-/// (0x0B, 0x0C), a Cross in Beast Out (0x0D..=0x16) or Beast Over (0x17,
-/// 0x18).
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// The chips a link navi charges with A: its family's damaging chips, from
+/// a navi level on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NaviChargedChips {
+    pub family: ChipFamily,
+    pub from_level: u8,
+}
+
+/// The chips a rule is about: an element's, or a family's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChipMatch {
+    Element(Element),
+    Family(ChipFamily),
+}
+
+/// What kind of form one of MegaMan's is.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FormKind {
+    /// His own.
+    #[default]
+    Base,
+    /// A Cross: merged with a link navi.
+    Cross,
+    /// Beast Out.
+    Beast,
+    /// A Cross in Beast Out.
+    CrossBeast,
+    /// Beast Over: the navi acts on its own.
+    BeastOver,
+}
+
+impl FormKind {
+    /// Beast Out, with or without a Cross, or Beast Over.
+    pub fn is_beast(self) -> bool {
+        matches!(self, FormKind::Beast | FormKind::CrossBeast | FormKind::BeastOver)
+    }
+
+    /// Beast Out, with or without a Cross.
+    pub fn is_beast_out(self) -> bool {
+        matches!(self, FormKind::Beast | FormKind::CrossBeast)
+    }
+
+    /// Beast Over.
+    pub fn is_beast_over(self) -> bool {
+        self == FormKind::BeastOver
+    }
+
+    /// A Cross is on (a Cross, or one in Beast Out).
+    pub fn has_cross(self) -> bool {
+        matches!(self, FormKind::Cross | FormKind::CrossBeast)
+    }
+}
+
+/// One of MegaMan's forms.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FormData {
-    /// The form number.
-    pub id: u8,
     pub name: String,
     pub sprite: SpriteId,
     pub element: Element,
+    #[serde(default)]
     pub weakness: SecondaryElements,
-    /// (Read from the definition by handle, not with the rest of the
-    /// record.)
-    #[serde(skip)]
-    pub weapons: FormWeapons,
     /// Added to the buster's damage.
     pub buster_bonus: u8,
-    /// Its identity (the base form has none of its own: MegaMan's).
+    pub kind: FormKind,
+    /// Whose game's form it is: the Beast's roar and Beast Over's glow.
+    #[serde(default)]
+    pub game: Option<GameVersion>,
+    /// MegaMan's palette in it (`byte_80203EA`: a Cross's; the base form's
+    /// and Beast Out's follow the mood).
+    #[serde(default)]
+    pub palette: u8,
+    /// The damage it adds to a family's damaging chips (`sub_800EF34`).
+    #[serde(default)]
+    pub chip_bonus: Option<FormChipBonus>,
+    /// The damage it adds to damaging Null chips when the family's bonus
+    /// doesn't apply, outside battle mode 1 (Beast Out's).
+    #[serde(default)]
+    pub null_bonus: u16,
+    /// The chips it charges with A (`sub_8013236`).
+    #[serde(default)]
+    pub charged_chips: Vec<ChargedChips>,
+    /// What a charged chip gains in it (`sub_8012C7C`).
+    #[serde(default)]
+    pub charged_bonus: ChargedBonus,
+    /// The chips a charge doubles (`sub_8012AFA`).
+    #[serde(default)]
+    pub charge_doubles: Option<ChipMatch>,
+    /// The chips whose use heals a twentieth of the base HP
+    /// (`sub_800E2FC`'s caller: not dimming chips).
+    #[serde(default)]
+    pub chip_heals: Option<ChipMatch>,
+    /// Its A charge builds up the next Fire chip's damage, up to this
+    /// much (`sub_80F0608`).
+    #[serde(default)]
+    pub fire_charge: Option<u16>,
+    /// What the status reset gives it (`sub_8014536`), and what a NaviCust
+    /// change gives back (`sub_801469C`; none: the reset's, without the
+    /// lock-on marker).
+    #[serde(default)]
+    pub status_reset: FormEffects,
+    #[serde(default)]
+    pub navicust_refresh: Option<FormEffects>,
+    /// The height it floats at, in whole pixels (`sub_80F0608`).
+    #[serde(default)]
+    pub hover: i16,
+    /// The shots of the buster volley the Cross special's controller
+    /// fires in it (`sub_802D4F0`).
+    #[serde(default)]
+    pub special_volley: u16,
+    /// A Cross change that finds the navi in this animation lets go of it
+    /// and of what it holds (`sub_8014B18`: GroundCross's drill).
+    #[serde(default)]
+    pub cross_release_anim: Option<u8>,
+    #[serde(default)]
+    pub traits: FormTraits,
+    /// The navi a Cross is made with: its image merges with MegaMan.
+    /// (This and what follows are read from the definition by handle, not
+    /// with the rest of the record.)
+    #[serde(skip)]
+    pub cross_of: Option<NaviHandle>,
+    /// A Cross's form in Beast Out.
+    #[serde(skip)]
+    pub beast: Option<FormHandle>,
+    /// What a weakness hit drops it to (`sub_8015766`); none: it stays.
+    #[serde(skip)]
+    pub breaks_to: Option<FormHandle>,
+    #[serde(skip)]
+    pub weapons: FormWeapons,
+    /// Its identity (the base form has none of its own: the navi's).
     #[serde(skip)]
     pub identity: Option<IdentityHandle>,
 }
+
+impl FormData {
+    /// What a NaviCust change gives the form back.
+    pub fn refresh_effects(&self) -> FormEffects {
+        self.navicust_refresh.unwrap_or(FormEffects(self.status_reset.0 & !FormEffects::LOCKON_MARKER))
+    }
+}
+
+/// The damage a form adds to a family's damaging chips.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FormChipBonus {
+    pub family: ChipFamily,
+    pub damage: u16,
+    /// Dimming chips of the family count too.
+    #[serde(default)]
+    pub dimming_chips: bool,
+}
+
+/// Chips a form charges with A: a family's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChargedChips {
+    pub family: ChipFamily,
+    /// Only its damaging chips that aren't dimming chips (false: any).
+    #[serde(default = "yes")]
+    pub damaging: bool,
+    /// And the chips with the `element_sword` trait.
+    #[serde(default)]
+    pub element_swords: bool,
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// What a charged chip gains in a form.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChargedBonus {
+    #[serde(default)]
+    pub damage: u16,
+    /// It paralyzes.
+    #[serde(default)]
+    pub paralyzes: bool,
+}
+
+/// What a form's status reset gives the navi. In a content file, a list of
+/// names.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct FormEffects(pub u16);
+
+impl FormEffects {
+    /// The statuses end (not in battle mode 1).
+    pub const CLEAR_STATUSES: u16 = 0x001;
+    pub const SUPER_ARMOR: u16 = 0x002;
+    pub const AIR_SHOES: u16 = 0x004;
+    pub const FLOAT_SHOES: u16 = 0x008;
+    /// The body floats (its collision type).
+    pub const FLOATING_BODY: u16 = 0x010;
+    /// Poison panels don't hurt it.
+    pub const POISON_PROOF: u16 = 0x020;
+    /// The Beast's lock-on marker.
+    pub const LOCKON_MARKER: u16 = 0x040;
+    /// Invulnerable for good.
+    pub const INVULNERABLE: u16 = 0x080;
+    /// The berserk controller starts over.
+    pub const BERSERK: u16 = 0x100;
+    pub(crate) const NAMES: &[(u32, &str)] = &[
+        (0x001, "clear_statuses"),
+        (0x002, "super_armor"),
+        (0x004, "air_shoes"),
+        (0x008, "float_shoes"),
+        (0x010, "floating_body"),
+        (0x020, "poison_proof"),
+        (0x040, "lockon_marker"),
+        (0x080, "invulnerable"),
+        (0x100, "berserk"),
+    ];
+
+    pub fn has(self, bit: u16) -> bool {
+        self.0 & bit != 0
+    }
+}
+
+serde_flags!(FormEffects, u16);
+
+/// What the ruleset asks of particular forms. In a content file, a list of
+/// names.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct FormTraits(pub u8);
+
+impl FormTraits {
+    /// A hit's status doesn't take (TomahawkCross).
+    pub const STATUS_IMMUNE: u8 = 0x01;
+    /// Its damaging Null chips delete at once what has a 4 in its HP
+    /// (`sub_8012C4A`: EraseCross).
+    pub const ERASES: u8 = 0x02;
+    /// Its charged sword runs inside the Beast Out rush (`sub_800FB54`:
+    /// SlashCross in Beast Out).
+    pub const CHARGED_SWORD_RUSH: u8 = 0x04;
+    /// The custom screen deals one more chip for each screen spent in it,
+    /// up to three (`sub_802A49C`: ChargeCross).
+    pub const EXTRA_CHIPS: u8 = 0x08;
+    /// The custom screen has the scrap button (`sub_8027F10`: DustCross).
+    pub const SCRAP_BUTTON: u8 = 0x10;
+    /// Its held buster doesn't fire while its B+Back special is asked for
+    /// (TenguCross and DustCross in Beast Out).
+    pub const SPECIAL_HOLDS_BUSTER: u8 = 0x20;
+    pub(crate) const NAMES: &[(u32, &str)] = &[
+        (0x01, "status_immune"),
+        (0x02, "erases"),
+        (0x04, "charged_sword_rush"),
+        (0x08, "extra_chips"),
+        (0x10, "scrap_button"),
+        (0x20, "special_holds_buster"),
+    ];
+
+    pub fn has(self, bit: u8) -> bool {
+        self.0 & bit != 0
+    }
+}
+
+serde_flags!(FormTraits, u8);
 
 /// A form's or navi's weapons, by the button that uses each (none: the
 /// original's 0xFF).
@@ -170,6 +479,52 @@ impl<'de> Deserialize<'de> for AttachPoint {
         let [x, y] = <[i8; 2]>::deserialize(d)?;
         Ok(AttachPoint { x, y })
     }
+}
+
+/// A navi definition's record: what it gives by value. (What it names by
+/// handle is read with the registries: `Defs::build`.)
+pub(crate) fn read_navi(
+    d: &bn6_content_api::Definition,
+    r: &super::legacy::Resolver,
+) -> Result<NaviData, bn6_content_api::ContentError> {
+    use serde_json::Value as Json;
+    let err = |m: String| super::legacy::err(d, m);
+    // (`mugshots` and `actions` are the frontend's and the content's own.)
+    let mut o = super::legacy::fields(
+        d,
+        r,
+        &["id", "identity", "banners", "own_chip", "actions", "mugshots", "weapons", "fresh", "cross_hp", "forms"],
+    )?;
+    let banners = d.spec.field("banners");
+    for (field, which) in [("win_banner", "win"), ("lose_banner", "lose")] {
+        let b = r.json(banners.field(which), &format!("navi {}.banners.{which}", d.key)).map_err(err)?;
+        o.insert(field.into(), b);
+    }
+    let own = d.spec.field("own_chip");
+    if !own.is_nil() {
+        o.insert("own_chip".into(), r.json(own, &format!("navi {}.own_chip", d.key)).map_err(err)?);
+    }
+    serde_json::from_value(Json::Object(o)).map_err(|m| err(m.to_string()))
+}
+
+/// A form definition's record, likewise.
+pub(crate) fn read_form(
+    d: &bn6_content_api::Definition,
+    r: &super::legacy::Resolver,
+) -> Result<FormData, bn6_content_api::ContentError> {
+    use serde_json::Value as Json;
+    // (`mugshot` is the frontend's; `buster_arm` the content's own: the
+    // arm a navi raises.)
+    let o = super::legacy::fields(
+        d,
+        r,
+        &["id", "identity", "cross_of", "beast", "breaks_to", "mugshot", "weapons", "buster_arm"],
+    )?;
+    let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::legacy::err(d, m))?;
+    if form.kind != FormKind::Base && form.game.is_none() {
+        return Err(super::legacy::err(d, "a form that is not the base form says whose `game` it is (gregar, falzar)"));
+    }
+    Ok(form)
 }
 
 /// A navi definition's `fresh`: what a Cross change brings it with.
