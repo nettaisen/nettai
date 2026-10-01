@@ -15,7 +15,6 @@ use bn6_battle::battle::{fight, mode, top};
 use bn6_battle::object::{ObjectRef, flags};
 
 /// The player navi's action while it stands waiting for input.
-const IDLE: u8 = 8;
 const FULL: u16 = bn6_battle::hud::CustomGauge::FULL;
 
 /// HUD presentation state that rolls from frame to frame.
@@ -120,7 +119,9 @@ impl HudState {
         (self.is_over, self.gauge_is_on) = (decided(b), b.gauge.enabled);
         if let Some(r) = b.player(b.setup.local_side) {
             let o = b.objects.get(r);
-            if o.action == IDLE && (o.phase != 0 || o.phase_init != 0) {
+            if bn6_battle::kinds::player::navi_action(b, r) == bn6_battle::kinds::player::NaviAction::Idle
+                && (o.phase != 0 || o.phase_init != 0)
+            {
                 self.chip_name = true;
             }
             let using_chip = o.actor.is_some_and(|a| b.actors.get(a).status & status::CHIP_IN_PROGRESS != 0);
@@ -158,7 +159,10 @@ impl HudState {
             }
             let Some(r) = b.player(side) else { continue };
             let o = b.objects.get(r);
-            if o.action != 0 && o.hp > 0 && !self.enemies.iter().any(|e| e.object == r) {
+            if bn6_battle::kinds::player::navi_action(b, r) != bn6_battle::kinds::player::NaviAction::Entry
+                && o.hp > 0
+                && !self.enemies.iter().any(|e| e.object == r)
+            {
                 self.enemies.push(EnemyHp { object: r, shown: o.hp, colour: 0, timer: 0 });
             }
         }
