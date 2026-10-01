@@ -54,7 +54,7 @@ fn battles_run_the_content_scripts() {
             "blkbomb/bomb",
             "bomb",
             "bomb-slash",
-            "boomerang",
+            "boomer/boomerang",
             "boulder",
             "bugbomb/bomb",
             "bugfix/controller",

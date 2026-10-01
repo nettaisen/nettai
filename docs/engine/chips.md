@@ -213,7 +213,7 @@ A chip's behaviour is selected entirely by `cd.action` (+0x0B) and `cd.subtype` 
    entries; 7 and 0x12 are NULL (the game would jump to address 0). The entries are content's: a chip definition's
    `instant` hook, or a weapon's `instant`. 0 BeastOut `sub_80104E0` and 3 the plus chips
    `sub_8010488` (lib/instant/plus, with their sparkle, effect #0x14, objects/rising-bubble), 1 the boomerang
-   (objects/boomerang, chips/boomer), 4 Lance
+   (chips/boomer/boomerang, kind `boomer/boomerang`), 4 Lance
    (chips/lance), 5 FullCust `sub_800AF34` (chips/fullcust), 8 FireHit (chips/firehit), 10 BusterUp `sub_8010820` (chips/busterup), 12 SandWrm (chips/sandwrm), 13 SyncTrgr
    `sub_80EC44C` (chips/synctrgr), 15 ColForce (chips/colforce), 19 JustcOne (chips/justcone), 21 GolmHit
    (chips/golmhit), 22 ColArmy (chips/colarmy). Subtypes 2
