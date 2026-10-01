@@ -18,9 +18,12 @@ The exemplars (content model v2, step 7) show the patterns end to end, and are t
 | BusterUp and the plus chips | Instant chips: an `instant` hook per chip; a shared library with the records' path beside it | chips/busterup, chips/atk-10, chips/navi-20, lib/instant/plus.luau, chips/0c0-atk-10 |
 | The link navis' own chips | A record that runs the action its module exports (`{ action = define.action { ... } }`), for an action number registration can't claim; a phased routine on the attack's step with shared helpers; kinds beside the navi, or with the navi chip series that shares them | lib/link_chips.luau, navis/heatman ... navis/dustman (chip.luau and their kinds), chips/190-heatpres ... chips/199-dustbrk |
 | MegaMan's weapons | Weapons: `define.weapon` with its action a definition, charge times of its own, the routine numbers it still answers to (`legacy`); a setup that writes its action's state (`navi:action_state(action)`); a weapon whose effect is instant (`instant`); roles the ruleset starts (`forced_charged_shot`, `cross_protect`, `beast_claw`, ..., rules/roles.luau); the kinds only a form's weapon spawns beside it; a weapon that asks the attack's chip for its part (`navi.attack_chip`: SlashCross's charged slash, a record a sword's slash names) | navis/00-megaman/weapons/`<name>`/weapon.luau, navis/00-megaman/forms/`<form>`/, navis/00-megaman/dash_hit.luau, lib/buster.luau, lib/weapon.luau |
+| The link navis' charged attacks | A weapon whose action is the navi's own (the original's entry 9 of his action table): the setup gives the damage by the buster's Attack, the counter byte and the element; the phased routine of his chip (lib/link_chips); a kind of his AI's with the variant the attack names (a record or an options table); a kind that lasts while its owner's action does; a weapon that runs a chip's action with the chip as the attack's (ProtoMan's WideSwrd) | navis/heatman/charge.luau ... navis/dustman/charge.luau, navis/groundman/drill.luau, navis/protoman/charge.luau, back_special.luau |
 
-Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e); the ones nothing
-implements yet (the link navis' charges, the sticky charges, the charged-chip bonuses) are the generated stubs of
+Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e), and so are the
+link navis' charged attacks and ProtoMan's B+Back specials (navis/NAVI/charge.luau, navis/protoman/back_special.luau;
+docs/engine/standard-chips.md, "Action 9"); the ones nothing
+implements yet (the sticky charges, the charged-chip bonuses, ProtoMan's A-charge) are the generated stubs of
 step 5 (navis/00-megaman/weapons/NAME/weapon.luau, a form's or navi's own beside its `form.luau` or
 `navi.luau`), whose legacy marker names the routines. The navis, MegaMan's forms, the stages
 (stages/) and the rule sections (rules/) are definitions too, generated from the ROM once and checked against it
@@ -85,8 +88,10 @@ the migration ends, registration by number (§3.2) resolves the pack's records i
    `scratch_position` for a position the spawner's registers leave), an action's (actions.toml: a chip's action
    is `<chip>/action`, which is the key it gets by default; give `id` when no chip holds it). compat/ is
    gen-content's; a key or name you add goes into compat/curation.toml too, for review.
-Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e); the ones nothing
-implements yet (the link navis' charges, the sticky charges, the charged-chip bonuses) are the generated stubs of
+Every weapon routine MegaMan's forms and the NaviCust name is a hand-written definition (step 8e), and so are the
+link navis' charged attacks and ProtoMan's B+Back specials (navis/NAVI/charge.luau, navis/protoman/back_special.luau;
+docs/engine/standard-chips.md, "Action 9"); the ones nothing
+implements yet (the sticky charges, the charged-chip bonuses, ProtoMan's A-charge) are the generated stubs of
 step 5 (navis/00-megaman/weapons/NAME/weapon.luau, a form's or navi's own beside its `form.luau` or
 `navi.luau`), whose legacy marker names the routines. The navis, MegaMan's forms, the stages
 (stages/) and the rule sections (rules/) are definitions too, generated from the ROM once and checked against it

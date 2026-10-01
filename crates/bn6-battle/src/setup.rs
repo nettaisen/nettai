@@ -120,6 +120,10 @@ pub struct NaviWeapons {
     pub buster_shot: u8,
     /// +0x4F: the charged shot's projectile config (0 = default 6).
     pub charge_shot_kind: u8,
+    /// +0x48: the damage a B+Back special takes from the navi's stats
+    /// (ProtoMan's reflecting guard, weapon routine 0x30; from the navi's
+    /// starting row).
+    pub back_special_damage: u16,
 }
 
 /// NaviCust bugs and program side effects.
@@ -303,6 +307,8 @@ impl NaviStats {
             0x42 => low(&mut self.max_hp),
             0x43 => high(&mut self.max_hp),
             0x44 => w.mode9_a = weapon(value),
+            0x48 => low(&mut w.back_special_damage),
+            0x49 => high(&mut w.back_special_damage),
             0x4D => w.buster_shot = value,
             0x4F => w.charge_shot_kind = value,
             0x50 => low(&mut self.chip_recovery),
