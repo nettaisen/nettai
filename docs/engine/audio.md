@@ -22,7 +22,7 @@ the start of every tick).
 
 Ids are song-table indices (`SoundId`): music is 0x00..=0x25, effects
 0x64 and up; a few have names (`SoundId::VIRUS_BATTLE`, `WINNER`, ...).
-Content names its sounds: `asset.sound("cannon-shot")` is the song the
+Content names its sounds: `asset.sound("cannon")` is the song the
 pack's asset index (`assets.toml`) lists under that name, resolved when the
 content loads (a name the pack doesn't list is a load error), so a content
 sound is a song of whatever pack is loaded.
@@ -42,6 +42,13 @@ full 0x8F (`sub_801C470`); panel crack/break 0x97 (`object_crackPanel`,
 resume 0x9F (`sub_801E15C`, `sub_80083E4`); the HP box's alarm 0x84, every
 45 ticks a console's own navi is at a quarter of its HP or less
 (`sub_801C840`, heard on that console only).
+
+The HUD's warning marker (`sub_800AE90`: the gauge chips', VDoll's marks,
+LifeSync's) sounds on every 16th frame of the console's own frame counter,
+which counts frames since the match began whatever the battle does
+(`Console::frames`, from `ConsoleSetup::frames`): content calls
+`battle.warn(sound, at, side)` every tick the marker shows, and the engine
+makes the cue on those frames, for each console that shows it.
 
 Not emitted: the custom screen's own UI sounds (cursor 0x7F, select
 0x81/0x82, open 0x79, a Cross chosen 0x92, Beast Out, ...). The engine runs

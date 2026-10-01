@@ -20,7 +20,8 @@
 //!   the controller's `Object::telop_chip`), and the chip a player just
 //!   used, which the other player's console names (`Battle::used_chips`);
 //! - what each console shows of its navi's chips (`Battle::chip_hud`), and
-//!   the HUD's message (`Battle::message`);
+//!   the HUD's message (`Battle::message`) and warning markers
+//!   (`Battle::warnings`);
 //! - the objects' `VISIBLE` header flag.
 //!
 //! Also left out: the behaviors handle (`Battle::behaviors`), which is
@@ -166,6 +167,7 @@ impl Hash for Battle {
             used_chips: _,
             chip_hud: _,
             message: _,
+            warnings: _,
             paused,
             inputs,
             hands,

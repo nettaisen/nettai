@@ -192,7 +192,7 @@ function beast.init(me: Object, sprite: SpriteAsset, ahead: boolean, name: numbe
     beast.rest(me, ahead)
     local sp = me.sprite
     sp:load(sprite)
-    sp.shadow = "hidden"
+    sp.shadow = "with_sprite"
     me.anim, me.anim_loaded = 0, 0
     sp:set_animation(0)
     sp.palette = 0
