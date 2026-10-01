@@ -515,12 +515,6 @@ impl Battle {
         self.content.stage(self.setup.settings.stage).panel_pattern
     }
 
-    /// A chip field's number in the pack's table (the ruleset asks chips by
-    /// number until phase C); none for no chip or a chip content defines.
-    pub fn chip_number(&self, chip: Option<ChipHandle>) -> Option<crate::content::ChipId> {
-        chip.and_then(|h| self.content.chip_number(h))
-    }
-
     /// A side's form, by number (the ruleset asks forms by number until
     /// phase C).
     pub fn form(&self, side: usize) -> Form {

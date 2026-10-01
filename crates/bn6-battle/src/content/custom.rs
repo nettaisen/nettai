@@ -2,7 +2,7 @@
 //! Advances (each with the chip it makes) and the link navis' own chips
 //! (each with its navi).
 
-use super::{ChipCode, ChipId};
+use super::ChipCode;
 use bn6_content_api::ChipHandle;
 use serde::{Deserialize, Serialize};
 
@@ -66,10 +66,11 @@ impl Default for CustomScreenLayout {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaRecipe {
-    /// `count` of one chip with consecutive codes (`sub_80295C8`).
-    CodeRun { chip: ChipId, count: u8 },
-    /// These chips in this order, whatever their codes (`sub_802961A`).
-    Sequence(Vec<ChipId>),
+    /// `count` of one chip (by key) with consecutive codes (`sub_80295C8`).
+    CodeRun { chip: String, count: u8 },
+    /// These chips (by key) in this order, whatever their codes
+    /// (`sub_802961A`).
+    Sequence(Vec<String>),
 }
 
 impl PaRecipe {
@@ -142,10 +143,10 @@ pub enum ChipModifier {
     Uninstall,
 }
 
-/// A chip with its code (a link navi's own chip).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// A chip (by key) with its code (a link navi's own chip).
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CodedChip {
-    pub chip: ChipId,
+    pub chip: String,
     pub code: ChipCode,
 }

@@ -160,6 +160,91 @@ impl ExtraChipFlags {
 
 serde_flags!(ExtraChipFlags, u8);
 
+/// What the ruleset asks of particular chips (docs/design/
+/// content-model-v2.md §7.5): the cases the original tells by a chip's
+/// place in its chip table. In a content file, a list of names.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ChipTraits(pub u8);
+
+impl ChipTraits {
+    /// The Beast rush doesn't chain it as the next chip (`sub_800FC30`:
+    /// the variable swords).
+    pub const NO_CHAIN: u8 = 0x01;
+    /// It hits harder while its user's barrier holds (`sub_800F1DC`: the
+    /// AuraHeds and StreamHd).
+    pub const AURA_BONUS: u8 = 0x02;
+    /// The other side can't cut in on the dimming it starts (`sub_800BF16`
+    /// with the chip's cut-in rule: the chips past the Program Advances).
+    pub const NO_CUT_IN: u8 = 0x04;
+    /// SlashCross charges it though its family isn't Sword (`sub_8013236`:
+    /// the elemental swords).
+    pub const ELEMENT_SWORD: u8 = 0x08;
+    /// AntiNavi turns it back though it has no `navi` flag (the navi
+    /// chips' block of the chip table: Django's chips).
+    pub const NAVI_SLOT: u8 = 0x10;
+    /// Its navi heals: the other side's armed AntiRecv springs instead of
+    /// it coming (`sub_80E192C`: Roll's chips).
+    pub const HEALS: u8 = 0x20;
+    pub(crate) const NAMES: &[(u32, &str)] = &[
+        (0x01, "no_chain"),
+        (0x02, "aura_bonus"),
+        (0x04, "no_cut_in"),
+        (0x08, "element_sword"),
+        (0x10, "navi_slot"),
+        (0x20, "heals"),
+    ];
+
+    pub fn has(self, bit: u8) -> bool {
+        self.0 & bit != 0
+    }
+}
+
+serde_flags!(ChipTraits, u8);
+
+/// A trap chip: what the defensive-chip record that holds it catches (the
+/// ruleset's side of the trap chips, docs/engine/dimming-chips.md).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Trap {
+    /// AntiDmg: a hit of 10 or more (`sub_801056A`).
+    AntiDamage,
+    /// AntiSwrd: a sword hit.
+    AntiSword,
+    /// BodyGrd: as AntiDmg, with its own counter.
+    BodyGuard,
+    /// AntiNavi: the other side's navi chip turns back.
+    AntiNavi,
+    /// AntiRecv: the other side's heal.
+    AntiRecovery,
+}
+
+/// How a chip's damage is worked out when it isn't a fixed number
+/// (`off_80109DC`, by the original's formula number). In a content file,
+/// `damage = { formula = "hp_lost" }`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "formula", rename_all = "snake_case", deny_unknown_fields)]
+pub enum DamageFormula {
+    /// The opponent's HP, at most 500 (`sub_8010A90`; formula 0).
+    OpponentHp,
+    /// An SP navi chip's: by how long its user took to delete that SP navi
+    /// (`sub_8010AE4`; formulas 1 to 18). `slot`: the SP navi, one of the
+    /// rules' `sp_slots`; `by_time`: the damage by deletion-time step
+    /// (`Rules::sp_deletion_times`).
+    SpNavi { slot: String, by_time: Vec<u16> },
+    /// By how full the custom gauge is (`sub_8010B78`; formula 19).
+    Gauge,
+    /// The HP its user has lost, at most 500 (`sub_8010BD0`; formula 20).
+    HpLost,
+    /// The last two digits of its user's HP (`sub_8010BF0`; formula 21).
+    HpLastDigits,
+    /// Half the opponent's max HP, at most 999 (`sub_8010C06`; formula 22).
+    HalfOpponentMaxHp,
+    /// A link navi's chip's: `base`, plus `per_level` for each level of
+    /// its user's buster attack up to 5 (`sub_8010C50`, a row of
+    /// `byte_80212D4`; formulas 23 to 44).
+    NaviLevel { base: u8, per_level: u8 },
+}
+
 /// One battle chip (docs/engine/chips.md §1.2), with the data that only
 /// its action uses.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -204,8 +289,21 @@ pub struct ChipData {
     pub extra_flags: ExtraChipFlags,
     /// Beast Out lock-on panel search (`Rules::lockon`).
     pub lockon_mode: u8,
-    /// Base damage; 1000 and up select damage formula `damage - 1000`.
+    /// Base damage (0 for a chip whose damage is a `formula`).
     pub damage: u16,
+    /// How the damage is worked out, for a chip whose damage isn't fixed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub formula: Option<DamageFormula>,
+    /// What the ruleset asks of this chip in particular.
+    #[serde(default)]
+    pub traits: ChipTraits,
+    /// A trap chip: what it catches as the side's defensive chip.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trap: Option<Trap>,
+    /// A dark chip's cost: what using it adds to its user's HP bug, which
+    /// stops at 7 (`sub_800B79A`).
+    #[serde(default)]
+    pub hp_bug: u8,
     /// Library number, index within the library, and alphabetical sort
     /// key (menus only).
     pub library_number: u16,
@@ -213,21 +311,15 @@ pub struct ChipData {
     pub sort_key: u16,
     /// Uses per battle through the Battle Chip Gate's slot-in.
     pub slot_in_limit: u8,
-    /// A dark chip's substitute when its user has no bug frags (an index
-    /// into the dark-chip substitute list).
+    /// A dark chip's substitute: the chip (by key) its user gets instead
+    /// with no bug frag left (`sub_8010D58`). A chip with one costs a bug
+    /// frag.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub dark_substitute: Option<u8>,
-    /// An SP navi chip's damage by deletion-time step (damage formulas
-    /// 1..=18; `Rules::sp_deletion_times`).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sp_damage: Option<Vec<u16>>,
-    /// A link navi's chip's damage (damage formulas 24..=44).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub navi_damage: Option<NaviChipDamage>,
+    pub dark_substitute: Option<String>,
     /// What the chip does to the chip picked before it, as a modifier.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub modifier: Option<ChipModifier>,
-    /// The Program Advances that make this chip.
+    /// The Program Advances that make this chip, their ingredients by key.
     #[serde(default, rename = "program_advance", skip_serializing_if = "Vec::is_empty")]
     pub program_advances: Vec<ProgramAdvanceRecipe>,
     /// GunDelSol's data (action 0x37).
@@ -313,16 +405,6 @@ pub struct SwordSlash {
     pub bug_arg: u8,
     /// The effect (effect object #0) it shows on the panel ahead.
     pub effect: u8,
-}
-
-/// A link navi's chip's damage (`sub_8010C50`, a row of `byte_80212D4`):
-/// `base`, plus `per_level` for each level of its user's buster attack
-/// up to 5.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct NaviChipDamage {
-    pub base: u8,
-    pub per_level: u8,
 }
 
 /// GunDelSol's per-chip data.

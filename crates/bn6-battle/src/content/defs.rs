@@ -34,7 +34,7 @@ use super::{
     ChipData, ChipId, Content, DIMMING_CHIP_ACTION,
     FormData, INSTANT_CHIP_ACTION, NAVI_CHIP_ACTION, NaviData,
 };
-use super::roles::{ActionRole, HookRole, KindRole, RoleAction, RoleKind, Roles};
+use super::roles::{ActionRole, ChipRole, HookRole, KindRole, RoleAction, RoleKind, Roles};
 use crate::setup::{Form, Navi, StageSettings};
 use crate::kinds::{ENGINE_KINDS, EngineKind};
 
@@ -147,6 +147,27 @@ pub struct ChipDef {
     /// How it is used: a definition's own use, or a pack record's, which
     /// registration by number resolves from its action and subtype.
     pub usage: ChipUsage,
+    /// What its record names, by handle.
+    pub links: ChipLinks,
+}
+
+/// What a chip's record names by key or name, resolved: the ruleset reads
+/// these.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct ChipLinks {
+    /// A dark chip's substitute (`ChipData::dark_substitute`).
+    pub dark_substitute: Option<ChipHandle>,
+    /// An SP navi chip's slot among the setup's SP deletion times
+    /// (`DamageFormula::SpNavi::slot`, by the rules' `sp_slots`).
+    pub sp_slot: Option<u8>,
+    /// The navi whose own chip this is (a link navi's chip: offered on the
+    /// custom screen once a round, never charged, dropped from the hand
+    /// when a round ends).
+    pub own_chip_of: Option<NaviHandle>,
+    /// Its place among the Program Advances' results (those chips with a
+    /// recipe, in handle order): the bit a formed one takes in a player's
+    /// record of the round.
+    pub advance: Option<u8>,
 }
 
 /// A navi: the pack's record (keyed `v1/navi-01`).
@@ -154,6 +175,8 @@ pub struct ChipDef {
 pub struct NaviDef {
     pub key: String,
     pub record: NaviData,
+    /// A link navi's own chip (`NaviData::own_chip`), by handle.
+    pub own_chip: Option<(ChipHandle, super::ChipCode)>,
 }
 
 /// One of MegaMan's forms: the pack's record (keyed `v1/form-0c`).
@@ -239,6 +262,12 @@ pub struct Defs {
     pub collisions: Vec<CollisionTypeDef>,
     /// What the ruleset needs from content by role (`define.roles`).
     pub roles: Roles,
+    /// The Program Advances, in the order they are tried (each chip holds
+    /// the recipes that make it; `sub_8029520`).
+    pub program_advances: Vec<super::ProgramAdvance>,
+    /// The Cross special's chips by row (`Rules::cross_special`), each with
+    /// the chip whose damage it strikes with, if another's.
+    pub cross_special: Vec<Vec<(ChipHandle, Option<ChipHandle>)>>,
     /// The engine's number for each effect, spark and collision type
     /// content defines, by handle; and those past the numbered tables, by
     /// number from the table's length (the same look or type defined twice
@@ -538,11 +567,10 @@ fn record_action<'d>(definitions: &'d Definitions, module: &str, whose: &str) ->
 }
 
 /// A chip definition's record (docs/design/content-model-v2.md §3.1): the
-/// fields the engine reads, with the lock-on mode and the Program Advance
-/// recipes' chips by the numbers `r` gives them. Damage formulas and dark
-/// chips' substitutes by definition come with the v2 API (a chip still read
-/// by number gives them in its legacy marker); a definition that gives one
-/// is refused.
+/// fields the engine reads, with the lock-on mode by the number `r` gives
+/// it, and the chips it names (its Program Advance recipes' ingredients, a
+/// dark chip's substitute) by key: the registry resolves those to handles
+/// once every chip has one (`ChipDef::links`).
 ///
 /// The transitional `legacy = { subtype, params }` marker gives the record
 /// the original's subtype and parameter bytes, for what still reads them
@@ -553,9 +581,6 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
     use serde_json::{Map, Value as Json};
     let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
     let spec = &d.spec;
-    if !spec.field("dark_substitute").is_nil() {
-        return Err(what("`dark_substitute` in a definition comes with the v2 API".into()));
-    }
     let json = |field: &str| -> Result<Json, ContentError> { r.json(spec.field(field), &format!("chip {}.{field}", d.key)).map_err(what) };
     let mut o = Map::new();
     o.insert("name".into(), Json::String(spec.field("name").str().unwrap_or(&d.key).to_string()));
@@ -586,8 +611,24 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
         let v = json(field)?;
         o.insert(field.into(), if v.is_null() { default } else { v });
     }
-    if o["damage"].as_i64().is_some_and(|v| v >= 1000) {
-        return Err(what("`damage` is a number below 1000 (formulas come with the v2 API)".into()));
+    // `damage`: a number, or a formula (`{ formula = "hp_lost" }`).
+    match o["damage"].take() {
+        formula @ Json::Object(_) => {
+            o.insert("formula".into(), formula);
+            o.insert("damage".into(), 0.into());
+        }
+        Json::Number(n) if n.as_i64().is_some_and(|v| (0..1000).contains(&v)) => {
+            o.insert("damage".into(), Json::Number(n));
+        }
+        other => return Err(what(format!("`damage` is {other}: a number below 1000, or a formula"))),
+    }
+    // What the ruleset asks of this chip: its traits, the trap it is, a
+    // dark chip's cost and its substitute (a chip, by key here).
+    for field in ["traits", "trap", "hp_bug", "dark_substitute"] {
+        let v = json(field)?;
+        if !v.is_null() {
+            o.insert(field.into(), v);
+        }
     }
     let library = spec.field("library");
     for (field, from) in [("library_number", "number"), ("library_index", "index"), ("sort_key", "sort")] {
@@ -614,7 +655,13 @@ pub(crate) fn chip_record(d: &Definition, r: &super::legacy::Resolver) -> Result
 /// `define.roles { actions = { ... }, kinds = { ... } }` (content::roles):
 /// each role a definition, or a v1 registration through its `legacy`
 /// marker (an action by number, a kind by key).
-fn read_roles(d: &Definition, actions: &[ActionDef], kinds: &[KindDef], functions: &mut Functions) -> Result<Roles, ContentError> {
+fn read_roles(
+    d: &Definition,
+    actions: &[ActionDef],
+    kinds: &[KindDef],
+    chips: &[ChipDef],
+    functions: &mut Functions,
+) -> Result<Roles, ContentError> {
     let what = |e: String| ContentError::new(format!("{}.luau: roles: {e}", d.module));
     let Data::Map(groups) = &d.spec else { return Err(what("a table of role groups".into())) };
     let legacy = |name: &str, v: &Data, field: &str| -> Result<Option<Data>, ContentError> {
@@ -686,7 +733,30 @@ fn read_roles(d: &Definition, actions: &[ActionDef], kinds: &[KindDef], function
                     }
                     roles.hooks.insert(role, functions.id(FnSource::slot(Registry::Roles, &d.key, &format!("hooks.{name}"))));
                 }
-                _ => return Err(what(format!("the ruleset has no role group `{group}` (it has actions, kinds, hooks)"))),
+                "chips" => {
+                    let names: Vec<&str> = ChipRole::ALL.iter().map(|r| r.name()).collect();
+                    let role = ChipRole::named(&name).ok_or_else(|| {
+                        what(format!("the ruleset has no role chips.{name} (it has {})", names.join(", ")))
+                    })?;
+                    let full = format!("chips.{name}");
+                    // A chip definition, or a pack record by its key (the
+                    // engine's test content, whose records no module holds).
+                    let key = if let Data::Ref(Registry::Chip, key) = v {
+                        key.clone()
+                    } else if let Some(k) = legacy(&full, v, "chip")? {
+                        let Data::Str(k) = k else {
+                            return Err(what(format!("{full}'s legacy chip is {k:?}, not a chip's key")));
+                        };
+                        k
+                    } else {
+                        return Err(what(format!("{full} is not a chip")));
+                    };
+                    let i = chips
+                        .binary_search_by(|c| c.key.as_str().cmp(&key))
+                        .map_err(|_| what(format!("{full} names the chip {key:?}, which the content doesn't have")))?;
+                    roles.chips.insert(role, ChipHandle(i as u16));
+                }
+                _ => return Err(what(format!("the ruleset has no role group `{group}` (it has actions, kinds, hooks, chips)"))),
             }
         }
     }
@@ -1092,7 +1162,7 @@ impl Defs {
                     None => ChipUsage::Unported(Unported::Action(n)),
                 },
             };
-            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage }, whose);
+            chips.add(key.clone(), ChipDef { key, record: c.clone(), usage, links: ChipLinks::default() }, whose);
         }
         for d in definitions.of(Registry::Chip) {
             if legacy.chips.contains_key(&d.key) {
@@ -1105,9 +1175,82 @@ impl Defs {
                 )));
             };
             let record = chip_record(d, &resolver)?;
-            chips.add(d.key.clone(), ChipDef { key: d.key.clone(), record, usage }, format!("defined in {}.luau", d.module));
+            chips.add(
+                d.key.clone(),
+                ChipDef { key: d.key.clone(), record, usage, links: ChipLinks::default() },
+                format!("defined in {}.luau", d.module),
+            );
         }
-        let chips: Vec<ChipDef> = chips.sorted()?.into_iter().map(|(_, c)| c).collect();
+        let mut chips: Vec<ChipDef> = chips.sorted()?.into_iter().map(|(_, c)| c).collect();
+
+        // What the chips' records name, by handle: the Program Advances
+        // (their recipes' ingredients), a dark chip's substitute, an SP
+        // navi chip's slot.
+        let chip_handle = |key: &str, whose: &str| -> Result<ChipHandle, ContentError> {
+            chips
+                .binary_search_by(|c| c.key.as_str().cmp(key))
+                .map(|i| ChipHandle(i as u16))
+                .map_err(|_| ContentError::new(format!("{whose} names the chip {key:?}, which the content doesn't have")))
+        };
+        let mut advances: Vec<(u8, super::ProgramAdvance)> = Vec::new();
+        let mut links = Vec::with_capacity(chips.len());
+        let mut results = 0u8;
+        for (i, c) in chips.iter().enumerate() {
+            let whose = format!("chip {}", c.key);
+            let mut l = ChipLinks::default();
+            if let Some(sub) = &c.record.dark_substitute {
+                l.dark_substitute = Some(chip_handle(sub, &format!("{whose}'s dark_substitute"))?);
+            }
+            if let Some(super::DamageFormula::SpNavi { slot, .. }) = &c.record.formula {
+                let n = content.rules.sp_slots.iter().position(|s| s == slot).ok_or_else(|| {
+                    ContentError::new(format!("{whose}'s damage is by the SP navi {slot:?}, which the rules' sp_slots don't list"))
+                })?;
+                l.sp_slot = Some(n as u8);
+            }
+            for r in &c.record.program_advances {
+                let at = format!("{whose}'s recipe");
+                let recipe = match &r.recipe {
+                    super::PaRecipe::CodeRun { chip, count } => super::Recipe::CodeRun { chip: chip_handle(chip, &at)?, count: *count },
+                    super::PaRecipe::Sequence(keys) => {
+                        super::Recipe::Sequence(keys.iter().map(|k| chip_handle(k, &at)).collect::<Result<_, _>>()?)
+                    }
+                };
+                advances.push((r.order, super::ProgramAdvance { result: ChipHandle(i as u16), recipe }));
+            }
+            if !c.record.program_advances.is_empty() {
+                // (A player's record of the round's formed ones is 32 bits.)
+                if results >= 32 {
+                    return Err(ContentError::new(format!("{whose}: more than 32 chips are Program Advances")));
+                }
+                l.advance = Some(results);
+                results += 1;
+            }
+            links.push(l);
+        }
+        for (c, l) in chips.iter_mut().zip(links) {
+            c.links = l;
+        }
+        advances.sort_by_key(|(order, _)| *order);
+        let program_advances: Vec<super::ProgramAdvance> = advances.into_iter().map(|(_, pa)| pa).collect();
+        let chip_handle = |key: &str, whose: &str| -> Result<ChipHandle, ContentError> {
+            chips
+                .binary_search_by(|c| c.key.as_str().cmp(key))
+                .map(|i| ChipHandle(i as u16))
+                .map_err(|_| ContentError::new(format!("{whose} names the chip {key:?}, which the content doesn't have")))
+        };
+        let mut cross_special = Vec::with_capacity(content.rules.cross_special.len());
+        for row in &content.rules.cross_special {
+            let at = "the Cross special's chips (rules cross-special)";
+            let mut out = Vec::with_capacity(row.len());
+            for c in row {
+                let damage_of = match &c.damage_of {
+                    Some(k) => Some(chip_handle(k, at)?),
+                    None => None,
+                };
+                out.push((chip_handle(&c.chip, at)?, damage_of));
+            }
+            cross_special.push(out);
+        }
 
         // The pack's navis, forms and stages.
         let key_of = |defined: &BTreeMap<String, u8>, n: u8, v1: String| -> String {
@@ -1118,9 +1261,19 @@ impl Defs {
         let mut navis = Entries::new(Registry::Navi);
         for n in &content.navis {
             let key = key_of(&navi_keys, n.id, format!("v1/navi-{:02x}", n.id));
-            navis.add(key.clone(), NaviDef { key, record: n.clone() }, "the pack's navi".into());
+            let own_chip = match &n.own_chip {
+                Some(c) => Some((chip_handle(&c.chip, &format!("navi {key}'s own chip"))?, c.code)),
+                None => None,
+            };
+            navis.add(key.clone(), NaviDef { key, record: n.clone(), own_chip }, "the pack's navi".into());
         }
         let navis: Vec<NaviDef> = navis.sorted()?.into_iter().map(|(_, n)| n).collect();
+        // (Each navi's own chip knows its navi.)
+        for (i, n) in navis.iter().enumerate() {
+            if let Some((chip, _)) = n.own_chip {
+                chips[chip.index()].links.own_chip_of = Some(NaviHandle(i as u16));
+            }
+        }
         let mut forms = Entries::new(Registry::Form);
         for f in &content.forms {
             let key = key_of(&form_keys, f.id, format!("v1/form-{:02x}", f.id));
@@ -1263,7 +1416,7 @@ impl Defs {
         // The roles.
         let mut roles = Roles::default();
         if let [d] = definitions.of(Registry::Roles) {
-            roles = read_roles(d, &actions, &kinds, &mut functions)?;
+            roles = read_roles(d, &actions, &kinds, &chips, &mut functions)?;
         }
 
         let records: Vec<RecordDef> = definitions
@@ -1326,6 +1479,8 @@ impl Defs {
             regions,
             collisions,
             roles,
+            program_advances,
+            cross_special,
             effect_numbers,
             spark_numbers,
             collision_numbers,

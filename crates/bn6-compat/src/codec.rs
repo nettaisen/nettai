@@ -51,7 +51,9 @@ impl<'a> Ids<'a> {
 
     /// A chip's id.
     pub fn chip_id(&self, h: ChipHandle) -> ChipId {
-        if let Some(id) = self.content.chip_number(h) {
+        // (A numbered record, which only the engine's test content has, is
+        // its own number.)
+        if let Some(id) = self.content.defs.chip(h).record.id {
             return id;
         }
         let key = &self.content.defs.chip(h).key;
@@ -544,7 +546,7 @@ mod tests {
         let ticker = c.defs.chip_by_key("test/ticker1").unwrap();
         assert_eq!(ids.chip(0x36), ticker);
         assert_eq!(ids.chip_id(ticker), 0x36);
-        assert_eq!(ids.chip(0x37), c.chip_numbered(0x37).unwrap());
+        assert_eq!(ids.chip(0x37), c.defs.chip_numbered(0x37).unwrap());
         assert_eq!(ids.chip_id(ids.chip(0x37)), 0x37);
         let shot = c.defs.weapon_by_key("test/tick-shot").unwrap();
         assert_eq!((ids.weapon(0x2E), ids.weapon(0x2F)), (Some(shot), Some(shot)));

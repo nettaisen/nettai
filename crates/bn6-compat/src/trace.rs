@@ -718,7 +718,7 @@ pub fn check_custom_screens(round: &Round, content: &Content, compat: &Compat) -
                     let block = codec::chip_hand(&unhex(&f.chip_blocks[p]), &ids);
                     let expected =
                         sent.result.hand.clone().unwrap_or_else(|| codec::chip_hand(&unhex(&before.chip_blocks[p]), &ids));
-                    let formula = |h: &ChipHand, k: usize| h.ids[k].is_some_and(|id| content.chip(id).damage >= 1000);
+                    let formula = |h: &ChipHand, k: usize| h.ids[k].is_some_and(|id| content.chip(id).formula.is_some());
                     let mut ours = expected.clone();
                     for k in 0..6 {
                         if formula(&ours, k) {

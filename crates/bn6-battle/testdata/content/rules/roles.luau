@@ -42,6 +42,11 @@ return define.roles {
         falling_rock = falling_rock.kind,
         support = supports.kind,
     },
+    chips = {
+        -- What a zeroed chip field reads: the test content's chip 0 (a
+        -- Rust-built record, which no module holds: by its key).
+        zeroed = { legacy = { chip = "v1/chip-000" } },
+    },
     hooks = {
         -- The NaviCust FirstBarrier, as BN6's roles fill it: the Barrier
         -- chip's barrier and its visual.

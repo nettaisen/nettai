@@ -39,7 +39,7 @@ pub(crate) fn spawn_controller(b: &mut Battle, user: ObjectRef, a: &AttackVars) 
     let damage = a.damage as u32 | (a.hit_param as u32) << 16;
     // The chip's controller. (off_802CCB4's subtypes 34, 35, 39 and 40
     // are null: the game jumps to address 0.)
-    let chip = a.chip.or_else(|| b.content.chip_numbered(0)).expect("the pack's chip 0 (a zeroed chip field reads it)");
+    let chip = b.content.chip_or_zeroed(a.chip);
     let hook = match b.content.defs.chip(chip).usage {
         ChipUsage::Dimming(f) => f,
         ChipUsage::Unported(crate::content::Unported::Dimming(subtype)) => {

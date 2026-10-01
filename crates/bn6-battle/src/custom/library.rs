@@ -4,7 +4,7 @@
 //! libraries.
 
 use super::folder::FolderChip;
-use crate::content::{BannerId, ChipData, ChipId, Content, CustomScreenLayout, ProgramAdvance};
+use crate::content::{BannerId, ChipData, ChipRole, Content, CustomScreenLayout, ProgramAdvance};
 use crate::setup::{Form, Navi};
 use bn6_content_api::{ChipHandle, FormHandle, NaviHandle};
 
@@ -12,18 +12,23 @@ use bn6_content_api::{ChipHandle, FormHandle, NaviHandle};
 pub trait Library {
     /// A chip's record.
     fn chip(&self, id: ChipHandle) -> &ChipData;
-    /// A chip's number in the pack's table (the screen's numeric logic
-    /// asks it until phase C); none for a chip content defines.
-    fn chip_number(&self, id: ChipHandle) -> Option<ChipId>;
-    /// The pack's chip with this number.
-    fn chip_numbered(&self, id: ChipId) -> Option<ChipHandle>;
+    /// The Beast Out chip the screen offers (`roles.chips.beast_out`), if
+    /// the content has one, and the chip an illegal pick counts as
+    /// (`roles.chips.invalid`).
+    fn beast_out_chip(&self) -> Option<ChipHandle>;
+    fn invalid_chip(&self) -> ChipHandle;
+    /// A Program Advance's place among them (the bit a formed one takes in
+    /// the round's record), by the chip it makes.
+    fn advance_index(&self, result: ChipHandle) -> u8;
+    /// The navi whose own chip `id` is (a link navi's chip), if any.
+    fn own_chip_of(&self, id: ChipHandle) -> Option<NaviHandle>;
     /// A navi's and a form's numbers, and the pack's form with a number
     /// (the screen's numeric logic asks them until phase C).
     fn navi_number(&self, navi: NaviHandle) -> Navi;
     fn form_number(&self, form: FormHandle) -> Form;
     fn form_numbered(&self, form: Form) -> FormHandle;
     /// The Program Advances, in the order they are tried.
-    fn program_advances(&self) -> Vec<ProgramAdvance>;
+    fn program_advances(&self) -> &[ProgramAdvance];
     /// A link navi's own chip, offered once a round (none for MegaMan).
     fn navi_chip(&self, navi: NaviHandle) -> Option<FolderChip>;
     /// The navi's no-running message: the characters in each of its lines
@@ -40,12 +45,20 @@ impl Library for Content {
         Content::chip(self, id)
     }
 
-    fn chip_number(&self, id: ChipHandle) -> Option<ChipId> {
-        Content::chip_number(self, id)
+    fn beast_out_chip(&self) -> Option<ChipHandle> {
+        self.defs.roles.try_chip(ChipRole::BeastOut)
     }
 
-    fn chip_numbered(&self, id: ChipId) -> Option<ChipHandle> {
-        Content::chip_numbered(self, id)
+    fn invalid_chip(&self) -> ChipHandle {
+        self.defs.roles.chip(ChipRole::Invalid)
+    }
+
+    fn advance_index(&self, result: ChipHandle) -> u8 {
+        self.chip_links(result).advance.expect("a Program Advance's result")
+    }
+
+    fn own_chip_of(&self, id: ChipHandle) -> Option<NaviHandle> {
+        self.chip_links(id).own_chip_of
     }
 
     fn navi_number(&self, navi: NaviHandle) -> Navi {
@@ -60,14 +73,13 @@ impl Library for Content {
         Content::form_numbered(self, form)
     }
 
-    fn program_advances(&self) -> Vec<ProgramAdvance> {
+    fn program_advances(&self) -> &[ProgramAdvance] {
         Content::program_advances(self)
     }
 
     fn navi_chip(&self, navi: NaviHandle) -> Option<FolderChip> {
-        let c = Content::navi_chip(self, navi)?;
-        let id = self.chip_numbered(c.chip).unwrap_or_else(|| panic!("a navi's own chip is chip {:#x}, which isn't in the content", c.chip));
-        Some(FolderChip { id, code: c.code })
+        let (id, code) = Content::navi_chip(self, navi)?;
+        Some(FolderChip { id, code })
     }
 
     fn run_message(&self, navi: NaviHandle) -> [u8; 3] {
@@ -88,7 +100,7 @@ impl Library for Content {
 #[cfg(test)]
 pub(crate) mod testing {
     use super::*;
-    use crate::content::{ChipClass, ChipCode, ChipFamily, ChipFlags, Element, ExtraChipFlags};
+    use crate::content::{ChipClass, ChipCode, ChipFamily, ChipFlags, ChipId, Element, ExtraChipFlags};
 
     /// A chip record with only what the custom screen reads.
     pub fn chip(class: ChipClass, codes: &[ChipCode], flags: u8, damage: u16) -> ChipData {
@@ -116,9 +128,11 @@ pub(crate) mod testing {
             library_index: 0,
             sort_key: 0,
             slot_in_limit: 0,
+            formula: None,
+            traits: Default::default(),
+            trap: None,
+            hp_bug: 0,
             dark_substitute: None,
-            sp_damage: None,
-            navi_damage: None,
             modifier: None,
             program_advances: Vec::new(),
             gun_del_sol: None,
@@ -131,7 +145,10 @@ pub(crate) mod testing {
     /// A library of made-up chips: `chips` by number (others are plain
     /// standard chips in every code), and these Program Advances, on the
     /// test content's screen layout. A chip's, navi's or form's handle is
-    /// its number.
+    /// its number, with BN6's numbering where the screen names a chip by
+    /// role: the Beast Out chip 0x13F, the invalid chip 0x185, the Program
+    /// Advances from 0x140 and the link navis' own chips from 0x190 (navi
+    /// 1's).
     pub struct TestLibrary {
         pub chips: Vec<(ChipId, ChipData)>,
         pub program_advances: Vec<ProgramAdvance>,
@@ -145,6 +162,12 @@ pub(crate) mod testing {
         ChipCode(15), ChipCode(16), ChipCode(17), ChipCode(18), ChipCode(19), ChipCode(20), ChipCode(21),
         ChipCode(22), ChipCode(23), ChipCode(24), ChipCode(25), ChipCode(26),
     ];
+
+    /// The chips the screen names by role, as the test library numbers them.
+    pub const BEAST_OUT: ChipId = 0x13F;
+    pub const INVALID: ChipId = 0x185;
+    pub const FIRST_ADVANCE: ChipId = 0x140;
+    pub const FIRST_OWN_CHIP: ChipId = 0x190;
 
     impl TestLibrary {
         pub fn new(chips: Vec<(ChipId, ChipData)>, program_advances: Vec<ProgramAdvance>) -> TestLibrary {
@@ -161,11 +184,17 @@ pub(crate) mod testing {
         fn chip(&self, id: ChipHandle) -> &ChipData {
             self.chips.iter().find(|(i, _)| *i == id.0).map(|(_, c)| c).unwrap_or(&self.plain)
         }
-        fn chip_number(&self, id: ChipHandle) -> Option<ChipId> {
-            Some(id.0)
+        fn beast_out_chip(&self) -> Option<ChipHandle> {
+            Some(ChipHandle(BEAST_OUT))
         }
-        fn chip_numbered(&self, id: ChipId) -> Option<ChipHandle> {
-            Some(ChipHandle(id))
+        fn invalid_chip(&self) -> ChipHandle {
+            ChipHandle(INVALID)
+        }
+        fn advance_index(&self, result: ChipHandle) -> u8 {
+            (result.0 - FIRST_ADVANCE) as u8
+        }
+        fn own_chip_of(&self, id: ChipHandle) -> Option<NaviHandle> {
+            id.0.checked_sub(FIRST_OWN_CHIP - 1).filter(|&n| n >= 1).map(NaviHandle)
         }
         fn navi_number(&self, navi: NaviHandle) -> Navi {
             Navi(navi.0 as u8)
@@ -176,8 +205,8 @@ pub(crate) mod testing {
         fn form_numbered(&self, form: Form) -> FormHandle {
             FormHandle(form.0 as u16)
         }
-        fn program_advances(&self) -> Vec<ProgramAdvance> {
-            self.program_advances.clone()
+        fn program_advances(&self) -> &[ProgramAdvance] {
+            &self.program_advances
         }
         fn navi_chip(&self, _navi: NaviHandle) -> Option<FolderChip> {
             None
