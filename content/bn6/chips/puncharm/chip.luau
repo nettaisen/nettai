@@ -18,6 +18,7 @@ local PALETTE = 0
 return define.chip {
     id = "puncharm",
     name = "PunchArm",
+    description = "\n\n",
     codes = { "A", "B", "C", "*" },
     element = "null", family = "null", class = "standard",
     rarity = 4, mb = 10, damage = 0, hit_param = 20, lockout = 20,
