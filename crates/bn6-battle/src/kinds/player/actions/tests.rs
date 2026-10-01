@@ -1886,7 +1886,7 @@ fn an_action_starts_the_next_by_definition() {
 fn the_ruleset_starts_a_role_action() {
     // A caught hit starts AntiDmg's counter: the role content fills.
     let (mut b, p0, p1) = fight_on_test_pack();
-    let role = b.content.defs.roles.actions.anti_damage_counter.expect("the test pack fills it");
+    let role = b.content.defs.roles.try_action(crate::content::ActionRole::AntiDamageCounter).expect("the test pack fills it");
     assert_eq!(b.content.defs.action(role).key, "test/anti-damage-counter");
     ai_mut(&mut b, p0).requests |= request::ANTI_DAMAGE_TRIGGERED;
     super::reactive::counter(&mut b, p0);
@@ -1903,7 +1903,7 @@ fn a_forced_charged_shot_starts_its_role() {
     // The request that starts the charged shot from idle without its
     // weapon's setup starts the role's action.
     let (mut b, p0, p1) = fight_on_test_pack();
-    let role = b.content.defs.roles.actions.forced_charged_shot.expect("the test pack fills it");
+    let role = b.content.defs.roles.try_action(crate::content::ActionRole::ForcedChargedShot).expect("the test pack fills it");
     ai_mut(&mut b, p0).requests |= request::FORCED_CHARGED_SHOT;
     tick(&mut b, p0, p1, 0);
     assert_eq!(super::super::running_content_action(&b, p0), Some(role));

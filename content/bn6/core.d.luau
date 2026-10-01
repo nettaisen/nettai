@@ -1346,6 +1346,9 @@ export type KindSpec = {
     pool: Pool,
     state: StateSchema?,
     update: (me: Object) -> (),
+    -- What places it when a stage's actor list names it (the role
+    -- `kinds.rock`, say).
+    place: ((spec: ActorListEntrySpec) -> ())?,
 }
 export type Kind = KindSpec
 
@@ -1438,12 +1441,30 @@ export type CollisionTypeSpec = { id: string, side0: number, side1: number, row_
 export type CollisionType = CollisionTypeSpec
 
 -- What the ruleset needs from content by role (rules/roles.luau, once).
+-- A role a v1 registration fills, until its family converts it
+-- (transitional, counted by the ratchet): an action by its number, a kind
+-- by its key.
+export type LegacyAction = { legacy: { action: number } }
+export type LegacyKind = { legacy: { kind: string } }
 export type RolesSpec = {
     actions: {
-        anti_damage_counter: Action?,
-        anti_sword_counter: Action?,
-        body_guard_counter: Action?,
-        forced_charged_shot: Action?,
+        anti_damage_counter: (Action | LegacyAction)?,
+        anti_sword_counter: (Action | LegacyAction)?,
+        body_guard_counter: (Action | LegacyAction)?,
+        forced_charged_shot: (Action | LegacyAction)?,
+        stun_strike: (Action | LegacyAction)?,
+        cross_protect: (Action | LegacyAction)?,
+        turn: (Action | LegacyAction)?,
+        cross_death: (Action | LegacyAction)?,
+        volley: (Action | LegacyAction)?,
+        charged_sword: (Action | LegacyAction)?,
+        beast_claw: (Action | LegacyAction)?,
+    }?,
+    kinds: {
+        rock: (Kind | LegacyKind)?,
+        absorbed_obstacle: (Kind | LegacyKind)?,
+        falling_rock: (Kind | LegacyKind)?,
+        support: (Kind | LegacyKind)?,
     }?,
 }
 

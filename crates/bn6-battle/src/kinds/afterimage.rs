@@ -18,8 +18,6 @@ use crate::kinds::player::form;
 use crate::object::{ObjectRef, Vec3, flags, state};
 use crate::setup::Form;
 
-pub const INDEX: u8 = 0x28;
-
 /// The colour shader `sub_80EAFC2` gives its afterimages.
 const COLOR_SHADER: u16 = 0x83E0;
 

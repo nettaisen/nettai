@@ -11,8 +11,6 @@ use crate::kinds::{common, heal, navi_warp};
 use crate::object::{ObjectRef, PanelPos, Vec3, state};
 use crate::dimming::{self, DimmingChip};
 
-pub const INDEX: u8 = 0x10;
-
 /// What the controller needs to bring its navi.
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
