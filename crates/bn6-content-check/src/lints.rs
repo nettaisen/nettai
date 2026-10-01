@@ -187,11 +187,6 @@ const ALWAYS: &[(&str, &str, &str)] = &[
 const BY_ARGUMENT: &[(&str, &[usize], &str, &str)] = &[
     ("battle.play_sound(", &[0], "battle.play_sound(number)", "asset.sound"),
     ("battle.play_sound_for(", &[1], "battle.play_sound_for(side, number)", "asset.sound"),
-    ("battle.effect(", &[1], "battle.effect(pos, number)", "define.effect"),
-    ("battle.spark(", &[2], "battle.spark(owner, pos, number)", "define.spark"),
-    ("battle.region_effects(", &[2, 4], "battle.region_effects(number)", "define.region, define.effect"),
-    (":setup_collision(", &[0, 1], "me:setup_collision(number)", "define.collision"),
-    (":reset_collision_types(", &[0, 1], "me:reset_collision_types(number)", "define.collision"),
     (":set_attack(", &[0], "me:set_attack(number)", "an action definition"),
 ];
 

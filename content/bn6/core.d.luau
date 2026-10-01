@@ -232,20 +232,17 @@ end
 
 -- An object's collision registration.
 declare class Collision
-    -- The region shape (a region definition; nil, none) and hit spark (a
-    -- spark definition; nil, none).
+    -- The region its hits cover (a region definition; nil, none) and the
+    -- spark they show (a spark definition; nil, none): the fields, and
+    -- the same as methods.
     function set_region(self, region: Region?): ()
     function set_hit_effect(self, spark: Spark?): ()
-    -- Region shape, as the engine's byte (`set_region` takes a
-    -- definition). Deprecated: setting it to a number.
-    region: number
+    region: Region?
     -- The panel the region is anchored on (`update_collision_panels`
     -- copies the object's).
     panel_x: number
     panel_y: number
-    -- Hit spark (0xFF = none), as the engine's byte (`set_hit_effect` takes
-    -- a definition). Deprecated: setting it to a number.
-    hit_effect: number
+    hit_effect: Spark?
     -- The primary element its hits carry and the secondary elements (sword
     -- 0x80, cursor 0x40, wind 0x20, break 0x10): setup takes them from the
     -- object's element byte; `sub_8019F8C` sets them again.
@@ -524,9 +521,9 @@ declare class Object
     function create_collision(self): boolean
     -- Set up the registration from the object (side, panel, element,
     -- damage word): what it is and what it hits, as collision types
-    -- (define.collision). Deprecated: collision types by index.
-    function setup_collision(self, self_type: CollisionType | number, target_type: CollisionType | number, hit_mod: number): ()
-    function reset_collision_types(self, self_type: CollisionType | number, target_type: CollisionType | number, hit_mod: number): ()
+    -- (define.collision).
+    function setup_collision(self, self_type: CollisionType, target_type: CollisionType, hit_mod: number): ()
+    function reset_collision_types(self, self_type: CollisionType, target_type: CollisionType, hit_mod: number): ()
     -- The damage word a hit carries: the damage (with its flag bits) in
     -- the low half, the counter byte above (the object's damage and
     -- stamina).
@@ -701,12 +698,13 @@ export type HitboxSpec = {
     panel_y: number,
     element: number,
     z: number?,
-    -- Region shape (a definition; nil, none; deprecated: a number).
-    region: (Region | number)?,
-    hit_effect: Spark | number,
-    -- Collision types (definitions; deprecated: indices).
-    target: CollisionType | number,
-    self_type: CollisionType | number,
+    -- The region it covers and the spark its hits show (definitions; nil,
+    -- none).
+    region: Region?,
+    hit_effect: Spark?,
+    -- Its collision types: what it reaches, what it is.
+    target: CollisionType,
+    self_type: CollisionType,
     -- The damage word: damage (with flag bits) and the counter byte.
     damage: number,
     stamina: number?,
@@ -939,13 +937,13 @@ declare battle: {
     spawn_kind_first: (name: string, pos: Vec3?, params: { number }?) -> Object?,
     spawn_kind_at_end: (name: string, pos: Vec3?, params: { number }?) -> Object?,
     -- The generic one-shot effect (effect object #0) an effect definition
-    -- describes. Deprecated: an effect by number.
-    effect: (pos: Vec3, effect: Effect | number, flip: number?, palette_add: number?, priority: number?) -> Object?,
-    -- `sub_801BD3C`: the one-shot effect `id` on each field panel of hit
-    -- region `region` around (x, y), turned the way side `side` faces, at
-    -- height z (default 0); a whole-field region's (0x80 and up) from the
-    -- bottom right, on the ground.
-    region_effects: (x: number, y: number, region: Region | number, side: number, effect: Effect | number, z: number?) -> (),
+    -- describes.
+    effect: (pos: Vec3, effect: Effect, flip: number?, palette_add: number?, priority: number?) -> Object?,
+    -- `sub_801BD3C`: the one-shot effect `effect` on each field panel of
+    -- hit region `region` around (x, y), turned the way side `side` faces,
+    -- at height z (default 0); a whole-field region's from the bottom
+    -- right, on the ground.
+    region_effects: (x: number, y: number, region: Region, side: number, effect: Effect, z: number?) -> (),
     -- The one-tick hit region (attack object #3).
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- `sub_80E11E0`: a screen palette flash (effect object #0x0A) of a
@@ -953,8 +951,7 @@ declare battle: {
     -- optionally going on while dimmed or paused.
     palette_flash: (variant: number, ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
     -- A hit spark (effect object #4) a spark definition describes.
-    -- Deprecated: a spark by number.
-    spark: (owner: Object, pos: Vec3, spark: Spark | number) -> Object?,
+    spark: (owner: Object, pos: Vec3, spark: Spark) -> Object?,
     -- `sub_80C468C`: a form overlay (actor object #0x57) on `owner`,
     -- following it every tick.
     form_overlay: (owner: Object, spec: FormOverlaySpec) -> Object?,
@@ -1208,18 +1205,6 @@ declare int: {
 -- names, sprites as "CC-II", keyed by the entities' ids. Only the fields
 -- scripts read are typed here; the rest are there too.
 
--- What an attachment looks like and where it sits on its owner.
-export type AttachmentKind = {
-    -- The attachment's number (its first spawn parameter).
-    id: number,
-    sprite: SpriteId,
-    palette: number,
-    -- Pixels raised by (subtracted from y and z).
-    lift: number,
-    -- The owner's sprite attach point it follows (nil: its origin).
-    attach_point: number?,
-}
-
 export type RockKind = {
     id: number,
     anim: number,
@@ -1334,15 +1319,7 @@ export type ShockWave = { id: number, sprite: SpriteId, anim: number, ticks: num
 export type ObjectKindData = { pool: Pool, index: number, script: string }
 
 export type PackData = {
-    -- Hit-region shapes by region number: the panels' offsets `{ dx, dy }`
-    -- from the anchor (dx facing right).
-    regions: { [number]: { { number } } },
-    -- Region shapes by region number (`PanelOffsetListsPointerTable`): the
-    -- panels as {dx, dy}, dx toward the facing side, in the order hits and
-    -- panel searches (`object_getPanelRegion`) take them.
-    regions: { [number]: { { number } } },
     objects: {
-        attachments: { [number]: AttachmentKind },
         rocks: { [number]: RockKind },
         absorbed_sprites: { [number]: SpriteId },
         body_overlays: { [number]: BodyOverlay },
@@ -1362,17 +1339,9 @@ export type PackData = {
         -- 256 steps a turn, 1.0 = 0x100, over a turn and a half, so the
         -- cosine of step a is entry a + 64.
         sine: { [number]: number },
-        -- Whole-field hit regions (`byte_8019C34`): region 0x80 + i covers
-        -- every panel whose flags word has all of `require` and none of
-        -- `forbid`.
-        field_regions: { [number]: PanelCondition },
         -- MegaMan's palette in each Cross, by form (`byte_80203EA`).
         cross_palettes: { [number]: number },
     },
-    -- Hit regions (`PanelOffsetListsPointerTable`) by region number: the
-    -- panels a region covers, { dx, dy } from its panel with dx toward the
-    -- facing side, in the game's order.
-    regions: { [number]: { { number } } },
 }
 
 declare data: PackData
@@ -1721,6 +1690,49 @@ export type RolesSpec = {
     -- forms' charged claw's.
     lockon: {
         beast_claw: Lockon?,
+    }?,
+    -- The one-shot effects the ruleset shows itself: a navi deleted (and
+    -- a cross merged, a navi arriving, a form put on or taken off), HP
+    -- recovered, a side cutting in, a trap springing, an obstacle encased,
+    -- a form change, Beast Over's beast, blast and bursts.
+    effects: {
+        deletion: Effect?,
+        recovery: Effect?,
+        cut_in_flash: Effect?,
+        trap_mark: Effect?,
+        encased: Effect?,
+        form_change: Effect?,
+        beast_over_gregar: Effect?,
+        beast_over_falzar: Effect?,
+        beast_over_blast: Effect?,
+        beast_over_burst: Effect?,
+    }?,
+    -- The hit sparks the ruleset shows itself: a new registration's until
+    -- its owner names another, a blocked hit's, an eruption's, a thrown
+    -- obstacle's landing's, an uninstall's.
+    sparks: {
+        plain: Spark?,
+        guard: Spark?,
+        eruption: Spark?,
+        thrown_obstacle: Spark?,
+        uninstall: Spark?,
+    }?,
+    -- The hit regions the ruleset registers itself: a registration's own
+    -- panel, which every setup gives it.
+    regions: {
+        anchor: Region?,
+    }?,
+    -- The collision types the ruleset registers itself: a navi's body
+    -- (floating or not) and what it reacts to, an eruption and a thrown
+    -- obstacle's landing and what they reach.
+    collision: {
+        navi: CollisionType?,
+        floating_navi: CollisionType?,
+        navi_target: CollisionType?,
+        eruption: CollisionType?,
+        eruption_target: CollisionType?,
+        thrown_obstacle: CollisionType?,
+        thrown_obstacle_target: CollisionType?,
     }?,
     hooks: {
         -- The NaviCust FirstBarrier: raise its barrier and the barrier's

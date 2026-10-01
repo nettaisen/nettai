@@ -37,7 +37,7 @@ local function pull(me: Object, x: number, y: number, how: number)
                 element = 0,
                 region = regions.single,
                 -- None.
-                hit_effect = 0xFF,
+                hit_effect = nil,
                 target = collision.hits_navis,
                 self_type = collision.guard_breaking,
                 damage = 0,

@@ -10,6 +10,7 @@
 local attachment = require("../../../../objects/attachment/attachment")
 local drill_object = require("../../../../objects/drill/drill")
 local lockon = require("../../../../rules/lockon")
+local regions = require("../../../../lib/regions")
 local weapon = require("../../../../lib/weapon")
 
 export type State = {
@@ -112,7 +113,7 @@ local function burrow(me: Object, s: State)
         s.timer = 0x1E
         me:set_animation(0x16)
         me:reserve_panel(me.panel_x, me.panel_y)
-        me.collision.region = 0
+        me.collision.region = nil
         me:set_status("moving", true)
     end
     if s.timer == 0x1B then
@@ -141,7 +142,7 @@ local function burrow(me: Object, s: State)
     me.panel_x, me.panel_y = me:lockon_panel(x, y, LOCKON)
     me:set_coordinates_from_panel()
     me:update_collision_panels()
-    me.collision.region = 1
+    me.collision.region = regions.single
     me.step = EMERGE
     me.step_init = 0
 end
@@ -214,7 +215,7 @@ local function sink(me: Object, s: State)
     me.step = RETURN
     me.step_init = 0
     s.timer = 3
-    me.collision.region = 0
+    me.collision.region = nil
     local p = me.pos
     me.pos = Vec3.new(AWAY, p.y, p.z)
     me.related1 = nil
@@ -230,7 +231,7 @@ local function return_(me: Object, s: State)
     end
     me:set_status("using_action", false)
     me:set_status("moving", false)
-    me.collision.region = 1
+    me.collision.region = regions.single
     me.panel_x, me.panel_y = me.future_panel_x, me.future_panel_y
     me:unreserve_panel(me.panel_x, me.panel_y)
     me:set_coordinates_from_panel()

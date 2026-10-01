@@ -157,14 +157,6 @@ pub struct Content {
     pub rules: Rules,
     /// Object kinds' data.
     pub objects: ObjectData,
-    /// Generic one-shot effects by effect id (effect object #0's first
-    /// parameter).
-    pub effects: Vec<EffectSprite>,
-    /// Hit sparks by hit-effect id.
-    pub sparks: Vec<EffectSprite>,
-    /// Hit-region shapes by region number (below 0x80): the panels a hit
-    /// covers, relative to its panel.
-    pub regions: Vec<Vec<PanelOffset>>,
     /// Every sprite's animation timing.
     pub animations: Animations,
     /// The assets content can name (`asset.sprite("bomb")`): the loader
@@ -358,59 +350,37 @@ impl Content {
         self.animations.get(sprite, anim)
     }
 
-    /// A generic effect's look: the pack data's, else one content defines
-    /// (by the engine's number for it, `Defs::number`).
-    pub fn effect(&self, id: u8) -> EffectSprite {
-        self.effects
-            .get(id as usize)
-            .copied()
-            .or_else(|| self.defs.effect_numbered(id))
-            .unwrap_or_else(|| panic!("effect {id:#x} is not in the content"))
+    /// A one-shot effect's look.
+    pub fn effect(&self, h: bn6_content_api::EffectHandle) -> EffectSprite {
+        self.defs.effects[h.index()]
     }
 
-    /// A hit spark's look (likewise).
-    pub fn spark(&self, id: u8) -> EffectSprite {
-        self.sparks
-            .get(id as usize)
-            .copied()
-            .or_else(|| self.defs.spark_numbered(id))
-            .unwrap_or_else(|| panic!("hit spark {id:#x} is not in the content"))
+    /// A hit spark's look.
+    pub fn spark(&self, h: bn6_content_api::SparkHandle) -> EffectSprite {
+        self.defs.sparks[h.index()]
     }
 
-    /// A hit-region shape (empty for regions the content doesn't have).
-    pub fn region(&self, region: u8) -> &[PanelOffset] {
-        match self.regions.get(region as usize) {
-            Some(r) => r,
-            None => match self.defs.region_numbered(region) {
-                Some(Region::Panels(p)) => p,
-                _ => &[],
-            },
+    /// A hit region.
+    pub fn region(&self, h: bn6_content_api::RegionHandle) -> &Region {
+        &self.defs.regions[h.index()]
+    }
+
+    /// The panels around its anchor a hit region covers; none for no
+    /// region and for a whole-field one (which has no offsets: the
+    /// original's shape lookup doesn't know them).
+    pub fn region_offsets(&self, region: Option<bn6_content_api::RegionHandle>) -> &[PanelOffset] {
+        match region.map(|h| self.region(h)) {
+            Some(Region::Panels(p)) => p,
+            _ => &[],
         }
     }
 
-    /// A whole-field region's panel condition (region 0x80 and up).
-    pub fn field_region(&self, region: u8) -> PanelCondition {
-        let i = (region & 0x7F) as usize;
-        match self.rules.field_regions.get(i) {
-            Some(&c) => c,
-            None => match self.defs.region_numbered(region) {
-                Some(&Region::Field(c)) => c,
-                _ => panic!("field region {region:#x} is not in the content"),
-            },
-        }
-    }
-
-    /// Collision type `index`'s flag word for `alliance`'s side, and the
-    /// offset the original's lookup of its row leaves in a register (a bug
-    /// code's high byte, `sub_801A00E`).
-    pub fn collision_type(&self, index: u8, alliance: u8) -> (u32, u16) {
-        match self.rules.collision_types.get(index as usize) {
-            Some(t) => (t[alliance as usize & 1], index as u16 * 8),
-            None => match self.defs.collision_numbered(index) {
-                Some(t) => (t.flags[alliance as usize & 1], t.row_offset),
-                None => panic!("collision type {index:#x} is not in the content"),
-            },
-        }
+    /// A collision type's flag word for `alliance`'s side, and the offset
+    /// the original's lookup of its row leaves in a register (a bug code's
+    /// high byte, `sub_801A00E`).
+    pub fn collision_type(&self, h: bn6_content_api::CollisionHandle, alliance: u8) -> (u32, u16) {
+        let t = &self.defs.collisions[h.index()];
+        (t.flags[alliance as usize & 1], t.row_offset)
     }
 
     /// The Program Advances, in the order they are tried (each chip holds
@@ -422,10 +392,5 @@ impl Content {
     /// A link navi's own chip (none for MegaMan).
     pub fn navi_chip(&self, navi: NaviHandle) -> Option<(ChipHandle, ChipCode)> {
         self.defs.navi(navi).own_chip
-    }
-
-    /// An attachment kind (the attachment object's first parameter).
-    pub fn attachment(&self, kind: u8) -> &AttachmentKind {
-        self.objects.attachment(kind)
     }
 }

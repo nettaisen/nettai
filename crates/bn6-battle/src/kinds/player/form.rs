@@ -280,7 +280,7 @@ pub(super) fn apply_form_flags(b: &mut Battle, r: ObjectRef) {
         0x18 => {
             set_flag1(b, r, f1::UNAFFECTED_BY_POISON);
             let hm = body_hit_modifier(b);
-            b.reset_collision_types(r, 0x10, 2, hm);
+            super::reset_body_types(b, r, true, hm);
             spawn_lockon_marker(b, r);
             super::berserk::reset(b, r);
         }
@@ -297,7 +297,7 @@ pub(super) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
     let floating = |b: &mut Battle| {
         set_flag1(b, r, f1::AIRSHOE | f1::FLOATSHOE);
         let hm = body_hit_modifier(b);
-        b.reset_collision_types(r, 0x10, 2, hm);
+        super::reset_body_types(b, r, true, hm);
     };
     match form.0 {
         // nullsub_801471C .. nullsub_8014728, nullsub_5.
@@ -351,7 +351,7 @@ fn spawn_lockon_marker(b: &mut Battle, r: ObjectRef) {
 fn floating_beast(b: &mut Battle, r: ObjectRef) {
     set_flag1(b, r, f1::AIRSHOE | f1::FLOATSHOE);
     let hm = body_hit_modifier(b);
-    b.reset_collision_types(r, 0x10, 2, hm);
+    super::reset_body_types(b, r, true, hm);
     spawn_lockon_marker(b, r);
 }
 
