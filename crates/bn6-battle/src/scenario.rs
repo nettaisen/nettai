@@ -90,7 +90,7 @@ pub fn setup_with(chips: &[&str]) -> RoundSetup {
 
 /// The same round with both folders holding `chips` by handle (in turn),
 /// so they may be chips content defines: each in code A if it comes in
-/// it (the test content's numbered chips all do), else `*`, else its
+/// it (the test content's own chips all do), else `*`, else its
 /// first code.
 pub fn setup_with_handles(chips: &[ChipHandle]) -> RoundSetup {
     let mut s = setup();

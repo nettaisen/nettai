@@ -1222,8 +1222,8 @@ fn slash_cross_a_charge_asks_the_chip_for_its_slash() {
     let o = b.objects.get(p0);
     assert_eq!((act(&b, p0), o.panel), (8, PanelPos { x: 2, y: 2 }));
 
-    // A chip that is still a record has no definition to ask: its subtype
-    // (1, the wide sword's row) and first parameter (the step) say.
+    // The test blades run StepSwrd's and WideSwrd's actions, whose slashes
+    // say: the wide slash, after a dash for the step sword's.
     let (mut b, p0, _) = fight();
     use_charged_chip(&mut b, p0, 0x11, testing::chip_handle(testing::STEP_BLADE));
     assert_eq!(runs(&b, p0), "slashcross/charge/action");
@@ -1784,8 +1784,8 @@ fn count_kind(b: &Battle, name: &str) -> usize {
 fn spawning_instant_chips_run_their_objects_and_roll_back() {
     // Each effect's object appears the tick the chip's effect runs, plays
     // out, rolls back at any point, and is gone within 200 ticks.
-    // BN6's definitions, and the numbered chips that reach the records'
-    // shim (FireHit's) or a v1 module (FlmHook's).
+    // BN6's definitions, and the test chips that compose FireHit's and
+    // FlmHook's effects.
     let chips = [
         (testing::chip_handle(testing::BOOMER), "boomerang"),
         (testing::chip_handle(testing::LANCE), "lance/lance"),
