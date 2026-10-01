@@ -1,3 +1,3 @@
-# H-Burst runs action 0x34 (`sub_80ED810`), in chip.luau.
+# H-Burst's action (0x34) for its record, in chip.luau.
 
 script = "chip.luau"

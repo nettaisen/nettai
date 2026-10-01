@@ -64,6 +64,7 @@ fn battles_run_the_content_scripts() {
             "countdown-bomb",
             "crack-shot",
             "dash-hit",
+            "dolthdr/doll",
             "dragon-body",
             "dragon-head",
             "drill",
@@ -93,11 +94,11 @@ fn battles_run_the_content_scripts() {
             "golem",
             "grab/controller",
             "grab/shot",
+            "gundels/beam",
             "gust",
             "heat-flame",
             "heat-man",
             "hit-flash",
-            "honey-bee",
             "instrument",
             "instruments/controller",
             "invisible",
@@ -124,6 +125,7 @@ fn battles_run_the_content_scripts() {
             "rock-chip",
             "rock-cube",
             "rock-debris",
+            "rskyhny/bee",
             "sand-hole",
             "sand-spray",
             "sand-worm",
@@ -142,7 +144,6 @@ fn battles_run_the_content_scripts() {
             "spout-splash",
             "sumnblk/controller",
             "sumnblk/navi",
-            "sun-beam",
             "sun-meteor",
             "sun-moon",
             "sword-wave",
@@ -172,7 +173,7 @@ fn the_duel_fires_scripted_gun_del_sols() {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
             match b.kind_key(r) {
-                "sun-beam" => beams += 1,
+                "gundels/beam" => beams += 1,
                 "attachment" => guns += 1,
                 _ => {}
             }
@@ -231,10 +232,31 @@ fn the_scripted_navi_and_dimming_chips_play() {
     assert!(ticks("grab/shot") > 0, "grab shots: {seen:?}");
 }
 
+/// The duel's round with the bee and dragon chips (RskyHny2 and ElecDrgn,
+/// which content defines) in the folders, in turn, both in the code they
+/// share (V), so a hand takes both.
+fn bee_and_dragon_setup() -> crate::setup::RoundSetup {
+    use crate::content::ChipCode;
+    use crate::custom::{BattleFolder, FolderChip};
+    let chips = [testing::defined_chip(testing::BEES), testing::defined_chip(testing::DRAGON)];
+    let code = ChipCode::from_letter('V').unwrap();
+    let content = testing::content();
+    let mut folder = BattleFolder::empty();
+    for (slot, &h) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
+        assert!(content.chip(h).codes.contains(&code), "chip {h:?} doesn't come in V");
+        *slot = Some(FolderChip::new(h, code));
+    }
+    let mut s = scenario::setup();
+    for p in &mut s.players {
+        p.folder = Some(folder);
+    }
+    s
+}
+
 /// A duel with the bee and dragon chips in the folders: the ticks each
 /// scripted kind was on the field, and the players' HP at the end.
 fn bee_and_dragon_duel(ticks: usize) -> (std::collections::BTreeMap<String, usize>, [u16; 2]) {
-    let setup = || scenario::setup_with(&[testing::BEES, testing::DRAGON]);
+    let setup = bee_and_dragon_setup;
     let tape = scenario::record_on(setup(), ticks, 5);
     let mut b = Battle::new(setup(), scenario::content());
     let mut seen = std::collections::BTreeMap::new();
@@ -255,7 +277,7 @@ fn the_bees_and_dragons_play() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The hive in hand, the bees it sends, the dragon's head and body.
     assert!(ticks("attachment") > 0, "the hive: {seen:?}");
-    assert!(ticks("honey-bee") > 0, "bees: {seen:?}");
+    assert!(ticks("rskyhny/bee") > 0, "bees: {seen:?}");
     assert!(ticks("dragon-head") > 0, "dragon heads: {seen:?}");
     assert!(ticks("dragon-body") >= 4 * ticks("dragon-head"), "four body segments a head: {seen:?}");
     assert!(hp.iter().any(|&h| h < 1000), "someone got hit: {hp:?}");
@@ -263,7 +285,7 @@ fn the_bees_and_dragons_play() {
 
 #[test]
 fn the_bees_and_dragons_roll_back() {
-    let setup = || scenario::setup_with(&[testing::BEES, testing::DRAGON]);
+    let setup = bee_and_dragon_setup;
     let tape = scenario::record_on(setup(), 1600, 5);
     let mut b = Battle::new(setup(), scenario::content());
     let whole = digests(&tape, Battle::new(setup(), scenario::content()));
@@ -485,13 +507,13 @@ fn registrations_follow_the_content_data() {
     let d = &c.defs;
     // The four SunGun chips share one action, as the thrown chips and the
     // three swords share theirs; the v1 weapons have theirs (the buster's,
-    // the charged shot's and the blank shot's are definitions); the mend,
-    // mirror, bee and dragon chips theirs.
+    // the charged shot's and the blank shot's are definitions); the mend
+    // and mirror chips theirs. (The bee and dragon chips are definitions.)
     let mut actions: Vec<u8> = d.actions.iter().filter_map(|a| a.number).collect();
     actions.sort();
     let expected = [
-        0x12, 0x13, 0x1A, 0x1D, 0x1E, 0x20, 0x22, 0x2B, 0x35, 0x37, 0x39, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x49, 0x4A,
-        0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x56, 0x57, 0x58,
+        0x12, 0x13, 0x1A, 0x1D, 0x1E, 0x20, 0x22, 0x2B, 0x35, 0x37, 0x3A, 0x3C, 0x3D, 0x41, 0x45, 0x46, 0x49, 0x4A, 0x4C,
+        0x4D, 0x4E, 0x4F, 0x50, 0x52, 0x56, 0x57, 0x58,
     ];
     assert_eq!(actions, expected, "{:?}", d.actions);
     // An instant chip's record resolves its subtype's effect, and a weapon
@@ -508,7 +530,7 @@ fn registrations_follow_the_content_data() {
     assert_eq!(d.kind_at(crate::object::Pool::Attack, 3), None);
     // Two chips implementing one action with different scripts is an error.
     let mut c = testing::build();
-    c.chips[testing::SUN_GUN_2 as usize].script = Some("objects/sun-beam/sun_beam".into());
+    c.chips[testing::SUN_GUN_2 as usize].script = Some("chips/009-mend/chip".into());
     let e = c.define().unwrap_err().message;
     assert!(e.contains("implements action 0x37"), "{e}");
     // So is naming a script the pack doesn't have.
@@ -860,9 +882,10 @@ fn play_error(behaviors: Behaviors) -> Option<String> {
 }
 
 const GUN_DEL_SOL: &str = "chips/001-sungun1/chip";
-const UPDATE: &str = "function gun_del_sol.update(me: Object, s: State)\n";
+const UPDATE: &str = "function by_number.update(me: Object, s: any)\n";
 
-/// GunDelSol's update with `line` added at its top.
+/// GunDelSol's update (the numbered registration's, which runs the chip's
+/// own) with `line` added at its top.
 fn in_update(line: &str) -> Content {
     patched(GUN_DEL_SOL, &[(UPDATE, &format!("{UPDATE}    {line}\n"))])
 }
@@ -870,8 +893,8 @@ fn in_update(line: &str) -> Content {
 #[test]
 fn state_in_module_locals_is_rejected_at_load() {
     let c = patched(
-        "objects/sun-beam/sun_beam",
-        &[("local sun_beam = {", "local hums = 0\nlocal sun_beam = {"), ("    s.ticks += 1\n", "    s.ticks += 1\n    hums += 1\n")],
+        "chips/gundels/beam",
+        &[("local beam = {}", "local hums = 0\nlocal beam = {}"), ("    s.ticks += 1\n", "    s.ticks += 1\n    hums += 1\n")],
     );
     let e = load(&c).err().expect("rejected");
     assert!(e.contains("assigns the module-level local `hums`"), "{e}");
@@ -885,7 +908,7 @@ fn global_writes_are_rejected_at_load() {
 
 #[test]
 fn module_tables_and_data_are_frozen() {
-    for line in ["gun_del_sol.uses = me.step", "data.chips[me.chip].gun_del_sol.firing_ticks = 1", "math.floor = math.ceil"] {
+    for line in ["by_number.uses = me.step", "data.chips[me.chip].gun_del_sol.firing_ticks = 1", "math.floor = math.ceil"] {
         let e = play_error(load(&in_update(line)).unwrap()).expect("the write fails");
         assert!(e.contains("readonly"), "{line}: {e}");
     }
@@ -895,7 +918,7 @@ fn module_tables_and_data_are_frozen() {
 fn tables_captured_by_functions_are_frozen() {
     let c = patched(
         GUN_DEL_SOL,
-        &[("local gun_del_sol = {", "local seen = {}\nlocal gun_del_sol = {"), (UPDATE, &format!("{UPDATE}    seen[1] = me.step\n"))],
+        &[("local by_number = {", "local seen = {}\nlocal by_number = {"), (UPDATE, &format!("{UPDATE}    seen[1] = me.step\n"))],
     );
     let e = play_error(load(&c).unwrap()).expect("the write fails");
     assert!(e.contains("readonly"), "{e}");
@@ -919,7 +942,11 @@ fn weak_tables_are_refused() {
 
 #[test]
 fn fractions_cannot_enter_battle_state() {
-    let b = load(&patched(GUN_DEL_SOL, &[("        s.timer = 6\n", "        s.timer = 13 / 2\n")])).unwrap();
+    let b = load(&patched(
+        "chips/gundels/action",
+        &[("            s.timer = WIND_UP_TICKS\n", "            s.timer = 13 / 2\n")],
+    ))
+    .unwrap();
     let e = play_error(b).expect("refused");
     assert!(e.contains("6.5 is not an integer"), "{e}");
 }

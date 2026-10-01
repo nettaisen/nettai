@@ -13,6 +13,7 @@ use bn6_battle::content::testing;
 use bn6_battle::input::PlayerTick;
 use bn6_battle::object::Vec3;
 use bn6_battle::scenario;
+use bn6_content_api::{AssetKind, Value};
 
 const N: u32 = 200_000;
 
@@ -43,8 +44,9 @@ fn main() {
     println!("|---|---|{}", if natives.len() > 1 { "---|" } else { "" });
     for (name, op) in OPS {
         let mut content = testing::build();
-        let beam = content.scripts.modules.get_mut("objects/sun-beam/sun_beam").expect("the sun beam script");
-        let hook = "    if s.ticks % 11 == 0 then";
+        let beam = content.scripts.modules.get_mut("chips/gundels/beam").expect("the sun beam script");
+        let hook = "    if s.ticks % HUM_TICKS == 0 then";
+        assert!(beam.contains(hook), "the sun beam script has no {hook:?}");
         *beam = beam.replacen(hook, &format!("    if me.timer2 == 7 then for i = 1, {N} do {op} end end\n{hook}"), 1);
         let mut row = format!("| {name} |");
         for &native in natives {
@@ -57,8 +59,11 @@ fn main() {
                 }
                 // A sun beam on player 0 that runs `op` N times when its timer2 is 7.
                 let owner = b.player(0).unwrap();
-                let r = behavior::spawn_kind(&mut b, "sun-beam", Vec3::default(), [0, 2, 0, 0]).unwrap();
+                let r = behavior::spawn_kind(&mut b, "gundels/beam", Vec3::default(), [0; 4]).unwrap();
                 b.objects.get_mut(r).related[0] = Some(owner);
+                let look = b.content.assets.handle(AssetKind::Sprite, "sun-beam").expect("the sun beam's sprite");
+                behavior::set_state_field(&mut b, r, "sprite", Value::Asset(AssetKind::Sprite, look));
+                behavior::set_state_field(&mut b, r, "palette", Value::Int(2));
                 behavior::set_state_variant(&mut b, r, "slot", "related");
                 b.objects.get_mut(owner).related[0] = Some(r);
                 b.tick(&idle, Default::default());
