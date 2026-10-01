@@ -611,7 +611,7 @@ objects/ too.)
 The rest of v1's layout moves as follows: `lib/sword.luau` and `lib/vari_sword.luau` into `lib/swords/`,
 `lib/dragon.luau` into `lib/dragons/`, `lib/instant-chips/` into `lib/instant/`, `lib/buster.luau` into
 `navis/megaman/weapons/buster/`; every `chips/NNN-name` folder into its chip's or series' folder; the 46
-`navis/00-megaman/weapons/NN-name` folders into the form that uses each (or `navis/megaman/weapons/` when
+`navis/megaman/weapons/NN-name` folders into the form that uses each (or `navis/megaman/weapons/` when
 several forms do), with the 17 `NN-buster` alias folders gone (compat names the aliases).
 
 ## 5. Composition patterns
@@ -1290,10 +1290,10 @@ return define.form {
 
 The per-form tables the Rust ruleset holds as `match form.0` today (§7.5) become these fields.
 
-**As built** (step 7): navis/00-megaman/weapons/buster, charged-shot and blank-shot (`weapon.luau` each: the
+**As built** (step 7): navis/megaman/weapons/buster, charged-shot and blank-shot (`weapon.luau` each: the
 weapon definition `megaman/buster` with its shot `megaman/buster/shot`, `megaman/charged-shot` with
 `megaman/charged-shot/action`, `megaman/blank-shot` with `megaman/blank-shot/action`), and
-navis/00-megaman/forms/heatcross/charge.luau (`heatcross/charge`). The v1 registrations (`weapon.toml`, the 16
+navis/megaman/forms/heatcross/charge.luau (`heatcross/charge`). The v1 registrations (`weapon.toml`, the 16
 buster alias folders) went. What it settled:
 
 - **A weapon definition takes routine numbers** with the transitional `legacy = { routines = { ... } }`
@@ -1323,15 +1323,14 @@ buster alias folders) went. What it settled:
 
 **As built** (step 8e, MegaMan's weapons): every weapon routine a v1 module implemented is a `define.weapon`
 with its action a `define.action`, in the module the weapon's key names: a form's own under
-navis/00-megaman/forms/`<form>`/ (`charge`, `drop`, `wave`, `lunge`, `scatter`, `dash`, `drill`, `tackle`,
+navis/megaman/forms/`<form>`/ (`charge`, `drop`, `wave`, `lunge`, `scatter`, `dash`, `drill`, `tackle`,
 `throw`, `throw_absorbed`, beside the kinds only it spawns: SpoutCross Beast's `surge`, TenguCross Beast's
 `whirlwind`, EraseCross's `ray`, EraseCross Beast's `erase_drop`, SlashCross Beast's `lunge_slash`, ChargeCross
 Beast's `charge_wave`, DustCross Beast's `junk_shot`, DustCross's `junk_ball`, SlashCross's `sword_wave` and
-`slashes`), one several forms or the NaviCust name under navis/00-megaman/weapons/`<name>`/weapon.luau (the
+`slashes`), one several forms or the NaviCust name under navis/megaman/weapons/`<name>`/weapon.luau (the
 Beast busters, the Beast claw, `tengu-wind`, `absorb`, `anti-damage`, `slash-a-charge`, and `shield`, which
 defines the four NaviCust shields and reflects), and
-the hit the dash and the tackle share in navis/00-megaman/dash_hit.luau (`megaman/dash-hit`). (The folder stays
-`00-megaman` until the navis are definitions.) What it settled:
+the hit the dash and the tackle share in navis/megaman/dash_hit.luau (`megaman/dash-hit`). What it settled:
 
 - **A setup writes its action's state**, not attack parameters: `navi:action_state(action)` gives the state of
   the action the setup is about to return (zeroed unless that action ran last), and the setup fills what the
@@ -1357,7 +1356,7 @@ the hit the dash and the tackle share in navis/00-megaman/dash_hit.luau (`megama
   special, which nothing charges, still gives its row (zeros).
 - **SlashCross's charged slash asks the chip for its slash.** What the slash is (the wave it sends, a second
   hidden wave, the blade or none, the swing's sound, a second slash, the Beast rush's lock-on mode) is a
-  `ChargedSlash` record (navis/00-megaman/forms/slashcross/slashes), where the original read a table by the
+  `ChargedSlash` record (navis/megaman/forms/slashcross/slashes), where the original read a table by the
   attack's variant for each part. A sword names its own in its action's spec (`slash.action { ...,
   charged = slashes.wide }`; MoonBld's swing its ring; a step sword's `step` is the dash), and the A-charge
   (`megaman/slash-a-charge`) reads it of the attack's chip: `navi.attack_chip`, the attack's chip as its
@@ -1556,7 +1555,7 @@ entry reaches the rock's `actor_list_entry` by its type number, and the other ty
   `set_state_variant`; `eaten`; `telop_chip`), and the support's out flag (the original's second parameter,
   which the support sets and clears) is the controller's `out`. Rush leaves the second WhiCapsl in the hand by
   its chip number still (that chip is a record, §5.4): the one chip number left in these modules.
-- **SlashCross's sword wave** (navis/00-megaman/forms/slashcross/sword_wave): its rows (`byte_80D7F4C`) are
+- **SlashCross's sword wave** (navis/megaman/forms/slashcross/sword_wave): its rows (`byte_80D7F4C`) are
   `SwordWaveVariant` records, `sword_wave.spawn(owner, variant, x, y, element, damage, hidden?)`, named by the
   sword each is of (`sword_wave.waves`; each charged slash's record names its own since step 8e, §5.7). The
   pack's `sword_waves` data is read by no script any more.
@@ -2325,9 +2324,9 @@ reaches the traces and the game's setups through `bn6-compat`, which maps the en
   0b1-invisibl (1: Invisibl, a dark chip's substitute; the second WhiCapsl, past 0x170) and 121-darkinvs (38:
   DarkInvs, a dark chip). They go when the ruleset names those chips by trait and the recipes by handle (phase
   C, step 10). Rush's spared chip (lib/supports/rush: the second WhiCapsl's number) goes with them.
-- **The charged slashes by row.** `slashes.by_row` (navis/00-megaman/forms/slashcross/slashes) keeps the
+- **The charged slashes by row.** `slashes.by_row` (navis/megaman/forms/slashcross/slashes) keeps the
   charged slashes by the original's row, a sword chip's subtype, and SlashCross's A-charge
-  (navis/00-megaman/weapons/slash-a-charge) the variable swords' and MoonBld's action numbers, for a charged
+  (navis/megaman/weapons/slash-a-charge) the variable swords' and MoonBld's action numbers, for a charged
   chip that is still a pack record (counted by the ratchet: the attack's variant and first parameter). They go
   when the swords SlashCross charges are definitions (step 5 for their records; their slashes already name
   their charged slash).

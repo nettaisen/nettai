@@ -24,7 +24,7 @@
 --       `dimming_chip(user, spec)`, for a navi chip (0x1B) `navi_chip(user,
 --       controller, spec)`, for an instant chip (0x1C) `instant_chip(user,
 --       spec)`
---   navis/00-megaman/weapons/NN-name/weapon.toml            a weapon routine:
+--   navis/megaman/weapons/NN-name/weapon.toml            a weapon routine:
 --       `setup(navi) -> action`, and `state`/`update` for its `action`,
 --       `instant_chip(user, spec)` for its `instant_chip`
 --
